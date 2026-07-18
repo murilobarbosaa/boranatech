@@ -551,7 +551,7 @@ const baseAreasTI: AreaTI[] = [
         oQueFaz:
           "No dia a dia: coleta dados de múltiplas fontes, explora padrões com análise estatística (Python + Pandas + Matplotlib), formula hipóteses de negócio (ex: 'quais clientes têm maior risco de churn?'), treina modelos de machine learning pra responder essas perguntas, e apresenta resultados pra stakeholders não-técnicos em formato visual e narrativo. Em fintechs e bancos, trabalha em modelos de risco de crédito, prevenção de fraude e segmentação de clientes.",
         diferencasDaAreaMae:
-          "Enquanto o Analista de Dados foca em relatórios e dashboards sobre o que já aconteceu, o Cientista de Dados constrói modelos preditivos sobre o que vai acontecer. Onde o analista usa Excel e Power BI, o cientista usa Python, scikit-learn e TensorFlow. A barreira de entrada é maior (exige base sólida de estatística inferencial e álgebra linear), mas o salário compensa: cientista júnior pode começar acima do pleno analista.",
+          "Enquanto o Analista de Dados foca em relatórios e dashboards sobre o que já aconteceu, o Cientista de Dados constrói modelos preditivos sobre o que vai acontecer. Onde o analista usa Excel e Power BI, o cientista usa Python, scikit-learn e TensorFlow. A fronteira com o Machine Learning Engineer (subárea de IA) é de escopo: o cientista experimenta, treina e valida modelos em notebooks; quando o modelo precisa virar produto (API, pipeline de re-treino, escala em produção), o trabalho passa pro ML Engineer. A barreira de entrada é maior (exige base sólida de estatística inferencial e álgebra linear), mas o salário compensa: cientista júnior pode começar acima do pleno analista.",
         habilidadesEspecificas: [
           "Estatística inferencial e álgebra linear (base matemática forte)",
           "Python avançado com Pandas, NumPy e Matplotlib",
@@ -705,6 +705,226 @@ const baseAreasTI: AreaTI[] = [
         ],
         dicasIniciais:
           "Analytics Engineer é o caminho mais inteligente pra Analistas que querem subir salário sem virar Engenheiro de Dados puro. dbt é A ferramenta da carreira. Invista 1-2 meses dominando. SQL é 80% do trabalho. Se não está fluente, foque aí antes. Inglês é importante (toda a community dbt está em inglês). Cargo ainda em formação no BR. Quem entra agora pega salários acima do normal.",
+      },
+      {
+        slug: "engenheiro-dados",
+        nome: "Engenheiro de Dados",
+        descricaoCurta:
+          "Constrói e opera os pipelines que movem e transformam dados em escala. É a fundação técnica que alimenta analistas, cientistas e BI.",
+        descricaoCompleta:
+          "Engenheiro de Dados é quem constrói a infraestrutura de dados de uma empresa: os pipelines que extraem dados de dezenas de fontes, movem pra um data lake ou warehouse e deixam tudo pronto e confiável pra quem vai analisar. Sem ele, cientistas e analistas não têm dado com que trabalhar. É um dos cargos mais demandados e mais bem pagos da área de dados em 2026, porque combina engenharia de software pesada com domínio de sistemas distribuídos. Mercado super aquecido: com o boom de IA, toda empresa que quer usar modelos precisa antes organizar seus dados, e é o engenheiro que faz isso. Média BR gira em torno de R$ 10-12k, com sêniores em fintechs passando de R$ 20k.",
+        oQueFaz:
+          "No dia a dia: constrói pipelines de ingestão (batch e streaming) que trazem dados de bancos, APIs e eventos pra um repositório central, orquestra a execução desses fluxos com Airflow ou Dagster, processa grandes volumes com Spark, modela os dados no warehouse (modelagem dimensional), implementa observabilidade e testes pra garantir que o dado chega íntegro, e otimiza custo e performance da infraestrutura de dados. Trabalha como fornecedor: entrega dados confiáveis pra Analytics Engineers, Analistas e Cientistas consumirem.",
+        diferencasDaAreaMae:
+          "Dentro de Ciência de Dados, o Engenheiro de Dados é a camada de infraestrutura, não toca em modelo preditivo nem em dashboard. Diferente do Analytics Engineer (que transforma dados já dentro do warehouse com SQL e dbt), o Engenheiro de Dados constrói o que vem antes: os pipelines que movem o dado da origem até o warehouse. Diferente do DBA (que administra e afina um banco específico), o engenheiro constrói o fluxo de movimentação entre muitos sistemas. Diferente do Arquiteto de Dados (que decide qual ecossistema usar), o engenheiro implementa e opera o que o arquiteto desenhou. É a porta de entrada natural pra quem vem de backend e quer migrar pra dados: a base de engenharia de software já vale muito.",
+        habilidadesEspecificas: [
+          "Python e SQL avançado (base do trabalho diário)",
+          "Orquestração de pipelines (Airflow ou Dagster)",
+          "Processamento distribuído (Apache Spark, PySpark)",
+          "Modelagem dimensional (Kimball) e conceitos de data lake/lakehouse",
+          "Cloud e noções de Infrastructure as Code (Terraform)",
+        ],
+        ferramentasEspecificas: [
+          "Apache Airflow ou Dagster (orquestração)",
+          "Apache Spark / Databricks (processamento em escala)",
+          "dbt (transformação no warehouse)",
+          "Python (PySpark, Pandas) + SQL",
+          "Snowflake, BigQuery ou Redshift (data warehouses)",
+          "Apache Kafka (ingestão de streaming)",
+        ],
+        cargos: [
+          "Engenheiro de Dados Júnior (0-2 anos)",
+          "Engenheiro de Dados Pleno (2-5 anos)",
+          "Engenheiro de Dados Sênior (5+ anos)",
+          "Staff/Principal Data Engineer (arquitetura de plataforma de dados)",
+        ],
+        faixaSalarial:
+          "R$ 5.000 (júnior) a R$ 25.000+ (sênior). Média BR R$ 10-12k, Glassdoor 2026. Pleno gira em R$ 11-16k. Especialistas em Spark e streaming em fintechs (Nubank, iFood, Stone) passam R$ 20k. Remoto pra fora paga em dólar.",
+        dificuldade: 4,
+        cursosGratuitos: [
+          "DataTalksClub: Data Engineering Zoomcamp (gratuito, completo, em inglês)",
+          "freeCodeCamp: tutoriais de Apache Airflow e Spark (YouTube)",
+          "Documentação oficial do Apache Airflow e do Apache Spark (gratuita)",
+        ],
+        projetosSugeridos: [
+          "Pipeline batch completo: ingestão de CSV/API → data lake → warehouse orquestrado com Airflow",
+          "Job de processamento em Spark sobre um dataset público grande (milhões de linhas)",
+          "Pipeline de streaming com Kafka: eventos → processamento → warehouse em quase tempo real",
+        ],
+        roadmapEspecifico: [
+          "Dominar SQL profundo + Python (foco em manipulação de dados)",
+          "Aprender modelagem de dados (dimensional/Kimball) e conceitos de warehouse",
+          "Estudar orquestração com Airflow (padrão da área) construindo pipelines reais",
+          "Aprender Spark pra processamento em escala e um data warehouse na nuvem (BigQuery é gratuito até certo volume)",
+          "Construir portfólio público: 2 pipelines end-to-end no GitHub com documentação",
+        ],
+        dicasIniciais:
+          "Engenheiro de Dados é o cargo que mais cresce com o boom de IA: modelo bom precisa de dado organizado, e é você que organiza. Se vem de backend, seu maior atalho: sua base de engenharia já conta muito. SQL e Python são inegociáveis, comece por eles. Airflow é a ferramenta que aparece em quase toda vaga. O DataTalksClub Zoomcamp é o melhor caminho gratuito e estruturado pra entrar. Inglês é obrigatório (doc e community em inglês).",
+      },
+      {
+        slug: "dba",
+        nome: "DBA / Administrador de Banco de Dados",
+        descricaoCurta:
+          "Garante que os bancos de dados fiquem rápidos, seguros e sempre disponíveis. Modelagem, tuning, backup e alta disponibilidade.",
+        descricaoCompleta:
+          "DBA (Database Administrator) é o profissional responsável por manter os bancos de dados de uma empresa funcionando com performance, segurança e disponibilidade. É quem garante que a query não trave, que o banco aguente o pico de acesso, que exista backup pra recuperar de um desastre e que dados sensíveis estejam protegidos. É um cargo tradicional e sólido da área de dados: menos badalado que Cientista ou Engenheiro de Dados, mas essencial e estável, especialmente em bancos, telecom, saúde e ERPs corporativos, onde a base de dados é o coração da operação. Salário típico no BR: R$ 4-6k júnior, R$ 7-11k pleno, R$ 12-18k sênior, com especialistas em alta disponibilidade passando disso.",
+        oQueFaz:
+          "No dia a dia: modela e mantém esquemas de banco, analisa e otimiza queries lentas (índices, planos de execução, tuning), configura e testa rotinas de backup e recuperação, monta e monitora alta disponibilidade (replicação, failover, clusters), gerencia permissões e segurança do banco, acompanha métricas de saúde (locks, uso de disco, conexões) e planeja capacidade. Atua tanto em bancos relacionais (PostgreSQL, SQL Server, Oracle, MySQL) quanto, cada vez mais, em bancos NoSQL.",
+        diferencasDaAreaMae:
+          "Dentro de Ciência de Dados, o DBA é o especialista no banco em si, não na análise do dado que está nele. Diferente do Engenheiro de Dados (que constrói pipelines movendo dados entre sistemas), o DBA foca em manter um ou poucos bancos rodando com performance e confiabilidade. Diferente do Arquiteto de Dados (que decide qual banco e ecossistema adotar), o DBA opera e afina o banco escolhido no dia a dia. Diferente do Analista (que consulta o dado pra gerar insight), o DBA cuida da infraestrutura que guarda esse dado. É um cargo pra quem gosta de performance, confiabilidade e do funcionamento interno de sistemas de banco.",
+        habilidadesEspecificas: [
+          "SQL avançado e entendimento profundo de planos de execução",
+          "Tuning de performance (índices, particionamento, otimização de queries)",
+          "Backup, recuperação e planos de continuidade (disaster recovery)",
+          "Alta disponibilidade (replicação, failover, clusters)",
+          "Segurança de banco (controle de acesso, criptografia, auditoria)",
+        ],
+        ferramentasEspecificas: [
+          "PostgreSQL, MySQL, SQL Server ou Oracle (bancos relacionais)",
+          "Ferramentas de monitoramento (pgAdmin, Percona Monitoring, Datadog)",
+          "Scripts de automação (Shell, Python) pra rotinas de manutenção",
+          "Ferramentas de backup (pg_dump, Barman, RMAN)",
+          "MongoDB ou Redis (NoSQL, diferencial crescente)",
+          "Ambientes de banco gerenciado na nuvem (RDS, Cloud SQL)",
+        ],
+        cargos: [
+          "DBA Júnior (0-2 anos)",
+          "DBA Pleno (2-5 anos)",
+          "DBA Sênior (5+ anos)",
+          "DBA Especialista / Database Reliability Engineer",
+        ],
+        faixaSalarial:
+          "R$ 4.000 (júnior) a R$ 18.000 (sênior). Pleno gira em R$ 7-11k. DBAs especialistas em alta disponibilidade e bancos críticos (bancos, telecom) chegam a R$ 15-20k. Média BR em torno de R$ 8k, Glassdoor 2026.",
+        dificuldade: 4,
+        cursosGratuitos: [
+          "Microsoft Learn: fundamentos de SQL Server e Azure SQL (gratuito oficial)",
+          "PostgreSQL Tutorial (postgresqltutorial.com): guia gratuito e completo",
+          "Use The Index, Luke (use-the-index-luke.com): livro gratuito sobre tuning de SQL",
+        ],
+        projetosSugeridos: [
+          "Otimização documentada: pegar queries lentas em dataset público, criar índices e medir o ganho",
+          "Setup de replicação PostgreSQL com failover testado em ambiente local (Docker)",
+          "Rotina completa de backup e restore automatizada com scripts e validação de integridade",
+        ],
+        roadmapEspecifico: [
+          "Dominar SQL profundo e o modelo relacional",
+          "Escolher um banco (PostgreSQL é gratuito e muito procurado) e aprender sua administração",
+          "Estudar tuning de performance: índices, planos de execução, otimização de queries",
+          "Aprender backup/recuperação e alta disponibilidade (replicação, failover)",
+          "Praticar em ambiente próprio (Docker) simulando cenários reais de carga e falha",
+        ],
+        dicasIniciais:
+          "DBA é o cargo mais estável e menos hypado da área de dados, e isso é uma vantagem: menos concorrência, demanda constante. Comece pelo PostgreSQL: gratuito, open source e cada vez mais adotado. Tuning de performance é o que separa o DBA júnior do sênior. Estude planos de execução a fundo. 'Use The Index, Luke' é a melhor referência gratuita sobre isso. Bancos, telecom e ERPs são os maiores empregadores. Cloud (RDS, Cloud SQL) é o futuro do cargo. Aprenda o banco gerenciado também.",
+      },
+      {
+        slug: "governanca-dados",
+        nome: "Governança de Dados / Data Steward",
+        descricaoCurta:
+          "Define as regras do jogo dos dados: qualidade, privacidade (LGPD), catálogo e linhagem. Garante que o dado seja confiável e usado de forma correta.",
+        descricaoCompleta:
+          "Governança de Dados é a disciplina que garante que os dados de uma empresa sejam confiáveis, bem documentados, seguros e usados dentro da lei. O Data Steward é quem coloca isso em prática: define políticas de qualidade, mantém o catálogo de dados (o mapa do que existe e onde), controla a linhagem (de onde o dado veio e por onde passou) e garante conformidade com a LGPD. Ganhou peso enorme no BR a partir da LGPD e do boom de IA: modelo treinado com dado errado ou usado sem base legal vira risco jurídico e reputacional. Cargo mais próximo de processo, política e negócio do que de código pesado, o que o torna uma porta de entrada acessível pra quem vem de áreas como compliance, administração ou negócio. Salários vão de R$ 5k na base a R$ 20k+ pra líderes de governança em bancos e fintechs.",
+        oQueFaz:
+          "No dia a dia: define e aplica políticas de qualidade de dados (o que é um dado válido, quem é dono de cada domínio), mantém o catálogo de dados atualizado pra que times encontrem e entendam o que existe, documenta linhagem (rastreia a origem e as transformações de cada dado), mapeia dados pessoais e garante conformidade com a LGPD (base legal, retenção, anonimização), define papéis de acesso e uso, e educa os times sobre uso responsável de dados. Trabalha na fronteira entre a área técnica de dados e as áreas de negócio, jurídico e compliance.",
+        diferencasDaAreaMae:
+          "Dentro de Ciência de Dados, a Governança é a camada de regras e confiança, não de construção nem de análise. Diferente do Engenheiro de Dados (que implementa os pipelines) e do Arquiteto de Dados (que desenha o ecossistema), o Data Steward define as políticas que esses dados precisam seguir: qualidade, privacidade, catálogo e linhagem. Diferente do Analista (que extrai insight do dado), a governança garante que o dado seja confiável e legal antes de qualquer análise. É a subárea menos técnica em código e mais forte em processo, negócio e regulação. Perfeita pra quem vem de compliance, jurídico ou administração e quer entrar em dados sem programação pesada.",
+        habilidadesEspecificas: [
+          "LGPD e privacidade de dados (base legal, retenção, anonimização)",
+          "Gestão de qualidade de dados (definição de métricas e políticas)",
+          "Catálogo e metadados (documentar o que existe e o que significa)",
+          "Linhagem de dados (rastrear origem e transformações)",
+          "Comunicação e articulação entre times técnicos, negócio e jurídico",
+        ],
+        ferramentasEspecificas: [
+          "Ferramentas de catálogo (DataHub, Collibra, Alation, Amundsen)",
+          "Ferramentas de qualidade de dados (Great Expectations, Soda)",
+          "SQL intermediário (pra investigar e validar dados)",
+          "Frameworks de governança (DAMA-DMBOK como referência)",
+          "Planilhas e ferramentas de documentação (mapeamento de dados)",
+          "Plataformas de gestão de consentimento e privacidade (LGPD)",
+        ],
+        cargos: [
+          "Data Steward Júnior / Analista de Governança (0-2 anos)",
+          "Data Steward Pleno (2-5 anos)",
+          "Especialista em Governança de Dados (5+ anos)",
+          "Data Governance Lead / Head of Data Governance",
+        ],
+        faixaSalarial:
+          "R$ 5.000 (júnior/steward) a R$ 22.000+ (líder de governança). Pleno gira em R$ 8-13k. Leads de Data Governance em bancos e fintechs, onde a LGPD é crítica, passam R$ 18k. Cargo em valorização crescente com o avanço da regulação.",
+        dificuldade: 3,
+        cursosGratuitos: [
+          "ENAP: cursos gratuitos sobre LGPD e proteção de dados (Escola Nacional de Administração Pública)",
+          "ANPD: guias e materiais oficiais sobre a LGPD (gratuitos)",
+          "Google Cloud Skills Boost: trilha de Data Governance (parte gratuita)",
+        ],
+        projetosSugeridos: [
+          "Mapa de dados pessoais fictício de uma empresa com base legal LGPD documentada por dado",
+          "Catálogo de dados simples de um domínio (ex: e-commerce) com definições, donos e linhagem",
+          "Conjunto de regras de qualidade de dados com testes usando Great Expectations",
+        ],
+        roadmapEspecifico: [
+          "Estudar a LGPD a fundo (é a base do cargo no BR): ENAP e ANPD têm material gratuito",
+          "Aprender os pilares de governança (qualidade, catálogo, linhagem, metadados) via DAMA-DMBOK",
+          "Aprender SQL intermediário pra investigar e validar dados na prática",
+          "Conhecer ferramentas de catálogo e qualidade (DataHub, Great Expectations)",
+          "Montar um portfólio de artefatos: mapa de dados, catálogo documentado, políticas de qualidade",
+        ],
+        dicasIniciais:
+          "Governança de Dados é a porta de entrada mais acessível pra quem vem de compliance, jurídico ou negócio: pesa mais processo e regulação do que código. A LGPD é o seu maior ativo. Domine-a e você já vale muito em banco e fintech. Não precisa programar pesado, mas SQL intermediário ajuda a ganhar respeito dos times técnicos. Com o boom de IA, governança virou tema de conselho: dado mal governado é risco jurídico direto. Cargo em alta e ainda pouco disputado no BR.",
+      },
+      {
+        slug: "arquiteto-dados",
+        nome: "Arquiteto de Dados",
+        descricaoCurta:
+          "Desenha o ecossistema de dados da empresa: decide entre warehouse, lakehouse ou data mesh e define os padrões que engenheiros e analistas seguem.",
+        descricaoCompleta:
+          "Arquiteto de Dados é o cargo mais sênior e estratégico da área: quem desenha o mapa de todo o ecossistema de dados de uma empresa. Decide a topologia (data warehouse centralizado, lakehouse, data mesh descentralizado), escolhe as tecnologias-chave, define padrões de modelagem, segurança e integração, e garante que a plataforma de dados aguente crescer sem virar um caos. Não é um cargo de entrada: normalmente exige anos como Engenheiro de Dados ou DBA antes. É quem traduz a estratégia de negócio em decisões técnicas de longo prazo sobre dados. Por ser cargo de decisão e alta senioridade, está entre os mais bem pagos da área: em grandes empresas e consultorias, arquitetos passam de R$ 25k, e remoto pra fora paga em dólar.",
+        oQueFaz:
+          "No dia a dia: define a arquitetura de dados da empresa (warehouse vs lakehouse vs data mesh) alinhada às necessidades de negócio, escolhe o stack tecnológico (quais bancos, warehouses, ferramentas de ingestão e processamento), estabelece padrões de modelagem, nomenclatura, segurança e integração que os times seguem, avalia trade-offs de custo, performance e escala nas decisões de ecossistema, orienta Engenheiros de Dados e DBAs na implementação, e planeja a evolução da plataforma pros próximos anos. Trabalha próximo de liderança técnica e de negócio.",
+        diferencasDaAreaMae:
+          "Dentro de Ciência de Dados, o Arquiteto de Dados é o desenhista do sistema, os outros executam o que ele projeta. Diferente do Engenheiro de Dados (que implementa e opera os pipelines), o arquiteto decide qual ecossistema e quais padrões usar. Diferente do DBA (que administra um banco específico), o arquiteto define a topologia geral onde esses bancos se encaixam. Diferente da Governança (que cria as políticas de uso), o arquiteto cria a estrutura técnica que sustenta tudo. É o cargo de maior senioridade e visão da área: pensa em anos, não em sprints, e decide onde a empresa investe em dados.",
+        habilidadesEspecificas: [
+          "Visão ampla de ecossistemas de dados (warehouse, lakehouse, data mesh)",
+          "Modelagem de dados em profundidade (dimensional, Data Vault, normalização)",
+          "Trade-offs de tecnologia, custo, performance e escala",
+          "Segurança, integração e padrões de arquitetura de dados",
+          "Comunicação com liderança técnica e de negócio (traduzir estratégia em arquitetura)",
+        ],
+        ferramentasEspecificas: [
+          "Data warehouses e lakehouses (Snowflake, BigQuery, Databricks)",
+          "Ferramentas de modelagem e diagramação de dados (dbt, erwin, dbdiagram)",
+          "Plataformas de nuvem (AWS, GCP, Azure) e seus serviços de dados",
+          "Ferramentas de catálogo e governança (para desenhar padrões)",
+          "Conceitos e frameworks (Kimball, Data Vault, Data Mesh)",
+          "IaC e ferramentas de custo (pra avaliar trade-offs de infraestrutura)",
+        ],
+        cargos: [
+          "Arquiteto de Dados Pleno (vindo de Eng. de Dados/DBA, 6+ anos)",
+          "Arquiteto de Dados Sênior (8+ anos)",
+          "Principal Data Architect / Head of Data Platform",
+          "Enterprise Data Architect (arquitetura de dados corporativa)",
+        ],
+        faixaSalarial:
+          "R$ 14.000 (pleno) a R$ 35.000+ (sênior/principal). Cargo sênior: costuma exigir 6+ anos de experiência prévia. Em grandes empresas e consultorias, arquitetos passam R$ 25k. Remoto pra fora paga US$ 10-18k/mês.",
+        dificuldade: 5,
+        cursosGratuitos: [
+          "Microsoft Learn: Azure Data Fundamentals (DP-900, gratuito oficial)",
+          "AWS Skill Builder: trilha de Data Analytics e arquitetura de dados (parte gratuita)",
+          "Palestras gratuitas de Martin Kleppmann (autor de Designing Data-Intensive Applications) no YouTube",
+        ],
+        projetosSugeridos: [
+          "Desenho de arquitetura completa de dados pra uma empresa fictícia (diagrama + justificativa de cada escolha)",
+          "Comparativo documentado: warehouse vs lakehouse vs data mesh pra um cenário real, com trade-offs",
+          "Documento de padrões de dados (modelagem, nomenclatura, segurança) pra um domínio de negócio",
+        ],
+        roadmapEspecifico: [
+          "Consolidar anos de base em Engenharia de Dados ou administração de bancos (pré-requisito real)",
+          "Aprofundar em modelagem de dados avançada (dimensional, Data Vault)",
+          "Estudar padrões de arquitetura modernos (lakehouse, data mesh) e seus trade-offs",
+          "Ler referências de fundo (Designing Data-Intensive Applications é a bíblia da área)",
+          "Praticar desenho de arquiteturas: pegar cenários e justificar cada decisão tecnológica",
+        ],
+        dicasIniciais:
+          "Arquiteto de Dados não é cargo de entrada: é aonde se chega depois de anos como Engenheiro de Dados ou DBA. Se está começando em dados, mire uma dessas duas primeiro. O diferencial do arquiteto não é saber uma ferramenta, é entender trade-offs: quando warehouse, quando lakehouse, quando data mesh, e por quê. 'Designing Data-Intensive Applications' do Kleppmann é leitura obrigatória. Comunicação com negócio vale tanto quanto profundidade técnica: o arquiteto traduz estratégia em decisão de dados.",
       },
     ],
   },
