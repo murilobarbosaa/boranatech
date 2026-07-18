@@ -259,32 +259,43 @@ export default function Cursos() {
     [courses],
   );
 
-  const filtered = courses
-    .filter((c) => {
-      const slugLabel = labelForAreaSlug(c.areaSlug);
-      const matchSearch =
-        c.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.canal.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        slugLabel.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchArea = area === AREA_ALL || c.areaSlug === area;
-      const matchNivel =
-        nivel === "Todos" ||
-        normalizarNivel(c.nivel) === normalizarNivel(nivel);
-      const matchIdioma =
-        idioma === "Todos" ||
-        c.idioma.includes(idioma) ||
-        idiomaCurto(c.idioma) === idioma;
-      const matchTipo = tipo === "Todos" || (c.tipo || "Gratuito") === tipo;
-      return matchSearch && matchArea && matchNivel && matchIdioma && matchTipo;
-    })
-    .sort((a, b) => {
-      const areaCompare = labelForAreaSlug(a.areaSlug).localeCompare(
-        labelForAreaSlug(b.areaSlug),
-        "pt-BR",
-      );
-      if (areaCompare !== 0) return areaCompare;
-      return (nivelOrder[a.nivel] ?? 99) - (nivelOrder[b.nivel] ?? 99);
-    });
+  // Decorate-sort-undecorate: o label da area sai de labelForAreaSlug (um
+  // areasTI.find por chamada). Pre-computamos uma vez por item, entao filtro e
+  // sort reusam. Elimina as ~2 chamadas por comparacao no sort (antes ~8k finds
+  // em 457 itens). Memoizado: so recalcula quando courses/busca/filtros mudam.
+  // Comportamento identico: mesma ordem, mesmo resultado, quirk do "Geral" intacto.
+  const filtered = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return courses
+      .map((curso) => ({ curso, areaLabel: labelForAreaSlug(curso.areaSlug) }))
+      .filter(({ curso, areaLabel }) => {
+        const matchSearch =
+          curso.titulo.toLowerCase().includes(q) ||
+          curso.canal.toLowerCase().includes(q) ||
+          areaLabel.toLowerCase().includes(q);
+        const matchArea = area === AREA_ALL || curso.areaSlug === area;
+        const matchNivel =
+          nivel === "Todos" ||
+          normalizarNivel(curso.nivel) === normalizarNivel(nivel);
+        const matchIdioma =
+          idioma === "Todos" ||
+          curso.idioma.includes(idioma) ||
+          idiomaCurto(curso.idioma) === idioma;
+        const matchTipo =
+          tipo === "Todos" || (curso.tipo || "Gratuito") === tipo;
+        return (
+          matchSearch && matchArea && matchNivel && matchIdioma && matchTipo
+        );
+      })
+      .sort((a, b) => {
+        const areaCompare = a.areaLabel.localeCompare(b.areaLabel, "pt-BR");
+        if (areaCompare !== 0) return areaCompare;
+        return (
+          (nivelOrder[a.curso.nivel] ?? 99) - (nivelOrder[b.curso.nivel] ?? 99)
+        );
+      })
+      .map(({ curso }) => curso);
+  }, [courses, searchQuery, area, nivel, idioma, tipo]);
 
   // Free ve so os cursos da amostra; os travados nunca sao renderizados (nem
   // borrados). O teaser abaixo comunica quantos ficam no Pro.
