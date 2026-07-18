@@ -3632,7 +3632,173 @@ const baseAreasTI: AreaTI[] = [
       "Design de Games",
       "Ciência da Computação",
     ],
-    subareas: [],
+    subareas: [
+      {
+        slug: "unity",
+        nome: "Unity (C#)",
+        descricaoCurta:
+          "A engine mais empregável, especialmente em mobile. Usa C#, tem a maior comunidade e concentra a maioria das vagas de jogos no Brasil.",
+        descricaoCompleta:
+          "Unity é a engine que domina o mercado de jogos no Brasil, principalmente no mobile, que é justamente onde estão os estúdios brasileiros que mais contratam (Wildlife, Tapps, Aquiris). Usa C#, uma linguagem acessível, e tem a maior biblioteca de tutoriais e a comunidade mais ativa. É a aposta mais segura por empregabilidade: se o objetivo é conseguir a primeira vaga em games no BR, Unity é o caminho com mais portas. Cobre desde jogos 2D casuais até 3D de médio porte, e é forte também em áreas fora de games (realidade aumentada, simulações, visualização). O salário inicial em games ainda fica abaixo da média geral de TI (o mercado é pequeno e apaixonado), mas as vagas de Unity mobile em estúdios estabelecidos pagam melhor que a média indie, e sêniores em estúdio internacional ou remoto pra fora ganham bem.",
+        oQueFaz:
+          "No dia a dia: programa mecânicas de jogo em C# (movimentação, combate, sistemas de pontos e progressão), implementa comportamento de inimigos (máquinas de estado, pathfinding com NavMesh), integra arte e som na engine via prefabs e cenas, otimiza performance pra rodar em celulares variados (memória, draw calls, battery), publica na Google Play e App Store, e itera muito com base em testes de jogabilidade. Em estúdio, trabalha próximo de game designers, artistas e QA, geralmente num cargo de Gameplay Programmer.",
+        diferencasDaAreaMae:
+          "Dentro de Game Dev, escolha Unity quando o objetivo é empregabilidade e mobile: é onde estão as vagas no BR e a curva de entrada é suave (C# é mais amigável que o C++ da Unreal). Diferente da Unreal Engine (C++, referência em gráfico AAA e console, porém mais difícil e com menos vagas no BR), a Unity entrega um caminho mais rápido pra primeira vaga e domina o casual/mobile. Diferente da Godot (open source, ideal pra indie solo e projetos leves), a Unity tem mercado corporativo real, mais tutoriais e mais recrutadores procurando. Regra prática: mira vaga em estúdio brasileiro, comece por Unity.",
+        habilidadesEspecificas: [
+          "C# aplicado a jogos (MonoBehaviour, ciclo de vida, corrotinas)",
+          "Sistema de cenas, prefabs e componentes da Unity",
+          "Física 2D/3D, colisões e NavMesh (pathfinding de inimigos)",
+          "Otimização pra mobile (profiling, draw calls, memória)",
+          "Publicação em Google Play e App Store",
+        ],
+        ferramentasEspecificas: [
+          "Unity (engine) + Visual Studio (C#)",
+          "Unity Profiler (otimização de performance)",
+          "Git com Git LFS (versionar assets grandes)",
+          "Blender (ajustes básicos de assets 3D)",
+          "Google Play Console / App Store Connect (publicação)",
+          "Plastic SCM ou Unity Version Control (times maiores)",
+        ],
+        cargos: [
+          "Programador de Jogos Júnior (Unity)",
+          "Gameplay Programmer (Unity)",
+          "Desenvolvedor de Jogos Mobile (Unity)",
+          "Programador de Jogos Sênior / Tech Lead",
+        ],
+        faixaSalarial:
+          "R$ 2.500 (júnior) a R$ 16.000 (sênior). Games paga abaixo da média geral de TI no início, porque o mercado BR é pequeno e concentrado. Estúdios mobile estabelecidos (Wildlife, Tapps) e pleno giram em R$ 5-9k; sêniores e remoto pra fora (US$ 4-8k/mês) são a exceção que compensa. Entre pela paixão, não pelo salário inicial.",
+        dificuldade: 4,
+        cursosGratuitos: [
+          "Unity Learn (cursos oficiais gratuitos, em inglês e PT-BR)",
+          "Brackeys (YouTube): referência mundial de Unity, biblioteca enorme e gratuita",
+          "Code Monkey (YouTube): tutoriais gratuitos de Unity e C# aplicados a jogos",
+        ],
+        projetosSugeridos: [
+          "Platformer 2D completo com física, inimigos e fases (portfólio-base)",
+          "Jogo mobile casual publicado na Google Play (mostra ciclo completo até a loja)",
+          "Top-down shooter com comportamento de inimigos (máquina de estados + NavMesh)",
+        ],
+        roadmapEspecifico: [
+          "Firmar lógica de programação e C# antes de mergulhar na engine",
+          "Aprender o essencial da Unity (cenas, prefabs, física) pelo Unity Learn",
+          "Construir 3-5 jogos pequenos completos, não 1 grande pela metade",
+          "Publicar 1 jogo na Itch.io ou Google Play e participar de 1 game jam",
+          "Montar portfólio público (GitHub + builds jogáveis) mirando vaga de Gameplay Programmer",
+        ],
+        dicasIniciais:
+          "Unity é a escolha de maior empregabilidade no BR, principalmente pra mobile. Foque em C# primeiro: sem lógica sólida, a engine não ajuda. Faça muitos jogos pequenos e termine todos, um portfólio de 3-5 jogos completos vale mais que um projeto ambicioso inacabado. Game jams (Global Game Jam, Ludum Dare) são o atalho pra aprender rápido e fazer networking. Inglês é quase obrigatório: quase toda doc e comunidade estão em inglês. Sobre salário: seja realista, games começa abaixo do resto de TI; o retorno vem com senioridade, estúdio internacional ou remoto pra fora.",
+      },
+      {
+        slug: "unreal",
+        nome: "Unreal Engine (C++)",
+        descricaoCurta:
+          "A engine de gráficos de ponta e jogos AAA/console. Usa C++ (com apoio do Blueprints). Mais difícil e com menos vagas no BR, mas top em estúdios grandes e remoto internacional.",
+        descricaoCompleta:
+          "Unreal Engine é a referência em jogos de gráficos avançados e grande porte: consoles, PC AAA e projetos que exigem fidelidade visual alta. Usa C++ como linguagem principal, apoiada pelo Blueprints (sistema visual de scripting que reduz a barreira de entrada). É a engine mais difícil das três, e o mercado brasileiro pra ela é menor e mais concentrado em poucos estúdios de porte (como a Aquiris) e em trabalho remoto pra fora. Em compensação, é onde estão os cargos mais técnicos e mais bem pagos da área quando se sobe de senioridade, especialmente Engine Programmer e Graphics/Rendering Programmer, papéis raros no BR mas valorizados internacionalmente. O salário inicial em games continua abaixo da média de TI; a diferença da Unreal aparece no topo e no mercado internacional, não na entrada.",
+        oQueFaz:
+          "No dia a dia: programa gameplay e sistemas em C++ e Blueprints, trabalha com renderização e otimização gráfica (a razão de existir da Unreal), lida com física, animação e cenas 3D de alta fidelidade, faz profiling pesado pra manter framerate em cenas complexas, e integra pipelines de arte 3D de estúdio. Colabora com artistas técnicos, level designers e animadores. Em estúdio, tende a cargos mais especializados: Gameplay Programmer, Engine Programmer ou Graphics Programmer.",
+        diferencasDaAreaMae:
+          "Dentro de Game Dev, escolha Unreal quando o alvo é gráfico de ponta, console ou AAA, e você tolera a curva de C++. Diferente da Unity (C#, mais empregável e dominante no mobile do BR), a Unreal tem menos vagas locais mas concentra os papéis mais técnicos (Engine e Graphics Programmer) e o mercado internacional de gráfico pesado. Diferente da Godot (open source, leve, ideal pra indie solo), a Unreal é a mais pesada e complexa, feita pra produções grandes com equipe. Regra prática: sonha com jogo de gráfico AAA/console ou remoto internacional de alta fidelidade, encare o C++ e vá de Unreal.",
+        habilidadesEspecificas: [
+          "C++ aplicado a jogos (a maior barreira e o maior diferencial)",
+          "Blueprints (scripting visual da Unreal) e a ponte com C++",
+          "Renderização, materiais e otimização gráfica (foco da engine)",
+          "Física, animação e cenas 3D de alta fidelidade",
+          "Profiling pesado pra manter performance em cenas complexas",
+        ],
+        ferramentasEspecificas: [
+          "Unreal Engine + Visual Studio (C++)",
+          "Blueprints (scripting visual integrado)",
+          "Unreal Insights (profiling de performance)",
+          "Perforce ou Git com LFS (versionamento de projetos grandes)",
+          "Blender ou Maya (pipeline de assets 3D)",
+          "Quixel / Megascans (biblioteca de assets da Epic)",
+        ],
+        cargos: [
+          "Programador de Jogos Júnior (Unreal)",
+          "Gameplay Programmer (Unreal / C++)",
+          "Engine Programmer (sistemas de baixo nível)",
+          "Graphics / Rendering Programmer (raro no BR, top internacional)",
+        ],
+        faixaSalarial:
+          "R$ 2.500 (júnior) a R$ 16.000+ (sênior no BR). Menos vagas locais que Unity, concentradas em poucos estúdios de porte. O diferencial aparece no topo e fora: Engine e Graphics Programmers seniores, e remoto pra fora (US$ 5-10k/mês), pagam acima da média de games. Na entrada, o salário segue abaixo do resto de TI, como toda a área.",
+        dificuldade: 5,
+        cursosGratuitos: [
+          "Unreal Online Learning (Epic Games): cursos oficiais gratuitos, do básico ao avançado",
+          "Documentação oficial da Unreal Engine (dev.epicgames.com, gratuita e completa)",
+          "Unreal Sensei (YouTube): tutoriais gratuitos populares de Unreal Engine 5",
+        ],
+        projetosSugeridos: [
+          "Protótipo 3D em primeira ou terceira pessoa com Blueprints + C++",
+          "Cena com foco em iluminação e materiais (mostra domínio do lado gráfico da engine)",
+          "Sistema de gameplay em C++ (inventário, combate ou save) exposto pra Blueprints",
+        ],
+        roadmapEspecifico: [
+          "Firmar lógica de programação; começar pelos Blueprints e migrar pra C++",
+          "Aprender o essencial da Unreal (atores, níveis, materiais) pelo Unreal Online Learning",
+          "Aprofundar em C++ de jogos: é o que separa Gameplay de Engine Programmer",
+          "Construir protótipos 3D com foco no lado gráfico/performance da engine",
+          "Montar portfólio de alta fidelidade e mirar estúdio AAA ou vaga remota internacional",
+        ],
+        dicasIniciais:
+          "Unreal é a mais difícil das três e tem menos vagas no BR, então entre com objetivo claro: gráfico AAA, console ou mercado internacional. Comece pelos Blueprints pra ganhar tração e vá encarando o C++ em paralelo, é ele que abre os cargos técnicos (Engine e Graphics Programmer). Não tente aprender C++ inteiro antes de usar a engine: aprenda fazendo, com projeto na frente. Inglês é indispensável. Sobre salário: a entrada é baixa como em toda a área; o retorno da Unreal vem no topo e no remoto internacional, raramente na primeira vaga local.",
+      },
+      {
+        slug: "godot",
+        nome: "Godot (GDScript)",
+        descricaoCurta:
+          "Engine open source, leve e amigável pra iniciantes. Usa GDScript (parecido com Python). Perfeita pra indie e projetos solo; mercado formal ainda pequeno, mas em crescimento.",
+        descricaoCompleta:
+          "Godot é uma engine livre e de código aberto, leve o suficiente pra rodar em máquinas modestas e com uma das entradas mais amigáveis pra quem começa. Usa principalmente o GDScript, uma linguagem própria com sintaxe parecida com Python, enxuta e fácil de aprender (também aceita C#). É a escolha ideal pra desenvolvimento indie e projetos solo: você constrói e publica um jogo pequeno completo mais rápido do que nas outras engines. O mercado formal de vagas Godot no Brasil ainda é pequeno (a maioria dos estúdios usa Unity ou Unreal), mas vem crescendo com a adoção open source e é forte no caminho do indie que publica os próprios jogos. Financeiramente é o mais imprevisível: renda de indie depende de vendas dos próprios jogos, que variam muito; como carreira CLT, ainda há menos posições que em Unity.",
+        oQueFaz:
+          "No dia a dia (tipicamente como indie ou dev generalista): programa o jogo inteiro em GDScript, monta cenas com o sistema de nós da Godot, implementa mecânicas, comportamento de inimigos e sistemas de save, cuida de arte 2D/3D leve e som, e publica na Itch.io ou lojas. Como o time costuma ser pequeno (às vezes de uma pessoa só), acumula vários chapéus: programação, integração de assets, game design e publicação. Em estúdios que adotam Godot, o cargo se aproxima de um Gameplay Programmer generalista.",
+        diferencasDaAreaMae:
+          "Dentro de Game Dev, escolha Godot quando o objetivo é indie, projeto solo, software livre ou uma entrada mais suave: GDScript é a linguagem mais fácil das três e a engine é leve. Diferente da Unity (mais vagas CLT e domínio do mobile no BR), a Godot tem mercado formal menor, mas dá autonomia pra publicar seus próprios jogos rápido. Diferente da Unreal (C++, gráfico AAA, pesada), a Godot é o oposto: simples, leve e feita pra escopo pequeno e médio. Regra prática: quer fazer e lançar seus próprios jogos ou tem máquina modesta, comece por Godot; quer maximizar chance de emprego em estúdio, considere Unity.",
+        habilidadesEspecificas: [
+          "GDScript (sintaxe parecida com Python, fácil de aprender)",
+          "Sistema de nós e cenas da Godot",
+          "Mecânicas 2D (força da engine) e noções de 3D",
+          "Publicação independente (Itch.io, lojas) e escopo de projeto solo",
+          "Generalismo: integrar arte, som e game design além de programar",
+        ],
+        ferramentasEspecificas: [
+          "Godot Engine (leve, open source, roda em qualquer OS)",
+          "Editor de GDScript embutido na Godot",
+          "Git com Git LFS (versionar assets)",
+          "Aseprite ou Krita (arte 2D / pixel art)",
+          "Itch.io (publicação independente)",
+          "Blender (integra bem com o pipeline 3D da Godot)",
+        ],
+        cargos: [
+          "Desenvolvedor Indie / Solo (Godot)",
+          "Programador de Jogos Generalista (Godot)",
+          "Gameplay Programmer (Godot, em estúdios que adotam a engine)",
+          "Criador de jogos autoral (auto-publicação)",
+        ],
+        faixaSalarial:
+          "Muito variável e, na média, o mais baixo dos três em carreira formal, porque há menos vagas CLT de Godot no BR (a maioria dos estúdios usa Unity/Unreal). Como indie, a renda vem de vendas dos próprios jogos e oscila de quase nada a bem alto em casos raros de sucesso. Vagas de estúdio Godot que existem seguem a faixa geral de games (R$ 2.5-16k). É o caminho da autonomia e do portfólio, não do salário previsível.",
+        dificuldade: 3,
+        cursosGratuitos: [
+          "Documentação oficial da Godot + tutoriais (aprendem GDScript do zero, gratuito)",
+          "GDQuest (YouTube e site): referência de Godot, muito conteúdo gratuito",
+          "Brackeys (YouTube): série gratuita de introdução à Godot",
+        ],
+        projetosSugeridos: [
+          "Platformer 2D completo em GDScript (a força da Godot é 2D)",
+          "Jogo pequeno autoral publicado na Itch.io (mostra o ciclo completo até o lançamento)",
+          "Jogo feito numa game jam com escopo fechado (Godot brilha em prototipagem rápida)",
+        ],
+        roadmapEspecifico: [
+          "Aprender GDScript pela documentação oficial (curva suave, parecida com Python)",
+          "Dominar o sistema de nós e cenas da Godot construindo jogos 2D pequenos",
+          "Publicar jogos autorais na Itch.io e participar de game jams",
+          "Montar portfólio jogável público (o indie se vende pelos jogos lançados)",
+          "Se mirar emprego, considerar também Unity: amplia muito o leque de vagas no BR",
+        ],
+        dicasIniciais:
+          "Godot é a entrada mais suave e a melhor pra quem quer lançar os próprios jogos rápido, sem custo de engine e em máquina modesta. GDScript é fácil (lembra Python), então a barreira técnica é a menor das três. Seja honesto sobre o mercado: há menos vagas CLT de Godot no BR que de Unity, então o caminho aqui é mais indie/autoral do que emprego formal. Publique cedo e participe de game jams: no indie, seu portfólio de jogos lançados é seu currículo. Se o objetivo principal for empregabilidade em estúdio, vale aprender Unity em paralelo. Inglês ajuda muito na doc e comunidade.",
+      },
+    ],
   },
   {
     id: "analise-dados",
