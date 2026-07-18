@@ -25,6 +25,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AiCtaLink } from "@/components/shared/AiCta";
+import { BntSelect } from "@/components/shared/BntSelect";
 import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
 import LockedCatalogTeaser from "@/components/pro/LockedCatalogTeaser";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -64,6 +65,11 @@ const idiomaOptions = ["Todos", "Português", "Inglês"];
 const tipoOptions = ["Todos", "Gratuito", "Pago"];
 
 const AREA_ALL = "Todas";
+// Sentinela de borda p/ o BntSelect: o Radix Select proibe value="" em SelectItem,
+// e cursos com areaSlug null colapsam na opcao "Geral" (value="" no <select>
+// nativo). Mapeamos "" <-> sentinela SO na borda do BntSelect; o state `area`
+// continua "" internamente. Confirmado que nenhum areaSlug real colide.
+const AREA_EMPTY_SENTINEL = "__empty__";
 const SPECIAL_LABELS: Record<string, string> = {
   carreira: "Carreira",
   fullstack: "Full Stack",
@@ -438,26 +444,25 @@ export default function Cursos() {
               >
                 Área
               </label>
-              <select
+              <BntSelect
                 id="cursos-area"
-                value={area}
-                onChange={(e) => setArea(e.target.value)}
-                className="w-full px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
-              >
-                {areaSlugOptions.map((slug) => {
-                  const value = slug === AREA_ALL ? AREA_ALL : (slug ?? "");
-                  const key = slug ?? "__null__";
-                  const label =
+                value={area === "" ? AREA_EMPTY_SENTINEL : area}
+                onValueChange={(v) =>
+                  setArea(v === AREA_EMPTY_SENTINEL ? "" : v)
+                }
+                options={areaSlugOptions.map((slug) => ({
+                  value:
+                    slug === AREA_ALL
+                      ? AREA_ALL
+                      : slug == null
+                        ? AREA_EMPTY_SENTINEL
+                        : slug,
+                  label:
                     slug === AREA_ALL
                       ? "Todas as áreas"
-                      : labelForAreaSlug(slug);
-                  return (
-                    <option key={key} value={value}>
-                      {label}
-                    </option>
-                  );
-                })}
-              </select>
+                      : labelForAreaSlug(slug),
+                }))}
+              />
             </div>
             {/* Nivel */}
             <div className="flex flex-col gap-1">
@@ -467,18 +472,15 @@ export default function Cursos() {
               >
                 Nível
               </label>
-              <select
+              <BntSelect
                 id="cursos-nivel"
                 value={nivel}
-                onChange={(e) => setNivel(e.target.value)}
-                className="w-full px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
-              >
-                {nivelOptions.map((o) => (
-                  <option key={o} value={o}>
-                    {o === "Todos" ? "Todos os níveis" : o}
-                  </option>
-                ))}
-              </select>
+                onValueChange={setNivel}
+                options={nivelOptions.map((o) => ({
+                  value: o,
+                  label: o === "Todos" ? "Todos os níveis" : o,
+                }))}
+              />
             </div>
             {/* Idioma */}
             <div className="flex flex-col gap-1">
@@ -488,18 +490,15 @@ export default function Cursos() {
               >
                 Idioma
               </label>
-              <select
+              <BntSelect
                 id="cursos-idioma"
                 value={idioma}
-                onChange={(e) => setIdioma(e.target.value)}
-                className="w-full px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
-              >
-                {idiomaOptions.map((o) => (
-                  <option key={o} value={o}>
-                    {o === "Todos" ? "Todos os idiomas" : o}
-                  </option>
-                ))}
-              </select>
+                onValueChange={setIdioma}
+                options={idiomaOptions.map((o) => ({
+                  value: o,
+                  label: o === "Todos" ? "Todos os idiomas" : o,
+                }))}
+              />
             </div>
             {/* Preço */}
             <div className="flex flex-col gap-1">
@@ -509,18 +508,15 @@ export default function Cursos() {
               >
                 Preço
               </label>
-              <select
+              <BntSelect
                 id="cursos-preco"
                 value={tipo}
-                onChange={(e) => setTipo(e.target.value)}
-                className="w-full px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
-              >
-                {tipoOptions.map((o) => (
-                  <option key={o} value={o}>
-                    {o === "Todos" ? "Todos os preços" : o}
-                  </option>
-                ))}
-              </select>
+                onValueChange={setTipo}
+                options={tipoOptions.map((o) => ({
+                  value: o,
+                  label: o === "Todos" ? "Todos os preços" : o,
+                }))}
+              />
             </div>
           </div>
         </div>
