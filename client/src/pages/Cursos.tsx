@@ -15,6 +15,7 @@ import {
   PlayCircle,
   Sparkles,
   BadgeCheck,
+  Library,
   Award,
   ChevronDown,
   Lock,
@@ -95,6 +96,38 @@ const areaTagClass: Record<string, string> = {
 // ja que a API pode devolver caixa/acentuacao diferente do rotulo do filtro.
 function normalizarNivel(valor: string): string {
   return valor.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+}
+
+// Selo de certificado. Prioriza o campo explicito `certificado` (gratuito|pago|
+// nenhum); quando ausente, cai no comportamento historico derivado de
+// `certificate`/`tipo`, para nao alterar os cursos legados.
+type CertBadge = { label: string; className: string; hasIcon: boolean };
+function certBadge(curso: {
+  certificate?: string;
+  certificado?: string;
+  tipo?: string;
+}): CertBadge | null {
+  const emerald = "border-emerald-300 bg-emerald-50 text-emerald-800";
+  const amber = "border-amber-300 bg-amber-50 text-amber-800";
+  const slate = "border-slate-200 bg-slate-50 text-slate-500";
+  if (curso.certificado === "gratuito")
+    return { label: "Certificado grátis", className: emerald, hasIcon: true };
+  if (curso.certificado === "pago")
+    return { label: "Certificado pago", className: amber, hasIcon: true };
+  if (curso.certificado === "nenhum")
+    return { label: "Sem certificado", className: slate, hasIcon: false };
+  if (curso.certificate === "sim")
+    return {
+      label:
+        (curso.tipo || "Gratuito") !== "Pago"
+          ? "Certificado grátis"
+          : "Com certificado",
+      className: emerald,
+      hasIcon: true,
+    };
+  if (curso.certificate === "nao")
+    return { label: "Sem certificado", className: slate, hasIcon: false };
+  return null;
 }
 
 // Mapeia codigos curtos de idioma da API (ex.: "pt-BR", "en") para o rotulo do
@@ -678,18 +711,26 @@ export default function Cursos() {
                       >
                         {curso.tipo || "Gratuito"}
                       </span>
-                      {curso.certificate === "sim" ? (
-                        <span className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-800">
-                          <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
-                          {(curso.tipo || "Gratuito") !== "Pago"
-                            ? "Certificado grátis"
-                            : "Com certificado"}
+                      {curso.formato === "hub" && (
+                        <span className="inline-flex items-center gap-1 rounded-md border border-violet-300 bg-violet-50 px-2.5 py-1 text-[11px] font-black text-violet-800">
+                          <Library className="h-3.5 w-3.5" aria-hidden />
+                          Catálogo de cursos
                         </span>
-                      ) : curso.certificate === "nao" ? (
-                        <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-500">
-                          Sem certificado
-                        </span>
-                      ) : null}
+                      )}
+                      {(() => {
+                        const cert = certBadge(curso);
+                        if (!cert) return null;
+                        return (
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] ${cert.hasIcon ? "font-black" : "font-bold"} ${cert.className}`}
+                          >
+                            {cert.hasIcon && (
+                              <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
+                            )}
+                            {cert.label}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <span
