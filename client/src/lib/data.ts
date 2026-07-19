@@ -9523,7 +9523,7 @@ export const cursosGratuitos = [
     id: "frontend-3",
     certificate: "sim",
     titulo: "Crie um site simples usando HTML, CSS e JavaScript",
-    canal: "Fundação Bradesco (com Microsoft)",
+    canal: "Fundação Bradesco",
     plataforma: "Escola Virtual Fundação Bradesco",
     link: "https://www.ev.org.br/cursos/crie-um-site-simples-usando-html-css-e-javascript",
     areaSlug: "frontend" as string | null,
@@ -9531,7 +9531,7 @@ export const cursosGratuitos = [
     duracao: "Aproximadamente 2 horas",
     idioma: "Português",
     descricao:
-      "Curso rápido que apresenta os fundamentos da construção de sites, da estrutura básica em HTML até a adição de interatividade com JavaScript, passando pela configuração do ambiente de desenvolvimento.",
+      "Curso rápido que apresenta os fundamentos da construção de sites, da estrutura básica em HTML até a adição de interatividade com JavaScript, passando pela configuração do ambiente de desenvolvimento. Conteúdo produzido em parceria com a Microsoft.",
     motivoIndicacao:
       "Ótima opção para quem quer um primeiro contato objetivo e com certificado digital reconhecido e gratuito. Bom para reforçar o currículo de quem busca vagas iniciais sem experiência prévia em tecnologia.",
     oQueAprende: [
@@ -10633,7 +10633,7 @@ export const cursosGratuitos = [
     id: "bradesco-intro-analise-dados-powerbi",
     certificate: "sim",
     titulo: "Introducao a Analise de Dados - Microsoft Power BI",
-    canal: "Fundacao Bradesco / Microsoft",
+    canal: "Fundação Bradesco",
     plataforma: "Escola Virtual (Fundacao Bradesco)",
     link: "https://www.ev.org.br/cursos/introducao-a-analise-de-dados-microsoft-power-bi",
     areaSlug: "analise-dados" as string | null,
@@ -10809,7 +10809,7 @@ export const cursosGratuitos = [
     id: "bradesco-intro-analise-analista-dados",
     certificate: "sim",
     titulo: "Introducao a Analise de Dados - Microsoft Power BI",
-    canal: "Fundacao Bradesco / Microsoft",
+    canal: "Fundação Bradesco",
     plataforma: "Escola Virtual (Fundacao Bradesco)",
     link: "https://www.ev.org.br/cursos/introducao-a-analise-de-dados-microsoft-power-bi",
     areaSlug: "analista-dados" as string | null,
@@ -10897,7 +10897,7 @@ export const cursosGratuitos = [
     id: "bradesco-analise-dados-powerbi-bi",
     certificate: "sim",
     titulo: "Analise de Dados no Power BI",
-    canal: "Fundacao Bradesco / Microsoft",
+    canal: "Fundação Bradesco",
     plataforma: "Escola Virtual (Fundacao Bradesco)",
     link: "https://www.ev.org.br/cursos/analise-de-dados-no-power-bi",
     areaSlug: "analista-bi" as string | null,
@@ -10905,7 +10905,7 @@ export const cursosGratuitos = [
     duracao: "4 horas",
     idioma: "Português",
     descricao:
-      "Curso avancado da trilha de Power BI da Escola Virtual, com recursos de IA como Principais Influenciadores, Arvore Hierarquica e Perguntas e Respostas.",
+      "Curso avancado da trilha de Power BI da Escola Virtual, com recursos de IA como Principais Influenciadores, Arvore Hierarquica e Perguntas e Respostas. Conteudo produzido pela Microsoft.",
     motivoIndicacao:
       "Aprofunda recursos analiticos do Power BI que vao alem do basico, de graca e em portugues, com certificado.",
     oQueAprende: [
@@ -10919,7 +10919,7 @@ export const cursosGratuitos = [
     id: "bradesco-intro-analise-bi",
     certificate: "sim",
     titulo: "Introducao a Analise de Dados - Microsoft Power BI",
-    canal: "Fundacao Bradesco / Microsoft",
+    canal: "Fundação Bradesco",
     plataforma: "Escola Virtual (Fundacao Bradesco)",
     link: "https://www.ev.org.br/cursos/introducao-a-analise-de-dados-microsoft-power-bi",
     areaSlug: "analista-bi" as string | null,
@@ -11228,7 +11228,7 @@ export const cursosGratuitos = [
     id: "bradesco-administrando-banco-dados-eng",
     certificate: "sim",
     titulo: "Administrando Banco de Dados",
-    canal: "Fundacao Bradesco",
+    canal: "Fundação Bradesco",
     plataforma: "Escola Virtual (Fundacao Bradesco)",
     link: "https://www.ev.org.br/cursos/administrando-banco-de-dados",
     areaSlug: "engenharia-dados" as string | null,
@@ -12002,7 +12002,7 @@ export const cursosGratuitos = [
     id: "bradesco-ev-ai-900-azure",
     certificate: "sim",
     titulo: "AI-900 - Fundamentos de IA no Azure",
-    canal: "Fundação Bradesco (conteúdo Microsoft)",
+    canal: "Fundação Bradesco",
     plataforma: "Escola Virtual Fundação Bradesco",
     link: "https://www.ev.org.br/cursos/AI900Azure",
     areaSlug: "ia" as string | null,
@@ -12010,7 +12010,7 @@ export const cursosGratuitos = [
     duracao: "16 horas",
     idioma: "Português",
     descricao:
-      "Curso em 5 módulos que apresenta os serviços de IA do Azure, com videoaulas, apostilas e artigos, preparando para os fundamentos da certificação AI-900.",
+      "Curso em 5 módulos que apresenta os serviços de IA do Azure, com videoaulas, apostilas e artigos, preparando para os fundamentos da certificação AI-900. Conteúdo produzido em parceria com a Microsoft.",
     motivoIndicacao:
       "Une conteúdo da Microsoft a um certificado gratuito, servindo de preparo inicial para uma certificação oficial paga.",
     oQueAprende: [
@@ -12025,7 +12025,7 @@ export const cursosGratuitos = [
     id: "bradesco-ev-fluencia-ia",
     certificate: "sim",
     titulo: "FluêncIA em Inteligência Artificial",
-    canal: "Fundação Bradesco (parceria Microsoft)",
+    canal: "Fundação Bradesco",
     plataforma: "Escola Virtual Fundação Bradesco",
     link: "https://www.ev.org.br/cursos/fluencia",
     areaSlug: "ia" as string | null,
