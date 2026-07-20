@@ -9,6 +9,7 @@ import ConsentGate from "./components/consent/ConsentGate";
 import ErrorBoundary from "./components/ErrorBoundary";
 import LaunchGate from "./components/gate/LaunchGate";
 import ScrollToTop from "./components/ScrollToTop";
+import SuperInterstitial from "./components/notifications/SuperInterstitial";
 import RequireAuth from "./components/auth/RequireAuth";
 import { AuthProvider } from "./contexts/AuthContext";
 import { FavoritesProvider } from "./contexts/FavoritesContext";
@@ -383,6 +384,7 @@ function App() {
                   <ScrollToTop />
                   <LaunchGate>
                     <ConsentGate>
+                      <SuperInterstitial />
                       <Router />
                     </ConsentGate>
                   </LaunchGate>

@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { BellOff, CheckCheck, Clock, RefreshCw, Tag, X } from "lucide-react";
+import {
+  BellOff,
+  CheckCheck,
+  Clock,
+  RefreshCw,
+  Sparkles,
+  Tag,
+  X,
+} from "lucide-react";
 
 import CopyButton from "@/components/shared/CopyButton";
 import { SheetClose } from "@/components/ui/sheet";
@@ -156,7 +164,7 @@ function NotificationCard({
   onSelect: (item: NotificationItem) => void;
   onClose?: () => void;
 }) {
-  const { markAsRead } = useNotifications();
+  const { markAsRead, openSuperModal } = useNotifications();
   const [locallyExpired, setLocallyExpired] = useState(false);
 
   const expired = item.is_expired || locallyExpired;
@@ -166,9 +174,16 @@ function NotificationCard({
     item.expires_at !== null &&
     new Date(item.expires_at).getTime() > Date.now();
 
-  // Clicar abre o detalhe (corpo completo vive lá, não mais inline). A
-  // interação marca como lida, mantendo a regra atual de "marcar na interação".
+  // Super: clicar REABRE o SuperModal grande (não o detalhe genérico) e fecha o
+  // painel. NÃO marca como lida — reabrir é só visualizar; ler acontece no CTA
+  // do modal (engajamento) ou o dismiss ao fechar. Item comum: comportamento
+  // atual (marca na interação e abre o NotificationDetailDialog).
   function handleSelect() {
+    if (item.is_super) {
+      openSuperModal(item, "manual");
+      onClose?.();
+      return;
+    }
     if (unread) void markAsRead(item.id);
     onSelect(item);
   }
@@ -180,7 +195,13 @@ function NotificationCard({
     <article
       className={`border-b border-slate-200 px-4 py-3 transition-colors last:border-b-0 ${
         expired ? "opacity-60" : ""
-      } ${unread ? "bg-sky-50" : "bg-white"}`}
+      } ${
+        item.is_super
+          ? "border-l-4 border-l-[#ffb800] bg-gradient-to-r from-amber-50 to-white"
+          : unread
+            ? "bg-sky-50"
+            : "bg-white"
+      }`}
     >
       <button
         type="button"
@@ -195,6 +216,12 @@ function NotificationCard({
             />
           ) : null}
           <div className="min-w-0 flex-1">
+            {item.is_super ? (
+              <span className="mb-1 inline-flex items-center gap-1 rounded-full border border-slate-900 bg-[#ffb800] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950">
+                <Sparkles className="h-3 w-3" aria-hidden="true" />
+                Destaque
+              </span>
+            ) : null}
             {/* Título à esquerda (line-clamp-2, encolhe), horário fixo à direita
                 na mesma linha: em 360px o título longo não empurra o horário. */}
             <div className="flex items-start justify-between gap-2">

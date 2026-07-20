@@ -12,6 +12,7 @@ const svc = vi.hoisted(() => ({
   fetch: vi.fn(),
   markAsRead: vi.fn(),
   markAllAsRead: vi.fn(),
+  dismissSuper: vi.fn(),
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
@@ -22,6 +23,7 @@ vi.mock("@/services/notificationsService", () => ({
   fetchNotifications: (...args: unknown[]) => svc.fetch(...args),
   markAsRead: (...args: unknown[]) => svc.markAsRead(...args),
   markAllAsRead: (...args: unknown[]) => svc.markAllAsRead(...args),
+  dismissSuper: (...args: unknown[]) => svc.dismissSuper(...args),
 }));
 
 import {
@@ -38,8 +40,17 @@ function Capture() {
   return null;
 }
 
-function page(unread: number, data: NotificationsPage["data"] = []) {
-  return { data, unread_count: unread, next_cursor: null } as NotificationsPage;
+function page(
+  unread: number,
+  data: NotificationsPage["data"] = [],
+  activeSuper: NotificationsPage["activeSuper"] = null,
+) {
+  return {
+    data,
+    activeSuper,
+    unread_count: unread,
+    next_cursor: null,
+  } as NotificationsPage;
 }
 
 function unreadItem(id: string) {
@@ -56,8 +67,26 @@ function unreadItem(id: string) {
     cta_label: null,
     expires_at: null,
     published_at: "2026-07-16T00:00:00.000Z",
+    is_super: false,
+    super_eyebrow: null,
+    super_title: null,
+    super_subtitle: null,
+    super_cta_label: null,
+    super_cta_url: null,
     is_expired: false,
     read_at: null,
+  } as NotificationsPage["data"][number];
+}
+
+function superItem(id: string) {
+  return {
+    ...unreadItem(id),
+    is_super: true,
+    super_eyebrow: "Novidade",
+    super_title: "Chegou o *modo turbo*",
+    super_subtitle: "Comece agora.",
+    super_cta_label: "Explorar",
+    super_cta_url: "/planos",
   } as NotificationsPage["data"][number];
 }
 
@@ -79,6 +108,7 @@ beforeEach(() => {
   svc.fetch.mockReset();
   svc.markAsRead.mockReset().mockResolvedValue(undefined);
   svc.markAllAsRead.mockReset().mockResolvedValue(1);
+  svc.dismissSuper.mockReset().mockResolvedValue(undefined);
   authState.value = { user: { id: "u1" } };
   ctx = null;
 });
@@ -169,6 +199,66 @@ describe("NotificationsContext: sinal de chegada (arrivalSignal)", () => {
     });
     await poll(page(2)); // servidor 1 -> 2: chegada real
     expect(ctx!.arrivalSignal).toBe(1);
+  });
+});
+
+// ── SUPER: interstitial (auto/manual), dismiss vs read ───────────────────────
+describe("NotificationsContext: super (interstitial e dismiss)", () => {
+  it("activeSuper no payload dispara o interstitial AUTO uma vez", async () => {
+    await mountWithBaseline(page(1, [], superItem("s1")));
+    expect(ctx!.superModalOpen).toBe(true);
+    expect(ctx!.superModalSource).toBe("auto");
+    expect(ctx!.superModalItem?.id).toBe("s1");
+    expect(ctx!.activeSuper?.id).toBe("s1");
+  });
+
+  it("não redispara em poll seguinte após dismiss (uma vez por carga)", async () => {
+    await mountWithBaseline(page(1, [], superItem("s1")));
+    await act(async () => {
+      await ctx!.dismissSuper("s1");
+    });
+    expect(ctx!.superModalOpen).toBe(false);
+    expect(ctx!.activeSuper).toBeNull();
+    // Poll ainda traz a super (server não processou o dismiss): NÃO reabre.
+    await poll(page(1, [], superItem("s1")));
+    expect(ctx!.superModalOpen).toBe(false);
+  });
+
+  it("dismiss != read: fecha o modal e grava dismiss, mas NÃO mexe no unread", async () => {
+    await mountWithBaseline(page(2, [superItem("s1")], superItem("s1")));
+    await act(async () => {
+      await ctx!.dismissSuper("s1");
+    });
+    expect(svc.dismissSuper).toHaveBeenCalledWith("s1");
+    expect(svc.markAsRead).not.toHaveBeenCalled();
+    expect(ctx!.unreadCount).toBe(2); // dismiss não decrementa o sino
+    expect(ctx!.notifications.some((n) => n.id === "s1")).toBe(true); // segue no sino
+  });
+
+  it("CTA marca como LIDA (read genérico): decrementa e chama o server", async () => {
+    await mountWithBaseline(page(1, [superItem("s1")], superItem("s1")));
+    await act(async () => {
+      await ctx!.markAsRead("s1"); // o SuperInterstitial faz isto no onCta
+    });
+    expect(svc.markAsRead).toHaveBeenCalledWith("s1");
+    expect(ctx!.unreadCount).toBe(0);
+  });
+
+  it("openSuperModal manual: abre com source 'manual' (clique no sino)", async () => {
+    await mountWithBaseline(page(0));
+    expect(ctx!.superModalOpen).toBe(false);
+    await act(async () => {
+      ctx!.openSuperModal(superItem("s9"));
+    });
+    expect(ctx!.superModalOpen).toBe(true);
+    expect(ctx!.superModalSource).toBe("manual");
+    expect(ctx!.superModalItem?.id).toBe("s9");
+  });
+
+  it("sem activeSuper: não abre nada", async () => {
+    await mountWithBaseline(page(3, [unreadItem("n1")]));
+    expect(ctx!.superModalOpen).toBe(false);
+    expect(ctx!.activeSuper).toBeNull();
   });
 });
 

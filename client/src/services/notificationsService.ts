@@ -21,12 +21,23 @@ export type NotificationItem = {
   cta_label: string | null;
   expires_at: string | null;
   published_at: string | null;
+  // SUPER: is_super marca a notificação de destaque; os super_* alimentam o
+  // SuperModal (o destaque *asterisco* é parsed no client). Todos os itens do
+  // feed carregam esses campos (is_super false / super_* null fora de super).
+  is_super: boolean;
+  super_eyebrow: string | null;
+  super_title: string | null;
+  super_subtitle: string | null;
+  super_cta_label: string | null;
+  super_cta_url: string | null;
   is_expired: boolean;
   read_at: string | null;
 };
 
 export type NotificationsPage = {
   data: NotificationItem[];
+  // A super ativa (interstitial) do usuário, ou null. Vem embutida no GET.
+  activeSuper: NotificationItem | null;
   unread_count: number;
   next_cursor: string | null;
 };
@@ -74,4 +85,15 @@ export async function markAllAsRead(): Promise<number> {
   if (!res.ok) throw new Error("Erro ao marcar notificações como lidas");
   const json = (await res.json()) as { data?: { marked?: number } };
   return json.data?.marked ?? 0;
+}
+
+// Dispensa o interstitial da super (cross-device). NÃO marca como lida: a super
+// some do modal automático mas segue no sino. Rota fora do /api/me/notifications.
+export async function dismissSuper(id: string): Promise<void> {
+  const headers = await getAuthHeader();
+  const res = await fetch(apiUrl(`/api/me/super/${id}/dismiss`), {
+    method: "POST",
+    headers,
+  });
+  if (!res.ok) throw new Error("Erro ao dispensar a notificação");
 }

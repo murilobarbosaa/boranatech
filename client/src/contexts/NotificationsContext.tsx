@@ -9,12 +9,18 @@ import {
 } from "react";
 
 import {
+  dismissSuper as dismissSuperRequest,
   fetchNotifications,
   markAllAsRead as markAllAsReadRequest,
   markAsRead as markAsReadRequest,
   type NotificationItem,
 } from "@/services/notificationsService";
 import { useAuth } from "./AuthContext";
+
+// Origem da abertura do SuperModal: 'auto' = pop automatico por carga de app
+// (respeita a allowlist de rota no SuperInterstitial); 'manual' = clique no sino
+// (abre em qualquer rota).
+export type SuperModalSource = "auto" | "manual";
 
 // Estado das notificações in-app. Mesmo padrão do SubscriptionContext:
 // só ativa com user logado e faz polling apenas com a aba visível. O GET
@@ -37,6 +43,15 @@ interface NotificationsContextValue {
   // sino nunca balança por oscilação de UI. Vive no provider (montado uma
   // vez no App), logo sobrevive à remontagem do sino a cada navegação.
   arrivalSignal: number;
+  // SUPER. activeSuper = a super ativa (interstitial) ou null. O modal (montado
+  // uma vez pelo SuperInterstitial) e controlado por superModalOpen/Item/Source.
+  activeSuper: NotificationItem | null;
+  superModalOpen: boolean;
+  superModalItem: NotificationItem | null;
+  superModalSource: SuperModalSource | null;
+  openSuperModal: (item: NotificationItem, source?: SuperModalSource) => void;
+  closeSuperModal: () => void;
+  dismissSuper: (id: string) => Promise<void>;
   refresh: (options?: { silent?: boolean }) => Promise<void>;
   loadMore: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
@@ -60,7 +75,19 @@ export function NotificationsProvider({
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadedOnce, setLoadedOnce] = useState(false);
   const [arrivalSignal, setArrivalSignal] = useState(0);
+  const [activeSuper, setActiveSuper] = useState<NotificationItem | null>(null);
+  const [superModalOpen, setSuperModalOpen] = useState(false);
+  const [superModalItem, setSuperModalItem] = useState<NotificationItem | null>(
+    null,
+  );
+  const [superModalSource, setSuperModalSource] =
+    useState<SuperModalSource | null>(null);
   const loadingMoreRef = useRef(false);
+  // "Uma vez por carga de app": true depois que o interstitial AUTO ja foi
+  // disparado nesta carga. Guarda contra redisparo em polls/navegacoes. Vive no
+  // provider (montado uma vez), entao sobrevive a remontagem do sino; so zera no
+  // logout (nova carga = reload zera naturalmente).
+  const autoSuperTriggeredRef = useRef(false);
   // Último unread_count VINDO DO SERVIDOR (null = ainda sem baseline). Fonte da
   // verdade pra detectar chegada; nunca reflete decremento otimista local.
   const lastServerUnreadRef = useRef<number | null>(null);
@@ -89,6 +116,17 @@ export function NotificationsProvider({
         lastServerUnreadRef.current = page.unread_count;
         if (prevServerUnread !== null && page.unread_count > prevServerUnread) {
           setArrivalSignal((signal) => signal + 1);
+        }
+        // Super ativa embutida no payload. Na PRIMEIRA vez que vier != null nesta
+        // carga, dispara o interstitial AUTO uma única vez (a exclusão por rota é
+        // decidida no SuperInterstitial). Polls seguintes não redisparam.
+        const nextSuper = page.activeSuper ?? null;
+        setActiveSuper(nextSuper);
+        if (nextSuper && !autoSuperTriggeredRef.current) {
+          autoSuperTriggeredRef.current = true;
+          setSuperModalItem(nextSuper);
+          setSuperModalSource("auto");
+          setSuperModalOpen(true);
         }
         setNextCursor((prevCursor) =>
           loadedOnce ? prevCursor : page.next_cursor,
@@ -125,34 +163,75 @@ export function NotificationsProvider({
     }
   }, [nextCursor, user]);
 
-  // Otimista: read_at local + badge decrementado na hora; reverte se falhar.
+  // Otimista: read_at local + badge decrementado na hora; reverte se falhar. O
+  // update otimista só roda se o item estiver na página carregada; mesmo fora
+  // dela (ex.: super antiga não paginada, disparada pelo CTA) o server é chamado
+  // — read é idempotente lá — pra a leitura valer cross-device.
   const markAsRead = useCallback(
     async (id: string) => {
       const target = notifications.find((item) => item.id === id);
-      if (!target || target.read_at) return;
+      if (target?.read_at) return;
 
       const nowIso = new Date().toISOString();
-      setNotifications((prev) =>
-        prev.map((item) =>
-          item.id === id ? { ...item, read_at: nowIso } : item,
-        ),
-      );
-      setUnreadCount((count) => Math.max(0, count - 1));
+      if (target) {
+        setNotifications((prev) =>
+          prev.map((item) =>
+            item.id === id ? { ...item, read_at: nowIso } : item,
+          ),
+        );
+        setUnreadCount((count) => Math.max(0, count - 1));
+      }
 
       try {
         await markAsReadRequest(id);
       } catch (error) {
         console.error("[NotificationsContext] markAsRead failed", error);
-        setNotifications((prev) =>
-          prev.map((item) =>
-            item.id === id ? { ...item, read_at: null } : item,
-          ),
-        );
-        setUnreadCount((count) => count + 1);
+        if (target) {
+          setNotifications((prev) =>
+            prev.map((item) =>
+              item.id === id ? { ...item, read_at: null } : item,
+            ),
+          );
+          setUnreadCount((count) => count + 1);
+        }
       }
     },
     [notifications],
   );
+
+  // Abre o SuperModal (via SuperInterstitial, o único ponto de montagem).
+  // Padrão 'manual' = clique no sino, abre em qualquer rota.
+  const openSuperModal = useCallback(
+    (item: NotificationItem, source: SuperModalSource = "manual") => {
+      setSuperModalItem(item);
+      setSuperModalSource(source);
+      setSuperModalOpen(true);
+    },
+    [],
+  );
+
+  const closeSuperModal = useCallback(() => {
+    setSuperModalOpen(false);
+    setSuperModalItem(null);
+    setSuperModalSource(null);
+  }, []);
+
+  // Dispensa (fechar no X/overlay/Esc): otimista — fecha o modal e zera a super
+  // ativa local (não repipoca nesta carga; autoSuperTriggeredRef já trava), e
+  // grava o dismiss no server. NÃO marca como lida: a super continua no sino.
+  const dismissSuper = useCallback(async (id: string) => {
+    setSuperModalOpen(false);
+    setSuperModalItem(null);
+    setSuperModalSource(null);
+    setActiveSuper(null);
+    try {
+      await dismissSuperRequest(id);
+    } catch (error) {
+      // Falhou no server: o modal já fechou; numa próxima carga a super pode
+      // reaparecer (o dismiss não persistiu). Sem reverter a UI.
+      console.error("[NotificationsContext] dismissSuper failed", error);
+    }
+  }, []);
 
   const markAllAsRead = useCallback(async () => {
     const previous = notifications;
@@ -188,6 +267,12 @@ export function NotificationsProvider({
       // Reseta a baseline: o próximo login rebaseia sem emitir chegada.
       // arrivalSignal fica como está (monotônico); o sino desmonta no logout.
       lastServerUnreadRef.current = null;
+      // Zera o estado da super: o próximo login/carga pode reabrir o interstitial.
+      setActiveSuper(null);
+      setSuperModalOpen(false);
+      setSuperModalItem(null);
+      setSuperModalSource(null);
+      autoSuperTriggeredRef.current = false;
       return;
     }
     void refresh();
@@ -227,6 +312,13 @@ export function NotificationsProvider({
       hasError,
       hasMore: nextCursor !== null,
       arrivalSignal,
+      activeSuper,
+      superModalOpen,
+      superModalItem,
+      superModalSource,
+      openSuperModal,
+      closeSuperModal,
+      dismissSuper,
       refresh,
       loadMore,
       markAsRead,
@@ -234,6 +326,13 @@ export function NotificationsProvider({
     }),
     [
       arrivalSignal,
+      activeSuper,
+      superModalOpen,
+      superModalItem,
+      superModalSource,
+      openSuperModal,
+      closeSuperModal,
+      dismissSuper,
       hasError,
       isLoading,
       loadMore,
