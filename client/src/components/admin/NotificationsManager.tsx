@@ -363,10 +363,10 @@ function NotificationPreviewCard({ form }: { form: FormState }) {
     : null;
   return (
     <div className="rounded-2xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]">
-      <p className="border-b-2 border-slate-900 bg-[#faf8f4] px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+      <p className="rounded-t-[14px] border-b-2 border-slate-900 bg-[#faf8f4] px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
         Como o usuário verá
       </p>
-      <div className="bg-sky-50 px-4 py-3">
+      <div className="rounded-b-[14px] bg-sky-50 px-4 py-3">
         <div className="flex items-start gap-2">
           <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-sky-500" />
           <div className="min-w-0 flex-1">
