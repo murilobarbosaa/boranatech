@@ -513,6 +513,7 @@ export default function Salarios() {
                         {String(label)}
                       </span>
                       <BntSelect
+                        accent="green"
                         label={String(label)}
                         value={String(value)}
                         onValueChange={(v) =>
@@ -732,6 +733,7 @@ export default function Salarios() {
                   <label className="mt-4 block text-sm font-black">
                     Área
                     <BntSelect
+                      accent="green"
                       label="Área"
                       className="mt-1"
                       value={negArea}
@@ -745,6 +747,7 @@ export default function Salarios() {
                   <label className="mt-3 block text-sm font-black">
                     Nível
                     <BntSelect
+                      accent="green"
                       label="Nível"
                       className="mt-1"
                       value={negLevel}
