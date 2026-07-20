@@ -5,6 +5,7 @@ import ProGate from "@/components/pro/ProGate";
 import BackToTechnologies from "@/components/shared/BackToTechnologies";
 import CopyButton from "@/components/shared/CopyButton";
 import PageHero from "@/components/shared/PageHero";
+import { BntSelect } from "@/components/shared/BntSelect";
 import { technologies } from "@/lib/technologyData";
 import { getTechnologies } from "@/services/contentService";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -65,22 +66,20 @@ export default function TecnologiaComparador() {
           <div className="card-brutal rounded-2xl bg-white p-6">
             <div className="grid gap-4 md:grid-cols-2">
               {[leftSlug, rightSlug].map((value, index) => (
-                <select
+                <BntSelect
                   key={index}
-                  className="rounded-xl border-2 border-slate-900 bg-white p-3 font-bold"
-                  value={value}
-                  onChange={(event) =>
-                    index === 0
-                      ? setLeftSlug(event.target.value)
-                      : setRightSlug(event.target.value)
+                  label={
+                    index === 0 ? "Primeira tecnologia" : "Segunda tecnologia"
                   }
-                >
-                  {technologyItems.map((technology) => (
-                    <option key={technology.slug} value={technology.slug}>
-                      {technology.name}
-                    </option>
-                  ))}
-                </select>
+                  value={value}
+                  onValueChange={(v) =>
+                    index === 0 ? setLeftSlug(v) : setRightSlug(v)
+                  }
+                  options={technologyItems.map((technology) => ({
+                    value: technology.slug,
+                    label: technology.name,
+                  }))}
+                />
               ))}
             </div>
             <div className="mt-6 overflow-x-auto">
