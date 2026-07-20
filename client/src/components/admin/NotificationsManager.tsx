@@ -320,14 +320,23 @@ function AudienceReach({
   audience,
   category,
   enabled,
+  elevated = false,
 }: {
   audience: AdminNotificationAudience;
   category: AdminNotificationCategory;
   enabled: boolean;
+  // elevated: aplica a sombra brutalist do card de preview. Ligado só na coluna
+  // do formulário (consistência com o preview); desligado no diálogo, onde os
+  // cards não têm sombra.
+  elevated?: boolean;
 }) {
   const { preview, loading } = useAudiencePreview(audience, category, enabled);
   return (
-    <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-3">
+    <div
+      className={`rounded-2xl border-2 border-slate-900 bg-violet-50 p-3${
+        elevated ? " shadow-[3px_3px_0_#0f172a]" : ""
+      }`}
+    >
       <p className="text-xs font-black uppercase text-violet-700">
         Alcance estimado
       </p>
@@ -1000,10 +1009,11 @@ export function NotificationsManager() {
                   audience={form.audience}
                   category={form.category}
                   enabled
+                  elevated
                 />
               ) : null}
               {!editingPublished && form.audience === "custom" ? (
-                <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-3">
+                <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-3 shadow-[3px_3px_0_#0f172a]">
                   <p className="text-xs font-black uppercase text-violet-700">
                     Destinatários
                   </p>
