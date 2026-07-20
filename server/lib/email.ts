@@ -567,6 +567,38 @@ function campaignLayout(opts: {
 // TODO(Ana): textos fixos do template de campanha acima (nome no topo e rodape).
 
 // Envio de campanha: diferente dos transacionais, falha NUNCA colapsa em
+// Teto de tempo para UM envio de campanha. Sem isto, um request pendurado no
+// Resend (o SDK nao aplica timeout) segura o worker de concorrencia 1 da fila
+// email-campaign indefinidamente e trava a campanha inteira ate um restart do
+// processo. Com o teto, o envio pendurado vira falha normal: entra no attempts:3
+// com backoff e, esgotado, o recipient e marcado failed pelo handler existente.
+// So o caminho de CAMPANHA usa isto; os transacionais (sendEmail direto) seguem
+// com o comportamento inalterado.
+const CAMPAIGN_SEND_TIMEOUT_MS = 20_000;
+
+// Promise.race com um timer sempre limpo. Nao cancela o fetch subjacente (o SDK
+// do Resend nao expoe um signal de forma estavel nesta versao), mas para de
+// esperar por ele: o suficiente para liberar o slot unico do worker. O request
+// remanescente resolve/rejeita em background e e ignorado.
+async function withSendTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Timeout de ${ms}ms ao ${label}.`)),
+      ms,
+    );
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 // sucesso. Sem Resend configurado ou com erro de API, lanca; o worker da fila
 // marca o destinatario como failed apos esgotar as tentativas.
 export async function sendCampaignEmail(params: {
@@ -598,19 +630,23 @@ export async function sendCampaignEmail(params: {
     unsubscribeUrl: params.unsubscribeUrl,
     footerReason: params.footerReason,
   });
-  const result = await sendEmail({
-    to: params.to,
-    from: FROM_RELATIONSHIP,
-    subject: personalizedSubject,
-    html,
-    headers: {
-      // Alem do mailto padrao, a URL de descadastro da campanha. O header
-      // List-Unsubscribe-Post habilita o one-click dos provedores (POST direto
-      // na URL, sem body; a rota aceita token via query string).
-      "List-Unsubscribe": `<${params.unsubscribeUrl}>, <mailto:oi@boranatech.com.br?subject=unsubscribe>`,
-      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-    },
-  });
+  const result = await withSendTimeout(
+    sendEmail({
+      to: params.to,
+      from: FROM_RELATIONSHIP,
+      subject: personalizedSubject,
+      html,
+      headers: {
+        // Alem do mailto padrao, a URL de descadastro da campanha. O header
+        // List-Unsubscribe-Post habilita o one-click dos provedores (POST direto
+        // na URL, sem body; a rota aceita token via query string).
+        "List-Unsubscribe": `<${params.unsubscribeUrl}>, <mailto:oi@boranatech.com.br?subject=unsubscribe>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
+    }),
+    CAMPAIGN_SEND_TIMEOUT_MS,
+    "enviar e-mail de campanha",
+  );
   if (!result) {
     throw new Error("Envio de campanha nao executado (Resend indisponivel).");
   }
