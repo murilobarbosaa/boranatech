@@ -15,7 +15,7 @@ import {
   CouponBlock,
   ctaTarget,
 } from "@/components/notifications/NotificationsPanel";
-import { NOTIFICATION_TYPE_META } from "@/lib/notificationTypeMeta";
+import { notificationTypeMetaOf } from "@/lib/notificationTypeMeta";
 import type {
   NotificationItem,
   NotificationType,
@@ -50,7 +50,7 @@ function TypeTag({
   type: NotificationType;
   className?: string;
 }) {
-  const meta = NOTIFICATION_TYPE_META[type];
+  const meta = notificationTypeMetaOf(type);
   return (
     <span
       className={`inline-flex shrink-0 items-center rounded-full border-2 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide ${meta.badge} ${className}`}

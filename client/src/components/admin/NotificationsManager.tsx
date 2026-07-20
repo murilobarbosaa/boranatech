@@ -11,7 +11,10 @@ import {
 import { toast } from "sonner";
 
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
-import { NOTIFICATION_TYPE_META as TYPE_META } from "@/lib/notificationTypeMeta";
+import {
+  NOTIFICATION_TYPE_META as TYPE_META,
+  notificationTypeMetaOf,
+} from "@/lib/notificationTypeMeta";
 import {
   Dialog,
   DialogContent,
@@ -116,6 +119,35 @@ const TYPE_OPTIONS = Object.entries(TYPE_META) as Array<
 const AUDIENCE_OPTIONS = Object.entries(AUDIENCE_META) as Array<
   [AdminNotificationAudience, { label: string; description: string }]
 >;
+
+// Resolvem meta por chave COM FALLBACK. Um valor de enum vindo do server que o
+// front ainda não conhece (deploy do frontend defasado do backend/db:push que
+// já produz um status/audience novo, ou uma adição futura de enum) renderiza um
+// badge neutro com o valor cru, em vez de estourar a página inteira do admin num
+// `X[chave].label` de chave inexistente (TypeError dentro do items.map).
+const UNKNOWN_BADGE = "border-slate-400 bg-slate-100 text-slate-500";
+// Reusa o resolver centralizado (fonte única de fallback do type, compartilhada
+// com o lado do usuário). status/audience abaixo são metas exclusivos do admin
+// (shapes distintos) e mantêm resolver próprio.
+export const typeMetaOf = notificationTypeMetaOf;
+export function statusMetaOf(status: string): { label: string; badge: string } {
+  return (
+    STATUS_META[status as AdminNotificationStatus] ?? {
+      label: status,
+      badge: UNKNOWN_BADGE,
+    }
+  );
+}
+export function audienceMetaOf(
+  audience: string,
+): { label: string; description: string } {
+  return (
+    AUDIENCE_META[audience as AdminNotificationAudience] ?? {
+      label: audience,
+      description: "",
+    }
+  );
+}
 
 const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "short",
@@ -912,7 +944,7 @@ export function NotificationsManager() {
                   ))}
                 </select>
                 <p className="mt-1 text-xs font-semibold text-slate-500">
-                  {AUDIENCE_META[form.audience].description}
+                  {audienceMetaOf(form.audience).description}
                 </p>
               </div>
               {form.audience === "custom" ? (
@@ -1144,12 +1176,12 @@ export function NotificationsManager() {
                     </td>
                     <td className="px-4 py-3">
                       <MetaBadge
-                        label={TYPE_META[item.type].label}
-                        className={TYPE_META[item.type].badge}
+                        label={typeMetaOf(item.type).label}
+                        className={typeMetaOf(item.type).badge}
                       />
                     </td>
                     <td className="px-4 py-3 font-semibold text-slate-600">
-                      {AUDIENCE_META[item.audience].label}
+                      {audienceMetaOf(item.audience).label}
                       {item.audience === "custom" ? (
                         <span className="block text-[11px] font-semibold text-slate-400">
                           {item.recipient_count.toLocaleString("pt-BR")}{" "}
@@ -1164,8 +1196,8 @@ export function NotificationsManager() {
                     </td>
                     <td className="px-4 py-3">
                       <MetaBadge
-                        label={STATUS_META[item.status].label}
-                        className={STATUS_META[item.status].badge}
+                        label={statusMetaOf(item.status).label}
+                        className={statusMetaOf(item.status).badge}
                       />
                     </td>
                     <td className="px-4 py-3 font-semibold text-slate-600">
@@ -1350,11 +1382,11 @@ export function NotificationsManager() {
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <MetaBadge
-                    label={TYPE_META[publishTarget.type].label}
-                    className={TYPE_META[publishTarget.type].badge}
+                    label={typeMetaOf(publishTarget.type).label}
+                    className={typeMetaOf(publishTarget.type).badge}
                   />
                   <MetaBadge
-                    label={AUDIENCE_META[publishTarget.audience].label}
+                    label={audienceMetaOf(publishTarget.audience).label}
                     className="border-slate-900 bg-white text-slate-900"
                   />
                   <MetaBadge
