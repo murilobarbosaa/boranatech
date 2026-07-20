@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import Layout from "@/components/Layout";
+import { BntSelect } from "@/components/shared/BntSelect";
 import ProGate from "@/components/pro/ProGate";
 import SEO from "@/components/SEO";
 import { cn } from "@/lib/utils";
@@ -1086,45 +1087,39 @@ export default function Comparador() {
               <div className="grid gap-4 md:grid-cols-3">
                 <label className="text-xs font-black uppercase text-slate-600">
                   Prioridade
-                  <select
+                  <BntSelect
+                    label="Prioridade"
                     value={objective}
-                    onChange={(event) => setObjective(event.target.value)}
-                    className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-black text-slate-900"
-                  >
-                    {objectives.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={setObjective}
+                    options={objectives.map((item) => ({
+                      value: item.id,
+                      label: item.label,
+                    }))}
+                  />
                 </label>
                 <label className="text-xs font-black uppercase text-slate-600">
                   Pagamento
-                  <select
+                  <BntSelect
+                    label="Pagamento"
                     value={budget}
-                    onChange={(event) => setBudget(event.target.value)}
-                    className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-black text-slate-900"
-                  >
-                    {budgets.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={setBudget}
+                    options={budgets.map((item) => ({
+                      value: item.id,
+                      label: item.label,
+                    }))}
+                  />
                 </label>
                 <label className="text-xs font-black uppercase text-slate-600">
                   Ritmo / duração
-                  <select
+                  <BntSelect
+                    label="Ritmo / duração"
                     value={duration}
-                    onChange={(event) => setDuration(event.target.value)}
-                    className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-black text-slate-900"
-                  >
-                    {durations.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={setDuration}
+                    options={durations.map((item) => ({
+                      value: item.id,
+                      label: item.label,
+                    }))}
+                  />
                 </label>
               </div>
 
@@ -1165,24 +1160,21 @@ export default function Comparador() {
                 <span className="mt-0.5 block text-xs font-semibold text-slate-500">
                   Mesmo grupo que a opção B
                 </span>
-                <select
+                <BntSelect
+                  label="Opção A"
                   value={left.id}
-                  onChange={(event) => {
-                    const id = event.target.value;
-                    setLeftId(id);
-                    if (id === rightId && options.length >= 2) {
-                      const swap = options.find((o) => o.id !== id);
+                  onValueChange={(v) => {
+                    setLeftId(v);
+                    if (v === rightId && options.length >= 2) {
+                      const swap = options.find((o) => o.id !== v);
                       if (swap) setRightId(swap.id);
                     }
                   }}
-                  className="mt-2 w-full rounded-xl border-2 border-slate-300 bg-white p-3"
-                >
-                  {options.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.name}
-                    </option>
-                  ))}
-                </select>
+                  options={options.map((option) => ({
+                    value: option.id,
+                    label: option.name,
+                  }))}
+                />
               </label>
               <label className="card-brutal rounded-2xl bg-white p-4 text-sm font-bold">
                 <span className="inline-flex items-center gap-2">
@@ -1194,19 +1186,14 @@ export default function Comparador() {
                 <span className="mt-0.5 block text-xs font-semibold text-slate-500">
                   Só entradas do tipo "{kindMeta?.label ?? comparisonKind}"
                 </span>
-                <select
+                <BntSelect
+                  label="Opção B"
                   value={right.id}
-                  onChange={(event) => setRightId(event.target.value)}
-                  className="mt-2 w-full rounded-xl border-2 border-slate-300 bg-white p-3"
-                >
-                  {options
+                  onValueChange={(v) => setRightId(v)}
+                  options={options
                     .filter((option) => option.id !== left.id)
-                    .map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.name}
-                      </option>
-                    ))}
-                </select>
+                    .map((option) => ({ value: option.id, label: option.name }))}
+                />
               </label>
             </div>
 
