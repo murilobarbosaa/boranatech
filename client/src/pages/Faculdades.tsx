@@ -34,6 +34,7 @@ import AuthGateModal from "@/components/gate/AuthGateModal";
 import { useAuthGate } from "@/hooks/useAuthGate";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { BntSelect } from "@/components/shared/BntSelect";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import MiniQuiz from "@/components/shared/MiniQuiz";
 import { faculdades } from "@/lib/data";
@@ -724,17 +725,16 @@ export default function Faculdades() {
               ))}
             </div>
             <div className="w-px h-5 bg-slate-200" />
-            <select
+            <BntSelect
+              fullWidth={false}
+              label="Nível de Matemática"
               value={mat}
-              onChange={(e) => setMat(e.target.value)}
-              className="px-3 py-2 border-2 border-violet-200 rounded-lg text-sm focus:outline-none focus:border-violet-500 bg-white"
-            >
-              {matNiveis.map((m) => (
-                <option key={m}>
-                  {m === "Todos" ? "Nível de Matemática" : `Matemática: ${m}`}
-                </option>
-              ))}
-            </select>
+              onValueChange={setMat}
+              options={matNiveis.map((m) => ({
+                value: m,
+                label: m === "Todos" ? "Nível de Matemática" : `Matemática: ${m}`,
+              }))}
+            />
           </div>
         </div>
       </section>

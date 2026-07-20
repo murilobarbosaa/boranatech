@@ -21,6 +21,7 @@ import { motion } from "framer-motion";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { BntSelect } from "@/components/shared/BntSelect";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import { comunidades } from "@/lib/data";
 import { ESTADO_UF_OPTS } from "@/lib/eventFilters";
@@ -193,16 +194,16 @@ export default function Comunidades() {
                 className="w-full rounded-lg border-2 border-violet-200 bg-white py-2 pl-9 pr-3 text-sm focus:border-violet-500 focus:outline-none"
               />
             </div>
-            <select
+            <BntSelect
+              fullWidth={false}
+              label="Filtrar por área"
               value={area}
-              onChange={(e) => setArea(e.target.value)}
-              aria-label="Filtrar por área"
-              className="rounded-lg border-2 border-violet-200 bg-white px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
-            >
-              {areas.map((a) => (
-                <option key={a}>{a === "Todas" ? "Todas as áreas" : a}</option>
-              ))}
-            </select>
+              onValueChange={setArea}
+              options={areas.map((a) => ({
+                value: a,
+                label: a === "Todas" ? "Todas as áreas" : a,
+              }))}
+            />
             <div className="relative">
               <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-600" />
               <label htmlFor="comunidade-estado" className="sr-only">
