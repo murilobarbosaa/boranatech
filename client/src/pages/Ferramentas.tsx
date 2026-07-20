@@ -32,6 +32,7 @@ import SEO from "@/components/SEO";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import CopyButton from "@/components/shared/CopyButton";
 import PageHero from "@/components/shared/PageHero";
+import { BntSelect } from "@/components/shared/BntSelect";
 import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn, youtubeEmbedUrl } from "@/lib/utils";
@@ -516,19 +517,19 @@ export default function Ferramentas() {
                   >
                     Área
                   </label>
-                  <select
+                  <BntSelect
                     id="ferramentas-area"
+                    fullWidth={false}
                     value={area}
-                    onChange={(event) => setArea(event.target.value)}
-                    className="rounded-lg border-2 border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-orange-500"
-                  >
-                    <option value="Todas">Todas as áreas</option>
-                    {areaOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={setArea}
+                    options={[
+                      { value: "Todas", label: "Todas as áreas" },
+                      ...areaOptions.map((option) => ({
+                        value: option,
+                        label: option,
+                      })),
+                    ]}
+                  />
                 </div>
 
                 <div className="flex flex-col gap-1">
@@ -538,19 +539,19 @@ export default function Ferramentas() {
                   >
                     Necessidade
                   </label>
-                  <select
+                  <BntSelect
                     id="ferramentas-need"
+                    fullWidth={false}
                     value={need}
-                    onChange={(event) => setNeed(event.target.value)}
-                    className="rounded-lg border-2 border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-orange-500"
-                  >
-                    <option value="Todas">Toda necessidade</option>
-                    {needOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={setNeed}
+                    options={[
+                      { value: "Todas", label: "Toda necessidade" },
+                      ...needOptions.map((option) => ({
+                        value: option,
+                        label: option,
+                      })),
+                    ]}
+                  />
                 </div>
 
                 <div className="flex flex-col gap-1">
@@ -560,17 +561,16 @@ export default function Ferramentas() {
                   >
                     Ordenar
                   </label>
-                  <select
+                  <BntSelect
                     id="ferramentas-sort"
+                    fullWidth={false}
                     value={sort}
-                    onChange={(event) =>
-                      setSort(event.target.value === "need" ? "need" : "az")
-                    }
-                    className="rounded-lg border-2 border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-orange-500"
-                  >
-                    <option value="az">Nome (A-Z)</option>
-                    <option value="need">Necessidade</option>
-                  </select>
+                    onValueChange={(v) => setSort(v === "need" ? "need" : "az")}
+                    options={[
+                      { value: "az", label: "Nome (A-Z)" },
+                      { value: "need", label: "Necessidade" },
+                    ]}
+                  />
                 </div>
               </div>
 

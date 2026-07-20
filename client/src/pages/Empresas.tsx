@@ -4,6 +4,7 @@ import { ArrowRight, RotateCcw, Trophy } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import PageHero from "@/components/shared/PageHero";
+import { BntSelect } from "@/components/shared/BntSelect";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import {
@@ -257,39 +258,42 @@ export default function Empresas() {
               <div className="grid flex-1 gap-3 md:grid-cols-3">
                 <label className="text-xs font-black uppercase text-slate-500">
                   Segmento
-                  <select
-                    className="mt-1 w-full rounded-lg border-2 border-blue-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-blue-500"
+                  <BntSelect
+                    className="mt-1"
+                    label="Segmento"
                     value={segment}
-                    onChange={(event) => setSegment(event.target.value)}
-                  >
-                    {companySegments.map((item) => (
-                      <option key={item}>{item}</option>
-                    ))}
-                  </select>
+                    onValueChange={setSegment}
+                    options={companySegments.map((item) => ({
+                      value: item,
+                      label: item,
+                    }))}
+                  />
                 </label>
                 <label className="text-xs font-black uppercase text-slate-500">
                   Cidade
-                  <select
-                    className="mt-1 w-full rounded-lg border-2 border-blue-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-blue-500"
+                  <BntSelect
+                    className="mt-1"
+                    label="Cidade"
                     value={city}
-                    onChange={(event) => setCity(event.target.value)}
-                  >
-                    {companyCities.map((item) => (
-                      <option key={item}>{item}</option>
-                    ))}
-                  </select>
+                    onValueChange={setCity}
+                    options={companyCities.map((item) => ({
+                      value: item,
+                      label: item,
+                    }))}
+                  />
                 </label>
                 <label className="text-xs font-black uppercase text-slate-500">
                   Nível
-                  <select
-                    className="mt-1 w-full rounded-lg border-2 border-blue-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-blue-500"
+                  <BntSelect
+                    className="mt-1"
+                    label="Nível"
                     value={level}
-                    onChange={(event) => setLevel(event.target.value)}
-                  >
-                    {companyHiringLevels.map((item) => (
-                      <option key={item}>{item}</option>
-                    ))}
-                  </select>
+                    onValueChange={setLevel}
+                    options={companyHiringLevels.map((item) => ({
+                      value: item,
+                      label: item,
+                    }))}
+                  />
                 </label>
               </div>
 

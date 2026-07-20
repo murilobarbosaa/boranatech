@@ -21,6 +21,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AiCtaLink } from "@/components/shared/AiCta";
+import { BntSelect } from "@/components/shared/BntSelect";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import LockedCatalogTeaser from "@/components/pro/LockedCatalogTeaser";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -53,6 +54,11 @@ const nivelGuides = [
 
 const AREA_ALL = "Todas";
 const TECH_ALL = "Todas";
+// Sentinela de borda p/ o BntSelect: o Radix Select proibe value="" em SelectItem,
+// e projetos com areaSlug null caem em value="" (slug ?? ""). Mapeamos "" <->
+// sentinela SO na borda; o state `area` continua "" internamente. Mesmo padrao do
+// Cursos; quirk de null preservado.
+const AREA_EMPTY_SENTINEL = "__empty__";
 const SPECIAL_LABELS: Record<string, string> = {
   carreira: "Carreira",
   fullstack: "Full Stack",
@@ -309,51 +315,43 @@ export default function Projetos() {
                   className="w-full pl-9 pr-4 py-2 border-2 border-orange-200 rounded-lg text-sm bg-white focus:outline-none focus:border-orange-500"
                 />
               </div>
-              <select
-                value={area}
-                onChange={(e) => setArea(e.target.value)}
-                aria-label="Filtrar por área"
-                className="w-full px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
-              >
-                {areaSlugOptions.map((slug) => {
-                  const value = slug === AREA_ALL ? AREA_ALL : (slug ?? "");
-                  const key = slug ?? "__null__";
-                  const label =
+              <BntSelect
+                label="Filtrar por área"
+                value={area === "" ? AREA_EMPTY_SENTINEL : area}
+                onValueChange={(v) =>
+                  setArea(v === AREA_EMPTY_SENTINEL ? "" : v)
+                }
+                options={areaSlugOptions.map((slug) => ({
+                  value:
+                    slug === AREA_ALL
+                      ? AREA_ALL
+                      : slug == null
+                        ? AREA_EMPTY_SENTINEL
+                        : slug,
+                  label:
                     slug === AREA_ALL
                       ? "Todas as áreas"
-                      : labelForAreaSlug(slug);
-                  return (
-                    <option key={key} value={value}>
-                      {label}
-                    </option>
-                  );
-                })}
-              </select>
-              <select
+                      : labelForAreaSlug(slug),
+                }))}
+              />
+              <BntSelect
+                label="Filtrar por nível"
                 value={nivel}
-                onChange={(e) => setNivel(e.target.value)}
-                aria-label="Filtrar por nível"
-                className="w-full px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
-              >
-                {niveis.map((n) => (
-                  <option key={n} value={n}>
-                    {n === "Todos" ? "Todos os níveis" : n} ({nivelCounts[n]})
-                  </option>
-                ))}
-              </select>
-              <select
+                onValueChange={setNivel}
+                options={niveis.map((n) => ({
+                  value: n,
+                  label: `${n === "Todos" ? "Todos os níveis" : n} (${nivelCounts[n]})`,
+                }))}
+              />
+              <BntSelect
+                label="Filtrar por tecnologia"
                 value={tech}
-                onChange={(e) => setTech(e.target.value)}
-                aria-label="Filtrar por tecnologia"
-                className="w-full px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
-              >
-                <option value={TECH_ALL}>Todas as tecnologias</option>
-                {techOptions.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+                onValueChange={setTech}
+                options={[
+                  { value: TECH_ALL, label: "Todas as tecnologias" },
+                  ...techOptions.map((t) => ({ value: t, label: t })),
+                ]}
+              />
             </div>
             {activeFilters.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
