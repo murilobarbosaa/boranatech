@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { Link } from "wouter";
 import {
   Activity,
   AlertTriangle,
@@ -765,8 +766,8 @@ function AdminShell({
       <header className="sticky top-0 z-[1000] border-b-2 border-slate-900 bg-[#f6f0df]/95 backdrop-blur">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex min-h-16 items-center justify-between gap-4">
-            <a
-              href="/admin"
+            <Link
+              href="/"
               className="group flex min-w-fit items-center gap-2"
             >
               <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-slate-900 bg-yellow-400 text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all group-hover:shadow-[4px_4px_0_#0f172a]">
@@ -780,7 +781,7 @@ function AdminShell({
                   Admin da plataforma
                 </span>
               </div>
-            </a>
+            </Link>
 
             {session ? (
               <nav className="hidden min-w-0 flex-1 flex-wrap items-center justify-center gap-1 px-2 py-2 lg:flex">
