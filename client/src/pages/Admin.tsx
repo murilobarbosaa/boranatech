@@ -4836,6 +4836,7 @@ export default function Admin() {
   const [affiliateCommission, setAffiliateCommission] = useState(30);
   const [copiedAffiliateLink, setCopiedAffiliateLink] = useState(false);
   const [affiliates, setAffiliates] = useState<AffiliateRecord[]>([]);
+  const [affiliateSearch, setAffiliateSearch] = useState("");
   const [affiliatesLoading, setAffiliatesLoading] = useState(false);
   const [savingAffiliate, setSavingAffiliate] = useState(false);
   const [payingAffiliateId, setPayingAffiliateId] = useState<string | null>(
@@ -5190,6 +5191,23 @@ export default function Admin() {
       ),
     [affiliates],
   );
+
+  // Filtro client-side da LISTA de cards (name + code + email, case-insensitive).
+  // So a lista filtra: affiliateTotals acima segue sobre todos os afiliados de
+  // proposito (metricas do programa inteiro). Sem paginacao no endpoint, entao
+  // filtrar em memoria e completo, nao enganoso.
+  const filteredAffiliates = useMemo(() => {
+    const term = affiliateSearch.trim().toLowerCase();
+    if (!term) return affiliates;
+    return affiliates.filter((affiliate) => {
+      const name = (affiliate.name || "").toLowerCase();
+      const code = (affiliate.code || "").toLowerCase();
+      const email = (affiliate.email || "").toLowerCase();
+      return (
+        name.includes(term) || code.includes(term) || email.includes(term)
+      );
+    });
+  }, [affiliates, affiliateSearch]);
   const adminMetricCards = useMemo<MetricCard[]>(() => {
     if (!dashboard?.counts) return metricCards;
 
@@ -6098,7 +6116,9 @@ export default function Admin() {
                       Manual ativo
                     </p>
                     <p className="text-sm font-bold text-slate-600">
-                      {affiliates.length} afiliados cadastrados
+                      {affiliateSearch.trim()
+                        ? `${filteredAffiliates.length} de ${affiliates.length} afiliados`
+                        : `${affiliates.length} afiliados cadastrados`}
                     </p>
                   </div>
                 </div>
@@ -6271,12 +6291,20 @@ export default function Admin() {
                     <Tag className="h-6 w-6" />
                     Afiliados cadastrados
                   </h3>
+                  <input
+                    type="search"
+                    value={affiliateSearch}
+                    onChange={(event) => setAffiliateSearch(event.target.value)}
+                    placeholder="Buscar por nome, código ou e-mail..."
+                    className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_#0f172a] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
+                  />
                   <div className="mt-5">
                     {overviewLoading || affiliatesLoading ? (
                       <LoadingBlock />
                     ) : affiliates.length ? (
+                      filteredAffiliates.length ? (
                       <div className="space-y-3">
-                        {affiliates.map((affiliate) => (
+                        {filteredAffiliates.map((affiliate) => (
                           <div
                             key={affiliate.id}
                             className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
@@ -6484,6 +6512,17 @@ export default function Admin() {
                           </div>
                         ))}
                       </div>
+                      ) : (
+                        <div className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
+                          <p className="font-display text-lg font-black text-slate-950">
+                            Nenhum afiliado encontrado para "
+                            {affiliateSearch.trim()}"
+                          </p>
+                          <p className="mt-2 text-sm font-semibold text-slate-500">
+                            Ajuste o termo da busca ou limpe o campo.
+                          </p>
+                        </div>
+                      )
                     ) : (
                       <div className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
                         <p className="font-display text-lg font-black text-slate-950">
