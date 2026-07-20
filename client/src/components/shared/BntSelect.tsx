@@ -81,7 +81,7 @@ export function BntSelect({
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent
-        sideOffset={4}
+        sideOffset={0}
         // Folga p/ o header fixo no flip-up: encolhe o available-height do Radix
         // para o popup caber abaixo do header (em vez de medir so ate a viewport).
         // Demais lados = margem padrao do primitivo (CONTENT_MARGIN).
