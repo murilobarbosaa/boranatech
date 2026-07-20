@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   Select,
   SelectContent,
@@ -11,6 +12,34 @@ export type BntSelectOption = {
   value: string;
   label: string;
   disabled?: boolean;
+};
+
+// Cor de acento do item por pagina: SO muda hover (focus, /20) e selecionado
+// (checked, /30). Borda, sombra e trigger sao identicos em todo o site (o ponto
+// da consistencia). Strings literais completas: o JIT do Tailwind nao gera
+// classes montadas em runtime. Hexes -500 dos tokens de pagina (getPageAccentUi),
+// no mesmo brilho do amarelo. `yellow` = default #FFB800, inalterado.
+export type BntSelectAccent =
+  | "yellow"
+  | "blue"
+  | "green"
+  | "violet"
+  | "orange"
+  | "teal"
+  | "pink"
+  | "gold";
+
+const accentItemClasses: Record<BntSelectAccent, string> = {
+  yellow: "focus:bg-[#FFB800]/20 data-[state=checked]:bg-[#FFB800]/30",
+  blue: "focus:bg-[#3b82f6]/20 data-[state=checked]:bg-[#3b82f6]/30",
+  green: "focus:bg-[#10b981]/20 data-[state=checked]:bg-[#10b981]/30",
+  violet: "focus:bg-[#8b5cf6]/20 data-[state=checked]:bg-[#8b5cf6]/30",
+  orange: "focus:bg-[#f97316]/20 data-[state=checked]:bg-[#f97316]/30",
+  teal: "focus:bg-[#14b8a6]/20 data-[state=checked]:bg-[#14b8a6]/30",
+  pink: "focus:bg-[#ec4899]/20 data-[state=checked]:bg-[#ec4899]/30",
+  // Gold (goldenrod, saturado) usa opacidade maior (/25, /40) que as demais: e
+  // mais escuro, precisa de mais presenca pra ler como "dourado" e nao lavar.
+  gold: "focus:bg-[#DAA520]/25 data-[state=checked]:bg-[#DAA520]/40",
 };
 
 export type BntSelectProps = {
@@ -28,6 +57,11 @@ export type BntSelectProps = {
   triggerClassName?: string;
   size?: "sm" | "md";
   fullWidth?: boolean;
+  // Cor do item selecionado/hover (default "yellow" = identico a hoje).
+  accent?: BntSelectAccent;
+  // Icone decorativo a esquerda do valor no trigger (ex.: <MapPin ... />). O
+  // BntSelect embrulha em aria-hidden; o nome acessivel segue de label/id.
+  leadingIcon?: ReactNode;
 };
 
 // Alturas alinhadas ao ui/input.tsx (h-9) para "sm"; "md" um pouco mais alto
@@ -60,6 +94,8 @@ export function BntSelect({
   triggerClassName,
   size = "md",
   fullWidth = true,
+  accent = "yellow",
+  leadingIcon,
 }: BntSelectProps) {
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>
@@ -78,7 +114,20 @@ export function BntSelect({
           className,
         )}
       >
-        <SelectValue placeholder={placeholder} />
+        {leadingIcon ? (
+          // Grupo icone+valor a esquerda; o chevron do primitivo fica a direita
+          // (o justify-between do trigger separa este span do chevron). Icone
+          // decorativo -> aria-hidden. So embrulhamos quando ha icone, pra nao
+          // alterar os selects sem icone (mantem SelectValue como filho direto).
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="shrink-0" aria-hidden="true">
+              {leadingIcon}
+            </span>
+            <SelectValue placeholder={placeholder} />
+          </span>
+        ) : (
+          <SelectValue placeholder={placeholder} />
+        )}
       </SelectTrigger>
       <SelectContent
         sideOffset={0}
@@ -103,8 +152,8 @@ export function BntSelect({
             disabled={opt.disabled}
             className={cn(
               "cursor-pointer rounded-lg text-sm font-medium text-slate-900",
-              "focus:bg-[#FFB800]/20 focus:text-slate-950",
-              "data-[state=checked]:bg-[#FFB800]/30 data-[state=checked]:font-bold",
+              "focus:text-slate-950 data-[state=checked]:font-bold",
+              accentItemClasses[accent],
             )}
           >
             {opt.label}
