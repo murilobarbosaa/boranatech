@@ -104,6 +104,14 @@
   * {
     @apply border-border outline-ring/50;
   }
+  ::selection {
+    background-color: var(--brand-yellow);
+    color: var(--brand-slate);
+  }
+  ::-moz-selection {
+    background-color: var(--brand-yellow);
+    color: var(--brand-slate);
+  }
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-body);
