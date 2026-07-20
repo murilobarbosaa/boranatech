@@ -7,7 +7,6 @@ import { useMemo, useState } from "react";
 import {
   Calendar,
   CalendarPlus,
-  ChevronDown,
   ExternalLink,
   LayoutGrid,
   MapPin,
@@ -260,26 +259,23 @@ export default function Eventos() {
                 <MapPin className="h-3.5 w-3.5 text-amber-600" />
                 {LABEL_FILTROS.estado} (UF)
               </label>
-              <div className="relative min-w-[13rem]">
-                <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-600" />
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-700" />
-                <select
-                  id="filter-evento-estado"
-                  value={estadoUF}
-                  onChange={(e) =>
-                    setEstadoUF(e.target.value as "" | EstadoUfSigla)
-                  }
-                  className="w-full appearance-none rounded-xl border-2 border-slate-900 bg-amber-50 py-2 pl-9 pr-9 text-sm font-bold text-slate-900 shadow-[2px_2px_0_#0f172a] focus:outline-none focus:ring-4 focus:ring-amber-200"
-                  title={LABEL_FILTROS.estado}
-                >
-                  {ESTADO_UF_OPTS.map(({ sigla, nome }) => (
-                    <option key={sigla} value={sigla}>
-                      {nome}
-                    </option>
-                  ))}
-                  <option value="">Todos os estados</option>
-                </select>
-              </div>
+              <BntSelect
+                id="filter-evento-estado"
+                fullWidth={false}
+                triggerClassName="min-w-[13rem]"
+                leadingIcon={<MapPin className="h-4 w-4 text-amber-600" />}
+                value={estadoUF === ALL ? FILTRO_TODOS : estadoUF}
+                onValueChange={(v) =>
+                  setEstadoUF(v === FILTRO_TODOS ? ALL : (v as EstadoUfSigla))
+                }
+                options={[
+                  ...ESTADO_UF_OPTS.map(({ sigla, nome }) => ({
+                    value: sigla,
+                    label: nome,
+                  })),
+                  { value: FILTRO_TODOS, label: "Todos os estados" },
+                ]}
+              />
             </div>
             <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer pb-2">
               <input
