@@ -4793,6 +4793,9 @@ function AdminCheckbox({
   );
 }
 
+// Paginacao client-side da lista de Afiliados: 5 cards por pagina.
+const AFFILIATE_PAGE_SIZE = 5;
+
 export default function Admin() {
   const { loading: authLoading, signOut, user } = useAuth();
   const [session, setSession] = useState<AdminSession | null>(null);
@@ -4837,6 +4840,7 @@ export default function Admin() {
   const [copiedAffiliateLink, setCopiedAffiliateLink] = useState(false);
   const [affiliates, setAffiliates] = useState<AffiliateRecord[]>([]);
   const [affiliateSearch, setAffiliateSearch] = useState("");
+  const [affiliatePage, setAffiliatePage] = useState(1);
   const [affiliatesLoading, setAffiliatesLoading] = useState(false);
   const [savingAffiliate, setSavingAffiliate] = useState(false);
   const [payingAffiliateId, setPayingAffiliateId] = useState<string | null>(
@@ -5208,6 +5212,25 @@ export default function Admin() {
       );
     });
   }, [affiliates, affiliateSearch]);
+
+  // Paginacao SEMPRE sobre a lista filtrada (filtrar -> paginar). Reset para a
+  // pagina 1 quando a busca muda (idiomatico no admin, ver UsersDashboard).
+  useEffect(() => {
+    setAffiliatePage(1);
+  }, [affiliateSearch]);
+
+  const affiliateTotalPages = Math.max(
+    1,
+    Math.ceil(filteredAffiliates.length / AFFILIATE_PAGE_SIZE),
+  );
+  // Guarda de range lida no render: se a lista encolher (busca ou exclusao) e a
+  // pagina atual ficar alem do fim, exibe a ultima pagina valida sem tela vazia
+  // nem flash. Os handlers dos botoes tambem clampam.
+  const affiliateCurrentPage = Math.min(affiliatePage, affiliateTotalPages);
+  const pagedAffiliates = filteredAffiliates.slice(
+    (affiliateCurrentPage - 1) * AFFILIATE_PAGE_SIZE,
+    affiliateCurrentPage * AFFILIATE_PAGE_SIZE,
+  );
   const adminMetricCards = useMemo<MetricCard[]>(() => {
     if (!dashboard?.counts) return metricCards;
 
@@ -6303,8 +6326,9 @@ export default function Admin() {
                       <LoadingBlock />
                     ) : affiliates.length ? (
                       filteredAffiliates.length ? (
+                      <>
                       <div className="space-y-3">
-                        {filteredAffiliates.map((affiliate) => (
+                        {pagedAffiliates.map((affiliate) => (
                           <div
                             key={affiliate.id}
                             className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
@@ -6512,6 +6536,46 @@ export default function Admin() {
                           </div>
                         ))}
                       </div>
+                      {affiliateTotalPages > 1 ? (
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                          <span className="text-sm font-black text-slate-950">
+                            Página {affiliateCurrentPage} de{" "}
+                            {affiliateTotalPages}
+                          </span>
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAffiliatePage(
+                                  Math.max(1, affiliateCurrentPage - 1),
+                                )
+                              }
+                              disabled={affiliateCurrentPage <= 1}
+                              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+                            >
+                              Anterior
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAffiliatePage(
+                                  Math.min(
+                                    affiliateTotalPages,
+                                    affiliateCurrentPage + 1,
+                                  ),
+                                )
+                              }
+                              disabled={
+                                affiliateCurrentPage >= affiliateTotalPages
+                              }
+                              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+                            >
+                              Próxima
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                      </>
                       ) : (
                         <div className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
                           <p className="font-display text-lg font-black text-slate-950">
