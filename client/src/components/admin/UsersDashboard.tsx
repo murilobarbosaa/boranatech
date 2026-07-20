@@ -23,7 +23,7 @@ type UsersListPayload = {
   pageSize: number;
 };
 
-type ProFilter = "all" | "pro" | "not_pro";
+type UserListFilter = "all" | "pro" | "not_pro" | "influencers" | "ativo";
 
 const PAGE_SIZE = 50;
 const SEARCH_DEBOUNCE_MS = 350;
@@ -77,6 +77,10 @@ type UserDetail = {
     granted_by_email: string | null;
   } | null;
   paid_total_cents: number;
+  // Derivado no servidor a partir de last_sign_in_at, com a mesma janela de 30d
+  // do filtro ATIVO: active = login < 30d, inactive = login > 30d, never = nunca
+  // logou. A janela vive so no servidor; aqui so mapeamos o rotulo.
+  activity_status: "active" | "inactive" | "never";
   created_at: string | null;
   updated_at: string | null;
 };
@@ -150,9 +154,13 @@ function labelFrom(
   return map[value] ?? value;
 }
 
-function statusLabel(onboardingCompleted: boolean | null | undefined): string {
-  return onboardingCompleted ? "Ativo" : "Cadastro incompleto";
-}
+// Rotulos do activity_status (derivado no servidor de last_sign_in_at). So
+// aparece no detalhe: a lista nao paga o scan de Auth necessario para saber isso.
+const ACTIVITY_STATUS_LABELS: Record<UserDetail["activity_status"], string> = {
+  active: "Ativo",
+  inactive: "Inativo",
+  never: "Nunca acessou",
+};
 
 function displayName(row: UserRow): string {
   if (row.name && row.name.trim()) return row.name.trim();
@@ -371,7 +379,7 @@ export function UsersDashboard() {
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<ProFilter>("all");
+  const [filter, setFilter] = useState<UserListFilter>("all");
   const [page, setPage] = useState(1);
 
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
@@ -447,7 +455,7 @@ export function UsersDashboard() {
     };
   }, [search, filter, page]);
 
-  function changeFilter(next: ProFilter) {
+  function changeFilter(next: UserListFilter) {
     setFilter(next);
     setPage(1);
   }
@@ -608,21 +616,21 @@ export function UsersDashboard() {
           placeholder="Buscar por nome ou e-mail..."
           className="min-w-[220px] flex-1 rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_#0f172a] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
         />
-        <div className="flex rounded-2xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]">
+        <div className="flex flex-wrap overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]">
           {(
             [
               { value: "all", label: "Todos" },
               { value: "pro", label: "Pro" },
               { value: "not_pro", label: "Não-Pro" },
-            ] as Array<{ value: ProFilter; label: string }>
-          ).map((option, index) => (
+              { value: "influencers", label: "Influencers" },
+              { value: "ativo", label: "Ativo" },
+            ] as Array<{ value: UserListFilter; label: string }>
+          ).map((option) => (
             <button
               key={option.value}
               type="button"
               onClick={() => changeFilter(option.value)}
-              className={`px-4 py-2.5 text-sm font-black uppercase ${
-                index > 0 ? "border-l-2 border-slate-900" : ""
-              } ${
+              className={`-ml-0.5 -mt-0.5 border-l-2 border-t-2 border-slate-900 px-4 py-2.5 text-sm font-black uppercase ${
                 filter === option.value
                   ? "bg-yellow-300 text-slate-950"
                   : "bg-white text-slate-500 hover:bg-yellow-50"
@@ -652,14 +660,9 @@ export function UsersDashboard() {
               disabled={!row.user_id}
               className="grid w-full gap-1 border-b-2 border-slate-100 p-4 text-left transition hover:bg-yellow-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <div className="flex items-center justify-between gap-3">
-                <p className="font-display text-lg font-black text-slate-950">
-                  {displayName(row)}
-                </p>
-                <span className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black">
-                  {statusLabel(row.onboarding_completed)}
-                </span>
-              </div>
+              <p className="font-display text-lg font-black text-slate-950">
+                {displayName(row)}
+              </p>
               <p className="text-sm font-semibold text-slate-500">
                 {row.email || "sem e-mail"}
               </p>
@@ -1038,10 +1041,6 @@ export function UsersDashboard() {
                               : String(detail.onboarding_step)
                           }
                         />
-                        <Field
-                          label="Status"
-                          value={statusLabel(detail.onboarding_completed)}
-                        />
                       </section>
 
                       <section className="space-y-2.5">
@@ -1066,6 +1065,10 @@ export function UsersDashboard() {
                         <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
                           Sistema
                         </h4>
+                        <Field
+                          label="Atividade"
+                          value={ACTIVITY_STATUS_LABELS[detail.activity_status]}
+                        />
                         <Field
                           label="Cadastro"
                           value={fmtDate(detail.created_at)}
