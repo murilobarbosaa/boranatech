@@ -6,6 +6,7 @@ import { runVagasSync } from "../jobs/syncJobs";
 import { syncNews } from "../jobs/syncNews";
 import { reindexSearchDocuments } from "../lib/searchIndex";
 import { recordCronRun } from "../lib/cron-logs";
+import { reconcileEmailCampaignBatches } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
@@ -1089,6 +1090,37 @@ router.post("/sync-finance", withCronLock("sync-finance", 600, async (_req, res,
   } catch (err) {
     await recordCronRun({
       jobName: "sync-finance",
+      status: "error",
+      startedAt,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    next(err);
+  }
+}));
+
+// Rede de seguranca das campanhas de e-mail: reenfileira recipients pending de
+// campanhas sending (lote dispatched) que o worker de concorrencia 1 nao chegou a
+// processar (worker travado ou reiniciado). Ate agora isso so acontecia no boot;
+// sem este cron, uma campanha travada so se curava num restart do processo. Reusa
+// a MESMA reconcileEmailCampaignBatches do boot: NAO seleciona recipient novo, so
+// reenfileira pending existente. Reentrante com o worker ativo (jobId
+// deterministico por recipient torna o re-add no-op; filtro status pending; guarda
+// de status no proprio job; so lote dispatched). TTL 600s: folga caso uma execucao
+// demore; o proximo tick (5min) pula com withCronLock se ainda estiver rodando.
+router.post("/reconcile-email-campaigns", withCronLock("reconcile-email-campaigns", 600, async (_req, res, next) => {
+  const startedAt = new Date();
+
+  try {
+    await reconcileEmailCampaignBatches();
+    await recordCronRun({
+      jobName: "reconcile-email-campaigns",
+      status: "success",
+      startedAt,
+    });
+    res.json({ data: { reconciled: true } });
+  } catch (err) {
+    await recordCronRun({
+      jobName: "reconcile-email-campaigns",
       status: "error",
       startedAt,
       errorMessage: err instanceof Error ? err.message : String(err),
