@@ -22,7 +22,7 @@ import { createError } from "../middleware/error";
 const router = Router();
 
 const ADMIN_COLUMNS =
-  "id, title, body, type, category, audience, coupon_code, discount_percent, cta_url, cta_label, expires_at, status, published_at, scheduled_for, created_by, created_at, updated_at";
+  "id, title, body, type, category, audience, coupon_code, discount_percent, cta_url, cta_label, expires_at, status, published_at, scheduled_for, is_super, super_eyebrow, super_title, super_subtitle, super_cta_label, super_cta_url, created_by, created_at, updated_at";
 
 const NOTIFICATION_TYPES = [
   "announcement",
@@ -137,6 +137,15 @@ const CreateSchema = z
     cta_url: z.string().trim().url().max(2048).nullable().optional(),
     cta_label: z.string().trim().min(1).max(60).nullable().optional(),
     expires_at: expiresAtSchema.nullable().optional(),
+    // SUPER: colunas dedicadas. is_super default false; super_cta_url segue as
+    // mesmas regras de cta_url (url valida). Uma super pode ser tambem cupom
+    // e/ou agendada (flags ortogonais, sem regra especial de par).
+    is_super: z.boolean().optional().default(false),
+    super_eyebrow: z.string().trim().min(1).max(60).nullable().optional(),
+    super_title: z.string().trim().min(1).max(120).nullable().optional(),
+    super_subtitle: z.string().trim().min(1).max(200).nullable().optional(),
+    super_cta_label: z.string().trim().min(1).max(60).nullable().optional(),
+    super_cta_url: z.string().trim().url().max(2048).nullable().optional(),
     recipient_emails: recipientEmailsSchema.optional(),
   })
   .refine((data) => data.type !== "coupon" || Boolean(data.coupon_code), {
@@ -145,6 +154,17 @@ const CreateSchema = z
   .refine((data) => !data.expires_at || isFuture(data.expires_at), {
     message: "expires_at deve ser uma data futura.",
   })
+  .refine(
+    (data) =>
+      !data.is_super ||
+      (Boolean(data.super_title) &&
+        Boolean(data.super_cta_label) &&
+        Boolean(data.super_cta_url)),
+    {
+      message:
+        "Super exige super_title, super_cta_label e super_cta_url.",
+    },
+  )
   .refine(
     (data) =>
       data.audience !== "custom" || (data.recipient_emails?.length ?? 0) > 0,
@@ -167,6 +187,15 @@ const PatchSchema = z
     cta_label: z.string().trim().min(1).max(60).nullable().optional(),
     expires_at: expiresAtSchema.nullable().optional(),
     status: z.enum(["published", "archived"]).optional(),
+    // SUPER no patch: campos individuais validados aqui; a exigencia "super
+    // completa" (title+cta) e checada no handler contra os valores efetivos
+    // (patch ?? existing), como o cupom, porque o patch e parcial.
+    is_super: z.boolean().optional(),
+    super_eyebrow: z.string().trim().min(1).max(60).nullable().optional(),
+    super_title: z.string().trim().min(1).max(120).nullable().optional(),
+    super_subtitle: z.string().trim().min(1).max(200).nullable().optional(),
+    super_cta_label: z.string().trim().min(1).max(60).nullable().optional(),
+    super_cta_url: z.string().trim().url().max(2048).nullable().optional(),
     recipient_emails: recipientEmailsSchema.optional(),
   })
   .refine((data) => !data.expires_at || isFuture(data.expires_at), {
@@ -385,6 +414,12 @@ router.post("/", async (req, res, next) => {
         cta_url: data.cta_url ?? null,
         cta_label: data.cta_label ?? null,
         expires_at: data.expires_at ?? null,
+        is_super: data.is_super ?? false,
+        super_eyebrow: data.super_eyebrow ?? null,
+        super_title: data.super_title ?? null,
+        super_subtitle: data.super_subtitle ?? null,
+        super_cta_label: data.super_cta_label ?? null,
+        super_cta_url: data.super_cta_url ?? null,
         status: "draft",
         created_by: req.user!.id,
       })
@@ -419,7 +454,9 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-// Campos de conteudo, imutaveis apos a publicacao.
+// Campos de conteudo, imutaveis apos a publicacao. super_* entram aqui: seguem
+// a mesma regra dos outros campos de conteudo (editaveis em draft/scheduled,
+// imutaveis em published/archived).
 const CONTENT_FIELDS = [
   "title",
   "body",
@@ -430,6 +467,12 @@ const CONTENT_FIELDS = [
   "discount_percent",
   "cta_url",
   "cta_label",
+  "is_super",
+  "super_eyebrow",
+  "super_title",
+  "super_subtitle",
+  "super_cta_label",
+  "super_cta_url",
 ] as const;
 
 // PATCH /api/admin/notifications/:id
@@ -500,6 +543,33 @@ router.patch("/:id", async (req, res, next) => {
             "coupon_code é obrigatório quando type é coupon.",
           ),
         );
+      }
+      // Super completa contra os valores efetivos (patch ?? existing), como o
+      // cupom: patch parcial pode ligar is_super sem reenviar os super_*.
+      const effectiveIsSuper =
+        update.is_super !== undefined ? update.is_super : existing.is_super;
+      if (effectiveIsSuper === true) {
+        const effTitle =
+          update.super_title !== undefined
+            ? update.super_title
+            : existing.super_title;
+        const effCtaLabel =
+          update.super_cta_label !== undefined
+            ? update.super_cta_label
+            : existing.super_cta_label;
+        const effCtaUrl =
+          update.super_cta_url !== undefined
+            ? update.super_cta_url
+            : existing.super_cta_url;
+        if (!effTitle || !effCtaLabel || !effCtaUrl) {
+          return next(
+            createError(
+              400,
+              "invalid_request",
+              "Super exige super_title, super_cta_label e super_cta_url.",
+            ),
+          );
+        }
       }
     } else {
       const touchedContent =

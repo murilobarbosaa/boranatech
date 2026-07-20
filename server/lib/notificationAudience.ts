@@ -35,7 +35,7 @@ export const FEED_VISIBLE_STATUS = "published";
 // Colunas expostas ao usuario final. Sem status/created_by/created_at:
 // published_at e a referencia temporal publica e o cursor da paginacao.
 export const NOTIFICATION_PUBLIC_COLUMNS =
-  "id, title, body, type, category, audience, coupon_code, discount_percent, cta_url, cta_label, expires_at, published_at";
+  "id, title, body, type, category, audience, coupon_code, discount_percent, cta_url, cta_label, expires_at, published_at, is_super, super_eyebrow, super_title, super_subtitle, super_cta_label, super_cta_url";
 
 export type PublicNotificationRow = {
   id: string;
@@ -50,6 +50,15 @@ export type PublicNotificationRow = {
   cta_label: string | null;
   expires_at: string | null;
   published_at: string | null;
+  // Campos da notificacao SUPER (modal interstitial). is_super false nos itens
+  // comuns; super_* nulos fora de super. super_title destaca palavras marcadas
+  // com *asteriscos* no client.
+  is_super: boolean;
+  super_eyebrow: string | null;
+  super_title: string | null;
+  super_subtitle: string | null;
+  super_cta_label: string | null;
+  super_cta_url: string | null;
 };
 
 export type VisibleNotification = PublicNotificationRow & {
@@ -230,4 +239,76 @@ export async function isNotificationVisibleToUser(
     data as { id: string; audience: string; category: string },
     ctx,
   );
+}
+
+// Teto de candidatos a super ativa. Supers publicadas sao raras; o indice
+// parcial notifications_active_super_idx cobre o recorte. O teto so limita a
+// varredura caso alguem publique muitas supers de uma vez.
+const SUPER_CANDIDATE_CAP = 20;
+
+// Puro e testavel: dado os candidatos a super ativa JA ORDENADOS por
+// published_at desc (mais recente primeiro) e o conjunto de ids suprimidos
+// (dispensados OU lidos), devolve o primeiro nao-suprimido, ou null. dismiss e
+// read entram JUNTOS aqui: QUALQUER um suprime o interstitial (a distincao
+// dismiss != read vale so pro sino/unread_count, calculado a parte).
+export function pickActiveSuper<T extends { id: string }>(
+  candidates: T[],
+  suppressedIds: Set<string>,
+): T | null {
+  return candidates.find((c) => !suppressedIds.has(c.id)) ?? null;
+}
+
+// Super ativa (o modal interstitial) do usuario: a MAIS RECENTE published +
+// visivel + is_super + nao-expirada + nao-dispensada + nao-lida. REUTILIZA
+// visibleQuery (mesma base de status='published' + audience + opt-in do feed);
+// NAO reimplementa o filtro de audience. Barata e sem N+1: uma query de
+// candidatos (indice parcial), depois dois lookups indexados de dismiss/read
+// restritos aos ids candidatos, e escolha em memoria.
+export async function getActiveSuperForUser(
+  ctx: NotificationAudienceContext,
+  userId: string,
+): Promise<VisibleNotification | null> {
+  const nowIso = new Date().toISOString();
+  const { data, error } = await visibleQuery(ctx, NOTIFICATION_PUBLIC_COLUMNS)
+    .eq("is_super", true)
+    // Nao-expirada: sem validade ou validade no futuro. (Precedente do uso de
+    // ISO em .or: reconcile-subscriptions em server/routes/cron.ts.)
+    .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
+    .order("published_at", { ascending: false })
+    .limit(SUPER_CANDIDATE_CAP);
+  if (error) {
+    throw new Error(`Falha ao buscar super ativa: ${error.message}`);
+  }
+  const candidates = (data ?? []) as unknown as PublicNotificationRow[];
+  if (candidates.length === 0) return null;
+
+  const ids = candidates.map((row) => row.id);
+  const [dismissedRes, readRes] = await Promise.all([
+    supabaseAdmin
+      .from("notification_super_dismissals")
+      .select("notification_id")
+      .eq("user_id", userId)
+      .in("notification_id", ids),
+    supabaseAdmin
+      .from("notification_reads")
+      .select("notification_id")
+      .eq("user_id", userId)
+      .in("notification_id", ids),
+  ]);
+  if (dismissedRes.error) {
+    throw new Error(
+      `Falha ao buscar dispensas de super: ${dismissedRes.error.message}`,
+    );
+  }
+  if (readRes.error) {
+    throw new Error(`Falha ao buscar leituras: ${readRes.error.message}`);
+  }
+
+  const suppressed = new Set<string>([
+    ...(dismissedRes.data ?? []).map((r) => r.notification_id as string),
+    ...(readRes.data ?? []).map((r) => r.notification_id as string),
+  ]);
+
+  const active = pickActiveSuper(candidates, suppressed);
+  return active ? annotateExpiration(active) : null;
 }

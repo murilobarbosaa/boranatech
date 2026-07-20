@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   FEED_VISIBLE_STATUS,
+  pickActiveSuper,
   rowVisibleInContext,
   type NotificationAudienceContext,
 } from "./notificationAudience";
@@ -105,5 +106,40 @@ describe("FEED_VISIBLE_STATUS", () => {
     for (const status of ["draft", "scheduled", "archived"]) {
       expect(status).not.toBe(FEED_VISIBLE_STATUS);
     }
+  });
+});
+
+// pickActiveSuper: seleciona a super ativa (interstitial) entre candidatos JA
+// ordenados por published_at desc, excluindo os suprimidos (dispensados OU
+// lidos). O filtro de status/audience/expiracao e SQL (visibleQuery), coberto
+// pelos testes de FEED_VISIBLE_STATUS/rowVisibleInContext; aqui foca a escolha.
+describe("pickActiveSuper", () => {
+  const recent = { id: "super-recent" };
+  const older = { id: "super-older" };
+  const candidates = [recent, older]; // desc: mais recente primeiro
+
+  it("sem supressao, retorna a MAIS RECENTE (primeiro candidato)", () => {
+    expect(pickActiveSuper(candidates, new Set())).toBe(recent);
+  });
+
+  it("a mais recente dispensada OU lida cai pra proxima nao-suprimida", () => {
+    expect(pickActiveSuper(candidates, new Set(["super-recent"]))).toBe(older);
+  });
+
+  it("todas suprimidas (dismiss e/ou read) -> null (sem interstitial)", () => {
+    expect(
+      pickActiveSuper(candidates, new Set(["super-recent", "super-older"])),
+    ).toBeNull();
+  });
+
+  it("sem candidatos -> null", () => {
+    expect(pickActiveSuper([], new Set())).toBeNull();
+  });
+
+  it("dismiss suprime o interstitial: uma super dispensada sai do activeSuper (o unread_count, calculado so por notification_reads, nao e afetado)", () => {
+    // Aqui o id entra em suppressed via dispensa (nao leitura); pickActiveSuper
+    // o exclui do interstitial. O unread_count vive no route e so consulta
+    // notification_reads, entao a super dispensada-nao-lida segue contando.
+    expect(pickActiveSuper([recent], new Set(["super-recent"]))).toBeNull();
   });
 });

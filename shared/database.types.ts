@@ -1854,6 +1854,32 @@ export type Database = {
           },
         ]
       }
+      notification_super_dismissals: {
+        Row: {
+          dismissed_at: string
+          notification_id: string
+          user_id: string
+        }
+        Insert: {
+          dismissed_at?: string
+          notification_id: string
+          user_id: string
+        }
+        Update: {
+          dismissed_at?: string
+          notification_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_super_dismissals_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           audience: string
@@ -1867,9 +1893,15 @@ export type Database = {
           discount_percent: number | null
           expires_at: string | null
           id: string
+          is_super: boolean
           published_at: string | null
           scheduled_for: string | null
           status: string
+          super_cta_label: string | null
+          super_cta_url: string | null
+          super_eyebrow: string | null
+          super_subtitle: string | null
+          super_title: string | null
           title: string
           type: string
           updated_at: string
@@ -1886,9 +1918,15 @@ export type Database = {
           discount_percent?: number | null
           expires_at?: string | null
           id?: string
+          is_super?: boolean
           published_at?: string | null
           scheduled_for?: string | null
           status?: string
+          super_cta_label?: string | null
+          super_cta_url?: string | null
+          super_eyebrow?: string | null
+          super_subtitle?: string | null
+          super_title?: string | null
           title: string
           type?: string
           updated_at?: string
@@ -1905,9 +1943,15 @@ export type Database = {
           discount_percent?: number | null
           expires_at?: string | null
           id?: string
+          is_super?: boolean
           published_at?: string | null
           scheduled_for?: string | null
           status?: string
+          super_cta_label?: string | null
+          super_cta_url?: string | null
+          super_eyebrow?: string | null
+          super_subtitle?: string | null
+          super_title?: string | null
           title?: string
           type?: string
           updated_at?: string

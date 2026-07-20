@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import {
+  getActiveSuperForUser,
   getVisibleNotificationsForUser,
   isNotificationVisibleToUser,
   listVisibleNotificationIds,
@@ -88,9 +89,14 @@ router.get("/", async (req, res, next) => {
 
   try {
     const ctx = await audienceContext(req.user!.id, req.isPro);
-    const [{ items, nextCursor }, windowIds] = await Promise.all([
+    // activeSuper vai junto no mesmo GET (decisao: embutido, nao endpoint
+    // dedicado). getActiveSuperForUser e barata (indice parcial + 2 lookups por
+    // ids), entao nao vira N+1: continua 4 queries no total independente do
+    // tamanho do feed.
+    const [{ items, nextCursor }, windowIds, activeSuper] = await Promise.all([
       getVisibleNotificationsForUser(ctx, { limit, cursor }),
       listVisibleNotificationIds(ctx, UNREAD_WINDOW),
+      getActiveSuperForUser(ctx, req.user!.id),
     ]);
 
     const idsToCheck = Array.from(
@@ -105,6 +111,9 @@ router.get("/", async (req, res, next) => {
         ...item,
         read_at: readMap.get(item.id) ?? null,
       })),
+      // activeSuper e sempre nao-lida (getActiveSuperForUser exclui as lidas),
+      // entao read_at e null; mantido no shape pra o item ser completo.
+      activeSuper: activeSuper ? { ...activeSuper, read_at: null } : null,
       unread_count: Math.min(unread, UNREAD_DISPLAY_CAP),
       next_cursor: nextCursor,
     });
@@ -200,6 +209,81 @@ router.post("/read-all", async (req, res, next) => {
         500,
         "notifications_read_all_failed",
         "Não foi possível marcar as notificações como lidas.",
+      ),
+    );
+  }
+});
+
+// Router da super, montado em /api/me/super (app.ts). Separado do feed so pra
+// dar o path /api/me/super/:id/dismiss; mesmos guards (auth + tier).
+export const superRouter = Router();
+superRouter.use(requireAuth);
+superRouter.use(checkProStatus);
+
+// POST /api/me/super/:id/dismiss
+// Dispensa o modal interstitial (cross-device). NAO marca como lida: a super
+// some do interstitial mas continua no sino ate o /:id/read generico. 404
+// uniforme se nao existe / nao e visivel / nao e super (mesmo padrao do
+// /:id/read). Idempotente (upsert ignoreDuplicates).
+superRouter.post("/:id/dismiss", async (req, res, next) => {
+  const notificationId = req.params.id;
+  if (!UUID_PATTERN.test(notificationId)) {
+    return next(
+      createError(404, "notification_not_found", "Notificação não encontrada."),
+    );
+  }
+
+  try {
+    const ctx = await audienceContext(req.user!.id, req.isPro);
+    const visible = await isNotificationVisibleToUser(notificationId, ctx);
+    if (!visible) {
+      return next(
+        createError(
+          404,
+          "notification_not_found",
+          "Notificação não encontrada.",
+        ),
+      );
+    }
+
+    // Dismiss so faz sentido em super: confirma a flag (a linha ja e published
+    // e visivel pelo check acima). 404 uniforme se nao for super.
+    const { data: row, error: rowError } = await supabaseAdmin
+      .from("notifications")
+      .select("is_super")
+      .eq("id", notificationId)
+      .maybeSingle();
+    if (rowError) {
+      throw new Error(rowError.message);
+    }
+    if (!row || row.is_super !== true) {
+      return next(
+        createError(
+          404,
+          "notification_not_found",
+          "Notificação não encontrada.",
+        ),
+      );
+    }
+
+    const { error } = await supabaseAdmin
+      .from("notification_super_dismissals")
+      .upsert(
+        { user_id: req.user!.id, notification_id: notificationId },
+        { onConflict: "user_id,notification_id", ignoreDuplicates: true },
+      );
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    res.json({ data: { dismissed: true } });
+  } catch (err) {
+    console.error("[notifications] super dismiss failed", err);
+    return next(
+      createError(
+        500,
+        "notification_dismiss_failed",
+        "Não foi possível dispensar a notificação.",
       ),
     );
   }
