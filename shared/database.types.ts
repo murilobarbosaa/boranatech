@@ -1868,6 +1868,7 @@ export type Database = {
           expires_at: string | null
           id: string
           published_at: string | null
+          scheduled_for: string | null
           status: string
           title: string
           type: string
@@ -1886,6 +1887,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           published_at?: string | null
+          scheduled_for?: string | null
           status?: string
           title: string
           type?: string
@@ -1904,6 +1906,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           published_at?: string | null
+          scheduled_for?: string | null
           status?: string
           title?: string
           type?: string

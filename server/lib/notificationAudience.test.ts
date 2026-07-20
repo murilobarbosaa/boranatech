@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  FEED_VISIBLE_STATUS,
   rowVisibleInContext,
   type NotificationAudienceContext,
 } from "./notificationAudience";
@@ -91,5 +92,18 @@ describe("rowVisibleInContext", () => {
         ctx(),
       ),
     ).toBe(false);
+  });
+});
+
+// Invariante de status: o feed do usuario (visibleQuery e
+// isNotificationVisibleToUser) filtra por FEED_VISIBLE_STATUS. Uma notificacao
+// 'scheduled' tem status != published, entao NUNCA vaza no feed antes de o cron
+// a promover. Este teste trava a garantia contra alguem ampliar o filtro.
+describe("FEED_VISIBLE_STATUS", () => {
+  it("so 'published' e visivel; draft, scheduled e archived nunca vazam", () => {
+    expect(FEED_VISIBLE_STATUS).toBe("published");
+    for (const status of ["draft", "scheduled", "archived"]) {
+      expect(status).not.toBe(FEED_VISIBLE_STATUS);
+    }
   });
 });

@@ -1149,6 +1149,57 @@ router.post("/enrich-backlog", withCronLock("enrich-backlog", 1800, async (_req,
   }
 }));
 
+// Promove notificacoes agendadas cujo horario venceu: scheduled -> published.
+// UPDATE unico, atomico e idempotente (WHERE status='scheduled' garante que uma
+// linha ja promovida nao e retocada). published_at e setado AGORA, no momento do
+// disparo (nunca no agendamento), pro feed ordenar por published_at desc e o
+// "ha X" ficar correto. scheduled_for e preservado como registro do agendamento.
+// TTL 300s: job leve (um UPDATE). A visibleQuery so mostra published, entao
+// scheduled nunca vaza antes desta promocao.
+router.post(
+  "/publish-scheduled-notifications",
+  withCronLock(
+    "publish-scheduled-notifications",
+    300,
+    async (_req, res, next) => {
+      const startedAt = new Date();
+
+      try {
+        const nowIso = new Date().toISOString();
+        const { data, error } = await supabaseAdmin
+          .from("notifications")
+          .update({
+            status: "published",
+            published_at: nowIso,
+            updated_at: nowIso,
+          })
+          .eq("status", "scheduled")
+          .lte("scheduled_for", nowIso)
+          .select("id");
+        if (error) {
+          throw new Error(error.message);
+        }
+        const published = data?.length ?? 0;
+        await recordCronRun({
+          jobName: "publish-scheduled-notifications",
+          status: "success",
+          startedAt,
+          payload: { published },
+        });
+        res.json({ data: { published } });
+      } catch (err) {
+        await recordCronRun({
+          jobName: "publish-scheduled-notifications",
+          status: "error",
+          startedAt,
+          errorMessage: err instanceof Error ? err.message : String(err),
+        });
+        next(err);
+      }
+    },
+  ),
+);
+
 router.get("/status", async (_req, res, next) => {
   try {
     const { data: sources, error: sourcesError } = await supabaseAdmin

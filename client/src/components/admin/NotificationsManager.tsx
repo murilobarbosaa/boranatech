@@ -27,6 +27,8 @@ import {
   listNotifications,
   patchNotification,
   publishNotification,
+  scheduleNotification,
+  unscheduleNotification,
   type AdminNotification,
   type AdminNotificationAudience,
   type AdminNotificationCategory,
@@ -53,6 +55,10 @@ const STATUS_META: Record<
   { label: string; badge: string }
 > = {
   draft: { label: "Rascunho", badge: "border-slate-500 bg-slate-100 text-slate-600" },
+  scheduled: {
+    label: "Agendada",
+    badge: "border-sky-700 bg-sky-100 text-sky-800",
+  },
   published: {
     label: "Publicada",
     badge: "border-emerald-700 bg-emerald-100 text-emerald-800",
@@ -460,6 +466,11 @@ export function NotificationsManager() {
     null,
   );
   const [publishing, setPublishing] = useState(false);
+  // "quando enviar" do diálogo de publicação (espelha o modal de disparo das
+  // campanhas de email): now = publica já; schedule = grava scheduled_for.
+  const [whenMode, setWhenMode] = useState<"now" | "schedule">("now");
+  const [scheduleText, setScheduleText] = useState("");
+  const [unscheduling, setUnscheduling] = useState<string | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<AdminNotification | null>(
     null,
   );
@@ -475,8 +486,12 @@ export function NotificationsManager() {
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
 
+  // Imutabilidade: SO published/archived travam o conteudo. scheduled ainda nao
+  // foi disparada, entao edita normalmente (igual draft).
   const editingPublished =
-    formMode?.mode === "edit" && formMode.notification.status !== "draft";
+    formMode?.mode === "edit" &&
+    (formMode.notification.status === "published" ||
+      formMode.notification.status === "archived");
 
   const load = useCallback(async () => {
     setListLoading(true);
@@ -598,8 +613,48 @@ export function NotificationsManager() {
     }
   }
 
+  // Abre o diálogo de publicação/agendamento. mode=schedule prefill a data com
+  // o scheduled_for atual (reagendar); publicar agora abre em now.
+  function openPublish(item: AdminNotification, mode: "now" | "schedule") {
+    setPublishTarget(item);
+    setWhenMode(mode);
+    setScheduleText(
+      mode === "schedule" && item.scheduled_for
+        ? isoToLocalInput(item.scheduled_for)
+        : "",
+    );
+  }
+
   async function handlePublish() {
     if (!publishTarget) return;
+    // Agendar: converte o datetime-local (fuso do navegador) para ISO e chama
+    // /schedule. As regras de janela (futuro, máx 30d) são validadas no server.
+    if (whenMode === "schedule") {
+      if (!scheduleText) {
+        toast.error("Escolha a data e a hora do agendamento.");
+        return;
+      }
+      const date = new Date(scheduleText);
+      if (Number.isNaN(date.getTime())) {
+        toast.error("Data de agendamento inválida.");
+        return;
+      }
+      setPublishing(true);
+      try {
+        await scheduleNotification(publishTarget.id, date.toISOString());
+        toast.success("Notificação agendada.");
+        setPublishTarget(null);
+        void load();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Erro ao agendar.",
+        );
+      } finally {
+        setPublishing(false);
+      }
+      return;
+    }
+
     setPublishing(true);
     try {
       await publishNotification(publishTarget.id);
@@ -612,6 +667,21 @@ export function NotificationsManager() {
       );
     } finally {
       setPublishing(false);
+    }
+  }
+
+  async function handleUnschedule(item: AdminNotification) {
+    setUnscheduling(item.id);
+    try {
+      await unscheduleNotification(item.id);
+      toast.success("Agendamento cancelado. Voltou para rascunho.");
+      void load();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Erro ao cancelar agendamento.",
+      );
+    } finally {
+      setUnscheduling(null);
     }
   }
 
@@ -691,6 +761,7 @@ export function NotificationsManager() {
             >
               <option value="">Todos</option>
               <option value="draft">Rascunho</option>
+              <option value="scheduled">Agendada</option>
               <option value="published">Publicada</option>
               <option value="archived">Arquivada</option>
             </select>
@@ -1098,7 +1169,16 @@ export function NotificationsManager() {
                       />
                     </td>
                     <td className="px-4 py-3 font-semibold text-slate-600">
-                      {formatDateTime(item.published_at) || "-"}
+                      {item.status === "scheduled" && item.scheduled_for ? (
+                        <span className="inline-flex flex-col text-sky-800">
+                          <span className="text-[11px] font-black uppercase tracking-wide">
+                            Agendada para
+                          </span>
+                          {formatDateTime(item.scheduled_for)}
+                        </span>
+                      ) : (
+                        formatDateTime(item.published_at) || "-"
+                      )}
                     </td>
                     <td className="px-4 py-3 font-semibold text-slate-600">
                       {item.expires_at ? (
@@ -1131,10 +1211,45 @@ export function NotificationsManager() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => setPublishTarget(item)}
+                              onClick={() => openPublish(item, "now")}
                               className={`${rowActionClass} bg-emerald-100 text-emerald-800`}
                             >
                               Publicar
+                            </button>
+                          </>
+                        ) : null}
+                        {item.status === "scheduled" ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => openEdit(item)}
+                              className={rowActionClass}
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openPublish(item, "schedule")}
+                              className={`${rowActionClass} bg-sky-100 text-sky-800`}
+                            >
+                              Reagendar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleUnschedule(item)}
+                              disabled={unscheduling === item.id}
+                              className={rowActionClass}
+                            >
+                              {unscheduling === item.id
+                                ? "Cancelando..."
+                                : "Cancelar agendamento"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openPublish(item, "now")}
+                              className={`${rowActionClass} bg-emerald-100 text-emerald-800`}
+                            >
+                              Publicar agora
                             </button>
                           </>
                         ) : null}
@@ -1215,10 +1330,14 @@ export function NotificationsManager() {
       >
         <DialogContent className="rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a] sm:max-w-md">
           <DialogTitle className="font-display text-2xl font-black text-slate-950">
-            Publicar notificação?
+            {whenMode === "schedule"
+              ? "Agendar notificação?"
+              : "Publicar notificação?"}
           </DialogTitle>
           <DialogDescription className="text-sm font-semibold text-slate-600">
-            Após publicar, o conteúdo não poderá ser editado.
+            {whenMode === "schedule"
+              ? "Ela vai sair automaticamente no horário escolhido. Até lá, continua editável."
+              : "Após publicar, o conteúdo não poderá ser editado."}
           </DialogDescription>
           {publishTarget ? (
             <div className="space-y-3">
@@ -1274,6 +1393,57 @@ export function NotificationsManager() {
                   enabled
                 />
               )}
+
+              <div className="rounded-2xl border-2 border-slate-900 bg-white p-3">
+                <p className="text-xs font-black uppercase text-slate-500">
+                  Quando enviar
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(
+                    [
+                      { id: "now", label: "Agora" },
+                      { id: "schedule", label: "Agendar" },
+                    ] as const
+                  ).map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setWhenMode(option.id)}
+                      className={`rounded-full border-2 border-slate-900 px-4 py-1.5 text-xs font-black uppercase transition-colors ${
+                        whenMode === option.id
+                          ? "bg-slate-950 text-white"
+                          : "bg-white text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                {whenMode === "schedule" ? (
+                  <div className="mt-3">
+                    <label
+                      htmlFor="notif-schedule"
+                      className="text-xs font-black uppercase text-slate-500"
+                    >
+                      Data e hora (horário de Brasília)
+                    </label>
+                    <input
+                      id="notif-schedule"
+                      type="datetime-local"
+                      value={scheduleText}
+                      onChange={(e) => setScheduleText(e.target.value)}
+                      className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
+                    />
+                    {scheduleText &&
+                    !Number.isNaN(new Date(scheduleText).getTime()) ? (
+                      <p className="mt-2 text-xs font-bold text-sky-800">
+                        Sai em{" "}
+                        {formatDateTime(new Date(scheduleText).toISOString())}.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
           ) : null}
           <DialogFooter>
@@ -1290,7 +1460,13 @@ export function NotificationsManager() {
               disabled={publishing}
               className={primaryButtonClass}
             >
-              {publishing ? "Publicando..." : "Publicar"}
+              {whenMode === "schedule"
+                ? publishing
+                  ? "Agendando..."
+                  : "Agendar"
+                : publishing
+                  ? "Publicando..."
+                  : "Publicar"}
             </button>
           </DialogFooter>
         </DialogContent>

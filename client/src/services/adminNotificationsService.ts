@@ -3,7 +3,11 @@ import { adminFetch } from "@/lib/adminApi";
 // Service da seção admin de notificações. Usa o adminFetch (Bearer +
 // prefixo /api/admin + parse de erro do padrão { error: { message } }).
 
-export type AdminNotificationStatus = "draft" | "published" | "archived";
+export type AdminNotificationStatus =
+  | "draft"
+  | "scheduled"
+  | "published"
+  | "archived";
 export type AdminNotificationType =
   | "announcement"
   | "coupon"
@@ -31,6 +35,7 @@ export type AdminNotification = {
   expires_at: string | null;
   status: AdminNotificationStatus;
   published_at: string | null;
+  scheduled_for: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -114,6 +119,24 @@ export async function archiveNotification(
   id: string,
 ): Promise<{ data: AdminNotification }> {
   return adminFetch(`/notifications/${id}/archive`, { method: "POST" });
+}
+
+// draft|scheduled -> scheduled (agenda e reagenda). scheduledFor em ISO (UTC).
+export async function scheduleNotification(
+  id: string,
+  scheduledFor: string,
+): Promise<{ data: AdminNotification }> {
+  return adminFetch(`/notifications/${id}/schedule`, {
+    method: "POST",
+    body: JSON.stringify({ scheduled_for: scheduledFor }),
+  });
+}
+
+// scheduled -> draft (cancela o agendamento sem publicar).
+export async function unscheduleNotification(
+  id: string,
+): Promise<{ data: AdminNotification }> {
+  return adminFetch(`/notifications/${id}/unschedule`, { method: "POST" });
 }
 
 export async function fetchNotificationStats(

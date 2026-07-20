@@ -22,7 +22,7 @@ import { createError } from "../middleware/error";
 const router = Router();
 
 const ADMIN_COLUMNS =
-  "id, title, body, type, category, audience, coupon_code, discount_percent, cta_url, cta_label, expires_at, status, published_at, created_by, created_at, updated_at";
+  "id, title, body, type, category, audience, coupon_code, discount_percent, cta_url, cta_label, expires_at, status, published_at, scheduled_for, created_by, created_at, updated_at";
 
 const NOTIFICATION_TYPES = [
   "announcement",
@@ -30,7 +30,59 @@ const NOTIFICATION_TYPES = [
   "optin",
   "system",
 ] as const;
-const NOTIFICATION_STATUSES = ["draft", "published", "archived"] as const;
+const NOTIFICATION_STATUSES = [
+  "draft",
+  "scheduled",
+  "published",
+  "archived",
+] as const;
+
+// Agendamento: MESMAS regras das campanhas de email (adminEmailCampaigns:
+// SCHEDULE_PAST_TOLERANCE_MS / SCHEDULE_MAX_AHEAD_MS). Duplicado com comentario
+// como o EMAIL_PATTERN, pra nao acoplar dois routers.
+const SCHEDULE_PAST_TOLERANCE_MS = 60_000; // 60s de folga pra clock skew
+const SCHEDULE_MAX_AHEAD_MS = 30 * 24 * 60 * 60 * 1000; // 30d
+
+type ScheduleValidation =
+  | { ok: true; iso: string }
+  | { ok: false; message: string };
+
+// Puro e testavel: valida um scheduled_for contra `nowMs` com as regras do
+// email (futuro com tolerancia de 60s, no maximo 30 dias a frente) e devolve o
+// ISO canonico. Espelha o bloco de agendamento de adminEmailCampaigns.
+export function validateScheduledFor(
+  value: string,
+  nowMs: number,
+): ScheduleValidation {
+  const ts = new Date(value).getTime();
+  if (!Number.isFinite(ts)) {
+    return { ok: false, message: "Data de agendamento inválida." };
+  }
+  if (ts < nowMs - SCHEDULE_PAST_TOLERANCE_MS) {
+    return { ok: false, message: "O agendamento precisa ser no futuro." };
+  }
+  if (ts > nowMs + SCHEDULE_MAX_AHEAD_MS) {
+    return {
+      ok: false,
+      message: "O agendamento pode ser de no máximo 30 dias à frente.",
+    };
+  }
+  return { ok: true, iso: new Date(ts).toISOString() };
+}
+
+// Puro e testavel: o cron promove scheduled -> published quando vencido. Espelha
+// EXATAMENTE o WHERE do endpoint /api/cron/publish-scheduled-notifications
+// (status='scheduled' AND scheduled_for <= now()); a agendada so vira published
+// quando scheduled_for <= now, nunca antes.
+export function isScheduledDue(
+  scheduledFor: string | null,
+  nowMs: number,
+): boolean {
+  if (!scheduledFor) return false;
+  const ts = new Date(scheduledFor).getTime();
+  if (!Number.isFinite(ts)) return false;
+  return ts <= nowMs;
+}
 
 // Audiences aceitas na criacao: os segmentos (avaliados na leitura) mais
 // 'custom' (lista fixa materializada em notification_recipients).
@@ -135,6 +187,7 @@ type NotificationRow = {
   audience: string;
   coupon_code: string | null;
   expires_at: string | null;
+  scheduled_for: string | null;
   [key: string]: unknown;
 };
 
@@ -411,13 +464,18 @@ router.patch("/:id", async (req, res, next) => {
 
     const update: Record<string, unknown> = {};
 
-    if (existing.status === "draft") {
+    // draft e scheduled sao editaveis (conteudo mutavel): scheduled ainda NAO
+    // foi publicada. As transicoes de status (publicar/agendar/cancelar) tem
+    // endpoints proprios, entao patch.status nao e aceito aqui nesse ramo.
+    const editable =
+      existing.status === "draft" || existing.status === "scheduled";
+    if (editable) {
       if (patch.status !== undefined) {
         return next(
           createError(
             400,
             "use_publish_endpoint",
-            "Use POST /:id/publish para publicar um rascunho.",
+            "Use POST /:id/publish, /:id/schedule ou /:id/unschedule para mudar o status.",
           ),
         );
       }
@@ -464,11 +522,11 @@ router.patch("/:id", async (req, res, next) => {
       }
     }
 
-    // Recipients: so em draft (published caiu no 409 acima se tocou). A lista
-    // e substituida INTEIRA (delete + insert) quando recipient_emails vem no
-    // patch; sem o campo, a lista atual e mantida.
+    // Recipients: so em draft/scheduled (published caiu no 409 acima se tocou).
+    // A lista e substituida INTEIRA (delete + insert) quando recipient_emails
+    // vem no patch; sem o campo, a lista atual e mantida.
     let resolved: ResolvedRecipients | null = null;
-    if (existing.status === "draft") {
+    if (editable) {
       const effectiveAudience = (update.audience ??
         existing.audience) as string;
       if (patch.recipient_emails && effectiveAudience !== "custom") {
@@ -521,7 +579,7 @@ router.patch("/:id", async (req, res, next) => {
     }
     const updatedRow = updated as unknown as NotificationRow;
 
-    if (existing.status === "draft") {
+    if (editable) {
       if (resolved) {
         const { error: deleteError } = await supabaseAdmin
           .from("notification_recipients")
@@ -685,12 +743,14 @@ router.post("/:id/publish", async (req, res, next) => {
         createError(404, "not_found", "Notificação não encontrada."),
       );
     }
-    if (existing.status !== "draft") {
+    // Publica imediatamente draft OU scheduled (o "publicar agora" ignora e
+    // limpa o agendamento pendente).
+    if (existing.status !== "draft" && existing.status !== "scheduled") {
       return next(
         createError(
           409,
           "invalid_status",
-          "Só rascunhos podem ser publicados.",
+          "Só rascunhos ou agendadas podem ser publicados.",
         ),
       );
     }
@@ -719,12 +779,20 @@ router.post("/:id/publish", async (req, res, next) => {
       }
     }
 
+    // scheduled_for e zerado no disparo imediato: uma published nunca carrega
+    // agendamento pendente (o cron so olha status='scheduled', mas manter a
+    // coluna limpa evita confusao).
     const nowIso = new Date().toISOString();
     const { data: updated, error } = await supabaseAdmin
       .from("notifications")
-      .update({ status: "published", published_at: nowIso, updated_at: nowIso })
+      .update({
+        status: "published",
+        published_at: nowIso,
+        updated_at: nowIso,
+        scheduled_for: null,
+      })
       .eq("id", id.data)
-      .eq("status", "draft")
+      .in("status", ["draft", "scheduled"])
       .select(ADMIN_COLUMNS)
       .single();
     if (error) {
@@ -736,6 +804,158 @@ router.post("/:id/publish", async (req, res, next) => {
     console.error("[admin/notifications] publish failed", err);
     return next(
       createError(500, "db_error", "Erro ao publicar notificação."),
+    );
+  }
+});
+
+const ScheduleSchema = z.object({
+  scheduled_for: z.string(),
+});
+
+// POST /api/admin/notifications/:id/schedule { scheduled_for }
+// draft|scheduled -> scheduled (o mesmo endpoint agenda e reagenda). Espelha o
+// passo de disparo agendado das campanhas de email: o "quando" e decidido aqui,
+// nao na criacao. published_at continua null (so o cron/publish o seta no
+// disparo). Aplica as MESMAS guardas do publish (expiracao futura, custom com
+// destinatarios) porque scheduled vira published sozinha depois.
+router.post("/:id/schedule", async (req, res, next) => {
+  const id = z.string().uuid().safeParse(req.params.id);
+  if (!id.success) {
+    return next(createError(404, "not_found", "Notificação não encontrada."));
+  }
+  const parsed = ScheduleSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return next(
+      createError(400, "invalid_schedule", "Data de agendamento inválida."),
+    );
+  }
+
+  const validation = validateScheduledFor(parsed.data.scheduled_for, Date.now());
+  if (!validation.ok) {
+    return next(createError(400, "invalid_schedule", validation.message));
+  }
+  const scheduledForIso = validation.iso;
+
+  try {
+    const existing = await findNotification(id.data);
+    if (!existing) {
+      return next(
+        createError(404, "not_found", "Notificação não encontrada."),
+      );
+    }
+    if (existing.status !== "draft" && existing.status !== "scheduled") {
+      return next(
+        createError(
+          409,
+          "invalid_status",
+          "Só rascunhos ou agendadas podem ser agendados.",
+        ),
+      );
+    }
+    if (existing.expires_at && !isFuture(existing.expires_at)) {
+      return next(
+        createError(
+          400,
+          "invalid_request",
+          "expires_at deve ser uma data futura para agendar.",
+        ),
+      );
+    }
+    // Agendar depois da expiracao publicaria algo ja expirado: rejeita.
+    if (
+      existing.expires_at &&
+      Date.parse(scheduledForIso) >= Date.parse(existing.expires_at)
+    ) {
+      return next(
+        createError(
+          400,
+          "invalid_schedule",
+          "O agendamento precisa ser antes da data de expiração.",
+        ),
+      );
+    }
+    if (existing.audience === "custom") {
+      const recipients = await countRecipients(existing.id);
+      if (recipients === 0) {
+        return next(
+          createError(
+            400,
+            "no_recipients_matched",
+            "Esta notificação custom está sem destinatários; reenvie a lista de emails antes de agendar.",
+          ),
+        );
+      }
+    }
+
+    const { data: updated, error } = await supabaseAdmin
+      .from("notifications")
+      .update({
+        status: "scheduled",
+        scheduled_for: scheduledForIso,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id.data)
+      .in("status", ["draft", "scheduled"])
+      .select(ADMIN_COLUMNS)
+      .single();
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    res.json({ data: updated });
+  } catch (err) {
+    console.error("[admin/notifications] schedule failed", err);
+    return next(
+      createError(500, "db_error", "Erro ao agendar notificação."),
+    );
+  }
+});
+
+// POST /api/admin/notifications/:id/unschedule: scheduled -> draft. Cancela o
+// agendamento (limpa scheduled_for) sem publicar. Conteudo intacto.
+router.post("/:id/unschedule", async (req, res, next) => {
+  const id = z.string().uuid().safeParse(req.params.id);
+  if (!id.success) {
+    return next(createError(404, "not_found", "Notificação não encontrada."));
+  }
+
+  try {
+    const existing = await findNotification(id.data);
+    if (!existing) {
+      return next(
+        createError(404, "not_found", "Notificação não encontrada."),
+      );
+    }
+    if (existing.status !== "scheduled") {
+      return next(
+        createError(
+          409,
+          "invalid_status",
+          "Só notificações agendadas podem ter o agendamento cancelado.",
+        ),
+      );
+    }
+
+    const { data: updated, error } = await supabaseAdmin
+      .from("notifications")
+      .update({
+        status: "draft",
+        scheduled_for: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id.data)
+      .eq("status", "scheduled")
+      .select(ADMIN_COLUMNS)
+      .single();
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    res.json({ data: updated });
+  } catch (err) {
+    console.error("[admin/notifications] unschedule failed", err);
+    return next(
+      createError(500, "db_error", "Erro ao cancelar o agendamento."),
     );
   }
 });

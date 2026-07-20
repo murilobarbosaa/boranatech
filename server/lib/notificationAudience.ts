@@ -25,6 +25,13 @@ import {
 // - status = 'published' sempre; expirada NAO e filtrada (historico honesto),
 //   apenas anotada com is_expired.
 
+// Unico status de notificacao visivel ao usuario final. draft, scheduled e
+// archived NUNCA aparecem no feed: uma scheduled so passa a ser vista quando o
+// cron publish-scheduled-notifications a promove a published (setando
+// published_at no disparo). visibleQuery e isNotificationVisibleToUser filtram
+// por esta constante, entao ampliar a visibilidade exige mudar aqui (e o teste).
+export const FEED_VISIBLE_STATUS = "published";
+
 // Colunas expostas ao usuario final. Sem status/created_by/created_at:
 // published_at e a referencia temporal publica e o cursor da paginacao.
 export const NOTIFICATION_PUBLIC_COLUMNS =
@@ -147,7 +154,7 @@ function visibleQuery(ctx: NotificationAudienceContext, columns: string) {
   let query = supabaseAdmin
     .from("notifications")
     .select(columns)
-    .eq("status", "published");
+    .eq("status", FEED_VISIBLE_STATUS);
   if (ctx.recipientNotificationIds.length > 0) {
     query = query.or(
       `audience.in.(${ctx.allowedAudiences.join(",")}),id.in.(${ctx.recipientNotificationIds.join(",")})`,
@@ -215,7 +222,7 @@ export async function isNotificationVisibleToUser(
   const { data, error } = await supabaseAdmin
     .from("notifications")
     .select("id, audience, category")
-    .eq("status", "published")
+    .eq("status", FEED_VISIBLE_STATUS)
     .eq("id", notificationId)
     .maybeSingle();
   if (error || !data) return false;
