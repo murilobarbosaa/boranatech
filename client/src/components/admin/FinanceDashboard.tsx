@@ -408,7 +408,7 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
       )}
 
       {/* Bloco EXTRATO (transacoes da Stripe) */}
-      <div className="rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]">
+      <div className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-slate-900 bg-slate-50 px-4 py-3">
           <p className="text-xs font-black uppercase text-slate-600">
             Extrato da Stripe
