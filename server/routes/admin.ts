@@ -15,6 +15,7 @@ import {
 } from "../lib/financeMetrics";
 import { fetchUsdBrlRate } from "../lib/fx/ptax";
 import { getPosthogStats, getPosthogUserActivity } from "../lib/posthog";
+import { fetchAuthTimes } from "../lib/authUsers";
 import { getUsageRetention } from "../lib/usageRetention";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { emailQueue } from "../lib/queue";
@@ -858,6 +859,9 @@ function ilikePattern(term: string): string {
   return `"%${escaped}%"`;
 }
 
+// Janela do filtro ATIVO: login (auth.users.last_sign_in_at) nos ultimos 30 dias.
+const ACTIVE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
 router.get("/users", async (req, res, next) => {
   try {
     const pageRaw = parseInt(String(req.query.page ?? "1"), 10);
@@ -872,26 +876,12 @@ router.get("/users", async (req, res, next) => {
     const filterRaw =
       typeof req.query.filter === "string" ? req.query.filter : "all";
     const filter =
-      filterRaw === "pro" || filterRaw === "not_pro" ? filterRaw : "all";
-
-    // Filtro Pro por lista explicita de user_id com subscription active (decisao
-    // do Murilo): subscriptions nao tem FK declarada para profiles, entao o join
-    // implicito do PostgREST nao e confiavel. A lista e minuscula e o resultado
-    // exato.
-    let proUserIds: string[] = [];
-    if (filter !== "all") {
-      const { data: subRows, error: subError } = await supabaseAdmin
-        .from("subscriptions")
-        .select("user_id")
-        .eq("status", "active");
-      if (subError)
-        return next(
-          dbError("users pro filter", subError, "Erro ao buscar usuários."),
-        );
-      proUserIds = Array.from(
-        new Set((subRows || []).map((row) => row.user_id)),
-      );
-    }
+      filterRaw === "pro" ||
+      filterRaw === "not_pro" ||
+      filterRaw === "influencers" ||
+      filterRaw === "ativo"
+        ? filterRaw
+        : "all";
 
     // Lista ENXUTA: so o necessario para a linha (nome, email, status). CPF e os
     // demais campos de profiles NAO trafegam aqui; vem sob demanda em /users/:id.
@@ -908,12 +898,71 @@ router.get("/users", async (req, res, next) => {
       const pattern = ilikePattern(search);
       query = query.or(`name.ilike.${pattern},email.ilike.${pattern}`);
     }
-    if (filter === "pro") {
-      // Sem nenhum assinante ativo, o resultado correto e vazio: in() com lista
-      // vazia devolve zero linhas, exatamente o esperado.
-      query = query.in("user_id", proUserIds);
-    } else if (filter === "not_pro" && proUserIds.length > 0) {
-      query = query.not("user_id", "in", `(${proUserIds.join(",")})`);
+
+    // Cada filtro vira uma LISTA de user_id aplicada com .in()/.not in() no nivel
+    // do banco: filtro + range + count acontecem juntos com a busca, entao a
+    // paginacao e a contagem seguem corretas em qualquer combinacao.
+    if (filter === "pro" || filter === "not_pro") {
+      // Pro por lista explicita de user_id com subscription active (decisao do
+      // Murilo): subscriptions nao tem FK declarada para profiles, entao o join
+      // implicito do PostgREST nao e confiavel. A lista e minuscula e o resultado
+      // exato. Influencer NAO entra aqui de proposito: Pro = assinante pagante.
+      const { data: subRows, error: subError } = await supabaseAdmin
+        .from("subscriptions")
+        .select("user_id")
+        .eq("status", "active");
+      if (subError)
+        return next(
+          dbError("users pro filter", subError, "Erro ao buscar usuários."),
+        );
+      const proUserIds = Array.from(
+        new Set((subRows || []).map((row) => row.user_id)),
+      );
+      if (filter === "pro") {
+        // Sem nenhum assinante ativo, o resultado correto e vazio: in() com lista
+        // vazia devolve zero linhas, exatamente o esperado.
+        query = query.in("user_id", proUserIds);
+      } else if (proUserIds.length > 0) {
+        query = query.not("user_id", "in", `(${proUserIds.join(",")})`);
+      }
+    } else if (filter === "influencers") {
+      // Influencer = concessao ATIVA (revoked_at null; o indice unico parcial
+      // garante no maximo uma por usuario). Mesma mecanica de lista do Pro.
+      const { data: infRows, error: infError } = await supabaseAdmin
+        .from("influencers")
+        .select("user_id")
+        .is("revoked_at", null);
+      if (infError)
+        return next(
+          dbError("users influencer filter", infError, "Erro ao buscar usuários."),
+        );
+      const influencerIds = Array.from(
+        new Set((infRows || []).map((row) => row.user_id)),
+      );
+      // Lista vazia -> in() devolve zero linhas, exatamente o esperado.
+      query = query.in("user_id", influencerIds);
+    } else if (filter === "ativo") {
+      // ATIVO = login nos ultimos 30 dias. last_sign_in_at so existe em
+      // auth.users (nao em profiles), entao varre o Auth (listUsers), filtra pelo
+      // cutoff e aplica a lista de ids. Quem nunca logou (last_sign_in_at null)
+      // fica fora, por definicao.
+      //
+      // RISCO DE ESCALA: diferente do Pro (lista minuscula de pagantes), "ativos
+      // em 30d" pode ser fracao grande da base -> lista grande no .in(), que pode
+      // estourar o tamanho da query no PostgREST, e a varredura roda a cada
+      // request com filter=ativo. Barato na base atual. Caminho futuro: um RPC
+      // dedicado (profiles JOIN auth.users com limit/offset/count no banco),
+      // mesma nota ja registrada em server/lib/usageRetention.ts.
+      const authTimes = await fetchAuthTimes();
+      const cutoffMs = Date.now() - ACTIVE_WINDOW_MS;
+      const activeIds: string[] = [];
+      authTimes.forEach((times, userId) => {
+        const ms = times.lastSignInAt
+          ? new Date(times.lastSignInAt).getTime()
+          : NaN;
+        if (!Number.isNaN(ms) && ms >= cutoffMs) activeIds.push(userId);
+      });
+      query = query.in("user_id", activeIds);
     }
 
     const { data, count, error } = await query;
@@ -961,7 +1010,7 @@ router.get("/users/:id", async (req, res, next) => {
     // Assinatura (a mais recente), intencao de cancelamento agendada, valor
     // pago real e acesso de influencer, em paralelo. Quem nunca assinou vem com
     // null: estado legitimo, nao erro.
-    const [subResult, cancelResult, financeResult, influencerResult] =
+    const [subResult, cancelResult, financeResult, influencerResult, authResult] =
       await Promise.all([
       supabaseAdmin
         .from("subscriptions")
@@ -997,6 +1046,11 @@ router.get("/users/:id", async (req, res, next) => {
         .eq("user_id", uid)
         .is("revoked_at", null)
         .maybeSingle(),
+      // last_sign_in_at so existe em auth.users (nao em profiles): UM
+      // getUserById(uid), em paralelo com os demais lookups, alimenta o
+      // activity_status. Custo O(1) por request de detalhe (nao e o scan de
+      // listUsers do filtro ATIVO, que varre a base inteira).
+      supabaseAdmin.auth.admin.getUserById(uid),
     ]);
 
     if (subResult.error)
@@ -1023,6 +1077,25 @@ router.get("/users/:id", async (req, res, next) => {
           "Erro ao buscar usuário.",
         ),
       );
+    if (authResult.error)
+      return next(
+        dbError("user auth lookup", authResult.error, "Erro ao buscar usuário."),
+      );
+
+    // Status de atividade a partir de last_sign_in_at, com a MESMA janela do
+    // filtro ATIVO (ACTIVE_WINDOW_MS). Computado no servidor para a janela viver
+    // num unico lugar: o client so mapeia o rotulo. Quem nunca logou
+    // (last_sign_in_at null) -> "never".
+    const lastSignInMs = authResult.data.user?.last_sign_in_at
+      ? new Date(authResult.data.user.last_sign_in_at).getTime()
+      : NaN;
+    const activityStatus: "active" | "inactive" | "never" = Number.isNaN(
+      lastSignInMs,
+    )
+      ? "never"
+      : lastSignInMs >= Date.now() - ACTIVE_WINDOW_MS
+        ? "active"
+        : "inactive";
 
     // Nome/email de quem concedeu, para o modal mostrar "concedido por".
     let influencer: {
@@ -1104,6 +1177,7 @@ router.get("/users/:id", async (req, res, next) => {
           : null,
         paid_total_cents: paidTotalCents,
         influencer,
+        activity_status: activityStatus,
       },
     });
   } catch (err) {
