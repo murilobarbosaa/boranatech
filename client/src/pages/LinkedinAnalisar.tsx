@@ -21,6 +21,7 @@ import ProGate from "@/components/pro/ProGate";
 import BrutalActionButton from "@/components/shared/BrutalActionButton";
 import CopyButton from "@/components/shared/CopyButton";
 import ReanalyzeCta from "@/components/shared/ReanalyzeCta";
+import { BntSelect } from "@/components/shared/BntSelect";
 import SectionLabel from "@/components/shared/SectionLabel";
 import SEO from "@/components/SEO";
 import { Spinner } from "@/components/ui/spinner";
@@ -261,8 +262,6 @@ function Field({
   );
 }
 
-const selectClass =
-  "w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-sky-200";
 const inputClass =
   "w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-sky-200";
 
@@ -333,47 +332,39 @@ function ContextFields({
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <Field label="Área de interesse">
-        <select
+        <BntSelect
+          label="Área de interesse"
           value={form.area}
-          onChange={(event) => update("area", event.target.value as AreaSlug)}
-          className={selectClass}
-        >
-          {AREA_SLUGS.map((slug) => (
-            <option key={slug} value={slug}>
-              {AREA_LABELS[slug]}
-            </option>
-          ))}
-        </select>
+          onValueChange={(v) => update("area", v as AreaSlug)}
+          options={AREA_SLUGS.map((slug) => ({
+            value: slug,
+            label: AREA_LABELS[slug],
+          }))}
+        />
       </Field>
 
       <Field label="Nível">
-        <select
+        <BntSelect
+          label="Nível"
           value={form.level}
-          onChange={(event) =>
-            update("level", event.target.value as LinkedinLevel)
-          }
-          className={selectClass}
-        >
-          {LINKEDIN_LEVELS.map((level) => (
-            <option key={level} value={level}>
-              {LEVEL_LABEL[level]}
-            </option>
-          ))}
-        </select>
+          onValueChange={(v) => update("level", v as LinkedinLevel)}
+          options={LINKEDIN_LEVELS.map((level) => ({
+            value: level,
+            label: LEVEL_LABEL[level],
+          }))}
+        />
       </Field>
 
       <Field label="Onde você quer trabalhar?">
-        <select
+        <BntSelect
+          label="Onde você quer trabalhar?"
           value={form.mercado}
-          onChange={(event) => update("mercado", event.target.value as Mercado)}
-          className={selectClass}
-        >
-          {MERCADOS.map((mercado) => (
-            <option key={mercado} value={mercado}>
-              {MERCADO_LABELS[mercado]}
-            </option>
-          ))}
-        </select>
+          onValueChange={(v) => update("mercado", v as Mercado)}
+          options={MERCADOS.map((mercado) => ({
+            value: mercado,
+            label: MERCADO_LABELS[mercado],
+          }))}
+        />
       </Field>
 
       <Field label="Objetivo (opcional)">
@@ -400,94 +391,68 @@ function ProfileQuestions({
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <Field label="Tem foto profissional?">
-        <select
+        <BntSelect
+          label="Tem foto profissional?"
+          placeholder={SELECT_PLACEHOLDER}
           value={form.foto}
-          onChange={(event) => update("foto", event.target.value as SimNao)}
-          className={selectClass}
-        >
-          <option value="" disabled>
-            {SELECT_PLACEHOLDER}
-          </option>
-          {(["sim", "nao"] as SimNao[]).map((value) => (
-            <option key={value} value={value}>
-              {SIM_NAO_LABEL[value]}
-            </option>
-          ))}
-        </select>
+          onValueChange={(v) => update("foto", v as SimNao)}
+          options={(["sim", "nao"] as SimNao[]).map((value) => ({
+            value,
+            label: SIM_NAO_LABEL[value],
+          }))}
+        />
       </Field>
 
       <Field label="Tem banner personalizado?">
-        <select
+        <BntSelect
+          label="Tem banner personalizado?"
+          placeholder={SELECT_PLACEHOLDER}
           value={form.banner}
-          onChange={(event) => update("banner", event.target.value as SimNao)}
-          className={selectClass}
-        >
-          <option value="" disabled>
-            {SELECT_PLACEHOLDER}
-          </option>
-          {(["sim", "nao"] as SimNao[]).map((value) => (
-            <option key={value} value={value}>
-              {SIM_NAO_LABEL[value]}
-            </option>
-          ))}
-        </select>
+          onValueChange={(v) => update("banner", v as SimNao)}
+          options={(["sim", "nao"] as SimNao[]).map((value) => ({
+            value,
+            label: SIM_NAO_LABEL[value],
+          }))}
+        />
       </Field>
 
       <Field label="Open to Work para recrutadores?">
-        <select
+        <BntSelect
+          label="Open to Work para recrutadores?"
+          placeholder={SELECT_PLACEHOLDER}
           value={form.openToWork}
-          onChange={(event) =>
-            update("openToWork", event.target.value as OpenToWork)
-          }
-          className={selectClass}
-        >
-          <option value="" disabled>
-            {SELECT_PLACEHOLDER}
-          </option>
-          {(["sim", "nao", "nao-sei"] as OpenToWork[]).map((value) => (
-            <option key={value} value={value}>
-              {OPEN_TO_WORK_LABEL[value]}
-            </option>
-          ))}
-        </select>
+          onValueChange={(v) => update("openToWork", v as OpenToWork)}
+          options={(["sim", "nao", "nao-sei"] as OpenToWork[]).map((value) => ({
+            value,
+            label: OPEN_TO_WORK_LABEL[value],
+          }))}
+        />
       </Field>
 
       <Field label="Quantas conexões?">
-        <select
+        <BntSelect
+          label="Quantas conexões?"
+          placeholder={SELECT_PLACEHOLDER}
           value={form.conexoes}
-          onChange={(event) =>
-            update("conexoes", event.target.value as Conexoes)
-          }
-          className={selectClass}
-        >
-          <option value="" disabled>
-            {SELECT_PLACEHOLDER}
-          </option>
-          {CONEXOES.map((value) => (
-            <option key={value} value={value}>
-              {CONEXOES_LABEL[value]}
-            </option>
-          ))}
-        </select>
+          onValueChange={(v) => update("conexoes", v as Conexoes)}
+          options={CONEXOES.map((value) => ({
+            value,
+            label: CONEXOES_LABEL[value],
+          }))}
+        />
       </Field>
 
       <Field label="Com que frequência posta ou comenta?">
-        <select
+        <BntSelect
+          label="Com que frequência posta ou comenta?"
+          placeholder={SELECT_PLACEHOLDER}
           value={form.atividade}
-          onChange={(event) =>
-            update("atividade", event.target.value as Atividade)
-          }
-          className={selectClass}
-        >
-          <option value="" disabled>
-            {SELECT_PLACEHOLDER}
-          </option>
-          {ATIVIDADE.map((value) => (
-            <option key={value} value={value}>
-              {ATIVIDADE_LABEL[value]}
-            </option>
-          ))}
-        </select>
+          onValueChange={(v) => update("atividade", v as Atividade)}
+          options={ATIVIDADE.map((value) => ({
+            value,
+            label: ATIVIDADE_LABEL[value],
+          }))}
+        />
       </Field>
     </div>
   );

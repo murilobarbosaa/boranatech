@@ -22,6 +22,7 @@ import ProGate from "@/components/pro/ProGate";
 import PortfolioFreeGuide from "@/components/portfolio/PortfolioFreeGuide";
 import BrutalActionButton from "@/components/shared/BrutalActionButton";
 import ReanalyzeCta from "@/components/shared/ReanalyzeCta";
+import { BntSelect } from "@/components/shared/BntSelect";
 import ScoreDeltaBanner from "@/components/shared/ScoreDeltaBanner";
 import SectionLabel from "@/components/shared/SectionLabel";
 import SEO from "@/components/SEO";
@@ -1078,24 +1079,16 @@ export default function PortfolioAnalisar() {
                 <label className="mt-4 flex flex-wrap items-center gap-2 text-sm font-bold text-slate-600">
                   {/* TODO(Ana): revisar rotulo e helper da area alvo. */}
                   <span>Área alvo desta análise</span>
-                  <select
+                  <BntSelect
+                    fullWidth={false}
+                    label="Área alvo desta análise"
                     value={area}
-                    onChange={(event) =>
-                      changeArea(event.target.value as AreaSelection)
-                    }
-                    className={cn(
-                      "rounded-xl border-2 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none",
-                      ac.input,
-                      ac.cardFocusRing,
-                    )}
-                  >
-                    <option value={GENERAL_AREA}>Geral</option>
-                    {areasTI.map((a) => (
-                      <option key={a.slug} value={a.slug}>
-                        {a.nome}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={(v) => changeArea(v as AreaSelection)}
+                    options={[
+                      { value: GENERAL_AREA, label: "Geral" },
+                      ...areasTI.map((a) => ({ value: a.slug, label: a.nome })),
+                    ]}
+                  />
                 </label>
                 <p className="mt-2 text-xs font-medium text-slate-500">
                   Vale só para esta análise e direciona as recomendações. Ex:
