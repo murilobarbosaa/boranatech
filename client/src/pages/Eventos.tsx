@@ -19,6 +19,7 @@ import {
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { BntSelect } from "@/components/shared/BntSelect";
 import {
   ESTADO_UF_OPTS,
   LABEL_FILTROS,
@@ -75,6 +76,10 @@ function EventLogo({ name, logoUrl }: { name: string; logoUrl: string }) {
 }
 
 const ALL = "";
+// Sentinela de borda p/ o BntSelect: o Radix Select proibe SelectItem value="".
+// Os filtros usam ALL="" como "todos"; mapeamos "" <-> sentinela SO na borda, o
+// state segue "". Campos isolados (categoria/formato), sem colisao entre eles.
+const FILTRO_TODOS = "__todos__";
 
 type Tab = "todos" | "webinars" | "hackathons";
 
@@ -134,9 +139,6 @@ export default function Eventos() {
       }).sort((a, b) => eventoSortKey(a).localeCompare(eventoSortKey(b))),
     [tab, categoria, formato, estadoUF, apenasGratuitos],
   );
-
-  const selectClass =
-    "min-w-[10.5rem] max-w-[16rem] px-3 py-2 border-2 border-fuchsia-200 rounded-lg text-sm focus:outline-none focus:border-fuchsia-500 bg-white truncate";
 
   return (
     <Layout>
@@ -216,20 +218,18 @@ export default function Eventos() {
                 >
                   {LABEL_FILTROS.categoria}
                 </label>
-                <select
+                <BntSelect
                   id="filter-evento-tipo"
-                  value={categoria}
-                  onChange={(e) => setCategoria(e.target.value)}
-                  className={selectClass}
-                  title={LABEL_FILTROS.categoria}
-                >
-                  {categoriasUnicas.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                  <option value="">{LABEL_FILTROS.categoria}</option>
-                </select>
+                  fullWidth={false}
+                  value={categoria === ALL ? FILTRO_TODOS : categoria}
+                  onValueChange={(v) =>
+                    setCategoria(v === FILTRO_TODOS ? ALL : v)
+                  }
+                  options={[
+                    ...categoriasUnicas.map((c) => ({ value: c, label: c })),
+                    { value: FILTRO_TODOS, label: LABEL_FILTROS.categoria },
+                  ]}
+                />
               </div>
             )}
             <div className="flex flex-col gap-1.5">
@@ -239,18 +239,18 @@ export default function Eventos() {
               >
                 {LABEL_FILTROS.modalidade}
               </label>
-              <select
+              <BntSelect
                 id="filter-evento-modalidade"
-                value={formato}
-                onChange={(e) => setFormato(e.target.value)}
-                className={selectClass}
-                title={LABEL_FILTROS.modalidade}
-              >
-                <option value="Presencial">Presencial</option>
-                <option value="Online">Online</option>
-                <option value="Híbrido">Híbrido (presencial + remoto)</option>
-                <option value="">{LABEL_FILTROS.modalidade}</option>
-              </select>
+                fullWidth={false}
+                value={formato === ALL ? FILTRO_TODOS : formato}
+                onValueChange={(v) => setFormato(v === FILTRO_TODOS ? ALL : v)}
+                options={[
+                  { value: "Presencial", label: "Presencial" },
+                  { value: "Online", label: "Online" },
+                  { value: "Híbrido", label: "Híbrido (presencial + remoto)" },
+                  { value: FILTRO_TODOS, label: LABEL_FILTROS.modalidade },
+                ]}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <label

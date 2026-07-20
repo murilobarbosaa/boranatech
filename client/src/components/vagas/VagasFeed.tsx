@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Briefcase, RefreshCw, Search } from "lucide-react";
 import BrutalActionButton from "@/components/shared/BrutalActionButton";
 import SectionLabel from "@/components/shared/SectionLabel";
+import { BntSelect } from "@/components/shared/BntSelect";
 import VagasJobCard from "@/components/vagas/VagasJobCard";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import {
@@ -63,8 +64,10 @@ function FeedSkeleton() {
   );
 }
 
-const selectClass =
-  "h-10 rounded-xl border-2 border-slate-900 bg-white px-3 text-sm font-bold text-slate-800";
+// Sentinela de borda p/ o BntSelect (Radix proibe SelectItem value=""). Os 3
+// filtros usam "" como "todos"; mapeamos "" <-> sentinela SO na borda, o state
+// segue "". Campos isolados (seniority/modality/contract), sem colisao entre eles.
+const FILTRO_TODOS = "__todos__";
 
 // Feed Pro de vagas: busca com debounce, filtros, paginacao por append.
 // Montado SOMENTE para assinante (o pai condiciona a isPro): nenhuma chamada
@@ -203,45 +206,51 @@ export default function VagasFeed({
               </button>
             ))}
           </div>
-          <select
-            value={seniority}
-            onChange={(e) => setSeniority(e.target.value as VagaSeniority | "")}
-            className={selectClass}
-            aria-label="Nível"
-          >
-            <option value="">Nível: todos</option>
-            {SENIORITY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={modality}
-            onChange={(e) => setModality(e.target.value as VagaModality | "")}
-            className={selectClass}
-            aria-label="Modalidade"
-          >
-            <option value="">Modalidade: todas</option>
-            {MODALITY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={contract}
-            onChange={(e) => setContract(e.target.value as VagaContract | "")}
-            className={selectClass}
-            aria-label="Contrato"
-          >
-            <option value="">Contrato: todos</option>
-            {CONTRACT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <BntSelect
+            fullWidth={false}
+            label="Nível"
+            value={seniority === "" ? FILTRO_TODOS : seniority}
+            onValueChange={(v) =>
+              setSeniority(v === FILTRO_TODOS ? "" : (v as VagaSeniority))
+            }
+            options={[
+              { value: FILTRO_TODOS, label: "Nível: todos" },
+              ...SENIORITY_OPTIONS.map((o) => ({
+                value: o.value,
+                label: o.label,
+              })),
+            ]}
+          />
+          <BntSelect
+            fullWidth={false}
+            label="Modalidade"
+            value={modality === "" ? FILTRO_TODOS : modality}
+            onValueChange={(v) =>
+              setModality(v === FILTRO_TODOS ? "" : (v as VagaModality))
+            }
+            options={[
+              { value: FILTRO_TODOS, label: "Modalidade: todas" },
+              ...MODALITY_OPTIONS.map((o) => ({
+                value: o.value,
+                label: o.label,
+              })),
+            ]}
+          />
+          <BntSelect
+            fullWidth={false}
+            label="Contrato"
+            value={contract === "" ? FILTRO_TODOS : contract}
+            onValueChange={(v) =>
+              setContract(v === FILTRO_TODOS ? "" : (v as VagaContract))
+            }
+            options={[
+              { value: FILTRO_TODOS, label: "Contrato: todos" },
+              ...CONTRACT_OPTIONS.map((o) => ({
+                value: o.value,
+                label: o.label,
+              })),
+            ]}
+          />
         </div>
       </div>
 
