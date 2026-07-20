@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import {
   Activity,
   AlertTriangle,
@@ -388,6 +388,21 @@ const adminNavItems: AdminNavItem[] = [
     icon: <LockKeyhole className="h-4 w-4" />,
   },
 ];
+
+// Slugs canonicos das abas, derivados da propria nav (fonte unica: se uma aba
+// entra/sai da nav, o conjunto valido acompanha).
+const ADMIN_SECTION_IDS = new Set<string>(
+  adminNavItems.map((item) => item.href.replace("#", "")),
+);
+
+// Le ?section= da URL e devolve um AdminSectionId valido, ou o default seguro.
+// Centraliza a validacao: ausente ou lixo -> "visao-geral".
+function sectionFromSearch(search: string): AdminSectionId {
+  const value = new URLSearchParams(search).get("section");
+  return value && ADMIN_SECTION_IDS.has(value)
+    ? (value as AdminSectionId)
+    : "visao-geral";
+}
 
 function slugifyAffiliateCode(value: string) {
   return value
@@ -4832,8 +4847,18 @@ export default function Admin() {
   const [affiliatesError, setAffiliatesError] = useState<string | null>(null);
   const [financeRefreshKey, setFinanceRefreshKey] = useState(0);
   const [overviewLoading, setOverviewLoading] = useState(true);
-  const [activeSection, setActiveSection] =
-    useState<AdminSectionId>("visao-geral");
+  // Aba derivada DIRETO da URL (?section=), fonte unica: sem estado espelhado,
+  // entao nao ha loop URL<->estado. F5, voltar/avancar e colar link leem daqui;
+  // /admin sem ?section cai em "visao-geral" e nao reescreve a URL.
+  const search = useSearch();
+  const [, setLocation] = useLocation();
+  const activeSection = sectionFromSearch(search);
+  const setActiveSection = useCallback(
+    (section: AdminSectionId) => {
+      setLocation(`/admin?section=${section}`);
+    },
+    [setLocation],
+  );
   const [affiliateName, setAffiliateName] = useState("Nova parceira tech");
   const [affiliateCode, setAffiliateCode] = useState("PARCEIRA20");
   const [affiliateDiscount, setAffiliateDiscount] = useState(20);
