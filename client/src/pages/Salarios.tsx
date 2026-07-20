@@ -20,6 +20,7 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import PageHero from "@/components/shared/PageHero";
+import { BntSelect } from "@/components/shared/BntSelect";
 import CountUp from "@/components/reactbits/CountUp";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
@@ -511,20 +512,17 @@ export default function Salarios() {
                       <span className="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
                         {String(label)}
                       </span>
-                      <select
-                        className={cn(
-                          "w-full rounded-xl border-2 bg-white p-3",
-                          ac.input,
-                        )}
+                      <BntSelect
+                        label={String(label)}
                         value={String(value)}
-                        onChange={(event) =>
-                          (setter as (v: string) => void)(event.target.value)
+                        onValueChange={(v) =>
+                          (setter as (v: string) => void)(v)
                         }
-                      >
-                        {(options as string[]).map((option) => (
-                          <option key={option}>{option}</option>
-                        ))}
-                      </select>
+                        options={(options as string[]).map((option) => ({
+                          value: option,
+                          label: option,
+                        }))}
+                      />
                     </label>
                   ))}
                 </div>
@@ -733,27 +731,29 @@ export default function Salarios() {
                   </p>
                   <label className="mt-4 block text-sm font-black">
                     Área
-                    <select
-                      className="mt-1 w-full rounded-xl border-2 border-slate-900 p-3"
+                    <BntSelect
+                      label="Área"
+                      className="mt-1"
                       value={negArea}
-                      onChange={(event) => setNegArea(event.target.value)}
-                    >
-                      {negAreaOptions.map((option) => (
-                        <option key={option}>{option}</option>
-                      ))}
-                    </select>
+                      onValueChange={setNegArea}
+                      options={negAreaOptions.map((option) => ({
+                        value: option,
+                        label: option,
+                      }))}
+                    />
                   </label>
                   <label className="mt-3 block text-sm font-black">
                     Nível
-                    <select
-                      className="mt-1 w-full rounded-xl border-2 border-slate-900 p-3"
+                    <BntSelect
+                      label="Nível"
+                      className="mt-1"
                       value={negLevel}
-                      onChange={(event) => setNegLevel(event.target.value)}
-                    >
-                      {negLevelOptions.map((option) => (
-                        <option key={option}>{option}</option>
-                      ))}
-                    </select>
+                      onValueChange={setNegLevel}
+                      options={negLevelOptions.map((option) => ({
+                        value: option,
+                        label: option,
+                      }))}
+                    />
                   </label>
                   <motion.div
                     key={`${negArea}-${negLevel}`}

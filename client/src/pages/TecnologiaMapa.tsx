@@ -5,6 +5,7 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import BackToTechnologies from "@/components/shared/BackToTechnologies";
 import PageHero from "@/components/shared/PageHero";
+import { BntSelect } from "@/components/shared/BntSelect";
 import TechCompactTile from "@/components/shared/TechCompactTile";
 import AuthGateModal from "@/components/gate/AuthGateModal";
 import { useAuthGate } from "@/hooks/useAuthGate";
@@ -125,23 +126,21 @@ export default function TecnologiaMapa() {
                 <Filter className="h-4 w-4 text-teal-700" aria-hidden />
                 Filtrar por área
               </label>
-              <select
+              <BntSelect
                 id="tech-area-filter"
+                triggerClassName="sm:w-64"
                 value={focusedSlug ?? "__all__"}
-                onChange={(e) =>
-                  setFocusedSlug(
-                    e.target.value === "__all__" ? null : e.target.value,
-                  )
+                onValueChange={(v) =>
+                  setFocusedSlug(v === "__all__" ? null : v)
                 }
-                className="w-full rounded-lg border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold text-slate-900 shadow-[2px_2px_0_#0f172a] focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 sm:w-64"
-              >
-                <option value="__all__">Todas as áreas</option>
-                {areasTI.map((area) => (
-                  <option key={area.slug} value={area.slug}>
-                    {area.nome}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: "__all__", label: "Todas as áreas" },
+                  ...areasTI.map((area) => ({
+                    value: area.slug,
+                    label: area.nome,
+                  })),
+                ]}
+              />
             </div>
             <p className="mt-3 text-xs font-medium text-slate-600">
               Clique em <span className="font-bold">Ver tecnologias</span> no

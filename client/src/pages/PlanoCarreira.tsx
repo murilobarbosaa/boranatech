@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { BntSelect } from "@/components/shared/BntSelect";
 import ProGate from "@/components/pro/ProGate";
 import { Spinner } from "@/components/ui/spinner";
 import CareerTrail from "@/components/careerPlan/CareerTrail";
@@ -148,31 +149,24 @@ function IntakeForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block font-black">
             Área
-            <select
-              className={fieldClass}
+            <BntSelect
+              label="Área"
               value={area}
-              onChange={(e) => setArea(e.target.value)}
-            >
-              {AREA_SLUGS.map((slug) => (
-                <option key={slug} value={slug}>
-                  {AREA_LABELS[slug]}
-                </option>
-              ))}
-            </select>
+              onValueChange={setArea}
+              options={AREA_SLUGS.map((slug) => ({
+                value: slug,
+                label: AREA_LABELS[slug],
+              }))}
+            />
           </label>
           <label className="block font-black">
             Nível atual
-            <select
-              className={fieldClass}
+            <BntSelect
+              label="Nível atual"
               value={level}
-              onChange={(e) => setLevel(e.target.value)}
-            >
-              {LEVEL_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+              onValueChange={setLevel}
+              options={LEVEL_OPTIONS.map((opt) => ({ value: opt, label: opt }))}
+            />
           </label>
           <label className="block font-black">
             Horas de estudo por semana
@@ -192,31 +186,27 @@ function IntakeForm({
           </label>
           <label className="block font-black">
             Horizonte do plano
-            <select
-              className={fieldClass}
-              value={horizonMonths}
-              onChange={(e) => setHorizonMonths(Number(e.target.value))}
-            >
-              {HORIZON_OPTIONS.map((months) => (
-                <option key={months} value={months}>
-                  {months} meses
-                </option>
-              ))}
-            </select>
+            <BntSelect
+              label="Horizonte do plano"
+              value={String(horizonMonths)}
+              onValueChange={(v) => setHorizonMonths(Number(v))}
+              options={HORIZON_OPTIONS.map((months) => ({
+                value: String(months),
+                label: `${months} meses`,
+              }))}
+            />
           </label>
           <label className="block font-black sm:col-span-2">
             Orçamento para certificações
-            <select
-              className={fieldClass}
+            <BntSelect
+              label="Orçamento para certificações"
               value={budget}
-              onChange={(e) => setBudget(e.target.value as CareerPlanBudget)}
-            >
-              {BUDGET_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              onValueChange={(v) => setBudget(v as CareerPlanBudget)}
+              options={BUDGET_OPTIONS.map((opt) => ({
+                value: opt.value,
+                label: opt.label,
+              }))}
+            />
           </label>
         </div>
       </div>
