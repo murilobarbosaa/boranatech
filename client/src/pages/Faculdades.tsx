@@ -9,7 +9,6 @@ import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
   Check,
-  ChevronDown,
   X,
   Star,
   MapPin,
@@ -52,6 +51,9 @@ import {
 
 const tipos = ["Todos", "Técnico", "Tecnólogo", "Bacharelado"];
 const matNiveis = ["Todos", "Médio", "Alto", "Médio-Alto"];
+// Sentinela de borda p/ o BntSelect (Radix proibe SelectItem value=""). O estado
+// "" = "todos os estados"; mapeamos "" <-> sentinela so na borda, state segue "".
+const FILTRO_TODOS = "__todos__";
 
 const matematicaColor: Record<string, string> = {
   Médio: "bg-sky-100 text-sky-800",
@@ -726,6 +728,7 @@ export default function Faculdades() {
             </div>
             <div className="w-px h-5 bg-slate-200" />
             <BntSelect
+              accent="violet"
               fullWidth={false}
               label="Nível de Matemática"
               value={mat}
@@ -1188,28 +1191,23 @@ export default function Faculdades() {
                   </p>
                 </div>
               </div>
-              <div className="relative w-full shrink-0 sm:w-72">
-                <MapPin
-                  className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500"
-                  aria-hidden
-                />
-                <select
-                  aria-label="Escolha seu estado"
-                  value={selectedUf}
-                  onChange={(event) => setSelectedUf(event.target.value)}
-                  className="w-full cursor-pointer appearance-none rounded-xl border-2 border-slate-900 bg-white py-3 pl-11 pr-9 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-600"
-                >
-                  <option value="">Todos os estados</option>
-                  <option value="__ead__">EAD / Nacional</option>
-                  {brazilianStates.map(({ uf, name }) => (
-                    <option key={uf} value={uf}>
-                      {name} ({uf})
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-700"
-                  aria-hidden
+              <div className="w-full shrink-0 sm:w-72">
+                <BntSelect
+                  accent="violet"
+                  label="Escolha seu estado"
+                  leadingIcon={<MapPin className="h-5 w-5 text-violet-600" />}
+                  value={selectedUf === "" ? FILTRO_TODOS : selectedUf}
+                  onValueChange={(v) =>
+                    setSelectedUf(v === FILTRO_TODOS ? "" : v)
+                  }
+                  options={[
+                    { value: FILTRO_TODOS, label: "Todos os estados" },
+                    { value: "__ead__", label: "EAD / Nacional" },
+                    ...brazilianStates.map(({ uf, name }) => ({
+                      value: uf,
+                      label: `${name} (${uf})`,
+                    })),
+                  ]}
                 />
               </div>
             </div>

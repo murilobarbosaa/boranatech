@@ -59,6 +59,9 @@ const tipoColor: Record<string, string> = {
 
 const areas = ["Todas", ...Array.from(new Set(comunidades.map((c) => c.area)))];
 const idiomas = ["Todos", "Português", "Inglês"];
+// Sentinela de borda p/ o BntSelect (Radix proibe SelectItem value=""). O estado
+// "" = "todos os estados"; mapeamos "" <-> sentinela so na borda, state segue "".
+const FILTRO_TODOS = "__todos__";
 
 export default function Comunidades() {
   const [modalidade, setModalidade] = useState<Modalidade>("Todas");
@@ -195,6 +198,7 @@ export default function Comunidades() {
               />
             </div>
             <BntSelect
+              accent="violet"
               fullWidth={false}
               label="Filtrar por área"
               value={area}
@@ -204,25 +208,21 @@ export default function Comunidades() {
                 label: a === "Todas" ? "Todas as áreas" : a,
               }))}
             />
-            <div className="relative">
-              <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-600" />
-              <label htmlFor="comunidade-estado" className="sr-only">
-                Filtrar por estado
-              </label>
-              <select
-                id="comunidade-estado"
-                value={estadoUF}
-                onChange={(e) => setEstadoUF(e.target.value)}
-                className="rounded-lg border-2 border-slate-900 bg-amber-50 py-2 pl-9 pr-3 text-sm font-bold text-slate-900 shadow-[2px_2px_0_#0f172a] focus:outline-none focus:ring-4 focus:ring-amber-200"
-              >
-                <option value="">Todos os estados</option>
-                {ESTADO_UF_OPTS.map(({ sigla, nome }) => (
-                  <option key={sigla} value={sigla}>
-                    {nome}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <BntSelect
+              accent="violet"
+              fullWidth={false}
+              label="Filtrar por estado"
+              leadingIcon={<MapPin className="h-4 w-4 text-violet-600" />}
+              value={estadoUF === "" ? FILTRO_TODOS : estadoUF}
+              onValueChange={(v) => setEstadoUF(v === FILTRO_TODOS ? "" : v)}
+              options={[
+                { value: FILTRO_TODOS, label: "Todos os estados" },
+                ...ESTADO_UF_OPTS.map(({ sigla, nome }) => ({
+                  value: sigla,
+                  label: nome,
+                })),
+              ]}
+            />
             <div
               className="flex gap-2"
               role="group"
