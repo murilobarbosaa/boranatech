@@ -12704,7 +12704,7 @@ export const cursosGratuitos = [
     titulo: "Pre Security - Fundamentos de segurança",
     canal: "TryHackMe",
     plataforma: "TryHackMe",
-    link: "https://tryhackme.com/",
+    link: "https://tryhackme.com/path/outline/presecurity",
     areaSlug: "red-team" as string | null,
     nivel: "Iniciante",
     duracao: "Cerca de 30 horas",
