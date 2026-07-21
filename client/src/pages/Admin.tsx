@@ -3485,20 +3485,18 @@ function EmailCampaignsAdminSection() {
                     Nenhuma lista importada. Importe uma lista no bloco acima.
                   </p>
                 ) : (
-                  <select
+                  <BntSelect
+                    accent="gold"
+                    label="Lista importada"
+                    className="mt-2"
+                    placeholder="Escolha uma lista..."
                     value={selectedContactListId}
-                    onChange={(event) =>
-                      setSelectedContactListId(event.target.value)
-                    }
-                    className="mt-2 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
-                  >
-                    <option value="">Escolha uma lista...</option>
-                    {contactLists.map((list) => (
-                      <option key={list.id} value={list.id}>
-                        {list.name} ({list.valid_count} válidos)
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={setSelectedContactListId}
+                    options={contactLists.map((list) => ({
+                      value: list.id,
+                      label: `${list.name} (${list.valid_count} válidos)`,
+                    }))}
+                  />
                 )}
                 <p className="mt-2 text-xs font-bold text-slate-500">
                   {/* TODO(Ana): explicação da reconsulta no envio. */}

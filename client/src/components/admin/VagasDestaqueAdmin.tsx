@@ -12,6 +12,7 @@ import {
   type VagaSeniority,
 } from "@/services/vagasService";
 import { cn } from "@/lib/utils";
+import { BntSelect } from "@/components/shared/BntSelect";
 
 // Secao "Vagas em destaque" do painel admin (front VAGAS, fase 4): CRUD das
 // vagas manuais (source='manual') via endpoints dedicados com validacao Zod
@@ -92,6 +93,11 @@ const EMPTY_FORM: FormState = {
 const inputClass =
   "mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200";
 const labelClass = "text-sm font-black text-slate-950";
+// Sentinela de borda p/ o BntSelect (Radix proibe SelectItem value=""). Aqui "" e
+// uma escolha legitima ("Nao informar"/"Sem salario informado"): mapeamos "" <->
+// sentinela SO na camada de UI (value/onValueChange). O state segue "" e o
+// payloadFromForm (campo || undefined) continua gravando undefined, nao a sentinela.
+const NAO_INFORMAR = "__none__";
 
 type ListStatus = "loading" | "error" | "ready";
 
@@ -330,17 +336,17 @@ export default function VagasDestaqueAdmin() {
           </label>
           <label className={labelClass}>
             País
-            <select
+            <BntSelect
+              accent="gold"
+              label="País"
+              className="mt-2"
               value={form.country}
-              onChange={(e) => set("country", e.target.value)}
-              className={inputClass}
-            >
-              {COUNTRY_OPTIONS.map((cc) => (
-                <option key={cc} value={cc}>
-                  {cc.toUpperCase()}
-                </option>
-              ))}
-            </select>
+              onValueChange={(v) => set("country", v)}
+              options={COUNTRY_OPTIONS.map((cc) => ({
+                value: cc,
+                label: cc.toUpperCase(),
+              }))}
+            />
           </label>
           <label className={cn(labelClass, "md:col-span-2")}>
             URL da vaga (https)
@@ -354,54 +360,60 @@ export default function VagasDestaqueAdmin() {
           </label>
           <label className={labelClass}>
             Nível
-            <select
-              value={form.seniority}
-              onChange={(e) =>
-                set("seniority", e.target.value as FormState["seniority"])
+            <BntSelect
+              accent="gold"
+              label="Nível"
+              className="mt-2"
+              value={form.seniority === "" ? NAO_INFORMAR : form.seniority}
+              onValueChange={(v) =>
+                set(
+                  "seniority",
+                  (v === NAO_INFORMAR ? "" : v) as FormState["seniority"],
+                )
               }
-              className={inputClass}
-            >
-              <option value="">Não informar</option>
-              {SENIORITY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: NAO_INFORMAR, label: "Não informar" },
+                ...SENIORITY_OPTIONS,
+              ]}
+            />
           </label>
           <label className={labelClass}>
             Contrato
-            <select
-              value={form.contract}
-              onChange={(e) =>
-                set("contract", e.target.value as FormState["contract"])
+            <BntSelect
+              accent="gold"
+              label="Contrato"
+              className="mt-2"
+              value={form.contract === "" ? NAO_INFORMAR : form.contract}
+              onValueChange={(v) =>
+                set(
+                  "contract",
+                  (v === NAO_INFORMAR ? "" : v) as FormState["contract"],
+                )
               }
-              className={inputClass}
-            >
-              <option value="">Não informar</option>
-              {CONTRACT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: NAO_INFORMAR, label: "Não informar" },
+                ...CONTRACT_OPTIONS,
+              ]}
+            />
           </label>
           <label className={labelClass}>
             Modalidade
-            <select
-              value={form.modality}
-              onChange={(e) =>
-                set("modality", e.target.value as FormState["modality"])
+            <BntSelect
+              accent="gold"
+              label="Modalidade"
+              className="mt-2"
+              value={form.modality === "" ? NAO_INFORMAR : form.modality}
+              onValueChange={(v) =>
+                set(
+                  "modality",
+                  (v === NAO_INFORMAR ? "" : v) as FormState["modality"],
+                )
               }
-              className={inputClass}
-            >
-              <option value="">Não informar</option>
-              {MODALITY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: NAO_INFORMAR, label: "Não informar" },
+                ...MODALITY_OPTIONS,
+              ]}
+            />
           </label>
           <label className={cn(labelClass, "md:col-span-2")}>
             Descrição
@@ -435,18 +447,24 @@ export default function VagasDestaqueAdmin() {
           </label>
           <label className={labelClass}>
             Moeda do salário
-            <select
-              value={form.salaryCurrency}
-              onChange={(e) => set("salaryCurrency", e.target.value)}
-              className={inputClass}
-            >
-              <option value="">Sem salário informado</option>
-              {CURRENCY_OPTIONS.map((currency) => (
-                <option key={currency} value={currency}>
-                  {currency}
-                </option>
-              ))}
-            </select>
+            <BntSelect
+              accent="gold"
+              label="Moeda do salário"
+              className="mt-2"
+              value={
+                form.salaryCurrency === "" ? NAO_INFORMAR : form.salaryCurrency
+              }
+              onValueChange={(v) =>
+                set("salaryCurrency", v === NAO_INFORMAR ? "" : v)
+              }
+              options={[
+                { value: NAO_INFORMAR, label: "Sem salário informado" },
+                ...CURRENCY_OPTIONS.map((currency) => ({
+                  value: currency,
+                  label: currency,
+                })),
+              ]}
+            />
           </label>
           <label className={labelClass}>
             Destacar até (opcional)
