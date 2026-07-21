@@ -38,7 +38,8 @@ export default function RecuperarSenha() {
     try {
       await resetPassword(parsed.data.email);
       setSentTo(parsed.data.email);
-    } catch {
+    } catch (error) {
+      console.error("[RecuperarSenha] resetPasswordForEmail failed", error);
       toast.error(
         "Não foi possível enviar o link agora. Tenta novamente em alguns instantes.",
       );
@@ -53,7 +54,8 @@ export default function RecuperarSenha() {
     try {
       await resetPassword(sentTo);
       toast.success("Reenviamos o link. Confira a caixa de entrada e o spam.");
-    } catch {
+    } catch (error) {
+      console.error("[RecuperarSenha] resetPasswordForEmail resend failed", error);
       toast.error(
         "Não foi possível reenviar agora. Tenta novamente em alguns instantes.",
       );

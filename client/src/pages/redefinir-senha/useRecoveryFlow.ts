@@ -26,11 +26,13 @@ export function useRecoveryFlow(): RecoveryFlowState {
 
     let resolved = false;
     let expiryTimer: number | undefined;
+    let changeTimer: number | undefined;
 
     const finish = (next: RecoveryFlowState) => {
       if (resolved) return;
       resolved = true;
       if (expiryTimer !== undefined) window.clearTimeout(expiryTimer);
+      if (changeTimer !== undefined) window.clearTimeout(changeTimer);
       setState(next);
     };
 
@@ -52,7 +54,20 @@ export function useRecoveryFlow(): RecoveryFlowState {
       if (session) {
         // Sessão estabelecida: recuperação (define nova senha sem a atual) vs
         // login normal (vai para /trocar-senha, que exige a senha atual).
-        finish(recovery ? "ready" : "redirect-change-password");
+        if (recovery) {
+          finish("ready");
+          return;
+        }
+        // Sessão presente sem PASSWORD_RECOVERY ainda visto: pode ser recovery
+        // em andamento. O supabase salva a sessão e emite PASSWORD_RECOVERY num
+        // setTimeout(0) agendado durante a init, que getSession aguarda -> este
+        // then roda ANTES do evento. Adia a decisão de redirect uma pequena
+        // margem para o evento (via listener ao vivo) vencer a corrida e
+        // finalizar "ready". Se nenhum evento chegar, é login normal -> troca.
+        changeTimer = window.setTimeout(
+          () => finish("redirect-change-password"),
+          30,
+        );
         return;
       }
 
@@ -80,6 +95,7 @@ export function useRecoveryFlow(): RecoveryFlowState {
       resolved = true;
       data.subscription.unsubscribe();
       if (expiryTimer !== undefined) window.clearTimeout(expiryTimer);
+      if (changeTimer !== undefined) window.clearTimeout(changeTimer);
     };
   }, []);
 

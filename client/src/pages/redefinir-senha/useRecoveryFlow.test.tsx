@@ -61,6 +61,13 @@ async function flush() {
   });
 }
 
+// Aguarda um macrotask real (usado para deixar o changeTimer de 30ms disparar).
+async function waitTimer(ms: number) {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  });
+}
+
 describe("useRecoveryFlow: detecção de recuperação (implicit + PKCE)", () => {
   beforeEach(() => {
     supa.reset();
@@ -100,7 +107,27 @@ describe("useRecoveryFlow: detecção de recuperação (implicit + PKCE)", () =>
     const sink = { state: "checking" as RecoveryFlowState };
     render(<Probe sink={sink} />);
     await flush();
+    // A decisão de redirect é adiada 30ms para dar a vez a um PASSWORD_RECOVERY
+    // que possa chegar logo após o getSession; sem evento, o timer resolve.
+    expect(sink.state).toBe("checking");
+    await waitTimer(50);
     expect(sink.state).toBe("redirect-change-password");
+  });
+
+  it("corrida: sessão presente e PASSWORD_RECOVERY chega logo depois -> ready", async () => {
+    recovery.seen = false;
+    supa.setGetSession(async () => ({ data: { session } }));
+    const sink = { state: "checking" as RecoveryFlowState };
+    render(<Probe sink={sink} />);
+    await flush();
+    // getSession resolveu com sessão; a decisão de redirect está adiada (timer),
+    // ainda não disparou.
+    expect(sink.state).toBe("checking");
+    await act(async () => {
+      supa.emit("PASSWORD_RECOVERY", session);
+    });
+    await flush();
+    expect(sink.state).toBe("ready");
   });
 
   it("erro na URL (link expirado) -> expired", async () => {
