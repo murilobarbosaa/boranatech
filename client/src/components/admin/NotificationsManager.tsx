@@ -888,45 +888,43 @@ export function NotificationsManager() {
                   <label htmlFor="notif-type" className={labelClass}>
                     Tipo
                   </label>
-                  <select
+                  <BntSelect
+                    accent="gold"
                     id="notif-type"
-                    value={form.type}
                     disabled={editingPublished}
-                    onChange={(e) =>
+                    value={form.type}
+                    onValueChange={(v) =>
                       setForm({
                         ...form,
-                        type: e.target.value as AdminNotificationType,
+                        type: v as AdminNotificationType,
                       })
                     }
-                    className={inputClass}
-                  >
-                    {TYPE_OPTIONS.map(([value, meta]) => (
-                      <option key={value} value={value}>
-                        {meta.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={TYPE_OPTIONS.map(([value, meta]) => ({
+                      value,
+                      label: meta.label,
+                    }))}
+                  />
                 </div>
                 <div>
                   <label htmlFor="notif-category" className={labelClass}>
                     Categoria
                   </label>
-                  <select
+                  <BntSelect
+                    accent="gold"
                     id="notif-category"
-                    value={form.category}
                     disabled={editingPublished}
-                    onChange={(e) =>
+                    value={form.category}
+                    onValueChange={(v) =>
                       setForm({
                         ...form,
-                        category: e.target
-                          .value as AdminNotificationCategory,
+                        category: v as AdminNotificationCategory,
                       })
                     }
-                    className={inputClass}
-                  >
-                    <option value="product">Produto</option>
-                    <option value="promotional">Promocional</option>
-                  </select>
+                    options={[
+                      { value: "product", label: "Produto" },
+                      { value: "promotional", label: "Promocional" },
+                    ]}
+                  />
                   <p className="mt-1 text-xs font-semibold text-slate-500">
                     Promocional só chega a quem tem opt-in de marketing.
                   </p>
@@ -936,25 +934,22 @@ export function NotificationsManager() {
                 <label htmlFor="notif-audience" className={labelClass}>
                   Audience
                 </label>
-                <select
+                <BntSelect
+                  accent="gold"
                   id="notif-audience"
-                  value={form.audience}
                   disabled={editingPublished}
-                  onChange={(e) =>
+                  value={form.audience}
+                  onValueChange={(v) =>
                     setForm({
                       ...form,
-                      audience: e.target
-                        .value as AdminNotificationAudience,
+                      audience: v as AdminNotificationAudience,
                     })
                   }
-                  className={inputClass}
-                >
-                  {AUDIENCE_OPTIONS.map(([value, meta]) => (
-                    <option key={value} value={value}>
-                      {meta.label}
-                    </option>
-                  ))}
-                </select>
+                  options={AUDIENCE_OPTIONS.map(([value, meta]) => ({
+                    value,
+                    label: meta.label,
+                  }))}
+                />
                 <p className="mt-1 text-xs font-semibold text-slate-500">
                   {audienceMetaOf(form.audience).description}
                 </p>
