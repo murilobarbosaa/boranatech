@@ -1,5 +1,6 @@
 import { Router } from "express";
 
+import { UNSUBSCRIBE_URL_PLACEHOLDER } from "../../shared/emailCampaignBody";
 import { sendCampaignEmail } from "../lib/email";
 import { batchJobId } from "../lib/emailCampaignJobIds";
 import {
@@ -33,7 +34,7 @@ import { createError } from "../middleware/error";
 const router = Router();
 
 const CAMPAIGN_COLUMNS =
-  "id, subject, body, image_url, category, status, total_recipients, sent_count, failed_count, created_by, created_at, started_at, completed_at";
+  "id, subject, body, body_is_html, image_url, category, status, total_recipients, sent_count, failed_count, created_by, created_at, started_at, completed_at";
 
 const BATCH_COLUMNS =
   "id, campaign_id, mode, batch_limit, exclude_other_campaigns, source, user_segment, scheduled_for, status, dispatched_at, created_at";
@@ -200,6 +201,18 @@ router.post("/", async (req, res, next) => {
       );
     }
 
+    // body_is_html: quando true, bodyText e o e-mail HTML inteiro (sem layout em
+    // volta). Ausente/nao-boolean cai em false (comportamento atual).
+    const bodyIsHtml = body.body_is_html === true;
+
+    // Aviso nao-bloqueante: HTML sem {unsubscribe_url} pode sair sem link de
+    // descadastro visivel (o header SMTP List-Unsubscribe segue setado). So loga.
+    if (bodyIsHtml && !bodyText.includes(UNSUBSCRIBE_URL_PLACEHOLDER)) {
+      console.warn(
+        "[email-campaign] Campanha HTML sem {unsubscribe_url}: o link de descadastro pode nao aparecer no corpo.",
+      );
+    }
+
     if (!req.user) {
       return next(createError(401, "unauthorized", "Autenticação necessária."));
     }
@@ -209,6 +222,7 @@ router.post("/", async (req, res, next) => {
       .insert({
         subject,
         body: bodyText,
+        body_is_html: bodyIsHtml,
         image_url: imageUrl,
         category,
         created_by: req.user.id,
@@ -709,11 +723,29 @@ router.patch("/:id", async (req, res, next) => {
       );
     }
 
+    // body_is_html: quando true, bodyText e o e-mail HTML inteiro (sem layout em
+    // volta). Ausente/nao-boolean cai em false (comportamento atual).
+    const bodyIsHtml = body.body_is_html === true;
+
+    // Aviso nao-bloqueante: HTML sem {unsubscribe_url} pode sair sem link de
+    // descadastro visivel (o header SMTP List-Unsubscribe segue setado). So loga.
+    if (bodyIsHtml && !bodyText.includes(UNSUBSCRIBE_URL_PLACEHOLDER)) {
+      console.warn(
+        "[email-campaign] Campanha HTML sem {unsubscribe_url}: o link de descadastro pode nao aparecer no corpo.",
+      );
+    }
+
     // CAS no update: se a campanha saiu de draft entre a checagem e o update
     // (disparo concorrente), nada e alterado.
     const { data: updated, error: updateError } = await supabaseAdmin
       .from("email_campaigns")
-      .update({ subject, body: bodyText, image_url: imageUrl, category })
+      .update({
+        subject,
+        body: bodyText,
+        body_is_html: bodyIsHtml,
+        image_url: imageUrl,
+        category,
+      })
       .eq("id", req.params.id)
       .eq("status", "draft")
       .select(CAMPAIGN_COLUMNS)
@@ -1003,6 +1035,7 @@ router.post("/:id/test", async (req, res, next) => {
         to: req.user.email,
         subject: campaign.subject,
         body: campaign.body,
+        bodyIsHtml: campaign.body_is_html === true,
         imageUrl: campaign.image_url,
         unsubscribeUrl: buildCampaignUnsubscribeUrl(req.user.email),
         // Teste ao proprio admin: sem origem de lote, o rodape real e definido

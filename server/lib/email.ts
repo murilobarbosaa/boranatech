@@ -2,6 +2,7 @@ import { Resend } from "resend";
 
 import {
   applyNamePlaceholder,
+  applyUnsubscribeUrl,
   escapeCampaignHtml,
   renderCampaignBodyHtml,
 } from "../../shared/emailCampaignBody";
@@ -601,6 +602,39 @@ async function withSendTimeout<T>(
 
 // sucesso. Sem Resend configurado ou com erro de API, lanca; o worker da fila
 // marca o destinatario como failed apos esgotar as tentativas.
+// Faixa da imagem no modo HTML: espelha a moldura do corpo do HTML do admin. A
+// imagem entra numa <table> centrada da MESMA largura do corpo (600px por padrao),
+// limitada a max-width, sobre uma faixa <table width=100%> de fundo escuro. Assim
+// a imagem nao transborda a largura do corpo (nao estoura os 600px) e o fundo
+// escuro cobre as laterais/juncao (sem sobrar o branco do cliente de e-mail entre
+// a imagem e o corpo). O ${bodyHtml} (documento HTML completo do admin) vem logo
+// abaixo, colado. Sem imagem, o modo HTML nao usa este wrapper (o HTML e puro).
+//
+// SUPOSICAO de cor: a faixa usa #05060E, o fundo do <body> do HTML de referencia
+// (Plano Pro). Um HTML futuro com outro fundo pode descasar levemente nesta faixa;
+// nesse caso, alinhar HTML_MODE_IMAGE_BAND_BG (ou o wrapper) ao fundo do novo HTML.
+// A largura e parametro (default 600, largura do HTML de referencia); nao exposta
+// na UI por ora.
+// TODO(Ana): alt text generico do hero da campanha.
+const HTML_MODE_IMAGE_BAND_BG = "#05060E";
+
+function htmlModeWithHeroImage(
+  imageUrl: string,
+  bodyHtml: string,
+  width = 600,
+) {
+  const band = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0;padding:0;background:${HTML_MODE_IMAGE_BAND_BG};border-collapse:collapse;">
+    <tr><td align="center" style="padding:0;">
+      <table role="presentation" width="${width}" cellpadding="0" cellspacing="0" border="0" style="width:${width}px;max-width:${width}px;border-collapse:collapse;">
+        <tr><td style="padding:0;font-size:0;line-height:0;">
+          <img src="${escapeCampaignHtml(imageUrl)}" width="${width}" alt="Imagem da campanha do Bora na Tech" style="display:block;width:100%;max-width:${width}px;height:auto;border:0;">
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>`;
+  return `${band}${bodyHtml}`;
+}
+
 export async function sendCampaignEmail(params: {
   to: string;
   subject: string;
@@ -609,6 +643,7 @@ export async function sendCampaignEmail(params: {
   unsubscribeUrl: string;
   footerReason: string;
   firstName: string;
+  bodyIsHtml?: boolean;
 }) {
   if (!env.resendApiKey || !resend) {
     throw new Error("RESEND_API_KEY ausente. Envio de campanha requer Resend.");
@@ -619,17 +654,31 @@ export async function sendCampaignEmail(params: {
     params.subject,
     params.firstName,
   );
-  const title = escapeCampaignHtml(personalizedSubject);
-  // {nome} no corpo: substituido no texto CRU; renderCampaignBodyHtml escapa
-  // cada bloco depois, entao o nome passa pelo mesmo escape do resto do corpo.
+  // {nome} no corpo: substituido no texto CRU antes de montar o HTML.
   const personalizedBody = applyNamePlaceholder(params.body, params.firstName);
-  const html = campaignLayout({
-    title,
-    bodyHtml: renderCampaignBodyHtml(personalizedBody),
-    imageUrl: params.imageUrl,
-    unsubscribeUrl: params.unsubscribeUrl,
-    footerReason: params.footerReason,
-  });
+  let html: string;
+  if (params.bodyIsHtml) {
+    // Modo HTML: o corpo do admin E o e-mail (sem header, card ou rodape de
+    // compliance automatico). {nome} (acima) e {unsubscribe_url} sao substituidos;
+    // o resto vai como colado, sem escapar (fonte confiavel, admin-only). Com
+    // imageUrl, um wrapper minimo cola a imagem full-width no topo e o HTML logo
+    // abaixo; sem imageUrl, o HTML e o e-mail inteiro puro. O header SMTP
+    // List-Unsubscribe abaixo segue setado. footerReason nao se aplica aqui.
+    const injected = applyUnsubscribeUrl(personalizedBody, params.unsubscribeUrl);
+    html = params.imageUrl
+      ? htmlModeWithHeroImage(params.imageUrl, injected)
+      : injected;
+  } else {
+    // Modo texto: caminho de sempre, embrulhado pelo campaignLayout (header,
+    // imagem opcional, rodape de compliance por audiencia).
+    html = campaignLayout({
+      title: escapeCampaignHtml(personalizedSubject),
+      bodyHtml: renderCampaignBodyHtml(personalizedBody),
+      imageUrl: params.imageUrl,
+      unsubscribeUrl: params.unsubscribeUrl,
+      footerReason: params.footerReason,
+    });
+  }
   const result = await withSendTimeout(
     sendEmail({
       to: params.to,

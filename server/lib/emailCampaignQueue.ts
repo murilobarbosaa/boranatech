@@ -887,7 +887,7 @@ async function processRecipientJob(job: Job<EmailCampaignJobData>) {
 
   const { data: campaign, error: campaignError } = await supabaseAdmin
     .from("email_campaigns")
-    .select("id, subject, body, image_url")
+    .select("id, subject, body, body_is_html, image_url")
     .eq("id", campaignId)
     .maybeSingle();
   if (campaignError) {
@@ -914,6 +914,7 @@ async function processRecipientJob(job: Job<EmailCampaignJobData>) {
     to: recipient.email,
     subject: campaign.subject,
     body: campaign.body,
+    bodyIsHtml: campaign.body_is_html === true,
     imageUrl: campaign.image_url,
     unsubscribeUrl,
     footerReason,

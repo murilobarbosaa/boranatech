@@ -49,3 +49,17 @@ export function renderCampaignBodyHtml(body: string): string {
     )
     .join("");
 }
+
+// Placeholder do link de descadastro. So faz sentido no modo HTML (body_is_html):
+// ali o corpo do admin e o e-mail INTEIRO (sem campaignLayout em volta), entao o
+// admin decide onde o link de unsubscribe aparece marcando {unsubscribe_url}. No
+// modo texto o rodape (com o link) e automatico e este placeholder e ignorado.
+export const UNSUBSCRIBE_URL_PLACEHOLDER = "{unsubscribe_url}";
+
+// Troca todas as ocorrencias de {unsubscribe_url} pela URL real de descadastro do
+// destinatario. Compartilhado entre o envio (server/lib/email.ts) e o preview do
+// admin, pra os dois seguirem a mesma logica. split/join (nao regex) pra a URL
+// entrar literal, mesmo com caracteres especiais ($, &, etc.).
+export function applyUnsubscribeUrl(html: string, unsubscribeUrl: string): string {
+  return html.split(UNSUBSCRIBE_URL_PLACEHOLDER).join(unsubscribeUrl);
+}
