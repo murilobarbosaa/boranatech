@@ -28,6 +28,7 @@ import SEO from "@/components/SEO";
 import LockedCatalogTeaser from "@/components/pro/LockedCatalogTeaser";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
+import { BntSelect } from "@/components/shared/BntSelect";
 import MiniQuiz, {
   type MiniQuizPergunta,
   type MiniQuizResultado,
@@ -547,36 +548,36 @@ export default function Plataformas() {
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Idioma
                 </span>
-                <select
+                <BntSelect
+                  accent="green"
+                  size="sm"
+                  fullWidth={false}
+                  label="Filtrar por idioma"
                   value={idiomaFilter}
-                  onChange={(event) => setIdiomaFilter(event.target.value)}
-                  className="rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 outline-none transition-all focus:border-emerald-700 focus:ring-4 focus:ring-emerald-100"
-                  aria-label="Filtrar por idioma"
-                >
-                  {idiomas.map((idioma) => (
-                    <option key={idioma} value={idioma}>
-                      {idioma === "Todos" ? "Todos os idiomas" : idioma}
-                    </option>
-                  ))}
-                </select>
+                  onValueChange={setIdiomaFilter}
+                  options={idiomas.map((idioma) => ({
+                    value: idioma,
+                    label: idioma === "Todos" ? "Todos os idiomas" : idioma,
+                  }))}
+                />
               </div>
 
               <div className="inline-flex items-center gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Área
                 </span>
-                <select
+                <BntSelect
+                  accent="green"
+                  size="sm"
+                  fullWidth={false}
+                  label="Filtrar por área"
                   value={areaFilter}
-                  onChange={(event) => setAreaFilter(event.target.value)}
-                  className="rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 outline-none transition-all focus:border-emerald-700 focus:ring-4 focus:ring-emerald-100"
-                  aria-label="Filtrar por área"
-                >
-                  {areas.map((area) => (
-                    <option key={area} value={area}>
-                      {area === "Todas" ? "Todas as áreas" : area}
-                    </option>
-                  ))}
-                </select>
+                  onValueChange={setAreaFilter}
+                  options={areas.map((area) => ({
+                    value: area,
+                    label: area === "Todas" ? "Todas as áreas" : area,
+                  }))}
+                />
               </div>
 
               <label className="inline-flex items-center gap-2 rounded-full border-2 border-slate-300 bg-emerald-50 px-3 py-1 text-xs font-bold text-slate-700 cursor-pointer">
