@@ -13684,7 +13684,7 @@ export const cursosGratuitos = [
     titulo: "Formação em Product Management",
     canal: "PM3",
     plataforma: "PM3",
-    link: "https://pm3.com.br/",
+    link: "https://pm3.com.br/curso-product-manager/",
     areaSlug: "product-manager" as string | null,
     nivel: "Intermediário",
     duracao: "Cerca de 6 meses",
