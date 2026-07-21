@@ -67,6 +67,7 @@ export default function TecnologiaComparador() {
             <div className="grid gap-4 md:grid-cols-2">
               {[leftSlug, rightSlug].map((value, index) => (
                 <BntSelect
+                  accent="green"
                   key={index}
                   label={
                     index === 0 ? "Primeira tecnologia" : "Segunda tecnologia"

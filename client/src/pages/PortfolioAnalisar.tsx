@@ -1080,6 +1080,7 @@ export default function PortfolioAnalisar() {
                   {/* TODO(Ana): revisar rotulo e helper da area alvo. */}
                   <span>Área alvo desta análise</span>
                   <BntSelect
+                    accent="violet"
                     fullWidth={false}
                     label="Área alvo desta análise"
                     value={area}

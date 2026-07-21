@@ -333,6 +333,7 @@ function ContextFields({
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <Field label="Área de interesse">
         <BntSelect
+          accent="blue"
           label="Área de interesse"
           value={form.area}
           onValueChange={(v) => update("area", v as AreaSlug)}
@@ -345,6 +346,7 @@ function ContextFields({
 
       <Field label="Nível">
         <BntSelect
+          accent="blue"
           label="Nível"
           value={form.level}
           onValueChange={(v) => update("level", v as LinkedinLevel)}
@@ -357,6 +359,7 @@ function ContextFields({
 
       <Field label="Onde você quer trabalhar?">
         <BntSelect
+          accent="blue"
           label="Onde você quer trabalhar?"
           value={form.mercado}
           onValueChange={(v) => update("mercado", v as Mercado)}
@@ -392,6 +395,7 @@ function ProfileQuestions({
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <Field label="Tem foto profissional?">
         <BntSelect
+          accent="blue"
           label="Tem foto profissional?"
           placeholder={SELECT_PLACEHOLDER}
           value={form.foto}
@@ -405,6 +409,7 @@ function ProfileQuestions({
 
       <Field label="Tem banner personalizado?">
         <BntSelect
+          accent="blue"
           label="Tem banner personalizado?"
           placeholder={SELECT_PLACEHOLDER}
           value={form.banner}
@@ -418,6 +423,7 @@ function ProfileQuestions({
 
       <Field label="Open to Work para recrutadores?">
         <BntSelect
+          accent="blue"
           label="Open to Work para recrutadores?"
           placeholder={SELECT_PLACEHOLDER}
           value={form.openToWork}
@@ -431,6 +437,7 @@ function ProfileQuestions({
 
       <Field label="Quantas conexões?">
         <BntSelect
+          accent="blue"
           label="Quantas conexões?"
           placeholder={SELECT_PLACEHOLDER}
           value={form.conexoes}
@@ -444,6 +451,7 @@ function ProfileQuestions({
 
       <Field label="Com que frequência posta ou comenta?">
         <BntSelect
+          accent="blue"
           label="Com que frequência posta ou comenta?"
           placeholder={SELECT_PLACEHOLDER}
           value={form.atividade}

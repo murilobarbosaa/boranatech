@@ -150,6 +150,7 @@ function IntakeForm({
           <label className="block font-black">
             Área
             <BntSelect
+              accent="gold"
               label="Área"
               value={area}
               onValueChange={setArea}
@@ -162,6 +163,7 @@ function IntakeForm({
           <label className="block font-black">
             Nível atual
             <BntSelect
+              accent="gold"
               label="Nível atual"
               value={level}
               onValueChange={setLevel}
@@ -187,6 +189,7 @@ function IntakeForm({
           <label className="block font-black">
             Horizonte do plano
             <BntSelect
+              accent="gold"
               label="Horizonte do plano"
               value={String(horizonMonths)}
               onValueChange={(v) => setHorizonMonths(Number(v))}
@@ -199,6 +202,7 @@ function IntakeForm({
           <label className="block font-black sm:col-span-2">
             Orçamento para certificações
             <BntSelect
+              accent="gold"
               label="Orçamento para certificações"
               value={budget}
               onValueChange={(v) => setBudget(v as CareerPlanBudget)}

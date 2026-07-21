@@ -316,6 +316,7 @@ export default function Projetos() {
                 />
               </div>
               <BntSelect
+                accent="orange"
                 label="Filtrar por área"
                 value={area === "" ? AREA_EMPTY_SENTINEL : area}
                 onValueChange={(v) =>
@@ -335,6 +336,7 @@ export default function Projetos() {
                 }))}
               />
               <BntSelect
+                accent="orange"
                 label="Filtrar por nível"
                 value={nivel}
                 onValueChange={setNivel}
@@ -344,6 +346,7 @@ export default function Projetos() {
                 }))}
               />
               <BntSelect
+                accent="orange"
                 label="Filtrar por tecnologia"
                 value={tech}
                 onValueChange={setTech}

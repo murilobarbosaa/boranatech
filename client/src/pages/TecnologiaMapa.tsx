@@ -127,6 +127,7 @@ export default function TecnologiaMapa() {
                 Filtrar por área
               </label>
               <BntSelect
+                accent="green"
                 id="tech-area-filter"
                 triggerClassName="sm:w-64"
                 value={focusedSlug ?? "__all__"}

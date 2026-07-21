@@ -1088,6 +1088,7 @@ export default function Comparador() {
                 <label className="text-xs font-black uppercase text-slate-600">
                   Prioridade
                   <BntSelect
+                    accent="gold"
                     label="Prioridade"
                     value={objective}
                     onValueChange={setObjective}
@@ -1100,6 +1101,7 @@ export default function Comparador() {
                 <label className="text-xs font-black uppercase text-slate-600">
                   Pagamento
                   <BntSelect
+                    accent="gold"
                     label="Pagamento"
                     value={budget}
                     onValueChange={setBudget}
@@ -1112,6 +1114,7 @@ export default function Comparador() {
                 <label className="text-xs font-black uppercase text-slate-600">
                   Ritmo / duração
                   <BntSelect
+                    accent="gold"
                     label="Ritmo / duração"
                     value={duration}
                     onValueChange={setDuration}
@@ -1161,6 +1164,7 @@ export default function Comparador() {
                   Mesmo grupo que a opção B
                 </span>
                 <BntSelect
+                  accent="gold"
                   label="Opção A"
                   value={left.id}
                   onValueChange={(v) => {
@@ -1187,6 +1191,7 @@ export default function Comparador() {
                   Só entradas do tipo "{kindMeta?.label ?? comparisonKind}"
                 </span>
                 <BntSelect
+                  accent="gold"
                   label="Opção B"
                   value={right.id}
                   onValueChange={(v) => setRightId(v)}

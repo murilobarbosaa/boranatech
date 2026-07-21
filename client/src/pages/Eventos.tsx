@@ -218,6 +218,7 @@ export default function Eventos() {
                   {LABEL_FILTROS.categoria}
                 </label>
                 <BntSelect
+                  accent="pink"
                   id="filter-evento-tipo"
                   fullWidth={false}
                   value={categoria === ALL ? FILTRO_TODOS : categoria}
@@ -239,6 +240,7 @@ export default function Eventos() {
                 {LABEL_FILTROS.modalidade}
               </label>
               <BntSelect
+                accent="pink"
                 id="filter-evento-modalidade"
                 fullWidth={false}
                 value={formato === ALL ? FILTRO_TODOS : formato}
@@ -256,14 +258,15 @@ export default function Eventos() {
                 htmlFor="filter-evento-estado"
                 className="inline-flex items-center gap-1.5 text-xs font-black text-slate-900"
               >
-                <MapPin className="h-3.5 w-3.5 text-amber-600" />
+                <MapPin className="h-3.5 w-3.5 text-pink-600" />
                 {LABEL_FILTROS.estado} (UF)
               </label>
               <BntSelect
+                accent="pink"
                 id="filter-evento-estado"
                 fullWidth={false}
                 triggerClassName="min-w-[13rem]"
-                leadingIcon={<MapPin className="h-4 w-4 text-amber-600" />}
+                leadingIcon={<MapPin className="h-4 w-4 text-pink-600" />}
                 value={estadoUF === ALL ? FILTRO_TODOS : estadoUF}
                 onValueChange={(v) =>
                   setEstadoUF(v === FILTRO_TODOS ? ALL : (v as EstadoUfSigla))

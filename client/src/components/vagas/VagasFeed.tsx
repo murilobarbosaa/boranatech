@@ -207,6 +207,7 @@ export default function VagasFeed({
             ))}
           </div>
           <BntSelect
+            accent="blue"
             fullWidth={false}
             label="Nível"
             value={seniority === "" ? FILTRO_TODOS : seniority}
@@ -222,6 +223,7 @@ export default function VagasFeed({
             ]}
           />
           <BntSelect
+            accent="blue"
             fullWidth={false}
             label="Modalidade"
             value={modality === "" ? FILTRO_TODOS : modality}
@@ -237,6 +239,7 @@ export default function VagasFeed({
             ]}
           />
           <BntSelect
+            accent="blue"
             fullWidth={false}
             label="Contrato"
             value={contract === "" ? FILTRO_TODOS : contract}

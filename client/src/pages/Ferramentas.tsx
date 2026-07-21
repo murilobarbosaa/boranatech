@@ -518,6 +518,7 @@ export default function Ferramentas() {
                     Área
                   </label>
                   <BntSelect
+                    accent="orange"
                     id="ferramentas-area"
                     fullWidth={false}
                     value={area}
@@ -540,6 +541,7 @@ export default function Ferramentas() {
                     Necessidade
                   </label>
                   <BntSelect
+                    accent="orange"
                     id="ferramentas-need"
                     fullWidth={false}
                     value={need}
@@ -562,6 +564,7 @@ export default function Ferramentas() {
                     Ordenar
                   </label>
                   <BntSelect
+                    accent="orange"
                     id="ferramentas-sort"
                     fullWidth={false}
                     value={sort}

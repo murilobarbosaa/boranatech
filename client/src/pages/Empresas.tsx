@@ -259,6 +259,7 @@ export default function Empresas() {
                 <label className="text-xs font-black uppercase text-slate-500">
                   Segmento
                   <BntSelect
+                    accent="blue"
                     className="mt-1"
                     label="Segmento"
                     value={segment}
@@ -272,6 +273,7 @@ export default function Empresas() {
                 <label className="text-xs font-black uppercase text-slate-500">
                   Cidade
                   <BntSelect
+                    accent="blue"
                     className="mt-1"
                     label="Cidade"
                     value={city}
@@ -285,6 +287,7 @@ export default function Empresas() {
                 <label className="text-xs font-black uppercase text-slate-500">
                   Nível
                   <BntSelect
+                    accent="blue"
                     className="mt-1"
                     label="Nível"
                     value={level}
