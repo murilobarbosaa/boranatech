@@ -47,6 +47,7 @@ import { ContactListsManager } from "@/components/admin/ContactListsManager";
 import { ConversionDashboard } from "@/components/admin/ConversionDashboard";
 import { NotificationsManager } from "@/components/admin/NotificationsManager";
 import { ExpensesManager } from "@/components/admin/ExpensesManager";
+import { BntSelect } from "@/components/shared/BntSelect";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { IntegrationsHealthPanel } from "@/components/admin/IntegrationsHealthPanel";
 import { PagesDashboard } from "@/components/admin/PagesDashboard";
@@ -4772,17 +4773,14 @@ function AdminSelect({
   return (
     <label className="text-sm font-black text-slate-950">
       {label}
-      <select
+      <BntSelect
+        accent="gold"
+        label={label}
+        className="mt-2"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+        onValueChange={onChange}
+        options={options.map((option) => ({ value: option, label: option }))}
+      />
     </label>
   );
 }
@@ -6504,21 +6502,24 @@ export default function Admin() {
                                   </label>
                                   <label className="text-xs font-black uppercase text-slate-600">
                                     Status
-                                    <select
+                                    <BntSelect
+                                      accent="gold"
+                                      label="Status"
+                                      className="mt-1"
                                       value={affiliateEditForm.status}
-                                      onChange={(event) =>
+                                      onValueChange={(v) =>
                                         setAffiliateEditForm({
                                           ...affiliateEditForm,
-                                          status: event.target
-                                            .value as AffiliateEditForm["status"],
+                                          status:
+                                            v as AffiliateEditForm["status"],
                                         })
                                       }
-                                      className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
-                                    >
-                                      <option value="active">active</option>
-                                      <option value="paused">paused</option>
-                                      <option value="inactive">inactive</option>
-                                    </select>
+                                      options={[
+                                        { value: "active", label: "active" },
+                                        { value: "paused", label: "paused" },
+                                        { value: "inactive", label: "inactive" },
+                                      ]}
+                                    />
                                   </label>
                                   <label className="text-xs font-black uppercase text-slate-600 sm:col-span-2">
                                     Notas

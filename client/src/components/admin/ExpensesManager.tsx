@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { adminFetch } from "@/lib/adminApi";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
+import { BntSelect } from "@/components/shared/BntSelect";
 
 // TODO(Ana): revisar TODA a copy visivel deste bloco (labels do formulario,
 // categorias, cabecalhos da tabela, mensagens de estado e o aviso de cambio).
@@ -318,19 +319,14 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
           </label>
           <label className="text-xs font-black uppercase text-slate-600">
             Categoria
-            <select
+            <BntSelect
+              accent="gold"
+              label="Categoria"
+              className="mt-1"
               value={form.category}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, category: e.target.value }))
-              }
-              className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+              onValueChange={(v) => setForm((f) => ({ ...f, category: v }))}
+              options={CATEGORIES}
+            />
           </label>
           <label className="text-xs font-black uppercase text-slate-600">
             Fornecedor
@@ -345,19 +341,22 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
           </label>
           <label className="text-xs font-black uppercase text-slate-600">
             Tipo
-            <select
+            <BntSelect
+              accent="gold"
+              label="Tipo"
+              className="mt-1"
               value={form.kind}
-              onChange={(e) =>
+              onValueChange={(v) =>
                 setForm((f) => ({
                   ...f,
-                  kind: e.target.value === "recurring" ? "recurring" : "one_off",
+                  kind: v === "recurring" ? "recurring" : "one_off",
                 }))
               }
-              className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
-            >
-              <option value="one_off">Pontual</option>
-              <option value="recurring">Recorrente</option>
-            </select>
+              options={[
+                { value: "one_off", label: "Pontual" },
+                { value: "recurring", label: "Recorrente" },
+              ]}
+            />
           </label>
           <label className="text-xs font-black uppercase text-slate-600">
             Competência
@@ -384,39 +383,44 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
           </label>
           <label className="text-xs font-black uppercase text-slate-600">
             Moeda
-            <select
+            <BntSelect
+              accent="gold"
+              label="Moeda"
+              className="mt-1"
               value={form.currency}
-              onChange={(e) =>
+              onValueChange={(v) =>
                 setForm((f) => ({
                   ...f,
-                  currency: e.target.value === "USD" ? "USD" : "BRL",
+                  currency: v === "USD" ? "USD" : "BRL",
                 }))
               }
-              className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
-            >
-              <option value="BRL">BRL</option>
-              <option value="USD">USD</option>
-            </select>
+              options={[
+                { value: "BRL", label: "BRL" },
+                { value: "USD", label: "USD" },
+              ]}
+            />
           </label>
 
           {form.kind === "recurring" ? (
             <>
               <label className="text-xs font-black uppercase text-slate-600">
                 Recorrência
-                <select
+                <BntSelect
+                  accent="gold"
+                  label="Recorrência"
+                  className="mt-1"
                   value={form.recurrence_interval}
-                  onChange={(e) =>
+                  onValueChange={(v) =>
                     setForm((f) => ({
                       ...f,
-                      recurrence_interval:
-                        e.target.value === "yearly" ? "yearly" : "monthly",
+                      recurrence_interval: v === "yearly" ? "yearly" : "monthly",
                     }))
                   }
-                  className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
-                >
-                  <option value="monthly">Mensal</option>
-                  <option value="yearly">Anual</option>
-                </select>
+                  options={[
+                    { value: "monthly", label: "Mensal" },
+                    { value: "yearly", label: "Anual" },
+                  ]}
+                />
               </label>
               <label className="text-xs font-black uppercase text-slate-600">
                 Início
