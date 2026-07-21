@@ -13792,7 +13792,7 @@ export const cursosGratuitos = [
     titulo: "SOC Level 1",
     canal: "TryHackMe",
     plataforma: "TryHackMe",
-    link: "https://tryhackme.com/",
+    link: "https://tryhackme.com/path/outline/soclevel1",
     areaSlug: "blue-team" as string | null,
     nivel: "Intermediário",
     duracao: "Cerca de 60 horas",
