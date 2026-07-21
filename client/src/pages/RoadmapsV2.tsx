@@ -11,6 +11,8 @@ import RoadmapCompletionCard, {
   type RoadmapQuizApproval,
 } from "@/components/roadmapV2/RoadmapCompletionCard";
 import RoadmapCompletionModal from "@/components/roadmapV2/RoadmapCompletionModal";
+import RoadmapFeaturedCourse from "@/components/roadmapV2/RoadmapFeaturedCourse";
+import { cursosParceiros } from "@/lib/parceiros";
 import { useAuth } from "@/contexts/AuthContext";
 import { roadmapLoaders } from "@/lib/roadmapV2/loaders";
 import { roadmapsMeta } from "@/lib/roadmapV2/meta";
@@ -38,6 +40,13 @@ export default function RoadmapsV2() {
   const params = useParams();
   const slug = params.slug ?? "";
   const loader = roadmapLoaders[slug];
+
+  // Gate dinamico: o destaque de parceiro aparece nas trilhas cujo slug esta
+  // em roadmapSlugs do dado (client/src/lib/parceiros.ts), sem hardcode aqui.
+  const featuredPartners = useMemo(
+    () => cursosParceiros.filter((curso) => curso.roadmapSlugs.includes(slug)),
+    [slug],
+  );
 
   // Conteudo da trilha carregado sob demanda (chunk por slug). null enquanto
   // o import() resolve; loadFailed cobre falha de rede com retry, sem
@@ -280,6 +289,10 @@ export default function RoadmapsV2() {
                   }}
                 />
               </div>
+
+              {featuredPartners.map((curso) => (
+                <RoadmapFeaturedCourse key={curso.id} curso={curso} />
+              ))}
 
               {ready && (
                 <RoadmapCompletionCard
