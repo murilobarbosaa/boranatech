@@ -13774,7 +13774,7 @@ export const cursosGratuitos = [
     titulo: "Penetration Tester Path",
     canal: "Hack The Box",
     plataforma: "HTB Academy",
-    link: "https://academy.hackthebox.com/",
+    link: "https://academy.hackthebox.com/path/preview/penetration-tester",
     areaSlug: "red-team" as string | null,
     nivel: "Avançado",
     duracao: "Cerca de 6 meses",
