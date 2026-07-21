@@ -552,6 +552,7 @@ export default function Plataformas() {
                   accent="green"
                   size="sm"
                   fullWidth={false}
+                  triggerClassName="h-8 px-2.5 text-xs"
                   label="Filtrar por idioma"
                   value={idiomaFilter}
                   onValueChange={setIdiomaFilter}
@@ -570,6 +571,7 @@ export default function Plataformas() {
                   accent="green"
                   size="sm"
                   fullWidth={false}
+                  triggerClassName="h-8 px-2.5 text-xs"
                   label="Filtrar por área"
                   value={areaFilter}
                   onValueChange={setAreaFilter}
