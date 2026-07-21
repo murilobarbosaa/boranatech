@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import {
@@ -65,6 +72,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { adminFetch } from "@/lib/adminApi";
 import {
   applyNamePlaceholder,
+  applyUnsubscribeUrl,
   renderCampaignBodyHtml,
 } from "@shared/emailCampaignBody";
 import { readAdminClaim } from "@/lib/adminClaim";
@@ -1796,6 +1804,7 @@ type EmailCampaign = {
   id: string;
   subject: string;
   body: string;
+  body_is_html: boolean;
   image_url: string | null;
   category: EmailCampaignCategory;
   status: EmailCampaignStatus;
@@ -1994,6 +2003,195 @@ function campaignPendingCount(campaign: EmailCampaign): number | null {
   );
 }
 
+// TODO(Ana): nome de exemplo do preview de personalizacao.
+const PREVIEW_EXAMPLE_NAME = "Maria";
+
+// Preview de documento HTML completo (modo HTML) num <iframe srcDoc>: isola o
+// documento colado — os <style> do e-mail ficam presos ao iframe (nao vazam pra
+// pagina do admin) e elementos posicionados nao criam overlay sobre o formulario.
+// Auto-resize: no onLoad (dispara no mount e a cada srcDoc novo) le o scrollHeight
+// do documento e ajusta a altura, com min de seguranca (300px). sandbox=
+// "allow-same-origin" (sem allow-scripts) bloqueia JS do HTML colado e ainda deixa
+// ler contentDocument pra medir. width 100% (o HTML ja centra os 600px sozinho).
+// Fidelidade: recebe o MESMO previewBodyHtml do envio.
+function HtmlDocFrame({ srcDoc }: { srcDoc: string }) {
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const [height, setHeight] = useState(300);
+  const handleResize = useCallback(() => {
+    const doc = frameRef.current?.contentDocument;
+    const next = doc?.documentElement?.scrollHeight ?? 0;
+    setHeight(Math.max(next, 300));
+  }, []);
+  return (
+    <iframe
+      ref={frameRef}
+      title="Preview do e-mail (HTML)"
+      srcDoc={srcDoc}
+      onLoad={handleResize}
+      sandbox="allow-same-origin"
+      className="block w-full border-0"
+      style={{ height }}
+    />
+  );
+}
+
+// Preview do e-mail isolado num componente memoizado (React.memo). O HTML do
+// corpo (grande no modo HTML, ate com base64) so e recalculado quando
+// bodyText/bodyIsHtml mudam (useMemo), e o React.memo evita re-render/reparse
+// quando o formulario mexe em campos nao relacionados (categoria, etc.). A logica
+// compartilhada com o envio (applyNamePlaceholder/applyUnsubscribeUrl/
+// renderCampaignBodyHtml) e IDENTICA; muda so o quando ela roda.
+const CampaignPreview = memo(function CampaignPreview({
+  bodyText,
+  bodyIsHtml,
+  subject,
+  imageUrl,
+  imageBroken,
+  onImageError,
+}: {
+  bodyText: string;
+  bodyIsHtml: boolean;
+  subject: string;
+  imageUrl: string;
+  imageBroken: boolean;
+  onImageError: () => void;
+}) {
+  const trimmedImageUrl = imageUrl.trim();
+  // Preview usa a MESMA logica do envio (fonte-unica), so com {nome} de exemplo.
+  // Modo texto: renderCampaignBodyHtml (escapa e paragrafa), dentro do card.
+  // Modo HTML: o corpo E o e-mail inteiro; substitui {unsubscribe_url} por "#" so
+  // pra visualizar e injeta sozinho, sem o card/header/rodape de preview.
+  const previewBodyHtml = useMemo(() => {
+    const named = applyNamePlaceholder(bodyText, PREVIEW_EXAMPLE_NAME);
+    return bodyIsHtml
+      ? applyUnsubscribeUrl(named, "#")
+      : renderCampaignBodyHtml(named);
+  }, [bodyText, bodyIsHtml]);
+  const hasNamePlaceholder = useMemo(
+    () => bodyText.includes("{nome}"),
+    [bodyText],
+  );
+
+  return (
+    <article className="card-brutal min-w-0 rounded-3xl bg-white p-6">
+      {/* TODO(Ana): título do preview. */}
+      <h3 className="font-display text-2xl font-black">Preview do e-mail</h3>
+      {/* overflow-auto + max-h: contem previews gigantes (ex. HTML colado como
+          texto com base64 inquebravel) — rola dentro da caixa em vez de escapar e
+          cobrir a coluna do formulario. So tem efeito quando algo transbordaria. */}
+      <div className="mt-4 max-h-[70vh] overflow-auto rounded-2xl border-2 border-slate-900 bg-[#F1F5F9] p-4">
+        {bodyIsHtml ? (
+          // Modo HTML: com imagem, a imagem centrada (max 600px) fica sobre uma
+          // faixa escura (#05060E, fundo do HTML de referencia) e o HTML vem
+          // colado abaixo (espelha htmlModeWithHeroImage do envio). Sem imagem,
+          // o HTML e o e-mail inteiro sozinho. {nome} = exemplo, {unsubscribe_url} = "#".
+          <div>
+            {bodyText.trim() ? (
+              trimmedImageUrl && !imageBroken ? (
+                // Imagem no topo (React) + documento isolado no iframe abaixo. A
+                // "faixa fake #05060E" saiu do preview: o iframe ja pinta o fundo
+                // real do <body> e, no painel, a imagem ocupa a largura toda (sem
+                // gutters), entao a faixa virou redundante aqui. O envio real
+                // (htmlModeWithHeroImage no server) MANTEM a faixa — cliente de
+                // e-mail nao usa iframe; nao mexer no server.
+                <div>
+                  <img
+                    src={trimmedImageUrl}
+                    // TODO(Ana): alt text generico do hero da campanha.
+                    alt="Imagem da campanha do Bora na Tech"
+                    onError={onImageError}
+                    className="mx-auto block w-full max-w-[600px]"
+                  />
+                  <HtmlDocFrame srcDoc={previewBodyHtml} />
+                </div>
+              ) : (
+                <HtmlDocFrame srcDoc={previewBodyHtml} />
+              )
+            ) : (
+              <p className="text-sm font-semibold text-slate-400">
+                {/* TODO(Ana): placeholder do preview HTML vazio. */}
+                Cole o HTML para ver o e-mail completo aqui.
+              </p>
+            )}
+            {trimmedImageUrl && imageBroken ? (
+              <p className="mt-2 rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">
+                {/* TODO(Ana): erro de imagem no preview. */}
+                Não foi possível carregar a imagem dessa URL.
+              </p>
+            ) : null}
+            <p className="mt-2 text-[11px] font-semibold text-slate-500">
+              Preview do HTML como e-mail inteiro, sem header/rodapé automáticos.{" "}
+              <code>{"{nome}"}</code> ={" "}
+              <span className="font-black">{PREVIEW_EXAMPLE_NAME}</span>,{" "}
+              <code>{"{unsubscribe_url}"}</code> = "#".
+            </p>
+          </div>
+        ) : (
+          <div className="mx-auto max-w-md border-4 border-slate-950 bg-white">
+            {trimmedImageUrl && !imageBroken ? (
+              <img
+                src={trimmedImageUrl}
+                // TODO(Ana): alt text generico do hero da campanha.
+                alt="Imagem da campanha do Bora na Tech"
+                onError={onImageError}
+                className="block w-full max-w-full"
+              />
+            ) : null}
+            <div className="p-5">
+              {trimmedImageUrl && imageBroken ? (
+                <p className="mb-3 rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">
+                  {/* TODO(Ana): erro de imagem no preview. */}
+                  Não foi possível carregar a imagem dessa URL.
+                </p>
+              ) : null}
+              <p className="font-display text-xs font-black text-slate-950">
+                BORA NA TECH
+              </p>
+              <h4 className="font-display mt-3 text-xl font-black text-slate-950">
+                {applyNamePlaceholder(subject, PREVIEW_EXAMPLE_NAME).trim() ||
+                  "Assunto da campanha"}
+              </h4>
+              {bodyText.trim() ? (
+                <div
+                  className="mt-3 break-words"
+                  dangerouslySetInnerHTML={{ __html: previewBodyHtml }}
+                />
+              ) : (
+                <p className="mt-3 text-sm font-semibold text-slate-400">
+                  {/* TODO(Ana): placeholder do preview vazio. */}O corpo da
+                  campanha aparece aqui.
+                </p>
+              )}
+              {hasNamePlaceholder ? (
+                // TODO(Ana): copy da nota de personalizacao do preview.
+                <p className="mt-3 rounded-lg border-2 border-slate-300 bg-slate-50 p-2 text-[11px] font-semibold text-slate-500">
+                  Acima, com nome de exemplo (
+                  <span className="font-black">{PREVIEW_EXAMPLE_NAME}</span>).
+                  Para quem não tem nome, o <code>{"{nome}"}</code> some (e o
+                  espaço antes dele): "Oi {"{nome}"}," vira "Oi,".
+                </p>
+              ) : null}
+              <div className="mt-4 border-t-2 border-slate-200 pt-3 text-center text-[11px] font-semibold text-slate-400">
+                {/* TODO(Ana): rodapé do preview (o rodapé real varia por origem). */}
+                <p>
+                  O rodapé real explica a origem do envio e é definido pela
+                  audiência escolhida no disparo.
+                </p>
+                <p className="mt-1 underline">
+                  Não quero mais receber estes e-mails
+                </p>
+                <p className="mt-1">
+                  Enviado por Bora na Tech (oi@boranatech.com.br)
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </article>
+  );
+});
+
 function EmailCampaignsAdminSection() {
   const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
   const [listError, setListError] = useState<string | null>(null);
@@ -2006,6 +2204,7 @@ function EmailCampaignsAdminSection() {
 
   const [subject, setSubject] = useState("");
   const [bodyText, setBodyText] = useState("");
+  const [bodyIsHtml, setBodyIsHtml] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [imageBroken, setImageBroken] = useState(false);
   const [campaignCategory, setCampaignCategory] =
@@ -2194,6 +2393,7 @@ function EmailCampaignsAdminSection() {
         body: JSON.stringify({
           subject: subject.trim(),
           body: bodyText.trim(),
+          body_is_html: bodyIsHtml,
           image_url: imageUrl.trim() || null,
           category: campaignCategory,
         }),
@@ -2205,6 +2405,7 @@ function EmailCampaignsAdminSection() {
       setDetail({ ...created, batches: [] });
       setSubject("");
       setBodyText("");
+      setBodyIsHtml(false);
       setImageUrl("");
       setCampaignCategory("product");
       void loadCampaigns();
@@ -2222,6 +2423,7 @@ function EmailCampaignsAdminSection() {
     setEditingId(detail.id);
     setSubject(detail.subject);
     setBodyText(detail.body);
+    setBodyIsHtml(detail.body_is_html ?? false);
     setImageUrl(detail.image_url ?? "");
     setCampaignCategory(detail.category);
     setImageBroken(false);
@@ -2231,6 +2433,7 @@ function EmailCampaignsAdminSection() {
     setEditingId(null);
     setSubject("");
     setBodyText("");
+    setBodyIsHtml(false);
     setImageUrl("");
     setCampaignCategory("product");
     setImageBroken(false);
@@ -2250,6 +2453,7 @@ function EmailCampaignsAdminSection() {
         body: JSON.stringify({
           subject: subject.trim(),
           body: bodyText.trim(),
+          body_is_html: bodyIsHtml,
           image_url: imageUrl.trim() || null,
           category: campaignCategory,
         }),
@@ -2664,15 +2868,17 @@ function EmailCampaignsAdminSection() {
     }
   }
 
-  // Preview do {nome}: mostra o corpo com um nome de exemplo, pra o Murilo ver
-  // como a personalizacao fica. A versao sem nome aparece como nota logo abaixo.
-  // TODO(Ana): nome de exemplo do preview de personalizacao.
-  const PREVIEW_EXAMPLE_NAME = "Maria";
-  const hasNamePlaceholder = bodyText.includes("{nome}");
-  const previewBodyHtml = renderCampaignBodyHtml(
-    applyNamePlaceholder(bodyText, PREVIEW_EXAMPLE_NAME),
+  // Aviso nao-bloqueante: no modo HTML, sem {unsubscribe_url} o link de
+  // descadastro pode nao aparecer no corpo (o header SMTP segue setado no envio).
+  // Memoizado: sem isto, o HTML (grande no modo HTML) e varrido a cada render,
+  // inclusive em clique de campo nao relacionado (categoria, etc.).
+  const missingUnsubscribe = useMemo(
+    () => bodyIsHtml && !bodyText.includes("{unsubscribe_url}"),
+    [bodyIsHtml, bodyText],
   );
-  const trimmedImageUrl = imageUrl.trim();
+  // Callback estavel pro React.memo do CampaignPreview valer: uma nova funcao a
+  // cada render quebraria a memoizacao e re-renderizaria o preview sempre.
+  const handlePreviewImageError = useCallback(() => setImageBroken(true), []);
   const pending = detail ? campaignPendingCount(detail) : null;
   const progressPercent =
     detail && detail.total_recipients
@@ -2696,12 +2902,35 @@ function EmailCampaignsAdminSection() {
       subtitle="Crie uma campanha, envie um teste para você e dispare para a audiência escolhida com fila e limite de velocidade."
     >
       <div className="grid gap-5 lg:grid-cols-2">
-        <article className="card-brutal rounded-3xl bg-white p-6">
+        <article className="card-brutal min-w-0 rounded-3xl bg-white p-6">
           {/* TODO(Ana): rótulos do formulário de campanha. */}
           <h3 className="font-display text-2xl font-black">
             {editingId ? "Editar campanha" : "Nova campanha"}
           </h3>
           <div className="mt-4 space-y-4">
+            {/* Imagem no topo do e-mail (full-width). Vale para os dois modos:
+                hero do campaignLayout no texto, imagem colada acima do HTML no
+                modo HTML. Por isso fica no inicio do formulario. */}
+            <div>
+              <label
+                htmlFor="email-campaign-image"
+                className="text-xs font-black uppercase text-slate-500"
+              >
+                URL da imagem (opcional)
+              </label>
+              <input
+                id="email-campaign-image"
+                type="url"
+                value={imageUrl}
+                onChange={(event) => {
+                  setImageUrl(event.target.value);
+                  setImageBroken(false);
+                }}
+                // TODO(Ana): placeholder da URL de imagem.
+                placeholder="URL pública do Supabase Storage"
+                className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
+              />
+            </div>
             <div>
               <label
                 htmlFor="email-campaign-subject"
@@ -2718,30 +2947,58 @@ function EmailCampaignsAdminSection() {
               />
             </div>
             <div>
-              <label
-                htmlFor="email-campaign-body"
-                className="text-xs font-black uppercase text-slate-500"
-              >
-                Corpo
-              </label>
+              <div className="flex items-center justify-between gap-2">
+                <label
+                  htmlFor="email-campaign-body"
+                  className="text-xs font-black uppercase text-slate-500"
+                >
+                  Corpo
+                </label>
+                {/* TODO(Ana): rótulo do toggle de HTML. */}
+                <label className="flex cursor-pointer items-center gap-1.5 text-[11px] font-black uppercase text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={bodyIsHtml}
+                    onChange={(event) => setBodyIsHtml(event.target.checked)}
+                    className="h-4 w-4 accent-slate-950"
+                  />
+                  Usar HTML
+                </label>
+              </div>
               <textarea
                 id="email-campaign-body"
                 value={bodyText}
                 onChange={(event) => setBodyText(event.target.value)}
                 rows={8}
-                // TODO(Ana): placeholder do corpo.
-                placeholder="Quebra de linha dupla vira parágrafo. Use {nome} para o primeiro nome."
-                className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
+                // TODO(Ana): placeholder do corpo (texto vs HTML).
+                placeholder={
+                  bodyIsHtml
+                    ? "Cole o HTML estilizado. Use {nome} e {unsubscribe_url}."
+                    : "Quebra de linha dupla vira parágrafo. Use {nome} para o primeiro nome."
+                }
+                className={`mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold ${
+                  bodyIsHtml ? "font-mono text-xs" : ""
+                }`}
               />
-              {/* TODO(Ana): copy da ajuda do placeholder {nome}. */}
-              <p className="mt-1 text-[11px] font-semibold text-slate-500">
-                Escreva <code className="font-black">{"{nome}"}</code> para
-                inserir o primeiro nome da pessoa. Só as origens Usuários e Lista
-                importada têm nome; nas demais (Waitlist, Newsletter, Lista
-                avulsa) o <code className="font-black">{"{nome}"}</code> some,
-                junto do espaço antes dele. Ex: "Oi {"{nome}"}," vira "Oi," para
-                quem não tem nome.
-              </p>
+              {/* TODO(Ana): copy da ajuda do corpo (HTML vs texto e {nome}). */}
+              {bodyIsHtml ? (
+                <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                  Modo HTML: o conteúdo é o e-mail inteiro, injetado como colado
+                  (sem header, imagem ou rodapé automáticos). Use{" "}
+                  <code className="font-black">{"{nome}"}</code> para o primeiro
+                  nome e <code className="font-black">{"{unsubscribe_url}"}</code>{" "}
+                  onde o link de descadastro deve aparecer.
+                </p>
+              ) : (
+                <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                  Escreva <code className="font-black">{"{nome}"}</code> para
+                  inserir o primeiro nome da pessoa. Só as origens Usuários e
+                  Lista importada têm nome; nas demais (Waitlist, Newsletter,
+                  Lista avulsa) o <code className="font-black">{"{nome}"}</code>{" "}
+                  some, junto do espaço antes dele. Ex: "Oi {"{nome}"}," vira
+                  "Oi," para quem não tem nome.
+                </p>
+              )}
             </div>
             <div>
               {/* TODO(Ana): rótulo do campo de categoria. */}
@@ -2785,26 +3042,15 @@ function EmailCampaignsAdminSection() {
                 })}
               </div>
             </div>
-            <div>
-              <label
-                htmlFor="email-campaign-image"
-                className="text-xs font-black uppercase text-slate-500"
-              >
-                URL da imagem (opcional)
-              </label>
-              <input
-                id="email-campaign-image"
-                type="url"
-                value={imageUrl}
-                onChange={(event) => {
-                  setImageUrl(event.target.value);
-                  setImageBroken(false);
-                }}
-                // TODO(Ana): placeholder da URL de imagem.
-                placeholder="URL pública do Supabase Storage"
-                className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
-              />
-            </div>
+            {missingUnsubscribe ? (
+              // Aviso, nao bloqueio: o envio segue permitido (o header SMTP
+              // List-Unsubscribe continua setado), mas o link visual pode faltar.
+              <p className="rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-xs font-bold text-amber-800">
+                ⚠️ Seu HTML não tem{" "}
+                <code className="font-black">{"{unsubscribe_url}"}</code> — o link
+                de descadastro pode não funcionar.
+              </p>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -2835,71 +3081,14 @@ function EmailCampaignsAdminSection() {
           </div>
         </article>
 
-        <article className="card-brutal rounded-3xl bg-white p-6">
-          {/* TODO(Ana): título do preview. */}
-          <h3 className="font-display text-2xl font-black">Preview do e-mail</h3>
-          <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-[#F1F5F9] p-4">
-            <div className="mx-auto max-w-md border-4 border-slate-950 bg-white">
-              {trimmedImageUrl && !imageBroken ? (
-                <img
-                  src={trimmedImageUrl}
-                  // TODO(Ana): alt text generico do hero da campanha.
-                  alt="Imagem da campanha do Bora na Tech"
-                  onError={() => setImageBroken(true)}
-                  className="block w-full max-w-full"
-                />
-              ) : null}
-              <div className="p-5">
-                {trimmedImageUrl && imageBroken ? (
-                  <p className="mb-3 rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">
-                    {/* TODO(Ana): erro de imagem no preview. */}
-                    Não foi possível carregar a imagem dessa URL.
-                  </p>
-                ) : null}
-                <p className="font-display text-xs font-black text-slate-950">
-                  BORA NA TECH
-                </p>
-                <h4 className="font-display mt-3 text-xl font-black text-slate-950">
-                  {applyNamePlaceholder(subject, PREVIEW_EXAMPLE_NAME).trim() ||
-                    "Assunto da campanha"}
-                </h4>
-                {bodyText.trim() ? (
-                  <div
-                    className="mt-3"
-                    dangerouslySetInnerHTML={{ __html: previewBodyHtml }}
-                  />
-                ) : (
-                  <p className="mt-3 text-sm font-semibold text-slate-400">
-                    {/* TODO(Ana): placeholder do preview vazio. */}O corpo da
-                    campanha aparece aqui.
-                  </p>
-                )}
-                {hasNamePlaceholder ? (
-                  // TODO(Ana): copy da nota de personalizacao do preview.
-                  <p className="mt-3 rounded-lg border-2 border-slate-300 bg-slate-50 p-2 text-[11px] font-semibold text-slate-500">
-                    Acima, com nome de exemplo (
-                    <span className="font-black">{PREVIEW_EXAMPLE_NAME}</span>).
-                    Para quem não tem nome, o <code>{"{nome}"}</code> some (e o
-                    espaço antes dele): "Oi {"{nome}"}," vira "Oi,".
-                  </p>
-                ) : null}
-                <div className="mt-4 border-t-2 border-slate-200 pt-3 text-center text-[11px] font-semibold text-slate-400">
-                  {/* TODO(Ana): rodapé do preview (o rodapé real varia por origem). */}
-                  <p>
-                    O rodapé real explica a origem do envio e é definido pela
-                    audiência escolhida no disparo.
-                  </p>
-                  <p className="mt-1 underline">
-                    Não quero mais receber estes e-mails
-                  </p>
-                  <p className="mt-1">
-                    Enviado por Bora na Tech (oi@boranatech.com.br)
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </article>
+        <CampaignPreview
+          bodyText={bodyText}
+          bodyIsHtml={bodyIsHtml}
+          subject={subject}
+          imageUrl={imageUrl}
+          imageBroken={imageBroken}
+          onImageError={handlePreviewImageError}
+        />
       </div>
 
       {selectedId && !detail && (detailLoading || detailError) ? (
