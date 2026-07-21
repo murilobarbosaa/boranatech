@@ -14026,7 +14026,7 @@ export const cursosGratuitos = [
     titulo: "Kubernetes Administrator (CKA)",
     canal: "Linux Foundation",
     plataforma: "Linux Foundation Training",
-    link: "https://training.linuxfoundation.org/",
+    link: "https://training.linuxfoundation.org/certification/certified-kubernetes-administrator-cka/",
     areaSlug: "platform-engineer" as string | null,
     nivel: "Avançado",
     duracao: "Cerca de 3 meses",
