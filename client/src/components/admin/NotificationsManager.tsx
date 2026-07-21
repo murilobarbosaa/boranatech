@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
+import { BntSelect } from "@/components/shared/BntSelect";
 import {
   NOTIFICATION_TYPE_META as TYPE_META,
   notificationTypeMetaOf,
@@ -459,6 +460,10 @@ function NotificationPreviewCard({ form }: { form: FormState }) {
 
 const inputClass =
   "w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
+// Sentinela de borda p/ o BntSelect (Radix proibe SelectItem value=""). Os filtros
+// de lista usam "" = "todos"; mapeamos "" <-> sentinela so na borda, o state segue
+// "" e o `status: statusFilter || undefined` do listNotifications continua identico.
+const FILTRO_TODOS = "__todos__";
 const labelClass =
   "mb-1 block text-xs font-black uppercase tracking-wide text-slate-600";
 const primaryButtonClass =
@@ -782,42 +787,49 @@ export function NotificationsManager() {
             <label htmlFor="notif-filter-status" className={labelClass}>
               Status
             </label>
-            <select
+            <BntSelect
+              accent="gold"
               id="notif-filter-status"
-              value={statusFilter}
-              onChange={(e) => {
+              fullWidth={false}
+              value={statusFilter === "" ? FILTRO_TODOS : statusFilter}
+              onValueChange={(v) => {
                 setPage(0);
-                setStatusFilter(e.target.value as AdminNotificationStatus | "");
+                setStatusFilter(
+                  v === FILTRO_TODOS ? "" : (v as AdminNotificationStatus),
+                );
               }}
-              className={inputClass}
-            >
-              <option value="">Todos</option>
-              <option value="draft">Rascunho</option>
-              <option value="scheduled">Agendada</option>
-              <option value="published">Publicada</option>
-              <option value="archived">Arquivada</option>
-            </select>
+              options={[
+                { value: FILTRO_TODOS, label: "Todos" },
+                { value: "draft", label: "Rascunho" },
+                { value: "scheduled", label: "Agendada" },
+                { value: "published", label: "Publicada" },
+                { value: "archived", label: "Arquivada" },
+              ]}
+            />
           </div>
           <div>
             <label htmlFor="notif-filter-type" className={labelClass}>
               Tipo
             </label>
-            <select
+            <BntSelect
+              accent="gold"
               id="notif-filter-type"
-              value={typeFilter}
-              onChange={(e) => {
+              fullWidth={false}
+              value={typeFilter === "" ? FILTRO_TODOS : typeFilter}
+              onValueChange={(v) => {
                 setPage(0);
-                setTypeFilter(e.target.value as AdminNotificationType | "");
+                setTypeFilter(
+                  v === FILTRO_TODOS ? "" : (v as AdminNotificationType),
+                );
               }}
-              className={inputClass}
-            >
-              <option value="">Todos</option>
-              {TYPE_OPTIONS.map(([value, meta]) => (
-                <option key={value} value={value}>
-                  {meta.label}
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: FILTRO_TODOS, label: "Todos" },
+                ...TYPE_OPTIONS.map(([value, meta]) => ({
+                  value,
+                  label: meta.label,
+                })),
+              ]}
+            />
           </div>
         </div>
         <button type="button" onClick={openCreate} className={primaryButtonClass}>

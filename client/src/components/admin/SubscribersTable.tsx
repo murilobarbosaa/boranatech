@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { adminFetch } from "@/lib/adminApi";
+import { BntSelect } from "@/components/shared/BntSelect";
 
 // TODO(Ana): revisar TODA a copy visivel deste componente (titulos, labels de
 // filtro, cabecalhos de coluna, badges de status e mensagens de estado).
@@ -33,8 +34,13 @@ const STATUS_META: Record<string, { label: string; className: string }> = {
   incomplete: { label: "Incompleto", className: "border-rose-400 bg-rose-50 text-rose-700" },
 };
 
+// Sentinela de borda p/ o BntSelect (Radix proibe SelectItem value=""). O filtro
+// "" = "todos"; mapeamos "" <-> sentinela so na borda, o state segue "" e o guard
+// if(status)/if(planCode) que dropa o filtro continua identico.
+const FILTRO_TODOS = "__todos__";
+
 const STATUS_OPTIONS = [
-  { value: "", label: "Todos os status" },
+  { value: FILTRO_TODOS, label: "Todos os status" },
   { value: "active", label: "Ativo" },
   { value: "trialing", label: "Trial" },
   { value: "past_due", label: "Inadimplente" },
@@ -43,7 +49,7 @@ const STATUS_OPTIONS = [
 ];
 
 const PLAN_OPTIONS = [
-  { value: "", label: "Todos os planos" },
+  { value: FILTRO_TODOS, label: "Todos os planos" },
   { value: "pro_monthly", label: "Mensal" },
   { value: "pro_semiannual", label: "Semestral" },
   { value: "pro_annual", label: "Anual" },
@@ -133,33 +139,29 @@ export function SubscribersTable() {
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-xs font-black uppercase text-slate-600">
           Status
-          <select
-            value={status}
-            onChange={(event) => resetToFirstPage(setStatus, event.target.value)}
-            className="mt-1 block rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
-          >
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          <BntSelect
+            accent="gold"
+            fullWidth={false}
+            label="Status"
+            value={status === "" ? FILTRO_TODOS : status}
+            onValueChange={(v) =>
+              resetToFirstPage(setStatus, v === FILTRO_TODOS ? "" : v)
+            }
+            options={STATUS_OPTIONS}
+          />
         </label>
         <label className="text-xs font-black uppercase text-slate-600">
           Plano
-          <select
-            value={planCode}
-            onChange={(event) =>
-              resetToFirstPage(setPlanCode, event.target.value)
+          <BntSelect
+            accent="gold"
+            fullWidth={false}
+            label="Plano"
+            value={planCode === "" ? FILTRO_TODOS : planCode}
+            onValueChange={(v) =>
+              resetToFirstPage(setPlanCode, v === FILTRO_TODOS ? "" : v)
             }
-            className="mt-1 block rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
-          >
-            {PLAN_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            options={PLAN_OPTIONS}
+          />
         </label>
         <form
           onSubmit={(event) => {
