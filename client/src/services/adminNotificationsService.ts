@@ -36,6 +36,14 @@ export type AdminNotification = {
   status: AdminNotificationStatus;
   published_at: string | null;
   scheduled_for: string | null;
+  // SUPER: colunas dedicadas (Fase 1). is_super marca o destaque; os super_*
+  // alimentam o SuperModal/interstitial. Fora de super vêm false/null.
+  is_super: boolean;
+  super_eyebrow: string | null;
+  super_title: string | null;
+  super_subtitle: string | null;
+  super_cta_label: string | null;
+  super_cta_url: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -54,6 +62,15 @@ export type AdminNotificationInput = {
   cta_url?: string | null;
   cta_label?: string | null;
   expires_at?: string | null;
+  // SUPER (Fase 1): is_super liga o destaque; se true, super_title/super_cta_label/
+  // super_cta_url são obrigatórios (validado no server). super_cta_url segue as
+  // regras de cta_url (url válida).
+  is_super?: boolean;
+  super_eyebrow?: string | null;
+  super_title?: string | null;
+  super_subtitle?: string | null;
+  super_cta_label?: string | null;
+  super_cta_url?: string | null;
   // Obrigatório (min 1, max 500) quando audience é custom; proibido nas demais.
   recipient_emails?: string[];
 };

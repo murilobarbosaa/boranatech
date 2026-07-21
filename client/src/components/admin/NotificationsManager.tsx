@@ -201,6 +201,14 @@ type FormState = {
   cta_url: string;
   cta_label: string;
   expires_at_local: string;
+  // SUPER: is_super liga o destaque; os super_* alimentam o modal. Guardados
+  // como string no form (vazio => null no payload).
+  is_super: boolean;
+  super_eyebrow: string;
+  super_title: string;
+  super_subtitle: string;
+  super_cta_label: string;
+  super_cta_url: string;
   // Texto cru do textarea de custom; os emails saem de parseRecipientEmails.
   recipients_text: string;
 };
@@ -216,6 +224,12 @@ const EMPTY_FORM: FormState = {
   cta_url: "",
   cta_label: "",
   expires_at_local: "",
+  is_super: false,
+  super_eyebrow: "",
+  super_title: "",
+  super_subtitle: "",
+  super_cta_label: "",
+  super_cta_url: "",
   recipients_text: "",
 };
 
@@ -232,6 +246,12 @@ function formFromNotification(n: AdminNotification): FormState {
     cta_url: n.cta_url ?? "",
     cta_label: n.cta_label ?? "",
     expires_at_local: n.expires_at ? isoToLocalInput(n.expires_at) : "",
+    is_super: n.is_super,
+    super_eyebrow: n.super_eyebrow ?? "",
+    super_title: n.super_title ?? "",
+    super_subtitle: n.super_subtitle ?? "",
+    super_cta_label: n.super_cta_label ?? "",
+    super_cta_url: n.super_cta_url ?? "",
     // Emails da lista atual não são recuperáveis (guardamos user_id); vazio
     // mantém a lista, preencher substitui inteira.
     recipients_text: "",
@@ -271,6 +291,29 @@ function validateForm(
     if (Number.isNaN(ts)) return "Data de expiração inválida.";
     if (ts <= Date.now()) return "expires_at deve ser uma data futura.";
   }
+  // Super: espelha o refine do server. Se is_super, exige título + label + URL
+  // do botão; eyebrow/subtítulo são opcionais mas seguem os limites de tamanho.
+  if (form.is_super) {
+    if (!form.super_title.trim())
+      return "Super exige um título (super_title).";
+    if (form.super_title.trim().length > 120)
+      return "O título da super deve ter no máximo 120 caracteres.";
+    if (!form.super_cta_label.trim())
+      return "Super exige o texto do botão (super_cta_label).";
+    if (form.super_cta_label.trim().length > 60)
+      return "O texto do botão da super deve ter no máximo 60 caracteres.";
+    if (!form.super_cta_url.trim())
+      return "Super exige a URL do botão (super_cta_url).";
+    try {
+      new URL(form.super_cta_url.trim());
+    } catch {
+      return "A URL do botão da super deve ser válida (com https://).";
+    }
+    if (form.super_eyebrow.trim().length > 60)
+      return "O eyebrow da super deve ter no máximo 60 caracteres.";
+    if (form.super_subtitle.trim().length > 200)
+      return "O subtítulo da super deve ter no máximo 200 caracteres.";
+  }
   if (form.audience === "custom") {
     const emails = parseRecipientEmails(form.recipients_text);
     if (options.requireRecipients && emails.length === 0)
@@ -307,6 +350,16 @@ function payloadFromForm(form: FormState): AdminNotificationInput {
     expires_at: form.expires_at_local
       ? new Date(form.expires_at_local).toISOString()
       : null,
+    // Super: quando desligada, zera tudo (is_super false + super_* null) pra o
+    // patch limpar de fato o destaque. Só usado no ramo editável (draft/scheduled);
+    // published envia apenas expires_at, então a imutabilidade dos super_* fica
+    // preservada.
+    is_super: form.is_super,
+    super_eyebrow: form.is_super ? form.super_eyebrow.trim() || null : null,
+    super_title: form.is_super ? form.super_title.trim() || null : null,
+    super_subtitle: form.is_super ? form.super_subtitle.trim() || null : null,
+    super_cta_label: form.is_super ? form.super_cta_label.trim() || null : null,
+    super_cta_url: form.is_super ? form.super_cta_url.trim() || null : null,
   };
 }
 
@@ -454,6 +507,53 @@ function NotificationPreviewCard({ form }: { form: FormState }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Destaque *palavra* -> âmbar, versão local (duplicação leve e proposital pra
+// não acoplar o admin ao SuperModal do usuário, mesmo critério do preview do
+// card do sino). Segmentos ímpares do split são o conteúdo entre asteriscos.
+function highlightSuperTitle(text: string) {
+  return text.split(/\*([^*]+)\*/g).map((segment, index) =>
+    index % 2 === 1 ? (
+      <span key={index} className="text-amber-500">
+        {segment}
+      </span>
+    ) : (
+      <span key={index}>{segment}</span>
+    ),
+  );
+}
+
+// Mini-indicador do destaque: NÃO renderiza o SuperModal inteiro, só sinaliza
+// que a notificação também sai como modal e prevê o título com o destaque âmbar.
+function SuperPreviewCard({ form }: { form: FormState }) {
+  return (
+    <div className="rounded-2xl border-2 border-slate-900 bg-slate-950 p-4 text-white shadow-[3px_3px_0_#0f172a]">
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">
+        Também aparece como modal em destaque
+      </p>
+      {form.super_eyebrow.trim() ? (
+        <p className="mt-2 text-[11px] font-black uppercase tracking-[0.2em] text-amber-300">
+          {form.super_eyebrow.trim()}
+        </p>
+      ) : null}
+      <p className="font-display mt-1 text-lg font-black leading-tight">
+        {form.super_title.trim() ? (
+          highlightSuperTitle(form.super_title.trim())
+        ) : (
+          <span className="text-slate-400">Título do destaque</span>
+        )}
+      </p>
+      {form.super_subtitle.trim() ? (
+        <p className="mt-1 text-sm text-slate-300">
+          {form.super_subtitle.trim()}
+        </p>
+      ) : null}
+      <span className="mt-3 inline-flex items-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+        {form.super_cta_label.trim() || "Texto do botão"}
+      </span>
     </div>
   );
 }
@@ -781,57 +881,7 @@ export function NotificationsManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-wrap gap-3">
-          <div>
-            <label htmlFor="notif-filter-status" className={labelClass}>
-              Status
-            </label>
-            <BntSelect
-              accent="gold"
-              id="notif-filter-status"
-              fullWidth={false}
-              value={statusFilter === "" ? FILTRO_TODOS : statusFilter}
-              onValueChange={(v) => {
-                setPage(0);
-                setStatusFilter(
-                  v === FILTRO_TODOS ? "" : (v as AdminNotificationStatus),
-                );
-              }}
-              options={[
-                { value: FILTRO_TODOS, label: "Todos" },
-                { value: "draft", label: "Rascunho" },
-                { value: "scheduled", label: "Agendada" },
-                { value: "published", label: "Publicada" },
-                { value: "archived", label: "Arquivada" },
-              ]}
-            />
-          </div>
-          <div>
-            <label htmlFor="notif-filter-type" className={labelClass}>
-              Tipo
-            </label>
-            <BntSelect
-              accent="gold"
-              id="notif-filter-type"
-              fullWidth={false}
-              value={typeFilter === "" ? FILTRO_TODOS : typeFilter}
-              onValueChange={(v) => {
-                setPage(0);
-                setTypeFilter(
-                  v === FILTRO_TODOS ? "" : (v as AdminNotificationType),
-                );
-              }}
-              options={[
-                { value: FILTRO_TODOS, label: "Todos" },
-                ...TYPE_OPTIONS.map(([value, meta]) => ({
-                  value,
-                  label: meta.label,
-                })),
-              ]}
-            />
-          </div>
-        </div>
+      <div className="flex flex-wrap justify-end gap-3">
         <button type="button" onClick={openCreate} className={primaryButtonClass}>
           Nova notificação
         </button>
@@ -1069,6 +1119,137 @@ export function NotificationsManager() {
                   />
                 </div>
               </div>
+              <div className="rounded-2xl border-2 border-slate-900 bg-[#faf8f4] p-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={form.is_super}
+                    disabled={editingPublished}
+                    onChange={(e) =>
+                      setForm({ ...form, is_super: e.target.checked })
+                    }
+                    className="mt-0.5 h-5 w-5 shrink-0 rounded border-2 border-slate-900 accent-[#FFB800] disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  <span>
+                    <span className="block text-sm font-black text-slate-950">
+                      Notificação Super (destaque)
+                    </span>
+                    <span className="mt-0.5 block text-xs font-semibold text-slate-500">
+                      Aparece como modal em destaque no meio da tela quando o
+                      usuário abre o app, além de no sino.
+                    </span>
+                  </span>
+                </label>
+                {form.is_super ? (
+                  <div className="mt-4 space-y-4 border-t-2 border-dashed border-slate-300 pt-4">
+                    <div>
+                      <label htmlFor="notif-super-eyebrow" className={labelClass}>
+                        Eyebrow (opcional)
+                      </label>
+                      <input
+                        id="notif-super-eyebrow"
+                        type="text"
+                        maxLength={60}
+                        value={form.super_eyebrow}
+                        disabled={editingPublished}
+                        placeholder="NOVIDADE NAS ÁREAS"
+                        onChange={(e) =>
+                          setForm({ ...form, super_eyebrow: e.target.value })
+                        }
+                        className={inputClass}
+                      />
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        Texto pequeno acima do título.
+                      </p>
+                    </div>
+                    <div>
+                      <label htmlFor="notif-super-title" className={labelClass}>
+                        Título do destaque (obrigatório)
+                      </label>
+                      <input
+                        id="notif-super-title"
+                        type="text"
+                        maxLength={120}
+                        value={form.super_title}
+                        disabled={editingPublished}
+                        onChange={(e) =>
+                          setForm({ ...form, super_title: e.target.value })
+                        }
+                        className={inputClass}
+                      />
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        Use *asteriscos* para destacar palavras em âmbar. Ex.:
+                        +*300* projetos *grátis* → 300 e grátis ficam
+                        destacados.
+                      </p>
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="notif-super-subtitle"
+                        className={labelClass}
+                      >
+                        Subtítulo (opcional)
+                      </label>
+                      <input
+                        id="notif-super-subtitle"
+                        type="text"
+                        maxLength={200}
+                        value={form.super_subtitle}
+                        disabled={editingPublished}
+                        onChange={(e) =>
+                          setForm({ ...form, super_subtitle: e.target.value })
+                        }
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label
+                          htmlFor="notif-super-cta-label"
+                          className={labelClass}
+                        >
+                          Texto do botão (obrigatório)
+                        </label>
+                        <input
+                          id="notif-super-cta-label"
+                          type="text"
+                          maxLength={60}
+                          value={form.super_cta_label}
+                          disabled={editingPublished}
+                          placeholder="Explorar agora"
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              super_cta_label: e.target.value,
+                            })
+                          }
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="notif-super-cta-url"
+                          className={labelClass}
+                        >
+                          URL do botão (obrigatório)
+                        </label>
+                        <input
+                          id="notif-super-cta-url"
+                          type="url"
+                          maxLength={2048}
+                          placeholder="https://..."
+                          value={form.super_cta_url}
+                          disabled={editingPublished}
+                          onChange={(e) =>
+                            setForm({ ...form, super_cta_url: e.target.value })
+                          }
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
               <div>
                 <label htmlFor="notif-expires" className={labelClass}>
                   Expira em (opcional, sempre editável)
@@ -1138,10 +1319,62 @@ export function NotificationsManager() {
                 </div>
               ) : null}
               <NotificationPreviewCard form={form} />
+              {form.is_super ? <SuperPreviewCard form={form} /> : null}
             </div>
           </div>
         </article>
       ) : null}
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label htmlFor="notif-filter-status" className={labelClass}>
+            Status
+          </label>
+          <BntSelect
+            accent="gold"
+            id="notif-filter-status"
+            fullWidth={false}
+            value={statusFilter === "" ? FILTRO_TODOS : statusFilter}
+            onValueChange={(v) => {
+              setPage(0);
+              setStatusFilter(
+                v === FILTRO_TODOS ? "" : (v as AdminNotificationStatus),
+              );
+            }}
+            options={[
+              { value: FILTRO_TODOS, label: "Todos" },
+              { value: "draft", label: "Rascunho" },
+              { value: "scheduled", label: "Agendada" },
+              { value: "published", label: "Publicada" },
+              { value: "archived", label: "Arquivada" },
+            ]}
+          />
+        </div>
+        <div>
+          <label htmlFor="notif-filter-type" className={labelClass}>
+            Tipo
+          </label>
+          <BntSelect
+            accent="gold"
+            id="notif-filter-type"
+            fullWidth={false}
+            value={typeFilter === "" ? FILTRO_TODOS : typeFilter}
+            onValueChange={(v) => {
+              setPage(0);
+              setTypeFilter(
+                v === FILTRO_TODOS ? "" : (v as AdminNotificationType),
+              );
+            }}
+            options={[
+              { value: FILTRO_TODOS, label: "Todos" },
+              ...TYPE_OPTIONS.map(([value, meta]) => ({
+                value,
+                label: meta.label,
+              })),
+            ]}
+          />
+        </div>
+      </div>
 
       <article className="card-brutal overflow-hidden rounded-3xl bg-white">
         {listLoading ? (
@@ -1178,8 +1411,14 @@ export function NotificationsManager() {
                     key={item.id}
                     className="border-b border-slate-200 last:border-b-0"
                   >
-                    <td className="max-w-[260px] truncate px-4 py-3 font-bold text-slate-950">
-                      {item.title}
+                    <td className="max-w-[260px] px-4 py-3 font-bold text-slate-950">
+                      <span className="block truncate">{item.title}</span>
+                      {item.is_super ? (
+                        <MetaBadge
+                          label="Super"
+                          className="mt-1 border-amber-600 bg-amber-100 text-amber-800"
+                        />
+                      ) : null}
                     </td>
                     <td className="px-4 py-3">
                       <MetaBadge
