@@ -13056,7 +13056,7 @@ export const cursosGratuitos = [
     titulo: "Getting Started in Design",
     canal: "Figma",
     plataforma: "Figma",
-    link: "https://www.figma.com/resource-library/",
+    link: "https://www.figma.com/resource-library/getting-started-in-design/",
     areaSlug: "product-design" as string | null,
     nivel: "Iniciante",
     duracao: "Cerca de 8 horas",
