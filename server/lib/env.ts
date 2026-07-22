@@ -168,6 +168,16 @@ export const env = {
   redisUrl: process.env.REDIS_URL || "",
   // DSN do Sentry (server). Ausente: Sentry desativado, no-op total.
   sentryDsn: process.env.SENTRY_DSN || "",
+  // API REST do Sentry (leitura de issues na aba Bugs & Erros do admin).
+  // Qualquer uma das tres ausente desativa a integracao: o endpoint responde
+  // 503 sentry_not_configured, nada mais quebra.
+  sentryAuthToken: process.env.SENTRY_AUTH_TOKEN || "",
+  sentryOrgSlug: process.env.SENTRY_ORG_SLUG || "",
+  sentryProjectSlug: process.env.SENTRY_PROJECT_SLUG || "",
+  // Destinos das notificacoes do bug tracker do admin. Vazios: o envio vira
+  // no-op com log, no padrao resendApiKey.
+  bugNotifyNewEmail: process.env.BUG_NOTIFY_NEW_EMAIL || "",
+  bugNotifyDoneEmail: process.env.BUG_NOTIFY_DONE_EMAIL || "",
   // Teto do rate limit por IP por minuto. Existe SOMENTE para staging/teste
   // de carga (k6): producao NAO deve setar esta variavel (default 180).
   // Invalido (nao inteiro ou < 1) cai no default com warn no boot.

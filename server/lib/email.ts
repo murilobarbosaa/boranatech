@@ -726,3 +726,104 @@ export async function sendPaymentFailedEmail(
     html: layout(theme, title, body),
   });
 }
+
+// Notificacoes internas do bug tracker do admin (aba Bugs & Erros). Destino
+// vem de env (BUG_NOTIFY_*), nao de usuario: sem destino configurado vira
+// no-op com log, no mesmo espirito do RESEND_API_KEY ausente em sendEmail.
+
+const BUG_SEVERITY_LABELS: Record<string, string> = {
+  low: "Baixa",
+  medium: "Média",
+  high: "Alta",
+  critical: "Crítica",
+};
+
+// "3 dias e 4 horas", "2 horas e 15 minutos", "menos de um minuto". Duas
+// unidades bastam pra leitura humana; precisao de segundos nao interessa.
+function formatBugDuration(fromIso: string, toIso: string) {
+  const ms = Date.parse(toIso) - Date.parse(fromIso);
+  if (!Number.isFinite(ms) || ms < 60_000) return "menos de um minuto";
+  const totalMinutes = Math.floor(ms / 60_000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  const plural = (n: number, unit: string) =>
+    `${n} ${unit}${n === 1 ? "" : "s"}`;
+  if (days > 0) {
+    return hours > 0
+      ? `${plural(days, "dia")} e ${plural(hours, "hora")}`
+      : plural(days, "dia");
+  }
+  if (hours > 0) {
+    return minutes > 0
+      ? `${plural(hours, "hora")} e ${plural(minutes, "minuto")}`
+      : plural(hours, "hora");
+  }
+  return plural(minutes, "minuto");
+}
+
+export async function sendBugCreatedEmail(params: {
+  title: string;
+  severity: string;
+  description?: string | null;
+  sentryIssueUrl?: string | null;
+}) {
+  if (!env.bugNotifyNewEmail) {
+    console.warn("[email] BUG_NOTIFY_NEW_EMAIL ausente. E-mail não enviado.");
+    return;
+  }
+  const theme = NEUTRAL_THEME;
+  const safeTitle = escapeHtml(params.title);
+  const severity =
+    BUG_SEVERITY_LABELS[params.severity] ?? escapeHtml(params.severity);
+  const details = [`Severidade: <strong>${severity}</strong>`];
+  if (params.description) {
+    details.push(`Descrição: ${escapeHtml(params.description)}`);
+  }
+  if (params.sentryIssueUrl) {
+    details.push(
+      `<a href="${escapeHtml(params.sentryIssueUrl)}" style="color:${theme.accent};">Ver o erro no Sentry</a>`,
+    );
+  }
+  const body = `
+    ${paragraph(`Um novo bug acabou de ser registrado no admin: <strong>${safeTitle}</strong>.`)}
+    ${list(theme, details)}
+    ${button("Abrir a aba de bugs", `${APP_URL}/admin?section=bugs`, theme)}
+  `;
+  await sendEmail({
+    to: env.bugNotifyNewEmail,
+    from: FROM_TRANSACTIONAL,
+    subject: `🐛 Novo bug registrado: ${params.title}`,
+    html: layout(theme, "Novo bug registrado", body),
+  });
+}
+
+export async function sendBugResolvedEmail(params: {
+  title: string;
+  createdAt: string;
+  resolvedAt: string;
+  resolvedBy?: string | null;
+}) {
+  if (!env.bugNotifyDoneEmail) {
+    console.warn("[email] BUG_NOTIFY_DONE_EMAIL ausente. E-mail não enviado.");
+    return;
+  }
+  const theme = NEUTRAL_THEME;
+  const safeTitle = escapeHtml(params.title);
+  const duration = formatBugDuration(params.createdAt, params.resolvedAt);
+  const details = [`Tempo até resolver: <strong>${duration}</strong>`];
+  if (params.resolvedBy) {
+    details.push(`Resolvido por: ${escapeHtml(params.resolvedBy)}`);
+  }
+  const body = `
+    ${paragraph(`O bug <strong>${safeTitle}</strong> foi marcado como resolvido.`)}
+    ${list(theme, details)}
+    ${button("Abrir a aba de bugs", `${APP_URL}/admin?section=bugs`, theme)}
+  `;
+  await sendEmail({
+    to: env.bugNotifyDoneEmail,
+    from: FROM_TRANSACTIONAL,
+    subject: `✅ Bug resolvido: ${params.title}`,
+    html: layout(theme, "Bug resolvido", body),
+  });
+}

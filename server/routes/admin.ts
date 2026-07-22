@@ -25,6 +25,7 @@ import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 import { resolvePlanPriceCents } from "../lib/planPrice";
+import bugsAdminRouter from "./adminBugs";
 import contactListsRouter from "./adminContactLists";
 import emailCampaignsRouter from "./adminEmailCampaigns";
 import notificationsAdminRouter from "./adminNotifications";
@@ -39,6 +40,8 @@ router.use("/email-campaigns", emailCampaignsRouter);
 router.use("/contact-lists", contactListsRouter);
 // Notificacoes in-app (broadcast). Depois dos guards de admin.
 router.use("/notifications", notificationsAdminRouter);
+// Bugs & Erros (issues do Sentry + bug tracker). Depois dos guards de admin.
+router.use("/bugs", bugsAdminRouter);
 
 const EDITABLE_TABLES: Record<string, string[]> = {
   news: [
