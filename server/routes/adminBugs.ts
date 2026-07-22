@@ -2,8 +2,10 @@ import { Router } from "express";
 import { z } from "zod";
 
 import { sendBugCreatedEmail, sendBugResolvedEmail } from "../lib/email";
+import { env } from "../lib/env";
 import { listSentryIssues } from "../lib/sentryApi";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
+import { createTargetedNotification } from "../lib/targetedNotifications";
 import { createError } from "../middleware/error";
 
 // Aba Bugs & Erros do admin: issues lidas da API do Sentry (read-only) e bug
@@ -17,6 +19,13 @@ const router = Router();
 
 const BUG_STATUSES = ["open", "in_progress", "done"] as const;
 const BUG_SEVERITIES = ["low", "medium", "high", "critical"] as const;
+
+const SEVERITY_LABELS: Record<(typeof BUG_SEVERITIES)[number], string> = {
+  low: "baixa",
+  medium: "média",
+  high: "alta",
+  critical: "crítica",
+};
 
 const SentryQuerySchema = z.object({
   query: z.string().trim().min(1).max(200).default("is:unresolved"),
@@ -191,6 +200,8 @@ router.post("/", async (req, res, next) => {
   }
 
   const bug = data as BugRow;
+  // Email e notificacao in-app sao independentes: cada um com seu catch, a
+  // falha de um nao segura o outro e nenhum bloqueia a resposta.
   void sendBugCreatedEmail({
     title: bug.title,
     severity: bug.severity,
@@ -198,6 +209,17 @@ router.post("/", async (req, res, next) => {
     sentryIssueUrl: bug.sentry_issue_url,
   }).catch((emailError) => {
     console.error("[admin-bugs] Falha no email de bug novo:", emailError);
+  });
+  void createTargetedNotification({
+    email: env.bugNotifyNewEmail,
+    title: `🐛 Novo bug: ${bug.title}`,
+    body: `Um novo bug de severidade ${SEVERITY_LABELS[bug.severity]} foi registrado no admin.`,
+    createdBy: req.user!.id,
+  }).catch((notificationError) => {
+    console.error(
+      "[admin-bugs] Falha na notificação de bug novo:",
+      notificationError,
+    );
   });
 
   res.status(201).json(bug);
@@ -261,6 +283,8 @@ router.patch("/:id", async (req, res, next) => {
   }
 
   const bug = data as BugRow;
+  // Ambos os avisos atras do MESMO gate becameDone (anti-duplicata da
+  // transicao); entre si sao independentes, cada um com seu catch.
   if (becameDone) {
     void sendBugResolvedEmail({
       title: bug.title,
@@ -271,6 +295,17 @@ router.patch("/:id", async (req, res, next) => {
       console.error(
         "[admin-bugs] Falha no email de bug resolvido:",
         emailError,
+      );
+    });
+    void createTargetedNotification({
+      email: env.bugNotifyDoneEmail,
+      title: `✅ Bug resolvido: ${bug.title}`,
+      body: `O bug de severidade ${SEVERITY_LABELS[bug.severity]} foi marcado como corrigido.`,
+      createdBy: req.user?.id ?? null,
+    }).catch((notificationError) => {
+      console.error(
+        "[admin-bugs] Falha na notificação de bug resolvido:",
+        notificationError,
       );
     });
   }
