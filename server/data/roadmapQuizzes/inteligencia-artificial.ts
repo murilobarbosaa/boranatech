@@ -3,8 +3,6 @@
 // NUNCA importar, direta ou indiretamente, de client/src (o client recebe as
 // perguntas sem gabarito via API). Ids sao estaveis: regenerar com --force
 // troca os ids e invalida tentativas registradas. Ver README.md desta pasta.
-// TODO(Ana): revisao editorial completa deste pool (perguntas, alternativas
-// e explicacoes de todos os niveis).
 import type { QuizPool } from "../../../shared/roadmapQuiz/types";
 
 const pool: QuizPool = {
@@ -176,10 +174,10 @@ const pool: QuizPool = {
       pergunta:
         "Você precisa manipular um conjunto de dados para um projeto de IA. Qual biblioteca do Python é mais indicada para essa tarefa?",
       alternativas: {
-        a: "NumPy, que é ótima para cálculos numéricos em massa",
-        b: "Matplotlib, que é usada para desenhar gráficos",
-        c: "Pandas, que é ideal para manipulação de dados em tabelas",
-        d: "Scikit-learn, que é focada em algoritmos de aprendizado de máquina",
+        a: "NumPy, que é ótima para cálculos numéricos em massa.",
+        b: "Matplotlib, que é usada para desenhar gráficos.",
+        c: "Pandas, que é ideal para manipulação de dados em tabelas.",
+        d: "Scikit-learn, que é focada em algoritmos de aprendizado de máquina.",
       },
       correta: "c",
       explicacao:
@@ -192,10 +190,10 @@ const pool: QuizPool = {
       pergunta:
         "Você está aprendendo Python e quer se tornar fluente. Qual é a melhor prática recomendada para atingir esse objetivo?",
       alternativas: {
-        a: "Ler livros sobre Python até se sentir confortável",
-        b: "Fazer exercícios abstratos de programação",
-        c: "Praticar escrevendo código com dados reais",
-        d: "Assistir a vídeos tutoriais sem praticar",
+        a: "Ler livros sobre Python até se sentir confortável.",
+        b: "Fazer exercícios abstratos de programação.",
+        c: "Praticar escrevendo código com dados reais.",
+        d: "Assistir a vídeos tutoriais sem praticar.",
       },
       correta: "c",
       explicacao:
@@ -208,10 +206,10 @@ const pool: QuizPool = {
       pergunta:
         "Você está começando a aprender sobre IA e se depara com a necessidade de entender seus dados. Qual área da matemática é mais importante nesse momento?",
       alternativas: {
-        a: "Álgebra linear, para entender vetores e matrizes",
-        b: "Cálculo, para compreender derivadas",
-        c: "Estatística básica, para interpretar dados e modelos",
-        d: "Geometria, para entender formas e espaços",
+        a: "Álgebra linear, para entender vetores e matrizes.",
+        b: "Cálculo, para compreender derivadas.",
+        c: "Estatística básica, para interpretar dados e modelos.",
+        d: "Geometria, para entender formas e espaços.",
       },
       correta: "c",
       explicacao:
@@ -224,10 +222,10 @@ const pool: QuizPool = {
       pergunta:
         "Você quer entender como os modelos de IA aprendem. Qual conceito matemático é essencial para isso?",
       alternativas: {
-        a: "Média, para calcular valores centrais",
-        b: "Derivada, para entender ajustes nos modelos",
-        c: "Distribuição, para analisar dados",
-        d: "Probabilidade, para prever resultados",
+        a: "Média, para calcular valores centrais.",
+        b: "Derivada, para entender ajustes nos modelos.",
+        c: "Distribuição, para analisar dados.",
+        d: "Probabilidade, para prever resultados.",
       },
       correta: "b",
       explicacao:
@@ -240,10 +238,10 @@ const pool: QuizPool = {
       pergunta:
         "Ao estudar álgebra linear, qual operação é fundamental para compreender como os dados são representados em IA?",
       alternativas: {
-        a: "Adição de vetores, que é simples e direta",
-        b: "Multiplicação de matrizes, que é complexa mas essencial",
-        c: "Subtração de números, que é básica",
-        d: "Divisão de frações, que é comum em cálculos",
+        a: "Adição de vetores, que é simples e direta.",
+        b: "Multiplicação de matrizes, que é complexa mas essencial.",
+        c: "Subtração de números, que é básica.",
+        d: "Divisão de frações, que é comum em cálculos.",
       },
       correta: "b",
       explicacao:
