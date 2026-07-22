@@ -9,6 +9,7 @@ import {
 import { batchJobId, recipientJobId } from "./emailCampaignJobIds";
 import { env } from "./env";
 import { queueConnection } from "./redis";
+import { withRedisOpTimeout } from "./redisOpTimeout";
 import { supabaseAdmin } from "./supabaseAdmin";
 import {
   fetchProStatusSets,
@@ -105,12 +106,19 @@ export async function enqueueCampaignRecipients(
   const CHUNK = 500;
   for (let i = 0; i < recipientIds.length; i += CHUNK) {
     const chunk = recipientIds.slice(i, i + CHUNK);
-    await emailCampaignQueue.addBulk(
-      chunk.map((recipientId) => ({
-        name: "send",
-        data: { campaignId, recipientId },
-        opts: { jobId: recipientJobId(recipientId) },
-      })),
+    // Teto de 2s: com a fila half-open o addBulk ficaria pendente na offline
+    // queue e penduraria a rota admin. O timeout propaga pro caminho de erro ja
+    // existente do chamador (dispatch reverte o lote; reconciliacao reenfileira
+    // depois). jobId deterministico + idempotencia impedem duplicata.
+    await withRedisOpTimeout(
+      emailCampaignQueue.addBulk(
+        chunk.map((recipientId) => ({
+          name: "send",
+          data: { campaignId, recipientId },
+          opts: { jobId: recipientJobId(recipientId) },
+        })),
+      ),
+      `enqueueCampaignRecipients:${campaignId}`,
     );
   }
 }
@@ -128,10 +136,16 @@ export async function scheduleBatchDispatchJob(
   const delay = scheduledFor
     ? Math.max(new Date(scheduledFor).getTime() - Date.now(), 0)
     : 0;
-  await emailCampaignQueue.add(
-    "dispatch-batch",
-    { batchId },
-    { jobId: batchJobId(batchId), delay },
+  // Teto de 2s (mesmo motivo do addBulk acima): o jobId deterministico batch-{id}
+  // torna o re-add da reconciliacao no-op, entao um add abandonado pelo timeout e
+  // recriado sem duplicar.
+  await withRedisOpTimeout(
+    emailCampaignQueue.add(
+      "dispatch-batch",
+      { batchId },
+      { jobId: batchJobId(batchId), delay },
+    ),
+    `scheduleBatchDispatchJob:${batchId}`,
   );
 }
 

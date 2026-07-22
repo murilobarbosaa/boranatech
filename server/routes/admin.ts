@@ -20,6 +20,7 @@ import { getUsageRetention } from "../lib/usageRetention";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { emailQueue } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
+import { RedisOpTimeoutError, withRedisOpTimeout } from "../lib/redisOpTimeout";
 import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAdmin, requireAuth } from "../middleware/auth";
@@ -1992,14 +1993,26 @@ router.get("/queue-stats", async (_req, res, next) => {
       );
     }
 
-    const [waiting, active, completed, failed] = await Promise.all([
-      emailQueue.getWaitingCount(),
-      emailQueue.getActiveCount(),
-      emailQueue.getCompletedCount(),
-      emailQueue.getFailedCount(),
-    ]);
+    // Teto de 2s: com a fila half-open esses contadores ficariam pendentes na
+    // offline queue e pendurariam a rota. No timeout, devolve o MESMO estado
+    // nomeado do "sem Redis" (503 queue_unavailable) em vez de pendurar; outros
+    // erros seguem o fluxo normal (next).
+    const [waiting, active, completed, failed] = await withRedisOpTimeout(
+      Promise.all([
+        emailQueue.getWaitingCount(),
+        emailQueue.getActiveCount(),
+        emailQueue.getCompletedCount(),
+        emailQueue.getFailedCount(),
+      ]),
+      "queue-stats",
+    );
     res.json({ data: { waiting, active, completed, failed } });
   } catch (err) {
+    if (err instanceof RedisOpTimeoutError) {
+      return next(
+        createError(503, "queue_unavailable", "Fila de e-mail indisponível."),
+      );
+    }
     next(err);
   }
 });

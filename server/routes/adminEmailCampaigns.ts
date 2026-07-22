@@ -21,6 +21,7 @@ import {
   type UserSegment,
 } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
+import { withRedisOpTimeout } from "../lib/redisOpTimeout";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import {
   buildCampaignUnsubscribeUrl,
@@ -835,7 +836,15 @@ router.delete("/:id", async (req, res, next) => {
     for (const batch of batches ?? []) {
       if (batch.status === "pending" && emailCampaignQueue) {
         try {
-          await emailCampaignQueue.remove(batchJobId(batch.id));
+          // Teto de 2s POR lote: com a fila half-open cada remove penduraria a
+          // exclusao. O timeout cai neste catch best-effort da propria iteracao,
+          // entao o loop segue pros demais lotes sem interromper; um gatilho que
+          // sobrar no Redis vira no-op (o dispatch acha o batch deletado, CAS
+          // sem linha), e a exclusao no banco abaixo prossegue.
+          await withRedisOpTimeout(
+            emailCampaignQueue.remove(batchJobId(batch.id)),
+            `remove-batch-trigger:${batch.id}`,
+          );
         } catch (removeErr) {
           console.warn(
             "[email-campaign] Falha ao remover gatilho na exclusão",
@@ -1480,7 +1489,13 @@ router.delete("/:id/batches/:batchId", async (req, res, next) => {
     // ativo), o CAS acima ja garante que o gatilho remanescente vira no-op.
     if (emailCampaignQueue) {
       try {
-        await emailCampaignQueue.remove(batchJobId(req.params.batchId));
+        // Teto de 2s: com a fila half-open o remove penduraria o cancelamento.
+        // Best-effort ja: o CAS acima garante que um gatilho remanescente vira
+        // no-op, entao abandonar o remove pelo timeout e seguro.
+        await withRedisOpTimeout(
+          emailCampaignQueue.remove(batchJobId(req.params.batchId)),
+          `remove-batch-trigger:${req.params.batchId}`,
+        );
       } catch (removeErr) {
         console.warn(
           "[email-campaign] Falha ao remover gatilho do lote cancelado",

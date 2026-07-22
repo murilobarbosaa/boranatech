@@ -4,6 +4,7 @@ import { Queue, Worker, type Job } from "bullmq";
 import type { Gender } from "../../shared/gender";
 import { env } from "./env";
 import { queueConnection } from "./redis";
+import { withRedisOpTimeout } from "./redisOpTimeout";
 import {
   sendCancellationEmail,
   sendCancellationScheduledEmail,
@@ -174,17 +175,6 @@ export function createEmailWorker() {
   return worker;
 }
 
-// Teto pro enfileiramento. Com Redis fora, a conexao de fila (offline queue
-// ligada, exigencia do BullMQ) segura o add() indefinidamente em vez de
-// rejeitar, entao sem este teto a rota penduraria. Estourado o teto, o enqueue
-// PROPAGA o erro em vez de enviar direto: o add preso na offline queue completa
-// quando o Redis volta (o worker envia), entao um envio direto aqui duplicaria
-// o e-mail e furaria o limiter de taxa. O chamador trata o erro (best-effort
-// nos nao criticos; nos criticos o e-mail ainda sai pela fila que se recupera).
-const ENQUEUE_TIMEOUT_MS = 2_000;
-
-const ENQUEUE_TIMEOUT = Symbol("email-enqueue-timeout");
-
 export async function enqueueEmail(data: EmailJobData) {
   if (!emailQueue) {
     // Redis nao configurado (sem fila): nao existe job pra completar depois,
@@ -210,21 +200,5 @@ export async function enqueueEmail(data: EmailJobData) {
   // Fila existe: o e-mail vai pela fila OU falha. Nunca envio direto aqui.
   // Timeout do add (Redis lento) ou rejeicao propagam pro chamador; enviar
   // direto duplicaria (o add preso completa depois) e furaria o limiter.
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    const added = await Promise.race([
-      emailQueue.add(data.type, data),
-      new Promise<typeof ENQUEUE_TIMEOUT>((resolve) => {
-        timer = setTimeout(() => resolve(ENQUEUE_TIMEOUT), ENQUEUE_TIMEOUT_MS);
-        timer.unref();
-      }),
-    ]);
-    if (added === ENQUEUE_TIMEOUT) {
-      throw new Error(
-        `Timeout ao enfileirar e-mail (${data.type}) apos ${ENQUEUE_TIMEOUT_MS}ms.`,
-      );
-    }
-  } finally {
-    clearTimeout(timer);
-  }
+  await withRedisOpTimeout(emailQueue.add(data.type, data), `email:${data.type}`);
 }
