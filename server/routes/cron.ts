@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import * as Sentry from "@sentry/node";
 import { NextFunction, Request, Response, Router } from "express";
 
 import { enrichBacklog } from "../jobs/enrichBacklog";
@@ -1121,6 +1122,82 @@ router.post("/reconcile-email-campaigns", withCronLock("reconcile-email-campaign
   } catch (err) {
     await recordCronRun({
       jobName: "reconcile-email-campaigns",
+      status: "error",
+      startedAt,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    next(err);
+  }
+}));
+
+// Watchdog de liveness das campanhas (alert-only). Deteccao 100% via Postgres
+// (email_campaign_find_stuck), NUNCA toca a queueConnection: funciona com a fila
+// congelada. So alerta (Sentry + log); a recuperacao automatica ja e do
+// socketTimeout da queueConnection (Rodada 1). TTL 120s: uma RPC de leitura, com
+// deadline proprio de 15s no supabaseAdmin; folga ate o proximo tick (5min).
+type StuckCampaign = {
+  campaign_id: string;
+  subject: string;
+  started_at: string | null;
+  pending_count: number;
+  sent_count: number;
+  failed_count: number;
+  total_recipients: number | null;
+  last_sent_at: string | null;
+};
+
+router.post("/campaign-liveness", withCronLock("campaign-liveness", 120, async (_req, res, next) => {
+  const startedAt = new Date();
+
+  try {
+    const { data, error } = await supabaseAdmin.rpc(
+      "email_campaign_find_stuck",
+      { p_stale_minutes: 15 },
+    );
+    if (error) {
+      throw new Error(error.message);
+    }
+    const stuck = (data ?? []) as StuckCampaign[];
+
+    for (const c of stuck) {
+      console.error(
+        `[campaign-liveness] Campanha travada: ${c.campaign_id} "${c.subject}" ` +
+          `pending=${c.pending_count} sent=${c.sent_count} failed=${c.failed_count} ` +
+          `total=${c.total_recipients} last_sent_at=${c.last_sent_at}`,
+      );
+      Sentry.withScope((scope) => {
+        scope.setTag("cron", "campaign-liveness");
+        scope.setTag("campaignId", c.campaign_id);
+        scope.setContext("campaign", {
+          subject: c.subject,
+          pending: c.pending_count,
+          sent: c.sent_count,
+          failed: c.failed_count,
+          total: c.total_recipients,
+          startedAt: c.started_at,
+          lastSentAt: c.last_sent_at,
+        });
+        Sentry.captureException(
+          new Error(
+            `Campanha de e-mail travada (sending, sem progresso ha >=15min): ${c.campaign_id}`,
+          ),
+        );
+      });
+    }
+
+    await recordCronRun({
+      jobName: "campaign-liveness",
+      status: "success",
+      startedAt,
+      payload: {
+        stuckCount: stuck.length,
+        stuckIds: stuck.map((c) => c.campaign_id),
+      },
+    });
+    res.json({ data: { stuck: stuck.length } });
+  } catch (err) {
+    await recordCronRun({
+      jobName: "campaign-liveness",
       status: "error",
       startedAt,
       errorMessage: err instanceof Error ? err.message : String(err),
