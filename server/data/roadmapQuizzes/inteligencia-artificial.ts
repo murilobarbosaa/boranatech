@@ -297,6 +297,54 @@ const pool: QuizPool = {
       fonte: "fundamentos.tipos",
     },
     {
+      id: "inteligencia-artificial-ini-19",
+      nivel: "iniciante",
+      pergunta:
+        "Você lê que a IA já passou por invernos ao longo de sua história. O que esse termo descreve?",
+      alternativas: {
+        a: "Períodos em que promessas exageradas não se cumpriram e o interesse e o financiamento secaram.",
+        b: "Épocas em que a IA foi proibida por lei em vários países.",
+        c: "Momentos em que os computadores ficaram frios demais para treinar modelos.",
+        d: "Fases em que a IA superou a inteligência humana e precisou ser contida.",
+      },
+      correta: "a",
+      explicacao:
+        "Os invernos da IA foram períodos em que promessas grandes demais, seguidas de resultados aquém, levaram a cortes de financiamento e queda de interesse. A área avança em ondas, com euforia e decepção se alternando, não em linha reta.",
+      fonte: "fundamentos.historia",
+    },
+    {
+      id: "inteligencia-artificial-ini-20",
+      nivel: "iniciante",
+      pergunta:
+        "Ao olhar como a IA gera valor hoje nos mais diversos setores, qual padrão melhor descreve a maioria das aplicações reais?",
+      alternativas: {
+        a: "São robôs humanoides autônomos substituindo trabalhadores.",
+        b: "São modelos bem escolhidos resolvendo um problema específico, apoiados em bons dados.",
+        c: "São sistemas de inteligência geral que fazem qualquer tarefa.",
+        d: "São algoritmos que dispensam dados, bastando poder de computação.",
+      },
+      correta: "b",
+      explicacao:
+        "A maioria das aplicações não é nada futurista: é um modelo bem escolhido resolvendo um problema específico de negócio. O valor quase sempre vem de juntar a IA a bons dados e a um processo que a usa de verdade, não da sofisticação do algoritmo.",
+      fonte: "fundamentos.aplicacoes",
+    },
+    {
+      id: "inteligencia-artificial-ini-21",
+      nivel: "iniciante",
+      pergunta:
+        "Você quer isolar as bibliotecas de cada projeto para que a instalação de um não quebre o outro. Qual ferramenta resolve isso?",
+      alternativas: {
+        a: "Um ambiente virtual, com venv ou conda, que separa as dependências de cada projeto.",
+        b: "O Jupyter Notebook, que executa o código de forma exploratória.",
+        c: "O Git, que guarda o histórico de versões do código.",
+        d: "O Google Colab, que roda tudo na nuvem sem instalação.",
+      },
+      correta: "a",
+      explicacao:
+        "Um ambiente virtual (venv ou conda) isola as dependências de cada projeto numa caixa separada, evitando conflitos entre versões de bibliotecas. Jupyter é onde você experimenta e o Git versiona o código, mas quem isola as dependências é o ambiente virtual.",
+      fonte: "prerequisitos.ambiente",
+    },
+    {
       id: "inteligencia-artificial-int-01",
       nivel: "intermediario",
       pergunta:
@@ -681,6 +729,38 @@ const pool: QuizPool = {
       fonte: "deeplearning.transformers",
     },
     {
+      id: "inteligencia-artificial-int-25",
+      nivel: "intermediario",
+      pergunta:
+        "Por que uma rede neural convolucional (CNN) enxerga imagens melhor que uma rede comum totalmente conectada?",
+      alternativas: {
+        a: "Porque decora cada pixel da imagem em uma tabela para consultar depois.",
+        b: "Porque usa filtros que deslizam pela imagem detectando padrões locais, como bordas e texturas.",
+        c: "Porque transforma a imagem em uma sequência de palavras antes de processá-la.",
+        d: "Porque dispensa dados de treino ao ignorar por completo a posição dos pixels.",
+      },
+      correta: "b",
+      explicacao:
+        "A CNN usa a convolução: pequenos filtros deslizam pela imagem procurando padrões locais (bordas, texturas), onde quer que apareçam. As primeiras camadas detectam coisas simples e as seguintes as combinam em objetos, algo que uma rede comum, que liga tudo a tudo, não faz bem.",
+      fonte: "deeplearning.cnn",
+    },
+    {
+      id: "inteligencia-artificial-int-26",
+      nivel: "intermediario",
+      pergunta:
+        "Você vai processar frases, onde a ordem das palavras muda o sentido. O que uma LSTM acrescenta a uma rede recorrente simples?",
+      alternativas: {
+        a: "A capacidade de processar a imagem da frase com convoluções.",
+        b: "Um mecanismo que decide o que guardar e o que descartar, preservando informação por mais tempo.",
+        c: "A eliminação total da noção de ordem entre as palavras.",
+        d: "A troca da memória por uma tabela fixa de palavras conhecidas.",
+      },
+      correta: "b",
+      explicacao:
+        "RNNs simples esqueciam o começo de sequências longas. A LSTM (memória de longo e curto prazo) tem um mecanismo interno que decide o que reter e o que descartar, preservando o contexto relevante por muito mais tempo, essencial quando a ordem carrega o significado.",
+      fonte: "deeplearning.rnn",
+    },
+    {
       id: "inteligencia-artificial-av-01",
       nivel: "avancado",
       pergunta:
@@ -1063,6 +1143,54 @@ const pool: QuizPool = {
       explicacao:
         "No Brasil, a LGPD rege como dados pessoais podem ser coletados e usados, e alcança diretamente quem treina modelos com dados de pessoas. Na Europa, o AI Act impõe obrigações conforme o risco da aplicação e virou referência global.",
       fonte: "pratica.etica",
+    },
+    {
+      id: "inteligencia-artificial-av-25",
+      nivel: "avancado",
+      pergunta:
+        "Um aplicativo gera legendas automáticas transformando a fala de um vídeo em texto. Que tarefa de IA é essa?",
+      alternativas: {
+        a: "Síntese de voz (text-to-speech, TTS).",
+        b: "Reconhecimento de fala (speech-to-text, STT).",
+        c: "Visão computacional aplicada a vídeo.",
+        d: "Tradução automática entre idiomas.",
+      },
+      correta: "b",
+      explicacao:
+        "Transformar voz em texto é reconhecimento de fala (speech-to-text, STT), o que gera legendas e transcrições. O caminho inverso, transformar texto em fala natural, é a síntese de voz (text-to-speech, TTS).",
+      fonte: "dominios.audio",
+    },
+    {
+      id: "inteligencia-artificial-av-26",
+      nivel: "avancado",
+      pergunta:
+        "Ao avaliar um modelo que prevê vendas mês a mês, por que você NÃO pode embaralhar os dados antes de separar treino e teste?",
+      alternativas: {
+        a: "Porque embaralhar apaga os rótulos de cada venda.",
+        b: "Porque a ordem no tempo importa: treinar com dados do futuro para prever o passado não faz sentido.",
+        c: "Porque séries temporais não podem ser divididas em treino e teste.",
+        d: "Porque embaralhar deixa o treino mais lento sem nenhum motivo.",
+      },
+      correta: "b",
+      explicacao:
+        "Numa série temporal, os dados não são independentes: o valor de hoje depende do de ontem. A separação entre treino e teste precisa respeitar a linha do tempo, porque treinar com dados do futuro para prever o passado não reflete o uso real do modelo.",
+      fonte: "dominios.series",
+    },
+    {
+      id: "inteligencia-artificial-av-27",
+      nivel: "avancado",
+      pergunta:
+        "Você quer um papel focado em levar modelos à produção de forma robusta e escalável, mais perto da engenharia de software e da infraestrutura. Qual perfil combina mais?",
+      alternativas: {
+        a: "Cientista de Dados, focado em explorar dados e experimentar modelos.",
+        b: "Engenheiro de Machine Learning, focado em produção, escala e MLOps.",
+        c: "Engenheiro de IA, focado em construir produtos sobre modelos prontos.",
+        d: "Analista de negócios, focado em relatórios e indicadores.",
+      },
+      correta: "b",
+      explicacao:
+        "O Engenheiro de Machine Learning foca em levar modelos à produção de forma robusta e escalável, puxando para a engenharia de software e a infraestrutura (o território de MLOps). O Cientista de Dados vive mais perto da estatística e do negócio, e o Engenheiro de IA constrói produtos sobre modelos prontos.",
+      fonte: "pratica.carreira",
     },
   ],
 };
