@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import TechnologyLogo from "@/components/TechnologyLogo";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
 import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
@@ -329,6 +330,11 @@ export default function AreaDetalhe() {
   if (!area) {
     return (
       <Layout>
+        <SEO
+          title="Área não encontrada · Bora na Tech?"
+          description="Área não encontrada."
+          url={`/areas/${params.slug ?? ""}`}
+        />
         <div className="container py-20 text-center">
           <p className="mb-4 text-5xl">😕</p>
           <h1 className="font-display mb-2 text-2xl font-bold text-slate-900">
@@ -374,6 +380,12 @@ export default function AreaDetalhe() {
 
   return (
     <Layout>
+      <SEO
+        title={`${area.nome} · Bora na Tech?`}
+        description={area.descricaoCurta}
+        url={`/areas/${area.slug}`}
+        schemaType="CollectionPage"
+      />
       <PageHero
         accent={accent}
         eyebrow="Área de TI"
