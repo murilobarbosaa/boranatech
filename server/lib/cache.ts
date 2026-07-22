@@ -31,15 +31,24 @@ export function cacheKey(
   return `pubcache:${route}${parts.length > 0 ? `:${parts.join("&")}` : ""}`;
 }
 
+// opts.bypass: ignora o cache por completo (nao le, nao escreve). Uso: chaves de
+//   cardinalidade ilimitada (busca) que poluiriam o Redis.
+// opts.refresh: write-through. Pula a leitura (forca um miss), recalcula e
+//   sobrescreve a chave com o valor fresco e TTL novo. Todos os leitores seguintes
+//   veem o valor atualizado (nao so quem pediu refresh). Sobrescrever equivale a
+//   DEL+SET, mas sem deixar buraco se o compute falhar: nesse caso o valor antigo
+//   continua servindo aos demais ate o TTL (fail-open mais forte). bypass vence
+//   refresh (se ambos, nao escreve).
 export async function getOrCompute<T>(
   key: string,
   ttlSeconds: number,
   compute: () => Promise<T>,
-  opts?: { bypass?: boolean },
+  opts?: { bypass?: boolean; refresh?: boolean },
 ): Promise<T> {
-  const usable = !opts?.bypass && cacheConnection !== null;
+  const canWrite = !opts?.bypass && cacheConnection !== null;
+  const canRead = canWrite && !opts?.refresh;
 
-  if (usable) {
+  if (canRead) {
     try {
       const hit = await cacheConnection!.get(key);
       if (hit !== null) {
@@ -52,7 +61,7 @@ export async function getOrCompute<T>(
 
   const value = await compute();
 
-  if (usable && value !== null && value !== undefined) {
+  if (canWrite && value !== null && value !== undefined) {
     const serialized = JSON.stringify(value);
     if (serialized.length > MAX_VALUE_BYTES) {
       console.debug(`[pubcache] ${key}: valor acima de 512KB, nao cacheado`);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
   CartesianGrid,
@@ -161,6 +161,10 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [localRefresh, setLocalRefresh] = useState(0);
+  // Consumido uma vez: apos um sync manual, a proxima carga do resultado passa
+  // ?fresh=1, que faz o server recalcular e repopular o cache (write-through), de
+  // modo que todos os admins passam a ver os numeros ja sincronizados.
+  const forceFreshRef = useRef(false);
 
   // Range memoizado: o `now` do preset e calculado UMA vez por combinacao de
   // [preset, customFrom, customTo], nao a cada render. Assim a identidade do
@@ -178,6 +182,10 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
     setError(null);
     try {
       const params = new URLSearchParams({ from: range.from, to: range.to });
+      if (forceFreshRef.current) {
+        params.set("fresh", "1");
+        forceFreshRef.current = false;
+      }
       const [summaryJson, seriesJson]: [
         { data: FinanceSummary },
         { data: TimeseriesPoint[] },
@@ -234,6 +242,7 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
     setSyncError(null);
     try {
       await adminFetch("/finance/sync", { method: "POST" });
+      forceFreshRef.current = true;
       setLocalRefresh((k) => k + 1);
     } catch (err) {
       setSyncError(

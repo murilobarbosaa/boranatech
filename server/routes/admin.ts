@@ -7,6 +7,7 @@ import {
   getMrrSnapshot,
   getSubscriberList,
 } from "../lib/billingMetrics";
+import { getOrCompute } from "../lib/cache";
 import { env } from "../lib/env";
 import {
   getDeferredRevenue,
@@ -1511,15 +1512,46 @@ router.get("/subscribers", async (req, res, next) => {
   }
 });
 
+// Cache das agregacoes financeiras do painel. Camada de ROTA de proposito: os
+// modulos billingMetrics/financeMetrics seguem "so calculo" (getMrrSnapshot tambem
+// alimenta o cron de snapshots, que precisa do valor REAL, nao do cacheado). O
+// contrato do getOrCompute ja garante fail-open no Redis e nunca cacheia erro/null.
+// TTL de 45s (dentro da janela 30-60s). ?fresh=1 usa o refresh (write-through) do
+// getOrCompute: recalcula e repopula a chave, entao TODOS os admins passam a ver o
+// valor atualizado (ex.: logo apos um sync da Stripe), nao so quem forcou o refresh.
+const FINANCE_CACHE_TTL_S = 45;
+
+function wantsFresh(query: Record<string, unknown>): boolean {
+  return query.fresh === "1";
+}
+
+// O preset do dashboard manda `to = now` com precisao de milissegundo, entao a
+// chave crua nunca se repetiria (0% de hit). Alinhamos `to` a um balde de 60s:
+// pedidos na mesma janela colidem na mesma chave. A imprecisao (dados "as of" a
+// virada do balde) e irrelevante e coerente com um TTL de dezenas de segundos.
+// `from` (mes cheio nos presets, dia cheio no custom) ja e estavel.
+function financeRangeKey(scope: string, from: Date, to: Date): string {
+  const toBucket = Math.floor(to.getTime() / 60_000);
+  return `admincache:finance:${scope}:from=${from.toISOString()}&to=${toBucket}`;
+}
+
 // Metricas financeiras reais (MRR + churn), substituindo os mocks do admin.
 // Erros propagam (o modulo nunca colapsa em 0); ausencia vem como estado nomeado.
-router.get("/billing-metrics", async (_req, res, next) => {
+router.get("/billing-metrics", async (req, res, next) => {
   try {
-    const [mrr, churn] = await Promise.all([
-      getMrrSnapshot(),
-      getChurnSnapshot({}),
-    ]);
-    res.json({ data: { mrr, churn } });
+    const data = await getOrCompute(
+      "admincache:billing-metrics",
+      FINANCE_CACHE_TTL_S,
+      async () => {
+        const [mrr, churn] = await Promise.all([
+          getMrrSnapshot(),
+          getChurnSnapshot({}),
+        ]);
+        return { mrr, churn };
+      },
+      { refresh: wantsFresh(req.query as Record<string, unknown>) },
+    );
+    res.json({ data });
   } catch (err) {
     next(err);
   }
@@ -1739,11 +1771,19 @@ router.get("/finance/summary", async (req, res, next) => {
     const defFrom = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
     const from = parseDateParam(req.query.from, defFrom);
     const to = parseDateParam(req.query.to, now);
-    const [summary, deferred] = await Promise.all([
-      getFinanceSummary({ from, to }),
-      getDeferredRevenue(),
-    ]);
-    res.json({ data: { ...summary, deferred } });
+    const data = await getOrCompute(
+      financeRangeKey("summary", from, to),
+      FINANCE_CACHE_TTL_S,
+      async () => {
+        const [summary, deferred] = await Promise.all([
+          getFinanceSummary({ from, to }),
+          getDeferredRevenue(),
+        ]);
+        return { ...summary, deferred };
+      },
+      { refresh: wantsFresh(req.query as Record<string, unknown>) },
+    );
+    res.json({ data });
   } catch (err) {
     next(err);
   }
@@ -1755,7 +1795,12 @@ router.get("/finance/timeseries", async (req, res, next) => {
     const defFrom = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
     const from = parseDateParam(req.query.from, defFrom);
     const to = parseDateParam(req.query.to, now);
-    const series = await getFinanceTimeseries({ from, to, granularity: "month" });
+    const series = await getOrCompute(
+      financeRangeKey("timeseries", from, to),
+      FINANCE_CACHE_TTL_S,
+      () => getFinanceTimeseries({ from, to, granularity: "month" }),
+      { refresh: wantsFresh(req.query as Record<string, unknown>) },
+    );
     res.json({ data: series });
   } catch (err) {
     next(err);
