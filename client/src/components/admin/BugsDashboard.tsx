@@ -72,10 +72,33 @@ const LEVEL_BADGES: Record<string, string> = {
   debug: "bg-slate-100 text-slate-600",
 };
 
-const BOARD_COLUMNS: Array<{ status: BugStatus; label: string }> = [
-  { status: "open", label: "Abertos" },
-  { status: "in_progress", label: "Em correção" },
-  { status: "done", label: "Corrigidos" },
+// Fundos tintados por estado (leitura rápida do board) e highlight de drop
+// como intensificação da cor da própria coluna. Admin é light-only, sem
+// variantes dark. Cards brancos com borda escura mantêm o contraste em cima.
+const BOARD_COLUMNS: Array<{
+  status: BugStatus;
+  label: string;
+  bg: string;
+  dropHighlight: string;
+}> = [
+  {
+    status: "open",
+    label: "Abertos",
+    bg: "bg-slate-100",
+    dropHighlight: "bg-slate-200 ring-4 ring-slate-400",
+  },
+  {
+    status: "in_progress",
+    label: "Em correção",
+    bg: "bg-sky-50",
+    dropHighlight: "bg-sky-100 ring-4 ring-sky-400",
+  },
+  {
+    status: "done",
+    label: "Corrigidos",
+    bg: "bg-emerald-50",
+    dropHighlight: "bg-emerald-100 ring-4 ring-emerald-400",
+  },
 ];
 
 const STATS_PERIODS = [
@@ -188,6 +211,8 @@ export function BugsDashboard() {
   const [movingId, setMovingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminBug | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverStatus, setDragOverStatus] = useState<BugStatus | null>(null);
 
   const refreshSentry = useCallback(async () => {
     setSentryLoading(true);
@@ -319,8 +344,22 @@ export function BugsDashboard() {
     }
   }
 
+  // Único caminho de mudança de status (botões e drag and drop): otimista,
+  // com snapshot pra reverter em erro; no sucesso o refreshBugs continua sendo
+  // a fonte de verdade (traz resolved_at e counts do server).
   async function moveBug(bug: AdminBug, status: BugStatus) {
+    if (bug.status === status) return;
     setMovingId(bug.id);
+    const previousBugs = bugs;
+    const previousCounts = counts;
+    setBugs((current) =>
+      current.map((b) => (b.id === bug.id ? { ...b, status } : b)),
+    );
+    setCounts((current) => ({
+      ...current,
+      [bug.status]: Math.max(0, current[bug.status] - 1),
+      [status]: current[status] + 1,
+    }));
     try {
       await patchBug(bug.id, { status });
       toast.success(
@@ -328,12 +367,22 @@ export function BugsDashboard() {
       );
       await refreshBugs();
     } catch (error) {
+      setBugs(previousBugs);
+      setCounts(previousCounts);
       toast.error(
         error instanceof Error ? error.message : "Erro ao mover o bug.",
       );
     } finally {
       setMovingId(null);
     }
+  }
+
+  function handleDrop(bugId: string, status: BugStatus) {
+    setDraggingId(null);
+    setDragOverStatus(null);
+    const bug = bugs.find((b) => b.id === bugId);
+    if (!bug || bug.status === status) return;
+    void moveBug(bug, status);
   }
 
   async function confirmDelete() {
@@ -604,10 +653,46 @@ export function BugsDashboard() {
                 const columnBugs = bugs.filter(
                   (bug) => bug.status === column.status,
                 );
+                const draggingBug = draggingId
+                  ? bugs.find((bug) => bug.id === draggingId)
+                  : undefined;
+                const isValidDropTarget =
+                  draggingBug !== undefined &&
+                  draggingBug.status !== column.status;
+                const highlighted =
+                  isValidDropTarget && dragOverStatus === column.status;
                 return (
                   <section
                     key={column.status}
-                    className="rounded-3xl border-2 border-slate-900 bg-slate-50 p-4 shadow-[3px_3px_0_#0f172a]"
+                    onDragOver={(e) => {
+                      if (!isValidDropTarget) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (dragOverStatus !== column.status) {
+                        setDragOverStatus(column.status);
+                      }
+                    }}
+                    onDragLeave={(e) => {
+                      if (
+                        e.relatedTarget instanceof Node &&
+                        e.currentTarget.contains(e.relatedTarget)
+                      ) {
+                        return;
+                      }
+                      setDragOverStatus((current) =>
+                        current === column.status ? null : current,
+                      );
+                    }}
+                    onDrop={(e) => {
+                      if (!isValidDropTarget) return;
+                      e.preventDefault();
+                      const id =
+                        e.dataTransfer.getData("text/plain") || draggingId;
+                      if (id) handleDrop(id, column.status);
+                    }}
+                    className={`rounded-3xl border-2 border-slate-900 p-4 shadow-[3px_3px_0_#0f172a] transition-colors ${
+                      highlighted ? column.dropHighlight : column.bg
+                    }`}
                   >
                     <header className="mb-3 flex items-center justify-between">
                       <h3 className="text-sm font-black uppercase tracking-wide text-slate-950">
@@ -626,7 +711,19 @@ export function BugsDashboard() {
                         columnBugs.map((bug) => (
                           <article
                             key={bug.id}
-                            className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData("text/plain", bug.id);
+                              e.dataTransfer.effectAllowed = "move";
+                              setDraggingId(bug.id);
+                            }}
+                            onDragEnd={() => {
+                              setDraggingId(null);
+                              setDragOverStatus(null);
+                            }}
+                            className={`cursor-grab rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a] active:cursor-grabbing ${
+                              draggingId === bug.id ? "opacity-50" : ""
+                            }`}
                           >
                             <div className="flex flex-wrap items-center gap-2">
                               <SeverityBadge severity={bug.severity} />
