@@ -15,6 +15,7 @@ import {
   Bell,
   Bot,
   BrainCircuit,
+  Bug,
   Clock3,
   Compass,
   Copy,
@@ -52,6 +53,7 @@ import { CancellationReasonsDashboard } from "@/components/admin/CancellationRea
 import { UsageRetentionDashboard } from "@/components/admin/UsageRetentionDashboard";
 import { ContactListsManager } from "@/components/admin/ContactListsManager";
 import { ConversionDashboard } from "@/components/admin/ConversionDashboard";
+import { BugsDashboard } from "@/components/admin/BugsDashboard";
 import { NotificationsManager } from "@/components/admin/NotificationsManager";
 import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { BntSelect } from "@/components/shared/BntSelect";
@@ -165,7 +167,8 @@ type AdminSectionId =
   | "emails"
   | "notificacoes"
   | "beta"
-  | "vagas";
+  | "vagas"
+  | "bugs";
 
 type DashboardData = {
   counts?: {
@@ -389,6 +392,11 @@ const adminNavItems: AdminNavItem[] = [
     href: "#notificacoes",
     label: "Notificações",
     icon: <Bell className="h-4 w-4" />,
+  },
+  {
+    href: "#bugs",
+    label: "Bugs & Erros",
+    icon: <Bug className="h-4 w-4" />,
   },
   {
     href: "#beta",
@@ -6316,6 +6324,18 @@ export default function Admin() {
               subtitle="Crie avisos, cupons e comunicados que aparecem no sino do usuário. Publicado é imutável; arquivar tira do feed sem apagar o histórico."
             >
               <NotificationsManager />
+            </AdminSection>
+          ) : null}
+
+          {activeSection === "bugs" ? (
+            <AdminSection
+              id="bugs"
+              eyebrow="bugs & erros"
+              icon={<Bug className="h-4 w-4" />}
+              title="Bugs & Erros"
+              subtitle="Erros capturados pelo Sentry e bug tracker interno. Criar um bug a partir de um erro vincula os dois; concluir um bug dispara o aviso por email."
+            >
+              <BugsDashboard />
             </AdminSection>
           ) : null}
 

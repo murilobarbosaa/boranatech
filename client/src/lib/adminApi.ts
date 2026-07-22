@@ -13,10 +13,29 @@ async function authHeaders(options?: RequestInit) {
   };
 }
 
+// Erro do padrao { error: { code, message } } do server. Extends Error de
+// proposito: todo catch existente (error.message) segue identico; quem precisa
+// distinguir o code (ex: sentry_not_configured na aba Bugs) faz instanceof.
+export class AdminApiError extends Error {
+  readonly status: number;
+  readonly code: string | null;
+
+  constructor(message: string, status: number, code: string | null) {
+    super(message);
+    this.name = "AdminApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 async function parseAdminResponse(res: Response) {
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.error?.message || `Erro ${res.status}`);
+    throw new AdminApiError(
+      data.error?.message || `Erro ${res.status}`,
+      res.status,
+      data.error?.code ?? null,
+    );
   }
 
   return res.json();
