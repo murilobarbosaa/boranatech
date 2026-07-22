@@ -249,6 +249,54 @@ const pool: QuizPool = {
       fonte: "prerequisitos.matematica",
     },
     {
+      id: "inteligencia-artificial-ini-16",
+      nivel: "iniciante",
+      pergunta:
+        "Você vai representar um conjunto de dados para treinar um modelo. Como a álgebra linear organiza esses dados?",
+      alternativas: {
+        a: "Cada exemplo vira um vetor (lista de números) e o conjunto todo vira uma matriz.",
+        b: "Cada exemplo vira uma equação que o modelo resolve isoladamente.",
+        c: "Os dados precisam ser convertidos em texto antes de entrar no modelo.",
+        d: "Cada coluna da tabela é tratada como um número único e indivisível.",
+      },
+      correta: "a",
+      explicacao:
+        "Na álgebra linear da IA, um exemplo é um vetor e o conjunto de dados inteiro é uma matriz (uma pilha de vetores); é assim que dados e modelos são representados e multiplicados.",
+      fonte: "prerequisitos.algebra",
+    },
+    {
+      id: "inteligencia-artificial-ini-17",
+      nivel: "iniciante",
+      pergunta:
+        "Você está entendendo como um modelo reduz seus erros durante o treino. O que a ideia de derivada informa nesse processo?",
+      alternativas: {
+        a: "O valor final que o modelo deve prever para cada exemplo.",
+        b: "Se mexer um pouco em uma entrada, o erro sobe ou desce, e com que intensidade.",
+        c: "A quantidade de dados necessária para treinar o modelo.",
+        d: "Quantas camadas a rede neural precisa ter para aprender.",
+      },
+      correta: "b",
+      explicacao:
+        "A derivada é a inclinação da curva num ponto: ela diz para que lado e com que intensidade o erro muda. É isso que orienta o modelo a descer, aos poucos, rumo ao menor erro.",
+      fonte: "prerequisitos.calculo",
+    },
+    {
+      id: "inteligencia-artificial-ini-18",
+      nivel: "iniciante",
+      pergunta:
+        "Um colega afirma que os assistentes de chat atuais já são uma inteligência artificial geral (AGI). Por que essa afirmação está incorreta?",
+      alternativas: {
+        a: "Porque nenhum sistema de IA consegue processar linguagem humana ainda.",
+        b: "Porque a AGI já existe, mas só em laboratórios de pesquisa fechados.",
+        c: "Porque a IA atual é estreita (resolve tarefas específicas), e a AGI, com flexibilidade humana, ainda não existe.",
+        d: "Porque assistentes de chat não usam inteligência artificial de verdade.",
+      },
+      correta: "c",
+      explicacao:
+        "Toda IA atual é fraca ou estreita: resolve tarefas específicas. A IA forte ou AGI, com a flexibilidade da mente humana, não existe; os LLMs parecem gerais, mas são previsores de texto muito capazes, não uma mente geral.",
+      fonte: "fundamentos.tipos",
+    },
+    {
       id: "inteligencia-artificial-int-01",
       nivel: "intermediario",
       pergunta:
@@ -489,6 +537,150 @@ const pool: QuizPool = {
       fonte: "deeplearning.treino",
     },
     {
+      id: "inteligencia-artificial-int-16",
+      nivel: "intermediario",
+      pergunta:
+        "Você precisa prever se uma transação é fraude ou não (sim ou não). Qual modelo base é o mais indicado?",
+      alternativas: {
+        a: "Regressão linear, porque prevê valores contínuos com precisão.",
+        b: "Regressão logística, porque prevê uma categoria a partir de uma probabilidade.",
+        c: "K-means, porque separa as transações em grupos automaticamente.",
+        d: "PCA, porque reduz o número de variáveis da transação.",
+      },
+      correta: "b",
+      explicacao:
+        "A regressão logística é o modelo base de classificação: devolve uma probabilidade (a chance de ser fraude) que você converte em sim ou não. A regressão linear prevê números, não categorias.",
+      fonte: "ml.regressao",
+    },
+    {
+      id: "inteligencia-artificial-int-17",
+      nivel: "intermediario",
+      pergunta:
+        "Uma única árvore de decisão está decorando os dados de treino e indo mal em dados novos. Qual abordagem tende a resolver isso?",
+      alternativas: {
+        a: "Aumentar a profundidade da árvore para ela aprender mais detalhes.",
+        b: "Usar um ensemble, como Random Forest ou Gradient Boosting, combinando várias árvores.",
+        c: "Trocar a árvore por uma regressão linear simples.",
+        d: "Remover as features menos importantes até sobrar apenas uma.",
+      },
+      correta: "b",
+      explicacao:
+        "Uma árvore sozinha tende a decorar e generaliza mal. Ensembles como Random Forest (votação entre muitas árvores) e Gradient Boosting (XGBoost, árvores em sequência corrigindo erros) resolvem isso e dominam problemas com dados em tabela.",
+      fonte: "ml.arvores",
+    },
+    {
+      id: "inteligencia-artificial-int-18",
+      nivel: "intermediario",
+      pergunta:
+        "Você quer classificar um novo cliente olhando os exemplos mais parecidos que já conhece. Qual modelo segue exatamente essa ideia?",
+      alternativas: {
+        a: "SVM, que traça a fronteira de maior margem entre as classes.",
+        b: "KNN, que classifica pelo voto dos k exemplos mais próximos.",
+        c: "Regressão linear, que ajusta a melhor reta aos dados.",
+        d: "Random Forest, que combina muitas árvores de decisão.",
+      },
+      correta: "b",
+      explicacao:
+        "O KNN (k vizinhos mais próximos) classifica um exemplo novo pela maioria entre os k exemplos mais parecidos que já conhece; é a ideia de similaridade. O SVM, em contraste, busca a fronteira que melhor separa as classes.",
+      fonte: "ml.instancia",
+    },
+    {
+      id: "inteligencia-artificial-int-19",
+      nivel: "intermediario",
+      pergunta:
+        "Você tem milhares de clientes sem rótulo e quer descobrir grupos naturais entre eles. Que tipo de tarefa é essa?",
+      alternativas: {
+        a: "Aprendizado supervisionado de classificação, com o grupo como categoria.",
+        b: "Aprendizado não supervisionado de clusterização, como o K-means.",
+        c: "Regressão, prevendo a qual grupo cada cliente pertence.",
+        d: "Aprendizado por reforço, com recompensas por agrupar bem.",
+      },
+      correta: "b",
+      explicacao:
+        "Descobrir grupos em dados sem rótulo é clusterização, o carro-chefe do aprendizado não supervisionado. O K-means é o algoritmo padrão: você define o número de grupos (k) e ele agrupa os exemplos parecidos.",
+      fonte: "ml.clustering",
+    },
+    {
+      id: "inteligencia-artificial-int-20",
+      nivel: "intermediario",
+      pergunta:
+        "Seu conjunto de dados tem cinquenta colunas muito correlacionadas e o treino ficou lento. O que o PCA faz para ajudar?",
+      alternativas: {
+        a: "Cria novas linhas de dados sintéticos para aumentar o conjunto.",
+        b: "Encontra as direções de maior variação e reescreve os dados em poucas componentes principais.",
+        c: "Remove aleatoriamente metade das colunas para acelerar o treino.",
+        d: "Converte todas as colunas de texto em números automaticamente.",
+      },
+      correta: "b",
+      explicacao:
+        "O PCA (análise de componentes principais) reduz a dimensionalidade encontrando as direções em que os dados mais variam e reescrevendo tudo em poucas componentes, mantendo a informação que importa e descartando o que quase não carrega.",
+      fonte: "ml.dimensionalidade",
+    },
+    {
+      id: "inteligencia-artificial-int-21",
+      nivel: "intermediario",
+      pergunta:
+        "Numa base com uma coluna de data de nascimento, você cria uma coluna de idade a partir dela. Que trabalho é esse, e por que importa?",
+      alternativas: {
+        a: "Feature engineering, e a qualidade das variáveis costuma decidir mais o resultado que a escolha do algoritmo.",
+        b: "Validação cruzada, usada para medir o modelo com mais confiança.",
+        c: "Regularização, para impedir que o modelo decore os dados.",
+        d: "Redução de dimensionalidade, para comprimir as variáveis existentes.",
+      },
+      correta: "a",
+      explicacao:
+        "Criar boas variáveis a partir das que existem é feature engineering, o coração da etapa de dados. Uma feature bem pensada, que capture algo que o modelo sozinho não veria, muitas vezes melhora o resultado mais do que trocar de algoritmo.",
+      fonte: "ml.features",
+    },
+    {
+      id: "inteligencia-artificial-int-22",
+      nivel: "intermediario",
+      pergunta:
+        "Num teste que detecta uma doença, deixar de identificar um caso doente é mais grave que dar um alarme falso. Qual métrica você deve priorizar?",
+      alternativas: {
+        a: "A precisão, que mede quantos dos casos marcados como positivos eram mesmo.",
+        b: "O recall, que mede quantos dos positivos reais o modelo conseguiu pegar.",
+        c: "A taxa de acerto bruta, que resume tudo num só número.",
+        d: "O tempo de treino do modelo, que indica sua eficiência.",
+      },
+      correta: "b",
+      explicacao:
+        "Quando perder um caso positivo é o erro mais grave, prioriza-se o recall (dos positivos reais, quantos o modelo pegou). A precisão pesa mais quando o custo maior é o alarme falso, como num filtro de spam.",
+      fonte: "ml.metricas",
+    },
+    {
+      id: "inteligencia-artificial-int-23",
+      nivel: "intermediario",
+      pergunta:
+        "Seu modelo vai muito melhor no treino do que no teste. Qual destas NÃO é uma forma válida de reduzir esse overfitting?",
+      alternativas: {
+        a: "Conseguir mais dados variados para o modelo aprender o padrão geral.",
+        b: "Simplificar o modelo, por exemplo podando a profundidade de uma árvore.",
+        c: "Aplicar regularização, penalizando pesos exagerados.",
+        d: "Treinar por mais tempo nos mesmos dados até o erro de treino zerar.",
+      },
+      correta: "d",
+      explicacao:
+        "Mais dados, simplificar o modelo e regularização combatem o overfitting. Treinar mais nos mesmos dados até o erro de treino zerar faz o oposto: aprofunda a decoreba e piora a generalização.",
+      fonte: "ml.regularizacao",
+    },
+    {
+      id: "inteligencia-artificial-int-24",
+      nivel: "intermediario",
+      pergunta:
+        "O que o mecanismo de attention, no transformer, faz para interpretar uma palavra numa frase?",
+      alternativas: {
+        a: "Lê a frase palavra por palavra, em ordem, guardando só um resumo do que já viu.",
+        b: "Olha todas as outras palavras da sequência ao mesmo tempo e pesa quanto cada uma importa naquele contexto.",
+        c: "Ignora o contexto e traduz cada palavra isoladamente.",
+        d: "Converte a frase em uma imagem para aplicar convoluções.",
+      },
+      correta: "b",
+      explicacao:
+        "A atenção olha, para cada palavra, todas as outras da sequência de uma vez e decide quanto cada uma pesa no contexto. Fazer isso em paralelo (em vez de sequencialmente, como as RNNs) melhorou o contexto e destravou modelos gigantes; é o T de GPT.",
+      fonte: "deeplearning.transformers",
+    },
+    {
       id: "inteligencia-artificial-av-01",
       nivel: "avancado",
       pergunta:
@@ -726,6 +918,150 @@ const pool: QuizPool = {
       correta: "b",
       explicacao:
         "Explicar a origem das respostas e o funcionamento do modelo é essencial para garantir a transparência e a confiança dos usuários.",
+      fonte: "pratica.etica",
+    },
+    {
+      id: "inteligencia-artificial-av-16",
+      nivel: "avancado",
+      pergunta:
+        "Um LLM respondeu com a citação de uma lei que parece precisa, mas você não encontra a fonte em lugar nenhum. O que explica esse comportamento?",
+      alternativas: {
+        a: "O LLM consultou a internet em tempo real e trouxe um dado desatualizado.",
+        b: "O LLM alucinou: gerou um texto plausível com confiança, sem que ele seja verdade verificada.",
+        c: "O LLM não foi treinado o suficiente e por isso ainda comete erros de digitação.",
+        d: "O LLM confundiu o idioma da pergunta com o idioma do treino.",
+      },
+      correta: "b",
+      explicacao:
+        "LLMs preveem a próxima palavra plausível, não a verdade verificada, então alucinam: geram informações falsas com total confiança. Por isso qualquer uso sério exige verificação humana da saída.",
+      fonte: "generativa.llms",
+    },
+    {
+      id: "inteligencia-artificial-av-17",
+      nivel: "avancado",
+      pergunta:
+        "Você quer que um LLM responda sobre os documentos internos da sua empresa, sempre atualizados, sem treinar nada. Qual técnica resolve isso?",
+      alternativas: {
+        a: "RAG: buscar os trechos relevantes dos documentos e entregá-los junto com a pergunta.",
+        b: "Aumentar a temperatura para o modelo ser mais criativo nas respostas.",
+        c: "Fine-tuning completo do modelo a cada novo documento adicionado.",
+        d: "Confiar na memória do modelo, que já contém todo o conhecimento necessário.",
+      },
+      correta: "a",
+      explicacao:
+        "RAG (geração aumentada por recuperação) busca os trechos relevantes dos seus dados e os injeta no prompt, para o modelo responder ancorado neles. Isso dá respostas atualizadas, específicas e com fonte, reduzindo alucinação, sem treinar o modelo.",
+      fonte: "generativa.rag",
+    },
+    {
+      id: "inteligencia-artificial-av-18",
+      nivel: "avancado",
+      pergunta:
+        "Você quer que um LLM consulte a previsão do tempo de verdade antes de responder. Como o function calling torna isso possível?",
+      alternativas: {
+        a: "O modelo executa a consulta sozinho, diretamente nos servidores do provedor.",
+        b: "O modelo indica que quer chamar uma função que você disponibilizou, seu código a executa e devolve o resultado.",
+        c: "O modelo memoriza a previsão durante o treino e a recupera na resposta.",
+        d: "O modelo aumenta a temperatura para adivinhar o clima com mais variedade.",
+      },
+      correta: "b",
+      explicacao:
+        "No function calling, em vez de só gerar texto, o modelo sinaliza que quer chamar uma função que você forneceu; seu código a executa de verdade e devolve o resultado ao modelo. Assim o LLM supera fraquezas como fatos atualizados, delegando-as a ferramentas confiáveis.",
+      fonte: "generativa.agentes",
+    },
+    {
+      id: "inteligencia-artificial-av-19",
+      nivel: "avancado",
+      pergunta:
+        "Um LLM erra num problema que exige várias etapas de raciocínio. Qual técnica de prompt tende a reduzir esse erro?",
+      alternativas: {
+        a: "Pedir explicitamente que o modelo pense passo a passo antes de dar a resposta final.",
+        b: "Reduzir o prompt ao mínimo para economizar tokens.",
+        c: "Repetir a mesma pergunta várias vezes na mesma chamada.",
+        d: "Aumentar a temperatura para o modelo explorar mais respostas.",
+      },
+      correta: "a",
+      explicacao:
+        "Pedir para o modelo pensar passo a passo o faz explicitar as etapas antes de concluir, o que reduz erros em contas e lógica. Ainda assim, um bom prompt reduz, mas não elimina, alucinações: validar a saída continua obrigatório.",
+      fonte: "generativa.prompts",
+    },
+    {
+      id: "inteligencia-artificial-av-20",
+      nivel: "avancado",
+      pergunta:
+        "Você quer um app em que o usuário envia a foto de um gráfico e recebe uma explicação em texto. Que tipo de modelo torna isso possível num sistema só?",
+      alternativas: {
+        a: "Um modelo de regressão treinado apenas com números.",
+        b: "Um modelo multimodal, que entende imagem e texto no mesmo espaço de significado.",
+        c: "Uma rede recorrente (LSTM) especializada em séries temporais.",
+        d: "Um modelo de clusterização que agrupa imagens parecidas.",
+      },
+      correta: "b",
+      explicacao:
+        "Modelos multimodais entendem e combinam várias modalidades (imagem, texto, áudio) num espaço comum de significado, permitindo mandar uma foto e uma pergunta e receber uma resposta em texto, sem juntar vários sistemas na mão.",
+      fonte: "generativa.multimodal",
+    },
+    {
+      id: "inteligencia-artificial-av-21",
+      nivel: "avancado",
+      pergunta:
+        "Um modelo em produção começa a errar cada vez mais com o tempo, sem nenhum bug no código. O que provavelmente aconteceu?",
+      alternativas: {
+        a: "Overfitting, que só aparece durante o treino.",
+        b: "Drift: o mundo mudou e os dados de entrada deixaram de se parecer com os de treino.",
+        c: "A GPU do servidor ficou lenta e degradou a qualidade das previsões.",
+        d: "O modelo esqueceu o que aprendeu por falta de uso.",
+      },
+      correta: "b",
+      explicacao:
+        "Um modelo pode degradar sozinho por drift: o mundo muda, os dados que chegam deixam de se parecer com os de treino e a qualidade cai. Por isso MLOps exige monitorar previsões e dados em produção; a resposta costuma ser retreinar com dados atuais.",
+      fonte: "pratica.mlops",
+    },
+    {
+      id: "inteligencia-artificial-av-22",
+      nivel: "avancado",
+      pergunta:
+        "Num chat interativo, você precisa de respostas rápidas e baratas para uma tarefa simples. Qual decisão faz mais sentido?",
+      alternativas: {
+        a: "Usar sempre o modelo maior e mais poderoso disponível, custe o que custar.",
+        b: "Escolher o menor modelo que resolve bem a tarefa, equilibrando qualidade, custo e latência.",
+        c: "Aumentar o tamanho do prompt para melhorar a resposta, sem olhar o custo por token.",
+        d: "Priorizar a resposta mais lenta, pois ela costuma ser mais precisa.",
+      },
+      correta: "b",
+      explicacao:
+        "O modelo maior também é o mais caro e o mais lento. A pergunta certa não é qual o mais poderoso, e sim qual o menor modelo que resolve este problema bem o bastante, equilibrando qualidade, custo e latência.",
+      fonte: "pratica.custos",
+    },
+    {
+      id: "inteligencia-artificial-av-23",
+      nivel: "avancado",
+      pergunta:
+        "Um serviço recomenda um item com a lógica de que pessoas com gosto parecido com o seu também gostaram dele. Que abordagem é essa?",
+      alternativas: {
+        a: "Filtragem baseada em conteúdo, que usa as características do próprio item.",
+        b: "Filtragem colaborativa, que se baseia no comportamento de usuários parecidos.",
+        c: "Arranque a frio, usado quando não há histórico do usuário.",
+        d: "Redução de dimensionalidade, que comprime o catálogo de itens.",
+      },
+      correta: "b",
+      explicacao:
+        "Recomendar com base no comportamento de gente parecida é filtragem colaborativa (quem consumiu isto também consumiu aquilo). A baseada em conteúdo usa características do item; na prática, sistemas reais combinam as duas em modelos híbridos.",
+      fonte: "dominios.recomendacao",
+    },
+    {
+      id: "inteligencia-artificial-av-24",
+      nivel: "avancado",
+      pergunta:
+        "Sua equipe vai treinar um modelo com dados pessoais de clientes no Brasil. Que marco legal rege diretamente essa coleta e uso?",
+      alternativas: {
+        a: "A LGPD, que no Brasil regula como dados pessoais podem ser coletados e usados.",
+        b: "O AI Act, que é a única lei aplicável a qualquer projeto de IA no mundo.",
+        c: "Nenhum, porque dados usados para treinar modelos não são regulados.",
+        d: "Apenas os termos de uso internos da empresa, sem obrigação legal externa.",
+      },
+      correta: "a",
+      explicacao:
+        "No Brasil, a LGPD rege como dados pessoais podem ser coletados e usados, e alcança diretamente quem treina modelos com dados de pessoas. Na Europa, o AI Act impõe obrigações conforme o risco da aplicação e virou referência global.",
       fonte: "pratica.etica",
     },
   ],
