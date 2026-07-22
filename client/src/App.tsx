@@ -29,6 +29,11 @@ const Certificados = lazyWithRetry(() => import("@/pages/Certificados"));
 const CertificadoPublico = lazyWithRetry(
   () => import("@/pages/CertificadoPublico"),
 );
+// DEV ONLY - remover antes de producao. Fora de dev o import fica num ramo
+// morto (import.meta.env.DEV false) e some do bundle de producao.
+const DevCertificadoTeste = import.meta.env.DEV
+  ? lazyWithRetry(() => import("@/pages/DevCertificadoTeste"))
+  : null;
 const Checkout = lazyWithRetry(() => import("@/pages/Checkout"));
 const CheckoutSucesso = lazyWithRetry(() => import("@/pages/CheckoutSucesso"));
 const Comparador = lazyWithRetry(() => import("@/pages/Comparador"));
@@ -358,6 +363,10 @@ function Router() {
             RequireAuth. Indice ANTES do :code por clareza de ordem literal. */}
         <Route path="/certificados" component={Certificados} />
         <Route path="/certificados/:code" component={CertificadoPublico} />
+        {/* DEV ONLY - remover antes de producao. So existe fora de producao. */}
+        {import.meta.env.DEV && DevCertificadoTeste ? (
+          <Route path="/dev/certificado-teste" component={DevCertificadoTeste} />
+        ) : null}
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

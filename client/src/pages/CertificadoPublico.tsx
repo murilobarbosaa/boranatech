@@ -2,11 +2,16 @@ import { useEffect, useState } from "react";
 import { useParams } from "wouter";
 import { ShieldAlert, ShieldX } from "lucide-react";
 
+import CertificateDownloadButtons from "@/components/certificates/CertificateDownloadButtons";
 import CertificateView from "@/components/certificates/CertificateView";
 import { CERT_ISSUER_LEGAL } from "@/components/certificates/constants";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
-import { getPublicCertificate } from "@/services/certificateService";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  getPublicCertificate,
+  listCertificates,
+} from "@/services/certificateService";
 import type { PublicCertificate } from "@shared/certificates/types";
 
 // Pagina PUBLICA de verificacao (/certificados/:code), sem auth. Consome o
@@ -34,8 +39,10 @@ export default function CertificadoPublico() {
   const params = useParams();
   const code = params.code ?? "";
 
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [cert, setCert] = useState<PublicCertificate | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,6 +56,23 @@ export default function CertificadoPublico() {
       cancelled = true;
     };
   }, [code]);
+
+  // "Sou o dono?" sem expor user_id no payload publico: se logado, cruzo o code
+  // com a lista dos MEUS certificados (GET /api/certificates ja e dono-so). Os
+  // botoes de download so aparecem quando o code esta nela.
+  useEffect(() => {
+    if (!user || !cert || cert.revoked) {
+      setIsOwner(false);
+      return;
+    }
+    let cancelled = false;
+    listCertificates().then((list) => {
+      if (!cancelled) setIsOwner(list.some((item) => item.code === cert.code));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, cert]);
 
   return (
     <Layout>
@@ -111,6 +135,11 @@ export default function CertificadoPublico() {
                 cpfMasked={cert.cpfMasked}
                 syllabus={cert.syllabus}
               />
+              {isOwner ? (
+                <div className="mt-5">
+                  <CertificateDownloadButtons code={cert.code} />
+                </div>
+              ) : null}
               <Disclaimer />
             </>
           )}

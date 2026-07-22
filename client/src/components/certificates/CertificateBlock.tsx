@@ -16,6 +16,7 @@ import type {
   PublicCertificate,
 } from "@shared/certificates/types";
 
+import CertificateDownloadButtons from "./CertificateDownloadButtons";
 import CertificateView from "./CertificateView";
 import CompleteProfileModal from "./CompleteProfileModal";
 import LinkedinButtons from "./LinkedinButtons";
@@ -289,15 +290,9 @@ export default function CertificateBlock({
             </div>
           ) : null}
           <div className="mt-4 flex flex-col gap-3">
-            <button
-              type="button"
-              disabled
-              title="em breve"
-              className="inline-flex w-fit cursor-not-allowed items-center justify-center rounded-[11px] border-[2.5px] border-slate-400 bg-white px-4 py-2.5 text-sm font-black text-slate-400 opacity-70"
-            >
-              {/* TODO(Ana): label do botao baixar PDF (fase 3) */}
-              Baixar PDF
-            </button>
+            {/* Aqui o usuario ja e o dono (acabou de emitir), entao os botoes
+                aparecem direto; a rota reconfirma a posse server-side. */}
+            <CertificateDownloadButtons code={eligibility.code} />
             <LinkedinButtons
               roadmapTitle={roadmap.title}
               code={eligibility.code}

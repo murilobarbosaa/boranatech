@@ -27,6 +27,7 @@ import certificatesRouter, {
 import consentRouter from "./routes/consent";
 import contentRouter from "./routes/content";
 import cronRouter from "./routes/cron";
+import devRouter from "./routes/dev";
 import faculdadesRouter from "./routes/faculdades";
 import githubRouter from "./routes/github";
 import interviewRouter from "./routes/interview";
@@ -370,6 +371,13 @@ app.use("/api/launch-state", launchStateRouter);
 app.use("/api/beta", betaRouter);
 app.use("/api/faculdades", faculdadesRouter);
 app.use("/api/public/certificates", publicCertificatesRouter);
+
+// DEV ONLY - remover antes de producao. Preview do certificado (Parte 1).
+// Publico (antes do JWT gate) e so montado fora de producao; o proprio router
+// reforca o 404 em producao.
+if (!env.isProd) {
+  app.use("/api/dev", devRouter);
+}
 
 app.use("/api", validateSupabaseJwt);
 

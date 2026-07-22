@@ -6,9 +6,14 @@
 // motivacao). O gate Pro DE VERDADE (403) fica so no POST de emissao.
 import { Router } from "express";
 
+import type { Request, Response, NextFunction } from "express";
+
+import { renderCertificatePdf, renderCertificatePng } from "../lib/certificatePdf";
+import { renderCertificateSvg } from "../lib/certificateRender";
 import {
   getCertificateByCode,
   getCertificateEligibility,
+  getCertificateRecordForOwner,
   getCertificateStatuses,
   issueCertificate,
 } from "../lib/certificates";
@@ -19,6 +24,121 @@ import { createError } from "../middleware/error";
 const router = Router();
 
 router.use(requireAuth);
+
+// Rate limit dedicado das rotas de download (geram Chromium, sao caras). Janela
+// fixa por USUARIO, em memoria: minimo defensivo, nao entitlement. Sweep
+// oportunista quando o mapa cresce, para nao vazar chaves de usuarios inativos.
+const DOWNLOAD_WINDOW_MS = 60_000;
+const DOWNLOAD_MAX_PER_WINDOW = 10;
+const DOWNLOAD_STORE_CAP = 10_000;
+const downloadHits = new Map<string, { count: number; resetAt: number }>();
+
+function downloadRateLimited(userId: string): boolean {
+  const now = Date.now();
+  const entry = downloadHits.get(userId);
+  if (!entry || entry.resetAt <= now) {
+    if (downloadHits.size > DOWNLOAD_STORE_CAP) {
+      downloadHits.forEach((value, key) => {
+        if (value.resetAt <= now) downloadHits.delete(key);
+      });
+    }
+    downloadHits.set(userId, { count: 1, resetAt: now + DOWNLOAD_WINDOW_MS });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > DOWNLOAD_MAX_PER_WINDOW;
+}
+
+// Sanitiza o code para nome de arquivo: so o alfabeto do code normalizado.
+function safeCodeForFilename(code: string): string {
+  return code.replace(/[^A-Za-z0-9_-]/g, "");
+}
+
+type DownloadFormat = "pdf" | "image";
+
+// Download DONO-SO. A trava real de posse e server-side: esconder o botao no
+// client nao basta. Ordem: rate limit -> existe? -> e do dono? -> revogado? ->
+// gera. Qualquer falha do Chromium vira 503 tratado (nunca stacktrace); a
+// visualizacao publica do certificado nao depende disto.
+async function handleDownload(
+  format: DownloadFormat,
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const userId = req.user!.id;
+  if (downloadRateLimited(userId)) {
+    return next(
+      createError(
+        429,
+        "rate_limited",
+        "Muitos downloads seguidos. Aguarde um minuto e tente de novo.",
+      ),
+    );
+  }
+
+  const record = await getCertificateRecordForOwner(req.params.code);
+  if (!record) {
+    return next(createError(404, "not_found", "Certificado não encontrado."));
+  }
+  // 403, nao 404 generico: o dono e conhecido e nao e o requisitante.
+  if (record.userId !== userId) {
+    return next(
+      createError(403, "forbidden", "Este certificado não pertence a você."),
+    );
+  }
+  // Revogado: bloqueia o download (nao gera arquivo de um certificado invalido).
+  if (record.revoked) {
+    return next(
+      createError(409, "revoked", "Certificado revogado. Download indisponível."),
+    );
+  }
+
+  try {
+    const svg = await renderCertificateSvg(record.data);
+    const safeCode = safeCodeForFilename(record.data.code);
+    if (format === "pdf") {
+      const pdf = await renderCertificatePdf(svg);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="certificado-${safeCode}.pdf"`,
+      );
+      res.setHeader("Cache-Control", "private, no-store");
+      res.send(pdf);
+      return;
+    }
+    const png = await renderCertificatePng(svg);
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="certificado-${safeCode}.png"`,
+    );
+    res.setHeader("Cache-Control", "private, no-store");
+    res.send(png);
+  } catch (err) {
+    // Chromium nao iniciou/gerou (provavel no primeiro deploy Railway ate
+    // validar). Erro tratado, nunca 500 feio; a pagina publica segue intacta.
+    console.error("[certificates] download generation failed:", err);
+    return next(
+      createError(
+        503,
+        "generation_unavailable",
+        "Não foi possível gerar o arquivo agora. Tente mais tarde.",
+      ),
+    );
+  }
+}
+
+// DONO-SO, com login (requireAuth ja aplicado). ANTES do checkProStatus: baixar
+// um certificado ja emitido nao deve exigir assinatura Pro ativa (a pessoa era
+// Pro quando emitiu).
+router.get("/:code/pdf", (req, res, next) => {
+  void handleDownload("pdf", req, res, next);
+});
+router.get("/:code/image", (req, res, next) => {
+  void handleDownload("image", req, res, next);
+});
 
 // Status por trilha pro selo da vitrine. Declarada ANTES do checkProStatus de
 // proposito: o selo nao e recurso Pro, entao nao paga a latencia do cache+RPC

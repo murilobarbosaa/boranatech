@@ -19,6 +19,7 @@ import {
 import { roadmapsV2 } from "../../shared/roadmapV2/content";
 import { CERT_SCORE } from "../../shared/roadmapQuiz/types";
 import { roadmapQuizPools } from "../data/roadmapQuizzes";
+import type { CertificateRenderData } from "./certificateRender";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 // Nome do titular aceitavel: pelo menos 2 palavras, cada uma com 2+ caracteres.
@@ -315,6 +316,48 @@ export async function getCertificateByCode(
     .maybeSingle();
   if (error || !data) return null;
   return toPublicCertificate(data as CertificateRow);
+}
+
+// Leitura para o DONO (download de PDF/PNG). Diferente de getCertificateByCode:
+// traz user_id (a trava real de posse) e revoked_at, alem so dos campos que o
+// render precisa. Nada disto e exposto ao publico; e o server que decide se o
+// requisitante e o dono antes de gerar o arquivo. null se code invalido/ausente.
+export async function getCertificateRecordForOwner(code: string): Promise<
+  | {
+      userId: string;
+      revoked: boolean;
+      data: CertificateRenderData;
+    }
+  | null
+> {
+  const normalized = normalizeCertificateCode(code);
+  if (!normalized) return null;
+  const { data, error } = await supabaseAdmin
+    .from("certificates")
+    .select("user_id, code, holder_name, roadmap_title, hours, issued_at, revoked_at")
+    .eq("code", normalized)
+    .maybeSingle();
+  if (error || !data) return null;
+  const row = data as {
+    user_id: string;
+    code: string;
+    holder_name: string;
+    roadmap_title: string;
+    hours: number;
+    issued_at: string;
+    revoked_at: string | null;
+  };
+  return {
+    userId: row.user_id,
+    revoked: row.revoked_at != null,
+    data: {
+      holderName: row.holder_name,
+      roadmapTitle: row.roadmap_title,
+      hours: row.hours,
+      issuedAt: row.issued_at,
+      code: row.code,
+    },
+  };
 }
 
 // Status por trilha pro selo da vitrine (/roadmaps). NAO e recurso Pro.

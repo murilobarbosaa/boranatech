@@ -116,6 +116,60 @@ export async function listCertificates(): Promise<CertificateListItem[]> {
   }
 }
 
+export type DownloadResult =
+  | { ok: true }
+  | { ok: false; reason: "unavailable" | "forbidden" | "error" };
+
+function filenameFromDisposition(value: string | null): string | null {
+  if (!value) return null;
+  const match = /filename="?([^"]+)"?/.exec(value);
+  return match ? match[1] : null;
+}
+
+function triggerBlobDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+// Download DONO-SO do certificado (PDF ou imagem PNG). A rota exige login e ser
+// o dono; a trava real e server-side (403 pro nao-dono). 503/429 -> "tente mais
+// tarde" (geracao indisponivel), sem quebrar a pagina. Dispara o download via
+// blob usando o filename do header Content-Disposition.
+export async function downloadCertificateFile(
+  code: string,
+  format: "pdf" | "image",
+): Promise<DownloadResult> {
+  try {
+    const header = await authHeader();
+    const res = await fetch(
+      apiUrl(`/api/certificates/${encodeURIComponent(code)}/${format}`),
+      { headers: { ...header } },
+    );
+    if (!res.ok) {
+      if (res.status === 503 || res.status === 429) {
+        return { ok: false, reason: "unavailable" };
+      }
+      if (res.status === 403) return { ok: false, reason: "forbidden" };
+      return { ok: false, reason: "error" };
+    }
+    const blob = await res.blob();
+    const filename =
+      filenameFromDisposition(res.headers.get("Content-Disposition")) ??
+      `certificado-${code}.${format === "pdf" ? "pdf" : "png"}`;
+    triggerBlobDownload(blob, filename);
+    return { ok: true };
+  } catch (err) {
+    console.error("[certificates] downloadCertificateFile error:", err);
+    return { ok: false, reason: "error" };
+  }
+}
+
 // Verificacao PUBLICA por code, sem auth. null se nao existir (404) ou falhar.
 export async function getPublicCertificate(
   code: string,
