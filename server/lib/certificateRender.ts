@@ -142,12 +142,13 @@ export interface CertificateRenderData {
   code: string;
 }
 
-// Recebe os dados do snapshot e devolve o SVG preenchido como string. Ordem:
-// ancoras primeiro (texto), QR por ultimo (troca de bloco).
-export async function renderCertificateSvg(
+// Preenche um template (com ou sem fontes embutidas) com os dados do snapshot.
+// Ordem: ancoras primeiro (texto), QR por ultimo (troca de bloco).
+async function fillTemplate(
+  template: string,
   data: CertificateRenderData,
 ): Promise<string> {
-  let svg = loadTemplate();
+  let svg = template;
   // O design mostra o nome em caixa alta: uppercase pt-BR (preserva acentos).
   svg = setAnchor(svg, "nome", data.holderName.toLocaleUpperCase("pt-BR"));
   svg = setAnchor(svg, "trilha", data.roadmapTitle);
@@ -155,6 +156,32 @@ export async function renderCertificateSvg(
   svg = setAnchor(svg, "data", formatDateBR(data.issuedAt));
   svg = setAnchor(svg, "codigo", data.code);
   const qrGroup = await buildQrGroup(data.code);
-  svg = replaceFakeQr(svg, qrGroup);
-  return svg;
+  return replaceFakeQr(svg, qrGroup);
+}
+
+// SVG com as fontes EMBUTIDAS (base64). E este que o PDF e o PNG usam: o
+// Chromium precisa das fontes embutidas. NAO alterar o comportamento aqui.
+export async function renderCertificateSvg(
+  data: CertificateRenderData,
+): Promise<string> {
+  return fillTemplate(loadTemplate(), data);
+}
+
+// SVG de TELA, LEVE: sem o bloco de fontes embutidas (~263KB). A pagina do
+// certificado carrega Outfit/Bricolage via @font-face e renderiza este SVG
+// INLINE, entao as fontes vem da pagina (identico visualmente, muito mais leve).
+// NAO usar para PDF/PNG (que precisam das fontes embutidas).
+let cachedScreenTemplate: string | null = null;
+function loadScreenTemplate(): string {
+  if (cachedScreenTemplate === null) {
+    // Remove o unico <style> do template (o bloco de @font-face nos defs).
+    cachedScreenTemplate = loadTemplate().replace(/<style>[\s\S]*?<\/style>/, "");
+  }
+  return cachedScreenTemplate;
+}
+
+export async function renderCertificateScreenSvg(
+  data: CertificateRenderData,
+): Promise<string> {
+  return fillTemplate(loadScreenTemplate(), data);
 }

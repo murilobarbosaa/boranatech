@@ -170,6 +170,23 @@ export async function downloadCertificateFile(
   }
 }
 
+// SVG de TELA (leve, sem fontes embutidas) para a pagina renderizar INLINE.
+// null se falhar (a pagina cai num placeholder). Publico, sem auth.
+export async function getPublicCertificateSvg(
+  code: string,
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      apiUrl(`/api/public/certificates/${encodeURIComponent(code)}/svg`),
+    );
+    if (!res.ok) return null;
+    return await res.text();
+  } catch (err) {
+    console.error("[certificates] getPublicCertificateSvg error:", err);
+    return null;
+  }
+}
+
 // Verificacao PUBLICA por code, sem auth. null se nao existir (404) ou falhar.
 export async function getPublicCertificate(
   code: string,

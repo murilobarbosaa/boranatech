@@ -1,5 +1,31 @@
 /* Fontes auto-hospedadas (snapshot do Google Fonts). Gerado uma vez; servidas de /fonts. */
 
+/* Fontes do CERTIFICADO (Outfit + Bricolage Grotesque). Extraidas do proprio
+   template do certificado (mesmos arquivos que o PDF/PNG embutem), servidas de
+   /fonts para a pagina do certificado renderizar o SVG de TELA sem as fontes
+   embutidas (leve). Só sao baixadas quando o SVG do certificado e exibido. */
+@font-face {
+  font-family: "Outfit";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/Outfit-400.ttf) format("truetype");
+}
+@font-face {
+  font-family: "Outfit";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/fonts/Outfit-700.ttf) format("truetype");
+}
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/fonts/BricolageGrotesque-700.ttf) format("truetype");
+}
+
 /* latin-ext */
 @font-face {
   font-family: "Fira Code";

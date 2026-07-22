@@ -9,7 +9,10 @@ import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 
 import { renderCertificatePdf, renderCertificatePng } from "../lib/certificatePdf";
-import { renderCertificateSvg } from "../lib/certificateRender";
+import {
+  renderCertificateScreenSvg,
+  renderCertificateSvg,
+} from "../lib/certificateRender";
 import {
   getCertificateByCode,
   getCertificateEligibility,
@@ -235,6 +238,37 @@ publicCertificatesRouter.get("/:code", async (req, res, next) => {
     // Revogado retorna 200 com revoked: true (a pagina diz "revogado", nao
     // "nao existe").
     res.json({ data: certificate });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// SVG bonito do certificado para a pagina EXIBIR (versao de TELA, LEVE: sem as
+// fontes base64 embutidas). A pagina renderiza inline e carrega Outfit/Bricolage
+// via @font-face, entao fica identico ao PDF mas ~55% menor no fio. Deriva do
+// snapshot congelado; NAO expoe user_id nem CPF (o design nem tem CPF). Revogado
+// TAMBEM serve o SVG: a pagina marca o estado, nao bloqueia aqui. Coberto pelo
+// rate limit global de /api/*. NAO confundir com o SVG do PDF/PNG (embutido).
+publicCertificatesRouter.get("/:code/svg", async (req, res, next) => {
+  try {
+    const certificate = await getCertificateByCode(req.params.code);
+    if (!certificate) {
+      return next(
+        createError(404, "not_found", "Certificado não encontrado."),
+      );
+    }
+    const svg = await renderCertificateScreenSvg({
+      holderName: certificate.holderName,
+      roadmapTitle: certificate.roadmapTitle,
+      hours: certificate.hours,
+      issuedAt: certificate.issuedAt,
+      code: certificate.code,
+    });
+    // Deriva de snapshot imutavel: cacheavel por alguns minutos (alivia a
+    // renderizacao repetida do SVG na verificacao publica).
+    res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.send(svg);
   } catch (err) {
     next(err);
   }

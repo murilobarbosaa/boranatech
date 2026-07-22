@@ -269,6 +269,7 @@ interface CertificateRow {
   code: string;
   holder_name: string;
   holder_cpf: string;
+  roadmap_slug: string;
   roadmap_title: string;
   hours: number;
   syllabus: SyllabusSection[];
@@ -288,6 +289,7 @@ function toPublicCertificate(row: CertificateRow): PublicCertificate {
     code: row.code,
     holderName: row.holder_name,
     cpfMasked,
+    roadmapSlug: row.roadmap_slug,
     roadmapTitle: row.roadmap_title,
     hours: row.hours,
     syllabus: row.syllabus,
@@ -310,7 +312,7 @@ export async function getCertificateByCode(
   const { data, error } = await supabaseAdmin
     .from("certificates")
     .select(
-      "code, holder_name, holder_cpf, roadmap_title, hours, syllabus, issued_at, revoked_at, revoked_reason",
+      "code, holder_name, holder_cpf, roadmap_slug, roadmap_title, hours, syllabus, issued_at, revoked_at, revoked_reason",
     )
     .eq("code", normalized)
     .maybeSingle();

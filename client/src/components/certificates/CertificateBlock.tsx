@@ -7,19 +7,14 @@ import type { CompletionCta } from "@/lib/roadmapV2/completionCtas";
 import type { RoadmapV2 } from "@/lib/roadmapV2/types";
 import {
   getEligibility,
-  getPublicCertificate,
   issueCertificate,
 } from "@/services/certificateService";
 import type {
   Eligibility,
   MissingProfileField,
-  PublicCertificate,
 } from "@shared/certificates/types";
 
-import CertificateDownloadButtons from "./CertificateDownloadButtons";
-import CertificateView from "./CertificateView";
 import CompleteProfileModal from "./CompleteProfileModal";
-import LinkedinButtons from "./LinkedinButtons";
 
 // Maquina de estados do bloco de conclusao (item 1), dirigida pelo GET de
 // elegibilidade. UM estado por vez. O botao do LinkedIn SO existe em
@@ -76,7 +71,6 @@ export default function CertificateBlock({
   const [issuing, setIssuing] = useState(false);
   const [issueError, setIssueError] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [issuedCert, setIssuedCert] = useState<PublicCertificate | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -89,21 +83,6 @@ export default function CertificateBlock({
     if (!user) return;
     void load();
   }, [user, load]);
-
-  // already_issued: busca o certificado publico pelo code pra desenhar na tela.
-  useEffect(() => {
-    if (eligibility?.status !== "already_issued") {
-      setIssuedCert(null);
-      return;
-    }
-    let cancelled = false;
-    getPublicCertificate(eligibility.code).then((cert) => {
-      if (!cancelled) setIssuedCert(cert);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [eligibility]);
 
   const handleIssue = useCallback(async () => {
     setIssuing(true);
@@ -271,33 +250,26 @@ export default function CertificateBlock({
         </SuccessShell>
       );
 
+    // Card ENXUTO: o certificado, os downloads e o LinkedIn agora vivem SO na
+    // pagina do certificado. Aqui e so a celebracao + o atalho pra la.
     case "already_issued":
       return (
         <SuccessShell title={completedTitle}>
           <p className="mt-1 text-sm font-semibold text-slate-600">
-            {/* TODO(Ana): certificado emitido */}
-            Seu certificado está emitido.
+            {/* TODO(Ana): parabens + certificado emitido */}
+            Parabéns! Você concluiu a trilha {roadmap.title} e seu certificado
+            foi emitido.
           </p>
-          {issuedCert ? (
-            <div className="mt-4">
-              <CertificateView
-                holderName={issuedCert.holderName}
-                roadmapTitle={issuedCert.roadmapTitle}
-                hours={issuedCert.hours}
-                issuedAt={issuedCert.issuedAt}
-                code={issuedCert.code}
-              />
-            </div>
-          ) : null}
-          <div className="mt-4 flex flex-col gap-3">
-            {/* Aqui o usuario ja e o dono (acabou de emitir), entao os botoes
-                aparecem direto; a rota reconfirma a posse server-side. */}
-            <CertificateDownloadButtons code={eligibility.code} />
-            <LinkedinButtons
-              roadmapTitle={roadmap.title}
-              code={eligibility.code}
-              issuedAt={issuedCert?.issuedAt ?? ""}
-            />
+          {/* Botao normal (nao full-width) alinhado com os CTAs de trilha, na
+              mesma linha e no mesmo padrao visual. */}
+          <div className="mt-4 flex flex-wrap items-start gap-3">
+            <Link
+              href={`/certificados/${eligibility.code}`}
+              className={primaryButtonClass}
+            >
+              {/* TODO(Ana): label ver meu certificado */}
+              Ver meu certificado
+            </Link>
             <CompletionCtaLinks ctas={asSecondary(secondaryCtas)} />
           </div>
         </SuccessShell>

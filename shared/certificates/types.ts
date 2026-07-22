@@ -50,6 +50,7 @@ export interface PublicCertificate {
   code: string;
   holderName: string;
   cpfMasked: string;
+  roadmapSlug: string;
   roadmapTitle: string;
   hours: number;
   syllabus: SyllabusSection[];
