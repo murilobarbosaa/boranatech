@@ -19,7 +19,10 @@ export const roadmapLoaders: Record<string, () => Promise<RoadmapV2>> = {
     import("@shared/roadmapV2/content/fullstack").then((m) => m.fullstack),
   dados: () => import("@shared/roadmapV2/content/dados").then((m) => m.dados),
   uxui: () => import("@shared/roadmapV2/content/uxui").then((m) => m.uxui),
-  ia: () => import("@shared/roadmapV2/content/ia").then((m) => m.ia),
+  "inteligencia-artificial": () =>
+    import("@shared/roadmapV2/content/inteligencia-artificial").then(
+      (m) => m.inteligenciaArtificial,
+    ),
   produto: () =>
     import("@shared/roadmapV2/content/produto").then((m) => m.produto),
   ciberseguranca: () =>

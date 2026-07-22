@@ -40,7 +40,7 @@ export const projectTrailLinks: Record<
   ],
   "chatbot-com-ia": [
     {
-      "slug": "ia",
+      "slug": "inteligencia-artificial",
       "nodeId": "pratica.projeto"
     }
   ],

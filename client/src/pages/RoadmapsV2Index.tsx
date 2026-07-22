@@ -320,9 +320,15 @@ export default function RoadmapsV2Index() {
     };
   }, [user]);
 
+  // Resolve por slug OU por area: a trilha de IA tem slug
+  // "inteligencia-artificial" mas area "ia" (o gerador ocupa /roadmaps/ia),
+  // entao ?area=ia precisa cair no slug da trilha, nao no proprio param.
   const areaParam = new URLSearchParams(search).get("area");
-  if (areaParam && roadmapsMeta.some((r) => r.slug === areaParam)) {
-    return <Redirect to={`/roadmaps/${areaParam}`} />;
+  const areaTarget = areaParam
+    ? roadmapsMeta.find((r) => r.slug === areaParam || r.area === areaParam)
+    : undefined;
+  if (areaTarget) {
+    return <Redirect to={`/roadmaps/${areaTarget.slug}`} />;
   }
 
   return (
@@ -402,7 +408,7 @@ export default function RoadmapsV2Index() {
             {roadmapsMeta
               .filter((r) => r.kind !== "carreira")
               .map((r, index) => {
-                const area = areasTI.find((x) => x.slug === r.slug);
+                const area = areasTI.find((x) => x.slug === r.area);
                 if (!area) return null;
                 const Icon = area.icon;
                 const hasProject = r.hasProject;

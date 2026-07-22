@@ -4,7 +4,7 @@ import { backend } from "./backend";
 import { fullstack } from "./fullstack";
 import { dados } from "./dados";
 import { uxui } from "./uxui";
-import { ia } from "./ia";
+import { inteligenciaArtificial } from "./inteligencia-artificial";
 import { produto } from "./produto";
 import { ciberseguranca } from "./ciberseguranca";
 import { cloud } from "./cloud";
@@ -36,7 +36,7 @@ export {
   fullstack,
   dados,
   uxui,
-  ia,
+  inteligenciaArtificial,
   produto,
   ciberseguranca,
   cloud,
@@ -68,7 +68,7 @@ export const roadmapsV2: RoadmapV2[] = [
   fullstack,
   dados,
   uxui,
-  ia,
+  inteligenciaArtificial,
   produto,
   ciberseguranca,
   cloud,

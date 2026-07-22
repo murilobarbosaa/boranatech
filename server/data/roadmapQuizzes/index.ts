@@ -19,7 +19,7 @@ import frontend from "./frontend";
 import fullstack from "./fullstack";
 import gamedev from "./gamedev";
 import gestao from "./gestao";
-import ia from "./ia";
+import inteligenciaArtificial from "./inteligencia-artificial";
 import infraestrutura from "./infraestrutura";
 import iot from "./iot";
 import mainframe from "./mainframe";
@@ -44,7 +44,7 @@ export const roadmapQuizPools: Record<string, QuizPool> = {
   fullstack,
   gamedev,
   gestao,
-  ia,
+  "inteligencia-artificial": inteligenciaArtificial,
   infraestrutura,
   iot,
   mainframe,

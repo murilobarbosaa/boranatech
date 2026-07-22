@@ -80,13 +80,13 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "hasQuiz": true
   },
   {
-    "slug": "ia",
+    "slug": "inteligencia-artificial",
     "area": "ia",
     "title": "Inteligência Artificial do Zero",
     "level": "Iniciante",
     "description": "Dos fundamentos e da matemática essencial ao machine learning, deep learning e IA generativa. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 23,
+    "stepCount": 50,
     "hasProject": true,
     "hasQuiz": true
   },
