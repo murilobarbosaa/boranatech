@@ -535,7 +535,7 @@ export default function Cursos() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Nome do curso ou canal"
-                  className="w-full pl-9 pr-4 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500"
+                  className="w-full h-10 pl-9 pr-4 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500"
                 />
               </div>
             </div>
