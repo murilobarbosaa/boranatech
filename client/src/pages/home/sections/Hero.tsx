@@ -451,7 +451,10 @@ function readCachedUsersCount(): number | null {
     const raw = window.localStorage.getItem(USERS_COUNT_LS_KEY);
     if (!raw) return null;
     const n = Number.parseInt(raw, 10);
-    return Number.isFinite(n) && n >= 0 ? n : null;
+    // Só > 0 é número confiável: um "0" (cache envenenado por build/servidor
+    // antigo, ou resposta degradada) é tratado como ausente e cai no placeholder,
+    // nunca renderizado como "+0". Mesmo critério do Checkout (cache compartilhado).
+    return Number.isFinite(n) && n > 0 ? n : null;
   } catch {
     return null;
   }
@@ -467,8 +470,9 @@ function writeCachedUsersCount(n: number): void {
 
 export default function Hero() {
   const [currentHighlight, setCurrentHighlight] = useState(0);
-  // null = sem número confiável (primeira visita sem cache OU backend sem lkg).
-  // Nunca usamos um default hardcoded; o placeholder do badge cobre o estado vazio.
+  // null = sem número confiável (primeira visita sem cache, backend sem lkg, ou
+  // valor degradado <= 0). Nunca usamos default hardcoded nem exibimos 0; o
+  // placeholder do badge cobre o estado vazio. Estado só é null ou > 0.
   const [usersCount, setUsersCount] = useState<number | null>(() =>
     readCachedUsersCount(),
   );
@@ -488,6 +492,9 @@ export default function Hero() {
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (cancelled || !data || typeof data.count !== "number") return;
+        // 0/negativo é degradação, não estado real: não exibe nem grava no cache
+        // (evitaria envenenar o localStorage compartilhado). Mesmo guard do Checkout.
+        if (data.count <= 0) return;
         setUsersCount(data.count);
         writeCachedUsersCount(data.count);
       })
