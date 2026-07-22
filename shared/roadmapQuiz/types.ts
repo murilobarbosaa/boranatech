@@ -38,20 +38,27 @@ export type PublicQuizQuestion = Omit<
 };
 
 // Uma tentativa sorteia 10 perguntas (3 iniciante, 4 intermediario,
-// 3 avancado) e aprova com 6 acertos ou mais.
+// 3 avancado) e aprova com 7 acertos ou mais.
 export const QUESTIONS_PER_ATTEMPT = 10;
 export const DRAW_BY_LEVEL: Record<QuizNivel, number> = {
   iniciante: 3,
   intermediario: 4,
   avancado: 3,
 };
-export const PASS_SCORE = 6;
+export const PASS_SCORE = 7;
 
-// Barra do CERTIFICADO, distinta e mais alta que PASS_SCORE por design: 6
-// acertos fecham a trilha (roadmap_completions), 8 certificam. Congelada em
-// cada certificado emitido (coluna cert_score) para a nota de corte histórica
-// nunca mudar retroativamente.
-export const CERT_SCORE = 8;
+// Barra do CERTIFICADO: BARRA UNICA (decisao de produto). Passar na prova ja
+// da direito ao certificado, entao a barra do certificado e a mesma de
+// aprovacao. Mantida como constante separada (nao deletada) porque
+// certificates.ts a importa e a coluna congelada cert_score guarda o valor da
+// nota de corte de cada certificado emitido, para nunca mudar retroativamente.
+export const CERT_SCORE = PASS_SCORE;
+
+// Retake: reprovar libera refazer, mas ate RETAKE_LIMIT tentativas por ciclo.
+// Estourou as tentativas -> cooldown de COOLDOWN_HOURS a partir da ultima
+// reprovada do ciclo; passado o cooldown o ciclo reseta e libera de novo.
+export const RETAKE_LIMIT = 3;
+export const COOLDOWN_HOURS = 24;
 
 // Tamanho do pool por nivel: o gerador mira 15 e a validacao exige pelo
 // menos 9 (o sorteio precisa de folga pra variar entre tentativas). O piso e

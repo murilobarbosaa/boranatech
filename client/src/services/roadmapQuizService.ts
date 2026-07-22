@@ -61,6 +61,7 @@ export type QuizErrorCode =
   | "quiz_unavailable"
   | "completion_required"
   | "already_passed"
+  | "cooldown_active"
   | "not_found"
   | "not_active"
   | "invalid_answers"
@@ -71,6 +72,7 @@ const KNOWN_CODES: ReadonlySet<string> = new Set([
   "quiz_unavailable",
   "completion_required",
   "already_passed",
+  "cooldown_active",
   "not_found",
   "not_active",
   "invalid_answers",
@@ -78,11 +80,14 @@ const KNOWN_CODES: ReadonlySet<string> = new Set([
 
 export class QuizServiceError extends Error {
   code: QuizErrorCode;
+  // So vem com cooldown_active: ISO de quando as tentativas liberam de novo.
+  retryAt?: string;
 
-  constructor(code: QuizErrorCode, message: string) {
+  constructor(code: QuizErrorCode, message: string, retryAt?: string) {
     super(message);
     this.name = "QuizServiceError";
     this.code = code;
+    this.retryAt = retryAt;
   }
 }
 
@@ -113,7 +118,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   const json = (await res.json().catch(() => null)) as {
     data?: T;
-    error?: { code?: string; message?: string };
+    error?: { code?: string; message?: string; retryAt?: string };
   } | null;
 
   if (!res.ok) {
@@ -121,6 +126,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new QuizServiceError(
       KNOWN_CODES.has(code) ? (code as QuizErrorCode) : "unknown",
       json?.error?.message ?? `HTTP ${res.status}`,
+      typeof json?.error?.retryAt === "string"
+        ? json.error.retryAt
+        : undefined,
     );
   }
   if (json?.data === undefined) {

@@ -20,6 +20,7 @@ import {
 import { roadmapQuizPools } from "../data/roadmapQuizzes";
 import {
   drawQuestions,
+  evaluateRetakeGate,
   gradeAttempt,
   toPublicQuestions,
   type AttemptQuestionSnapshot,
@@ -194,6 +195,30 @@ router.post("/:slug/attempts", async (req, res, next) => {
           attemptId: active.id,
           questions: toPublicQuestions(pool, active.questions),
           answers: active.answers ?? {},
+        },
+      });
+    }
+
+    // Barra unica: quem reprovou pode refazer, mas ate RETAKE_LIMIT tentativas
+    // por ciclo; estourou -> cooldown de COOLDOWN_HOURS a partir da ultima
+    // reprovada, depois o ciclo reseta. A aprovada ja barrou acima
+    // (already_passed). Derivado dos timestamps, sem coluna nova.
+    const failedAtMs = attempts
+      .filter((row) => row.status === "reprovada")
+      .map((row) => new Date(row.completed_at ?? row.created_at).getTime())
+      .filter((ms) => Number.isFinite(ms))
+      .sort((a, b) => a - b);
+    const retake = evaluateRetakeGate(failedAtMs, Date.now());
+    if (!retake.allowed) {
+      // createError so carrega { code, message }; o cooldown precisa devolver o
+      // retryAt pro client mostrar quando libera, entao respondemos direto.
+      return res.status(429).json({
+        error: {
+          code: "cooldown_active",
+          // TODO(Ana): copy do aviso de cooldown do quiz
+          message:
+            "Você usou todas as tentativas por enquanto. Tente de novo mais tarde.",
+          retryAt: retake.retryAt,
         },
       });
     }

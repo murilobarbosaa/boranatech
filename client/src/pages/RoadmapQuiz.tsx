@@ -16,6 +16,7 @@ import {
 } from "@/services/roadmapQuizService";
 import {
   QUESTIONS_PER_ATTEMPT,
+  RETAKE_LIMIT,
   type PublicQuizQuestion,
   type QuizAlternativaId,
 } from "@shared/roadmapQuiz/types";
@@ -46,9 +47,24 @@ type Phase =
   | { kind: "loading" }
   | { kind: "gate"; code: "completion_required" | "quiz_unavailable" }
   | { kind: "load_error" }
+  | { kind: "cooldown"; retryAt: string | null }
   | { kind: "exam" }
   | { kind: "result"; result: QuizSubmitResult }
   | { kind: "approved"; score: number | null; review: QuizReviewItem[] };
+
+// Formata o ISO de liberacao pro aviso de cooldown; sem data valida, cai num
+// texto generico.
+function formatRetryAt(retryAt: string | null): string {
+  if (!retryAt) return "mais tarde";
+  const date = new Date(retryAt);
+  if (Number.isNaN(date.getTime())) return "mais tarde";
+  return date.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function frameClass(extra = ""): string {
   return `rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a] ${extra}`;
@@ -159,6 +175,10 @@ export default function RoadmapQuiz() {
         }
         if (err.code === "already_passed") {
           void loadApproved();
+          return;
+        }
+        if (err.code === "cooldown_active") {
+          setPhase({ kind: "cooldown", retryAt: err.retryAt ?? null });
           return;
         }
       }
@@ -323,6 +343,26 @@ export default function RoadmapQuiz() {
               </button>
               <Link href={trailHref} className={secondaryBtn}>
                 {/* TODO(Ana): CTA de volta no erro de carregamento */}
+                Voltar à trilha
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {phase.kind === "cooldown" && (
+          <div className={frameClass()}>
+            <h2 className="font-display text-lg font-black text-slate-950">
+              {/* TODO(Ana): titulo do estado de cooldown de tentativas */}
+              Tentativas esgotadas por enquanto
+            </h2>
+            <p className="mt-2 text-sm font-semibold text-slate-600">
+              {/* TODO(Ana): corpo do aviso de cooldown de tentativas */}
+              Você usou suas {RETAKE_LIMIT} tentativas nesta trilha. Você pode
+              tentar de novo a partir de {formatRetryAt(phase.retryAt)}.
+            </p>
+            <div className="mt-4">
+              <Link href={trailHref} className={primaryBtn}>
+                {/* TODO(Ana): CTA de volta a trilha no cooldown */}
                 Voltar à trilha
               </Link>
             </div>

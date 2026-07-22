@@ -5,8 +5,10 @@
 // pool e so sai no retorno de gradeAttempt como boolean por pergunta; a
 // projecao pro client (toPublicQuestions) nunca o inclui.
 import {
+  COOLDOWN_HOURS,
   DRAW_BY_LEVEL,
   PASS_SCORE,
+  RETAKE_LIMIT,
   type PublicQuizQuestion,
   type QuizAlternativaId,
   type QuizNivel,
@@ -125,4 +127,43 @@ export function toPublicQuestions(
     });
   }
   return out;
+}
+
+const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000;
+
+export interface RetakeGate {
+  allowed: boolean;
+  // ISO do momento em que o cooldown expira; presente so quando allowed=false.
+  retryAt?: string;
+}
+
+// Regra de tentativas da barra unica, derivada SO dos timestamps de reprovacao
+// (em ms, ASCENDENTES) sem coluna nova. Agrupa as reprovadas em ciclos de
+// RETAKE_LIMIT: ao fechar o ciclo (RETAKE_LIMIT reprovadas), o cooldown vai ate
+// COOLDOWN_MS depois da ultima reprovada do ciclo. Passado o cooldown o ciclo
+// reseta (libera RETAKE_LIMIT de novo); em cooldown, bloqueia e devolve o
+// retryAt. Os dados sao auto-consistentes: uma reprovada so existe se o gate a
+// permitiu, entao contar em ordem cronologica reproduz os ciclos reais.
+export function evaluateRetakeGate(
+  failedAtMs: number[],
+  nowMs: number,
+): RetakeGate {
+  let count = 0;
+  let cooldownUntil: number | null = null;
+  for (const ts of failedAtMs) {
+    count += 1;
+    if (count >= RETAKE_LIMIT) {
+      const end = ts + COOLDOWN_MS;
+      if (nowMs >= end) {
+        count = 0;
+        cooldownUntil = null;
+      } else {
+        cooldownUntil = end;
+      }
+    }
+  }
+  if (count >= RETAKE_LIMIT && cooldownUntil !== null) {
+    return { allowed: false, retryAt: new Date(cooldownUntil).toISOString() };
+  }
+  return { allowed: true };
 }
