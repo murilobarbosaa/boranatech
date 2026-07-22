@@ -35,7 +35,6 @@ export type Eligibility =
   | ({ status: "not_complete" } & EligibilityHours)
   | ({ status: "quiz_required" } & EligibilityHours)
   | ({ status: "score_below_cert"; score: number; certScore: number } & EligibilityHours)
-  | ({ status: "pro_required" } & EligibilityHours)
   | ({ status: "profile_incomplete"; missing: MissingProfileField[] } & EligibilityHours)
   | ({ status: "already_issued"; code: string } & EligibilityHours)
   | ({ status: "unavailable" } & EligibilityHours)

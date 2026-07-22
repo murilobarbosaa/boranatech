@@ -215,15 +215,20 @@ export default function CertificadoPublico() {
 
               <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
                 {/* COLUNA A: o certificado (SVG inline). aspect-ratio reserva o
-                    espaco ANTES de carregar -> sem layout shift. */}
-                <div className="overflow-hidden rounded-[16px] bg-[#3E1076] shadow-[8px_8px_0_#7c3aed]">
-                  <div
-                    className="aspect-[3508/2480] w-full [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
-                    aria-label={`Certificado de ${cert.holderName}`}
-                    {...(svgMarkup
-                      ? { dangerouslySetInnerHTML: { __html: svgMarkup } }
-                      : {})}
-                  />
+                    espaco (mesma proporcao do SVG) ANTES de carregar -> sem
+                    layout shift. Sem fundo roxo no wrapper: enquanto carrega
+                    mostra um placeholder neutro; carregado, o SVG preenche a
+                    caixa exatamente (nao sobra faixa). */}
+                <div className="overflow-hidden rounded-[16px] shadow-[8px_8px_0_#7c3aed]">
+                  {svgMarkup ? (
+                    <div
+                      className="aspect-[3508/2480] w-full [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
+                      aria-label={`Certificado de ${cert.holderName}`}
+                      dangerouslySetInnerHTML={{ __html: svgMarkup }}
+                    />
+                  ) : (
+                    <div className="aspect-[3508/2480] w-full animate-pulse bg-slate-200" />
+                  )}
                 </div>
 
                 {/* COLUNA B: verificacao (prosa) + infos + acoes. */}

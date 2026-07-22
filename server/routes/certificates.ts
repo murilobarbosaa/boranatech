@@ -1,9 +1,9 @@
 // Certificados (C1, fase 2A): elegibilidade, emissao, lista do usuario e
 // verificacao publica por code.
 //
-// O GET de elegibilidade NAO e mais 403 pra free: devolve status pro_required
-// (a pessoa ve o certificado que conquistou e o upgrade, no momento de maior
-// motivacao). O gate Pro DE VERDADE (403) fica so no POST de emissao.
+// Emitir certificado NAO exige Pro (decisao de produto): quem passou na prova e
+// tem perfil completo emite de graca. Nem elegibilidade nem emissao passam por
+// checkProStatus; nada de certificado e gated por assinatura.
 import { Router } from "express";
 
 import type { Request, Response, NextFunction } from "express";
@@ -21,7 +21,7 @@ import {
   issueCertificate,
 } from "../lib/certificates";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
-import { checkProStatus, requireAuth } from "../middleware/auth";
+import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 
 const router = Router();
@@ -133,9 +133,8 @@ async function handleDownload(
   }
 }
 
-// DONO-SO, com login (requireAuth ja aplicado). ANTES do checkProStatus: baixar
-// um certificado ja emitido nao deve exigir assinatura Pro ativa (a pessoa era
-// Pro quando emitiu).
+// DONO-SO, com login (requireAuth ja aplicado). Baixar nao exige Pro (nada de
+// certificado exige).
 router.get("/:code/pdf", (req, res, next) => {
   void handleDownload("pdf", req, res, next);
 });
@@ -143,9 +142,8 @@ router.get("/:code/image", (req, res, next) => {
   void handleDownload("image", req, res, next);
 });
 
-// Status por trilha pro selo da vitrine. Declarada ANTES do checkProStatus de
-// proposito: o selo nao e recurso Pro, entao nao paga a latencia do cache+RPC
-// de Pro. userId SEMPRE do JWT.
+// Status por trilha pro selo da vitrine. Nao e recurso Pro (nada de certificado
+// e). userId SEMPRE do JWT.
 router.get("/status", async (req, res, next) => {
   try {
     const statuses = await getCertificateStatuses(req.user!.id);
@@ -155,16 +153,14 @@ router.get("/status", async (req, res, next) => {
   }
 });
 
-router.use(checkProStatus);
-
-// Elegibilidade: sempre 200. isPro vira parametro (status pro_required), nunca
-// erro. userId SEMPRE do JWT.
+// Elegibilidade: sempre 200. Emitir certificado NAO exige Pro (decisao de
+// produto), entao nao passa por checkProStatus nem calcula isPro. userId SEMPRE
+// do JWT.
 router.get("/eligibility/:slug", async (req, res, next) => {
   try {
     const eligibility = await getCertificateEligibility(
       req.user!.id,
       req.params.slug,
-      req.isPro === true,
     );
     res.json({ data: eligibility });
   } catch (err) {
@@ -172,22 +168,12 @@ router.get("/eligibility/:slug", async (req, res, next) => {
   }
 });
 
-// Emissao: gate Pro REAL. Body ignorado por completo (nada dele e lido); a
-// funcao reavalia tudo server-side.
+// Emissao: SEM gate de Pro. Body ignorado por completo (nada dele e lido); a
+// funcao reavalia tudo server-side e so emite se a elegibilidade for "eligible"
+// (passou na prova + perfil completo + nao revogado).
 router.post("/issue/:slug", async (req, res, next) => {
   try {
-    if (req.isPro !== true) {
-      return next(
-        // TODO(Ana): revisar copy da mensagem de gate Pro do certificado.
-        createError(
-          403,
-          "forbidden",
-          "Recurso Pro. Assine o Plano Pro para emitir seu certificado.",
-        ),
-      );
-    }
-
-    const result = await issueCertificate(req.user!.id, req.params.slug, true);
+    const result = await issueCertificate(req.user!.id, req.params.slug);
     if (result.ok) {
       return res.status(201).json({ data: { code: result.code } });
     }

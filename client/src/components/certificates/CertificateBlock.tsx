@@ -166,25 +166,6 @@ export default function CertificateBlock({
         </SuccessShell>
       );
 
-    // Momento de maior conversao: celebra o que a pessoa conquistou, so entao
-    // o upgrade. Sem LinkedIn (o certificado ainda nao existe).
-    case "pro_required":
-      return (
-        <SuccessShell title={completedTitle}>
-          <p className="mt-1 text-sm font-semibold text-slate-600">
-            {/* TODO(Ana): certificado pronto, so falta o Pro */}
-            Seu certificado de {eligibility.hours}h está pronto.
-          </p>
-          <div className="mt-4 flex flex-col gap-3">
-            <Link href="/planos" className={primaryButtonClass}>
-              {/* TODO(Ana): copy do CTA de assinar */}
-              Assinar o Pro para emitir
-            </Link>
-            <CompletionCtaLinks ctas={asSecondary(secondaryCtas)} />
-          </div>
-        </SuccessShell>
-      );
-
     // Aviso, nao erro: falta um passo.
     case "profile_incomplete":
       return (

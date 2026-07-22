@@ -32,7 +32,6 @@ function isValidFullName(name: string | null | undefined): boolean {
 export async function getCertificateEligibility(
   userId: string,
   slug: string,
-  isPro: boolean,
 ): Promise<Eligibility> {
   // a. Roadmap estatico existente e nao gerado por IA.
   const roadmap = roadmapsV2.find((r) => r.slug === slug);
@@ -91,12 +90,8 @@ export async function getCertificateEligibility(
     return { status: "score_below_cert", score, certScore: CERT_SCORE, ...hours };
   }
 
-  // Gate Pro DEPOIS da barra de nota: so pede assinatura pra quem ja passou nos
-  // 8 acertos. Quem reprovou ve "refaca a prova", nunca um paywall. Nao e 403;
-  // e um status pra UI mostrar o certificado conquistado e o upgrade.
-  if (!isPro) {
-    return { status: "pro_required", ...hours };
-  }
+  // Emitir certificado NAO exige Pro (decisao de produto): quem passou na prova
+  // e tem perfil completo emite de graca. Nao ha mais gate de assinatura aqui.
 
   // f. Identidade do titular completa (snapshot da emissao sai daqui).
   const { data: profileRaw, error: profileError } = await supabaseAdmin
@@ -156,9 +151,8 @@ function isUniqueViolationOn(
 export async function issueCertificate(
   userId: string,
   slug: string,
-  isPro: boolean,
 ): Promise<{ ok: true; code: string } | { ok: false; reason: Eligibility }> {
-  const eligibility = await getCertificateEligibility(userId, slug, isPro);
+  const eligibility = await getCertificateEligibility(userId, slug);
   if (eligibility.status !== "eligible") {
     return { ok: false, reason: eligibility };
   }
