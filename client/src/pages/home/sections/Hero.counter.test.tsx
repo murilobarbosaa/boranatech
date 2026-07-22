@@ -302,6 +302,15 @@ describe("Hero: contador do hero (last-known-good no localStorage, sem default 4
     expectsPlaceholder();
   });
 
+  it("[localStorage-zero-vira-placeholder] cache envenenado com '0' é rejeitado: placeholder, nunca '+0'", () => {
+    window.localStorage.setItem(LS_KEY, "0");
+    fetchSpy.mockReturnValue(new Promise(() => {}));
+
+    renderHero();
+
+    expectsPlaceholder();
+  });
+
   it("[localStorage-throw-no-crash] getItem lança (modo privado, cookies bloqueados): placeholder, sem crash de render", () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new Error("storage blocked");
@@ -312,13 +321,24 @@ describe("Hero: contador do hero (last-known-good no localStorage, sem default 4
     expectsPlaceholder();
   });
 
-  it("[zero-real-renderiza-+0-e-cacheia] backend devolve {count: 0} legítimo (tabela vazia): mostra +0 e grava '0' no LS", async () => {
+  it("[zero-do-backend-vira-placeholder-e-nao-cacheia] backend devolve {count: 0} (degradação, não estado real): fica no placeholder e NÃO grava '0' no LS", async () => {
     fetchSpy.mockResolvedValue(jsonResponse({ count: 0 }));
 
     renderHero();
     await flushMicrotasks();
-    await expectsNumber("0");
+    expectsPlaceholder();
 
-    expect(window.localStorage.getItem(LS_KEY)).toBe("0");
+    expect(window.localStorage.getItem(LS_KEY)).toBeNull();
+  });
+
+  it("[zero-do-backend-nao-sobrescreve-cache-bom] localStorage='32' + backend {count: 0}: continua em +32, não regride para +0", async () => {
+    window.localStorage.setItem(LS_KEY, "32");
+    fetchSpy.mockResolvedValue(jsonResponse({ count: 0 }));
+
+    renderHero();
+    await flushMicrotasks();
+
+    await expectsNumber("32");
+    expect(window.localStorage.getItem(LS_KEY)).toBe("32");
   });
 });
