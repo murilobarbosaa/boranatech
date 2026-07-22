@@ -21,15 +21,6 @@ const LEVEL_ACCENT: Record<
 
 const DEFAULT_ACCENT = { color: "#7c3aed", soft: "#ede9fe" };
 
-const CONFETTI = [
-  { x: -22, y: -12, c: "#0d9488", d: 0 },
-  { x: 16, y: -20, c: "#7c3aed", d: 0.04 },
-  { x: 26, y: 4, c: "#FFB800", d: 0.08 },
-  { x: -14, y: 10, c: "#e11d48", d: 0.06 },
-  { x: 4, y: -26, c: "#06b6d4", d: 0.1 },
-  { x: -28, y: 2, c: "#f97316", d: 0.12 },
-];
-
 type TrailDrawerProps = {
   section: RoadmapSection | null;
   done: Set<string>;
@@ -133,28 +124,6 @@ export default function TrailDrawer({
                       Etapa concluída!
                     </span>
                   )}
-                </div>
-              )}
-              {complete && !reduce && (
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute right-9 top-7"
-                >
-                  {CONFETTI.map((cf, k) => (
-                    <motion.span
-                      key={k}
-                      className="absolute block h-2 w-2 rounded-[2px]"
-                      style={{ background: cf.c }}
-                      initial={{ x: 0, y: 0, scale: 0, opacity: 1 }}
-                      animate={{
-                        x: cf.x,
-                        y: cf.y,
-                        scale: [0, 1.2, 1],
-                        opacity: [1, 1, 0],
-                      }}
-                      transition={{ duration: 0.9, ease: "easeOut", delay: cf.d }}
-                    />
-                  ))}
                 </div>
               )}
             </div>
