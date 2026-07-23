@@ -454,9 +454,13 @@ function slugifyAffiliateCode(value: string) {
     .slice(0, 18);
 }
 
-function buildAffiliateLink(code: string, discount: number) {
+// So ?ref=: em /planos o useAffiliate le ref (cupom e so alias legado, que
+// segue aceito para links antigos ja distribuidos) e busca o desconto na API;
+// ?desconto= so serve de fallback visual no /cadastro, aonde este link nao
+// aponta (o redirect /planos -> /cadastro o re-adiciona sozinho).
+function buildAffiliateLink(code: string) {
   const safeCode = slugifyAffiliateCode(code || "PARCEIRO");
-  return `https://boranatech.com.br/planos?ref=${safeCode}&cupom=${safeCode}&desconto=${discount}`;
+  return `https://boranatech.com.br/planos?ref=${safeCode}`;
 }
 
 // Mesmo padrao do server (server/lib/coupons.ts) e do banco (CHECK na coluna).
@@ -5648,8 +5652,8 @@ export default function Admin() {
   );
 
   const generatedAffiliateLink = useMemo(
-    () => buildAffiliateLink(affiliateCode, affiliateDiscount),
-    [affiliateCode, affiliateDiscount],
+    () => buildAffiliateLink(affiliateCode),
+    [affiliateCode],
   );
 
   const aiUsageReal = useMemo<AiUsage[]>(() => {
@@ -5978,7 +5982,7 @@ export default function Admin() {
   }
 
   async function handleCopyAffiliateCardLink(affiliate: AffiliateRecord) {
-    const link = buildAffiliateLink(affiliate.code, affiliate.discount_percent);
+    const link = buildAffiliateLink(affiliate.code);
     await navigator.clipboard.writeText(link);
     setCopiedAffiliateCardId(affiliate.id);
     window.setTimeout(() => {
@@ -6896,7 +6900,7 @@ export default function Admin() {
                           Links com desconto e comissão para parceiros
                         </h2>
                         <p className="mt-2 max-w-3xl text-sm font-bold text-slate-800">
-                          Gere cupons rastreáveis para influenciadores,
+                          Gere códigos rastreáveis para influenciadores,
                           comunidades, mentorias e embaixadores. Cada link
                           aplica desconto ao aluno e calcula comissão para o
                           afiliado.
@@ -6985,7 +6989,7 @@ export default function Admin() {
                         </label>
 
                         <label className="text-sm font-black text-slate-950">
-                          Código/cupom
+                          Código do afiliado
                           <div className="mt-2 flex gap-2">
                             <input
                               value={affiliateCode}
@@ -7054,7 +7058,7 @@ export default function Admin() {
                           </p>
                           <div className="mt-3 grid gap-2 text-xs font-bold text-slate-600 sm:grid-cols-2">
                             <span className="rounded-full border border-slate-300 bg-white px-3 py-2">
-                              Cupom: {slugifyAffiliateCode(affiliateCode)}
+                              Código: {slugifyAffiliateCode(affiliateCode)}
                             </span>
                             <span className="rounded-full border border-slate-300 bg-white px-3 py-2">
                               Comissão: {affiliateCommission}% por venda paga

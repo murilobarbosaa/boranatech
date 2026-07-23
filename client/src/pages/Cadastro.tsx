@@ -41,7 +41,7 @@ export default function Cadastro() {
               <TicketPercent className="h-5 w-5" />
               {/* TODO(Ana): confirmar copy final */}
               Você vai assinar com {visibleDiscount}% de desconto na primeira
-              cobrança, cupom {affiliateCode} aplicado automaticamente
+              cobrança, código {affiliateCode} aplicado automaticamente
             </p>
             <p className="mt-1 text-xs font-bold text-slate-950/80">
               {/* TODO(Ana): confirmar copy final */}

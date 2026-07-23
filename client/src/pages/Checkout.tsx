@@ -859,7 +859,7 @@ export default function Checkout() {
           <div className="container py-3 text-center">
             <p className="font-display text-sm font-black uppercase tracking-wider text-slate-950">
               {/* TODO(Ana): confirmar copy final */}
-              Cupom {affiliateCode} aplicado, {discountPercent}% de desconto na
+              Código {affiliateCode} aplicado, {discountPercent}% de desconto na
               primeira cobrança, em qualquer plano.
             </p>
             <p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-950/70">
@@ -1102,7 +1102,7 @@ export default function Checkout() {
                 <span>
                   {/* TODO(Ana): confirmar copy final */}
                   Desconto de {discountPercent}% na primeira cobrança, em
-                  qualquer plano, já aplicado nos preços abaixo · Cupom{" "}
+                  qualquer plano, já aplicado nos preços abaixo · Código{" "}
                   {affiliateCode}
                 </span>
                 <span className="text-xs font-semibold text-emerald-700">
