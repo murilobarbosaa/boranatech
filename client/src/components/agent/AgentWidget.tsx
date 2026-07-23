@@ -376,6 +376,16 @@ export default function AgentWidget() {
   // conforme estar logado ou nao (ver handleLauncherClick).
   if (loading) return null;
 
+  // Paginas onde o agente NAO deve aparecer (checagem reativa por rota):
+  // - Prova (/roadmaps/:slug/prova): e avaliacao; assistente de IA permitiria
+  //   cola e anularia o gate de nota/tentativas. NUNCA aparece.
+  // - Certificado publico (/certificados/:code): so para LOGADO. O recrutador
+  //   deslogado que abre o link compartilhado nao ve o agente.
+  const isQuizPage = /^\/roadmaps\/[^/]+\/prova\/?$/.test(location);
+  const isPublicCertPage = /^\/certificados\/[^/]+\/?$/.test(location);
+  if (isQuizPage) return null;
+  if (isPublicCertPage && !user) return null;
+
   // So mostra o historico (botao + gaveta) para Pro com historico disponivel.
   // Free e estado degradado ficam no chat puro, identico ao de hoje.
   const showHistory = isPro && historyAvailable;
