@@ -67,6 +67,65 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+// Bandeiras em SVG inline (emoji de bandeira nao renderiza como bandeira no
+// Windows/Chrome; o publico e majoritariamente Windows, entao SVG e consistente).
+function FlagBR() {
+  return (
+    <svg viewBox="0 0 28 20" className="h-4 w-6 rounded-[3px]" aria-hidden="true">
+      <rect width="28" height="20" fill="#009B3A" />
+      <path d="M14 2 L26 10 L14 18 L2 10 Z" fill="#FEDF00" />
+      <circle cx="14" cy="10" r="4.3" fill="#002776" />
+    </svg>
+  );
+}
+
+function FlagUS() {
+  return (
+    <svg viewBox="0 0 28 20" className="h-4 w-6 rounded-[3px]" aria-hidden="true">
+      <rect width="28" height="20" fill="#fff" />
+      {[0, 2, 4, 6, 8, 10, 12].map((y) => (
+        <rect key={y} y={(y * 20) / 13} width="28" height={20 / 13} fill="#B22234" />
+      ))}
+      <rect width="12" height={(7 * 20) / 13} fill="#3C3B6E" />
+    </svg>
+  );
+}
+
+const LANGS = [
+  { code: "pt" as const, label: "Português", Flag: FlagBR },
+  { code: "en" as const, label: "English", Flag: FlagUS },
+];
+
+function LangSelector({
+  lang,
+  onChange,
+}: {
+  lang: CertLang;
+  onChange: (lang: CertLang) => void;
+}) {
+  return (
+    <div className="inline-flex shrink-0 items-center gap-1 rounded-full border-[2.5px] border-slate-950 bg-white p-1 shadow-[2px_2px_0_#0f172a]">
+      {LANGS.map(({ code, label, Flag }) => (
+        <button
+          key={code}
+          type="button"
+          onClick={() => onChange(code)}
+          aria-label={label}
+          title={label}
+          aria-pressed={lang === code}
+          className={`flex items-center justify-center rounded-full p-1.5 transition-all ${
+            lang === code
+              ? "bg-[#FFB800]"
+              : "opacity-40 grayscale hover:opacity-80"
+          }`}
+        >
+          <Flag />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function CertificadoPublico() {
   const params = useParams();
   const code = params.code ?? "";
@@ -159,7 +218,7 @@ export default function CertificadoPublico() {
       />
       <section className="bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <div
-          className={`mx-auto px-5 pb-20 pt-8 ${wide ? "max-w-6xl" : "max-w-[680px]"}`}
+          className={`mx-auto px-5 pb-20 pt-6 ${wide ? "max-w-6xl" : "max-w-[680px]"}`}
         >
           {loading ? (
             <CenteredSpinner />
@@ -202,50 +261,37 @@ export default function CertificadoPublico() {
             </div>
           ) : (
             <>
-              {/* TOPO: voltar (esquerda) + seletor de idioma (direita) +
-                  subtitulo + titulo da trilha (estilo Coursera). */}
-              <div className="flex items-start justify-between gap-4">
-                <Link
-                  href={`/roadmaps/${cert.roadmapSlug}`}
-                  className="inline-flex items-center gap-1.5 text-sm font-black text-violet-800 transition-colors hover:text-violet-900"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  {/* TODO(Ana): copy do voltar para a trilha */}
-                  {t.backToTrail}
-                </Link>
-                {/* Seletor PT/EN. So estado local, sem persistir. */}
-                <div className="inline-flex shrink-0 overflow-hidden rounded-full border-[2.5px] border-slate-950 shadow-[2px_2px_0_#0f172a]">
-                  {(["pt", "en"] as const).map((code) => (
-                    <button
-                      key={code}
-                      type="button"
-                      onClick={() => setLang(code)}
-                      aria-pressed={lang === code}
-                      className={`px-3 py-1 text-xs font-black uppercase transition-colors ${
-                        lang === code
-                          ? "bg-[#FFB800] text-slate-950"
-                          : "bg-white text-slate-500 hover:bg-slate-50"
-                      }`}
-                    >
-                      {code}
-                    </button>
-                  ))}
+              {/* TOPO: voltar; depois titulo (esquerda) + seletor de idioma na
+                  MESMA linha do titulo (direita), pra ficar perto do certificado
+                  e nao empurrar tudo pra baixo. */}
+              <Link
+                href={`/roadmaps/${cert.roadmapSlug}`}
+                className="inline-flex items-center gap-1.5 text-sm font-black text-violet-800 transition-colors hover:text-violet-900"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                {/* TODO(Ana): copy do voltar para a trilha */}
+                {t.backToTrail}
+              </Link>
+              <div className="mt-4 flex items-end justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">
+                    {/* TODO(Ana): rotulo acima do titulo */}
+                    {t.certificateOfCompletion}
+                  </p>
+                  <h1 className="mt-1 font-display text-4xl font-black leading-tight text-slate-950">
+                    {trilhaTitle}
+                  </h1>
                 </div>
+                {/* Seletor de idioma (bandeiras). So estado local, sem persistir. */}
+                <LangSelector lang={lang} onChange={setLang} />
               </div>
-              <p className="mt-6 text-sm font-black uppercase tracking-[0.2em] text-slate-500">
-                {/* TODO(Ana): rotulo acima do titulo */}
-                {t.certificateOfCompletion}
-              </p>
-              <h1 className="mt-1 font-display text-4xl font-black leading-tight text-slate-950">
-                {trilhaTitle}
-              </h1>
 
               {/* Certificado (heroi) a DIREITA no desktop, painel a esquerda
                   (estilo Coursera). O certificado vem PRIMEIRO no DOM (heroi
                   primeiro no mobile empilhado); no desktop, order inverte pra
                   ele ficar na coluna maior a direita. As acoes ficam ABAIXO do
                   certificado (coluna direita). */}
-              <div className="mt-8 grid gap-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.9fr)]">
+              <div className="mt-6 grid gap-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.9fr)]">
                 {/* COLUNA DO CERTIFICADO: o SVG (integro, sem clip) + acoes. */}
                 <div className="flex flex-col gap-4 lg:order-last">
                   {/* SVG inline. aspect-ratio reserva o espaco (mesma proporcao

@@ -261,11 +261,11 @@ publicCertificatesRouter.get("/:code/svg", async (req, res, next) => {
       },
       parseLang(req.query.lang),
     );
-    // Deriva de snapshot imutavel: cacheavel por alguns minutos. O ?lang faz
-    // parte da URL, entao PT e EN sao cacheados separadamente; Vary por seguranca.
+    // NAO cachear: o SVG varia por ?lang e a troca de idioma tem que refletir na
+    // hora. Cache agressivo (antes public max-age=300) arriscava servir a versao
+    // PT cacheada quando o usuario troca pra EN. O render e barato.
     res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
-    res.setHeader("Cache-Control", "public, max-age=300");
-    res.setHeader("Vary", "Accept-Encoding");
+    res.setHeader("Cache-Control", "no-store");
     res.send(svg);
   } catch (err) {
     next(err);

@@ -179,9 +179,13 @@ export async function getPublicCertificateSvg(
   lang: "pt" | "en" = "pt",
 ): Promise<string | null> {
   try {
-    const query = lang === "en" ? "?lang=en" : "";
+    // lang SEMPRE explicito na URL (pt e en), e cache: "no-store" pra o browser
+    // nunca reusar a versao de outro idioma ao trocar o toggle.
     const res = await fetch(
-      apiUrl(`/api/public/certificates/${encodeURIComponent(code)}/svg${query}`),
+      apiUrl(
+        `/api/public/certificates/${encodeURIComponent(code)}/svg?lang=${lang}`,
+      ),
+      { cache: "no-store" },
     );
     if (!res.ok) return null;
     return await res.text();
