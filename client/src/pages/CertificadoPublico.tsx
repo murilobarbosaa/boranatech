@@ -1,13 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
-import { ArrowLeft, ShieldAlert, ShieldCheck, ShieldX } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  Share2,
+  ShieldAlert,
+  ShieldCheck,
+  ShieldX,
+} from "lucide-react";
 
-import CertificateDownloadButtons from "@/components/certificates/CertificateDownloadButtons";
+import CertificateDownloadModal from "@/components/certificates/CertificateDownloadModal";
+import CertificateShareModal from "@/components/certificates/CertificateShareModal";
 import { CERT_ISSUER_LEGAL } from "@/components/certificates/constants";
-import LinkedinButtons from "@/components/certificates/LinkedinButtons";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { useAuth } from "@/contexts/AuthContext";
+import { roadmapsV2 } from "@shared/roadmapV2/content";
+import { deriveTrilhaSkills } from "@shared/certificates/skills";
 import {
   getPublicCertificate,
   getPublicCertificateSvg,
@@ -49,23 +58,8 @@ function formatDate(iso: string): string {
   }).format(date);
 }
 
-// Habilidades DERIVADAS do conteudo REAL da trilha: os titulos das secoes do
-// snapshot congelado (a mesma ementa, sem as horas). Nao inventa tema novo;
-// so normaliza espacos e deduplica. Exibido AO VIVO na pagina (nao entra no
-// SVG/PDF congelado), entao derivar da trilha aqui e aceitavel.
-function deriveSkills(syllabus: PublicCertificate["syllabus"]): string[] {
-  const seen = new Set<string>();
-  const skills: string[] = [];
-  for (const section of syllabus) {
-    const name = section.title.replace(/\s+/g, " ").trim();
-    const key = name.toLowerCase();
-    if (name && !seen.has(key)) {
-      seen.add(key);
-      skills.push(name);
-    }
-  }
-  return skills;
-}
+const actionButtonClass =
+  "inline-flex flex-1 items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-950 bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:bg-[#FFF9E9] hover:shadow-[4px_4px_0_#0f172a]";
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
@@ -88,6 +82,8 @@ export default function CertificadoPublico() {
   const [svgMarkup, setSvgMarkup] = useState<string | null>(null);
   // null = ainda verificando (reserva espaco das acoes para nao dar layout shift).
   const [isOwner, setIsOwner] = useState<boolean | null>(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -137,10 +133,16 @@ export default function CertificadoPublico() {
     };
   }, [user, cert]);
 
-  const skills = useMemo(
-    () => (cert ? deriveSkills(cert.syllabus) : []),
-    [cert],
-  );
+  // Habilidades + texto de contexto DERIVADOS do conteudo REAL da trilha
+  // (secoes + topicos + descricao), via um reconhecedor deterministico. Exibido
+  // AO VIVO (nao entra no SVG/PDF congelado), entao derivar da trilha e ok.
+  const trilhaSkills = useMemo(() => {
+    if (!cert) return { context: "", tags: [] as string[] };
+    const roadmap = roadmapsV2.find((r) => r.slug === cert.roadmapSlug);
+    return roadmap
+      ? deriveTrilhaSkills(roadmap)
+      : { context: "", tags: [] as string[] };
+  }, [cert]);
 
   const wide = !loading && cert !== null && !cert.revoked;
 
@@ -213,13 +215,18 @@ export default function CertificadoPublico() {
                 {cert.roadmapTitle}
               </h1>
 
-              <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-                {/* COLUNA A: o certificado (SVG inline). aspect-ratio reserva o
-                    espaco (mesma proporcao do SVG) ANTES de carregar -> sem
-                    layout shift. Sem fundo roxo no wrapper: enquanto carrega
-                    mostra um placeholder neutro; carregado, o SVG preenche a
-                    caixa exatamente (nao sobra faixa). */}
-                <div className="overflow-hidden rounded-[16px] shadow-[8px_8px_0_#7c3aed]">
+              {/* Certificado (heroi) a DIREITA no desktop, painel a esquerda
+                  (estilo Coursera). O certificado vem PRIMEIRO no DOM (heroi
+                  primeiro no mobile empilhado); no desktop, order inverte pra
+                  ele ficar na coluna maior a direita. As acoes ficam ABAIXO do
+                  certificado (coluna direita). */}
+              <div className="mt-8 grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.55fr)]">
+                {/* COLUNA DO CERTIFICADO: o SVG (integro, sem clip) + acoes. */}
+                <div className="flex flex-col gap-4 lg:order-last">
+                  {/* SVG inline. aspect-ratio reserva o espaco (mesma proporcao
+                      do SVG) ANTES de carregar -> sem layout shift. Sem
+                      rounded/overflow: o SVG aparece integro (nao corta o topo);
+                      o proprio design ja tem moldura e sombra. */}
                   {svgMarkup ? (
                     <div
                       className="aspect-[3508/2480] w-full [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
@@ -227,12 +234,40 @@ export default function CertificadoPublico() {
                       dangerouslySetInnerHTML={{ __html: svgMarkup }}
                     />
                   ) : (
-                    <div className="aspect-[3508/2480] w-full animate-pulse bg-slate-200" />
+                    <div className="aspect-[3508/2480] w-full animate-pulse rounded-[12px] bg-slate-200" />
                   )}
+
+                  {/* Acoes DONO-SO abaixo do certificado. isOwner === null ->
+                      ainda verificando: reserva a altura (skeleton) pra nao dar
+                      layout shift ao aparecer. Dois botoes -> modais. */}
+                  {isOwner === null ? (
+                    <div className="h-[52px] w-full animate-pulse rounded-[11px] bg-slate-100" />
+                  ) : isOwner ? (
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={() => setShareOpen(true)}
+                        className={actionButtonClass}
+                      >
+                        <Share2 className="h-4 w-4" />
+                        {/* TODO(Ana): label do botao compartilhar */}
+                        Compartilhar certificado
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDownloadOpen(true)}
+                        className={actionButtonClass}
+                      >
+                        <Download className="h-4 w-4" />
+                        {/* TODO(Ana): label do botao baixar */}
+                        Baixar certificado
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
 
-                {/* COLUNA B: verificacao (prosa) + infos + acoes. */}
-                <div className="flex flex-col gap-6">
+                {/* PAINEL (esquerda): verificacao (prosa) + infos. Sem acoes. */}
+                <div className="flex flex-col gap-6 lg:order-first">
                   <div>
                     <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-emerald-600 bg-emerald-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-emerald-800">
                       <ShieldCheck className="h-4 w-4" />
@@ -267,52 +302,55 @@ export default function CertificadoPublico() {
                       </span>
                     </p>
                   </div>
-
-                  {/* Acoes DONO-SO. isOwner === null -> ainda verificando: reserva
-                      o espaco (skeleton) pra nao dar layout shift ao aparecer. */}
-                  {isOwner === null ? (
-                    <div className="h-[168px] animate-pulse rounded-[16px] border-[3px] border-slate-200 bg-slate-50" />
-                  ) : isOwner ? (
-                    <div className="rounded-[16px] border-[3px] border-slate-950 bg-[#FFF9E9] p-6 shadow-[5px_5px_0_#FFB800]">
-                      <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
-                        {/* TODO(Ana): titulo do bloco de acoes do dono */}
-                        Compartilhe seu certificado
-                      </p>
-                      <div className="mt-4 flex flex-col gap-3">
-                        <CertificateDownloadButtons code={cert.code} />
-                        <LinkedinButtons
-                          roadmapTitle={cert.roadmapTitle}
-                          code={cert.code}
-                          issuedAt={cert.issuedAt}
-                        />
-                      </div>
-                    </div>
-                  ) : null}
                 </div>
               </div>
 
-              {/* HABILIDADES: tags leves (estilo "Skills you'll gain"), no lugar
-                  do paredao de ementa. Derivadas das secoes da trilha. */}
-              {skills.length > 0 ? (
-                <div className="mt-10">
+              {/* HABILIDADES: texto de contexto (descricao da trilha) + tags
+                  limpas (so tecnologias/habilidades reais, derivadas do conteudo
+                  da trilha). No lugar do paredao de ementa. */}
+              {trilhaSkills.context || trilhaSkills.tags.length > 0 ? (
+                <div className="mt-12">
                   <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">
                     {/* TODO(Ana): titulo da secao de habilidades */}
                     Habilidades desenvolvidas
                   </p>
-                  <ul className="mt-4 flex flex-wrap gap-2.5">
-                    {skills.map((skill) => (
-                      <li
-                        key={skill}
-                        className="rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-sm font-bold text-slate-800 shadow-[2px_2px_0_#0f172a]"
-                      >
-                        {skill}
-                      </li>
-                    ))}
-                  </ul>
+                  {trilhaSkills.context ? (
+                    <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-slate-600">
+                      {trilhaSkills.context}
+                    </p>
+                  ) : null}
+                  {trilhaSkills.tags.length > 0 ? (
+                    <ul className="mt-4 flex flex-wrap gap-2.5">
+                      {trilhaSkills.tags.map((skill) => (
+                        <li
+                          key={skill}
+                          className="rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-sm font-bold text-slate-800 shadow-[2px_2px_0_#0f172a]"
+                        >
+                          {skill}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </div>
               ) : null}
 
               <Disclaimer />
+
+              {/* Modais dono-so (renderizados fechados; abertos pelos botoes). */}
+              <CertificateShareModal
+                code={cert.code}
+                roadmapTitle={cert.roadmapTitle}
+                hours={cert.hours}
+                issuedAt={cert.issuedAt}
+                skills={trilhaSkills.tags}
+                open={shareOpen}
+                onOpenChange={setShareOpen}
+              />
+              <CertificateDownloadModal
+                code={cert.code}
+                open={downloadOpen}
+                onOpenChange={setDownloadOpen}
+              />
             </>
           )}
         </div>
