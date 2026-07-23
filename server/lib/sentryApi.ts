@@ -320,20 +320,28 @@ export async function getIssuesByNumericIds(
       `${SENTRY_API_BASE}/projects/${cfg.config.org}/${cfg.config.project}/issues/`,
     );
     url.searchParams.set("query", `issue.id:[${chunk.join(", ")}]`);
-    // Janela ampla: lastSeen e absoluto, mas o filtro de data default do Sentry
-    // poderia esconder issues sem evento recente. 90d cobre o horizonte util.
-    url.searchParams.set("statsPeriod", "90d");
+    // statsPeriod VAZIO de proposito. Este endpoint (GET .../issues/) so aceita
+    // '', '24h' ou '14d'; qualquer outro valor (ex.: 90d) responde 400 "Invalid
+    // stats_period". Precisamos do lastSeen ABSOLUTO, sem janela que esconda
+    // cards resolvidos ha mais de 14d, e '' nao aplica corte por tempo. NAO
+    // trocar por 90d/30d: a lista de valores aceitos e fechada.
+    url.searchParams.set("statsPeriod", "");
 
     const r = await sentryFetch(url, { token: cfg.config.token });
     if (r.kind === "rate_limited")
       return { state: "rate_limited", retryAfterSeconds: r.retryAfterSeconds };
     if (r.kind === "error") return { state: "error", reason: r.reason };
-    if (!r.response.ok)
+    if (!r.response.ok) {
+      // Corpo da resposta no reason: o Sentry devolve a causa em texto (ex.:
+      // {"detail":"Invalid stats_period..."}). Sem isso o log so via "400" e a
+      // causa real so aparecia testando a API na mao.
+      const body = (await r.response.text().catch(() => "")).slice(0, 500);
       return {
         state: "error",
-        reason: `Sentry respondeu ${r.response.status}.`,
+        reason: `Sentry respondeu ${r.response.status}${body ? `: ${body}` : "."}`,
         httpStatus: r.response.status,
       };
+    }
 
     const payload: unknown = await r.response.json().catch(() => null);
     if (!Array.isArray(payload))

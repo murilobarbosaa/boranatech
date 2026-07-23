@@ -171,8 +171,14 @@ async function reconcileDoneCards(
     .filter((id): id is string => Boolean(id));
   const issuesResult = await getIssuesByNumericIds(numericIds);
   if (issuesResult.state !== "ok") {
-    // rate_limited / error / not_configured: nao toca nos cards nesta run.
-    summary.reconcileSkipped = issuesResult.state;
+    // rate_limited / error / not_configured: nao toca nos cards nesta run
+    // (fail-safe, nunca reabre por falha de leitura). Carrega o motivo real
+    // (status HTTP + corpo do Sentry) pro payload do cron_run_logs; so o state
+    // ("error") escondia a causa e obrigava a testar a API na mao.
+    summary.reconcileSkipped =
+      issuesResult.state === "error"
+        ? `error: ${issuesResult.reason}`
+        : issuesResult.state;
     return;
   }
 
