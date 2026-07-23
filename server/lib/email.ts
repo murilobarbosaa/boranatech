@@ -644,7 +644,7 @@ export async function sendCampaignEmail(params: {
   footerReason: string;
   firstName: string;
   bodyIsHtml?: boolean;
-}) {
+}): Promise<string | null> {
   if (!env.resendApiKey || !resend) {
     throw new Error("RESEND_API_KEY ausente. Envio de campanha requer Resend.");
   }
@@ -702,6 +702,10 @@ export async function sendCampaignEmail(params: {
   if (result.error) {
     throw new Error(result.error.message || "Erro do Resend ao enviar.");
   }
+  // data.id do Resend, para correlacionar com o webhook de bounce/complaint. O
+  // envio ja foi aceito aqui; id ausente ou vazio NAO e falha (|| null cobre
+  // undefined e string vazia): retorna null e o fluxo segue normal.
+  return result.data?.id || null;
 }
 
 export async function sendPaymentFailedEmail(

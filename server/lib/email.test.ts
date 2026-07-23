@@ -55,12 +55,21 @@ describe("sendCampaignEmail — timeout do envio", () => {
     await assertion;
   });
 
-  it("resolve normalmente quando o envio responde antes do timeout (sucesso preservado)", async () => {
+  it("resolve com o id do Resend quando o envio responde antes do timeout", async () => {
     // Sem fake timers: o send resolve na hora; o clearTimeout no finally limpa o
-    // timer de 20s. Comportamento de sucesso = retorna void, sem lançar.
+    // timer de 20s. Sucesso retorna o data.id (correlacao com o webhook), sem lançar.
     resendState.send = () =>
       Promise.resolve({ data: { id: "email_test" }, error: null });
 
-    await expect(sendCampaignEmail(PARAMS)).resolves.toBeUndefined();
+    await expect(sendCampaignEmail(PARAMS)).resolves.toBe("email_test");
+  });
+
+  it("retorna null quando o envio e aceito mas sem id (ausente ou vazio)", async () => {
+    // id vazio: envio aceito pelo Resend, mas sem correlacao possivel. Nao e
+    // falha (nao lança): retorna null e o fluxo de envio segue.
+    resendState.send = () =>
+      Promise.resolve({ data: { id: "" }, error: null });
+
+    await expect(sendCampaignEmail(PARAMS)).resolves.toBeNull();
   });
 });

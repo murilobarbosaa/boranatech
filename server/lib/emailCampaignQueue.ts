@@ -771,11 +771,13 @@ async function recordResult(
   recipientId: string,
   success: boolean,
   errorMessage: string | null,
+  providerMessageId: string | null = null,
 ) {
   const { error } = await supabaseAdmin.rpc("email_campaign_record_result", {
     p_recipient_id: recipientId,
     p_success: success,
     p_error: errorMessage,
+    p_provider_message_id: providerMessageId,
   });
   if (error) {
     throw new Error(`Falha ao registrar resultado do envio: ${error.message}`);
@@ -956,7 +958,10 @@ async function processRecipientJob(job: Job<EmailCampaignJobData>) {
   );
 
   const unsubscribeUrl = buildCampaignUnsubscribeUrl(recipient.email);
-  await sendCampaignEmail({
+  // messageId (data.id do Resend) correlaciona este recipient com o webhook de
+  // bounce/complaint. Pode vir null (envio aceito sem id): recordResult grava
+  // null e o fluxo segue.
+  const messageId = await sendCampaignEmail({
     to: recipient.email,
     subject: campaign.subject,
     body: campaign.body,
@@ -971,7 +976,7 @@ async function processRecipientJob(job: Job<EmailCampaignJobData>) {
   // retry reenvia o e-mail (destinatario segue pending). Trade-off consciente:
   // duplicar num blip transitorio de banco e melhor que travar o contador e a
   // campanha pra sempre.
-  await recordResult(recipientId, true, null);
+  await recordResult(recipientId, true, null, messageId);
 }
 
 async function processCampaignJob(job: Job<EmailCampaignJobData>) {

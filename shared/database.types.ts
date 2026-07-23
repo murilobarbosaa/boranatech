@@ -2977,7 +2977,12 @@ export type Database = {
         Returns: undefined
       }
       email_campaign_record_result: {
-        Args: { p_error?: string; p_recipient_id: string; p_success: boolean }
+        Args: {
+          p_error?: string
+          p_provider_message_id?: string
+          p_recipient_id: string
+          p_success: boolean
+        }
         Returns: undefined
       }
       email_campaign_try_complete: {
