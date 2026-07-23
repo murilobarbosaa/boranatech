@@ -59,6 +59,9 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
   // Re-verificacao: o botao "Tentar novamente" e a recuperacao automatica
   // pos-refresh de token incrementam este contador para re-rodar o effect.
   const [checkNonce, setCheckNonce] = useState(0);
+  // Apenas apresentacao: sinaliza que a verificacao falhou e um retry (backoff)
+  // esta em curso, para o checking nao parecer travado. Nao muda fase nem fluxo.
+  const [retrying, setRetrying] = useState(false);
 
   // Espelha phase para o effect de recuperacao ler o valor atual sem colocar
   // phase nas deps (o que faria o effect rodar a cada transicao de fase).
@@ -69,6 +72,7 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
     if (!gateActive) return;
     let cancelled = false;
     setPhase("checking");
+    setRetrying(false);
 
     async function runCheck() {
       for (let attempt = 0; ; attempt++) {
@@ -96,6 +100,7 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
             });
             return;
           }
+          setRetrying(true);
           await new Promise((resolve) => setTimeout(resolve, delay));
           if (cancelled) return;
         }
@@ -150,8 +155,13 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
 
   if (phase === "checking") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#faf8f4]">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#faf8f4]">
         <Spinner className="size-8" />
+        {retrying ? (
+          <p className="text-sm font-bold text-slate-600">
+            Não foi possível verificar. Tentando novamente...
+          </p>
+        ) : null}
       </div>
     );
   }
