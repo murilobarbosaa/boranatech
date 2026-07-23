@@ -27,7 +27,6 @@ import certificatesRouter, {
 import consentRouter from "./routes/consent";
 import contentRouter from "./routes/content";
 import cronRouter from "./routes/cron";
-import devRouter from "./routes/dev";
 import faculdadesRouter from "./routes/faculdades";
 import githubRouter from "./routes/github";
 import interviewRouter from "./routes/interview";
@@ -390,13 +389,6 @@ app.use("/api/public/certificates", publicCertificatesRouter);
 // Webhook do Resend: publico (a autenticacao e a assinatura Svix), montado antes
 // do gate de JWT. O rawBody ja foi capturado pelo middleware acima.
 app.use("/api/resend/webhook", resendWebhookRouter);
-
-// DEV ONLY - remover antes de producao. Preview do certificado (Parte 1).
-// Publico (antes do JWT gate) e so montado fora de producao; o proprio router
-// reforca o 404 em producao.
-if (!env.isProd) {
-  app.use("/api/dev", devRouter);
-}
 
 app.use("/api", validateSupabaseJwt);
 
