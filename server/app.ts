@@ -543,7 +543,7 @@ app.get("*", (_req, res) => {
 // sentry.ts descarta esses tambem, dupla protecao).
 app.use(
   (
-    err: Error & { statusCode?: number },
+    err: Error & { statusCode?: number; context?: Record<string, unknown> },
     req: express.Request,
     res: express.Response,
     next: express.NextFunction,
@@ -554,6 +554,11 @@ app.use(
       Sentry.withScope((scope) => {
         scope.setTag("requestId", String(res.locals.requestId ?? ""));
         scope.setTag("route", req.path);
+        // Sem isto todo evento vinha com 0 usuarios: a request ja passou pelo
+        // requireAuth, entao req.user existe para rota autenticada.
+        if (req.user?.id) scope.setUser({ id: req.user.id });
+        // Contexto estruturado que o handler anexou via createError(..., {context}).
+        if (err.context) scope.setContext("handler", err.context);
         Sentry.captureException(err);
       });
     }

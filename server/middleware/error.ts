@@ -3,6 +3,9 @@ import { NextFunction, Request, Response } from "express";
 export interface AppError extends Error {
   statusCode?: number;
   code?: string;
+  // Contexto estruturado repassado ao Sentry pelo handler central em app.ts
+  // (scope.setContext). Nunca vaza ao cliente.
+  context?: Record<string, unknown>;
 }
 
 export function errorHandler(
@@ -41,9 +44,15 @@ export function createError(
   statusCode: number,
   code: string,
   message: string,
+  // options.cause preserva o erro original (ex.: erro cru do Supabase): o
+  // integration LinkedErrors do Sentry percorre err.cause e anexa o stack real,
+  // em vez de so a mensagem generica. options.context vira scope.setContext.
+  options?: { cause?: unknown; context?: Record<string, unknown> },
 ): AppError {
   const err: AppError = new Error(message);
   err.statusCode = statusCode;
   err.code = code;
+  if (options?.cause !== undefined) err.cause = options.cause;
+  if (options?.context) err.context = options.context;
   return err;
 }

@@ -98,7 +98,15 @@ router.put("/:context/:itemKey", async (req, res, next) => {
       }
     }
 
-    const { state } = req.body as { state?: Record<string, unknown> };
+    const { state } = req.body as { state?: unknown };
+    if (
+      state !== undefined &&
+      (typeof state !== "object" || state === null || Array.isArray(state))
+    ) {
+      return next(
+        createError(400, "invalid_request", "state deve ser um objeto."),
+      );
+    }
 
     const { data, error } = await supabaseAdmin
       .from("user_progress")
@@ -107,7 +115,7 @@ router.put("/:context/:itemKey", async (req, res, next) => {
           user_id: req.user!.id,
           context,
           item_key: itemKey,
-          state: state ?? {},
+          state: (state as Record<string, unknown> | undefined) ?? {},
         },
         { onConflict: "user_id,context,item_key" },
       )
@@ -115,7 +123,23 @@ router.put("/:context/:itemKey", async (req, res, next) => {
       .single();
 
     if (error) {
-      return next(createError(500, "db_error", "Erro ao salvar progresso."));
+      // Preserva o erro cru do Supabase (cause -> LinkedErrors do Sentry) e
+      // anexa contexto: sem isso o Sentry so via a mensagem generica.
+      console.error(
+        `[progress] upsert falhou context=${context} item_key=${itemKey} user=${req.user!.id}`,
+        error,
+      );
+      return next(
+        createError(500, "db_error", "Erro ao salvar progresso.", {
+          cause: error,
+          context: {
+            type: context,
+            slug: itemKey,
+            userId: req.user!.id,
+            state: (state as Record<string, unknown> | undefined) ?? {},
+          },
+        }),
+      );
     }
 
     res.json({
