@@ -49,11 +49,14 @@ import {
 import PaymentMethodDialog from "@/components/pro/PaymentMethodDialog";
 import { apiUrl } from "@/lib/api";
 import {
+  discountedPriceCents,
   FROM_MONTHLY_LABEL,
+  getPlanPriceCents,
   isPlanId,
   MONTHLY_BASE_LABEL,
   PLAN_ORDER,
   PLAN_PRICING,
+  savingsPercentFloor,
   type PlanId,
 } from "@shared/planPricing";
 import { areasCount, dictionaryTermsCount } from "@/lib/countsGenerated";
@@ -89,12 +92,17 @@ const PLAN_MONTHS: Record<PlanId, number> = {
   pro_annual: 12,
 };
 
+// Base do desconto exibido: preco cheio do mensal em centavos.
+const MONTHLY_BASE_CENTS =
+  getPlanPriceCents("pro_monthly") ??
+  Math.round(PLAN_PRICING.pro_monthly.total * 100);
+
 const plans = PLAN_ORDER.map((id) => {
   const p = PLAN_PRICING[id];
   return {
     id: p.id,
     label: p.label,
-    price: p.total,
+    priceCents: getPlanPriceCents(id) ?? Math.round(p.total * 100),
     priceLabel: p.totalLabel,
     period: p.period,
     monthlyEquivalent: p.monthlyEquivalent,
@@ -700,10 +708,10 @@ export default function Checkout() {
     return discountPercent;
   }
 
-  function discountedPrice(planId: string, price: number) {
-    const percent = planDiscountPercent(planId);
-    if (!percent) return price;
-    return Number((price * (1 - percent / 100)).toFixed(2));
+  // Preco final por plano em CENTAVOS (shared/planPricing.ts faz a conta em
+  // inteiros): card, badge, equivalente mensal e CTA derivam DESTE valor.
+  function planFinalPriceCents(planId: string, priceCents: number): number {
+    return discountedPriceCents(priceCents, planDiscountPercent(planId));
   }
 
   // CTA "Assinar": deslogado -> cadastro (comportamento inalterado); mensal ->
@@ -1113,21 +1121,24 @@ export default function Checkout() {
             {plans.map((plan, idx) => {
               const selected = selectedPlan === plan.id;
               const planPercent = planDiscountPercent(plan.id);
-              const finalPrice = discountedPrice(plan.id, plan.price);
+              const finalPriceCents = planFinalPriceCents(
+                plan.id,
+                plan.priceCents,
+              );
               const couponCoversPlan =
                 !!coupon &&
                 (!coupon.applicable_plans ||
                   coupon.applicable_plans.includes(plan.id));
-              // Desconto TOTAL real vs mensal cheio (floor: nunca prometer mais
-              // que o real) e equivalente mensal com o cupom (ceil no centavo:
-              // nunca exibir mais barato que o real).
-              const cycleFullPrice =
-                PLAN_MONTHS[plan.id] * PLAN_PRICING.pro_monthly.total;
+              // Desconto TOTAL real vs mensal cheio (floor sobre inteiros:
+              // nunca promete mais que o real) e equivalente mensal com o cupom
+              // (ceil no centavo: nunca exibe mais barato que o real). Tudo em
+              // centavos, derivado do MESMO finalPriceCents exibido no card.
+              const cycleFullCents = PLAN_MONTHS[plan.id] * MONTHLY_BASE_CENTS;
               const couponSavingsPercent = couponCoversPlan
-                ? Math.floor((1 - finalPrice / cycleFullPrice) * 100)
+                ? savingsPercentFloor(cycleFullCents, finalPriceCents)
                 : 0;
-              const couponMonthlyEquivalent = couponCoversPlan
-                ? Math.ceil((finalPrice / PLAN_MONTHS[plan.id]) * 100) / 100
+              const couponMonthlyEquivalentCents = couponCoversPlan
+                ? Math.ceil(finalPriceCents / PLAN_MONTHS[plan.id])
                 : null;
               return (
                 <motion.button
@@ -1204,13 +1215,13 @@ export default function Checkout() {
                       {plan.priceLabel}
                     </p>
                     <motion.p
-                      key={finalPrice}
+                      key={finalPriceCents}
                       initial={reduce ? false : { opacity: 0, scale: 0.96 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.25, ease: "easeOut" }}
                       className="font-display text-4xl font-black text-slate-950"
                     >
-                      {formatPrice(finalPrice)}
+                      {formatPrice(finalPriceCents / 100)}
                     </motion.p>
                     <p className="mt-1 text-sm font-bold text-slate-700">
                       {plan.period}
@@ -1234,7 +1245,9 @@ export default function Checkout() {
                   {plan.monthlyEquivalent ? (
                     <div className="my-auto pt-2">
                       <motion.p
-                        key={couponMonthlyEquivalent ?? plan.monthlyEquivalent}
+                        key={
+                          couponMonthlyEquivalentCents ?? plan.monthlyEquivalent
+                        }
                         initial={reduce ? false : { opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.25, ease: "easeOut" }}
@@ -1246,8 +1259,8 @@ export default function Checkout() {
                             {MONTHLY_BASE_LABEL}
                           </span>
                         ) : null}
-                        {couponMonthlyEquivalent !== null
-                          ? `${formatPrice(couponMonthlyEquivalent)}/mês`
+                        {couponMonthlyEquivalentCents !== null
+                          ? `${formatPrice(couponMonthlyEquivalentCents / 100)}/mês`
                           : plan.monthlyEquivalent}
                       </motion.p>
                     </div>
@@ -1278,7 +1291,7 @@ export default function Checkout() {
                   <Sparkles className="h-5 w-5" />
                   {loading
                     ? "Abrindo checkout..."
-                    : `Assinar ${currentPlan.label} · ${formatPrice(discountedPrice(currentPlan.id, currentPlan.price))}`}
+                    : `Assinar ${currentPlan.label} · ${formatPrice(planFinalPriceCents(currentPlan.id, currentPlan.priceCents) / 100)}`}
                 </button>
               </>
             ) : (

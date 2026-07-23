@@ -77,3 +77,32 @@ export function getPlanChargeValue(planId: PlanId): number {
 export function getPlanPriceCents(code: string): number | null {
   return isPlanId(code) ? Math.round(PLAN_PRICING[code].total * 100) : null;
 }
+
+// Matematica de desconto percentual em CENTAVOS (inteiros), fonte unica de
+// tudo que exibe preco com desconto no Checkout (card, badge de percentual,
+// equivalente mensal e CTA). Em float, 29.90 * 0.70 = 20.9299... e o percentual
+// derivado vira 29.999% (floor -> 29%); em centavos inteiros nao ha drift.
+
+// Valor final apos desconto percentual. O DESCONTO e arredondado ao centavo
+// mais proximo (Math.round), replicando a Stripe, que calcula o percent_off do
+// coupon e arredonda ao centavo mais proximo; e ela quem computa o valor
+// cobrado nos dois modos (price fixo no cartao, price_data inline no boleto),
+// entao o front so bate com a cobranca usando a mesma regra.
+export function discountedPriceCents(
+  priceCents: number,
+  percent: number,
+): number {
+  if (percent <= 0) return priceCents;
+  return priceCents - Math.round((priceCents * percent) / 100);
+}
+
+// Percentual real de desconto de finalCents sobre fullCents, com floor sobre a
+// razao de INTEIROS: nunca exibe percentual maior que o desconto real, e
+// percentuais exatos nao sofrem drift (30% de 2990 da exatamente 30).
+export function savingsPercentFloor(
+  fullCents: number,
+  finalCents: number,
+): number {
+  if (fullCents <= 0) return 0;
+  return Math.floor(((fullCents - finalCents) * 100) / fullCents);
+}
