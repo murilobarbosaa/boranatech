@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/node";
 import express, { Router, type Response } from "express";
 
+import { validateEmailForSending } from "../lib/emailValidation";
 import { env } from "../lib/env";
 import { enqueueEmail } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
@@ -15,10 +16,6 @@ const router = Router();
 
 const SIGNUP_WINDOW_SECONDS = 10 * 60;
 const SIGNUP_MAX_ATTEMPTS = 20;
-// Validacao simples: presenca de local, arroba e dominio com ponto. A confirmacao
-// real do endereco fica a cargo do envio do e-mail.
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MAX_EMAIL_LENGTH = 254;
 const MAX_SOURCE_LENGTH = 64;
 
 function normalizeEmail(value: string) {
@@ -32,13 +29,18 @@ router.post("/", async (req, res) => {
       typeof body.email === "string" ? body.email : "",
     );
 
-    if (
-      !email ||
-      email.length > MAX_EMAIL_LENGTH ||
-      !EMAIL_PATTERN.test(email)
-    ) {
+    // Mesma fonte de verdade do envio: sintaxe + dominio reservado (example.com,
+    // .test etc). Sem isto, probe/teste entrava na waitlist e so falhava no envio.
+    const emailCheck = validateEmailForSending(email);
+    if (!emailCheck.ok) {
       res.status(400).json({
-        error: { code: "invalid_email", message: "E-mail invalido." },
+        error: {
+          code: "invalid_email",
+          message:
+            emailCheck.reason === "reserved"
+              ? "Use um e-mail de um domínio real. Não aceitamos domínios de teste (example.com, .test)."
+              : "E-mail invalido.",
+        },
       });
       return;
     }

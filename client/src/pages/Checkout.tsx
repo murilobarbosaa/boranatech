@@ -63,6 +63,7 @@ import {
   FREE_COURSES_SAMPLE_SIZE,
   FREE_PLATFORMS_SAMPLE_SIZE,
 } from "@/lib/freeTierLimits";
+import { validateEmailForSending } from "@shared/emailValidation";
 
 // UI-only (destaque/selo) por plano; os precos vem da fonte unica planPricing.
 const PLAN_UI: Record<PlanId, { highlight: boolean; badge: string | null }> = {
@@ -348,10 +349,6 @@ function scrollToPlans() {
   }
 }
 
-// Mesma validacao leve das outras capturas de e-mail (waitlist/newsletter): a
-// confirmacao real fica no double opt-in do e-mail de confirmacao.
-const WAITLIST_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 // CTA de lista de espera exibido quando o pagamento esta desligado (kill-switch).
 // Espelha a ESTRUTURA da NewsletterCapture (idle/submitting/success/error,
 // fail-closed, tratamento de erro por status), mas posta em POST /api/waitlist
@@ -384,7 +381,9 @@ function WaitlistCta({ defaultEmail }: { defaultEmail: string }) {
   async function handleWaitlist(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = email.trim();
-    if (!trimmed || !WAITLIST_EMAIL_RE.test(trimmed)) {
+    // Mesma fonte de verdade do server (sintaxe + dominio reservado). UX apenas:
+    // o servidor revalida em POST /api/waitlist.
+    if (!validateEmailForSending(trimmed).ok) {
       // TODO(Ana): copy de e-mail invalido (validacao client).
       setErrorMessage("Informe um e-mail válido.");
       setSubmitStatus("error");

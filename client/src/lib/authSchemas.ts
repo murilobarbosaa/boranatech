@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { validateEmailForSending } from "@shared/emailValidation";
 import { GENDER_VALUES, type Gender } from "@shared/gender";
 
 export const passwordSchema = z
@@ -20,7 +21,15 @@ export const signupSchema = z.object({
     .trim()
     .toLowerCase()
     .email("Informe um e-mail válido.")
-    .max(160, "Use um e-mail mais curto."),
+    .max(160, "Use um e-mail mais curto.")
+    // UX apenas, NAO e gate de seguranca: o cadastro e client.auth.signUp direto
+    // no Supabase, bypassavel por quem chama a API sem passar por este schema. O
+    // bloqueio autoritativo de dominio reservado precisa de trigger/Auth Hook no
+    // Supabase (proposta separada). Aqui so evita probe/typo (example.com, .test)
+    // pelo formulario.
+    .refine((value) => validateEmailForSending(value).ok, {
+      message: "Use um e-mail de um domínio real (evite example.com, .test).",
+    }),
   password: passwordSchema,
   gender: z.enum(GENDER_VALUES).optional(),
 });
