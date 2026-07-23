@@ -4,6 +4,7 @@ import { z } from "zod";
 import { sendBugCreatedEmail, sendBugResolvedEmail } from "../lib/email";
 import { env } from "../lib/env";
 import { listSentryIssues } from "../lib/sentryApi";
+import { syncBugStatusToSentry } from "../lib/sentryBugSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createTargetedNotification } from "../lib/targetedNotifications";
 import { createError } from "../middleware/error";
@@ -44,6 +45,9 @@ const CreateSchema = z.object({
   severity: z.enum(BUG_SEVERITIES).default("medium"),
   sentry_issue_id: z.string().trim().min(1).max(100).nullable().optional(),
   sentry_issue_url: z.string().trim().url().max(2048).nullable().optional(),
+  // issue.id numerico do Sentry (groupId), enviado na criacao a partir de uma
+  // issue. Evita ter que resolver o shortId depois para a primeira sincronizacao.
+  sentry_numeric_id: z.string().trim().min(1).max(100).nullable().optional(),
 });
 
 const PatchSchema = z
@@ -69,6 +73,11 @@ type BugRow = {
   severity: (typeof BUG_SEVERITIES)[number];
   sentry_issue_id: string | null;
   sentry_issue_url: string | null;
+  sentry_numeric_id: string | null;
+  sentry_sync_pending: "resolved" | "unresolved" | null;
+  sentry_reopen_event_at: string | null;
+  sentry_last_checked_at: string | null;
+  sentry_orphaned_at: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -76,7 +85,7 @@ type BugRow = {
 };
 
 const BUG_COLUMNS =
-  "id, title, description, status, severity, sentry_issue_id, sentry_issue_url, created_by, created_at, updated_at, resolved_at";
+  "id, title, description, status, severity, sentry_issue_id, sentry_issue_url, sentry_numeric_id, sentry_sync_pending, sentry_reopen_event_at, sentry_last_checked_at, sentry_orphaned_at, created_by, created_at, updated_at, resolved_at";
 
 router.get("/sentry-issues", async (req, res, next) => {
   const parsed = SentryQuerySchema.safeParse(req.query);
@@ -189,6 +198,7 @@ router.post("/", async (req, res, next) => {
       severity: parsed.data.severity,
       sentry_issue_id: parsed.data.sentry_issue_id ?? null,
       sentry_issue_url: parsed.data.sentry_issue_url ?? null,
+      sentry_numeric_id: parsed.data.sentry_numeric_id ?? null,
       created_by: req.user!.id,
     })
     .select(BUG_COLUMNS)
@@ -265,9 +275,16 @@ router.patch("/:id", async (req, res, next) => {
   // transicao pra done, limpo quando o bug sai de done (reaberto). done ->
   // done nao reseta o timestamp nem reenvia o email de conclusao.
   const becameDone = patch.status === "done" && current.status !== "done";
+  const leftDone =
+    Boolean(patch.status) &&
+    patch.status !== "done" &&
+    current.status === "done";
   if (becameDone) update.resolved_at = new Date().toISOString();
-  if (patch.status && patch.status !== "done" && current.status === "done") {
+  if (leftDone) {
     update.resolved_at = null;
+    // Reabertura manual limpa o motivo de reabertura automatica: o banner "voltou
+    // a acontecer" so vale ate a proxima resolucao/reabertura decidir de novo.
+    update.sentry_reopen_event_at = null;
   }
 
   const { data, error } = await supabaseAdmin
@@ -306,6 +323,24 @@ router.patch("/:id", async (req, res, next) => {
       console.error(
         "[admin-bugs] Falha na notificação de bug resolvido:",
         notificationError,
+      );
+    });
+  }
+
+  // Sincronizacao de status com o Sentry, so para cards vinculados a uma issue.
+  // Fire-and-forget no mesmo padrao dos emails acima: NAO segura a resposta nem
+  // falha a transicao do card. syncBugStatusToSentry ja e best-effort e persiste
+  // sentry_sync_pending em caso de falha, para o job de reconciliacao repetir.
+  if (bug.sentry_issue_id && (becameDone || leftDone)) {
+    void syncBugStatusToSentry({
+      bugId: bug.id,
+      shortId: bug.sentry_issue_id,
+      numericId: bug.sentry_numeric_id,
+      target: becameDone ? "resolved" : "unresolved",
+    }).catch((syncError) => {
+      console.error(
+        "[admin-bugs] Falha ao sincronizar status no Sentry:",
+        syncError,
       );
     });
   }

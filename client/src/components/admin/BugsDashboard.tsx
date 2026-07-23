@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -126,6 +126,7 @@ type FormState = {
   severity: BugSeverity;
   sentry_issue_id: string | null;
   sentry_issue_url: string | null;
+  sentry_numeric_id: string | null;
 };
 
 const EMPTY_FORM: FormState = {
@@ -134,7 +135,20 @@ const EMPTY_FORM: FormState = {
   severity: "medium",
   sentry_issue_id: null,
   sentry_issue_url: null,
+  sentry_numeric_id: null,
 };
+
+const STATUS_LABEL: Record<BugStatus, string> = {
+  open: "Abertos",
+  in_progress: "Em correção",
+  done: "Corrigidos",
+};
+
+function daysSince(iso: string): number {
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return 0;
+  return Math.max(0, Math.floor((Date.now() - ms) / 86_400_000));
+}
 
 function severityFromLevel(level: string): BugSeverity {
   if (level === "fatal" || level === "error") return "high";
@@ -173,6 +187,45 @@ function LevelBadge({ level }: { level: string }) {
   );
 }
 
+// Estado real do vinculo com o Sentry num card do tracker: reabertura automatica,
+// selo de verificado, sincronizacao pendente de retry e issue orfa (deletada no
+// Sentry). Nada renderizado para bug manual (sem sentry_issue_id).
+function BugSentryState({ bug }: { bug: AdminBug }) {
+  if (!bug.sentry_issue_id) return null;
+  // Reaberto = ha data de evento de reabertura mais nova que a resolucao (ou sem
+  // resolucao atual). Resolucao/reabertura manual posterior zera o banner.
+  const reopened =
+    bug.sentry_reopen_event_at !== null &&
+    (bug.resolved_at === null ||
+      Date.parse(bug.sentry_reopen_event_at) > Date.parse(bug.resolved_at));
+  const cleanSince = bug.resolved_at ?? bug.sentry_last_checked_at;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {bug.sentry_orphaned_at ? (
+        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-black text-rose-700">
+          Issue removida no Sentry
+        </span>
+      ) : null}
+      {bug.sentry_sync_pending ? (
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-black text-amber-700">
+          Sincronização pendente
+        </span>
+      ) : null}
+      {reopened ? (
+        <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-black text-orange-700">
+          Reaberto automaticamente: evento novo em{" "}
+          {formatDate(bug.sentry_reopen_event_at as string)}
+        </span>
+      ) : null}
+      {bug.status === "done" && !reopened && bug.sentry_last_checked_at ? (
+        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-black text-emerald-700">
+          Verificado · sem eventos há {daysSince(cleanSince as string)}d
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function SeverityBadge({ severity }: { severity: BugSeverity }) {
   const meta = SEVERITY_META[severity];
   return <span className={`${badgeClass} ${meta.badge}`}>{meta.label}</span>;
@@ -202,6 +255,15 @@ export function BugsDashboard() {
   });
   const [bugsLoading, setBugsLoading] = useState(true);
   const [bugsError, setBugsError] = useState<string | null>(null);
+  // Issues que ja tem card no tracker (por shortId) e em qual coluna, para marcar
+  // na aba de erros e evitar duplicatas.
+  const linkedByShortId = useMemo(() => {
+    const map = new Map<string, BugStatus>();
+    for (const b of bugs) {
+      if (b.sentry_issue_id) map.set(b.sentry_issue_id, b.status);
+    }
+    return map;
+  }, [bugs]);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AdminBug | null>(null);
@@ -284,6 +346,7 @@ export function BugsDashboard() {
       severity: severityFromLevel(issue.level),
       sentry_issue_id: issue.shortId,
       sentry_issue_url: issue.permalink,
+      sentry_numeric_id: issue.id,
     });
     setFormError(null);
     setFormOpen(true);
@@ -298,6 +361,7 @@ export function BugsDashboard() {
       severity: bug.severity,
       sentry_issue_id: bug.sentry_issue_id,
       sentry_issue_url: bug.sentry_issue_url,
+      sentry_numeric_id: bug.sentry_numeric_id,
     });
     setFormError(null);
     setFormOpen(true);
@@ -330,6 +394,7 @@ export function BugsDashboard() {
           ...payload,
           sentry_issue_id: form.sentry_issue_id,
           sentry_issue_url: form.sentry_issue_url,
+          sentry_numeric_id: form.sentry_numeric_id,
         });
         toast.success("Bug registrado.");
       }
@@ -564,6 +629,12 @@ export function BugsDashboard() {
                           <span className="font-mono text-xs font-bold text-slate-500">
                             {issue.shortId}
                           </span>
+                          {linkedByShortId.has(issue.shortId) ? (
+                            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-black text-violet-800">
+                              No tracker ·{" "}
+                              {STATUS_LABEL[linkedByShortId.get(issue.shortId)!]}
+                            </span>
+                          ) : null}
                           <p className="text-sm font-black text-slate-950">
                             {issue.title}
                           </p>
@@ -592,9 +663,12 @@ export function BugsDashboard() {
                         <button
                           type="button"
                           onClick={() => openCreateFromIssue(issue)}
-                          className={rowActionClass}
+                          disabled={linkedByShortId.has(issue.shortId)}
+                          className={`${rowActionClass} disabled:cursor-not-allowed disabled:opacity-50`}
                         >
-                          Criar bug
+                          {linkedByShortId.has(issue.shortId)
+                            ? "Já no tracker"
+                            : "Criar bug"}
                         </button>
                       </div>
                     </li>
@@ -754,6 +828,7 @@ export function BugsDashboard() {
                                 Resolvido {timeAgo(bug.resolved_at)}
                               </p>
                             ) : null}
+                            <BugSentryState bug={bug} />
                             <div className="mt-3 flex flex-wrap gap-2">
                               {statusActions(bug)}
                               <button

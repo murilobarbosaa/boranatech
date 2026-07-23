@@ -32,6 +32,8 @@ export type SentryIssuesResult =
 
 const SENTRY_API_BASE = "https://sentry.io/api/0";
 const REQUEST_TIMEOUT_MS = 10_000;
+// Lote da busca por id numerico: uma request por lote, nunca uma por card.
+const SENTRY_ID_QUERY_CHUNK = 25;
 
 // O Sentry pagina por cursor no header Link, no formato:
 //   <url>; rel="previous"; results="false"; cursor="0:0:1",
@@ -142,4 +144,206 @@ export async function listSentryIssues(params?: {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+// --- Escrita e leitura pontual para a sincronizacao do bug tracker ---------
+// Mesmo contrato de estados das leituras acima. Nenhuma funcao lanca: erro e
+// sempre um estado discriminado, para o job/rota decidirem retry vs seguir.
+
+export type SentryShortIdResult =
+  | { state: "not_configured"; missing: string[] }
+  | { state: "rate_limited"; retryAfterSeconds: number | null }
+  | { state: "not_found" }
+  | { state: "error"; reason: string; httpStatus?: number }
+  | { state: "ok"; groupId: string };
+
+export type SentryWriteResult =
+  | { state: "not_configured"; missing: string[] }
+  | { state: "rate_limited"; retryAfterSeconds: number | null }
+  | { state: "error"; reason: string; httpStatus?: number }
+  | { state: "ok" };
+
+export type SentryIssuesByIdResult =
+  | { state: "not_configured"; missing: string[] }
+  | { state: "rate_limited"; retryAfterSeconds: number | null }
+  | { state: "error"; reason: string; httpStatus?: number }
+  | { state: "ok"; issues: SentryIssue[] };
+
+type SentryConfig = { token: string; org: string; project: string };
+
+function resolveSentryConfig():
+  | { ok: true; config: SentryConfig }
+  | { ok: false; missing: string[] } {
+  const missing: string[] = [];
+  if (!env.sentryAuthToken) missing.push("SENTRY_AUTH_TOKEN");
+  if (!env.sentryOrgSlug) missing.push("SENTRY_ORG_SLUG");
+  if (!env.sentryProjectSlug) missing.push("SENTRY_PROJECT_SLUG");
+  if (missing.length > 0) return { ok: false, missing };
+  return {
+    ok: true,
+    config: {
+      token: env.sentryAuthToken,
+      org: env.sentryOrgSlug,
+      project: env.sentryProjectSlug,
+    },
+  };
+}
+
+// Fetch com timeout + mapeamento de 429/abort para estados. O caller trata o
+// status HTTP do Response. Nunca lanca.
+async function sentryFetch(
+  url: URL | string,
+  init: RequestInit & { token: string },
+): Promise<
+  | { kind: "response"; response: Response }
+  | { kind: "rate_limited"; retryAfterSeconds: number | null }
+  | { kind: "error"; reason: string }
+> {
+  const { token, headers, ...rest } = init;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      ...rest,
+      headers: { Authorization: `Bearer ${token}`, ...(headers ?? {}) },
+      signal: controller.signal,
+    });
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers.get("Retry-After"));
+      return {
+        kind: "rate_limited",
+        retryAfterSeconds: Number.isFinite(retryAfter) ? retryAfter : null,
+      };
+    }
+    return { kind: "response", response };
+  } catch (error) {
+    const aborted = error instanceof Error && error.name === "AbortError";
+    return {
+      kind: "error",
+      reason: aborted
+        ? `Timeout de ${REQUEST_TIMEOUT_MS / 1000}s na API do Sentry.`
+        : error instanceof Error
+          ? error.message
+          : "Falha desconhecida na API do Sentry.",
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// GET /organizations/{org}/shortids/{short_id}/ -> groupId numerico. not_found
+// (404) sinaliza issue deletada (o caller marca o card como orfao).
+export async function resolveShortId(
+  shortId: string,
+): Promise<SentryShortIdResult> {
+  const cfg = resolveSentryConfig();
+  if (!cfg.ok) return { state: "not_configured", missing: cfg.missing };
+
+  const url = `${SENTRY_API_BASE}/organizations/${cfg.config.org}/shortids/${encodeURIComponent(shortId)}/`;
+  const r = await sentryFetch(url, { token: cfg.config.token });
+  if (r.kind === "rate_limited")
+    return { state: "rate_limited", retryAfterSeconds: r.retryAfterSeconds };
+  if (r.kind === "error") return { state: "error", reason: r.reason };
+
+  const { response } = r;
+  if (response.status === 404) return { state: "not_found" };
+  if (!response.ok)
+    return {
+      state: "error",
+      reason: `Sentry respondeu ${response.status}.`,
+      httpStatus: response.status,
+    };
+
+  const payload = (await response.json().catch(() => null)) as {
+    groupId?: unknown;
+  } | null;
+  const groupId =
+    typeof payload?.groupId === "string"
+      ? payload.groupId
+      : typeof payload?.groupId === "number"
+        ? String(payload.groupId)
+        : "";
+  if (!groupId) return { state: "error", reason: "shortid sem groupId." };
+  return { state: "ok", groupId };
+}
+
+// PUT /issues/{numeric_id}/ { status }. Achado do teste manual: reverter para
+// unresolved seta substatus 'regressed' no Sentry sem evento novo; NAO usamos
+// status/substatus como sinal de recorrencia (o job usa lastSeen > resolved_at).
+export async function updateIssueStatus(
+  numericId: string,
+  status: "resolved" | "unresolved",
+): Promise<SentryWriteResult> {
+  const cfg = resolveSentryConfig();
+  if (!cfg.ok) return { state: "not_configured", missing: cfg.missing };
+
+  const url = `${SENTRY_API_BASE}/issues/${encodeURIComponent(numericId)}/`;
+  const r = await sentryFetch(url, {
+    token: cfg.config.token,
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  if (r.kind === "rate_limited")
+    return { state: "rate_limited", retryAfterSeconds: r.retryAfterSeconds };
+  if (r.kind === "error") return { state: "error", reason: r.reason };
+  if (!r.response.ok)
+    return {
+      state: "error",
+      reason: `Sentry respondeu ${r.response.status}.`,
+      httpStatus: r.response.status,
+    };
+  return { state: "ok" };
+}
+
+// Estado atual de varias issues por id numerico, em lote (chunks de
+// SENTRY_ID_QUERY_CHUNK), para a reconciliacao. Uma request por lote, nunca uma
+// por card. Filtro por id: query `issue.id:[a, b, ...]`. VALIDAR EMPIRICAMENTE
+// (sintaxe de busca do Sentry, como as notas de PostgREST no projeto): uma issue
+// nao retornada no lote e tratada pelo job como "sem evento novo" (fail-safe:
+// nunca reabre por ausencia).
+export async function getIssuesByNumericIds(
+  numericIds: string[],
+): Promise<SentryIssuesByIdResult> {
+  const cfg = resolveSentryConfig();
+  if (!cfg.ok) return { state: "not_configured", missing: cfg.missing };
+
+  const ids = Array.from(
+    new Set(numericIds.filter((id) => id.trim().length > 0)),
+  );
+  if (ids.length === 0) return { state: "ok", issues: [] };
+
+  const collected: SentryIssue[] = [];
+  for (let i = 0; i < ids.length; i += SENTRY_ID_QUERY_CHUNK) {
+    const chunk = ids.slice(i, i + SENTRY_ID_QUERY_CHUNK);
+    const url = new URL(
+      `${SENTRY_API_BASE}/projects/${cfg.config.org}/${cfg.config.project}/issues/`,
+    );
+    url.searchParams.set("query", `issue.id:[${chunk.join(", ")}]`);
+    // Janela ampla: lastSeen e absoluto, mas o filtro de data default do Sentry
+    // poderia esconder issues sem evento recente. 90d cobre o horizonte util.
+    url.searchParams.set("statsPeriod", "90d");
+
+    const r = await sentryFetch(url, { token: cfg.config.token });
+    if (r.kind === "rate_limited")
+      return { state: "rate_limited", retryAfterSeconds: r.retryAfterSeconds };
+    if (r.kind === "error") return { state: "error", reason: r.reason };
+    if (!r.response.ok)
+      return {
+        state: "error",
+        reason: `Sentry respondeu ${r.response.status}.`,
+        httpStatus: r.response.status,
+      };
+
+    const payload: unknown = await r.response.json().catch(() => null);
+    if (!Array.isArray(payload))
+      return {
+        state: "error",
+        reason: "Resposta do Sentry fora do formato esperado.",
+      };
+    for (const raw of payload)
+      collected.push(toIssue(raw as Record<string, unknown>));
+  }
+
+  return { state: "ok", issues: collected };
 }

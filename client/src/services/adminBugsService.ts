@@ -7,6 +7,8 @@ import { adminFetch } from "@/lib/adminApi";
 export type BugStatus = "open" | "in_progress" | "done";
 export type BugSeverity = "low" | "medium" | "high" | "critical";
 
+export type BugSentrySync = "resolved" | "unresolved";
+
 export type AdminBug = {
   id: string;
   title: string;
@@ -15,6 +17,12 @@ export type AdminBug = {
   severity: BugSeverity;
   sentry_issue_id: string | null;
   sentry_issue_url: string | null;
+  // Estado da sincronizacao com o Sentry (preenchido para cards vinculados).
+  sentry_numeric_id: string | null;
+  sentry_sync_pending: BugSentrySync | null;
+  sentry_reopen_event_at: string | null;
+  sentry_last_checked_at: string | null;
+  sentry_orphaned_at: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -29,6 +37,7 @@ export type AdminBugInput = {
   severity?: BugSeverity;
   sentry_issue_id?: string | null;
   sentry_issue_url?: string | null;
+  sentry_numeric_id?: string | null;
 };
 
 export type SentryIssue = {
