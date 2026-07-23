@@ -37,6 +37,7 @@ import {
   Tag,
   TicketPercent,
   Trophy,
+  X,
   UserRound,
   Users,
   WalletCards,
@@ -7466,7 +7467,7 @@ export default function Admin() {
                                 );
                                 setCopiedCouponLink(false);
                               }}
-                              className="w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold uppercase outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                              className="w-full min-w-0 rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold uppercase outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
                               placeholder="PROMO20"
                             />
                             <button
@@ -7507,30 +7508,61 @@ export default function Admin() {
                           />
                         </label>
 
-                        <div className="grid gap-4 sm:grid-cols-2">
+                        {/* grid-cols-1 no mobile (empilha) e min-w-0 no input
+                            de data, que tem largura minima intrinseca e
+                            estoura o container em 360px sem isso. */}
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <label className="text-sm font-black text-slate-950">
                             Validade (opcional)
-                            <input
-                              type="date"
-                              value={couponFormValidUntil}
-                              onChange={(event) =>
-                                setCouponFormValidUntil(event.target.value)
-                              }
-                              className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
-                            />
+                            <div className="mt-2 flex items-center gap-2">
+                              <input
+                                type="date"
+                                value={couponFormValidUntil}
+                                onChange={(event) =>
+                                  setCouponFormValidUntil(event.target.value)
+                                }
+                                className="min-w-0 flex-1 rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                              />
+                              {couponFormValidUntil ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setCouponFormValidUntil("")}
+                                  aria-label="Limpar validade"
+                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_#0f172a]"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              ) : null}
+                            </div>
                           </label>
                           <label className="text-sm font-black text-slate-950">
                             Limite de usos (opcional)
-                            <input
-                              type="number"
-                              min={1}
-                              value={couponFormMaxRedemptions}
-                              onChange={(event) =>
-                                setCouponFormMaxRedemptions(event.target.value)
-                              }
-                              className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
-                              placeholder="Ilimitado"
-                            />
+                            <div className="mt-2 flex items-center gap-2">
+                              <input
+                                type="number"
+                                min={1}
+                                value={couponFormMaxRedemptions}
+                                onChange={(event) =>
+                                  setCouponFormMaxRedemptions(
+                                    event.target.value,
+                                  )
+                                }
+                                className="min-w-0 flex-1 rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                                placeholder="Ilimitado"
+                              />
+                              {couponFormMaxRedemptions ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setCouponFormMaxRedemptions("")
+                                  }
+                                  aria-label="Limpar limite de usos"
+                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_#0f172a]"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              ) : null}
+                            </div>
                           </label>
                         </div>
 
@@ -7772,36 +7804,72 @@ export default function Admin() {
                                           </label>
                                           <label className="text-xs font-black uppercase text-slate-600">
                                             Validade (vazio = sem expiração)
-                                            <input
-                                              type="date"
-                                              value={couponEditForm.valid_until}
-                                              onChange={(event) =>
-                                                setCouponEditForm({
-                                                  ...couponEditForm,
-                                                  valid_until:
-                                                    event.target.value,
-                                                })
-                                              }
-                                              className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
-                                            />
+                                            <div className="mt-1 flex items-center gap-2">
+                                              <input
+                                                type="date"
+                                                value={
+                                                  couponEditForm.valid_until
+                                                }
+                                                onChange={(event) =>
+                                                  setCouponEditForm({
+                                                    ...couponEditForm,
+                                                    valid_until:
+                                                      event.target.value,
+                                                  })
+                                                }
+                                                className="min-w-0 flex-1 rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                              />
+                                              {couponEditForm.valid_until ? (
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    setCouponEditForm({
+                                                      ...couponEditForm,
+                                                      valid_until: "",
+                                                    })
+                                                  }
+                                                  aria-label="Limpar validade"
+                                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_#0f172a]"
+                                                >
+                                                  <X className="h-4 w-4" />
+                                                </button>
+                                              ) : null}
+                                            </div>
                                           </label>
                                           <label className="text-xs font-black uppercase text-slate-600">
                                             Limite de usos (vazio = ilimitado)
-                                            <input
-                                              type="number"
-                                              min={1}
-                                              value={
-                                                couponEditForm.max_redemptions
-                                              }
-                                              onChange={(event) =>
-                                                setCouponEditForm({
-                                                  ...couponEditForm,
-                                                  max_redemptions:
-                                                    event.target.value,
-                                                })
-                                              }
-                                              className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
-                                            />
+                                            <div className="mt-1 flex items-center gap-2">
+                                              <input
+                                                type="number"
+                                                min={1}
+                                                value={
+                                                  couponEditForm.max_redemptions
+                                                }
+                                                onChange={(event) =>
+                                                  setCouponEditForm({
+                                                    ...couponEditForm,
+                                                    max_redemptions:
+                                                      event.target.value,
+                                                  })
+                                                }
+                                                className="min-w-0 flex-1 rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                              />
+                                              {couponEditForm.max_redemptions ? (
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    setCouponEditForm({
+                                                      ...couponEditForm,
+                                                      max_redemptions: "",
+                                                    })
+                                                  }
+                                                  aria-label="Limpar limite de usos"
+                                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_#0f172a]"
+                                                >
+                                                  <X className="h-4 w-4" />
+                                                </button>
+                                              ) : null}
+                                            </div>
                                           </label>
                                           <div className="text-xs font-black uppercase text-slate-600 sm:col-span-2">
                                             Planos aplicáveis
