@@ -188,8 +188,9 @@ function LevelBadge({ level }: { level: string }) {
 }
 
 // Estado real do vinculo com o Sentry num card do tracker: reabertura automatica,
-// selo de verificado, sincronizacao pendente de retry e issue orfa (deletada no
-// Sentry). Nada renderizado para bug manual (sem sentry_issue_id).
+// selo de verificado, aguardando verificacao (done ainda nao reconciliado),
+// sincronizacao pendente de retry e issue orfa (deletada no Sentry). Nada
+// renderizado para bug manual (sem sentry_issue_id).
 function BugSentryState({ bug }: { bug: AdminBug }) {
   if (!bug.sentry_issue_id) return null;
   // Reaberto = ha data de evento de reabertura mais nova que a resolucao (ou sem
@@ -215,6 +216,11 @@ function BugSentryState({ bug }: { bug: AdminBug }) {
         <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-black text-orange-700">
           Reaberto automaticamente: evento novo em{" "}
           {formatDate(bug.sentry_reopen_event_at as string)}
+        </span>
+      ) : null}
+      {bug.status === "done" && !reopened && !bug.sentry_last_checked_at ? (
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-black text-amber-700">
+          Aguardando verificação
         </span>
       ) : null}
       {bug.status === "done" && !reopened && bug.sentry_last_checked_at ? (
