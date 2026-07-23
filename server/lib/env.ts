@@ -165,6 +165,9 @@ export const env = {
   // na UE usa eu.posthog.com. Default US preserva o comportamento atual.
   posthogHost: process.env.POSTHOG_HOST || "https://us.posthog.com",
   resendApiKey: process.env.RESEND_API_KEY || "",
+  // Secret de assinatura (Svix) do webhook do Resend. Ausente: o endpoint
+  // /api/resend/webhook responde 503 e nada mais quebra (padrao resendApiKey).
+  resendWebhookSecret: process.env.RESEND_WEBHOOK_SECRET || "",
   redisUrl: process.env.REDIS_URL || "",
   // DSN do Sentry (server). Ausente: Sentry desativado, no-op total.
   sentryDsn: process.env.SENTRY_DSN || "",

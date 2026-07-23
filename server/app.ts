@@ -43,6 +43,7 @@ import projectValidationsRouter from "./routes/projectValidations";
 import quizRouter from "./routes/quiz";
 import roadmapCompletionsRouter from "./routes/roadmapCompletions";
 import roadmapQuizRouter from "./routes/roadmapQuiz";
+import resendWebhookRouter from "./routes/resendWebhook";
 import resumeAnalysisRouter from "./routes/resumeAnalysis";
 import resumesRouter from "./routes/resumes";
 import statsRouter from "./routes/stats";
@@ -165,7 +166,8 @@ function isRateLimitExempt(pathname: string) {
   return (
     pathname === "/api/health" ||
     pathname === "/api/health/live" ||
-    pathname.startsWith("/api/billing/webhook")
+    pathname.startsWith("/api/billing/webhook") ||
+    pathname.startsWith("/api/resend/webhook")
   );
 }
 
@@ -342,6 +344,19 @@ app.use("/api/billing/webhook", (req, _res, next) => {
   next();
 });
 
+// Webhook do Resend: a verificacao Svix precisa do corpo cru exato, entao so
+// guardamos rawBody (sem JSON.parse; o handler usa o payload verificado pela
+// Svix, nao req.body). Antes do json global, mesmo padrao do billing acima.
+app.use("/api/resend/webhook", express.raw({ type: "application/json" }));
+
+app.use("/api/resend/webhook", (req, _res, next) => {
+  if (Buffer.isBuffer(req.body)) {
+    (req as typeof req & { rawBody?: Buffer }).rawBody = req.body;
+  }
+
+  next();
+});
+
 // Upload de avatar envia imagem base64 (pode passar de 2mb). Parser dedicado ANTES
 // do json global; requisicoes ja parseadas (req._body) sao ignoradas pelo global.
 app.use("/api/me/avatar", express.json({ limit: "10mb" }));
@@ -371,6 +386,10 @@ app.use("/api/launch-state", launchStateRouter);
 app.use("/api/beta", betaRouter);
 app.use("/api/faculdades", faculdadesRouter);
 app.use("/api/public/certificates", publicCertificatesRouter);
+
+// Webhook do Resend: publico (a autenticacao e a assinatura Svix), montado antes
+// do gate de JWT. O rawBody ja foi capturado pelo middleware acima.
+app.use("/api/resend/webhook", resendWebhookRouter);
 
 // DEV ONLY - remover antes de producao. Preview do certificado (Parte 1).
 // Publico (antes do JWT gate) e so montado fora de producao; o proprio router

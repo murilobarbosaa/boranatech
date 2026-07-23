@@ -472,6 +472,39 @@ export type Database = {
         }
         Relationships: []
       }
+      resend_events: {
+        Row: {
+          applied: boolean
+          bounce_type: string | null
+          email: string | null
+          event_type: string
+          id: string
+          message_id: string | null
+          payload: Json | null
+          received_at: string
+        }
+        Insert: {
+          applied?: boolean
+          bounce_type?: string | null
+          email?: string | null
+          event_type: string
+          id: string
+          message_id?: string | null
+          payload?: Json | null
+          received_at?: string
+        }
+        Update: {
+          applied?: boolean
+          bounce_type?: string | null
+          email?: string | null
+          event_type?: string
+          id?: string
+          message_id?: string | null
+          payload?: Json | null
+          received_at?: string
+        }
+        Relationships: []
+      }
       career_plans: {
         Row: {
           catalog_version: string
@@ -2929,6 +2962,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      resend_apply_event: {
+        Args: { p_event_id: string }
+        Returns: undefined
+      }
       buscar_faculdades_cursos: {
         Args: {
           p_grau?: number
