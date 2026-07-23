@@ -17,6 +17,10 @@ export interface CreateCheckoutInput {
   planId: PlanId;
   // Codigo de afiliado ja normalizado (uppercase/trim); "" quando ausente.
   affiliateCode: string;
+  // Cupom de marketing ja normalizado (uppercase/trim); "" quando ausente.
+  // Se valido, o desconto dele tem precedencia sobre o de afiliado; o
+  // affiliate_code continua sendo gravado para comissao.
+  couponCode: string;
   paymentMethod: CheckoutPaymentMethod;
   // INTERNO, NUNCA vem do corpo HTTP: so o handler de renovacao (que ja validou o
   // token assinado) seta true, para pular o guard de "assinatura ativa" (na

@@ -1,11 +1,4 @@
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import {
@@ -42,6 +35,7 @@ import {
   Sparkles,
   Star,
   Tag,
+  TicketPercent,
   Trophy,
   UserRound,
   Users,
@@ -57,6 +51,7 @@ import { BugsDashboard } from "@/components/admin/BugsDashboard";
 import { NotificationsManager } from "@/components/admin/NotificationsManager";
 import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { BntSelect } from "@/components/shared/BntSelect";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { IntegrationsHealthPanel } from "@/components/admin/IntegrationsHealthPanel";
 import { PagesDashboard } from "@/components/admin/PagesDashboard";
@@ -72,6 +67,7 @@ import SEO from "@/components/SEO";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminFetch } from "@/lib/adminApi";
+import { PLAN_ORDER, PLAN_PRICING, type PlanId } from "@shared/planPricing";
 import {
   applyNamePlaceholder,
   applyUnsubscribeUrl,
@@ -145,6 +141,33 @@ type AffiliateEditForm = {
   commission_percent: number;
   status: "active" | "paused" | "inactive";
   notes: string;
+};
+
+// Cupom de marketing (tabela coupons, CRUD generico /content/coupons). SEM
+// comissao/atribuicao de afiliado; times_redeemed e contador do webhook,
+// somente leitura aqui.
+type CouponRecord = {
+  id: string;
+  code: string;
+  description?: string | null;
+  discount_percent: number;
+  status: "active" | "paused" | "inactive";
+  valid_from: string | null;
+  valid_until: string | null;
+  max_redemptions: number | null;
+  times_redeemed: number;
+  applicable_plans: string[] | null;
+};
+
+type CouponEditForm = {
+  description: string;
+  discount_percent: number;
+  status: "active" | "paused" | "inactive";
+  // yyyy-mm-dd do input date; "" = sem expiracao.
+  valid_until: string;
+  // Texto do input numerico; "" = ilimitado.
+  max_redemptions: string;
+  applicable_plans: PlanId[];
 };
 
 type AdminNavItem = {
@@ -433,6 +456,77 @@ function slugifyAffiliateCode(value: string) {
 function buildAffiliateLink(code: string, discount: number) {
   const safeCode = slugifyAffiliateCode(code || "PARCEIRO");
   return `https://boranatech.com.br/planos?ref=${safeCode}&cupom=${safeCode}&desconto=${discount}`;
+}
+
+// Mesmo padrao do server (server/lib/coupons.ts) e do banco (CHECK na coluna).
+const COUPON_CODE_PATTERN = /^[A-Z0-9]{3,32}$/;
+
+function slugifyCouponCode(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "")
+    .toUpperCase()
+    .slice(0, 32);
+}
+
+function buildCouponLink(code: string) {
+  return `https://boranatech.com.br/planos?promo=${slugifyCouponCode(code || "PROMO")}`;
+}
+
+// Codigo aleatorio no espirito do gerador de afiliado (base + desconto), com
+// sufixo aleatorio sem caracteres ambiguos (0/O, 1/I).
+function generateCouponCode(discount: number) {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const suffix = Array.from(
+    { length: 4 },
+    () => alphabet[Math.floor(Math.random() * alphabet.length)],
+  ).join("");
+  return `PROMO${discount}${suffix}`;
+}
+
+// valid_until: o input date da yyyy-mm-dd; grava o FIM daquele dia no fuso
+// local (validade inclusiva, "vale ate o dia X").
+function dateInputToIso(value: string): string | null {
+  if (!value) return null;
+  const date = new Date(`${value}T23:59:59`);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function isoToDateInput(value: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function couponExpired(coupon: CouponRecord): boolean {
+  return (
+    !!coupon.valid_until && new Date(coupon.valid_until).getTime() <= Date.now()
+  );
+}
+
+// Todos os planos marcados = null (cupom vale para todos); parcial = array na
+// ordem canonica de PLAN_ORDER.
+function couponPlansPayload(plans: PlanId[]): PlanId[] | null {
+  const normalized = PLAN_ORDER.filter((id) => plans.includes(id));
+  return normalized.length === PLAN_ORDER.length ? null : normalized;
+}
+
+// Volta do banco (string[] | null) para o form, descartando ids desconhecidos.
+function couponPlansFromRecord(plans: string[] | null): PlanId[] {
+  if (!plans) return [...PLAN_ORDER];
+  return PLAN_ORDER.filter((id) => plans.includes(id));
+}
+
+function couponPlansLabel(plans: string[] | null): string {
+  if (!plans) return "Todos os planos";
+  const labels = PLAN_ORDER.filter((id) => plans.includes(id)).map(
+    (id) => PLAN_PRICING[id].label,
+  );
+  return labels.length ? labels.join(", ") : "Nenhum plano";
 }
 
 function formatAdminDate(value?: string | null) {
@@ -798,10 +892,7 @@ function AdminShell({
       <header className="sticky top-0 z-[1000] border-b-2 border-slate-900 bg-[#f6f0df]/95 backdrop-blur">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex min-h-16 items-center justify-between gap-4">
-            <Link
-              href="/"
-              className="group flex min-w-fit items-center gap-2"
-            >
+            <Link href="/" className="group flex min-w-fit items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-slate-900 bg-yellow-400 text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all group-hover:shadow-[4px_4px_0_#0f172a]">
                 <Compass className="h-5 w-5" />
               </span>
@@ -2178,8 +2269,8 @@ const CampaignPreview = memo(function CampaignPreview({
               </p>
             ) : null}
             <p className="mt-2 text-[11px] font-semibold text-slate-500">
-              Preview do HTML como e-mail inteiro, sem header/rodapé automáticos.{" "}
-              <code>{"{nome}"}</code> ={" "}
+              Preview do HTML como e-mail inteiro, sem header/rodapé
+              automáticos. <code>{"{nome}"}</code> ={" "}
               <span className="font-black">{PREVIEW_EXAMPLE_NAME}</span>,{" "}
               <code>{"{unsubscribe_url}"}</code> = "#".
             </p>
@@ -2277,7 +2368,9 @@ function EmailCampaignsAdminSection() {
   const [batchSegment, setBatchSegment] = useState<EmailUserSegment>("all");
   const [contactLists, setContactLists] = useState<ContactListOption[]>([]);
   const [selectedContactListId, setSelectedContactListId] = useState("");
-  const [contactListsError, setContactListsError] = useState<string | null>(null);
+  const [contactListsError, setContactListsError] = useState<string | null>(
+    null,
+  );
   const [customText, setCustomText] = useState("");
   const [excludeOther, setExcludeOther] = useState(true);
   const [whenMode, setWhenMode] = useState<"now" | "schedule">("now");
@@ -2330,7 +2423,9 @@ function EmailCampaignsAdminSection() {
     setListError(null);
     try {
       const json = await adminFetch("/email-campaigns");
-      setCampaigns(Array.isArray(json.data) ? (json.data as EmailCampaign[]) : []);
+      setCampaigns(
+        Array.isArray(json.data) ? (json.data as EmailCampaign[]) : [],
+      );
     } catch (err) {
       setListError(
         err instanceof Error ? err.message : "Erro ao carregar campanhas.",
@@ -2781,9 +2876,7 @@ function EmailCampaignsAdminSection() {
       }
       if (nextSet.size >= EMAIL_BATCH_MAX_SELECTED) {
         // TODO(Ana): aviso de limite de seleção.
-        toast.error(
-          `Máximo de ${EMAIL_BATCH_MAX_SELECTED} e-mails por lote.`,
-        );
+        toast.error(`Máximo de ${EMAIL_BATCH_MAX_SELECTED} e-mails por lote.`);
         return prev;
       }
       nextSet.add(email);
@@ -2803,9 +2896,7 @@ function EmailCampaignsAdminSection() {
       }
       if (parsedCustom.valid.length > EMAIL_BATCH_MAX_SELECTED) {
         // TODO(Ana): mensagem de lista colada acima do limite.
-        toast.error(
-          `Máximo de ${EMAIL_BATCH_MAX_SELECTED} e-mails por lote.`,
-        );
+        toast.error(`Máximo de ${EMAIL_BATCH_MAX_SELECTED} e-mails por lote.`);
         return;
       }
     } else if (batchSource === "contact_list") {
@@ -2896,9 +2987,7 @@ function EmailCampaignsAdminSection() {
       void loadDetail(detail.id);
       void loadCampaigns();
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Erro ao criar o lote.",
-      );
+      toast.error(err instanceof Error ? err.message : "Erro ao criar o lote.");
     } finally {
       setBatchBusy(false);
     }
@@ -2941,7 +3030,10 @@ function EmailCampaignsAdminSection() {
   // Grupo "Entrega": derivado da campanha, sem coluna nova. Entregues e
   // aceitos menos os que quicaram/reclamaram (>= 0 por seguranca).
   const delivered = detail
-    ? Math.max(0, detail.sent_count - detail.bounced_count - detail.complained_count)
+    ? Math.max(
+        0,
+        detail.sent_count - detail.bounced_count - detail.complained_count,
+      )
     : null;
   const detailBounceRate = detail
     ? bounceRatePercent(detail.sent_count, detail.bounced_count)
@@ -3064,8 +3156,9 @@ function EmailCampaignsAdminSection() {
                   Modo HTML: o conteúdo é o e-mail inteiro, injetado como colado
                   (sem header, imagem ou rodapé automáticos). Use{" "}
                   <code className="font-black">{"{nome}"}</code> para o primeiro
-                  nome e <code className="font-black">{"{unsubscribe_url}"}</code>{" "}
-                  onde o link de descadastro deve aparecer.
+                  nome e{" "}
+                  <code className="font-black">{"{unsubscribe_url}"}</code> onde
+                  o link de descadastro deve aparecer.
                 </p>
               ) : (
                 <p className="mt-1 text-[11px] font-semibold text-slate-500">
@@ -3125,17 +3218,15 @@ function EmailCampaignsAdminSection() {
               // List-Unsubscribe continua setado), mas o link visual pode faltar.
               <p className="rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-xs font-bold text-amber-800">
                 ⚠️ Seu HTML não tem{" "}
-                <code className="font-black">{"{unsubscribe_url}"}</code> — o link
-                de descadastro pode não funcionar.
+                <code className="font-black">{"{unsubscribe_url}"}</code> — o
+                link de descadastro pode não funcionar.
               </p>
             ) : null}
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 disabled={creating}
-                onClick={() =>
-                  void (editingId ? saveEdit() : createCampaign())
-                }
+                onClick={() => void (editingId ? saveEdit() : createCampaign())}
                 className="bnt-pressable rounded-full border-2 border-slate-900 bg-[#FFB800] px-5 py-2 text-sm font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a] disabled:opacity-40"
               >
                 {/* TODO(Ana) */}
@@ -3929,7 +4020,8 @@ function EmailCampaignsAdminSection() {
               Pular quem já recebeu outra campanha
             </label>
 
-            {batchSource === "contact_list" ? null : batchSource !== "custom" ? (
+            {batchSource === "contact_list" ? null : batchSource !==
+              "custom" ? (
               <div className="mt-4">
                 {/* TODO(Ana): rótulos dos modos. */}
                 <p className="text-xs font-black uppercase text-slate-500">
@@ -3998,7 +4090,8 @@ function EmailCampaignsAdminSection() {
               </div>
             )}
 
-            {batchSource === "custom" || batchSource === "contact_list" ? null : batchMode === "next" ? (
+            {batchSource === "custom" ||
+            batchSource === "contact_list" ? null : batchMode === "next" ? (
               <div className="mt-4">
                 <label
                   htmlFor="email-batch-limit"
@@ -4263,8 +4356,8 @@ function EmailCampaignsAdminSection() {
               Cancelar este lote agendado?
             </h3>
             <p className="mt-3 text-sm font-semibold text-slate-600">
-              Agendado para {formatBatchDateTime(cancelTarget.scheduled_for)}.
-              O lote não será disparado e os destinatários dele não recebem o
+              Agendado para {formatBatchDateTime(cancelTarget.scheduled_for)}. O
+              lote não será disparado e os destinatários dele não recebem o
               e-mail.
             </p>
             <div className="mt-6 flex justify-end gap-3">
@@ -5175,6 +5268,9 @@ function AdminCheckbox({
 // Paginacao client-side da lista de Afiliados: 5 cards por pagina.
 const AFFILIATE_PAGE_SIZE = 5;
 
+// Cupons seguem o mesmo padrao de paginacao da lista de afiliados.
+const COUPON_PAGE_SIZE = 5;
+
 export default function Admin() {
   const { loading: authLoading, signOut, user } = useAuth();
   const [session, setSession] = useState<AdminSession | null>(null);
@@ -5199,9 +5295,8 @@ export default function Admin() {
   const [churnRiskUsers, setChurnRiskUsers] = useState<ChurnRiskUser[] | null>(
     null,
   );
-  const [billingMetrics, setBillingMetrics] = useState<BillingMetricsData | null>(
-    null,
-  );
+  const [billingMetrics, setBillingMetrics] =
+    useState<BillingMetricsData | null>(null);
   const [billingMetricsError, setBillingMetricsError] = useState<string | null>(
     null,
   );
@@ -5252,6 +5347,40 @@ export default function Admin() {
     string | null
   >(null);
 
+  // Toggle Afiliados | Cupons da secao, mesmo padrao do BugsDashboard
+  // (Tabs local, sem persistencia na URL, default na primeira visao).
+  const [affiliatesTab, setAffiliatesTab] = useState<"afiliados" | "cupons">(
+    "afiliados",
+  );
+  const [coupons, setCoupons] = useState<CouponRecord[]>([]);
+  const [couponsLoading, setCouponsLoading] = useState(false);
+  const [couponsLoaded, setCouponsLoaded] = useState(false);
+  const [couponSearch, setCouponSearch] = useState("");
+  const [couponPage, setCouponPage] = useState(1);
+  const [couponFormCode, setCouponFormCode] = useState("");
+  const [couponFormDescription, setCouponFormDescription] = useState("");
+  const [couponFormDiscount, setCouponFormDiscount] = useState(20);
+  const [couponFormValidUntil, setCouponFormValidUntil] = useState("");
+  const [couponFormMaxRedemptions, setCouponFormMaxRedemptions] = useState("");
+  const [couponFormPlans, setCouponFormPlans] = useState<PlanId[]>([
+    ...PLAN_ORDER,
+  ]);
+  const [savingCoupon, setSavingCoupon] = useState(false);
+  const [copiedCouponLink, setCopiedCouponLink] = useState(false);
+  const [editingCouponId, setEditingCouponId] = useState<string | null>(null);
+  const [couponEditForm, setCouponEditForm] = useState<CouponEditForm | null>(
+    null,
+  );
+  const [savingCouponEditId, setSavingCouponEditId] = useState<string | null>(
+    null,
+  );
+  const [deleteCouponTarget, setDeleteCouponTarget] =
+    useState<CouponRecord | null>(null);
+  const [deletingCouponId, setDeletingCouponId] = useState<string | null>(null);
+  const [copiedCouponCardId, setCopiedCouponCardId] = useState<string | null>(
+    null,
+  );
+
   useEffect(() => {
     if (authLoading) {
       setAccessState("loading");
@@ -5298,7 +5427,10 @@ export default function Admin() {
             })),
           fetch(apiUrl("/api/health"))
             .then((res) => res.json())
-            .then((data) => ({ ok: true as const, data: data as HealthResponse }))
+            .then((data) => ({
+              ok: true as const,
+              data: data as HealthResponse,
+            }))
             .catch(() => ({ ok: false as const })),
           adminFetch("/ai-stats")
             .then((json) => ({
@@ -5314,7 +5446,10 @@ export default function Admin() {
             })),
           // Sem colapso: falha de fetch vira estado de erro da secao, nao zeros.
           adminFetch("/queue-stats")
-            .then((json) => ({ ok: true as const, data: json.data as QueueStats }))
+            .then((json) => ({
+              ok: true as const,
+              data: json.data as QueueStats,
+            }))
             .catch((err: unknown) => ({
               ok: false as const,
               error:
@@ -5335,7 +5470,9 @@ export default function Admin() {
           adminFetch("/churn-risk")
             .then((json) => ({
               ok: true as const,
-              data: Array.isArray(json.data) ? (json.data as ChurnRiskUser[]) : [],
+              data: Array.isArray(json.data)
+                ? (json.data as ChurnRiskUser[])
+                : [],
             }))
             .catch((err: unknown) => ({
               ok: false as const,
@@ -5536,8 +5673,7 @@ export default function Admin() {
   const healthItemsReal = useMemo(() => buildHealthItems(health), [health]);
   // Deriva os stats so quando o estado e "ok"; caso contrario null. Mantem o
   // nome posthogStats para as leituras de render continuarem validas.
-  const posthogStats =
-    posthogState?.state === "ok" ? posthogState.stats : null;
+  const posthogStats = posthogState?.state === "ok" ? posthogState.stats : null;
   // hasData vem do backend (nunca inferido de zeros no client).
   const posthogHasData = Boolean(
     posthogState?.state === "ok" && posthogState.hasData,
@@ -5596,9 +5732,7 @@ export default function Admin() {
       const name = (affiliate.name || "").toLowerCase();
       const code = (affiliate.code || "").toLowerCase();
       const email = (affiliate.email || "").toLowerCase();
-      return (
-        name.includes(term) || code.includes(term) || email.includes(term)
-      );
+      return name.includes(term) || code.includes(term) || email.includes(term);
     });
   }, [affiliates, affiliateSearch]);
 
@@ -5619,6 +5753,32 @@ export default function Admin() {
   const pagedAffiliates = filteredAffiliates.slice(
     (affiliateCurrentPage - 1) * AFFILIATE_PAGE_SIZE,
     affiliateCurrentPage * AFFILIATE_PAGE_SIZE,
+  );
+
+  // Cupons: mesmo padrao dos afiliados (filtro client-side por code/descricao,
+  // filtrar -> paginar, reset na busca, clamp de range no render).
+  const filteredCoupons = useMemo(() => {
+    const term = couponSearch.trim().toLowerCase();
+    if (!term) return coupons;
+    return coupons.filter((coupon) => {
+      const code = (coupon.code || "").toLowerCase();
+      const description = (coupon.description || "").toLowerCase();
+      return code.includes(term) || description.includes(term);
+    });
+  }, [coupons, couponSearch]);
+
+  useEffect(() => {
+    setCouponPage(1);
+  }, [couponSearch]);
+
+  const couponTotalPages = Math.max(
+    1,
+    Math.ceil(filteredCoupons.length / COUPON_PAGE_SIZE),
+  );
+  const couponCurrentPage = Math.min(couponPage, couponTotalPages);
+  const pagedCoupons = filteredCoupons.slice(
+    (couponCurrentPage - 1) * COUPON_PAGE_SIZE,
+    couponCurrentPage * COUPON_PAGE_SIZE,
   );
   const adminMetricCards = useMemo<MetricCard[]>(() => {
     if (!dashboard?.counts) return metricCards;
@@ -5647,7 +5807,10 @@ export default function Admin() {
     // So os VALORES sao preenchidos; o label vem da base e nunca e sobrescrito.
     return [
       { ...metricCards[0], value: String(dashboard.counts.users) },
-      { ...metricCards[1], value: String(dashboard.counts.active_subscriptions) },
+      {
+        ...metricCards[1],
+        value: String(dashboard.counts.active_subscriptions),
+      },
       { ...metricCards[2], value: mrrValue, detail: mrrDetail },
       { ...metricCards[3], value: String(dashboard.counts.ai_calls_total) },
       { ...metricCards[4], value: String(dashboard.counts.courses) },
@@ -5824,6 +5987,188 @@ export default function Admin() {
     }, 2000);
   }
 
+  async function refreshCoupons() {
+    setCouponsLoading(true);
+    try {
+      const json = await adminFetch("/content/coupons");
+      setCoupons(Array.isArray(json.data) ? (json.data as CouponRecord[]) : []);
+    } catch {
+      setCoupons([]);
+    } finally {
+      setCouponsLoading(false);
+    }
+  }
+
+  // Carrega os cupons na primeira abertura do toggle Cupons (nao entra no
+  // load geral do dashboard, que ja faz bastante fan-out).
+  useEffect(() => {
+    if (
+      activeSection !== "afiliados" ||
+      affiliatesTab !== "cupons" ||
+      couponsLoaded
+    )
+      return;
+    setCouponsLoaded(true);
+    void refreshCoupons();
+    // refreshCoupons e estavel o suficiente aqui: so roda no flip do guard.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection, affiliatesTab, couponsLoaded]);
+
+  function toggleCouponFormPlan(planId: PlanId) {
+    setCouponFormPlans((current) =>
+      current.includes(planId)
+        ? current.filter((id) => id !== planId)
+        : PLAN_ORDER.filter((id) => id === planId || current.includes(id)),
+    );
+    setCopiedCouponLink(false);
+  }
+
+  function handleGenerateCouponCode() {
+    setCouponFormCode(generateCouponCode(couponFormDiscount));
+    setCopiedCouponLink(false);
+  }
+
+  async function handleCopyCouponLink() {
+    await navigator.clipboard.writeText(buildCouponLink(couponFormCode));
+    setCopiedCouponLink(true);
+  }
+
+  async function handleCreateCoupon() {
+    const code = slugifyCouponCode(couponFormCode);
+    if (!COUPON_CODE_PATTERN.test(code)) {
+      toast.error("Código inválido: use de 3 a 32 letras e números.");
+      return;
+    }
+    if (couponFormPlans.length === 0) {
+      toast.error("Selecione ao menos um plano aplicável.");
+      return;
+    }
+    const maxRaw = couponFormMaxRedemptions.trim();
+    const maxRedemptions = maxRaw ? Number(maxRaw) : null;
+    if (
+      maxRedemptions !== null &&
+      (!Number.isInteger(maxRedemptions) || maxRedemptions <= 0)
+    ) {
+      toast.error("Limite de usos deve ser um número inteiro positivo.");
+      return;
+    }
+
+    setSavingCoupon(true);
+    try {
+      await adminFetch("/content/coupons", {
+        method: "POST",
+        body: JSON.stringify({
+          code,
+          description: couponFormDescription.trim() || null,
+          discount_percent: couponFormDiscount,
+          status: "active",
+          valid_until: dateInputToIso(couponFormValidUntil),
+          max_redemptions: maxRedemptions,
+          applicable_plans: couponPlansPayload(couponFormPlans),
+        }),
+      });
+      toast.success("Cupom criado com sucesso.");
+      await refreshCoupons();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Erro ao criar cupom.",
+      );
+    } finally {
+      setSavingCoupon(false);
+    }
+  }
+
+  function startCouponEdit(coupon: CouponRecord) {
+    setEditingCouponId(coupon.id);
+    setCouponEditForm({
+      description: coupon.description || "",
+      discount_percent: Number(coupon.discount_percent || 20),
+      status: coupon.status || "active",
+      valid_until: isoToDateInput(coupon.valid_until),
+      max_redemptions:
+        coupon.max_redemptions === null ? "" : String(coupon.max_redemptions),
+      applicable_plans: couponPlansFromRecord(coupon.applicable_plans),
+    });
+  }
+
+  function cancelCouponEdit() {
+    setEditingCouponId(null);
+    setCouponEditForm(null);
+  }
+
+  async function handleSaveCouponEdit(coupon: CouponRecord) {
+    if (!couponEditForm) return;
+
+    if (couponEditForm.applicable_plans.length === 0) {
+      toast.error("Selecione ao menos um plano aplicável.");
+      return;
+    }
+    const maxRaw = couponEditForm.max_redemptions.trim();
+    const maxRedemptions = maxRaw ? Number(maxRaw) : null;
+    if (
+      maxRedemptions !== null &&
+      (!Number.isInteger(maxRedemptions) || maxRedemptions <= 0)
+    ) {
+      toast.error("Limite de usos deve ser um número inteiro positivo.");
+      return;
+    }
+
+    setSavingCouponEditId(coupon.id);
+    try {
+      await adminFetch(`/content/coupons/${coupon.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          description: couponEditForm.description.trim() || null,
+          discount_percent: Number(couponEditForm.discount_percent || 0),
+          status: couponEditForm.status,
+          valid_until: dateInputToIso(couponEditForm.valid_until),
+          max_redemptions: maxRedemptions,
+          applicable_plans: couponPlansPayload(couponEditForm.applicable_plans),
+        }),
+      });
+      toast.success("Cupom atualizado com sucesso.");
+      cancelCouponEdit();
+      await refreshCoupons();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Erro ao salvar cupom.",
+      );
+    } finally {
+      setSavingCouponEditId(null);
+    }
+  }
+
+  async function confirmDeleteCoupon() {
+    if (!deleteCouponTarget) return;
+
+    setDeletingCouponId(deleteCouponTarget.id);
+    try {
+      await adminFetch(`/content/coupons/${deleteCouponTarget.id}`, {
+        method: "DELETE",
+      });
+      toast.success("Cupom excluído com sucesso.");
+      setDeleteCouponTarget(null);
+      if (editingCouponId === deleteCouponTarget.id) cancelCouponEdit();
+      await refreshCoupons();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Erro ao excluir cupom.",
+      );
+    } finally {
+      setDeletingCouponId(null);
+    }
+  }
+
+  async function handleCopyCouponCardLink(coupon: CouponRecord) {
+    await navigator.clipboard.writeText(buildCouponLink(coupon.code));
+    setCopiedCouponCardId(coupon.id);
+    window.setTimeout(() => {
+      setCopiedCouponCardId((current) =>
+        current === coupon.id ? null : current,
+      );
+    }, 2000);
+  }
+
   if (accessState !== "allowed" || !session) {
     return (
       <AdminAccessGate
@@ -5888,31 +6233,31 @@ export default function Admin() {
               ) : dashboardError ? (
                 <ErrorBlock message={dashboardError} />
               ) : (
-              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {adminMetricCards.map((metric) => (
-                  <article
-                    key={metric.label}
-                    className="card-brutal rounded-3xl bg-white p-5"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <span
-                        className={`flex h-13 w-13 items-center justify-center rounded-2xl border-2 border-slate-900 shadow-[3px_3px_0_#0f172a] ${metric.color}`}
-                      >
-                        {metric.icon}
-                      </span>
-                    </div>
-                    <p className="mt-5 text-sm font-black uppercase tracking-wide text-slate-500">
-                      {metric.label}
-                    </p>
-                    <p className="font-display mt-1 text-4xl font-black text-slate-950">
-                      {metric.value}
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-slate-600">
-                      {metric.detail}
-                    </p>
-                  </article>
-                ))}
-              </div>
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {adminMetricCards.map((metric) => (
+                    <article
+                      key={metric.label}
+                      className="card-brutal rounded-3xl bg-white p-5"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <span
+                          className={`flex h-13 w-13 items-center justify-center rounded-2xl border-2 border-slate-900 shadow-[3px_3px_0_#0f172a] ${metric.color}`}
+                        >
+                          {metric.icon}
+                        </span>
+                      </div>
+                      <p className="mt-5 text-sm font-black uppercase tracking-wide text-slate-500">
+                        {metric.label}
+                      </p>
+                      <p className="font-display mt-1 text-4xl font-black text-slate-950">
+                        {metric.value}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-slate-600">
+                        {metric.detail}
+                      </p>
+                    </article>
+                  ))}
+                </div>
               )}
 
               <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
@@ -6245,7 +6590,9 @@ export default function Admin() {
                         // (sucesso sempre retorna lista). Mostra erro, nao vazio.
                         // TODO(Ana): copy de fallback do erro de churn.
                         <ErrorBlock
-                          message={churnError ?? "Erro ao carregar risco de churn."}
+                          message={
+                            churnError ?? "Erro ao carregar risco de churn."
+                          }
                         />
                       ) : churnRiskUsers.length ? (
                         <div className="space-y-3">
@@ -6329,8 +6676,8 @@ export default function Admin() {
                   Despesas
                 </h2>
                 <p className="mb-5 mt-1 max-w-3xl text-sm font-semibold text-slate-600">
-                  Lance cobranças recorrentes e gastos pontuais. Moeda estrangeira
-                  trava o câmbio (PTAX) na data do lançamento.
+                  Lance cobranças recorrentes e gastos pontuais. Moeda
+                  estrangeira trava o câmbio (PTAX) na data do lançamento.
                 </p>
                 <ExpensesManager
                   onChanged={() => setFinanceRefreshKey((k) => k + 1)}
@@ -6482,7 +6829,6 @@ export default function Admin() {
             </AdminSection>
           ) : null}
 
-
           {activeSection === "emails" ? <EmailCampaignsAdminSection /> : null}
 
           {activeSection === "notificacoes" ? (
@@ -6512,499 +6858,1094 @@ export default function Admin() {
           {activeSection === "beta" ? <BetaCodesAdminSection /> : null}
 
           {activeSection === "afiliados" ? (
-            <article
-              id="afiliados"
-              className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white"
+            <Tabs
+              value={affiliatesTab}
+              onValueChange={(value) =>
+                setAffiliatesTab(value as "afiliados" | "cupons")
+              }
             >
-              <div className="border-b-2 border-slate-900 bg-[#ffb800] p-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a]">
-                      <Handshake className="h-4 w-4" />
-                      afiliados
-                    </p>
-                    <h2 className="font-display mt-4 text-3xl font-black text-slate-950">
-                      Links com desconto e comissão para parceiros
-                    </h2>
-                    <p className="mt-2 max-w-3xl text-sm font-bold text-slate-800">
-                      Gere cupons rastreáveis para influenciadores, comunidades,
-                      mentorias e embaixadores. Cada link aplica desconto ao
-                      aluno e calcula comissão para o afiliado.
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
-                    <p className="text-xs font-black uppercase text-slate-500">
-                      status
-                    </p>
-                    <p className="font-display text-xl font-black text-slate-950">
-                      Manual ativo
-                    </p>
-                    <p className="text-sm font-bold text-slate-600">
-                      {affiliateSearch.trim()
-                        ? `${filteredAffiliates.length} de ${affiliates.length} afiliados`
-                        : `${affiliates.length} afiliados cadastrados`}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <TabsList className="h-auto gap-1 rounded-full border-2 border-slate-900 bg-white p-1 shadow-[2px_2px_0_#0f172a]">
+                <TabsTrigger
+                  value="afiliados"
+                  className="rounded-full px-4 py-1.5 text-xs font-black uppercase data-[state=active]:bg-slate-950 data-[state=active]:text-white"
+                >
+                  Afiliados
+                </TabsTrigger>
+                <TabsTrigger
+                  value="cupons"
+                  className="rounded-full px-4 py-1.5 text-xs font-black uppercase data-[state=active]:bg-slate-950 data-[state=active]:text-white"
+                >
+                  Cupons
+                </TabsTrigger>
+              </TabsList>
 
-              {affiliatesError ? (
-                <div className="border-b-2 border-slate-900 p-6">
-                  <ErrorBlock message={affiliatesError} />
-                </div>
-              ) : null}
-
-              <div className="grid gap-5 border-b-2 border-slate-900 bg-violet-50 p-6 md:grid-cols-2 xl:grid-cols-4">
-                {[
-                  {
-                    label: "Receita atribuída",
-                    value: formatCents(affiliateTotals.revenue),
-                    icon: <DollarSign className="h-5 w-5" />,
-                  },
-                  {
-                    label: "Comissões a pagar",
-                    value: formatCents(affiliateTotals.commissionDue),
-                    icon: <WalletCards className="h-5 w-5" />,
-                  },
-                  {
-                    label: "Vendas atribuídas",
-                    value: formatCount(affiliateTotals.sales),
-                    icon: <Trophy className="h-5 w-5" />,
-                  },
-                  {
-                    label: "Cliques registrados",
-                    value: formatCount(affiliateTotals.clicks),
-                    icon: <MousePointerClick className="h-5 w-5" />,
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.label}
-                    className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
-                  >
-                    <span className="inline-flex rounded-xl border-2 border-slate-900 bg-yellow-300 p-2 text-slate-950">
-                      {item.icon}
-                    </span>
-                    <p className="mt-3 text-xs font-black uppercase text-violet-700">
-                      {item.label}
-                    </p>
-                    <p className="font-display mt-1 text-2xl font-black text-slate-950">
-                      {item.value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid gap-6 p-6 xl:grid-cols-[0.9fr_1.1fr]">
-                <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
-                  <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                    <PlusCircle className="h-6 w-6" />
-                    Gerar link de afiliado
-                  </h3>
-                  <div className="mt-5 grid gap-4">
-                    <label className="text-sm font-black text-slate-950">
-                      Nome do afiliado
-                      <input
-                        value={affiliateName}
-                        onChange={(event) => {
-                          setAffiliateName(event.target.value);
-                          setCopiedAffiliateLink(false);
-                        }}
-                        className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
-                        placeholder="Ex: Parceiro Tech"
-                      />
-                    </label>
-
-                    <label className="text-sm font-black text-slate-950">
-                      Código/cupom
-                      <div className="mt-2 flex gap-2">
-                        <input
-                          value={affiliateCode}
-                          onChange={(event) => {
-                            setAffiliateCode(
-                              slugifyAffiliateCode(event.target.value),
-                            );
-                            setCopiedAffiliateLink(false);
-                          }}
-                          className="w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold uppercase outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
-                          placeholder="PARCEIRA20"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleGenerateAffiliateCode}
-                          className="rounded-2xl border-2 border-slate-900 bg-yellow-300 px-4 text-sm font-black shadow-[3px_3px_0_#0f172a]"
-                        >
-                          Gerar
-                        </button>
+              <TabsContent value="afiliados" className="mt-4">
+                <article
+                  id="afiliados"
+                  className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white"
+                >
+                  <div className="border-b-2 border-slate-900 bg-[#ffb800] p-6">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                          <Handshake className="h-4 w-4" />
+                          afiliados
+                        </p>
+                        <h2 className="font-display mt-4 text-3xl font-black text-slate-950">
+                          Links com desconto e comissão para parceiros
+                        </h2>
+                        <p className="mt-2 max-w-3xl text-sm font-bold text-slate-800">
+                          Gere cupons rastreáveis para influenciadores,
+                          comunidades, mentorias e embaixadores. Cada link
+                          aplica desconto ao aluno e calcula comissão para o
+                          afiliado.
+                        </p>
                       </div>
-                    </label>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <label className="text-sm font-black text-slate-950">
-                        Desconto para aluno: {affiliateDiscount}%
-                        <input
-                          type="range"
-                          min="5"
-                          max="50"
-                          step="5"
-                          value={affiliateDiscount}
-                          onChange={(event) => {
-                            setAffiliateDiscount(Number(event.target.value));
-                            setCopiedAffiliateLink(false);
-                          }}
-                          className="mt-4 w-full accent-violet-700"
-                        />
-                      </label>
-                      <label className="text-sm font-black text-slate-950">
-                        Comissão afiliado: {affiliateCommission}%
-                        <input
-                          type="range"
-                          min="5"
-                          max="50"
-                          step="5"
-                          value={affiliateCommission}
-                          onChange={(event) =>
-                            setAffiliateCommission(Number(event.target.value))
-                          }
-                          className="mt-4 w-full accent-violet-700"
-                        />
-                      </label>
-                    </div>
-
-                    <div className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
-                      <p className="flex items-center gap-2 text-xs font-black uppercase text-violet-700">
-                        <LinkIcon className="h-4 w-4" />
-                        link gerado
-                      </p>
-                      <p className="mt-2 break-all font-mono text-sm font-black text-slate-950">
-                        {generatedAffiliateLink}
-                      </p>
-                      <div className="mt-3 grid gap-2 text-xs font-bold text-slate-600 sm:grid-cols-2">
-                        <span className="rounded-full border border-slate-300 bg-white px-3 py-2">
-                          Cupom: {slugifyAffiliateCode(affiliateCode)}
-                        </span>
-                        <span className="rounded-full border border-slate-300 bg-white px-3 py-2">
-                          Comissão: {affiliateCommission}% por venda paga
-                        </span>
+                      <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
+                        <p className="text-xs font-black uppercase text-slate-500">
+                          status
+                        </p>
+                        <p className="font-display text-xl font-black text-slate-950">
+                          Manual ativo
+                        </p>
+                        <p className="text-sm font-bold text-slate-600">
+                          {affiliateSearch.trim()
+                            ? `${filteredAffiliates.length} de ${affiliates.length} afiliados`
+                            : `${affiliates.length} afiliados cadastrados`}
+                        </p>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <button
-                        type="button"
-                        onClick={handleCreateAffiliate}
-                        disabled={savingAffiliate}
-                        className="btn-brutal-primary inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 font-black disabled:opacity-60"
+                  {affiliatesError ? (
+                    <div className="border-b-2 border-slate-900 p-6">
+                      <ErrorBlock message={affiliatesError} />
+                    </div>
+                  ) : null}
+
+                  <div className="grid gap-5 border-b-2 border-slate-900 bg-violet-50 p-6 md:grid-cols-2 xl:grid-cols-4">
+                    {[
+                      {
+                        label: "Receita atribuída",
+                        value: formatCents(affiliateTotals.revenue),
+                        icon: <DollarSign className="h-5 w-5" />,
+                      },
+                      {
+                        label: "Comissões a pagar",
+                        value: formatCents(affiliateTotals.commissionDue),
+                        icon: <WalletCards className="h-5 w-5" />,
+                      },
+                      {
+                        label: "Vendas atribuídas",
+                        value: formatCount(affiliateTotals.sales),
+                        icon: <Trophy className="h-5 w-5" />,
+                      },
+                      {
+                        label: "Cliques registrados",
+                        value: formatCount(affiliateTotals.clicks),
+                        icon: <MousePointerClick className="h-5 w-5" />,
+                      },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
                       >
-                        <PlusCircle className="h-5 w-5" />
-                        {savingAffiliate ? "Salvando..." : "Criar afiliado"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCopyAffiliateLink}
-                        className="btn-brutal-accent inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 font-black"
-                      >
-                        <Copy className="h-5 w-5" />
-                        {copiedAffiliateLink ? "Link copiado" : "Copiar link"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
-                  <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                    <Tag className="h-6 w-6" />
-                    Afiliados cadastrados
-                  </h3>
-                  <input
-                    type="search"
-                    value={affiliateSearch}
-                    onChange={(event) => setAffiliateSearch(event.target.value)}
-                    placeholder="Buscar por nome, código ou e-mail..."
-                    className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_#0f172a] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
-                  />
-                  <div className="mt-5">
-                    {overviewLoading || affiliatesLoading ? (
-                      <LoadingBlock />
-                    ) : affiliates.length ? (
-                      filteredAffiliates.length ? (
-                      <>
-                      <div className="space-y-3">
-                        {pagedAffiliates.map((affiliate) => (
-                          <div
-                            key={affiliate.id}
-                            className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
-                          >
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                              <div>
-                                <p className="font-display text-lg font-black text-slate-950">
-                                  {affiliate.name}
-                                </p>
-                                <p className="mt-1 font-mono text-xs font-black text-violet-700">
-                                  {affiliate.code}
-                                </p>
-                                <p className="mt-1 text-xs font-semibold text-slate-500">
-                                  {affiliate.discount_percent}% desconto •{" "}
-                                  {affiliate.commission_percent}% comissão •{" "}
-                                  {affiliate.status}
-                                </p>
-                              </div>
-                              <div className="flex flex-wrap gap-2 sm:justify-end">
-                                <button
-                                  type="button"
-                                  onClick={() => startAffiliateEdit(affiliate)}
-                                  className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a]"
-                                >
-                                  Editar
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    void handleCopyAffiliateCardLink(affiliate)
-                                  }
-                                  className="rounded-full border-2 border-slate-900 bg-yellow-100 px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
-                                >
-                                  {copiedAffiliateCardId === affiliate.id
-                                    ? "Link copiado!"
-                                    : "Copiar link"}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    void handleMarkAffiliatePaid(affiliate)
-                                  }
-                                  disabled={
-                                    affiliate.commission_due_cents <= 0 ||
-                                    payingAffiliateId === affiliate.id
-                                  }
-                                  className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-50"
-                                >
-                                  {payingAffiliateId === affiliate.id
-                                    ? "Pagando..."
-                                    : "Marcar comissão paga"}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setDeleteAffiliateTarget(affiliate)
-                                  }
-                                  className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-2 text-xs font-black text-rose-800 shadow-[2px_2px_0_#0f172a]"
-                                >
-                                  Excluir
-                                </button>
-                              </div>
-                            </div>
-                            <div className="mt-4 grid gap-2 text-xs font-black sm:grid-cols-4">
-                              <span className="rounded-xl bg-white px-3 py-2">
-                                Cliques: {formatCount(affiliate.clicks)}
-                              </span>
-                              <span className="rounded-xl bg-white px-3 py-2">
-                                Vendas: {formatCount(affiliate.sales)}
-                              </span>
-                              <span className="rounded-xl bg-white px-3 py-2">
-                                Receita: {formatCents(affiliate.revenue_cents)}
-                              </span>
-                              <span className="rounded-xl bg-white px-3 py-2">
-                                A pagar:{" "}
-                                {formatCents(affiliate.commission_due_cents)}
-                              </span>
-                            </div>
-                            {editingAffiliateId === affiliate.id &&
-                            affiliateEditForm ? (
-                              <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-white p-4">
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                  <label className="text-xs font-black uppercase text-slate-600">
-                                    Nome
-                                    <input
-                                      value={affiliateEditForm.name}
-                                      onChange={(event) =>
-                                        setAffiliateEditForm({
-                                          ...affiliateEditForm,
-                                          name: event.target.value,
-                                        })
-                                      }
-                                      className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
-                                    />
-                                  </label>
-                                  <label className="text-xs font-black uppercase text-slate-600">
-                                    Email
-                                    <input
-                                      value={affiliateEditForm.email}
-                                      onChange={(event) =>
-                                        setAffiliateEditForm({
-                                          ...affiliateEditForm,
-                                          email: event.target.value,
-                                        })
-                                      }
-                                      className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
-                                      type="email"
-                                    />
-                                  </label>
-                                  <label className="text-xs font-black uppercase text-slate-600">
-                                    Desconto (%)
-                                    <input
-                                      value={affiliateEditForm.discount_percent}
-                                      onChange={(event) =>
-                                        setAffiliateEditForm({
-                                          ...affiliateEditForm,
-                                          discount_percent: Number(
-                                            event.target.value,
-                                          ),
-                                        })
-                                      }
-                                      className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
-                                      min={1}
-                                      max={100}
-                                      type="number"
-                                    />
-                                  </label>
-                                  <label className="text-xs font-black uppercase text-slate-600">
-                                    Comissão (%)
-                                    <input
-                                      value={
-                                        affiliateEditForm.commission_percent
-                                      }
-                                      onChange={(event) =>
-                                        setAffiliateEditForm({
-                                          ...affiliateEditForm,
-                                          commission_percent: Number(
-                                            event.target.value,
-                                          ),
-                                        })
-                                      }
-                                      className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
-                                      min={1}
-                                      max={100}
-                                      type="number"
-                                    />
-                                  </label>
-                                  <label className="text-xs font-black uppercase text-slate-600">
-                                    Status
-                                    <BntSelect
-                                      accent="gold"
-                                      label="Status"
-                                      className="mt-1"
-                                      value={affiliateEditForm.status}
-                                      onValueChange={(v) =>
-                                        setAffiliateEditForm({
-                                          ...affiliateEditForm,
-                                          status:
-                                            v as AffiliateEditForm["status"],
-                                        })
-                                      }
-                                      options={[
-                                        { value: "active", label: "active" },
-                                        { value: "paused", label: "paused" },
-                                        { value: "inactive", label: "inactive" },
-                                      ]}
-                                    />
-                                  </label>
-                                  <label className="text-xs font-black uppercase text-slate-600 sm:col-span-2">
-                                    Notas
-                                    <textarea
-                                      value={affiliateEditForm.notes}
-                                      onChange={(event) =>
-                                        setAffiliateEditForm({
-                                          ...affiliateEditForm,
-                                          notes: event.target.value,
-                                        })
-                                      }
-                                      className="mt-1 min-h-24 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
-                                    />
-                                  </label>
-                                </div>
-                                <div className="mt-4 flex justify-end gap-3">
-                                  <button
-                                    type="button"
-                                    onClick={cancelAffiliateEdit}
-                                    className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black"
-                                  >
-                                    Cancelar
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      void handleSaveAffiliateEdit(affiliate)
-                                    }
-                                    disabled={
-                                      savingAffiliateEditId === affiliate.id
-                                    }
-                                    className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-60"
-                                  >
-                                    {savingAffiliateEditId === affiliate.id
-                                      ? "Salvando..."
-                                      : "Salvar"}
-                                  </button>
-                                </div>
-                              </div>
-                            ) : null}
-                          </div>
-                        ))}
+                        <span className="inline-flex rounded-xl border-2 border-slate-900 bg-yellow-300 p-2 text-slate-950">
+                          {item.icon}
+                        </span>
+                        <p className="mt-3 text-xs font-black uppercase text-violet-700">
+                          {item.label}
+                        </p>
+                        <p className="font-display mt-1 text-2xl font-black text-slate-950">
+                          {item.value}
+                        </p>
                       </div>
-                      {affiliateTotalPages > 1 ? (
-                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                          <span className="text-sm font-black text-slate-950">
-                            Página {affiliateCurrentPage} de{" "}
-                            {affiliateTotalPages}
-                          </span>
-                          <div className="flex items-center gap-3">
+                    ))}
+                  </div>
+
+                  <div className="grid gap-6 p-6 xl:grid-cols-[0.9fr_1.1fr]">
+                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                      <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                        <PlusCircle className="h-6 w-6" />
+                        Gerar link de afiliado
+                      </h3>
+                      <div className="mt-5 grid gap-4">
+                        <label className="text-sm font-black text-slate-950">
+                          Nome do afiliado
+                          <input
+                            value={affiliateName}
+                            onChange={(event) => {
+                              setAffiliateName(event.target.value);
+                              setCopiedAffiliateLink(false);
+                            }}
+                            className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                            placeholder="Ex: Parceiro Tech"
+                          />
+                        </label>
+
+                        <label className="text-sm font-black text-slate-950">
+                          Código/cupom
+                          <div className="mt-2 flex gap-2">
+                            <input
+                              value={affiliateCode}
+                              onChange={(event) => {
+                                setAffiliateCode(
+                                  slugifyAffiliateCode(event.target.value),
+                                );
+                                setCopiedAffiliateLink(false);
+                              }}
+                              className="w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold uppercase outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                              placeholder="PARCEIRA20"
+                            />
                             <button
                               type="button"
-                              onClick={() =>
-                                setAffiliatePage(
-                                  Math.max(1, affiliateCurrentPage - 1),
-                                )
-                              }
-                              disabled={affiliateCurrentPage <= 1}
-                              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+                              onClick={handleGenerateAffiliateCode}
+                              className="rounded-2xl border-2 border-slate-900 bg-yellow-300 px-4 text-sm font-black shadow-[3px_3px_0_#0f172a]"
                             >
-                              Anterior
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setAffiliatePage(
-                                  Math.min(
-                                    affiliateTotalPages,
-                                    affiliateCurrentPage + 1,
-                                  ),
-                                )
-                              }
-                              disabled={
-                                affiliateCurrentPage >= affiliateTotalPages
-                              }
-                              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
-                            >
-                              Próxima
+                              Gerar
                             </button>
                           </div>
+                        </label>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <label className="text-sm font-black text-slate-950">
+                            Desconto para aluno: {affiliateDiscount}%
+                            <input
+                              type="range"
+                              min="5"
+                              max="50"
+                              step="5"
+                              value={affiliateDiscount}
+                              onChange={(event) => {
+                                setAffiliateDiscount(
+                                  Number(event.target.value),
+                                );
+                                setCopiedAffiliateLink(false);
+                              }}
+                              className="mt-4 w-full accent-violet-700"
+                            />
+                          </label>
+                          <label className="text-sm font-black text-slate-950">
+                            Comissão afiliado: {affiliateCommission}%
+                            <input
+                              type="range"
+                              min="5"
+                              max="50"
+                              step="5"
+                              value={affiliateCommission}
+                              onChange={(event) =>
+                                setAffiliateCommission(
+                                  Number(event.target.value),
+                                )
+                              }
+                              className="mt-4 w-full accent-violet-700"
+                            />
+                          </label>
                         </div>
-                      ) : null}
-                      </>
-                      ) : (
+
                         <div className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
-                          <p className="font-display text-lg font-black text-slate-950">
-                            Nenhum afiliado encontrado para "
-                            {affiliateSearch.trim()}"
+                          <p className="flex items-center gap-2 text-xs font-black uppercase text-violet-700">
+                            <LinkIcon className="h-4 w-4" />
+                            link gerado
                           </p>
-                          <p className="mt-2 text-sm font-semibold text-slate-500">
-                            Ajuste o termo da busca ou limpe o campo.
+                          <p className="mt-2 break-all font-mono text-sm font-black text-slate-950">
+                            {generatedAffiliateLink}
                           </p>
+                          <div className="mt-3 grid gap-2 text-xs font-bold text-slate-600 sm:grid-cols-2">
+                            <span className="rounded-full border border-slate-300 bg-white px-3 py-2">
+                              Cupom: {slugifyAffiliateCode(affiliateCode)}
+                            </span>
+                            <span className="rounded-full border border-slate-300 bg-white px-3 py-2">
+                              Comissão: {affiliateCommission}% por venda paga
+                            </span>
+                          </div>
                         </div>
-                      )
-                    ) : (
-                      <div className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
-                        <p className="font-display text-lg font-black text-slate-950">
-                          Nenhum afiliado cadastrado ainda
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={handleCreateAffiliate}
+                            disabled={savingAffiliate}
+                            className="btn-brutal-primary inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 font-black disabled:opacity-60"
+                          >
+                            <PlusCircle className="h-5 w-5" />
+                            {savingAffiliate ? "Salvando..." : "Criar afiliado"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleCopyAffiliateLink}
+                            className="btn-brutal-accent inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 font-black"
+                          >
+                            <Copy className="h-5 w-5" />
+                            {copiedAffiliateLink
+                              ? "Link copiado"
+                              : "Copiar link"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                      <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                        <Tag className="h-6 w-6" />
+                        Afiliados cadastrados
+                      </h3>
+                      <input
+                        type="search"
+                        value={affiliateSearch}
+                        onChange={(event) =>
+                          setAffiliateSearch(event.target.value)
+                        }
+                        placeholder="Buscar por nome, código ou e-mail..."
+                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_#0f172a] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
+                      />
+                      <div className="mt-5">
+                        {overviewLoading || affiliatesLoading ? (
+                          <LoadingBlock />
+                        ) : affiliates.length ? (
+                          filteredAffiliates.length ? (
+                            <>
+                              <div className="space-y-3">
+                                {pagedAffiliates.map((affiliate) => (
+                                  <div
+                                    key={affiliate.id}
+                                    className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
+                                  >
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                      <div>
+                                        <p className="font-display text-lg font-black text-slate-950">
+                                          {affiliate.name}
+                                        </p>
+                                        <p className="mt-1 font-mono text-xs font-black text-violet-700">
+                                          {affiliate.code}
+                                        </p>
+                                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                                          {affiliate.discount_percent}% desconto
+                                          • {affiliate.commission_percent}%
+                                          comissão • {affiliate.status}
+                                        </p>
+                                      </div>
+                                      <div className="flex flex-wrap gap-2 sm:justify-end">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            startAffiliateEdit(affiliate)
+                                          }
+                                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a]"
+                                        >
+                                          Editar
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            void handleCopyAffiliateCardLink(
+                                              affiliate,
+                                            )
+                                          }
+                                          className="rounded-full border-2 border-slate-900 bg-yellow-100 px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                                        >
+                                          {copiedAffiliateCardId ===
+                                          affiliate.id
+                                            ? "Link copiado!"
+                                            : "Copiar link"}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            void handleMarkAffiliatePaid(
+                                              affiliate,
+                                            )
+                                          }
+                                          disabled={
+                                            affiliate.commission_due_cents <=
+                                              0 ||
+                                            payingAffiliateId === affiliate.id
+                                          }
+                                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-50"
+                                        >
+                                          {payingAffiliateId === affiliate.id
+                                            ? "Pagando..."
+                                            : "Marcar comissão paga"}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setDeleteAffiliateTarget(affiliate)
+                                          }
+                                          className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-2 text-xs font-black text-rose-800 shadow-[2px_2px_0_#0f172a]"
+                                        >
+                                          Excluir
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <div className="mt-4 grid gap-2 text-xs font-black sm:grid-cols-4">
+                                      <span className="rounded-xl bg-white px-3 py-2">
+                                        Cliques: {formatCount(affiliate.clicks)}
+                                      </span>
+                                      <span className="rounded-xl bg-white px-3 py-2">
+                                        Vendas: {formatCount(affiliate.sales)}
+                                      </span>
+                                      <span className="rounded-xl bg-white px-3 py-2">
+                                        Receita:{" "}
+                                        {formatCents(affiliate.revenue_cents)}
+                                      </span>
+                                      <span className="rounded-xl bg-white px-3 py-2">
+                                        A pagar:{" "}
+                                        {formatCents(
+                                          affiliate.commission_due_cents,
+                                        )}
+                                      </span>
+                                    </div>
+                                    {editingAffiliateId === affiliate.id &&
+                                    affiliateEditForm ? (
+                                      <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-white p-4">
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                          <label className="text-xs font-black uppercase text-slate-600">
+                                            Nome
+                                            <input
+                                              value={affiliateEditForm.name}
+                                              onChange={(event) =>
+                                                setAffiliateEditForm({
+                                                  ...affiliateEditForm,
+                                                  name: event.target.value,
+                                                })
+                                              }
+                                              className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                            />
+                                          </label>
+                                          <label className="text-xs font-black uppercase text-slate-600">
+                                            Email
+                                            <input
+                                              value={affiliateEditForm.email}
+                                              onChange={(event) =>
+                                                setAffiliateEditForm({
+                                                  ...affiliateEditForm,
+                                                  email: event.target.value,
+                                                })
+                                              }
+                                              className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                              type="email"
+                                            />
+                                          </label>
+                                          <label className="text-xs font-black uppercase text-slate-600">
+                                            Desconto (%)
+                                            <input
+                                              value={
+                                                affiliateEditForm.discount_percent
+                                              }
+                                              onChange={(event) =>
+                                                setAffiliateEditForm({
+                                                  ...affiliateEditForm,
+                                                  discount_percent: Number(
+                                                    event.target.value,
+                                                  ),
+                                                })
+                                              }
+                                              className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                              min={1}
+                                              max={100}
+                                              type="number"
+                                            />
+                                          </label>
+                                          <label className="text-xs font-black uppercase text-slate-600">
+                                            Comissão (%)
+                                            <input
+                                              value={
+                                                affiliateEditForm.commission_percent
+                                              }
+                                              onChange={(event) =>
+                                                setAffiliateEditForm({
+                                                  ...affiliateEditForm,
+                                                  commission_percent: Number(
+                                                    event.target.value,
+                                                  ),
+                                                })
+                                              }
+                                              className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                              min={1}
+                                              max={100}
+                                              type="number"
+                                            />
+                                          </label>
+                                          <label className="text-xs font-black uppercase text-slate-600">
+                                            Status
+                                            <BntSelect
+                                              accent="gold"
+                                              label="Status"
+                                              className="mt-1"
+                                              value={affiliateEditForm.status}
+                                              onValueChange={(v) =>
+                                                setAffiliateEditForm({
+                                                  ...affiliateEditForm,
+                                                  status:
+                                                    v as AffiliateEditForm["status"],
+                                                })
+                                              }
+                                              options={[
+                                                {
+                                                  value: "active",
+                                                  label: "active",
+                                                },
+                                                {
+                                                  value: "paused",
+                                                  label: "paused",
+                                                },
+                                                {
+                                                  value: "inactive",
+                                                  label: "inactive",
+                                                },
+                                              ]}
+                                            />
+                                          </label>
+                                          <label className="text-xs font-black uppercase text-slate-600 sm:col-span-2">
+                                            Notas
+                                            <textarea
+                                              value={affiliateEditForm.notes}
+                                              onChange={(event) =>
+                                                setAffiliateEditForm({
+                                                  ...affiliateEditForm,
+                                                  notes: event.target.value,
+                                                })
+                                              }
+                                              className="mt-1 min-h-24 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                            />
+                                          </label>
+                                        </div>
+                                        <div className="mt-4 flex justify-end gap-3">
+                                          <button
+                                            type="button"
+                                            onClick={cancelAffiliateEdit}
+                                            className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black"
+                                          >
+                                            Cancelar
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              void handleSaveAffiliateEdit(
+                                                affiliate,
+                                              )
+                                            }
+                                            disabled={
+                                              savingAffiliateEditId ===
+                                              affiliate.id
+                                            }
+                                            className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-60"
+                                          >
+                                            {savingAffiliateEditId ===
+                                            affiliate.id
+                                              ? "Salvando..."
+                                              : "Salvar"}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                ))}
+                              </div>
+                              {affiliateTotalPages > 1 ? (
+                                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                                  <span className="text-sm font-black text-slate-950">
+                                    Página {affiliateCurrentPage} de{" "}
+                                    {affiliateTotalPages}
+                                  </span>
+                                  <div className="flex items-center gap-3">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setAffiliatePage(
+                                          Math.max(1, affiliateCurrentPage - 1),
+                                        )
+                                      }
+                                      disabled={affiliateCurrentPage <= 1}
+                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+                                    >
+                                      Anterior
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setAffiliatePage(
+                                          Math.min(
+                                            affiliateTotalPages,
+                                            affiliateCurrentPage + 1,
+                                          ),
+                                        )
+                                      }
+                                      disabled={
+                                        affiliateCurrentPage >=
+                                        affiliateTotalPages
+                                      }
+                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+                                    >
+                                      Próxima
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : null}
+                            </>
+                          ) : (
+                            <div className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
+                              <p className="font-display text-lg font-black text-slate-950">
+                                Nenhum afiliado encontrado para "
+                                {affiliateSearch.trim()}"
+                              </p>
+                              <p className="mt-2 text-sm font-semibold text-slate-500">
+                                Ajuste o termo da busca ou limpe o campo.
+                              </p>
+                            </div>
+                          )
+                        ) : (
+                          <div className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
+                            <p className="font-display text-lg font-black text-slate-950">
+                              Nenhum afiliado cadastrado ainda
+                            </p>
+                            <p className="mt-2 text-sm font-semibold text-slate-500">
+                              Crie o primeiro afiliado pelo formulário ao lado.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              </TabsContent>
+
+              <TabsContent value="cupons" className="mt-4">
+                <article
+                  id="cupons"
+                  className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white"
+                >
+                  <div className="border-b-2 border-slate-900 bg-[#ffb800] p-6">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                          <TicketPercent className="h-4 w-4" />
+                          cupons
                         </p>
-                        <p className="mt-2 text-sm font-semibold text-slate-500">
-                          Crie o primeiro afiliado pelo formulário ao lado.
+                        <h2 className="font-display mt-4 text-3xl font-black text-slate-950">
+                          Cupons de desconto
+                        </h2>
+                        <p className="mt-2 max-w-3xl text-sm font-bold text-slate-800">
+                          Códigos promocionais sem comissão de afiliado.
+                          Desconto na primeira cobrança, com validade e limite
+                          de usos.
                         </p>
                       </div>
-                    )}
+                      <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
+                        <p className="text-xs font-black uppercase text-slate-500">
+                          status
+                        </p>
+                        <p className="font-display text-xl font-black text-slate-950">
+                          Marketing
+                        </p>
+                        <p className="text-sm font-bold text-slate-600">
+                          {couponSearch.trim()
+                            ? `${filteredCoupons.length} de ${coupons.length} cupons`
+                            : `${coupons.length} cupons cadastrados`}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </article>
+
+                  <div className="grid gap-6 p-6 xl:grid-cols-[0.9fr_1.1fr]">
+                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                      <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                        <PlusCircle className="h-6 w-6" />
+                        Criar cupom
+                      </h3>
+                      <div className="mt-5 grid gap-4">
+                        <label className="text-sm font-black text-slate-950">
+                          Código
+                          <div className="mt-2 flex gap-2">
+                            <input
+                              value={couponFormCode}
+                              onChange={(event) => {
+                                setCouponFormCode(
+                                  slugifyCouponCode(event.target.value),
+                                );
+                                setCopiedCouponLink(false);
+                              }}
+                              className="w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold uppercase outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                              placeholder="PROMO20"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleGenerateCouponCode}
+                              className="rounded-2xl border-2 border-slate-900 bg-yellow-300 px-4 text-sm font-black shadow-[3px_3px_0_#0f172a]"
+                            >
+                              Gerar
+                            </button>
+                          </div>
+                        </label>
+
+                        <label className="text-sm font-black text-slate-950">
+                          Descrição (uso interno)
+                          <input
+                            value={couponFormDescription}
+                            onChange={(event) =>
+                              setCouponFormDescription(event.target.value)
+                            }
+                            className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                            placeholder="Ex: Black Friday 2026"
+                          />
+                        </label>
+
+                        <label className="text-sm font-black text-slate-950">
+                          Desconto para o aluno: {couponFormDiscount}%
+                          <input
+                            type="range"
+                            min="1"
+                            max="100"
+                            step="1"
+                            value={couponFormDiscount}
+                            onChange={(event) => {
+                              setCouponFormDiscount(Number(event.target.value));
+                              setCopiedCouponLink(false);
+                            }}
+                            className="mt-4 w-full accent-violet-700"
+                          />
+                        </label>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <label className="text-sm font-black text-slate-950">
+                            Validade (opcional)
+                            <input
+                              type="date"
+                              value={couponFormValidUntil}
+                              onChange={(event) =>
+                                setCouponFormValidUntil(event.target.value)
+                              }
+                              className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                            />
+                          </label>
+                          <label className="text-sm font-black text-slate-950">
+                            Limite de usos (opcional)
+                            <input
+                              type="number"
+                              min={1}
+                              value={couponFormMaxRedemptions}
+                              onChange={(event) =>
+                                setCouponFormMaxRedemptions(event.target.value)
+                              }
+                              className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                              placeholder="Ilimitado"
+                            />
+                          </label>
+                        </div>
+
+                        <div className="text-sm font-black text-slate-950">
+                          Planos aplicáveis
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {PLAN_ORDER.map((planId) => (
+                              <label
+                                key={planId}
+                                className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={couponFormPlans.includes(planId)}
+                                  onChange={() => toggleCouponFormPlan(planId)}
+                                  className="h-4 w-4 accent-violet-700"
+                                />
+                                {PLAN_PRICING[planId].label}
+                              </label>
+                            ))}
+                          </div>
+                          <p className="mt-2 text-xs font-semibold text-slate-500">
+                            Todos marcados = vale em qualquer plano.
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
+                          <p className="flex items-center gap-2 text-xs font-black uppercase text-violet-700">
+                            <LinkIcon className="h-4 w-4" />
+                            link de campanha
+                          </p>
+                          <p className="mt-2 break-all font-mono text-sm font-black text-slate-950">
+                            {buildCouponLink(couponFormCode)}
+                          </p>
+                          <div className="mt-3 grid gap-2 text-xs font-bold text-slate-600 sm:grid-cols-2">
+                            <span className="rounded-full border border-slate-300 bg-white px-3 py-2">
+                              Cupom:{" "}
+                              {slugifyCouponCode(couponFormCode) || "PROMO"}
+                            </span>
+                            <span className="rounded-full border border-slate-300 bg-white px-3 py-2">
+                              {couponFormDiscount}% na primeira cobrança
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleCreateCoupon()}
+                            disabled={savingCoupon}
+                            className="btn-brutal-primary inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 font-black disabled:opacity-60"
+                          >
+                            <PlusCircle className="h-5 w-5" />
+                            {savingCoupon ? "Salvando..." : "Criar cupom"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleCopyCouponLink()}
+                            className="btn-brutal-accent inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 font-black"
+                          >
+                            <Copy className="h-5 w-5" />
+                            {copiedCouponLink ? "Link copiado" : "Copiar link"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                      <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                        <Tag className="h-6 w-6" />
+                        Cupons cadastrados
+                      </h3>
+                      <input
+                        type="search"
+                        value={couponSearch}
+                        onChange={(event) =>
+                          setCouponSearch(event.target.value)
+                        }
+                        placeholder="Buscar por código ou descrição..."
+                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_#0f172a] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
+                      />
+                      <div className="mt-5">
+                        {couponsLoading ? (
+                          <LoadingBlock />
+                        ) : coupons.length ? (
+                          filteredCoupons.length ? (
+                            <>
+                              <div className="space-y-3">
+                                {pagedCoupons.map((coupon) => (
+                                  <div
+                                    key={coupon.id}
+                                    className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
+                                  >
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                      <div>
+                                        <p className="font-mono text-lg font-black text-violet-700">
+                                          {coupon.code}
+                                        </p>
+                                        {coupon.description ? (
+                                          <p className="mt-1 text-sm font-bold text-slate-700">
+                                            {coupon.description}
+                                          </p>
+                                        ) : null}
+                                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                                          {coupon.discount_percent}% desconto •{" "}
+                                          {coupon.status}
+                                        </p>
+                                      </div>
+                                      <div className="flex flex-wrap gap-2 sm:justify-end">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            startCouponEdit(coupon)
+                                          }
+                                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a]"
+                                        >
+                                          Editar
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            void handleCopyCouponCardLink(
+                                              coupon,
+                                            )
+                                          }
+                                          className="rounded-full border-2 border-slate-900 bg-yellow-100 px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                                        >
+                                          {copiedCouponCardId === coupon.id
+                                            ? "Link copiado!"
+                                            : "Copiar link"}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setDeleteCouponTarget(coupon)
+                                          }
+                                          className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-2 text-xs font-black text-rose-800 shadow-[2px_2px_0_#0f172a]"
+                                        >
+                                          Excluir
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <div className="mt-4 flex flex-wrap gap-2 text-xs font-black">
+                                      <span className="rounded-xl bg-white px-3 py-2">
+                                        Usos:{" "}
+                                        {formatCount(coupon.times_redeemed)}/
+                                        {coupon.max_redemptions === null
+                                          ? "∞"
+                                          : formatCount(coupon.max_redemptions)}
+                                      </span>
+                                      <span
+                                        className={`rounded-xl px-3 py-2 ${
+                                          couponExpired(coupon)
+                                            ? "bg-rose-100 text-rose-800"
+                                            : "bg-white"
+                                        }`}
+                                      >
+                                        Validade:{" "}
+                                        {coupon.valid_until
+                                          ? formatAdminDate(coupon.valid_until)
+                                          : "sem expiração"}
+                                        {couponExpired(coupon)
+                                          ? " (expirado)"
+                                          : ""}
+                                      </span>
+                                      <span className="rounded-xl bg-white px-3 py-2">
+                                        {couponPlansLabel(
+                                          coupon.applicable_plans,
+                                        )}
+                                      </span>
+                                    </div>
+                                    {editingCouponId === coupon.id &&
+                                    couponEditForm ? (
+                                      <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-white p-4">
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                          <label className="text-xs font-black uppercase text-slate-600 sm:col-span-2">
+                                            Descrição
+                                            <input
+                                              value={couponEditForm.description}
+                                              onChange={(event) =>
+                                                setCouponEditForm({
+                                                  ...couponEditForm,
+                                                  description:
+                                                    event.target.value,
+                                                })
+                                              }
+                                              className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                            />
+                                          </label>
+                                          <label className="text-xs font-black uppercase text-slate-600">
+                                            Desconto (%)
+                                            <input
+                                              value={
+                                                couponEditForm.discount_percent
+                                              }
+                                              onChange={(event) =>
+                                                setCouponEditForm({
+                                                  ...couponEditForm,
+                                                  discount_percent: Number(
+                                                    event.target.value,
+                                                  ),
+                                                })
+                                              }
+                                              className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                              min={1}
+                                              max={100}
+                                              type="number"
+                                            />
+                                          </label>
+                                          <label className="text-xs font-black uppercase text-slate-600">
+                                            Status
+                                            <BntSelect
+                                              accent="gold"
+                                              label="Status"
+                                              className="mt-1"
+                                              value={couponEditForm.status}
+                                              onValueChange={(v) =>
+                                                setCouponEditForm({
+                                                  ...couponEditForm,
+                                                  status:
+                                                    v as CouponEditForm["status"],
+                                                })
+                                              }
+                                              options={[
+                                                {
+                                                  value: "active",
+                                                  label: "active",
+                                                },
+                                                {
+                                                  value: "paused",
+                                                  label: "paused",
+                                                },
+                                                {
+                                                  value: "inactive",
+                                                  label: "inactive",
+                                                },
+                                              ]}
+                                            />
+                                          </label>
+                                          <label className="text-xs font-black uppercase text-slate-600">
+                                            Validade (vazio = sem expiração)
+                                            <input
+                                              type="date"
+                                              value={couponEditForm.valid_until}
+                                              onChange={(event) =>
+                                                setCouponEditForm({
+                                                  ...couponEditForm,
+                                                  valid_until:
+                                                    event.target.value,
+                                                })
+                                              }
+                                              className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                            />
+                                          </label>
+                                          <label className="text-xs font-black uppercase text-slate-600">
+                                            Limite de usos (vazio = ilimitado)
+                                            <input
+                                              type="number"
+                                              min={1}
+                                              value={
+                                                couponEditForm.max_redemptions
+                                              }
+                                              onChange={(event) =>
+                                                setCouponEditForm({
+                                                  ...couponEditForm,
+                                                  max_redemptions:
+                                                    event.target.value,
+                                                })
+                                              }
+                                              className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                            />
+                                          </label>
+                                          <div className="text-xs font-black uppercase text-slate-600 sm:col-span-2">
+                                            Planos aplicáveis
+                                            <div className="mt-2 flex flex-wrap gap-2">
+                                              {PLAN_ORDER.map((planId) => (
+                                                <label
+                                                  key={planId}
+                                                  className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black normal-case"
+                                                >
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={couponEditForm.applicable_plans.includes(
+                                                      planId,
+                                                    )}
+                                                    onChange={() =>
+                                                      setCouponEditForm({
+                                                        ...couponEditForm,
+                                                        applicable_plans:
+                                                          couponEditForm.applicable_plans.includes(
+                                                            planId,
+                                                          )
+                                                            ? couponEditForm.applicable_plans.filter(
+                                                                (id) =>
+                                                                  id !== planId,
+                                                              )
+                                                            : PLAN_ORDER.filter(
+                                                                (id) =>
+                                                                  id ===
+                                                                    planId ||
+                                                                  couponEditForm.applicable_plans.includes(
+                                                                    id,
+                                                                  ),
+                                                              ),
+                                                      })
+                                                    }
+                                                    className="h-4 w-4 accent-violet-700"
+                                                  />
+                                                  {PLAN_PRICING[planId].label}
+                                                </label>
+                                              ))}
+                                            </div>
+                                          </div>
+                                          <p className="text-xs font-semibold normal-case text-slate-500 sm:col-span-2">
+                                            Usos até agora:{" "}
+                                            {formatCount(coupon.times_redeemed)}{" "}
+                                            (somente leitura, contado na
+                                            ativação da assinatura).
+                                          </p>
+                                        </div>
+                                        <div className="mt-4 flex justify-end gap-3">
+                                          <button
+                                            type="button"
+                                            onClick={cancelCouponEdit}
+                                            className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black"
+                                          >
+                                            Cancelar
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              void handleSaveCouponEdit(coupon)
+                                            }
+                                            disabled={
+                                              savingCouponEditId === coupon.id
+                                            }
+                                            className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-60"
+                                          >
+                                            {savingCouponEditId === coupon.id
+                                              ? "Salvando..."
+                                              : "Salvar"}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                ))}
+                              </div>
+                              {couponTotalPages > 1 ? (
+                                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                                  <span className="text-sm font-black text-slate-950">
+                                    Página {couponCurrentPage} de{" "}
+                                    {couponTotalPages}
+                                  </span>
+                                  <div className="flex items-center gap-3">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setCouponPage(
+                                          Math.max(1, couponCurrentPage - 1),
+                                        )
+                                      }
+                                      disabled={couponCurrentPage <= 1}
+                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+                                    >
+                                      Anterior
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setCouponPage(
+                                          Math.min(
+                                            couponTotalPages,
+                                            couponCurrentPage + 1,
+                                          ),
+                                        )
+                                      }
+                                      disabled={
+                                        couponCurrentPage >= couponTotalPages
+                                      }
+                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+                                    >
+                                      Próxima
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : null}
+                            </>
+                          ) : (
+                            <div className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
+                              <p className="font-display text-lg font-black text-slate-950">
+                                Nenhum cupom encontrado para "
+                                {couponSearch.trim()}"
+                              </p>
+                              <p className="mt-2 text-sm font-semibold text-slate-500">
+                                Ajuste o termo da busca ou limpe o campo.
+                              </p>
+                            </div>
+                          )
+                        ) : (
+                          <div className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
+                            <p className="font-display text-lg font-black text-slate-950">
+                              Nenhum cupom cadastrado ainda
+                            </p>
+                            <p className="mt-2 text-sm font-semibold text-slate-500">
+                              Crie o primeiro cupom pelo formulário ao lado.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              </TabsContent>
+            </Tabs>
           ) : null}
 
           {activeSection === "visao-geral" ? (
@@ -7199,6 +8140,38 @@ export default function Admin() {
                 className="rounded-full border-2 border-slate-900 bg-rose-100 px-4 py-2 text-sm font-black text-rose-800 disabled:opacity-60"
               >
                 {deletingAffiliateId === deleteAffiliateTarget.id
+                  ? "Excluindo..."
+                  : "Confirmar exclusão"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {deleteCouponTarget ? (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4">
+          <div className="card-brutal max-w-md rounded-3xl bg-white p-6">
+            <h3 className="font-display text-2xl font-black text-slate-950">
+              Tem certeza que deseja excluir o cupom {deleteCouponTarget.code}?
+            </h3>
+            <p className="mt-3 text-sm font-semibold text-slate-600">
+              Esta ação não pode ser desfeita. Quem já usou o cupom não é
+              afetado; ele só deixa de valer para novas compras.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteCouponTarget(null)}
+                className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDeleteCoupon()}
+                disabled={deletingCouponId === deleteCouponTarget.id}
+                className="rounded-full border-2 border-slate-900 bg-rose-100 px-4 py-2 text-sm font-black text-rose-800 disabled:opacity-60"
+              >
+                {deletingCouponId === deleteCouponTarget.id
                   ? "Excluindo..."
                   : "Confirmar exclusão"}
               </button>

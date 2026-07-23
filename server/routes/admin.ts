@@ -193,6 +193,18 @@ const EDITABLE_TABLES: Record<string, string[]> = {
     "commission_due_cents",
     "commission_paid_cents",
   ],
+  // times_redeemed fica de fora de proposito: e contador do webhook
+  // (increment_coupon_redemption), somente leitura no admin.
+  coupons: [
+    "code",
+    "description",
+    "discount_percent",
+    "status",
+    "valid_from",
+    "valid_until",
+    "max_redemptions",
+    "applicable_plans",
+  ],
 };
 
 function getSearchColumn(type: string) {
@@ -777,7 +789,12 @@ router.delete("/content/:type/:id", async (req, res, next) => {
     if (!before)
       return next(createError(404, "not_found", "Item não encontrado."));
 
-    if (req.query.force === "true" || type === "affiliates") {
+    // affiliates e coupons nao tem is_published: delete e sempre hard.
+    if (
+      req.query.force === "true" ||
+      type === "affiliates" ||
+      type === "coupons"
+    ) {
       const { error } = await supabaseAdmin.from(type).delete().eq("id", id);
       if (error)
         return next(dbError("content delete", error, "Erro ao deletar item."));

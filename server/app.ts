@@ -26,6 +26,7 @@ import certificatesRouter, {
 } from "./routes/certificates";
 import consentRouter from "./routes/consent";
 import contentRouter from "./routes/content";
+import couponsRouter from "./routes/coupons";
 import cronRouter from "./routes/cron";
 import faculdadesRouter from "./routes/faculdades";
 import githubRouter from "./routes/github";
@@ -378,6 +379,7 @@ app.use(
 app.use(express.json({ limit: "2mb" }));
 
 app.use("/api/affiliates", affiliatesRouter);
+app.use("/api/coupons", couponsRouter);
 app.use("/api/stats", statsRouter);
 app.use("/api/waitlist", waitlistRouter);
 app.use("/api/newsletter", newsletterRouter);

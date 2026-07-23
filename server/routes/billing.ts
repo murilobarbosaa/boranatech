@@ -345,6 +345,10 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
       typeof req.body?.affiliateCode === "string"
         ? req.body.affiliateCode.trim().toUpperCase()
         : "";
+    const couponCode =
+      typeof req.body?.couponCode === "string"
+        ? req.body.couponCode.trim().toUpperCase()
+        : "";
     const planId: PlanId =
       typeof req.body?.planId === "string" && isPlanId(req.body.planId)
         ? req.body.planId
@@ -384,6 +388,7 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
       user: { id: userId, email: req.user!.email },
       planId,
       affiliateCode,
+      couponCode,
       paymentMethod,
     });
 
@@ -458,6 +463,7 @@ router.post("/renew", async (req, res, next) => {
       user: { id: r.data.userId, email },
       planId: r.data.planId,
       affiliateCode: "",
+      couponCode: "",
       paymentMethod: "boleto",
       internalRenewal: true,
     });

@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 
+import { findValidCoupon } from "../lib/coupons";
 import { env } from "../lib/env";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
@@ -157,7 +158,12 @@ async function handleTransition(
   userId: string,
   prevStatus: string | null,
   nextStatus: string,
-  opts: { affiliateCode?: string | null; revenueCents?: number; planName?: string },
+  opts: {
+    affiliateCode?: string | null;
+    couponCode?: string | null;
+    revenueCents?: number;
+    planName?: string;
+  },
 ): Promise<void> {
   const becameActive = !isProStatus(prevStatus) && isProStatus(nextStatus);
   const becameCanceled = prevStatus !== "canceled" && nextStatus === "canceled";
@@ -184,6 +190,23 @@ async function handleTransition(
       console.error(
         "[webhook/stripe] Falha ao contar conversao de afiliado:",
         affiliateError,
+      );
+    }
+  }
+
+  // Resgate do cupom de marketing: conta SO na ativacao (nunca na criacao da
+  // sessao), no mesmo ponto da conversao de afiliado. coupon_code no metadata
+  // ja significa "desconto aplicado na sessao" (createCheckout so grava quando
+  // aplica). Best-effort: falha loga e nao derruba o webhook.
+  if (becameActive && opts.couponCode) {
+    try {
+      await supabaseAdmin.rpc("increment_coupon_redemption", {
+        p_code: opts.couponCode,
+      });
+    } catch (couponError) {
+      console.error(
+        "[webhook/stripe] Falha ao contar resgate de cupom:",
+        couponError,
       );
     }
   }
@@ -264,6 +287,7 @@ async function applySubscription(
   const status = mapStatus(sub.status);
   const period = subItemPeriod(sub);
   const affiliateCode = sub.metadata?.affiliate_code || null;
+  const couponCode = sub.metadata?.coupon_code || null;
   const lastEventIso = eventCreatedAt.toISOString();
 
   const patch = {
@@ -289,6 +313,7 @@ async function applySubscription(
     provider_subscription_id: sub.id,
     provider_customer_id: customerIdOf(sub),
     affiliate_code: affiliateCode,
+    coupon_code: couponCode,
   };
 
   // raceLost: so o ramo de INSERT concorrente pode perder a corrida. No UPDATE
@@ -328,6 +353,7 @@ async function applySubscription(
   const revenueCents = sub.items?.data?.[0]?.price?.unit_amount ?? 0;
   await handleTransition(userId, existing?.status ?? null, status, {
     affiliateCode,
+    couponCode,
     revenueCents,
     planName: proPlan.name || planCode,
   });
@@ -360,6 +386,7 @@ async function onCheckoutCompleted(
       supabase_user_id: session.client_reference_id,
       plan_id: session.metadata?.plan_id || "",
       affiliate_code: session.metadata?.affiliate_code || "",
+      coupon_code: session.metadata?.coupon_code || "",
     };
   }
   await applySubscription(sub, event, eventCreatedAt);
@@ -417,6 +444,7 @@ async function applyBoletoPending(
     provider_subscription_id: session.id,
     provider_customer_id: customerId,
     affiliate_code: session.metadata?.affiliate_code || null,
+    coupon_code: session.metadata?.coupon_code || null,
     status: "pending",
     payment_method: "boleto",
     renewal_type: "manual",
@@ -539,7 +567,7 @@ async function onBoletoAsyncPaymentSucceeded(
     })
     .eq("provider_subscription_id", session.id)
     .eq("status", "pending")
-    .select("user_id, affiliate_code, plan_id");
+    .select("user_id, affiliate_code, coupon_code, plan_id");
 
   if (error) {
     console.error("[webhook/stripe] boleto activation write failed:", error);
@@ -588,6 +616,7 @@ async function onBoletoAsyncPaymentSucceeded(
   // 'active' (Pro): becameActive dispara email/cache/conversao, igual ao cartao.
   await handleTransition(row.user_id, "pending", "active", {
     affiliateCode: row.affiliate_code,
+    couponCode: row.coupon_code,
     revenueCents: session.amount_total ?? 0,
     planName: plan?.name || plan?.code || "Pro",
   });
@@ -712,6 +741,43 @@ async function ensureAffiliateCoupon(
   }
 }
 
+// Coupon Stripe do cupom de marketing, DETERMINISTICO por percentual:
+// bnt_promo_<percent>_once. Espelha ensureAffiliateCoupon: dois cupons de
+// marketing com o mesmo percentual compartilham o objeto na Stripe; qual cupom
+// deu o desconto vive no coupon_code (metadata/subscriptions). duration "once"
+// = desconto so na primeira cobranca, paridade com o desconto de afiliado.
+// Idempotente: retrieve; se faltar, cria; corrida na criacao conta como sucesso.
+async function ensureMarketingCoupon(
+  couponId: string,
+  percentOff: number,
+): Promise<void> {
+  const stripe = getStripe();
+  try {
+    await stripe.coupons.retrieve(couponId);
+    return;
+  } catch (err) {
+    if (
+      !(
+        isStripeError(err) &&
+        (err.code === "resource_missing" || err.statusCode === 404)
+      )
+    ) {
+      throw err;
+    }
+  }
+  try {
+    await stripe.coupons.create({
+      id: couponId,
+      percent_off: percentOff,
+      duration: "once",
+      metadata: { source: "bnt_promo", discount_percent: String(percentOff) },
+    });
+  } catch (err) {
+    if (isStripeError(err) && err.code === "resource_already_exists") return;
+    throw err;
+  }
+}
+
 // Boleto: dias de acesso Pro concedidos quando o pagamento compensa (proxima
 // task). So os planos semestral/anual aceitam boleto; o mensal fica de fora.
 const BOLETO_ACCESS_DAYS: Partial<Record<PlanId, number>> = {
@@ -793,10 +859,42 @@ async function createCheckout(
     );
   }
 
-  // Afiliado/desconto: mesma regra do Asaas. So valida afiliado ativo; o desconto
-  // (cupom once) e o increment_affiliate_trials so entram na PRIMEIRA compra.
+  // Afiliado/cupom de marketing: desconto e contadores so entram na PRIMEIRA
+  // compra (mesma regra dos dois). Precedencia: cupom de marketing valido ganha
+  // do discount_percent do afiliado; o affiliate_code continua sendo gravado
+  // para comissao (so a FONTE do desconto muda).
   let validAffiliateCode = "";
+  let validCouponCode = "";
   let discounts: Stripe.Checkout.SessionCreateParams.Discount[] | undefined;
+
+  const firstPurchase =
+    input.affiliateCode || input.couponCode
+      ? await isFirstPurchase(input.user.id)
+      : false;
+
+  if (input.couponCode && firstPurchase) {
+    // Revalida TUDO no server (nunca confia no client): ativo, janela de
+    // validade, limite de usos e plano aplicavel. Cupom NUNCA impede a
+    // assinatura: qualquer falha segue sem desconto e loga.
+    const coupon = await findValidCoupon(input.couponCode, {
+      planId: input.planId,
+    });
+    if (coupon) {
+      try {
+        const couponId = `bnt_promo_${coupon.discount_percent}_once`;
+        await ensureMarketingCoupon(couponId, coupon.discount_percent);
+        discounts = [{ coupon: couponId }];
+        // So grava (e portanto so conta resgate na ativacao) quando o desconto
+        // foi de fato aplicado na sessao.
+        validCouponCode = coupon.code;
+      } catch (couponErr) {
+        console.error(
+          "[billing/checkout] cupom de marketing falhou, seguindo sem desconto:",
+          couponErr,
+        );
+      }
+    }
+  }
 
   if (input.affiliateCode) {
     const { data: affiliate } = await supabaseAdmin
@@ -809,22 +907,25 @@ async function createCheckout(
     if (affiliate) {
       validAffiliateCode = affiliate.code;
 
-      if (await isFirstPurchase(input.user.id)) {
+      if (firstPurchase) {
+        // Desconto do afiliado so quando o cupom de marketing nao aplicou.
         // Cupom NUNCA impede a assinatura: se qualquer passo falhar, segue sem
         // desconto e loga. So percentual (discount_percent e integer 1..100).
-        try {
-          const couponId = `bnt_aff_${affiliate.discount_percent}_once`;
-          await ensureAffiliateCoupon(couponId, affiliate.discount_percent);
-          discounts = [{ coupon: couponId }];
-        } catch (couponErr) {
-          console.error(
-            "[billing/checkout] cupom Stripe falhou, seguindo sem desconto:",
-            couponErr,
-          );
+        if (!discounts) {
+          try {
+            const couponId = `bnt_aff_${affiliate.discount_percent}_once`;
+            await ensureAffiliateCoupon(couponId, affiliate.discount_percent);
+            discounts = [{ coupon: couponId }];
+          } catch (couponErr) {
+            console.error(
+              "[billing/checkout] cupom Stripe falhou, seguindo sem desconto:",
+              couponErr,
+            );
+          }
         }
 
-        // trials: mesma condicao do Asaas (1a compra + afiliado ativo),
-        // independente de o cupom ter sido aplicado.
+        // trials: mesma condicao de antes (1a compra + afiliado ativo),
+        // independente de o desconto aplicado ter vindo dele ou do cupom.
         await supabaseAdmin.rpc("increment_affiliate_trials", {
           p_affiliate_id: affiliate.id,
         });
@@ -833,13 +934,14 @@ async function createCheckout(
   }
 
   // metadata replicado na sessao E na subscription: assim TODO evento
-  // customer.subscription.* carrega supabase_user_id/plan_id/affiliate_code, e o
-  // affiliate_code (validado) sobrevive ate a linha em subscriptions (paridade
-  // com Asaas, que so propaga o codigo validado).
+  // customer.subscription.* carrega supabase_user_id/plan_id/affiliate_code/
+  // coupon_code, e os codigos (validados) sobrevivem ate a linha em
+  // subscriptions (paridade com Asaas, que so propaga o codigo validado).
   const metadata = {
     supabase_user_id: input.user.id,
     plan_id: input.planId,
     affiliate_code: validAffiliateCode || "",
+    coupon_code: validCouponCode || "",
   };
 
   if (input.paymentMethod === "boleto") {

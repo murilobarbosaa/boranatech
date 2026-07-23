@@ -15,12 +15,14 @@ import {
   Camera,
   Check,
   History,
+  Loader2,
   type LucideIcon,
   MonitorPlay,
   Palette,
   Sparkles,
   Trophy,
   Users,
+  X,
 } from "lucide-react";
 
 import Layout from "@/components/Layout";
@@ -29,6 +31,11 @@ import CeuEstrelado from "@/components/shared/CeuEstrelado";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAffiliate } from "@/hooks/useAffiliate";
+import {
+  useCoupon,
+  type CouponStatus,
+  type StoredCoupon,
+} from "@/hooks/useCoupon";
 import {
   captureCheckoutAbandoned,
   captureCheckoutStarted,
@@ -43,6 +50,7 @@ import PaymentMethodDialog from "@/components/pro/PaymentMethodDialog";
 import { apiUrl } from "@/lib/api";
 import {
   FROM_MONTHLY_LABEL,
+  isPlanId,
   MONTHLY_BASE_LABEL,
   PLAN_ORDER,
   PLAN_PRICING,
@@ -70,6 +78,15 @@ const PLAN_UI: Record<PlanId, { highlight: boolean; badge: string | null }> = {
   pro_monthly: { highlight: false, badge: null },
   pro_semiannual: { highlight: true, badge: "MAIS POPULAR" },
   pro_annual: { highlight: false, badge: "MELHOR CUSTO" },
+};
+
+// Meses por ciclo, para recalcular equivalente mensal e desconto total quando o
+// cupom muda o valor do ciclo (o monthlyEquivalent/savingsPercent estaticos do
+// planPricing assumem preco cheio).
+const PLAN_MONTHS: Record<PlanId, number> = {
+  pro_monthly: 1,
+  pro_semiannual: 6,
+  pro_annual: 12,
 };
 
 const plans = PLAN_ORDER.map((id) => {
@@ -227,7 +244,11 @@ const PRO_EXCLUSIVE_COUNT =
 // A secao de comparacao foi removida (sera reconstruida); os agrupamentos e
 // totais ficam exportados pra futura secao de comparacao.
 export type CompareCell = boolean | string;
-export type CompareRow = { feature: string; free: CompareCell; pro: CompareCell };
+export type CompareRow = {
+  feature: string;
+  free: CompareCell;
+  pro: CompareCell;
+};
 
 export const COMPARE_GROUPS: Array<{
   title: string;
@@ -302,9 +323,7 @@ export const COMPARE_GROUPS: Array<{
   },
 ];
 
-export const COMPARE_ROWS: CompareRow[] = COMPARE_GROUPS.flatMap(
-  (g) => g.rows,
-);
+export const COMPARE_ROWS: CompareRow[] = COMPARE_GROUPS.flatMap((g) => g.rows);
 
 // usado pela futura secao de comparacao
 export const COMPARE_FREE_TOTAL = COMPARE_ROWS.filter(
@@ -467,10 +486,137 @@ function WaitlistCta({ defaultEmail }: { defaultEmail: string }) {
   );
 }
 
+// Labels dos planos cobertos por um cupom restrito ("Semestral e Anual"),
+// ignorando ids desconhecidos. Vazio = nenhum plano da lista existe mais.
+function coveredPlanLabels(applicablePlans: string[]): string {
+  const labels = applicablePlans
+    .filter(isPlanId)
+    .map((id) => PLAN_PRICING[id].label);
+  if (labels.length <= 1) return labels.join("");
+  return `${labels.slice(0, -1).join(", ")} e ${labels[labels.length - 1]}`;
+}
+
+// Campo de cupom fechado por padrao (um disclosure discreto), pra nao mandar
+// a pessoa embora do checkout cacando cupom. A mensagem de invalido e generica
+// de proposito, igual ao 404 do server (anti-oraculo).
+function CouponField({
+  coupon,
+  status,
+  onApply,
+  onRemove,
+}: {
+  coupon: StoredCoupon | null;
+  status: CouponStatus;
+  onApply: (code: string) => Promise<boolean>;
+  onRemove: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [code, setCode] = useState("");
+  const [shaking, setShaking] = useState(false);
+  const validating = status === "validating";
+
+  if (coupon) {
+    return (
+      <div
+        role="status"
+        className="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-emerald-700 bg-emerald-50 py-1.5 pl-4 pr-1.5 text-sm font-bold text-emerald-800"
+      >
+        <Check
+          size={16}
+          strokeWidth={3}
+          aria-hidden="true"
+          className="shrink-0"
+        />
+        <span className="truncate">
+          Cupom <span className="font-mono font-black">{coupon.code}</span>{" "}
+          aplicado
+        </span>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remover cupom ${coupon.code}`}
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-emerald-700 transition-colors hover:bg-emerald-200 hover:text-emerald-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+        >
+          <X size={14} strokeWidth={3} aria-hidden="true" />
+        </button>
+      </div>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-sm font-bold text-slate-400 underline decoration-slate-600 underline-offset-4 transition-colors hover:text-slate-200 hover:decoration-slate-400"
+      >
+        Tem um cupom de desconto?
+      </button>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (validating || !code.trim()) return;
+        void onApply(code).then((ok) => {
+          if (!ok) setShaking(true);
+        });
+      }}
+      className="flex w-full max-w-sm flex-col items-center gap-1.5"
+    >
+      <div className="flex w-full gap-2">
+        <label htmlFor="coupon-code" className="sr-only">
+          Código do cupom
+        </label>
+        <input
+          id="coupon-code"
+          value={code}
+          onChange={(event) => setCode(event.target.value.toUpperCase())}
+          onAnimationEnd={() => setShaking(false)}
+          placeholder="SEUCUPOM"
+          autoFocus
+          autoComplete="off"
+          spellCheck={false}
+          maxLength={32}
+          disabled={validating}
+          aria-invalid={status === "invalid"}
+          className={`h-10 min-w-0 flex-1 rounded-xl border-2 bg-white px-3 text-sm font-black uppercase tracking-wider text-slate-950 transition-colors duration-200 placeholder:font-bold placeholder:text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300 disabled:opacity-60 ${
+            status === "invalid" ? "border-rose-500" : "border-slate-900"
+          } ${shaking ? "animate-coupon-shake" : ""}`}
+        />
+        <button
+          type="submit"
+          disabled={validating || !code.trim()}
+          className="bnt-pressable inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border-2 border-slate-900 bg-[#FFB800] px-4 font-display text-sm font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-60 disabled:hover:translate-y-0"
+        >
+          {validating ? (
+            <Loader2 size={15} className="animate-spin" aria-hidden="true" />
+          ) : null}
+          {validating ? "Validando..." : "Aplicar"}
+        </button>
+      </div>
+      <p
+        aria-live="polite"
+        className="min-h-[1rem] text-center text-xs font-bold text-rose-400"
+      >
+        {status === "invalid" ? "Cupom inválido ou expirado." : ""}
+      </p>
+    </form>
+  );
+}
+
 export default function Checkout() {
   const [, setLocation] = useLocation();
   const { session, user, profile } = useAuth();
   const { affiliateCode, discountPercent } = useAffiliate();
+  const {
+    coupon,
+    status: couponStatus,
+    applyCoupon,
+    removeCoupon,
+  } = useCoupon();
   const [selectedPlan, setSelectedPlan] = useState("pro_semiannual");
   const [loading, setLoading] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -539,19 +685,40 @@ export default function Checkout() {
     }
   }, []);
 
-  function discountedPrice(price: number) {
-    if (!discountPercent) return price;
-    return Number((price * (1 - discountPercent / 100)).toFixed(2));
+  // Desconto vigente por plano, espelhando a precedencia do server: cupom de
+  // marketing que cobre o plano ganha; senao vale o desconto de afiliado (0 sem
+  // afiliado). Com cupom restrito (applicable_plans) + afiliado, os planos fora
+  // da lista caem no desconto do afiliado, igual ao backend, pro preco exibido
+  // ser sempre o preco cobrado.
+  function planDiscountPercent(planId: string): number {
+    if (
+      coupon &&
+      (!coupon.applicable_plans || coupon.applicable_plans.includes(planId))
+    ) {
+      return coupon.discount_percent;
+    }
+    return discountPercent;
+  }
+
+  function discountedPrice(planId: string, price: number) {
+    const percent = planDiscountPercent(planId);
+    if (!percent) return price;
+    return Number((price * (1 - percent / 100)).toFixed(2));
   }
 
   // CTA "Assinar": deslogado -> cadastro (comportamento inalterado); mensal ->
   // cartao direto (boleto nao e permitido ali); anual/semestral -> dialog de metodo.
   function handleSubscribe() {
     if (!session) {
-      const query = affiliateCode
-        ? `?ref=${encodeURIComponent(affiliateCode)}&cupom=${encodeURIComponent(affiliateCode)}&desconto=${discountPercent}`
-        : "";
-      setLocation(`/cadastro${query}`);
+      const params = new URLSearchParams();
+      if (affiliateCode) {
+        params.set("ref", affiliateCode);
+        params.set("cupom", affiliateCode);
+        params.set("desconto", String(discountPercent));
+      }
+      if (coupon) params.set("promo", coupon.code);
+      const query = params.toString();
+      setLocation(`/cadastro${query ? `?${query}` : ""}`);
       return;
     }
 
@@ -595,7 +762,9 @@ export default function Checkout() {
     }
   }
 
-  const hasCoupon = discountPercent > 0 && !!affiliateCode;
+  // Banner de afiliado some quando ha cupom de marketing (o desconto vigente e
+  // o do cupom); a atribuicao do afiliado segue viva no localStorage/checkout.
+  const hasAffiliateBanner = discountPercent > 0 && !!affiliateCode && !coupon;
   const currentPlan = plans.find((p) => p.id === selectedPlan) ?? plans[0];
 
   // Radiogroup de planos (padrao WAI-ARIA): setas movem o foco E selecionam;
@@ -677,7 +846,7 @@ export default function Checkout() {
         }}
       />
 
-      {hasCoupon ? (
+      {hasAffiliateBanner ? (
         <div className="border-b-2 border-slate-950 bg-[#FFB800]">
           <div className="container py-3 text-center">
             <p className="font-display text-sm font-black uppercase tracking-wider text-slate-950">
@@ -897,7 +1066,28 @@ export default function Checkout() {
             </p>
           </motion.div>
 
-          {hasCoupon ? (
+          {coupon ? (
+            <div className="mx-auto mt-8 w-fit max-w-xl rounded-2xl border-2 border-emerald-700 bg-emerald-50 px-4 py-2 text-center">
+              <p className="inline text-sm font-bold text-emerald-800">
+                <Check
+                  size={16}
+                  strokeWidth={3}
+                  aria-hidden="true"
+                  className="mr-1.5 inline-block align-[-3px]"
+                />
+                Cupom{" "}
+                <span className="font-mono font-black">{coupon.code}</span>:{" "}
+                {coupon.discount_percent}% off na primeira cobrança
+                {coupon.applicable_plans
+                  ? ` nos planos ${coveredPlanLabels(coupon.applicable_plans)}`
+                  : ""}
+                , já aplicado nos preços.{" "}
+                <span className="whitespace-nowrap text-xs font-semibold text-emerald-700">
+                  Renovações no valor cheio.
+                </span>
+              </p>
+            </div>
+          ) : hasAffiliateBanner ? (
             <div className="mx-auto mt-8 flex w-full max-w-xl items-center justify-center gap-2 rounded-full border-2 border-emerald-700 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-800">
               <Check size={16} strokeWidth={3} aria-hidden="true" />
               <span className="flex flex-col items-center text-center sm:flex-row sm:gap-1.5">
@@ -922,7 +1112,23 @@ export default function Checkout() {
           >
             {plans.map((plan, idx) => {
               const selected = selectedPlan === plan.id;
-              const finalPrice = discountedPrice(plan.price);
+              const planPercent = planDiscountPercent(plan.id);
+              const finalPrice = discountedPrice(plan.id, plan.price);
+              const couponCoversPlan =
+                !!coupon &&
+                (!coupon.applicable_plans ||
+                  coupon.applicable_plans.includes(plan.id));
+              // Desconto TOTAL real vs mensal cheio (floor: nunca prometer mais
+              // que o real) e equivalente mensal com o cupom (ceil no centavo:
+              // nunca exibir mais barato que o real).
+              const cycleFullPrice =
+                PLAN_MONTHS[plan.id] * PLAN_PRICING.pro_monthly.total;
+              const couponSavingsPercent = couponCoversPlan
+                ? Math.floor((1 - finalPrice / cycleFullPrice) * 100)
+                : 0;
+              const couponMonthlyEquivalent = couponCoversPlan
+                ? Math.ceil((finalPrice / PLAN_MONTHS[plan.id]) * 100) / 100
+                : null;
               return (
                 <motion.button
                   key={plan.id}
@@ -976,38 +1182,74 @@ export default function Checkout() {
                     <h3 className="font-display text-3xl font-black text-slate-950">
                       {plan.label}
                     </h3>
-                    {plan.savings ? (
+                    {couponCoversPlan ? (
+                      <p className="mt-1.5 inline-flex w-fit items-center whitespace-nowrap rounded-full border border-emerald-800 bg-emerald-50 px-2 py-0.5 text-xs font-black text-emerald-800">
+                        {couponSavingsPercent}% off com cupom
+                      </p>
+                    ) : plan.savings ? (
                       <p className="mt-1 text-sm font-black text-violet-800">
                         {plan.savings}
                       </p>
                     ) : null}
                   </div>
                   <div className="mt-6">
-                    {discountPercent > 0 ? (
-                      <p className="text-sm font-black text-slate-500 line-through">
-                        {plan.priceLabel}
-                      </p>
-                    ) : null}
-                    <p className="font-display text-4xl font-black text-slate-950">
-                      {formatPrice(finalPrice)}
+                    {/* Sempre renderizado (invisivel sem desconto) pra reservar
+                        a altura e o preco nao pular ao aplicar/remover cupom. */}
+                    <p
+                      aria-hidden={planPercent > 0 ? undefined : true}
+                      className={`text-sm font-black text-slate-500 line-through transition-opacity duration-200 ${
+                        planPercent > 0 ? "opacity-100" : "opacity-0"
+                      }`}
+                    >
+                      {plan.priceLabel}
                     </p>
+                    <motion.p
+                      key={finalPrice}
+                      initial={reduce ? false : { opacity: 0, scale: 0.96 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.25, ease: "easeOut" }}
+                      className="font-display text-4xl font-black text-slate-950"
+                    >
+                      {formatPrice(finalPrice)}
+                    </motion.p>
                     <p className="mt-1 text-sm font-bold text-slate-700">
                       {plan.period}
                     </p>
+                    {coupon && coupon.applicable_plans ? (
+                      <p
+                        className={`mt-1 text-xs font-black ${
+                          couponCoversPlan
+                            ? "text-emerald-700"
+                            : "text-slate-500"
+                        }`}
+                      >
+                        {couponCoversPlan
+                          ? `Cupom ${coupon.code} aplicado`
+                          : `Cupom ${coupon.code} não vale neste plano`}
+                      </p>
+                    ) : null}
                   </div>
                   {/* my-auto centraliza o box no vao entre a periodicidade e o
                       rodape; py-2 garante respiro minimo quando o card aperta. */}
                   {plan.monthlyEquivalent ? (
                     <div className="my-auto pt-2">
-                      <p className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950">
+                      <motion.p
+                        key={couponMonthlyEquivalent ?? plan.monthlyEquivalent}
+                        initial={reduce ? false : { opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.25, ease: "easeOut" }}
+                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950"
+                      >
                         Equivale a{" "}
                         {plan.savingsPercent > 0 ? (
                           <span className="font-bold text-slate-400 line-through">
                             {MONTHLY_BASE_LABEL}
                           </span>
                         ) : null}
-                        {plan.monthlyEquivalent}
-                      </p>
+                        {couponMonthlyEquivalent !== null
+                          ? `${formatPrice(couponMonthlyEquivalent)}/mês`
+                          : plan.monthlyEquivalent}
+                      </motion.p>
                     </div>
                   ) : null}
                   <p className="mt-auto pt-2 text-sm font-bold text-slate-700">
@@ -1021,6 +1263,12 @@ export default function Checkout() {
           <div className="mt-10 flex flex-col items-center gap-3">
             {billingStatus === "on" ? (
               <>
+                <CouponField
+                  coupon={coupon}
+                  status={couponStatus}
+                  onApply={applyCoupon}
+                  onRemove={removeCoupon}
+                />
                 <button
                   type="button"
                   onClick={handleSubscribe}
@@ -1030,7 +1278,7 @@ export default function Checkout() {
                   <Sparkles className="h-5 w-5" />
                   {loading
                     ? "Abrindo checkout..."
-                    : `Assinar ${currentPlan.label} · ${formatPrice(discountedPrice(currentPlan.price))}`}
+                    : `Assinar ${currentPlan.label} · ${formatPrice(discountedPrice(currentPlan.id, currentPlan.price))}`}
                 </button>
               </>
             ) : (

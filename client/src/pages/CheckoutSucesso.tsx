@@ -14,6 +14,7 @@ import {
 } from "@/lib/analytics";
 import { whatsappSupportUrl } from "@/lib/whatsapp";
 import { clearStoredAffiliate } from "@/hooks/useAffiliate";
+import { clearStoredCoupon } from "@/hooks/useCoupon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { greet } from "@shared/greeting";
@@ -93,13 +94,15 @@ export default function CheckoutSucesso() {
     return fireProCelebration({ x: centerX, y: baseY });
   }, [isLoadingScreen, showSuccess, reduce]);
 
-  // Consome o cupom de afiliado uma unica vez quando a conversao confirma (isPro).
-  // Guarda via ref para nao remover de novo em re-render. Nao mexe no carimbo
-  // subscriptions.affiliate_code, que e o registro de comissao no servidor.
+  // Consome o cupom de afiliado e o de marketing uma unica vez quando a
+  // conversao confirma (isPro). Guarda via ref para nao remover de novo em
+  // re-render. Nao mexe nos carimbos subscriptions.affiliate_code/coupon_code,
+  // que sao o registro de comissao/resgate no servidor.
   useEffect(() => {
     if (!isPro || affiliateConsumedRef.current) return;
     affiliateConsumedRef.current = true;
     clearStoredAffiliate();
+    clearStoredCoupon();
   }, [isPro]);
 
   // subscription_completed: dispara uma unica vez quando a assinatura confirma.

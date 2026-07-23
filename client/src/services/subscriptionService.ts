@@ -1,5 +1,6 @@
 import { apiUrl } from "@/lib/api";
 import { AFFILIATE_STORAGE_KEY } from "@/hooks/useAffiliate";
+import { COUPON_STORAGE_KEY } from "@/hooks/useCoupon";
 import { supabase } from "@/lib/supabase";
 
 const API_BASE = apiUrl("/api");
@@ -56,11 +57,26 @@ export async function createCheckout(
   } catch {
     affiliateCode = undefined;
   }
+  // Cupom de marketing, mesmo padrao do afiliado. O server revalida tudo e
+  // decide a precedencia (cupom ganha do desconto de afiliado).
+  let couponCode: string | undefined;
+  try {
+    const storedCoupon = window.localStorage.getItem(COUPON_STORAGE_KEY);
+    const coupon = storedCoupon ? JSON.parse(storedCoupon) : null;
+    couponCode = coupon?.expires > Date.now() ? coupon.code : undefined;
+  } catch {
+    couponCode = undefined;
+  }
   const res = await fetch(`${API_BASE}/billing/checkout`, {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
     // payment_method ausente => o server usa 'card' (retrocompativel).
-    body: JSON.stringify({ affiliateCode, planId, payment_method: paymentMethod }),
+    body: JSON.stringify({
+      affiliateCode,
+      couponCode,
+      planId,
+      payment_method: paymentMethod,
+    }),
   });
 
   if (!res.ok) throw new CheckoutError(await checkoutErrorCode(res));
