@@ -272,14 +272,12 @@ function ParceiroCard({ parceiro }: { parceiro: CursoParceiro }) {
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="grid shrink-0 place-items-center rounded-lg border border-slate-200 bg-slate-50 p-2">
-          <img
-            src={parceiro.logo}
-            alt={`Logo ${parceiro.titulo}`}
-            loading="lazy"
-            className="h-14 w-auto max-w-[120px] object-contain"
-          />
-        </div>
+        <img
+          src={parceiro.logo}
+          alt={`Logo ${parceiro.titulo}`}
+          loading="lazy"
+          className="h-16 w-16 shrink-0 object-contain"
+        />
         <div className="min-w-0">
           <h3 className="font-display text-lg font-black leading-snug text-slate-950">
             {parceiro.titulo}

@@ -25,7 +25,7 @@ export const cursosParceiros: CursoParceiro[] = [
     autor: "PC (pctheone)",
     link: "https://aceleradev.com.br/",
     tipo: "Pago",
-    logo: "/aceleradev.avif",
+    logo: "/aceleradev-circle.webp",
     roadmapSlugs: ["fullstack", "frontend", "backend"],
     descricao:
       "Comunidade e método prático para conquistar sua primeira (ou melhor) vaga em tech, mesmo sem experiência. Foco em currículo, LinkedIn, preparação para entrevistas e networking no Discord. Não é um curso de programação: é sobre posicionamento e entrada no mercado tech.",
