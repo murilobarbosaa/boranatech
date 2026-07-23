@@ -12,41 +12,19 @@ import {
   CERT_LINKEDIN_ORG_ID,
   verificationUrl,
 } from "@/components/certificates/constants";
+import {
+  certEmailSubject,
+  certI18n,
+  certPostText,
+  certTweetText,
+  type CertLang,
+} from "@/components/certificates/i18n";
 
 // Modal de compartilhar (dono-so). Areas, nesta ordem: (topo) adicionar ao
 // perfil do LinkedIn destacado; link da pagina + copiar; texto pronto + copiar
 // + dica; botoes de rede (LinkedIn, X, Email). Sem Instagram (nao ha share por
-// link la). Reusa a construcao do Add to Profile e do share do LinkedIn.
-
-function longText(
-  trilha: string,
-  horas: number,
-  skills: string[],
-  link: string,
-): string {
-  const skillLines = skills
-    .slice(0, 4)
-    .map((s) => `→ ${s}`)
-    .join("\n");
-  return `🎓 Trilha ${trilha} concluída na Bora na Tech!
-
-Foram ${horas} horas de conteúdo, uma prova final com nota mínima e um certificado verificável no fim. Sem atalho.
-
-O que eu levo dessa jornada:
-${skillLines}
-
-Se você está pensando em entrar (ou crescer) na área tech: o mais difícil é começar. O resto é constância.
-
-Qual habilidade você está estudando agora? Me conta nos comentários 👇
-
-Certificado verificável: ${link}
-
-@Bora Na Tech #BoraNaTech #CarreiraTech #AprendizadoContinuo`;
-}
-
-function shortText(trilha: string, horas: number, link: string): string {
-  return `🎓 Trilha ${trilha} concluída na Bora na Tech! ${horas}h de conteúdo e certificado verificável: ${link} #BoraNaTech`;
-}
+// link la). Bilingue: os textos e labels vem do idioma atual. Reusa a
+// construcao do Add to Profile e do share do LinkedIn.
 
 function addToProfileUrl(
   trilha: string,
@@ -80,26 +58,30 @@ export default function CertificateShareModal({
   hours,
   issuedAt,
   skills,
+  lang,
   open,
   onOpenChange,
 }: {
   code: string;
+  // Ja localizado pelo pai (PT ou EN conforme o idioma atual).
   roadmapTitle: string;
   hours: number;
   issuedAt: string;
   skills: string[];
+  lang: CertLang;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const [copied, setCopied] = useState<CopyKey>(null);
+  const t = certI18n(lang).sh;
 
   const link = verificationUrl(code);
-  const fullText = longText(roadmapTitle, hours, skills, link);
-  const tweet = shortText(roadmapTitle, hours, link);
+  const fullText = certPostText(lang, roadmapTitle, hours, skills, link);
+  const tweet = certTweetText(lang, roadmapTitle, hours, link);
   const addUrl = addToProfileUrl(roadmapTitle, code, link, issuedAt);
   const xUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(tweet)}`;
   const linkedinShare = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(link)}`;
-  const emailUrl = `mailto:?subject=${encodeURIComponent(`Meu certificado Bora na Tech - ${roadmapTitle}`)}&body=${encodeURIComponent(fullText)}`;
+  const emailUrl = `mailto:?subject=${encodeURIComponent(certEmailSubject(lang, roadmapTitle))}&body=${encodeURIComponent(fullText)}`;
 
   async function copy(value: string, key: Exclude<CopyKey, null>) {
     try {
@@ -118,7 +100,7 @@ export default function CertificateShareModal({
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-black text-slate-950">
             {/* TODO(Ana): titulo do modal de compartilhar */}
-            Compartilhar certificado
+            {t.title}
           </DialogTitle>
         </DialogHeader>
 
@@ -132,11 +114,11 @@ export default function CertificateShareModal({
               <div>
                 <p className="text-sm font-black text-slate-950">
                   {/* TODO(Ana): titulo do bloco add to profile */}
-                  Adicione às suas Licenças e Certificações
+                  {t.addTitle}
                 </p>
                 <p className="mt-0.5 text-xs font-semibold text-slate-600">
                   {/* TODO(Ana): subtitulo do bloco add to profile */}
-                  Registre esta conquista direto no seu perfil do LinkedIn.
+                  {t.addSubtitle}
                 </p>
               </div>
             </div>
@@ -148,7 +130,7 @@ export default function CertificateShareModal({
             >
               <Icon icon="ph:linkedin-logo-bold" className="text-lg" />
               {/* TODO(Ana): label do botao add to profile */}
-              Adicionar ao perfil
+              {t.addBtn}
             </a>
           </div>
 
@@ -156,7 +138,7 @@ export default function CertificateShareModal({
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
               {/* TODO(Ana): rotulo do link */}
-              Link do certificado
+              {t.linkLabel}
             </p>
             <div className="mt-2 flex gap-2">
               <input
@@ -174,7 +156,7 @@ export default function CertificateShareModal({
                 ) : (
                   <Copy className="h-4 w-4" />
                 )}
-                {copied === "link" ? "Copiado" : "Copiar"}
+                {copied === "link" ? t.copied : t.copy}
               </button>
             </div>
           </div>
@@ -183,7 +165,7 @@ export default function CertificateShareModal({
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
               {/* TODO(Ana): rotulo do texto pronto */}
-              Texto pronto para colar
+              {t.textLabel}
             </p>
             <textarea
               readOnly
@@ -192,10 +174,7 @@ export default function CertificateShareModal({
               className="mt-2 w-full resize-none rounded-[12px] border-[2.5px] border-slate-950 bg-slate-50 p-3 text-sm font-medium leading-relaxed text-slate-700"
             />
             <div className="mt-2 flex items-center justify-between gap-3">
-              <p className="text-xs font-medium text-slate-500">
-                No LinkedIn, digite @ e selecione Bora Na Tech para marcar a
-                nossa página.
-              </p>
+              <p className="text-xs font-medium text-slate-500">{t.tip}</p>
               <button
                 type="button"
                 onClick={() => copy(fullText, "text")}
@@ -206,7 +185,7 @@ export default function CertificateShareModal({
                 ) : (
                   <Copy className="h-4 w-4" />
                 )}
-                {copied === "text" ? "Copiado" : "Copiar texto"}
+                {copied === "text" ? t.copied : t.copyText}
               </button>
             </div>
           </div>
@@ -215,7 +194,7 @@ export default function CertificateShareModal({
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
               {/* TODO(Ana): rotulo dos botoes de rede */}
-              Compartilhar em
+              {t.shareIn}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               <a

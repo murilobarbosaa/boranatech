@@ -12,6 +12,7 @@ import { renderCertificatePdf, renderCertificatePng } from "../lib/certificatePd
 import {
   renderCertificateScreenSvg,
   renderCertificateSvg,
+  type CertificateLang,
 } from "../lib/certificateRender";
 import {
   getCertificateByCode,
@@ -57,6 +58,12 @@ function safeCodeForFilename(code: string): string {
   return code.replace(/[^A-Za-z0-9_-]/g, "");
 }
 
+// Idioma da APRESENTACAO (?lang=en). Qualquer valor diferente de "en" -> "pt".
+// O snapshot continua em PT; EN e gerado na hora.
+function parseLang(value: unknown): CertificateLang {
+  return value === "en" ? "en" : "pt";
+}
+
 type DownloadFormat = "pdf" | "image";
 
 // Download DONO-SO. A trava real de posse e server-side: esconder o botao no
@@ -98,7 +105,7 @@ async function handleDownload(
   }
 
   try {
-    const svg = await renderCertificateSvg(record.data);
+    const svg = await renderCertificateSvg(record.data, parseLang(req.query.lang));
     const safeCode = safeCodeForFilename(record.data.code);
     if (format === "pdf") {
       const pdf = await renderCertificatePdf(svg);
@@ -243,17 +250,22 @@ publicCertificatesRouter.get("/:code/svg", async (req, res, next) => {
         createError(404, "not_found", "Certificado não encontrado."),
       );
     }
-    const svg = await renderCertificateScreenSvg({
-      holderName: certificate.holderName,
-      roadmapTitle: certificate.roadmapTitle,
-      hours: certificate.hours,
-      issuedAt: certificate.issuedAt,
-      code: certificate.code,
-    });
-    // Deriva de snapshot imutavel: cacheavel por alguns minutos (alivia a
-    // renderizacao repetida do SVG na verificacao publica).
+    const svg = await renderCertificateScreenSvg(
+      {
+        holderName: certificate.holderName,
+        roadmapSlug: certificate.roadmapSlug,
+        roadmapTitle: certificate.roadmapTitle,
+        hours: certificate.hours,
+        issuedAt: certificate.issuedAt,
+        code: certificate.code,
+      },
+      parseLang(req.query.lang),
+    );
+    // Deriva de snapshot imutavel: cacheavel por alguns minutos. O ?lang faz
+    // parte da URL, entao PT e EN sao cacheados separadamente; Vary por seguranca.
     res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=300");
+    res.setHeader("Vary", "Accept-Encoding");
     res.send(svg);
   } catch (err) {
     next(err);

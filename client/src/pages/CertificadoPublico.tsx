@@ -12,11 +12,17 @@ import {
 import CertificateDownloadModal from "@/components/certificates/CertificateDownloadModal";
 import CertificateShareModal from "@/components/certificates/CertificateShareModal";
 import { CERT_ISSUER_LEGAL } from "@/components/certificates/constants";
+import {
+  certI18n,
+  formatCertDate,
+  type CertLang,
+} from "@/components/certificates/i18n";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { useAuth } from "@/contexts/AuthContext";
 import { roadmapsV2 } from "@shared/roadmapV2/content";
 import { deriveTrilhaSkills } from "@shared/certificates/skills";
+import { localizedRoadmapTitle } from "@shared/certificates/roadmapTitlesEn";
 import {
   getPublicCertificate,
   getPublicCertificateSvg,
@@ -47,17 +53,6 @@ function Disclaimer() {
   );
 }
 
-function formatDate(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(date);
-}
-
 const actionButtonClass =
   "inline-flex flex-1 items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-950 bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:bg-[#FFF9E9] hover:shadow-[4px_4px_0_#0f172a]";
 
@@ -84,6 +79,8 @@ export default function CertificadoPublico() {
   const [isOwner, setIsOwner] = useState<boolean | null>(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
+  // Idioma da APRESENTACAO. So estado local, sem persistir; o snapshot fica PT.
+  const [lang, setLang] = useState<CertLang>("pt");
 
   useEffect(() => {
     let cancelled = false;
@@ -100,20 +97,22 @@ export default function CertificadoPublico() {
   }, [code]);
 
   // SVG de tela, buscado em paralelo e renderizado inline (usa as fontes da
-  // pagina). So faz sentido buscar quando o certificado existe e nao e revogado.
+  // pagina). Refaz o fetch ao trocar o idioma (o EN e gerado na hora no server;
+  // o ?lang separa o cache). So busca quando o certificado existe e nao revogado.
   useEffect(() => {
     if (!cert || cert.revoked) {
       setSvgMarkup(null);
       return;
     }
     let cancelled = false;
-    getPublicCertificateSvg(cert.code).then((markup) => {
+    setSvgMarkup(null);
+    getPublicCertificateSvg(cert.code, lang).then((markup) => {
       if (!cancelled) setSvgMarkup(markup);
     });
     return () => {
       cancelled = true;
     };
-  }, [cert]);
+  }, [cert, lang]);
 
   // "Sou o dono?" sem expor user_id no payload publico: se logado, cruzo o code
   // com a lista dos MEUS certificados. Enquanto verifica, isOwner = null (reserva
@@ -140,10 +139,15 @@ export default function CertificadoPublico() {
     if (!cert) return { context: "", tags: [] as string[] };
     const roadmap = roadmapsV2.find((r) => r.slug === cert.roadmapSlug);
     return roadmap
-      ? deriveTrilhaSkills(roadmap)
+      ? deriveTrilhaSkills(roadmap, lang)
       : { context: "", tags: [] as string[] };
-  }, [cert]);
+  }, [cert, lang]);
 
+  const t = certI18n(lang);
+  // Titulo da trilha no idioma atual (h1, prosa, modais). O EN vem do mapa.
+  const trilhaTitle = cert
+    ? localizedRoadmapTitle(cert.roadmapSlug, cert.roadmapTitle, lang)
+    : "";
   const wide = !loading && cert !== null && !cert.revoked;
 
   return (
@@ -166,11 +170,11 @@ export default function CertificadoPublico() {
               </span>
               <h1 className="mt-4 font-display text-2xl font-black text-slate-950">
                 {/* TODO(Ana): titulo do 404 de certificado */}
-                Certificado não encontrado.
+                {t.notFoundTitle}
               </h1>
               <p className="mt-2 text-sm font-medium text-slate-600">
                 {/* TODO(Ana): corpo do 404 de certificado */}
-                Confira o código e tente novamente.
+                {t.notFoundBody}
               </p>
               <Disclaimer />
             </div>
@@ -181,16 +185,16 @@ export default function CertificadoPublico() {
               </span>
               <h1 className="mt-4 font-display text-2xl font-black text-red-700">
                 {/* TODO(Ana): titulo do certificado revogado */}
-                Certificado revogado.
+                {t.revokedTitle}
               </h1>
               <p className="mt-2 text-sm font-semibold text-slate-700">
                 {/* TODO(Ana): corpo do certificado revogado */}
-                Este certificado foi revogado e não é válido.
+                {t.revokedBody}
               </p>
               {cert.revokedReason ? (
                 <p className="mt-2 text-sm font-medium text-slate-600">
                   {/* TODO(Ana): rotulo do motivo da revogacao */}
-                  Motivo: {cert.revokedReason}
+                  {t.revokedReason} {cert.revokedReason}
                 </p>
               ) : null}
               <p className="mt-4 text-xs font-bold text-slate-400">{cert.code}</p>
@@ -198,21 +202,42 @@ export default function CertificadoPublico() {
             </div>
           ) : (
             <>
-              {/* TOPO: voltar + subtitulo + titulo da trilha (estilo Coursera). */}
-              <Link
-                href={`/roadmaps/${cert.roadmapSlug}`}
-                className="inline-flex items-center gap-1.5 text-sm font-black text-violet-800 transition-colors hover:text-violet-900"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                {/* TODO(Ana): copy do voltar para a trilha */}
-                Voltar para a trilha
-              </Link>
+              {/* TOPO: voltar (esquerda) + seletor de idioma (direita) +
+                  subtitulo + titulo da trilha (estilo Coursera). */}
+              <div className="flex items-start justify-between gap-4">
+                <Link
+                  href={`/roadmaps/${cert.roadmapSlug}`}
+                  className="inline-flex items-center gap-1.5 text-sm font-black text-violet-800 transition-colors hover:text-violet-900"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  {/* TODO(Ana): copy do voltar para a trilha */}
+                  {t.backToTrail}
+                </Link>
+                {/* Seletor PT/EN. So estado local, sem persistir. */}
+                <div className="inline-flex shrink-0 overflow-hidden rounded-full border-[2.5px] border-slate-950 shadow-[2px_2px_0_#0f172a]">
+                  {(["pt", "en"] as const).map((code) => (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => setLang(code)}
+                      aria-pressed={lang === code}
+                      className={`px-3 py-1 text-xs font-black uppercase transition-colors ${
+                        lang === code
+                          ? "bg-[#FFB800] text-slate-950"
+                          : "bg-white text-slate-500 hover:bg-slate-50"
+                      }`}
+                    >
+                      {code}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <p className="mt-6 text-sm font-black uppercase tracking-[0.2em] text-slate-500">
                 {/* TODO(Ana): rotulo acima do titulo */}
-                Certificado de conclusão
+                {t.certificateOfCompletion}
               </p>
               <h1 className="mt-1 font-display text-4xl font-black leading-tight text-slate-950">
-                {cert.roadmapTitle}
+                {trilhaTitle}
               </h1>
 
               {/* Certificado (heroi) a DIREITA no desktop, painel a esquerda
@@ -251,7 +276,7 @@ export default function CertificadoPublico() {
                       >
                         <Share2 className="h-4 w-4" />
                         {/* TODO(Ana): label do botao compartilhar */}
-                        Compartilhar certificado
+                        {t.shareBtn}
                       </button>
                       <button
                         type="button"
@@ -260,7 +285,7 @@ export default function CertificadoPublico() {
                       >
                         <Download className="h-4 w-4" />
                         {/* TODO(Ana): label do botao baixar */}
-                        Baixar certificado
+                        {t.downloadBtn}
                       </button>
                     </div>
                   ) : null}
@@ -272,31 +297,40 @@ export default function CertificadoPublico() {
                     <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-emerald-600 bg-emerald-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-emerald-800">
                       <ShieldCheck className="h-4 w-4" />
                       {/* TODO(Ana): selo de valido */}
-                      Verificado
+                      {t.verified}
                     </span>
                     <p className="mt-3 text-sm font-semibold leading-relaxed text-slate-700">
                       {/* TODO(Ana): texto de verificacao em prosa */}
-                      A conta de{" "}
-                      <span className="font-black text-slate-950">
-                        {cert.holderName}
-                      </span>{" "}
-                      foi verificada. A Bora na Tech certifica a conclusão da
-                      trilha {cert.roadmapTitle}.
+                      {(() => {
+                        const prose = t.verificationProse(
+                          cert.holderName,
+                          trilhaTitle,
+                        );
+                        return (
+                          <>
+                            {prose.before}
+                            <span className="font-black text-slate-950">
+                              {prose.name}
+                            </span>
+                            {prose.after}
+                          </>
+                        );
+                      })()}
                     </p>
                   </div>
 
                   <div className="flex flex-col gap-5 rounded-[16px] border-[3px] border-slate-950 bg-white p-6 shadow-[5px_5px_0_#0f172a]">
-                    <InfoRow label="Titular" value={cert.holderName} />
+                    <InfoRow label={t.recipient} value={cert.holderName} />
                     <div className="grid grid-cols-2 gap-4">
                       <InfoRow
-                        label="Concluído em"
-                        value={formatDate(cert.issuedAt)}
+                        label={t.completedOn}
+                        value={formatCertDate(cert.issuedAt, lang)}
                       />
-                      <InfoRow label="Carga horária" value={`${cert.hours}h`} />
+                      <InfoRow label={t.totalHours} value={`${cert.hours}h`} />
                     </div>
                     <p className="border-t-2 border-dashed border-slate-200 pt-3 text-xs font-bold text-slate-500">
                       {/* TODO(Ana): rotulo do codigo */}
-                      Código:{" "}
+                      {t.code}:{" "}
                       <span className="font-black text-slate-900">
                         {cert.code}
                       </span>
@@ -313,7 +347,7 @@ export default function CertificadoPublico() {
                 <div className="mt-12">
                   <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">
                     {/* TODO(Ana): titulo da secao de habilidades */}
-                    Habilidades desenvolvidas
+                    {t.skillsTitle}
                   </p>
                   {/* TODO(Ana): texto de contexto proprio do certificado */}
                   <ul className="mt-4 flex flex-wrap gap-2.5">
@@ -331,18 +365,21 @@ export default function CertificadoPublico() {
 
               <Disclaimer />
 
-              {/* Modais dono-so (renderizados fechados; abertos pelos botoes). */}
+              {/* Modais dono-so (renderizados fechados; abertos pelos botoes).
+                  Recebem o idioma atual; o titulo ja vai localizado. */}
               <CertificateShareModal
                 code={cert.code}
-                roadmapTitle={cert.roadmapTitle}
+                roadmapTitle={trilhaTitle}
                 hours={cert.hours}
                 issuedAt={cert.issuedAt}
                 skills={trilhaSkills.tags}
+                lang={lang}
                 open={shareOpen}
                 onOpenChange={setShareOpen}
               />
               <CertificateDownloadModal
                 code={cert.code}
+                lang={lang}
                 open={downloadOpen}
                 onOpenChange={setDownloadOpen}
               />

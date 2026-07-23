@@ -330,7 +330,9 @@ export async function getCertificateRecordForOwner(code: string): Promise<
   if (!normalized) return null;
   const { data, error } = await supabaseAdmin
     .from("certificates")
-    .select("user_id, code, holder_name, roadmap_title, hours, issued_at, revoked_at")
+    .select(
+      "user_id, code, holder_name, roadmap_slug, roadmap_title, hours, issued_at, revoked_at",
+    )
     .eq("code", normalized)
     .maybeSingle();
   if (error || !data) return null;
@@ -338,6 +340,7 @@ export async function getCertificateRecordForOwner(code: string): Promise<
     user_id: string;
     code: string;
     holder_name: string;
+    roadmap_slug: string;
     roadmap_title: string;
     hours: number;
     issued_at: string;
@@ -348,6 +351,7 @@ export async function getCertificateRecordForOwner(code: string): Promise<
     revoked: row.revoked_at != null,
     data: {
       holderName: row.holder_name,
+      roadmapSlug: row.roadmap_slug,
       roadmapTitle: row.roadmap_title,
       hours: row.hours,
       issuedAt: row.issued_at,

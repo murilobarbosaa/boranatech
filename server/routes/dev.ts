@@ -22,15 +22,18 @@ router.use((_req, res, next) => {
 // que o render aplica o uppercase do design.
 const SAMPLE = {
   holderName: "Maria da Silva Santos",
+  roadmapSlug: "frontend",
   roadmapTitle: "Desenvolvimento Web",
   hours: 40,
   issuedAt: new Date().toISOString(),
   code: "BNT-TEST-0001",
 } as const;
 
-router.get("/certificate-preview.svg", async (_req, res, next) => {
+router.get("/certificate-preview.svg", async (req, res, next) => {
   try {
-    const svg = await renderCertificateSvg(SAMPLE);
+    // ?lang=en para pre-visualizar o certificado em ingles (dev).
+    const lang = req.query.lang === "en" ? "en" : "pt";
+    const svg = await renderCertificateSvg(SAMPLE, lang);
     res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
     res.setHeader("Cache-Control", "no-store");
     res.send(svg);

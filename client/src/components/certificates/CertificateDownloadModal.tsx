@@ -8,53 +8,38 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { certI18n, type CertLang } from "@/components/certificates/i18n";
 import { downloadCertificateFile } from "@/services/certificateService";
 
 // Modal de download (dono-so). Duas opcoes grandes: PDF e PNG. Cada uma dispara
-// o download ja existente (as rotas nao mudam). Falha de geracao (503/429) vira
-// aviso amigavel; a pagina/visualizacao nao dependem disto.
+// o download ja existente (rotas inalteradas, com ?lang). Falha de geracao
+// (503/429) vira aviso amigavel; a pagina/visualizacao nao dependem disto.
 type Busy = "pdf" | "image" | null;
-
-type Option = {
-  format: "pdf" | "image";
-  label: string;
-  hint: string;
-  Icon: typeof FileText;
-};
-
-const OPTIONS: Option[] = [
-  {
-    format: "pdf",
-    label: "PDF",
-    // TODO(Ana): descricao curta da opcao PDF
-    hint: "Ideal para imprimir e anexar",
-    Icon: FileText,
-  },
-  {
-    format: "image",
-    label: "PNG",
-    // TODO(Ana): descricao curta da opcao PNG
-    hint: "Ideal para postar nas redes",
-    Icon: ImageDown,
-  },
-];
 
 export default function CertificateDownloadModal({
   code,
+  lang,
   open,
   onOpenChange,
 }: {
   code: string;
+  lang: CertLang;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const [busy, setBusy] = useState<Busy>(null);
   const [failed, setFailed] = useState(false);
+  const t = certI18n(lang).dl;
+
+  const options = [
+    { format: "pdf" as const, label: "PDF", hint: t.pdfHint, Icon: FileText },
+    { format: "image" as const, label: "PNG", hint: t.pngHint, Icon: ImageDown },
+  ];
 
   async function handle(format: "pdf" | "image") {
     setBusy(format);
     setFailed(false);
-    const result = await downloadCertificateFile(code, format);
+    const result = await downloadCertificateFile(code, format, lang);
     if (!result.ok) setFailed(true);
     setBusy(null);
   }
@@ -65,16 +50,16 @@ export default function CertificateDownloadModal({
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-black text-slate-950">
             {/* TODO(Ana): titulo do modal de download */}
-            Baixar certificado
+            {t.title}
           </DialogTitle>
           <DialogDescription className="text-sm font-medium text-slate-500">
             {/* TODO(Ana): subtitulo do modal de download */}
-            Escolha o formato do arquivo.
+            {t.subtitle}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          {OPTIONS.map(({ format, label, hint, Icon }) => (
+          {options.map(({ format, label, hint, Icon }) => (
             <button
               key={format}
               type="button"
@@ -100,7 +85,7 @@ export default function CertificateDownloadModal({
         {failed ? (
           <p className="text-center text-xs font-bold text-red-600">
             {/* TODO(Ana): copy do erro de geracao do arquivo */}
-            Não foi possível gerar o arquivo agora. Tente mais tarde.
+            {t.error}
           </p>
         ) : null}
       </DialogContent>

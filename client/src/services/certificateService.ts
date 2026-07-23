@@ -144,11 +144,13 @@ function triggerBlobDownload(blob: Blob, filename: string): void {
 export async function downloadCertificateFile(
   code: string,
   format: "pdf" | "image",
+  lang: "pt" | "en" = "pt",
 ): Promise<DownloadResult> {
   try {
     const header = await authHeader();
+    const query = lang === "en" ? "?lang=en" : "";
     const res = await fetch(
-      apiUrl(`/api/certificates/${encodeURIComponent(code)}/${format}`),
+      apiUrl(`/api/certificates/${encodeURIComponent(code)}/${format}${query}`),
       { headers: { ...header } },
     );
     if (!res.ok) {
@@ -174,10 +176,12 @@ export async function downloadCertificateFile(
 // null se falhar (a pagina cai num placeholder). Publico, sem auth.
 export async function getPublicCertificateSvg(
   code: string,
+  lang: "pt" | "en" = "pt",
 ): Promise<string | null> {
   try {
+    const query = lang === "en" ? "?lang=en" : "";
     const res = await fetch(
-      apiUrl(`/api/public/certificates/${encodeURIComponent(code)}/svg`),
+      apiUrl(`/api/public/certificates/${encodeURIComponent(code)}/svg${query}`),
     );
     if (!res.ok) return null;
     return await res.text();

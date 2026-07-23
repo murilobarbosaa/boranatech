@@ -179,11 +179,78 @@ function contentHaystack(roadmap: RoadmapV2): string {
   return parts.join(" \n ").toLowerCase();
 }
 
+// Rotulo EN dos tags que diferem do nome tecnico. O que nao esta aqui e igual
+// em PT e EN (HTML, React, Docker, Kubernetes, SQL, Python, Git...). So exibicao
+// na pagina (nao entra no SVG/PDF, que so tem titulo/labels do desenho).
+const TAG_EN: Record<string, string> = {
+  Responsividade: "Responsiveness",
+  Acessibilidade: "Accessibility",
+  Autenticação: "Authentication",
+  Estatística: "Statistics",
+  "Visualização de dados": "Data visualization",
+  "Redes neurais": "Neural networks",
+  "Visão computacional": "Computer vision",
+  "LLMs e IA generativa": "LLMs and Generative AI",
+  "Modelagem de dados": "Data modeling",
+  "Índices e performance": "Indexes and performance",
+  "Transações (ACID)": "Transactions (ACID)",
+  "Power BI e dashboards": "Power BI and dashboards",
+  Planilhas: "Spreadsheets",
+  "Infraestrutura como código": "Infrastructure as code",
+  Observabilidade: "Observability",
+  Redes: "Networking",
+  Virtualização: "Virtualization",
+  "Backup e recuperação": "Backup and recovery",
+  Criptografia: "Cryptography",
+  "Segurança de aplicações": "Application security",
+  "Resposta a incidentes": "Incident response",
+  Prototipação: "Prototyping",
+  Tipografia: "Typography",
+  "Métodos ágeis": "Agile methods",
+  "Roadmap e backlog": "Roadmap and backlog",
+  "Métricas e KPIs": "Metrics and KPIs",
+  "Teste A/B": "A/B testing",
+  "Gestão de riscos": "Risk management",
+  "Testes de software": "Software testing",
+  "Automação de testes": "Test automation",
+  "Estruturas de dados": "Data structures",
+  Algoritmos: "Algorithms",
+  POO: "OOP",
+  "SOLID e padrões": "SOLID and patterns",
+  "Arquitetura de software": "Software architecture",
+  "Lógica de programação": "Programming logic",
+  "UI declarativa": "Declarative UI",
+  "Navegação e estado": "Navigation and state",
+  "Armazenamento local": "Local storage",
+  "Notificações e sensores": "Notifications and sensors",
+  "Publicação nas lojas": "App store publishing",
+  "Física e colisões": "Physics and collisions",
+  "Animação 2D": "2D animation",
+  "IA de jogos": "Game AI",
+  Microcontroladores: "Microcontrollers",
+  "Processos de negócio": "Business processes",
+  "Parametrização e customização": "Configuration and customization",
+  "Integrações de sistemas": "Systems integration",
+  "Engenharia de requisitos": "Requirements engineering",
+  "Documentação técnica": "Technical writing",
+  "Atendimento ao usuário": "User support",
+  "Confiabilidade (SLO/SLI)": "Reliability (SLO/SLI)",
+  "Linguagem C": "C language",
+  "Versionamento de modelos": "Model versioning",
+  "Monitoramento de modelos": "Model monitoring",
+  "Processamento em lote": "Batch processing",
+  "SAP e Totvs": "SAP and Totvs",
+};
+
 export type TrilhaSkills = { context: string; tags: string[] };
 
-// Deriva contexto (a descricao da propria trilha) + tags de habilidade. As tags
-// saem ordenadas pela primeira aparicao no conteudo e limitadas a MAX_TAGS.
-export function deriveTrilhaSkills(roadmap: RoadmapV2): TrilhaSkills {
+// Deriva contexto (a descricao da propria trilha) + tags de habilidade, no
+// idioma pedido (default pt). As tags saem ordenadas pela primeira aparicao no
+// conteudo (PT) e limitadas a MAX_TAGS; so o ROTULO muda em EN.
+export function deriveTrilhaSkills(
+  roadmap: RoadmapV2,
+  lang: "pt" | "en" = "pt",
+): TrilhaSkills {
   const hay = contentHaystack(roadmap);
   const found: Array<{ tag: string; at: number }> = [];
   for (const entry of SKILL_DICTIONARY) {
@@ -197,6 +264,8 @@ export function deriveTrilhaSkills(roadmap: RoadmapV2): TrilhaSkills {
     if (best !== -1) found.push({ tag: entry.tag, at: best });
   }
   found.sort((a, b) => a.at - b.at);
-  const tags = found.slice(0, MAX_TAGS).map((f) => f.tag);
+  const tags = found
+    .slice(0, MAX_TAGS)
+    .map((f) => (lang === "en" ? (TAG_EN[f.tag] ?? f.tag) : f.tag));
   return { context: roadmap.description.trim(), tags };
 }
