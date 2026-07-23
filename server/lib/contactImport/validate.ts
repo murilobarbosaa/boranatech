@@ -1,4 +1,5 @@
 import { fetchSuppressedEmailSet } from "../emailCampaignQueue";
+import { validateEmailForSending } from "../emailValidation";
 import { supabaseAdmin } from "../supabaseAdmin";
 import type { ImportSource, ParsedRow } from "./parse";
 
@@ -11,7 +12,7 @@ export type MemberReport = {
   email: string;
   name: string | null;
   status: MemberStatus;
-  invalidReason: string | null; // "syntax" | "disposable" | null
+  invalidReason: string | null; // "syntax" | "reserved" | "disposable" | null
   userId: string | null; // preenchido quando o email JA e usuario
   rawLine: string;
 };
@@ -27,11 +28,9 @@ export type ImportReport = {
   members: MemberReport[];
 };
 
-// RFC-simplificado, suficiente para triagem de lista (a autoridade final de
-// entregabilidade e o Resend/supressao no envio).
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-// Dominios descartaveis conhecidos (lista pequena, hardcoded).
+// Sintaxe e dominio reservado: validados pela fonte unica compartilhada
+// (validateEmailForSending). Aqui fica so a politica PROPRIA do import:
+// dominios descartaveis (lista pequena, hardcoded).
 const DISPOSABLE_DOMAINS = new Set([
   "mailinator.com",
   "guerrillamail.com",
@@ -50,17 +49,13 @@ const DISPOSABLE_DOMAINS = new Set([
   "mohmal.com",
 ]);
 
-function isSyntaxValid(email: string): boolean {
-  return email.length <= 254 && EMAIL_RE.test(email);
-}
-
 function domainOf(email: string): string {
   return email.slice(email.lastIndexOf("@") + 1).toLowerCase();
 }
 
 // PURA e testavel: recebe os conjuntos de supressao e usuarios existentes ja
-// resolvidos. Precedencia: syntax invalido > duplicado no arquivo > descartavel
-// > suprimido > usuario existente (valid + user_id) > valid.
+// resolvidos. Precedencia: syntax invalido > duplicado no arquivo > reservado >
+// descartavel > suprimido > usuario existente (valid + user_id) > valid.
 export function classifyContacts(
   source: ImportSource,
   parsed: ParsedRow[],
@@ -80,7 +75,8 @@ export function classifyContacts(
     let invalidReason: string | null = null;
     let userId: string | null = null;
 
-    if (!isSyntaxValid(row.email)) {
+    const check = validateEmailForSending(row.email);
+    if (!check.ok && check.reason === "syntax") {
       status = "invalid";
       invalidReason = "syntax";
       invalidCount += 1;
@@ -89,7 +85,11 @@ export function classifyContacts(
       duplicateCount += 1;
     } else {
       seen.add(emailLower);
-      if (DISPOSABLE_DOMAINS.has(domainOf(row.email))) {
+      if (!check.ok && check.reason === "reserved") {
+        status = "invalid";
+        invalidReason = "reserved";
+        invalidCount += 1;
+      } else if (DISPOSABLE_DOMAINS.has(domainOf(row.email))) {
         status = "invalid";
         invalidReason = "disposable";
         invalidCount += 1;
@@ -165,7 +165,7 @@ export async function validateContacts(
   const suppressedLower = await fetchSuppressedEmailSet();
   const wantedLower = new Set(
     parsed
-      .filter((r) => isSyntaxValid(r.email))
+      .filter((r) => validateEmailForSending(r.email).ok)
       .map((r) => r.email.toLowerCase()),
   );
   const existingUsersLower = await fetchExistingUsers(wantedLower);
