@@ -32,33 +32,47 @@ function clientUserAgent(req: Request): string | null {
   return ua ?? null;
 }
 
-// Fail-closed: retorna true SOMENTE se existir linha para terms na TERMS_VERSION
-// atual E para privacy na PRIVACY_VERSION atual. Qualquer erro de consulta vira
-// false (nunca colapsa em "ja consentiu"). Sempre filtra por user_id.
+// Fail-closed de NEGOCIO: retorna true SOMENTE se existir linha para terms na
+// TERMS_VERSION atual E para privacy na PRIVACY_VERSION atual. Ausencia de linha
+// = false (nao consentiu). Mas falha de INFRA (query ao Supabase) NAO vira
+// false: propaga como erro para o /status responder 5xx, em vez de mascarar como
+// "nao consentiu" e empurrar o gate a pedir aceite de quem ja consentiu. Sempre
+// filtra por user_id.
 export async function hasCurrentConsent(userId: string): Promise<boolean> {
-  try {
-    const { data, error } = await supabaseAdmin
-      .from("user_consents")
-      .select("document, version")
-      .eq("user_id", userId)
-      .in("document", [...CONSENT_DOCUMENTS]);
-    if (error || !data) return false;
-    const rows = data as Array<{ document: string; version: string }>;
-    const hasTerms = rows.some(
-      (row) => row.document === "terms" && row.version === TERMS_VERSION,
+  const { data, error } = await supabaseAdmin
+    .from("user_consents")
+    .select("document, version")
+    .eq("user_id", userId)
+    .in("document", [...CONSENT_DOCUMENTS]);
+  if (error) {
+    console.error(`[consent] status query falhou user=${userId}`, error);
+    throw createError(
+      500,
+      "consent_read_failed",
+      "Erro ao verificar consentimento.",
+      {
+        cause: error,
+        context: { op: "status", userId, pgCode: error.code },
+      },
     );
-    const hasPrivacy = rows.some(
-      (row) => row.document === "privacy" && row.version === PRIVACY_VERSION,
-    );
-    return hasTerms && hasPrivacy;
-  } catch {
-    return false;
   }
+  const rows = (data ?? []) as Array<{ document: string; version: string }>;
+  const hasTerms = rows.some(
+    (row) => row.document === "terms" && row.version === TERMS_VERSION,
+  );
+  const hasPrivacy = rows.some(
+    (row) => row.document === "privacy" && row.version === PRIVACY_VERSION,
+  );
+  return hasTerms && hasPrivacy;
 }
 
-router.get("/status", async (req, res) => {
-  const hasConsented = await hasCurrentConsent(req.user!.id);
-  res.json({ hasConsented });
+router.get("/status", async (req, res, next) => {
+  try {
+    const hasConsented = await hasCurrentConsent(req.user!.id);
+    res.json({ hasConsented });
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.post("/", async (req, res, next) => {
@@ -101,12 +115,10 @@ router.post("/", async (req, res, next) => {
   ];
 
   // Idempotente: reenviar o mesmo aceite nao duplica prova nem estoura erro.
-  const { error } = await supabaseAdmin
-    .from("user_consents")
-    .upsert(rows, {
-      onConflict: "user_id,document,version",
-      ignoreDuplicates: true,
-    });
+  const { error } = await supabaseAdmin.from("user_consents").upsert(rows, {
+    onConflict: "user_id,document,version",
+    ignoreDuplicates: true,
+  });
 
   if (error) {
     return next(
