@@ -76,9 +76,12 @@ export function buildCompletionCtas(roadmap: RoadmapV2): CompletionCta[] {
     if (nextSlug) {
       ctas.push({
         id: `next-${nextSlug}`,
-        // TODO(Ana): copy da CTA de proxima trilha
+        // TODO(Ana): copy da CTA de proxima trilha (sugestao: "Explorar outras
+        // trilhas", ja que agora leva a vitrine /roadmaps, nao a uma trilha fixa)
         label: "Começar a próxima trilha",
-        href: `/roadmaps/${nextSlug}`,
+        // Leva a VITRINE de roadmaps: quem escolhe a proxima e a pessoa, nao um
+        // proximo fixo pre-definido.
+        href: "/roadmaps",
         variant: nextTrailVariant,
         kind: "next-trail",
       });

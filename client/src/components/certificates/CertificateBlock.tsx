@@ -102,11 +102,17 @@ export default function CertificateBlock({
 
   const completedTitle = `Você concluiu a trilha ${roadmap.title}!`;
 
+  // Skeleton com altura proxima da final (linha de texto + fileira de botoes),
+  // para o card nao "crescer"/pular quando a elegibilidade chega. O card so
+  // monta quando a trilha esta concluida (gate no pai), entao o titulo ja e a
+  // celebracao correta desde o primeiro frame.
   if (loading || !eligibility) {
     return (
       <SuccessShell title={completedTitle}>
-        <div className="mt-4 flex justify-center py-2">
-          <span className="h-6 w-6 animate-spin rounded-full border-[3px] border-slate-300 border-t-slate-900" />
+        <div className="mt-3 h-4 w-2/3 animate-pulse rounded bg-emerald-100" />
+        <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <div className="h-[42px] w-40 animate-pulse rounded-[11px] bg-emerald-100" />
+          <div className="h-[42px] w-44 animate-pulse rounded-[11px] bg-emerald-100" />
         </div>
       </SuccessShell>
     );
@@ -125,7 +131,7 @@ export default function CertificateBlock({
       return (
         <SuccessShell title={completedTitle}>
           <p className="mt-1 text-sm font-semibold text-slate-600">{dateLine}</p>
-          <div className="mt-4">
+          <div className="mt-4 [&>div]:justify-center">
             <CompletionCtaLinks ctas={secondaryCtas} />
           </div>
         </SuccessShell>
@@ -241,9 +247,9 @@ export default function CertificateBlock({
             Parabéns! Você concluiu a trilha {roadmap.title} e seu certificado
             foi emitido.
           </p>
-          {/* Botao normal (nao full-width) alinhado com os CTAs de trilha, na
-              mesma linha e no mesmo padrao visual. */}
-          <div className="mt-4 flex flex-wrap items-start gap-3">
+          {/* Botoes centralizados horizontalmente, na mesma fileira e no mesmo
+              padrao visual; wrap em telas estreitas, tambem centralizado. */}
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
             <Link
               href={`/certificados/${eligibility.code}`}
               className={primaryButtonClass}
