@@ -3,6 +3,7 @@ import { Router } from "express";
 import { UNSUBSCRIBE_URL_PLACEHOLDER } from "../../shared/emailCampaignBody";
 import { sendCampaignEmail } from "../lib/email";
 import { batchJobId } from "../lib/emailCampaignJobIds";
+import { validateEmailForSending } from "../lib/emailValidation";
 import {
   ELIGIBLE_WAITLIST_STATUSES,
   NEWSLETTER_ELIGIBLE_STATUSES,
@@ -46,11 +47,6 @@ function parseCategory(value: unknown): EmailCampaignCategory | null {
 }
 
 const MAX_SELECTED_PER_BATCH = 500;
-
-// Mesma validacao do POST /api/waitlist: presenca de local, arroba e dominio
-// com ponto. Usada na lista avulsa (custom), unica origem sem tabela por tras.
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MAX_EMAIL_LENGTH = 254;
 
 const BATCH_SOURCES = [
   "waitlist",
@@ -1242,18 +1238,21 @@ router.post("/:id/batches", async (req, res, next) => {
         }
         const email = raw.trim().toLowerCase();
         // Lista avulsa e a unica origem sem tabela por tras: valida o formato
-        // aqui (picker de waitlist/newsletter ja vem de dados validados).
-        if (
-          source === "custom" &&
-          (email.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(email))
-        ) {
-          return next(
-            createError(
-              400,
-              "invalid_emails",
-              `E-mail inválido na lista: ${email.slice(0, 80)}`,
-            ),
-          );
+        // aqui (picker de waitlist/newsletter ja vem de dados validados). Fonte
+        // unica compartilhada: bloqueia sintaxe invalida E dominio reservado.
+        if (source === "custom") {
+          const check = validateEmailForSending(email);
+          if (!check.ok) {
+            return next(
+              createError(
+                400,
+                "invalid_emails",
+                check.reason === "reserved"
+                  ? `E-mail com domínio reservado na lista: ${email.slice(0, 80)}`
+                  : `E-mail inválido na lista: ${email.slice(0, 80)}`,
+              ),
+            );
+          }
         }
         normalized.add(email);
       }
