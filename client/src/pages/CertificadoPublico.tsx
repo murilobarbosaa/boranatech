@@ -220,7 +220,7 @@ export default function CertificadoPublico() {
                   primeiro no mobile empilhado); no desktop, order inverte pra
                   ele ficar na coluna maior a direita. As acoes ficam ABAIXO do
                   certificado (coluna direita). */}
-              <div className="mt-8 grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.55fr)]">
+              <div className="mt-8 grid gap-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.9fr)]">
                 {/* COLUNA DO CERTIFICADO: o SVG (integro, sem clip) + acoes. */}
                 <div className="flex flex-col gap-4 lg:order-last">
                   {/* SVG inline. aspect-ratio reserva o espaco (mesma proporcao
@@ -305,32 +305,27 @@ export default function CertificadoPublico() {
                 </div>
               </div>
 
-              {/* HABILIDADES: texto de contexto (descricao da trilha) + tags
-                  limpas (so tecnologias/habilidades reais, derivadas do conteudo
-                  da trilha). No lugar do paredao de ementa. */}
-              {trilhaSkills.context || trilhaSkills.tags.length > 0 ? (
+              {/* HABILIDADES: tags limpas (so tecnologias/habilidades reais,
+                  derivadas do conteudo da trilha). Sem texto de contexto por
+                  enquanto (o roadmap.description carrega copy de navegacao da
+                  trilha, fora de lugar aqui). */}
+              {trilhaSkills.tags.length > 0 ? (
                 <div className="mt-12">
                   <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">
                     {/* TODO(Ana): titulo da secao de habilidades */}
                     Habilidades desenvolvidas
                   </p>
-                  {trilhaSkills.context ? (
-                    <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-slate-600">
-                      {trilhaSkills.context}
-                    </p>
-                  ) : null}
-                  {trilhaSkills.tags.length > 0 ? (
-                    <ul className="mt-4 flex flex-wrap gap-2.5">
-                      {trilhaSkills.tags.map((skill) => (
-                        <li
-                          key={skill}
-                          className="rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-sm font-bold text-slate-800 shadow-[2px_2px_0_#0f172a]"
-                        >
-                          {skill}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
+                  {/* TODO(Ana): texto de contexto proprio do certificado */}
+                  <ul className="mt-4 flex flex-wrap gap-2.5">
+                    {trilhaSkills.tags.map((skill) => (
+                      <li
+                        key={skill}
+                        className="rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-sm font-bold text-slate-800 shadow-[2px_2px_0_#0f172a]"
+                      >
+                        {skill}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ) : null}
 
