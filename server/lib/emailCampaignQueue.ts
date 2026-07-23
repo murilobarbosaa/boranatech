@@ -7,6 +7,7 @@ import {
   type CampaignAudience,
 } from "./email";
 import { batchJobId, recipientJobId } from "./emailCampaignJobIds";
+import { partitionSendableEmails, validateEmailForSending } from "./emailValidation";
 import { env } from "./env";
 import { queueConnection } from "./redis";
 import { withRedisOpTimeout } from "./redisOpTimeout";
@@ -603,6 +604,19 @@ export async function dispatchCampaignBatch(
       );
     }
 
+    // Barreira central: nenhuma origem (waitlist/newsletter/users/custom/
+    // contact_list) insere e-mail com sintaxe invalida ou dominio reservado
+    // (example.com etc). O admin (custom) e o import (contact_list) ja filtram
+    // na entrada; aqui cobre tambem waitlist/newsletter/users, que nao validavam.
+    const { sendable, rejected } = partitionSendableEmails(emails);
+    if (rejected.length > 0) {
+      console.warn(
+        `[email-campaign] Lote ${batch.id}: ${rejected.length} destinatario(s) descartado(s) por e-mail invalido/reservado antes do envio:`,
+        rejected.slice(0, 10).map((r) => `${r.email} (${r.reason})`),
+      );
+    }
+    emails = sendable;
+
     if (emails.length === 0) {
       // Nada novo a inserir. Este lote pode ter sido o ultimo pending
       // segurando o fechamento da campanha.
@@ -896,6 +910,24 @@ async function processRecipientJob(job: Job<EmailCampaignJobData>) {
   }
   // Idempotencia: ja resolvido (sent ou failed definitivo) e no-op.
   if (recipient.status !== "pending") {
+    return;
+  }
+
+  // Barreira final antes do Resend: dado sujo conhecido (dominio reservado ou
+  // sintaxe invalida) e marcado failed direto, SEM chamar o Resend nem queimar
+  // as tentativas/poluir o Sentry com um erro que ja se sabe ser dado sujo. O
+  // dispatch ja filtra na selecao; esta barreira pega recipient antigo ja
+  // inserido (ex.: reenfileirado pela reconciliacao no boot). recordResult
+  // marca failed e retorna: o job completa normal (sem throw = sem retry).
+  const emailCheck = validateEmailForSending(recipient.email);
+  if (!emailCheck.ok) {
+    await recordResult(
+      recipientId,
+      false,
+      emailCheck.reason === "reserved"
+        ? "Dominio reservado (nao entregavel); envio ignorado sem chamar o Resend."
+        : "E-mail com sintaxe invalida; envio ignorado sem chamar o Resend.",
+    );
     return;
   }
 
