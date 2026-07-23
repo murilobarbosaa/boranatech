@@ -6,6 +6,7 @@ import { enrichBacklog } from "../jobs/enrichBacklog";
 import { runVagasSync } from "../jobs/syncJobs";
 import { syncNews } from "../jobs/syncNews";
 import { reindexSearchDocuments } from "../lib/searchIndex";
+import { reconcileSentryBugs } from "../lib/sentryBugReconcile";
 import { recordCronRun } from "../lib/cron-logs";
 import { reconcileEmailCampaignBatches } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
@@ -1308,6 +1309,38 @@ router.post(
     },
   ),
 );
+
+// Reconciliacao do bug tracker com o Sentry: backfill de numeric id, retry das
+// sincronizacoes de status pendentes e, para cards em done, reabertura quando o
+// erro voltou a acontecer (lastSeen > resolved_at). Idempotente e nao destrutivo.
+// TTL 600s: backfill/retry limitados a 25 cards por run (1 chamada Sentry cada,
+// teto 10s) + uma busca em lote; pior caso na casa dos minutos.
+router.post("/reconcile-sentry-bugs", withCronLock("reconcile-sentry-bugs", 600, async (_req, res, next) => {
+  const startedAt = new Date();
+
+  try {
+    const summary = await reconcileSentryBugs();
+    const degraded =
+      summary.backfillFailed > 0 ||
+      summary.syncRetryFailed > 0 ||
+      summary.reconcileSkipped !== null;
+    await recordCronRun({
+      jobName: "reconcile-sentry-bugs",
+      status: degraded ? "partial" : "success",
+      startedAt,
+      payload: { ...summary },
+    });
+    res.json({ data: summary });
+  } catch (err) {
+    await recordCronRun({
+      jobName: "reconcile-sentry-bugs",
+      status: "error",
+      startedAt,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    next(err);
+  }
+}));
 
 router.get("/status", async (_req, res, next) => {
   try {

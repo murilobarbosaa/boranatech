@@ -831,3 +831,27 @@ export async function sendBugResolvedEmail(params: {
     html: layout(theme, "Bug resolvido", body),
   });
 }
+
+export async function sendBugReopenedEmail(params: {
+  title: string;
+  eventAt: string;
+}) {
+  if (!env.bugNotifyDoneEmail) {
+    console.warn("[email] BUG_NOTIFY_DONE_EMAIL ausente. E-mail não enviado.");
+    return;
+  }
+  const theme = NEUTRAL_THEME;
+  const safeTitle = escapeHtml(params.title);
+  const eventDate = new Date(params.eventAt).toLocaleString("pt-BR");
+  const body = `
+    ${paragraph(`O bug <strong>${safeTitle}</strong> voltou a acontecer no Sentry e foi reaberto automaticamente.`)}
+    ${list(theme, [`Evento novo em: <strong>${escapeHtml(eventDate)}</strong>`])}
+    ${button("Abrir a aba de bugs", `${APP_URL}/admin?section=bugs`, theme)}
+  `;
+  await sendEmail({
+    to: env.bugNotifyDoneEmail,
+    from: FROM_TRANSACTIONAL,
+    subject: `🔁 Bug reaberto: ${params.title}`,
+    html: layout(theme, "Bug reaberto", body),
+  });
+}
