@@ -53,7 +53,7 @@ export default function RoadmapFeaturedCourse({
                 {autorLabel}
               </span>
             </div>
-            <p className="mt-2 text-pretty text-xs font-medium leading-snug text-slate-300 text-center sm:indent-8 sm:text-sm sm:text-justify">
+            <p className="mt-2 text-pretty text-xs font-medium leading-snug text-slate-300 text-center sm:text-sm sm:text-justify">
               {curso.descricao}
             </p>
 
