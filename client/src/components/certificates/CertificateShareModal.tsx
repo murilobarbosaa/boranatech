@@ -75,7 +75,11 @@ export default function CertificateShareModal({
   const [copied, setCopied] = useState<CopyKey>(null);
   const t = certI18n(lang).sh;
 
-  const link = verificationUrl(code);
+  // O link compartilhado LEVA o idioma atual: quem abrir ve a pagina em EN.
+  // PT copia limpo (sem param); EN anexa ?lang=en. Vale para copiar link, o
+  // {link} do post/X/email e o share do LinkedIn.
+  const link =
+    lang === "en" ? `${verificationUrl(code)}?lang=en` : verificationUrl(code);
   const fullText = certPostText(lang, roadmapTitle, hours, skills, link);
   const tweet = certTweetText(lang, roadmapTitle, hours, link);
   const addUrl = addToProfileUrl(roadmapTitle, code, link, issuedAt);

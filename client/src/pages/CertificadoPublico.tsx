@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
 import {
   ArrowLeft,
@@ -96,6 +96,28 @@ const LANGS = [
   { code: "en" as const, label: "English", Flag: FlagUS },
 ];
 
+// Le o idioma do ?lang da URL (padrao do projeto: URLSearchParams sobre
+// window.location.search). Ausente ou qualquer valor != "en" -> pt.
+function readLangFromUrl(): CertLang {
+  if (typeof window === "undefined") return "pt";
+  return new URLSearchParams(window.location.search).get("lang") === "en"
+    ? "en"
+    : "pt";
+}
+
+// Escreve o idioma na URL sem recarregar (replaceState). EN -> ?lang=en; PT ->
+// limpa o param. Preserva outros params/hash.
+function writeLangToUrl(lang: CertLang): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (lang === "en") url.searchParams.set("lang", "en");
+  else url.searchParams.delete("lang");
+  window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+}
+
+// Seletor de bandeiras (DONO-SO) + balao de quadrinho ancorado absoluto (nao
+// empurra a altura). No mobile o balao some (hidden sm:block) pra nao sobrepor
+// o titulo.
 function LangSelector({
   lang,
   onChange,
@@ -104,24 +126,33 @@ function LangSelector({
   onChange: (lang: CertLang) => void;
 }) {
   return (
-    <div className="inline-flex shrink-0 items-center gap-1 rounded-full border-[2.5px] border-slate-950 bg-white p-1 shadow-[2px_2px_0_#0f172a]">
-      {LANGS.map(({ code, label, Flag }) => (
-        <button
-          key={code}
-          type="button"
-          onClick={() => onChange(code)}
-          aria-label={label}
-          title={label}
-          aria-pressed={lang === code}
-          className={`flex items-center justify-center rounded-full p-1.5 transition-all ${
-            lang === code
-              ? "bg-[#FFB800]"
-              : "opacity-40 grayscale hover:opacity-80"
-          }`}
-        >
-          <Flag />
-        </button>
-      ))}
+    <div className="relative shrink-0">
+      <div className="absolute bottom-full right-0 mb-2 hidden sm:block">
+        <div className="relative w-max max-w-[230px] rounded-[10px] border-[2.5px] border-slate-950 bg-white px-3 py-1.5 text-xs font-black leading-snug text-slate-800 shadow-[2px_2px_0_#0f172a]">
+          {/* TODO(Ana): copy do balao */}
+          Qual linguagem você quer o seu certificado?
+          <span className="absolute -bottom-[7px] right-6 h-3 w-3 rotate-45 border-b-[2.5px] border-r-[2.5px] border-slate-950 bg-white" />
+        </div>
+      </div>
+      <div className="inline-flex items-center gap-1 rounded-full border-[2.5px] border-slate-950 bg-white p-1 shadow-[2px_2px_0_#0f172a]">
+        {LANGS.map(({ code, label, Flag }) => (
+          <button
+            key={code}
+            type="button"
+            onClick={() => onChange(code)}
+            aria-label={label}
+            title={label}
+            aria-pressed={lang === code}
+            className={`flex items-center justify-center rounded-full p-1.5 transition-all ${
+              lang === code
+                ? "bg-[#FFB800]"
+                : "opacity-40 grayscale hover:opacity-80"
+            }`}
+          >
+            <Flag />
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -138,8 +169,17 @@ export default function CertificadoPublico() {
   const [isOwner, setIsOwner] = useState<boolean | null>(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
-  // Idioma da APRESENTACAO. So estado local, sem persistir; o snapshot fica PT.
-  const [lang, setLang] = useState<CertLang>("pt");
+  // Idioma da APRESENTACAO, INICIALIZADO PELA URL (?lang=en). So estado local +
+  // querystring, sem persistir em banco; o snapshot fica PT. Quem abre um link
+  // com ?lang=en ve a pagina em EN direto, sem interacao.
+  const [lang, setLang] = useState<CertLang>(readLangFromUrl);
+
+  // Troca de idioma (so o dono usa): atualiza o estado E a URL (replaceState),
+  // pra o link da barra de endereco / copiar ja levar o idioma.
+  const changeLang = useCallback((next: CertLang) => {
+    setLang(next);
+    writeLangToUrl(next);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -282,8 +322,12 @@ export default function CertificadoPublico() {
                     {trilhaTitle}
                   </h1>
                 </div>
-                {/* Seletor de idioma (bandeiras). So estado local, sem persistir. */}
-                <LangSelector lang={lang} onChange={setLang} />
+                {/* Seletor de idioma (bandeiras) + balao: SO PARA O DONO. O
+                    visitante nao escolhe (a lingua vem da URL); sem seletor, o
+                    titulo ocupa a linha inteira, sem buraco nem flicker. */}
+                {isOwner === true ? (
+                  <LangSelector lang={lang} onChange={changeLang} />
+                ) : null}
               </div>
 
               {/* Certificado (heroi) a DIREITA no desktop, painel a esquerda
