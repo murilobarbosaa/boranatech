@@ -10,10 +10,11 @@
 
 BEGIN;
 
--- 4 linhas de teste na waitlist (latency-test-*@example.com, 2026-07-07). lower()
--- por robustez de caixa; a janela de data pina exatamente esses probes.
+-- 4 linhas de teste na waitlist (*latency-test*@example.com, 2026-07-07): cobre
+-- tanto latency-test-local-* quanto o prefixo waitlist-latency-test. lower() por
+-- robustez de caixa; a janela de data pina exatamente esses probes.
 DELETE FROM public.waitlist
-WHERE lower(email) LIKE 'latency-test-%@example.com'
+WHERE lower(email) LIKE '%latency-test%@example.com'
   AND created_at >= '2026-07-07' AND created_at < '2026-07-08';
 
 -- 2 linhas do probe redteam em email_campaign_recipients (zero progresso).
