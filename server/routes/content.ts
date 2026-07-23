@@ -459,13 +459,17 @@ router.post("/roadmaps/:slug/progress", requireAuth, async (req, res, next) => {
   try {
     const { step_id, status, notes } = req.body as Record<string, unknown>;
 
-    if (!step_id)
+    if (typeof step_id !== "string" || step_id.trim() === "")
       return next(
         createError(400, "invalid_request", "step_id é obrigatório."),
       );
     if (status && !["completed", "skipped"].includes(String(status))) {
       return next(createError(400, "invalid_request", "status inválido."));
     }
+    if (notes !== undefined && notes !== null && typeof notes !== "string")
+      return next(
+        createError(400, "invalid_request", "notes deve ser uma string."),
+      );
 
     const { data: roadmap } = await supabaseAdmin
       .from("roadmaps")
@@ -500,8 +504,28 @@ router.post("/roadmaps/:slug/progress", requireAuth, async (req, res, next) => {
       .select()
       .single();
 
-    if (error)
-      return next(createError(500, "db_error", "Erro ao salvar progresso."));
+    if (error) {
+      // Preserva o erro cru do Supabase (cause -> LinkedErrors do Sentry) e
+      // anexa contexto: sem isso o Sentry so via a mensagem generica. Mensagem
+      // distinta da rota de projetos (progress.ts) pra separar as origens no
+      // Sentry, que agrupa pelo texto do erro, nao pelo code da resposta.
+      console.error(
+        `[content] upsert falhou roadmap=${roadmap.id} step_id=${step_id} user=${req.user!.id}`,
+        error,
+      );
+      return next(
+        createError(500, "db_error", "Erro ao salvar progresso do roadmap.", {
+          cause: error,
+          context: {
+            slug: req.params.slug,
+            roadmapId: roadmap.id,
+            stepId: step_id,
+            status: status ?? null,
+            userId: req.user!.id,
+          },
+        }),
+      );
+    }
 
     res.json({ data });
   } catch (err) {
