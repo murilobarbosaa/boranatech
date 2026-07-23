@@ -6,6 +6,31 @@ import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 
+// Preserva o erro cru do Supabase (cause -> LinkedErrors do Sentry) e anexa
+// contexto minimo (sem PII alem do userId): sem isso o Sentry so via a mensagem
+// generica. Mesma mecanica do handler de progresso (server/routes/progress.ts).
+function dbError(
+  op: string,
+  userId: string,
+  message: string,
+  error: unknown,
+  slug?: string,
+) {
+  console.error(
+    `[roadmap-completions] ${op} falhou${slug ? ` slug=${slug}` : ""} user=${userId}`,
+    error,
+  );
+  return createError(500, "db_error", message, {
+    cause: error,
+    context: {
+      op,
+      userId,
+      ...(slug !== undefined ? { slug } : {}),
+      pgCode: (error as { code?: string } | null | undefined)?.code,
+    },
+  });
+}
+
 const router = Router();
 
 router.use(requireAuth);
@@ -47,7 +72,15 @@ router.post("/:slug", async (req, res, next) => {
       .like("item_key", `${slug}:%`);
 
     if (error) {
-      return next(createError(500, "db_error", "Erro ao verificar progresso."));
+      return next(
+        dbError(
+          "check_progress",
+          req.user!.id,
+          "Erro ao verificar progresso.",
+          error,
+          slug,
+        ),
+      );
     }
 
     const doneKeys = new Set((data ?? []).map((row) => row.item_key));
@@ -73,7 +106,15 @@ router.post("/:slug", async (req, res, next) => {
       .maybeSingle();
 
     if (selectError) {
-      return next(createError(500, "db_error", "Erro ao ler conclusão."));
+      return next(
+        dbError(
+          "read_completion",
+          req.user!.id,
+          "Erro ao ler conclusão.",
+          selectError,
+          slug,
+        ),
+      );
     }
 
     let row = existing;
@@ -101,13 +142,25 @@ router.post("/:slug", async (req, res, next) => {
             .single();
           if (racedError || !raced) {
             return next(
-              createError(500, "db_error", "Erro ao registrar conclusão."),
+              dbError(
+                "register_race_reread",
+                req.user!.id,
+                "Erro ao registrar conclusão.",
+                racedError,
+                slug,
+              ),
             );
           }
           row = raced;
         } else {
           return next(
-            createError(500, "db_error", "Erro ao registrar conclusão."),
+            dbError(
+              "insert_completion",
+              req.user!.id,
+              "Erro ao registrar conclusão.",
+              insertError,
+              slug,
+            ),
           );
         }
       } else {
@@ -124,14 +177,34 @@ router.post("/:slug", async (req, res, next) => {
 
       if (updateError || !updated) {
         return next(
-          createError(500, "db_error", "Erro ao atualizar conclusão."),
+          dbError(
+            "update_completion",
+            req.user!.id,
+            "Erro ao atualizar conclusão.",
+            updateError,
+            slug,
+          ),
         );
       }
       row = updated;
     }
 
     if (!row) {
-      return next(createError(500, "db_error", "Erro ao ler conclusão."));
+      // Guarda de invariante, nao erro do Supabase: nenhum branch acima populou
+      // row apesar de nenhuma query ter falhado. Sem `cause` (nao ha erro cru),
+      // so log + contexto para o Sentry.
+      console.error(
+        `[roadmap-completions] read_completion_missing_row slug=${slug} user=${req.user!.id}`,
+      );
+      return next(
+        createError(500, "db_error", "Erro ao ler conclusão.", {
+          context: {
+            op: "read_completion_missing_row",
+            userId: req.user!.id,
+            slug,
+          },
+        }),
+      );
     }
 
     res.json({
@@ -154,7 +227,9 @@ router.get("/", async (req, res, next) => {
       .order("completed_at", { ascending: false });
 
     if (error) {
-      return next(createError(500, "db_error", "Erro ao buscar conclusões."));
+      return next(
+        dbError("list", req.user!.id, "Erro ao buscar conclusões.", error),
+      );
     }
 
     res.json({
