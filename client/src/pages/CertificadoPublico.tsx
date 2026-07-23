@@ -125,12 +125,19 @@ function LangSelector({
   lang: CertLang;
   onChange: (lang: CertLang) => void;
 }) {
+  // O balao some ao usar o seletor (qualquer bandeira): ja cumpriu o papel de
+  // avisar que da pra trocar. Estado local, sem persistir (reload pode voltar).
+  const [dismissed, setDismissed] = useState(false);
   return (
     <div className="relative shrink-0">
-      <div className="absolute bottom-full right-0 mb-2 hidden sm:block">
+      <div
+        className={`absolute bottom-full right-0 mb-3.5 hidden transition-opacity duration-200 sm:block ${
+          dismissed ? "pointer-events-none opacity-0" : "opacity-100"
+        }`}
+      >
         <div className="relative w-max max-w-[230px] rounded-[10px] border-[2.5px] border-slate-950 bg-white px-3 py-1.5 text-xs font-black leading-snug text-slate-800 shadow-[2px_2px_0_#0f172a]">
           {/* TODO(Ana): copy do balao */}
-          Qual linguagem você quer o seu certificado?
+          Em qual língua você quer o seu certificado?
           <span className="absolute -bottom-[7px] right-6 h-3 w-3 rotate-45 border-b-[2.5px] border-r-[2.5px] border-slate-950 bg-white" />
         </div>
       </div>
@@ -139,7 +146,10 @@ function LangSelector({
           <button
             key={code}
             type="button"
-            onClick={() => onChange(code)}
+            onClick={() => {
+              onChange(code);
+              setDismissed(true);
+            }}
             aria-label={label}
             title={label}
             aria-pressed={lang === code}
