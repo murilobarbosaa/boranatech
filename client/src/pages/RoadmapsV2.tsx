@@ -7,16 +7,11 @@ import FavoriteButton from "@/components/FavoriteButton";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import RoadmapTrail from "@/components/roadmapV2/RoadmapTrail";
 import TrailDrawer from "@/components/roadmapV2/TrailDrawer";
-import RoadmapCompletionCard, {
-  type RoadmapQuizApproval,
-} from "@/components/roadmapV2/RoadmapCompletionCard";
+import RoadmapCompletionCard from "@/components/roadmapV2/RoadmapCompletionCard";
 import RoadmapCompletionModal from "@/components/roadmapV2/RoadmapCompletionModal";
 import RoadmapFeaturedCourse from "@/components/roadmapV2/RoadmapFeaturedCourse";
 import { cursosParceiros } from "@/lib/parceiros";
-import { useAuth } from "@/contexts/AuthContext";
 import { roadmapLoaders } from "@/lib/roadmapV2/loaders";
-import { roadmapsMeta } from "@/lib/roadmapV2/meta";
-import { getHistory } from "@/services/roadmapQuizService";
 import { nodeProgress } from "@/lib/roadmapV2/progress";
 import { useRoadmapCompletion } from "@/hooks/useRoadmapCompletion";
 import { useRoadmapProgress } from "@/hooks/useRoadmapProgress";
@@ -116,38 +111,6 @@ export default function RoadmapsV2() {
 
   const { completion, allComplete, showModal, dismissModal, ctas } =
     useRoadmapCompletion({ roadmap, done, ready });
-
-  const { user } = useAuth();
-  const hasQuiz = useMemo(
-    () => roadmapsMeta.find((meta) => meta.slug === slug)?.hasQuiz ?? false,
-    [slug],
-  );
-  const [quizApproval, setQuizApproval] = useState<RoadmapQuizApproval | null>(
-    null,
-  );
-
-  // Uma chamada de historico por mount, SO em trilha com prova, pra saber se
-  // o usuario ja foi aprovado (selo no card + CTA de rever a prova). Falha e
-  // silenciosa: sem selo, a entrada da prova continua funcionando.
-  useEffect(() => {
-    setQuizApproval(null);
-    if (!hasQuiz || !user) return;
-    let cancelled = false;
-    getHistory(slug)
-      .then((history) => {
-        if (cancelled) return;
-        const approved = history.attempts.find(
-          (attempt) => attempt.status === "aprovada",
-        );
-        if (approved) setQuizApproval({ score: approved.score });
-      })
-      .catch((err) => {
-        console.error("[roadmapsV2] historico da prova falhou:", err);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [slug, hasQuiz, user]);
 
   const overall = useMemo(() => {
     return sections.reduce(
@@ -300,7 +263,6 @@ export default function RoadmapsV2() {
                   completion={completion}
                   allComplete={allComplete}
                   ctas={ctas}
-                  quizApproval={quizApproval}
                 />
               )}
 

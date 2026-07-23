@@ -9,20 +9,11 @@ import type { RoadmapV2 } from "@/lib/roadmapV2/types";
 // certificado (CertificateBlock), que busca o GET /api/certificates/eligibility
 // por conta propria. Este componente so decide SE o bloco aparece (concluiu a
 // trilha), emite o aviso de conteudo novo e passa a data e as CTAs secundarias.
-//
-// quizApproval continua no contrato porque RoadmapsV2.tsx (fora do escopo desta
-// fase) ainda o passa; a fonte de verdade do estado de prova agora e a
-// elegibilidade, entao o campo nao e mais consumido aqui.
-export type RoadmapQuizApproval = {
-  score: number | null;
-};
-
 type RoadmapCompletionCardProps = {
   roadmap: RoadmapV2;
   completion: RoadmapCompletion | null;
   allComplete: boolean;
   ctas: CompletionCta[];
-  quizApproval?: RoadmapQuizApproval | null;
 };
 
 function formatDate(iso: string): string {

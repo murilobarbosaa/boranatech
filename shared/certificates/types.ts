@@ -58,6 +58,10 @@ export interface PublicCertificate {
   revokedReason?: string;
 }
 
+// Status por trilha para o selo da vitrine (/roadmaps). "certificada" >
+// "concluida" > "em_progresso". Fonte unica: server e client leem daqui.
+export type CertificateStatus = "em_progresso" | "concluida" | "certificada";
+
 // Valida CPF pelos dois digitos verificadores. Opera so sobre digitos
 // (qualquer mascara e ignorada). Rejeita comprimento != 11 e as sequencias de
 // digito repetido (00000000000 ... 99999999999), que passam na conta mas nao

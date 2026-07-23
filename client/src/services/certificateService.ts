@@ -1,9 +1,14 @@
 import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import type {
+  CertificateStatus,
   Eligibility,
   PublicCertificate,
 } from "@shared/certificates/types";
+
+// Reexporta a fonte unica (shared) para os consumidores atuais do client
+// (RoadmapsV2Index importa daqui) sem duplicar a definicao.
+export type { CertificateStatus };
 
 // Service dos certificados (C1, fase 2B). Mesmo padrao dos demais services:
 // apiUrl + Bearer da sessao Supabase, resposta em { data }. O gabarito de
@@ -24,8 +29,6 @@ export interface CertificateListItem {
   hours: number;
   issuedAt: string;
 }
-
-export type CertificateStatus = "em_progresso" | "concluida" | "certificada";
 
 export interface RoadmapCertificateStatus {
   roadmapSlug: string;

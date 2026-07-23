@@ -10,6 +10,7 @@ import {
 import { computeHours } from "../../shared/certificates/hours";
 import {
   isValidCpf,
+  type CertificateStatus,
   type Eligibility,
   type EligibilityHours,
   type MissingProfileField,
@@ -367,8 +368,6 @@ export async function getCertificateRecordForOwner(code: string): Promise<
 // Regra central: "concluida" exige QUIZ APROVADO, nunca roadmap_completions
 // sozinho (autodeclarado e falsificavel). Por isso a query e em
 // roadmap_quiz_attempts, nao em roadmap_completions.
-export type CertificateStatus = "em_progresso" | "concluida" | "certificada";
-
 export async function getCertificateStatuses(
   userId: string,
 ): Promise<Array<{ roadmapSlug: string; status: CertificateStatus }>> {
