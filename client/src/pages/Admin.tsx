@@ -1819,6 +1819,8 @@ type EmailCampaign = {
   total_recipients: number | null;
   sent_count: number;
   failed_count: number;
+  bounced_count: number;
+  complained_count: number;
   created_at: string;
   started_at: string | null;
   completed_at: string | null;
@@ -1933,11 +1935,21 @@ const EMAIL_RECIPIENTS_PAGE_SIZE = 20;
 
 type EmailRecipientStatus = "sent" | "failed" | "pending";
 
+// Entrega assincrona (webhook do Resend), independente do status de hand-off.
+// null = sem evento de entrega ainda.
+type EmailDeliveryStatus =
+  | "delivered"
+  | "bounced"
+  | "complained"
+  | "delayed"
+  | null;
+
 type EmailCampaignRecipientRow = {
   email: string;
   status: EmailRecipientStatus;
   sent_at: string | null;
   error: string | null;
+  delivery_status: EmailDeliveryStatus;
 };
 
 // TODO(Ana): rótulos de status dos destinatários.
@@ -1958,6 +1970,44 @@ const EMAIL_RECIPIENT_STATUS_META: Record<
     className: "border-amber-500 bg-amber-100 text-amber-800",
   },
 };
+
+// Badge de entrega por destinatario (delivery_status do webhook). null nao
+// renderiza badge (mostra "-" na celula).
+const EMAIL_DELIVERY_STATUS_META: Record<
+  "delivered" | "bounced" | "complained" | "delayed",
+  { label: string; className: string }
+> = {
+  delivered: {
+    label: "Entregue",
+    className: "border-emerald-500 bg-emerald-100 text-emerald-800",
+  },
+  bounced: {
+    label: "Bounce",
+    className: "border-rose-500 bg-rose-100 text-rose-800",
+  },
+  complained: {
+    label: "Reclamação",
+    className: "border-orange-500 bg-orange-100 text-orange-800",
+  },
+  delayed: {
+    label: "Atrasado",
+    className: "border-amber-500 bg-amber-100 text-amber-800",
+  },
+};
+
+// Go-live do webhook de bounces em producao. Campanhas criadas ANTES disto nao
+// tiveram ingestao automatica de bounce/complaint, entao o "Entregues" delas
+// reflete os aceitos (pode superestimar).
+// Origem do valor: go-live confirmado por curl em 2026-07-23, quando a rota
+// /api/resend/webhook passou a responder 400 invalid_signature (date do
+// response: Thu, 23 Jul 2026 05:25:53 GMT); o deploy foi imediatamente antes.
+const BOUNCE_INGESTION_SINCE = new Date("2026-07-23T05:20:00Z");
+
+// Taxa de bounce em % (bounces sobre aceitos). null quando nao ha aceitos.
+function bounceRatePercent(sentCount: number, bouncedCount: number) {
+  if (sentCount <= 0) return null;
+  return (bouncedCount / sentCount) * 100;
+}
 
 // TODO(Ana): rótulos dos filtros de destinatários.
 const EMAIL_RECIPIENT_FILTERS: Array<{
@@ -2888,6 +2938,26 @@ function EmailCampaignsAdminSection() {
   // cada render quebraria a memoizacao e re-renderizaria o preview sempre.
   const handlePreviewImageError = useCallback(() => setImageBroken(true), []);
   const pending = detail ? campaignPendingCount(detail) : null;
+  // Grupo "Entrega": derivado da campanha, sem coluna nova. Entregues e
+  // aceitos menos os que quicaram/reclamaram (>= 0 por seguranca).
+  const delivered = detail
+    ? Math.max(0, detail.sent_count - detail.bounced_count - detail.complained_count)
+    : null;
+  const detailBounceRate = detail
+    ? bounceRatePercent(detail.sent_count, detail.bounced_count)
+    : null;
+  const detailBounceTier =
+    detailBounceRate === null
+      ? "none"
+      : detailBounceRate >= 5
+        ? "high"
+        : detailBounceRate >= 2
+          ? "watch"
+          : "ok";
+  // Campanha anterior ao webhook: nao teve ingestao automatica de bounces.
+  const preBounceTracking = detail
+    ? new Date(detail.created_at) < BOUNCE_INGESTION_SINCE
+    : false;
   const progressPercent =
     detail && detail.total_recipients
       ? Math.min(
@@ -3204,30 +3274,98 @@ function EmailCampaignsAdminSection() {
           ) : null}
 
           {detail.status !== "draft" ? (
-            <div className="mt-5">
-              <div className="grid gap-4 sm:grid-cols-3">
-                {/* TODO(Ana): rótulos dos contadores de progresso. */}
-                {[
-                  { label: "Enviados", value: detail.sent_count },
-                  { label: "Falhas", value: detail.failed_count },
-                  { label: "Pendentes", value: pending },
-                ].map((card) => (
-                  <div
-                    key={card.label}
-                    className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]"
-                  >
+            <div className="mt-5 space-y-5">
+              {/* Grupo Envio: resultado do hand-off ao provedor. "Aceitos" =
+                  sent_count (o Resend aceitou), nao entrega confirmada. */}
+              <div>
+                <p className="mb-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                  Envio
+                </p>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {[
+                    { label: "Aceitos", value: detail.sent_count },
+                    { label: "Falhas", value: detail.failed_count },
+                    { label: "Pendentes", value: pending },
+                  ].map((card) => (
+                    <div
+                      key={card.label}
+                      className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]"
+                    >
+                      <p className="text-xs font-black uppercase text-slate-500">
+                        {card.label}
+                      </p>
+                      <p className="font-display text-3xl font-black text-slate-950">
+                        {card.value ?? "?"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Grupo Entrega: eventos assincronos do webhook do Resend. */}
+              <div>
+                <p className="mb-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                  Entrega
+                </p>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
                     <p className="text-xs font-black uppercase text-slate-500">
-                      {card.label}
+                      Entregues
                     </p>
                     <p className="font-display text-3xl font-black text-slate-950">
-                      {card.value ?? "?"}
+                      {delivered ?? "?"}
+                    </p>
+                    {preBounceTracking ? (
+                      <p
+                        className="mt-1 text-[11px] font-semibold leading-tight text-slate-500"
+                        title="Campanhas anteriores ao inicio da ingestao automatica de bounces nao tem esse dado. O numero reflete os aceitos pelo provedor, nao a entrega confirmada."
+                      >
+                        Anterior à ingestão de bounces: reflete os aceitos.
+                      </p>
+                    ) : null}
+                  </div>
+                  <div
+                    className={`rounded-2xl border-2 p-4 ${
+                      detailBounceTier === "high"
+                        ? "border-rose-500 bg-rose-50 shadow-[4px_4px_0_#e11d48]"
+                        : detailBounceTier === "watch"
+                          ? "border-amber-500 bg-amber-50 shadow-[4px_4px_0_#f59e0b]"
+                          : "border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]"
+                    }`}
+                  >
+                    <p className="text-xs font-black uppercase text-slate-500">
+                      Bounces
+                    </p>
+                    <p className="font-display text-3xl font-black text-slate-950">
+                      {detail.bounced_count}
+                    </p>
+                    {detailBounceRate !== null ? (
+                      <p
+                        className={`mt-1 text-[11px] font-black uppercase ${
+                          detailBounceTier === "high"
+                            ? "text-rose-700"
+                            : detailBounceTier === "watch"
+                              ? "text-amber-700"
+                              : "text-slate-500"
+                        }`}
+                      >
+                        {detailBounceRate.toFixed(1)}% de taxa
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
+                    <p className="text-xs font-black uppercase text-slate-500">
+                      Reclamações
+                    </p>
+                    <p className="font-display text-3xl font-black text-slate-950">
+                      {detail.complained_count}
                     </p>
                   </div>
-                ))}
+                </div>
               </div>
-              <div className="mt-4">
+
+              <div>
                 <div className="mb-1 flex justify-between text-xs font-black uppercase text-slate-500">
-                  {/* TODO(Ana): rótulo da barra de progresso. */}
                   <span>Progresso</span>
                   <span>
                     {detail.sent_count + detail.failed_count} de{" "}
@@ -3422,6 +3560,9 @@ function EmailCampaignsAdminSection() {
                             Status
                           </th>
                           <th className="px-4 py-3 font-black uppercase text-slate-600">
+                            Entrega
+                          </th>
+                          <th className="px-4 py-3 font-black uppercase text-slate-600">
                             Enviado em
                           </th>
                           <th className="px-4 py-3 font-black uppercase text-slate-600">
@@ -3446,6 +3587,21 @@ function EmailCampaignsAdminSection() {
                                 >
                                   {meta.label}
                                 </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                {row.delivery_status ? (
+                                  <span
+                                    className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-black ${EMAIL_DELIVERY_STATUS_META[row.delivery_status].className}`}
+                                  >
+                                    {
+                                      EMAIL_DELIVERY_STATUS_META[
+                                        row.delivery_status
+                                      ].label
+                                    }
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400">-</span>
+                                )}
                               </td>
                               <td className="px-4 py-3 text-slate-600">
                                 {row.sent_at
@@ -3534,7 +3690,7 @@ function EmailCampaignsAdminSection() {
                     Status
                   </th>
                   <th className="px-4 py-3 font-black uppercase text-slate-600">
-                    Enviados
+                    Aceitos
                   </th>
                   <th className="px-4 py-3 font-black uppercase text-slate-600">
                     Falhas
@@ -3550,6 +3706,10 @@ function EmailCampaignsAdminSection() {
               <tbody>
                 {campaigns.map((campaign) => {
                   const meta = EMAIL_CAMPAIGN_STATUS_META[campaign.status];
+                  const listBounceRate = bounceRatePercent(
+                    campaign.sent_count,
+                    campaign.bounced_count,
+                  );
                   return (
                     <tr
                       key={campaign.id}
@@ -3575,7 +3735,17 @@ function EmailCampaignsAdminSection() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-slate-600">
-                        {campaign.sent_count}
+                        <div className="flex items-center gap-2">
+                          <span>{campaign.sent_count}</span>
+                          {listBounceRate !== null && listBounceRate >= 5 ? (
+                            <span
+                              className="inline-flex rounded-full border border-rose-500 bg-rose-100 px-2 py-0.5 text-[11px] font-black text-rose-800"
+                              title="Taxa de bounce acima de 5%: risco de reputacao no Resend."
+                            >
+                              {listBounceRate.toFixed(1)}% bounce
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-slate-600">
                         {campaign.failed_count}

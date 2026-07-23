@@ -36,7 +36,7 @@ import { createError } from "../middleware/error";
 const router = Router();
 
 const CAMPAIGN_COLUMNS =
-  "id, subject, body, body_is_html, image_url, category, status, total_recipients, sent_count, failed_count, created_by, created_at, started_at, completed_at";
+  "id, subject, body, body_is_html, image_url, category, status, total_recipients, sent_count, failed_count, bounced_count, complained_count, created_by, created_at, started_at, completed_at";
 
 const BATCH_COLUMNS =
   "id, campaign_id, mode, batch_limit, exclude_other_campaigns, source, user_segment, scheduled_for, status, dispatched_at, created_at";
@@ -954,7 +954,9 @@ router.get("/:id/recipients", async (req, res, next) => {
 
     let query = supabaseAdmin
       .from("email_campaign_recipients")
-      .select("email, status, sent_at, error", { count: "exact" })
+      .select("email, status, sent_at, error, delivery_status", {
+        count: "exact",
+      })
       .eq("campaign_id", req.params.id)
       .order("position", { ascending: true })
       .range(offset, offset + limit - 1);

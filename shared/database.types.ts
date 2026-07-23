@@ -1095,30 +1095,39 @@ export type Database = {
         Row: {
           batch_id: string | null
           campaign_id: string
+          delivery_status: string | null
+          delivery_updated_at: string | null
           email: string
           error: string | null
           id: string
           position: number
+          provider_message_id: string | null
           sent_at: string | null
           status: string
         }
         Insert: {
           batch_id?: string | null
           campaign_id: string
+          delivery_status?: string | null
+          delivery_updated_at?: string | null
           email: string
           error?: string | null
           id?: string
           position: number
+          provider_message_id?: string | null
           sent_at?: string | null
           status?: string
         }
         Update: {
           batch_id?: string | null
           campaign_id?: string
+          delivery_status?: string | null
+          delivery_updated_at?: string | null
           email?: string
           error?: string | null
           id?: string
           position?: number
+          provider_message_id?: string | null
           sent_at?: string | null
           status?: string
         }
@@ -1142,7 +1151,9 @@ export type Database = {
       email_campaigns: {
         Row: {
           body: string
+          bounced_count: number
           category: string
+          complained_count: number
           completed_at: string | null
           created_at: string
           created_by: string
@@ -1157,7 +1168,9 @@ export type Database = {
         }
         Insert: {
           body: string
+          bounced_count?: number
           category: string
+          complained_count?: number
           completed_at?: string | null
           created_at?: string
           created_by: string
@@ -1172,7 +1185,9 @@ export type Database = {
         }
         Update: {
           body?: string
+          bounced_count?: number
           category?: string
+          complained_count?: number
           completed_at?: string | null
           created_at?: string
           created_by?: string
