@@ -77,6 +77,35 @@ const QUEUE_NAME = "email-campaign";
 const CAMPAIGN_ATTEMPTS = 3;
 const DB_PAGE = 1000;
 
+// Funil da selecao de destinatarios: de quantos foram varridos, quantos cairam
+// em cada filtro e quantos sobraram. Existe pra dar VISIBILIDADE (o "so ~300"
+// que assustou era a contagem correta de outra origem, nao um corte): logado no
+// dispatch e exposto no /audience-count pra a UI mostrar o breakdown. Os campos
+// de opt-in/segmento so se aplicam a origem users; nas demais ficam em zero.
+export type SelectionFunnel = {
+  scanned: number;
+  discarded_no_email: number;
+  discarded_opt_in: number;
+  discarded_segment: number;
+  discarded_suppressed: number;
+  discarded_duplicate: number;
+  discarded_sent_elsewhere: number;
+  selected: number;
+};
+
+export function emptySelectionFunnel(): SelectionFunnel {
+  return {
+    scanned: 0,
+    discarded_no_email: 0,
+    discarded_opt_in: 0,
+    discarded_segment: 0,
+    discarded_suppressed: 0,
+    discarded_duplicate: 0,
+    discarded_sent_elsewhere: 0,
+    selected: 0,
+  };
+}
+
 export const emailCampaignQueue = queueConnection
   ? new Queue<EmailCampaignJobData>(QUEUE_NAME, {
       connection: queueConnection,
@@ -313,9 +342,10 @@ async function selectNextEligibleUserEmails(
   const proSets = segment === "all" ? null : await fetchProStatusSets();
   const needOptIn = category === "promotional";
 
+  const funnel = emptySelectionFunnel();
   const seen = new Set<string>();
   const selected: string[] = [];
-  for (let from = 0; ; from += DB_PAGE) {
+  paginate: for (let from = 0; ; from += DB_PAGE) {
     const { data, error } = await supabaseAdmin
       .from("profiles")
       .select("user_id, email, marketing_opt_in")
@@ -326,22 +356,46 @@ async function selectNextEligibleUserEmails(
     }
     const rows = data ?? [];
     for (const row of rows) {
-      if (!row.email) continue;
-      const email = row.email.toLowerCase();
-      if (seen.has(email)) continue;
-      seen.add(email);
-      if (needOptIn && row.marketing_opt_in !== true) continue;
-      if (proSets && !userMatchesSegment(row.user_id, segment, proSets)) {
+      funnel.scanned += 1;
+      if (!row.email) {
+        funnel.discarded_no_email += 1;
         continue;
       }
-      if (existing.has(email)) continue;
-      if (suppressed.has(email)) continue;
-      if (sentElsewhere?.has(email)) continue;
+      const email = row.email.toLowerCase();
+      if (seen.has(email)) {
+        funnel.discarded_duplicate += 1;
+        continue;
+      }
+      seen.add(email);
+      if (needOptIn && row.marketing_opt_in !== true) {
+        funnel.discarded_opt_in += 1;
+        continue;
+      }
+      if (proSets && !userMatchesSegment(row.user_id, segment, proSets)) {
+        funnel.discarded_segment += 1;
+        continue;
+      }
+      if (existing.has(email)) {
+        funnel.discarded_duplicate += 1;
+        continue;
+      }
+      if (suppressed.has(email)) {
+        funnel.discarded_suppressed += 1;
+        continue;
+      }
+      if (sentElsewhere?.has(email)) {
+        funnel.discarded_sent_elsewhere += 1;
+        continue;
+      }
       selected.push(email);
-      if (limit !== null && selected.length >= limit) return selected;
+      // break, nao return: o log do funil abaixo precisa rodar mesmo quando o
+      // limite do lote e atingido no meio da varredura.
+      if (limit !== null && selected.length >= limit) break paginate;
     }
     if (rows.length < DB_PAGE) break;
   }
+  funnel.selected = selected.length;
+  console.log("[email-campaign] funnel selectNextEligibleUserEmails", funnel);
   return selected;
 }
 

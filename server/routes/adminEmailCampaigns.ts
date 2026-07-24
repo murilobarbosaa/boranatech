@@ -11,6 +11,7 @@ import {
   cleanupCanceledBatch,
   dispatchCampaignBatch,
   emailCampaignQueue,
+  emptySelectionFunnel,
   fetchCampaignRecipientEmailSet,
   fetchProStatusSets,
   fetchSentEmailSetFromOtherCampaigns,
@@ -18,6 +19,7 @@ import {
   scheduleBatchDispatchJob,
   userMatchesSegment,
   type EmailCampaignCategory,
+  type SelectionFunnel,
   type TableBackedSource,
   type UserSegment,
 } from "../lib/emailCampaignQueue";
@@ -332,6 +334,10 @@ router.get("/audience-count", async (req, res, next) => {
 
     const PAGE = 1000;
     let count = 0;
+    // Mesmo funil da selecao no dispatch (selectNextEligibleUserEmails): a UI
+    // mostra de quantos foram varridos, quantos cairam em cada filtro e quantos
+    // sobraram, pra o numero nunca aparecer solto e sem contexto.
+    const funnel: SelectionFunnel = emptySelectionFunnel();
     // Cobertura de nome: numero de elegiveis com nome (so origem users tem nome
     // por natureza aqui). null = origem sem nome (waitlist/newsletter), pra a UI
     // dizer "esta origem nao envia nome" em vez de mostrar zero.
@@ -355,17 +361,37 @@ router.get("/audience-count", async (req, res, next) => {
         }
         const rows = data ?? [];
         for (const row of rows) {
-          if (!row.email) continue;
-          const email = row.email.toLowerCase();
-          if (seen.has(email)) continue;
-          seen.add(email);
-          if (needOptIn && row.marketing_opt_in !== true) continue;
-          if (proSets && !userMatchesSegment(row.user_id, segment, proSets)) {
+          funnel.scanned += 1;
+          if (!row.email) {
+            funnel.discarded_no_email += 1;
             continue;
           }
-          if (existing.has(email)) continue;
-          if (suppressed.has(email)) continue;
-          if (sentElsewhere?.has(email)) continue;
+          const email = row.email.toLowerCase();
+          if (seen.has(email)) {
+            funnel.discarded_duplicate += 1;
+            continue;
+          }
+          seen.add(email);
+          if (needOptIn && row.marketing_opt_in !== true) {
+            funnel.discarded_opt_in += 1;
+            continue;
+          }
+          if (proSets && !userMatchesSegment(row.user_id, segment, proSets)) {
+            funnel.discarded_segment += 1;
+            continue;
+          }
+          if (existing.has(email)) {
+            funnel.discarded_duplicate += 1;
+            continue;
+          }
+          if (suppressed.has(email)) {
+            funnel.discarded_suppressed += 1;
+            continue;
+          }
+          if (sentElsewhere?.has(email)) {
+            funnel.discarded_sent_elsewhere += 1;
+            continue;
+          }
           count += 1;
           if (
             (row.name && row.name.trim()) ||
@@ -394,16 +420,27 @@ router.get("/audience-count", async (req, res, next) => {
         }
         const rows = data ?? [];
         for (const row of rows) {
-          if (existing.has(row.email)) continue;
-          if (suppressed.has(row.email.toLowerCase())) continue;
-          if (sentElsewhere?.has(row.email.toLowerCase())) continue;
+          funnel.scanned += 1;
+          if (existing.has(row.email)) {
+            funnel.discarded_duplicate += 1;
+            continue;
+          }
+          if (suppressed.has(row.email.toLowerCase())) {
+            funnel.discarded_suppressed += 1;
+            continue;
+          }
+          if (sentElsewhere?.has(row.email.toLowerCase())) {
+            funnel.discarded_sent_elsewhere += 1;
+            continue;
+          }
           count += 1;
         }
         if (rows.length < PAGE) break;
       }
     }
 
-    res.json({ data: { count, withName } });
+    funnel.selected = count;
+    res.json({ data: { count, withName, funnel } });
   } catch (err) {
     next(err);
   }

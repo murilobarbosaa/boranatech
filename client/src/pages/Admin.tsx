@@ -1996,6 +1996,43 @@ const EMAIL_USER_SEGMENT_META: Record<EmailUserSegment, string> = {
   ex_pro: "Ex-Pro",
 };
 
+// Funil da seleção de destinatários (espelha SelectionFunnel do server): de
+// quantos foram varridos, quantos caíram em cada filtro e quantos sobraram.
+// Serve pra o número de elegíveis nunca aparecer solto, sem contexto.
+type SelectionFunnel = {
+  scanned: number;
+  discarded_no_email: number;
+  discarded_opt_in: number;
+  discarded_segment: number;
+  discarded_suppressed: number;
+  discarded_duplicate: number;
+  discarded_sent_elsewhere: number;
+  selected: number;
+};
+
+// Rótulos dos descartes, na ordem de exibição. Só os > 0 aparecem no breakdown.
+const EMAIL_FUNNEL_DISCARD_LABELS: Array<{
+  key: keyof SelectionFunnel;
+  label: string;
+}> = [
+  { key: "discarded_no_email", label: "sem email" },
+  { key: "discarded_opt_in", label: "sem opt-in" },
+  { key: "discarded_segment", label: "fora do segmento" },
+  { key: "discarded_suppressed", label: "suprimidos" },
+  { key: "discarded_duplicate", label: "já na campanha" },
+  { key: "discarded_sent_elsewhere", label: "já enviados" },
+];
+
+// "2077 varridos · 24 suprimidos · 42 já enviados · 2011 selecionados".
+function formatSelectionFunnel(funnel: SelectionFunnel): string {
+  const parts = [`${funnel.scanned} varridos`];
+  for (const { key, label } of EMAIL_FUNNEL_DISCARD_LABELS) {
+    if (funnel[key] > 0) parts.push(`${funnel[key]} ${label}`);
+  }
+  parts.push(`${funnel.selected} selecionados`);
+  return parts.join(" · ");
+}
+
 // Mesma validação de formato do backend (lista avulsa).
 const EMAIL_INPUT_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMAIL_INPUT_MAX_LENGTH = 254;
@@ -2396,6 +2433,9 @@ function EmailCampaignsAdminSection() {
     number | null | undefined
   >(undefined);
   const [eligibleError, setEligibleError] = useState<string | null>(null);
+  const [eligibleFunnel, setEligibleFunnel] = useState<SelectionFunnel | null>(
+    null,
+  );
 
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(
     () => new Set(),
@@ -2688,6 +2728,7 @@ function EmailCampaignsAdminSection() {
       setEligibleCount(null);
       setEligibleWithName(undefined);
       setEligibleError(null);
+      setEligibleFunnel(null);
       try {
         const params = new URLSearchParams();
         params.set("campaignId", campaignId);
@@ -2697,9 +2738,14 @@ function EmailCampaignsAdminSection() {
         const json = await adminFetch(
           `/email-campaigns/audience-count?${params.toString()}`,
         );
-        const data = json.data as { count: number; withName: number | null };
+        const data = json.data as {
+          count: number;
+          withName: number | null;
+          funnel?: SelectionFunnel;
+        };
         setEligibleCount(data.count);
         setEligibleWithName(data.withName);
+        setEligibleFunnel(data.funnel ?? null);
       } catch (err) {
         // Erro de contagem é exibido como erro, nunca como zero.
         setEligibleError(
@@ -4014,6 +4060,11 @@ function EmailCampaignsAdminSection() {
                       {typeof eligibleWithName === "number"
                         ? `${eligibleWithName} com nome (recebem {nome} personalizado).`
                         : "Esta origem não tem nome: {nome} some para todos."}
+                    </p>
+                  ) : null}
+                  {eligibleFunnel !== null ? (
+                    <p className="text-xs font-medium text-slate-400">
+                      {formatSelectionFunnel(eligibleFunnel)}
                     </p>
                   ) : null}
                 </div>
