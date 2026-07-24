@@ -2006,11 +2006,14 @@ type SelectionFunnel = {
   discarded_segment: number;
   discarded_suppressed: number;
   discarded_duplicate: number;
+  discarded_already_recipient: number;
   discarded_sent_elsewhere: number;
   selected: number;
 };
 
 // Rótulos dos descartes, na ordem de exibição. Só os > 0 aparecem no breakdown.
+// duplicate = email repetido na varredura; already_recipient = já é destinatário
+// desta campanha; sent_elsewhere = já recebeu outra campanha.
 const EMAIL_FUNNEL_DISCARD_LABELS: Array<{
   key: keyof SelectionFunnel;
   label: string;
@@ -2019,7 +2022,8 @@ const EMAIL_FUNNEL_DISCARD_LABELS: Array<{
   { key: "discarded_opt_in", label: "sem opt-in" },
   { key: "discarded_segment", label: "fora do segmento" },
   { key: "discarded_suppressed", label: "suprimidos" },
-  { key: "discarded_duplicate", label: "já na campanha" },
+  { key: "discarded_duplicate", label: "duplicados" },
+  { key: "discarded_already_recipient", label: "já na campanha" },
   { key: "discarded_sent_elsewhere", label: "já enviados" },
 ];
 

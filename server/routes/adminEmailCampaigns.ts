@@ -381,7 +381,7 @@ router.get("/audience-count", async (req, res, next) => {
             continue;
           }
           if (existing.has(email)) {
-            funnel.discarded_duplicate += 1;
+            funnel.discarded_already_recipient += 1;
             continue;
           }
           if (suppressed.has(email)) {
@@ -422,7 +422,7 @@ router.get("/audience-count", async (req, res, next) => {
         for (const row of rows) {
           funnel.scanned += 1;
           if (existing.has(row.email)) {
-            funnel.discarded_duplicate += 1;
+            funnel.discarded_already_recipient += 1;
             continue;
           }
           if (suppressed.has(row.email.toLowerCase())) {

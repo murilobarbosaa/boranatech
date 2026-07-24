@@ -82,6 +82,12 @@ const DB_PAGE = 1000;
 // que assustou era a contagem correta de outra origem, nao um corte): logado no
 // dispatch e exposto no /audience-count pra a UI mostrar o breakdown. Os campos
 // de opt-in/segmento so se aplicam a origem users; nas demais ficam em zero.
+// discarded_duplicate e discarded_already_recipient sao causas distintas de
+// proposito: duplicate = mesmo email aparecendo duas vezes NA varredura;
+// already_recipient = email que ja e destinatario DESTA campanha (dedup entre
+// lotes). Separados porque o segundo e o que explica um lote render menos que o
+// anterior no mesmo segmento (700 vs 1343 em never_pro: a diferenca sao os ja
+// enviados/ja na campanha, nao o filtro).
 export type SelectionFunnel = {
   scanned: number;
   discarded_no_email: number;
@@ -89,6 +95,7 @@ export type SelectionFunnel = {
   discarded_segment: number;
   discarded_suppressed: number;
   discarded_duplicate: number;
+  discarded_already_recipient: number;
   discarded_sent_elsewhere: number;
   selected: number;
 };
@@ -101,6 +108,7 @@ export function emptySelectionFunnel(): SelectionFunnel {
     discarded_segment: 0,
     discarded_suppressed: 0,
     discarded_duplicate: 0,
+    discarded_already_recipient: 0,
     discarded_sent_elsewhere: 0,
     selected: 0,
   };
@@ -376,7 +384,7 @@ async function selectNextEligibleUserEmails(
         continue;
       }
       if (existing.has(email)) {
-        funnel.discarded_duplicate += 1;
+        funnel.discarded_already_recipient += 1;
         continue;
       }
       if (suppressed.has(email)) {
