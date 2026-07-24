@@ -76,18 +76,6 @@ const inkPrimary = `${PRIMARY_BASE} bg-slate-900 text-white`;
 const SUBTITLE = "mx-auto mt-2 max-w-md text-sm font-semibold text-slate-600";
 const STAT = "mx-auto mt-3 max-w-md text-xs font-bold text-slate-700";
 
-function formatRetryAt(retryAt: string | undefined): string {
-  if (!retryAt) return "mais tarde";
-  const date = new Date(retryAt);
-  if (Number.isNaN(date.getTime())) return "mais tarde";
-  return date.toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 // Junta numeros em portugues: "4", "4 e 5", "4, 5 e 4".
 function formatList(items: number[]): string {
   if (items.length <= 1) return items.join("");
@@ -476,11 +464,12 @@ export default function CertificateBlock({
       const notas = reprovadas
         .map((a) => a.score)
         .filter((s): s is number => s != null);
-      const inCooldown = gate ? !gate.allowed : false;
+      // Linha informativa do histórico (notas anteriores + restantes no ciclo).
+      // A mensagem especifica de cooldown NAO aparece no card: o botao da prova
+      // leva ao briefing, que mostra o contador ao vivo. `gate.remaining` ainda
+      // alimenta "restam Y de 3", entao o fetch do historico continua com uso.
       let stat: string | null = null;
-      if (gate && !gate.allowed) {
-        stat = `Você usou as ${RETAKE_LIMIT} tentativas deste ciclo. Novas tentativas a partir de ${formatRetryAt(gate.retryAt)}.`;
-      } else if (gate && reprovadas.length > 0) {
+      if (gate && reprovadas.length > 0) {
         const notasPart =
           notas.length > 0
             ? `Notas anteriores: ${formatList(notas)} de ${QUESTIONS_PER_ATTEMPT}.`
@@ -501,11 +490,11 @@ export default function CertificateBlock({
           </p>
           {stat ? <p className={STAT}>{stat}</p> : null}
           <CtaRow>
-            {inCooldown ? null : (
-              <Link href={`/roadmaps/${slug}/prova`} className={violetPrimary}>
-                Fazer a prova final
-              </Link>
-            )}
+            {/* Sempre visivel: mesmo em cooldown, /prova valida o horario no
+                server e o briefing mostra o contador. Nao depende do retakeGate. */}
+            <Link href={`/roadmaps/${slug}/prova`} className={violetPrimary}>
+              Fazer a prova final
+            </Link>
             <CompletionCtaLinks ctas={asSecondary(secondaryCtas)} />
           </CtaRow>
         </StateShell>
