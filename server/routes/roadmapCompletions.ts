@@ -100,7 +100,7 @@ router.post("/:slug", async (req, res, next) => {
     // nao reescreve o congelado, senao o card de "conteudo novo" oscilaria.
     const { data: existing, error: selectError } = await supabaseAdmin
       .from("roadmap_completions")
-      .select("completed_at, required_count")
+      .select("completed_at, required_count, celebrated_at")
       .eq("user_id", req.user!.id)
       .eq("roadmap_slug", slug)
       .maybeSingle();
@@ -127,7 +127,7 @@ router.post("/:slug", async (req, res, next) => {
           roadmap_slug: slug,
           required_count: requiredCount,
         })
-        .select("completed_at, required_count")
+        .select("completed_at, required_count, celebrated_at")
         .single();
 
       if (insertError) {
@@ -136,7 +136,7 @@ router.post("/:slug", async (req, res, next) => {
         if (insertError.code === "23505") {
           const { data: raced, error: racedError } = await supabaseAdmin
             .from("roadmap_completions")
-            .select("completed_at, required_count")
+            .select("completed_at, required_count, celebrated_at")
             .eq("user_id", req.user!.id)
             .eq("roadmap_slug", slug)
             .single();
@@ -172,7 +172,7 @@ router.post("/:slug", async (req, res, next) => {
         .update({ required_count: requiredCount })
         .eq("user_id", req.user!.id)
         .eq("roadmap_slug", slug)
-        .select("completed_at, required_count")
+        .select("completed_at, required_count, celebrated_at")
         .single();
 
       if (updateError || !updated) {
@@ -211,8 +211,47 @@ router.post("/:slug", async (req, res, next) => {
       data: {
         completedAt: row.completed_at,
         requiredCount: row.required_count,
+        celebratedAt: row.celebrated_at,
       },
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Marca a celebracao (confete do card dourado) como ja exibida. Idempotente: so
+// grava se ainda estava NULL (`.is("celebrated_at", null)`), entao chamadas
+// repetidas ou concorrentes (dois mounts/dispositivos) sao no-op. Filtro por
+// user_id: cada um so marca a propria conclusao. Fire-and-forget do lado do
+// cliente; aqui nao ha efeito colateral alem do UPDATE.
+router.post("/:slug/celebrated", async (req, res, next) => {
+  try {
+    const { slug } = req.params;
+
+    const { data, error } = await supabaseAdmin
+      .from("roadmap_completions")
+      .update({ celebrated_at: new Date().toISOString() })
+      .eq("user_id", req.user!.id)
+      .eq("roadmap_slug", slug)
+      .is("celebrated_at", null)
+      .select("celebrated_at")
+      .maybeSingle();
+
+    if (error) {
+      return next(
+        dbError(
+          "mark_celebrated",
+          req.user!.id,
+          "Erro ao marcar celebração.",
+          error,
+          slug,
+        ),
+      );
+    }
+
+    // data null = nenhuma linha atualizada (ja celebrada ou sem conclusao): e
+    // idempotencia, nao erro. O cliente ja atualizou o estado de forma otimista.
+    res.json({ data: { celebratedAt: data?.celebrated_at ?? null } });
   } catch (err) {
     next(err);
   }
@@ -222,7 +261,7 @@ router.get("/", async (req, res, next) => {
   try {
     const { data, error } = await supabaseAdmin
       .from("roadmap_completions")
-      .select("roadmap_slug, completed_at, required_count")
+      .select("roadmap_slug, completed_at, required_count, celebrated_at")
       .eq("user_id", req.user!.id)
       .order("completed_at", { ascending: false });
 
@@ -237,6 +276,7 @@ router.get("/", async (req, res, next) => {
         roadmapSlug: row.roadmap_slug,
         completedAt: row.completed_at,
         requiredCount: row.required_count,
+        celebratedAt: row.celebrated_at,
       })),
     });
   } catch (err) {
