@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
-import { Award } from "lucide-react";
+import {
+  Award,
+  BadgeCheck,
+  CheckCircle2,
+  GraduationCap,
+  IdCard,
+  TriangleAlert,
+} from "lucide-react";
 
 import { CompletionCtaLinks } from "@/components/roadmapV2/RoadmapCompletionModal";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,10 +19,16 @@ import {
   getEligibility,
   issueCertificate,
 } from "@/services/certificateService";
+import { getHistory, type QuizHistory } from "@/services/roadmapQuizService";
 import type {
   Eligibility,
   MissingProfileField,
 } from "@shared/certificates/types";
+import {
+  PASS_SCORE,
+  QUESTIONS_PER_ATTEMPT,
+  RETAKE_LIMIT,
+} from "@shared/roadmapQuiz/types";
 
 import CompleteProfileModal from "./CompleteProfileModal";
 
@@ -49,8 +62,31 @@ const MISSING_LABEL: Record<MissingProfileField, string> = {
   cpf: "CPF",
 };
 
-const primaryButtonClass =
-  "inline-flex items-center justify-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]";
+// Botao primario por accent. Base compartilhada com o traco neo-brutalista +
+// mobile-fix (w-full sm:w-auto); a cor muda por estado (violet=estudo/prova,
+// gold=certificado, emerald=passo pendente, ink=acao neutra "tentar de novo").
+// O #FFB800 fica reservado pro gesto que cria/leva ao certificado.
+const PRIMARY_BASE =
+  "inline-flex w-full items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 px-5 py-3 text-sm font-black shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto";
+const violetPrimary = `${PRIMARY_BASE} bg-violet-800 text-white`;
+const goldPrimary = `${PRIMARY_BASE} bg-[#FFB800] text-slate-950`;
+const emeraldPrimary = `${PRIMARY_BASE} bg-emerald-600 text-white`;
+const inkPrimary = `${PRIMARY_BASE} bg-slate-900 text-white`;
+
+const SUBTITLE = "mx-auto mt-2 max-w-md text-sm font-semibold text-slate-600";
+const STAT = "mx-auto mt-3 max-w-md text-xs font-bold text-slate-700";
+
+function formatRetryAt(retryAt: string | undefined): string {
+  if (!retryAt) return "mais tarde";
+  const date = new Date(retryAt);
+  if (Number.isNaN(date.getTime())) return "mais tarde";
+  return date.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 // Estado already_issued (redesign dourado): botao secundario mais leve que a
 // acao principal (outline, sombra menor). w-full no mobile, largura intrinseca
@@ -91,20 +127,73 @@ function asSecondary(ctas: CompletionCta[]): CompletionCta[] {
   return ctas.map((cta) => ({ ...cta, variant: "secondary" as const }));
 }
 
-function SuccessShell({
+// Semantica de cor dos estados verdes: violet=estudo/prova, emerald=passou
+// (falta 1 passo), neutral=informativo sem acao, danger=erro. O already_issued
+// dourado tem shell proprio (inline, com framer-motion + confete) e NAO passa
+// por aqui.
+type Accent = "violet" | "emerald" | "neutral" | "danger";
+const ACCENT: Record<Accent, { bg: string; shadow: string; seal: string }> = {
+  violet: {
+    bg: "bg-violet-50",
+    shadow: "shadow-[5px_5px_0_#5b21b6]",
+    seal: "bg-violet-700 text-white",
+  },
+  emerald: {
+    bg: "bg-emerald-50",
+    shadow: "shadow-[5px_5px_0_#10b981]",
+    seal: "bg-emerald-300 text-slate-950",
+  },
+  neutral: {
+    bg: "bg-[#faf8f4]",
+    shadow: "shadow-[5px_5px_0_#cbd5e1]",
+    seal: "bg-slate-200 text-slate-700",
+  },
+  danger: {
+    bg: "bg-white",
+    shadow: "shadow-[5px_5px_0_#ef4444]",
+    seal: "bg-red-100 text-red-600",
+  },
+};
+
+// Shell dos estados verdes: selo circular no topo (analogo ao dourado), titulo
+// e corpo centralizados. Estatico (sem entrada animada) por ser bloco de status;
+// a celebracao animada continua so no already_issued.
+function StateShell({
+  accent,
+  icon,
   title,
   children,
 }: {
-  title?: string;
+  accent: Accent;
+  icon: ReactNode;
+  title: string;
   children: ReactNode;
 }) {
+  const a = ACCENT[accent];
   return (
-    <div className="mt-6 rounded-[14px] border-[2.5px] border-slate-900 bg-emerald-50 p-5 shadow-[4px_4px_0_#10b981]">
-      {title ? (
-        <h2 className="font-display text-xl font-black text-slate-950">
-          {title}
-        </h2>
-      ) : null}
+    <div
+      className={`mt-6 rounded-[14px] border-[2.5px] border-slate-900 p-5 text-center sm:p-6 ${a.bg} ${a.shadow}`}
+    >
+      <span
+        aria-hidden
+        className={`mx-auto grid h-14 w-14 place-items-center rounded-full border-[2.5px] border-slate-900 shadow-[3px_3px_0_#0f172a] ${a.seal}`}
+      >
+        {icon}
+      </span>
+      <h2 className="mt-4 font-display text-xl font-black leading-tight text-slate-950 sm:text-2xl">
+        {title}
+      </h2>
+      {children}
+    </div>
+  );
+}
+
+// Fileira de acoes: mobile empilha em coluna (botoes w-full), sm vira linha
+// centralizada. Primario e secundarios (CompletionCtaLinks, agora Fragment)
+// ficam como irmaos aqui.
+function CtaRow({ children }: { children: ReactNode }) {
+  return (
+    <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
       {children}
     </div>
   );
@@ -137,6 +226,9 @@ export default function CertificateBlock({
   const [issuing, setIssuing] = useState(false);
   const [issueError, setIssueError] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  // Historico da prova (notas, restantes, cooldown). Suplementar: so em
+  // quiz_required. null = ainda nao carregou OU falhou (degradacao graciosa).
+  const [history, setHistory] = useState<QuizHistory | null>(null);
 
   const sealRef = useRef<HTMLDivElement>(null);
   const seededRef = useRef(initialCached != null);
@@ -149,6 +241,7 @@ export default function CertificateBlock({
   // clobber de estado novo e setState em componente morto).
   const mountedRef = useRef(true);
   const loadSeqRef = useRef(0);
+  const historySeqRef = useRef(0);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -245,6 +338,26 @@ export default function CertificateBlock({
     };
   }, [eligibility?.status, allComplete, onEnsureCompletion, user, slug, load]);
 
+  // Histórico da prova SO no estado quiz_required, buscado sob demanda. Sem
+  // cache (dado suplementar e barato), mas com os mesmos guards de race/desmonte
+  // do load (seq + mountedRef). Falha e silenciosa: history fica null e o card
+  // renderiza sem as estatisticas — o botao da prova segue funcionando.
+  useEffect(() => {
+    if (eligibility?.status !== "quiz_required") {
+      setHistory(null);
+      return;
+    }
+    const seq = (historySeqRef.current += 1);
+    getHistory(slug)
+      .then((result) => {
+        if (!mountedRef.current || seq !== historySeqRef.current) return;
+        setHistory(result);
+      })
+      .catch(() => {
+        // Degradacao graciosa: sem historico, sem estatisticas.
+      });
+  }, [eligibility?.status, slug]);
+
   const handleIssue = useCallback(async () => {
     setIssuing(true);
     setIssueError(false);
@@ -276,7 +389,7 @@ export default function CertificateBlock({
   // Skeleton NEUTRO (creme/cinza), deliberadamente sem verde nem dourado: no
   // loading ainda nao sabemos o estado final, entao qualquer cor de estado
   // pisca ao trocar. Espelha o layout do card dourado (selo + titulo + botoes)
-  // pra minimizar layout shift. Nao usa o SuccessShell compartilhado.
+  // pra minimizar layout shift. Nao usa o StateShell compartilhado.
   if (loading || !eligibility) {
     return (
       <div className="mt-6 rounded-[14px] border-[2.5px] border-slate-900 bg-[#faf8f4] p-6 text-center shadow-[5px_5px_0_#cbd5e1] sm:p-7">
@@ -291,124 +404,155 @@ export default function CertificateBlock({
     );
   }
 
-  const dateLine = completedDate
-    ? `Conclusão registrada em ${completedDate}.`
-    : "Todos os passos obrigatórios estão concluídos.";
-
   switch (eligibility.status) {
-    // Trilha nao certificavel (nao existe / gerada por IA): caso legitimo de
-    // "nada a fazer" alem das CTAs de continuidade.
+    // Nada a fazer alem de continuar: trilha nao certificavel.
     case "not_certifiable":
       return (
-        <SuccessShell title={completedTitle}>
-          <p className="mt-1 text-sm font-semibold text-slate-600">{dateLine}</p>
-          <div className="mt-4 [&>div]:justify-center">
+        <StateShell
+          accent="neutral"
+          icon={<CheckCircle2 className="h-7 w-7" aria-hidden />}
+          title="Trilha concluída!"
+        >
+          <p className={SUBTITLE}>Você concluiu todos os passos desta trilha.</p>
+          <CtaRow>
             <CompletionCtaLinks ctas={secondaryCtas} />
-          </div>
-        </SuccessShell>
+          </CtaRow>
+        </StateShell>
       );
 
-    // Trilha sem prova/certificado: deixa explicito pra nao ficar ambiguo (o
-    // usuario concluiu tudo, mas nao ha exame nem certificado). Sem botao de
-    // prova, so as CTAs de continuidade.
+    // Trilha sem prova/certificado: deixa explicito, sem botao de prova.
     case "no_quiz":
       return (
-        <SuccessShell title={completedTitle}>
-          <p className="mt-1 text-sm font-semibold text-slate-600">
-            {/* TODO(Ana): trilha sem prova/certificado */}
-            Você concluiu todos os passos. Esta trilha não tem prova final nem
-            certificado.
+        <StateShell
+          accent="neutral"
+          icon={<CheckCircle2 className="h-7 w-7" aria-hidden />}
+          title={completedTitle}
+        >
+          <p className={SUBTITLE}>
+            Esta trilha não tem prova final nem certificado. Continue praticando
+            pelos próximos passos.
           </p>
-          <div className="mt-4 [&>div]:justify-center">
+          <CtaRow>
             <CompletionCtaLinks ctas={secondaryCtas} />
-          </div>
-        </SuccessShell>
+          </CtaRow>
+        </StateShell>
       );
 
-    // Estado inconsistente: concluida localmente (allComplete), mas o server
-    // ainda nao registrou a conclusao. O efeito de recuperacao acima re-registra
-    // e revalida; enquanto isso NAO deixamos sem caminho: oferecemos a prova. O
-    // gate completion_required do /prova informa corretamente se a conclusao
-    // realmente faltar, o que e melhor que um card mudo.
+    // Inconsistente: concluida localmente mas o server ainda nao registrou. O
+    // efeito de recuperacao re-registra e revalida; enquanto isso oferecemos a
+    // prova (o gate completion_required do /prova informa o caso real). Accent
+    // violeta porque leva a prova; comportamento intocado.
     case "not_complete":
       return (
-        <SuccessShell title={completedTitle}>
-          <p className="mt-1 text-sm font-semibold text-slate-600">
+        <StateShell
+          accent="violet"
+          icon={<GraduationCap className="h-7 w-7" aria-hidden />}
+          title={completedTitle}
+        >
+          <p className={SUBTITLE}>
             Todos os passos obrigatórios estão concluídos.
           </p>
-          <div className="mt-4 flex flex-col gap-3">
+          <CtaRow>
             {allComplete ? (
-              <Link
-                href={`/roadmaps/${slug}/prova`}
-                className={primaryButtonClass}
-              >
-                {/* TODO(Ana): copy do botao de fazer a prova */}
+              <Link href={`/roadmaps/${slug}/prova`} className={violetPrimary}>
                 Fazer a prova final
               </Link>
             ) : null}
             <CompletionCtaLinks ctas={asSecondary(secondaryCtas)} />
-          </div>
-        </SuccessShell>
+          </CtaRow>
+        </StateShell>
       );
 
-    case "quiz_required":
+    case "quiz_required": {
+      const gate = history?.retakeGate;
+      const reprovadas =
+        history?.attempts.filter((a) => a.status === "reprovada") ?? [];
+      const notas = reprovadas
+        .map((a) => a.score)
+        .filter((s): s is number => s != null);
+      const inCooldown = gate ? !gate.allowed : false;
+      let stat: string | null = null;
+      if (gate && !gate.allowed) {
+        stat = `Você usou as ${RETAKE_LIMIT} tentativas deste ciclo. Novas tentativas a partir de ${formatRetryAt(gate.retryAt)}.`;
+      } else if (gate && reprovadas.length > 0) {
+        stat = `Você já tentou ${reprovadas.length} ${
+          reprovadas.length === 1 ? "vez" : "vezes"
+        }${
+          notas.length > 0
+            ? ` (${notas.join(", ")} de ${QUESTIONS_PER_ATTEMPT})`
+            : ""
+        }. Restam ${gate.remaining} de ${RETAKE_LIMIT} tentativas neste ciclo.`;
+      }
       return (
-        <SuccessShell title={completedTitle}>
-          <p className="mt-1 text-sm font-semibold text-slate-600">
-            {/* TODO(Ana): a prova vale certificado */}
-            Faça a prova final para conquistar seu certificado.
+        <StateShell
+          accent="violet"
+          icon={<GraduationCap className="h-7 w-7" aria-hidden />}
+          title={completedTitle}
+        >
+          <p className={SUBTITLE}>
+            Falta a prova final para conquistar seu certificado — {PASS_SCORE}{" "}
+            acertos em {QUESTIONS_PER_ATTEMPT} questões.
           </p>
-          <div className="mt-4 flex flex-col gap-3">
-            <Link href={`/roadmaps/${slug}/prova`} className={primaryButtonClass}>
-              {/* TODO(Ana): copy do botao de fazer a prova */}
-              Fazer a prova final
-            </Link>
+          {stat ? <p className={STAT}>{stat}</p> : null}
+          <CtaRow>
+            {inCooldown ? null : (
+              <Link href={`/roadmaps/${slug}/prova`} className={violetPrimary}>
+                Fazer a prova final
+              </Link>
+            )}
             <CompletionCtaLinks ctas={asSecondary(secondaryCtas)} />
-          </div>
-        </SuccessShell>
+          </CtaRow>
+        </StateShell>
       );
+    }
 
+    // Codigo morto hoje (barra unica = aprovacao = certificado). Copy minima.
     case "score_below_cert":
       return (
-        <SuccessShell title={completedTitle}>
-          <p className="mt-1 text-sm font-semibold text-slate-600">
-            {/* TODO(Ana): nota atual vs barra do certificado */}
-            Você passou com {eligibility.score}/10. O certificado exige{" "}
-            {eligibility.certScore}/10.
+        <StateShell
+          accent="violet"
+          icon={<GraduationCap className="h-7 w-7" aria-hidden />}
+          title="Quase lá!"
+        >
+          <p className={SUBTITLE}>
+            Você passou com {eligibility.score}/{QUESTIONS_PER_ATTEMPT}, mas o
+            certificado exige {eligibility.certScore}. Refaça a prova para
+            certificar.
           </p>
-          <div className="mt-4 flex flex-col gap-3">
-            <Link href={`/roadmaps/${slug}/prova`} className={primaryButtonClass}>
-              {/* TODO(Ana): copy do botao de refazer a prova */}
-              Refazer a prova para certificar
+          <CtaRow>
+            <Link href={`/roadmaps/${slug}/prova`} className={violetPrimary}>
+              Refazer a prova
             </Link>
             <CompletionCtaLinks ctas={asSecondary(secondaryCtas)} />
-          </div>
-        </SuccessShell>
+          </CtaRow>
+        </StateShell>
       );
 
-    // Aviso, nao erro: falta um passo.
+    // Passou, falta so completar o perfil pra emitir.
     case "profile_incomplete":
       return (
         <>
-          <SuccessShell title={completedTitle}>
-            <p className="mt-1 text-sm font-semibold text-slate-600">
-              {/* TODO(Ana): complete o perfil pra emitir */}
+          <StateShell
+            accent="emerald"
+            icon={<IdCard className="h-7 w-7" aria-hidden />}
+            title="Falta um passo para o certificado"
+          >
+            <p className={SUBTITLE}>
               Para emitir seu certificado de {eligibility.hours}h, complete seu
-              perfil: {eligibility.missing.map((f) => MISSING_LABEL[f]).join(" e ")}
-              .
+              perfil:{" "}
+              {eligibility.missing.map((f) => MISSING_LABEL[f]).join(" e ")}.
             </p>
-            <div className="mt-4 flex flex-col gap-3">
+            <CtaRow>
               <button
                 type="button"
                 onClick={() => setModalOpen(true)}
-                className={primaryButtonClass}
+                className={emeraldPrimary}
               >
-                {/* TODO(Ana): copy do botao completar perfil */}
                 Completar perfil
               </button>
               <CompletionCtaLinks ctas={asSecondary(secondaryCtas)} />
-            </div>
-          </SuccessShell>
+            </CtaRow>
+          </StateShell>
           <CompleteProfileModal
             open={modalOpen}
             missing={eligibility.missing}
@@ -421,39 +565,43 @@ export default function CertificateBlock({
         </>
       );
 
+    // Passou e perfil ok: emitir. Botao em #FFB800 (previa do certificado
+    // dourado) sobre shell emerald.
     case "eligible":
       return (
-        <SuccessShell title={completedTitle}>
-          <p className="mt-1 text-sm font-semibold text-slate-600">
-            {/* TODO(Ana): tudo pronto para emitir */}
-            Está tudo pronto. Emita seu certificado quando quiser.
+        <StateShell
+          accent="emerald"
+          icon={<BadgeCheck className="h-7 w-7" aria-hidden />}
+          title="Tudo pronto para o seu certificado!"
+        >
+          <p className={SUBTITLE}>
+            Você passou na prova. Emita seu certificado de {eligibility.hours}h
+            quando quiser.
           </p>
-          <div className="mt-4 flex flex-col gap-3">
+          <CtaRow>
             <button
               type="button"
               onClick={handleIssue}
               disabled={issuing}
-              className={`${primaryButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
+              className={goldPrimary}
             >
-              {/* TODO(Ana): label do botao emitir */}
               {issuing
                 ? "Emitindo..."
                 : `Emitir certificado (${eligibility.hours}h)`}
             </button>
-            {issueError ? (
-              <p className="text-xs font-bold text-red-600">
-                {/* TODO(Ana): erro ao emitir */}
-                Não deu pra emitir agora. Tente de novo.
-              </p>
-            ) : null}
             <CompletionCtaLinks ctas={asSecondary(secondaryCtas)} />
-          </div>
-        </SuccessShell>
+          </CtaRow>
+          {issueError ? (
+            <p className="mt-3 text-xs font-bold text-red-600">
+              Não deu pra emitir agora. Tente de novo.
+            </p>
+          ) : null}
+        </StateShell>
       );
 
-    // Card de conquista (shell PROPRIO, dourado): nao usa o SuccessShell
-    // compartilhado. Selo circular no topo, hierarquia de acoes e pilha de
-    // botoes achatada (primario + secundarios irmaos) pro alinhamento no mobile.
+    // Card de conquista (shell PROPRIO, dourado): nao usa o StateShell
+    // compartilhado (tem framer-motion + confete proprios). Selo circular no
+    // topo, hierarquia de acoes e pilha de botoes achatada pro mobile.
     case "already_issued": {
       const metadata = [
         completedDate ? `Concluído em ${completedDate}` : null,
@@ -551,20 +699,24 @@ export default function CertificateBlock({
     // perfil incompleto.
     case "unavailable":
       return (
-        <div className="mt-6 rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#ef4444]">
-          <p className="text-sm font-bold text-slate-900">
-            {/* TODO(Ana): erro ao verificar certificado */}
-            Não conseguimos verificar seu certificado agora.
+        <StateShell
+          accent="danger"
+          icon={<TriangleAlert className="h-7 w-7" aria-hidden />}
+          title="Não conseguimos verificar seu certificado"
+        >
+          <p className={SUBTITLE}>
+            Foi um problema temporário. Tente de novo em instantes.
           </p>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className={`${primaryButtonClass} mt-4`}
-          >
-            {/* TODO(Ana): label do botao tentar de novo */}
-            Tentar novamente
-          </button>
-        </div>
+          <CtaRow>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className={inkPrimary}
+            >
+              Tentar novamente
+            </button>
+          </CtaRow>
+        </StateShell>
       );
 
     default:

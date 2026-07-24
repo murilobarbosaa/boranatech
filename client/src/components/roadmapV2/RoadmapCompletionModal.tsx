@@ -28,13 +28,17 @@ type RoadmapCompletionModalProps = {
 
 function ctaClass(variant: CompletionCta["variant"]): string {
   return variant === "primary"
-    ? "inline-flex items-center justify-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
-    : "inline-flex items-center justify-center rounded-[11px] border-[2.5px] border-slate-900 bg-white px-4 py-2.5 text-sm font-black text-slate-900 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]";
+    ? "inline-flex w-full items-center justify-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] sm:w-auto"
+    : "inline-flex w-full items-center justify-center rounded-[11px] border-[2.5px] border-slate-900 bg-white px-4 py-2.5 text-sm font-black text-slate-900 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] sm:w-auto";
 }
 
+// Fragment (sem wrapper): quem chama fornece o container flex, pra o primario e
+// os secundarios ficarem IRMAOS numa unica pilha. No mobile os botoes empilham
+// em largura total (w-full); a partir de sm viram largura intrinseca em linha.
+// Isso corrige o desalinhamento no card e no modal de uma vez.
 export function CompletionCtaLinks({ ctas }: { ctas: CompletionCta[] }) {
   return (
-    <div className="flex flex-wrap gap-3">
+    <>
       {ctas.map((cta) =>
         cta.href.startsWith("/") ? (
           <Link key={cta.id} href={cta.href} className={ctaClass(cta.variant)}>
@@ -52,7 +56,7 @@ export function CompletionCtaLinks({ ctas }: { ctas: CompletionCta[] }) {
           </a>
         ),
       )}
-    </div>
+    </>
   );
 }
 
@@ -96,7 +100,7 @@ export default function RoadmapCompletionModal({
             do nível iniciante ao avançado. Agora escolha o próximo movimento.
           </DialogDescription>
         </DialogHeader>
-        <div className="mt-2">
+        <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <CompletionCtaLinks ctas={ctas} />
         </div>
       </DialogContent>
