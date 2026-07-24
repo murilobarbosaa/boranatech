@@ -1938,7 +1938,12 @@ type ContactListOption = {
   named_count: number;
 };
 
-type EmailUserSegment = "all" | "never_pro" | "active_pro" | "ex_pro";
+type EmailUserSegment =
+  | "all"
+  | "never_pro"
+  | "active_pro"
+  | "paying_pro"
+  | "ex_pro";
 
 type EmailCampaignBatch = {
   id: string;
@@ -1987,6 +1992,7 @@ const EMAIL_USER_SEGMENT_META: Record<EmailUserSegment, string> = {
   all: "Todos",
   never_pro: "Nunca Pro",
   active_pro: "Pro ativo",
+  paying_pro: "Pro pagante",
   ex_pro: "Ex-Pro",
 };
 
