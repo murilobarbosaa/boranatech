@@ -1,4 +1,12 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import {
@@ -19,6 +27,7 @@ import {
   FileText,
   Globe2,
   Handshake,
+  HelpCircle,
   LayoutDashboard,
   Link as LinkIcon,
   LockKeyhole,
@@ -53,6 +62,11 @@ import { NotificationsManager } from "@/components/admin/NotificationsManager";
 import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { BntSelect } from "@/components/shared/BntSelect";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { IntegrationsHealthPanel } from "@/components/admin/IntegrationsHealthPanel";
 import { PagesDashboard } from "@/components/admin/PagesDashboard";
@@ -2011,30 +2025,95 @@ type SelectionFunnel = {
   selected: number;
 };
 
-// Rótulos dos descartes, na ordem de exibição. Só os > 0 aparecem no breakdown.
-// duplicate = email repetido na varredura; already_recipient = já é destinatário
-// desta campanha; sent_elsewhere = já recebeu outra campanha.
+// Rótulos + explicação (hint) dos descartes, na ordem de exibição. Só os > 0
+// aparecem no breakdown. Rótulo e hint moram juntos (fonte única): o tooltip lê
+// daqui. duplicate = email repetido na varredura; already_recipient = já é
+// destinatário desta campanha; sent_elsewhere = já recebeu outra campanha.
 const EMAIL_FUNNEL_DISCARD_LABELS: Array<{
   key: keyof SelectionFunnel;
   label: string;
+  hint: string;
 }> = [
-  { key: "discarded_no_email", label: "sem email" },
-  { key: "discarded_opt_in", label: "sem opt-in" },
-  { key: "discarded_segment", label: "fora do segmento" },
-  { key: "discarded_suppressed", label: "suprimidos" },
-  { key: "discarded_duplicate", label: "duplicados" },
-  { key: "discarded_already_recipient", label: "já na campanha" },
-  { key: "discarded_sent_elsewhere", label: "já enviados" },
+  {
+    key: "discarded_no_email",
+    label: "sem email",
+    hint: "Registros sem endereço de e-mail cadastrado.",
+  },
+  {
+    key: "discarded_opt_in",
+    label: "sem opt-in",
+    hint: "Não autorizaram receber e-mails de marketing. Só se aplica a campanhas promocionais.",
+  },
+  {
+    key: "discarded_segment",
+    label: "fora do segmento",
+    hint: "Não se encaixam no segmento escolhido (ex: já são Pro quando o segmento é Nunca Pro).",
+  },
+  {
+    key: "discarded_suppressed",
+    label: "suprimidos",
+    hint: "E-mails bloqueados permanentemente por rejeição do servidor, marcação como spam ou descadastro.",
+  },
+  {
+    key: "discarded_duplicate",
+    label: "duplicados",
+    hint: "O mesmo e-mail apareceu mais de uma vez na varredura.",
+  },
+  {
+    key: "discarded_already_recipient",
+    label: "já na campanha",
+    hint: "Já são destinatários desta mesma campanha, incluídos por outro lote.",
+  },
+  {
+    key: "discarded_sent_elsewhere",
+    label: "já enviados",
+    hint: "Já receberam outra campanha e foram excluídos pela opção 'Pular quem já recebeu outra campanha'.",
+  },
 ];
 
-// "2077 varridos · 24 suprimidos · 42 já enviados · 2011 selecionados".
-function formatSelectionFunnel(funnel: SelectionFunnel): string {
-  const parts = [`${funnel.scanned} varridos`];
-  for (const { key, label } of EMAIL_FUNNEL_DISCARD_LABELS) {
-    if (funnel[key] > 0) parts.push(`${funnel[key]} ${label}`);
+// varridos/selecionados sao os extremos do funil (nao descartes), fora do array
+// acima; hints proprios.
+const EMAIL_FUNNEL_SCANNED_HINT =
+  "Total de registros da origem que foram analisados na seleção.";
+const EMAIL_FUNNEL_SELECTED_HINT =
+  "Destinatários que passaram por todos os filtros e receberão este lote.";
+
+// Breakdown do funil com tooltip por item (hover + foco por teclado). Gatilho
+// discreto: underline pontilhado + cursor de ajuda, sem icone por item.
+// "2077 varridos · 24 suprimidos · … · 2011 selecionados".
+function SelectionFunnelBreakdown({ funnel }: { funnel: SelectionFunnel }) {
+  const parts: Array<{ text: string; hint: string }> = [
+    { text: `${funnel.scanned} varridos`, hint: EMAIL_FUNNEL_SCANNED_HINT },
+  ];
+  for (const { key, label, hint } of EMAIL_FUNNEL_DISCARD_LABELS) {
+    if (funnel[key] > 0) parts.push({ text: `${funnel[key]} ${label}`, hint });
   }
-  parts.push(`${funnel.selected} selecionados`);
-  return parts.join(" · ");
+  parts.push({
+    text: `${funnel.selected} selecionados`,
+    hint: EMAIL_FUNNEL_SELECTED_HINT,
+  });
+  return (
+    <p className="text-xs font-medium text-slate-400">
+      {parts.map((part, index) => (
+        <Fragment key={part.text}>
+          {index > 0 ? " · " : null}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                tabIndex={0}
+                className="cursor-help rounded-sm underline decoration-dotted underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+              >
+                {part.text}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[240px] text-balance">
+              {part.hint}
+            </TooltipContent>
+          </Tooltip>
+        </Fragment>
+      ))}
+    </p>
+  );
 }
 
 // Origens "próximos da fila" (mode=next), as unicas combinaveis num mesmo
@@ -4158,7 +4237,7 @@ function EmailCampaignsAdminSection() {
 
       {batchModalOpen && detail ? (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4">
-          <div className="card-brutal max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6">
+          <div className="bnt-scrollbar card-brutal max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6">
             {/* TODO(Ana): copy do modal de novo lote. */}
             <h3 className="font-display text-2xl font-black text-slate-950">
               Novo lote de envio
@@ -4202,10 +4281,31 @@ function EmailCampaignsAdminSection() {
 
             {isQueueSource(batchSource) && batchMode === "next" ? (
               <div className="mt-4">
-                {/* TODO(Ana): rótulo do passo de origens adicionais. */}
-                <p className="text-xs font-black uppercase text-slate-500">
-                  Incluir também
-                </p>
+                <div className="flex items-center gap-1.5">
+                  {/* TODO(Ana): rótulo do passo de origens adicionais. */}
+                  <p className="text-xs font-black uppercase text-slate-500">
+                    Incluir também
+                  </p>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Como funcionam as origens combinadas"
+                        className="rounded-full text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                      >
+                        <HelpCircle className="h-3.5 w-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[280px] text-balance">
+                      {/* TODO(Ana): copy das origens combinadas. */}
+                      Cada origem vira um lote próprio, disparado na ordem
+                      Usuários → Newsletter → Waitlist. Quem está em mais de uma
+                      base recebe pelo primeiro lote (e o rodapé daquela origem).
+                      O limite "próximos N" se aplica a cada origem. Em campanha
+                      promocional, a origem Usuários só alcança quem tem opt-in.
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <div className="mt-2 flex flex-wrap gap-3">
                   {QUEUE_SOURCE_PRECEDENCE.filter(
                     (source) => source !== batchSource,
@@ -4224,14 +4324,6 @@ function EmailCampaignsAdminSection() {
                     </label>
                   ))}
                 </div>
-                <p className="mt-1 text-xs font-bold text-slate-500">
-                  {/* TODO(Ana): copy das origens combinadas. */}
-                  Cada origem vira um lote próprio, disparado na ordem Usuários →
-                  Newsletter → Waitlist. Quem está em mais de uma base recebe pelo
-                  primeiro lote (e o rodapé daquela origem). O limite "próximos N"
-                  se aplica a cada origem. Em campanha promocional, a origem
-                  Usuários só alcança quem tem opt-in.
-                </p>
               </div>
             ) : null}
 
@@ -4354,9 +4446,7 @@ function EmailCampaignsAdminSection() {
                     </p>
                   ) : null}
                   {eligibleFunnel !== null ? (
-                    <p className="text-xs font-medium text-slate-400">
-                      {formatSelectionFunnel(eligibleFunnel)}
-                    </p>
+                    <SelectionFunnelBreakdown funnel={eligibleFunnel} />
                   ) : null}
                 </div>
               )
@@ -4393,9 +4483,7 @@ function EmailCampaignsAdminSection() {
                             }`}
                           </p>
                           {info?.funnel ? (
-                            <p className="text-xs font-medium text-slate-400">
-                              {formatSelectionFunnel(info.funnel)}
-                            </p>
+                            <SelectionFunnelBreakdown funnel={info.funnel} />
                           ) : null}
                         </>
                       )}

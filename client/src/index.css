@@ -198,6 +198,28 @@
     box-shadow: 2px 2px 0 oklch(0.13 0.015 260);
   }
 
+  /* Scrollbar fina no tom slate do sistema, para paineis/modais com scroll.
+     Aplicar na classe EXPLICITAMENTE (nao global) pra nao vazar pra outros
+     elementos com scroll nao relacionados. */
+  .bnt-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.72 0.03 260) transparent;
+  }
+  .bnt-scrollbar::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+  }
+  .bnt-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .bnt-scrollbar::-webkit-scrollbar-thumb {
+    background-color: oklch(0.72 0.03 260);
+    border-radius: 9999px;
+  }
+  .bnt-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(0.58 0.03 260);
+  }
+
   details.card-brutal,
   details.card-invite {
     align-self: flex-start;
