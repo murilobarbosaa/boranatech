@@ -20,6 +20,9 @@ type RoadmapCompletionCardProps = {
   // Persistencia da celebracao: chamado pelo card apos disparar o confete pra
   // marcar celebrated_at (dispara so na primeira vez, cross-device).
   onCelebrate?: () => void;
+  // Recuperacao do beco not_complete: re-registra a conclusao quando o server
+  // ainda nao a tem apesar do allComplete local.
+  onEnsureCompletion?: () => Promise<boolean>;
 };
 
 function formatDate(iso: string): string {
@@ -35,6 +38,7 @@ export default function RoadmapCompletionCard({
   ctas,
   overall,
   onCelebrate,
+  onEnsureCompletion,
 }: RoadmapCompletionCardProps) {
   if (!completion && !allComplete) return null;
 
@@ -71,6 +75,8 @@ export default function RoadmapCompletionCard({
         overall={overall}
         celebratedAt={completion ? completion.celebratedAt : undefined}
         onCelebrate={onCelebrate}
+        allComplete={allComplete}
+        onEnsureCompletion={onEnsureCompletion}
       />
     </>
   );

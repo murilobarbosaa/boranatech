@@ -116,6 +116,7 @@ export default function RoadmapsV2() {
     dismissModal,
     ctas,
     onCelebrate,
+    ensureCompletion,
   } = useRoadmapCompletion({ roadmap, done, ready });
 
   const overall = useMemo(() => {
@@ -271,6 +272,7 @@ export default function RoadmapsV2() {
                   ctas={ctas}
                   overall={overall}
                   onCelebrate={onCelebrate}
+                  onEnsureCompletion={ensureCompletion}
                 />
               )}
 

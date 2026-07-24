@@ -37,6 +37,11 @@ type CertificateBlockProps = {
   // string = ja celebrada. onCelebrate marca celebrated_at apos disparar.
   celebratedAt?: string | null;
   onCelebrate?: () => void;
+  // Conclusao local (allComplete no RoadmapsV2): usada pra recuperar o estado
+  // inconsistente not_complete e pra liberar o caminho da prova.
+  allComplete: boolean;
+  // Re-registra a conclusao quando o server ainda nao a tem (beco not_complete).
+  onEnsureCompletion?: () => Promise<boolean>;
 };
 
 const MISSING_LABEL: Record<MissingProfileField, string> = {
@@ -112,6 +117,8 @@ export default function CertificateBlock({
   overall,
   celebratedAt,
   onCelebrate,
+  allComplete,
+  onEnsureCompletion,
 }: CertificateBlockProps) {
   const { user } = useAuth();
   const slug = roadmap.slug;
@@ -135,6 +142,8 @@ export default function CertificateBlock({
   const seededRef = useRef(initialCached != null);
   // Guard por mount pra o confete de conquista nao redisparar em re-render.
   const celebratedRef = useRef(false);
+  // Guard por mount pra a recuperacao do not_complete rodar uma vez so.
+  const recoverRef = useRef(false);
   // Guard de desmonte + contador de sequencia: descarta respostas que chegam
   // apos o desmonte ou que foram superadas por uma chamada mais nova (evita
   // clobber de estado novo e setState em componente morto).
@@ -214,6 +223,28 @@ export default function CertificateBlock({
     };
   }, [eligibility?.status, celebratedAt, reduce, onCelebrate]);
 
+  // Recuperacao do beco not_complete: a trilha esta concluida localmente
+  // (allComplete) mas o server ainda nao tem a conclusao — corrida entre o POST
+  // de registro e este GET (que pode ter cacheado o not_complete), ou registro
+  // ao vivo que falhou. Re-registra (idempotente) e, ao confirmar, invalida o
+  // not_complete cacheado e revalida -> cai em quiz_required. Uma vez por mount;
+  // se o re-registro nao resolver, o proprio card ja oferece a prova (o gate
+  // completion_required do /prova informa o caso real).
+  useEffect(() => {
+    if (eligibility?.status !== "not_complete" || !allComplete) return;
+    if (recoverRef.current || !onEnsureCompletion) return;
+    recoverRef.current = true;
+    let cancelled = false;
+    void onEnsureCompletion().then((ok) => {
+      if (cancelled || !ok || !mountedRef.current) return;
+      if (user) eligibilityCache.delete(eligibilityKey(user.id, slug));
+      void load();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [eligibility?.status, allComplete, onEnsureCompletion, user, slug, load]);
+
   const handleIssue = useCallback(async () => {
     setIssuing(true);
     setIssueError(false);
@@ -265,16 +296,57 @@ export default function CertificateBlock({
     : "Todos os passos obrigatórios estão concluídos.";
 
   switch (eligibility.status) {
-    // Sem certificado possivel: bloco de conclusao simples, sem prova nem
-    // LinkedIn. not_complete cai aqui de proposito (nao deveria acontecer).
+    // Trilha nao certificavel (nao existe / gerada por IA): caso legitimo de
+    // "nada a fazer" alem das CTAs de continuidade.
     case "not_certifiable":
-    case "no_quiz":
-    case "not_complete":
       return (
         <SuccessShell title={completedTitle}>
           <p className="mt-1 text-sm font-semibold text-slate-600">{dateLine}</p>
           <div className="mt-4 [&>div]:justify-center">
             <CompletionCtaLinks ctas={secondaryCtas} />
+          </div>
+        </SuccessShell>
+      );
+
+    // Trilha sem prova/certificado: deixa explicito pra nao ficar ambiguo (o
+    // usuario concluiu tudo, mas nao ha exame nem certificado). Sem botao de
+    // prova, so as CTAs de continuidade.
+    case "no_quiz":
+      return (
+        <SuccessShell title={completedTitle}>
+          <p className="mt-1 text-sm font-semibold text-slate-600">
+            {/* TODO(Ana): trilha sem prova/certificado */}
+            Você concluiu todos os passos. Esta trilha não tem prova final nem
+            certificado.
+          </p>
+          <div className="mt-4 [&>div]:justify-center">
+            <CompletionCtaLinks ctas={secondaryCtas} />
+          </div>
+        </SuccessShell>
+      );
+
+    // Estado inconsistente: concluida localmente (allComplete), mas o server
+    // ainda nao registrou a conclusao. O efeito de recuperacao acima re-registra
+    // e revalida; enquanto isso NAO deixamos sem caminho: oferecemos a prova. O
+    // gate completion_required do /prova informa corretamente se a conclusao
+    // realmente faltar, o que e melhor que um card mudo.
+    case "not_complete":
+      return (
+        <SuccessShell title={completedTitle}>
+          <p className="mt-1 text-sm font-semibold text-slate-600">
+            Todos os passos obrigatórios estão concluídos.
+          </p>
+          <div className="mt-4 flex flex-col gap-3">
+            {allComplete ? (
+              <Link
+                href={`/roadmaps/${slug}/prova`}
+                className={primaryButtonClass}
+              >
+                {/* TODO(Ana): copy do botao de fazer a prova */}
+                Fazer a prova final
+              </Link>
+            ) : null}
+            <CompletionCtaLinks ctas={asSecondary(secondaryCtas)} />
           </div>
         </SuccessShell>
       );

@@ -152,6 +152,20 @@ export function useRoadmapCompletion({
     [roadmap],
   );
 
+  // Recuperacao do beco not_complete: re-registra a conclusao (idempotente no
+  // server: re-le a existente ou insere) e devolve se agora existe. Chamado
+  // pelo card quando a elegibilidade cai em not_complete apesar do allComplete
+  // local (corrida POST-registro vs GET-eligibility, ou POST ao vivo que falhou).
+  const ensureCompletion = useCallback(async (): Promise<boolean> => {
+    if (!userId || !slug) return false;
+    const record = await registerCompletion(userId, slug);
+    if (record) {
+      setCompletion(record);
+      return true;
+    }
+    return false;
+  }, [userId, slug]);
+
   // Marca a celebracao como exibida (chamado pelo card apos disparar o confete).
   // Otimista: some do gatilho ja nesta sessao (setCompletion) antes do POST, e
   // o service espelha no cache em memoria. Fire-and-forget no service.
@@ -172,5 +186,6 @@ export function useRoadmapCompletion({
     dismissModal: () => setShowModal(false),
     ctas,
     onCelebrate: markCelebration,
+    ensureCompletion,
   };
 }
