@@ -426,9 +426,20 @@ router.get("/:slug/attempts", async (req, res, next) => {
     const approved = attempts.find((row) => row.status === "aprovada");
     const pool = roadmapQuizPools[slug];
 
+    // Mesmo gate do POST /:slug/attempts (barra unica de tentativas), computado
+    // aqui pra a tela explicativa mostrar restantes/cooldown SEM criar tentativa.
+    // Fonte de verdade unica: o server; o POST reavalia no confirm.
+    const failedAtMs = attempts
+      .filter((row) => row.status === "reprovada")
+      .map((row) => new Date(row.completed_at ?? row.created_at).getTime())
+      .filter((ms) => Number.isFinite(ms))
+      .sort((a, b) => a - b);
+    const retakeGate = evaluateRetakeGate(failedAtMs, Date.now());
+
     res.json({
       data: {
         attempts: attempts.map(attemptSummary),
+        retakeGate,
         ...(approved && pool
           ? {
               revisaoAprovada: buildApprovedReview(

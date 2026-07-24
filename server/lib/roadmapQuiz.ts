@@ -135,6 +135,9 @@ export interface RetakeGate {
   allowed: boolean;
   // ISO do momento em que o cooldown expira; presente so quando allowed=false.
   retryAt?: string;
+  // Tentativas restantes no ciclo atual (RETAKE_LIMIT - reprovacoes do ciclo).
+  // RETAKE_LIMIT quando nunca reprovou nesta janela; 0 em cooldown.
+  remaining: number;
 }
 
 // Regra de tentativas da barra unica, derivada SO dos timestamps de reprovacao
@@ -163,7 +166,14 @@ export function evaluateRetakeGate(
     }
   }
   if (count >= RETAKE_LIMIT && cooldownUntil !== null) {
-    return { allowed: false, retryAt: new Date(cooldownUntil).toISOString() };
+    return {
+      allowed: false,
+      retryAt: new Date(cooldownUntil).toISOString(),
+      remaining: 0,
+    };
   }
-  return { allowed: true };
+  // Quando liberado, count e sempre < RETAKE_LIMIT (o ciclo cheio ou reseta ou
+  // vira cooldown acima), entao remaining fica entre 1 e RETAKE_LIMIT; sem
+  // nenhuma reprovada, count=0 -> remaining=RETAKE_LIMIT (primeira tentativa).
+  return { allowed: true, remaining: RETAKE_LIMIT - count };
 }
