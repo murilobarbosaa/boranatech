@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import { env } from "./lib/env";
+import { isRateLimitExempt } from "./lib/rateLimitExempt";
 import { cacheConnection } from "./lib/redis";
 import { supabaseAdmin } from "./lib/supabaseAdmin";
 import { validateSupabaseJwt } from "./middleware/auth";
@@ -161,15 +162,6 @@ setInterval(
   () => sweepRateLimitStore(Date.now()),
   RATE_LIMIT_WINDOW_MS,
 ).unref();
-
-function isRateLimitExempt(pathname: string) {
-  return (
-    pathname === "/api/health" ||
-    pathname === "/api/health/live" ||
-    pathname.startsWith("/api/billing/webhook") ||
-    pathname.startsWith("/api/resend/webhook")
-  );
-}
 
 // Janela fixa compartilhada entre replicas: INCR + EXPIRE atomicos via multi na
 // cacheConnection (fail-fast). Retorna a contagem da janela, ou null se o Redis
