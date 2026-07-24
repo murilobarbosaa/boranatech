@@ -63,10 +63,10 @@ import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { BntSelect } from "@/components/shared/BntSelect";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { IntegrationsHealthPanel } from "@/components/admin/IntegrationsHealthPanel";
 import { PagesDashboard } from "@/components/admin/PagesDashboard";
@@ -2078,9 +2078,10 @@ const EMAIL_FUNNEL_SCANNED_HINT =
 const EMAIL_FUNNEL_SELECTED_HINT =
   "Destinatários que passaram por todos os filtros e receberão este lote.";
 
-// Breakdown do funil com tooltip por item (hover + foco por teclado). Gatilho
-// discreto: underline pontilhado + cursor de ajuda, sem icone por item.
-// "2077 varridos · 24 suprimidos · … · 2011 selecionados".
+// Breakdown do funil com popover por item (abre no clique/tap, funciona em
+// touch; teclado: foco + Enter/Space abre, Esc fecha). Gatilho discreto:
+// underline pontilhado + cursor de ajuda, sem icone por item (o <button> mantem
+// a aparencia inline). "2077 varridos · 24 suprimidos · … · 2011 selecionados".
 function SelectionFunnelBreakdown({ funnel }: { funnel: SelectionFunnel }) {
   const parts: Array<{ text: string; hint: string }> = [
     { text: `${funnel.scanned} varridos`, hint: EMAIL_FUNNEL_SCANNED_HINT },
@@ -2097,19 +2098,20 @@ function SelectionFunnelBreakdown({ funnel }: { funnel: SelectionFunnel }) {
       {parts.map((part, index) => (
         <Fragment key={part.text}>
           {index > 0 ? " · " : null}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span
-                tabIndex={0}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
                 className="cursor-help rounded-sm underline decoration-dotted underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
               >
                 {part.text}
-              </span>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-[240px] text-balance">
+              </button>
+            </PopoverTrigger>
+            {/* z acima do modal (z-[2000]) pra nunca ficar atras dele. */}
+            <PopoverContent className="z-[2100] w-auto max-w-[240px] p-3 text-xs font-medium text-balance">
               {part.hint}
-            </TooltipContent>
-          </Tooltip>
+            </PopoverContent>
+          </Popover>
         </Fragment>
       ))}
     </p>
@@ -4286,8 +4288,8 @@ function EmailCampaignsAdminSection() {
                   <p className="text-xs font-black uppercase text-slate-500">
                     Incluir também
                   </p>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
+                  <Popover>
+                    <PopoverTrigger asChild>
                       <button
                         type="button"
                         aria-label="Como funcionam as origens combinadas"
@@ -4295,16 +4297,17 @@ function EmailCampaignsAdminSection() {
                       >
                         <HelpCircle className="h-3.5 w-3.5" />
                       </button>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[280px] text-balance">
+                    </PopoverTrigger>
+                    {/* z acima do modal (z-[2000]) pra nunca ficar atras dele. */}
+                    <PopoverContent className="z-[2100] w-auto max-w-[280px] p-3 text-xs font-medium text-slate-600 text-balance">
                       {/* TODO(Ana): copy das origens combinadas. */}
                       Cada origem vira um lote próprio, disparado na ordem
                       Usuários → Newsletter → Waitlist. Quem está em mais de uma
                       base recebe pelo primeiro lote (e o rodapé daquela origem).
                       O limite "próximos N" se aplica a cada origem. Em campanha
                       promocional, a origem Usuários só alcança quem tem opt-in.
-                    </TooltipContent>
-                  </Tooltip>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-3">
                   {QUEUE_SOURCE_PRECEDENCE.filter(
