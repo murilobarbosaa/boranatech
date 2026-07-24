@@ -12,6 +12,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { DESKTOP_BREAKPOINT_PX } from "@/lib/breakpoints";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import type { NotificationItem } from "@/services/notificationsService";
 
@@ -87,10 +88,11 @@ export default function NotificationBell({
   // Header só troca display via 2xl:hidden/2xl:flex). O conteúdo do Sheet/Dialog
   // é portalado pro body, então esconder o container NÃO fecha um detalhe aberto:
   // ao cruzar o 2xl, a instância escondida deixaria um overlay órfão na tela.
-  // Fecha painel+detalhe quando esta instância deixa de ser a visível. 1536px =
-  // 2xl do Tailwind, em sincronia com os 2xl:hidden/2xl:flex do Header.
+  // Fecha painel+detalhe quando esta instância deixa de ser a visível.
+  // DESKTOP_BREAKPOINT_PX = 2xl do Tailwind, em sincronia com os
+  // 2xl:hidden/2xl:flex do Header (constante única compartilhada).
   useEffect(() => {
-    const mql = window.matchMedia("(min-width: 1536px)");
+    const mql = window.matchMedia(`(min-width: ${DESKTOP_BREAKPOINT_PX}px)`);
     function closeIfInactive() {
       const active = variant === "desktop" ? mql.matches : !mql.matches;
       if (!active) {
