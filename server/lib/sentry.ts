@@ -2,16 +2,59 @@ import * as Sentry from "@sentry/node";
 
 import { env } from "./env";
 
-// Rastreio de erros 5xx e de jobs (auditoria, secao 9). SO erros: tracing
-// custa e nao e o objetivo (tracesSampleRate 0).
+// Rastreio de erros 5xx e de jobs (auditoria, secao 9) + tracing de rota com
+// amostragem dinamica (tracesSampler): 0 fora de producao, 0 em health/assets,
+// 0.3 nas rotas caras (badges, admin finance/billing-metrics), 0.05 de baseline.
+// @sentry/node v10 auto-instrumenta http+express via OTel; como o init roda
+// antes do Express (ver ORDEM DE CARGA), basta amostrar aqui, sem integration.
 //
 // ORDEM DE CARGA: este modulo se auto-inicializa na avaliacao e DEVE ser o
 // primeiro import de server/index.ts. O build e um bundle ESM unico (esbuild)
 // em que a ordem de avaliacao segue a ordem dos imports; com @sentry/node em
 // --external e o init aqui, o Sentry sobe antes do Express e do resto do app.
 //
-// PII: beforeSend remove headers de credencial e NUNCA anexa body de request.
-// Erros esperados do nosso createError (statusCode < 500) sao descartados.
+// PII: beforeSend remove headers de credencial e NUNCA anexa body de request;
+// beforeSendTransaction zera a query_string das transacoes (mesmo rigor no path
+// de tracing). Erros esperados do nosso createError (statusCode < 500) sao
+// descartados.
+
+// Path da transacao a partir do samplingContext do OTel. url.path e o mais
+// limpo (sem query string); http.route e a rota parametrizada; name vem no
+// formato "GET /api/..." (por isso o match usa includes, nao startsWith).
+function transactionPath(samplingContext: {
+  name?: string;
+  attributes?: Record<string, unknown>;
+}): string {
+  const attrs = samplingContext.attributes ?? {};
+  const candidate =
+    attrs["url.path"] ??
+    attrs["http.route"] ??
+    attrs["http.target"] ??
+    samplingContext.name ??
+    "";
+  return typeof candidate === "string" ? candidate : "";
+}
+
+function tracesSampler(samplingContext: {
+  name?: string;
+  attributes?: Record<string, unknown>;
+}): number {
+  if (!env.isProd) return 0;
+
+  const path = transactionPath(samplingContext);
+
+  if (path.includes("/api/health") || path.includes("/assets")) return 0;
+
+  if (
+    path.includes("/api/badges") ||
+    path.includes("/api/admin/finance") ||
+    path.includes("/api/admin/billing-metrics")
+  ) {
+    return 0.3;
+  }
+
+  return 0.05;
+}
 
 function initSentry() {
   if (!env.sentryDsn) {
@@ -22,7 +65,7 @@ function initSentry() {
   Sentry.init({
     dsn: env.sentryDsn,
     environment: env.nodeEnv,
-    tracesSampleRate: 0,
+    tracesSampler,
     sendDefaultPii: false,
     beforeSend(event, hint) {
       const original = hint?.originalException as
@@ -49,6 +92,12 @@ function initSentry() {
         }
       }
 
+      return event;
+    },
+    beforeSendTransaction(event) {
+      if (event.request) {
+        delete event.request.query_string;
+      }
       return event;
     },
   });
