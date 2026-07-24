@@ -71,6 +71,7 @@ supabase/migrations/
 - **Classes custom globais**: `bnt-pressable` (efeito press), `animate-marquee-left`, `animate-gentle-float` (definidas em `index.css`)
 - **Nomes**: arquivos e componentes em PascalCase; páginas nomeadas em português (ex: `TecnologiaMapa`)
 - Sem CSS modules, styled-components ou comentários explicativos no JSX
+- **Lookups por valor do servidor**: todo acesso a mapa/dicionário indexado por um valor que vem do servidor (status, type, audience, category, enums em geral) passa por um resolver com fallback neutro, nunca acesso direto. Um enum novo que o bundle ainda não conhece derruba a página inteira (`STATUS_META[item.status].label` quebrou o admin em produção com `Cannot read properties of undefined (reading 'label')`). Referência de implementação: `notificationTypeMetaOf` em `client/src/lib/notificationTypeMeta.ts`.
 
 ## Convenções do Server
 
@@ -146,6 +147,12 @@ Tipografia de seção: `font-display font-black` para headings; labels de seçã
 | ------- | ----------------------------------------------------------------- |
 | Vercel  | Só frontend, catch-all rewrite `/(.*) → /index.html`              |
 | Railway | Fullstack, nixpacks, `npm run build`, start: `node dist/index.js` |
+
+### Ordem de deploy: código antes da migration
+
+- Aplicar migration (`db:push`) apenas DEPOIS ou SIMULTANEAMENTE ao deploy do código que a consome, nunca antes. Justificativa: código novo tolera schema antigo (colunas nullable, guardas de fallback); schema novo NÃO é tolerado por código antigo (migration + cron no banco sem o endpoint deployado = notificação agendada não dispara; enum novo no banco sem o frontend que o conhece = crash de admin).
+- Checklist: (1) commit + push, (2) deploy de backend e frontend, (3) `db:push`, (4) smoke test.
+- `pnpm check` deve estar VERDE antes de deployar: o Vite builda mesmo com `tsc` vermelho, então um check vermelho não impede um deploy quebrado de subir.
 
 ## Arquivos Importantes
 
