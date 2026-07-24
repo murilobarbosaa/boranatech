@@ -21,6 +21,7 @@ import {
   Smartphone,
   type LucideIcon,
 } from "lucide-react";
+import * as Sentry from "@sentry/react";
 import { featuredAreas } from "@/lib/homeData.generated";
 import { apiUrl } from "@/lib/api";
 
@@ -468,6 +469,41 @@ function writeCachedUsersCount(n: number): void {
   }
 }
 
+// Contexto estruturado de cada falha do contador, mandado pro Sentry. Todos os
+// caminhos que antes ficavam mudos (.catch vazio, !r.ok -> null, HTML da Vercel,
+// count degradado) passam por aqui, pra a gente enxergar a distribuição real por
+// dispositivo (429 de rate limit vs CORS/ad-block vs HTML por VITE_API_URL
+// ausente vs count nulo). NÃO muda nada visível: a UI segue no cache/placeholder.
+type StatsCounterContext = {
+  resolvedUrl: string;
+  hadCache: boolean;
+  status: number | null;
+  contentType: string | null;
+};
+
+function captureStatsCounterIssue(
+  message: string,
+  ctx: StatsCounterContext,
+  error?: unknown,
+): void {
+  Sentry.withScope((scope) => {
+    scope.setTag("route", "stats/users-count");
+    scope.setLevel("warning");
+    scope.setContext("stats_users_count", {
+      resolvedUrl: ctx.resolvedUrl,
+      hadCache: ctx.hadCache,
+      status: ctx.status,
+      contentType: ctx.contentType,
+      origin: typeof window !== "undefined" ? window.location.origin : null,
+    });
+    if (error !== undefined) {
+      Sentry.captureException(error);
+    } else {
+      Sentry.captureMessage(message);
+    }
+  });
+}
+
 export default function Hero() {
   const [currentHighlight, setCurrentHighlight] = useState(0);
   // null = sem número confiável (primeira visita sem cache, backend sem lkg, ou
@@ -488,17 +524,65 @@ export default function Hero() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(apiUrl("/api/stats/users-count"))
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (cancelled || !data || typeof data.count !== "number") return;
-        // 0/negativo é degradação, não estado real: não exibe nem grava no cache
-        // (evitaria envenenar o localStorage compartilhado). Mesmo guard do Checkout.
-        if (data.count <= 0) return;
+    const resolvedUrl = apiUrl("/api/stats/users-count");
+    const hadCache = readCachedUsersCount() !== null;
+
+    fetch(resolvedUrl)
+      .then(async (r) => {
+        const contentType = r.headers.get("content-type");
+
+        if (!r.ok) {
+          // Não-2xx (ex.: 429 do rate limit em IP compartilhado, 5xx): antes
+          // virava null em silêncio.
+          captureStatsCounterIssue(`[stats] users-count HTTP ${r.status}`, {
+            resolvedUrl,
+            hadCache,
+            status: r.status,
+            contentType,
+          });
+          return;
+        }
+
+        // content-type não-JSON (cenário Vercel sem VITE_API_URL: o rewrite
+        // devolve o HTML do app.html com 200): parsear lançaria e sumiria no
+        // catch. Capturamos explícito ANTES do r.json().
+        if (!contentType || !contentType.includes("application/json")) {
+          captureStatsCounterIssue("[stats] users-count non-JSON response", {
+            resolvedUrl,
+            hadCache,
+            status: r.status,
+            contentType,
+          });
+          return;
+        }
+
+        const data = await r.json();
+        if (cancelled) return;
+
+        if (!data || typeof data.count !== "number" || data.count <= 0) {
+          // Resposta degradada (count nulo/0/negativo): não é estado real, não
+          // exibe nem grava no cache (evitaria envenenar o localStorage
+          // compartilhado). Mesmo guard do Checkout, agora instrumentado.
+          captureStatsCounterIssue("[stats] users-count degraded payload", {
+            resolvedUrl,
+            hadCache,
+            status: r.status,
+            contentType,
+          });
+          return;
+        }
+
         setUsersCount(data.count);
         writeCachedUsersCount(data.count);
       })
-      .catch(() => {});
+      .catch((err) => {
+        // Rede/CORS/ad-block/JSON malformado: antes engolido pelo catch vazio.
+        captureStatsCounterIssue(
+          "[stats] users-count fetch failed",
+          { resolvedUrl, hadCache, status: null, contentType: null },
+          err,
+        );
+      });
     return () => {
       cancelled = true;
     };

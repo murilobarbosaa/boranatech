@@ -95,6 +95,34 @@ vi.mock("framer-motion", async () => {
   };
 });
 
+// =============================================================================
+// Mock do Sentry: withScope executa o callback com um scope espião, pra provar
+// que cada ramo antes mudo agora captura, sem rede.
+// =============================================================================
+const sentrySpy = vi.hoisted(() => {
+  const setTag = vi.fn();
+  const setLevel = vi.fn();
+  const setContext = vi.fn();
+  const scope = { setTag, setLevel, setContext };
+  const captureMessage = vi.fn();
+  const captureException = vi.fn();
+  const withScope = vi.fn((cb: (s: typeof scope) => void) => cb(scope));
+  return {
+    setTag,
+    setLevel,
+    setContext,
+    captureMessage,
+    captureException,
+    withScope,
+  };
+});
+
+vi.mock("@sentry/react", () => ({
+  withScope: sentrySpy.withScope,
+  captureMessage: sentrySpy.captureMessage,
+  captureException: sentrySpy.captureException,
+}));
+
 import Hero from "./Hero";
 
 const LS_KEY = "bnt_users_count";
@@ -124,6 +152,12 @@ beforeEach(() => {
   );
   fetchSpy = vi.fn();
   vi.stubGlobal("fetch", fetchSpy);
+  sentrySpy.setTag.mockClear();
+  sentrySpy.setLevel.mockClear();
+  sentrySpy.setContext.mockClear();
+  sentrySpy.captureMessage.mockClear();
+  sentrySpy.captureException.mockClear();
+  sentrySpy.withScope.mockClear();
   try {
     window.localStorage.clear();
   } catch {
@@ -340,5 +374,90 @@ describe("Hero: contador do hero (last-known-good no localStorage, sem default 4
 
     await expectsNumber("32");
     expect(window.localStorage.getItem(LS_KEY)).toBe("32");
+  });
+});
+
+function htmlResponse(): Response {
+  return new Response("<!doctype html><html></html>", {
+    status: 200,
+    headers: { "content-type": "text/html" },
+  });
+}
+
+describe("Hero: instrumentação Sentry do contador (não muda a UI, só captura o silêncio)", () => {
+  it("[429-captura-http] HTTP 429 (rate limit em IP compartilhado): captura warning com status e mantém placeholder", async () => {
+    fetchSpy.mockResolvedValue(new Response("", { status: 429 }));
+
+    renderHero();
+
+    await waitFor(() => {
+      expect(sentrySpy.captureMessage).toHaveBeenCalledWith(
+        "[stats] users-count HTTP 429",
+      );
+    });
+    expect(sentrySpy.setTag).toHaveBeenCalledWith("route", "stats/users-count");
+    expect(sentrySpy.setContext).toHaveBeenCalledWith(
+      "stats_users_count",
+      expect.objectContaining({ status: 429, hadCache: false }),
+    );
+    // UI intocada: sem número, placeholder.
+    expectsPlaceholder();
+  });
+
+  it("[html-captura-non-json] resposta HTML (Vercel sem VITE_API_URL): captura non-JSON em vez de deixar o parse lançar, mantém cache", async () => {
+    window.localStorage.setItem(LS_KEY, "32");
+    fetchSpy.mockResolvedValue(htmlResponse());
+
+    renderHero();
+
+    await waitFor(() => {
+      expect(sentrySpy.captureMessage).toHaveBeenCalledWith(
+        "[stats] users-count non-JSON response",
+      );
+    });
+    expect(sentrySpy.setContext).toHaveBeenCalledWith(
+      "stats_users_count",
+      expect.objectContaining({ contentType: "text/html", hadCache: true }),
+    );
+    // UI intocada: segue no last-known-good local.
+    await expectsNumber("32");
+  });
+
+  it("[count-null-captura-degraded] backend {count: null}: captura payload degradado, mantém placeholder", async () => {
+    fetchSpy.mockResolvedValue(jsonResponse({ count: null }));
+
+    renderHero();
+
+    await waitFor(() => {
+      expect(sentrySpy.captureMessage).toHaveBeenCalledWith(
+        "[stats] users-count degraded payload",
+      );
+    });
+    expectsPlaceholder();
+  });
+
+  it("[network-error-captura-exception] fetch rejeita (CORS/ad-block/rede): captura a exceção, mantém cache", async () => {
+    window.localStorage.setItem(LS_KEY, "32");
+    const err = new Error("network failure");
+    fetchSpy.mockRejectedValue(err);
+
+    renderHero();
+
+    await waitFor(() => {
+      expect(sentrySpy.captureException).toHaveBeenCalledWith(err);
+    });
+    expect(sentrySpy.setTag).toHaveBeenCalledWith("route", "stats/users-count");
+    await expectsNumber("32");
+  });
+
+  it("[sucesso-nao-captura] resposta saudável {count: 45}: mostra +45 e não captura nada", async () => {
+    fetchSpy.mockResolvedValue(jsonResponse({ count: 45 }));
+
+    renderHero();
+    await flushMicrotasks();
+
+    await expectsNumber("45");
+    expect(sentrySpy.captureMessage).not.toHaveBeenCalled();
+    expect(sentrySpy.captureException).not.toHaveBeenCalled();
   });
 });
