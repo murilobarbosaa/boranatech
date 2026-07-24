@@ -5,6 +5,7 @@ import { NextFunction, Request, Response, Router } from "express";
 import { enrichBacklog } from "../jobs/enrichBacklog";
 import { runVagasSync } from "../jobs/syncJobs";
 import { syncNews } from "../jobs/syncNews";
+import { writeAudienceSnapshots } from "../lib/audienceReach";
 import { reindexSearchDocuments } from "../lib/searchIndex";
 import { reconcileSentryBugs } from "../lib/sentryBugReconcile";
 import { recordCronRun } from "../lib/cron-logs";
@@ -1285,11 +1286,22 @@ router.post(
           })
           .eq("status", "scheduled")
           .lte("scheduled_for", nowIso)
-          .select("id");
+          .select("id, audience, category");
         if (error) {
           throw new Error(error.message);
         }
-        const published = data?.length ?? 0;
+        const promoted = (data ?? []) as Array<{
+          id: string;
+          audience: string;
+          category: string;
+        }>;
+        const published = promoted.length;
+        // Snapshot de alcance dos recem-promovidos (denominador exato das
+        // stats). Contexto carregado UMA vez por tick e reusado; best-effort,
+        // nao reverte a promocao ja feita se falhar.
+        if (published > 0) {
+          await writeAudienceSnapshots(promoted);
+        }
         await recordCronRun({
           jobName: "publish-scheduled-notifications",
           status: "success",

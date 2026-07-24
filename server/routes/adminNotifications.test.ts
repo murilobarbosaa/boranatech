@@ -7,6 +7,8 @@ import {
   isEmailColumnMissing,
   isScheduledDue,
   mapProfileRowsToRecipients,
+  publishWithSnapshotFallback,
+  resolveDenominator,
   validateScheduledFor,
 } from "./adminNotifications";
 
@@ -235,6 +237,116 @@ describe("insertRecipientsWithFallback", () => {
     await expect(
       insertRecipientsWithFallback("notif-1", recipients, runInsert),
     ).rejects.toThrow("duplicate key");
+  });
+});
+
+// Denominador da taxa de leitura (puro): custom -> recipients; snapshot != null
+// -> snapshot (exato); snapshot null -> estimativa (legado).
+describe("resolveDenominator", () => {
+  it("custom usa recipient_count (source recipients)", () => {
+    expect(
+      resolveDenominator({
+        audience: "custom",
+        audienceSnapshot: null,
+        recipientCount: 42,
+        estimate: 999,
+      }),
+    ).toEqual({ denominator: 42, denominator_source: "recipients" });
+  });
+
+  it("segmento com snapshot usa o valor congelado (source snapshot)", () => {
+    expect(
+      resolveDenominator({
+        audience: "active_pro",
+        audienceSnapshot: 500,
+        recipientCount: 0,
+        estimate: 700,
+      }),
+    ).toEqual({ denominator: 500, denominator_source: "snapshot" });
+  });
+
+  it("snapshot 0 ainda e exato (nao cai na estimativa)", () => {
+    expect(
+      resolveDenominator({
+        audience: "active_pro",
+        audienceSnapshot: 0,
+        recipientCount: 0,
+        estimate: 700,
+      }),
+    ).toEqual({ denominator: 0, denominator_source: "snapshot" });
+  });
+
+  it("segmento legado (snapshot null) cai na estimativa", () => {
+    expect(
+      resolveDenominator({
+        audience: "active_pro",
+        audienceSnapshot: null,
+        recipientCount: 0,
+        estimate: 700,
+      }),
+    ).toEqual({ denominator: 700, denominator_source: "estimate" });
+  });
+});
+
+// Publicacao com snapshot degradando: publicar NUNCA falha por causa da coluna
+// nova. runUpdate injetavel evita mockar o supabaseAdmin.
+describe("publishWithSnapshotFallback", () => {
+  const baseFields = { status: "published", published_at: "2026-07-24T00:00:00Z" };
+
+  it("coluna ausente: refaz o update SEM audience_snapshot e publica", async () => {
+    const calls: Array<Record<string, unknown>> = [];
+    let warned = 0;
+    const runUpdate = async (payload: Record<string, unknown>) => {
+      calls.push(payload);
+      return calls.length === 1
+        ? {
+            data: null,
+            error: {
+              code: "PGRST204",
+              message:
+                "Could not find the 'audience_snapshot' column of 'notifications' in the schema cache",
+            },
+          }
+        : { data: { id: "n1" }, error: null };
+    };
+
+    const res = await publishWithSnapshotFallback(
+      baseFields,
+      500,
+      runUpdate,
+      () => {
+        warned += 1;
+      },
+    );
+
+    expect(res.error).toBeNull();
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toHaveProperty("audience_snapshot", 500);
+    expect(calls[1]).not.toHaveProperty("audience_snapshot");
+    expect(warned).toBe(1);
+  });
+
+  it("coluna existe: grava com snapshot numa unica tentativa", async () => {
+    const calls: Array<Record<string, unknown>> = [];
+    const runUpdate = async (payload: Record<string, unknown>) => {
+      calls.push(payload);
+      return { data: { id: "n1" }, error: null };
+    };
+    const res = await publishWithSnapshotFallback(baseFields, 500, runUpdate);
+    expect(res.error).toBeNull();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toHaveProperty("audience_snapshot", 500);
+  });
+
+  it("outro erro NAO e mascarado (nao refaz, retorna o erro)", async () => {
+    let count = 0;
+    const runUpdate = async () => {
+      count += 1;
+      return { data: null, error: { code: "23505", message: "duplicate key" } };
+    };
+    const res = await publishWithSnapshotFallback(baseFields, 500, runUpdate);
+    expect(res.error?.code).toBe("23505");
+    expect(count).toBe(1);
   });
 });
 

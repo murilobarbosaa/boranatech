@@ -4,11 +4,11 @@ import { z } from "zod";
 import { cacheKey, getOrCompute } from "../lib/cache";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import {
-  USER_SEGMENTS,
-  fetchProStatusSets,
-  userMatchesSegment,
-  type UserSegment,
-} from "../lib/userSegments";
+  loadReachContext,
+  segmentReach,
+} from "../lib/audienceReach";
+import { isMissingColumnError } from "../lib/pgErrors";
+import { USER_SEGMENTS, type UserSegment } from "../lib/userSegments";
 import { createError } from "../middleware/error";
 
 // Montado DENTRO de server/routes/admin.ts, DEPOIS de requireAuth/requireAdmin
@@ -294,27 +294,14 @@ async function resolveRecipientEmails(
   return mapProfileRowsToRecipients(unique, rows);
 }
 
-// Detecta o erro de "coluna email inexistente" nos dois formatos possiveis: no
-// INSERT o PostgREST valida o payload contra o schema cache e devolve PGRST204;
-// no SELECT ele gera o SQL e o Postgres reclama com 42703 (undefined_column).
-// O includes("email") evita mascarar erro de outra coluna. Enquanto a migration
-// nao roda (deploy do codigo vem ANTES do db:push), este e o caminho esperado.
-const PGRST_COLUMN_NOT_FOUND = "PGRST204";
-const PG_UNDEFINED_COLUMN = "42703";
+// Detecção de "coluna email inexistente" (delega ao helper compartilhado que
+// cobre PGRST204 do insert e 42703 do select). Enquanto a migration nao roda
+// (deploy do codigo vem ANTES do db:push), este e o caminho esperado.
 export function isEmailColumnMissing(error: {
   code?: string;
   message?: string;
 }): boolean {
-  if (
-    error.code !== PGRST_COLUMN_NOT_FOUND &&
-    error.code !== PG_UNDEFINED_COLUMN
-  ) {
-    return false;
-  }
-  return (
-    typeof error.message === "string" &&
-    error.message.toLowerCase().includes("email")
-  );
+  return isMissingColumnError(error, "email");
 }
 
 type RecipientRow = {
@@ -807,72 +794,22 @@ const AudiencePreviewQuerySchema = z.object({
   category: z.enum(["product", "promotional"]).default("product"),
 });
 
-// Auth user_ids com marketing_opt_in = true (regra da category promotional),
-// paginado. user_id, nao profiles.id: os sets de segmento sao chaveados pelo
-// id de auth.users.
-async function fetchOptedInUserIds(): Promise<string[]> {
-  const ids: string[] = [];
-  for (let from = 0; ; from += DB_PAGE) {
-    const { data, error } = await supabaseAdmin
-      .from("profiles")
-      .select("user_id")
-      .eq("marketing_opt_in", true)
-      .range(from, from + DB_PAGE - 1);
-    if (error) {
-      throw new Error(error.message);
-    }
-    const rows = data ?? [];
-    ids.push(...rows.map((row) => row.user_id as string));
-    if (rows.length < DB_PAGE) break;
-  }
-  return ids;
-}
-
 // Estimativa de alcance com a MESMA semantica do feed (userSegments): quantos
 // usuarios da base casam com audience + category. E preview, nao contrato: a
 // visibilidade real e decidida por usuario na leitura, entao contas que virem
-// Pro (ou derem opt-in) depois entram no alcance sem refletir aqui.
+// Pro (ou derem opt-in) depois entram no alcance sem refletir aqui. Reusa o
+// mesmo calculo (audienceReach) do snapshot gravado na publicacao.
 async function computeAudiencePreview(
   audience: UserSegment,
   category: "product" | "promotional",
 ): Promise<{ total_users: number; matched: number }> {
-  const [profilesResult, sets] = await Promise.all([
-    supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }),
-    fetchProStatusSets(),
-  ]);
-  if (profilesResult.error) {
-    throw new Error(profilesResult.error.message);
-  }
-  const totalUsers = profilesResult.count ?? 0;
-
-  if (category === "promotional") {
-    const optedIn = await fetchOptedInUserIds();
-    const matched = optedIn.filter((id) =>
-      userMatchesSegment(id, audience, sets),
-    ).length;
-    return { total_users: totalUsers, matched };
-  }
-
-  let matched: number;
-  if (audience === "all") {
-    matched = totalUsers;
-  } else if (audience === "active_pro") {
-    matched = sets.active.size;
-  } else if (audience === "paying_pro") {
-    // paying_pro = assinantes pagantes vigentes, sem os influencers de cortesia.
-    matched = sets.payingActive.size;
-  } else if (audience === "never_pro") {
-    // never_pro exige !everPaid E !active: influencer ativo que nunca pagou
-    // esta em active (Pro vitalicio) e sai da conta.
-    const everPaidOrActive = new Set(sets.everPaid);
-    sets.active.forEach((id) => everPaidOrActive.add(id));
-    matched = Math.max(0, totalUsers - everPaidOrActive.size);
-  } else {
-    matched = Array.from(sets.everPaid).filter(
-      (id) => !sets.active.has(id) && !sets.pastDue.has(id),
-    ).length;
-  }
-  return { total_users: totalUsers, matched };
+  const ctx = await loadReachContext({
+    needOptedIn: category === "promotional",
+  });
+  return {
+    total_users: ctx.totalUsers,
+    matched: segmentReach(audience, category, ctx),
+  };
 }
 
 // GET /api/admin/notifications/audience-preview?audience=&category=
@@ -917,6 +854,91 @@ router.get("/audience-preview", async (req, res, next) => {
   }
 });
 
+// Puro e testavel: escolhe o denominador da taxa de leitura e a origem.
+// - custom: recipient_count (lista fixa, sempre exato) -> 'recipients'.
+// - snapshot != null: alcance congelado na publicacao -> 'snapshot' (exato).
+// - snapshot null (legado, publicada antes da feature): estimativa de agora.
+export function resolveDenominator(input: {
+  audience: string;
+  audienceSnapshot: number | null;
+  recipientCount: number;
+  estimate: number;
+}): {
+  denominator: number;
+  denominator_source: "recipients" | "snapshot" | "estimate";
+} {
+  if (input.audience === "custom") {
+    return {
+      denominator: input.recipientCount,
+      denominator_source: "recipients",
+    };
+  }
+  if (input.audienceSnapshot !== null) {
+    return {
+      denominator: input.audienceSnapshot,
+      denominator_source: "snapshot",
+    };
+  }
+  return { denominator: input.estimate, denominator_source: "estimate" };
+}
+
+type PublishUpdateResult = {
+  data: unknown;
+  error: { code?: string; message?: string } | null;
+};
+
+// Publica gravando audience_snapshot; se a coluna ainda nao existe (janela
+// entre deploy e db:push), refaz o update SEM o snapshot pra publicar mesmo
+// assim. So o snapshot cai (denominador vira estimativa); publicar NUNCA falha
+// por causa da coluna nova. Outros erros propagam (o handler decide). runUpdate
+// injetavel pra ser testavel sem o supabaseAdmin.
+export async function publishWithSnapshotFallback(
+  baseFields: Record<string, unknown>,
+  snapshot: number | null,
+  runUpdate: (payload: Record<string, unknown>) => Promise<PublishUpdateResult>,
+  onColumnMissing?: () => void,
+): Promise<PublishUpdateResult> {
+  const first = await runUpdate({
+    ...baseFields,
+    audience_snapshot: snapshot,
+  });
+  if (!first.error) return first;
+  if (isMissingColumnError(first.error, "audience_snapshot")) {
+    onColumnMissing?.();
+    return runUpdate(baseFields);
+  }
+  return first;
+}
+
+// Aviso logado uma unica vez por processo (nao por publicacao).
+let snapshotColumnMissingWarned = false;
+function warnSnapshotColumnMissing(): void {
+  if (!snapshotColumnMissingWarned) {
+    console.warn(
+      "[admin/notifications] coluna notifications.audience_snapshot ausente; publicando sem snapshot até o db:push.",
+    );
+    snapshotColumnMissingWarned = true;
+  }
+}
+
+// Le o audience_snapshot tolerando o schema antigo: se a coluna nao existe
+// (42703 no select), devolve null (a UI cai na estimativa). Nao carrega o resto
+// da notificacao (isso vem do findNotification).
+async function fetchAudienceSnapshot(
+  notificationId: string,
+): Promise<number | null> {
+  const { data, error } = await supabaseAdmin
+    .from("notifications")
+    .select("audience_snapshot")
+    .eq("id", notificationId)
+    .maybeSingle();
+  if (error) {
+    if (isMissingColumnError(error, "audience_snapshot")) return null;
+    throw new Error(error.message);
+  }
+  return (data?.audience_snapshot as number | null | undefined) ?? null;
+}
+
 // POST /api/admin/notifications/:id/publish: draft -> published. Revalida a
 // expiracao na hora da publicacao (o draft pode ter envelhecido).
 router.post("/:id/publish", async (req, res, next) => {
@@ -954,10 +976,11 @@ router.post("/:id/publish", async (req, res, next) => {
     }
     // Guarda de integridade: custom sem destinatario nunca publica (pode
     // acontecer se um replace de lista falhou no meio; o draft fica sem
-    // linhas e o admin resolve reenviando a lista).
+    // linhas e o admin resolve reenviando a lista). O count vira o snapshot.
+    let customRecipientCount = 0;
     if (existing.audience === "custom") {
-      const recipients = await countRecipients(existing.id);
-      if (recipients === 0) {
+      customRecipientCount = await countRecipients(existing.id);
+      if (customRecipientCount === 0) {
         return next(
           createError(
             400,
@@ -968,27 +991,59 @@ router.post("/:id/publish", async (req, res, next) => {
       }
     }
 
+    // Snapshot de alcance pro denominador exato das stats. BEST-EFFORT: se o
+    // calculo falhar, grava null e publica mesmo assim (publicar > metrica).
+    let audienceSnapshot: number | null = null;
+    try {
+      if (existing.audience === "custom") {
+        audienceSnapshot = customRecipientCount;
+      } else {
+        const ctx = await loadReachContext({
+          needOptedIn: existing.category === "promotional",
+        });
+        audienceSnapshot = segmentReach(
+          existing.audience as UserSegment,
+          existing.category as "product" | "promotional",
+          ctx,
+        );
+      }
+    } catch (snapErr) {
+      console.warn(
+        "[admin/notifications] cálculo do snapshot de alcance falhou; publicando sem snapshot",
+        snapErr,
+      );
+      audienceSnapshot = null;
+    }
+
     // scheduled_for e zerado no disparo imediato: uma published nunca carrega
     // agendamento pendente (o cron so olha status='scheduled', mas manter a
     // coluna limpa evita confusao).
     const nowIso = new Date().toISOString();
-    const { data: updated, error } = await supabaseAdmin
-      .from("notifications")
-      .update({
+    const result = await publishWithSnapshotFallback(
+      {
         status: "published",
         published_at: nowIso,
         updated_at: nowIso,
         scheduled_for: null,
-      })
-      .eq("id", id.data)
-      .in("status", ["draft", "scheduled"])
-      .select(ADMIN_COLUMNS)
-      .single();
-    if (error) {
-      throw new Error(error.message);
+      },
+      audienceSnapshot,
+      async (payload) => {
+        const r = await supabaseAdmin
+          .from("notifications")
+          .update(payload)
+          .eq("id", id.data)
+          .in("status", ["draft", "scheduled"])
+          .select(ADMIN_COLUMNS)
+          .single();
+        return { data: r.data, error: r.error };
+      },
+      warnSnapshotColumnMissing,
+    );
+    if (result.error) {
+      throw new Error(result.error.message);
     }
 
-    res.json({ data: updated });
+    res.json({ data: result.data });
   } catch (err) {
     console.error("[admin/notifications] publish failed", err);
     return next(
@@ -1232,6 +1287,35 @@ router.get("/:id/stats", async (req, res, next) => {
       if (rows.length < DB_PAGE) break;
     }
 
+    // Denominador da taxa de leitura: custom usa recipient_count; segmento com
+    // snapshot usa o alcance congelado (exato); segmento legado (sem snapshot)
+    // cai na estimativa de agora, so calculada nesse caso (evita a varredura).
+    const audienceSnapshot =
+      existing.audience === "custom"
+        ? null
+        : await fetchAudienceSnapshot(id.data);
+    const recipientCount =
+      existing.audience === "custom"
+        ? await countRecipients(id.data)
+        : 0;
+    let estimate = 0;
+    if (existing.audience !== "custom" && audienceSnapshot === null) {
+      const ctx = await loadReachContext({
+        needOptedIn: existing.category === "promotional",
+      });
+      estimate = segmentReach(
+        existing.audience as UserSegment,
+        existing.category as "product" | "promotional",
+        ctx,
+      );
+    }
+    const { denominator, denominator_source } = resolveDenominator({
+      audience: existing.audience,
+      audienceSnapshot,
+      recipientCount,
+      estimate,
+    });
+
     res.json({
       data: {
         total_reads: total,
@@ -1239,6 +1323,8 @@ router.get("/:id/stats", async (req, res, next) => {
           day,
           count,
         })),
+        denominator,
+        denominator_source,
       },
     });
   } catch (err) {

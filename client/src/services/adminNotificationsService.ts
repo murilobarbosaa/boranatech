@@ -86,6 +86,11 @@ export type AdminNotificationMutationResult = {
 export type NotificationStats = {
   total_reads: number;
   reads_by_day: Array<{ day: string; count: number }>;
+  // Denominador da taxa de leitura resolvido no server. 'snapshot' = alcance
+  // congelado na publicação (exato); 'recipients' = lista custom (exato);
+  // 'estimate' = legado sem snapshot (estimativa de agora).
+  denominator: number;
+  denominator_source: "snapshot" | "estimate" | "recipients";
 };
 
 export type AudiencePreview = {

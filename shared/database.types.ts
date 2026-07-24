@@ -1934,6 +1934,7 @@ export type Database = {
       notifications: {
         Row: {
           audience: string
+          audience_snapshot: number | null
           body: string
           category: string
           coupon_code: string | null
@@ -1959,6 +1960,7 @@ export type Database = {
         }
         Insert: {
           audience?: string
+          audience_snapshot?: number | null
           body: string
           category?: string
           coupon_code?: string | null
@@ -1984,6 +1986,7 @@ export type Database = {
         }
         Update: {
           audience?: string
+          audience_snapshot?: number | null
           body?: string
           category?: string
           coupon_code?: string | null

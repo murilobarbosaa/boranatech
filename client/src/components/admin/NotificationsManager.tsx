@@ -644,9 +644,6 @@ export function NotificationsManager() {
     null,
   );
   const [stats, setStats] = useState<NotificationStats | null>(null);
-  const [statsPreview, setStatsPreview] = useState<AudiencePreview | null>(
-    null,
-  );
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
 
@@ -896,20 +893,12 @@ export function NotificationsManager() {
   function openStats(notification: AdminNotification) {
     setStatsTarget(notification);
     setStats(null);
-    setStatsPreview(null);
     setStatsError(null);
     setStatsLoading(true);
-    // custom não tem preview de segmento: o denominador exato é o
-    // recipient_count da própria notificação.
-    void Promise.all([
-      fetchNotificationStats(notification.id),
-      notification.audience === "custom"
-        ? Promise.resolve(null)
-        : fetchAudiencePreview(notification.audience, notification.category),
-    ])
-      .then(([statsRes, previewRes]) => {
+    // O denominador (e se é exato ou estimativa) vem resolvido do server.
+    void fetchNotificationStats(notification.id)
+      .then((statsRes) => {
         setStats(statsRes.data);
-        setStatsPreview(previewRes ? previewRes.data : null);
       })
       .catch((error) => {
         setStatsError(
@@ -922,10 +911,9 @@ export function NotificationsManager() {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const statsIsCustom = statsTarget?.audience === "custom";
-  const statsDenominator = statsIsCustom
-    ? (statsTarget?.recipient_count ?? 0)
-    : (statsPreview?.matched ?? 0);
+  // 'estimate' = legado sem snapshot; 'snapshot'/'recipients' = exato.
+  const statsIsExact = stats !== null && stats.denominator_source !== "estimate";
+  const statsDenominator = stats?.denominator ?? 0;
   const readRate =
     stats && statsDenominator > 0
       ? Math.min(100, Math.round((stats.total_reads / statsDenominator) * 100))
@@ -1871,7 +1859,7 @@ export function NotificationsManager() {
                 </div>
                 <div className="rounded-2xl border-2 border-slate-900 bg-emerald-50 p-3">
                   <p className="text-xs font-black uppercase text-emerald-700">
-                    {statsIsCustom
+                    {statsIsExact
                       ? "Taxa de leitura (exata)"
                       : "Taxa de leitura (estimativa)"}
                   </p>
@@ -1879,9 +1867,11 @@ export function NotificationsManager() {
                     {readRate !== null ? `${readRate}%` : "-"}
                   </p>
                   <p className="mt-1 text-[11px] font-semibold text-slate-500">
-                    {statsIsCustom
+                    {stats?.denominator_source === "recipients"
                       ? `Sobre os ${statsDenominator.toLocaleString("pt-BR")} destinatários fixos da lista.`
-                      : "Sobre o alcance atual da audience, que muda com o tempo."}
+                      : stats?.denominator_source === "snapshot"
+                        ? `Sobre os ${statsDenominator.toLocaleString("pt-BR")} usuários alcançados na publicação.`
+                        : "Sobre o alcance atual da audience, que muda com o tempo (publicada antes do snapshot)."}
                   </p>
                 </div>
               </div>
