@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Router } from "express";
 
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -12,6 +13,26 @@ const router = Router();
 const FRESH_TTL_MS = 5 * 60 * 1000;
 let lastKnownGood: number | null = null;
 let lastFetchAt = 0;
+
+// Captura explicita da degradacao do contador. O endpoint devolve 200 de
+// proposito (serve last-known-good), entao NUNCA chega no errorHandler de 5xx
+// do app.ts: sem esta captura, a degradacao so aparecia no console do Railway.
+// Correlaciona com os eventos do client via a mesma tag route.
+function captureUsersCountDegraded(
+  reason: string,
+  extra: Record<string, unknown>,
+): void {
+  Sentry.withScope((scope) => {
+    scope.setTag("route", "stats/users-count");
+    scope.setLevel("warning");
+    scope.setContext("stats_users_count", {
+      reason,
+      hadLkg: lastKnownGood !== null,
+      ...extra,
+    });
+    Sentry.captureMessage("[stats] users-count degraded");
+  });
+}
 
 async function queryProfilesCount(): Promise<number | null> {
   const { count, error } = await supabaseAdmin
@@ -33,9 +54,16 @@ router.get("/users-count", async (_req, res) => {
       lastFetchAt = Date.now();
       return res.json({ count: fresh });
     }
+    // Query resolveu sem erro mas count veio nulo: degradação silenciosa do
+    // Supabase. Serve lkg (pode ser null num processo novo) e reporta.
+    captureUsersCountDegraded("query_returned_null", { supabaseCount: null });
     return res.json({ count: lastKnownGood });
   } catch (err) {
     console.error("[stats] users-count query failed", err);
+    captureUsersCountDegraded("query_threw", {
+      supabaseCount: null,
+      error: err instanceof Error ? err.message : String(err),
+    });
     return res.json({ count: lastKnownGood });
   }
 });

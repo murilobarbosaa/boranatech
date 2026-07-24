@@ -10,6 +10,23 @@ vi.mock("./../lib/supabaseAdmin", () => ({
   supabaseAdmin: { from: supaSpy.from },
 }));
 
+// Sentry mockado: withScope executa o callback com um scope espião, pra provar
+// tag/level/context e a captureMessage da degradação sem rede.
+const sentrySpy = vi.hoisted(() => {
+  const setTag = vi.fn();
+  const setLevel = vi.fn();
+  const setContext = vi.fn();
+  const scope = { setTag, setLevel, setContext };
+  const captureMessage = vi.fn();
+  const withScope = vi.fn((cb: (s: typeof scope) => void) => cb(scope));
+  return { setTag, setLevel, setContext, captureMessage, withScope };
+});
+
+vi.mock("@sentry/node", () => ({
+  withScope: sentrySpy.withScope,
+  captureMessage: sentrySpy.captureMessage,
+}));
+
 import statsRouter, { __resetForTests } from "./stats";
 
 // TTL do cache fresh do endpoint. Replicado aqui (não exportado por design,
@@ -58,6 +75,11 @@ describe("GET /api/stats/users-count: last-known-good em memória, sem 0 inventa
     __resetForTests();
     supaSpy.from.mockClear();
     supaSpy.select.mockReset();
+    sentrySpy.setTag.mockClear();
+    sentrySpy.setLevel.mockClear();
+    sentrySpy.setContext.mockClear();
+    sentrySpy.captureMessage.mockClear();
+    sentrySpy.withScope.mockClear();
   });
 
   afterEach(() => {
@@ -186,5 +208,100 @@ describe("GET /api/stats/users-count: last-known-good em memória, sem 0 inventa
     supaSpy.select.mockResolvedValueOnce({ count: null, error: null });
     const r = await callEndpoint();
     expect(r.body).toEqual({ count: null });
+  });
+});
+
+describe("GET /api/stats/users-count: instrumentação Sentry da degradação", () => {
+  beforeEach(() => {
+    __resetForTests();
+    supaSpy.from.mockClear();
+    supaSpy.select.mockReset();
+    sentrySpy.setTag.mockClear();
+    sentrySpy.setLevel.mockClear();
+    sentrySpy.setContext.mockClear();
+    sentrySpy.captureMessage.mockClear();
+    sentrySpy.withScope.mockClear();
+  });
+
+  afterEach(() => {
+    __resetForTests();
+    vi.useRealTimers();
+  });
+
+  it("[capture-on-null] count:null sem erro captura warning com tag/route e reason query_returned_null", async () => {
+    supaSpy.select.mockResolvedValueOnce({ count: null, error: null });
+
+    await callEndpoint();
+
+    expect(sentrySpy.captureMessage).toHaveBeenCalledTimes(1);
+    expect(sentrySpy.captureMessage).toHaveBeenCalledWith(
+      "[stats] users-count degraded",
+    );
+    expect(sentrySpy.setTag).toHaveBeenCalledWith("route", "stats/users-count");
+    expect(sentrySpy.setLevel).toHaveBeenCalledWith("warning");
+    expect(sentrySpy.setContext).toHaveBeenCalledWith(
+      "stats_users_count",
+      expect.objectContaining({
+        reason: "query_returned_null",
+        hadLkg: false,
+        supabaseCount: null,
+      }),
+    );
+  });
+
+  it("[capture-on-throw] query throw captura warning com reason query_threw e a mensagem do erro", async () => {
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    supaSpy.select.mockResolvedValueOnce({
+      count: null,
+      error: new Error("db down"),
+    });
+
+    await callEndpoint();
+
+    expect(sentrySpy.captureMessage).toHaveBeenCalledTimes(1);
+    expect(sentrySpy.setContext).toHaveBeenCalledWith(
+      "stats_users_count",
+      expect.objectContaining({
+        reason: "query_threw",
+        error: "db down",
+      }),
+    );
+
+    errSpy.mockRestore();
+  });
+
+  it("[hadLkg-true-when-serving-lkg] após sucesso, degradação reporta hadLkg true", async () => {
+    vi.useFakeTimers();
+
+    supaSpy.select.mockResolvedValueOnce({ count: 32, error: null });
+    await callEndpoint();
+    vi.advanceTimersByTime(FRESH_TTL_MS + 1);
+
+    supaSpy.select.mockResolvedValueOnce({ count: null, error: null });
+    await callEndpoint();
+
+    expect(sentrySpy.setContext).toHaveBeenLastCalledWith(
+      "stats_users_count",
+      expect.objectContaining({ hadLkg: true }),
+    );
+  });
+
+  it("[no-capture-on-success] resposta saudável não captura nada", async () => {
+    supaSpy.select.mockResolvedValueOnce({ count: 32, error: null });
+
+    const r = await callEndpoint();
+    expect(r.body).toEqual({ count: 32 });
+    expect(sentrySpy.captureMessage).not.toHaveBeenCalled();
+  });
+
+  it("[no-capture-on-ttl-hit] cache TTL fresh serve sem rebater nem capturar", async () => {
+    supaSpy.select.mockResolvedValueOnce({ count: 32, error: null });
+    await callEndpoint();
+    sentrySpy.captureMessage.mockClear();
+
+    // 2º request dentro do TTL: serve lkg, sem Supabase e sem captura.
+    const r2 = await callEndpoint();
+    expect(r2.body).toEqual({ count: 32 });
+    expect(sentrySpy.captureMessage).not.toHaveBeenCalled();
   });
 });
