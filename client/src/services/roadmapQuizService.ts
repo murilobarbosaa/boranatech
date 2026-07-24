@@ -51,8 +51,20 @@ export interface QuizAttemptSummary {
   completedAt: string | null;
 }
 
+export interface RetakeGate {
+  allowed: boolean;
+  // ISO de quando o cooldown expira; presente so quando allowed=false.
+  retryAt?: string;
+  // Tentativas restantes no ciclo atual (RETAKE_LIMIT quando nunca reprovou; 0
+  // em cooldown).
+  remaining: number;
+}
+
 export interface QuizHistory {
   attempts: QuizAttemptSummary[];
+  // Estado das tentativas (restantes/cooldown), computado no server. Usado pela
+  // tela explicativa pra mostrar restantes e cooldown sem criar tentativa.
+  retakeGate: RetakeGate;
   // Revisao completa da tentativa aprovada, se existir.
   revisaoAprovada?: QuizReviewItem[];
 }

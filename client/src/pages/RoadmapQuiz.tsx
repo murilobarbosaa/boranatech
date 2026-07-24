@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, Send } from "lucide-react";
 import { useReducedMotion } from "framer-motion";
 import { fireProCelebration } from "@/lib/proConfetti";
 import { roadmapsMeta } from "@/lib/roadmapV2/meta";
+import QuizBriefing from "@/components/roadmapQuiz/QuizBriefing";
 import {
   getHistory,
   QuizServiceError,
@@ -11,8 +12,10 @@ import {
   startOrResume,
   submitAttempt,
   type QuizAnswerMap,
+  type QuizAttemptSummary,
   type QuizReviewItem,
   type QuizSubmitResult,
+  type RetakeGate,
 } from "@/services/roadmapQuizService";
 import {
   QUESTIONS_PER_ATTEMPT,
@@ -45,6 +48,12 @@ const AUTOSAVE_DEBOUNCE_MS = 2000;
 
 type Phase =
   | { kind: "loading" }
+  | {
+      kind: "briefing";
+      attempts: QuizAttemptSummary[];
+      retakeGate: RetakeGate;
+      hasActive: boolean;
+    }
   | { kind: "gate"; code: "completion_required" | "quiz_unavailable" }
   | { kind: "load_error" }
   | { kind: "cooldown"; retryAt: string | null }
@@ -186,9 +195,42 @@ export default function RoadmapQuiz() {
     }
   }, [slug, loadApproved]);
 
+  // Tela explicativa antes da prova: NAO cria tentativa no mount. So le o
+  // historico (getHistory nao tem efeito colateral) pra decidir o briefing e o
+  // estado das tentativas. O startOrResume so roda quando o usuario confirma.
+  const prepare = useCallback(async () => {
+    setPhase({ kind: "loading" });
+    try {
+      const history = await getHistory(slug);
+      const approved = history.attempts.find(
+        (attempt) => attempt.status === "aprovada",
+      );
+      if (approved) {
+        // Ja passou: pula o briefing e reaproveita o history JA buscado (sem
+        // segunda chamada) pra montar a revisao da aprovada.
+        setPhase({
+          kind: "approved",
+          score: approved.score ?? null,
+          review: history.revisaoAprovada ?? [],
+        });
+        return;
+      }
+      setPhase({
+        kind: "briefing",
+        attempts: history.attempts,
+        retakeGate: history.retakeGate,
+        hasActive: history.attempts.some(
+          (attempt) => attempt.status === "ativa",
+        ),
+      });
+    } catch {
+      setPhase({ kind: "load_error" });
+    }
+  }, [slug]);
+
   useEffect(() => {
-    void start();
-  }, [start]);
+    void prepare();
+  }, [prepare]);
 
   // Autosave com debounce: persiste as respostas parciais ~2s depois da
   // ultima mudanca. Silencioso: falha so loga e fica pendente pro proximo
@@ -284,6 +326,15 @@ export default function RoadmapQuiz() {
           <div className="flex justify-center py-16">
             <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-slate-300 border-t-slate-900" />
           </div>
+        )}
+
+        {phase.kind === "briefing" && (
+          <QuizBriefing
+            attempts={phase.attempts}
+            retakeGate={phase.retakeGate}
+            hasActive={phase.hasActive}
+            onStart={() => void start()}
+          />
         )}
 
         {phase.kind === "gate" && phase.code === "completion_required" && (
