@@ -24,6 +24,7 @@ import {
   type UserSegment,
 } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
+import { paginateRange } from "../lib/paginate";
 import { withRedisOpTimeout } from "../lib/redisOpTimeout";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import {
@@ -344,23 +345,21 @@ router.get("/audience-count", async (req, res, next) => {
     let withName: number | null = source === "users" ? 0 : null;
     if (source === "users") {
       const seen = new Set<string>();
-      for (let from = 0; ; from += PAGE) {
-        const { data, error } = await supabaseAdmin
-          .from("profiles")
-          .select("user_id, email, marketing_opt_in, name, full_name")
-          .range(from, from + PAGE - 1);
-        if (error) {
-          console.error("[email-campaign] Falha ao contar usuários", error);
-          return next(
-            createError(
-              500,
-              "campaign_error",
-              "Não foi possível contar os elegíveis.",
-            ),
-          );
-        }
-        const rows = data ?? [];
-        for (const row of rows) {
+      try {
+        for await (const row of paginateRange<{
+          user_id: string;
+          email: string | null;
+          marketing_opt_in: boolean | null;
+          name: string | null;
+          full_name: string | null;
+        }>(
+          (from, to) =>
+            supabaseAdmin
+              .from("profiles")
+              .select("user_id, email, marketing_opt_in, name, full_name")
+              .range(from, to),
+          { errorLabel: "Falha ao contar usuários", pageSize: PAGE },
+        )) {
           funnel.scanned += 1;
           if (!row.email) {
             funnel.discarded_no_email += 1;
@@ -400,26 +399,22 @@ router.get("/audience-count", async (req, res, next) => {
             withName = (withName ?? 0) + 1;
           }
         }
-        if (rows.length < PAGE) break;
+      } catch (scanErr) {
+        console.error("[email-campaign] Falha ao contar usuários", scanErr);
+        return next(
+          createError(
+            500,
+            "campaign_error",
+            "Não foi possível contar os elegíveis.",
+          ),
+        );
       }
     } else {
-      for (let from = 0; ; from += PAGE) {
-        const { data, error } = await audienceQuery(source).range(
-          from,
-          from + PAGE - 1,
-        );
-        if (error) {
-          console.error("[email-campaign] Falha ao contar a origem", error);
-          return next(
-            createError(
-              500,
-              "campaign_error",
-              "Não foi possível contar os elegíveis.",
-            ),
-          );
-        }
-        const rows = data ?? [];
-        for (const row of rows) {
+      try {
+        for await (const row of paginateRange<{ email: string }>(
+          (from, to) => audienceQuery(source).range(from, to),
+          { errorLabel: "Falha ao contar a origem", pageSize: PAGE },
+        )) {
           funnel.scanned += 1;
           if (existing.has(row.email)) {
             funnel.discarded_already_recipient += 1;
@@ -435,7 +430,15 @@ router.get("/audience-count", async (req, res, next) => {
           }
           count += 1;
         }
-        if (rows.length < PAGE) break;
+      } catch (scanErr) {
+        console.error("[email-campaign] Falha ao contar a origem", scanErr);
+        return next(
+          createError(
+            500,
+            "campaign_error",
+            "Não foi possível contar os elegíveis.",
+          ),
+        );
       }
     }
 

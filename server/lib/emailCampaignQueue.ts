@@ -9,6 +9,7 @@ import {
 import { batchJobId, recipientJobId } from "./emailCampaignJobIds";
 import { partitionSendableEmails, validateEmailForSending } from "./emailValidation";
 import { env } from "./env";
+import { paginateRange } from "./paginate";
 import { queueConnection } from "./redis";
 import { withRedisOpTimeout } from "./redisOpTimeout";
 import { supabaseAdmin } from "./supabaseAdmin";
@@ -245,21 +246,20 @@ export async function fetchSentEmailSetFromOtherCampaigns(
   excludingCampaignId: string,
 ): Promise<Set<string>> {
   const emails = new Set<string>();
-  for (let from = 0; ; from += DB_PAGE) {
-    const { data, error } = await supabaseAdmin
-      .from("email_campaign_recipients")
-      .select("email")
-      .eq("status", "sent")
-      .neq("campaign_id", excludingCampaignId)
-      .range(from, from + DB_PAGE - 1);
-    if (error) {
-      throw new Error(
-        `Falha ao buscar enviados de outras campanhas: ${error.message}`,
-      );
-    }
-    const rows = data ?? [];
-    rows.forEach((row) => emails.add(row.email.toLowerCase()));
-    if (rows.length < DB_PAGE) break;
+  for await (const row of paginateRange<{ email: string }>(
+    (from, to) =>
+      supabaseAdmin
+        .from("email_campaign_recipients")
+        .select("email")
+        .eq("status", "sent")
+        .neq("campaign_id", excludingCampaignId)
+        .range(from, to),
+    {
+      errorLabel: "Falha ao buscar enviados de outras campanhas",
+      pageSize: DB_PAGE,
+    },
+  )) {
+    emails.add(row.email.toLowerCase());
   }
   return emails;
 }
@@ -268,17 +268,12 @@ export async function fetchSentEmailSetFromOtherCampaigns(
 // (descadastro de campanha, bounce, insercao manual). Em minusculas.
 export async function fetchSuppressedEmailSet(): Promise<Set<string>> {
   const emails = new Set<string>();
-  for (let from = 0; ; from += DB_PAGE) {
-    const { data, error } = await supabaseAdmin
-      .from("email_suppressions")
-      .select("email")
-      .range(from, from + DB_PAGE - 1);
-    if (error) {
-      throw new Error(`Falha ao buscar supressoes: ${error.message}`);
-    }
-    const rows = data ?? [];
-    rows.forEach((row) => emails.add(row.email.toLowerCase()));
-    if (rows.length < DB_PAGE) break;
+  for await (const row of paginateRange<{ email: string }>(
+    (from, to) =>
+      supabaseAdmin.from("email_suppressions").select("email").range(from, to),
+    { errorLabel: "Falha ao buscar supressoes", pageSize: DB_PAGE },
+  )) {
+    emails.add(row.email.toLowerCase());
   }
   return emails;
 }
@@ -311,22 +306,18 @@ async function selectNextEligibleEmails(
     ? await fetchSentEmailSetFromOtherCampaigns(campaignId)
     : null;
   const selected: string[] = [];
-  for (let from = 0; ; from += DB_PAGE) {
-    const { data, error } = await sourceTableQuery(source)
-      .order("created_at", { ascending: true })
-      .range(from, from + DB_PAGE - 1);
-    if (error) {
-      throw new Error(`Falha ao buscar a origem ${source}: ${error.message}`);
-    }
-    const rows = data ?? [];
-    for (const row of rows) {
-      if (existing.has(row.email)) continue;
-      if (suppressed.has(row.email.toLowerCase())) continue;
-      if (sentElsewhere?.has(row.email.toLowerCase())) continue;
-      selected.push(row.email);
-      if (limit !== null && selected.length >= limit) return selected;
-    }
-    if (rows.length < DB_PAGE) break;
+  for await (const row of paginateRange<{ email: string }>(
+    (from, to) =>
+      sourceTableQuery(source)
+        .order("created_at", { ascending: true })
+        .range(from, to),
+    { errorLabel: `Falha ao buscar a origem ${source}`, pageSize: DB_PAGE },
+  )) {
+    if (existing.has(row.email)) continue;
+    if (suppressed.has(row.email.toLowerCase())) continue;
+    if (sentElsewhere?.has(row.email.toLowerCase())) continue;
+    selected.push(row.email);
+    if (limit !== null && selected.length >= limit) break;
   }
   return selected;
 }
@@ -353,54 +344,54 @@ async function selectNextEligibleUserEmails(
   const funnel = emptySelectionFunnel();
   const seen = new Set<string>();
   const selected: string[] = [];
-  paginate: for (let from = 0; ; from += DB_PAGE) {
-    const { data, error } = await supabaseAdmin
-      .from("profiles")
-      .select("user_id, email, marketing_opt_in")
-      .order("created_at", { ascending: true })
-      .range(from, from + DB_PAGE - 1);
-    if (error) {
-      throw new Error(`Falha ao buscar usuarios: ${error.message}`);
+  for await (const row of paginateRange<{
+    user_id: string;
+    email: string | null;
+    marketing_opt_in: boolean | null;
+  }>(
+    (from, to) =>
+      supabaseAdmin
+        .from("profiles")
+        .select("user_id, email, marketing_opt_in")
+        .order("created_at", { ascending: true })
+        .range(from, to),
+    { errorLabel: "Falha ao buscar usuarios", pageSize: DB_PAGE },
+  )) {
+    funnel.scanned += 1;
+    if (!row.email) {
+      funnel.discarded_no_email += 1;
+      continue;
     }
-    const rows = data ?? [];
-    for (const row of rows) {
-      funnel.scanned += 1;
-      if (!row.email) {
-        funnel.discarded_no_email += 1;
-        continue;
-      }
-      const email = row.email.toLowerCase();
-      if (seen.has(email)) {
-        funnel.discarded_duplicate += 1;
-        continue;
-      }
-      seen.add(email);
-      if (needOptIn && row.marketing_opt_in !== true) {
-        funnel.discarded_opt_in += 1;
-        continue;
-      }
-      if (proSets && !userMatchesSegment(row.user_id, segment, proSets)) {
-        funnel.discarded_segment += 1;
-        continue;
-      }
-      if (existing.has(email)) {
-        funnel.discarded_already_recipient += 1;
-        continue;
-      }
-      if (suppressed.has(email)) {
-        funnel.discarded_suppressed += 1;
-        continue;
-      }
-      if (sentElsewhere?.has(email)) {
-        funnel.discarded_sent_elsewhere += 1;
-        continue;
-      }
-      selected.push(email);
-      // break, nao return: o log do funil abaixo precisa rodar mesmo quando o
-      // limite do lote e atingido no meio da varredura.
-      if (limit !== null && selected.length >= limit) break paginate;
+    const email = row.email.toLowerCase();
+    if (seen.has(email)) {
+      funnel.discarded_duplicate += 1;
+      continue;
     }
-    if (rows.length < DB_PAGE) break;
+    seen.add(email);
+    if (needOptIn && row.marketing_opt_in !== true) {
+      funnel.discarded_opt_in += 1;
+      continue;
+    }
+    if (proSets && !userMatchesSegment(row.user_id, segment, proSets)) {
+      funnel.discarded_segment += 1;
+      continue;
+    }
+    if (existing.has(email)) {
+      funnel.discarded_already_recipient += 1;
+      continue;
+    }
+    if (suppressed.has(email)) {
+      funnel.discarded_suppressed += 1;
+      continue;
+    }
+    if (sentElsewhere?.has(email)) {
+      funnel.discarded_sent_elsewhere += 1;
+      continue;
+    }
+    selected.push(email);
+    // break, nao return: o log do funil abaixo precisa rodar mesmo quando o
+    // limite do lote e atingido no meio da varredura.
+    if (limit !== null && selected.length >= limit) break;
   }
   funnel.selected = selected.length;
   console.log("[email-campaign] funnel selectNextEligibleUserEmails", funnel);

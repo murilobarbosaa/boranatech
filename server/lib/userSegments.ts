@@ -1,3 +1,4 @@
+import { paginateRange } from "./paginate";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 // Segmentos de usuarios por status Pro, derivados de subscriptions + plans.
@@ -34,18 +35,16 @@ export type ProStatusSets = {
 // never_pro acontece na tabela-verdade, que exige !active).
 async function fetchActiveInfluencerUserIds(): Promise<string[]> {
   const ids: string[] = [];
-  for (let from = 0; ; from += DB_PAGE) {
-    const { data, error } = await supabaseAdmin
-      .from("influencers")
-      .select("user_id")
-      .is("revoked_at", null)
-      .range(from, from + DB_PAGE - 1);
-    if (error) {
-      throw new Error(`Falha ao buscar influencers: ${error.message}`);
-    }
-    const rows = data ?? [];
-    ids.push(...rows.map((row) => row.user_id as string));
-    if (rows.length < DB_PAGE) break;
+  for await (const row of paginateRange<{ user_id: string }>(
+    (from, to) =>
+      supabaseAdmin
+        .from("influencers")
+        .select("user_id")
+        .is("revoked_at", null)
+        .range(from, to),
+    { errorLabel: "Falha ao buscar influencers", pageSize: DB_PAGE },
+  )) {
+    ids.push(row.user_id as string);
   }
   return ids;
 }
@@ -72,29 +71,30 @@ export async function fetchProStatusSets(): Promise<ProStatusSets> {
   const payingActive = new Set<string>();
   const pastDue = new Set<string>();
   const everPaid = new Set<string>();
-  for (let from = 0; ; from += DB_PAGE) {
-    const { data, error } = await supabaseAdmin
-      .from("subscriptions")
-      .select("user_id, plan_id, status, current_period_end")
-      .range(from, from + DB_PAGE - 1);
-    if (error) {
-      throw new Error(`Falha ao buscar assinaturas: ${error.message}`);
+  for await (const row of paginateRange<{
+    user_id: string;
+    plan_id: string | null;
+    status: string | null;
+    current_period_end: string | null;
+  }>(
+    (from, to) =>
+      supabaseAdmin
+        .from("subscriptions")
+        .select("user_id, plan_id, status, current_period_end")
+        .range(from, to),
+    { errorLabel: "Falha ao buscar assinaturas", pageSize: DB_PAGE },
+  )) {
+    if (!row.plan_id || !paidPlanIds.has(row.plan_id)) continue;
+    everPaid.add(row.user_id);
+    const periodOk =
+      !row.current_period_end ||
+      new Date(row.current_period_end).getTime() > Date.now();
+    if ((row.status === "active" || row.status === "trialing") && periodOk) {
+      active.add(row.user_id);
+      payingActive.add(row.user_id);
+    } else if (row.status === "past_due") {
+      pastDue.add(row.user_id);
     }
-    const rows = data ?? [];
-    for (const row of rows) {
-      if (!row.plan_id || !paidPlanIds.has(row.plan_id)) continue;
-      everPaid.add(row.user_id);
-      const periodOk =
-        !row.current_period_end ||
-        new Date(row.current_period_end).getTime() > Date.now();
-      if ((row.status === "active" || row.status === "trialing") && periodOk) {
-        active.add(row.user_id);
-        payingActive.add(row.user_id);
-      } else if (row.status === "past_due") {
-        pastDue.add(row.user_id);
-      }
-    }
-    if (rows.length < DB_PAGE) break;
   }
 
   // Influencer ativo entra so em active (Pro vitalicio sem pagamento); NUNCA em
