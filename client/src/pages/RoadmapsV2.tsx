@@ -109,8 +109,14 @@ export default function RoadmapsV2() {
     onCloseDrawer: () => setOpenSectionId(null),
   });
 
-  const { completion, allComplete, showModal, dismissModal, ctas } =
-    useRoadmapCompletion({ roadmap, done, ready });
+  const {
+    completion,
+    allComplete,
+    showModal,
+    dismissModal,
+    ctas,
+    onCelebrate,
+  } = useRoadmapCompletion({ roadmap, done, ready });
 
   const overall = useMemo(() => {
     return sections.reduce(
@@ -263,6 +269,8 @@ export default function RoadmapsV2() {
                   completion={completion}
                   allComplete={allComplete}
                   ctas={ctas}
+                  overall={overall}
+                  onCelebrate={onCelebrate}
                 />
               )}
 

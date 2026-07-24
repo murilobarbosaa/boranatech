@@ -14,6 +14,12 @@ type RoadmapCompletionCardProps = {
   completion: RoadmapCompletion | null;
   allComplete: boolean;
   ctas: CompletionCta[];
+  // Contagem agregada de topicos, repassada ao CertificateBlock (reforco de
+  // conquista no estado already_issued). Opcional.
+  overall?: { done: number; total: number };
+  // Persistencia da celebracao: chamado pelo card apos disparar o confete pra
+  // marcar celebrated_at (dispara so na primeira vez, cross-device).
+  onCelebrate?: () => void;
 };
 
 function formatDate(iso: string): string {
@@ -27,6 +33,8 @@ export default function RoadmapCompletionCard({
   completion,
   allComplete,
   ctas,
+  overall,
+  onCelebrate,
 }: RoadmapCompletionCardProps) {
   if (!completion && !allComplete) return null;
 
@@ -60,6 +68,9 @@ export default function RoadmapCompletionCard({
         roadmap={roadmap}
         completedDate={completedDate}
         secondaryCtas={secondaryCtas}
+        overall={overall}
+        celebratedAt={completion ? completion.celebratedAt : undefined}
+        onCelebrate={onCelebrate}
       />
     </>
   );

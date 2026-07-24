@@ -7,6 +7,9 @@ export interface RoadmapCompletion {
   // Required leaves da trilha no momento da conclusao (congelado no server).
   // Comparado com o count atual do catalogo pra detectar conteudo novo.
   requiredCount: number;
+  // Quando a celebracao (confete do card dourado) foi exibida. null = ainda
+  // nao celebrada (dispara na primeira visualizacao do card already_issued).
+  celebratedAt: string | null;
 }
 
 async function authHeader(): Promise<Record<string, string>> {
@@ -66,13 +69,18 @@ export async function registerCompletion(
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = (await res.json()) as {
-      data?: { completedAt: string; requiredCount: number };
+      data?: {
+        completedAt: string;
+        requiredCount: number;
+        celebratedAt: string | null;
+      };
     };
     if (!json.data) return null;
     const completion: RoadmapCompletion = {
       roadmapSlug: slug,
       completedAt: json.data.completedAt,
       requiredCount: json.data.requiredCount,
+      celebratedAt: json.data.celebratedAt ?? null,
     };
     if (cachedUserId === userId && cachedCompletions !== null) {
       const rest = cachedCompletions.filter((c) => c.roadmapSlug !== slug);
@@ -84,5 +92,31 @@ export async function registerCompletion(
     // visita tenta de novo.
     console.error("[roadmapCompletion] registerCompletion error:", err);
     return null;
+  }
+}
+
+// Marca a celebracao como exibida (Etapa 2 do card de conclusao). Otimista no
+// cache em memoria PRIMEIRO (a proxima leitura ja ve celebrada, mesmo antes ou
+// apesar da resposta do server) e so entao dispara o POST. Fire-and-forget:
+// falha nao e visivel e, no pior caso, rende um disparo extra numa sessao
+// futura (cache perdido, marcacao nao persistida) — nunca erro pro usuario.
+export async function markCelebrated(
+  userId: string,
+  slug: string,
+): Promise<void> {
+  if (cachedUserId === userId && cachedCompletions !== null) {
+    cachedCompletions = cachedCompletions.map((c) =>
+      c.roadmapSlug === slug && c.celebratedAt === null
+        ? { ...c, celebratedAt: new Date().toISOString() }
+        : c,
+    );
+  }
+  try {
+    const res = await request(`/${encodeURIComponent(slug)}/celebrated`, {
+      method: "POST",
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  } catch (err) {
+    console.error("[roadmapCompletion] markCelebrated error:", err);
   }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { nodeProgress } from "@/lib/roadmapV2/progress";
 import {
@@ -7,6 +7,7 @@ import {
 } from "@/lib/roadmapV2/completionCtas";
 import {
   listCompletions,
+  markCelebrated,
   registerCompletion,
   type RoadmapCompletion,
 } from "@/services/roadmapCompletionService";
@@ -151,11 +152,25 @@ export function useRoadmapCompletion({
     [roadmap],
   );
 
+  // Marca a celebracao como exibida (chamado pelo card apos disparar o confete).
+  // Otimista: some do gatilho ja nesta sessao (setCompletion) antes do POST, e
+  // o service espelha no cache em memoria. Fire-and-forget no service.
+  const markCelebration = useCallback(() => {
+    if (!userId || !slug) return;
+    setCompletion((prev) =>
+      prev && prev.celebratedAt === null
+        ? { ...prev, celebratedAt: new Date().toISOString() }
+        : prev,
+    );
+    void markCelebrated(userId, slug);
+  }, [userId, slug]);
+
   return {
     completion,
     allComplete,
     showModal,
     dismissModal: () => setShowModal(false),
     ctas,
+    onCelebrate: markCelebration,
   };
 }
