@@ -4,6 +4,10 @@ import { Icon } from "@iconify/react";
 import { Heart } from "lucide-react";
 import Logo from "@/components/Logo";
 import { apiUrl } from "@/lib/api";
+import {
+  getNewsletterState,
+  peekNewsletterState,
+} from "@/lib/newsletterState";
 import { CONTACT_EMAIL, FOOTER_COLUMNS, SOCIAL_LINKS } from "@/lib/footerData";
 
 type SocialIconProps = {
@@ -79,8 +83,11 @@ const SOCIAL_ITEMS = [
 const NEWSLETTER_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function NewsletterCapture() {
+  // Estado semeado do cache de modulo (peek): apos a 1a carga, os mounts
+  // seguintes (o Footer remonta a cada navegacao) ja abrem com o valor certo,
+  // sem flash de "loading". A flag e server-only.
   const [captureStatus, setCaptureStatus] = useState<"loading" | "on" | "off">(
-    "loading",
+    () => peekNewsletterState() ?? "loading",
   );
   const [email, setEmail] = useState("");
   const [submitStatus, setSubmitStatus] = useState<
@@ -88,23 +95,17 @@ function NewsletterCapture() {
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
-  // 1 request leve no mount. A flag e server-only, entao o front descobre o estado
-  // por GET /api/newsletter/state.
+  // getNewsletterState cacheia e dedupa: 1 request por carga de app em vez de 1
+  // por navegacao. Fail-closed em erro (off), com retry no proximo mount.
   useEffect(() => {
     let cancelled = false;
-    async function resolveState() {
-      try {
-        const res = await fetch(apiUrl("/api/newsletter/state"));
-        if (!res.ok) throw new Error("state indisponivel");
-        const data = (await res.json()) as { status?: string };
-        if (cancelled) return;
-        // Fail-closed no front: so liga o form com "on" explicito.
-        setCaptureStatus(data.status === "on" ? "on" : "off");
-      } catch {
+    getNewsletterState()
+      .then((status) => {
+        if (!cancelled) setCaptureStatus(status);
+      })
+      .catch(() => {
         if (!cancelled) setCaptureStatus("off");
-      }
-    }
-    resolveState();
+      });
     return () => {
       cancelled = true;
     };
