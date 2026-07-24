@@ -219,6 +219,10 @@ const CSP_POLICY = [
     "wss://vlcvaanlkqyxemrxsxzn.supabase.co",
     "https://us.i.posthog.com",
     "https://us-assets.i.posthog.com",
+    // Sentry do browser (VITE_SENTRY_DSN): sem este host o CSP bloqueia o envio
+    // dos eventos (mais um silencio). Wildcard cobre o subdominio de ingest de
+    // qualquer regiao (o<org>.ingest[.us|.de].sentry.io).
+    "https://*.sentry.io",
   ].join(" "),
   // 'self' necessario pro iframe da landing de lancamento (client/public/lancamento.html).
   // Nao remover sem migrar a landing pra fora de iframe.
