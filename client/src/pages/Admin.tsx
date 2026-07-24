@@ -4067,8 +4067,8 @@ function EmailCampaignsAdminSection() {
                         : ""
                     } → ${
                       eligibleCount === null
-                        ? "contando destinatários..."
-                        : `${eligibleCount} destinatários`
+                        ? "contando elegíveis..."
+                        : `${eligibleCount} elegíveis`
                     }`}
                   </p>
                   {eligibleCount !== null ? (
