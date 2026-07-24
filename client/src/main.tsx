@@ -5,8 +5,13 @@ import posthog from "posthog-js";
 import { z } from "zod";
 import App from "./App";
 import { reloadOnceForStaleChunk } from "./lib/lazyWithRetry";
+import { initClientSentry } from "./lib/sentry";
 import "./fonts.css";
 import "./index.css";
+
+// Sentry do browser: inicializa cedo (antes do primeiro render) pra capturar
+// erros de boot. No-op quando VITE_SENTRY_DSN esta ausente.
+initClientSentry();
 
 // Skew de deploy: o Vite emite vite:preloaderror quando falha o preload de um
 // chunk cujo hash sumiu apos um novo deploy. Recarrega uma vez (mesma guarda
