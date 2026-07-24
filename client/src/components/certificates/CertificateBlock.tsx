@@ -88,6 +88,12 @@ function formatRetryAt(retryAt: string | undefined): string {
   });
 }
 
+// Junta numeros em portugues: "4", "4 e 5", "4, 5 e 4".
+function formatList(items: number[]): string {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}`;
+}
+
 // Estado already_issued (redesign dourado): botao secundario mais leve que a
 // acao principal (outline, sombra menor). w-full no mobile, largura intrinseca
 // a partir de sm. Renderizados direto no card, sem o CompletionCtaLinks
@@ -317,7 +323,7 @@ export default function CertificateBlock({
   }, [eligibility?.status, celebratedAt, reduce, onCelebrate]);
 
   // Recuperacao do beco not_complete: a trilha esta concluida localmente
-  // (allComplete) mas o server ainda nao tem a conclusao — corrida entre o POST
+  // (allComplete) mas o server ainda nao tem a conclusao, por corrida entre o POST
   // de registro e este GET (que pode ter cacheado o not_complete), ou registro
   // ao vivo que falhou. Re-registra (idempotente) e, ao confirmar, invalida o
   // not_complete cacheado e revalida -> cai em quiz_required. Uma vez por mount;
@@ -341,7 +347,7 @@ export default function CertificateBlock({
   // Histórico da prova SO no estado quiz_required, buscado sob demanda. Sem
   // cache (dado suplementar e barato), mas com os mesmos guards de race/desmonte
   // do load (seq + mountedRef). Falha e silenciosa: history fica null e o card
-  // renderiza sem as estatisticas — o botao da prova segue funcionando.
+  // renderiza sem as estatisticas, o botao da prova segue funcionando.
   useEffect(() => {
     if (eligibility?.status !== "quiz_required") {
       setHistory(null);
@@ -466,7 +472,7 @@ export default function CertificateBlock({
     case "quiz_required": {
       const gate = history?.retakeGate;
       const reprovadas =
-        history?.attempts.filter((a) => a.status === "reprovada") ?? [];
+        history?.attempts?.filter((a) => a.status === "reprovada") ?? [];
       const notas = reprovadas
         .map((a) => a.score)
         .filter((s): s is number => s != null);
@@ -475,13 +481,13 @@ export default function CertificateBlock({
       if (gate && !gate.allowed) {
         stat = `Você usou as ${RETAKE_LIMIT} tentativas deste ciclo. Novas tentativas a partir de ${formatRetryAt(gate.retryAt)}.`;
       } else if (gate && reprovadas.length > 0) {
-        stat = `Você já tentou ${reprovadas.length} ${
-          reprovadas.length === 1 ? "vez" : "vezes"
-        }${
+        const notasPart =
           notas.length > 0
-            ? ` (${notas.join(", ")} de ${QUESTIONS_PER_ATTEMPT})`
-            : ""
-        }. Restam ${gate.remaining} de ${RETAKE_LIMIT} tentativas neste ciclo.`;
+            ? `Notas anteriores: ${formatList(notas)} de ${QUESTIONS_PER_ATTEMPT}.`
+            : `Você já fez ${reprovadas.length} ${
+                reprovadas.length === 1 ? "tentativa" : "tentativas"
+              }.`;
+        stat = `${notasPart} Restam ${gate.remaining} de ${RETAKE_LIMIT} tentativas neste ciclo.`;
       }
       return (
         <StateShell
@@ -490,7 +496,7 @@ export default function CertificateBlock({
           title={completedTitle}
         >
           <p className={SUBTITLE}>
-            Falta a prova final para conquistar seu certificado — {PASS_SCORE}{" "}
+            Falta a prova final para conquistar seu certificado: {PASS_SCORE}{" "}
             acertos em {QUESTIONS_PER_ATTEMPT} questões.
           </p>
           {stat ? <p className={STAT}>{stat}</p> : null}

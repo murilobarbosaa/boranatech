@@ -3,6 +3,7 @@ import { Link, useParams } from "wouter";
 import { ArrowLeft, ArrowRight, CheckCircle2, Send } from "lucide-react";
 import { useReducedMotion } from "framer-motion";
 import { fireProCelebration } from "@/lib/proConfetti";
+import { useCountdown } from "@/hooks/useCountdown";
 import { roadmapsMeta } from "@/lib/roadmapV2/meta";
 import QuizBriefing from "@/components/roadmapQuiz/QuizBriefing";
 import {
@@ -51,7 +52,7 @@ type Phase =
   | {
       kind: "briefing";
       attempts: QuizAttemptSummary[];
-      retakeGate: RetakeGate;
+      retakeGate?: RetakeGate;
       hasActive: boolean;
     }
   | { kind: "gate"; code: "completion_required" | "quiz_unavailable" }
@@ -232,6 +233,14 @@ export default function RoadmapQuiz() {
     void prepare();
   }, [prepare]);
 
+  // Contador vivo do cooldown SO nesta tela de foco (o card da trilha fica com
+  // a data estatica). Ao zerar, revalida (prepare re-busca o historico) pra o
+  // usuario comecar assim que liberar, sem reload. Sem alvo -> sem interval.
+  const cooldownCountdown = useCountdown(
+    phase.kind === "cooldown" ? phase.retryAt : null,
+    prepare,
+  );
+
   // Autosave com debounce: persiste as respostas parciais ~2s depois da
   // ultima mudanca. Silencioso: falha so loga e fica pendente pro proximo
   // tick (o submit envia o estado completo de qualquer forma).
@@ -334,6 +343,7 @@ export default function RoadmapQuiz() {
             retakeGate={phase.retakeGate}
             hasActive={phase.hasActive}
             onStart={() => void start()}
+            onExpire={() => void prepare()}
           />
         )}
 
@@ -401,19 +411,25 @@ export default function RoadmapQuiz() {
         )}
 
         {phase.kind === "cooldown" && (
-          <div className={frameClass()}>
+          <div className={frameClass("text-center")}>
             <h2 className="font-display text-lg font-black text-slate-950">
-              {/* TODO(Ana): titulo do estado de cooldown de tentativas */}
               Tentativas esgotadas por enquanto
             </h2>
             <p className="mt-2 text-sm font-semibold text-slate-600">
-              {/* TODO(Ana): corpo do aviso de cooldown de tentativas */}
-              Você usou suas {RETAKE_LIMIT} tentativas nesta trilha. Você pode
-              tentar de novo a partir de {formatRetryAt(phase.retryAt)}.
+              Você usou suas {RETAKE_LIMIT} tentativas neste ciclo. As novas
+              tentativas liberam em:
             </p>
-            <div className="mt-4">
-              <Link href={trailHref} className={primaryBtn}>
-                {/* TODO(Ana): CTA de volta a trilha no cooldown */}
+            <p className="mt-3 font-mono text-4xl font-black tabular-nums text-slate-950">
+              {cooldownCountdown ?? "00:00:00"}
+            </p>
+            <p className="mt-1 text-xs font-bold text-slate-500">
+              {formatRetryAt(phase.retryAt)}
+            </p>
+            <div className="mt-5 flex justify-center">
+              <Link
+                href={trailHref}
+                className={`${primaryBtn} w-full sm:w-auto`}
+              >
                 Voltar à trilha
               </Link>
             </div>
@@ -489,8 +505,7 @@ export default function RoadmapQuiz() {
                               setIndex(i);
                             }}
                           >
-                            {/* TODO(Ana): CTA de ir para a pergunta */}
-                            Ir para
+                            Ver
                           </button>
                         </span>
                       </li>
@@ -538,24 +553,22 @@ export default function RoadmapQuiz() {
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-4 flex flex-wrap gap-3">
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
                     <button
                       type="button"
                       onClick={handleSubmitClick}
                       disabled={submitting}
-                      className={primaryBtn}
+                      className={`${primaryBtn} w-full sm:w-auto`}
                     >
                       <Send className="h-4 w-4" />
-                      {/* TODO(Ana): CTA de enviar a prova */}
                       {submitting ? "Enviando..." : "Enviar prova"}
                     </button>
                     <button
                       type="button"
                       onClick={() => setReviewing(false)}
                       disabled={submitting}
-                      className={secondaryBtn}
+                      className={`${secondaryBtn} w-full sm:w-auto`}
                     >
-                      {/* TODO(Ana): CTA de voltar as perguntas */}
                       Voltar às perguntas
                     </button>
                   </div>

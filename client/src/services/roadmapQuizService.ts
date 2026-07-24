@@ -64,7 +64,10 @@ export interface QuizHistory {
   attempts: QuizAttemptSummary[];
   // Estado das tentativas (restantes/cooldown), computado no server. Usado pela
   // tela explicativa pra mostrar restantes e cooldown sem criar tentativa.
-  retakeGate: RetakeGate;
+  // OPCIONAL de proposito: um server anterior a esta mudanca (deploy/restart
+  // pendente) nao devolve o campo. E dado suplementar; o client trata a ausencia
+  // como "permitido" e simplesmente nao mostra as tentativas restantes.
+  retakeGate?: RetakeGate;
   // Revisao completa da tentativa aprovada, se existir.
   revisaoAprovada?: QuizReviewItem[];
 }
