@@ -13,6 +13,11 @@ import { toast } from "sonner";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 import { BntSelect } from "@/components/shared/BntSelect";
 import {
+  brasiliaLocalToIso,
+  formatBrasiliaDateTime,
+  isoToBrasiliaLocal,
+} from "@/lib/brasiliaTime";
+import {
   NOTIFICATION_TYPE_META as TYPE_META,
   notificationTypeMetaOf,
 } from "@/lib/notificationTypeMeta";
@@ -757,28 +762,29 @@ export function NotificationsManager() {
     setWhenMode(mode);
     setScheduleText(
       mode === "schedule" && item.scheduled_for
-        ? isoToLocalInput(item.scheduled_for)
+        ? isoToBrasiliaLocal(item.scheduled_for)
         : "",
     );
   }
 
   async function handlePublish() {
     if (!publishTarget) return;
-    // Agendar: converte o datetime-local (fuso do navegador) para ISO e chama
-    // /schedule. As regras de janela (futuro, máx 30d) são validadas no server.
+    // Agendar: o datetime-local é wall-clock de Brasília (rótulo do campo);
+    // brasiliaLocalToIso ancora em America/Sao_Paulo, independente do fuso do
+    // navegador. As regras de janela (futuro, máx 30d) são validadas no server.
     if (whenMode === "schedule") {
       if (!scheduleText) {
         toast.error("Escolha a data e a hora do agendamento.");
         return;
       }
-      const date = new Date(scheduleText);
-      if (Number.isNaN(date.getTime())) {
+      const scheduledForIso = brasiliaLocalToIso(scheduleText);
+      if (!scheduledForIso) {
         toast.error("Data de agendamento inválida.");
         return;
       }
       setPublishing(true);
       try {
-        await scheduleNotification(publishTarget.id, date.toISOString());
+        await scheduleNotification(publishTarget.id, scheduledForIso);
         toast.success("Notificação agendada.");
         setPublishTarget(null);
         void load();
@@ -878,6 +884,8 @@ export function NotificationsManager() {
     form.audience === "custom"
       ? parseRecipientEmails(form.recipients_text)
       : [];
+  // Preview do agendamento no horário de Brasília (mesma conversão da gravação).
+  const schedulePreviewIso = brasiliaLocalToIso(scheduleText);
 
   return (
     <div className="space-y-6">
@@ -1712,11 +1720,10 @@ export function NotificationsManager() {
                       onChange={(e) => setScheduleText(e.target.value)}
                       className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
                     />
-                    {scheduleText &&
-                    !Number.isNaN(new Date(scheduleText).getTime()) ? (
+                    {schedulePreviewIso ? (
                       <p className="mt-2 text-xs font-bold text-sky-800">
-                        Sai em{" "}
-                        {formatDateTime(new Date(scheduleText).toISOString())}.
+                        Sai em {formatBrasiliaDateTime(schedulePreviewIso)}{" "}
+                        (horário de Brasília).
                       </p>
                     ) : null}
                   </div>
