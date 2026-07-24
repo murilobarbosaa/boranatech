@@ -337,11 +337,18 @@ router.get("/dashboard", async (_req, res, next) => {
 // direto. TTL 5 min: funil de 30d nao muda de forma perceptivel minuto a minuto.
 const POSTHOG_STATS_CACHE_TTL_S = 300;
 
+// computedAt embutido na closure: roda no cache-write, entao fica congelado com
+// o valor e servido pelo resto do TTL. E o horario REAL de calculo (nao "agora"
+// no hit). Nao exige metadata no getOrCompute. So a janela default carrega isso;
+// a custom e live. O shape de `data` no envelope nao muda (computedAt vai fora).
 function getCachedPosthogStatsDefault() {
   return getOrCompute(
     "admincache:posthog-stats:default30d",
     POSTHOG_STATS_CACHE_TTL_S,
-    () => getPosthogStats(),
+    async () => ({
+      result: await getPosthogStats(),
+      computedAt: new Date().toISOString(),
+    }),
   );
 }
 
@@ -359,13 +366,15 @@ router.get("/posthog-stats", async (req, res, next) => {
     const from =
       fromDate && !Number.isNaN(fromDate.getTime()) ? fromDate : undefined;
     const to = toDate && !Number.isNaN(toDate.getTime()) ? toDate : undefined;
-    // Janela default (sem from/to valido) le do cache compartilhado; janela
-    // custom recalcula sempre (cardinalidade ilimitada nao entra no Redis).
-    const result =
-      from || to
-        ? await getPosthogStats({ from, to })
-        : await getCachedPosthogStatsDefault();
-    res.json({ data: result });
+    // Janela default (sem from/to valido) le do cache compartilhado e expoe o
+    // computedAt (horario real de calculo, congelado no cache-write). Janela
+    // custom recalcula sempre (live), sem computedAt: e sempre "agora".
+    if (from || to) {
+      res.json({ data: await getPosthogStats({ from, to }) });
+    } else {
+      const { result, computedAt } = await getCachedPosthogStatsDefault();
+      res.json({ data: result, computedAt });
+    }
   } catch (err) {
     next(err);
   }

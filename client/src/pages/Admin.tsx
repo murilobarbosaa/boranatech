@@ -5297,6 +5297,12 @@ export default function Admin() {
     failed: 0,
   });
   const [posthogState, setPosthogState] = useState<PosthogState | null>(null);
+  // Horario REAL de calculo do funil (vem do envelope da janela default, cacheada
+  // 5 min). null na janela custom/erro (que sao live). O PostHog e a unica fonte
+  // da Visao com idade perceptivel; os demais blocos sao live e nao tem stamp.
+  const [posthogComputedAt, setPosthogComputedAt] = useState<string | null>(
+    null,
+  );
   const [churnRiskUsers, setChurnRiskUsers] = useState<ChurnRiskUser[] | null>(
     null,
   );
@@ -5309,7 +5315,17 @@ export default function Admin() {
   const [churnError, setChurnError] = useState<string | null>(null);
   const [affiliatesError, setAffiliatesError] = useState<string | null>(null);
   const [financeRefreshKey, setFinanceRefreshKey] = useState(0);
-  const [overviewLoading, setOverviewLoading] = useState(true);
+  // Loading por fonte de dado, nao um flag unico: cada card renderiza assim que
+  // SEU dado chega, sem ficar refem do endpoint mais lento (PostHog/churn). Os
+  // fetches seguem em paralelo (Promise.all em loadDashboardData); o que muda e
+  // so o estado de UI. queue nao tem flag (usa queueError + default).
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [healthLoading, setHealthLoading] = useState(true);
+  const [aiStatsLoading, setAiStatsLoading] = useState(true);
+  const [posthogLoading, setPosthogLoading] = useState(true);
+  const [churnLoading, setChurnLoading] = useState(true);
+  const [affiliatesStatsLoading, setAffiliatesStatsLoading] = useState(true);
+  const [billingLoading, setBillingLoading] = useState(true);
   // Aba derivada DIRETO da URL (?section=), fonte unica: sem estado espelhado,
   // entao nao ha loop URL<->estado. F5, voltar/avancar e colar link leem daqui;
   // /admin sem ?section cai em "visao-geral" e nao reescreve a URL.
@@ -5403,118 +5419,115 @@ export default function Admin() {
     // Carrega os dados do dashboard. Separado da decisao do gate: a falha aqui
     // nao deve, no caminho da claim, fechar o gate (so deixa os dados vazios).
     const loadDashboardData = async () => {
-      setOverviewLoading(true);
-      try {
-        const [
-          dashboardResult,
-          healthResult,
-          aiResult,
-          queueResult,
-          posthogResult,
-          churnResult,
-          affiliatesResult,
-          billingMetricsResult,
-        ] = await Promise.all([
-          // Core tagueado: falha de /dashboard NAO pode virar 0 nos contadores.
-          // Alem disso, tagueando os tres cores o Promise.all nunca rejeita, entao
-          // cada resultado (inclusive o do dashboard) e sempre aplicado.
-          adminFetch("/dashboard")
-            .then((json) => ({
-              ok: true as const,
-              data: json.data as DashboardData,
-            }))
-            .catch((err: unknown) => ({
-              ok: false as const,
-              error:
-                err instanceof Error
-                  ? err.message
-                  : "Erro ao carregar o dashboard.",
-            })),
-          fetch(apiUrl("/api/health"))
-            .then((res) => res.json())
-            .then((data) => ({
-              ok: true as const,
-              data: data as HealthResponse,
-            }))
-            .catch(() => ({ ok: false as const })),
-          adminFetch("/ai-stats")
-            .then((json) => ({
-              ok: true as const,
-              data: (json.data || {}) as AiStatsData,
-            }))
-            .catch((err: unknown) => ({
-              ok: false as const,
-              error:
-                err instanceof Error
-                  ? err.message
-                  : "Erro ao carregar uso de IA.",
-            })),
-          // Sem colapso: falha de fetch vira estado de erro da secao, nao zeros.
-          adminFetch("/queue-stats")
-            .then((json) => ({
-              ok: true as const,
-              data: json.data as QueueStats,
-            }))
-            .catch((err: unknown) => ({
-              ok: false as const,
-              error:
-                err instanceof Error ? err.message : "Erro ao carregar a fila.",
-            })),
-          // PostHog: union do backend; falha de fetch vira o proprio estado error.
-          adminFetch("/posthog-stats")
-            .then((json) => json.data as PosthogState)
-            .catch(
-              (err: unknown): PosthogState => ({
-                state: "error",
-                reason:
-                  err instanceof Error
-                    ? err.message
-                    : "Erro ao consultar o PostHog.",
-              }),
-            ),
-          adminFetch("/churn-risk")
-            .then((json) => ({
-              ok: true as const,
-              data: Array.isArray(json.data)
-                ? (json.data as ChurnRiskUser[])
-                : [],
-            }))
-            .catch((err: unknown) => ({
-              ok: false as const,
-              error:
-                err instanceof Error
-                  ? err.message
-                  : "Erro ao carregar risco de churn.",
-            })),
-          adminFetch("/affiliates-stats")
-            .then((json) => ({
-              ok: true as const,
-              data: Array.isArray(json.data)
-                ? (json.data as AffiliateRecord[])
-                : [],
-            }))
-            .catch((err: unknown) => ({
-              ok: false as const,
-              error:
-                err instanceof Error
-                  ? err.message
-                  : "Erro ao carregar afiliados.",
-            })),
-          // Falha de metricas de cobranca vira ESTADO de erro na secao, nao dado
-          // vazio: capturamos o erro num resultado tagueado, sem colapsar em 0.
-          adminFetch("/billing-metrics")
-            .then((json) => ({
-              ok: true as const,
-              data: json.data as BillingMetricsData,
-            }))
-            .catch((err: unknown) => ({
-              ok: false as const,
-              error:
-                err instanceof Error
-                  ? err.message
-                  : "Erro ao carregar métricas de cobrança.",
-            })),
-        ]);
+      setDashboardLoading(true);
+      setHealthLoading(true);
+      setAiStatsLoading(true);
+      setPosthogLoading(true);
+      setChurnLoading(true);
+      setAffiliatesStatsLoading(true);
+      setBillingLoading(true);
+
+      // Mesmas promises tagueadas de antes (falha vira estado de erro da secao,
+      // nunca zeros). A diferenca: cada uma aplica SEU estado no proprio .then
+      // assim que chega, em vez de esperar o Promise.all inteiro. O paralelismo
+      // e identico; muda so o momento em que cada card sai do "Carregando".
+      const dashboardPromise = adminFetch("/dashboard")
+        .then((json) => ({
+          ok: true as const,
+          data: json.data as DashboardData,
+        }))
+        .catch((err: unknown) => ({
+          ok: false as const,
+          error:
+            err instanceof Error ? err.message : "Erro ao carregar o dashboard.",
+        }));
+      const healthPromise = fetch(apiUrl("/api/health"))
+        .then((res) => res.json())
+        .then((data) => ({
+          ok: true as const,
+          data: data as HealthResponse,
+        }))
+        .catch(() => ({ ok: false as const }));
+      const aiPromise = adminFetch("/ai-stats")
+        .then((json) => ({
+          ok: true as const,
+          data: (json.data || {}) as AiStatsData,
+        }))
+        .catch((err: unknown) => ({
+          ok: false as const,
+          error:
+            err instanceof Error ? err.message : "Erro ao carregar uso de IA.",
+        }));
+      // Sem colapso: falha de fetch vira estado de erro da secao, nao zeros.
+      const queuePromise = adminFetch("/queue-stats")
+        .then((json) => ({
+          ok: true as const,
+          data: json.data as QueueStats,
+        }))
+        .catch((err: unknown) => ({
+          ok: false as const,
+          error:
+            err instanceof Error ? err.message : "Erro ao carregar a fila.",
+        }));
+      // PostHog: union do backend; falha de fetch vira o proprio estado error.
+      // computedAt vem no envelope so na janela default (cacheada); ausente/erro
+      // => null (dado live, idade nao se aplica).
+      const posthogPromise = adminFetch("/posthog-stats")
+        .then((json) => ({
+          state: json.data as PosthogState,
+          computedAt:
+            typeof json.computedAt === "string" ? json.computedAt : null,
+        }))
+        .catch((err: unknown) => ({
+          state: {
+            state: "error" as const,
+            reason:
+              err instanceof Error
+                ? err.message
+                : "Erro ao consultar o PostHog.",
+          } as PosthogState,
+          computedAt: null,
+        }));
+      const churnPromise = adminFetch("/churn-risk")
+        .then((json) => ({
+          ok: true as const,
+          data: Array.isArray(json.data) ? (json.data as ChurnRiskUser[]) : [],
+        }))
+        .catch((err: unknown) => ({
+          ok: false as const,
+          error:
+            err instanceof Error
+              ? err.message
+              : "Erro ao carregar risco de churn.",
+        }));
+      const affiliatesPromise = adminFetch("/affiliates-stats")
+        .then((json) => ({
+          ok: true as const,
+          data: Array.isArray(json.data)
+            ? (json.data as AffiliateRecord[])
+            : [],
+        }))
+        .catch((err: unknown) => ({
+          ok: false as const,
+          error:
+            err instanceof Error ? err.message : "Erro ao carregar afiliados.",
+        }));
+      // Falha de metricas de cobranca vira ESTADO de erro na secao, nao dado
+      // vazio: capturamos o erro num resultado tagueado, sem colapsar em 0.
+      const billingPromise = adminFetch("/billing-metrics")
+        .then((json) => ({
+          ok: true as const,
+          data: json.data as BillingMetricsData,
+        }))
+        .catch((err: unknown) => ({
+          ok: false as const,
+          error:
+            err instanceof Error
+              ? err.message
+              : "Erro ao carregar métricas de cobrança.",
+        }));
+
+      void dashboardPromise.then((dashboardResult) => {
         if (cancelled) return;
         if (dashboardResult.ok) {
           setDashboard(dashboardResult.data);
@@ -5529,7 +5542,15 @@ export default function Admin() {
           setDashboardError(dashboardResult.error);
           setAuditLogs([]);
         }
+        setDashboardLoading(false);
+      });
+      void healthPromise.then((healthResult) => {
+        if (cancelled) return;
         setHealth(healthResult.ok ? healthResult.data : null);
+        setHealthLoading(false);
+      });
+      void aiPromise.then((aiResult) => {
+        if (cancelled) return;
         if (aiResult.ok) {
           setAiStats(aiResult.data);
           setAiStatsError(null);
@@ -5537,13 +5558,25 @@ export default function Admin() {
           setAiStats({});
           setAiStatsError(aiResult.error);
         }
+        setAiStatsLoading(false);
+      });
+      void queuePromise.then((queueResult) => {
+        if (cancelled) return;
         if (queueResult.ok) {
           setQueueStats(queueResult.data);
           setQueueError(null);
         } else {
           setQueueError(queueResult.error);
         }
-        setPosthogState(posthogResult);
+      });
+      void posthogPromise.then((posthogResult) => {
+        if (cancelled) return;
+        setPosthogState(posthogResult.state);
+        setPosthogComputedAt(posthogResult.computedAt);
+        setPosthogLoading(false);
+      });
+      void churnPromise.then((churnResult) => {
+        if (cancelled) return;
         if (churnResult.ok) {
           setChurnRiskUsers(churnResult.data);
           setChurnError(null);
@@ -5551,6 +5584,10 @@ export default function Admin() {
           setChurnRiskUsers(null);
           setChurnError(churnResult.error);
         }
+        setChurnLoading(false);
+      });
+      void affiliatesPromise.then((affiliatesResult) => {
+        if (cancelled) return;
         if (affiliatesResult.ok) {
           setAffiliates(affiliatesResult.data);
           setAffiliatesError(null);
@@ -5558,6 +5595,10 @@ export default function Admin() {
           setAffiliates([]);
           setAffiliatesError(affiliatesResult.error);
         }
+        setAffiliatesStatsLoading(false);
+      });
+      void billingPromise.then((billingMetricsResult) => {
+        if (cancelled) return;
         if (billingMetricsResult.ok) {
           setBillingMetrics(billingMetricsResult.data);
           setBillingMetricsError(null);
@@ -5565,9 +5606,22 @@ export default function Admin() {
           setBillingMetrics(null);
           setBillingMetricsError(billingMetricsResult.error);
         }
-      } finally {
-        if (!cancelled) setOverviewLoading(false);
-      }
+        setBillingLoading(false);
+      });
+
+      // Mantido o Promise.all: mesmo paralelismo, e o await preserva o contrato
+      // de "conclui quando tudo terminou" para o caller (resolve()). Os .then
+      // acima ja aplicaram cada estado; aqui so aguardamos o conjunto.
+      await Promise.all([
+        dashboardPromise,
+        healthPromise,
+        aiPromise,
+        queuePromise,
+        posthogPromise,
+        churnPromise,
+        affiliatesPromise,
+        billingPromise,
+      ]);
     };
 
     const resolve = async () => {
@@ -5624,6 +5678,7 @@ export default function Admin() {
           setAiStatsError(null);
           setQueueStats({ waiting: 0, active: 0, completed: 0, failed: 0 });
           setPosthogState(null);
+          setPosthogComputedAt(null);
           setChurnRiskUsers(null);
           setChurnError(null);
           setAffiliates([]);
@@ -5642,7 +5697,11 @@ export default function Admin() {
     };
   }, [authLoading, user]);
 
-  const lastUpdated = useMemo(
+  // Horario de CARGA da view (quando o cliente abriu), nao frescor por-dado: com
+  // cache por bloco, os dados tem idades diferentes; um stamp unico so e honesto
+  // sobre a acao de carregar. A idade real de dado aparece so onde ha cache
+  // perceptivel (o funil, via posthogComputedAt).
+  const loadedAt = useMemo(
     () =>
       new Intl.DateTimeFormat("pt-BR", {
         dateStyle: "short",
@@ -6221,7 +6280,7 @@ export default function Admin() {
                 Dados separados por seção
               </p>
               <p className="mt-1 text-xs font-semibold text-slate-500">
-                Atualizado em {lastUpdated}
+                Carregado às {loadedAt}
               </p>
             </div>
           </div>
@@ -6233,7 +6292,7 @@ export default function Admin() {
           {activeSection === "visao-geral" ? (
             <>
               <IntegrationsHealthPanel />
-              {overviewLoading ? (
+              {dashboardLoading ? (
                 <LoadingBlock />
               ) : dashboardError ? (
                 <ErrorBlock message={dashboardError} />
@@ -6275,6 +6334,12 @@ export default function Admin() {
                       <h2 className="font-display text-2xl font-black text-slate-950">
                         Do visitante ao assinante Pro
                       </h2>
+                      {!posthogLoading && posthogComputedAt ? (
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          analytics atualizados{" "}
+                          {formatRelativeTime(posthogComputedAt)}
+                        </p>
+                      ) : null}
                     </div>
                     {posthogHasData ? (
                       <span className="inline-flex w-fit items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-50 px-3 py-2 text-xs font-black text-violet-800">
@@ -6284,7 +6349,7 @@ export default function Admin() {
                     ) : null}
                   </div>
                   <div className="mt-6 space-y-4">
-                    {overviewLoading ? (
+                    {posthogLoading ? (
                       <LoadingBlock />
                     ) : posthogHasData && posthogFunnel.length ? (
                       posthogFunnel.map((step, index) => {
@@ -6354,7 +6419,7 @@ export default function Admin() {
                   <div className="mt-6 grid grid-cols-2 gap-3">
                     <div className="rounded-2xl border-2 border-white/80 bg-white/10 p-4">
                       <p className="text-2xl font-black">
-                        {overviewLoading
+                        {dashboardLoading
                           ? "…"
                           : dashboard?.counts
                             ? formatCount(dashboard.counts.ai_calls_total)
@@ -6437,7 +6502,7 @@ export default function Admin() {
                     </p>
                   </div>
                   <div className="divide-y-2 divide-slate-100">
-                    {overviewLoading ? (
+                    {aiStatsLoading ? (
                       <div className="p-5">
                         <LoadingBlock />
                       </div>
@@ -6492,7 +6557,7 @@ export default function Admin() {
                         Assinaturas ativas
                       </p>
                       <p className="font-display text-3xl font-black text-slate-950">
-                        {overviewLoading
+                        {dashboardLoading
                           ? "…"
                           : dashboard?.counts
                             ? formatCount(dashboard.counts.active_subscriptions)
@@ -6503,7 +6568,7 @@ export default function Admin() {
                       </p>
                     </div>
                     <BillingMetricsPanel
-                      loading={overviewLoading}
+                      loading={billingLoading}
                       error={billingMetricsError}
                       metrics={billingMetrics}
                     />
@@ -6588,7 +6653,7 @@ export default function Admin() {
                       Usuários em risco
                     </h3>
                     <div className="mt-4">
-                      {overviewLoading ? (
+                      {churnLoading ? (
                         <LoadingBlock />
                       ) : churnRiskUsers === null ? (
                         // churnRiskUsers null so acontece em erro de fetch agora
@@ -6709,7 +6774,7 @@ export default function Admin() {
                     </h3>
                     <div className="mt-4">
                       <BillingMetricsPanel
-                        loading={overviewLoading}
+                        loading={billingLoading}
                         error={billingMetricsError}
                         metrics={billingMetrics}
                       />
@@ -7105,7 +7170,7 @@ export default function Admin() {
                         className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_#0f172a] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
                       />
                       <div className="mt-5">
-                        {overviewLoading || affiliatesLoading ? (
+                        {affiliatesStatsLoading || affiliatesLoading ? (
                           <LoadingBlock />
                         ) : affiliates.length ? (
                           filteredAffiliates.length ? (
@@ -8029,7 +8094,7 @@ export default function Admin() {
                     Saúde do sistema
                   </h2>
                   <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                    {overviewLoading ? (
+                    {healthLoading ? (
                       <div className="sm:col-span-2">
                         <LoadingBlock />
                       </div>
@@ -8070,7 +8135,7 @@ export default function Admin() {
                     Páginas mais acessadas
                   </h2>
                   <div className="mt-5 overflow-hidden rounded-2xl border-2 border-slate-900">
-                    {overviewLoading ? (
+                    {posthogLoading ? (
                       <div className="p-5">
                         <LoadingBlock />
                       </div>
@@ -8106,7 +8171,7 @@ export default function Admin() {
                     Aquisição de usuários
                   </h2>
                   <div className="mt-6 space-y-4">
-                    {overviewLoading ? (
+                    {posthogLoading ? (
                       <LoadingBlock />
                     ) : posthogHasData && posthogStats?.acquisition.length ? (
                       posthogStats.acquisition.map((channel) => {
@@ -8152,7 +8217,7 @@ export default function Admin() {
                     Eventos recentes
                   </h2>
                   <div className="mt-5 space-y-4">
-                    {overviewLoading ? (
+                    {dashboardLoading ? (
                       <LoadingBlock />
                     ) : auditLogs.length ? (
                       auditLogs.map((event) => (
