@@ -151,7 +151,27 @@ router.get("/", async (req, res, next) => {
 
         const { data, error, count } = await query;
         if (error) {
-          throw createError(500, "db_error", "Erro ao buscar vagas.");
+          // Preserva o erro cru do Supabase (cause -> LinkedErrors do Sentry) e
+          // anexa contexto: sem isso o Sentry so via a mensagem generica.
+          console.error(
+            `[vagas] list falhou region=${region ?? "all"} country=${country ?? "all"} q=${q ?? ""} page=${page} user=${req.user!.id}`,
+            error,
+          );
+          throw createError(500, "db_error", "Erro ao buscar vagas.", {
+            cause: error,
+            context: {
+              region: region ?? null,
+              country: country ?? null,
+              seniority: seniority ?? null,
+              contract: contract ?? null,
+              modality: modality ?? null,
+              source: source ?? null,
+              q: q ?? null,
+              page,
+              limit,
+              userId: req.user!.id,
+            },
+          });
         }
         const total = count ?? 0;
         return {
@@ -193,7 +213,13 @@ router.get("/destaques", async (req, res, next) => {
           .order("published_at", { ascending: false })
           .limit(8);
         if (error) {
-          throw createError(500, "db_error", "Erro ao buscar destaques.");
+          // Preserva o erro cru do Supabase (cause -> LinkedErrors do Sentry) e
+          // anexa contexto: sem isso o Sentry so via a mensagem generica.
+          console.error(`[vagas] destaques falhou user=${req.user!.id}`, error);
+          throw createError(500, "db_error", "Erro ao buscar destaques.", {
+            cause: error,
+            context: { userId: req.user!.id },
+          });
         }
         return { items: ((data ?? []) as JobRow[]).map(toItem) };
       },
@@ -217,7 +243,15 @@ router.get("/admin", requireAdmin, async (_req, res, next) => {
       .order("published_at", { ascending: false })
       .limit(100);
     if (error) {
-      return next(createError(500, "db_error", "Erro ao listar vagas."));
+      // Preserva o erro cru do Supabase (cause -> LinkedErrors do Sentry) e
+      // anexa contexto: sem isso o Sentry so via a mensagem generica.
+      console.error(`[vagas] admin list falhou`, error);
+      return next(
+        createError(500, "db_error", "Erro ao listar vagas.", {
+          cause: error,
+          context: { scope: "admin_manual_list" },
+        }),
+      );
     }
     type AdminRow = JobRow & {
       featured_until: string | null;
@@ -256,7 +290,18 @@ router.get("/:id", async (req, res, next) => {
       .eq("is_published", true)
       .maybeSingle();
     if (error) {
-      return next(createError(500, "db_error", "Erro ao buscar a vaga."));
+      // Preserva o erro cru do Supabase (cause -> LinkedErrors do Sentry) e
+      // anexa contexto: sem isso o Sentry so via a mensagem generica.
+      console.error(
+        `[vagas] detail falhou id=${id.data} user=${req.user!.id}`,
+        error,
+      );
+      return next(
+        createError(500, "db_error", "Erro ao buscar a vaga.", {
+          cause: error,
+          context: { jobId: id.data, userId: req.user!.id },
+        }),
+      );
     }
     if (!data) {
       return next(createError(404, "not_found", "Vaga não encontrada."));
@@ -417,7 +462,18 @@ router.post("/admin", requireAdmin, async (req, res, next) => {
           createError(409, "conflict", "Já existe uma vaga com essa URL."),
         );
       }
-      return next(createError(500, "db_error", "Erro ao criar a vaga."));
+      // Preserva o erro cru do Supabase (cause -> LinkedErrors do Sentry) e
+      // anexa contexto: sem isso o Sentry so via a mensagem generica.
+      console.error(
+        `[vagas] admin create falhou url=${parsed.data.url} user=${req.user!.id}`,
+        error,
+      );
+      return next(
+        createError(500, "db_error", "Erro ao criar a vaga.", {
+          cause: error,
+          context: { url: parsed.data.url, userId: req.user!.id },
+        }),
+      );
     }
     const row = data as JobRow;
     res
@@ -452,7 +508,20 @@ router.patch("/admin/:id", requireAdmin, async (req, res, next) => {
       .eq("id", id.data)
       .maybeSingle();
     if (findError) {
-      return next(createError(500, "db_error", "Erro ao buscar a vaga."));
+      // Preserva o erro cru do Supabase (cause -> LinkedErrors do Sentry) e
+      // anexa contexto: sem isso o Sentry so via a mensagem generica. Mensagem
+      // distinta do GET /:id e do update abaixo pra separar as origens no
+      // Sentry, que agrupa pelo texto do erro.
+      console.error(
+        `[vagas] admin patch find falhou id=${id.data} user=${req.user!.id}`,
+        findError,
+      );
+      return next(
+        createError(500, "db_error", "Erro ao carregar a vaga para edição.", {
+          cause: findError,
+          context: { jobId: id.data, userId: req.user!.id, step: "find" },
+        }),
+      );
     }
     if (!existing) {
       return next(createError(404, "not_found", "Vaga não encontrada."));
@@ -501,7 +570,22 @@ router.patch("/admin/:id", requireAdmin, async (req, res, next) => {
       .select(`${LIST_COLUMNS}, description`)
       .single();
     if (error) {
-      return next(createError(500, "db_error", "Erro ao atualizar a vaga."));
+      // Preserva o erro cru do Supabase (cause -> LinkedErrors do Sentry) e
+      // anexa contexto: sem isso o Sentry so via a mensagem generica.
+      console.error(
+        `[vagas] admin patch update falhou id=${id.data} user=${req.user!.id}`,
+        error,
+      );
+      return next(
+        createError(500, "db_error", "Erro ao atualizar a vaga.", {
+          cause: error,
+          context: {
+            jobId: id.data,
+            userId: req.user!.id,
+            fields: Object.keys(patch),
+          },
+        }),
+      );
     }
     const row = data as JobRow;
     res.json({
