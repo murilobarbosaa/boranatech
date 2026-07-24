@@ -2037,6 +2037,25 @@ function formatSelectionFunnel(funnel: SelectionFunnel): string {
   return parts.join(" · ");
 }
 
+// Origens "próximos da fila" (mode=next), as unicas combinaveis num mesmo
+// disparo. custom (lista avulsa) e contact_list (lista importada) carregam
+// input proprio (e-mails colados / id da lista) e ficam single-origin.
+//
+// A ORDEM aqui e a PRECEDENCIA de dedup entre lotes da mesma campanha: cada
+// origem vira um lote, disparado nesta ordem, e quem existe em mais de uma base
+// e inserido pelo PRIMEIRO lote (ON CONFLICT (campaign_id, email) DO NOTHING no
+// server) e recebe o rodape/unsubscribe daquela origem. Usuarios PRIMEIRO: quem
+// tem conta deve receber o rodape de usuario, nunca o de lista de espera.
+// Newsletter antes de Waitlist: assinatura confirmada (opt-in explicito) e um
+// vinculo mais especifico que a waitlist de pre-lancamento. A ordem e imposta
+// no submit, nao pela ordem de marcacao na UI.
+const QUEUE_SOURCE_PRECEDENCE = ["users", "newsletter", "waitlist"] as const;
+type QueueSource = (typeof QUEUE_SOURCE_PRECEDENCE)[number];
+
+function isQueueSource(source: EmailBatchSource): source is QueueSource {
+  return (QUEUE_SOURCE_PRECEDENCE as readonly string[]).includes(source);
+}
+
 // Mesma validação de formato do backend (lista avulsa).
 const EMAIL_INPUT_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMAIL_INPUT_MAX_LENGTH = 254;
@@ -2440,6 +2459,34 @@ function EmailCampaignsAdminSection() {
   const [eligibleFunnel, setEligibleFunnel] = useState<SelectionFunnel | null>(
     null,
   );
+  // Origens adicionais (alem da principal batchSource) a incluir no mesmo
+  // disparo. So origens de fila em mode=next; cada uma vira um POST /batches
+  // separado no submit, na ordem de QUEUE_SOURCE_PRECEDENCE.
+  const [extraSources, setExtraSources] = useState<Set<QueueSource>>(
+    () => new Set(),
+  );
+  // Contagem/funil por origem adicional (o numero de cada origem aparece
+  // rotulado, nunca um total solto). Chave = origem.
+  const [extraAudience, setExtraAudience] = useState<
+    Partial<
+      Record<
+        QueueSource,
+        {
+          count: number | null;
+          funnel: SelectionFunnel | null;
+          error: string | null;
+        }
+      >
+    >
+  >({});
+  // Resultado de um disparo multi-origem que falhou no meio: o que ja foi
+  // disparado, o que falhou e o que nem chegou a ser tentado.
+  const [batchMultiError, setBatchMultiError] = useState<{
+    succeeded: QueueSource[];
+    failedSource: QueueSource;
+    failedMessage: string;
+    notAttempted: QueueSource[];
+  } | null>(null);
 
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(
     () => new Set(),
@@ -2760,6 +2807,68 @@ function EmailCampaignsAdminSection() {
     [],
   );
 
+  // Contagem de UMA origem de fila (para as origens adicionais). Segmento so vai
+  // na origem users, igual ao caminho da principal.
+  const fetchAudience = useCallback(
+    async (
+      campaignId: string,
+      exclude: boolean,
+      source: QueueSource,
+      segment: EmailUserSegment,
+    ) => {
+      const params = new URLSearchParams();
+      params.set("campaignId", campaignId);
+      params.set("source", source);
+      if (source === "users") params.set("segment", segment);
+      if (exclude) params.set("excludeOtherCampaigns", "true");
+      const json = await adminFetch(
+        `/email-campaigns/audience-count?${params.toString()}`,
+      );
+      return json.data as {
+        count: number;
+        withName: number | null;
+        funnel?: SelectionFunnel;
+      };
+    },
+    [],
+  );
+
+  const loadExtraAudience = useCallback(
+    async (
+      campaignId: string,
+      source: QueueSource,
+      segment: EmailUserSegment,
+      exclude: boolean,
+    ) => {
+      setExtraAudience((prev) => ({
+        ...prev,
+        [source]: { count: null, funnel: null, error: null },
+      }));
+      try {
+        const data = await fetchAudience(campaignId, exclude, source, segment);
+        setExtraAudience((prev) => ({
+          ...prev,
+          [source]: {
+            count: data.count,
+            funnel: data.funnel ?? null,
+            error: null,
+          },
+        }));
+      } catch (err) {
+        setExtraAudience((prev) => ({
+          ...prev,
+          [source]: {
+            count: null,
+            funnel: null,
+            error:
+              err instanceof Error ? err.message : "Erro ao contar os elegíveis.",
+          },
+        }));
+      }
+    },
+    [fetchAudience],
+  );
+
   function openBatchModal() {
     if (!detail) return;
     setBatchModalOpen(true);
@@ -2779,6 +2888,9 @@ function EmailCampaignsAdminSection() {
     setSelectedContactListId("");
     setContactLists([]);
     setContactListsError(null);
+    setExtraSources(new Set());
+    setExtraAudience({});
+    setBatchMultiError(null);
     void loadEligibleCount(detail.id, true, "waitlist");
   }
 
@@ -2808,6 +2920,11 @@ function EmailCampaignsAdminSection() {
     setCustomText("");
     setLimitText("");
     setSelectedContactListId("");
+    // Trocar a origem principal zera as adicionais: a combinacao anterior nao
+    // faz mais sentido (e custom/contact_list nem sao combinaveis).
+    setExtraSources(new Set());
+    setExtraAudience({});
+    setBatchMultiError(null);
     if (next === "custom") {
       // Lista avulsa é sempre a lista colada: sem modo "próximos" nem contagem
       // de origem (a contagem útil é a de e-mails válidos colados).
@@ -2832,9 +2949,35 @@ function EmailCampaignsAdminSection() {
     setBatchSegment(next);
     setSelectedEmails(new Set());
     setPickerOffset(0);
+    // O segmento so afeta a origem users, seja ela a principal ou uma adicional.
     if (batchSource === "users") {
       void loadEligibleCount(detail.id, excludeOther, "users", next);
     }
+    if (extraSources.has("users")) {
+      void loadExtraAudience(detail.id, "users", next, excludeOther);
+    }
+  }
+
+  // Marca/desmarca uma origem adicional (alem da principal). Ao marcar, ja
+  // carrega a contagem daquela origem; ao desmarcar, limpa.
+  function toggleExtraSource(source: QueueSource) {
+    if (!detail) return;
+    setBatchMultiError(null);
+    setExtraSources((prev) => {
+      const nextSet = new Set(prev);
+      if (nextSet.has(source)) {
+        nextSet.delete(source);
+        setExtraAudience((prevAudience) => {
+          const copy = { ...prevAudience };
+          delete copy[source];
+          return copy;
+        });
+      } else {
+        nextSet.add(source);
+        void loadExtraAudience(detail.id, source, batchSegment, excludeOther);
+      }
+      return nextSet;
+    });
   }
 
   function toggleExcludeOther() {
@@ -2850,6 +2993,10 @@ function EmailCampaignsAdminSection() {
     } else if (batchSource === "users") {
       void loadEligibleCount(detail.id, next, "users", batchSegment);
     }
+    // As adicionais tambem dependem do exclude: recarrega cada uma.
+    extraSources.forEach((source) => {
+      void loadExtraAudience(detail.id, source, batchSegment, next);
+    });
   }
 
   const parsedCustom = useMemo(() => {
@@ -2947,6 +3094,7 @@ function EmailCampaignsAdminSection() {
 
   async function submitBatch() {
     if (!detail) return;
+    setBatchMultiError(null);
 
     let limit: number | undefined;
     if (batchSource === "custom") {
@@ -2996,6 +3144,97 @@ function EmailCampaignsAdminSection() {
         return;
       }
       scheduledFor = date.toISOString();
+    }
+
+    // Multi-origem: origem principal + adicionais (so origens de fila em
+    // mode=next). Cada origem vira um POST /batches SEPARADO, disparado na ordem
+    // de precedencia (QUEUE_SOURCE_PRECEDENCE), NAO na ordem de marcacao: quem
+    // esta em varias bases recebe pelo primeiro lote e leva o rodape daquela
+    // origem. Para no primeiro erro pra o admin ver o que ja foi e o que falta.
+    if (
+      isQueueSource(batchSource) &&
+      batchMode === "next" &&
+      extraSources.size > 0
+    ) {
+      const origins = QUEUE_SOURCE_PRECEDENCE.filter(
+        (source) => source === batchSource || extraSources.has(source),
+      );
+      setBatchBusy(true);
+      const succeeded: Array<{
+        source: QueueSource;
+        enqueued?: number;
+        scheduled: boolean;
+      }> = [];
+      let failed: { source: QueueSource; message: string } | null = null;
+      try {
+        for (const source of origins) {
+          try {
+            const json = await adminFetch(
+              `/email-campaigns/${detail.id}/batches`,
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  mode: "next",
+                  source,
+                  userSegment: source === "users" ? batchSegment : undefined,
+                  limit,
+                  scheduledFor,
+                  excludeOtherCampaigns: excludeOther,
+                }),
+              },
+            );
+            const data = json.data as { scheduled: boolean; enqueued?: number };
+            succeeded.push({
+              source,
+              enqueued: data.enqueued,
+              scheduled: data.scheduled,
+            });
+          } catch (err) {
+            failed = {
+              source,
+              message:
+                err instanceof Error ? err.message : "Erro ao criar o lote.",
+            };
+            break;
+          }
+        }
+      } finally {
+        setBatchBusy(false);
+      }
+      // Sempre recarrega: o historico de lotes reflete o que foi criado.
+      void loadDetail(detail.id);
+      void loadCampaigns();
+      if (!failed) {
+        toast.success(
+          succeeded
+            .map(
+              (result) =>
+                `${EMAIL_BATCH_SOURCE_META[result.source]}${
+                  result.scheduled
+                    ? " (agendado)"
+                    : `: ${result.enqueued ?? 0}`
+                }`,
+            )
+            .join(" · "),
+        );
+        setBatchModalOpen(false);
+      } else {
+        const notAttempted = origins.filter(
+          (source) =>
+            source !== failed!.source &&
+            !succeeded.some((result) => result.source === source),
+        );
+        setBatchMultiError({
+          succeeded: succeeded.map((result) => result.source),
+          failedSource: failed.source,
+          failedMessage: failed.message,
+          notAttempted,
+        });
+        toast.error(
+          `Falha na origem ${EMAIL_BATCH_SOURCE_META[failed.source]}. ${succeeded.length} já disparada(s), ${notAttempted.length} não disparada(s).`,
+        );
+      }
+      return;
     }
 
     setBatchBusy(true);
@@ -3961,7 +4200,42 @@ function EmailCampaignsAdminSection() {
               ) : null}
             </div>
 
-            {batchSource === "users" ? (
+            {isQueueSource(batchSource) && batchMode === "next" ? (
+              <div className="mt-4">
+                {/* TODO(Ana): rótulo do passo de origens adicionais. */}
+                <p className="text-xs font-black uppercase text-slate-500">
+                  Incluir também
+                </p>
+                <div className="mt-2 flex flex-wrap gap-3">
+                  {QUEUE_SOURCE_PRECEDENCE.filter(
+                    (source) => source !== batchSource,
+                  ).map((source) => (
+                    <label
+                      key={source}
+                      className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-slate-700"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={extraSources.has(source)}
+                        onChange={() => toggleExtraSource(source)}
+                        className="h-4 w-4 accent-slate-950"
+                      />
+                      {EMAIL_BATCH_SOURCE_META[source]}
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-1 text-xs font-bold text-slate-500">
+                  {/* TODO(Ana): copy das origens combinadas. */}
+                  Cada origem vira um lote próprio, disparado na ordem Usuários →
+                  Newsletter → Waitlist. Quem está em mais de uma base recebe pelo
+                  primeiro lote (e o rodapé daquela origem). O limite "próximos N"
+                  se aplica a cada origem. Em campanha promocional, a origem
+                  Usuários só alcança quem tem opt-in.
+                </p>
+              </div>
+            ) : null}
+
+            {batchSource === "users" || extraSources.has("users") ? (
               <div className="mt-4">
                 {/* TODO(Ana): rótulo do seletor de segmento. */}
                 <p className="text-xs font-black uppercase text-slate-500">
@@ -4088,6 +4362,49 @@ function EmailCampaignsAdminSection() {
               )
             ) : null}
 
+            {extraSources.size > 0 ? (
+              <div className="mt-2 space-y-2 border-t-2 border-dashed border-slate-200 pt-2">
+                {QUEUE_SOURCE_PRECEDENCE.filter((source) =>
+                  extraSources.has(source),
+                ).map((source) => {
+                  const info = extraAudience[source];
+                  const segmentSuffix =
+                    source === "users"
+                      ? ` · Segmento: ${
+                          EMAIL_USER_SEGMENT_META[batchSegment] ?? batchSegment
+                        }`
+                      : "";
+                  const prefix = `Origem: ${
+                    EMAIL_BATCH_SOURCE_META[source] ?? source
+                  }${segmentSuffix} → `;
+                  return (
+                    <div key={source} className="space-y-1">
+                      {info?.error ? (
+                        <p className="text-sm font-bold text-rose-700">
+                          {`${prefix}${info.error}`}
+                        </p>
+                      ) : (
+                        <>
+                          <p className="text-sm font-semibold text-slate-600">
+                            {`${prefix}${
+                              info?.count == null
+                                ? "contando elegíveis..."
+                                : `${info.count} elegíveis`
+                            }`}
+                          </p>
+                          {info?.funnel ? (
+                            <p className="text-xs font-medium text-slate-400">
+                              {formatSelectionFunnel(info.funnel)}
+                            </p>
+                          ) : null}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm font-semibold text-slate-700">
               <input
                 type="checkbox"
@@ -4098,6 +4415,14 @@ function EmailCampaignsAdminSection() {
               {/* TODO(Ana): rótulo do filtro entre campanhas. */}
               Pular quem já recebeu outra campanha
             </label>
+            {extraSources.size > 0 ? (
+              <p className="mt-1 text-xs font-bold text-slate-500">
+                {/* TODO(Ana): copy da dedup entre origens. */}
+                Com múltiplas origens, quem está em mais de uma base é enviado uma
+                única vez, pelo primeiro lote na ordem Usuários → Newsletter →
+                Waitlist.
+              </p>
+            ) : null}
 
             {batchSource === "contact_list" ? null : batchSource !==
               "custom" ? (
@@ -4114,7 +4439,15 @@ function EmailCampaignsAdminSection() {
                     <button
                       key={option.id}
                       type="button"
-                      onClick={() => setBatchMode(option.id)}
+                      onClick={() => {
+                        setBatchMode(option.id);
+                        // Origens adicionais só valem no modo "próximos": ao ir
+                        // pro seletor manual, zera a combinação.
+                        if (option.id === "selected") {
+                          setExtraSources(new Set());
+                          setExtraAudience({});
+                        }
+                      }}
                       className={`rounded-full border-2 border-slate-900 px-4 py-1.5 text-xs font-black uppercase transition-colors motion-reduce:transition-none ${
                         batchMode === option.id
                           ? "bg-slate-950 text-white"
@@ -4400,6 +4733,35 @@ function EmailCampaignsAdminSection() {
                 className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
               />
             </div>
+            {batchMultiError ? (
+              <div className="mt-4 rounded-2xl border-2 border-rose-300 bg-rose-50 p-3 text-sm font-bold text-rose-700">
+                {/* TODO(Ana): copy da falha parcial no disparo multi-origem. */}
+                <p>
+                  Falha na origem{" "}
+                  {EMAIL_BATCH_SOURCE_META[batchMultiError.failedSource]}:{" "}
+                  {batchMultiError.failedMessage}
+                </p>
+                {batchMultiError.succeeded.length > 0 ? (
+                  <p className="mt-1 font-semibold text-emerald-700">
+                    Já disparadas:{" "}
+                    {batchMultiError.succeeded
+                      .map((source) => EMAIL_BATCH_SOURCE_META[source])
+                      .join(", ")}
+                    .
+                  </p>
+                ) : null}
+                {batchMultiError.notAttempted.length > 0 ? (
+                  <p className="mt-1 font-semibold text-slate-700">
+                    Não disparadas:{" "}
+                    {batchMultiError.notAttempted
+                      .map((source) => EMAIL_BATCH_SOURCE_META[source])
+                      .join(", ")}
+                    . Remarque só essas e dispare de novo.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
