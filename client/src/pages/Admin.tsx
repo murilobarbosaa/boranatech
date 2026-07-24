@@ -3578,7 +3578,7 @@ function EmailCampaignsAdminSection() {
                               {EMAIL_BATCH_SOURCE_META[batch.source] ??
                                 batch.source}
                               {batch.user_segment
-                                ? ` (${EMAIL_USER_SEGMENT_META[batch.user_segment]})`
+                                ? ` (${EMAIL_USER_SEGMENT_META[batch.user_segment] ?? batch.user_segment})`
                                 : ""}
                             </td>
                             <td className="px-4 py-3 text-slate-600">
@@ -4053,10 +4053,23 @@ function EmailCampaignsAdminSection() {
                 </p>
               ) : (
                 <div className="mt-3 space-y-1">
+                  {/* O número nunca aparece solto: sempre rotulado com a origem
+                      (e o segmento, na origem Usuários) pra não ser lido como de
+                      outra origem. */}
                   <p className="text-sm font-semibold text-slate-600">
-                    {eligibleCount === null
-                      ? "Contando destinatários elegíveis..."
-                      : `${eligibleCount} pessoas elegíveis nesta origem.`}
+                    {`Origem: ${
+                      EMAIL_BATCH_SOURCE_META[batchSource] ?? batchSource
+                    }${
+                      batchSource === "users"
+                        ? ` · Segmento: ${
+                            EMAIL_USER_SEGMENT_META[batchSegment] ?? batchSegment
+                          }`
+                        : ""
+                    } → ${
+                      eligibleCount === null
+                        ? "contando destinatários..."
+                        : `${eligibleCount} destinatários`
+                    }`}
                   </p>
                   {eligibleCount !== null ? (
                     // TODO(Ana): copy da cobertura de nome por origem.
