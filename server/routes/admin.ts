@@ -15,7 +15,11 @@ import {
   getFinanceTimeseries,
 } from "../lib/financeMetrics";
 import { fetchUsdBrlRate } from "../lib/fx/ptax";
-import { getPosthogStats, getPosthogUserActivity } from "../lib/posthog";
+import {
+  getPosthogHealth,
+  getPosthogStats,
+  getPosthogUserActivity,
+} from "../lib/posthog";
 import { fetchAuthTimes } from "../lib/authUsers";
 import { getUsageRetention } from "../lib/usageRetention";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
@@ -327,6 +331,20 @@ router.get("/dashboard", async (_req, res, next) => {
   }
 });
 
+// Cache da janela default (30d) do funil. Chave FIXA: o compute usa to=new Date()
+// (muda a cada ms), entao sem chave estavel o hit rate seria 0. So a janela
+// default entra aqui; janelas custom (from/to, ex.: ConversionDashboard) passam
+// direto. TTL 5 min: funil de 30d nao muda de forma perceptivel minuto a minuto.
+const POSTHOG_STATS_CACHE_TTL_S = 300;
+
+function getCachedPosthogStatsDefault() {
+  return getOrCompute(
+    "admincache:posthog-stats:default30d",
+    POSTHOG_STATS_CACHE_TTL_S,
+    () => getPosthogStats(),
+  );
+}
+
 // Estado do PostHog como union discriminado (not_configured | error | ok). A
 // logica vive em lib/posthog.ts; erro nunca vira zero. O client sera migrado
 // para ler o novo shape na proxima sessao.
@@ -341,7 +359,12 @@ router.get("/posthog-stats", async (req, res, next) => {
     const from =
       fromDate && !Number.isNaN(fromDate.getTime()) ? fromDate : undefined;
     const to = toDate && !Number.isNaN(toDate.getTime()) ? toDate : undefined;
-    const result = await getPosthogStats({ from, to });
+    // Janela default (sem from/to valido) le do cache compartilhado; janela
+    // custom recalcula sempre (cardinalidade ilimitada nao entra no Redis).
+    const result =
+      from || to
+        ? await getPosthogStats({ from, to })
+        : await getCachedPosthogStatsDefault();
     res.json({ data: result });
   } catch (err) {
     next(err);
@@ -350,40 +373,52 @@ router.get("/posthog-stats", async (req, res, next) => {
 
 // Saude das integracoes, sem vazar segredos (so presenca/booleanos e o union do
 // PostHog). Responde de vez as perguntas de ambiente em aberto do relatorio.
+// Cacheado (TTL 3 min): presenca de env e alcance de servico mudam raramente, e
+// evita repetir a sonda do PostHog e o ping de Redis a cada carga da aba. Chave
+// fixa (sem params). Fail-open do getOrCompute: Redis fora = compute roda igual.
+const INTEGRATIONS_HEALTH_CACHE_TTL_S = 180;
+
 router.get("/integrations/health", async (_req, res, next) => {
   try {
-    const posthog = await getPosthogStats();
+    const data = await getOrCompute(
+      "admincache:integrations-health",
+      INTEGRATIONS_HEALTH_CACHE_TTL_S,
+      async () => {
+        // Sonda leve (1 query), nao o funil completo: o painel so le state/hasData.
+        const posthog = await getPosthogHealth();
 
-    let redis: { configured: boolean; ok: boolean } = {
-      configured: Boolean(env.redisUrl),
-      ok: false,
-    };
-    if (cacheConnection) {
-      try {
-        const pong = await cacheConnection.ping();
-        redis = { configured: true, ok: pong === "PONG" };
-      } catch {
-        redis = { configured: true, ok: false };
-      }
-    }
+        let redis: { configured: boolean; ok: boolean } = {
+          configured: Boolean(env.redisUrl),
+          ok: false,
+        };
+        if (cacheConnection) {
+          try {
+            const pong = await cacheConnection.ping();
+            redis = { configured: true, ok: pong === "PONG" };
+          } catch {
+            redis = { configured: true, ok: false };
+          }
+        }
 
-    res.json({
-      data: {
-        billingEnabled: env.billingEnabled,
-        posthog,
-        stripe: {
-          secretKey: Boolean(env.stripeSecretKey),
-          webhookSecret: Boolean(env.stripeWebhookSecret),
-          priceIds: {
-            pro_monthly: Boolean(env.stripePriceIds.pro_monthly),
-            pro_semiannual: Boolean(env.stripePriceIds.pro_semiannual),
-            pro_annual: Boolean(env.stripePriceIds.pro_annual),
+        return {
+          billingEnabled: env.billingEnabled,
+          posthog,
+          stripe: {
+            secretKey: Boolean(env.stripeSecretKey),
+            webhookSecret: Boolean(env.stripeWebhookSecret),
+            priceIds: {
+              pro_monthly: Boolean(env.stripePriceIds.pro_monthly),
+              pro_semiannual: Boolean(env.stripePriceIds.pro_semiannual),
+              pro_annual: Boolean(env.stripePriceIds.pro_annual),
+            },
           },
-        },
-        redis,
-        resend: { apiKey: Boolean(env.resendApiKey) },
+          redis,
+          resend: { apiKey: Boolean(env.resendApiKey) },
+        };
       },
-    });
+    );
+
+    res.json({ data });
   } catch (err) {
     next(err);
   }

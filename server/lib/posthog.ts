@@ -69,6 +69,11 @@ class PosthogQueryError extends Error {
   }
 }
 
+// Teto por query: HogQL dessas agregacoes responde em poucos segundos; 8s pega
+// um request travado sem cortar uma query normal lenta. No abort o fetch rejeita,
+// vira PosthogQueryError e o estado 'error' (falha-segura, nunca pendura a aba).
+const POSTHOG_QUERY_TIMEOUT_MS = 8000;
+
 function cellToNumber(value: unknown): number {
   return typeof value === "number" ? value : Number(value) || 0;
 }
@@ -86,6 +91,7 @@ async function runPosthogQuery(hogql: string): Promise<PosthogQueryResponse> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ query: { kind: "HogQLQuery", query: hogql } }),
+      signal: AbortSignal.timeout(POSTHOG_QUERY_TIMEOUT_MS),
     },
   );
 
@@ -299,6 +305,38 @@ export async function getPosthogStats(
       stats.acquisition.length > 0;
 
     return { state: "ok", hasData, stats };
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    const httpStatus =
+      err instanceof PosthogQueryError ? err.httpStatus : undefined;
+    return { state: "error", reason, httpStatus };
+  }
+}
+
+// Sonda leve de saude do PostHog para a aba Visao (painel Saude das integracoes).
+// Ao contrario de getPosthogStats (9 queries do funil), roda UMA query: prova
+// (a) env presente, (b) key com escopo /query/ e projeto alcancavel, (c) se ha
+// trafego (hasData) na janela de 30d. Mesma maquina de estados; o painel so le
+// state/hasData, nunca stats.
+export type PosthogHealthState =
+  | { state: "not_configured"; missing: string[] }
+  | { state: "error"; reason: string; httpStatus?: number }
+  | { state: "ok"; hasData: boolean };
+
+export async function getPosthogHealth(): Promise<PosthogHealthState> {
+  const missing: string[] = [];
+  if (!env.posthogApiKey) missing.push("POSTHOG_API_KEY");
+  if (!env.posthogProjectId) missing.push("POSTHOG_PROJECT_ID");
+  if (missing.length > 0) return { state: "not_configured", missing };
+
+  const to = new Date();
+  const from = new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const win = `timestamp >= toDateTime('${hogTime(from)}') and timestamp <= toDateTime('${hogTime(to)}')`;
+
+  try {
+    const res = await runPosthogQuery(`select count() from events where ${win}`);
+    const total = cellToNumber(res.results?.[0]?.[0]);
+    return { state: "ok", hasData: total > 0 };
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     const httpStatus =
