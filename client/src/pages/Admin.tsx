@@ -81,7 +81,7 @@ import VagasDestaqueAdmin from "@/components/admin/VagasDestaqueAdmin";
 import SEO from "@/components/SEO";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
 import { useAuth } from "@/contexts/AuthContext";
-import { adminFetch } from "@/lib/adminApi";
+import { adminFetch, AdminApiError } from "@/lib/adminApi";
 import { PLAN_ORDER, PLAN_PRICING, type PlanId } from "@shared/planPricing";
 import {
   applyNamePlaceholder,
@@ -3100,6 +3100,40 @@ function EmailCampaignsAdminSection() {
     return { valid, invalid };
   }, [customText]);
 
+  // Elegíveis CONHECIDOS de uma origem de fila (principal ou adicional). count
+  // null = ainda contando; error != null = falha na contagem. "Conhecido = 0"
+  // só quando count === 0 e sem erro.
+  function originKnownEligibles(source: QueueSource): {
+    count: number | null;
+    error: string | null;
+  } {
+    if (source === batchSource) {
+      return { count: eligibleCount, error: eligibleError };
+    }
+    const info = extraAudience[source];
+    return { count: info?.count ?? null, error: info?.error ?? null };
+  }
+
+  // Origens de fila selecionadas (principal + adicionais) no modo "próximos".
+  const selectedQueueOrigins =
+    isQueueSource(batchSource) && batchMode === "next"
+      ? QUEUE_SOURCE_PRECEDENCE.filter(
+          (source) => source === batchSource || extraSources.has(source),
+        )
+      : [];
+  // Todas as origens marcadas têm audiência CONHECIDA = 0 (nenhuma desconhecida
+  // nem > 0). Desconhecida (contando/erro) NÃO conta como vazia: o backend é a
+  // defesa nesse caso.
+  const allSelectedOriginsKnownEmpty =
+    selectedQueueOrigins.length > 0 &&
+    selectedQueueOrigins.every((source) => {
+      const { count, error } = originKnownEligibles(source);
+      return !error && count === 0;
+    });
+  // Só bloqueia o disparo IMEDIATO: o agendado reavalia a audiência no disparo,
+  // então uma lista vazia agora pode ter gente até a data agendada.
+  const blockImmediateEmpty = whenMode === "now" && allSelectedOriginsKnownEmpty;
+
   useEffect(() => {
     if (
       !batchModalOpen ||
@@ -3240,6 +3274,21 @@ function EmailCampaignsAdminSection() {
       const origins = QUEUE_SOURCE_PRECEDENCE.filter(
         (source) => source === batchSource || extraSources.has(source),
       );
+      // No disparo IMEDIATO, pula origens com audiência CONHECIDA = 0 (não faz o
+      // POST). No AGENDADO, não pula: a audiência é reavaliada no disparo, então
+      // uma origem vazia agora pode ter gente na data agendada.
+      const skipped: QueueSource[] = [];
+      const toDispatch =
+        whenMode === "now"
+          ? origins.filter((source) => {
+              const { count, error } = originKnownEligibles(source);
+              if (!error && count === 0) {
+                skipped.push(source);
+                return false;
+              }
+              return true;
+            })
+          : origins;
       setBatchBusy(true);
       const succeeded: Array<{
         source: QueueSource;
@@ -3248,7 +3297,7 @@ function EmailCampaignsAdminSection() {
       }> = [];
       let failed: { source: QueueSource; message: string } | null = null;
       try {
-        for (const source of origins) {
+        for (const source of toDispatch) {
           try {
             const json = await adminFetch(
               `/email-campaigns/${detail.id}/batches`,
@@ -3271,6 +3320,12 @@ function EmailCampaignsAdminSection() {
               scheduled: data.scheduled,
             });
           } catch (err) {
+            // no_eligible NÃO é falha: a origem esvaziou entre a contagem e o
+            // disparo (corrida). Registra como pulada e segue pras demais.
+            if (err instanceof AdminApiError && err.code === "no_eligible") {
+              skipped.push(source);
+              continue;
+            }
             failed = {
               source,
               message:
@@ -3285,22 +3340,14 @@ function EmailCampaignsAdminSection() {
       // Sempre recarrega: o historico de lotes reflete o que foi criado.
       void loadDetail(detail.id);
       void loadCampaigns();
-      if (!failed) {
-        toast.success(
-          succeeded
-            .map(
-              (result) =>
-                `${EMAIL_BATCH_SOURCE_META[result.source]}${
-                  result.scheduled
-                    ? " (agendado)"
-                    : `: ${result.enqueued ?? 0}`
-                }`,
-            )
-            .join(" · "),
-        );
-        setBatchModalOpen(false);
-      } else {
-        const notAttempted = origins.filter(
+      const skippedNote =
+        skipped.length > 0
+          ? ` · puladas (0 elegíveis): ${skipped
+              .map((source) => EMAIL_BATCH_SOURCE_META[source])
+              .join(", ")}`
+          : "";
+      if (failed) {
+        const notAttempted = toDispatch.filter(
           (source) =>
             source !== failed!.source &&
             !succeeded.some((result) => result.source === source),
@@ -3314,6 +3361,23 @@ function EmailCampaignsAdminSection() {
         toast.error(
           `Falha na origem ${EMAIL_BATCH_SOURCE_META[failed.source]}. ${succeeded.length} já disparada(s), ${notAttempted.length} não disparada(s).`,
         );
+      } else if (succeeded.length === 0) {
+        // Nada disparado (todas as origens estavam vazias): não fecha o modal.
+        toast(`Nenhuma origem tinha destinatário elegível: nada foi enviado.`);
+      } else {
+        toast.success(
+          succeeded
+            .map(
+              (result) =>
+                `${EMAIL_BATCH_SOURCE_META[result.source]}${
+                  result.scheduled
+                    ? " (agendado)"
+                    : `: ${result.enqueued ?? 0}`
+                }`,
+            )
+            .join(" · ") + skippedNote,
+        );
+        setBatchModalOpen(false);
       }
       return;
     }
@@ -3359,11 +3423,17 @@ function EmailCampaignsAdminSection() {
       });
       const data = json.data as { scheduled: boolean; enqueued?: number };
       // TODO(Ana): toasts do lote.
-      toast.success(
-        data.scheduled
-          ? "Lote agendado."
-          : `${data.enqueued ?? 0} envios enfileirados.`,
-      );
+      if (data.scheduled) {
+        toast.success("Lote agendado.");
+      } else if ((data.enqueued ?? 0) > 0) {
+        toast.success(`${data.enqueued} envios enfileirados.`);
+      } else {
+        // Defesa: com os guards de audiência vazia (front desabilita o imediato
+        // vazio; backend rejeita com no_eligible), este ramo é inalcançável no
+        // imediato, mas a copy honesta cobre qualquer resíduo em vez de dizer
+        // "0 envios enfileirados" como se fosse sucesso.
+        toast("Nenhum destinatário elegível: nada foi enviado.");
+      }
       setBatchModalOpen(false);
       void loadDetail(detail.id);
       void loadCampaigns();
@@ -4853,6 +4923,18 @@ function EmailCampaignsAdminSection() {
               </div>
             ) : null}
 
+            {blockImmediateEmpty ? (
+              <p className="mt-4 rounded-2xl border-2 border-amber-300 bg-amber-50 p-3 text-sm font-bold text-amber-800">
+                {/* TODO(Ana): copy de audiência vazia no disparo imediato. */}
+                Nenhum destinatário elegível{" "}
+                {selectedQueueOrigins.length > 1
+                  ? "nas origens selecionadas"
+                  : "nesta origem"}{" "}
+                com os filtros atuais. Ajuste a origem ou o segmento, ou agende o
+                envio (a audiência é recontada no disparo).
+              </p>
+            ) : null}
+
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
@@ -4864,7 +4946,9 @@ function EmailCampaignsAdminSection() {
               </button>
               <button
                 type="button"
-                disabled={confirmText !== "ENVIAR" || batchBusy}
+                disabled={
+                  confirmText !== "ENVIAR" || batchBusy || blockImmediateEmpty
+                }
                 onClick={() => void submitBatch()}
                 className="rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 disabled:opacity-40"
               >
