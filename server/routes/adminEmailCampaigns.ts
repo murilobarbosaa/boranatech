@@ -1431,6 +1431,44 @@ router.post("/:id/batches", async (req, res, next) => {
     if (!scheduledFor) {
       try {
         const result = await dispatchCampaignBatch(batch.id);
+        if (result.enqueued === 0) {
+          // Ninguem elegivel no disparo IMEDIATO: o dispatch ja marcou o lote
+          // dispatched e chamou tryCompleteCampaign, mas SEM inserir recipient
+          // (o caminho vazio nao chama add_recipients, entao total_recipients e
+          // a campanha ficam intactos). Remove o lote vazio pra nao poluir o
+          // historico e devolve 400, espelhando o no_eligible_members do
+          // contact_list. Nao ha email_campaign_recipients desta batch; so os
+          // batch_recipients de mode=selected, deletados antes da linha do lote.
+          // So o imediato passa por aqui; o agendado vira pending e e reavaliado
+          // no disparo (visibilidade via log estruturado no dispatch).
+          const { error: batchRecipientsError } = await supabaseAdmin
+            .from("email_campaign_batch_recipients")
+            .delete()
+            .eq("batch_id", batch.id);
+          if (batchRecipientsError) {
+            console.error(
+              "[email-campaign] Falha ao limpar e-mails do lote vazio",
+              batchRecipientsError,
+            );
+          }
+          const { error: batchDeleteError } = await supabaseAdmin
+            .from("email_campaign_batches")
+            .delete()
+            .eq("id", batch.id);
+          if (batchDeleteError) {
+            console.error(
+              "[email-campaign] Falha ao remover lote vazio",
+              batchDeleteError,
+            );
+          }
+          return next(
+            createError(
+              400,
+              "no_eligible",
+              "Nenhum destinatário elegível nesta origem com os filtros atuais. Nada foi enviado.",
+            ),
+          );
+        }
         const { data: fresh } = await fetchCampaign(campaignId);
         res.json({
           data: {

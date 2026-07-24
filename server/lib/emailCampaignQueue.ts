@@ -672,7 +672,20 @@ export async function dispatchCampaignBatch(
 
     if (emails.length === 0) {
       // Nada novo a inserir. Este lote pode ter sido o ultimo pending
-      // segurando o fechamento da campanha.
+      // segurando o fechamento da campanha. Log estruturado pra o disparo vazio
+      // (inclusive de lote AGENDADO, que nao passa pela rejeicao imediata da
+      // rota) ficar visivel no historico de logs em vez de sumir em silencio.
+      console.warn(
+        "[email-campaign] Lote disparado sem destinatario elegivel",
+        {
+          batchId: batch.id,
+          campaignId: batch.campaign_id,
+          source,
+          mode: batch.mode,
+          userSegment: batch.user_segment ?? null,
+          reason: "selection_empty",
+        },
+      );
       await tryCompleteCampaign(batch.campaign_id);
       return { dispatched: true, enqueued: 0 };
     }
@@ -695,6 +708,19 @@ export async function dispatchCampaignBatch(
       recipient_email: string;
     }>;
     if (rows.length === 0) {
+      // Todos os selecionados ja eram recipients (conflito no insert): mesmo
+      // caso do vazio acima, logado pra o disparo sem ninguem novo nao sumir.
+      console.warn(
+        "[email-campaign] Lote disparado sem destinatario elegivel",
+        {
+          batchId: batch.id,
+          campaignId: batch.campaign_id,
+          source,
+          mode: batch.mode,
+          userSegment: batch.user_segment ?? null,
+          reason: "all_already_recipients",
+        },
+      );
       await tryCompleteCampaign(batch.campaign_id);
       return { dispatched: true, enqueued: 0 };
     }
