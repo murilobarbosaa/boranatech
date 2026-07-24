@@ -162,6 +162,20 @@ export async function fetchNotificationStats(
   return adminFetch(`/notifications/${id}/stats`);
 }
 
+// Emails da lista custom, pra repopular o textarea ao editar. `missing` > 0
+// sinaliza linhas legadas sem email (a lista recuperada não cobre todos).
+export type NotificationRecipients = {
+  emails: string[];
+  total: number;
+  missing: number;
+};
+
+export async function fetchNotificationRecipients(
+  id: string,
+): Promise<{ data: NotificationRecipients }> {
+  return adminFetch(`/notifications/${id}/recipients`);
+}
+
 export async function fetchAudiencePreview(
   audience: AdminNotificationAudience,
   category: AdminNotificationCategory,

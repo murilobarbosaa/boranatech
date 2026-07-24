@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildRecipientRows,
+  buildRecipientsResponse,
+  insertRecipientsWithFallback,
+  isEmailColumnMissing,
   isScheduledDue,
   mapProfileRowsToRecipients,
   validateScheduledFor,
@@ -58,6 +62,179 @@ describe("mapProfileRowsToRecipients", () => {
     );
     expect(result.matched).toEqual(["ana@exemplo.com"]);
     expect(result.unmatched).toEqual([]);
+  });
+
+  // recipients guarda o par (user_id, email) que o insert grava, pra a lista
+  // custom ser recuperavel ao reeditar (antes so o user_id ia pro banco).
+  it("recipients traz o par user_id + email lowercased pro insert", () => {
+    const result = mapProfileRowsToRecipients(
+      ["Ana@Exemplo.com"],
+      [{ user_id: "auth-user-1", email: "Ana@Exemplo.com" }],
+    );
+    expect(result.recipients).toEqual([
+      { userId: "auth-user-1", email: "ana@exemplo.com" },
+    ]);
+  });
+
+  it("dois emails do mesmo usuario geram um unico recipient (dedupe por user_id)", () => {
+    const result = mapProfileRowsToRecipients(
+      ["a@exemplo.com", "b@exemplo.com"],
+      [
+        { user_id: "auth-user-1", email: "a@exemplo.com" },
+        { user_id: "auth-user-1", email: "b@exemplo.com" },
+      ],
+    );
+    expect(result.recipients).toEqual([
+      { userId: "auth-user-1", email: "a@exemplo.com" },
+    ]);
+  });
+});
+
+// Montagem do payload de insert (pura). withEmail=false e o shape legado usado
+// no fallback quando a coluna email ainda nao existe.
+describe("buildRecipientRows", () => {
+  it("withEmail=true inclui o email em cada linha", () => {
+    expect(
+      buildRecipientRows(
+        "notif-1",
+        [{ userId: "u1", email: "a@x.com" }],
+        { withEmail: true },
+      ),
+    ).toEqual([
+      { notification_id: "notif-1", user_id: "u1", email: "a@x.com" },
+    ]);
+  });
+
+  it("withEmail=false omite o email (shape legado do fallback)", () => {
+    const rows = buildRecipientRows(
+      "notif-1",
+      [{ userId: "u1", email: "a@x.com" }],
+      { withEmail: false },
+    );
+    expect(rows).toEqual([{ notification_id: "notif-1", user_id: "u1" }]);
+    expect(rows[0]).not.toHaveProperty("email");
+  });
+});
+
+// Montagem da resposta do GET (pura): email null (legado) nao entra em `emails`,
+// e `missing` conta os que faltam pra a UI cair no comportamento legado.
+describe("buildRecipientsResponse", () => {
+  it("todas as linhas com email: missing 0", () => {
+    expect(
+      buildRecipientsResponse([{ email: "a@x.com" }, { email: "b@x.com" }]),
+    ).toEqual({ emails: ["a@x.com", "b@x.com"], total: 2, missing: 0 });
+  });
+
+  it("mistura de email e legado: missing conta os nulos", () => {
+    expect(
+      buildRecipientsResponse([{ email: "a@x.com" }, { email: null }]),
+    ).toEqual({ emails: ["a@x.com"], total: 2, missing: 1 });
+  });
+
+  it("todas legadas (schema antigo): emails vazio e missing = total", () => {
+    expect(
+      buildRecipientsResponse([{ email: null }, { email: null }]),
+    ).toEqual({ emails: [], total: 2, missing: 2 });
+  });
+});
+
+// Deteccao do erro de coluna inexistente nos dois formatos (insert PGRST204,
+// select 42703), com guarda de mensagem pra nao mascarar outra coluna.
+describe("isEmailColumnMissing", () => {
+  it("PGRST204 do insert com 'email' na mensagem", () => {
+    expect(
+      isEmailColumnMissing({
+        code: "PGRST204",
+        message:
+          "Could not find the 'email' column of 'notification_recipients' in the schema cache",
+      }),
+    ).toBe(true);
+  });
+
+  it("42703 do select com 'email' na mensagem", () => {
+    expect(
+      isEmailColumnMissing({
+        code: "42703",
+        message: "column notification_recipients.email does not exist",
+      }),
+    ).toBe(true);
+  });
+
+  it("outro erro (23505) nao e coluna ausente", () => {
+    expect(
+      isEmailColumnMissing({ code: "23505", message: "duplicate key" }),
+    ).toBe(false);
+  });
+
+  it("PGRST204 de outra coluna nao dispara o fallback do email", () => {
+    expect(
+      isEmailColumnMissing({
+        code: "PGRST204",
+        message: "Could not find the 'foo' column",
+      }),
+    ).toBe(false);
+  });
+});
+
+// Degradacao do insert: com email falha por coluna ausente -> refaz sem email e
+// conclui. runInsert injetavel evita mockar o supabaseAdmin.
+describe("insertRecipientsWithFallback", () => {
+  const recipients = [{ userId: "u1", email: "a@x.com" }];
+
+  it("coluna ausente: refaz sem email, conclui e avisa uma vez", async () => {
+    const calls: Array<Array<Record<string, unknown>>> = [];
+    let warned = 0;
+    const runInsert = async (rows: Array<Record<string, unknown>>) => {
+      calls.push(rows);
+      return calls.length === 1
+        ? {
+            error: {
+              code: "PGRST204",
+              message:
+                "Could not find the 'email' column of 'notification_recipients' in the schema cache",
+            },
+          }
+        : { error: null };
+    };
+
+    await expect(
+      insertRecipientsWithFallback("notif-1", recipients, runInsert, () => {
+        warned += 1;
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0][0]).toHaveProperty("email", "a@x.com");
+    expect(calls[1][0]).not.toHaveProperty("email");
+    expect(warned).toBe(1);
+  });
+
+  it("sucesso na 1a tentativa: nao refaz nem avisa", async () => {
+    const calls: Array<unknown> = [];
+    let warned = 0;
+    const runInsert = async (rows: Array<Record<string, unknown>>) => {
+      calls.push(rows);
+      return { error: null };
+    };
+    await insertRecipientsWithFallback(
+      "notif-1",
+      recipients,
+      runInsert,
+      () => {
+        warned += 1;
+      },
+    );
+    expect(calls).toHaveLength(1);
+    expect(warned).toBe(0);
+  });
+
+  it("erro que nao e coluna ausente propaga (nao mascara)", async () => {
+    const runInsert = async () => ({
+      error: { code: "23505", message: "duplicate key" },
+    });
+    await expect(
+      insertRecipientsWithFallback("notif-1", recipients, runInsert),
+    ).rejects.toThrow("duplicate key");
   });
 });
 

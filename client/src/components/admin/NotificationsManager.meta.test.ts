@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   audienceMetaOf,
+  recoveredRecipientsText,
   statusMetaOf,
   typeMetaOf,
 } from "@/components/admin/NotificationsManager";
@@ -38,5 +39,29 @@ describe("resolvers de meta (fallback anti-crash)", () => {
     const unknown = audienceMetaOf("segmento_novo");
     expect(unknown.label).toBe("segmento_novo");
     expect(typeof unknown.description).toBe("string");
+  });
+});
+
+// Recuperação da lista custom ao reeditar (Item de recipients.email): a lista
+// só repopula o textarea quando veio inteira; parcial/legado/vazio mantém o
+// placeholder de contagem, porque preencher substitui a lista toda no save.
+describe("recoveredRecipientsText", () => {
+  it("lista completa repopula o textarea (um email por linha)", () => {
+    expect(
+      recoveredRecipientsText({
+        emails: ["a@x.com", "b@x.com"],
+        missing: 0,
+      }),
+    ).toBe("a@x.com\nb@x.com");
+  });
+
+  it("linha legada sem email (missing > 0) NÃO popula, mantém o legado", () => {
+    expect(
+      recoveredRecipientsText({ emails: ["a@x.com"], missing: 3 }),
+    ).toBeNull();
+  });
+
+  it("lista vazia não popula", () => {
+    expect(recoveredRecipientsText({ emails: [], missing: 0 })).toBeNull();
   });
 });

@@ -224,6 +224,9 @@ type ResolvedRecipients = {
   matched: string[];
   unmatched: string[];
   userIds: string[];
+  // Pares (user_id, email) pro insert: uma linha por destinatario, com o email
+  // resolvido guardado pra recuperar a lista depois. Dedupados por user_id.
+  recipients: Array<{ userId: string; email: string }>;
 };
 
 // Mapeamento puro linhas de profiles -> recipients. ATENCAO ao schema:
@@ -235,15 +238,30 @@ export function mapProfileRowsToRecipients(
   rows: Array<{ user_id: string | null; email: string | null }>,
 ): ResolvedRecipients {
   const matched: string[] = [];
-  const userIds = new Set<string>();
+  // Dedupe por user_id preservando o primeiro email visto: o insert grava uma
+  // linha (user_id, email) por destinatario, e o email guardado permite
+  // repopular o textarea ao reeditar a lista custom.
+  const emailByUserId = new Map<string, string>();
   for (const row of rows) {
     if (!row.email || !row.user_id) continue;
-    matched.push(String(row.email).toLowerCase());
-    userIds.add(row.user_id);
+    const email = String(row.email).toLowerCase();
+    matched.push(email);
+    if (!emailByUserId.has(row.user_id)) {
+      emailByUserId.set(row.user_id, email);
+    }
   }
   const matchedSet = new Set(matched);
   const unmatched = requested.filter((email) => !matchedSet.has(email));
-  return { matched, unmatched, userIds: Array.from(userIds) };
+  const recipients = Array.from(emailByUserId, ([userId, email]) => ({
+    userId,
+    email,
+  }));
+  return {
+    matched,
+    unmatched,
+    userIds: recipients.map((r) => r.userId),
+    recipients,
+  };
 }
 
 // Resolve emails -> auth user_id via profiles.user_id (mesmo padrao do
@@ -275,19 +293,116 @@ async function resolveRecipientEmails(
   return mapProfileRowsToRecipients(unique, rows);
 }
 
+// Detecta o erro de "coluna email inexistente" nos dois formatos possiveis: no
+// INSERT o PostgREST valida o payload contra o schema cache e devolve PGRST204;
+// no SELECT ele gera o SQL e o Postgres reclama com 42703 (undefined_column).
+// O includes("email") evita mascarar erro de outra coluna. Enquanto a migration
+// nao roda (deploy do codigo vem ANTES do db:push), este e o caminho esperado.
+const PGRST_COLUMN_NOT_FOUND = "PGRST204";
+const PG_UNDEFINED_COLUMN = "42703";
+export function isEmailColumnMissing(error: {
+  code?: string;
+  message?: string;
+}): boolean {
+  if (
+    error.code !== PGRST_COLUMN_NOT_FOUND &&
+    error.code !== PG_UNDEFINED_COLUMN
+  ) {
+    return false;
+  }
+  return (
+    typeof error.message === "string" &&
+    error.message.toLowerCase().includes("email")
+  );
+}
+
+type RecipientRow = {
+  notification_id: string;
+  user_id: string;
+  email?: string;
+};
+
+// Puro e testavel: monta as linhas do insert. withEmail=false e o shape legado
+// (schema antigo, sem a coluna), usado no fallback de degradacao.
+export function buildRecipientRows(
+  notificationId: string,
+  recipients: Array<{ userId: string; email: string }>,
+  options: { withEmail: boolean },
+): RecipientRow[] {
+  return recipients.map(({ userId, email }) =>
+    options.withEmail
+      ? { notification_id: notificationId, user_id: userId, email }
+      : { notification_id: notificationId, user_id: userId },
+  );
+}
+
+// Puro e testavel: monta a resposta do GET a partir das linhas. Linha com email
+// null (legado, anterior a coluna) nao entra em `emails`; `missing` > 0 sinaliza
+// a UI que a lista original nao esta completa (cai no comportamento legado).
+export function buildRecipientsResponse(
+  rows: Array<{ email: string | null }>,
+): { emails: string[]; total: number; missing: number } {
+  const emails: string[] = [];
+  for (const row of rows) {
+    if (row.email) emails.push(String(row.email));
+  }
+  return { emails, total: rows.length, missing: rows.length - emails.length };
+}
+
+type InsertResult = { error: { code?: string; message?: string } | null };
+
+// Puro quanto ao IO (recebe runInsert injetavel): tenta gravar COM email; se o
+// schema ainda nao tem a coluna, reinsere so (notification_id, user_id) pra o
+// envio custom nunca quebrar entre o deploy e o db:push. Outros erros propagam
+// (nao mascara falha real). onColumnMissing dispara uma vez pra logar o aviso.
+export async function insertRecipientsWithFallback(
+  notificationId: string,
+  recipients: Array<{ userId: string; email: string }>,
+  runInsert: (rows: RecipientRow[]) => Promise<InsertResult>,
+  onColumnMissing?: () => void,
+): Promise<void> {
+  const first = await runInsert(
+    buildRecipientRows(notificationId, recipients, { withEmail: true }),
+  );
+  if (!first.error) return;
+  if (isEmailColumnMissing(first.error)) {
+    onColumnMissing?.();
+    const fallback = await runInsert(
+      buildRecipientRows(notificationId, recipients, { withEmail: false }),
+    );
+    if (fallback.error) {
+      throw new Error(fallback.error.message ?? "insert failed");
+    }
+    return;
+  }
+  throw new Error(first.error.message ?? "insert failed");
+}
+
+// Aviso logado uma unica vez por processo (nao por linha nem por notificacao).
+let emailColumnMissingWarned = false;
+
 async function insertRecipients(
   notificationId: string,
-  userIds: string[],
+  recipients: Array<{ userId: string; email: string }>,
 ): Promise<void> {
-  const { error } = await supabaseAdmin.from("notification_recipients").insert(
-    userIds.map((userId) => ({
-      notification_id: notificationId,
-      user_id: userId,
-    })),
+  await insertRecipientsWithFallback(
+    notificationId,
+    recipients,
+    async (rows) => {
+      const { error } = await supabaseAdmin
+        .from("notification_recipients")
+        .insert(rows);
+      return { error };
+    },
+    () => {
+      if (!emailColumnMissingWarned) {
+        console.warn(
+          "[admin/notifications] coluna notification_recipients.email ausente; gravando recipients sem email até o db:push.",
+        );
+        emailColumnMissingWarned = true;
+      }
+    },
   );
-  if (error) {
-    throw new Error(error.message);
-  }
 }
 
 async function countRecipients(notificationId: string): Promise<number> {
@@ -432,7 +547,7 @@ router.post("/", async (req, res, next) => {
 
     if (resolved) {
       try {
-        await insertRecipients(createdRow.id, resolved.userIds);
+        await insertRecipients(createdRow.id, resolved.recipients);
       } catch (recipientsErr) {
         await supabaseAdmin
           .from("notifications")
@@ -658,7 +773,7 @@ router.patch("/:id", async (req, res, next) => {
         if (deleteError) {
           throw new Error(deleteError.message);
         }
-        await insertRecipients(id.data, resolved.userIds);
+        await insertRecipients(id.data, resolved.recipients);
       } else if (
         existing.audience === "custom" &&
         updatedRow.audience !== "custom"
@@ -1126,6 +1241,80 @@ router.get("/:id/stats", async (req, res, next) => {
     console.error("[admin/notifications] stats failed", err);
     return next(
       createError(500, "db_error", "Erro ao buscar estatísticas."),
+    );
+  }
+});
+
+// Le as linhas de recipients pra o GET. Degrada quando o schema ainda nao tem a
+// coluna email (select falha com 42703): reconta as linhas por uma coluna que
+// existe (user_id) e devolve email null pra cada, ou seja, "todos legados".
+async function fetchLegacyRecipientRows(
+  notificationId: string,
+): Promise<Array<{ email: string | null }>> {
+  const rows: Array<{ email: string | null }> = [];
+  for (let from = 0; ; from += DB_PAGE) {
+    const { data, error } = await supabaseAdmin
+      .from("notification_recipients")
+      .select("user_id")
+      .eq("notification_id", notificationId)
+      .range(from, from + DB_PAGE - 1);
+    if (error) {
+      throw new Error(error.message);
+    }
+    const page = data ?? [];
+    for (let i = 0; i < page.length; i += 1) rows.push({ email: null });
+    if (page.length < DB_PAGE) break;
+  }
+  return rows;
+}
+
+async function fetchRecipientEmailRows(
+  notificationId: string,
+): Promise<Array<{ email: string | null }>> {
+  const rows: Array<{ email: string | null }> = [];
+  for (let from = 0; ; from += DB_PAGE) {
+    const { data, error } = await supabaseAdmin
+      .from("notification_recipients")
+      .select("email")
+      .eq("notification_id", notificationId)
+      .range(from, from + DB_PAGE - 1);
+    if (error) {
+      if (isEmailColumnMissing(error)) {
+        return fetchLegacyRecipientRows(notificationId);
+      }
+      throw new Error(error.message);
+    }
+    const page = (data ?? []) as Array<{ email: string | null }>;
+    for (const row of page) rows.push({ email: row.email });
+    if (page.length < DB_PAGE) break;
+  }
+  return rows;
+}
+
+// GET /api/admin/notifications/:id/recipients: emails da lista custom, pra
+// repopular o textarea ao editar (antes so a contagem era recuperavel). Linhas
+// legadas (email null, anteriores a coluna) contam mas nao tem email; `missing`
+// deixa a UI detectar que a lista original nao esta completa e cair no legado.
+router.get("/:id/recipients", async (req, res, next) => {
+  const id = z.string().uuid().safeParse(req.params.id);
+  if (!id.success) {
+    return next(createError(404, "not_found", "Notificação não encontrada."));
+  }
+
+  try {
+    const existing = await findNotification(id.data);
+    if (!existing) {
+      return next(
+        createError(404, "not_found", "Notificação não encontrada."),
+      );
+    }
+
+    const rows = await fetchRecipientEmailRows(id.data);
+    res.json({ data: buildRecipientsResponse(rows) });
+  } catch (err) {
+    console.error("[admin/notifications] recipients failed", err);
+    return next(
+      createError(500, "db_error", "Erro ao carregar destinatários."),
     );
   }
 });

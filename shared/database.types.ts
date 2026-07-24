@@ -1881,14 +1881,17 @@ export type Database = {
       }
       notification_recipients: {
         Row: {
+          email: string | null
           notification_id: string
           user_id: string
         }
         Insert: {
+          email?: string | null
           notification_id: string
           user_id: string
         }
         Update: {
+          email?: string | null
           notification_id?: string
           user_id?: string
         }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -32,6 +32,7 @@ import {
   archiveNotification,
   createNotification,
   fetchAudiencePreview,
+  fetchNotificationRecipients,
   fetchNotificationStats,
   listNotifications,
   patchNotification,
@@ -257,10 +258,25 @@ function formFromNotification(n: AdminNotification): FormState {
     super_subtitle: n.super_subtitle ?? "",
     super_cta_label: n.super_cta_label ?? "",
     super_cta_url: n.super_cta_url ?? "",
-    // Emails da lista atual não são recuperáveis (guardamos user_id); vazio
-    // mantém a lista, preencher substitui inteira.
+    // recipients_text começa vazio; para drafts custom os emails são
+    // recuperados de forma assíncrona no openEdit (ver recoveredRecipientsText).
     recipients_text: "",
   };
+}
+
+// Decide se a lista recuperada (GET /:id/recipients) repopula o textarea. Só
+// quando veio INTEIRA (missing === 0) e não vazia: preencher substitui a lista
+// toda no save, então uma lista parcial (linhas legadas sem email guardado)
+// descartaria destinatários. Nesse caso retorna null e a UI mantém o
+// placeholder de contagem (comportamento legado).
+export function recoveredRecipientsText(recovered: {
+  emails: string[];
+  missing: number;
+}): string | null {
+  if (recovered.missing === 0 && recovered.emails.length > 0) {
+    return recovered.emails.join("\n");
+  }
+  return null;
 }
 
 // Espelho client-side do zod do server, pra mensagem imediata; o erro do
@@ -660,10 +676,15 @@ export function NotificationsManager() {
     void load();
   }, [load]);
 
+  // Guarda a notificação cuja lista custom está sendo recuperada, pra ignorar
+  // uma resposta tardia se o admin já trocou de form/fechou.
+  const editingRecipientsRef = useRef<string | null>(null);
+
   function openCreate() {
     setForm(EMPTY_FORM);
     setFormError(null);
     setRecipientFeedback(null);
+    editingRecipientsRef.current = null;
     setFormMode({ mode: "create" });
   }
 
@@ -672,12 +693,35 @@ export function NotificationsManager() {
     setFormError(null);
     setRecipientFeedback(null);
     setFormMode({ mode: "edit", notification });
+    editingRecipientsRef.current = notification.id;
+    // Recupera os emails da lista custom pra repopular o textarea. Só em
+    // draft/scheduled editáveis e quando há lista; published é imutável.
+    const editable =
+      notification.status === "draft" || notification.status === "scheduled";
+    if (
+      notification.audience === "custom" &&
+      editable &&
+      notification.recipient_count > 0
+    ) {
+      void fetchNotificationRecipients(notification.id)
+        .then((res) => {
+          if (editingRecipientsRef.current !== notification.id) return;
+          const text = recoveredRecipientsText(res.data);
+          if (text !== null) {
+            setForm((prev) => ({ ...prev, recipients_text: text }));
+          }
+        })
+        .catch(() => {
+          // Falha na recuperação: mantém o comportamento legado (contagem).
+        });
+    }
   }
 
   function closeForm() {
     setFormMode(null);
     setFormError(null);
     setRecipientFeedback(null);
+    editingRecipientsRef.current = null;
   }
 
   async function handleSave() {
