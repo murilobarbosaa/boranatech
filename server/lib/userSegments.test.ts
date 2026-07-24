@@ -14,6 +14,7 @@ const USER = "11111111-1111-1111-1111-111111111111";
 function setsFromFlags(flags: ProStatusFlags): ProStatusSets {
   return {
     active: new Set(flags.active ? [USER] : []),
+    payingActive: new Set(flags.payingActive ? [USER] : []),
     pastDue: new Set(flags.pastDue ? [USER] : []),
     everPaid: new Set(flags.everPaid ? [USER] : []),
   };
@@ -24,7 +25,9 @@ function matchedSegments(flags: ProStatusFlags): UserSegment[] {
 }
 
 // Perfis da tabela-verdade (decisao de 2026-07-16, alinhada ao is_user_pro
-// com influencers). Cada caso lista TODOS os segmentos que o perfil casa.
+// com influencers; paying_pro adicionado depois). Cada caso lista TODOS os
+// segmentos que o perfil casa. Distincao-chave: paying_pro exige payingActive
+// (pagamento vigente), enquanto active_pro aceita tambem influencer de cortesia.
 const CASES: Array<{
   name: string;
   flags: ProStatusFlags;
@@ -32,32 +35,32 @@ const CASES: Array<{
 }> = [
   {
     name: "nunca pagou, nao e influencer",
-    flags: { active: false, pastDue: false, everPaid: false },
+    flags: { active: false, payingActive: false, pastDue: false, everPaid: false },
     expected: ["all", "never_pro"],
   },
   {
-    name: "assinante ativo",
-    flags: { active: true, pastDue: false, everPaid: true },
-    expected: ["all", "active_pro"],
+    name: "assinante ativo pagante: active_pro E paying_pro",
+    flags: { active: true, payingActive: true, pastDue: false, everPaid: true },
+    expected: ["all", "active_pro", "paying_pro"],
   },
   {
     name: "ex-assinante (pagou, hoje sem plano)",
-    flags: { active: false, pastDue: false, everPaid: true },
+    flags: { active: false, payingActive: false, pastDue: false, everPaid: true },
     expected: ["all", "ex_pro"],
   },
   {
     name: "past_due (recuperacao de pagamento) entra apenas em all",
-    flags: { active: false, pastDue: true, everPaid: true },
+    flags: { active: false, payingActive: false, pastDue: true, everPaid: true },
     expected: ["all"],
   },
   {
-    name: "influencer ativo que nunca assinou: active_pro, nunca never_pro",
-    flags: { active: true, pastDue: false, everPaid: false },
+    name: "influencer ativo que nunca assinou: active_pro SIM, paying_pro NAO",
+    flags: { active: true, payingActive: false, pastDue: false, everPaid: false },
     expected: ["all", "active_pro"],
   },
   {
-    name: "ex-assinante que virou influencer: active_pro, sai de ex_pro",
-    flags: { active: true, pastDue: false, everPaid: true },
+    name: "ex-assinante que virou influencer: active_pro SIM, paying_pro NAO, sai de ex_pro",
+    flags: { active: true, payingActive: false, pastDue: false, everPaid: true },
     expected: ["all", "active_pro"],
   },
 ];
@@ -83,6 +86,7 @@ describe("userSegments truth table", () => {
   it("usuario fora dos sets casa apenas all e never_pro", () => {
     const sets = setsFromFlags({
       active: false,
+      payingActive: false,
       pastDue: false,
       everPaid: false,
     });

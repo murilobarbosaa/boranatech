@@ -18,6 +18,7 @@ export type AdminNotificationAudience =
   | "all"
   | "never_pro"
   | "active_pro"
+  | "paying_pro"
   | "ex_pro"
   | "custom";
 

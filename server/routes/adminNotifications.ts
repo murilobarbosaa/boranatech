@@ -90,6 +90,7 @@ const NOTIFICATION_AUDIENCES = [
   "all",
   "never_pro",
   "active_pro",
+  "paying_pro",
   "ex_pro",
   "custom",
 ] as const;
@@ -857,6 +858,9 @@ async function computeAudiencePreview(
     matched = totalUsers;
   } else if (audience === "active_pro") {
     matched = sets.active.size;
+  } else if (audience === "paying_pro") {
+    // paying_pro = assinantes pagantes vigentes, sem os influencers de cortesia.
+    matched = sets.payingActive.size;
   } else if (audience === "never_pro") {
     // never_pro exige !everPaid E !active: influencer ativo que nunca pagou
     // esta em active (Pro vitalicio) e sai da conta.

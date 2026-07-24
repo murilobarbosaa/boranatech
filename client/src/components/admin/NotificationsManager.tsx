@@ -90,7 +90,13 @@ const AUDIENCE_META: Record<
   },
   active_pro: {
     label: "Pro ativo",
-    description: "Assinatura paga ativa (mesma definição do is_user_pro).",
+    description:
+      "Toda a experiência Pro vigente (mesma definição do is_user_pro). INCLUI influencers de cortesia, não só quem paga.",
+  },
+  paying_pro: {
+    label: "Pro pagante",
+    description:
+      "Assinantes com pagamento vigente. Exclui influencers de cortesia; use para cobrança/renovação.",
   },
   ex_pro: {
     label: "Ex-Pro",
