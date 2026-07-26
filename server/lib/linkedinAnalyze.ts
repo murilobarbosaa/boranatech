@@ -49,6 +49,19 @@ export class LinkedinUnreadableError extends Error {
   }
 }
 
+/**
+ * Resposta da IA cortada pelo teto de max_tokens (finish_reason "length").
+ * Distinta de JSON malformado: aqui o JSON esta correto, só incompleto, e
+ * repetir a chamada corta no mesmo lugar. A rota transforma em 502 com
+ * mensagem propria.
+ */
+export class LinkedinTruncatedError extends Error {
+  constructor() {
+    super("A resposta da IA foi cortada pelo limite de tamanho.");
+    this.name = "LinkedinTruncatedError";
+  }
+}
+
 const SYSTEM_PROMPT = `Você é um especialista sênior em LinkedIn para carreiras de tecnologia no Brasil, mentor da plataforma BoraNaTech. Seu público vai de iniciantes (estagiários, trainees, juniores, pessoas em transição de carreira) a profissionais de nível pleno. Seu trabalho é interpretar uma análise já calculada e reescrever as partes do perfil para que ele seja encontrado por recrutadores e receba mensagens.
 
 REGRA DOS FATOS: as checagens automáticas, a nota e as listas de palavras-chave encontradas e faltantes que você vai receber já foram calculadas e são fatos. Você não reavalia, não recalcula nota, não contradiz as checagens e não inventa informações que não estão no perfil. Se o perfil não menciona algo, você não pode afirmar que a pessoa sabe aquilo. Nas sugestões de skills, proponha apenas o que é plausível a partir do que o perfil já evidencia, e deixe claro que a pessoa só deve adicionar o que realmente sabe.
@@ -208,9 +221,18 @@ async function runQualitativeOnce(
   }
 
   const payload = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
   };
-  const content = payload.choices?.[0]?.message?.content;
+  const choice = payload.choices?.[0];
+  // finish_reason "length" = a resposta bateu no max_tokens e veio cortada. Sem
+  // esta checagem o sintoma era "JSON invalido", que manda diagnosticar o
+  // parser quando o problema e orcamento de saida. Erro proprio, e a tentativa
+  // seguinte nao adianta nada (o mesmo prompt corta no mesmo lugar), entao
+  // LinkedinTruncatedError nao e retentado.
+  if (choice?.finish_reason === "length") {
+    throw new LinkedinTruncatedError();
+  }
+  const content = choice?.message?.content;
   if (!content) {
     throw new Error("A IA não retornou conteúdo.");
   }
@@ -253,6 +275,10 @@ async function runQualitative(
       console.error(
         `[linkedin-analyze] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} falhou: ${detail}`,
       );
+      // Truncamento e deterministico: o mesmo prompt com o mesmo max_tokens
+      // corta de novo. Retentar so faz a pessoa esperar o dobro pelo mesmo
+      // erro, entao aborta o loop na hora.
+      if (err instanceof LinkedinTruncatedError) break;
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
       }

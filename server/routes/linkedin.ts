@@ -10,6 +10,7 @@ import { estimateCost } from "../lib/aiTools";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import {
   analyzeLinkedin,
+  LinkedinTruncatedError,
   LinkedinUnreadableError,
 } from "../lib/linkedinAnalyze";
 import type { LinkedinParsed } from "../../shared/linkedin/parse";
@@ -206,6 +207,16 @@ router.post(
             422,
             "unreadable_profile",
             "Não consegui ler seu perfil a partir do texto enviado. Tente colar o texto do perfil manualmente.",
+          ),
+        );
+      }
+      if (err instanceof LinkedinTruncatedError) {
+        // TODO(Ana): revisar a mensagem de analise cortada por tamanho.
+        return next(
+          createError(
+            502,
+            "analysis_truncated",
+            "A análise ficou grande demais e foi cortada no meio. Tente de novo com um texto de perfil mais enxuto.",
           ),
         );
       }
