@@ -225,6 +225,10 @@ router.get(
         .limit(20);
 
       if (error) {
+        console.error(
+          "[linkedin] Falha ao listar analises:",
+          error.message,
+        );
         return next(
           createError(500, "db_error", "Erro ao buscar suas análises."),
         );
@@ -252,6 +256,10 @@ router.get(
         .maybeSingle();
 
       if (error) {
+        console.error(
+          "[linkedin] Falha ao buscar a analise:",
+          error.message,
+        );
         return next(createError(500, "db_error", "Erro ao buscar a análise."));
       }
       if (!data) {
@@ -324,6 +332,10 @@ router.get(
       .eq("analysis_id", id)
       .eq("done", true);
     if (error) {
+      console.error(
+        "[linkedin] Falha ao carregar o progresso de melhorias:",
+        error.message,
+      );
       return next(
         createError(
           500,
@@ -388,6 +400,10 @@ router.put(
         { onConflict: "user_id,analysis_id,improvement_index" },
       );
     if (error) {
+      console.error(
+        "[linkedin] Falha ao salvar o progresso de melhorias:",
+        error.message,
+      );
       return next(
         createError(500, "save_failed", "Não foi possível salvar o progresso."),
       );
