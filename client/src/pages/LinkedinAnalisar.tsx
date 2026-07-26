@@ -778,8 +778,16 @@ export default function LinkedinAnalisar() {
       // Resultado chegou: de volta ao topo (a pessoa pode ter rolado
       // durante o loading).
       scrollToStageTop();
-      const fresh = await listLinkedinAnalyses();
-      setAnalyses(fresh);
+      // Refresh do historico FORA do try da analise: e acessorio e ja custou
+      // uma chamada de IA. Se ele falhar dentro do try, o catch liga o error e
+      // o estado de resultado some (showResult exige error vazio), trocando um
+      // resultado pago por uma tela de erro. Falha aqui so deixa a lista
+      // desatualizada ate a proxima carga.
+      void listLinkedinAnalyses()
+        .then(setAnalyses)
+        .catch(() => {
+          // Historico desatualizado nao invalida o resultado exibido.
+        });
     } catch (err) {
       setError(err instanceof Error ? err.message : "ANALYSIS_FAILED");
     } finally {
