@@ -21,6 +21,7 @@
     "start": "NODE_ENV=production node dist/index.js",
     "preview": "vite preview --host",
     "check": "tsc --noEmit && tsx scripts/generateRoadmapMeta.mts --check && tsx scripts/generateSitemap.mts --check && tsx scripts/checkCspHashes.mts",
+    "check:migrations": "tsx scripts/checkMigrationsApplied.mts",
     "posters": "tsx scripts/fetch-tmdb-posters.mjs",
     "seed:content": "tsx server/scripts/seed-content.ts",
     "test": "vitest run",

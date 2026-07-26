@@ -152,8 +152,9 @@ Tipografia de seção: `font-display font-black` para headings; labels de seçã
 ### Ordem de deploy: código antes da migration
 
 - Aplicar migration (`db:push`) apenas DEPOIS ou SIMULTANEAMENTE ao deploy do código que a consome, nunca antes. Justificativa: código novo tolera schema antigo (colunas nullable, guardas de fallback); schema novo NÃO é tolerado por código antigo (migration + cron no banco sem o endpoint deployado = notificação agendada não dispara; enum novo no banco sem o frontend que o conhece = crash de admin).
-- Checklist: (1) commit + push, (2) deploy de backend e frontend, (3) `db:push`, (4) smoke test.
-- `pnpm check` deve estar VERDE antes de deployar: o Vite builda mesmo com `tsc` vermelho, então um check vermelho não impede um deploy quebrado de subir.
+- Checklist: (1) commit + push, (2) deploy de backend e frontend, (3) `db:push` (ou o SQL da migration no SQL Editor), (4) **`pnpm check:migrations` contra o banco alvo**, (5) smoke test.
+- O passo (4) não é opcional: a regra acima protege contra migration ANTES do código, mas não contra a migration que nunca chega DEPOIS. Foi exatamente isso que aconteceu com `20260710120000_create_linkedin_improvement_progress.sql`: o código subiu, a migration ficou só no repositório, e o checklist de melhorias do Analisador de LinkedIn nasceu morto em produção devolvendo 500. Nada acusou, porque código novo tolerando schema antigo é justamente o que o passo (3) pressupõe. `pnpm check:migrations` compara as tabelas declaradas em `supabase/migrations/*.sql` com as que existem no banco e falha listando as ausentes.
+- `pnpm check` deve estar VERDE antes de deployar: o Vite builda mesmo com `tsc` vermelho, então um check vermelho não impede um deploy quebrado de subir. `pnpm check` é offline e NÃO inclui `check:migrations`, que precisa de rede e do service role.
 
 ## Arquivos Importantes
 
