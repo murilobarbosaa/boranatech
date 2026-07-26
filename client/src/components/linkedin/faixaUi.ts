@@ -25,3 +25,26 @@ export const FAIXA_WASH: Record<LinkedinFaixa, string> = {
   forte: "from-sky-200/40",
   magnetico: "from-emerald-200/40",
 };
+
+// Fallbacks neutros: uma faixa que o bundle ainda nao conhece pinta cinza em
+// vez de derrubar a pagina.
+const FAIXA_UI_FALLBACK: LinkedinFaixaUi = {
+  cardBg: "bg-slate-100",
+  chipBg: "bg-slate-300",
+};
+const FAIXA_WASH_FALLBACK = "from-slate-200/40";
+
+/**
+ * Resolvers de faixa. A faixa chega do SERVIDOR e tambem do `result` jsonb
+ * persistido, entao acesso direto ao mapa quebra a pagina inteira quando um
+ * valor novo aparece antes do deploy do front (regra "Lookups por valor do
+ * servidor" do CLAUDE.md; ja houve incidente real com STATUS_META no admin).
+ * Molde de notificationTypeMetaOf.
+ */
+export function faixaUiOf(faixa: string): LinkedinFaixaUi {
+  return FAIXA_UI[faixa as LinkedinFaixa] ?? FAIXA_UI_FALLBACK;
+}
+
+export function faixaWashOf(faixa: string): string {
+  return FAIXA_WASH[faixa as LinkedinFaixa] ?? FAIXA_WASH_FALLBACK;
+}

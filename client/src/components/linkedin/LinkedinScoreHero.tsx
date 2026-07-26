@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import { motion } from "framer-motion";
 import { ArrowRight, Linkedin, Sparkles } from "lucide-react";
-import { FAIXA_UI } from "@/components/linkedin/faixaUi";
+import { faixaUiOf } from "@/components/linkedin/faixaUi";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import { AREA_LABELS } from "@shared/areas";
@@ -66,7 +66,7 @@ export default function LinkedinScoreHero({
   improvements?: { done: number; total: number } | null;
 }) {
   const { deterministic } = response;
-  const faixaUi = FAIXA_UI[deterministic.faixa];
+  const faixaUi = faixaUiOf(deterministic.faixa);
   // Delta valido para ESTE resultado: anima da nota antiga pra nova.
   const delta =
     scoreDelta && scoreDelta.to === deterministic.score ? scoreDelta : null;

@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Linkedin, MessageCircle, Search, Sparkles } from "lucide-react";
-import { FAIXA_WASH } from "@/components/linkedin/faixaUi";
+import { faixaWashOf } from "@/components/linkedin/faixaUi";
 import { cn } from "@/lib/utils";
 import type { LinkedinFaixa } from "@shared/linkedin/schema";
 
@@ -86,13 +86,13 @@ export default function LinkedinResultBackdrop({
       <div
         className={cn(
           "absolute inset-x-0 top-0 h-80 bg-gradient-to-b via-transparent to-transparent [mask-image:linear-gradient(to_bottom,black_40%,transparent)]",
-          FAIXA_WASH[faixa],
+          faixaWashOf(faixa),
         )}
       />
       <div
         className={cn(
           "absolute right-[-12%] top-[42%] h-96 w-[65%] rounded-full bg-gradient-to-tl via-transparent to-transparent blur-3xl",
-          FAIXA_WASH[faixa],
+          faixaWashOf(faixa),
         )}
       />
       {RESULT_DOODLES.map((doodle, i) => {
