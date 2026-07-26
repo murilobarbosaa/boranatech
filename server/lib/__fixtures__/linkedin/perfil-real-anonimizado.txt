@@ -1,0 +1,179 @@
+Contact 
+Denver - Delaware 
+(11)90000-0000   (Mobile) 
+joana.teste@exemplo.com 
+www.linkedin.com/in/ 
+joanateste-dev   (LinkedIn) 
+github.com/joanateste 
+(Portfolio) 
+Top Skills 
+AI Agents 
+Vector Databases 
+Retrieval-Augmented Generation 
+(RAG) 
+Languages 
+Portuguese   (Native or Bilingual) 
+Spanish   (Professional Working) 
+English   (Full Professional) 
+French   (Elementary) 
+Certifications 
+Google Cloud: Introduction to Docker 
+Algorithms and Programming Logic 
+ITIL® v3 
+Fundamentals of the General Data 
+Protection Law (LGPD) 
+HTML/CSS 
+Joana Teste 
+Software Developer | Full-Stack Engineer | AI Agent Expert | React | 
+Node 
+Greater São Paulo Area 
+Summary 
+I am a Front-End Engineer with over 3 years of experience in 
+Software Development. I have 
+profound knowledge in full-stack development, crafting modern user 
+interfaces with React and 
+implementing RESTful APIs using TypeScript and Node.js. 
+Additionally, I am skilled in backend 
+infrastructure, including containerization with Docker, database 
+administration with PostgreSQL and 
+Redis, and Linux server management. I am also adept in developing, 
+customizing, and deploying 
+Generative AI agents to solve specific client challenges. My 
+academic background includes a 
+Bachelor's in Computer Science, currently in progress. 
+As a Front-End Engineer, I have the ability to solve problems, 
+develop new solutions, and apply ITIL 
+V4 best practices to ensure efficient IT service delivery. I am capable 
+of using my strong desire for 
+learning and development to drive projects to successful completion. 
+I have successfully developed and customized Generative AI agents 
+for various clients, addressing 
+their specific challenges and enhancing their business processes. 
+Additionally, I have experience in 
+modernizing user interfaces and backend infrastructures, which 
+enhances performance and scalability. I am proficient in using tools 
+such as Docker, PostgreSQL, Redis, and Linux, contributing 
+to robust and efficient IT solutions. 
+Experience 
+Bora na Tech? 
+CTO & Co-founder 
+Page   1   of   5 
+July 2026 - Present   (1 month) 
+Brazil 
+SinergyRH 
+Artificial Intelligence Engineer 
+July 2026 - Present   (1 month) 
+São Paulo, Brazil 
+Building production AI systems for HR: a conversational payroll agent and 
+large-scale candidate search. 
+• Built Syni, a production conversational AI agent that answers natural- 
+language HR and payroll questions for both employees and managers, with 
+role-aware access so employees query their own data and managers query 
+their team’s. 
+• Designed a hybrid architecture where deterministic backend logic handles 
+every calculation while LLMs handle only intent interpretation and natural- 
+language composition, keeping all figures deterministic and reliable with no 
+risk of model hallucination on the data. 
+• Built an LLM orchestrator with structured JSON output that classifies user 
+intent and routes each request to the correct action, backed by deterministic 
+pre-routers that cut latency by ~86% on common queries by avoiding 
+unnecessary model calls. 
+• Implemented multi-channel delivery (WhatsApp and Excel export) with 
+automatic handling of messaging-window constraints, and integrated modern 
+AI into a legacy PHP 7.4 production system without disrupting existing 
+functionality. 
+• Architected and deployed a semantic search engine over 3M+ candidate 
+profiles, returning ranked results from natural-language queries in seconds 
+using vector embeddings and Qdrant. 
+• Built an AI-powered pipeline that automatically extracts and structures 
+information from unstructured resume documents, sharply reducing manual 
+screening time. 
+Chatvolt 
+Generative AI Consultant/Support Analyst 
+March 2025 - June 2026   (1 year 4 months) 
+Campinas, São Paulo, Brazil 
+Responsibilities: 
+• I specialize in creating custom AI Agents for various companies. 
+• Developed over 20 AI agents tailored for 15+ companies. 
+Page   2   of   5 
+• Implemented an AI solution for over 20 schools. 
+• I provide consulting services in AI technology integration. 
+• Supported organizations in AI project management. 
+• Ensured AI solutions aligned with strategic goals. 
+• Delivered end-to-end AI solution support. 
+Achievements: 
+• Streamlined operations in multiple client businesses. 
+• Enhanced sales through custom AI solutions. 
+• Significantly optimized technical support processes. 
+• Increased client engagement and value realization from AI. 
+• Successfully integrated a singular AI system across school networks. 
+• Improved response times and customer support satisfaction. 
+• Enhanced decision-making with tailored AI strategies. 
+TST - Tribunal Superior do Trabalho 
+Intern 
+June 2024 - June 2026   (2 years 1 month) 
+Brasília, DF 
+Responsibilities: 
+• I effectively implemented ITIL v4 frameworks. 
+• Improved IT service delivery strategies. 
+• Enhanced support systems for 25+ IT professionals. 
+• Conducted efficiency analysis for service improvement. 
+• Participated in IT infrastructure development projects. 
+• Facilitated knowledge sharing sessions. 
+• Assisted in project management tasks. 
+Achievements: 
+• Improved IT operational efficiency significantly. 
+• Enhanced coordination among IT personnel. 
+• Streamlined IT support processes. 
+• Reduced system downtime and improved reliability. 
+• Introduced best practices in IT service management. 
+• Contributed to a more responsive IT environment. 
+• Elevated user satisfaction through improved services. 
+Alpha Edtech 
+1 year 1 month 
+Software Engineer/QA Engineer 
+Page   3   of   5 
+August 2024 - November 2024   (4 months) 
+São Paulo, Brasil 
+Responsibilities: 
+• Developed an end-to-end testing suite using Cypress. 
+• Implemented a back-end testing strategy with Jest. 
+• Integrated automated testing in CI/CD pipeline. 
+• Ensured reliability of services with comprehensive testing. 
+• Reduced production bugs through rigorous testing. 
+• Conducted UI functionality and performance testing. 
+• Collaborated with cross-functional teams for QA processes. 
+Achievements: 
+• Significantly reduced bugs in production systems. 
+• Accelerated the development cycle considerably. 
+• Improved the stability of deployed services. 
+• Enhanced code quality and release confidence. 
+• Contributed to a more reliable user interface experience. 
+• Implemented scalable QA solutions for complex systems. 
+• Demonstrated high team collaboration for effective QA. 
+Software Engineer/Full-Stack Developer 
+November 2023 - November 2024   (1 year 1 month) 
+São Paulo, Brasil 
+Responsibilities: 
+• Developed responsive user interfaces using React. 
+• Created a library of reusable components. 
+• Designed scalable RESTful APIs with TypeScript and Node.js. 
+• Managed PostgreSQL and Redis database environments. 
+• Maintained production Linux servers for high availability. 
+• Implemented security protocols and automation tasks. 
+• Optimized performance for high-traffic applications. 
+Achievements: 
+• Accelerated development cycles by over 20%. 
+• Improved long-term code maintainability. 
+• Reduced runtime errors significantly. 
+• Achieved high system availability and peak performance. 
+• Enhanced data integrity through robust database management. 
+• Strengthened security and reliability of servers. 
+• Contributed to the development of high-performance web applications. 
+Page   4   of   5 
+Education 
+UniCEUB - Centro Universitário de Brasília 
+Bachelor's degree, Computer Science   · (January 2023 - 2026) 
+Harvard University 
+Computer Science   · (January 2025 - November 2026) 
+Page   5   of   5

@@ -1,0 +1,27 @@
+Contato
+maria.silva@email.com
+www.linkedin.com/in/mariasilva
+Principais competências
+React
+TypeScript
+Node.js
+Maria Silva
+Desenvolvedora Full-stack Sênior | React, TypeScript, Node.js, AWS | Construindo produtos SaaS escaláveis
+Resumo
+Sou desenvolvedora full-stack com 8 anos de experiência construindo produtos web de alta escala. Já liderei a migração de um monolito PHP para uma arquitetura de microsserviços em Node.js e TypeScript, reduzindo o tempo de deploy em 70%. Trabalho com React, Next.js, PostgreSQL, Docker e AWS no dia a dia. Também mentoro pessoas desenvolvedoras juniores e escrevo sobre arquitetura de software. Se você procura alguém para liderar tecnicamente um time de produto, me chame aqui no LinkedIn para conversarmos.
+Experience
+Empresa Tech LTDA
+Desenvolvedora Full-stack Sênior
+janeiro de 2022 - Present
+3 anos
+São Paulo, Brasil
+Liderei a migração de um monolito para microsserviços em Node.js, reduzindo o tempo de deploy em 70%. Desenvolvi 12 APIs REST em TypeScript com cobertura de testes acima de 85%. Implementei pipeline de CI/CD com GitHub Actions e Docker, aumentando a frequência de releases em 300%. Otimizei consultas PostgreSQL que reduziram a latência média de 800ms para 120ms.
+Startup XYZ
+Desenvolvedora Front-end Pleno
+março de 2019 - dezembro de 2021
+2 anos 10 meses
+Criei o design system da empresa em React e Tailwind CSS, adotado por 4 times. Implementei testes end-to-end com Cypress cobrindo os 15 fluxos críticos. Migrei a aplicação de Webpack para Vite, reduzindo o tempo de build em 60%.
+Education
+USP
+Bacharelado em Ciência da Computação
+2015 - 2019

@@ -1,0 +1,15 @@
+Contato
+paulo.souza@exemplo.com
+Paulo Souza
+Desenvolvedor Back-end | Python, Django
+Resumo
+Sou desenvolvedor back-end e trabalho com Python e Django construindo APIs para clientes de varios portes. Gosto de escrever codigo simples, testar bem e manter o sistema previsivel. Tenho experiencia com PostgreSQL, Docker e filas. Me chame aqui no LinkedIn para conversarmos sobre oportunidades na area.
+Experience
+Empresa Longa
+Desenvolvedor Back-end
+janeiro de 2020 - Present
+5 anos
+Sao Paulo
+Desenvolvi endpoints em Python e Django para o produto principal. Criei rotinas de importacao de dados e integrei servicos externos. Escrevi testes de unidade e de integracao para as rotas criticas. Configurei filas assincronas para processamento em segundo plano.
+Page   10   of   12
+Mantive a documentacao da API atualizada e revisei codigo dos colegas.

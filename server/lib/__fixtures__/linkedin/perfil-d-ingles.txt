@@ -1,0 +1,13 @@
+Contact
+carlos@email.com
+Carlos Mendes
+Backend Engineer | Go, Kubernetes, Distributed Systems
+Summary
+Backend engineer focused on distributed systems and platform reliability. I design and operate services written in Go and Python running on Kubernetes. Previously helped scale a payments platform to 4 million daily transactions. Interested in remote roles with international teams. Feel free to reach out.
+Experience
+Global Payments Inc
+Backend Engineer
+January 2021 - Present
+4 years
+Remote
+Designed and implemented payment settlement services in Go handling 4 million daily transactions. Built observability stack with Prometheus and Grafana reducing mean time to detection by 60%. Migrated 20 services to Kubernetes with zero downtime.
