@@ -6,6 +6,7 @@ import {
   type LinkedinAnalysisResponse,
   type LinkedinAnalyzeRequest,
 } from "../../shared/linkedin/schema";
+import { estimateCost } from "../lib/aiTools";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import {
   analyzeLinkedin,
@@ -173,6 +174,12 @@ router.post(
         status: aiUsed ? "success" : "skipped",
         inputChars: aiIo.inputChars,
         outputChars,
+        // Sem isto a ferramenta aparecia com custo zero nos paineis admin
+        // (/ai-stats e get_ai_usage_admin_summary somam cost_estimate). O
+        // atalho sem IA continua com custo zero, que e o valor correto.
+        costEstimate: aiUsed
+          ? estimateCost(aiIo.inputChars, outputChars)
+          : 0,
       });
 
       const analysisId = await persistAnalysis(
