@@ -95,6 +95,14 @@ export async function analyzeLinkedin(
 // Progresso das melhorias aplicadas (checklist vivo do resultado), espelho do
 // githubClient. Sem custo de IA: e so estado do proprio dado.
 
+function readErrorCode(body: unknown): string | null {
+  if (body && typeof body === "object") {
+    const rec = body as { error?: { code?: unknown } };
+    if (typeof rec.error?.code === "string") return rec.error.code;
+  }
+  return null;
+}
+
 function readErrorMessage(body: unknown): string {
   if (body && typeof body === "object") {
     const rec = body as { error?: { message?: unknown } };
@@ -104,9 +112,22 @@ function readErrorMessage(body: unknown): string {
   return "Não foi possível completar agora. Tente novamente.";
 }
 
+/**
+ * Progresso carregado. progressAvailable false = a feature esta indisponivel
+ * (tabela ausente no banco), o que NAO e erro: a UI esconde o checklist e
+ * mostra o aviso ameno, sem banner vermelho.
+ */
+export interface LinkedinImprovementsState {
+  applied: number[];
+  progressAvailable: boolean;
+}
+
+// Erro de PUT quando a feature esta indisponivel, distinto de falha de salvar.
+export const PROGRESS_UNAVAILABLE = "PROGRESS_UNAVAILABLE";
+
 export async function getLinkedinImprovements(
   analysisId: string,
-): Promise<number[]> {
+): Promise<LinkedinImprovementsState> {
   const authHeader = await getAuthHeader();
   const response = await fetch(
     apiUrl(
@@ -118,8 +139,15 @@ export async function getLinkedinImprovements(
     const body = (await response.json().catch(() => null)) as unknown;
     throw new Error(readErrorMessage(body));
   }
-  const payload = (await response.json()) as { applied?: number[] };
-  return Array.isArray(payload.applied) ? payload.applied : [];
+  const payload = (await response.json()) as {
+    applied?: number[];
+    progressAvailable?: boolean;
+  };
+  return {
+    applied: Array.isArray(payload.applied) ? payload.applied : [],
+    // Ausente = servidor antigo, que so respondia 200 quando havia tabela.
+    progressAvailable: payload.progressAvailable !== false,
+  };
 }
 
 export async function setLinkedinImprovement(
@@ -140,6 +168,9 @@ export async function setLinkedinImprovement(
   );
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as unknown;
+    if (readErrorCode(body) === "progress_unavailable") {
+      throw new Error(PROGRESS_UNAVAILABLE);
+    }
     throw new Error(readErrorMessage(body));
   }
 }

@@ -280,6 +280,21 @@ router.get(
 // Teto do indice aceito (as melhorias vem 4 a 7 por analise; folga proposital).
 const MAX_IMPROVEMENT_INDEX = 20;
 
+/**
+ * A tabela de progresso nao existe no banco alvo?
+ *
+ * Rede de seguranca para migration esquecida: o codigo novo tolera schema
+ * antigo em vez de devolver 500 no meio de um resultado que deu certo. NAO
+ * substitui aplicar a migration, so troca "erro vermelho" por "recurso
+ * indisponivel" enquanto ela nao chega.
+ *
+ * PGRST205 e o schema cache do PostgREST sem a tabela; 42P01 e o undefined_table
+ * do proprio Postgres. Checagem por codigo, nunca por texto da mensagem.
+ */
+function isMissingProgressTable(error: { code?: string | null }): boolean {
+  return error.code === "PGRST205" || error.code === "42P01";
+}
+
 // Posse da analise ANTES de qualquer leitura/escrita de progresso: true/false
 // pela existencia da linha do dono, null em erro de query (vira 500).
 async function ownsLinkedinAnalysis(
@@ -336,6 +351,12 @@ router.get(
         "[linkedin] Falha ao carregar o progresso de melhorias:",
         error.message,
       );
+      // Tabela ausente: 200 com progressAvailable false. A UI esconde o
+      // checklist e avisa que o recurso esta indisponivel, em vez de exibir
+      // erro vermelho sobre um resultado que deu certo.
+      if (isMissingProgressTable(error)) {
+        return res.json({ applied: [], progressAvailable: false });
+      }
       return next(
         createError(
           500,
@@ -348,6 +369,7 @@ router.get(
       applied: ((data ?? []) as Array<{ improvement_index: number }>).map(
         (row) => row.improvement_index,
       ),
+      progressAvailable: true,
     });
   },
 );
@@ -404,6 +426,17 @@ router.put(
         "[linkedin] Falha ao salvar o progresso de melhorias:",
         error.message,
       );
+      // Codigo proprio: o client trata como recurso indisponivel (esconde o
+      // checklist), nao como falha de salvar (que pediria "tente de novo").
+      if (isMissingProgressTable(error)) {
+        return next(
+          createError(
+            503,
+            "progress_unavailable",
+            "O progresso de melhorias está indisponível no momento.",
+          ),
+        );
+      }
       return next(
         createError(500, "save_failed", "Não foi possível salvar o progresso."),
       );

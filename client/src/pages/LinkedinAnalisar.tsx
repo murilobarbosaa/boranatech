@@ -56,6 +56,7 @@ import {
   getLinkedinAnalysis,
   getLinkedinImprovements,
   listLinkedinAnalyses,
+  PROGRESS_UNAVAILABLE,
   setLinkedinImprovement,
 } from "@/lib/linkedinClient";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
@@ -517,6 +518,9 @@ export default function LinkedinAnalisar() {
   // Indices das melhorias marcadas como aplicadas (carregado por analysisId).
   const [applied, setApplied] = useState<Set<number>>(new Set());
   const [progressError, setProgressError] = useState("");
+  // A feature de progresso existe no banco alvo? false = checklist escondido e
+  // aviso ameno, nunca erro vermelho (rede de seguranca para migration ausente).
+  const [progressAvailable, setProgressAvailable] = useState(true);
   // PDF e a porta de entrada; quem ja tem texto (sessao restaurada) cai
   // direto no modo revisao.
   const [entryPath, setEntryPath] = useState<EntryPath>(() =>
@@ -578,14 +582,17 @@ export default function LinkedinAnalisar() {
   // de carga NUNCA colapsa em vazio silencioso: liga o progressError.
   useEffect(() => {
     setProgressError("");
+    setProgressAvailable(true);
     if (!analysisId) {
       setApplied(new Set());
       return;
     }
     let alive = true;
     getLinkedinImprovements(analysisId)
-      .then((indexes) => {
-        if (alive) setApplied(new Set(indexes));
+      .then((state) => {
+        if (!alive) return;
+        setApplied(new Set(state.applied));
+        setProgressAvailable(state.progressAvailable);
       })
       .catch(() => {
         if (!alive) return;
@@ -612,13 +619,21 @@ export default function LinkedinAnalisar() {
       else next.add(index);
       return next;
     });
-    setLinkedinImprovement(analysisId, index, !wasDone).catch(() => {
+    setLinkedinImprovement(analysisId, index, !wasDone).catch((err: unknown) => {
       setApplied((prev) => {
         const reverted = new Set(prev);
         if (wasDone) reverted.add(index);
         else reverted.delete(index);
         return reverted;
       });
+      // Recurso indisponivel (tabela ausente) nao e falha de salvar: esconde o
+      // checklist e cai no aviso ameno, sem pedir "tente de novo". Na pratica
+      // este ramo nao dispara, porque sem progressAvailable o checkbox nem
+      // renderiza; fica como defesa se o banco sumir no meio da sessao.
+      if (err instanceof Error && err.message === PROGRESS_UNAVAILABLE) {
+        setProgressAvailable(false);
+        return;
+      }
       // TODO(Ana): revisar a mensagem de falha ao salvar o progresso.
       setProgressError("Não foi possível salvar seu progresso. Tente de novo.");
     });
@@ -828,16 +843,20 @@ export default function LinkedinAnalisar() {
     form.atividade !== "";
   const canSubmit = profileChars >= 200 && signalsAnswered && !loading;
 
+  // Checklist interativo: exige analise persistida E a feature disponivel no
+  // banco. Sem os dois, os cards de melhoria renderizam sem checkbox.
+  const checklistEnabled = Boolean(analysisId) && progressAvailable;
+
   // Placar do checklist: so conta indices dentro do range das melhorias da
-  // analise exibida. Sem analysisId (persistencia falhou ou storage v2) ou
-  // com erro de progresso, o placar e null e o chip NAO renderiza: erro nunca
-  // vira um "0 de N" falso.
+  // analise exibida. Sem analysisId (persistencia falhou ou storage v2), com a
+  // feature indisponivel, ou com erro de progresso, o placar e null e o chip
+  // NAO renderiza: erro nunca vira um "0 de N" falso.
   const improvementsTotal = result?.qualitative.melhorias.length ?? 0;
   const appliedCount = Array.from(applied).filter(
     (index) => index < improvementsTotal,
   ).length;
   const improvementsScore =
-    analysisId && !progressError && improvementsTotal > 0
+    checklistEnabled && !progressError && improvementsTotal > 0
       ? { done: appliedCount, total: improvementsTotal }
       : null;
   const allApplied =
@@ -1472,7 +1491,7 @@ export default function LinkedinAnalisar() {
                     </Reveal>
                     <Reveal delay={0.05}>
                       <div className="space-y-3">
-                        {!analysisId ? (
+                        {!checklistEnabled ? (
                           <FeedbackBanner variant="warn">
                             {/* TODO(Ana): revisar o aviso de progresso indisponivel. */}
                             O progresso de melhorias está indisponível para esta
@@ -1487,8 +1506,10 @@ export default function LinkedinAnalisar() {
                         <Improvements
                           melhorias={result.qualitative.melhorias}
                           accent={ac}
-                          applied={analysisId ? applied : undefined}
-                          onToggle={analysisId ? toggleImprovement : undefined}
+                          applied={checklistEnabled ? applied : undefined}
+                          onToggle={
+                            checklistEnabled ? toggleImprovement : undefined
+                          }
                         />
                       </div>
                     </Reveal>
