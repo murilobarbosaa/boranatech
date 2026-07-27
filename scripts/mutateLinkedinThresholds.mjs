@@ -112,8 +112,152 @@ const fmt = (base, delta) => {
   return base.includes(".") ? String(Number(n.toFixed(4))) : String(n);
 };
 
+// ============================================================================
+// DESCOBERTA A PARTIR DA FONTE
+//
+// Terceira instancia do mesmo defeito nesta auditoria: guard cuja cobertura e
+// lista escrita a mao. A migration dependia de alguem lembrar; o regex de
+// checkMigrationsApplied cobria 38 de 72 tabelas; o pre-commit tinha lista de
+// arquivos e liberou arvore vermelha. Todos falharam PASSANDO.
+//
+// A tabela MUT acima e exatamente isso: 49 limiares escritos a mao. Um limiar
+// novo simplesmente nao apareceria, e o script reportaria 49/49 sobre uma
+// superficie menor, com cara de tudo certo.
+//
+// A partir daqui a fonte de verdade e o CODIGO. O script varre os arquivos,
+// enumera todo sitio numerico, e exige que cada um esteja em UMA das duas
+// listas: coberto por MUT/VIZINHOS, ou declarado NAO-LIMIAR com motivo. Sitio
+// em nenhuma das duas FALHA a execucao. Limiar novo na Fase 3 obriga uma
+// decisao explicita em vez de sumir em silencio.
+// ============================================================================
+
+const FONTES = [
+  "shared/linkedin/normalizeProfileText.ts",
+  "shared/linkedin/numeralLastro.ts",
+  "shared/linkedin/parse.ts",
+  "shared/linkedin/schema.ts",
+  "shared/linkedin/proximosPassos.ts",
+  "shared/linkedin/molduraAspiracional.ts",
+  "server/lib/linkedinChecks.ts",
+  "server/lib/linkedinAnalyze.ts",
+];
+
+const PADROES_SITIO = [
+  /^(?:export\s+)?const\s+[A-Z][A-Z0-9_]*\s*=\s*-?\d+(?:\.\d+)?\s*;/,
+  /[<>]=?\s*-?\d+(?:\.\d+)?/,
+  /===?\s*-?\d+(?:\.\d+)?/,
+  /\.slice\(\s*-?\d+\s*(?:,\s*-?\d+\s*)?\)/,
+  /:\s*-?\d+(?:\.\d+)?\s*,\s*$/,
+];
+
+// NAO-LIMIARES declarados, com motivo. Cada entrada e um par [regex, motivo].
+// Entrar aqui e uma decisao: significa "este numero existe, eu olhei, e mudar
+// ele nao muda comportamento observavel que valha teste de fronteira".
+const NAO_LIMIAR = [
+  [/\.length\s*===?\s*0\b/, "checagem de vazio, nao e fronteira"],
+  [/\.length\s*>\s*0\b/, "checagem de nao-vazio, nao e fronteira"],
+  [/^for \(let \w+ = 0;/, "contador de laco"],
+  [/^for \(let \w+ = 1;/, "contador de laco"],
+  [/^\s*(?:let|const) \w+ = -?[01];?$/, "inicializacao de acumulador"],
+  [/i \+= 1|n \+= 1|from \+= |\+= PAGE/, "passo de laco"],
+  [/melhor < 0|idx < 0|posTermo < 0|indexOf\(.*\) >= 0|>= 0\)/, "guarda de indice nao encontrado"],
+  [/slice\(0, 300\)/, "corte de mensagem de erro para log"],
+  [/slice\(0, 1500\)/, "teto do texto de dedup persistido, nao entra em check"],
+  [/temperature:/, "parametro do modelo, nao limiar de regra"],
+  [/const (?:AI_MAX_ATTEMPTS|MAX_TOKENS) =/, "parametro operacional da chamada de IA"],
+  [/const AI_BACKOFF_MS/, "backoff de retry"],
+  [/possivel === 0/, "divisao por zero"],
+  [/keyTechs\.length === 0/, "divisao por zero"],
+  [/faixaFromScore|score <= /, "fronteira de faixa, coberta em VIZINHOS"],
+  [/=== 1 \? "" : "s"|=== 1$|length === 1/, "plural de copy"],
+  [/\+ 1\]|\- 1\]|\[i \+ 1\]|\[i - 1\]/, "acesso a vizinho de array"],
+  [/hashEstavel|2166136261|16777619/, "constantes do hash FNV-1a"],
+  [/charCodeAt|>>> 0/, "aritmetica do hash"],
+  [/cobre\.length === 1|nomes\.length <= 1|partes\.length === 0/, "formatacao de lista"],
+  [/saida\.length >= MAX_ITENS|slice\(0, MAX_ITENS\)|< MAX_ITENS/, "uso do teto MAX_ITENS, declarado abaixo"],
+  [/const MAX_ITENS = 3;/, "teto de itens recomendados, nao entra em nota"],
+  [/t\.length >= 4|length >= 4|length < 4/, "tamanho minimo de token de credencial, nao entra em nota"],
+  [/\.slice\(0, 20\)/, "teto de linhas de formacao e certificacoes, nao entra em check"],
+  [/\.slice\(0, 6\)|\.slice\(0, 7\)|slice\(0, -1\)|slice\(0, 2\)/, "teto de itens em texto de prompt ou copy"],
+  [/n === 0/, "estado vazio de descricao, coberto por MIN_DESCRICAO_PARA_BULLETS"],
+  [/nivel === alvo \? 1 : 0|cobre\.length \* 3/, "pesos da recomendacao, nao entram em nota"],
+  [/for \(let n = 0; n < 2/, "metadados apos a data, coberto em MUT"],
+  [/abertos\.length > 0|restante \/ abertos\.length/, "water-filling do orcamento"],
+  [/token\.length > 3/, "tamanho minimo de token no casamento de contexto"],
+  [/\bn >= 1900\b|n <= 2100/, "faixa de ano, coberta em MUT"],
+  [/content\.slice\(1\)/, "pula a linha de titulo quando a secao nao tem data"],
+  [/posMarcador >= 0 && posMarcador < posTermo/, "ordem entre indices, nao e numero de regra"],
+];
+
+function descobrirSitios() {
+  const sitios = [];
+  for (const rel of FONTES) {
+    const linhas = readFileSync(`${R}/${rel}`, "utf8").split("\n");
+    linhas.forEach((bruta, i) => {
+      const t = bruta.trim();
+      if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) return;
+      if (!PADROES_SITIO.some((re) => re.test(t))) return;
+      sitios.push({ rel, linha: i + 1, texto: t });
+    });
+  }
+  return sitios;
+}
+
+function auditarCobertura() {
+  const conhecidos = [
+    ...MUT.map(([rel, , de]) => ({ rel, de })),
+    ...VIZINHOS.map(([rel, , template, valor]) => ({
+      rel,
+      de: template.replace("{N}", valor),
+    })),
+  ];
+  const sitios = descobrirSitios();
+  const orfaos = [];
+  let cobertos = 0;
+  let declarados = 0;
+  for (const s of sitios) {
+    // Casa nos DOIS sentidos. Cada avaliador de check escreve o mesmo limiar
+    // duas vezes, uma no `aprovado` e outra na copy do `detail`, e a segunda
+    // aparece como sitio proprio, mais curto. O nome da variavel vai junto na
+    // comparacao de proposito: `headlineTechs >= 2`, `verbCount >= 2` e
+    // `expTechs >= 2` sao TRES limiares distintos com o mesmo numero, e casar
+    // so por operador e numero daria cobertura falsa a dois deles.
+    const casa = (k) =>
+      k.rel === s.rel &&
+      (s.texto.includes(k.de.trim()) || k.de.trim().includes(s.texto));
+    if (conhecidos.some(casa)) {
+      cobertos += 1;
+      continue;
+    }
+    if (NAO_LIMIAR.some(([re]) => re.test(s.texto))) {
+      declarados += 1;
+      continue;
+    }
+    orfaos.push(s);
+  }
+  console.log(
+    `[descoberta] ${sitios.length} sitios numericos na fonte | ${cobertos} cobertos por mutante | ${declarados} declarados nao-limiar | ${orfaos.length} ORFAOS`,
+  );
+  if (orfaos.length > 0) {
+    console.log(
+      "\nSITIO NUMERICO QUE O SCRIPT NAO CONHECE. Classifique cada um: se for",
+    );
+    console.log(
+      "limiar, acrescente em MUT (e em VIZINHOS se a Fase 3 mexer nele); se nao",
+    );
+    console.log("for, acrescente em NAO_LIMIAR com o motivo.\n");
+    for (const o of orfaos) console.log(`  ${o.rel}:${o.linha}  ${o.texto.slice(0, 100)}`);
+    process.exit(1);
+  }
+  return sitios.length;
+}
+
 const ALVOS = "shared/linkedin server/lib/linkedin client/src/components/linkedin";
 const VIZINHANCA = process.argv.includes("--vizinhanca");
+
+// Auditoria de escopo SEMPRE, nos dois modos: um limiar novo nao pode passar
+// despercebido so porque a rodada era de vizinhanca.
+auditarCobertura();
 
 function rodarTestes(R, ALVOS) {
   try {
