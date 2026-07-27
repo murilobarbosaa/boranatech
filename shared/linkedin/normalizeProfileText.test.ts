@@ -79,6 +79,21 @@ describe("normalizeProfileLines: barra orfa NAO absorve o vizinho errado", () =>
     ]);
   });
 
+  it("virgula de prosa NAO e separador estrutural: junta e a virgula fica", () => {
+    // Regressao real, pega pelas golden files: duas linhas do Sobre do perfil
+    // real terminam em virgula no ponto da quebra. Tratar virgula como
+    // separador estrutural recusava a juncao da continuacao longa E apagava a
+    // virgula, corrompendo a frase.
+    expect(
+      n("I am also adept in developing,\ncustomizing, and deploying"),
+    ).toEqual(["I am also adept in developing, customizing, and deploying"]);
+    expect(
+      n("I have the ability to solve problems,\ndevelop new solutions, and apply ITIL"),
+    ).toEqual([
+      "I have the ability to solve problems, develop new solutions, and apply ITIL",
+    ]);
+  });
+
   it("MAS continua absorvendo a cauda legitima (o caso do Node)", () => {
     expect(n(`${headline} React |\nNode`)).toEqual([
       "Software Developer | Full-Stack Engineer | AI Agent Expert | React | Node",

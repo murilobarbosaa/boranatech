@@ -54,8 +54,20 @@ const BULLET_START = /^\s*(?:[•·▪◦*-]|\d+[.)])\s+/;
 /** Pontuação que fecha uma ideia: linha assim não continua na seguinte. */
 const ENDS_CLOSED = /[.!?;:]$/;
 
-/** Separador órfão no fim da linha: sinal FORTE de que a ideia continua. */
-const ENDS_ORPHAN_SEPARATOR = /[|,/]$/;
+/**
+ * Separador ESTRUTURAL órfão no fim da linha: barra vertical ou barra, que só
+ * existem como divisor de itens (headline no formato `cargo | stack | tag`).
+ * Ficar no fim da linha significa que o item seguinte foi quebrado.
+ *
+ * VÍRGULA NÃO ENTRA AQUI, de propósito. Vírgula é pontuação normal de prosa e
+ * cai naturalmente no fim da linha quando o PDF quebra no meio de uma frase
+ * ("...I am also adept in developing," + "customizing, and deploying"). Tratá-la
+ * como separador estrutural fazia duas coisas erradas ao mesmo tempo: recusava
+ * a junção quando a continuação era longa, e depois APAGAVA a vírgula, que é
+ * pontuação legítima da frase. Continuação de prosa é coberta pela regra 4
+ * (linha seguinte começa em minúscula).
+ */
+const ENDS_ORPHAN_SEPARATOR = /[|/]$/;
 
 /** Hifenização de quebra de página: "natural-" seguido de "language". */
 const ENDS_HYPHEN = /[a-zà-ÿ]-$/i;
@@ -104,7 +116,7 @@ function ehFragmentoDeCauda(linha: string): boolean {
  * A linha `atual` é continuação da `anterior`?
  *
  * SÃO consideradas continuação:
- *   1. anterior termina em separador órfão (`|`, `,`, `/`) E a linha seguinte
+ *   1. anterior termina em separador estrutural órfão (`|` ou `/`) E a linha seguinte
  *      parece a cauda dela (curta, poucos tokens, não é localização): o caso
  *      da headline quebrada em "... | React |" + "Node";
  *   2. anterior termina em hífen de quebra ("natural-" + "language");
@@ -183,9 +195,12 @@ function juntar(anterior: string, atual: string): string {
   return `${a} ${b}`;
 }
 
-/** Barra ou vírgula órfã sobrando no fim, quando não houve o que juntar. */
+/**
+ * Separador estrutural sobrando no fim, quando não houve o que juntar.
+ * Só barra vertical e barra: vírgula é pontuação da frase e fica.
+ */
 function limparSeparadorOrfao(linha: string): string {
-  return linha.replace(/\s*[|,/]\s*$/, "").trimEnd();
+  return linha.replace(/\s*[|/]\s*$/, "").trimEnd();
 }
 
 /**
