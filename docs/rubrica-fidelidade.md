@@ -183,3 +183,71 @@ que passa batido: o perfil diz que *pre-routers determinísticos* cortaram latê
 e a saída escreveu "um agente de AI conversacional que reduziu o tempo de resposta em 86% para consultas
 comuns" — o 86 existe na experiência, então o harness aprova, mas o sujeito mudou. Reatribuição continua
 dependendo de leitura humana, e o placar mecânico deve ser lido com essa ressalva.
+
+---
+
+## 8. O que o harness detecta e o que NÃO detecta
+
+O gate vale exatamente o que esta lista permite. Uma medição só é honesta se as cegueiras estiverem escritas
+ao lado do placar, porque toda melhoria que fecha uma classe detectável empurra o resto para as classes cegas.
+
+### Detecta
+
+| Classe | Como | Campo |
+|---|---|---|
+| Tecnologia sem lastro em bullet | `matchTechnologies` do bullet contra o texto daquela experiência | `bulletsReescritos` |
+| Tecnologia sem lastro em headline | contra `keywordsEncontradas` (determinístico) | `headlines` |
+| Numeral fabricado | valor ausente do texto daquela experiência | `bulletsReescritos` |
+| Numeral com tipo trocado | valor existe como contagem, usado como percentual | `bulletsReescritos` |
+| Bullet sem origem | a experiência do bloco não tem descrição própria (< 48 caracteres), então todo bullet ali é fabricado, **inclusive os que não citam número nem tecnologia** | `bulletsReescritos` |
+| Competência sugerida sem lastro | contra o perfil + competências coladas | `skillsParaEstudar` |
+
+### NÃO detecta, com o motivo
+
+1. **Reatribuição de sujeito com o mesmo tipo de numeral.** "Os pre-routers cortaram latência em ~86%" vira
+   "o agente reduziu o tempo de resposta em 86%". O 86 existe na experiência e é percentual nos dois lados,
+   então nem a presença nem a comparação de tipo pegam. Exige entender quem é o sujeito da frase.
+2. **Afirmação qualitativa fabricada numa experiência QUE TEM descrição.** Se a origem tem 800 caracteres e o
+   modelo inventa "liderou a migração para microsserviços" sem número e sem tecnologia nova, nada acusa. O
+   corte por conteúdo de origem só cobre o caso da experiência vazia.
+3. **Distinção entre "eu sei X" e "quero aprender X".** Medido: em `sobreReescrito` o modelo escreveu "tenho
+   interesse em aprender sobre frameworks como React e TypeScript", que é honesto, e o harness contou como
+   duas tecnologias inventadas. A regra mecânica é "tecnologia nomeada sem lastro", e ela não lê a moldura da
+   frase. **Isto infla o placar**, não o esconde: é falso positivo, não falso negativo.
+4. **`sobreReescrito` inteiro** está fora da camada de lastro (ver `shared/linkedin/lastro.ts` para o motivo),
+   então o harness ainda o mede mas a produção não o corrige. Toda ocorrência ali é reportada e sobrevive.
+5. **Exagero de escopo sem número.** "Melhorou significativamente" onde a origem diz "melhorou" não é
+   detectável mecanicamente.
+6. **Rótulos que não são tecnologia conhecida** ("Business Intelligence", "ETL"): ficam fora da contagem por
+   decisão da seção 2, e são reportados à parte.
+7. **Idioma e tom** fora do especificado: não é objeto desta rubrica.
+
+### Consequência prática
+
+O placar decomposto existe por causa desta lista. Um total agregado esconde que uma classe foi a zero
+enquanto outra apareceu. Reporte sempre por classe.
+
+---
+
+## 9. Princípio de projeto: check reprovando aumenta fabricação
+
+Registrado como observação, **sem ação nesta fase**.
+
+Evidência acumulada em três medições independentes:
+
+| Situação | Fabricação |
+|---|---|
+| `headline-stack` aprovando (perfil real, 8 execuções) | 0 |
+| `headline-stack` reprovando, mesmo perfil e mesmo prompt (8 execuções) | 6, em 4 das 8 |
+| Perfil raso, lista de "adicionar agora" vazia (Fase 0, 10 execuções) | 22 |
+
+O experimento do meio isolou a variável: um único termo da headline mudou, o que alterou apenas o resultado de
+um check no bloco enviado ao prompt. Com o check reprovando, o modelo fabricou; com ele aprovando, não.
+
+**A leitura: um check reprovando funciona como pressão para o modelo compensar.** Ele lê a lista de falhas como
+um pedido de conserto e preenche as lacunas com o que não tem.
+
+Isso é argumento de segunda ordem para a Fase 1B, e vale escrever com todas as letras: **consertar um check que
+reprova por bug do parser não melhora só a nota, reduz mentira no texto.** Cada check falso removido é uma
+fonte de fabricação removida. Ao priorizar a 1B, o peso de um bug não é só "quantos pontos de nota ele custa",
+é também "quanta invenção ele induz".
