@@ -1036,12 +1036,32 @@ async function createCheckout(
   }
 
   if (input.affiliateCode) {
-    const { data: affiliate } = await supabaseAdmin
+    const { data: affiliate, error: affiliateError } = await supabaseAdmin
       .from("affiliates")
       .select("id, code, discount_percent")
       .eq("code", input.affiliateCode)
       .eq("status", "active")
       .maybeSingle();
+
+    // O error era DESCARTADO aqui, e sem else. As duas causas de "sem afiliado"
+    // colapsavam num unico silencio: codigo que nao existe (ou foi
+    // desativado/removido, caso ACACIAOFF) e falha de query. A primeira e
+    // esperada e o desconto some por decisao; a segunda e defeito nosso e o
+    // desconto some por acidente. Nos dois casos o cliente ja exibiu o preco com
+    // desconto e a pessoa paga cheio sem aviso. Continua seguindo sem desconto
+    // (cupom NUNCA impede a assinatura), mas agora com rastro distinguivel.
+    if (affiliateError) {
+      console.error(
+        `[billing/checkout] ERRO DE QUERY no afiliado ${input.affiliateCode} ` +
+          `(user ${input.user.id}, plano ${input.planId}); seguindo SEM desconto:`,
+        affiliateError,
+      );
+    } else if (!affiliate) {
+      console.warn(
+        `[billing/checkout] afiliado ${input.affiliateCode} inexistente ou inativo ` +
+          `(user ${input.user.id}, plano ${input.planId}); seguindo sem desconto.`,
+      );
+    }
 
     if (affiliate) {
       validAffiliateCode = affiliate.code;
