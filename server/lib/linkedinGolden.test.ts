@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { parseLinkedinText } from "../../shared/linkedin/parse";
 import { runLinkedinChecks } from "./linkedinChecks";
 import type { AreaSlug } from "../../shared/areas";
-import type { Mercado } from "../../shared/linkedin/schema";
+import type { LinkedinLevel, Mercado } from "../../shared/linkedin/schema";
 
 /**
  * GOLDEN FILES do analisador de LinkedIn: trava o comportamento
@@ -40,6 +40,7 @@ const FIXTURES = path.join(
 interface Cenario {
   fixture: string;
   area: AreaSlug;
+  level: LinkedinLevel;
   mercado: Mercado;
   skills: string;
   foto: "sim" | "nao";
@@ -56,6 +57,7 @@ function analisar(c: Cenario) {
     parsed,
     profileText,
     area: c.area,
+    level: c.level,
     mercado: c.mercado,
     skills: c.skills,
     foto: c.foto,
@@ -73,6 +75,7 @@ function analisar(c: Cenario) {
 describe("golden: perfil real (PDF de export, anonimizado)", () => {
   const cenario: Cenario = {
     fixture: "perfil-real-anonimizado.txt",
+    level: "pleno",
     area: "fullstack",
     mercado: "exterior",
     skills: "AI Agents, Vector Databases, Retrieval-Augmented Generation, (RAG)",
@@ -170,8 +173,11 @@ describe("golden: perfil real (PDF de export, anonimizado)", () => {
   it("checks e score", () => {
     const { deterministic, reprovados } = analisar(cenario);
 
-    // 72 -> 75: headline-stack passou a aprovar porque "Node" voltou.
-    expect(deterministic.score).toBe(75);
+    // 75 -> 74 (REGUA V2). Duas forcas em sentidos opostos: `exp-descricoes`
+    // passou a REPROVAR, porque a experiencia 1 (CTO) tem descricao vazia e o
+    // agregado antigo escondia isso; e a cobertura essencial passou a APROVAR,
+    // porque o corte da area fullstack virou 6 em vez de 50% de 22.
+    expect(deterministic.score).toBe(74);
     expect(deterministic.faixa).toBe("forte");
     // mercado exterior: sem termos-bilingues, com headline/sobre em ingles.
     expect(deterministic.checks).toHaveLength(28);
@@ -182,9 +188,12 @@ describe("golden: perfil real (PDF de export, anonimizado)", () => {
       // Node. Era a origem da critica falsa "a headline nao menciona
       // tecnologias" e da recomendacao de Next.js e Tailwind.
       "sobre-cta",
-      // BUG CONHECIDO (rodada1 achado #1): cobertura exige 50% e 75% de TODAS
-      // as tecnologias da area; inatingivel na pratica.
-      "cobertura-keywords-area",
+      // REGUA V2: veredito por experiencia. A de numero 1 nao tem descricao
+      // propria, e o agregado antigo (soma >= 100) escondia isso.
+      "exp-descricoes",
+      // CORRIGIDO (regua v2): `cobertura-keywords-area` saiu daqui. O corte
+      // deixou de ser 50% de TODAS as tecnologias da area e virou
+      // min(6, ceil(pool/2)), que em fullstack (pool 22) da 6.
       "cobertura-keywords-otima",
       "skills-quantidade",
       "skills-cobertura",
@@ -266,6 +275,7 @@ describe("golden: perfis sinteticos", () => {
       nome: "A) senior tech completo",
       cenario: {
         fixture: "perfil-a-senior.txt",
+    level: "pleno",
         area: "fullstack",
         mercado: "brasil",
         skills:
@@ -279,16 +289,13 @@ describe("golden: perfis sinteticos", () => {
       headline:
         "Desenvolvedora Full-stack Sênior | React, TypeScript, Node.js, AWS | Construindo produtos SaaS escaláveis",
       experiencias: 2,
-      // BUG CONHECIDO (rodada1 achado #1): perfil exemplar trava em 82 porque
+      // CORRIGIDO (regua v2): o perfil exemplar deixou de travar em 82 e chega
+      // a 90, primeira ocupacao real da faixa Magnetico. Antes era
       // os 3 checks de cobertura sao inatingiveis. Teto medido: 85 no Brasil.
-      score: 82,
-      faixa: "forte",
+      score: 90,
+      faixa: "magnetico",
       nChecks: 27,
       reprovados: [
-        "cobertura-keywords-area",
-        "cobertura-keywords-otima",
-        // BUG CONHECIDO (rodada2 C.2): exige o cargo em PT e EN, contradizendo
-        // o system prompt, que autoriza cargo em ingles no mercado Brasil.
         "termos-bilingues",
         "skills-cobertura",
         "skills-quantidade-otima",
@@ -298,6 +305,7 @@ describe("golden: perfis sinteticos", () => {
       nome: "B) junior com perfil raso",
       cenario: {
         fixture: "perfil-b-junior-raso.txt",
+    level: "estagio",
         area: "frontend",
         mercado: "brasil",
         skills: "HTML, CSS, JavaScript",
@@ -310,7 +318,7 @@ describe("golden: perfis sinteticos", () => {
       headline:
         "Estudante de Análise e Desenvolvimento de Sistemas | Em busca de oportunidade",
       experiencias: 1,
-      score: 15,
+      score: 22,
       faixa: "inicio",
       nChecks: 27,
       reprovados: [
@@ -322,7 +330,6 @@ describe("golden: perfis sinteticos", () => {
         "sobre-stack",
         "sobre-cta",
         "sobre-tamanho",
-        "exp-descricoes",
         "exp-verbos-acao",
         "exp-tecnologias",
         "exp-resultados",
@@ -344,6 +351,7 @@ describe("golden: perfis sinteticos", () => {
       nome: "C) nao-tech em transicao para dados",
       cenario: {
         fixture: "perfil-c-nao-tech.txt",
+    level: "transicao",
         area: "analise-dados",
         mercado: "brasil",
         skills: "Excel, Power BI, SQL, TOTVS, Conciliacao bancaria",
@@ -358,7 +366,7 @@ describe("golden: perfis sinteticos", () => {
       experiencias: 2,
       // BUG CONHECIDO (rodada1, vies estrutural): perfil bem escrito de quem
       // esta EM TRANSICAO e medido pela aderencia a area que ainda nao tem.
-      score: 49,
+      score: 47,
       faixa: "em-construcao",
       nChecks: 27,
       reprovados: [
@@ -366,7 +374,6 @@ describe("golden: perfis sinteticos", () => {
         "headline-stack",
         "sobre-gancho",
         "sobre-stack",
-        "sobre-tamanho",
         "exp-tecnologias",
         "cargo-em-experiencia",
         "cobertura-keywords-area",
@@ -383,6 +390,7 @@ describe("golden: perfis sinteticos", () => {
       nome: "D) perfil em ingles, sem competencias coladas",
       cenario: {
         fixture: "perfil-d-ingles.txt",
+    level: "pleno",
         area: "backend",
         mercado: "exterior",
         skills: "",
@@ -397,7 +405,7 @@ describe("golden: perfis sinteticos", () => {
       // BUG CONHECIDO (rodada1 achado #1 + #8): 72 com ZERO competencias
       // informadas e 3% de cobertura, mais que perfis bem mais completos em
       // outros mercados. Os 2 checks essenciais de ingles compensam.
-      score: 72,
+      score: 74,
       faixa: "forte",
       nChecks: 28,
       reprovados: [
@@ -416,6 +424,7 @@ describe("golden: perfis sinteticos", () => {
       nome: "E) PDF de 10+ paginas (rodape vira metrica)",
       cenario: {
         fixture: "perfil-e-paginado.txt",
+    level: "junior",
         area: "backend",
         mercado: "brasil",
         skills: "Python, Django, PostgreSQL, Docker",
@@ -433,9 +442,6 @@ describe("golden: perfis sinteticos", () => {
       nChecks: 27,
       reprovados: [
         "headline-tamanho",
-        "sobre-tamanho",
-        // CORRIGIDO (Fase 1A): agora REPROVA, como deveria. A descricao desta
-        // fixture nao tem numero nenhum; quem aprovava era o "Page 10 of 12".
         "exp-resultados",
         "cobertura-keywords-area",
         "cobertura-keywords-otima",
@@ -469,6 +475,7 @@ describe("golden: perfis sinteticos", () => {
     // TUDO que o texto comprova esta fora delas.
     const real = analisar({
       fixture: "perfil-real-anonimizado.txt",
+    level: "pleno",
       area: "fullstack",
       mercado: "exterior",
       skills: "AI Agents, Vector Databases, Retrieval-Augmented Generation, (RAG)",
@@ -498,6 +505,7 @@ describe("golden: perfis sinteticos", () => {
     // exatamente aqui que o modelo inventava.
     const raso = analisar({
       fixture: "perfil-b-junior-raso.txt",
+    level: "estagio",
       area: "frontend",
       mercado: "brasil",
       skills: "HTML, CSS, JavaScript",
@@ -518,6 +526,7 @@ describe("golden: perfis sinteticos", () => {
   it("skillsParaAdicionarAgora: sem competencias coladas, tudo que o perfil prova entra", () => {
     const ingles = analisar({
       fixture: "perfil-d-ingles.txt",
+    level: "pleno",
       area: "backend",
       mercado: "exterior",
       skills: "",
@@ -560,6 +569,7 @@ describe("golden: perfis sinteticos", () => {
       parsed,
       profileText,
       area: cenario.area,
+      level: cenario.level,
       mercado: cenario.mercado,
       skills: cenario.skills,
       foto: cenario.foto,

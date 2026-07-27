@@ -24,6 +24,7 @@ const N = "shared/linkedin/normalizeProfileText.ts";
 const P = "shared/linkedin/parse.ts";
 const L = "shared/linkedin/numeralLastro.ts";
 const S = "shared/linkedin/schema.ts";
+const V = "shared/linkedin/reguaV2.ts";
 const C = "server/lib/linkedinChecks.ts";
 const A = "server/lib/linkedinAnalyze.ts";
 
@@ -44,8 +45,10 @@ const MUT = [
   [P, "cabecalho de bloco, max palavras (12)", "if (t.split(/\\s+/).length > 12) return false;", "if (t.split(/\\s+/).length > 2) return false;"],
   [P, "headline candidata, len min (6)", "if (trimmed.length < 6 || trimmed.length > 250) return false;", "if (trimmed.length < 60 || trimmed.length > 250) return false;"],
   [P, "headline candidata, len max (250)", "if (trimmed.length < 6 || trimmed.length > 250) return false;", "if (trimmed.length < 6 || trimmed.length > 25) return false;"],
-  [P, "preambulo sem secao (20 linhas)", "lines.slice(0, firstMainIndex) : lines.slice(0, 20);", "lines.slice(0, firstMainIndex) : lines.slice(0, 2);"],
-  [P, "clip da headline (250)", "return clip(strong[strong.length - 1], 250);", "return clip(strong[strong.length - 1], 25);"],
+  [P, "preambulo sem secao (20 linhas)", "Math.min(20, lines.length)", "Math.min(2, lines.length)"],
+  [P, "linha de nome, len max (60)", "anterior.length <= 60 &&", "anterior.length <= 6 &&"],
+  [P, "linha de nome, max palavras (6)", "anterior.split(/\\s+/).length <= 6 &&", "anterior.split(/\\s+/).length <= 1 &&"],
+  [P, "clip da headline (250)", "clip(escolhida.linha, 250)", "clip(escolhida.linha, 25)"],
   [P, "skill, len min (2)", "if (skill.length >= 2 && skill.length <= 60) out.push(skill);", "if (skill.length >= 20 && skill.length <= 60) out.push(skill);"],
   [P, "skill, len max (60)", "if (skill.length >= 2 && skill.length <= 60) out.push(skill);", "if (skill.length >= 2 && skill.length <= 6) out.push(skill);"],
   [P, "teto de skills (50)", "return Array.from(new Set(out)).slice(0, 50);", "return Array.from(new Set(out)).slice(0, 1);"],
@@ -54,7 +57,7 @@ const MUT = [
   [S, "faixa em-construcao (69)", "if (score <= 69) return \"em-construcao\";", "if (score <= 6) return \"em-construcao\";"],
   [S, "faixa forte (89)", "if (score <= 89) return \"forte\";", "if (score <= 8) return \"forte\";"],
   [S, "QUALITATIVE_VERSION", "export const QUALITATIVE_VERSION = 3;", "export const QUALITATIVE_VERSION = 9;"],
-  [S, "DETERMINISTIC_VERSION", "export const DETERMINISTIC_VERSION = 3;", "export const DETERMINISTIC_VERSION = 9;"],
+  [S, "DETERMINISTIC_VERSION", "export const DETERMINISTIC_VERSION = 4;", "export const DETERMINISTIC_VERSION = 9;"],
   [S, "peso essencial (10)", "  essencial: 10,", "  essencial: 11,"],
   [S, "peso importante (6)", "  importante: 6,", "  importante: 7,"],
   [S, "peso opcional (3)", "  opcional: 3,", "  opcional: 4,"],
@@ -67,17 +70,22 @@ const MUT = [
   [C, "sobre-existe, min (200)", "const ok = sobre.trim().length >= 200;", "const ok = sobre.trim().length >= 2000;"],
   [C, "sobre-gancho, max 1a frase (140)", "        first.length <= 140 &&", "        first.length <= 14 &&"],
   [C, "sobre-stack, min techs (3)", "aprovado: sobreTechs >= 3,", "aprovado: sobreTechs >= 9,"],
-  [C, "sobre-tamanho, min (500)", "const ok = len >= 500 && len <= 2200;", "const ok = len >= 5000 && len <= 2200;"],
-  [C, "sobre-tamanho, max (2200)", "const ok = len >= 500 && len <= 2200;", "const ok = len >= 500 && len <= 220;"],
   [C, "exp-existe, min (1)", "aprovado: parsed.experiencias.length >= 1,", "aprovado: parsed.experiencias.length >= 9,"],
-  [C, "exp-descricoes, min chars (100)", "const ok = len >= 100;", "const ok = len >= 100000;"],
   [C, "exp-verbos-acao, min (2)", "aprovado: verbCount >= 2,", "aprovado: verbCount >= 99,"],
   [C, "exp-tecnologias, min (2)", "aprovado: expTechs >= 2,", "aprovado: expTechs >= 99,"],
-  [C, "cobertura-keywords-area (0.5)", "aprovado: coverageRatio >= 0.5,", "aprovado: coverageRatio >= 0.01,"],
-  [C, "cobertura-keywords-otima (0.75)", "aprovado: coverageRatio >= 0.75,", "aprovado: coverageRatio >= 0.01,"],
   [C, "skills-quantidade (10)", "aprovado: skillsForm.length >= 10,", "aprovado: skillsForm.length >= 1,"],
   [C, "skills-cobertura (0.5)", "aprovado: skillsRatio >= 0.5,", "aprovado: skillsRatio >= 0.01,"],
   [C, "skills-quantidade-otima (25)", "aprovado: skillsForm.length >= 25,", "aprovado: skillsForm.length >= 1,"],
+  [V, "cobertura v2, teto absoluto essencial (6)", "Math.min(6, Math.ceil(pool / 2))", "Math.min(1, Math.ceil(pool / 2))"],
+  [V, "cobertura v2, teto absoluto otima (10)", "Math.min(10, Math.ceil(pool * 0.75))", "Math.min(1, Math.ceil(pool * 0.75))"],
+  [V, "cobertura v2, proporcao essencial (2)", "Math.ceil(pool / 2)", "Math.ceil(pool / 9)"],
+  [V, "cobertura v2, proporcao otima (0.75)", "Math.ceil(pool * 0.75)", "Math.ceil(pool * 0.05)"],
+  [V, "densidade leve, sobreMin (300)", "sobreMin: 300,", "sobreMin: 30,"],
+  [V, "sobreMax (2200)", "sobreMax: 2200,\n        descricaoPorExperiencia: 50,", "sobreMax: 220,\n        descricaoPorExperiencia: 50,"],
+  [V, "densidade padrao, sobreMin (500)", "sobreMin: 500,", "sobreMin: 50,"],
+  [V, "densidade leve, descricao por experiencia (50)", "descricaoPorExperiencia: 50,", "descricaoPorExperiencia: 5,"],
+  [V, "densidade padrao, descricao por experiencia (100)", "descricaoPorExperiencia: 100,", "descricaoPorExperiencia: 10,"],
+  [V, "TETO_SINAIS (12)", "export const TETO_SINAIS = 12;", "export const TETO_SINAIS = 1;"],
 ];
 
 // MODO VIZINHANCA (--vizinhanca). As mutacoes da tabela acima sao de ordem de
@@ -89,8 +97,6 @@ const MUT = [
 //
 // [arquivo, nome, template com {N}, valor atual]
 const VIZINHOS = [
-  [C, "cobertura-keywords-area", "aprovado: coverageRatio >= {N},", "0.5"],
-  [C, "cobertura-keywords-otima", "aprovado: coverageRatio >= {N},", "0.75"],
   [C, "skills-cobertura", "aprovado: skillsRatio >= {N},", "0.5"],
   [S, "peso essencial", "  essencial: {N},", "10"],
   [S, "peso importante", "  importante: {N},", "6"],
@@ -103,6 +109,9 @@ const VIZINHOS = [
   [S, "faixa inicio", "if (score <= {N}) return \"inicio\";", "39"],
   [S, "faixa em-construcao", "if (score <= {N}) return \"em-construcao\";", "69"],
   [S, "faixa forte", "if (score <= {N}) return \"forte\";", "89"],
+  [V, "TETO_SINAIS", "export const TETO_SINAIS = {N};", "12"],
+  [V, "densidade leve, sobreMin", "sobreMin: {N},\n        sobreMax: 2200,\n        descricaoPorExperiencia: 50,", "300"],
+  [V, "densidade leve, descricao/exp", "descricaoPorExperiencia: {N},\n      }", "50"],
 ];
 
 // Passo por limiar: razao usa 0.01 e 0.02, inteiro usa 1 e 2.
@@ -138,6 +147,7 @@ const FONTES = [
   "shared/linkedin/schema.ts",
   "shared/linkedin/proximosPassos.ts",
   "shared/linkedin/molduraAspiracional.ts",
+  "shared/linkedin/reguaV2.ts",
   "server/lib/linkedinChecks.ts",
   "server/lib/linkedinAnalyze.ts",
 ];
@@ -187,6 +197,14 @@ const NAO_LIMIAR = [
   [/\bn >= 1900\b|n <= 2100/, "faixa de ano, coberta em MUT"],
   [/content\.slice\(1\)/, "pula a linha de titulo quando a secao nao tem data"],
   [/posMarcador >= 0 && posMarcador < posTermo/, "ordem entre indices, nao e numero de regra"],
+  [/headlineIdx <= 0/, "guarda de indice: nao ha linha anterior a headline"],
+  [/porItem\.total > 0/, "guarda de lista vazia no veredito por item"],
+  [/porItem\.reprovadas\.length > 1/, "plural de copy"],
+  [/sobreMax: 2200,/, "teto do Sobre, coberto em VIZINHOS pelo mutante de sobre-tamanho"],
+  [/Math\.max\(essencial \+ 1/, "trava otima > essencial, coberta por teste dedicado com pool 1"],
+  [/somaSinaisBase <= TETO_SINAIS/, "guarda: sinais que ja cabem no teto nao sao escalados"],
+  [/mudaram\.length > 0/, "guarda de lista vazia na deteccao de autodeclaracao"],
+  [/\.filter\(\(i\) => i > 0\)/, "sentinela 0 = indice base-1 valido, nao e limiar"],
 ];
 
 function descobrirSitios() {

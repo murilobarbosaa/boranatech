@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AREA_SLUGS } from "../areas";
+import { pesoEfetivo } from "./reguaV2";
 
 /**
  * Contrato do analisador de LinkedIn.
@@ -420,10 +421,23 @@ export function computeLinkedinScore(checks: LinkedinCheckResult[]): {
   score: number;
   faixa: LinkedinFaixa;
 } {
+  // Teto dos sinais autodeclarados (regua v2). Os cinco checks da categoria
+  // `sinais` sao respostas de formulario que a plataforma nao consegue conferir,
+  // e na v1 somavam 28 de 194 pontos, 14,4% da nota, um deles no mesmo tier de
+  // "ter headline". Eles sao escalados para caber em TETO_SINAIS. O tier NAO
+  // muda: ele continua governando apresentacao e ordem no relatorio.
+  const somaSinaisBase = checks
+    .filter((c) => c.category === "sinais")
+    .reduce((soma, c) => soma + TIER_WEIGHTS[c.tier], 0);
   let possivel = 0;
   let ganho = 0;
   for (const check of checks) {
-    const weight = TIER_WEIGHTS[check.tier];
+    const weight = pesoEfetivo(
+      check.tier,
+      check.category,
+      TIER_WEIGHTS[check.tier],
+      somaSinaisBase,
+    );
     possivel += weight;
     if (check.aprovado) ganho += weight;
   }
@@ -706,6 +720,14 @@ export const QUALITATIVE_VERSION = 3;
  *   da empresa e agora não passa mais. Duas notas de versões diferentes não são
  *   comparáveis mesmo quando coincidem.
  *
+ * 4: Régua v2 (Fase 3). Quatro mudanças que movem nota, todas medidas antes de
+ *   virar código em `docs/simulacao-regua-v2.md`: cobertura por corte relativo
+ *   ao tamanho da pool da área (variante C), `exp-descricoes` por experiência em
+ *   vez do bloco concatenado, limiares de densidade modulados por `level`, e
+ *   teto de peso para os sinais autodeclarados, que mexe no denominador e
+ *   portanto desloca a nota de todo mundo. Nota de v3 e de v4 não são
+ *   comparáveis, e o delta fica suprimido entre elas.
+ *
  * NÃO bumpado na Fase 2A, e a decisão é deliberada. A fase acrescentou
  * `keywordsCampos`, um campo OPCIONAL e puramente descritivo: nenhum check o
  * lê, a nota das 6 fixtures é idêntica, e a régua não mudou. O que esta
@@ -719,7 +741,7 @@ export const QUALITATIVE_VERSION = 3;
  * `titulosIngles`) passa por `readDeterministic`. Ver
  * docs/divida-leitura-persistida.md.
  */
-export const DETERMINISTIC_VERSION = 3;
+export const DETERMINISTIC_VERSION = 4;
 
 export interface LinkedinAnalysisResponse {
   area: (typeof AREA_SLUGS)[number];
@@ -748,6 +770,15 @@ export interface LinkedinAnalysisSummary {
    * notas NÃO são comparáveis, e não comemorar melhoria que não houve.
    */
   deterministicVersion?: number | null;
+  /**
+   * Vereditos dos checks desta análise, só id/category/aprovado.
+   *
+   * Existe para o cliente saber se a diferença para a análise seguinte veio SÓ
+   * de autodeclaração (foto, banner, conexões) e, nesse caso, não mostrar delta
+   * nem celebração. Sem isto seria uma segunda requisição por análise aberta.
+   * Ausente nas linhas anteriores à régua v2.
+   */
+  checks?: { id: string; category: string; aprovado: boolean }[] | null;
 }
 
 export interface LinkedinAnalysisRecord extends LinkedinAnalysisSummary {

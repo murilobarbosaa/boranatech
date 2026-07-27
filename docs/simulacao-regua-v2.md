@@ -143,6 +143,62 @@ cortes ficam `analise-sistemas 2/3`, `blockchain 3/4`, `gamedev 3/5`, `iot 4/6`,
 `banco-de-dados 6/10`, `cloud 6/10`, `mobile 6/10`, todos atingíveis. Nenhuma amostra real sustenta
 previsão de nota nessas áreas; o que se afirma aqui é só reachability, que depende da pool e não do perfil.
 
+## 3-ter. Simulação LÍQUIDA da régua v2 (Fase 3, item 4)
+
+Três das quatro mudanças são recomputáveis exatamente sobre as 107. A quarta (checks por item) não é,
+porque `experienciasDescricaoTamanhos` só passa a existir a partir daqui.
+
+| | antes (v1) | só cobertura C | só densidade por `level` | só teto de sinais | **LÍQUIDO (as três)** |
+|---|---|---|---|---|---|
+| média | 46,0 | 47,4 | 46,0 | 44,4 | **45,9** |
+| mediana | 45 | 46 | 45 | 45 | **45** |
+| sobem | | 24 | 3 | 20 | **36** |
+| descem | | 0 | 0 | **79** | **64** |
+| iguais | | 83 | 104 | 8 | **7** |
+| faixa para cima | | 4 | 0 | 0 | **6** |
+| faixa para baixo | | 0 | 0 | **13** | **13** |
+| maior subida | | +9 | +2 | +6 | **+12** (59 para 71) |
+| maior queda | | 0 | 0 | -6 | **-6** (43 para 37) |
+
+Faixas líquidas por dezena: `10:4 20:11 30:19 40:34 50:18 60:14 70:7` contra
+`10:4 20:10 30:9 40:43 50:28 60:10 70:3` antes.
+
+**O teto dos sinais é a força dominante, e no sentido contrário ao esperado.** Sozinho ele derruba a nota
+de **79 das 107** e move 13 para a faixa de baixo. O motivo é direto: quase todo mundo APROVA os sinais
+autodeclarados (a maioria responde que tem foto, que tem conexões), então esses 28 pontos eram pontos que
+as pessoas estavam ganhando. Reduzi-los a 12 tira de quem os tinha. A média quase não se move (46,0 para
+45,9) porque a cobertura empurra 24 para cima enquanto os sinais empurram 79 para baixo: **o agregado
+esconde que 100 das 107 mudam de nota.**
+
+A densidade por `level` quase não aparece (3 perfis, +2 no máximo), e isso também é informação: das 75
+análises de nível leve com Sobre preenchido, 70 já passavam em 500 caracteres. O afrouxamento é justo, e
+não é onde estava o problema.
+
+**Checks por item**, não recomputável, mantém o intervalo da seção 3: até 70 perfis podem cair 5 a 6
+pontos, com até 26 mudando de faixa para baixo no pior caso. Somado ao líquido acima, o pior caso total é
+consideravelmente mais duro que o que a tabela mostra. A próxima simulação desta pergunta será exata,
+porque `experienciasDescricaoTamanhos` passa a ser persistido.
+
+## 3-quater. Teto teórico e a faixa Magnético
+
+**O teto teórico é 100**, e sempre foi: com todos os 27 (Brasil) ou 28 (exterior) checks aprovados, a nota
+é 100 por construção. A pergunta que importa é outra: **existe perfil real capaz de chegar a 90?**
+
+Medido: reprovar UM check essencial derruba de 100 para **94**; reprovar um opcional derruba para **99**.
+Ou seja, dá para falhar dois essenciais e ainda ficar em Magnético.
+
+**A resposta mudou com a régua v2, e a causa é exatamente a que a rodada 1 identificou.** O teto real
+medido lá era 85 a 87 porque os dois checks de cobertura eram inalcançáveis: em `backend`, a v1 exigia 32
+das 64 tecnologias-chave comprovadas no perfil, e 48 para a marca ótima. Com a variante C são **6 e 10**,
+em qualquer área.
+
+Prova concreta: a fixture `perfil-a-senior`, um perfil exemplar e realista, saiu de **82 (forte)** para
+**90 (magnetico)**. Ela ainda reprova três checks (`termos-bilingues`, `skills-cobertura`,
+`skills-quantidade-otima`), todos alcançáveis por uma pessoa real que escreva o cargo em inglês e cadastre
+25 competências.
+
+**Magnético deixou de ser decorativa.** Não mexi em nenhuma fronteira de faixa.
+
 ## 4. O que isto não decide
 
 A mensagem que o usuário lê quando a nota dele muda sem ele ter mexido no perfil. Os números acima dizem

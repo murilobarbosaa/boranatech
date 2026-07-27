@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { runLinkedinChecks } from "./linkedinChecks";
 import { keyTechnologiesForArea } from "./skillNormalize";
+import { cortesDeCobertura } from "../../shared/linkedin/reguaV2";
 import { faixaFromScore } from "../../shared/linkedin/schema";
 import type { LinkedinParsed } from "../../shared/linkedin/parse";
 
@@ -35,6 +36,7 @@ const rodar = (
 ) =>
   runLinkedinChecks({
     parsed,
+      level: "pleno",
     profileText: over.profileText ?? `${parsed.headline ?? ""} ${parsed.sobre ?? ""}`,
     area: over.area ?? "fullstack",
     mercado: "brasil",
@@ -137,42 +139,26 @@ describe("fronteira: cobertura por razao (0.5, 0.75) e skills-cobertura (0.5)", 
     expect(techs).toHaveLength(22);
   });
 
-  it("cobertura-keywords-area: 10 de 22 reprova, 11 de 22 aprova", () => {
-    // 10/22 = 0,4545 e 11/22 = 0,5000. A fronteira 0,5 fica presa nesse par.
-    expect(aprovado(comNTechs(10), "cobertura-keywords-area")).toBe(false);
-    expect(aprovado(comNTechs(11), "cobertura-keywords-area")).toBe(true);
+  it("REGUA V2: cobertura-keywords-area prende em 6 para fullstack (pool 22)", () => {
+    // A regua v1 comparava razao (>= 0,5 de 22 = 11 tecnologias) e era
+    // inatingivel na pratica: 1 das 107 analises aprovava. A v2 usa
+    // min(6, ceil(pool/2)), que em fullstack da 6.
+    expect(cortesDeCobertura(22).essencial).toBe(6);
+    expect(aprovado(comNTechs(5), "cobertura-keywords-area")).toBe(false);
+    expect(aprovado(comNTechs(6), "cobertura-keywords-area")).toBe(true);
   });
 
-  it("cobertura-keywords-otima: 16 de 22 reprova, 17 de 22 aprova", () => {
-    // 16/22 = 0,7273 e 17/22 = 0,7727. A fronteira 0,75 fica presa nesse par.
-    expect(aprovado(comNTechs(16), "cobertura-keywords-otima")).toBe(false);
-    expect(aprovado(comNTechs(17), "cobertura-keywords-otima")).toBe(true);
+  it("REGUA V2: cobertura-keywords-otima prende em 10 para fullstack", () => {
+    expect(cortesDeCobertura(22).otima).toBe(10);
+    expect(aprovado(comNTechs(9), "cobertura-keywords-otima")).toBe(false);
+    expect(aprovado(comNTechs(10), "cobertura-keywords-otima")).toBe(true);
   });
 
-  it("cobertura-keywords-otima em backend: 0,75 e atingivel EXATO, e a fronteira prende por cima", () => {
-    // backend tem 64 tecnologias-chave, degrau 1/64 = 0,0156, e 48/64 = 0,7500
-    // cravado. Com o valor exato na mao, subir o limiar para 0,76 reprova e o
-    // teste quebra. DESCER para 0,74 continua inobservavel em qualquer area:
-    // exigiria uma razao entre 47/64 = 0,7344 e 48/64 = 0,75, e nao existe.
-    const backend = keyTechnologiesForArea("backend");
-    expect(backend).toHaveLength(64);
-    const comN = (n: number) => {
-      const texto = backend.slice(0, n).join(" ");
-      return runLinkedinChecks({
-        parsed: parsedBase({ sobre: texto }),
-        profileText: texto,
-        area: "backend",
-        mercado: "brasil",
-        skills: "",
-        foto: "sim",
-        banner: "sim",
-        openToWork: "sim",
-        conexoes: "500-mais",
-        atividade: "semanal",
-      });
-    };
-    expect(aprovado(comN(47), "cobertura-keywords-otima")).toBe(false);
-    expect(aprovado(comN(48), "cobertura-keywords-otima")).toBe(true);
+  it("REGUA V2: em area de pool pequena o corte encolhe junto, e nunca fica impossivel", () => {
+    // ciberseguranca tem pool 10: o corte essencial vira 5, nao 6. Era o unico
+    // perfil das 107 que a contagem absoluta pura derrubava.
+    expect(cortesDeCobertura(10)).toEqual({ essencial: 5, otima: 8 });
+    expect(cortesDeCobertura(3).essencial).toBeLessThanOrEqual(3);
   });
 
   it("skills-cobertura: 10 coladas reprova, 11 coladas aprova", () => {

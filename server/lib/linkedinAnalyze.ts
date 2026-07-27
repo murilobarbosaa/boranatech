@@ -781,6 +781,7 @@ export async function analyzeLinkedin(
     parsed,
     profileText: request.profileText,
     area: request.area,
+    level: request.level,
     mercado: request.mercado,
     skills: request.skills,
     foto: request.foto,

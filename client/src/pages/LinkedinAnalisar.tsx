@@ -32,6 +32,7 @@ import {
 } from "@/components/portfolio/QualitativePanels";
 import { NextStepCard } from "@/components/shared/NextStepCard";
 import NextStepsByArea from "@/components/shared/NextStepsByArea";
+import { mudancaSoDeAutodeclaracao } from "@shared/linkedin/reguaV2";
 import {
   BenefitPills,
   HowItWorksTimeline,
@@ -838,8 +839,18 @@ export default function LinkedinAnalisar() {
           versaoDe(anterior.deterministicVersion) !==
             versaoDe(record.result.deterministicVersion);
         setReguaMudou(mudou);
+        // Delta e celebracao NUNCA disparam por mudanca que veio so de
+        // autodeclaracao: subir de faixa por ter marcado "sim, tenho banner"
+        // seria a plataforma parabenizando a pessoa por responder formulario.
+        const soDeclarado =
+          Array.isArray(anterior?.checks) &&
+          mudancaSoDeAutodeclaracao(
+            anterior.checks,
+            record.result.deterministic.checks,
+          );
         setScoreDelta(
           !mudou &&
+            !soDeclarado &&
             prior !== null &&
             prior !== record.result.deterministic.score
             ? { from: prior, to: record.result.deterministic.score }
@@ -1504,9 +1515,16 @@ export default function LinkedinAnalisar() {
 
                   {reguaMudou ? (
                     <FeedbackBanner variant="warn">
-                      Melhoramos a leitura do seu PDF desde a sua última
-                      análise, então esta nota não é comparável com a anterior.
-                      A comparação recomeça a partir daqui.
+                      Mudamos os critérios da nota desde a sua última análise.
+                      Agora cada experiência é avaliada por si, uma sem
+                      descrição não é mais compensada por outra longa; a
+                      cobertura de tecnologias passou a considerar quantas
+                      existem na sua área, em vez de exigir metade de todas; a
+                      régua de tamanho de texto ficou mais leve para quem está
+                      começando; e o que você declara sobre o perfil (foto,
+                      banner, conexões) pesa menos que o que a gente consegue
+                      conferir no PDF. Por isso esta nota não é comparável com
+                      a anterior, e a comparação recomeça a partir daqui.
                     </FeedbackBanner>
                   ) : scoreDelta ? (
                     <ScoreDeltaBanner

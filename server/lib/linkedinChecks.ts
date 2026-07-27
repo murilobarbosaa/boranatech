@@ -7,6 +7,7 @@ import {
   resolveTier,
   type LinkedinCampo,
   type LinkedinCheckResult,
+  type LinkedinLevel,
   type LinkedinDeterministicResult,
   type LinkedinKeywordCampos,
   type Mercado,
@@ -21,6 +22,11 @@ import {
   matchesAnyTitle,
   normalize,
 } from "./skillNormalize";
+import {
+  cortesDeCobertura,
+  expDescricoesPorItem,
+  limiaresDensidade,
+} from "../../shared/linkedin/reguaV2";
 
 /**
  * Checagens determinísticas do analisador de LinkedIn.
@@ -33,6 +39,11 @@ export interface LinkedinChecksInput {
   parsed: LinkedinParsed;
   profileText: string;
   area: AreaSlug;
+  /**
+   * Nivel declarado. Modula SO limiares de densidade (`sobre-tamanho`,
+   * `exp-descricoes`, `exp-resultados`), nunca tier. Ver shared/linkedin/reguaV2.
+   */
+  level: LinkedinLevel;
   mercado: Mercado;
   skills: string;
   foto: "sim" | "nao";
@@ -145,6 +156,8 @@ export function runLinkedinChecks(
   input: LinkedinChecksInput,
 ): LinkedinDeterministicResult {
   const { parsed, profileText, area, mercado } = input;
+  const densidade = limiaresDensidade(input.level);
+  const cortes = cortesDeCobertura(keyTechnologiesForArea(area).length);
 
   const headline = parsed.headline ?? "";
   const sobre = parsed.sobre ?? "";
@@ -270,7 +283,7 @@ export function runLinkedinChecks(
     },
     "sobre-tamanho": () => {
       const len = sobre.trim().length;
-      const ok = len >= 500 && len <= 2200;
+      const ok = len >= densidade.sobreMin && len <= densidade.sobreMax;
       return {
         aprovado: ok,
         detail: ok
@@ -288,8 +301,27 @@ export function runLinkedinChecks(
           : "Nenhuma experiência detectada (projetos próprios contam, vale cadastrar).",
     }),
     "exp-descricoes": () => {
+      // REGUA V2: veredito por experiencia, nao pelo bloco concatenado. O
+      // agregado somava tudo e comparava com 100, entao uma experiencia vazia
+      // entre quatro cheias passava e o card dizia "criterios ok" para um
+      // perfil com buraco.
+      const porItem = expDescricoesPorItem(
+        parsed.experiencias.map((exp) => exp.descricao.trim().length),
+        densidade.descricaoPorExperiencia,
+      );
       const len = expDescricoes.length;
-      const ok = len >= 100;
+      const ok = porItem.aprovado;
+      if (!ok && porItem.total > 0) {
+        // UM check, UMA linha, nomeando as experiencias com buraco. A
+        // alternativa seria um card por experiencia, e sete cards vermelhos
+        // fazem a pessoa fechar a pagina em vez de consertar uma coisa.
+        const quais = porItem.reprovadas.join(", ");
+        const plural = porItem.reprovadas.length > 1;
+        return {
+          aprovado: false,
+          detail: `${porItem.reprovadas.length} de ${porItem.total} experiência(s) sem descrição própria suficiente: ${plural ? "as de número" : "a de número"} ${quais}. Cada experiência precisa da descrição dela, não adianta uma longa compensar uma vazia.`,
+        };
+      }
       return {
         aprovado: ok,
         detail: ok
@@ -312,6 +344,12 @@ export function runLinkedinChecks(
           : "As descrições das experiências citam menos de 2 tecnologias.",
     }),
     "exp-resultados": () => {
+      // NAO modulado por nivel, e a decisao e deliberada. `exp-resultados` nao
+      // tem limiar numerico para afrouxar: ele pergunta se as descricoes trazem
+      // numero, e a resposta e sim ou nao. Fazer ele auto-aprovar para quem tem
+      // poucas experiencias produziria um card dizendo "Descricoes com numeros"
+      // num perfil sem numero nenhum, que e exatamente o card falso que esta
+      // regua v2 existe para eliminar em `exp-descricoes`.
       const ok = RESULT_RE.test(expDescricoes);
       return {
         aprovado: ok,
@@ -329,17 +367,29 @@ export function runLinkedinChecks(
           : "O cargo-alvo não aparece no título de nenhuma experiência.",
       };
     },
-    "cobertura-keywords-area": () => ({
-      aprovado: coverageRatio >= 0.5,
-      detail: `O perfil cobre ${pct(coverageRatio)} das tecnologias-chave da área.`,
-    }),
-    "cobertura-keywords-otima": () => ({
-      aprovado: coverageRatio >= 0.75,
-      detail:
-        coverageRatio >= 0.75
-          ? `Cobertura ótima: ${pct(coverageRatio)} das tecnologias-chave da área.`
-          : `Cobertura de ${pct(coverageRatio)} das tecnologias-chave (o ideal é 75% ou mais).`,
-    }),
+    // REGUA V2: o veredito e por CONTAGEM, com o corte relativo ao tamanho da
+    // pool da area. O detail fala a mesma lingua do veredito: dizer "o ideal e
+    // 75%" num check aprovado por contagem seria o card se contradizendo.
+    "cobertura-keywords-area": () => {
+      const n = fullCoverage.encontradas.length;
+      const ok = n >= cortes.essencial;
+      return {
+        aprovado: ok,
+        detail: ok
+          ? `O perfil comprova ${n} das ${keyTechs.length} tecnologias-chave da área (o mínimo é ${cortes.essencial}).`
+          : `O perfil comprova ${n} das ${keyTechs.length} tecnologias-chave da área. Faltam ${cortes.essencial - n} para o mínimo.`,
+      };
+    },
+    "cobertura-keywords-otima": () => {
+      const n = fullCoverage.encontradas.length;
+      const ok = n >= cortes.otima;
+      return {
+        aprovado: ok,
+        detail: ok
+          ? `Cobertura ótima: ${n} das ${keyTechs.length} tecnologias-chave da área.`
+          : `Cobertura de ${n} das ${keyTechs.length} tecnologias-chave. Para a marca ótima nesta área são ${cortes.otima}.`,
+      };
+    },
     "termos-bilingues": () => {
       const pt = matchesAnyTitle(profileText, PT_TITLES[area]);
       const en = matchesAnyTitle(profileText, ENGLISH_TITLES[area]);

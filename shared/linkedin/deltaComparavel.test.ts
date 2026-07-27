@@ -57,6 +57,9 @@ describe("delta de nota entre versoes da regua", () => {
     expect(deltaEhComparavel(2, 1)).toBe(false);
     // Fase 1A (v2) contra Fase 1B (v3) tambem nao compara.
     expect(deltaEhComparavel(2, 3)).toBe(false);
+    // E a regua v2 (v4) nao compara com nenhuma anterior.
+    expect(deltaEhComparavel(3, 4)).toBe(false);
+    expect(deltaEhComparavel(4, 3)).toBe(false);
   });
 
   it("linha antiga sem carimbo conta como v1", () => {
@@ -82,10 +85,10 @@ describe("delta de nota entre versoes da regua", () => {
     ).toBe(true);
   });
 
-  it("a versao atual e 3: reanalise de qualquer historico existente nao compara", () => {
+  it("a versao atual e 4: reanalise de qualquer historico existente nao compara", () => {
     // Guard contra esquecer de bumpar: se DETERMINISTIC_VERSION voltar a 1,
     // este teste quebra e avisa que o historico voltaria a ser comparado.
-    expect(DETERMINISTIC_VERSION).toBe(3);
+    expect(DETERMINISTIC_VERSION).toBe(4);
     expect(deltaEhComparavel(null, DETERMINISTIC_VERSION)).toBe(false);
   });
 });

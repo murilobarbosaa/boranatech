@@ -89,6 +89,7 @@ describe("SOBRE_LIMIT: o Sobre entra truncado no prompt", () => {
     const parsed = parseLinkedinText(texto);
     const deterministic = runLinkedinChecks({
       parsed,
+      level: "pleno",
       profileText: texto,
       area: "fullstack",
       mercado: "brasil",
