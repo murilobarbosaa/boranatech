@@ -1420,6 +1420,58 @@ async function reactivate(input: ReactivateInput): Promise<ReactivateResult> {
   };
 }
 
+// Estado do processamento ANTERIOR de um event id que ja tem linha em
+// billing_events. Ver a migration 20260727130000 para o porque.
+type PriorProcessing = "processed" | "unfinished";
+
+async function readPriorProcessing(eventId: string): Promise<PriorProcessing> {
+  // select("*") de proposito, nao select("processed_at"): enquanto a migration
+  // nao estiver aplicada, pedir a coluna pelo nome derrubaria a leitura e,
+  // com ela, TODO evento duplicado. Com "*", a coluna ausente chega como
+  // undefined e o comportamento antigo (presenca da linha = processado) e
+  // preservado. Custo extra do raw jsonb so no caminho de duplicata, que e raro.
+  const { data, error } = await supabaseAdmin
+    .from("billing_events")
+    .select("*")
+    .eq("id", eventId)
+    .maybeSingle();
+
+  if (error) {
+    // Nao da para AFIRMAR que ja foi processado. Falha para o lado de
+    // reprocessar: repetir um efeito (que os guards de idempotencia ja cobrem:
+    // raceLost, last_event_at, flips condicionais) e menos grave que descartar
+    // um pagamento.
+    console.error(
+      `[webhook/stripe] falha ao ler processed_at de ${eventId}; tratando como nao concluido:`,
+      error,
+    );
+    return "unfinished";
+  }
+  // Linha sumiu entre o upsert e esta leitura (compensacao concorrente).
+  if (!data) return "unfinished";
+
+  const stamp = (data as { processed_at?: string | null }).processed_at;
+  // undefined = coluna ainda nao existe no banco: comportamento antigo.
+  if (stamp === undefined) return "processed";
+  return stamp ? "processed" : "unfinished";
+}
+
+async function markEventProcessed(eventId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("billing_events")
+    .update({ processed_at: new Date().toISOString() })
+    .eq("id", eventId);
+  if (error) {
+    // Nao derruba a resposta: o handler JA concluiu e o estado do usuario esta
+    // correto. O custo de nao carimbar e um eventual reprocesso em resend
+    // manual. Tambem e o que acontece enquanto a migration nao subiu.
+    console.warn(
+      `[webhook/stripe] falha ao carimbar processed_at de ${eventId}:`,
+      error,
+    );
+  }
+}
+
 async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
   // Fail-closed: sem secret configurado, rejeita (mesma filosofia do Asaas).
   if (!env.stripeWebhookSecret) {
@@ -1483,7 +1535,17 @@ async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
     throw createError(500, "db_error", "Erro ao registrar evento.");
   }
   if (!recorded || recorded.length === 0) {
-    return { received: true, deduped: true };
+    // Linha ja existia. Isso NAO e sinonimo de "ja processado": o DELETE de
+    // compensacao la embaixo pode ter falhado, deixando o registro de um
+    // processamento que morreu no meio. Sem esta checagem, o retry da Stripe
+    // seria descartado aqui e o pagamento sumiria sem log.
+    if ((await readPriorProcessing(event.id)) === "processed") {
+      return { received: true, deduped: true };
+    }
+    console.warn(
+      `[webhook/stripe] evento ${event.id} (${event.type}) tinha registro SEM processed_at; ` +
+        `processamento anterior nao concluiu, reprocessando.`,
+    );
   }
 
   // Se algo falhar, remove o billing_event para o retry da Stripe reprocessar.
@@ -1546,12 +1608,31 @@ async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
         }
         return { received: true, unhandled: true };
     }
+    // Carimba a conclusao. So a partir daqui uma reentrega conta como duplicata.
+    await markEventProcessed(event.id);
     return { received: true };
   } catch (procErr) {
+    // Compensacao: apagar a linha faz o retry da Stripe reprocessar. Ela deixou
+    // de ser a UNICA defesa (processed_at cobre a falha dela), mas continua
+    // sendo o caminho limpo. O erro agora e LIDO e logado: antes o { error } do
+    // supabase-js era descartado e o catch so pegava falha de rede, entao uma
+    // compensacao malsucedida era invisivel.
     try {
-      await supabaseAdmin.from("billing_events").delete().eq("id", event.id);
-    } catch {
-      // ignora falha de cleanup
+      const { error: cleanupError } = await supabaseAdmin
+        .from("billing_events")
+        .delete()
+        .eq("id", event.id);
+      if (cleanupError) {
+        console.error(
+          `[webhook/stripe] compensacao falhou para ${event.id}; o retry depende de processed_at NULL:`,
+          cleanupError,
+        );
+      }
+    } catch (cleanupErr) {
+      console.error(
+        `[webhook/stripe] compensacao lancou para ${event.id}; o retry depende de processed_at NULL:`,
+        cleanupErr,
+      );
     }
     throw procErr;
   }
