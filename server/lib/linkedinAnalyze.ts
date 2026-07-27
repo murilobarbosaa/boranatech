@@ -12,7 +12,11 @@ import {
 } from "../../shared/linkedin/schema";
 import { ENGLISH_TITLES, PT_TITLES } from "../../shared/linkedin/titles";
 import { env } from "./env";
-import { runLinkedinChecks } from "./linkedinChecks";
+import { parseSkillsInput, runLinkedinChecks } from "./linkedinChecks";
+import {
+  keyTechnologiesForArea,
+  matchTechnologies,
+} from "./skillNormalize";
 import { fetchWithTimeout } from "./http";
 import {
   parseLinkedinText,
@@ -65,6 +69,14 @@ export class LinkedinTruncatedError extends Error {
 const SYSTEM_PROMPT = `Você é um especialista sênior em LinkedIn para carreiras de tecnologia no Brasil, mentor da plataforma BoraNaTech. Seu público vai de iniciantes (estagiários, trainees, juniores, pessoas em transição de carreira) a profissionais de nível pleno. Seu trabalho é interpretar uma análise já calculada e reescrever as partes do perfil para que ele seja encontrado por recrutadores e receba mensagens.
 
 REGRA DOS FATOS: as checagens automáticas, a nota e as listas de palavras-chave encontradas e faltantes que você vai receber já foram calculadas e são fatos. Você não reavalia, não recalcula nota, não contradiz as checagens e não inventa informações que não estão no perfil. Se o perfil não menciona algo, você não pode afirmar que a pessoa sabe aquilo. Nas sugestões de skills, proponha apenas o que é plausível a partir do que o perfil já evidencia, e deixe claro que a pessoa só deve adicionar o que realmente sabe.
+
+DIVERGÊNCIA ENTRE CHECAGEM E TEXTO (válvula da regra dos fatos): as checagens são automáticas e podem estar erradas em um caso específico. Se o texto do perfil contradisser uma checagem de forma verificável, aponte a divergência em vez de repetir a checagem. Exemplo: se uma checagem disser que as experiências têm descrição, mas houver no texto uma experiência sem nenhuma descrição própria, diga isso e cite qual. Isso não é recalcular a nota nem discutir a checagem: é relatar o que você está vendo no texto. Na dúvida, siga a checagem.
+
+TECNOLOGIA SÓ COM LASTRO: em bulletsReescritos, você só pode nomear uma tecnologia dentro do bullet de uma experiência se ela aparecer no texto DAQUELA experiência. Tecnologia que aparece no Sobre, na headline ou em OUTRA experiência não vale como lastro para esta. Se o texto da experiência não nomeia a stack, escreva o bullet sem tecnologia nenhuma, descrevendo o que foi feito e o resultado. É melhor um bullet sem stack do que um bullet com stack inventada.
+
+NÚMERO NÃO MUDA DE DONO: métricas, percentuais e volumes só podem ser reescritos com o MESMO sujeito e o MESMO recorte que têm no perfil. Se o texto diz que uma técnica específica reduziu a latência em uma situação específica, não atribua esse número ao projeto inteiro, a outra técnica, nem a outra métrica. Na dúvida sobre a que o número se refere, escreva o bullet sem o número.
+
+CAMPOS PARA COLAR SÓ COM O QUE EXISTE: headlines, sobreReescrito e bulletsReescritos só podem citar tecnologias que aparecem no perfil. As tecnologias marcadas como SEM NENHUMA evidência no perfil não entram em nenhum texto para colar e não entram em skillsSugeridas; no máximo aparecem em uma melhoria, descritas como estudo futuro e com essa palavra explícita. skillsSugeridas deve priorizar as tecnologias que o perfil COMPROVA e que estão fora das competências cadastradas, porque essas a pessoa pode adicionar hoje com honestidade.
 
 COMO RECRUTADORES BUSCAM: recrutadores usam o LinkedIn Recruiter com buscas por cargo atual, cargos anteriores, competências cadastradas e palavras-chave booleanas. Os campos que mais pesam na busca são a headline, os títulos das experiências e a seção de competências. O texto do Sobre é indexado, mas pesa menos. Por isso o cargo-alvo precisa aparecer literalmente na headline e em pelo menos um título de experiência, e as tecnologias precisam estar escritas por extenso no perfil, em português e quando fizer sentido também em inglês.
 
@@ -142,6 +154,19 @@ function buildUserPrompt(
     ? [`Objetivo do usuário: ${request.objetivo.trim()}`, ""]
     : [];
 
+  // Tecnologias que o perfil evidencia mas que nao estao nas competencias
+  // coladas: derivado aqui, no prompt, e NAO adicionado ao deterministic (o
+  // result e persistido e o contrato nao muda).
+  const skillsDoFormulario = new Set(
+    matchTechnologies(
+      parseSkillsInput(request.skills).join(", "),
+      keyTechnologiesForArea(area),
+    ).encontradas,
+  );
+  const comprovadasForaDasCompetencias = deterministic.keywordsEncontradas.filter(
+    (tech) => !skillsDoFormulario.has(tech),
+  );
+
   const sinais = [
     `foto profissional: ${request.foto}`,
     `banner personalizado: ${request.banner}`,
@@ -166,7 +191,15 @@ function buildUserPrompt(
     `Palavras-chave da área encontradas no perfil: ${
       deterministic.keywordsEncontradas.join(", ") || "nenhuma"
     }.`,
-    `Palavras-chave da área faltantes: ${
+    // A lista de faltantes ia crua para o modelo e era lida como lista de
+    // tarefas: as duas execucoes de controle mandaram o usuario anunciar
+    // Next.js e Tailwind na headline sem ele nunca ter usado nenhum dos dois.
+    // Separar por EVIDENCIA resolve na origem: o que ele comprova no perfil e
+    // sugestao legitima de competencia, o resto e no maximo estudo futuro.
+    `Tecnologias que o perfil COMPROVA mas que estão fora das competências cadastradas (pode sugerir para a seção Competências): ${
+      comprovadasForaDasCompetencias.join(", ") || "nenhuma"
+    }.`,
+    `Tecnologias da área SEM NENHUMA evidência no perfil (só podem ser citadas como estudo futuro, nunca como texto para colar): ${
       deterministic.keywordsFaltantes.join(", ") || "nenhuma"
     }.`,
     "",
