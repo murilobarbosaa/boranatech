@@ -295,7 +295,9 @@ if (VIZINHANCA) {
     const marca = Object.entries(resultado).map(([k, v]) => `${k}:${v ? "quebra" : "PASSA"}`).join("  ");
     console.log(`${cobertoNoMenor ? "OK  " : "GAP "} ${nome.padEnd(26)} ${valor.padEnd(6)} ${marca}`);
   }
-  writeFileSync(`${R}/vizinhanca.json`, JSON.stringify(out, null, 2));
+  // Artefato so quando pedido: escrever na raiz do repo por padrao ja fez
+  // um vizinhanca.json entrar em commit por engano.
+  if (process.env.SP) writeFileSync(`${process.env.SP}/vizinhanca.json`, JSON.stringify(out, null, 2));
   const gaps = out.filter((o) => o.cobertoNoMenor === false);
   console.log(`\n=== vizinhanca: ${out.length} limiares | com cobertura de fronteira: ${out.length - gaps.length} | SEM: ${gaps.length} ===`);
   for (const g of gaps) console.log(`  GAP  ${g.rel}:${g.linha}  ${g.nome} (${g.valor})`);
