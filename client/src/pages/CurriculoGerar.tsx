@@ -479,7 +479,7 @@ export default function CurriculoGerar() {
           DENTRO do cenario (pontilhado da casa + gradiente de marca amber).
           O backdrop vivo completo so existe na ENTRADA; atelie e resultado
           ficam com a faixa curta. */}
-      <section className="relative overflow-hidden bg-[#faf8f4] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="curriculo-page-root relative overflow-hidden bg-[#faf8f4] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <BuilderBackdrop reduce={reduce} full={isEntry} />
         <div className="container relative z-10">
           {/* Cabecalho integrado, presente nos 3 estados. TODO(Ana): validar

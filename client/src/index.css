@@ -1136,6 +1136,8 @@ body[data-scroll-locked] [data-app-header] {
    .curriculo-print-target    o "papel A4" do currículo (única coisa visível).
    .curriculo-preview-stage   moldura cinza do app que envolve o A4 (fica
                               invisível no print, deixando só a folha branca).
+   .curriculo-page-root       a section que embrulha a página inteira, que na
+                              tela é overflow-hidden pra conter o backdrop.
    ───────────────────────────────────────────────────────────────────────── */
 
 @media print {
@@ -1158,6 +1160,17 @@ body[data-scroll-locked] [data-app-header] {
   .curriculo-print-target,
   .curriculo-print-target * {
     visibility: visible !important;
+  }
+
+  /* CRÍTICO: a section da página é overflow-hidden na tela (contém o backdrop
+     animado). No print, todo filho EM FLUXO dela é .print-hide (display:none) e
+     o A4 é absolute, então a section colapsa pra altura dos próprios paddings
+     (~96px) e o overflow recorta o currículo inteiro: PDF em branco. Liberar o
+     overflow aqui é o que faz o documento aparecer. Não some com o backdrop:
+     ele é .print-hide e, além disso, o body * acima já deixa tudo invisível
+     fora do subtree do .curriculo-print-target. */
+  .curriculo-page-root {
+    overflow: visible !important;
   }
 
   /* Tira moldura cinza/sombra do palco e cola o documento no canto da página. */
