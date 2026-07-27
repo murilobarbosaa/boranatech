@@ -131,7 +131,7 @@ router.post(
       (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
     const tool = `github-${mode}`;
 
-    const usage = await checkAiDailyLimit(userId, !!req.isPro, "[github]", "github-perfil");
+    const usage = await checkAiDailyLimit(userId, !!req.isPro, "[github]", tool);
     if (!usage.allowed) {
       if (usage.verificationFailed) {
         await logAiUsage({

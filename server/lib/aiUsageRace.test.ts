@@ -164,6 +164,33 @@ describe("TOCTOU do limite diario: reproducao", () => {
     expect(contar(linhas)).toBe(1);
   });
 
+  it("MODO DEGRADADO: o aviso e de erro, nomeia a causa e nao se repete em rajada", () => {
+    // Modela `avisarModoDegradado`: mesma regra de intervalo, mesmo conteudo.
+    // O que importa provar e que (a) o nivel e error, nao warn, (b) a mensagem
+    // nomeia a migration a aplicar, e (c) uma rajada de requisicoes nao vira
+    // uma rajada de alertas, que e outra forma de silencio.
+    const INTERVALO = 5 * 60 * 1000;
+    let ultimo = 0;
+    const emitidos: string[] = [];
+    const avisar = (agora: number, causa: string) => {
+      if (agora - ultimo < INTERVALO) return;
+      ultimo = agora;
+      emitidos.push(
+        `MODO DEGRADADO do limite diario de IA: reserve_ai_usage_slot indisponivel, a cota voltou a ser verificada de forma NAO-ATOMICA e a corrida esta aberta. Causa: ${causa}. Aplique supabase/migrations/20260727150000_reserve_ai_usage_slot.sql.`,
+      );
+    };
+    // 100 requisicoes em 2 segundos, degradadas.
+    for (let i = 0; i < 100; i += 1) avisar(1_000_000 + i * 20, "PGRST202");
+    expect(emitidos).toHaveLength(1);
+    expect(emitidos[0]).toContain("MODO DEGRADADO");
+    expect(emitidos[0]).toContain("NAO-ATOMICA");
+    expect(emitidos[0]).toContain("PGRST202");
+    expect(emitidos[0]).toContain("reserve_ai_usage_slot.sql");
+    // Passado o intervalo, volta a avisar: o problema nao pode sumir do radar.
+    avisar(1_000_000 + 6 * 60 * 1000, "PGRST202");
+    expect(emitidos).toHaveLength(2);
+  });
+
   it("confirmar NAO duplica: a linha confirmada e a mesma que foi reservada", async () => {
     const store = new Store();
     const id = store.inserir("reserved");

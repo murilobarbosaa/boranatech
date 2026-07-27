@@ -61,6 +61,24 @@ ausente falha fechado (ninguém lê o que não devia) e índice ausente degrada 
   Coluna faltando é exatamente o modo de falha do incidente que criou este script, só que uma camada
   abaixo.
 
+## Modo degradado do limite diário de IA
+
+Sem a RPC `reserve_ai_usage_slot`, `checkAiDailyLimit` volta ao caminho antigo, ler-depois-escrever, e a
+janela de corrida do TOCTOU reabre. **É deliberado**: derrubar nove ferramentas de IA porque uma migration
+não foi aplicada é pior que a corrida, que custa algumas chamadas a mais para quem dispara requisições em
+paralelo.
+
+O que não pode é ser silencioso. Como reconhecer:
+
+- **No log**: a string `MODO DEGRADADO` em `console.error`, com a causa (`PGRST202` quando a função não
+  existe) e o caminho da migration a aplicar.
+- **No Sentry**: evento de nível `error`, tags `area=ai-quota` e `degraded=true`, fingerprint
+  `ai-quota-degraded` (todos os eventos agrupam num issue só).
+- **No `check:migrations`**: a função aparece como ausente, por nome.
+
+O aviso sai no máximo **uma vez a cada 5 minutos por processo**. Sem esse corte, um sistema degradado gera
+um evento por requisição, o alerta vira ruído e ninguém olha, que é outra forma de silêncio.
+
 ## Achado colateral, 2026-07-27
 
 `call_cron_endpoint` está exposta no banco e **não é declarada por migration nenhuma**: ela aparece só

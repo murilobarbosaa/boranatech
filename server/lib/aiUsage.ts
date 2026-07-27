@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/node";
+
 import { env } from "./env";
 import { DEFAULT_MODEL } from "./openai";
 import { supabaseAdmin } from "./supabaseAdmin";
@@ -25,6 +27,48 @@ export interface AiDailyLimitResult {
  * NAO libera a chamada e marca verificationFailed para o caller responder 503
  * (falha de verificacao), distinto do 429 de limite real atingido.
  */
+/**
+ * MODO DEGRADADO do limite diario.
+ *
+ * Sem a RPC `reserve_ai_usage_slot`, a verificacao volta a ser ler-depois-
+ * escrever e a janela de corrida reabre. A escolha e deliberada: derrubar nove
+ * ferramentas de IA porque uma migration nao foi aplicada e pior que a corrida,
+ * que custa algumas chamadas a mais para quem dispara requisicoes paralelas.
+ *
+ * O que NAO pode acontecer e o modo degradado ser silencioso. Antes disto era
+ * um `console.warn` no meio do log de producao, num sistema cuja postura
+ * declarada para cota e fail-closed. Agora e `console.error` com a causa e um
+ * evento de erro no Sentry.
+ *
+ * Como reconhecer em producao: procure `MODO DEGRADADO` no log, ou o evento
+ * `ai-quota-degraded` no Sentry. Ver docs/limites-do-guard-de-migrations.md e
+ * a migration 20260727150000_reserve_ai_usage_slot.sql.
+ *
+ * O aviso e emitido no MAXIMO uma vez a cada 5 minutos por processo. Sem o
+ * corte, um sistema degradado gera um evento por requisicao e o alerta vira
+ * ruido, que e outra forma de silencio.
+ */
+const INTERVALO_AVISO_MS = 5 * 60 * 1000;
+let ultimoAvisoDegradado = 0;
+
+function avisarModoDegradado(logScope: string, causa: string): void {
+  const agora = Date.now();
+  if (agora - ultimoAvisoDegradado < INTERVALO_AVISO_MS) return;
+  ultimoAvisoDegradado = agora;
+  const mensagem = `${logScope} MODO DEGRADADO do limite diario de IA: reserve_ai_usage_slot indisponivel, a cota voltou a ser verificada de forma NAO-ATOMICA e a corrida esta aberta. Causa: ${causa}. Aplique supabase/migrations/20260727150000_reserve_ai_usage_slot.sql.`;
+  console.error(mensagem);
+  try {
+    Sentry.captureMessage(mensagem, {
+      level: "error",
+      tags: { area: "ai-quota", degraded: "true" },
+      fingerprint: ["ai-quota-degraded"],
+    });
+  } catch {
+    // Sentry desligado (DSN ausente) e no-op por desenho; o console.error acima
+    // ja garante o rastro.
+  }
+}
+
 export async function checkAiDailyLimit(
   userId: string,
   isPro: boolean,
@@ -59,15 +103,12 @@ export async function checkAiDailyLimit(
         limit,
       };
     }
-    // RPC ausente (migration ainda nao aplicada) cai no caminho antigo. Codigo
-    // novo tolerando schema antigo, regra do projeto. O aviso existe para a
-    // ausencia nao virar silencio permanente.
-    console.warn(
-      `${logScope} reserve_ai_usage_slot indisponivel, usando a contagem nao-atomica:`,
-      error?.message ?? "resposta inesperada",
-    );
+    avisarModoDegradado(logScope, error?.message ?? "resposta inesperada");
   } catch (err) {
-    console.warn(`${logScope} reserve_ai_usage_slot lancou:`, err);
+    avisarModoDegradado(
+      logScope,
+      err instanceof Error ? err.message : String(err),
+    );
   }
 
   try {
