@@ -515,6 +515,9 @@ export function runLinkedinChecks(
     skillsParaAdicionarAgora,
     keywordsCampos,
     perfilDedup,
+    experienciasDescricaoTamanhos: parsed.experiencias.map(
+      (exp) => exp.descricao.trim().length,
+    ),
     titulosIngles,
     headline: parsed.headline,
     sobreTamanho: sobre.trim().length,

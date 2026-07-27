@@ -206,6 +206,16 @@ describe("golden: perfil real (PDF de export, anonimizado)", () => {
       expect(deterministic.keywordsEncontradas).not.toContain(ausente);
     }
 
+    // FASE 3: comprimento da descricao por experiencia. So numeros, e sao
+    // exatamente os mesmos que o parse ja afirma acima. Existe para a proxima
+    // simulacao de "checks por item" ser exata em vez de intervalar.
+    expect(deterministic.experienciasDescricaoTamanhos).toEqual([
+      0, 1422, 823, 717, 789, 786,
+    ]);
+    expect(deterministic.experienciasDescricaoTamanhos).toHaveLength(
+      deterministic.experienciasContagem,
+    );
+
     // FASE 2A: decomposicao por campo. Nao entra em check nenhum, e a prova
     // disso e que o score acima continua 75. Ela responde a pergunta que a
     // cobertura agregada nao respondia: "adicionar ONDE?".

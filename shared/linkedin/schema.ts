@@ -514,6 +514,21 @@ export interface LinkedinDeterministicResult {
    * mesmos cursos. OPCIONAL, análise anterior à Fase 2B não tem.
    */
   perfilDedup?: string;
+  /**
+   * Comprimento da descrição de CADA experiência, na ordem em que o parser as
+   * leu. Só números, nunca texto de ninguém.
+   *
+   * Existe por causa de uma pergunta que a simulação da régua v2 não conseguiu
+   * responder (`docs/simulacao-regua-v2.md`, seção 3): quantas das 107 análises
+   * têm alguma experiência sem descrição própria. O agregado `exp-descricoes`
+   * olha a concatenação, então uma experiência vazia entre quatro cheias passa
+   * despercebida, e o texto por experiência nunca foi persistido. Sem isto, a
+   * resposta é um intervalo de "0 a 70"; com isto, é exata.
+   *
+   * NÃO entra em check nenhum e não bumpa versão: campo novo, opcional, que
+   * nenhuma régua lê (critério em DETERMINISTIC_VERSION).
+   */
+  experienciasDescricaoTamanhos?: number[];
   /** Títulos de busca em inglês da área, casados ou não contra o perfil. */
   titulosIngles: TituloInglesMatch[];
   headline: string | null;
