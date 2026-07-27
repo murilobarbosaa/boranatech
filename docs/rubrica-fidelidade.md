@@ -115,11 +115,22 @@ Custo aproximado: US$ 0,0012 por execução com `gpt-4o-mini`, cerca de US$ 0,01
 
 ## 6. Histórico de medições
 
-| Data | Prompt | Execuções | Inventadas | Distorcidas | Rubrica |
+| Data | Prompt / contrato | Execuções | Inventadas | Distorcidas | Rubrica |
 |---|---|---|---|---|---|
 | 2026-07-26 | antes da Fase 0 | 10 | 58 | 3 | v1 |
-| 2026-07-26 | Fase 0, item 7 | 10 | 22 | 0 | v1 |
+| 2026-07-26 | Fase 0, item 7 (lastro por experiência) | 10 | 22 | 0 | v1 |
+| 2026-07-26 | Fase 0, campos separados (v2) | 10 | 3 | 0 | v1 |
+| 2026-07-26 | Fase 0, `skillsParaAdicionarAgora` em código (v3) | 10 | **0** | **0** | v1 |
 
-Detalhe da segunda medição: as 22 restantes estão todas em `skillsSugeridas` e concentradas no perfil raso, que
-é o único onde a lista de "tecnologias comprovadas fora das competências" fica vazia. Em bullets, o placar foi
-6 -> 0; em métricas reatribuídas, 3 -> 0.
+Leitura da série, que é o resultado mais útil deste documento:
+
+- **58 -> 22**: instruções de lastro (tecnologia só com base no texto daquela experiência, métrica não muda de
+  dono). Matou 100% das invenções em bullets e 100% das métricas reatribuídas.
+- **22 -> 3**: separar o campo em "adicionar agora" e "estudar". O resíduo ficou só no perfil raso, onde a
+  lista de comprovadas é vazia e o modelo preenchia para não deixar vazio.
+- **3 -> 0**: tirar o cálculo do modelo. `skillsParaAdicionarAgora` é subtração de conjuntos e passou a ser
+  computado em `deterministic`; `skillsParaEstudar` continua no modelo, mas com origem fechada (só itens da
+  lista de faltantes entregue no prompt).
+
+A lição que vale para as próximas ferramentas: **as três reduções vieram de tirar trabalho do modelo, não de
+pedir melhor.** Nenhuma exigiu trocar de modelo.
