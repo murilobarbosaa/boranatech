@@ -110,9 +110,28 @@ O que não pode é ser silencioso. Como reconhecer:
 O aviso sai no máximo **uma vez a cada 5 minutos por processo**. Sem esse corte, um sistema degradado gera
 um evento por requisição, o alerta vira ruído e ninguém olha, que é outra forma de silêncio.
 
-## Achado colateral, 2026-07-27
+## Direção inversa: existe no banco e ninguém declara
 
-`call_cron_endpoint` está exposta no banco e **não é declarada por migration nenhuma**: ela aparece só
-dentro de um comentário SQL. Foi criada à mão em algum momento. O guard não acusa porque ele checa o
-sentido "declarado existe?", não "existente é declarado?". O sentido inverso é outra lacuna, e a mesma RPC
-de introspecção fecharia os dois.
+O guard também responde "existente é declarado?", para funções e para tabelas/views, comparando com o
+OpenAPI. Importa porque backup físico preserva o objeto criado à mão, mas **reconstrução a partir das
+migrations não** — e `supabase start` é reconstrução, então o ambiente de ensaio nasceria diferente de
+produção. Função de extensão (`unaccent`, `show_trgm`, ...) fica numa lista de exceção explícita, com nome,
+nunca por omissão. Medido em 2026-07-27: **zero** funções e **zero** tabelas nessa condição.
+
+## Correção de um achado anterior, 2026-07-27
+
+A rodada anterior afirmou que `call_cron_endpoint` existia no banco sem migration que a declarasse, criada
+à mão. **Estava errado, e o errado era o parser.**
+
+`stripSqlComments` era `replace(/\/\*[\s\S]*?\*\//g, " ")`, e casou o `/*` de `/api/cron/*`, na primeira
+linha de `20260518003955_schedule_cron_jobs.sql`, com o `*/` de `'15 */6 * * *'` sessenta linhas abaixo.
+Apagou 1502 caracteres de SQL real e escondeu a função. Medido em toda a pasta: **4 arquivos afetados,
+3663 caracteres de SQL apagados, 1 função escondida**, nenhuma tabela e nenhuma RLS.
+
+É a sexta instância da mesma classe nesta base, e a mais antiga. O conserto não é regex melhor, é léxico
+mínimo: string entre aspas simples, dollar-quoting (onde mora todo corpo de função) e aninhamento de bloco.
+
+Um segundo defeito do mesmo tipo apareceu junto: o parser aplicava todos os `CREATE` de um arquivo e só
+depois todos os `DROP`, então `drop function x; create function x;` (padrão para trocar assinatura)
+terminava com `x` removido do conjunto. Foi assim que `email_campaign_record_result` apareceu como não
+declarada. Agora os eventos são aplicados em **ordem de origem**.

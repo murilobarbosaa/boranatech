@@ -169,12 +169,79 @@ const EXPECTED_TABLE_COUNT = 73;
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
 // numeros e ato deliberado, no mesmo commit da migration que cria ou remove o
 // objeto.
-const EXPECTED_FUNCTION_COUNT = 22;
+const EXPECTED_FUNCTION_COUNT = 24;
 const EXPECTED_TRIGGER_FUNCTION_COUNT = 3;
 
 /** Remove comentarios de linha e de bloco antes de qualquer parse. */
+/**
+ * Remove comentario SQL SEM comer SQL real.
+ *
+ * A versao anterior era `replace(/\/\*[\s\S]*?\*\//g, " ")`, e ela casava o
+ * `/*` de `/api/cron/*` na primeira linha de 20260518003955 com o `*` `/` de
+ * `'15 *``/6 * * *'` sessenta linhas abaixo, apagando 1502 caracteres de SQL
+ * real e escondendo `call_cron_endpoint` do guard. Medido: 4 arquivos afetados,
+ * 3663 caracteres apagados, 1 funcao escondida (nenhuma tabela, nenhuma RLS).
+ *
+ * Sexta instancia da mesma classe nesta base, e a mais antiga: parser que
+ * sub-casa em silencio. O conserto exige lexico minimo, nao regex melhor:
+ * string entre aspas simples, dollar-quoting (`$fn$ ... $fn$`, onde mora todo
+ * corpo de funcao) e aninhamento de bloco, que o Postgres permite.
+ */
 function stripSqlComments(sql: string): string {
-  return sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
+  let out = "";
+  let i = 0;
+  while (i < sql.length) {
+    const c = sql[i];
+    const d = sql[i + 1];
+    if (c === "'") {
+      const j = sql.indexOf("'", i + 1);
+      if (j < 0) {
+        out += sql.slice(i);
+        break;
+      }
+      out += sql.slice(i, j + 1);
+      i = j + 1;
+      continue;
+    }
+    const dollar = /^\$[a-zA-Z_]*\$/.exec(sql.slice(i));
+    if (dollar) {
+      const tag = dollar[0];
+      const j = sql.indexOf(tag, i + tag.length);
+      if (j < 0) {
+        out += sql.slice(i);
+        break;
+      }
+      out += sql.slice(i, j + tag.length);
+      i = j + tag.length;
+      continue;
+    }
+    if (c === "-" && d === "-") {
+      const j = sql.indexOf("\n", i);
+      i = j < 0 ? sql.length : j;
+      out += " ";
+      continue;
+    }
+    if (c === "/" && d === "*") {
+      let nivel = 1;
+      i += 2;
+      while (i < sql.length && nivel > 0) {
+        if (sql[i] === "/" && sql[i + 1] === "*") {
+          nivel += 1;
+          i += 2;
+        } else if (sql[i] === "*" && sql[i + 1] === "/") {
+          nivel -= 1;
+          i += 2;
+        } else {
+          i += 1;
+        }
+      }
+      out += " ";
+      continue;
+    }
+    out += c;
+    i += 1;
+  }
+  return out;
 }
 
 function conferirCoberturaSimples(
@@ -200,24 +267,55 @@ for (const file of readdirSync(migrationsDir)
   .filter((f) => f.endsWith(".sql"))
   .sort()) {
   const sql = stripSqlComments(readFileSync(path.join(migrationsDir, file), "utf8"));
+  // ORDEM DE ORIGEM, nao ordem de categoria. A primeira versao aplicava todos
+  // os CREATE do arquivo e so depois todos os DROP, entao um arquivo que faz
+  // `drop function x; create function x;` (padrao para mudar assinatura)
+  // terminava com x REMOVIDO do conjunto declarado. Foi assim que
+  // `email_campaign_record_result` apareceu como "existe no banco e ninguem
+  // declara": ela e declarada, o parser e que desfazia a declaracao.
+  const aplicarEmOrdem = (
+    conjunto: Set<string>,
+    criar: RegExp,
+    dropar: RegExp,
+    aoCriar?: (nome: string, indice: number) => void,
+  ) => {
+    const eventos = [
+      ...[...sql.matchAll(criar)].map((m) => ({
+        pos: m.index ?? 0,
+        nome: m[1].toLowerCase(),
+        tipo: "criar" as const,
+      })),
+      ...[...sql.matchAll(dropar)].map((m) => ({
+        pos: m.index ?? 0,
+        nome: m[1].toLowerCase(),
+        tipo: "dropar" as const,
+      })),
+    ].sort((a, b) => a.pos - b.pos);
+    for (const e of eventos) {
+      if (e.tipo === "criar") {
+        conjunto.add(e.nome);
+        aoCriar?.(e.nome, e.pos);
+      } else {
+        conjunto.delete(e.nome);
+      }
+    }
+  };
+
   const reconhecidas = [...sql.matchAll(CREATE_TABLE_RE)];
-  for (const match of reconhecidas) {
-    declared.add(match[1].toLowerCase());
-  }
-  for (const match of sql.matchAll(DROP_TABLE_RE)) {
-    declared.delete(match[1].toLowerCase());
-  }
+  aplicarEmOrdem(declared, CREATE_TABLE_RE, DROP_TABLE_RE);
   // FUNCOES, POLICIES, INDICES: mesma leitura, mesmo guard de cobertura.
   const fnLidas = [...sql.matchAll(CREATE_FUNCTION_RE)];
-  for (const m of fnLidas) {
-    funcoesDeclaradas.set(m[1].toLowerCase(), ehTrigger(sql, m.index ?? 0));
-  }
-  for (const m of sql.matchAll(DROP_FUNCTION_RE)) {
-    funcoesDeclaradas.delete(m[1].toLowerCase());
+  const nomesFuncao = new Set<string>();
+  aplicarEmOrdem(nomesFuncao, CREATE_FUNCTION_RE, DROP_FUNCTION_RE, (nome, pos) => {
+    funcoesDeclaradas.set(nome, ehTrigger(sql, pos));
+  });
+  for (const nome of Array.from(funcoesDeclaradas.keys())) {
+    if (nomesFuncao.size > 0 && !nomesFuncao.has(nome) && fnLidas.some((m) => m[1].toLowerCase() === nome)) {
+      funcoesDeclaradas.delete(nome);
+    }
   }
   const rlsLidas = [...sql.matchAll(ENABLE_RLS_RE)];
-  for (const m of rlsLidas) rlsDeclarada.add(m[1].toLowerCase());
-  for (const m of sql.matchAll(DISABLE_RLS_RE)) rlsDeclarada.delete(m[1].toLowerCase());
+  aplicarEmOrdem(rlsDeclarada, ENABLE_RLS_RE, DISABLE_RLS_RE);
   conferirCoberturaSimples(rlsLidas.length, sql, ANY_ENABLE_RLS_RE, "enable row level security", file);
   for (const m of sql.matchAll(POLICY_SELECT_RE)) {
     const tabela = m[2].toLowerCase();
@@ -374,6 +472,8 @@ const funcoesTrigger = [...funcoesDeclaradas.entries()].filter(
   ([, trigger]) => trigger,
 ).length;
 
+let recursosExpostos: Set<string> | null = null;
+
 async function rpcsExpostas(): Promise<Set<string> | null> {
   try {
     const response = await fetch(`${supabaseUrl}/rest/v1/`, {
@@ -385,7 +485,13 @@ async function rpcsExpostas(): Promise<Set<string> | null> {
     });
     if (!response.ok) return null;
     const spec = (await response.json()) as { paths?: Record<string, unknown> };
-    const nomes = Object.keys(spec.paths ?? {})
+    const paths = Object.keys(spec.paths ?? {});
+    recursosExpostos = new Set(
+      paths
+        .filter((p) => p.startsWith("/") && !p.startsWith("/rpc/") && p.length > 1)
+        .map((p) => p.slice(1).toLowerCase()),
+    );
+    const nomes = paths
       .filter((p) => p.startsWith("/rpc/"))
       .map((p) => p.slice(5).toLowerCase());
     return new Set(nomes);
@@ -428,6 +534,54 @@ if (expostas === null) {
   } else {
     console.log(
       `[checkMigrationsApplied] ${funcoesVerificaveis.length} funcao(oes) declaradas existem no banco alvo (${funcoesTrigger} de trigger nao sao verificaveis por REST).`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// DIRECAO INVERSA: existe no banco e nenhuma migration declara.
+//
+// O guard responde "declarado existe?". Esta secao responde "existente e
+// declarado?". Importa porque backup fisico preserva o objeto criado a mao, mas
+// reconstrucao a partir das migrations (que e o que `supabase start` faz) nasce
+// sem ele: o ambiente de ensaio sairia diferente de producao e ninguem saberia.
+//
+// So funcoes e tabelas/views, que sao o que o PostgREST expoe. Funcao de
+// extensao (unaccent, show_trgm, ...) nao e declarada por migration nossa de
+// proposito e fica numa lista de excecao explicita, nao por omissao.
+const DE_EXTENSAO = new Set([
+  "unaccent",
+  "show_trgm",
+  "show_limit",
+  "set_limit",
+  "gtrgm_in",
+  "gtrgm_out",
+  "custom_access_token_hook",
+]);
+
+if (expostas !== null) {
+  const funcoesNaoDeclaradas = [...expostas].filter(
+    (f) => !funcoesDeclaradas.has(f) && !DE_EXTENSAO.has(f),
+  );
+  if (funcoesNaoDeclaradas.length > 0) {
+    console.warn(
+      `[checkMigrationsApplied] ${funcoesNaoDeclaradas.length} funcao(oes) existem no banco e NAO sao declaradas por migration nenhuma: ${funcoesNaoDeclaradas.join(", ")}. Reconstrucao a partir das migrations nasceria sem elas.`,
+    );
+  } else {
+    console.log(
+      "[checkMigrationsApplied] direcao inversa: nenhuma funcao existe no banco sem estar declarada.",
+    );
+  }
+  const recursosNaoDeclarados = [...(recursosExpostos ?? [])].filter(
+    (r) => !declared.has(r),
+  );
+  if (recursosNaoDeclarados.length > 0) {
+    console.warn(
+      `[checkMigrationsApplied] ${recursosNaoDeclarados.length} tabela(s)/view(s) expostas pelo PostgREST e NAO declaradas: ${recursosNaoDeclarados.join(", ")}.`,
+    );
+  } else {
+    console.log(
+      "[checkMigrationsApplied] direcao inversa: nenhuma tabela ou view exposta sem estar declarada.",
     );
   }
 }
