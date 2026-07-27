@@ -24,9 +24,11 @@ import type { Mercado } from "../../shared/linkedin/schema";
  *
  * A fixture perfil-real-anonimizado.txt e o texto extraido de um PDF real de
  * export do LinkedIn (pdfjs, mesma extracao de client/src/lib/pdfExtract.ts),
- * com nome, e-mail, telefone e URLs trocados. A anonimizacao preserva a
- * estrutura de linhas, entao o resultado deterministico e identico ao do
- * arquivo original.
+ * com nome, e-mail, telefone, URLs, empregadores, instituicoes de ensino e
+ * nome de produto trocados por sinteticos. A anonimizacao preserva a estrutura
+ * de linhas e os comprimentos que importam para as heuristicas, entao o
+ * resultado deterministico e IDENTICO ao do arquivo original (verificado:
+ * mesmo score, faixa, contagem de experiencias e conjunto de reprovados).
  */
 
 const FIXTURES = path.join(
@@ -107,14 +109,14 @@ describe("golden: perfil real (PDF de export, anonimizado)", () => {
 
     expect(parsed.experiencias.map((e) => e.titulo)).toEqual([
       // BUG CONHECIDO (rodada2 B.8): rodape de paginacao do PDF entra no titulo.
-      // A empresa "Bora na Tech?" fica 3 linhas antes da data e e DESCARTADA.
+      // A empresa "Startup Alfa" fica 3 linhas antes da data e e DESCARTADA.
       "CTO & Co-founder Page   1   of   5",
       // BUG CONHECIDO (rodada2 B.2): empresa colada no cargo.
-      "SinergyRH Artificial Intelligence Engineer",
-      "Chatvolt Generative AI Consultant/Support Analyst",
-      "TST - Tribunal Superior do Trabalho Intern",
+      "NexoRH Artificial Intelligence Engineer",
+      "Botvia Generative AI Consultant/Support Analyst",
+      "OGF - Orgao Governamental Federal Intern",
       // BUG CONHECIDO (rodada2 B.4): formato agrupado do LinkedIn. A empresa
-      // "Alpha Edtech" cai na DESCRICAO da experiencia anterior (a do TST).
+      // "Beta Edtech" cai na DESCRICAO da experiencia anterior (a do orgao).
       "Software Engineer/QA Engineer Page   3   of   5",
       // BUG CONHECIDO (rodada2 B.5): o ultimo bullet da experiencia anterior
       // entra no titulo da seguinte.
@@ -126,13 +128,13 @@ describe("golden: perfil real (PDF de export, anonimizado)", () => {
     // engole o cabecalho da experiencia SEGUINTE (42 chars) em vez de ficar
     // vazia. Por isso nenhum check detecta a experiencia vazia.
     expect(parsed.experiencias[0].descricao).toBe(
-      "SinergyRH Artificial Intelligence Engineer",
+      "NexoRH Artificial Intelligence Engineer",
     );
     expect(parsed.experiencias.map((e) => e.descricao.length)).toEqual([
       42, 1474, 912, 793, 828, 804,
     ]);
     // BUG CONHECIDO (rodada2 B.4): confirma a reatribuicao da empresa.
-    expect(parsed.experiencias[3].descricao).toContain("Alpha Edtech");
+    expect(parsed.experiencias[3].descricao).toContain("Beta Edtech");
   });
 
   it("checks e score", () => {

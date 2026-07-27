@@ -1,5 +1,5 @@
 Contact 
-Denver - Delaware 
+Cidade Exemplo - Estado 
 (11)90000-0000   (Mobile) 
 joana.teste@exemplo.com 
 www.linkedin.com/in/ 
@@ -55,18 +55,18 @@ enhances performance and scalability. I am proficient in using tools
 such as Docker, PostgreSQL, Redis, and Linux, contributing 
 to robust and efficient IT solutions. 
 Experience 
-Bora na Tech? 
+Startup Alfa 
 CTO & Co-founder 
 Page   1   of   5 
 July 2026 - Present   (1 month) 
 Brazil 
-SinergyRH 
+NexoRH 
 Artificial Intelligence Engineer 
 July 2026 - Present   (1 month) 
 São Paulo, Brazil 
 Building production AI systems for HR: a conversational payroll agent and 
 large-scale candidate search. 
-• Built Syni, a production conversational AI agent that answers natural- 
+• Built Aria, a production conversational AI agent that answers natural- 
 language HR and payroll questions for both employees and managers, with 
 role-aware access so employees query their own data and managers query 
 their team’s. 
@@ -88,7 +88,7 @@ using vector embeddings and Qdrant.
 • Built an AI-powered pipeline that automatically extracts and structures 
 information from unstructured resume documents, sharply reducing manual 
 screening time. 
-Chatvolt 
+Botvia 
 Generative AI Consultant/Support Analyst 
 March 2025 - June 2026   (1 year 4 months) 
 Campinas, São Paulo, Brazil 
@@ -109,7 +109,7 @@ Achievements:
 • Successfully integrated a singular AI system across school networks. 
 • Improved response times and customer support satisfaction. 
 • Enhanced decision-making with tailored AI strategies. 
-TST - Tribunal Superior do Trabalho 
+OGF - Orgao Governamental Federal 
 Intern 
 June 2024 - June 2026   (2 years 1 month) 
 Brasília, DF 
@@ -129,7 +129,7 @@ Achievements:
 • Introduced best practices in IT service management. 
 • Contributed to a more responsive IT environment. 
 • Elevated user satisfaction through improved services. 
-Alpha Edtech 
+Beta Edtech 
 1 year 1 month 
 Software Engineer/QA Engineer 
 Page   3   of   5 
@@ -172,8 +172,8 @@ Achievements:
 • Contributed to the development of high-performance web applications. 
 Page   4   of   5 
 Education 
-UniCEUB - Centro Universitário de Brasília 
+Centro Universitario Alfa 
 Bachelor's degree, Computer Science   · (January 2023 - 2026) 
-Harvard University 
+Universidade Beta 
 Computer Science   · (January 2025 - November 2026) 
 Page   5   of   5

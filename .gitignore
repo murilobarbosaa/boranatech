@@ -28,3 +28,8 @@ backups/
 
 # Bundle analysis (ANALYZE=1 pnpm build)
 bundle-stats.html
+
+# PDF cru de perfil do LinkedIn usado nas auditorias: dado pessoal real,
+# nunca versionado. As fixtures derivadas dele vivem anonimizadas em
+# server/lib/__fixtures__/linkedin/.
+docs/fixtures/

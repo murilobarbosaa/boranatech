@@ -58,25 +58,25 @@
     "bulletsReescritos": [
       {
         "bullets": [
-          "Built Syni, a production conversational AI agent using Node.js and React, enhancing HR query handling.",
+          "Built Aria, a production conversational AI agent using Node.js and React, enhancing HR query handling.",
           "Designed a hybrid architecture for AI systems, improving reliability and reducing response latency by ~86%.",
           "Implemented multi-channel delivery for AI solutions, integrating with legacy PHP systems without disruption."
         ],
-        "contexto": "SinergyRH Artificial Intelligence Engineer"
+        "contexto": "NexoRH Artificial Intelligence Engineer"
       },
       {
         "bullets": [
           "Developed over 20 custom AI agents for various companies, improving operational efficiency and client engagement.",
           "Streamlined technical support processes, enhancing customer satisfaction and response times."
         ],
-        "contexto": "Chatvolt Generative AI Consultant/Support Analyst"
+        "contexto": "Botvia Generative AI Consultant/Support Analyst"
       },
       {
         "bullets": [
           "Developed an end-to-end testing suite using Cypress, significantly reducing bugs in production systems.",
           "Implemented automated testing strategies in CI/CD pipelines, accelerating the development cycle."
         ],
-        "contexto": "Alpha Edtech Software Engineer/QA Engineer"
+        "contexto": "Beta Edtech Software Engineer/QA Engineer"
       }
     ],
     "modeloMensagemRecrutador": "Hi [Recruiter's Name], I am a Full-Stack Developer with experience in AI solutions and a strong background in technologies like React and Node.js. I am currently looking for new opportunities and would love to connect!"
