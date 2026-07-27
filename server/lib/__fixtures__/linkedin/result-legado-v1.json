@@ -1,0 +1,358 @@
+{
+  "area": "fullstack",
+  "level": "pleno",
+  "mercado": "exterior",
+  "qualitative": {
+    "resumo": "Seu perfil apresenta uma boa base de experiências e habilidades, mas há espaço para melhorias significativas, especialmente na seção de competências e na cobertura de palavras-chave da área. A falta de algumas tecnologias essenciais pode limitar sua visibilidade para recrutadores. Focar na adição de mais competências e na atualização da headline pode aumentar suas chances de ser encontrado.",
+    "headlines": [
+      "Full Stack Developer | React, Node.js, PostgreSQL, Docker | Building AI Solutions",
+      "Full Stack Engineer | JavaScript, TypeScript, React, Node.js | AI Agent Specialist",
+      "Software Engineer | Full-Stack Developer, Docker, PostgreSQL, Redis | Passionate about AI Integration"
+    ],
+    "melhorias": [
+      {
+        "titulo": "Atualizar a Headline",
+        "comoFazer": "Inclua pelo menos mais 2 tecnologias reconhecidas na sua headline, como Next.js e Express.js, para aumentar a relevância nas buscas.",
+        "prioridade": "alta"
+      },
+      {
+        "titulo": "Adicionar Competências",
+        "comoFazer": "Cadastre pelo menos 6 novas competências relevantes, como Git, GraphQL e MongoDB, para atingir o mínimo recomendado de 10.",
+        "prioridade": "alta"
+      },
+      {
+        "titulo": "Aumentar a Atividade no LinkedIn",
+        "comoFazer": "Comece a interagir mais com postagens, comentando ou compartilhando conteúdos relevantes da sua área, pelo menos uma vez por semana.",
+        "prioridade": "media"
+      },
+      {
+        "titulo": "Convite Claro ao Contato no Sobre",
+        "comoFazer": "Adicione uma frase ao final da seção Sobre convidando recrutadores a entrar em contato, mencionando seu interesse em oportunidades de Full-Stack.",
+        "prioridade": "media"
+      }
+    ],
+    "pontosFortes": [
+      "Experiência sólida em desenvolvimento de software com foco em inteligência artificial.",
+      "Histórico comprovado de criação e implementação de soluções de AI personalizadas para empresas.",
+      "Capacidade de trabalhar com uma variedade de tecnologias modernas, incluindo React, Node.js e PostgreSQL.",
+      "Experiência em gerenciamento de infraestrutura de backend e containerização com Docker."
+    ],
+    "pontosFracos": [
+      "Falta de cobertura de palavras-chave essenciais da área, com apenas 27% das tecnologias-chave cobertas.",
+      "Número insuficiente de competências cadastradas, apenas 4, quando o ideal é 10 ou mais.",
+      "A headline não menciona tecnologias além das já listadas, o que pode limitar a busca por recrutadores.",
+      "Pouca atividade recente no LinkedIn, o que pode impactar a visibilidade do perfil."
+    ],
+    "proximoPasso": "Atualizar a headline para incluir mais tecnologias reconhecidas, como Next.js e Express.js, para melhorar a visibilidade do seu perfil.",
+    "sobreReescrito": "I am a Full-Stack Developer with over 3 years of experience in software development. I have a profound knowledge in full-stack development, crafting modern user interfaces with React and implementing RESTful APIs using TypeScript and Node.js. Additionally, I am skilled in backend infrastructure, including containerization with Docker, database administration with PostgreSQL and Redis, and Linux server management. I have successfully developed and customized Generative AI agents for various clients, addressing their specific challenges and enhancing their business processes. My academic background includes a Bachelor's in Computer Science, currently in progress. I am capable of using my strong desire for learning and development to drive projects to successful completion. I invite recruiters to connect with me for exciting Full-Stack opportunities.",
+    "skillsSugeridas": [
+      "Next.js",
+      "Tailwind CSS",
+      "Express.js",
+      "GraphQL",
+      "MongoDB",
+      "Git",
+      "Ruby",
+      "Elixir"
+    ],
+    "bulletsReescritos": [
+      {
+        "bullets": [
+          "Built Syni, a production conversational AI agent using Node.js and React, enhancing HR query handling.",
+          "Designed a hybrid architecture for AI systems, improving reliability and reducing response latency by ~86%.",
+          "Implemented multi-channel delivery for AI solutions, integrating with legacy PHP systems without disruption."
+        ],
+        "contexto": "SinergyRH Artificial Intelligence Engineer"
+      },
+      {
+        "bullets": [
+          "Developed over 20 custom AI agents for various companies, improving operational efficiency and client engagement.",
+          "Streamlined technical support processes, enhancing customer satisfaction and response times."
+        ],
+        "contexto": "Chatvolt Generative AI Consultant/Support Analyst"
+      },
+      {
+        "bullets": [
+          "Developed an end-to-end testing suite using Cypress, significantly reducing bugs in production systems.",
+          "Implemented automated testing strategies in CI/CD pipelines, accelerating the development cycle."
+        ],
+        "contexto": "Alpha Edtech Software Engineer/QA Engineer"
+      }
+    ],
+    "modeloMensagemRecrutador": "Hi [Recruiter's Name], I am a Full-Stack Developer with experience in AI solutions and a strong background in technologies like React and Node.js. I am currently looking for new opportunities and would love to connect!"
+  },
+  "deterministic": {
+    "faixa": "forte",
+    "score": 72,
+    "checks": [
+      {
+        "id": "headline-existe",
+        "tier": "essencial",
+        "label": "Headline presente",
+        "detail": "Headline detectada no perfil.",
+        "aprovado": true,
+        "category": "headline"
+      },
+      {
+        "id": "headline-cargo-alvo",
+        "tier": "essencial",
+        "label": "Headline com o cargo-alvo",
+        "detail": "A headline traz um cargo que recrutadores buscam.",
+        "aprovado": true,
+        "category": "headline"
+      },
+      {
+        "id": "headline-stack",
+        "tier": "importante",
+        "label": "Headline com tecnologias",
+        "detail": "A headline cita menos de 2 tecnologias reconhecidas.",
+        "aprovado": false,
+        "category": "headline"
+      },
+      {
+        "id": "headline-tamanho",
+        "tier": "importante",
+        "label": "Headline com tamanho bom",
+        "detail": "A headline tem 68 caracteres, um bom tamanho.",
+        "aprovado": true,
+        "category": "headline"
+      },
+      {
+        "id": "headline-sem-cliche",
+        "tier": "opcional",
+        "label": "Headline sem clichês",
+        "detail": "A headline foge dos clichês mais comuns.",
+        "aprovado": true,
+        "category": "headline"
+      },
+      {
+        "id": "sobre-existe",
+        "tier": "essencial",
+        "label": "Seção Sobre presente",
+        "detail": "A seção Sobre tem 1317 caracteres de conteúdo.",
+        "aprovado": true,
+        "category": "sobre"
+      },
+      {
+        "id": "sobre-gancho",
+        "tier": "importante",
+        "label": "Sobre com gancho na primeira frase",
+        "detail": "A primeira frase do Sobre funciona como gancho.",
+        "aprovado": true,
+        "category": "sobre"
+      },
+      {
+        "id": "sobre-stack",
+        "tier": "importante",
+        "label": "Sobre menciona a stack",
+        "detail": "O Sobre menciona 8 tecnologias reconhecidas.",
+        "aprovado": true,
+        "category": "sobre"
+      },
+      {
+        "id": "sobre-cta",
+        "tier": "importante",
+        "label": "Sobre com convite ao contato",
+        "detail": "O Sobre não traz um convite claro ao contato.",
+        "aprovado": false,
+        "category": "sobre"
+      },
+      {
+        "id": "sobre-tamanho",
+        "tier": "opcional",
+        "label": "Sobre com tamanho bom",
+        "detail": "O Sobre tem 1317 caracteres, um tamanho equilibrado.",
+        "aprovado": true,
+        "category": "sobre"
+      },
+      {
+        "id": "exp-existe",
+        "tier": "essencial",
+        "label": "Pelo menos uma experiência",
+        "detail": "6 experiência(s) detectada(s).",
+        "aprovado": true,
+        "category": "experiencias"
+      },
+      {
+        "id": "exp-descricoes",
+        "tier": "essencial",
+        "label": "Experiências com descrição",
+        "detail": "As experiências têm descrições com substância.",
+        "aprovado": true,
+        "category": "experiencias"
+      },
+      {
+        "id": "exp-verbos-acao",
+        "tier": "importante",
+        "label": "Descrições com verbos de ação",
+        "detail": "As descrições usam 37 verbos de ação.",
+        "aprovado": true,
+        "category": "experiencias"
+      },
+      {
+        "id": "exp-tecnologias",
+        "tier": "importante",
+        "label": "Descrições com tecnologias",
+        "detail": "As descrições citam 10 tecnologias reconhecidas.",
+        "aprovado": true,
+        "category": "experiencias"
+      },
+      {
+        "id": "exp-resultados",
+        "tier": "opcional",
+        "label": "Descrições com números e resultados",
+        "detail": "As descrições trazem números ou métricas.",
+        "aprovado": true,
+        "category": "experiencias"
+      },
+      {
+        "id": "cargo-em-experiencia",
+        "tier": "importante",
+        "label": "Cargo-alvo em algum título de experiência",
+        "detail": "O cargo-alvo aparece no título de alguma experiência.",
+        "aprovado": true,
+        "category": "encontrabilidade"
+      },
+      {
+        "id": "cobertura-keywords-area",
+        "tier": "essencial",
+        "label": "Cobertura básica das palavras-chave da área",
+        "detail": "O perfil cobre 27% das tecnologias-chave da área.",
+        "aprovado": false,
+        "category": "encontrabilidade"
+      },
+      {
+        "id": "cobertura-keywords-otima",
+        "tier": "importante",
+        "label": "Cobertura ótima das palavras-chave da área",
+        "detail": "Cobertura de 27% das tecnologias-chave (o ideal é 75% ou mais).",
+        "aprovado": false,
+        "category": "encontrabilidade"
+      },
+      {
+        "id": "skills-quantidade",
+        "tier": "essencial",
+        "label": "Pelo menos 10 competências cadastradas",
+        "detail": "4 competência(s) informada(s) (o ideal é 10 ou mais).",
+        "aprovado": false,
+        "category": "skills"
+      },
+      {
+        "id": "skills-cobertura",
+        "tier": "essencial",
+        "label": "Competências cobrem as palavras-chave da área",
+        "detail": "As competências cobrem 0% das tecnologias-chave da área.",
+        "aprovado": false,
+        "category": "skills"
+      },
+      {
+        "id": "skills-quantidade-otima",
+        "tier": "opcional",
+        "label": "25 ou mais competências cadastradas",
+        "detail": "4 competências (25 ou mais deixa o perfil mais forte).",
+        "aprovado": false,
+        "category": "skills"
+      },
+      {
+        "id": "foto-profissional",
+        "tier": "essencial",
+        "label": "Foto de perfil profissional",
+        "detail": "Você marcou que tem foto de perfil profissional.",
+        "aprovado": true,
+        "category": "sinais"
+      },
+      {
+        "id": "banner-personalizado",
+        "tier": "opcional",
+        "label": "Banner personalizado",
+        "detail": "Você marcou que tem um banner personalizado.",
+        "aprovado": true,
+        "category": "sinais"
+      },
+      {
+        "id": "open-to-work",
+        "tier": "importante",
+        "label": "Open to Work configurado",
+        "detail": "Open to Work configurado para recrutadores.",
+        "aprovado": true,
+        "category": "sinais"
+      },
+      {
+        "id": "conexoes",
+        "tier": "importante",
+        "label": "Rede com 100 ou mais conexões",
+        "detail": "Sua rede já tem alcance (100 ou mais conexões).",
+        "aprovado": true,
+        "category": "sinais"
+      },
+      {
+        "id": "atividade",
+        "tier": "opcional",
+        "label": "Atividade recente no LinkedIn",
+        "detail": "Pouca atividade no LinkedIn, postar ou comentar ajuda a aparecer.",
+        "aprovado": false,
+        "category": "sinais"
+      },
+      {
+        "id": "headline-em-ingles",
+        "tier": "essencial",
+        "label": "Headline em inglês",
+        "detail": "A headline está majoritariamente em inglês.",
+        "aprovado": true,
+        "category": "headline"
+      },
+      {
+        "id": "sobre-em-ingles",
+        "tier": "essencial",
+        "label": "Sobre em inglês",
+        "detail": "O Sobre está majoritariamente em inglês.",
+        "aprovado": true,
+        "category": "sobre"
+      }
+    ],
+    "headline": "Software Developer | Full-Stack Engineer | AI Agent Expert | React |",
+    "sobreTamanho": 1317,
+    "titulosIngles": [
+      {
+        "titulo": "Full Stack Developer",
+        "encontrado": false
+      },
+      {
+        "titulo": "Full Stack Engineer",
+        "encontrado": false
+      },
+      {
+        "titulo": "Software Engineer",
+        "encontrado": true
+      }
+    ],
+    "skillsContagem": 4,
+    "keywordsFaltantes": [
+      "Next.js",
+      "Tailwind CSS",
+      "Express.js",
+      "GraphQL",
+      "MongoDB",
+      "Git",
+      "Ruby",
+      "Elixir",
+      "Nuxt",
+      "NestJS",
+      "Laravel",
+      "Ruby on Rails",
+      "ASP.NET Core",
+      "Phoenix",
+      "Firebase",
+      "Supabase"
+    ],
+    "keywordsEncontradas": [
+      "JavaScript",
+      "TypeScript",
+      "React",
+      "Node.js",
+      "PostgreSQL",
+      "Docker"
+    ],
+    "experienciasContagem": 6
+  }
+}

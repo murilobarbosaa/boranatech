@@ -63,6 +63,7 @@ import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { extractLinkedinPdf, PdfExtractError } from "@/lib/pdfExtract";
 import { cn } from "@/lib/utils";
 import { parseLinkedinText } from "@shared/linkedin/parse";
+import { readQualitative } from "@shared/linkedin/readQualitative";
 import {
   AREA_LABELS,
   AREA_SLUGS,
@@ -851,6 +852,14 @@ export default function LinkedinAnalisar() {
     form.atividade !== "";
   const canSubmit = profileChars >= 200 && signalsAnswered && !loading;
 
+  // Leitura VERSIONADA do qualitative persistido: nunca acessar
+  // result.qualitative.x direto (o jsonb pode ter sido gravado por outra versao
+  // do codigo). Degrada para render parcial em vez de derrubar a pagina.
+  const qual = useMemo(
+    () => (result ? readQualitative(result.qualitative, result.qualitativeVersion) : null),
+    [result],
+  );
+
   // Checklist interativo: exige analise persistida E a feature disponivel no
   // banco. Sem os dois, os cards de melhoria renderizam sem checkbox.
   const checklistEnabled = Boolean(analysisId) && progressAvailable;
@@ -939,7 +948,7 @@ export default function LinkedinAnalisar() {
         {showEntry ? <LinkedinBackdrop reduce={reduce} /> : null}
         {/* Cenario do resultado tingido pela faixa da nota; o estado de erro
             fica sem backdrop (so o pontilhado cream). */}
-        {!loading && !error && result ? (
+        {!loading && !error && result && qual ? (
           <LinkedinResultBackdrop
             faixa={result.deterministic.faixa}
             reduce={reduce}
@@ -1434,7 +1443,7 @@ export default function LinkedinAnalisar() {
                 />
               ) : null}
 
-              {!loading && !error && result ? (
+              {!loading && !error && result && qual ? (
                 <div
                   className="area-rise space-y-8"
                   style={{ animationDelay: "0.08s" }}
@@ -1467,7 +1476,7 @@ export default function LinkedinAnalisar() {
                     className="rotate-[0.5deg]"
                   >
                     <NextStepCard
-                      proximoPasso={result.qualitative.proximoPasso}
+                      proximoPasso={qual.proximoPasso}
                     />
                   </motion.div>
 
@@ -1480,7 +1489,7 @@ export default function LinkedinAnalisar() {
                   <div className="mx-auto mt-14 max-w-3xl space-y-8">
                     <Reveal>
                       <AiSummary
-                        resumo={result.qualitative.resumo}
+                        resumo={qual.resumo}
                         accent={ac}
                         onAskAgent={() =>
                           // TODO(Ana): revisar o texto pre-preenchido da ponte.
@@ -1492,8 +1501,8 @@ export default function LinkedinAnalisar() {
                     </Reveal>
                     <Reveal delay={0.05}>
                       <StrengthsWeaknesses
-                        pontosFortes={result.qualitative.pontosFortes}
-                        pontosFracos={result.qualitative.pontosFracos}
+                        pontosFortes={qual.pontosFortes}
+                        pontosFracos={qual.pontosFracos}
                         accent={ac}
                       />
                     </Reveal>
@@ -1512,7 +1521,7 @@ export default function LinkedinAnalisar() {
                           </FeedbackBanner>
                         ) : null}
                         <Improvements
-                          melhorias={result.qualitative.melhorias}
+                          melhorias={qual.melhorias}
                           accent={ac}
                           applied={checklistEnabled ? applied : undefined}
                           onToggle={
@@ -1545,7 +1554,7 @@ export default function LinkedinAnalisar() {
                         }
                         paste={
                           <ul className="space-y-3">
-                            {result.qualitative.headlines.map(
+                            {qual.headlines.map(
                               (headline, index) => (
                                 <li
                                   key={index}
@@ -1593,11 +1602,11 @@ export default function LinkedinAnalisar() {
                           <div>
                             <div className="mb-2 flex justify-end">
                               <CopyButton
-                                text={result.qualitative.sobreReescrito}
+                                text={qual.sobreReescrito}
                               />
                             </div>
                             <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
-                              {result.qualitative.sobreReescrito}
+                              {qual.sobreReescrito}
                             </p>
                           </div>
                         }
@@ -1662,9 +1671,9 @@ export default function LinkedinAnalisar() {
                           ) : null
                         }
                         paste={
-                          result.qualitative.bulletsReescritos.length > 0 ? (
+                          qual.bulletsReescritos.length > 0 ? (
                             <div className="space-y-4">
-                              {result.qualitative.bulletsReescritos.map(
+                              {qual.bulletsReescritos.map(
                                 (item, index) => (
                                   <div
                                     key={index}
@@ -1740,32 +1749,76 @@ export default function LinkedinAnalisar() {
                           ) : null
                         }
                         paste={
-                          result.qualitative.skillsSugeridas.length > 0 ? (
-                            <div>
-                              <div className="flex items-start justify-between gap-3">
-                                <p className="text-sm text-slate-600">
-                                  Sugestões a partir do que falta no seu perfil.
-                                  Adicione só o que você realmente sabe, mesmo
-                                  que no básico.
-                                </p>
-                                <CopyButton
-                                  text={result.qualitative.skillsSugeridas.join(
-                                    ", ",
-                                  )}
-                                />
-                              </div>
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                {result.qualitative.skillsSugeridas.map(
-                                  (skill) => (
-                                    <span
-                                      key={skill}
-                                      className="inline-flex rounded-full border-2 border-amber-400 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800"
-                                    >
-                                      {skill}
-                                    </span>
-                                  ),
-                                )}
-                              </div>
+                          qual.skillsParaAdicionarAgora.length > 0 ||
+                          qual.skillsParaEstudar.length > 0 ? (
+                            <div className="space-y-5">
+                              {/* Bloco 1: o que a pessoa JA comprova no perfil
+                                  e pode cadastrar hoje. Este tem CopyButton. */}
+                              {qual.skillsParaAdicionarAgora.length > 0 ? (
+                                <div>
+                                  <div className="flex items-start justify-between gap-3">
+                                    <p className="text-sm text-slate-600">
+                                      {/* TODO(Ana): revisar a copy do bloco de adicionar agora. */}
+                                      <span className="font-black text-slate-900">
+                                        Adicione agora:
+                                      </span>{" "}
+                                      seu perfil já demonstra estas tecnologias,
+                                      mas elas não estão nas suas competências.
+                                    </p>
+                                    <CopyButton
+                                      text={qual.skillsParaAdicionarAgora.join(
+                                        ", ",
+                                      )}
+                                    />
+                                  </div>
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    {qual.skillsParaAdicionarAgora.map(
+                                      (skill) => (
+                                        <span
+                                          key={skill}
+                                          className="inline-flex rounded-full border-2 border-emerald-500 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800"
+                                        >
+                                          {skill}
+                                        </span>
+                                      ),
+                                    )}
+                                  </div>
+                                </div>
+                              ) : null}
+
+                              {/* Bloco 2: trilha de estudo. SEM CopyButton de
+                                  proposito: copiar em massa para as
+                                  competencias e exatamente o conselho errado
+                                  que este bloco existe para evitar. */}
+                              {qual.skillsParaEstudar.length > 0 ? (
+                                <div
+                                  className={
+                                    qual.skillsParaAdicionarAgora.length > 0
+                                      ? "border-t-2 border-dashed border-slate-200 pt-5"
+                                      : undefined
+                                  }
+                                >
+                                  <p className="text-sm text-slate-600">
+                                    {/* TODO(Ana): revisar a copy do bloco de estudo. */}
+                                    <span className="font-black text-slate-900">
+                                      Para estudar:
+                                    </span>{" "}
+                                    comuns na sua área e ainda sem sinal no seu
+                                    perfil. Não adicione às competências antes
+                                    de realmente saber usar.
+                                  </p>
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    {qual.skillsParaEstudar.map((skill) => (
+                                      <span
+                                        key={skill}
+                                        className="inline-flex rounded-full border-2 border-slate-300 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600"
+                                      >
+                                        {skill}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : null}
                             </div>
                           ) : null
                         }
@@ -1831,12 +1884,12 @@ export default function LinkedinAnalisar() {
                             <div className="mb-2 flex justify-end">
                               <CopyButton
                                 text={
-                                  result.qualitative.modeloMensagemRecrutador
+                                  qual.modeloMensagemRecrutador
                                 }
                               />
                             </div>
                             <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
-                              {result.qualitative.modeloMensagemRecrutador}
+                              {qual.modeloMensagemRecrutador}
                             </p>
                           </div>
                         }

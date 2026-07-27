@@ -4,6 +4,7 @@ import {
   LinkedinQualitativeSchema,
   MERCADO_LABELS,
   FAIXA_LABELS,
+  QUALITATIVE_VERSION,
   type LinkedinAnalysisResponse,
   type LinkedinAnalyzeRequest,
   type LinkedinDeterministicResult,
@@ -76,7 +77,7 @@ TECNOLOGIA SÓ COM LASTRO: em bulletsReescritos, você só pode nomear uma tecno
 
 NÚMERO NÃO MUDA DE DONO: métricas, percentuais e volumes só podem ser reescritos com o MESMO sujeito e o MESMO recorte que têm no perfil. Se o texto diz que uma técnica específica reduziu a latência em uma situação específica, não atribua esse número ao projeto inteiro, a outra técnica, nem a outra métrica. Na dúvida sobre a que o número se refere, escreva o bullet sem o número.
 
-CAMPOS PARA COLAR SÓ COM O QUE EXISTE: headlines, sobreReescrito e bulletsReescritos só podem citar tecnologias que aparecem no perfil. As tecnologias marcadas como SEM NENHUMA evidência no perfil não entram em nenhum texto para colar e não entram em skillsSugeridas; no máximo aparecem em uma melhoria, descritas como estudo futuro e com essa palavra explícita. skillsSugeridas deve priorizar as tecnologias que o perfil COMPROVA e que estão fora das competências cadastradas, porque essas a pessoa pode adicionar hoje com honestidade.
+CAMPOS PARA COLAR SÓ COM O QUE EXISTE: headlines, sobreReescrito e bulletsReescritos só podem citar tecnologias que aparecem no perfil. As tecnologias marcadas como SEM NENHUMA evidência no perfil não entram em nenhum texto para colar: elas só podem aparecer em skillsParaEstudar. skillsParaAdicionarAgora recebe SOMENTE as tecnologias que o perfil já comprova e que estão fora das competências cadastradas; quando essa lista de comprovadas chegar vazia, devolva skillsParaAdicionarAgora como lista vazia, e isso é resposta correta, não uma falha a preencher.
 
 COMO RECRUTADORES BUSCAM: recrutadores usam o LinkedIn Recruiter com buscas por cargo atual, cargos anteriores, competências cadastradas e palavras-chave booleanas. Os campos que mais pesam na busca são a headline, os títulos das experiências e a seção de competências. O texto do Sobre é indexado, mas pesa menos. Por isso o cargo-alvo precisa aparecer literalmente na headline e em pelo menos um título de experiência, e as tecnologias precisam estar escritas por extenso no perfil, em português e quando fizer sentido também em inglês.
 
@@ -387,7 +388,10 @@ function warmEmptyQualitative(
     sobreReescrito:
       "Estou começando minha jornada em tecnologia e construindo meu portfólio na prática. Tenho estudado as bases da área e aplicado em projetos pessoais. Quero uma primeira oportunidade para crescer junto a um time. Pode me chamar aqui no LinkedIn para conversar.",
     bulletsReescritos: [],
-    skillsSugeridas: faltantesTop,
+    // Perfil quase vazio nao comprova tecnologia nenhuma, entao "adicionar
+    // agora" fica legitimamente vazio e as faltantes viram trilha de estudo.
+    skillsParaAdicionarAgora: [],
+    skillsParaEstudar: faltantesTop,
     modeloMensagemRecrutador:
       "Olá, tudo bem? Estou começando na área de tecnologia e tenho acompanhado as vagas da sua empresa. Adoraria me conectar e ficar no seu radar para futuras oportunidades de início de carreira. Obrigado!",
   };
@@ -430,6 +434,8 @@ export async function analyzeLinkedin(
       area: request.area,
       level: request.level,
       mercado: request.mercado,
+      // Carimbo do formato de qualitative, lido de volta por readQualitative.
+      qualitativeVersion: QUALITATIVE_VERSION,
       deterministic,
       qualitative,
     },

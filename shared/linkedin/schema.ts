@@ -527,10 +527,19 @@ export const LinkedinQualitativeSchema = z.object({
     .describe(
       "Bullets reescritos por experiência ou projeto do perfil. Idioma pela regra do mercado-alvo: inglês para mercado exterior; para Brasil ou ambos, português com os termos técnicos em inglês.",
     ),
-  skillsSugeridas: z
+  // Um campo so ("skillsSugeridas") carregava dois significados incompativeis:
+  // "adicione isto hoje" e "estude isto". Como ele era derivado da lista de
+  // faltantes, a ferramenta acabava mandando um dev JavaScript anunciar Ruby e
+  // Elixir nas competencias. Separado em dois, cada um com a sua regra.
+  skillsParaAdicionarAgora: z
     .array(z.string())
     .describe(
-      "Competências que faltam e que a pessoa provavelmente pode adicionar com honestidade, baseadas nas palavras-chave faltantes e no que o perfil já evidencia.",
+      "Competências que o perfil JÁ COMPROVA (aparecem no texto das experiências ou do Sobre) e que não estão na lista de competências cadastradas. A pessoa pode adicionar hoje com honestidade. LISTA VAZIA É RESPOSTA VÁLIDA E ESPERADA quando tudo que o perfil comprova já está cadastrado: não preencha com tecnologia que o perfil não evidencia só para não deixar vazio.",
+    ),
+  skillsParaEstudar: z
+    .array(z.string())
+    .describe(
+      "Tecnologias da área que o perfil NÃO evidencia, oferecidas como trilha de estudo. NÃO é para colar no perfil: a pessoa não deve adicionar nenhuma delas às competências antes de realmente saber usar. Lista vazia é válida.",
     ),
   modeloMensagemRecrutador: z
     .string()
@@ -567,10 +576,26 @@ export type LinkedinAnalyzeRequest = z.infer<
 
 // Resposta do endpoint
 
+/**
+ * Versão do formato de `qualitative`, estampada no result a cada escrita.
+ *
+ * 1 (implícita, ausente nas linhas gravadas até 2026-07-26): tinha
+ *   `skillsSugeridas`, um campo só, derivado das palavras-chave faltantes.
+ * 2: `skillsSugeridas` deu lugar a `skillsParaAdicionarAgora` e
+ *   `skillsParaEstudar`.
+ *
+ * Quem lê análise persistida NUNCA acessa `result.qualitative.x` direto: usa
+ * `readQualitative` (shared/linkedin/readQualitative.ts), que resolve a versão
+ * e degrada para render parcial. Ver CLAUDE.md, "Lookups por valor do servidor".
+ */
+export const QUALITATIVE_VERSION = 2;
+
 export interface LinkedinAnalysisResponse {
   area: (typeof AREA_SLUGS)[number];
   level: LinkedinLevel;
   mercado: Mercado;
+  /** Ausente nas linhas da versão 1. Ver QUALITATIVE_VERSION. */
+  qualitativeVersion?: number;
   deterministic: LinkedinDeterministicResult;
   qualitative: LinkedinQualitative;
 }
