@@ -610,12 +610,20 @@ export const QUALITATIVE_VERSION = 3;
  *   muda para o mesmo perfil: headline completa, competências sem fragmento,
  *   descrições sem ruído. Notas de v1 e v2 não são comparáveis entre si, e é
  *   por isso que o delta é suprimido quando as versões diferem.
+ * 3: Fase 1B. O bloco de experiências passou a separar empresa de cargo, a
+ *   terminar a descrição no cabeçalho do bloco seguinte (e não na data
+ *   seguinte) e a reconhecer localização por forma, não por comprimento. Nas 6
+ *   fixtures a nota não se moveu, mas isso é uma propriedade DELAS, não da
+ *   régua: `cargo-em-experiencia` casa contra os títulos, e um perfil cuja
+ *   empresa contém uma palavra de cargo ("Backend Solutions") passava por causa
+ *   da empresa e agora não passa mais. Duas notas de versões diferentes não são
+ *   comparáveis mesmo quando coincidem.
  *
  * O conjunto mínimo de leitura (`keywordsEncontradas`, `keywordsFaltantes`,
  * `titulosIngles`) passa por `readDeterministic`. Ver
  * docs/divida-leitura-persistida.md.
  */
-export const DETERMINISTIC_VERSION = 2;
+export const DETERMINISTIC_VERSION = 3;
 
 export interface LinkedinAnalysisResponse {
   area: (typeof AREA_SLUGS)[number];
