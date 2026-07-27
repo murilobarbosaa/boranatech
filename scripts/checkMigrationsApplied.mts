@@ -39,6 +39,25 @@ if (!supabaseUrl || !serviceRoleKey) {
 }
 
 // "create table [if not exists] public.<nome>", com ou sem aspas no nome.
+/**
+ * FORMAS DE "create table" QUE O PARSER RECONHECE:
+ *   create table public.x                       create table if not exists public.x
+ *   create table "public".x                     create table if not exists "public"."x"
+ *   create table public."x"                     quebra de linha entre os tokens
+ *   maiusculas/minusculas em qualquer combinacao (flag i)
+ *
+ * FORMAS QUE ELE NAO RECONHECE (de proposito ou por limitacao):
+ *   create table x                    (sem schema; ambiguo, depende do search_path)
+ *   create table outro_schema.x       (so auditamos o schema public)
+ *   create temp/unlogged table ...    (nao e objeto persistente do schema)
+ *   create table public . x           (espaco antes do ponto)
+ *
+ * A lista de nao-reconhecidas nao e teorica: a primeira versao deste script
+ * usava um regex que exigia "if not exists" e enxergava 38 das 72 tabelas,
+ * produzindo um "esta tudo certo" falso. Por isso existe o guard de cobertura
+ * mais abaixo: qualquer "create table" que o parser NAO conseguir atribuir a
+ * uma tabela derruba o script, em vez de encolher o conjunto em silencio.
+ */
 const CREATE_TABLE_RE =
   /create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public|"public")\.\s*"?([a-z0-9_]+)"?/gi;
 // "drop table [if exists] public.<nome>": tabela criada e depois removida por
@@ -47,25 +66,75 @@ const CREATE_TABLE_RE =
 // falso positivo e ninguem confia mais nele.
 const DROP_TABLE_RE =
   /drop\s+table\s+(?:if\s+exists\s+)?(?:public|"public")\.\s*"?([a-z0-9_]+)"?/gi;
+// Deteccao ampla, so para conferir COBERTURA do parser: pega qualquer
+// "create ... table" e compara com o que o regex especifico conseguiu ler.
+const ANY_CREATE_TABLE_RE = /create\s+(?:\w+\s+)*?table\s+(?:if\s+not\s+exists\s+)?[^\s(;]+/gi;
+
+// Total esperado de tabelas declaradas e ainda vivas. Afirmado de proposito: se
+// o conjunto ENCOLHER (regex que parou de casar, migration removida, parser
+// quebrado), o script falha mesmo que todas as tabelas restantes existam no
+// banco. Atualize este numero conscientemente ao adicionar ou dropar tabela.
+const EXPECTED_TABLE_COUNT = 72;
+
+/** Remove comentarios de linha e de bloco antes de qualquer parse. */
+function stripSqlComments(sql: string): string {
+  return sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
+}
 
 // Ordem lexicografica dos arquivos = ordem cronologica das migrations (prefixo
 // timestamp), entao criar e dropar na sequencia reproduz o estado final.
 const declared = new Set<string>();
+const naoReconhecidas: string[] = [];
 for (const file of readdirSync(migrationsDir)
   .filter((f) => f.endsWith(".sql"))
   .sort()) {
-  const sql = readFileSync(path.join(migrationsDir, file), "utf8");
-  for (const match of sql.matchAll(CREATE_TABLE_RE)) {
+  const sql = stripSqlComments(readFileSync(path.join(migrationsDir, file), "utf8"));
+  const reconhecidas = [...sql.matchAll(CREATE_TABLE_RE)];
+  for (const match of reconhecidas) {
     declared.add(match[1].toLowerCase());
   }
   for (const match of sql.matchAll(DROP_TABLE_RE)) {
     declared.delete(match[1].toLowerCase());
   }
+  // Guard de cobertura por arquivo: todo "create table" precisa ter sido lido.
+  const todas = [...sql.matchAll(ANY_CREATE_TABLE_RE)];
+  if (todas.length > reconhecidas.length) {
+    const lidas = new Set(reconhecidas.map((m) => m[0].replace(/\s+/g, " ").toLowerCase()));
+    for (const m of todas) {
+      const trecho = m[0].replace(/\s+/g, " ").toLowerCase();
+      if (![...lidas].some((l) => l.startsWith(trecho) || trecho.startsWith(l))) {
+        naoReconhecidas.push(`${file}: ${m[0].replace(/\s+/g, " ").slice(0, 80)}`);
+      }
+    }
+  }
+}
+
+if (naoReconhecidas.length > 0) {
+  console.error(
+    `[checkMigrationsApplied] ${naoReconhecidas.length} "create table" que o parser NAO reconheceu:`,
+  );
+  for (const item of naoReconhecidas) console.error(`  ${item}`);
+  console.error(
+    "Ajuste CREATE_TABLE_RE (e o bloco de formas reconhecidas no topo) antes de confiar neste script.",
+  );
+  process.exit(1);
 }
 
 const tables = [...declared].sort();
 if (tables.length === 0) {
   console.error("[checkMigrationsApplied] nenhuma tabela encontrada nas migrations.");
+  process.exit(1);
+}
+
+if (tables.length !== EXPECTED_TABLE_COUNT) {
+  console.error(
+    `[checkMigrationsApplied] o conjunto declarado mudou: ${tables.length} tabela(s), esperado ${EXPECTED_TABLE_COUNT}.`,
+  );
+  console.error(
+    tables.length < EXPECTED_TABLE_COUNT
+      ? "  ENCOLHEU. Se nao foi um drop intencional, o parser provavelmente parou de reconhecer alguma forma."
+      : "  CRESCEU. Se as tabelas novas sao esperadas, atualize EXPECTED_TABLE_COUNT.",
+  );
   process.exit(1);
 }
 
