@@ -80,7 +80,84 @@ const MUT = [
   [C, "skills-quantidade-otima (25)", "aprovado: skillsForm.length >= 25,", "aprovado: skillsForm.length >= 1,"],
 ];
 
+// MODO VIZINHANCA (--vizinhanca). As mutacoes da tabela acima sao de ordem de
+// grandeza e respondem "esse limiar e usado?". A Fase 3 move fronteiras por
+// poucos pontos, e a pergunta dela e outra: "essa fronteira esta no lugar
+// certo?". Um limiar pode estar coberto contra 40 -> 4 e descoberto contra
+// 40 -> 41. Foi assim que o peso `essencial` apareceu como buraco: o mutante
+// que o pegou era de +1.
+//
+// [arquivo, nome, template com {N}, valor atual]
+const VIZINHOS = [
+  [C, "cobertura-keywords-area", "aprovado: coverageRatio >= {N},", "0.5"],
+  [C, "cobertura-keywords-otima", "aprovado: coverageRatio >= {N},", "0.75"],
+  [C, "skills-cobertura", "aprovado: skillsRatio >= {N},", "0.5"],
+  [S, "peso essencial", "  essencial: {N},", "10"],
+  [S, "peso importante", "  importante: {N},", "6"],
+  [S, "peso opcional", "  opcional: {N},", "3"],
+  [C, "skills-quantidade", "aprovado: skillsForm.length >= {N},", "10"],
+  [C, "skills-quantidade-otima", "aprovado: skillsForm.length >= {N},", "25"],
+  [C, "sobre-tamanho, min", "const ok = len >= {N} && len <= 2200;", "500"],
+  [C, "sobre-tamanho, max", "const ok = len >= 500 && len <= {N};", "2200"],
+  [C, "exp-descricoes", "const ok = len >= {N};", "100"],
+  [S, "faixa inicio", "if (score <= {N}) return \"inicio\";", "39"],
+  [S, "faixa em-construcao", "if (score <= {N}) return \"em-construcao\";", "69"],
+  [S, "faixa forte", "if (score <= {N}) return \"forte\";", "89"],
+];
+
+// Passo por limiar: razao usa 0.01 e 0.02, inteiro usa 1 e 2.
+const passos = (valor) => (valor.includes(".") ? [0.01, 0.02] : [1, 2]);
+const fmt = (base, delta) => {
+  const n = Number(base) + delta;
+  return base.includes(".") ? String(Number(n.toFixed(4))) : String(n);
+};
+
 const ALVOS = "shared/linkedin server/lib/linkedin client/src/components/linkedin";
+const VIZINHANCA = process.argv.includes("--vizinhanca");
+
+function rodarTestes(R, ALVOS) {
+  try {
+    execSync(`npx vitest run ${ALVOS} --silent 2>&1`, { cwd: R, encoding: "utf8", stdio: "pipe" });
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+if (VIZINHANCA) {
+  const out = [];
+  for (const [rel, nome, template, valor] of VIZINHOS) {
+    const abs = `${R}/${rel}`;
+    const orig = readFileSync(abs, "utf8");
+    const de = template.replace("{N}", valor);
+    if (orig.split(de).length - 1 !== 1) {
+      out.push({ nome, rel, status: "ANCORA NAO ENCONTRADA OU AMBIGUA", de });
+      console.log(`??   ${rel}  ${nome}: ancora "${de}" nao bate`);
+      continue;
+    }
+    const linha = orig.slice(0, orig.indexOf(de)).split("\n").length;
+    const resultado = {};
+    for (const passo of passos(valor)) {
+      for (const sinal of [-1, 1]) {
+        const novo = fmt(valor, sinal * passo);
+        writeFileSync(abs, orig.replace(de, template.replace("{N}", novo)));
+        resultado[`${sinal > 0 ? "+" : "-"}${passo}`] = rodarTestes(R, ALVOS);
+        writeFileSync(abs, orig);
+      }
+    }
+    const menor = passos(valor)[0];
+    const cobertoNoMenor = resultado[`-${menor}`] || resultado[`+${menor}`];
+    out.push({ nome, rel, linha, valor, resultado, cobertoNoMenor });
+    const marca = Object.entries(resultado).map(([k, v]) => `${k}:${v ? "quebra" : "PASSA"}`).join("  ");
+    console.log(`${cobertoNoMenor ? "OK  " : "GAP "} ${nome.padEnd(26)} ${valor.padEnd(6)} ${marca}`);
+  }
+  writeFileSync(`${R}/vizinhanca.json`, JSON.stringify(out, null, 2));
+  const gaps = out.filter((o) => o.cobertoNoMenor === false);
+  console.log(`\n=== vizinhanca: ${out.length} limiares | com cobertura de fronteira: ${out.length - gaps.length} | SEM: ${gaps.length} ===`);
+  for (const g of gaps) console.log(`  GAP  ${g.rel}:${g.linha}  ${g.nome} (${g.valor})`);
+  process.exit(0);
+}
+
 const linhas = [];
 for (const [rel, nome, de, para] of MUT) {
   const abs = `${R}/${rel}`;
