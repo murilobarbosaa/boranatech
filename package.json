@@ -23,6 +23,7 @@
     "check": "tsc --noEmit && tsx scripts/generateRoadmapMeta.mts --check && tsx scripts/generateSitemap.mts --check && tsx scripts/checkCspHashes.mts",
     "check:migrations": "tsx scripts/checkMigrationsApplied.mts",
     "report:ai-usage": "tsx scripts/aiUsageReport.mts",
+    "check:persisted": "tsx scripts/checkPersistedAnalyses.mts",
     "posters": "tsx scripts/fetch-tmdb-posters.mjs",
     "seed:content": "tsx server/scripts/seed-content.ts",
     "test": "vitest run",
