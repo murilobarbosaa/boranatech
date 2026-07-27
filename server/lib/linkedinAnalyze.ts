@@ -48,16 +48,33 @@ import { toOpenAIStrictSchema } from "./openaiStrictSchema";
 /**
  * Conteudo minimo de descricao para uma experiencia poder receber bullets.
  *
- * Justificativa com as 6 fixtures, todas as 13 experiencias medidas: a unica
- * abaixo de 48 caracteres e a de 39, que nao e descricao nenhuma (e o cabecalho
- * da experiencia SEGUINTE, engolido pelo bug B.1, aberto). A menor descricao
- * legitima tem 56 ("Atendimento ao cliente e organizacao do estoque da loja.").
- * 48 e o meio do vao, com 9 caracteres de margem para cada lado.
+ * REVALIDADO na Fase 1B, depois que o B.1 foi corrigido. A justificativa
+ * anterior ("meio do vao entre 39 e 56") estava contaminada: o 39 nao era uma
+ * descricao curta, era o cabecalho da experiencia SEGUINTE engolido pelo bug.
+ * Com o parser corrigido, a distribuicao real das 13 experiencias das 6
+ * fixtures e:
  *
- * Por que o corte existe: sem descricao de origem, todo bullet gerado e
- * fabricado por definicao. Pior, a fabricacao passa despercebida quando nao
- * cita numero nem tecnologia, que sao as duas coisas que a verificacao
- * determinista sabe conferir. Nao gerar e a unica resposta honesta.
+ *   0 caracteres .... 1 experiencia   (CTO, que de fato nao tem descricao)
+ *   1 a 47 .......... 0 experiencias  <- vao SEM NENHUM DADO
+ *   48 ou mais ...... 12 experiencias (a menor legitima tem 56)
+ *
+ * Ou seja: a unica fronteira que o corpus sustenta e zero contra nao-zero.
+ * Qualquer valor entre 1 e 55 e igualmente sem evidencia, e o teto e 56, para
+ * nao recusar a unica descricao curta real que existe.
+ *
+ * Por que manter um corte acima de zero, entao: os dois erros nao custam o
+ * mesmo. Recusar bullets de uma descricao curta e real custa um bullet, e a
+ * pessoa recebe no lugar uma melhoria dizendo como escrever a descricao, o que
+ * e bom conselho para uma descricao de 30 caracteres. Aceitar uma descricao
+ * curta demais custa um bullet inventado colado no LinkedIn de alguem, e a
+ * verificacao determinista NAO pega esse caso: ela confere numeral e
+ * tecnologia, e um bullet fabricado sem numero e sem stack passa limpo
+ * (blindspot registrado em docs/rubrica-fidelidade.md, secao 8).
+ *
+ * 48 fica, agora com a justificativa certa: e conservador por escolha, com 8
+ * caracteres de folga abaixo do unico dado real, e o vao que ele cobre esta
+ * vazio no corpus. Se algum dia aparecer descricao legitima nessa faixa, este
+ * numero muda com dado na mao, nao por gosto.
  */
 const MIN_DESCRICAO_PARA_BULLETS = 48;
 
@@ -103,6 +120,8 @@ DIVERGÊNCIA ENTRE CHECAGEM E TEXTO (válvula da regra dos fatos): as checagens 
 TECNOLOGIA SÓ COM LASTRO: em bulletsReescritos, você só pode nomear uma tecnologia dentro do bullet de uma experiência se ela aparecer no texto DAQUELA experiência. Tecnologia que aparece no Sobre, na headline ou em OUTRA experiência não vale como lastro para esta. Se o texto da experiência não nomeia a stack, escreva o bullet sem tecnologia nenhuma, descrevendo o que foi feito e o resultado. É melhor um bullet sem stack do que um bullet com stack inventada.
 
 EXPERIÊNCIA SEM DESCRIÇÃO: se uma experiência vier marcada como SEM DESCRIÇÃO PRÓPRIA NO PERFIL, não escreva bullets para ela em hipótese nenhuma. Não há o que reescrever: qualquer bullet ali seria inventado por você. Em vez disso, inclua uma melhoria nomeando essa experiência e dizendo como escrever a descrição dela.
+
+EXPERIÊNCIA COM DESCRIÇÃO CURTA DEMAIS: se uma experiência vier marcada como DESCRIÇÃO CURTA DEMAIS PARA REESCREVER, também não escreva bullets para ela. A diferença para o caso acima é que aqui existe texto, e ele vem transcrito na marcação: use esse texto para escrever uma melhoria específica, citando o que a pessoa já escreveu e dizendo o que falta acrescentar. Não trate essa experiência como vazia, porque ela não está.
 
 NÚMERO NÃO MUDA DE DONO: métricas, percentuais e volumes só podem ser reescritos com o MESMO sujeito e o MESMO recorte que têm no perfil. Se o texto diz que uma técnica específica reduziu a latência em uma situação específica, não atribua esse número ao projeto inteiro, a outra técnica, nem a outra métrica. Na dúvida sobre a que o número se refere, escreva o bullet sem o número.
 
@@ -158,12 +177,32 @@ function checksBlock(deterministic: LinkedinDeterministicResult): string {
     .join("\n");
 }
 
-/** A experiencia tem descricao propria suficiente para sustentar bullets? */
-function temConteudoParaBullets(exp: LinkedinParsed["experiencias"][number]): boolean {
-  return exp.descricao.trim().length >= MIN_DESCRICAO_PARA_BULLETS;
+/**
+ * Estado da descricao de uma experiencia.
+ *
+ * Zero e curto sao coisas diferentes e recebem tratamento diferente: "vazia" e
+ * um fato do perfil (a pessoa nao escreveu nada) e "curta" e um julgamento
+ * nosso sobre quantidade de texto. Antes os dois caiam na mesma copy, que
+ * dizia "sem descricao propria" para uma experiencia que tinha descricao.
+ */
+type EstadoDescricao = "vazia" | "curta" | "suficiente";
+
+export function estadoDescricao(
+  exp: LinkedinParsed["experiencias"][number],
+): EstadoDescricao {
+  const n = exp.descricao.trim().length;
+  if (n === 0) return "vazia";
+  return n >= MIN_DESCRICAO_PARA_BULLETS ? "suficiente" : "curta";
 }
 
-function experienciasBlock(parsed: LinkedinParsed): string {
+/** A experiencia tem descricao propria suficiente para sustentar bullets? */
+function temConteudoParaBullets(exp: LinkedinParsed["experiencias"][number]): boolean {
+  return estadoDescricao(exp) === "suficiente";
+}
+
+// Exportada para teste: e o texto exato que chega ao modelo, e as tres
+// marcacoes (vazia, curta, suficiente) so tem valor se forem verificaveis.
+export function experienciasBlock(parsed: LinkedinParsed): string {
   if (parsed.experiencias.length === 0)
     return "(nenhuma experiência detectada)";
   const text = parsed.experiencias
@@ -174,10 +213,15 @@ function experienciasBlock(parsed: LinkedinParsed): string {
       // sozinho o que o parser bagunçava.
       const cargo = exp.titulo || "(sem título)";
       const titulo = exp.empresa ? `${cargo} (${exp.empresa})` : cargo;
-      // Marcada explicitamente para o modelo: sem descricao propria, nao ha o
-      // que reescrever, e qualquer bullet aqui seria invencao.
-      if (!temConteudoParaBullets(exp)) {
+      // Marcada explicitamente para o modelo. Vazia e curta sao marcacoes
+      // distintas: na vazia nao ha texto nenhum, na curta ha texto e o modelo
+      // precisa saber que ele existe para poder cita-lo na melhoria.
+      const estado = estadoDescricao(exp);
+      if (estado === "vazia") {
         return `${index + 1}. ${titulo}\n(SEM DESCRIÇÃO PRÓPRIA NO PERFIL: não escreva bullets para esta experiência)`;
+      }
+      if (estado === "curta") {
+        return `${index + 1}. ${titulo}\n(DESCRIÇÃO CURTA DEMAIS PARA REESCREVER, transcrita aqui só como contexto: "${exp.descricao}". Não escreva bullets para esta experiência: o que existe não sustenta um bullet sem você completar o que não está escrito)`;
       }
       return `${index + 1}. ${titulo}\n${exp.descricao}`;
     })
@@ -485,13 +529,31 @@ function registrarViolacao(v: Violacao): void {
   );
 }
 
-/** Melhoria injetada quando uma experiencia esta sem descricao propria. */
-function melhoriaDescricaoVazia(titulo: string): LinkedinMelhoria {
+/**
+ * Melhoria injetada quando uma experiencia nao recebeu bullets.
+ *
+ * Duas copies fechadas, uma por estado, porque o pedido a pessoa e diferente:
+ * na vazia ela escreve do zero, na curta ela parte do que ja escreveu. Dizer
+ * "esta sem descricao" para quem escreveu uma linha e simplesmente falso, e a
+ * pessoa para de confiar no resto do relatorio.
+ */
+function melhoriaSemBullets(
+  titulo: string,
+  estado: "vazia" | "curta",
+): LinkedinMelhoria {
+  if (estado === "vazia") {
+    return {
+      prioridade: "alta",
+      titulo: `Escreva a descrição da experiência ${titulo}`,
+      comoFazer:
+        "Essa experiência está no seu perfil só com cargo e data, sem uma linha do que você fez. Abra ela no LinkedIn hoje e escreva três bullets: o que você entregava, com qual tecnologia ou ferramenta, e um resultado concreto quando houver. Enquanto estiver vazia, ela quase não pesa na busca e quem abre o seu perfil não tem o que ler.",
+    };
+  }
   return {
     prioridade: "alta",
-    titulo: `Escreva a descrição da experiência ${titulo}`,
+    titulo: `Amplie a descrição da experiência ${titulo}`,
     comoFazer:
-      "Essa experiência está no seu perfil só com cargo e data, sem uma linha do que você fez. Abra ela no LinkedIn hoje e escreva três bullets: o que você entregava, com qual tecnologia ou ferramenta, e um resultado concreto quando houver. Enquanto estiver vazia, ela quase não pesa na busca e quem abre o seu perfil não tem o que ler.",
+      "Essa experiência tem descrição, mas em uma linha só, e por isso a plataforma não reescreveu ela: não dá para transformar uma frase em bullets sem completar o que você não escreveu. Volte nela e acrescente, a partir do que já está lá, com qual tecnologia ou ferramenta você fazia aquilo, para quem ou para quantas pessoas, e o que mudou depois. Três bullets já colocam essa experiência no mesmo nível das outras.",
   };
 }
 
@@ -595,8 +657,10 @@ function aplicarLastro(
   );
   let melhorias = qualitative.melhorias;
   if (semDescricao.length > 0) {
-    const nova = melhoriaDescricaoVazia(
-      semDescricao[0].titulo || "sem título",
+    const alvo = semDescricao[0];
+    const nova = melhoriaSemBullets(
+      alvo.titulo || "sem título",
+      estadoDescricao(alvo) === "vazia" ? "vazia" : "curta",
     );
     const jaCitada = melhorias.some((m) =>
       m.titulo.toLowerCase().includes("descrição da experiência"),
