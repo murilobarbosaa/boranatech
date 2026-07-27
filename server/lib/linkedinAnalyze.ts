@@ -16,6 +16,10 @@ import { ENGLISH_TITLES, PT_TITLES } from "../../shared/linkedin/titles";
 import { env } from "./env";
 import { parseSkillsInput, runLinkedinChecks } from "./linkedinChecks";
 import {
+  numeraisSemLastro,
+  removerNumeralSemLastro,
+} from "../../shared/linkedin/numeralLastro";
+import {
   keyTechnologiesForArea,
   matchTechnologies,
 } from "./skillNormalize";
@@ -399,6 +403,87 @@ function warmEmptyQualitative(
   };
 }
 
+/**
+ * Casa um bloco de bulletsReescritos com a experiencia de origem pelo campo
+ * `contexto`, por sobreposicao de tokens do titulo. Mesmo criterio da rubrica.
+ */
+function origemDoBloco(
+  contexto: string,
+  experiencias: LinkedinParsed["experiencias"],
+): string | null {
+  const alvo = contexto.toLowerCase();
+  let melhor = -1;
+  let score = 0;
+  experiencias.forEach((exp, index) => {
+    const hits = exp.titulo
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((token) => token.length > 3 && alvo.includes(token)).length;
+    if (hits > score) {
+      score = hits;
+      melhor = index;
+    }
+  });
+  if (melhor < 0) return null;
+  return `${experiencias[melhor].titulo} ${experiencias[melhor].descricao}`;
+}
+
+/**
+ * Remove de bulletsReescritos todo numeral que NAO existe no texto da
+ * experiencia de origem daquele bloco.
+ *
+ * Numeral e verificavel, e o que e verificavel se confere em codigo em vez de
+ * se pedir ao modelo. Foi assim que a fidelidade saiu de 58 para 0 na Fase 0. O
+ * prompt ja instrui "numero nao muda de dono", mas instrucao nao e garantia:
+ * numa medicao de 10 execucoes o modelo fabricou 30%, 40% e 25% numa unica
+ * resposta, em experiencias onde esses valores nao existem.
+ *
+ * Bloco sem origem identificavel fica INTACTO: sem lastro conhecido nao da para
+ * afirmar que o numeral e falso, e apagar por precaucao destruiria dado bom.
+ */
+function sanearNumeraisDosBullets(
+  qualitative: LinkedinQualitative,
+  parsed: LinkedinParsed,
+): LinkedinQualitative {
+  if (qualitative.bulletsReescritos.length === 0) return qualitative;
+
+  let removidos = 0;
+  const bulletsReescritos = qualitative.bulletsReescritos.map((bloco) => {
+    const origem = origemDoBloco(bloco.contexto, parsed.experiencias);
+    if (!origem) return bloco;
+    const semLastro = numeraisSemLastro(bloco.bullets, origem);
+    if (semLastro.length === 0) return bloco;
+
+    const bullets = bloco.bullets.map((bullet) => {
+      let saida = bullet;
+      for (const ocorrencia of semLastro) {
+        if (ocorrencia.bullet !== bullet) continue;
+        removidos += 1;
+        // Log estruturado para virar metrica de qualidade depois: sem painel
+        // agora, mas greppavel e ja com os campos que o painel pediria.
+        console.warn(
+          JSON.stringify({
+            level: "warn",
+            msg: "ai_numeral_sem_lastro",
+            tool: "linkedin-analyzer",
+            campo: "bulletsReescritos",
+            contexto: bloco.contexto,
+            numeral: ocorrencia.numeral,
+            acao: "removido",
+            retry: false,
+          }),
+        );
+        saida = removerNumeralSemLastro(saida, ocorrencia.numeral);
+      }
+      return saida;
+    });
+    return { ...bloco, bullets };
+  });
+
+  if (removidos === 0) return qualitative;
+  return { ...qualitative, bulletsReescritos };
+}
+
 export async function analyzeLinkedin(
   request: LinkedinAnalyzeRequest,
   onAiIo?: (io: AnalyzeAiIo) => void,
@@ -424,12 +509,14 @@ export async function analyzeLinkedin(
   const quaseVazio =
     !parsed.headline && !parsed.sobre && parsed.experiencias.length === 0;
 
-  const qualitative = quaseVazio
+  const qualitativeCru = quaseVazio
     ? warmEmptyQualitative(request.area, request.mercado, deterministic)
     : await runQualitative(
         buildUserPrompt(request, parsed, deterministic),
         onAiIo,
       );
+
+  const qualitative = sanearNumeraisDosBullets(qualitativeCru, parsed);
 
   return {
     response: {
