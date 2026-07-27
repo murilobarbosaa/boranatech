@@ -22,6 +22,10 @@
 //                                          SUPABASE_SERVICE_ROLE_KEY do ambiente)
 // Saida: exit 1 e lista das tabelas ausentes; exit 0 quando tudo existe.
 import { readdirSync, readFileSync } from "node:fs";
+import {
+  classificarRls,
+  type LeituraContagem,
+} from "./lib/rlsVeredito";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -600,7 +604,24 @@ if (rlsVivas.length !== EXPECTED_RLS_COUNT) {
   );
 }
 
-async function contarLinhas(tabela: string, chave: string): Promise<number> {
+/**
+ * Leitura de contagem com TRES desfechos distintos, nao um numero e -1 para
+ * tudo que der errado.
+ *
+ * O terceiro estado e real: uma tabela com `REVOKE ALL ... FROM anon` devolve
+ * **401 com codigo 42501** (insufficient_privilege), nao zero linhas. Sao
+ * defesas em camadas diferentes, e o relatorio precisa distinguir:
+ *   - RLS ativa: o papel PODE consultar a tabela e a policy nao devolve linha;
+ *   - sem privilegio: o papel nem chega na tabela.
+ *
+ * A versao anterior devolvia -1 em qualquer resposta nao-ok e o chamador tratava
+ * `<= 0` como protegida. O veredito saia certo por acidente: **um erro de rede
+ * tambem contava como protegida**, que e a conflacao perigosa desta classe.
+ */
+async function contarLinhas(
+  tabela: string,
+  chave: string,
+): Promise<LeituraContagem> {
   try {
     const response = await fetch(`${supabaseUrl}/rest/v1/${tabela}?select=*`, {
       headers: {
@@ -610,10 +631,23 @@ async function contarLinhas(tabela: string, chave: string): Promise<number> {
         Range: "0-0",
       },
     });
-    if (!response.ok) return -1;
-    return Number(response.headers.get("content-range")?.split("/")[1] ?? -1);
-  } catch {
-    return -1;
+    if (response.ok) {
+      return {
+        tipo: "ok",
+        n: Number(response.headers.get("content-range")?.split("/")[1] ?? -1),
+      };
+    }
+    const corpo = (await response.json().catch(() => null)) as {
+      code?: string;
+    } | null;
+    // 42501 e o insufficient_privilege do Postgres, que e o que o REVOKE produz.
+    if (corpo?.code === "42501") return { tipo: "sem-privilegio" };
+    return { tipo: "erro", detalhe: `HTTP ${response.status} ${corpo?.code ?? ""}` };
+  } catch (err) {
+    return {
+      tipo: "erro",
+      detalhe: err instanceof Error ? err.message : String(err),
+    };
   }
 }
 
@@ -636,27 +670,27 @@ if (!anonKey) {
   const expostas: string[] = [];
   const inconclusivas: string[] = [];
   let protegidas = 0;
+  let semPrivilegio = 0;
   let publicasDeclaradas = 0;
   for (const tabela of rlsVivas) {
+    // A classificacao mora em scripts/lib/rlsVeredito.ts, com teste. Ela NAO e
+    // replicada aqui de proposito: uma copia so pegaria mudanca de shape.
     const comServico = await contarLinhas(tabela, serviceRoleKey!);
-    if (comServico < 0) {
-      inconclusivas.push(`${tabela} (service role nao leu)`);
-      continue;
-    }
-    if (comServico === 0) {
-      // Tabela vazia nao prova nada: anon ver zero pode ser RLS ou pode ser
-      // que nao ha o que ver. NUNCA contar como verde.
-      inconclusivas.push(`${tabela} (vazia)`);
-      continue;
-    }
-    const comAnon = await contarLinhas(tabela, anonKey);
-    if (comAnon <= 0) {
-      protegidas += 1;
-    } else if (tabelasComSelectPublico.has(tabela)) {
-      publicasDeclaradas += 1;
-    } else {
-      expostas.push(`${tabela} (service role ve ${comServico}, anon ve ${comAnon})`);
-    }
+    const precisaAnon = comServico.tipo === "ok" && comServico.n > 0;
+    const comAnon = precisaAnon ? await contarLinhas(tabela, anonKey) : null;
+    const v = classificarRls(
+      comServico,
+      comAnon,
+      tabelasComSelectPublico.has(tabela),
+    );
+    if (v.veredito === "protegida-por-policy") protegidas += 1;
+    else if (v.veredito === "protegida-por-privilegio") semPrivilegio += 1;
+    else if (v.veredito === "publica-declarada") publicasDeclaradas += 1;
+    else if (v.veredito === "exposta") {
+      expostas.push(
+        `${tabela} (service role ve ${v.comServico}, anon ve ${v.comAnon})`,
+      );
+    } else inconclusivas.push(`${tabela} (${v.motivo})`);
   }
   if (expostas.length > 0) {
     houveFalha = true;
@@ -666,7 +700,7 @@ if (!anonKey) {
     for (const e of expostas) console.error(`  EXPOSTA: public.${e}`);
   }
   console.log(
-    `[checkMigrationsApplied] RLS: ${protegidas} protegida(s), ${publicasDeclaradas} publica(s) por policy declarada, ${expostas.length} exposta(s), ${inconclusivas.length} inconclusiva(s) de ${rlsVivas.length}.`,
+    `[checkMigrationsApplied] RLS: ${protegidas} protegida(s) por policy, ${semPrivilegio} protegida(s) por REVOKE (anon sem privilegio), ${publicasDeclaradas} publica(s) por policy declarada, ${expostas.length} exposta(s), ${inconclusivas.length} inconclusiva(s) de ${rlsVivas.length}.`,
   );
   if (inconclusivas.length > 0) {
     console.warn(

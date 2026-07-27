@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { analyzeLinkedin } from "./linkedinAnalyze";
+import { capturados } from "./__mocks__/sentryEspiao";
 import * as http from "./http";
 import type { LinkedinAnalyzeRequest } from "../../shared/linkedin/schema";
 
@@ -20,6 +21,11 @@ import type { LinkedinAnalyzeRequest } from "../../shared/linkedin/schema";
  * com ela estar desligada. Aqui a resposta da IA é injetada COM violação, então
  * a única saída limpa possível é a camada tendo agido.
  */
+
+vi.mock("@sentry/node", async () => {
+  const { espiao } = await import("./__mocks__/sentryEspiao");
+  return espiao();
+});
 
 const FIXTURE = readFileSync(
   path.join(
@@ -116,6 +122,30 @@ describe("camada de lastro no caminho da rota", () => {
     const texto = q.bulletsReescritos.flatMap((b) => b.bullets).join(" ");
     // 97% nao existe no texto daquela experiencia: tem que ter sido removido.
     expect(texto).not.toContain("97%");
+  });
+
+  it("MANDA a violacao para o Sentry, com um issue por tipo", async () => {
+    // `console.warn` NAO chega ao Sentry neste projeto: o init nao declara
+    // `integrations` e `captureConsoleIntegration` nao e padrao no
+    // @sentry/node. Sem esta captura o sinal morria no log do Railway.
+    vi.spyOn(http, "fetchWithTimeout").mockResolvedValue(respostaComViolacao());
+    // ESM nao deixa espiar o namespace do modulo, entao o mock e do modulo
+    // inteiro, com o resto passando adiante.
+    await analyzeLinkedin(PEDIDO);
+    expect(capturados.length).toBeGreaterThanOrEqual(1);
+    const o = capturados[0].opts as {
+      level: string;
+      fingerprint: string[];
+      tags: Record<string, string>;
+    };
+    expect(capturados[0].msg).toContain("ai_lastro_violado");
+    // `warning`, nao `error`: a protecao FUNCIONOU. `error` e reservado para
+    // protecao desligada (o modo degradado da cota).
+    expect(o.level).toBe("warning");
+    expect(o.tags.area).toBe("ai-lastro");
+    // Um issue por TIPO, para um tipo nao esconder o outro atras do volume.
+    expect(o.fingerprint[0]).toBe("ai-lastro-violado");
+    expect(o.fingerprint).toHaveLength(2);
   });
 
   it("REGISTRA a violacao, em vez de sanear em silencio", async () => {

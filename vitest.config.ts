@@ -19,10 +19,16 @@ export default defineConfig({
       "client/src/**/*.test.{ts,tsx}",
       "server/**/*.test.ts",
       "shared/**/*.test.ts",
+      // `scripts/` entrou porque o guard de migrations tem logica de verdade
+      // (a classificacao de RLS) e ela precisava de teste. Teste em pasta fora
+      // do include nao roda, que e pior que teste nenhum: da a impressao de
+      // cobertura sem ter nenhuma.
+      "scripts/**/*.test.ts",
     ],
     environmentMatchGlobs: [
       ["server/**", "node"],
       ["shared/**", "node"],
+      ["scripts/**", "node"],
     ],
   },
 });

@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/node";
+
 import { AREA_LABELS, type AreaSlug } from "../../shared/areas";
 import {
   LINKEDIN_LEVEL_LABELS,
@@ -603,9 +605,46 @@ function experienciaDoBloco(
   return melhor < 0 ? null : experiencias[melhor];
 }
 
+/**
+ * Teto de eventos de lastro no Sentry, por tipo e por processo.
+ *
+ * Mesmo cuidado do modo degradado da cota: um dia ruim do modelo geraria um
+ * evento por analise e o alerta viraria ruido. O `console.warn` continua saindo
+ * em TODA ocorrencia, entao a contagem exata fica no log; o Sentry recebe a
+ * amostra que faz o problema aparecer no painel.
+ */
+const INTERVALO_LASTRO_MS = 60 * 1000;
+const ultimoLastroPorTipo = new Map<string, number>();
+
 function registrarViolacao(v: Violacao): void {
+  // NIVEL: `warning`, nao `error`, e a diferenca e deliberada. O modo degradado
+  // da cota e `error` porque significa que uma PROTECAO ESTA DESLIGADA; uma
+  // violacao de lastro significa o oposto, que a protecao FUNCIONOU e removeu o
+  // que o modelo tentou fabricar. O que se quer aqui e visibilidade (o evento
+  // aparece no painel e da para contar), nao urgencia de plantao.
+  //
+  // Sem esta captura o evento morria no log do Railway: o Sentry deste projeto
+  // nao declara `integrations`, e `captureConsoleIntegration` NAO e padrao no
+  // @sentry/node, entao console.warn nunca chegava la.
+  const agora = Date.now();
+  const ultimo = ultimoLastroPorTipo.get(v.tipo) ?? 0;
+  if (agora - ultimo >= INTERVALO_LASTRO_MS) {
+    ultimoLastroPorTipo.set(v.tipo, agora);
+    try {
+      Sentry.captureMessage(`ai_lastro_violado: ${v.tipo}`, {
+        level: "warning",
+        tags: { area: "ai-lastro", tool: "linkedin-analyzer", tipo: v.tipo },
+        // Um issue por TIPO: os quatro tipos sao problemas diferentes e nao
+        // devem se esconder atras do volume um do outro.
+        fingerprint: ["ai-lastro-violado", v.tipo],
+        extra: { campo: v.campo, termo: v.termo, contexto: v.contexto },
+      });
+    } catch {
+      // Sentry desligado (DSN ausente) e no-op por desenho.
+    }
+  }
   // Log estruturado, mesmo formato da Fase 1A-bis, agora com o tipo
-  // distinguido. Vira metrica de qualidade depois; sem painel agora.
+  // distinguido. Sai em TODA ocorrencia: e ele que da a contagem exata.
   console.warn(
     JSON.stringify({
       level: "warn",
