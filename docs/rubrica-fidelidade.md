@@ -126,6 +126,18 @@ Custo aproximado: US$ 0,0012 por execução com `gpt-4o-mini`, cerca de US$ 0,01
 | 2026-07-26 | Fase 0, item 7 (lastro por experiência) | 10 | 22 | 0 | v1 |
 | 2026-07-26 | Fase 0, campos separados (v2) | 10 | 3 | 0 | v1 |
 | 2026-07-26 | Fase 0, `skillsParaAdicionarAgora` em código (v3) | 10 | **0** | **0** | v1 |
+| 2026-07-26 | Fase 1A, normalização de line-wrap e rodapé | 10 | 3 | 0 | v1 |
+| 2026-07-27 | Fase 1A-bis, saneamento de numeral em bullets | **30** | 2 | 1 | v1.1 |
+
+Detalhe da medição de 30 execuções (n maior justamente porque n=10 não distinguia regressão de amostra
+ruim): **28 de 30 execuções limpas**, 1 com um problema e 1 com dois. As 3 ocorrências restantes são de duas
+causas conhecidas e nenhuma é fabricação de numeral, que era o alvo:
+
+- 1 `distorcida`: reatribuição de numeral. A origem diz "25+ IT professionals" e a saída escreveu "satisfação
+  do usuário em 25%". O `25` existe na experiência, então a verificação mecânica aprova por desenho. É o ponto
+  cego registrado na emenda 1.
+- 2 `inventadas`: tecnologias (React, TypeScript) numa **headline** do perfil raso. Fora do escopo do
+  saneamento, que nesta rodada cobre só `bulletsReescritos`.
 
 Leitura da série, que é o resultado mais útil deste documento:
 
