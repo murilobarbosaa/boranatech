@@ -59,6 +59,32 @@ run). Ele passa a somar o `usage` que a OpenAI devolve em cada chamada e grava o
 - **Contra:** não aparece em `report:ai-usage`. Quem quiser o total gasto no mês precisa somar duas
   fontes na mão.
 
+## 2-bis. `env -i` NÃO isola o `dotenv`: prova errada dada como boa
+
+Registro de um erro de verificação, porque ele é a classe da Fase 3 aplicada a ambiente.
+
+Antes do primeiro push, afirmei que a suíte roda sem ambiente, com esta prova:
+
+```
+$ env -i PATH=... CI=true npx vitest run
+Test Files 62 passed | Tests 549 passed
+```
+
+**A prova estava errada.** `env -i` limpa as variáveis do shell, mas `server/lib/env.ts:5` chama
+`config({ quiet: true })` do `dotenv`, que **lê o arquivo `.env` do disco** e não depende do shell. O teste
+continuou recebendo `OPENAI_API_KEY` o tempo todo. No CI, onde o `.env` não existe (é gitignored),
+`linkedinLastroNaRota.test.ts` quebrou nos 4 testes com `Serviço de IA não configurado`.
+
+**A verificação válida é remover o arquivo:**
+
+```
+$ mv .env .env.probe-bak; npx vitest run; mv .env.probe-bak .env
+```
+
+O padrão do erro é o de sempre: eu testei a coisa que era fácil de testar em vez da coisa que a afirmação
+dizia, e o resultado verde escondeu que o escopo era menor. A diferença aqui é que o "parser cego" era o meu
+raciocínio sobre o que `env -i` cobre.
+
 ## 3. Recomendação
 
 **Caminho C, e nada além disso por enquanto.**

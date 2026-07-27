@@ -22,6 +22,21 @@ import type { LinkedinAnalyzeRequest } from "../../shared/linkedin/schema";
  * a única saída limpa possível é a camada tendo agido.
  */
 
+/**
+ * `openaiApiKey` sintetica: `runQualitative` tem um guard
+ * (`linkedinAnalyze.ts:480`) que lanca antes de qualquer chamada HTTP, e o CI
+ * nao tem `.env`. A chave NAO e usada: o transporte (`fetchWithTimeout`) esta
+ * mockado logo abaixo, entao nenhuma requisicao sai daqui.
+ *
+ * `importActual` de proposito, em vez de um objeto sintetico: assim todo o
+ * resto de `env` continua real e o teste nao vira uma versao simplificada do
+ * caminho. Quem roda continua sendo `analyzeLinkedin`, inteira.
+ */
+vi.mock("./env", async (importActual) => {
+  const real = await importActual<typeof import("./env")>();
+  return { ...real, env: { ...real.env, openaiApiKey: "sk-de-teste-nao-usada" } };
+});
+
 vi.mock("@sentry/node", async () => {
   const { espiao } = await import("./__mocks__/sentryEspiao");
   return espiao();
