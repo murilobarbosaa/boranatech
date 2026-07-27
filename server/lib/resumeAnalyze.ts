@@ -26,6 +26,11 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// O bloco QUANTIDADES OBRIGATORIAS do prompt nao e redundante com o schema:
+// toOpenAIStrictSchema remove minItems/maxItems (o strict mode da OpenAI nao
+// aceita essas palavras-chave), entao a cardinalidade de pontosFortes,
+// pontosFracos e sugestoesPorSecao so chega ao modelo pelo texto. Sem ela o
+// modelo devolve 2 ou 8 itens, o safeParse reprova e a analise vira 502.
 // TODO(Ana): revisar toda a copy do prompt do avaliador de curriculo.
 const SYSTEM_PROMPT = `Voce e um avaliador senior de curriculos para carreiras de tecnologia no Brasil, mentor da plataforma BoraNaTech. Seu publico e iniciante: estagiarios, juniores e pessoas em transicao de carreira. Seu trabalho e diagnosticar o curriculo com honestidade e devolver sugestoes construtivas e acionaveis.
 
@@ -44,6 +49,8 @@ ADERENCIA A VAGA: preencha aderenciaVaga SOMENTE quando o input trouxer o texto 
 TOM: direto, encorajador e concreto, nunca condescendente. Uma pessoa iniciante precisa sair sabendo exatamente o que fazer.
 
 ESTILO: no idioma do curriculo (ver IDIOMA DA RESPOSTA). Proibido travessao e meia-risca, use ponto, virgula ou parenteses. Sem emojis.
+
+QUANTIDADES OBRIGATORIAS: de 3 a 6 pontosFortes, de 3 a 6 pontosFracos e de 3 a 7 itens em sugestoesPorSecao. Os limites sao rigidos e a lista fora da faixa faz a analise inteira ser descartada. Se o curriculo for bom e voce encontrar menos de 3 problemas reais, complete ate 3 com melhorias de menor prioridade (refinar um bullet, ordem das secoes, clareza do objetivo), sem inventar defeito que nao existe e sem repetir o mesmo ponto com outras palavras. Se houver mais candidatos que o maximo, fique com os de maior impacto.
 
 Responda apenas com o JSON do schema.`;
 
