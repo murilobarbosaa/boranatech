@@ -11,6 +11,7 @@ virar surpresa.
 |---|---|---|
 | Tabelas e views | `create table` nas migrations, com `drop table` descontado | `GET /rest/v1/<nome>`: `PGRST205` significa ausente |
 | Funções (não-trigger) | `create function` / `create or replace function`, com `drop function` descontado | OpenAPI do PostgREST (`GET /rest/v1/`, `Accept: application/openapi+json`) enumera as RPC expostas |
+| **RLS ativa** | `alter table ... enable row level security`, com `disable` descontado | Conta com service role e lê com a chave **anon**: anon ver linhas sem policy pública que justifique é **exposição** |
 
 Em ambos há **guard de cobertura do parser**: se o arquivo tem mais `create X` do que o parser conseguiu
 ler, o script aborta em vez de encolher o conjunto em silêncio. E há **asserção de tamanho do conjunto**
@@ -31,7 +32,7 @@ Duas decisões que valem registro:
 
 | Objeto | Quantidade declarada | Por que não é verificado |
 |---|---|---|
-| Policies (RLS) | 72 | O PostgREST não expõe `pg_policy` de forma nenhuma |
+| Policies, como texto | 72 | O PostgREST não expõe `pg_policy`. O EFEITO da policy de SELECT é verificado pela leitura com anon (acima); o conteúdo exato de `using`/`with check` não é |
 | Índices | 124 | Idem para `pg_index` |
 
 O projeto não tem `DATABASE_URL` nem cliente Postgres (`pg`/`postgres` não estão instalados), então não há
@@ -60,6 +61,36 @@ ausente falha fechado (ninguém lê o que não devia) e índice ausente degrada 
   que sobra.** O guard confirma que a tabela existe, não que ela tem as colunas que o código espera.
   Coluna faltando é exatamente o modo de falha do incidente que criou este script, só que uma camada
   abaixo.
+
+## RLS: como é verificada, e o que fica inconclusivo
+
+Para cada uma das 73 tabelas vivas que declaram RLS: conta com o service role (N) e lê com a chave anon (A).
+
+| N | A | Veredito |
+|---|---|---|
+| > 0 | 0 | **Protegida** |
+| > 0 | > 0 e existe policy de SELECT pública declarada | **Pública por decisão**, não exposição |
+| > 0 | > 0 e **não** existe tal policy | **EXPOSTA**, o guard falha nomeando a tabela |
+| 0 | qualquer | **Inconclusiva**, nunca verde |
+| erro no service role | | **Inconclusiva** |
+
+**Tabela vazia não prova nada**: anon ver zero pode ser RLS funcionando ou pode ser que não há o que ver.
+Contá-la como verde seria o mesmo erro de sempre, falhar passando.
+
+**A regra do Postgres que decide o falso positivo**: policy **sem cláusula `to`** vale para `public`, o que
+inclui `anon`. A primeira versão deste teste exigia `to anon` explícito e teria acusado 11 tabelas de
+catálogo como exposição, todas com `for select using (is_published = true)` e nenhum `to`. Falso positivo
+em guard de segurança é pior que inútil: ensina a ignorar o alarme.
+
+**Estado medido em 2026-07-27**: 53 protegidas, 13 públicas por policy declarada (`areas`, `courses`,
+`external_jobs`, `faculdades_cursos`, `faculdades_ies`, `news`, `plans`, `platforms`, `projects`,
+`roadmap_steps`, `roadmaps`, `search_documents`, `technologies`), **0 expostas**, 7 inconclusivas
+(6 tabelas vazias mais `billing_orphan_payments`, que não existe). `external_jobs` é o caso mais
+informativo: service role vê 8019 e anon vê 2348, ou seja, a policy está filtrando de fato.
+
+**Requisito de ambiente**: a verificação precisa de `VITE_SUPABASE_ANON_KEY` além do service role. Sem ela
+o guard avisa que não verificou, em vez de passar em silêncio. O job `migrations` do CI hoje só recebe
+`VITE_SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`: **para o CI verificar RLS, falta acrescentar o secret**.
 
 ## Modo degradado do limite diário de IA
 

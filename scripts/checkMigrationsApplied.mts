@@ -96,6 +96,34 @@ const ANY_CREATE_FUNCTION_RE = /create\s+(?:or\s+replace\s+)?function\s+[^\s(;]+
 const DROP_FUNCTION_RE =
   /drop\s+function\s+(?:if\s+exists\s+)?(?:public|"public")\.\s*"?([a-z0-9_]+)"?/gi;
 
+/**
+ * RLS: `alter table ... enable row level security`.
+ *
+ * Sai de "enumerado, nao verificado" e vira verificado, porque esta nao e
+ * higiene, e exposicao: a tabela existe, entao o guard de tabela passa, e sem a
+ * RLS aplicada ela fica legivel pela chave anon.
+ */
+const ENABLE_RLS_RE =
+  /alter\s+table\s+(?:if\s+exists\s+)?(?:public|"public")\.\s*"?([a-z0-9_]+)"?\s+enable\s+row\s+level\s+security/gi;
+const ANY_ENABLE_RLS_RE = /enable\s+row\s+level\s+security/gi;
+const DISABLE_RLS_RE =
+  /alter\s+table\s+(?:if\s+exists\s+)?(?:public|"public")\.\s*"?([a-z0-9_]+)"?\s+disable\s+row\s+level\s+security/gi;
+
+/**
+ * Policy de SELECT que o papel `anon` consegue usar.
+ *
+ * A regra do Postgres que importa aqui: policy SEM clausula `to` vale para
+ * `public`, o que inclui `anon`. A primeira versao deste teste exigia `to anon`
+ * explicito e teria acusado 11 tabelas de catalogo como exposicao, todas com
+ * `for select using (is_published = true)` e nenhum `to`. Falso positivo em
+ * guard de seguranca e pior que inutil: ensina a ignorar o alarme.
+ */
+const POLICY_SELECT_RE =
+  /create\s+policy\s+"?([^"\n]+?)"?\s+on\s+(?:public|"public")\.\s*"?([a-z0-9_]+)"?([\s\S]{0,400}?);/gi;
+
+const rlsDeclarada = new Set<string>();
+const tabelasComSelectPublico = new Set<string>();
+
 const CREATE_POLICY_RE = /create\s+policy\s+"?([^"\n]+?)"?\s+on\s/gi;
 const ANY_CREATE_POLICY_RE = /create\s+policy\s/gi;
 const CREATE_INDEX_RE =
@@ -149,6 +177,21 @@ function stripSqlComments(sql: string): string {
   return sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
 }
 
+function conferirCoberturaSimples(
+  lidas: number,
+  fonte: string,
+  amplo: RegExp,
+  rotulo: string,
+  arquivo: string,
+): void {
+  const todas = [...fonte.matchAll(amplo)].length;
+  if (todas > lidas) {
+    naoReconhecidasOutras.push(
+      `${arquivo}: ${todas} "${rotulo}" no arquivo, ${lidas} reconhecidos pelo parser`,
+    );
+  }
+}
+
 // Ordem lexicografica dos arquivos = ordem cronologica das migrations (prefixo
 // timestamp), entao criar e dropar na sequencia reproduz o estado final.
 const declared = new Set<string>();
@@ -172,6 +215,20 @@ for (const file of readdirSync(migrationsDir)
   for (const m of sql.matchAll(DROP_FUNCTION_RE)) {
     funcoesDeclaradas.delete(m[1].toLowerCase());
   }
+  const rlsLidas = [...sql.matchAll(ENABLE_RLS_RE)];
+  for (const m of rlsLidas) rlsDeclarada.add(m[1].toLowerCase());
+  for (const m of sql.matchAll(DISABLE_RLS_RE)) rlsDeclarada.delete(m[1].toLowerCase());
+  conferirCoberturaSimples(rlsLidas.length, sql, ANY_ENABLE_RLS_RE, "enable row level security", file);
+  for (const m of sql.matchAll(POLICY_SELECT_RE)) {
+    const tabela = m[2].toLowerCase();
+    const corpo = m[3].toLowerCase();
+    const ehSelect =
+      /for\s+select/.test(corpo) || !/for\s+(insert|update|delete|all)/.test(corpo);
+    const semClausulaTo = !/\bto\s+[a-z_]/.test(corpo);
+    const paraAnon = /\bto\s+[^;]*\b(anon|public)\b/.test(corpo);
+    if (ehSelect && (semClausulaTo || paraAnon)) tabelasComSelectPublico.add(tabela);
+  }
+
   const polLidas = [...sql.matchAll(CREATE_POLICY_RE)];
   for (const m of polLidas) policiesDeclaradas.add(m[1].trim().toLowerCase());
   const idxLidos = [...sql.matchAll(CREATE_INDEX_RE)];
@@ -371,6 +428,84 @@ if (expostas === null) {
   } else {
     console.log(
       `[checkMigrationsApplied] ${funcoesVerificaveis.length} funcao(oes) declaradas existem no banco alvo (${funcoesTrigger} de trigger nao sao verificaveis por REST).`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// RLS: verificada de fato, lendo com a chave anon.
+// ---------------------------------------------------------------------------
+const EXPECTED_RLS_COUNT = 73;
+const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+
+const rlsVivas = [...rlsDeclarada].filter((t) => declared.has(t)).sort();
+if (rlsVivas.length !== EXPECTED_RLS_COUNT) {
+  houveFalha = true;
+  console.error(
+    `[checkMigrationsApplied] o conjunto de tabelas com RLS mudou: ${rlsVivas.length}, esperado ${EXPECTED_RLS_COUNT}.`,
+  );
+}
+
+async function contarLinhas(tabela: string, chave: string): Promise<number> {
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/${tabela}?select=*`, {
+      headers: {
+        apikey: chave,
+        Authorization: `Bearer ${chave}`,
+        Prefer: "count=exact",
+        Range: "0-0",
+      },
+    });
+    if (!response.ok) return -1;
+    return Number(response.headers.get("content-range")?.split("/")[1] ?? -1);
+  } catch {
+    return -1;
+  }
+}
+
+if (!anonKey) {
+  console.warn(
+    `[checkMigrationsApplied] RLS NAO verificada em ${rlsVivas.length} tabela(s): VITE_SUPABASE_ANON_KEY ausente no ambiente. A verificacao precisa das duas chaves.`,
+  );
+} else {
+  const expostas: string[] = [];
+  const inconclusivas: string[] = [];
+  let protegidas = 0;
+  let publicasDeclaradas = 0;
+  for (const tabela of rlsVivas) {
+    const comServico = await contarLinhas(tabela, serviceRoleKey!);
+    if (comServico < 0) {
+      inconclusivas.push(`${tabela} (service role nao leu)`);
+      continue;
+    }
+    if (comServico === 0) {
+      // Tabela vazia nao prova nada: anon ver zero pode ser RLS ou pode ser
+      // que nao ha o que ver. NUNCA contar como verde.
+      inconclusivas.push(`${tabela} (vazia)`);
+      continue;
+    }
+    const comAnon = await contarLinhas(tabela, anonKey);
+    if (comAnon <= 0) {
+      protegidas += 1;
+    } else if (tabelasComSelectPublico.has(tabela)) {
+      publicasDeclaradas += 1;
+    } else {
+      expostas.push(`${tabela} (service role ve ${comServico}, anon ve ${comAnon})`);
+    }
+  }
+  if (expostas.length > 0) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] ${expostas.length} tabela(s) com RLS declarada estao LEGIVEIS pela chave anon sem policy publica que justifique:`,
+    );
+    for (const e of expostas) console.error(`  EXPOSTA: public.${e}`);
+  }
+  console.log(
+    `[checkMigrationsApplied] RLS: ${protegidas} protegida(s), ${publicasDeclaradas} publica(s) por policy declarada, ${expostas.length} exposta(s), ${inconclusivas.length} inconclusiva(s) de ${rlsVivas.length}.`,
+  );
+  if (inconclusivas.length > 0) {
+    console.warn(
+      `  inconclusivas (sem veredito, NAO sao verdes): ${inconclusivas.join(", ")}`,
     );
   }
 }
