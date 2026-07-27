@@ -100,6 +100,36 @@ Repository secrets. É a mesma chave anon pública que o frontend já usa (`VITE
 novo: ela existe justamente para ser exposta ao navegador. O que o guard faz com ela é ler como um
 visitante anônimo leria.
 
+## Dívida: guarda parcial em função com vários call sites
+
+Varredura da mesma classe que achou o `setScoreDelta`, feita no pré-deploy. A pergunta é: onde uma
+proteção foi acrescentada em **um** lugar de vários?
+
+| Função / estado | Call sites | Protegidos | Situação |
+|---|---|---|---|
+| `setScoreDelta` (LinkedIn) | 2 + 1 reset | **2 + 1** | **CORRIGIDO**: funil único, com teste que enumera |
+| `setReguaMudou` | 1 + 1 reset | 1 + 1 | Dentro do mesmo funil |
+| `setScoreDelta` (**Portfolio**) | 2 + 1 reset | **0** | **DÍVIDA**, ver abaixo |
+| `checkAiDailyLimit` | 9 | 9 | A reserva é interna à função |
+| `logAiUsage` | 84 | 84 | A busca da reserva é interna à função |
+| `aplicarLastro` | 1 | 1 | Caminho único |
+| `readQualitative` | 1 | 1 | Caminho único |
+| `readDeterministic` | 1 | 1 | Caminho único, mas ver abaixo |
+| Leitura direta de `deterministic.*` | **31** | 0 | Dívida já documentada em `divida-leitura-persistida.md` |
+| `setResult` / `setError` | 3 / 5 | n/a | Estado simples, sem regra a proteger |
+
+**`PortfolioAnalisar.tsx` calcula o delta em dois lugares, cada um com a própria condição, e sem nenhuma
+supressão por versão de régua.** Não foi corrigido, e o motivo é escopo: o Portfólio **não tem
+`deterministicVersion`**, então não existe hoje o defeito que isso preveniria. É latente: no dia em que a
+régua do Portfólio mudar, ele vai mostrar delta comparando duas réguas diferentes, que é exatamente o que
+seis rodadas de auditoria evitaram no LinkedIn. Consertar exige auditar uma régua que esta série não
+auditou.
+
+**As 31 leituras diretas de `deterministic.*`** continuam sendo a maior superfície. Uma delas é nova, da
+decomposição no hero (`deterministic.checks`), e está coberta por `decomposicao.test.ts` contra a fixture
+legada real: as 107 linhas têm `checks` com `category` e `tier` em todos os 28 itens, e a soma reproduz a
+nota gravada.
+
 ## Modo degradado do limite diário de IA
 
 Sem a RPC `reserve_ai_usage_slot`, `checkAiDailyLimit` volta ao caminho antigo, ler-depois-escrever, e a
