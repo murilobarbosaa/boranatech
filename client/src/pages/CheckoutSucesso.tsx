@@ -82,14 +82,19 @@ export default function CheckoutSucesso() {
           ?.name ?? "Plano Pro")
       : "Plano Pro";
 
-  const accessSource =
+  const payload =
     typeof subscription === "object" && subscription
-      ? ((subscription as { accessSource?: AccessSource }).accessSource ?? null)
+      ? (subscription as { accessSource?: AccessSource; status?: string })
       : null;
-  // paidAccess: existe linha em subscriptions (o endpoint so devolve
-  // 'subscription' quando achou uma em active/trialing/past_due). Admin com
-  // assinatura paga tambem cai aqui, que e o certo: houve cobranca.
-  const paidAccess = accessSource === "subscription";
+  const accessSource = payload?.accessSource ?? null;
+  // paidAccess deriva da EXISTENCIA da linha de assinatura, nao da string de
+  // precedencia: o ramo "sem assinatura" do endpoint devolve status "free"
+  // fixo, entao qualquer outro status significa linha real em subscriptions
+  // (active/trialing/past_due). Hoje isso coincide com accessSource ===
+  // "subscription" -- billing.ts poe a assinatura na frente de admin e de
+  // influencer --, mas depender do status nao quebra se aquela precedencia for
+  // reordenada. Admin ou influencer QUE PAGARAM continuam vendo o sucesso.
+  const paidAccess = !!payload?.status && payload.status !== "free";
   const grantedAccess =
     !paidAccess && (accessSource === "admin" || accessSource === "influencer");
 
