@@ -239,6 +239,64 @@ async function handleTransition(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Silencios do caminho de dinheiro.
+//
+// Varios handlers abaixo desistem com um `return` mudo e respondem 200 para a
+// Stripe. Isso e correto quando nao houve cobranca (assinatura mexida a mao no
+// painel, boleto so emitido, evento de estado); e um buraco quando o dinheiro JA
+// ENTROU, porque o pagamento some sem log, sem retry e sem linha, e o
+// reconcile-subscriptions nao alcanca o que nunca virou linha.
+//
+// Os dois predicados abaixo separam os dois casos. Regra unica aplicada em todos
+// os pontos: so vira erro (e portanto retry da Stripe) quando o evento CONFIRMA
+// pagamento E ninguem foi atendido, isto e, nao existe linha em subscriptions
+// para aquela chave. Com linha existente o usuario tem acesso, entao o problema
+// e de estado, nao de dinheiro perdido: loga em nivel de erro e devolve 200, sem
+// arriscar um retry perpetuo (a Stripe desabilita endpoint que falha por dias).
+// ---------------------------------------------------------------------------
+
+function isPaidSessionStatus(status: string | null | undefined): boolean {
+  // 'no_payment_required' entra: e o que a Stripe devolve num mode:subscription
+  // 100% descontado. Nao houve cobranca, mas a assinatura DEVE existir.
+  return status === "paid" || status === "no_payment_required";
+}
+
+function eventConfirmsPayment(event: Stripe.Event): boolean {
+  switch (event.type) {
+    // invoice.paid so existe com a fatura liquidada (inclui a de valor zero).
+    case "invoice.paid":
+      return true;
+    case "checkout.session.completed":
+    case "checkout.session.async_payment_succeeded":
+      return isPaidSessionStatus(
+        (event.data.object as Stripe.Checkout.Session).payment_status,
+      );
+    // customer.subscription.* e evento de ESTADO, nao de cobranca. Assinatura
+    // criada a mao no painel, sem o nosso metadata, cai aqui o tempo todo e
+    // precisa continuar sendo ignorada em silencio.
+    default:
+      return false;
+  }
+}
+
+async function subscriptionRowExists(
+  providerSubscriptionId: string,
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("subscriptions")
+    .select("id")
+    .eq("provider_subscription_id", providerSubscriptionId)
+    .limit(1);
+  // Na duvida (erro de query), assume que NAO existe: prefere gritar e forcar
+  // retry a engolir um pagamento por causa de uma falha de leitura.
+  if (error) {
+    console.error("[webhook/stripe] falha ao checar linha existente:", error);
+    return false;
+  }
+  return (data?.length ?? 0) > 0;
+}
+
 // Upsert de uma assinatura Stripe na tabela subscriptions, com guard de
 // out-of-order por last_event_at (mesma protecao do Asaas).
 async function applySubscription(
@@ -248,6 +306,21 @@ async function applySubscription(
 ): Promise<void> {
   const userId = sub.metadata?.supabase_user_id;
   if (!userId) {
+    if (eventConfirmsPayment(event)) {
+      const atendido = await subscriptionRowExists(sub.id);
+      console.error(
+        `[webhook/stripe] PAGAMENTO SEM DONO: subscription ${sub.id} sem supabase_user_id no metadata ` +
+          `(evento ${event.type} ${event.id}, customer ${customerIdOf(sub)}, linha existente: ${atendido}).`,
+      );
+      if (!atendido) {
+        throw createError(
+          500,
+          "subscription_user_missing",
+          "Assinatura paga sem usuário no metadata.",
+        );
+      }
+      return;
+    }
     console.warn(
       `[webhook/stripe] subscription ${sub.id} sem supabase_user_id no metadata; ignorando.`,
     );
@@ -256,6 +329,22 @@ async function applySubscription(
 
   const planCode = resolvePlanCode(sub);
   if (!planCode) {
+    if (eventConfirmsPayment(event)) {
+      const atendido = await subscriptionRowExists(sub.id);
+      console.error(
+        `[webhook/stripe] PAGAMENTO SEM PLANO: subscription ${sub.id} sem plano resolvivel ` +
+          `(evento ${event.type} ${event.id}, user ${userId}, price ` +
+          `${sub.items?.data?.[0]?.price?.id ?? "?"}, linha existente: ${atendido}).`,
+      );
+      if (!atendido) {
+        throw createError(
+          500,
+          "subscription_plan_unresolved",
+          "Assinatura paga sem plano resolvível.",
+        );
+      }
+      return;
+    }
     console.warn(
       `[webhook/stripe] subscription ${sub.id} sem plano resolvivel (metadata/price); ignorando.`,
     );
@@ -280,7 +369,9 @@ async function applySubscription(
     existing?.last_event_at &&
     eventCreatedAt < new Date(existing.last_event_at)
   ) {
-    console.warn(`[webhook/stripe] evento fora de ordem ignorado (${event.id})`);
+    console.warn(
+      `[webhook/stripe] evento fora de ordem ignorado (${event.id})`,
+    );
     return;
   }
 
@@ -375,7 +466,34 @@ async function onCheckoutCompleted(
 
   const subRef = session.subscription;
   const subId = typeof subRef === "string" ? subRef : (subRef?.id ?? null);
-  if (!subId) return;
+  if (!subId) {
+    // Nao pago (boleto de fora do nosso fluxo, sessao sem cobranca): silencio
+    // legitimo, e o async_payment_succeeded ja grita se aquele dinheiro entrar.
+    if (!isPaidSessionStatus(session.payment_status)) {
+      console.warn(
+        `[webhook/stripe] checkout ${session.id} sem subscription e nao pago (${session.payment_status}); ignorando.`,
+      );
+      return;
+    }
+    // Pago e sem subscription: nao ha objeto para virar assinatura. A linha do
+    // boleto e chaveada pelo id da SESSAO, entao e por ela que se checa se
+    // alguem ja foi atendido.
+    const atendido = await subscriptionRowExists(session.id);
+    console.error(
+      `[webhook/stripe] PAGAMENTO SEM ASSINATURA: checkout ${session.id} pago (${session.payment_status}) ` +
+        `sem subscription (mode ${session.mode}, user ` +
+        `${session.metadata?.supabase_user_id || session.client_reference_id || "DESCONHECIDO"}, ` +
+        `total ${session.amount_total}, linha existente: ${atendido}).`,
+    );
+    if (!atendido) {
+      throw createError(
+        500,
+        "checkout_without_subscription",
+        "Checkout pago sem assinatura para ativar.",
+      );
+    }
+    return;
+  }
 
   const sub = await getStripe().subscriptions.retrieve(subId);
   // Fallback: se o metadata da subscription nao veio, reidrata a partir do
@@ -404,7 +522,25 @@ async function applyBoletoPending(
 ): Promise<void> {
   // Se por algum motivo ja veio pago, quem sincroniza e a proxima task; nao grava
   // pendente aqui para nao mascarar o acesso.
-  if (session.payment_status === "paid") return;
+  if (session.payment_status === "paid") {
+    // Caso normal deste ramo: REDELIVERY do completed depois que o boleto ja
+    // compensou. A linha existe (pending ou active) e quem ativa e o
+    // async_payment_succeeded. No-op idempotente, como sempre foi.
+    if (await subscriptionRowExists(session.id)) return;
+    // Sem linha e ja pago: nada no sistema concede acesso a esse boleto, e o
+    // async_payment_succeeded que viesse depois falharia em "Linha do boleto nao
+    // encontrada". Grita aqui, onde ainda da para reprocessar.
+    console.error(
+      `[webhook/stripe] BOLETO PAGO SEM LINHA: checkout ${session.id} veio paid no completed ` +
+        `(user ${session.metadata?.supabase_user_id || session.client_reference_id || "DESCONHECIDO"}, ` +
+        `plano ${session.metadata?.plan_id ?? "?"}, total ${session.amount_total}); nenhum acesso concedido.`,
+    );
+    throw createError(
+      500,
+      "boleto_paid_without_row",
+      "Boleto pago sem linha pendente para ativar.",
+    );
+  }
 
   const userId =
     session.metadata?.supabase_user_id || session.client_reference_id;
@@ -456,12 +592,10 @@ async function applyBoletoPending(
 
   // Idempotente: session id e unico e ignoreDuplicates evita erro se o evento
   // reentrar (retry da Stripe). Sem handleTransition: pendente nao vira Pro.
-  const { error } = await supabaseAdmin
-    .from("subscriptions")
-    .upsert(row, {
-      onConflict: "provider_subscription_id",
-      ignoreDuplicates: true,
-    });
+  const { error } = await supabaseAdmin.from("subscriptions").upsert(row, {
+    onConflict: "provider_subscription_id",
+    ignoreDuplicates: true,
+  });
   if (error) {
     console.error("[webhook/stripe] boleto pending write failed:", error);
     throw createError(500, "db_error", "Erro ao gravar assinatura.");
@@ -681,7 +815,9 @@ async function onInvoiceFailed(
     existing.last_event_at &&
     eventCreatedAt < new Date(existing.last_event_at)
   ) {
-    console.warn(`[webhook/stripe] evento fora de ordem ignorado (${event.id})`);
+    console.warn(
+      `[webhook/stripe] evento fora de ordem ignorado (${event.id})`,
+    );
     return;
   }
 
@@ -733,7 +869,10 @@ async function ensureAffiliateCoupon(
       id: couponId,
       percent_off: percentOff,
       duration: "once",
-      metadata: { source: "bnt_affiliate", discount_percent: String(percentOff) },
+      metadata: {
+        source: "bnt_affiliate",
+        discount_percent: String(percentOff),
+      },
     });
   } catch (err) {
     if (isStripeError(err) && err.code === "resource_already_exists") return;
@@ -1036,11 +1175,7 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
 
   if (error) throw createError(500, "db_error", "Erro ao buscar assinatura.");
   if (!sub) {
-    throw createError(
-      404,
-      "not_found",
-      "Nenhuma assinatura ativa encontrada.",
-    );
+    throw createError(404, "not_found", "Nenhuma assinatura ativa encontrada.");
   }
 
   // BOLETO (renewal_type='manual'): NAO ha subscription recorrente na Stripe
