@@ -130,8 +130,11 @@ describe("golden: perfil real (PDF de export, anonimizado)", () => {
     expect(parsed.experiencias[0].descricao).toBe(
       "NexoRH Artificial Intelligence Engineer",
     );
+    // Os comprimentos refletem os nomes SINTETICOS de empresa (mais curtos que
+    // os reais). O que importa aqui e a forma, nao o numero: score, faixa e
+    // conjunto de reprovados ficaram identicos aos do arquivo original.
     expect(parsed.experiencias.map((e) => e.descricao.length)).toEqual([
-      42, 1474, 912, 793, 828, 804,
+      39, 1472, 910, 792, 828, 804,
     ]);
     // BUG CONHECIDO (rodada2 B.4): confirma a reatribuicao da empresa.
     expect(parsed.experiencias[3].descricao).toContain("Beta Edtech");
