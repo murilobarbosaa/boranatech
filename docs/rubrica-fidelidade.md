@@ -129,6 +129,36 @@ Custo aproximado: US$ 0,0012 por execução com `gpt-4o-mini`, cerca de US$ 0,01
 | 2026-07-26 | Fase 1A, normalização de line-wrap e rodapé | 10 | 3 | 0 | v1 |
 | 2026-07-27 | Fase 1A-bis, saneamento de numeral em bullets | **30** | 2 | 1 | v1.1 |
 | 2026-07-27 | Fase 1A-ter, camada única de lastro | **30** | 4 | 0 | v1.1 |
+| 2026-07-27 | Fase 1B, reescrita do bloco de experiências | **30** | 1 | 0 | v1.1 |
+
+### Fase 1B, 2026-07-27
+
+Hipótese declarada antes de medir: com o bloco de experiências limpo, a fabricação cai. Placar decomposto,
+comparado lado a lado com a 1A-ter:
+
+| Classe | 1A-ter | 1B |
+|---|---|---|
+| fabricação de numeral | 0 | **0** |
+| fabricação de tecnologia | 4 | **1** |
+| afirmação sem numeral e sem tecnologia | 0 | **0** |
+| reatribuição | 0 | **0** |
+| execuções limpas | 28/30 | **29/30** |
+| afirmações avaliadas | (não registrado) | 406 |
+
+A direção bate com a hipótese, e **o tamanho da amostra não sustenta a conclusão**: 2 execuções sujas contra 1,
+em 30, é indistinguível de ruído amostral. O que a medição sustenta com firmeza é o negativo, que era o risco
+real de mexer no parser: **nenhuma classe piorou e nenhuma classe nova apareceu**. As três classes cobertas
+pela camada de lastro seguem em zero.
+
+A única ocorrência é de novo a cegueira 3 da seção 8, no perfil de transição: o texto diz "Estou estudando
+Python e outras ferramentas de análise de dados", que é honesto e é justamente o que se quer de um perfil em
+transição, e a regra mecânica conta como tecnologia sem lastro. Falso positivo do harness, não mentira do
+produto. Tratamento em `docs/tecnologia-aspiracional-sobre.md`.
+
+Mudança no harness nesta rodada: ele passou a importar `experienciasBlock` de
+`server/lib/linkedinAnalyze.ts` em vez de remontar o bloco de experiências por conta própria. A 1B mudou
+exatamente esse trecho do prompt (empresa separada do cargo, três estados de descrição), e um harness que
+remonta o prompt teria medido um prompt que não existe mais.
 
 Placar decomposto da Fase 1A-ter, que é a forma correta de ler o resultado:
 
