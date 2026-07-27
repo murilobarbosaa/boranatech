@@ -493,6 +493,19 @@ export function runLinkedinChecks(
     };
   });
 
+  // Dedup de recomendacao. Formacao e certificacoes vem do parser (secoes que
+  // nenhum check le), mais headline e competencias coladas. Teto de 1500 para
+  // nao inchar o jsonb persistido.
+  const perfilDedup = [
+    headline,
+    ...parsed.formacao,
+    ...parsed.certificacoes,
+    ...parsed.skillsPdf,
+    skillsText,
+  ]
+    .join(" | ")
+    .slice(0, 1500);
+
   return {
     score,
     faixa,
@@ -501,6 +514,7 @@ export function runLinkedinChecks(
     keywordsFaltantes: fullCoverage.faltantes,
     skillsParaAdicionarAgora,
     keywordsCampos,
+    perfilDedup,
     titulosIngles,
     headline: parsed.headline,
     sobreTamanho: sobre.trim().length,

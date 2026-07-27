@@ -1943,7 +1943,36 @@ export default function LinkedinAnalisar() {
                     </Reveal>
 
                     <Reveal>
-                      <NextStepsByArea area={result.area} />
+                      <NextStepsByArea
+                        area={result.area}
+                        contexto={
+                          // Sem keywordsCampos (analise anterior a Fase 2A) o
+                          // componente volta ao modo so-area sozinho: preferir
+                          // recomendacao generica a recomendacao com contexto
+                          // pela metade.
+                          result.deterministic.keywordsCampos
+                            ? {
+                                nivelUsuario: result.level,
+                                lacunas: result.deterministic.keywordsCampos
+                                  .filter((k) => !k.comprovado)
+                                  .map((k) => k.termo),
+                                tecnologiasDaArea:
+                                  result.deterministic.keywordsCampos.map(
+                                    (k) => k.termo,
+                                  ),
+                                textoPerfil:
+                                  result.deterministic.perfilDedup ?? "",
+                                // Semente estavel: a mesma analise reaberta
+                                // recebe a mesma ordem. Sem id (persistencia
+                                // falhou), cai num derivado do proprio
+                                // resultado, que tambem e estavel.
+                                seed:
+                                  analysisId ??
+                                  `${result.area}:${result.deterministic.score}:${result.deterministic.sobreTamanho}`,
+                              }
+                            : undefined
+                        }
+                      />
                     </Reveal>
 
                     {/* Climax do loop fechando o prontuario, com a

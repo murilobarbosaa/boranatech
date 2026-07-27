@@ -33,6 +33,15 @@ export interface LinkedinParsed {
   experiencias: LinkedinExperiencia[];
   /** Competências lidas da seção do PDF (sinal extra, não é o form). */
   skillsPdf: string[];
+  /**
+   * Linhas das seções Formação e Certificações, cruas.
+   *
+   * Não entram em check nenhum e não tocam a nota: existem para a recomendação
+   * de cursos poder deduplicar contra o que a pessoa já tem. Recomendar CS50 de
+   * Harvard para quem tem Harvard na formação é o caso que motivou.
+   */
+  formacao: string[];
+  certificacoes: string[];
   /** Falso quando o texto não tem nada de aproveitável. Vira 422 na rota. */
   usable: boolean;
 }
@@ -461,6 +470,8 @@ export function parseLinkedinText(text: string): LinkedinParsed {
       sobre: null,
       experiencias: [],
       skillsPdf: [],
+      formacao: [],
+      certificacoes: [],
       usable: false,
     };
   }
@@ -480,6 +491,8 @@ export function parseLinkedinText(text: string): LinkedinParsed {
   );
 
   const skillsPdf = parseSkills(sectionLines(lines, hits, "skills"));
+  const formacao = sectionLines(lines, hits, "formacao").slice(0, 20);
+  const certificacoes = sectionLines(lines, hits, "certificacoes").slice(0, 20);
 
   // Sinal real de headline: barra de cargo, palavra de papel ou clichê de
   // perfil, nao so comprimento. Uma linha longa qualquer (lixo de PDF que nao
@@ -498,5 +511,13 @@ export function parseLinkedinText(text: string): LinkedinParsed {
     experiencias.length > 0 ||
     skillsPdf.length > 0;
 
-  return { headline, sobre, experiencias, skillsPdf, usable };
+  return {
+    headline,
+    sobre,
+    experiencias,
+    skillsPdf,
+    formacao,
+    certificacoes,
+    usable,
+  };
 }

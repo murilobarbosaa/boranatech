@@ -506,6 +506,14 @@ export interface LinkedinDeterministicResult {
    * antes da v4 não tem este campo. Ver `readDeterministic`.
    */
   keywordsCampos?: LinkedinKeywordCampos[];
+  /**
+   * Texto do perfil usado SÓ para deduplicar recomendação de curso: formação,
+   * certificações, headline e competências. Não entra em check nenhum.
+   *
+   * Persistido de propósito: é o que faz a mesma análise reaberta recomendar os
+   * mesmos cursos. OPCIONAL, análise anterior à Fase 2B não tem.
+   */
+  perfilDedup?: string;
   /** Títulos de busca em inglês da área, casados ou não contra o perfil. */
   titulosIngles: TituloInglesMatch[];
   headline: string | null;

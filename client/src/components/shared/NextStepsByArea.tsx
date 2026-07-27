@@ -4,6 +4,11 @@ import { ArrowRight, BookOpen, ExternalLink, FolderGit2 } from "lucide-react";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { cursosGratuitos, projetos } from "@/lib/data";
 import { areaLabel, GENERAL_AREA, type AreaSelection } from "@shared/areas";
+import {
+  recomendarCursos,
+  recomendarProjetos,
+  type ContextoRecomendacao,
+} from "@shared/linkedin/proximosPassos";
 
 interface CourseCard {
   id: string;
@@ -12,11 +17,24 @@ interface CourseCard {
   link: string;
   nivel: string;
   areaSlug: string | null;
+  /** Por que este item, e não outro. null no modo só-área. */
+  motivo: string | null;
 }
 
 const MAX_ITEMS = 3;
 
-export default function NextStepsByArea({ area }: { area: AreaSelection }) {
+/**
+ * `contexto` ausente = comportamento antigo (só a área). É o que a análise
+ * gravada antes da Fase 2B produz, e o que qualquer chamador sem análise
+ * produz. Presente, a escolha passa a usar nível, lacunas e dedup.
+ */
+export default function NextStepsByArea({
+  area,
+  contexto,
+}: {
+  area: AreaSelection;
+  contexto?: Omit<ContextoRecomendacao, "area" | "isPro">;
+}) {
   const isGeneral = area === GENERAL_AREA;
   const label = areaLabel(area);
   const { isPro } = useSubscription();
@@ -26,10 +44,18 @@ export default function NextStepsByArea({ area }: { area: AreaSelection }) {
   // convite pra uma porta trancada.
   const projects = useMemo(() => {
     if (isGeneral) return [];
+    if (contexto) {
+      return recomendarProjetos(projetos as never, {
+        ...contexto,
+        area,
+        isPro,
+      }).map((r) => ({ ...r.item, motivo: r.motivo }));
+    }
     return projetos
       .filter((p) => p.areaSlug === area && (p.pro !== true || isPro))
-      .slice(0, MAX_ITEMS);
-  }, [area, isGeneral, isPro]);
+      .slice(0, MAX_ITEMS)
+      .map((p) => ({ ...p, motivo: null as string | null }));
+  }, [area, isGeneral, isPro, contexto]);
 
   // Cursos tambem do catalogo estatico (mesma fonte da pagina /cursos). Antes
   // vinha de getCourses({area}); a rota /api/content/courses agora e fatiada
@@ -37,18 +63,26 @@ export default function NextStepsByArea({ area }: { area: AreaSelection }) {
   // estas sugestoes por area. A fonte canonica cobre todas as areas.
   const courses = useMemo<CourseCard[]>(() => {
     if (isGeneral) return [];
-    return cursosGratuitos
-      .filter((c) => c.areaSlug === area)
-      .slice(0, MAX_ITEMS)
-      .map((c) => ({
-        id: c.id,
-        titulo: c.titulo,
-        canal: c.canal,
-        link: c.link,
-        nivel: c.nivel,
-        areaSlug: c.areaSlug,
-      }));
-  }, [area, isGeneral]);
+    const crus = contexto
+      ? recomendarCursos(cursosGratuitos as never, {
+          ...contexto,
+          area,
+          isPro,
+        }).map((r) => ({ ...r.item, motivo: r.motivo }))
+      : cursosGratuitos
+          .filter((c) => c.areaSlug === area)
+          .slice(0, MAX_ITEMS)
+          .map((c) => ({ ...c, motivo: null as string | null }));
+    return crus.map((c) => ({
+      id: c.id,
+      titulo: c.titulo,
+      canal: c.canal,
+      link: c.link,
+      nivel: c.nivel,
+      areaSlug: c.areaSlug,
+      motivo: c.motivo,
+    }));
+  }, [area, isGeneral, isPro, contexto]);
 
   if (isGeneral) {
     // Sem area definida, o quiz e o caminho pros proximos passos.
@@ -111,6 +145,11 @@ export default function NextStepsByArea({ area }: { area: AreaSelection }) {
                 <p className="mt-2 line-clamp-2 text-sm text-slate-700">
                   {project.objetivo}
                 </p>
+                {project.motivo ? (
+                  <p className="mt-2 border-t-2 border-dashed border-slate-200 pt-2 text-xs font-medium text-violet-800">
+                    {project.motivo}
+                  </p>
+                ) : null}
               </div>
             ))}
           </div>
@@ -151,6 +190,11 @@ export default function NextStepsByArea({ area }: { area: AreaSelection }) {
                   {course.canal ? `${course.canal} | ` : ""}
                   {course.nivel}
                 </p>
+                {course.motivo ? (
+                  <p className="mt-2 border-t-2 border-dashed border-slate-200 pt-2 text-xs font-medium text-violet-800">
+                    {course.motivo}
+                  </p>
+                ) : null}
               </a>
             ))}
           </div>
