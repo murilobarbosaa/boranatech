@@ -1,0 +1,23 @@
+#!/bin/sh
+# Pre-commit do Bora na Tech.
+#
+# Por que existe: durante a auditoria do Analisador de LinkedIn, duas vezes um
+# commit saiu antes de alguem ler o resultado dos testes, e nas duas as golden
+# files pegaram a quebra depois do fato. Um check que depende de lembrar de
+# rodar e exatamente o desenho que causou o bug original desta auditoria (a
+# migration que ficou no repositorio sem ser aplicada). Aqui roda sozinho.
+#
+# Roda: golden files + leitores versionados (~2,4s) e pnpm check (~3,3s).
+# Nao roda a suite inteira (~6,6s) para nao pesar em todo commit; a suite
+# completa fica no CI (.github/workflows/ci.yml).
+#
+# Emergencia: git commit --no-verify. Use com parcimonia e conserte depois.
+set -e
+
+echo "[pre-commit] golden files e leitores versionados..."
+npx vitest run server/lib/linkedinGolden.test.ts shared/linkedin/ --silent
+
+echo "[pre-commit] pnpm check..."
+pnpm check
+
+echo "[pre-commit] ok"
