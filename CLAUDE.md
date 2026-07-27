@@ -93,6 +93,17 @@ supabase/migrations/
 - Cursos e Plataformas são freemium: o grátis vê uma amostra (tamanhos em `client/src/lib/freeTierLimits.ts`, reexport de `shared/freeTierLimits.ts`, fonte única compartilhada com o server), o Pro vê tudo.
 - Dívida conhecida do gating de catálogo: o gate por tier cobre a API (`server/routes/content.ts`), o DOM, o HTML prerenderizado e o JSON-LD, mas o catálogo completo continua extraível do bundle JS, porque `client/src/lib/data.ts` é a fonte canônica e é importada estaticamente pelas páginas. Fechar isso exige inverter a fonte canônica para o DB (servir só a amostra ao free no runtime), o que é um projeto à parte.
 
+## Política de Branch e Deploy
+
+Decidida em 2026-07-27, depois de um lote de 94 commits acumulados sem subir.
+
+- **Trabalho em branch, `main` é produção.** Nada de commit direto na `main`.
+- **CI roda em push de qualquer branch** (`.github/workflows/ci.yml`), então a validação acontece antes da `main`, sem cerimônia de PR. Repositório de uma pessoa: PR sem revisor cobra sem pagar.
+- **Fast-forward quando o CI estiver verde.** Sem merge commit, sem PR. Antes de subir, conferir que é fast-forward mesmo: `git rev-list --count <branch>..origin/main` tem que dar 0.
+- **Branch de dias, não de semanas.** O lote de 94 commits de julho é o anti-padrão a não repetir: cada fase da auditoria deveria ter sido um deploy com 24h de observação. Lote grande transforma qualquer problema numa investigação entre 94 suspeitos, e adia a única verificação que vale, que é o comportamento em produção.
+- **Deploy NÃO é atômico**: Vercel (frontend) e Railway (backend) sobem independentes, e a Vercel costuma terminar primeiro. Existe uma janela de 1 a 3 minutos com front novo contra backend antigo. Todo campo novo que o front leia precisa degradar sozinho nessa janela, e a prova é teste, não inspeção (`shared/linkedin/janelaDeDeploy.test.ts` usa a resposta real do backend antigo).
+- **Preview da Vercel usa as env vars do escopo Preview.** Se elas apontarem para o Supabase e o Railway de produção, uma análise rodada num preview de branch **grava linha real**. Conferir o escopo antes de usar preview para teste.
+
 ## Convenções de Git / Commits
 
 **REGRA CRÍTICA, sempre seguir:**

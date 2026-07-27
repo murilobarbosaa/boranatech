@@ -17,9 +17,19 @@
 # roda sozinho.
 name: CI
 
+# Dispara em push de QUALQUER branch, nao so main.
+#
+# Por que mudou: com o gatilho restrito a main, nao havia como confirmar o CI
+# verde ANTES de tocar em producao, a nao ser abrindo PR. Num repositorio de uma
+# pessoa so, a cerimonia de PR nao paga o que cobra, e o efeito era o inverso do
+# desejado: o CI validava depois do fato.
+#
+# Rodar `migrations` em toda branch e seguro porque ele e LEITURA PURA: faz GET
+# no PostgREST e le o OpenAPI, nao escreve nada, nao chama RPC volatil (a
+# existencia de funcao e conferida pelo OpenAPI justamente para nao invocar
+# `reserve_ai_usage_slot`, que insere linha). Ver docs/limites-do-guard-de-migrations.md.
 on:
   push:
-    branches: [main]
   pull_request:
 
 jobs:

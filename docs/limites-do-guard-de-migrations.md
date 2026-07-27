@@ -148,6 +148,38 @@ O que não pode é ser silencioso. Como reconhecer:
 O aviso sai no máximo **uma vez a cada 5 minutos por processo**. Sem esse corte, um sistema degradado gera
 um evento por requisição, o alerta vira ruído e ninguém olha, que é outra forma de silêncio.
 
+## Lacuna: 35 tabelas cuja policy de RLS nunca foi exercida
+
+Medido em 2026-07-27, depois que o veredito passou a separar os dois mecanismos. Das 66 tabelas com veredito
+(73 menos 7 inconclusivas):
+
+| mecanismo | tabelas |
+|---|---|
+| protegida por **policy** de RLS (anon consulta e a policy não devolve linha) | **18** |
+| protegida por **privilégio** (anon recebe `42501`, nem chega na tabela) | **35** |
+| pública por policy declarada | 13 |
+
+**A lacuna**: nas 35, a policy de RLS **nunca foi exercida por verificação nenhuma**. O `anon` é barrado
+antes, pelo Postgres, então a policy pode estar ausente, errada ou permissiva demais e nada acusa. O guard
+diz "protegida" e está certo sobre o efeito de hoje; ele não diz nada sobre a camada de baixo.
+
+**O gatilho é uma linha de SQL**: `GRANT SELECT ON public.<tabela> TO anon` em qualquer uma das 35 faz a
+proteção passar a depender de uma policy que ninguém conferiu. Não é hipotético: 13 tabelas de catálogo têm
+exatamente esse GRANT hoje, de propósito, e é assim que elas viram públicas.
+
+Só 5 das 35 têm `REVOKE` explícito em migration (`affiliates`, `billing_orphan_payments`,
+`content_sources`, `content_sync_logs`, `coupons`). As outras 30 caem no default do Supabase: `anon` nunca
+recebeu `GRANT`. Ou seja, para a maioria a proteção não é uma decisão escrita, é a ausência de uma.
+
+**Como fechar, quando houver `DATABASE_URL`**: a mesma RPC de introspecção somente-leitura que fecharia
+policies e índices resolveria isto também, comparando, para cada tabela com RLS, se existe policy de SELECT
+declarada. Aí o veredito passa a ter quatro estados em vez de três: protegida por policy, protegida por
+privilégio **com** policy de reserva, protegida por privilégio **sem** policy, e exposta. O terceiro é o que
+hoje é invisível.
+
+**Não fechado**: sem conexão direta ao Postgres não há caminho de leitura, e a RPC de introspecção é ela
+mesma um objeto que precisa ser aplicado à mão.
+
 ## Direção inversa: existe no banco e ninguém declara
 
 O guard também responde "existente é declarado?", para funções e para tabelas/views, comparando com o
