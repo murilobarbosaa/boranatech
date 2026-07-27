@@ -73,7 +73,15 @@ const ANY_CREATE_TABLE_RE = /create\s+(?:\w+\s+)*?table\s+(?:if\s+not\s+exists\s
 // Total esperado de tabelas declaradas e ainda vivas. Afirmado de proposito: se
 // o conjunto ENCOLHER (regex que parou de casar, migration removida, parser
 // quebrado), o script falha mesmo que todas as tabelas restantes existam no
-// banco. Atualize este numero conscientemente ao adicionar ou dropar tabela.
+// banco.
+//
+// MEXER NESTE NUMERO E ATO DELIBERADO, NAO TAREFA DE MANUTENCAO. Ele so muda
+// junto com uma migration que cria ou dropa tabela, no MESMO commit dela, e a
+// mensagem do commit deve dizer qual tabela entrou ou saiu. Se o script
+// reclamar deste numero e voce nao mexeu em migration nenhuma, a resposta certa
+// quase nunca e "atualizar o numero": e descobrir o que parou de ser
+// reconhecido. Foi exatamente assim que a auditoria concluiu "so falta uma
+// tabela" olhando 38 de 72.
 const EXPECTED_TABLE_COUNT = 72;
 
 /** Remove comentarios de linha e de bloco antes de qualquer parse. */

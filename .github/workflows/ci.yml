@@ -1,0 +1,61 @@
+# CI do Bora na Tech
+
+# Dois jobs de proposito:
+#
+#   qualidade  - offline (tsc, geradores em modo --check, hashes de CSP, testes).
+#                Roda em todo push e PR, nao precisa de segredo nenhum.
+#
+#   migrations - compara as tabelas declaradas em supabase/migrations com as que
+#                existem no banco alvo. Precisa de rede e do service role.
+#
+# Por que o job de migrations existe: a migration
+# 20260710120000_create_linkedin_improvement_progress.sql ficou no repositorio
+# sem nunca ser aplicada, o codigo subiu, e o checklist de melhorias do
+# Analisador de LinkedIn nasceu morto em producao devolvendo 500. O passo (4)
+# do checklist de deploy (CLAUDE.md) foi criado para pegar isso, mas um passo
+# que depende de alguem lembrar de rodar repete o desenho que falhou. Aqui ele
+# roda sozinho.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  qualidade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm test
+
+  migrations:
+    runs-on: ubuntu-latest
+    # Nao bloqueia o merge de PR de fork (que nao enxerga segredo), mas falha
+    # visivelmente no push para main, que e quando a migration deveria ter sido
+    # aplicada.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Tabelas declaradas existem no banco alvo
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: pnpm check:migrations
