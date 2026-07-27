@@ -305,18 +305,60 @@ function clip(value: string, max: number): string {
   return trimmed.length <= max ? trimmed : trimmed.slice(0, max).trim();
 }
 
+/**
+ * Headline detectada e ONDE ela está.
+ *
+ * O índice existe por causa do bloco de identidade: no export real, o nome, a
+ * headline e a localização ficam entre a última seção da coluna lateral e a
+ * primeira seção principal, sem cabeçalho nenhum separando. Sem saber onde a
+ * headline começa, a seção lateral anterior engole os três.
+ */
 function detectHeadline(
   lines: string[],
   firstMainIndex: number,
-): string | null {
-  const preamble =
-    firstMainIndex >= 0 ? lines.slice(0, firstMainIndex) : lines.slice(0, 20);
-  const candidates = preamble.filter(isHeadlineCandidate);
-  const strong = candidates.filter(hasHeadlineSignal);
-  if (strong.length === 0) return null;
+): { valor: string | null; indice: number } {
+  const limite = firstMainIndex >= 0 ? firstMainIndex : Math.min(20, lines.length);
+  const preamble = lines.slice(0, limite);
+  const strong = preamble
+    .map((linha, indice) => ({ linha, indice }))
+    .filter(({ linha }) => isHeadlineCandidate(linha) && hasHeadlineSignal(linha));
+  if (strong.length === 0) return { valor: null, indice: -1 };
   // O nome vem antes da headline; pegamos a candidata forte mais próxima da
   // primeira seção principal (a última da lista).
-  return clip(strong[strong.length - 1], 250);
+  const escolhida = strong[strong.length - 1];
+  return { valor: clip(escolhida.linha, 250), indice: escolhida.indice };
+}
+
+/**
+ * Onde começa o bloco de identidade (nome, headline, localização).
+ *
+ * É o corte que a seção lateral anterior tem que respeitar. Devolve -1 quando
+ * não há bloco identificável, e aí nada é cortado: preferir seção com ruído a
+ * seção truncada por chute.
+ */
+function inicioDaIdentidade(lines: string[], headlineIdx: number): number {
+  if (headlineIdx <= 0) return headlineIdx;
+  const anterior = lines[headlineIdx - 1].trim();
+  // O nome próprio: curto, sem separador de headline, sem ser cabeçalho de
+  // seção e sem sinal de cargo. Se a linha anterior não parecer nome, o bloco
+  // começa na própria headline.
+  //
+  // Deliberadamente SEM testar localização. Nome de pessoa e nome de cidade têm
+  // a mesma forma ("Joana Teste" e "Belo Horizonte" são indistinguíveis por
+  // shape), e a primeira versão deste guard usava `ehLinhaDeLocalizacao` para
+  // recusar, o que deixava o nome passar para dentro das certificações. Quem
+  // desempata é a POSIÇÃO: no export, localização vem DEPOIS da headline e o
+  // nome vem antes. Custo assumido: num export sem linha de nome, uma linha
+  // real da seção lateral é cortada.
+  const pareceNome =
+    anterior.length > 0 &&
+    anterior.length <= 60 &&
+    !anterior.includes("|") &&
+    anterior.split(/\s+/).length <= 6 &&
+    !matchSectionHeader(anterior) &&
+    !hasHeadlineSignal(anterior) &&
+    comecaMaiuscula(anterior);
+  return pareceNome ? headlineIdx - 1 : headlineIdx;
 }
 
 /** Índices de todos os cabeçalhos de seção encontrados, em ordem. */
@@ -334,11 +376,22 @@ function sectionLines(
   lines: string[],
   hits: SectionHeaderHit[],
   key: SectionKey,
+  /**
+   * Corte do bloco de identidade. A última seção da coluna lateral termina no
+   * próximo cabeçalho reconhecido, que é `Summary`, e no meio do caminho estão
+   * o nome, a headline e a localização. Sem este corte, `certificacoes` do
+   * perfil real vinha com "Joana Teste", a headline inteira e
+   * "Greater São Paulo Area" dentro.
+   */
+  identidadeStart = -1,
 ): string[] {
   const start = hits.find((hit) => hit.key === key);
   if (!start) return [];
   const next = hits.find((hit) => hit.index > start.index);
-  const end = next ? next.index : lines.length;
+  let end = next ? next.index : lines.length;
+  if (identidadeStart > start.index && identidadeStart < end) {
+    end = identidadeStart;
+  }
   return lines.slice(start.index + 1, end);
 }
 
@@ -481,7 +534,11 @@ export function parseLinkedinText(text: string): LinkedinParsed {
   const firstMain = hits.find((hit) => mainKeys.includes(hit.key));
   const firstMainIndex = firstMain ? firstMain.index : -1;
 
-  const headline = detectHeadline(lines, firstMainIndex);
+  const { valor: headline, indice: headlineIdx } = detectHeadline(
+    lines,
+    firstMainIndex,
+  );
+  const identidadeStart = inicioDaIdentidade(lines, headlineIdx);
 
   const sobreRaw = sectionLines(lines, hits, "sobre").join(" ").trim();
   const sobre = sobreRaw.length > 0 ? sobreRaw : null;
@@ -490,9 +547,19 @@ export function parseLinkedinText(text: string): LinkedinParsed {
     sectionLines(lines, hits, "experiencia"),
   );
 
-  const skillsPdf = parseSkills(sectionLines(lines, hits, "skills"));
-  const formacao = sectionLines(lines, hits, "formacao").slice(0, 20);
-  const certificacoes = sectionLines(lines, hits, "certificacoes").slice(0, 20);
+  const skillsPdf = parseSkills(
+    sectionLines(lines, hits, "skills", identidadeStart),
+  );
+  const formacao = sectionLines(lines, hits, "formacao", identidadeStart).slice(
+    0,
+    20,
+  );
+  const certificacoes = sectionLines(
+    lines,
+    hits,
+    "certificacoes",
+    identidadeStart,
+  ).slice(0, 20);
 
   // Sinal real de headline: barra de cargo, palavra de papel ou clichê de
   // perfil, nao so comprimento. Uma linha longa qualquer (lixo de PDF que nao

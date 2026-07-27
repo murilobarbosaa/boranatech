@@ -1,0 +1,184 @@
+[
+  {
+    "nome": "cobertura-keywords-area",
+    "rel": "server/lib/linkedinChecks.ts",
+    "linha": 333,
+    "valor": "0.5",
+    "resultado": {
+      "-0.01": false,
+      "+0.01": true,
+      "-0.02": false,
+      "+0.02": true
+    },
+    "cobertoNoMenor": true
+  },
+  {
+    "nome": "cobertura-keywords-otima",
+    "rel": "server/lib/linkedinChecks.ts",
+    "linha": 337,
+    "valor": "0.75",
+    "resultado": {
+      "-0.01": false,
+      "+0.01": true,
+      "-0.02": true,
+      "+0.02": true
+    },
+    "cobertoNoMenor": true
+  },
+  {
+    "nome": "skills-cobertura",
+    "rel": "server/lib/linkedinChecks.ts",
+    "linha": 359,
+    "valor": "0.5",
+    "resultado": {
+      "-0.01": false,
+      "+0.01": true,
+      "-0.02": false,
+      "+0.02": true
+    },
+    "cobertoNoMenor": true
+  },
+  {
+    "nome": "peso essencial",
+    "rel": "shared/linkedin/schema.ts",
+    "linha": 95,
+    "valor": "10",
+    "resultado": {
+      "-1": true,
+      "+1": true,
+      "-2": true,
+      "+2": true
+    },
+    "cobertoNoMenor": true
+  },
+  {
+    "nome": "peso importante",
+    "rel": "shared/linkedin/schema.ts",
+    "linha": 96,
+    "valor": "6",
+    "resultado": {
+      "-1": true,
+      "+1": true,
+      "-2": true,
+      "+2": true
+    },
+    "cobertoNoMenor": true
+  },
+  {
+    "nome": "peso opcional",
+    "rel": "shared/linkedin/schema.ts",
+    "linha": 97,
+    "valor": "3",
+    "resultado": {
+      "-1": true,
+      "+1": true,
+      "-2": true,
+      "+2": true
+    },
+    "cobertoNoMenor": true
+  },
+  {
+    "nome": "skills-quantidade",
+    "rel": "server/lib/linkedinChecks.ts",
+    "linha": 355,
+    "valor": "10",
+    "resultado": {
+      "-1": true,
+      "+1": true,
+      "-2": true,
+      "+2": true
+    },
+    "cobertoNoMenor": true
+  },
+  {
+    "nome": "skills-quantidade-otima",
+    "rel": "server/lib/linkedinChecks.ts",
+    "linha": 363,
+    "valor": "25",
+    "resultado": {
+      "-1": true,
+      "+1": true,
+      "-2": true,
+      "+2": true
+    },
+    "cobertoNoMenor": true
+  },
+  {
+    "nome": "sobre-tamanho, min",
+    "rel": "server/lib/linkedinChecks.ts",
+    "linha": 273,
+    "valor": "500",
+    "resultado": {
+      "-1": true,
+      "+1": true,
+      "-2": true,
+      "+2": true
+    },
+    "cobertoNoMenor": true
+  },
+  {
+    "nome": "sobre-tamanho, max",
+    "rel": "server/lib/linkedinChecks.ts",
+    "linha": 273,
+    "valor": "2200",
+    "resultado": {
+      "-1": true,
+      "+1": true,
+      "-2": true,
+      "+2": true
+    },
+    "cobertoNoMenor": true
+  },
+  {
+    "nome": "exp-descricoes",
+    "rel": "server/lib/linkedinChecks.ts",
+    "linha": 292,
+    "valor": "100",
+    "resultado": {
+      "-1": true,
+      "+1": true,
+      "-2": true,
+      "+2": true
+    },
+    "cobertoNoMenor": true
+  },
+  {
+    "nome": "faixa inicio",
+    "rel": "shared/linkedin/schema.ts",
+    "linha": 119,
+    "valor": "39",
+    "resultado": {
+      "-1": true,
+      "+1": true,
+      "-2": true,
+      "+2": true
+    },
+    "cobertoNoMenor": true
+  },
+  {
+    "nome": "faixa em-construcao",
+    "rel": "shared/linkedin/schema.ts",
+    "linha": 120,
+    "valor": "69",
+    "resultado": {
+      "-1": true,
+      "+1": true,
+      "-2": true,
+      "+2": true
+    },
+    "cobertoNoMenor": true
+  },
+  {
+    "nome": "faixa forte",
+    "rel": "shared/linkedin/schema.ts",
+    "linha": 121,
+    "valor": "89",
+    "resultado": {
+      "-1": true,
+      "+1": true,
+      "-2": true,
+      "+2": true
+    },
+    "cobertoNoMenor": true
+  }
+]

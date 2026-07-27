@@ -101,6 +101,30 @@ describe("golden: perfil real (PDF de export, anonimizado)", () => {
       "Retrieval-Augmented Generation (RAG)",
     ]);
 
+    // CORRIGIDO (Fase 3-preparo): a coluna lateral termina no bloco de
+    // identidade, nao no proximo cabecalho. Antes `certificacoes` vinha com
+    // "Joana Teste", a headline inteira e "Greater São Paulo Area" dentro,
+    // porque a proxima ancora reconhecida depois de Certifications e Summary.
+    expect(parsed.certificacoes).toEqual([
+      "Google Cloud: Introduction to Docker",
+      "Algorithms and Programming Logic",
+      "ITIL® v3",
+      "Fundamentals of the General Data",
+      "Protection Law (LGPD)",
+      "HTML/CSS",
+    ]);
+    for (const linha of parsed.certificacoes) {
+      expect(linha).not.toContain("Joana");
+      expect(linha).not.toContain("Full-Stack Engineer");
+      expect(linha).not.toContain("São Paulo Area");
+    }
+    expect(parsed.formacao).toEqual([
+      "Centro Universitario Alfa",
+      "Bachelor's degree, Computer Science   · (January 2023 - 2026)",
+      "Universidade Beta",
+      "Computer Science   · (January 2025 - November 2026)",
+    ]);
+
     expect(parsed.experiencias).toHaveLength(6);
 
     // CORRIGIDO (Fase 1B, B.2 e B.5): titulo e so o cargo. A empresa saiu para
