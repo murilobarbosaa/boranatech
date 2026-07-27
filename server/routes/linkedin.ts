@@ -6,7 +6,7 @@ import {
   type LinkedinAnalysisResponse,
   type LinkedinAnalyzeRequest,
 } from "../../shared/linkedin/schema";
-import { estimateCost } from "../lib/aiTools";
+import { estimateCost, estimateCostFromTokens } from "../lib/aiTools";
 import { DEFAULT_MODEL } from "../lib/openai";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import {
@@ -160,7 +160,7 @@ router.post(
     }
 
     let aiUsed = false;
-    let aiIo = { inputChars: 0, outputChars: 0 };
+    let aiIo = { inputChars: 0, outputChars: 0, inputTokens: 0, outputTokens: 0 };
     try {
       const { response, parsed } = await analyzeLinkedin(request, (io) => {
         aiUsed = true;
@@ -181,10 +181,20 @@ router.post(
         status: aiUsed ? "success" : "skipped",
         inputChars: aiIo.inputChars,
         outputChars: aiIo.outputChars,
+        inputTokens: aiIo.inputTokens,
+        outputTokens: aiIo.outputTokens,
         // Sem isto a ferramenta aparecia com custo zero nos paineis admin
         // (/ai-stats e get_ai_usage_admin_summary somam cost_estimate).
+        // Tokens EXATOS de usage quando vierem; a conta por chars fica so de
+        // fallback, porque CHARS_PER_TOKEN subestima a entrada.
         costEstimate: aiUsed
-          ? estimateCost(aiIo.inputChars, aiIo.outputChars, DEFAULT_MODEL)
+          ? aiIo.inputTokens > 0
+            ? estimateCostFromTokens(
+                aiIo.inputTokens,
+                aiIo.outputTokens,
+                DEFAULT_MODEL,
+              )
+            : estimateCost(aiIo.inputChars, aiIo.outputChars, DEFAULT_MODEL)
           : 0,
       });
 

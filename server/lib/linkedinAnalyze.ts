@@ -106,6 +106,9 @@ Responda apenas com o JSON do schema.`;
 export interface AnalyzeAiIo {
   inputChars: number;
   outputChars: number;
+  /** Tokens EXATOS de `usage` da OpenAI. 0 quando a resposta nao trouxe. */
+  inputTokens: number;
+  outputTokens: number;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -256,6 +259,7 @@ async function runQualitativeOnce(
 
   const payload = (await response.json()) as {
     choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
   const choice = payload.choices?.[0];
   // finish_reason "length" = a resposta bateu no max_tokens e veio cortada. Sem
@@ -287,7 +291,14 @@ async function runQualitativeOnce(
     );
   }
 
-  onAiIo?.({ inputChars: userText.length, outputChars: content.length });
+  // Tokens exatos quando a OpenAI mandar; chars seguem gravados para o
+  // fallback de custo e para comparacao historica.
+  onAiIo?.({
+    inputChars: userText.length,
+    outputChars: content.length,
+    inputTokens: payload.usage?.prompt_tokens ?? 0,
+    outputTokens: payload.usage?.completion_tokens ?? 0,
+  });
   return validation.data;
 }
 

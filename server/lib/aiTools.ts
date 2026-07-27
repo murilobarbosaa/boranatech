@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 import { CurriculoSchema } from "../../shared/curriculo/schema";
-import { DEFAULT_MODEL } from "./openai";
+import {
+  DEFAULT_MODEL,
+  MODERATION_MODEL,
+  TRANSCRIPTION_MODEL,
+} from "./openai";
 import { toOpenAIStrictSchema } from "./openaiStrictSchema";
 
 export interface ResponseFormatConfig {
@@ -54,17 +58,50 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
 };
 
 /**
- * Preco do modelo com fallback: modelo desconhecido cai no preco do
+ * Modelos que NAO sao cobrados por token de texto. Audio e moderacao entram
+ * aqui: transcricao e cobrada por minuto e o TTS do projeto e ElevenLabs, que
+ * nem OpenAI e. Precificar qualquer um deles com a tabela de token seria
+ * reintroduzir exatamente a regua errada que este arquivo acabou de eliminar,
+ * so que disfarcada de numero plausivel. Custo deles fica 0 e explicito, para
+ * ninguem confundir "nao medimos" com "nao custa".
+ */
+export const NON_TEXT_MODELS = new Set<string>([
+  MODERATION_MODEL,
+  TRANSCRIPTION_MODEL,
+]);
+
+/**
+ * Preco do modelo com fallback: modelo de TEXTO desconhecido cai no preco do
  * DEFAULT_MODEL em vez de derrubar a chamada ou zerar o custo. Zerar seria pior
  * que errar, porque some do painel (foi o que aconteceu com o linkedin-analyzer).
+ * Modelo nao-texto devolve null: quem chama trata como "nao estimavel".
  */
-export function modelPricingOf(model: string): ModelPricing {
+export function modelPricingOf(model: string): ModelPricing | null {
+  if (NON_TEXT_MODELS.has(model)) return null;
   const pricing = MODEL_PRICING[model];
   if (pricing) return pricing;
   console.warn(
     `[aiTools] sem preco cadastrado para o modelo "${model}", usando o preco de ${DEFAULT_MODEL}.`,
   );
   return MODEL_PRICING[DEFAULT_MODEL];
+}
+
+/**
+ * Custo a partir dos tokens EXATOS que a OpenAI devolve em `usage`. Este e o
+ * caminho preferido: elimina o CHARS_PER_TOKEN, que subestima a entrada (medido
+ * 2,2 chars/token no analisador de LinkedIn, contra os 4 assumidos).
+ */
+export function estimateCostFromTokens(
+  inputTokens: number,
+  outputTokens: number,
+  model: string = DEFAULT_MODEL,
+): number {
+  const pricing = modelPricingOf(model);
+  if (!pricing) return 0;
+  return (
+    (inputTokens / 1_000_000) * pricing.inputPerMillion +
+    (outputTokens / 1_000_000) * pricing.outputPerMillion
+  );
 }
 
 /**
@@ -581,17 +618,18 @@ export function getToolConfig(toolKey: string): AiToolConfig | null {
   return config;
 }
 
+/**
+ * FALLBACK por caracteres, para quando a rota ainda nao captura `usage`.
+ * Prefira estimateCostFromTokens sempre que a resposta da OpenAI estiver a mao.
+ */
 export function estimateCost(
   inputChars: number,
   outputChars: number,
   model: string = DEFAULT_MODEL,
 ): number {
-  const inputTokens = inputChars / CHARS_PER_TOKEN;
-  const outputTokens = outputChars / CHARS_PER_TOKEN;
-  const pricing = modelPricingOf(model);
-
-  return (
-    (inputTokens / 1_000_000) * pricing.inputPerMillion +
-    (outputTokens / 1_000_000) * pricing.outputPerMillion
+  return estimateCostFromTokens(
+    inputChars / CHARS_PER_TOKEN,
+    outputChars / CHARS_PER_TOKEN,
+    model,
   );
 }

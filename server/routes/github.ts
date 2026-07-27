@@ -175,7 +175,9 @@ router.post(
         },
         budget.signal,
       );
-      const outputChars = JSON.stringify(data).length;
+      // Saida do MODELO, nao a resposta inteira da rota: o payload devolvido
+    // carrega o bloco deterministico, que a IA nao gerou e ninguem pagou.
+    const outputChars = aiIo.outputChars;
       // So conta no limite diario quando a IA rodou de fato. O caminho
       // deterministico (perfil/repo essencialmente vazio) loga como "skipped",
       // que get_ai_usage_today nao conta, pra nao gastar a cota a toa.

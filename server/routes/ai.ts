@@ -2,7 +2,11 @@ import crypto from "crypto";
 import { NextFunction, Request, Response, Router } from "express";
 
 import { env } from "../lib/env";
-import { estimateCost, getToolConfig } from "../lib/aiTools";
+import {
+  estimateCost,
+  estimateCostFromTokens,
+  getToolConfig,
+} from "../lib/aiTools";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import { buildLoginContextMessage } from "../lib/loginContext";
 import { fetchWithTimeout } from "../lib/http";
@@ -424,7 +428,10 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
       inputTokens,
       outputTokens,
       model: toolConfig.model,
-      costEstimate: estimateCost(inputChars, outputBuf.length, toolConfig.model),
+      costEstimate:
+        inputTokens > 0
+          ? estimateCostFromTokens(inputTokens, outputTokens, toolConfig.model)
+          : estimateCost(inputChars, outputBuf.length, toolConfig.model),
     });
   }
 });
