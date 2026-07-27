@@ -229,7 +229,9 @@ export function experienciasBlock(parsed: LinkedinParsed): string {
   return truncate(text, EXPERIENCIAS_LIMIT);
 }
 
-function buildUserPrompt(
+// Exportada para teste: e o unico lugar onde SOBRE_LIMIT e observavel, e um
+// limiar que nenhum teste alcancava era exatamente o buraco da Fase 1B-bis.
+export function buildUserPrompt(
   request: LinkedinAnalyzeRequest,
   parsed: LinkedinParsed,
   deterministic: LinkedinDeterministicResult,

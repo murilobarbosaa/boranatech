@@ -99,6 +99,20 @@ describe("normalizeProfileLines: barra orfa NAO absorve o vizinho errado", () =>
       "Software Developer | Full-Stack Engineer | AI Agent Expert | React | Node",
     ]);
   });
+
+  it("a cauda cabe em ate 3 tokens; o 4o ja e conteudo proprio", () => {
+    // MAX_FRAGMENTO_TOKENS. Estava sem cobertura: a varredura de mutacao da
+    // Fase 1B-bis baixou de 3 para 1 e nenhum teste reclamou. As duas linhas
+    // abaixo tem menos de 30 caracteres e nao sao localizacao, entao a UNICA
+    // coisa que as separa e a contagem de tokens.
+    expect(n(`${headline}\nNode Express Fastify`)).toEqual([
+      "Software Developer | Full-Stack Engineer | AI Agent Expert | Node Express Fastify",
+    ]);
+    expect(n(`${headline}\nNode Express Fastify Nest`)).toEqual([
+      "Software Developer | Full-Stack Engineer | AI Agent Expert",
+      "Node Express Fastify Nest",
+    ]);
+  });
 });
 
 describe("normalizeProfileLines: NAO junta (falsos positivos)", () => {
