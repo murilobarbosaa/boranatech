@@ -23,6 +23,8 @@ const parsed = (descricoes: string[]): LinkedinParsed => ({
   sobre: null,
   experiencias: descricoes.map(exp),
   skillsPdf: [],
+  formacao: [],
+  certificacoes: [],
   usable: true,
 });
 

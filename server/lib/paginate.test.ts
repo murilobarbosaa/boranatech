@@ -8,7 +8,12 @@ type Row = { n: number };
 // que `serverCap` por pagina (imita db-max-rows abaixo do pageSize pedido).
 function makeSource(total: number, serverCap: number) {
   const calls: Array<{ from: number; to: number }> = [];
-  const fetchPage = (from: number, to: number): PaginatedPage<Row> => {
+  // async de proposito: `paginateRange` recebe `(from, to) => PromiseLike<...>`,
+  // e o mock sincrono so passava porque o tsconfig nao checava teste.
+  const fetchPage = async (
+    from: number,
+    to: number,
+  ): Promise<PaginatedPage<Row>> => {
     calls.push({ from, to });
     const requested = to - from + 1;
     const pageSize = Math.min(requested, serverCap);
@@ -74,7 +79,7 @@ describe("paginateRange", () => {
   });
 
   it("propaga o erro com o errorLabel como prefixo", async () => {
-    const fetchPage = (): PaginatedPage<Row> => ({
+    const fetchPage = async (): Promise<PaginatedPage<Row>> => ({
       data: null,
       error: { message: "boom" },
     });
