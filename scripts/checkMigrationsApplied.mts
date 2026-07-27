@@ -82,7 +82,7 @@ const ANY_CREATE_TABLE_RE = /create\s+(?:\w+\s+)*?table\s+(?:if\s+not\s+exists\s
 // quase nunca e "atualizar o numero": e descobrir o que parou de ser
 // reconhecido. Foi exatamente assim que a auditoria concluiu "so falta uma
 // tabela" olhando 38 de 72.
-const EXPECTED_TABLE_COUNT = 72;
+const EXPECTED_TABLE_COUNT = 73;
 
 /** Remove comentarios de linha e de bloco antes de qualquer parse. */
 function stripSqlComments(sql: string): string {

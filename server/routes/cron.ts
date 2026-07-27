@@ -11,6 +11,7 @@ import { reconcileSentryBugs } from "../lib/sentryBugReconcile";
 import { recordCronRun } from "../lib/cron-logs";
 import { reconcileEmailCampaignBatches } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
+import { clampWindowDays, detectOrphanPayments } from "../lib/orphanPayments";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
@@ -200,131 +201,146 @@ async function reindexAfterSync(jobName: string, types: string[]) {
   try {
     console.log(`[cron] ${jobName}: reindexando tipos ${types.join(", ")}`);
     const summary = await reindexSearchDocuments(types);
-    console.log(`[cron] ${jobName}: reindex concluida:`, JSON.stringify(summary));
+    console.log(
+      `[cron] ${jobName}: reindex concluida:`,
+      JSON.stringify(summary),
+    );
   } catch (err) {
-    console.warn(`[cron] ${jobName}: reindex pos-sync falhou (fail-soft):`, err);
+    console.warn(
+      `[cron] ${jobName}: reindex pos-sync falhou (fail-soft):`,
+      err,
+    );
   }
 }
 
 // TTL 1200s: 4 fetches Currents + enriquecimento OpenAI artigo a artigo,
 // duracao tipica de minutos; 2x com folga.
-router.post("/sync-news", withCronLock("sync-news", 1200, async (_req, res, next) => {
-  const startedAt = new Date();
+router.post(
+  "/sync-news",
+  withCronLock("sync-news", 1200, async (_req, res, next) => {
+    const startedAt = new Date();
 
-  try {
-    const result = await syncNews();
-    await recordSync("currents", startedAt, result);
-    await recordCronRun({
-      jobName: "sync-news",
-      status: result.failed > 0 ? "partial" : "success",
-      startedAt,
-      payload: { ...result },
-    });
-    await reindexAfterSync("sync-news", ["news"]);
-    res.json({ data: result });
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    await recordSync(
-      "currents",
-      startedAt,
-      { found: 0, created: 0, updated: 0, failed: 1 },
-      errorMessage,
-    );
-    await recordCronRun({
-      jobName: "sync-news",
-      status: "error",
-      startedAt,
-      errorMessage,
-    });
-    next(err);
-  }
-}));
+    try {
+      const result = await syncNews();
+      await recordSync("currents", startedAt, result);
+      await recordCronRun({
+        jobName: "sync-news",
+        status: result.failed > 0 ? "partial" : "success",
+        startedAt,
+        payload: { ...result },
+      });
+      await reindexAfterSync("sync-news", ["news"]);
+      res.json({ data: result });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      await recordSync(
+        "currents",
+        startedAt,
+        { found: 0, created: 0, updated: 0, failed: 1 },
+        errorMessage,
+      );
+      await recordCronRun({
+        jobName: "sync-news",
+        status: "error",
+        startedAt,
+        errorMessage,
+      });
+      next(err);
+    }
+  }),
+);
 
 // TTL 600s: ~22 unidades de fetch (teto 15s cada) rodando por fonte com
 // allSettled + upserts em lote, tipico bem abaixo de 10min.
-router.post("/sync-jobs", withCronLock("sync-jobs", 600, async (_req, res, next) => {
-  const startedAt = new Date();
+router.post(
+  "/sync-jobs",
+  withCronLock("sync-jobs", 600, async (_req, res, next) => {
+    const startedAt = new Date();
 
-  try {
-    const result = await runVagasSync();
-    // Um content_sync_log por fonte que rodou (getSource ignora codes sem
-    // linha em content_sources; hoje so "jooble" existe, os demais viram
-    // no-op ate o cadastro das fontes novas).
-    const bySource = new Map<
-      string,
-      { found: number; created: number; updated: number; failed: number }
-    >();
-    for (const r of result.results) {
-      const acc = bySource.get(r.source) ?? {
-        found: 0,
-        created: 0,
-        updated: 0,
-        failed: 0,
-      };
-      acc.found += r.fetched;
-      acc.created += r.upserted;
-      acc.failed += r.failed + (r.error ? 1 : 0);
-      bySource.set(r.source, acc);
+    try {
+      const result = await runVagasSync();
+      // Um content_sync_log por fonte que rodou (getSource ignora codes sem
+      // linha em content_sources; hoje so "jooble" existe, os demais viram
+      // no-op ate o cadastro das fontes novas).
+      const bySource = new Map<
+        string,
+        { found: number; created: number; updated: number; failed: number }
+      >();
+      for (const r of result.results) {
+        const acc = bySource.get(r.source) ?? {
+          found: 0,
+          created: 0,
+          updated: 0,
+          failed: 0,
+        };
+        acc.found += r.fetched;
+        acc.created += r.upserted;
+        acc.failed += r.failed + (r.error ? 1 : 0);
+        bySource.set(r.source, acc);
+      }
+      for (const [code, totals] of Array.from(bySource.entries())) {
+        await recordSync(code, startedAt, totals);
+      }
+      await recordCronRun({
+        jobName: "sync-jobs",
+        status: result.totals.failed > 0 ? "partial" : "success",
+        startedAt,
+        payload: { ...result.totals, skipped: result.skippedSources },
+      });
+      await reindexAfterSync("sync-jobs", ["job"]);
+      res.json({ data: result });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      await recordSync(
+        "jooble",
+        startedAt,
+        { found: 0, created: 0, updated: 0, failed: 1 },
+        errorMessage,
+      );
+      await recordCronRun({
+        jobName: "sync-jobs",
+        status: "error",
+        startedAt,
+        errorMessage,
+      });
+      next(err);
     }
-    for (const [code, totals] of Array.from(bySource.entries())) {
-      await recordSync(code, startedAt, totals);
-    }
-    await recordCronRun({
-      jobName: "sync-jobs",
-      status: result.totals.failed > 0 ? "partial" : "success",
-      startedAt,
-      payload: { ...result.totals, skipped: result.skippedSources },
-    });
-    await reindexAfterSync("sync-jobs", ["job"]);
-    res.json({ data: result });
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    await recordSync(
-      "jooble",
-      startedAt,
-      { found: 0, created: 0, updated: 0, failed: 1 },
-      errorMessage,
-    );
-    await recordCronRun({
-      jobName: "sync-jobs",
-      status: "error",
-      startedAt,
-      errorMessage,
-    });
-    next(err);
-  }
-}));
+  }),
+);
 
 // Reindexacao COMPLETA do search_documents (todas as fontes). Agendada diaria
 // via pg_cron (migration 20260702120000) e disponivel para disparo manual. O
 // reindexador ja e fail-soft por fonte: falhas parciais viram status "partial".
 // TTL 1200s: reindex completo de todas as fontes em paginas de 1000, cresce
 // com o catalogo; 20min cobre com folga.
-router.post("/reindex-search", withCronLock("reindex-search", 1200, async (_req, res, next) => {
-  const startedAt = new Date();
+router.post(
+  "/reindex-search",
+  withCronLock("reindex-search", 1200, async (_req, res, next) => {
+    const startedAt = new Date();
 
-  try {
-    console.log("[cron] reindex-search: iniciando reindexacao completa");
-    const summary = await reindexSearchDocuments();
-    console.log("[cron] reindex-search: concluida:", JSON.stringify(summary));
-    await recordCronRun({
-      jobName: "reindex-search",
-      status: summary.falhas.length > 0 ? "partial" : "success",
-      startedAt,
-      payload: { ...summary },
-    });
-    res.json({ data: summary });
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    await recordCronRun({
-      jobName: "reindex-search",
-      status: "error",
-      startedAt,
-      errorMessage,
-    });
-    next(err);
-  }
-}));
+    try {
+      console.log("[cron] reindex-search: iniciando reindexacao completa");
+      const summary = await reindexSearchDocuments();
+      console.log("[cron] reindex-search: concluida:", JSON.stringify(summary));
+      await recordCronRun({
+        jobName: "reindex-search",
+        status: summary.falhas.length > 0 ? "partial" : "success",
+        startedAt,
+        payload: { ...summary },
+      });
+      res.json({ data: summary });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      await recordCronRun({
+        jobName: "reindex-search",
+        status: "error",
+        startedAt,
+        errorMessage,
+      });
+      next(err);
+    }
+  }),
+);
 
 // Cancelamento agendado de linha Stripe vencida. O webhook de fim de periodo
 // (customer.subscription.deleted) pode ter se perdido, entao a UNICA verdade e a
@@ -401,84 +417,95 @@ async function reconcileStripeCancellation(sub: SubRow): Promise<RowOutcome> {
 // Stripe. Cobre casos em que o webhook customer.subscription.deleted se perdeu.
 // TTL 600s: N subs vencidas x chamadas Stripe (teto 15s cada), tipico de
 // segundos; aplicado o minimo de 10min.
-router.post("/process-cancellations", withCronLock("process-cancellations", 600, async (_req, res, next) => {
-  const startedAt = new Date();
+router.post(
+  "/process-cancellations",
+  withCronLock("process-cancellations", 600, async (_req, res, next) => {
+    const startedAt = new Date();
 
-  try {
-    const nowIso = new Date().toISOString();
+    try {
+      const nowIso = new Date().toISOString();
 
-    // Provider-agnostico. cancel_at_period_end=true NAO pode mais ser excluido
-    // silenciosamente do reconcile: para a Stripe o webhook de fim de periodo
-    // pode se perder, e ausencia de evento nunca pode manter Pro (fail-open).
-    const { data: due, error: dueError } = await supabaseAdmin
-      .from("subscriptions")
-      .select(
-        "id, user_id, provider, status, provider_subscription_id, current_period_end",
-      )
-      .eq("cancel_at_period_end", true)
-      .eq("status", "active")
-      .lte("current_period_end", nowIso);
+      // Provider-agnostico. cancel_at_period_end=true NAO pode mais ser excluido
+      // silenciosamente do reconcile: para a Stripe o webhook de fim de periodo
+      // pode se perder, e ausencia de evento nunca pode manter Pro (fail-open).
+      const { data: due, error: dueError } = await supabaseAdmin
+        .from("subscriptions")
+        .select(
+          "id, user_id, provider, status, provider_subscription_id, current_period_end",
+        )
+        .eq("cancel_at_period_end", true)
+        .eq("status", "active")
+        .lte("current_period_end", nowIso);
 
-    if (dueError) {
+      if (dueError) {
+        await recordCronRun({
+          jobName: "process-cancellations",
+          status: "error",
+          startedAt,
+          errorMessage: dueError.message,
+        });
+        return next(
+          createError(
+            500,
+            "db_error",
+            "Erro ao buscar cancelamentos pendentes.",
+          ),
+        );
+      }
+
+      const subs = (due || []) as SubRow[];
+      const outcomes: RowOutcome[] = [];
+      const failures: Array<{
+        subscription_id: string;
+        provider: string;
+        reason: string;
+      }> = [];
+
+      for (const sub of subs) {
+        try {
+          const outcome = await reconcileStripeCancellation(sub);
+          if (outcome.outcome === "skipped") {
+            console.warn(
+              `[cron/process-cancellations] ${sub.id} skipped (reason=${outcome.reason ?? "n/a"})`,
+            );
+          }
+          outcomes.push(outcome);
+        } catch (err) {
+          const reason = err instanceof Error ? err.message : String(err);
+          failures.push({
+            subscription_id: sub.id,
+            provider: "stripe",
+            reason,
+          });
+          outcomes.push({ provider: "stripe", outcome: "failed", reason });
+          console.error(`[cron/process-cancellations] ${sub.id} falhou:`, err);
+        }
+      }
+
+      const processed = subs.length;
+      const byProvider = tallyByProvider(outcomes);
+      const skipped = countOutcome(outcomes, "skipped");
+      const failed = countOutcome(outcomes, "failed");
+
+      await recordCronRun({
+        jobName: "process-cancellations",
+        status: failed > 0 ? "partial" : "success",
+        startedAt,
+        payload: { processed, byProvider, skipped, failed },
+      });
+
+      res.json({ data: { processed, byProvider, skipped, failed, failures } });
+    } catch (err) {
       await recordCronRun({
         jobName: "process-cancellations",
         status: "error",
         startedAt,
-        errorMessage: dueError.message,
+        errorMessage: err instanceof Error ? err.message : String(err),
       });
-      return next(
-        createError(500, "db_error", "Erro ao buscar cancelamentos pendentes."),
-      );
+      next(err);
     }
-
-    const subs = (due || []) as SubRow[];
-    const outcomes: RowOutcome[] = [];
-    const failures: Array<{
-      subscription_id: string;
-      provider: string;
-      reason: string;
-    }> = [];
-
-    for (const sub of subs) {
-      try {
-        const outcome = await reconcileStripeCancellation(sub);
-        if (outcome.outcome === "skipped") {
-          console.warn(
-            `[cron/process-cancellations] ${sub.id} skipped (reason=${outcome.reason ?? "n/a"})`,
-          );
-        }
-        outcomes.push(outcome);
-      } catch (err) {
-        const reason = err instanceof Error ? err.message : String(err);
-        failures.push({ subscription_id: sub.id, provider: "stripe", reason });
-        outcomes.push({ provider: "stripe", outcome: "failed", reason });
-        console.error(`[cron/process-cancellations] ${sub.id} falhou:`, err);
-      }
-    }
-
-    const processed = subs.length;
-    const byProvider = tallyByProvider(outcomes);
-    const skipped = countOutcome(outcomes, "skipped");
-    const failed = countOutcome(outcomes, "failed");
-
-    await recordCronRun({
-      jobName: "process-cancellations",
-      status: failed > 0 ? "partial" : "success",
-      startedAt,
-      payload: { processed, byProvider, skipped, failed },
-    });
-
-    res.json({ data: { processed, byProvider, skipped, failed, failures } });
-  } catch (err) {
-    await recordCronRun({
-      jobName: "process-cancellations",
-      status: "error",
-      startedAt,
-      errorMessage: err instanceof Error ? err.message : String(err),
-    });
-    next(err);
-  }
-}));
+  }),
+);
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -868,7 +895,8 @@ async function reconcileStripeRow(sub: SubRow): Promise<RowOutcome> {
   const state = await getStripeSubscriptionState(sub.provider_subscription_id);
   const prevStatus = sub.status ?? null;
   const statusChanged = state.status !== prevStatus;
-  const periodChanged = state.currentPeriodEnd !== (sub.current_period_end ?? null);
+  const periodChanged =
+    state.currentPeriodEnd !== (sub.current_period_end ?? null);
 
   if (!statusChanged && !periodChanged) {
     return { provider: "stripe", outcome: "unchanged" };
@@ -1023,83 +1051,141 @@ async function reconcileExpiredSubscriptions() {
 
 // TTL 900s: 2 fases x ate 25 subscriptions x ate 2 chamadas Stripe cada
 // (teto 15s por chamada); pior caso teorico na casa dos minutos.
-router.post("/reconcile-subscriptions", withCronLock("reconcile-subscriptions", 900, async (_req, res, next) => {
-  const startedAt = new Date();
+router.post(
+  "/reconcile-subscriptions",
+  withCronLock("reconcile-subscriptions", 900, async (_req, res, next) => {
+    const startedAt = new Date();
 
-  try {
-    const incomplete = await reconcileIncompleteSubscriptions();
-    const expired = await reconcileExpiredSubscriptions();
+    try {
+      const incomplete = await reconcileIncompleteSubscriptions();
+      const expired = await reconcileExpiredSubscriptions();
 
-    const totalFailed = incomplete.failed + expired.failed;
-    // Contagens separadas por provider (byProvider) + skipped/failed por fase.
-    const payload = {
-      incomplete: {
-        processed: incomplete.processed,
-        byProvider: incomplete.byProvider,
-        skipped: incomplete.skipped,
-        failed: incomplete.failed,
-      },
-      expired: {
-        processed: expired.processed,
-        byProvider: expired.byProvider,
-        skipped: expired.skipped,
-        failed: expired.failed,
-      },
-    };
-
-    await recordCronRun({
-      jobName: "reconcile-subscriptions",
-      status: totalFailed > 0 ? "partial" : "success",
-      startedAt,
-      payload,
-    });
-
-    res.json({
-      data: {
-        ...payload,
-        failures: {
-          incomplete: incomplete.failures,
-          expired: expired.failures,
+      const totalFailed = incomplete.failed + expired.failed;
+      // Contagens separadas por provider (byProvider) + skipped/failed por fase.
+      const payload = {
+        incomplete: {
+          processed: incomplete.processed,
+          byProvider: incomplete.byProvider,
+          skipped: incomplete.skipped,
+          failed: incomplete.failed,
         },
-      },
-    });
-  } catch (err) {
-    await recordCronRun({
-      jobName: "reconcile-subscriptions",
-      status: "error",
-      startedAt,
-      errorMessage: err instanceof Error ? err.message : String(err),
-    });
-    next(err);
-  }
-}));
+        expired: {
+          processed: expired.processed,
+          byProvider: expired.byProvider,
+          skipped: expired.skipped,
+          failed: expired.failed,
+        },
+      };
+
+      await recordCronRun({
+        jobName: "reconcile-subscriptions",
+        status: totalFailed > 0 ? "partial" : "success",
+        startedAt,
+        payload,
+      });
+
+      res.json({
+        data: {
+          ...payload,
+          failures: {
+            incomplete: incomplete.failures,
+            expired: expired.failures,
+          },
+        },
+      });
+    } catch (err) {
+      await recordCronRun({
+        jobName: "reconcile-subscriptions",
+        status: "error",
+        startedAt,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+      next(err);
+    }
+  }),
+);
+
+// Rede de seguranca que faltava: o UNICO job que parte da Stripe para o banco.
+// reconcile-subscriptions so olha linhas que ja existem em subscriptions, entao
+// um pagamento que nunca virou linha (returns mudos de providers/stripe.ts) e
+// invisivel para ele. Este aqui lista as Checkout Sessions PAGAS da janela e
+// acusa as que nao tem contrapartida. SO DETECTA: nao promove ninguem.
+// TTL 900s: uma listagem paginada da Stripe, mesmo teto do reconcile.
+router.post(
+  "/detect-orphan-payments",
+  withCronLock("detect-orphan-payments", 900, async (req, res, next) => {
+    const startedAt = new Date();
+
+    try {
+      const scan = await detectOrphanPayments({
+        windowDays: clampWindowDays(req.query.days),
+      });
+
+      // 'partial' quando ha orfao: o job rodou inteiro, mas o resultado exige
+      // acao humana e nao pode aparecer como sucesso limpo na lista de crons.
+      // Tambem 'partial' quando o registro nao gravou (migration pendente).
+      const needsAttention = scan.orphans > 0 || !scan.persisted;
+
+      await recordCronRun({
+        jobName: "detect-orphan-payments",
+        status: needsAttention ? "partial" : "success",
+        startedAt,
+        payload: {
+          windowDays: scan.windowDays,
+          paidSessions: scan.paidSessions,
+          skippedRecent: scan.skippedRecent,
+          orphans: scan.orphans,
+          newOrphans: scan.newOrphans,
+          persisted: scan.persisted,
+          // Lista inteira no payload de proposito: cron_run_logs existe hoje e
+          // sobrevive ao Railway, entao o achado fica consultavel mesmo se a
+          // tabela dedicada ainda nao estiver aplicada.
+          findings: scan.findings,
+        },
+      });
+
+      res.json({ data: scan });
+    } catch (err) {
+      await recordCronRun({
+        jobName: "detect-orphan-payments",
+        status: "error",
+        startedAt,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+      next(err);
+    }
+  }),
+);
 
 // Rede de seguranca do financeiro: sincroniza as balance transactions das
 // ultimas 72h. O webhook e o caminho rapido; este cron garante contra evento
 // perdido. Idempotente pelo bt id. TTL 600s: poucos itens por dia.
-router.post("/sync-finance", withCronLock("sync-finance", 600, async (_req, res, next) => {
-  const startedAt = new Date();
+router.post(
+  "/sync-finance",
+  withCronLock("sync-finance", 600, async (_req, res, next) => {
+    const startedAt = new Date();
 
-  try {
-    const since = new Date(Date.now() - 72 * 60 * 60 * 1000);
-    const result = await syncBalanceTransactions({ since });
-    await recordCronRun({
-      jobName: "sync-finance",
-      status: "success",
-      startedAt,
-      payload: { ...result },
-    });
-    res.json({ data: result });
-  } catch (err) {
-    await recordCronRun({
-      jobName: "sync-finance",
-      status: "error",
-      startedAt,
-      errorMessage: err instanceof Error ? err.message : String(err),
-    });
-    next(err);
-  }
-}));
+    try {
+      const since = new Date(Date.now() - 72 * 60 * 60 * 1000);
+      const result = await syncBalanceTransactions({ since });
+      await recordCronRun({
+        jobName: "sync-finance",
+        status: "success",
+        startedAt,
+        payload: { ...result },
+      });
+      res.json({ data: result });
+    } catch (err) {
+      await recordCronRun({
+        jobName: "sync-finance",
+        status: "error",
+        startedAt,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+      next(err);
+    }
+  }),
+);
 
 // Rede de seguranca das campanhas de e-mail: reenfileira recipients pending de
 // campanhas sending (lote dispatched) que o worker de concorrencia 1 nao chegou a
@@ -1110,27 +1196,30 @@ router.post("/sync-finance", withCronLock("sync-finance", 600, async (_req, res,
 // deterministico por recipient torna o re-add no-op; filtro status pending; guarda
 // de status no proprio job; so lote dispatched). TTL 600s: folga caso uma execucao
 // demore; o proximo tick (5min) pula com withCronLock se ainda estiver rodando.
-router.post("/reconcile-email-campaigns", withCronLock("reconcile-email-campaigns", 600, async (_req, res, next) => {
-  const startedAt = new Date();
+router.post(
+  "/reconcile-email-campaigns",
+  withCronLock("reconcile-email-campaigns", 600, async (_req, res, next) => {
+    const startedAt = new Date();
 
-  try {
-    await reconcileEmailCampaignBatches();
-    await recordCronRun({
-      jobName: "reconcile-email-campaigns",
-      status: "success",
-      startedAt,
-    });
-    res.json({ data: { reconciled: true } });
-  } catch (err) {
-    await recordCronRun({
-      jobName: "reconcile-email-campaigns",
-      status: "error",
-      startedAt,
-      errorMessage: err instanceof Error ? err.message : String(err),
-    });
-    next(err);
-  }
-}));
+    try {
+      await reconcileEmailCampaignBatches();
+      await recordCronRun({
+        jobName: "reconcile-email-campaigns",
+        status: "success",
+        startedAt,
+      });
+      res.json({ data: { reconciled: true } });
+    } catch (err) {
+      await recordCronRun({
+        jobName: "reconcile-email-campaigns",
+        status: "error",
+        startedAt,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+      next(err);
+    }
+  }),
+);
 
 // Watchdog de liveness das campanhas (alert-only). Deteccao 100% via Postgres
 // (email_campaign_find_stuck), NUNCA toca a queueConnection: funciona com a fila
@@ -1148,117 +1237,126 @@ type StuckCampaign = {
   last_sent_at: string | null;
 };
 
-router.post("/campaign-liveness", withCronLock("campaign-liveness", 120, async (_req, res, next) => {
-  const startedAt = new Date();
+router.post(
+  "/campaign-liveness",
+  withCronLock("campaign-liveness", 120, async (_req, res, next) => {
+    const startedAt = new Date();
 
-  try {
-    const { data, error } = await supabaseAdmin.rpc(
-      "email_campaign_find_stuck",
-      { p_stale_minutes: 15 },
-    );
-    if (error) {
-      throw new Error(error.message);
-    }
-    const stuck = (data ?? []) as StuckCampaign[];
-
-    for (const c of stuck) {
-      console.error(
-        `[campaign-liveness] Campanha travada: ${c.campaign_id} "${c.subject}" ` +
-          `pending=${c.pending_count} sent=${c.sent_count} failed=${c.failed_count} ` +
-          `total=${c.total_recipients} last_sent_at=${c.last_sent_at}`,
+    try {
+      const { data, error } = await supabaseAdmin.rpc(
+        "email_campaign_find_stuck",
+        { p_stale_minutes: 15 },
       );
-      Sentry.withScope((scope) => {
-        scope.setTag("cron", "campaign-liveness");
-        scope.setTag("campaignId", c.campaign_id);
-        scope.setContext("campaign", {
-          subject: c.subject,
-          pending: c.pending_count,
-          sent: c.sent_count,
-          failed: c.failed_count,
-          total: c.total_recipients,
-          startedAt: c.started_at,
-          lastSentAt: c.last_sent_at,
-        });
-        Sentry.captureException(
-          new Error(
-            `Campanha de e-mail travada (sending, sem progresso ha >=15min): ${c.campaign_id}`,
-          ),
-        );
-      });
-    }
+      if (error) {
+        throw new Error(error.message);
+      }
+      const stuck = (data ?? []) as StuckCampaign[];
 
-    await recordCronRun({
-      jobName: "campaign-liveness",
-      status: "success",
-      startedAt,
-      payload: {
-        stuckCount: stuck.length,
-        stuckIds: stuck.map((c) => c.campaign_id),
-      },
-    });
-    res.json({ data: { stuck: stuck.length } });
-  } catch (err) {
-    await recordCronRun({
-      jobName: "campaign-liveness",
-      status: "error",
-      startedAt,
-      errorMessage: err instanceof Error ? err.message : String(err),
-    });
-    next(err);
-  }
-}));
+      for (const c of stuck) {
+        console.error(
+          `[campaign-liveness] Campanha travada: ${c.campaign_id} "${c.subject}" ` +
+            `pending=${c.pending_count} sent=${c.sent_count} failed=${c.failed_count} ` +
+            `total=${c.total_recipients} last_sent_at=${c.last_sent_at}`,
+        );
+        Sentry.withScope((scope) => {
+          scope.setTag("cron", "campaign-liveness");
+          scope.setTag("campaignId", c.campaign_id);
+          scope.setContext("campaign", {
+            subject: c.subject,
+            pending: c.pending_count,
+            sent: c.sent_count,
+            failed: c.failed_count,
+            total: c.total_recipients,
+            startedAt: c.started_at,
+            lastSentAt: c.last_sent_at,
+          });
+          Sentry.captureException(
+            new Error(
+              `Campanha de e-mail travada (sending, sem progresso ha >=15min): ${c.campaign_id}`,
+            ),
+          );
+        });
+      }
+
+      await recordCronRun({
+        jobName: "campaign-liveness",
+        status: "success",
+        startedAt,
+        payload: {
+          stuckCount: stuck.length,
+          stuckIds: stuck.map((c) => c.campaign_id),
+        },
+      });
+      res.json({ data: { stuck: stuck.length } });
+    } catch (err) {
+      await recordCronRun({
+        jobName: "campaign-liveness",
+        status: "error",
+        startedAt,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+      next(err);
+    }
+  }),
+);
 
 // TTL 300s: job leve (le subscriptions + getMrrSnapshot + um upsert). Registra o
 // snapshot diario do estado das assinaturas em subscription_snapshots (idempotente
 // por snapshot_date). subscriptions e apenas LIDA aqui.
-router.post("/snapshot-subscriptions", withCronLock("snapshot-subscriptions", 300, async (_req, res, next) => {
-  const startedAt = new Date();
+router.post(
+  "/snapshot-subscriptions",
+  withCronLock("snapshot-subscriptions", 300, async (_req, res, next) => {
+    const startedAt = new Date();
 
-  try {
-    const result = await collectSubscriptionSnapshot();
-    await recordCronRun({
-      jobName: "snapshot-subscriptions",
-      status: "success",
-      startedAt,
-      payload: { ...result },
-    });
-    res.json({ data: result });
-  } catch (err) {
-    await recordCronRun({
-      jobName: "snapshot-subscriptions",
-      status: "error",
-      startedAt,
-      errorMessage: err instanceof Error ? err.message : String(err),
-    });
-    next(err);
-  }
-}));
+    try {
+      const result = await collectSubscriptionSnapshot();
+      await recordCronRun({
+        jobName: "snapshot-subscriptions",
+        status: "success",
+        startedAt,
+        payload: { ...result },
+      });
+      res.json({ data: result });
+    } catch (err) {
+      await recordCronRun({
+        jobName: "snapshot-subscriptions",
+        status: "error",
+        startedAt,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+      next(err);
+    }
+  }),
+);
 
 // TTL 1800s: backlog de enriquecimento OpenAI (teto de 120s por chamada do
 // SDK), o job potencialmente mais longo do conjunto.
-router.post("/enrich-backlog", withCronLock("enrich-backlog", 1800, async (_req, res, next) => {
-  const startedAt = new Date();
+router.post(
+  "/enrich-backlog",
+  withCronLock("enrich-backlog", 1800, async (_req, res, next) => {
+    const startedAt = new Date();
 
-  try {
-    const result = await enrichBacklog();
-    await recordCronRun({
-      jobName: "enrich-backlog",
-      status: result.failed > 0 ? "partial" : "success",
-      startedAt,
-      payload: { ...result },
-    });
-    res.json({ data: result });
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    await recordCronRun({
-      jobName: "enrich-backlog",
-      status: "error",
-      startedAt,
-      errorMessage,
-    });
-    next(err);
-  }
-}));
+    try {
+      const result = await enrichBacklog();
+      await recordCronRun({
+        jobName: "enrich-backlog",
+        status: result.failed > 0 ? "partial" : "success",
+        startedAt,
+        payload: { ...result },
+      });
+      res.json({ data: result });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      await recordCronRun({
+        jobName: "enrich-backlog",
+        status: "error",
+        startedAt,
+        errorMessage,
+      });
+      next(err);
+    }
+  }),
+);
 
 // Promove notificacoes agendadas cujo horario venceu: scheduled -> published.
 // UPDATE unico, atomico e idempotente (WHERE status='scheduled' garante que uma
@@ -1327,32 +1425,35 @@ router.post(
 // erro voltou a acontecer (lastSeen > resolved_at). Idempotente e nao destrutivo.
 // TTL 600s: backfill/retry limitados a 25 cards por run (1 chamada Sentry cada,
 // teto 10s) + uma busca em lote; pior caso na casa dos minutos.
-router.post("/reconcile-sentry-bugs", withCronLock("reconcile-sentry-bugs", 600, async (_req, res, next) => {
-  const startedAt = new Date();
+router.post(
+  "/reconcile-sentry-bugs",
+  withCronLock("reconcile-sentry-bugs", 600, async (_req, res, next) => {
+    const startedAt = new Date();
 
-  try {
-    const summary = await reconcileSentryBugs();
-    const degraded =
-      summary.backfillFailed > 0 ||
-      summary.syncRetryFailed > 0 ||
-      summary.reconcileSkipped !== null;
-    await recordCronRun({
-      jobName: "reconcile-sentry-bugs",
-      status: degraded ? "partial" : "success",
-      startedAt,
-      payload: { ...summary },
-    });
-    res.json({ data: summary });
-  } catch (err) {
-    await recordCronRun({
-      jobName: "reconcile-sentry-bugs",
-      status: "error",
-      startedAt,
-      errorMessage: err instanceof Error ? err.message : String(err),
-    });
-    next(err);
-  }
-}));
+    try {
+      const summary = await reconcileSentryBugs();
+      const degraded =
+        summary.backfillFailed > 0 ||
+        summary.syncRetryFailed > 0 ||
+        summary.reconcileSkipped !== null;
+      await recordCronRun({
+        jobName: "reconcile-sentry-bugs",
+        status: degraded ? "partial" : "success",
+        startedAt,
+        payload: { ...summary },
+      });
+      res.json({ data: summary });
+    } catch (err) {
+      await recordCronRun({
+        jobName: "reconcile-sentry-bugs",
+        status: "error",
+        startedAt,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+      next(err);
+    }
+  }),
+);
 
 router.get("/status", async (_req, res, next) => {
   try {
