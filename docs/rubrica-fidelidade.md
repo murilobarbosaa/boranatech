@@ -155,6 +155,30 @@ Python e outras ferramentas de análise de dados", que é honesto e é justament
 transição, e a regra mecânica conta como tecnologia sem lastro. Falso positivo do harness, não mentira do
 produto. Tratamento em `docs/tecnologia-aspiracional-sobre.md`.
 
+### Emenda 2, 2026-07-27: moldura de aprendizado não é fabricação
+
+A cegueira 3 deixou de ser cegueira. `shared/linkedin/molduraAspiracional.ts` separa, dentro do
+`sobreReescrito`, tecnologia sem lastro que aparece **depois de um marcador de aprendizado** na mesma frase
+("estou estudando X", "tenho interesse em aprender X") de tecnologia afirmada como experiência ("domino X").
+A primeira deixa de contar como violação; a segunda continua contando.
+
+Isto **não desliga o detector**, e há teste positivo provando: `molduraAspiracional.test.ts` exige que
+"Domino Kubernetes e Terraform" num perfil que não os comprova seja classificado como afirmação, incluindo o
+caso misto ("Domino Kubernetes e estou estudando Terraform", onde só o segundo termo é absolvido). Os três
+limites conhecidos do detector estão testados e todos erram para o lado de contar violação a mais.
+
+Reclassificação das medições já feitas, sem gastar API:
+
+| Medição | Ocorrências pela régua antiga | Moldura | Afirmação sem lastro |
+|---|---|---|---|
+| 1A-ter | 4 | 4 | **0** |
+| 1B | 1 | 1 | **0** |
+
+A da 1B foi reclassificada do JSON gravado da execução. As 4 da 1A-ter foram reclassificadas pelas frases
+registradas acima nesta seção, porque o harness sobrescreve o JSON por execução e os arquivos originais não
+existem mais; as quatro frases estão no teste do detector. **Com a régua corrigida, a Fase 1B mede 30 de 30
+execuções limpas e zero violações em todas as quatro classes.**
+
 Mudança no harness nesta rodada: ele passou a importar `experienciasBlock` de
 `server/lib/linkedinAnalyze.ts` em vez de remontar o bloco de experiências por conta própria. A 1B mudou
 exatamente esse trecho do prompt (empresa separada do cargo, três estados de descrição), e um harness que
