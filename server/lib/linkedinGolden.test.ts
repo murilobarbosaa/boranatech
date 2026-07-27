@@ -301,12 +301,15 @@ describe("golden: perfis sinteticos", () => {
       // CORRIGIDO (regua v2): o perfil exemplar deixou de travar em 82 e chega
       // a 90, primeira ocupacao real da faixa Magnetico. Antes era
       // os 3 checks de cobertura sao inatingiveis. Teto medido: 85 no Brasil.
-      score: 91,
+      score: 97,
       faixa: "magnetico",
       nChecks: 27,
       reprovados: [
         "termos-bilingues",
-        "skills-cobertura",
+        // CORRIGIDO (pre-deploy): `skills-cobertura` saiu daqui. Ele pedia 50%
+        // de TODA a pool da area nas competencias coladas (11 em fullstack) e
+        // aprovava 0 das 107. Agora pede o corte da variante C limitado pelo
+        // que o perfil comprova.
         "skills-quantidade-otima",
       ],
     },
@@ -327,7 +330,7 @@ describe("golden: perfis sinteticos", () => {
       headline:
         "Estudante de Análise e Desenvolvimento de Sistemas | Em busca de oportunidade",
       experiencias: 1,
-      score: 20,
+      score: 26,
       faixa: "inicio",
       nChecks: 27,
       reprovados: [
@@ -347,7 +350,6 @@ describe("golden: perfis sinteticos", () => {
         "cobertura-keywords-otima",
         "termos-bilingues",
         "skills-quantidade",
-        "skills-cobertura",
         "skills-quantidade-otima",
         "foto-profissional",
         "banner-personalizado",
@@ -380,7 +382,7 @@ describe("golden: perfis sinteticos", () => {
       experiencias: 2,
       // BUG CONHECIDO (rodada1, vies estrutural): perfil bem escrito de quem
       // esta EM TRANSICAO e medido pela aderencia a area que ainda nao tem.
-      score: 50,
+      score: 56,
       faixa: "em-construcao",
       nChecks: 27,
       reprovados: [
@@ -394,7 +396,6 @@ describe("golden: perfis sinteticos", () => {
         "cobertura-keywords-otima",
         "termos-bilingues",
         "skills-quantidade",
-        "skills-cobertura",
         "skills-quantidade-otima",
         "banner-personalizado",
         "atividade",
@@ -457,8 +458,8 @@ describe("golden: perfis sinteticos", () => {
       headline: "Desenvolvedor Back-end | Python, Django",
       experiencias: 1,
       // 69 -> 68: exp-resultados deixou de ser aprovado pelo rodape.
-      score: 68,
-      faixa: "em-construcao",
+      score: 73,
+      faixa: "forte",
       nChecks: 27,
       reprovados: [
         "headline-tamanho",
@@ -470,7 +471,6 @@ describe("golden: perfis sinteticos", () => {
         "cobertura-keywords-otima",
         "termos-bilingues",
         "skills-quantidade",
-        "skills-cobertura",
         "skills-quantidade-otima",
         "banner-personalizado",
       ],
@@ -608,6 +608,6 @@ describe("golden: perfis sinteticos", () => {
       semRodape.checks.find((c) => c.id === "exp-resultados")?.aprovado,
     ).toBe(false);
     expect(semRodape.score).toBe(comRodape.deterministic.score);
-    expect(semRodape.score).toBe(68);
+    expect(semRodape.score).toBe(73);
   });
 });

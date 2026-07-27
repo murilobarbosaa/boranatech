@@ -23,6 +23,7 @@ import {
   normalize,
 } from "./skillNormalize";
 import {
+  corteDeCompetencias,
   cortesDeCobertura,
   expDescricoesPorItem,
   limiaresDensidade,
@@ -184,6 +185,13 @@ export function runLinkedinChecks(
     keyTechs.length === 0
       ? 0
       : skillsCoverage.encontradas.length / keyTechs.length;
+
+  // Depende de fullCoverage: o corte de competencias e limitado pelo que a
+  // pessoa comprova, e nao pela pool sozinha.
+  const corteCompetencias = corteDeCompetencias(
+    keyTechs.length,
+    fullCoverage.encontradas.length,
+  );
 
   const marketTitles = titlesForMarket(area, mercado);
   const headlineTechs = countKnownTechnologies(headline);
@@ -406,8 +414,14 @@ export function runLinkedinChecks(
       detail: `${skillsForm.length} competência(s) informada(s) (o ideal é 10 ou mais).`,
     }),
     "skills-cobertura": () => ({
-      aprovado: skillsRatio >= 0.5,
-      detail: `As competências cobrem ${pct(skillsRatio)} das tecnologias-chave da área.`,
+      aprovado:
+        corteCompetencias.alcancavel &&
+        skillsCoverage.encontradas.length >= corteCompetencias.minimo,
+      detail: !corteCompetencias.alcancavel
+        ? "As competências não cobrem tecnologia-chave nenhuma da área, e o perfil também não comprova nenhuma para cadastrar."
+        : skillsCoverage.encontradas.length >= corteCompetencias.minimo
+          ? `${skillsCoverage.encontradas.length} das tecnologias-chave que o seu perfil comprova estão cadastradas nas competências.`
+          : `${skillsCoverage.encontradas.length} de ${corteCompetencias.minimo} tecnologias-chave cadastradas nas competências. Você comprova ${fullCoverage.encontradas.length} no perfil: cadastre as que faltam.`,
     }),
     "skills-quantidade-otima": () => ({
       aprovado: skillsForm.length >= 25,

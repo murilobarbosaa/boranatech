@@ -74,9 +74,10 @@ const MUT = [
   [C, "exp-verbos-acao, min (2)", "aprovado: verbCount >= 2,", "aprovado: verbCount >= 99,"],
   [C, "exp-tecnologias, min (2)", "aprovado: expTechs >= 2,", "aprovado: expTechs >= 99,"],
   [C, "skills-quantidade (10)", "aprovado: skillsForm.length >= 10,", "aprovado: skillsForm.length >= 1,"],
-  [C, "skills-cobertura (0.5)", "aprovado: skillsRatio >= 0.5,", "aprovado: skillsRatio >= 0.01,"],
   [C, "skills-quantidade-otima (25)", "aprovado: skillsForm.length >= 25,", "aprovado: skillsForm.length >= 1,"],
   [V, "cobertura v2, teto absoluto essencial (6)", "Math.min(6, Math.ceil(pool / 2))", "Math.min(1, Math.ceil(pool / 2))"],
+  [V, "corte de competencias: limitado pelo comprovado", "Math.min(essencial, tecnologiasComprovadas)", "Math.min(essencial, tecnologiasComprovadas + 9)"],
+  [V, "corte de competencias: guarda de zero", "alcancavel: tecnologiasComprovadas > 0", "alcancavel: tecnologiasComprovadas >= 0"],
   [V, "cobertura v2, teto absoluto otima (10)", "Math.min(10, Math.ceil(pool * 0.75))", "Math.min(1, Math.ceil(pool * 0.75))"],
   [V, "cobertura v2, proporcao essencial (2)", "Math.ceil(pool / 2)", "Math.ceil(pool / 9)"],
   [V, "cobertura v2, proporcao otima (0.75)", "Math.ceil(pool * 0.75)", "Math.ceil(pool * 0.05)"],
@@ -96,7 +97,6 @@ const MUT = [
 //
 // [arquivo, nome, template com {N}, valor atual]
 const VIZINHOS = [
-  [C, "skills-cobertura", "aprovado: skillsRatio >= {N},", "0.5"],
   [S, "peso essencial", "  essencial: {N},", "10"],
   [S, "peso importante", "  importante: {N},", "6"],
   [S, "peso opcional", "  opcional: {N},", "3"],
@@ -201,6 +201,7 @@ const NAO_LIMIAR = [
   [/sobreMax: 2200,/, "teto do Sobre, coberto em VIZINHOS pelo mutante de sobre-tamanho"],
   [/Math\.max\(essencial \+ 1/, "trava otima > essencial, coberta por teste dedicado com pool 1"],
   [/mudaram\.length > 0/, "guarda de lista vazia na deteccao de autodeclaracao"],
+  [/skillsRatio/, "razao antiga, mantida so no calculo do detail informativo"],
   [/\.filter\(\(i\) => i > 0\)/, "sentinela 0 = indice base-1 valido, nao e limiar"],
 ];
 
@@ -250,8 +251,21 @@ function auditarCobertura() {
     }
     orfaos.push(s);
   }
+  // OS DOIS NUMEROS CONTAM COISAS DIFERENTES, e a saida diz isso de propósito.
+  // "sitios cobertos" sao LINHAS de codigo que casaram com alguma ancora;
+  // "limiares" sao ENTRADAS da tabela MUT. Nao podem ser iguais por construcao:
+  //   - uma linha com dois numeros (`length < 6 || length > 250`) e UM sitio e
+  //     DUAS entradas;
+  //   - uma entrada pode casar com DOIS sitios (o `aprovado` e a copy do
+  //     `detail` repetem a mesma comparacao).
+  // Sem este rotulo, 54 contra 55 se le como off-by-one, que e exatamente a
+  // classe de defeito que este script existe para nao ter.
+  const ancoras = new Set(conhecidos.map((k) => `${k.rel}|${k.de.trim()}`));
   console.log(
-    `[descoberta] ${sitios.length} sitios numericos na fonte | ${cobertos} cobertos por mutante | ${declarados} declarados nao-limiar | ${orfaos.length} ORFAOS`,
+    `[descoberta] ${sitios.length} sitios numericos na fonte | ${cobertos} SITIOS cobertos por ancora | ${declarados} declarados nao-limiar | ${orfaos.length} ORFAOS`,
+  );
+  console.log(
+    `[descoberta] ${conhecidos.length} ENTRADAS de mutante em ${ancoras.size} ancoras distintas (entrada != sitio: ver comentario em auditarCobertura)`,
   );
   if (orfaos.length > 0) {
     console.log(

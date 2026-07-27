@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { runLinkedinChecks } from "./linkedinChecks";
 import { keyTechnologiesForArea } from "./skillNormalize";
-import { cortesDeCobertura } from "../../shared/linkedin/reguaV2";
+import {
+  corteDeCompetencias,
+  cortesDeCobertura,
+} from "../../shared/linkedin/reguaV2";
 import { faixaFromScore } from "../../shared/linkedin/schema";
 import type { LinkedinParsed } from "../../shared/linkedin/parse";
 
@@ -161,10 +164,45 @@ describe("fronteira: cobertura por razao (0.5, 0.75) e skills-cobertura (0.5)", 
     expect(cortesDeCobertura(3).essencial).toBeLessThanOrEqual(3);
   });
 
-  it("skills-cobertura: 10 coladas reprova, 11 coladas aprova", () => {
-    const comNColadas = (n: number) =>
-      rodar(parsedBase(), { skills: techs.slice(0, n).join(", ") });
-    expect(aprovado(comNColadas(10), "skills-cobertura")).toBe(false);
-    expect(aprovado(comNColadas(11), "skills-cobertura")).toBe(true);
+  it("REGUA V2: skills-cobertura prende no que o perfil COMPROVA, nao na pool", () => {
+    // A v1 pedia 50% da pool inteira nas competencias coladas (11 em fullstack)
+    // e aprovava 0 das 107. Agora pede min(corte, comprovadas): nunca mais do
+    // que a pessoa tem.
+    const comTudo = (n: number) => {
+      const texto = techs.slice(0, 8).join(" "); // o perfil comprova 8
+      return rodar(parsedBase({ sobre: texto }), {
+        profileText: texto,
+        skills: techs.slice(0, n).join(", "),
+      });
+    };
+    // comprova 8, entao o corte e min(6, 8) = 6.
+    expect(corteDeCompetencias(22, 8)).toEqual({ minimo: 6, alcancavel: true });
+    expect(aprovado(comTudo(5), "skills-cobertura")).toBe(false);
+    expect(aprovado(comTudo(6), "skills-cobertura")).toBe(true);
+  });
+
+  it("REGUA V2: quem comprova pouco nao e cobrado por mais do que tem", () => {
+    // Comprova 3: o corte cai para 3, e cadastrar as 3 aprova. Na v1 esta
+    // pessoa reprovava sem ter o que fazer.
+    const texto = techs.slice(0, 3).join(" ");
+    const comN = (n: number) =>
+      rodar(parsedBase({ sobre: texto }), {
+        profileText: texto,
+        skills: techs.slice(0, n).join(", "),
+      });
+    expect(corteDeCompetencias(22, 3).minimo).toBe(3);
+    expect(aprovado(comN(2), "skills-cobertura")).toBe(false);
+    expect(aprovado(comN(3), "skills-cobertura")).toBe(true);
+  });
+
+  it("REGUA V2: quem comprova ZERO nao ganha o check de graca", () => {
+    // Sem a guarda, min(6, 0) = 0 e `0 >= 0` aprovaria: 27 das 107 ganhariam um
+    // check essencial de 10 pontos por nao ter nada.
+    expect(corteDeCompetencias(22, 0)).toEqual({ minimo: 0, alcancavel: false });
+    const vazio = rodar(parsedBase({ headline: "Pessoa" }), {
+      profileText: "Pessoa",
+      skills: "",
+    });
+    expect(aprovado(vazio, "skills-cobertura")).toBe(false);
   });
 });

@@ -41,6 +41,38 @@ export function cortesDeCobertura(pool: number): {
   return { essencial, otima };
 }
 
+/**
+ * Corte de `skills-cobertura`: quantas tecnologias-chave precisam estar
+ * CADASTRADAS nas competências.
+ *
+ * A v1 pedia `>= 0,5` de toda a pool da área, o mesmo defeito dos outros dois
+ * checks de cobertura, e com o mesmo resultado: **0 das 107 aprovavam**.
+ *
+ * Aqui a variante C direta seria errada, e é por isso que a forma é outra. O
+ * numerador deste check vem só das competências coladas, e o que ele pergunta é
+ * REGISTRO, não conhecimento: "o que você prova está cadastrado?". Cobrar
+ * `min(6, ⌈pool/2⌉)` contra a pool transformaria este check numa segunda cópia
+ * de `cobertura-keywords-area`, e uma pessoa que comprova 4 tecnologias e
+ * cadastrou as 4 continuaria reprovando sem ter o que fazer a respeito.
+ *
+ * A forma correta é o corte da variante C **limitado pelo que a pessoa
+ * comprova**: nunca se pede mais do que ela tem. Com a guarda de que quem
+ * comprova zero NÃO passa de graça: sem ela, 27 das 107 ganhariam um check
+ * essencial de 10 pontos por não ter nada.
+ *
+ * Medido sobre as 107: hoje 0 aprovam, com a variante C direta 7, com esta 16.
+ */
+export function corteDeCompetencias(
+  pool: number,
+  tecnologiasComprovadas: number,
+): { minimo: number; alcancavel: boolean } {
+  const { essencial } = cortesDeCobertura(pool);
+  return {
+    minimo: Math.min(essencial, tecnologiasComprovadas),
+    alcancavel: tecnologiasComprovadas > 0,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // 2. LIMIARES DE DENSIDADE POR NÍVEL
 // ---------------------------------------------------------------------------

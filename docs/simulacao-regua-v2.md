@@ -220,6 +220,54 @@ mudando de faixa para baixo no pior caso. Diferente do teto, essa queda tem caus
 experiência sem descrição própria é um buraco real do perfil, e o card que dizia "critérios ok" para ela
 estava mentindo.
 
+## 3-sexies. `skills-cobertura` na variante C (pré-deploy)
+
+O terceiro check do achado #1 da rodada 1. Ele pedia `>= 0,5` de TODA a pool da área nas competências
+coladas (11 em fullstack, 32 em backend) e aprovava **0 das 107**.
+
+**A variante C direta aqui seria errada.** O numerador vem só das competências coladas, e o que o check
+pergunta é REGISTRO, não conhecimento: "o que você prova está cadastrado?". Cobrar `min(6, ⌈pool/2⌉)`
+contra a pool transformaria este check numa segunda cópia de `cobertura-keywords-area`, e uma pessoa que
+comprova 4 tecnologias e cadastrou as 4 continuaria reprovando **sem ter o que fazer a respeito**.
+
+A forma adotada é o corte da variante C **limitado pelo que a pessoa comprova**, com guarda para o zero:
+
+```
+minimo = min(essencial_da_area, tecnologias_comprovadas)
+aprova = tecnologias_comprovadas > 0 && cadastradas >= minimo
+```
+
+Sem a guarda, `min(6, 0) = 0` e `0 >= 0` aprovaria: **27 das 107 ganhariam um check essencial de 10 pontos
+por não ter nada**.
+
+Medido sobre as 107 (a contagem de tecnologias-chave nas competências foi recuperada do percentual do
+`detail`; a inversão é inequívoca em **0 de 107** casos ambíguos):
+
+| forma | aprovam |
+|---|---|
+| hoje, `>= 0,5` da pool | **0/107** |
+| variante C direta | 7/107 |
+| **adotada** (limitada pelo comprovado) | **16/107** |
+
+### Simulação líquida com as TRÊS mudanças de cobertura
+
+| | antes | depois |
+|---|---|---|
+| média | 46,0 | **48,3** |
+| sobem | | **36** |
+| **descem** | | **0** |
+| iguais | | **71** |
+| faixa para cima | | **10** (3 `inicio->em-construcao`, 7 `em-construcao->forte`) |
+| **faixa para baixo** | | **0** |
+| maior subida | | **+15** (56 para 71) |
+| maior queda | | **nenhuma** |
+
+Faixas: `10:2 20:9 30:9 40:42 50:23 60:12 70:10` contra `10:4 20:10 30:9 40:43 50:28 60:10 70:3`.
+
+Entra na mesma `deterministicVersion` **4**, sem bump novo: a v4 ainda não subiu, então não existe análise
+gravada com ela para ficar incomparável. Bumpar para 5 marcaria como incomparáveis duas versões que nunca
+coexistiram em produção.
+
 ## 3-quater. Teto teórico e a faixa Magnético
 
 **O teto teórico é 100**, e sempre foi: com todos os 27 (Brasil) ou 28 (exterior) checks aprovados, a nota
