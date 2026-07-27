@@ -655,6 +655,17 @@ export const QUALITATIVE_VERSION = 3;
 /**
  * Versão do formato de `deterministic`, estampada no result a cada escrita.
  *
+ * O QUE ELA SIGNIFICA: comparabilidade de NOTA entre duas análises, e só isso.
+ * Duas análises de versões diferentes não podem virar delta nem celebração,
+ * porque a régua mudou embaixo delas.
+ *
+ * QUANDO BUMPAR: quando a nota do MESMO perfil, sem a pessoa mexer em nada,
+ * pode sair diferente (peso, limiar, catálogo de checks, ou o conteúdo que o
+ * parser entrega à régua). QUANDO NÃO BUMPAR: campo novo, opcional, que nenhum
+ * check lê. Ausência de campo é problema de leitura, e a leitura já é tolerante
+ * por `safeParse` em `readDeterministic`, que não precisa de versão para
+ * degradar.
+ *
  * 1: formato original, estável desde a criação da tabela (verificado: as 107
  *   linhas persistidas têm exatamente as mesmas 10 chaves), mais o
  *   `skillsParaAdicionarAgora` acrescentado junto com a v3 do qualitative.
