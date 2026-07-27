@@ -179,6 +179,47 @@ pontos, com até 26 mudando de faixa para baixo no pior caso. Somado ao líquido
 consideravelmente mais duro que o que a tabela mostra. A próxima simulação desta pergunta será exata,
 porque `experienciasDescricaoTamanhos` passa a ser persistido.
 
+## 3-quinquies. Reversão do teto de sinais e simulação FINAL
+
+O teto de 12 pontos nos sinais autodeclarados **foi revertido** por decisão de produto, e a decomposição
+acima é o motivo: 100% do movimento para baixo e 100% dos 13 rebaixamentos vinham dele. Cobertura e
+densidade não derrubavam ninguém. O teto tirava ponto exatamente de quem respondeu a verdade sobre ter
+foto, banner e Open to Work, que são ações reais e as mais fáceis de executar.
+
+O risco que ele endereçava (inflação invisível e gamificável) ficou com dois mecanismos que não custam
+ponto de ninguém: o bloco rotulado **"você declarou"**, separado do que a ferramenta leu do PDF, e
+`mudancaSoDeAutodeclaracao`, que impede delta e celebração quando a única coisa que mudou entre duas
+análises foi autodeclaração.
+
+**Limite conhecido dos dois, declarado**: eles protegem a COMPARAÇÃO, não o número absoluto de uma
+primeira análise, onde não existe "antes". Uma pessoa que responde "sim" aos cinco sinais na primeira
+análise leva 28 pontos que a ferramenta não conferiu, e a separação torna isso visível na tela mas não
+tira do número que ela vê e compartilha. É o vetor que sobra.
+
+**Simulação final, sem o teto:**
+
+| | antes (v1) | só cobertura C | só densidade | **FINAL (as duas)** |
+|---|---|---|---|---|
+| média | 46,0 | 47,4 | 46,0 | **47,5** |
+| mediana | 45 | 46 | 45 | **46** |
+| sobem | | 24 | 3 | **27** |
+| **descem** | | 0 | 0 | **0** |
+| iguais | | 83 | 104 | **80** |
+| faixa para cima | | 4 | 0 | **4** |
+| **faixa para baixo** | | 0 | 0 | **0** |
+| maior subida | | +9 | +2 | **+9** (49 para 58) |
+| maior queda | | 0 | 0 | **nenhuma** |
+
+Faixas finais por dezena: `10:4 20:10 30:8 40:41 50:22 60:16 70:6` contra `10:4 20:10 30:9 40:43 50:28
+60:10 70:3` antes.
+
+**Nenhuma das 107 perde ponto por reponderação.** O único vetor de queda que sobra é o `exp-descricoes`
+por item, que não é simulável sobre as 107 (o campo `experienciasDescricaoTamanhos` só passa a existir
+daqui pra frente) e cujo intervalo continua sendo o da seção 3: até 70 perfis, 5 a 6 pontos, até 26
+mudando de faixa para baixo no pior caso. Diferente do teto, essa queda tem causa verdadeira: uma
+experiência sem descrição própria é um buraco real do perfil, e o card que dizia "critérios ok" para ela
+estava mentindo.
+
 ## 3-quater. Teto teórico e a faixa Magnético
 
 **O teto teórico é 100**, e sempre foi: com todos os 27 (Brasil) ou 28 (exterior) checks aprovados, a nota

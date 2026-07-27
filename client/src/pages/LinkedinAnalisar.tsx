@@ -1515,16 +1515,19 @@ export default function LinkedinAnalisar() {
 
                   {reguaMudou ? (
                     <FeedbackBanner variant="warn">
-                      Mudamos os critérios da nota desde a sua última análise.
-                      Agora cada experiência é avaliada por si, uma sem
-                      descrição não é mais compensada por outra longa; a
-                      cobertura de tecnologias passou a considerar quantas
-                      existem na sua área, em vez de exigir metade de todas; a
-                      régua de tamanho de texto ficou mais leve para quem está
-                      começando; e o que você declara sobre o perfil (foto,
-                      banner, conexões) pesa menos que o que a gente consegue
-                      conferir no PDF. Por isso esta nota não é comparável com
-                      a anterior, e a comparação recomeça a partir daqui.
+                      Mudamos os critérios da nota desde a sua última análise, e
+                      quase tudo foi para deixar a régua mais justa. A cobertura
+                      de palavras-chave era impossível de alcançar: ela pedia
+                      metade de todas as tecnologias da área, o que em algumas
+                      áreas significava mais de trinta. Agora ela considera
+                      quantas existem na sua área de verdade. O nível que você
+                      informa passou a contar, então quem está começando não é
+                      medido pela régua de quem está há anos na área. E cada
+                      experiência passou a ser avaliada por si: uma sem
+                      descrição não é mais compensada por outra bem escrita, o
+                      que pode ter feito esse critério específico reprovar.
+                      Por isso esta nota não é comparável com a anterior, e a
+                      comparação recomeça a partir daqui.
                     </FeedbackBanner>
                   ) : scoreDelta ? (
                     <ScoreDeltaBanner
