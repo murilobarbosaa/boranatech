@@ -130,6 +130,32 @@ Custo aproximado: US$ 0,0012 por execução com `gpt-4o-mini`, cerca de US$ 0,01
 | 2026-07-27 | Fase 1A-bis, saneamento de numeral em bullets | **30** | 2 | 1 | v1.1 |
 | 2026-07-27 | Fase 1A-ter, camada única de lastro | **30** | 4 | 0 | v1.1 |
 | 2026-07-27 | Fase 1B, reescrita do bloco de experiências | **30** | 1 | 0 | v1.1 |
+| 2026-07-27 | Fase 2B, prompt com orçamento repartido | **30** | **0** | **0** | v1.2 |
+
+### Fase 2B, 2026-07-27
+
+Remedição, não reclassificação. O 30/30 da 1B foi medido no prompt de 4.000 caracteres com corte por
+posição e depois reclassificado pela régua de moldura; este foi medido no prompt que existe hoje, com
+orçamento de 6.000 repartido, em que o modelo vê 6 de 6 cabeçalhos e 5 de 5 descrições contra 5 e 3 antes.
+
+| | 1B (reclassificada) | 2B (medida) |
+|---|---|---|
+| fabricação de numeral | 0 | **0** |
+| fabricação de tecnologia | 0 | **0** |
+| afirmação sem numeral e sem tecnologia | 0 | **0** |
+| reatribuição | 0 | **0** |
+| execuções limpas | 30/30 | **30/30** |
+| afirmações avaliadas | 406 | **431** |
+| tecnologia em moldura (não é violação) | 1 | 3 |
+
+**Ficou.** Dar ao modelo 2 cabeçalhos e 2 descrições a mais não produziu fabricação nenhuma, e a base de
+evidência subiu de 406 para 431 afirmações avaliadas. O que a medição sustenta é o negativo, que era o
+risco: mais texto de origem não virou mais invenção.
+
+As 3 ocorrências de tecnologia em moldura subiram de 1 para 3 e **nenhuma é violação**. Duas são a mesma
+frase do perfil raso ("estou aprendendo sobre frameworks como React e TypeScript") e uma é o perfil em
+transição ("buscando desenvolver habilidades em Python"). São o comportamento correto para os dois perfis
+que mais precisam dele. Artefatos em `medicoes/2026-07-27T13-00-06-fase2b`.
 
 ### Fase 1B, 2026-07-27
 
