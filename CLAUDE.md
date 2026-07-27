@@ -169,7 +169,13 @@ O backup do Supabase é **diário, por volta de 04:15 (horário de Brasília)**,
 set -a && . ./.env && set +a
 curl -s "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/backups" \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
-  | grep -o '"inserted_at":"[^"]*","status":"[^"]*"' | head -3
+  | grep -oE '"status":"[A-Z]+","inserted_at":"[^"]+"' | head -3
+```
+
+Saída esperada (o mais recente primeiro):
+
+```
+"status":"COMPLETED","inserted_at":"2026-07-26T07:16:38.430Z"
 ```
 
 Se o backup mais recente não for de hoje de madrugada, ou não estiver `COMPLETED`, **não rode a migration**: sem backup válido a janela não protege nada. Procedimento de restauração e ensaio em `docs/ambiente-backup-restauracao.md`.
