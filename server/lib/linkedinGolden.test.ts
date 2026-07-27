@@ -115,16 +115,16 @@ describe("golden: perfil real (PDF de export, anonimizado)", () => {
       "Software Engineer/Full-Stack Developer",
     ]);
 
-    // CORRIGIDO (Fase 1B, B.4): a empresa fica no bloco a que pertence. O null
-    // do ultimo e correto, nao perda: no formato agrupado o LinkedIn escreve
-    // "Beta Edtech" uma vez so, no topo do grupo, e nao repete no 2o cargo.
+    // CORRIGIDO (Fase 1B + 1B-bis, B.4): a empresa fica no bloco a que pertence,
+    // e no formato agrupado ela e propagada para todos os cargos aninhados. Os
+    // dois ultimos sao o mesmo grupo "Beta Edtech", que o PDF escreve uma vez so.
     expect(parsed.experiencias.map((e) => e.empresa)).toEqual([
       "Startup Alfa",
       "NexoRH",
       "Botvia",
       "OGF - Orgao Governamental Federal",
       "Beta Edtech",
-      null,
+      "Beta Edtech",
     ]);
 
     // CORRIGIDO (Fase 1B, B.1): a experiencia de CTO nao tem descricao no PDF,

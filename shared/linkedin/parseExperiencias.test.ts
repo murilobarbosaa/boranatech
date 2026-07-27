@@ -166,13 +166,68 @@ Desenvolvi interfaces em React e APIs em TypeScript.
     expect(exp(agrupado)[1].empresa).toBe("Beta Edtech");
   });
 
-  it("o 2o cargo do grupo tem empresa null, e isso e o certo", () => {
-    // O export escreve a empresa uma vez so, no topo do grupo. Repetir
-    // "Beta Edtech" aqui seria o parser inventando o que o PDF nao diz.
-    expect(exp(agrupado)[2].empresa).toBeNull();
+  it("o 2o cargo do grupo HERDA a empresa do grupo", () => {
+    // O export escreve a empresa uma vez so, no topo do grupo. Deixar null aqui
+    // era herdar o bug pelo outro lado: a empresa existe no PDF e vale para os
+    // dois cargos, nao so para o primeiro.
+    expect(exp(agrupado)[2].empresa).toBe("Beta Edtech");
     expect(exp(agrupado)[2].titulo).toBe(
       "Software Engineer/Full-Stack Developer",
     );
+  });
+
+  it("grupo com TRES cargos: os tres ficam com a empresa", () => {
+    const tres = `Experience
+Beta Edtech
+3 years 2 months
+Staff Engineer
+January 2025 - Present   (7 months)
+São Paulo, Brasil
+Lidero a plataforma de dados e o time de infraestrutura.
+Software Engineer/QA Engineer
+August 2024 - November 2024   (4 months)
+São Paulo, Brasil
+Escrevi a suite de testes ponta a ponta com Cypress e Jest.
+Software Engineer/Full-Stack Developer
+November 2023 - November 2024   (1 year 1 month)
+São Paulo, Brasil
+Desenvolvi interfaces em React e APIs em TypeScript.
+`;
+    expect(exp(tres).map((e) => e.empresa)).toEqual([
+      "Beta Edtech",
+      "Beta Edtech",
+      "Beta Edtech",
+    ]);
+    expect(exp(tres).map((e) => e.titulo)).toEqual([
+      "Staff Engineer",
+      "Software Engineer/QA Engineer",
+      "Software Engineer/Full-Stack Developer",
+    ]);
+  });
+
+  it("empresa nova depois de um grupo NAO e sobrescrita pela heranca", () => {
+    const doisGrupos = `Experience
+Beta Edtech
+1 year 1 month
+Software Engineer/QA Engineer
+August 2024 - November 2024   (4 months)
+São Paulo, Brasil
+Escrevi a suite de testes com Cypress.
+Software Engineer/Full-Stack Developer
+November 2023 - November 2024   (1 year 1 month)
+São Paulo, Brasil
+Desenvolvi interfaces em React.
+Empresa Alfa
+Desenvolvedora Back-end
+janeiro de 2020 - outubro de 2023
+3 anos
+Construí a API de pagamentos em Node.js.
+`;
+    expect(exp(doisGrupos).map((e) => e.empresa)).toEqual([
+      "Beta Edtech",
+      "Beta Edtech",
+      "Empresa Alfa",
+    ]);
   });
 });
 
@@ -341,7 +396,7 @@ Desenvolvi interfaces em React.
     );
   });
 
-  it("mas some assim que o fragmento tem pontuacao de fim de frase", () => {
+  it("mas some assim que o fragmento tem pontuacao de fim de frase (herda o grupo)", () => {
     const texto = `Experience
 Beta Edtech
 1 year 1 month
@@ -355,7 +410,7 @@ November 2023 - November 2024   (1 year 1 month)
 São Paulo, Brasil
 Desenvolvi interfaces em React.
 `;
-    expect(exp(texto)[1].empresa).toBeNull();
+    expect(exp(texto)[1].empresa).toBe("Beta Edtech");
     expect(exp(texto)[0].descricao).toContain("Stack: Node, Jest, Cypress.");
   });
 });

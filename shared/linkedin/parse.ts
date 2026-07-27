@@ -18,9 +18,10 @@ export interface LinkedinExperiencia {
   /** Só o cargo. A empresa nunca vem colada aqui. */
   titulo: string;
   /**
-   * Empresa, quando o export a traz em linha própria. Fica null no formato
-   * agrupado a partir do segundo cargo, onde a empresa aparece uma vez só, no
-   * topo do grupo, e não se repete por cargo.
+   * Empresa do cargo. No formato agrupado o export escreve a empresa uma vez
+   * só, no topo do grupo, e ela é propagada para todos os cargos aninhados.
+   * Só fica null quando o próprio PDF não traz empresa nenhuma antes da
+   * primeira data.
    */
   empresa: string | null;
   descricao: string;
@@ -415,6 +416,16 @@ function parseExperiencias(lines: string[]): LinkedinExperiencia[] {
   const blocos = dateIdx.map((di, e) =>
     lerCabecalho(content, di, e > 0 ? dateIdx[e - 1] : -1),
   );
+
+  // Propagação da empresa do grupo. No formato agrupado o export escreve a
+  // empresa UMA vez, no topo, e os cargos seguintes vêm sem ela. Ler isso como
+  // "cargo sem empresa" é herdar o bug: a empresa existe no PDF e vale para
+  // todos os cargos do grupo, não só para o primeiro. Um cargo sem linha de
+  // empresa própria é, por construção do export, continuação do grupo anterior.
+  // A primeira experiência não tem de quem herdar e continua null.
+  for (let e = 1; e < blocos.length; e += 1) {
+    if (blocos[e].empresa === null) blocos[e].empresa = blocos[e - 1].empresa;
+  }
 
   return blocos.flatMap((bloco, e) => {
     // A descrição termina onde começa o CABEÇALHO do bloco seguinte, não na
