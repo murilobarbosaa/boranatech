@@ -62,8 +62,9 @@ describe("readQualitative: linha legada real (v1)", () => {
     const view = readQualitative(LEGADO.qualitative, LEGADO.qualitativeVersion);
     // skillsSugeridas v1 era derivado das FALTANTES: no perfil real ele contem
     // Ruby e Elixir para um dev JavaScript. Renderizar isso como "adicione as
-    // suas competencias" repetiria o conselho ruim a cada abertura.
-    expect(view.skillsParaAdicionarAgora).toEqual([]);
+    // suas competencias" repetiria o conselho ruim a cada abertura. A lista de
+    // "adicionar agora" nao vem daqui desde a v3: e calculada em deterministic.
+    expect("skillsParaAdicionarAgora" in view).toBe(false);
     expect(view.skillsParaEstudar).toContain("Ruby");
     expect(view.skillsParaEstudar).toContain("Elixir");
     expect(view.skillsParaEstudar).toEqual(
@@ -82,7 +83,6 @@ describe("readQualitative: formato atual e entradas quebradas", () => {
     headlines: ["h1", "h2", "h3"],
     sobreReescrito: "s",
     bulletsReescritos: [{ contexto: "ctx", bullets: ["x"] }],
-    skillsParaAdicionarAgora: ["React"],
     skillsParaEstudar: ["Go"],
     modeloMensagemRecrutador: "m",
   };
@@ -90,7 +90,6 @@ describe("readQualitative: formato atual e entradas quebradas", () => {
   it("le o formato novo sem tocar nas listas", () => {
     const view = readQualitative(atual, QUALITATIVE_VERSION);
     expect(view.version).toBe(QUALITATIVE_VERSION);
-    expect(view.skillsParaAdicionarAgora).toEqual(["React"]);
     expect(view.skillsParaEstudar).toEqual(["Go"]);
     expect(view.camposAusentes).toEqual([]);
   });

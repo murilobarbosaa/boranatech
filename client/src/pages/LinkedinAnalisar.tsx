@@ -852,6 +852,10 @@ export default function LinkedinAnalisar() {
     form.atividade !== "";
   const canSubmit = profileChars >= 200 && signalsAnswered && !loading;
 
+  // Lista calculada em codigo (deterministic). Ausente nas analises gravadas
+  // antes da v3, entao leitura guardada.
+  const skillsAdicionarAgora = result?.deterministic.skillsParaAdicionarAgora ?? [];
+
   // Leitura VERSIONADA do qualitative persistido: nunca acessar
   // result.qualitative.x direto (o jsonb pode ter sido gravado por outra versao
   // do codigo). Degrada para render parcial em vez de derrubar a pagina.
@@ -1749,12 +1753,12 @@ export default function LinkedinAnalisar() {
                           ) : null
                         }
                         paste={
-                          qual.skillsParaAdicionarAgora.length > 0 ||
+                          skillsAdicionarAgora.length > 0 ||
                           qual.skillsParaEstudar.length > 0 ? (
                             <div className="space-y-5">
                               {/* Bloco 1: o que a pessoa JA comprova no perfil
                                   e pode cadastrar hoje. Este tem CopyButton. */}
-                              {qual.skillsParaAdicionarAgora.length > 0 ? (
+                              {skillsAdicionarAgora.length > 0 ? (
                                 <div>
                                   <div className="flex items-start justify-between gap-3">
                                     <p className="text-sm text-slate-600">
@@ -1766,13 +1770,13 @@ export default function LinkedinAnalisar() {
                                       mas elas não estão nas suas competências.
                                     </p>
                                     <CopyButton
-                                      text={qual.skillsParaAdicionarAgora.join(
+                                      text={skillsAdicionarAgora.join(
                                         ", ",
                                       )}
                                     />
                                   </div>
                                   <div className="mt-3 flex flex-wrap gap-2">
-                                    {qual.skillsParaAdicionarAgora.map(
+                                    {skillsAdicionarAgora.map(
                                       (skill) => (
                                         <span
                                           key={skill}
@@ -1793,7 +1797,7 @@ export default function LinkedinAnalisar() {
                               {qual.skillsParaEstudar.length > 0 ? (
                                 <div
                                   className={
-                                    qual.skillsParaAdicionarAgora.length > 0
+                                    skillsAdicionarAgora.length > 0
                                       ? "border-t-2 border-dashed border-slate-200 pt-5"
                                       : undefined
                                   }

@@ -382,6 +382,78 @@ describe("golden: perfis sinteticos", () => {
     });
   }
 
+  // skillsParaAdicionarAgora e SUBTRACAO DE CONJUNTOS feita em codigo:
+  // keywordsEncontradas menos o que ja esta nas competencias coladas. Saiu do
+  // modelo na v3 porque pedir aritmetica a um LLM produzia invencao (o perfil
+  // raso ganhava Git, Figma e TypeScript que nao existem no perfil).
+  it("skillsParaAdicionarAgora: so o que o perfil comprova e nao esta cadastrado", () => {
+    // Perfil real: as competencias coladas sao de IA (AI Agents, RAG...), entao
+    // TUDO que o texto comprova esta fora delas.
+    const real = analisar({
+      fixture: "perfil-real-anonimizado.txt",
+      area: "fullstack",
+      mercado: "exterior",
+      skills: "AI Agents, Vector Databases, Retrieval-Augmented Generation, (RAG)",
+      foto: "sim",
+      banner: "sim",
+      openToWork: "sim",
+      conexoes: "500-mais",
+      atividade: "raramente",
+    });
+    expect(real.deterministic.skillsParaAdicionarAgora).toEqual([
+      "JavaScript",
+      "TypeScript",
+      "React",
+      "Node.js",
+      "PostgreSQL",
+      "Docker",
+    ]);
+    // Nunca sugere o que nao esta em keywordsEncontradas.
+    for (const tech of real.deterministic.skillsParaAdicionarAgora ?? []) {
+      expect(real.deterministic.keywordsEncontradas).toContain(tech);
+    }
+  });
+
+  it("skillsParaAdicionarAgora: LISTA VAZIA quando tudo ja esta cadastrado", () => {
+    // Perfil raso: o texto so evidencia HTML, CSS e JavaScript, e as tres ja
+    // estao nas competencias coladas. Vazio e a resposta correta, e era
+    // exatamente aqui que o modelo inventava.
+    const raso = analisar({
+      fixture: "perfil-b-junior-raso.txt",
+      area: "frontend",
+      mercado: "brasil",
+      skills: "HTML, CSS, JavaScript",
+      foto: "nao",
+      banner: "nao",
+      openToWork: "nao-sei",
+      conexoes: "ate-50",
+      atividade: "nunca",
+    });
+    expect(raso.deterministic.keywordsEncontradas).toEqual([
+      "HTML",
+      "CSS",
+      "JavaScript",
+    ]);
+    expect(raso.deterministic.skillsParaAdicionarAgora).toEqual([]);
+  });
+
+  it("skillsParaAdicionarAgora: sem competencias coladas, tudo que o perfil prova entra", () => {
+    const ingles = analisar({
+      fixture: "perfil-d-ingles.txt",
+      area: "backend",
+      mercado: "exterior",
+      skills: "",
+      foto: "sim",
+      banner: "nao",
+      openToWork: "nao-sei",
+      conexoes: "100-500",
+      atividade: "raramente",
+    });
+    expect(ingles.deterministic.skillsParaAdicionarAgora).toEqual(
+      ingles.deterministic.keywordsEncontradas,
+    );
+  });
+
   // BUG CONHECIDO (rodada2 B.8): "Page 10 of 12" contem um numero de 2 digitos,
   // e RESULT_RE (/\b\d{2,}\b/) o aceita como metrica. A descricao da fixture E
   // nao tem NENHUM numero proprio; e o rodape do PDF que aprova o check. Um

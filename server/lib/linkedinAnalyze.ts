@@ -77,7 +77,7 @@ TECNOLOGIA SÓ COM LASTRO: em bulletsReescritos, você só pode nomear uma tecno
 
 NÚMERO NÃO MUDA DE DONO: métricas, percentuais e volumes só podem ser reescritos com o MESMO sujeito e o MESMO recorte que têm no perfil. Se o texto diz que uma técnica específica reduziu a latência em uma situação específica, não atribua esse número ao projeto inteiro, a outra técnica, nem a outra métrica. Na dúvida sobre a que o número se refere, escreva o bullet sem o número.
 
-CAMPOS PARA COLAR SÓ COM O QUE EXISTE: headlines, sobreReescrito e bulletsReescritos só podem citar tecnologias que aparecem no perfil. As tecnologias marcadas como SEM NENHUMA evidência no perfil não entram em nenhum texto para colar: elas só podem aparecer em skillsParaEstudar. skillsParaAdicionarAgora recebe SOMENTE as tecnologias que o perfil já comprova e que estão fora das competências cadastradas; quando essa lista de comprovadas chegar vazia, devolva skillsParaAdicionarAgora como lista vazia, e isso é resposta correta, não uma falha a preencher.
+CAMPOS PARA COLAR SÓ COM O QUE EXISTE: headlines, sobreReescrito e bulletsReescritos só podem citar tecnologias que aparecem no perfil. As tecnologias marcadas como SEM NENHUMA evidência no perfil não entram em nenhum texto para colar: elas só podem aparecer em skillsParaEstudar, escolhidas daquela lista e escritas exatamente como aparecem nela. A lista de tecnologias que o perfil comprova e que faltam nas competências já vem calculada e é exibida pela plataforma: você não a reescreve nem a repete como lista, no máximo comenta na prosa.
 
 COMO RECRUTADORES BUSCAM: recrutadores usam o LinkedIn Recruiter com buscas por cargo atual, cargos anteriores, competências cadastradas e palavras-chave booleanas. Os campos que mais pesam na busca são a headline, os títulos das experiências e a seção de competências. O texto do Sobre é indexado, mas pesa menos. Por isso o cargo-alvo precisa aparecer literalmente na headline e em pelo menos um título de experiência, e as tecnologias precisam estar escritas por extenso no perfil, em português e quando fizer sentido também em inglês.
 
@@ -158,18 +158,9 @@ function buildUserPrompt(
     ? [`Objetivo do usuário: ${request.objetivo.trim()}`, ""]
     : [];
 
-  // Tecnologias que o perfil evidencia mas que nao estao nas competencias
-  // coladas: derivado aqui, no prompt, e NAO adicionado ao deterministic (o
-  // result e persistido e o contrato nao muda).
-  const skillsDoFormulario = new Set(
-    matchTechnologies(
-      parseSkillsInput(request.skills).join(", "),
-      keyTechnologiesForArea(area),
-    ).encontradas,
-  );
-  const comprovadasForaDasCompetencias = deterministic.keywordsEncontradas.filter(
-    (tech) => !skillsDoFormulario.has(tech),
-  );
+  // Calculado em linkedinChecks (subtracao de conjuntos), nao pedido ao modelo.
+  const comprovadasForaDasCompetencias =
+    deterministic.skillsParaAdicionarAgora ?? [];
 
   const sinais = [
     `foto profissional: ${request.foto}`,
@@ -200,10 +191,10 @@ function buildUserPrompt(
     // Next.js e Tailwind na headline sem ele nunca ter usado nenhum dos dois.
     // Separar por EVIDENCIA resolve na origem: o que ele comprova no perfil e
     // sugestao legitima de competencia, o resto e no maximo estudo futuro.
-    `Tecnologias que o perfil COMPROVA mas que estão fora das competências cadastradas (pode sugerir para a seção Competências): ${
+    `Tecnologias que o perfil COMPROVA e que estão fora das competências cadastradas (JÁ CALCULADO, a plataforma mostra esta lista sozinha; você NÃO a reescreve, apenas pode comentá-la na prosa): ${
       comprovadasForaDasCompetencias.join(", ") || "nenhuma"
     }.`,
-    `Tecnologias da área SEM NENHUMA evidência no perfil (só podem ser citadas como estudo futuro, nunca como texto para colar): ${
+    `Tecnologias da área SEM NENHUMA evidência no perfil (é DESTA lista, e só dela, que sai skillsParaEstudar): ${
       deterministic.keywordsFaltantes.join(", ") || "nenhuma"
     }.`,
     "",
@@ -401,7 +392,6 @@ function warmEmptyQualitative(
     bulletsReescritos: [],
     // Perfil quase vazio nao comprova tecnologia nenhuma, entao "adicionar
     // agora" fica legitimamente vazio e as faltantes viram trilha de estudo.
-    skillsParaAdicionarAgora: [],
     skillsParaEstudar: faltantesTop,
     modeloMensagemRecrutador:
       "Olá, tudo bem? Estou começando na área de tecnologia e tenho acompanhado as vagas da sua empresa. Adoraria me conectar e ficar no seu radar para futuras oportunidades de início de carreira. Obrigado!",

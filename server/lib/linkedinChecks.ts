@@ -452,12 +452,23 @@ export function runLinkedinChecks(
     encontrado: matchesAnyTitle(profileText, [titulo]),
   }));
 
+  // Subtracao de conjuntos, nao julgamento: tecnologias da area que o PERFIL
+  // evidencia menos as que ja estao nas competencias coladas. E a lista do "voce
+  // ja prova isto, so falta cadastrar". Ficava a cargo do modelo e era a fonte
+  // das ultimas invencoes medidas (o perfil raso ganhava Git, Figma e
+  // TypeScript do nada). Aritmetica e trabalho de codigo.
+  const jaNasCompetencias = new Set(skillsCoverage.encontradas);
+  const skillsParaAdicionarAgora = fullCoverage.encontradas.filter(
+    (tech) => !jaNasCompetencias.has(tech),
+  );
+
   return {
     score,
     faixa,
     checks,
     keywordsEncontradas: fullCoverage.encontradas,
     keywordsFaltantes: fullCoverage.faltantes,
+    skillsParaAdicionarAgora,
     titulosIngles,
     headline: parsed.headline,
     sobreTamanho: sobre.trim().length,

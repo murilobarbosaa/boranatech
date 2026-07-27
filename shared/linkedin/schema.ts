@@ -444,6 +444,15 @@ export interface LinkedinDeterministicResult {
   keywordsEncontradas: string[];
   /** Tecnologias-chave da área ausentes do perfil. */
   keywordsFaltantes: string[];
+  /**
+   * Tecnologias que o perfil COMPROVA e que não estão nas competências
+   * coladas: `keywordsEncontradas` menos as encontradas no campo de skills.
+   * Calculado em código (é subtração de conjuntos, não curadoria).
+   *
+   * OPCIONAL de propósito: as análises gravadas antes da v3 não têm este
+   * campo. Quem lê análise persistida precisa tolerar a ausência.
+   */
+  skillsParaAdicionarAgora?: string[];
   /** Títulos de busca em inglês da área, casados ou não contra o perfil. */
   titulosIngles: TituloInglesMatch[];
   headline: string | null;
@@ -531,15 +540,13 @@ export const LinkedinQualitativeSchema = z.object({
   // "adicione isto hoje" e "estude isto". Como ele era derivado da lista de
   // faltantes, a ferramenta acabava mandando um dev JavaScript anunciar Ruby e
   // Elixir nas competencias. Separado em dois, cada um com a sua regra.
-  skillsParaAdicionarAgora: z
-    .array(z.string())
-    .describe(
-      "Competências que o perfil JÁ COMPROVA (aparecem no texto das experiências ou do Sobre) e que não estão na lista de competências cadastradas. A pessoa pode adicionar hoje com honestidade. LISTA VAZIA É RESPOSTA VÁLIDA E ESPERADA quando tudo que o perfil comprova já está cadastrado: não preencha com tecnologia que o perfil não evidencia só para não deixar vazio.",
-    ),
+  // skillsParaAdicionarAgora NAO esta aqui de proposito: e subtracao de
+  // conjuntos, calculada em deterministic. Pedir aritmetica ao modelo foi a
+  // ultima fonte de invencao medida. Ele escreve so a prosa em volta.
   skillsParaEstudar: z
     .array(z.string())
     .describe(
-      "Tecnologias da área que o perfil NÃO evidencia, oferecidas como trilha de estudo. NÃO é para colar no perfil: a pessoa não deve adicionar nenhuma delas às competências antes de realmente saber usar. Lista vazia é válida.",
+      "De 3 a 6 tecnologias ESCOLHIDAS da lista de tecnologias sem evidência no perfil que você recebeu, priorizando as mais úteis para a área e o nível da pessoa. Só valem itens daquela lista, copiados exatamente como aparecem nela: não invente nem reescreva nome de tecnologia. É trilha de estudo, NÃO é para colar no perfil, e a pessoa não deve adicionar nenhuma delas às competências antes de saber usar. Justifique a escolha em uma das melhorias. Lista vazia é válida quando a lista de origem vier vazia.",
     ),
   modeloMensagemRecrutador: z
     .string()
@@ -582,13 +589,15 @@ export type LinkedinAnalyzeRequest = z.infer<
  * 1 (implícita, ausente nas linhas gravadas até 2026-07-26): tinha
  *   `skillsSugeridas`, um campo só, derivado das palavras-chave faltantes.
  * 2: `skillsSugeridas` deu lugar a `skillsParaAdicionarAgora` e
- *   `skillsParaEstudar`.
+ *   `skillsParaEstudar`, os dois escritos pelo modelo.
+ * 3: `skillsParaAdicionarAgora` saiu do modelo e virou campo calculado em
+ *   `deterministic`. O modelo escreve só `skillsParaEstudar`.
  *
  * Quem lê análise persistida NUNCA acessa `result.qualitative.x` direto: usa
  * `readQualitative` (shared/linkedin/readQualitative.ts), que resolve a versão
  * e degrada para render parcial. Ver CLAUDE.md, "Lookups por valor do servidor".
  */
-export const QUALITATIVE_VERSION = 2;
+export const QUALITATIVE_VERSION = 3;
 
 export interface LinkedinAnalysisResponse {
   area: (typeof AREA_SLUGS)[number];

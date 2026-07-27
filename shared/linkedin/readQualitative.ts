@@ -38,7 +38,6 @@ const LenientQualitativeSchema = z.object({
   headlines: z.array(z.string()).optional(),
   sobreReescrito: z.string().optional(),
   bulletsReescritos: z.array(LinkedinBulletsReescritosSchema).optional(),
-  skillsParaAdicionarAgora: z.array(z.string()).optional(),
   skillsParaEstudar: z.array(z.string()).optional(),
   /** Versão 1: campo único, derivado das palavras-chave faltantes. */
   skillsSugeridas: z.array(z.string()).optional(),
@@ -56,7 +55,6 @@ export interface QualitativeView {
   headlines: string[];
   sobreReescrito: string;
   bulletsReescritos: LinkedinBulletsReescritos[];
-  skillsParaAdicionarAgora: string[];
   skillsParaEstudar: string[];
   modeloMensagemRecrutador: string;
   /** Nomes dos campos que não vieram ou não puderam ser lidos. */
@@ -72,7 +70,6 @@ const CAMPOS_ESPERADOS = [
   "headlines",
   "sobreReescrito",
   "bulletsReescritos",
-  "skillsParaAdicionarAgora",
   "skillsParaEstudar",
   "modeloMensagemRecrutador",
 ] as const;
@@ -84,24 +81,19 @@ export function readQualitative(
   const parsed = LenientQualitativeSchema.safeParse(raw);
   const q = parsed.success ? parsed.data : {};
 
-  // Versão: o carimbo do result manda; sem carimbo, a presença dos campos novos
-  // decide. Linha antiga não tem carimbo nem campos novos, então cai em 1.
-  const temCamposNovos =
-    q.skillsParaAdicionarAgora !== undefined || q.skillsParaEstudar !== undefined;
+  // Versão: o carimbo do result manda; sem carimbo, a presença de
+  // skillsParaEstudar decide. Linha antiga não tem carimbo nem o campo novo.
   const version =
-    declaredVersion ?? (temCamposNovos ? QUALITATIVE_VERSION : 1);
+    declaredVersion ?? (q.skillsParaEstudar !== undefined ? QUALITATIVE_VERSION : 1);
 
   // Legado (v1): `skillsSugeridas` era derivado das FALTANTES, então vira
   // trilha de estudo, nunca "adicione agora". Renderizar aquela lista como
   // sugestão de competência repetiria o conselho ruim (Ruby e Elixir para um
   // dev JavaScript) a cada abertura do histórico.
-  const legado = version < QUALITATIVE_VERSION;
-  const skillsParaAdicionarAgora = legado
-    ? []
-    : (q.skillsParaAdicionarAgora ?? []);
-  const skillsParaEstudar = legado
-    ? (q.skillsSugeridas ?? [])
-    : (q.skillsParaEstudar ?? []);
+  // v1 tinha só `skillsSugeridas`, derivado das FALTANTES: vira trilha de
+  // estudo. A partir da v2 o campo já se chama skillsParaEstudar.
+  const skillsParaEstudar = q.skillsParaEstudar ?? q.skillsSugeridas ?? [];
+  const legado = q.skillsParaEstudar === undefined;
 
   const view: QualitativeView = {
     version,
@@ -113,16 +105,13 @@ export function readQualitative(
     headlines: q.headlines ?? [],
     sobreReescrito: q.sobreReescrito ?? "",
     bulletsReescritos: q.bulletsReescritos ?? [],
-    skillsParaAdicionarAgora,
     skillsParaEstudar,
     modeloMensagemRecrutador: q.modeloMensagemRecrutador ?? "",
     camposAusentes: [],
   };
 
   // Um campo legado não conta como ausente: ele existe, só tem outro nome.
-  const resolvidosPeloLegado = new Set(
-    legado ? ["skillsParaAdicionarAgora", "skillsParaEstudar"] : [],
-  );
+  const resolvidosPeloLegado = new Set(legado ? ["skillsParaEstudar"] : []);
   view.camposAusentes = CAMPOS_ESPERADOS.filter(
     (campo) =>
       !resolvidosPeloLegado.has(campo) &&
