@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  TETO_SINAIS,
+  CATEGORIA_AUTODECLARADA,
   cortesDeCobertura,
   expDescricoesPorItem,
   limiaresDensidade,
   mudancaSoDeAutodeclaracao,
-  pesoEfetivo,
 } from "./reguaV2";
 
 describe("cobertura, variante C", () => {
@@ -118,24 +117,21 @@ describe("exp-descricoes por item", () => {
   });
 });
 
-describe("teto dos sinais autodeclarados", () => {
-  it("sinais sao escalados para caber no teto", () => {
-    // Na v1 os cinco somam 28: essencial 10 + importante 6 + importante 6 +
-    // opcional 3 + opcional 3.
-    const soma = 28;
-    const escalado = [10, 6, 6, 3, 3].map((p) =>
-      pesoEfetivo("essencial", "sinais", p, soma),
-    );
-    expect(escalado.reduce((s, x) => s + x, 0)).toBeCloseTo(TETO_SINAIS, 6);
-  });
-
-  it("check que NAO e de sinais nao muda", () => {
-    expect(pesoEfetivo("essencial", "headline", 10, 28)).toBe(10);
-    expect(pesoEfetivo("opcional", "experiencias", 3, 28)).toBe(3);
-  });
-
-  it("se os sinais ja cabem no teto, nada e escalado", () => {
-    expect(pesoEfetivo("opcional", "sinais", 3, 9)).toBe(3);
+describe("sinais autodeclarados: sem reponderacao", () => {
+  it("o peso dos sinais NAO e mexido: 28 de 194 continuam sendo 28 de 194", () => {
+    // Guard contra reintroduzir o teto sem decisao. Ele existiu e foi
+    // revertido: 100% do movimento para baixo das 107 vinha dele.
+    const catalogo = [
+      { tier: "essencial" as const, category: "sinais" },
+      { tier: "opcional" as const, category: "sinais" },
+      { tier: "importante" as const, category: "sinais" },
+      { tier: "importante" as const, category: "sinais" },
+      { tier: "opcional" as const, category: "sinais" },
+    ];
+    const pesos = { essencial: 10, importante: 6, opcional: 3 };
+    const soma = catalogo.reduce((s, c) => s + pesos[c.tier], 0);
+    expect(soma).toBe(28);
+    expect(CATEGORIA_AUTODECLARADA).toBe("sinais");
   });
 });
 

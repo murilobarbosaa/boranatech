@@ -143,42 +143,33 @@ export function expDescricoesPorItem(
 }
 
 // ---------------------------------------------------------------------------
-// 4. TETO DOS SINAIS AUTODECLARADOS
+// 4. SINAIS AUTODECLARADOS: visibilidade e supressao, NAO reponderacao
 // ---------------------------------------------------------------------------
 
 /**
- * Peso máximo que a categoria `sinais` pode somar no denominador da nota.
+ * Os cinco checks de `sinais` (foto, banner, Open to Work, conexoes, atividade)
+ * sao AUTODECLARADOS: a plataforma pergunta no formulario e acredita. Eles
+ * somam 28 de 194 pontos, 14,4% da nota.
  *
- * Os cinco checks de sinais (foto, banner, open to work, conexões, atividade)
- * são AUTODECLARADOS: a plataforma não lê nenhum deles do PDF, ela pergunta no
- * formulário e acredita. Na v1 eles somam 28 de 194 pontos possíveis, ou
- * **14,4% da nota**, e um deles é `essencial`, o mesmo tier de "ter headline".
+ * Um teto de 12 pontos chegou a existir aqui e foi REVERTIDO. A simulacao sobre
+ * as 107 analises mostrou que ele sozinho derrubava a nota de 79 delas e movia
+ * 13 para a faixa de baixo, enquanto cobertura e densidade nao derrubavam
+ * ninguem: 100% do movimento para baixo vinha da reponderacao. E ele tirava
+ * ponto exatamente de quem respondeu a verdade sobre ter foto e banner, que sao
+ * acoes reais e as mais faceis de executar.
  *
- * 12 é pouco mais que um check essencial verificado (10). A regra que o número
- * expressa: o conjunto inteiro do que a pessoa declara sobre si vale um pouco
- * mais que um único fato que a ferramenta conseguiu conferir, e menos que dois.
+ * O risco que o teto endereçava (inflacao invisivel e gamificavel) fica com dois
+ * mecanismos que nao custam ponto de ninguem:
+ *   - VISIBILIDADE: o bloco aparece rotulado como "voce declarou", separado do
+ *     que a ferramenta leu do PDF;
+ *   - NAO-GAMIFICABILIDADE: `mudancaSoDeAutodeclaracao` impede delta e
+ *     celebracao quando a unica coisa que mudou entre duas analises foi
+ *     autodeclaracao.
  *
- * O tier de cada check NÃO muda: ele continua governando a apresentação e a
- * ordem no relatório. O que muda é o peso efetivo no cálculo.
+ * Limite conhecido dos dois: eles protegem a COMPARACAO, nao o numero absoluto
+ * de uma primeira analise, onde nao ha "antes" para comparar.
  */
-export const TETO_SINAIS = 12;
-
-/**
- * Peso efetivo de um check no cálculo da nota.
- *
- * Sinais são escalados proporcionalmente para caber em `TETO_SINAIS`. Isso mexe
- * no DENOMINADOR e portanto desloca a nota de todo mundo, inclusive de quem não
- * mudou nada: está quantificado isolado em `docs/simulacao-regua-v2.md`.
- */
-export function pesoEfetivo(
-  tier: LinkedinCheckTier,
-  category: string,
-  pesoBase: number,
-  somaSinaisBase: number,
-): number {
-  if (category !== "sinais" || somaSinaisBase <= TETO_SINAIS) return pesoBase;
-  return (pesoBase * TETO_SINAIS) / somaSinaisBase;
-}
+export const CATEGORIA_AUTODECLARADA = "sinais";
 
 /**
  * A mudança entre duas análises veio SÓ de autodeclaração?

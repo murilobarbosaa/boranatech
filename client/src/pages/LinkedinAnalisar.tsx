@@ -1901,7 +1901,7 @@ export default function LinkedinAnalisar() {
 
                     <Reveal>
                       <SectionReport
-                        title="Sinais do perfil"
+                        title="Sinais do perfil (você declarou)"
                         icon={
                           <BadgeCheck
                             className={SECTION_ICON_CLASS}
@@ -1909,7 +1909,21 @@ export default function LinkedinAnalisar() {
                           />
                         }
                         checks={checksByCategory("sinais")}
-                      />
+                      >
+                        {/* Separacao visual do que a ferramenta LEU do PDF.
+                            Estes cinco vem do formulario e a plataforma nao tem
+                            como conferir; deixar isso explicito e metade do que
+                            substituiu o teto de peso que existiu e foi
+                            revertido. A outra metade e a supressao de delta. */}
+                        <p className="mt-4 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50 p-3 text-xs font-medium text-amber-900">
+                          Estes cinco pontos vêm das suas respostas no
+                          formulário, não do PDF: a gente não consegue conferir
+                          foto, banner, Open to Work, conexões nem frequência de
+                          posts. Eles contam na nota porque são ações reais e
+                          fáceis de fazer, mas valem pelo que você fizer de
+                          verdade, não pelo que marcar aqui.
+                        </p>
+                      </SectionReport>
                     </Reveal>
 
                     {/* RecruiterFinder dentro do prontuario: agrupado logo

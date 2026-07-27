@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { AREA_SLUGS } from "../areas";
-import { pesoEfetivo } from "./reguaV2";
 
 /**
  * Contrato do analisador de LinkedIn.
@@ -421,23 +420,19 @@ export function computeLinkedinScore(checks: LinkedinCheckResult[]): {
   score: number;
   faixa: LinkedinFaixa;
 } {
-  // Teto dos sinais autodeclarados (regua v2). Os cinco checks da categoria
-  // `sinais` sao respostas de formulario que a plataforma nao consegue conferir,
-  // e na v1 somavam 28 de 194 pontos, 14,4% da nota, um deles no mesmo tier de
-  // "ter headline". Eles sao escalados para caber em TETO_SINAIS. O tier NAO
-  // muda: ele continua governando apresentacao e ordem no relatorio.
-  const somaSinaisBase = checks
-    .filter((c) => c.category === "sinais")
-    .reduce((soma, c) => soma + TIER_WEIGHTS[c.tier], 0);
+  // SEM teto para os sinais autodeclarados, e a ausencia e decisao, nao
+  // esquecimento. Um teto de 12 pontos chegou a existir na regua v2 e foi
+  // revertido: a simulacao sobre as 107 mostrou que 100% do movimento para
+  // baixo e 100% dos 13 rebaixamentos vinham dele, e que ele so tirava ponto de
+  // quem respondeu a verdade sobre foto, banner e Open to Work, que sao acoes
+  // que valem de fato e sao as mais faceis de executar. O risco de inflacao
+  // fica com os dois mecanismos que nasceram depois: o bloco separado de "voce
+  // declarou" (torna visivel) e `mudancaSoDeAutodeclaracao` (torna
+  // nao-gamificavel).
   let possivel = 0;
   let ganho = 0;
   for (const check of checks) {
-    const weight = pesoEfetivo(
-      check.tier,
-      check.category,
-      TIER_WEIGHTS[check.tier],
-      somaSinaisBase,
-    );
+    const weight = TIER_WEIGHTS[check.tier];
     possivel += weight;
     if (check.aprovado) ganho += weight;
   }

@@ -85,7 +85,6 @@ const MUT = [
   [V, "densidade padrao, sobreMin (500)", "sobreMin: 500,", "sobreMin: 50,"],
   [V, "densidade leve, descricao por experiencia (50)", "descricaoPorExperiencia: 50,", "descricaoPorExperiencia: 5,"],
   [V, "densidade padrao, descricao por experiencia (100)", "descricaoPorExperiencia: 100,", "descricaoPorExperiencia: 10,"],
-  [V, "TETO_SINAIS (12)", "export const TETO_SINAIS = 12;", "export const TETO_SINAIS = 1;"],
 ];
 
 // MODO VIZINHANCA (--vizinhanca). As mutacoes da tabela acima sao de ordem de
@@ -109,7 +108,6 @@ const VIZINHOS = [
   [S, "faixa inicio", "if (score <= {N}) return \"inicio\";", "39"],
   [S, "faixa em-construcao", "if (score <= {N}) return \"em-construcao\";", "69"],
   [S, "faixa forte", "if (score <= {N}) return \"forte\";", "89"],
-  [V, "TETO_SINAIS", "export const TETO_SINAIS = {N};", "12"],
   [V, "densidade leve, sobreMin", "sobreMin: {N},\n        sobreMax: 2200,\n        descricaoPorExperiencia: 50,", "300"],
   [V, "densidade leve, descricao/exp", "descricaoPorExperiencia: {N},\n      }", "50"],
 ];
@@ -202,7 +200,6 @@ const NAO_LIMIAR = [
   [/porItem\.reprovadas\.length > 1/, "plural de copy"],
   [/sobreMax: 2200,/, "teto do Sobre, coberto em VIZINHOS pelo mutante de sobre-tamanho"],
   [/Math\.max\(essencial \+ 1/, "trava otima > essencial, coberta por teste dedicado com pool 1"],
-  [/somaSinaisBase <= TETO_SINAIS/, "guarda: sinais que ja cabem no teto nao sao escalados"],
   [/mudaram\.length > 0/, "guarda de lista vazia na deteccao de autodeclaracao"],
   [/\.filter\(\(i\) => i > 0\)/, "sentinela 0 = indice base-1 valido, nao e limiar"],
 ];

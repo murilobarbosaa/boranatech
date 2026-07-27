@@ -173,11 +173,12 @@ describe("golden: perfil real (PDF de export, anonimizado)", () => {
   it("checks e score", () => {
     const { deterministic, reprovados } = analisar(cenario);
 
-    // 75 -> 74 (REGUA V2). Duas forcas em sentidos opostos: `exp-descricoes`
-    // passou a REPROVAR, porque a experiencia 1 (CTO) tem descricao vazia e o
-    // agregado antigo escondia isso; e a cobertura essencial passou a APROVAR,
-    // porque o corte da area fullstack virou 6 em vez de 50% de 22.
-    expect(deterministic.score).toBe(74);
+    // 75 -> 75 (REGUA V2), e o empate esconde duas forcas opostas do mesmo
+    // tamanho: `exp-descricoes` passou a REPROVAR, porque a experiencia 1 (CTO)
+    // tem descricao vazia e o agregado antigo escondia isso; e a cobertura
+    // essencial passou a APROVAR, porque o corte da area fullstack virou 6 em
+    // vez de 50% de 22.
+    expect(deterministic.score).toBe(75);
     expect(deterministic.faixa).toBe("forte");
     // mercado exterior: sem termos-bilingues, com headline/sobre em ingles.
     expect(deterministic.checks).toHaveLength(28);
@@ -292,7 +293,7 @@ describe("golden: perfis sinteticos", () => {
       // CORRIGIDO (regua v2): o perfil exemplar deixou de travar em 82 e chega
       // a 90, primeira ocupacao real da faixa Magnetico. Antes era
       // os 3 checks de cobertura sao inatingiveis. Teto medido: 85 no Brasil.
-      score: 90,
+      score: 91,
       faixa: "magnetico",
       nChecks: 27,
       reprovados: [
@@ -318,7 +319,7 @@ describe("golden: perfis sinteticos", () => {
       headline:
         "Estudante de Análise e Desenvolvimento de Sistemas | Em busca de oportunidade",
       experiencias: 1,
-      score: 22,
+      score: 20,
       faixa: "inicio",
       nChecks: 27,
       reprovados: [
@@ -366,7 +367,7 @@ describe("golden: perfis sinteticos", () => {
       experiencias: 2,
       // BUG CONHECIDO (rodada1, vies estrutural): perfil bem escrito de quem
       // esta EM TRANSICAO e medido pela aderencia a area que ainda nao tem.
-      score: 47,
+      score: 50,
       faixa: "em-construcao",
       nChecks: 27,
       reprovados: [
@@ -405,7 +406,7 @@ describe("golden: perfis sinteticos", () => {
       // BUG CONHECIDO (rodada1 achado #1 + #8): 72 com ZERO competencias
       // informadas e 3% de cobertura, mais que perfis bem mais completos em
       // outros mercados. Os 2 checks essenciais de ingles compensam.
-      score: 74,
+      score: 72,
       faixa: "forte",
       nChecks: 28,
       reprovados: [
@@ -437,7 +438,7 @@ describe("golden: perfis sinteticos", () => {
       headline: "Desenvolvedor Back-end | Python, Django",
       experiencias: 1,
       // 69 -> 68: exp-resultados deixou de ser aprovado pelo rodape.
-      score: 68,
+      score: 69,
       faixa: "em-construcao",
       nChecks: 27,
       reprovados: [
@@ -582,6 +583,6 @@ describe("golden: perfis sinteticos", () => {
       semRodape.checks.find((c) => c.id === "exp-resultados")?.aprovado,
     ).toBe(false);
     expect(semRodape.score).toBe(comRodape.deterministic.score);
-    expect(semRodape.score).toBe(68);
+    expect(semRodape.score).toBe(69);
   });
 });
