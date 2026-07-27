@@ -29,6 +29,11 @@ export interface NumeralEncontrado {
   canonico: string;
   /** O numeral vinha acompanhado de %? */
   percentual: boolean;
+  /**
+   * O numeral estava colado a uma letra (`v4`, `ES6`, `ITIL v4`, `Vue3`)?
+   * Nesse caso e numero de VERSAO ou identificador, nao metrica de resultado.
+   */
+  versao: boolean;
 }
 
 /**
@@ -101,23 +106,31 @@ export function extrairNumerais(texto: string): NumeralEncontrado[] {
   for (const m of Array.from(texto.matchAll(NUMERAL_RE))) {
     const bruto = m[0].trim();
     if (!/\d/.test(bruto)) continue;
-    const fim = (m.index ?? 0) + m[0].length;
+    const inicio = m.index ?? 0;
+    // Letra colada antes: "v4", "ES6", "Vue3". Versao, nao metrica.
+    const versao = /[a-zà-ÿ]/i.test(texto.slice(Math.max(0, inicio - 1), inicio));
+    const fim = inicio + m[0].length;
     const seguinte = texto.slice(fim, fim + 2);
-    const percentual = /%/.test(bruto) || /^\s*%/.test(seguinte);
+    // "40%", "40 %", "40 percent", "40 por cento" e "40 pct" sao percentual.
+    const depois = semAcento(texto.slice(fim, fim + 12));
+    const percentual =
+      /%/.test(bruto) ||
+      /^\s*%/.test(seguinte) ||
+      /^\s*(?:percent|per cento|por cento|pct)\b/.test(depois);
     // "3 milhoes" vira 3000000, para casar com "3M+" na origem.
     const palavraSeguinte = semAcento(texto.slice(fim, fim + 12)).match(/^\s*([a-z]+)/);
     const escala = palavraSeguinte ? ESCALA_PALAVRA[palavraSeguinte[1]] : undefined;
     const canonico = canonizar(bruto);
     if (escala && /^\d+(\.\d+)?$/.test(canonico)) {
-      out.push({ bruto: `${bruto} ${palavraSeguinte![1]}`, canonico: String(Math.round(Number(canonico) * escala)), percentual });
+      out.push({ bruto: `${bruto} ${palavraSeguinte![1]}`, canonico: String(Math.round(Number(canonico) * escala)), percentual, versao });
       continue;
     }
-    out.push({ bruto, canonico, percentual });
+    out.push({ bruto, canonico, percentual, versao });
   }
   const semAc = semAcento(texto);
   for (const [palavra, digito] of Object.entries(POR_EXTENSO)) {
     if (new RegExp(`\\b${palavra}\\b`).test(semAc)) {
-      out.push({ bruto: palavra, canonico: digito, percentual: false });
+      out.push({ bruto: palavra, canonico: digito, percentual: false, versao: false });
     }
   }
   return out;
@@ -140,6 +153,9 @@ function ehDataOuDuracao(bruto: string, contexto: string): boolean {
 export interface NumeralSemLastro {
   bullet: string;
   numeral: string;
+  /** `ausente` = o valor nao existe na origem. `tipo_trocado` = existe como
+   *  contagem e foi usado como percentual. */
+  motivo: "ausente" | "tipo_trocado";
 }
 
 /**
@@ -151,13 +167,29 @@ export function numeraisSemLastro(
   bullets: string[],
   origem: string,
 ): NumeralSemLastro[] {
-  const daOrigem = new Set(extrairNumerais(origem).map((n) => n.canonico));
+  const daOrigem = extrairNumerais(origem);
+  const valores = new Set(daOrigem.map((n) => n.canonico));
+  // Um valor pode aparecer na origem como contagem E como percentual em
+  // lugares diferentes; guardamos os dois conjuntos separados.
+  const comoPercentual = new Set(
+    daOrigem.filter((n) => n.percentual).map((n) => n.canonico),
+  );
+
   const fora: NumeralSemLastro[] = [];
   for (const bullet of bullets) {
     for (const n of extrairNumerais(bullet)) {
+      if (n.versao) continue;
       if (ehDataOuDuracao(n.bruto, bullet)) continue;
-      if (!daOrigem.has(n.canonico)) {
-        fora.push({ bullet, numeral: n.bruto });
+      if (!valores.has(n.canonico)) {
+        fora.push({ bullet, numeral: n.bruto, motivo: "ausente" });
+        continue;
+      }
+      // TIPO TROCADO: o valor existe na origem, mas como CONTAGEM, e o bullet
+      // o usa como PERCENTUAL. Caso real medido: a origem diz "25+ IT
+      // professionals" e a saida escreveu "satisfacao do usuario em 25%". O
+      // numero esta la, o significado nao.
+      if (n.percentual && !comoPercentual.has(n.canonico)) {
+        fora.push({ bullet, numeral: n.bruto, motivo: "tipo_trocado" });
       }
     }
   }

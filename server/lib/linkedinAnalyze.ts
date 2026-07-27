@@ -9,6 +9,7 @@ import {
   type LinkedinAnalysisResponse,
   type LinkedinAnalyzeRequest,
   type LinkedinDeterministicResult,
+  type LinkedinMelhoria,
   type LinkedinQualitative,
   type Mercado,
 } from "../../shared/linkedin/schema";
@@ -20,6 +21,11 @@ import {
   removerNumeralSemLastro,
 } from "../../shared/linkedin/numeralLastro";
 import {
+  removerTermoSemLastro,
+  type Violacao,
+} from "../../shared/linkedin/lastro";
+import {
+  ALL_TECHNOLOGIES,
   keyTechnologiesForArea,
   matchTechnologies,
 } from "./skillNormalize";
@@ -38,6 +44,22 @@ import { toOpenAIStrictSchema } from "./openaiStrictSchema";
  * parte qualitativa (diagnóstico e reescritas), recebendo as checagens já
  * calculadas como fatos. Perfil quase vazio usa um atalho caloroso sem IA.
  */
+
+/**
+ * Conteudo minimo de descricao para uma experiencia poder receber bullets.
+ *
+ * Justificativa com as 6 fixtures, todas as 13 experiencias medidas: a unica
+ * abaixo de 48 caracteres e a de 39, que nao e descricao nenhuma (e o cabecalho
+ * da experiencia SEGUINTE, engolido pelo bug B.1, aberto). A menor descricao
+ * legitima tem 56 ("Atendimento ao cliente e organizacao do estoque da loja.").
+ * 48 e o meio do vao, com 9 caracteres de margem para cada lado.
+ *
+ * Por que o corte existe: sem descricao de origem, todo bullet gerado e
+ * fabricado por definicao. Pior, a fabricacao passa despercebida quando nao
+ * cita numero nem tecnologia, que sao as duas coisas que a verificacao
+ * determinista sabe conferir. Nao gerar e a unica resposta honesta.
+ */
+const MIN_DESCRICAO_PARA_BULLETS = 48;
 
 const SOBRE_LIMIT = 3000;
 const EXPERIENCIAS_LIMIT = 4000;
@@ -79,6 +101,8 @@ REGRA DOS FATOS: as checagens automáticas, a nota e as listas de palavras-chave
 DIVERGÊNCIA ENTRE CHECAGEM E TEXTO (válvula da regra dos fatos): as checagens são automáticas e podem estar erradas em um caso específico. Se o texto do perfil contradisser uma checagem de forma verificável, aponte a divergência em vez de repetir a checagem. Exemplo: se uma checagem disser que as experiências têm descrição, mas houver no texto uma experiência sem nenhuma descrição própria, diga isso e cite qual. Isso não é recalcular a nota nem discutir a checagem: é relatar o que você está vendo no texto. Na dúvida, siga a checagem.
 
 TECNOLOGIA SÓ COM LASTRO: em bulletsReescritos, você só pode nomear uma tecnologia dentro do bullet de uma experiência se ela aparecer no texto DAQUELA experiência. Tecnologia que aparece no Sobre, na headline ou em OUTRA experiência não vale como lastro para esta. Se o texto da experiência não nomeia a stack, escreva o bullet sem tecnologia nenhuma, descrevendo o que foi feito e o resultado. É melhor um bullet sem stack do que um bullet com stack inventada.
+
+EXPERIÊNCIA SEM DESCRIÇÃO: se uma experiência vier marcada como SEM DESCRIÇÃO PRÓPRIA NO PERFIL, não escreva bullets para ela em hipótese nenhuma. Não há o que reescrever: qualquer bullet ali seria inventado por você. Em vez disso, inclua uma melhoria nomeando essa experiência e dizendo como escrever a descrição dela.
 
 NÚMERO NÃO MUDA DE DONO: métricas, percentuais e volumes só podem ser reescritos com o MESMO sujeito e o MESMO recorte que têm no perfil. Se o texto diz que uma técnica específica reduziu a latência em uma situação específica, não atribua esse número ao projeto inteiro, a outra técnica, nem a outra métrica. Na dúvida sobre a que o número se refere, escreva o bullet sem o número.
 
@@ -134,14 +158,23 @@ function checksBlock(deterministic: LinkedinDeterministicResult): string {
     .join("\n");
 }
 
+/** A experiencia tem descricao propria suficiente para sustentar bullets? */
+function temConteudoParaBullets(exp: LinkedinParsed["experiencias"][number]): boolean {
+  return exp.descricao.trim().length >= MIN_DESCRICAO_PARA_BULLETS;
+}
+
 function experienciasBlock(parsed: LinkedinParsed): string {
   if (parsed.experiencias.length === 0)
     return "(nenhuma experiência detectada)";
   const text = parsed.experiencias
     .map((exp, index) => {
       const titulo = exp.titulo || "(sem título)";
-      const desc = exp.descricao || "(sem descrição)";
-      return `${index + 1}. ${titulo}\n${desc}`;
+      // Marcada explicitamente para o modelo: sem descricao propria, nao ha o
+      // que reescrever, e qualquer bullet aqui seria invencao.
+      if (!temConteudoParaBullets(exp)) {
+        return `${index + 1}. ${titulo}\n(SEM DESCRIÇÃO PRÓPRIA NO PERFIL: não escreva bullets para esta experiência)`;
+      }
+      return `${index + 1}. ${titulo}\n${exp.descricao}`;
     })
     .join("\n\n");
   return truncate(text, EXPERIENCIAS_LIMIT);
@@ -407,10 +440,10 @@ function warmEmptyQualitative(
  * Casa um bloco de bulletsReescritos com a experiencia de origem pelo campo
  * `contexto`, por sobreposicao de tokens do titulo. Mesmo criterio da rubrica.
  */
-function origemDoBloco(
+function experienciaDoBloco(
   contexto: string,
   experiencias: LinkedinParsed["experiencias"],
-): string | null {
+): LinkedinParsed["experiencias"][number] | null {
   const alvo = contexto.toLowerCase();
   let melhor = -1;
   let score = 0;
@@ -424,64 +457,152 @@ function origemDoBloco(
       melhor = index;
     }
   });
-  if (melhor < 0) return null;
-  return `${experiencias[melhor].titulo} ${experiencias[melhor].descricao}`;
+  return melhor < 0 ? null : experiencias[melhor];
+}
+
+function registrarViolacao(v: Violacao): void {
+  // Log estruturado, mesmo formato da Fase 1A-bis, agora com o tipo
+  // distinguido. Vira metrica de qualidade depois; sem painel agora.
+  console.warn(
+    JSON.stringify({
+      level: "warn",
+      msg: "ai_lastro_violado",
+      tool: "linkedin-analyzer",
+      tipo: v.tipo,
+      campo: v.campo,
+      contexto: v.contexto,
+      termo: v.termo,
+      acao: v.tipo === "bullet_sem_origem" ? "bloco_removido" : "termo_removido",
+      retry: false,
+    }),
+  );
+}
+
+/** Melhoria injetada quando uma experiencia esta sem descricao propria. */
+function melhoriaDescricaoVazia(titulo: string): LinkedinMelhoria {
+  return {
+    prioridade: "alta",
+    titulo: `Escreva a descrição da experiência ${titulo}`,
+    comoFazer:
+      "Essa experiência está no seu perfil só com cargo e data, sem uma linha do que você fez. Abra ela no LinkedIn hoje e escreva três bullets: o que você entregava, com qual tecnologia ou ferramenta, e um resultado concreto quando houver. Enquanto estiver vazia, ela quase não pesa na busca e quem abre o seu perfil não tem o que ler.",
+  };
 }
 
 /**
- * Remove de bulletsReescritos todo numeral que NAO existe no texto da
- * experiencia de origem daquele bloco.
- *
- * Numeral e verificavel, e o que e verificavel se confere em codigo em vez de
- * se pedir ao modelo. Foi assim que a fidelidade saiu de 58 para 0 na Fase 0. O
- * prompt ja instrui "numero nao muda de dono", mas instrucao nao e garantia:
- * numa medicao de 10 execucoes o modelo fabricou 30%, 40% e 25% numa unica
- * resposta, em experiencias onde esses valores nao existem.
- *
- * Bloco sem origem identificavel fica INTACTO: sem lastro conhecido nao da para
- * afirmar que o numeral e falso, e apagar por precaucao destruiria dado bom.
+ * Camada unica de lastro sobre o texto gerado. Ver shared/linkedin/lastro.ts
+ * para a lista de campos cobertos e nao cobertos, com o motivo de cada um.
  */
-function sanearNumeraisDosBullets(
+function aplicarLastro(
   qualitative: LinkedinQualitative,
   parsed: LinkedinParsed,
+  deterministic: LinkedinDeterministicResult,
 ): LinkedinQualitative {
-  if (qualitative.bulletsReescritos.length === 0) return qualitative;
+  const violacoes: Violacao[] = [];
 
-  let removidos = 0;
-  const bulletsReescritos = qualitative.bulletsReescritos.map((bloco) => {
-    const origem = origemDoBloco(bloco.contexto, parsed.experiencias);
-    if (!origem) return bloco;
-    const semLastro = numeraisSemLastro(bloco.bullets, origem);
-    if (semLastro.length === 0) return bloco;
+  // 1. HEADLINES: tecnologia so com lastro em keywordsEncontradas.
+  const comprovadas = new Set(
+    deterministic.keywordsEncontradas.map((t) => t.toLowerCase()),
+  );
+  const headlines = qualitative.headlines.map((headline) => {
+    let saida = headline;
+    for (const tech of matchTechnologies(headline, ALL_TECHNOLOGIES)
+      .encontradas) {
+      if (comprovadas.has(tech.toLowerCase())) continue;
+      violacoes.push({
+        tipo: "tecnologia_sem_lastro",
+        campo: "headlines",
+        contexto: headline,
+        termo: tech,
+      });
+      saida = removerTermoSemLastro(saida, tech);
+    }
+    return saida;
+  });
 
-    const bullets = bloco.bullets.map((bullet) => {
+  // 2. BULLETS: bloco sem origem com conteudo sai inteiro; nos que ficam,
+  // tecnologia e numeral conferidos contra o texto DAQUELA experiencia.
+  const bulletsReescritos: typeof qualitative.bulletsReescritos = [];
+  for (const bloco of qualitative.bulletsReescritos) {
+    const exp = experienciaDoBloco(bloco.contexto, parsed.experiencias);
+    // Sem origem identificavel, o bloco fica intacto: nao da para afirmar que
+    // e falso, e apagar por precaucao destruiria dado bom.
+    if (!exp) {
+      bulletsReescritos.push(bloco);
+      continue;
+    }
+    if (!temConteudoParaBullets(exp)) {
+      // Origem sem descricao propria: TODO bullet aqui e fabricado, inclusive
+      // os que nao citam numero nem tecnologia e por isso passariam batido.
+      violacoes.push({
+        tipo: "bullet_sem_origem",
+        campo: "bulletsReescritos",
+        contexto: bloco.contexto,
+        termo: `${bloco.bullets.length} bullet(s)`,
+      });
+      continue;
+    }
+
+    const origem = `${exp.titulo} ${exp.descricao}`;
+    const daOrigem = new Set(
+      matchTechnologies(origem, ALL_TECHNOLOGIES).encontradas.map((t) =>
+        t.toLowerCase(),
+      ),
+    );
+    let bullets = bloco.bullets.map((bullet) => {
       let saida = bullet;
-      for (const ocorrencia of semLastro) {
-        if (ocorrencia.bullet !== bullet) continue;
-        removidos += 1;
-        // Log estruturado para virar metrica de qualidade depois: sem painel
-        // agora, mas greppavel e ja com os campos que o painel pediria.
-        console.warn(
-          JSON.stringify({
-            level: "warn",
-            msg: "ai_numeral_sem_lastro",
-            tool: "linkedin-analyzer",
-            campo: "bulletsReescritos",
-            contexto: bloco.contexto,
-            numeral: ocorrencia.numeral,
-            acao: "removido",
-            retry: false,
-          }),
-        );
-        saida = removerNumeralSemLastro(saida, ocorrencia.numeral);
+      for (const tech of matchTechnologies(bullet, ALL_TECHNOLOGIES)
+        .encontradas) {
+        if (daOrigem.has(tech.toLowerCase())) continue;
+        violacoes.push({
+          tipo: "tecnologia_sem_lastro",
+          campo: "bulletsReescritos",
+          contexto: bloco.contexto,
+          termo: tech,
+        });
+        saida = removerTermoSemLastro(saida, tech);
       }
       return saida;
     });
-    return { ...bloco, bullets };
-  });
+    for (const ocorrencia of numeraisSemLastro(bullets, origem)) {
+      violacoes.push({
+        tipo:
+          ocorrencia.motivo === "tipo_trocado"
+            ? "numeral_tipo_trocado"
+            : "numeral_fabricado",
+        campo: "bulletsReescritos",
+        contexto: bloco.contexto,
+        termo: ocorrencia.numeral,
+      });
+      bullets = bullets.map((b) =>
+        b === ocorrencia.bullet
+          ? removerNumeralSemLastro(b, ocorrencia.numeral)
+          : b,
+      );
+    }
+    bulletsReescritos.push({ ...bloco, bullets });
+  }
 
-  if (removidos === 0) return qualitative;
-  return { ...qualitative, bulletsReescritos };
+  // 3. A lacuna que o corte criou vira melhoria NOMEADA, no topo.
+  const semDescricao = parsed.experiencias.filter(
+    (exp) => !temConteudoParaBullets(exp),
+  );
+  let melhorias = qualitative.melhorias;
+  if (semDescricao.length > 0) {
+    const nova = melhoriaDescricaoVazia(
+      semDescricao[0].titulo || "sem título",
+    );
+    const jaCitada = melhorias.some((m) =>
+      m.titulo.toLowerCase().includes("descrição da experiência"),
+    );
+    // Teto de 7 do schema preservado: entra na frente e corta o excedente.
+    if (!jaCitada) melhorias = [nova, ...melhorias].slice(0, 7);
+  }
+
+  for (const v of violacoes) registrarViolacao(v);
+  if (violacoes.length === 0 && melhorias === qualitative.melhorias) {
+    return qualitative;
+  }
+  return { ...qualitative, headlines, bulletsReescritos, melhorias };
 }
 
 export async function analyzeLinkedin(
@@ -516,7 +637,7 @@ export async function analyzeLinkedin(
         onAiIo,
       );
 
-  const qualitative = sanearNumeraisDosBullets(qualitativeCru, parsed);
+  const qualitative = aplicarLastro(qualitativeCru, parsed, deterministic);
 
   return {
     response: {
