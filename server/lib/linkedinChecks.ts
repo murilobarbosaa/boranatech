@@ -1,11 +1,14 @@
 import type { AreaSlug } from "../../shared/areas";
 import {
+  LINKEDIN_CAMPOS,
   LINKEDIN_CHECK_CATALOG,
   checkAppliesToMercado,
   computeLinkedinScore,
   resolveTier,
+  type LinkedinCampo,
   type LinkedinCheckResult,
   type LinkedinDeterministicResult,
+  type LinkedinKeywordCampos,
   type Mercado,
 } from "../../shared/linkedin/schema";
 import { ENGLISH_TITLES, PT_TITLES } from "../../shared/linkedin/titles";
@@ -462,6 +465,34 @@ export function runLinkedinChecks(
     (tech) => !jaNasCompetencias.has(tech),
   );
 
+  // DECOMPOSICAO POR CAMPO. Nao entra em check nenhum e nao toca na nota: e a
+  // mesma cobertura de sempre, so que dizendo ONDE cada termo esta. A nota
+  // continua saindo de `fullText`, que e o perfil inteiro.
+  const textoPorCampo: Record<LinkedinCampo, string> = {
+    headline,
+    sobre,
+    experiencias: `${expTitulos} ${expDescricoes}`,
+    competencias: skillsText,
+  };
+  const keywordsCampos: LinkedinKeywordCampos[] = keyTechs.map((termo) => {
+    const presenteEm = LINKEDIN_CAMPOS.filter(
+      (campo) => matchTechnologies(textoPorCampo[campo], [termo]).encontradas.length > 0,
+    );
+    const comprovado = presenteEm.length > 0;
+    // Destino so existe para o que o perfil comprova. Mandar escrever na
+    // headline uma tecnologia que a pessoa nao demonstrou seria a plataforma
+    // pedindo para mentir, que e exatamente o que a camada de lastro combate.
+    const destino: LinkedinCampo[] = comprovado
+      ? ["competencias", "headline", "sobre"]
+      : [];
+    return {
+      termo,
+      presenteEm,
+      faltaEm: destino.filter((campo) => !presenteEm.includes(campo)),
+      comprovado,
+    };
+  });
+
   return {
     score,
     faixa,
@@ -469,6 +500,7 @@ export function runLinkedinChecks(
     keywordsEncontradas: fullCoverage.encontradas,
     keywordsFaltantes: fullCoverage.faltantes,
     skillsParaAdicionarAgora,
+    keywordsCampos,
     titulosIngles,
     headline: parsed.headline,
     sobreTamanho: sobre.trim().length,

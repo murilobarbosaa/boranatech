@@ -436,6 +436,52 @@ export interface TituloInglesMatch {
   encontrado: boolean;
 }
 
+/** Campos do perfil onde uma palavra-chave pode estar escrita. */
+export const LINKEDIN_CAMPOS = [
+  "headline",
+  "sobre",
+  "experiencias",
+  "competencias",
+] as const;
+export type LinkedinCampo = (typeof LINKEDIN_CAMPOS)[number];
+
+export const LINKEDIN_CAMPO_LABELS: Record<LinkedinCampo, string> = {
+  headline: "Headline",
+  sobre: "Sobre",
+  experiencias: "Experiências",
+  competencias: "Competências",
+};
+
+/**
+ * Onde uma tecnologia-chave da área está hoje e onde ela deveria estar.
+ *
+ * Existe por causa de uma reclamação concreta: a plataforma dizia "sua
+ * cobertura é 27%, adicione palavras-chave" e a pessoa não tinha como saber em
+ * QUAL campo escrever. A cobertura é calculada sobre o perfil inteiro, então a
+ * nota não distingue campo nenhum; esta decomposição não muda a nota, ela só
+ * conta onde o termo está.
+ *
+ * `destino` é derivado do que o próprio catálogo de checks já afirma sobre
+ * busca de recrutador, não de opinião nova:
+ *   - competências é o campo por onde o recrutador FILTRA, e é o destino de
+ *     toda tecnologia que o perfil comprova (`skills-cobertura`);
+ *   - a headline "aparece em toda busca" e vale pelo menos 2 tecnologias
+ *     (`headline-stack`);
+ *   - o Sobre "é indexado pela busca" e vale a stack escrita por extenso
+ *     (`sobre-stack`).
+ * Tecnologia sem nenhuma evidência no perfil não recebe destino: não há campo
+ * onde escrevê-la sem mentir, e ela vai para a lista de estudo.
+ */
+export interface LinkedinKeywordCampos {
+  termo: string;
+  /** Campos onde o termo aparece hoje. Vazio = não aparece em lugar nenhum. */
+  presenteEm: LinkedinCampo[];
+  /** Campos onde ele deveria estar e não está. Vazio quando não há evidência. */
+  faltaEm: LinkedinCampo[];
+  /** O perfil comprova o termo em algum campo? */
+  comprovado: boolean;
+}
+
 export interface LinkedinDeterministicResult {
   score: number;
   faixa: LinkedinFaixa;
@@ -453,6 +499,13 @@ export interface LinkedinDeterministicResult {
    * campo. Quem lê análise persistida precisa tolerar a ausência.
    */
   skillsParaAdicionarAgora?: string[];
+  /**
+   * Onde cada tecnologia-chave da área está e onde ela deveria estar.
+   *
+   * OPCIONAL de propósito, como `skillsParaAdicionarAgora`: análise gravada
+   * antes da v4 não tem este campo. Ver `readDeterministic`.
+   */
+  keywordsCampos?: LinkedinKeywordCampos[];
   /** Títulos de busca em inglês da área, casados ou não contra o perfil. */
   titulosIngles: TituloInglesMatch[];
   headline: string | null;
@@ -618,6 +671,15 @@ export const QUALITATIVE_VERSION = 3;
  *   empresa contém uma palavra de cargo ("Backend Solutions") passava por causa
  *   da empresa e agora não passa mais. Duas notas de versões diferentes não são
  *   comparáveis mesmo quando coincidem.
+ *
+ * NÃO bumpado na Fase 2A, e a decisão é deliberada. A fase acrescentou
+ * `keywordsCampos`, um campo OPCIONAL e puramente descritivo: nenhum check o
+ * lê, a nota das 6 fixtures é idêntica, e a régua não mudou. O que esta
+ * constante governa é COMPARABILIDADE DE NOTA, não formato de payload; bumpar
+ * aqui suprimiria o delta e a celebração de todo mundo que tem análise em v3,
+ * de graça. Precedente na própria v1: `skillsParaAdicionarAgora` entrou como
+ * campo opcional sem bump, pelo mesmo motivo. A ausência do campo nas linhas
+ * antigas é resolvida onde deve ser, em `readDeterministic`.
  *
  * O conjunto mínimo de leitura (`keywordsEncontradas`, `keywordsFaltantes`,
  * `titulosIngles`) passa por `readDeterministic`. Ver

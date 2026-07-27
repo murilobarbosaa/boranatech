@@ -37,7 +37,10 @@ describe("readDeterministic: linha legada real", () => {
     expect(view.keywordsEncontradas.length).toBeGreaterThan(0);
     expect(view.keywordsFaltantes.length).toBeGreaterThan(0);
     expect(view.titulosIngles.length).toBeGreaterThan(0);
-    expect(view.camposAusentes).toEqual([]);
+    // A fixture legada e de antes da Fase 2A: nao tem keywordsCampos, e a
+    // ausencia tem que aparecer como ausencia, nao como lista vazia silenciosa.
+    expect(view.keywordsCampos).toEqual([]);
+    expect(view.camposAusentes).toEqual(["keywordsCampos"]);
     expect(view.version).toBe(DETERMINISTIC_VERSION);
   });
 
@@ -63,7 +66,28 @@ describe("readDeterministic: entradas degradadas", () => {
     expect(view.camposAusentes).toEqual([
       "keywordsFaltantes",
       "titulosIngles",
+      "keywordsCampos",
     ]);
+  });
+
+  it("keywordsCampos malformado degrada para lista vazia", () => {
+    // Um item com campo invalido derruba o array inteiro para vazio, porque o
+    // safeParse e do objeto todo. E o comportamento desejado: a UI cai nas duas
+    // listas antigas em vez de renderizar destino errado.
+    const view = readDeterministic({
+      keywordsCampos: [{ termo: "React", presenteEm: ["inexistente"], faltaEm: [], comprovado: true }],
+    });
+    expect(view.keywordsCampos).toEqual([]);
+  });
+
+  it("keywordsCampos valido atravessa inteiro", () => {
+    const view = readDeterministic({
+      keywordsCampos: [
+        { termo: "React", presenteEm: ["headline", "sobre"], faltaEm: ["competencias"], comprovado: true },
+      ],
+    });
+    expect(view.keywordsCampos).toHaveLength(1);
+    expect(view.keywordsCampos[0].faltaEm).toEqual(["competencias"]);
   });
 
   it("as tres listas sao sempre iteraveis, nunca undefined", () => {

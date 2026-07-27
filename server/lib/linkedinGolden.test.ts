@@ -182,6 +182,33 @@ describe("golden: perfil real (PDF de export, anonimizado)", () => {
       expect(deterministic.keywordsEncontradas).not.toContain(ausente);
     }
 
+    // FASE 2A: decomposicao por campo. Nao entra em check nenhum, e a prova
+    // disso e que o score acima continua 75. Ela responde a pergunta que a
+    // cobertura agregada nao respondia: "adicionar ONDE?".
+    const campos = deterministic.keywordsCampos ?? [];
+    expect(campos).toHaveLength(22);
+    const porTermo = (t: string) => campos.find((k) => k.termo === t)!;
+    // React esta na headline, no Sobre e nas experiencias, e falta so nas
+    // competencias coladas. Antes a UI so sabia dizer "esta no perfil".
+    expect(porTermo("React").presenteEm).toEqual([
+      "headline",
+      "sobre",
+      "experiencias",
+    ]);
+    expect(porTermo("React").faltaEm).toEqual(["competencias"]);
+    // Docker aparece so no Sobre: falta nas competencias E na headline.
+    expect(porTermo("Docker").presenteEm).toEqual(["sobre"]);
+    expect(porTermo("Docker").faltaEm).toEqual(["competencias", "headline"]);
+    // Sem evidencia nenhuma: nao recebe destino. Mandar escrever na headline
+    // uma tecnologia que a pessoa nao demonstrou seria pedir para mentir.
+    expect(porTermo("GraphQL").comprovado).toBe(false);
+    expect(porTermo("GraphQL").presenteEm).toEqual([]);
+    expect(porTermo("GraphQL").faltaEm).toEqual([]);
+    // O conjunto dos comprovados e exatamente keywordsEncontradas.
+    expect(campos.filter((k) => k.comprovado).map((k) => k.termo).sort()).toEqual(
+      [...deterministic.keywordsEncontradas].sort(),
+    );
+
     // skillsContagem conta as competencias COLADAS no formulario, que neste
     // cenario ainda sao a string antiga com "(RAG)" separado. O prefill do
     // client passa a entregar 3 (ver skillsPdf acima), entao uma analise nova
