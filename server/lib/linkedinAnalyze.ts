@@ -168,7 +168,12 @@ function experienciasBlock(parsed: LinkedinParsed): string {
     return "(nenhuma experiência detectada)";
   const text = parsed.experiencias
     .map((exp, index) => {
-      const titulo = exp.titulo || "(sem título)";
+      // Cargo e empresa vêm separados do parser. Aqui eles voltam a aparecer
+      // juntos, mas atribuídos ao bloco certo: antes a empresa caía na
+      // descrição da experiência ANTERIOR e o modelo tinha que reassociar
+      // sozinho o que o parser bagunçava.
+      const cargo = exp.titulo || "(sem título)";
+      const titulo = exp.empresa ? `${cargo} (${exp.empresa})` : cargo;
       // Marcada explicitamente para o modelo: sem descricao propria, nao ha o
       // que reescrever, e qualquer bullet aqui seria invencao.
       if (!temConteudoParaBullets(exp)) {
@@ -448,7 +453,9 @@ function experienciaDoBloco(
   let melhor = -1;
   let score = 0;
   experiencias.forEach((exp, index) => {
-    const hits = exp.titulo
+    // Cargo E empresa: é o mesmo par que o prompt mostra em `contexto`, e a
+    // empresa é o que desempata dois cargos parecidos no mesmo perfil.
+    const hits = `${exp.titulo} ${exp.empresa ?? ""}`
       .toLowerCase()
       .split(/\s+/)
       .filter((token) => token.length > 3 && alvo.includes(token)).length;

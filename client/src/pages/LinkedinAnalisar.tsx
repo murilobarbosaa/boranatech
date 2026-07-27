@@ -1351,6 +1351,12 @@ export default function LinkedinAnalisar() {
                                       <span className="font-bold text-slate-900">
                                         {exp.titulo || "(sem título)"}
                                       </span>
+                                      {exp.empresa ? (
+                                        <span className="text-slate-500">
+                                          {" "}
+                                          em {exp.empresa}
+                                        </span>
+                                      ) : null}
                                       {exp.descricao ? (
                                         <span>
                                           {" "}
@@ -1691,6 +1697,12 @@ export default function LinkedinAnalisar() {
                                     <span className="font-bold text-slate-900">
                                       {titulo}
                                     </span>
+                                    {exp.empresa ? (
+                                      <span className="text-slate-500">
+                                        {" "}
+                                        em {exp.empresa}
+                                      </span>
+                                    ) : null}
                                     {descricao ? (
                                       <span>
                                         {" "}

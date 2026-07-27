@@ -103,38 +103,44 @@ describe("golden: perfil real (PDF de export, anonimizado)", () => {
 
     expect(parsed.experiencias).toHaveLength(6);
 
+    // CORRIGIDO (Fase 1B, B.2 e B.5): titulo e so o cargo. A empresa saiu para
+    // campo proprio e o bullet da experiencia anterior nao entra mais aqui.
     expect(parsed.experiencias.map((e) => e.titulo)).toEqual([
-      // CORRIGIDO (Fase 1A): o rodape sai antes do parse. Efeito colateral
-      // positivo: sem o rodape ocupando uma das 2 linhas de titulo, a empresa
-      // "Startup Alfa" passou a caber e nao e mais descartada.
-      "Startup Alfa CTO & Co-founder",
-      // BUG CONHECIDO (rodada2 B.2): empresa colada no cargo.
-      "NexoRH Artificial Intelligence Engineer",
-      "Botvia Generative AI Consultant/Support Analyst",
-      "OGF - Orgao Governamental Federal Intern",
-      // BUG CONHECIDO (rodada2 B.4, ABERTO, escopo 1B): formato agrupado do
-      // LinkedIn. A empresa "Beta Edtech" cai na DESCRICAO da experiencia
-      // anterior e a linha de duracao ocupa o titulo. O rodape ja saiu.
-      "1 year 1 month Software Engineer/QA Engineer",
-      // BUG CONHECIDO (rodada2 B.5): o ultimo bullet da experiencia anterior
-      // entra no titulo da seguinte.
-      "• Demonstrated high team collaboration for effective QA. Software Engineer/Full-Stack Developer",
+      "CTO & Co-founder",
+      "Artificial Intelligence Engineer",
+      "Generative AI Consultant/Support Analyst",
+      "Intern",
+      // CORRIGIDO (Fase 1B, B.4): a duracao do grupo agrupado saiu do titulo.
+      "Software Engineer/QA Engineer",
+      "Software Engineer/Full-Stack Developer",
     ]);
 
-    // BUG CONHECIDO (rodada2 B.1, ABERTO, escopo 1B): a experiencia de CTO nao
-    // tem descricao no PDF. Como a janela de descricao vai "da data ate a
-    // proxima data", ela engole o cabecalho da experiencia SEGUINTE em vez de
-    // ficar vazia. Por isso nenhum check detecta a experiencia vazia.
-    expect(parsed.experiencias[0].descricao).toBe(
-      "NexoRH Artificial Intelligence Engineer",
-    );
-    // Comprimentos com nomes sinteticos e ja sem o rodape de paginacao, que
-    // antes somava 57 caracteres falsos ao total de exp-descricoes.
-    expect(parsed.experiencias.map((e) => e.descricao.length)).toEqual([
-      39, 1470, 892, 774, 828, 786,
+    // CORRIGIDO (Fase 1B, B.4): a empresa fica no bloco a que pertence. O null
+    // do ultimo e correto, nao perda: no formato agrupado o LinkedIn escreve
+    // "Beta Edtech" uma vez so, no topo do grupo, e nao repete no 2o cargo.
+    expect(parsed.experiencias.map((e) => e.empresa)).toEqual([
+      "Startup Alfa",
+      "NexoRH",
+      "Botvia",
+      "OGF - Orgao Governamental Federal",
+      "Beta Edtech",
+      null,
     ]);
-    // BUG CONHECIDO (rodada2 B.4): confirma a reatribuicao da empresa.
-    expect(parsed.experiencias[3].descricao).toContain("Beta Edtech");
+
+    // CORRIGIDO (Fase 1B, B.1): a experiencia de CTO nao tem descricao no PDF,
+    // e agora ela vem VAZIA em vez de engolir o cabecalho da seguinte. Este era
+    // o motivo de nenhum check enxergar a experiencia sem descricao.
+    expect(parsed.experiencias[0].descricao).toBe("");
+    // CORRIGIDO (Fase 1B, B.3): a linha de localizacao nao entra mais na
+    // descricao. Cada queda de comprimento em relacao a Fase 1A e exatamente
+    // isso mais a cauda do vizinho que saiu.
+    expect(parsed.experiencias.map((e) => e.descricao.length)).toEqual([
+      0, 1422, 823, 717, 789, 786,
+    ]);
+    // CORRIGIDO (Fase 1B, B.4): a empresa nao esta mais na descricao alheia.
+    expect(parsed.experiencias[3].descricao).not.toContain("Beta Edtech");
+    // CORRIGIDO (Fase 1B, B.3): nenhuma descricao comeca por localizacao.
+    expect(parsed.experiencias[2].descricao.startsWith("Campinas")).toBe(false);
   });
 
   it("checks e score", () => {

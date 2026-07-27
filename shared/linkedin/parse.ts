@@ -15,7 +15,14 @@
 import { normalizeProfileLines } from "./normalizeProfileText";
 
 export interface LinkedinExperiencia {
+  /** Só o cargo. A empresa nunca vem colada aqui. */
   titulo: string;
+  /**
+   * Empresa, quando o export a traz em linha própria. Fica null no formato
+   * agrupado a partir do segundo cargo, onde a empresa aparece uma vez só, no
+   * topo do grupo, e não se repete por cargo.
+   */
+  empresa: string | null;
   descricao: string;
 }
 
@@ -111,6 +118,104 @@ function isDateRangeLine(line: string): boolean {
   if (!hasStart) return false;
   if (!SEP_RE.test(l)) return false;
   return END_RE.test(l);
+}
+
+/**
+ * Marcador de bullet. Escrito com escape unicode pelo mesmo motivo de DASH:
+ * caractere de travessão literal é proibido no projeto.
+ */
+const BULLET_RE = new RegExp(
+  `^(?:[\\u2022\\u00b7\\u25aa\\u25e6\\u25cf*+]|${DASH})\\s+`,
+);
+
+const UNIDADE_DURACAO = "(?:anos?|meses|mes|years?|yrs?|months?|mos?)";
+const DURACAO_RE = new RegExp(
+  `^\\d+\\s+${UNIDADE_DURACAO}(?:\\s+\\d+\\s+${UNIDADE_DURACAO})*$`,
+);
+
+/**
+ * A linha é só uma duração ("3 anos", "1 year 1 month", "(4 months)")?
+ *
+ * É o que distingue o bloco AGRUPADO do simples: quando uma empresa tem vários
+ * cargos, o export coloca a duração total do grupo entre a empresa e o primeiro
+ * cargo, e ela não é um intervalo de datas (não tem ano nem nome de mês), então
+ * `isDateRangeLine` não a enxerga. Sem reconhecê-la aqui, ela fica órfã e cai na
+ * descrição da experiência anterior, levando a empresa junto.
+ */
+function ehLinhaDeDuracao(linha: string): boolean {
+  const limpo = linha.trim().replace(/^\(/, "").replace(/\)$/, "").trim();
+  return DURACAO_RE.test(stripAccentsLower(limpo));
+}
+
+const MODALIDADE_RE = /^(?:remote|remoto|hibrido|hybrid|on-?site|presencial)\b/;
+
+// Caixa da primeira letra sem `\p{Lu}`: o target do tsconfig não aceita a flag
+// `u`, e comparar com toLocaleUpperCase cobre acentuada do mesmo jeito. Dígito
+// e pontuação não são nem uma coisa nem outra.
+function comecaMaiuscula(valor: string): boolean {
+  const c = valor.charAt(0);
+  return c !== "" && c === c.toLocaleUpperCase() && c !== c.toLocaleLowerCase();
+}
+
+function comecaMinuscula(valor: string): boolean {
+  const c = valor.charAt(0);
+  return c !== "" && c === c.toLocaleLowerCase() && c !== c.toLocaleUpperCase();
+}
+
+/**
+ * A linha é uma localização de trabalho?
+ *
+ * Substitui a heurística de comprimento (`< 18`), que era uma regra de tamanho
+ * fazendo trabalho de regra de forma: pulava "Brazil" e "São Paulo, Brazil" mas
+ * deixava "Campinas, São Paulo, Brazil" (27 caracteres) entrar na descrição.
+ *
+ * A forma de uma localização é: poucas palavras, no máximo quatro partes
+ * separadas por vírgula, cada parte começando em maiúscula, sem pontuação de
+ * fim de frase e sem marcador de bullet. Uma frase de descrição que comece com
+ * nome de cidade não passa, porque tem mais de sete palavras ou termina em
+ * ponto. Só é consultada na posição logo após a data, onde o export põe a
+ * localização, nunca no meio do texto.
+ */
+function ehLinhaDeLocalizacao(linha: string): boolean {
+  const t = linha.trim();
+  if (t.length === 0 || t.length > 60) return false;
+  if (BULLET_RE.test(t)) return false;
+  if (/[.;:]$/.test(t)) return false;
+  if (isDateRangeLine(t)) return false;
+  if (ehLinhaDeDuracao(t)) return false;
+  if (matchSectionHeader(t)) return false;
+  if (t.split(/\s+/).length > 7) return false;
+  if (MODALIDADE_RE.test(stripAccentsLower(t))) return true;
+  const partes = t
+    .split(",")
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+  if (partes.length === 0 || partes.length > 4) return false;
+  return partes.every(
+    (p) => comecaMaiuscula(p) && p.split(/\s+/).length <= 4,
+  );
+}
+
+/**
+ * A linha pode ser empresa ou cargo (cabeçalho de bloco de experiência)?
+ *
+ * O que ela precisa REJEITAR é o que produziu dois dos bugs: bullet de
+ * descrição (o último bullet de um cargo virava parte do título do cargo
+ * seguinte) e linha de duração órfã (a duração do grupo virava parte do
+ * título). Frase de descrição também não passa: termina em pontuação, ou é
+ * longa, ou começa em minúscula.
+ */
+function ehLinhaDeCabecalho(linha: string): boolean {
+  const t = linha.trim();
+  if (t.length === 0 || t.length > 80) return false;
+  if (BULLET_RE.test(t)) return false;
+  if (/[.;:,]$/.test(t)) return false;
+  if (isDateRangeLine(t)) return false;
+  if (ehLinhaDeDuracao(t)) return false;
+  if (matchSectionHeader(t)) return false;
+  if (t.split(/\s+/).length > 12) return false;
+  if (comecaMinuscula(t)) return false;
+  return true;
 }
 
 const EMAIL_RE = /\S+@\S+\.\S+/;
@@ -238,6 +343,58 @@ function parseSkills(lines: string[]): string[] {
   return Array.from(new Set(out)).slice(0, 50);
 }
 
+/**
+ * Um bloco de experiência já delimitado: onde o cabeçalho começa, onde está a
+ * data que ancora o bloco, e o que o cabeçalho continha.
+ */
+interface BlocoExperiencia {
+  headerStart: number;
+  dateIdx: number;
+  empresa: string | null;
+  titulo: string;
+}
+
+/**
+ * Lê o cabeçalho de um bloco andando PARA TRÁS a partir da linha de data.
+ *
+ * O export do LinkedIn tem dois formatos, e este é o único lugar do parser que
+ * sabe disso:
+ *
+ *   SIMPLES                        AGRUPADO (uma empresa, vários cargos)
+ *   Empresa                        Empresa
+ *   Cargo                          1 year 1 month     <- duração do grupo
+ *   janeiro de 2022 - Present      Cargo 1
+ *   3 anos                         agosto de 2024 - novembro de 2024
+ *   São Paulo, Brasil              São Paulo, Brasil
+ *   descrição...                   descrição...
+ *                                  Cargo 2            <- SEM empresa de novo
+ *                                  novembro de 2023 - novembro de 2024
+ *                                  descrição...
+ *
+ * Daí a ordem da leitura: cargo, depois duração opcional do grupo, depois
+ * empresa opcional. `limite` é o índice da data anterior: o cabeçalho nunca a
+ * atravessa.
+ */
+function lerCabecalho(
+  content: string[],
+  dateIdx: number,
+  limite: number,
+): BlocoExperiencia {
+  let i = dateIdx - 1;
+  let titulo = "";
+  let empresa: string | null = null;
+  if (i > limite && ehLinhaDeCabecalho(content[i])) {
+    titulo = content[i];
+    i -= 1;
+  }
+  if (i > limite && ehLinhaDeDuracao(content[i])) i -= 1;
+  if (titulo && i > limite && ehLinhaDeCabecalho(content[i])) {
+    empresa = content[i];
+    i -= 1;
+  }
+  return { headerStart: i + 1, dateIdx, empresa, titulo };
+}
+
 function parseExperiencias(lines: string[]): LinkedinExperiencia[] {
   const content = lines.map((l) => l.trim()).filter((l) => l.length > 0);
   if (content.length === 0) return [];
@@ -252,41 +409,33 @@ function parseExperiencias(lines: string[]): LinkedinExperiencia[] {
     const titulo = content[0] ?? "";
     const descricao = content.slice(1).join(" ").trim();
     if (!titulo && !descricao) return [];
-    return [{ titulo, descricao }];
+    return [{ titulo, empresa: null, descricao }];
   }
 
-  const experiencias: LinkedinExperiencia[] = [];
-  for (let e = 0; e < dateIdx.length; e += 1) {
-    const di = dateIdx[e];
-    const prevDi = e > 0 ? dateIdx[e - 1] : -1;
-    // Título: a linha não-vazia logo antes da data (o cargo). Pega até 2 linhas
-    // anteriores que não sejam outra data, sem invadir o bloco anterior.
-    const tituloParts: string[] = [];
-    for (let k = di - 1; k > prevDi && tituloParts.length < 2; k -= 1) {
-      if (isDateRangeLine(content[k])) break;
-      tituloParts.unshift(content[k]);
+  const blocos = dateIdx.map((di, e) =>
+    lerCabecalho(content, di, e > 0 ? dateIdx[e - 1] : -1),
+  );
+
+  return blocos.flatMap((bloco, e) => {
+    // A descrição termina onde começa o CABEÇALHO do bloco seguinte, não na
+    // data seguinte. É a correção de fundo: entre uma data e a próxima existe o
+    // cabeçalho do vizinho, e a janela antiga o engolia. Com o fim no lugar
+    // certo, "descrição vazia" passa a existir como resultado possível, em vez
+    // de virar o nome da empresa seguinte.
+    const fim =
+      e + 1 < blocos.length ? blocos[e + 1].headerStart : content.length;
+    // Depois da data vêm até duas linhas de metadado (duração e localização),
+    // em qualquer ordem. Metadado não é descrição.
+    let inicio = bloco.dateIdx + 1;
+    for (let n = 0; n < 2 && inicio < fim; n += 1) {
+      const linha = content[inicio];
+      if (!ehLinhaDeDuracao(linha) && !ehLinhaDeLocalizacao(linha)) break;
+      inicio += 1;
     }
-    const titulo = tituloParts.join(" ").trim();
-    // Descrição: linhas depois da data até a próxima data. A primeira linha
-    // logo após a data costuma ser duração ou localização, então pulamos uma
-    // linha curta sem letras suficientes.
-    const nextDi = e + 1 < dateIdx.length ? dateIdx[e + 1] : content.length;
-    let descStart = di + 1;
-    const firstAfter = content[descStart] ?? "";
-    if (
-      firstAfter &&
-      (isDateRangeLine(firstAfter) ||
-        /\b(yrs?|mos?|anos?|meses|mes)\b/i.test(firstAfter) ||
-        firstAfter.length < 18)
-    ) {
-      descStart += 1;
-    }
-    const descricao = content.slice(descStart, nextDi).join(" ").trim();
-    if (titulo || descricao) {
-      experiencias.push({ titulo, descricao });
-    }
-  }
-  return experiencias;
+    const descricao = content.slice(inicio, fim).join(" ").trim();
+    if (!bloco.titulo && !bloco.empresa && !descricao) return [];
+    return [{ titulo: bloco.titulo, empresa: bloco.empresa, descricao }];
+  });
 }
 
 export function parseLinkedinText(text: string): LinkedinParsed {
