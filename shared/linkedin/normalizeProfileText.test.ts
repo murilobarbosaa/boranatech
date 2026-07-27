@@ -36,6 +36,56 @@ describe("normalizeProfileLines: junta o que o PDF quebrou", () => {
   });
 });
 
+describe("normalizeProfileLines: barra orfa NAO absorve o vizinho errado", () => {
+  // REGRESSAO da Fase 1A: headline terminada em "|" sem continuacao real
+  // absorvia a linha seguinte. Antes ficava truncada; passou a ficar poluida.
+  const headline = "Software Developer | Full-Stack Engineer | AI Agent Expert |";
+
+  it("nao absorve linha de LOCALIZACAO", () => {
+    expect(n(`${headline}\nGreater São Paulo Area`)).toEqual([
+      "Software Developer | Full-Stack Engineer | AI Agent Expert",
+      "Greater São Paulo Area",
+    ]);
+    expect(n(`${headline}\nSão Paulo, Brazil`)).toEqual([
+      "Software Developer | Full-Stack Engineer | AI Agent Expert",
+      "São Paulo, Brazil",
+    ]);
+    expect(n(`${headline}\nBrasília, DF`)).toEqual([
+      "Software Developer | Full-Stack Engineer | AI Agent Expert",
+      "Brasília, DF",
+    ]);
+  });
+
+  it("nao absorve linha de DATA", () => {
+    expect(n(`${headline}\njaneiro de 2022 - Present`)).toEqual([
+      "Software Developer | Full-Stack Engineer | AI Agent Expert",
+      "janeiro de 2022 - Present",
+    ]);
+  });
+
+  it("nao absorve CABECALHO de secao", () => {
+    expect(n(`${headline}\nSummary`)).toEqual([
+      "Software Developer | Full-Stack Engineer | AI Agent Expert",
+      "Summary",
+    ]);
+  });
+
+  it("nao absorve LINHA LONGA de conteudo", () => {
+    const longa =
+      "Sou desenvolvedora com oito anos de experiencia construindo produtos web";
+    expect(n(`${headline}\n${longa}`)).toEqual([
+      "Software Developer | Full-Stack Engineer | AI Agent Expert",
+      longa,
+    ]);
+  });
+
+  it("MAS continua absorvendo a cauda legitima (o caso do Node)", () => {
+    expect(n(`${headline} React |\nNode`)).toEqual([
+      "Software Developer | Full-Stack Engineer | AI Agent Expert | React | Node",
+    ]);
+  });
+});
+
 describe("normalizeProfileLines: NAO junta (falsos positivos)", () => {
   // Este bloco e o que impede a normalizacao de estragar o parse. Cada caso
   // aqui e algo que, se fosse unido, produziria dado inventado ou destruiria

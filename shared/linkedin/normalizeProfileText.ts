@@ -67,11 +67,46 @@ const PARENTHETICAL_ONLY = /^\([^()]*\)$/;
 const MAX_CONTINUATION_LEN = 40;
 
 /**
+ * Linha de LOCALIZAÇÃO do export do LinkedIn. Formatos observados no arquivo
+ * real: `Greater São Paulo Area`, `São Paulo, Brazil`, `Brasília, DF`,
+ * `Cidade Exemplo - Estado`. É um CAMPO PRÓPRIO que aparece logo depois da
+ * headline e logo depois da linha de data, então é exatamente o vizinho que
+ * uma junção agressiva absorveria por engano.
+ */
+const LOCATION_LIKE =
+  /(\b(?:area|region|regi[aã]o|greater)\b|,\s*[A-Z]{2}$|,\s*(?:brazil|brasil|portugal|spain|espanha|united states|usa|uk|canada|canad[aá])$)/i;
+
+/** Fragmento curto o bastante para ser a cauda de uma linha quebrada. */
+const MAX_FRAGMENTO_LEN = 30;
+const MAX_FRAGMENTO_TOKENS = 3;
+
+/**
+ * A linha pode ser a CAUDA de um campo quebrado?
+ *
+ * Usado só depois de separador órfão. A barra órfã diz "a linha anterior ficou
+ * aberta", mas NÃO diz que a próxima é a continuação dela: no export, a linha
+ * logo abaixo da headline é a localização. Sem este teste, uma headline que
+ * termina em `|` sem continuação real absorvia
+ * `Greater São Paulo Area` (regressão introduzida na Fase 1A).
+ *
+ * Assimetria deliberada: recusar uma cauda legítima devolve o comportamento
+ * antigo (headline truncada, barra limpa), que é feio mas honesto. Absorver a
+ * localização inventa conteúdo na headline. Na dúvida, recusa.
+ */
+function ehFragmentoDeCauda(linha: string): boolean {
+  const t = linha.trim();
+  if (t.length === 0 || t.length > MAX_FRAGMENTO_LEN) return false;
+  if (LOCATION_LIKE.test(t)) return false;
+  return t.split(/\s+/).length <= MAX_FRAGMENTO_TOKENS;
+}
+
+/**
  * A linha `atual` é continuação da `anterior`?
  *
  * SÃO consideradas continuação:
- *   1. anterior termina em separador órfão (`|`, `,`, `/`), o caso da headline
- *      quebrada em "... | React |" + "Node";
+ *   1. anterior termina em separador órfão (`|`, `,`, `/`) E a linha seguinte
+ *      parece a cauda dela (curta, poucos tokens, não é localização): o caso
+ *      da headline quebrada em "... | React |" + "Node";
  *   2. anterior termina em hífen de quebra ("natural-" + "language");
  *   3. atual é só um parêntese fechado e curto, o caso do "(RAG)";
  *   4. atual começa em minúscula, é curta e a anterior não fechou pontuação.
@@ -86,7 +121,10 @@ const MAX_CONTINUATION_LEN = 40;
  *   - atual começando com maiúscula sem nenhum dos sinais 1 a 3: é o caso de
  *     duas competências curtas legítimas em linhas separadas ("React" e "Vue"),
  *     onde juntar inventaria uma competência que não existe;
- *   - atual longa (acima de 40 caracteres): conteúdo próprio.
+ *   - atual longa (acima de 40 caracteres): conteúdo próprio;
+ *   - depois de separador órfão, linha que não passa em `ehFragmentoDeCauda`:
+ *     é o caso da localização (`Greater São Paulo Area`) logo abaixo de uma
+ *     headline que termina em barra.
  */
 function ehContinuacao(anterior: string, atual: string): boolean {
   if (!anterior || !atual) return false;
@@ -99,8 +137,13 @@ function ehContinuacao(anterior: string, atual: string): boolean {
   if (PARENTHETICAL_ONLY.test(atual.trim()) && atual.trim().length <= MAX_CONTINUATION_LEN) {
     return true;
   }
-  // 1 e 2: a linha anterior ficou aberta.
-  if (ENDS_ORPHAN_SEPARATOR.test(anterior.trim())) return true;
+  // 1. separador órfão: a anterior ficou aberta, mas só junta se a seguinte
+  // parecer mesmo a cauda dela. Sem cauda válida, não junta e a barra é
+  // limpa depois por limparSeparadorOrfao.
+  if (ENDS_ORPHAN_SEPARATOR.test(anterior.trim())) {
+    return ehFragmentoDeCauda(atual);
+  }
+  // 2. hífen de quebra.
   if (ENDS_HYPHEN.test(anterior.trim())) return true;
 
   if (ENDS_CLOSED.test(anterior.trim())) return false;
