@@ -1,37 +1,93 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { resolveCheckActionUrl } from "./checkLinks";
+import { resolveCheckPassos } from "./checkLinks";
 import { LINKEDIN_CHECK_CATALOG } from "./schema";
 
-const PROFILE_URL = "https://www.linkedin.com/in/me";
+/**
+ * O "Resolver agora" foi removido na Fase 2A: ele devolvia
+ * https://www.linkedin.com/in/me para os 28 checks editáveis, a MESMA URL para
+ * todos, prometendo levar ao lugar do problema e largando a pessoa na porta de
+ * entrada. No lugar entrou o caminho em passos.
+ */
 
-describe("resolveCheckActionUrl (linkedin)", () => {
-  it("resolve para o proprio perfil os checks corrigidos dentro do perfil", () => {
-    expect(resolveCheckActionUrl("headline-existe")).toBe(PROFILE_URL);
-    expect(resolveCheckActionUrl("sobre-gancho")).toBe(PROFILE_URL);
-    expect(resolveCheckActionUrl("exp-descricoes")).toBe(PROFILE_URL);
-    expect(resolveCheckActionUrl("cobertura-keywords-area")).toBe(PROFILE_URL);
-    expect(resolveCheckActionUrl("skills-quantidade")).toBe(PROFILE_URL);
-    expect(resolveCheckActionUrl("foto-profissional")).toBe(PROFILE_URL);
-    expect(resolveCheckActionUrl("open-to-work")).toBe(PROFILE_URL);
-    expect(resolveCheckActionUrl("headline-em-ingles")).toBe(PROFILE_URL);
-  });
+const FONTE = readFileSync(
+  path.join(path.dirname(fileURLToPath(import.meta.url)), "checkLinks.ts"),
+  "utf8",
+);
 
-  it("devolve null para checks cuja acao nao e edicao do perfil", () => {
-    expect(resolveCheckActionUrl("conexoes")).toBeNull();
-    expect(resolveCheckActionUrl("atividade")).toBeNull();
-  });
-
-  it("devolve null para id desconhecido, nunca adivinha URL", () => {
-    expect(resolveCheckActionUrl("id_desconhecido")).toBeNull();
-    expect(resolveCheckActionUrl("repo_readme_present")).toBeNull();
-    expect(resolveCheckActionUrl("")).toBeNull();
-  });
-
-  it("todo check do catalogo resolve para /in/me ou null, sem outra URL", () => {
+describe("resolveCheckPassos (linkedin)", () => {
+  it("TODO check do catalogo tem passos, inclusive os dois que nao editam o perfil", () => {
     for (const entry of LINKEDIN_CHECK_CATALOG) {
-      const url = resolveCheckActionUrl(entry.id);
-      expect([PROFILE_URL, null]).toContain(url);
+      const passos = resolveCheckPassos(entry.id);
+      expect(passos, `check sem passos: ${entry.id}`).not.toBeNull();
+      expect(passos!.length).toBeGreaterThanOrEqual(3);
     }
+  });
+
+  it("conexoes e atividade, que antes nao tinham nada, agora tem caminho", () => {
+    expect(resolveCheckPassos("conexoes")?.[0]).toContain("Minha rede");
+    expect(resolveCheckPassos("atividade")?.[0]).toContain("página inicial");
+  });
+
+  it("os passos levam ao campo certo, nao a um lugar generico", () => {
+    expect(resolveCheckPassos("headline-cargo-alvo")?.join(" ")).toContain(
+      "Editar apresentação",
+    );
+    expect(resolveCheckPassos("sobre-cta")?.join(" ")).toContain("seção Sobre");
+    expect(resolveCheckPassos("exp-descricoes")?.join(" ")).toContain(
+      "seção Experiência",
+    );
+    expect(resolveCheckPassos("skills-quantidade")?.join(" ")).toContain(
+      "Adicionar competências",
+    );
+    expect(resolveCheckPassos("foto-profissional")?.join(" ")).toContain(
+      "sua foto",
+    );
+    expect(resolveCheckPassos("banner-personalizado")?.join(" ")).toContain(
+      "faixa de capa",
+    );
+    expect(resolveCheckPassos("open-to-work")?.join(" ")).toContain(
+      "Abrir para",
+    );
+  });
+
+  it("id desconhecido devolve null, nunca adivinha caminho", () => {
+    expect(resolveCheckPassos("id_desconhecido")).toBeNull();
+    expect(resolveCheckPassos("repo_readme_present")).toBeNull();
+    expect(resolveCheckPassos("")).toBeNull();
+  });
+
+  it("nenhuma URL sobrou em codigo executavel do modulo", () => {
+    // Guard contra reintroduzir link nao verificado. Voltar com deep link exige
+    // verificar com conta na mao e mudar este teste de proposito.
+    expect(FONTE).not.toMatch(/^(?!\s*\/\/).*https?:\/\//m);
+  });
+
+  it("o botao Resolver agora nao existe mais na UI", () => {
+    const secao = readFileSync(
+      path.join(
+        path.dirname(fileURLToPath(import.meta.url)),
+        "..",
+        "..",
+        "client",
+        "src",
+        "components",
+        "linkedin",
+        "SectionReport.tsx",
+      ),
+      "utf8",
+    );
+    // "Resolver agora" so pode sobreviver dentro do comentario que explica a
+    // remocao, nunca como rotulo renderizado.
+    const semComentarios = secao
+      .split("\n")
+      .filter((linha) => !linha.trim().startsWith("//"))
+      .join("\n");
+    expect(semComentarios).not.toContain("Resolver agora");
+    expect(secao).not.toContain("resolveCheckActionUrl");
+    expect(secao).toContain("Onde resolver isso");
   });
 });
