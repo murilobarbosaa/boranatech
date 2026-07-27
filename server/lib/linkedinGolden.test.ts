@@ -75,10 +75,13 @@ function analisar(c: Cenario) {
 describe("golden: perfil real (PDF de export, anonimizado)", () => {
   const cenario: Cenario = {
     fixture: "perfil-real-anonimizado.txt",
+    // NIVEL pleno: "over 3 years of experience in Software Development" no Sobre,
+    // seis experiencias e cargo de CTO. Nao e defensavel de outro jeito.
     level: "pleno",
     area: "fullstack",
     mercado: "exterior",
-    skills: "AI Agents, Vector Databases, Retrieval-Augmented Generation, (RAG)",
+    skills:
+      "AI Agents, Vector Databases, Retrieval-Augmented Generation, (RAG)",
     foto: "sim",
     banner: "sim",
     openToWork: "sim",
@@ -206,9 +209,9 @@ describe("golden: perfil real (PDF de export, anonimizado)", () => {
     // existir no perfil. O alias "js" casa dentro de "Node.js", porque o
     // lookbehind de containsTerm nao bloqueia o ponto.
     expect(deterministic.keywordsEncontradas).toContain("JavaScript");
-    expect(readFileSync(path.join(FIXTURES, cenario.fixture), "utf8")).not.toMatch(
-      /javascript/i,
-    );
+    expect(
+      readFileSync(path.join(FIXTURES, cenario.fixture), "utf8"),
+    ).not.toMatch(/javascript/i);
 
     // BUG CONHECIDO (rodada2 F.2b): tecnologias escritas no perfil que a regua
     // da area ignora por nao estarem no TECH_AREA_MAP de fullstack.
@@ -249,9 +252,12 @@ describe("golden: perfil real (PDF de export, anonimizado)", () => {
     expect(porTermo("GraphQL").presenteEm).toEqual([]);
     expect(porTermo("GraphQL").faltaEm).toEqual([]);
     // O conjunto dos comprovados e exatamente keywordsEncontradas.
-    expect(campos.filter((k) => k.comprovado).map((k) => k.termo).sort()).toEqual(
-      [...deterministic.keywordsEncontradas].sort(),
-    );
+    expect(
+      campos
+        .filter((k) => k.comprovado)
+        .map((k) => k.termo)
+        .sort(),
+    ).toEqual([...deterministic.keywordsEncontradas].sort());
 
     // skillsContagem conta as competencias COLADAS no formulario, que neste
     // cenario ainda sao a string antiga com "(RAG)" separado. O prefill do
@@ -276,7 +282,9 @@ describe("golden: perfis sinteticos", () => {
       nome: "A) senior tech completo",
       cenario: {
         fixture: "perfil-a-senior.txt",
-    level: "pleno",
+        // NIVEL pleno: "Desenvolvedora Full-stack Senior", 3 anos na atual mais 2 anos
+        // e 10 meses na anterior. Nao e defensavel de outro jeito.
+        level: "pleno",
         area: "fullstack",
         mercado: "brasil",
         skills:
@@ -306,7 +314,7 @@ describe("golden: perfis sinteticos", () => {
       nome: "B) junior com perfil raso",
       cenario: {
         fixture: "perfil-b-junior-raso.txt",
-    level: "estagio",
+        level: "estagio",
         area: "frontend",
         mercado: "brasil",
         skills: "HTML, CSS, JavaScript",
@@ -352,7 +360,12 @@ describe("golden: perfis sinteticos", () => {
       nome: "C) nao-tech em transicao para dados",
       cenario: {
         fixture: "perfil-c-nao-tech.txt",
-    level: "transicao",
+        // NIVEL transicao: cinco anos em administrativo e a area alvo e analise de
+        // dados. E o caso canonico de transicao. DEFENSAVEL DE DOIS JEITOS: pela
+        // senioridade na area ANTIGA seria "pleno", e ai a regua endureceria; a regra
+        // escrita em reguaV2 e explicita que quem troca de area e iniciante NA AREA
+        // NOVA, e esta fixture e o teste dessa regra.
+        level: "transicao",
         area: "analise-dados",
         mercado: "brasil",
         skills: "Excel, Power BI, SQL, TOTVS, Conciliacao bancaria",
@@ -391,7 +404,9 @@ describe("golden: perfis sinteticos", () => {
       nome: "D) perfil em ingles, sem competencias coladas",
       cenario: {
         fixture: "perfil-d-ingles.txt",
-    level: "pleno",
+        // NIVEL pleno: "Backend Engineer" desde 2021 com escala de 4 milhoes de
+        // transacoes diarias. Nao e defensavel de outro jeito.
+        level: "pleno",
         area: "backend",
         mercado: "exterior",
         skills: "",
@@ -425,7 +440,11 @@ describe("golden: perfis sinteticos", () => {
       nome: "E) PDF de 10+ paginas (rodape vira metrica)",
       cenario: {
         fixture: "perfil-e-paginado.txt",
-    level: "junior",
+        // NIVEL pleno: "janeiro de 2020 - Present, 5 anos". Foi atribuido junior por
+        // engano na primeira passagem e corrigido: 5 anos nao e junior, e a diferenca
+        // importa porque este cenario testa `exp-resultados`, que a regua leve nao
+        // afrouxa mas o limiar de descricao por experiencia sim.
+        level: "pleno",
         area: "backend",
         mercado: "brasil",
         skills: "Python, Django, PostgreSQL, Docker",
@@ -438,11 +457,14 @@ describe("golden: perfis sinteticos", () => {
       headline: "Desenvolvedor Back-end | Python, Django",
       experiencias: 1,
       // 69 -> 68: exp-resultados deixou de ser aprovado pelo rodape.
-      score: 69,
+      score: 68,
       faixa: "em-construcao",
       nChecks: 27,
       reprovados: [
         "headline-tamanho",
+        // REGUA V2: perfil-e virou pleno (5 anos), entao o Sobre passa a ser
+        // medido pela regua padrao (500) em vez da leve (300), e reprova.
+        "sobre-tamanho",
         "exp-resultados",
         "cobertura-keywords-area",
         "cobertura-keywords-otima",
@@ -476,10 +498,11 @@ describe("golden: perfis sinteticos", () => {
     // TUDO que o texto comprova esta fora delas.
     const real = analisar({
       fixture: "perfil-real-anonimizado.txt",
-    level: "pleno",
+      level: "pleno",
       area: "fullstack",
       mercado: "exterior",
-      skills: "AI Agents, Vector Databases, Retrieval-Augmented Generation, (RAG)",
+      skills:
+        "AI Agents, Vector Databases, Retrieval-Augmented Generation, (RAG)",
       foto: "sim",
       banner: "sim",
       openToWork: "sim",
@@ -506,7 +529,7 @@ describe("golden: perfis sinteticos", () => {
     // exatamente aqui que o modelo inventava.
     const raso = analisar({
       fixture: "perfil-b-junior-raso.txt",
-    level: "estagio",
+      level: "estagio",
       area: "frontend",
       mercado: "brasil",
       skills: "HTML, CSS, JavaScript",
@@ -527,7 +550,9 @@ describe("golden: perfis sinteticos", () => {
   it("skillsParaAdicionarAgora: sem competencias coladas, tudo que o perfil prova entra", () => {
     const ingles = analisar({
       fixture: "perfil-d-ingles.txt",
-    level: "pleno",
+      // NIVEL pleno: "Backend Engineer" desde 2021 com escala de 4 milhoes de
+      // transacoes diarias. Nao e defensavel de outro jeito.
+      level: "pleno",
       area: "backend",
       mercado: "exterior",
       skills: "",
@@ -583,6 +608,6 @@ describe("golden: perfis sinteticos", () => {
       semRodape.checks.find((c) => c.id === "exp-resultados")?.aprovado,
     ).toBe(false);
     expect(semRodape.score).toBe(comRodape.deterministic.score);
-    expect(semRodape.score).toBe(69);
+    expect(semRodape.score).toBe(68);
   });
 });
