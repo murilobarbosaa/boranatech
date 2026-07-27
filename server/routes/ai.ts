@@ -64,7 +64,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
     return next(createError(403, "forbidden", "Plano Pro necessário para usar esta ferramenta."));
   }
 
-  const usage = await checkAiDailyLimit(userId, !!req.isPro);
+  const usage = await checkAiDailyLimit(userId, !!req.isPro, "[ai]", toolKey);
   if (!usage.allowed) {
     if (usage.verificationFailed) {
       await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "rate limit check failed", model: toolConfig.model });
@@ -295,7 +295,7 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
     return next(createError(403, "forbidden", "Plano Pro necessário para usar esta ferramenta."));
   }
 
-  const usage = await checkAiDailyLimit(userId, !!req.isPro, "[ai/stream]");
+  const usage = await checkAiDailyLimit(userId, !!req.isPro, "[ai/stream]", toolKey);
   if (!usage.allowed) {
     if (usage.verificationFailed) {
       await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "rate limit check failed", model: toolConfig.model });

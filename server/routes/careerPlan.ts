@@ -158,7 +158,7 @@ router.post(
     const requestId =
       (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
 
-    const usage = await checkAiDailyLimit(userId, !!req.isPro, "[career-plan]");
+    const usage = await checkAiDailyLimit(userId, !!req.isPro, "[career-plan]", TOOL);
     if (!usage.allowed) {
       if (usage.verificationFailed) {
         await logAiUsage({

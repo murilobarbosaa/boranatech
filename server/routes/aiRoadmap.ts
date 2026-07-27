@@ -310,7 +310,7 @@ async function passesGenerationGate(
     next(createError(403, "pro_required", "O Roadmap com IA e exclusivo do Plano Pro."));
     return false;
   }
-  const usage = await checkAiDailyLimit(userId, true, "[roadmap-ia]");
+  const usage = await checkAiDailyLimit(userId, true, "[roadmap-ia]", ROADMAP_GENERATOR_TOOL);
   if (!usage.allowed) {
     if (usage.verificationFailed) {
       await logAiUsage({

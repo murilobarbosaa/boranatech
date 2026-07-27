@@ -667,7 +667,7 @@ router.post(
       (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
 
     // Quota global ANTES de qualquer chamada cara (fetch da vaga incluso).
-    const usage = await checkAiDailyLimit(userId, !!req.isPro, "[interview]");
+    const usage = await checkAiDailyLimit(userId, !!req.isPro, "[interview]", INTERVIEW_SESSION_TOOL);
     if (!usage.allowed) {
       if (usage.verificationFailed) {
         await logAiUsage({

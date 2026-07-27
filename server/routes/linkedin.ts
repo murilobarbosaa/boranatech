@@ -122,7 +122,7 @@ router.post(
     const requestId =
       (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
 
-    const usage = await checkAiDailyLimit(userId, !!req.isPro, "[linkedin]");
+    const usage = await checkAiDailyLimit(userId, !!req.isPro, "[linkedin]", TOOL);
     if (!usage.allowed) {
       // Falha de verificacao (RPC fora) e distinta de cota estourada: 503, nao
       // 429, e loga como "error" pra nao poluir a metrica de rate_limited.

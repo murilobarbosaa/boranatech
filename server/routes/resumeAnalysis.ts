@@ -93,7 +93,7 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
   }
   const request = parsed.data;
 
-  const usage = await checkAiDailyLimit(userId, true, "[resume]");
+  const usage = await checkAiDailyLimit(userId, true, "[resume]", RESUME_ANALYZER_TOOL);
   if (!usage.allowed) {
     if (usage.verificationFailed) {
       await logAiUsage({

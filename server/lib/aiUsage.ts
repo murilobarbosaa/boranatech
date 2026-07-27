@@ -29,8 +29,47 @@ export async function checkAiDailyLimit(
   userId: string,
   isPro: boolean,
   logScope = "[ai]",
+  tool = "ai",
 ): Promise<AiDailyLimitResult> {
   const limit = isPro ? env.aiDailyLimitPro : env.aiDailyLimitFree;
+
+  // CAMINHO ATOMICO (reserva). Ver o cabecalho de
+  // supabase/migrations/..._reserve_ai_usage_slot.sql.
+  //
+  // O desenho antigo era ler-depois-escrever: esta funcao contava as linhas do
+  // dia e a rota so inseria a linha DEPOIS da chamada da OpenAI. Entre a
+  // leitura e a escrita cabe qualquer numero de requisicoes do mesmo usuario, e
+  // todas leem o mesmo contador e todas passam. Com limite 5, dez requisicoes
+  // paralelas faziam dez chamadas pagas.
+  //
+  // Agora a contagem e a insercao acontecem na mesma transacao, serializada por
+  // advisory lock do usuario, e o que a rota faz depois e CONFIRMAR a linha que
+  // ja existe.
+  try {
+    const { data, error } = await supabaseAdmin.rpc("reserve_ai_usage_slot", {
+      p_user_id: userId,
+      p_tool: tool,
+      p_limit: limit,
+    });
+    const linha = Array.isArray(data) ? data[0] : data;
+    if (!error && linha && typeof linha.allowed === "boolean") {
+      return {
+        allowed: linha.allowed,
+        count: linha.usage_count ?? 0,
+        limit,
+      };
+    }
+    // RPC ausente (migration ainda nao aplicada) cai no caminho antigo. Codigo
+    // novo tolerando schema antigo, regra do projeto. O aviso existe para a
+    // ausencia nao virar silencio permanente.
+    console.warn(
+      `${logScope} reserve_ai_usage_slot indisponivel, usando a contagem nao-atomica:`,
+      error?.message ?? "resposta inesperada",
+    );
+  } catch (err) {
+    console.warn(`${logScope} reserve_ai_usage_slot lancou:`, err);
+  }
+
   try {
     const { data: usageCount, error: usageError } = await supabaseAdmin.rpc("get_ai_usage_today", {
       p_user_id: userId,
@@ -252,7 +291,64 @@ export interface LogAiUsageParams {
  * Insere uma linha em ai_usage_logs com os mesmos campos de sempre.
  * Nao lanca: falha de log so vira console.warn.
  */
+/** Id da reserva mais antiga em voo deste usuario para esta ferramenta. */
+async function acharReserva(
+  userId: string,
+  tool: string,
+): Promise<string | null> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("ai_usage_logs")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("tool", tool)
+      .eq("status", "reserved")
+      .order("created_at", { ascending: true })
+      .limit(1);
+    if (error || !data || data.length === 0) return null;
+    return (data[0] as { id: string }).id;
+  } catch {
+    return null;
+  }
+}
+
 export async function logAiUsage(params: LogAiUsageParams) {
+  // CONFIRMA A RESERVA, se houver uma.
+  //
+  // Por que a busca e automatica e nao um id passado pela rota: sao NOVE rotas
+  // chamando este par de funcoes. Exigir que cada uma carregue o id seria a
+  // mesma classe de defeito que esta auditoria persegue, lista mantida a mao, e
+  // aqui o custo de esquecer uma e pior que a corrida original: a linha fica
+  // 'reserved' e consome cota da pessoa ate o fim do dia. Procurando a reserva
+  // por (usuario, tool) nao ha como esquecer.
+  //
+  // A DEVOLUCAO tambem sai de graca: a rota ja chama esta funcao com status
+  // 'error' quando a chamada falha, e o contador do dia so soma 'success' e
+  // 'reserved'. Uma reserva que vira 'error' deixa de ocupar vaga sozinha.
+  const reserva = await acharReserva(params.userId, params.tool);
+  if (reserva) {
+    try {
+      const { error } = await supabaseAdmin
+        .from("ai_usage_logs")
+        .update({
+          request_id: params.requestId,
+          status: params.status,
+          error_message: params.errorMessage || null,
+          input_chars: params.inputChars || 0,
+          output_chars: params.outputChars || 0,
+          input_tokens: params.inputTokens || 0,
+          output_tokens: params.outputTokens || 0,
+          model: params.model || DEFAULT_MODEL,
+          cost_estimate: params.costEstimate || 0,
+        })
+        .eq("id", reserva);
+      if (!error) return;
+      console.warn("[ai] Falha ao confirmar a reserva:", error.message);
+    } catch (err) {
+      console.warn("[ai] Falha ao confirmar a reserva:", err);
+    }
+    return;
+  }
   try {
     await supabaseAdmin.from("ai_usage_logs").insert({
       user_id: params.userId,
