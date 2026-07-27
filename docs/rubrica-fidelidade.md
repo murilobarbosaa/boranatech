@@ -128,6 +128,23 @@ Custo aproximado: US$ 0,0012 por execução com `gpt-4o-mini`, cerca de US$ 0,01
 | 2026-07-26 | Fase 0, `skillsParaAdicionarAgora` em código (v3) | 10 | **0** | **0** | v1 |
 | 2026-07-26 | Fase 1A, normalização de line-wrap e rodapé | 10 | 3 | 0 | v1 |
 | 2026-07-27 | Fase 1A-bis, saneamento de numeral em bullets | **30** | 2 | 1 | v1.1 |
+| 2026-07-27 | Fase 1A-ter, camada única de lastro | **30** | 4 | 0 | v1.1 |
+
+Placar decomposto da Fase 1A-ter, que é a forma correta de ler o resultado:
+
+| Classe | Ocorrências |
+|---|---|
+| fabricação de numeral | **0** |
+| fabricação de tecnologia | 4 |
+| afirmação sem numeral e sem tecnologia | **0** |
+| reatribuição | **0** |
+
+28 de 30 execuções limpas; as 2 sujas tiveram 2 ocorrências cada. **As três classes cobertas pela camada de
+lastro foram a zero**, incluindo a classe que era invisível até esta rodada. As 4 restantes estão inteiramente
+em `sobreReescrito`, que está fora da camada por decisão registrada, e as 4 são a cegueira 3 da seção 8: o
+texto diz "tenho interesse em aprender sobre frameworks como React e TypeScript" e "aplicar novas tecnologias
+como Python e R", que é honesto, e a regra mecânica conta como tecnologia sem lastro. São falsos positivos do
+harness, não mentira do produto.
 
 Detalhe da medição de 30 execuções (n maior justamente porque n=10 não distinguia regressão de amostra
 ruim): **28 de 30 execuções limpas**, 1 com um problema e 1 com dois. As 3 ocorrências restantes são de duas
