@@ -95,6 +95,54 @@ dizer que o pior caso é folgado e o melhor é improvável.
 descrição de cada experiência (um array de inteiros). É aditivo, não muda nota, não guarda texto de
 ninguém, e faz a próxima simulação desta pergunta ser exata em vez de intervalar.
 
+## 3-bis. Três variantes de cobertura (Fase 3, item 5)
+
+Tamanhos de pool medidos, 22 áreas: `analise-sistemas 3`, `gestao 5`, `blockchain 5`, `gamedev 6`,
+`iot 7`, `produto 10`, `uxui 10`, `ciberseguranca 10`, `sre 12`, `analise-dados 14`, `banco-de-dados 14`,
+`cloud 15`, `ia 15`, `qa 16`, `infraestrutura 17`, `mobile 18`, `engenharia-dados 19`, `fullstack 22`,
+`devops 29`, `frontend 33`, `dados 35`, `backend 64`.
+
+| | A: absoluto 6/10 | B: `min(6, ceil(p/2))` / `min(10, ceil(p*0,75))` | C: B com `ótima >= essencial+1` |
+|---|---|---|---|
+| média | 47,4 | 47,4 | 47,4 |
+| mediana | 46 | 46 | 46 |
+| sobem | 24 | 24 | 24 |
+| **descem** | **1** | **0** | **0** |
+| mudam de faixa | 4 | 4 | 4 |
+| maior subida | +9 (49→58, backend) | +9 | +9 |
+| maior queda | **-6** (68→62, ciberseguranca) | **nenhuma** | **nenhuma** |
+| aprovam essencial | 24/107 | **25/107** | 25/107 |
+| aprovam ótima | 5/107 | 5/107 | 5/107 |
+| **essencial impossível** | **3 áreas** | **0** | **0** |
+| **ótima impossível** | **5 áreas** | **0** | **0** |
+
+Faixas por dezena: antes `10:4 20:10 30:9 40:43 50:28 60:10 70:3`; nas três variantes
+`10:4 20:10 30:8 40:41 50:22 60:16 70:6`.
+
+**Impossibilidade, por área.** Em A, `analise-sistemas(3)`, `gestao(5)` e `blockchain(5)` têm pool menor
+que 6: o check essencial nunca pode ser aprovado, por mais completo que o perfil seja. A ótima em 10 é
+impossível nessas três mais `gamedev(6)` e `iot(7)`, **cinco áreas** (não oito). Em B e em C, zero: o corte
+nunca pode passar do tamanho da pool, por construção.
+
+**O perigo de ler só o movimento de nota.** A tem 3 perfis das 107 em `gestao`, área onde ela torna o
+essencial impossível, e **nenhum deles muda de nota**, porque já reprovam. O dano de A é invisível no
+placar e só aparece olhando a pool. Foi exatamente o modo de falha da régua original.
+
+**Por que a única queda some em B.** `ciberseguranca` tem pool 10; o perfil tinha 5 tecnologias e passava
+pelos 50%. Em A, 5 < 6 e ele cai 6 pontos. Em B, o corte da área é `min(6, 5) = 5`, e ele continua
+aprovando. B não é só mais justo com áreas pequenas: ele não pune ninguém pela recalibragem.
+
+**C é idêntico a B nos dados de hoje** e a trava nunca chega a agir: para toda pool real,
+`ceil(p*0,75) > ceil(p/2)`. Ela existe para a pool que encolher: com pool 1, B daria essencial 1 e ótima 1,
+dois checks que nunca se diferenciam.
+
+**Projeção para as 8 áreas sem perfil nas 107** (`cloud 15`, `mobile 18`, `gamedev 6`,
+`banco-de-dados 14`, `sre 12`, `analise-sistemas 3`, `blockchain 5`, `iot 7`): em A, três delas nascem com
+check impossível (`analise-sistemas`, `blockchain` no essencial; mais `gamedev` e `iot` na ótima). Em B, os
+cortes ficam `analise-sistemas 2/3`, `blockchain 3/4`, `gamedev 3/5`, `iot 4/6`, `sre 6/9`,
+`banco-de-dados 6/10`, `cloud 6/10`, `mobile 6/10`, todos atingíveis. Nenhuma amostra real sustenta
+previsão de nota nessas áreas; o que se afirma aqui é só reachability, que depende da pool e não do perfil.
+
 ## 4. O que isto não decide
 
 A mensagem que o usuário lê quando a nota dele muda sem ele ter mexido no perfil. Os números acima dizem
