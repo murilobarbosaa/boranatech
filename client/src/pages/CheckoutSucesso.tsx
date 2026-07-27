@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Check, Clock, Loader2, MessageCircle } from "lucide-react";
+import {
+  Check,
+  Clock,
+  Loader2,
+  MessageCircle,
+  ShieldCheck,
+} from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 
 import { fireProCelebration } from "@/lib/proConfetti";
@@ -19,9 +25,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { greet } from "@shared/greeting";
 
+// Origem do acesso, como o /api/billing/subscription devolve. Esta tela NAO pode
+// usar o isPro do contexto para confirmar pagamento: aquele isPro e
+// (is_user_pro || isAdmin), e o proprio is_user_pro ja inclui o ramo influencer.
+// Resultado: admin e influencer viam "Aê, Pro!" sem nunca ter havido cobranca, e
+// todo teste de checkout feito com essas contas nascia invalido. Assinatura real e
+// o UNICO caso que confirma pagamento; admin/influencer ganham tela propria.
+type AccessSource = "subscription" | "influencer" | "admin" | null;
+
 export default function CheckoutSucesso() {
-  const { isPro, loading, refreshSubscription, subscription } =
-    useSubscription();
+  const { loading, refreshSubscription, subscription } = useSubscription();
   const { profile } = useAuth();
   const [checking, setChecking] = useState(true);
   const [processed, setProcessed] = useState(false);
@@ -69,9 +82,20 @@ export default function CheckoutSucesso() {
           ?.name ?? "Plano Pro")
       : "Plano Pro";
 
+  const accessSource =
+    typeof subscription === "object" && subscription
+      ? ((subscription as { accessSource?: AccessSource }).accessSource ?? null)
+      : null;
+  // paidAccess: existe linha em subscriptions (o endpoint so devolve
+  // 'subscription' quando achou uma em active/trialing/past_due). Admin com
+  // assinatura paga tambem cai aqui, que e o certo: houve cobranca.
+  const paidAccess = accessSource === "subscription";
+  const grantedAccess =
+    !paidAccess && (accessSource === "admin" || accessSource === "influencer");
+
   const isLoadingScreen = checking || loading;
-  const showSuccess = isPro;
-  const showProcessing = processed && !isPro;
+  const showSuccess = paidAccess;
+  const showProcessing = processed && !paidAccess && !grantedAccess;
 
   const whatsappUrl = whatsappSupportUrl(
     "Olá! Acabei de assinar o Pro e gostaria de suporte.",
@@ -95,22 +119,25 @@ export default function CheckoutSucesso() {
   }, [isLoadingScreen, showSuccess, reduce]);
 
   // Consome o cupom de afiliado e o de marketing uma unica vez quando a
-  // conversao confirma (isPro). Guarda via ref para nao remover de novo em
-  // re-render. Nao mexe nos carimbos subscriptions.affiliate_code/coupon_code,
-  // que sao o registro de comissao/resgate no servidor.
+  // conversao confirma (assinatura real). Guarda via ref para nao remover de novo
+  // em re-render. Nao mexe nos carimbos subscriptions.affiliate_code/coupon_code,
+  // que sao o registro de comissao/resgate no servidor. Com paidAccess no lugar
+  // de isPro, o acesso concedido (admin/influencer) nao queima mais a atribuicao
+  // de quem ainda vai pagar.
   useEffect(() => {
-    if (!isPro || affiliateConsumedRef.current) return;
+    if (!paidAccess || affiliateConsumedRef.current) return;
     affiliateConsumedRef.current = true;
     clearStoredAffiliate();
     clearStoredCoupon();
-  }, [isPro]);
+  }, [paidAccess]);
 
   // subscription_completed: dispara uma unica vez quando a assinatura confirma.
   // Tambem limpa a flag de checkout pendente para nao gerar um checkout_abandoned
-  // falso se a pessoa voltar ao /planos depois.
+  // falso se a pessoa voltar ao /planos depois. Gated em paidAccess: acesso de
+  // admin/influencer nao e conversao e nao pode entrar no funil.
   const completedFiredRef = useRef(false);
   useEffect(() => {
-    if (!isPro || completedFiredRef.current) return;
+    if (!paidAccess || completedFiredRef.current) return;
     completedFiredRef.current = true;
     sessionStorage.removeItem("bnt_checkout_pending");
     const sub = subscription as {
@@ -125,7 +152,7 @@ export default function CheckoutSucesso() {
       price_cents: priceCents,
       provider: sub?.provider ?? "stripe",
     });
-  }, [isPro, subscription]);
+  }, [paidAccess, subscription]);
 
   const fadeSlideUp = {
     initial: reduce ? false : { opacity: 0, y: 12 },
@@ -205,6 +232,8 @@ export default function CheckoutSucesso() {
                 >
                   <Clock className="h-12 w-12 text-[#1a1a1a]" />
                 </motion.span>
+              ) : grantedAccess ? (
+                <ShieldCheck className="h-12 w-12 text-[#1a1a1a]" />
               ) : (
                 <motion.span
                   initial={reduce ? false : { scale: 0 }}
@@ -281,6 +310,45 @@ export default function CheckoutSucesso() {
                     >
                       <MessageCircle className="h-5 w-5" />
                       Suporte no WhatsApp
+                    </a>
+                  ) : null}
+                </div>
+              </motion.div>
+            ) : grantedAccess ? (
+              <motion.div key="granted" {...fadeSlideUp}>
+                <h1 className="font-display mt-8 text-4xl font-black text-[#1a1a1a]">
+                  Nenhuma assinatura encontrada
+                </h1>
+                <p className="mx-auto mt-3 max-w-lg text-base font-semibold leading-relaxed text-slate-600">
+                  Seu acesso Pro vem de{" "}
+                  {accessSource === "admin"
+                    ? "uma conta de administrador"
+                    : "uma cortesia de parceria"}
+                  , não de uma assinatura paga. Se você acabou de pagar, o
+                  registro ainda não chegou: nesse caso fale com a gente antes
+                  de tentar de novo.
+                </p>
+                <div className="mt-8 flex flex-col items-center gap-3">
+                  <Link
+                    href="/perfil"
+                    className="inline-flex rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
+                  >
+                    Ir para o perfil
+                  </Link>
+                  {whatsappUrl ? (
+                    <a
+                      href={whatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() =>
+                        captureWhatsappSupportClicked({
+                          source: "checkout_success",
+                        })
+                      }
+                      className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-white px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
+                    >
+                      <MessageCircle className="h-5 w-5" />
+                      Falar no WhatsApp
                     </a>
                   ) : null}
                 </div>
