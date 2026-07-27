@@ -56,6 +56,15 @@ interface SectionReportProps {
    * secao nao tem veredito), recolhida em details no veredito bom.
    */
   paste?: React.ReactNode;
+  /**
+   * Uma linha dizendo ONDE colar e O QUE fazer com o que ja esta la.
+   *
+   * Obrigatoria sempre que houver `paste`. Sem ela o bloco aparecia sob um
+   * rotulo generico ("pronto para colar", "Quer deixar ainda melhor?") que nao
+   * dizia nem o campo de destino nem se o texto SOMA ou SUBSTITUI o que existe.
+   * Competencias soma e headline substitui, e a UI tratava as duas igual.
+   */
+  pasteHint?: string;
   /** Conteudo extra sempre visivel (ex: nota honesta de estado vazio). */
   children?: React.ReactNode;
 }
@@ -66,6 +75,7 @@ export default function SectionReport({
   checks,
   atual,
   paste,
+  pasteHint,
   children,
 }: SectionReportProps) {
   const verdict = deriveSectionVerdict(checks);
@@ -190,17 +200,25 @@ export default function SectionReport({
           pasteOpen ? (
             <div className="mt-5 rounded-xl border-2 border-sky-600 bg-sky-50 p-4">
               <p className="text-xs font-black uppercase tracking-[0.15em] text-sky-700">
-                {/* TODO(Ana): revisar o rotulo da camada pronta para colar. */}
                 pronto para colar
               </p>
+              {pasteHint ? (
+                <p className="mt-1 text-xs font-medium text-sky-900">
+                  {pasteHint}
+                </p>
+              ) : null}
               <div className="mt-3 min-w-0">{paste}</div>
             </div>
           ) : (
             <details className="mt-5 rounded-xl border-2 border-slate-200 bg-white p-4">
               <summary className="cursor-pointer text-sm font-black text-slate-800">
-                {/* TODO(Ana): revisar o convite do para colar no veredito bom. */}
-                Quer deixar ainda melhor?
+                Está bom, mas dá para melhorar: ver o texto pronto para colar
               </summary>
+              {pasteHint ? (
+                <p className="mt-2 text-xs font-medium text-slate-600">
+                  {pasteHint}
+                </p>
+              ) : null}
               <div className="mt-3 min-w-0">{paste}</div>
             </details>
           )

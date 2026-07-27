@@ -624,24 +624,28 @@ export default function LinkedinAnalisar() {
       else next.add(index);
       return next;
     });
-    setLinkedinImprovement(analysisId, index, !wasDone).catch((err: unknown) => {
-      setApplied((prev) => {
-        const reverted = new Set(prev);
-        if (wasDone) reverted.add(index);
-        else reverted.delete(index);
-        return reverted;
-      });
-      // Recurso indisponivel (tabela ausente) nao e falha de salvar: esconde o
-      // checklist e cai no aviso ameno, sem pedir "tente de novo". Na pratica
-      // este ramo nao dispara, porque sem progressAvailable o checkbox nem
-      // renderiza; fica como defesa se o banco sumir no meio da sessao.
-      if (err instanceof Error && err.message === PROGRESS_UNAVAILABLE) {
-        setProgressAvailable(false);
-        return;
-      }
-      // TODO(Ana): revisar a mensagem de falha ao salvar o progresso.
-      setProgressError("Não foi possível salvar seu progresso. Tente de novo.");
-    });
+    setLinkedinImprovement(analysisId, index, !wasDone).catch(
+      (err: unknown) => {
+        setApplied((prev) => {
+          const reverted = new Set(prev);
+          if (wasDone) reverted.add(index);
+          else reverted.delete(index);
+          return reverted;
+        });
+        // Recurso indisponivel (tabela ausente) nao e falha de salvar: esconde o
+        // checklist e cai no aviso ameno, sem pedir "tente de novo". Na pratica
+        // este ramo nao dispara, porque sem progressAvailable o checkbox nem
+        // renderiza; fica como defesa se o banco sumir no meio da sessao.
+        if (err instanceof Error && err.message === PROGRESS_UNAVAILABLE) {
+          setProgressAvailable(false);
+          return;
+        }
+        // TODO(Ana): revisar a mensagem de falha ao salvar o progresso.
+        setProgressError(
+          "Não foi possível salvar seu progresso. Tente de novo.",
+        );
+      },
+    );
   }
 
   useEffect(() => {
@@ -788,9 +792,7 @@ export default function LinkedinAnalisar() {
         priorVersion !== versaoDe(data.deterministicVersion);
       setReguaMudou(mudou);
       setScoreDelta(
-        !mudou &&
-          priorScore !== null &&
-          priorScore !== data.deterministic.score
+        !mudou && priorScore !== null && priorScore !== data.deterministic.score
           ? { from: priorScore, to: data.deterministic.score }
           : null,
       );
@@ -837,7 +839,9 @@ export default function LinkedinAnalisar() {
             versaoDe(record.result.deterministicVersion);
         setReguaMudou(mudou);
         setScoreDelta(
-          !mudou && prior !== null && prior !== record.result.deterministic.score
+          !mudou &&
+            prior !== null &&
+            prior !== record.result.deterministic.score
             ? { from: prior, to: record.result.deterministic.score }
             : null,
         );
@@ -879,13 +883,17 @@ export default function LinkedinAnalisar() {
 
   // Lista calculada em codigo (deterministic). Ausente nas analises gravadas
   // antes da v3, entao leitura guardada.
-  const skillsAdicionarAgora = result?.deterministic.skillsParaAdicionarAgora ?? [];
+  const skillsAdicionarAgora =
+    result?.deterministic.skillsParaAdicionarAgora ?? [];
 
   // Leitura VERSIONADA do qualitative persistido: nunca acessar
   // result.qualitative.x direto (o jsonb pode ter sido gravado por outra versao
   // do codigo). Degrada para render parcial em vez de derrubar a pagina.
   const qual = useMemo(
-    () => (result ? readQualitative(result.qualitative, result.qualitativeVersion) : null),
+    () =>
+      result
+        ? readQualitative(result.qualitative, result.qualitativeVersion)
+        : null,
     [result],
   );
 
@@ -1052,7 +1060,10 @@ export default function LinkedinAnalisar() {
             </div>
           ) : null}
           {!isPro ? (
-            <ProGate feature="linkedin_analyzer" description="A análise lê seu perfil do LinkedIn, calcula uma nota e entrega os textos prontos para você ser encontrado por recrutadores de estágio, trainee, júnior ou pleno." />
+            <ProGate
+              feature="linkedin_analyzer"
+              description="A análise lê seu perfil do LinkedIn, calcula uma nota e entrega os textos prontos para você ser encontrado por recrutadores de estágio, trainee, júnior ou pleno."
+            />
           ) : (
             <div className="space-y-8">
               {/* Ordem narrativa da entrada: explicacao (timeline + vitrine)
@@ -1517,9 +1528,7 @@ export default function LinkedinAnalisar() {
                     }
                     className="rotate-[0.5deg]"
                   >
-                    <NextStepCard
-                      proximoPasso={qual.proximoPasso}
-                    />
+                    <NextStepCard proximoPasso={qual.proximoPasso} />
                   </motion.div>
 
                   {/* Corpo prontuario: coluna unica de leitura vertical (o
@@ -1583,6 +1592,7 @@ export default function LinkedinAnalisar() {
                     <Reveal>
                       <SectionReport
                         title="Headline"
+                        pasteHint="Cole no campo de headline do seu perfil, no lugar do que está lá. A headline é um campo único: isto SUBSTITUI o texto atual, não soma."
                         icon={
                           <Type className={SECTION_ICON_CLASS} aria-hidden />
                         }
@@ -1596,19 +1606,17 @@ export default function LinkedinAnalisar() {
                         }
                         paste={
                           <ul className="space-y-3">
-                            {qual.headlines.map(
-                              (headline, index) => (
-                                <li
-                                  key={index}
-                                  className="flex items-start justify-between gap-3 rounded-xl border-2 border-slate-200 bg-white p-3"
-                                >
-                                  <p className="min-w-0 text-sm font-medium text-slate-800">
-                                    {headline}
-                                  </p>
-                                  <CopyButton text={headline} />
-                                </li>
-                              ),
-                            )}
+                            {qual.headlines.map((headline, index) => (
+                              <li
+                                key={index}
+                                className="flex items-start justify-between gap-3 rounded-xl border-2 border-slate-200 bg-white p-3"
+                              >
+                                <p className="min-w-0 text-sm font-medium text-slate-800">
+                                  {headline}
+                                </p>
+                                <CopyButton text={headline} />
+                              </li>
+                            ))}
                           </ul>
                         }
                       >
@@ -1626,6 +1634,7 @@ export default function LinkedinAnalisar() {
                     <Reveal>
                       <SectionReport
                         title="Sobre"
+                        pasteHint="Cole na seção Sobre, no lugar do texto atual. É um campo único, então isto SUBSTITUI o que está lá. Se você tem um trecho que quer manter, junte antes de salvar."
                         icon={
                           <FileText
                             className={SECTION_ICON_CLASS}
@@ -1643,9 +1652,7 @@ export default function LinkedinAnalisar() {
                         paste={
                           <div>
                             <div className="mb-2 flex justify-end">
-                              <CopyButton
-                                text={qual.sobreReescrito}
-                              />
+                              <CopyButton text={qual.sobreReescrito} />
                             </div>
                             <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
                               {qual.sobreReescrito}
@@ -1675,6 +1682,7 @@ export default function LinkedinAnalisar() {
                     <Reveal>
                       <SectionReport
                         title="Experiências"
+                        pasteHint="Cole na descrição da experiência de mesmo nome, dentro do LinkedIn. Aqui depende de você: estes bullets reescrevem os que já existem, mas se a sua descrição tiver algo que não aparece aqui (um projeto, uma ferramenta, um número), mantenha essa parte e troque o resto."
                         icon={
                           <Briefcase
                             className={SECTION_ICON_CLASS}
@@ -1719,36 +1727,32 @@ export default function LinkedinAnalisar() {
                         paste={
                           qual.bulletsReescritos.length > 0 ? (
                             <div className="space-y-4">
-                              {qual.bulletsReescritos.map(
-                                (item, index) => (
-                                  <div
-                                    key={index}
-                                    className="rounded-xl border-2 border-slate-200 bg-white p-4"
-                                  >
-                                    <div className="mb-2 flex items-start justify-between gap-3">
-                                      <p className="min-w-0 text-sm font-black text-slate-900">
-                                        {item.contexto}
-                                      </p>
-                                      <CopyButton
-                                        text={item.bullets.join("\n")}
-                                      />
-                                    </div>
-                                    <ul className="space-y-2">
-                                      {item.bullets.map(
-                                        (bullet, bulletIndex) => (
-                                          <li
-                                            key={bulletIndex}
-                                            className="flex items-start gap-2 text-sm text-slate-700"
-                                          >
-                                            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-sky-500" />
-                                            {bullet}
-                                          </li>
-                                        ),
-                                      )}
-                                    </ul>
+                              {qual.bulletsReescritos.map((item, index) => (
+                                <div
+                                  key={index}
+                                  className="rounded-xl border-2 border-slate-200 bg-white p-4"
+                                >
+                                  <div className="mb-2 flex items-start justify-between gap-3">
+                                    <p className="min-w-0 text-sm font-black text-slate-900">
+                                      {item.contexto}
+                                    </p>
+                                    <CopyButton
+                                      text={item.bullets.join("\n")}
+                                    />
                                   </div>
-                                ),
-                              )}
+                                  <ul className="space-y-2">
+                                    {item.bullets.map((bullet, bulletIndex) => (
+                                      <li
+                                        key={bulletIndex}
+                                        className="flex items-start gap-2 text-sm text-slate-700"
+                                      >
+                                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-sky-500" />
+                                        {bullet}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ))}
                             </div>
                           ) : null
                         }
@@ -1779,6 +1783,7 @@ export default function LinkedinAnalisar() {
                     <Reveal>
                       <SectionReport
                         title="Competências"
+                        pasteHint="Adicione uma a uma em Competências, no seu perfil. Aqui é SOMA, não troca: nada do que você já cadastrou precisa sair."
                         icon={
                           <Award className={SECTION_ICON_CLASS} aria-hidden />
                         }
@@ -1812,22 +1817,18 @@ export default function LinkedinAnalisar() {
                                       mas elas não estão nas suas competências.
                                     </p>
                                     <CopyButton
-                                      text={skillsAdicionarAgora.join(
-                                        ", ",
-                                      )}
+                                      text={skillsAdicionarAgora.join(", ")}
                                     />
                                   </div>
                                   <div className="mt-3 flex flex-wrap gap-2">
-                                    {skillsAdicionarAgora.map(
-                                      (skill) => (
-                                        <span
-                                          key={skill}
-                                          className="inline-flex rounded-full border-2 border-emerald-500 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800"
-                                        >
-                                          {skill}
-                                        </span>
-                                      ),
-                                    )}
+                                    {skillsAdicionarAgora.map((skill) => (
+                                      <span
+                                        key={skill}
+                                        className="inline-flex rounded-full border-2 border-emerald-500 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800"
+                                      >
+                                        {skill}
+                                      </span>
+                                    ))}
                                   </div>
                                 </div>
                               ) : null}
@@ -1918,6 +1919,7 @@ export default function LinkedinAnalisar() {
                     <Reveal>
                       <SectionReport
                         title="Mensagem para recrutador"
+                        pasteHint="Esta não vai no seu perfil. Copie e envie no chat do LinkedIn quando responder um recrutador, trocando o que estiver entre colchetes."
                         icon={
                           <MessageSquare
                             className={SECTION_ICON_CLASS}
@@ -1929,9 +1931,7 @@ export default function LinkedinAnalisar() {
                           <div>
                             <div className="mb-2 flex justify-end">
                               <CopyButton
-                                text={
-                                  qual.modeloMensagemRecrutador
-                                }
+                                text={qual.modeloMensagemRecrutador}
                               />
                             </div>
                             <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
