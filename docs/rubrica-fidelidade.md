@@ -31,7 +31,12 @@ O fato existe no perfil, mas foi alterado ao ser reescrito. Casos que contam com
 - **Troca de métrica**: latência vira acurácia, redução de bugs vira aumento de produtividade.
 
 ### `inventada`
-Não há lastro nenhum no perfil. Os dois casos que importam aqui:
+Não há lastro nenhum no perfil. Os casos que importam aqui:
+
+- **Métrica sem lastro** (acrescentado na emenda de 2026-07-26, ver seção 7): um número, percentual ou
+  volume que não existe em lugar nenhum do texto daquela experiência. É diferente de reatribuição: aqui não há
+  um valor original sendo movido de dono, o valor **não existe**. Exemplo real: "melhorando a eficiência em
+  30%" numa experiência que não tem descrição nenhuma no PDF.
 
 - **Tecnologia sem lastro**: uma tecnologia nomeada num bullet de experiência que não aparece no texto daquela
   experiência (mesmo que apareça no Sobre, na headline ou em outra experiência), ou uma tecnologia em
@@ -134,3 +139,35 @@ Leitura da série, que é o resultado mais útil deste documento:
 
 A lição que vale para as próximas ferramentas: **as três reduções vieram de tirar trabalho do modelo, não de
 pedir melhor.** Nenhuma exigiu trocar de modelo.
+
+---
+
+## 7. Emendas
+
+### Emenda 1, 2026-07-26: métrica fabricada é `inventada`, não `distorcida`
+
+**Motivo.** Primeira aplicação ambígua da rubrica. A medição da Fase 1A produziu três bullets com percentuais
+(`30%`, `40%`, `25%`) que não existem em lugar nenhum do perfil. A v1 definia `distorcida` como "o fato existe
+mas foi alterado" e `inventada` com dois exemplos que falavam só de **tecnologia** e de **recomendação**.
+Número fabricado não se encaixava em nenhuma das duas com clareza: não é um valor existente sendo movido de
+dono, e não é tecnologia nem recomendação.
+
+**Decisão.** Métrica sem lastro passa a ser explicitamente `inventada`. O critério que separa as duas:
+
+| Situação | Veredito |
+|---|---|
+| O número existe no perfil e foi atribuído a outro sujeito, escopo ou métrica | `distorcida` |
+| O número não existe em lugar nenhum do texto daquela experiência | `inventada` |
+
+**Impacto nas medições anteriores.** As 3 ocorrências da medição da Fase 1A, contadas como `distorcidas`
+(rótulo `REATRIBUIDA` do harness), são reclassificadas como `inventadas`. O total não muda (3), a distribuição
+sim. As medições de 58/22/3/0 não são afetadas: naquelas, as 3 `distorcidas` da linha de base eram
+reatribuição genuína (os ~86% mudando de dono), não fabricação.
+
+**Limitação conhecida do harness, registrada aqui para não ser esquecida.** A verificação mecânica compara o
+numeral do bullet com os numerais do texto daquela experiência. Ela detecta **fabricação** (número ausente da
+origem), mas **não detecta reatribuição** (número presente na origem, colado no sujeito errado). Exemplo real
+que passa batido: o perfil diz que *pre-routers determinísticos* cortaram latência em ~86% *em queries comuns*,
+e a saída escreveu "um agente de AI conversacional que reduziu o tempo de resposta em 86% para consultas
+comuns" — o 86 existe na experiência, então o harness aprova, mas o sujeito mudou. Reatribuição continua
+dependendo de leitura humana, e o placar mecânico deve ser lido com essa ressalva.
