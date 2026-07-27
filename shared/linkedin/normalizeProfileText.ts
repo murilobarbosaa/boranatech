@@ -111,11 +111,27 @@ function ehContinuacao(anterior: string, atual: string): boolean {
 }
 
 /**
- * Junta duas linhas. No caso do hífen, o hífen é PRESERVADO e não entra espaço:
- * o export do LinkedIn quebra em hífen que já existia na palavra composta
- * ("natural-language", "full-stack"), não insere hífen de silabação. Remover o
- * hífen produziria "naturallanguage", que não é palavra nem casa com
- * tecnologia nenhuma no matching.
+ * Junta duas linhas. No caso do hífen, o hífen é PRESERVADO e não entra espaço.
+ *
+ * SUPOSIÇÃO, não fato verificado. A base é pequena: no único PDF real que
+ * temos, existem exatamente DUAS quebras em hífen, e as duas são a mesma
+ * palavra composta (`natural-` + `language`), contra 19 hífens no meio de
+ * linha em compostos normais (`Full-Stack`, `pre-routers`, `end-to-end`).
+ * Isso é consistente com "o LinkedIn quebra em hífen que já existe e não
+ * insere hífen de silabação", mas n=2 num só documento não prova a regra.
+ *
+ * Se a suposição estiver errada num perfil em português com palavra longa
+ * (`desenvolvi-` + `mento`), o resultado é `desenvolvi-mento`: palavra
+ * quebrada com hífen espúrio. O dano é de exibição e, no pior caso, de
+ * matching (uma tecnologia hifenizada por engano deixa de ser contada e a nota
+ * cai). Vale registrar que o comportamento ANTERIOR era pior no mesmo caso:
+ * produzia `desenvolvi- mento`, com hífen E espaço, que também não casa com
+ * nada. Nenhuma das duas escolhas acerta os dois casos; esta acerta o caso
+ * observado.
+ *
+ * Como derrubar a suposição: um export em português com palavra longa cortada
+ * no fim da linha. Se aparecer, a saída correta passa a depender de detectar
+ * se a junção forma palavra de dicionário, o que é outro projeto.
  */
 function juntar(anterior: string, atual: string): string {
   const a = anterior.trimEnd();

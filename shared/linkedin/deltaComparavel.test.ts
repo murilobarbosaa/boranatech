@@ -1,6 +1,27 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { DETERMINISTIC_VERSION } from "./schema";
+
+// A linha legada REAL: as 107 analises nao tem `deterministicVersion` nenhum.
+// O campo e AUSENTE, nao e 1. Testar 1 contra 2 nao cobre esse caso.
+const LEGADO = JSON.parse(
+  readFileSync(
+    path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "..",
+      "..",
+      "server",
+      "lib",
+      "__fixtures__",
+      "linkedin",
+      "result-legado-v1.json",
+    ),
+    "utf8",
+  ),
+) as { deterministicVersion?: number };
 
 /**
  * Regra do delta de nota, extraída da página para poder ser testada.
@@ -43,6 +64,20 @@ describe("delta de nota entre versoes da regua", () => {
     expect(deltaEhComparavel(undefined, 1)).toBe(true);
     expect(deltaEhComparavel(null, DETERMINISTIC_VERSION)).toBe(false);
     expect(deltaEhComparavel(undefined, DETERMINISTIC_VERSION)).toBe(false);
+  });
+
+  it("fixture legada real: o campo e AUSENTE e mesmo assim suprime o delta", () => {
+    // Nao e um 1 escrito: a chave nao existe no jsonb gravado.
+    expect("deterministicVersion" in LEGADO).toBe(false);
+    expect(LEGADO.deterministicVersion).toBeUndefined();
+    // Reanalisar hoje (v2) em cima dessa linha NAO pode mostrar delta.
+    expect(
+      deltaEhComparavel(LEGADO.deterministicVersion, DETERMINISTIC_VERSION),
+    ).toBe(false);
+    // E abrir duas linhas legadas seguidas continua comparavel entre si.
+    expect(
+      deltaEhComparavel(LEGADO.deterministicVersion, LEGADO.deterministicVersion),
+    ).toBe(true);
   });
 
   it("a versao atual e 2: reanalise de qualquer historico existente nao compara", () => {
