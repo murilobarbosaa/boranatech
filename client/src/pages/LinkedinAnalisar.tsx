@@ -32,7 +32,11 @@ import {
 } from "@/components/portfolio/QualitativePanels";
 import { NextStepCard } from "@/components/shared/NextStepCard";
 import NextStepsByArea from "@/components/shared/NextStepsByArea";
-import { mudancaSoDeAutodeclaracao } from "@shared/linkedin/reguaV2";
+import {
+  decidirDelta,
+  versaoDe,
+  type VeredictoDelta,
+} from "@shared/linkedin/deltaFunil";
 import {
   BenefitPills,
   HowItWorksTimeline,
@@ -668,8 +672,15 @@ export default function LinkedinAnalisar() {
   }, [isPro]);
 
   // Versao ausente = linha gravada antes do carimbo, tratada como 1.
-  function versaoDe(v: number | null | undefined): number {
-    return v ?? 1;
+  /**
+   * Aplicador UNICO do veredito do funil. Os dois caminhos que mostram delta
+   * (analise nova e abrir do historico) passam por aqui, e nenhum deles chama
+   * `setScoreDelta` direto: `deltaFunil.test.ts` enumera os call sites da fonte
+   * e falha se algum voltar a decidir por conta propria.
+   */
+  function aplicarDelta(v: VeredictoDelta): void {
+    setReguaMudou(v.reguaMudou);
+    setScoreDelta(v.delta);
   }
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -786,16 +797,16 @@ export default function LinkedinAnalisar() {
       });
       setResult(data);
       setAnalysisId(newAnalysisId);
-      // Delta SO quando a nota mudou: empate nao vira banner nem seta, e o
-      // contador do hero volta a animar de 0 (semantica alinhada ao GitHub).
-      const mudou =
-        priorVersion !== null &&
-        priorVersion !== versaoDe(data.deterministicVersion);
-      setReguaMudou(mudou);
-      setScoreDelta(
-        !mudou && priorScore !== null && priorScore !== data.deterministic.score
-          ? { from: priorScore, to: data.deterministic.score }
-          : null,
+      // FUNIL UNICO do delta: todas as supressoes moram em decidirDelta.
+      aplicarDelta(
+        decidirDelta({
+          notaAnterior: priorScore,
+          versaoAnterior: priorVersion,
+          checksAnteriores: analyses[0]?.checks,
+          notaAtual: data.deterministic.score,
+          versaoAtual: data.deterministicVersion,
+          checksAtuais: data.deterministic.checks,
+        }),
       );
       // Resultado chegou: de volta ao topo (a pessoa pode ter rolado
       // durante o loading).
@@ -833,28 +844,16 @@ export default function LinkedinAnalisar() {
         // mudou de fato.
         const idx = analyses.findIndex((item) => item.id === id);
         const anterior = idx >= 0 ? analyses[idx + 1] : undefined;
-        const prior = anterior?.score ?? null;
-        const mudou =
-          anterior !== undefined &&
-          versaoDe(anterior.deterministicVersion) !==
-            versaoDe(record.result.deterministicVersion);
-        setReguaMudou(mudou);
-        // Delta e celebracao NUNCA disparam por mudanca que veio so de
-        // autodeclaracao: subir de faixa por ter marcado "sim, tenho banner"
-        // seria a plataforma parabenizando a pessoa por responder formulario.
-        const soDeclarado =
-          Array.isArray(anterior?.checks) &&
-          mudancaSoDeAutodeclaracao(
-            anterior.checks,
-            record.result.deterministic.checks,
-          );
-        setScoreDelta(
-          !mudou &&
-            !soDeclarado &&
-            prior !== null &&
-            prior !== record.result.deterministic.score
-            ? { from: prior, to: record.result.deterministic.score }
-            : null,
+        // FUNIL UNICO do delta: todas as supressoes moram em decidirDelta.
+        aplicarDelta(
+          decidirDelta({
+            notaAnterior: anterior?.score ?? null,
+            versaoAnterior: anterior?.deterministicVersion,
+            checksAnteriores: anterior?.checks,
+            notaAtual: record.result.deterministic.score,
+            versaoAtual: record.result.deterministicVersion,
+            checksAtuais: record.result.deterministic.checks,
+          }),
         );
         scrollToStageTop();
       }
