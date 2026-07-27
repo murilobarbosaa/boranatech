@@ -7,6 +7,7 @@ import {
   type LinkedinAnalyzeRequest,
 } from "../../shared/linkedin/schema";
 import { estimateCost } from "../lib/aiTools";
+import { DEFAULT_MODEL } from "../lib/openai";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import {
   analyzeLinkedin,
@@ -165,7 +166,12 @@ router.post(
         aiUsed = true;
         aiIo = io;
       });
-      const outputChars = JSON.stringify(response).length;
+      // outputChars mede a SAIDA DO MODELO (aiIo.outputChars, o tamanho do
+      // content devolvido pela OpenAI), nao JSON.stringify(response): a
+      // resposta da rota carrega tambem o bloco deterministico inteiro, que a
+      // IA nao gerou e ninguem pagou. Com o response completo, a linha de
+      // exemplo media 10.432 caracteres contra os ~3.900 de saida real.
+      // O atalho sem IA (perfil quase vazio) fica com zero, que e o correto.
       // So conta no limite diario quando a IA rodou de fato. O atalho caloroso
       // (perfil quase vazio) loga como "skipped", que nao conta na cota.
       await logAiUsage({
@@ -174,12 +180,11 @@ router.post(
         requestId,
         status: aiUsed ? "success" : "skipped",
         inputChars: aiIo.inputChars,
-        outputChars,
+        outputChars: aiIo.outputChars,
         // Sem isto a ferramenta aparecia com custo zero nos paineis admin
-        // (/ai-stats e get_ai_usage_admin_summary somam cost_estimate). O
-        // atalho sem IA continua com custo zero, que e o valor correto.
+        // (/ai-stats e get_ai_usage_admin_summary somam cost_estimate).
         costEstimate: aiUsed
-          ? estimateCost(aiIo.inputChars, outputChars)
+          ? estimateCost(aiIo.inputChars, aiIo.outputChars, DEFAULT_MODEL)
           : 0,
       });
 

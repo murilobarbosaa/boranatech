@@ -194,7 +194,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
           inputTokens: data.usage?.prompt_tokens || 0,
           outputTokens: data.usage?.completion_tokens || 0,
           model: toolConfig.model,
-          costEstimate: estimateCost(inputChars, outputChars),
+          costEstimate: estimateCost(inputChars, outputChars, toolConfig.model),
         });
         return next(createError(502, "upstream_error", "Resposta da IA não bateu com o schema esperado."));
       }
@@ -209,7 +209,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
         inputTokens: data.usage?.prompt_tokens || 0,
         outputTokens: data.usage?.completion_tokens || 0,
         model: toolConfig.model,
-        costEstimate: estimateCost(inputChars, outputChars),
+        costEstimate: estimateCost(inputChars, outputChars, toolConfig.model),
       });
 
       res.json({ data: validation.data });
@@ -226,7 +226,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
       inputTokens: data.usage?.prompt_tokens || 0,
       outputTokens: data.usage?.completion_tokens || 0,
       model: toolConfig.model,
-      costEstimate: estimateCost(inputChars, outputChars),
+      costEstimate: estimateCost(inputChars, outputChars, toolConfig.model),
     });
 
     res.json({ result });
@@ -424,7 +424,7 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
       inputTokens,
       outputTokens,
       model: toolConfig.model,
-      costEstimate: estimateCost(inputChars, outputBuf.length),
+      costEstimate: estimateCost(inputChars, outputBuf.length, toolConfig.model),
     });
   }
 });

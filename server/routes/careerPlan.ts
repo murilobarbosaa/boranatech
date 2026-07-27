@@ -3,6 +3,7 @@ import { NextFunction, Request, Response, Router } from "express";
 import { z } from "zod";
 
 import { estimateCost } from "../lib/aiTools";
+import { DEFAULT_MODEL } from "../lib/openai";
 import {
   CAREER_PLAN_CHAT_TOOL,
   checkAiDailyLimit,
@@ -452,7 +453,7 @@ router.post(
         status: "success",
         inputChars: aiIo.inputChars,
         outputChars: aiIo.outputChars,
-        costEstimate: estimateCost(aiIo.inputChars, aiIo.outputChars),
+        costEstimate: estimateCost(aiIo.inputChars, aiIo.outputChars, DEFAULT_MODEL),
       });
       res.json({
         reply: turn.reply,

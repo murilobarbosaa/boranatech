@@ -8,6 +8,7 @@ import {
   type ResumeScoreResult,
 } from "../../shared/resumeAnalysis/schema";
 import { estimateCost } from "../lib/aiTools";
+import { DEFAULT_MODEL } from "../lib/openai";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import { env } from "../lib/env";
 import { runResumeQualitative, type ResumeAiIo } from "../lib/resumeAnalyze";
@@ -178,7 +179,7 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
     status: "success",
     inputChars: io.inputChars,
     outputChars: io.outputChars,
-    costEstimate: estimateCost(io.inputChars, io.outputChars),
+    costEstimate: estimateCost(io.inputChars, io.outputChars, DEFAULT_MODEL),
   });
 
   res.json({

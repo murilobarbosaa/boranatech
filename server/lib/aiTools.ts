@@ -31,8 +31,49 @@ export interface AiToolConfig {
 
 const curriculoJsonSchema = toOpenAIStrictSchema(CurriculoSchema);
 
-export const COST_PER_1K_INPUT_TOKENS = 0.00085;
-export const COST_PER_1K_OUTPUT_TOKENS = 0.0034;
+/**
+ * Preco por MODELO, em dolar por 1 milhao de tokens.
+ *
+ * Substitui o par unico COST_PER_1K_INPUT_TOKENS/COST_PER_1K_OUTPUT_TOKENS, que
+ * cobrava US$ 0,85/1M de entrada e US$ 3,40/1M de saida para qualquer chamada.
+ * Medido contra 30 dias reais de ai_usage_logs, aquilo inflava o custo das
+ * ferramentas que registravam em 5,4x a 5,7x. Preco por modelo tambem e o unico
+ * jeito de a conta continuar certa no dia em que uma ferramenta usar um modelo
+ * diferente das outras.
+ */
+export interface ModelPricing {
+  /** US$ por 1 milhao de tokens de entrada. */
+  inputPerMillion: number;
+  /** US$ por 1 milhao de tokens de saida. */
+  outputPerMillion: number;
+}
+
+export const MODEL_PRICING: Record<string, ModelPricing> = {
+  "gpt-4o-mini": { inputPerMillion: 0.15, outputPerMillion: 0.6 },
+  "gpt-4o": { inputPerMillion: 2.5, outputPerMillion: 10 },
+};
+
+/**
+ * Preco do modelo com fallback: modelo desconhecido cai no preco do
+ * DEFAULT_MODEL em vez de derrubar a chamada ou zerar o custo. Zerar seria pior
+ * que errar, porque some do painel (foi o que aconteceu com o linkedin-analyzer).
+ */
+export function modelPricingOf(model: string): ModelPricing {
+  const pricing = MODEL_PRICING[model];
+  if (pricing) return pricing;
+  console.warn(
+    `[aiTools] sem preco cadastrado para o modelo "${model}", usando o preco de ${DEFAULT_MODEL}.`,
+  );
+  return MODEL_PRICING[DEFAULT_MODEL];
+}
+
+/**
+ * Aproximacao de tokens a partir de caracteres. Continua sendo uma
+ * aproximacao grosseira: medido no analisador de LinkedIn, 9.097 caracteres de
+ * entrada viraram 4.130 tokens reais, ou seja 2,2 chars/token e nao 4, entao a
+ * conta SUBESTIMA a entrada em portugues com termos tecnicos. Trocar isto exige
+ * ler `usage` da resposta da OpenAI em todas as rotas, que e trabalho a parte.
+ */
 export const CHARS_PER_TOKEN = 4;
 
 export const AI_TOOLS: Record<string, AiToolConfig> = {
@@ -540,12 +581,17 @@ export function getToolConfig(toolKey: string): AiToolConfig | null {
   return config;
 }
 
-export function estimateCost(inputChars: number, outputChars: number): number {
+export function estimateCost(
+  inputChars: number,
+  outputChars: number,
+  model: string = DEFAULT_MODEL,
+): number {
   const inputTokens = inputChars / CHARS_PER_TOKEN;
   const outputTokens = outputChars / CHARS_PER_TOKEN;
+  const pricing = modelPricingOf(model);
 
   return (
-    (inputTokens / 1000) * COST_PER_1K_INPUT_TOKENS +
-    (outputTokens / 1000) * COST_PER_1K_OUTPUT_TOKENS
+    (inputTokens / 1_000_000) * pricing.inputPerMillion +
+    (outputTokens / 1_000_000) * pricing.outputPerMillion
   );
 }

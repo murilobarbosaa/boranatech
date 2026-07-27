@@ -16,6 +16,7 @@ import {
   generateSkeleton,
 } from "../lib/aiRoadmap/generate";
 import { estimateCost } from "../lib/aiTools";
+import { DEFAULT_MODEL } from "../lib/openai";
 import {
   checkAiDailyLimit,
   checkRoadmapIntakeChatDailyLimit,
@@ -290,7 +291,7 @@ async function finishGeneration(
     status: "success",
     inputChars: io.inputChars,
     outputChars: io.outputChars,
-    costEstimate: estimateCost(io.inputChars, io.outputChars),
+    costEstimate: estimateCost(io.inputChars, io.outputChars, DEFAULT_MODEL),
   });
   sseSend(res, { type: "done", slug });
   sseDone(res);
@@ -564,7 +565,7 @@ router.post("/intake/chat", async (req: Request, res: Response, next: NextFuncti
       status: "success",
       inputChars: aiIo.inputChars,
       outputChars: aiIo.outputChars,
-      costEstimate: estimateCost(aiIo.inputChars, aiIo.outputChars),
+      costEstimate: estimateCost(aiIo.inputChars, aiIo.outputChars, DEFAULT_MODEL),
     });
     res.json({
       reply: turn.reply,
