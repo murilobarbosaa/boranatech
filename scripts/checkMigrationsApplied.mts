@@ -70,6 +70,59 @@ const DROP_TABLE_RE =
 // "create ... table" e compara com o que o regex especifico conseguiu ler.
 const ANY_CREATE_TABLE_RE = /create\s+(?:\w+\s+)*?table\s+(?:if\s+not\s+exists\s+)?[^\s(;]+/gi;
 
+/**
+ * FUNCOES, POLICIES E INDICES.
+ *
+ * Quinta instancia da classe "guard cuja cobertura e lista incompleta", e criada
+ * pela propria correcao do TOCTOU: a migration nova cria uma FUNCAO, e este
+ * script so enumerava `create table`. Esquecer de aplica-la nao acusava nada.
+ *
+ * O que da para VERIFICAR com o acesso disponivel (PostgREST + service role):
+ *   - tabelas e views: um GET devolve PGRST205 quando nao existem;
+ *   - funcoes: o OpenAPI do PostgREST (`GET /rest/v1/` com Accept
+ *     application/openapi+json) enumera as RPC expostas. Leitura pura, sem
+ *     efeito colateral. NAO chamamos a funcao para testar existencia de
+ *     proposito: `reserve_ai_usage_slot` e VOLATILE e INSERE linha.
+ *
+ * O que NAO da: policy e indice nao aparecem em lugar nenhum do PostgREST, e o
+ * projeto nao tem DATABASE_URL nem cliente Postgres. As duas sao enumeradas da
+ * fonte, com guard de cobertura do parser, e reportadas como DECLARADAS SEM
+ * VERIFICACAO. E menos do que verificar, e e mais do que fingir que nao
+ * existem: o numero fica visivel e uma queda nele aparece.
+ */
+const CREATE_FUNCTION_RE =
+  /create\s+(?:or\s+replace\s+)?function\s+(?:public|"public")\.\s*"?([a-z0-9_]+)"?/gi;
+const ANY_CREATE_FUNCTION_RE = /create\s+(?:or\s+replace\s+)?function\s+[^\s(;]+/gi;
+const DROP_FUNCTION_RE =
+  /drop\s+function\s+(?:if\s+exists\s+)?(?:public|"public")\.\s*"?([a-z0-9_]+)"?/gi;
+
+const CREATE_POLICY_RE = /create\s+policy\s+"?([^"\n]+?)"?\s+on\s/gi;
+const ANY_CREATE_POLICY_RE = /create\s+policy\s/gi;
+const CREATE_INDEX_RE =
+  /create\s+(?:unique\s+)?index\s+(?:concurrently\s+)?(?:if\s+not\s+exists\s+)?"?([a-z0-9_]+)"?/gi;
+const ANY_CREATE_INDEX_RE = /create\s+(?:unique\s+)?index\s/gi;
+
+/**
+ * Funcao que devolve trigger NAO e exposta pelo PostgREST, entao nao pode ser
+ * cobrada na verificacao. Reconhecida pela assinatura, nao por lista de nomes.
+ *
+ * O escopo e o PRIMEIRO `returns` depois do `create function`, que e o desta
+ * funcao. A primeira versao procurava "returns trigger" numa janela de 4000
+ * caracteres, e isso classificou `get_study_heatmap` e `is_user_admin` como
+ * trigger porque havia uma funcao de trigger logo abaixo no mesmo arquivo. Sao
+ * duas RPC reais, expostas, que sairiam da verificacao em silencio: a mesma
+ * classe de defeito que este script existe para nao ter.
+ */
+function ehTrigger(sql: string, from: number): boolean {
+  const m = /\breturns\s+"?(\w+)"?/i.exec(sql.slice(from, from + 4000));
+  return m !== null && m[1].toLowerCase() === "trigger";
+}
+
+const funcoesDeclaradas = new Map<string, boolean>();
+const policiesDeclaradas = new Set<string>();
+const indicesDeclarados = new Set<string>();
+const naoReconhecidasOutras: string[] = [];
+
 // Total esperado de tabelas declaradas e ainda vivas. Afirmado de proposito: se
 // o conjunto ENCOLHER (regex que parou de casar, migration removida, parser
 // quebrado), o script falha mesmo que todas as tabelas restantes existam no
@@ -83,6 +136,13 @@ const ANY_CREATE_TABLE_RE = /create\s+(?:\w+\s+)*?table\s+(?:if\s+not\s+exists\s
 // reconhecido. Foi exatamente assim que a auditoria concluiu "so falta uma
 // tabela" olhando 38 de 72.
 const EXPECTED_TABLE_COUNT = 73;
+
+// Mesma assercao de tamanho das tabelas, pelo mesmo motivo: pegar o caso em que
+// o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
+// numeros e ato deliberado, no mesmo commit da migration que cria ou remove o
+// objeto.
+const EXPECTED_FUNCTION_COUNT = 22;
+const EXPECTED_TRIGGER_FUNCTION_COUNT = 3;
 
 /** Remove comentarios de linha e de bloco antes de qualquer parse. */
 function stripSqlComments(sql: string): string {
@@ -104,6 +164,34 @@ for (const file of readdirSync(migrationsDir)
   for (const match of sql.matchAll(DROP_TABLE_RE)) {
     declared.delete(match[1].toLowerCase());
   }
+  // FUNCOES, POLICIES, INDICES: mesma leitura, mesmo guard de cobertura.
+  const fnLidas = [...sql.matchAll(CREATE_FUNCTION_RE)];
+  for (const m of fnLidas) {
+    funcoesDeclaradas.set(m[1].toLowerCase(), ehTrigger(sql, m.index ?? 0));
+  }
+  for (const m of sql.matchAll(DROP_FUNCTION_RE)) {
+    funcoesDeclaradas.delete(m[1].toLowerCase());
+  }
+  const polLidas = [...sql.matchAll(CREATE_POLICY_RE)];
+  for (const m of polLidas) policiesDeclaradas.add(m[1].trim().toLowerCase());
+  const idxLidos = [...sql.matchAll(CREATE_INDEX_RE)];
+  for (const m of idxLidos) indicesDeclarados.add(m[1].toLowerCase());
+
+  const conferirCobertura = (
+    lidas: RegExpMatchArray[],
+    amplo: RegExp,
+    rotulo: string,
+  ) => {
+    const todas = [...sql.matchAll(amplo)];
+    if (todas.length <= lidas.length) return;
+    naoReconhecidasOutras.push(
+      `${file}: ${todas.length} "${rotulo}" no arquivo, ${lidas.length} reconhecidos pelo parser`,
+    );
+  };
+  conferirCobertura(fnLidas, ANY_CREATE_FUNCTION_RE, "create function");
+  conferirCobertura(polLidas, ANY_CREATE_POLICY_RE, "create policy");
+  conferirCobertura(idxLidos, ANY_CREATE_INDEX_RE, "create index");
+
   // Guard de cobertura por arquivo: todo "create table" precisa ter sido lido.
   const todas = [...sql.matchAll(ANY_CREATE_TABLE_RE)];
   if (todas.length > reconhecidas.length) {
@@ -115,6 +203,17 @@ for (const file of readdirSync(migrationsDir)
       }
     }
   }
+}
+
+if (naoReconhecidasOutras.length > 0) {
+  console.error(
+    `[checkMigrationsApplied] o parser nao leu todos os objetos declarados:`,
+  );
+  for (const item of naoReconhecidasOutras) console.error(`  ${item}`);
+  console.error(
+    "Ajuste os regex do bloco de funcoes/policies/indices antes de confiar neste script.",
+  );
+  process.exit(1);
 }
 
 if (naoReconhecidas.length > 0) {
@@ -190,17 +289,102 @@ if (inconclusive.length > 0) {
   );
 }
 
+// Falha acumulada, nao aborto na primeira categoria: descobrir que faltava uma
+// tabela, aplicar, rodar de novo e so entao descobrir que faltava uma funcao e
+// o mesmo desperdicio de ciclo que o checklist manual causava.
+let houveFalha = false;
+
 if (missing.length > 0) {
+  houveFalha = true;
   console.error(
     `[checkMigrationsApplied] ${missing.length} de ${tables.length} tabela(s) declaradas NAO existem no banco alvo:`,
   );
   for (const table of missing) console.error(`  ausente: public.${table}`);
+} else {
+  console.log(
+    `[checkMigrationsApplied] ${tables.length} tabela(s) declaradas nas migrations existem no banco alvo.`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FUNCOES: verificadas contra o OpenAPI do PostgREST.
+// ---------------------------------------------------------------------------
+const funcoesVerificaveis = [...funcoesDeclaradas.entries()]
+  .filter(([, trigger]) => !trigger)
+  .map(([nome]) => nome)
+  .sort();
+const funcoesTrigger = [...funcoesDeclaradas.entries()].filter(
+  ([, trigger]) => trigger,
+).length;
+
+async function rpcsExpostas(): Promise<Set<string> | null> {
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+      headers: {
+        apikey: serviceRoleKey!,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        Accept: "application/openapi+json",
+      },
+    });
+    if (!response.ok) return null;
+    const spec = (await response.json()) as { paths?: Record<string, unknown> };
+    const nomes = Object.keys(spec.paths ?? {})
+      .filter((p) => p.startsWith("/rpc/"))
+      .map((p) => p.slice(5).toLowerCase());
+    return new Set(nomes);
+  } catch (err) {
+    console.error(
+      "[checkMigrationsApplied] falha ao ler o OpenAPI do PostgREST:",
+      err instanceof Error ? err.message : err,
+    );
+    return null;
+  }
+}
+
+if (funcoesDeclaradas.size !== EXPECTED_FUNCTION_COUNT) {
+  houveFalha = true;
   console.error(
-    "Aplique as migrations pendentes antes de considerar o deploy concluido.",
+    `[checkMigrationsApplied] o conjunto de funcoes declaradas mudou: ${funcoesDeclaradas.size}, esperado ${EXPECTED_FUNCTION_COUNT}.`,
+  );
+}
+if (funcoesTrigger !== EXPECTED_TRIGGER_FUNCTION_COUNT) {
+  houveFalha = true;
+  console.error(
+    `[checkMigrationsApplied] a classificacao de trigger mudou: ${funcoesTrigger}, esperado ${EXPECTED_TRIGGER_FUNCTION_COUNT}. Funcao real classificada como trigger sai da verificacao em silencio.`,
+  );
+}
+
+const expostas = await rpcsExpostas();
+if (expostas === null) {
+  houveFalha = true;
+  console.error(
+    "[checkMigrationsApplied] sem veredito para funcoes: o OpenAPI nao respondeu.",
+  );
+} else {
+  const funcoesAusentes = funcoesVerificaveis.filter((f) => !expostas.has(f));
+  if (funcoesAusentes.length > 0) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] ${funcoesAusentes.length} de ${funcoesVerificaveis.length} funcao(oes) declaradas NAO existem no banco alvo:`,
+    );
+    for (const f of funcoesAusentes) console.error(`  ausente: public.${f}()`);
+  } else {
+    console.log(
+      `[checkMigrationsApplied] ${funcoesVerificaveis.length} funcao(oes) declaradas existem no banco alvo (${funcoesTrigger} de trigger nao sao verificaveis por REST).`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POLICIES E INDICES: enumerados da fonte, SEM caminho de verificacao.
+// ---------------------------------------------------------------------------
+console.log(
+  `[checkMigrationsApplied] ${policiesDeclaradas.size} policy(s) e ${indicesDeclarados.size} indice(s) declarados nas migrations. NAO VERIFICADOS: o PostgREST nao expoe nenhum dos dois e o projeto nao tem conexao direta ao Postgres. Ver docs/limites-do-guard-de-migrations.md.`,
+);
+
+if (houveFalha) {
+  console.error(
+    "\nAplique as migrations pendentes antes de considerar o deploy concluido.",
   );
   process.exit(1);
 }
-
-console.log(
-  `[checkMigrationsApplied] ${tables.length} tabela(s) declaradas nas migrations existem no banco alvo.`,
-);
