@@ -88,9 +88,17 @@ em guard de segurança é pior que inútil: ensina a ignorar o alarme.
 (6 tabelas vazias mais `billing_orphan_payments`, que não existe). `external_jobs` é o caso mais
 informativo: service role vê 8019 e anon vê 2348, ou seja, a policy está filtrando de fato.
 
-**Requisito de ambiente**: a verificação precisa de `VITE_SUPABASE_ANON_KEY` além do service role. Sem ela
-o guard avisa que não verificou, em vez de passar em silêncio. O job `migrations` do CI hoje só recebe
-`VITE_SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`: **para o CI verificar RLS, falta acrescentar o secret**.
+**Requisito de ambiente**: a verificação precisa de `VITE_SUPABASE_ANON_KEY` além do service role.
+
+- **Local**, sem a chave: o guard avisa que não verificou RLS e segue, porque o resto dele continua valendo.
+- **No CI**, o job `migrations` passa `CHECK_RLS_OBRIGATORIO=1`, e aí a ausência da chave **falha o job**
+  nomeando o secret que falta. Guard de segurança que pula em silêncio é a forma exata do problema que
+  abriu esta auditoria.
+
+**Secret a cadastrar**: `VITE_SUPABASE_ANON_KEY`, em GitHub → Settings → Secrets and variables → Actions →
+Repository secrets. É a mesma chave anon pública que o frontend já usa (`VITE_*`), então não é segredo
+novo: ela existe justamente para ser exposta ao navegador. O que o guard faz com ela é ler como um
+visitante anônimo leria.
 
 ## Modo degradado do limite diário de IA
 

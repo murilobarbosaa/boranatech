@@ -54,8 +54,14 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Tabelas declaradas existem no banco alvo
+      # A chave ANON e obrigatoria: sem ela o guard nao consegue verificar RLS,
+      # e guard de seguranca que pula em silencio e a forma exata do problema
+      # que abriu esta auditoria. O script falha por conta propria quando ela
+      # falta (ver CHECK_RLS_OBRIGATORIO).
+      - name: Objetos declarados existem no banco alvo, e RLS esta ativa
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          CHECK_RLS_OBRIGATORIO: "1"
         run: pnpm check:migrations

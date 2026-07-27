@@ -618,9 +618,20 @@ async function contarLinhas(tabela: string, chave: string): Promise<number> {
 }
 
 if (!anonKey) {
-  console.warn(
-    `[checkMigrationsApplied] RLS NAO verificada em ${rlsVivas.length} tabela(s): VITE_SUPABASE_ANON_KEY ausente no ambiente. A verificacao precisa das duas chaves.`,
-  );
+  // Rodando local sem a chave anon: avisa e segue, porque o guard tem valor
+  // mesmo sem a parte de RLS. No CI (CHECK_RLS_OBRIGATORIO=1) a ausencia FALHA:
+  // guard de seguranca que pula em silencio e a forma exata do problema que
+  // abriu esta auditoria.
+  const obrigatorio = process.env.CHECK_RLS_OBRIGATORIO === "1";
+  const mensagem = `[checkMigrationsApplied] RLS NAO verificada em ${rlsVivas.length} tabela(s): VITE_SUPABASE_ANON_KEY ausente no ambiente. A verificacao precisa das duas chaves.`;
+  if (obrigatorio) {
+    houveFalha = true;
+    console.error(
+      `${mensagem} CHECK_RLS_OBRIGATORIO=1: cadastre o secret VITE_SUPABASE_ANON_KEY no repositorio.`,
+    );
+  } else {
+    console.warn(mensagem);
+  }
 } else {
   const expostas: string[] = [];
   const inconclusivas: string[] = [];
