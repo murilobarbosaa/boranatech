@@ -19,6 +19,34 @@ const router = Router();
 router.use(requireAuth);
 router.use(checkProStatus);
 
+// Teto do resumo de issues gravado em ai_usage_logs. A coluna e text (sem
+// limite no Postgres), entao o teto e higiene de log, nao restricao de schema.
+const ZOD_ISSUES_LOG_MAX = 500;
+
+/**
+ * Resume os issues do Zod para o campo error_message de ai_usage_logs.
+ *
+ * Grava SOMENTE code, path e message. Nunca o valor recebido, o payload da IA
+ * ou trechos do input: o input dessas tools e dado pessoal (curriculo, perfil,
+ * conversa) e essa coluna fica consultavel no banco. Sem esse resumo o log
+ * dizia apenas "Zod validation failed" e descobrir QUAL campo quebrou exigia
+ * ir no log do Railway.
+ *
+ * Tipado estruturalmente para nao precisar importar o zod so por causa disso.
+ */
+function zodIssuesForLog(
+  issues: ReadonlyArray<{ code: string; path: PropertyKey[]; message: string }>,
+): string {
+  const resumo = issues
+    .map(
+      (issue) =>
+        `${issue.code}@${issue.path.join(".") || "<raiz>"}: ${issue.message}`,
+    )
+    .join(" | ");
+  if (resumo.length <= ZOD_ISSUES_LOG_MAX) return resumo;
+  return `${resumo.slice(0, ZOD_ISSUES_LOG_MAX)} [truncado: ${issues.length} issues no total]`;
+}
+
 router.post("/:tool", async (req: Request, res: Response, next: NextFunction) => {
   const toolKey = req.params.tool;
   const requestId =
@@ -192,7 +220,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
           tool: toolKey,
           requestId,
           status: "error",
-          errorMessage: "Zod validation failed",
+          errorMessage: `Zod validation failed: ${zodIssuesForLog(validation.error.issues)}`,
           inputChars,
           outputChars,
           inputTokens: data.usage?.prompt_tokens || 0,
