@@ -9,7 +9,7 @@
 - Solução mais simples primeiro. Não introduzir abstração, dependência ou camada que a tarefa não pediu.
 - Leitura direcionada: abrir arquivo e trecho específicos, não "ler o projeto inteiro".
 - Antes de considerar pronto: rodar `pnpm check`. Mudança em auth, controle de acesso ou deploy exige validação manual antes de subir.
-- Hook de pre-commit versionado em `.githooks/pre-commit` (golden files do LinkedIn + `pnpm check`, ~5,5s). O `prepare` do `package.json` aponta o `core.hooksPath` sozinho no `pnpm install`; se o hook não estiver rodando, `git config core.hooksPath .githooks`. `--no-verify` só em emergência.
+- Hook de pre-commit versionado em `.githooks/pre-commit` (suite inteira + `pnpm check`, ~11s). Roda a suite toda de proposito: a versao com lista de arquivos escrita a mao deixou passar um commit com 10 testes vermelhos. `pnpm check` NAO cobre `*.test.ts` (o `tsconfig.json` os exclui), entao erro de tipo em teste so aparece rodando o teste. O `prepare` do `package.json` aponta o `core.hooksPath` sozinho no `pnpm install`; se o hook não estiver rodando, `git config core.hooksPath .githooks`. `--no-verify` só em emergência.
 - Conteúdo e copy: nunca inventar dado (números de mercado, salários, instituições). Sem fonte, suavizar pra qualitativo ou remover.
 
 ## Stack

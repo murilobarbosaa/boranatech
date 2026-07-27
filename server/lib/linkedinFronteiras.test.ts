@@ -23,6 +23,8 @@ const parsedBase = (over: Partial<LinkedinParsed> = {}): LinkedinParsed => ({
   sobre: null,
   experiencias: [],
   skillsPdf: [],
+  formacao: [],
+  certificacoes: [],
   usable: true,
   ...over,
 });

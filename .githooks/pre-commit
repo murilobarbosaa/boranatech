@@ -7,15 +7,25 @@
 # rodar e exatamente o desenho que causou o bug original desta auditoria (a
 # migration que ficou no repositorio sem ser aplicada). Aqui roda sozinho.
 #
-# Roda: golden files + leitores versionados (~2,4s) e pnpm check (~3,3s).
-# Nao roda a suite inteira (~6,6s) para nao pesar em todo commit; a suite
-# completa fica no CI (.github/workflows/ci.yml).
+# POR QUE A SUITE INTEIRA, E NAO UM SUBCONJUNTO. A primeira versao rodava so as
+# golden files mais shared/linkedin, para economizar 5 segundos. Na Fase 2B um
+# commit passou verde por esse hook com 10 testes vermelhos: um campo novo em
+# LinkedinParsed quebrou linkedinFronteiras.test.ts, que estava fora da lista
+# escrita a mao. Lista escrita a mao fica para tras da suite, e um check que
+# fica para tras nao e check. 7,6s contra 1,3s e o preco de nao ter que confiar
+# em manutencao manual do proprio guarda.
+#
+# Roda: suite inteira (~7,6s) e pnpm check (~3,3s). Total ~11s por commit.
+#
+# ATENCAO: `pnpm check` NAO cobre arquivos de teste, porque tsconfig.json os
+# exclui. Erro de tipo em teste so aparece quando o teste roda, e e por isso que
+# rodar a suite aqui importa ainda mais.
 #
 # Emergencia: git commit --no-verify. Use com parcimonia e conserte depois.
 set -e
 
-echo "[pre-commit] golden files e leitores versionados..."
-npx vitest run server/lib/linkedinGolden.test.ts shared/linkedin/ --silent
+echo "[pre-commit] suite de testes..."
+npx vitest run --silent
 
 echo "[pre-commit] pnpm check..."
 pnpm check
