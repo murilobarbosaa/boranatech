@@ -413,16 +413,38 @@ export function runLinkedinChecks(
       aprovado: skillsForm.length >= 10,
       detail: `${skillsForm.length} competência(s) informada(s) (o ideal é 10 ou mais).`,
     }),
-    "skills-cobertura": () => ({
-      aprovado:
-        corteCompetencias.alcancavel &&
-        skillsCoverage.encontradas.length >= corteCompetencias.minimo,
-      detail: !corteCompetencias.alcancavel
-        ? "As competências não cobrem tecnologia-chave nenhuma da área, e o perfil também não comprova nenhuma para cadastrar."
-        : skillsCoverage.encontradas.length >= corteCompetencias.minimo
-          ? `${skillsCoverage.encontradas.length} das tecnologias-chave que o seu perfil comprova estão cadastradas nas competências.`
-          : `${skillsCoverage.encontradas.length} de ${corteCompetencias.minimo} tecnologias-chave cadastradas nas competências. Você comprova ${fullCoverage.encontradas.length} no perfil: cadastre as que faltam.`,
-    }),
+    "skills-cobertura": () => {
+      const cadastradas = skillsCoverage.encontradas.length;
+      const comprovadas = fullCoverage.encontradas.length;
+      const ok =
+        corteCompetencias.alcancavel && cadastradas >= corteCompetencias.minimo;
+      // O corte foi LIMITADO pelo que a pessoa comprova, e nao pelo alvo da
+      // area? Entao aprovar aqui nao significa "competencias completas", e a
+      // copy nao pode deixar parecer que significa: a alavanca verdadeira e
+      // escrever no perfil o que ela ja faz, nao cadastrar mais no LinkedIn.
+      // Sem isso, quem comprova 1 e cadastrou 1 leria "esta tudo certo" e
+      // pararia exatamente onde nao devia.
+      const limitadoPeloQueComprova = comprovadas < cortes.essencial;
+      if (!corteCompetencias.alcancavel) {
+        return {
+          aprovado: false,
+          detail:
+            "As competências não cobrem tecnologia-chave nenhuma da área, e o perfil também não comprova nenhuma para cadastrar. Comece escrevendo no perfil as ferramentas que você usa.",
+        };
+      }
+      if (!ok) {
+        return {
+          aprovado: false,
+          detail: `${cadastradas} de ${corteCompetencias.minimo} tecnologias-chave cadastradas nas competências. Você comprova ${comprovadas} no perfil: cadastre as que faltam.`,
+        };
+      }
+      return {
+        aprovado: true,
+        detail: limitadoPeloQueComprova
+          ? `Você cadastrou ${cadastradas === 1 ? "a única tecnologia-chave" : `as ${cadastradas} tecnologias-chave`} que o seu perfil comprova, e é isso que este critério mede. Mas o perfil comprova ${comprovadas} de ${cortes.essencial} que a área pede: o próximo passo não é cadastrar mais, é escrever no perfil o que você já faz com as outras.`
+          : `As ${cadastradas} tecnologias-chave que o seu perfil comprova estão cadastradas nas competências.`,
+      };
+    },
     "skills-quantidade-otima": () => ({
       aprovado: skillsForm.length >= 25,
       detail:

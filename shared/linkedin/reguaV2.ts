@@ -1,4 +1,8 @@
-import type { LinkedinCheckTier, LinkedinLevel } from "./schema";
+import type {
+  LinkedinCheckCategory,
+  LinkedinCheckTier,
+  LinkedinLevel,
+} from "./schema";
 
 /**
  * Régua v2 do analisador de LinkedIn: as quatro decisões que mudam nota.
@@ -201,7 +205,54 @@ export function expDescricoesPorItem(
  * Limite conhecido dos dois: eles protegem a COMPARACAO, nao o numero absoluto
  * de uma primeira analise, onde nao ha "antes" para comparar.
  */
-export const CATEGORIA_AUTODECLARADA = "sinais";
+export const CATEGORIA_AUTODECLARADA: LinkedinCheckCategory = "sinais";
+
+/**
+ * Decomposição da nota por categoria: de onde vêm os pontos.
+ *
+ * Mora aqui, e não dentro do hero, porque o teste que a cobre replicava a conta
+ * e portanto só pegava mudança de SHAPE, nunca mudança da matemática: as duas
+ * cópias mudariam juntas e o teste continuaria verde. Mesma classe do resto
+ * desta auditoria, num escopo mais estreito do que parece.
+ *
+ * Não altera nota: é a mesma soma que `computeLinkedinScore` faz, quebrada por
+ * categoria para exibição.
+ */
+export interface ParcelaDaNota {
+  categoria: LinkedinCheckCategory;
+  ganho: number;
+  possivel: number;
+}
+
+export function decomporNota(
+  checks: readonly {
+    category: LinkedinCheckCategory;
+    tier: LinkedinCheckTier;
+    aprovado: boolean;
+  }[],
+  pesos: Record<LinkedinCheckTier, number>,
+  categorias: readonly LinkedinCheckCategory[],
+): ParcelaDaNota[] {
+  return categorias
+    .map((categoria) => {
+      const doGrupo = checks.filter((c) => c.category === categoria);
+      return {
+        categoria,
+        ganho: doGrupo
+          .filter((c) => c.aprovado)
+          .reduce((soma, c) => soma + pesos[c.tier], 0),
+        possivel: doGrupo.reduce((soma, c) => soma + pesos[c.tier], 0),
+      };
+    })
+    .filter((p) => p.possivel > 0);
+}
+
+/** Pontos possíveis da categoria autodeclarada, 0 se ela não aparecer. */
+export function parcelaAutodeclarada(parcelas: ParcelaDaNota[]): number {
+  return (
+    parcelas.find((p) => p.categoria === CATEGORIA_AUTODECLARADA)?.possivel ?? 0
+  );
+}
 
 /**
  * A mudança entre duas análises veio SÓ de autodeclaração?

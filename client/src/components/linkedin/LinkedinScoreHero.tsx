@@ -5,6 +5,10 @@ import { ArrowRight, Linkedin, Sparkles } from "lucide-react";
 import { faixaUiOf } from "@/components/linkedin/faixaUi";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
+import {
+  decomporNota,
+  parcelaAutodeclarada,
+} from "@shared/linkedin/reguaV2";
 import { AREA_LABELS } from "@shared/areas";
 import {
   FAIXA_LABELS,
@@ -44,11 +48,6 @@ function useCountUp(target: number, from: number, reduce: boolean): number {
   }, [target, from, reduce]);
   return value;
 }
-
-/** Pontos possiveis da categoria autodeclarada, 0 se ela nao aparecer. */
-const SINAIS_POSSIVEL = (
-  d: { categoria: string; possivel: number }[],
-): number => d.find((x) => x.categoria === "sinais")?.possivel ?? 0;
 
 // Paleta do confete da plataforma (proConfetti.ts), reusada no burst
 // localizado do delta que subiu, como no GitHub.
@@ -95,19 +94,11 @@ export default function LinkedinScoreHero({
   // Mostrar so a parcela dos sinais seria pior que mostrar tudo: "14% da sua
   // nota e autodeclarado" convida a pergunta "de que?", e a resposta ja esta na
   // mao. O custo de computar as seis categorias e o mesmo.
-  const decomposicao = LINKEDIN_CATEGORIES.map((categoria) => {
-    const doGrupo = deterministic.checks.filter(
-      (c) => c.category === categoria,
-    );
-    const possivel = doGrupo.reduce(
-      (soma, c) => soma + TIER_WEIGHTS[c.tier],
-      0,
-    );
-    const ganho = doGrupo
-      .filter((c) => c.aprovado)
-      .reduce((soma, c) => soma + TIER_WEIGHTS[c.tier], 0);
-    return { categoria, ganho, possivel };
-  }).filter((d) => d.possivel > 0);
+  const decomposicao = decomporNota(
+    deterministic.checks,
+    TIER_WEIGHTS,
+    LINKEDIN_CATEGORIES,
+  );
   const totalPossivel = decomposicao.reduce((s, d) => s + d.possivel, 0);
 
   // Burst localizado quando a reanalise SUBIU a nota, sincronizado com a
@@ -304,7 +295,7 @@ export default function LinkedinScoreHero({
                 })}
               </ul>
               <p className="mt-3 text-xs font-medium text-amber-900">
-                Sinais do perfil vale {SINAIS_POSSIVEL(decomposicao)} dos{" "}
+                Sinais do perfil vale {parcelaAutodeclarada(decomposicao)} dos{" "}
                 {totalPossivel} pontos e vem do que você respondeu no
                 formulário, não do PDF: é a única parte que a gente não consegue
                 conferir.

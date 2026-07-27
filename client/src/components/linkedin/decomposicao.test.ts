@@ -8,6 +8,10 @@ import {
   TIER_WEIGHTS,
   type LinkedinCheckResult,
 } from "@shared/linkedin/schema";
+import {
+  decomporNota,
+  parcelaAutodeclarada,
+} from "@shared/linkedin/reguaV2";
 
 /**
  * A decomposicao do hero le `deterministic.checks` DIRETO, sem passar por
@@ -39,17 +43,15 @@ const LEGADO = JSON.parse(
   ),
 ) as { deterministic: { checks: LinkedinCheckResult[]; score: number } };
 
-/** Replica exata do calculo do LinkedinScoreHero. */
-function decompor(checks: LinkedinCheckResult[]) {
-  return LINKEDIN_CATEGORIES.map((categoria) => {
-    const doGrupo = checks.filter((c) => c.category === categoria);
-    const possivel = doGrupo.reduce((s, c) => s + TIER_WEIGHTS[c.tier], 0);
-    const ganho = doGrupo
-      .filter((c) => c.aprovado)
-      .reduce((s, c) => s + TIER_WEIGHTS[c.tier], 0);
-    return { categoria, ganho, possivel };
-  }).filter((d) => d.possivel > 0);
-}
+/**
+ * A MESMA funcao que o hero chama, nao uma copia dela.
+ *
+ * A primeira versao deste teste replicava a conta, e por isso so pegava mudanca
+ * de shape: mexer na matematica mudaria as duas copias juntas e o teste
+ * continuaria verde. Mesma classe de defeito do resto da auditoria.
+ */
+const decompor = (checks: LinkedinCheckResult[]) =>
+  decomporNota(checks, TIER_WEIGHTS, LINKEDIN_CATEGORIES);
 
 describe("decomposicao da nota numa analise LEGADA v1", () => {
   const checks = LEGADO.deterministic.checks;
@@ -85,8 +87,22 @@ describe("decomposicao da nota numa analise LEGADA v1", () => {
   });
 
   it("a parcela autodeclarada aparece e vale 28 de 194", () => {
-    const sinais = decompor(checks).find((x) => x.categoria === "sinais");
-    expect(sinais).toBeDefined();
-    expect(sinais!.possivel).toBe(28);
+    expect(parcelaAutodeclarada(decompor(checks))).toBe(28);
+  });
+
+  it("a conta e a MESMA que o hero usa, nao uma copia", () => {
+    // Guard contra o teste voltar a replicar a matematica: se o hero deixar de
+    // chamar `decomporNota`, este teste passa a cobrir codigo que ninguem roda.
+    const hero = readFileSync(
+      path.join(
+        path.dirname(fileURLToPath(import.meta.url)),
+        "LinkedinScoreHero.tsx",
+      ),
+      "utf8",
+    );
+    expect(hero).toContain("decomporNota(");
+    expect(hero).toContain("parcelaAutodeclarada(");
+    // E o hero NAO pode ter a conta de novo dentro dele.
+    expect(hero).not.toContain("LINKEDIN_CATEGORIES.map(");
   });
 });
