@@ -79,7 +79,25 @@ import { toOpenAIStrictSchema } from "./openaiStrictSchema";
 const MIN_DESCRICAO_PARA_BULLETS = 48;
 
 const SOBRE_LIMIT = 3000;
-const EXPERIENCIAS_LIMIT = 4000;
+/**
+ * Orçamento de caracteres do bloco de experiências no prompt.
+ *
+ * 4000 -> 6000 na Fase 2A. Medição que motivou: com o bloco já limpo pela 1A e
+ * pela 1B, o perfil real ocupa 4040 caracteres, e a soma das 5 descrições com
+ * cabeçalhos dá cerca de 4900. Em 4000 o alvo "bullets para toda experiência
+ * com descrição própria" só era alcançável cortando as 5 descrições a 45% do
+ * tamanho; em 6000 todas entram inteiras e ainda sobra folga.
+ *
+ * O que custa: 2000 caracteres a mais são cerca de 500 tokens de entrada, ou
+ * US$ 0,000075 por análise ao preço do gpt-4o-mini, contra os US$ 0,001294 por
+ * análise medidos em produção. Menos de 6% no pior caso, e só em perfil que
+ * chega a encostar no teto.
+ *
+ * Por que o teto continua existindo: ele protege o caso patológico (perfil com
+ * 20 experiências longas), onde o corte ainda acontece, agora repartido em vez
+ * de por posição.
+ */
+const EXPERIENCIAS_LIMIT = 6000;
 
 // Duas tentativas de 45s (pior caso ~90s + backoff), nao tres de 60s: fazer a
 // pessoa esperar quase tres minutos para receber o mesmo erro so castiga. Melhor
@@ -200,33 +218,105 @@ function temConteudoParaBullets(exp: LinkedinParsed["experiencias"][number]): bo
   return estadoDescricao(exp) === "suficiente";
 }
 
+const MARCA_CORTE = "\n(descrição cortada pelo limite do prompt)";
+
+/**
+ * Reparte um orçamento de caracteres entre descrições, sem deixar nenhuma zerada.
+ *
+ * Water-filling: quem já cabe na cota leva o tamanho inteiro e devolve a sobra
+ * ao bolo; quem não cabe divide o que restou. Uma descrição curta não desperdiça
+ * cota, e uma descrição gigante não engole as outras.
+ */
+function repartirOrcamento(disponivel: number, tamanhos: number[]): number[] {
+  const cotas = new Array<number>(tamanhos.length).fill(0);
+  let restante = Math.max(disponivel, 0);
+  let abertos = tamanhos.map((_, i) => i);
+  while (abertos.length > 0) {
+    const cota = Math.floor(restante / abertos.length);
+    const cabem = abertos.filter((i) => tamanhos[i] <= cota);
+    if (cabem.length === 0) {
+      for (const i of abertos) cotas[i] = cota;
+      break;
+    }
+    for (const i of cabem) {
+      cotas[i] = tamanhos[i];
+      restante -= tamanhos[i];
+    }
+    abertos = abertos.filter((i) => tamanhos[i] > cota);
+  }
+  return cotas;
+}
+
 // Exportada para teste: e o texto exato que chega ao modelo, e as tres
 // marcacoes (vazia, curta, suficiente) so tem valor se forem verificaveis.
 export function experienciasBlock(parsed: LinkedinParsed): string {
   if (parsed.experiencias.length === 0)
     return "(nenhuma experiência detectada)";
-  const text = parsed.experiencias
-    .map((exp, index) => {
-      // Cargo e empresa vêm separados do parser. Aqui eles voltam a aparecer
-      // juntos, mas atribuídos ao bloco certo: antes a empresa caía na
-      // descrição da experiência ANTERIOR e o modelo tinha que reassociar
-      // sozinho o que o parser bagunçava.
-      const cargo = exp.titulo || "(sem título)";
-      const titulo = exp.empresa ? `${cargo} (${exp.empresa})` : cargo;
-      // Marcada explicitamente para o modelo. Vazia e curta sao marcacoes
-      // distintas: na vazia nao ha texto nenhum, na curta ha texto e o modelo
-      // precisa saber que ele existe para poder cita-lo na melhoria.
-      const estado = estadoDescricao(exp);
-      if (estado === "vazia") {
-        return `${index + 1}. ${titulo}\n(SEM DESCRIÇÃO PRÓPRIA NO PERFIL: não escreva bullets para esta experiência)`;
-      }
-      if (estado === "curta") {
-        return `${index + 1}. ${titulo}\n(DESCRIÇÃO CURTA DEMAIS PARA REESCREVER, transcrita aqui só como contexto: "${exp.descricao}". Não escreva bullets para esta experiência: o que existe não sustenta um bullet sem você completar o que não está escrito)`;
-      }
-      return `${index + 1}. ${titulo}\n${exp.descricao}`;
-    })
-    .join("\n\n");
-  return truncate(text, EXPERIENCIAS_LIMIT);
+
+  const partes = parsed.experiencias.map((exp, index) => {
+    // Cargo e empresa vêm separados do parser. Aqui eles voltam a aparecer
+    // juntos, mas atribuídos ao bloco certo: antes a empresa caía na
+    // descrição da experiência ANTERIOR e o modelo tinha que reassociar
+    // sozinho o que o parser bagunçava.
+    const cargo = exp.titulo || "(sem título)";
+    const titulo = exp.empresa ? `${cargo} (${exp.empresa})` : cargo;
+    // Marcada explicitamente para o modelo. Vazia e curta sao marcacoes
+    // distintas: na vazia nao ha texto nenhum, na curta ha texto e o modelo
+    // precisa saber que ele existe para poder cita-lo na melhoria.
+    const estado = estadoDescricao(exp);
+    const cabecalho = `${index + 1}. ${titulo}`;
+    if (estado === "vazia") {
+      return {
+        cabecalho,
+        corpo:
+          "(SEM DESCRIÇÃO PRÓPRIA NO PERFIL: não escreva bullets para esta experiência)",
+        cortavel: false,
+      };
+    }
+    if (estado === "curta") {
+      return {
+        cabecalho,
+        corpo: `(DESCRIÇÃO CURTA DEMAIS PARA REESCREVER, transcrita aqui só como contexto: "${exp.descricao}". Não escreva bullets para esta experiência: o que existe não sustenta um bullet sem você completar o que não está escrito)`,
+        cortavel: false,
+      };
+    }
+    return { cabecalho, corpo: exp.descricao, cortavel: true };
+  });
+
+  const montar = (corpos: string[]) =>
+    partes.map((p, i) => `${p.cabecalho}\n${corpos[i]}`).join("\n\n");
+
+  const inteiro = montar(partes.map((p) => p.corpo));
+  if (inteiro.length <= EXPERIENCIAS_LIMIT) return inteiro;
+
+  // ORÇAMENTO ESTOURADO. O corte antigo era um `slice` no fim do texto, o que
+  // significa: as experiências mais antigas somem inteiras, sem cabeçalho, sem
+  // nada, e o modelo não escreve bullet para o que não viu. Era isso que fazia
+  // só 3 das 6 experiências do perfil real receberem bullets (rodada 2, E.5).
+  //
+  // Critério novo, declarado: nenhuma experiência desaparece. Todos os
+  // cabeçalhos entram, todas as marcações de vazia e curta entram inteiras
+  // (são curtas e carregam instrução), e o que sobra do orçamento é repartido
+  // entre as descrições. Cortar por igual custa detalhe do fim de uma descrição
+  // longa; cortar por posição custava a experiência inteira.
+  const cortaveis = partes.map((p, i) => (p.cortavel ? i : -1)).filter((i) => i >= 0);
+  const fixo = partes.reduce(
+    (soma, p, i) =>
+      soma + p.cabecalho.length + 1 + (p.cortavel ? MARCA_CORTE.length : p.corpo.length),
+    0,
+  ) + (partes.length - 1) * 2;
+  const cotas = repartirOrcamento(
+    EXPERIENCIAS_LIMIT - fixo,
+    cortaveis.map((i) => partes[i].corpo.length),
+  );
+  const corpos = partes.map((p) => p.corpo);
+  cortaveis.forEach((idx, k) => {
+    const cota = Math.max(cotas[k], 0);
+    if (partes[idx].corpo.length > cota) {
+      corpos[idx] = `${partes[idx].corpo.slice(0, cota).trimEnd()}${MARCA_CORTE}`;
+    }
+  });
+  return montar(corpos);
 }
 
 // Exportada para teste: e o unico lugar onde SOBRE_LIMIT e observavel, e um

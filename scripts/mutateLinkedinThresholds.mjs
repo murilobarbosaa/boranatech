@@ -60,7 +60,7 @@ const MUT = [
   [S, "peso opcional (3)", "  opcional: 3,", "  opcional: 4,"],
   [A, "MIN_DESCRICAO_PARA_BULLETS (48)", "const MIN_DESCRICAO_PARA_BULLETS = 48;", "const MIN_DESCRICAO_PARA_BULLETS = 999;"],
   [A, "SOBRE_LIMIT (3000)", "const SOBRE_LIMIT = 3000;", "const SOBRE_LIMIT = 30;"],
-  [A, "EXPERIENCIAS_LIMIT (4000)", "const EXPERIENCIAS_LIMIT = 4000;", "const EXPERIENCIAS_LIMIT = 40;"],
+  [A, "EXPERIENCIAS_LIMIT (6000)", "const EXPERIENCIAS_LIMIT = 6000;", "const EXPERIENCIAS_LIMIT = 60;"],
   [C, "headline-stack, min techs (2)", "aprovado: headlineTechs >= 2,", "aprovado: headlineTechs >= 9,"],
   [C, "headline-tamanho, min (40)", "const ok = len >= 40 && len <= 220;", "const ok = len >= 400 && len <= 220;"],
   [C, "headline-tamanho, max (220)", "const ok = len >= 40 && len <= 220;", "const ok = len >= 40 && len <= 22;"],

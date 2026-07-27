@@ -77,6 +77,47 @@ describe("experienciasBlock: a marcacao que chega ao modelo", () => {
     );
   });
 
+  it("orcamento estourado: NENHUMA experiencia desaparece", () => {
+    // O corte antigo era um slice no fim do texto, entao as experiencias mais
+    // antigas sumiam inteiras e o modelo nao escrevia bullet para o que nao
+    // viu (rodada 2, E.5). Agora o orcamento e repartido entre as descricoes.
+    const muitas = parsed(
+      Array.from({ length: 12 }, (_, i) => `Descricao ${i + 1}. ${"x".repeat(900)}`),
+    );
+    const bloco = experienciasBlock(muitas);
+    for (let i = 1; i <= 12; i += 1) {
+      expect(bloco).toContain(`${i}. Desenvolvedora Back-end (Empresa Alfa)`);
+    }
+    expect(bloco.length).toBeLessThanOrEqual(6000);
+    // Cada descricao chega com pedaco proprio, nenhuma zerada.
+    for (let i = 1; i <= 12; i += 1) {
+      expect(bloco).toContain(`Descricao ${i}.`);
+    }
+    expect(bloco).toContain("(descrição cortada pelo limite do prompt)");
+  });
+
+  it("marcacao de vazia e de curta sobrevive inteira ao corte", () => {
+    // Sao curtas e carregam INSTRUCAO. Cortar uma delas pela metade produziria
+    // uma ordem truncada, que e pior que uma descricao truncada.
+    const misto = parsed([
+      "",
+      "Atendi clientes na loja",
+      ...Array.from({ length: 10 }, () => "y".repeat(900)),
+    ]);
+    const bloco = experienciasBlock(misto);
+    expect(bloco).toContain(
+      "(SEM DESCRIÇÃO PRÓPRIA NO PERFIL: não escreva bullets para esta experiência)",
+    );
+    expect(bloco).toContain("DESCRIÇÃO CURTA DEMAIS PARA REESCREVER");
+    expect(bloco).toContain('"Atendi clientes na loja"');
+    expect(bloco.length).toBeLessThanOrEqual(6000);
+  });
+
+  it("dentro do orcamento nao ha corte nenhum", () => {
+    const bloco = experienciasBlock(parsed([A48, A48]));
+    expect(bloco).not.toContain("cortada pelo limite");
+  });
+
   it("empresa null nao vira parentese vazio", () => {
     const semEmpresa: LinkedinParsed = {
       ...parsed([A48]),
