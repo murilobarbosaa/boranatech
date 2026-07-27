@@ -37,9 +37,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # SEM `with: version`. O `packageManager` do package.json (pnpm@10.33.2)
+      # e a fonte unica, e o action-setup@v4 RECUSA quando encontra as duas
+      # ("Multiple versions of pnpm specified"). Deixar o packageManager mandar
+      # tambem da paridade exata entre CI e maquina local, em vez de "alguma 10".
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -56,9 +58,11 @@ jobs:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
+      # SEM `with: version`. O `packageManager` do package.json (pnpm@10.33.2)
+      # e a fonte unica, e o action-setup@v4 RECUSA quando encontra as duas
+      # ("Multiple versions of pnpm specified"). Deixar o packageManager mandar
+      # tambem da paridade exata entre CI e maquina local, em vez de "alguma 10".
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
