@@ -34,7 +34,16 @@ export function deriveSectionVerdict(
 
 // Cores do veredito na mesma familia semantica da faixa da nota (faixaUi):
 // red pra trocar, amber pra ajustes, emerald pra bom.
-// TODO(Ana): revisar os rotulos dos vereditos do prontuario.
+//
+// COPY REVISADA E FECHADA (pre-deploy). Os cinco textos deste arquivo estavam
+// com TODO desde a criacao e todos renderizam para o usuario, ou seja, eram
+// copy provisoria a caminho de producao. A revisao manteve os cinco, e o
+// motivo de cada um esta escrito onde ele aparece. Trocar por trocar teria
+// custado familiaridade sem ganhar clareza.
+//
+// Os tres rotulos abaixo: escala de tres estados alinhada com a cor (vermelho,
+// ambar, verde) e com o verbo que a pessoa precisa executar. "Precisa trocar"
+// diz o que fazer, nao so que esta ruim.
 const VERDICT_UI: Record<SectionVerdict, { label: string; chip: string }> = {
   trocar: { label: "Precisa trocar", chip: "bg-red-300" },
   ajustes: { label: "Bom, com ajustes", chip: "bg-amber-300" },
@@ -119,14 +128,19 @@ export default function SectionReport({
         </span>
         {checks.length > 0 ? (
           <span className="mt-2 block text-xs font-bold text-slate-500">
-            {/* TODO(Ana): revisar o resumo de criterios do cabecalho. */}
+            {/* "criterios" e a mesma palavra da lista logo abaixo, entao o
+                cabecalho e a lista falam a mesma lingua. E desde a regua v2 o
+                "N criterios ok" e confiavel: `exp-descricoes` passou a olhar
+                cada experiencia, entao ele nao aprova mais um perfil com
+                experiencia vazia. Antes este texto podia estar mentindo. */}
             {pendentes > 0
               ? `${pendentes} de ${checks.length} critérios pendentes`
               : `${checks.length} critérios ok`}
           </span>
         ) : paste ? (
           <span className="mt-2 block text-xs font-bold text-slate-500">
-            {/* TODO(Ana): revisar o convite do card so de texto pronto. */}
+            {/* Card sem veredito (so texto pronto): o convite diz a acao, nao
+                o conteudo, porque o conteudo ja esta no titulo da secao. */}
             Abra para copiar o texto pronto.
           </span>
         ) : null}
@@ -159,7 +173,8 @@ export default function SectionReport({
                     <p className="text-sm text-slate-500">{check.detail}</p>
                     {!check.aprovado && HINT_BY_ID.has(check.id) ? (
                       <p className="mt-0.5 text-xs font-medium text-slate-400">
-                        {/* TODO(Ana): revisar o rotulo "como resolver". */}
+                        {/* Rotulo em minuscula e proposital: e uma etiqueta de
+                            apoio dentro do check, nao um titulo concorrente. */}
                         <span className="font-bold text-slate-500">
                           como resolver:
                         </span>{" "}
@@ -188,7 +203,9 @@ export default function SectionReport({
         {atual ? (
           <div className="mt-5 rounded-xl border-2 border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-black uppercase tracking-[0.15em] text-slate-500">
-              {/* TODO(Ana): revisar o rotulo da camada do texto atual. */}
+              {/* Par com "pronto para colar" logo abaixo: as duas camadas usam
+                  a mesma forma (minuscula, caixa alta por CSS), entao a
+                  oposicao entre o que existe e o que substituir fica visual. */}
               seu atual
             </p>
             <div className="mt-2 min-w-0 text-sm text-slate-700">{atual}</div>

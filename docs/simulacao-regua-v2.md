@@ -240,14 +240,37 @@ aprova = tecnologias_comprovadas > 0 && cadastradas >= minimo
 Sem a guarda, `min(6, 0) = 0` e `0 >= 0` aprovaria: **27 das 107 ganhariam um check essencial de 10 pontos
 por não ter nada**.
 
-Medido sobre as 107 (a contagem de tecnologias-chave nas competências foi recuperada do percentual do
-`detail`; a inversão é inequívoca em **0 de 107** casos ambíguos):
+**Sobre a recuperação do número, e por que ela não é método.** A contagem de tecnologias-chave nas
+competências não é persistida. Ela foi recuperada invertendo o percentual do `detail`
+(`pct = round(100·n/pool)`), e a inversão é **unívoca em 0 de 107** casos: nenhum percentual admite dois
+inteiros. Isso vale como **medição de uma vez**, feita e conferida, e **não vale como método**: este mesmo
+documento registra na seção 1 que extrair número de string de copy quebra em silêncio na primeira mudança
+de texto. Nada em produção depende dessa inversão; ela existiu para responder a esta pergunta e morre aqui.
+
+Medido sobre as 107:
 
 | forma | aprovam |
 |---|---|
 | hoje, `>= 0,5` da pool | **0/107** |
 | variante C direta | 7/107 |
 | **adotada** (limitada pelo comprovado) | **16/107** |
+
+**Distribuição de tecnologias comprovadas entre os 16 que passam** (a pergunta é se o check virou fácil):
+
+| comprovadas | 1 | 2 | 4 | 5 | 6 | 8 | 10 | 15 |
+|---|---|---|---|---|---|---|---|---|
+| perfis | 4 | 3 | 1 | 1 | 1 | 3 | 2 | 1 |
+
+**7 dos 16 (44%) passam comprovando 1 ou 2 tecnologias**, e os 4 de "comprova 1, cadastrou 1" são o caso
+extremo: um check `essencial` de 10 pontos por cadastrar uma única tecnologia. Os outros 7 comprovam 6 ou
+mais, ou seja, passam pelo corte cheio.
+
+A leitura honesta: o check mede **registro**, e quem comprova 1 e cadastrou 1 registrou 100% do que tem.
+O que impede esse perfil de ter nota alta é `cobertura-keywords-area`, que continua exigindo 6 e continua
+reprovando ele. São dois checks com duas perguntas. Se a decisão for que registrar 1 não deveria valer um
+essencial inteiro, o ajuste natural é um piso (`max(2, min(essencial, comprovadas))`), que tiraria os 4
+casos de 1 e deixaria 12 aprovando. **Não foi feito**: é decisão de produto, e o número está aqui para ela
+ser tomada com dado.
 
 ### Simulação líquida com as TRÊS mudanças de cobertura
 
