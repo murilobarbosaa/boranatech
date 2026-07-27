@@ -8,8 +8,11 @@ import { cn } from "@/lib/utils";
 import { AREA_LABELS } from "@shared/areas";
 import {
   FAIXA_LABELS,
+  LINKEDIN_CATEGORIES,
+  LINKEDIN_CATEGORY_LABELS,
   LINKEDIN_LEVEL_LABELS,
   MERCADO_LABELS,
+  TIER_WEIGHTS,
   type LinkedinAnalysisResponse,
 } from "@shared/linkedin/schema";
 
@@ -41,6 +44,11 @@ function useCountUp(target: number, from: number, reduce: boolean): number {
   }, [target, from, reduce]);
   return value;
 }
+
+/** Pontos possiveis da categoria autodeclarada, 0 se ela nao aparecer. */
+const SINAIS_POSSIVEL = (
+  d: { categoria: string; possivel: number }[],
+): number => d.find((x) => x.categoria === "sinais")?.possivel ?? 0;
 
 // Paleta do confete da plataforma (proConfetti.ts), reusada no burst
 // localizado do delta que subiu, como no GitHub.
@@ -74,6 +82,33 @@ export default function LinkedinScoreHero({
   const ringOffset = RING_CIRCUMFERENCE * (1 - value / 100);
 
   const scoreRef = useRef<HTMLDivElement>(null);
+
+  // DECOMPOSICAO DA NOTA (achado #12 da rodada 1: a nota nunca mostrava de onde
+  // vinha, nem os pesos). Calculada aqui a partir de `deterministic.checks`, que
+  // ja carrega tier e categoria: nao muda nada no servidor e nao toca a nota.
+  //
+  // A parcela de `sinais` sai destacada porque ela e a unica AUTODECLARADA: os
+  // cinco checks vem do formulario e a plataforma nao consegue conferi-los. Isso
+  // fecha, por transparencia, o vetor que a supressao de delta nao alcanca (a
+  // primeira analise, onde nao ha "antes" para comparar).
+  //
+  // Mostrar so a parcela dos sinais seria pior que mostrar tudo: "14% da sua
+  // nota e autodeclarado" convida a pergunta "de que?", e a resposta ja esta na
+  // mao. O custo de computar as seis categorias e o mesmo.
+  const decomposicao = LINKEDIN_CATEGORIES.map((categoria) => {
+    const doGrupo = deterministic.checks.filter(
+      (c) => c.category === categoria,
+    );
+    const possivel = doGrupo.reduce(
+      (soma, c) => soma + TIER_WEIGHTS[c.tier],
+      0,
+    );
+    const ganho = doGrupo
+      .filter((c) => c.aprovado)
+      .reduce((soma, c) => soma + TIER_WEIGHTS[c.tier], 0);
+    return { categoria, ganho, possivel };
+  }).filter((d) => d.possivel > 0);
+  const totalPossivel = decomposicao.reduce((s, d) => s + d.possivel, 0);
 
   // Burst localizado quando a reanalise SUBIU a nota, sincronizado com a
   // chegada do contador. reduce nao dispara nada. Condicao identica ao GitHub.
@@ -231,6 +266,49 @@ export default function LinkedinScoreHero({
               <span className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-700">
                 {MERCADO_LABELS[response.mercado]}
               </span>
+            </div>
+
+            <div className="rounded-xl border-2 border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.15em] text-slate-500">
+                de onde vem a sua nota
+              </p>
+              <ul className="mt-3 space-y-2">
+                {decomposicao.map((d) => {
+                  const autodeclarado = d.categoria === "sinais";
+                  return (
+                    <li key={d.categoria} className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "w-28 shrink-0 truncate text-xs font-bold",
+                          autodeclarado ? "text-amber-800" : "text-slate-600",
+                        )}
+                      >
+                        {LINKEDIN_CATEGORY_LABELS[d.categoria]}
+                      </span>
+                      <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-full border border-slate-300 bg-white">
+                        <span
+                          className={cn(
+                            "block h-full rounded-full",
+                            autodeclarado ? "bg-amber-400" : "bg-sky-600",
+                          )}
+                          style={{
+                            width: `${Math.round((d.ganho / d.possivel) * 100)}%`,
+                          }}
+                        />
+                      </span>
+                      <span className="w-14 shrink-0 text-right text-xs font-bold tabular-nums text-slate-500">
+                        {d.ganho}/{d.possivel}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="mt-3 text-xs font-medium text-amber-900">
+                Sinais do perfil vale {SINAIS_POSSIVEL(decomposicao)} dos{" "}
+                {totalPossivel} pontos e vem do que você respondeu no
+                formulário, não do PDF: é a única parte que a gente não consegue
+                conferir.
+              </p>
             </div>
           </div>
         </div>
