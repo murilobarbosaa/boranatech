@@ -252,7 +252,7 @@ router.get(
     try {
       const { data, error } = await supabaseAdmin
         .from("linkedin_analyses")
-        .select("id, area, level, score, faixa, created_at")
+        .select("id, area, level, score, faixa, created_at, result->deterministicVersion")
         .eq("user_id", req.user!.id)
         .order("created_at", { ascending: false })
         .limit(20);

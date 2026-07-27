@@ -86,55 +86,52 @@ describe("golden: perfil real (PDF de export, anonimizado)", () => {
   it("parse: headline, sobre, skills e experiencias", () => {
     const { parsed } = analisar(cenario);
 
-    // BUG CONHECIDO (rodada2 B.7): a headline real ocupa 2 linhas no PDF e
-    // termina em "| React | Node". A linha "Node" tem 4 caracteres e e
-    // rejeitada por isHeadlineCandidate (minimo 6), entao "Node" some e sobra
-    // a barra orfa. E a causa raiz de headline-stack reprovar mais abaixo.
+    // CORRIGIDO (Fase 1A): a headline ocupa 2 linhas no PDF e a normalizacao
+    // junta pela barra orfa, entao "Node" volta e a barra final some.
     expect(parsed.headline).toBe(
-      "Software Developer | Full-Stack Engineer | AI Agent Expert | React |",
+      "Software Developer | Full-Stack Engineer | AI Agent Expert | React | Node",
     );
     expect(parsed.sobre?.length).toBe(1317);
 
-    // BUG CONHECIDO (rodada2 B.7): "Retrieval-Augmented Generation (RAG)" e UMA
-    // competencia, quebrada em duas linhas pelo PDF. parseSkills itera linha a
-    // linha e nao junta continuacao, entao 3 competencias viram 4 itens.
+    // CORRIGIDO (Fase 1A): o parentese solto volta a ser continuacao, entao as
+    // 3 competencias reais contam como 3, sem o fragmento "(RAG)".
     expect(parsed.skillsPdf).toEqual([
       "AI Agents",
       "Vector Databases",
-      "Retrieval-Augmented Generation",
-      "(RAG)",
+      "Retrieval-Augmented Generation (RAG)",
     ]);
 
     expect(parsed.experiencias).toHaveLength(6);
 
     expect(parsed.experiencias.map((e) => e.titulo)).toEqual([
-      // BUG CONHECIDO (rodada2 B.8): rodape de paginacao do PDF entra no titulo.
-      // A empresa "Startup Alfa" fica 3 linhas antes da data e e DESCARTADA.
-      "CTO & Co-founder Page   1   of   5",
+      // CORRIGIDO (Fase 1A): o rodape sai antes do parse. Efeito colateral
+      // positivo: sem o rodape ocupando uma das 2 linhas de titulo, a empresa
+      // "Startup Alfa" passou a caber e nao e mais descartada.
+      "Startup Alfa CTO & Co-founder",
       // BUG CONHECIDO (rodada2 B.2): empresa colada no cargo.
       "NexoRH Artificial Intelligence Engineer",
       "Botvia Generative AI Consultant/Support Analyst",
       "OGF - Orgao Governamental Federal Intern",
-      // BUG CONHECIDO (rodada2 B.4): formato agrupado do LinkedIn. A empresa
-      // "Beta Edtech" cai na DESCRICAO da experiencia anterior (a do orgao).
-      "Software Engineer/QA Engineer Page   3   of   5",
+      // BUG CONHECIDO (rodada2 B.4, ABERTO, escopo 1B): formato agrupado do
+      // LinkedIn. A empresa "Beta Edtech" cai na DESCRICAO da experiencia
+      // anterior e a linha de duracao ocupa o titulo. O rodape ja saiu.
+      "1 year 1 month Software Engineer/QA Engineer",
       // BUG CONHECIDO (rodada2 B.5): o ultimo bullet da experiencia anterior
       // entra no titulo da seguinte.
       "• Demonstrated high team collaboration for effective QA. Software Engineer/Full-Stack Developer",
     ]);
 
-    // BUG CONHECIDO (rodada2 B.1): a experiencia de CTO nao tem descricao no
-    // PDF. Como a janela de descricao vai "da data ate a proxima data", ela
-    // engole o cabecalho da experiencia SEGUINTE (42 chars) em vez de ficar
-    // vazia. Por isso nenhum check detecta a experiencia vazia.
+    // BUG CONHECIDO (rodada2 B.1, ABERTO, escopo 1B): a experiencia de CTO nao
+    // tem descricao no PDF. Como a janela de descricao vai "da data ate a
+    // proxima data", ela engole o cabecalho da experiencia SEGUINTE em vez de
+    // ficar vazia. Por isso nenhum check detecta a experiencia vazia.
     expect(parsed.experiencias[0].descricao).toBe(
       "NexoRH Artificial Intelligence Engineer",
     );
-    // Os comprimentos refletem os nomes SINTETICOS de empresa (mais curtos que
-    // os reais). O que importa aqui e a forma, nao o numero: score, faixa e
-    // conjunto de reprovados ficaram identicos aos do arquivo original.
+    // Comprimentos com nomes sinteticos e ja sem o rodape de paginacao, que
+    // antes somava 57 caracteres falsos ao total de exp-descricoes.
     expect(parsed.experiencias.map((e) => e.descricao.length)).toEqual([
-      39, 1472, 910, 792, 828, 804,
+      39, 1470, 892, 774, 828, 786,
     ]);
     // BUG CONHECIDO (rodada2 B.4): confirma a reatribuicao da empresa.
     expect(parsed.experiencias[3].descricao).toContain("Beta Edtech");
@@ -143,15 +140,17 @@ describe("golden: perfil real (PDF de export, anonimizado)", () => {
   it("checks e score", () => {
     const { deterministic, reprovados } = analisar(cenario);
 
-    expect(deterministic.score).toBe(72);
+    // 72 -> 75: headline-stack passou a aprovar porque "Node" voltou.
+    expect(deterministic.score).toBe(75);
     expect(deterministic.faixa).toBe("forte");
     // mercado exterior: sem termos-bilingues, com headline/sobre em ingles.
     expect(deterministic.checks).toHaveLength(28);
 
     expect(reprovados).toEqual([
-      // BUG CONHECIDO (rodada2 B.9): reprova porque "Node" foi truncado da
-      // headline pelo line-wrap. A headline real cita React E Node.
-      "headline-stack",
+      // CORRIGIDO (Fase 1A): headline-stack saiu daqui. Reprovava porque
+      // "Node" era truncado pelo line-wrap; a headline sempre citou React E
+      // Node. Era a origem da critica falsa "a headline nao menciona
+      // tecnologias" e da recomendacao de Next.js e Tailwind.
       "sobre-cta",
       // BUG CONHECIDO (rodada1 achado #1): cobertura exige 50% e 75% de TODAS
       // as tecnologias da area; inatingivel na pratica.
@@ -177,7 +176,10 @@ describe("golden: perfil real (PDF de export, anonimizado)", () => {
       expect(deterministic.keywordsEncontradas).not.toContain(ausente);
     }
 
-    // BUG CONHECIDO (rodada2 B.7): 3 competencias reais contadas como 4.
+    // skillsContagem conta as competencias COLADAS no formulario, que neste
+    // cenario ainda sao a string antiga com "(RAG)" separado. O prefill do
+    // client passa a entregar 3 (ver skillsPdf acima), entao uma analise nova
+    // real informa 3.
     expect(deterministic.skillsContagem).toBe(4);
   });
 });
@@ -358,12 +360,16 @@ describe("golden: perfis sinteticos", () => {
       },
       headline: "Desenvolvedor Back-end | Python, Django",
       experiencias: 1,
-      score: 69,
+      // 69 -> 68: exp-resultados deixou de ser aprovado pelo rodape.
+      score: 68,
       faixa: "em-construcao",
       nChecks: 27,
       reprovados: [
         "headline-tamanho",
         "sobre-tamanho",
+        // CORRIGIDO (Fase 1A): agora REPROVA, como deveria. A descricao desta
+        // fixture nao tem numero nenhum; quem aprovava era o "Page 10 of 12".
+        "exp-resultados",
         "cobertura-keywords-area",
         "cobertura-keywords-otima",
         "termos-bilingues",
@@ -459,20 +465,22 @@ describe("golden: perfis sinteticos", () => {
     );
   });
 
-  // BUG CONHECIDO (rodada2 B.8): "Page 10 of 12" contem um numero de 2 digitos,
-  // e RESULT_RE (/\b\d{2,}\b/) o aceita como metrica. A descricao da fixture E
-  // nao tem NENHUM numero proprio; e o rodape do PDF que aprova o check. Um
-  // PDF de 10+ paginas ganha "Descricoes com numeros e resultados" de graca.
-  it("E) rodape de paginacao aprova exp-resultados sozinho", () => {
+  // CORRIGIDO (Fase 1A). Era o BUG CONHECIDO rodada2 B.8: "Page 10 of 12" tem
+  // um numero de 2 digitos e RESULT_RE (/\b\d{2,}\b/) o aceitava como metrica,
+  // entao um PDF de 10+ paginas ganhava "Descricoes com numeros e resultados"
+  // de graca. O rodape agora sai na normalizacao, antes do parse, e o teste
+  // inverteu de sinal: com ou sem o rodape no arquivo, o resultado e o mesmo.
+  it("E) rodape de paginacao NAO aprova mais exp-resultados", () => {
     const cenario = cenarios[4].cenario;
     const comRodape = analisar(cenario);
     expect(
       comRodape.deterministic.checks.find((c) => c.id === "exp-resultados")
         ?.aprovado,
-    ).toBe(true);
-    expect(comRodape.reprovados).not.toContain("exp-resultados");
+    ).toBe(false);
+    expect(comRodape.reprovados).toContain("exp-resultados");
 
-    // Mesmo texto sem o rodape: o check reprova e a nota cai.
+    // Mesmo texto sem o rodape: resultado IDENTICO, prova de que o rodape
+    // deixou de influenciar a nota.
     const profileText = readFileSync(
       path.join(FIXTURES, cenario.fixture),
       "utf8",
@@ -496,6 +504,7 @@ describe("golden: perfis sinteticos", () => {
     expect(
       semRodape.checks.find((c) => c.id === "exp-resultados")?.aprovado,
     ).toBe(false);
+    expect(semRodape.score).toBe(comRodape.deterministic.score);
     expect(semRodape.score).toBe(68);
   });
 });

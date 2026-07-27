@@ -12,6 +12,8 @@
  * é best-effort: prefere null a devolver lixo (o nome da pessoa, um e-mail).
  */
 
+import { normalizeProfileLines } from "./normalizeProfileText";
+
 export interface LinkedinExperiencia {
   titulo: string;
   descricao: string;
@@ -114,7 +116,6 @@ function isDateRangeLine(line: string): boolean {
 const EMAIL_RE = /\S+@\S+\.\S+/;
 const URL_RE = /(https?:\/\/|www\.|linkedin\.com|github\.com)/i;
 const PHONE_RE = /^[\s()+\d.-]{7,}$/;
-const PAGE_RE = /^(page|pagina)\s+\d+\s+(of|de)\s+\d+$/i;
 
 const HEADLINE_SIGNAL_RE = new RegExp(
   [
@@ -169,7 +170,6 @@ function isHeadlineCandidate(line: string): boolean {
   if (EMAIL_RE.test(trimmed)) return false;
   if (URL_RE.test(trimmed)) return false;
   if (PHONE_RE.test(trimmed)) return false;
-  if (PAGE_RE.test(trimmed)) return false;
   if (isDateRangeLine(trimmed)) return false;
   return true;
 }
@@ -290,10 +290,10 @@ function parseExperiencias(lines: string[]): LinkedinExperiencia[] {
 }
 
 export function parseLinkedinText(text: string): LinkedinParsed {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+  // UMA passada de normalizacao antes de qualquer parser especifico: junta
+  // continuacao de linha quebrada pelo PDF e remove rodape de paginacao. Client
+  // e servidor chamam esta mesma funcao, entao veem exatamente o mesmo texto.
+  const lines = normalizeProfileLines(text);
 
   if (lines.length === 0) {
     return {

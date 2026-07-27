@@ -602,15 +602,20 @@ export const QUALITATIVE_VERSION = 3;
 /**
  * Versão do formato de `deterministic`, estampada no result a cada escrita.
  *
- * 1: formato atual, estável desde a criação da tabela (verificado: as 107
+ * 1: formato original, estável desde a criação da tabela (verificado: as 107
  *   linhas persistidas têm exatamente as mesmas 10 chaves), mais o
  *   `skillsParaAdicionarAgora` acrescentado junto com a v3 do qualitative.
+ * 2: Fase 1A. A leitura do PDF passou a normalizar quebra de linha e a remover
+ *   rodapé de paginação ANTES do parse. Mesmos campos, mas o CONTEÚDO deles
+ *   muda para o mesmo perfil: headline completa, competências sem fragmento,
+ *   descrições sem ruído. Notas de v1 e v2 não são comparáveis entre si, e é
+ *   por isso que o delta é suprimido quando as versões diferem.
  *
  * O conjunto mínimo de leitura (`keywordsEncontradas`, `keywordsFaltantes`,
  * `titulosIngles`) passa por `readDeterministic`. Ver
  * docs/divida-leitura-persistida.md.
  */
-export const DETERMINISTIC_VERSION = 1;
+export const DETERMINISTIC_VERSION = 2;
 
 export interface LinkedinAnalysisResponse {
   area: (typeof AREA_SLUGS)[number];
@@ -633,6 +638,12 @@ export interface LinkedinAnalysisSummary {
   score: number;
   faixa: string;
   created_at: string;
+  /**
+   * Versão da régua determinística que produziu esta nota. Ausente (null) nas
+   * linhas gravadas antes do carimbo. Serve para o cliente saber que duas
+   * notas NÃO são comparáveis, e não comemorar melhoria que não houve.
+   */
+  deterministicVersion?: number | null;
 }
 
 export interface LinkedinAnalysisRecord extends LinkedinAnalysisSummary {

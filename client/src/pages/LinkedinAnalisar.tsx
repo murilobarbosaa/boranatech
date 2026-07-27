@@ -46,7 +46,6 @@ import { LinkedinError } from "@/components/linkedin/LinkedinStates";
 import ScoreDeltaBanner from "@/components/shared/ScoreDeltaBanner";
 import RecruiterFinder from "@/components/linkedin/RecruiterFinder";
 import SectionReport from "@/components/linkedin/SectionReport";
-import { stripPdfPageNoise } from "@/components/linkedin/stripPdfPageNoise";
 import { openAgentWidget } from "@/components/agent/AgentWidget";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -545,6 +544,11 @@ export default function LinkedinAnalisar() {
     from: number;
     to: number;
   } | null>(null);
+  // Regua de leitura do perfil mudou entre a analise anterior e esta? Quando
+  // muda, as duas notas nao sao comparaveis: nao ha delta nem celebracao, so
+  // um aviso. Sem isto, uma correcao de parser vira "voce melhorou" com
+  // confete, comemorando algo que a pessoa nao fez.
+  const [reguaMudou, setReguaMudou] = useState(false);
   // Confirmacao leve da reanalise (consome 1 uso de IA).
   const [confirmReanalyze, setConfirmReanalyze] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -658,6 +662,11 @@ export default function LinkedinAnalisar() {
     };
   }, [isPro]);
 
+  // Versao ausente = linha gravada antes do carimbo, tratada como 1.
+  function versaoDe(v: number | null | undefined): number {
+    return v ?? 1;
+  }
+
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     if (key === "area") areaTouched.current = true;
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -752,6 +761,9 @@ export default function LinkedinAnalisar() {
     // Nota da analise imediatamente anterior, capturada ANTES da nova entrar
     // no historico (a lista vem em ordem decrescente).
     const priorScore = analyses[0]?.score ?? null;
+    const priorVersion = analyses[0]
+      ? versaoDe(analyses[0].deterministicVersion)
+      : null;
 
     try {
       const { data, analysisId: newAnalysisId } = await analyzeLinkedin({
@@ -771,8 +783,14 @@ export default function LinkedinAnalisar() {
       setAnalysisId(newAnalysisId);
       // Delta SO quando a nota mudou: empate nao vira banner nem seta, e o
       // contador do hero volta a animar de 0 (semantica alinhada ao GitHub).
+      const mudou =
+        priorVersion !== null &&
+        priorVersion !== versaoDe(data.deterministicVersion);
+      setReguaMudou(mudou);
       setScoreDelta(
-        priorScore !== null && priorScore !== data.deterministic.score
+        !mudou &&
+          priorScore !== null &&
+          priorScore !== data.deterministic.score
           ? { from: priorScore, to: data.deterministic.score }
           : null,
       );
@@ -811,9 +829,15 @@ export default function LinkedinAnalisar() {
         // a propria linha. Mesmo criterio do analyze: delta so quando a nota
         // mudou de fato.
         const idx = analyses.findIndex((item) => item.id === id);
-        const prior = idx >= 0 ? (analyses[idx + 1]?.score ?? null) : null;
+        const anterior = idx >= 0 ? analyses[idx + 1] : undefined;
+        const prior = anterior?.score ?? null;
+        const mudou =
+          anterior !== undefined &&
+          versaoDe(anterior.deterministicVersion) !==
+            versaoDe(record.result.deterministicVersion);
+        setReguaMudou(mudou);
         setScoreDelta(
-          prior !== null && prior !== record.result.deterministic.score
+          !mudou && prior !== null && prior !== record.result.deterministic.score
             ? { from: prior, to: record.result.deterministic.score }
             : null,
         );
@@ -840,6 +864,7 @@ export default function LinkedinAnalisar() {
     setProgressError("");
     setError("");
     setScoreDelta(null);
+    setReguaMudou(false);
     setConfirmReanalyze(false);
   }
 
@@ -881,6 +906,7 @@ export default function LinkedinAnalisar() {
       ? { done: appliedCount, total: improvementsTotal }
       : null;
   const allApplied =
+    !reguaMudou &&
     improvementsScore !== null &&
     improvementsScore.done === improvementsScore.total;
 
@@ -1459,7 +1485,13 @@ export default function LinkedinAnalisar() {
                     improvements={improvementsScore}
                   />
 
-                  {scoreDelta ? (
+                  {reguaMudou ? (
+                    <FeedbackBanner variant="warn">
+                      Melhoramos a leitura do seu PDF desde a sua última
+                      análise, então esta nota não é comparável com a anterior.
+                      A comparação recomeça a partir daqui.
+                    </FeedbackBanner>
+                  ) : scoreDelta ? (
                     <ScoreDeltaBanner
                       from={scoreDelta.from}
                       to={scoreDelta.to}
@@ -1598,7 +1630,7 @@ export default function LinkedinAnalisar() {
                         atual={
                           sobreAtual ? (
                             <p className="whitespace-pre-wrap leading-relaxed">
-                              {stripPdfPageNoise(sobreAtual)}
+                              {sobreAtual}
                             </p>
                           ) : null
                         }
@@ -1650,12 +1682,10 @@ export default function LinkedinAnalisar() {
                               {experienciasAtual.map((exp, index) => {
                                 // Ruido de paginacao do PDF sai SO daqui (a
                                 // exibicao); o parse que pontuou fica intacto.
-                                const titulo =
-                                  stripPdfPageNoise(exp.titulo) ||
-                                  "(sem título)";
-                                const descricao = stripPdfPageNoise(
-                                  exp.descricao,
-                                );
+                                // Sem limpeza aqui: o rodape de paginacao ja
+                                // sai na normalizacao, antes do parse.
+                                const titulo = exp.titulo || "(sem título)";
+                                const descricao = exp.descricao;
                                 return (
                                   <li key={index}>
                                     <span className="font-bold text-slate-900">
