@@ -5,6 +5,7 @@ import {
   MERCADO_LABELS,
   FAIXA_LABELS,
   QUALITATIVE_VERSION,
+  DETERMINISTIC_VERSION,
   type LinkedinAnalysisResponse,
   type LinkedinAnalyzeRequest,
   type LinkedinDeterministicResult,
@@ -435,8 +436,9 @@ export async function analyzeLinkedin(
       area: request.area,
       level: request.level,
       mercado: request.mercado,
-      // Carimbo do formato de qualitative, lido de volta por readQualitative.
+      // Carimbos de formato, lidos de volta por readQualitative/readDeterministic.
       qualitativeVersion: QUALITATIVE_VERSION,
+      deterministicVersion: DETERMINISTIC_VERSION,
       deterministic,
       qualitative,
     },

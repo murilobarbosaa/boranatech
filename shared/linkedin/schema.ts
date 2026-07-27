@@ -599,12 +599,27 @@ export type LinkedinAnalyzeRequest = z.infer<
  */
 export const QUALITATIVE_VERSION = 3;
 
+/**
+ * Versão do formato de `deterministic`, estampada no result a cada escrita.
+ *
+ * 1: formato atual, estável desde a criação da tabela (verificado: as 107
+ *   linhas persistidas têm exatamente as mesmas 10 chaves), mais o
+ *   `skillsParaAdicionarAgora` acrescentado junto com a v3 do qualitative.
+ *
+ * O conjunto mínimo de leitura (`keywordsEncontradas`, `keywordsFaltantes`,
+ * `titulosIngles`) passa por `readDeterministic`. Ver
+ * docs/divida-leitura-persistida.md.
+ */
+export const DETERMINISTIC_VERSION = 1;
+
 export interface LinkedinAnalysisResponse {
   area: (typeof AREA_SLUGS)[number];
   level: LinkedinLevel;
   mercado: Mercado;
   /** Ausente nas linhas da versão 1. Ver QUALITATIVE_VERSION. */
   qualitativeVersion?: number;
+  /** Ausente nas linhas gravadas antes da Fase 0. Ver DETERMINISTIC_VERSION. */
+  deterministicVersion?: number;
   deterministic: LinkedinDeterministicResult;
   qualitative: LinkedinQualitative;
 }

@@ -1,5 +1,6 @@
 import { Check, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { readDeterministic } from "@shared/linkedin/readDeterministic";
 import type {
   LinkedinDeterministicResult,
   Mercado,
@@ -17,8 +18,12 @@ export default function RecruiterFinder({
   deterministic,
   mercado,
 }: RecruiterFinderProps) {
+  // Leitura tolerante: estas tres sao as unicas leituras do jsonb persistido
+  // que chamam metodo em array (.length/.map) e portanto derrubariam a pagina
+  // se o campo faltasse. O tipo da prop descreve o que o servidor escreve HOJE,
+  // nao o que as analises antigas gravaram. Ver docs/divida-leitura-persistida.md.
   const { keywordsEncontradas, keywordsFaltantes, titulosIngles } =
-    deterministic;
+    readDeterministic(deterministic);
   const showIngles = mercado === "exterior" || mercado === "ambos";
 
   return (

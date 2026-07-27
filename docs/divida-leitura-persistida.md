@@ -66,11 +66,11 @@ São as únicas que **lançam** em vez de degradar, e as três estão no caminho
 direto pelo jsonb persistido. A correção é um `readDeterministic` no molde do `readQualitative`, ou, se o
 apetite for menor, três `?? []` mais um `deterministicVersion` estampado na escrita.
 
-Recomendação: **`readDeterministic` antes da Fase 1**, pelo mesmo argumento que valeu para o `qualitative` —
-a Fase 1 é exatamente a rodada que vai mudar o formato, e o histórico de 107 análises é onde a mudança aparece.
-Custo estimado: 2 a 3 horas, incluindo teste com a fixture legada que já existe
-(`server/lib/__fixtures__/linkedin/result-legado-v1.json`).
+~~Recomendação: `readDeterministic` antes da Fase 1~~ **FEITO na Fase 0.**
+`shared/linkedin/readDeterministic.ts` cobre as três leituras, `RecruiterFinder` passou a consumi-lo, e
+`deterministicVersion` é estampado na escrita. Testado com a fixture legada real
+(`server/lib/__fixtures__/linkedin/result-legado-v1.json`), incluindo o caso em que as três listas somem.
 
-Os 17 acessos restantes do LinkedIn podem esperar: degradam para texto estranho, não para tela branca. As
+Os 17 acessos restantes do LinkedIn (a tabela acima menos o `faixa`, já coberto) podem esperar: degradam para texto estranho, não para tela branca. As
 outras duas features (Portfólio e Currículo) ficam fora da Fase 1 por definição de escopo, mas herdam o mesmo
 risco e o mesmo remédio, e o `readQualitative` já serve de molde pronto para as duas.
