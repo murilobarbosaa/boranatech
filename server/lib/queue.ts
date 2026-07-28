@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/node";
+import type { ReasonBucket } from "../../shared/paymentRecovery";
 import { Queue, Worker, type Job } from "bullmq";
 
 import type { Gender } from "../../shared/gender";
@@ -11,6 +12,7 @@ import {
   sendNewsletterConfirmEmail,
   sendNewsletterWelcomeEmail,
   sendPaymentFailedEmail,
+  sendPaymentRecoveryEmail,
   sendProUpgradeEmail,
   sendRenewalReminderEmail,
   sendWaitlistConfirmationEmail,
@@ -25,6 +27,7 @@ export type EmailJobData =
   | ({ type: "cancellation" } & Recipient)
   | ({ type: "cancellation_scheduled"; effectiveAt: string } & Recipient)
   | ({ type: "payment_failed" } & Recipient)
+  | ({ type: "payment_recovery"; bucket: ReasonBucket } & Recipient)
   | ({
       type: "renewal_reminder";
       planName: string;
@@ -52,6 +55,9 @@ const EMAIL_CRITICALITY: Record<
   cancellation: "critical",
   cancellation_scheduled: "critical",
   payment_failed: "critical",
+  // Critico: e a UNICA comunicacao que uma recusa de primeira cobranca gera. Sem
+  // ele a pessoa simplesmente desaparece (12 pessoas, R$ 292,71, medido em 90d).
+  payment_recovery: "critical",
   // Critico: se o lembrete nao sai, o boleto vence e o assinante perde o acesso
   // que renovaria. Com Redis fora, o envio direto (fallback critico) mantem o
   // lembrete saindo em vez de sumir calado.
@@ -101,6 +107,9 @@ async function sendDirect(data: EmailJobData) {
       break;
     case "payment_failed":
       await sendPaymentFailedEmail(data.to, data.name, data.gender);
+      break;
+    case "payment_recovery":
+      await sendPaymentRecoveryEmail(data.to, data.name, data.bucket);
       break;
     case "renewal_reminder":
       await sendRenewalReminderEmail(data.to, data.name, {
