@@ -1,5 +1,6 @@
 import {
   Fragment,
+  Suspense,
   memo,
   useCallback,
   useEffect,
@@ -59,7 +60,17 @@ import { UsageRetentionDashboard } from "@/components/admin/UsageRetentionDashbo
 import { ContactListsManager } from "@/components/admin/ContactListsManager";
 import { ConversionDashboard } from "@/components/admin/ConversionDashboard";
 import { BugsDashboard } from "@/components/admin/BugsDashboard";
-import { TasksDashboard } from "@/components/admin/tasks/TasksDashboard";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import { TasksErrorBoundary } from "@/components/admin/tasks/TasksErrorBoundary";
+import { TasksPanelSkeleton } from "@/components/admin/tasks/TasksPanelSkeleton";
+
+// Carregado sob demanda: o modulo de Tarefas traz o dnd-kit e o remark-gfm, e um
+// import estatico coloca os dois no chunk do Admin, que TODA aba do painel baixa.
+// Medido: o chunk saiu de 700,98 kB para 860,43 kB (gzip 170,18 -> 216,50).
+// Ninguem fora deste modulo importa dnd-kit, entao a fronteira e limpa.
+const TasksDashboard = lazyWithRetry(
+  () => import("@/components/admin/tasks/TasksDashboard"),
+);
 import { NotificationsManager } from "@/components/admin/NotificationsManager";
 import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { BntSelect } from "@/components/shared/BntSelect";
@@ -7552,7 +7563,14 @@ export default function Admin() {
               title="Tarefas"
               subtitle="Board interno de backlog, features, melhorias e débito técnico. As etapas são editáveis: renomeie no duplo clique e reordene pelo menu da coluna."
             >
-              <TasksDashboard />
+              {/* Boundary SO em volta desta secao: sem ele, um erro de render
+                  aqui sobe ate o ErrorBoundary do App.tsx e derruba a pagina
+                  inteira do admin. Ver TasksErrorBoundary.tsx. */}
+              <TasksErrorBoundary>
+                <Suspense fallback={<TasksPanelSkeleton />}>
+                  <TasksDashboard />
+                </Suspense>
+              </TasksErrorBoundary>
             </AdminSection>
           ) : null}
 
