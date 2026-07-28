@@ -75,14 +75,34 @@ errado sem que se saiba qual metade falhou.
 do upload. O `dist/` do backend não é servido publicamente (o Railway roda o processo, não serve o
 diretório), então o risco de vazamento é menor que no frontend, mas apagar continua sendo o certo.
 
-## Modo de falha conhecido do upload de source map do frontend
+## Upload de source map falho: achado e resolvido no mesmo dia
 
-Medido em 2026-07-28, com token inválido de propósito: **o build passa (exit 0) e os `.map` são apagados
-mesmo com o upload falhando.**
+**O achado**, medido em 2026-07-28 com token inválido de propósito: o build passava (exit 0), os `.map` eram
+apagados, e não sobrava sinal nenhum. Bom para vazamento, péssimo para diagnóstico: um token expirado ou
+rotacionado produziria deploys verdes com stacks ilegíveis, e a descoberta viria semanas depois, dentro de um
+incidente. Silêncio de novo, criado dentro da correção que existia para acabar com o silêncio.
 
-Isso é bom para vazamento (não sobra arquivo) e **ruim para diagnóstico**: um token expirado ou rotacionado
-produz deploys verdes com stacks ilegíveis, sem ninguém notar até precisar depurar. É silêncio de novo, em
-mais uma camada.
+**A correção**, no mesmo dia, com o `errorHandler` do plugin: falha de upload agora **derruba o build**
+(`exit 1`), com a causa e a instrução na saída.
 
-Não foi tratado. Se virar problema, o caminho é o `errorHandler` do plugin, decidindo explicitamente entre
-derrubar o build e apenas avisar alto.
+A alternativa "avisar alto" foi descartada pelo argumento que este próprio documento mede uma seção acima:
+aviso dentro de um build **verde** é indistinguível de silêncio, porque ninguém abre log de build sem já
+estar procurando alguma coisa, e o verde é o sinal que a pessoa realmente lê.
+
+Classificar o erro (401 quebra, rede avisa) também foi descartado, e o motivo importa: exigiria casar por
+texto a mensagem do `sentry-cli`, e um casamento de padrão que pode sub-casar em silêncio é a classe de
+defeito que este repositório persegue. Se o Sentry mudasse a frase, o 401 cairia no ramo "transitório" e o
+bug original voltaria inteiro.
+
+O contra-argumento legítimo (indisponibilidade do Sentry impedindo um hotfix) é resolvido por uma válvula
+**explícita**, `SENTRY_SOURCEMAPS_OPCIONAL=1`, que transforma a falha em aviso. Quem a usa está escolhendo
+subir sem telemetria, uma vez, sabendo. Diferente do estado anterior, em que subir sem telemetria era o
+padrão e era mudo.
+
+Provado com o mesmo token inválido:
+
+| condição | build | `.map` vazados |
+|---|---|---|
+| token inválido | **exit 1**, com a mensagem | 0 |
+| token inválido + `SENTRY_SOURCEMAPS_OPCIONAL=1` | exit 0, com aviso | 0 |
+| sem token nenhum | exit 0, sem aviso | 0 |

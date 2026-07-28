@@ -37,6 +37,79 @@ if (SENTRY_RELEASE) process.env.VITE_SENTRY_RELEASE = SENTRY_RELEASE;
  */
 const SENTRY_UPLOAD_ATIVO = Boolean(process.env.SENTRY_AUTH_TOKEN);
 
+/**
+ * Valvula de emergencia. Setada, o upload falho vira AVISO em vez de erro.
+ *
+ * Existe por um motivo unico e nomeado: indisponibilidade do Sentry nao pode
+ * impedir um hotfix. Sem ela, "quebrar o build" acopla a capacidade de
+ * DEPLOYAR a saude de um terceiro, e o momento em que o Sentry cair e
+ * exatamente o momento em que voce pode precisar subir alguma coisa correndo.
+ *
+ * Deliberada e visivel de proposito: quem a usa esta escolhendo subir sem
+ * telemetria, uma vez, sabendo. Diferente do estado anterior, em que subir sem
+ * telemetria era o comportamento padrao e silencioso.
+ */
+const SENTRY_SOURCEMAPS_OPCIONAL = Boolean(
+  process.env.SENTRY_SOURCEMAPS_OPCIONAL,
+);
+
+/**
+ * Upload falho QUEBRA o build. Decisao, com o contra-argumento respondido.
+ *
+ * O estado que isto corrige: token invalido produzia `exit 0`, mapas apagados,
+ * e nenhum sinal. Deploy verde, telemetria cega, e a descoberta acontecendo
+ * semanas depois, dentro de um incidente, que e o pior momento possivel. Foi
+ * um defeito da MESMA classe da auditoria inteira, criado dentro da correcao
+ * dela: instrumento que reporta sucesso sobre uma superficie menor.
+ *
+ * POR QUE NAO "AVISAR ALTO". O aviso iria para o log de build da Vercel, e o
+ * argumento contra e o que esta base ja mediu em outra camada: `console.warn`
+ * do servidor morre no log do Railway porque ninguem abre log sem ja estar
+ * procurando alguma coisa. Log de build tem exatamente a mesma propriedade, com
+ * o agravante de que build verde e o sinal que a pessoa realmente le. Um aviso
+ * dentro de um build verde e indistinguivel de silencio.
+ *
+ * POR QUE NAO CLASSIFICAR O ERRO (401 quebra, rede avisa). Foi a primeira
+ * versao desta funcao e eu a descartei: classificar exigiria casar a mensagem
+ * do `sentry-cli` ("Invalid org token (http status: 401)") por texto, e um
+ * casamento de padrao que pode sub-casar em silencio e a classe de defeito que
+ * este repositorio persegue. Se o Sentry mudasse a frase, o 401 cairia no ramo
+ * "transitorio" e voltaria a subir verde, que e o bug original de volta.
+ *
+ * Entao: falha nao classificada ABORTA, e a excecao e explicita
+ * (SENTRY_SOURCEMAPS_OPCIONAL), no lugar de implicita. Mesmo desenho do
+ * `scripts/mutateLinkedinThresholds.mjs`, onde item nao classificado derruba a
+ * execucao em vez de passar batido.
+ */
+function tratarFalhaDeUpload(err: Error): void {
+  const aviso = [
+    "",
+    "════════════════════════════════════════════════════════════════",
+    "  UPLOAD DE SOURCE MAP FALHOU",
+    "",
+    `  ${err.message.split("\n")[0]}`,
+    "",
+    "  O bundle sobe sem source map: todo stack no Sentry vira",
+    "  index-XXXX.js:1:48213, ilegivel.",
+    "",
+    "  Causa provavel: SENTRY_AUTH_TOKEN expirado, rotacionado, ou sem",
+    "  escopo project:releases. Confira tambem SENTRY_ORG e SENTRY_PROJECT.",
+    "",
+    "  Se o Sentry estiver fora do ar e voce PRECISA subir agora:",
+    "    SENTRY_SOURCEMAPS_OPCIONAL=1",
+    "  Isso faz esta falha virar aviso. Use e desfaca.",
+    "════════════════════════════════════════════════════════════════",
+    "",
+  ].join("\n");
+
+  if (SENTRY_SOURCEMAPS_OPCIONAL) {
+    console.warn(aviso);
+    return;
+  }
+  console.error(aviso);
+  throw err;
+}
+
 const plugins = [react(), tailwindcss()];
 
 if (SENTRY_UPLOAD_ATIVO) {
@@ -46,6 +119,7 @@ if (SENTRY_UPLOAD_ATIVO) {
       org: process.env.SENTRY_ORG,
       project: process.env.SENTRY_PROJECT,
       release: SENTRY_RELEASE ? { name: SENTRY_RELEASE } : undefined,
+      errorHandler: tratarFalhaDeUpload,
       sourcemaps: {
         // Apaga o .map do outDir depois de enviar. Sem isto o mapa fica publico.
         filesToDeleteAfterUpload: ["dist/public/**/*.js.map"],
