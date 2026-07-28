@@ -35,6 +35,7 @@ import bugsAdminRouter from "./adminBugs";
 import contactListsRouter from "./adminContactLists";
 import emailCampaignsRouter from "./adminEmailCampaigns";
 import notificationsAdminRouter from "./adminNotifications";
+import tasksAdminRouter from "./adminTasks";
 
 const router = Router();
 
@@ -48,6 +49,11 @@ router.use("/contact-lists", contactListsRouter);
 router.use("/notifications", notificationsAdminRouter);
 // Bugs & Erros (issues do Sentry + bug tracker). Depois dos guards de admin.
 router.use("/bugs", bugsAdminRouter);
+// Tarefas (board Kanban interno). Depois dos guards de admin. Montado em /crm e
+// nao em /tasks para que o recurso "tarefa" fique em /crm/tasks: se o router
+// morasse em /tasks, as tarefas teriam que ficar na raiz dele e /tasks/boards
+// competiria com /tasks/:id, funcionando so pela ordem de declaracao.
+router.use("/crm", tasksAdminRouter);
 
 const EDITABLE_TABLES: Record<string, string[]> = {
   news: [
