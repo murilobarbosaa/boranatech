@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from "./taskBoardStyles";
+import { LAYER_DIALOG } from "./taskLayers";
 
 // Substitui os window.prompt do board (nome da etapa, limite de WIP). Um unico
 // dialogo parametrizado em vez de dois componentes quase iguais: os dois casos
@@ -69,7 +70,7 @@ export function PromptDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a] sm:max-w-sm">
+      <DialogContent className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a] sm:max-w-sm`}>
         <DialogTitle className="font-display text-2xl font-black text-slate-950">
           {title}
         </DialogTitle>

@@ -14,6 +14,7 @@ import {
   COLUMN_COLOR_FALLBACK,
   safeHexColor,
 } from "./taskBoardStyles";
+import { LAYER_ON_PAGE } from "./taskLayers";
 import type { TaskColumn } from "./types";
 
 type ColumnHeaderProps = {
@@ -145,7 +146,7 @@ function ColumnHeaderBase({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="rounded-xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]"
+            className={`${LAYER_ON_PAGE} rounded-xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]`}
           >
             <DropdownMenuItem
               onSelect={() => setEditing(true)}

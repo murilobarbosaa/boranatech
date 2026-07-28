@@ -12,6 +12,7 @@ import {
   COLUMN_COLOR_CHOICES,
   safeHexColor,
 } from "./taskBoardStyles";
+import { LAYER_IN_DIALOG } from "./taskLayers";
 import type { TaskLabel } from "./types";
 
 // Multi-select de etiquetas com criacao inline.
@@ -93,7 +94,7 @@ export function LabelPicker({
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          className="w-64 rounded-xl border-2 border-slate-900 bg-white p-2 shadow-[4px_4px_0_#0f172a]"
+          className={`${LAYER_IN_DIALOG} w-64 rounded-xl border-2 border-slate-900 bg-white p-2 shadow-[4px_4px_0_#0f172a]`}
         >
           <input
             autoFocus

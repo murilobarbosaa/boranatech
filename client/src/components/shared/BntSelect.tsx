@@ -55,6 +55,14 @@ export type BntSelectProps = {
   // Merge via cn(): estas classes vencem as base sem sobrescrever tudo.
   className?: string;
   triggerClassName?: string;
+  /**
+   * Classes do POPUP (SelectContent). Existe porque `className` cai no trigger,
+   * e quem abre um select dentro de um modal precisa subir o popup acima dele:
+   * o default `z-[1100]` foi pensado para select na pagina (acima do header
+   * `z-[1000]`), e fica ATRAS de um modal em `z-[2000]`. Opcional; sem ela nada
+   * muda.
+   */
+  contentClassName?: string;
   size?: "sm" | "md";
   fullWidth?: boolean;
   // Cor do item selecionado/hover (default "yellow" = identico a hoje).
@@ -92,6 +100,7 @@ export function BntSelect({
   disabled,
   className,
   triggerClassName,
+  contentClassName,
   size = "md",
   fullWidth = true,
   accent = "yellow",
@@ -143,6 +152,8 @@ export function BntSelect({
           // z acima do header fixo (z-[1000]): o Radix propaga o z-index computado
           // do content para o wrapper do popper, entao isso sobe o popup inteiro.
           "z-[1100]",
+          // Sobe mais quando o select vive dentro de um modal.
+          contentClassName,
         )}
       >
         {options.map((opt) => (

@@ -1,5 +1,5 @@
 import { forwardRef, memo } from "react";
-import { Filter, Search, X } from "lucide-react";
+import { Filter, Search, Settings2, X } from "lucide-react";
 
 import { BntSelect } from "@/components/shared/BntSelect";
 import {
@@ -16,6 +16,7 @@ import {
   safeHexColor,
 } from "./taskBoardStyles";
 import { activeFilterCount, type DueFilter, type GroupBy, type TaskFilters } from "./taskFilters";
+import { LAYER_ON_PAGE } from "./taskLayers";
 import type { ViewMode } from "./taskViewState";
 import type { TaskAssignee, TaskBoard, TaskLabel, TaskPriority, TaskType } from "./types";
 
@@ -40,6 +41,7 @@ type BoardToolbarProps = {
   onViewChange: (view: ViewMode) => void;
   onIncludeArchivedChange: (value: boolean) => void;
   onClearFilters: () => void;
+  onManageBoards: () => void;
 };
 
 const DUE_OPTIONS: Array<{ value: DueFilter; label: string }> = [
@@ -80,6 +82,7 @@ export const BoardToolbar = memo(
       onViewChange,
       onIncludeArchivedChange,
       onClearFilters,
+      onManageBoards,
     },
     searchRef,
   ) {
@@ -93,17 +96,29 @@ export const BoardToolbar = memo(
             <label htmlFor="tasks-board-select" className={labelClass}>
               Quadro
             </label>
-            <BntSelect
-              id="tasks-board-select"
-              size="sm"
-              accent="gold"
-              value={activeBoardId ?? ""}
-              onValueChange={onSelectBoard}
-              options={boards.map((board) => ({
-                value: board.id,
-                label: `${board.key} · ${board.name}`,
-              }))}
-            />
+            <div className="flex gap-1.5">
+              <BntSelect
+                id="tasks-board-select"
+                size="sm"
+                accent="gold"
+                fullWidth
+                value={activeBoardId ?? ""}
+                onValueChange={onSelectBoard}
+                options={boards.map((board) => ({
+                  value: board.id,
+                  label: `${board.key} · ${board.name}`,
+                }))}
+              />
+              <button
+                type="button"
+                onClick={onManageBoards}
+                aria-label="Gerenciar quadros"
+                title="Criar, renomear, arquivar ou excluir quadros"
+                className="inline-flex h-9 shrink-0 items-center rounded-xl border-2 border-slate-900 bg-white px-2.5 text-slate-900 shadow-[2px_2px_0_#0f172a]"
+              >
+                <Settings2 className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           <div className="min-w-[13rem] flex-1">
@@ -169,7 +184,7 @@ export const BoardToolbar = memo(
             </PopoverTrigger>
             <PopoverContent
               align="end"
-              className="w-72 space-y-3 rounded-xl border-2 border-slate-900 bg-white p-3 shadow-[4px_4px_0_#0f172a]"
+              className={`${LAYER_ON_PAGE} w-72 space-y-3 rounded-xl border-2 border-slate-900 bg-white p-3 shadow-[4px_4px_0_#0f172a]`}
             >
               <div>
                 <p className={labelClass}>Responsável</p>
