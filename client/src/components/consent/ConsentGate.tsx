@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import posthog from "posthog-js";
 import { Spinner } from "@/components/ui/spinner";
-import { useAuth } from "@/contexts/AuthContext";
+import { PERCEIVED_STALL_MS, useAuth } from "@/contexts/AuthContext";
 import { hasOAuthCallbackInUrl } from "@/lib/authCallback";
 import { getConsentStatus, recordConsent } from "@/services/consentService";
 
@@ -29,6 +29,24 @@ const ALLOWLISTED_PATHS = new Set(["/termos-de-uso", "/privacidade"]);
 // observaveis sem telemetria extra aqui.
 const CHECK_RETRY_DELAYS_MS = [1500, 4000];
 
+// Teto do tempo que o gate espera a escrita de consentimento do cadastro (item
+// 3.4). A escrita NAO e cancelada quando isto expira: ela continua tentando em
+// segundo plano, e se concluir depois o gate fecha o modal sozinho
+// (consentWriteConfirmed). O que expira aqui e a PACIENCIA da tela, nao a prova.
+//
+// 10s, e o numero sai de uma comparacao de danos que o item 3.5 mudou. Com
+// ON CONFLICT DO NOTHING, mostrar o modal para quem ja consentiu e inofensivo:
+// aceitar de novo nao altera o accepted_at original, entao o custo e um clique a
+// mais. Ja prender a tela custa muito mais, e no pior momento possivel, que e o
+// segundo seguinte ao cadastro. Logo, entre errar segurando e errar perguntando,
+// erra-se perguntando.
+//
+// O valor e o reflexo de recarregar (~10s): esperar alem dele nao compra nada,
+// porque a pessoa recarrega e o hold morre junto com a aba. Somado ao backoff que
+// segue rodando por baixo, cobre a primeira tentativa e a primeira retentativa da
+// escrita, que e onde a esmagadora maioria dos casos resolve.
+const CONSENT_WRITE_HOLD_MS = 10_000;
+
 function captureGateEvent(event: string, props: Record<string, unknown>): void {
   console.info(`[ConsentGate] ${event}`, props);
   try {
@@ -39,7 +57,8 @@ function captureGateEvent(event: string, props: Record<string, unknown>): void {
 }
 
 export default function ConsentGate({ children }: { children: ReactNode }) {
-  const { session, signOut } = useAuth();
+  const { session, signOut, consentWriteInFlight, consentWriteConfirmed } =
+    useAuth();
   const [location] = useLocation();
 
   const userId = session?.user?.id ?? null;
@@ -62,14 +81,78 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
   // Apenas apresentacao: sinaliza que a verificacao falhou e um retry (backoff)
   // esta em curso, para o checking nao parecer travado. Nao muda fase nem fluxo.
   const [retrying, setRetrying] = useState(false);
+  // O hold da escrita ja passou do teto e o gate voltou a decidir sozinho.
+  const [holdExpired, setHoldExpired] = useState(false);
+  // A espera pela escrita passou do ponto em que parece travada (item 1.8
+  // aplicado a esta tela). So apresentacao: nao muda fase nem fluxo.
+  const [holdLooksStalled, setHoldLooksStalled] = useState(false);
+
+  // Enquanto isto for true, o gate nao conclui nada sobre consentimento.
+  const holdingForWrite = consentWriteInFlight && !holdExpired;
 
   // Espelha phase para o effect de recuperacao ler o valor atual sem colocar
   // phase nas deps (o que faria o effect rodar a cada transicao de fase).
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
 
+  // Os dois relogios do hold nascem e morrem juntos com a escrita em voo, e por
+  // isso vivem no mesmo efeito: separar em dois significaria lembrar de limpar os
+  // dois em cada saida, e o de tranquilizacao sobreviveria ao desfecho.
+  useEffect(() => {
+    if (!consentWriteInFlight) {
+      // Escrita acabou (de um jeito ou de outro): zera para que uma proxima
+      // escrita nesta mesma carga de pagina ganhe o hold inteiro de novo.
+      setHoldExpired(false);
+      setHoldLooksStalled(false);
+      return;
+    }
+    const aviso = window.setTimeout(
+      () => setHoldLooksStalled(true),
+      PERCEIVED_STALL_MS,
+    );
+    const teto = window.setTimeout(
+      () => setHoldExpired(true),
+      CONSENT_WRITE_HOLD_MS,
+    );
+    return () => {
+      window.clearTimeout(aviso);
+      window.clearTimeout(teto);
+    };
+  }, [consentWriteInFlight]);
+
+  // Escrita CONFIRMADA pelo servidor, possivelmente depois de o hold expirar e de
+  // o modal ja ter aparecido. Fecha sozinho, sem clique: a mesma autoridade que o
+  // gate consultaria (o servidor) ja respondeu, e pedir de novo seria perguntar o
+  // que acabamos de saber. Contador, nao booleano, para que uma segunda gravacao
+  // na mesma carga de pagina volte a disparar este efeito.
+  useEffect(() => {
+    if (consentWriteConfirmed === 0) return;
+    setPhase("consented");
+  }, [consentWriteConfirmed]);
+
   useEffect(() => {
     if (!gateActive) return;
+    // Item 3.4. Escrita de consentimento em voo: NAO consultar o status agora.
+    // Consultar aqui e ler antes da escrita, e a resposta seria um `false` que
+    // significa "ainda nao chegou", nao "nao consentiu" — foi assim que 50 pessoas
+    // que tinham acabado de aceitar viram o modal pedindo o aceite de novo.
+    // Segurar em "checking" e correto: nao ha nada a decidir ainda, e o efeito
+    // roda de novo sozinho quando a flag cair (ela esta nas deps), qualquer que
+    // seja o desfecho da escrita.
+    //
+    // Isto NAO e retry sobre `false`, e a distincao e o ponto: um `false` obtido
+    // com a escrita ja concluida e legitimo e terminal (quem de fato nao aceitou
+    // precisa ver o modal), e retentar sobre ele daria um spinner que nunca sai.
+    // O que se espera aqui e o fim da ESCRITA, um evento que sempre acontece.
+    //
+    // E a espera tem TETO (holdingForWrite, nao consentWriteInFlight): passado
+    // CONSENT_WRITE_HOLD_MS o gate volta a decidir por conta propria, mesmo com a
+    // escrita ainda tentando por baixo. Se ela concluir depois, o efeito de
+    // consentWriteConfirmed acima fecha o modal sem clique.
+    if (holdingForWrite) {
+      setPhase("checking");
+      return;
+    }
     let cancelled = false;
     setPhase("checking");
     setRetrying(false);
@@ -112,7 +195,7 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [gateActive, userId, checkNonce]);
+  }, [gateActive, userId, checkNonce, holdingForWrite]);
 
   // Recuperacao automatica: se a verificacao falhou e o token foi renovado
   // (TOKEN_REFRESHED muda o access_token), tenta de novo UMA vez. Nao
@@ -129,7 +212,7 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
     setSubmitting(true);
     setSubmitError(false);
     try {
-      await recordConsent();
+      await recordConsent("consent_gate_checkbox");
       setPhase("consented");
       captureGateEvent("consent_accept", { result: "ok" });
     } catch (err) {
@@ -154,13 +237,31 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
   }
 
   if (phase === "checking") {
+    // Item 1.8 aplicado a esta tela. O spinner mudo daqui e o mesmo problema do
+    // retorno do OAuth, com outro suporte: silencio por mais de PERCEIVED_STALL_MS
+    // faz a pessoa recarregar, e recarregar no meio do hold mata a escrita que
+    // ainda estava tentando em segundo plano. A mensagem existe para segurar o
+    // reflexo, nao para informar erro: nao ha erro nenhum aqui.
+    //
+    // As duas mensagens sao mutuamente exclusivas por construcao: `retrying` so e
+    // ligado dentro de runCheck, que nem chega a rodar enquanto ha hold.
+    const progresso = holdingForWrite
+      ? holdLooksStalled
+        ? // TODO(Ana): copy da espera pela gravacao do aceite no cadastro.
+          "Registrando seu aceite, só um instante..."
+        : null
+      : retrying
+        ? "Não foi possível verificar. Tentando novamente..."
+        : null;
+
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#faf8f4]">
         <Spinner className="size-8" />
-        {retrying ? (
-          <p className="text-sm font-bold text-slate-600">
-            Não foi possível verificar. Tentando novamente...
-          </p>
+        {/* Sem role="status" aqui: o proprio Spinner acima ja e a regiao viva
+            (role="status" + aria-label). Duas regioes vivas irmas fazem o leitor
+            de tela anunciar a mesma espera duas vezes. */}
+        {progresso ? (
+          <p className="text-sm font-bold text-slate-600">{progresso}</p>
         ) : null}
       </div>
     );

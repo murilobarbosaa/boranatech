@@ -2,16 +2,36 @@ import posthog from "posthog-js";
 
 import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
+import type { ConsentMethod } from "@shared/consent";
 
 const API_BASE = apiUrl("/api");
 
 // Flag de "aceite pendente" gravada no signup (form de e-mail ou OAuth) e consumida
 // quando a sessao aparece (SIGNED_IN em AuthContext). sessionStorage de proposito:
-// sobrevive ao redirect do OAuth na mesma aba, mas NAO espera horas por confirmacao
-// de e-mail (aba nao sobrevive) — nesse caso o ConsentGate cobre no primeiro login.
+// sobrevive ao redirect do OAuth na mesma aba.
+//
+// A ressalva sobre confirmacao de e-mail que morava aqui foi VERIFICADA em
+// 2026-07-28 e nao se aplica a este projeto: `mailer_autoconfirm` esta LIGADO na
+// config de auth do Supabase, ou seja, confirmacao por e-mail esta DESLIGADA, o
+// signUp ja devolve sessao e o SIGNED_IN sai na hora, na mesma aba. Conferido nos
+// dois sentidos: nenhum dos usuarios de auth.users tem `email_confirmed_at` nulo.
+// Se a confirmacao um dia for ligada, esta flag deixa de alcancar o cadastro por
+// e-mail (a aba nao espera o clique no link, que pode vir de outro aparelho) e o
+// caminho passa a depender do ConsentGate no primeiro login.
+//
+// A flag so e APAGADA depois de o servidor confirmar a gravacao (ver recordConsent
+// e o flush no AuthContext). Apagar antes era o que transformava uma falha de rede
+// em consentimento perdido sem rastro.
 export const PENDING_CONSENT_KEY = "bnt_pending_consent";
 
 type ConsentOp = "status" | "record";
+
+// Teto de UMA tentativa de requisicao de consentimento. Com o backoff de
+// recordConsent, o pior caso visivel e 8s + 0,8s + 8s + 2,4s + 8s, ou seja, cerca
+// de 27s ate o gate voltar a decidir sozinho. Longo, mas finito e so alcancavel
+// com a rede morrendo tres vezes seguidas; o caso comum (5xx rapido, DNS que
+// falha na hora) resolve em menos de um segundo.
+const REQUEST_TIMEOUT_MS = 8_000;
 
 // Erro de requisicao de consentimento com o status HTTP anexado. Deixa o
 // ConsentGate distinguir "nao consentiu" (200 + hasConsented:false) de "nao deu
@@ -60,6 +80,13 @@ async function consentFetch(
   const doFetch = (token: string | null) =>
     fetch(`${API_BASE}${path}`, {
       ...init,
+      // Teto por tentativa. Nao e decorativo: desde que o ConsentGate passou a
+      // SEGURAR a avaliacao enquanto ha escrita em voo (item 3.4), um fetch que
+      // nunca resolve deixaria de ser "consentimento perdido" e viraria "tela
+      // travada em spinner para sempre", que e pior. `fetch` sem sinal nao tem
+      // limite proprio. O abort vira erro sem `status`, ou seja, retentavel, que
+      // e o tratamento certo para uma conexao que morreu no meio.
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       headers: {
         ...(init?.headers ?? {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -106,18 +133,78 @@ export async function hasActiveSession(): Promise<boolean> {
   return Boolean(session?.access_token);
 }
 
-// Identidade e prova vem do JWT no servidor. O client so envia os flags.
-export async function recordConsent(): Promise<void> {
+// Backoff do registro de consentimento: 3 tentativas no total (a primeira mais
+// duas). Curto de proposito, porque alguem esta esperando na frente da tela, e
+// limitado de proposito, porque tentativa infinita transforma indisponibilidade
+// em spinner eterno. Esgotado, quem cobre e o ConsentGate na proxima carga.
+const RECORD_RETRY_DELAYS_MS = [800, 2400];
+
+// Repetir so faz sentido quando a falha pode ter sido do caminho, nao do pedido.
+// 4xx (fora de 408/429) e recusa deliberada do servidor: repetir o mesmo corpo
+// daria o mesmo resultado e so atrasaria o desfecho honesto. `status === null` e
+// erro de rede (o fetch nem chegou a ter resposta), que e o caso mais comum de
+// escrita perdida e o principal motivo de este retry existir.
+function isRetryableStatus(status: number | null): boolean {
+  if (status === null) return true;
+  if (status === 408 || status === 429) return true;
+  return status >= 500;
+}
+
+async function attemptRecord(method: ConsentMethod): Promise<void> {
   const res = await consentFetch("record", "/consent", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ acceptedTerms: true, acceptedPrivacy: true }),
+    body: JSON.stringify({
+      acceptedTerms: true,
+      acceptedPrivacy: true,
+      method,
+    }),
   });
   if (!res.ok) {
     throw consentError(
       res.status,
       `Erro ao registrar consentimento (HTTP ${res.status}).`,
     );
+  }
+  // O 2xx sozinho nao e mais a confirmacao: o servidor passou a devolver o estado
+  // RESULTANTE lido do banco depois da escrita, e e esse campo que autoriza o
+  // chamador a considerar o aceite gravado (e, no fluxo de signup, a apagar a flag
+  // pendente). Backend anterior a este deploy ja devolvia `hasConsented: true`,
+  // entao a checagem estrita funciona nos dois lados da janela de deploy.
+  const json = (await res.json().catch(() => null)) as {
+    hasConsented?: boolean;
+  } | null;
+  if (json?.hasConsented !== true) {
+    throw consentError(
+      res.status,
+      "Consentimento enviado sem confirmação no corpo da resposta.",
+    );
+  }
+}
+
+// Identidade e prova vem do JWT no servidor. O client so envia os flags e o
+// caminho pelo qual o aceite foi dado.
+//
+// O retry mora AQUI DENTRO, e nao no chamador, de proposito: guarda escrita no
+// call site precisa ser repetida em cada um deles (hoje o flush pos-signup no
+// AuthContext e o botao do ConsentGate) e some no primeiro chamador novo que
+// alguem escrever sem lembrar. Dentro da funcao, os dois ficam cobertos por
+// construcao, e qualquer terceiro que apareca ja nasce coberto.
+//
+// So retorna sem erro quando o servidor CONFIRMOU a gravacao. Quem chama pode
+// tratar "resolveu" como "esta gravado", e e isso que sustenta a regra de so
+// limpar `bnt_pending_consent` depois do 2xx confirmado.
+export async function recordConsent(method: ConsentMethod): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await attemptRecord(method);
+      return;
+    } catch (err) {
+      const status = (err as { status?: number } | null)?.status ?? null;
+      const delay = RECORD_RETRY_DELAYS_MS[attempt];
+      if (delay === undefined || !isRetryableStatus(status)) throw err;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
   }
 }
 
