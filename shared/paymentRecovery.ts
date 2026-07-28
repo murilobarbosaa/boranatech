@@ -15,13 +15,29 @@ export type ReasonBucket =
 export const DEBOUNCE_MS = 30 * 60 * 1000;
 export const SEGUNDO_AVISO_MS = 72 * 60 * 60 * 1000;
 /**
- * Depois de 2 e-mails o assunto morre para aquela pessoa, e so volta se ela
- * passar 30 dias sem nova tentativa (episodio novo) ou converter. Sem esse corte,
- * quem falha todo mes receberia a regua para sempre.
+ * Depois de 2 e-mails o EPISODIO morre. Um episodio novo abre quando a pessoa
+ * passa 30 dias sem contato e volta a falhar.
  */
 export const EPISODIO_NOVO_MS = 30 * 24 * 60 * 60 * 1000;
 
-export type EnvioAnterior = { stage: number; sentAtMs: number };
+/**
+ * Teto de episodios por endereco, PARA SEMPRE. 3 episodios = no maximo 6 e-mails
+ * na vida daquele e-mail.
+ *
+ * Existe porque reabrir episodio sem teto significa que quem falha todo mes
+ * recebe 2 e-mails a cada 30 dias, 24 por ano. Isso e spam, e spam queima
+ * reputacao de dominio, que e dano compartilhado com TODO e-mail do produto
+ * (recibo, cancelamento, lembrete de boleto). O teto e o que separa "cliente que
+ * voltou" de "cobranca perpetua".
+ */
+export const MAX_EPISODIOS = 3;
+
+export type EnvioAnterior = {
+  stage: number;
+  sentAtMs: number;
+  /** Qual episodio. Sem isto a UNIQUE do banco impede a reabertura. */
+  episodio: number;
+};
 
 export type FatosRecuperacao = {
   agoraMs: number;
@@ -39,7 +55,7 @@ export type FatosRecuperacao = {
 
 export type DecisaoRecuperacao =
   | { enviar: false; motivo: string }
-  | { enviar: true; stage: 1 | 2 };
+  | { enviar: true; stage: 1 | 2; episodio: number };
 
 /**
  * A ordem das checagens e deliberada: as razoes ABSOLUTAS (nao pode receber
@@ -59,27 +75,35 @@ export function decidirRecuperacao(
     return { enviar: false, motivo: "debounce" };
   }
 
-  const ordenados = [...f.enviosAnteriores].sort(
-    (a, b) => b.sentAtMs - a.sentAtMs,
-  );
-  const ultimo = ordenados[0];
-  if (!ultimo) return { enviar: true, stage: 1 };
-
-  // Episodio novo: a tentativa atual e muito posterior ao ultimo contato, entao o
-  // ciclo anterior encerrou e a pessoa volta a ser elegivel do stage 1.
-  if (f.ultimaTentativaMs - ultimo.sentAtMs >= EPISODIO_NOVO_MS) {
-    return { enviar: true, stage: 1 };
+  if (f.enviosAnteriores.length === 0) {
+    return { enviar: true, stage: 1, episodio: 1 };
   }
 
-  if (ultimo.stage >= 2) return { enviar: false, motivo: "episodio_encerrado" };
+  // O episodio corrente e o de numero MAIOR, nao o mais recente por data: um
+  // reprocesso fora de ordem nao pode "voltar" para um episodio encerrado.
+  const episodioAtual = Math.max(...f.enviosAnteriores.map((e) => e.episodio));
+  const doEpisodio = f.enviosAnteriores.filter((e) => e.episodio === episodioAtual);
+  const ultimoContatoMs = Math.max(...doEpisodio.map((e) => e.sentAtMs));
 
-  // Teto de 1 por pessoa por 72h. Tambem e o intervalo do segundo aviso: as duas
-  // regras coincidem de proposito, entao nao ha como o stage 2 furar o teto.
-  if (f.agoraMs - ultimo.sentAtMs < SEGUNDO_AVISO_MS) {
+  // Episodio NOVO: a tentativa atual e muito posterior ao ultimo contato.
+  if (f.ultimaTentativaMs - ultimoContatoMs >= EPISODIO_NOVO_MS) {
+    if (episodioAtual >= MAX_EPISODIOS) {
+      return { enviar: false, motivo: "teto_de_episodios" };
+    }
+    return { enviar: true, stage: 1, episodio: episodioAtual + 1 };
+  }
+
+  if (Math.max(...doEpisodio.map((e) => e.stage)) >= 2) {
+    return { enviar: false, motivo: "episodio_encerrado" };
+  }
+
+  // Teto de 1 por pessoa por 72h, que e tambem o intervalo do segundo aviso: as
+  // duas regras coincidem de proposito, entao o stage 2 nao fura o teto.
+  if (f.agoraMs - ultimoContatoMs < SEGUNDO_AVISO_MS) {
     return { enviar: false, motivo: "teto_72h" };
   }
 
-  return { enviar: true, stage: 2 };
+  return { enviar: true, stage: 2, episodio: episodioAtual };
 }
 
 /** Agrupa o motivo cru da Stripe na variante de texto correspondente. */

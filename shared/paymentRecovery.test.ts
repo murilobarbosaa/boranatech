@@ -5,6 +5,7 @@ import {
   decidirRecuperacao,
   DEBOUNCE_MS,
   EPISODIO_NOVO_MS,
+  MAX_EPISODIOS,
   SEGUNDO_AVISO_MS,
   type FatosRecuperacao,
 } from "./paymentRecovery";
@@ -26,7 +27,7 @@ function fatos(over: Partial<FatosRecuperacao> = {}): FatosRecuperacao {
 
 describe("decidirRecuperacao", () => {
   it("manda o primeiro aviso quando o debounce passou e nunca houve envio", () => {
-    expect(decidirRecuperacao(fatos())).toEqual({ enviar: true, stage: 1 });
+    expect(decidirRecuperacao(fatos())).toEqual({ enviar: true, stage: 1, episodio: 1 });
   });
 
   it("nao manda enquanto a pessoa ainda esta tentando (debounce)", () => {
@@ -38,7 +39,7 @@ describe("decidirRecuperacao", () => {
     const d = decidirRecuperacao(
       fatos({ ultimaTentativaMs: AGORA - DEBOUNCE_MS }),
     );
-    expect(d).toEqual({ enviar: true, stage: 1 });
+    expect(d).toEqual({ enviar: true, stage: 1, episodio: 1 });
   });
 
   // O caso que motivou a regua: 10 tentativas em ~1h tem que render UM e-mail.
@@ -55,50 +56,91 @@ describe("decidirRecuperacao", () => {
       agoraMs: maisRecente + DEBOUNCE_MS,
       ultimaTentativaMs: maisRecente,
     });
-    expect(decidirRecuperacao(depois)).toEqual({ enviar: true, stage: 1 });
+    expect(decidirRecuperacao(depois)).toEqual({ enviar: true, stage: 1, episodio: 1 });
     // ...e o segundo e barrado pelo teto de 72h.
     expect(
       decidirRecuperacao({
         ...depois,
-        enviosAnteriores: [{ stage: 1, sentAtMs: maisRecente + DEBOUNCE_MS }],
+        enviosAnteriores: [{ stage: 1, sentAtMs: maisRecente + DEBOUNCE_MS, episodio: 1 }],
       }),
     ).toEqual({ enviar: false, motivo: "teto_72h" });
   });
 
   it("segura o segundo aviso antes de 72h e libera depois", () => {
-    const stage1 = { stage: 1, sentAtMs: AGORA - SEGUNDO_AVISO_MS + 1000 };
+    const stage1 = { stage: 1, sentAtMs: AGORA - SEGUNDO_AVISO_MS + 1000, episodio: 1 };
     expect(decidirRecuperacao(fatos({ enviosAnteriores: [stage1] }))).toEqual({
       enviar: false,
       motivo: "teto_72h",
     });
     expect(
       decidirRecuperacao(
-        fatos({ enviosAnteriores: [{ stage: 1, sentAtMs: AGORA - SEGUNDO_AVISO_MS }] }),
+        fatos({ enviosAnteriores: [{ stage: 1, sentAtMs: AGORA - SEGUNDO_AVISO_MS, episodio: 1 }] }),
       ),
-    ).toEqual({ enviar: true, stage: 2 });
+    ).toEqual({ enviar: true, stage: 2, episodio: 1 });
   });
 
   it("para de vez depois do segundo aviso", () => {
     const d = decidirRecuperacao(
       fatos({
         enviosAnteriores: [
-          { stage: 1, sentAtMs: AGORA - 10 * SEGUNDO_AVISO_MS },
-          { stage: 2, sentAtMs: AGORA - 5 * SEGUNDO_AVISO_MS },
+          { stage: 1, sentAtMs: AGORA - 10 * SEGUNDO_AVISO_MS, episodio: 1 },
+          { stage: 2, sentAtMs: AGORA - 5 * SEGUNDO_AVISO_MS, episodio: 1 },
         ],
       }),
     );
     expect(d).toEqual({ enviar: false, motivo: "episodio_encerrado" });
   });
 
-  it("reabre no stage 1 quando a tentativa nova esta muito depois do ultimo contato", () => {
+  it("reabre no stage 1 do episodio 2 quando a tentativa nova esta muito depois", () => {
     const ultimoEnvio = AGORA - EPISODIO_NOVO_MS - DEBOUNCE_MS - 10;
     const d = decidirRecuperacao(
       fatos({
         ultimaTentativaMs: AGORA - DEBOUNCE_MS,
-        enviosAnteriores: [{ stage: 2, sentAtMs: ultimoEnvio }],
+        enviosAnteriores: [{ stage: 2, sentAtMs: ultimoEnvio, episodio: 1 }],
       }),
     );
-    expect(d).toEqual({ enviar: true, stage: 1 });
+    // episodio 2, nao 1: e isto que a UNIQUE (email, episodio, stage) permite
+    // representar e a UNIQUE (email, stage) tornava impossivel.
+    expect(d).toEqual({ enviar: true, stage: 1, episodio: 2 });
+  });
+
+  it("o segundo aviso do episodio 2 fica no episodio 2", () => {
+    const abriu = AGORA - SEGUNDO_AVISO_MS;
+    const d = decidirRecuperacao(
+      fatos({
+        enviosAnteriores: [
+          { stage: 1, sentAtMs: AGORA - 10 * EPISODIO_NOVO_MS, episodio: 1 },
+          { stage: 2, sentAtMs: AGORA - 9 * EPISODIO_NOVO_MS, episodio: 1 },
+          { stage: 1, sentAtMs: abriu, episodio: 2 },
+        ],
+      }),
+    );
+    expect(d).toEqual({ enviar: true, stage: 2, episodio: 2 });
+  });
+
+  it("para de vez no teto de MAX_EPISODIOS", () => {
+    const ultimoEnvio = AGORA - EPISODIO_NOVO_MS - DEBOUNCE_MS - 10;
+    const d = decidirRecuperacao(
+      fatos({
+        ultimaTentativaMs: AGORA - DEBOUNCE_MS,
+        enviosAnteriores: [{ stage: 2, sentAtMs: ultimoEnvio, episodio: MAX_EPISODIOS }],
+      }),
+    );
+    expect(d).toEqual({ enviar: false, motivo: "teto_de_episodios" });
+  });
+
+  it("usa o episodio de MAIOR numero, nao o mais recente por data", () => {
+    // Reprocesso fora de ordem: uma linha antiga do episodio 1 chega depois.
+    const d = decidirRecuperacao(
+      fatos({
+        enviosAnteriores: [
+          { stage: 1, sentAtMs: AGORA - 1000, episodio: 1 },
+          { stage: 1, sentAtMs: AGORA - SEGUNDO_AVISO_MS, episodio: 2 },
+        ],
+      }),
+    );
+    // Se olhasse a data, veria o episodio 1 e devolveria stage 2 do episodio 1.
+    expect(d).toEqual({ enviar: true, stage: 2, episodio: 2 });
   });
 
   // As razoes absolutas precedem as de tempo, para o log dizer a causa real.
@@ -121,7 +163,7 @@ describe("decidirRecuperacao", () => {
     const d = decidirRecuperacao(
       fatos({
         converteu: true,
-        enviosAnteriores: [{ stage: 1, sentAtMs: AGORA - SEGUNDO_AVISO_MS }],
+        enviosAnteriores: [{ stage: 1, sentAtMs: AGORA - SEGUNDO_AVISO_MS, episodio: 1 }],
       }),
     );
     expect(d).toEqual({ enviar: false, motivo: "converteu" });
