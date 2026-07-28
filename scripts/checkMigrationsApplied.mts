@@ -26,6 +26,13 @@ import {
   classificarRls,
   type LeituraContagem,
 } from "./lib/rlsVeredito";
+import { criarAcumulador } from "./lib/declaredSchema";
+import {
+  colunasReais,
+  indicesReais,
+  policiesReais,
+  type IntrospectDeps,
+} from "./lib/pgIntrospect";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -88,11 +95,13 @@ const ANY_CREATE_TABLE_RE = /create\s+(?:\w+\s+)*?table\s+(?:if\s+not\s+exists\s
  *     efeito colateral. NAO chamamos a funcao para testar existencia de
  *     proposito: `reserve_ai_usage_slot` e VOLATILE e INSERE linha.
  *
- * O que NAO da: policy e indice nao aparecem em lugar nenhum do PostgREST, e o
- * projeto nao tem DATABASE_URL nem cliente Postgres. As duas sao enumeradas da
- * fonte, com guard de cobertura do parser, e reportadas como DECLARADAS SEM
- * VERIFICACAO. E menos do que verificar, e e mais do que fingir que nao
- * existem: o numero fica visivel e uma queda nele aparece.
+ * Policy e indice NAO aparecem no PostgREST. Por isso eles (mais as COLUNAS)
+ * sao verificados por outro caminho, o endpoint SQL da Management API: ver a
+ * secao "COLUNAS, INDICES e POLICIES" no fim deste arquivo e
+ * scripts/lib/pgIntrospect.ts. Os regex daqui de baixo (CREATE_POLICY_RE,
+ * CREATE_INDEX_RE) seguem existindo apenas para o GUARD DE COBERTURA do parser;
+ * o conjunto que vale para a comparacao vem de scripts/lib/declaredSchema.ts,
+ * que atribui cada objeto a sua tabela e desconta tabela dropada.
  */
 const CREATE_FUNCTION_RE =
   /create\s+(?:or\s+replace\s+)?function\s+(?:public|"public")\.\s*"?([a-z0-9_]+)"?/gi;
@@ -267,10 +276,15 @@ function conferirCoberturaSimples(
 // timestamp), entao criar e dropar na sequencia reproduz o estado final.
 const declared = new Set<string>();
 const naoReconhecidas: string[] = [];
+// Colunas, indices e policies declarados. Acumulado no MESMO loop e a partir do
+// MESMO SQL ja sem comentarios: um segundo leitor de arquivo com um segundo
+// lexer seria uma segunda fonte de verdade capaz de divergir em silencio.
+const schemaAcc = criarAcumulador();
 for (const file of readdirSync(migrationsDir)
   .filter((f) => f.endsWith(".sql"))
   .sort()) {
   const sql = stripSqlComments(readFileSync(path.join(migrationsDir, file), "utf8"));
+  schemaAcc.aplicarArquivo(file, sql);
   // ORDEM DE ORIGEM, nao ordem de categoria. A primeira versao aplicava todos
   // os CREATE do arquivo e so depois todos os DROP, entao um arquivo que faz
   // `drop function x; create function x;` (padrao para mudar assinatura)
@@ -710,11 +724,129 @@ if (!anonKey) {
 }
 
 // ---------------------------------------------------------------------------
-// POLICIES E INDICES: enumerados da fonte, SEM caminho de verificacao.
+// COLUNAS, INDICES e POLICIES: agora VERIFICADOS contra o catalogo do Postgres.
+//
+// Antes esta secao so IMPRIMIA as contagens, porque o PostgREST nao expoe
+// pg_indexes nem pg_policy nem information_schema.columns. O caminho que faltava
+// e o endpoint SQL da Management API (ver scripts/lib/pgIntrospect.ts). Foi a
+// ausencia desta verificacao que deixou `billing_events.processed_at` faltar em
+// producao com o guard verde.
 // ---------------------------------------------------------------------------
-console.log(
-  `[checkMigrationsApplied] ${policiesDeclaradas.size} policy(s) e ${indicesDeclarados.size} indice(s) declarados nas migrations. NAO VERIFICADOS: o PostgREST nao expoe nenhum dos dois e o projeto nao tem conexao direta ao Postgres. Ver docs/limites-do-guard-de-migrations.md.`,
-);
+const esquema = schemaAcc.resultado();
+
+// Aborto em nao classificado. Vem ANTES de qualquer comparacao: um parser que
+// nao leu tudo produz um conjunto menor, e conjunto menor comparado com sucesso
+// e exatamente a forma de falhar passando.
+if (esquema.naoClassificados.length > 0) {
+  console.error(
+    `[checkMigrationsApplied] o parser de colunas/indices/policies nao classificou ${esquema.naoClassificados.length} ocorrencia(s):`,
+  );
+  for (const item of esquema.naoClassificados) console.error(`  ${item}`);
+  console.error(
+    "Uma forma de SQL nova apareceu. Ajuste scripts/lib/declaredSchema.ts (bloco de FORMAS RECONHECIDAS) antes de confiar neste script.",
+  );
+  process.exit(1);
+}
+
+// Assercao de tamanho do conjunto, mesma regra dos outros EXPECTED_*: MEXER
+// NESTES NUMEROS E ATO DELIBERADO, no mesmo commit da migration que cria ou
+// remove o objeto, com o nome dele na mensagem. Valores medidos em 2026-07-28
+// sobre as 117 migrations do diretorio.
+const EXPECTED_COLUMN_COUNT = 880;
+const EXPECTED_INDEX_COUNT = 134;
+const EXPECTED_POLICY_COUNT = 68;
+
+const conjuntos: Array<[string, number, number]> = [
+  ["colunas", esquema.colunas.size, EXPECTED_COLUMN_COUNT],
+  ["indices", esquema.indices.size, EXPECTED_INDEX_COUNT],
+  ["policies", esquema.policies.size, EXPECTED_POLICY_COUNT],
+];
+for (const [rotulo, real, esperado] of conjuntos) {
+  if (real !== esperado) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] o conjunto de ${rotulo} declaradas mudou: ${real}, esperado ${esperado}. Se a mudanca e esperada, atualize a constante no mesmo commit da migration.`,
+    );
+  }
+}
+
+const projectRef = process.env.SUPABASE_PROJECT_REF;
+const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
+
+if (!projectRef || !accessToken) {
+  // MESMO padrao do bloco de RLS acima (CHECK_RLS_OBRIGATORIO), de proposito:
+  // local sem a credencial AVISA e segue; no CI a ausencia FALHA. Inventar aqui
+  // uma regra mais rigida que a do vizinho quebraria o CI de toda branch no
+  // primeiro push, antes de o secret existir, e o custo disso e o guard virar
+  // ruido que se aprende a ignorar.
+  //
+  // AVISO NAO E VERDE: a mensagem diz quantos objetos ficaram sem conferencia,
+  // e o CI (CHECK_SCHEMA_OBRIGATORIO=1) transforma isso em falha. Sem o secret
+  // configurado, o CI cobra e a mensagem explica o que fazer.
+  const obrigatorio = process.env.CHECK_SCHEMA_OBRIGATORIO === "1";
+  const mensagem =
+    `[checkMigrationsApplied] colunas/indices/policies NAO verificados: faltam SUPABASE_PROJECT_REF e/ou SUPABASE_ACCESS_TOKEN. ` +
+    `${esquema.colunas.size} coluna(s), ${esquema.indices.size} indice(s) e ${esquema.policies.size} policy(s) declaradas ficaram sem conferencia.`;
+  if (obrigatorio) {
+    houveFalha = true;
+    console.error(mensagem);
+  } else {
+    console.warn(`${mensagem} (defina CHECK_SCHEMA_OBRIGATORIO=1 para exigir).`);
+  }
+} else {
+  const deps: IntrospectDeps = { projectRef, accessToken };
+  const [colsDb, idxDb, polDb] = await Promise.all([
+    colunasReais(deps),
+    indicesReais(deps),
+    policiesReais(deps),
+  ]);
+
+  const faltando = (
+    rotulo: string,
+    declarados: Map<string, string>,
+    reais: Set<string>,
+  ): void => {
+    const ausentes = [...declarados.keys()].filter((k) => !reais.has(k)).sort();
+    if (ausentes.length === 0) {
+      console.log(
+        `[checkMigrationsApplied] ${declarados.size} ${rotulo} declaradas existem no banco alvo.`,
+      );
+      return;
+    }
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] ${ausentes.length} ${rotulo} declaradas NAO existem no banco alvo:`,
+    );
+    for (const k of ausentes) {
+      console.error(`  AUSENTE: ${k}   (declarada em ${declarados.get(k)})`);
+    }
+  };
+
+  faltando("coluna(s)", esquema.colunas, colsDb);
+  faltando("indice(s)", esquema.indices, idxDb);
+  faltando("policy(s)", esquema.policies, polDb);
+
+  // Direcao inversa. AVISO, nao falha: o baseline 20260517231011_remote_schema
+  // foi gerado por dump de um banco que ja existia, entao objeto sem declaracao
+  // e esperado ali. O numero fica visivel para uma queda ou um salto aparecer.
+  const inversa = [
+    ["coluna(s)", colsDb, esquema.colunas] as const,
+    ["indice(s)", idxDb, esquema.indices] as const,
+    ["policy(s)", polDb, esquema.policies] as const,
+  ];
+  for (const [rotulo, reais, declarados] of inversa) {
+    const semDeclaracao = [...reais].filter((k) => !declarados.has(k));
+    if (semDeclaracao.length > 0) {
+      console.warn(
+        `  direcao inversa: ${semDeclaracao.length} ${rotulo} no banco sem declaracao nas migrations (esperado no baseline de dump).`,
+      );
+    }
+  }
+
+  console.log(
+    "[checkMigrationsApplied] NAO verificados nem aqui: tipo/nullability/default de coluna, expressao de policy, definicao de indice, constraints, triggers, enums e grants. Ver docs/limites-do-guard-de-migrations.md.",
+  );
+}
 
 if (houveFalha) {
   console.error(
