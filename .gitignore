@@ -11,6 +11,16 @@ yarn-error.log*
 .env.local
 .env.*.local
 
+# Backups do `.env` criados por harness (pre-commit, probes de fidelidade).
+# NAO sao arquivos temporarios inofensivos: sao COPIA INTEGRAL do `.env`, com a
+# chave sk_live_ da Stripe e o service role do Supabase dentro. Ficavam como
+# untracked, entao um `git add -A` distraido publicaria segredo de producao no
+# repositorio. O `.env` proprio ja e ignorado desde a primeira linha; os backups
+# dele nao eram.
+.env.pre-commit-bak
+.env.probe-bak
+.env*-bak
+
 # Claude Code
 .claude/
 .agents/
