@@ -4,7 +4,15 @@ import {
   signupSourceFromUrl,
 } from "@/lib/analytics";
 import { assertSupabaseConfigured, supabase } from "@/lib/supabase";
-import { hasOAuthCallbackInUrl } from "@/lib/authCallback";
+import {
+  hasOAuthCallbackInUrl,
+  readAuthErrorFromUrl,
+} from "@/lib/authCallback";
+import {
+  authErrorFields,
+  reportAuthDiagnostic,
+  reportAuthFailure,
+} from "@/lib/authTelemetry";
 import { reconcilePendingQuizResult } from "@/services/careerQuizService";
 import {
   PENDING_CONSENT_KEY,
@@ -148,10 +156,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void reconcilePendingQuizResult();
     }
     let mounted = true;
+    // Referência de tempo do boot, para o elapsed_ms do erro vindo na URL (esse
+    // caminho não tem um "início da troca" próprio: quando a página carrega, a
+    // falha já aconteceu no provider).
+    const bootStartedAt = Date.now();
     let safetyTimer: number | undefined;
+    // Havia callback de OAuth na URL quando este effect começou? Capturado UMA vez,
+    // antes de qualquer await, porque o supabase-js remove o `?code=` da URL durante
+    // a própria inicialização: consultar depois pode dar false e perderíamos a
+    // medição de 1.7. Usado SÓ para timing; a lógica de segurar o loading continua
+    // consultando a URL onde já consultava, para não mexer no comportamento testado.
+    const callbackPresentAtBoot = hasOAuthCallbackInUrl();
+    // Instante de referência do retorno do OAuth, e trava de "só reporta uma vez":
+    // sem ela, TOKEN_REFRESHED depois do login contaria como um segundo retorno e
+    // inflaria a distribuição com tempos que não são de retorno nenhum.
+    //
+    // Semeado AQUI, no boot, e não dentro do ramo que segura o loading: quando a
+    // troca PKCE termina ANTES do nosso getSession resolver, não passamos por
+    // aquele ramo, e é justamente esse o caminho rápido e saudável que o
+    // histograma do 1.7 mais precisa conter. Semear só no ramo lento deixaria a
+    // distribuição enviesada para os casos ruins, ou seja, mediria o oposto do
+    // que a pergunta pede.
+    let oauthReturnStartedAt: number | null = callbackPresentAtBoot
+      ? bootStartedAt
+      : null;
+    let oauthOutcomeReported = false;
     let retryTimer: number | undefined;
     let skeletonTimer: number | undefined;
     let retryAttempt = 0;
+    // Início da primeira tentativa do ciclo atual de perfil. Alimenta elapsed_ms do
+    // log de falha de perfil: mede o ciclo inteiro (com os retries), não a última
+    // tentativa, porque o que importa é quanto tempo a pessoa ficou sem perfil.
+    let profileFetchStartedAt = Date.now();
     // generationRef é compartilhado com refreshProfile (escopo do componente).
     // Use sempre generationRef.current dentro deste effect para que qualquer
     // bump externo (refreshProfile) seja observado pelas chamadas em voo aqui.
@@ -161,6 +197,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.clearTimeout(safetyTimer);
         safetyTimer = undefined;
       }
+    }
+
+    // Desfecho do retorno do OAuth, reportado no máximo uma vez por carga de
+    // página. Concentrado numa função só porque o instante medido é o mesmo em
+    // todos os caminhos: chamar reportAuthDiagnostic solto em cada ramo abriria a
+    // porta para dois deles dispararem juntos e contarem o mesmo retorno duas vezes.
+    function reportOAuthOutcome(stage: "oauth_return_succeeded") {
+      if (oauthOutcomeReported || oauthReturnStartedAt === null) return;
+      oauthOutcomeReported = true;
+      reportAuthDiagnostic({
+        stage,
+        method: "oauth_redirect",
+        provider: "google",
+        elapsedMs: Date.now() - oauthReturnStartedAt,
+      });
     }
 
     function clearRetryTimer() {
@@ -201,6 +252,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const delay = computeRetryDelay(attempt);
         if (delay === null) {
           // Retries esgotados. Estado terminal: se não há perfil, status='error'.
+          //
+          // Item 1.4: este é o estágio 'profile', NÃO 'provider'. O provider fez a
+          // parte dele (existe sessão válida aqui, senão não estaríamos buscando
+          // perfil); o que falhou foi GET /api/me, ou seja, nossa API ou nosso
+          // banco. Para quem está na tela as duas falhas são idênticas, e é
+          // justamente por isso que o log tem que separá-las.
+          //
+          // Reportado só no terminal, não a cada tentativa: 3 eventos por falha
+          // inflariam a contagem e o que interessa é "quantas pessoas ficaram sem
+          // perfil", não quantos pacotes se perderam no caminho.
+          reportAuthFailure({
+            stage: "profile",
+            method: "oauth_redirect",
+            provider: null,
+            errorCode: "profile_fetch_exhausted",
+            errorMessage: error.message,
+            httpStatus:
+              (err as { status?: number | null } | null)?.status ?? null,
+            elapsedMs: Date.now() - profileFetchStartedAt,
+          });
           if (!profileRef.current) {
             setProfileStatus("error");
           }
@@ -223,6 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       generationRef.current += 1;
       const gen = generationRef.current;
       retryAttempt = 0;
+      profileFetchStartedAt = Date.now();
       clearRetryTimer();
       clearSkeletonTimer();
       if (mode === "initial" && !profileRef.current) {
@@ -269,6 +341,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           reconcileQuizForSession(initialSession);
         }
 
+        // Item 1.2: erro do provider na URL de callback. Antes isso era ignorado
+        // por completo (hasAuthErrorInUrl existia e só o fluxo de recuperação de
+        // senha consumia), então "redirect fora da allowlist" e "usuário cancelou"
+        // chegavam como uma tela deslogada sem explicação e sem registro.
+        //
+        // Só REGISTRA, sem mudar o fluxo: este commit é de instrumentação, e a
+        // tela explicativa vem no próximo. Reportar antes de tratar é de propósito,
+        // porque é o registro que diz qual `error_code` chega de verdade, e é ele
+        // que decide quais mensagens a tela precisa ter.
+        const urlError = readAuthErrorFromUrl();
+        if (urlError) {
+          reportAuthFailure({
+            stage: "provider",
+            method: "oauth_redirect",
+            provider: "google",
+            errorCode: urlError.errorCode ?? urlError.error,
+            errorMessage: urlError.description,
+            elapsedMs: Date.now() - bootStartedAt,
+          });
+        }
+
         // Callback de OAuth em andamento: getSession resolveu null mas a URL ainda
         // tem ?code= (PKCE) / token no hash (implicit). A troca vai concluir e
         // emitir SIGNED_IN. NÃO feche o loading agora, senão abrimos a janela
@@ -277,8 +370,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.info("[auth] holding loading for OAuth callback");
           // Salvaguarda: se o SIGNED_IN nunca chegar (ex.: troca PKCE falha), não
           // travar em spinner eterno, degrada graciosamente para "não autenticado".
+          const callbackStartedAt = Date.now();
           safetyTimer = window.setTimeout(() => {
             if (!mounted) return;
+            // Item 1.3. Esta é a quarta e última superfície de falha a ganhar
+            // registro, e a mais importante das quatro: até aqui o único rastro do
+            // caminho era um console.warn que ninguém lê, então a hipótese de que
+            // este timer derruba login SAUDÁVEL nunca pôde ser medida. O
+            // comportamento continua o mesmo por enquanto, de propósito: o conserto
+            // é o próximo commit, e ele precisa de linha de base para ser avaliado.
+            reportAuthFailure({
+              stage: "session_unconfirmed",
+              method: "oauth_redirect",
+              provider: "google",
+              errorCode: "pkce_exchange_unconfirmed",
+              elapsedMs: Date.now() - callbackStartedAt,
+            });
             console.warn(
               "[auth] safety timeout fired; treating as unauthenticated",
             );
@@ -305,6 +412,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       clearSafetyTimer();
       setSession(nextSession);
+      // Item 1.7: retorno de OAuth concluído com sucesso. Medido do início do
+      // retorno até o SIGNED_IN confirmado. Só conta quando havia callback na URL
+      // no boot (`oauthReturnStartedAt`), então login por e-mail/senha e refresh de
+      // token não entram na distribuição.
+      if (event === "SIGNED_IN" && nextSession) {
+        reportOAuthOutcome("oauth_return_succeeded");
+      }
       if (event === "SIGNED_OUT" || !nextSession) {
         quizReconcileUserRef.current = null;
         cancelProfileLifecycle();
@@ -421,6 +535,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         captureUserSignedUpForEmail(signupSourceFromUrl());
       } catch (error) {
         console.error("[AuthContext] signUp failed", error);
+        // Reportado AQUI, dentro da função, e não em cada tela de cadastro: guarda
+        // no chamador precisa ser repetida em Auth.tsx e AuthModal.tsx e desaparece
+        // na primeira tela nova que alguém escrever sem lembrar.
+        const fields = authErrorFields(error);
+        reportAuthFailure({
+          stage: "provider",
+          method: "email_signup",
+          provider: "email",
+          errorCode: fields.code,
+          errorMessage: fields.message,
+          httpStatus: fields.status,
+        });
         throw error;
       }
     },
@@ -434,7 +560,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password,
     });
 
-    if (error) throw error;
+    if (error) {
+      const fields = authErrorFields(error);
+      reportAuthFailure({
+        stage: "provider",
+        method: "email_password",
+        provider: "email",
+        errorCode: fields.code,
+        errorMessage: fields.message,
+        httpStatus: fields.status,
+      });
+      throw error;
+    }
 
     if (data.user) {
       posthog.identify(data.user.id);
@@ -446,6 +583,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (provider: OAuthProvider, options?: { redirectTo?: string }) => {
       const client = assertSupabaseConfigured();
       posthog.capture("oauth_sign_in_started", { provider });
+      const startedAt = Date.now();
 
       const { error } = await client.auth.signInWithOAuth({
         provider,
@@ -458,7 +596,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Falha ANTES de sair da página (ex.: provider desabilitado no projeto,
+        // redirectTo fora da allowlist). Distinta da falha no RETORNO, que é
+        // reportada no boot do effect: as duas são stage 'provider', e o que as
+        // separa no log é o error_code.
+        const fields = authErrorFields(error);
+        reportAuthFailure({
+          stage: "provider",
+          method: "oauth_redirect",
+          provider,
+          errorCode: fields.code ?? "oauth_start_failed",
+          errorMessage: fields.message,
+          httpStatus: fields.status,
+          elapsedMs: Date.now() - startedAt,
+        });
+        throw error;
+      }
     },
     [],
   );
