@@ -6,6 +6,10 @@ import * as Sentry from "@sentry/node";
 import { createServer } from "http";
 
 import app from "./app";
+// Guarda de ambiente ANTES de qualquer coisa que escreva: se o processo esta
+// fora de producao apontando para credenciais de producao, ele nao sobe. Mora em
+// modulo proprio (nao em env.ts) porque 7 scripts avaliam env.ts de proposito.
+import { assertAmbienteSeguro } from "./lib/ambienteSeguro";
 import { env } from "./lib/env";
 import {
   createEmailCampaignWorker,
@@ -38,6 +42,8 @@ process.on("uncaughtException", (err) => {
 });
 
 async function startServer() {
+  assertAmbienteSeguro();
+
   const server = createServer(app);
   const emailWorker = env.redisUrl
     ? (() => {
