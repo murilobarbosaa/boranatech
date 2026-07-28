@@ -43,6 +43,7 @@ import { TaskChecklist } from "./TaskChecklist";
 import { TaskComments } from "./TaskComments";
 import { TaskProperties } from "./TaskProperties";
 import { rowActionClass, secondaryButtonClass } from "./taskBoardStyles";
+import { LAYER_DIALOG } from "./taskLayers";
 import { shortIdOf } from "./taskDeepLink";
 import { useAutoSave } from "./useAutoSave";
 import type {
@@ -602,7 +603,8 @@ export function TaskModal({
         }}
       >
         <DialogContent
-          className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 bg-white p-0 sm:h-[88vh] sm:w-[min(72rem,94vw)] sm:max-w-none sm:rounded-2xl sm:border-2 sm:border-slate-950 sm:shadow-[6px_6px_0_#0f172a]"
+          // Acima do header do admin: sem isto o topo do modal fica inalcancavel.
+          className={`${LAYER_DIALOG} flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 bg-white p-0 sm:h-[88vh] sm:w-[min(72rem,94vw)] sm:max-w-none sm:rounded-2xl sm:border-2 sm:border-slate-950 sm:shadow-[6px_6px_0_#0f172a]`}
         >
           <header className="flex shrink-0 items-center justify-between gap-3 border-b-2 border-slate-200 px-4 py-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-2">
@@ -651,7 +653,7 @@ export function TaskModal({
           </DialogDescription>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row">
-            <div className="min-w-0 flex-1 space-y-5 px-4 py-4 sm:px-6">
+            <div className="min-w-0 flex-1 space-y-5 px-4 pt-4 pb-10 sm:px-6">
               {loading || !data || !task ? (
                 <>
                   <Skeleton className="h-9 w-2/3 bg-slate-200" />
@@ -774,7 +776,7 @@ export function TaskModal({
               )}
             </div>
 
-            <aside className="shrink-0 border-t-2 border-slate-200 bg-slate-50 px-4 py-4 sm:px-6 lg:w-[22rem] lg:border-l-2 lg:border-t-0">
+            <aside className="shrink-0 border-t-2 border-slate-200 bg-slate-50 px-4 pt-4 pb-10 sm:px-6 lg:w-[22rem] lg:border-l-2 lg:border-t-0">
               {loading || !data || !task ? (
                 <div className="space-y-2">
                   <Skeleton className="h-7 w-full bg-slate-200" />
@@ -850,7 +852,7 @@ export function TaskModal({
       </Dialog>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogContent className="rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a]">
+        <AlertDialogContent className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}>
           <AlertDialogTitle className="font-display text-2xl font-black text-slate-950">
             Excluir tarefa
           </AlertDialogTitle>

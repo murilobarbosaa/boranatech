@@ -46,9 +46,11 @@ import {
 } from "@/services/adminTasksService";
 
 import { BoardColumn } from "./BoardColumn";
+import { BoardManagerDialog } from "./BoardManagerDialog";
 import { BoardToolbar } from "./BoardToolbar";
 import { TaskListView } from "./TaskListView";
 import { PromptDialog } from "./PromptDialog";
+import { LAYER_DIALOG, LAYER_IN_DIALOG } from "./taskLayers";
 import { resolveBoardDrop } from "./resolveBoardDrop";
 import {
   resolveColumnOrder,
@@ -127,6 +129,7 @@ export function TasksDashboard() {
     loading,
     error,
     refresh,
+    reloadBoards,
     applyLocal,
   } = useBoardSnapshot(boardId, includeArchived);
 
@@ -140,6 +143,7 @@ export function TasksDashboard() {
   const [deleteMoveTo, setDeleteMoveTo] = useState<string>("");
   const [newColumnOpen, setNewColumnOpen] = useState(false);
   const [wipDialogColumnId, setWipDialogColumnId] = useState<string | null>(null);
+  const [boardManagerOpen, setBoardManagerOpen] = useState(false);
 
   // Refs para handlers ESTAVEIS: sem isto, todo useCallback dependeria de
   // `snapshot`/`search` e mudaria de identidade a cada render, o que anularia o
@@ -1110,6 +1114,7 @@ export function TasksDashboard() {
         onViewChange={(next) => setViewState({ view: next })}
         onIncludeArchivedChange={(next) => setViewState({ includeArchived: next })}
         onClearFilters={clearFilters}
+        onManageBoards={() => setBoardManagerOpen(true)}
       />
 
       {!canReorder && groups.some((group) => group.tasks.length > 1) ? (
@@ -1276,6 +1281,19 @@ export function TasksDashboard() {
         />
       ) : null}
 
+      <BoardManagerDialog
+        open={boardManagerOpen}
+        boards={boards}
+        onOpenChange={setBoardManagerOpen}
+        onChanged={() => void reloadBoards()}
+        onCreated={(id) => setBoardId(id)}
+        onDeleted={(id) => {
+          // Se o quadro excluido era o ativo, sai dele: continuar apontando para
+          // um id que nao existe mais deixaria a tela em erro permanente.
+          if (boardId === id) setBoardId(null);
+        }}
+      />
+
       <PromptDialog
         open={newColumnOpen}
         title="Nova etapa"
@@ -1336,7 +1354,7 @@ export function TasksDashboard() {
           }
         }}
       >
-        <AlertDialogContent className="rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a]">
+        <AlertDialogContent className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}>
           <AlertDialogTitle className="font-display text-2xl font-black text-slate-950">
             Excluir etapa
           </AlertDialogTitle>
@@ -1358,6 +1376,8 @@ export function TasksDashboard() {
                 id="tasks-move-to"
                 size="sm"
                 accent="gold"
+                // Select DENTRO do AlertDialog: precisa subir acima dele.
+                contentClassName={LAYER_IN_DIALOG}
                 value={deleteMoveTo}
                 onValueChange={setDeleteMoveTo}
                 placeholder="Escolha a etapa de destino"
