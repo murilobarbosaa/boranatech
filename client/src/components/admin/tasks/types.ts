@@ -14,12 +14,12 @@
 
 export type TaskPriority = "baixa" | "media" | "alta" | "urgente";
 
-export type TaskType =
-  | "feature"
-  | "bug"
-  | "melhoria"
-  | "debito_tecnico"
-  | "tarefa";
+/**
+ * 'bug' saiu do conjunto aceito (bug tem tela propria). O valor continua sendo
+ * RENDERIZAVEL pelo typeMetaOf, porque linha antiga de histórico pode cita-lo e
+ * registro historico nao vira buraco por causa de uma opcao removida do menu.
+ */
+export type TaskType = "feature" | "melhoria" | "debito_tecnico" | "tarefa";
 
 export type TaskActivityAction =
   | "created"

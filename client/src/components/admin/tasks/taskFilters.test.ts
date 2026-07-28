@@ -104,7 +104,7 @@ describe("matchesFilters", () => {
       matchesFilters(task({ priority: "alta" }), withFilters({ priorities: ["alta"] }), CTX),
     ).toBe(true);
     expect(
-      matchesFilters(task({ type: "bug" }), withFilters({ types: ["feature"] }), CTX),
+      matchesFilters(task({ type: "melhoria" }), withFilters({ types: ["feature"] }), CTX),
     ).toBe(false);
   });
 
@@ -133,8 +133,8 @@ describe("matchesFilters", () => {
   });
 
   it("filtros combinam em E entre si", () => {
-    const f = withFilters({ priorities: ["alta"], types: ["bug"] });
-    expect(matchesFilters(task({ priority: "alta", type: "bug" }), f, CTX)).toBe(true);
+    const f = withFilters({ priorities: ["alta"], types: ["melhoria"] });
+    expect(matchesFilters(task({ priority: "alta", type: "melhoria" }), f, CTX)).toBe(true);
     expect(matchesFilters(task({ priority: "alta", type: "feature" }), f, CTX)).toBe(false);
   });
 

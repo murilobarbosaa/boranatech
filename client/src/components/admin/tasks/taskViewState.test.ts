@@ -10,13 +10,13 @@ describe("readViewState", () => {
 
   it("le tudo", () => {
     const state = readViewState(
-      "?section=tarefas&q=login&assignee=u1,u2&labels=l1&priority=alta,urgente&type=bug&due=late&mine=1&group=priority&view=lista&archived=1",
+      "?section=tarefas&q=login&assignee=u1,u2&labels=l1&priority=alta,urgente&type=melhoria&due=late&mine=1&group=priority&view=lista&archived=1",
     );
     expect(state.filters.query).toBe("login");
     expect(state.filters.assigneeIds).toEqual(["u1", "u2"]);
     expect(state.filters.labelIds).toEqual(["l1"]);
     expect(state.filters.priorities).toEqual(["alta", "urgente"]);
-    expect(state.filters.types).toEqual(["bug"]);
+    expect(state.filters.types).toEqual(["melhoria"]);
     expect(state.filters.due).toBe("late");
     expect(state.filters.mine).toBe(true);
     expect(state.groupBy).toBe("priority");
@@ -92,7 +92,7 @@ describe("writeViewState", () => {
         assigneeIds: ["u1"],
         labelIds: ["l1", "l2"],
         priorities: ["urgente" as const],
-        types: ["bug" as const],
+        types: ["melhoria" as const],
         due: "week" as const,
         mine: true,
       },

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { activityDotOf, activityLineOf } from "./taskActivityMeta";
+import { typeMetaOf } from "./taskBoardStyles";
 import type { TaskActivity, TaskActivityAction } from "./types";
 
 function entry(
@@ -154,6 +155,27 @@ describe("activityDotOf", () => {
   it("kind desconhecido cai no neutro em vez de undefined", () => {
     expect(activityDotOf("nao_existe")).toBe(activityDotOf("other"));
     expect(activityDotOf("nao_existe")).toBeTruthy();
+  });
+});
+
+describe("tipo removido do menu continua legivel", () => {
+  // `bug` saiu do conjunto aceito (bug tem tela propria), mas registro historico
+  // nao pode virar buraco porque uma opcao saiu do menu. O fallback neutro e
+  // para o que NUNCA existiu, nao para o que existiu e foi removido.
+  it("typeMetaOf ainda conhece `bug` e nao cai no neutro", () => {
+    const bug = typeMetaOf("bug");
+    expect(bug.label).toBe("Bug");
+    expect(bug.label).not.toBe(typeMetaOf("valor_que_nunca_existiu").label);
+  });
+
+  it("valor que nunca existiu continua caindo no neutro", () => {
+    expect(typeMetaOf("teletransporte").label).toBe("Outro");
+  });
+
+  it("a linha de histórico de mudanca de tipo para bug continua legivel", () => {
+    expect(entryText("type_changed", { from: "tarefa", to: "bug" })).toBe(
+      "mudou o tipo de tarefa para bug",
+    );
   });
 });
 

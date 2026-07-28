@@ -29,13 +29,7 @@ export const DEFAULT_VIEW_STATE: TaskViewState = {
 };
 
 const PRIORITIES: TaskPriority[] = ["baixa", "media", "alta", "urgente"];
-const TYPES: TaskType[] = [
-  "feature",
-  "bug",
-  "melhoria",
-  "debito_tecnico",
-  "tarefa",
-];
+const TYPES: TaskType[] = ["feature", "melhoria", "debito_tecnico", "tarefa"];
 const GROUPS: GroupBy[] = ["column", "assignee", "priority"];
 const DUES: DueFilter[] = ["", "late", "week"];
 

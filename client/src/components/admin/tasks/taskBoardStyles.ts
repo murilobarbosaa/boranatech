@@ -42,10 +42,22 @@ const PRIORITY_META: Record<TaskPriority, BadgeMeta> = {
 
 const TYPE_META: Record<TaskType, BadgeMeta> = {
   feature: { label: "Feature", badge: "bg-violet-100 text-violet-800" },
-  bug: { label: "Bug", badge: "bg-rose-100 text-rose-800" },
   melhoria: { label: "Melhoria", badge: "bg-sky-100 text-sky-800" },
   debito_tecnico: { label: "Débito técnico", badge: "bg-amber-100 text-amber-900" },
   tarefa: { label: "Tarefa", badge: "bg-slate-100 text-slate-700" },
+};
+
+/**
+ * Tipos que saíram do conjunto aceito mas continuam RENDERIZAVEIS.
+ *
+ * `bug` deixou de ser opcao (bug tem tela propria), e tirar o rotulo junto faria
+ * uma linha de histórico dizendo "mudou o tipo para bug" virar "Outro", ou pior,
+ * um card antigo perder a identificacao. Registro historico nao pode degradar
+ * porque o menu mudou; o fallback neutro e para o que NUNCA existiu, nao para o
+ * que existiu e saiu.
+ */
+const TYPE_META_HISTORICO: Record<string, BadgeMeta> = {
+  bug: { label: "Bug", badge: "bg-rose-100 text-rose-800" },
 };
 
 const NEUTRAL_META: BadgeMeta = {
@@ -58,7 +70,9 @@ export function priorityMetaOf(value: string): BadgeMeta {
 }
 
 export function typeMetaOf(value: string): BadgeMeta {
-  return TYPE_META[value as TaskType] ?? NEUTRAL_META;
+  return (
+    TYPE_META[value as TaskType] ?? TYPE_META_HISTORICO[value] ?? NEUTRAL_META
+  );
 }
 
 /** Opcoes para os selects, derivadas dos mapas (fonte unica). */
