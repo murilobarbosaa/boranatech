@@ -7,6 +7,9 @@ import { memoryLocation } from "wouter/memory-location";
 // Mock de framer-motion: AnimatedCounter exibe o `value` no DOM (sem animação
 // de viewport), permitindo provar o que aparece na tela após cada cenário.
 // =============================================================================
+// Ambiente de movimento controlado pelo teste (prefers-reduced-motion).
+const motionEnv = vi.hoisted(() => ({ prefersReduced: false }));
+
 vi.mock("framer-motion", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
 
@@ -80,15 +83,21 @@ vi.mock("framer-motion", async () => {
     return { stop: () => {} };
   }
 
-  function useInView() {
-    return true;
-  }
+  const actual =
+    await vi.importActual<typeof import("framer-motion")>("framer-motion");
 
   return {
     motion: fakeMotion,
     AnimatePresence: ({ children }: { children: React.ReactNode }) =>
       React.createElement(React.Fragment, null, children),
-    useInView,
+    // useInView REAL, de propósito. A versão anterior deste mock era
+    // `useInView: () => true`, o que excluía da suíte exatamente o mecanismo
+    // que estava quebrado: o contador travava em 0 porque o observer nunca
+    // disparava, e o teste passava verde porque nunca exercitou o observer.
+    // Aqui ele roda de verdade, contra o IntersectionObserver stubado abaixo,
+    // que o teste controla (dispara / nunca dispara / ausente).
+    useInView: actual.useInView,
+    useReducedMotion: () => motionEnv.prefersReduced,
     useMotionValue,
     useTransform,
     animate,
@@ -130,11 +139,35 @@ const PLACEHOLDER_TEXT = "Já estão encontrando o caminho em tech";
 
 let fetchSpy: ReturnType<typeof vi.fn>;
 
-beforeEach(() => {
+// Modo do IntersectionObserver stubado:
+//   "fire"  -> o alvo é reportado como visível (situação normal do badge, que
+//              fica acima da dobra);
+//   "never" -> o observer nunca chama o callback. É o cenário do bug: o alvo
+//              cai fora da root e a animação nunca é disparada.
+let ioMode: "fire" | "never" = "fire";
+// rootMargins efetivamente pedidos ao IntersectionObserver, pra travar a
+// decisão de não usar margem negativa nos lados.
+let ioRootMargins: string[] = [];
+
+function stubIntersectionObserver() {
   vi.stubGlobal(
     "IntersectionObserver",
     class {
-      observe() {}
+      private cb: IntersectionObserverCallback;
+      constructor(cb: IntersectionObserverCallback, opts?: { rootMargin?: string }) {
+        this.cb = cb;
+        ioRootMargins.push(opts?.rootMargin ?? "");
+      }
+      observe(target: Element) {
+        if (ioMode === "never") return;
+        const entry = {
+          target,
+          isIntersecting: true,
+          intersectionRatio: 1,
+        } as unknown as IntersectionObserverEntry;
+        // assíncrono, como o observer real
+        setTimeout(() => this.cb([entry], this as never), 0);
+      }
       unobserve() {}
       disconnect() {}
       takeRecords() {
@@ -142,6 +175,13 @@ beforeEach(() => {
       }
     },
   );
+}
+
+beforeEach(() => {
+  ioMode = "fire";
+  ioRootMargins = [];
+  motionEnv.prefersReduced = false;
+  stubIntersectionObserver();
   vi.stubGlobal(
     "ResizeObserver",
     class {
@@ -459,5 +499,105 @@ describe("Hero: instrumentação Sentry do contador (não muda a UI, só captura
     await expectsNumber("45");
     expect(sentrySpy.captureMessage).not.toHaveBeenCalled();
     expect(sentrySpy.captureException).not.toHaveBeenCalled();
+  });
+});
+
+// ===========================================================================
+// Gatilho da animação. Estes testes existem porque o contador ficou travado em
+// "+0" em produção e as duas correções anteriores passaram verde: a suíte
+// mockava `useInView` para `true`, então o gatilho, que era o defeito, nunca
+// era exercitado. Aqui o `useInView` é o real e quem varia é o observer.
+// ===========================================================================
+describe("Hero: gatilho da animação do contador (nunca sobra 0 na tela)", () => {
+  it("[observer-dispara] alvo reportado visível: anima até o valor final", async () => {
+    window.localStorage.setItem(LS_KEY, "2776");
+    fetchSpy.mockReturnValue(new Promise(() => {}));
+
+    renderHero();
+
+    await expectsNumber("2776");
+  });
+
+  it("[observer-nunca-dispara-cai-no-fallback] observer mudo: o valor final aparece assim mesmo, sem sobrar 0", async () => {
+    ioMode = "never";
+    window.localStorage.setItem(LS_KEY, "2776");
+    fetchSpy.mockReturnValue(new Promise(() => {}));
+
+    renderHero();
+
+    // Antes do fallback o contador está em 0: é o estado que ficava permanente.
+    expect(bodyText()).toMatch(/\+\s*0\s*pessoas/);
+
+    // E o fallback tem que resgatar sozinho.
+    await waitFor(
+      () => {
+        const m = bodyText().match(
+          /\+\s*([\d.]+)\s*pessoas já encontraram seu caminho/,
+        );
+        expect(m).not.toBeNull();
+        expect(m![1].replace(/[. ]/g, "")).toBe("2776");
+      },
+      { timeout: 4000 },
+    );
+  });
+
+  it("[intersection-observer-ausente] ambiente sem IntersectionObserver: ainda chega no valor final", async () => {
+    vi.stubGlobal("IntersectionObserver", undefined);
+    window.localStorage.setItem(LS_KEY, "2776");
+    fetchSpy.mockReturnValue(new Promise(() => {}));
+
+    renderHero();
+
+    await waitFor(
+      () => {
+        const m = bodyText().match(
+          /\+\s*([\d.]+)\s*pessoas já encontraram seu caminho/,
+        );
+        expect(m).not.toBeNull();
+        expect(m![1].replace(/[. ]/g, "")).toBe("2776");
+      },
+      { timeout: 4000 },
+    );
+  });
+
+  it("[movimento-reduzido-valor-final-direto] prefers-reduced-motion + observer mudo: valor final imediato, sem animação e sem 0", async () => {
+    motionEnv.prefersReduced = true;
+    ioMode = "never";
+    window.localStorage.setItem(LS_KEY, "2776");
+    fetchSpy.mockReturnValue(new Promise(() => {}));
+
+    renderHero();
+
+    // Imediato: sem esperar observer nem timeout de fallback.
+    const txt = bodyText();
+    expect(txt).toContain("2.776");
+    expect(txt).not.toMatch(/\+\s*0\s*pessoas/);
+  });
+
+  it("[sem-margem-negativa-lateral] nenhum observer do hero encolhe a root nos lados", () => {
+    window.localStorage.setItem(LS_KEY, "2776");
+    fetchSpy.mockReturnValue(new Promise(() => {}));
+
+    renderHero();
+
+    // Controle negativo: se ninguém observou nada, o teste não provou nada.
+    expect(ioRootMargins.length).toBeGreaterThan(0);
+
+    for (const margin of ioRootMargins) {
+      // rootMargin CSS-like: top right bottom left (1 a 4 valores).
+      const parts = margin.trim().split(/\s+/);
+      const [top, right = top, bottom = top, left = right] = parts;
+      expect(
+        parseFloat(right),
+        `rootMargin "${margin}" tem margem negativa à direita: encolhe a root e pode excluir alvo estreito`,
+      ).toBeGreaterThanOrEqual(0);
+      expect(
+        parseFloat(left),
+        `rootMargin "${margin}" tem margem negativa à esquerda: encolhe a root e pode excluir alvo estreito`,
+      ).toBeGreaterThanOrEqual(0);
+      // vertical pode ser negativo (dispara um pouco antes de entrar)
+      expect(Number.isNaN(parseFloat(top))).toBe(false);
+      expect(Number.isNaN(parseFloat(bottom))).toBe(false);
+    }
   });
 });

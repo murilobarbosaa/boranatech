@@ -6,6 +6,7 @@ import {
   motion,
   useInView,
   useMotionValue,
+  useReducedMotion,
   useTransform,
 } from "framer-motion";
 import {
@@ -178,25 +179,68 @@ function generateSCurvePath(
 // CONTADOR ANIMADO (dispara ao entrar no viewport, uma vez)
 // =========================================
 
-function AnimatedCounter({ value }: { value: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const count = useMotionValue(0);
+// Tempo até o fallback assumir quando o observer não dispara. Curto porque o
+// badge fica acima da dobra: se em 1.2s o gatilho não veio, ele não vem mais.
+const COUNTER_FALLBACK_MS = 1200;
+
+function AnimatedCounter({
+  value,
+  targetRef,
+}: {
+  value: number;
+  targetRef: React.RefObject<HTMLElement | null>;
+}) {
+  const prefersReduced = useReducedMotion();
+  // Sem IntersectionObserver o framer-motion lança dentro de um efeito passivo
+  // e derruba a árvore inteira (pior que exibir 0). Passando um ref vazio o
+  // useInView não observa nada, `isInView` fica false e o fallback resolve.
+  const unobservedRef = useRef<HTMLElement>(null);
+  const observedRef =
+    typeof IntersectionObserver !== "undefined" ? targetRef : unobservedRef;
+  // O alvo do observer é o BADGE, não o span de dígitos. O span tem largura
+  // dependente do conteúdo que ainda vai animar: no primeiro paint ele contém
+  // só o "0" (~10px) e, em viewport estreita, cabia inteiro dentro da faixa
+  // morta lateral criada pela margem negativa, então nunca intersectava e o
+  // contador ficava travado em 0 (medido quebrando em 320/344/375/390/402).
+  // Margem negativa só no eixo VERTICAL: nos lados ela encolhe a root e volta
+  // a excluir alvos estreitos.
+  const isInView = useInView(observedRef, {
+    once: true,
+    margin: "0px 0px -80px 0px",
+  });
+  // Rede de segurança: se o observer não disparar por qualquer motivo (alvo
+  // fora da root, IntersectionObserver indisponível, layout inesperado), o
+  // contador vai pro valor final assim mesmo. 0 nunca é estado final visível.
+  const [fallbackFired, setFallbackFired] = useState(false);
+  const count = useMotionValue(prefersReduced ? value : 0);
   const rounded = useTransform(count, (latest) =>
     Math.round(latest).toLocaleString("pt-BR"),
   );
 
   useEffect(() => {
-    if (isInView) {
-      const controls = animate(count, value, {
-        duration: 1.2,
-        ease: "easeOut",
-      });
-      return () => controls.stop();
+    // Movimento reduzido: valor final direto, sem animação.
+    if (prefersReduced) {
+      count.set(value);
+      return;
     }
-  }, [isInView, value, count]);
+    if (!isInView && !fallbackFired) return;
+    const controls = animate(count, value, {
+      duration: 1.2,
+      ease: "easeOut",
+    });
+    return () => controls.stop();
+  }, [isInView, fallbackFired, prefersReduced, value, count]);
 
-  return <motion.span ref={ref}>{rounded}</motion.span>;
+  useEffect(() => {
+    if (prefersReduced || isInView || fallbackFired) return;
+    const timeoutId = window.setTimeout(
+      () => setFallbackFired(true),
+      COUNTER_FALLBACK_MS,
+    );
+    return () => window.clearTimeout(timeoutId);
+  }, [prefersReduced, isInView, fallbackFired]);
+
+  return <motion.span>{rounded}</motion.span>;
 }
 
 // =========================================
@@ -513,6 +557,9 @@ export default function Hero() {
     readCachedUsersCount(),
   );
   const sectionRef = useRef<HTMLElement>(null);
+  // Alvo estável do observer do contador: largura do badge não depende do
+  // número que ainda vai animar.
+  const badgeRef = useRef<HTMLDivElement>(null);
 
   // Alterna o highlight do headline a cada 3s.
   useEffect(() => {
@@ -599,6 +646,7 @@ export default function Hero() {
       <div className="relative z-10 mx-auto max-w-5xl px-4 text-center">
         {/* 1) Badge social com triângulo de tooltip de mapa abaixo. */}
         <motion.div
+          ref={badgeRef}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.5 }}
@@ -608,8 +656,8 @@ export default function Hero() {
           <span className="text-sm font-bold text-slate-950">
             {usersCount !== null ? (
               <>
-                +<AnimatedCounter value={usersCount} /> pessoas já encontraram
-                seu caminho
+                +<AnimatedCounter value={usersCount} targetRef={badgeRef} />{" "}
+                pessoas já encontraram seu caminho
               </>
             ) : (
               "Já estão encontrando o caminho em tech"

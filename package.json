@@ -23,6 +23,7 @@
     "preview": "vite preview --host",
     "check": "tsc --noEmit && tsx scripts/generateRoadmapMeta.mts --check && tsx scripts/generateSitemap.mts --check && tsx scripts/checkCspHashes.mts",
     "check:migrations": "tsx scripts/checkMigrationsApplied.mts",
+    "check:hero-counter": "node scripts/checkHeroCounter.mjs",
     "report:ai-usage": "tsx scripts/aiUsageReport.mts",
     "check:persisted": "tsx scripts/checkPersistedAnalyses.mts",
     "posters": "tsx scripts/fetch-tmdb-posters.mjs",
