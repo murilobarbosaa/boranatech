@@ -167,14 +167,14 @@ const naoReconhecidasOutras: string[] = [];
 // quase nunca e "atualizar o numero": e descobrir o que parou de ser
 // reconhecido. Foi exatamente assim que a auditoria concluiu "so falta uma
 // tabela" olhando 38 de 72.
-const EXPECTED_TABLE_COUNT = 73;
+const EXPECTED_TABLE_COUNT = 81;
 
 // Mesma assercao de tamanho das tabelas, pelo mesmo motivo: pegar o caso em que
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
 // numeros e ato deliberado, no mesmo commit da migration que cria ou remove o
 // objeto.
-const EXPECTED_FUNCTION_COUNT = 24;
-const EXPECTED_TRIGGER_FUNCTION_COUNT = 3;
+const EXPECTED_FUNCTION_COUNT = 25;
+const EXPECTED_TRIGGER_FUNCTION_COUNT = 4;
 
 /** Remove comentarios de linha e de bloco antes de qualquer parse. */
 /**
@@ -593,7 +593,7 @@ if (expostas !== null) {
 // ---------------------------------------------------------------------------
 // RLS: verificada de fato, lendo com a chave anon.
 // ---------------------------------------------------------------------------
-const EXPECTED_RLS_COUNT = 73;
+const EXPECTED_RLS_COUNT = 81;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 const rlsVivas = [...rlsDeclarada].filter((t) => declared.has(t)).sort();
