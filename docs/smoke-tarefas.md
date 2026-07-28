@@ -300,3 +300,100 @@ curto (`DEV-…`) depois que o servidor responde.
 - Em viewport de celular (DevTools, ~390px): as colunas rolam na horizontal com
   encaixe (snap) e as setas `←`/`→` dos cards ficam **sempre visíveis**, já que
   não existe hover em toque.
+
+---
+
+# Smoke test do drag and drop (Fase 3)
+
+**Use um quadro sandbox, nunca o `DEV`.** Crie um board com key `TST` e apague no
+fim; o cascade leva colunas, tarefas e etiquetas junto. O motivo não é só evitar
+sujeira: criar e mover tarefa incrementa `next_number` de forma **irreversível**,
+e testar no `DEV` deixaria buracos permanentes na numeração antes de existir uma
+tarefa real.
+
+## 17. Clique versus arrasto
+
+O ponto mais fácil de quebrar da fase.
+
+1. **Clique** num card sem mexer o mouse: abre `?task=`.
+2. **Arraste** um card e solte: **não pode** abrir a tarefa ao soltar.
+3. Arraste um card e solte **no mesmo lugar**: nada acontece, e o Network não
+   mostra nenhum `PATCH /move`.
+4. Clique nas setas `←`/`→`: move sem abrir a tarefa e sem iniciar arrasto.
+
+## 18. Toque (obrigatório, e não é o mesmo teste do mouse)
+
+No DevTools, ative **device toolbar** e um perfil de celular, para os eventos
+serem de toque. Melhor ainda: abra pelo IP da rede (`http://192.168.x.x:3000`)
+num celular de verdade.
+
+Com **o mesmo dedo**, os três gestos precisam conviver:
+
+1. **Deslizar para cima/baixo** sobre a lista: rola a coluna. Não pode arrancar
+   o card.
+2. **Deslizar para os lados** sobre o board: rola entre colunas.
+3. **Pressionar e segurar (~0,2s) e então arrastar**: levanta o card.
+
+Se o card sair junto com a rolagem, o `delay` do `TouchSensor` está curto demais;
+se for difícil pegar o card, está longo. Está em `TasksDashboard.tsx`
+(`activationConstraint: { delay: 220, tolerance: 6 }`).
+
+## 19. Teclado
+
+Com `Tab`, chegue a um card e pressione **espaço**. As setas movem, **espaço**
+solta, **Esc** cancela. Com um leitor de tela ligado, os anúncios têm que sair em
+**português** ("Tarefa TST-3 movida para Em Progresso, posição 2 de 5"), nunca em
+inglês.
+
+## 20. Colunas por arrasto
+
+Arraste pela **alça** (o ícone de seis pontos à esquerda do nome). A coluna troca
+de lugar; recarregue e confirme que persistiu. Se aparecer `incomplete_order`, a
+lista enviada não continha todas as etapas.
+
+## 21. WIP durante o arrasto
+
+Defina limite `1` numa etapa que já tenha 1 tarefa e arraste outra por cima: a
+coluna destaca em **vermelho** em vez de violeta. **Solte assim mesmo**: tem que
+aceitar. O limite avisa, não bloqueia.
+
+## 22. Rebalanceamento de posição
+
+Coberto de forma automatizada contra um Postgres e um PostgREST reais, em
+`server/routes/adminTasks.rebalance.test.ts`. Ele **pula por padrão** (o CI não
+tem Docker) e roda assim:
+
+```bash
+docker network create bnt-test
+docker run -d --name bnt-pg --network bnt-test -e POSTGRES_PASSWORD=test \
+  -p 55432:5432 postgres:16-alpine
+
+# prelude: schema auth, auth.users, set_updated_at, roles anon/authenticated,
+# e um role apirole com bypassrls (o alvo aqui e a camada de dados, nao a RLS,
+# que o check:migrations ja verifica contra producao).
+psql -h localhost -p 55432 -U postgres -f <prelude.sql>
+psql -h localhost -p 55432 -U postgres \
+  -f supabase/migrations/20260727160000_create_admin_tasks.sql
+
+docker run -d --name bnt-rest --network bnt-test -p 55433:3000 \
+  -e PGRST_DB_URI="postgres://postgres:test@bnt-pg:5432/postgres" \
+  -e PGRST_DB_SCHEMAS=public -e PGRST_DB_ANON_ROLE=apirole \
+  -e PGRST_JWT_SECRET="reallyreallyreallyreallyverysafesecret" \
+  postgrest/postgrest:v12.2.3
+
+# BNT_PGREST_JWT: JWT HS256 com { "role": "apirole" }, assinado com o secret
+# acima. Sem ele o PostgREST responde 401 ao header Authorization que o
+# supabase-js sempre envia.
+BNT_PGREST_URL=http://127.0.0.1:55433 \
+BNT_TEST_USER_ID=<uuid em auth.users> \
+BNT_PGREST_JWT=<jwt> \
+  pnpm vitest run server/routes/adminTasks.rebalance.test.ts
+```
+
+Use **`127.0.0.1`, não `localhost`**: o `fetch` do Node resolve `localhost` para
+IPv6 e o container só publica em IPv4.
+
+Se algum dia for preciso conferir que esse teste ainda **discrimina**, o controle
+negativo é trocar `MIN_POSITION_GAP` por `Number.MIN_VALUE` em
+`server/lib/adminTaskPosition.ts` (desliga o rebalanceamento na prática) e
+confirmar que ele fica vermelho. Restaure depois.

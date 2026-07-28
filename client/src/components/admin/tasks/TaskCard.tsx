@@ -1,4 +1,6 @@
-import { memo } from "react";
+import { memo, useRef } from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { CalendarDays, CheckSquare, ChevronLeft, ChevronRight, MessageSquare } from "lucide-react";
 
 import {
@@ -14,6 +16,17 @@ import type { TaskAssignee, TaskCard as TaskCardData, TaskLabel } from "./types"
 // Card do board. Tudo aqui e OPCIONAL menos o ID curto e o titulo: campo vazio
 // simplesmente nao renderiza, em vez de deixar slot vazio ocupando altura. Um
 // card so com titulo tem que parecer inteiro, nao quebrado.
+
+/**
+ * Distancia, em pixels, acima da qual um ponteiro que desceu e subiu no card
+ * conta como ARRASTO e nao como clique.
+ *
+ * Tem que ser >= a `activationConstraint.distance` do PointerSensor: o dnd-kit
+ * ainda emite o `click` no fim de um arrasto, e sem esta checagem todo drag
+ * terminaria abrindo a tarefa. Manter os dois numeros iguais e proposital, e
+ * mexer em um sem mexer no outro reabre exatamente esse bug.
+ */
+export const DRAG_ACTIVATION_DISTANCE = 5;
 
 type TaskCardProps = {
   task: TaskCardData;
@@ -56,18 +69,13 @@ function initialsOf(assignee: TaskAssignee) {
     .join("");
 }
 
-function TaskCardBase({
+/** Conteudo do card, reusado pelo DragOverlay (que nao e sortable). */
+export function TaskCardBody({
   task,
   boardKey,
   labelsById,
   assigneesById,
-  canMoveLeft,
-  canMoveRight,
-  isSelected,
-  isPending,
-  onOpen,
-  onQuickMove,
-}: TaskCardProps) {
+}: Pick<TaskCardProps, "task" | "boardKey" | "labelsById" | "assigneesById">) {
   const priority = priorityMetaOf(task.priority);
   const type = typeMetaOf(task.type);
   const due = dueState(task.due_date);
@@ -81,60 +89,7 @@ function TaskCardBase({
     : null;
 
   return (
-    <article
-      role="button"
-      tabIndex={0}
-      aria-label={`${shortIdOf(boardKey, task.number)}: ${task.title}`}
-      onClick={() => onOpen(task.id)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onOpen(task.id);
-        }
-      }}
-      className={`group relative cursor-pointer rounded-2xl border-2 border-slate-900 bg-white p-3 text-left shadow-[3px_3px_0_#0f172a] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
-        isSelected ? "ring-4 ring-violet-300" : ""
-      } ${isPending ? "opacity-60" : ""}`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <span className="font-mono text-[11px] font-bold text-slate-500">
-          {shortIdOf(boardKey, task.number)}
-        </span>
-        {/* Setas sempre no DOM: em touch nao existe hover, entao o avanco rapido
-            seria inalcancavel se dependesse dele. No ponteiro fino elas ficam
-            discretas e ganham opacidade no hover/foco do card.
-            NAO desabilitam durante `isPending`: avancar duas etapas e dois
-            cliques seguidos, e travar o segundo ate a rede responder faz o board
-            parecer quebrado. Quem cuida da corrida e o contador de sequencia por
-            tarefa no TasksDashboard; `isPending` aqui e so o sinal visual. */}
-        <div className="flex shrink-0 gap-1 opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
-          <button
-            type="button"
-            aria-label="Mover para a etapa anterior"
-            disabled={!canMoveLeft}
-            onClick={(event) => {
-              event.stopPropagation();
-              onQuickMove(task.id, -1);
-            }}
-            className="rounded-full border-2 border-slate-900 bg-white p-0.5 text-slate-900 shadow-[1px_1px_0_#0f172a] disabled:opacity-30 disabled:shadow-none"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            aria-label="Mover para a próxima etapa"
-            disabled={!canMoveRight}
-            onClick={(event) => {
-              event.stopPropagation();
-              onQuickMove(task.id, 1);
-            }}
-            className="rounded-full border-2 border-slate-900 bg-white p-0.5 text-slate-900 shadow-[1px_1px_0_#0f172a] disabled:opacity-30 disabled:shadow-none"
-          >
-            <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </div>
-
+    <>
       <p className="mt-1.5 text-sm font-black leading-snug text-slate-950">
         {task.title}
       </p>
@@ -209,11 +164,144 @@ function TaskCardBase({
           ) : null}
         </div>
       ) : null}
+    </>
+  );
+}
+
+function TaskCardBase({
+  task,
+  boardKey,
+  labelsById,
+  assigneesById,
+  canMoveLeft,
+  canMoveRight,
+  isSelected,
+  isPending,
+  onOpen,
+  onQuickMove,
+}: TaskCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: task.id,
+    // Tarefa otimista ainda sem id real nao pode ser arrastada: o move iria para
+    // um id que o servidor nao conhece.
+    disabled: task.id.startsWith("temp-"),
+    data: { type: "task", columnId: task.column_id },
+    // O padrao do dnd-kit e "sortable", em ingles, e vira aria-roledescription.
+    attributes: { roleDescription: "tarefa arrastável" },
+  });
+
+  // Coordenadas do pointerdown, para separar clique de arrasto no pointerup.
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
+
+  function isDragGesture(clientX: number, clientY: number) {
+    const start = pointerStart.current;
+    if (!start) return false;
+    return (
+      Math.abs(clientX - start.x) > DRAG_ACTIVATION_DISTANCE ||
+      Math.abs(clientY - start.y) > DRAG_ACTIVATION_DISTANCE
+    );
+  }
+
+  return (
+    <article
+      ref={setNodeRef}
+      // `attributes` do dnd-kit ja traz role, tabIndex e aria-roledescription;
+      // declarar role/tabIndex aqui seria sobrescrito por ele. O aria-label vem
+      // DEPOIS do spread justamente para nao ser engolido.
+      {...attributes}
+      {...listeners}
+      aria-label={`${shortIdOf(boardKey, task.number)}: ${task.title}`}
+      onPointerDown={(event) => {
+        pointerStart.current = { x: event.clientX, y: event.clientY };
+        listeners?.onPointerDown?.(event);
+      }}
+      onClick={(event) => {
+        // O dnd-kit emite `click` tambem no fim de um arrasto. Abrir a tarefa
+        // aqui faria todo drag terminar com o modal na cara.
+        if (isDragGesture(event.clientX, event.clientY)) return;
+        onOpen(task.id);
+      }}
+      onKeyDown={(event) => {
+        // Espaco e Enter sao do KeyboardSensor durante o arrasto por teclado; so
+        // abrimos a tarefa com Enter e quando nao ha arrasto em curso.
+        if (event.key === "Enter" && !isDragging) {
+          event.preventDefault();
+          onOpen(task.id);
+        }
+      }}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
+      className={`group relative cursor-grab touch-none rounded-2xl border-2 border-slate-900 bg-white p-3 text-left shadow-[3px_3px_0_#0f172a] transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 active:cursor-grabbing ${
+        isSelected ? "ring-4 ring-violet-300" : ""
+      } ${isPending ? "opacity-60" : ""} ${
+        // O card original vira o PLACEHOLDER do destino enquanto o DragOverlay
+        // carrega a copia levantada.
+        isDragging ? "opacity-30" : ""
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="font-mono text-[11px] font-bold text-slate-500">
+          {shortIdOf(boardKey, task.number)}
+        </span>
+        {/* Setas sempre no DOM: em touch nao existe hover, entao o avanco rapido
+            seria inalcancavel se dependesse dele. No ponteiro fino elas ficam
+            discretas e ganham opacidade no hover/foco do card.
+            NAO desabilitam durante `isPending`: avancar duas etapas e dois
+            cliques seguidos, e travar o segundo ate a rede responder faz o board
+            parecer quebrado. Quem cuida da corrida e o contador de sequencia por
+            tarefa no TasksDashboard; `isPending` aqui e so o sinal visual. */}
+        <div className="flex shrink-0 gap-1 opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+          <button
+            type="button"
+            aria-label="Mover para a etapa anterior"
+            disabled={!canMoveLeft}
+            // stopPropagation no pointerdown: sem isso o gesto comecaria a
+            // arrastar o card a partir do botao.
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onQuickMove(task.id, -1);
+            }}
+            className="rounded-full border-2 border-slate-900 bg-white p-0.5 text-slate-900 shadow-[1px_1px_0_#0f172a] disabled:opacity-30 disabled:shadow-none"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Mover para a próxima etapa"
+            disabled={!canMoveRight}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onQuickMove(task.id, 1);
+            }}
+            className="rounded-full border-2 border-slate-900 bg-white p-0.5 text-slate-900 shadow-[1px_1px_0_#0f172a] disabled:opacity-30 disabled:shadow-none"
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      <TaskCardBody
+        task={task}
+        boardKey={boardKey}
+        labelsById={labelsById}
+        assigneesById={assigneesById}
+      />
     </article>
   );
 }
 
 // memo: mover UM card nao pode re-renderizar o board inteiro. As props sao
 // primitivas ou referencias estaveis (os handlers vem de useCallback no
-// TasksDashboard, e `labels` de um useMemo por task).
+// TasksDashboard, e os mapas de useMemo).
 export const TaskCard = memo(TaskCardBase);

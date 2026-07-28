@@ -23,7 +23,7 @@ type ColumnHeaderProps = {
   canMoveRight: boolean;
   onRename: (columnId: string, name: string) => void;
   onRecolor: (columnId: string, color: string) => void;
-  onSetWipLimit: (columnId: string, wipLimit: number | null) => void;
+  onRequestWipLimit: (columnId: string) => void;
   onMoveColumn: (columnId: string, direction: -1 | 1) => void;
   onRequestDelete: (columnId: string) => void;
 };
@@ -35,7 +35,7 @@ function ColumnHeaderBase({
   canMoveRight,
   onRename,
   onRecolor,
-  onSetWipLimit,
+  onRequestWipLimit,
   onMoveColumn,
   onRequestDelete,
 }: ColumnHeaderProps) {
@@ -169,27 +169,7 @@ function ColumnHeaderBase({
 
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onSelect={(event) => {
-                event.preventDefault();
-                const answer = window.prompt(
-                  "Limite de tarefas em progresso nesta etapa (vazio remove o limite):",
-                  column.wip_limit === null ? "" : String(column.wip_limit),
-                );
-                if (answer === null) return;
-                const trimmed = answer.trim();
-                if (trimmed === "") {
-                  onSetWipLimit(column.id, null);
-                  return;
-                }
-                const parsed = Number(trimmed);
-                // Recusa em vez de mandar lixo: o server valida inteiro positivo
-                // e devolveria 400, mas avisar aqui e mais barato e mais claro.
-                if (!Number.isInteger(parsed) || parsed <= 0) {
-                  window.alert("Informe um número inteiro maior que zero.");
-                  return;
-                }
-                onSetWipLimit(column.id, parsed);
-              }}
+              onSelect={() => onRequestWipLimit(column.id)}
               className="text-xs font-black"
             >
               <Gauge className="mr-2 h-3.5 w-3.5" /> Definir limite (WIP)

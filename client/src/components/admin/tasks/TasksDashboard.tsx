@@ -2,6 +2,25 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  closestCorners,
+  useSensor,
+  useSensors,
+  type Announcements,
+  type DragEndEvent,
+  type DragStartEvent,
+  type ScreenReaderInstructions,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
 
 import { ErrorBlock } from "@/components/admin/StateBlocks";
 import {
@@ -27,6 +46,13 @@ import {
 
 import { BoardColumn } from "./BoardColumn";
 import { BoardToolbar } from "./BoardToolbar";
+import { PromptDialog } from "./PromptDialog";
+import {
+  resolveColumnOrder,
+  resolveDropTarget,
+  type BoardOrder,
+} from "./resolveDropTarget";
+import { DRAG_ACTIVATION_DISTANCE, TaskCardBody } from "./TaskCard";
 import { emptyBlockClass, primaryButtonClass, secondaryButtonClass } from "./taskBoardStyles";
 import { parseShortId, readTaskParam, shortIdOf, withTaskParam } from "./taskDeepLink";
 import type { TaskBoardSnapshot, TaskCard as TaskCardData, TaskColumn } from "./types";
@@ -84,6 +110,8 @@ export function TasksDashboard() {
     null,
   );
   const [deleteMoveTo, setDeleteMoveTo] = useState<string>("");
+  const [newColumnOpen, setNewColumnOpen] = useState(false);
+  const [wipDialogColumnId, setWipDialogColumnId] = useState<string | null>(null);
 
   // Refs para handlers ESTAVEIS: sem isto, todo useCallback dependeria de
   // `snapshot`/`search` e mudaria de identidade a cada render, o que anularia o
@@ -109,6 +137,31 @@ export function TasksDashboard() {
       return next;
     });
   }, []);
+
+  // Estado do arrasto em curso. `draggingRef` existe alem do state porque o
+  // guardedRefresh e chamado de dentro de callbacks assincronos, onde ler o
+  // state daria o valor congelado do render em que a promessa comecou.
+  const [activeDrag, setActiveDrag] = useState<
+    { id: string; type: "task" | "column" } | null
+  >(null);
+  const [overColumnId, setOverColumnId] = useState<string | null>(null);
+  const draggingRef = useRef(false);
+  const missedRefreshRef = useRef(false);
+
+  /**
+   * Refresh que NAO reordena o board debaixo do dedo.
+   *
+   * Uma resposta de move que chega durante um arrasto reescreveria as posicoes
+   * de todos os cards, e o card que esta sendo arrastado saltaria de lugar no
+   * meio do gesto. Aqui o refresh fica pendente e roda quando o arrasto termina.
+   */
+  const guardedRefresh = useCallback(async () => {
+    if (draggingRef.current) {
+      missedRefreshRef.current = true;
+      return;
+    }
+    await refresh();
+  }, [refresh]);
 
   // -------------------------------------------------------------------------
   // Deep link
@@ -183,47 +236,103 @@ export function TasksDashboard() {
     [snapshot?.admins],
   );
 
-  // -------------------------------------------------------------------------
-  // Mover tarefa (setas de avanco rapido)
-  // -------------------------------------------------------------------------
+  /** Ordem visual do board, no formato que resolveDropTarget espera. */
+  const boardOrder = useMemo<BoardOrder>(
+    () => ({
+      columns: columns.map((column) => ({
+        id: column.id,
+        taskIds: (tasksByColumn.get(column.id) ?? []).map((task) => task.id),
+      })),
+    }),
+    [columns, tasksByColumn],
+  );
+  // Ref espelhando a ordem: os handlers de drag precisam do valor ATUAL sem
+  // entrar na lista de dependencias deles, que e o que os mantem estaveis.
+  const boardOrderRef = useRef<BoardOrder>(boardOrder);
+  boardOrderRef.current = boardOrder;
 
-  const quickMove = useCallback(
-    async (taskId: string, direction: -1 | 1) => {
+  /** Ids das colunas para o SortableContext horizontal. Referencia estavel. */
+  const columnIds = useMemo(() => columns.map((column) => column.id), [columns]);
+
+  const activeDragTask = useMemo(
+    () =>
+      activeDrag?.type === "task"
+        ? (snapshot?.tasks.find((task) => task.id === activeDrag.id) ?? null)
+        : null,
+    [activeDrag, snapshot],
+  );
+
+  // -------------------------------------------------------------------------
+  // Mover tarefa: CAMINHO UNICO
+  // -------------------------------------------------------------------------
+  // Setas de avanco rapido e drag and drop entram os dois aqui. Nao existe rota
+  // paralela para o arrasto de proposito: dois caminhos com a mesma
+  // responsabilidade divergem no primeiro conserto que so um dos dois recebe.
+  // As setas passam (null, null), que significa "fim da coluna de destino"; o
+  // arrasto passa os vizinhos que resolveDropTarget apurou.
+
+  /**
+   * Posicao provisoria so para a tela, entre os vizinhos. O numero definitivo
+   * vem do server (server/lib/adminTaskPosition.ts) na resposta; esta conta
+   * existe para o card nao piscar entre o solte e a resposta.
+   */
+  function optimisticPosition(
+    before: number | null,
+    after: number | null,
+  ): number {
+    if (before === null && after === null) return 1000;
+    if (before === null) return after! - 1000;
+    if (after === null) return before + 1000;
+    return (before + after) / 2;
+  }
+
+  const moveTaskTo = useCallback(
+    async (
+      taskId: string,
+      columnId: string,
+      beforeTaskId: string | null,
+      afterTaskId: string | null,
+    ) => {
       const current = snapshotRef.current;
       if (!current) return;
       const task = current.tasks.find((item) => item.id === taskId);
       if (!task || task.id.startsWith(TEMP_ID_PREFIX)) return;
-
-      const ordered = [...current.columns].sort((a, b) => a.position - b.position);
-      const index = ordered.findIndex((column) => column.id === task.column_id);
-      const target = ordered[index + direction];
-      if (!target) return;
 
       const previousColumnId = task.column_id;
       const previousPosition = task.position;
       const seq = (moveSeqRef.current.get(taskId) ?? 0) + 1;
       moveSeqRef.current.set(taskId, seq);
 
-      // Otimista: entra no FIM da coluna de destino, que e o mesmo lugar onde o
-      // server vai coloca-lo (a chamada nao manda vizinho).
-      const endPosition =
-        Math.max(
-          0,
-          ...current.tasks
-            .filter((item) => item.column_id === target.id)
-            .map((item) => item.position),
-        ) + 1000;
+      const positionOf = (id: string | null) =>
+        id === null
+          ? null
+          : (current.tasks.find((item) => item.id === id)?.position ?? null);
+      const targetPosition =
+        beforeTaskId === null && afterTaskId === null
+          ? // Sem vizinho declarado = fim da coluna, que e o que o server faz.
+            Math.max(
+              0,
+              ...current.tasks
+                .filter((item) => item.column_id === columnId)
+                .map((item) => item.position),
+            ) + 1000
+          : optimisticPosition(positionOf(beforeTaskId), positionOf(afterTaskId));
+
       applyLocal((snap) =>
         withTask(snap, taskId, (item) => ({
           ...item,
-          column_id: target.id,
-          position: endPosition,
+          column_id: columnId,
+          position: targetPosition,
         })),
       );
       markPending(taskId, true);
 
       try {
-        const moved = await apiMoveTask(taskId, { column_id: target.id });
+        const moved = await apiMoveTask(taskId, {
+          column_id: columnId,
+          before_task_id: beforeTaskId,
+          after_task_id: afterTaskId,
+        });
         // A guarda de sequencia vale no SUCESSO tambem, nao so no erro: se um
         // segundo move ja partiu, aplicar a resposta do primeiro puxaria o card
         // de volta para a coluna intermediaria. O erro e mais obvio de imaginar,
@@ -233,7 +342,7 @@ export function TasksDashboard() {
         applyLocal((snap) =>
           withTask(snap, taskId, (item) => ({ ...item, ...moved })),
         );
-        await refresh();
+        await guardedRefresh();
       } catch (mutationError) {
         // Um move mais novo ja partiu: o estado atual e o dele, e desfazer aqui
         // mostraria o card num lugar que ninguem pediu.
@@ -257,14 +366,23 @@ export function TasksDashboard() {
         if (moveSeqRef.current.get(taskId) === seq) markPending(taskId, false);
       }
     },
-    [applyLocal, markPending, refresh],
+    [applyLocal, guardedRefresh, markPending],
   );
 
   const handleQuickMove = useCallback(
     (taskId: string, direction: -1 | 1) => {
-      void quickMove(taskId, direction);
+      const current = snapshotRef.current;
+      if (!current) return;
+      const task = current.tasks.find((item) => item.id === taskId);
+      if (!task) return;
+      const ordered = [...current.columns].sort((a, b) => a.position - b.position);
+      const index = ordered.findIndex((column) => column.id === task.column_id);
+      const target = ordered[index + direction];
+      if (!target) return;
+      // (null, null) = fim da coluna de destino.
+      void moveTaskTo(taskId, target.id, null, null);
     },
-    [quickMove],
+    [moveTaskTo],
   );
 
   // -------------------------------------------------------------------------
@@ -342,7 +460,7 @@ export function TasksDashboard() {
               : task,
           ),
         }));
-        await refresh();
+        await guardedRefresh();
       } catch (mutationError) {
         applyLocal((snap) => ({
           ...snap,
@@ -355,7 +473,7 @@ export function TasksDashboard() {
         );
       }
     },
-    [applyLocal, refresh],
+    [applyLocal, guardedRefresh],
   );
 
   const handleCreateTask = useCallback(
@@ -384,7 +502,7 @@ export function TasksDashboard() {
 
       try {
         await apiPatchColumn(columnId, patch);
-        await refresh();
+        await guardedRefresh();
       } catch (mutationError) {
         applyLocal((snap) => ({
           ...snap,
@@ -397,7 +515,7 @@ export function TasksDashboard() {
         );
       }
     },
-    [applyLocal, refresh],
+    [applyLocal, guardedRefresh],
   );
 
   const handleRenameColumn = useCallback(
@@ -413,6 +531,10 @@ export function TasksDashboard() {
     },
     [patchColumnOptimistic],
   );
+
+  const handleRequestWipLimit = useCallback((columnId: string) => {
+    setWipDialogColumnId(columnId);
+  }, []);
 
   const handleSetWipLimit = useCallback(
     (columnId: string, wipLimit: number | null) => {
@@ -453,7 +575,7 @@ export function TasksDashboard() {
       void (async () => {
         try {
           await apiReorderColumns(current.board.id, ids);
-          await refresh();
+          await guardedRefresh();
         } catch (mutationError) {
           applyLocal((snap) => ({ ...snap, columns: previousColumns }));
           toast.error(
@@ -464,21 +586,16 @@ export function TasksDashboard() {
         }
       })();
     },
-    [applyLocal, refresh],
+    [applyLocal, guardedRefresh],
   );
 
-  const handleCreateColumn = useCallback(() => {
+  const handleCreateColumn = useCallback((name: string) => {
     const current = snapshotRef.current;
     if (!current) return;
-    const name = window.prompt("Nome da nova etapa:");
-    if (name === null) return;
-    const trimmed = name.trim();
-    if (!trimmed) return;
-
     void (async () => {
       try {
-        await apiCreateColumn({ board_id: current.board.id, name: trimmed });
-        await refresh();
+        await apiCreateColumn({ board_id: current.board.id, name });
+        await guardedRefresh();
         toast.success("Etapa criada.");
       } catch (mutationError) {
         toast.error(
@@ -488,7 +605,181 @@ export function TasksDashboard() {
         );
       }
     })();
+  }, [guardedRefresh]);
+
+  // -------------------------------------------------------------------------
+  // Drag and drop
+  // -------------------------------------------------------------------------
+
+  const sensors = useSensors(
+    // Distancia de ativacao: sem ela TODO clique vira arrasto e o card nunca
+    // abre. O mesmo numero e usado no TaskCard para separar clique de arrasto no
+    // pointerup, e os dois precisam continuar iguais.
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE },
+    }),
+    // No toque a ativacao e por TEMPO, nao por distancia: com distancia, deslizar
+    // o dedo para rolar a coluna arrancaria o card. Com 220ms de pressao e 6px de
+    // tolerancia, rolar na vertical, rolar o board na horizontal e arrastar um
+    // card convivem no mesmo dedo. Foi o ajuste mais sensivel da fase.
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 220, tolerance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    draggingRef.current = true;
+    setActiveDrag({
+      id: String(event.active.id),
+      type: event.active.data.current?.type === "column" ? "column" : "task",
+    });
+  }, []);
+
+  const finishDrag = useCallback(() => {
+    draggingRef.current = false;
+    setActiveDrag(null);
+    setOverColumnId(null);
+    // Refresh que foi adiado porque chegou no meio do gesto.
+    if (missedRefreshRef.current) {
+      missedRefreshRef.current = false;
+      void refresh();
+    }
   }, [refresh]);
+
+  const handleDragOver = useCallback((event: DragEndEvent) => {
+    const overId = event.over ? String(event.over.id) : null;
+    if (!overId) {
+      setOverColumnId(null);
+      return;
+    }
+    const order = boardOrderRef.current;
+    const asColumn = order.columns.find((column) => column.id === overId);
+    const owning = order.columns.find((column) => column.taskIds.includes(overId));
+    setOverColumnId(asColumn?.id ?? owning?.id ?? null);
+  }, []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const activeId = String(event.active.id);
+      const overId = event.over ? String(event.over.id) : null;
+      const isColumn = event.active.data.current?.type === "column";
+      const order = boardOrderRef.current;
+      const board = snapshotRef.current;
+
+      // Encerra o gesto ANTES de disparar a mutacao: a partir daqui o refresh
+      // volta a ser imediato, e nao ha mais nada debaixo do dedo.
+      finishDrag();
+      if (!board) return;
+
+      if (isColumn) {
+        // O alvo pode ser um card; nesse caso vale a coluna dona dele.
+        const overColumn = overId
+          ? (order.columns.find((column) => column.id === overId)?.id ??
+            order.columns.find((column) => column.taskIds.includes(overId))?.id ??
+            null)
+          : null;
+        const ids = resolveColumnOrder(order, activeId, overColumn);
+        if (!ids) return;
+
+        const previousColumns = board.columns;
+        const byId = new Map(board.columns.map((column) => [column.id, column]));
+        applyLocal((snap) => ({
+          ...snap,
+          columns: ids.map((id, index) => ({
+            ...byId.get(id)!,
+            position: (index + 1) * 1000,
+          })),
+        }));
+        void (async () => {
+          try {
+            // Lista COMPLETA: o endpoint recusa parcial com incomplete_order.
+            await apiReorderColumns(board.board.id, ids);
+            await guardedRefresh();
+          } catch (mutationError) {
+            applyLocal((snap) => ({ ...snap, columns: previousColumns }));
+            toast.error(
+              mutationError instanceof Error
+                ? mutationError.message
+                : "Erro ao reordenar as etapas.",
+            );
+          }
+        })();
+        return;
+      }
+
+      const target = resolveDropTarget(order, activeId, overId);
+      // null = soltou onde ja estava, ou fora de alvo valido. Nao dispara
+      // requisicao nem linha de log de atividade.
+      if (!target) return;
+      void moveTaskTo(
+        activeId,
+        target.columnId,
+        target.beforeTaskId,
+        target.afterTaskId,
+      );
+    },
+    [applyLocal, finishDrag, guardedRefresh, moveTaskTo],
+  );
+
+  // Leitores de tela em portugues. O dnd-kit traz os textos em ingles por
+  // padrao, e um board inteiro anunciado em outro idioma e pior que silencio.
+  const screenReaderInstructions = useMemo<ScreenReaderInstructions>(
+    () => ({
+      draggable:
+        "Para mover, pressione espaço ou Enter. Use as setas para escolher o destino, espaço ou Enter para soltar, e Escape para cancelar.",
+    }),
+    [],
+  );
+
+  const announcements = useMemo<Announcements>(() => {
+    const describe = (id: string) => {
+      const board = snapshotRef.current;
+      if (!board) return id;
+      const column = board.columns.find((item) => item.id === id);
+      if (column) return `Etapa ${column.name}`;
+      const task = board.tasks.find((item) => item.id === id);
+      return task
+        ? `Tarefa ${shortIdOf(board.board.key, task.number)}, ${task.title}`
+        : id;
+    };
+    const placement = (activeId: string, overId: string | null) => {
+      const order = boardOrderRef.current;
+      const target = resolveDropTarget(order, activeId, overId);
+      if (!target) return null;
+      const board = snapshotRef.current;
+      const column = board?.columns.find((item) => item.id === target.columnId);
+      const list = order.columns.find((item) => item.id === target.columnId);
+      const total = (list?.taskIds.filter((id) => id !== activeId).length ?? 0) + 1;
+      const index =
+        target.beforeTaskId === null
+          ? 1
+          : (list?.taskIds.filter((id) => id !== activeId).indexOf(target.beforeTaskId) ?? 0) + 2;
+      return { columnName: column?.name ?? "", index, total };
+    };
+
+    return {
+      onDragStart: ({ active }) => `${describe(String(active.id))} levantada.`,
+      onDragOver: ({ active, over }) => {
+        if (!over) return "Fora de qualquer etapa.";
+        const spot = placement(String(active.id), String(over.id));
+        return spot
+          ? `${describe(String(active.id))} sobre ${spot.columnName}, posição ${spot.index} de ${spot.total}.`
+          : `${describe(String(active.id))} sobre ${describe(String(over.id))}.`;
+      },
+      onDragEnd: ({ active, over }) => {
+        if (!over) return `${describe(String(active.id))} devolvida ao lugar de origem.`;
+        const spot = placement(String(active.id), String(over.id));
+        return spot
+          ? `${describe(String(active.id))} movida para ${spot.columnName}, posição ${spot.index} de ${spot.total}.`
+          : `${describe(String(active.id))} solta em ${describe(String(over.id))}.`;
+      },
+      onDragCancel: ({ active }) =>
+        `Movimentação de ${describe(String(active.id))} cancelada.`,
+    };
+  }, []);
 
   const handleRequestDeleteColumn = useCallback((columnId: string) => {
     setDeleteColumnId(columnId);
@@ -505,7 +796,7 @@ export function TasksDashboard() {
       setDeleteColumnId(null);
       setDeleteBlockedMessage(null);
       setDeleteMoveTo("");
-      await refresh();
+      await guardedRefresh();
       toast.success("Etapa excluída.");
     } catch (mutationError) {
       // 409 column_not_empty nao e falha: e o server pedindo o destino das
@@ -523,7 +814,7 @@ export function TasksDashboard() {
           : "Erro ao excluir a etapa.",
       );
     }
-  }, [deleteColumnId, deleteMoveTo, refresh]);
+  }, [deleteColumnId, deleteMoveTo, guardedRefresh]);
 
   // -------------------------------------------------------------------------
   // Render
@@ -575,6 +866,9 @@ export function TasksDashboard() {
   const deleteTargetColumn = deleteColumnId
     ? columns.find((column) => column.id === deleteColumnId)
     : undefined;
+  const wipDialogColumn = wipDialogColumnId
+    ? columns.find((column) => column.id === wipDialogColumnId)
+    : undefined;
 
   return (
     <div className="space-y-4">
@@ -595,49 +889,135 @@ export function TasksDashboard() {
           </p>
           <button
             type="button"
-            onClick={handleCreateColumn}
+            onClick={() => setNewColumnOpen(true)}
             className={`${primaryButtonClass} mt-4`}
           >
             Criar primeira etapa
           </button>
         </div>
       ) : (
-        <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 sm:snap-none">
-          {columns.map((column, index) => (
-            <BoardColumn
-              key={column.id}
-              column={column}
-              tasks={tasksByColumn.get(column.id) ?? []}
-              boardKey={snapshot.board.key}
-              labelsById={labelsById}
-              assigneesById={assigneesById}
-              canMoveLeft={index > 0}
-              canMoveRight={index < columns.length - 1}
-              selectedTaskId={selectedTaskId}
-              pendingTaskIds={pendingTaskIds}
-              onOpenTask={openTask}
-              onQuickMove={handleQuickMove}
-              onCreateTask={handleCreateTask}
-              onRenameColumn={handleRenameColumn}
-              onRecolorColumn={handleRecolorColumn}
-              onSetWipLimit={handleSetWipLimit}
-              onMoveColumn={handleMoveColumn}
-              onRequestDeleteColumn={handleRequestDeleteColumn}
-            />
-          ))}
+        <DndContext
+          sensors={sensors}
+          // closestCorners lida melhor que closestCenter com listas verticais de
+          // alturas diferentes, que e exatamente o caso de cards de tamanhos
+          // variados dentro da coluna.
+          collisionDetection={closestCorners}
+          accessibility={{ announcements, screenReaderInstructions }}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+          onDragCancel={finishDrag}
+        >
+          <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
+            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 sm:snap-none">
+              {columns.map((column, index) => (
+                <BoardColumn
+                  key={column.id}
+                  column={column}
+                  tasks={tasksByColumn.get(column.id) ?? []}
+                  boardKey={snapshot.board.key}
+                  labelsById={labelsById}
+                  assigneesById={assigneesById}
+                  canMoveLeft={index > 0}
+                  canMoveRight={index < columns.length - 1}
+                  selectedTaskId={selectedTaskId}
+                  pendingTaskIds={pendingTaskIds}
+                  isDropTarget={
+                    activeDrag?.type === "task" && overColumnId === column.id
+                  }
+                  onOpenTask={openTask}
+                  onQuickMove={handleQuickMove}
+                  onCreateTask={handleCreateTask}
+                  onRenameColumn={handleRenameColumn}
+                  onRecolorColumn={handleRecolorColumn}
+                  onRequestWipLimit={handleRequestWipLimit}
+                  onMoveColumn={handleMoveColumn}
+                  onRequestDeleteColumn={handleRequestDeleteColumn}
+                />
+              ))}
 
-          <div className="flex w-[85vw] shrink-0 snap-start items-start sm:w-[13rem]">
-            <button
-              type="button"
-              onClick={handleCreateColumn}
-              className="flex w-full items-center justify-center gap-1.5 rounded-3xl border-2 border-dashed border-slate-400 bg-white/60 px-4 py-6 text-sm font-black text-slate-600 transition-colors hover:border-slate-900 hover:bg-white hover:text-slate-900"
-            >
-              <Plus className="h-4 w-4" />
-              Nova etapa
-            </button>
-          </div>
-        </div>
+              <div className="flex w-[85vw] shrink-0 snap-start items-start sm:w-[13rem]">
+                <button
+                  type="button"
+                  onClick={() => setNewColumnOpen(true)}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-3xl border-2 border-dashed border-slate-400 bg-white/60 px-4 py-6 text-sm font-black text-slate-600 transition-colors hover:border-slate-900 hover:bg-white hover:text-slate-900"
+                >
+                  <Plus className="h-4 w-4" />
+                  Nova etapa
+                </button>
+              </div>
+            </div>
+          </SortableContext>
+
+          {/* Card levantado: mesma borda e sombra do board, com rotacao leve e
+              sombra mais funda para ler como "fora do plano". */}
+          <DragOverlay dropAnimation={null}>
+            {activeDragTask ? (
+              <article className="w-[19rem] rotate-3 cursor-grabbing rounded-2xl border-2 border-slate-900 bg-white p-3 shadow-[8px_8px_0_#0f172a]">
+                <span className="font-mono text-[11px] font-bold text-slate-500">
+                  {shortIdOf(snapshot.board.key, activeDragTask.number)}
+                </span>
+                <TaskCardBody
+                  task={activeDragTask}
+                  boardKey={snapshot.board.key}
+                  labelsById={labelsById}
+                  assigneesById={assigneesById}
+                />
+              </article>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
+
+      <PromptDialog
+        open={newColumnOpen}
+        title="Nova etapa"
+        description="A etapa entra no fim do quadro e pode ser reordenada depois."
+        label="Nome da etapa"
+        placeholder="Ex: Em Revisão"
+        confirmLabel="Criar etapa"
+        validate={(value) =>
+          value.length === 0
+            ? "Informe um nome."
+            : value.length > 60
+              ? "Nome muito longo (máx. 60)."
+              : null
+        }
+        onConfirm={handleCreateColumn}
+        onOpenChange={setNewColumnOpen}
+      />
+
+      <PromptDialog
+        open={wipDialogColumnId !== null}
+        title="Limite de trabalho em progresso"
+        description="Deixe vazio para remover o limite. O limite é um aviso visual: mover uma tarefa para uma etapa cheia continua permitido."
+        label={`Limite da etapa ${wipDialogColumn?.name ?? ""}`}
+        placeholder="Sem limite"
+        initialValue={
+          wipDialogColumn?.wip_limit === null ||
+          wipDialogColumn?.wip_limit === undefined
+            ? ""
+            : String(wipDialogColumn.wip_limit)
+        }
+        validate={(value) => {
+          if (value === "") return null;
+          const parsed = Number(value);
+          return Number.isInteger(parsed) && parsed > 0
+            ? null
+            : "Informe um número inteiro maior que zero.";
+        }}
+        onConfirm={(value) => {
+          if (wipDialogColumnId) {
+            handleSetWipLimit(
+              wipDialogColumnId,
+              value === "" ? null : Number(value),
+            );
+          }
+        }}
+        onOpenChange={(open) => {
+          if (!open) setWipDialogColumnId(null);
+        }}
+      />
 
       <AlertDialog
         open={deleteColumnId !== null}
