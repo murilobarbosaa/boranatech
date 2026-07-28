@@ -21,6 +21,34 @@
 // `--apply` (banco) ou `--confirm` (Stripe), dry-run por default. Duas defesas
 // distintas para dois riscos distintos, nenhuma dependendo da outra.
 //
+// POR QUE A LOGICA E "EVIDENCIA POSITIVA DE DEV", E NAO "TUDO QUE NAO E PROD"
+// ---------------------------------------------------------------------------
+// A primeira versao abortava sempre que NODE_ENV !== "production". Isso apostava
+// que producao declara NODE_ENV, e a aposta NAO se sustentou na medicao:
+//
+//   - `/api/health` do processo de producao devolve `"env": "production"`, entao
+//     o VALOR esta certo hoje (medido em 2026-07-28, uptime de 13h);
+//   - MAS `railway.json` declara `"startCommand": "node dist/index.js"`, SEM
+//     NODE_ENV. O unico lugar do repositorio que declara e o `"start"` do
+//     package.json (`NODE_ENV=production node dist/index.js`), e o railway.json
+//     o SUBSTITUI. Ou seja, o valor vem de variavel de servico no painel (que eu
+//     nao consigo ler) ou de default de plataforma.
+//
+// Default de plataforma pode mudar numa atualizacao do Railway. E o pior caso
+// desta guarda com a logica antiga era A API INTEIRA FORA DO AR, porque ela roda
+// no boot do unico processo web. Trocar por evidencia positiva de dev inverte a
+// assimetria: o pior caso passa a ser "a guarda nao dispara num setup local
+// exotico", e nesse caso as outras defesas seguem de pe (os portoes --apply e
+// --confirm dos scripts).
+//
+// FALHA ABERTA de proposito, e esta e a decisao consciente: NODE_ENV com valor
+// desconhecido, ou ausente sem `.env` no disco, NAO aborta.
+//
+// O marcador de fallback e a EXISTENCIA DO ARQUIVO `.env`, nao uma variavel:
+// `.env` esta no .gitignore, portanto nunca entra na imagem do Railway, enquanto
+// toda maquina de desenvolvimento tem um. E o mesmo principio do CI, que nao
+// simula a ausencia do arquivo, simplesmente nao o tem.
+//
 // QUANDO A ESCOTILHA E LEGITIMA (PERMITIR_CHAVES_LIVE_EM_DEV=1)
 //   - reproduzir localmente um bug que so aparece com dado de producao, em
 //     LEITURA (abrir uma pagina, inspecionar um estado);
@@ -39,15 +67,21 @@
  * constante, e nao inferido de "url remota == producao", para que criar um projeto
  * de dev de verdade passe nesta guarda sem ninguem ter que mexer nela.
  */
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
 export const REF_SUPABASE_PRODUCAO = "vlcvaanlkqyxemrxsxzn";
 
 export const ESCOTILHA = "PERMITIR_CHAVES_LIVE_EM_DEV";
 
 export type EntradaAmbiente = {
-  nodeEnv: string;
+  /** Valor CRU de process.env.NODE_ENV: `undefined` e diferente de "production". */
+  nodeEnv: string | undefined;
   stripeSecretKey: string;
   supabaseUrl: string;
   escotilhaLigada: boolean;
+  /** Existe arquivo `.env` no diretorio de trabalho (marcador de maquina de dev). */
+  temArquivoEnvLocal: boolean;
 };
 
 export type VereditoAmbiente =
@@ -64,7 +98,13 @@ export type VereditoAmbiente =
  * aprende a ignorar.
  */
 export function avaliarAmbiente(e: EntradaAmbiente): VereditoAmbiente {
+  // Producao declarada: nunca ha veredito. Primeira porta, e a mais importante.
   if (e.nodeEnv === "production") return { tipo: "ok" };
+
+  // EVIDENCIA POSITIVA de desenvolvimento. Sem ela, nao aborta.
+  const declaradoDev = e.nodeEnv === "development" || e.nodeEnv === "test";
+  const semNodeEnvComArquivo = !e.nodeEnv && e.temArquivoEnvLocal;
+  if (!declaradoDev && !semNodeEnvComArquivo) return { tipo: "ok" };
 
   const achados: string[] = [];
   if (e.stripeSecretKey.startsWith("sk_live_")) {
@@ -85,11 +125,15 @@ export function avaliarAmbiente(e: EntradaAmbiente): VereditoAmbiente {
 }
 
 /** Mensagem de abort. Diz O QUE FAZER, nao so o que esta errado. */
-export function mensagemDeAbort(achados: string[]): string {
+export function mensagemDeAbort(
+  achados: string[],
+  nodeEnvLido: string | undefined,
+): string {
   return [
     "",
     "==============================================================",
     "[ambiente] BOOT ABORTADO: credenciais de PRODUCAO fora de producao.",
+    `[ambiente] NODE_ENV lido: ${nodeEnvLido === undefined ? "(ausente)" : `"${nodeEnvLido}"`}`,
     "==============================================================",
     ...achados.map((a) => `  - ${a}`),
     "",
@@ -110,10 +154,14 @@ export function mensagemDeAbort(achados: string[]): string {
 }
 
 /** Aviso da escotilha. ALTO de proposito, e em TODO boot. */
-export function mensagemDaEscotilha(achados: string[]): string {
+export function mensagemDaEscotilha(
+  achados: string[],
+  nodeEnvLido: string | undefined,
+): string {
   return [
     "",
     "**************************************************************",
+    `[ambiente] NODE_ENV lido: ${nodeEnvLido === undefined ? "(ausente)" : `"${nodeEnvLido}"`}`,
     `[ambiente] ${ESCOTILHA}=1 -- rodando contra PRODUCAO fora de producao.`,
     ...achados.map((a) => `  ! ${a}`),
     "  Toda escrita daqui atinge cliente real. Desligue quando terminar.",
@@ -127,19 +175,24 @@ export function mensagemDaEscotilha(achados: string[]): string {
  * ponto e nao subir, e um throw poderia ser engolido por algum wrapper.
  */
 export function assertAmbienteSeguro(): void {
+  // Valor CRU, sem `|| "development"`: a ausencia de NODE_ENV e informacao, e
+  // colapsa-la em "development" era o que fazia a guarda abortar em producao caso
+  // a plataforma parasse de definir a variavel.
+  const nodeEnvLido = process.env.NODE_ENV;
   const veredito = avaliarAmbiente({
-    nodeEnv: process.env.NODE_ENV || "development",
+    nodeEnv: nodeEnvLido,
     stripeSecretKey: process.env.STRIPE_SECRET_KEY || "",
     supabaseUrl:
       process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "",
     escotilhaLigada: process.env[ESCOTILHA] === "1",
+    temArquivoEnvLocal: existsSync(join(process.cwd(), ".env")),
   });
 
   if (veredito.tipo === "ok") return;
   if (veredito.tipo === "escotilha") {
-    console.warn(mensagemDaEscotilha(veredito.achados));
+    console.warn(mensagemDaEscotilha(veredito.achados, nodeEnvLido));
     return;
   }
-  console.error(mensagemDeAbort(veredito.achados));
+  console.error(mensagemDeAbort(veredito.achados, nodeEnvLido));
   process.exit(1);
 }

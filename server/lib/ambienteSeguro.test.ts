@@ -17,6 +17,7 @@ function entrada(over: Partial<EntradaAmbiente> = {}): EntradaAmbiente {
     stripeSecretKey: "sk_test_seguro",
     supabaseUrl: "http://localhost:54321",
     escotilhaLigada: false,
+    temArquivoEnvLocal: true,
     ...over,
   };
 }
@@ -96,19 +97,75 @@ describe("avaliarAmbiente", () => {
   });
 });
 
+// A INVERSAO (rodada 10): abortar exige evidencia POSITIVA de dev.
+describe("evidencia positiva de desenvolvimento", () => {
+  const RUIM = { stripeSecretKey: "sk_live_real", supabaseUrl: PROD_URL };
+
+  it("NODE_ENV ausente SEM .env no disco nao aborta (o caso do Railway)", () => {
+    // Este e o cenario que a logica antiga derrubava: producao sem NODE_ENV
+    // declarado. railway.json nao declara, e `.env` esta no .gitignore.
+    expect(
+      avaliarAmbiente(
+        entrada({ ...RUIM, nodeEnv: undefined, temArquivoEnvLocal: false }),
+      ),
+    ).toEqual({ tipo: "ok" });
+  });
+
+  it("NODE_ENV ausente COM .env no disco aborta (maquina de dev)", () => {
+    const v = avaliarAmbiente(
+      entrada({ ...RUIM, nodeEnv: undefined, temArquivoEnvLocal: true }),
+    );
+    expect(v.tipo).toBe("abortar");
+  });
+
+  it("valor desconhecido de NODE_ENV nao aborta (falha aberta deliberada)", () => {
+    expect(
+      avaliarAmbiente(
+        entrada({ ...RUIM, nodeEnv: "staging", temArquivoEnvLocal: false }),
+      ),
+    ).toEqual({ tipo: "ok" });
+  });
+
+  it.each(["development", "test"])(
+    "NODE_ENV=%s aborta mesmo sem .env no disco",
+    (ne) => {
+      const v = avaliarAmbiente(
+        entrada({ ...RUIM, nodeEnv: ne, temArquivoEnvLocal: false }),
+      );
+      expect(v.tipo).toBe("abortar");
+    },
+  );
+
+  it("producao ganha de tudo, inclusive de .env presente", () => {
+    expect(
+      avaliarAmbiente(
+        entrada({ ...RUIM, nodeEnv: "production", temArquivoEnvLocal: true }),
+      ),
+    ).toEqual({ tipo: "ok" });
+  });
+});
+
 describe("mensagens", () => {
   it("o abort diz o que fazer e nomeia a escotilha", () => {
-    const m = mensagemDeAbort(["algo"]);
+    const m = mensagemDeAbort(["algo"], "development");
     expect(m).toContain("BOOT ABORTADO");
     expect(m).toContain("sk_test_");
     expect(m).toContain(ESCOTILHA);
     // Precisa dizer que script tem caminho proprio, senao alguem liga a
     // escotilha global para rodar um script.
     expect(m).toContain("--confirm");
+    // 0.3: a mensagem tem que dizer QUAL valor foi lido.
+    expect(m).toContain('NODE_ENV lido: "development"');
+  });
+
+  it("o abort diz (ausente) quando NODE_ENV nao existe", () => {
+    expect(mensagemDeAbort(["algo"], undefined)).toContain(
+      "NODE_ENV lido: (ausente)",
+    );
   });
 
   it("o aviso da escotilha e alto e lista os achados", () => {
-    const m = mensagemDaEscotilha(["achado A", "achado B"]);
+    const m = mensagemDaEscotilha(["achado A", "achado B"], undefined);
     expect(m).toContain(ESCOTILHA);
     expect(m).toContain("achado A");
     expect(m).toContain("achado B");
