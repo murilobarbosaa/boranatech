@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { analyzeLinkedin } from "./linkedinAnalyze";
 import * as http from "./http";
+import { readQualitative } from "../../shared/linkedin/readQualitative";
 import type { LinkedinAnalyzeRequest } from "../../shared/linkedin/schema";
 
 /**
@@ -32,6 +33,25 @@ import type { LinkedinAnalyzeRequest } from "../../shared/linkedin/schema";
  * `actions/checkout@v4` clona raso (`fetch-depth: 1`) e o objeto não existiria
  * no CI. Então a lista é congelada aqui, com o sha ao lado.
  */
+
+/**
+ * `openaiApiKey` sintética, pelo mesmo motivo de `linkedinLastroNaRota.test.ts`:
+ * `runQualitative` tem um guard (`linkedinAnalyze.ts:480`) que lança antes de
+ * qualquer HTTP, e o CI não tem `.env`. A chave NÃO é usada: `fetchWithTimeout`
+ * está mockado em cada teste, então nenhuma requisição sai daqui.
+ *
+ * `importActual` de propósito: o resto de `env` continua real, e este teste
+ * exercita `analyzeLinkedin` inteira, que é o ponto.
+ */
+vi.mock("./env", async (importActual) => {
+  const real = await importActual<typeof import("./env")>();
+  return { ...real, env: { ...real.env, openaiApiKey: "sk-de-teste-nao-usada" } };
+});
+
+vi.mock("@sentry/node", async () => {
+  const { espiao } = await import("./__mocks__/sentryEspiao");
+  return espiao();
+});
 
 /** Campos de `deterministic` que o bundle de `1369621` lê, no JSX, sem guarda. */
 const LIDOS_DETERMINISTIC = [
@@ -68,21 +88,21 @@ const TOTAL_DETERMINISTIC = 7;
 const TOTAL_QUALITATIVE = 10;
 
 /**
- * INCOMPATIBILIDADE CONHECIDA, congelada de propósito.
+ * QUEBRAS CONHECIDAS: agora VAZIO, e isso é o resultado do conserto.
  *
- * `skillsSugeridas` foi RENOMEADO para `skillsParaEstudar` nesta série. É a
- * única mudança não-aditiva do contrato de resposta: todos os outros 16 campos
- * seguem existindo com o mesmo nome. O bundle antigo faz
- * `result.qualitative.skillsSugeridas.length` em
- * `client/src/pages/LinkedinAnalisar.tsx:1714` sem `?.`, então a ausência não
- * degrada: estoura `TypeError` no render do resultado.
+ * `skillsSugeridas` foi renomeado para `skillsParaEstudar` em `f70f1b3`, a
+ * única mudança não-aditiva do contrato em 94 commits, e o bundle antigo lê o
+ * campo antigo sem guarda (`client/src/pages/LinkedinAnalisar.tsx:1714`), o que
+ * derrubava o render inteiro. `comAliasDeTransicao` em `linkedinAnalyze.ts`
+ * reemite o nome antigo, então nenhum campo lido pelo bundle antigo falta.
  *
- * O conjunto é congelado em vez de o teste simplesmente ignorar o campo. Se um
- * SEGUNDO campo sumir, o conjunto cresce e o teste fica vermelho. Se alguém
- * restaurar a compatibilidade, ele encolhe e o teste também fica vermelho,
- * pedindo que esta constante seja atualizada junto.
+ * Continua sendo asserção de IGUALDADE, não de pertinência: se alguém remover
+ * outro campo, o conjunto cresce e o teste fica vermelho; quando o alias for
+ * retirado (gatilho de 2026-08-10), ele volta a `["skillsSugeridas"]` e esta
+ * constante precisa ser atualizada no mesmo commit. Nos dois sentidos o teste
+ * exige uma decisão explícita.
  */
-const QUEBRAS_CONHECIDAS = ["skillsSugeridas"] as const;
+const QUEBRAS_CONHECIDAS = [] as const;
 
 const PERFIL = readFileSync(
   path.join(
@@ -225,6 +245,26 @@ describe("janela de deploy inversa: bundle antigo lendo backend novo", () => {
     ]) {
       expect(typeof q[campo], `${campo} deveria ser string`).toBe("string");
     }
+  });
+
+  it("o alias NÃO faz o front novo achar que a análise é legado", async () => {
+    vi.spyOn(http, "fetchWithTimeout").mockResolvedValue(respostaValida());
+    const { response } = await analyzeLinkedin(PEDIDO);
+    const q = response.qualitative as unknown as Record<string, unknown>;
+
+    // Os dois nomes coexistem agora. O risco do alias seria o front novo
+    // confundir "tem skillsSugeridas" com "é v1" e degradar sozinho.
+    expect("skillsSugeridas" in q).toBe(true);
+    expect("skillsParaEstudar" in q).toBe(true);
+
+    const view = readQualitative(response.qualitative, response.qualitativeVersion);
+    // `readQualitative.ts:86` decide a versão por `skillsParaEstudar !== undefined`,
+    // e `:96` decide `legado` pelo mesmo campo. Ambos continuam vendo a v3.
+    expect(view.version).toBe(response.qualitativeVersion);
+    expect(view.version).not.toBe(1);
+    // E `:95` (`skillsParaEstudar ?? skillsSugeridas`) continua pegando o novo.
+    expect(view.skillsParaEstudar).toEqual(q.skillsParaEstudar);
+    expect(view.camposAusentes).toEqual([]);
   });
 
   it("o campo que substituiu `skillsSugeridas` existe, com outro nome", async () => {

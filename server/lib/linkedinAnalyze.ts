@@ -807,6 +807,38 @@ function aplicarLastro(
   return { ...qualitative, headlines, bulletsReescritos, melhorias };
 }
 
+/**
+ * ALIAS DE TRANSIÇÃO. Reemite `skillsSugeridas` como cópia de
+ * `skillsParaEstudar`. REMOVER, não manter.
+ *
+ * POR QUE EXISTE: `f70f1b3` ("feat(linkedin): split suggested skills into
+ * add-now and study lists", 2026-07-26) renomeou `skillsSugeridas` para
+ * `skillsParaEstudar`. Foi a ÚNICA mudança não-aditiva do contrato de resposta
+ * em 94 commits, e o bundle anterior lê o campo antigo sem guarda, em
+ * `client/src/pages/LinkedinAnalisar.tsx:1714` (`.length` direto). A ausência
+ * não degrada: derruba o render inteiro do resultado com `TypeError`.
+ *
+ * POR QUE AQUI, e não no schema da IA: o modelo continua produzindo UM campo
+ * só. Isto é montagem de resposta, não pedido ao modelo. E como a rota persiste
+ * o mesmo objeto (`server/routes/linkedin.ts:74`, `result: response`), o alias
+ * entra na resposta E no que é gravado pelo mesmo caminho, o que importa
+ * porque análise v4 reaberta por bundle antigo quebraria igual.
+ *
+ * POR QUE NÃO É SÓ A JANELA DE DEPLOY: redeploy da Vercel não alcança quem está
+ * com a aba aberta desde antes. O JS antigo já baixado continua rodando até a
+ * pessoa recarregar, e não há prazo para isso. Alias no backend alcança todos.
+ *
+ * GATILHO DE REMOÇÃO: a partir de **2026-08-10** (duas semanas), quando não
+ * houver cliente antigo plausível em execução. Ao remover, atualizar
+ * `QUEBRAS_CONHECIDAS` em `server/lib/janelaDeDeployInversa.test.ts` de volta
+ * para `["skillsSugeridas"]`, que é o teste que trava esta decisão.
+ */
+function comAliasDeTransicao(
+  qualitative: LinkedinQualitative,
+): LinkedinQualitative & { skillsSugeridas: string[] } {
+  return { ...qualitative, skillsSugeridas: qualitative.skillsParaEstudar };
+}
+
 export async function analyzeLinkedin(
   request: LinkedinAnalyzeRequest,
   onAiIo?: (io: AnalyzeAiIo) => void,
@@ -851,7 +883,7 @@ export async function analyzeLinkedin(
       qualitativeVersion: QUALITATIVE_VERSION,
       deterministicVersion: DETERMINISTIC_VERSION,
       deterministic,
-      qualitative,
+      qualitative: comAliasDeTransicao(qualitative),
     },
     parsed,
   };
