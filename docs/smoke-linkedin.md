@@ -202,15 +202,35 @@ usuário. Um evento `ai_lastro_violado` no Sentry é a camada **funcionando**, n
 
 Este é o único passo que exercita a telemetria em vez de confiar nela. Provoca o erro de propósito.
 
-**Clicar:** com o resultado de uma análise na tela, abrir o console do navegador e quebrar o render à força.
-O jeito mais direto sem tocar em código é remover do DOM um nó que o React ainda vai atualizar:
+**O que você precisa:** só o console do navegador (F12, aba Console). Nenhuma ferramenta além disso, nenhuma
+alteração de código.
+
+**Por que não é "remover um nó do DOM":** remover elemento à mão só quebra se o React for mexer naquele nó
+depois, o que depende de timing e não reproduz sempre. O caminho abaixo é determinístico, e melhor ainda:
+reproduz uma falha REAL, que é o resultado persistido com forma diferente da que o código espera.
+
+**Passo a passo:**
+
+1. Rode ou abra uma análise, para ter um resultado na tela.
+2. Abra o console (F12, aba Console) e cole:
 
 ```js
-document.querySelector('.area-rise')?.remove()
+const K = "boranatech:linkedin-analyzer";
+const s = JSON.parse(sessionStorage.getItem(K));
+s.result.qualitative.melhorias = "isto deveria ser um array";
+sessionStorage.setItem(K, JSON.stringify(s));
+location.reload();
 ```
 
-Se isso não derrubar, sirva de alternativa recarregar com a rede em modo offline no meio do carregamento de
-um chunk, que produz o mesmo caminho (`lazyWithRetry` esgota a retentativa e propaga para o boundary).
+3. A página recarrega, restaura o resultado do `sessionStorage`, e o render chama `.map` numa string.
+
+**Para desfazer**, depois de observar: `sessionStorage.removeItem("boranatech:linkedin-analyzer")` e
+recarregar. A análise continua no histórico, isto mexe só no rascunho local da aba.
+
+**Variante que testa o outro boundary** (o de fora, `escopo: app`), opcional: em DevTools, aba Network,
+clique com o botão direito em qualquer requisição de `/assets/LinkedinAnalisar-*.js`, escolha "Block request
+URL", e recarregue a página do analisador. O `lazyWithRetry` esgota a retentativa e o recarregamento, e
+propaga para o boundary do App. Serve para ver o `ChunkLoadError` chegando ao Sentry.
 
 **Observar, em três lugares:**
 
