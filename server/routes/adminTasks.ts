@@ -386,6 +386,18 @@ async function writePositions(
 /**
  * Posicao para um card dentro de `columnId`, entre os vizinhos apontados.
  *
+ * SEMANTICA DOS VIZINHOS, em relacao a ORDEM VISUAL depois do movimento (este e
+ * o par de nomes que todo mundo troca, entao fica explicito):
+ *
+ *   beforeTaskId = o card que fica ACIMA do card movido. "before" = vem antes na
+ *                  tela. null = o card movido vai para o TOPO da coluna.
+ *   afterTaskId  = o card que fica ABAIXO do card movido. "after" = vem depois
+ *                  na tela. null = o card movido vai para o FIM da coluna.
+ *
+ * Os dois nulos significam coluna vazia (ou "solte no fim", que da no mesmo
+ * quando nao ha vizinho de baixo). NAO sao "o card que estava antes de mover":
+ * a referencia e sempre o estado FINAL desejado.
+ *
  * Quando o intervalo entre os vizinhos acabou (positionBetween devolve
  * "rebalance"), a coluna INTEIRA e reescrita em espacamento inteiro e o calculo
  * refeito sobre as posicoes novas. O rebalanceamento acontece aqui dentro,

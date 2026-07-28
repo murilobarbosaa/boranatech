@@ -166,8 +166,15 @@ export type TaskDetail = {
 
 /**
  * Onde soltar um card. O cliente aponta os VIZINHOS por id; quem calcula o
- * numero da posicao e o server (server/lib/adminTaskPosition.ts). Os dois nulos
- * significam "no fim da coluna".
+ * numero da posicao e o server (server/lib/adminTaskPosition.ts).
+ *
+ * Os nomes sao relativos a ORDEM VISUAL DEPOIS do movimento, nunca ao estado
+ * anterior (ver o mesmo texto em resolveTaskPosition, server/routes/adminTasks.ts):
+ *
+ *   before_task_id = card que fica ACIMA do movido. null = topo da coluna.
+ *   after_task_id  = card que fica ABAIXO do movido. null = fim da coluna.
+ *
+ * Os dois nulos = coluna vazia, ou "solte no fim".
  */
 export type TaskPlacement = {
   before_task_id?: string | null;
