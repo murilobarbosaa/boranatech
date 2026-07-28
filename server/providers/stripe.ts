@@ -1271,10 +1271,20 @@ async function createCheckout(
   // payment_method_save: com nenhum PaymentMethod salvo, um mapeamento errado nao
   // consegue cobrar o cartao de outra pessoa. Cartao salvo e fase 2, so depois do
   // mapeamento validado em producao.
-  const customerId = await resolveStripeCustomerId(
+  const resolucao = await resolveStripeCustomerId(
     input.user.id,
     input.user.email,
   );
+  // UM ou OUTRO, nunca os dois: a Stripe recusa `customer` junto de
+  // `customer_email`. No caminho degradado voltamos ao comportamento de hoje, em
+  // que o Checkout cria um Customer por sessao.
+  const customerParams: Pick<
+    Stripe.Checkout.SessionCreateParams,
+    "customer" | "customer_email"
+  > =
+    resolucao.modo === "reuso"
+      ? { customer: resolucao.customerId }
+      : { customer_email: input.user.email || undefined };
 
   if (input.paymentMethod === "boleto") {
     // Boleto: pagamento unico (mode: payment). Nao pode usar price recurring, entao
@@ -1313,7 +1323,7 @@ async function createCheckout(
         },
       ],
       client_reference_id: input.user.id,
-      customer: customerId,
+      ...customerParams,
       metadata: boletoMetadata,
       discounts,
       success_url: `${env.appPublicUrl}/planos/sucesso`,
@@ -1336,7 +1346,7 @@ async function createCheckout(
     payment_method_types: ["card"],
     line_items: [{ price: priceId, quantity: 1 }],
     client_reference_id: input.user.id,
-    customer: customerId,
+    ...customerParams,
     metadata,
     subscription_data: { metadata },
     discounts,
