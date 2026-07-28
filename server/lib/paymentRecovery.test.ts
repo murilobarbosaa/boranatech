@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { runPaymentRecovery } from "./paymentRecovery";
-import { EPISODIO_NOVO_MS, SEGUNDO_AVISO_MS } from "../../shared/paymentRecovery";
+import {
+  EPISODIO_NOVO_MS,
+  MAX_EPISODIOS,
+  SEGUNDO_AVISO_MS,
+} from "../../shared/paymentRecovery";
 
 /**
  * Este teste existe por causa de um bug que os 17 testes da decisao pura NAO
@@ -34,6 +38,12 @@ const db = {
 };
 
 const enviados: { to: string; bucket: string }[] = [];
+/**
+ * TENTATIVAS de upsert, nao linhas gravadas. A diferenca e o ponto do teste do
+ * teto: uma tentativa que o banco recusa pelo CHECK ainda seria uma tentativa por
+ * execucao do cron, a cada 15 min, para sempre.
+ */
+const tentativasDeEscrita: Record<string, unknown>[] = [];
 vi.mock("./queue", () => ({
   enqueueEmail: async (job: { to: string; bucket: string }) => {
     enviados.push({ to: job.to, bucket: job.bucket });
@@ -79,6 +89,7 @@ vi.mock("./supabaseAdmin", () => {
       },
       upsert: (linha: Record<string, unknown>) => ({
         select: async () => {
+          tentativasDeEscrita.push(linha);
           // AQUI mora o ponto do teste: a chave unica da migration, respeitada.
           const existe = db.envios.some(
             (e) => chaveDe(e as unknown as Record<string, unknown>) === chaveDe(linha),
@@ -130,6 +141,7 @@ beforeEach(() => {
   db.assinaturasAtivasDe = new Set();
   db.suprimidos = new Set();
   enviados.length = 0;
+  tentativasDeEscrita.length = 0;
 });
 
 describe("runPaymentRecovery com a chave unica do banco", () => {
@@ -194,6 +206,40 @@ describe("runPaymentRecovery com a chave unica do banco", () => {
     const r = await runPaymentRecovery(new Date(T0 + 31 * 60_000));
     expect(r.enviados).toBe(1);
     expect(enviados).toHaveLength(1);
+  });
+
+  // BLOCO 1 da rodada 10: no teto, nao pode haver NEM TENTATIVA de escrita.
+  it("pessoa no teto de episodios nao gera tentativa de escrita nenhuma", async () => {
+    // Episodio MAX completo (stage 1 e 2), contato ha muito tempo.
+    const contatoAntigo = T0 - EPISODIO_NOVO_MS - 10 * 60_000;
+    db.envios = [
+      { email: EMAIL, episodio: MAX_EPISODIOS, stage: 1, sent_at: new Date(contatoAntigo - 1000).toISOString(), supabase_user_id: "user-1", reason_bucket: "outro" },
+      { email: EMAIL, episodio: MAX_EPISODIOS, stage: 2, sent_at: new Date(contatoAntigo).toISOString(), supabase_user_id: "user-1", reason_bucket: "outro" },
+    ];
+    db.recusas = [recusa(T0)];
+
+    const r = await runPaymentRecovery(new Date(T0 + 31 * 60_000));
+
+    expect(r.enviados).toBe(0);
+    expect(r.ignorados.teto_de_episodios).toBe(1);
+    // O que este teste existe para provar:
+    expect(tentativasDeEscrita).toHaveLength(0);
+    expect(enviados).toHaveLength(0);
+    // E nao contou como erro de registro, que seria o sintoma do bug.
+    expect(r.ignorados.erro_registro).toBeUndefined();
+  });
+
+  it("no teto, varredura repetida segue sem tentar escrever", async () => {
+    const contatoAntigo = T0 - EPISODIO_NOVO_MS - 10 * 60_000;
+    db.envios = [
+      { email: EMAIL, episodio: MAX_EPISODIOS, stage: 2, sent_at: new Date(contatoAntigo).toISOString(), supabase_user_id: "user-1", reason_bucket: "outro" },
+    ];
+    db.recusas = [recusa(T0)];
+    for (let i = 0; i < 5; i += 1) {
+      await runPaymentRecovery(new Date(T0 + (31 + i * 15) * 60_000));
+    }
+    expect(tentativasDeEscrita).toHaveLength(0);
+    expect(enviados).toHaveLength(0);
   });
 
   it("dentro do debounce nao manda nada", async () => {

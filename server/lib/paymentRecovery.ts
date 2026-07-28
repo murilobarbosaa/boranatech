@@ -183,9 +183,14 @@ export async function runPaymentRecovery(
       failureCode: maisRecente.failure_code,
     });
 
-    // INSERT ANTES DO ENVIO. Se o insert conflitar (UNIQUE email+stage), outra
+    // INSERT ANTES DO ENVIO. Se conflitar (UNIQUE email+episodio+stage), outra
     // execucao ja cuidou e este nao envia. Ordem inversa (enviar e depois gravar)
     // mandaria duas vezes sempre que a gravacao falhasse.
+    //
+    // So se chega aqui com decisao.enviar === true, e a decisao NUNCA devolve
+    // episodio acima de MAX_EPISODIOS (ela para em `teto_de_episodios` antes de
+    // somar). Sem isso, o cron tentaria a cada 15 min um INSERT que viola o CHECK
+    // do banco e contaria `erro_registro` para sempre, para aquela pessoa.
     const { data: gravado, error: erroInsert } = await supabaseAdmin
       .from("payment_recovery_emails")
       .upsert(
