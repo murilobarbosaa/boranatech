@@ -8,6 +8,7 @@ import type {
   TaskComment,
   TaskDetail,
   TaskLabel,
+  TaskActivity,
   TaskPlacement,
   TaskPriority,
   TaskType,
@@ -161,6 +162,19 @@ export async function createTask(
 
 export async function getTask(id: string): Promise<TaskDetail> {
   return adminFetch(`/crm/tasks/${id}`);
+}
+
+/**
+ * Pagina o histórico, do mais novo para o mais velho. `before` e o `created_at`
+ * da linha mais antiga que o cliente ja tem (cursor por timestamp, nao offset:
+ * o log so cresce no topo, e offset repetiria registro).
+ */
+export async function getTaskActivity(
+  id: string,
+  before?: string,
+): Promise<{ activity: TaskActivity[]; activity_has_more: boolean }> {
+  const query = before ? `?before=${encodeURIComponent(before)}` : "";
+  return adminFetch(`/crm/tasks/${id}/activity${query}`);
 }
 
 export async function patchTask(

@@ -161,7 +161,14 @@ export type TaskDetail = {
   label_ids: string[];
   comments: TaskComment[];
   checklist: TaskChecklistItem[];
+  /** Primeira pagina do histórico, do mais novo para o mais velho. */
   activity: TaskActivity[];
+  /**
+   * Ha mais histórico alem do que veio. O server manda isto explicitamente em
+   * vez de deixar a tela supor pelo tamanho da lista: uma pagina cheia e
+   * indistinguivel de "acabou exatamente aqui".
+   */
+  activity_has_more: boolean;
 };
 
 /**

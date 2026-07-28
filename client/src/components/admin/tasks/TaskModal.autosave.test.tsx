@@ -46,6 +46,13 @@ vi.mock("@/services/adminTasksService", () => ({
 
 vi.mock("sonner", () => ({ toast: toastSpy }));
 
+// O modal le o usuario logado so para decidir quais comentarios mostram os
+// botoes de editar e excluir. Quem GARANTE isso e a rota (filtro por author_id
+// no WHERE), entao o mock aqui nao afrouxa nada.
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { id: "user-1" } }),
+}));
+
 import { TaskModal } from "./TaskModal";
 
 const COLUMNS: TaskColumn[] = [
@@ -139,6 +146,7 @@ beforeEach(() => {
     comments: [],
     checklist: [] as TaskChecklistItem[],
     activity: [],
+    activity_has_more: false,
   });
   svc.patchTask.mockImplementation(async (_id: string, patch: Partial<Task>) => {
     trace.events.push("patch");
@@ -162,7 +170,7 @@ describe("TaskModal: abertura", () => {
     expect(screen.queryByLabelText("Título da tarefa")).toBeNull();
 
     await act(async () => {
-      resolveGet?.({ task: TASK, label_ids: [], comments: [], checklist: [], activity: [] });
+      resolveGet?.({ task: TASK, label_ids: [], comments: [], checklist: [], activity: [], activity_has_more: false });
     });
     expect(screen.getByLabelText("Título da tarefa")).toBeTruthy();
   });

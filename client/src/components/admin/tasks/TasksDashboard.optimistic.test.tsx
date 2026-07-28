@@ -66,6 +66,11 @@ vi.mock("@/services/adminTasksService", () => ({
 
 vi.mock("sonner", () => ({ toast: toastSpy }));
 
+// O TaskModal, montado quando ha ?task= na URL, le o usuario logado.
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { id: "user-1" } }),
+}));
+
 vi.mock("wouter", () => ({
   useSearch: () => locationSpy.search,
   useLocation: () => ["/admin", locationSpy.set],
@@ -171,6 +176,7 @@ beforeEach(() => {
     comments: [],
     checklist: [],
     activity: [],
+    activity_has_more: false,
   });
   svc.getBoardSnapshot.mockImplementation(() =>
     Promise.resolve({

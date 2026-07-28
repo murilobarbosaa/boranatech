@@ -18,31 +18,40 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   attachLabel,
   createChecklistItem,
+  createComment as createCommentRequest,
   createLabel,
   createTask,
   deleteChecklistItem,
+  deleteComment,
   deleteTask,
   detachLabel,
   getTask,
+  getTaskActivity,
   patchChecklistItem,
+  patchComment,
   patchTask,
   reorderChecklist,
 } from "@/services/adminTasksService";
 
 import { MarkdownEditor } from "./MarkdownEditor";
+import { TaskActivityList } from "./TaskActivityList";
 import { TaskChecklist } from "./TaskChecklist";
+import { TaskComments } from "./TaskComments";
 import { TaskProperties } from "./TaskProperties";
 import { rowActionClass, secondaryButtonClass } from "./taskBoardStyles";
 import { shortIdOf } from "./taskDeepLink";
 import { useAutoSave } from "./useAutoSave";
 import type {
   Task,
+  TaskActivity,
   TaskAssignee,
   TaskCard,
   TaskChecklistItem,
+  TaskComment,
   TaskColumn,
   TaskLabel,
   TaskPriority,
@@ -87,7 +96,12 @@ type ModalData = {
   task: Task;
   labelIds: string[];
   checklist: TaskChecklistItem[];
+  comments: TaskComment[];
+  activity: TaskActivity[];
+  activityHasMore: boolean;
 };
+
+const TEMP_COMMENT_PREFIX = "temp-comment-";
 
 export function TaskModal({
   taskId,
@@ -103,6 +117,11 @@ export function TaskModal({
   onBoardChanged,
   onRemoveCard,
 }: TaskModalProps) {
+  // Quem esta logado, so para DECIDIR o que mostrar. Quem garante que ninguem
+  // edita comentario alheio e a rota, que filtra por author_id no WHERE.
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? null;
+
   const [data, setData] = useState<ModalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState("");
@@ -111,6 +130,14 @@ export function TaskModal({
   const [estimateDraft, setEstimateDraft] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [sideTab, setSideTab] = useState<"comentarios" | "historico">(
+    "comentarios",
+  );
+  const [loadingMoreActivity, setLoadingMoreActivity] = useState(false);
+  // Relogio capturado UMA vez por montagem do modal, e passado adiante. As datas
+  // relativas ficam estaveis enquanto o modal esta aberto (nada de "há 5 min"
+  // virando "há 6 min" no meio de um render) e o teste consegue injetar o valor.
+  const [nowMs] = useState(() => Date.now());
 
   const requestSeq = useRef(0);
   const mounted = useRef(true);
@@ -155,6 +182,9 @@ export function TaskModal({
           task: detail.task,
           labelIds: detail.label_ids,
           checklist: detail.checklist,
+          comments: detail.comments,
+          activity: detail.activity,
+          activityHasMore: detail.activity_has_more,
         });
         setTitle(detail.task.title);
         setDescription(detail.task.description ?? "");
@@ -356,6 +386,164 @@ export function TaskModal({
     }, "Erro ao reordenar o checklist.");
   }
 
+  // -------------------------------------------------------------------------
+  // Comentarios e histórico
+  // -------------------------------------------------------------------------
+
+  /**
+   * Devolve `false` quando falhou, para o composer recuperar o texto em vez de
+   * perde-lo. Mesmo principio do autosave: rede caida nao apaga o que a pessoa
+   * escreveu.
+   */
+  async function createComment(body: string): Promise<boolean> {
+    const tempId = `${TEMP_COMMENT_PREFIX}${Date.now()}`;
+    const optimistic: TaskComment = {
+      id: tempId,
+      task_id: taskId,
+      author_id: currentUserId ?? "",
+      body,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    setData((current) =>
+      current ? { ...current, comments: [...current.comments, optimistic] } : current,
+    );
+    bumpCommentCount(1);
+
+    try {
+      const created = await createCommentRequest(taskId, body);
+      // Troca NO LUGAR, sem remover e reinserir: o comentario nao pisca nem
+      // duplica. Mesmo padrao da criacao de tarefa no board.
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              comments: current.comments.map((item) =>
+                item.id === tempId ? created : item,
+              ),
+            }
+          : current,
+      );
+      return true;
+    } catch (error) {
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              comments: current.comments.filter((item) => item.id !== tempId),
+            }
+          : current,
+      );
+      bumpCommentCount(-1);
+      toast.error(error instanceof Error ? error.message : "Erro ao comentar.");
+      return false;
+    }
+  }
+
+  function editComment(commentId: string, body: string) {
+    const previous = data?.comments.find((item) => item.id === commentId);
+    setData((current) =>
+      current
+        ? {
+            ...current,
+            comments: current.comments.map((item) =>
+              item.id === commentId
+                ? { ...item, body, updated_at: new Date().toISOString() }
+                : item,
+            ),
+          }
+        : current,
+    );
+    void (async () => {
+      try {
+        const updated = await patchComment(commentId, body);
+        setData((current) =>
+          current
+            ? {
+                ...current,
+                comments: current.comments.map((item) =>
+                  item.id === commentId ? updated : item,
+                ),
+              }
+            : current,
+        );
+      } catch (error) {
+        // Inclui o caso de editar comentario de outra pessoa: o server responde
+        // 404 porque o author_id nao casa o WHERE.
+        if (previous) {
+          setData((current) =>
+            current
+              ? {
+                  ...current,
+                  comments: current.comments.map((item) =>
+                    item.id === commentId ? previous : item,
+                  ),
+                }
+              : current,
+          );
+        }
+        toast.error(
+          error instanceof Error ? error.message : "Erro ao editar o comentário.",
+        );
+      }
+    })();
+  }
+
+  function removeComment(commentId: string) {
+    const previous = data?.comments ?? [];
+    setData((current) =>
+      current
+        ? {
+            ...current,
+            comments: current.comments.filter((item) => item.id !== commentId),
+          }
+        : current,
+    );
+    bumpCommentCount(-1);
+    void (async () => {
+      try {
+        await deleteComment(commentId);
+      } catch (error) {
+        setData((current) => (current ? { ...current, comments: previous } : current));
+        bumpCommentCount(1);
+        toast.error(
+          error instanceof Error ? error.message : "Erro ao excluir o comentário.",
+        );
+      }
+    })();
+  }
+
+  function bumpCommentCount(delta: number) {
+    const total = (data?.comments.length ?? 0) + delta;
+    onPatchCard(taskId, { comment_count: Math.max(0, total) });
+  }
+
+  function loadMoreActivity() {
+    const oldest = data?.activity[data.activity.length - 1];
+    if (!oldest || loadingMoreActivity) return;
+    setLoadingMoreActivity(true);
+    void (async () => {
+      try {
+        const page = await getTaskActivity(taskId, oldest.created_at);
+        setData((current) =>
+          current
+            ? {
+                ...current,
+                activity: [...current.activity, ...page.activity],
+                activityHasMore: page.activity_has_more,
+              }
+            : current,
+        );
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Erro ao carregar o histórico.",
+        );
+      } finally {
+        setLoadingMoreActivity(false);
+      }
+    })();
+  }
+
   function toggleLabel(labelId: string, selected: boolean) {
     setData((current) => {
       if (!current) return current;
@@ -531,16 +719,56 @@ export function TaskModal({
                     onReorder={reorderChecklistItems}
                   />
 
-                  {/* Casca da Fase 5. O layout ja e o definitivo: comentarios e
-                      histórico entram DENTRO deste bloco, sem mexer no resto. */}
-                  <section className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-4">
-                    <h3 className="text-xs font-black uppercase tracking-wide text-slate-600">
-                      Comentários e histórico
-                    </h3>
-                    <p className="mt-1.5 text-sm font-semibold text-slate-400">
-                      Entram na próxima fase. A API já registra o histórico de
-                      cada alteração desde agora.
-                    </p>
+                  {/* Duas ABAS e nao uma timeline unica: o histórico gera uma
+                      linha por campo alterado e afogaria a conversa em poucos
+                      dias de uso. */}
+                  <section>
+                    <div className="mb-2.5 flex gap-1 rounded-full border-2 border-slate-900 bg-white p-0.5 shadow-[1px_1px_0_#0f172a] sm:w-fit">
+                      <button
+                        type="button"
+                        onClick={() => setSideTab("comentarios")}
+                        className={`rounded-full px-3 py-1 text-[11px] font-black uppercase transition-colors ${
+                          sideTab === "comentarios"
+                            ? "bg-slate-950 text-white"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        Comentários
+                        {data.comments.length > 0 ? ` (${data.comments.length})` : ""}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSideTab("historico")}
+                        className={`rounded-full px-3 py-1 text-[11px] font-black uppercase transition-colors ${
+                          sideTab === "historico"
+                            ? "bg-slate-950 text-white"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        Histórico
+                      </button>
+                    </div>
+
+                    {sideTab === "comentarios" ? (
+                      <TaskComments
+                        comments={data.comments}
+                        admins={admins}
+                        currentUserId={currentUserId}
+                        nowMs={nowMs}
+                        onCreate={createComment}
+                        onEdit={editComment}
+                        onDelete={removeComment}
+                      />
+                    ) : (
+                      <TaskActivityList
+                        activity={data.activity}
+                        admins={admins}
+                        hasMore={data.activityHasMore}
+                        loadingMore={loadingMoreActivity}
+                        nowMs={nowMs}
+                        onLoadMore={loadMoreActivity}
+                      />
+                    )}
                   </section>
                 </>
               )}

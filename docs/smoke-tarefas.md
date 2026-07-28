@@ -479,3 +479,78 @@ lateral espremida.
 - **Duplicar**: cria `(cópia)` na mesma etapa, com um **ID curto novo**.
 - **Arquivar**: fecha o modal e o card some do board.
 - **Excluir**: pede confirmação, fecha e some. O checklist vai junto (cascade).
+
+---
+
+# Smoke test de comentários e histórico (Fase 5)
+
+Ainda no quadro sandbox. Abra uma tarefa e use as abas **Comentários** e
+**Histórico** no fim da coluna principal.
+
+Os casos de perda de texto, o resolver de `action` desconhecido, a paginação e a
+denormalização do payload estão automatizados, e cada suíte foi conferida contra
+controle negativo (ver o relatório da fase). A lista abaixo é o que só o
+navegador mostra.
+
+## 31. Comentar offline
+
+DevTools → Network → **Offline**. Escreva um comentário e envie.
+
+Esperado: o comentário aparece na hora, some quando a requisição falha, toast de
+erro, e **o texto volta para o campo de escrita**. Volte a ficar online, mande de
+novo e recarregue: aparece uma vez só, nunca duas.
+
+## 32. Editar comentário de outro autor
+
+Peça para outra pessoa admin comentar na mesma tarefa (ou insira uma linha em
+`admin_task_comments` com `author_id` diferente do seu).
+
+Na interface os botões de editar e excluir **não aparecem** nesse comentário. Mas
+o que garante é o servidor, então force pelo console:
+
+```js
+await fetch("/api/admin/crm/comments/<id-do-comentario-alheio>", {
+  method: "PATCH",
+  headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
+  body: JSON.stringify({ body: "invasão" }),
+}).then((r) => r.status);
+```
+
+Esperado: **404**, não 200 e não 403. A rota filtra por `author_id` no próprio
+`WHERE`, então a linha simplesmente não casa.
+
+## 33. `action` desconhecido no histórico
+
+Simula o bundle antigo contra backend novo. No SQL editor:
+
+```sql
+insert into public.admin_task_activity (task_id, actor_id, action, payload)
+values ('<uuid da tarefa>', null, 'archived', '{}'::jsonb);
+```
+
+Depois edite o `action` dessa linha para um valor fora do CHECK — como o CHECK
+recusa, o teste real de bundle antigo é o inverso: **remova uma entrada do
+`switch` em `taskActivityMeta.ts`** e recarregue. A linha tem que mostrar
+"registrou uma alteração", nunca sumir e nunca derrubar a aba. Restaure depois.
+
+## 34. Tarefa com muito histórico
+
+Gere volume mudando a prioridade da mesma tarefa umas 40 vezes (o `↑`/`↓` do
+select serve). Abra a tarefa e vá em **Histórico**.
+
+Esperado: 30 linhas e um botão **"Carregar mais"**. Clique: emenda a página
+seguinte sem repetir nem pular nenhuma linha, e o botão some quando acaba.
+Confirme no Network que a abertura da tarefa **não** baixou o histórico inteiro.
+
+## 35. Etiqueta excluída no histórico
+
+Aplique uma etiqueta numa tarefa, remova-a da tarefa e depois **exclua a etiqueta
+do quadro**. No histórico, as duas linhas continuam dizendo o nome dela.
+
+É o ponto do Passo 1 desta fase: o log guarda o rótulo legível gravado no momento
+do evento, não uma referência que pode desaparecer.
+
+## 36. Contador do card
+
+Comente numa tarefa e feche o modal: o contador de comentários no card, no board,
+já subiu. Sem recarregar a página.
