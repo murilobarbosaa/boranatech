@@ -21,10 +21,48 @@ export type IntrospectDeps = {
   accessToken: string;
 };
 
+/**
+ * Recusa qualquer coisa que nao seja UM comando SELECT.
+ *
+ * O endpoint da Management API executa SQL ARBITRARIO com o papel `postgres`:
+ * `runSql` tinha, na pratica, poder de DROP num modulo que roda em `pnpm
+ * check:migrations`, ou seja, rotina. Nada aqui precisa disso, entao o poder sai.
+ *
+ * A checagem e deliberadamente ESTREITA e conservadora: um unico statement,
+ * comecando em `select` ou `with`, sem `;` no meio. Nao tenta ser um parser de
+ * SQL (parser meu decidindo escopo e a classe de erro que esta base documenta):
+ * ela RECUSA o que nao reconhece, em vez de tentar interpretar. Se um dia uma
+ * consulta legitima for barrada, o conserto e reescrever a consulta, nao afrouxar
+ * o guard.
+ */
+export function exigirSelect(query: string): void {
+  // Sem comentarios: `-- ` e `/* */` poderiam esconder o verbo real.
+  if (/--|\/\*/.test(query)) {
+    throw new Error("[pgIntrospect] consulta com comentario SQL recusada.");
+  }
+  const limpa = query.trim().replace(/;\s*$/, "");
+  if (limpa.includes(";")) {
+    throw new Error("[pgIntrospect] mais de um statement recusado.");
+  }
+  if (!/^(select|with)\s/i.test(limpa)) {
+    throw new Error(
+      `[pgIntrospect] somente SELECT: recusado "${limpa.slice(0, 40)}".`,
+    );
+  }
+  // `with ... as ( insert ... returning )` e SELECT na superficie e escrita no
+  // fundo. Barra as palavras de escrita em qualquer posicao.
+  if (/\b(insert|update|delete|drop|alter|create|truncate|grant|revoke|copy)\b/i.test(limpa)) {
+    throw new Error(
+      "[pgIntrospect] palavra de escrita na consulta; recusado.",
+    );
+  }
+}
+
 export async function runSql<T = Record<string, unknown>>(
   deps: IntrospectDeps,
   query: string,
 ): Promise<T[]> {
+  exigirSelect(query);
   const response = await fetch(
     `https://api.supabase.com/v1/projects/${deps.projectRef}/database/query`,
     {
