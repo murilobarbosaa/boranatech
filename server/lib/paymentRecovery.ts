@@ -4,9 +4,16 @@
 // regua depende de TEMPO PASSAR (debounce de 30 min). Quem varre e o cron.
 //
 // A decisao e pura e vive em shared/paymentRecovery.ts. Aqui so juntamos os fatos
-// e obedecemos. A guarda de "ja mandei" e o UNIQUE (email, stage) do banco, nao
-// uma checagem no chamador: o INSERT vem ANTES do envio, entao duas execucoes
-// concorrentes nao conseguem mandar dois e-mails nem em corrida.
+// e obedecemos. A guarda de "ja mandei" e o UNIQUE (email, episodio, stage) do
+// banco, nao uma checagem no chamador: o INSERT vem ANTES do envio, entao duas
+// execucoes concorrentes nao conseguem mandar dois e-mails nem em corrida.
+//
+// O `episodio` na chave NAO e enfeite. Com a UNIQUE original (email, stage), a
+// reabertura de episodio era INALCANCAVEL: passados os 30 dias a decisao devolvia
+// stage 1, o upsert conflitava com a linha de stage 1 do episodio anterior,
+// ignoreDuplicates transformava em DO NOTHING, e o runner contava como
+// `ja_registrado`. Quem falhasse em agosto e voltasse em outubro nunca receberia
+// e-mail, e o contador diria "ja tratado". Ver a migration 20260728230000.
 
 import {
   classificarMotivo,
@@ -137,7 +144,7 @@ export async function runPaymentRecovery(
 
     const { data: envios, error: erroEnvios } = await supabaseAdmin
       .from("payment_recovery_emails")
-      .select("stage, sent_at")
+      .select("stage, sent_at, episodio")
       .eq("email", email);
     if (erroEnvios) {
       console.error(
@@ -152,10 +159,13 @@ export async function runPaymentRecovery(
     const decisao = decidirRecuperacao({
       agoraMs: agora.getTime(),
       ultimaTentativaMs,
-      enviosAnteriores: (envios ?? []).map((e: { stage: number | string; sent_at: string }) => ({
-        stage: Number(e.stage),
-        sentAtMs: new Date(e.sent_at as string).getTime(),
-      })),
+      enviosAnteriores: (envios ?? []).map(
+        (e: { stage: number | string; sent_at: string; episodio: number | string }) => ({
+          stage: Number(e.stage),
+          sentAtMs: new Date(e.sent_at).getTime(),
+          episodio: Number(e.episodio),
+        }),
+      ),
       converteu: await converteu(userId),
       suprimido: await estaSuprimido(email),
       emailValido: validateEmailForSending(email).ok,
@@ -183,11 +193,12 @@ export async function runPaymentRecovery(
           email,
           supabase_user_id: userId,
           stage: decisao.stage,
+          episodio: decisao.episodio,
           failed_payment_id: maisRecente.id,
           reason_bucket: bucket,
           sent_at: agora.toISOString(),
         },
-        { onConflict: "email,stage", ignoreDuplicates: true },
+        { onConflict: "email,episodio,stage", ignoreDuplicates: true },
       )
       .select("id");
     if (erroInsert) {
