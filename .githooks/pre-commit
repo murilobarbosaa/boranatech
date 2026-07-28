@@ -15,7 +15,21 @@
 # fica para tras nao e check. 7,6s contra 1,3s e o preco de nao ter que confiar
 # em manutencao manual do proprio guarda.
 #
-# Roda: suite inteira (~7,6s) e pnpm check (~3,3s). Total ~11s por commit.
+# POR QUE A SEGUNDA RODADA, SEM `.env`. Essa e a condicao real do CI: o job
+# `qualidade` nao recebe segredo nenhum e nao existe arquivo `.env` la. Duas
+# vezes seguidas um teste que le `env.*` passou local e quebrou no CI, e na
+# segunda vez foi no commit IMEDIATAMENTE seguinte ao que documentou a
+# armadilha. Documentacao nao impediu; execucao impediu. Ver CLAUDE.md, o item
+# do `env -i`, e docs/harness-fidelidade-instrumento.md secao 2-bis.
+#
+# POR QUE A SUITE TODA DE NOVO, e nao so "os testes que importam env": a
+# dependencia e TRANSITIVA. janelaDeDeployInversa.test.ts nao importa `./env`,
+# importa `analyzeLinkedin`, que importa. Enumerar isso da fonte exige seguir o
+# grafo de imports, ou seja, um parser que pode sub-casar em silencio, que e a
+# classe de defeito que este hook existe para nao repetir. Rodar tudo duas vezes
+# custa ~8s e nao depende de nenhum parser meu estar certo.
+#
+# Roda: suite (~7,6s) + suite sem .env (~7,6s) + pnpm check (~3,3s).
 #
 # ATENCAO: `pnpm check` NAO cobre arquivos de teste, porque tsconfig.json os
 # exclui. Erro de tipo em teste so aparece quando o teste roda, e e por isso que
@@ -24,8 +38,40 @@
 # Emergencia: git commit --no-verify. Use com parcimonia e conserte depois.
 set -e
 
+ENV_BAK=".env.pre-commit-bak"
+
+# Restauracao do `.env`. Um hook que deixa o `.env` renomeado quebra o ambiente
+# de quem commitou, e seria pior que o problema que ele resolve. Por isso a
+# restauracao e verificada por hash e grita, em vez de falhar em silencio.
+restaurar_env() {
+  [ -f "$ENV_BAK" ] || return 0
+  mv -f "$ENV_BAK" .env
+  DEPOIS=$(md5sum .env | cut -d' ' -f1)
+  if [ "$DEPOIS" != "$ENV_MD5" ]; then
+    echo "" >&2
+    echo "[pre-commit] ERRO GRAVE: o .env restaurado NAO confere." >&2
+    echo "[pre-commit]   antes:  $ENV_MD5" >&2
+    echo "[pre-commit]   depois: $DEPOIS" >&2
+    echo "[pre-commit] Confira o arquivo A MAO antes de continuar." >&2
+    exit 1
+  fi
+}
+
 echo "[pre-commit] suite de testes..."
 npx vitest run --silent
+
+if [ -f .env ]; then
+  echo "[pre-commit] suite sem .env (condicao do CI)..."
+  ENV_MD5=$(md5sum .env | cut -d' ' -f1)
+  trap restaurar_env EXIT INT TERM
+  mv .env "$ENV_BAK"
+  npx vitest run --silent
+  restaurar_env
+  trap - EXIT INT TERM
+  echo "[pre-commit] .env restaurado e conferido ($ENV_MD5)."
+else
+  echo "[pre-commit] sem .env neste checkout, a primeira rodada ja e a condicao do CI."
+fi
 
 echo "[pre-commit] pnpm check..."
 pnpm check
