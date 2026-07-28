@@ -109,6 +109,10 @@ async function ensureCoupon(percent) {
     );
   }
 
+  if (!CONFIRM) {
+    console.log(`[stripe-coupons] DRY-RUN: criaria o coupon ${id} (${percent}% once)`);
+    return { id: "(dry-run)" };
+  }
   const created = await stripeRequest("POST", "/coupons", {
     id,
     percent_off: percent,
@@ -122,6 +126,19 @@ async function ensureCoupon(percent) {
   }
   console.log(`[stripe-coupons] criado: ${id} (${percent}% once)`);
 }
+
+// PORTAO: dry-run por default, --confirm para escrever. Padrao da casa
+// (stripe-webhook-events.mjs). Antes deste bloco o script criava objeto na Stripe
+// em LIVE sem nenhuma confirmacao, bastando um `node scripts/...` sem argumento.
+// Rodar em live e INTENCIONAL aqui (o cabecalho documenta os dois modos), entao o
+// portao pede confirmacao em vez de bloquear.
+const CONFIRM = process.argv.includes("--confirm");
+const MODO = (process.env.STRIPE_SECRET_KEY || "").startsWith("sk_live_")
+  ? "LIVE"
+  : "TEST";
+console.log(
+  `[stripe-coupons] modo=${MODO} | ${CONFIRM ? "APLICANDO" : "DRY-RUN (nada e criado)"}`,
+);
 
 async function main() {
   const percents = await fetchActivePercents();
