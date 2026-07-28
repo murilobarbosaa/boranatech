@@ -53,6 +53,11 @@ type ActivityAction =
   | "completed"
   | "reopened";
 
+// Tamanho da pagina do historico. O activity e a tabela que mais cresce aqui
+// (uma linha por mudanca de campo), e abrir uma tarefa nao pode custar o log
+// inteiro. Paginado por cursor em GET /tasks/:id/activity.
+const ACTIVITY_PAGE_SIZE = 30;
+
 const HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
 const BOARD_KEY = /^[A-Z][A-Z0-9]{1,9}$/;
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -343,6 +348,26 @@ async function logActivity(
       error,
     );
   }
+}
+
+/**
+ * Nome legivel de um usuario, para DENORMALIZAR no payload do log.
+ *
+ * O log e registro historico e precisa ser autossuficiente no momento da
+ * escrita. Guardar so o uuid faz a linha depender de uma consulta futura que
+ * pode nao ter resposta: conta removida de admin_roles, perfil apagado, e a
+ * entrada de seis meses atras vira um uuid cru na tela. O id continua no payload
+ * junto do nome, para quem quiser navegar.
+ */
+async function userLabel(userId: string | null): Promise<string | null> {
+  if (!userId) return null;
+  const { data } = await supabaseAdmin
+    .from("profiles")
+    .select("name, email")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!data) return null;
+  return (data.name as string | null) ?? (data.email as string | null) ?? null;
 }
 
 /** Coluna onde um card novo nasce: a is_start, ou a de menor posicao. */
@@ -1033,12 +1058,16 @@ router.get("/tasks/:id", async (req, res, next) => {
       .select(CHECKLIST_COLUMNS)
       .eq("task_id", task.id)
       .order("position", { ascending: true }),
+    // Pede UM a mais que a pagina para saber se ha continuacao. O `.limit(200)`
+    // anterior nao truncava em silencio do lado do banco, mas truncava em
+    // silencio para QUEM OLHA: a tela mostrava 200 linhas sem dizer que havia
+    // mais, e "vi o historico inteiro" seria falso. Agora ha has_more.
     supabaseAdmin
       .from("admin_task_activity")
       .select(ACTIVITY_COLUMNS)
       .eq("task_id", task.id)
       .order("created_at", { ascending: false })
-      .limit(200),
+      .limit(ACTIVITY_PAGE_SIZE + 1),
   ]);
 
   if (links.error || comments.error || checklist.error || activity.error) {
@@ -1049,12 +1078,54 @@ router.get("/tasks/:id", async (req, res, next) => {
     return next(createError(500, "db_error", "Erro ao carregar a tarefa."));
   }
 
+  const activityRows = (activity.data ?? []) as ActivityRow[];
+  const hasMoreActivity = activityRows.length > ACTIVITY_PAGE_SIZE;
+
   res.json({
     task,
     label_ids: (links.data ?? []).map((row) => row.label_id as string),
     comments: (comments.data ?? []) as CommentRow[],
     checklist: (checklist.data ?? []) as ChecklistRow[],
-    activity: (activity.data ?? []) as ActivityRow[],
+    activity: activityRows.slice(0, ACTIVITY_PAGE_SIZE),
+    activity_has_more: hasMoreActivity,
+  });
+});
+
+/**
+ * Paginacao do historico, do mais novo para o mais velho.
+ *
+ * `before` e o created_at da linha mais antiga que o cliente ja tem. Cursor por
+ * timestamp e nao por OFFSET porque o log so cresce no topo: com OFFSET, uma
+ * linha nova entre duas paginas empurraria tudo e repetiria um registro.
+ */
+router.get("/tasks/:id/activity", async (req, res, next) => {
+  const id = parseId(req.params.id);
+  if (!id.success) {
+    return next(createError(404, "not_found", "Tarefa não encontrada."));
+  }
+  const before = typeof req.query.before === "string" ? req.query.before : null;
+  if (before !== null && Number.isNaN(Date.parse(before))) {
+    return next(invalid(undefined, "Cursor inválido."));
+  }
+
+  let query = supabaseAdmin
+    .from("admin_task_activity")
+    .select(ACTIVITY_COLUMNS)
+    .eq("task_id", id.data)
+    .order("created_at", { ascending: false })
+    .limit(ACTIVITY_PAGE_SIZE + 1);
+  if (before) query = query.lt("created_at", before);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("[admin-tasks] Falha ao paginar atividade:", error);
+    return next(createError(500, "db_error", "Erro ao carregar o histórico."));
+  }
+
+  const rows = (data ?? []) as ActivityRow[];
+  res.json({
+    activity: rows.slice(0, ACTIVITY_PAGE_SIZE),
+    activity_has_more: rows.length > ACTIVITY_PAGE_SIZE,
   });
 });
 
@@ -1123,11 +1194,21 @@ router.patch("/tasks/:id", async (req, res, next) => {
     fields.assignee_id !== undefined &&
     (fields.assignee_id ?? null) !== current.assignee_id
   ) {
+    // Nome resolvido AGORA e gravado junto: ver userLabel.
+    const [fromName, toName] = await Promise.all([
+      userLabel(current.assignee_id),
+      userLabel(task.assignee_id),
+    ]);
     await logActivity(
       task.id,
       actor,
       task.assignee_id ? "assigned" : "unassigned",
-      { from: current.assignee_id, to: task.assignee_id },
+      {
+        from: current.assignee_id,
+        from_name: fromName,
+        to: task.assignee_id,
+        to_name: toName,
+      },
     );
   }
   if (
@@ -1396,6 +1477,15 @@ router.delete("/tasks/:id/labels/:labelId", async (req, res, next) => {
     return next(createError(404, "not_found", "Vínculo não encontrado."));
   }
 
+  // Le o nome ANTES de desvincular: a etiqueta pode ser excluida logo depois, e
+  // ai o nome some para sempre. Este e o unico ponto do log em que a informacao
+  // e irrecuperavel se nao for capturada na hora.
+  const { data: labelRow } = await supabaseAdmin
+    .from("admin_task_labels")
+    .select("name")
+    .eq("id", labelId.data)
+    .maybeSingle();
+
   const { data, error } = await supabaseAdmin
     .from("admin_task_label_links")
     .delete()
@@ -1410,6 +1500,7 @@ router.delete("/tasks/:id/labels/:labelId", async (req, res, next) => {
   if (data && data.length > 0) {
     await logActivity(id.data, req.user!.id, "label_removed", {
       label_id: labelId.data,
+      label_name: (labelRow?.name as string | null) ?? null,
     });
   }
   res.json({ ok: true });
