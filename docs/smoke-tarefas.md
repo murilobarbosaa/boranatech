@@ -218,3 +218,85 @@ for t in $T1 $T2; do curl -s "${AUTH[@]}" -X DELETE "$BASE/api/admin/crm/tasks/$
 
 As tarefas criadas nos passos 2 e 3 também precisam sair. `admin_task_boards` em
 cascata leva tudo junto, mas **não exclua o board DEV**: ele é o seed.
+
+---
+
+# Smoke test da interface (Fase 2, board e CRUD)
+
+Em `/admin?section=tarefas`, logado como admin. Ainda **não há drag and drop nem
+modal da tarefa**: mover é pelas setas do card e pelo menu da coluna.
+
+Os passos 11 a 14 são os chatos, e são os que importam. Os automatizados estão em
+`client/src/components/admin/tasks/TasksDashboard.optimistic.test.tsx`; a lista
+abaixo é a conferência com rede e banco de verdade.
+
+## 11. Etapa não-vazia (409 → escolher destino)
+
+1. Crie uma etapa nova pelo botão **"+ Nova etapa"**.
+2. Mova uma tarefa para ela com a seta `→`.
+3. No menu da etapa (`⋯`), **Excluir etapa**, e confirme.
+
+Esperado: o diálogo **não fecha**. Ele troca para a mensagem do servidor
+(`A etapa tem 1 tarefa(s)…`) e mostra um select **"Mover as tarefas para"**. O
+botão vira **"Mover e excluir"** e fica desabilitado até você escolher o destino.
+Ao confirmar, a etapa some e a tarefa aparece na etapa escolhida.
+
+## 12. Dois movimentos em sequência rápida
+
+Clique na seta `→` do mesmo card **duas vezes seguidas, rápido**, atravessando
+duas etapas.
+
+Esperado: o card avança duas etapas e **fica lá**. Não pode voltar sozinho para a
+etapa intermediária depois de um instante, nem para a original. Recarregue a
+página: a etapa final tem que ser a mesma.
+
+Para exercitar o caminho de erro, no DevTools use **Network → Offline** e clique
+na seta: o card volta para a etapa de origem e aparece um toast de erro. Volte a
+ficar online e recarregue para confirmar que o servidor concorda com a tela.
+
+## 13. Criar tarefa com a rede falhando
+
+1. DevTools → Network → **Offline**.
+2. **"+ Nova tarefa"**, digite um título, `Enter`.
+
+Esperado: o card aparece na hora, some sozinho quando a requisição falha, e um
+toast informa o erro. **Não pode sobrar card fantasma nem duplicado** ao voltar
+para online e recarregar.
+
+Ainda online, digite três títulos seguidos com `Enter` entre eles: o campo
+**continua aberto e focado** e as três tarefas aparecem, cada uma com seu ID
+curto (`DEV-…`) depois que o servidor responde.
+
+## 14. `?task=` e `?section=` juntos
+
+1. Clique num card. A URL vira `/admin?section=tarefas&task=DEV-42` e o card
+   ganha um anel violeta.
+2. **F5.** Tem que voltar na aba Tarefas com o mesmo card destacado. Se cair em
+   "Visão", a escrita do parâmetro comeu o `section`.
+3. **Voltar** no navegador: sai o `task=`, o destaque some, a aba continua
+   Tarefas.
+4. **Avançar**: o destaque volta.
+5. Troque para a aba **Bugs & Erros** e volte para **Tarefas**: o `task=` foi
+   descartado (ele pertence a esta aba) e nada quebrou.
+6. Edite a URL para `?section=tarefas&task=lixo` e recarregue: a tela carrega
+   normal, sem destaque e sem erro no console.
+
+## 15. Etapas: renomear, cor, WIP e ordem
+
+- **Duplo clique** no nome da etapa: vira campo. `Enter` salva, `Esc` cancela e
+  volta o nome anterior.
+- Menu `⋯` → **Cor**: a faixa do topo da coluna muda na hora.
+- Menu `⋯` → **Definir limite (WIP)**: informe `1` numa etapa com 2 ou mais
+  tarefas. O contador vira `2/1` em vermelho. **Confirme que ainda dá para mover
+  outra tarefa para lá**: o limite é aviso, não bloqueio.
+- Menu `⋯` → **Mover para a esquerda/direita**: a coluna troca de lugar. Nas
+  pontas as opções ficam desabilitadas. Recarregue e confirme que a ordem
+  persistiu (se aparecer `incomplete_order`, a lista enviada não estava completa).
+
+## 16. Estados vazios e responsivo
+
+- Uma etapa sem tarefas mostra "Nenhuma tarefa nesta etapa", não espaço em branco.
+- Um quadro sem etapas mostra o convite para criar a primeira.
+- Em viewport de celular (DevTools, ~390px): as colunas rolam na horizontal com
+  encaixe (snap) e as setas `←`/`→` dos cards ficam **sempre visíveis**, já que
+  não existe hover em toque.

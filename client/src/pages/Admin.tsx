@@ -31,6 +31,7 @@ import {
   LayoutDashboard,
   Link as LinkIcon,
   LockKeyhole,
+  SquareKanban,
   LogOut,
   Mail,
   MousePointerClick,
@@ -58,6 +59,7 @@ import { UsageRetentionDashboard } from "@/components/admin/UsageRetentionDashbo
 import { ContactListsManager } from "@/components/admin/ContactListsManager";
 import { ConversionDashboard } from "@/components/admin/ConversionDashboard";
 import { BugsDashboard } from "@/components/admin/BugsDashboard";
+import { TasksDashboard } from "@/components/admin/tasks/TasksDashboard";
 import { NotificationsManager } from "@/components/admin/NotificationsManager";
 import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { BntSelect } from "@/components/shared/BntSelect";
@@ -206,7 +208,8 @@ type AdminSectionId =
   | "notificacoes"
   | "beta"
   | "vagas"
-  | "bugs";
+  | "bugs"
+  | "tarefas";
 
 type DashboardData = {
   counts?: {
@@ -435,6 +438,11 @@ const adminNavItems: AdminNavItem[] = [
     href: "#bugs",
     label: "Bugs & Erros",
     icon: <Bug className="h-4 w-4" />,
+  },
+  {
+    href: "#tarefas",
+    label: "Tarefas",
+    icon: <SquareKanban className="h-4 w-4" />,
   },
   {
     href: "#beta",
@@ -7533,6 +7541,18 @@ export default function Admin() {
               subtitle="Erros capturados pelo Sentry e bug tracker interno. Criar um bug a partir de um erro vincula os dois; concluir um bug dispara o aviso por email."
             >
               <BugsDashboard />
+            </AdminSection>
+          ) : null}
+
+          {activeSection === "tarefas" ? (
+            <AdminSection
+              id="tarefas"
+              eyebrow="tarefas"
+              icon={<SquareKanban className="h-4 w-4" />}
+              title="Tarefas"
+              subtitle="Board interno de backlog, features, melhorias e débito técnico. As etapas são editáveis: renomeie no duplo clique e reordene pelo menu da coluna."
+            >
+              <TasksDashboard />
             </AdminSection>
           ) : null}
 
