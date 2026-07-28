@@ -120,6 +120,14 @@ bump e com consentimento atual, 2477 têm a linha gravada em menos de 10s do
 | Rate limit | 180 req/min **por IP** | `server/lib/env.ts` |
 | Pico de usuários/dia com `consent_check` | 291 | PostHog, 14 dias |
 | **Migration `consent_method`** | **APLICADA em 2026-07-28**, via SQL Editor (não pelo CLI) | `information_schema.columns`: `consent_method / text / is_nullable=YES` |
+| **Migration `billing_failed_payments`** | **APLICADA em 2026-07-28.** Tabela existe (22 colunas), `EXPECTED_TABLE_COUNT = 82` | `to_regclass`, `pg_class`, e commits `43f895f` / `0ff8946` |
+
+> **Correção de registro.** Durante o trabalho eu reportei que a migration de billing
+> não havia sido aplicada e não deveria ser. Estava errado: `billing_failed_payments`
+> **existe em produção**, o `EXPECTED_TABLE_COUNT` já foi para 82 no commit da própria
+> migration, e o webhook de produção já está inscrito em `charge.failed` e
+> `payment_intent.payment_failed`. Ela é de outra frente (billing), não deste fluxo,
+> mas está no mesmo lote de deploy e por isso fica registrada aqui.
 
 ### O histórico do CLI não reflete o banco, e isso é anterior a este trabalho
 
