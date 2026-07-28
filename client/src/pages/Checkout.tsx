@@ -627,6 +627,10 @@ export default function Checkout() {
   } = useCoupon();
   const [selectedPlan, setSelectedPlan] = useState("pro_semiannual");
   const [loading, setLoading] = useState(false);
+  // Retorno pelo cancel_url. NAO significa "recusado": o cancel_url tambem
+  // dispara para quem clicou em voltar sem tentar nada. Por isso a copy abaixo e
+  // neutra quanto a causa.
+  const [retornoSemPagar, setRetornoSemPagar] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const reduce = useReducedMotion();
 
@@ -684,12 +688,17 @@ export default function Checkout() {
   }, []);
 
   // checkout_abandoned: se havia um checkout pendente (marcado antes do redirect
-  // para a Stripe) e a pessoa voltou para ca (cancel_url), registra o abandono.
+  // para a Stripe) e a pessoa voltou para ca (cancel_url), registra o abandono E
+  // mostra o aviso. Antes SO havia o evento de PostHog: quem voltava sem pagar
+  // nao via nada, e das 53 recusas medidas nenhuma gerou uma palavra na tela.
   useEffect(() => {
     const pending = sessionStorage.getItem("bnt_checkout_pending");
     if (pending) {
+      // Limpa na EXIBICAO, nao no dismiss: navegar para outra rota e voltar nao
+      // deve ressuscitar o aviso de uma tentativa que ja passou.
       sessionStorage.removeItem("bnt_checkout_pending");
       captureCheckoutAbandoned({ plan_code: pending });
+      setRetornoSemPagar(true);
     }
   }, []);
 
@@ -853,6 +862,55 @@ export default function Checkout() {
           },
         }}
       />
+
+      {retornoSemPagar ? (
+        <div className="border-b-2 border-slate-950 bg-white">
+          <div className="container flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-display text-sm font-black uppercase tracking-wider text-slate-950">
+                {/* TODO(Ana): titulo do aviso. NAO afirmar que o cartao foi
+                    recusado: o cancel_url tambem dispara em desistencia. */}
+                Não recebemos a confirmação do seu pagamento.
+              </p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-950/70">
+                {/* TODO(Ana): subtitulo. Pode dizer que nada foi cobrado. */}
+                Nada foi cobrado. Você pode tentar de novo ou escolher outra
+                forma de pagamento.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setRetornoSemPagar(false);
+                  handleSubscribe();
+                }}
+                className="bnt-pressable border-2 border-slate-950 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase tracking-wider text-slate-950 shadow-[3px_3px_0_#0f172a]"
+              >
+                {/* TODO(Ana): rotulo. */}
+                Tentar de novo
+              </button>
+              <a
+                href={`https://wa.me/${import.meta.env.VITE_WHATSAPP_NUMBER ?? ""}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bnt-pressable border-2 border-slate-950 bg-white px-4 py-2 text-xs font-black uppercase tracking-wider text-slate-950 shadow-[3px_3px_0_#0f172a]"
+              >
+                {/* TODO(Ana): rotulo. */}
+                Falar com a gente
+              </a>
+              <button
+                type="button"
+                onClick={() => setRetornoSemPagar(false)}
+                aria-label="Fechar aviso"
+                className="px-2 py-2 text-xs font-black uppercase tracking-wider text-slate-950/60 hover:text-slate-950"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {hasAffiliateBanner ? (
         <div className="border-b-2 border-slate-950 bg-[#FFB800]">
