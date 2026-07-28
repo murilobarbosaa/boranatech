@@ -8,6 +8,8 @@ import { env } from "./env";
 export type SentryIssue = {
   id: string;
   shortId: string;
+  /** Slug do projeto de origem. Vazio quando a API nao mandou. */
+  projectSlug: string;
   title: string;
   culprit: string;
   level: string;
@@ -31,6 +33,22 @@ export type SentryIssuesResult =
     };
 
 const SENTRY_API_BASE = "https://sentry.io/api/0";
+
+/**
+ * `-1` e a forma da API do Sentry de dizer TODOS os projetos da organizacao.
+ *
+ * Por que o painel passou a consultar a organizacao em vez de um projeto:
+ * `SENTRY_PROJECT_SLUG` era singular, e no dia em que nasceu o projeto de
+ * browser (`boranatech-front`, 2026-07-28) a tela "Erros capturados pelo
+ * Sentry" passaria a listar METADE dos erros, sem dar erro e sem avisar. Um
+ * instrumento que existe para enxergar falha escondida, escondendo falha. Com
+ * `-1` o conjunto e descoberto pelo servidor a cada chamada: projeto novo entra
+ * sozinho, e nao ha lista, contagem nem slug para alguem lembrar de atualizar.
+ *
+ * A origem continua legivel porque o `shortId` ja tras o prefixo por projeto
+ * (`NODE-EXPRESS-B`, `BORANATECH-FRONT-A`), e agora tambem em `projectSlug`.
+ */
+const TODOS_OS_PROJETOS = "-1";
 const REQUEST_TIMEOUT_MS = 10_000;
 // Lote da busca por id numerico: uma request por lote, nunca uma por card.
 const SENTRY_ID_QUERY_CHUNK = 25;
@@ -65,6 +83,9 @@ function toIssue(raw: Record<string, unknown>): SentryIssue {
   return {
     id: str(raw.id),
     shortId: str(raw.shortId),
+    projectSlug: str(
+      (raw.project as Record<string, unknown> | undefined)?.slug,
+    ),
     title: str(raw.title),
     culprit: str(raw.culprit),
     level: str(raw.level),
@@ -85,12 +106,11 @@ export async function listSentryIssues(params?: {
   const missing: string[] = [];
   if (!env.sentryAuthToken) missing.push("SENTRY_AUTH_TOKEN");
   if (!env.sentryOrgSlug) missing.push("SENTRY_ORG_SLUG");
-  if (!env.sentryProjectSlug) missing.push("SENTRY_PROJECT_SLUG");
   if (missing.length > 0) return { state: "not_configured", missing };
 
-  const url = new URL(
-    `${SENTRY_API_BASE}/projects/${env.sentryOrgSlug}/${env.sentryProjectSlug}/issues/`,
-  );
+  // ORGANIZACAO, nao projeto. Ver TODOS_OS_PROJETOS.
+  const url = new URL(`${SENTRY_API_BASE}/organizations/${env.sentryOrgSlug}/issues/`);
+  url.searchParams.set("project", TODOS_OS_PROJETOS);
   url.searchParams.set("query", params?.query ?? "is:unresolved");
   url.searchParams.set("statsPeriod", params?.statsPeriod ?? "14d");
   if (params?.cursor) url.searchParams.set("cursor", params.cursor);
@@ -169,7 +189,7 @@ export type SentryIssuesByIdResult =
   | { state: "error"; reason: string; httpStatus?: number }
   | { state: "ok"; issues: SentryIssue[] };
 
-type SentryConfig = { token: string; org: string; project: string };
+type SentryConfig = { token: string; org: string };
 
 function resolveSentryConfig():
   | { ok: true; config: SentryConfig }
@@ -177,15 +197,10 @@ function resolveSentryConfig():
   const missing: string[] = [];
   if (!env.sentryAuthToken) missing.push("SENTRY_AUTH_TOKEN");
   if (!env.sentryOrgSlug) missing.push("SENTRY_ORG_SLUG");
-  if (!env.sentryProjectSlug) missing.push("SENTRY_PROJECT_SLUG");
   if (missing.length > 0) return { ok: false, missing };
   return {
     ok: true,
-    config: {
-      token: env.sentryAuthToken,
-      org: env.sentryOrgSlug,
-      project: env.sentryProjectSlug,
-    },
+    config: { token: env.sentryAuthToken, org: env.sentryOrgSlug },
   };
 }
 
@@ -317,8 +332,9 @@ export async function getIssuesByNumericIds(
   for (let i = 0; i < ids.length; i += SENTRY_ID_QUERY_CHUNK) {
     const chunk = ids.slice(i, i + SENTRY_ID_QUERY_CHUNK);
     const url = new URL(
-      `${SENTRY_API_BASE}/projects/${cfg.config.org}/${cfg.config.project}/issues/`,
+      `${SENTRY_API_BASE}/organizations/${cfg.config.org}/issues/`,
     );
+    url.searchParams.set("project", TODOS_OS_PROJETOS);
     url.searchParams.set("query", `issue.id:[${chunk.join(", ")}]`);
     // statsPeriod VAZIO de proposito. Este endpoint (GET .../issues/) so aceita
     // '', '24h' ou '14d'; qualquer outro valor (ex.: 90d) responde 400 "Invalid

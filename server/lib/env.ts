@@ -176,7 +176,6 @@ export const env = {
   // 503 sentry_not_configured, nada mais quebra.
   sentryAuthToken: process.env.SENTRY_AUTH_TOKEN || "",
   sentryOrgSlug: process.env.SENTRY_ORG_SLUG || "",
-  sentryProjectSlug: process.env.SENTRY_PROJECT_SLUG || "",
   // Destinos das notificacoes do bug tracker do admin. Vazios: o envio vira
   // no-op com log, no padrao resendApiKey.
   bugNotifyNewEmail: process.env.BUG_NOTIFY_NEW_EMAIL || "",
