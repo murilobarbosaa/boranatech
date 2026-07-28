@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 
 import ErrorBoundary from "./ErrorBoundary";
 import {
@@ -90,6 +91,42 @@ describe("ErrorBoundary", () => {
       </ErrorBoundary>,
     );
     expect(screen.getByText(EVENT_ID_DE_TESTE.slice(0, 8))).toBeTruthy();
+  });
+
+  it("erro durante uma análise NÃO leva o texto do perfil no evento", () => {
+    // O texto colado vive em prop e em estado do componente que quebra. Este
+    // teste afirma sobre o payload INTEIRO que sai daqui (erro, extra, tags),
+    // serializado, e não sobre um campo escolhido a dedo.
+    const PERFIL =
+      "Ana Ferreira Moura | ana.moura@exemplo.com | +55 11 91234-5678";
+
+    function ResultadoQueQuebra({ profileText }: { profileText: string }) {
+      const [texto] = useState(profileText);
+      if (texto) throw new Error("estourou montando o resultado");
+      return null;
+    }
+
+    render(
+      <ErrorBoundary escopo="linkedin-resultado">
+        <ResultadoQueQuebra profileText={PERFIL} />
+      </ErrorBoundary>,
+    );
+
+    expect(capturados).toHaveLength(1);
+    const payload = JSON.stringify({
+      message: (capturados[0].error as Error).message,
+      stack: (capturados[0].error as Error).stack,
+      opts: capturados[0].opts,
+    });
+
+    expect(payload).not.toContain("Ana Ferreira Moura");
+    expect(payload).not.toContain("ana.moura@exemplo.com");
+    expect(payload).not.toContain("91234-5678");
+    // E o que SOBRA ainda serve para depurar: o componentStack nomeia o
+    // componente, sem carregar as props dele.
+    expect(String(capturados[0].opts.extra?.componentStack)).toContain(
+      "ResultadoQueQuebra",
+    );
   });
 
   it("CONTÉM o erro: o que está fora do boundary continua de pé", () => {

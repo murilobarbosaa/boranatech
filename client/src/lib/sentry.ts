@@ -23,10 +23,67 @@ import * as Sentry from "@sentry/react";
 // o que torna cada ocorrencia valiosa. O corte por tipo mora no `beforeSend`
 // abaixo, e nao no `sampleRate` do init, porque o `sampleRate` do SDK e cego ao
 // conteudo do evento: ele decide antes de existir tag para ler.
+//
+// REAVALIADA em 2026-07-28, depois de os Inbound Filters do Sentry passarem a
+// descartar extensao e crawler na origem. A amostragem NAO virou redundante,
+// mas o caso que a justifica mudou: nao e mais ruido de extensao (o filtro
+// pegou isso, e sem consumir cota), e sim os diagnosticos instrumentados do
+// contador da home (`Hero.tsx:500,502`, tag `route=stats/users-count`), que sao
+// eventos NOSSOS, o filtro nao toca, disparam por carga de pagina e valem em
+// agregado: 25% ja revela a distribuicao (429 vs HTML vs count nulo).
 const ERROR_SAMPLE_RATE = 0.25;
 
 /** Tag posta por `ErrorBoundary.componentDidCatch`. Estes vao 100%. */
 const ORIGEM_NAO_AMOSTRADA = "error-boundary";
+
+/**
+ * PII EM BREADCRUMB: o vetor que os scrubbers do Sentry NAO cobrem.
+ *
+ * Os scrubbers casam por NOME de campo (`password`, `token`, `secret`). O texto
+ * do PDF do LinkedIn nao tem nome nenhum: e uma string de milhares de
+ * caracteres com telefone, e-mail e historico profissional, que vive no estado
+ * do React e no `sessionStorage`. Estado do React e `sessionStorage` NAO entram
+ * em evento do Sentry; o que entra, e por onde esse texto vazaria, e breadcrumb
+ * de `console`, porque qualquer `console.log` de depuracao com o perfil dentro
+ * vira anexo do proximo erro capturado, para sempre.
+ *
+ * Decisao: descartar breadcrumb de console INTEIRO, em vez de tentar limpar.
+ * Filtrar por conteudo exigiria adivinhar o formato do que e sensivel, que e o
+ * mesmo erro dos scrubbers por nome de campo, uma camada abaixo. E o valor de
+ * diagnostico do console e baixo comparado ao risco: o stack e o
+ * `componentStack` ja dizem onde quebrou.
+ *
+ * De `fetch`/`xhr` sobra so metodo, caminho e status. A query string sai porque
+ * e onde um id ou e-mail apareceria sem ninguem ter decidido isso.
+ */
+export function limparBreadcrumb<
+  T extends { category?: string; data?: Record<string, unknown> },
+>(crumb: T): T | null {
+  if (crumb.category === "console") return null;
+
+  if (crumb.category === "fetch" || crumb.category === "xhr") {
+    const { url, method, status_code } = (crumb.data ?? {}) as {
+      url?: unknown;
+      method?: unknown;
+      status_code?: unknown;
+    };
+    return {
+      ...crumb,
+      data: {
+        ...(typeof method === "string" ? { method } : {}),
+        ...(typeof url === "string" ? { url: semQueryString(url) } : {}),
+        ...(status_code === undefined ? {} : { status_code }),
+      },
+    };
+  }
+
+  return crumb;
+}
+
+/** Corta query e fragmento. Entrada nao-URL volta cortada na primeira `?`. */
+function semQueryString(url: string): string {
+  return url.split("?")[0].split("#")[0];
+}
 
 export function initClientSentry(): void {
   const dsn = import.meta.env.VITE_SENTRY_DSN;
@@ -44,6 +101,9 @@ export function initClientSentry(): void {
     // as tags. Ver ERROR_SAMPLE_RATE.
     sampleRate: 1,
     beforeSend: amostrarPorOrigem,
+    beforeBreadcrumb: limparBreadcrumb,
+    // false ja era o valor, e fica explicito: sem ele o SDK anexa IP e headers
+    // da requisicao. Espelha `server/lib/sentry.ts`.
     sendDefaultPii: false,
   });
 }

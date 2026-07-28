@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { amostrarPorOrigem } from "./sentry";
+import { amostrarPorOrigem, limparBreadcrumb } from "./sentry";
+
+/** Trecho realista do que o usuário cola: tem telefone e e-mail no meio. */
+const TEXTO_DE_PERFIL =
+  "Ana Ferreira Moura | Full-Stack | ana.moura@exemplo.com | +55 11 91234-5678 | Campinas, São Paulo";
 
 /**
  * O corte de amostragem por tipo de evento.
@@ -41,5 +45,53 @@ describe("amostrarPorOrigem", () => {
     const evento = { tags: { origem: "x" } };
     expect(amostrarPorOrigem(evento, undefined, () => 0.25)).toBeNull();
     expect(amostrarPorOrigem(evento, undefined, () => 0.2499)).toBe(evento);
+  });
+});
+
+describe("limparBreadcrumb", () => {
+  it("DESCARTA breadcrumb de console, que é por onde o perfil vazaria", () => {
+    const crumb = {
+      category: "console",
+      message: `perfil recebido: ${TEXTO_DE_PERFIL}`,
+      data: { arguments: [TEXTO_DE_PERFIL] },
+    };
+    expect(limparBreadcrumb(crumb)).toBeNull();
+  });
+
+  it("de fetch sobra método, caminho e status, e a query string SAI", () => {
+    const limpo = limparBreadcrumb({
+      category: "fetch",
+      data: {
+        method: "POST",
+        url: "https://api.boranatech.com.br/api/linkedin/analyze?email=ana.moura@exemplo.com",
+        status_code: 500,
+        // Um dia alguém adiciona isto sem pensar. O filtro é allowlist, então
+        // campo novo não passa por omissão.
+        body: TEXTO_DE_PERFIL,
+      },
+    });
+
+    expect(limpo?.data).toEqual({
+      method: "POST",
+      url: "https://api.boranatech.com.br/api/linkedin/analyze",
+      status_code: 500,
+    });
+    expect(JSON.stringify(limpo)).not.toContain("ana.moura@exemplo.com");
+  });
+
+  it("breadcrumb de navegação e clique passa inteiro", () => {
+    const crumb = { category: "ui.click", message: "button#analisar" };
+    expect(limparBreadcrumb(crumb)).toBe(crumb);
+  });
+
+  it("URL sem query continua igual, e o fragmento também sai", () => {
+    const limpo = limparBreadcrumb({
+      category: "xhr",
+      data: { method: "GET", url: "https://x/api/bookmarks/#ancora" },
+    });
+    expect(limpo?.data).toEqual({
+      method: "GET",
+      url: "https://x/api/bookmarks/",
+    });
   });
 });

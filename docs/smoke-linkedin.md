@@ -45,7 +45,7 @@ Política de Branch e Deploy.
 
 ## Os passos
 
-Os 11 primeiros são de navegador. O 12 é conferência de telemetria, depois deles. Ordem de prioridade quando o tempo é curto: **1 e 2 primeiro** (atingem as 107 análises já gravadas,
+Os 11 primeiros são de navegador. O 12 provoca um erro de propósito, e o 13 e o 14 conferem a telemetria depois deles. Ordem de prioridade quando o tempo é curto: **1 e 2 primeiro** (atingem as 107 análises já gravadas,
 imediatamente), depois **3 a 6** (a régua nova e os bugs da Fase 1), depois o resto.
 
 ### 1. Histórico logado, abrir uma análise v1 (REVERSÃO)
@@ -198,13 +198,55 @@ foi debitada de alguém que não recebeu resultado.
 reporta `ai_lastro_violado` no Sentry. Este passo confere se a camada agiu, não se o dado saiu errado para o
 usuário. Um evento `ai_lastro_violado` no Sentry é a camada **funcionando**, não falhando.
 
-### 12. Projeto de browser no Sentry, depois de tudo (degradação)
+### 12. Erro de render provocado, ponta a ponta (REVERSÃO se o fallback não aparecer)
+
+Este é o único passo que exercita a telemetria em vez de confiar nela. Provoca o erro de propósito.
+
+**Clicar:** com o resultado de uma análise na tela, abrir o console do navegador e quebrar o render à força.
+O jeito mais direto sem tocar em código é remover do DOM um nó que o React ainda vai atualizar:
+
+```js
+document.querySelector('.area-rise')?.remove()
+```
+
+Se isso não derrubar, sirva de alternativa recarregar com a rede em modo offline no meio do carregamento de
+um chunk, que produz o mesmo caminho (`lazyWithRetry` esgota a retentativa e propaga para o boundary).
+
+**Observar, em três lugares:**
+
+1. **Na tela:** aparece "Não foi possível montar este resultado", em português, com os botões "Recarregar a
+   página" e "Fazer nova análise". **Nenhum stack trace visível.** O código curto de 8 caracteres aparece.
+   O resto da página (cabeçalho, rodapé) continua de pé, porque o boundary é estreito.
+2. **No Sentry, projeto `boranatech-front`:** o evento chega com tag `origem: error-boundary` e
+   `escopo: linkedin-resultado`, e o `event_id` começa com os 8 caracteres que a tela mostrou. **O stack é
+   legível**, com nome de arquivo e linha do fonte, não `index-B_vsFLFC.js:1:48213`. Stack ilegível aqui
+   significa que o source map não subiu, e é o único jeito de descobrir isso.
+3. **Nos breadcrumbs desse evento:** nenhum breadcrumb de `console`, e nenhuma URL com query string. **O
+   texto do perfil não pode aparecer em lugar nenhum do evento.**
+
+**Por que é reversão:** se o fallback não aparecer, ou aparecer com stack, o usuário está vendo o que aquela
+pessoa das 23:35 viu.
+
+### 13. O mesmo evento no painel de admin (degradação)
+
+**Clicar:** abrir `Bugs & Erros` no admin.
+
+**Observar:**
+- o evento do passo 12 aparece na lista, com `shortId` prefixado por `BORANATECH-FRONT-`;
+- e os erros de servidor continuam aparecendo, com prefixo `NODE-EXPRESS-`.
+
+**Por que existe:** o painel consultava **um** projeto por slug fixo. Com o projeto de browser criado, ele
+passaria a mostrar metade dos erros sem dar erro e sem avisar. Agora consulta a organização inteira
+(`project=-1`), então este passo confirma que os dois projetos chegam juntos. **Ver só um dos prefixos é
+falha**, mesmo que a lista pareça cheia.
+
+### 14. Projeto de browser no Sentry, depois de tudo (degradação)
 
 **Não precisa de navegador.** Depois de terminar os 11 passos, abrir o projeto de browser no Sentry e olhar
 os eventos da janela em que você rodou o smoke.
 
 **Observar:**
-- **zero eventos** com a tag `origem: error-boundary`;
+- **nenhum evento com `origem: error-boundary` ALÉM do que você provocou no passo 12**;
 - se houver algum, a tag `escopo` diz onde: `linkedin-resultado` é o boundary estreito do resultado, `app` é
   o boundary de fora, e `app` significa que algo escapou de todos os boundaries de domínio.
 

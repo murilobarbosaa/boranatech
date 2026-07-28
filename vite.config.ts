@@ -1,4 +1,5 @@
 import { jsxLocPlugin } from "@builder.io/vite-plugin-jsx-loc";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
@@ -7,7 +8,51 @@ import { defineConfig } from "vite";
 
 const PROJECT_ROOT = import.meta.dirname;
 
+/**
+ * Release do Sentry, derivada e nao cadastrada.
+ *
+ * A Vercel expoe `VERCEL_GIT_COMMIT_SHA` sozinha no build. Cadastrar
+ * `VITE_SENTRY_RELEASE` a mao no dashboard seria PIOR: a Vercel nao interpola
+ * `$VAR` no valor, entao o bundle receberia a string literal
+ * "$VERCEL_GIT_COMMIT_SHA" como nome de release.
+ *
+ * Fallback vazio de proposito: sem release o Sentry agrupa sem versao, o que
+ * degrada a leitura mas nao quebra build nenhum (local, CI, ou Vercel sem git).
+ */
+const SENTRY_RELEASE = process.env.VERCEL_GIT_COMMIT_SHA || "";
+if (SENTRY_RELEASE) process.env.VITE_SENTRY_RELEASE = SENTRY_RELEASE;
+
+/**
+ * Upload de source map, LIGADO PELA PRESENCA DO TOKEN.
+ *
+ * O guard e aqui, no config, e nao na confianca de que o plugin degrada bem
+ * sozinho. A documentacao dele diz que avisa e segue sem token; isso pode ser
+ * verdade e pode mudar de versao. Ausencia como no-op ESTRUTURAL nao depende do
+ * comportamento de terceiro, e build local e CI nunca terao esse token.
+ *
+ * `sourcemap: "hidden"` (em `build`, abaixo) NAO basta sozinho para o mapa nao
+ * vazar: ele so omite o comentario `sourceMappingURL`, e o arquivo `.map`
+ * continua no outDir, que a Vercel serve inteiro. Quem adivinhar a URL baixa o
+ * codigo-fonte. Quem resolve e o `filesToDeleteAfterUpload` abaixo.
+ */
+const SENTRY_UPLOAD_ATIVO = Boolean(process.env.SENTRY_AUTH_TOKEN);
+
 const plugins = [react(), tailwindcss()];
+
+if (SENTRY_UPLOAD_ATIVO) {
+  plugins.push(
+    sentryVitePlugin({
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      release: SENTRY_RELEASE ? { name: SENTRY_RELEASE } : undefined,
+      sourcemaps: {
+        // Apaga o .map do outDir depois de enviar. Sem isto o mapa fica publico.
+        filesToDeleteAfterUpload: ["dist/public/**/*.js.map"],
+      },
+    }),
+  );
+}
 
 // Analise de bundle sob demanda: ANALYZE=1 pnpm build gera bundle-stats.html.
 if (process.env.ANALYZE) {
@@ -37,6 +82,20 @@ export default defineConfig(({ command, mode }) => {
     build: {
       outDir: path.resolve(import.meta.dirname, "dist/public"),
       emptyOutDir: true,
+      // Source map SO existe quando ha quem o envie E o apague.
+      //
+      // "hidden" omite o comentario `sourceMappingURL`, entao nenhum navegador
+      // pede o arquivo; mas o `.map` continua no outDir, e a Vercel serve o
+      // outDir inteiro. Quem apaga e o `filesToDeleteAfterUpload` do plugin.
+      //
+      // Por que amarrado ao token, e nao ligado sempre: com `sourcemap:
+      // "hidden"` fixo, um build SEM token gera os mapas e nao tem quem os
+      // apague, publicando 529 arquivos de codigo-fonte. Medido, nao suposto: e
+      // exatamente o que aconteceu na primeira versao deste config. Isso faria
+      // uma propriedade de seguranca depender de uma variavel de ambiente estar
+      // setada, que e a forma de falha que esta base persegue. Amarrado assim,
+      // a ausencia do token nao gera nada, entao nao ha o que vazar.
+      sourcemap: SENTRY_UPLOAD_ATIVO ? "hidden" : false,
       rollupOptions: {
         output: {
           // Chunks manuais por ciclo de vida de mudanca: vendors so mudam em
