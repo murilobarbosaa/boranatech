@@ -11,16 +11,20 @@ import {
   emptyBlockClass,
   safeHexColor,
 } from "./taskBoardStyles";
-import type {
-  TaskAssignee,
-  TaskCard as TaskCardData,
-  TaskColumn,
-  TaskLabel,
-} from "./types";
+import type { TaskGroup } from "./taskFilters";
+import type { TaskAssignee, TaskColumn, TaskLabel } from "./types";
+
+// Container de um grupo do board. Com agrupamento por ETAPA ele e a coluna, com
+// cabecalho editavel, menu e alca de arrasto; com agrupamento por responsavel ou
+// prioridade e so uma caixa com titulo, porque nao existe "renomear a prioridade
+// alta".
+//
+// `column` nulo e exatamente esse segundo caso, e e o que decide o que aparece.
 
 type BoardColumnProps = {
-  column: TaskColumn;
-  tasks: TaskCardData[];
+  group: TaskGroup;
+  /** Nao-nulo apenas quando o agrupamento e por etapa. */
+  column: TaskColumn | null;
   boardKey: string;
   labelsById: Map<string, TaskLabel>;
   assigneesById: Map<string, TaskAssignee>;
@@ -28,10 +32,14 @@ type BoardColumnProps = {
   canMoveRight: boolean;
   selectedTaskId: string | null;
   pendingTaskIds: ReadonlySet<string>;
-  /** Alvo do arrasto em curso: destaca a coluna que vai receber o card. */
   isDropTarget: boolean;
+  /** Falso com filtro ativo ou agrupamento fora de etapa. */
+  canReorder: boolean;
+  /** Ha filtro ligado: muda o texto do estado vazio. */
+  filtersActive: boolean;
   onOpenTask: (taskId: string) => void;
   onQuickMove: (taskId: string, direction: -1 | 1) => void;
+  onUnarchive: (taskId: string) => void;
   onCreateTask: (
     columnId: string,
     title: string,
@@ -42,11 +50,12 @@ type BoardColumnProps = {
   onRequestWipLimit: (columnId: string) => void;
   onMoveColumn: (columnId: string, direction: -1 | 1) => void;
   onRequestDeleteColumn: (columnId: string) => void;
+  onClearFilters: () => void;
 };
 
 function BoardColumnBase({
+  group,
   column,
-  tasks,
   boardKey,
   labelsById,
   assigneesById,
@@ -55,16 +64,20 @@ function BoardColumnBase({
   selectedTaskId,
   pendingTaskIds,
   isDropTarget,
+  canReorder,
+  filtersActive,
   onOpenTask,
   onQuickMove,
+  onUnarchive,
   onCreateTask,
   onRenameColumn,
   onRecolorColumn,
   onRequestWipLimit,
   onMoveColumn,
   onRequestDeleteColumn,
+  onClearFilters,
 }: BoardColumnProps) {
-  const accent = safeHexColor(column.color, COLUMN_COLOR_FALLBACK);
+  const accent = safeHexColor(group.color, COLUMN_COLOR_FALLBACK);
 
   const {
     attributes,
@@ -74,17 +87,19 @@ function BoardColumnBase({
     transition,
     isDragging,
   } = useSortable({
-    id: column.id,
+    id: group.id,
+    // So a coluna de verdade e arrastavel. Um grupo de prioridade nao tem ordem
+    // propria para reordenar.
+    disabled: column === null,
     data: { type: "column" },
     attributes: { roleDescription: "etapa arrastável" },
   });
 
-  // Array de ids ESTAVEL enquanto a lista nao muda: o SortableContext compara
-  // por identidade e uma referencia nova a cada render faria todos os itens
-  // reavaliarem posicao a cada pixel do arrasto.
-  const taskIds = useMemo(() => tasks.map((task) => task.id), [tasks]);
+  const taskIds = useMemo(() => group.tasks.map((task) => task.id), [group.tasks]);
 
-  const overWip = column.wip_limit !== null && tasks.length > column.wip_limit;
+  const overWip =
+    column?.wip_limit != null && group.totalBeforeFilter > column.wip_limit;
+  const filtered = group.tasks.length < group.totalBeforeFilter;
 
   return (
     <section
@@ -95,72 +110,95 @@ function BoardColumnBase({
         borderTopColor: accent,
         borderTopWidth: 6,
       }}
-      // Largura fixa + snap: no mobile a coluna encaixa na viewport ao arrastar
-      // o scroll horizontal, em vez de parar no meio de duas.
       className={`flex w-[85vw] shrink-0 snap-start flex-col rounded-3xl border-2 border-slate-900 p-3 shadow-[3px_3px_0_#0f172a] transition-colors sm:w-[19rem] ${
         isDragging ? "opacity-40" : ""
       } ${
-        // WIP estourado SINALIZA no hover de arrasto, nao bloqueia: o server
-        // aceita a movimentacao de qualquer jeito, e uma coluna que recusa card
-        // em silencio seria pior do que uma que avisa.
         isDropTarget
           ? overWip
             ? "bg-rose-100 ring-4 ring-rose-400"
             : "bg-violet-50 ring-4 ring-violet-300"
           : "bg-slate-50"
       }`}
-      aria-label={`Etapa ${column.name}`}
+      aria-label={`Etapa ${group.label}`}
     >
-      <div className="flex items-start gap-1">
-        {/* Alca dedicada para arrastar a COLUNA. Se a coluna inteira fosse a
-            alca, comecar um arrasto de card ou clicar no menu tambem arrastaria
-            a coluna. */}
-        <button
-          type="button"
-          aria-label={`Reordenar a etapa ${column.name}`}
-          className="mt-0.5 shrink-0 cursor-grab touch-none rounded text-slate-400 hover:text-slate-900 active:cursor-grabbing"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
-        <div className="min-w-0 flex-1">
-          <ColumnHeader
-            column={column}
-            taskCount={tasks.length}
-            canMoveLeft={canMoveLeft}
-            canMoveRight={canMoveRight}
-            onRename={onRenameColumn}
-            onRecolor={onRecolorColumn}
-            onRequestWipLimit={onRequestWipLimit}
-            onMoveColumn={onMoveColumn}
-            onRequestDelete={onRequestDeleteColumn}
+      {column ? (
+        <div className="flex items-start gap-1">
+          {/* Alca dedicada: se a coluna inteira fosse a alca, comecar um arrasto
+              de card ou clicar no menu tambem arrastaria a coluna. */}
+          <button
+            type="button"
+            aria-label={`Reordenar a etapa ${column.name}`}
+            className="mt-0.5 shrink-0 cursor-grab touch-none rounded text-slate-400 hover:text-slate-900 active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <ColumnHeader
+              column={column}
+              taskCount={group.tasks.length}
+              totalBeforeFilter={group.totalBeforeFilter}
+              canMoveLeft={canMoveLeft}
+              canMoveRight={canMoveRight}
+              onRename={onRenameColumn}
+              onRecolor={onRecolorColumn}
+              onRequestWipLimit={onRequestWipLimit}
+              onMoveColumn={onMoveColumn}
+              onRequestDelete={onRequestDeleteColumn}
+            />
+          </div>
+        </div>
+      ) : (
+        <header className="mb-3 flex items-center justify-between gap-2">
+          <h3 className="truncate text-sm font-black uppercase tracking-wide text-slate-950">
+            {group.label}
+          </h3>
+          <span className="inline-flex items-center rounded-full border-2 border-slate-900 bg-white px-2 py-0.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+            {filtered
+              ? `${group.tasks.length} de ${group.totalBeforeFilter}`
+              : group.tasks.length}
+          </span>
+        </header>
+      )}
+
+      {column ? (
+        <div className="mb-2">
+          <NewTaskComposer
+            columnId={column.id}
+            placement="top"
+            onCreate={onCreateTask}
           />
         </div>
-      </div>
+      ) : null}
 
-      <div className="mb-2">
-        <NewTaskComposer
-          columnId={column.id}
-          placement="top"
-          onCreate={onCreateTask}
-        />
-      </div>
-
-      {/* Scroll vertical proprio, com teto relativo a viewport: a coluna cresce
-          ate ali e depois rola por dentro, em vez de esticar a pagina. */}
       <div className="flex max-h-[calc(100vh-22rem)] min-h-[4rem] flex-1 flex-col gap-2.5 overflow-y-auto pr-0.5">
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-          {tasks.length === 0 ? (
-            <p className={emptyBlockClass}>
-              Nenhuma tarefa nesta etapa.
-              <br />
-              <span className="font-semibold text-slate-400">
-                Arraste um card para cá ou use “Nova tarefa”.
-              </span>
-            </p>
+          {group.tasks.length === 0 ? (
+            // Coluna vazia e coluna FILTRADA a zero sao coisas diferentes, e
+            // confundir as duas faz a pessoa achar que perdeu tarefas.
+            filtersActive ? (
+              <div className={emptyBlockClass}>
+                Nada bate com os filtros.
+                <button
+                  type="button"
+                  onClick={onClearFilters}
+                  className="mt-1.5 block w-full text-[11px] font-black text-violet-700 hover:text-violet-900"
+                >
+                  limpar filtros
+                </button>
+              </div>
+            ) : (
+              <p className={emptyBlockClass}>
+                Nenhuma tarefa nesta etapa.
+                <br />
+                <span className="font-semibold text-slate-400">
+                  {column ? "Arraste um card para cá ou use “Nova tarefa”." : "Arraste um card para cá."}
+                </span>
+              </p>
+            )
           ) : (
-            tasks.map((task) => (
+            group.tasks.map((task) => (
               <TaskCard
                 key={task.id}
                 task={task}
@@ -171,21 +209,25 @@ function BoardColumnBase({
                 canMoveRight={canMoveRight}
                 isSelected={selectedTaskId === task.id}
                 isPending={pendingTaskIds.has(task.id)}
+                canReorder={canReorder}
                 onOpen={onOpenTask}
                 onQuickMove={onQuickMove}
+                onUnarchive={onUnarchive}
               />
             ))
           )}
         </SortableContext>
       </div>
 
-      <div className="mt-2">
-        <NewTaskComposer
-          columnId={column.id}
-          placement="bottom"
-          onCreate={onCreateTask}
-        />
-      </div>
+      {column ? (
+        <div className="mt-2">
+          <NewTaskComposer
+            columnId={column.id}
+            placement="bottom"
+            onCreate={onCreateTask}
+          />
+        </div>
+      ) : null}
     </section>
   );
 }

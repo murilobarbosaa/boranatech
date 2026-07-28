@@ -43,6 +43,8 @@ function NewTaskComposerBase({
     return (
       <button
         type="button"
+        // Marcador para o atalho `N` do board encontrar o composer do topo.
+        data-composer-for={placement === "top" ? columnId : undefined}
         onClick={() => setOpen(true)}
         className="flex w-full items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-slate-400 bg-white/60 px-3 py-2 text-xs font-black text-slate-600 transition-colors hover:border-slate-900 hover:bg-white hover:text-slate-900"
       >

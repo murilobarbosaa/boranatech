@@ -35,23 +35,41 @@ import {
 import { BntSelect } from "@/components/shared/BntSelect";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AdminApiError } from "@/lib/adminApi";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   createColumn as apiCreateColumn,
   createTask as apiCreateTask,
   deleteColumn as apiDeleteColumn,
   moveTask as apiMoveTask,
   patchColumn as apiPatchColumn,
+  patchTask as apiPatchTask,
   reorderColumns as apiReorderColumns,
 } from "@/services/adminTasksService";
 
 import { BoardColumn } from "./BoardColumn";
 import { BoardToolbar } from "./BoardToolbar";
+import { TaskListView } from "./TaskListView";
 import { PromptDialog } from "./PromptDialog";
+import { resolveBoardDrop } from "./resolveBoardDrop";
 import {
   resolveColumnOrder,
   resolveDropTarget,
   type BoardOrder,
 } from "./resolveDropTarget";
+import {
+  EMPTY_FILTERS,
+  buildGroups,
+  hasActiveFilters,
+  matchesFilters,
+  type GroupBy,
+  type TaskFilters,
+} from "./taskFilters";
+import {
+  DEFAULT_VIEW_STATE,
+  readViewState,
+  writeViewState,
+  type TaskViewState,
+} from "./taskViewState";
 import { DRAG_ACTIVATION_DISTANCE, TaskCardBody } from "./TaskCard";
 import { TaskModal } from "./TaskModal";
 import { emptyBlockClass, primaryButtonClass, secondaryButtonClass } from "./taskBoardStyles";
@@ -94,6 +112,15 @@ export function TasksDashboard() {
   const search = useSearch();
   const [, setLocation] = useLocation();
   const [boardId, setBoardId] = useState<string | null>(null);
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? null;
+
+  // Busca, filtros, agrupamento, visao e arquivadas vivem na URL, sem estado
+  // espelhado, exatamente como o `?section=` da pagina e o `?task=` da Fase 2.
+  // Isso da F5, voltar/avancar e link compartilhavel de graca.
+  const viewState = useMemo(() => readViewState(search), [search]);
+  const { filters, groupBy, view, includeArchived } = viewState;
+
   const {
     boards,
     snapshot,
@@ -101,7 +128,7 @@ export function TasksDashboard() {
     error,
     refresh,
     applyLocal,
-  } = useBoardSnapshot(boardId);
+  } = useBoardSnapshot(boardId, includeArchived);
 
   const [pendingTaskIds, setPendingTaskIds] = useState<ReadonlySet<string>>(
     () => new Set(),
@@ -197,6 +224,27 @@ export function TasksDashboard() {
     setLocation(`/admin${withTaskParam(searchRef.current, null)}`);
   }, [setLocation]);
 
+  const setViewState = useCallback(
+    (patch: Partial<TaskViewState>) => {
+      const next = { ...readViewState(searchRef.current), ...patch };
+      setLocation(`/admin${writeViewState(searchRef.current, next)}`);
+    },
+    [setLocation],
+  );
+
+  const setFilters = useCallback(
+    (next: TaskFilters) => setViewState({ filters: next }),
+    [setViewState],
+  );
+  const clearFilters = useCallback(
+    () => setViewState({ filters: EMPTY_FILTERS }),
+    [setViewState],
+  );
+  const setGroupBy = useCallback(
+    (next: GroupBy) => setViewState({ groupBy: next }),
+    [setViewState],
+  );
+
   /** Aplica um patch no card do board sem refetch do snapshot inteiro. */
   const patchCard = useCallback(
     (id: string, patch: Partial<TaskCardData>) => {
@@ -225,10 +273,40 @@ export function TasksDashboard() {
     [snapshot],
   );
 
+  const allTasks = useMemo(() => snapshot?.tasks ?? [], [snapshot]);
+
+  // Relogio capturado uma vez: filtro de data estavel enquanto a tela vive, e
+  // testavel.
+  const [nowMs] = useState(() => Date.now());
+
+  const filtersActive = hasActiveFilters(filters);
+
+  const visibleTasks = useMemo(
+    () =>
+      filtersActive
+        ? allTasks.filter((task) =>
+            matchesFilters(task, filters, { nowMs, currentUserId }),
+          )
+        : allTasks,
+    [allTasks, currentUserId, filters, filtersActive, nowMs],
+  );
+
+  const groups = useMemo(
+    () =>
+      buildGroups(
+        visibleTasks,
+        allTasks,
+        groupBy,
+        columns,
+        snapshot?.admins ?? [],
+      ),
+    [allTasks, columns, groupBy, snapshot?.admins, visibleTasks],
+  );
+
   const tasksByColumn = useMemo(() => {
     const grouped = new Map<string, TaskCardData[]>();
     for (const column of columns) grouped.set(column.id, []);
-    for (const task of snapshot?.tasks ?? []) {
+    for (const task of allTasks) {
       const bucket = grouped.get(task.column_id);
       if (bucket) bucket.push(task);
     }
@@ -240,7 +318,7 @@ export function TasksDashboard() {
       );
     });
     return grouped;
-  }, [columns, snapshot]);
+  }, [allTasks, columns]);
 
   const labelsById = useMemo(
     () => new Map((snapshot?.labels ?? []).map((label) => [label.id, label])),
@@ -251,7 +329,16 @@ export function TasksDashboard() {
     [snapshot?.admins],
   );
 
-  /** Ordem visual do board, no formato que resolveDropTarget espera. */
+  /**
+   * Ordem visual COMPLETA (sem filtro) no formato do resolveDropTarget.
+   *
+   * De propósito nao e a lista visivel: com filtro ligado, calcular vizinhos
+   * sobre o que esta na tela produz um ponto medio arbitrario em relacao aos
+   * cards OCULTOS entre eles. Visualmente correto, ordenacao real indefinida, e
+   * ninguem percebe ate limpar o filtro. Por isso a reordenacao dentro da coluna
+   * fica DESABILITADA com filtro ativo (ver canReorder e handleDragEnd), e esta
+   * ordem segue completa para o caso sem filtro.
+   */
   const boardOrder = useMemo<BoardOrder>(
     () => ({
       columns: columns.map((column) => ({
@@ -265,9 +352,34 @@ export function TasksDashboard() {
   // entrar na lista de dependencias deles, que e o que os mantem estaveis.
   const boardOrderRef = useRef<BoardOrder>(boardOrder);
   boardOrderRef.current = boardOrder;
+  // Mesmo motivo: os handlers de drag precisam do valor atual sem virar
+  // dependencia e perder a identidade estavel.
+  const groupsRef = useRef(groups);
+  groupsRef.current = groups;
+  const groupByRef = useRef(groupBy);
+  groupByRef.current = groupBy;
+  const filtersActiveRef = useRef(filtersActive);
+  filtersActiveRef.current = filtersActive;
 
-  /** Ids das colunas para o SortableContext horizontal. Referencia estavel. */
-  const columnIds = useMemo(() => columns.map((column) => column.id), [columns]);
+  /** Ids dos containers para o SortableContext horizontal. Referencia estavel. */
+  const columnIds = useMemo(() => groups.map((group) => group.id), [groups]);
+
+  /**
+   * Reordenar DENTRO de um container so tem significado quando a lista mostrada
+   * e a ordenacao real: agrupada por etapa E sem filtro. Fora disso, `position`
+   * nao descreve o que esta na tela, e um ponto medio calculado entre dois
+   * vizinhos visiveis cai em lugar arbitrario em relacao ao que esta escondido.
+   */
+  const canReorder = groupBy === "column" && !filtersActive;
+
+  const columnById = useMemo(
+    () => new Map(columns.map((column) => [column.id, column])),
+    [columns],
+  );
+  const columnIndexOf = useCallback(
+    (columnId: string) => columns.findIndex((column) => column.id === columnId),
+    [columns],
+  );
 
   const activeDragTask = useMemo(
     () =>
@@ -634,6 +746,79 @@ export function TasksDashboard() {
     })();
   }, [guardedRefresh]);
 
+  /**
+   * Patch otimista de UMA propriedade da tarefa, usado pelo arrasto quando o
+   * agrupamento nao e por etapa. Reaproveita o mesmo rollback por tarefa do
+   * moveTaskTo em vez de inventar outro caminho.
+   */
+  const patchTaskProperty = useCallback(
+    async (taskId: string, patch: Partial<TaskCardData>) => {
+      const current = snapshotRef.current;
+      const previous = current?.tasks.find((item) => item.id === taskId);
+      if (!previous) return;
+
+      applyLocal((snap) => withTask(snap, taskId, (item) => ({ ...item, ...patch })));
+      markPending(taskId, true);
+      try {
+        const updated = await apiPatchTask(taskId, patch);
+        applyLocal((snap) => withTask(snap, taskId, (item) => ({ ...item, ...updated })));
+        await guardedRefresh();
+      } catch (mutationError) {
+        applyLocal((snap) => withTask(snap, taskId, () => previous));
+        toast.error(
+          mutationError instanceof Error
+            ? mutationError.message
+            : "Erro ao atualizar a tarefa.",
+        );
+      } finally {
+        markPending(taskId, false);
+      }
+    },
+    [applyLocal, guardedRefresh, markPending],
+  );
+
+  const handleUnarchive = useCallback(
+    (taskId: string) => {
+      void patchTaskProperty(taskId, { archived_at: null } as Partial<TaskCardData>);
+    },
+    [patchTaskProperty],
+  );
+
+  // -------------------------------------------------------------------------
+  // Atalhos de teclado
+  // -------------------------------------------------------------------------
+  // `N` cria tarefa, `/` foca a busca. Nenhum dispara com o foco dentro de campo
+  // de texto: digitar "novo" na busca nao pode abrir um composer a cada `n`.
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const composerTriggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const typing =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+      if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
+      // Com o modal aberto os atalhos do board ficam fora de cena: quem manda no
+      // teclado ali e o modal (Esc, setas).
+      if (readTaskParam(searchRef.current)) return;
+
+      if (event.key === "/") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      } else if (event.key === "n" || event.key === "N") {
+        event.preventDefault();
+        composerTriggerRef.current?.click();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   // -------------------------------------------------------------------------
   // Drag and drop
   // -------------------------------------------------------------------------
@@ -737,18 +922,42 @@ export function TasksDashboard() {
         return;
       }
 
-      const target = resolveDropTarget(order, activeId, overId);
-      // null = soltou onde ja estava, ou fora de alvo valido. Nao dispara
-      // requisicao nem linha de log de atividade.
-      if (!target) return;
+      if (!overId) return;
+      const task = board.tasks.find((item) => item.id === activeId);
+      if (!task) return;
+
+      // Toda a semantica do drop (agrupamento, filtro, reordenacao ambigua) mora
+      // em resolveBoardDrop, funcao pura e testada. Este handler so despacha.
+      const action = resolveBoardDrop(
+        {
+          order,
+          groups: groupsRef.current,
+          groupBy: groupByRef.current,
+          filtersActive: filtersActiveRef.current,
+          task,
+        },
+        overId,
+      );
+
+      if (action.kind === "none") return;
+      if (action.kind === "priority") {
+        void patchTaskProperty(activeId, {
+          priority: action.value as TaskCardData["priority"],
+        });
+        return;
+      }
+      if (action.kind === "assignee") {
+        void patchTaskProperty(activeId, { assignee_id: action.value });
+        return;
+      }
       void moveTaskTo(
         activeId,
-        target.columnId,
-        target.beforeTaskId,
-        target.afterTaskId,
+        action.columnId,
+        action.beforeTaskId,
+        action.afterTaskId,
       );
     },
-    [applyLocal, finishDrag, guardedRefresh, moveTaskTo],
+    [applyLocal, finishDrag, guardedRefresh, moveTaskTo, patchTaskProperty],
   );
 
   // Leitores de tela em portugues. O dnd-kit traz os textos em ingles por
@@ -900,13 +1109,51 @@ export function TasksDashboard() {
   return (
     <div className="space-y-4">
       <BoardToolbar
+        ref={searchInputRef}
         boards={boards}
         activeBoardId={boardId}
-        taskCount={snapshot.tasks.length}
+        admins={snapshot.admins}
+        labels={snapshot.labels}
+        filters={filters}
+        groupBy={groupBy}
+        view={view}
+        includeArchived={includeArchived}
+        visibleCount={visibleTasks.length}
+        totalCount={allTasks.length}
         onSelectBoard={setBoardId}
+        onFiltersChange={setFilters}
+        onGroupByChange={setGroupBy}
+        onViewChange={(next) => setViewState({ view: next })}
+        onIncludeArchivedChange={(next) => setViewState({ includeArchived: next })}
+        onClearFilters={clearFilters}
       />
 
-      {columns.length === 0 ? (
+      {!canReorder && groups.some((group) => group.tasks.length > 1) ? (
+        <p className="text-[11px] font-semibold text-slate-500">
+          {groupBy === "column"
+            ? "Reordenar dentro da etapa está indisponível com filtro ativo: a lista visível não é a ordenação real. Mover entre etapas continua funcionando."
+            : "Agrupado por " +
+              (groupBy === "priority" ? "prioridade" : "responsável") +
+              ": arrastar entre grupos altera a propriedade, e não há ordem para reordenar."}
+        </p>
+      ) : null}
+
+      {view === "lista" ? (
+        <TaskListView
+          groups={groups}
+          boardKey={snapshot.board.key}
+          labelsById={labelsById}
+          assigneesById={assigneesById}
+          columnCount={columns.length}
+          columnIndexOf={columnIndexOf}
+          selectedTaskId={selectedTaskId}
+          filtersActive={filtersActive}
+          onOpenTask={openTask}
+          onQuickMove={handleQuickMove}
+          onUnarchive={handleUnarchive}
+          onClearFilters={clearFilters}
+        />
+      ) : columns.length === 0 ? (
         <div className="rounded-3xl border-2 border-dashed border-slate-300 bg-white p-10 text-center">
           <p className="text-sm font-black text-slate-600">
             Este quadro ainda não tem etapas.
@@ -937,42 +1184,48 @@ export function TasksDashboard() {
         >
           <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
             <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 sm:snap-none">
-              {columns.map((column, index) => (
+              {groups.map((group, index) => (
                 <BoardColumn
-                  key={column.id}
-                  column={column}
-                  tasks={tasksByColumn.get(column.id) ?? []}
+                  key={group.id}
+                  group={group}
+                  column={columnById.get(group.id) ?? null}
                   boardKey={snapshot.board.key}
                   labelsById={labelsById}
                   assigneesById={assigneesById}
                   canMoveLeft={index > 0}
-                  canMoveRight={index < columns.length - 1}
+                  canMoveRight={index < groups.length - 1}
                   selectedTaskId={selectedTaskId}
                   pendingTaskIds={pendingTaskIds}
                   isDropTarget={
-                    activeDrag?.type === "task" && overColumnId === column.id
+                    activeDrag?.type === "task" && overColumnId === group.id
                   }
+                  canReorder={canReorder}
+                  filtersActive={filtersActive}
                   onOpenTask={openTask}
                   onQuickMove={handleQuickMove}
+                  onUnarchive={handleUnarchive}
                   onCreateTask={handleCreateTask}
                   onRenameColumn={handleRenameColumn}
                   onRecolorColumn={handleRecolorColumn}
                   onRequestWipLimit={handleRequestWipLimit}
                   onMoveColumn={handleMoveColumn}
                   onRequestDeleteColumn={handleRequestDeleteColumn}
+                  onClearFilters={clearFilters}
                 />
               ))}
 
-              <div className="flex w-[85vw] shrink-0 snap-start items-start sm:w-[13rem]">
-                <button
-                  type="button"
-                  onClick={() => setNewColumnOpen(true)}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-3xl border-2 border-dashed border-slate-400 bg-white/60 px-4 py-6 text-sm font-black text-slate-600 transition-colors hover:border-slate-900 hover:bg-white hover:text-slate-900"
-                >
-                  <Plus className="h-4 w-4" />
-                  Nova etapa
-                </button>
-              </div>
+              {groupBy === "column" ? (
+                <div className="flex w-[85vw] shrink-0 snap-start items-start sm:w-[13rem]">
+                  <button
+                    type="button"
+                    onClick={() => setNewColumnOpen(true)}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-3xl border-2 border-dashed border-slate-400 bg-white/60 px-4 py-6 text-sm font-black text-slate-600 transition-colors hover:border-slate-900 hover:bg-white hover:text-slate-900"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Nova etapa
+                  </button>
+                </div>
+              ) : null}
             </div>
           </SortableContext>
 
@@ -995,6 +1248,24 @@ export function TasksDashboard() {
           </DragOverlay>
         </DndContext>
       )}
+
+      {/* Alvo do atalho `N`. Invisivel: o composer de verdade vive em cada
+          coluna, e este botao so encaminha para o da primeira etapa. */}
+      <button
+        ref={composerTriggerRef}
+        type="button"
+        tabIndex={-1}
+        aria-hidden
+        className="sr-only"
+        onClick={() => {
+          const first = columns[0];
+          if (!first) return;
+          const composer = document.querySelector<HTMLButtonElement>(
+            `[data-composer-for="${first.id}"]`,
+          );
+          composer?.click();
+        }}
+      />
 
       {selectedTaskId ? (
         <TaskModal

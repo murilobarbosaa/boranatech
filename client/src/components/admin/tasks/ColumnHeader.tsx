@@ -18,7 +18,10 @@ import type { TaskColumn } from "./types";
 
 type ColumnHeaderProps = {
   column: TaskColumn;
+  /** Quantidade VISIVEL (ja filtrada). */
   taskCount: number;
+  /** Total antes do filtro, para o contador "3 de 12". */
+  totalBeforeFilter: number;
   canMoveLeft: boolean;
   canMoveRight: boolean;
   onRename: (columnId: string, name: string) => void;
@@ -31,6 +34,7 @@ type ColumnHeaderProps = {
 function ColumnHeaderBase({
   column,
   taskCount,
+  totalBeforeFilter,
   canMoveLeft,
   canMoveRight,
   onRename,
@@ -66,7 +70,9 @@ function ColumnHeaderBase({
 
   // wip_limit e AVISO, nao bloqueio: o server nao recusa a movimentacao. O
   // destaque aqui e a unica manifestacao do estouro.
-  const overWip = column.wip_limit !== null && taskCount > column.wip_limit;
+  const overWip =
+    column.wip_limit !== null && totalBeforeFilter > column.wip_limit;
+  const filtered = taskCount < totalBeforeFilter;
 
   return (
     <header className="mb-3 flex items-center justify-between gap-2">
@@ -113,15 +119,21 @@ function ColumnHeaderBase({
       <div className="flex shrink-0 items-center gap-1.5">
         <span
           title={
-            column.wip_limit === null
-              ? `${taskCount} tarefa(s)`
-              : `${taskCount} de no máximo ${column.wip_limit}`
+            filtered
+              ? `${taskCount} visíveis de ${totalBeforeFilter} na etapa`
+              : column.wip_limit === null
+                ? `${totalBeforeFilter} tarefa(s)`
+                : `${totalBeforeFilter} de no máximo ${column.wip_limit}`
           }
           className={`inline-flex items-center rounded-full border-2 border-slate-900 px-2 py-0.5 text-xs font-black shadow-[2px_2px_0_#0f172a] ${
             overWip ? "bg-rose-600 text-white" : "bg-white text-slate-950"
           }`}
         >
-          {column.wip_limit === null ? taskCount : `${taskCount}/${column.wip_limit}`}
+          {filtered
+            ? `${taskCount} de ${totalBeforeFilter}`
+            : column.wip_limit === null
+              ? totalBeforeFilter
+              : `${totalBeforeFilter}/${column.wip_limit}`}
         </span>
 
         <DropdownMenu>

@@ -1,7 +1,15 @@
 import { memo, useRef } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CalendarDays, CheckSquare, ChevronLeft, ChevronRight, MessageSquare } from "lucide-react";
+import {
+  ArchiveRestore,
+  CalendarDays,
+  CheckSquare,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  MessageSquare,
+} from "lucide-react";
 
 import {
   badgeClass,
@@ -41,8 +49,15 @@ type TaskCardProps = {
   canMoveRight: boolean;
   isSelected: boolean;
   isPending: boolean;
+  /**
+   * Reordenar DENTRO da coluna e ambíguo com filtro ligado ou agrupamento
+   * diferente de etapa. Quando falso, o card ainda arrasta entre containers, mas
+   * o drop na mesma coluna vira no-op. Ver o comentario em handleDragEnd.
+   */
+  canReorder: boolean;
   onOpen: (taskId: string) => void;
   onQuickMove: (taskId: string, direction: -1 | 1) => void;
+  onUnarchive: (taskId: string) => void;
 };
 
 /** Vencimento em AAAA-MM-DD comparado com HOJE no fuso local, sem virar Date. */
@@ -90,7 +105,11 @@ export function TaskCardBody({
 
   return (
     <>
-      <p className="mt-1.5 text-sm font-black leading-snug text-slate-950">
+      <p
+        className={`mt-1.5 text-sm font-black leading-snug ${
+          task.archived_at ? "text-slate-500 line-through" : "text-slate-950"
+        }`}
+      >
         {task.title}
       </p>
 
@@ -140,6 +159,12 @@ export function TaskCardBody({
               {task.checklist_done}/{task.checklist_total}
             </span>
           ) : null}
+          {task.estimate !== null ? (
+            <span className="inline-flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {task.estimate}h
+            </span>
+          ) : null}
           {task.comment_count > 0 ? (
             <span className="inline-flex items-center gap-1">
               <MessageSquare className="h-3 w-3" />
@@ -177,9 +202,12 @@ function TaskCardBase({
   canMoveRight,
   isSelected,
   isPending,
+  canReorder,
   onOpen,
   onQuickMove,
+  onUnarchive,
 }: TaskCardProps) {
+  const archived = Boolean(task.archived_at);
   const {
     attributes,
     listeners,
@@ -240,7 +268,11 @@ function TaskCardBase({
         transform: CSS.Transform.toString(transform),
         transition,
       }}
-      className={`group relative cursor-grab touch-none rounded-2xl border-2 border-slate-900 bg-white p-3 text-left shadow-[3px_3px_0_#0f172a] transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 active:cursor-grabbing ${
+      className={`group relative touch-none rounded-2xl border-2 p-3 text-left shadow-[3px_3px_0_#0f172a] transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 active:cursor-grabbing ${
+        archived
+          ? "border-dashed border-slate-400 bg-slate-100"
+          : "border-slate-900 bg-white"
+      } ${canReorder ? "cursor-grab" : "cursor-pointer"} ${
         isSelected ? "ring-4 ring-violet-300" : ""
       } ${isPending ? "opacity-60" : ""} ${
         // O card original vira o PLACEHOLDER do destino enquanto o DragOverlay
@@ -260,6 +292,20 @@ function TaskCardBase({
             parecer quebrado. Quem cuida da corrida e o contador de sequencia por
             tarefa no TasksDashboard; `isPending` aqui e so o sinal visual. */}
         <div className="flex shrink-0 gap-1 opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+          {archived ? (
+            <button
+              type="button"
+              aria-label="Desarquivar tarefa"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                onUnarchive(task.id);
+              }}
+              className="rounded-full border-2 border-slate-900 bg-white p-0.5 text-slate-900 shadow-[1px_1px_0_#0f172a]"
+            >
+              <ArchiveRestore className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
           <button
             type="button"
             aria-label="Mover para a etapa anterior"

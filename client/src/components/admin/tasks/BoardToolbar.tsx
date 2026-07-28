@@ -1,54 +1,376 @@
-import { memo } from "react";
+import { forwardRef, memo } from "react";
+import { Filter, Search, X } from "lucide-react";
 
 import { BntSelect } from "@/components/shared/BntSelect";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
-import type { TaskBoard } from "./types";
+import {
+  LABEL_COLOR_FALLBACK,
+  PRIORITY_OPTIONS,
+  TYPE_OPTIONS,
+  labelClass,
+  safeHexColor,
+} from "./taskBoardStyles";
+import { activeFilterCount, type DueFilter, type GroupBy, type TaskFilters } from "./taskFilters";
+import type { ViewMode } from "./taskViewState";
+import type { TaskAssignee, TaskBoard, TaskLabel, TaskPriority, TaskType } from "./types";
 
-// Barra superior do board. Nesta fase e SO o seletor de quadro e o contador; a
-// busca, os filtros, o agrupamento e o alternador de visao entram na Fase 6, e
-// esta barra e o lugar deles.
+// Barra superior do board: quadro, busca, filtros, agrupamento, visao e o toggle
+// de arquivadas. Todo controle daqui escreve na URL (ver taskViewState), entao
+// qualquer combinacao vira link compartilhavel.
 
 type BoardToolbarProps = {
   boards: TaskBoard[];
   activeBoardId: string | null;
-  taskCount: number;
+  admins: TaskAssignee[];
+  labels: TaskLabel[];
+  filters: TaskFilters;
+  groupBy: GroupBy;
+  view: ViewMode;
+  includeArchived: boolean;
+  visibleCount: number;
+  totalCount: number;
   onSelectBoard: (boardId: string) => void;
+  onFiltersChange: (filters: TaskFilters) => void;
+  onGroupByChange: (groupBy: GroupBy) => void;
+  onViewChange: (view: ViewMode) => void;
+  onIncludeArchivedChange: (value: boolean) => void;
+  onClearFilters: () => void;
 };
 
-function BoardToolbarBase({
-  boards,
-  activeBoardId,
-  taskCount,
-  onSelectBoard,
-}: BoardToolbarProps) {
-  if (boards.length === 0) return null;
+const DUE_OPTIONS: Array<{ value: DueFilter; label: string }> = [
+  { value: "", label: "Qualquer data" },
+  { value: "late", label: "Atrasadas" },
+  { value: "week", label: "Esta semana" },
+];
 
-  return (
-    <div className="flex flex-wrap items-end justify-between gap-3">
-      <div className="min-w-[14rem]">
-        <label
-          htmlFor="tasks-board-select"
-          className="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600"
-        >
-          Quadro
-        </label>
-        <BntSelect
-          id="tasks-board-select"
-          size="sm"
-          accent="gold"
-          value={activeBoardId ?? ""}
-          onValueChange={onSelectBoard}
-          options={boards.map((board) => ({
-            value: board.id,
-            label: `${board.key} · ${board.name}`,
-          }))}
-        />
-      </div>
-      <p className="pb-1 text-xs font-black uppercase tracking-wide text-slate-500">
-        {taskCount} tarefa{taskCount === 1 ? "" : "s"}
-      </p>
-    </div>
-  );
+function toggle<T>(list: T[], value: T): T[] {
+  return list.includes(value)
+    ? list.filter((item) => item !== value)
+    : [...list, value];
 }
 
-export const BoardToolbar = memo(BoardToolbarBase);
+const chip =
+  "rounded-full border-2 border-slate-900 px-2 py-0.5 text-[11px] font-black transition-colors";
+
+/**
+ * `ref` chega no input de busca porque o atalho `/` precisa foca-lo de fora, do
+ * TasksDashboard, que e quem escuta o teclado da aba inteira.
+ */
+export const BoardToolbar = memo(
+  forwardRef<HTMLInputElement, BoardToolbarProps>(function BoardToolbarBase(
+    {
+      boards,
+      activeBoardId,
+      admins,
+      labels,
+      filters,
+      groupBy,
+      view,
+      includeArchived,
+      visibleCount,
+      totalCount,
+      onSelectBoard,
+      onFiltersChange,
+      onGroupByChange,
+      onViewChange,
+      onIncludeArchivedChange,
+      onClearFilters,
+    },
+    searchRef,
+  ) {
+    if (boards.length === 0) return null;
+    const activeCount = activeFilterCount(filters);
+
+    return (
+      <div className="space-y-2.5">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-[13rem]">
+            <label htmlFor="tasks-board-select" className={labelClass}>
+              Quadro
+            </label>
+            <BntSelect
+              id="tasks-board-select"
+              size="sm"
+              accent="gold"
+              value={activeBoardId ?? ""}
+              onValueChange={onSelectBoard}
+              options={boards.map((board) => ({
+                value: board.id,
+                label: `${board.key} · ${board.name}`,
+              }))}
+            />
+          </div>
+
+          <div className="min-w-[13rem] flex-1">
+            <label htmlFor="tasks-search" className={labelClass}>
+              Busca
+            </label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                id="tasks-search"
+                ref={searchRef}
+                value={filters.query}
+                placeholder="Título ou descrição.  /  para focar"
+                aria-label="Buscar tarefas"
+                onChange={(event) =>
+                  onFiltersChange({ ...filters, query: event.target.value })
+                }
+                className="h-9 w-full rounded-xl border-2 border-slate-900 bg-white pl-8 pr-8 text-sm font-semibold text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+              />
+              {filters.query ? (
+                <button
+                  type="button"
+                  aria-label="Limpar busca"
+                  onClick={() => onFiltersChange({ ...filters, query: "" })}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="min-w-[9.5rem]">
+            <label htmlFor="tasks-group" className={labelClass}>
+              Agrupar por
+            </label>
+            <BntSelect
+              id="tasks-group"
+              size="sm"
+              accent="gold"
+              value={groupBy}
+              onValueChange={(value) => onGroupByChange(value as GroupBy)}
+              options={[
+                { value: "column", label: "Etapa" },
+                { value: "assignee", label: "Responsável" },
+                { value: "priority", label: "Prioridade" },
+              ]}
+            />
+          </div>
+
+          <Popover>
+            <PopoverTrigger
+              aria-label="Filtros"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border-2 border-slate-900 bg-white px-3 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a]"
+            >
+              <Filter className="h-3.5 w-3.5" />
+              Filtros
+              {activeCount > 0 ? (
+                <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FFB800] px-1 text-[10px] font-black text-slate-950">
+                  {activeCount}
+                </span>
+              ) : null}
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="w-72 space-y-3 rounded-xl border-2 border-slate-900 bg-white p-3 shadow-[4px_4px_0_#0f172a]"
+            >
+              <div>
+                <p className={labelClass}>Responsável</p>
+                <div className="flex flex-wrap gap-1">
+                  {admins.map((admin) => {
+                    const on = filters.assigneeIds.includes(admin.user_id);
+                    return (
+                      <button
+                        key={admin.user_id}
+                        type="button"
+                        onClick={() =>
+                          onFiltersChange({
+                            ...filters,
+                            assigneeIds: toggle(filters.assigneeIds, admin.user_id),
+                          })
+                        }
+                        className={`${chip} ${on ? "bg-slate-950 text-white" : "bg-white text-slate-700"}`}
+                      >
+                        {admin.name ?? admin.email ?? admin.user_id}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <p className={labelClass}>Etiquetas</p>
+                <div className="flex flex-wrap gap-1">
+                  {labels.map((label) => {
+                    const on = filters.labelIds.includes(label.id);
+                    return (
+                      <button
+                        key={label.id}
+                        type="button"
+                        onClick={() =>
+                          onFiltersChange({
+                            ...filters,
+                            labelIds: toggle(filters.labelIds, label.id),
+                          })
+                        }
+                        className={`${chip} ${on ? "ring-2 ring-slate-900 ring-offset-1" : ""}`}
+                        style={{
+                          backgroundColor: safeHexColor(
+                            label.color,
+                            LABEL_COLOR_FALLBACK,
+                          ),
+                        }}
+                      >
+                        {label.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <p className={labelClass}>Prioridade</p>
+                <div className="flex flex-wrap gap-1">
+                  {PRIORITY_OPTIONS.map((option) => {
+                    const on = filters.priorities.includes(option.value as TaskPriority);
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() =>
+                          onFiltersChange({
+                            ...filters,
+                            priorities: toggle(
+                              filters.priorities,
+                              option.value as TaskPriority,
+                            ),
+                          })
+                        }
+                        className={`${chip} ${on ? "bg-slate-950 text-white" : "bg-white text-slate-700"}`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <p className={labelClass}>Tipo</p>
+                <div className="flex flex-wrap gap-1">
+                  {TYPE_OPTIONS.map((option) => {
+                    const on = filters.types.includes(option.value as TaskType);
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() =>
+                          onFiltersChange({
+                            ...filters,
+                            types: toggle(filters.types, option.value as TaskType),
+                          })
+                        }
+                        className={`${chip} ${on ? "bg-slate-950 text-white" : "bg-white text-slate-700"}`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="tasks-due" className={labelClass}>
+                  Vencimento
+                </label>
+                <BntSelect
+                  id="tasks-due"
+                  size="sm"
+                  accent="gold"
+                  fullWidth
+                  value={filters.due}
+                  onValueChange={(value) =>
+                    onFiltersChange({ ...filters, due: value as DueFilter })
+                  }
+                  options={DUE_OPTIONS.map((option) => ({
+                    value: option.value,
+                    label: option.label,
+                  }))}
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-xs font-black text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={filters.mine}
+                  onChange={(event) =>
+                    onFiltersChange({ ...filters, mine: event.target.checked })
+                  }
+                  className="h-4 w-4 rounded border-2 border-slate-900 accent-[#FFB800]"
+                />
+                Criadas por mim
+              </label>
+
+              <label className="flex items-center gap-2 text-xs font-black text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={includeArchived}
+                  onChange={(event) => onIncludeArchivedChange(event.target.checked)}
+                  className="h-4 w-4 rounded border-2 border-slate-900 accent-[#FFB800]"
+                />
+                Mostrar arquivadas
+              </label>
+
+              {activeCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={onClearFilters}
+                  className="w-full rounded-full border-2 border-slate-900 bg-white px-2 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a]"
+                >
+                  Limpar filtros
+                </button>
+              ) : null}
+            </PopoverContent>
+          </Popover>
+
+          <div className="flex gap-1 rounded-full border-2 border-slate-900 bg-white p-0.5 shadow-[2px_2px_0_#0f172a]">
+            {(["board", "lista"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => onViewChange(option)}
+                className={`rounded-full px-3 py-1 text-[11px] font-black uppercase transition-colors ${
+                  view === option
+                    ? "bg-slate-950 text-white"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                {option === "board" ? "Board" : "Lista"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-xs font-black uppercase tracking-wide text-slate-500">
+          <span>
+            {activeCount > 0
+              ? `${visibleCount} de ${totalCount} tarefa${totalCount === 1 ? "" : "s"}`
+              : `${totalCount} tarefa${totalCount === 1 ? "" : "s"}`}
+          </span>
+          {includeArchived ? (
+            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] text-slate-700">
+              incluindo arquivadas
+            </span>
+          ) : null}
+          {activeCount > 0 ? (
+            <button
+              type="button"
+              onClick={onClearFilters}
+              className="inline-flex items-center gap-1 text-[11px] text-violet-700 hover:text-violet-900"
+            >
+              <X className="h-3 w-3" />
+              limpar
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }),
+);

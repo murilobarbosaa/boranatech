@@ -554,3 +554,79 @@ do evento, não uma referência que pode desaparecer.
 
 Comente numa tarefa e feche o modal: o contador de comentários no card, no board,
 já subiu. Sem recarregar a página.
+
+---
+
+# Smoke test de busca, filtros e lista (Fase 6)
+
+## 37. Busca com caractere especial
+
+Crie duas tarefas: `entregar 100% do escopo` e `entregar 100 coisas`. Busque por
+`100%`.
+
+Esperado: **só a primeira**. Se as duas aparecerem, a busca virou padrão e o `%`
+voltou a ser curinga. Repita com `a_b` versus `axb`.
+
+`/` foca o campo de busca. Com o cursor dentro dele, digitar `n` escreve `n`,
+**não** abre um composer.
+
+## 38. Drag com filtro ativo
+
+O caso mais delicado da fase.
+
+1. Numa etapa com 3 cards, filtre por prioridade de modo a esconder **o do meio**.
+2. Tente arrastar o primeiro card para baixo do terceiro, **dentro da mesma
+   etapa**.
+
+Esperado: **nada acontece**, e o aviso na barra explica por quê. Não pode haver
+`PATCH /move` no Network.
+
+3. Arraste o mesmo card para **outra etapa**.
+
+Esperado: funciona, e ele entra no **fim** da etapa de destino. Limpe o filtro e
+confirme que a ordem da etapa de origem continua exatamente como estava.
+
+## 39. Drag agrupado por prioridade
+
+Agrupe por **Prioridade** e arraste um card de "Média" para "Alta".
+
+Esperado: a prioridade muda (o badge do card acompanha) e o histórico registra
+`mudou a prioridade de média para alta`. Não pode haver `PATCH /move`. Dentro do
+grupo não há reordenação — arrastar um card sobre outro do mesmo grupo não faz
+nada.
+
+Repita agrupando por **Responsável**, incluindo soltar em "Sem responsável": tem
+que **desatribuir**, não gravar a string `none`.
+
+## 40. URL com filtro, tarefa aberta e F5
+
+1. Ligue um filtro (ex.: atrasadas), agrupe por responsável, mude para **Lista**.
+2. Abra uma tarefa.
+3. A URL tem `section`, `task`, `due`, `group` e `view` ao mesmo tempo.
+4. **F5.** Volta exatamente igual: mesma aba, mesmo filtro, mesmo agrupamento,
+   mesma visão, mesma tarefa aberta.
+5. **Voltar** no navegador desfaz um passo por vez, sem perder os outros
+   parâmetros.
+6. Copie a URL e abra em outra aba: mesmo estado.
+7. Limpe os filtros: os parâmetros **somem** da URL em vez de ficarem vazios.
+
+## 41. Contador filtrado e estado vazio
+
+Com filtro ligado, o contador da etapa mostra `3 de 12`, não `3`. Uma etapa que
+ficou sem nada mostra "Nada bate com os filtros" com link de limpar — texto
+**diferente** de "Nenhuma tarefa nesta etapa".
+
+O limite de WIP continua contando o **total** da etapa, não o filtrado: um filtro
+não pode fazer um estouro de WIP desaparecer.
+
+## 42. Arquivadas
+
+Arquive uma tarefa pelo modal. Ligue **Mostrar arquivadas** nos filtros: ela
+reaparece com aparência distinta (tracejada, título riscado) e um botão de
+desarquivar. Desarquive e confirme que volta ao normal.
+
+## 43. Lista
+
+Alterne para **Lista**. Respeita o mesmo filtro, busca e agrupamento; clicar numa
+linha abre o mesmo modal; as setas movem entre etapas. Com filtro que não casa
+nada, mostra o estado vazio com botão de limpar.

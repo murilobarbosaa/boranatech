@@ -24,7 +24,12 @@ type SnapshotState = {
   error: string | null;
 };
 
-export function useBoardSnapshot(boardId: string | null) {
+export function useBoardSnapshot(
+  boardId: string | null,
+  // Arquivadas sao a UNICA dimensao de filtro que muda o que o servidor devolve;
+  // todo o resto e filtrado no cliente sobre este snapshot (ver taskFilters.ts).
+  includeArchived = false,
+) {
   const [state, setState] = useState<SnapshotState>({
     boards: [],
     snapshot: null,
@@ -67,7 +72,7 @@ export function useBoardSnapshot(boardId: string | null) {
     if (!boardId) return;
     const seq = (requestSeq.current += 1);
     try {
-      const snapshot = await getBoardSnapshot(boardId);
+      const snapshot = await getBoardSnapshot(boardId, { includeArchived });
       // Chegou atrasada: outra requisicao ja partiu depois desta, e o estado
       // dela e mais novo que este. Descarta em silencio.
       if (!mounted.current || seq !== requestSeq.current) return;
@@ -86,7 +91,7 @@ export function useBoardSnapshot(boardId: string | null) {
           error instanceof Error ? error.message : "Erro ao carregar o quadro.",
       }));
     }
-  }, [boardId]);
+  }, [boardId, includeArchived]);
 
   useEffect(() => {
     void loadBoards();
