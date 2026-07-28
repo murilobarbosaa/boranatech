@@ -214,6 +214,91 @@ describe.skipIf(!enabled)("adminTasks: posicao contra Postgres real", () => {
     ]);
   });
 
+  // O payload do log tem que ser AUTOSSUFICIENTE no momento da escrita. Se ele
+  // guardar so ids, renomear uma etiqueta reescreve o histórico e excluir a
+  // etiqueta transforma a linha num buraco.
+  it("o log grava o ROTULO legivel, nao so o id", async () => {
+    const alvo = await createTask("com histórico");
+
+    // Etiqueta aplicada e depois REMOVIDA, e por fim a etiqueta e EXCLUIDA do
+    // quadro. Se o nome nao tivesse sido gravado na hora, seria irrecuperavel.
+    const label = await api("/crm/labels", {
+      method: "POST",
+      body: JSON.stringify({ board_id: boardId, name: "Urgente" }),
+    });
+    const labelId = (label.body as { id: string }).id;
+    await api(`/crm/tasks/${alvo.id}/labels`, {
+      method: "POST",
+      body: JSON.stringify({ label_id: labelId }),
+    });
+    await api(`/crm/tasks/${alvo.id}/labels/${labelId}`, { method: "DELETE" });
+    await api(`/crm/labels/${labelId}`, { method: "DELETE" });
+
+    // Responsavel definido e removido.
+    await api(`/crm/tasks/${alvo.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ assignee_id: TEST_USER_ID }),
+    });
+    await api(`/crm/tasks/${alvo.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ assignee_id: null }),
+    });
+
+    const { body } = await api(`/crm/tasks/${alvo.id}`);
+    const activity = (body as { activity: Array<{ action: string; payload: Record<string, unknown> }> })
+      .activity;
+
+    const byAction = (action: string) =>
+      activity.find((entry) => entry.action === action)?.payload ?? {};
+
+    expect(byAction("created").column_name).toBe("Fila");
+    // A etiqueta NAO existe mais no banco, e o histórico continua sabendo o nome.
+    expect(byAction("label_added").label_name).toBe("Urgente");
+    expect(byAction("label_removed").label_name).toBe("Urgente");
+    // Responsavel: nome junto do id nos dois sentidos.
+    expect(byAction("assigned")).toHaveProperty("to_name");
+    expect(byAction("assigned").to).toBe(TEST_USER_ID);
+    expect(byAction("unassigned")).toHaveProperty("from_name");
+  });
+
+  it("o histórico e paginado e diz quando ha mais", async () => {
+    const alvo = await createTask("muitas alteracoes");
+
+    // Cada patch de prioridade gera uma linha. 35 > ACTIVITY_PAGE_SIZE (30).
+    const prioridades = ["baixa", "media", "alta", "urgente"];
+    for (let i = 0; i < 35; i += 1) {
+      await api(`/crm/tasks/${alvo.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ priority: prioridades[i % prioridades.length] }),
+      });
+    }
+
+    const first = await api(`/crm/tasks/${alvo.id}`);
+    const firstBody = first.body as {
+      activity: Array<{ id: string; created_at: string }>;
+      activity_has_more: boolean;
+    };
+    expect(firstBody.activity).toHaveLength(30);
+    // O ponto: a tela SABE que ha mais, em vez de mostrar 30 linhas como se
+    // fossem o histórico inteiro.
+    expect(firstBody.activity_has_more).toBe(true);
+
+    const oldest = firstBody.activity[firstBody.activity.length - 1];
+    const second = await api(
+      `/crm/tasks/${alvo.id}/activity?before=${encodeURIComponent(oldest.created_at)}`,
+    );
+    const secondBody = second.body as {
+      activity: Array<{ id: string }>;
+      activity_has_more: boolean;
+    };
+    expect(secondBody.activity.length).toBeGreaterThan(0);
+
+    // Cursor por timestamp nao pode repetir nem pular registro.
+    const firstIds = new Set(firstBody.activity.map((entry) => entry.id));
+    const repetidos = secondBody.activity.filter((entry) => firstIds.has(entry.id));
+    expect(repetidos).toHaveLength(0);
+  }, 120_000);
+
   // O teste que motiva o arquivo inteiro.
   it("insercao repetida no MESMO intervalo dispara o rebalanceamento e a ordem sobrevive", async () => {
     const inicio = await columnOrder();
