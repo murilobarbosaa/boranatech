@@ -1127,22 +1127,12 @@ export function TasksDashboard() {
         </p>
       ) : null}
 
-      {view === "lista" ? (
-        <TaskListView
-          groups={groups}
-          boardKey={snapshot.board.key}
-          labelsById={labelsById}
-          assigneesById={assigneesById}
-          columnCount={columns.length}
-          columnIndexOf={columnIndexOf}
-          selectedTaskId={selectedTaskId}
-          filtersActive={filtersActive}
-          onOpenTask={openTask}
-          onQuickMove={handleQuickMove}
-          onUnarchive={handleUnarchive}
-          onClearFilters={clearFilters}
-        />
-      ) : columns.length === 0 ? (
+      {/* Zero etapas e verificado ANTES da visao: um quadro sem etapa nao tem o
+          que listar, e na visao em lista nao havia saida nenhuma (a pessoa via
+          "nenhuma tarefa" e nao tinha como criar a primeira etapa). Este e o
+          unico caminho para fora do estado vazio, incluindo o caso raro do seed
+          de um quadro novo ter falhado. */}
+      {columns.length === 0 ? (
         <div className="rounded-3xl border-2 border-dashed border-slate-300 bg-white p-10 text-center">
           <p className="text-sm font-black text-slate-600">
             Este quadro ainda não tem etapas.
@@ -1158,6 +1148,21 @@ export function TasksDashboard() {
             Criar primeira etapa
           </button>
         </div>
+      ) : view === "lista" ? (
+        <TaskListView
+          groups={groups}
+          boardKey={snapshot.board.key}
+          labelsById={labelsById}
+          assigneesById={assigneesById}
+          columnCount={columns.length}
+          columnIndexOf={columnIndexOf}
+          selectedTaskId={selectedTaskId}
+          filtersActive={filtersActive}
+          onOpenTask={openTask}
+          onQuickMove={handleQuickMove}
+          onUnarchive={handleUnarchive}
+          onClearFilters={clearFilters}
+        />
       ) : (
         <DndContext
           sensors={sensors}
@@ -1354,7 +1359,7 @@ export function TasksDashboard() {
           }
         }}
       >
-        <AlertDialogContent className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}>
+        <AlertDialogContent overlayClassName={LAYER_DIALOG} className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}>
           <AlertDialogTitle className="font-display text-2xl font-black text-slate-950">
             Excluir etapa
           </AlertDialogTitle>

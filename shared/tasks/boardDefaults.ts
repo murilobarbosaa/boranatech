@@ -18,6 +18,26 @@
 // vermelho, e ai a decisao e deliberada: ou uma migration nova alinha o seed
 // historico, ou o teste passa a comparar contra a lista congelada. Ficar vermelho
 // e o ponto.
+//
+// ────────────────────────────────────────────────────────────────────────────
+// O QUE O TESTE DE PARIDADE **NAO** COBRE. Leia antes de mexer nas etapas.
+//
+// Ele compara este arquivo com o SQL da migration de CRIACAO, e so isso. Ou
+// seja: garante que as duas copias nasceram iguais, nao que o BANCO esta assim
+// hoje.
+//
+// O buraco concreto: se uma migration FUTURA renomear uma etapa direto no banco
+// (um `update admin_task_columns set name = ...`), este arquivo e a migration
+// antiga continuam concordando entre si, o teste segue VERDE, e mesmo assim
+// quadros novos passam a nascer com nomes diferentes dos que o quadro DEV tem.
+// O guarda-corpo tem essa borda.
+//
+// Fechar isso exigiria ler o banco dentro do teste, o que o acopla a ambiente
+// (rede, service role, CI sem secret) e transforma um teste puro e instantaneo
+// numa dependencia de infra. A troca nao compensa: a divergencia coberta aqui e
+// a provavel (alguem edita um dos dois arquivos), e a descoberta e cosmetica
+// (nome de etapa), nao corrupcao de dado.
+// ────────────────────────────────────────────────────────────────────────────
 
 export type DefaultColumn = {
   name: string;
