@@ -785,6 +785,163 @@ async function onBoletoAsyncPaymentFailed(
   }
 }
 
+// ---------------------------------------------------------------------------
+// PAGAMENTO RECUSADO (charge.failed, payment_intent.payment_failed).
+//
+// NUNCA LANCA. Cartao recusado e evento NORMAL de operacao, nao incidente: a
+// pessoa erra o numero, o limite estoura, o Radar bloqueia. Se este handler
+// lancasse, tres coisas ruins aconteceriam de uma vez, todas por cima do
+// desenho da rodada 3:
+//   1. o catch de handleWebhook apagaria o billing_event como COMPENSACAO, que
+//      existe para forcar retry de dinheiro perdido -- aqui nao ha dinheiro;
+//   2. a Stripe reentregaria por ~3 dias, e cada reentrega falharia de novo,
+//      virando retry perpetuo sobre um fato imutavel;
+//   3. endpoint que falha por dias e DESABILITADO pela Stripe, e ai os eventos
+//      que importam (invoice.paid, async_payment_succeeded) param de chegar.
+// Ou seja: lancar aqui derrubaria o caminho do dinheiro para registrar um
+// nao-pagamento. Por isso o corpo inteiro e best-effort com catch mudo em log.
+//
+// O predicado eventConfirmsPayment tambem nao alcanca estes eventos (ele so
+// responde true para invoice.paid e sessao paga), entao nenhum dos "grita quando
+// o dinheiro entrou" e afetado.
+// ---------------------------------------------------------------------------
+type RecusaLinha = {
+  provider: string;
+  provider_object_id: string;
+  object_type: string;
+  payment_intent_id: string | null;
+  customer_id: string | null;
+  supabase_user_id: string | null;
+  email: string | null;
+  amount_cents: number | null;
+  currency: string | null;
+  plan_id: string | null;
+  failure_code: string | null;
+  decline_code: string | null;
+  advice_code: string | null;
+  outcome_type: string | null;
+  outcome_reason: string | null;
+  risk_level: string | null;
+  seller_message: string | null;
+  failure_message: string | null;
+  attempted_at: string;
+  event_id: string;
+};
+
+function idDe(ref: string | { id: string } | null | undefined): string | null {
+  if (!ref) return null;
+  return typeof ref === "string" ? ref : ref.id;
+}
+
+function linhaDeCharge(ch: Stripe.Charge, event: Stripe.Event): RecusaLinha {
+  const o = ch.outcome;
+  return {
+    provider: "stripe",
+    provider_object_id: ch.id,
+    object_type: "charge",
+    payment_intent_id: idDe(ch.payment_intent),
+    customer_id: idDe(ch.customer),
+    supabase_user_id: ch.metadata?.supabase_user_id || null,
+    email: ch.billing_details?.email || ch.receipt_email || null,
+    amount_cents: ch.amount ?? null,
+    currency: ch.currency ?? null,
+    plan_id: ch.metadata?.plan_id || null,
+    // ch.failure_code e sempre o generico ('card_declined'). O motivo que serve
+    // para agir vive no outcome, medido na conta em 2026-07-28:
+    //   outcome.reason               = insufficient_funds  <- o semantico
+    //   outcome.advice_code          = try_again_later      <- retry vale a pena?
+    //   outcome.network_decline_code = 51                   <- codigo do emissor
+    // `payment_method_details.card.decline_code` NAO EXISTE nesta versao da API
+    // (2026-06-24.dahlia): a primeira versao deste handler lia dali e o tsc
+    // acusou. Ler campo inexistente daria null silencioso em toda linha.
+    failure_code: ch.failure_code ?? null,
+    decline_code: o?.network_decline_code ?? null,
+    advice_code: o?.advice_code ?? null,
+    outcome_type: o?.type ?? null,
+    outcome_reason: o?.reason ?? null,
+    risk_level: o?.risk_level ?? null,
+    seller_message: o?.seller_message ?? null,
+    failure_message: ch.failure_message ?? null,
+    attempted_at: new Date(ch.created * 1000).toISOString(),
+    event_id: event.id,
+  };
+}
+
+function linhaDePaymentIntent(
+  pi: Stripe.PaymentIntent,
+  event: Stripe.Event,
+): RecusaLinha {
+  const err = pi.last_payment_error;
+  return {
+    provider: "stripe",
+    provider_object_id: pi.id,
+    object_type: "payment_intent",
+    payment_intent_id: pi.id,
+    customer_id: idDe(pi.customer),
+    supabase_user_id: pi.metadata?.supabase_user_id || null,
+    email:
+      pi.receipt_email || err?.payment_method?.billing_details?.email || null,
+    amount_cents: pi.amount ?? null,
+    currency: pi.currency ?? null,
+    plan_id: pi.metadata?.plan_id || null,
+    failure_code: err?.code ?? null,
+    decline_code: err?.decline_code ?? null,
+    advice_code: err?.advice_code ?? null,
+    outcome_type: null,
+    outcome_reason: null,
+    risk_level: null,
+    seller_message: null,
+    failure_message: err?.message ?? null,
+    attempted_at: new Date(pi.created * 1000).toISOString(),
+    event_id: event.id,
+  };
+}
+
+async function onPaymentFailed(event: Stripe.Event): Promise<void> {
+  try {
+    const linha =
+      event.type === "charge.failed"
+        ? linhaDeCharge(event.data.object as Stripe.Charge, event)
+        : linhaDePaymentIntent(
+            event.data.object as Stripe.PaymentIntent,
+            event,
+          );
+
+    // Log em nivel de INFO, nao de erro: e operacao normal. O log existe para o
+    // caso de a gravacao falhar e o dado sobrar so aqui.
+    console.log(
+      `[webhook/stripe] recusa: ${linha.object_type} ${linha.provider_object_id} ` +
+        `${linha.email ?? "(sem email)"} ${linha.amount_cents ?? "?"} ` +
+        `${linha.outcome_type ?? "-"}/${linha.decline_code ?? linha.failure_code ?? "-"} ` +
+        `risk=${linha.risk_level ?? "-"}`,
+    );
+
+    // ignoreDuplicates: reentrega do mesmo evento nao duplica a linha. Tentativa
+    // NOVA da mesma pessoa tem outro id e vira outra linha, de proposito.
+    const { error } = await supabaseAdmin
+      .from("billing_failed_payments")
+      .upsert(linha, {
+        onConflict: "provider_object_id",
+        ignoreDuplicates: true,
+      });
+    if (error) {
+      // Inclui o caso "a migration ainda nao subiu". O handler TOLERA schema
+      // antigo de proposito (codigo antes da migration): sem a tabela, a recusa
+      // fica so no log e o webhook segue 200.
+      console.error(
+        `[webhook/stripe] falha ao gravar recusa ${linha.provider_object_id} (a linha fica so no log):`,
+        error,
+      );
+    }
+  } catch (err) {
+    // Ultimo anel: nem um shape inesperado da Stripe pode virar 500 aqui.
+    console.error(
+      `[webhook/stripe] handler de recusa lancou para ${event.id}; ignorado de proposito:`,
+      err,
+    );
+  }
+}
+
 async function onInvoicePaid(
   event: Stripe.Event,
   eventCreatedAt: Date,
@@ -1593,6 +1750,13 @@ async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
         break;
       case "invoice.payment_failed":
         await onInvoiceFailed(event, eventCreatedAt);
+        break;
+      // Recusa de cobranca. Antes caia no `default`, que apagava o proprio
+      // billing_event e devolvia unhandled: a falha nao existia em lugar nenhum.
+      // onPaymentFailed nunca lanca, entao a resposta e sempre 200.
+      case "charge.failed":
+      case "payment_intent.payment_failed":
+        await onPaymentFailed(event);
         break;
       case "charge.succeeded":
       case "charge.refunded":

@@ -36,6 +36,12 @@ const HANDLED_EVENTS = [
   "charge.refunded",
   "charge.dispute.created",
   "charge.dispute.closed",
+  // Recusa de cobranca. Os dois, nao um: o Radar bloqueia alguns pagamentos
+  // ANTES de existir charge (not_sent_to_network), e nesses casos so o
+  // payment_intent.payment_failed chega. Inscrever apenas charge.failed perderia
+  // exatamente a classe de recusa que mais gera "paguei e nao liberou".
+  "charge.failed",
+  "payment_intent.payment_failed",
 ];
 
 const secretKey = process.env.STRIPE_SECRET_KEY;
