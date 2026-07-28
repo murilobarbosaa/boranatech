@@ -752,7 +752,7 @@ if (esquema.naoClassificados.length > 0) {
 // NESTES NUMEROS E ATO DELIBERADO, no mesmo commit da migration que cria ou
 // remove o objeto, com o nome dele na mensagem. Valores medidos em 2026-07-28
 // sobre as 117 migrations do diretorio.
-const EXPECTED_COLUMN_COUNT = 915;
+const EXPECTED_COLUMN_COUNT = 916;
 const EXPECTED_INDEX_COUNT = 137;
 const EXPECTED_POLICY_COUNT = 68;
 
