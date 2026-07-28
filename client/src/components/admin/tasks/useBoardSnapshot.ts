@@ -37,8 +37,14 @@ export function useBoardSnapshot(
     error: null,
   });
 
-  // Sequencia da ultima requisicao disparada. Resposta com selo menor e lixo.
-  const requestSeq = useRef(0);
+  // UM contador POR RECURSO. Duas requisicoes de recursos diferentes nunca sao
+  // obsoletas uma em relacao a outra, e um contador compartilhado fazia o
+  // refresh do snapshot invalidar a resposta da lista de quadros: criar um
+  // quadro buscava a lista nova com sucesso e a jogava fora, e o quadro sumia
+  // do seletor ate algum outro evento refazer a lista.
+  // Reproduzido em useBoardSnapshot.seq.test.tsx.
+  const boardsSeq = useRef(0);
+  const snapshotSeq = useRef(0);
   // Evita setState depois do unmount (trocar de aba no admin desmonta a secao).
   const mounted = useRef(true);
   useEffect(() => {
@@ -49,14 +55,14 @@ export function useBoardSnapshot(
   }, []);
 
   const loadBoards = useCallback(async () => {
-    const seq = (requestSeq.current += 1);
+    const seq = (boardsSeq.current += 1);
     try {
       const { boards } = await listBoards();
-      if (!mounted.current || seq !== requestSeq.current) return boards;
+      if (!mounted.current || seq !== boardsSeq.current) return boards;
       setState((current) => ({ ...current, boards, error: null }));
       return boards;
     } catch (error) {
-      if (mounted.current && seq === requestSeq.current) {
+      if (mounted.current && seq === boardsSeq.current) {
         setState((current) => ({
           ...current,
           loading: false,
@@ -70,12 +76,12 @@ export function useBoardSnapshot(
 
   const refresh = useCallback(async () => {
     if (!boardId) return;
-    const seq = (requestSeq.current += 1);
+    const seq = (snapshotSeq.current += 1);
     try {
       const snapshot = await getBoardSnapshot(boardId, { includeArchived });
       // Chegou atrasada: outra requisicao ja partiu depois desta, e o estado
       // dela e mais novo que este. Descarta em silencio.
-      if (!mounted.current || seq !== requestSeq.current) return;
+      if (!mounted.current || seq !== snapshotSeq.current) return;
       setState((current) => ({
         ...current,
         snapshot,
@@ -83,7 +89,7 @@ export function useBoardSnapshot(
         error: null,
       }));
     } catch (error) {
-      if (!mounted.current || seq !== requestSeq.current) return;
+      if (!mounted.current || seq !== snapshotSeq.current) return;
       setState((current) => ({
         ...current,
         loading: false,
@@ -105,6 +111,24 @@ export function useBoardSnapshot(
     }));
     void refresh();
   }, [boardId, refresh]);
+
+  /**
+   * Insere um quadro na lista a partir da RESPOSTA da criacao, sem refetch.
+   *
+   * O refetch e justamente o que abria a janela para a lista voltar sem o quadro
+   * novo. A RPC ja devolve o quadro pronto, entao nao ha o que buscar; e a
+   * ordenacao local repete a do servidor (position, desempate por created_at)
+   * para o quadro nascer no mesmo lugar em que ele vai aparecer no proximo load.
+   */
+  const addBoard = useCallback((board: TaskBoard) => {
+    setState((current) => ({
+      ...current,
+      boards: [...current.boards.filter((b) => b.id !== board.id), board].sort(
+        (a, b) =>
+          a.position - b.position || a.created_at.localeCompare(b.created_at),
+      ),
+    }));
+  }, []);
 
   /**
    * Aplica uma mutacao local ao snapshot (update otimista).
@@ -130,6 +154,7 @@ export function useBoardSnapshot(
     error: state.error,
     refresh,
     reloadBoards: loadBoards,
+    addBoard,
     applyLocal,
   };
 }
