@@ -645,11 +645,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setConsentWriteInFlight(true);
               void (async () => {
                 try {
-                  // Passo 4 troca este valor para "signup_wrap_implicit", NO MESMO
-                  // commit que remove a caixa de selecao. Enquanto a caixa existir,
-                  // o que aconteceu foi uma marcacao explicita, e e isso que a
-                  // prova tem que dizer.
-                  await recordConsent("signup_form_checkbox");
+                  // Item 4.4. `signup_wrap_implicit`, e nao mais
+                  // `signup_form_checkbox`, NO MESMO commit que removeu a caixa de
+                  // selecao. O que aconteceu agora foi um clique num botao com o
+                  // aviso ao lado, e isso e um mecanismo de consentimento distinto
+                  // de marcar uma caixa: se as duas formas dividissem a string, nao
+                  // haveria como separa-las depois. A string antiga permanece na
+                  // allowlist como historico, sem novos usos.
+                  await recordConsent("signup_wrap_implicit");
                   sessionStorage.removeItem(PENDING_CONSENT_KEY);
                   // Depois da flag, e so no sucesso: e este sinal que autoriza o
                   // ConsentGate a fechar um modal que ele ja tenha aberto por ter
