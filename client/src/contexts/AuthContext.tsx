@@ -19,11 +19,7 @@ import {
   recordConsent,
 } from "@/services/consentService";
 import type { Profile } from "@/services/contracts";
-import {
-  getMyProfile,
-  PENDING_MARKETING_OPTIN_KEY,
-  recordPendingMarketingOptIn,
-} from "@/services/profileService";
+import { getMyProfile } from "@/services/profileService";
 import type { Gender } from "@shared/gender";
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 import {
@@ -674,39 +670,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 }
               })();
             }
-            // Opt-in de marketing pendente do signup: mesmo padrao do consent.
-            // So existe a flag se a pessoa marcou (persistimos so o "true"). Grava
-            // profiles.marketing_opt_in via PATCH /api/me. .catch silencioso: se
-            // falhar, o /bem-vindo ainda oferece o opt-in (profile continua false).
-            if (sessionStorage.getItem(PENDING_MARKETING_OPTIN_KEY)) {
-              sessionStorage.removeItem(PENDING_MARKETING_OPTIN_KEY);
-              const optInUserId = nextSession.user.id;
-              void recordPendingMarketingOptIn()
-                .then(async () => {
-                  // O GET inicial do profile pode ler o banco ANTES deste
-                  // PATCH commitar e deixar marketing_opt_in=false em memoria
-                  // (o /bem-vindo perguntaria de novo). Refetch pra alinhar.
-                  // NAO usar refreshProfile aqui: a closure deste effect
-                  // capturaria a versao com session=null, que LIMPA o profile.
-                  // Guarda de sessao: se deslogou (ou trocou de usuario)
-                  // enquanto o PATCH voava, nao refetcha, pra nao ressuscitar
-                  // perfil de sessao encerrada (mesma preocupacao da Race B).
-                  if (!mounted || !supabase) return;
-                  const { data } = await supabase.auth.getSession();
-                  if (!mounted) return;
-                  if (data.session?.user?.id !== optInUserId) return;
-                  startProfileLifecycle(
-                    data.session,
-                    profileRef.current ? "background" : "initial",
-                  );
-                })
-                .catch((optInErr) => {
-                  console.warn(
-                    "[auth] failed to record pending marketing opt-in:",
-                    optInErr,
-                  );
-                });
-            }
+            // Item 5.1. Aqui ficava o flush do opt-in de marketing pendente do
+            // signup. Removido junto com os checkboxes que o alimentavam: sem
+            // escritor, era codigo morto que continuaria lendo sessionStorage, e
+            // uma API de "opt-in pendente" sem chamador convida alguem a religar a
+            // coleta no cadastro, que e exatamente o que a LGPD art. 8 par. 4
+            // desaconselha. A escolha de marketing agora acontece no /bem-vindo e
+            // no perfil, nunca junto do aceite dos termos.
           }
         }
         reconcileQuizForSession(nextSession);

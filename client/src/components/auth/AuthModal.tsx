@@ -22,10 +22,7 @@ import {
 } from "@/lib/authSchemas";
 import { savePendingIntent, type PendingIntent } from "@/lib/pendingIntent";
 import { cn } from "@/lib/utils";
-import {
-  getMyProfile,
-  PENDING_MARKETING_OPTIN_KEY,
-} from "@/services/profileService";
+import { getMyProfile } from "@/services/profileService";
 import { PENDING_CONSENT_KEY } from "@/services/consentService";
 import SignInWrapNotice from "./SignInWrapNotice";
 import type { Gender } from "@shared/gender";
@@ -62,25 +59,17 @@ export default function AuthModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<FriendlyError | null>(null);
   const [passwordFocused, setPasswordFocused] = useState(false);
-  // Opt-in de marketing: OPCIONAL, nasce desmarcado (exigencia legal). Persistido
-  // em profiles.marketing_opt_in via a flag pendente consumida no SIGNED_IN.
-  const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   useEffect(() => {
     if (open) {
       setTab(defaultTab);
       setError(null);
-      setMarketingOptIn(false);
     }
   }, [open, defaultTab]);
 
   useEffect(() => {
     setError(null);
   }, [name, email, password, gender, tab]);
-
-  useEffect(() => {
-    setMarketingOptIn(false);
-  }, [tab]);
 
   const isSignup = tab === "signup";
 
@@ -113,11 +102,6 @@ export default function AuthModal({
           return;
         }
 
-        // Opt-in de marketing: so grava a flag se marcado (persistimos so o "true";
-        // o default do banco ja e false). Consumida no SIGNED_IN, igual ao consent.
-        if (marketingOptIn) {
-          sessionStorage.setItem(PENDING_MARKETING_OPTIN_KEY, "1");
-        }
         await signUp(parsed.data);
         getMyProfile().catch((triggerErr) => {
           console.warn(
@@ -303,20 +287,9 @@ export default function AuthModal({
               isFocused={passwordFocused}
             />
           )}
-          {/* Item 4.2. O checkbox de aceite dos termos saiu daqui e virou o
-              SignInWrapNotice abaixo dos botoes. O opt-in de marketing abaixo
-              sai no Passo 5. */}
-          {isSignup && (
-            <label className="flex items-start gap-2 text-xs text-slate-500">
-              <input
-                type="checkbox"
-                className="mt-0.5 h-3.5 w-3.5 flex-shrink-0"
-                checked={marketingOptIn}
-                onChange={(event) => setMarketingOptIn(event.target.checked)}
-              />
-              <span>Quero receber novidades e ofertas por e-mail</span>
-            </label>
-          )}
+          {/* Itens 4.2 e 5.1: os checkboxes de aceite e de marketing sairam
+              daqui. O aceite virou o SignInWrapNotice abaixo dos botoes; o
+              marketing saiu do cadastro por inteiro (LGPD art. 8 par. 4). */}
           <button
             className="btn-brutal-accent inline-flex w-full justify-center rounded-full px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-60"
             disabled={isSubmitting}
@@ -341,7 +314,6 @@ export default function AuthModal({
             <div className="mt-3">
               <SocialAuthButtons
                 mode="cadastro"
-                marketingOptIn={marketingOptIn}
                 onBeforeOAuth={persistIntentForOAuth}
                 showDivider={false}
                 redirectTo={
