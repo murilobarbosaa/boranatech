@@ -154,6 +154,8 @@ export function TasksDashboard() {
   const searchRef = useRef(search);
   searchRef.current = search;
   const moveSeqRef = useRef(new Map<string, number>());
+  // Contador SEPARADO do de movimentacao: ver patchTaskProperty.
+  const patchSeqRef = useRef(new Map<string, number>());
   const tempCounter = useRef(0);
 
   // Primeiro board vira o ativo. Nao reescreve a URL: quadro nao esta no deep
@@ -762,21 +764,53 @@ export function TasksDashboard() {
       const previous = current?.tasks.find((item) => item.id === taskId);
       if (!previous) return;
 
+      // Guarda SO os campos que esta operacao mexe. Guardar o objeto inteiro
+      // fazia o rollback devolver tambem `column_id`, desfazendo na tela um move
+      // que o servidor ja tinha gravado.
+      const camposAnteriores = Object.fromEntries(
+        Object.keys(patch).map((campo) => [
+          campo,
+          previous[campo as keyof TaskCardData],
+        ]),
+      ) as Partial<TaskCardData>;
+
+      // Contador PROPRIO desta operacao, separado do de movimentacao: move e
+      // patch escrevem campos diferentes da mesma tarefa e nao sao obsoletos um
+      // em relacao ao outro. Um contador so cancelaria um pelo outro, que e o
+      // mesmo defeito, de cabeca para baixo.
+      const seq = (patchSeqRef.current.get(taskId) ?? 0) + 1;
+      patchSeqRef.current.set(taskId, seq);
+
       applyLocal((snap) => withTask(snap, taskId, (item) => ({ ...item, ...patch })));
       markPending(taskId, true);
       try {
         const updated = await apiPatchTask(taskId, patch);
-        applyLocal((snap) => withTask(snap, taskId, (item) => ({ ...item, ...updated })));
+        if (patchSeqRef.current.get(taskId) !== seq) return;
+        // Aplica SO os campos desta operacao. A resposta traz a tarefa inteira
+        // como ela estava quando o patch partiu, e a coluna dali pode ja estar
+        // velha se um move aconteceu no meio.
+        const aplicados = Object.fromEntries(
+          Object.keys(patch).map((campo) => [
+            campo,
+            updated[campo as keyof typeof updated],
+          ]),
+        ) as Partial<TaskCardData>;
+        applyLocal((snap) =>
+          withTask(snap, taskId, (item) => ({ ...item, ...aplicados })),
+        );
         await guardedRefresh();
       } catch (mutationError) {
-        applyLocal((snap) => withTask(snap, taskId, () => previous));
+        if (patchSeqRef.current.get(taskId) !== seq) return;
+        applyLocal((snap) =>
+          withTask(snap, taskId, (item) => ({ ...item, ...camposAnteriores })),
+        );
         toast.error(
           mutationError instanceof Error
             ? mutationError.message
             : "Erro ao atualizar a tarefa.",
         );
       } finally {
-        markPending(taskId, false);
+        if (patchSeqRef.current.get(taskId) === seq) markPending(taskId, false);
       }
     },
     [applyLocal, guardedRefresh, markPending],
