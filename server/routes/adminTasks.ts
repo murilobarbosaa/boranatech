@@ -2,6 +2,12 @@ import { Router } from "express";
 import { z } from "zod";
 
 import {
+  DEFAULT_BOARD_COLUMNS,
+  DEFAULT_BOARD_LABELS,
+  DEFAULT_COLUMN_STEP,
+} from "../../shared/tasks/boardDefaults";
+
+import {
   positionBetween,
   rebalancePositions,
   POSITION_STEP,
@@ -595,7 +601,45 @@ router.post("/boards", async (req, res, next) => {
     console.error("[admin-tasks] Falha ao criar board:", error);
     return next(createError(500, "db_error", "Erro ao criar quadro."));
   }
-  res.status(201).json(data as BoardRow);
+
+  const board = data as BoardRow;
+
+  // Quadro sem etapa e beco sem saida: a tela abre num estado vazio e nao ha o
+  // que fazer nela. Nasce com as MESMAS etapas e etiquetas do seed, a partir da
+  // fonte unica em shared/tasks/boardDefaults.ts (ver o comentario de la sobre a
+  // copia congelada no SQL da migration).
+  //
+  // Falha aqui NAO desfaz o quadro: sem transacao no supabase-js, apagar o que
+  // acabou de ser criado teria seu proprio modo de falha. O quadro fica de pe e
+  // vazio, o log registra, e a pessoa cria a primeira etapa na mao, que e um
+  // caminho que ja existe.
+  const [columnsResult, labelsResult] = await Promise.all([
+    supabaseAdmin.from("admin_task_columns").insert(
+      DEFAULT_BOARD_COLUMNS.map((column, index) => ({
+        board_id: board.id,
+        name: column.name,
+        color: column.color,
+        position: (index + 1) * DEFAULT_COLUMN_STEP,
+        is_start: column.is_start,
+        is_done: column.is_done,
+      })),
+    ),
+    supabaseAdmin.from("admin_task_labels").insert(
+      DEFAULT_BOARD_LABELS.map((label) => ({
+        board_id: board.id,
+        name: label.name,
+        color: label.color,
+      })),
+    ),
+  ]);
+  if (columnsResult.error || labelsResult.error) {
+    console.error(
+      "[admin-tasks] Quadro criado, mas o seed de etapas/etiquetas falhou:",
+      columnsResult.error ?? labelsResult.error,
+    );
+  }
+
+  res.status(201).json(board);
 });
 
 router.patch("/boards/:id", async (req, res, next) => {
