@@ -110,3 +110,12 @@ describe("flag de consentimento em TODA iniciacao de auth (item 4.3)", () => {
     expect(sessionStorage.getItem(PENDING_CONSENT_KEY)).toBe("1");
   });
 });
+
+describe("nao coleta marketing (item 5.1)", () => {
+  it("nao grava flag de opt-in de marketing em nenhum modo", () => {
+    render(<SocialAuthButtons mode="cadastro" />);
+    fireEvent.click(botaoGoogle());
+
+    expect(sessionStorage.getItem("bnt_pending_marketing_optin")).toBeNull();
+  });
+});

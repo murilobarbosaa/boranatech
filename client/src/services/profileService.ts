@@ -4,12 +4,17 @@ import type { Profile, ProfileSnapshot } from "./contracts";
 
 const API_BASE = apiUrl("/api");
 
-// Flag de "opt-in de marketing pendente", gravada no signup (form de e-mail ou
-// OAuth) e consumida quando a sessao aparece (SIGNED_IN em AuthContext), mesmo
-// padrao do PENDING_CONSENT_KEY. sessionStorage sobrevive ao redirect do OAuth na
-// mesma aba. Setada SO quando a pessoa marca o opt-in: o default do banco ja e
-// false, entao so precisamos persistir o "true".
-export const PENDING_MARKETING_OPTIN_KEY = "bnt_pending_marketing_optin";
+// Item 5.1. Aqui viviam `PENDING_MARKETING_OPTIN_KEY` e
+// `recordPendingMarketingOptIn`, o par que carregava o opt-in de marketing do
+// formulario de cadastro ate o SIGNED_IN. Removidos com os checkboxes que os
+// alimentavam: consentimento de marketing precisa ser especifico e destacado
+// (LGPD art. 8 par. 4) e nao pode vir empacotado com o aceite dos termos.
+//
+// A chave `bnt_pending_marketing_optin` pode existir no sessionStorage de quem
+// estava no meio de um cadastro durante o deploy. Ninguem le mais, e
+// sessionStorage morre com a aba: nao ha nada a limpar.
+//
+// A escolha de marketing acontece em /bem-vindo (card dispensavel) e no perfil.
 
 async function getAuthHeader(): Promise<Record<string, string>> {
   const {
@@ -74,11 +79,4 @@ export async function updateMyProfile(
   if (!res.ok) throw new Error("Erro ao atualizar perfil");
   const json = (await res.json()) as { data: Profile };
   return json.data;
-}
-
-// Consome a flag de opt-in pendente: grava marketing_opt_in=true via PATCH /api/me
-// (o server carimba marketing_opt_in_at). Precisa de sessao, por isso o consumo e no
-// SIGNED_IN do AuthContext, igual ao recordConsent.
-export async function recordPendingMarketingOptIn(): Promise<void> {
-  await updateMyProfile({ marketing_opt_in: true });
 }

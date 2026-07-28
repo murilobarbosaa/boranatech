@@ -4,17 +4,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { rememberSignupSource, signupSourceFromUrl } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { PENDING_CONSENT_KEY } from "@/services/consentService";
-import { PENDING_MARKETING_OPTIN_KEY } from "@/services/profileService";
 
 type SocialAuthButtonsProps = {
   mode: "login" | "cadastro";
   onBeforeOAuth?: () => void;
   showDivider?: boolean;
   redirectTo?: string;
-  // Opt-in de marketing (opcional, so no cadastro). Marca a flag pendente antes do
-  // redirect OAuth; o AuthContext grava marketing_opt_in no retorno. Desmarcado nao
-  // grava nada (o default do banco ja e false).
-  marketingOptIn?: boolean;
 };
 
 type SocialProvider = "google";
@@ -61,7 +56,6 @@ export default function SocialAuthButtons({
   onBeforeOAuth,
   showDivider = true,
   redirectTo,
-  marketingOptIn = false,
 }: SocialAuthButtonsProps) {
   const { signInWithOAuth } = useAuth();
   const [loadingProvider, setLoadingProvider] = useState<SocialProvider | null>(
@@ -100,10 +94,6 @@ export default function SocialAuthButtons({
         // OAuth perde o returnTo no round-trip; persiste a origem agora (ainda
         // em /cadastro?returnTo=...) pro user_signed_up ler no retorno.
         rememberSignupSource(signupSourceFromUrl());
-        // So grava a flag de opt-in se marcado; desmarcado nao persiste (default false).
-        if (marketingOptIn) {
-          sessionStorage.setItem(PENDING_MARKETING_OPTIN_KEY, "1");
-        }
       }
       await signInWithOAuth(provider, redirectTo ? { redirectTo } : undefined);
     } catch (error) {

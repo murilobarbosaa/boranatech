@@ -260,10 +260,25 @@ router.patch("/", checkProStatus, async (req, res, next) => {
       }
     }
 
-    // Fora da whitelist de proposito: o carimbo de quando a pessoa consentiu
-    // (marketing_opt_in_at) e gravado pelo SERVER, nunca vindo do cliente.
-    // Desmarcar zera o consentimento e o carimbo. Nao toca a supressao global
+    // Fora da whitelist de proposito: o carimbo (marketing_opt_in_at) e gravado
+    // pelo SERVER, nunca vindo do cliente. Nao toca a supressao global
     // (email_suppressions), que e outra camada e vale acima do opt-in.
+    //
+    // Item 5.2. O carimbo passou a significar "quando a DECISAO foi registrada", e
+    // nao mais "quando a pessoa consentiu". Ou seja, `false` tambem carimba.
+    //
+    // O motivo e que precisamos distinguir "nunca perguntado" de "perguntado e
+    // recusado", e sem uma coluna nova (decisao D: sem migration neste passo) o
+    // unico sinal disponivel e este carimbo. Com a regra antiga (`false` zerava o
+    // carimbo) os dois estados eram literalmente a mesma linha, e por isso o card
+    // do /bem-vindo voltava a perguntar a quem ja tinha dispensado.
+    //
+    // NULL agora significa exatamente uma coisa: nunca perguntamos.
+    //
+    // Seguro para o envio de e-mail: TODA decisao de envio promocional filtra por
+    // `marketing_opt_in === true` (o booleano), nunca pelo carimbo. Conferido em
+    // audienceReach, emailCampaignQueue, notificationAudience e
+    // adminEmailCampaigns; o carimbo so aparece na listagem do admin.
     if ("marketing_opt_in" in body) {
       const value = body.marketing_opt_in;
       if (typeof value !== "boolean") {
@@ -276,7 +291,7 @@ router.patch("/", checkProStatus, async (req, res, next) => {
         );
       }
       updates.marketing_opt_in = value;
-      updates.marketing_opt_in_at = value ? new Date().toISOString() : null;
+      updates.marketing_opt_in_at = new Date().toISOString();
     }
 
     for (const field of Object.keys(AVATAR_VALUES) as Array<

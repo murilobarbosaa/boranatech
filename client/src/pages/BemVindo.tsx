@@ -28,12 +28,20 @@ export default function BemVindo() {
   const reduce = useReducedMotion();
   const [, setLocation] = useLocation();
   const { profile, profileStatus, refreshProfile } = useAuth();
-  // O checkbox de opt-in so e COLETOR legitimo quando foi de fato exibido, e a
-  // decisao de exibir exige o profile carregado (profileStatus === "ready"):
-  // antes disso nao da pra saber se a pessoa ja optou no cadastro. Em "error"
-  // tambem nao exibimos: sem certeza, nao coletamos e nao escrevemos.
+  // Item 5.2. "Nunca perguntado" e `marketing_opt_in_at == null`, e nao mais
+  // `marketing_opt_in !== true`.
+  //
+  // A condicao antiga nao distinguia "nunca perguntei" de "perguntei e a pessoa
+  // disse nao", porque as duas situacoes davam `marketing_opt_in === false`. O
+  // resultado era o card voltando a perguntar a quem ja tinha dispensado, toda vez.
+  // O carimbo agora e gravado nas DUAS respostas (ver server/routes/me.ts), entao
+  // `null` significa exatamente uma coisa: ninguem perguntou ainda.
+  //
+  // A exigencia de `profileStatus === "ready"` continua: antes de o profile
+  // carregar nao da para saber, e em "error" tambem nao. Sem certeza, nao
+  // perguntamos e nao escrevemos.
   const optInColetavel =
-    profileStatus === "ready" && profile?.marketing_opt_in !== true;
+    profileStatus === "ready" && profile?.marketing_opt_in_at == null;
   // Opt-in de comunicacao promocional: DESMARCADO por default, escolha
   // explicita. Editavel depois no perfil.
   const [marketingOptIn, setMarketingOptIn] = useState(false);
@@ -56,14 +64,22 @@ export default function BemVindo() {
   // local pra nao prender a pessoa nesta tela num retorno futuro. Leva junto
   // a escolha de opt-in de marketing (o carimbo e gravado pelo server).
   function marcarOnboarding() {
-    // marketing_opt_in so entra no PATCH quando o checkbox foi exibido E marcado:
-    // o que este form nao coletou, ele nao escreve. NUNCA grava false: o default
-    // do banco ja e false, e um false aqui poderia sobrescrever um opt-in feito no
-    // cadastro (PATCH concorrente no SIGNED_IN). O PATCH /api/me aceita payload
-    // parcial, entao omitir o campo e seguro.
+    // Item 5.3. `marketing_opt_in` entra no PATCH sempre que o card foi EXIBIDO,
+    // com o valor que a pessoa deixou: marcado grava true, dispensado grava false.
+    //
+    // Antes, dispensar nao gravava nada, e como "nao gravou nada" era
+    // indistinguivel de "nunca perguntei", o card voltava a perguntar na proxima
+    // visita. Gravar o false (e, com ele, o carimbo do servidor) e o que encerra a
+    // pergunta: depois de registrada, a decisao nao e refeita.
+    //
+    // A ressalva antiga sobre sobrescrever um opt-in do cadastro morreu junto com
+    // o item 5.1: nao existe mais coleta de marketing no cadastro, entao nao ha
+    // PATCH concorrente com o qual competir. E o que este card nao exibiu ele
+    // continua nao escrevendo: fora de `optInColetavel`, o campo e omitido e o
+    // PATCH parcial nao toca no valor existente.
     const updates: Record<string, unknown> = { onboarding_completed: true };
-    if (optInColetavel && marketingOptIn) {
-      updates.marketing_opt_in = true;
+    if (optInColetavel) {
+      updates.marketing_opt_in = marketingOptIn;
     }
     void updateMyProfile(updates)
       .then(() => refreshProfile())
@@ -118,11 +134,13 @@ export default function BemVindo() {
           a primeira vaga.
         </p>
 
-        {/* So oferece o opt-in a quem ainda nao optou, e SO depois do profile
-            carregar (optInColetavel): renderizar antes causava flicker e abria
-            janela pra coletar de quem ja optou no cadastro. Quem marcou la
-            (profile.marketing_opt_in === true) nao e perguntado de novo. Usuarios
-            antigos (default false) continuam vendo normalmente. */}
+        {/* Item 5.5. O marketing NUNCA bloqueia nada e NUNCA e modal: e um card
+            dispensavel, e seguir sem marcar e uma resposta valida (registrada como
+            `false`), nao uma pergunta adiada.
+
+            So aparece para quem ainda nao foi perguntado (optInColetavel), e SO
+            depois do profile carregar: renderizar antes causava flicker e abria
+            janela pra perguntar a quem ja tinha respondido. */}
         {optInColetavel && (
           <label className="mx-auto mt-6 flex max-w-md cursor-pointer items-start justify-center gap-2 text-left text-sm font-medium text-slate-300">
             <input

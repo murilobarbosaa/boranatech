@@ -16,10 +16,7 @@ import {
   loginSchema,
   signupSchema,
 } from "@/lib/authSchemas";
-import {
-  getMyProfile,
-  PENDING_MARKETING_OPTIN_KEY,
-} from "@/services/profileService";
+import { getMyProfile } from "@/services/profileService";
 import { PENDING_CONSENT_KEY } from "@/services/consentService";
 import { greet } from "@shared/greeting";
 
@@ -39,9 +36,6 @@ export default function Auth({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<FriendlyError | null>(null);
   const [passwordFocused, setPasswordFocused] = useState(false);
-  // Opt-in de marketing: OPCIONAL, nasce desmarcado (exigencia legal). Persistido
-  // em profiles.marketing_opt_in via a flag pendente consumida no SIGNED_IN.
-  const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   useEffect(() => {
     setError(null);
@@ -80,11 +74,6 @@ export default function Auth({
           return;
         }
 
-        // Opt-in de marketing: so grava a flag se marcado (persistimos so o "true";
-        // o default do banco ja e false). Consumida no SIGNED_IN, igual ao consent.
-        if (marketingOptIn) {
-          sessionStorage.setItem(PENDING_MARKETING_OPTIN_KEY, "1");
-        }
         await signUp(parsed.data);
         getMyProfile().catch((triggerErr) => {
           console.warn("[Auth] failed to trigger welcome email:", triggerErr);
@@ -228,23 +217,12 @@ export default function Auth({
                   isFocused={passwordFocused}
                 />
               )}
-              {/* Item 4.2. Aqui vivia o checkbox de aceite dos termos, que
-                  bloqueava o submit. Virou o SignInWrapNotice abaixo dos botoes.
-                  O opt-in de marketing abaixo sai no Passo 5. */}
-              {isSignup && (
-                <label className="flex items-start gap-2 text-xs text-slate-500">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 h-3.5 w-3.5 flex-shrink-0"
-                    checked={marketingOptIn}
-                    onChange={(event) => setMarketingOptIn(event.target.checked)}
-                  />
-                  <span>
-                    Aceito receber novidades, conteúdos e ofertas do Bora na
-                    Tech por e-mail. Você pode cancelar quando quiser.
-                  </span>
-                </label>
-              )}
+              {/* Itens 4.2 e 5.1. Aqui viviam dois checkboxes: o de aceite dos
+                  termos, que bloqueava o submit, e o de opt-in de marketing.
+                  O primeiro virou o SignInWrapNotice abaixo dos botoes; o segundo
+                  saiu do cadastro por inteiro, porque consentimento de marketing
+                  precisa ser especifico e destacado (LGPD art. 8 par. 4) e nao pode
+                  vir empacotado com os termos nem condicionar o uso do servico. */}
               <button
                 className="btn-brutal-accent inline-flex w-full justify-center rounded-full px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isSubmitting}
@@ -268,11 +246,7 @@ export default function Auth({
                   <div className="h-px flex-1 bg-slate-200" />
                 </div>
                 <div className="mt-4">
-                  <SocialAuthButtons
-                    mode={mode}
-                    marketingOptIn={marketingOptIn}
-                    showDivider={false}
-                  />
+                  <SocialAuthButtons mode={mode} showDivider={false} />
                 </div>
               </div>
             )}
