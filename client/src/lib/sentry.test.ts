@@ -25,6 +25,15 @@ describe("amostrarPorOrigem", () => {
     expect(amostrarPorOrigem(evento, undefined, () => 1)).toBe(evento);
   });
 
+  // Falha de login e rara e cada ocorrencia e o dado. Com amostragem, 3 de cada 4
+  // relatos de "nao consegui entrar" ficariam invisiveis, que e exatamente o
+  // problema que a instrumentacao de auth existe para resolver.
+  it("evento de auth passa SEMPRE, mesmo no pior sorteio", () => {
+    const evento = { tags: { origem: "auth" } };
+    expect(amostrarPorOrigem(evento, undefined, () => 0.99)).toBe(evento);
+    expect(amostrarPorOrigem(evento, undefined, () => 1)).toBe(evento);
+  });
+
   it("evento comum continua amostrado a 0.25", () => {
     const evento = { tags: { origem: "outra-coisa" } };
     // Abaixo do corte passa.

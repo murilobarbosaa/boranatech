@@ -33,17 +33,30 @@ export async function getProfileSnapshot(): Promise<ProfileSnapshot> {
   };
 }
 
+// Erro de leitura de perfil com o status HTTP ANEXADO, mesmo padrao do
+// `consentError` em consentService.ts. O status ja aparecia dentro do texto da
+// mensagem, mas texto de mensagem nao e campo: recuperar o numero de volta exigiria
+// casar `/HTTP (\d+)/` na string, ou seja, um parser sobre a saida de outro trecho
+// nosso, que e a classe de instrumento que falha PASSANDO (casa menos do que
+// deveria e ninguem percebe). Como campo, quem loga le `err.status` direto.
+function profileError(status: number | null, message: string): Error {
+  const err = new Error(message) as Error & { status?: number | null };
+  err.status = status;
+  return err;
+}
+
 export async function getMyProfile(): Promise<Profile> {
   const headers = await getAuthHeader();
   const res = await fetch(`${API_BASE}/me`, { headers });
   if (!res.ok) {
-    throw new Error(`Erro ao buscar perfil (HTTP ${res.status}).`);
+    throw profileError(res.status, `Erro ao buscar perfil (HTTP ${res.status}).`);
   }
   const json = (await res.json().catch(() => null)) as {
     data?: Profile | null;
   } | null;
   if (!json?.data?.id) {
-    throw new Error("Erro ao buscar perfil (resposta vazia ou inválida).");
+    // 200 com corpo invalido: status null distingue do caso de falha HTTP.
+    throw profileError(null, "Erro ao buscar perfil (resposta vazia ou inválida).");
   }
   return json.data;
 }
