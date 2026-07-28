@@ -71,6 +71,51 @@ desfaria movimentos posteriores já gravados. E há um contador de sequência po
 tarefa, aplicado **no sucesso e no erro** — se um segundo move já partiu, nem o
 erro nem a resposta atrasada do primeiro tocam o estado.
 
+### Regra das mutações otimistas (leia antes de escrever a próxima)
+
+Este módulo aprendeu a mesma lição **três vezes**, em lugares diferentes, e nas
+três o sintoma foi o mesmo: a tela mostrando um estado plausível e errado, sem
+nenhum erro em log nenhum. Duas regras, e as duas são sobre **escopo**.
+
+**1. Um contador de sequência POR OPERAÇÃO.** Nunca compartilhado entre recursos
+diferentes, nem entre operações que escrevem campos diferentes do mesmo recurso.
+
+Duas requisições só são obsoletas uma em relação à outra quando disputam **o
+mesmo estado**. Um contador compartilhado faz a resposta boa de uma ser
+descartada como "atrasada" por causa da outra — e o descarte é silencioso por
+construção, porque a guarda existe justamente para não fazer barulho.
+
+**2. Rollback e merge apenas dos campos que a operação tocou.** Nunca o objeto
+inteiro, nunca o snapshot inteiro.
+
+Guardar `previous` completo é cômodo e errado: no momento do rollback, o objeto
+pode ter recebido escritas de **outra** operação que já foi gravada no servidor.
+Restaurá-lo por inteiro desfaz na tela algo que existe no banco. O mesmo vale
+para o caminho de sucesso: a resposta traz o recurso como ele estava quando
+aquela requisição partiu, e aplicá-la inteira sobrescreve o que chegou depois.
+
+Vale para os **dois** caminhos, sucesso e erro. Errar só no sucesso é mais fácil,
+porque o erro é o que a gente imagina ao escrever.
+
+#### Os três episódios
+
+| # | Onde | O que aconteceu |
+| --- | --- | --- |
+| 1 | `useBoardSnapshot` | A lista de quadros e o snapshot dividiam **um** contador. Criar um quadro disparava `reloadBoards()` e, logo depois, um `refresh()` do snapshot; a resposta da lista chegava com selo antigo e era **descartada**. O quadro era buscado com sucesso e jogado fora — sumia do seletor até algum outro evento refazer a lista. |
+| 2 | `patchTaskProperty` | Não tinha contador **nenhum**. Duas alterações rápidas na mesma tarefa corriam sem guarda, e a resposta da primeira sobrescrevia a segunda. |
+| 3 | `patchTaskProperty` | Guardava o objeto **inteiro** para o rollback. Desarquivar um card, movê-lo com a seta enquanto o patch estava no ar, e o patch falhar: o rollback devolvia `column_id` junto e o card voltava para a coluna antiga, desfazendo na tela um movimento que o servidor já tinha gravado. |
+
+O 3 é literalmente o defeito que o "Um caminho só de movimentação" acima já
+descrevia e que `moveTaskTo` já corrigia. Ele foi reintroduzido meses depois numa
+operação nova, por quem tinha escrito a correção. **Conhecer a regra não bastou;
+por isso ela está escrita aqui.**
+
+Cada um dos três foi **reproduzido em teste antes do conserto** e cada correção
+tem controle negativo: `useBoardSnapshot.seq.test.tsx` e
+`TasksDashboard.patchRace.test.tsx`. O de compartilhar contador é instrutivo ao
+contrário — reunir `patchSeqRef` e `moveSeqRef` num só deixa o teste vermelho,
+porque cancelar uma operação pela outra é o mesmo defeito de cabeça para baixo.
+
 ### RLS sem policy, mais REVOKE
 
 Todas as oito tabelas têm `enable row level security` e **zero policies**, igual a
