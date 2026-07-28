@@ -15,6 +15,27 @@
 // Não roda no CI porque depende de um Chrome instalado e de um servidor de pé.
 // É verificação de release manual, versionada aqui de propósito: checklist que
 // mora só na conversa some na primeira compactação de contexto.
+//
+// LIMITE CONHECIDO: TODAS as amostras rodam DESLOGADAS.
+//
+// O que este script cobre é a home de um visitante anônimo. Nesse caminho os dois
+// gates que envolvem o Router em `App.tsx` são passagem pura: o `AuthCallbackGate`
+// devolve `children` direto sem `callbackIssue`, e o `ConsentGate` devolve
+// `children` quando `!gateActive`, sendo `gateActive = Boolean(userId) && ...`.
+// Sem sessão, nenhum dos dois monta DOM nem adia o mount do hero.
+//
+// Logado é outra árvore. O `ConsentGate` passa a poder renderizar o estado
+// `checking` (tela cheia com spinner) antes de liberar o Router, e o hero só monta
+// depois disso. Esse caminho NÃO é exercitado aqui, então um "26 amostras OK" não
+// autoriza a conclusão "o contador está certo para todo mundo", só para quem chega
+// deslogado.
+//
+// Cobrir o caso logado exige semear sessão do Supabase no browser (token no
+// storage que o supabase-js lê), o que é trabalho à parte e não está feito.
+// Enquanto não estiver, este comentário é o que impede o próximo leitor de ler
+// cobertura total onde há cobertura parcial: instrumento cujo escopo encolheu em
+// silêncio é a classe de defeito que o CLAUDE.md cataloga, e a versão barata da
+// contramedida é dizer no próprio instrumento o que ele não mede.
 
 import { createRequire } from "node:module";
 import { existsSync } from "node:fs";
