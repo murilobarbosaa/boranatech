@@ -10,6 +10,7 @@
 // no chamador teria que ser repetida nos dois e sumiria no primeiro que alguem
 // esquecesse.
 
+import * as Sentry from "@sentry/node";
 import type Stripe from "stripe";
 
 import { env } from "./env";
@@ -129,7 +130,59 @@ async function lerMapeamento(
 }
 
 /**
- * Resolve (ou cria) o Customer do usuario e devolve o id.
+ * Resultado da resolucao.
+ *
+ * DOIS desfechos, nao um id com excecao para tudo. A versao anterior lancava em
+ * QUALQUER falha, o que colapsava dois casos muito diferentes:
+ *
+ *   DIVERGENCIA   o mapeamento aponta para o Customer de OUTRO usuario, ou o modo
+ *                 (live/test) nao bate. Isso e defeito de dado e continua
+ *                 ABORTANDO o checkout. Falha fechada.
+ *
+ *   INDISPONIBILIDADE  erro de rede, timeout, rate limit do Supabase, tabela
+ *                 inacessivel. Nao ha nada de errado com o usuario, e derrubar o
+ *                 checkout por isso troca uma venda perdida por um Customer
+ *                 duplicado. Degrada para `customer_email`, que e LITERALMENTE o
+ *                 comportamento de producao hoje em 100% das sessoes.
+ */
+export type ResolucaoCustomer =
+  | { modo: "reuso"; customerId: string }
+  | { modo: "degradado"; motivo: string };
+
+/**
+ * Reporta a degradacao num lugar CONTAVEL.
+ *
+ * console.error e greppavel, nao contavel. O Sentry conta evento por issue e
+ * mostra a curva no tempo, que e a pergunta real ("isto esta acontecendo com que
+ * frequencia?"). Mesmo idioma de server/routes/stats.ts:33
+ * (`captureMessage("[stats] users-count degraded")`), para as duas degradacoes do
+ * produto aparecerem com a mesma cara.
+ */
+function reportarDegradacao(motivo: string, userId: string, err?: unknown): void {
+  console.error(
+    `[stripeCustomer] DEGRADADO (${motivo}) para o user ${userId}; seguindo com customer_email. ` +
+      "O pior resultado e um Customer duplicado.",
+    err ?? "",
+  );
+  try {
+    Sentry.captureMessage("[billing] stripe_customer_lookup degraded", {
+      level: "warning",
+      tags: { motivo },
+      extra: { userId, erro: err instanceof Error ? err.message : String(err ?? "") },
+    });
+  } catch {
+    // Sentry indisponivel nao pode derrubar o checkout que acabamos de salvar.
+  }
+}
+
+/** Erro transitorio da Stripe: nao autoriza concluir nada, mas nao e divergencia. */
+function ehTransitorioStripe(err: unknown): boolean {
+  const e = err as Stripe.errors.StripeError;
+  return !(e?.code === "resource_missing" || e?.statusCode === 404);
+}
+
+/**
+ * Resolve (ou cria) o Customer do usuario.
  *
  * CORRIDA (dois checkouts simultaneos do mesmo usuario): ambos leem mapeamento
  * vazio e ambos criam um Customer na Stripe. O upsert com ignoreDuplicates decide
@@ -138,82 +191,88 @@ async function lerMapeamento(
  *
  * O orfao NAO PODE RECEBER COBRANCA: ele nunca entra em `stripe_customers` (o
  * conflito o rejeitou), nunca e devolvido por esta funcao, e portanto nunca chega
- * ao `customer:` de uma Checkout Session. Sem sessao, nao ha cobranca. Fica
- * registrado em log de aviso para uma varredura poder recolher depois.
+ * ao `customer:` de uma Checkout Session. Sem sessao, nao ha cobranca.
  */
 export async function resolveStripeCustomerId(
   userId: string,
   email: string | undefined,
-): Promise<string> {
+): Promise<ResolucaoCustomer> {
   const livemode = livemodeEsperado();
   const stripe = getStripe();
 
-  const mapeado = await lerMapeamento(userId, livemode);
+  let mapeado: string | null;
+  try {
+    mapeado = await lerMapeamento(userId, livemode);
+  } catch (err) {
+    // Tabela inacessivel / rate limit / rede. Nao e divergencia.
+    reportarDegradacao("leitura_do_mapeamento", userId, err);
+    return { modo: "degradado", motivo: "leitura_do_mapeamento" };
+  }
 
   if (mapeado) {
-    let precisaRecriar = false;
+    // SO a chamada de rede fica dentro do try. As assercoes de divergencia ficam
+    // FORA, e isso nao e estilo: com elas dentro, o `catch` abaixo capturava o
+    // proprio throw de `conferirModo`/`conferirDono`, `ehTransitorioStripe` nao
+    // reconhecia o createError, e a DIVERGENCIA virava DEGRADACAO -- exatamente o
+    // colapso dos dois casos que este bloco existe para desfazer. Pego por
+    // stripeCustomer.test.ts na primeira execucao.
+    let existente: Stripe.Customer | Stripe.DeletedCustomer | null = null;
     try {
-      const existente = await stripe.customers.retrieve(mapeado);
-      // Customer deletado no painel volta com deleted: true em vez de 404.
-      if ((existente as Stripe.DeletedCustomer).deleted) {
-        console.warn(
-          `[stripeCustomer] customer ${mapeado} esta deletado na Stripe; recriando para o user ${userId}.`,
-        );
-        precisaRecriar = true;
-      } else {
-        const customer = existente as Stripe.Customer;
-        conferirModo(customer, livemode);
-        conferirDono(customer, userId);
-        await garantirMetadata(customer, userId);
-        return customer.id;
-      }
+      existente = await stripe.customers.retrieve(mapeado);
     } catch (err) {
-      const stripeErr = err as Stripe.errors.StripeError;
-      // resource_missing: sumiu de verdade. Qualquer outro erro (rede, rate
-      // limit, chave invalida) NAO autoriza criar outro Customer, porque criar
-      // seria reintroduzir o duplicado por causa de uma falha transitoria.
-      if (
-        stripeErr?.code !== "resource_missing" &&
-        stripeErr?.statusCode !== 404
-      ) {
-        throw err;
+      if (ehTransitorioStripe(err)) {
+        reportarDegradacao("stripe_indisponivel", userId, err);
+        return { modo: "degradado", motivo: "stripe_indisponivel" };
       }
       console.warn(
         `[stripeCustomer] customer ${mapeado} nao existe mais na Stripe; recriando para o user ${userId}.`,
       );
-      precisaRecriar = true;
     }
 
-    if (!precisaRecriar) {
-      throw createError(500, "config_error", "Estado inesperado do Customer.");
+    if (existente && !(existente as Stripe.DeletedCustomer).deleted) {
+      const customer = existente as Stripe.Customer;
+      conferirModo(customer, livemode);
+      conferirDono(customer, userId);
+      await garantirMetadata(customer, userId);
+      return { modo: "reuso", customerId: customer.id };
+    }
+    if (existente) {
+      console.warn(
+        `[stripeCustomer] customer ${mapeado} esta deletado na Stripe; recriando para o user ${userId}.`,
+      );
     }
 
-    // Recriar e ATUALIZAR a linha existente, nunca inserir outra: a linha ja
-    // ocupa (user_id, livemode) e um INSERT bateria no UNIQUE.
-    const novo = await criarCustomer(userId, email, livemode);
+    let novo: Stripe.Customer;
+    try {
+      novo = await criarCustomer(userId, email, livemode);
+    } catch (err) {
+      reportarDegradacao("criacao_do_customer", userId, err);
+      return { modo: "degradado", motivo: "criacao_do_customer" };
+    }
     const { error } = await supabaseAdmin
       .from("stripe_customers")
       .update({ stripe_customer_id: novo.id })
       .eq("user_id", userId)
       .eq("livemode", livemode);
     if (error) {
-      // O Customer existe na Stripe mas o mapeamento nao aponta para ele. Abortar
-      // e o certo: seguir usaria um Customer que a proxima tentativa nao acha,
-      // recriando de novo e voltando ao problema dos duplicados.
-      console.error(
-        `[stripeCustomer] customer ${novo.id} criado mas mapeamento NAO atualizado (user ${userId}):`,
-        error,
-      );
-      throw createError(
-        500,
-        "db_error",
-        "Não foi possível atualizar seu cadastro de pagamento. Tente novamente.",
-      );
+      // O Customer E do usuario (metadata carimbado na criacao), entao USAR e
+      // correto e melhor que degradar: a cobranca vai para o lugar certo. O que
+      // falhou foi so a PERSISTENCIA, e o custo disso e um duplicado na proxima
+      // tentativa, que e o estado de hoje.
+      reportarDegradacao("persistencia_do_mapeamento", userId, error);
+      return { modo: "reuso", customerId: novo.id };
     }
-    return novo.id;
+    return { modo: "reuso", customerId: novo.id };
   }
 
-  const criado = await criarCustomer(userId, email, livemode);
+  let criado: Stripe.Customer;
+  try {
+    criado = await criarCustomer(userId, email, livemode);
+  } catch (err) {
+    reportarDegradacao("criacao_do_customer", userId, err);
+    return { modo: "degradado", motivo: "criacao_do_customer" };
+  }
+
   const { data, error } = await supabaseAdmin
     .from("stripe_customers")
     .upsert(
@@ -222,33 +281,30 @@ export async function resolveStripeCustomerId(
     )
     .select("stripe_customer_id");
   if (error) {
-    console.error("[stripeCustomer] falha ao gravar mapeamento:", error);
-    throw createError(
-      500,
-      "db_error",
-      "Não foi possível registrar seu cadastro de pagamento. Tente novamente.",
-    );
+    reportarDegradacao("persistencia_do_mapeamento", userId, error);
+    return { modo: "reuso", customerId: criado.id };
   }
 
-  // Vazio = perdeu a corrida (ignoreDuplicates transformou o conflito em DO
-  // NOTHING). O vencedor ja gravou; relê e usa o dele.
+  // Vazio = perdeu a corrida. O vencedor ja gravou; rele e usa o dele.
   if ((data?.length ?? 0) === 0) {
-    const vencedor = await lerMapeamento(userId, livemode);
+    let vencedor: string | null = null;
+    try {
+      vencedor = await lerMapeamento(userId, livemode);
+    } catch (err) {
+      reportarDegradacao("releitura_pos_corrida", userId, err);
+    }
     if (!vencedor) {
-      // Conflitou e agora nao acha: so acontece se a linha tiver sido removida no
-      // meio. Aborta em vez de criar um terceiro Customer.
-      throw createError(
-        500,
-        "db_error",
-        "Não foi possível confirmar seu cadastro de pagamento. Tente novamente.",
-      );
+      // Nao conseguiu descobrir o vencedor. O Customer recem-criado E do usuario
+      // (metadata carimbado), entao usar e seguro; so nao ficou mapeado.
+      reportarDegradacao("corrida_sem_vencedor", userId);
+      return { modo: "reuso", customerId: criado.id };
     }
     console.warn(
       `[stripeCustomer] corrida na criacao (user ${userId}): customer ${criado.id} ficou ORFAO, ` +
         `usando ${vencedor}. O orfao nunca entra em stripe_customers, entao nao pode ser cobrado.`,
     );
-    return vencedor;
+    return { modo: "reuso", customerId: vencedor };
   }
 
-  return criado.id;
+  return { modo: "reuso", customerId: criado.id };
 }
