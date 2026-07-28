@@ -36,42 +36,62 @@
 # rodar a suite aqui importa ainda mais.
 #
 # Emergencia: git commit --no-verify. Use com parcimonia e conserte depois.
+#
+# POR QUE A SEGUNDA RODADA NAO MEXE MAIS NO `.env`. A versao anterior renomeava o
+# arquivo (`mv .env .env.pre-commit-bak`) e restaurava por `trap EXIT INT TERM`.
+# A FIDELIDADE estava certa (ausencia do ARQUIVO, nao `env -i`); a DURABILIDADE,
+# nao: `trap` nao roda em SIGKILL. Em 2026-07-28 um `kill -9` (OOM, duas suites em
+# paralelo) matou o hook entre o `mv` e a restauracao. O `.env` sumiu do disco e a
+# copia integral dos segredos ficou como untracked, a um `git add -A` de vazar.
+#
+# A correcao NAO troca fidelidade por conveniencia. Uma tentativa intermediaria
+# so trocava o `cwd` da segunda rodada, e foi descartada por ser MEIO-CEGA: o
+# `dotenv` resolve por `process.cwd()`, mas o Vite tem carregador proprio ancorado
+# em `envDir`/`root`, entao `import.meta.env.VITE_*` continuava populado. Medido
+# por probe. Enganar carregador por carregador so cobre os que alguem lembrou;
+# remover a coisa em si derrota todos.
+#
+# O QUE FAZ AGORA: materializa o INDICE num diretorio temporario e roda a segunda
+# passada la dentro, com `--root` apontando para ele.
+#
+#   - `git checkout-index -a --prefix=` e nao `git archive`/`write-tree`: le o
+#     indice direto e NAO cria objeto nenhum no banco de objetos. `write-tree`
+#     escreveria uma tree a cada commit, efeito colateral que um hook nao deve ter.
+#   - o INDICE, e nao o HEAD: o hook roda antes do commit existir, entao testar o
+#     HEAD daria veredito sobre a arvore anterior. E nao o working tree: o que vai
+#     ser commitado e o que esta staged.
+#   - `.env` e gitignored, logo nao esta no indice, logo nao existe no temporario.
+#     Os DOIS carregadores ficam cegos: `cwd` e `root` apontam para um lugar sem
+#     `.env`.
+#
+# NAO HA ESTADO A RESTAURAR. Sem `mv`, sem backup, sem `trap`: um SIGKILL custa um
+# commit abortado e um diretorio orfao em /tmp, nunca um ambiente quebrado.
 set -e
-
-ENV_BAK=".env.pre-commit-bak"
-
-# Restauracao do `.env`. Um hook que deixa o `.env` renomeado quebra o ambiente
-# de quem commitou, e seria pior que o problema que ele resolve. Por isso a
-# restauracao e verificada por hash e grita, em vez de falhar em silencio.
-restaurar_env() {
-  [ -f "$ENV_BAK" ] || return 0
-  mv -f "$ENV_BAK" .env
-  DEPOIS=$(md5sum .env | cut -d' ' -f1)
-  if [ "$DEPOIS" != "$ENV_MD5" ]; then
-    echo "" >&2
-    echo "[pre-commit] ERRO GRAVE: o .env restaurado NAO confere." >&2
-    echo "[pre-commit]   antes:  $ENV_MD5" >&2
-    echo "[pre-commit]   depois: $DEPOIS" >&2
-    echo "[pre-commit] Confira o arquivo A MAO antes de continuar." >&2
-    exit 1
-  fi
-}
 
 echo "[pre-commit] suite de testes..."
 npx vitest run --silent
 
-if [ -f .env ]; then
-  echo "[pre-commit] suite sem .env (condicao do CI)..."
-  ENV_MD5=$(md5sum .env | cut -d' ' -f1)
-  trap restaurar_env EXIT INT TERM
-  mv .env "$ENV_BAK"
-  npx vitest run --silent
-  restaurar_env
-  trap - EXIT INT TERM
-  echo "[pre-commit] .env restaurado e conferido ($ENV_MD5)."
-else
-  echo "[pre-commit] sem .env neste checkout, a primeira rodada ja e a condicao do CI."
+echo "[pre-commit] suite sem .env (condicao do CI)..."
+REPO=$(git rev-parse --show-toplevel)
+SEM_ENV=$(mktemp -d)
+git checkout-index -a --prefix="$SEM_ENV/"
+
+# Guardas de sanidade DO PROPRIO INSTRUMENTO. Sem elas, um temporario vazio ou um
+# `.env` inesperado fariam a segunda rodada passar verde sobre a premissa errada,
+# que e a classe de defeito que este hook existe para nao repetir.
+if [ ! -f "$SEM_ENV/vitest.config.ts" ] || [ ! -f "$SEM_ENV/package.json" ]; then
+  echo "[pre-commit] ERRO: o indice nao materializou em $SEM_ENV." >&2
+  rm -rf "$SEM_ENV"; exit 1
 fi
+if [ -e "$SEM_ENV/.env" ]; then
+  echo "[pre-commit] ERRO: $SEM_ENV tem .env; nao seria a condicao do CI." >&2
+  rm -rf "$SEM_ENV"; exit 1
+fi
+
+ln -s "$REPO/node_modules" "$SEM_ENV/node_modules"
+( cd "$SEM_ENV" && "$SEM_ENV/node_modules/.bin/vitest" run --root "$SEM_ENV" --silent )
+rm -rf "$SEM_ENV"
+echo "[pre-commit] segunda rodada feita sobre o INDICE, sem .env, e o .env do disco nao foi tocado."
 
 echo "[pre-commit] pnpm check..."
 pnpm check
