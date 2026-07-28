@@ -31,7 +31,25 @@
 //      que fecha a lacuna do conferirDono, que tolera metadata ausente. Sem o
 //      carimbo, a protecao contra "Customer de outro usuario" fica dormente
 //      justamente nos Customers antigos.
-//   5. INSERT em stripe_customers com ON CONFLICT DO NOTHING.
+//   5. DETECTA mapeamento pre-existente. Se o usuario JA tem mapeamento e ele
+//      aponta para outro Customer, REPORTA o conflito e NAO escreve.
+//   6. Senao, INSERT em stripe_customers.
+//
+// POR QUE O PASSO 5 EXISTE (janela entre deploy e backfill)
+// ---------------------------------------------------------------------------
+// Entre o deploy do reuso e a execucao deste script, os 3 clusters SEM assinatura
+// (laurapdsz20, felixvicente983, helenadesouza22) podem iniciar um checkout. O
+// resolver le mapeamento vazio, cria um Customer NOVO e mapeia para ele. Quando
+// este backfill rodar, um `on conflict do nothing` cru pularia em SILENCIO, e o
+// canonico historico ficaria sem mapeamento e sem metadata carimbado -- sem
+// ninguem saber.
+//
+// Nao ha dano de dinheiro nesse caso: o Customer novo E do usuario (metadata
+// carimbado na criacao) e nenhum PaymentMethod fica salvo. O que se perde e a
+// CONSOLIDACAO: o Customer novo nasce sem historico bom, que e exatamente o que o
+// Radar consulta, e some um orfao a mais. Para laurapdsz20, que tem 5 bloqueios de
+// Radar, e justamente o pior caso. Entao o script REPORTA em vez de pular calado,
+// e a decisao de intervir e humana.
 //
 // O QUE ELE NAO FAZ, de proposito:
 //   - NAO deleta os Customers excedentes. Sem mapeamento eles ja sao
@@ -133,6 +151,7 @@ console.log(`[backfill] ${clusters.length} e-mail(s) com mais de um Customer.\n`
 let planejados = 0;
 let aplicados = 0;
 const abortados = [];
+const conflitos = [];
 
 for (const [email] of clusters) {
   // Passo 1: consistencia forte. A listagem geral acima pode estar desatualizada
@@ -209,6 +228,26 @@ for (const [email] of clusters) {
   console.log(`    metadata : ${donoAtual ? "ja carimbado" : "SERA carimbado"}`);
   console.log(`    inertes  : ${excedentes.join(", ") || "(nenhum)"} (nao deletados)`);
 
+  // Passo 5: mapeamento pre-existente? Detecta a janela deploy->backfill.
+  const jaMapeado = await supa(
+    `stripe_customers?select=stripe_customer_id&user_id=eq.${userId}&livemode=is.${LIVEMODE}`,
+  );
+  const mapeadoPara = jaMapeado?.[0]?.stripe_customer_id ?? null;
+  if (mapeadoPara && mapeadoPara !== canonico.id) {
+    conflitos.push(
+      `${email}: JA mapeado para ${mapeadoPara}, que NAO e o canonico eleito ` +
+        `(${canonico.id}). Nada escrito. Provavel checkout na janela entre o ` +
+        `deploy e este backfill.`,
+    );
+    console.log(`    !! CONFLITO: mapeamento existente ${mapeadoPara} MANTIDO;`);
+    console.log(`       canonico eleito ${canonico.id} NAO foi mapeado. Nada escrito.`);
+    continue;
+  }
+  if (mapeadoPara === canonico.id) {
+    console.log(`    ja mapeado para o canonico; nada a fazer.`);
+    continue;
+  }
+
   if (!CONFIRM) continue;
 
   // Passo 4: carimbar metadata (fecha a lacuna do conferirDono).
@@ -234,6 +273,15 @@ for (const [email] of clusters) {
 }
 
 console.log(`\n[backfill] clusters elegiveis: ${planejados}`);
+if (conflitos.length > 0) {
+  console.log(`[backfill] CONFLITOS DE MAPEAMENTO (${conflitos.length}), nada escrito neles:`);
+  for (const c of conflitos) console.log(`  !! ${c}`);
+  console.log(
+    "  Decisao humana: manter o Customer novo (simples, perde o historico do " +
+      "canonico) ou remapear a mao para o canonico (consolida, exige apagar a " +
+      "linha de stripe_customers do usuario antes de rodar de novo).",
+  );
+}
 if (abortados.length > 0) {
   console.log(`[backfill] ABORTADOS (${abortados.length}), nenhum tocado:`);
   for (const a of abortados) console.log(`  ! ${a}`);
