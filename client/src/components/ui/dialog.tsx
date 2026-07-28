@@ -91,12 +91,23 @@ DialogOverlay.displayName = "DialogOverlay";
 
 function DialogContent({
   className,
+  overlayClassName,
   children,
   showCloseButton = true,
   onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
+  /**
+   * Classes do OVERLAY. Aditivo: sem ela o overlay fica exatamente como estava
+   * (`z-50`), entao nenhum dialog existente muda de comportamento.
+   *
+   * Existe porque o overlay era o unico pedaco do dialog inalcancavel de fora, e
+   * o admin tem header em `z-[1000]`: quem sobe o conteudo para `z-[2000]`
+   * precisa subir o escurecido junto, senao o header aparece por cima dele.
+   * Mesma tecnica do `contentClassName` do BntSelect.
+   */
+  overlayClassName?: string;
 }) {
   const { isComposing } = useDialogComposition();
 
@@ -120,7 +131,7 @@ function DialogContent({
 
   return (
     <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay />
+      <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(

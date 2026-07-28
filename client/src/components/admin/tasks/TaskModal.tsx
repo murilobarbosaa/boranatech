@@ -603,6 +603,7 @@ export function TaskModal({
         }}
       >
         <DialogContent
+          overlayClassName={LAYER_DIALOG}
           // Acima do header do admin: sem isto o topo do modal fica inalcancavel.
           className={`${LAYER_DIALOG} flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 bg-white p-0 sm:h-[88vh] sm:w-[min(72rem,94vw)] sm:max-w-none sm:rounded-2xl sm:border-2 sm:border-slate-950 sm:shadow-[6px_6px_0_#0f172a]`}
         >
@@ -852,7 +853,7 @@ export function TaskModal({
       </Dialog>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogContent className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}>
+        <AlertDialogContent overlayClassName={LAYER_DIALOG} className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}>
           <AlertDialogTitle className="font-display text-2xl font-black text-slate-950">
             Excluir tarefa
           </AlertDialogTitle>

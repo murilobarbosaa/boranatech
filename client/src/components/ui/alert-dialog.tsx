@@ -44,11 +44,19 @@ function AlertDialogOverlay({
 
 function AlertDialogContent({
   className,
+  overlayClassName,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
+  /**
+   * Classes do OVERLAY. Aditivo: sem ela o overlay fica exatamente como estava
+   * (`z-50`), entao nenhum alert-dialog existente muda de comportamento. Ver o
+   * mesmo comentario em dialog.tsx.
+   */
+  overlayClassName?: string;
+}) {
   return (
     <AlertDialogPortal>
-      <AlertDialogOverlay />
+      <AlertDialogOverlay className={overlayClassName} />
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
         className={cn(

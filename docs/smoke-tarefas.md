@@ -648,10 +648,11 @@ destino do 409 de etapa não-vazia.
 Fora do modal: o menu `⋯` da coluna e o popover de **Filtros** ficam acima do
 header quando abrem para cima.
 
-Detalhe conhecido: o **escurecido** do fundo não cobre o header (o
-`DialogContent` do shadcn não deixa estilizar o overlay de fora). O header não
-fica clicável — o Radix desliga os eventos do body. Consertar de vez é uma linha
-nos primitivos, e isso corrigiria também Bugs & Erros e Notificações.
+O **escurecido** também cobre o header. Isso veio de um `overlayClassName`
+opcional acrescentado a `ui/dialog.tsx` e `ui/alert-dialog.tsx`: o default segue
+`z-50`, então nenhum outro dialog do projeto mudou. Bugs & Erros e Notificações
+continuam com o mesmo defeito de antes, e agora têm a porta aberta para adotar a
+prop quando alguém cuidar deles.
 
 ## 45. Respiro no rodapé do modal
 
@@ -681,3 +682,14 @@ No botão de engrenagem ao lado do seletor de quadro:
 No modal, escolha uma data. Ao lado do campo aparece a data em português
 (`28/07/2026`). Se o seu navegador mostrar o input como `mm/dd/yyyy`, é a locale
 dele — o eco ao lado é o que confirma o que foi entendido.
+
+## 48. Quadro sem etapas
+
+Estado raro, e o único caminho de saída dele. Simule excluindo todas as etapas de
+um quadro sandbox (o 409 exige `moveTo`, então mova as tarefas antes, ou use um
+quadro recém-criado e vazio de tarefas).
+
+Esperado: "Este quadro ainda não tem etapas" com o botão **Criar primeira etapa**.
+Troque para `?view=lista` e recarregue: **o mesmo botão**, não um "nenhuma
+tarefa" sem saída. Ligue um filtro: continua sendo o estado de sem-etapas, porque
+a ação necessária é outra.

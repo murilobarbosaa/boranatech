@@ -205,6 +205,7 @@ export function BoardManagerDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+          overlayClassName={LAYER_DIALOG}
         className={`${LAYER_DIALOG} max-h-[85vh] overflow-y-auto rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a] sm:max-w-lg`}
       >
         <DialogTitle className="font-display text-2xl font-black text-slate-950">
