@@ -200,7 +200,7 @@ const EXPECTED_TRIGGER_FUNCTION_COUNT = 4;
  * string entre aspas simples, dollar-quoting (`$fn$ ... $fn$`, onde mora todo
  * corpo de funcao) e aninhamento de bloco, que o Postgres permite.
  */
-function stripSqlComments(sql: string): string {
+export function stripSqlComments(sql: string): string {
   let out = "";
   let i = 0;
   while (i < sql.length) {
@@ -752,7 +752,14 @@ if (esquema.naoClassificados.length > 0) {
 // NESTES NUMEROS E ATO DELIBERADO, no mesmo commit da migration que cria ou
 // remove o objeto, com o nome dele na mensagem. Valores medidos em 2026-07-28
 // sobre as 117 migrations do diretorio.
-const EXPECTED_COLUMN_COUNT = 916;
+// 915 nesta branch, nao 916. A migration de consentimento
+// (20260728180000_add_consent_method_to_user_consents.sql) e da outra frente e nao
+// existe aqui, porque esta branch nasceu de origin/main. A coluna
+// `user_consents.consent_method` JA existe no banco (a outra sessao aplicou), e por
+// isso o guard reporta "1 coluna no banco sem declaracao": correto e esperado.
+// Quando aquele trabalho entrar na main, quem o mergear sobe este numero para 916
+// no mesmo commit da migration, que e a regra da casa.
+const EXPECTED_COLUMN_COUNT = 915;
 const EXPECTED_INDEX_COUNT = 137;
 const EXPECTED_POLICY_COUNT = 68;
 
