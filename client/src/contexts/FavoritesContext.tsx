@@ -165,7 +165,21 @@ async function apiFetch(path: string, options?: RequestInit) {
     fetch(apiUrl(`/api/bookmarks${path}`), {
       ...options,
       headers: {
-        "Content-Type": "application/json",
+        // `Content-Type` SO quando ha corpo. Mandar em GET produziu 500 real em
+        // producao: `InternalServerError: stream is not readable` em
+        // `GET /api/bookmarks/` (Sentry NODE-EXPRESS-B, 2026-07-28T01:11:16Z).
+        //
+        // A cadeia: o `express.json()` global (`server/app.ts:375`) decide se le
+        // o corpo pelos HEADERS, nao pelo metodo. Com `Content-Type:
+        // application/json` presente, e com `Transfer-Encoding: chunked` que a
+        // borda do Railway acrescenta a requisicao sem `Content-Length`, ele
+        // conclui que ha corpo e chama `getRawBody` num stream que ja acabou.
+        //
+        // Raro porque depende do chunked entrar, o que nao acontece sempre. Foi
+        // 1 ocorrencia; o efeito e a lista de favoritos falhar naquela carga.
+        ...(options?.body === undefined
+          ? {}
+          : { "Content-Type": "application/json" }),
         ...extraHeaders,
         ...(options?.headers || {}),
       },
