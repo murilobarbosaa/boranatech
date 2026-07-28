@@ -5,6 +5,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Redirect, Route, Switch } from "wouter";
+import AuthCallbackGate from "./components/auth/AuthCallbackGate";
 import ConsentGate from "./components/consent/ConsentGate";
 import ErrorBoundary from "./components/ErrorBoundary";
 import LaunchGate from "./components/gate/LaunchGate";
@@ -383,10 +384,14 @@ function App() {
                   <AffiliateTracker />
                   <ScrollToTop />
                   <LaunchGate>
-                    <ConsentGate>
-                      <SuperInterstitial />
-                      <Router />
-                    </ConsentGate>
+                    {/* Acima do ConsentGate de propósito: não faz sentido pedir
+                        aceite de uma sessão que não conseguimos confirmar. */}
+                    <AuthCallbackGate>
+                      <ConsentGate>
+                        <SuperInterstitial />
+                        <Router />
+                      </ConsentGate>
+                    </AuthCallbackGate>
                   </LaunchGate>
                 </TooltipProvider>
               </NotificationsProvider>

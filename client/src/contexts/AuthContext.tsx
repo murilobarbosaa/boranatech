@@ -60,6 +60,49 @@ const PROFILE_RETRY_JITTER = 0.25;
 // Skeleton só no boot inicial sem perfil. Aos 6s força fallback visual sem matar retries.
 const PROFILE_BOOT_SKELETON_TIMEOUT_MS = 6_000;
 
+// Limite de espera pela troca PKCE no retorno do OAuth.
+//
+// Era 5000ms, e 5000ms era curto pelo motivo errado: o que tem que caber aqui é a
+// volta do app do Google, um handshake TLS para uma origem nova e UM round trip
+// para `<projeto>.supabase.co`, num aparelho que pode ter acabado de trocar de
+// célula. Não passa pelo Railway, então cold start não entra na conta; latência
+// ruim de rede móvel entra, e 5s cai dentro dela. Ou seja: o timer disparava em
+// login SAUDÁVEL, e como a ação dele era declarar "não logado", uma lentidão
+// virava logout.
+//
+// 20s fica acima do p99 de uma requisição em rede móvel ruim e ainda abaixo do
+// ponto em que a pessoa conclui que a página morreu. Também não antecipa a falha
+// do próprio SDK, cujos limites de rede são maiores.
+//
+// E o custo de errar para o lado longo caiu: o desfecho agora é um aviso
+// recuperável, não um logout. Antes, esperar mais significava mais tempo até
+// deslogar alguém injustamente; agora significa mais tempo até um "não deu para
+// confirmar" honesto, com botão de tentar de novo.
+const OAUTH_CALLBACK_TIMEOUT_MS = 20_000;
+
+// Item 1.8. Quando a espera passa deste ponto, a tela passa a dizer que está viva.
+//
+// O problema que isto resolve não é técnico, é de comportamento: 20s de spinner
+// mudo faz a pessoa recarregar por volta dos 10s, e recarregar mata o timer antes
+// do desfecho, então a telemetria do 1.6/1.7 nunca é emitida. O conserto se
+// sabotaria sozinho, e ainda pareceria que o caminho nunca é atingido.
+//
+// 6000ms, e o número NÃO é novo: é o mesmo PROFILE_BOOT_SKELETON_TIMEOUT_MS acima,
+// que já responde a esta mesma pergunta humana ("a partir de quando a pessoa
+// desconfia que travou?") e já foi calibrado nesta base. Inventar um segundo
+// limiar para a mesma pergunta criaria dois números para manter em sincronia sem
+// nenhum ganho. Fica confortavelmente abaixo do reflexo de recarregar (~10s) e bem
+// acima do p50 de um retorno saudável, então login normal nunca vê a mensagem.
+const OAUTH_CALLBACK_REASSURANCE_MS = PROFILE_BOOT_SKELETON_TIMEOUT_MS;
+
+// Por que o retorno do OAuth não pôde ser concluído. Nunca significa "deslogado":
+// significa "não sabemos", e a UI trata como estado explícito com ação de retry.
+export type AuthCallbackIssue =
+  // A URL de callback trouxe error/error_code do provider (item 1.2).
+  | { kind: "provider_error"; code: string | null; description: string | null }
+  // O limite acima estourou e getSession() também não achou sessão (item 1.3).
+  | { kind: "unconfirmed"; code: null; description: null };
+
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
@@ -67,6 +110,14 @@ interface AuthContextValue {
   profileStatus: ProfileStatus;
   profileError: Error | null;
   loading: boolean;
+  // Desfecho não-conclusivo do retorno do OAuth. null = nada a relatar.
+  callbackIssue: AuthCallbackIssue | null;
+  // A troca PKCE está demorando o bastante para valer avisar que está viva
+  // (item 1.8). Não é erro e não oferece ação: só sinaliza progresso.
+  callbackSlow: boolean;
+  // Reconsulta a sessão e, se ela existir, retoma o fluxo normal. É a ação do
+  // botão "tentar novamente" do aviso.
+  retryCallback: () => Promise<void>;
   signUp: (input: SignUpInput) => Promise<void>;
   signIn: (input: SignInInput) => Promise<void>;
   signInWithOAuth: (
@@ -127,6 +178,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profileStatus, setProfileStatus] = useState<ProfileStatus>("idle");
   const [profileError, setProfileError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(true);
+  const [callbackIssue, setCallbackIssue] = useState<AuthCallbackIssue | null>(
+    null,
+  );
+  const [callbackSlow, setCallbackSlow] = useState(false);
+
+  // O retry precisa de startProfileLifecycle/reconcileQuizForSession, que vivem no
+  // closure do effect de boot. Guardar a função num ref evita colocar o nonce nas
+  // deps do effect, o que re-assinaria o onAuthStateChange a cada tentativa e
+  // mexeria nas invariantes de corrida que os testes deste arquivo travam.
+  const retryCallbackRef = useRef<(() => Promise<void>) | null>(null);
 
   // profileRef é mantido em sincronia SÍNCRONA com setProfile em cada caller
   // (fetchAndApply success, cancelProfileLifecycle, ambos ramos de refreshProfile).
@@ -161,6 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // falha já aconteceu no provider).
     const bootStartedAt = Date.now();
     let safetyTimer: number | undefined;
+    let reassuranceTimer: number | undefined;
     // Havia callback de OAuth na URL quando este effect começou? Capturado UMA vez,
     // antes de qualquer await, porque o supabase-js remove o `?code=` da URL durante
     // a própria inicialização: consultar depois pode dar false e perderíamos a
@@ -192,18 +254,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Use sempre generationRef.current dentro deste effect para que qualquer
     // bump externo (refreshProfile) seja observado pelas chamadas em voo aqui.
 
+    // Limpa os DOIS timers do ciclo de callback, de propósito. Eles nascem juntos e
+    // morrem juntos, e uma função separada para cada um significaria lembrar de
+    // chamar as duas em cada um dos call sites: a guarda mora dentro, não no
+    // chamador, senão o timer de tranquilização sobreviveria ao desfecho e a
+    // mensagem apareceria depois do login já ter dado certo.
     function clearSafetyTimer() {
       if (safetyTimer !== undefined) {
         window.clearTimeout(safetyTimer);
         safetyTimer = undefined;
       }
+      if (reassuranceTimer !== undefined) {
+        window.clearTimeout(reassuranceTimer);
+        reassuranceTimer = undefined;
+      }
     }
 
     // Desfecho do retorno do OAuth, reportado no máximo uma vez por carga de
-    // página. Concentrado numa função só porque o instante medido é o mesmo em
-    // todos os caminhos: chamar reportAuthDiagnostic solto em cada ramo abriria a
-    // porta para dois deles dispararem juntos e contarem o mesmo retorno duas vezes.
-    function reportOAuthOutcome(stage: "oauth_return_succeeded") {
+    // página. Concentrado aqui porque 1.6 e 1.7 são o MESMO instante medido, só
+    // com nome diferente conforme o caminho: chamar reportAuthDiagnostic solto em
+    // cada ramo abriria a porta para os dois dispararem juntos.
+    function reportOAuthOutcome(stage:
+      | "session_recovered_after_timeout"
+      | "oauth_return_succeeded") {
       if (oauthOutcomeReported || oauthReturnStartedAt === null) return;
       oauthOutcomeReported = true;
       reportAuthDiagnostic({
@@ -346,10 +419,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // senha consumia), então "redirect fora da allowlist" e "usuário cancelou"
         // chegavam como uma tela deslogada sem explicação e sem registro.
         //
-        // Só REGISTRA, sem mudar o fluxo: este commit é de instrumentação, e a
-        // tela explicativa vem no próximo. Reportar antes de tratar é de propósito,
-        // porque é o registro que diz qual `error_code` chega de verdade, e é ele
-        // que decide quais mensagens a tela precisa ter.
+        // Reporta SEMPRE que o parâmetro existe, porque a tentativa falhou de fato,
+        // mas só bloqueia a tela quando não há sessão: quem já está logado e cai
+        // aqui com uma URL velha não precisa ver aviso nenhum.
         const urlError = readAuthErrorFromUrl();
         if (urlError) {
           reportAuthFailure({
@@ -360,6 +432,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             errorMessage: urlError.description,
             elapsedMs: Date.now() - bootStartedAt,
           });
+          if (!initialSession) {
+            setCallbackIssue({
+              kind: "provider_error",
+              code: urlError.errorCode ?? urlError.error,
+              description: urlError.description,
+            });
+            setLoading(false);
+            return;
+          }
         }
 
         // Callback de OAuth em andamento: getSession resolveu null mas a URL ainda
@@ -368,36 +449,98 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // (loading=false, user=null) que faz os guards redirecionarem indevidamente.
         if (!initialSession && hasOAuthCallbackInUrl()) {
           console.info("[auth] holding loading for OAuth callback");
-          // Salvaguarda: se o SIGNED_IN nunca chegar (ex.: troca PKCE falha), não
-          // travar em spinner eterno, degrada graciosamente para "não autenticado".
           const callbackStartedAt = Date.now();
           safetyTimer = window.setTimeout(() => {
+            void resolveStalledCallback(callbackStartedAt);
+          }, OAUTH_CALLBACK_TIMEOUT_MS);
+          // Item 1.8: não muda fluxo nem oferece ação, só deixa de parecer morta.
+          reassuranceTimer = window.setTimeout(() => {
             if (!mounted) return;
-            // Item 1.3. Esta é a quarta e última superfície de falha a ganhar
-            // registro, e a mais importante das quatro: até aqui o único rastro do
-            // caminho era um console.warn que ninguém lê, então a hipótese de que
-            // este timer derruba login SAUDÁVEL nunca pôde ser medida. O
-            // comportamento continua o mesmo por enquanto, de propósito: o conserto
-            // é o próximo commit, e ele precisa de linha de base para ser avaliado.
-            reportAuthFailure({
-              stage: "session_unconfirmed",
+            setCallbackSlow(true);
+            reportAuthDiagnostic({
+              stage: "oauth_return_slow",
               method: "oauth_redirect",
               provider: "google",
-              errorCode: "pkce_exchange_unconfirmed",
               elapsedMs: Date.now() - callbackStartedAt,
             });
-            console.warn(
-              "[auth] safety timeout fired; treating as unauthenticated",
-            );
-            setSession(null);
-            cancelProfileLifecycle();
-            setLoading(false);
-          }, 5000);
+          }, OAUTH_CALLBACK_REASSURANCE_MS);
           return;
         }
 
         setLoading(false);
       });
+
+    // Item 1.3. O que este caminho NÃO faz mais, e é o ponto todo: não chama
+    // setSession(null) nem cancelProfileLifecycle(). O timer antigo zerava sessão e
+    // o app declarava "não logado" enquanto a troca PKCE ainda podia estar em voo,
+    // ou seja, transformava lentidão de rede em logout, e o único rastro era um
+    // console.warn que ninguém lê.
+    //
+    // Agora o estouro do limite só ENCERRA o loading, e antes de concluir qualquer
+    // coisa consulta getSession() e confia no resultado: se a troca concluiu e só a
+    // notificação se perdeu, adota a sessão e segue o fluxo normal. Se realmente não
+    // há sessão, vira estado explícito com retry, nunca silêncio.
+    async function resolveStalledCallback(startedAt: number) {
+      if (!mounted || !supabase) return;
+
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+
+      const recovered = data.session;
+      if (recovered) {
+        console.info("[auth] callback resolved late; adopting session");
+        // Item 1.6. Este é o caso que o timer antigo destruía: sessão VÁLIDA
+        // encontrada depois do limite. Evento próprio, NÃO classificado como
+        // falha, porque aqui o login deu certo. É a medida que diz se o
+        // problema (3) morreu no Passo 1: se este evento parar de aparecer, o
+        // limite passou a caber na latência real.
+        reportOAuthOutcome("session_recovered_after_timeout");
+        setSession(recovered);
+        startProfileLifecycle(
+          recovered,
+          profileRef.current ? "background" : "initial",
+        );
+        reconcileQuizForSession(recovered);
+        setCallbackIssue(null);
+        setCallbackSlow(false);
+        setLoading(false);
+        return;
+      }
+
+      // Continua medido depois do conserto de propósito: sem o evento, "arrumamos o
+      // timer" seria afirmação sem instrumento, e não teríamos como saber se 20s é o
+      // número certo nem com que frequência esse caminho é atingido de verdade.
+      reportAuthFailure({
+        stage: "session_unconfirmed",
+        method: "oauth_redirect",
+        provider: "google",
+        errorCode: "pkce_exchange_unconfirmed",
+        elapsedMs: Date.now() - startedAt,
+      });
+      setCallbackIssue({ kind: "unconfirmed", code: null, description: null });
+      // O card de falha substitui a mensagem de progresso.
+      setCallbackSlow(false);
+      setLoading(false);
+    }
+
+    // Mesma consulta do retry manual, sem reportar de novo (a falha já foi
+    // registrada quando o limite estourou; um segundo evento por clique
+    // distorceria a contagem).
+    retryCallbackRef.current = async () => {
+      if (!mounted || !supabase) return;
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+      const recovered = data.session;
+      if (!recovered) return;
+      setSession(recovered);
+      startProfileLifecycle(
+        recovered,
+        profileRef.current ? "background" : "initial",
+      );
+      reconcileQuizForSession(recovered);
+      setCallbackIssue(null);
+      setLoading(false);
+    };
 
     function handleAuthChange(
       event: AuthChangeEvent,
@@ -412,6 +555,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       clearSafetyTimer();
       setSession(nextSession);
+      // Chegou desfecho de verdade: qualquer aviso de "não deu para confirmar"
+      // deixa de valer. Cobre a troca PKCE que concluiu DEPOIS do limite, caso em
+      // que o aviso já estava na tela e precisa sair sozinho, sem clique.
+      setCallbackIssue(null);
+      setCallbackSlow(false);
       // Item 1.7: retorno de OAuth concluído com sucesso. Medido do início do
       // retorno até o SIGNED_IN confirmado. Só conta quando havia callback na URL
       // no boot (`oauthReturnStartedAt`), então login por e-mail/senha e refresh de
@@ -649,6 +797,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfileError(null);
   }, [session]);
 
+  const retryCallback = useCallback(async () => {
+    await retryCallbackRef.current?.();
+  }, []);
+
   const signOut = useCallback(async () => {
     const client = assertSupabaseConfigured();
     const { error } = await client.auth.signOut();
@@ -685,6 +837,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profileStatus,
       profileError,
       loading,
+      callbackIssue,
+      callbackSlow,
+      retryCallback,
       signUp,
       signIn,
       signInWithOAuth,
@@ -694,11 +849,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshProfile,
     }),
     [
+      callbackIssue,
+      callbackSlow,
       loading,
       profile,
       profileStatus,
       profileError,
       resetPassword,
+      retryCallback,
       refreshProfile,
       session,
       signIn,
