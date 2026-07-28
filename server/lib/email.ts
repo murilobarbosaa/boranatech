@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import type { ReasonBucket } from "../../shared/paymentRecovery";
 
 import {
   applyNamePlaceholder,
@@ -706,6 +707,112 @@ export async function sendCampaignEmail(params: {
   // envio ja foi aceito aqui; id ausente ou vazio NAO e falha (|| null cobre
   // undefined e string vazia): retorna null e o fluxo segue normal.
   return result.data?.id || null;
+}
+
+// ---------------------------------------------------------------------------
+// RECUPERACAO de pagamento recusado (regua em shared/paymentRecovery.ts).
+//
+// DIFERENTE de sendPaymentFailedEmail: aquele e para RENOVACAO que falhou (a
+// pessoa JA e assinante e vai perder o acesso). Este e para quem tentou assinar e
+// nao conseguiu, ou seja, nunca teve acesso. Os dois textos nao podem ser o mesmo:
+// "para manter seu acesso" seria mentira para quem nunca entrou.
+//
+// COPY: todas as variantes abaixo estao com TODO(Ana). Ana edita EXCLUSIVAMENTE o
+// conteudo de RECOVERY_COPY: `subject`, `linhas` (cada item vira um paragrafo) e
+// `cta`. A regua, a escolha da variante e o link NAO ficam aqui.
+//
+// A variante `blocked` e a mais delicada e nao deve dizer que o banco recusou,
+// porque nao foi o banco: foi a nossa antifraude. Ver docs/radar-bloqueios.md.
+// ---------------------------------------------------------------------------
+type RecoveryCopy = {
+  subject: string;
+  linhas: string[];
+  cta: string;
+};
+
+const RECOVERY_COPY: Record<ReasonBucket, RecoveryCopy> = {
+  insufficient_funds: {
+    // TODO(Ana): assunto da recusa por saldo/limite.
+    subject: "Seu pagamento não foi aprovado",
+    linhas: [
+      // TODO(Ana): dizer que o cartao nao passou por limite/saldo, sem culpar.
+      "Tentamos processar o pagamento da sua assinatura Pro e o cartão não foi aprovado.",
+      // TODO(Ana): oferecer outro cartao E o boleto (semestral/anual).
+      "Você pode tentar com outro cartão, ou escolher boleto nos planos semestral e anual.",
+    ],
+    // TODO(Ana): rotulo do botao.
+    cta: "Tentar de novo",
+  },
+  try_again_later: {
+    // TODO(Ana): assunto da recusa temporaria.
+    subject: "Seu pagamento não foi aprovado",
+    linhas: [
+      // TODO(Ana): recusa temporaria, tentar de novo costuma resolver.
+      "O banco não aprovou a cobrança desta vez, e isso costuma ser temporário.",
+      // TODO(Ana): sugerir nova tentativa antes de trocar de cartao.
+      "Tentar de novo em alguns minutos normalmente resolve. Se não resolver, use outro cartão.",
+    ],
+    // TODO(Ana): rotulo do botao.
+    cta: "Tentar de novo",
+  },
+  dados_incorretos: {
+    // TODO(Ana): assunto do erro de digitacao.
+    subject: "Confira os dados do cartão",
+    linhas: [
+      // TODO(Ana): dado do cartao nao confere, sem dizer QUAL (nao sabemos).
+      "Não conseguimos concluir o pagamento porque algum dado do cartão não confere.",
+      // TODO(Ana): pedir para revisar numero, validade e codigo.
+      "Vale revisar o número, a validade e o código de segurança e tentar novamente.",
+    ],
+    // TODO(Ana): rotulo do botao.
+    cta: "Revisar e tentar de novo",
+  },
+  blocked: {
+    // TODO(Ana): assunto do caso Radar. NAO usar "recusado pelo banco".
+    subject: "Não conseguimos concluir seu pagamento",
+    linhas: [
+      // TODO(Ana): nao foi o banco, foi nossa verificacao de seguranca. Sem jargao.
+      "Não conseguimos concluir seu pagamento na nossa verificação de segurança. Nada foi cobrado de você.",
+      // TODO(Ana): confirmar que NAO houve cobranca (esta e a frase que evita o
+      // "paguei e nao liberou") e oferecer contato humano.
+      "Se você acha que isso foi um engano, responda este e-mail que a gente resolve com você.",
+    ],
+    // TODO(Ana): rotulo do botao.
+    cta: "Falar com a gente",
+  },
+  outro: {
+    // TODO(Ana): assunto generico.
+    subject: "Seu pagamento não foi aprovado",
+    linhas: [
+      // TODO(Ana): texto neutro, sem afirmar causa.
+      "Tentamos processar o pagamento da sua assinatura Pro e não foi aprovado.",
+      // TODO(Ana): oferecer outro cartao ou outro metodo.
+      "Você pode tentar com outro cartão ou escolher outra forma de pagamento.",
+    ],
+    // TODO(Ana): rotulo do botao.
+    cta: "Tentar de novo",
+  },
+};
+
+export async function sendPaymentRecoveryEmail(
+  to: string,
+  name: string,
+  bucket: ReasonBucket,
+): Promise<void> {
+  const copy = RECOVERY_COPY[bucket] ?? RECOVERY_COPY.outro;
+  const safeName = escapeHtml(name);
+  const theme = NEUTRAL_THEME;
+  const body = `
+    ${paragraph(`Oi, ${safeName}.`)}
+    ${copy.linhas.map((linha) => paragraph(linha)).join("\n")}
+    ${button(copy.cta, `${APP_URL}/planos`, theme)}
+  `;
+  await sendEmail({
+    to,
+    from: FROM_TRANSACTIONAL,
+    subject: copy.subject,
+    html: layout(theme, copy.subject, body),
+  });
 }
 
 export async function sendPaymentFailedEmail(

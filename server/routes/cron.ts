@@ -17,6 +17,7 @@ import { enqueueEmail } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
 import { issueRenewalToken } from "../lib/renewalToken";
 import { getStripe } from "../lib/stripeClient";
+import { runPaymentRecovery } from "../lib/paymentRecovery";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { syncBalanceTransactions } from "../lib/stripeSync";
 import { collectSubscriptionSnapshot } from "../lib/subscriptionSnapshots";
@@ -1485,5 +1486,34 @@ router.get("/status", async (_req, res, next) => {
     next(err);
   }
 });
+
+// Regua de recuperacao de pagamento recusado. Varre billing_failed_payments e
+// manda no maximo 2 e-mails por episodio, com debounce de 30 min de silencio.
+// Cadencia de 15 min (nao 5): o debounce e de 30 min, entao varrer mais rapido
+// nao adianta nada e so multiplica consulta. TTL 300s.
+router.post(
+  "/payment-recovery",
+  withCronLock("payment-recovery", 300, async (_req, res, next) => {
+    const startedAt = new Date();
+    try {
+      const r = await runPaymentRecovery();
+      await recordCronRun({
+        jobName: "payment-recovery",
+        status: "success",
+        startedAt,
+        payload: r,
+      });
+      res.json({ data: r });
+    } catch (err) {
+      await recordCronRun({
+        jobName: "payment-recovery",
+        status: "error",
+        startedAt,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+      next(err);
+    }
+  }),
+);
 
 export default router;
