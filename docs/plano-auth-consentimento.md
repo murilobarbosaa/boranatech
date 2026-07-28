@@ -17,6 +17,62 @@ diz o que ainda falta, e a ausência de um item não se parece com nada.
 
 ---
 
+## 0. O lote foi SEPARADO (2026-07-28)
+
+Este trabalho nasceu na `fix/home-hero-counter`, que acabou acumulando **três
+frentes** ao mesmo tempo: consentimento/auth, o contador da home e uma frente de
+billing/checkout desenvolvida em paralelo por outra sessão. Chegou a 25 commits.
+
+O consentimento foi extraído para **`feat/consentimento-signin-wrap`**, criada a
+partir de `origin/main` e com os 8 commits de consentimento/auth aplicados por
+cherry-pick, mais o conserto do hook de pre-commit.
+
+**Por quê:**
+
+- **O rebase deixou de ser hazard.** A `fix/home-hero-counter` continua intacta e
+  não foi reescrita. Reescrever 20+ commits enquanto outra sessão constrói em cima
+  deles é ambiguidade garantida; com branch nova o problema desaparece por
+  construção, e ela rebaseia quando quiser.
+- **O custo era zero.** Os dois conjuntos tocam arquivos **disjuntos**: 35 só de
+  consentimento, 25 só das outras frentes, **interseção vazia**. Os 8 cherry-picks
+  aplicaram sem um único conflito.
+- **Lote menor é a política.** Três frentes num push transformam qualquer problema
+  em produção numa investigação entre três suspeitos.
+
+### Aviso CONHECIDO no `check:migrations` desta branch
+
+O guard vai emitir:
+
+```
+N tabela(s)/view(s) expostas pelo PostgREST e NAO declaradas:
+billing_failed_payments, stripe_customers, payment_recovery_emails
+```
+
+**É esperado e não reprova.** As três tabelas já existem no banco (foram aplicadas
+pela frente de billing), mas as migrations que as declaram vivem nos commits de
+billing, que não estão nesta branch. A direção inversa do guard é `console.warn`
+sem `houveFalha = true` (verificado em `scripts/checkMigrationsApplied.mts`), então
+o script sai com 0. As asserções de tamanho também casam: a migration de
+consentimento adiciona uma **coluna**, não tabela, então o conjunto declarado
+continua 81 e bate com o `EXPECTED_TABLE_COUNT` de `origin/main`.
+
+**O aviso desaparece sozinho quando a frente de billing entrar na `main`.** Até lá,
+aviso não é verde: se aparecer nome de tabela **fora** dessas três, é outra coisa e
+precisa ser investigado.
+
+### Sobre os commits duplicados
+
+A `fix/home-hero-counter` contém **os mesmos 8 commits com hashes diferentes**
+(cherry-pick reescreve o hash, não o conteúdo). Ao rebasear aquela branch depois
+que esta entrar na `main`, o git **deve** descartá-los por `patch-id`.
+
+**Isso precisa ser CONFERIDO, não presumido.** `patch-id` falha em descartar quando
+o patch é aplicado com contexto diferente, e aí o rebase tenta reaplicar e conflita.
+Antes de rebasear a `fix/home-hero-counter`, rodar `git rebase --onto main` num
+worktree descartável e conferir que os 8 sumiram, em vez de descobrir no meio.
+
+---
+
 ## 1. As quatro decisões
 
 ### A — Modelo de dados do consentimento
