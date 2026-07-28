@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Archive, Copy, Link as LinkIcon, Loader2, Trash2 } from "lucide-react";
+import {
+  Archive,
+  Copy,
+  Link as LinkIcon,
+  Loader2,
+  MoreHorizontal,
+  Trash2,
+} from "lucide-react";
 
 import {
   AlertDialog,
@@ -17,6 +24,12 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -43,7 +56,7 @@ import { TaskChecklist } from "./TaskChecklist";
 import { TaskComments } from "./TaskComments";
 import { TaskProperties } from "./TaskProperties";
 import { rowActionClass, secondaryButtonClass } from "./taskBoardStyles";
-import { LAYER_DIALOG } from "./taskLayers";
+import { LAYER_DIALOG, LAYER_IN_DIALOG } from "./taskLayers";
 import { shortIdOf } from "./taskDeepLink";
 import { useAutoSave } from "./useAutoSave";
 import type {
@@ -607,7 +620,10 @@ export function TaskModal({
           // Acima do header do admin: sem isto o topo do modal fica inalcancavel.
           className={`${LAYER_DIALOG} flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 bg-white p-0 sm:h-[88vh] sm:w-[min(72rem,94vw)] sm:max-w-none sm:rounded-2xl sm:border-2 sm:border-slate-950 sm:shadow-[6px_6px_0_#0f172a]`}
         >
-          <header className="flex shrink-0 items-center justify-between gap-3 border-b-2 border-slate-200 px-4 py-3 sm:px-6">
+          {/* `pr-14` reserva a faixa do X do proprio Dialog (`absolute top-4
+              right-4`): sem isso a ultima acao passa por baixo dele. Reservar o
+              espaco e nao mover o X, que esta onde a pessoa espera. */}
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b-2 border-slate-200 py-3 pl-4 pr-14 sm:pl-6">
             <div className="flex min-w-0 items-center gap-2">
               <span className="font-mono text-xs font-bold text-slate-500">
                 {task ? shortIdOf(boardKey, task.number) : "—"}
@@ -621,7 +637,10 @@ export function TaskModal({
                 </span>
               ) : null}
             </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+            {/* Ate `md`, as quatro acoes viram um menu: em tela cheia no
+                celular elas nao cabem junto com o X sem encolher a fonte, e
+                encolher fonte para caber e trocar um problema por outro. */}
+            <div className="hidden shrink-0 flex-wrap items-center gap-1.5 md:flex">
               <button type="button" onClick={copyLink} className={rowActionClass}>
                 <LinkIcon className="mr-1 inline h-3 w-3" />
                 Link
@@ -643,6 +662,35 @@ export function TaskModal({
                 Excluir
               </button>
             </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label="Ações da tarefa"
+                className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 shadow-[2px_2px_0_#0f172a] md:hidden"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className={`${LAYER_IN_DIALOG} rounded-xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]`}
+              >
+                <DropdownMenuItem onSelect={copyLink} className="text-xs font-black">
+                  <LinkIcon className="mr-2 h-3.5 w-3.5" /> Copiar link
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={duplicate} className="text-xs font-black">
+                  <Copy className="mr-2 h-3.5 w-3.5" /> Duplicar
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={archive} className="text-xs font-black">
+                  <Archive className="mr-2 h-3.5 w-3.5" /> Arquivar
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => setConfirmDelete(true)}
+                  className="text-xs font-black text-rose-700 focus:text-rose-700"
+                >
+                  <Trash2 className="mr-2 h-3.5 w-3.5" /> Excluir
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </header>
 
           <DialogTitle className="sr-only">
@@ -653,8 +701,17 @@ export function TaskModal({
             baixo para navegar entre as tarefas da etapa.
           </DialogDescription>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row">
-            <div className="min-w-0 flex-1 space-y-5 px-4 pt-4 pb-10 sm:px-6">
+          {/* No DESKTOP quem rola e cada coluna, nao a linha.
+              Motivo: com `lg:flex-row` + `overflow-y-auto` na LINHA, os filhos
+              esticam (align-items: stretch) para a altura VISIVEL do container.
+              O `padding-bottom` do filho assenta no fim dessa caixa esticada, e
+              o conteudo que transborda rola por cima dele -- foi por isso que o
+              `pb-10` da rodada passada nao alcancou o composer de comentario.
+              Com o scroll em cada coluna, a altura de cada uma volta a ser a do
+              proprio conteudo e o padding funciona. De quebra, no desktop a
+              coluna de propriedades deixa de arrastar a principal junto. */}
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+            <div className="min-w-0 flex-1 space-y-5 px-4 pt-4 pb-10 sm:px-6 lg:overflow-y-auto">
               {loading || !data || !task ? (
                 <>
                   <Skeleton className="h-9 w-2/3 bg-slate-200" />
@@ -777,7 +834,7 @@ export function TaskModal({
               )}
             </div>
 
-            <aside className="shrink-0 border-t-2 border-slate-200 bg-slate-50 px-4 pt-4 pb-10 sm:px-6 lg:w-[22rem] lg:border-l-2 lg:border-t-0">
+            <aside className="shrink-0 border-t-2 border-slate-200 bg-slate-50 px-4 pt-4 pb-10 sm:px-6 lg:w-[22rem] lg:overflow-y-auto lg:border-l-2 lg:border-t-0">
               {loading || !data || !task ? (
                 <div className="space-y-2">
                   <Skeleton className="h-7 w-full bg-slate-200" />

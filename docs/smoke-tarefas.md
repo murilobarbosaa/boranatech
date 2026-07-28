@@ -693,3 +693,44 @@ Esperado: "Este quadro ainda não tem etapas" com o botão **Criar primeira etap
 Troque para `?view=lista` e recarregue: **o mesmo botão**, não um "nenhuma
 tarefa" sem saída. Ligue um filtro: continua sendo o estado de sem-etapas, porque
 a ação necessária é outra.
+
+---
+
+# Segunda rodada de correções
+
+## 49. O `X` de fechar não é mais engolido
+
+No desktop, as ações (Link / Duplicar / Arquivar / Excluir) param antes do `X` —
+a linha reserva a faixa dele (`pr-14`), o `X` continua onde estava.
+
+Em viewport de celular, com o modal em tela cheia, as quatro ações viram um menu
+`⋯`. Abra o menu: as quatro opções estão lá, e o popup fica **acima** do modal.
+
+## 50. Rodapé do modal
+
+Role a coluna principal até o fim: o botão **Comentar** tem folga.
+
+No desktop, **cada coluna rola por conta própria** agora. Role as propriedades até
+"Concluído em": tem folga, e a coluna principal não se mexe junto. Vá para a aba
+**Histórico** com "Carregar mais" visível: o botão também tem folga.
+
+## 51. Criar quadro
+
+Com o Network aberto, crie um quadro. Esperado: **uma** requisição
+(`POST /rest/v1/rpc/create_admin_task_board`), não quatro. O botão mostra spinner
+enquanto corre.
+
+O quadro aparece no seletor **e continua lá** — não pode sumir e voltar. Ele entra
+no fim da lista, e recarregando a página fica na mesma posição.
+
+## 52. Tipo "Bug" saiu
+
+No modal, o select **Tipo** tem Feature, Melhoria, Débito técnico e Tarefa. Nos
+filtros, idem.
+
+Mas o histórico continua legível: se existir uma linha antiga dizendo "mudou o
+tipo de tarefa para bug", ela aparece assim, e um card com `type = 'bug'` mostra
+o badge **Bug**, não "Outro". Registro histórico não vira buraco porque a opção
+saiu do menu.
+
+Tentar gravar `bug` pela API responde erro do banco (o `CHECK` foi apertado).
