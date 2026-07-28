@@ -205,3 +205,96 @@ Um segundo defeito do mesmo tipo apareceu junto: o parser aplicava todos os `CRE
 depois todos os `DROP`, então `drop function x; create function x;` (padrão para trocar assinatura)
 terminava com `x` removido do conjunto. Foi assim que `email_campaign_record_result` apareceu como não
 declarada. Agora os eventos são aplicados em **ordem de origem**.
+
+---
+
+# Atualização de 2026-07-28: colunas, índices e policies passaram a ser verificados
+
+O que este documento chamava de "**a maior lacuna que sobra**" (alteração de coluna
+não enumerada) deixou de ser lacuna. O guard agora compara **colunas, índices e
+policies** declarados contra o catálogo real do Postgres.
+
+O caminho de leitura que faltava **não** era uma RPC de introspecção (que seria
+circular: uma migration para verificar migrations). É o endpoint SQL da Management
+API, `POST /v1/projects/<ref>/database/query`, que roda como o papel `postgres` e
+nunca precisou ser criado. Ver `scripts/lib/pgIntrospect.ts`.
+
+Correção a este documento: a frase "o projeto não tem `DATABASE_URL` nem cliente
+Postgres, então não há caminho de leitura" estava **desatualizada**. `psql` está
+instalado na máquina de desenvolvimento; o que não funciona é a conexão direta
+(`db.<ref>.supabase.co` resolve só em IPv6, inalcançável da rede de dev) e o
+pooler IPv4 (recusa a senha de `SUPABASE_DB_PASSWORD`). O endpoint HTTP não
+depende de nenhum dos dois.
+
+## O que motivou
+
+`20260727130000_add_processed_at_to_billing_events.sql` ficou commitada e não
+aplicada. A tabela `billing_events` existia, então o guard de tabela passava, e
+`pnpm check:migrations` reportava verde enquanto `processed_at` não existia em
+produção. O `readPriorProcessing` degrada de propósito nesse caso (usa `select("*")`
+justamente para a coluna ausente chegar como `undefined`), então nada quebrou. Mas
+a proteção que a migration existe para dar ficou **inerte** por um dia, sem nada
+acusar.
+
+## Como o escopo é mantido honesto
+
+O escopo continua **derivado de parser**, e por isso carrega duas contramedidas:
+
+1. **Aborto em não classificado.** Toda ocorrência ampla de `add/drop/rename
+   column`, `create/drop index`, `create/drop policy`, `create/drop table` precisa
+   ter sido lida por uma forma reconhecida. Diferença **derruba** o script.
+2. **Asserção de tamanho** (`EXPECTED_COLUMN_COUNT`, `EXPECTED_INDEX_COUNT`,
+   `EXPECTED_POLICY_COUNT`), alterável só como ato deliberado, no commit da
+   migration.
+
+**O aborto se pagou na primeira execução.** A forma multi-coluna
+(`alter table t add column a ..., add column b ...`, multi-linha) rendia 1 coluna
+de 5. A checagem de "essa forma não existe nesta base" tinha sido um
+`grep -E "add column[^;]*, *add column"`, e **grep casa por linha** enquanto a
+forma ocupa várias: o resultado vazio foi lido como ausência. O aborto acusou 7
+arquivos, 38 ocorrências amplas contra 8 lidas. Sem ele o conjunto teria nascido
+cerca de 30 colunas menor e **verde**.
+
+## Ainda NÃO verificado
+
+Tipo, nullability e default de coluna; expressão `using`/`with check` de policy;
+definição do índice; constraints; triggers; enums; grants. E o item abaixo, que é
+o mais consequente.
+
+## LACUNA ABERTA 1: `cron.schedule` não é coberto
+
+`20260727120100_schedule_detect_orphan_payments.sql` **também** estava commitada e
+não aplicada, e o guard **não a pegou nem depois de estendido**. O motivo é
+estrutural: ela não cria coluna, índice nem policy. Ela chama
+`cron.schedule(...)`, uma função de extensão que grava em `cron.job`.
+
+Consequência prática: **uma migration de agendamento que nunca roda é invisível
+para o `check:migrations`.** O código do endpoint existe, o deploy passa, o CI
+passa, e o job simplesmente nunca dispara. Foi exatamente assim que a detecção de
+pagamento órfão ficou desligada: o endpoint `/api/cron/detect-orphan-payments`
+estava em produção e nada o chamava. Esse é o mesmo desenho de falha do incidente
+que criou este script, num objeto que ele não enxerga.
+
+Como fechar, quando valer: enumerar `cron.schedule('<nome>', ...)` nas migrations e
+comparar com `select jobname from cron.job`. A leitura já é possível pelo mesmo
+endpoint da Management API (`cron.job` tem 14 linhas hoje). Não implementado nesta
+rodada por decisão de escopo.
+
+## Reconstrução em Postgres vazio: recomendada, e deliberadamente adiada
+
+O desenho **correto** para esta classe de verificação não é parser nenhum: é
+aplicar as 120 migrations num Postgres **genuinamente vazio**, introspectar o
+resultado, introspectar produção e comparar. Nenhum parser decide o escopo; o
+escopo é "tudo aquilo em que o Postgres terminou". Cobre tipo, default,
+constraint, trigger, enum e grant de uma vez, nos dois sentidos, e é o mesmo
+movimento que o CI já faz com o `.env` (não simular a ausência, simplesmente não
+ter). Docker está disponível na máquina de desenvolvimento.
+
+**Decisão de 2026-07-28: fica para um PR isolado, depois.** O motivo é o custo
+real, não preguiça: as migrations dependem de supabase-ismos (papéis `anon`,
+`authenticated`, `service_role`; schemas `auth`, `cron`, `vault`; `auth.uid()`;
+extensões) e um Postgres vanilla precisa de uma camada de stub para eles. Esse
+stub é escopo escrito à mão, o que reintroduz a classe de problema, com uma
+diferença importante a favor: ele erra **alto** (a migration estoura), não em
+silêncio. Misturar isso com uma rodada de billing faria o diff contar duas
+histórias.
