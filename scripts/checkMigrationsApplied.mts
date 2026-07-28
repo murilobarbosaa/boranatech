@@ -173,7 +173,7 @@ const EXPECTED_TABLE_COUNT = 81;
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
 // numeros e ato deliberado, no mesmo commit da migration que cria ou remove o
 // objeto.
-const EXPECTED_FUNCTION_COUNT = 25;
+const EXPECTED_FUNCTION_COUNT = 26;
 const EXPECTED_TRIGGER_FUNCTION_COUNT = 4;
 
 /** Remove comentarios de linha e de bloco antes de qualquer parse. */

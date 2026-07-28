@@ -2,12 +2,6 @@ import { Router } from "express";
 import { z } from "zod";
 
 import {
-  DEFAULT_BOARD_COLUMNS,
-  DEFAULT_BOARD_LABELS,
-  DEFAULT_COLUMN_STEP,
-} from "../../shared/tasks/boardDefaults";
-
-import {
   positionBetween,
   rebalancePositions,
   POSITION_STEP,
@@ -33,9 +27,11 @@ import { createError } from "../middleware/error";
 const router = Router();
 
 const PRIORITIES = ["baixa", "media", "alta", "urgente"] as const;
+// 'bug' saiu: bug tem tela propria (aba Bugs & Erros). Ver a migration
+// 20260728120100. O CHECK do banco tambem foi apertado; esta lista e o espelho
+// dele, e as duas andam juntas.
 const TASK_TYPES = [
   "feature",
-  "bug",
   "melhoria",
   "debito_tecnico",
   "tarefa",
@@ -397,8 +393,7 @@ async function writePositions(
   table:
     | "admin_tasks"
     | "admin_task_columns"
-    | "admin_task_checklist_items"
-    | "admin_task_boards",
+    | "admin_task_checklist_items",
   orderedIds: string[],
 ): Promise<{ error: string | null }> {
   const positions = rebalancePositions(orderedIds.length);
@@ -484,7 +479,7 @@ async function resolveTaskPosition(
 
 /** Posicao no fim de uma colecao ordenada (maior posicao + passo). */
 async function nextPositionAtEnd(
-  table: "admin_task_columns" | "admin_task_checklist_items" | "admin_task_boards",
+  table: "admin_task_columns" | "admin_task_checklist_items",
   filterColumn: "board_id" | "task_id" | null,
   filterValue: string | null,
 ): Promise<number> {
@@ -560,7 +555,11 @@ router.get("/boards", async (req, res, next) => {
   let query = supabaseAdmin
     .from("admin_task_boards")
     .select(BOARD_COLUMNS)
-    .order("position", { ascending: true });
+    .order("position", { ascending: true })
+    // Desempate explicito: duas posicoes iguais dariam ordem indefinida, e o
+    // quadro "trocaria de lugar" entre dois carregamentos sem nada ter mudado.
+    // Ordenacao ambigua e bug adormecido mesmo com a position determinista.
+    .order("created_at", { ascending: true });
   if (!includeArchived) query = query.is("archived_at", null);
 
   const { data, error } = await query;
@@ -577,19 +576,18 @@ router.post("/boards", async (req, res, next) => {
     return next(invalid(parsed.error.issues[0]?.message, "Payload inválido."));
   }
 
-  const position = await nextPositionAtEnd("admin_task_boards", null, null);
+  // UMA ida ao servidor, numa transacao. A RPC insere o quadro, as 5 etapas e as
+  // 6 etiquetas juntos, com `position` explicita no fim da lista. Antes eram
+  // quatro requisicoes em sequencia e, sem transacao, uma falha no meio deixava
+  // um quadro vazio (o resgate para esse estado continua no board, como rede).
   const { data, error } = await supabaseAdmin
-    .from("admin_task_boards")
-    .insert({
-      name: parsed.data.name,
-      key: parsed.data.key,
-      slug: parsed.data.slug,
-      description: parsed.data.description ?? null,
-      color: parsed.data.color ?? "#FFB800",
-      position,
-      created_by: req.user!.id,
+    .rpc("create_admin_task_board", {
+      p_name: parsed.data.name,
+      p_key: parsed.data.key,
+      p_slug: parsed.data.slug,
+      p_color: parsed.data.color ?? "#FFB800",
+      p_created_by: req.user!.id,
     })
-    .select(BOARD_COLUMNS)
     .single();
 
   if (error?.code === "23505") {
@@ -602,44 +600,7 @@ router.post("/boards", async (req, res, next) => {
     return next(createError(500, "db_error", "Erro ao criar quadro."));
   }
 
-  const board = data as BoardRow;
-
-  // Quadro sem etapa e beco sem saida: a tela abre num estado vazio e nao ha o
-  // que fazer nela. Nasce com as MESMAS etapas e etiquetas do seed, a partir da
-  // fonte unica em shared/tasks/boardDefaults.ts (ver o comentario de la sobre a
-  // copia congelada no SQL da migration).
-  //
-  // Falha aqui NAO desfaz o quadro: sem transacao no supabase-js, apagar o que
-  // acabou de ser criado teria seu proprio modo de falha. O quadro fica de pe e
-  // vazio, o log registra, e a pessoa cria a primeira etapa na mao, que e um
-  // caminho que ja existe.
-  const [columnsResult, labelsResult] = await Promise.all([
-    supabaseAdmin.from("admin_task_columns").insert(
-      DEFAULT_BOARD_COLUMNS.map((column, index) => ({
-        board_id: board.id,
-        name: column.name,
-        color: column.color,
-        position: (index + 1) * DEFAULT_COLUMN_STEP,
-        is_start: column.is_start,
-        is_done: column.is_done,
-      })),
-    ),
-    supabaseAdmin.from("admin_task_labels").insert(
-      DEFAULT_BOARD_LABELS.map((label) => ({
-        board_id: board.id,
-        name: label.name,
-        color: label.color,
-      })),
-    ),
-  ]);
-  if (columnsResult.error || labelsResult.error) {
-    console.error(
-      "[admin-tasks] Quadro criado, mas o seed de etapas/etiquetas falhou:",
-      columnsResult.error ?? labelsResult.error,
-    );
-  }
-
-  res.status(201).json(board);
+  res.status(201).json(data as BoardRow);
 });
 
 router.patch("/boards/:id", async (req, res, next) => {

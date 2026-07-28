@@ -19,16 +19,25 @@ import {
 // tamanho (5 e 6) e o que derruba o parser encolhido, que e a classe de defeito
 // mais cara desta base.
 
-const MIGRATION = path.resolve(
+const migrationsDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
   "..",
   "supabase",
   "migrations",
-  "20260727160000_create_admin_tasks.sql",
 );
 
-const sql = readFileSync(MIGRATION, "utf8");
+/** Seed original, do `create table`. */
+const sql = readFileSync(
+  path.join(migrationsDir, "20260727160000_create_admin_tasks.sql"),
+  "utf8",
+);
+
+/** Terceira copia: a RPC transacional que a UI usa para criar quadro. */
+const rpcSql = readFileSync(
+  path.join(migrationsDir, "20260728120000_create_admin_task_board_rpc.sql"),
+  "utf8",
+);
 
 /** ('Backlog', '#94A3B8', 1000::double precision, true,  false) */
 const COLUMN_TUPLE =
@@ -36,6 +45,14 @@ const COLUMN_TUPLE =
 
 /** ('Frontend', '#38BDF8') */
 const LABEL_TUPLE = /\(\s*'([^']+)'\s*,\s*'(#[0-9A-Fa-f]{6})'\s*\)/g;
+
+/** (v_board.id, 'Backlog', '#94A3B8', 1000, true,  false) */
+const RPC_COLUMN_TUPLE =
+  /\(\s*v_board\.id\s*,\s*'([^']+)'\s*,\s*'(#[0-9A-Fa-f]{6})'\s*,\s*\d+\s*,\s*(true|false)\s*,\s*(true|false)\s*\)/g;
+
+/** (v_board.id, 'Frontend', '#38BDF8') */
+const RPC_LABEL_TUPLE =
+  /\(\s*v_board\.id\s*,\s*'([^']+)'\s*,\s*'(#[0-9A-Fa-f]{6})'\s*\)/g;
 
 /** exec em laco, e nao [...matchAll]: o tsconfig do projeto nao habilita
  *  downlevelIteration, entao espalhar o iterador de matches nao compila. */
@@ -68,6 +85,24 @@ function parseLabels() {
   }));
 }
 
+function parseRpcColumns() {
+  return todosOsMatches(RPC_COLUMN_TUPLE, rpcSql).map((m) => ({
+    name: m[1],
+    color: m[2],
+    is_start: m[3] === "true",
+    is_done: m[4] === "true",
+  }));
+}
+
+function parseRpcLabels() {
+  const start = rpcSql.indexOf("insert into public.admin_task_labels");
+  expect(start).toBeGreaterThan(-1);
+  return todosOsMatches(RPC_LABEL_TUPLE, rpcSql.slice(start)).map((m) => ({
+    name: m[1],
+    color: m[2],
+  }));
+}
+
 describe("seed do quadro: TS e SQL nao podem divergir", () => {
   it("o parser LEU as tuplas (guarda contra regex que encolheu)", () => {
     expect(parseColumns()).toHaveLength(5);
@@ -90,5 +125,26 @@ describe("seed do quadro: TS e SQL nao podem divergir", () => {
   it("nomes de etiqueta nao colidem em minusculas (indice unico do banco)", () => {
     const lower = DEFAULT_BOARD_LABELS.map((l) => l.name.toLowerCase());
     expect(new Set(lower).size).toBe(lower.length);
+  });
+
+  // A definicao vive em TRES lugares: este TS, o seed da migration de criacao e
+  // a RPC que a interface usa. A RPC e a que roda em todo quadro novo, entao ela
+  // e a que mais importa nao divergir.
+  it("o parser LEU as tuplas da RPC", () => {
+    expect(parseRpcColumns()).toHaveLength(5);
+    expect(parseRpcLabels()).toHaveLength(6);
+  });
+
+  it("as etapas da RPC sao exatamente as do boardDefaults", () => {
+    expect(parseRpcColumns()).toEqual(DEFAULT_BOARD_COLUMNS);
+  });
+
+  it("as etiquetas da RPC sao exatamente as do boardDefaults", () => {
+    expect(parseRpcLabels()).toEqual(DEFAULT_BOARD_LABELS);
+  });
+
+  it("a RPC e o seed original concordam entre si", () => {
+    expect(parseRpcColumns()).toEqual(parseColumns());
+    expect(parseRpcLabels()).toEqual(parseLabels());
   });
 });

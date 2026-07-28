@@ -56,8 +56,12 @@ type BoardManagerDialogProps = {
   onOpenChange: (open: boolean) => void;
   /** Recarrega a lista de quadros no dashboard. */
   onChanged: () => void;
-  /** Chamado ao criar, para o board novo virar o ativo. */
-  onCreated: (boardId: string) => void;
+  /**
+   * Recebe o quadro COMPLETO devolvido pela criacao. O chamador insere na
+   * lista a partir daqui, sem refetch: o refetch e o que abria a janela para a
+   * lista voltar sem o quadro recem-criado.
+   */
+  onCreated: (board: TaskBoard) => void;
   /** Quadro excluido: o dashboard precisa sair dele se era o ativo. */
   onDeleted: (boardId: string) => void;
 };
@@ -119,8 +123,9 @@ export function BoardManagerDialog({
         color,
       });
       toast.success(`Quadro ${board.key} criado com as etapas padrão.`);
-      onCreated(board.id);
-      onChanged();
+      // Sem onChanged() aqui: a resposta ja traz o quadro, e refazer a lista so
+      // reabriria a corrida que fazia ele sumir do seletor.
+      onCreated(board);
       setName("");
       setKey("");
     } catch (error) {

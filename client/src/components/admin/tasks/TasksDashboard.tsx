@@ -130,6 +130,7 @@ export function TasksDashboard() {
     error,
     refresh,
     reloadBoards,
+    addBoard,
     applyLocal,
   } = useBoardSnapshot(boardId, includeArchived);
 
@@ -1291,7 +1292,10 @@ export function TasksDashboard() {
         boards={boards}
         onOpenChange={setBoardManagerOpen}
         onChanged={() => void reloadBoards()}
-        onCreated={(id) => setBoardId(id)}
+        onCreated={(board) => {
+          addBoard(board);
+          setBoardId(board.id);
+        }}
         onDeleted={(id) => {
           // Se o quadro excluido era o ativo, sai dele: continuar apontando para
           // um id que nao existe mais deixaria a tela em erro permanente.

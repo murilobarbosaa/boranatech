@@ -140,7 +140,11 @@ describe("BoardManagerDialog: criar", () => {
       slug: "marketing-e-vendas",
       color: "#FFB800",
     });
-    expect(onCreated).toHaveBeenCalledWith("board-MKT");
+    // Recebe o quadro COMPLETO, nao so o id: e a partir desta resposta que a
+    // lista e atualizada, sem refetch.
+    expect(onCreated).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "board-MKT", key: "MKT" }),
+    );
   });
 
   it("colisao de slug vinda do servidor vira mensagem legivel", async () => {
