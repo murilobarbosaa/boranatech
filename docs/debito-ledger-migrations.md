@@ -110,3 +110,78 @@ responde a segunda pergunta.
 - Manter `pnpm check:migrations` no CI (já está, job `migrations`).
 - Ao aplicar migration pelo SQL editor, rodar o guard logo depois, contra o banco
   alvo. É o que a seção de deploy do `CLAUDE.md` já manda fazer no passo (4).
+
+---
+
+# Atualização de 2026-07-28: o débito cresceu, e o risco tem nome
+
+## Números atuais
+
+| Medida | 2026-07-27 | 2026-07-28 |
+| --- | --- | --- |
+| Arquivos de migration no repositório | 114 | **120** |
+| Versões registradas no ledger | 16 | **16** |
+| No repositório e não no ledger | 98 | **104** |
+
+O ledger não se moveu, e não vai se mover: as migrations desta rodada foram
+aplicadas pelo **endpoint SQL da Management API**, que como o SQL editor executa o
+SQL sem escrever em `supabase_migrations.schema_migrations`. Só o CLI alimenta o
+ledger, e o CLI não está instalado.
+
+## O risco concreto: `supabase db push` com o ledger desatualizado
+
+Este é o próximo candidato a incidente, e é por isso que está escrito.
+
+O `db push` decide o que aplicar **comparando o diretório com o ledger**. Com 104
+versões ausentes do ledger, ele consideraria essas 104 como pendentes e tentaria
+aplicá-las, **em ordem, na mesma execução**. O que acontece então:
+
+- **As idempotentes passam batidas.** Boa parte usa `if not exists` / `or replace`
+  e não faria nada. Isso é o que torna o cenário perigoso: começa dando certo.
+- **As NÃO idempotentes falham ou pior.** `20260517232033_drop_orphan_tables.sql`
+  faz `DROP TABLE IF EXISTS "public"."events" CASCADE` (inofensivo, já foi), mas
+  há migrations de **backfill** (`update`/`delete` de dado) no conjunto. Reaplicar
+  um backfill sobre dado que já foi transformado é a receita do contador que
+  dobrou: já aconteceu nesta base, por incremento em vez de recálculo por
+  atribuição.
+- **`20260714010505_remove_asaas_data_and_defaults.sql`** é destrutiva por nome e
+  por conteúdo (`alter column ... ` em `subscriptions` e `billing_events`).
+- **A falha no meio deixa o banco parcialmente migrado**, e o ledger anotando
+  parte do caminho, o que é um terceiro estado pior que os dois.
+
+Some a isso que o RPO é de até 24 horas (backup diário ~04:15, PITR desabilitado):
+um `db push` acidental às 21h custa cerca de 17 horas de dados.
+
+**Regra prática até o ledger ser reparado: NÃO rodar `pnpm db:push` contra
+produção.** Aplicar migration é, hoje, SQL editor ou endpoint da Management API,
+uma por vez, com verificação depois (`pnpm check:migrations`).
+
+## O que NÃO está quebrado
+
+O schema está aplicado e agora isso é uma afirmação mais forte do que era em
+2026-07-27, porque o `check:migrations` passou a comparar **colunas, índices e
+policies**, não só tabelas e funções (ver
+`docs/limites-do-guard-de-migrations.md`). O que está desatualizado continua sendo
+só o **registro**.
+
+Ressalva que sobrevive: o guard ainda não compara tipo, default, constraint,
+trigger, enum, grant nem `cron.schedule`. Então "o schema está aplicado" segue
+sendo uma afirmação sobre existência de nomes, não sobre forma.
+
+## Reparar: mais seguro agora, e ainda não trivial
+
+`supabase migration repair --status applied` nas 104 versões afirma "isto já
+rodou". Em 2026-07-27 isso afirmava mais do que o guard provava. Hoje afirma
+menos a mais, porque colunas, índices e policies passaram a ser conferidos. Ainda
+assim, uma migration que subiu **pela metade** pelo SQL editor (o editor executa o
+que você colou, e não há transação em volta de statements colados em sessões
+diferentes) ficaria marcada como aplicada com um objeto de forma errada.
+
+Ordem sugerida, para um PR próprio de quem cuida do deploy:
+
+1. instalar o CLI;
+2. rodar `check:migrations` verde (feito: exit 0 em 2026-07-28);
+3. fechar a lacuna de `cron.schedule`, porque é a única classe já observada
+   falhando e ainda invisível;
+4. `migration repair --status applied` nas versões ausentes;
+5. só então `db push` volta a ser um comando utilizável.
