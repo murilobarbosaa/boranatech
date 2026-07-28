@@ -57,8 +57,19 @@ export type ProfileStatus = "idle" | "loading" | "ready" | "error";
 // Duas tentativas, sem loop apertado. Esgotadas, espera próximo evento de auth natural.
 const PROFILE_RETRY_DELAYS_MS = [3_000, 12_000];
 const PROFILE_RETRY_JITTER = 0.25;
+// A partir de quando uma espera passa a PARECER travada para quem está olhando.
+//
+// É uma pergunta humana, não técnica, e a resposta é a mesma em toda tela: abaixo
+// disso um spinner lê como "carregando", acima disso lê como "morreu", e por volta
+// dos 10s vem o reflexo de recarregar. Um número só, exportado, porque três
+// literais 6000 espalhados são três coisas que alguém move em um lugar só.
+//
+// Consumidores: o skeleton de perfil e o aviso do retorno do OAuth (aqui), e a
+// mensagem de progresso do ConsentGate durante o hold da escrita de consentimento.
+export const PERCEIVED_STALL_MS = 6_000;
+
 // Skeleton só no boot inicial sem perfil. Aos 6s força fallback visual sem matar retries.
-const PROFILE_BOOT_SKELETON_TIMEOUT_MS = 6_000;
+const PROFILE_BOOT_SKELETON_TIMEOUT_MS = PERCEIVED_STALL_MS;
 
 // Limite de espera pela troca PKCE no retorno do OAuth.
 //
@@ -87,13 +98,13 @@ const OAUTH_CALLBACK_TIMEOUT_MS = 20_000;
 // do desfecho, então a telemetria do 1.6/1.7 nunca é emitida. O conserto se
 // sabotaria sozinho, e ainda pareceria que o caminho nunca é atingido.
 //
-// 6000ms, e o número NÃO é novo: é o mesmo PROFILE_BOOT_SKELETON_TIMEOUT_MS acima,
-// que já responde a esta mesma pergunta humana ("a partir de quando a pessoa
-// desconfia que travou?") e já foi calibrado nesta base. Inventar um segundo
-// limiar para a mesma pergunta criaria dois números para manter em sincronia sem
-// nenhum ganho. Fica confortavelmente abaixo do reflexo de recarregar (~10s) e bem
-// acima do p50 de um retorno saudável, então login normal nunca vê a mensagem.
-const OAUTH_CALLBACK_REASSURANCE_MS = PROFILE_BOOT_SKELETON_TIMEOUT_MS;
+// 6000ms, e o número NÃO é novo: é o PERCEIVED_STALL_MS acima, que já responde a
+// esta mesma pergunta humana ("a partir de quando a pessoa desconfia que
+// travou?") e já foi calibrado nesta base. Inventar um segundo limiar para a mesma
+// pergunta criaria dois números para manter em sincronia sem nenhum ganho. Fica
+// confortavelmente abaixo do reflexo de recarregar (~10s) e bem acima do p50 de um
+// retorno saudável, então login normal nunca vê a mensagem.
+const OAUTH_CALLBACK_REASSURANCE_MS = PERCEIVED_STALL_MS;
 
 // Por que o retorno do OAuth não pôde ser concluído. Nunca significa "deslogado":
 // significa "não sabemos", e a UI trata como estado explícito com ação de retry.
@@ -118,6 +129,22 @@ interface AuthContextValue {
   // Reconsulta a sessão e, se ela existir, retoma o fluxo normal. É a ação do
   // botão "tentar novamente" do aviso.
   retryCallback: () => Promise<void>;
+  // Item 3.4. Há uma gravação de consentimento em voo, disparada pelo aceite que
+  // a pessoa deu no cadastro. Enquanto for true, NINGUÉM pode concluir nada sobre
+  // o estado de consentimento: ler agora é ler antes da escrita, que é exatamente
+  // a corrida medida no Passo 2 (50 pessoas viram o modal com a linha já gravada,
+  // todas com menos de 5s de distância). Não é erro e não é "não consentiu": é
+  // "ainda não dá para saber".
+  consentWriteInFlight: boolean;
+  // Contador de gravações de consentimento CONFIRMADAS pelo servidor nesta carga
+  // de página. Zero significa "nenhuma ainda", nunca "falhou".
+  //
+  // Existe porque a escrita continua tentando depois que o gate desiste de
+  // esperar (ver CONSENT_WRITE_HOLD_MS no ConsentGate): quando ela finalmente
+  // conclui, o modal pode já estar na tela, e quem abriu tem que fechar sozinho.
+  // Mesmo mecanismo do desfecho tardio do retorno do OAuth, que limpa o aviso
+  // sem exigir clique.
+  consentWriteConfirmed: number;
   signUp: (input: SignUpInput) => Promise<void>;
   signIn: (input: SignInInput) => Promise<void>;
   signInWithOAuth: (
@@ -182,6 +209,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     null,
   );
   const [callbackSlow, setCallbackSlow] = useState(false);
+  const [consentWriteInFlight, setConsentWriteInFlight] = useState(false);
+  const [consentWriteConfirmed, setConsentWriteConfirmed] = useState(0);
+
+  // Trava de "um flush por carga de página". SIGNED_IN pode chegar mais de uma
+  // vez (StrictMode em dev, reassinatura do listener) e sem isto o mesmo aceite
+  // dispararia dois POSTs concorrentes: o segundo colidiria com o primeiro no
+  // índice único, e o par de escritas confundiria a leitura de quem espera o
+  // in-flight cair. Ref, não estado: precisa ser lido e escrito de forma
+  // síncrona dentro do próprio handler, antes de qualquer render.
+  const consentFlushStartedRef = useRef(false);
 
   // O retry precisa de startProfileLifecycle/reconcileQuizForSession, que vivem no
   // closure do effect de boot. Guardar a função num ref evita colocar o nonce nas
@@ -579,18 +616,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // email/senha ja dispara no signUp; a funcao ignora provider=email.
           if (event === "SIGNED_IN") {
             captureUserSignedUpForOAuth(nextSession.user);
-            // Aceite pendente de um signup (e-mail com sessao imediata, OAuth, ou
-            // magic link se um dia existir): agora ha identidade via JWT, grava o
-            // consentimento. Consome a flag uma vez. .catch silencioso, sem retry —
-            // se falhar, o ConsentGate cobre no proximo carregamento.
-            if (sessionStorage.getItem(PENDING_CONSENT_KEY)) {
-              sessionStorage.removeItem(PENDING_CONSENT_KEY);
-              void recordConsent().catch((consentErr) => {
-                console.warn(
-                  "[auth] failed to record pending consent:",
-                  consentErr,
-                );
-              });
+            // Aceite pendente de um signup (e-mail ou OAuth): agora ha identidade
+            // via JWT, grava o consentimento.
+            //
+            // Itens 3.2 e 3.3. O que mudou, e por que:
+            //
+            // ANTES a flag era apagada ANTES do POST e o POST era disparado com
+            // .catch silencioso, sem retry. Um blip de rede apagava a intencao de
+            // aceite e nao gravava nada, sem deixar rastro. AGORA a flag so sai
+            // depois de o servidor CONFIRMAR a gravacao; falhou, ela FICA, e a
+            // intencao continua registrada para a proxima tentativa.
+            //
+            // O retry e o backoff vivem dentro de recordConsent, cobrindo tambem o
+            // botao do ConsentGate. Aqui so esperamos o desfecho.
+            //
+            // `void` mais async interno, e nao await direto, porque handleAuthChange
+            // e um callback SINCRONO do onAuthStateChange: devolver uma Promise para
+            // o SDK nao faria ninguem esperar por ela. Quem de fato espera e o gate,
+            // via consentWriteInFlight, e por isso a flag sobe AQUI, no mesmo tique
+            // sincrono do setSession: as duas atualizacoes entram no mesmo lote de
+            // render, entao o ConsentGate nunca chega a ver "tem usuario e nao ha
+            // escrita em voo" durante a janela da corrida.
+            if (
+              sessionStorage.getItem(PENDING_CONSENT_KEY) &&
+              !consentFlushStartedRef.current
+            ) {
+              consentFlushStartedRef.current = true;
+              setConsentWriteInFlight(true);
+              void (async () => {
+                try {
+                  // Passo 4 troca este valor para "signup_wrap_implicit", NO MESMO
+                  // commit que remove a caixa de selecao. Enquanto a caixa existir,
+                  // o que aconteceu foi uma marcacao explicita, e e isso que a
+                  // prova tem que dizer.
+                  await recordConsent("signup_form_checkbox");
+                  sessionStorage.removeItem(PENDING_CONSENT_KEY);
+                  // Depois da flag, e so no sucesso: e este sinal que autoriza o
+                  // ConsentGate a fechar um modal que ele ja tenha aberto por ter
+                  // desistido de esperar.
+                  if (mounted) setConsentWriteConfirmed((n) => n + 1);
+                } catch (consentErr) {
+                  // Flag PRESERVADA de proposito. O ConsentGate assume a partir
+                  // daqui e pede o aceite, que e o comportamento correto: nao
+                  // temos confirmacao de que a linha existe.
+                  console.warn(
+                    "[auth] failed to record pending consent:",
+                    consentErr,
+                  );
+                } finally {
+                  // Liberado nos DOIS desfechos. Deixar preso no erro travaria o
+                  // gate em "checking" para sempre, trocando um consentimento
+                  // perdido por uma tela morta.
+                  if (mounted) setConsentWriteInFlight(false);
+                }
+              })();
             }
             // Opt-in de marketing pendente do signup: mesmo padrao do consent.
             // So existe a flag se a pessoa marcou (persistimos so o "true"). Grava
@@ -840,6 +919,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       callbackIssue,
       callbackSlow,
       retryCallback,
+      consentWriteInFlight,
+      consentWriteConfirmed,
       signUp,
       signIn,
       signInWithOAuth,
@@ -851,6 +932,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [
       callbackIssue,
       callbackSlow,
+      consentWriteInFlight,
+      consentWriteConfirmed,
       loading,
       profile,
       profileStatus,
