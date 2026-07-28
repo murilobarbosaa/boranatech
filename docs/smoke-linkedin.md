@@ -15,6 +15,19 @@ frontend confirmado servindo o build novo. Para conferir o build, uma requisiç�
 curl -s https://boranatech.com.br/ | grep -oE 'index-[A-Za-z0-9_-]+\.js'
 ```
 
+**ORDEM OBRIGATÓRIA, se a telemetria do browser ainda não estiver no ar.** `VITE_SENTRY_DSN` é lida em
+build time pelo Vite (substituição textual no bundle), não em runtime. Cadastrar na Vercel **não** afeta o
+bundle que já está publicado:
+
+1. criar o projeto de browser no Sentry e pegar o DSN;
+2. cadastrar `VITE_SENTRY_DSN` no escopo **Production** da Vercel;
+3. **redeploy** (sem isto o passo 2 não tem efeito nenhum);
+4. conferir que o hash do bundle mudou, com uma requisição;
+5. só então rodar o smoke.
+
+Rodar o smoke antes disso não é errado, mas o que ele não pegar **não fica registrado**, que é justamente a
+diferença entre validação e amostra.
+
 **NÃO rodar em preview da Vercel.** As env vars de Preview apontam para o Railway e o Supabase de produção:
 uma análise rodada em preview grava linha real e consome cota de IA de verdade. Ver `CLAUDE.md`, seção
 Política de Branch e Deploy.
@@ -30,9 +43,9 @@ Política de Branch e Deploy.
 | **degradação** | Não reverte. Abrir issue e consertar no próximo deploy. |
 | **cosmético** | Anotar e seguir. |
 
-## Os 11 passos
+## Os passos
 
-Ordem de prioridade quando o tempo é curto: **1 e 2 primeiro** (atingem as 107 análises já gravadas,
+Os 11 primeiros são de navegador. O 12 é conferência de telemetria, depois deles. Ordem de prioridade quando o tempo é curto: **1 e 2 primeiro** (atingem as 107 análises já gravadas,
 imediatamente), depois **3 a 6** (a régua nova e os bugs da Fase 1), depois o resto.
 
 ### 1. Histórico logado, abrir uma análise v1 (REVERSÃO)
@@ -184,6 +197,27 @@ foi debitada de alguém que não recebeu resultado.
 **Por que é só cosmético:** a camada de lastro (`shared/linkedin/lastro.ts`) já saneia antes de responder e
 reporta `ai_lastro_violado` no Sentry. Este passo confere se a camada agiu, não se o dado saiu errado para o
 usuário. Um evento `ai_lastro_violado` no Sentry é a camada **funcionando**, não falhando.
+
+### 12. Projeto de browser no Sentry, depois de tudo (degradação)
+
+**Não precisa de navegador.** Depois de terminar os 11 passos, abrir o projeto de browser no Sentry e olhar
+os eventos da janela em que você rodou o smoke.
+
+**Observar:**
+- **zero eventos** com a tag `origem: error-boundary`;
+- se houver algum, a tag `escopo` diz onde: `linkedin-resultado` é o boundary estreito do resultado, `app` é
+  o boundary de fora, e `app` significa que algo escapou de todos os boundaries de domínio.
+
+**Por que este passo existe, e por que a ausência é o resultado esperado:** os 11 passos anteriores são olho
+humano em navegador, que é amostra, não prova. Este passo é o único que responde "o que eu NÃO vi?". Um
+boundary que disparou sem você perceber (porque o fallback é discreto, ou porque você olhou para outra parte
+da tela) só aparece aqui.
+
+**Atenção à leitura:** ausência de evento só vale se a telemetria estiver de fato no ar. Se `VITE_SENTRY_DSN`
+não estava cadastrada, ou se o bundle publicado é anterior ao cadastro, zero eventos é o comportamento de um
+instrumento desligado, não a prova de que nada quebrou. Confira o hash do bundle antes de concluir qualquer
+coisa deste passo. É a mesma armadilha do `env -i`: instrumento que não estava medindo devolve silêncio, e
+silêncio parece sucesso.
 
 ## Efeito colateral do rollback
 

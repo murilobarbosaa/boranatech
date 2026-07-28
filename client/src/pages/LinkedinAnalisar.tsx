@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
+  AlertTriangle,
   ArrowLeft,
   Award,
   BadgeCheck,
@@ -47,6 +48,7 @@ import LinkedinHistory from "@/components/linkedin/LinkedinHistory";
 import LinkedinResultBackdrop from "@/components/linkedin/LinkedinResultBackdrop";
 import LinkedinScanCard from "@/components/linkedin/LinkedinScanCard";
 import LinkedinScoreHero from "@/components/linkedin/LinkedinScoreHero";
+import ErrorBoundary, { CodigoDoErro } from "@/components/ErrorBoundary";
 import { LinkedinError } from "@/components/linkedin/LinkedinStates";
 import ScoreDeltaBanner from "@/components/shared/ScoreDeltaBanner";
 import RecruiterFinder from "@/components/linkedin/RecruiterFinder";
@@ -504,6 +506,53 @@ const SECTION_ICON_CLASS = "h-5 w-5 text-sky-700";
 // analise detectou (ou nao detectou), nunca inventa conteudo.
 const EMPTY_NOTE_CLASS =
   "mt-5 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-3 text-sm font-medium text-slate-600";
+
+/**
+ * Fallback de dominio do resultado. Duas coisas que a tela cheia generica nao
+ * consegue dar: diz que a analise NAO se perdeu (ela esta gravada, o que
+ * quebrou foi a montagem da tela), e oferece saida util em vez de so recarregar.
+ */
+function ResultadoIndisponivel({
+  eventId,
+  onNovaAnalise,
+}: {
+  eventId: string | null;
+  onNovaAnalise: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border-2 border-slate-950 bg-white p-8 shadow-[5px_5px_0_#0f172a]">
+      <div className="flex flex-col items-center text-center">
+        <AlertTriangle size={36} className="mb-4 shrink-0 text-amber-500" />
+        <h3 className="mb-2 font-display text-xl font-black text-slate-950">
+          Não foi possível montar este resultado
+        </h3>
+        <p className="mb-6 max-w-md text-sm font-medium text-slate-600">
+          A análise foi concluída e está salva no seu histórico. O que falhou
+          foi a montagem desta tela, e o erro já foi registrado do nosso lado.
+        </p>
+
+        {eventId ? <CodigoDoErro id={eventId} /> : null}
+
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="bnt-pressable rounded-xl border-2 border-slate-950 bg-[#FFB800] px-4 py-2 font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+          >
+            Recarregar a página
+          </button>
+          <button
+            type="button"
+            onClick={onNovaAnalise}
+            className="bnt-pressable rounded-xl border-2 border-slate-950 bg-white px-4 py-2 font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+          >
+            Fazer nova análise
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function LinkedinAnalisar() {
   const { isPro } = useSubscription();
@@ -1501,6 +1550,21 @@ export default function LinkedinAnalisar() {
               ) : null}
 
               {!loading && !error && result && qual ? (
+                /* Boundary ESTREITO. Sem ele, um erro de render aqui sobe ate o
+                   boundary do App e derruba a pagina inteira, header e tudo.
+                   Foi o que aconteceu com `skillsSugeridas`: a analise foi
+                   cobrada, persistida, e a pessoa levou tela de erro no lugar
+                   do resultado. Contido aqui, o resto da pagina fica de pe e
+                   sobra uma saida util. */
+                <ErrorBoundary
+                  escopo="linkedin-resultado"
+                  fallback={({ eventId }) => (
+                    <ResultadoIndisponivel
+                      eventId={eventId}
+                      onNovaAnalise={startNewAnalysis}
+                    />
+                  )}
+                >
                 <div
                   className="area-rise space-y-8"
                   style={{ animationDelay: "0.08s" }}
@@ -2024,6 +2088,7 @@ export default function LinkedinAnalisar() {
                     </Reveal>
                   </div>
                 </div>
+                </ErrorBoundary>
               ) : null}
 
               {showEntry && analyses.length > 0 ? (

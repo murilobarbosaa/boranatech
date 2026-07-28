@@ -353,6 +353,32 @@ async function acharReserva(
   }
 }
 
+/**
+ * Falha ao FECHAR uma reserva. Sobe para o Sentry, não fica em `console.warn`.
+ *
+ * Por que este merecia subir e os outros `warn` deste arquivo não: a reserva já
+ * debitou a cota da pessoa. Se a confirmação falha, a linha fica `reserved`
+ * para sempre, e o efeito é cobrança sem entrega, silenciosa. O passo 10 do
+ * `docs/smoke-linkedin.md` procura exatamente essa órfã, mas só quando alguém
+ * lembra de rodar; e `console.warn` NÃO vira issue, porque
+ * `server/lib/sentry.ts` não instala integração de console. Ou seja: até aqui,
+ * a única forma de descobrir era contar linhas no banco à mão.
+ */
+function avisarReservaOrfa(params: LogAiUsageParams, causa: string) {
+  const mensagem = `[ai] Falha ao confirmar a reserva: a linha fica ORFA em 'reserved' e a cota foi debitada sem entrega. Causa: ${causa}`;
+  console.error(mensagem);
+  try {
+    Sentry.captureMessage(mensagem, {
+      level: "error",
+      tags: { area: "ai-quota", orfa: "true", tool: params.tool },
+      fingerprint: ["ai-reserva-orfa"],
+    });
+  } catch {
+    // Sentry desligado (DSN ausente) e no-op por desenho; o console.error acima
+    // ja garante o rastro. Mesmo padrao do avisarModoDegradado.
+  }
+}
+
 export async function logAiUsage(params: LogAiUsageParams) {
   // CONFIRMA A RESERVA, se houver uma.
   //
@@ -384,9 +410,9 @@ export async function logAiUsage(params: LogAiUsageParams) {
         })
         .eq("id", reserva);
       if (!error) return;
-      console.warn("[ai] Falha ao confirmar a reserva:", error.message);
+      avisarReservaOrfa(params, error.message);
     } catch (err) {
-      console.warn("[ai] Falha ao confirmar a reserva:", err);
+      avisarReservaOrfa(params, err instanceof Error ? err.message : String(err));
     }
     return;
   }

@@ -16,7 +16,17 @@ import * as Sentry from "@sentry/react";
 // amostra ja revela a distribuicao (429 vs HTML vs count nulo) por dispositivo.
 
 // Fracao dos eventos de erro efetivamente enviados. Conservador de proposito.
+//
+// NAO se aplica a tudo. Amostrar ruido de extensao de browser faz sentido;
+// amostrar TELA QUEBRADA nao, porque 0.25 significa que 3 de cada 4 usuarios
+// que viram a pagina cair ficam invisiveis, e a raridade do evento e justamente
+// o que torna cada ocorrencia valiosa. O corte por tipo mora no `beforeSend`
+// abaixo, e nao no `sampleRate` do init, porque o `sampleRate` do SDK e cego ao
+// conteudo do evento: ele decide antes de existir tag para ler.
 const ERROR_SAMPLE_RATE = 0.25;
+
+/** Tag posta por `ErrorBoundary.componentDidCatch`. Estes vao 100%. */
+const ORIGEM_NAO_AMOSTRADA = "error-boundary";
 
 export function initClientSentry(): void {
   const dsn = import.meta.env.VITE_SENTRY_DSN;
@@ -30,7 +40,25 @@ export function initClientSentry(): void {
     // release opcional: so quando o build injeta VITE_SENTRY_RELEASE (ex.: SHA
     // do commit). Ausente, o Sentry agrupa sem versao, sem quebrar nada.
     release: import.meta.env.VITE_SENTRY_RELEASE || undefined,
-    sampleRate: ERROR_SAMPLE_RATE,
+    // 1 de proposito: a amostragem real acontece no `beforeSend`, que enxerga
+    // as tags. Ver ERROR_SAMPLE_RATE.
+    sampleRate: 1,
+    beforeSend: amostrarPorOrigem,
     sendDefaultPii: false,
   });
+}
+
+/**
+ * Amostragem por tipo de evento. Exportada para ser testavel sem subir o SDK.
+ *
+ * `sortear` e injetavel pelo mesmo motivo: um teste que chama `Math.random`
+ * de verdade e um teste que passa as vezes.
+ */
+export function amostrarPorOrigem<T extends { tags?: Record<string, unknown> }>(
+  event: T,
+  _hint?: unknown,
+  sortear: () => number = Math.random,
+): T | null {
+  if (event.tags?.origem === ORIGEM_NAO_AMOSTRADA) return event;
+  return sortear() < ERROR_SAMPLE_RATE ? event : null;
 }
