@@ -176,7 +176,7 @@ const naoReconhecidasOutras: string[] = [];
 // quase nunca e "atualizar o numero": e descobrir o que parou de ser
 // reconhecido. Foi exatamente assim que a auditoria concluiu "so falta uma
 // tabela" olhando 38 de 72.
-const EXPECTED_TABLE_COUNT = 81;
+const EXPECTED_TABLE_COUNT = 82;
 
 // Mesma assercao de tamanho das tabelas, pelo mesmo motivo: pegar o caso em que
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
@@ -607,7 +607,7 @@ if (expostas !== null) {
 // ---------------------------------------------------------------------------
 // RLS: verificada de fato, lendo com a chave anon.
 // ---------------------------------------------------------------------------
-const EXPECTED_RLS_COUNT = 81;
+const EXPECTED_RLS_COUNT = 82;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 const rlsVivas = [...rlsDeclarada].filter((t) => declared.has(t)).sort();
@@ -752,8 +752,8 @@ if (esquema.naoClassificados.length > 0) {
 // NESTES NUMEROS E ATO DELIBERADO, no mesmo commit da migration que cria ou
 // remove o objeto, com o nome dele na mensagem. Valores medidos em 2026-07-28
 // sobre as 117 migrations do diretorio.
-const EXPECTED_COLUMN_COUNT = 880;
-const EXPECTED_INDEX_COUNT = 134;
+const EXPECTED_COLUMN_COUNT = 902;
+const EXPECTED_INDEX_COUNT = 136;
 const EXPECTED_POLICY_COUNT = 68;
 
 const conjuntos: Array<[string, number, number]> = [
