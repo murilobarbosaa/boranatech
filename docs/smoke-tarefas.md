@@ -630,3 +630,54 @@ desarquivar. Desarquive e confirme que volta ao normal.
 Alterne para **Lista**. Respeita o mesmo filtro, busca e agrupamento; clicar numa
 linha abre o mesmo modal; as setas movem entre etapas. Com filtro que não casa
 nada, mostra o estado vazio com botão de limpar.
+
+---
+
+# Correções pós-deploy
+
+## 44. Modal por cima do header
+
+Abra uma tarefa e role o modal até o topo: o título e o campo **Etapa** ficam
+alcançáveis, sem o header do admin cobrindo. Repita com o `AlertDialog` de
+excluir etapa, o diálogo de WIP, o de nova etapa e o de **Quadros**.
+
+Abra o select de **Etapa** dentro do modal: o popup aparece **acima** do modal,
+não atrás. O mesmo para **Responsável**, **Prioridade**, **Tipo** e o seletor de
+destino do 409 de etapa não-vazia.
+
+Fora do modal: o menu `⋯` da coluna e o popover de **Filtros** ficam acima do
+header quando abrem para cima.
+
+Detalhe conhecido: o **escurecido** do fundo não cobre o header (o
+`DialogContent` do shadcn não deixa estilizar o overlay de fora). O header não
+fica clicável — o Radix desliga os eventos do body. Consertar de vez é uma linha
+nos primitivos, e isso corrigiria também Bugs & Erros e Notificações.
+
+## 45. Respiro no rodapé do modal
+
+Role o modal até o fim: o botão **Comentar** tem folga da borda. Role a coluna de
+propriedades até o fim: o mesmo.
+
+## 46. Quadros
+
+No botão de engrenagem ao lado do seletor de quadro:
+
+1. **Criar**: nome, sigla e cor. Digitar `mkt` vira `MKT` sozinho. O aviso de que
+   a sigla **não muda depois** aparece antes de criar, junto com o exemplo
+   `MKT-1`.
+2. Tente a sigla `1AB` → mensagem de formato, botão desabilitado. Tente `DEV`
+   (já existe) → mensagem de sigla em uso, **sem** chamar a API.
+3. Crie de verdade: o quadro nasce com **5 etapas** (Backlog → Concluído) e **6
+   etiquetas**, e vira o quadro ativo.
+4. **Renomear**: edite o nome na lista e saia do campo. A sigla não é editável.
+5. **Arquivar**: some do seletor e continua na lista, esmaecido, com botão de
+   restaurar.
+6. **Excluir**: exige digitar a sigla. Com a sigla errada o botão fica
+   desabilitado. Confirme e veja que o quadro some; se era o ativo, o board sai
+   dele sem ficar em erro.
+
+## 47. Vencimento
+
+No modal, escolha uma data. Ao lado do campo aparece a data em português
+(`28/07/2026`). Se o seu navegador mostrar o input como `mm/dd/yyyy`, é a locale
+dele — o eco ao lado é o que confirma o que foi entendido.

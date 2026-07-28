@@ -4,6 +4,8 @@ import { BntSelect } from "@/components/shared/BntSelect";
 
 import { LabelPicker } from "./LabelPicker";
 import { PRIORITY_OPTIONS, TYPE_OPTIONS } from "./taskBoardStyles";
+import { formatIsoDay } from "./relativeTime";
+import { LAYER_IN_DIALOG } from "./taskLayers";
 import type {
   Task,
   TaskAssignee,
@@ -98,6 +100,7 @@ export function TaskProperties({
           size="sm"
           accent="gold"
           fullWidth
+          contentClassName={LAYER_IN_DIALOG}
           label="Etapa da tarefa"
           value={task.column_id}
           onValueChange={onChangeColumn}
@@ -113,6 +116,7 @@ export function TaskProperties({
           size="sm"
           accent="gold"
           fullWidth
+          contentClassName={LAYER_IN_DIALOG}
           label="Responsável pela tarefa"
           value={task.assignee_id ?? SEM_RESPONSAVEL}
           onValueChange={(value) =>
@@ -133,6 +137,7 @@ export function TaskProperties({
           size="sm"
           accent="gold"
           fullWidth
+          contentClassName={LAYER_IN_DIALOG}
           label="Prioridade"
           value={task.priority}
           onValueChange={(value) => onChangePriority(value as TaskPriority)}
@@ -145,6 +150,7 @@ export function TaskProperties({
           size="sm"
           accent="gold"
           fullWidth
+          contentClassName={LAYER_IN_DIALOG}
           label="Tipo"
           value={task.type}
           onValueChange={(value) => onChangeType(value as TaskType)}
@@ -167,13 +173,29 @@ export function TaskProperties({
             direto: converter para ISO com hora (como faz o dateInputToIso do
             Admin.tsx, escrito para colunas timestamptz) seria rejeitado pelo
             zod da rota. */}
-        <input
-          type="date"
-          value={task.due_date ?? ""}
-          aria-label="Data de vencimento"
-          onChange={(event) => onChangeDueDate(event.target.value || null)}
-          className="w-full rounded-lg border-2 border-slate-300 px-2 py-1 text-xs font-semibold text-slate-900 focus:border-slate-900 focus:outline-none"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={task.due_date ?? ""}
+            aria-label="Data de vencimento"
+            onChange={(event) => onChangeDueDate(event.target.value || null)}
+            className="min-w-0 flex-1 rounded-lg border-2 border-slate-300 px-2 py-1 text-xs font-semibold text-slate-900 focus:border-slate-900 focus:outline-none"
+          />
+          {/* O input nativo mostra a ordem dos campos conforme a LOCALE do
+              navegador (mm/dd/yyyy num Chrome em en-US), e isso nao e
+              controlavel de forma confiavel por atributo HTML. O valor gravado e
+              sempre AAAA-MM-DD, entao nao ha risco de dado errado; o risco e a
+              pessoa inverter dia e mes ao digitar. Este eco em portugues mostra
+              o que foi entendido, na hora. */}
+          {task.due_date ? (
+            <span
+              aria-live="polite"
+              className="shrink-0 rounded-md bg-slate-200 px-1.5 py-0.5 font-mono text-[11px] font-black text-slate-700"
+            >
+              {formatIsoDay(task.due_date)}
+            </span>
+          ) : null}
+        </div>
       </Row>
 
       <Row label="Estimativa">

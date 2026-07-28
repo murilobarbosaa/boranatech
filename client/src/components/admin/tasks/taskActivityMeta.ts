@@ -1,3 +1,4 @@
+import { formatIsoDay } from "./relativeTime";
 import type { TaskActivity } from "./types";
 
 // Resolucao das linhas do histórico.
@@ -67,8 +68,8 @@ function valueLabel(map: Record<string, string>, value: string | null): string {
 
 function formatDay(value: string | null): string {
   if (!value) return "sem data";
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : value;
+  // Reusa o formatador do modulo de datas em vez de manter uma copia.
+  return formatIsoDay(value) || value;
 }
 
 /**

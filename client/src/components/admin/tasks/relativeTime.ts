@@ -72,3 +72,19 @@ export function relativeTime(iso: string | null, nowMs: number): string {
   // Acima de uma semana, o absoluto informa mais que o relativo.
   return formatBrasiliaDateTime(iso);
 }
+
+/**
+ * `AAAA-MM-DD` (coluna `date`) em `dd/mm/aaaa`.
+ *
+ * Nao passa por `new Date()`: o construtor interpreta "2026-07-28" como UTC e,
+ * em fuso negativo, `toLocaleDateString` devolveria o DIA ANTERIOR. Como a
+ * string ja e o dia, o formato e recorte puro.
+ *
+ * Existe aqui, e nao numa terceira copia, porque o histórico tambem precisa dele
+ * (taskActivityMeta) e o campo de vencimento passou a precisar.
+ */
+export function formatIsoDay(value: string | null | undefined): string {
+  if (!value) return "";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : "";
+}
