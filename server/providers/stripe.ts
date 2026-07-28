@@ -5,6 +5,7 @@ import { env } from "../lib/env";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { getStripe } from "../lib/stripeClient";
+import { resolveStripeCustomerId } from "../lib/stripeCustomer";
 import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
@@ -1260,6 +1261,21 @@ async function createCheckout(
     coupon_code: validCouponCode || "",
   };
 
+  // Customer REUSADO, nao criado por sessao. `customer` e `customer_email` NAO
+  // podem coexistir numa Checkout Session (a Stripe recusa), entao os dois ramos
+  // abaixo trocam um pelo outro em vez de somar. A resolucao, a assercao de dono e
+  // o tratamento de corrida vivem em lib/stripeCustomer.ts, dentro da funcao, para
+  // valer nos dois ramos por construcao.
+  //
+  // NAO passamos saved_payment_method_options nem ligamos
+  // payment_method_save: com nenhum PaymentMethod salvo, um mapeamento errado nao
+  // consegue cobrar o cartao de outra pessoa. Cartao salvo e fase 2, so depois do
+  // mapeamento validado em producao.
+  const customerId = await resolveStripeCustomerId(
+    input.user.id,
+    input.user.email,
+  );
+
   if (input.paymentMethod === "boleto") {
     // Boleto: pagamento unico (mode: payment). Nao pode usar price recurring, entao
     // o valor vem inline de planPricing.ts (fonte unica: e o que o site mostra e o
@@ -1297,7 +1313,7 @@ async function createCheckout(
         },
       ],
       client_reference_id: input.user.id,
-      customer_email: input.user.email || undefined,
+      customer: customerId,
       metadata: boletoMetadata,
       discounts,
       success_url: `${env.appPublicUrl}/planos/sucesso`,
@@ -1320,7 +1336,7 @@ async function createCheckout(
     payment_method_types: ["card"],
     line_items: [{ price: priceId, quantity: 1 }],
     client_reference_id: input.user.id,
-    customer_email: input.user.email || undefined,
+    customer: customerId,
     metadata,
     subscription_data: { metadata },
     discounts,
