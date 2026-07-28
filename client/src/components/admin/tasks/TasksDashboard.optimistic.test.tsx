@@ -25,6 +25,19 @@ const svc = vi.hoisted(() => ({
   reorderColumns: vi.fn(),
   createColumn: vi.fn(),
   deleteColumn: vi.fn(),
+  // O TaskModal monta junto quando ha ?task= na URL. Sem estes mocks as funcoes
+  // chegam como undefined, o modal estoura dentro do proprio catch e o teste de
+  // deep link passaria com o modal quebrado, sem ninguem perceber.
+  getTask: vi.fn(),
+  patchTask: vi.fn(),
+  deleteTask: vi.fn(),
+  createLabel: vi.fn(),
+  attachLabel: vi.fn(),
+  detachLabel: vi.fn(),
+  createChecklistItem: vi.fn(),
+  patchChecklistItem: vi.fn(),
+  deleteChecklistItem: vi.fn(),
+  reorderChecklist: vi.fn(),
 }));
 
 const toastSpy = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn() }));
@@ -39,6 +52,16 @@ vi.mock("@/services/adminTasksService", () => ({
   reorderColumns: (...a: unknown[]) => svc.reorderColumns(...a),
   createColumn: (...a: unknown[]) => svc.createColumn(...a),
   deleteColumn: (...a: unknown[]) => svc.deleteColumn(...a),
+  getTask: (...a: unknown[]) => svc.getTask(...a),
+  patchTask: (...a: unknown[]) => svc.patchTask(...a),
+  deleteTask: (...a: unknown[]) => svc.deleteTask(...a),
+  createLabel: (...a: unknown[]) => svc.createLabel(...a),
+  attachLabel: (...a: unknown[]) => svc.attachLabel(...a),
+  detachLabel: (...a: unknown[]) => svc.detachLabel(...a),
+  createChecklistItem: (...a: unknown[]) => svc.createChecklistItem(...a),
+  patchChecklistItem: (...a: unknown[]) => svc.patchChecklistItem(...a),
+  deleteChecklistItem: (...a: unknown[]) => svc.deleteChecklistItem(...a),
+  reorderChecklist: (...a: unknown[]) => svc.reorderChecklist(...a),
 }));
 
 vi.mock("sonner", () => ({ toast: toastSpy }));
@@ -142,6 +165,13 @@ beforeEach(() => {
   locationSpy.search = "?section=tarefas";
   serverState.tasks = [task("task-1", 1, "col-a")];
   svc.listBoards.mockResolvedValue({ boards: [BOARD] });
+  svc.getTask.mockResolvedValue({
+    task: task("task-1", 1, "col-a"),
+    label_ids: [],
+    comments: [],
+    checklist: [],
+    activity: [],
+  });
   svc.getBoardSnapshot.mockImplementation(() =>
     Promise.resolve({
       ...structuredClone(SNAPSHOT),

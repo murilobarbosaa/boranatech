@@ -397,3 +397,85 @@ Se algum dia for preciso conferir que esse teste ainda **discrimina**, o control
 negativo é trocar `MIN_POSITION_GAP` por `Number.MIN_VALUE` em
 `server/lib/adminTaskPosition.ts` (desliga o rebalanceamento na prática) e
 confirmar que ele fica vermelho. Restaure depois.
+
+---
+
+# Smoke test do modal (Fase 4)
+
+Ainda no quadro sandbox. Abra uma tarefa clicando no card.
+
+Os casos de perda de texto estão automatizados em
+`TaskModal.autosave.test.tsx`, e os testes foram conferidos contra o controle
+negativo (com `void flush()` no lugar de `await flush()` eles ficam vermelhos).
+A lista abaixo é o que só o navegador mostra.
+
+## 23. Abrir não trava esperando a rede
+
+Com o DevTools em **Slow 3G**, clique num card: o modal abre **na hora** com
+skeleton, e o conteúdo entra depois. Se a tela congelar antes de abrir, o
+carregamento voltou a bloquear a abertura.
+
+## 24. Fechar com alteração em voo
+
+O caso que custa dado, e que tem quatro portas:
+
+1. Digite na descrição e aperte **Esc imediatamente**, antes do debounce. O
+   indicador mostra `salvando…`, o modal só fecha depois, e ao reabrir o texto
+   está lá.
+2. Mesma coisa clicando **fora** do modal.
+3. Digite e navegue com **`↓`** para a próxima tarefa da etapa: grava a atual
+   antes de trocar. Volte com `↑` e confirme.
+4. Digite e aperte **F5**: o navegador precisa **avisar** que há alteração não
+   salva. (Aqui não dá para gravar: o navegador não espera requisição durante o
+   unload, então avisar é o comportamento correto.)
+
+Repita o passo 1 com **Network → Offline**: aparece `erro ao salvar`, e o texto
+digitado **não é descartado** — voltando a ficar online, a próxima gravação leva
+o conteúdo.
+
+## 25. Etapa pelo select move de verdade
+
+Mude a **Etapa** na coluna lateral. O card atrás precisa pular de coluna no board.
+Se a etapa de destino for terminal, o modal passa a mostrar **Concluído em**.
+Confirme no Network que saiu um `PATCH /crm/tasks/:id/move`, e **não** um
+`PATCH /crm/tasks/:id` com `column_id` — é o mesmo caminho do drag.
+
+## 26. Etiqueta com nome que já existe
+
+Em **Etiquetas**, digite o nome de uma etiqueta que **já existe** no quadro (com
+outra caixa, por exemplo `frontend` quando existe `Frontend`) e confirme. Ela
+precisa ser aplicada normalmente, **sem nenhuma mensagem de erro**. A API devolve
+200 com a etiqueta existente, e isso é sucesso.
+
+Depois teste um nome com curinga de LIKE, como `50% pronto`: tem que criar uma
+etiqueta nova, não reaproveitar outra.
+
+## 27. Markdown
+
+Selecione um trecho na descrição e clique em **negrito** — os asteriscos entram
+em volta da seleção e a seleção continua no texto, não nos delimitadores.
+`Ctrl+B`, `Ctrl+I` e `Ctrl+K` fazem o mesmo. Na aba **Visualizar**, um
+`- [ ] item` vira caixa de seleção (isso é o `remark-gfm`).
+
+Escreva `<img src=x onerror=alert(1)>` e vá para **Visualizar**: o HTML aparece
+como **texto**, nunca executa. Não há `rehype-raw` nem `dangerouslySetInnerHTML`
+no projeto, e é assim que fica.
+
+## 28. `?task=` inexistente
+
+Edite a URL para `?section=tarefas&task=DEV-99999` (número que não existe) e
+recarregue: toast de erro, o `?task=` sai da URL e a aba Tarefas continua
+carregada. **Não** pode cair na Visão.
+
+## 29. Mobile em tela cheia
+
+Em viewport de celular, o modal ocupa a tela inteira, sem cantos arredondados e
+sem borda, e as propriedades ficam **abaixo** do conteúdo, não numa coluna
+lateral espremida.
+
+## 30. Ações
+
+- **Link**: copia e, colado em outra aba, abre a mesma tarefa.
+- **Duplicar**: cria `(cópia)` na mesma etapa, com um **ID curto novo**.
+- **Arquivar**: fecha o modal e o card some do board.
+- **Excluir**: pede confirmação, fecha e some. O checklist vai junto (cascade).

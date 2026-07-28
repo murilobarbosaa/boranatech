@@ -53,6 +53,7 @@ import {
   type BoardOrder,
 } from "./resolveDropTarget";
 import { DRAG_ACTIVATION_DISTANCE, TaskCardBody } from "./TaskCard";
+import { TaskModal } from "./TaskModal";
 import { emptyBlockClass, primaryButtonClass, secondaryButtonClass } from "./taskBoardStyles";
 import { parseShortId, readTaskParam, shortIdOf, withTaskParam } from "./taskDeepLink";
 import type { TaskBoardSnapshot, TaskCard as TaskCardData, TaskColumn } from "./types";
@@ -196,10 +197,24 @@ export function TasksDashboard() {
     setLocation(`/admin${withTaskParam(searchRef.current, null)}`);
   }, [setLocation]);
 
-  // TODO(Fase 4): o modal da tarefa consome selectedTaskId e chama closeTask no
-  // Esc e no clique fora. Nesta fase o deep link so destaca o card no board,
-  // para a mecanica de URL entrar isolada da complexidade do modal.
-  void closeTask;
+  /** Aplica um patch no card do board sem refetch do snapshot inteiro. */
+  const patchCard = useCallback(
+    (id: string, patch: Partial<TaskCardData>) => {
+      applyLocal((snap) => withTask(snap, id, (item) => ({ ...item, ...patch })));
+    },
+    [applyLocal],
+  );
+
+  const removeCard = useCallback(
+    (id: string) => {
+      applyLocal((snap) => ({
+        ...snap,
+        tasks: snap.tasks.filter((task) => task.id !== id),
+      }));
+    },
+    [applyLocal],
+  );
+
 
   // -------------------------------------------------------------------------
   // Derivados
@@ -381,6 +396,18 @@ export function TasksDashboard() {
       if (!target) return;
       // (null, null) = fim da coluna de destino.
       void moveTaskTo(taskId, target.id, null, null);
+    },
+    [moveTaskTo],
+  );
+
+  /**
+   * Movimentacao disparada pelo select de Etapa do modal. Passa pela MESMA
+   * moveTaskTo do drag e das setas, com o mesmo contador de sequencia: nao ha
+   * terceiro caminho de movimentacao no modulo.
+   */
+  const moveFromModal = useCallback(
+    (id: string, columnId: string) => {
+      void moveTaskTo(id, columnId, null, null);
     },
     [moveTaskTo],
   );
@@ -968,6 +995,31 @@ export function TasksDashboard() {
           </DragOverlay>
         </DndContext>
       )}
+
+      {selectedTaskId ? (
+        <TaskModal
+          // key por tarefa: trocar de card com as setas remonta o modal com
+          // estado limpo, em vez de carregar rascunho da tarefa anterior.
+          key={selectedTaskId}
+          taskId={selectedTaskId}
+          boardKey={snapshot.board.key}
+          columns={columns}
+          admins={snapshot.admins}
+          labels={snapshot.labels}
+          siblingsInColumn={
+            tasksByColumn.get(
+              snapshot.tasks.find((task) => task.id === selectedTaskId)?.column_id ??
+                "",
+            ) ?? []
+          }
+          onClose={closeTask}
+          onOpenTask={openTask}
+          onMoveTask={moveFromModal}
+          onPatchCard={patchCard}
+          onRemoveCard={removeCard}
+          onBoardChanged={() => void refresh()}
+        />
+      ) : null}
 
       <PromptDialog
         open={newColumnOpen}
