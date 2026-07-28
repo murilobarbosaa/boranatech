@@ -33,8 +33,19 @@ import * as Sentry from "@sentry/react";
 // agregado: 25% ja revela a distribuicao (429 vs HTML vs count nulo).
 const ERROR_SAMPLE_RATE = 0.25;
 
-/** Tag posta por `ErrorBoundary.componentDidCatch`. Estes vao 100%. */
-const ORIGEM_NAO_AMOSTRADA = "error-boundary";
+/**
+ * Origens que vao 100%, sem amostragem.
+ *
+ * - `error-boundary`: tag posta por `ErrorBoundary.componentDidCatch`.
+ * - `auth`: tag posta por `reportAuthFailure` (lib/authTelemetry.ts). Entrou pelo
+ *   mesmo argumento que ja justificava a excecao do error-boundary, escrito no
+ *   bloco de ERROR_SAMPLE_RATE: amostrar faz sentido para evento que vale em
+ *   AGREGADO e dispara por carga de pagina, e nao para evento RARO em que cada
+ *   ocorrencia e o dado. Falha de login e do segundo tipo. Com 0.25, de cada 4
+ *   pessoas que nao conseguiram entrar 3 ficariam invisiveis, que e literalmente
+ *   o problema que a instrumentacao existe para resolver.
+ */
+const ORIGENS_NAO_AMOSTRADAS = new Set(["error-boundary", "auth"]);
 
 /**
  * PII EM BREADCRUMB: o vetor que os scrubbers do Sentry NAO cobrem.
@@ -119,6 +130,6 @@ export function amostrarPorOrigem<T extends { tags?: Record<string, unknown> }>(
   _hint?: unknown,
   sortear: () => number = Math.random,
 ): T | null {
-  if (event.tags?.origem === ORIGEM_NAO_AMOSTRADA) return event;
+  if (ORIGENS_NAO_AMOSTRADAS.has(String(event.tags?.origem))) return event;
   return sortear() < ERROR_SAMPLE_RATE ? event : null;
 }
