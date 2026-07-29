@@ -281,18 +281,45 @@ havia nada a corrigir.
 A lição prática: para ancoragem e scroll spy a métrica é **estabilidade de
 posição das seções**, não CLS. São perguntas diferentes.
 
-### d) O `check:hero-counter` compara com uma constante que envelhece
+### d) Alternativa disponível para o badge do hero: encurtar a frase
 
-O script assume `HERO_COUNTER_VALUE = "2776"` por padrão e semeia o
-`localStorage` com ele, dizendo no comentário que assim não depende do backend.
-**Não é verdade quando o backend responde**: em desenvolvimento o dev server fala
-com a API real, o valor volta do servidor e sobrescreve a semente. Em 2026-07-28 a
-contagem real já era **2922**, e o script reprovou as 26 amostras por isso, não
-por defeito da página (`HERO_COUNTER_VALUE=2922` passa as 26).
+**Corrigido em 2026-07-29, mas a alternativa fica registrada.**
 
-Não corrigido. A correção honesta é o script LER o valor servido e conferir
-estabilidade e ausência de zero, em vez de comparar com uma constante escrita à
-mão que envelhece sozinha.
+A frase do badge é "+N pessoas já encontraram seu caminho", 40 caracteres. Ela
+não cabe em uma linha abaixo de 395px (medido pixel a pixel), então nas larguras
+estreitas o badge ocupa duas linhas, com a quebra forçada em ponto escolhido
+(`<br className="hidden max-[395px]:inline" />`, entre "pessoas" e "já").
+
+**A alternativa que devolveria uma linha só em todas as larguras é encurtar a
+copy**, por exemplo "+N já encontraram seu caminho". Foi descartada em 2026-07-29
+por decisão editorial: "pessoas" é a palavra que carrega a prova social.
+
+Se a copy mudar depois e passar a caber em 320px, **a única coisa a fazer é
+remover o `<br>`**. Nada mais depende dele.
+
+### e) O `check:hero-counter` comparava com uma constante que envelhece
+
+**Corrigido em 2026-07-29**, registrado porque a forma do erro se repete.
+
+O script assumia `HERO_COUNTER_VALUE = "2776"` por padrão e semeava o
+`localStorage` com ele, dizendo no comentário que assim não dependia do backend.
+**Não era verdade quando o backend responde**: em desenvolvimento o dev server
+fala com a API real, o valor volta do servidor e sobrescreve a semente. Em
+2026-07-28 a contagem real já era **2922**, e o script reprovou as 26 amostras
+por isso, não por defeito da página.
+
+A correção não foi atualizar o número: foi **interceptar a chamada** de
+`/api/stats/users-count` e servir um valor conhecido, trocando a asserção
+absoluta ("é 2776") pela relacional ("é o que a API devolveu"). Um contador de
+intercepções atendidas aborta se a página deixar de chamar o endpoint, para o
+teste não passar medindo um número vindo de outro lugar.
+
+Um efeito colateral vale registro, porque é a mesma armadilha em outro lugar: a
+cópia invisível que reserva a largura do contador entra no `textContent`, e tanto
+o script quanto o teste de unidade passaram a ler o número duplicado
+(`"+4.3214.321 pessoas..."`). Os dois leitores agora removem os nós
+`aria-hidden` antes de medir, e a remoção mora **no leitor único** de cada um
+(`readCounter` e `bodyText`), não em cada asserção.
 
 ---
 
