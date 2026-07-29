@@ -240,7 +240,31 @@ function AnimatedCounter({
     return () => window.clearTimeout(timeoutId);
   }, [prefersReduced, isInView, fallbackFired]);
 
-  return <motion.span>{rounded}</motion.span>;
+  // Largura RESERVADA pelo valor FINAL, e nao pelo valor atual.
+  //
+  // Sem isto o span cresce junto com os digitos (0 -> 12 -> 917 -> 2.921), o
+  // badge inteiro cresce com ele, e em viewport estreita o texto do badge
+  // QUEBRA PARA A SEGUNDA LINHA e volta, varias vezes, durante a animacao.
+  // Medido em 390px: altura do badge alternando entre 20px e 40px, o `ul.grid`
+  // logo abaixo pulando entre y=768 e y=788, 27 mudancas de geometria em 1.2s, e
+  // CLS de 0.103 (acima do limiar de 0.1). Medido tambem no codigo anterior a
+  // este contador, quando ele ficava travado em 0: CLS 0.00000. Ou seja, o
+  // deslocamento nasceu junto com a animacao, e some reservando o espaco.
+  //
+  // `tabular-nums` para todos os digitos terem a mesma largura, senao "111" e
+  // "999" mediriam diferente e a reserva calculada por contagem de caracteres
+  // nao valeria. `text-left` para o numero crescer para a direita dentro da
+  // caixa reservada, em vez de empurrar o "+" que vem antes dele.
+  const larguraReservada = `${value.toLocaleString("pt-BR").length}ch`;
+
+  return (
+    <motion.span
+      className="inline-block text-left tabular-nums"
+      style={{ minWidth: larguraReservada }}
+    >
+      {rounded}
+    </motion.span>
+  );
 }
 
 // =========================================
