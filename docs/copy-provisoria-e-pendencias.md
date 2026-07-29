@@ -321,6 +321,48 @@ o script quanto o teste de unidade passaram a ler o número duplicado
 `aria-hidden` antes de medir, e a remoção mora **no leitor único** de cada um
 (`readCounter` e `bodyText`), não em cada asserção.
 
+### f) A Novidades não tem eyebrow, e a ausência é DELIBERADA
+
+Registrado em 2026-07-29 para ninguém "corrigir" isso depois.
+
+As outras seções decoradas da home abrem com um eyebrow (`SectionLabel` em
+uppercase com `tracking-[0.2em]`). A **Novidades não tem, e nunca teve**: ela abre
+direto no `<h2>Novidades</h2>`.
+
+Os rótulos "Última notícia", "Próximos eventos" e "Dica rápida" que aparecem ali
+são dos **cards**, não da seção — quem procurar um eyebrow com um seletor genérico
+vai encontrar um deles e concluir errado, que foi o que aconteceu na primeira
+auditoria.
+
+**Por que fica assim:** é a seção mais curta do bloco do topo e funciona como
+faixa de novidades, não como seção-marco. O `h2` já basta. Adicionar um eyebrow
+seria escrever copy nova, e copy é decisão editorial.
+
+### g) `CARD_LABEL` da Novidades sem `font-display`
+
+Os rótulos dos cards usam `text-sm font-black uppercase tracking-[0.2em]`, sem
+`font-display`, então renderizam em Plus Jakarta Sans enquanto os eyebrows de
+seção renderizam em Space Grotesk.
+
+**Não corrigido de propósito.** Mexer no interior dos cards dessincroniza os
+skeletons, que derivam a altura das classes de tipografia dos cards reais (ver
+item h). O ganho é pequeno e o risco é de layout.
+
+### h) Resíduo de 22px no card de dica da Novidades
+
+Os três skeletons da Novidades espelham cada um o seu próprio card, e o delta
+medido é **0 para notícia, 0 para eventos e 0 ou +22 para a dica**, em 390px. No
+desktop os três dão 0.
+
+A origem é sorteio: `DicaCard` escolhe a dica com `Math.random()`, e as dicas têm
+comprimentos diferentes. O skeleton reserva 3 linhas, que é a mediana; quando sai
+uma de 4 linhas faltam 22px, exatamente uma linha de `text-base leading-snug`.
+
+**Aceito em 2026-07-29.** Zerar exigiria `line-clamp-3` no parágrafo, o que trunca
+conteúdo. **Se alguém mexer na tipografia dentro dos cards, os deltas das três
+variantes precisam ser remedidos**, porque a altura dos skeletons é derivada
+dessas classes.
+
 ---
 
 ## 4. Push para a `main` deploya. Não existe passo manual.
