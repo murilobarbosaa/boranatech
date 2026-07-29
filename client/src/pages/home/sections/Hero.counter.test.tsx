@@ -221,7 +221,20 @@ function renderHero() {
 }
 
 function bodyText(): string {
-  return (document.body.textContent ?? "").replace(/\s+/g, " ").trim();
+  // Lê o DOM SEM os nós marcados como escondidos.
+  //
+  // O contador reserva a largura da caixa renderizando uma cópia INVISÍVEL do
+  // valor final ao lado do número animado (ver AnimatedCounter em Hero.tsx). Ela
+  // é `aria-hidden`, mas `textContent` não liga para isso: sem removê-la a
+  // leitura sai duplicada ("+2.7760 pessoas...", a cópia mais o valor corrente) e
+  // toda asserção sobre o número reprova por dígitos que ninguém vê.
+  //
+  // A remoção fica AQUI, no leitor único, e não em cada asserção: 14 testes
+  // dependem desta função, e guarda escrita no chamador sumiria no primeiro que
+  // alguém esquecesse. Mesmo princípio do `logAiUsage` citado no CLAUDE.md.
+  const clone = document.body.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove());
+  return (clone.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
 function expectsPlaceholder() {

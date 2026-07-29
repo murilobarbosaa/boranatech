@@ -119,7 +119,18 @@ async function readCounter(page) {
       /pessoas já encontraram/.test(s.textContent || ""),
     );
     if (!badge) return null;
-    const m = (badge.textContent || "").match(/\+\s*([\d.]+)\s*pessoas/);
+    // Lê o badge SEM os nós marcados como escondidos.
+    //
+    // O contador reserva largura renderizando uma cópia INVISÍVEL do valor final
+    // ao lado do número animado. Ela é `aria-hidden`, mas entra no `textContent`
+    // do mesmo jeito, e sem removê-la a leitura vinha duplicada:
+    // "+4.3214.321 pessoas..." virava 43214321. O que interessa aqui é o que a
+    // pessoa lê, então o que está marcado como escondido sai antes da medição.
+    const clone = badge.cloneNode(true);
+    clone
+      .querySelectorAll('[aria-hidden="true"]')
+      .forEach((n) => n.remove());
+    const m = (clone.textContent || "").match(/\+\s*([\d.]+)\s*pessoas/);
     return m ? m[1].replace(/[.\s]/g, "") : null;
   });
 }

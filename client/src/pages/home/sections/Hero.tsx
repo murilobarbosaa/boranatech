@@ -251,19 +251,33 @@ function AnimatedCounter({
   // este contador, quando ele ficava travado em 0: CLS 0.00000. Ou seja, o
   // deslocamento nasceu junto com a animacao, e some reservando o espaco.
   //
-  // `tabular-nums` para todos os digitos terem a mesma largura, senao "111" e
-  // "999" mediriam diferente e a reserva calculada por contagem de caracteres
-  // nao valeria. `text-left` para o numero crescer para a direita dentro da
-  // caixa reservada, em vez de empurrar o "+" que vem antes dele.
-  const larguraReservada = `${value.toLocaleString("pt-BR").length}ch`;
+  // A reserva e uma COPIA INVISIVEL do valor final, e nao um calculo de largura.
+  //
+  // A primeira versao usava `minWidth: ${n}ch`, contando caracteres. Media errado:
+  // `ch` e a largura do glifo "0" PADRAO, e com `tabular-nums` o digito e cerca de
+  // 18% mais estreito. Medido em 390px: caixa reservada de 49,5px para um numero
+  // que ocupa 38,9px, ou seja **10,6px de espaco morto** entre o numero e a
+  // palavra seguinte, visivel em TODAS as larguras, inclusive no desktop, onde
+  // nao ha quebra nenhuma.
+  //
+  // Aqui quem define a largura e o proprio texto final, renderizado e medido pelo
+  // browser. Nao ha unidade a estimar e nao ha o que corrigir quando a fonte
+  // mudar. Mesmo principio dos skeletons da Novidades: derivar do que existe, em
+  // vez de calcular por fora.
+  //
+  // A copia e `aria-hidden` e o numero vivo fica sobreposto em `absolute`, entao
+  // leitor de tela le so uma vez. `tabular-nums` no pai continua necessario: sem
+  // ele "111" e "999" teriam larguras diferentes e o numero animado poderia
+  // estourar a caixa dimensionada pelo valor final.
+  const valorFinal = value.toLocaleString("pt-BR");
 
   return (
-    <motion.span
-      className="inline-block text-left tabular-nums"
-      style={{ minWidth: larguraReservada }}
-    >
-      {rounded}
-    </motion.span>
+    <span className="relative inline-block tabular-nums">
+      <span aria-hidden className="invisible">
+        {valorFinal}
+      </span>
+      <motion.span className="absolute inset-0 text-left">{rounded}</motion.span>
+    </span>
   );
 }
 
@@ -682,7 +696,31 @@ export default function Hero() {
             {usersCount !== null ? (
               <>
                 +<AnimatedCounter value={usersCount} targetRef={badgeRef} />{" "}
-                pessoas já encontraram seu caminho
+                pessoas{" "}
+                {/* Quebra DELIBERADA, e o limite e MEDIDO, nao um breakpoint do
+                    tema. Varrendo de 380 a 420 pixel a pixel, com o <br>
+                    desligado: em 394px a frase ocupa 2 linhas e em 395px cabe em
+                    1. Usar `sm:` (640px) faria o <br> aparecer em 430, 480 e 600,
+                    forcando duas linhas onde uma serve.
+
+                    O valor na classe e 395 e nao 394 porque foi conferido nas
+                    duas bordas com o <br> LIGADO: com `max-[394px]` o <br>
+                    passava a valer so a partir de 393 e sobrava exatamente uma
+                    largura (394) com a quebra acidental. Com `max-[395px]` o
+                    comportamento medido e o desejado -- 392, 393 e 394 com a
+                    quebra deliberada, 395 em diante numa linha so. O limite veio
+                    da medicao nas bordas, nao de aritmetica sobre o numero.
+
+                    Sem isto a quebra caia no meio da frase e mudava de lugar
+                    conforme a largura ("...encontraram / seu caminho" em 320 e
+                    390, "...seu / caminho" em 402), o que le como acidente. Aqui
+                    ela e sempre no mesmo ponto: o numero e a palavra que carrega
+                    a prova social ficam juntos na primeira linha.
+
+                    Se a copy encurtar a ponto de caber em 320px, este <br> sai e
+                    nada mais precisa mudar. */}
+                <br className="hidden max-[395px]:inline" />
+                já encontraram seu caminho
               </>
             ) : (
               "Já estão encontrando o caminho em tech"
