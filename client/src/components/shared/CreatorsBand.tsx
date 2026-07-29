@@ -88,8 +88,16 @@ function Chip({
 export default function CreatorsBand() {
   const reduce = useReducedMotion() ?? false;
 
+  // Sem `bnt-ancora` de proposito, e a ausencia e deliberada: esta faixa E o
+  // elemento sticky que compoe a faixa fixa do topo, entao ela vive em `top-16`
+  // e nunca sai de la. `scroll-margin-top` sobre ela nao teria efeito nenhum
+  // (medido: ancorar aqui deixa a secao em y=64 nas duas larguras, que e a
+  // posicao dela por construcao, nao um defeito). O `id` fica porque serve para
+  // referencia e teste; o que nao existe e a promessa de que ancorar aqui rola a
+  // pagina.
   return (
     <section
+      id="creators-de-tech"
       aria-label="Creators de conteúdo em tech"
       className="sticky top-16 z-40 overflow-hidden border-b-2 border-slate-950 bg-[#6b1fc9] py-2"
     >

@@ -214,7 +214,7 @@ function DicaCard() {
 
 export default function Novidades() {
   return (
-    <section aria-label="Novidades" className="bg-[#faf8f4] py-16 sm:py-20">
+    <section id="novidades" aria-label="Novidades" className="bnt-ancora bg-[#faf8f4] py-16 sm:py-20">
       <div className="container">
         <div className="mb-8 max-w-2xl">
           <h2 className="font-display text-3xl font-black text-slate-950">

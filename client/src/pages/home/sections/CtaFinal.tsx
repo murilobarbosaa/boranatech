@@ -358,7 +358,8 @@ function CtaFinalInteractive({ commandSet }: { commandSet: CommandSet }) {
 
   return (
     <section
-      className="relative overflow-hidden bg-[#faf8f4] py-20 md:py-28"
+      id="comece-agora"
+      className="bnt-ancora relative overflow-hidden bg-[#faf8f4] py-20 md:py-28"
       aria-labelledby="cta-final-title"
     >
       <MatrixBackground />

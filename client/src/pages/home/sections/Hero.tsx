@@ -637,8 +637,9 @@ export default function Hero() {
 
   return (
     <section
+      id="inicio"
       ref={sectionRef}
-      className="relative min-h-screen overflow-hidden bg-[#faf8f4] py-16 md:py-24"
+      className="bnt-ancora relative min-h-screen overflow-hidden bg-[#faf8f4] py-16 md:py-24"
       aria-labelledby="hero-headline"
     >
       <MapBackground sectionRef={sectionRef} />

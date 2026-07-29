@@ -90,7 +90,7 @@ const ITENS: Item[] = [
 
 export default function OQueEncontra() {
   return (
-    <section className="border-y-2 border-slate-950 bg-[#faf8f4] py-16 sm:py-20">
+    <section id="o-que-voce-encontra" className="bnt-ancora border-y-2 border-slate-950 bg-[#faf8f4] py-16 sm:py-20">
       <div className="container">
         <div className="mb-8 max-w-2xl">
           <p className="text-sm font-black uppercase tracking-[0.2em] text-violet-800">

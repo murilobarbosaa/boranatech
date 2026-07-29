@@ -14,7 +14,8 @@ export default function DorSolucao() {
 
   return (
     <section
-      className="relative overflow-hidden border-b-2 border-slate-950 bg-[#faf8f4] py-16 md:py-24"
+      id="talvez-seja-voce"
+      className="bnt-ancora relative overflow-hidden border-b-2 border-slate-950 bg-[#faf8f4] py-16 md:py-24"
       aria-labelledby="dor-solucao-title"
     >
       <div className="mx-auto max-w-4xl px-4 text-center">

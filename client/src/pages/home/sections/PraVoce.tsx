@@ -105,7 +105,7 @@ export default function PraVoce() {
   const curso2 = praVoceCursos[1];
 
   return (
-    <section className="relative overflow-hidden py-20 md:py-28 bg-[#f0f9ff]">
+    <section id="pra-ler-e-aprender" className="bnt-ancora relative overflow-hidden py-20 md:py-28 bg-[#f0f9ff]">
       <BackgroundDecoration />
 
       <div className="relative z-10 mx-auto max-w-6xl px-4">

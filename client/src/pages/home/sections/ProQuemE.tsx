@@ -42,7 +42,7 @@ export default function ProQuemE() {
   const totalAreas = areasCount;
 
   return (
-    <section className="relative overflow-hidden bg-white py-20 md:py-28">
+    <section id="o-que-e-bora-na-tech" className="bnt-ancora relative overflow-hidden bg-white py-20 md:py-28">
       <div className="relative z-10 mx-auto max-w-6xl px-4">
         <div className="text-center">
           <motion.p

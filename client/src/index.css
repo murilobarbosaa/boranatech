@@ -276,6 +276,40 @@
     box-shadow: 2px 2px 0 oklch(0.13 0.015 260);
   }
 
+  /* Faixa superior permanentemente ocupada pelo <header> fixed mais a
+     CreatorsBand sticky. Medido em Chrome real, nao estimado.
+
+     E a UNIAO das duas caixas, nao a soma das alturas. As duas se SOBREPOEM em
+     2px: o header ocupa [0..66] e a banda fica em `top-16` (64px), ou seja,
+     [64..122]. Somar as alturas (66 + 58) da 124 e conta o trecho 64..66 duas
+     vezes. O numero certo e a borda de baixo da banda.
+
+       largura   header      banda           uniao
+       390px     [0..66]     [64..122]       122px
+       1440px    [0..66]     [64..140.875]   141px  (arredondado para cima)
+
+     A banda muda de altura exatamente em 640px, o breakpoint `sm` (conferido em
+     639 e 640).
+
+     Existe como variavel, e nao como numero repetido em cada secao, porque o dia
+     em que o header ou a banda mudarem de altura o ajuste tem que ser em um
+     lugar so. Ancora que some atras do header e o sintoma classico desse numero
+     ter sido copiado e esquecido. */
+  :root {
+    --bnt-faixa-fixa: 122px;
+  }
+
+  @media (min-width: 640px) {
+    :root {
+      --bnt-faixa-fixa: 141px;
+    }
+  }
+
+  /* Alvo de ancoragem por hash. Aplicada nas secoes da home. */
+  .bnt-ancora {
+    scroll-margin-top: var(--bnt-faixa-fixa);
+  }
+
   .bnt-pressable {
     transform-origin: center;
     transition:

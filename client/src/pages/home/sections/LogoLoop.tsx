@@ -78,7 +78,7 @@ export default function LogoLoop() {
   const duplicatedLogos = [...LOGOS, ...LOGOS];
 
   return (
-    <section className="relative overflow-hidden py-10 md:py-14">
+    <section id="tecnologias" className="bnt-ancora relative overflow-hidden py-10 md:py-14">
       {/* Camada 1: gradient base cream → violet pastel.
           Topo cream conecta com a Hero, base violet conecta com o
           Mapa (que agora começa em violet-50 puro, sem cream). */}
