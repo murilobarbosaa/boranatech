@@ -67,6 +67,11 @@ type Props = Comum &
     | {
         variante: "pontos" | "listras";
         /**
+         * Opacidade da textura, em classe utilitaria (`opacity-25`). Faixa
+         * medida nas referencias: 0.30 a 0.35. Padrao `opacity-30`.
+         */
+        opacidade?: string;
+        /**
          * Cor da decoração, em classe utilitária de TEXTO (`text-violet-300`).
          *
          * `currentColor` é o que permite a malha e as listras usarem a cor sem
@@ -79,12 +84,19 @@ type Props = Comum &
       }
   );
 
-/** Malha de pontos: raio de 1.2px em grade de 32px. Medido em Mapa e PraVoce. */
-function Pontos({ acento }: { acento: string }) {
+/**
+ * Malha de pontos: raio de 1.2px em grade de 32px. Medido em Mapa e PraVoce.
+ *
+ * `opacidade` existe porque nem toda seção suporta o mesmo peso de textura: as
+ * referências medidas variam de 0.30 (PraVoce) a 0.35 (Mapa), e uma seção curta
+ * como a Novidades pede menos para não ganhar peso visual que ela não deve ter.
+ * O padrão é o valor do meio da faixa medida.
+ */
+function Pontos({ acento, opacidade }: { acento: string; opacidade: string }) {
   return (
     <div
       aria-hidden
-      className={cn("pointer-events-none absolute inset-0 opacity-30", acento)}
+      className={cn("pointer-events-none absolute inset-0", opacidade, acento)}
       style={{
         backgroundImage:
           "radial-gradient(circle, currentColor 1.2px, transparent 1.2px)",
@@ -161,7 +173,13 @@ export interface OrbSpec {
  */
 function Decoracao(props: Props) {
   if (props.variante === "glow") return <Glow orbs={props.orbs} />;
-  if (props.variante === "pontos") return <Pontos acento={props.acento} />;
+  if (props.variante === "pontos")
+    return (
+      <Pontos
+        acento={props.acento}
+        opacidade={props.opacidade ?? "opacity-30"}
+      />
+    );
   return <Listras acento={props.acento} />;
 }
 

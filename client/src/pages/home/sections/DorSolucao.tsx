@@ -42,14 +42,20 @@ export default function DorSolucao() {
   const reduce = useReducedMotion();
 
   return (
-    // Cream mantido: as vizinhas de cima (Novidades) e de baixo (OQueEncontra)
-    // tambem sao `#faf8f4` hoje, e as duas emendas medem delta 0. O `border-b-2`
-    // saiu porque a transicao passa a ser por cor de fundo, nao por traco: com as
-    // duas bases iguais, a borda era a UNICA coisa marcando o corte, e nenhuma
-    // das secoes de referencia usa borda de separacao.
+    // Cream mantido, e agora ele e o MEIO de uma alternancia, nao mais uma
+    // continuacao: Novidades (violet) -> DorSolucao (cream) -> OQueEncontra
+    // (off-white).
     //
-    // A emenda de baixo muda quando o OQueEncontra virar off-white; ela e tratada
-    // no commit proprio das emendas, nao aqui.
+    // ATENCAO A QUEM LER O HISTORICO: quando esta secao foi decorada, a
+    // justificativa da base era "as duas vizinhas sao cream, emendas com delta
+    // 0". As duas vizinhas mudaram de base logo em seguida, e as emendas #3 e #4
+    // passaram de 0 para a faixa de 5 a 10. **Isso e esperado e e o objetivo**,
+    // nao regressao: a alternancia so existe porque as bases passaram a diferir,
+    // e 5 a 10 e a mesma faixa de degrau que a pagina ja usava entre Mapa,
+    // PorOndeComecar e TurbineComIA antes deste trabalho.
+    //
+    // O `border-b-2` saiu porque a transicao passa a ser por cor de fundo, nao
+    // por traco. Nenhuma das secoes de referencia usa borda de separacao.
     <SecaoDecorada
       id="talvez-seja-voce"
       base="bg-[#faf8f4]"

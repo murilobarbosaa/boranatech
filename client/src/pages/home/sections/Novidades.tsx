@@ -8,6 +8,7 @@ import {
   Shuffle,
 } from "lucide-react";
 import { getNews, type NewsItem } from "@/services/contentApi";
+import SecaoDecorada from "../SecaoDecorada";
 
 // Bloco unico de "Novidades" no topo da home (logo apos o hero): reune as tres
 // atualizacoes reais (ultima noticia, proximos eventos e dica rapida) que antes
@@ -361,10 +362,32 @@ function DicaCard() {
 
 export default function Novidades() {
   return (
-    <section id="novidades" aria-label="Novidades" className="bnt-ancora bg-[#faf8f4] py-16 sm:py-20">
-      <div className="container">
+    // Violet tint, e e ele que abre a alternancia do topo: Hero cream ->
+    // Novidades violet -> DorSolucao cream -> OQueEncontra off-white.
+    //
+    // A malha fica em `opacity-25`, abaixo do `opacity-30` padrao usado no
+    // OQueEncontra. Esta secao e curta (a mais curta do bloco do topo) e textura
+    // no mesmo peso a faria pesar mais do que o papel dela na pagina.
+    //
+    // Sem eyebrow: esta secao nunca teve um. O `<h2>Novidades</h2>` e o titulo, e
+    // os rotulos "Ultima noticia" / "Proximos eventos" / "Dica rapida" sao dos
+    // CARDS, nao da secao. Inventar um eyebrow aqui seria escrever copy nova.
+    <SecaoDecorada
+      id="novidades"
+      base="bg-[#f5f3ff]"
+      variante="pontos"
+      acento="text-violet-300"
+      opacidade="opacity-25"
+      padding="py-16 md:py-24"
+      ariaLabelledBy="novidades-titulo"
+    >
+      <div className="container relative z-10">
         <div className="mb-8 max-w-2xl">
-          <h2 className="font-display text-3xl font-black text-slate-950">
+          <h2
+            id="novidades-titulo"
+            className="font-display font-black leading-[1.1] text-slate-950"
+            style={{ fontSize: "clamp(28px, 4vw, 38px)" }}
+          >
             Novidades
           </h2>
           <p className="mt-2 text-sm text-slate-600">
@@ -377,6 +400,6 @@ export default function Novidades() {
           <DicaCard />
         </div>
       </div>
-    </section>
+    </SecaoDecorada>
   );
 }
