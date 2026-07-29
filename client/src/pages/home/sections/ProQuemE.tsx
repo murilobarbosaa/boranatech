@@ -9,6 +9,33 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { areasCount } from "@/lib/countsGenerated";
+import SectionLabel from "@/components/shared/SectionLabel";
+import SecaoDecorada, {
+  VIEWPORT_ENTRADA,
+  type OrbSpec,
+} from "../SecaoDecorada";
+
+/**
+ * Dois orbs suaves, em base clara.
+ *
+ * Alfa entre 0.14 e 0.20: a faixa medida nas seções de referência de base clara
+ * (PraVoce usa 0.20 e 0.25). O Pro chega a 0.24, mas o fundo dele é escuro, onde
+ * o glow precisa de mais massa para aparecer.
+ */
+const ORBS: OrbSpec[] = [
+  {
+    posicao: "left-[6%] top-[10%]",
+    tamanho: "500px",
+    blur: "56px",
+    cor: "rgba(167, 139, 250, 0.20)",
+  },
+  {
+    posicao: "right-[4%] bottom-[8%]",
+    tamanho: "420px",
+    blur: "64px",
+    cor: "rgba(232, 121, 249, 0.14)",
+  },
+];
 
 // Copy desta secao e rascunho da Ana (texto final e dela).
 // TODO(Ana): revisar headline, personas e beneficios antes de publicar.
@@ -42,25 +69,42 @@ export default function ProQuemE() {
   const totalAreas = areasCount;
 
   return (
-    <section id="o-que-e-bora-na-tech" className="bnt-ancora relative overflow-hidden bg-white py-20 md:py-28">
+    // Base `#f5f3ff` e nao branco puro, e a escolha nao e de gosto: o LogoLoop
+    // logo acima termina num gradiente que vai de `#faf8f4` a `#f5f3ff` (medido),
+    // entao comecar exatamente em `#f5f3ff` faz a emenda desaparecer por
+    // construcao, sem borda para disfarcar o corte.
+    <SecaoDecorada
+      id="o-que-e-bora-na-tech"
+      base="bg-[#f5f3ff]"
+      variante="glow"
+      orbs={ORBS}
+    >
       <div className="relative z-10 mx-auto max-w-6xl px-4">
         <div className="text-center">
-          <motion.p
+          <motion.div
             initial={reduce ? false : { opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
+            viewport={VIEWPORT_ENTRADA}
             transition={{ duration: 0.5 }}
-            className="font-display text-xs md:text-sm font-black uppercase tracking-[0.2em] text-violet-700"
           >
-            O que é o Bora na Tech
-          </motion.p>
+            {/* SectionLabel como ESTRUTURA, tipografia da home por className.
+                O componente traz `tracking-[0.18em]` e nao traz `font-display`;
+                as nove secoes da home usam `font-display ... tracking-[0.2em]`.
+                Adotar o componente sem repor isso faria estas quatro divergirem
+                das outras nove, invertendo o problema em vez de resolver.
+                `justify-center` porque SectionLabel e flex, e `text-center` do
+                pai nao centraliza caixa flex. */}
+            <SectionLabel className="justify-center font-display text-xs md:text-sm tracking-[0.2em] text-violet-700">
+              O que é o Bora na Tech
+            </SectionLabel>
+          </motion.div>
           <motion.h2
             initial={reduce ? false : { opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
+            viewport={VIEWPORT_ENTRADA}
             transition={{ duration: 0.6, delay: 0.1 }}
             className="mt-4 font-display font-black text-slate-950 leading-[1.05]"
-            style={{ fontSize: "clamp(36px, 6vw, 68px)" }}
+            style={{ fontSize: "clamp(36px, 6vw, 72px)" }}
           >
             A bússola pra quem está começando{" "}
             <span className="text-violet-700">ou se sentindo perdido</span> na
@@ -69,7 +113,7 @@ export default function ProQuemE() {
           <motion.p
             initial={reduce ? false : { opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
+            viewport={VIEWPORT_ENTRADA}
             transition={{ duration: 0.5, delay: 0.2 }}
             className="mx-auto mt-6 max-w-2xl text-base md:text-lg font-medium text-slate-700"
           >
@@ -86,7 +130,7 @@ export default function ProQuemE() {
                 key={persona.title}
                 initial={reduce ? false : { opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
+                viewport={VIEWPORT_ENTRADA}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 className="rounded-2xl border-2 border-slate-950 bg-[#faf8f4] p-6 shadow-[4px_4px_0_#0f172a] transition-transform hover:-translate-y-1"
               >
@@ -112,7 +156,7 @@ export default function ProQuemE() {
         <motion.div
           initial={reduce ? false : { opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
+          viewport={VIEWPORT_ENTRADA}
           transition={{ duration: 0.5 }}
           className="mt-12 rounded-3xl border-2 border-slate-950 bg-amber-50 p-6 shadow-[4px_4px_0_#0f172a] md:p-10"
         >
@@ -141,7 +185,7 @@ export default function ProQuemE() {
         <motion.div
           initial={reduce ? false : { opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
+          viewport={VIEWPORT_ENTRADA}
           transition={{ duration: 0.5 }}
           className="mt-12 flex flex-col items-center gap-4 text-center"
         >
@@ -166,6 +210,6 @@ export default function ProQuemE() {
           </Link>
         </motion.div>
       </div>
-    </section>
+    </SecaoDecorada>
   );
 }
