@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import {
   ArrowRight,
@@ -36,34 +36,151 @@ const CARD_LABEL =
 const CARD_LINK =
   "mt-auto inline-flex w-fit items-center gap-1 pt-4 text-sm font-black text-violet-800 hover:underline";
 
-// Skeleton ESTRUTURAL: mesma caixa do card real (mesmo padding, raio, borda e
-// `min-h`), com blocos internos no lugar do label, do titulo, do texto e do
-// link. A altura passa a ser DERIVADA da mesma caixa, em vez de um `h-64` (256px)
-// escolhido a mao.
+// UM skeleton POR TIPO DE CARD, cada um espelhando o proprio card.
 //
-// O 256 nao correspondia a nenhuma altura real: medidas em Chrome real, os cards
-// dao 194 (noticia), 274 (eventos) e 202 (dica). O resultado era a secao encolher
-// 98px no mobile e crescer 18px no desktop quando o fetch chegava. Isso quase nao
-// pontuava CLS, porque a secao esta abaixo da dobra na carga, mas movia todas as
-// ancoras abaixo dela, que e o que a Demanda 3 precisa que fique parado.
+// O que havia antes era um `h-64` (256px) escolhido a mao, que nao correspondia a
+// nenhuma altura real: medidas em Chrome real, os cards dao 194 (noticia), 274
+// (eventos) e 224 (dica). A secao encolhia 98px no mobile e crescia 18px no
+// desktop quando o fetch chegava. Isso quase nao pontuava CLS, porque a secao
+// esta abaixo da dobra na carga, mas movia todas as ancoras abaixo dela.
 //
-// A borda fica `border-slate-200` (e nao a `border-slate-950` do card real) de
-// proposito: o skeleton deve ocupar o espaco certo sem se parecer com conteudo
-// pronto.
-function CardSkeleton() {
+// Um skeleton generico para os tres nao resolve, e isso foi medido: no desktop a
+// grade iguala tudo pela altura do mais alto e um valor unico basta, mas no
+// mobile os cards empilham com alturas genuinamente diferentes (194 noticia, 274
+// eventos, 224 dica) e nenhuma caixa unica bate com as tres. A tentativa com um
+// skeleton so trocou -98px por +92px: mesma amplitude, sinal invertido.
+//
+// Aqui cada skeleton tem as MESMAS linhas do card que substitui, na mesma caixa
+// (`CARD_BASE`, mesmo padding e raio), entao a altura reservada e derivada da
+// mesma estrutura em vez de escolhida a mao.
+//
+// Borda `border-slate-200` em vez da `border-slate-950` do card real de proposito:
+// ocupar o espaco certo sem se parecer com conteudo pronto.
+function SkeletonCaixa({ children }: { children: ReactNode }) {
   return (
     <div
       className={`${CARD_BASE} border-slate-200 motion-safe:animate-pulse`}
       aria-busy="true"
       aria-label="Carregando"
     >
-      <div className="mb-3 h-4 w-32 rounded bg-slate-200" />
-      <div className="h-5 w-full rounded bg-slate-200" />
-      <div className="mt-2 h-5 w-4/5 rounded bg-slate-200" />
-      <div className="mt-4 h-4 w-full rounded bg-slate-100" />
-      <div className="mt-2 h-4 w-2/3 rounded bg-slate-100" />
-      <div className="mt-auto h-4 w-24 rounded bg-slate-200" />
+      {children}
     </div>
+  );
+}
+
+/**
+ * Uma linha de texto falsa, com a altura DERIVADA da tipografia herdada.
+ *
+ * O `&nbsp;` faz o bloco ocupar exatamente um `line-height` do contexto em que
+ * esta, entao quem define a altura e a MESMA classe de tipografia do card real
+ * (`text-lg leading-snug`, `text-base leading-snug`, `text-sm`...). Nao ha pixel
+ * escrito a mao aqui, e nao ha o que atualizar quando a tipografia mudar: a
+ * altura acompanha sozinha.
+ *
+ * Era isso que faltava na versao anterior, que usava `h-6`, `h-5`, `h-[22px]` e
+ * ficava sistematicamente 14 a 20px curta por card.
+ */
+function SkeletonLinha({ w, tom = "bg-slate-200" }: { w: string; tom?: string }) {
+  return (
+    <div className={`${w} ${tom} rounded`} aria-hidden>
+      &nbsp;
+    </div>
+  );
+}
+
+// Espelha CARD_LABEL: `text-sm` com `mb-3`, e um icone de 16px que nao estoura a
+// linha de 20px.
+function SkeletonRotulo() {
+  return (
+    <div className="mb-3 text-sm">
+      <SkeletonLinha w="w-36" />
+    </div>
+  );
+}
+
+// Espelha CARD_LINK: `mt-auto` com `pt-4`, `text-sm`.
+function SkeletonLink() {
+  return (
+    <div className="mt-auto pt-4 text-sm">
+      <SkeletonLinha w="w-24" />
+    </div>
+  );
+}
+
+// Noticia: rotulo + titulo `h3.font-display.text-lg.leading-snug` + link.
+// Tres linhas: e o que o titulo de noticia ocupa em 390px (medido: 74px, tres
+// linhas de 24.7px). Titulo curto sobra, titulo longo falta -- ver o residuo
+// declarado no comentario do topo.
+function NoticiaSkeleton() {
+  return (
+    <SkeletonCaixa>
+      <SkeletonRotulo />
+      <div className="font-display text-lg leading-snug">
+        <SkeletonLinha w="w-full" />
+        <SkeletonLinha w="w-full" />
+        <SkeletonLinha w="w-3/5" />
+      </div>
+      <SkeletonLink />
+    </SkeletonCaixa>
+  );
+}
+
+// Eventos: rotulo + lista de 3 itens em `space-y-3`, cada item com nome
+// (`text-sm leading-snug`) e data (`mt-0.5 text-xs`) + link.
+//
+// E o unico dos tres cuja altura NAO depende de texto variavel: a lista e sempre
+// `slice(0, 3)`, e nome de evento cabe em uma linha nas medicoes feitas.
+function EventosSkeleton() {
+  return (
+    <SkeletonCaixa>
+      <SkeletonRotulo />
+      <div className="space-y-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i}>
+            <div className="text-sm leading-snug">
+              <SkeletonLinha w="w-full" />
+            </div>
+            {/* `leading-snug` sem `text-xs`, e os dois detalhes sao medidos.
+                No card real a data e um `inline-flex` dentro de um
+                `<a class="block">`: um elemento inline-level assenta numa caixa
+                de linha governada pelo contexto, e nao pelo `text-xs` dele
+                proprio. Copiar `text-xs` dava 16px e deixava o card 18px curto;
+                herdar a linha base dava 24px e passava 6px, quebrando o zero do
+                desktop. A caixa real mede 22px, que e `leading-snug` sobre a
+                fonte base. */}
+            <div className="mt-0.5 leading-snug">
+              <SkeletonLinha w="w-28" tom="bg-slate-100" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <SkeletonLink />
+    </SkeletonCaixa>
+  );
+}
+
+// Dica: rotulo + paragrafo `text-base leading-snug` + a faixa de acoes, que tem
+// um botao (`h-9` com padding proprio) e nao um link comum.
+//
+// Tres linhas e a mediana. A dica exibida e SORTEADA a cada carga
+// (`Math.random()` em DicaCard), entao a altura real deste card varia entre uma
+// visita e outra por desenho, e nenhuma reserva fixa acerta sempre.
+function DicaSkeleton() {
+  return (
+    <SkeletonCaixa>
+      <SkeletonRotulo />
+      <div className="font-display text-base leading-snug">
+        <SkeletonLinha w="w-full" />
+        <SkeletonLinha w="w-full" />
+        <SkeletonLinha w="w-3/5" />
+      </div>
+      <div className="mt-auto flex items-center gap-3 pt-4">
+        <div className="h-9 w-32 rounded-full bg-slate-200" aria-hidden />
+        <div className="text-sm">
+          <SkeletonLinha w="w-20" />
+        </div>
+      </div>
+    </SkeletonCaixa>
   );
 }
 
@@ -88,7 +205,7 @@ function NoticiaCard() {
     };
   }, []);
 
-  if (carregando) return <CardSkeleton />;
+  if (carregando) return <NoticiaSkeleton />;
   if (!item) return null;
 
   return (
@@ -138,7 +255,7 @@ function EventosCard() {
     };
   }, []);
 
-  if (proximos === null) return <CardSkeleton />;
+  if (proximos === null) return <EventosSkeleton />;
   if (proximos.length === 0) return null;
 
   return (
@@ -209,7 +326,7 @@ function DicaCard() {
     setIndice(proximo);
   }
 
-  if (dicas === null) return <CardSkeleton />;
+  if (dicas === null) return <DicaSkeleton />;
   const dica = dicas[indice];
   if (!dica) return null;
 
