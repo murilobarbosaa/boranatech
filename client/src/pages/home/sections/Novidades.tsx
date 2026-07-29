@@ -18,8 +18,17 @@ import { getNews, type NewsItem } from "@/services/contentApi";
 type Evento = (typeof import("@/lib/eventosData"))["eventos"][number];
 type Dica = (typeof import("@/lib/dicasData"))["dicas"][number];
 
+// Altura minima do card, a partir de `sm`.
+//
+// 274px e a altura MEDIDA do card mais alto (eventos) em Chrome real, e a partir
+// de `sm` a grade iguala todos por ela de qualquer jeito, entao reservar aqui nao
+// muda nada do layout final e elimina o salto. Abaixo de `sm` os cards empilham
+// com altura natural (medidas: 194, 274, 202), e forcar 274 nos tres custaria
+// cerca de 150px de espaco vazio numa secao que e curta de proposito.
+const CARD_MIN_H = "sm:min-h-[274px]";
+
 const CARD_BASE =
-  "flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[5px_5px_0_#0f172a]";
+  `flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[5px_5px_0_#0f172a] ${CARD_MIN_H}`;
 
 const CARD_LABEL =
   "mb-3 inline-flex w-fit items-center gap-2 text-sm font-black uppercase tracking-[0.2em]";
@@ -27,13 +36,34 @@ const CARD_LABEL =
 const CARD_LINK =
   "mt-auto inline-flex w-fit items-center gap-1 pt-4 text-sm font-black text-violet-800 hover:underline";
 
+// Skeleton ESTRUTURAL: mesma caixa do card real (mesmo padding, raio, borda e
+// `min-h`), com blocos internos no lugar do label, do titulo, do texto e do
+// link. A altura passa a ser DERIVADA da mesma caixa, em vez de um `h-64` (256px)
+// escolhido a mao.
+//
+// O 256 nao correspondia a nenhuma altura real: medidas em Chrome real, os cards
+// dao 194 (noticia), 274 (eventos) e 202 (dica). O resultado era a secao encolher
+// 98px no mobile e crescer 18px no desktop quando o fetch chegava. Isso quase nao
+// pontuava CLS, porque a secao esta abaixo da dobra na carga, mas movia todas as
+// ancoras abaixo dela, que e o que a Demanda 3 precisa que fique parado.
+//
+// A borda fica `border-slate-200` (e nao a `border-slate-950` do card real) de
+// proposito: o skeleton deve ocupar o espaco certo sem se parecer com conteudo
+// pronto.
 function CardSkeleton() {
   return (
     <div
-      className="h-64 rounded-2xl border-2 border-slate-200 bg-white motion-safe:animate-pulse"
+      className={`${CARD_BASE} border-slate-200 motion-safe:animate-pulse`}
       aria-busy="true"
       aria-label="Carregando"
-    />
+    >
+      <div className="mb-3 h-4 w-32 rounded bg-slate-200" />
+      <div className="h-5 w-full rounded bg-slate-200" />
+      <div className="mt-2 h-5 w-4/5 rounded bg-slate-200" />
+      <div className="mt-4 h-4 w-full rounded bg-slate-100" />
+      <div className="mt-2 h-4 w-2/3 rounded bg-slate-100" />
+      <div className="mt-auto h-4 w-24 rounded bg-slate-200" />
+    </div>
   );
 }
 
