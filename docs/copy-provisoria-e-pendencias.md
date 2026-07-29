@@ -9,97 +9,130 @@ o episódio (o checklist de smoke test que perdeu 3 dos 11 passos exatamente
 durante o deploy que ele existia para validar), e a contramedida é esta: se não
 está em arquivo commitado, não existe.
 
-Duas frentes aqui, e elas não se misturam:
+---
 
-1. **Copy provisória** que já está em produção e precisa de revisão editorial.
-2. **Pendências da frente de billing**, com prazo, para não virarem dívida sem dono.
+## ⚠️ A copy provisória JÁ ESTÁ NO AR
+
+Não é "vai para produção no próximo deploy". **Foi para produção em
+2026-07-28.**
+
+O motivo é que **push para a `main` é deploy**: não há workflow de deploy no
+repositório (só `ci.yml`) e o `vercel.json` não tem `ignoreCommand`, então as
+integrações de GitHub da Vercel e do Railway sobem sozinhas a cada push. Isso
+está detalhado na seção 4.
+
+Linha do tempo medida:
+
+| Instante (UTC) | Instante (BRT) | Evento | Como foi medido |
+| --- | --- | --- | --- |
+| 2026-07-28T23:06:01Z | 20:06:01 | `e9a8249` (auth + os 33 `TODO(Ana)`) chega na `main` | `created_at` da run de CI da `main` |
+| ~23:06 a 23:15 | ~20:06 a 20:15 | Vercel e Railway sobem, cada um no seu tempo (deploy não é atômico) | — |
+| 2026-07-28T23:15:40Z | 20:15:40 | **Primeira prova de que a copy nova está servindo**: duas linhas em `user_consents` gravadas com `consent_method = 'signup_wrap_implicit'`, valor que só o código novo escreve | consulta ao banco de produção |
+
+Ou seja: **a partir de 2026-07-28 20:15 BRT, no mais tardar, toda pessoa que
+passa pelo login, pelo retorno do OAuth ou pela tela de boas-vindas está lendo
+os textos abaixo.** A revisão editorial não é preparação para um deploy futuro,
+é correção de algo que já está publicado.
 
 ---
 
 ## 1. Copy provisória: 33 marcadores `TODO(Ana)`
 
-Todos entraram na `main` no merge do consentimento e **já estão no ar**. Nenhum
-é placeholder tipo "lorem ipsum": todos têm texto funcional escrito, que serve
-enquanto não houver revisão. O pedido é revisão editorial, não preenchimento de
-vazio.
+Nenhum é placeholder vazio tipo "lorem ipsum": todos têm texto funcional
+escrito, que serve enquanto não houver revisão. O pedido é revisão editorial.
+
+**Ordem das seções: por alcance, do maior para o menor.** Quem revisar de cima
+para baixo corrige primeiro o que mais gente lê.
 
 **Como ler a coluna "visível":**
 
-- **Sim** — a pessoa lê na tela, em condição normal ou de erro.
-- **Corpo da resposta** — a string vai no JSON da API e aparece em DevTools,
-  log e Sentry, mas **a interface não a renderiza**: o cliente monta a própria
+- **Sim** — a pessoa lê na tela.
+- **Corpo da resposta** — a string vai no JSON da API e aparece em DevTools, log
+  e Sentry, mas **a interface não a renderiza**: o cliente monta a própria
   mensagem. Conferido em `client/src/services/consentService.ts`
   (`attemptRecord` lança `Erro ao registrar consentimento (HTTP ${res.status})`,
   sem ler o campo `message` do servidor) e em `ConsentGate.tsx`, que exibe texto
   próprio no `submitError`.
 
-### 1.1. `client/src/components/auth/AuthCallbackGate.tsx` (3)
+### 1.1. Fluxo de login e cadastro — alcance máximo
 
-Tela cheia no retorno do login social, quando a sessão não pôde ser confirmada.
-Fica acima do `ConsentGate` na árvore, então substitui a página inteira.
+Todo mundo que entra na plataforma passa por aqui.
+
+#### `client/src/pages/Auth.tsx` (1)
 
 | Linha | Texto atual | Onde aparece | Visível |
 | --- | --- | --- | --- |
-| 44 | "Confirmando seu login, só um instante..." | Espera longa no retorno do OAuth (mensagem de progresso, não de erro) | Sim |
-| 85 | "Tentar novamente" / "Verificando..." | Botão primário do aviso de callback | Sim |
-| 98 | "Fazer login novamente" | Link secundário, recomeça o login do zero | Sim |
+| 231 | "Criar minha conta" / "Entrar" / "Processando..." | Botão de submit do formulário. O cadastro agora leva a `/bem-vindo` | Sim |
 
-### 1.2. `client/src/components/auth/authCallbackMessages.ts` (5)
+#### `client/src/components/consent/ConsentGate.tsx` (12)
 
-Título e texto de cada desfecho de retorno de OAuth. Renderizados pelo
-`AuthCallbackGate`.
+Modal bloqueante. Aparece para **qualquer pessoa logada** que ainda não tenha
+aceite registrado na versão atual dos documentos, em qualquer rota não
+allowlistada. É a tela que mais gente encontra depois do login, e ela não tem
+botão de fechar.
+
+| Linha | Texto atual | Onde aparece | Visível |
+| --- | --- | --- | --- |
+| 316 | "Antes de continuar" | Título do modal bloqueante | Sim |
+| 320 | "Para usar a plataforma, precisamos do seu aceite dos documentos abaixo." | Texto explicativo | Sim |
+| 334 | "Li e aceito os **Termos de Uso**." | Rótulo da checkbox de termos | Sim |
+| 356 | "Li e aceito a **Política de Privacidade**." | Rótulo da checkbox de privacidade | Sim |
+| 385 | "Aceitar e continuar" / "Processando..." | Botão primário | Sim |
+| 394 | "Recusar e sair da conta" | Recusa explícita | Sim |
+| 374 | "Não foi possível registrar seu aceite. Tente novamente." | Erro ao gravar o aceite | Sim |
+| 250 | "Registrando seu aceite, só um instante..." | Espera pela gravação vinda do cadastro | Sim |
+| 277 | "Não foi possível verificar sua conta" | Título do estado de falha de verificação | Sim |
+| 281 | "Tivemos um problema para confirmar seus dados. Verifique sua conexão e tente novamente." | Texto do estado de falha | Sim |
+| 291 | "Tentar novamente" | Retry no estado de falha | Sim |
+| 299 | "Sair da conta" | Saída no estado de falha | Sim |
+
+### 1.2. Retorno do login social (callback) — alcance médio
+
+Só quem usa login social **e** cai num desfecho não conclusivo. Menos gente que
+o grupo acima, mas é exatamente a tela de quem já está com problema, então o
+texto errado aqui custa caro.
+
+#### `client/src/components/auth/authCallbackMessages.ts` (5)
 
 | Linha | Texto atual | Onde aparece | Visível |
 | --- | --- | --- | --- |
 | 16 | "Não foi possível concluir seu login" / "O login com o Google não foi concluído. Isso costuma ser temporário: tente novamente." | Fallback genérico, qualquer `error_code` desconhecido | Sim |
+| 53 | "Não foi possível confirmar sua sessão" / "Sua conexão demorou mais que o esperado e não conseguimos confirmar seu login. Nada foi perdido: tente novamente." | Sessão não confirmada no limite (não houve recusa do provider) | Sim |
 | 24 | "Login cancelado" / "Você fechou a tela do Google antes de concluir. Pode tentar de novo quando quiser." | `access_denied` | Sim |
 | 30 | "Este link expirou" / "Links de acesso têm validade curta. Faça o login novamente." | `otp_expired` | Sim |
 | 35 | "Não conseguimos validar seu login" / "O login parece ter começado em outro navegador ou aplicativo. Tente novamente nesta mesma janela." | `bad_oauth_state` | Sim |
-| 53 | "Não foi possível confirmar sua sessão" / "Sua conexão demorou mais que o esperado e não conseguimos confirmar seu login. Nada foi perdido: tente novamente." | Sessão não confirmada dentro do limite (não houve recusa do provider) | Sim |
 
-### 1.3. `client/src/components/consent/ConsentGate.tsx` (12)
+#### `client/src/components/auth/AuthCallbackGate.tsx` (3)
 
-Modal bloqueante de consentimento e seus estados de espera e falha. Só aparece
-para quem está logado.
+Tela cheia: substitui a página inteira enquanto está ativa.
 
 | Linha | Texto atual | Onde aparece | Visível |
 | --- | --- | --- | --- |
-| 250 | "Registrando seu aceite, só um instante..." | Espera pela gravação do aceite vinda do cadastro | Sim |
-| 277 | "Não foi possível verificar sua conta" | Título do estado de falha de verificação | Sim |
-| 281 | "Tivemos um problema para confirmar seus dados. Verifique sua conexão e tente novamente." | Texto do estado de falha | Sim |
-| 291 | "Tentar novamente" | Botão de retry no estado de falha | Sim |
-| 299 | "Sair da conta" | Saída no estado de falha | Sim |
-| 316 | "Antes de continuar" | Título do modal bloqueante | Sim |
-| 320 | "Para usar a plataforma, precisamos do seu aceite dos documentos abaixo." | Texto explicativo do modal | Sim |
-| 334 | "Li e aceito os **Termos de Uso**." | Rótulo da checkbox de termos | Sim |
-| 356 | "Li e aceito a **Política de Privacidade**." | Rótulo da checkbox de privacidade | Sim |
-| 374 | "Não foi possível registrar seu aceite. Tente novamente." | Erro ao gravar o aceite | Sim |
-| 385 | "Aceitar e continuar" / "Processando..." | Botão primário do modal | Sim |
-| 394 | "Recusar e sair da conta" | Recusa explícita | Sim |
+| 44 | "Confirmando seu login, só um instante..." | Espera longa no retorno do OAuth. Mensagem de progresso, não de erro | Sim |
+| 85 | "Tentar novamente" / "Verificando..." | Botão primário do aviso | Sim |
+| 98 | "Fazer login novamente" | Link secundário, recomeça o login do zero | Sim |
 
-### 1.4. `client/src/pages/Auth.tsx` (1)
+### 1.3. Boas-vindas — alcance menor
+
+Só quem acabou de criar conta, e uma vez só.
+
+#### `client/src/pages/BemVindo.tsx` (9)
 
 | Linha | Texto atual | Onde aparece | Visível |
 | --- | --- | --- | --- |
-| 231 | "Criar minha conta" / "Entrar" / "Processando..." | Botão de submit do formulário de cadastro e login (o cadastro agora leva a `/bem-vindo`) | Sim |
-
-### 1.5. `client/src/pages/BemVindo.tsx` (9)
-
-Primeira tela depois do cadastro.
-
-| Linha | Texto atual | Onde aparece | Visível |
-| --- | --- | --- | --- |
-| 12 | Lista `PRO_BENEFICIOS` inteira (7 itens) | Grade de benefícios do bloco Pro; a nota pede revisão de títulos e ordem | Sim |
-| 18 | "Plano de carreira" | Um item da grade, marcado individualmente para validação de rótulo | Sim |
-| 122 | "Boas vindas ao **Bora na Tech!**" / "Sua conta tá pronta. Vamos te mostrar o caminho do primeiro passo até a primeira vaga." | Título e subtítulo da página | Sim |
-| 152 | "Aceito receber e-mails com novidades e promoções do Bora na Tech. Dá pra mudar isso no perfil quando quiser." | Consentimento promocional (card dispensável, nunca bloqueia) | Sim |
+| 122 | "Boas vindas ao **Bora na Tech!**" / "Sua conta tá pronta. Vamos te mostrar o caminho do primeiro passo até a primeira vaga." | Título e subtítulo | Sim |
 | 167 | "Primeiros passos" | Botão primário | Sim |
 | 175 | "Leva a um passo a passo rápido pra te situar." | Linha discreta sob o botão | Sim |
 | 182 | "Explorar por conta própria" | Link secundário | Sim |
+| 152 | "Aceito receber e-mails com novidades e promoções do Bora na Tech. Dá pra mudar isso no perfil quando quiser." | Consentimento promocional. Card dispensável, nunca bloqueia | Sim |
 | 200 | "Bora na Tech Pro" / "Tudo que acelera sua entrada em TI, com IA:" | Nome e chamada do bloco Pro | Sim |
+| 12 | Lista `PRO_BENEFICIOS` inteira (7 itens) | Grade de benefícios; a nota pede revisão de títulos e ordem | Sim |
+| 18 | "Plano de carreira" | Um item da grade, marcado para validação de rótulo | Sim |
 | 229 | "Conhecer o Pro" | Link para `/planos` | Sim |
 
-### 1.6. `server/routes/consent.ts` (3)
+### 1.4. Não renderizados
+
+#### `server/routes/consent.ts` (3)
 
 | Linha | Texto atual | Onde aparece | Visível |
 | --- | --- | --- | --- |
@@ -107,16 +140,14 @@ Primeira tela depois do cadastro.
 | 207 | "Não foi possível registrar o consentimento. Tente novamente." | `500 consent_write_failed` | Corpo da resposta |
 | 234 | "Não foi possível confirmar o registro do consentimento. Tente novamente." | `500 consent_readback_failed` | Corpo da resposta |
 
-### 1.7. Resumo
+### 1.5. Resumo
 
-| Grupo | Marcadores | Visíveis na tela | Só no corpo da resposta |
+| Grupo | Marcadores | Na tela | Só no corpo da resposta |
 | --- | --- | --- | --- |
-| `AuthCallbackGate.tsx` | 3 | 3 | 0 |
-| `authCallbackMessages.ts` | 5 | 5 | 0 |
-| `ConsentGate.tsx` | 12 | 12 | 0 |
-| `Auth.tsx` | 1 | 1 | 0 |
-| `BemVindo.tsx` | 9 | 9 | 0 |
-| `server/routes/consent.ts` | 3 | 0 | 3 |
+| Login e cadastro (`Auth.tsx`, `ConsentGate.tsx`) | 13 | 13 | 0 |
+| Callback (`authCallbackMessages.ts`, `AuthCallbackGate.tsx`) | 8 | 8 | 0 |
+| Boas-vindas (`BemVindo.tsx`) | 9 | 9 | 0 |
+| Backend (`server/routes/consent.ts`) | 3 | 0 | 3 |
 | **Total** | **33** | **30** | **3** |
 
 Para reconferir o total a qualquer momento, sem confiar nesta tabela:
@@ -140,7 +171,7 @@ Ela **não está em produção** e **não é mais fast-forward**.
 
 | # | Pendência | Estado em 2026-07-28 |
 | --- | --- | --- |
-| 1 | **Rebase sobre a `main`** | Necessário: a branch ficou 10 commits atrás quando auth, hero counter e Dicas entraram. Não foi feito de propósito, para não reescrever a branch sem decisão. |
+| 1 | **Rebase sobre a `main`** | Necessário: a branch ficou atrás quando auth, hero counter e Dicas entraram. Não foi feito de propósito, para não reescrever a branch sem decisão. |
 | 2 | **5 migrations não aplicadas** | `20260728190000_create_billing_failed_payments`, `20260728200000_create_stripe_customers`, `20260728210000_create_payment_recovery_emails`, `20260728220000_schedule_payment_recovery`, `20260728230000_add_episodio_to_payment_recovery_emails` |
 | 3 | **`scripts/backfillStripeCustomers.mjs` nunca executado** | Tem dry-run por padrão e exige `--confirm`. Nenhuma execução real registrada. |
 | 4 | **Aviso das 3 tabelas na `main`** | `check:migrations` reporta `payment_recovery_emails, stripe_customers, billing_failed_payments` expostas pelo PostgREST e não declaradas. Some sozinho quando a billing entrar. |
@@ -158,12 +189,13 @@ conhecida e temporária. **O risco não é o aviso, é o aviso virar paisagem.**
 Depois de algumas semanas ninguém lê mais, e o dia em que ele mudar de conteúdo
 não vai chamar atenção de ninguém.
 
-### 2.3. Prazo
+### 2.3. Prazo: 2026-07-31
 
-**Proposta, pendente de confirmação: subir a billing até 2026-07-31.**
+**Confirmado em 2026-07-28.** Três dias, coerente com "branch de dias, não de
+semanas" do CLAUDE.md.
 
-Três dias, coerente com "branch de dias, não de semanas" do CLAUDE.md. Se a data
-não for viável, a decisão a tomar não é adiar em silêncio, e sim uma destas:
+Se a data não for cumprida, a decisão a tomar não é adiar em silêncio, e sim uma
+destas:
 
 - **Adiar com data nova escrita aqui**, no mesmo commit que muda a data.
 - **Transformar o aviso em erro temporário** no `check:migrations`, com a data de
@@ -171,8 +203,7 @@ não for viável, a decisão a tomar não é adiar em silêncio, e sim uma desta
 
 ### 2.4. Ordem de deploy quando ela subir
 
-Vale repetir aqui porque o merge da billing dispara deploy automático (ver
-seção 3):
+Vale repetir aqui porque o merge da billing dispara deploy automático (seção 4):
 
 1. rebase sobre a `main` e CI verde;
 2. merge fast-forward e push (**isto já deploya**);
@@ -188,14 +219,36 @@ Conferir a janela de migration destrutiva antes.
 
 ---
 
-## 3. Push para a `main` deploya. Não existe passo manual.
+## 3. Achado de design não endereçado: a sombra flat não é universal
+
+Medido em 2026-07-28 durante a auditoria da home, em Chrome real.
+
+O CLAUDE.md lista `shadow-[5px_5px_0_#0f172a]` como sombra flat do design
+system, mas o `box-shadow` computado dos cards principais da home vem `none` ou
+totalmente transparente. A sombra aparece em badges e pills (o badge do
+`DorSolucao` usa `shadow-[3px_3px_0_#0f172a]`), não nos cards.
+
+**Decisão de 2026-07-28: NÃO retro-aplicar.** O achado é real, mas padronizar
+sombra em toda a home é tarefa própria, com seu próprio risco visual, e
+misturá-la ao trabalho de fundo decorado faria o diff contar duas histórias.
+Fica registrado aqui para não se perder.
+
+Na mesma linha, e pelo mesmo motivo, ficaram fora do escopo daquele trabalho:
+
+- **retrofit do container canônico** nas seções que não o wrapper novo;
+- **conversão dos sítios de `viewport={{ margin: "-100px" }}`** para o preset do
+  wrapper novo.
+
+---
+
+## 4. Push para a `main` deploya. Não existe passo manual.
 
 Medido em 2026-07-28, e registrado aqui porque muda o significado de "fazer
 merge".
 
 Não há workflow de deploy no `.github/workflows/` (só `ci.yml`), e o
-`vercel.json` não tem `ignoreCommand`. O deploy vem das integrações de
-GitHub da Vercel e do Railway, que sobem sozinhas a cada push na `main`.
+`vercel.json` não tem `ignoreCommand`. O deploy vem das integrações de GitHub da
+Vercel e do Railway, que sobem sozinhas a cada push na `main`.
 
 A medição, por endpoint que DECLARA o estado, em amostra única (nunca por
 frequência, ver CLAUDE.md):
@@ -208,5 +261,9 @@ curl -s https://api.boranatech.com.br/api/health
 `uptime` de 36 segundos logo após o push confirma que o processo tinha acabado
 de subir.
 
-**Consequência prática:** `git push origin main` é um deploy de produção. Todo
-merge para a `main` deve ser tratado como tal, inclusive na escolha do horário.
+**Consequências práticas:**
+
+- `git push origin main` é um deploy de produção. Todo merge para a `main` deve
+  ser tratado como tal, inclusive na escolha do horário.
+- Não existe janela entre "mergear" e "publicar" para revisar o resultado. A
+  revisão tem que acontecer **antes** do merge, na branch.
