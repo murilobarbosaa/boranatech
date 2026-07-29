@@ -1,6 +1,9 @@
 import { Link } from "wouter";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 
+import SectionLabel from "@/components/shared/SectionLabel";
+import SecaoDecorada from "../SecaoDecorada";
+
 // Secao "o que voce encontra": lista escaneavel das principais coisas do site,
 // com marcacao clara de Gratis vs Pro. So itens que existem de verdade (rotas
 // reais em App.tsx). Pro = ferramentas de IA com requiresPro:true no server
@@ -90,13 +93,33 @@ const ITENS: Item[] = [
 
 export default function OQueEncontra() {
   return (
-    <section id="o-que-voce-encontra" className="bnt-ancora border-y-2 border-slate-950 bg-[#faf8f4] py-16 sm:py-20">
-      <div className="container">
+    // Off-white `#fafaf9`, e a base separa esta secao da DorSolucao logo acima,
+    // que fica em cream. O par `#faf8f4 -> #fafaf9` e o mesmo vocabulario de
+    // degrau que a pagina ja usa entre Mapa, PorOndeComecar e TurbineComIA
+    // (medido: delta 10 em tres emendas pre-existentes).
+    //
+    // O `border-y-2 border-slate-950` saiu dos DOIS lados. Ele era a muleta que
+    // marcava o corte quando as bases eram identicas; com bases diferentes a
+    // transicao acontece por cor, como nas secoes de referencia, que nao usam
+    // borda de separacao nenhuma.
+    <SecaoDecorada
+      id="o-que-voce-encontra"
+      base="bg-[#fafaf9]"
+      variante="pontos"
+      acento="text-violet-300"
+    >
+      <div className="container relative z-10">
         <div className="mb-8 max-w-2xl">
-          <p className="text-sm font-black uppercase tracking-[0.2em] text-violet-800">
+          {/* Eyebrow CORRIGIDO: faltava `font-display`, e era a unica divergencia
+              de familia tipografica entre os eyebrows da home (as outras nove
+              usam Space Grotesk; esta renderizava em Plus Jakarta Sans). */}
+          <SectionLabel className="font-display text-xs md:text-sm tracking-[0.2em] text-violet-800">
             O que você encontra
-          </p>
-          <h2 className="mt-2 font-display text-3xl font-black text-slate-950 sm:text-4xl">
+          </SectionLabel>
+          <h2
+            className="mt-2 font-display font-black leading-[1.05] text-slate-950"
+            style={{ fontSize: "clamp(30px, 5vw, 56px)" }}
+          >
             Tudo pra começar na tech, num lugar só
           </h2>
           <p className="mt-3 text-lg text-slate-600">
@@ -148,6 +171,6 @@ export default function OQueEncontra() {
           ))}
         </ul>
       </div>
-    </section>
+    </SecaoDecorada>
   );
 }
