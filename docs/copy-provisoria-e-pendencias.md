@@ -241,6 +241,61 @@ Na mesma linha, e pelo mesmo motivo, ficaram fora do escopo daquele trabalho:
 
 ---
 
+## 3-bis. Achados medidos em 2026-07-28, registrados sem correção
+
+### a) CLS residual de 0.015 no desktop, por volta de 3.8s
+
+Um `span.relative.isolate.inline-block.px-3.py-1` dentro do Hero produz uma
+entrada de `layout-shift` de 0.01504 em 1440px, cerca de 3.8s depois da carga.
+**Aparece nos dois modos de movimento**, inclusive com `prefers-reduced-motion:
+reduce`, então não é animação de entrada. Também aparece no código anterior ao
+contador do hero (medido em 0.01517), o que descarta relação com aquele trabalho.
+
+Suspeita não verificada: troca de fonte, ou alguma alternância no headline.
+**Não investigado de propósito**, registrado para não virar achado perdido.
+
+### b) `tracking-[0.18em]` do `SectionLabel` contra `tracking-[0.2em]` da home
+
+`client/src/components/shared/SectionLabel.tsx` renderiza `text-xs font-black
+uppercase tracking-[0.18em]`, sem `font-display`. As 9 seções da home que têm
+eyebrow usam `font-display text-xs md:text-sm font-black uppercase
+tracking-[0.2em]`.
+
+Ao adotar o `SectionLabel` na home, a tipografia da home é passada por
+`className` para o renderizado continuar igual ao das outras seções. **Unificar
+os dois valores em toda a aplicação é decisão separada**, com impacto fora da
+home, e não foi tomada aqui.
+
+### c) A reflow da Novidades não pontuava CLS, e isso quase a escondeu
+
+O skeleton de altura fixa da Novidades movia a seção em 98px, e mesmo assim a
+métrica de CLS marcava praticamente zero, porque a seção está **abaixo da dobra**
+quando o fetch chega, e deslocamento fora do viewport não pontua.
+
+É a mesma classe que o CLAUDE.md cataloga: **um instrumento reportando sucesso
+sobre uma superfície menor que a do problema.** O CLS estava certo sobre o que
+mede (o que o usuário vê pular na carga) e cego para o que importava aqui (todas
+as âncoras abaixo mudando de lugar). Quem olhasse só o CLS concluiria que não
+havia nada a corrigir.
+
+A lição prática: para ancoragem e scroll spy a métrica é **estabilidade de
+posição das seções**, não CLS. São perguntas diferentes.
+
+### d) O `check:hero-counter` compara com uma constante que envelhece
+
+O script assume `HERO_COUNTER_VALUE = "2776"` por padrão e semeia o
+`localStorage` com ele, dizendo no comentário que assim não depende do backend.
+**Não é verdade quando o backend responde**: em desenvolvimento o dev server fala
+com a API real, o valor volta do servidor e sobrescreve a semente. Em 2026-07-28 a
+contagem real já era **2922**, e o script reprovou as 26 amostras por isso, não
+por defeito da página (`HERO_COUNTER_VALUE=2922` passa as 26).
+
+Não corrigido. A correção honesta é o script LER o valor servido e conferir
+estabilidade e ausência de zero, em vez de comparar com uma constante escrita à
+mão que envelhece sozinha.
+
+---
+
 ## 4. Push para a `main` deploya. Não existe passo manual.
 
 Medido em 2026-07-28, e registrado aqui porque muda o significado de "fazer
