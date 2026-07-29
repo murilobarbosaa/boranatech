@@ -72,6 +72,22 @@ type Props = Comum &
          */
         opacidade?: string;
         /**
+         * Espacamento da grade de pontos. Padrao `32px 32px`, o valor medido em
+         * Mapa e PraVoce.
+         *
+         * Existe por causa de uma adjacencia: o LogoLoop usa a MESMA tecnica, na
+         * MESMA cor (violet-300), em grade de 28px. Contra os 32px padrao a
+         * diferenca e de 12,5%, abaixo do que o olho separa, e as duas secoes
+         * liam como uma faixa texturizada unica em vez de duas secoes. Medido no
+         * screenshot da emenda.
+         *
+         * Testado: trocar a COR nao resolve (violet-300 e slate-300 em opacidade
+         * 0.30 sobre base clara sao indistinguiveis). Trocar o ESPACAMENTO
+         * resolve, e e o unico eixo que resolve sem mexer em cor, opacidade ou
+         * base.
+         */
+        grade?: string;
+        /**
          * Cor da decoração, em classe utilitária de TEXTO (`text-violet-300`).
          *
          * `currentColor` é o que permite a malha e as listras usarem a cor sem
@@ -92,7 +108,15 @@ type Props = Comum &
  * como a Novidades pede menos para não ganhar peso visual que ela não deve ter.
  * O padrão é o valor do meio da faixa medida.
  */
-function Pontos({ acento, opacidade }: { acento: string; opacidade: string }) {
+function Pontos({
+  acento,
+  opacidade,
+  grade,
+}: {
+  acento: string;
+  opacidade: string;
+  grade: string;
+}) {
   return (
     <div
       aria-hidden
@@ -100,7 +124,7 @@ function Pontos({ acento, opacidade }: { acento: string; opacidade: string }) {
       style={{
         backgroundImage:
           "radial-gradient(circle, currentColor 1.2px, transparent 1.2px)",
-        backgroundSize: "32px 32px",
+        backgroundSize: grade,
       }}
     />
   );
@@ -178,6 +202,7 @@ function Decoracao(props: Props) {
       <Pontos
         acento={props.acento}
         opacidade={props.opacidade ?? "opacity-30"}
+        grade={props.grade ?? "32px 32px"}
       />
     );
   return <Listras acento={props.acento} />;

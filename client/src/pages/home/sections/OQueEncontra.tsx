@@ -107,6 +107,11 @@ export default function OQueEncontra() {
       base="bg-[#fafaf9]"
       variante="pontos"
       acento="text-violet-300"
+      // 56px contra os 32px padrao. O LogoLoop, vizinho de baixo, usa a mesma
+      // tecnica na mesma cor em grade de 28px; com 32 as duas malhas liam como
+      // uma faixa continua. Medido: 56px separa as duas por densidade, sem borda
+      // e sem mexer em cor, opacidade ou base. O LogoLoop nao foi tocado.
+      grade="56px 56px"
     >
       <div className="container relative z-10">
         <div className="mb-8 max-w-2xl">
