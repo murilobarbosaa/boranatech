@@ -189,13 +189,27 @@ conhecida e temporária. **O risco não é o aviso, é o aviso virar paisagem.**
 Depois de algumas semanas ninguém lê mais, e o dia em que ele mudar de conteúdo
 não vai chamar atenção de ninguém.
 
-### 2.3. Prazo: 2026-07-31
+### 2.3. Prazo: 2026-08-01
 
-**Confirmado em 2026-07-28.** Três dias, coerente com "branch de dias, não de
-semanas" do CLAUDE.md.
+**Adiado de 2026-07-31 para 2026-08-01 em 2026-07-29**, por ato deliberado e não
+por esquecimento, que é a única forma de mudança de prazo que este documento
+aceita.
 
-Se a data não for cumprida, a decisão a tomar não é adiar em silêncio, e sim uma
-destas:
+Os dois motivos, medidos:
+
+1. **A branch afastou.** Quando o prazo foi marcado ela estava 10 commits atrás da
+   `main`; com o trabalho de design da home ela ficou 15. O rebase, o CI verde, o
+   merge-deploy, as 5 migrations aplicadas à mão, o `check:migrations`, a decisão
+   sobre o `backfillStripeCustomers.mjs` e o smoke não cabem em dois dias com
+   folga para dar errado.
+2. **Conflito de janela.** O deploy visual da home ficou marcado para
+   **2026-07-30, 05h-09h BRT**, e duas dessas migrations (`schedule_payment_recovery`
+   mexe em `cron.schedule`, `add_episodio` altera tabela existente) pedem a mesma
+   janela. Subir as duas coisas no mesmo dia deixaria dois suspeitos para qualquer
+   problema, em vez de um.
+
+Se ESTA data também não for cumprida, as saídas continuam sendo as mesmas duas, e
+nenhuma delas é o silêncio:
 
 - **Adiar com data nova escrita aqui**, no mesmo commit que muda a data.
 - **Transformar o aviso em erro temporário** no `check:migrations`, com a data de
@@ -362,6 +376,106 @@ uma de 4 linhas faltam 22px, exatamente uma linha de `text-base leading-snug`.
 conteúdo. **Se alguém mexer na tipografia dentro dos cards, os deltas das três
 variantes precisam ser remedidos**, porque a altura dos skeletons é derivada
 dessas classes.
+
+### i) A alternância A-B-A-B de ProQuemE até TurbineComIA: ACEITA
+
+Decidido em 2026-07-29, depois do trabalho de fundo decorado da home.
+
+Quatro seções seguidas alternam entre exatamente dois tons quase idênticos,
+`#f5f3ff` e `#fafaf9`, com delta 10 entre eles:
+
+```
+o-que-e-bora-na-tech   #f5f3ff
+do-zero-ao-primeiro..  #fafaf9
+por-onde-comecar       #f5f3ff
+turbine-com-ia         #fafaf9
+```
+
+Visto numa coluna comprimida da página inteira, isso lê como padrão mecânico.
+**Foi avaliado e mantido**, por três motivos:
+
+1. **Ninguém vê duas bases no mesmo frame.** As quatro seções medem de 1000px a
+   1827px de altura, contra uma viewport de 844px no mobile e 900px no desktop. A
+   alternância existe no documento, não na tela: para percebê-la é preciso rolar
+   por mais de uma tela inteira entre uma base e a seguinte.
+2. **Mudar o violet da ProQuemE reintroduziria a emenda #6.** Ela hoje mede delta
+   **0** porque a base bate exatamente com o fim do gradiente do LogoLoop
+   (`#faf8f4 -> #f5f3ff`, medido). Escolher outro violet para quebrar a
+   alternância recria ali um degrau que hoje não existe: troca um problema teórico
+   por um visível.
+3. **Três das quatro são pré-existentes.** Mapa, PorOndeComecar e TurbineComIA já
+   alternavam antes deste trabalho. O que mudou foi a ProQuemE entrar na
+   sequência, estendendo-a de 3 para 4. Reordenar bases fora das quatro seções do
+   escopo é outro trabalho.
+
+**Aviso de método, e ele vale para qualquer revisão futura de ritmo visual:** a
+coluna com a página inteira é **visão de revisor, não de usuário**. Ela comprime
+14 mil pixels de altura em uma imagem de dois mil, ou seja, mostra de uma vez algo
+que a pessoa percorre em dezenas de segundos. Padrões que saltam ali podem ser
+invisíveis no uso real. Reabrir esta decisão olhando um screenshot comprimido é
+reabrir com o instrumento errado.
+
+### j) Emendas #2 e #3 em delta 13: aceitas
+
+O bloco do topo passou a alternar `#faf8f4` (Hero) → `#f5f3ff` (Novidades) →
+`#faf8f4` (DorSolucao), com delta **13** nas duas fronteiras.
+
+Isso fica **acima da faixa de 0 a 10** em que as demais emendas não deliberadas da
+página se encaixam. **É intencional:** essas duas emendas SÃO a alternância que o
+trabalho pediu, e reduzi-las para caber em 10 significaria escolher um violet mais
+próximo do cream, enfraquecendo justamente o efeito. 13 contra 10 é a mesma ordem
+de grandeza, longe das trocas deliberadas de seção (263 a 415).
+
+### k) O `clip` do Puppeteer é coordenada de PÁGINA, não de viewport
+
+Registrado porque o instrumento de medição de emendas vai ser reusado.
+
+**O método correto**, para ler o pixel renderizado nos dois lados de uma
+fronteira:
+
+1. calcular o `y` ABSOLUTO da fronteira
+   (`getBoundingClientRect().top + window.scrollY`), **remedindo imediatamente
+   antes de cada leitura**, porque a página assenta depois da rolagem e as
+   coordenadas envelhecem;
+2. rolar até a fronteira ficar dentro da viewport, para o browser rasterizar a
+   região de verdade;
+3. tirar o screenshot com `clip` no `y` **absoluto**, sem subtrair `window.scrollY`;
+4. decodificar o pixel com um `<canvas>` dentro da própria página, o que evita
+   adicionar biblioteca de imagem ao projeto por causa de uma medição.
+
+**O erro que motivou este registro:** o passo 3 foi escrito subtraindo o
+`scrollY`, por analogia errada com coordenada de viewport. As 13 emendas passaram
+a ler o mesmo cream do topo do documento.
+
+**Como foi pego:** não pelo instrumento, que reportava números plausíveis, mas por
+um valor IMPOSSÍVEL. A emenda #10 é `#fafaf9` contra `slate-950`, preto contra
+quase branco, e devolveu **delta 0**. Um número que não pode existir naquela
+fronteira. Sem uma emenda de contraste extremo na tabela, o erro teria passado
+como resultado.
+
+A lição prática: **toda tabela de medição deve conter pelo menos um caso cujo
+valor esperado é conhecido e extremo**, para servir de âncora de sanidade. É o
+mesmo princípio das asserções de tamanho de conjunto do `check:migrations`.
+
+### l) Limite latente: o gate do `<br>` do badge do hero envelhece com a contagem
+
+O badge do hero quebra em duas linhas abaixo de 395px, com a quebra forçada num
+ponto escolhido por `<br className="hidden max-[395px]:inline" />`.
+
+**Os 395px foram medidos com o contador em 5 caracteres** (`"2.936"`). Quando a
+contagem de pessoas passar de **10.000**, o número passa a `"10.000"`, seis
+caracteres, a frase fica mais larga e **395 deixa de ser o limite certo**: vai
+existir uma faixa de larguras em que a frase não cabe e o `<br>` ainda não entrou,
+reproduzindo exatamente a quebra acidental que ele existe para evitar.
+
+É a mesma classe da constante `HERO_COUNTER_VALUE = "2776"` que envelheceu no
+`check:hero-counter` (item e): **um número medido uma vez, correto no dia, que
+apodrece sozinho conforme o produto cresce**.
+
+**Não corrigido de propósito**, porque a correção honesta não é ajustar 395 para
+outro número igualmente perecível, e sim medir a largura da frase em tempo de
+execução ou aceitar a quebra natural. Registrado para não ser descoberto por
+alguém olhando um badge torto sem entender por quê.
 
 ---
 
