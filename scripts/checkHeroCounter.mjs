@@ -43,8 +43,34 @@ import { existsSync } from "node:fs";
 const require = createRequire(import.meta.url);
 const { default: puppeteer } = await import("puppeteer-core");
 
+// VALOR SERVIDO PELO TESTE, não valor esperado do mundo real.
+//
+// A versão anterior comparava com a constante "2776" e semeava o `localStorage`,
+// afirmando no comentário que assim não dependia do backend. **Isso era falso.**
+// O componente lê o cache só como valor INICIAL e em seguida busca
+// `/api/stats/users-count`; quando o backend responde, a resposta sobrescreve a
+// semente. Em desenvolvimento o dev server fala com a API real, então o script
+// media contra o dado de produção. Em 2026-07-28 a contagem passou de 2776 para
+// 2922 e as 26 amostras reprovaram por DADO, não por defeito da página.
+//
+// Teste que reprova pelo motivo errado é teste que alguém desativa, e este é
+// justamente o instrumento que provou o bug original.
+//
+// Agora o script INTERCEPTA a chamada e serve um valor conhecido. A asserção
+// passou a ser relacional: "o contador chega ao valor que a API devolveu", em
+// todas as larguras. Nenhum número literal do mundo real aparece aqui, então não
+// há o que envelhecer.
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
-const EXPECTED = process.env.HERO_COUNTER_VALUE ?? "2776";
+const SERVED_COUNT = Number(process.env.HERO_COUNTER_VALUE ?? 4321);
+if (!Number.isInteger(SERVED_COUNT) || SERVED_COUNT <= 0) {
+  console.error(
+    `[hero-counter] HERO_COUNTER_VALUE inválido: ${process.env.HERO_COUNTER_VALUE}`,
+  );
+  process.exit(1);
+}
+// O que a página deve exibir, formatado como o componente formata (pt-BR).
+const EXPECTED = SERVED_COUNT.toLocaleString("pt-BR").replace(/[.\s]/g, "");
+const ENDPOINT = "/api/stats/users-count";
 
 // Larguras cobertas. As quatro do meio são as que quebravam em produção; 360
 // entra porque é a largura "de teste" onde o bug NÃO aparecia, e foi por isso
@@ -107,10 +133,35 @@ async function sample({ width, reduced }) {
       ]);
     }
     await page.setViewport({ width, height: 800, deviceScaleFactor: 1 });
-    // Semeia o last-known-good pra o contador renderizar sem depender do backend.
-    await page.evaluateOnNewDocument((v) => {
-      localStorage.setItem("bnt_users_count", v);
-    }, EXPECTED);
+
+    // INTERCEPTA a chamada do contador e serve um valor conhecido.
+    //
+    // Substitui a semeadura do `localStorage`, que não isolava nada: o cache é
+    // só o valor INICIAL, e a resposta da API sobrescreve. Interceptar corta a
+    // dependência na origem, e a asserção passa a ser "a página exibe o que a
+    // API devolveu", que continua verdadeira quando a contagem real mudar.
+    //
+    // `atendida` prova que a rota foi de fato exercitada: se o componente parar
+    // de chamar este endpoint, a intercepção nunca dispara e o teste passaria
+    // medindo um valor que veio de outro lugar. Sem essa contagem, o instrumento
+    // encolheria em silêncio.
+    let atendida = 0;
+    await page.setRequestInterception(true);
+    page.on("request", (req) => {
+      if (req.url().includes(ENDPOINT)) {
+        atendida += 1;
+        req.respond({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ count: SERVED_COUNT }),
+        });
+        return;
+      }
+      req.continue();
+    });
+
+    // Sem semear o `localStorage`: a resposta interceptada tem que ser a única
+    // origem do número. Se o cache entrasse aqui, um acerto poderia vir dele.
     await page.goto(BASE_URL, { waitUntil: "networkidle2", timeout: 30000 });
 
     // Movimento reduzido: tem que já estar no valor final, sem animar.
@@ -120,7 +171,7 @@ async function sample({ width, reduced }) {
     await new Promise((r) => setTimeout(r, 2500));
     const final = await readCounter(page);
 
-    return { early, final };
+    return { early, final, atendida };
   } finally {
     await page.close();
   }
@@ -135,11 +186,15 @@ for (const reduced of [false, true]) {
   console.log("  largura | @250ms | final  | veredito");
   console.log("  --------|--------|--------|---------");
   for (const width of WIDTHS) {
-    const { early, final } = await sample({ width, reduced });
+    const { early, final, atendida } = await sample({ width, reduced });
 
     const problems = [];
+    // Rota não exercitada: o número na tela veio de outro lugar que não a
+    // resposta que este teste controla, e comparar com ele não prova nada.
+    if (atendida === 0) problems.push("a página não chamou " + ENDPOINT);
     if (final === null) problems.push("badge não encontrado");
-    else if (final !== EXPECTED) problems.push(`final=${final}`);
+    else if (final !== EXPECTED)
+      problems.push(`final=${final}, servido=${EXPECTED}`);
     // Movimento reduzido não pode animar: o valor final já tem que estar lá.
     if (reduced && early !== EXPECTED) problems.push(`animou (@250ms=${early})`);
 
@@ -168,5 +223,5 @@ if (failures.length) {
 }
 
 console.log(
-  `\n[hero-counter] ${total} amostras OK (${WIDTHS.length} larguras x 2 modos de movimento), todas em +${EXPECTED}.`,
+  `\n[hero-counter] ${total} amostras OK (${WIDTHS.length} larguras x 2 modos de movimento), todas no valor servido pela API interceptada (+${SERVED_COUNT.toLocaleString("pt-BR")}).`,
 );
