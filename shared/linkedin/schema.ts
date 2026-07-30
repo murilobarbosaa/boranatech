@@ -723,6 +723,23 @@ export const QUALITATIVE_VERSION = 3;
  *   portanto desloca a nota de todo mundo. Nota de v3 e de v4 não são
  *   comparáveis, e o delta fica suprimido entre elas.
  *
+ * 5: Fase 4. A régua NÃO mudou: mudou o CONTEÚDO que o parser entrega a ela,
+ *   que é o quarto gatilho listado acima e o menos óbvio dos quatro. A headline
+ *   podia ocupar mais de uma linha e `detectHeadline` escolhia uma só, então o
+ *   cargo-alvo e metade da stack ficavam de fora do campo mais pesado do perfil.
+ *   O índice errado ainda arrastava o corte do bloco de identidade, e o NOME da
+ *   pessoa vazava para as competências lidas do PDF. Os dois somem juntos com a
+ *   correção, e o mesmo perfil, sem a pessoa mexer em nada, passa a ver uma
+ *   headline diferente chegando aos cinco checks de `headline-*` e às duas
+ *   coberturas. 41 das 157 linhas persistidas (26%) carregam a assinatura do
+ *   truncamento, e nelas o TETO de movimento é de 7 a 29 pontos.
+ *
+ *   Não deu para simular a nota nova linha a linha, e o motivo é uma lacuna de
+ *   diagnóstico, não uma escolha: `profileText` não é persistido, e o
+ *   `perfilDedup` que sobra vem sem quebra de linha nenhuma. O bug é de
+ *   ESTRUTURA DE LINHA, então reparsear o dedup não reproduz nem corrige. O
+ *   número acima é teto por peso de check, não medição.
+ *
  * NÃO bumpado na Fase 2A, e a decisão é deliberada. A fase acrescentou
  * `keywordsCampos`, um campo OPCIONAL e puramente descritivo: nenhum check o
  * lê, a nota das 6 fixtures é idêntica, e a régua não mudou. O que esta
@@ -736,7 +753,7 @@ export const QUALITATIVE_VERSION = 3;
  * `titulosIngles`) passa por `readDeterministic`. Ver
  * docs/divida-leitura-persistida.md.
  */
-export const DETERMINISTIC_VERSION = 4;
+export const DETERMINISTIC_VERSION = 5;
 
 export interface LinkedinAnalysisResponse {
   area: (typeof AREA_SLUGS)[number];

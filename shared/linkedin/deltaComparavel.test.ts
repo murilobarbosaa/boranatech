@@ -60,6 +60,12 @@ describe("delta de nota entre versoes da regua", () => {
     // E a regua v2 (v4) nao compara com nenhuma anterior.
     expect(deltaEhComparavel(3, 4)).toBe(false);
     expect(deltaEhComparavel(4, 3)).toBe(false);
+    // Fase 4 (v5): a regua nao mudou, a LEITURA do perfil mudou. A headline
+    // que vinha cortada chega inteira aos checks, entao a nota do mesmo perfil
+    // se move sem a pessoa ter mexido em nada. Mesma consequencia, mesma
+    // supressao.
+    expect(deltaEhComparavel(4, 5)).toBe(false);
+    expect(deltaEhComparavel(5, 4)).toBe(false);
   });
 
   it("linha antiga sem carimbo conta como v1", () => {
@@ -85,10 +91,15 @@ describe("delta de nota entre versoes da regua", () => {
     ).toBe(true);
   });
 
-  it("a versao atual e 4: reanalise de qualquer historico existente nao compara", () => {
+  it("a versao atual e 5: reanalise de qualquer historico existente nao compara", () => {
     // Guard contra esquecer de bumpar: se DETERMINISTIC_VERSION voltar a 1,
     // este teste quebra e avisa que o historico voltaria a ser comparado.
-    expect(DETERMINISTIC_VERSION).toBe(4);
+    // Alterar este numero e ATO DELIBERADO, no mesmo commit da mudanca que
+    // move nota, com o motivo no bloco de doc da constante.
+    expect(DETERMINISTIC_VERSION).toBe(5);
     expect(deltaEhComparavel(null, DETERMINISTIC_VERSION)).toBe(false);
+    // As 157 linhas persistidas sao v1 (107, sem carimbo) ou v4 (50). Nenhuma
+    // das duas compara com a v5, que e o ponto do bump.
+    expect(deltaEhComparavel(4, DETERMINISTIC_VERSION)).toBe(false);
   });
 });

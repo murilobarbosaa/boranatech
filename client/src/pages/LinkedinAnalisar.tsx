@@ -1577,20 +1577,28 @@ export default function LinkedinAnalisar() {
                   />
 
                   {reguaMudou ? (
+                    // TODO(Ana): revisar a copy do aviso de nota nao-comparavel.
+                    // Precisa continuar cobrindo os DOIS motivos: mudanca de
+                    // criterio (v3 -> v4) e mudanca de LEITURA do perfil
+                    // (v4 -> v5), que e o caso da Fase 4. O banner so recebe um
+                    // booleano e nao sabe de qual versao a pessoa veio, entao a
+                    // copy tem que ser verdadeira para qualquer transicao.
                     <FeedbackBanner variant="warn">
-                      Mudamos os critérios da nota desde a sua última análise, e
-                      quase tudo foi para deixar a régua mais justa. A cobertura
-                      de palavras-chave era impossível de alcançar: ela pedia
-                      metade de todas as tecnologias da área, o que em algumas
-                      áreas significava mais de trinta. Agora ela considera
-                      quantas existem na sua área de verdade. O nível que você
-                      informa passou a contar, então quem está começando não é
-                      medido pela régua de quem está há anos na área. E cada
-                      experiência passou a ser avaliada por si: uma sem
-                      descrição não é mais compensada por outra bem escrita, o
-                      que pode ter feito esse critério específico reprovar.
-                      Por isso esta nota não é comparável com a anterior, e a
-                      comparação recomeça a partir daqui.
+                      Esta nota não é comparável com a da sua análise anterior, e
+                      a comparação recomeça a partir daqui. A mudança mais
+                      recente não foi de critério, foi de leitura: a headline que
+                      vinha cortada ao meio agora é lida inteira, e só isso já
+                      move a nota do mesmo perfil, sem você ter mexido em nada.
+                      Se a sua análise anterior é de antes de julho, os critérios
+                      também mudaram, quase tudo para deixar a régua mais justa:
+                      a cobertura de palavras-chave pedia metade de todas as
+                      tecnologias da área, o que em algumas áreas significava
+                      mais de trinta, e agora considera quantas existem na sua
+                      área de verdade; o nível que você informa passou a contar,
+                      então quem está começando não é medido pela régua de quem
+                      está há anos na área; e cada experiência passou a ser
+                      avaliada por si, então uma sem descrição não é mais
+                      compensada por outra bem escrita.
                     </FeedbackBanner>
                   ) : scoreDelta ? (
                     <ScoreDeltaBanner
