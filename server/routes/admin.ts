@@ -28,6 +28,10 @@ import { cacheConnection } from "../lib/redis";
 import { RedisOpTimeoutError, withRedisOpTimeout } from "../lib/redisOpTimeout";
 import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
+import {
+  fetchUserListEnrichment,
+  type SubscriptionRow,
+} from "../lib/userListEnrichment";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 import { resolvePlanPriceCents } from "../lib/planPrice";
@@ -955,12 +959,15 @@ router.get("/users", async (req, res, next) => {
         ? filterRaw
         : "all";
 
-    // Lista ENXUTA: so o necessario para a linha (nome, email, status). CPF e os
-    // demais campos de profiles NAO trafegam aqui; vem sob demanda em /users/:id.
+    // Lista ENXUTA: so o necessario para a linha. CPF e os demais campos de
+    // profiles NAO trafegam aqui; vem sob demanda em /users/:id.
+    //
+    // onboarding_completed saiu do select: trafegava em 50 linhas por pagina e
+    // nao era renderizado em lugar nenhum (o detalhe le o dele, de outra rota).
     const rangeFrom = (page - 1) * pageSize;
     let query = supabaseAdmin
       .from("profiles")
-      .select("id, user_id, name, email, onboarding_completed", {
+      .select("id, user_id, name, email, created_at", {
         count: "exact",
       })
       .order("created_at", { ascending: false })
@@ -1041,8 +1048,76 @@ router.get("/users", async (req, res, next) => {
     if (error)
       return next(dbError("users list", error, "Erro ao buscar usuários."));
 
+    const rows = data || [];
+
+    // Enriquecimento em LOTE sobre os ids DESTA pagina: duas consultas de custo
+    // fixo, nunca uma por linha. Mesmo padrao de .in() usado pelos filtros
+    // acima, pelo mesmo motivo (subscriptions nao tem FK declarada para
+    // profiles, entao o join implicito do PostgREST nao e confiavel).
+    const pageUserIds = rows
+      .map((row) => row.user_id)
+      .filter((id): id is string => Boolean(id));
+
+    let listError: string | null = null;
+    const enrichment = await fetchUserListEnrichment(
+      pageUserIds,
+      {
+        bySubscription: async (ids) => {
+          const { data: subs, error: subsError } = await supabaseAdmin
+            .from("subscriptions")
+            .select(
+              "user_id, status, current_period_end, created_at, plans(code)",
+            )
+            .in("user_id", ids);
+          if (subsError) {
+            listError = subsError.message;
+            return [];
+          }
+          return (subs || []) as SubscriptionRow[];
+        },
+        byInfluencer: async (ids) => {
+          const { data: infs, error: infsError } = await supabaseAdmin
+            .from("influencers")
+            .select("user_id")
+            .is("revoked_at", null)
+            .in("user_id", ids);
+          if (infsError) {
+            listError = infsError.message;
+            return [];
+          }
+          return (infs || []).map((row) => row.user_id);
+        },
+      },
+      new Date(),
+    );
+
+    // Fail-loud: sem o enriquecimento a lista mostraria TODO MUNDO como nao-Pro,
+    // que e um erro silencioso pior que um 500 (o admin agiria sobre o dado
+    // errado). Um influencer marcado como nao-Pro e exatamente o engano que a
+    // coluna existe para evitar.
+    if (listError) {
+      return next(
+        dbError(
+          "users list enrichment",
+          { message: listError },
+          "Erro ao buscar usuários.",
+        ),
+      );
+    }
+
+    const items = rows.map((row) => {
+      const extra = row.user_id ? enrichment.get(row.user_id) : undefined;
+      return {
+        ...row,
+        is_pro: extra?.is_pro ?? false,
+        pro_source: extra?.pro_source ?? null,
+        plan_code: extra?.plan_code ?? null,
+        subscription_status: extra?.subscription_status ?? null,
+      };
+    });
+
     res.json({
-      data: { items: data || [], total: count ?? 0, page, pageSize },
+      data: { items, total: count ?? 0, page, pageSize },
     });
   } catch (err) {
     next(err);
