@@ -96,6 +96,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      admin_refunds: {
+        Row: {
+          actor_user_id: string;
+          amount_cents: number;
+          created_at: string;
+          currency: string;
+          id: string;
+          reason: string;
+          stripe_charge_id: string;
+          stripe_reason: string | null;
+          stripe_refund_id: string | null;
+          stripe_status: string | null;
+          user_id: string;
+        };
+        Insert: {
+          actor_user_id: string;
+          amount_cents: number;
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          reason: string;
+          stripe_charge_id: string;
+          stripe_reason?: string | null;
+          stripe_refund_id?: string | null;
+          stripe_status?: string | null;
+          user_id: string;
+        };
+        Update: {
+          actor_user_id?: string;
+          amount_cents?: number;
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          reason?: string;
+          stripe_charge_id?: string;
+          stripe_reason?: string | null;
+          stripe_refund_id?: string | null;
+          stripe_status?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       admin_roles: {
         Row: {
           created_at: string | null;

@@ -22,9 +22,9 @@ import { describe, expect, it } from "vitest";
  */
 
 // Total conferido contra `select count(*) from pg_tables where schemaname='public'`
-// em 2026-07-30. Alterar este número é ato deliberado, no mesmo commit da
+// em 2026-07-30 (85 desde a migration 20260730160000, que criou admin_refunds). Alterar este número é ato deliberado, no mesmo commit da
 // migration que cria ou dropa a tabela.
-const EXPECTED_TABLE_COUNT = 84;
+const EXPECTED_TABLE_COUNT = 85;
 
 function parseColumnsFromTypes(): Map<string, Set<string>> {
   const file = resolve(process.cwd(), "shared/database.types.ts");
@@ -84,7 +84,10 @@ function parseColumnsFromTypes(): Map<string, Set<string>> {
  * Esvaziar esta lista é o normal depois de aplicar a migration e rodar
  * `pnpm db:types`.
  */
-const TABELAS_PENDENTES = ["admin_refunds"];
+const TABELAS_PENDENTES: string[] = [
+  // Vazia: a migration 20260730160000 foi aplicada e os tipos regenerados,
+  // então admin_refunds saiu daqui. É o estado normal.
+];
 
 function colunasDeCreateTable(tabela: string): Set<string> | null {
   const dir = resolve(process.cwd(), "supabase/migrations");
@@ -489,9 +492,12 @@ describe("a exceção de coluna pendente de migration é conferida, não confiad
 });
 
 describe("tabela pendente de migration entra com as colunas da migration", () => {
-  it("admin_refunds e reconhecida e traz as colunas declaradas", () => {
-    const cols = COLUNAS_POR_TABELA.get("admin_refunds");
-    expect(cols, "admin_refunds nao foi reconhecida").toBeTruthy();
+  it("o parser de CREATE TABLE lê as colunas de verdade da migration", () => {
+    // Com a lista de pendentes VAZIA (estado normal), este teste exercita o
+    // MECANISMO direto em vez de depender de haver pendência: um teste que só
+    // itera lista vazia não afirma nada.
+    const cols = colunasDeCreateTable("admin_refunds");
+    expect(cols, "admin_refunds nao foi lida da migration").toBeTruthy();
     for (const esperada of [
       "user_id",
       "actor_user_id",
@@ -502,9 +508,11 @@ describe("tabela pendente de migration entra com as colunas da migration", () =>
     ]) {
       expect(cols!.has(esperada), esperada).toBe(true);
     }
+    // E não inventa colunas que a migration não declara.
+    expect(cols!.has("coluna_inventada")).toBe(false);
   });
 
-  it("coluna inventada numa tabela pendente continua sendo recusada", () => {
+  it("coluna inventada continua sendo recusada pelo dublê", () => {
     const d = criarSupabaseDouble({ admin_refunds: { rows: [] } });
     expect(() =>
       (
