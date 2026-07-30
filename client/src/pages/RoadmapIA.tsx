@@ -11,6 +11,7 @@ import {
   AiGenerationProgressCard,
   useAiGeneration,
 } from "@/components/roadmapV2/AiGenerationProgress";
+import { clearDraft, loadDraft, saveDraft } from "@/lib/roadmapIntakeDraft";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import {
@@ -47,10 +48,7 @@ const GENERATING_ACTIVE_WINDOW_MS = 5 * 60 * 1000;
 // Rascunho do chat no localStorage: chave por usuario, no padrao bnt:<feature>:v1.
 // TTL curto (24h): uma conversa de 7 etapas nao pode se perder num reload, mas
 // tambem nao deve ressuscitar dias depois. Limpo ao concluir a geracao.
-const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
-function draftKey(userId: string): string {
-  return `bnt:roadmap-intake-chat:v1:${userId}`;
-}
+// Mora em client/src/lib/roadmapIntakeDraft.ts para ser testavel sem DOM.
 
 // Campos essenciais para gerar (os 3 enums que viram os rotulos do prompt de
 // geracao; format e assumido "misto"). O progresso da conversa e quantos deles
@@ -111,7 +109,8 @@ const COPY = {
       ? "Ultima mensagem desta conversa."
       : `Faltam ${n} mensagens nesta conversa.`,
   summaryTitle: "Fechou. Isto e o que eu entendi:",
-  summaryHint: "Se algo ficou torto, e so me dizer aqui embaixo antes de gerar.",
+  summaryHint:
+    "Se algo ficou torto, e so me dizer aqui embaixo antes de gerar.",
   // No chat travado a dica acima seria mentira: nao ha "aqui embaixo" para
   // digitar. A saida passa a ser recomecar.
   summaryHintBlocked:
@@ -252,59 +251,6 @@ const DEADLINE_DISPLAY: Record<
   "sem-prazo": "Sem prazo definido",
 };
 
-interface ChatDraft {
-  savedAt: number;
-  messages: IntakeChatMessage[];
-  intake: IntakeChatProposal | null;
-  missing: string[];
-  ready: boolean;
-  // Opcional: rascunhos salvos antes da fase 2 nao tem este campo, e restaurar
-  // sem ele so significa nao mostrar o aviso ate o proximo turno.
-  restantes?: number | null;
-}
-
-function loadDraft(userId: string): ChatDraft | null {
-  try {
-    const raw = window.localStorage.getItem(draftKey(userId));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as ChatDraft;
-    if (
-      !parsed ||
-      typeof parsed.savedAt !== "number" ||
-      !Array.isArray(parsed.messages) ||
-      parsed.messages.length === 0
-    ) {
-      return null;
-    }
-    if (Date.now() - parsed.savedAt > DRAFT_TTL_MS) {
-      window.localStorage.removeItem(draftKey(userId));
-      return null;
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function saveDraft(userId: string, draft: Omit<ChatDraft, "savedAt">): void {
-  try {
-    window.localStorage.setItem(
-      draftKey(userId),
-      JSON.stringify({ savedAt: Date.now(), ...draft }),
-    );
-  } catch {
-    // Storage cheio ou indisponivel: o rascunho e best-effort, ignora.
-  }
-}
-
-function clearDraft(userId: string): void {
-  try {
-    window.localStorage.removeItem(draftKey(userId));
-  } catch {
-    // Ignora: limpeza best-effort.
-  }
-}
-
 function formatDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
@@ -325,14 +271,18 @@ function StatusBadge({ item }: { item: AiRoadmapListItem }) {
   if (item.status === "ready") {
     const total = item.totalSteps ?? null;
     const completed = item.completedSteps ?? null;
-    if (total !== null && completed !== null && total > 0 && completed >= total) {
+    if (
+      total !== null &&
+      completed !== null &&
+      total > 0 &&
+      completed >= total
+    ) {
       kind = "done";
       label = COPY.statusDone;
     } else {
       label = COPY.statusReady;
     }
-  }
-  else if (item.status === "partial") label = COPY.statusPartial;
+  } else if (item.status === "partial") label = COPY.statusPartial;
   else if (item.status === "failed") label = COPY.statusFailed;
   else if (
     Date.now() - new Date(item.updated_at).getTime() <
@@ -443,7 +393,8 @@ export default function RoadmapIA() {
         trail.pct !== null ? `${trail.title} (${trail.pct}%)` : trail.title,
       );
     }
-    if (context.careerGoal) contextChips.push(`Objetivo: ${context.careerGoal}`);
+    if (context.careerGoal)
+      contextChips.push(`Objetivo: ${context.careerGoal}`);
     if (context.studyMinutes30d !== null) {
       const hours = Math.round(context.studyMinutes30d / 60);
       contextChips.push(
@@ -663,7 +614,10 @@ export default function RoadmapIA() {
 
           <div className="mt-8">
             {!isPro ? (
-              <ProGate feature="roadmap_ia" description={COPY.proGateDescription} />
+              <ProGate
+                feature="roadmap_ia"
+                description={COPY.proGateDescription}
+              />
             ) : generationActive ||
               state.phase === "error" ||
               state.phase === "blocked" ? (
