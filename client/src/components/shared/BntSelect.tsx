@@ -85,11 +85,51 @@ const sizeClasses: Record<NonNullable<BntSelectProps["size"]>, string> = {
 // header e fica atras dele. O header nao e tocado.
 const HEADER_OFFSET = 72; // 66px do header + 6px de margem
 
+/**
+ * Descarta option com value vazio ANTES de chegar ao Radix.
+ *
+ * O Radix lanca `A <Select.Item /> must have a value prop that is not an empty
+ * string` de dentro do render, e um throw no render derruba a arvore inteira:
+ * um filtro com uma opcao torta apagava a pagina do admin, nao o filtro.
+ *
+ * Por que aqui e nao na pagina: a regra "mapeie '' <-> sentinela antes de passar
+ * as options" ja estava escrita neste arquivo, mas escrita como instrucao para o
+ * CHAMADOR, e guarda no call site cobre so os chamadores que alguem lembrou de
+ * proteger. Sao 20+ call sites hoje e os proximos ainda nao existem. E a regra do
+ * CLAUDE.md: protecao DENTRO da funcao, nunca no call site. Os chamadores que ja
+ * mapeiam sentinela continuam funcionando iguais; este filtro so age no caso que
+ * hoje quebra.
+ *
+ * Descarta em vez de substituir por sentinela: inventar um value aqui criaria uma
+ * opcao selecionavel que a pagina nao sabe interpretar, e o `onValueChange`
+ * devolveria um valor que ninguem trata. Sumir com a opcao invalida degrada; um
+ * value inventado propaga o defeito para dentro do estado da pagina.
+ *
+ * NAO e silencioso: avisa no console nomeando o rotulo, para o descarte ser
+ * rastreavel ate a origem em vez de virar "a opcao sumiu e ninguem sabe por que".
+ */
+export function opcoesRenderizaveis(
+  options: readonly BntSelectOption[],
+): BntSelectOption[] {
+  const validas: BntSelectOption[] = [];
+  for (const opt of options) {
+    if (typeof opt.value === "string" && opt.value.length > 0) {
+      validas.push(opt);
+      continue;
+    }
+    console.warn(
+      `[BntSelect] opcao descartada por value vazio (label: ${String(opt.label)}). ` +
+        `Mapeie "" para uma sentinela na pagina antes de passar as options.`,
+    );
+  }
+  return validas;
+}
+
 // Wrapper de select do design system: encapsula o primitivo Radix (ui/select.tsx,
 // intocado) e aplica a assinatura visual do site (borda 2px slate-950, cantos
-// arredondados, sombra offset solida). NAO aceita option.value vazio: o Radix
-// Select proibe value="" em SelectItem; a pagina deve mapear "" <-> sentinela na
-// borda antes de passar as options.
+// arredondados, sombra offset solida). Option com value vazio e DESCARTADA por
+// `opcoesRenderizaveis` (o Radix proibe, e o throw dele derruba a pagina); a
+// pagina continua devendo mapear "" <-> sentinela para a opcao aparecer.
 export function BntSelect({
   value,
   onValueChange,
@@ -156,7 +196,7 @@ export function BntSelect({
           contentClassName,
         )}
       >
-        {options.map((opt) => (
+        {opcoesRenderizaveis(options).map((opt) => (
           <SelectItem
             key={opt.value}
             value={opt.value}
