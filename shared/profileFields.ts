@@ -32,6 +32,9 @@ export const PROFILE_TEXT_LIMITS: Record<string, number> = {
   area_interesse: 120,
   nivel_atual: 120,
   objetivo: 500,
+  // handle e UNIQUE em profiles e nao e editavel pelo admin, mas o limite vale
+  // para /api/me. 60 e generoso para um slug de perfil.
+  handle: 60,
 };
 
 export const PROFILE_URL_FIELDS = [
