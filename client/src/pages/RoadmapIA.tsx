@@ -96,12 +96,6 @@ const COPY = {
   chatPlaceholder: "Escreva sua resposta",
   chatOpeningError: "Nao consegui comecar a conversa agora. Tente de novo.",
   chatGenericError: "Nao consegui responder agora. Tente de novo.",
-  // 429 do chat: cota SEPARADA da de gerar, a copy nao pode dizer que acabou a
-  // cota de gerar.
-  chatQuotaError:
-    "Voce atingiu o limite diario de mensagens do chat. Isso e separado da cota de gerar roadmap; tente de novo amanha.",
-  chatTurnLimit:
-    "Chegamos ao limite desta conversa. Voce ja pode gerar o roadmap com o que montamos ate aqui.",
   // Aviso de aproximacao do teto. So aparece nas ultimas mensagens (ver
   // AVISO_RESTANTES_A_PARTIR_DE): antes disso e ruido.
   chatRestantes: (n: number) =>
@@ -110,6 +104,10 @@ const COPY = {
       : `Faltam ${n} mensagens nesta conversa.`,
   summaryTitle: "Fechou. Isto e o que eu entendi:",
   summaryHint: "Se algo ficou torto, e so me dizer aqui embaixo antes de gerar.",
+  // No chat travado a dica acima seria mentira: nao ha "aqui embaixo" para
+  // digitar. A saida passa a ser recomecar.
+  summaryHintBlocked:
+    "Se algo ficou torto, recomece a conversa antes de gerar.",
   summaryGoal: "Objetivo",
   summaryHours: "Tempo por semana",
   summaryDeadline: "Prazo",
@@ -122,6 +120,9 @@ const COPY = {
   // nao dizia O QUE faltava nem oferecia saida.
   missingTitle: "Falta pouco pra gerar",
   missingLead: "Ainda preciso saber:",
+  // Quando o chat travou, a lista vira formulario: responder aqui e a saida.
+  missingLeadBlocked: "Responda aqui e eu gero seu roadmap:",
+  chatRestart: "Recomecar a conversa",
 } as const;
 
 // Rotulos em portugues dos campos que faltam. O usuario nunca ve "hoursPerWeek".
@@ -130,6 +131,90 @@ const MISSING_LABEL: Record<IntakeRequiredChoiceField, string> = {
   hoursPerWeek: "quanto tempo por semana voce tem",
   deadline: "em quanto tempo quer chegar la",
 };
+
+// Bloqueios do chat. `transient` e o unico em que Tentar de novo faz sentido:
+// nos demais a causa e deterministica e reenviar o mesmo corpo da o mesmo erro,
+// que era o botao de Retry que nunca funcionava.
+type ChatBlockKind =
+  | "transient"
+  | "turn_limit"
+  | "quota"
+  | "payload"
+  | "pro"
+  | "invalid";
+
+interface ChatBlock {
+  kind: ChatBlockKind;
+  // So o transient carrega mensagem do servidor; os outros tem copy fixa.
+  message?: string;
+}
+
+function isTransient(block: ChatBlock | null): boolean {
+  return block?.kind === "transient";
+}
+
+// TODO(Ana): revisar a copy de bloqueio. Regra: cada uma diz O QUE aconteceu; a
+// proxima acao vem dos botoes logo abaixo (gerar, formulario ou recomecar).
+const BLOCK_COPY: Record<Exclude<ChatBlockKind, "transient">, string> = {
+  turn_limit: "Esta conversa chegou ao limite de mensagens.",
+  quota:
+    "Voce atingiu o limite diario de mensagens do chat. Ele reseta a meia-noite (horario de Brasilia) e e separado da cota de gerar roadmap.",
+  payload: "Esta conversa ficou longa demais para continuar.",
+  pro: "O Roadmap com IA e exclusivo do Plano Pro.",
+  invalid: "Nao consegui continuar esta conversa.",
+};
+
+// Traduz o codigo de erro da API no kind de bloqueio.
+function blockFromError(err: unknown, fallbackMessage: string): ChatBlock {
+  if (err instanceof IntakeChatApiError) {
+    if (err.code === "turn_limit") return { kind: "turn_limit" };
+    if (err.code === "rate_limited") return { kind: "quota" };
+    if (err.code === "payload_too_large") return { kind: "payload" };
+    if (err.code === "pro_required") return { kind: "pro" };
+    if (err.code === "invalid_request") return { kind: "invalid" };
+  }
+  return { kind: "transient", message: fallbackMessage };
+}
+
+// Opcoes do formulario de fallback. Reaproveitadas do formulario estatico que
+// existia antes do commit 083432c (guided chat intake replaces static form);
+// mesmos valores de enum, mesmos rotulos, mesmo desenho de botao.
+const FALLBACK_QUESTIONS: Array<{
+  key: IntakeRequiredChoiceField;
+  question: string;
+  options: Array<{ value: string; label: string }>;
+}> = [
+  {
+    key: "goal",
+    question: "Qual e o seu objetivo principal?",
+    options: [
+      { value: "primeira-vaga", label: "Conquistar a primeira vaga" },
+      { value: "transicao", label: "Mudar de carreira pra tech" },
+      { value: "freela", label: "Trabalhar como freelancer" },
+      { value: "aprofundar", label: "Me aprofundar na minha area" },
+    ],
+  },
+  {
+    key: "hoursPerWeek",
+    question: "Quanto tempo por semana voce tem pra estudar?",
+    options: [
+      { value: "ate-5", label: "Ate 5 horas" },
+      { value: "5-10", label: "5 a 10 horas" },
+      { value: "10-20", label: "10 a 20 horas" },
+      { value: "20-mais", label: "Mais de 20 horas" },
+    ],
+  },
+  {
+    key: "deadline",
+    question: "Em quanto tempo voce quer chegar la?",
+    options: [
+      { value: "3m", label: "3 meses" },
+      { value: "6m", label: "6 meses" },
+      { value: "12m", label: "12 meses" },
+      { value: "sem-prazo", label: "Sem prazo definido" },
+    ],
+  },
+];
 
 // Rotulos de exibicao dos enums no resumo do intake (nao vao ao server; o server
 // recebe o enum cru). TODO(Ana): revisar rotulos.
@@ -279,8 +364,17 @@ export default function RoadmapIA() {
   // backend a cada turno.
   const [messages, setMessages] = useState<IntakeChatMessage[]>([]);
   const [sending, setSending] = useState(false);
-  const [chatError, setChatError] = useState<string | null>(null);
-  const [turnLimitReached, setTurnLimitReached] = useState(false);
+  // Bloqueio do chat, tipado. Antes eram dois estados frouxos (chatError string
+  // e turnLimitReached boolean) e o turn_limit voltava sem setar nenhum dos
+  // dois, o que produzia a tela com input travado, mensagem dizendo "voce ja
+  // pode gerar" e nenhum botao de gerar. Agora todo bloqueio tem um kind, e o
+  // kind decide o que a tela oferece.
+  const [block, setBlock] = useState<ChatBlock | null>(null);
+  // Respostas dadas pelo formulario de fallback. Tem PRECEDENCIA sobre o que o
+  // chat propos: se a pessoa respondeu na mao, e essa a resposta que vale.
+  const [formOverrides, setFormOverrides] = useState<
+    Partial<Record<IntakeRequiredChoiceField, string>>
+  >({});
   const [intake, setIntake] = useState<IntakeChatProposal | null>(null);
   const [missing, setMissing] = useState<string[]>([...ESSENTIAL_FIELDS]);
   const [ready, setReady] = useState(false);
@@ -351,13 +445,13 @@ export default function RoadmapIA() {
     if (state.phase === "error" || state.phase === "blocked") loadList();
   }, [state.phase, loadList]);
 
-  // Um turno do chat: envia [semente, ...historico] e aplica o resultado. Erro
-  // de turno vira mensagem amigavel; limite de turnos trava o input; 429 tem
-  // copy propria (a cota do chat e separada da de gerar).
+  // Um turno do chat. O historico vai SEM semente (o servidor injeta a dele).
+  // Todo erro vira um ChatBlock tipado; o kind decide se a tela oferece Tentar
+  // de novo (so transient) ou as saidas terminais.
   const runTurn = useCallback(
     async (history: IntakeChatMessage[], isOpening: boolean) => {
       setSending(true);
-      setChatError(null);
+      setBlock(null);
       try {
         const result = await sendIntakeChatTurn(history);
         setMessages([...history, { role: "assistant", content: result.reply }]);
@@ -366,15 +460,12 @@ export default function RoadmapIA() {
         setReady(result.ready);
         setRestantes(result.restantes);
       } catch (err) {
-        if (err instanceof IntakeChatApiError && err.code === "turn_limit") {
-          setTurnLimitReached(true);
-          return;
-        }
-        if (err instanceof IntakeChatApiError && err.code === "rate_limited") {
-          setChatError(COPY.chatQuotaError);
-          return;
-        }
-        setChatError(isOpening ? COPY.chatOpeningError : COPY.chatGenericError);
+        setBlock(
+          blockFromError(
+            err,
+            isOpening ? COPY.chatOpeningError : COPY.chatGenericError,
+          ),
+        );
       } finally {
         setSending(false);
       }
@@ -392,11 +483,28 @@ export default function RoadmapIA() {
   );
 
   // Reenvia a ultima mensagem do usuario sem duplicar: o historico ja termina
-  // nela (a resposta do assistente nao foi anexada por causa do erro).
+  // nela (a resposta do assistente nao foi anexada por causa do erro). So e
+  // oferecido em bloqueio transitorio.
   const handleRetry = useCallback(() => {
     if (sending) return;
     void runTurn(messages, false);
   }, [messages, runTurn, sending]);
+
+  // Saida SEMPRE disponivel: joga fora o rascunho e recomeca do zero. Antes
+  // disto, quem batia no teto ficava preso ate o TTL de 24h do rascunho expirar,
+  // porque recarregar a pagina restaurava exatamente o mesmo estado travado.
+  const restartChat = useCallback(() => {
+    if (sending) return;
+    if (userId) clearDraft(userId);
+    setMessages([]);
+    setIntake(null);
+    setMissing([...ESSENTIAL_FIELDS]);
+    setReady(false);
+    setRestantes(null);
+    setBlock(null);
+    setFormOverrides({});
+    void runTurn([], true);
+  }, [runTurn, sending, userId]);
 
   // Bootstrap (uma vez, so Pro, com sessao e no phase idle): restaura o rascunho
   // ou dispara o turno de abertura. O phase idle evita gerar um turno por engano
@@ -427,9 +535,17 @@ export default function RoadmapIA() {
   // manda a resposta pronta; recalcular localmente cobre a janela de deploy
   // (front novo contra backend antigo, que nao manda canGenerate) e o caso do
   // formulario de fallback, cujos valores ainda nao passaram por turno nenhum.
-  const readiness = buildGenerationIntake(intake ?? {});
+  const readiness = buildGenerationIntake({
+    ...(intake ?? {}),
+    ...formOverrides,
+  });
   const canGenerate = readiness.canGenerate;
   const missingToGenerate = readiness.missing;
+
+  // A conversa nao pode continuar: bloqueio terminal (teto, cota, payload, Pro,
+  // requisicao invalida). Nesse estado o input fica travado, entao a tela PRECISA
+  // oferecer outra coisa: gerar (se der) ou o formulario de fallback.
+  const chatBlocked = block !== null && !isTransient(block);
 
   // Gera com o payload que o buildGenerationIntake montou. Sem caminho de
   // validacao proprio aqui: se canGenerate e true, o payload existe.
@@ -534,10 +650,27 @@ export default function RoadmapIA() {
                   onSend={handleSend}
                   title={COPY.chatTitle}
                   subtitle={COPY.chatSubtitle}
-                  error={chatError}
-                  onRetry={chatError ? handleRetry : undefined}
-                  turnLimitReached={turnLimitReached}
-                  turnLimitMessage={COPY.chatTurnLimit}
+                  error={
+                    block
+                      ? isTransient(block)
+                        ? (block.message ?? COPY.chatGenericError)
+                        : null
+                      : null
+                  }
+                  // Tentar de novo SO no transitorio: nos bloqueios
+                  // deterministicos reenviar o mesmo corpo da o mesmo erro, e o
+                  // botao virava uma promessa que nunca se cumpre.
+                  onRetry={isTransient(block) ? handleRetry : undefined}
+                  turnLimitReached={chatBlocked}
+                  turnLimitMessage={
+                    block && !isTransient(block)
+                      ? BLOCK_COPY[
+                          block.kind as Exclude<ChatBlockKind, "transient">
+                        ]
+                      : undefined
+                  }
+                  onRestart={restartChat}
+                  restartLabel={COPY.chatRestart}
                   progress={{
                     done: essentialDone,
                     total: ESSENTIAL_FIELDS.length,
@@ -603,7 +736,7 @@ export default function RoadmapIA() {
                       ) : null}
                     </dl>
                     <p className="mt-3 text-xs font-semibold text-slate-500">
-                      {COPY.summaryHint}
+                      {chatBlocked ? COPY.summaryHintBlocked : COPY.summaryHint}
                     </p>
                     <button
                       type="button"
@@ -616,19 +749,62 @@ export default function RoadmapIA() {
                   </div>
                 ) : (
                   /* canGenerate false: a pessoa ve NOMEADO o que falta, em vez
-                     do antigo silencio (o botao simplesmente nao existia). */
+                     do antigo silencio (o botao simplesmente nao existia). Se o
+                     chat ainda pode continuar, a lista basta (responder no chat
+                     e o caminho); se o chat travou, o formulario abaixo e a
+                     saida, porque senao nao sobraria nenhuma. */
                   <div className="rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[3px_3px_0_#0f172a]">
                     <p className="font-display text-lg font-black text-slate-950">
                       {COPY.missingTitle}
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-600">
-                      {COPY.missingLead}
+                      {chatBlocked ? COPY.missingLeadBlocked : COPY.missingLead}
                     </p>
-                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm font-bold text-slate-800">
-                      {missingToGenerate.map((field) => (
-                        <li key={field}>{MISSING_LABEL[field]}</li>
-                      ))}
-                    </ul>
+                    {chatBlocked ? (
+                      <div className="mt-4 space-y-5">
+                        {FALLBACK_QUESTIONS.filter((q) =>
+                          missingToGenerate.includes(q.key),
+                        ).map((q) => (
+                          <fieldset key={q.key}>
+                            <legend className="font-display text-base font-black text-slate-950">
+                              {q.question}
+                            </legend>
+                            <div className="mt-2.5 flex flex-wrap gap-2.5">
+                              {q.options.map((option) => {
+                                const active =
+                                  formOverrides[q.key] === option.value;
+                                return (
+                                  <button
+                                    key={option.value}
+                                    type="button"
+                                    aria-pressed={active}
+                                    onClick={() =>
+                                      setFormOverrides((prev) => ({
+                                        ...prev,
+                                        [q.key]: option.value,
+                                      }))
+                                    }
+                                    className={`rounded-[11px] border-[2.5px] border-slate-900 px-4 py-2.5 text-sm font-extrabold shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] ${
+                                      active
+                                        ? "bg-[#FFB800] text-slate-950"
+                                        : "bg-white text-slate-600"
+                                    }`}
+                                  >
+                                    {option.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </fieldset>
+                        ))}
+                      </div>
+                    ) : (
+                      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm font-bold text-slate-800">
+                        {missingToGenerate.map((field) => (
+                          <li key={field}>{MISSING_LABEL[field]}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 )}
               </div>

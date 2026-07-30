@@ -183,7 +183,12 @@ export const AI_TOOLS: Record<string, AiToolConfig> = {
     requiresPro: true,
     requiresAuth: true,
     mode: "chat",
-    maxInputChars: 9_000,
+    // Espelha MAX_BODY_CHARS de server/lib/aiRoadmap/intakeChat.ts, que e o teto
+    // ANTI-ABUSO. O teto que importa no dia a dia e PROMPT_HISTORY_MAX_CHARS, que
+    // comprime em vez de rejeitar. Este numero nao e aplicado a esta tool (ela e
+    // internalOnly e a rota generica /api/ai nunca a serve), mas divergir dele
+    // deixaria a documentacao mentindo.
+    maxInputChars: 120_000,
     temperature: 0.6,
     model: DEFAULT_MODEL,
     description: "Chat de intake conversacional do roadmap com IA",

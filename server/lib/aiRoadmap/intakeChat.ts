@@ -85,9 +85,66 @@ export const COTA_DIARIA_MINIMA = MAX_USER_MESSAGES * CONVERSAS_COMPLETAS_POR_DI
 // system prompt: o numero aqui e o mesmo citado la.
 export const POUSO_SUAVE_RESTANTES = 3;
 
-// Teto de caracteres do corpo, espelhando o maxInputChars da entrada
-// roadmap-intake-chat em AI_TOOLS.
-export const MAX_BODY_CHARS = 9_000;
+// TETO DE CARACTERES: comprimir, nao rejeitar.
+//
+// O teto antigo (9.000) era uma REJEICAO: acima dele a rota devolvia
+// payload_too_large e a conversa morria. Com 20 turnos ele passaria a ser
+// atingivel numa conversa legitima (20 respostas + 20 falas do Natechinho de ate
+// 600 chars da algo perto de 18.000), ou seja, viraria o mesmo beco sem saida em
+// outra porta.
+//
+// Agora sao dois tetos com papeis diferentes:
+//
+//  - PROMPT_HISTORY_MAX_CHARS: teto do que vai NO PROMPT. Acima dele o historico
+//    e comprimido (ver compressHistory). Dimensionado ACIMA do pior caso de uma
+//    conversa normal, de proposito: compressao e rede de seguranca, nao rotina.
+//  - MAX_BODY_CHARS: teto ABSOLUTO do corpo aceito, contra abuso. Uma ordem de
+//    grandeza acima, porque so precisa barrar payload construido a mao.
+//
+// A contagem do orcamento de turnos (userCount) roda sobre o historico INTEIRO,
+// antes da compressao: comprimir o prompt nao pode dar turnos de brinde.
+export const PROMPT_HISTORY_MAX_CHARS = 24_000;
+export const MAX_BODY_CHARS = 120_000;
+
+// Quantas mensagens do FIM sempre sobrevivem a compressao. O resumo da etapa 7 e
+// a confirmacao da pessoa vivem no fim da conversa, e sao exatamente o que o
+// turno seguinte precisa ler para marcar ready.
+export const COMPRESS_KEEP_TAIL = 10;
+
+// Marcador que entra no lugar dos turnos descartados. Sem ele o modelo pode
+// concluir que nunca perguntou o que perguntou, e repetir etapas ja vencidas.
+const COMPRESS_MARKER =
+  "(Os turnos mais antigos desta conversa foram omitidos por tamanho. O intake ja capturado continua valendo; nao repita perguntas cujas respostas voce ja tem.)";
+
+/**
+ * Mantem o historico do PROMPT dentro de PROMPT_HISTORY_MAX_CHARS descartando os
+ * turnos mais ANTIGOS, no molde do trimHistory de server/routes/interview.ts.
+ *
+ * Estrategia escolhida (descartar, nao resumir): resumir exigiria uma segunda
+ * chamada de IA por turno, com custo, latencia e um modo de falha proprio (o que
+ * fazer quando o resumo falha?). Descartar e deterministico e barato, e o que
+ * importa para o proximo turno esta no fim da conversa, nao no comeco: a semente
+ * e injetada sempre, o intake acumulado ja vem estruturado no proprio objeto
+ * `intake` de cada turno, e o resumo da etapa 7 fica entre as ultimas mensagens.
+ */
+export function compressHistory(
+  messages: IntakeChatMessage[],
+): IntakeChatMessage[] {
+  const size = (msgs: IntakeChatMessage[]) =>
+    msgs.reduce((acc, m) => acc + m.content.length, 0);
+  if (size(messages) <= PROMPT_HISTORY_MAX_CHARS) return messages;
+
+  const tail = messages.slice(-COMPRESS_KEEP_TAIL);
+  const head = messages.slice(0, Math.max(0, messages.length - COMPRESS_KEEP_TAIL));
+  while (head.length > 0 && size([...head, ...tail]) > PROMPT_HISTORY_MAX_CHARS) {
+    head.shift();
+  }
+  return [
+    { role: "assistant", content: COMPRESS_MARKER },
+    ...head,
+    ...tail,
+  ];
+}
 
 // Campos do intake proposto pelo chat. NAO inclui format (nao perguntado; o
 // client assume "misto"). goal/hoursPerWeek/deadline usam os MESMOS enums de
@@ -471,7 +528,10 @@ export async function runIntakeChatTurn(
     // identico entre chamadas.
     { role: "system", content: `Restam ${restantes} mensagens nesta conversa.` },
     { role: "user", content: CHAT_KICKOFF },
-    ...messages.map((m) => ({ role: m.role, content: m.content })),
+    ...compressHistory(messages).map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
   ];
 
   let lastError: unknown;
