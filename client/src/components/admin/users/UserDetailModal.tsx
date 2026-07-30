@@ -29,6 +29,7 @@ import { UserDetailSkeleton } from "./UserDetailSkeleton";
 import { UserTransactions } from "./UserTransactions";
 import { EditableField, GenderField } from "./UserEditFields";
 import { EmailChangeDialog } from "./EmailChangeDialog";
+import { CancelSubscriptionDialog } from "./CancelSubscriptionDialog";
 import { useProfileEdit } from "./useProfileEdit";
 import {
   AlertDialog,
@@ -155,6 +156,7 @@ export function UserDetailModal({
   // FECHAR e o modal.
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   // FUNIL UNICO de fechamento: o botao "Fechar", o Esc e qualquer caminho
   // futuro passam por aqui. Hoje so repassa o onClose; existe porque a Fatia 5
@@ -177,6 +179,7 @@ export function UserDetailModal({
     // dialogo aberto deixaria estado pendente para a proxima abertura. O
     // rascunho da troca nao sobrevive de propósito (o dialogo zera ao abrir).
     setEmailOpen(false);
+    setCancelOpen(false);
     onClose();
   }
 
@@ -853,6 +856,30 @@ export function UserDetailModal({
                 >
                   Trocar e-mail
                 </button>
+                {/* Boleto NAO aparece como botao desabilitado: um botao morto
+                    convida a clicar e nao explica nada. Vira uma linha de
+                    texto, que diz o porque no lugar de esconder. A rota recusa
+                    de qualquer forma (boleto_not_supported). */}
+                {detail.subscription &&
+                !detail.subscription.cancel_at_period_end ? (
+                  detail.subscription.renewal_type === "manual" ? (
+                    <span
+                      data-testid="boleto-sem-cancelamento"
+                      className="text-xs font-bold text-slate-500"
+                    >
+                      Boleto não renova sozinho: o acesso termina no fim do
+                      período pago.
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setCancelOpen(true)}
+                      className={ACTION_BUTTON}
+                    >
+                      Cancelar Pro
+                    </button>
+                  )
+                ) : null}
               </>
             ) : null}
             {detail && !detailLoading && !edit.editing ? (
@@ -947,6 +974,16 @@ export function UserDetailModal({
         {/* Confirmacao de descarte. LAYER_IN_DIALOG (z-[2100]) porque abre
             DENTRO de um modal que ja esta em z-[2000]; a escala inteira esta
             documentada em tasks/taskLayers.ts. */}
+        {detail ? (
+          <CancelSubscriptionDialog
+            userId={userId}
+            detail={detail}
+            open={cancelOpen}
+            onOpenChange={setCancelOpen}
+            onChanged={() => setDetailVersion((version) => version + 1)}
+          />
+        ) : null}
+
         {detail ? (
           <EmailChangeDialog
             userId={userId}

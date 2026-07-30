@@ -1108,3 +1108,231 @@ describe("troca de e-mail (Fatia 5b)", () => {
     expect(screen.queryByText(/O login passa a ser/)).toBeNull();
   });
 });
+
+describe("cancelamento de assinatura (Fatia 6)", () => {
+  const ASSINATURA = {
+    plan_code: "pro_annual",
+    status: "active",
+    payment_method: "card",
+    renewal_type: "auto",
+    created_at: "2026-01-10T12:00:00Z",
+    current_period_end: "2027-01-10T12:00:00Z",
+    cancel_at_period_end: false,
+  };
+
+  function rotearCancel(over: Record<string, unknown> = {}) {
+    fetchMock.mockImplementation((path: string, init?: { method?: string }) => {
+      if (path.includes("/subscription/cancel")) {
+        const r = over.cancelPost;
+        if (r instanceof Error) return Promise.reject(r);
+        return Promise.resolve(r ?? { data: { canceled: true } });
+      }
+      if (path.includes("/transactions"))
+        return Promise.resolve({
+          data: {
+            items: [],
+            total_paid_cents: 0,
+            truncated: false,
+            limit: 200,
+          },
+        });
+      if (path.includes("/email-usage"))
+        return Promise.resolve({ data: { email: null, usage: [] } });
+      if (path.endsWith("/activity"))
+        return Promise.resolve({ data: { state: "ok", hasData: false } });
+      return Promise.resolve(
+        over.detalhe ?? detalhe({ subscription: ASSINATURA }),
+      );
+    });
+  }
+
+  async function abrirCancelamento() {
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar Pro" }));
+    return await screen.findByText("Cancelar assinatura?");
+  }
+
+  it("o diálogo mostra plano, valor e a data até quando o acesso vale", async () => {
+    rotearCancel();
+    const titulo = await abrirCancelamento();
+    // Escopado ao diálogo: plano e data também aparecem na seção Assinatura do
+    // modal por trás.
+    const dialogo = within(
+      titulo.closest('[role="alertdialog"]') as HTMLElement,
+    );
+
+    expect(dialogo.getByText("pro_annual")).toBeTruthy();
+    expect(dialogo.getByText("10/01/2027")).toBeTruthy();
+    expect(dialogo.getByText(/não é imediato/)).toBeTruthy();
+  });
+
+  it("aviso de influencer aparece para pro_source 'influencer'", async () => {
+    rotearCancel({
+      detalhe: detalhe({
+        subscription: ASSINATURA,
+        pro_source: "influencer",
+        is_pro: true,
+      }),
+    });
+    await abrirCancelamento();
+    expect(screen.getByTestId("aviso-influencer")).toBeTruthy();
+  });
+
+  it("aviso de influencer aparece para pro_source 'both'", async () => {
+    rotearCancel({
+      detalhe: detalhe({
+        subscription: ASSINATURA,
+        pro_source: "both",
+        is_pro: true,
+      }),
+    });
+    await abrirCancelamento();
+    expect(screen.getByTestId("aviso-influencer")).toBeTruthy();
+  });
+
+  it("aviso NÃO aparece para pro_source 'subscription'", async () => {
+    rotearCancel({
+      detalhe: detalhe({
+        subscription: ASSINATURA,
+        pro_source: "subscription",
+        is_pro: true,
+      }),
+    });
+    await abrirCancelamento();
+    expect(screen.queryByTestId("aviso-influencer")).toBeNull();
+  });
+
+  it("motivo vazio bloqueia a confirmação e não chama a rota", async () => {
+    rotearCancel();
+    await abrirCancelamento();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cancelar assinatura" }),
+    );
+
+    expect(
+      await screen.findByText("Informe o motivo do cancelamento."),
+    ).toBeTruthy();
+    expect(
+      fetchMock.mock.calls.some((c) =>
+        String(c[0]).includes("/subscription/cancel"),
+      ),
+    ).toBe(false);
+  });
+
+  it("com motivo, cancela e confirma por toast", async () => {
+    rotearCancel();
+    await abrirCancelamento();
+
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "pedido por e-mail" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cancelar assinatura" }),
+    );
+
+    await waitFor(() => expect(toastSpy.acao).toHaveBeenCalled());
+    const post = fetchMock.mock.calls.find((c) =>
+      String(c[0]).includes("/subscription/cancel"),
+    )!;
+    expect(JSON.parse((post[1] as { body: string }).body)).toEqual({
+      reason: "pedido por e-mail",
+    });
+  });
+
+  it("erro da rota vira toast legível", async () => {
+    rotearCancel({
+      cancelPost: new Error("Nenhuma assinatura ativa encontrada."),
+    });
+    await abrirCancelamento();
+
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "x" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cancelar assinatura" }),
+    );
+
+    await waitFor(() =>
+      expect(toastSpy.erro).toHaveBeenCalledWith(
+        "Nenhuma assinatura ativa encontrada.",
+      ),
+    );
+  });
+
+  it("botão trava durante a operação", async () => {
+    let liberar!: () => void;
+    fetchMock.mockImplementation((path: string) => {
+      if (path.includes("/subscription/cancel"))
+        return new Promise((r) => {
+          liberar = () => r({ data: { canceled: true } });
+        });
+      if (path.includes("/transactions"))
+        return Promise.resolve({
+          data: {
+            items: [],
+            total_paid_cents: 0,
+            truncated: false,
+            limit: 200,
+          },
+        });
+      if (path.includes("/email-usage"))
+        return Promise.resolve({ data: { email: null, usage: [] } });
+      if (path.endsWith("/activity"))
+        return Promise.resolve({ data: { state: "ok", hasData: false } });
+      return Promise.resolve(detalhe({ subscription: ASSINATURA }));
+    });
+
+    await abrirCancelamento();
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "x" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cancelar assinatura" }),
+    );
+
+    await waitFor(() =>
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Cancelando...",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Cancelando..." }));
+
+    expect(
+      fetchMock.mock.calls.filter((c) =>
+        String(c[0]).includes("/subscription/cancel"),
+      ),
+    ).toHaveLength(1);
+    liberar();
+  });
+
+  it("BOLETO não oferece o botão: mostra a explicação no lugar", async () => {
+    rotearCancel({
+      detalhe: detalhe({
+        subscription: { ...ASSINATURA, renewal_type: "manual" },
+      }),
+    });
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    expect(screen.queryByRole("button", { name: "Cancelar Pro" })).toBeNull();
+    expect(screen.getByTestId("boleto-sem-cancelamento")).toBeTruthy();
+  });
+
+  it("assinatura já cancelada não oferece o botão de novo", async () => {
+    rotearCancel({
+      detalhe: detalhe({
+        subscription: { ...ASSINATURA, cancel_at_period_end: true },
+      }),
+    });
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    expect(screen.queryByRole("button", { name: "Cancelar Pro" })).toBeNull();
+  });
+});
