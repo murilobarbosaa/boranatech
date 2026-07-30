@@ -213,3 +213,62 @@ export function captureUserSignedUpForOAuth(user: SupabaseUserLike): void {
     source: consumeSignupSource(),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Funil do Roadmap com IA.
+//
+// POR QUE EXISTE. O beco sem saida do chat de intake (teto de mensagens menor
+// que o roteiro, sem botao de gerar depois de estourar) ficou 17 dias em
+// producao sem ninguem ver, e so foi achado por DISTRIBUICAO ESTATISTICA: seis
+// conversas terminando em exatamente 12 turnos e nenhuma em 11. Nao havia
+// evento nenhum entre "abriu a pagina" e "roadmap gerado", entao a queda no meio
+// era invisivel.
+//
+// Cardinalidade: `motivo` e sempre um CODIGO de um conjunto fechado, nunca texto
+// livre, e nada aqui carrega fala do usuario.
+// ---------------------------------------------------------------------------
+
+// Primeiro turno da conversa (abertura ou rascunho restaurado).
+export function captureRoadmapChatIniciado(props: {
+  retomado_de_rascunho: boolean;
+}): void {
+  posthog.capture("roadmap_ia_chat_iniciado", props);
+}
+
+// Momento em que o intake fica completo o bastante para gerar. E o degrau que
+// faltava: sem ele nao da para distinguir "desistiu no meio da conversa" de
+// "conversou tudo e nao conseguiu gerar".
+export function captureRoadmapCanGenerate(props: {
+  turnos: number;
+  via_formulario: boolean;
+}): void {
+  posthog.capture("roadmap_ia_can_generate", props);
+}
+
+// Conversa interrompida antes de dar para gerar. `motivo` e o kind do bloqueio.
+export function captureRoadmapChatBloqueado(props: {
+  motivo: string;
+  can_generate: boolean;
+  turnos: number;
+}): void {
+  posthog.capture("roadmap_ia_chat_bloqueado", props);
+}
+
+export function captureRoadmapGeracaoIniciada(props: {
+  via_formulario: boolean;
+}): void {
+  posthog.capture("roadmap_ia_geracao_iniciada", props);
+}
+
+export function captureRoadmapGeracaoConcluida(props: {
+  secoes_falhas: number;
+  parcial: boolean;
+}): void {
+  posthog.capture("roadmap_ia_geracao_concluida", props);
+}
+
+// `motivo` classificado: codigo de bloqueio pre-SSE (rate_limited,
+// generation_in_progress, pro_required...) ou "stream_error"/"conexao_caiu".
+export function captureRoadmapGeracaoFalhou(props: { motivo: string }): void {
+  posthog.capture("roadmap_ia_geracao_falhou", props);
+}

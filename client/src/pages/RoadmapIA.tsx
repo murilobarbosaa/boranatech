@@ -25,6 +25,14 @@ import {
   type IntakeChatProposal,
 } from "@/services/aiRoadmapService";
 import {
+  captureRoadmapCanGenerate,
+  captureRoadmapChatBloqueado,
+  captureRoadmapChatIniciado,
+  captureRoadmapGeracaoConcluida,
+  captureRoadmapGeracaoFalhou,
+  captureRoadmapGeracaoIniciada,
+} from "@/lib/analytics";
+import {
   buildGenerationIntake,
   type IntakeRequiredChoiceField,
 } from "@shared/aiRoadmap";
@@ -384,6 +392,11 @@ export default function RoadmapIA() {
   const [restantes, setRestantes] = useState<number | null>(null);
   // Guarda de uma execucao so do bootstrap (restore do rascunho ou abertura).
   const bootstrappedRef = useRef(false);
+  // Espelhos para telemetria dentro de callbacks que nao dependem do estado
+  // (runTurn tem deps vazias de proposito, para nao remontar a cada turno).
+  const canGenerateRef = useRef(false);
+  const canGenerateEmitidoRef = useRef(false);
+  const fasePublicadaRef = useRef<string | null>(null);
 
   const onDone = useCallback(
     (slug: string) => {
@@ -461,12 +474,16 @@ export default function RoadmapIA() {
         setReady(result.ready);
         setRestantes(result.restantes);
       } catch (err) {
-        setBlock(
-          blockFromError(
-            err,
-            isOpening ? COPY.chatOpeningError : COPY.chatGenericError,
-          ),
+        const bloqueio = blockFromError(
+          err,
+          isOpening ? COPY.chatOpeningError : COPY.chatGenericError,
         );
+        setBlock(bloqueio);
+        captureRoadmapChatBloqueado({
+          motivo: bloqueio.kind,
+          can_generate: canGenerateRef.current,
+          turnos: history.filter((m) => m.role === "user").length,
+        });
       } finally {
         setSending(false);
       }
@@ -515,6 +532,7 @@ export default function RoadmapIA() {
     if (bootstrappedRef.current) return;
     bootstrappedRef.current = true;
     const draft = loadDraft(userId);
+    captureRoadmapChatIniciado({ retomado_de_rascunho: draft !== null });
     if (draft) {
       setMessages(draft.messages);
       setIntake(draft.intake);
@@ -548,6 +566,41 @@ export default function RoadmapIA() {
   // oferecer outra coisa: gerar (se der) ou o formulario de fallback.
   const chatBlocked = block !== null && !isTransient(block);
 
+  // Telemetria do degrau que faltava. Dispara UMA vez, na primeira vez que o
+  // intake fica completo: e o evento que separa "desistiu da conversa" de
+  // "conversou tudo e mesmo assim nao gerou".
+  const turnosDados = messages.filter((m) => m.role === "user").length;
+  useEffect(() => {
+    canGenerateRef.current = canGenerate;
+    if (canGenerate && !canGenerateEmitidoRef.current) {
+      canGenerateEmitidoRef.current = true;
+      captureRoadmapCanGenerate({
+        turnos: turnosDados,
+        via_formulario: Object.keys(formOverrides).length > 0,
+      });
+    }
+  }, [canGenerate, formOverrides, turnosDados]);
+
+  // Desfecho da geracao, uma vez por transicao de fase.
+  useEffect(() => {
+    if (state.phase === "idle" || state.phase === "running") {
+      fasePublicadaRef.current = null;
+      return;
+    }
+    if (fasePublicadaRef.current === state.phase) return;
+    fasePublicadaRef.current = state.phase;
+    if (state.phase === "done") {
+      captureRoadmapGeracaoConcluida({
+        secoes_falhas: state.failed.length,
+        parcial: state.failed.length > 0,
+      });
+      return;
+    }
+    captureRoadmapGeracaoFalhou({
+      motivo: state.blockedCode ?? "stream_error",
+    });
+  }, [state.phase, state.failed.length, state.blockedCode]);
+
   // Gera com o payload que o buildGenerationIntake montou. Sem caminho de
   // validacao proprio aqui: se canGenerate e true, o payload existe.
   const payloadToGenerate = readiness.intake;
@@ -557,12 +610,15 @@ export default function RoadmapIA() {
   const generate = useCallback(async () => {
     if (!payloadToGenerate || generating) return;
     setGenerating(true);
+    captureRoadmapGeracaoIniciada({
+      via_formulario: Object.keys(formOverrides).length > 0,
+    });
     try {
       await start((handlers) => streamGeneration(payloadToGenerate, handlers));
     } finally {
       setGenerating(false);
     }
-  }, [generating, payloadToGenerate, start]);
+  }, [formOverrides, generating, payloadToGenerate, start]);
 
   const resume = async (slug: string) => {
     await start((handlers) => streamResume(slug, handlers));

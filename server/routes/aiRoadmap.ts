@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import * as Sentry from "@sentry/node";
 import { NextFunction, Request, Response, Router } from "express";
 
 import {
@@ -58,6 +59,72 @@ router.use(requireAuth);
 router.use(checkProStatus);
 
 const ROADMAP_GENERATOR_TOOL = "roadmap-generator";
+
+// REJEICOES DE BORDA: os caminhos que barram a pessoa ANTES de qualquer chamada
+// de IA. Ate a fase 2 nenhum deles deixava rastro no banco, e o beco sem saida
+// do teto de turnos so foi descoberto por distribuicao estatistica, 17 dias
+// depois. Agora cada um grava uma linha com um CODIGO de motivo.
+//
+// PRIVACIDADE: `errorMessage` aqui recebe SOMENTE um codigo desta uniao, nunca
+// texto livre e nunca fala da pessoa. O status 'rejected' e novo e nao conta em
+// cota nenhuma (reserve_ai_usage_slot soma apenas 'success' e 'reserved'), entao
+// registrar nao cobra.
+type MotivoRejeicao =
+  | "turn_limit"
+  | "payload_too_large"
+  | "pro_required"
+  | "invalid_request"
+  | "generation_in_progress"
+  | "concurrency_check_failed"
+  | "context_failed"
+  | "not_resumable"
+  | "resume_in_progress"
+  | "resume_lock_failed"
+  | "corrupted_inputs"
+  | "corrupted_roadmap";
+
+async function registrarRejeicao(
+  userId: string,
+  tool: string,
+  requestId: string,
+  motivo: MotivoRejeicao,
+): Promise<void> {
+  await logAiUsage({
+    userId,
+    tool,
+    requestId,
+    status: "rejected",
+    errorMessage: motivo,
+  });
+}
+
+// Sentry para os estados em que a PESSOA FICA TRAVADA. console.error nao vira
+// issue (server/lib/sentry.ts nao instala integracao de console), entao sem isto
+// o rastro morre no log do Railway. Mesmo padrao de aiUsage.ts:367-380.
+const INTERVALO_AVISO_TRAVADO_MS = 5 * 60 * 1000;
+let ultimoAvisoTravado = 0;
+
+function avisarUsuarioTravado(
+  situacao: string,
+  userId: string,
+  detalhe: string,
+): void {
+  const agora = Date.now();
+  if (agora - ultimoAvisoTravado < INTERVALO_AVISO_TRAVADO_MS) return;
+  ultimoAvisoTravado = agora;
+  const mensagem = `[roadmap-ia] usuario TRAVADO: ${situacao}. user=${userId}. Detalhe: ${detalhe}`;
+  console.error(mensagem);
+  try {
+    Sentry.captureMessage(mensagem, {
+      level: "error",
+      tags: { area: "roadmap-ia", travado: "true", situacao },
+      fingerprint: ["roadmap-ia-travado", situacao],
+    });
+  } catch {
+    // Sentry desligado (DSN ausente) e no-op por desenho; o console.error acima
+    // ja garante o rastro. Mesmo padrao do avisarModoDegradado.
+  }
+}
 // Janela do bloqueio de geracao concorrente. Ajustavel. // TODO: calibrar.
 const CONCURRENT_WINDOW_MS = 5 * 60 * 1000;
 
@@ -282,6 +349,13 @@ async function concludeGeneration(
   ).length;
 
   if (filled === 0) {
+    // Nenhuma secao vingou: o roadmap existe mas esta vazio, e a unica saida da
+    // pessoa e retomar. Vira issue pelo mesmo motivo do esqueleto.
+    avisarUsuarioTravado(
+      "geracao sem nenhuma secao preenchida",
+      userId,
+      `secoes falhas: ${failed.length}`,
+    );
     // TODO(Ana): mensagem de falha parcial sem nada aproveitavel (retomada).
     sseSend(res, {
       type: "error",
@@ -443,6 +517,12 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
     // antigo "Respostas do entendimento invalidas" que nao dizia nada.
     const readiness = buildGenerationIntake(req.body as Record<string, string>);
     if (!readiness.canGenerate || !readiness.intake) {
+      await registrarRejeicao(
+        userId,
+        ROADMAP_GENERATOR_TOOL,
+        requestId,
+        "invalid_request",
+      );
       return next(
         createError(
           400,
@@ -466,6 +546,12 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
       .gte("updated_at", cutoff)
       .limit(1);
     if (activeError) {
+      await registrarRejeicao(
+        userId,
+        ROADMAP_GENERATOR_TOOL,
+        requestId,
+        "concurrency_check_failed",
+      );
       // TODO(Ana): mensagem de falha na checagem de geracao em andamento.
       return next(
         createError(
@@ -476,6 +562,12 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
       );
     }
     if ((activeRows ?? []).length > 0) {
+      await registrarRejeicao(
+        userId,
+        ROADMAP_GENERATOR_TOOL,
+        requestId,
+        "generation_in_progress",
+      );
       // TODO(Ana): mensagem de geracao ja em andamento.
       return next(
         createError(
@@ -520,6 +612,11 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
       const corrida = err instanceof GenerationInProgressError;
       console.error("[roadmap-ia] esqueleto falhou:", detail);
       await releaseReservation(userId, requestId, detail);
+      if (!corrida) {
+        // Sem esqueleto nao ha roadmap nenhum: a pessoa fica com a tela de erro
+        // e nada para retomar. E o pior desfecho da geracao.
+        avisarUsuarioTravado("esqueleto falhou apos os retries", userId, detail);
+      }
       // Corrida de clique duplo perdida: a outra requisicao esta gerando de
       // verdade, entao a mensagem e a mesma do 429, nao um erro de geracao.
       // TODO(Ana): mensagem de falha na geracao do esqueleto.
@@ -570,6 +667,19 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
   }
 });
 
+// Reduz a mensagem de erro de um turno a um CODIGO de baixa cardinalidade, para
+// o banco nunca receber texto livre vindo do provedor. Ver o comentario de
+// privacidade no catch da rota.
+function classificarFalhaDeTurno(message: string): string {
+  if (message.includes("upstream_timeout")) return "timeout";
+  const status = /OpenAI respondeu (\d{3})/.exec(message);
+  if (status) return `openai_${status[1]}`;
+  if (message.includes("nao bateu com o schema")) return "schema_mismatch";
+  if (message.includes("JSON valido")) return "invalid_json";
+  if (message.includes("nao retornou conteudo")) return "no_content";
+  return "upstream_error";
+}
+
 // POST /api/roadmaps-ia/intake/chat: um turno do chat de intake guiado. NAO gera
 // roadmap e NAO grava nada (efemero; o client mantem o historico e reenvia a
 // cada turno, como o agente e o chat de intake do plano de carreira). A geracao
@@ -578,20 +688,35 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
 router.post("/intake/chat", async (req: Request, res: Response, next: NextFunction) => {
   // Recheck fail-closed: conversar tambem e exclusivo do Pro (senao um usuario
   // free consumiria IA de graca), mesmo padrao do career-plan/intake/chat.
+  const userId = req.user!.id;
+  const requestId =
+    (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
+
   if (req.isPro !== true) {
+    await registrarRejeicao(
+      userId,
+      ROADMAP_INTAKE_CHAT_TOOL,
+      requestId,
+      "pro_required",
+    );
     // TODO(Ana): mensagem de recurso exclusivo Pro.
     return next(
       createError(403, "pro_required", "O Roadmap com IA e exclusivo do Plano Pro."),
     );
   }
 
-  const userId = req.user!.id;
-  const requestId =
-    (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
-
   const body = validateIntakeChatBody(req.body);
   if (!body.ok) {
+    await registrarRejeicao(
+      userId,
+      ROADMAP_INTAKE_CHAT_TOOL,
+      requestId,
+      body.error,
+    );
     if (body.error === "turn_limit") {
+      // O teto atingido e o estado em que a pessoa mais tem chance de ficar sem
+      // saida, entao ele vira issue, nao so linha de log.
+      avisarUsuarioTravado("teto de turnos do chat de intake", userId, "turn_limit");
       // TODO(Ana): mensagem de limite de turnos do chat (a UI oferece o formulario).
       return next(
         createError(
@@ -692,12 +817,17 @@ router.post("/intake/chat", async (req: Request, res: Response, next: NextFuncti
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro desconhecido";
+    // PRIVACIDADE: o detalhe cru fica SO no log do servidor. Ele pode conter o
+    // corpo de erro da OpenAI, e o prompt que gerou esse erro carrega a fala da
+    // pessoa; gravar isso em ai_usage_logs seria persistir conversa em uma
+    // tabela de telemetria. No banco vai apenas o codigo classificado.
+    console.error(`[roadmap-intake-chat] turno falhou: ${message}`);
     await logAiUsage({
       userId,
       tool: ROADMAP_INTAKE_CHAT_TOOL,
       requestId,
       status: "error",
-      errorMessage: message,
+      errorMessage: classificarFalhaDeTurno(message),
       inputChars: aiIo.inputChars,
     });
     // TODO(Ana): mensagem de erro ao processar o turno do chat (502).
