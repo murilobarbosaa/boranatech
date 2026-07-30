@@ -32,6 +32,14 @@
  */
 
 /** Estado do cruzamento entre a intenção registrada e o resultado observável. */
+import {
+  CAMPOS_VISIVEIS_POR_ACTION,
+  camposVisiveis,
+  comoObjeto,
+} from "../../shared/auditVisibleFields";
+
+export { CAMPOS_VISIVEIS_POR_ACTION, camposVisiveis };
+
 export type AuditOutcome = "confirmed" | "unconfirmed" | "not_verifiable";
 
 export type AuditLogRow = {
@@ -72,77 +80,6 @@ export type AuditHistoryEntry = {
   outcome: AuditOutcome;
   outcome_detail: string | null;
 };
-
-/**
- * O que pode aparecer na tela, por ação.
- *
- * Critério: campo curto e factual entra; texto livre e atributo pessoal não. A
- * ausência de `bio`, `objetivo`, `career_goal` e `gender` é deliberada, não
- * esquecimento. `reveal` é lista vazia por escrito: hoje a rota grava os dois
- * json como null (produção confere, 0 linhas de reveal com json), mas a
- * allowlist existe para o dia em que alguém mudar a gravação sem lembrar da
- * tela.
- */
-export const CAMPOS_VISIVEIS_POR_ACTION: Record<string, readonly string[]> = {
-  update_profile: [
-    "name",
-    "full_name",
-    "headline",
-    "city",
-    "uf",
-    "area_interesse",
-    "nivel_atual",
-    "github_url",
-    "linkedin_url",
-    "website_url",
-  ],
-  update_email: ["email"],
-  refund: ["amount_cents", "reason", "stripe_reason"],
-  cancel_subscription: [
-    "reason_code",
-    "current_period_end",
-    "cancel_at_period_end",
-  ],
-  reveal: [],
-  grant: [],
-  revoke: [],
-};
-
-function ehPrimitivo(v: unknown): v is string | number | boolean | null {
-  return (
-    v === null ||
-    typeof v === "string" ||
-    typeof v === "number" ||
-    typeof v === "boolean"
-  );
-}
-
-function comoObjeto(json: unknown): Record<string, unknown> | null {
-  if (!json || typeof json !== "object" || Array.isArray(json)) return null;
-  return json as Record<string, unknown>;
-}
-
-/**
- * Filtra um json de auditoria pela allowlist da ação. Fora da allowlist, ou
- * valor não primitivo, não sai daqui.
- */
-export function camposVisiveis(
-  action: string,
-  json: unknown,
-): Record<string, string | number | boolean | null> {
-  const permitidos = CAMPOS_VISIVEIS_POR_ACTION[action];
-  const obj = comoObjeto(json);
-  if (!permitidos || permitidos.length === 0 || !obj) return {};
-
-  const saida: Record<string, string | number | boolean | null> = {};
-  for (const campo of permitidos) {
-    if (!Object.prototype.hasOwnProperty.call(obj, campo)) continue;
-    const valor = obj[campo];
-    if (!ehPrimitivo(valor)) continue;
-    saida[campo] = valor;
-  }
-  return saida;
-}
 
 /** Nomes de tudo que consta no registro, allowlist à parte. */
 function nomesAlterados(before: unknown, after: unknown): string[] {

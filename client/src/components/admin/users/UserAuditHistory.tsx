@@ -1,5 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorBlock } from "@/components/admin/StateBlocks";
+import { camposVisiveis } from "@shared/auditVisibleFields";
 
 import { fmtDate } from "./userFormat";
 import type { AuditEntry, AuditPayload } from "./types";
@@ -83,8 +84,17 @@ function valorLegivel(v: string | number | boolean | null): string {
 }
 
 function Campos({ entrada }: { entrada: AuditEntry }) {
-  const before = entrada.before ?? {};
-  const after = entrada.after ?? {};
+  // Filtra DE NOVO, com a mesma allowlist que o servidor usou. Nao e
+  // redundancia inutil: o servidor filtra para o valor nao trafegar, e a tela
+  // filtra para que uma mudanca na gravacao do log, ou um backend mais novo que
+  // este bundle, nao pinte um valor que ninguem decidiu exibir. Medido: sem
+  // isto, um `before: { cpf: ... }` vindo do servidor era renderizado inteiro.
+  //
+  // A guarda mora AQUI DENTRO, e nao em quem chama <Campos>, porque guarda no
+  // chamador precisa ser repetida em cada chamador e some no primeiro que
+  // alguem esquecer.
+  const before = camposVisiveis(entrada.action, entrada.before);
+  const after = camposVisiveis(entrada.action, entrada.after);
   const exibidos = new Set([...Object.keys(before), ...Object.keys(after)]);
 
   // Campos que mudaram mas cujo VALOR nao veio: o servidor filtrou pela
