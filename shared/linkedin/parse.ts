@@ -306,12 +306,46 @@ function clip(value: string, max: number): string {
 }
 
 /**
- * Headline detectada e ONDE ela está.
+ * A linha ficou ABERTA em vírgula, ou seja, o item seguinte foi quebrado.
+ *
+ * É o irmão do separador órfão da Fase 1A, na direção oposta: lá a linha
+ * terminava em `|` e a cauda vinha curta na linha de baixo; aqui a headline
+ * termina em `,` no meio da enumeração de stack e a continuação começa em
+ * MAIÚSCULA (`... NestJS, TypeScript ,` + `PostgreSQL | SaaS B2B & B2C`), então
+ * a regra 4 de `normalizeProfileText` (que só junta quando a seguinte começa em
+ * minúscula) não junta, e as duas linhas viram candidatas independentes.
+ *
+ * A vírgula continua FORA de `ENDS_ORPHAN_SEPARATOR` no normalizador, e isso é
+ * deliberado: lá a regra vale para o texto inteiro, e vírgula é pontuação
+ * normal de prosa (o comentário do módulo documenta o estrago de tratá-la como
+ * separador estrutural). Aqui o escopo é só o preâmbulo e só entre candidatas
+ * fortes, onde vírgula no fim da linha não é prosa, é enumeração cortada.
+ */
+const HEADLINE_ABERTA_EM_VIRGULA = /,$/;
+
+/**
+ * Headline detectada e ONDE ela começa.
  *
  * O índice existe por causa do bloco de identidade: no export real, o nome, a
  * headline e a localização ficam entre a última seção da coluna lateral e a
  * primeira seção principal, sem cabeçalho nenhum separando. Sem saber onde a
  * headline começa, a seção lateral anterior engole os três.
+ *
+ * A headline pode OCUPAR MAIS DE UMA LINHA. Escolher uma só era o bug medido em
+ * produção: com a headline quebrada em duas, a última candidata vencia e o
+ * cargo-alvo mais metade da stack ficavam de fora (`PostgreSQL | SaaS B2B &
+ * B2C` no lugar de `Desenvolvedor Full Stack | React, ... | SaaS B2B & B2C`).
+ * O dano era duplo, porque `indice` alimenta `inicioDaIdentidade`: apontando
+ * para a segunda linha, o corte da seção lateral caía tarde demais e o NOME da
+ * pessoa mais o primeiro pedaço da headline vazavam para `skillsPdf`.
+ *
+ * A junção é para TRÁS e exige DOIS sinais ao mesmo tempo: a linha de cima ser
+ * candidata forte E ter ficado aberta em vírgula. Exigir os dois é o que
+ * protege os falsos positivos que importam, todos cobertos em
+ * `parse.headlineMultilinha.test.ts`: localização, nome de empresa, headline de
+ * outro perfil colada em seguida e cargo de experiência logo abaixo são linhas
+ * que vêm depois de uma headline FECHADA, e headline legítima não termina em
+ * vírgula. Na dúvida, não junta, e o resultado é o comportamento anterior.
  */
 function detectHeadline(
   lines: string[],
@@ -319,14 +353,30 @@ function detectHeadline(
 ): { valor: string | null; indice: number } {
   const limite = firstMainIndex >= 0 ? firstMainIndex : Math.min(20, lines.length);
   const preamble = lines.slice(0, limite);
+  const ehForte = (linha: string) =>
+    isHeadlineCandidate(linha) && hasHeadlineSignal(linha);
   const strong = preamble
     .map((linha, indice) => ({ linha, indice }))
-    .filter(({ linha }) => isHeadlineCandidate(linha) && hasHeadlineSignal(linha));
+    .filter(({ linha }) => ehForte(linha));
   if (strong.length === 0) return { valor: null, indice: -1 };
   // O nome vem antes da headline; pegamos a candidata forte mais próxima da
   // primeira seção principal (a última da lista).
   const escolhida = strong[strong.length - 1];
-  return { valor: clip(escolhida.linha, 250), indice: escolhida.indice };
+
+  const partes = [escolhida.linha.trim()];
+  let inicio = escolhida.indice;
+  while (inicio > 0) {
+    const anterior = preamble[inicio - 1].trim();
+    if (!HEADLINE_ABERTA_EM_VIRGULA.test(anterior)) break;
+    if (!ehForte(anterior)) break;
+    partes.unshift(anterior);
+    inicio -= 1;
+  }
+
+  return {
+    valor: clip(partes.join(" ").replace(/\s+/g, " "), 250),
+    indice: inicio,
+  };
 }
 
 /**
