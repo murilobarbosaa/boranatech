@@ -1,4 +1,6 @@
 import { Field } from "./UserFields";
+import { EditableField } from "./UserEditFields";
+import type { useProfileEdit } from "./useProfileEdit";
 import type { UserDetail } from "./types";
 import { NAO_INFORMADO, fmtText, safeHttpUrl, semValor } from "./userFormat";
 
@@ -47,39 +49,78 @@ function localidade(detail: UserDetail): string {
   return partes.length ? partes.join(" / ") : NAO_INFORMADO;
 }
 
-export function PublicProfileSection({ detail }: { detail: UserDetail }) {
+export function PublicProfileSection({
+  detail,
+  edit,
+}: {
+  detail: UserDetail;
+  edit: ReturnType<typeof useProfileEdit>;
+}) {
+  const comum = (name: string) => ({
+    name,
+    editing: edit.editing,
+    form: edit.form,
+    onChange: edit.change,
+    error: edit.errors[name],
+    disabled: edit.saving,
+  });
+
   return (
     <div className="space-y-3 rounded-2xl border-2 border-slate-200 bg-white p-4">
       <div className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
-        <Field
+        <EditableField
           label="Headline"
-          value={fmtText(detail.headline)}
-          empty={semValor(detail.headline)}
+          {...comum("headline")}
+          readValue={fmtText(detail.headline)}
+          readEmpty={semValor(detail.headline)}
         />
-        <Field
-          label="Cidade / UF"
-          value={localidade(detail)}
-          empty={semValor(detail.city) && semValor(detail.uf)}
-        />
-        <Field
+        {/* Em leitura, "Cidade / UF" numa linha so; em edicao os dois viram
+            campos separados, porque nao da para editar um valor concatenado. */}
+        {edit.editing ? (
+          <>
+            <EditableField
+              label="Cidade"
+              {...comum("city")}
+              readValue={fmtText(detail.city)}
+              readEmpty={semValor(detail.city)}
+            />
+            <EditableField
+              label="UF"
+              {...comum("uf")}
+              readValue={fmtText(detail.uf)}
+              readEmpty={semValor(detail.uf)}
+            />
+          </>
+        ) : (
+          <Field
+            label="Cidade / UF"
+            value={localidade(detail)}
+            empty={semValor(detail.city) && semValor(detail.uf)}
+          />
+        )}
+        <EditableField
           label="Meta de carreira"
-          value={fmtText(detail.career_goal)}
-          empty={semValor(detail.career_goal)}
+          {...comum("career_goal")}
+          readValue={fmtText(detail.career_goal)}
+          readEmpty={semValor(detail.career_goal)}
         />
-        <Field
+        <EditableField
           label="GitHub"
-          value={<UrlValue value={detail.github_url} />}
-          empty={semValor(detail.github_url)}
+          {...comum("github_url")}
+          readValue={<UrlValue value={detail.github_url} />}
+          readEmpty={semValor(detail.github_url)}
         />
-        <Field
+        <EditableField
           label="LinkedIn"
-          value={<UrlValue value={detail.linkedin_url} />}
-          empty={semValor(detail.linkedin_url)}
+          {...comum("linkedin_url")}
+          readValue={<UrlValue value={detail.linkedin_url} />}
+          readEmpty={semValor(detail.linkedin_url)}
         />
-        <Field
+        <EditableField
           label="Site"
-          value={<UrlValue value={detail.website_url} />}
-          empty={semValor(detail.website_url)}
+          {...comum("website_url")}
+          readValue={<UrlValue value={detail.website_url} />}
+          readEmpty={semValor(detail.website_url)}
         />
       </div>
     </div>

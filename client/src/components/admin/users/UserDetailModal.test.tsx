@@ -626,3 +626,236 @@ describe("modo de avatar", () => {
     expect(screen.getByText(/Modo do avatar: gravatar/)).toBeTruthy();
   });
 });
+
+describe("modo de edicao (Fatia 5a)", () => {
+  async function entrarEmEdicao() {
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+  }
+
+  it("o rodape oferece Editar em leitura", async () => {
+    rotear(detalhe());
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    const rodape = within(document.querySelector("footer") as HTMLElement);
+    expect(rodape.getByRole("button", { name: "Editar" })).toBeTruthy();
+  });
+
+  it("edita um campo e salva, com toast de confirmacao", async () => {
+    rotear(detalhe());
+    await entrarEmEdicao();
+
+    fireEvent.change(screen.getByLabelText("Nome"), {
+      target: { value: "Ana Paula" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(toastSpy.acao).toHaveBeenCalled());
+    const patch = fetchMock.mock.calls.find(
+      (c) => (c[1] as { method?: string })?.method === "PATCH",
+    );
+    expect(patch).toBeTruthy();
+    expect(JSON.parse((patch![1] as { body: string }).body)).toMatchObject({
+      name: "Ana Paula",
+    });
+  });
+
+  it("manda expected_updated_at junto, para a trava otimista", async () => {
+    rotear(detalhe());
+    await entrarEmEdicao();
+
+    fireEvent.change(screen.getByLabelText("Nome"), {
+      target: { value: "Ana Paula" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(toastSpy.acao).toHaveBeenCalled());
+    const patch = fetchMock.mock.calls.find(
+      (c) => (c[1] as { method?: string })?.method === "PATCH",
+    )!;
+    expect(JSON.parse((patch[1] as { body: string }).body)).toMatchObject({
+      expected_updated_at: "2026-07-02T12:00:00Z",
+    });
+  });
+
+  it("erro de validacao aparece inline, junto do campo, e nao em toast", async () => {
+    rotear(detalhe(), {
+      PATCH_ERRO: null,
+    });
+    fetchMock.mockImplementation((path: string, init?: { method?: string }) => {
+      if (init?.method === "PATCH") {
+        const erro = new Error("O campo headline excede o tamanho máximo.");
+        (erro as unknown as { code: string }).code = "invalid_request";
+        (erro as unknown as { field: string }).field = "headline";
+        return Promise.reject(erro);
+      }
+      if (path.includes("/transactions"))
+        return Promise.resolve({
+          data: {
+            items: [],
+            total_paid_cents: 0,
+            truncated: false,
+            limit: 200,
+          },
+        });
+      if (path.endsWith("/activity"))
+        return Promise.resolve({ data: { state: "ok", hasData: false } });
+      return Promise.resolve(detalhe());
+    });
+
+    await entrarEmEdicao();
+    // Headline vive dentro do dropdown "Mais informações".
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+    fireEvent.change(await screen.findByLabelText("Headline"), {
+      target: { value: "x".repeat(200) },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(
+      await screen.findByText("Headline precisa ter no máximo 140 caracteres."),
+    ).toBeTruthy();
+    // Validacao local: nem chegou a chamar o servidor.
+    expect(
+      fetchMock.mock.calls.some(
+        (c) => (c[1] as { method?: string })?.method === "PATCH",
+      ),
+    ).toBe(false);
+  });
+
+  it("Perfil público aparece em EDICAO mesmo com todos os campos nulos", async () => {
+    // Em leitura a secao e condicional (100% dos perfis tem os campos nulos
+    // hoje). Se continuasse condicional em edicao, nao haveria onde clicar
+    // para preencher pela primeira vez.
+    rotear(detalhe());
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+    expect(screen.queryByText("Perfil público")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+    expect(await screen.findByText("Perfil público")).toBeTruthy();
+  });
+
+  it("botao trava durante o salvamento, contra duplo clique", async () => {
+    let liberar!: () => void;
+    fetchMock.mockImplementation((path: string, init?: { method?: string }) => {
+      if (init?.method === "PATCH")
+        return new Promise((r) => {
+          liberar = () => r({ data: { updated: true, fields: ["name"] } });
+        });
+      if (path.includes("/transactions"))
+        return Promise.resolve({
+          data: {
+            items: [],
+            total_paid_cents: 0,
+            truncated: false,
+            limit: 200,
+          },
+        });
+      if (path.endsWith("/activity"))
+        return Promise.resolve({ data: { state: "ok", hasData: false } });
+      return Promise.resolve(detalhe());
+    });
+
+    await entrarEmEdicao();
+    fireEvent.change(screen.getByLabelText("Nome"), {
+      target: { value: "Ana Paula" },
+    });
+    const salvar = screen.getByRole("button", { name: "Salvar" });
+    fireEvent.click(salvar);
+
+    await waitFor(() =>
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Salvando...",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Salvando..." }));
+
+    const patches = fetchMock.mock.calls.filter(
+      (c) => (c[1] as { method?: string })?.method === "PATCH",
+    );
+    expect(patches).toHaveLength(1);
+    liberar();
+  });
+});
+
+describe("guarda de alteracao nao salva no funil requestClose", () => {
+  it("Esc SEM alteracao fecha direto", async () => {
+    rotear(detalhe());
+    const onClose = vi.fn();
+    render(<UserDetailModal userId="u1" onClose={onClose} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+
+    fireEvent.keyDown(document.activeElement || document.body, {
+      key: "Escape",
+      code: "Escape",
+    });
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  it("Esc COM alteracao nao salva pede confirmacao em vez de descartar", async () => {
+    rotear(detalhe());
+    const onClose = vi.fn();
+    render(<UserDetailModal userId="u1" onClose={onClose} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+    fireEvent.change(screen.getByLabelText("Nome"), {
+      target: { value: "Ana Paula" },
+    });
+
+    fireEvent.keyDown(document.activeElement || document.body, {
+      key: "Escape",
+      code: "Escape",
+    });
+
+    expect(await screen.findByText("Descartar alterações?")).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("confirmar o descarte fecha; continuar editando nao", async () => {
+    rotear(detalhe());
+    const onClose = vi.fn();
+    render(<UserDetailModal userId="u1" onClose={onClose} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+    fireEvent.change(screen.getByLabelText("Nome"), {
+      target: { value: "Ana Paula" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    await screen.findByText("Descartar alterações?");
+    fireEvent.click(screen.getByRole("button", { name: "Continuar editando" }));
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    await screen.findByText("Descartar alterações?");
+    fireEvent.click(screen.getByRole("button", { name: "Descartar" }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  it("a guarda vale para TODOS os caminhos de saida, nao so para o Esc", async () => {
+    // Se a checagem morasse nos call sites em vez de dentro do requestClose,
+    // bastaria alguem esquecer um caminho. Aqui os dois caminhos existentes
+    // (Esc e botao Fechar) sao exercitados contra a MESMA guarda.
+    rotear(detalhe());
+    const onClose = vi.fn();
+    render(<UserDetailModal userId="u1" onClose={onClose} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+    fireEvent.change(screen.getByLabelText("Nome"), {
+      target: { value: "Ana Paula" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(await screen.findByText("Descartar alterações?")).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});

@@ -16,7 +16,10 @@ import {
 // ajuste). Promover taskLayers.ts para um modulo compartilhado e o certo, mas
 // mexe em tasks/ e em outras abas, entao fica para quando houver um terceiro
 // consumidor.
-import { LAYER_DIALOG } from "@/components/admin/tasks/taskLayers";
+import {
+  LAYER_DIALOG,
+  LAYER_IN_DIALOG,
+} from "@/components/admin/tasks/taskLayers";
 
 import { ActivityBlock } from "./ActivityBlock";
 import { AvatarBlock } from "./AvatarBlock";
@@ -24,6 +27,17 @@ import { PublicProfileSection, temPerfilPublico } from "./PublicProfileSection";
 import { Field } from "./UserFields";
 import { UserDetailSkeleton } from "./UserDetailSkeleton";
 import { UserTransactions } from "./UserTransactions";
+import { EditableField, GenderField } from "./UserEditFields";
+import { useProfileEdit } from "./useProfileEdit";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type {
   PosthogUserActivityState,
   TransactionsPayload,
@@ -135,6 +149,11 @@ export function UserDetailModal({
   const [influencerBusy, setInfluencerBusy] = useState(false);
   const [detailVersion, setDetailVersion] = useState(0);
 
+  const edit = useProfileEdit(detail);
+  // Confirmacao de descarte. Fica aqui, e nao no hook, porque quem decide
+  // FECHAR e o modal.
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+
   // FUNIL UNICO de fechamento: o botao "Fechar", o Esc e qualquer caminho
   // futuro passam por aqui. Hoje so repassa o onClose; existe porque a Fatia 5
   // poe formulario editavel neste modal, e a checagem de "tem alteracao nao
@@ -142,7 +161,44 @@ export function UserDetailModal({
   // saida. Guarda no chamador e o desenho que ja falhou nesta base
   // (setScoreDelta, 2 call sites, um ficou sem).
   async function requestClose() {
+    // A GUARDA MORA AQUI, dentro do funil, nunca nos call sites. Esta e a fatia
+    // para a qual o funil foi construido: com alteracao nao salva, qualquer
+    // caminho de saida (Esc, botao Fechar, e o que a Fatia 6 ou 7 acrescentar)
+    // passa pela mesma pergunta. Guarda repetida em cada chamador some no
+    // primeiro que alguem esquecer, que e exatamente o que aconteceu com
+    // setScoreDelta nesta base.
+    if (edit.dirty) {
+      setConfirmDiscard(true);
+      return;
+    }
     onClose();
+  }
+
+  async function handleSave() {
+    if (edit.saving) return;
+    if (!edit.validate()) return;
+
+    edit.setSaving(true);
+    try {
+      await adminFetch(`/users/${userId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          ...edit.changedFields,
+          // Trava otimista: o servidor recusa com 409 se o cadastro mudou
+          // depois que este modal abriu.
+          expected_updated_at: detail?.updated_at ?? undefined,
+        }),
+      });
+      edit.cancel();
+      setDetailVersion((version) => version + 1);
+      showActionToast({ message: "Cadastro atualizado." });
+    } catch (err) {
+      showErrorToast(
+        err instanceof Error ? err.message : "Erro ao salvar o cadastro.",
+      );
+    } finally {
+      edit.setSaving(false);
+    }
   }
 
   // Ao montar (e a cada detailVersion): busca o detalhe. A atividade PostHog
@@ -517,25 +573,44 @@ export function UserDetailModal({
                 <div className={CARD_SECTION}>
                   <AvatarBlock avatar={detail.avatar} />
                   <div className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
-                    <Field
+                    <EditableField
                       label="Nome"
-                      value={fmtText(detail.name)}
-                      empty={semValor(detail.name)}
+                      name="name"
+                      editing={edit.editing}
+                      form={edit.form}
+                      onChange={edit.change}
+                      error={edit.errors.name}
+                      disabled={edit.saving}
+                      readValue={fmtText(detail.name)}
+                      readEmpty={semValor(detail.name)}
                     />
-                    <Field
+                    <EditableField
                       label="Nome completo"
-                      value={fmtText(detail.full_name)}
-                      empty={semValor(detail.full_name)}
+                      name="full_name"
+                      editing={edit.editing}
+                      form={edit.form}
+                      onChange={edit.change}
+                      error={edit.errors.full_name}
+                      disabled={edit.saving}
+                      readValue={fmtText(detail.full_name)}
+                      readEmpty={semValor(detail.full_name)}
                     />
+                    {/* E-mail NAO e editavel aqui: e a Fatia 5b, separada de
+                        propósito porque trocar o e-mail mexe em auth.users, na
+                        Stripe e nas listas de envio. */}
                     <Field
                       label="E-mail"
                       value={fmtText(detail.email)}
                       empty={semValor(detail.email)}
                     />
-                    <Field
-                      label="Gênero"
-                      value={fmtText(detail.gender)}
-                      empty={semValor(detail.gender)}
+                    <GenderField
+                      editing={edit.editing}
+                      form={edit.form}
+                      onChange={edit.change}
+                      error={edit.errors.gender}
+                      disabled={edit.saving}
+                      readValue={fmtText(detail.gender)}
+                      readEmpty={semValor(detail.gender)}
                     />
                   </div>
                 </div>
@@ -588,32 +663,62 @@ export function UserDetailModal({
                   <div className="grid items-start gap-6 lg:grid-cols-2">
                     <Section title="Perfil e carreira">
                       <div className={CARD_SECTION}>
-                        <Field
+                        <EditableField
                           label="Área de interesse"
-                          value={fmtText(detail.area_interesse)}
-                          empty={semValor(detail.area_interesse)}
+                          name="area_interesse"
+                          editing={edit.editing}
+                          form={edit.form}
+                          onChange={edit.change}
+                          error={edit.errors.area_interesse}
+                          disabled={edit.saving}
+                          readValue={fmtText(detail.area_interesse)}
+                          readEmpty={semValor(detail.area_interesse)}
                         />
-                        <Field
+                        <EditableField
                           label="Nível atual"
-                          value={fmtText(detail.nivel_atual)}
-                          empty={semValor(detail.nivel_atual)}
+                          name="nivel_atual"
+                          editing={edit.editing}
+                          form={edit.form}
+                          onChange={edit.change}
+                          error={edit.errors.nivel_atual}
+                          disabled={edit.saving}
+                          readValue={fmtText(detail.nivel_atual)}
+                          readEmpty={semValor(detail.nivel_atual)}
                         />
-                        <Field
+                        <EditableField
                           label="Objetivo"
-                          value={fmtText(detail.objetivo)}
-                          empty={semValor(detail.objetivo)}
+                          name="objetivo"
+                          editing={edit.editing}
+                          form={edit.form}
+                          onChange={edit.change}
+                          error={edit.errors.objetivo}
+                          disabled={edit.saving}
+                          readValue={fmtText(detail.objetivo)}
+                          readEmpty={semValor(detail.objetivo)}
                         />
-                        <Field
+                        <EditableField
                           label="Bio"
-                          value={fmtText(detail.bio)}
-                          empty={semValor(detail.bio)}
+                          name="bio"
+                          editing={edit.editing}
+                          form={edit.form}
+                          onChange={edit.change}
+                          error={edit.errors.bio}
+                          disabled={edit.saving}
+                          readValue={fmtText(detail.bio)}
+                          readEmpty={semValor(detail.bio)}
+                          multiline
                         />
                       </div>
                     </Section>
 
-                    {temPerfilPublico(detail) ? (
+                    {/* Em LEITURA a secao e condicional (os campos estao
+                        100% nulos em producao e seis linhas vazias para todo
+                        mundo seriam ruido). Em EDICAO ela aparece SEMPRE:
+                        escondida, nao haveria onde clicar para preencher pela
+                        primeira vez. */}
+                    {edit.editing || temPerfilPublico(detail) ? (
                       <Section title="Perfil público">
-                        <PublicProfileSection detail={detail} />
+                        <PublicProfileSection detail={detail} edit={edit} />
                       </Section>
                     ) : null}
 
@@ -701,7 +806,39 @@ export function UserDetailModal({
             reserva: espaco vazio nao promete o que ainda nao existe. */}
         <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t-2 border-slate-200 bg-slate-50 px-4 py-3 sm:px-6">
           <div className="flex flex-wrap items-center gap-2">
-            {detail && !detailLoading ? (
+            {detail && !detailLoading && edit.editing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => void handleSave()}
+                  disabled={edit.saving || !edit.dirty}
+                  className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
+                >
+                  {edit.saving ? "Salvando..." : "Salvar"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (edit.dirty) setConfirmDiscard(true);
+                    else edit.cancel();
+                  }}
+                  disabled={edit.saving}
+                  className={ACTION_BUTTON}
+                >
+                  Cancelar
+                </button>
+              </>
+            ) : null}
+            {detail && !detailLoading && !edit.editing ? (
+              <button
+                type="button"
+                onClick={edit.start}
+                className={ACTION_BUTTON}
+              >
+                Editar
+              </button>
+            ) : null}
+            {detail && !detailLoading && !edit.editing ? (
               detail.influencer ? (
                 revokeConfirm ? (
                   <>
@@ -753,7 +890,7 @@ export function UserDetailModal({
 
           {/* Formulario da nota, aberto pelo botao acima. Ocupa a linha inteira
               do rodape para o textarea nao espremer as acoes. */}
-          {grantOpen && detail && !detail.influencer ? (
+          {grantOpen && detail && !detail.influencer && !edit.editing ? (
             <div className="w-full space-y-2 rounded-2xl border-2 border-violet-700 bg-violet-50 p-3">
               <p className="text-[11px] font-black uppercase tracking-wide text-violet-700">
                 Conceder acesso de influencer
@@ -789,6 +926,39 @@ export function UserDetailModal({
             </div>
           ) : null}
         </footer>
+
+        {/* Confirmacao de descarte. LAYER_IN_DIALOG (z-[2100]) porque abre
+            DENTRO de um modal que ja esta em z-[2000]; a escala inteira esta
+            documentada em tasks/taskLayers.ts. */}
+        <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+          <AlertDialogContent
+            overlayClassName={LAYER_IN_DIALOG}
+            className={`${LAYER_IN_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}
+          >
+            <AlertDialogTitle className="font-display text-2xl font-black text-slate-950">
+              Descartar alterações?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-semibold text-slate-600">
+              As alterações deste cadastro ainda não foram salvas. Se sair
+              agora, elas se perdem.
+            </AlertDialogDescription>
+            <AlertDialogFooter className="mt-4">
+              <AlertDialogCancel className={ACTION_BUTTON}>
+                Continuar editando
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setConfirmDiscard(false);
+                  edit.cancel();
+                  onClose();
+                }}
+                className="rounded-full border-2 border-slate-900 bg-rose-300 px-4 py-1.5 text-xs font-black uppercase"
+              >
+                Descartar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );
