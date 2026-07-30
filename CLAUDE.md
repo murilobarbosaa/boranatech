@@ -43,7 +43,7 @@
 - **State**: React Context puro (`AuthContext`, `SubscriptionContext`, `ThemeContext`)
 - **Forms**: react-hook-form + zod v4
 - **Backend**: Express 4 (porta 3100 em dev) + Supabase (supabase-js v2) + BullMQ/ioredis
-- **Integrações**: Asaas (pagamentos), Resend (email), Currents API + OpenAI gpt-4o-mini (notícias), PostHog (analytics); auth Supabase via PKCE
+- **Integrações**: Stripe (pagamentos, SDK `stripe` v22, client em `server/lib/stripeClient.ts`), Resend (email), Currents API + OpenAI gpt-4o-mini (notícias), PostHog (analytics); auth Supabase via PKCE. O Asaas foi o gateway anterior e não existe mais no código: a migration `20260714010505_remove_asaas_data_and_defaults.sql` removeu os dados dele.
 - **Package manager**: pnpm 10
 
 ## Path Aliases
@@ -61,10 +61,11 @@ pnpm dev:server     # só Express
 pnpm build          # vite build + esbuild server bundle → dist/
 pnpm start          # NODE_ENV=production node dist/index.js
 pnpm check          # tsc --noEmit
+pnpm test           # vitest run (suite inteira)
 pnpm format         # prettier --write .
 ```
 
-> Sem script `test` no package.json. Vitest instalado mas não exposto.
+> Não há ESLint, Biome nem oxlint no projeto: a única checagem de estilo é o Prettier, e `pnpm format` reescreve o repositório inteiro. Para conferir só o que você mexeu, `npx prettier --check <arquivos>`. Vários arquivos já em `main` não passam nesse check, então um warn não significa que foi você: compare com a versão em `HEAD` antes de concluir.
 
 ## Estrutura
 
