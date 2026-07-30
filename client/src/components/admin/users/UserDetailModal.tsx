@@ -22,6 +22,7 @@ import {
 } from "@/components/admin/tasks/taskLayers";
 
 import { ActivityBlock } from "./ActivityBlock";
+import { UserAuditHistory } from "./UserAuditHistory";
 import { AvatarBlock } from "./AvatarBlock";
 import { PublicProfileSection, temPerfilPublico } from "./PublicProfileSection";
 import { Field } from "./UserFields";
@@ -44,6 +45,7 @@ import {
 import type {
   PosthogUserActivityState,
   TransactionItem,
+  AuditPayload,
   TransactionsPayload,
   UserDetail,
 } from "./types";
@@ -133,6 +135,17 @@ export function UserDetailModal({
   // o efeito nao se reentrega no meio da propria requisicao.
   const [moreOpen, setMoreOpen] = useState(false);
   const activityRequested = useRef(false);
+
+  // Historico administrativo: MESMO padrao preguicoso da atividade, e o latch e
+  // ref pelo mesmo motivo (estado nas deps do proprio efeito que o seta faz a
+  // limpeza da primeira execucao descartar a resposta, e a secao fica
+  // carregando para sempre). Mora atras do mesmo dropdown em vez de ganhar um
+  // colapsavel proprio: uma affordance nova para a mesma classe de informacao
+  // secundaria seria mecanismo a mais sem pergunta a mais respondida.
+  const [audit, setAudit] = useState<AuditPayload | null>(null);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
+  const auditRequested = useRef(false);
 
   const [transactions, setTransactions] = useState<TransactionsPayload | null>(
     null,
@@ -308,6 +321,34 @@ export function UserDetailModal({
       })
       .finally(() => {
         if (!cancelled) setActivityLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, moreOpen]);
+
+  useEffect(() => {
+    if (!moreOpen || auditRequested.current) return;
+
+    let cancelled = false;
+    auditRequested.current = true;
+    setAuditLoading(true);
+    setAuditError(null);
+    adminFetch(`/users/${userId}/audit`)
+      .then((json) => {
+        if (cancelled) return;
+        setAudit((json.data as AuditPayload) ?? null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setAuditError(
+          err instanceof Error ? err.message : "Erro ao buscar o histórico.",
+        );
+        setAudit(null);
+      })
+      .finally(() => {
+        if (!cancelled) setAuditLoading(false);
       });
 
     return () => {
@@ -806,6 +847,22 @@ export function UserDetailModal({
                       error={activityError}
                       state={activity}
                     />
+                  </Section>
+
+                  {/* Somente LEITURA. Um historico com botao seria um lugar de
+                      onde se AGE sobre o passado, e o passado e o unico dado
+                      desta tela que nao pode ser editado. */}
+                  <Section title="Histórico administrativo">
+                    <div
+                      data-testid="user-audit"
+                      className="overflow-hidden rounded-2xl border-2 border-slate-200 bg-white"
+                    >
+                      <UserAuditHistory
+                        loading={auditLoading}
+                        error={auditError}
+                        payload={audit}
+                      />
+                    </div>
                   </Section>
                 </div>
               ) : null}

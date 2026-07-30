@@ -163,3 +163,32 @@ export type TransactionsPayload = {
   truncated: boolean;
   limit: number;
 };
+
+/**
+ * Historico administrativo (GET /users/:id/audit).
+ *
+ * `outcome` cruza a INTENCAO registrada em content_audit_logs (escrita ANTES da
+ * acao, porque a auditoria e fail-closed) com o RESULTADO observavel. Ver o
+ * cabecalho de server/lib/userAuditHistory.ts.
+ */
+export type AuditEntry = {
+  id: string;
+  action: string;
+  resource_type: string | null;
+  resource_slug: string | null;
+  actor_user_id: string | null;
+  actor_name: string;
+  created_at: string;
+  before: Record<string, string | number | boolean | null>;
+  after: Record<string, string | number | boolean | null>;
+  campos_alterados: string[];
+  outcome: "confirmed" | "unconfirmed" | "not_verifiable";
+  outcome_detail: string | null;
+};
+
+export type AuditPayload = {
+  entries: AuditEntry[];
+  truncated: boolean;
+  limit: number;
+  cross_reference_ok: boolean;
+};
