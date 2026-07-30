@@ -22,6 +22,17 @@ import { z } from "zod";
 
 export const AI_ROADMAP_SLUG_RE = /^ia-[a-z0-9]{8}$/;
 
+// Teto diario DEFAULT da cota dedicada do chat de intake
+// (ROADMAP_INTAKE_CHAT_DAILY_LIMIT_PRO em server/lib/env.ts, que importa daqui).
+//
+// Mora em shared, e nao em env.ts, por um motivo especifico: o orcamento de
+// turnos da conversa (MAX_USER_MESSAGES em server/lib/aiRoadmap/intakeChat.ts)
+// precisa CABER nesta cota, e a assercao que trava isso e um teste. Um teste
+// que importasse `server/lib/env` quebraria no CI, que nao tem arquivo .env
+// (regra do CLAUDE.md). Com o numero aqui, os dois lados da conta vivem em
+// modulos puros e o teste le os dois sem tocar em ambiente.
+export const ROADMAP_INTAKE_CHAT_DEFAULT_DAILY_LIMIT = 60;
+
 // Os 6 primeiros campos sao os do formulario original (enums + stackFocus +
 // extraContext) e NAO mudam: o resume de roadmaps partial legados reparseia o
 // que ficou gravado em ai_roadmaps.inputs, entao qualquer mudanca de shape neles

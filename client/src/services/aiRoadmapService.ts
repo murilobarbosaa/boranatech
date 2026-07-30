@@ -292,6 +292,12 @@ export interface IntakeChatTurnResult {
   intake: IntakeChatProposal;
   missing: string[];
   ready: boolean;
+  // Quantas mensagens a pessoa ainda pode mandar nesta conversa, e o teto total.
+  // Degradam para null quando o backend antigo responde sem eles (janela de
+  // deploy: front novo contra backend velho); a UI so mostra o aviso quando o
+  // numero existe.
+  restantes: number | null;
+  maxMensagens: number | null;
 }
 
 export type IntakeChatErrorCode =
@@ -379,5 +385,8 @@ export async function sendIntakeChatTurn(
     intake: data.intake,
     missing: data.missing as string[],
     ready: data.ready,
+    restantes: typeof data.restantes === "number" ? data.restantes : null,
+    maxMensagens:
+      typeof data.maxMensagens === "number" ? data.maxMensagens : null,
   };
 }

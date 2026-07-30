@@ -46,11 +46,17 @@ function draftKey(userId: string): string {
 // ja foram capturados, derivado do missing[] que o backend devolve.
 const ESSENTIAL_FIELDS = ["goal", "hoursPerWeek", "deadline"] as const;
 
-// TODO(Ana): revisar a mensagem de abertura enviada ao backend. Ela NAO aparece
-// como bolha na tela: so dispara o primeiro turno, cuja primeira pergunta ja usa
-// o contexto do pool. O backend exige historico nao-vazio, entao esta semente
-// entra sempre na frente do historico enviado.
-const CHAT_KICKOFF = "Quero montar meu roadmap de estudos. Pode comecar.";
+// A partir de quantas mensagens restantes a UI comeca a avisar. Maior que o
+// POUSO_SUAVE_RESTANTES do backend (3) de proposito: a pessoa ve o aviso antes
+// de o modelo comecar a aterrissar, entao a aterrissagem nao parece abrupta.
+const AVISO_RESTANTES_A_PARTIR_DE = 5;
+
+// A semente de abertura da conversa MUDOU DE LADO na fase 2: hoje ela vive no
+// servidor (CHAT_KICKOFF em server/lib/aiRoadmap/intakeChat.ts) e e injetada na
+// montagem do prompt. Enquanto o client a prefixava, ela era contada como
+// mensagem do usuario e comia uma vaga do orcamento de turnos. Nao voltar a
+// mandar semente daqui: o servidor remove a que vier no corpo, mas o teto ja
+// estaria errado antes disso.
 
 // TODO(Ana): revisar TODOS os textos deste bloco (copy da pagina, badges de
 // status, copy do chat e do resumo do intake).
@@ -93,6 +99,12 @@ const COPY = {
     "Voce atingiu o limite diario de mensagens do chat. Isso e separado da cota de gerar roadmap; tente de novo amanha.",
   chatTurnLimit:
     "Chegamos ao limite desta conversa. Voce ja pode gerar o roadmap com o que montamos ate aqui.",
+  // Aviso de aproximacao do teto. So aparece nas ultimas mensagens (ver
+  // AVISO_RESTANTES_A_PARTIR_DE): antes disso e ruido.
+  chatRestantes: (n: number) =>
+    n === 1
+      ? "Ultima mensagem desta conversa."
+      : `Faltam ${n} mensagens nesta conversa.`,
   summaryTitle: "Fechou. Isto e o que eu entendi:",
   summaryHint: "Se algo ficou torto, e so me dizer aqui embaixo antes de gerar.",
   summaryGoal: "Objetivo",
@@ -140,6 +152,9 @@ interface ChatDraft {
   intake: IntakeChatProposal | null;
   missing: string[];
   ready: boolean;
+  // Opcional: rascunhos salvos antes da fase 2 nao tem este campo, e restaurar
+  // sem ele so significa nao mostrar o aviso ate o proximo turno.
+  restantes?: number | null;
 }
 
 function loadDraft(userId: string): ChatDraft | null {
@@ -257,6 +272,9 @@ export default function RoadmapIA() {
   const [intake, setIntake] = useState<IntakeChatProposal | null>(null);
   const [missing, setMissing] = useState<string[]>([...ESSENTIAL_FIELDS]);
   const [ready, setReady] = useState(false);
+  // Mensagens que ainda cabem na conversa, vindo do backend. null = backend
+  // antigo (janela de deploy) ou nenhum turno ainda; a UI simplesmente nao avisa.
+  const [restantes, setRestantes] = useState<number | null>(null);
   const [finalError, setFinalError] = useState<string | null>(null);
   // Guarda de uma execucao so do bootstrap (restore do rascunho ou abertura).
   const bootstrappedRef = useRef(false);
@@ -331,14 +349,12 @@ export default function RoadmapIA() {
       setChatError(null);
       setFinalError(null);
       try {
-        const result = await sendIntakeChatTurn([
-          { role: "user", content: CHAT_KICKOFF },
-          ...history,
-        ]);
+        const result = await sendIntakeChatTurn(history);
         setMessages([...history, { role: "assistant", content: result.reply }]);
         setIntake(result.intake);
         setMissing(result.missing);
         setReady(result.ready);
+        setRestantes(result.restantes);
       } catch (err) {
         if (err instanceof IntakeChatApiError && err.code === "turn_limit") {
           setTurnLimitReached(true);
@@ -385,6 +401,7 @@ export default function RoadmapIA() {
       setIntake(draft.intake);
       setMissing(draft.missing);
       setReady(draft.ready);
+      setRestantes(draft.restantes ?? null);
       return;
     }
     void runTurn([], true);
@@ -393,7 +410,7 @@ export default function RoadmapIA() {
   // Persiste o rascunho a cada mudanca relevante (best-effort; TTL na leitura).
   useEffect(() => {
     if (!userId || messages.length === 0) return;
-    saveDraft(userId, { messages, intake, missing, ready });
+    saveDraft(userId, { messages, intake, missing, ready, restantes });
   }, [userId, messages, intake, missing, ready]);
 
   // ready + confirmacao: monta o RoadmapIntake final (intake do chat + format
@@ -523,6 +540,13 @@ export default function RoadmapIA() {
                     done: essentialDone,
                     total: ESSENTIAL_FIELDS.length,
                   }}
+                  remainingHint={
+                    restantes !== null &&
+                    restantes > 0 &&
+                    restantes <= AVISO_RESTANTES_A_PARTIR_DE
+                      ? COPY.chatRestantes(restantes)
+                      : null
+                  }
                   placeholder={COPY.chatPlaceholder}
                 />
 

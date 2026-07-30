@@ -29,12 +29,65 @@ const AI_BACKOFF_MS = [400, 800];
 const AI_TIMEOUT_MS = 90_000;
 const MAX_TOKENS = 1_500;
 
-// Tetos duros do corpo, aplicados no server (a rota so orquestra). MAX_BODY_CHARS
-// espelha o maxInputChars da entrada roadmap-intake-chat em AI_TOOLS. O roteiro
-// tem 7 etapas (contra 6 do careerPlan) e admite uma repergunta por etapa, entao
-// os tetos sao um pouco mais folgados que os do careerPlan (8000/10).
+// Semente de abertura da conversa. Ela existe so para dar um primeiro turno
+// nao-vazio ao modelo e NAO aparece como bolha na tela.
+//
+// Ate a fase 2 quem a prefixava era o CLIENT, a cada turno. O efeito era que ela
+// ocupava uma vaga de `userCount` e o orcamento real da pessoa ficava um turno
+// menor que o anunciado. Agora ela e injetada aqui, na montagem do prompt, e
+// nunca entra na contagem. `validateIntakeChatBody` REMOVE a semente se ela vier
+// no corpo, para o bundle antigo em cache (que ainda a prefixa) nao produzir
+// semente duplicada depois do deploy.
+export const CHAT_KICKOFF = "Quero montar meu roadmap de estudos. Pode comecar.";
+
+// ORCAMENTO DE TURNOS.
+//
+// O teto precisa caber o PIOR CASO do roteiro que o proprio prompt manda o
+// modelo seguir. Quando nao cabe, a conversa morre antes do resumo e a pessoa
+// fica sem roadmap: foi exatamente o que aconteceu com o teto de 12 contra um
+// roteiro que precisa de ate 15, agravado pela semente que comia uma vaga.
+//
+// Os tres numeros abaixo sao a TRANSCRICAO do roteiro em
+// INTAKE_CHAT_SYSTEM_PROMPT. Mudou o roteiro, mude-os aqui junto: o teste
+// invariante em intakeChat.test.ts recalcula o pior caso a partir deles e cai se
+// MAX_USER_MESSAGES deixar de caber. Sem esses numeros o roteiro so existiria
+// dentro de uma string de prompt, e nao haveria o que um teste checasse.
+export const ROTEIRO_ETAPAS = 7;
+export const ROTEIRO_REPERGUNTAS_POR_ETAPA = 1;
+export const ROTEIRO_TURNOS_DE_CONFIRMACAO = 1;
+
+// 7 respostas de etapa + 7 reperguntas + 1 confirmacao do resumo = 15.
+export const ROTEIRO_PIOR_CASO =
+  ROTEIRO_ETAPAS * (1 + ROTEIRO_REPERGUNTAS_POR_ETAPA) +
+  ROTEIRO_TURNOS_DE_CONFIRMACAO;
+
+// 20 = pior caso (15) + 5 de folga para o que o roteiro nao prevê (a pessoa
+// corrigir uma resposta, pedir para repetir, mudar de ideia sobre o objetivo).
+export const MAX_USER_MESSAGES = 20;
+
+// COTA DIARIA vs ORCAMENTO DE TURNOS.
+//
+// Cada turno bem-sucedido loga uma linha 'success' em ai_usage_logs e consome
+// uma unidade da cota DEDICADA do chat (get_ai_usage_today_by_tool com
+// tool = 'roadmap-intake-chat'). Logo, subir MAX_USER_MESSAGES sem olhar a cota
+// apenas MUDA a porta em que a pessoa trava: em vez de "limite da conversa" ela
+// bate em "limite diario", no meio da mesma conversa.
+//
+//   MAX_USER_MESSAGES (20) x CONVERSAS_COMPLETAS_POR_DIA (2) = 40 <= 60 (cota)
+//
+// A cota default (ROADMAP_INTAKE_CHAT_DEFAULT_DAILY_LIMIT) da 3 conversas
+// completas por dia, entao ha folga. O teste invariante trava a desigualdade.
+export const CONVERSAS_COMPLETAS_POR_DIA = 2;
+export const COTA_DIARIA_MINIMA = MAX_USER_MESSAGES * CONVERSAS_COMPLETAS_POR_DIA;
+
+// A partir de quantas mensagens restantes o modelo e instruido a aterrissar
+// (pular reperguntas e ir para o resumo). Ver "# Orcamento da conversa" no
+// system prompt: o numero aqui e o mesmo citado la.
+export const POUSO_SUAVE_RESTANTES = 3;
+
+// Teto de caracteres do corpo, espelhando o maxInputChars da entrada
+// roadmap-intake-chat em AI_TOOLS.
 export const MAX_BODY_CHARS = 9_000;
-export const MAX_USER_MESSAGES = 12;
 
 // Campos do intake proposto pelo chat. NAO inclui format (nao perguntado; o
 // client assume "misto"). goal/hoursPerWeek/deadline usam os MESMOS enums de
@@ -85,18 +138,46 @@ export interface IntakeChatMessage {
 }
 
 export type IntakeChatBodyValidation =
-  | { ok: true; messages: IntakeChatMessage[] }
+  | {
+      ok: true;
+      messages: IntakeChatMessage[];
+      // Mensagens de usuario ja gastas e quantas ainda cabem. A rota devolve
+      // `restantes` ao client, que avisa a pessoa antes de o teto chegar: teto
+      // que surpreende e indistinguivel de bug.
+      userCount: number;
+      restantes: number;
+    }
   | { ok: false; error: "invalid_request" | "payload_too_large" | "turn_limit" };
 
+// Remove a semente de abertura de qualquer posicao do historico.
+//
+// Por que em QUALQUER posicao e nao so na primeira: o bundle antigo da Vercel
+// prefixa a semente a cada turno, e uma aba aberta desde antes do deploy vai
+// continuar fazendo isso ate recarregar (nao existe prazo para isso acontecer).
+// Rascunhos do localStorage tambem podem carrega-la. Remover por igualdade de
+// conteudo cobre os tres casos com uma regra so, e o custo de remover uma
+// mensagem que a pessoa por acaso digitou identica a semente e zero: o servidor
+// injeta a semente de volta na montagem do prompt.
+function stripKickoff(messages: IntakeChatMessage[]): IntakeChatMessage[] {
+  return messages.filter(
+    (m) => !(m.role === "user" && m.content.trim() === CHAT_KICKOFF),
+  );
+}
+
 // Validacao pura do corpo, extraida para ser testavel sem HTTP. Limpa mensagens
-// invalidas, aplica o teto de chars e o teto de mensagens de usuario. A rota so
-// mapeia o erro para o status/codigo correspondente.
+// invalidas, remove a semente, aplica o teto de chars e o teto de mensagens de
+// usuario. A rota so mapeia o erro para o status/codigo correspondente.
+//
+// Historico VAZIO e valido: e o turno de abertura. Antes da fase 2 ele era
+// rejeitado como invalid_request, porque o client sempre mandava a semente e um
+// corpo vazio nunca acontecia; agora que a semente e do servidor, corpo vazio e
+// o caso normal do primeiro turno.
 export function validateIntakeChatBody(
   body: unknown,
 ): IntakeChatBodyValidation {
   const rec = (body ?? {}) as { messages?: unknown };
   const raw = rec.messages;
-  if (!Array.isArray(raw) || raw.length === 0) {
+  if (!Array.isArray(raw)) {
     return { ok: false, error: "invalid_request" };
   }
 
@@ -110,21 +191,25 @@ export function validateIntakeChatBody(
     if (!m.content.trim()) continue;
     cleaned.push({ role, content: m.content });
   }
-  if (cleaned.length === 0) {
-    return { ok: false, error: "invalid_request" };
-  }
 
-  const totalChars = cleaned.reduce((sum, m) => sum + m.content.length, 0);
+  const semSemente = stripKickoff(cleaned);
+
+  const totalChars = semSemente.reduce((sum, m) => sum + m.content.length, 0);
   if (totalChars > MAX_BODY_CHARS) {
     return { ok: false, error: "payload_too_large" };
   }
 
-  const userCount = cleaned.filter((m) => m.role === "user").length;
+  const userCount = semSemente.filter((m) => m.role === "user").length;
   if (userCount > MAX_USER_MESSAGES) {
     return { ok: false, error: "turn_limit" };
   }
 
-  return { ok: true, messages: cleaned };
+  return {
+    ok: true,
+    messages: semSemente,
+    userCount,
+    restantes: MAX_USER_MESSAGES - userCount,
+  };
 }
 
 // Normaliza o stackFocus proposto pelo modelo para respeitar o regex de
@@ -161,6 +246,11 @@ export const INTAKE_CHAT_SYSTEM_PROMPT =
   "deadline: '3m' (3 meses), '6m' (6 meses), '12m' (12 meses), 'sem-prazo' (sem prazo definido).\n\n" +
   "# Preenchimento do intake\n" +
   "A cada turno, preencha o objeto intake com o que você já sabe (do contexto ou do que a pessoa disse) e deixe null o que ainda não tem. Liste em missing os campos ainda em aberto. Os campos de escolha (goal, hoursPerWeek, deadline) devem ser exatamente um dos valores válidos acima; quando não souber, deixe null em vez de chutar. O campo format não existe aqui: nunca pergunte o formato de estudo, outra etapa assume o padrão.\n\n" +
+  "# Orçamento da conversa\n" +
+  "A cada turno você recebe uma linha dizendo quantas mensagens ainda restam nesta conversa. Esse número é um teto real: quando ele chega a zero a pessoa não consegue mais responder, então a conversa precisa ATERRISSAR antes disso, nunca ser interrompida no meio.\n" +
+  `Quando restarem ${POUSO_SUAVE_RESTANTES} mensagens ou menos, pare de reperguntar: aceite o que já tem, deixe null o que não souber e vá direto para a etapa 7 (resumo e confirmação).\n` +
+  "Quando restar 1 mensagem, apresente o resumo de forma que a única coisa que falte da pessoa seja confirmar, para que a confirmação caiba no último turno.\n" +
+  "Nunca gaste as últimas mensagens com perguntas novas.\n\n" +
   "# Quando encerrar\n" +
   "ready só pode ser true quando goal, hoursPerWeek e deadline estiverem preenchidos, o ponto de partida e os obstáculos já tiverem sido conversados, E a pessoa tiver confirmado o resumo da etapa 7. Antes disso, ready é false. Nunca marque ready no mesmo turno em que mostra o resumo pela primeira vez.\n\n" +
   "# Escrita\n" +
@@ -363,15 +453,24 @@ export async function runIntakeChatTurn(
   userId: string,
   messages: IntakeChatMessage[],
   onIo: (io: IntakeChatAiIo) => void,
+  restantes: number = MAX_USER_MESSAGES,
 ): Promise<IntakeChatTurn> {
   if (!env.openaiApiKey) {
     throw new Error("Servico de IA nao configurado.");
   }
 
   const context = await buildIntakeContext(userId);
+  // A semente entra AQUI, sempre, e sempre na frente: o historico que chega ja
+  // veio sem ela (stripKickoff), entao nao ha como duplicar, venha o corpo do
+  // bundle novo ou do antigo.
   const modelMessages: ModelMessage[] = [
     { role: "system", content: INTAKE_CHAT_SYSTEM_PROMPT },
     { role: "system", content: context },
+    // Orcamento numa mensagem PROPRIA e nao no system prompt: o prompt e
+    // estatico e o numero muda a cada turno; separa-los mantem o prompt grande
+    // identico entre chamadas.
+    { role: "system", content: `Restam ${restantes} mensagens nesta conversa.` },
+    { role: "user", content: CHAT_KICKOFF },
     ...messages.map((m) => ({ role: m.role, content: m.content })),
   ];
 

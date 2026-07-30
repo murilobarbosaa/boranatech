@@ -1,5 +1,6 @@
 import { config } from "dotenv";
 
+import { ROADMAP_INTAKE_CHAT_DEFAULT_DAILY_LIMIT } from "../../shared/aiRoadmap";
 import type { PlanId } from "../../shared/planPricing";
 
 config({ quiet: true });
@@ -134,9 +135,15 @@ export const env = {
   // global das ferramentas (padrao career-plan-chat). Pro-only: o gate barra
   // antes de qualquer chamada. Conversar tem quota propria para nao consumir o
   // orcamento de geracao (roadmap-generator).
-  // TODO: calibrar ROADMAP_INTAKE_CHAT_DAILY_LIMIT_PRO.
+  //
+  // O DEFAULT vem de shared/aiRoadmap.ts porque o orcamento de turnos da
+  // conversa precisa caber nele, e quem trava essa conta e um teste (ver o
+  // bloco "COTA DIARIA vs ORCAMENTO DE TURNOS" em aiRoadmap/intakeChat.ts).
+  // Baixar este valor por env sem baixar MAX_USER_MESSAGES junto reabre o beco
+  // sem saida de cota estourada no meio da conversa.
   roadmapIntakeChatDailyLimitPro: parseInt(
-    process.env.ROADMAP_INTAKE_CHAT_DAILY_LIMIT_PRO || "60",
+    process.env.ROADMAP_INTAKE_CHAT_DAILY_LIMIT_PRO ||
+      String(ROADMAP_INTAKE_CHAT_DEFAULT_DAILY_LIMIT),
     10,
   ),
   avatarReportHideThreshold: (() => {

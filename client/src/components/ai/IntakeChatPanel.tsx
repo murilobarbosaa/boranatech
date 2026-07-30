@@ -40,6 +40,10 @@ interface IntakeChatPanelProps {
   turnLimitReached?: boolean;
   turnLimitMessage?: string;
   progress?: IntakeChatProgress | null;
+  // Aviso discreto de que a conversa esta perto do teto ("faltam N mensagens").
+  // O caller decide a partir de quando mostrar; o painel so desenha. Existe para
+  // o teto nunca chegar de surpresa: limite que surpreende parece bug.
+  remainingHint?: string | null;
   placeholder?: string;
   // Trava o input mesmo sem estar enviando (ex: enquanto o caller processa o
   // envio final). Nao usado para o limite de turnos (esse tem prop propria).
@@ -115,6 +119,7 @@ export default function IntakeChatPanel({
   turnLimitReached = false,
   turnLimitMessage,
   progress,
+  remainingHint,
   placeholder = COPY.placeholder,
   inputDisabled = false,
 }: IntakeChatPanelProps) {
@@ -284,6 +289,11 @@ export default function IntakeChatPanel({
             <p className="mt-2 text-center text-xs font-bold text-slate-600">
               {COPY.sendHint}
             </p>
+            {remainingHint ? (
+              <p className="mt-1 text-center text-xs font-bold text-amber-700">
+                {remainingHint}
+              </p>
+            ) : null}
           </div>
         )}
       </div>

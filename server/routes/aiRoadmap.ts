@@ -24,6 +24,7 @@ import {
   ROADMAP_INTAKE_CHAT_TOOL,
 } from "../lib/aiUsage";
 import {
+  MAX_USER_MESSAGES,
   runIntakeChatTurn,
   validateIntakeChatBody,
   type IntakeChatAiIo,
@@ -555,9 +556,14 @@ router.post("/intake/chat", async (req: Request, res: Response, next: NextFuncti
 
   let aiIo: IntakeChatAiIo = { inputChars: 0, outputChars: 0 };
   try {
-    const turn = await runIntakeChatTurn(userId, body.messages, (io) => {
-      aiIo = io;
-    });
+    const turn = await runIntakeChatTurn(
+      userId,
+      body.messages,
+      (io) => {
+        aiIo = io;
+      },
+      body.restantes,
+    );
     await logAiUsage({
       userId,
       tool: ROADMAP_INTAKE_CHAT_TOOL,
@@ -567,11 +573,15 @@ router.post("/intake/chat", async (req: Request, res: Response, next: NextFuncti
       outputChars: aiIo.outputChars,
       costEstimate: estimateCost(aiIo.inputChars, aiIo.outputChars, DEFAULT_MODEL),
     });
+    // `restantes` ja desconta a mensagem que a pessoa acabou de mandar, entao e
+    // quantas ela AINDA pode mandar depois desta resposta.
     res.json({
       reply: turn.reply,
       intake: turn.intake,
       missing: turn.missing,
       ready: turn.ready,
+      restantes: body.restantes,
+      maxMensagens: MAX_USER_MESSAGES,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro desconhecido";
