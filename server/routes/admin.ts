@@ -30,6 +30,7 @@ import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import {
   fetchUserListEnrichment,
+  subscriptionGrantsPro,
   type SubscriptionRow,
 } from "../lib/userListEnrichment";
 import { requireAdmin, requireAuth } from "../middleware/auth";
@@ -1305,11 +1306,38 @@ router.get("/users/:id", async (req, res, next) => {
       0,
     );
 
+    // Origem do acesso Pro, para o cabecalho do modal usar o MESMO selo da
+    // lista. Reusa subscriptionGrantsPro em vez de reimplementar a regra: ela ja
+    // existe em dois lugares (a RPC e o TypeScript) e uma terceira copia aqui
+    // divergiria na primeira mudanca.
+    const assinaturaDaPro = subRow
+      ? subscriptionGrantsPro(
+          {
+            user_id: uid,
+            status: subRow.status,
+            current_period_end: subRow.current_period_end,
+            created_at: subRow.created_at,
+            plans: subRow.plans,
+          },
+          new Date(),
+        )
+      : false;
+    const proPorInfluencer = influencer !== null;
+    const proSource = assinaturaDaPro
+      ? proPorInfluencer
+        ? "both"
+        : "subscription"
+      : proPorInfluencer
+        ? "influencer"
+        : null;
+
     const { cpf, avatar_url, avatar_mode, avatar_moderation_status, ...rest } =
       data;
     res.json({
       data: {
         ...rest,
+        is_pro: assinaturaDaPro || proPorInfluencer,
+        pro_source: proSource,
         cpf_masked: maskCpf(cpf),
         has_cpf: Boolean((cpf || "").replace(/\D/g, "")),
         // Nao existe avatar_pending_url no schema: a foto e UMA (avatar_url) e o

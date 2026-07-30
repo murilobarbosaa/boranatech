@@ -166,6 +166,38 @@ export function subscriptionStatusBadgeOf(
   );
 }
 
+// Modo do avatar. Resolver COM FALLBACK: antes, qualquer valor diferente de
+// "photo" virava "Ícone", entao um modo novo do backend fazia a tela afirmar
+// com confianca algo que ela nao sabia. Desconhecido mostra o valor cru.
+const AVATAR_MODE_LABELS: Record<string, string> = {
+  photo: "Foto",
+  icon: "Ícone",
+};
+
+export function avatarModeLabelOf(mode: string | null | undefined): string {
+  if (!mode) return NAO_INFORMADO;
+  return AVATAR_MODE_LABELS[mode] ?? mode;
+}
+
+/**
+ * O campo esta vazio? Decidido a partir do DADO DE ORIGEM, nunca do texto ja
+ * formatado.
+ *
+ * Existe porque o Field comparava `value === NAO_INFORMADO` para esmaecer, o
+ * que amarrava estilo a uma string de copy: revisar "Não informado" na Fatia 3
+ * apagaria o esmaecido de todos os campos vazios, em silencio.
+ *
+ * E existe como funcao COMPARTILHADA, e nao como `empty={!valor}` em cada call
+ * site, por causa de duas armadilhas: `false` (opt-in recusado) e `0` (valor
+ * pago zero, passo zero do onboarding) sao dados de verdade, e um `!valor`
+ * ingenuo esmaeceria os dois.
+ */
+export function semValor(value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value === "string") return value.trim() === "";
+  return false;
+}
+
 // Iniciais para o circulo do avatar da lista. Nao busca avatar_url de proposito:
 // a linha ja tem o nome, e uma foto por linha custaria 50 requisicoes de imagem
 // por pagina. Mesma linguagem visual do avatar de sessao do AdminShell.

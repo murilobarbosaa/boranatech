@@ -10,9 +10,11 @@ import {
   fmtDate,
   fmtDateTime,
   fmtText,
+  avatarModeLabelOf,
   initialsOf,
   labelFrom,
   proBadgeOf,
+  semValor,
   subscriptionStatusBadgeOf,
 } from "./userFormat";
 
@@ -220,6 +222,49 @@ describe("initialsOf", () => {
     const saida = initialsOf("ana ferreira moura");
     expect(saida).toBe("AM");
     expect(saida.length).toBeLessThanOrEqual(2);
+  });
+});
+
+describe("semValor: decide o esmaecido a partir do DADO, nao do texto", () => {
+  it("null, undefined e string em branco sao ausencia de dado", () => {
+    expect(semValor(null)).toBe(true);
+    expect(semValor(undefined)).toBe(true);
+    expect(semValor("")).toBe(true);
+    expect(semValor("   ")).toBe(true);
+  });
+
+  it("false NAO e ausencia: e uma resposta", () => {
+    // A armadilha que motivou o helper. Um `empty={!valor}` no call site
+    // esmaeceria o "Não" de um opt-in recusado, que e dado de verdade.
+    expect(semValor(false)).toBe(false);
+  });
+
+  it("zero NAO e ausencia", () => {
+    // "Valor pago: R$ 0,00" e informacao; "passo do onboarding: 0" tambem.
+    expect(semValor(0)).toBe(false);
+  });
+
+  it("texto e numero comuns nao sao ausencia", () => {
+    expect(semValor("Ana")).toBe(false);
+    expect(semValor(22200)).toBe(false);
+  });
+});
+
+describe("avatarModeLabelOf", () => {
+  it("traduz os modos conhecidos", () => {
+    expect(avatarModeLabelOf("photo")).toBe("Foto");
+    expect(avatarModeLabelOf("icon")).toBe("Ícone");
+  });
+
+  it("modo desconhecido mostra o valor cru em vez de mentir Ícone", () => {
+    // Antes, QUALQUER coisa diferente de "photo" virava "Ícone", inclusive um
+    // modo novo do backend. A tela afirmava com confianca algo que nao sabia.
+    expect(avatarModeLabelOf("gravatar")).toBe("gravatar");
+  });
+
+  it("ausente vira Nao informado", () => {
+    expect(avatarModeLabelOf(null)).toBe(NAO_INFORMADO);
+    expect(avatarModeLabelOf(undefined)).toBe(NAO_INFORMADO);
   });
 });
 

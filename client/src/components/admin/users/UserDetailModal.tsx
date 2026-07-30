@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 import { adminFetch } from "@/lib/adminApi";
-import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
+import { ErrorBlock } from "@/components/admin/StateBlocks";
+import { showActionToast, showErrorToast } from "@/lib/notify";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ import { LAYER_DIALOG } from "@/components/admin/tasks/taskLayers";
 import { ActivityBlock } from "./ActivityBlock";
 import { AvatarBlock } from "./AvatarBlock";
 import { Field } from "./UserFields";
+import { UserDetailSkeleton } from "./UserDetailSkeleton";
 import type { PosthogUserActivityState, UserDetail } from "./types";
 import {
   NAO_INFORMADO,
@@ -32,29 +34,52 @@ import {
   fmtDateTime,
   fmtText,
   labelFrom,
+  proBadgeOf,
+  semValor,
 } from "./userFormat";
 
-// Modal de detalhe do usuario. Extraido do UsersDashboard sem mudanca de
-// aparencia: o cartao interno (`card-brutal my-8 ...`) e o mesmo elemento de
-// antes, com as mesmas classes.
+// Modal de detalhe do usuario, no molde do TaskModal: cabecalho fixo, corpo
+// rolavel, rodape de acoes. Tela cheia no mobile, caixa no desktop.
 //
-// O container que antes era uma <div> a mao virou Radix Dialog, o que traz Esc,
-// foco preso e semantica ARIA. O DialogContent nao desenha nada: ele so
-// reproduz o antigo container de rolagem (`fixed inset-0 flex items-start
-// justify-center overflow-y-auto p-4`), e por isso precisa neutralizar os
-// defaults visuais do primitivo (borda, sombra, fundo, arredondamento,
-// largura maxima e a centralizacao por translate).
+// A borda e a sombra vem de utilitarios Tailwind, nao de .card-brutal: a classe
+// custom vive em @layer components e perde para os utilitarios do proprio
+// DialogContent (border, shadow-lg), que vem depois na cascata. Mesma solucao
+// do TaskModal.
 const CONTENT_CLASSES = [
-  // reproducao literal do container antigo
-  "fixed inset-0 flex items-start justify-center overflow-y-auto p-4",
-  // neutralizacao dos defaults do DialogContent
-  "top-auto left-auto w-auto max-w-none translate-x-0 translate-y-0",
-  "gap-0 rounded-none border-0 bg-transparent shadow-none",
-  // o sm: precisa ser neutralizado no PROPRIO breakpoint: o tailwind-merge nao
-  // deixa uma classe sem modificador remover uma com `sm:`.
-  "sm:max-w-none",
+  "flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden",
+  // shadow-none no breakpoint base de proposito: o `shadow-lg` do primitivo
+  // tem modificador vazio, e o tailwind-merge nao deixa `sm:shadow-[...]`
+  // remove-lo. Sem isto, a versao de tela cheia carrega uma sombra que nao foi
+  // pedida.
+  "rounded-none border-0 bg-white p-0 shadow-none",
+  "sm:h-[88vh] sm:w-[min(56rem,94vw)] sm:max-w-none sm:rounded-3xl",
+  "sm:border-2 sm:border-slate-950 sm:shadow-[6px_6px_0_#0f172a]",
   LAYER_DIALOG,
 ].join(" ");
+
+const SECTION_TITLE =
+  "text-sm font-black uppercase tracking-[0.2em] text-slate-600";
+
+const CARD_SECTION =
+  "space-y-3 rounded-2xl border-2 border-slate-200 bg-white p-4";
+
+const ACTION_BUTTON =
+  "rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase transition hover:bg-yellow-50 disabled:opacity-60";
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-2.5">
+      <h4 className={SECTION_TITLE}>{title}</h4>
+      {children}
+    </section>
+  );
+}
 
 export function UserDetailModal({
   userId,
@@ -73,14 +98,20 @@ export function UserDetailModal({
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityError, setActivityError] = useState<string | null>(null);
   // Dropdown "Mais informacoes": fechado por padrao a cada abertura do modal.
-  // activityRequested garante que o fetch do PostHog dispara UMA vez, na
-  // primeira abertura do dropdown, nunca junto com o detalhe.
+  // O latch abaixo garante que o fetch do PostHog dispara UMA vez, na primeira
+  // abertura do dropdown, nunca junto com o detalhe.
+  //
+  // useRef, NAO useState. Era estado, e estava nas dependencias do proprio
+  // efeito que o setava: setar re-rodava o efeito, a limpeza da primeira
+  // execucao marcava cancelled = true, e .then/.catch/.finally eram descartados
+  // antes de aplicar qualquer coisa. A secao Atividade ficava em "Carregando
+  // dados..." para sempre, no sucesso e no erro. Ref nao dispara render, entao
+  // o efeito nao se reentrega no meio da propria requisicao.
   const [moreOpen, setMoreOpen] = useState(false);
-  const [activityRequested, setActivityRequested] = useState(false);
+  const activityRequested = useRef(false);
 
   const [revealedCpf, setRevealedCpf] = useState<string | null>(null);
   const [revealing, setRevealing] = useState(false);
-  const [revealError, setRevealError] = useState<string | null>(null);
 
   // Influencer: formulario de concessao (nota), confirmacao de revogacao e
   // refetch do detalhe apos mutacao (detailVersion entra nas deps do effect).
@@ -88,7 +119,6 @@ export function UserDetailModal({
   const [grantNote, setGrantNote] = useState("");
   const [revokeConfirm, setRevokeConfirm] = useState(false);
   const [influencerBusy, setInfluencerBusy] = useState(false);
-  const [influencerError, setInfluencerError] = useState<string | null>(null);
   const [detailVersion, setDetailVersion] = useState(0);
 
   // FUNIL UNICO de fechamento: o botao "Fechar", o Esc e qualquer caminho
@@ -115,11 +145,9 @@ export function UserDetailModal({
     setDetailLoading(true);
     setDetailError(null);
     setRevealedCpf(null);
-    setRevealError(null);
     setGrantOpen(false);
     setGrantNote("");
     setRevokeConfirm(false);
-    setInfluencerError(null);
     adminFetch(`/users/${userId}`)
       .then((json) => {
         if (cancelled) return;
@@ -144,10 +172,10 @@ export function UserDetailModal({
   // Fetch preguicoso da atividade PostHog: dispara uma unica vez por usuario,
   // quando o dropdown abre pela primeira vez.
   useEffect(() => {
-    if (!moreOpen || activityRequested) return;
+    if (!moreOpen || activityRequested.current) return;
 
     let cancelled = false;
-    setActivityRequested(true);
+    activityRequested.current = true;
     setActivityLoading(true);
     setActivityError(null);
     adminFetch(`/users/${userId}/activity`)
@@ -169,12 +197,17 @@ export function UserDetailModal({
     return () => {
       cancelled = true;
     };
-  }, [userId, moreOpen, activityRequested]);
+  }, [userId, moreOpen]);
 
+  // Resultado de ACAO vai para toast; erro de CARREGAMENTO continua inline (ver
+  // ErrorBlock abaixo). O criterio: erro de carregamento pertence a regiao que
+  // ficou vazia e precisa ser lido ao lado dela, inclusive depois que o toast
+  // sumiria; resultado de acao e um evento pontual, e prende-lo a um <p> dentro
+  // de um corpo rolavel deixa a confirmacao fora da tela quando a pessoa ja
+  // rolou para outro lugar.
   async function handleGrantInfluencer() {
     if (influencerBusy) return;
     setInfluencerBusy(true);
-    setInfluencerError(null);
     try {
       await adminFetch(`/users/${userId}/influencer`, {
         method: "POST",
@@ -183,8 +216,10 @@ export function UserDetailModal({
       setGrantOpen(false);
       setGrantNote("");
       setDetailVersion((version) => version + 1);
+      // TODO(Ana): copy de confirmacao da concessao de influencer.
+      showActionToast({ message: "Acesso de influencer concedido." });
     } catch (err) {
-      setInfluencerError(
+      showErrorToast(
         err instanceof Error
           ? err.message
           : "Erro ao conceder acesso de influencer.",
@@ -197,15 +232,16 @@ export function UserDetailModal({
   async function handleRevokeInfluencer() {
     if (influencerBusy) return;
     setInfluencerBusy(true);
-    setInfluencerError(null);
     try {
       await adminFetch(`/users/${userId}/influencer/revoke`, {
         method: "POST",
       });
       setRevokeConfirm(false);
       setDetailVersion((version) => version + 1);
+      // TODO(Ana): copy de confirmacao da revogacao de influencer.
+      showActionToast({ message: "Acesso de influencer revogado." });
     } catch (err) {
-      setInfluencerError(
+      showErrorToast(
         err instanceof Error
           ? err.message
           : "Erro ao revogar acesso de influencer.",
@@ -217,20 +253,21 @@ export function UserDetailModal({
 
   async function handleReveal() {
     setRevealing(true);
-    setRevealError(null);
     try {
       const json = await adminFetch(`/users/${userId}/reveal-cpf`, {
         method: "POST",
       });
       setRevealedCpf(json.data?.cpf ?? null);
     } catch (err) {
-      setRevealError(
+      showErrorToast(
         err instanceof Error ? err.message : "Erro ao revelar CPF.",
       );
     } finally {
       setRevealing(false);
     }
   }
+
+  const pro = proBadgeOf(detail?.pro_source);
 
   return (
     <Dialog
@@ -248,83 +285,75 @@ export function UserDetailModal({
         // permite: la todo campo tem autosave, entao fechar sem querer nao
         // perde nada. Aqui a Fatia 5 poe formulario com salvamento EXPLICITO
         // (corrigir e-mail digitado errado), e o backdrop e o alvo mais facil
-        // de acertar sem querer num cartao centralizado de max-w-3xl. Esc
-        // continua fechando porque e gesto deliberado, nao acidente.
-        //
-        // Redundante com o layout atual (o DialogContent cobre inset-0, entao
-        // nao ha "fora" clicavel), e de proposito: se o layout mudar, a postura
-        // nao muda junto em silencio.
+        // de acertar sem querer. Esc continua fechando porque e gesto
+        // deliberado, nao acidente.
         onInteractOutside={(event) => event.preventDefault()}
       >
-        <div className="card-brutal my-8 w-full max-w-3xl rounded-3xl bg-white p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
+        {/* CABECALHO FIXO: identidade e acesso ficam visiveis durante todo o
+            scroll, porque sao a resposta a "de quem e esta tela" e o admin
+            perde isso de vista assim que rola ate as secoes de baixo. */}
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b-2 border-slate-200 bg-[#f6f0df] px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <span
+              aria-hidden="true"
+              className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-700 text-sm font-black text-white sm:flex"
+            >
+              {(detail?.name || detail?.email || "?")
+                .trim()
+                .charAt(0)
+                .toUpperCase()}
+            </span>
+            <div className="min-w-0">
               <DialogTitle asChild>
-                <h3 className="font-display text-2xl font-black text-slate-950">
+                <h3 className="font-display truncate text-xl font-black text-slate-950 sm:text-2xl">
                   {detail ? fmtText(detail.name) : "Carregando..."}
                 </h3>
               </DialogTitle>
               <DialogDescription asChild>
-                <p className="text-sm font-semibold text-slate-500">
+                <p className="truncate text-sm font-semibold text-slate-500">
                   {detail?.email || ""}
                 </p>
               </DialogDescription>
             </div>
-            <button
-              type="button"
-              onClick={() => void requestClose()}
-              className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black"
-            >
-              Fechar
-            </button>
           </div>
+          {detail ? (
+            <span
+              className={`shrink-0 rounded-full border-2 px-3 py-1 text-xs font-black uppercase ${pro.className}`}
+            >
+              {pro.label}
+            </span>
+          ) : null}
+        </header>
 
+        {/* CORPO ROLAVEL */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
           {detailLoading ? (
-            <div className="mt-5">
-              <LoadingBlock />
-            </div>
+            <UserDetailSkeleton />
           ) : detailError ? (
-            <div className="mt-5">
-              <ErrorBlock message={detailError} />
-            </div>
+            <ErrorBlock message={detailError} />
           ) : detail ? (
-            <div className="mt-6 space-y-6">
-              {/* Visivel de cara: Identificacao (com a foto), Assinatura e
-                  Documento empilhados na vertical. Dentro de cada bloco os
-                  campos compactos usam a largura em 2 colunas (>= sm). */}
-              <div className="space-y-6">
-                <section className="space-y-2.5">
-                  <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
-                    Identificação
-                  </h4>
-                  <AvatarBlock avatar={detail.avatar} />
-                  <div className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
-                    <Field label="Nome" value={fmtText(detail.name)} />
-                    <Field
-                      label="Nome completo"
-                      value={fmtText(detail.full_name)}
-                    />
-                    <Field label="E-mail" value={fmtText(detail.email)} />
-                    <Field label="Gênero" value={fmtText(detail.gender)} />
-                  </div>
-                </section>
-
-                {/* TODO(Ana): revisar toda a copy do bloco de assinatura (rotulos,
-                    aviso de cancelamento e o estado de quem nunca assinou). */}
-                <section className="space-y-2.5">
-                  <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
-                    Assinatura
-                  </h4>
+            <div className="space-y-6">
+              {/* ASSINATURA vem PRIMEIRO, invertendo a ordem antiga. O modal e
+                  aberto para responder "qual o estado de acesso e pagamento
+                  desta pessoa", e a identidade ja esta no cabecalho fixo:
+                  repeti-la no topo empurrava a resposta para baixo da dobra.
+                  E aqui que as Fatias 5 a 7 vao agir. */}
+              {/* TODO(Ana): revisar toda a copy do bloco de assinatura (rotulos,
+                  aviso de cancelamento e o estado de quem nunca assinou). */}
+              <Section title="Assinatura">
+                <div className={CARD_SECTION}>
                   {detail.subscription ? (
                     <>
                       <div className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
                         <Field
                           label="Plano"
                           value={fmtText(detail.subscription.plan_code)}
+                          empty={semValor(detail.subscription.plan_code)}
                         />
                         <Field
                           label="Status"
                           value={fmtText(detail.subscription.status)}
+                          empty={semValor(detail.subscription.status)}
                         />
                         <Field
                           label="Método de pagamento"
@@ -332,6 +361,7 @@ export function UserDetailModal({
                             PAYMENT_METHOD_LABELS,
                             detail.subscription.payment_method,
                           )}
+                          empty={semValor(detail.subscription.payment_method)}
                         />
                         <Field
                           label="Renovação"
@@ -339,10 +369,12 @@ export function UserDetailModal({
                             RENEWAL_TYPE_LABELS,
                             detail.subscription.renewal_type,
                           )}
+                          empty={semValor(detail.subscription.renewal_type)}
                         />
                         <Field
                           label="Assinou em"
                           value={fmtDate(detail.subscription.created_at)}
+                          empty={semValor(detail.subscription.created_at)}
                         />
                         <Field
                           label={
@@ -353,10 +385,14 @@ export function UserDetailModal({
                           value={fmtDate(
                             detail.subscription.current_period_end,
                           )}
+                          empty={semValor(
+                            detail.subscription.current_period_end,
+                          )}
                         />
                         <Field
                           label="Valor pago (total)"
                           value={fmtBrl(detail.paid_total_cents)}
+                          empty={semValor(detail.paid_total_cents)}
                         />
                       </div>
                       {detail.cancellation_intent ? (
@@ -384,6 +420,9 @@ export function UserDetailModal({
                     </p>
                   )}
 
+                  {/* O ESTADO do influencer e conteudo e fica aqui, junto do
+                      resto do acesso; os BOTOES de conceder e revogar foram
+                      para o rodape, com as demais acoes sobre o usuario. */}
                   {/* TODO(Ana): revisar toda a copy do bloco de influencer
                       (rotulos, avisos, botoes e confirmacao de revogacao). */}
                   {detail.influencer ? (
@@ -411,124 +450,70 @@ export function UserDetailModal({
                       <p className="text-xs font-semibold text-violet-800">
                         Nota: {fmtText(detail.influencer.note)}
                       </p>
-                      {revokeConfirm ? (
-                        <div className="flex flex-wrap items-center gap-2 pt-1">
-                          <button
-                            type="button"
-                            onClick={handleRevokeInfluencer}
-                            disabled={influencerBusy}
-                            className="rounded-full border-2 border-slate-900 bg-rose-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
-                          >
-                            {influencerBusy
-                              ? "Revogando..."
-                              : "Confirmar revogação"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setRevokeConfirm(false)}
-                            disabled={influencerBusy}
-                            className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
-                          >
-                            Manter acesso
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setRevokeConfirm(true)}
-                          className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase"
-                        >
-                          Revogar acesso
-                        </button>
-                      )}
                     </div>
-                  ) : grantOpen ? (
-                    <div className="space-y-2 rounded-2xl border-2 border-violet-700 bg-violet-50 p-3">
-                      <p className="text-[11px] font-black uppercase tracking-wide text-violet-700">
-                        Conceder acesso de influencer
-                      </p>
-                      <textarea
-                        value={grantNote}
-                        onChange={(event) => setGrantNote(event.target.value)}
-                        placeholder="Por que este usuário está recebendo acesso? (ex: parceria de divulgação)"
-                        rows={2}
-                        className="w-full rounded-xl border-2 border-slate-900 bg-white p-2 text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
-                      />
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={handleGrantInfluencer}
-                          disabled={influencerBusy}
-                          className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
-                        >
-                          {influencerBusy ? "Concedendo..." : "Conceder"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setGrantOpen(false);
-                            setGrantNote("");
-                          }}
-                          disabled={influencerBusy}
-                          className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
+                  ) : null}
+                </div>
+              </Section>
+
+              <Section title="Identificação">
+                <div className={CARD_SECTION}>
+                  <AvatarBlock avatar={detail.avatar} />
+                  <div className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
+                    <Field
+                      label="Nome"
+                      value={fmtText(detail.name)}
+                      empty={semValor(detail.name)}
+                    />
+                    <Field
+                      label="Nome completo"
+                      value={fmtText(detail.full_name)}
+                      empty={semValor(detail.full_name)}
+                    />
+                    <Field
+                      label="E-mail"
+                      value={fmtText(detail.email)}
+                      empty={semValor(detail.email)}
+                    />
+                    <Field
+                      label="Gênero"
+                      value={fmtText(detail.gender)}
+                      empty={semValor(detail.gender)}
+                    />
+                  </div>
+                </div>
+              </Section>
+
+              <Section title="Documento">
+                <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
+                  <p className="text-[11px] font-black uppercase tracking-wide text-violet-700">
+                    CPF
+                  </p>
+                  <p className="mt-1 break-words font-display text-base font-black text-slate-950">
+                    {revealedCpf ??
+                      (detail.has_cpf
+                        ? (detail.cpf_masked ?? NAO_INFORMADO)
+                        : NAO_INFORMADO)}
+                  </p>
+                  {/* "Revelar CPF" fica AQUI, e nao no rodape: age sobre a
+                      visibilidade deste campo, nao sobre o usuario, e o efeito
+                      aparece na linha de cima. */}
+                  {detail.has_cpf && !revealedCpf ? (
                     <button
                       type="button"
-                      onClick={() => setGrantOpen(true)}
-                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase"
+                      onClick={handleReveal}
+                      disabled={revealing}
+                      className="mt-3 rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
                     >
-                      Tornar influencer
+                      {revealing ? "Revelando..." : "Revelar CPF"}
                     </button>
-                  )}
-                  {influencerError ? (
-                    <p className="text-xs font-black text-rose-700">
-                      {influencerError}
-                    </p>
                   ) : null}
-                </section>
-
-                <section className="space-y-2.5">
-                  <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
-                    Documento
-                  </h4>
-                  <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-3">
-                    <p className="text-[11px] font-black uppercase tracking-wide text-violet-700">
-                      CPF
-                    </p>
-                    <p className="mt-1 break-words font-display text-base font-black text-slate-950">
-                      {revealedCpf ??
-                        (detail.has_cpf
-                          ? (detail.cpf_masked ?? NAO_INFORMADO)
-                          : NAO_INFORMADO)}
-                    </p>
-                    {detail.has_cpf && !revealedCpf ? (
-                      <button
-                        type="button"
-                        onClick={handleReveal}
-                        disabled={revealing}
-                        className="mt-3 rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
-                      >
-                        {revealing ? "Revelando..." : "Revelar CPF"}
-                      </button>
-                    ) : null}
-                    {revealError ? (
-                      <p className="mt-2 text-xs font-black text-rose-700">
-                        {revealError}
-                      </p>
-                    ) : null}
-                    {/* TODO(Ana): copy do aviso de que revelar o CPF fica registrado em auditoria. */}
-                    <p className="mt-2 text-xs font-semibold text-slate-500">
-                      Revelar o CPF fica registrado em auditoria (quem revelou,
-                      de quem e quando).
-                    </p>
-                  </div>
-                </section>
-              </div>
+                  {/* TODO(Ana): copy do aviso de que revelar o CPF fica registrado em auditoria. */}
+                  <p className="mt-2 text-xs font-semibold text-slate-500">
+                    Revelar o CPF fica registrado em auditoria (quem revelou, de
+                    quem e quando).
+                  </p>
+                </div>
+              </Section>
 
               {/* TODO(Ana): rotulo do dropdown "Mais informacoes". */}
               <button
@@ -545,105 +530,204 @@ export function UserDetailModal({
 
               {moreOpen ? (
                 <div className="space-y-6">
-                  <div className="grid items-start gap-6 sm:grid-cols-2">
-                    <section className="space-y-2.5">
-                      <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
-                        Perfil e carreira
-                      </h4>
-                      <Field
-                        label="Área de interesse"
-                        value={fmtText(detail.area_interesse)}
-                      />
-                      <Field
-                        label="Nível atual"
-                        value={fmtText(detail.nivel_atual)}
-                      />
-                      <Field
-                        label="Objetivo"
-                        value={fmtText(detail.objetivo)}
-                      />
-                      <Field label="Bio" value={fmtText(detail.bio)} />
-                    </section>
+                  <div className="grid items-start gap-6 lg:grid-cols-2">
+                    <Section title="Perfil e carreira">
+                      <div className={CARD_SECTION}>
+                        <Field
+                          label="Área de interesse"
+                          value={fmtText(detail.area_interesse)}
+                          empty={semValor(detail.area_interesse)}
+                        />
+                        <Field
+                          label="Nível atual"
+                          value={fmtText(detail.nivel_atual)}
+                          empty={semValor(detail.nivel_atual)}
+                        />
+                        <Field
+                          label="Objetivo"
+                          value={fmtText(detail.objetivo)}
+                          empty={semValor(detail.objetivo)}
+                        />
+                        <Field
+                          label="Bio"
+                          value={fmtText(detail.bio)}
+                          empty={semValor(detail.bio)}
+                        />
+                      </div>
+                    </Section>
 
-                    <section className="space-y-2.5">
-                      <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
-                        Onboarding
-                      </h4>
-                      <Field
-                        label="Onboarding"
-                        value={
-                          detail.onboarding_completed
-                            ? "Concluído"
-                            : "Incompleto"
-                        }
-                      />
-                      <Field
-                        label="Passo do onboarding"
-                        value={
-                          detail.onboarding_step === null ||
-                          detail.onboarding_step === undefined
-                            ? NAO_INFORMADO
-                            : String(detail.onboarding_step)
-                        }
-                      />
-                    </section>
+                    <Section title="Onboarding">
+                      <div className={CARD_SECTION}>
+                        <Field
+                          label="Onboarding"
+                          value={
+                            detail.onboarding_completed
+                              ? "Concluído"
+                              : "Incompleto"
+                          }
+                          empty={semValor(detail.onboarding_completed)}
+                        />
+                        <Field
+                          label="Passo do onboarding"
+                          value={
+                            semValor(detail.onboarding_step)
+                              ? NAO_INFORMADO
+                              : String(detail.onboarding_step)
+                          }
+                          empty={semValor(detail.onboarding_step)}
+                        />
+                      </div>
+                    </Section>
 
-                    <section className="space-y-2.5">
-                      <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
-                        Marketing
-                      </h4>
-                      <Field
-                        label="Opt-in de marketing"
-                        value={fmtBool(detail.marketing_opt_in)}
-                      />
-                      <Field
-                        label="Data do opt-in"
-                        value={fmtDateTime(detail.marketing_opt_in_at)}
-                      />
-                      <Field
-                        label="E-mail de boas-vindas"
-                        value={fmtBool(detail.welcome_email_sent)}
-                      />
-                    </section>
+                    <Section title="Marketing">
+                      <div className={CARD_SECTION}>
+                        <Field
+                          label="Opt-in de marketing"
+                          value={fmtBool(detail.marketing_opt_in)}
+                          empty={semValor(detail.marketing_opt_in)}
+                        />
+                        <Field
+                          label="Data do opt-in"
+                          value={fmtDateTime(detail.marketing_opt_in_at)}
+                          empty={semValor(detail.marketing_opt_in_at)}
+                        />
+                        <Field
+                          label="E-mail de boas-vindas"
+                          value={fmtBool(detail.welcome_email_sent)}
+                          empty={semValor(detail.welcome_email_sent)}
+                        />
+                      </div>
+                    </Section>
 
-                    <section className="space-y-2.5">
-                      <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
-                        Sistema
-                      </h4>
-                      <Field
-                        label="Atividade"
-                        value={activityStatusLabelOf(detail.activity_status)}
-                      />
-                      <Field
-                        label="Cadastro"
-                        value={fmtDate(detail.created_at)}
-                      />
-                      <Field
-                        label="Atualizado em"
-                        value={fmtDateTime(detail.updated_at)}
-                      />
-                    </section>
+                    <Section title="Sistema">
+                      <div className={CARD_SECTION}>
+                        <Field
+                          label="Atividade"
+                          value={activityStatusLabelOf(detail.activity_status)}
+                          empty={semValor(detail.activity_status)}
+                        />
+                        <Field
+                          label="Cadastro"
+                          value={fmtDate(detail.created_at)}
+                          empty={semValor(detail.created_at)}
+                        />
+                        <Field
+                          label="Atualizado em"
+                          value={fmtDateTime(detail.updated_at)}
+                          empty={semValor(detail.updated_at)}
+                        />
+                      </div>
+                    </Section>
                   </div>
 
-                  <section className="space-y-3">
-                    <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
-                      Atividade
-                    </h4>
+                  <Section title="Atividade">
                     <ActivityBlock
                       loading={activityLoading}
                       error={activityError}
                       state={activity}
                     />
-                  </section>
+                  </Section>
                 </div>
               ) : null}
             </div>
           ) : (
-            <div className="mt-5">
-              <ErrorBlock message="Usuário não encontrado." />
-            </div>
+            <ErrorBlock message="Usuário não encontrado." />
           )}
-        </div>{" "}
+        </div>
+
+        {/* RODAPE DE ACOES sobre o USUARIO. Editar, Cancelar Pro e Reembolsar
+            entram aqui nas Fatias 5, 6 e 7. Nenhum botao desabilitado de
+            reserva: espaco vazio nao promete o que ainda nao existe. */}
+        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t-2 border-slate-200 bg-slate-50 px-4 py-3 sm:px-6">
+          <div className="flex flex-wrap items-center gap-2">
+            {detail && !detailLoading ? (
+              detail.influencer ? (
+                revokeConfirm ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleRevokeInfluencer}
+                      disabled={influencerBusy}
+                      className="rounded-full border-2 border-slate-900 bg-rose-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
+                    >
+                      {influencerBusy ? "Revogando..." : "Confirmar revogação"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRevokeConfirm(false)}
+                      disabled={influencerBusy}
+                      className={ACTION_BUTTON}
+                    >
+                      Manter acesso
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setRevokeConfirm(true)}
+                    className={ACTION_BUTTON}
+                  >
+                    Revogar acesso
+                  </button>
+                )
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setGrantOpen((open) => !open)}
+                  className={ACTION_BUTTON}
+                >
+                  Tornar influencer
+                </button>
+              )
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void requestClose()}
+            className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase transition hover:bg-yellow-50"
+          >
+            Fechar
+          </button>
+
+          {/* Formulario da nota, aberto pelo botao acima. Ocupa a linha inteira
+              do rodape para o textarea nao espremer as acoes. */}
+          {grantOpen && detail && !detail.influencer ? (
+            <div className="w-full space-y-2 rounded-2xl border-2 border-violet-700 bg-violet-50 p-3">
+              <p className="text-[11px] font-black uppercase tracking-wide text-violet-700">
+                Conceder acesso de influencer
+              </p>
+              <textarea
+                value={grantNote}
+                onChange={(event) => setGrantNote(event.target.value)}
+                placeholder="Por que este usuário está recebendo acesso? (ex: parceria de divulgação)"
+                rows={2}
+                className="w-full rounded-xl border-2 border-slate-900 bg-white p-2 text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleGrantInfluencer}
+                  disabled={influencerBusy}
+                  className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
+                >
+                  {influencerBusy ? "Concedendo..." : "Conceder"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGrantOpen(false);
+                    setGrantNote("");
+                  }}
+                  disabled={influencerBusy}
+                  className={ACTION_BUTTON}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </footer>
       </DialogContent>
     </Dialog>
   );

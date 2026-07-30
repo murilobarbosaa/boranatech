@@ -24,11 +24,6 @@ vi.mock("@/lib/adminApi", () => ({
 
 import { UsersDashboard } from "./UsersDashboard";
 
-// Classe do cartao do modal, copiada do componente ANTERIOR a extracao
-// (commit c15e29e). Se a extracao mexeu no visual, esta string diverge.
-const CARD_CLASSNAME_ANTES_DA_EXTRACAO =
-  "card-brutal my-8 w-full max-w-3xl rounded-3xl bg-white p-6";
-
 function listPayload(
   items: Array<Record<string, unknown>>,
   total = items.length,
@@ -393,34 +388,49 @@ describe("UsersDashboard: modal de detalhe", () => {
     ).toBe(1);
   });
 
-  it("o cartao interno mantem exatamente as classes de antes da extracao", async () => {
-    const dialog = await abrirModal();
-
-    const cartao = dialog.querySelector(".card-brutal");
-    expect(cartao).not.toBeNull();
-    expect(cartao!.className).toBe(CARD_CLASSNAME_ANTES_DA_EXTRACAO);
-  });
-
+  // As duas assercoes que existiam aqui ate a Fatia 2 travavam o modal no
+  // formato ANTERIOR a extracao (um .card-brutal dentro de um DialogContent
+  // transparente). A Fatia 3 redesenhou o modal de proposito, entao elas foram
+  // substituidas pelo contrato NOVO, nao removidas: o que nao pode acontecer em
+  // silencio segue travado.
   it("o DialogContent neutraliza os defaults visuais do primitivo", async () => {
     const dialog = await abrirModal();
     const classes = dialog.className;
 
-    // Se qualquer um destes sobreviver ao tailwind-merge, o container deixa de
-    // ser transparente e passa a desenhar borda/fundo/centralizacao propria.
+    // Sobrevivente do tailwind-merge = default do shadcn desenhando por cima do
+    // desenho do admin.
     for (const indesejada of [
       "bg-background",
       "rounded-lg",
       "shadow-lg",
-      "translate-y-[-50%]",
       "sm:max-w-lg",
       "max-w-[calc(100%-2rem)]",
+      "p-6",
     ]) {
       expect(classes.includes(indesejada)).toBe(false);
     }
-    // E mantem o container de rolagem que existia antes.
-    expect(classes).toContain("overflow-y-auto");
-    expect(classes).toContain("items-start");
     expect(classes).toContain("z-[2000]");
+  });
+
+  it("o modal e uma coluna com corpo rolavel, nao um bloco que rola inteiro", async () => {
+    const dialog = await abrirModal();
+
+    // Cabecalho fixo + corpo rolavel + rodape depende de o container ser flex
+    // coluna e NAO rolar ele mesmo: quem rola e so o corpo.
+    expect(dialog.className).toContain("flex-col");
+    expect(dialog.className).toContain("overflow-hidden");
+
+    const roláveis = dialog.querySelectorAll(".overflow-y-auto");
+    expect(roláveis.length).toBe(1);
+  });
+
+  it("tela cheia no mobile, caixa no desktop", async () => {
+    const dialog = await abrirModal();
+
+    expect(dialog.className).toContain("h-[100dvh]");
+    expect(dialog.className).toContain("w-screen");
+    expect(dialog.className).toContain("sm:h-[88vh]");
+    expect(dialog.className).toContain("sm:w-[min(56rem,94vw)]");
   });
 
   it("o dropdown Mais informacoes so busca o PostHog na primeira abertura", async () => {

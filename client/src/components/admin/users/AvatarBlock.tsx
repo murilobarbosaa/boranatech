@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { UserDetail } from "./types";
+import { avatarModeLabelOf } from "./userFormat";
 
 // TODO(Ana): revisar toda a copy do bloco de foto (rotulos de estado e avisos).
 export function AvatarBlock({ avatar }: { avatar: UserDetail["avatar"] }) {
@@ -63,7 +64,7 @@ export function AvatarBlock({ avatar }: { avatar: UserDetail["avatar"] }) {
           </p>
         ) : null}
         <p className="text-xs font-black uppercase tracking-wide text-violet-700">
-          Modo do avatar: {avatar?.mode === "photo" ? "Foto" : "Ícone"}
+          Modo do avatar: {avatarModeLabelOf(avatar?.mode)}
         </p>
       </div>
     </div>

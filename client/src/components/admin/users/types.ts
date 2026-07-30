@@ -40,10 +40,14 @@ export type UserListFilter =
   | "influencers"
   | "ativo";
 
-// Espelha o payload de GET /users/:id (CPF ja mascarado; sem campos de moderacao
-// de avatar nem o blob de preferences).
+// O que a UI CONSOME de GET /users/:id (CPF ja mascarado; sem campos de
+// moderacao de avatar nem o blob de preferences).
+//
+// Nao e um espelho literal do payload: `user_id` foi removido porque nunca era
+// lido (o modal recebe o id por prop, e le-lo da resposta seria uma segunda
+// fonte para a mesma coisa). O servidor continua enviando; o tipo descreve o
+// que a tela usa.
 export type UserDetail = {
-  user_id: string | null;
   name: string | null;
   full_name: string | null;
   email: string | null;
@@ -89,6 +93,12 @@ export type UserDetail = {
     granted_by_email: string | null;
   } | null;
   paid_total_cents: number;
+  // Derivados no servidor com a MESMA funcao que alimenta a lista
+  // (server/lib/userListEnrichment.ts), para o selo do cabecalho do modal e o
+  // da linha nunca discordarem. pro_source e `string` pelo mesmo motivo de
+  // UserRow: origem nova no backend nao pode quebrar o bundle em execucao.
+  is_pro?: boolean;
+  pro_source?: string | null;
   // Derivado no servidor a partir de last_sign_in_at, com a mesma janela de 30d
   // do filtro ATIVO: active = login < 30d, inactive = login > 30d, never = nunca
   // logou. A janela vive so no servidor; aqui so mapeamos o rotulo.
