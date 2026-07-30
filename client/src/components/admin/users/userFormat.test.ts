@@ -17,7 +17,12 @@ import {
   safeHttpUrl,
   semValor,
   subscriptionStatusBadgeOf,
+  subscriptionStatusLabelOf,
+  planLabelOf,
+  cancellationReasonLabelOf,
+  CANCELLATION_REASON_LABELS,
 } from "./userFormat";
+import { REASON_LABELS } from "@/components/admin/CancellationReasonsDashboard";
 
 /**
  * Formatadores do modulo de Usuarios.
@@ -326,5 +331,120 @@ describe("displayName", () => {
   it("sem nome e sem e-mail utilizavel, cai no generico", () => {
     expect(displayName({})).toBe("Usuário");
     expect(displayName({ name: null, email: "sem-arroba" })).toBe("Usuário");
+  });
+});
+
+describe("valores de servidor que chegavam crus na tela", () => {
+  // O inventario de frases da aba (aba.frases.test.tsx) pegou estes quatro
+  // aparecendo em snake_case no DOM: superseded, missing_feature, pro_annual e
+  // os irmaos de plan_code. A correcao e preencher o mapa, NUNCA remover o
+  // fallback: valor novo tem que continuar aparecendo cru em vez de quebrar a
+  // pagina.
+
+  describe("subscriptionStatusLabelOf", () => {
+    it("traduz os 7 status que subscriptions.status pode guardar", () => {
+      // O TOTAL e afirmado, nao a pertinencia. Os 5 primeiros sao a saida de
+      // mapStatus (server/providers/stripe.ts), que colapsa os 8 status da
+      // Stripe; os 2 ultimos sao escritos como literal pelo proprio projeto.
+      expect({
+        active: subscriptionStatusLabelOf("active"),
+        trialing: subscriptionStatusLabelOf("trialing"),
+        past_due: subscriptionStatusLabelOf("past_due"),
+        canceled: subscriptionStatusLabelOf("canceled"),
+        incomplete: subscriptionStatusLabelOf("incomplete"),
+        pending: subscriptionStatusLabelOf("pending"),
+        superseded: subscriptionStatusLabelOf("superseded"),
+      }).toEqual({
+        active: "Ativa",
+        trialing: "Em teste",
+        past_due: "Inadimplente",
+        canceled: "Cancelada",
+        incomplete: "Incompleta",
+        pending: "Aguardando pagamento",
+        superseded: "Substituída",
+      });
+    });
+
+    it("status novo continua aparecendo cru, sem quebrar", () => {
+      expect(subscriptionStatusLabelOf("status_do_futuro")).toBe(
+        "status_do_futuro",
+      );
+    });
+
+    it("sem assinatura, nao inventa", () => {
+      expect(subscriptionStatusLabelOf(null)).toBe(NAO_INFORMADO);
+      expect(subscriptionStatusLabelOf(undefined)).toBe(NAO_INFORMADO);
+    });
+
+    it("o selo da lista e o rotulo do detalhe dizem a MESMA coisa", () => {
+      // Eram dois caminhos: a lista resolvia pelo selo e o detalhe passava
+      // fmtText no valor cru. Divergir de novo e o defeito que esta fatia
+      // conserta.
+      for (const s of ["active", "pending", "superseded", "canceled"]) {
+        expect(subscriptionStatusBadgeOf(s)?.label).toBe(
+          subscriptionStatusLabelOf(s),
+        );
+      }
+    });
+  });
+
+  describe("planLabelOf", () => {
+    it("usa o nome que a propria tabela plans guarda", () => {
+      // Nao sao textos inventados: sao os `plans.name` de producao, conferidos
+      // em 2026-07-30. Inventar nome de plano seria inventar dado.
+      expect({
+        free: planLabelOf("free"),
+        pro_monthly: planLabelOf("pro_monthly"),
+        pro_semiannual: planLabelOf("pro_semiannual"),
+        pro_annual: planLabelOf("pro_annual"),
+      }).toEqual({
+        free: "Gratuito",
+        pro_monthly: "Pro Mensal",
+        pro_semiannual: "Pro Semestral",
+        pro_annual: "Pro Anual",
+      });
+    });
+
+    it("plano novo aparece cru", () => {
+      expect(planLabelOf("pro_bienal")).toBe("pro_bienal");
+    });
+
+    it("sem plano, nao inventa", () => {
+      expect(planLabelOf(null)).toBe(NAO_INFORMADO);
+    });
+  });
+
+  describe("cancellationReasonLabelOf", () => {
+    it("traduz os 6 reason_code que o CHECK do banco permite", () => {
+      expect({
+        expensive: cancellationReasonLabelOf("expensive"),
+        unused: cancellationReasonLabelOf("unused"),
+        missing_feature: cancellationReasonLabelOf("missing_feature"),
+        paused: cancellationReasonLabelOf("paused"),
+        other: cancellationReasonLabelOf("other"),
+        admin: cancellationReasonLabelOf("admin"),
+      }).toEqual({
+        expensive: "Está caro",
+        unused: "Não estava usando",
+        missing_feature: "Faltou funcionalidade",
+        paused: "Vai pausar, volta depois",
+        other: "Outro motivo",
+        admin: "Cancelado pelo admin",
+      });
+    });
+
+    it("motivo novo aparece cru", () => {
+      expect(cancellationReasonLabelOf("motivo_do_futuro")).toBe(
+        "motivo_do_futuro",
+      );
+    });
+
+    it("nao diverge do mapa da aba Retenção", () => {
+      // Os dois mapas existem separados de propósito (a aba Retenção não é
+      // escopo desta fatia), mas divergir em silêncio seria a mesma frase
+      // significando coisas diferentes em duas telas do mesmo admin. Este
+      // teste é o que torna a divergência barulhenta.
+      expect(CANCELLATION_REASON_LABELS).toEqual(REASON_LABELS);
+    });
   });
 });

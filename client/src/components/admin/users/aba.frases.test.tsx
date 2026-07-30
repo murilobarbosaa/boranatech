@@ -43,7 +43,6 @@ const SENTINELAS = new Set([
   "SENTINELA_AREA",
   "SENTINELA_NIVEL",
   "SENTINELA_OBJETIVO",
-  "SENTINELA_PLANO",
   "SENTINELA_CPF",
   "SENTINELA_ATOR",
   "SENTINELA_COBRANCA",
@@ -54,10 +53,6 @@ const SENTINELAS = new Set([
   "1",
   "3",
   "S",
-  // Status CRU do servidor. Aparece assim porque o resolver de status cai no
-  // fallback neutro para um valor que ele nao traduz, que e o comportamento
-  // desejado (convencao de lookup por valor do servidor). E dado, nao copy.
-  "active",
 ]);
 
 const LISTA = {
@@ -71,7 +66,7 @@ const LISTA = {
         is_pro: false,
         pro_source: null,
         plan_code: null,
-        subscription_status: null,
+        subscription_status: "superseded",
       },
     ],
     total: 1,
@@ -100,7 +95,7 @@ const DETALHE = {
     has_cpf: true,
     avatar: { url: null, mode: "icon", moderation_status: "clean" },
     subscription: {
-      plan_code: "SENTINELA_PLANO",
+      plan_code: "pro_annual",
       status: "active",
       payment_method: "card",
       renewal_type: "auto",
@@ -108,7 +103,11 @@ const DETALHE = {
       current_period_end: null,
       cancel_at_period_end: false,
     },
-    cancellation_intent: null,
+    cancellation_intent: {
+      reason_code: "missing_feature",
+      reason_text: null,
+      effective_at: null,
+    },
     influencer: null,
     paid_total_cents: 22200,
     activity_status: "active",
@@ -201,7 +200,10 @@ const COPY_ESTATICA = new Set<string>([
   "Sem foto enviada.",
   "Não informado",
   "Sem assinatura",
-  "—",
+  // "—" (marcador de campo vazio) saiu: com o fixture desta trava nenhum campo
+  // cai nele. Não é copy morta, é copy que este cenário não exercita, e o
+  // rendering de vazio tem trava própria em UserDetailModal.campos.test.tsx. Se
+  // ele voltar a aparecer aqui, cai como frase não classificada.
   "Nenhuma compra registrada.",
   "Sem atividade registrada para este usuário.",
   "Fechar",
@@ -215,6 +217,16 @@ const COPY_ESTATICA = new Set<string>([
   "Reembolso",
   "Confirmado",
   "por",
+  // Traduções desta fatia: eram "active", "superseded", "pro_annual" e
+  // "missing_feature" no DOM.
+  "Ativa",
+  "Substituída",
+  "Pro Anual",
+  "Faltou funcionalidade",
+  // Copy do bloco de cancelamento agendado, que o fixture antigo não montava.
+  "Cancelamento agendado",
+  "Motivo",
+  "Acaba em",
 ]);
 
 function frasesVisiveis(): string[] {

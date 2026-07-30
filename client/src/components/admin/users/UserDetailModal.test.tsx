@@ -1180,7 +1180,7 @@ describe("cancelamento de assinatura (Fatia 6)", () => {
       titulo.closest('[role="alertdialog"]') as HTMLElement,
     );
 
-    expect(dialogo.getByText("pro_annual")).toBeTruthy();
+    expect(dialogo.getByText("Pro Anual")).toBeTruthy();
     expect(dialogo.getByText("10/01/2027")).toBeTruthy();
     expect(dialogo.getByText(/não é imediato/)).toBeTruthy();
   });

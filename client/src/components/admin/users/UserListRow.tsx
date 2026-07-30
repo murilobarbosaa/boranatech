@@ -4,6 +4,7 @@ import {
   initialsOf,
   proBadgeOf,
   subscriptionStatusBadgeOf,
+  planLabelOf,
 } from "./userFormat";
 import type { UserRow } from "./types";
 
@@ -103,7 +104,7 @@ export function UserListRow({
             </span>
             {row.plan_code ? (
               <span className="text-xs font-bold text-slate-500">
-                {row.plan_code}
+                {planLabelOf(row.plan_code)}
               </span>
             ) : null}
           </>

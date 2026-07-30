@@ -62,6 +62,9 @@ import {
   labelFrom,
   proBadgeOf,
   semValor,
+  planLabelOf,
+  subscriptionStatusLabelOf,
+  cancellationReasonLabelOf,
 } from "./userFormat";
 
 // Modal de detalhe do usuario, no molde do TaskModal: cabecalho fixo, corpo
@@ -505,12 +508,14 @@ export function UserDetailModal({
                       <div className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
                         <Field
                           label="Plano"
-                          value={fmtText(detail.subscription.plan_code)}
+                          value={planLabelOf(detail.subscription.plan_code)}
                           empty={semValor(detail.subscription.plan_code)}
                         />
                         <Field
                           label="Status"
-                          value={fmtText(detail.subscription.status)}
+                          value={subscriptionStatusLabelOf(
+                            detail.subscription.status,
+                          )}
                           empty={semValor(detail.subscription.status)}
                         />
                         <Field
@@ -560,10 +565,11 @@ export function UserDetailModal({
                           </p>
                           <p className="mt-1 text-sm font-semibold text-amber-900">
                             Motivo{" "}
-                            {fmtText(
-                              detail.cancellation_intent.reason_text ||
-                                detail.cancellation_intent.reason_code,
-                            )}
+                            {detail.cancellation_intent.reason_text?.trim()
+                              ? detail.cancellation_intent.reason_text
+                              : cancellationReasonLabelOf(
+                                  detail.cancellation_intent.reason_code,
+                                )}
                           </p>
                           <p className="mt-1 text-sm font-semibold text-amber-900">
                             Acaba em{" "}

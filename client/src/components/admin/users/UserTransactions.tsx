@@ -1,7 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorBlock } from "@/components/admin/StateBlocks";
 
-import { fmtBrl, fmtDate } from "./userFormat";
+import { fmtBrl, fmtDate, planLabelOf } from "./userFormat";
 import type { TransactionItem, TransactionsPayload } from "./types";
 
 // Rotulos de tipo de transacao, com resolver de fallback: um tipo novo do
@@ -69,7 +69,7 @@ function Linha({
       <span className="flex flex-col">
         {item.plan_code ? (
           <span className="text-sm font-bold text-slate-700">
-            {item.plan_code}
+            {planLabelOf(item.plan_code)}
           </span>
         ) : null}
         {item.refunded_cents > 0 ? (

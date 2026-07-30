@@ -121,10 +121,14 @@ export function proBadgeOf(source: string | null | undefined): {
   );
 }
 
-// Rotulos de subscription_status. Mesmo conjunto e mesmas cores do
-// SubscribersTable, para as duas telas nao divergirem, mas atras de um resolver
-// com fallback: la o acesso e direto ao mapa, e a Stripe pode introduzir status
-// novo a qualquer momento.
+// Rotulos de subscription_status. As CORES sao as do SubscribersTable, mas o
+// conjunto e maior: aquela tela nao conhece `pending` (boleto) nem
+// `superseded`, e os renderiza crus. Nao quebra, porque o acesso la tem guarda
+// (`meta?.label ?? status`), mas e a mesma divida com outro dono.
+//
+// Aqui e resolver com fallback de propósito: a Stripe pode introduzir status
+// novo a qualquer momento, e valor desconhecido tem que aparecer cru em vez de
+// derrubar a tela.
 const SUBSCRIPTION_STATUS_BADGES: Record<
   string,
   { label: string; className: string }
@@ -134,7 +138,7 @@ const SUBSCRIPTION_STATUS_BADGES: Record<
     className: "border-emerald-600 bg-emerald-50 text-emerald-700",
   },
   trialing: {
-    label: "Trial",
+    label: "Em teste",
     className: "border-blue-500 bg-blue-50 text-blue-700",
   },
   past_due: {
@@ -150,8 +154,16 @@ const SUBSCRIPTION_STATUS_BADGES: Record<
     className: "border-rose-400 bg-rose-50 text-rose-700",
   },
   pending: {
-    label: "Pendente",
+    label: "Aguardando pagamento",
     className: "border-amber-500 bg-amber-50 text-amber-700",
+  },
+  // Escrito como literal por server/providers/stripe.ts quando uma assinatura
+  // nova substitui a anterior da mesma pessoa. Nao vem da Stripe e nao passa
+  // por mapStatus, entao nao aparecia em nenhuma lista derivada dos status do
+  // provedor.
+  superseded: {
+    label: "Substituída",
+    className: "border-slate-400 bg-slate-100 text-slate-600",
   },
 };
 
@@ -166,6 +178,66 @@ export function subscriptionStatusBadgeOf(
       className: ORIGEM_DESCONHECIDA,
     }
   );
+}
+
+/**
+ * Mesmo rotulo do selo da lista, para o DETALHE.
+ *
+ * Existia so o selo, e o detalhe passava `fmtText` no valor cru: "active"
+ * aparecia em ingles e em snake_case no campo Status, no selo mais comum da
+ * base inteira. As duas telas agora leem o MESMO mapa, entao nao ha como
+ * divergirem de novo.
+ */
+export function subscriptionStatusLabelOf(
+  status: string | null | undefined,
+): string {
+  if (!status) return NAO_INFORMADO;
+  return SUBSCRIPTION_STATUS_BADGES[status]?.label ?? status;
+}
+
+/**
+ * Rotulos de plano. Os textos NAO sao invencao: sao os `plans.name` que a
+ * propria tabela guarda, conferidos contra producao em 2026-07-30. Duplicar o
+ * nome aqui em vez de ler da tabela e deliberado, porque `plan_code` chega em
+ * lugares que nao carregam o registro do plano junto (linha da lista, extrato,
+ * dialogo de cancelamento).
+ */
+export const PLAN_LABELS: Record<string, string> = {
+  free: "Gratuito",
+  pro_monthly: "Pro Mensal",
+  pro_semiannual: "Pro Semestral",
+  pro_annual: "Pro Anual",
+};
+
+/** Resolver COM FALLBACK: plano novo aparece cru, nao quebra a tela. */
+export function planLabelOf(code: string | null | undefined): string {
+  if (!code) return NAO_INFORMADO;
+  return PLAN_LABELS[code] ?? code;
+}
+
+/**
+ * Motivos de cancelamento. Os 6 valores que o CHECK de
+ * subscription_cancellations.reason_code permite.
+ *
+ * Existe um mapa igual em CancellationReasonsDashboard.tsx (aba Retenção), que
+ * nao e escopo desta fatia. A divergencia entre os dois e travada por teste em
+ * userFormat.test.ts, entao ela nao pode acontecer em silencio.
+ */
+export const CANCELLATION_REASON_LABELS: Record<string, string> = {
+  expensive: "Está caro",
+  unused: "Não estava usando",
+  missing_feature: "Faltou funcionalidade",
+  paused: "Vai pausar, volta depois",
+  other: "Outro motivo",
+  admin: "Cancelado pelo admin",
+};
+
+/** Resolver COM FALLBACK: motivo novo aparece cru. */
+export function cancellationReasonLabelOf(
+  code: string | null | undefined,
+): string {
+  if (!code) return NAO_INFORMADO;
+  return CANCELLATION_REASON_LABELS[code] ?? code;
 }
 
 /**

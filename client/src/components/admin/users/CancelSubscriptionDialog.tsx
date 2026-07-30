@@ -11,7 +11,7 @@ import {
 import { LAYER_IN_DIALOG } from "@/components/admin/tasks/taskLayers";
 
 import type { UserDetail } from "./types";
-import { fmtBrl, fmtDate, fmtText } from "./userFormat";
+import { fmtBrl, fmtDate, fmtText, planLabelOf } from "./userFormat";
 
 // Confirmação do cancelamento de assinatura. Ação destrutiva: mesmo padrão de
 // AlertDialog que o TaskModal usa para exclusão.
@@ -94,7 +94,7 @@ export function CancelSubscriptionDialog({
                 <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
                   Plano
                 </span>
-                {fmtText(detail.subscription?.plan_code)}
+                {planLabelOf(detail.subscription?.plan_code)}
               </span>
               <span>
                 <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">

@@ -174,7 +174,7 @@ describe("nenhum campo visivel desapareceu no redesign", () => {
 
     for (const valor of [
       "Ana Ferreira Moura", // Identificação
-      "pro_annual", // Assinatura
+      "Pro Anual", // Assinatura (plan_code traduzido)
       "R$ 222,00", // Assinatura (valor pago)
       "***.456.789-**", // Documento
       "Dados", // Perfil e carreira
