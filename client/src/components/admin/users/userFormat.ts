@@ -81,6 +81,102 @@ export function activityStatusLabelOf(
   return ACTIVITY_STATUS_LABELS[status] ?? status;
 }
 
+// Selo de ORIGEM do acesso Pro. Assinatura e concessao de influencer sao
+// ortogonais (as duas podem valer ao mesmo tempo), e a diferenca e operacional,
+// nao cosmetica: cancelar a assinatura de um influencer NAO tira o Pro dele.
+// A lista precisa mostrar isso antes de alguem cancelar e ficar sem entender.
+const PRO_BADGES: Record<string, { label: string; className: string }> = {
+  subscription: {
+    label: "Pro",
+    className: "border-slate-900 bg-yellow-300 text-slate-950",
+  },
+  influencer: {
+    label: "Influencer",
+    className: "border-violet-800 bg-violet-100 text-violet-900",
+  },
+  both: {
+    label: "Pro + Influencer",
+    className: "border-violet-800 bg-violet-200 text-violet-950",
+  },
+};
+
+const SEM_PRO_BADGE = {
+  label: "Grátis",
+  className: "border-emerald-700 bg-emerald-50 text-emerald-800",
+};
+
+const ORIGEM_DESCONHECIDA = "border-slate-400 bg-slate-100 text-slate-600";
+
+// Resolver COM FALLBACK (molde de notificationTypeMetaOf): uma terceira origem
+// de Pro pode nascer no backend antes de o bundle do front subir.
+export function proBadgeOf(source: string | null | undefined): {
+  label: string;
+  className: string;
+} {
+  if (!source) return SEM_PRO_BADGE;
+  return (
+    PRO_BADGES[source] ?? { label: source, className: ORIGEM_DESCONHECIDA }
+  );
+}
+
+// Rotulos de subscription_status. Mesmo conjunto e mesmas cores do
+// SubscribersTable, para as duas telas nao divergirem, mas atras de um resolver
+// com fallback: la o acesso e direto ao mapa, e a Stripe pode introduzir status
+// novo a qualquer momento.
+const SUBSCRIPTION_STATUS_BADGES: Record<
+  string,
+  { label: string; className: string }
+> = {
+  active: {
+    label: "Ativa",
+    className: "border-emerald-600 bg-emerald-50 text-emerald-700",
+  },
+  trialing: {
+    label: "Trial",
+    className: "border-blue-500 bg-blue-50 text-blue-700",
+  },
+  past_due: {
+    label: "Inadimplente",
+    className: "border-amber-500 bg-amber-50 text-amber-700",
+  },
+  canceled: {
+    label: "Cancelada",
+    className: "border-slate-400 bg-slate-100 text-slate-600",
+  },
+  incomplete: {
+    label: "Incompleta",
+    className: "border-rose-400 bg-rose-50 text-rose-700",
+  },
+  pending: {
+    label: "Pendente",
+    className: "border-amber-500 bg-amber-50 text-amber-700",
+  },
+};
+
+/** null quando a pessoa nunca assinou: a coluna fica vazia em vez de inventar. */
+export function subscriptionStatusBadgeOf(
+  status: string | null | undefined,
+): { label: string; className: string } | null {
+  if (!status) return null;
+  return (
+    SUBSCRIPTION_STATUS_BADGES[status] ?? {
+      label: status,
+      className: ORIGEM_DESCONHECIDA,
+    }
+  );
+}
+
+// Iniciais para o circulo do avatar da lista. Nao busca avatar_url de proposito:
+// a linha ja tem o nome, e uma foto por linha custaria 50 requisicoes de imagem
+// por pagina. Mesma linguagem visual do avatar de sessao do AdminShell.
+export function initialsOf(name: string | null | undefined): string {
+  const partes = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return "?";
+  const primeira = partes[0][0];
+  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : "";
+  return (primeira + ultima).toUpperCase();
+}
+
 export function displayName(row: UserRow): string {
   if (row.name && row.name.trim()) return row.name.trim();
   const email = row.email || "";

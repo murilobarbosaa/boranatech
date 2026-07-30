@@ -4,8 +4,8 @@ import { adminFetch } from "@/lib/adminApi";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 
 import { UserDetailModal } from "./UserDetailModal";
+import { UserListHeader, UserListRow } from "./UserListRow";
 import type { UserListFilter, UserRow, UsersListPayload } from "./types";
-import { displayName } from "./userFormat";
 
 // TODO(Ana): revisar TODA a copy visivel deste componente (titulo dos grupos,
 // rotulos dos campos, estados vazios/erro e o aviso de auditoria do CPF).
@@ -87,12 +87,22 @@ export function UsersDashboard() {
           placeholder="Buscar por nome ou e-mail..."
           className="min-w-[220px] flex-1 rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_#0f172a] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
         />
+        {/* Pills, nao BntSelect: sao 5 opcoes mutuamente exclusivas e curtas.
+            A pill mostra TODAS as opcoes e o estado atual sem abrir nada, e
+            troca em um toque; um select esconde as opcoes e cobra dois. */}
         <div className="flex flex-wrap overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]">
           {(
             [
               { value: "all", label: "Todos" },
-              { value: "pro", label: "Pro" },
-              { value: "not_pro", label: "Não-Pro" },
+              // "Assinantes"/"Sem assinatura" em vez de "Pro"/"Nao-Pro": o
+              // filtro olha SO assinatura ativa (influencer fica de fora de
+              // proposito, ver server/routes/admin.ts), enquanto o selo da
+              // linha mostra o acesso REAL, que inclui influencer. Com os
+              // rotulos antigos, os 24 influencers sem assinatura apareciam sob
+              // "Nao-Pro" exibindo um selo de Pro: a tela se contradizia. Os
+              // valores enviados a API seguem "pro" e "not_pro".
+              { value: "pro", label: "Assinantes" },
+              { value: "not_pro", label: "Sem assinatura" },
               { value: "influencers", label: "Influencers" },
               { value: "ativo", label: "Ativo" },
             ] as Array<{ value: UserListFilter; label: string }>
@@ -113,7 +123,10 @@ export function UsersDashboard() {
         </div>
       </div>
 
-      <article className="card-brutal overflow-hidden rounded-3xl bg-white">
+      <article
+        data-testid="users-list"
+        className="card-brutal overflow-hidden rounded-3xl bg-white"
+      >
         {listLoading ? (
           <div className="p-6">
             <LoadingBlock />
@@ -123,31 +136,30 @@ export function UsersDashboard() {
             <ErrorBlock message={listError} />
           </div>
         ) : rows.length ? (
-          rows.map((row, index) => (
-            <button
-              key={row.user_id || row.id || row.email || `row-${index}`}
-              type="button"
-              onClick={() => setActiveUserId(row.user_id ?? null)}
-              disabled={!row.user_id}
-              className="grid w-full gap-1 border-b-2 border-slate-100 p-4 text-left transition hover:bg-yellow-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <p className="font-display text-lg font-black text-slate-950">
-                {displayName(row)}
-              </p>
-              <p className="text-sm font-semibold text-slate-500">
-                {row.email || "sem e-mail"}
-              </p>
-            </button>
-          ))
+          <>
+            <UserListHeader />
+            {rows.map((row, index) => (
+              <UserListRow
+                key={row.user_id || row.id || row.email || `row-${index}`}
+                row={row}
+                onOpen={setActiveUserId}
+              />
+            ))}
+          </>
         ) : (
           <div className="p-6">
             <p className="font-display text-xl font-black text-slate-950">
               Nenhum usuário encontrado
             </p>
-            <p className="mt-2 text-sm font-semibold text-slate-500">
+            {/* Vazio NAO e erro: sao diagnosticos diferentes e a copy precisa
+                separar "sua busca nao achou" de "a consulta falhou". */}
+            <p
+              data-testid="users-empty-hint"
+              className="mt-2 text-sm font-semibold text-slate-500"
+            >
               {search || filter !== "all"
                 ? "Nenhum resultado para a busca ou filtro atual. Ajuste os critérios e tente de novo."
-                : "A lista é preenchida com os perfis retornados por /api/admin/users."}
+                : "Nenhum usuário cadastrado ainda."}
             </p>
           </div>
         )}

@@ -7,10 +7,25 @@ export type UserRow = {
   user_id?: string;
   name?: string | null;
   email?: string | null;
-  onboarding_completed?: boolean | null;
+  created_at?: string | null;
+  // Enriquecimento em lote da rota (server/lib/userListEnrichment.ts). is_pro ja
+  // considera os DOIS ramos do gate real (assinatura e influencer); pro_source
+  // diz qual deles, e por isso e `string` e nao a uniao dos valores conhecidos:
+  // uma origem nova no backend nao pode quebrar o bundle em execucao. Quem le
+  // passa por proBadgeOf.
+  is_pro?: boolean;
+  pro_source?: string | null;
+  plan_code?: string | null;
+  subscription_status?: string | null;
 };
 
 // Espelha o payload paginado de GET /users.
+//
+// `page` e `pageSize` sao os ECOS do que a UI pediu: ela ja conhece os dois
+// (page e estado local, pageSize e a constante PAGE_SIZE) e nunca os leu. Ficam
+// no tipo porque o servidor os manda e documentam o contrato, mas a UI NAO os
+// usa como fonte da verdade: fazer isso trocaria um valor local sincrono por um
+// que so chega depois da resposta, e a paginacao piscaria a cada requisicao.
 export type UsersListPayload = {
   items: UserRow[];
   total: number;

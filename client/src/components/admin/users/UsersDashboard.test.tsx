@@ -105,13 +105,38 @@ describe("UsersDashboard: lista", () => {
     render(<UsersDashboard />);
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
 
-    fireEvent.click(screen.getByRole("button", { name: "Pro" }));
+    fireEvent.click(screen.getByRole("button", { name: "Assinantes" }));
 
     await waitFor(() => {
       const chamadas = fetchMock.mock.calls.map((c) => String(c[0]));
       expect(chamadas.some((p) => p.includes("filter=pro"))).toBe(true);
       expect(chamadas.some((p) => p.includes("page=1&"))).toBe(true);
     });
+  });
+
+  it("os 5 filtros continuam existindo, com os mesmos valores enviados a API", async () => {
+    rotearFetch({ "/users?": listPayload([]) });
+
+    render(<UsersDashboard />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+
+    // O rotulo mudou ("Pro" -> "Assinantes"), o CONTRATO com a API nao.
+    const esperado: Array<[string, string | null]> = [
+      ["Todos", null],
+      ["Assinantes", "filter=pro"],
+      ["Sem assinatura", "filter=not_pro"],
+      ["Influencers", "filter=influencers"],
+      ["Ativo", "filter=ativo"],
+    ];
+
+    for (const [rotulo, queryEsperada] of esperado) {
+      fireEvent.click(screen.getByRole("button", { name: rotulo }));
+      if (!queryEsperada) continue;
+      await waitFor(() => {
+        const chamadas = fetchMock.mock.calls.map((c) => String(c[0]));
+        expect(chamadas.some((p) => p.includes(queryEsperada))).toBe(true);
+      });
+    }
   });
 
   it("a paginacao pede a pagina seguinte e desabilita Anterior na primeira", async () => {
@@ -142,6 +167,151 @@ describe("UsersDashboard: lista", () => {
     render(<UsersDashboard />);
 
     expect(await screen.findByText("Erro ao buscar usuários.")).toBeTruthy();
+  });
+});
+
+describe("UsersDashboard: colunas e selos", () => {
+  it("mostra o cabecalho das colunas", async () => {
+    rotearFetch({
+      "/users?": listPayload([
+        { user_id: "u1", name: "Ana Moura", email: "ana@exemplo.com" },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+
+    await screen.findByText("Ana Moura");
+    // Escopado ao cabecalho: "Acesso", "Assinatura" e "Cadastro" tambem
+    // aparecem como rotulo dentro de cada linha, visivel so no mobile.
+    const cabecalho = within(screen.getByTestId("users-header"));
+    for (const coluna of ["Usuário", "Acesso", "Assinatura", "Cadastro"]) {
+      expect(cabecalho.getByText(coluna)).toBeTruthy();
+    }
+  });
+
+  it("distingue Pro por assinatura, por influencer, pelos dois, e gratis", async () => {
+    rotearFetch({
+      "/users?": listPayload([
+        {
+          user_id: "u1",
+          name: "Assinante",
+          email: "a@x.com",
+          is_pro: true,
+          pro_source: "subscription",
+          plan_code: "pro_annual",
+          subscription_status: "active",
+        },
+        {
+          user_id: "u2",
+          name: "Parceira",
+          email: "b@x.com",
+          is_pro: true,
+          pro_source: "influencer",
+        },
+        {
+          user_id: "u3",
+          name: "Os Dois",
+          email: "c@x.com",
+          is_pro: true,
+          pro_source: "both",
+          subscription_status: "active",
+        },
+        { user_id: "u4", name: "Gratuita", email: "d@x.com", is_pro: false },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+
+    await screen.findByText("Assinante");
+    // Escopado a lista: "Pro" e "Influencers" tambem sao rotulos de filtro.
+    const lista = within(screen.getByTestId("users-list"));
+    expect(lista.getByText("Pro")).toBeTruthy();
+    expect(lista.getByText("Influencer")).toBeTruthy();
+    expect(lista.getByText("Pro + Influencer")).toBeTruthy();
+    expect(lista.getByText("Grátis")).toBeTruthy();
+  });
+
+  it("status de assinatura desconhecido aparece cru, sem derrubar a lista", async () => {
+    rotearFetch({
+      "/users?": listPayload([
+        {
+          user_id: "u1",
+          name: "Ana Moura",
+          email: "ana@exemplo.com",
+          is_pro: true,
+          pro_source: "subscription",
+          subscription_status: "paused_by_provider",
+        },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+
+    // A lista renderiza (o nome aparece) E mostra o status cru.
+    expect(await screen.findByText("Ana Moura")).toBeTruthy();
+    expect(screen.getByText("paused_by_provider")).toBeTruthy();
+  });
+
+  it("mostra a data de cadastro formatada em pt-BR", async () => {
+    rotearFetch({
+      "/users?": listPayload([
+        {
+          user_id: "u1",
+          name: "Ana Moura",
+          email: "ana@exemplo.com",
+          created_at: "2026-03-14T12:00:00Z",
+        },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+
+    expect(await screen.findByText("14/03/2026")).toBeTruthy();
+  });
+
+  it("cada linha continua sendo um botao que abre o modal", async () => {
+    rotearFetch({
+      "/users?": listPayload([
+        { user_id: "u1", name: "Ana Moura", email: "ana@exemplo.com" },
+      ]),
+      "/users/u1": DETALHE,
+    });
+
+    render(<UsersDashboard />);
+    fireEvent.click(await screen.findByText("Ana Moura"));
+
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+  });
+});
+
+describe("UsersDashboard: estado vazio", () => {
+  it("busca sem resultado diz que nao achou, com texto diferente de erro", async () => {
+    rotearFetch({ "/users?": listPayload([]) });
+
+    render(<UsersDashboard />);
+
+    expect(await screen.findByText("Nenhum usuário encontrado")).toBeTruthy();
+    // O vazio nao pode se parecer com falha: sao diagnosticos diferentes.
+    expect(screen.queryByText(/Erro ao buscar/)).toBeNull();
+  });
+
+  it("base vazia e busca sem resultado dao explicacoes diferentes", async () => {
+    rotearFetch({ "/users?": listPayload([]) });
+    const { unmount } = render(<UsersDashboard />);
+    await screen.findByText("Nenhum usuário encontrado");
+    const semBusca = screen.getByTestId("users-empty-hint").textContent;
+    unmount();
+
+    rotearFetch({ "/users?": listPayload([]) });
+    render(<UsersDashboard />);
+    fireEvent.change(screen.getByPlaceholderText(/Buscar por nome/), {
+      target: { value: "zzzz" },
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("users-empty-hint").textContent).not.toBe(
+        semBusca,
+      );
+    });
   });
 });
 

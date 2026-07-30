@@ -10,7 +10,10 @@ import {
   fmtDate,
   fmtDateTime,
   fmtText,
+  initialsOf,
   labelFrom,
+  proBadgeOf,
+  subscriptionStatusBadgeOf,
 } from "./userFormat";
 
 /**
@@ -138,6 +141,85 @@ describe("labelFrom", () => {
     expect(labelFrom(PAYMENT_METHOD_LABELS, null)).toBe(NAO_INFORMADO);
     expect(labelFrom(PAYMENT_METHOD_LABELS, undefined)).toBe(NAO_INFORMADO);
     expect(labelFrom(PAYMENT_METHOD_LABELS, "")).toBe(NAO_INFORMADO);
+  });
+});
+
+describe("proBadgeOf", () => {
+  it("Pro por assinatura e Pro por influencer sao distinguiveis na lista", () => {
+    // Nao e cosmetica: a Fatia 6 vai cancelar assinatura, e cancelar a de um
+    // influencer NAO tira o Pro. Se a lista mostrasse o mesmo selo para os
+    // dois, o admin cancelaria e nao entenderia o resultado.
+    expect(proBadgeOf("subscription").label).toBe("Pro");
+    expect(proBadgeOf("influencer").label).toBe("Influencer");
+    expect(proBadgeOf("subscription").label).not.toBe(
+      proBadgeOf("influencer").label,
+    );
+  });
+
+  it("quem tem os DOIS mostra os dois", () => {
+    expect(proBadgeOf("both").label).toBe("Pro + Influencer");
+  });
+
+  it("sem origem de Pro, o selo e Grátis", () => {
+    expect(proBadgeOf(null).label).toBe("Grátis");
+    expect(proBadgeOf(undefined).label).toBe("Grátis");
+  });
+
+  it("origem desconhecida do servidor cai num selo neutro, sem quebrar", () => {
+    // Uma terceira origem de Pro (cortesia, cupom vitalicio) pode nascer no
+    // backend antes de o bundle do front subir.
+    const badge = proBadgeOf("cortesia");
+    expect(badge.label).toBe("cortesia");
+    expect(badge.className.length).toBeGreaterThan(0);
+  });
+
+  it("todo selo tem classe de cor: nenhum caminho devolve undefined", () => {
+    for (const origem of ["subscription", "influencer", "both", "xpto", null]) {
+      expect(typeof proBadgeOf(origem).className).toBe("string");
+    }
+  });
+});
+
+describe("subscriptionStatusBadgeOf", () => {
+  it("traduz os status conhecidos da Stripe", () => {
+    expect(subscriptionStatusBadgeOf("active")?.label).toBe("Ativa");
+    expect(subscriptionStatusBadgeOf("canceled")?.label).toBe("Cancelada");
+    expect(subscriptionStatusBadgeOf("past_due")?.label).toBe("Inadimplente");
+  });
+
+  it("status NOVO da Stripe nao quebra a tela: devolve o valor cru", () => {
+    // Foi um acesso direto a mapa por valor do servidor que derrubou o admin em
+    // producao. A Stripe pode introduzir status a qualquer momento.
+    const badge = subscriptionStatusBadgeOf("paused_by_provider");
+    expect(badge?.label).toBe("paused_by_provider");
+    expect(typeof badge?.className).toBe("string");
+  });
+
+  it("sem assinatura devolve null, para a coluna ficar vazia em vez de mentir", () => {
+    expect(subscriptionStatusBadgeOf(null)).toBeNull();
+    expect(subscriptionStatusBadgeOf(undefined)).toBeNull();
+    expect(subscriptionStatusBadgeOf("")).toBeNull();
+  });
+});
+
+describe("initialsOf", () => {
+  it("usa as iniciais do primeiro e do ultimo nome", () => {
+    expect(initialsOf("Ana Ferreira Moura")).toBe("AM");
+  });
+
+  it("nome unico usa so a primeira letra", () => {
+    expect(initialsOf("Ana")).toBe("A");
+  });
+
+  it("vazio nao vira string vazia no circulo", () => {
+    expect(initialsOf("")).toBe("?");
+    expect(initialsOf("   ")).toBe("?");
+  });
+
+  it("sempre em maiuscula e no maximo duas letras", () => {
+    const saida = initialsOf("ana ferreira moura");
+    expect(saida).toBe("AM");
+    expect(saida.length).toBeLessThanOrEqual(2);
   });
 });
 
