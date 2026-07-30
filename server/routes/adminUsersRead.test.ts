@@ -807,6 +807,65 @@ describe("GET /users/:id/audit: fiação do histórico administrativo", () => {
     expect(r.body.data.entries).toEqual([]);
   });
 
+  it("mix das sete ações sai com um outcome coerente para cada uma", async () => {
+    // Enumeradas de propósito, e o TOTAL é afirmado: se uma ação de usuário
+    // nascer sem entrar aqui, a contagem cai. Lista de pertinência ("as que eu
+    // conheço estão certas") não pegaria isso.
+    const ACOES = [
+      "reveal",
+      "grant",
+      "revoke",
+      "update_profile",
+      "update_email",
+      "cancel_subscription",
+      "refund",
+    ];
+
+    montar({
+      content_audit_logs: {
+        rows: ACOES.map((action, i) =>
+          logRow({
+            id: `l${i}`,
+            action,
+            resource_slug: action === "refund" ? "ch_1" : null,
+            after_json:
+              action === "refund" ? { amount_cents: 5000 } : { qualquer: 1 },
+          }),
+        ),
+      },
+      profiles: { rows: [] },
+      admin_refunds: {
+        rows: [
+          {
+            stripe_charge_id: "ch_1",
+            amount_cents: 5000,
+            stripe_refund_id: "re_1",
+          },
+        ],
+      },
+      // Nenhum cancelamento gravado: a intenção existe, o resultado não.
+      subscription_cancellations: { rows: [] },
+    });
+
+    const r = await chamarAdmin("GET", `/users/${UID}/audit`);
+    expect(r.status).toBe(200);
+
+    const porAcao: Record<string, string> = {};
+    for (const e of r.body.data.entries) porAcao[e.action] = e.outcome;
+
+    expect(porAcao).toEqual({
+      reveal: "not_verifiable",
+      grant: "not_verifiable",
+      revoke: "not_verifiable",
+      update_profile: "not_verifiable",
+      update_email: "not_verifiable",
+      // Tem tabela de resultado e a linha NÃO está lá: intenção sem confirmação.
+      cancel_subscription: "unconfirmed",
+      refund: "confirmed",
+    });
+    expect(Object.keys(porAcao)).toHaveLength(ACOES.length);
+  });
+
   it("sem ator nenhum, profiles não é consultado à toa", async () => {
     montar({
       content_audit_logs: { rows: [logRow({ actor_user_id: null })] },

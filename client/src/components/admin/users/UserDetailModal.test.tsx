@@ -1636,3 +1636,98 @@ describe("reembolso (Fatia 7)", () => {
     liberar();
   });
 });
+
+describe("historico administrativo no modal (Fatia 8)", () => {
+  it("busca o historico uma unica vez, na primeira abertura do dropdown", async () => {
+    rotear(detalhe());
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    const contar = () =>
+      fetchMock.mock.calls.filter((c) => String(c[0]).includes("/audit"))
+        .length;
+    expect(contar()).toBe(0);
+
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+    await waitFor(() => expect(contar()).toBe(1));
+
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+    expect(contar()).toBe(1);
+  });
+
+  it("o CPF NUNCA e renderizado no historico, nem se o backend mandar", async () => {
+    // Defesa em profundidade. O servidor ja filtra por allowlist e a rota de
+    // reveal grava os dois json nulos, mas a tela nao pode depender disso: se
+    // alguem mudar a gravacao la, o numero apareceria aqui sem ninguem ver.
+    rotear(detalhe(), {
+      "/audit": {
+        data: {
+          entries: [
+            {
+              id: "a1",
+              action: "reveal",
+              resource_type: "profile_cpf",
+              resource_slug: null,
+              actor_user_id: "admin-1",
+              actor_name: "Ana",
+              created_at: "2026-07-30T12:00:00Z",
+              before: { cpf: "39053344705" },
+              after: { cpf: "39053344705" },
+              campos_alterados: [],
+              outcome: "not_verifiable",
+              outcome_detail: null,
+            },
+          ],
+          truncated: false,
+          limit: 100,
+          cross_reference_ok: true,
+        },
+      },
+    });
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+
+    const secao = await screen.findByTestId("user-audit");
+    expect(within(secao).getByText("CPF revelado")).toBeTruthy();
+    expect(secao.textContent ?? "").not.toContain("39053344705");
+  });
+
+  it("action desconhecida aparece crua em vez de derrubar o modal", async () => {
+    rotear(detalhe(), {
+      "/audit": {
+        data: {
+          entries: [
+            {
+              id: "a1",
+              action: "acao_do_futuro",
+              resource_type: null,
+              resource_slug: null,
+              actor_user_id: null,
+              actor_name: "Admin removido",
+              created_at: "2026-07-30T12:00:00Z",
+              before: {},
+              after: {},
+              campos_alterados: [],
+              outcome: "not_verifiable",
+              outcome_detail: null,
+            },
+          ],
+          truncated: false,
+          limit: 100,
+          cross_reference_ok: true,
+        },
+      },
+    });
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+
+    const secao = await screen.findByTestId("user-audit");
+    expect(within(secao).getByText("acao_do_futuro")).toBeTruthy();
+  });
+});
