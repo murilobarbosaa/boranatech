@@ -156,11 +156,26 @@ function labelFrom(
 
 // Rotulos do activity_status (derivado no servidor de last_sign_in_at). So
 // aparece no detalhe: a lista nao paga o scan de Auth necessario para saber isso.
-const ACTIVITY_STATUS_LABELS: Record<UserDetail["activity_status"], string> = {
+const ACTIVITY_STATUS_LABELS: Record<string, string> = {
   active: "Ativo",
   inactive: "Inativo",
   never: "Nunca acessou",
 };
+
+// Resolver COM FALLBACK, no molde de notificationTypeMetaOf: nunca devolve
+// undefined. Acesso direto ao mapa (`ACTIVITY_STATUS_LABELS[valor]`) e a forma
+// que ja derrubou o admin em producao com "Cannot read properties of undefined";
+// basta o backend passar a emitir um estado que o bundle em execucao nao
+// conhece, e o frontend nao sobe junto com o backend.
+//
+// Funcao pura e isolada de proposito: na Fatia 1 ela se muda para
+// users/userFormat.ts sem arrastar nada.
+export function activityStatusLabelOf(
+  status: string | null | undefined,
+): string {
+  if (!status) return NAO_INFORMADO;
+  return ACTIVITY_STATUS_LABELS[status] ?? status;
+}
 
 function displayName(row: UserRow): string {
   if (row.name && row.name.trim()) return row.name.trim();
@@ -1067,7 +1082,7 @@ export function UsersDashboard() {
                         </h4>
                         <Field
                           label="Atividade"
-                          value={ACTIVITY_STATUS_LABELS[detail.activity_status]}
+                          value={activityStatusLabelOf(detail.activity_status)}
                         />
                         <Field
                           label="Cadastro"
