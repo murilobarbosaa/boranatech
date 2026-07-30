@@ -17,6 +17,7 @@ import {
   generateSectionContent,
   generateSkeleton,
 } from "../lib/aiRoadmap/generate";
+import { isOneGeneratingCollision } from "../lib/aiRoadmap/oneGenerating";
 import { estimateCost } from "../lib/aiTools";
 import { DEFAULT_MODEL } from "../lib/openai";
 import {
@@ -212,11 +213,11 @@ async function expireStaleGenerating(
   }
 }
 
-// Nome do indice unico parcial que garante UMA geracao ativa por usuario no
-// banco (20260730180000). A checagem de concorrencia em /generate continua onde
-// esta, para dar o 429 sem custo de insert; este indice fecha a corrida que ela
-// nao fecha, quando dois cliques passam pela checagem antes de qualquer insert.
-const ONE_GENERATING_INDEX = "ai_roadmaps_one_generating_per_user";
+// A checagem de concorrencia em /generate continua onde esta, para dar o 429 sem
+// custo de insert; o indice unico parcial (20260730180000) fecha a corrida que
+// ela nao fecha, quando dois cliques passam pela checagem antes de qualquer
+// insert. A classificacao do erro mora em modulo puro para ser testavel sem
+// `.env` (ver o cabecalho de oneGenerating.ts).
 
 export class GenerationInProgressError extends Error {
   constructor() {
@@ -254,8 +255,7 @@ async function insertRoadmapRow(
     // usuario significa que outra requisicao ganhou a corrida, e insistir criaria
     // a geracao duplicada que o indice existe para impedir.
     if (error && error.code === "23505") {
-      const detalhe = `${error.message} ${error.details ?? ""}`;
-      if (detalhe.includes(ONE_GENERATING_INDEX)) {
+      if (isOneGeneratingCollision(error)) {
         throw new GenerationInProgressError();
       }
       if (attempt < MAX_SLUG_ATTEMPTS) {
@@ -907,6 +907,18 @@ router.post("/:slug/resume", async (req: Request, res: Response, next: NextFunct
       .eq("status", "partial")
       .select("id");
     if (lockError) {
+      // O indice unico parcial (20260730180000) alcanca ESTE caminho tambem: o
+      // lock e um UPDATE que poe status='generating', entao ele colide quando a
+      // pessoa ja tem outra geracao ativa. Sem esta traducao a colisao cairia no
+      // 503 generico abaixo, que diz "tente novamente em instantes" sem nomear a
+      // causa. Mesmo 429 do /generate, porque o motivo e a saida sao os mesmos:
+      // esperar a outra geracao terminar.
+      if (isOneGeneratingCollision(lockError)) {
+        await registrarRejeicao(userId, ROADMAP_GENERATOR_TOOL, requestId, "generation_in_progress");
+        return next(
+          createError(429, "generation_in_progress", "Voce ja tem um roadmap sendo gerado. Aguarde alguns minutos."),
+        );
+      }
       // TODO(Ana): mensagem de falha ao iniciar a retomada.
       return next(
         createError(503, "resume_lock_failed", "Nao foi possivel iniciar a retomada agora. Tente novamente em instantes."),
