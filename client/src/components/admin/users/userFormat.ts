@@ -166,6 +166,30 @@ export function subscriptionStatusBadgeOf(
   );
 }
 
+/**
+ * Devolve a URL se ela for segura para virar href; senao null (o chamador
+ * renderiza texto cru).
+ *
+ * ALLOWLIST de esquema, nunca blocklist. As URLs de perfil sao escritas pelo
+ * PROPRIO usuario (server/routes/me.ts as aceita em EDITABLE_FIELDS), e o admin
+ * e quem tem mais privilegio na plataforma: um `javascript:` que chegasse a um
+ * href aqui seria XSS mirando exatamente a conta mais valiosa.
+ *
+ * Sem esquema tambem e null, de proposito: completar "github.com/x" para
+ * "https://github.com/x" seria inventar dado que o usuario nao escreveu.
+ */
+export function safeHttpUrl(value: string | null | undefined): string | null {
+  const bruto = (value ?? "").trim();
+  if (!bruto) return null;
+  try {
+    const url = new URL(bruto);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return bruto;
+  } catch {
+    return null;
+  }
+}
+
 // Modo do avatar. Resolver COM FALLBACK: antes, qualquer valor diferente de
 // "photo" virava "Ícone", entao um modo novo do backend fazia a tela afirmar
 // com confianca algo que ela nao sabia. Desconhecido mostra o valor cru.

@@ -14,6 +14,7 @@ import {
   initialsOf,
   labelFrom,
   proBadgeOf,
+  safeHttpUrl,
   semValor,
   subscriptionStatusBadgeOf,
 } from "./userFormat";
@@ -247,6 +248,45 @@ describe("semValor: decide o esmaecido a partir do DADO, nao do texto", () => {
   it("texto e numero comuns nao sao ausencia", () => {
     expect(semValor("Ana")).toBe(false);
     expect(semValor(22200)).toBe(false);
+  });
+});
+
+describe("safeHttpUrl: o que pode virar href", () => {
+  it("http e https passam", () => {
+    expect(safeHttpUrl("https://github.com/ana")).toBe(
+      "https://github.com/ana",
+    );
+    expect(safeHttpUrl("http://exemplo.com.br")).toBe("http://exemplo.com.br");
+  });
+
+  it("espacos nas pontas nao invalidam", () => {
+    expect(safeHttpUrl("  https://x.com  ")).toBe("https://x.com");
+  });
+
+  it("javascript: NAO vira href", () => {
+    // O valor vem do banco, escrito pelo proprio usuario em /api/me. Confiar
+    // nele para montar href e entregar XSS ao admin, que e quem tem mais a
+    // perder na plataforma.
+    expect(safeHttpUrl("javascript:alert(document.cookie)")).toBeNull();
+  });
+
+  it("data: e outros esquemas NAO viram href", () => {
+    expect(safeHttpUrl("data:text/html,<script>alert(1)</script>")).toBeNull();
+    expect(safeHttpUrl("file:///etc/passwd")).toBeNull();
+    expect(safeHttpUrl("vbscript:msgbox(1)")).toBeNull();
+  });
+
+  it("sem esquema NAO vira href: nao adivinhamos https", () => {
+    // "github.com/ana" pode ser o que a pessoa quis, mas inventar o esquema e
+    // inventar dado. Vira texto cru.
+    expect(safeHttpUrl("github.com/ana")).toBeNull();
+  });
+
+  it("lixo, vazio e nulo devolvem null", () => {
+    expect(safeHttpUrl("nao é url")).toBeNull();
+    expect(safeHttpUrl("")).toBeNull();
+    expect(safeHttpUrl(null)).toBeNull();
+    expect(safeHttpUrl(undefined)).toBeNull();
   });
 });
 

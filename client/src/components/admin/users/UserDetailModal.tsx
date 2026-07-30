@@ -20,6 +20,7 @@ import { LAYER_DIALOG } from "@/components/admin/tasks/taskLayers";
 
 import { ActivityBlock } from "./ActivityBlock";
 import { AvatarBlock } from "./AvatarBlock";
+import { PublicProfileSection, temPerfilPublico } from "./PublicProfileSection";
 import { Field } from "./UserFields";
 import { UserDetailSkeleton } from "./UserDetailSkeleton";
 import type { PosthogUserActivityState, UserDetail } from "./types";
@@ -555,6 +556,12 @@ export function UserDetailModal({
                         />
                       </div>
                     </Section>
+
+                    {temPerfilPublico(detail) ? (
+                      <Section title="Perfil público">
+                        <PublicProfileSection detail={detail} />
+                      </Section>
+                    ) : null}
 
                     <Section title="Onboarding">
                       <div className={CARD_SECTION}>

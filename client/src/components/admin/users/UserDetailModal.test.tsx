@@ -373,6 +373,79 @@ describe("campo vazio usa a prop explicita, nao o texto", () => {
   });
 });
 
+describe("perfil publico (os 6 campos recem-descobertos)", () => {
+  it("a secao NAO aparece quando os seis estao vazios, que e 100% dos casos hoje", async () => {
+    rotear(detalhe());
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+    await screen.findByText("Perfil e carreira");
+
+    expect(screen.queryByText("Perfil público")).toBeNull();
+  });
+
+  it("basta UM campo preenchido para a secao aparecer", async () => {
+    rotear(detalhe({ headline: "Dev em transição" }));
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+
+    expect(await screen.findByText("Perfil público")).toBeTruthy();
+    expect(screen.getByText("Dev em transição")).toBeTruthy();
+  });
+
+  it("URL valida vira link com rel de seguranca", async () => {
+    rotear(detalhe({ github_url: "https://github.com/ana" }));
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+    await screen.findByText("Perfil público");
+
+    const link = screen.getByRole("link", { name: "https://github.com/ana" });
+    expect(link.getAttribute("href")).toBe("https://github.com/ana");
+    expect(link.getAttribute("rel")).toContain("noopener");
+    expect(link.getAttribute("target")).toBe("_blank");
+  });
+
+  it("URL com esquema perigoso NAO vira link: fica texto cru", async () => {
+    rotear(detalhe({ website_url: "javascript:alert(1)" }));
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+    await screen.findByText("Perfil público");
+
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.getByText("javascript:alert(1)")).toBeTruthy();
+  });
+
+  it("URL sem esquema fica texto cru, sem inventar https", async () => {
+    rotear(detalhe({ linkedin_url: "linkedin.com/in/ana" }));
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+    await screen.findByText("Perfil público");
+
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.getByText("linkedin.com/in/ana")).toBeTruthy();
+  });
+
+  it("cidade e UF aparecem juntas", async () => {
+    rotear(detalhe({ city: "Brasília", uf: "DF" }));
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+    await screen.findByText("Perfil público");
+
+    expect(screen.getByText("Brasília / DF")).toBeTruthy();
+  });
+});
+
 describe("modo de avatar", () => {
   it("modo desconhecido mostra o valor cru em vez de afirmar Ícone", async () => {
     rotear(

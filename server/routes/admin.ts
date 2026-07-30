@@ -1143,16 +1143,16 @@ router.get("/users/:id", async (req, res, next) => {
       // Colunas conferidas contra shared/database.types.ts (gerado do banco
       // real).
       //
-      // DESATUALIZADO ATE 2026-07-29: este comentario afirmava que headline,
-      // city, uf, github_url, linkedin_url e website_url NAO existiam em
-      // profiles, porque a migration 20260623120000 nunca teria sido aplicada.
-      // Ela FOI aplicada desde entao; as seis colunas existem no banco
-      // (conferido em information_schema.columns) e profile_skills tambem.
-      // A lista abaixo continua sem elas por escolha, nao por impedimento:
-      // incluir campo novo muda o shape da resposta do detalhe e e trabalho da
-      // fatia que for editar perfil, nao deste comentario.
+      // headline, city, uf, github_url, linkedin_url e website_url ficaram
+      // FORA daqui por anos por causa de um comentario que afirmava que a
+      // migration 20260623120000 nunca fora aplicada. Ela foi: as seis colunas
+      // existem (conferido em information_schema.columns) e sao editaveis pelo
+      // proprio usuario (EDITABLE_FIELDS em server/routes/me.ts).
+      //
+      // Em 2026-07-29 as seis estao 100% NULAS (0 de 3182 perfis). A leitura
+      // nao custa nada e passa a valer sozinha quando alguem preencher.
       .select(
-        "user_id, name, full_name, email, gender, bio, area_interesse, nivel_atual, objetivo, onboarding_completed, onboarding_step, marketing_opt_in, marketing_opt_in_at, welcome_email_sent, cpf, avatar_url, avatar_mode, avatar_moderation_status, created_at, updated_at",
+        "user_id, name, full_name, email, gender, bio, area_interesse, nivel_atual, objetivo, onboarding_completed, onboarding_step, marketing_opt_in, marketing_opt_in_at, welcome_email_sent, cpf, avatar_url, avatar_mode, avatar_moderation_status, headline, city, uf, github_url, linkedin_url, website_url, created_at, updated_at",
       )
       .eq("user_id", uid)
       .maybeSingle();

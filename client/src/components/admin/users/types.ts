@@ -56,6 +56,15 @@ export type UserDetail = {
   area_interesse: string | null;
   nivel_atual: string | null;
   objetivo: string | null;
+  // Perfil publico. Editaveis pelo proprio usuario em /api/me; 100% nulos em
+  // producao ate 2026-07-29. Opcionais no tipo porque a resposta do backend
+  // antigo (janela de deploy Vercel/Railway) nao os traz.
+  headline?: string | null;
+  city?: string | null;
+  uf?: string | null;
+  github_url?: string | null;
+  linkedin_url?: string | null;
+  website_url?: string | null;
   onboarding_completed: boolean | null;
   onboarding_step: number | null;
   marketing_opt_in: boolean | null;
