@@ -8,6 +8,7 @@ import { getStripe } from "../lib/stripeClient";
 import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
+import { patchDeMeioDePagamento } from "../lib/paymentMethod";
 import { isFirstPurchase } from "./shared";
 import { getPlanChargeValue, PLAN_PRICING } from "../../shared/planPricing";
 import type { Gender } from "../../shared/gender";
@@ -377,6 +378,13 @@ async function applySubscription(
 
   const status = mapStatus(sub.status);
   const period = subItemPeriod(sub);
+  // A Subscription declara o meio em payment_settings.payment_method_types.
+  // Nao e adivinhacao: createCheckout fixa payment_method_types: ["card"] no
+  // ramo de assinatura (opt-out do dynamic payment methods), entao a lista
+  // chega com um elemento so e o valor e conclusivo.
+  const meioDePagamento = patchDeMeioDePagamento(
+    sub as unknown as Parameters<typeof patchDeMeioDePagamento>[0],
+  );
   const affiliateCode = sub.metadata?.affiliate_code || null;
   const couponCode = sub.metadata?.coupon_code || null;
   const lastEventIso = eventCreatedAt.toISOString();
@@ -395,6 +403,16 @@ async function applySubscription(
         : null,
     last_event_at: lastEventIso,
     raw_provider_payload: event,
+    // Meio de pagamento LIDO, nunca deduzido. Ver server/lib/paymentMethod.ts
+    // para a decisao de canonicidade e para o porque de nao gravar 'card' por
+    // eliminacao.
+    //
+    // A chave so entra no patch quando o meio foi resolvido: sem isto, um
+    // evento cuja carga nao declara o meio (invoice.paid e
+    // customer.subscription.updated as vezes nao declaram) sobrescreveria com
+    // NULL um valor que um evento anterior tinha resolvido. Atualizacao nao
+    // pode apagar informacao que a criacao tinha.
+    ...meioDePagamento,
   };
 
   const baseRequired = {
