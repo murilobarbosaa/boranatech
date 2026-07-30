@@ -1223,6 +1223,7 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
         .from("subscription_cancellations")
         .insert({
           user_id: input.userId,
+          canceled_by: input.actorUserId,
           provider_subscription_id: sub.provider_subscription_id,
           reason_code: input.reasonCode || null,
           reason_text: input.reasonText || null,
@@ -1299,6 +1300,7 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
     .from("subscription_cancellations")
     .insert({
       user_id: input.userId,
+      canceled_by: input.actorUserId,
       provider_subscription_id: sub.provider_subscription_id,
       reason_code: input.reasonCode || null,
       reason_text: input.reasonText || null,

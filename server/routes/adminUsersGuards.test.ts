@@ -32,6 +32,13 @@ vi.mock("../lib/env", () => ({
     supabaseServiceRoleKey: "service",
     isProd: false,
     devProUserIds: [],
+    stripePriceIds: {
+      pro_monthly: "price_m",
+      pro_semiannual: "price_s",
+      pro_annual: "price_a",
+    },
+    stripeWebhookSecret: "whsec_x",
+    appUrl: "https://exemplo.com",
     stripeSecretKey: "",
     billingEnabled: false,
     posthogApiKey: "",
@@ -129,6 +136,7 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
       "POST /users/:id/influencer",
       "POST /users/:id/influencer/revoke",
       "POST /users/:id/reveal-cpf",
+      "POST /users/:id/subscription/cancel",
     ]);
   });
 });

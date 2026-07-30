@@ -38,6 +38,13 @@ export interface CreateCheckoutResult {
 
 export interface CancelInput {
   userId: string;
+  /**
+   * Quem esta executando. Igual a userId quando e o proprio usuario; o id do
+   * admin quando vem de POST /api/admin/users/:id/subscription/cancel. Vai
+   * para subscription_cancellations.canceled_by, e e o que torna
+   * `canceled_by <> user_id` a leitura precisa de "um admin fez isso".
+   */
+  actorUserId: string;
   // Ja validados na rota (whitelist); "" quando ausentes.
   reasonCode: string;
   reasonText: string;

@@ -19,6 +19,7 @@ const estado = vi.hoisted(() => ({
   >,
   stripeUpdate: null as unknown as ReturnType<typeof vi.fn>,
   invalidateProCache: null as unknown as ReturnType<typeof vi.fn>,
+  stripeSubscriptionUpdate: null as unknown as ReturnType<typeof vi.fn>,
 }));
 
 vi.mock("../lib/queue", () => ({
@@ -37,6 +38,13 @@ vi.mock("../lib/env", () => ({
     supabaseServiceRoleKey: "service",
     isProd: false,
     devProUserIds: [],
+    stripePriceIds: {
+      pro_monthly: "price_m",
+      pro_semiannual: "price_s",
+      pro_annual: "price_a",
+    },
+    stripeWebhookSecret: "whsec_x",
+    appUrl: "https://exemplo.com",
     stripeSecretKey: "sk_test_x",
     billingEnabled: false,
     posthogApiKey: "",
@@ -51,7 +59,10 @@ vi.mock("../lib/supabaseAdmin", () => ({
   },
 }));
 vi.mock("../lib/stripeClient", () => ({
-  getStripe: () => ({ customers: { update: estado.stripeUpdate } }),
+  getStripe: () => ({
+    customers: { update: estado.stripeUpdate },
+    subscriptions: { update: estado.stripeSubscriptionUpdate },
+  }),
   STRIPE_API_VERSION: "2026-06-24.dahlia",
 }));
 vi.mock("../lib/proStatusCache", () => ({
@@ -120,6 +131,7 @@ function montar(
 beforeEach(() => {
   estado.stripeUpdate = vi.fn(async () => ({}));
   estado.invalidateProCache = vi.fn(async () => {});
+  estado.stripeSubscriptionUpdate = vi.fn(async () => ({}));
 });
 
 afterEach(() => {
@@ -684,5 +696,189 @@ describe("nenhum UPDATE sai sem filtro de escopo", () => {
       user_id: UID,
       granted_by: "admin-1",
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /users/:id/subscription/cancel  (Fatia 6)
+// ---------------------------------------------------------------------------
+
+describe("POST /users/:id/subscription/cancel", () => {
+  const SUB_CARTAO = {
+    id: "sub-row-1",
+    status: "active",
+    renewal_type: "auto",
+    current_period_end: "2027-01-01T00:00:00Z",
+    cancel_at_period_end: false,
+    provider_subscription_id: "sub_1",
+    payment_method: "card",
+  };
+
+  it("cancela: audita ANTES, chama a Stripe, grava e invalida o cache", async () => {
+    montar({
+      subscriptions: { rows: [SUB_CARTAO] },
+      content_audit_logs: { rows: [{}] },
+      subscription_cancellations: { rows: [] },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/subscription/cancel`, {
+      reason: "pedido por e-mail",
+    });
+
+    expect(r.status).toBe(200);
+    expect(r.body.data.canceled).toBe(true);
+
+    const ops = estado.double.chamadas.map((c) => `${c.op} ${c.table}`);
+    // Audita antes de qualquer coisa que remova acesso.
+    expect(ops.indexOf("insert content_audit_logs")).toBeLessThan(
+      ops.lastIndexOf("update subscriptions"),
+    );
+
+    const audit = estado.double.de("content_audit_logs")[0].payload!;
+    expect(audit.action).toBe("cancel_subscription");
+    expect(audit.actor_user_id).toBe("admin-1");
+    expect(audit.resource_type).toBe("subscription");
+
+    expect(estado.stripeSubscriptionUpdate).toHaveBeenCalledWith("sub_1", {
+      cancel_at_period_end: true,
+    });
+    expect(estado.invalidateProCache).toHaveBeenCalledWith(UID);
+
+    // O ator vai para canceled_by: é o que torna `canceled_by <> user_id` a
+    // leitura de "um admin fez isso".
+    const registro = estado.double
+      .de("subscription_cancellations")
+      .find((c) => c.op === "insert")!;
+    expect(registro.payload).toMatchObject({
+      user_id: UID,
+      canceled_by: "admin-1",
+      reason_code: "admin",
+      reason_text: "pedido por e-mail",
+    });
+  });
+
+  it("motivo ausente vira 400 sem consultar nada", async () => {
+    montar({});
+    const r = await chamarAdmin("POST", `/users/${UID}/subscription/cancel`, {
+      reason: "   ",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("reason_required");
+    expect(estado.double.chamadas).toHaveLength(0);
+  });
+
+  it("BOLETO é recusado com código próprio, na ROTA e não só na UI", async () => {
+    // renewal_type='manual' não tem assinatura recorrente na Stripe; setar
+    // cancel_at_period_end acordaria o bug do cron process-cancellations.
+    montar({
+      subscriptions: { rows: [{ ...SUB_CARTAO, renewal_type: "manual" }] },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/subscription/cancel`, {
+      reason: "x",
+    });
+
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("boleto_not_supported");
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+    expect(estado.stripeSubscriptionUpdate).not.toHaveBeenCalled();
+  });
+
+  it("reenvio com cancelamento já agendado é idempotente", async () => {
+    montar({
+      subscriptions: { rows: [{ ...SUB_CARTAO, cancel_at_period_end: true }] },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/subscription/cancel`, {
+      reason: "x",
+    });
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toMatchObject({
+      canceled: false,
+      already_scheduled: true,
+    });
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+    expect(estado.stripeSubscriptionUpdate).not.toHaveBeenCalled();
+  });
+
+  it("falha do AUDIT aborta antes de tocar a Stripe", async () => {
+    montar({
+      subscriptions: { rows: [SUB_CARTAO] },
+      content_audit_logs: { error: { message: "check" } },
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await chamarAdmin("POST", `/users/${UID}/subscription/cancel`, {
+      reason: "x",
+    });
+
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("audit_failed");
+    expect(estado.stripeSubscriptionUpdate).not.toHaveBeenCalled();
+    expect(estado.invalidateProCache).not.toHaveBeenCalled();
+  });
+
+  it("Stripe falhando deixa o banco intocado e devolve 502", async () => {
+    montar({
+      subscriptions: { rows: [SUB_CARTAO] },
+      content_audit_logs: { rows: [{}] },
+    });
+    estado.stripeSubscriptionUpdate = vi.fn(async () => {
+      throw new Error("stripe fora do ar");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await chamarAdmin("POST", `/users/${UID}/subscription/cancel`, {
+      reason: "x",
+    });
+
+    expect(r.status).toBe(502);
+    expect(
+      estado.double.de("subscriptions").filter((c) => c.op === "update"),
+    ).toHaveLength(0);
+  });
+
+  it("banco falhando DEPOIS da Stripe loga INCONSISTENCIA", async () => {
+    let chamadasSubs = 0;
+    montar({
+      subscriptions: () => {
+        chamadasSubs += 1;
+        // A rota consulta subscriptions TRES vezes: a busca dela, a busca
+        // interna do cancel(), e o update. As duas leituras passam; o UPDATE
+        // falha, que e o cenario de inconsistencia (Stripe ja aceitou).
+        return chamadasSubs <= 2
+          ? { rows: [SUB_CARTAO] }
+          : { error: { message: "timeout" } };
+      },
+      content_audit_logs: { rows: [{}] },
+    });
+    const erroSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await chamarAdmin("POST", `/users/${UID}/subscription/cancel`, {
+      reason: "x",
+    });
+
+    expect(r.status).toBe(500);
+    expect(
+      erroSpy.mock.calls.some((c) => String(c[0]).includes("INCONSISTENCIA")),
+    ).toBe(true);
+  });
+
+  it("usuário sem assinatura ativa vira 404", async () => {
+    montar({ subscriptions: { rows: [] } });
+    const r = await chamarAdmin("POST", `/users/${UID}/subscription/cancel`, {
+      reason: "x",
+    });
+    expect(r.status).toBe(404);
+  });
+
+  it("UUID inválido vira 400 sem consultar nada", async () => {
+    montar({});
+    const r = await chamarAdmin("POST", "/users/nao-uuid/subscription/cancel", {
+      reason: "x",
+    });
+    expect(r.status).toBe(400);
+    expect(estado.double.chamadas).toHaveLength(0);
   });
 });

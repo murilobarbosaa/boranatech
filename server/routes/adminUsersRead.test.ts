@@ -30,6 +30,13 @@ vi.mock("../lib/env", () => ({
     supabaseServiceRoleKey: "service",
     isProd: false,
     devProUserIds: [],
+    stripePriceIds: {
+      pro_monthly: "price_m",
+      pro_semiannual: "price_s",
+      pro_annual: "price_a",
+    },
+    stripeWebhookSecret: "whsec_x",
+    appUrl: "https://exemplo.com",
     stripeSecretKey: "",
     billingEnabled: false,
     posthogApiKey: "",

@@ -26,6 +26,7 @@ import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { emailQueue } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
 import { RedisOpTimeoutError, withRedisOpTimeout } from "../lib/redisOpTimeout";
+import { stripeProvider } from "../providers/stripe";
 import { getStripe } from "../lib/stripeClient";
 import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -1615,6 +1616,131 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
 
     await invalidateProStatusCache(uid);
     res.json({ data: { revoked: true } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// CANCELAMENTO DE ASSINATURA PELO ADMIN. Primeira acao que REMOVE acesso.
+//
+// Nao e imediato: reusa stripeProvider.cancel, que agenda para o fim do periodo
+// (cancel_at_period_end). A pessoa mantem Pro ate current_period_end.
+//
+// BOLETO fica de fora, com codigo proprio. `renewal_type='manual'` nao tem
+// assinatura recorrente na Stripe (provider_subscription_id e um cs_...), e
+// setar cancel_at_period_end nele coloca a linha na fila do cron
+// process-cancellations, que chama subscriptions.retrieve com um id de sessao e
+// falha a cada hora, para sempre. A recusa mora AQUI e nao so na UI: se a
+// guarda fosse so visual, a proxima chamada direta a rota acordaria o bug.
+router.post("/users/:id/subscription/cancel", async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
+      );
+    }
+
+    const motivoRaw = (req.body as { reason?: unknown } | undefined)?.reason;
+    const motivo = typeof motivoRaw === "string" ? motivoRaw.trim() : "";
+    if (!motivo) {
+      return next(
+        createError(
+          400,
+          "reason_required",
+          "Informe o motivo do cancelamento.",
+        ),
+      );
+    }
+
+    const { data: sub, error: subError } = await supabaseAdmin
+      .from("subscriptions")
+      .select(
+        "id, status, renewal_type, current_period_end, cancel_at_period_end",
+      )
+      .eq("user_id", uid)
+      .eq("provider", "stripe")
+      .in("status", ["active", "trialing", "past_due"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (subError)
+      return next(dbError("admin cancel lookup", subError, "Erro ao cancelar."));
+    if (!sub) {
+      return next(
+        createError(404, "not_found", "Nenhuma assinatura ativa encontrada."),
+      );
+    }
+
+    if (sub.renewal_type === "manual") {
+      return next(
+        createError(
+          409,
+          "boleto_not_supported",
+          "Assinatura de boleto não renova sozinha e não se cancela por aqui. O acesso termina no fim do período já pago.",
+        ),
+      );
+    }
+
+    // IDEMPOTENCIA: cancelamento ja agendado responde sucesso sem reexecutar e
+    // sem segunda linha de auditoria. Duplo clique nao pode gerar dois
+    // registros de uma acao que remove acesso.
+    if (sub.cancel_at_period_end) {
+      return res.json({
+        data: {
+          canceled: false,
+          already_scheduled: true,
+          effective_at: sub.current_period_end,
+        },
+      });
+    }
+
+    // AUDITORIA PRIMEIRO, fail-closed, no molde de /influencer. Sem rastro
+    // gravado, ninguem perde acesso.
+    const { error: auditError } = await supabaseAdmin
+      .from("content_audit_logs")
+      .insert({
+        actor_user_id: req.user!.id,
+        action: "cancel_subscription",
+        resource_type: "subscription",
+        resource_id: uid,
+        resource_slug: null,
+        before_json: {
+          status: sub.status,
+          cancel_at_period_end: sub.cancel_at_period_end,
+          current_period_end: sub.current_period_end,
+        },
+        after_json: { cancel_at_period_end: true, reason: motivo },
+      });
+    if (auditError) {
+      console.error("[admin] cancel subscription audit failed:", auditError);
+      return next(
+        createError(
+          500,
+          "audit_failed",
+          "Não foi possível registrar a auditoria do cancelamento.",
+        ),
+      );
+    }
+
+    // Reusa o UNICO caminho de cancelamento. A postura de erro dele fica
+    // preservada: Stripe falha -> 502 e banco intocado; banco falha depois da
+    // Stripe -> INCONSISTENCIA logada e 500.
+    const resultado = await stripeProvider.cancel({
+      userId: uid,
+      actorUserId: req.user!.id,
+      reasonCode: "admin",
+      reasonText: motivo,
+    });
+
+    await invalidateProStatusCache(uid);
+
+    res.json({ data: { canceled: true, ...resultado } });
   } catch (err) {
     next(err);
   }

@@ -305,6 +305,8 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
 
     const data = await stripeProvider.cancel({
       userId,
+      // O ator e a propria pessoa neste caminho.
+      actorUserId: userId,
       reasonCode,
       reasonText,
     });

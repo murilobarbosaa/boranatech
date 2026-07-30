@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -78,6 +78,49 @@ export const COLUNAS_POR_TABELA = parseColumnsFromTypes();
 /** Colunas de relacionamento que o PostgREST aceita no select e não são colunas. */
 const EMBEDS_CONHECIDOS = new Set(["plans"]);
 
+/**
+ * Colunas que o código já escreve e que ainda NÃO estão em
+ * `shared/database.types.ts` porque a migration que as cria não foi aplicada
+ * (e portanto os tipos não foram regenerados).
+ *
+ * A exceção NÃO é uma lista de confiança: cada entrada é conferida contra os
+ * arquivos de `supabase/migrations/`, e só vale se alguma migration do
+ * repositório declarar `ADD COLUMN ... <coluna>`. Um erro de digitação não é
+ * absorvido — ele simplesmente não acha migration e continua sendo recusado.
+ *
+ * Esvaziar esta lista é o comportamento normal depois de aplicar a migration e
+ * rodar `pnpm db:types`.
+ */
+const COLUNAS_PENDENTES: Array<{ tabela: string; coluna: string }> = [
+  { tabela: "subscription_cancellations", coluna: "canceled_by" },
+];
+
+function colunasDeclaradasEmMigrations(): Set<string> {
+  const dir = resolve(process.cwd(), "supabase/migrations");
+  const declaradas = new Set<string>();
+  for (const arquivo of readdirSync(dir)) {
+    if (!arquivo.endsWith(".sql")) continue;
+    const sql = readFileSync(resolve(dir, arquivo), "utf8");
+    // Array.from em vez de for..of sobre matchAll: o target do tsconfig nao
+    // habilita downlevelIteration.
+    for (const m of Array.from(
+      sql.matchAll(/ADD COLUMN(?:\s+IF NOT EXISTS)?\s+"?([a-z0-9_]+)"?/gi),
+    )) {
+      declaradas.add(m[1].toLowerCase());
+    }
+  }
+  return declaradas;
+}
+
+const COLUNAS_PENDENTES_VALIDAS = (() => {
+  const declaradas = colunasDeclaradasEmMigrations();
+  const validas = new Set<string>();
+  for (const { tabela, coluna } of COLUNAS_PENDENTES) {
+    if (declaradas.has(coluna)) validas.add(`${tabela}.${coluna}`);
+  }
+  return validas;
+})();
+
 export type LinhaQualquer = Record<string, unknown>;
 
 export type RespostaTabela = {
@@ -129,6 +172,7 @@ export function criarSupabaseDouble(
     }
     for (const col of colunas) {
       if (col === "*" || EMBEDS_CONHECIDOS.has(col)) continue;
+      if (COLUNAS_PENDENTES_VALIDAS.has(`${table}.${col}`)) continue;
       if (!validas.has(col)) {
         throw new Error(
           `[double] coluna "${col}" não existe em "${table}" (o Postgres recusaria esta query)`,
@@ -355,5 +399,29 @@ describe("o dublê falha em vez de aceitar qualquer query", () => {
     expect(d.de("profiles")[0].filtros).toEqual([
       { tipo: "eq", coluna: "user_id", valor: "u1" },
     ]);
+  });
+});
+
+describe("a exceção de coluna pendente de migration é conferida, não confiada", () => {
+  it("só vale para coluna que ALGUMA migration do repositório declara", () => {
+    // Se a lista tivesse um erro de digitação, ele não acharia migration e a
+    // coluna continuaria sendo recusada pelo dublê.
+    for (const { tabela, coluna } of COLUNAS_PENDENTES) {
+      expect(
+        COLUNAS_PENDENTES_VALIDAS.has(`${tabela}.${coluna}`),
+        `${tabela}.${coluna} não é declarada por nenhuma migration`,
+      ).toBe(true);
+    }
+  });
+
+  it("coluna inventada NÃO é absorvida pela exceção", () => {
+    const d = criarSupabaseDouble({ subscription_cancellations: { rows: [] } });
+    expect(() =>
+      (
+        d.client.from("subscription_cancellations") as {
+          insert: (p: Record<string, unknown>) => unknown;
+        }
+      ).insert({ user_id: "u", coluna_com_typo: 1 }),
+    ).toThrow(/não existe em "subscription_cancellations"/);
   });
 });
