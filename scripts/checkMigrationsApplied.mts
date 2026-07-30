@@ -167,7 +167,13 @@ const naoReconhecidasOutras: string[] = [];
 // quase nunca e "atualizar o numero": e descobrir o que parou de ser
 // reconhecido. Foi exatamente assim que a auditoria concluiu "so falta uma
 // tabela" olhando 38 de 72.
-const EXPECTED_TABLE_COUNT = 81;
+// 82 desde 20260730160000_create_admin_refunds.sql (cria admin_refunds). O
+// commit que criou a tabela nao subiu este numero, e o guard ficou vermelho
+// abortando antes de qualquer outra verificacao. Conferido antes de mexer, como
+// manda o CLAUDE.md: a tabela e declarada de verdade (CREATE TABLE IF NOT
+// EXISTS public.admin_refunds) e existe no banco alvo, entao o parser esta
+// certo e quem estava desatualizado era o numero.
+const EXPECTED_TABLE_COUNT = 82;
 
 // Mesma assercao de tamanho das tabelas, pelo mesmo motivo: pegar o caso em que
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
@@ -593,7 +599,9 @@ if (expostas !== null) {
 // ---------------------------------------------------------------------------
 // RLS: verificada de fato, lendo com a chave anon.
 // ---------------------------------------------------------------------------
-const EXPECTED_RLS_COUNT = 81;
+// 82 pela mesma causa do EXPECTED_TABLE_COUNT: admin_refunds declara
+// `alter table ... enable row level security` e entrou sem o numero subir.
+const EXPECTED_RLS_COUNT = 82;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 const rlsVivas = [...rlsDeclarada].filter((t) => declared.has(t)).sort();
