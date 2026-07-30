@@ -15,6 +15,14 @@ import {
   type SkillKind,
   type SkillLevel,
 } from "../../shared/profileSkills";
+import {
+  EDITABLE_FIELDS,
+  PROFILE_TEXT_LIMITS,
+  PROFILE_URL_FIELDS,
+  PROFILE_URL_MAX,
+  validateProfileTextValue,
+  validateProfileUrlValue,
+} from "../../shared/profileFields";
 
 const router = Router();
 
@@ -22,40 +30,8 @@ const GENDER_SET = new Set<string>(GENDER_VALUES);
 const SKILL_KIND_SET = new Set<string>(SKILL_KINDS);
 const SKILL_LEVEL_SET = new Set<string>(SKILL_LEVELS);
 
-const PROFILE_TEXT_LIMITS: Record<string, number> = {
-  headline: 140,
-  city: 80,
-  uf: 40,
-  career_goal: 240,
-};
-const PROFILE_URL_FIELDS = ["github_url", "linkedin_url", "website_url"];
-const PROFILE_URL_MAX = 300;
 const SKILL_TEXT_MAX = 80;
 
-const EDITABLE_FIELDS = [
-  "name",
-  "handle",
-  "avatar_border",
-  "avatar_icon",
-  "avatar_bg",
-  "bio",
-  "area_interesse",
-  "nivel_atual",
-  "objetivo",
-  "onboarding_completed",
-  "onboarding_step",
-  "preferences",
-  "gender",
-  "headline",
-  "city",
-  "uf",
-  "career_goal",
-  "github_url",
-  "linkedin_url",
-  "website_url",
-  "full_name",
-  "cpf",
-];
 
 const AVATAR_VALUES = {
   avatar_border: new Set([
@@ -123,41 +99,16 @@ function validateAvatarPreference(
   return null;
 }
 
-function validateProfileText(field: string, value: unknown, max: number) {
-  if (value === null) return null;
-  if (typeof value !== "string") {
-    return createError(400, "invalid_request", `Valor inválido para ${field}.`);
-  }
-  if (value.length > max) {
-    return createError(
-      400,
-      "invalid_request",
-      `O campo ${field} excede o tamanho máximo.`,
-    );
-  }
-  return null;
+// Regra em shared/profileFields.ts: a MESMA que o admin usa. Aqui so envelopa
+// no createError do Express.
+function validateProfileText(field: string, value: unknown) {
+  const erro = validateProfileTextValue(field, value);
+  return erro ? createError(400, erro.code, erro.message) : null;
 }
 
 function validateProfileUrl(field: string, value: unknown) {
-  if (value === null) return null;
-  if (typeof value !== "string") {
-    return createError(400, "invalid_request", `Valor inválido para ${field}.`);
-  }
-  if (value.length > PROFILE_URL_MAX) {
-    return createError(
-      400,
-      "invalid_request",
-      `O campo ${field} excede o tamanho máximo.`,
-    );
-  }
-  if (value.trim() !== "" && !/^https?:\/\/.+/.test(value.trim())) {
-    return createError(
-      400,
-      "invalid_request",
-      `O campo ${field} deve ser uma URL http ou https.`,
-    );
-  }
-  return null;
+  const erro = validateProfileUrlValue(field, value);
+  return erro ? createError(400, erro.code, erro.message) : null;
 }
 
 async function enqueueWelcomeEmailIfNeeded(
@@ -332,9 +283,9 @@ router.patch("/", checkProStatus, async (req, res, next) => {
       }
     }
 
-    for (const [field, max] of Object.entries(PROFILE_TEXT_LIMITS)) {
+    for (const field of Object.keys(PROFILE_TEXT_LIMITS)) {
       if (field in updates) {
-        const textError = validateProfileText(field, updates[field], max);
+        const textError = validateProfileText(field, updates[field]);
         if (textError) return next(textError);
       }
     }
