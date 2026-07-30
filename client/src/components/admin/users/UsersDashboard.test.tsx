@@ -317,6 +317,10 @@ describe("UsersDashboard: modal de detalhe", () => {
         { user_id: "u1", name: "Ana Moura", email: "ana@exemplo.com" },
       ]),
       "/users/u1/activity": { data: { state: "ok", hasData: false } },
+      // Antes do prefixo "/users/u1", que casaria esta rota tambem.
+      "/users/u1/transactions": {
+        data: { items: [], total_paid_cents: 0, truncated: false, limit: 200 },
+      },
       "/users/u1": DETALHE,
     });
 

@@ -23,7 +23,12 @@ import { AvatarBlock } from "./AvatarBlock";
 import { PublicProfileSection, temPerfilPublico } from "./PublicProfileSection";
 import { Field } from "./UserFields";
 import { UserDetailSkeleton } from "./UserDetailSkeleton";
-import type { PosthogUserActivityState, UserDetail } from "./types";
+import { UserTransactions } from "./UserTransactions";
+import type {
+  PosthogUserActivityState,
+  TransactionsPayload,
+  UserDetail,
+} from "./types";
 import {
   NAO_INFORMADO,
   PAYMENT_METHOD_LABELS,
@@ -111,6 +116,14 @@ export function UserDetailModal({
   const [moreOpen, setMoreOpen] = useState(false);
   const activityRequested = useRef(false);
 
+  const [transactions, setTransactions] = useState<TransactionsPayload | null>(
+    null,
+  );
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [transactionsError, setTransactionsError] = useState<string | null>(
+    null,
+  );
+
   const [revealedCpf, setRevealedCpf] = useState<string | null>(null);
   const [revealing, setRevealing] = useState(false);
 
@@ -163,6 +176,39 @@ export function UserDetailModal({
       })
       .finally(() => {
         if (!cancelled) setDetailLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, detailVersion]);
+
+  // Extrato de compras: vem JUNTO do detalhe, nao preguicoso como o PostHog.
+  // Os dois motivos sao diferentes. O PostHog e uma chamada a um terceiro, cara
+  // e opcional, escondida atras de um dropdown que muita gente nunca abre. O
+  // extrato e uma consulta ao proprio banco, filtrada por user_id, que hoje
+  // devolve no maximo UMA linha, e responde a mesma pergunta que a secao
+  // Assinatura logo acima: o estado financeiro desta pessoa. Escondido atras de
+  // clique, o "Valor pago (total)" continuaria sem lastro visivel.
+  useEffect(() => {
+    let cancelled = false;
+
+    setTransactionsLoading(true);
+    setTransactionsError(null);
+    adminFetch(`/users/${userId}/transactions`)
+      .then((json) => {
+        if (cancelled) return;
+        setTransactions((json.data as TransactionsPayload) ?? null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setTransactionsError(
+          err instanceof Error ? err.message : "Erro ao buscar as compras.",
+        );
+        setTransactions(null);
+      })
+      .finally(() => {
+        if (!cancelled) setTransactionsLoading(false);
       });
 
     return () => {
@@ -448,6 +494,22 @@ export function UserDetailModal({
                       </p>
                     </div>
                   ) : null}
+                </div>
+              </Section>
+
+              {/* Compras logo depois de Assinatura: as duas respondem a
+                  mesma pergunta (estado financeiro desta pessoa), e e aqui que
+                  o "Valor pago (total)" ganha lastro. */}
+              <Section title="Compras">
+                <div
+                  data-testid="user-transactions"
+                  className="overflow-hidden rounded-2xl border-2 border-slate-200 bg-white"
+                >
+                  <UserTransactions
+                    loading={transactionsLoading}
+                    error={transactionsError}
+                    payload={transactions}
+                  />
                 </div>
               </Section>
 

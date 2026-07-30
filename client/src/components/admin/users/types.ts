@@ -134,3 +134,32 @@ export type PosthogUserActivityState =
         navigation: Array<{ page: string; timestamp: string }>;
       };
     };
+
+// Extrato de compras (GET /users/:id/transactions). O estado de reembolso vem
+// AGREGADO do servidor (server/lib/userTransactions.ts): a Fatia 7 depende
+// destes campos para nao reembolsar duas vezes e para saber o teto do valor.
+export type TransactionItem = {
+  id: string;
+  type: string;
+  gross_cents: number;
+  fee_cents: number | null;
+  net_cents: number | null;
+  currency: string | null;
+  occurred_at: string;
+  stripe_charge_id: string | null;
+  stripe_invoice_id: string | null;
+  plan_code: string | null;
+  /** Magnitude positiva; 0 em linhas que nao sao charge. */
+  refunded_cents: number;
+  disputed_cents: number;
+  disputed: boolean;
+  refund_state: string;
+  refundable_cents: number;
+};
+
+export type TransactionsPayload = {
+  items: TransactionItem[];
+  total_paid_cents: number;
+  truncated: boolean;
+  limit: number;
+};

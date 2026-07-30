@@ -275,20 +275,32 @@ describe("rodape de acoes", () => {
 
 describe("carregamento", () => {
   it("mostra esqueleto enquanto busca, nao a caixa generica", async () => {
-    let resolver!: (v: unknown) => void;
-    fetchMock.mockImplementation(
-      () =>
-        new Promise((r) => {
-          resolver = r;
-        }),
-    );
+    // Resolve POR ROTA: o modal dispara duas requisicoes (detalhe e extrato) e
+    // um unico `resolver` compartilhado seria sobrescrito pela segunda,
+    // deixando o detalhe pendente para sempre.
+    let resolverDetalhe!: (v: unknown) => void;
+    fetchMock.mockImplementation((path: string) => {
+      if (path.includes("/transactions")) {
+        return Promise.resolve({
+          data: {
+            items: [],
+            total_paid_cents: 0,
+            truncated: false,
+            limit: 200,
+          },
+        });
+      }
+      return new Promise((r) => {
+        resolverDetalhe = r;
+      });
+    });
 
     render(<UserDetailModal userId="u1" onClose={() => {}} />);
 
     expect(screen.getByTestId("user-detail-skeleton")).toBeTruthy();
     expect(screen.queryByText("Carregando dados...")).toBeNull();
 
-    resolver(detalhe());
+    resolverDetalhe(detalhe());
     await pronto();
     expect(screen.queryByTestId("user-detail-skeleton")).toBeNull();
   });
@@ -443,6 +455,160 @@ describe("perfil publico (os 6 campos recem-descobertos)", () => {
     await screen.findByText("Perfil público");
 
     expect(screen.getByText("Brasília / DF")).toBeTruthy();
+  });
+});
+
+describe("extrato de compras", () => {
+  function extrato(items: Array<Record<string, unknown>>, extra = {}) {
+    return {
+      data: {
+        items,
+        total_paid_cents: items.reduce(
+          (s, i) => s + Number(i.gross_cents ?? 0),
+          0,
+        ),
+        truncated: false,
+        limit: 200,
+        ...extra,
+      },
+    };
+  }
+
+  function compra(over: Record<string, unknown> = {}) {
+    return {
+      id: "ft1",
+      type: "charge",
+      gross_cents: 22200,
+      fee_cents: 500,
+      net_cents: 21700,
+      currency: "BRL",
+      occurred_at: "2026-07-01T12:00:00Z",
+      stripe_charge_id: "ch_1",
+      stripe_invoice_id: null,
+      plan_code: "pro_annual",
+      refunded_cents: 0,
+      disputed_cents: 0,
+      disputed: false,
+      refund_state: "none",
+      refundable_cents: 22200,
+      ...over,
+    };
+  }
+
+  it("quem nunca pagou ve o vazio, nao um erro nem uma tabela em branco", async () => {
+    rotear(detalhe(), { "/transactions": extrato([]) });
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    expect(await screen.findByText("Nenhuma compra registrada.")).toBeTruthy();
+  });
+
+  it("mostra cobranca, reembolso e disputa com o SINAL, nao o modulo", async () => {
+    rotear(detalhe(), {
+      "/transactions": extrato([
+        compra(),
+        compra({
+          id: "ft2",
+          type: "refund",
+          gross_cents: -5000,
+          occurred_at: "2026-07-02T12:00:00Z",
+        }),
+        compra({
+          id: "ft3",
+          type: "dispute",
+          gross_cents: -2990,
+          occurred_at: "2026-07-03T12:00:00Z",
+        }),
+      ]),
+    });
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    const secao = within(await screen.findByTestId("user-transactions"));
+
+    expect(secao.getByText("R$ 222,00")).toBeTruthy();
+    // O menos precisa aparecer: reembolso e saida de dinheiro.
+    expect(secao.getByText("-R$ 50,00")).toBeTruthy();
+    expect(secao.getByText("-R$ 29,90")).toBeTruthy();
+    expect(secao.getByText("Cobrança")).toBeTruthy();
+    expect(secao.getByText("Reembolso")).toBeTruthy();
+    expect(secao.getByText("Chargeback")).toBeTruthy();
+  });
+
+  it("cobranca com reembolso parcial mostra quanto ja voltou", async () => {
+    rotear(detalhe(), {
+      "/transactions": extrato([
+        compra({
+          refunded_cents: 5000,
+          refund_state: "partial",
+          refundable_cents: 17200,
+        }),
+      ]),
+    });
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    const secao = within(await screen.findByTestId("user-transactions"));
+
+    expect(secao.getByText(/R\$ 50,00 reembolsados/)).toBeTruthy();
+  });
+
+  it("tipo desconhecido do backend nao derruba a secao", async () => {
+    rotear(detalhe(), {
+      "/transactions": extrato([compra({ type: "transfer_reversal" })]),
+    });
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    const secao = within(await screen.findByTestId("user-transactions"));
+
+    expect(secao.getByText("transfer_reversal")).toBeTruthy();
+  });
+
+  it("truncamento e AVISADO, nunca silencioso", async () => {
+    rotear(detalhe(), {
+      "/transactions": extrato([compra()], { truncated: true, limit: 200 }),
+    });
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    expect(await screen.findByText(/primeiras 200/)).toBeTruthy();
+  });
+
+  it("erro ao carregar o extrato fica inline, sem toast", async () => {
+    rotear(detalhe(), {
+      "/transactions": new Error("Erro ao buscar as compras."),
+    });
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    expect(await screen.findByText("Erro ao buscar as compras.")).toBeTruthy();
+    expect(toastSpy.erro).not.toHaveBeenCalled();
+  });
+
+  it("nao ha nenhum botao de acao na secao", async () => {
+    rotear(detalhe(), { "/transactions": extrato([compra()]) });
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    const secao = await screen.findByTestId("user-transactions");
+
+    expect(within(secao).queryAllByRole("button")).toEqual([]);
+  });
+
+  it("busca o extrato UMA vez so, junto do detalhe", async () => {
+    rotear(detalhe(), { "/transactions": extrato([compra()]) });
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await screen.findByTestId("user-transactions");
+
+    const n = fetchMock.mock.calls.filter((c) =>
+      String(c[0]).includes("/transactions"),
+    ).length;
+    expect(n).toBe(1);
   });
 });
 
