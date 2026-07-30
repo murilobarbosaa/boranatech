@@ -28,6 +28,7 @@ const REASON_LABELS: Record<string, string> = {
   missing_feature: "Faltou funcionalidade",
   paused: "Vai pausar, volta depois",
   other: "Outro motivo",
+  admin: "Cancelado pelo admin",
 };
 
 // Abaixo disso, percentual e enganoso (1 de 2 = 50%). Mesmo limiar/espirito do
