@@ -43,6 +43,13 @@ import {
   validateNewEmail,
 } from "../lib/emailChange";
 import { buildProfilePatch } from "../lib/profileEdit";
+import {
+  criarLimitadorDeReembolso,
+  idempotencyKeyForRefund,
+  stripeReasonFor,
+  validateRefundRequest,
+  type RefundReason,
+} from "../lib/refund";
 import { buildTransactionList, type FinanceRow } from "../lib/userTransactions";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -1616,6 +1623,245 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
 
     await invalidateProStatusCache(uid);
     res.json({ data: { revoked: true } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Teto por ADMIN para a emissão de reembolso. Ver a docstring da fábrica em
+// server/lib/refund.ts para o que ele protege e o que NÃO protege.
+const refundLimiter = criarLimitadorDeReembolso({
+  max: env.refundMaxPerMinute,
+  janelaMs: 60_000,
+});
+
+// EMISSÃO DE REEMBOLSO. Única ação da demanda sem desfazer.
+//
+// NÃO respeita BILLING_ENABLED de propósito: o kill-switch existe para parar de
+// VENDER, e travar a devolução durante um incidente é o oposto do que se quer.
+// getStripe() só exige STRIPE_SECRET_KEY.
+router.post("/users/:id/refunds", async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
+      );
+    }
+
+    if (refundLimiter(req.user!.id)) {
+      return next(
+        createError(
+          429,
+          "rate_limited",
+          "Muitos reembolsos seguidos. Espere um minuto.",
+        ),
+      );
+    }
+
+    const corpo = (req.body ?? {}) as {
+      charge_id?: unknown;
+      amount_cents?: unknown;
+      reason?: unknown;
+      reason_kind?: unknown;
+    };
+    const chargeId =
+      typeof corpo.charge_id === "string" ? corpo.charge_id.trim() : "";
+    if (!chargeId) {
+      return next(
+        createError(400, "charge_required", "Informe a cobrança a reembolsar."),
+      );
+    }
+
+    // ESCOPO E TETO, ambos recomputados AQUI. O cliente não é fonte de nada:
+    // manda o id da cobrança e o valor, e os dois são reconferidos contra o
+    // banco. A agregação é a MESMA da Fatia 4 (buildTransactionList), não uma
+    // segunda implementação.
+    const { data: linhas, error: linhasError } = await supabaseAdmin
+      .from("finance_transactions")
+      .select(
+        "id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
+      )
+      .eq("user_id", uid);
+
+    if (linhasError)
+      return next(
+        dbError("refund lookup", linhasError, "Erro ao emitir o reembolso."),
+      );
+
+    const extrato = buildTransactionList((linhas || []) as FinanceRow[]);
+    const alvo = extrato.items.find(
+      (item) => item.stripe_charge_id === chargeId && item.type === "charge",
+    );
+
+    // A cobrança precisa ser DESTE usuário. Sem isto, o id de uma cobrança de
+    // outra pessoa seria aceito.
+    if (!alvo) {
+      return next(
+        createError(
+          404,
+          "charge_not_found",
+          "Cobrança não encontrada para este usuário.",
+        ),
+      );
+    }
+
+    const validacao = validateRefundRequest(
+      {
+        ...alvo,
+        // Boleto: charge id com prefixo py_ e sem invoice. O SDK da Stripe não
+        // lista boleto entre os destinos de reembolso (destination_details),
+        // e a devolução sairia por br_bank_transfer, exigindo dados bancários
+        // do cliente.
+        is_boleto: chargeId.startsWith("py_"),
+      },
+      {
+        amountCents:
+          typeof corpo.amount_cents === "number"
+            ? corpo.amount_cents
+            : undefined,
+        reason: typeof corpo.reason === "string" ? corpo.reason : "",
+        reasonKind:
+          typeof corpo.reason_kind === "string"
+            ? (corpo.reason_kind as RefundReason)
+            : undefined,
+      },
+    );
+    if (!validacao.ok) {
+      const status =
+        validacao.error.code === "boleto_not_refundable" ? 409 : 400;
+      return next(
+        createError(status, validacao.error.code, validacao.error.message),
+      );
+    }
+
+    const stripeReason = stripeReasonFor(
+      validacao.reason,
+      corpo.reason_kind as RefundReason,
+    );
+
+    // AUDITORIA DA INTENÇÃO, fail-closed, ANTES da Stripe. Sem rastro gravado,
+    // dinheiro nenhum sai.
+    const { error: auditError } = await supabaseAdmin
+      .from("content_audit_logs")
+      .insert({
+        actor_user_id: req.user!.id,
+        action: "refund",
+        resource_type: "charge",
+        resource_id: uid,
+        resource_slug: chargeId,
+        before_json: {
+          gross_cents: alvo.gross_cents,
+          refunded_cents: alvo.refunded_cents,
+          refundable_cents: alvo.refundable_cents,
+        },
+        after_json: {
+          amount_cents: validacao.amountCents,
+          reason: validacao.reason,
+          stripe_reason: stripeReason,
+        },
+      });
+    if (auditError) {
+      console.error("[admin] refund audit failed:", auditError);
+      return next(
+        createError(
+          500,
+          "audit_failed",
+          "Não foi possível registrar a auditoria do reembolso.",
+        ),
+      );
+    }
+
+    let refund: { id: string; status: string | null };
+    try {
+      const criado = await getStripe().refunds.create(
+        {
+          charge: chargeId,
+          amount: validacao.amountCents,
+          reason: stripeReason,
+          metadata: {
+            admin_reason: validacao.reason.slice(0, 500),
+            actor_user_id: req.user!.id,
+          },
+        },
+        {
+          idempotencyKey: idempotencyKeyForRefund(
+            chargeId,
+            validacao.amountCents,
+            alvo.refunded_cents,
+          ),
+        },
+      );
+      refund = { id: criado.id, status: criado.status ?? null };
+    } catch (stripeErr) {
+      console.error(
+        `[admin/refund] Stripe recusou o reembolso de ${validacao.amountCents} em ${chargeId}:`,
+        stripeErr,
+      );
+      return next(
+        createError(
+          502,
+          "stripe_error",
+          "A Stripe recusou o reembolso. Nada foi devolvido.",
+        ),
+      );
+    }
+
+    // DAQUI PARA BAIXO O DINHEIRO JÁ SAIU. Nenhuma falha pode virar mensagem
+    // que sugira o contrário.
+    const { error: registroError } = await supabaseAdmin
+      .from("admin_refunds")
+      .insert({
+        user_id: uid,
+        actor_user_id: req.user!.id,
+        stripe_charge_id: chargeId,
+        stripe_refund_id: refund.id,
+        amount_cents: validacao.amountCents,
+        currency: alvo.currency ?? "BRL",
+        reason: validacao.reason,
+        stripe_reason: stripeReason,
+        stripe_status: refund.status,
+      });
+    if (registroError) {
+      console.error(
+        `[admin/refund] INCONSISTENCIA: reembolso ${refund.id} de ${validacao.amountCents} EMITIDO na Stripe para ${chargeId}, mas admin_refunds nao gravou. A auditoria da intencao existe; o resultado nao.`,
+        registroError,
+      );
+    }
+
+    // Extrato fresco. Se falhar, o reembolso continua tendo acontecido.
+    let extratoAtualizado = true;
+    try {
+      await syncBalanceTransactions({
+        since: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      });
+    } catch (syncErr) {
+      extratoAtualizado = false;
+      console.warn(
+        `[admin/refund] reembolso ${refund.id} emitido, mas o sync falhou; o extrato so atualiza no proximo ciclo:`,
+        syncErr,
+      );
+    }
+
+    // 200 SEMPRE que a Stripe aceitou. Devolver erro aqui faria o admin
+    // acreditar que o reembolso não aconteceu e tentar de novo — e a segunda
+    // tentativa cairia numa Idempotency-Key diferente (o refunded_cents teria
+    // mudado) e devolveria DE NOVO. Os campos abaixo dizem o que ficou por
+    // fazer, sem transformar isso em falha.
+    res.json({
+      data: {
+        refunded: true,
+        refund_id: refund.id,
+        amount_cents: validacao.amountCents,
+        status: refund.status,
+        statement_synced: extratoAtualizado,
+        record_saved: !registroError,
+      },
+    });
   } catch (err) {
     next(err);
   }

@@ -159,6 +159,9 @@ export const env = {
   // o adapter roda sem auth em modo reduzido (1 pagina) com warn.
   githubVagasToken:
     process.env.GITHUB_VAGAS_TOKEN || process.env.GITHUB_TOKEN || "",
+  // Teto de reembolsos por admin por minuto. Knob operacional: numa onda de
+  // chargebacks pode ser preciso subir. Ver server/lib/refund.ts.
+  refundMaxPerMinute: Number(process.env.REFUND_MAX_PER_MINUTE ?? 10),
   posthogApiKey: process.env.POSTHOG_API_KEY || "",
   posthogProjectId: process.env.POSTHOG_PROJECT_ID || "",
   // Host da API do PostHog (regiao). NUNCA hardcodar a regiao no codigo: projeto

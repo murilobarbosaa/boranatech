@@ -43,6 +43,7 @@ vi.mock("../lib/env", () => ({
     posthogProjectId: "",
     posthogHost: "https://us.posthog.com",
     rateLimitMaxRequests: 1000,
+    refundMaxPerMinute: 100000,
   },
 }));
 vi.mock("../lib/supabaseAdmin", () => ({

@@ -20,6 +20,8 @@ const estado = vi.hoisted(() => ({
   stripeUpdate: null as unknown as ReturnType<typeof vi.fn>,
   invalidateProCache: null as unknown as ReturnType<typeof vi.fn>,
   stripeSubscriptionUpdate: null as unknown as ReturnType<typeof vi.fn>,
+  stripeRefundCreate: null as unknown as ReturnType<typeof vi.fn>,
+  syncBalance: null as unknown as ReturnType<typeof vi.fn>,
 }));
 
 vi.mock("../lib/queue", () => ({
@@ -51,6 +53,7 @@ vi.mock("../lib/env", () => ({
     posthogProjectId: "",
     posthogHost: "https://us.posthog.com",
     rateLimitMaxRequests: 1000,
+    refundMaxPerMinute: 100000,
   },
 }));
 vi.mock("../lib/supabaseAdmin", () => ({
@@ -62,8 +65,12 @@ vi.mock("../lib/stripeClient", () => ({
   getStripe: () => ({
     customers: { update: estado.stripeUpdate },
     subscriptions: { update: estado.stripeSubscriptionUpdate },
+    refunds: { create: estado.stripeRefundCreate },
   }),
   STRIPE_API_VERSION: "2026-06-24.dahlia",
+}));
+vi.mock("../lib/stripeSync", () => ({
+  syncBalanceTransactions: (...a: unknown[]) => estado.syncBalance(...a),
 }));
 vi.mock("../lib/proStatusCache", () => ({
   invalidateProStatusCache: (...a: unknown[]) =>
@@ -132,6 +139,15 @@ beforeEach(() => {
   estado.stripeUpdate = vi.fn(async () => ({}));
   estado.invalidateProCache = vi.fn(async () => {});
   estado.stripeSubscriptionUpdate = vi.fn(async () => ({}));
+  estado.stripeRefundCreate = vi.fn(async () => ({
+    id: "re_1",
+    status: "succeeded",
+  }));
+  estado.syncBalance = vi.fn(async () => ({
+    processed: 0,
+    upserted: 0,
+    skipped: 0,
+  }));
 });
 
 afterEach(() => {
@@ -876,6 +892,350 @@ describe("POST /users/:id/subscription/cancel", () => {
   it("UUID inválido vira 400 sem consultar nada", async () => {
     montar({});
     const r = await chamarAdmin("POST", "/users/nao-uuid/subscription/cancel", {
+      reason: "x",
+    });
+    expect(r.status).toBe(400);
+    expect(estado.double.chamadas).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /users/:id/refunds  (Fatia 7) — a única ação sem desfazer
+// ---------------------------------------------------------------------------
+
+describe("POST /users/:id/refunds", () => {
+  function linha(over: Record<string, unknown> = {}) {
+    return {
+      id: "ft1",
+      type: "charge",
+      gross_cents: 20000,
+      fee_cents: 0,
+      net_cents: 20000,
+      currency: "BRL",
+      occurred_at: "2026-07-01T12:00:00Z",
+      stripe_charge_id: "ch_1",
+      stripe_invoice_id: null,
+      plan_code: "pro_annual",
+      ...over,
+    };
+  }
+
+  it("reembolso TOTAL: audita antes, chama a Stripe, grava e sincroniza", async () => {
+    montar({
+      finance_transactions: { rows: [linha()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [{}] },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      reason: "cliente pediu",
+    });
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toMatchObject({
+      refunded: true,
+      refund_id: "re_1",
+      amount_cents: 20000,
+      statement_synced: true,
+      record_saved: true,
+    });
+
+    const ops = estado.double.chamadas.map((c) => `${c.op} ${c.table}`);
+    expect(ops.indexOf("insert content_audit_logs")).toBeGreaterThanOrEqual(0);
+    expect(estado.double.de("content_audit_logs")[0].payload!.action).toBe(
+      "refund",
+    );
+    expect(estado.stripeRefundCreate).toHaveBeenCalledTimes(1);
+    expect(estado.syncBalance).toHaveBeenCalledTimes(1);
+  });
+
+  it("reembolso PARCIAL respeita o valor pedido", async () => {
+    montar({
+      finance_transactions: { rows: [linha()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [{}] },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      amount_cents: 5000,
+      reason: "parcial",
+    });
+
+    expect(r.body.data.amount_cents).toBe(5000);
+    const args = estado.stripeRefundCreate.mock.calls[0] as unknown[];
+    expect(args[0]).toMatchObject({ charge: "ch_1", amount: 5000 });
+  });
+
+  it("cobrança de OUTRO usuário é recusada", async () => {
+    // O extrato é filtrado por user_id; um charge que não está nele não existe
+    // para esta rota.
+    montar({ finance_transactions: { rows: [linha()] } });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_de_outra_pessoa",
+      reason: "x",
+    });
+
+    expect(r.status).toBe(404);
+    expect(r.body.error.code).toBe("charge_not_found");
+    expect(estado.stripeRefundCreate).not.toHaveBeenCalled();
+  });
+
+  it("valor acima do teto é recusado", async () => {
+    montar({ finance_transactions: { rows: [linha()] } });
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      amount_cents: 20001,
+      reason: "x",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("amount_above_refundable");
+  });
+
+  it("teto RECOMPUTADO: UI desatualizada não consegue devolver a mais", async () => {
+    // A UI viu R$200 disponíveis, mas entrou um reembolso de R$150 no meio. O
+    // servidor recomputa e recusa.
+    montar({
+      finance_transactions: {
+        rows: [
+          linha(),
+          linha({ id: "r1", type: "refund", gross_cents: -15000 }),
+        ],
+      },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      amount_cents: 20000,
+      reason: "x",
+    });
+
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("amount_above_refundable");
+    expect(estado.stripeRefundCreate).not.toHaveBeenCalled();
+  });
+
+  it("cobrança já totalmente reembolsada não aceita mais nada", async () => {
+    montar({
+      finance_transactions: {
+        rows: [
+          linha(),
+          linha({ id: "r1", type: "refund", gross_cents: -20000 }),
+        ],
+      },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      reason: "x",
+    });
+
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("nothing_refundable");
+  });
+
+  it("cobrança com DISPUTA respeita o teto reduzido", async () => {
+    montar({
+      finance_transactions: {
+        rows: [
+          linha(),
+          linha({ id: "d1", type: "dispute", gross_cents: -20000 }),
+        ],
+      },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      reason: "x",
+    });
+
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("nothing_refundable");
+    expect(r.body.error.message).toContain("chargeback");
+  });
+
+  it("BOLETO é recusado com código próprio", async () => {
+    montar({
+      finance_transactions: { rows: [linha({ stripe_charge_id: "py_1" })] },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "py_1",
+      reason: "x",
+    });
+
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("boleto_not_refundable");
+    expect(estado.stripeRefundCreate).not.toHaveBeenCalled();
+  });
+
+  it("falha do AUDIT aborta ANTES da Stripe", async () => {
+    montar({
+      finance_transactions: { rows: [linha()] },
+      content_audit_logs: { error: { message: "check" } },
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      reason: "x",
+    });
+
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("audit_failed");
+    expect(estado.stripeRefundCreate).not.toHaveBeenCalled();
+  });
+
+  it("Stripe recusando NÃO deixa rastro de sucesso", async () => {
+    montar({
+      finance_transactions: { rows: [linha()] },
+      content_audit_logs: { rows: [{}] },
+    });
+    estado.stripeRefundCreate = vi.fn(async () => {
+      throw new Error("charge already refunded");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      reason: "x",
+    });
+
+    expect(r.status).toBe(502);
+    expect(r.body.error.message).toContain("Nada foi devolvido");
+    expect(estado.double.de("admin_refunds")).toHaveLength(0);
+  });
+
+  it("sync falhando DEPOIS do refund responde 200 sinalizando o que faltou", async () => {
+    // O dinheiro JÁ SAIU. Devolver erro faria o admin tentar de novo, e a
+    // segunda tentativa teria outra Idempotency-Key (o refunded_cents mudou),
+    // reembolsando DUAS vezes.
+    montar({
+      finance_transactions: { rows: [linha()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [{}] },
+    });
+    estado.syncBalance = vi.fn(async () => {
+      throw new Error("stripe timeout");
+    });
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      reason: "x",
+    });
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toMatchObject({
+      refunded: true,
+      statement_synced: false,
+    });
+  });
+
+  it("gravação local falhando DEPOIS do refund loga INCONSISTENCIA e responde 200", async () => {
+    montar({
+      finance_transactions: { rows: [linha()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { error: { message: "timeout" } },
+    });
+    const erroSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      reason: "x",
+    });
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toMatchObject({ refunded: true, record_saved: false });
+    expect(
+      erroSpy.mock.calls.some((c) => String(c[0]).includes("INCONSISTENCIA")),
+    ).toBe(true);
+  });
+
+  it("duplo clique manda a MESMA Idempotency-Key", async () => {
+    montar({
+      finance_transactions: { rows: [linha()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [{}] },
+    });
+
+    await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      amount_cents: 5000,
+      reason: "x",
+    });
+    await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      amount_cents: 5000,
+      reason: "x",
+    });
+
+    const k1 = (
+      estado.stripeRefundCreate.mock.calls[0][1] as { idempotencyKey: string }
+    ).idempotencyKey;
+    const k2 = (
+      estado.stripeRefundCreate.mock.calls[1][1] as { idempotencyKey: string }
+    ).idempotencyKey;
+    expect(k1).toBe(k2);
+  });
+
+  it("dois parciais LEGÍTIMOS de mesmo valor mandam chaves DIFERENTES", async () => {
+    // Primeiro: nada reembolsado ainda.
+    montar({
+      finance_transactions: { rows: [linha()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [{}] },
+    });
+    await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      amount_cents: 5000,
+      reason: "primeiro",
+    });
+    const k1 = (
+      estado.stripeRefundCreate.mock.calls[0][1] as { idempotencyKey: string }
+    ).idempotencyKey;
+
+    // Segundo: o extrato já reflete os R$50 devolvidos.
+    montar({
+      finance_transactions: {
+        rows: [
+          linha(),
+          linha({ id: "r1", type: "refund", gross_cents: -5000 }),
+        ],
+      },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [{}] },
+    });
+    await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      amount_cents: 5000,
+      reason: "segundo",
+    });
+    // O spy da Stripe NAO e recriado pelo montar(): as duas emissoes ficam no
+    // mesmo mock, entao a segunda chave e a da posicao 1.
+    const k2 = (
+      estado.stripeRefundCreate.mock.calls[1][1] as { idempotencyKey: string }
+    ).idempotencyKey;
+
+    expect(k1).not.toBe(k2);
+  });
+
+  it("motivo ausente vira 400 sem tocar a Stripe", async () => {
+    montar({ finance_transactions: { rows: [linha()] } });
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      reason: "   ",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("reason_required");
+  });
+
+  it("UUID inválido vira 400 sem consultar nada", async () => {
+    montar({});
+    const r = await chamarAdmin("POST", "/users/nao-uuid/refunds", {
+      charge_id: "ch_1",
       reason: "x",
     });
     expect(r.status).toBe(400);

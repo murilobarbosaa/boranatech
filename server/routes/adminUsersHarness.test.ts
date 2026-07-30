@@ -73,7 +73,61 @@ function parseColumnsFromTypes(): Map<string, Set<string>> {
   return mapa;
 }
 
+/**
+ * Tabelas que o código já usa e que ainda NÃO estão em
+ * `shared/database.types.ts` porque a migration que as cria não foi aplicada.
+ *
+ * As colunas NÃO são liberadas em bloco: elas são extraídas do próprio
+ * `CREATE TABLE` da migration, então uma coluna inventada continua sendo
+ * recusada. Tabela sem migration correspondente também é recusada.
+ *
+ * Esvaziar esta lista é o normal depois de aplicar a migration e rodar
+ * `pnpm db:types`.
+ */
+const TABELAS_PENDENTES = ["admin_refunds"];
+
+function colunasDeCreateTable(tabela: string): Set<string> | null {
+  const dir = resolve(process.cwd(), "supabase/migrations");
+  for (const arquivo of readdirSync(dir)) {
+    if (!arquivo.endsWith(".sql")) continue;
+    const sql = readFileSync(resolve(dir, arquivo), "utf8");
+    const re = new RegExp(
+      `CREATE TABLE(?:\\s+IF NOT EXISTS)?\\s+(?:public\\.)?"?${tabela}"?\\s*\\(([\\s\\S]*?)\\n\\);`,
+      "i",
+    );
+    const m = re.exec(sql);
+    if (!m) continue;
+    const cols = new Set<string>();
+    for (const linha of m[1].split("\n")) {
+      const c = /^\s{2,}"?([a-z0-9_]+)"?\s+[a-z]/i.exec(linha);
+      if (
+        c &&
+        !["constraint", "primary", "unique", "foreign", "check"].includes(
+          c[1].toLowerCase(),
+        )
+      ) {
+        cols.add(c[1]);
+      }
+    }
+    return cols.size ? cols : null;
+  }
+  return null;
+}
+
 export const COLUNAS_POR_TABELA = parseColumnsFromTypes();
+
+// Total do que o ARQUIVO DE TIPOS traz, medido antes de injetar tabelas
+// pendentes de migration: é ele que precisa bater com o banco.
+const TABELAS_NOS_TIPOS = COLUNAS_POR_TABELA.size;
+
+// Tabelas pendentes entram no mapa com as colunas declaradas na migration. Se a
+// migration nao existir ou nao tiver colunas legiveis, a tabela NAO entra e
+// continua sendo recusada.
+for (const tabela of TABELAS_PENDENTES) {
+  if (COLUNAS_POR_TABELA.has(tabela)) continue;
+  const cols = colunasDeCreateTable(tabela);
+  if (cols) COLUNAS_POR_TABELA.set(tabela, cols);
+}
 
 /** Colunas de relacionamento que o PostgREST aceita no select e não são colunas. */
 const EMBEDS_CONHECIDOS = new Set(["plans"]);
@@ -312,7 +366,7 @@ describe("o parser de colunas afirma o TOTAL, não só a pertinência", () => {
     // Se este número divergir sem migration nova, investigue o PARSER antes de
     // mexer no número: um parser que encolhe em silêncio faria o dublê aceitar
     // colunas inexistentes e o arquivo inteiro passaria a testar a si mesmo.
-    expect(COLUNAS_POR_TABELA.size).toBe(EXPECTED_TABLE_COUNT);
+    expect(TABELAS_NOS_TIPOS).toBe(EXPECTED_TABLE_COUNT);
   });
 
   it("lê as colunas de verdade, não um conjunto vazio", () => {
@@ -431,5 +485,37 @@ describe("a exceção de coluna pendente de migration é conferida, não confiad
         }
       ).insert({ user_id: "u", coluna_com_typo: 1 }),
     ).toThrow(/não existe em "subscription_cancellations"/);
+  });
+});
+
+describe("tabela pendente de migration entra com as colunas da migration", () => {
+  it("admin_refunds e reconhecida e traz as colunas declaradas", () => {
+    const cols = COLUNAS_POR_TABELA.get("admin_refunds");
+    expect(cols, "admin_refunds nao foi reconhecida").toBeTruthy();
+    for (const esperada of [
+      "user_id",
+      "actor_user_id",
+      "stripe_charge_id",
+      "stripe_refund_id",
+      "amount_cents",
+      "reason",
+    ]) {
+      expect(cols!.has(esperada), esperada).toBe(true);
+    }
+  });
+
+  it("coluna inventada numa tabela pendente continua sendo recusada", () => {
+    const d = criarSupabaseDouble({ admin_refunds: { rows: [] } });
+    expect(() =>
+      (
+        d.client.from("admin_refunds") as {
+          insert: (p: Record<string, unknown>) => unknown;
+        }
+      ).insert({ user_id: "u", coluna_inventada: 1 }),
+    ).toThrow(/não existe em "admin_refunds"/);
+  });
+
+  it("tabela sem migration correspondente NAO e reconhecida", () => {
+    expect(colunasDeCreateTable("tabela_que_nao_existe")).toBeNull();
   });
 });
