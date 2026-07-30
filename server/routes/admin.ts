@@ -26,6 +26,7 @@ import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { emailQueue } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
 import { RedisOpTimeoutError, withRedisOpTimeout } from "../lib/redisOpTimeout";
+import { getStripe } from "../lib/stripeClient";
 import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import {
@@ -34,6 +35,12 @@ import {
   subscriptionGrantsPro,
   type SubscriptionRow,
 } from "../lib/userListEnrichment";
+import {
+  emailAlreadyTakenError,
+  mergedUserMetadata,
+  normalizeEmail,
+  validateNewEmail,
+} from "../lib/emailChange";
 import { buildProfilePatch } from "../lib/profileEdit";
 import { buildTransactionList, type FinanceRow } from "../lib/userTransactions";
 import { requireAdmin, requireAuth } from "../middleware/auth";
@@ -1608,6 +1615,238 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
 
     await invalidateProStatusCache(uid);
     res.json({ data: { revoked: true } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// O que existe hoje ligado ao e-mail ATUAL, por tabela. LEITURA, mostrada ao
+// admin ANTES de ele confirmar a troca.
+//
+// Estas linhas NAO sao migradas pela troca (decisao de produto), e o motivo de
+// mostra-las e que a decisao de mexer nelas depois seja tomada com o numero na
+// frente, nao de memoria.
+router.get("/users/:id/email-usage", async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+      );
+    }
+
+    const { data: perfil, error: perfilError } = await supabaseAdmin
+      .from("profiles")
+      .select("email")
+      .eq("user_id", uid)
+      .maybeSingle();
+    if (perfilError)
+      return next(
+        dbError("email usage profile", perfilError, "Erro ao consultar."),
+      );
+    if (!perfil)
+      return next(createError(404, "not_found", "Usuário não encontrado."));
+
+    const email = (perfil.email || "").trim().toLowerCase();
+    if (!email) {
+      return res.json({ data: { email: null, usage: [] } });
+    }
+
+    // Contagem em lote, uma consulta por tabela, com head:true (so o count
+    // trafega). Erro de UMA tabela nao derruba as demais: a contagem vira null
+    // e a UI mostra "não foi possível contar" naquela linha, em vez de sumir
+    // com a informacao inteira.
+    const alvos: Array<{ tabela: string; rotulo: string }> = [
+      { tabela: "newsletter_subscribers", rotulo: "Newsletter" },
+      { tabela: "email_suppressions", rotulo: "Supressões de envio" },
+      { tabela: "contact_list_members", rotulo: "Listas de contato" },
+      { tabela: "waitlist", rotulo: "Lista de espera" },
+      { tabela: "email_campaign_recipients", rotulo: "Campanhas enviadas" },
+    ];
+
+    const usage = await Promise.all(
+      alvos.map(async ({ tabela, rotulo }) => {
+        const { count, error } = await supabaseAdmin
+          .from(tabela)
+          .select("*", { count: "exact", head: true })
+          .eq("email", email);
+        if (error) {
+          console.warn(`[admin] email-usage ${tabela} falhou:`, error.message);
+          return { table: tabela, label: rotulo, count: null };
+        }
+        return { table: tabela, label: rotulo, count: count ?? 0 };
+      }),
+    );
+
+    res.json({ data: { email, usage } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// TROCA DE E-MAIL. Rota separada do PATCH de perfil de propósito: nao e um
+// campo de formulario, e a identidade de LOGIN que muda.
+//
+// Ordem: audit (fail-closed) -> Auth -> profiles -> Stripe (best-effort).
+// O comportamento de cada falha esta comentado no proprio passo.
+router.post("/users/:id/email", async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+      );
+    }
+
+    const novoEmail = normalizeEmail(
+      (req.body as { email?: unknown } | undefined)?.email as string,
+    );
+    const invalido = validateNewEmail(novoEmail);
+    if (invalido) {
+      return next(createError(400, invalido.code, invalido.message));
+    }
+
+    // auth.users e a FONTE da identidade; profiles e espelho. Le os dois.
+    const { data: authData, error: authReadError } =
+      await supabaseAdmin.auth.admin.getUserById(uid);
+    if (authReadError || !authData?.user) {
+      // Perfil sem linha em auth.users: 404. Nao criamos conta a partir do
+      // admin, e "trocar o e-mail" de quem nao tem identidade nao significa
+      // nada. Medido em 2026-07-30: zero casos em producao (a FK de profiles e
+      // ON DELETE CASCADE), entao isto e defesa, nao caminho esperado.
+      return next(
+        createError(404, "not_found", "Usuário não encontrado no Auth."),
+      );
+    }
+
+    const emailAtual = normalizeEmail(authData.user.email);
+
+    // IDEMPOTENCIA. Duplo clique ou reenvio nao reexecuta nada e NAO grava uma
+    // segunda linha de auditoria. Uma troca de identidade registrada duas vezes
+    // e o tipo de coisa que ninguem nota ate o log ficar estranho.
+    if (emailAtual === novoEmail) {
+      return res.json({ data: { changed: false, email: emailAtual } });
+    }
+
+    // AUDITORIA PRIMEIRO, fail-closed. Aqui pesa mais que na edicao de perfil:
+    // sem rastro gravado, a troca de identidade nao acontece. Conta mudar de
+    // dono sem registro de quem mudou e o pior desfecho desta rota.
+    const { error: auditError } = await supabaseAdmin
+      .from("content_audit_logs")
+      .insert({
+        actor_user_id: req.user!.id,
+        action: "update_email",
+        resource_type: "user_email",
+        resource_id: uid,
+        resource_slug: null,
+        before_json: { email: emailAtual },
+        after_json: { email: novoEmail },
+      });
+    if (auditError) {
+      console.error("[admin] email change audit failed:", auditError);
+      return next(
+        createError(
+          500,
+          "audit_failed",
+          "Não foi possível registrar a auditoria da troca.",
+        ),
+      );
+    }
+
+    // PASSO 1: Auth. E o unico passo cuja falha impede tudo o mais.
+    // email_confirm: true marca o endereco como confirmado em vez de disparar
+    // fluxo de confirmacao (semantica dos tipos de @supabase/auth-js 2.105.3).
+    // Sem isso, o recurso seria inutil: o endereco esta errado justamente
+    // porque foi digitado errado, e a pessoa nao recebe o link.
+    //
+    // user_metadata vai junto e COMPLETO: o email tambem vive la (3212 de 3218
+    // contas). Objeto inteiro, nunca so { email }, para nao arriscar apagar
+    // name/avatar_url caso o GoTrue substitua em vez de mesclar.
+    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+      uid,
+      {
+        email: novoEmail,
+        email_confirm: true,
+        user_metadata: mergedUserMetadata(
+          authData.user.user_metadata as Record<string, unknown> | null,
+          novoEmail,
+        ),
+      },
+    );
+
+    if (authError) {
+      // Colisao e o caso principal: auth.users.email tem UNIQUE. Traduz para
+      // 409 legivel; a mensagem crua do Auth vem em ingles e cita tabela, o que
+      // nao ajuda quem esta na tela.
+      if (emailAlreadyTakenError(authError)) {
+        return next(
+          createError(
+            409,
+            "email_taken",
+            "Este e-mail já pertence a outra conta.",
+          ),
+        );
+      }
+      console.error("[admin] email change auth failed:", authError);
+      return next(
+        createError(502, "auth_error", "Não foi possível trocar o e-mail."),
+      );
+    }
+
+    // PASSO 2: espelho em profiles. Se falhar AQUI, o estado ja e inconsistente
+    // de verdade: o login mudou e o espelho nao. NAO tentamos reverter o Auth:
+    // desfazer uma identidade que talvez ja tenha sido usada e pior que
+    // registrar a divergencia. Loga INCONSISTENCIA e responde de forma que o
+    // admin saiba que precisa agir.
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .update({ email: novoEmail })
+      .eq("user_id", uid);
+
+    if (profileError) {
+      console.error(
+        `[admin] INCONSISTENCIA: e-mail trocado no Auth para ${novoEmail} (user ${uid}) mas profiles.email NAO foi atualizado. O login ja e o novo; o espelho ainda e ${emailAtual}. Corrigir manualmente.`,
+        profileError,
+      );
+      return next(
+        createError(
+          500,
+          "profile_mirror_failed",
+          "O login já foi trocado, mas o cadastro não acompanhou. Avise o time técnico antes de tentar de novo.",
+        ),
+      );
+    }
+
+    // PASSO 3: Stripe, BEST-EFFORT. A troca de identidade ja valeu; recibo com
+    // endereco velho e problema menor que derrubar a operacao. Quem nunca
+    // assinou nao tem customer, e nem chegamos a chamar a Stripe.
+    let stripeUpdated = false;
+    try {
+      const { data: sub } = await supabaseAdmin
+        .from("subscriptions")
+        .select("provider_customer_id")
+        .eq("user_id", uid)
+        .not("provider_customer_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (sub?.provider_customer_id) {
+        await getStripe().customers.update(sub.provider_customer_id, {
+          email: novoEmail,
+        });
+        stripeUpdated = true;
+      }
+    } catch (stripeErr) {
+      console.warn(
+        `[admin] e-mail trocado, mas customers.update falhou para o user ${uid}; recibos futuros vao para o endereco antigo:`,
+        stripeErr,
+      );
+    }
+
+    res.json({
+      data: { changed: true, email: novoEmail, stripe_updated: stripeUpdated },
+    });
   } catch (err) {
     next(err);
   }
