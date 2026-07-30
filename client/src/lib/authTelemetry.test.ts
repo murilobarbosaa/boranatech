@@ -4,6 +4,7 @@ import {
   authErrorFields,
   buildAuthFailurePayload,
   redactSensitive,
+  nivelSentry,
 } from "./authTelemetry";
 
 const ENV = {
@@ -153,5 +154,31 @@ describe("authErrorFields", () => {
   it("aguenta null e string", () => {
     expect(authErrorFields(null).code).toBeNull();
     expect(authErrorFields("deu erro").message).toBe("deu erro");
+  });
+});
+
+/**
+ * Nivel do evento no Sentry (item 2 da Fase 4B).
+ *
+ * Senha errada e e-mail ja cadastrado sao produto funcionando. Somavam 19 dos
+ * eventos de 24h como `error` e empurravam para baixo as duas falhas reais.
+ * Rebaixados para `info`: saem da triagem de erro e a serie continua existindo,
+ * porque pico de `invalid_credentials` e sinal de seguranca.
+ */
+describe("nivelSentry", () => {
+  it("comportamento normal do produto vira info", () => {
+    expect(nivelSentry("invalid_credentials")).toBe("info");
+    expect(nivelSentry("user_already_exists")).toBe("info");
+  });
+
+  it("falha de verdade continua error", () => {
+    expect(nivelSentry("profile_fetch_exhausted")).toBe("error");
+    expect(nivelSentry("bad_oauth_state")).toBe("error");
+    expect(nivelSentry("pkce_exchange_unconfirmed")).toBe("error");
+  });
+
+  it("codigo ausente ou desconhecido continua error, que e o default seguro", () => {
+    expect(nivelSentry(null)).toBe("error");
+    expect(nivelSentry("codigo_que_ainda_nao_existe")).toBe("error");
   });
 });

@@ -264,6 +264,30 @@ export function authErrorFields(error: unknown): {
   };
 }
 
+/**
+ * Códigos que são COMPORTAMENTO NORMAL do produto, não defeito.
+ *
+ * Senha errada e e-mail já cadastrado são o sistema funcionando: a pessoa errou
+ * a senha, ou já tinha conta. Chegavam ao Sentry como `level: "error"` e somavam
+ * 19 dos 10 grupos de erro em 24h, empurrando para baixo os dois que são falha
+ * de verdade (`profile_fetch_exhausted`, `bad_oauth_state`).
+ *
+ * REBAIXA em vez de PARAR DE CAPTURAR, e o motivo é que o volume destes carrega
+ * sinal que não existe em lugar nenhum: um pico de `invalid_credentials` é a
+ * assinatura de credential stuffing, e um pico de `user_already_exists` é gente
+ * batendo num cadastro que deveria ter virado login. Parar de capturar apagaria
+ * os dois. `info` tira do stream de erro e mantém a série.
+ *
+ * O PostHog continua recebendo tudo em `auth_failure`, sem mudança: lá o evento
+ * é agregação, não triagem, e o `stage`/`error_code` seguem como propriedade.
+ */
+const CODIGOS_ESPERADOS = new Set(["invalid_credentials", "user_already_exists"]);
+
+/** Nível do evento no Sentry. Fora da allowlist, continua `error`. */
+export function nivelSentry(errorCode: string | null): "error" | "info" {
+  return errorCode !== null && CODIGOS_ESPERADOS.has(errorCode) ? "info" : "error";
+}
+
 export function reportAuthFailure(input: AuthFailureInput): AuthFailurePayload {
   const payload = buildAuthFailurePayload(input);
 
@@ -280,7 +304,7 @@ export function reportAuthFailure(input: AuthFailureInput): AuthFailurePayload {
     Sentry.captureMessage(
       `auth ${payload.stage} failure: ${payload.error_code ?? "unknown"}`,
       {
-        level: "error",
+        level: nivelSentry(payload.error_code),
         tags: {
           origem: SENTRY_ORIGEM_AUTH,
           auth_stage: payload.stage,
