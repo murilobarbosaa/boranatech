@@ -15,6 +15,7 @@ export function temPerfilPublico(detail: UserDetail): boolean {
     detail.headline,
     detail.city,
     detail.uf,
+    detail.career_goal,
     detail.github_url,
     detail.linkedin_url,
     detail.website_url,
@@ -59,6 +60,11 @@ export function PublicProfileSection({ detail }: { detail: UserDetail }) {
           label="Cidade / UF"
           value={localidade(detail)}
           empty={semValor(detail.city) && semValor(detail.uf)}
+        />
+        <Field
+          label="Meta de carreira"
+          value={fmtText(detail.career_goal)}
+          empty={semValor(detail.career_goal)}
         />
         <Field
           label="GitHub"

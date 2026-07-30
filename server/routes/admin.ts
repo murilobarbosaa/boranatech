@@ -30,6 +30,7 @@ import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import {
   fetchUserListEnrichment,
+  resolveProSource,
   subscriptionGrantsPro,
   type SubscriptionRow,
 } from "../lib/userListEnrichment";
@@ -972,6 +973,12 @@ router.get("/users", async (req, res, next) => {
         count: "exact",
       })
       .order("created_at", { ascending: false })
+      // Desempate por chave unica. created_at nao tem unique, entao a ordem
+      // entre linhas de mesmo instante nao e garantida, e sem garantia a
+      // paginacao por range pula e repete em silencio. Medido em 2026-07-29:
+      // 3182 perfis, zero empates, ou seja, nenhuma linha e afetada HOJE. Isto
+      // troca uma propriedade dos dados por uma garantia da consulta.
+      .order("id", { ascending: false })
       .range(rangeFrom, rangeFrom + pageSize - 1);
 
     if (search) {
@@ -1152,7 +1159,7 @@ router.get("/users/:id", async (req, res, next) => {
       // Em 2026-07-29 as seis estao 100% NULAS (0 de 3182 perfis). A leitura
       // nao custa nada e passa a valer sozinha quando alguem preencher.
       .select(
-        "user_id, name, full_name, email, gender, bio, area_interesse, nivel_atual, objetivo, onboarding_completed, onboarding_step, marketing_opt_in, marketing_opt_in_at, welcome_email_sent, cpf, avatar_url, avatar_mode, avatar_moderation_status, headline, city, uf, github_url, linkedin_url, website_url, created_at, updated_at",
+        "user_id, name, full_name, email, gender, bio, area_interesse, nivel_atual, objetivo, onboarding_completed, onboarding_step, marketing_opt_in, marketing_opt_in_at, welcome_email_sent, cpf, avatar_url, avatar_mode, avatar_moderation_status, headline, city, uf, career_goal, github_url, linkedin_url, website_url, created_at, updated_at",
       )
       .eq("user_id", uid)
       .maybeSingle();
@@ -1323,13 +1330,7 @@ router.get("/users/:id", async (req, res, next) => {
         )
       : false;
     const proPorInfluencer = influencer !== null;
-    const proSource = assinaturaDaPro
-      ? proPorInfluencer
-        ? "both"
-        : "subscription"
-      : proPorInfluencer
-        ? "influencer"
-        : null;
+    const proSource = resolveProSource(assinaturaDaPro, proPorInfluencer);
 
     const { cpf, avatar_url, avatar_mode, avatar_moderation_status, ...rest } =
       data;

@@ -167,7 +167,12 @@ export function buildEnrichmentIndex(
   return index;
 }
 
-function resolveProSource(
+/**
+ * Monta o discriminador de origem do Pro. EXPORTADO e usado tambem pela rota de
+ * detalhe (GET /users/:id): sem isto, a lista e o modal montavam "both" cada um
+ * do seu jeito, e duas montagens da mesma regra divergem na primeira mudanca.
+ */
+export function resolveProSource(
   porAssinatura: boolean,
   porInfluencer: boolean,
 ): ProSource | null {

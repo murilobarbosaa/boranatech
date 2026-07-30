@@ -62,6 +62,7 @@ export type UserDetail = {
   headline?: string | null;
   city?: string | null;
   uf?: string | null;
+  career_goal?: string | null;
   github_url?: string | null;
   linkedin_url?: string | null;
   website_url?: string | null;
