@@ -103,6 +103,20 @@ const DETALHE = {
       current_period_end: null,
       cancel_at_period_end: false,
     },
+    // Histórico: existe com assinatura `active`, então entra na trava.
+    // O bloco de BOLETO não entra aqui de propósito: ele só renderiza com
+    // status `pending`, que é incompatível com o cenário `active` deste
+    // fixture. A copy dele é travada em BoletoBlock.test.tsx.
+    subscription_history: [
+      {
+        plan_code: "pro_monthly",
+        status: "superseded",
+        payment_method: "boleto",
+        created_at: null,
+        current_period_end: null,
+      },
+    ],
+    boleto: null,
     cancellation_intent: {
       reason_code: "missing_feature",
       reason_text: null,
@@ -232,6 +246,11 @@ const COPY_ESTATICA = new Set<string>([
   // continuam na lista de copy porque seguem existindo como cabeçalho de coluna
   // do desktop (UserListHeader), que o jsdom renderiza mesmo com `hidden`.
   "desde",
+  // Seção "Assinaturas anteriores" (Parte 5 do fechamento do ciclo de boleto).
+  // "Substituída" e "Pro Anual" já estavam declarados por outro caminho.
+  "Assinaturas anteriores",
+  "Pro Mensal",
+  "Boleto",
 ]);
 
 function frasesVisiveis(): string[] {
