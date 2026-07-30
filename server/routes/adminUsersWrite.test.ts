@@ -1,0 +1,688 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+/**
+ * FIACAO das rotas de ESCRITA de usuário do admin.
+ *
+ * As pontas já tinham teste (libs puras e render). O que nunca teve foi o NÓ:
+ * a query do Supabase, a ordem dos passos, o envelope de erro e o status HTTP.
+ * Escrita primeiro porque é o que causa dano.
+ *
+ * O router REAL é exercitado através de um app Express REAL, com o
+ * errorHandler de produção montado. O que é dublê: Supabase, Stripe, Auth,
+ * Redis, BullMQ. O que NÃO é: as rotas, o roteamento, os middlewares de corpo e
+ * o handler de erro.
+ */
+
+const estado = vi.hoisted(() => ({
+  double: null as unknown as ReturnType<
+    typeof import("./adminUsersHarness.test").criarSupabaseDouble
+  >,
+  stripeUpdate: null as unknown as ReturnType<typeof vi.fn>,
+  invalidateProCache: null as unknown as ReturnType<typeof vi.fn>,
+}));
+
+vi.mock("../lib/queue", () => ({
+  emailQueue: null,
+  enqueueEmail: vi.fn(),
+  createEmailWorker: vi.fn(),
+}));
+vi.mock("../lib/redis", () => ({
+  queueConnection: null,
+  cacheConnection: null,
+}));
+vi.mock("../lib/env", () => ({
+  env: {
+    supabaseUrl: "https://exemplo.supabase.co",
+    supabaseAnonKey: "anon",
+    supabaseServiceRoleKey: "service",
+    isProd: false,
+    devProUserIds: [],
+    stripeSecretKey: "sk_test_x",
+    billingEnabled: false,
+    posthogApiKey: "",
+    posthogProjectId: "",
+    posthogHost: "https://us.posthog.com",
+    rateLimitMaxRequests: 1000,
+  },
+}));
+vi.mock("../lib/supabaseAdmin", () => ({
+  get supabaseAdmin() {
+    return estado.double.client;
+  },
+}));
+vi.mock("../lib/stripeClient", () => ({
+  getStripe: () => ({ customers: { update: estado.stripeUpdate } }),
+  STRIPE_API_VERSION: "2026-06-24.dahlia",
+}));
+vi.mock("../lib/proStatusCache", () => ({
+  invalidateProStatusCache: (...a: unknown[]) =>
+    estado.invalidateProCache(...a),
+  getCachedProStatus: async () => null,
+  setCachedProStatus: async () => {},
+}));
+// AUTENTICACAO: injeta um admin. As guardas em si são verificadas em
+// adminUsersGuards.test.ts, que NÃO as mocka.
+vi.mock("../middleware/auth", () => ({
+  requireAuth: (
+    req: Record<string, unknown>,
+    _res: unknown,
+    next: () => void,
+  ) => {
+    req.user = { id: "admin-1", email: "admin@x.com", role: "authenticated" };
+    next();
+  },
+  requireAdmin: (_req: unknown, _res: unknown, next: () => void) => next(),
+  checkProStatus: (_req: unknown, _res: unknown, next: () => void) => next(),
+  requirePro: (_req: unknown, _res: unknown, next: () => void) => next(),
+  validateSupabaseJwt: (_req: unknown, _res: unknown, next: () => void) =>
+    next(),
+  resolveProStatus: async () => false,
+  isDevProUser: () => false,
+}));
+
+import {
+  criarSupabaseDouble,
+  type RespostaTabela,
+} from "./adminUsersHarness.test";
+import adminRouter from "./admin";
+import { criarClienteAdmin } from "./adminTestClient";
+
+const chamarAdmin = criarClienteAdmin(adminRouter);
+
+const UID = "11111111-1111-1111-1111-111111111111";
+
+const PERFIL_BASE = {
+  user_id: UID,
+  name: "Ana",
+  full_name: "Ana Moura",
+  gender: "feminino",
+  bio: null,
+  area_interesse: null,
+  nivel_atual: null,
+  objetivo: null,
+  headline: null,
+  city: null,
+  uf: null,
+  career_goal: null,
+  github_url: null,
+  linkedin_url: null,
+  website_url: null,
+  updated_at: "2026-07-30T12:00:00Z",
+};
+
+function montar(
+  respostas: Record<string, RespostaTabela | (() => RespostaTabela)>,
+  authAdmin: Record<string, unknown> = {},
+) {
+  estado.double = criarSupabaseDouble(respostas, authAdmin);
+}
+
+beforeEach(() => {
+  estado.stripeUpdate = vi.fn(async () => ({}));
+  estado.invalidateProCache = vi.fn(async () => {});
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+// ---------------------------------------------------------------------------
+// PATCH /users/:id
+// ---------------------------------------------------------------------------
+
+describe("PATCH /users/:id", () => {
+  it("salva o campo permitido e grava a auditoria ANTES do update", async () => {
+    montar({
+      profiles: { rows: [PERFIL_BASE] },
+      content_audit_logs: { rows: [{}] },
+    });
+
+    const r = await chamarAdmin("PATCH", `/users/${UID}`, {
+      name: "Ana Paula",
+    });
+
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ data: { updated: true, fields: ["name"] } });
+
+    const ops = estado.double.chamadas.map((c) => `${c.op} ${c.table}`);
+    // Ordem: le o perfil -> AUDITA -> escreve. Auditar depois deixaria janela
+    // para escrita sem rastro.
+    expect(ops).toEqual([
+      "select profiles",
+      "insert content_audit_logs",
+      "update profiles",
+    ]);
+
+    const audit = estado.double.de("content_audit_logs")[0].payload!;
+    expect(audit.action).toBe("update_profile");
+    expect(audit.actor_user_id).toBe("admin-1");
+    expect(audit.before_json).toEqual({ name: "Ana" });
+    expect(audit.after_json).toEqual({ name: "Ana Paula" });
+  });
+
+  it("campo fora da allowlist vira 400, sem tocar audit nem tabela", async () => {
+    montar({ profiles: { rows: [PERFIL_BASE] } });
+
+    const r = await chamarAdmin("PATCH", `/users/${UID}`, { cpf: "123" });
+
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_field");
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+    expect(
+      estado.double.de("profiles").filter((c) => c.op === "update"),
+    ).toHaveLength(0);
+  });
+
+  it("validação de tamanho vira 400 antes de qualquer escrita", async () => {
+    montar({ profiles: { rows: [PERFIL_BASE] } });
+
+    const r = await chamarAdmin("PATCH", `/users/${UID}`, {
+      headline: "x".repeat(141),
+    });
+
+    expect(r.status).toBe(400);
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+  });
+
+  it("requisição SEM mudança não audita e não toca a tabela", async () => {
+    // profiles tem trigger de updated_at: um update vazio bateria o carimbo e
+    // deixaria rastro de "editado agora" sobre nada.
+    montar({ profiles: { rows: [PERFIL_BASE] } });
+
+    const r = await chamarAdmin("PATCH", `/users/${UID}`, { name: "Ana" });
+
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ data: { updated: false, fields: [] } });
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+    expect(
+      estado.double.de("profiles").filter((c) => c.op === "update"),
+    ).toHaveLength(0);
+  });
+
+  it("falha do AUDIT aborta a escrita (fail-closed)", async () => {
+    montar({
+      profiles: { rows: [PERFIL_BASE] },
+      content_audit_logs: { error: { message: "check constraint" } },
+    });
+
+    const r = await chamarAdmin("PATCH", `/users/${UID}`, {
+      name: "Ana Paula",
+    });
+
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("audit_failed");
+    expect(
+      estado.double.de("profiles").filter((c) => c.op === "update"),
+    ).toHaveLength(0);
+  });
+
+  it("updated_at divergente vira 409 antes do audit", async () => {
+    montar({ profiles: { rows: [PERFIL_BASE] } });
+
+    const r = await chamarAdmin("PATCH", `/users/${UID}`, {
+      name: "Ana Paula",
+      expected_updated_at: "2020-01-01T00:00:00Z",
+    });
+
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("stale_profile");
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+  });
+
+  it("UUID inválido vira 400 sem consultar nada", async () => {
+    montar({});
+    const r = await chamarAdmin("PATCH", "/users/nao-e-uuid", { name: "x" });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_user_id");
+    expect(estado.double.chamadas).toHaveLength(0);
+  });
+
+  it("usuário inexistente vira 404", async () => {
+    montar({ profiles: { rows: [] } });
+    const r = await chamarAdmin("PATCH", `/users/${UID}`, { name: "x" });
+    expect(r.status).toBe(404);
+    expect(r.body.error.code).toBe("not_found");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /users/:id/email
+// ---------------------------------------------------------------------------
+
+describe("POST /users/:id/email", () => {
+  type RespostaAuth = { data: unknown; error: unknown };
+  function authComEmail(email: string | null, erro: unknown = null) {
+    return {
+      getUserById: vi.fn(
+        async (): Promise<RespostaAuth> => ({
+          data: erro
+            ? null
+            : { user: { id: UID, email, user_metadata: { name: "Ana" } } },
+          error: erro,
+        }),
+      ),
+      updateUserById: vi.fn(
+        async (): Promise<RespostaAuth> => ({ data: {}, error: null }),
+      ),
+    };
+  }
+
+  it("troca com sucesso: audit, Auth, espelho e Stripe, nessa ordem", async () => {
+    const auth = authComEmail("velho@x.com");
+    montar(
+      {
+        content_audit_logs: { rows: [{}] },
+        profiles: { rows: [{ user_id: UID }] },
+        subscriptions: { rows: [{ provider_customer_id: "cus_1" }] },
+      },
+      auth,
+    );
+
+    const r = await chamarAdmin("POST", `/users/${UID}/email`, {
+      email: "novo@x.com",
+    });
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toMatchObject({ changed: true, email: "novo@x.com" });
+
+    const ops = estado.double.chamadas.map((c) => `${c.op} ${c.table}`);
+    expect(ops[0]).toBe("insert content_audit_logs");
+    expect(ops).toContain("update profiles");
+
+    const audit = estado.double.de("content_audit_logs")[0].payload!;
+    expect(audit.action).toBe("update_email");
+    expect(audit.before_json).toEqual({ email: "velho@x.com" });
+    expect(audit.after_json).toEqual({ email: "novo@x.com" });
+
+    // user_metadata vai COMPLETO, preservando o que já existia.
+    const args = auth.updateUserById.mock.calls[0] as unknown[];
+    expect(args[1]).toMatchObject({
+      email: "novo@x.com",
+      email_confirm: true,
+      user_metadata: { name: "Ana", email: "novo@x.com" },
+    });
+
+    expect(estado.stripeUpdate).toHaveBeenCalledWith("cus_1", {
+      email: "novo@x.com",
+    });
+  });
+
+  it("colisão no Auth vira 409 legível, sem vazar a mensagem crua", async () => {
+    const auth = authComEmail("velho@x.com");
+    auth.updateUserById = vi.fn(
+      async (): Promise<RespostaAuth> => ({
+        data: null,
+        error: {
+          message: "A user with this email address has already been registered",
+        },
+      }),
+    );
+    montar({ content_audit_logs: { rows: [{}] } }, auth);
+
+    const r = await chamarAdmin("POST", `/users/${UID}/email`, {
+      email: "ocupado@x.com",
+    });
+
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("email_taken");
+    expect(r.body.error.message).toBe("Este e-mail já pertence a outra conta.");
+    expect(r.body.error.message).not.toContain("already been registered");
+    // Espelho NÃO foi tocado.
+    expect(estado.double.de("profiles")).toHaveLength(0);
+  });
+
+  it("falha do espelho DEPOIS do Auth: 500 próprio e INCONSISTENCIA logada", async () => {
+    const auth = authComEmail("velho@x.com");
+    montar(
+      {
+        content_audit_logs: { rows: [{}] },
+        profiles: { error: { message: "timeout" } },
+      },
+      auth,
+    );
+    const erroSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await chamarAdmin("POST", `/users/${UID}/email`, {
+      email: "novo@x.com",
+    });
+
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("profile_mirror_failed");
+    expect(
+      erroSpy.mock.calls.some((c) => String(c[0]).includes("INCONSISTENCIA")),
+    ).toBe(true);
+    // NÃO tenta reverter o Auth.
+    expect(auth.updateUserById).toHaveBeenCalledTimes(1);
+  });
+
+  it("falha da Stripe NÃO derruba a troca", async () => {
+    const auth = authComEmail("velho@x.com");
+    montar(
+      {
+        content_audit_logs: { rows: [{}] },
+        profiles: { rows: [{ user_id: UID }] },
+        subscriptions: { rows: [{ provider_customer_id: "cus_1" }] },
+      },
+      auth,
+    );
+    estado.stripeUpdate = vi.fn(async () => {
+      throw new Error("stripe fora do ar");
+    });
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const r = await chamarAdmin("POST", `/users/${UID}/email`, {
+      email: "novo@x.com",
+    });
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toMatchObject({ changed: true, stripe_updated: false });
+  });
+
+  it("sem provider_customer_id NÃO chama a Stripe", async () => {
+    const auth = authComEmail("velho@x.com");
+    montar(
+      {
+        content_audit_logs: { rows: [{}] },
+        profiles: { rows: [{ user_id: UID }] },
+        subscriptions: { rows: [] },
+      },
+      auth,
+    );
+
+    const r = await chamarAdmin("POST", `/users/${UID}/email`, {
+      email: "novo@x.com",
+    });
+
+    expect(r.status).toBe(200);
+    expect(estado.stripeUpdate).not.toHaveBeenCalled();
+  });
+
+  it("reenvio do MESMO e-mail é idempotente: sem audit, sem Auth", async () => {
+    const auth = authComEmail("igual@x.com");
+    montar({}, auth);
+
+    const r = await chamarAdmin("POST", `/users/${UID}/email`, {
+      email: "  IGUAL@x.com ",
+    });
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toEqual({ changed: false, email: "igual@x.com" });
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+    expect(auth.updateUserById).not.toHaveBeenCalled();
+  });
+
+  it("formato inválido vira 400 sem tocar em nada", async () => {
+    montar({}, authComEmail("velho@x.com"));
+    const r = await chamarAdmin("POST", `/users/${UID}/email`, {
+      email: "sem-arroba",
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_email");
+    expect(estado.double.chamadas).toHaveLength(0);
+  });
+
+  it("falha do AUDIT aborta antes de tocar o Auth", async () => {
+    const auth = authComEmail("velho@x.com");
+    montar({ content_audit_logs: { error: { message: "check" } } }, auth);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await chamarAdmin("POST", `/users/${UID}/email`, {
+      email: "novo@x.com",
+    });
+
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("audit_failed");
+    expect(auth.updateUserById).not.toHaveBeenCalled();
+  });
+
+  it("perfil sem linha em auth.users vira 404", async () => {
+    montar({}, authComEmail(null, { message: "not found" }));
+    const r = await chamarAdmin("POST", `/users/${UID}/email`, {
+      email: "novo@x.com",
+    });
+    expect(r.status).toBe(404);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// influencer e reveal-cpf
+// ---------------------------------------------------------------------------
+
+describe("POST /users/:id/influencer", () => {
+  it("concede: audita, insere e invalida o cache de Pro", async () => {
+    montar({
+      influencers: { rows: [] },
+      content_audit_logs: { rows: [{}] },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/influencer`, {
+      note: "parceria",
+    });
+
+    expect(r.status).toBe(201);
+    const ops = estado.double.chamadas.map((c) => `${c.op} ${c.table}`);
+    expect(ops).toEqual([
+      "select influencers",
+      "insert content_audit_logs",
+      "insert influencers",
+    ]);
+    expect(estado.double.de("content_audit_logs")[0].payload!.action).toBe(
+      "grant",
+    );
+    // Sem isto o acesso Pro só valeria depois do TTL de 60s do cache.
+    expect(estado.invalidateProCache).toHaveBeenCalledWith(UID);
+  });
+
+  it("quem já é influencer não ganha segunda linha nem segunda auditoria", async () => {
+    montar({
+      influencers: {
+        rows: [{ id: "i1", granted_at: "2026-01-01", note: null }],
+      },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/influencer`, {});
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toEqual({ granted: false, already_active: true });
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+  });
+
+  it("falha do audit aborta a concessão", async () => {
+    montar({
+      influencers: { rows: [] },
+      content_audit_logs: { error: { message: "check" } },
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await chamarAdmin("POST", `/users/${UID}/influencer`, {});
+
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("audit_failed");
+    expect(
+      estado.double.de("influencers").filter((c) => c.op === "insert"),
+    ).toHaveLength(0);
+    expect(estado.invalidateProCache).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /users/:id/influencer/revoke", () => {
+  it("revoga: audita antes, atualiza e invalida o cache", async () => {
+    montar({
+      influencers: {
+        rows: [
+          { id: "i1", granted_at: "2026-01-01", granted_by: "a", note: null },
+        ],
+      },
+      content_audit_logs: { rows: [{}] },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/influencer/revoke`, {});
+
+    expect(r.status).toBe(200);
+    const ops = estado.double.chamadas.map((c) => `${c.op} ${c.table}`);
+    expect(ops).toEqual([
+      "select influencers",
+      "insert content_audit_logs",
+      "update influencers",
+    ]);
+    expect(estado.invalidateProCache).toHaveBeenCalledWith(UID);
+  });
+
+  it("revogar quem não é influencer ativo vira 404 próprio", async () => {
+    montar({ influencers: { rows: [] } });
+    const r = await chamarAdmin("POST", `/users/${UID}/influencer/revoke`, {});
+    expect(r.status).toBe(404);
+    expect(r.body.error.code).toBe("influencer_not_active");
+  });
+});
+
+describe("POST /users/:id/reveal-cpf", () => {
+  it("audita ANTES de devolver o número", async () => {
+    montar({
+      profiles: { rows: [{ cpf: "39053344705" }] },
+      content_audit_logs: { rows: [{}] },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/reveal-cpf`, {});
+
+    expect(r.status).toBe(200);
+    expect(r.body.data.cpf).toContain("390");
+    const ops = estado.double.chamadas.map((c) => `${c.op} ${c.table}`);
+    expect(ops).toEqual(["select profiles", "insert content_audit_logs"]);
+    expect(estado.double.de("content_audit_logs")[0].payload!.action).toBe(
+      "reveal",
+    );
+  });
+
+  it("audit falhando NÃO devolve o CPF", async () => {
+    montar({
+      profiles: { rows: [{ cpf: "39053344705" }] },
+      content_audit_logs: { error: { message: "check" } },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/reveal-cpf`, {});
+
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("audit_failed");
+    expect(JSON.stringify(r.body)).not.toContain("39053344705");
+  });
+
+  it("usuário sem CPF vira 404 próprio, sem auditar", async () => {
+    montar({ profiles: { rows: [{ cpf: null }] } });
+    const r = await chamarAdmin("POST", `/users/${UID}/reveal-cpf`, {});
+    expect(r.status).toBe(404);
+    expect(r.body.error.code).toBe("cpf_not_found");
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ESCOPO DA ESCRITA. É a asserção de maior valor do arquivo: o dublê não
+// executa SQL, então um UPDATE sem filtro devolveria "sucesso" aqui e
+// reescreveria a TABELA INTEIRA em produção. O que dá para afirmar é que o
+// filtro foi pedido.
+// ---------------------------------------------------------------------------
+
+describe("nenhum UPDATE sai sem filtro de escopo", () => {
+  it("PATCH /users/:id atualiza apenas a linha do usuário", async () => {
+    montar({
+      profiles: { rows: [PERFIL_BASE] },
+      content_audit_logs: { rows: [{}] },
+    });
+
+    await chamarAdmin("PATCH", `/users/${UID}`, { name: "Ana Paula" });
+
+    const update = estado.double.de("profiles").find((c) => c.op === "update")!;
+    expect(update.filtros.length).toBeGreaterThan(0);
+    expect(
+      update.filtros.some(
+        (f) => f.tipo === "eq" && f.coluna === "user_id" && f.valor === UID,
+      ),
+    ).toBe(true);
+  });
+
+  it("PATCH com expected_updated_at repete a trava no PRÓPRIO update (ponto atômico)", async () => {
+    montar({
+      profiles: { rows: [PERFIL_BASE] },
+      content_audit_logs: { rows: [{}] },
+    });
+
+    await chamarAdmin("PATCH", `/users/${UID}`, {
+      name: "Ana Paula",
+      expected_updated_at: PERFIL_BASE.updated_at,
+    });
+
+    const update = estado.double.de("profiles").find((c) => c.op === "update")!;
+    // Sem isto, entre ler e escrever existe janela para outro admin salvar.
+    expect(
+      update.filtros.some(
+        (f) => f.coluna === "updated_at" && f.valor === PERFIL_BASE.updated_at,
+      ),
+    ).toBe(true);
+  });
+
+  it("troca de e-mail atualiza apenas a linha do usuário", async () => {
+    const auth = {
+      getUserById: vi.fn(async () => ({
+        data: { user: { id: UID, email: "velho@x.com", user_metadata: {} } },
+        error: null,
+      })),
+      updateUserById: vi.fn(async () => ({ data: {}, error: null })),
+    };
+    montar(
+      {
+        content_audit_logs: { rows: [{}] },
+        profiles: { rows: [{ user_id: UID }] },
+        subscriptions: { rows: [] },
+      },
+      auth,
+    );
+
+    await chamarAdmin("POST", `/users/${UID}/email`, { email: "novo@x.com" });
+
+    const update = estado.double.de("profiles").find((c) => c.op === "update")!;
+    expect(
+      update.filtros.some(
+        (f) => f.tipo === "eq" && f.coluna === "user_id" && f.valor === UID,
+      ),
+    ).toBe(true);
+  });
+
+  it("revogar influencer filtra pela concessão E por revoked_at nulo", async () => {
+    montar({
+      influencers: {
+        rows: [
+          { id: "i1", granted_at: "2026-01-01", granted_by: "a", note: null },
+        ],
+      },
+      content_audit_logs: { rows: [{}] },
+    });
+
+    await chamarAdmin("POST", `/users/${UID}/influencer/revoke`, {});
+
+    const update = estado.double
+      .de("influencers")
+      .find((c) => c.op === "update")!;
+    expect(
+      update.filtros.some((f) => f.coluna === "id" && f.valor === "i1"),
+    ).toBe(true);
+    // O `is revoked_at null` evita revogar duas vezes numa corrida.
+    expect(
+      update.filtros.some((f) => f.tipo === "is" && f.coluna === "revoked_at"),
+    ).toBe(true);
+  });
+
+  it("a concessão de influencer grava o ator, não um id qualquer", async () => {
+    montar({ influencers: { rows: [] }, content_audit_logs: { rows: [{}] } });
+
+    await chamarAdmin("POST", `/users/${UID}/influencer`, { note: "x" });
+
+    const insert = estado.double
+      .de("influencers")
+      .find((c) => c.op === "insert")!;
+    expect(insert.payload).toMatchObject({
+      user_id: UID,
+      granted_by: "admin-1",
+    });
+  });
+});
