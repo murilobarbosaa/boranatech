@@ -106,3 +106,37 @@ Provado com o mesmo token inválido:
 | token inválido | **exit 1**, com a mensagem | 0 |
 | token inválido + `SENTRY_SOURCEMAPS_OPCIONAL=1` | exit 0, com aviso | 0 |
 | sem token nenhum | exit 0, sem aviso | 0 |
+
+## Adendo 2026-07-30: reserva de cota órfã no handler de STREAM
+
+Achado durante a Fase 2 do Roadmap com IA, ao investigar por que existiam 3 linhas presas em `reserved` na
+tabela `ai_usage_logs` (tool `resume-builder`, a mais antiga de 2026-07-30 03:53). **Não foi corrigido**:
+está fora do escopo daquela fase e vira demanda própria.
+
+**O mecanismo compartilhado está correto.** `server/lib/aiUsage.ts` faz o certo: `logAiUsage` procura a
+reserva por `(usuario, tool)` e a converte no status final, e o contador do dia só soma `success` e
+`reserved`, então uma reserva que vira `error` devolve a vaga sozinha. Não há o que consertar ali.
+
+**O defeito é de ROTA, e é uma assimetria entre dois handlers do mesmo arquivo.** Em
+`server/routes/ai.ts`, os dois handlers reservam vaga chamando `checkAiDailyLimit`, mas só um deles fecha
+todos os caminhos de saída:
+
+| caminho | handler não-streaming (reserva em `:67`) | handler de stream (reserva em `:298`) |
+| --- | --- | --- |
+| mensagens inválidas | loga em `:120` | **`:323` e `:336`, sem logar** |
+| payload grande demais | loga em `:141` | **`:342`, sem logar** |
+| chave da OpenAI ausente | loga em `:146` | **`:346`, sem logar** |
+
+Nos quatro casos do stream a rota faz `return next(createError(...))` direto, a reserva fica em `reserved` e
+ocupa uma vaga da cota da pessoa até expirar (10 minutos, pela `reserve_ai_usage_slot`).
+
+**Alcance maior do que parece:** `/api/ai/stream` é a rota genérica, então isso atinge **toda tool servida
+por ela**, não só o `resume-builder` em que as órfãs foram observadas.
+
+**Correção sugerida** (uma linha por caminho, no molde do handler que já está certo): chamar
+`logAiUsage({ status: "error", ... })` antes de cada um dos quatro `return`. A alternativa melhor, e mais
+cara, é a da regra "proteção dentro da função, nunca no call site" do `CLAUDE.md`: um wrapper que garanta a
+liberação no `finally`, para não depender de alguém lembrar em cada saída nova.
+
+**As 3 linhas órfãs não foram removidas** (limpeza de dado precisa de autorização explícita). Elas expiram
+sozinhas para efeito de contagem; o que fica é o registro histórico com status errado.
