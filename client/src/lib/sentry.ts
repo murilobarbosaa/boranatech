@@ -120,6 +120,50 @@ export function initClientSentry(): void {
 }
 
 /**
+ * Identidade do evento: SÓ o id, nunca contato.
+ *
+ * Por que existe: as 10 issues do projeto de browser vinham com
+ * `usuarios afetados: 0`, e um zero nessa coluna não é "ninguém foi afetado", é
+ * "não dá para saber". Sem ela não há como separar uma pessoa insistindo 29
+ * vezes de 29 pessoas atingidas, que é exatamente a pergunta que decide
+ * prioridade. O servidor já resolveu isso em `server/app.ts` (`scope.setUser({
+ * id: req.user.id })`, com o comentário "sem isto todo evento vinha com 0
+ * usuarios"); o client ficou de fora porque a inicialização do SDK acontece em
+ * `main.tsx`, no load do módulo, quando ainda não existe sessão nenhuma para ler.
+ *
+ * A construção é por ALLOWLIST, não por remoção: o objeto devolvido é montado
+ * campo a campo com uma chave só. Não é `{...user, email: undefined}`, que
+ * carregaria qualquer campo novo que a sessão passe a ter. `sendDefaultPii` fica
+ * `false` no init, então o SDK também não anexa IP nem headers por conta própria.
+ *
+ * O id é um UUID do Supabase: não é e-mail, não é nome, não é handle, e não
+ * resolve para nenhum dos três sem o nosso banco.
+ */
+export function buildSentryUser(
+  session: { user?: { id?: unknown } | null } | null | undefined,
+): { id: string } | null {
+  const id = session?.user?.id;
+  if (typeof id !== "string" || id.length === 0) return null;
+  return { id };
+}
+
+/**
+ * Aplica (ou limpa) a identidade no escopo global do Sentry.
+ *
+ * Chamada de UM lugar só, um efeito sobre `session` no `AuthProvider`, e isso é
+ * a regra do CLAUDE.md sobre guarda dentro da função em vez de no call site: o
+ * `setSession` do AuthContext acontece em cinco pontos diferentes (carga
+ * inicial, recuperação, callback, refresh, `SIGNED_OUT`), e uma chamada por
+ * ponto some no primeiro que alguém esquecer. Reagindo à mudança de `session`,
+ * o logout está coberto por construção: sessão vira null, identidade vira null.
+ */
+export function identifySentryUser(
+  session: { user?: { id?: unknown } | null } | null | undefined,
+): void {
+  Sentry.setUser(buildSentryUser(session));
+}
+
+/**
  * Amostragem por tipo de evento. Exportada para ser testavel sem subir o SDK.
  *
  * `sortear` e injetavel pelo mesmo motivo: um teste que chama `Math.random`

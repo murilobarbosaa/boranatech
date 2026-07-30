@@ -3,6 +3,7 @@ import {
   captureUserSignedUpForOAuth,
   signupSourceFromUrl,
 } from "@/lib/analytics";
+import { identifySentryUser } from "@/lib/sentry";
 import { assertSupabaseConfigured, supabase } from "@/lib/supabase";
 import {
   hasOAuthCallbackInUrl,
@@ -207,6 +208,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [callbackSlow, setCallbackSlow] = useState(false);
   const [consentWriteInFlight, setConsentWriteInFlight] = useState(false);
   const [consentWriteConfirmed, setConsentWriteConfirmed] = useState(0);
+
+  // Identidade do Sentry, derivada da sessão. UM lugar só, de propósito: o
+  // `setSession` acontece em cinco pontos deste arquivo, e uma chamada por ponto
+  // sumiria no primeiro que alguém esquecesse. Reagir à mudança cobre todos por
+  // construção, inclusive o logout (sessão null -> identidade null). Só o id vai;
+  // a montagem por allowlist mora em `buildSentryUser`.
+  useEffect(() => {
+    identifySentryUser(session);
+  }, [session]);
 
   // Trava de "um flush por carga de página". SIGNED_IN pode chegar mais de uma
   // vez (StrictMode em dev, reassinatura do listener) e sem isto o mesmo aceite

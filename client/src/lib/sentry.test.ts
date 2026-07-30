@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { amostrarPorOrigem, limparBreadcrumb } from "./sentry";
+import { amostrarPorOrigem, buildSentryUser, limparBreadcrumb } from "./sentry";
 
 /** Trecho realista do que o usuário cola: tem telefone e e-mail no meio. */
 const TEXTO_DE_PERFIL =
@@ -102,5 +102,78 @@ describe("limparBreadcrumb", () => {
       method: "GET",
       url: "https://x/api/bookmarks/",
     });
+  });
+});
+
+/**
+ * Identidade do evento (item 1 da Fase 4B).
+ *
+ * Duas propriedades, e a segunda e a que importa: o payload leva o id, e leva
+ * SO o id. `sendDefaultPii` esta `false` no init, entao o SDK nao anexa IP nem
+ * headers; o que sobra de risco e este objeto, e ele e montado por allowlist.
+ */
+describe("buildSentryUser", () => {
+  // Sessao realista do supabase-js: o `user` traz MUITO mais que o id, e e
+  // exatamente por isso que a montagem nao pode ser espalhamento.
+  const SESSAO = {
+    access_token: "eyJhbGciOiJIUzI1NiJ9.payload.assinatura",
+    refresh_token: "v1.MRq8v9-refresh",
+    user: {
+      id: "9f2b1c44-0e51-4a77-9d3a-1b8f5e6c2a10",
+      email: "ana.moura@exemplo.com",
+      phone: "+55 11 91234-5678",
+      user_metadata: { full_name: "Ana Ferreira Moura", avatar_url: "https://x/y.png" },
+      app_metadata: { provider: "google" },
+      created_at: "2026-01-02T03:04:05Z",
+    },
+  };
+
+  it("leva o id", () => {
+    expect(buildSentryUser(SESSAO)).toEqual({
+      id: "9f2b1c44-0e51-4a77-9d3a-1b8f5e6c2a10",
+    });
+  });
+
+  it("NAO leva contato nem nome: a chave e uma so", () => {
+    const u = buildSentryUser(SESSAO);
+    expect(Object.keys(u ?? {})).toEqual(["id"]);
+    const serializado = JSON.stringify(u);
+    expect(serializado).not.toContain("ana.moura@exemplo.com");
+    expect(serializado).not.toContain("91234-5678");
+    expect(serializado).not.toContain("Ana Ferreira Moura");
+    expect(serializado).not.toContain("avatar_url");
+    expect(serializado).not.toContain("google");
+  });
+
+  it("NAO leva token, que e o que mais doi vazar", () => {
+    const serializado = JSON.stringify(buildSentryUser(SESSAO));
+    expect(serializado).not.toContain("eyJ");
+    expect(serializado).not.toContain("refresh");
+  });
+
+  it("campo novo na sessao NAO entra sozinho (allowlist, nao remocao)", () => {
+    // O teste que pega a regressao futura: se a montagem virar espalhamento,
+    // qualquer campo que o Supabase acrescentar passa a vazar sem ninguem
+    // decidir isso. Com allowlist, o campo novo simplesmente nao aparece.
+    const comCampoNovo = {
+      ...SESSAO,
+      user: { ...SESSAO.user, cpf: "000.000.000-00", endereco: "Rua Exemplo, 100" },
+    };
+    expect(buildSentryUser(comCampoNovo)).toEqual({
+      id: "9f2b1c44-0e51-4a77-9d3a-1b8f5e6c2a10",
+    });
+  });
+
+  it("logout e sessao ausente devolvem null, que limpa a identidade", () => {
+    expect(buildSentryUser(null)).toBeNull();
+    expect(buildSentryUser(undefined)).toBeNull();
+    expect(buildSentryUser({})).toBeNull();
+    expect(buildSentryUser({ user: null })).toBeNull();
+    expect(buildSentryUser({ user: {} })).toBeNull();
+  });
+
+  it("id que nao e string nao vira identidade torta", () => {
+    expect(buildSentryUser({ user: { id: 123 } })).toBeNull();
+    expect(buildSentryUser({ user: { id: "" } })).toBeNull();
   });
 });
