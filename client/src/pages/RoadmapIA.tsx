@@ -116,6 +116,7 @@ const COPY = {
   summaryMotivation: "Motivacao",
   summaryConstraints: "Obstaculos",
   generate: "Gerar meu roadmap",
+  generating: "Gerando...",
   // Substitui o antigo finalError ("Faltou alguma informacao essencial"), que
   // nao dizia O QUE faltava nem oferecia saida.
   missingTitle: "Falta pouco pra gerar",
@@ -550,10 +551,18 @@ export default function RoadmapIA() {
   // Gera com o payload que o buildGenerationIntake montou. Sem caminho de
   // validacao proprio aqui: se canGenerate e true, o payload existe.
   const payloadToGenerate = readiness.intake;
+  // Trava o botao entre o clique e a resposta. `state.phase` so vira "running"
+  // depois do primeiro frame SSE, entao ele sozinho deixa uma janela aberta.
+  const [generating, setGenerating] = useState(false);
   const generate = useCallback(async () => {
-    if (!payloadToGenerate) return;
-    await start((handlers) => streamGeneration(payloadToGenerate, handlers));
-  }, [payloadToGenerate, start]);
+    if (!payloadToGenerate || generating) return;
+    setGenerating(true);
+    try {
+      await start((handlers) => streamGeneration(payloadToGenerate, handlers));
+    } finally {
+      setGenerating(false);
+    }
+  }, [generating, payloadToGenerate, start]);
 
   const resume = async (slug: string) => {
     await start((handlers) => streamResume(slug, handlers));
@@ -738,13 +747,19 @@ export default function RoadmapIA() {
                     <p className="mt-3 text-xs font-semibold text-slate-500">
                       {chatBlocked ? COPY.summaryHintBlocked : COPY.summaryHint}
                     </p>
+                    {/* disabled enquanto a requisicao esta em voo: sem isto,
+                        dois cliques disparavam duas geracoes, e as duas passavam
+                        pela checagem de concorrencia do servidor antes de
+                        qualquer insert. O indice unico parcial fecha a corrida
+                        no banco; isto evita provoca-la. */}
                     <button
                       type="button"
                       onClick={() => void generate()}
-                      className="bnt-pressable mt-4 inline-flex items-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-violet-600 px-5 py-3 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
+                      disabled={generating}
+                      className="bnt-pressable mt-4 inline-flex items-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-violet-600 px-5 py-3 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] disabled:translate-y-0 disabled:opacity-50 disabled:shadow-[3px_3px_0_#0f172a]"
                     >
                       <Sparkles className="h-4 w-4" />
-                      {COPY.generate}
+                      {generating ? COPY.generating : COPY.generate}
                     </button>
                   </div>
                 ) : (
