@@ -34,6 +34,7 @@ import {
   subscriptionGrantsPro,
   type SubscriptionRow,
 } from "../lib/userListEnrichment";
+import { buildProfilePatch } from "../lib/profileEdit";
 import { buildTransactionList, type FinanceRow } from "../lib/userTransactions";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -1607,6 +1608,133 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
 
     await invalidateProStatusCache(uid);
     res.json({ data: { revoked: true } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Edicao de cadastro pelo admin. LEITURA sensivel e escrita sensivel ficam de
+// fora: cpf, email e handle tem cada um o seu motivo, registrado em
+// ADMIN_EXCLUDED_PROFILE_FIELDS (shared/profileFields.ts), e a allowlist e
+// afirmada por teste contra a de /api/me.
+//
+// Nao invalida o cache de status Pro: nenhum destes campos entra no
+// is_user_pro (que olha subscriptions e influencers). Se um dia entrar, a
+// invalidacao vai aqui.
+router.patch("/users/:id", async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+      );
+    }
+
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    // expected_updated_at nao e campo de perfil: sai do corpo antes da
+    // allowlist, senao seria recusado como campo desconhecido.
+    const expectedUpdatedAt = body.expected_updated_at;
+    delete body.expected_updated_at;
+
+    const { data: atual, error: readError } = await supabaseAdmin
+      .from("profiles")
+      .select(
+        "name, full_name, gender, bio, area_interesse, nivel_atual, objetivo, headline, city, uf, career_goal, github_url, linkedin_url, website_url, updated_at",
+      )
+      .eq("user_id", uid)
+      .maybeSingle();
+
+    if (readError)
+      return next(dbError("PATCH /users/:id", readError, "Erro ao salvar."));
+    if (!atual)
+      return next(createError(404, "not_found", "Usuário não encontrado."));
+
+    // TRAVA OTIMISTA. Sao 2 admins hoje (medido), entao a colisao e improvavel;
+    // o que ela protege nao e o dado, e a AUDITORIA: sem isto, o segundo a
+    // salvar grava um before_json que ja era falso quando foi escrito, e o
+    // rastro passa a mentir justamente no registro que existe para nao mentir.
+    // A checagem se repete no .eq() do update, que e o ponto atomico.
+    if (
+      typeof expectedUpdatedAt === "string" &&
+      atual.updated_at !== expectedUpdatedAt
+    ) {
+      return next(
+        createError(
+          409,
+          "stale_profile",
+          "Este cadastro mudou depois que você abriu. Feche e abra de novo para ver o estado atual.",
+        ),
+      );
+    }
+
+    const patch = buildProfilePatch(atual as Record<string, unknown>, body);
+    if (!patch.ok) {
+      return next(createError(400, patch.error.code, patch.error.message));
+    }
+
+    // Sem mudanca efetiva: nao audita e NAO toca a tabela. profiles tem trigger
+    // `profiles_updated_at -> set_updated_at`, entao um update vazio ainda
+    // bateria o carimbo e deixaria rastro de "editado agora" sobre nada.
+    if (!patch.hasChanges) {
+      return res.json({ data: { updated: false, fields: [] } });
+    }
+
+    // AUDITORIA PRIMEIRO, fail-closed, no molde de POST /users/:id/influencer.
+    // NAO usa o helper logAudit(): ele engole o erro num console.warn, e aqui a
+    // ausencia de rastro tem que impedir a escrita, nao passar batida.
+    const { error: auditError } = await supabaseAdmin
+      .from("content_audit_logs")
+      .insert({
+        actor_user_id: req.user!.id,
+        action: "update_profile",
+        resource_type: "profile",
+        resource_id: uid,
+        resource_slug: null,
+        before_json: patch.before,
+        after_json: patch.after,
+      });
+    if (auditError) {
+      console.error("[admin] profile update audit failed:", auditError);
+      return next(
+        createError(
+          500,
+          "audit_failed",
+          "Não foi possível registrar a auditoria da edição.",
+        ),
+      );
+    }
+
+    // O .eq("updated_at") repete a trava, agora sem janela entre ler e
+    // escrever. Zero linhas afetadas = alguem salvou no meio do caminho.
+    let update = supabaseAdmin.from("profiles").update(patch.changes);
+    update = update.eq("user_id", uid);
+    if (typeof expectedUpdatedAt === "string") {
+      update = update.eq("updated_at", expectedUpdatedAt);
+    }
+    const { data: updated, error: updateError } = await update.select("user_id");
+
+    if (updateError)
+      return next(dbError("PATCH /users/:id", updateError, "Erro ao salvar."));
+
+    if (!updated || updated.length === 0) {
+      // Corrida real na janela de milissegundos. A linha de auditoria ja foi
+      // escrita e fica: o rastro registra a TENTATIVA, que e o lado seguro de
+      // errar (auditar demais, nunca de menos).
+      console.warn(
+        `[admin] PATCH /users/${uid}: update nao afetou linha (conflito de updated_at); audit ja gravado.`,
+      );
+      return next(
+        createError(
+          409,
+          "stale_profile",
+          "Este cadastro mudou depois que você abriu. Feche e abra de novo para ver o estado atual.",
+        ),
+      );
+    }
+
+    res.json({
+      data: { updated: true, fields: Object.keys(patch.changes) },
+    });
   } catch (err) {
     next(err);
   }
