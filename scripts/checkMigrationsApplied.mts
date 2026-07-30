@@ -179,7 +179,10 @@ const EXPECTED_TABLE_COUNT = 82;
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
 // numeros e ato deliberado, no mesmo commit da migration que cria ou remove o
 // objeto.
-const EXPECTED_FUNCTION_COUNT = 26;
+// 27 desde 20260730170000_ai_usage_excluded_tools.sql (cria
+// ai_usage_excluded_tools). Alterar este numero e ato deliberado, no mesmo
+// commit da migration que cria ou dropa a funcao.
+const EXPECTED_FUNCTION_COUNT = 27;
 const EXPECTED_TRIGGER_FUNCTION_COUNT = 4;
 
 /** Remove comentarios de linha e de bloco antes de qualquer parse. */
@@ -544,6 +547,117 @@ if (expostas === null) {
   } else {
     console.log(
       `[checkMigrationsApplied] ${funcoesVerificaveis.length} funcao(oes) declaradas existem no banco alvo (${funcoesTrigger} de trigger nao sao verificaveis por REST).`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ASSERCOES COMPORTAMENTAIS: a funcao existe E FAZ o que deveria.
+//
+// POR QUE ESTA SECAO EXISTE. Tudo acima verifica EXISTENCIA (a tabela existe, a
+// funcao existe). Existencia nao implica conteudo correto, e essa lacuna ja
+// custou caro: a migration 20260713160000_split_roadmap_intake_chat_quota.sql
+// so fazia `create or replace` do CORPO de get_ai_usage_today. A funcao ja
+// existia, entao o guard ficou verde por 17 dias sobre um banco em que a
+// mudanca nunca tinha sido aplicada, e cada turno do chat de intake do roadmap
+// cobrou uma vaga a mais da cota diaria de quem usava.
+//
+// POR QUE NAO COMPARAR O TEXTO DO CORPO. Porque o Postgres normaliza parte da
+// definicao, os arquivos usam $$ e $func$ aninhados, e mudanca de formatacao
+// viraria alarme falso. Guard ruidoso e guard que alguem desliga. Entao a
+// verificacao e COMPORTAMENTAL: chama a funcao e afirma o RESULTADO.
+//
+// REGRA (registrada tambem no CLAUDE.md): toda migration que so faz
+// `create or replace` de funcao PRECISA entrar aqui. Verificacao por nome nao a
+// enxerga, e sem assercao ela pode nunca chegar em producao sem nada acusar.
+//
+// A assercao e do TOTAL, nao da pertinencia: compara o conjunto inteiro, entao
+// tanto item faltando quanto item a mais derrubam. "Os que eu conheco estao la"
+// seria o mesmo tipo de instrumento que falha passando.
+interface AssercaoComportamental {
+  funcao: string;
+  args: Record<string, unknown>;
+  descricao: string;
+  // Recebe o que a RPC devolveu; devolve null se passou, ou o motivo da falha.
+  verificar: (resultado: unknown) => string | null;
+}
+
+function conjuntoIgual(recebido: unknown, esperado: string[]): string | null {
+  if (!Array.isArray(recebido)) {
+    return `esperava um array, veio ${JSON.stringify(recebido)?.slice(0, 120)}`;
+  }
+  const a = [...recebido].map(String).sort();
+  const b = [...esperado].sort();
+  if (a.length !== b.length || a.some((v, i) => v !== b[i])) {
+    return `esperado [${b.join(", ")}], recebido [${a.join(", ")}]`;
+  }
+  return null;
+}
+
+const ASSERCOES: AssercaoComportamental[] = [
+  {
+    funcao: "ai_usage_excluded_tools",
+    args: {},
+    descricao:
+      "lista canonica de tools com cota dedicada, excluidas da cota global",
+    verificar: (resultado) =>
+      conjuntoIgual(resultado, [
+        "agent-chat",
+        "interview-turn",
+        "career-plan-chat",
+        "roadmap-intake-chat",
+      ]),
+  },
+];
+
+async function chamarRpc(
+  funcao: string,
+  args: Record<string, unknown>,
+): Promise<{ ok: true; valor: unknown } | { ok: false; erro: string }> {
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${funcao}`, {
+      method: "POST",
+      headers: {
+        apikey: serviceRoleKey!,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(args),
+    });
+    if (!response.ok) {
+      const corpo = (await response.json().catch(() => null)) as {
+        code?: string;
+        message?: string;
+      } | null;
+      return {
+        ok: false,
+        erro: `HTTP ${response.status} ${corpo?.code ?? ""} ${corpo?.message ?? ""}`.trim(),
+      };
+    }
+    return { ok: true, valor: await response.json() };
+  } catch (err) {
+    return { ok: false, erro: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+for (const assercao of ASSERCOES) {
+  const chamada = await chamarRpc(assercao.funcao, assercao.args);
+  if (!chamada.ok) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] assercao comportamental SEM VEREDITO em public.${assercao.funcao}(): ${chamada.erro}. Se a funcao nao existe, a migration que a cria nao foi aplicada.`,
+    );
+    continue;
+  }
+  const falha = assercao.verificar(chamada.valor);
+  if (falha) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] public.${assercao.funcao}() nao faz o que a migration declara (${assercao.descricao}): ${falha}.`,
+    );
+  } else {
+    console.log(
+      `[checkMigrationsApplied] assercao comportamental ok: public.${assercao.funcao}() (${assercao.descricao}).`,
     );
   }
 }
