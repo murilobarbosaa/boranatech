@@ -1,3 +1,32 @@
+-- ============================================================================
+-- NUNCA APLICADA. SUPERADA PELA 20260730170000. NAO APLICAR.
+-- ============================================================================
+--
+-- Constatado em 2026-07-30 lendo o corpo vivo com pg_get_functiondef via
+-- Management API: get_ai_usage_today em producao excluia 3 tools, nao 4. Esta
+-- migration ficou 17 dias no repositorio sem chegar ao banco, e o guard
+-- (pnpm check:migrations) ficou VERDE o tempo todo, porque ele verificava
+-- funcao por NOME e o nome existia. Existencia nao implica conteudo.
+--
+-- Efeito enquanto durou: cada turno do chat de intake do Roadmap com IA
+-- consumia uma vaga da cota GLOBAL de IA, apesar de o chat ter cota dedicada
+-- propria. Cobranca dupla pelo mesmo uso. Medido: 273 linhas de
+-- 'roadmap-intake-chat' contadas indevidamente na global.
+--
+-- POR QUE NAO APLICAR AGORA: a 20260730170000_ai_usage_excluded_tools.sql
+-- carrega a MESMA mudanca por um mecanismo melhor (lista canonica em uma
+-- funcao, lida pelas duas consumidoras, mais assercao comportamental no guard).
+-- Aplicar esta primeiro criaria o corpo antigo so para a 170000 substituir em
+-- seguida: trabalho inutil com janela de risco no meio. Aplicar esta DEPOIS da
+-- 170000 seria pior ainda, porque REVERTERIA a unificacao.
+--
+-- O arquivo fica no historico por rastreabilidade: e ele que explica de onde
+-- veio a quarta entrada da lista canonica. Registrado em
+-- docs/debito-ledger-migrations.md.
+--
+-- O conteudo original segue abaixo, intocado.
+-- ============================================================================
+
 -- Separa a quota do chat de intake do roadmap com IA ('roadmap-intake-chat') da
 -- quota global das ferramentas de IA, espelhando o mecanismo do agente
 -- conversacional (20260628120000_split_agent_chat_quota.sql), dos turnos de
