@@ -83,7 +83,7 @@ import {
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { IntegrationsHealthPanel } from "@/components/admin/IntegrationsHealthPanel";
 import { PagesDashboard } from "@/components/admin/PagesDashboard";
-import { UsersDashboard } from "@/components/admin/UsersDashboard";
+import { UsersDashboard } from "@/components/admin/users/UsersDashboard";
 import PendingIntegration from "@/components/admin/PendingIntegration";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 import {
