@@ -859,3 +859,252 @@ describe("guarda de alteracao nao salva no funil requestClose", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 });
+
+describe("troca de e-mail (Fatia 5b)", () => {
+  function rotearEmail(over: Record<string, unknown> = {}) {
+    fetchMock.mockImplementation((path: string, init?: { method?: string }) => {
+      if (path.includes("/email-usage")) {
+        return Promise.resolve({
+          data: {
+            email: "ana@exemplo.com",
+            usage: [
+              {
+                table: "newsletter_subscribers",
+                label: "Newsletter",
+                count: 1,
+              },
+              {
+                table: "email_suppressions",
+                label: "Supressões de envio",
+                count: 0,
+              },
+              { table: "waitlist", label: "Lista de espera", count: 2 },
+            ],
+          },
+        });
+      }
+      if (path.endsWith("/email") && init?.method === "POST") {
+        const r = over.emailPost;
+        if (r instanceof Error) return Promise.reject(r);
+        return Promise.resolve(r ?? { data: { changed: true } });
+      }
+      if (path.includes("/transactions"))
+        return Promise.resolve({
+          data: {
+            items: [],
+            total_paid_cents: 0,
+            truncated: false,
+            limit: 200,
+          },
+        });
+      if (path.endsWith("/activity"))
+        return Promise.resolve({ data: { state: "ok", hasData: false } });
+      return Promise.resolve(detalhe());
+    });
+  }
+
+  async function abrirTrocaDeEmail() {
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: "Trocar e-mail" }));
+    return await screen.findByLabelText("Novo e-mail");
+  }
+
+  it("o rodape oferece a troca de e-mail", async () => {
+    rotearEmail();
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    const rodape = within(document.querySelector("footer") as HTMLElement);
+    expect(rodape.getByRole("button", { name: "Trocar e-mail" })).toBeTruthy();
+  });
+
+  it("passo 1 exige confirmacao digitada: divergente NAO avanca", async () => {
+    rotearEmail();
+    await abrirTrocaDeEmail();
+
+    fireEvent.change(screen.getByLabelText("Novo e-mail"), {
+      target: { value: "novo@exemplo.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirme o novo e-mail"), {
+      target: { value: "nvoo@exemplo.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(
+      await screen.findByText("Os dois e-mails não são iguais."),
+    ).toBeTruthy();
+    expect(screen.queryByText(/O login passa a ser/)).toBeNull();
+  });
+
+  it("formato invalido nao avanca e nem chama o servidor", async () => {
+    rotearEmail();
+    await abrirTrocaDeEmail();
+
+    fireEvent.change(screen.getByLabelText("Novo e-mail"), {
+      target: { value: "sem-arroba" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirme o novo e-mail"), {
+      target: { value: "sem-arroba" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByText("E-mail inválido.")).toBeTruthy();
+    expect(
+      fetchMock.mock.calls.some((c) => String(c[0]).endsWith("/email")),
+    ).toBe(false);
+  });
+
+  it("passo 2 lista os efeitos concretos, com as contagens", async () => {
+    rotearEmail();
+    await abrirTrocaDeEmail();
+
+    fireEvent.change(screen.getByLabelText("Novo e-mail"), {
+      target: { value: "novo@exemplo.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirme o novo e-mail"), {
+      target: { value: "novo@exemplo.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByText(/O login passa a ser/)).toBeTruthy();
+    expect(screen.getByText(/A senha não muda/)).toBeTruthy();
+    expect(screen.getByText(/recibos da Stripe/i)).toBeTruthy();
+    // Contagens das listas que NAO acompanham a troca.
+    expect(screen.getByText(/Newsletter/)).toBeTruthy();
+    expect(screen.getByText(/Lista de espera/)).toBeTruthy();
+  });
+
+  it("confirma e troca, com toast de sucesso", async () => {
+    rotearEmail();
+    await abrirTrocaDeEmail();
+
+    fireEvent.change(screen.getByLabelText("Novo e-mail"), {
+      target: { value: "novo@exemplo.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirme o novo e-mail"), {
+      target: { value: "novo@exemplo.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Trocar agora" }),
+    );
+
+    await waitFor(() => expect(toastSpy.acao).toHaveBeenCalled());
+    const post = fetchMock.mock.calls.find(
+      (c) =>
+        String(c[0]).endsWith("/email") &&
+        (c[1] as { method?: string })?.method === "POST",
+    );
+    expect(JSON.parse((post![1] as { body: string }).body)).toEqual({
+      email: "novo@exemplo.com",
+    });
+  });
+
+  it("colisao 409 vira mensagem legivel, nao code cru", async () => {
+    const erro = new Error("Este e-mail já pertence a outra conta.");
+    rotearEmail({ emailPost: erro });
+    await abrirTrocaDeEmail();
+
+    fireEvent.change(screen.getByLabelText("Novo e-mail"), {
+      target: { value: "ocupado@exemplo.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirme o novo e-mail"), {
+      target: { value: "ocupado@exemplo.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Trocar agora" }),
+    );
+
+    await waitFor(() =>
+      expect(toastSpy.erro).toHaveBeenCalledWith(
+        "Este e-mail já pertence a outra conta.",
+      ),
+    );
+  });
+
+  it("botao trava durante a operacao, contra duplo clique", async () => {
+    let liberar!: () => void;
+    fetchMock.mockImplementation((path: string, init?: { method?: string }) => {
+      if (path.endsWith("/email") && init?.method === "POST")
+        return new Promise((r) => {
+          liberar = () => r({ data: { changed: true } });
+        });
+      if (path.includes("/email-usage"))
+        return Promise.resolve({
+          data: { email: "ana@exemplo.com", usage: [] },
+        });
+      if (path.includes("/transactions"))
+        return Promise.resolve({
+          data: {
+            items: [],
+            total_paid_cents: 0,
+            truncated: false,
+            limit: 200,
+          },
+        });
+      if (path.endsWith("/activity"))
+        return Promise.resolve({ data: { state: "ok", hasData: false } });
+      return Promise.resolve(detalhe());
+    });
+
+    await abrirTrocaDeEmail();
+    fireEvent.change(screen.getByLabelText("Novo e-mail"), {
+      target: { value: "novo@exemplo.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirme o novo e-mail"), {
+      target: { value: "novo@exemplo.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Trocar agora" }),
+    );
+
+    await waitFor(() =>
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Trocando...",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Trocando..." }));
+
+    const posts = fetchMock.mock.calls.filter(
+      (c) =>
+        String(c[0]).endsWith("/email") &&
+        (c[1] as { method?: string })?.method === "POST",
+    );
+    expect(posts).toHaveLength(1);
+    liberar();
+  });
+
+  it("sair no meio da troca nao deixa rascunho pendente", async () => {
+    // Com o dialogo aberto, o "Fechar" do modal fica atras dele (o Radix marca
+    // os irmaos como aria-hidden), entao o caminho real de saida e cancelar. O
+    // que precisa ser verdade e que o rascunho NAO sobrevive: reabrir comeca do
+    // zero, no passo 1 e com os campos vazios.
+    rotearEmail();
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trocar e-mail" }));
+    fireEvent.change(await screen.findByLabelText("Novo e-mail"), {
+      target: { value: "rascunho@exemplo.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Novo e-mail")).toBeNull(),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Trocar e-mail" }));
+    const campo = (await screen.findByLabelText(
+      "Novo e-mail",
+    )) as HTMLInputElement;
+    expect(campo.value).toBe("");
+    expect(screen.queryByText(/O login passa a ser/)).toBeNull();
+  });
+});

@@ -28,6 +28,7 @@ import { Field } from "./UserFields";
 import { UserDetailSkeleton } from "./UserDetailSkeleton";
 import { UserTransactions } from "./UserTransactions";
 import { EditableField, GenderField } from "./UserEditFields";
+import { EmailChangeDialog } from "./EmailChangeDialog";
 import { useProfileEdit } from "./useProfileEdit";
 import {
   AlertDialog,
@@ -153,6 +154,7 @@ export function UserDetailModal({
   // Confirmacao de descarte. Fica aqui, e nao no hook, porque quem decide
   // FECHAR e o modal.
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
 
   // FUNIL UNICO de fechamento: o botao "Fechar", o Esc e qualquer caminho
   // futuro passam por aqui. Hoje so repassa o onClose; existe porque a Fatia 5
@@ -171,6 +173,10 @@ export function UserDetailModal({
       setConfirmDiscard(true);
       return;
     }
+    // Fechar o modal fecha tambem a troca de e-mail em andamento: sair com o
+    // dialogo aberto deixaria estado pendente para a proxima abertura. O
+    // rascunho da troca nao sobrevive de propósito (o dialogo zera ao abrir).
+    setEmailOpen(false);
     onClose();
   }
 
@@ -830,13 +836,24 @@ export function UserDetailModal({
               </>
             ) : null}
             {detail && !detailLoading && !edit.editing ? (
-              <button
-                type="button"
-                onClick={edit.start}
-                className={ACTION_BUTTON}
-              >
-                Editar
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={edit.start}
+                  className={ACTION_BUTTON}
+                >
+                  Editar
+                </button>
+                {/* Rota e dialogo proprios: nao e um campo do formulario de
+                    perfil, e a identidade de LOGIN que muda. */}
+                <button
+                  type="button"
+                  onClick={() => setEmailOpen(true)}
+                  className={ACTION_BUTTON}
+                >
+                  Trocar e-mail
+                </button>
+              </>
             ) : null}
             {detail && !detailLoading && !edit.editing ? (
               detail.influencer ? (
@@ -930,6 +947,16 @@ export function UserDetailModal({
         {/* Confirmacao de descarte. LAYER_IN_DIALOG (z-[2100]) porque abre
             DENTRO de um modal que ja esta em z-[2000]; a escala inteira esta
             documentada em tasks/taskLayers.ts. */}
+        {detail ? (
+          <EmailChangeDialog
+            userId={userId}
+            emailAtual={detail.email}
+            open={emailOpen}
+            onOpenChange={setEmailOpen}
+            onChanged={() => setDetailVersion((version) => version + 1)}
+          />
+        ) : null}
+
         <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
           <AlertDialogContent
             overlayClassName={LAYER_IN_DIALOG}
