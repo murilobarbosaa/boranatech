@@ -95,6 +95,8 @@ export type UserDetail = {
    * dos casos: 1 linha em 59 hoje).
    */
   boleto: BoletoEstado | null;
+  /** Assinaturas ANTERIORES, sem a vigente. Vazio quando so existe uma. */
+  subscription_history: SubscriptionHistoryItem[];
   cancellation_intent: {
     reason_code: string | null;
     reason_text: string | null;
@@ -211,3 +213,11 @@ export type BoletoEstado =
       pago: boolean;
     }
   | { estado: "indisponivel"; motivo: string };
+
+export type SubscriptionHistoryItem = {
+  plan_code: string | null;
+  status: string | null;
+  payment_method: string | null;
+  created_at: string | null;
+  current_period_end: string | null;
+};

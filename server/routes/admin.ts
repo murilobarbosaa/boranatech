@@ -1349,6 +1349,30 @@ router.get("/users/:id", async (req, res, next) => {
     ) as LinhaAssinatura | null;
     const subPlan = Array.isArray(subRow?.plans) ? subRow?.plans[0] : subRow?.plans;
 
+    // HISTORICO: as OUTRAS assinaturas do usuario, sem a escolhida acima.
+    //
+    // Antes o detalhe so conhecia uma linha, entao uma renovacao de boleto (que
+    // aposenta a anterior como `superseded`) fazia a compra original
+    // desaparecer da tela: nao dava para ver que a pessoa e assinante desde a
+    // primeira vez. Nao ha consulta nova, e a mesma que ja carrega
+    // `todasAsAssinaturas`.
+    //
+    // A vigente sai por IDENTIDADE de objeto, nao por comparacao de campos:
+    // duas renovacoes do mesmo plano no mesmo dia teriam plano, status e ate
+    // created_at iguais, e um filtro por valor tiraria as duas.
+    const subscriptionHistory = todasAsAssinaturas
+      .filter((linha) => linha !== subRow)
+      .map((linha) => {
+        const plano = Array.isArray(linha.plans) ? linha.plans[0] : linha.plans;
+        return {
+          plan_code: plano?.code ?? null,
+          status: linha.status,
+          payment_method: linha.payment_method,
+          created_at: linha.created_at,
+          current_period_end: linha.current_period_end,
+        };
+      });
+
     // ESTADO DO BOLETO, so quando a assinatura escolhida esta `pending`.
     //
     // Motivo: sem isto o admin ve "Aguardando pagamento" e nao tem como saber se
@@ -1422,6 +1446,7 @@ router.get("/users/:id", async (req, res, next) => {
             }
           : null,
         boleto,
+        subscription_history: subscriptionHistory,
         cancellation_intent: cancelResult.data
           ? {
               reason_code: cancelResult.data.reason_code,

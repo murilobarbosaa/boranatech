@@ -24,6 +24,7 @@ import {
 import { ActivityBlock } from "./ActivityBlock";
 import { UserAuditHistory } from "./UserAuditHistory";
 import { BoletoBlock } from "./BoletoBlock";
+import { SubscriptionHistory } from "./SubscriptionHistory";
 import { AvatarBlock } from "./AvatarBlock";
 import { PublicProfileSection, temPerfilPublico } from "./PublicProfileSection";
 import { Field } from "./UserFields";
@@ -888,6 +889,17 @@ export function UserDetailModal({
                       </div>
                     </Section>
                   </div>
+
+                  {/* So aparece quando existe historico: o servidor manda
+                      lista vazia para quem tem uma assinatura so, e secao
+                      vazia seria promessa de conteudo que nao existe. */}
+                  {(detail.subscription_history ?? []).length > 0 ? (
+                    <Section title="Assinaturas anteriores">
+                      <SubscriptionHistory
+                        items={detail.subscription_history}
+                      />
+                    </Section>
+                  ) : null}
 
                   <Section title="Atividade">
                     <ActivityBlock

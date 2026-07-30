@@ -872,6 +872,114 @@ describe("boleto pendente no detalhe (Partes 3 e 4)", () => {
   });
 });
 
+describe("histórico de assinaturas no detalhe (Parte 5)", () => {
+  const PERFIL_MIN = {
+    user_id: UID,
+    id: "p1",
+    name: "A",
+    email: "a@x",
+    cpf: null,
+    avatar_url: null,
+    avatar_mode: "icon",
+    avatar_moderation_status: "clean",
+  };
+  const AUTH = {
+    getUserById: async () => ({
+      data: { user: { last_sign_in_at: null } },
+      error: null,
+    }),
+  };
+
+  function linha(over: Record<string, unknown>) {
+    return {
+      user_id: UID,
+      status: "superseded",
+      payment_method: "boleto",
+      renewal_type: "manual",
+      created_at: "2025-01-01T00:00:00Z",
+      current_period_end: null,
+      cancel_at_period_end: false,
+      provider_subscription_id: "cs_old",
+      plans: { code: "pro_annual" },
+      ...over,
+    };
+  }
+
+  it("as anteriores aparecem, sem a vigente entre elas", async () => {
+    const VIGENTE = linha({
+      status: "active",
+      created_at: "2026-07-01T00:00:00Z",
+      current_period_end: FUTURO,
+      provider_subscription_id: "cs_novo",
+    });
+    montar(
+      {
+        profiles: { rows: [PERFIL_MIN] },
+        subscriptions: {
+          rows: [
+            VIGENTE,
+            linha({ created_at: "2025-01-01T00:00:00Z" }),
+            linha({ created_at: "2024-01-01T00:00:00Z", plans: { code: "pro_monthly" } }),
+          ],
+        },
+        influencers: { rows: [] },
+        finance_transactions: { rows: [] },
+        subscription_cancellations: { rows: [] },
+      },
+      AUTH,
+    );
+
+    const r = await chamarAdmin("GET", `/users/${UID}`);
+    expect(r.status).toBe(200);
+    expect(r.body.data.subscription.status).toBe("active");
+    expect(r.body.data.subscription_history).toHaveLength(2);
+    // A vigente NAO se repete no histórico: ela já é a seção acima.
+    expect(
+      r.body.data.subscription_history.every((h: any) => h.status !== "active"),
+    ).toBe(true);
+    // Mais recente primeiro.
+    expect(r.body.data.subscription_history[0].created_at).toBe(
+      "2025-01-01T00:00:00Z",
+    );
+    expect(r.body.data.subscription_history[1].plan_code).toBe("pro_monthly");
+  });
+
+  it("uma assinatura só devolve histórico VAZIO, não uma cópia dela", async () => {
+    // Assim a tela sabe não desenhar seção nenhuma, em vez de mostrar um
+    // histórico com um item que é a própria assinatura vigente.
+    montar(
+      {
+        profiles: { rows: [PERFIL_MIN] },
+        subscriptions: {
+          rows: [linha({ status: "active", current_period_end: FUTURO })],
+        },
+        influencers: { rows: [] },
+        finance_transactions: { rows: [] },
+        subscription_cancellations: { rows: [] },
+      },
+      AUTH,
+    );
+    const r = await chamarAdmin("GET", `/users/${UID}`);
+    expect(r.body.data.subscription_history).toEqual([]);
+  });
+
+  it("sem assinatura nenhuma, histórico vazio e sem erro", async () => {
+    montar(
+      {
+        profiles: { rows: [PERFIL_MIN] },
+        subscriptions: { rows: [] },
+        influencers: { rows: [] },
+        finance_transactions: { rows: [] },
+        subscription_cancellations: { rows: [] },
+      },
+      AUTH,
+    );
+    const r = await chamarAdmin("GET", `/users/${UID}`);
+    expect(r.status).toBe(200);
+    expect(r.body.data.subscription_history).toEqual([]);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // GET /users/:id/audit
 // ---------------------------------------------------------------------------
