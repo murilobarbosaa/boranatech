@@ -660,6 +660,20 @@ export const LinkedinAnalyzeRequestSchema = z.object({
   conexoes: ConexoesSchema,
   atividade: AtividadeSchema,
   objetivo: z.string().max(300).optional(),
+  /**
+   * Por onde o texto entrou: PDF, colagem manual, ou revisão de sessão restaurada.
+   *
+   * OPCIONAL de propósito, e não é preguiça de validação: o deploy não é atômico
+   * (Vercel e Railway sobem separados, janela de 1 a 3 minutos), então o backend
+   * novo precisa aceitar o bundle antigo, que não manda este campo. Obrigatório
+   * aqui derrubaria toda análise da janela com 400.
+   *
+   * Existe porque a ausência dele custou uma investigação inteira: com uma
+   * headline errada persistida em produção não havia como distinguir bug do
+   * parser de PDF de bug da colagem manual, e o valor JÁ existia no browser
+   * (`EntryPath` em LinkedinAnalisar.tsx) sem nunca sair de lá.
+   */
+  entryPath: z.enum(["pdf", "manual", "review"]).optional(),
 });
 
 export type LinkedinAnalyzeRequest = z.infer<

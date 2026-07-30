@@ -15,6 +15,7 @@ import {
   LinkedinUnreadableError,
 } from "../lib/linkedinAnalyze";
 import type { LinkedinParsed } from "../../shared/linkedin/parse";
+import { hashDoTexto } from "../lib/linkedinTextoHash";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -54,6 +55,12 @@ async function persistAnalysis(
       conexoes: request.conexoes,
       atividade: request.atividade,
       objetivo: request.objetivo ?? null,
+      // Caminho de entrada e impressao digital do texto. As duas chaves sao
+      // NOVAS: as 157 linhas ja gravadas nao as tem, e a leitura tolera isso
+      // (linkedinInputTolerante.test.ts trava a propriedade). `entryPath` vem
+      // null quando o bundle antigo nao mandou, que e o caso da janela de deploy.
+      entryPath: request.entryPath ?? null,
+      textoHash: hashDoTexto(request.profileText),
       parseResumo: {
         headline: parsed.headline,
         sobreTamanho: response.deterministic.sobreTamanho,
