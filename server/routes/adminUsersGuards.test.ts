@@ -1,0 +1,209 @@
+import { describe, expect, it, vi } from "vitest";
+
+/**
+ * GUARDA DE AUTORIZAÇÃO das rotas do admin.
+ *
+ * Nada verificava que as rotas novas estão de fato atrás de requireAuth +
+ * requireAdmin. Uma rota montada fora da guarda não quebra nada, não aparece em
+ * teste nenhum, e expõe dado de usuário para qualquer autenticado.
+ *
+ * A lista de rotas é DERIVADA do router, não escrita à mão: rota futura entra
+ * na verificação sozinha. Lista à mão é o caso degenerado do parser que
+ * sub-casa em silêncio, e este projeto já tem uma coleção deles documentada.
+ */
+
+// O router real importa BullMQ/ioredis (que abrem conexão) e o middleware de
+// auth (que monta o JWKS no load e falha sem .env). Estes mocks existem para o
+// MÓDULO carregar; as guardas em si NÃO são mockadas: são elas que o arquivo
+// verifica.
+vi.mock("../lib/queue", () => ({
+  emailQueue: null,
+  enqueueEmail: vi.fn(),
+  createEmailWorker: vi.fn(),
+}));
+vi.mock("../lib/redis", () => ({
+  queueConnection: null,
+  cacheConnection: null,
+}));
+vi.mock("../lib/env", () => ({
+  env: {
+    supabaseUrl: "https://exemplo.supabase.co",
+    supabaseAnonKey: "anon",
+    supabaseServiceRoleKey: "service",
+    isProd: false,
+    devProUserIds: [],
+    stripeSecretKey: "",
+    billingEnabled: false,
+    posthogApiKey: "",
+    posthogProjectId: "",
+    posthogHost: "https://us.posthog.com",
+    rateLimitMaxRequests: 1000,
+  },
+}));
+vi.mock("../lib/supabaseAdmin", () => ({
+  supabaseAdmin: {
+    from: () => ({}),
+    auth: { admin: {} },
+    rpc: async () => ({}),
+  },
+}));
+
+import adminRouter from "./admin";
+import { requireAdmin, requireAuth } from "../middleware/auth";
+
+type Camada = {
+  name?: string;
+  handle?: unknown;
+  route?: {
+    path: string;
+    methods: Record<string, boolean>;
+    stack: Array<{ handle: unknown }>;
+  };
+};
+
+const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
+
+/** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
+function guardasDoRouter(): unknown[] {
+  const guardas: unknown[] = [];
+  for (const camada of stack) {
+    if (camada.route) break; // a primeira rota encerra o bloco de guardas
+    if (camada.handle) guardas.push(camada.handle);
+  }
+  return guardas;
+}
+
+function rotasDeclaradas(): Array<{ metodo: string; caminho: string }> {
+  const saida: Array<{ metodo: string; caminho: string }> = [];
+  for (const camada of stack) {
+    if (!camada.route) continue;
+    for (const metodo of Object.keys(camada.route.methods)) {
+      saida.push({ metodo: metodo.toUpperCase(), caminho: camada.route.path });
+    }
+  }
+  return saida;
+}
+
+describe("todas as rotas do admin estão atrás das duas guardas", () => {
+  it("requireAuth e requireAdmin são montados ANTES da primeira rota", () => {
+    const guardas = guardasDoRouter();
+    expect(guardas).toContain(requireAuth);
+    expect(guardas).toContain(requireAdmin);
+  });
+
+  it("nenhuma rota é declarada antes das guardas", () => {
+    // A ordem importa: um router.get colocado acima do router.use ficaria
+    // FORA da proteção sem nada acusar.
+    const indiceRequireAuth = stack.findIndex((c) => c.handle === requireAuth);
+    const indiceRequireAdmin = stack.findIndex(
+      (c) => c.handle === requireAdmin,
+    );
+    const indicePrimeiraRota = stack.findIndex((c) => Boolean(c.route));
+
+    expect(indiceRequireAuth).toBeGreaterThanOrEqual(0);
+    expect(indiceRequireAdmin).toBeGreaterThanOrEqual(0);
+    expect(indicePrimeiraRota).toBeGreaterThan(indiceRequireAuth);
+    expect(indicePrimeiraRota).toBeGreaterThan(indiceRequireAdmin);
+  });
+
+  it("as rotas de usuário estão todas na lista derivada do router", () => {
+    // Não é a fonte da verdade (a fonte é o router); é uma trava para o caso de
+    // a extração de rotas parar de funcionar e a lista virar vazia, o que faria
+    // os testes acima passarem sobre nada.
+    const rotas = rotasDeclaradas();
+    expect(rotas.length).toBeGreaterThan(30);
+
+    const deUsuario = rotas
+      .filter((r) => r.caminho.startsWith("/users"))
+      .map((r) => `${r.metodo} ${r.caminho}`)
+      .sort();
+
+    expect(deUsuario).toEqual([
+      "GET /users",
+      "GET /users/:id",
+      "GET /users/:id/activity",
+      "GET /users/:id/email-usage",
+      "GET /users/:id/transactions",
+      "PATCH /users/:id",
+      "POST /users/:id/email",
+      "POST /users/:id/influencer",
+      "POST /users/:id/influencer/revoke",
+      "POST /users/:id/reveal-cpf",
+    ]);
+  });
+});
+
+describe("as guardas em si recusam quem não deve passar", () => {
+  function chamar(
+    guarda: (req: never, res: never, next: (e?: unknown) => void) => unknown,
+    req: Record<string, unknown>,
+  ) {
+    return new Promise<{ status?: number; code?: string }>((resolve) => {
+      void (
+        guarda as unknown as (
+          r: unknown,
+          s: unknown,
+          n: (e?: unknown) => void,
+        ) => unknown
+      )(req, {}, (err?: unknown) => {
+        if (!err) return resolve({});
+        const e = err as { statusCode?: number; code?: string };
+        resolve({ status: e.statusCode, code: e.code });
+      });
+    });
+  }
+
+  it("sem token: requireAuth devolve 401", async () => {
+    expect(await chamar(requireAuth, {})).toEqual({
+      status: 401,
+      code: "unauthorized",
+    });
+  });
+
+  it("com token: requireAuth deixa passar", async () => {
+    expect(await chamar(requireAuth, { user: { id: "u1" } })).toEqual({});
+  });
+
+  it("sem token: requireAdmin devolve 401 antes de consultar o banco", async () => {
+    expect(await chamar(requireAdmin, {})).toEqual({
+      status: 401,
+      code: "unauthorized",
+    });
+  });
+
+  it("token de NÃO-admin: requireAdmin devolve 403", async () => {
+    const { supabaseAdmin } = await import("../lib/supabaseAdmin");
+    (supabaseAdmin as unknown as { rpc: unknown }).rpc = async () => ({
+      data: false,
+      error: null,
+    });
+
+    expect(await chamar(requireAdmin, { user: { id: "u1" } })).toEqual({
+      status: 403,
+      code: "forbidden",
+    });
+  });
+
+  it("token de admin: requireAdmin deixa passar", async () => {
+    const { supabaseAdmin } = await import("../lib/supabaseAdmin");
+    (supabaseAdmin as unknown as { rpc: unknown }).rpc = async () => ({
+      data: true,
+      error: null,
+    });
+
+    expect(await chamar(requireAdmin, { user: { id: "u1" } })).toEqual({});
+  });
+
+  it("erro na RPC de admin vira 403, nunca liberação", async () => {
+    // Fail-closed: falha de infra não pode virar acesso.
+    const { supabaseAdmin } = await import("../lib/supabaseAdmin");
+    (supabaseAdmin as unknown as { rpc: unknown }).rpc = async () => {
+      throw new Error("banco fora do ar");
+    };
+
+    expect(await chamar(requireAdmin, { user: { id: "u1" } })).toEqual({
+      status: 403,
+      code: "forbidden",
+    });
+  });
+});
