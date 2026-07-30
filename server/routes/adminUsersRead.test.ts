@@ -601,3 +601,223 @@ describe("toda consulta por usuário carrega o filtro de escopo", () => {
     expect(ordens).toEqual(["created_at", "id"]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// GET /users/:id/audit
+// ---------------------------------------------------------------------------
+
+describe("GET /users/:id/audit: fiação do histórico administrativo", () => {
+  function logRow(over: Record<string, unknown> = {}) {
+    return {
+      id: "log-1",
+      action: "refund",
+      resource_type: "charge",
+      resource_id: UID,
+      resource_slug: "ch_1",
+      actor_user_id: "admin-1",
+      before_json: null,
+      after_json: { amount_cents: 5000, reason: "duplicidade" },
+      created_at: "2026-07-30T12:00:00Z",
+      ...over,
+    };
+  }
+
+  it("uuid inválido é barrado antes de tocar o banco", async () => {
+    montar({});
+    const r = await chamarAdmin("GET", "/users/nao-e-uuid/audit");
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("invalid_user_id");
+    expect(estado.double.chamadas).toHaveLength(0);
+  });
+
+  it("nome do ator sai resolvido, numa consulta só, sem N+1", async () => {
+    montar({
+      content_audit_logs: {
+        rows: [
+          logRow({ id: "l1", actor_user_id: "admin-1" }),
+          logRow({ id: "l2", actor_user_id: "admin-1" }),
+          logRow({ id: "l3", actor_user_id: "admin-2" }),
+        ],
+      },
+      profiles: {
+        rows: [
+          { user_id: "admin-1", name: "Ana", email: "ana@x" },
+          { user_id: "admin-2", name: null, email: "bruno@x" },
+        ],
+      },
+      admin_refunds: { rows: [] },
+      subscription_cancellations: { rows: [] },
+    });
+
+    const r = await chamarAdmin("GET", `/users/${UID}/audit`);
+    expect(r.status).toBe(200);
+
+    // Ordem: os três compartilham created_at, então vale o desempate por id
+    // decrescente (l3, l2, l1). admin-2 não tem name e cai para o email.
+    const nomes = r.body.data.entries.map((e: any) => e.actor_name);
+    expect(nomes).toEqual(["bruno@x", "Ana", "Ana"]);
+
+    // UMA consulta a profiles para os três registros e dois atores distintos.
+    const emProfiles = estado.double.chamadas.filter(
+      (c) => c.table === "profiles",
+    );
+    expect(emProfiles).toHaveLength(1);
+    expect(
+      emProfiles[0].filtros.some(
+        (f) => f.tipo === "in" && f.coluna === "user_id",
+      ),
+    ).toBe(true);
+  });
+
+  it("nome cai para o email quando o perfil não tem name", async () => {
+    montar({
+      content_audit_logs: { rows: [logRow({ actor_user_id: "admin-2" })] },
+      profiles: {
+        rows: [{ user_id: "admin-2", name: null, email: "bruno@x" }],
+      },
+      admin_refunds: { rows: [] },
+      subscription_cancellations: { rows: [] },
+    });
+    const r = await chamarAdmin("GET", `/users/${UID}/audit`);
+    expect(r.body.data.entries[0].actor_name).toBe("bruno@x");
+  });
+
+  it("filtra por resource_id E por ação: linha de conteúdo não entra no histórico da pessoa", async () => {
+    montar({
+      content_audit_logs: { rows: [logRow()] },
+      profiles: { rows: [] },
+      admin_refunds: { rows: [] },
+      subscription_cancellations: { rows: [] },
+    });
+    await chamarAdmin("GET", `/users/${UID}/audit`);
+
+    const chamada = estado.double.chamadas.find(
+      (c) => c.table === "content_audit_logs",
+    )!;
+    expect(chamada.filtros).toEqual(
+      expect.arrayContaining([
+        { tipo: "eq", coluna: "resource_id", valor: UID },
+        expect.objectContaining({ tipo: "in", coluna: "action" }),
+      ]),
+    );
+  });
+
+  it("reembolso com linha em admin_refunds chega CONFIRMADO na resposta", async () => {
+    montar({
+      content_audit_logs: { rows: [logRow()] },
+      profiles: { rows: [] },
+      admin_refunds: {
+        rows: [
+          {
+            stripe_charge_id: "ch_1",
+            amount_cents: 5000,
+            stripe_refund_id: "re_abc",
+          },
+        ],
+      },
+      subscription_cancellations: { rows: [] },
+    });
+
+    const r = await chamarAdmin("GET", `/users/${UID}/audit`);
+    expect(r.body.data.entries[0].outcome).toBe("confirmed");
+    expect(r.body.data.cross_reference_ok).toBe(true);
+  });
+
+  it("erro na tabela de RESULTADO degrada para não-verificável, sem derrubar o histórico", async () => {
+    // A intenção continua na tela. Trocar o histórico inteiro por erro 500 por
+    // causa de uma tabela auxiliar seria pior, e marcar 'unconfirmed' afirmaria
+    // que a ação não surtiu efeito, o que ninguém checou.
+    montar({
+      content_audit_logs: { rows: [logRow()] },
+      profiles: { rows: [] },
+      admin_refunds: { error: { message: "permission denied" } },
+      subscription_cancellations: { rows: [] },
+    });
+
+    const r = await chamarAdmin("GET", `/users/${UID}/audit`);
+    expect(r.status).toBe(200);
+    expect(r.body.data.entries).toHaveLength(1);
+    expect(r.body.data.entries[0].outcome).toBe("not_verifiable");
+    expect(r.body.data.cross_reference_ok).toBe(false);
+  });
+
+  it("erro na leitura do LOG é fail-loud: tela vazia afirmaria que nada aconteceu", async () => {
+    montar({
+      content_audit_logs: { error: { message: "timeout" } },
+      profiles: { rows: [] },
+      admin_refunds: { rows: [] },
+      subscription_cancellations: { rows: [] },
+    });
+
+    const r = await chamarAdmin("GET", `/users/${UID}/audit`);
+    expect(r.status).toBe(500);
+  });
+
+  it("valor de campo fora da allowlist não trafega na resposta", async () => {
+    montar({
+      content_audit_logs: {
+        rows: [
+          logRow({
+            action: "update_profile",
+            resource_type: "profile",
+            resource_slug: null,
+            before_json: { bio: "texto antigo e pessoal", name: "Ana" },
+            after_json: { bio: "texto novo e pessoal", name: "Ana Maria" },
+          }),
+        ],
+      },
+      profiles: { rows: [] },
+      admin_refunds: { rows: [] },
+      subscription_cancellations: { rows: [] },
+    });
+
+    const r = await chamarAdmin("GET", `/users/${UID}/audit`);
+    const corpo = JSON.stringify(r.body);
+    expect(corpo).not.toContain("pessoal");
+    // Mas o EVENTO continua visível.
+    expect(r.body.data.entries[0].campos_alterados).toContain("bio");
+  });
+
+  it("corte avisa que cortou", async () => {
+    montar({
+      content_audit_logs: {
+        rows: Array.from({ length: 101 }, (_, i) =>
+          logRow({ id: `l${String(i).padStart(3, "0")}` }),
+        ),
+      },
+      profiles: { rows: [] },
+      admin_refunds: { rows: [] },
+      subscription_cancellations: { rows: [] },
+    });
+
+    const r = await chamarAdmin("GET", `/users/${UID}/audit`);
+    expect(r.body.data.truncated).toBe(true);
+    expect(r.body.data.entries).toHaveLength(100);
+  });
+
+  it("histórico vazio é 200 com lista vazia, não 404", async () => {
+    montar({
+      content_audit_logs: { rows: [] },
+      profiles: { rows: [] },
+      admin_refunds: { rows: [] },
+      subscription_cancellations: { rows: [] },
+    });
+    const r = await chamarAdmin("GET", `/users/${UID}/audit`);
+    expect(r.status).toBe(200);
+    expect(r.body.data.entries).toEqual([]);
+  });
+
+  it("sem ator nenhum, profiles não é consultado à toa", async () => {
+    montar({
+      content_audit_logs: { rows: [logRow({ actor_user_id: null })] },
+      admin_refunds: { rows: [] },
+      subscription_cancellations: { rows: [] },
+    });
+    const r = await chamarAdmin("GET", `/users/${UID}/audit`);
+    expect(r.status).toBe(200);
+    expect(r.body.data.entries[0].actor_name).toBe("Admin removido");
+    expect(
+      estado.double.chamadas.filter((c) => c.table === "profiles"),
+    ).toHaveLength(0);
+  });
+});

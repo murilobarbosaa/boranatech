@@ -130,6 +130,7 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
       "GET /users",
       "GET /users/:id",
       "GET /users/:id/activity",
+      "GET /users/:id/audit",
       "GET /users/:id/email-usage",
       "GET /users/:id/transactions",
       "PATCH /users/:id",

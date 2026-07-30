@@ -51,6 +51,12 @@ import {
   type RefundReason,
 } from "../lib/refund";
 import { buildTransactionList, type FinanceRow } from "../lib/userTransactions";
+import {
+  buildAuditHistory,
+  type AuditLogRow,
+  type CancellationRow,
+  type RefundRow,
+} from "../lib/userAuditHistory";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 import { resolvePlanPriceCents } from "../lib/planPrice";
@@ -2399,6 +2405,128 @@ router.get("/users/:id/transactions", async (req, res, next) => {
     // completo sendo parcial.
     res.json({
       data: { ...list, truncated, limit: TRANSACTIONS_LIMIT },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Historico administrativo do usuario. Teto generoso de proposito: medido em
+// 2026-07-30, existem 26 linhas com escopo de usuario em content_audit_logs no
+// total, e no maximo 2 por pessoa. Paginar isso seria construir mecanismo para
+// um problema que nao existe; o teto e um limite de sanidade, e ele AVISA
+// quando corta.
+const AUDIT_LIMIT = 100;
+
+// Ações do admin sobre um usuario. Enumeradas de proposito, e nao derivadas de
+// "tudo que tem resource_id igual ao uid": um resource_id de conteudo pode
+// coincidir com um uuid de usuario, e uma acao nova sobre usuario que nasca
+// fora desta lista some da tela em silencio, o que e melhor que a tela passar a
+// exibir linha de outro dominio como se fosse do usuario.
+const ACOES_DE_USUARIO = [
+  "reveal",
+  "grant",
+  "revoke",
+  "update_profile",
+  "update_email",
+  "cancel_subscription",
+  "refund",
+] as const;
+
+router.get("/users/:id/audit", async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
+      );
+    }
+
+    // Uma linha alem do teto para distinguir "exatamente AUDIT_LIMIT" de "mais
+    // que AUDIT_LIMIT", mesmo padrao de /transactions.
+    const { data: logsData, error: logsError } = await supabaseAdmin
+      .from("content_audit_logs")
+      .select(
+        "id, action, resource_type, resource_id, resource_slug, actor_user_id, before_json, after_json, created_at",
+      )
+      .eq("resource_id", uid)
+      .in("action", ACOES_DE_USUARIO as unknown as string[])
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(AUDIT_LIMIT + 1);
+
+    // O historico em si e fail-loud: se a leitura do log falha, a tela nao pode
+    // mostrar "nenhuma ação registrada", que e uma afirmacao sobre o passado.
+    if (logsError)
+      return next(
+        dbError("user audit logs", logsError, "Erro ao buscar o histórico."),
+      );
+
+    const rows = logsData || [];
+    const truncated = rows.length > AUDIT_LIMIT;
+    const logs = (
+      truncated ? rows.slice(0, AUDIT_LIMIT) : rows
+    ) as AuditLogRow[];
+
+    // As tres consultas seguintes sao independentes entre si e nenhuma depende
+    // do resultado da outra: uma rodada so, sem N+1 por linha.
+    const actorIds = Array.from(
+      new Set(logs.map((l) => l.actor_user_id).filter((v): v is string => !!v)),
+    );
+
+    const [atoresRes, refundsRes, cancelamentosRes] = await Promise.all([
+      actorIds.length
+        ? supabaseAdmin
+            .from("profiles")
+            .select("user_id, name, email")
+            .in("user_id", actorIds)
+        : Promise.resolve({ data: [], error: null }),
+      supabaseAdmin
+        .from("admin_refunds")
+        .select("stripe_charge_id, amount_cents, stripe_refund_id")
+        .eq("user_id", uid),
+      supabaseAdmin
+        .from("subscription_cancellations")
+        .select("canceled_at, status, effective_at")
+        .eq("user_id", uid),
+    ]);
+
+    const atores = new Map<string, string>();
+    for (const p of atoresRes.data || []) {
+      const nome = (p.name || p.email || "").trim();
+      if (p.user_id && nome) atores.set(p.user_id, nome);
+    }
+
+    // DEGRADA, nao derruba, e a decisao esta escrita porque as duas saidas eram
+    // defensaveis. Falha na tabela de RESULTADO nao apaga a INTENCAO: com
+    // `null`, buildAuditHistory devolve outcome 'not_verifiable', que e
+    // exatamente o que aconteceu, em vez de 'unconfirmed', que afirmaria que a
+    // acao nao surtiu efeito. Derrubar a resposta inteira trocaria o historico
+    // completo por uma tela de erro por causa de uma tabela auxiliar.
+    const entries = buildAuditHistory({
+      logs,
+      atores,
+      refunds: refundsRes.error
+        ? null
+        : (refundsRes.data as RefundRow[] | null) || [],
+      cancelamentos: cancelamentosRes.error
+        ? null
+        : (cancelamentosRes.data as CancellationRow[] | null) || [],
+    });
+
+    res.json({
+      data: {
+        entries,
+        truncated,
+        limit: AUDIT_LIMIT,
+        // A tela precisa saber a diferenca entre "nada a confirmar" e "nao deu
+        // para checar", senao o rotulo neutro vira ambiguo.
+        cross_reference_ok: !refundsRes.error && !cancelamentosRes.error,
+      },
     });
   } catch (err) {
     next(err);
