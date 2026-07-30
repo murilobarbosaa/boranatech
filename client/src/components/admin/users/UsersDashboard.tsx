@@ -7,9 +7,6 @@ import { UserDetailModal } from "./UserDetailModal";
 import { UserListHeader, UserListRow } from "./UserListRow";
 import type { UserListFilter, UserRow, UsersListPayload } from "./types";
 
-// TODO(Ana): revisar TODA a copy visivel deste componente (titulo dos grupos,
-// rotulos dos campos, estados vazios/erro e o aviso de auditoria do CPF).
-
 const PAGE_SIZE = 50;
 const SEARCH_DEBOUNCE_MS = 350;
 
@@ -78,13 +75,12 @@ export function UsersDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* TODO(Ana): revisar copy da busca, filtros, paginacao e estado vazio. */}
       <div className="flex flex-wrap items-center gap-3">
         <input
           type="search"
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
-          placeholder="Buscar por nome ou e-mail..."
+          placeholder="Buscar por nome ou e-mail"
           className="min-w-[220px] flex-1 rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_#0f172a] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
         />
         {/* Pills, nao BntSelect: sao 5 opcoes mutuamente exclusivas e curtas.
@@ -158,8 +154,8 @@ export function UsersDashboard() {
               className="mt-2 text-sm font-semibold text-slate-500"
             >
               {search || filter !== "all"
-                ? "Nenhum resultado para a busca ou filtro atual. Ajuste os critérios e tente de novo."
-                : "Nenhum usuário cadastrado ainda."}
+                ? "Nada bateu com a busca ou o filtro. Tente outro termo ou volte para Todos."
+                : "Ainda não há usuários cadastrados."}
             </p>
           </div>
         )}

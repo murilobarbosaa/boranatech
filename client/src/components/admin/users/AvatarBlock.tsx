@@ -3,7 +3,12 @@ import { useState } from "react";
 import type { UserDetail } from "./types";
 import { avatarModeLabelOf } from "./userFormat";
 
-// TODO(Ana): revisar toda a copy do bloco de foto (rotulos de estado e avisos).
+// Copy revisada e aprovada em 2026-07-29. "Foto atual" ficou como estava, e
+// NAO virou "Aprovada": avatar_moderation_status tem DEFAULT 'clean' na coluna
+// (migration 20260618120000) e o upload grava 'clean' direto, sem revisao. Em
+// producao sao 3198 perfis, todos 'clean', e ZERO com
+// avatar_moderation_reviewed_by preenchido. "Aprovada" afirmaria um veredito
+// que nunca houve, para 1777 fotos.
 export function AvatarBlock({ avatar }: { avatar: UserDetail["avatar"] }) {
   const [broken, setBroken] = useState(false);
   const url = avatar?.url ?? null;
@@ -18,7 +23,7 @@ export function AvatarBlock({ avatar }: { avatar: UserDetail["avatar"] }) {
         }
       : status === "removed"
         ? {
-            label: "Rejeitada pela moderação",
+            label: "Rejeitada",
             className: "border-rose-500 bg-rose-100 text-rose-900",
           }
         : url
@@ -52,15 +57,15 @@ export function AvatarBlock({ avatar }: { avatar: UserDetail["avatar"] }) {
         ) : null}
         {status === "removed" ? (
           <p className="text-sm font-semibold text-slate-600">
-            A foto enviada foi rejeitada e removida pela moderação.
+            Rejeitada e removida pela moderação.
           </p>
         ) : status === "pending_review" ? (
           <p className="text-sm font-semibold text-slate-600">
-            Esta foto ainda não está pública: aguarda aprovação da moderação.
+            Ainda não está pública: aguarda aprovação.
           </p>
         ) : !url ? (
           <p className="text-sm font-semibold text-slate-600">
-            Este usuário não tem foto enviada.
+            Sem foto enviada.
           </p>
         ) : null}
         <p className="text-xs font-black uppercase tracking-wide text-violet-700">

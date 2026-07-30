@@ -41,7 +41,9 @@ export function fmtBrl(cents: number | null | undefined): string {
   }).format(cents / 100);
 }
 
-// TODO(Ana): revisar os rotulos de metodo de pagamento e tipo de renovacao.
+// Rotulos revisados e aprovados em 2026-07-29. "Automática"/"Manual" ficam
+// como estao: o rotulo do Field ja e "Renovação", entao o valor nao precisa se
+// reexplicar.
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   card: "Cartão",
   pix: "Pix",

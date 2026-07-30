@@ -217,8 +217,9 @@ export function UserDetailModal({
       setGrantOpen(false);
       setGrantNote("");
       setDetailVersion((version) => version + 1);
-      // TODO(Ana): copy de confirmacao da concessao de influencer.
-      showActionToast({ message: "Acesso de influencer concedido." });
+      showActionToast({
+        message: "Influencer concedido. O Pro já está ativo.",
+      });
     } catch (err) {
       showErrorToast(
         err instanceof Error
@@ -239,8 +240,10 @@ export function UserDetailModal({
       });
       setRevokeConfirm(false);
       setDetailVersion((version) => version + 1);
-      // TODO(Ana): copy de confirmacao da revogacao de influencer.
-      showActionToast({ message: "Acesso de influencer revogado." });
+      showActionToast({
+        message:
+          "Influencer revogado. Se houver assinatura ativa, o Pro continua por ela.",
+      });
     } catch (err) {
       showErrorToast(
         err instanceof Error
@@ -339,8 +342,6 @@ export function UserDetailModal({
                   desta pessoa", e a identidade ja esta no cabecalho fixo:
                   repeti-la no topo empurrava a resposta para baixo da dobra.
                   E aqui que as Fatias 5 a 7 vao agir. */}
-              {/* TODO(Ana): revisar toda a copy do bloco de assinatura (rotulos,
-                  aviso de cancelamento e o estado de quem nunca assinou). */}
               <Section title="Assinatura">
                 <div className={CARD_SECTION}>
                   {detail.subscription ? (
@@ -402,14 +403,14 @@ export function UserDetailModal({
                             Cancelamento agendado
                           </p>
                           <p className="mt-1 text-sm font-semibold text-amber-900">
-                            Motivo:{" "}
+                            Motivo{" "}
                             {fmtText(
                               detail.cancellation_intent.reason_text ||
                                 detail.cancellation_intent.reason_code,
                             )}
                           </p>
                           <p className="mt-1 text-sm font-semibold text-amber-900">
-                            Efetivo em:{" "}
+                            Acaba em{" "}
                             {fmtDate(detail.cancellation_intent.effective_at)}
                           </p>
                         </div>
@@ -417,27 +418,21 @@ export function UserDetailModal({
                     </>
                   ) : (
                     <p className="text-sm font-medium text-slate-400">
-                      Este usuário nunca assinou um plano.
+                      Nunca assinou um plano.
                     </p>
                   )}
 
                   {/* O ESTADO do influencer e conteudo e fica aqui, junto do
                       resto do acesso; os BOTOES de conceder e revogar foram
                       para o rodape, com as demais acoes sobre o usuario. */}
-                  {/* TODO(Ana): revisar toda a copy do bloco de influencer
-                      (rotulos, avisos, botoes e confirmacao de revogacao). */}
                   {detail.influencer ? (
                     <div className="space-y-2 rounded-2xl border-2 border-violet-700 bg-violet-50 p-3">
                       <span className="inline-block rounded-full border-2 border-violet-700 bg-violet-200 px-3 py-1 text-xs font-black uppercase text-violet-900">
                         Influencer
                       </span>
                       <p className="text-sm font-semibold text-violet-900">
-                        Acesso Pro de parceiro, sem assinatura e sem prazo. O
-                        acesso Pro desta conta vem desta concessão
-                        {detail.subscription
-                          ? " (além da assinatura acima)"
-                          : ""}
-                        .
+                        Acesso Pro de parceria: sem assinatura e sem prazo.
+                        Cancelar a assinatura não remove este acesso.
                       </p>
                       <p className="text-xs font-black uppercase tracking-wide text-violet-700">
                         Desde {fmtDate(detail.influencer.granted_at)}
@@ -508,15 +503,12 @@ export function UserDetailModal({
                       {revealing ? "Revelando..." : "Revelar CPF"}
                     </button>
                   ) : null}
-                  {/* TODO(Ana): copy do aviso de que revelar o CPF fica registrado em auditoria. */}
                   <p className="mt-2 text-xs font-semibold text-slate-500">
-                    Revelar o CPF fica registrado em auditoria (quem revelou, de
-                    quem e quando).
+                    Revelar fica registrado: quem revelou, de quem e quando.
                   </p>
                 </div>
               </Section>
 
-              {/* TODO(Ana): rotulo do dropdown "Mais informacoes". */}
               <button
                 type="button"
                 onClick={() => setMoreOpen((open) => !open)}
