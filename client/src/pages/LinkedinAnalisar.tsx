@@ -1337,61 +1337,81 @@ export default function LinkedinAnalisar() {
                             </button>
                           </div>
 
+                          {/* Os chips dizem O QUE FOI LIDO e pedem conferencia.
+                              NAO afirmam que a leitura esta certa: verde de
+                              "detectada" era um sinal tranquilizador que uma
+                              headline cortada ao meio produzia igualzinho, e foi
+                              exatamente por isso que o truncamento passou 13
+                              rodadas de auditoria e so apareceu no uso real.
+                              Presenca nao e correcao, e a cor nao pode dizer que
+                              e. Por isso: ambar quando falta (acao clara) e
+                              neutro quando existe (a pessoa e quem confere, logo
+                              abaixo, com o texto aberto). */}
                           <div className="flex flex-wrap gap-2">
                             <span
                               className={cn(
                                 "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
-                                parsed?.headline
-                                  ? "bg-emerald-100"
-                                  : "bg-amber-100",
+                                parsed?.headline ? "bg-white" : "bg-amber-100",
                               )}
                             >
                               Headline:{" "}
                               {parsed?.headline
-                                ? "detectada"
+                                ? "confira abaixo"
                                 : ENTRY_COPY.reviewNotFound}
                             </span>
                             <span
                               className={cn(
                                 "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
-                                parsed?.sobre
-                                  ? "bg-emerald-100"
-                                  : "bg-amber-100",
+                                parsed?.sobre ? "bg-white" : "bg-amber-100",
                               )}
                             >
                               Sobre:{" "}
                               {parsed?.sobre
-                                ? `${parsed.sobre.length} caracteres`
+                                ? `${parsed.sobre.length} caracteres lidos`
                                 : ENTRY_COPY.reviewNotFound}
                             </span>
                             <span
                               className={cn(
                                 "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
                                 parsed && parsed.experiencias.length > 0
-                                  ? "bg-emerald-100"
+                                  ? "bg-white"
                                   : "bg-amber-100",
                               )}
                             >
                               Experiências: {parsed?.experiencias.length ?? 0}{" "}
-                              detectada
+                              lida
                               {(parsed?.experiencias.length ?? 0) === 1
                                 ? ""
                                 : "s"}
                             </span>
-                            <span className="rounded-full border-2 border-slate-900 bg-sky-100 px-3 py-1 text-xs font-black text-slate-900">
+                            <span className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-900">
                               Competências no PDF:{" "}
-                              {parsed?.skillsPdf.length ?? 0}
+                              {parsed?.skillsPdf.length ?? 0} lidas
                             </span>
                           </div>
 
                           <div className="space-y-2">
+                            {/* ABERTO por padrao, e o unico do grupo que e. A
+                                headline e o campo de maior peso da regua (35 dos
+                                pontos, mais as duas coberturas) e o que mais
+                                sofre com quebra de linha do export. Escondido
+                                atras de um clique, ninguem conferia. */}
                             {parsed?.headline ? (
-                              <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
+                              <details
+                                open
+                                className="rounded-xl border-2 border-slate-900 bg-white p-3"
+                              >
                                 <summary className="cursor-pointer text-sm font-black text-slate-800">
-                                  Headline detectada
+                                  É esta a sua headline?
                                 </summary>
                                 <p className="mt-2 text-sm text-slate-700">
                                   {parsed.headline}
+                                </p>
+                                {/* TODO(Ana): revisar a copy de conferencia da headline. */}
+                                <p className="mt-2 text-xs font-medium text-slate-500">
+                                  Se estiver cortada ou faltando parte, corrija
+                                  no texto completo antes de analisar: é o campo
+                                  que mais pesa na nota.
                                 </p>
                               </details>
                             ) : null}
@@ -1409,8 +1429,9 @@ export default function LinkedinAnalisar() {
                               <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
                                 <summary className="cursor-pointer text-sm font-black text-slate-800">
                                   Experiências ({parsed.experiencias.length}{" "}
-                                  detectada
-                                  {parsed.experiencias.length === 1 ? "" : "s"})
+                                  lida
+                                  {parsed.experiencias.length === 1 ? "" : "s"}
+                                  ): confira se falta alguma
                                 </summary>
                                 <ul className="mt-2 space-y-2">
                                   {parsed.experiencias.map((exp, i) => (
