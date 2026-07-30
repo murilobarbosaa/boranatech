@@ -41,7 +41,13 @@ export function tipoDeTransacaoOf(type: string): {
 const GRID =
   "grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)] sm:items-center";
 
-function Linha({ item }: { item: TransactionItem }) {
+function Linha({
+  item,
+  onRefund,
+}: {
+  item: TransactionItem;
+  onRefund?: (item: TransactionItem) => void;
+}) {
   const tipo = tipoDeTransacaoOf(item.type);
   const negativo = item.gross_cents < 0;
 
@@ -91,6 +97,28 @@ function Linha({ item }: { item: TransactionItem }) {
         }`}
       >
         {fmtBrl(item.gross_cents)}
+        {/* Reembolso so aparece onde faz sentido: cobranca com teto > 0. Ja
+            reembolsada por inteiro mostra o estado, nao um botao morto. */}
+        {item.type === "charge" && onRefund ? (
+          item.refundable_cents > 0 ? (
+            <button
+              type="button"
+              onClick={() => onRefund(item)}
+              className="mt-1 block rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-[11px] font-black uppercase transition hover:bg-yellow-50 sm:ml-auto"
+            >
+              Reembolsar
+            </button>
+          ) : (
+            <span
+              data-testid="sem-reembolso"
+              className="mt-1 block text-[11px] font-bold uppercase text-slate-400"
+            >
+              {item.refund_state === "full"
+                ? "Reembolsada"
+                : "Sem saldo a reembolsar"}
+            </span>
+          )
+        ) : null}
       </span>
     </div>
   );
@@ -114,10 +142,12 @@ export function UserTransactions({
   loading,
   error,
   payload,
+  onRefund,
 }: {
   loading: boolean;
   error: string | null;
   payload: TransactionsPayload | null;
+  onRefund?: (item: TransactionItem) => void;
 }) {
   if (loading) return <ExtratoSkeleton />;
   // Erro de CARREGAMENTO fica inline, junto da regiao que ficou vazia (criterio
@@ -158,7 +188,7 @@ export function UserTransactions({
       </div>
 
       {items.map((item) => (
-        <Linha key={item.id} item={item} />
+        <Linha key={item.id} item={item} onRefund={onRefund} />
       ))}
 
       {/* Truncamento AVISADO: corte silencioso faria o total parecer completo

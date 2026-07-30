@@ -28,6 +28,7 @@ vi.mock("@/lib/notify", () => ({
 }));
 
 import { UserDetailModal } from "./UserDetailModal";
+import { fmtBrl } from "./userFormat";
 
 function detalhe(over: Record<string, unknown> = {}) {
   return {
@@ -589,14 +590,31 @@ describe("extrato de compras", () => {
     expect(toastSpy.erro).not.toHaveBeenCalled();
   });
 
-  it("nao ha nenhum botao de acao na secao", async () => {
-    rotear(detalhe(), { "/transactions": extrato([compra()]) });
+  // Ate a Fatia 6 o extrato era so leitura e este teste afirmava zero botoes. A
+  // Fatia 7 acrescenta o reembolso de proposito, entao a assercao foi
+  // SUBSTITUIDA pelo contrato novo, nao removida: botao aparece onde ha o que
+  // reembolsar, e onde nao ha aparece o ESTADO, nunca um botao morto.
+  it("cobranca sem saldo reembolsavel mostra o estado, nao um botao", async () => {
+    rotear(detalhe(), {
+      "/transactions": extrato([
+        compra({
+          refunded_cents: 22200,
+          refund_state: "full",
+          refundable_cents: 0,
+        }),
+      ]),
+    });
 
     render(<UserDetailModal userId="u1" onClose={() => {}} />);
     await pronto();
     const secao = await screen.findByTestId("user-transactions");
 
-    expect(within(secao).queryAllByRole("button")).toEqual([]);
+    expect(
+      within(secao).queryByRole("button", { name: "Reembolsar" }),
+    ).toBeNull();
+    expect(within(secao).getByTestId("sem-reembolso").textContent).toContain(
+      "Reembolsada",
+    );
   });
 
   it("busca o extrato UMA vez so, junto do detalhe", async () => {
@@ -1334,5 +1352,287 @@ describe("cancelamento de assinatura (Fatia 6)", () => {
     await pronto();
 
     expect(screen.queryByRole("button", { name: "Cancelar Pro" })).toBeNull();
+  });
+});
+
+describe("reembolso (Fatia 7)", () => {
+  function compraRef(over: Record<string, unknown> = {}) {
+    return {
+      id: "ft1",
+      type: "charge",
+      gross_cents: 20000,
+      fee_cents: 0,
+      net_cents: 20000,
+      currency: "BRL",
+      occurred_at: "2026-07-01T12:00:00Z",
+      stripe_charge_id: "ch_1",
+      stripe_invoice_id: null,
+      plan_code: "pro_annual",
+      refunded_cents: 0,
+      disputed_cents: 0,
+      disputed: false,
+      refund_state: "none",
+      refundable_cents: 20000,
+      ...over,
+    };
+  }
+
+  function rotearRefund(
+    item: Record<string, unknown>,
+    over: Record<string, unknown> = {},
+  ) {
+    fetchMock.mockImplementation((path: string, init?: { method?: string }) => {
+      if (path.includes("/refunds") && init?.method === "POST") {
+        const r = over.post;
+        if (r instanceof Error) return Promise.reject(r);
+        return Promise.resolve(
+          r ?? { data: { refunded: true, statement_synced: true } },
+        );
+      }
+      if (path.includes("/transactions"))
+        return Promise.resolve({
+          data: {
+            items: [item],
+            total_paid_cents: 20000,
+            truncated: false,
+            limit: 200,
+          },
+        });
+      if (path.includes("/email-usage"))
+        return Promise.resolve({ data: { email: null, usage: [] } });
+      if (path.endsWith("/activity"))
+        return Promise.resolve({ data: { state: "ok", hasData: false } });
+      return Promise.resolve(detalhe());
+    });
+  }
+
+  async function abrirRefund(
+    item: Record<string, unknown> = compraRef(),
+    over = {},
+  ) {
+    rotearRefund(item, over);
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(await screen.findByRole("button", { name: "Reembolsar" }));
+    return await screen.findByText("Reembolsar cobrança");
+  }
+
+  it("o passo 1 mostra o teto disponível", async () => {
+    await abrirRefund();
+    // Compara contra o proprio formatador: o Intl usa espaco NAO separavel
+    // depois do "R$", e um literal digitado a mao nunca bate.
+    expect(screen.getByTestId("teto-reembolso").textContent).toContain(
+      fmtBrl(20000),
+    );
+  });
+
+  it("teto menor que o bruto por DISPUTA é explicado", async () => {
+    await abrirRefund(
+      compraRef({
+        disputed_cents: 5000,
+        disputed: true,
+        refundable_cents: 15000,
+      }),
+    );
+    expect(screen.getByTestId("explicacao-teto").textContent).toContain(
+      "chargeback",
+    );
+  });
+
+  it("teto menor por reembolso anterior é explicado", async () => {
+    await abrirRefund(
+      compraRef({
+        refunded_cents: 5000,
+        refund_state: "partial",
+        refundable_cents: 15000,
+      }),
+    );
+    expect(screen.getByTestId("explicacao-teto").textContent).toContain(
+      "já foram reembolsados",
+    );
+  });
+
+  it("motivo vazio bloqueia o avanço", async () => {
+    await abrirRefund();
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(
+      await screen.findByText("Informe o motivo do reembolso."),
+    ).toBeTruthy();
+  });
+
+  it("passo 2 diz que é irreversível e que a assinatura NÃO será cancelada", async () => {
+    await abrirRefund();
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "x" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(
+      (await screen.findByTestId("aviso-irreversivel")).textContent,
+    ).toContain("irreversível");
+    expect(screen.getByTestId("aviso-assinatura").textContent).toContain(
+      "não será cancelada",
+    );
+  });
+
+  it("o botão só libera quando o valor é DIGITADO corretamente", async () => {
+    await abrirRefund();
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "x" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+
+    const botao = (await screen.findByRole("button", {
+      name: "Reembolsar agora",
+    })) as HTMLButtonElement;
+    // Campo nasce VAZIO: confirmar por clique seria só mais um clique.
+    expect(botao.disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText(/Digite o valor/), {
+      target: { value: "199,00" },
+    });
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Reembolsar agora",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+
+    fireEvent.change(screen.getByLabelText(/Digite o valor/), {
+      target: { value: "200,00" },
+    });
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Reembolsar agora",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(false);
+  });
+
+  it("emite e confirma por toast", async () => {
+    await abrirRefund();
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "pediu" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    fireEvent.change(await screen.findByLabelText(/Digite o valor/), {
+      target: { value: "200,00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Reembolsar agora" }));
+
+    await waitFor(() => expect(toastSpy.acao).toHaveBeenCalled());
+    const post = fetchMock.mock.calls.find(
+      (c) =>
+        String(c[0]).includes("/refunds") &&
+        (c[1] as { method?: string })?.method === "POST",
+    )!;
+    expect(JSON.parse((post[1] as { body: string }).body)).toEqual({
+      charge_id: "ch_1",
+      amount_cents: 20000,
+      reason: "pediu",
+    });
+  });
+
+  it("sync falho NÃO vira mensagem de erro: o reembolso aconteceu", async () => {
+    await abrirRefund(compraRef(), {
+      post: { data: { refunded: true, statement_synced: false } },
+    });
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "x" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    fireEvent.change(await screen.findByLabelText(/Digite o valor/), {
+      target: { value: "200,00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Reembolsar agora" }));
+
+    await waitFor(() => expect(toastSpy.acao).toHaveBeenCalled());
+    expect(toastSpy.erro).not.toHaveBeenCalled();
+    expect(String(toastSpy.acao.mock.calls[0][0].message)).toContain(
+      "Reembolso emitido",
+    );
+  });
+
+  it("erro da rota vira toast legível", async () => {
+    await abrirRefund(compraRef(), {
+      post: new Error(
+        "O valor pedido é maior do que o disponível para reembolso.",
+      ),
+    });
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "x" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    fireEvent.change(await screen.findByLabelText(/Digite o valor/), {
+      target: { value: "200,00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Reembolsar agora" }));
+
+    await waitFor(() =>
+      expect(toastSpy.erro).toHaveBeenCalledWith(
+        "O valor pedido é maior do que o disponível para reembolso.",
+      ),
+    );
+  });
+
+  it("botão trava durante a emissão", async () => {
+    let liberar!: () => void;
+    const item = compraRef();
+    fetchMock.mockImplementation((path: string, init?: { method?: string }) => {
+      if (path.includes("/refunds") && init?.method === "POST")
+        return new Promise((r) => {
+          liberar = () =>
+            r({ data: { refunded: true, statement_synced: true } });
+        });
+      if (path.includes("/transactions"))
+        return Promise.resolve({
+          data: {
+            items: [item],
+            total_paid_cents: 20000,
+            truncated: false,
+            limit: 200,
+          },
+        });
+      if (path.includes("/email-usage"))
+        return Promise.resolve({ data: { email: null, usage: [] } });
+      if (path.endsWith("/activity"))
+        return Promise.resolve({ data: { state: "ok", hasData: false } });
+      return Promise.resolve(detalhe());
+    });
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(await screen.findByRole("button", { name: "Reembolsar" }));
+    await screen.findByText("Reembolsar cobrança");
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "x" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    fireEvent.change(await screen.findByLabelText(/Digite o valor/), {
+      target: { value: "200,00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Reembolsar agora" }));
+
+    await waitFor(() =>
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Reembolsando...",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Reembolsando..." }));
+
+    expect(
+      fetchMock.mock.calls.filter(
+        (c) =>
+          String(c[0]).includes("/refunds") &&
+          (c[1] as { method?: string })?.method === "POST",
+      ),
+    ).toHaveLength(1);
+    liberar();
   });
 });

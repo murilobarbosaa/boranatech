@@ -30,6 +30,7 @@ import { UserTransactions } from "./UserTransactions";
 import { EditableField, GenderField } from "./UserEditFields";
 import { EmailChangeDialog } from "./EmailChangeDialog";
 import { CancelSubscriptionDialog } from "./CancelSubscriptionDialog";
+import { RefundDialog } from "./RefundDialog";
 import { useProfileEdit } from "./useProfileEdit";
 import {
   AlertDialog,
@@ -42,6 +43,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import type {
   PosthogUserActivityState,
+  TransactionItem,
   TransactionsPayload,
   UserDetail,
 } from "./types";
@@ -157,6 +159,7 @@ export function UserDetailModal({
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [refundAlvo, setRefundAlvo] = useState<TransactionItem | null>(null);
 
   // FUNIL UNICO de fechamento: o botao "Fechar", o Esc e qualquer caminho
   // futuro passam por aqui. Hoje so repassa o onClose; existe porque a Fatia 5
@@ -180,6 +183,7 @@ export function UserDetailModal({
     // rascunho da troca nao sobrevive de propósito (o dialogo zera ao abrir).
     setEmailOpen(false);
     setCancelOpen(false);
+    setRefundAlvo(null);
     onClose();
   }
 
@@ -574,6 +578,7 @@ export function UserDetailModal({
                     loading={transactionsLoading}
                     error={transactionsError}
                     payload={transactions}
+                    onRefund={setRefundAlvo}
                   />
                 </div>
               </Section>
@@ -974,6 +979,16 @@ export function UserDetailModal({
         {/* Confirmacao de descarte. LAYER_IN_DIALOG (z-[2100]) porque abre
             DENTRO de um modal que ja esta em z-[2000]; a escala inteira esta
             documentada em tasks/taskLayers.ts. */}
+        <RefundDialog
+          userId={userId}
+          charge={refundAlvo}
+          open={refundAlvo !== null}
+          onOpenChange={(aberto) => {
+            if (!aberto) setRefundAlvo(null);
+          }}
+          onDone={() => setDetailVersion((version) => version + 1)}
+        />
+
         {detail ? (
           <CancelSubscriptionDialog
             userId={userId}
