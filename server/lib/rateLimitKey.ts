@@ -1,3 +1,5 @@
+import { createHash } from "crypto";
+
 // Identidade usada para CONTAR cota de rate limit (ver server/app.ts). Extraido
 // para ser testavel isolado, sem subir o app inteiro, no mesmo molde de
 // rateLimitExempt.ts.
@@ -89,6 +91,24 @@ export function identidadeDeCota(
 /** Chave do teto por IP, aplicada por cima da cota do usuario. */
 export function chaveDeIp(ip: string | undefined | null): string {
   return `ip:${ip || "unknown"}`;
+}
+
+/**
+ * Rotulo estavel e NAO reversivel de uma chave, para a linha de amostragem.
+ *
+ * A amostra precisa AGRUPAR por IP (a pergunta e "quantas requisicoes por minuto
+ * um mesmo IP faz"), mas nao precisa do IP em si. Um prefixo de sha256 preserva
+ * o agrupamento e nao carrega o endereco nem o `sub` para dentro do log, que no
+ * Railway fica retido sem politica nossa. Mesmo argumento do `textoHash`: guardar
+ * o dado bruto para responder uma pergunta de agrupamento seria trocar uma divida
+ * por outra.
+ *
+ * 8 hex = 32 bits. Colisao e possivel e nao importa: duas chaves colidindo
+ * inflariam a contagem de um rotulo, e a leitura correta continua sendo a do
+ * MAIOR valor observado, nao a soma.
+ */
+export function alvoAnonimo(chave: string): string {
+  return createHash("sha256").update(chave, "utf8").digest("hex").slice(0, 8);
 }
 
 /**
