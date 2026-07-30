@@ -59,8 +59,27 @@ análise antiga (qualquer uma anterior a 2026-07-26, que são as v1).
 - a decomposição da nota bate com a nota exibida no topo (somar as parcelas por categoria).
 
 **Por que é reversão:** atinge todo mundo que já usou a ferramenta, sem precisar fazer nada. É o maior raio
-de alcance da lista. As v1 não têm `deterministicVersion`, `checks`, `keywordsCampos` nem
-`skillsParaEstudar`, então este passo é o teste real de `readDeterministic` e `readQualitative`.
+de alcance da lista.
+
+**O que as v1 de fato NÃO têm.** Medido em 2026-07-30 contra as 157 linhas persistidas (107 v1 sem carimbo,
+50 v4), porque a versão anterior deste parágrafo listava `checks` como ausente e **as 107 têm `checks`**. Um
+passo de smoke que descreve errado o que exercita testa menos do que promete:
+
+| campo | presente nas 107 v1 |
+|---|---|
+| `deterministic.checks` | **107/107 (TEM)** |
+| `deterministicVersion` | 0/107 |
+| `qualitativeVersion` | 0/107 |
+| `deterministic.keywordsCampos` | 0/107 |
+| `deterministic.perfilDedup` | 0/107 |
+| `deterministic.skillsParaAdicionarAgora` | 0/107 |
+| `qualitative.skillsParaEstudar` | 0/107 |
+| `qualitative.skillsSugeridas` | 107/107 (o nome antigo) |
+
+Então o passo 1 exercita, de verdade: a ausência dos dois carimbos de versão, a ausência dos quatro campos
+determinísticos opcionais, e o caminho de `readQualitative` que lê `skillsSugeridas` (v1) no lugar de
+`skillsParaEstudar` (v2+). Ele **não** exercita a tolerância a `checks` ausente, porque nenhuma linha real
+tem esse formato: essa tolerância só é coberta por teste unitário.
 
 ### 2. Checklist de melhorias numa análise antiga (REVERSÃO)
 
