@@ -1,6 +1,11 @@
-// Sincroniza os enabled_events de um Webhook Endpoint da Stripe com os eventos que
-// o handleWebhook (server/providers/stripe.ts) realmente trata. Adiciona os que
-// faltam, PRESERVA os existentes (nunca remove), idempotente.
+// Sincroniza os enabled_events de um Webhook Endpoint da Stripe com a lista
+// declarada em scripts/stripeWebhookEvents.data.mjs, e VERIFICA a sincronia nos
+// dois sentidos: evento declarado e ausente do endpoint, e evento assinado no
+// endpoint e nao declarado. Diverge -> sai com codigo 1, mesmo em dry-run.
+//
+// Antes ele so SOMAVA, e por isso divergiu em silencio: charge.failed e
+// payment_intent.payment_failed estavam assinados sem estar na lista, e o script
+// preservava os dois sem dizer nada.
 //
 // Motivo: o endpoint de producao estava com 5 eventos, mas faltavam os de boleto
 // (async_payment_succeeded/failed) -> boleto pago nao ativava ninguem em producao.
@@ -22,21 +27,11 @@ config({ quiet: true });
 
 const STRIPE_API = "https://api.stripe.com/v1";
 
-// Eventos que o switch de handleWebhook trata hoje. FONTE: manter em sincronia com
-// server/providers/stripe.ts (adicionar aqui quando adicionar um case la).
-const HANDLED_EVENTS = [
-  "checkout.session.completed",
-  "checkout.session.async_payment_succeeded",
-  "checkout.session.async_payment_failed",
-  "customer.subscription.updated",
-  "customer.subscription.deleted",
-  "invoice.paid",
-  "invoice.payment_failed",
-  "charge.succeeded",
-  "charge.refunded",
-  "charge.dispute.created",
-  "charge.dispute.closed",
-];
+import {
+  EXPECTED_EVENTS,
+  HANDLED_EVENTS,
+  UNHANDLED_ON_PURPOSE,
+} from "./stripeWebhookEvents.data.mjs";
 
 const secretKey = process.env.STRIPE_SECRET_KEY;
 if (!secretKey) {
@@ -77,7 +72,9 @@ function encodeEnabledEvents(events) {
 }
 
 async function main() {
-  console.log(`[stripe-webhook-events] modo: ${mode} | endpoint: ${endpointId}`);
+  console.log(
+    `[stripe-webhook-events] modo: ${mode} | endpoint: ${endpointId}`,
+  );
 
   const found = await stripeRequest(
     "GET",
@@ -110,12 +107,43 @@ async function main() {
   }
 
   const currentSet = new Set(current);
-  const missing = HANDLED_EVENTS.filter((e) => !currentSet.has(e));
-  // Uniao: preserva os existentes (mesmo os que nao estao em HANDLED) + adiciona os que faltam.
-  const desired = [...new Set([...current, ...HANDLED_EVENTS])];
+  const expectedSet = new Set(EXPECTED_EVENTS);
+
+  // VERIFICACAO NOS DOIS SENTIDOS. Antes daqui o script so somava
+  // (desired = atual + tratados), entao evento a mais no endpoint era
+  // preservado em silencio e a "fonte de verdade" descrevia MENOS que a
+  // realidade. Uma fonte de verdade que nao e verificada volta a divergir.
+  //
+  //   faltando  -> declarado aqui e ausente do endpoint (evento perdido: foi
+  //                assim que boleto pago deixou de ativar em producao)
+  //   excedente -> assinado no endpoint e nao declarado aqui
+  const missing = EXPECTED_EVENTS.filter((e) => !currentSet.has(e));
+  const extra = current.filter((e) => !expectedSet.has(e));
+  const desired = [...EXPECTED_EVENTS];
 
   console.log(`\nRegistrados hoje (${current.length}):`);
-  for (const e of current) console.log(`  ${e}`);
+  for (const e of current) {
+    const marca = expectedSet.has(e)
+      ? UNHANDLED_ON_PURPOSE[e]
+        ? `  (sem handler de propósito: ${UNHANDLED_ON_PURPOSE[e]})`
+        : ""
+      : "  <== NAO DECLARADO";
+    console.log(`  ${e}${marca}`);
+  }
+
+  if (extra.length > 0) {
+    console.error(
+      `\n[stripe-webhook-events] DIVERGENCIA: ${extra.length} evento(s) assinado(s) e nao declarado(s):`,
+    );
+    for (const e of extra) console.error(`  ${e}`);
+    console.error(
+      "\nCada evento assinado precisa estar em HANDLED_EVENTS (tem case no switch)\n" +
+        "ou em UNHANDLED_ON_PURPOSE (com o motivo), em\n" +
+        "scripts/stripeWebhookEvents.data.mjs. Classifique antes de seguir.",
+    );
+    process.exitCode = 1;
+    return;
+  }
 
   if (missing.length === 0) {
     console.log("\n[stripe-webhook-events] ja esta em dia; nada a adicionar.");
