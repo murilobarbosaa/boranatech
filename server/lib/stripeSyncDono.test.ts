@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { extractRefs, resolveOwnerFromParentCharge } from "./stripeSync";
+import {
+  extractRefs,
+  resolveOwnerFromParentCharge,
+  resolveOwnerFromPaymentIntent,
+} from "./stripeSync";
 
 /**
  * Atribuicao de DONO nas linhas de refund e dispute.
@@ -169,5 +173,146 @@ describe("resolveOwnerFromParentCharge", () => {
     } finally {
       warn.mockRestore();
     }
+  });
+});
+
+describe("resolveOwnerFromPaymentIntent: cobrança de boleto sem customer", () => {
+  // Boleto em `mode: payment` NAO anexa customer a charge, entao
+  // resolveByCustomer nunca resolve e a linha ficaria sem dono PARA SEMPRE (o
+  // campo nao vai aparecer depois). O vinculo existe no banco: a subscription
+  // de boleto guarda o EVENTO inteiro em raw_provider_payload, e a sessao
+  // dentro dele (data.object) carrega o payment_intent.
+  function lookups(over: {
+    byPaymentIntent?: (pi: string) => Promise<{
+      userId: string | null;
+      planCode: string | null;
+      metadataUserId: string | null;
+    } | null>;
+  }) {
+    return {
+      byPaymentIntent: over.byPaymentIntent ?? (async () => null),
+    };
+  }
+
+  it("resolve pelo user_id da subscription quando o metadata concorda", async () => {
+    const owner = await resolveOwnerFromPaymentIntent(
+      "pi_1",
+      lookups({
+        byPaymentIntent: async (pi) =>
+          pi === "pi_1"
+            ? {
+                userId: "user-1",
+                planCode: "pro_annual",
+                metadataUserId: "user-1",
+              }
+            : null,
+      }),
+    );
+
+    expect(owner).toEqual({ userId: "user-1", planCode: "pro_annual" });
+  });
+
+  it("metadata DIVERGENTE não resolve: fail-closed", async () => {
+    // subscriptions.user_id é escrito por nós depois de resolver a pessoa;
+    // metadata.supabase_user_id é string que nós mandamos à Stripe e lemos de
+    // volta. Concordarem é corroboração barata. Discordarem significa que uma
+    // das duas está errada, e atribuir dinheiro à pessoa errada é pior que
+    // deixar sem dono.
+    const owner = await resolveOwnerFromPaymentIntent(
+      "pi_1",
+      lookups({
+        byPaymentIntent: async () => ({
+          userId: "user-1",
+          planCode: "pro_annual",
+          metadataUserId: "OUTRO-user",
+        }),
+      }),
+    );
+
+    expect(owner).toEqual({ userId: null, planCode: null });
+  });
+
+  it("metadata AUSENTE ainda resolve pelo user_id da subscription", async () => {
+    // Sessão antiga pode não ter metadata; o user_id da subscription continua
+    // sendo a fonte da verdade.
+    const owner = await resolveOwnerFromPaymentIntent(
+      "pi_1",
+      lookups({
+        byPaymentIntent: async () => ({
+          userId: "user-1",
+          planCode: null,
+          metadataUserId: null,
+        }),
+      }),
+    );
+
+    expect(owner.userId).toBe("user-1");
+  });
+
+  it("sem subscription casável, devolve null sem inventar vínculo", async () => {
+    const owner = await resolveOwnerFromPaymentIntent(
+      "pi_orfao",
+      lookups({ byPaymentIntent: async () => null }),
+    );
+
+    expect(owner).toEqual({ userId: null, planCode: null });
+  });
+
+  it("falha do lookup não derruba o sync: null e aviso", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const owner = await resolveOwnerFromPaymentIntent(
+        "pi_1",
+        lookups({
+          byPaymentIntent: async () => {
+            throw new Error("banco fora do ar");
+          },
+        }),
+      );
+
+      expect(owner).toEqual({ userId: null, planCode: null });
+      expect(warn).toHaveBeenCalledOnce();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
+
+describe("extractRefs: payment intent da cobrança", () => {
+  it("charge expandida expõe o payment_intent", () => {
+    const refs = extractRefs({
+      object: "charge",
+      id: "py_1",
+      customer: null,
+      payment_intent: "pi_1",
+    } as never);
+
+    expect(refs.paymentIntentId).toBe("pi_1");
+    expect(refs.customerId).toBeNull();
+  });
+
+  it("charge de CARTÃO segue resolvendo por customer, intocada", () => {
+    const refs = extractRefs({
+      object: "charge",
+      id: "ch_1",
+      customer: "cus_1",
+      payment_intent: "pi_1",
+    } as never);
+
+    expect(refs.customerId).toBe("cus_1");
+  });
+
+  it("charge sem payment_intent não quebra", () => {
+    const refs = extractRefs({ object: "charge", id: "ch_1" } as never);
+    expect(refs.paymentIntentId).toBeNull();
+  });
+
+  it("refund não carrega payment intent: o vínculo dele é a cobrança-mãe", () => {
+    const refs = extractRefs({
+      object: "refund",
+      id: "re_1",
+      charge: "ch_1",
+    } as never);
+    expect(refs.paymentIntentId).toBeNull();
   });
 });

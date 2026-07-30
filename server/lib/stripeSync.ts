@@ -93,12 +93,76 @@ type Refs = {
   // charges.retrieve com id de refund seria erro garantido. Distincao
   // estrutural de proposito, nunca por prefixo do id.
   parentChargeId: string | null;
+  // Payment intent da COBRANCA. Existe para o unico caso em que o customer nao
+  // vem: boleto em `mode: payment`, onde a Stripe nao anexa customer a charge.
+  paymentIntentId: string | null;
 };
 
 export type FinanceOwner = { userId: string | null; planCode: string | null };
 
 // Lookups de dono injetados (funcao pura): o teste exercita a DECISAO de
 // atribuicao sem Postgres nem rede.
+/** Dono resolvido pela sessao de checkout ligada ao payment intent. */
+export type DonoPorPaymentIntent = {
+  /** subscriptions.user_id: escrito por nos ao resolver a pessoa. */
+  userId: string | null;
+  planCode: string | null;
+  /** metadata.supabase_user_id da sessao: corroboracao, nao fonte. */
+  metadataUserId: string | null;
+};
+
+export type PaymentIntentLookups = {
+  byPaymentIntent: (
+    paymentIntentId: string,
+  ) => Promise<DonoPorPaymentIntent | null>;
+};
+
+/**
+ * Dono de uma cobranca de BOLETO, que nao tem customer.
+ *
+ * Boleto em `mode: payment` nao anexa customer a charge, entao
+ * resolveByCustomer nunca resolve e a linha ficaria sem dono PARA SEMPRE: o
+ * campo nao vai aparecer depois. O vinculo ja existe no BANCO, sem chamar a
+ * Stripe: a subscription de boleto guarda o EVENTO inteiro em
+ * raw_provider_payload, e a sessao dentro dele (data.object) carrega o
+ * payment_intent da cobranca.
+ *
+ * FONTE DA VERDADE: subscriptions.user_id, coluna que o proprio webhook escreve
+ * depois de resolver a pessoa. O metadata.supabase_user_id da sessao e apenas
+ * CORROBORACAO: e uma string que nos mandamos a Stripe e lemos de volta, entao
+ * vale como segunda opiniao, nao como fonte. Divergencia entre as duas NAO
+ * resolve: atribuir dinheiro a pessoa errada e pior que deixar sem dono.
+ *
+ * Falha de lookup nao derruba o sync: null e aviso, e o proximo run tenta de
+ * novo. Mesma postura de resolveOwnerFromParentCharge.
+ */
+export async function resolveOwnerFromPaymentIntent(
+  paymentIntentId: string,
+  lookups: PaymentIntentLookups,
+): Promise<FinanceOwner> {
+  try {
+    const achado = await lookups.byPaymentIntent(paymentIntentId);
+    if (!achado?.userId) return { userId: null, planCode: null };
+
+    if (achado.metadataUserId && achado.metadataUserId !== achado.userId) {
+      console.warn(
+        `[stripeSync] payment intent ${paymentIntentId}: subscriptions.user_id (${achado.userId}) ` +
+          `diverge do metadata.supabase_user_id (${achado.metadataUserId}); linha entra SEM dono.`,
+      );
+      return { userId: null, planCode: null };
+    }
+
+    return { userId: achado.userId, planCode: achado.planCode };
+  } catch (err) {
+    console.warn(
+      `[stripeSync] nao foi possivel resolver o dono pelo payment intent ${paymentIntentId}; ` +
+        `a linha entra sem user_id e o proximo sync tenta de novo:`,
+      err,
+    );
+    return { userId: null, planCode: null };
+  }
+}
+
 export type OwnerLookups = {
   /** Dono da linha de charge JA gravada em finance_transactions. */
   byCharge: (chargeId: string) => Promise<FinanceOwner | null>;
@@ -140,6 +204,7 @@ export function extractRefs(source: Stripe.BalanceTransaction["source"]): Refs {
     invoiceId: null,
     customerId: null,
     parentChargeId: null,
+    paymentIntentId: null,
   };
   if (!source) return vazio;
   if (typeof source === "string") {
@@ -153,6 +218,9 @@ export function extractRefs(source: Stripe.BalanceTransaction["source"]): Refs {
       invoiceId: readIdOrString((source as { invoice?: unknown }).invoice),
       customerId: readIdOrString((source as { customer?: unknown }).customer),
       parentChargeId: null,
+      paymentIntentId: readIdOrString(
+        (source as { payment_intent?: unknown }).payment_intent,
+      ),
     };
   }
   if (source.object === "refund" || source.object === "dispute") {
@@ -221,7 +289,9 @@ async function resolveByCustomer(
     .limit(1)
     .maybeSingle();
   if (error) {
-    throw new Error(`lookup de subscription por customer falhou: ${error.message}`);
+    throw new Error(
+      `lookup de subscription por customer falhou: ${error.message}`,
+    );
   }
   const row = data as SubscriptionLookup | null;
   if (!row) return { userId: null, planCode: null };
@@ -261,6 +331,49 @@ async function customerOfChargeFromStripe(
   return readIdOrString((charge as { customer?: unknown }).customer);
 }
 
+/**
+ * Dono pela sessao de checkout que carrega este payment intent.
+ *
+ * SEM chamar a Stripe: `subscriptions.raw_provider_payload` guarda o evento
+ * `checkout.session.completed` inteiro, e a sessao (data.object) tem o
+ * payment_intent. Filtro por caminho JSON do PostgREST, conferido contra o
+ * banco real antes de escrever isto.
+ */
+async function ownerByPaymentIntent(
+  paymentIntentId: string,
+): Promise<DonoPorPaymentIntent | null> {
+  const { data, error } = await supabaseAdmin
+    .from("subscriptions")
+    .select("user_id, raw_provider_payload, plans(code)")
+    .eq("raw_provider_payload->data->object->>payment_intent", paymentIntentId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `lookup de subscription por payment intent falhou: ${error.message}`,
+    );
+  }
+  if (!data) return null;
+
+  const row = data as SubscriptionLookup & { raw_provider_payload?: unknown };
+  const plan = Array.isArray(row.plans) ? row.plans[0] : row.plans;
+
+  // metadata.supabase_user_id da sessao, para corroborar (ver docstring de
+  // resolveOwnerFromPaymentIntent).
+  const evento = row.raw_provider_payload as
+    | { data?: { object?: { metadata?: Record<string, unknown> } } }
+    | null
+    | undefined;
+  const metadataUserId = evento?.data?.object?.metadata?.supabase_user_id;
+
+  return {
+    userId: row.user_id ?? null,
+    planCode: plan?.code ?? null,
+    metadataUserId: typeof metadataUserId === "string" ? metadataUserId : null,
+  };
+}
+
 export async function syncBalanceTransactions(
   params: { since?: Date } = {},
 ): Promise<SyncResult> {
@@ -282,6 +395,9 @@ export async function syncBalanceTransactions(
   // (reembolso parcial em parcelas, disputa depois do reembolso), e sem isto
   // cada uma repetiria o charges.retrieve.
   const parentChargeCache = new Map<string, FinanceOwner>();
+  // Cache por payment intent: um boleto pode gerar mais de uma linha e a
+  // consulta e a mesma. Mesmo motivo do cache da cobranca-mae.
+  const paymentIntentCache = new Map<string, FinanceOwner>();
 
   const ownerLookups: OwnerLookups = {
     byCharge: ownerOfChargeRow,
@@ -326,6 +442,19 @@ export async function syncBalanceTransactions(
     let planCode: string | null = null;
     if (refs.customerId) {
       const resolved = await ownerLookups.byCustomer(refs.customerId);
+      userId = resolved.userId;
+      planCode = resolved.planCode;
+    } else if (refs.paymentIntentId) {
+      // FALLBACK, nao caminho principal: so chega aqui quem nao tem customer,
+      // que na pratica e boleto em `mode: payment`. Cartao continua resolvendo
+      // pelo ramo de cima, intocado.
+      let resolved = paymentIntentCache.get(refs.paymentIntentId);
+      if (!resolved) {
+        resolved = await resolveOwnerFromPaymentIntent(refs.paymentIntentId, {
+          byPaymentIntent: ownerByPaymentIntent,
+        });
+        paymentIntentCache.set(refs.paymentIntentId, resolved);
+      }
       userId = resolved.userId;
       planCode = resolved.planCode;
     } else if (refs.parentChargeId) {
