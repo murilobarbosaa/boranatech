@@ -34,6 +34,7 @@ import {
   subscriptionGrantsPro,
   type SubscriptionRow,
 } from "../lib/userListEnrichment";
+import { buildTransactionList, type FinanceRow } from "../lib/userTransactions";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 import { resolvePlanPriceCents } from "../lib/planPrice";
@@ -1606,6 +1607,60 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
 
     await invalidateProStatusCache(uid);
     res.json({ data: { revoked: true } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Teto do extrato. NAO ha paginacao aqui de proposito: medido em 2026-07-29, o
+// MAXIMO de linhas por usuario em producao e 1 (55 linhas no total, 50 usuarios
+// com transacao, media 1.00). Paginar um punhado custaria estado de pagina na
+// UI e uma segunda requisicao para nada. O teto existe so como para-quedas.
+const TRANSACTIONS_LIMIT = 200;
+
+// Extrato de compras do usuario. LEITURA. O estado de reembolso por cobranca
+// (refunded_cents, disputed_cents, refundable_cents) e agregado no SERVIDOR:
+// ver o aviso no topo de server/lib/userTransactions.ts antes de mexer.
+router.get("/users/:id/transactions", async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+      );
+    }
+
+    // Busca UMA linha alem do teto para saber se truncou, em vez de comparar
+    // com o teto (que nao distingue "exatamente 200" de "mais que 200").
+    const { data, error } = await supabaseAdmin
+      .from("finance_transactions")
+      .select(
+        "id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
+      )
+      .eq("user_id", uid)
+      .order("occurred_at", { ascending: false })
+      // Desempate por chave unica desde o inicio: occurred_at nao e unico e a
+      // ordem entre linhas do mesmo instante nao e garantida sem isto.
+      .order("id", { ascending: false })
+      .limit(TRANSACTIONS_LIMIT + 1);
+
+    if (error)
+      return next(
+        dbError("user transactions", error, "Erro ao buscar as compras."),
+      );
+
+    const rows = data || [];
+    const truncated = rows.length > TRANSACTIONS_LIMIT;
+    const list = buildTransactionList(
+      (truncated ? rows.slice(0, TRANSACTIONS_LIMIT) : rows) as FinanceRow[],
+    );
+
+    // truncated vai na resposta para a UI poder AVISAR. Corte silencioso e a
+    // classe de defeito que este projeto ja documentou: o total pareceria
+    // completo sendo parcial.
+    res.json({
+      data: { ...list, truncated, limit: TRANSACTIONS_LIMIT },
+    });
   } catch (err) {
     next(err);
   }
