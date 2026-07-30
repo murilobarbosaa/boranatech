@@ -1,6 +1,9 @@
 import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
-import type { RoadmapIntake } from "@shared/aiRoadmap";
+import type {
+  IntakeRequiredChoiceField,
+  RoadmapIntake,
+} from "@shared/aiRoadmap";
 import type { RoadmapV2 } from "@shared/roadmapV2/types";
 
 // Cliente do Roadmap com IA (/api/roadmaps-ia): lista, detalhe e os streams
@@ -290,8 +293,15 @@ export interface IntakeChatProposal {
 export interface IntakeChatTurnResult {
   reply: string;
   intake: IntakeChatProposal;
+  // O que falta para a CONVERSA terminar (sinal do modelo).
   missing: string[];
   ready: boolean;
+  // O que falta para GERAR, calculado pelo servidor com buildGenerationIntake.
+  // canGenerate, e nao ready, e quem decide se o botao de gerar existe. null =
+  // backend antigo na janela de deploy; o client recalcula localmente com a
+  // mesma funcao compartilhada, entao a UI degrada sem quebrar.
+  canGenerate: boolean | null;
+  missingToGenerate: IntakeRequiredChoiceField[] | null;
   // Quantas mensagens a pessoa ainda pode mandar nesta conversa, e o teto total.
   // Degradam para null quando o backend antigo responde sem eles (janela de
   // deploy: front novo contra backend velho); a UI so mostra o aviso quando o
@@ -388,5 +398,10 @@ export async function sendIntakeChatTurn(
     restantes: typeof data.restantes === "number" ? data.restantes : null,
     maxMensagens:
       typeof data.maxMensagens === "number" ? data.maxMensagens : null,
+    canGenerate:
+      typeof data.canGenerate === "boolean" ? data.canGenerate : null,
+    missingToGenerate: Array.isArray(data.missingToGenerate)
+      ? (data.missingToGenerate as IntakeRequiredChoiceField[])
+      : null,
   };
 }

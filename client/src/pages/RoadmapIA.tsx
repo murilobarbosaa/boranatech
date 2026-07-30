@@ -24,7 +24,10 @@ import {
   type AiRoadmapListItem,
   type IntakeChatProposal,
 } from "@/services/aiRoadmapService";
-import { RoadmapIntakeSchema } from "@shared/aiRoadmap";
+import {
+  buildGenerationIntake,
+  type IntakeRequiredChoiceField,
+} from "@shared/aiRoadmap";
 
 // Pagina do Roadmap com IA (Pro): entendimento (intake), geracao ao vivo por
 // SSE e lista dos roadmaps ja gerados. A visualizacao vive em /roadmaps/ia/:slug.
@@ -115,9 +118,18 @@ const COPY = {
   summaryMotivation: "Motivacao",
   summaryConstraints: "Obstaculos",
   generate: "Gerar meu roadmap",
-  finalError:
-    "Faltou alguma informacao essencial pra gerar. Me conta mais um pouco no chat e a gente tenta de novo.",
+  // Substitui o antigo finalError ("Faltou alguma informacao essencial"), que
+  // nao dizia O QUE faltava nem oferecia saida.
+  missingTitle: "Falta pouco pra gerar",
+  missingLead: "Ainda preciso saber:",
 } as const;
+
+// Rotulos em portugues dos campos que faltam. O usuario nunca ve "hoursPerWeek".
+const MISSING_LABEL: Record<IntakeRequiredChoiceField, string> = {
+  goal: "seu objetivo principal",
+  hoursPerWeek: "quanto tempo por semana voce tem",
+  deadline: "em quanto tempo quer chegar la",
+};
 
 // Rotulos de exibicao dos enums no resumo do intake (nao vao ao server; o server
 // recebe o enum cru). TODO(Ana): revisar rotulos.
@@ -275,7 +287,6 @@ export default function RoadmapIA() {
   // Mensagens que ainda cabem na conversa, vindo do backend. null = backend
   // antigo (janela de deploy) ou nenhum turno ainda; a UI simplesmente nao avisa.
   const [restantes, setRestantes] = useState<number | null>(null);
-  const [finalError, setFinalError] = useState<string | null>(null);
   // Guarda de uma execucao so do bootstrap (restore do rascunho ou abertura).
   const bootstrappedRef = useRef(false);
 
@@ -347,7 +358,6 @@ export default function RoadmapIA() {
     async (history: IntakeChatMessage[], isOpening: boolean) => {
       setSending(true);
       setChatError(null);
-      setFinalError(null);
       try {
         const result = await sendIntakeChatTurn(history);
         setMessages([...history, { role: "assistant", content: result.reply }]);
@@ -413,29 +423,21 @@ export default function RoadmapIA() {
     saveDraft(userId, { messages, intake, missing, ready, restantes });
   }, [userId, messages, intake, missing, ready]);
 
-  // ready + confirmacao: monta o RoadmapIntake final (intake do chat + format
-  // "misto"), valida no client e chama a geracao existente. Falha de validacao
-  // (nao deveria acontecer) mostra erro claro em vez de mandar lixo ao server.
+  // Prontidao para gerar, pela MESMA funcao que o servidor usa. O servidor ja
+  // manda a resposta pronta; recalcular localmente cobre a janela de deploy
+  // (front novo contra backend antigo, que nao manda canGenerate) e o caso do
+  // formulario de fallback, cujos valores ainda nao passaram por turno nenhum.
+  const readiness = buildGenerationIntake(intake ?? {});
+  const canGenerate = readiness.canGenerate;
+  const missingToGenerate = readiness.missing;
+
+  // Gera com o payload que o buildGenerationIntake montou. Sem caminho de
+  // validacao proprio aqui: se canGenerate e true, o payload existe.
+  const payloadToGenerate = readiness.intake;
   const generate = useCallback(async () => {
-    if (!intake) return;
-    const candidate: Record<string, unknown> = {
-      goal: intake.goal ?? undefined,
-      hoursPerWeek: intake.hoursPerWeek ?? undefined,
-      deadline: intake.deadline ?? undefined,
-      format: "misto",
-    };
-    if (intake.stackFocus) candidate.stackFocus = intake.stackFocus;
-    if (intake.startingPoint) candidate.startingPoint = intake.startingPoint;
-    if (intake.motivation) candidate.motivation = intake.motivation;
-    if (intake.constraints) candidate.constraints = intake.constraints;
-    const parsed = RoadmapIntakeSchema.safeParse(candidate);
-    if (!parsed.success) {
-      setFinalError(COPY.finalError);
-      return;
-    }
-    setFinalError(null);
-    await start((handlers) => streamGeneration(parsed.data, handlers));
-  }, [intake, start]);
+    if (!payloadToGenerate) return;
+    await start((handlers) => streamGeneration(payloadToGenerate, handlers));
+  }, [payloadToGenerate, start]);
 
   const resume = async (slug: string) => {
     await start((handlers) => streamResume(slug, handlers));
@@ -550,63 +552,59 @@ export default function RoadmapIA() {
                   placeholder={COPY.chatPlaceholder}
                 />
 
-                {ready && intake ? (
-                  <div className="rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#FCC700]">
+                {/* O resumo renderiza o PAYLOAD que vai ser enviado, nao a
+                    proposta crua do chat: o que a pessoa confere e exatamente o
+                    que o servidor recebe. `ready` (fim da conversa) so decide o
+                    destaque visual; quem decide a EXISTENCIA do botao e
+                    canGenerate. */}
+                {canGenerate && payloadToGenerate ? (
+                  <div
+                    className={`rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 ${ready ? "shadow-[4px_4px_0_#FCC700]" : "shadow-[3px_3px_0_#0f172a]"}`}
+                  >
                     <p className="font-display text-lg font-black text-slate-950">
                       {COPY.summaryTitle}
                     </p>
                     <dl className="mt-3 space-y-1.5 text-sm">
-                      {intake.goal ? (
-                        <SummaryRow
-                          label={COPY.summaryGoal}
-                          value={GOAL_DISPLAY[intake.goal]}
-                        />
-                      ) : null}
-                      {intake.hoursPerWeek ? (
-                        <SummaryRow
-                          label={COPY.summaryHours}
-                          value={HOURS_DISPLAY[intake.hoursPerWeek]}
-                        />
-                      ) : null}
-                      {intake.deadline ? (
-                        <SummaryRow
-                          label={COPY.summaryDeadline}
-                          value={DEADLINE_DISPLAY[intake.deadline]}
-                        />
-                      ) : null}
-                      {intake.stackFocus ? (
+                      <SummaryRow
+                        label={COPY.summaryGoal}
+                        value={GOAL_DISPLAY[payloadToGenerate.goal]}
+                      />
+                      <SummaryRow
+                        label={COPY.summaryHours}
+                        value={HOURS_DISPLAY[payloadToGenerate.hoursPerWeek]}
+                      />
+                      <SummaryRow
+                        label={COPY.summaryDeadline}
+                        value={DEADLINE_DISPLAY[payloadToGenerate.deadline]}
+                      />
+                      {payloadToGenerate.stackFocus ? (
                         <SummaryRow
                           label={COPY.summaryStack}
-                          value={intake.stackFocus}
+                          value={payloadToGenerate.stackFocus}
                         />
                       ) : null}
-                      {intake.startingPoint ? (
+                      {payloadToGenerate.startingPoint ? (
                         <SummaryRow
                           label={COPY.summaryStartingPoint}
-                          value={intake.startingPoint}
+                          value={payloadToGenerate.startingPoint}
                         />
                       ) : null}
-                      {intake.motivation ? (
+                      {payloadToGenerate.motivation ? (
                         <SummaryRow
                           label={COPY.summaryMotivation}
-                          value={intake.motivation}
+                          value={payloadToGenerate.motivation}
                         />
                       ) : null}
-                      {intake.constraints ? (
+                      {payloadToGenerate.constraints ? (
                         <SummaryRow
                           label={COPY.summaryConstraints}
-                          value={intake.constraints}
+                          value={payloadToGenerate.constraints}
                         />
                       ) : null}
                     </dl>
                     <p className="mt-3 text-xs font-semibold text-slate-500">
                       {COPY.summaryHint}
                     </p>
-                    {finalError ? (
-                      <p className="mt-3 rounded-[11px] border-[2px] border-slate-900 bg-rose-100 px-3 py-2 text-sm font-bold text-rose-800">
-                        {finalError}
-                      </p>
-                    ) : null}
                     <button
                       type="button"
                       onClick={() => void generate()}
@@ -616,7 +614,23 @@ export default function RoadmapIA() {
                       {COPY.generate}
                     </button>
                   </div>
-                ) : null}
+                ) : (
+                  /* canGenerate false: a pessoa ve NOMEADO o que falta, em vez
+                     do antigo silencio (o botao simplesmente nao existia). */
+                  <div className="rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[3px_3px_0_#0f172a]">
+                    <p className="font-display text-lg font-black text-slate-950">
+                      {COPY.missingTitle}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-600">
+                      {COPY.missingLead}
+                    </p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm font-bold text-slate-800">
+                      {missingToGenerate.map((field) => (
+                        <li key={field}>{MISSING_LABEL[field]}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </div>

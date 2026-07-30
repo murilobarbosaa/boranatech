@@ -3,6 +3,7 @@ import { NextFunction, Request, Response, Router } from "express";
 
 import {
   AI_ROADMAP_SLUG_RE,
+  buildGenerationIntake,
   RoadmapIntakeSchema,
   type RoadmapIntake,
 } from "../../shared/aiRoadmap";
@@ -361,14 +362,21 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
   const userId = req.user!.id;
 
   try {
-    const parsedBody = RoadmapIntakeSchema.safeParse(req.body);
-    if (!parsedBody.success) {
-      // TODO(Ana): mensagem de respostas invalidas do entendimento.
+    // MESMA funcao que o chat usa para decidir canGenerate: o endpoint nao pode
+    // recusar um payload que a UI considerou gerável, nem aceitar um que ela
+    // considerou incompleto. A mensagem de erro NOMEIA o que falta, em vez do
+    // antigo "Respostas do entendimento invalidas" que nao dizia nada.
+    const readiness = buildGenerationIntake(req.body as Record<string, string>);
+    if (!readiness.canGenerate || !readiness.intake) {
       return next(
-        createError(400, "invalid_request", "Respostas do entendimento invalidas."),
+        createError(
+          400,
+          "invalid_request",
+          `Faltam informacoes para gerar: ${readiness.missing.join(", ")}.`,
+        ),
       );
     }
-    const intake = parsedBody.data;
+    const intake = readiness.intake;
 
     if (!(await passesGenerationGate(req, next, requestId))) return;
 
@@ -573,6 +581,11 @@ router.post("/intake/chat", async (req: Request, res: Response, next: NextFuncti
       outputChars: aiIo.outputChars,
       costEstimate: estimateCost(aiIo.inputChars, aiIo.outputChars, DEFAULT_MODEL),
     });
+    // canGenerate sai da MESMA funcao que o /generate usa (buildGenerationIntake),
+    // entao o botao da UI e o gate do endpoint nunca discordam. `missing` aqui e
+    // o do INTAKE (o que falta para gerar), diferente do `turn.missing` do
+    // modelo, que e o que falta para a CONVERSA terminar.
+    const readiness = buildGenerationIntake(turn.intake);
     // `restantes` ja desconta a mensagem que a pessoa acabou de mandar, entao e
     // quantas ela AINDA pode mandar depois desta resposta.
     res.json({
@@ -580,6 +593,8 @@ router.post("/intake/chat", async (req: Request, res: Response, next: NextFuncti
       intake: turn.intake,
       missing: turn.missing,
       ready: turn.ready,
+      canGenerate: readiness.canGenerate,
+      missingToGenerate: readiness.missing,
       restantes: body.restantes,
       maxMensagens: MAX_USER_MESSAGES,
     });
