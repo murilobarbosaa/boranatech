@@ -7,6 +7,11 @@ import { fileURLToPath } from "url";
 
 import { env } from "./lib/env";
 import { isRateLimitExempt } from "./lib/rateLimitExempt";
+import {
+  chaveDeIp,
+  FATOR_TETO_IP,
+  identidadeDeCota,
+} from "./lib/rateLimitKey";
 import { cacheConnection } from "./lib/redis";
 import { supabaseAdmin } from "./lib/supabaseAdmin";
 import { validateSupabaseJwt } from "./middleware/auth";
@@ -269,8 +274,38 @@ app.use(async (req, res, next) => {
   }
 
   const now = Date.now();
-  const key = req.ip || "unknown";
+  // Conta por QUEM CHAMA, nao por de onde. IP nao e identidade: em NAT de
+  // operadora/escola dezenas de pessoas dividiam o mesmo balde de 180/min e
+  // levavam 429 juntas (28 dos 29 `profile_fetch_exhausted` do Sentry eram isso,
+  // espalhados por 6 cidades). Requisicao com token conta no balde do usuario.
+  const identidade = identidadeDeCota(req.headers.authorization, req.ip);
+  const key = identidade.chave;
+  // Requisicao autenticada leva TAMBEM um teto por IP, mais alto. Sem ele, um
+  // `sub` forjado a cada requisicao geraria um balde novo por chamada e escaparia
+  // da cota (o `sub` e lido sem verificar assinatura de proposito: ele nao
+  // autoriza nada, so escolhe balde). Requisicao sem token nao precisa do
+  // segundo teto, porque o IP ja e a chave principal e checar de novo contaria o
+  // mesmo balde duas vezes.
+  const tetoIp = identidade.porUsuario
+    ? {
+        chave: chaveDeIp(req.ip),
+        limite: RATE_LIMIT_MAX_REQUESTS * FATOR_TETO_IP,
+      }
+    : null;
   const windowStart = now - (now % RATE_LIMIT_WINDOW_MS);
+
+  // Escopo no log: sem ele, "429" nao diz se quem estourou foi a pessoa ou o IP
+  // inteiro, que sao problemas diferentes com correcoes diferentes.
+  const recusar = (escopo: "usuario" | "ip", resetAt: number) => {
+    res.setHeader("Retry-After", String(Math.ceil((resetAt - now) / 1000)));
+    console.warn(`[ratelimit] 429 escopo=${escopo}`);
+    return res.status(429).json({
+      error: {
+        code: "rate_limited",
+        message: "Muitas requisições. Tente novamente em instantes.",
+      },
+    });
+  };
 
   const redisCount = await redisRateLimitCount(key, windowStart);
   if (redisCount !== null) {
@@ -281,16 +316,13 @@ app.use(async (req, res, next) => {
       );
     }
     if (redisCount > RATE_LIMIT_MAX_REQUESTS) {
-      res.setHeader(
-        "Retry-After",
-        String(Math.ceil((windowStart + RATE_LIMIT_WINDOW_MS - now) / 1000)),
-      );
-      return res.status(429).json({
-        error: {
-          code: "rate_limited",
-          message: "Muitas requisições. Tente novamente em instantes.",
-        },
-      });
+      return recusar("usuario", windowStart + RATE_LIMIT_WINDOW_MS);
+    }
+    if (tetoIp) {
+      const contagemIp = await redisRateLimitCount(tetoIp.chave, windowStart);
+      if (contagemIp !== null && contagemIp > tetoIp.limite) {
+        return recusar("ip", windowStart + RATE_LIMIT_WINDOW_MS);
+      }
     }
     return next();
   }
@@ -302,28 +334,33 @@ app.use(async (req, res, next) => {
     );
   }
 
-  const current = rateLimitStore.get(key);
-
-  if (!current || current.resetAt <= now) {
-    if (rateLimitStore.size >= RATE_LIMIT_MAX_ENTRIES) {
-      sweepRateLimitStore(now);
+  // Fallback local: mesma decisao em duas chaves, entao vira funcao para os dois
+  // tetos usarem a MESMA contagem. Guarda dentro da funcao, nao repetida no call
+  // site: era assim que a supressao por autodeclaracao sumiu de um dos dois
+  // call sites de `setScoreDelta`.
+  const contarLocal = (chave: string): { count: number; resetAt: number } => {
+    const atual = rateLimitStore.get(chave);
+    if (!atual || atual.resetAt <= now) {
+      if (rateLimitStore.size >= RATE_LIMIT_MAX_ENTRIES) {
+        sweepRateLimitStore(now);
+      }
+      const novo = { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS };
+      rateLimitStore.set(chave, novo);
+      return novo;
     }
-    rateLimitStore.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return next();
-  }
+    atual.count += 1;
+    return atual;
+  };
 
-  current.count += 1;
-  if (current.count > RATE_LIMIT_MAX_REQUESTS) {
-    res.setHeader(
-      "Retry-After",
-      String(Math.ceil((current.resetAt - now) / 1000)),
-    );
-    return res.status(429).json({
-      error: {
-        code: "rate_limited",
-        message: "Muitas requisições. Tente novamente em instantes.",
-      },
-    });
+  const doUsuario = contarLocal(key);
+  if (doUsuario.count > RATE_LIMIT_MAX_REQUESTS) {
+    return recusar("usuario", doUsuario.resetAt);
+  }
+  if (tetoIp) {
+    const doIp = contarLocal(tetoIp.chave);
+    if (doIp.count > tetoIp.limite) {
+      return recusar("ip", doIp.resetAt);
+    }
   }
 
   next();
