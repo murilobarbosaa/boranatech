@@ -32,7 +32,6 @@ const SKILL_LEVEL_SET = new Set<string>(SKILL_LEVELS);
 
 const SKILL_TEXT_MAX = 80;
 
-
 const AVATAR_VALUES = {
   avatar_border: new Set([
     "classic",
@@ -283,7 +282,12 @@ router.patch("/", checkProStatus, async (req, res, next) => {
       }
     }
 
-    for (const field of Object.keys(PROFILE_TEXT_LIMITS)) {
+    // Todo campo de TEXTO passa por aqui: os que tem limite declarado (tipo +
+    // tamanho) e `handle`, que nao tem limite mas precisa da checagem de TIPO.
+    // Sem ela, um objeto no corpo chegava ao Postgres e virava erro de banco em
+    // vez de 400 (achado da Fatia 5a). A regra e a mesma que a rota do admin
+    // usa: shared/profileFields.ts.
+    for (const field of [...Object.keys(PROFILE_TEXT_LIMITS), "handle"]) {
       if (field in updates) {
         const textError = validateProfileText(field, updates[field]);
         if (textError) return next(textError);

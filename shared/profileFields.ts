@@ -8,19 +8,30 @@
 // divergencia dessas de propósito (a regra do Pro, que vive na RPC e em
 // TypeScript); a segunda nao foi aceita.
 //
-// LIMITE CONHECIDO, herdado e NAO corrigido aqui: name, bio, area_interesse,
-// nivel_atual e objetivo nao tem limite de tamanho. Nunca tiveram, nem em
-// me.ts. Este modulo EXTRAI o que existe, sem mudar comportamento de nenhuma
-// das duas rotas; apertar isso muda o que /api/me aceita hoje e e decisao
-// propria. Medido em 2026-07-29: o maior name tem 43 caracteres e os demais
-// campos estao todos nulos, entao apertar depois nao invalidaria nada.
+// Os limites valem para as DUAS rotas. Apertar aqui muda o que /api/me aceita
+// para todo usuario, entao qualquer teto novo precisa ser calibrado contra o
+// dado existente antes de entrar.
 
-/** Limites de tamanho por campo. Campo ausente daqui nao tem limite. */
+/**
+ * Limites de tamanho por campo. Campo ausente daqui nao tem limite.
+ *
+ * Os quatro primeiros sao os originais. Os cinco seguintes (name, bio,
+ * area_interesse, nivel_atual, objetivo) foram acrescentados em 2026-07-30:
+ * nunca tiveram limite nenhum, em nenhuma das duas rotas. Tetos GENEROSOS,
+ * calibrados para nao invalidar nada existente (medido: maior `name` = 43
+ * caracteres; os outros quatro estao 100% nulos em producao). Vale tambem para
+ * PATCH /api/me, ou seja, para todo usuario.
+ */
 export const PROFILE_TEXT_LIMITS: Record<string, number> = {
   headline: 140,
   city: 80,
   uf: 40,
   career_goal: 240,
+  name: 120,
+  bio: 2000,
+  area_interesse: 120,
+  nivel_atual: 120,
+  objetivo: 500,
 };
 
 export const PROFILE_URL_FIELDS = [

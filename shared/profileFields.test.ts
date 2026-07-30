@@ -84,11 +84,27 @@ describe("validateProfileTextValue", () => {
     );
   });
 
-  it("campo SEM limite declarado passa em qualquer tamanho", () => {
-    // Comportamento herdado de me.ts, documentado no modulo. Se um dia bio
-    // ganhar limite, este teste cai e vira a prova da mudanca.
-    expect(validateProfileTextValue("bio", "x".repeat(10000))).toBeNull();
-    expect(PROFILE_TEXT_LIMITS.bio).toBeUndefined();
+  it("os cinco campos que nao tinham limite agora tem", () => {
+    // Ate 2026-07-30 estes cinco passavam em qualquer tamanho, nas DUAS rotas.
+    for (const campo of [
+      "name",
+      "bio",
+      "area_interesse",
+      "nivel_atual",
+      "objetivo",
+    ]) {
+      expect(PROFILE_TEXT_LIMITS[campo], campo).toBeGreaterThan(0);
+      const acima = "x".repeat(PROFILE_TEXT_LIMITS[campo] + 1);
+      expect(validateProfileTextValue(campo, acima)?.code, campo).toBe(
+        "invalid_request",
+      );
+    }
+  });
+
+  it("os tetos novos nao invalidam o maior dado que existe hoje", () => {
+    // Medido em producao: maior `name` = 43 caracteres, os outros quatro 100%
+    // nulos. Um teto abaixo disso quebraria o save de quem ja esta cadastrado.
+    expect(validateProfileTextValue("name", "x".repeat(43))).toBeNull();
   });
 });
 
