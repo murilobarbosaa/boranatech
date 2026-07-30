@@ -8,6 +8,7 @@ import { fileURLToPath } from "url";
 import { env } from "./lib/env";
 import { isRateLimitExempt } from "./lib/rateLimitExempt";
 import {
+  alvoAnonimo,
   chaveDeIp,
   FATOR_TETO_IP,
   identidadeDeCota,
@@ -295,16 +296,37 @@ app.use(async (req, res, next) => {
   const windowStart = now - (now % RATE_LIMIT_WINDOW_MS);
 
   // Escopo no log: sem ele, "429" nao diz se quem estourou foi a pessoa ou o IP
-  // inteiro, que sao problemas diferentes com correcoes diferentes.
-  const recusar = (escopo: "usuario" | "ip", resetAt: number) => {
+  // inteiro, que sao problemas diferentes com correcoes diferentes. A CONTAGEM
+  // vem junto porque ela e de graca (ja esta em maos na hora da decisao) e
+  // transforma "estourou" em "estourou por quanto": 1081 contra 1080 e um NAT
+  // grande demais para o fator; 9000 contra 1080 e abuso. Sem o numero, as duas
+  // saem como a mesma linha.
+  const recusar = (
+    escopo: "usuario" | "ip",
+    resetAt: number,
+    contagem: number,
+    limite: number,
+  ) => {
     res.setHeader("Retry-After", String(Math.ceil((resetAt - now) / 1000)));
-    console.warn(`[ratelimit] 429 escopo=${escopo}`);
+    console.warn(
+      `[ratelimit] 429 escopo=${escopo} contagem=${contagem} limite=${limite}`,
+    );
     return res.status(429).json({
       error: {
         code: "rate_limited",
         message: "Muitas requisições. Tente novamente em instantes.",
       },
     });
+  };
+
+  // Amostra do DENOMINADOR: emite a contagem da JANELA (nao a requisicao) a cada
+  // N chamadas da mesma chave. Desligada por padrao. Ver docs/denominador-rate-limit.md.
+  const amostrar = (escopo: "usuario" | "ip", contagem: number, limite: number) => {
+    const n = env.rateLimitSampleN;
+    if (n <= 0 || contagem % n !== 0) return;
+    console.log(
+      `[ratelimit] amostra escopo=${escopo} alvo=${alvoAnonimo(escopo === "ip" ? chaveDeIp(req.ip) : key)} contagem=${contagem} limite=${limite}`,
+    );
   };
 
   const redisCount = await redisRateLimitCount(key, windowStart);
@@ -316,13 +338,15 @@ app.use(async (req, res, next) => {
       );
     }
     if (redisCount > RATE_LIMIT_MAX_REQUESTS) {
-      return recusar("usuario", windowStart + RATE_LIMIT_WINDOW_MS);
+      return recusar("usuario", windowStart + RATE_LIMIT_WINDOW_MS, redisCount, RATE_LIMIT_MAX_REQUESTS);
     }
+    amostrar("usuario", redisCount, RATE_LIMIT_MAX_REQUESTS);
     if (tetoIp) {
       const contagemIp = await redisRateLimitCount(tetoIp.chave, windowStart);
       if (contagemIp !== null && contagemIp > tetoIp.limite) {
-        return recusar("ip", windowStart + RATE_LIMIT_WINDOW_MS);
+        return recusar("ip", windowStart + RATE_LIMIT_WINDOW_MS, contagemIp, tetoIp.limite);
       }
+      if (contagemIp !== null) amostrar("ip", contagemIp, tetoIp.limite);
     }
     return next();
   }
@@ -354,13 +378,15 @@ app.use(async (req, res, next) => {
 
   const doUsuario = contarLocal(key);
   if (doUsuario.count > RATE_LIMIT_MAX_REQUESTS) {
-    return recusar("usuario", doUsuario.resetAt);
+    return recusar("usuario", doUsuario.resetAt, doUsuario.count, RATE_LIMIT_MAX_REQUESTS);
   }
+  amostrar("usuario", doUsuario.count, RATE_LIMIT_MAX_REQUESTS);
   if (tetoIp) {
     const doIp = contarLocal(tetoIp.chave);
     if (doIp.count > tetoIp.limite) {
-      return recusar("ip", doIp.resetAt);
+      return recusar("ip", doIp.resetAt, doIp.count, tetoIp.limite);
     }
+    amostrar("ip", doIp.count, tetoIp.limite);
   }
 
   next();
