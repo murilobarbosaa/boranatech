@@ -351,6 +351,130 @@ describe("GET /users/:id", () => {
     expect(r.body.data.is_pro).toBe(true);
     expect(r.body.data.pro_source).toBe("influencer");
   });
+
+  it("com active E pending simultâneos, lista e detalhe dizem a MESMA coisa", async () => {
+    // A janela real: na renovação de boleto o cron `expiring-subscriptions`
+    // manda o e-mail, o link entra por internalRenewal (que pula o guard de
+    // assinatura ativa) e o checkout.session.completed cria a linha `pending`
+    // ao lado da `active`. Isso dura até 3 dias.
+    //
+    // O detalhe escolhia por created_at desc, então mostrava a PENDING; a lista
+    // usa pickSubscription, que prefere a que concede Pro. As duas telas
+    // afirmavam coisas diferentes sobre a mesma pessoa.
+    const ATIVA = {
+      user_id: UID,
+      status: "active",
+      payment_method: "boleto",
+      renewal_type: "manual",
+      created_at: "2026-01-01T00:00:00Z",
+      current_period_end: FUTURO,
+      cancel_at_period_end: false,
+      plans: { code: "pro_annual" },
+    };
+    const PENDENTE = {
+      user_id: UID,
+      status: "pending",
+      payment_method: "boleto",
+      renewal_type: "manual",
+      // MAIS RECENTE: é ela que o critério antigo escolhia.
+      created_at: "2026-07-29T00:00:00Z",
+      current_period_end: null,
+      cancel_at_period_end: false,
+      plans: { code: "pro_annual" },
+    };
+
+    montar(
+      {
+        profiles: {
+          rows: [{ user_id: UID, id: "p1", email: "a@x", name: "A" }],
+        },
+        subscriptions: { rows: [PENDENTE, ATIVA] },
+        influencers: { rows: [] },
+        finance_transactions: { rows: [] },
+        subscription_cancellations: { rows: [] },
+      },
+      {
+        getUserById: async () => ({
+          data: { user: { last_sign_in_at: null } },
+          error: null,
+        }),
+      },
+    );
+    const detalhe = await chamarAdmin("GET", `/users/${UID}`);
+
+    montar({
+      profiles: {
+        rows: [
+          { id: "p1", user_id: UID, name: "A", email: "a@x", created_at: null },
+        ],
+        count: 1,
+      },
+      subscriptions: { rows: [PENDENTE, ATIVA] },
+      influencers: { rows: [] },
+    });
+    const lista = await chamarAdmin("GET", "/users");
+    const linha = lista.body.data.items.find((i: any) => i.user_id === UID);
+
+    expect(detalhe.status).toBe(200);
+    expect(linha).toBeTruthy();
+
+    // O que importa: as duas telas concordam.
+    expect(detalhe.body.data.subscription.status).toBe(
+      linha.subscription_status,
+    );
+    expect(detalhe.body.data.subscription.plan_code).toBe(linha.plan_code);
+    // E concordam no valor CERTO, não num errado em comum.
+    expect(detalhe.body.data.subscription.status).toBe("active");
+    expect(detalhe.body.data.pro_source).toBe("subscription");
+  });
+
+  it("sem nenhuma que conceda Pro, o detalhe mostra a mais recente", async () => {
+    // O outro ramo de pickSubscription: sem candidata Pro, vale a mais nova.
+    montar(
+      {
+        profiles: {
+          rows: [{ user_id: UID, id: "p1", email: "a@x", name: "A" }],
+        },
+        subscriptions: {
+          rows: [
+            {
+              user_id: UID,
+              status: "canceled",
+              payment_method: null,
+              renewal_type: "auto",
+              created_at: "2026-01-01T00:00:00Z",
+              current_period_end: null,
+              cancel_at_period_end: false,
+              plans: { code: "pro_monthly" },
+            },
+            {
+              user_id: UID,
+              status: "pending",
+              payment_method: "boleto",
+              renewal_type: "manual",
+              created_at: "2026-07-29T00:00:00Z",
+              current_period_end: null,
+              cancel_at_period_end: false,
+              plans: { code: "pro_annual" },
+            },
+          ],
+        },
+        influencers: { rows: [] },
+        finance_transactions: { rows: [] },
+        subscription_cancellations: { rows: [] },
+      },
+      {
+        getUserById: async () => ({
+          data: { user: { last_sign_in_at: null } },
+          error: null,
+        }),
+      },
+    );
+
+    const r = await chamarAdmin("GET", `/users/${UID}`);
+    expect(r.body.data.subscription.status).toBe("pending");
+    expect(r.body.data.pro_source).toBe(null);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -32,6 +32,7 @@ import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import {
   fetchUserListEnrichment,
+  pickSubscription,
   resolveProSource,
   subscriptionGrantsPro,
   type SubscriptionRow,
@@ -1197,15 +1198,24 @@ router.get("/users/:id", async (req, res, next) => {
     // null: estado legitimo, nao erro.
     const [subResult, cancelResult, financeResult, influencerResult, authResult] =
       await Promise.all([
+      // TODAS as assinaturas do usuario, nao a mais recente. A escolha de qual
+      // representa a pessoa e de pickSubscription, a MESMA funcao que a lista
+      // usa (server/lib/userListEnrichment.ts).
+      //
+      // Antes era order(created_at).limit(1): o criterio divergia do da lista, e
+      // divergia exatamente na janela que importa. Na renovacao de boleto o
+      // usuario fica com `active` e `pending` ao mesmo tempo por ate 3 dias (o
+      // link do lembrete entra por internalRenewal, que pula o guard de
+      // assinatura ativa), e as duas telas afirmavam coisas diferentes sobre a
+      // mesma pessoa: a lista dizia "Ativa", o detalhe dizia "Aguardando
+      // pagamento". Uma funcao, um criterio.
       supabaseAdmin
         .from("subscriptions")
         .select(
-          "status, payment_method, renewal_type, created_at, current_period_end, cancel_at_period_end, plans(code)",
+          "user_id, status, payment_method, renewal_type, created_at, current_period_end, cancel_at_period_end, plans(code)",
         )
         .eq("user_id", uid)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+        .order("created_at", { ascending: false }),
       supabaseAdmin
         .from("subscription_cancellations")
         .select("reason_code, reason_text, effective_at")
@@ -1320,7 +1330,8 @@ router.get("/users/:id", async (req, res, next) => {
       };
     }
 
-    const subRow = subResult.data as {
+    type LinhaAssinatura = {
+      user_id: string;
       status: string | null;
       payment_method: string | null;
       renewal_type: string | null;
@@ -1328,7 +1339,12 @@ router.get("/users/:id", async (req, res, next) => {
       current_period_end: string | null;
       cancel_at_period_end: boolean | null;
       plans: { code: string | null } | { code: string | null }[] | null;
-    } | null;
+    };
+    const todasAsAssinaturas = (subResult.data || []) as LinhaAssinatura[];
+    const subRow = pickSubscription(
+      todasAsAssinaturas,
+      new Date(),
+    ) as LinhaAssinatura | null;
     const subPlan = Array.isArray(subRow?.plans) ? subRow?.plans[0] : subRow?.plans;
 
     const paidTotalCents = (financeResult.data || []).reduce(
