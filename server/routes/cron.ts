@@ -21,6 +21,7 @@ import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { syncBalanceTransactions } from "../lib/stripeSync";
 import { collectSubscriptionSnapshot } from "../lib/subscriptionSnapshots";
 import { createError } from "../middleware/error";
+import { lerSessaoDeBoleto } from "../lib/boletoSession";
 import { getStripeSubscriptionState } from "../providers/stripe";
 import { isPlanId, PLAN_PRICING } from "../../shared/planPricing";
 
@@ -767,22 +768,23 @@ router.post(
 
           // Guard definitivo antes de matar: 1 retrieve por orfao (raros, e o
           // conjunto ja veio filtrado por idade), custo negligivel.
-          let session: Awaited<
-            ReturnType<typeof stripe.checkout.sessions.retrieve>
-          >;
-          try {
-            session = await stripe.checkout.sessions.retrieve(sessionId);
-          } catch (stripeErr) {
+          //
+          // MESMO caminho que o detalhe do admin usa (server/lib/boletoSession.ts).
+          // Antes era um retrieve escrito aqui; virou funcao compartilhada para
+          // os dois lados nao divergirem, ja que os dois decidem sobre o mesmo
+          // boleto. A funcao nao lanca: incerteza vira estado 'indisponivel'.
+          const estado = await lerSessaoDeBoleto(sessionId, stripe);
+
+          if (estado.estado === "indisponivel") {
             // Falha na consulta = incerteza: NAO cancela (fail-safe, deixa viva).
             console.error(
-              `[cron/expire-pending-boletos] retrieve falhou para ${sessionId}; mantendo linha viva:`,
-              stripeErr,
+              `[cron/expire-pending-boletos] leitura da sessao falhou para ${sessionId}; mantendo linha viva: ${estado.motivo}`,
             );
             failed++;
             continue;
           }
 
-          if (session.payment_status === "paid") {
+          if (estado.pago) {
             // Boleto PAGO cujo async_payment_succeeded se perdeu: dinheiro entrou,
             // acesso nao saiu. NUNCA cancelar; grita para investigacao (a reativacao
             // passa pelo handler de webhook, fora do escopo deste cron).

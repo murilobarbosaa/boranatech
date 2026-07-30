@@ -89,6 +89,12 @@ export type UserDetail = {
     current_period_end: string | null;
     cancel_at_period_end: boolean | null;
   } | null;
+  /**
+   * Estado do boleto pendente, lido da Checkout Session sob demanda.
+   * Null quando a assinatura escolhida nao esta `pending` (a maioria esmagadora
+   * dos casos: 1 linha em 59 hoje).
+   */
+  boleto: BoletoEstado | null;
   cancellation_intent: {
     reason_code: string | null;
     reason_text: string | null;
@@ -192,3 +198,16 @@ export type AuditPayload = {
   limit: number;
   cross_reference_ok: boolean;
 };
+
+/** Espelha server/lib/boletoSession.ts. */
+export type BoletoEstado =
+  | {
+      estado: "ok";
+      payment_status: string | null;
+      amount_cents: number | null;
+      currency: string | null;
+      /** Vencimento do BOLETO, nao da sessao de checkout. */
+      expires_at: string | null;
+      pago: boolean;
+    }
+  | { estado: "indisponivel"; motivo: string };

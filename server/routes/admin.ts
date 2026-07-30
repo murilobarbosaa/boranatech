@@ -30,6 +30,7 @@ import { stripeProvider } from "../providers/stripe";
 import { getStripe } from "../lib/stripeClient";
 import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
+import { lerSessaoDeBoleto } from "../lib/boletoSession";
 import {
   fetchUserListEnrichment,
   pickSubscription,
@@ -1212,7 +1213,7 @@ router.get("/users/:id", async (req, res, next) => {
       supabaseAdmin
         .from("subscriptions")
         .select(
-          "user_id, status, payment_method, renewal_type, created_at, current_period_end, cancel_at_period_end, plans(code)",
+          "user_id, status, payment_method, renewal_type, created_at, current_period_end, cancel_at_period_end, provider_subscription_id, plans(code)",
         )
         .eq("user_id", uid)
         .order("created_at", { ascending: false }),
@@ -1338,6 +1339,7 @@ router.get("/users/:id", async (req, res, next) => {
       created_at: string | null;
       current_period_end: string | null;
       cancel_at_period_end: boolean | null;
+      provider_subscription_id: string | null;
       plans: { code: string | null } | { code: string | null }[] | null;
     };
     const todasAsAssinaturas = (subResult.data || []) as LinhaAssinatura[];
@@ -1346,6 +1348,26 @@ router.get("/users/:id", async (req, res, next) => {
       new Date(),
     ) as LinhaAssinatura | null;
     const subPlan = Array.isArray(subRow?.plans) ? subRow?.plans[0] : subRow?.plans;
+
+    // ESTADO DO BOLETO, so quando a assinatura escolhida esta `pending`.
+    //
+    // Motivo: sem isto o admin ve "Aguardando pagamento" e nao tem como saber se
+    // o boleto esta a caminho ou morto sem abrir a Stripe. Com isto ele ve
+    // vencimento, valor e payment_status.
+    //
+    // A condicao e ESTREITA de propósito: `pending` e o unico status que pode
+    // ter boleto em aberto, e hoje isso e 1 linha em 59. Qualquer outro status
+    // nao paga chamada nenhuma.
+    //
+    // Reusa server/lib/boletoSession.ts, o MESMO caminho do cron
+    // expire-pending-boletos. A funcao nao lanca: falha vira
+    // { estado: "indisponivel" }, e o detalhe segue 200. Derrubar o modal por
+    // causa de um bloco informativo tiraria cadastro, assinatura e historico
+    // junto.
+    const boleto =
+      subRow?.status === "pending"
+        ? await lerSessaoDeBoleto(subRow.provider_subscription_id)
+        : null;
 
     const paidTotalCents = (financeResult.data || []).reduce(
       (sum, row) => sum + (row.gross_cents ?? 0),
@@ -1399,6 +1421,7 @@ router.get("/users/:id", async (req, res, next) => {
               cancel_at_period_end: subRow.cancel_at_period_end,
             }
           : null,
+        boleto,
         cancellation_intent: cancelResult.data
           ? {
               reason_code: cancelResult.data.reason_code,

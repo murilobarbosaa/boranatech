@@ -51,6 +51,12 @@ vi.mock("../lib/supabaseAdmin", () => ({
     return estado.double.client;
   },
 }));
+const boletoMock = vi.hoisted(() => ({
+  resposta: null as unknown,
+}));
+vi.mock("../lib/boletoSession", () => ({
+  lerSessaoDeBoleto: async () => boletoMock.resposta,
+}));
 vi.mock("../lib/authUsers", () => ({
   fetchAuthTimes: async () =>
     new Map([
@@ -723,6 +729,146 @@ describe("toda consulta por usuário carrega o filtro de escopo", () => {
     await chamarAdmin("GET", "/users");
 
     expect(ordens).toEqual(["created_at", "id"]);
+  });
+});
+
+describe("boleto pendente no detalhe (Partes 3 e 4)", () => {
+  const PERFIL_MIN = {
+    user_id: UID,
+    id: "p1",
+    name: "A",
+    email: "a@x",
+    cpf: null,
+    avatar_url: null,
+    avatar_mode: "icon",
+    avatar_moderation_status: "clean",
+  };
+  const AUTH = {
+    getUserById: async () => ({
+      data: { user: { last_sign_in_at: null } },
+      error: null,
+    }),
+  };
+
+  function comAssinatura(status: string, extra: Record<string, unknown> = {}) {
+    return {
+      profiles: { rows: [PERFIL_MIN] },
+      subscriptions: {
+        rows: [
+          {
+            user_id: UID,
+            status,
+            payment_method: "boleto",
+            renewal_type: "manual",
+            created_at: "2026-07-29T00:00:00Z",
+            current_period_end: null,
+            cancel_at_period_end: false,
+            provider_subscription_id: "cs_1",
+            plans: { code: "pro_annual" },
+            ...extra,
+          },
+        ],
+      },
+      influencers: { rows: [] },
+      finance_transactions: { rows: [] },
+      subscription_cancellations: { rows: [] },
+    };
+  }
+
+  it("status pending: o estado do boleto vem na resposta", async () => {
+    boletoMock.resposta = {
+      estado: "ok",
+      payment_status: "unpaid",
+      amount_cents: 15540,
+      currency: "brl",
+      expires_at: "2026-08-01T02:59:00.000Z",
+      pago: false,
+    };
+    montar(comAssinatura("pending"), AUTH);
+
+    const r = await chamarAdmin("GET", `/users/${UID}`);
+    expect(r.status).toBe(200);
+    expect(r.body.data.boleto).toMatchObject({
+      estado: "ok",
+      payment_status: "unpaid",
+      amount_cents: 15540,
+      expires_at: "2026-08-01T02:59:00.000Z",
+      pago: false,
+    });
+  });
+
+  it("QUALQUER outro status NÃO consulta a Stripe", async () => {
+    // O custo tem que ser zero para as 58 linhas que não são boleto pendente.
+    // Se um dia alguém trocar a condição, este teste cai.
+    for (const status of [
+      "active",
+      "canceled",
+      "past_due",
+      "incomplete",
+      "superseded",
+      "trialing",
+    ]) {
+      boletoMock.resposta = {
+        estado: "ok",
+        payment_status: "paid",
+        amount_cents: 1,
+        currency: "brl",
+        expires_at: null,
+        pago: true,
+      };
+      montar(comAssinatura(status), AUTH);
+      const r = await chamarAdmin("GET", `/users/${UID}`);
+      expect(r.body.data.boleto, status).toBeNull();
+    }
+  });
+
+  it("sem assinatura nenhuma, boleto é null", async () => {
+    boletoMock.resposta = null;
+    montar(
+      {
+        profiles: { rows: [PERFIL_MIN] },
+        subscriptions: { rows: [] },
+        influencers: { rows: [] },
+        finance_transactions: { rows: [] },
+        subscription_cancellations: { rows: [] },
+      },
+      AUTH,
+    );
+    const r = await chamarAdmin("GET", `/users/${UID}`);
+    expect(r.status).toBe(200);
+    expect(r.body.data.boleto).toBeNull();
+  });
+
+  it("falha da Stripe DEGRADA: o detalhe continua 200 e o resto vem inteiro", async () => {
+    // O bloco do boleto é informativo. Derrubar o modal por causa dele tiraria
+    // do admin o cadastro, a assinatura e o histórico junto.
+    boletoMock.resposta = { estado: "indisponivel", motivo: "rede caiu" };
+    montar(comAssinatura("pending"), AUTH);
+
+    const r = await chamarAdmin("GET", `/users/${UID}`);
+    expect(r.status).toBe(200);
+    expect(r.body.data.boleto).toMatchObject({ estado: "indisponivel" });
+    // O resto do detalhe não foi afetado.
+    expect(r.body.data.email).toBe("a@x");
+    expect(r.body.data.subscription.status).toBe("pending");
+  });
+
+  it("sessão PAGA com linha ainda pending é dinheiro sem acesso: vem sinalizado", async () => {
+    // É o caso que hoje só existe como log do Railway
+    // ("boleto PAGO ainda pending"). A resposta precisa poder dizer isso à tela.
+    boletoMock.resposta = {
+      estado: "ok",
+      payment_status: "paid",
+      amount_cents: 15540,
+      currency: "brl",
+      expires_at: null,
+      pago: true,
+    };
+    montar(comAssinatura("pending"), AUTH);
+
+    const r = await chamarAdmin("GET", `/users/${UID}`);
+    expect(r.body.data.boleto.pago).toBe(true);
+    expect(r.body.data.subscription.status).toBe("pending");
   });
 });
 

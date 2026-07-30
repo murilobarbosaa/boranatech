@@ -23,6 +23,7 @@ import {
 
 import { ActivityBlock } from "./ActivityBlock";
 import { UserAuditHistory } from "./UserAuditHistory";
+import { BoletoBlock } from "./BoletoBlock";
 import { AvatarBlock } from "./AvatarBlock";
 import { PublicProfileSection, temPerfilPublico } from "./PublicProfileSection";
 import { Field } from "./UserFields";
@@ -594,6 +595,11 @@ export function UserDetailModal({
                           empty={semValor(detail.paid_total_cents)}
                         />
                       </div>
+                      {/* So aparece com assinatura `pending`; o servidor manda
+                          null nos demais casos, entao nao ha condicao repetida
+                          aqui. */}
+                      <BoletoBlock boleto={detail.boleto} />
+
                       {detail.cancellation_intent ? (
                         <div className="rounded-2xl border-2 border-amber-500 bg-amber-50 p-3">
                           <p className="text-[11px] font-black uppercase tracking-wide text-amber-800">
