@@ -1102,9 +1102,18 @@ router.get("/users/:id", async (req, res, next) => {
         .limit(1)
         .maybeSingle(),
       // Valor pago: soma de gross_cents dos types charge, refund e dispute.
-      // Refund e dispute chegam da Stripe com gross NEGATIVO, entao a soma ja
-      // desconta devolucao e chargeback. payout e adjustment ficam de fora:
-      // sao movimentos da conta Stripe, nao pagamentos do usuario.
+      // gross_cents e NEGATIVO em refund e dispute (invariante declarada na
+      // coluna, migration 20260714130000), entao a soma liquida devolucao e
+      // chargeback sem precisar de sinal aqui. payout e adjustment ficam de
+      // fora: sao movimentos da conta Stripe, nao pagamentos do usuario.
+      //
+      // A subtracao DEPENDE de refund/dispute terem user_id preenchido, senao
+      // o .eq("user_id", uid) simplesmente nao os enxerga e o total fica bruto.
+      // Ate 2026-07-29 essa atribuicao NAO existia (extractRefs so resolvia
+      // customer para source.object === "charge"), entao este comentario
+      // afirmava uma compensacao que o codigo nao fazia. Quem garante hoje e o
+      // resolveOwnerFromParentCharge em server/lib/stripeSync.ts: mexer la sem
+      // manter a atribuicao volta a mentir aqui, em silencio.
       supabaseAdmin
         .from("finance_transactions")
         .select("gross_cents")
