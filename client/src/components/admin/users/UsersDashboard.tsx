@@ -81,12 +81,26 @@ export function UsersDashboard() {
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
           placeholder="Buscar por nome ou e-mail"
-          className="min-w-[220px] flex-1 rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_#0f172a] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
+          className="min-w-[220px] flex-1 rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_#0f172a] placeholder:text-slate-400 focus:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
         />
         {/* Pills, nao BntSelect: sao 5 opcoes mutuamente exclusivas e curtas.
             A pill mostra TODAS as opcoes e o estado atual sem abrir nada, e
             troca em um toque; um select esconde as opcoes e cobra dois. */}
-        <div className="flex flex-wrap overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]">
+        {/* GRADE de 3 colunas no mobile, linha unica no desktop.
+            5 opcoes em 3 colunas deixariam um vao na segunda linha (foi o
+            defeito relatado: parecia tabela quebrada). A quarta pill ocupa 2
+            colunas, entao a segunda linha FECHA e as divisorias verticais
+            alinham com as da primeira.
+
+            Scroll horizontal foi descartado: "Ativo" e a ultima opcao e
+            ficaria fora da tela, ou seja, esconderia opcao. Esconder opcao era
+            exatamente o contra que fez a Fatia 2 preferir pills a select, entao
+            resolver o wrap escondendo opcao desfaria a decisao anterior em vez
+            de completar. Reduzir rotulo tambem saiu: os textos "Assinantes" e
+            "Sem assinatura" foram escolhidos na Fatia 2 para a tela nao se
+            contradizer com o selo da linha, e encurtar traria a contradicao de
+            volta. Sobra tipografia menor no mobile, que nao custa informacao. */}
+        <div className="grid w-full grid-cols-3 overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a] sm:flex sm:w-auto sm:flex-wrap">
           {(
             [
               { value: "all", label: "Todos" },
@@ -107,7 +121,9 @@ export function UsersDashboard() {
               key={option.value}
               type="button"
               onClick={() => changeFilter(option.value)}
-              className={`-ml-0.5 -mt-0.5 border-l-2 border-t-2 border-slate-900 px-4 py-2.5 text-sm font-black uppercase ${
+              className={`-ml-0.5 -mt-0.5 border-l-2 border-t-2 border-slate-900 px-2 py-2.5 text-[11px] font-black uppercase leading-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-400 sm:px-4 sm:text-sm ${
+                option.value === "influencers" ? "col-span-2 sm:col-span-1" : ""
+              } ${
                 filter === option.value
                   ? "bg-yellow-300 text-slate-950"
                   : "bg-white text-slate-500 hover:bg-yellow-50"
@@ -171,7 +187,7 @@ export function UsersDashboard() {
               type="button"
               onClick={() => setPage((current) => Math.max(1, current - 1))}
               disabled={page <= 1}
-              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
             >
               Anterior
             </button>
@@ -184,7 +200,7 @@ export function UsersDashboard() {
                 setPage((current) => Math.min(totalPages, current + 1))
               }
               disabled={page >= totalPages}
-              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
             >
               Próxima
             </button>

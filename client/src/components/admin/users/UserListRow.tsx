@@ -10,21 +10,19 @@ import type { UserRow } from "./types";
 
 // Grade compartilhada pelo cabecalho e pelas linhas, para as colunas alinharem
 // sem <table>. Ver o comentario de UserListRow sobre por que nao e tabela.
+// No MOBILE isto e flex-wrap, nao grade: os metadados fluem na horizontal e
+// quebram sozinhos, em vez de virarem uma coluna de rotulo-acima-de-valor. A
+// partir de md volta a ser exatamente a grade de 4 colunas de antes, entao o
+// desktop nao muda.
+//
+// Continua sendo UMA arvore. Duas (tabela + cards escondidos por media query)
+// duplicariam cada texto no DOM, que e o que o comentario de UserListRow
+// sempre disse e continua valendo.
 const GRID =
-  "grid grid-cols-1 gap-x-4 gap-y-2 md:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)] md:items-center";
+  "flex flex-wrap items-center gap-x-3 gap-y-1.5 md:grid md:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)] md:items-center md:gap-x-4 md:gap-y-2";
 
 const BADGE_BASE =
   "inline-flex w-fit items-center rounded-full border-2 px-2.5 py-0.5 text-xs font-black uppercase";
-
-// Rotulo que so aparece no MOBILE, onde as colunas viram pilha e o valor
-// sozinho perde o significado. No desktop o cabecalho da a semantica.
-function RotuloMobile({ children }: { children: string }) {
-  return (
-    <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400 md:hidden">
-      {children}
-    </span>
-  );
-}
 
 export function UserListHeader() {
   return (
@@ -71,9 +69,9 @@ export function UserListRow({
       type="button"
       onClick={() => row.user_id && onOpen(row.user_id)}
       disabled={!row.user_id}
-      className={`${GRID} w-full border-b-2 border-slate-100 px-4 py-3 text-left transition hover:bg-yellow-50 disabled:cursor-not-allowed disabled:opacity-60`}
+      className={`${GRID} w-full border-b-2 border-slate-100 px-4 py-3 text-left transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-60`}
     >
-      <span className="flex min-w-0 items-center gap-3">
+      <span className="flex w-full min-w-0 items-center gap-3 md:w-auto">
         <span
           aria-hidden="true"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-700 text-xs font-black text-white"
@@ -91,12 +89,10 @@ export function UserListRow({
       </span>
 
       <span className="flex flex-col gap-1">
-        <RotuloMobile>Acesso</RotuloMobile>
         <span className={`${BADGE_BASE} ${pro.className}`}>{pro.label}</span>
       </span>
 
-      <span className="flex flex-col gap-1">
-        <RotuloMobile>Assinatura</RotuloMobile>
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-1 md:flex-col md:items-start md:gap-1">
         {status ? (
           <>
             <span className={`${BADGE_BASE} ${status.className}`}>
@@ -109,13 +105,15 @@ export function UserListRow({
             ) : null}
           </>
         ) : (
-          <span className="text-sm font-medium text-slate-400">—</span>
+          <span className="hidden text-sm font-medium text-slate-400 md:inline">
+            —
+          </span>
         )}
       </span>
 
       <span className="flex flex-col gap-1">
-        <RotuloMobile>Cadastro</RotuloMobile>
-        <span className="text-sm font-bold text-slate-600">
+        <span className="text-xs font-bold text-slate-500 md:text-sm md:text-slate-600">
+          <span className="md:hidden">desde </span>
           {fmtDate(row.created_at)}
         </span>
       </span>

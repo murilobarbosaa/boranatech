@@ -374,22 +374,32 @@ describe("UsersDashboard: modal de detalhe", () => {
   it("o botao Fechar continua fechando", async () => {
     await abrirModal();
 
-    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Fechar" })[0]);
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();
     });
   });
 
-  it("nao renderiza o X padrao do Dialog: o unico fechamento visivel e o botao Fechar", async () => {
+  it("nao renderiza o X padrao do Dialog, e os dois Fechar sao gatilhos do MESMO funil", async () => {
     const dialog = await abrirModal();
 
-    // O DialogContent traz um X proprio por padrao. Ele apareceria ALEM do
-    // botao "Fechar" que ja existe, o que seria mudanca visual.
+    // O DialogContent traz um X proprio por padrao, e ele fecharia por fora do
+    // requestClose. Continua desligado.
     expect(within(dialog).queryByRole("button", { name: /close/i })).toBeNull();
-    expect(
-      within(dialog).getAllByRole("button", { name: "Fechar" }).length,
-    ).toBe(1);
+
+    // A partir do polimento mobile sao DOIS gatilhos: o do cabecalho (so
+    // mobile) e o do rodape (so desktop), nunca os dois na mesma viewport. O
+    // que importa nao e a contagem, e que os dois chamem requestClose: o
+    // numero de portas pode crescer, o numero de FUNIS nao.
+    const fechares = within(dialog).getAllByRole("button", { name: "Fechar" });
+    expect(fechares.length).toBe(2);
+    expect(within(dialog).getByTestId("header-fechar").className).toContain(
+      "sm:hidden",
+    );
+    expect(within(dialog).getByTestId("footer-fechar").className).toContain(
+      "sm:inline-flex",
+    );
   });
 
   // As duas assercoes que existiam aqui ate a Fatia 2 travavam o modal no
@@ -432,7 +442,11 @@ describe("UsersDashboard: modal de detalhe", () => {
     const dialog = await abrirModal();
 
     expect(dialog.className).toContain("h-[100dvh]");
-    expect(dialog.className).toContain("w-screen");
+    // Era "w-screen" ate o polimento mobile. Trocado por "w-full" de propósito:
+    // 100vw inclui a barra de rolagem e criava rolagem horizontal em janela
+    // estreita com barra clássica. A propriedade travada continua a mesma
+    // (largura cheia no mobile), só sem o overflow.
+    expect(dialog.className).toContain("w-full");
     expect(dialog.className).toContain("sm:h-[88vh]");
     expect(dialog.className).toContain("sm:w-[min(56rem,94vw)]");
   });

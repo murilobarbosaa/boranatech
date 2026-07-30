@@ -848,12 +848,12 @@ describe("guarda de alteracao nao salva no funil requestClose", () => {
       target: { value: "Ana Paula" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    fireEvent.click(screen.getByTestId("footer-fechar"));
     await screen.findByText("Descartar alterações?");
     fireEvent.click(screen.getByRole("button", { name: "Continuar editando" }));
     expect(onClose).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    fireEvent.click(screen.getByTestId("footer-fechar"));
     await screen.findByText("Descartar alterações?");
     fireEvent.click(screen.getByRole("button", { name: "Descartar" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
@@ -872,7 +872,7 @@ describe("guarda de alteracao nao salva no funil requestClose", () => {
       target: { value: "Ana Paula" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    fireEvent.click(screen.getByTestId("footer-fechar"));
     expect(await screen.findByText("Descartar alterações?")).toBeTruthy();
     expect(onClose).not.toHaveBeenCalled();
   });

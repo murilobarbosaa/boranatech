@@ -75,7 +75,14 @@ import {
 // DialogContent (border, shadow-lg), que vem depois na cascata. Mesma solucao
 // do TaskModal.
 const CONTENT_CLASSES = [
-  "flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden",
+  // w-full, NAO w-screen. `w-screen` e 100vw, e 100vw INCLUI a barra de
+  // rolagem: numa janela estreita com barra classica o dialogo fica mais largo
+  // que a area util e cria rolagem horizontal. `w-full` num elemento `fixed`
+  // resolve contra o bloco de conteudo inicial, que ja exclui a barra. Em
+  // celular os dois dao no mesmo (barra sobreposta, largura zero), entao isto
+  // nao muda o mobile: fecha a unica fonte de overflow horizontal que o modulo
+  // tinha.
+  "flex h-[100dvh] w-full max-w-none flex-col gap-0 overflow-hidden",
   // shadow-none no breakpoint base de proposito: o `shadow-lg` do primitivo
   // tem modificador vazio, e o tailwind-merge nao deixa `sm:shadow-[...]`
   // remove-lo. Sem isto, a versao de tela cheia carrega uma sombra que nao foi
@@ -93,7 +100,20 @@ const CARD_SECTION =
   "space-y-3 rounded-2xl border-2 border-slate-200 bg-white p-4";
 
 const ACTION_BUTTON =
-  "rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase transition hover:bg-yellow-50 disabled:opacity-60";
+  "w-full rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60 sm:w-auto sm:py-1.5";
+
+/**
+ * Acao DESTRUTIVA. Difere em cor, nao so em posicao, e ocupa a linha inteira no
+ * mobile.
+ *
+ * O rodape tinha cinco botoes com peso visual identico: "Cancelar Pro" parecia
+ * igual a "Fechar". Numa grade de 2 colunas no celular, dois alvos de toque
+ * lado a lado com o mesmo aspecto convidam ao erro, e este e o unico do rodape
+ * cujo erro cobra caro. `col-span-2` tira ele do pareamento e o poe sozinho na
+ * propria linha.
+ */
+const DESTRUCTIVE_BUTTON =
+  "col-span-2 w-full rounded-full border-2 border-rose-600 bg-rose-50 px-4 py-2 text-xs font-black uppercase text-rose-700 transition hover:bg-rose-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60 sm:col-span-1 sm:w-auto sm:py-1.5";
 
 function Section({
   title,
@@ -479,13 +499,29 @@ export function UserDetailModal({
               </DialogDescription>
             </div>
           </div>
-          {detail ? (
-            <span
-              className={`shrink-0 rounded-full border-2 px-3 py-1 text-xs font-black uppercase ${pro.className}`}
+          <div className="flex shrink-0 items-center gap-2">
+            {detail ? (
+              <span
+                className={`rounded-full border-2 px-3 py-1 text-xs font-black uppercase ${pro.className}`}
+              >
+                {pro.label}
+              </span>
+            ) : null}
+            {/* Saida no cabecalho, SO no mobile, onde o modal e tela cheia e o
+                "Fechar" do rodape gastava uma linha inteira das cinco acoes.
+                Chama requestClose, o mesmo funil de Esc e do botao do rodape:
+                nao existe segunda porta de saida, so um segundo gatilho para a
+                mesma. */}
+            <button
+              type="button"
+              data-testid="header-fechar"
+              aria-label="Fechar"
+              onClick={() => void requestClose()}
+              className={`rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black uppercase transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 sm:hidden`}
             >
-              {pro.label}
-            </span>
-          ) : null}
+              Fechar
+            </button>
+          </div>
         </header>
 
         {/* CORPO ROLAVEL */}
@@ -882,14 +918,19 @@ export function UserDetailModal({
             entram aqui nas Fatias 5, 6 e 7. Nenhum botao desabilitado de
             reserva: espaco vazio nao promete o que ainda nao existe. */}
         <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t-2 border-slate-200 bg-slate-50 px-4 py-3 sm:px-6">
-          <div className="flex flex-wrap items-center gap-2">
+          {/* GRADE de 2 colunas no mobile: as acoes ficam com a MESMA largura e
+              a mesma altura, em vez de quebrarem em tres linhas desalinhadas.
+              Escala sem redesenho: 6 acoes fecham 3 linhas, 7 fecham 3 e a
+              destrutiva (col-span-2) sempre ocupa a sua sozinha. No desktop
+              volta a ser o flex de antes, sem mudanca. */}
+          <div className="grid w-full grid-cols-2 items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
             {detail && !detailLoading && edit.editing ? (
               <>
                 <button
                   type="button"
                   onClick={() => void handleSave()}
                   disabled={edit.saving || !edit.dirty}
-                  className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
+                  className="w-full rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-xs font-black uppercase focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60 sm:w-auto sm:py-1.5"
                 >
                   {edit.saving ? "Salvando..." : "Salvar"}
                 </button>
@@ -933,7 +974,7 @@ export function UserDetailModal({
                   detail.subscription.renewal_type === "manual" ? (
                     <span
                       data-testid="boleto-sem-cancelamento"
-                      className="text-xs font-bold text-slate-500"
+                      className="col-span-2 text-xs font-bold text-slate-500 sm:col-span-1"
                     >
                       Boleto não renova sozinho: o acesso termina no fim do
                       período pago.
@@ -942,7 +983,7 @@ export function UserDetailModal({
                     <button
                       type="button"
                       onClick={() => setCancelOpen(true)}
-                      className={ACTION_BUTTON}
+                      className={DESTRUCTIVE_BUTTON}
                     >
                       Cancelar Pro
                     </button>
@@ -958,7 +999,7 @@ export function UserDetailModal({
                       type="button"
                       onClick={handleRevokeInfluencer}
                       disabled={influencerBusy}
-                      className="rounded-full border-2 border-slate-900 bg-rose-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
+                      className="col-span-2 w-full rounded-full border-2 border-slate-900 bg-rose-300 px-4 py-2 text-xs font-black uppercase focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60 sm:col-span-1 sm:w-auto sm:py-1.5"
                     >
                       {influencerBusy ? "Revogando..." : "Confirmar revogação"}
                     </button>
@@ -975,7 +1016,7 @@ export function UserDetailModal({
                   <button
                     type="button"
                     onClick={() => setRevokeConfirm(true)}
-                    className={ACTION_BUTTON}
+                    className={DESTRUCTIVE_BUTTON}
                   >
                     Revogar acesso
                   </button>
@@ -994,8 +1035,9 @@ export function UserDetailModal({
 
           <button
             type="button"
+            data-testid="footer-fechar"
             onClick={() => void requestClose()}
-            className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase transition hover:bg-yellow-50"
+            className={`hidden rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 sm:inline-flex`}
           >
             Fechar
           </button>

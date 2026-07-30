@@ -227,6 +227,11 @@ const COPY_ESTATICA = new Set<string>([
   "Cancelamento agendado",
   "Motivo",
   "Acaba em",
+  // Polimento mobile: prefixo que deu contexto a data no card sem gastar uma
+  // linha de rótulo. Os rótulos ACESSO/ASSINATURA/CADASTRO saíram do CARD, mas
+  // continuam na lista de copy porque seguem existindo como cabeçalho de coluna
+  // do desktop (UserListHeader), que o jsdom renderiza mesmo com `hidden`.
+  "desde",
 ]);
 
 function frasesVisiveis(): string[] {
