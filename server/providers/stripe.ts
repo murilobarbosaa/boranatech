@@ -1672,6 +1672,13 @@ export type StripeSubscriptionState = {
   canceledAt: string | null;
 };
 
+/**
+ * ATENCAO: `subscriptionId` precisa ser um id de ASSINATURA (`sub_...`).
+ *
+ * Linha de BOLETO (`renewal_type='manual'`) guarda um id de SESSAO (`cs_...`)
+ * em `provider_subscription_id`, e passa-lo aqui faz o retrieve falhar sempre.
+ * Ver a nota no chamador em server/routes/cron.ts (process-cancellations).
+ */
 export async function getStripeSubscriptionState(
   subscriptionId: string,
 ): Promise<StripeSubscriptionState> {

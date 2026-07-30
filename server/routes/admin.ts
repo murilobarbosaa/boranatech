@@ -1646,6 +1646,13 @@ const refundLimiter = criarLimitadorDeReembolso({
 // NÃO respeita BILLING_ENABLED de propósito: o kill-switch existe para parar de
 // VENDER, e travar a devolução durante um incidente é o oposto do que se quer.
 // getStripe() só exige STRIPE_SECRET_KEY.
+//
+// BOLETO NÃO TEM CAMINHO DE REEMBOLSO POR AQUI. A devolução da Stripe é por
+// `charge`, e as cobranças de boleto entram sem `customer` anexado (`mode:
+// payment`), então elas só aparecem no extrato depois que o dono for resolvido
+// pelo payment intent. Enquanto houver charge sem dono, ela não é listada e
+// portanto não é reembolsável pela interface. Devolver boleto continua sendo
+// operação manual, fora da plataforma. Ver docs/aba-usuarios-admin.md.
 router.post("/users/:id/refunds", async (req, res, next) => {
   try {
     const uid = req.params.id;
@@ -2067,6 +2074,21 @@ router.get("/users/:id/email-usage", async (req, res, next) => {
 //
 // Ordem: audit (fail-closed) -> Auth -> profiles -> Stripe (best-effort).
 // O comportamento de cada falha esta comentado no proprio passo.
+//
+// O QUE ESTA ROTA NAO ALCANCA, medido em 2026-07-30 e registrado para nao ser
+// redescoberto como bug (detalhe em docs/aba-usuarios-admin.md):
+//
+//   (a) auth.identities[].identity_data.email FICA COM O ENDERECO ANTIGO. A API
+//       admin do Supabase nao expoe escrita em identities, entao nao ha como
+//       corrigir daqui. Login e recuperacao usam auth.users.email, que a rota
+//       atualiza, entao o efeito e uma divergencia visivel em quem inspeciona o
+//       objeto de identidade, nao uma quebra de acesso.
+//
+//   (b) email_suppressions com reason='unsubscribed' NAO acompanha o endereco
+//       novo. Isso e CONSENTIMENTO, e migrar automaticamente seria decidir por
+//       terceiro que o descadastro de um endereco vale para outro. 5 linhas
+//       hoje. Decisao consciente de nao automatizar; se alguem trocar o e-mail
+//       de uma conta descadastrada, o endereco novo volta a ser alcancavel.
 router.post("/users/:id/email", async (req, res, next) => {
   try {
     const uid = req.params.id;

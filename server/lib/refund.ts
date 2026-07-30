@@ -180,6 +180,19 @@ export function validateRefundRequest(
  * Idempotency-Key mais o teto recomputado no servidor. É a que impede um
  * script de emitir dezenas de reembolsos legítimos-mas-errados em segundos.
  */
+/**
+ * Teto de reembolsos por ator, POR PROCESSO.
+ *
+ * O contador vive na memoria desta instancia. Com mais de um processo servindo
+ * a API, o teto efetivo e `max x instancias`, nao `max`. Hoje o Railway roda
+ * uma instancia so, entao o efeito e o pretendido; se isso mudar, o limite
+ * afrouxa em silencio e sem aviso nenhum.
+ *
+ * Nao virou contador em Redis de proposito: seria estado compartilhado novo
+ * para um limite que e a SEGUNDA barreira (a primeira e a idempotencia por
+ * `charge + valor + reembolsado_antes`, que e do banco e da Stripe, e essa nao
+ * depende de instancia).
+ */
 export function criarLimitadorDeReembolso(opcoes: {
   max: number;
   janelaMs: number;

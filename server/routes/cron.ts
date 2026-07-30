@@ -361,6 +361,18 @@ async function reconcileStripeCancellation(sub: SubRow): Promise<RowOutcome> {
     };
   }
 
+  // BUG LATENTE, so BOLETO. `provider_subscription_id` de linha com
+  // `renewal_type='manual'` e um id de SESSAO (`cs_...`), nao de assinatura, e
+  // getStripeSubscriptionState chama subscriptions.retrieve com ele. Se uma
+  // linha dessas entrar aqui com cancel_at_period_end, a chamada falha a cada
+  // execucao, para sempre.
+  //
+  // Medido em 2026-07-30: 0 boletos com cancel_at_period_end, 0 linhas vencidas,
+  // 0 travadas, 1744 execucoes deste cron sem falha. Esta latente, nao ativo, e
+  // por isso nao foi consertado nesta rodada. A entrada pela UI esta fechada na
+  // rota de cancelamento administrativo (admin.ts, POST
+  // /users/:id/subscription/cancel), que recusa boleto no servidor.
+  //
   // Se esta leitura FALHAR (rede/5xx/rate limit), a excecao propaga ANTES de
   // qualquer escrita e o caller conta failed. Falha de leitura nunca vira
   // decisao: nem concede nem revoga acesso.
