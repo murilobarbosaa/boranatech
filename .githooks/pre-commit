@@ -75,11 +75,57 @@
 # commit abortado e um diretorio orfao em /tmp, nunca um ambiente quebrado.
 set -e
 
-echo "[pre-commit] suite de testes..."
-npx vitest run --silent
-
-echo "[pre-commit] suite sem .env (condicao do CI)..."
+# LOG DA SAIDA. Em 2026-07-31 tres testes falharam numa rodada do hook e passaram
+# na seguinte, e a identidade deles se PERDEU: o hook so imprimia no terminal, e
+# o que sobrou foi a contagem ("3 failed"), sem nome de arquivo. Investigar virou
+# impossivel e a conclusao teve que ser "nao reproduziu".
+#
+# E a mesma classe de defeito da demanda que originou este paragrafo: o
+# `turn_limit` tambem nao deixava rastro, e por isso o beco sem saida do chat
+# ficou 17 dias invisivel. Instrumento que nao grava o que viu nao permite
+# investigar depois.
+#
+# `pre-commit.log` guarda a ULTIMA rodada; uma rodada que FALHA e preservada a
+# parte, com carimbo de tempo, porque e justamente a que nao pode ser
+# sobrescrita pela proxima execucao verde. Os dois casam com `*.log` do
+# .gitignore, entao nunca entram em commit.
+#
+# CONTEUDO: e a mesma saida que ja ia para o terminal, com `--silent` ligado (o
+# vitest suprime console dos testes). Nao ha credencial ali; o que pode aparecer
+# e nome de host de infraestrutura em erro de conexao, que ja aparecia na tela.
 REPO=$(git rev-parse --show-toplevel)
+LOG="$REPO/pre-commit.log"
+: > "$LOG"
+
+preservar_se_falhou() {
+  status=$?
+  if [ "$status" -ne 0 ]; then
+    FALHA="$REPO/pre-commit-falha-$(date +%Y%m%d-%H%M%S).log"
+    cp "$LOG" "$FALHA" 2>/dev/null || true
+    echo "[pre-commit] FALHOU (status $status). Saida completa em $FALHA" >&2
+  fi
+  rm -f "$STATUS" 2>/dev/null || true
+  exit "$status"
+}
+trap preservar_se_falhou EXIT
+
+# Roda um comando mostrando a saida AO VIVO e gravando no log, preservando o
+# status real. `cmd | tee` sozinho nao serve: em pipeline o status e o do ULTIMO
+# elemento (o tee, que sempre da 0), entao uma suite vermelha passaria batido.
+# `set -o pipefail` resolveria, mas nao existe em dash, e este hook e
+# `#!/bin/sh` de proposito. O arquivo de status e a solucao POSIX: o subshell
+# grava o codigo de saida antes de a pipeline terminar.
+STATUS="$(mktemp)"
+rodar() {
+  { "$@" 2>&1; echo $? > "$STATUS"; } | tee -a "$LOG"
+  read st < "$STATUS"
+  return "$st"
+}
+
+echo "[pre-commit] suite de testes..."
+rodar npx vitest run --silent
+
+echo "[pre-commit] suite sem .env (condicao do CI)..." | tee -a "$LOG"
 SEM_ENV=$(mktemp -d)
 git checkout-index -a --prefix="$SEM_ENV/"
 
@@ -96,11 +142,11 @@ if [ -e "$SEM_ENV/.env" ]; then
 fi
 
 ln -s "$REPO/node_modules" "$SEM_ENV/node_modules"
-( cd "$SEM_ENV" && "$SEM_ENV/node_modules/.bin/vitest" run --root "$SEM_ENV" --silent )
+rodar sh -c 'cd "$1" && "$1/node_modules/.bin/vitest" run --root "$1" --silent' _ "$SEM_ENV"
 rm -rf "$SEM_ENV"
 echo "[pre-commit] segunda rodada feita sobre o INDICE, sem .env, e o .env do disco nao foi tocado."
 
-echo "[pre-commit] pnpm check..."
-pnpm check
+echo "[pre-commit] pnpm check..." | tee -a "$LOG"
+rodar pnpm check
 
 echo "[pre-commit] ok"
