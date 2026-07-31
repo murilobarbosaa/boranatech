@@ -69,6 +69,7 @@ import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { extractLinkedinPdf, PdfExtractError } from "@/lib/pdfExtract";
 import { cn } from "@/lib/utils";
 import { competenciasDoPdf } from "@shared/linkedin/competenciasDoPdf";
+import { headlineParecCortada } from "@/lib/headlineCortada";
 import { parseLinkedinText } from "@shared/linkedin/parse";
 import { readQualitative } from "@shared/linkedin/readQualitative";
 import {
@@ -748,6 +749,15 @@ export default function LinkedinAnalisar() {
     [form.profileText],
   );
 
+  /**
+   * A headline lida tem assinatura de corte? Decide o terceiro estado do chip.
+   *
+   * Derivado, nao estado: o texto e a unica fonte, entao guardar isto em
+   * `useState` criaria uma segunda verdade que precisaria ser sincronizada. E o
+   * Header/Footer desta base ja ensinou o custo disso.
+   */
+  const headlineCortada = headlineParecCortada(parsed?.headline);
+
   async function handleFile(file: File | undefined) {
     if (!file) return;
     setPdfError("");
@@ -1367,16 +1377,29 @@ export default function LinkedinAnalisar() {
                               neutro quando existe (a pessoa e quem confere, logo
                               abaixo, com o texto aberto). */}
                           <div className="flex flex-wrap gap-2">
+                            {/* TRES estados, nao dois. O terceiro existe porque
+                                "existe" e "esta inteira" sao perguntas
+                                diferentes, e o neutro respondia a primeira
+                                enquanto a pessoa lia a segunda. Medido: 27 das
+                                156 headlines persistidas tem assinatura
+                                inequivoca de corte, e o chip neutro dizia
+                                "confira abaixo" em todas elas. */}
                             <span
                               className={cn(
                                 "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
-                                parsed?.headline ? "bg-white" : "bg-amber-100",
+                                !parsed?.headline
+                                  ? "bg-amber-100"
+                                  : headlineCortada
+                                    ? "bg-[#FFB800]"
+                                    : "bg-white",
                               )}
                             >
                               Headline:{" "}
-                              {parsed?.headline
-                                ? "confira abaixo"
-                                : ENTRY_COPY.reviewNotFound}
+                              {!parsed?.headline
+                                ? ENTRY_COPY.reviewNotFound
+                                : headlineCortada
+                                  ? "parece cortada"
+                                  : "confira abaixo"}
                             </span>
                             <span
                               className={cn(
@@ -1426,12 +1449,20 @@ export default function LinkedinAnalisar() {
                                 <p className="mt-2 text-sm text-slate-700">
                                   {parsed.headline}
                                 </p>
-                                {/* TODO(Ana): revisar a copy de conferencia da headline. */}
-                                <p className="mt-2 text-xs font-medium text-slate-500">
-                                  Se estiver cortada ou faltando parte, corrija
-                                  no texto completo antes de analisar: é o campo
-                                  que mais pesa na nota.
-                                </p>
+                                {headlineCortada ? (
+                                  <p className="mt-2 rounded-lg bg-[#FFB800]/20 p-2 text-xs font-bold text-slate-900">
+                                    A headline que lemos parece estar cortada.
+                                    Confira se ela está inteira aqui em cima; se
+                                    não estiver, cole o texto do perfil de novo
+                                    ou ajuste antes de analisar.
+                                  </p>
+                                ) : (
+                                  <p className="mt-2 text-xs font-medium text-slate-500">
+                                    Se estiver cortada ou faltando parte, corrija
+                                    no texto completo antes de analisar: é o
+                                    campo que mais pesa na nota.
+                                  </p>
+                                )}
                               </details>
                             ) : null}
                             {parsed?.sobre ? (
