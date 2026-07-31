@@ -1,6 +1,9 @@
-import { FAIXA_UI } from "@/components/linkedin/faixaUi";
+import {
+  faixaLabelOf,
+  faixaUiOf,
+} from "@/components/linkedin/faixaUi";
 import { cn } from "@/lib/utils";
-import { FAIXA_LABELS, type LinkedinFaixa } from "@shared/linkedin/schema";
+import { type LinkedinFaixa } from "@shared/linkedin/schema";
 
 interface LinkedinScoreCardProps {
   score: number;
@@ -15,7 +18,7 @@ function ScoreContent({
   score: number;
   faixa: LinkedinFaixa;
 }) {
-  const ui = FAIXA_UI[faixa];
+  const ui = faixaUiOf(faixa);
   return (
     <>
       <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-700">
@@ -31,7 +34,7 @@ function ScoreContent({
           ui.chipBg,
         )}
       >
-        {FAIXA_LABELS[faixa]}
+        {faixaLabelOf(faixa)}
       </span>
     </>
   );
@@ -42,7 +45,7 @@ export default function LinkedinScoreCard({
   faixa,
   variant = "card",
 }: LinkedinScoreCardProps) {
-  const ui = FAIXA_UI[faixa];
+  const ui = faixaUiOf(faixa);
 
   if (variant === "panel") {
     return (

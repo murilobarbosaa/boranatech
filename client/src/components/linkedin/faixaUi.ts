@@ -1,4 +1,7 @@
-import type { LinkedinFaixa } from "@shared/linkedin/schema";
+import {
+  FAIXA_LABELS,
+  type LinkedinFaixa,
+} from "@shared/linkedin/schema";
 
 // Mapa faixa->cor do analisador de LinkedIn, extraido do LinkedinScoreCard
 // para modulo proprio (irmao do bandUi do portfolio): score card, nota-hero,
@@ -47,4 +50,25 @@ export function faixaUiOf(faixa: string): LinkedinFaixaUi {
 
 export function faixaWashOf(faixa: string): string {
   return FAIXA_WASH[faixa as LinkedinFaixa] ?? FAIXA_WASH_FALLBACK;
+}
+
+/**
+ * Rotulo da faixa, com o mesmo contrato dos dois acima.
+ *
+ * Faltava, e a ausencia deixava `LinkedinScoreCard` e `LinkedinScoreHero`
+ * lendo `FAIXA_LABELS[faixa]` direto. O dano nao e igual nos dois casos, e a
+ * diferenca vale registrar: `{FAIXA_LABELS[faixa]}` cru dentro do JSX rende
+ * NADA quando o valor e desconhecido (React ignora `undefined`), entao aquele
+ * era um chip vazio. Ja `const ui = FAIXA_UI[faixa]` seguido de `ui.chipBg`
+ * LANCA, e throw no render derruba a arvore inteira: e literalmente a forma do
+ * incidente do `STATUS_META[item.status].label` no admin, latente aqui.
+ *
+ * Nao ha rotulo neutro bom para faixa desconhecida, entao a string vazia e
+ * deliberada: melhor um chip sem texto (que e o comportamento atual do caso
+ * degenerado) do que inventar um nome de faixa que a regua nao tem.
+ */
+const FAIXA_LABEL_FALLBACK = "";
+
+export function faixaLabelOf(faixa: string): string {
+  return FAIXA_LABELS[faixa as LinkedinFaixa] ?? FAIXA_LABEL_FALLBACK;
 }

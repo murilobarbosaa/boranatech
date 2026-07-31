@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import { motion } from "framer-motion";
 import { ArrowRight, Linkedin, Sparkles } from "lucide-react";
-import { faixaUiOf } from "@/components/linkedin/faixaUi";
+import {
+  faixaLabelOf,
+  faixaUiOf,
+} from "@/components/linkedin/faixaUi";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import {
@@ -11,7 +14,6 @@ import {
 } from "@shared/linkedin/reguaV2";
 import { AREA_LABELS } from "@shared/areas";
 import {
-  FAIXA_LABELS,
   LINKEDIN_CATEGORIES,
   LINKEDIN_CATEGORY_LABELS,
   LINKEDIN_LEVEL_LABELS,
@@ -202,7 +204,7 @@ export default function LinkedinScoreHero({
                 faixaUi.chipBg,
               )}
             >
-              {FAIXA_LABELS[deterministic.faixa]}
+              {faixaLabelOf(deterministic.faixa)}
             </motion.span>
             {improvements && improvements.total > 0 ? (
               <motion.span
