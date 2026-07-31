@@ -433,6 +433,28 @@ export function computeLinkedinScore(checks: LinkedinCheckResult[]): {
   let ganho = 0;
   for (const check of checks) {
     const weight = TIER_WEIGHTS[check.tier];
+    // LANCA, e nao devolve peso de fallback. Esta e a excecao deliberada a
+    // regra dos resolvers, e o criterio que a separa esta no CLAUDE.md:
+    // fallback serve para valor de APRESENTACAO (cor, rotulo, icone), onde
+    // degradar mantem a informacao certa. Aqui o peso E a informacao.
+    //
+    // Sem isto, `undefined` entrava na soma e a nota inteira saia `NaN`, sem
+    // erro nenhum. Peso zero ou peso de `opcional` seriam PIORES que o NaN:
+    // devolveriam um numero plausivel que ninguem consegue distinguir de
+    // correto, e a auditoria desta base tem uma instancia exata disso (o
+    // `contarLinhas` devolvendo -1, em que falha de rede virou "protegida").
+    //
+    // Um tier fora do catalogo nao e valor novo do dominio: e payload
+    // corrompido ou versao futura lida por codigo antigo. Nao existe leitura
+    // correta dele. Esta funcao roda no SERVIDOR, dentro do try da rota, entao
+    // a excecao vira 500 com evento no Sentry, nao tela branca.
+    if (typeof weight !== "number") {
+      throw new Error(
+        `[linkedin] tier fora do catalogo ao calcular a nota: ` +
+          `tier=${JSON.stringify(check.tier)} check.id=${JSON.stringify(check.id)}. ` +
+          `Tiers validos: ${Object.keys(TIER_WEIGHTS).join(", ")}.`,
+      );
+    }
     possivel += weight;
     if (check.aprovado) ganho += weight;
   }
