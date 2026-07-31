@@ -179,7 +179,11 @@ function HistoryDrawer({
 
   return (
     <div className="absolute inset-0 z-20">
-      <div className="absolute inset-0 bg-slate-950/25" onClick={onClose} aria-hidden />
+      <div
+        className="absolute inset-0 bg-slate-950/25"
+        onClick={onClose}
+        aria-hidden
+      />
       <motion.div
         initial={reduce ? false : { opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -309,7 +313,9 @@ export default function AgentWidget() {
   const [hadPrefill, setHadPrefill] = useState(false);
 
   // Estado do historico (so usado quando Pro).
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<
+    string | null
+  >(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [historyAvailable, setHistoryAvailable] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false); // gaveta de historico
@@ -381,9 +387,25 @@ export default function AgentWidget() {
   //   cola e anularia o gate de nota/tentativas. NUNCA aparece.
   // - Certificado publico (/certificados/:code): so para LOGADO. O recrutador
   //   deslogado que abre o link compartilhado nao ve o agente.
+  // - Admin (/admin): o Natechinho e assistente de USUARIO da plataforma (sabe
+  //   navegar o catalogo, falar de progresso e do Pro). No painel ele nao
+  //   responde nenhuma pergunta que o admin faca ali, e o launcher fixo no canto
+  //   inferior direito disputa espaco com as acoes das tabelas. Decisao de
+  //   produto de 2026-07-31, nao limitacao tecnica.
+  //
+  // A checagem mora AQUI, e nao no LaunchGate que monta o widget, porque
+  // LaunchGate esta ACIMA do <Router /> (client/src/App.tsx) e le
+  // window.location.pathname direto: ele nao reassina o wouter, entao nao
+  // re-renderiza na navegacao client-side e o widget continuaria montado ao
+  // entrar em /admin sem recarregar a pagina. Aqui `location` vem do
+  // useLocation, que e reativo.
   const isQuizPage = /^\/roadmaps\/[^/]+\/prova\/?$/.test(location);
   const isPublicCertPage = /^\/certificados\/[^/]+\/?$/.test(location);
+  // Prefixo, nao igualdade: hoje so existe a rota exata /admin, mas uma
+  // sub-rota futura (/admin/algo) nao pode trazer o widget de volta em silencio.
+  const isAdminPage = /^\/admin(\/|$)/.test(location);
   if (isQuizPage) return null;
+  if (isAdminPage) return null;
   if (isPublicCertPage && !user) return null;
 
   // So mostra o historico (botao + gaveta) para Pro com historico disponivel.
@@ -426,7 +448,8 @@ export default function AgentWidget() {
   function handleStatus(status: AgentStatusEvent) {
     if (status.event === "tool_start") {
       setStatusLabel(
-        (status.tool && TOOL_STATUS_LABELS[status.tool]) || DEFAULT_STATUS_LABEL,
+        (status.tool && TOOL_STATUS_LABELS[status.tool]) ||
+          DEFAULT_STATUS_LABEL,
       );
     } else if (status.event === "tool_end") {
       setStatusLabel(null);
@@ -574,7 +597,10 @@ export default function AgentWidget() {
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-600 shadow-[2px_2px_0_#0f172a]"
                 aria-hidden
               >
-                <MessageCircle className="h-5 w-5 text-white" strokeWidth={2.5} />
+                <MessageCircle
+                  className="h-5 w-5 text-white"
+                  strokeWidth={2.5}
+                />
               </span>
               <div className="min-w-0">
                 {/* TODO(Ana): titulo do assistente. */}
@@ -687,7 +713,9 @@ export default function AgentWidget() {
                         {m.content.length === 0 ? (
                           <>
                             {/* TODO(Ana): texto sr-only do indicador digitando. */}
-                            <span className="sr-only">Natechinho digitando</span>
+                            <span className="sr-only">
+                              Natechinho digitando
+                            </span>
                             <TypingDots reduce={reduce} />
                           </>
                         ) : (
