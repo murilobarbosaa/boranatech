@@ -377,7 +377,22 @@ export async function sendIntakeChatTurn(
     const body = (await response.json().catch(() => null)) as unknown;
     throw toIntakeChatError(response.status, body);
   }
-  const data = (await response.json()) as Partial<IntakeChatTurnResult>;
+  return parseIntakeChatResponse(await response.json());
+}
+
+/**
+ * Parse da resposta de um turno, separado do fetch para ser testavel sem rede.
+ *
+ * CONTRATO DA JANELA DE DEPLOY. Os quatro campos da fase 2 (`canGenerate`,
+ * `missingToGenerate`, `restantes`, `maxMensagens`) degradam para `null` quando
+ * ausentes, porque o backend ANTERIOR nao os manda e a Vercel costuma subir
+ * antes do Railway. Os quatro originais (`reply`, `intake`, `missing`, `ready`)
+ * sao EXIGIDOS: `ready` em especial, porque foi ele que o bundle antigo usou por
+ * meses e removê-lo da resposta derrubaria o render, e porque o unico jeito de
+ * essa exigencia continuar valendo e alguem afirmar isso num teste.
+ */
+export function parseIntakeChatResponse(raw: unknown): IntakeChatTurnResult {
+  const data = (raw ?? {}) as Partial<IntakeChatTurnResult>;
   if (
     typeof data.reply !== "string" ||
     typeof data.ready !== "boolean" ||
