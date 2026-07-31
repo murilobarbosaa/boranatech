@@ -610,8 +610,16 @@ export function UserDetailModal({
                           <p className="text-[11px] font-black uppercase tracking-wide text-amber-800">
                             Cancelamento agendado
                           </p>
-                          <p className="mt-1 text-sm font-semibold text-amber-900">
-                            Motivo{" "}
+                          {/* Rótulo em linha PRÓPRIA, não colado no valor. A
+                              aprovação de copy que tirou os dois-pontos vale
+                              para rótulo curto seguido de valor curto; aqui o
+                              valor é texto livre do admin, e "Motivo QUero
+                              cancelar e pedir o reembolso" lia como uma frase
+                              só. Só este campo muda. */}
+                          <p className="mt-1 text-[11px] font-black uppercase tracking-wide text-amber-700">
+                            Motivo
+                          </p>
+                          <p className="text-sm font-semibold text-amber-900">
                             {detail.cancellation_intent.reason_text?.trim()
                               ? detail.cancellation_intent.reason_text
                               : cancellationReasonLabelOf(
