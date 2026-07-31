@@ -15,11 +15,16 @@
 export type TaskPriority = "baixa" | "media" | "alta" | "urgente";
 
 /**
- * 'bug' saiu do conjunto aceito (bug tem tela propria). O valor continua sendo
- * RENDERIZAVEL pelo typeMetaOf, porque linha antiga de histórico pode cita-lo e
- * registro historico nao vira buraco por causa de uma opcao removida do menu.
+ * 'bug' VOLTOU ao conjunto aceito (migration 20260731040000). Tinha saido
+ * porque bug tinha tela propria; a aba Bugs & Erros esta sendo aposentada e os
+ * bugs passam a viver no quadro BUG deste modulo.
  */
-export type TaskType = "feature" | "melhoria" | "debito_tecnico" | "tarefa";
+export type TaskType =
+  | "feature"
+  | "bug"
+  | "melhoria"
+  | "debito_tecnico"
+  | "tarefa";
 
 export type TaskActivityAction =
   | "created"

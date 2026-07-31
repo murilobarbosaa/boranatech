@@ -42,6 +42,7 @@ const PRIORITY_META: Record<TaskPriority, BadgeMeta> = {
 
 const TYPE_META: Record<TaskType, BadgeMeta> = {
   feature: { label: "Feature", badge: "bg-violet-100 text-violet-800" },
+  bug: { label: "Bug", badge: "bg-rose-100 text-rose-800" },
   melhoria: { label: "Melhoria", badge: "bg-sky-100 text-sky-800" },
   debito_tecnico: { label: "Débito técnico", badge: "bg-amber-100 text-amber-900" },
   tarefa: { label: "Tarefa", badge: "bg-slate-100 text-slate-700" },
@@ -50,15 +51,16 @@ const TYPE_META: Record<TaskType, BadgeMeta> = {
 /**
  * Tipos que saíram do conjunto aceito mas continuam RENDERIZAVEIS.
  *
- * `bug` deixou de ser opcao (bug tem tela propria), e tirar o rotulo junto faria
- * uma linha de histórico dizendo "mudou o tipo para bug" virar "Outro", ou pior,
- * um card antigo perder a identificacao. Registro historico nao pode degradar
- * porque o menu mudou; o fallback neutro e para o que NUNCA existiu, nao para o
- * que existiu e saiu.
+ * VAZIO no momento: `bug` era o unico morador e voltou ao conjunto aceito
+ * (migration 20260731040000), entao subiu para TYPE_META. O mapa e o elo do meio
+ * de typeMetaOf continuam de pe de proposito, e nao por inercia: eles sao o
+ * mecanismo que separa "valor que NUNCA existiu" (cai no neutro) de "valor que
+ * existiu e saiu do menu" (mantem o rotulo). Um card antigo ou uma linha de
+ * histórico dizendo "mudou o tipo para X" nao pode virar "Outro" so porque o
+ * menu mudou. Aposentar um tipo no futuro e mover a entrada para ca, e o
+ * caminho ja esta pronto e testado.
  */
-const TYPE_META_HISTORICO: Record<string, BadgeMeta> = {
-  bug: { label: "Bug", badge: "bg-rose-100 text-rose-800" },
-};
+const TYPE_META_HISTORICO: Record<string, BadgeMeta> = {};
 
 const NEUTRAL_META: BadgeMeta = {
   label: "Outro",
