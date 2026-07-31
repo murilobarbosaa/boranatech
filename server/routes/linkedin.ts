@@ -63,6 +63,12 @@ async function persistAnalysis(
       textoHash: hashDoTexto(request.profileText),
       parseResumo: {
         headline: parsed.headline,
+        // Contexto da leitura da headline. Chave NOVA, pelo mesmo padrao de
+        // `entryPath`/`textoHash`: as linhas ja gravadas nao a tem e o leitor
+        // tolera a ausencia. Existe porque `headline` sozinha nao distingue "o
+        // parser cortou" de "a pessoa escreveu assim", e sem `profileText`
+        // (que nao e guardado, de proposito) nao havia como saber depois.
+        headlineContexto: parsed.headlineContexto,
         sobreTamanho: response.deterministic.sobreTamanho,
         experienciasContagem: response.deterministic.experienciasContagem,
         skillsPdf: parsed.skillsPdf,
