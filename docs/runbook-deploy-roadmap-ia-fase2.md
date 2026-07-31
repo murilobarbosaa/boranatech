@@ -68,6 +68,40 @@ política proíbe.
 Depois do rebase, reconferir: `git rev-list --count HEAD..origin/main` = 0, e
 `pnpm check && pnpm test` verdes.
 
+### A main se move. Reverificar não é opcional.
+
+Na sessão de 2026-07-30 a `origin/main` andou **cinco vezes** enquanto a Fase 2
+era preparada. Fast-forward apoiado numa verificação feita antes desse movimento
+é o mesmo defeito das outras instâncias do `CLAUDE.md`: um instrumento dando
+veredito sobre uma superfície que já mudou.
+
+**Antes de CADA fast-forward, nesta ordem:**
+
+```bash
+git fetch origin
+git merge-base --is-ancestor origin/main fase2-rebaseada && echo "OK: a main nao andou" \
+  || echo "A MAIN ANDOU: rebasear de novo e REVERIFICAR"
+```
+
+O `merge-base --is-ancestor` é o critério: ele passa se e somente se
+`origin/main` for ancestral da branch, que é a definição de fast-forward
+possível.
+
+**Se a main andou**, o ciclo inteiro se repete, sem atalho:
+
+1. `git rebase origin/main`
+2. na worktree limpa, sem `.env`: `pnpm check` e a suíte completa verdes;
+3. as quatro constantes aparecendo **uma vez cada** e com os valores certos
+   (`EXPECTED_TABLE_COUNT` 82, `EXPECTED_RLS_COUNT` 82,
+   `EXPECTED_FUNCTION_COUNT` 27, `EXPECTED_TRIGGER_FUNCTION_COUNT` 4);
+4. as asserções comportamentais do Q1.a ainda no guard (`grep -c
+ai_usage_excluded_tools scripts/checkMigrationsApplied.mts` maior que zero);
+5. `pnpm check:migrations` com o único vermelho esperado.
+
+Ausência de conflito textual **não** substitui nenhum desses passos: as duas
+frentes tocam `CLAUDE.md`, `scripts/checkMigrationsApplied.mts` e
+`server/lib/env.ts`, e o código combinado só existe depois do rebase.
+
 ## A ordem é obrigatória, e não é a intuitiva
 
 **Migration `170000` → push/CI → deploy do server → deploy do front → migration
@@ -240,8 +274,18 @@ git checkout main && git merge --ff-only fix/roadmap-ia-intake-desbloqueio
 git push origin main
 ```
 
-**Check:** `0` no comando acima ANTES do merge. Se não der 0, pare: não é
-fast-forward e a política do projeto não prevê merge commit.
+**Check:** `0` no comando acima ANTES do merge, e
+`git merge-base --is-ancestor origin/main <branch>` passando. Se qualquer um
+falhar, pare: não é fast-forward, e a política do projeto não prevê merge commit.
+Volte ao passo 0-B, rebaseie e **reverifique tudo**.
+
+**Empurrar a BRANCH não deploya produção**, medido por leitura de configuração:
+não há workflow de deploy em `.github/workflows/` (só `ci.yml`) e o
+`vercel.json` não tem `ignoreCommand`. Quem deploya são as integrações de GitHub
+da Vercel e do Railway, e elas sobem produção a partir da `main`. O push da
+branch dispara o CI e **um preview da Vercel**, que fala com o Railway e o
+Supabase de PRODUÇÃO (ver `CLAUDE.md`): serve para ver a interface, nunca para
+exercitar fluxo.
 
 ### Passo 4 — deploy do SERVER (Railway), e só dele [você]
 
