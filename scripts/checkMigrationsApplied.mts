@@ -209,8 +209,24 @@ const EXPECTED_TABLE_COUNT = 82;
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
 // numeros e ato deliberado, no mesmo commit da migration que cria ou remove o
 // objeto.
-const EXPECTED_FUNCTION_COUNT = 26;
-const EXPECTED_TRIGGER_FUNCTION_COUNT = 4;
+// 27 desde 20260731050300_add_archive_provenance_to_admin_tasks.sql (cria
+// set_admin_task_archive_source). Era 26.
+//
+// O numero veio de 28 no ramo em que este trabalho nasceu, e a diferenca NAO e
+// erro de rebase: aquele ramo tinha tambem
+// 20260730170000_ai_usage_excluded_tools.sql, que declara mais uma funcao e que
+// NAO esta na main. Sobre a main a conta e 26 + 1.
+//
+// Alterar este numero e ato deliberado, no mesmo commit da migration que cria ou
+// dropa a funcao.
+const EXPECTED_FUNCTION_COUNT = 27;
+// 5 pela MESMA migration: set_admin_task_archive_source devolve trigger, entao
+// nao e exposta pelo PostgREST e sai do conjunto verificavel por REST. Os dois
+// numeros sobem juntos quando a funcao nova e de trigger, e so o primeiro sobe
+// quando ela e chamavel. Subir so um dos dois esconderia uma funcao real que a
+// classificacao passou a tratar como trigger, que e o defeito que este par de
+// asserções existe para pegar.
+const EXPECTED_TRIGGER_FUNCTION_COUNT = 5;
 
 /** Remove comentarios de linha e de bloco antes de qualquer parse. */
 /**
