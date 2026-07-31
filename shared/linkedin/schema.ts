@@ -754,6 +754,24 @@ export const QUALITATIVE_VERSION = 3;
  *   ESTRUTURA DE LINHA, então reparsear o dedup não reproduz nem corrige. O
  *   número acima é teto por peso de check, não medição.
  *
+ * 6: o campo de competências parou de receber o que não é competência. O
+ *   pré-preenchimento a partir do PDF escrevia `skillsPdf` inteiro no
+ *   formulário quando a pessoa deixava o campo vazio, e `skillsPdf` às vezes
+ *   carrega o bloco de identidade junto (nome, cidade, estado, país, e em
+ *   três linhas o empregador ou a instituição). A régua não mudou e o parser
+ *   não mudou: mudou o que ENTRA no campo `skills`, que é fonte de
+ *   `skills-quantidade`, `skills-quantidade-otima` e das duas coberturas.
+ *
+ *   Medido sobre as 162 análises persistidas: em 17 o campo `skills` era
+ *   exatamente o pré-preenchimento não editado E carregava excedente; dessas,
+ *   7 PASSAVAM em `skills-quantidade` (essencial, 10 pontos) contando o
+ *   próprio nome e a cidade como competência, e passam a reprovar. Movimento
+ *   de 10 pontos em 194, sempre para baixo, em 7 de 162 (4,3%). As outras 10
+ *   tinham de 4 a 6 itens, já reprovavam o corte de 10, e não se movem.
+ *
+ *   O bump é por comparabilidade e não por régua: o mesmo perfil, sem a pessoa
+ *   mexer em nada, passa a declarar menos competências do que declarava.
+ *
  * NÃO bumpado na Fase 2A, e a decisão é deliberada. A fase acrescentou
  * `keywordsCampos`, um campo OPCIONAL e puramente descritivo: nenhum check o
  * lê, a nota das 6 fixtures é idêntica, e a régua não mudou. O que esta
@@ -767,7 +785,7 @@ export const QUALITATIVE_VERSION = 3;
  * `titulosIngles`) passa por `readDeterministic`. Ver
  * docs/divida-leitura-persistida.md.
  */
-export const DETERMINISTIC_VERSION = 5;
+export const DETERMINISTIC_VERSION = 6;
 
 export interface LinkedinAnalysisResponse {
   area: (typeof AREA_SLUGS)[number];

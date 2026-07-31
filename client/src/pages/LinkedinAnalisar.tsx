@@ -1634,12 +1634,20 @@ export default function LinkedinAnalisar() {
                     // O paragrafo de julho FICA: ele e datado ("se a sua analise
                     // anterior e de antes de julho"), entao continua verdadeiro
                     // sem depender de qual foi a mudanca mais recente.
+                    //
+                    // "o que lemos do seu perfil para preencher a analise" cobre
+                    // as TRES coisas que ja causaram bump: criterio (v3 -> v4),
+                    // leitura do parser (v4 -> v5) e o que e escrito no
+                    // formulario a partir do PDF (v5 -> v6, o pre-preenchimento
+                    // de competencias). Foi escolhida por cobrir as tres sem
+                    // afirmar qual foi a ultima, que e o requisito do booleano.
                     <FeedbackBanner variant="warn">
                       Esta nota não é comparável com a da sua análise anterior, e
                       a comparação recomeça a partir daqui. Entre uma análise e
-                      outra, tanto os critérios quanto a forma de ler o seu
-                      perfil podem ter mudado, e qualquer um dos dois move a nota
-                      do mesmo perfil, sem você ter mexido em nada. Se a sua
+                      outra, podem ter mudado os critérios da régua ou o que
+                      lemos do seu perfil para preencher a análise, e qualquer um
+                      dos dois move a nota do mesmo perfil, sem você ter mexido
+                      em nada. Se a sua
                       análise anterior é de antes de julho, os critérios
                       também mudaram, quase tudo para deixar a régua mais justa:
                       a cobertura de palavras-chave pedia metade de todas as
