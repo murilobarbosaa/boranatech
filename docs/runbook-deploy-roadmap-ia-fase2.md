@@ -403,6 +403,17 @@ São os dois lados da mesma afirmação.
 
 ### 2. Alguém atravessou o funil inteiro
 
+**O funil só pode ser validado DEPOIS do deploy, e por gente de verdade.** Ele é
+100% client-side: `posthog.init` só existe em `client/src/main.tsx` e os seis
+eventos vivem em `client/src/lib/analytics.ts`, que importa `posthog-js`. O
+harness de smoke test fala HTTP com o servidor e **nunca carrega o bundle**, então
+ele não emite nem pode emitir evento nenhum. Nenhuma quantidade de teste local
+substitui esta verificação.
+
+**Quando olhar:** 24h depois do deploy do frontend, não antes. Antes disso a
+ausência de eventos é indistinguível de "ninguém entrou ainda", que é o mesmo
+defeito do blip de disponibilidade registrado no `CLAUDE.md`.
+
 No PostHog, sequência para um mesmo `distinct_id`:
 
 `roadmap_ia_chat_iniciado` → `roadmap_ia_can_generate` →
@@ -427,6 +438,35 @@ Um único evento desses é regressão e pede investigação, não espera.
 
 Complementarmente, o Sentry recebe `[roadmap-ia] usuario TRAVADO` para os estados
 de pessoa presa (throttle de 5 min). **Sucesso: nenhuma issue nova.**
+
+### 3-bis. O índice único da 180000 funciona (só verificável AQUI)
+
+**Não pode ser exercitado antes do deploy**, por decisão de sequenciamento: aplicar
+o índice antes do código novo é exatamente o que a ordem deste runbook proíbe (o
+handler que traduz `23505` em 429 está no código novo). Então esta verificação é
+pós-deploy, e é obrigatória.
+
+**Teste:** com o servidor novo no ar e a `180000` aplicada, dispare **dois
+`POST /api/roadmaps-ia/generate` concorrentes** com o mesmo intake, na mesma
+conta, dentro da janela de 5 minutos.
+
+**Sucesso:** um devolve o stream normalmente e o outro devolve **429
+`generation_in_progress`**.
+
+**Falha, e o que cada uma significa:**
+
+- **500**, ou o stream morrendo com `{type:"error"}` genérico: o handler não
+  reconheceu o `23505`. Provável causa: o nome do índice divergiu de
+  `ONE_GENERATING_INDEX` em `server/lib/aiRoadmap/oneGenerating.ts`. Os dois estão
+  acoplados de propósito e a migration avisa disso no cabeçalho.
+- **Duas gerações nascendo**: o índice não foi criado. Reconferir o passo 6.
+- **429 vindo da checagem antiga** (antes de qualquer insert) também é sucesso
+  parcial: significa que a corrida não aconteceu nesta tentativa. Repita até a
+  colisão ocorrer de fato, ou force disparando as duas requisições em paralelo.
+
+Confirme também que **não** houve o caminho das 3 tentativas de slug: no log do
+servidor, uma colisão de geração não deve produzir três inserts seguidos nem três
+esqueletos gerados. Um esqueleto descartado é uma chamada de OpenAI paga por nada.
 
 ### 4. Guard verde
 
