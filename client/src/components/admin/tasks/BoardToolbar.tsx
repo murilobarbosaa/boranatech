@@ -44,8 +44,25 @@ type BoardToolbarProps = {
   onManageBoards: () => void;
 };
 
-const DUE_OPTIONS: Array<{ value: DueFilter; label: string }> = [
-  { value: "", label: "Qualquer data" },
+/**
+ * Sentinela para o "sem filtro" do select de Vencimento.
+ *
+ * `DueFilter` usa "" para "qualquer data", e "" e proibido como value de item do
+ * Radix Select: ele LANCA de dentro do render. Hoje o BntSelect protege a arvore
+ * descartando a opcao invalida (opcoesRenderizaveis), mas descartar resolve o
+ * crash e nao o produto: sem esta sentinela a opcao "Qualquer data" simplesmente
+ * nao aparece no menu, e quem escolhe "Atrasadas" nao consegue voltar atras pelo
+ * proprio select. O warn no console a cada abertura do popover era o aviso.
+ *
+ * A sentinela mora SO na interface: `filters.due` continua sendo "" | "late" |
+ * "week", que e o que vai para a URL e para applyFilters. Traduzir aqui, na
+ * borda, e o que impede o valor inventado de vazar para o estado da pagina.
+ * Mesmo padrao do "__none__" de VagasDestaque.
+ */
+export const DUE_ANY = "__any__";
+
+export const DUE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: DUE_ANY, label: "Qualquer data" },
   { value: "late", label: "Atrasadas" },
   { value: "week", label: "Esta semana" },
 ];
@@ -300,14 +317,14 @@ export const BoardToolbar = memo(
                   size="sm"
                   accent="gold"
                   fullWidth
-                  value={filters.due}
+                  value={filters.due === "" ? DUE_ANY : filters.due}
                   onValueChange={(value) =>
-                    onFiltersChange({ ...filters, due: value as DueFilter })
+                    onFiltersChange({
+                      ...filters,
+                      due: value === DUE_ANY ? "" : (value as DueFilter),
+                    })
                   }
-                  options={DUE_OPTIONS.map((option) => ({
-                    value: option.value,
-                    label: option.label,
-                  }))}
+                  options={DUE_OPTIONS}
                 />
               </div>
 
