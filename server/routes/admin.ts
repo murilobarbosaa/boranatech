@@ -44,6 +44,7 @@ import {
   normalizeEmail,
   validateNewEmail,
 } from "../lib/emailChange";
+import { paginateRange } from "../lib/paginate";
 import { buildProfilePatch } from "../lib/profileEdit";
 import {
   criarLimitadorDeReembolso,
@@ -3962,24 +3963,88 @@ router.get("/finance/fx-preview", async (req, res, next) => {
   }
 });
 
+/**
+ * Todos os desbloqueios de beta bem-sucedidos, paginados.
+ *
+ * Devolve no shape tagueado do supabase-js (`{ data, error }`) porque o chamador
+ * trata a falha como "agregado zera, os codigos aparecem" e nao pode virar um
+ * throw que derrube a lista inteira.
+ */
+async function coletarLogsDeBeta(): Promise<{
+  data: Array<{ code_id: string | null; created_at: string }> | null;
+  error: { message: string } | null;
+}> {
+  try {
+    const linhas: Array<{ code_id: string | null; created_at: string }> = [];
+    for await (const log of paginateRange<{
+      code_id: string | null;
+      created_at: string;
+    }>(
+      (from, to) =>
+        supabaseAdmin
+          .from("beta_unlock_logs")
+          .select("code_id, created_at")
+          .eq("success", true)
+          .order("id", { ascending: true })
+          .range(from, to),
+      { errorLabel: "beta unlock logs" },
+    )) {
+      linhas.push(log);
+    }
+    return { data: linhas, error: null };
+  } catch (err) {
+    return {
+      data: null,
+      error: { message: err instanceof Error ? err.message : String(err) },
+    };
+  }
+}
+
+// Custo e volume de IA por ferramenta, 30 dias.
+//
+// PAGINADO, e o motivo e um defeito medido: ate 2026-07-31 esta rota fazia um
+// `.select()` solto sobre ai_usage_logs e somava o que viesse. O PostgREST corta
+// em `db-max-rows` (1000 na configuracao atual), entao a soma parava na
+// milesima linha SEM AVISO: com 1167 linhas reais na janela, o painel exibia
+// R$ 1,45 onde o custo era R$ 1,58. Nao havia sinal de que faltava algo, e o
+// erro CRESCE com o volume. E a classe que o CLAUDE.md documenta: o instrumento
+// reporta sucesso sobre uma superficie menor.
+//
+// POR QUE PAGINAR E NAO AGREGAR NO BANCO. Agregar em SQL transferiria uma linha
+// por tool em vez de uma por chamada, e seria mais barato. Mas exigiria funcao
+// nova, portanto MIGRATION, com a ordem de deploy que ela implica; e o guard de
+// migrations nao enxerga corpo de funcao, entao ela ainda precisaria de
+// assercao comportamental propria. Paginar reusa `paginateRange`, que ja existe
+// e ja resolve o caso do max-rows menor que a pagina, e nao cria objeto novo no
+// banco. Se o volume crescer a ponto de a transferencia doer, a agregacao em
+// SQL e a evolucao natural, e ai o custo da migration se paga.
+//
+// A ORDENACAO NAO E ENFEITE: paginacao por OFFSET sem ORDER BY tem ordem
+// indefinida no Postgres, e duas paginas podem repetir ou pular linhas. Ordenar
+// por `id` da uma ordem total e estavel.
 router.get("/ai-stats", async (_req, res, next) => {
   try {
-    const { data: byTool, error } = await supabaseAdmin
-      .from("ai_usage_logs")
-      .select("tool, status, cost_estimate")
-      .gte(
-        "created_at",
-        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      );
-
-    if (error)
-      return next(dbError("ai-stats", error, "Erro ao buscar stats de IA."));
+    const desde = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const stats: Record<
       string,
       { calls: number; success: number; cost: number }
     > = {};
-    for (const log of byTool || []) {
+
+    for await (const log of paginateRange<{
+      tool: string;
+      status: string | null;
+      cost_estimate: string | null;
+    }>(
+      (from, to) =>
+        supabaseAdmin
+          .from("ai_usage_logs")
+          .select("tool, status, cost_estimate")
+          .gte("created_at", desde)
+          .order("id", { ascending: true })
+          .range(from, to),
+      { errorLabel: "ai-stats" },
+    )) {
       if (!stats[log.tool]) stats[log.tool] = { calls: 0, success: 0, cost: 0 };
       stats[log.tool].calls += 1;
       if (log.status === "success") stats[log.tool].success += 1;
@@ -4311,10 +4376,12 @@ router.get("/beta-codes", async (_req, res, next) => {
         .from("beta_access_codes")
         .select("id, code, label, active, created_at, revoked_at")
         .order("created_at", { ascending: false }),
-      supabaseAdmin
-        .from("beta_unlock_logs")
-        .select("code_id, created_at")
-        .eq("success", true),
+      // PAGINADO pelo mesmo motivo do /ai-stats: este agregado conta TODOS os
+      // desbloqueios bem-sucedidos, e a tabela ja tem 615 linhas (medido em
+      // 2026-07-31). Sem paginar, o `success_count` de cada codigo passa a
+      // mentir para MENOS assim que a tabela cruzar o max-rows, e contador que
+      // mente para menos nao tem como ser percebido.
+      coletarLogsDeBeta(),
     ]);
 
     if (codesRes.error)

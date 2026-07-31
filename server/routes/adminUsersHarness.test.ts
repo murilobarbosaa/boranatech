@@ -194,6 +194,10 @@ type Chamada = {
   op: "select" | "insert" | "update" | "delete";
   colunas: string[];
   filtros: Array<{ tipo: string; coluna: string; valor: unknown }>;
+  /** Colunas passadas a `.order()`, na ordem. Paginação por OFFSET sem ordenação
+   * tem resultado indefinido no Postgres, e é isso que um teste precisa poder
+   * afirmar. */
+  ordem: string[];
   payload?: LinhaQualquer;
 };
 
@@ -219,6 +223,14 @@ export function criarSupabaseDouble(
     data: null,
     error: null,
   }),
+  /**
+   * Teto de linhas POR RESPOSTA, como o `db-max-rows` do PostgREST. `null`
+   * (padrão) = sem teto, que é o comportamento de sempre. Um teste que passa um
+   * número aqui está reproduzindo a condição real de produção: o servidor
+   * devolve no máximo N linhas, e quem não pagina soma só as N primeiras
+   * achando que somou tudo.
+   */
+  maxRows: number | null = null,
 ): SupabaseDouble {
   const chamadas: Chamada[] = [];
 
@@ -256,7 +268,14 @@ export function criarSupabaseDouble(
     op: Chamada["op"],
     payload?: LinhaQualquer,
   ) {
-    const chamada: Chamada = { table, op, colunas: [], filtros: [], payload };
+    const chamada: Chamada = {
+      table,
+      op,
+      colunas: [],
+      filtros: [],
+      ordem: [],
+      payload,
+    };
     chamadas.push(chamada);
 
     if (payload) {
@@ -304,21 +323,47 @@ export function criarSupabaseDouble(
       };
     }
     q.order = (coluna: string) => {
-      if (typeof coluna === "string") validarColunas(table, [coluna]);
+      if (typeof coluna === "string") {
+        validarColunas(table, [coluna]);
+        chamada.ordem.push(coluna);
+      }
       return q;
     };
-    for (const metodo of ["range", "limit"]) {
-      q[metodo] = () => q;
-    }
+    // `range` PRECISA recortar de verdade. Enquanto ele era um no-op, uma rota
+    // paginada e uma rota truncada davam exatamente o mesmo resultado no dublê,
+    // e o teto de 1000 linhas do PostgREST (que já cortou o custo de IA em
+    // produção) era INSIMULÁVEL aqui. Um dublê que não reproduz a condição não
+    // testa a correção dela.
+    let rangeFrom: number | null = null;
+    let rangeTo: number | null = null;
+    q.range = (from: number, to: number) => {
+      rangeFrom = from;
+      rangeTo = to;
+      return q;
+    };
+    q.limit = () => q;
 
     function resultado() {
       const r = resolver(table);
       if (r.error) return { data: null, error: r.error, count: null };
-      const rows = r.rows ?? [];
+      const todas = r.rows ?? [];
+      // O total do count é o do CONJUNTO, não o da página: é assim que o
+      // PostgREST responde com `count=exact` mais `Range`.
+      const total = r.count ?? todas.length;
+      let rows = todas;
+      if (rangeFrom !== null && rangeTo !== null) {
+        rows = todas.slice(rangeFrom, rangeTo + 1);
+      }
+      // TETO DO SERVIDOR, aplicado DEPOIS do range, igual ao db-max-rows do
+      // PostgREST: ele corta a página mesmo quando o cliente pediu mais. É a
+      // condição que produz truncamento silencioso em quem não pagina.
+      if (maxRows !== null && rows.length > maxRows) {
+        rows = rows.slice(0, maxRows);
+      }
       return {
         data: headOnly ? null : rows,
         error: null,
-        count: contarExato ? (r.count ?? rows.length) : null,
+        count: contarExato ? total : null,
       };
     }
 
