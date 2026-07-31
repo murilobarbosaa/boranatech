@@ -294,22 +294,31 @@ type MrrSnapshot = {
   byPlan: PlanMrr[];
 };
 
+// Contexto que ACOMPANHA o churn e nao entra nele. Opcional em ambos os ramos
+// porque na janela de deploy o frontend novo fala com o backend antigo, que nao
+// manda estes campos.
+type ChurnContext = {
+  scheduledNotCounted?: number;
+  revertedInWindow?: number;
+  orphanCancellations?: number;
+};
+
 type ChurnSnapshot =
-  | {
+  | ({
       status: "insufficient_data";
       reason: string;
       windowDays: number;
       canceledInWindow?: number;
       activeAtStart?: number;
-    }
-  | {
+    } & ChurnContext)
+  | ({
       status: "ok";
       windowDays: number;
       churnRate: number;
       canceledInWindow: number;
       activeAtStart: number;
       ltvCents: number | null;
-    };
+    } & ChurnContext);
 
 type BillingMetricsData = { mrr: MrrSnapshot; churn: ChurnSnapshot };
 
@@ -752,12 +761,50 @@ function formatPercent1(value: number) {
 }
 
 // TODO(Ana): revisar as explicacoes de churn insuficiente.
+/**
+ * Agendados e revertidos, ao lado do churn.
+ *
+ * Nao renderiza nada quando o backend nao manda os campos (janela de deploy) nem
+ * quando ambos sao zero: bloco vazio ocupando espaco e ruido, e um "0 agendados"
+ * so vale quando ha algo a comparar.
+ */
+function ChurnContextTiles({ churn }: { churn: ChurnSnapshot }) {
+  const agendados = churn.scheduledNotCounted;
+  const revertidos = churn.revertedInWindow;
+  if (agendados === undefined && revertidos === undefined) return null;
+  if (!agendados && !revertidos) return null;
+
+  return (
+    <>
+      {agendados ? (
+        <MetricTile
+          label="Saídas agendadas"
+          value={String(agendados)}
+          hint="Já avisaram que saem. Fora do churn: viram receita em risco."
+        />
+      ) : null}
+      {revertidos ? (
+        <MetricTile
+          label="Cancelamentos revertidos"
+          value={String(revertidos)}
+          hint="Pediram para sair e desistiram, na janela."
+        />
+      ) : null}
+    </>
+  );
+}
+
 function churnInsufficientReason(reason: string): string {
   switch (reason) {
     case "subscription_base_younger_than_window":
       return "Base de assinaturas ainda nova demais para calcular churn de 30 dias.";
     case "no_active_subscribers_at_window_start":
       return "Não havia assinantes ativos no início da janela para calcular churn.";
+    // Estado que existe para NAO virar "0%". Nenhuma assinatura chegou ao fim do
+    // periodo, entao ninguem teve a chance de sair: zero aqui seria ausencia de
+    // medicao disfarcada de medicao.
+    case "no_subscription_period_ended":
+      return "Nenhuma assinatura chegou ao fim do período ainda: não há saída possível para medir.";
     default:
       return "Dados insuficientes para calcular churn.";
   }
@@ -864,6 +911,11 @@ function BillingMetricsPanel({
             hint={`${churn.canceledInWindow} de ${churn.activeAtStart} no início da janela`}
           />
         )}
+        {/* Agendados e revertidos vem ao LADO do churn, nunca somados nele. Sem
+            estes dois, "0% de churn" com nove saidas marcadas leria como
+            "ninguem quer sair". Aparecem nos dois desfechos (ok e insuficiente)
+            porque informam igual nos dois. */}
+        <ChurnContextTiles churn={churn} />
         {churn.status === "ok" && churn.ltvCents !== null ? (
           <MetricTile
             label="LTV"

@@ -289,15 +289,44 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
 // Churn
 // ---------------------------------------------------------------------------
 
+/**
+ * Contagens que acompanham o churn e NAO entram nele.
+ *
+ * Existem porque a alternativa e a pessoa que le "0% de churn" concluir que
+ * ninguem quer sair, quando ha nove saidas com data marcada. Elas ficam ao lado
+ * do numero, nunca somadas nele.
+ */
+export type ChurnContext = {
+  /**
+   * Cancelamentos AGENDADOS e ainda nao efetivados. Deliberadamente FORA do
+   * churn: eles ja sao a metrica de "receita em risco", e conta-los aqui faria o
+   * mesmo fato aparecer duas vezes no painel.
+   */
+  scheduledNotCounted: number;
+  /**
+   * Cancelamentos REVERTIDOS na janela: gente que pediu para sair e desistiu. E
+   * o unico sinal positivo de retencao que o banco guarda hoje, e ele nao tinha
+   * lugar nenhum na interface.
+   */
+  revertedInWindow: number;
+  /**
+   * Linhas de cancelamento cuja assinatura nao existe mais em `subscriptions`
+   * (residuo do gateway anterior e de dados de teste). NAO entram no numerador:
+   * o denominador vem de `subscriptions`, e misturar as duas populacoes daria
+   * uma razao sem significado. Reportadas para a ausencia nao virar silencio.
+   */
+  orphanCancellations: number;
+};
+
 export type ChurnSnapshot =
-  | {
+  | ({
       status: "insufficient_data";
       reason: string;
       windowDays: number;
       canceledInWindow?: number;
       activeAtStart?: number;
-    }
-  | {
+    } & Partial<ChurnContext>)
+  | ({
       status: "ok";
       windowDays: number;
       churnRate: number;
@@ -305,21 +334,183 @@ export type ChurnSnapshot =
       activeAtStart: number;
       // null quando churnRate = 0 (LTV nao definido): ausencia, nao zero.
       ltvCents: number | null;
-    };
+    } & ChurnContext);
 
-// churnRate = cancelamentos na janela / assinantes ativos no inicio da janela.
-// activeAtStart e uma APROXIMACAO (o banco nao guarda snapshot historico):
-// assinaturas criadas antes do inicio da janela e nao canceladas antes dele.
-// Cancelamentos derivam de canceled_at (subscriptions).
-//
-// Estados nomeados de ausencia (nunca um numero inventado):
-// - base com menos de windowDays de vida -> insufficient_data.
-// - denominador 0 -> insufficient_data.
-// LTV (ARPU / churnRate) so e retornado quando churnRate > 0.
+type LinhaDeCancelamento = {
+  provider_subscription_id: string | null;
+  status: string | null;
+  canceled_at: string | null;
+  effective_at: string | null;
+};
+
+/**
+ * Quando o cancelamento SURTIU EFEITO.
+ *
+ * `effective_at` e a data em que o acesso acaba; `canceled_at` e a data em que a
+ * pessoa pediu. Para medir saida, vale a primeira. O fallback existe porque
+ * `effective_at` e nullable no schema, e uma linha sem ele ainda e um evento.
+ */
+function instanteDoEfeito(linha: LinhaDeCancelamento): string | null {
+  return linha.effective_at ?? linha.canceled_at;
+}
+
+function dentroDaJanela(
+  iso: string | null,
+  inicio: string,
+  fim: string,
+): boolean {
+  return Boolean(iso && iso >= inicio && iso <= fim);
+}
+
+/** Todas as linhas de cancelamento, com o id das assinaturas que ainda existem. */
+async function lerCancelamentos(): Promise<{
+  linhas: LinhaDeCancelamento[];
+  idsExistentes: Set<string>;
+}> {
+  const [cancRes, subsRes] = await Promise.all([
+    supabaseAdmin
+      .from("subscription_cancellations")
+      .select("provider_subscription_id, status, canceled_at, effective_at"),
+    supabaseAdmin.from("subscriptions").select("provider_subscription_id"),
+  ]);
+  if (cancRes.error) throw cancRes.error;
+  if (subsRes.error) throw subsRes.error;
+
+  const idsExistentes = new Set(
+    ((subsRes.data ?? []) as Array<{ provider_subscription_id: string | null }>)
+      .map((r) => r.provider_subscription_id)
+      .filter((v): v is string => Boolean(v)),
+  );
+  return {
+    linhas: (cancRes.data ?? []) as LinhaDeCancelamento[],
+    idsExistentes,
+  };
+}
+
+/**
+ * Saidas EFETIVAS na janela, deduplicadas por assinatura.
+ *
+ * Dedup por `provider_subscription_id` porque as duas fontes se sobrepoem: uma
+ * assinatura que terminou tem `canceled_at` preenchido E uma linha `completed`
+ * em subscription_cancellations. Sem dedup, ela contaria duas vezes e o churn
+ * sairia dobrado.
+ */
+async function contarSaidasEfetivas(
+  inicio: string,
+  fim: string,
+): Promise<number> {
+  const { data: porCanceledAt, error } = await supabaseAdmin
+    .from("subscriptions")
+    .select("provider_subscription_id, id, canceled_at")
+    .gte("canceled_at", inicio)
+    .lte("canceled_at", fim);
+  if (error) throw error;
+
+  const saidas = new Set<string>();
+  for (const row of (porCanceledAt ?? []) as Array<{
+    provider_subscription_id: string | null;
+    id: string;
+  }>) {
+    // Cai no `id` da linha quando nao ha id de provedor: e o mesmo objeto, e
+    // ignora-lo perderia a saida.
+    saidas.add(row.provider_subscription_id ?? row.id);
+  }
+
+  const { linhas, idsExistentes } = await lerCancelamentos();
+  for (const linha of linhas) {
+    if (linha.status !== "completed") continue;
+    if (!dentroDaJanela(instanteDoEfeito(linha), inicio, fim)) continue;
+    // Orfa NAO entra: o denominador vem de `subscriptions`, e contar no
+    // numerador uma assinatura que nao esta la produz uma razao entre
+    // populacoes diferentes.
+    if (
+      !linha.provider_subscription_id ||
+      !idsExistentes.has(linha.provider_subscription_id)
+    ) {
+      continue;
+    }
+    saidas.add(linha.provider_subscription_id);
+  }
+
+  return saidas.size;
+}
+
+/** Agendados, revertidos e orfas: acompanham o churn sem entrar nele. */
+async function coletarContextoDeChurn(
+  inicio: string,
+  fim: string,
+): Promise<ChurnContext> {
+  const { linhas, idsExistentes } = await lerCancelamentos();
+
+  let scheduledNotCounted = 0;
+  let revertedInWindow = 0;
+  let orphanCancellations = 0;
+
+  for (const linha of linhas) {
+    const orfa =
+      !linha.provider_subscription_id ||
+      !idsExistentes.has(linha.provider_subscription_id);
+    if (orfa) {
+      orphanCancellations += 1;
+      continue;
+    }
+    if (linha.status === "scheduled") {
+      // Agendado NAO se limita a janela: o que importa e que ainda vai sair.
+      scheduledNotCounted += 1;
+    } else if (
+      linha.status === "reverted" &&
+      dentroDaJanela(linha.canceled_at, inicio, fim)
+    ) {
+      revertedInWindow += 1;
+    }
+  }
+
+  return { scheduledNotCounted, revertedInWindow, orphanCancellations };
+}
+
+/**
+ * CHURN MEDE EFEITO: quem saiu de fato. Nunca quem AVISOU que vai sair.
+ *
+ * A distincao nao e preciosismo. Um cancelamento agendado ja e contado como
+ * "receita em risco"; se o churn tambem o contasse, o mesmo fato entraria duas
+ * vezes no painel e ele passaria a somar a si mesmo. Por isso `scheduled` fica
+ * de fora do numerador e sai ao lado, em `scheduledNotCounted`.
+ *
+ * DE ONDE VEM O EFEITO, nas duas fontes que existem, deduplicado por assinatura:
+ *
+ *   (a) `subscriptions.canceled_at` — escrito quando a assinatura termina de
+ *       verdade, pelo webhook `customer.subscription.deleted`, pelo cron
+ *       `process-cancellations` ou pela revogacao administrativa;
+ *   (b) `subscription_cancellations` com `status='completed'` — o registro
+ *       proprio, que sobrevive mesmo se a linha de assinatura for alterada.
+ *
+ * POR QUE AS DUAS. Ate 2026-07-31 so (a) era consultada, e (a) tem um buraco
+ * conhecido: assinatura de BOLETO (`renewal_type='manual'`) nao tem subscription
+ * na Stripe, entao nenhum webhook chega e o cron `process-cancellations` a
+ * ignora de proposito. Uma dessas nunca recebe `canceled_at` e some do churn
+ * para sempre. (b) fecha esse caso.
+ *
+ * A GUARDA QUE IMPORTA: `no_subscription_period_ended`. Antes desta versao, a
+ * unica protecao era a idade da base, e ela expira sozinha. Medido em
+ * 2026-07-31: a assinatura mais antiga e de 13/07 e o periodo mais curto termina
+ * em 13/08, entao por volta de 12/08 a guarda de idade deixaria de valer e a
+ * funcao passaria a devolver `0 / N = 0%` — um zero CONFIANTE sobre uma base em
+ * que nenhuma assinatura teve a chance de terminar. Zero medido e zero por
+ * impossibilidade de medir sao coisas diferentes, e so a segunda e mentira.
+ * A guarda nova pergunta o que de fato importa: ja houve algum periodo
+ * encerrado? Se nao, nao ha o que medir, e o estado e nomeado.
+ *
+ * `activeAtStart` continua sendo APROXIMACAO (o banco nao guarda snapshot
+ * historico de quem estava ativo): assinaturas criadas antes do inicio da janela
+ * que nao tinham terminado nem sido canceladas ate ali.
+ *
+ * LTV (ARPU / churnRate) so e retornado quando churnRate > 0.
+ */
 export async function getChurnSnapshot(
   params: { windowDays?: number } = {},
 ): Promise<ChurnSnapshot> {
   const windowDays = params.windowDays ?? 30;
+  const nowIso = new Date().toISOString();
   const windowStartIso = new Date(
     Date.now() - windowDays * 24 * 60 * 60 * 1000,
   ).toISOString();
@@ -341,21 +532,39 @@ export async function getChurnSnapshot(
     };
   }
 
+  // Contexto primeiro: ele acompanha TODOS os desfechos, inclusive os de
+  // ausencia. Um "dados insuficientes" que ainda diz "9 agendados, 2 revertidos"
+  // informa; um que so diz "insuficiente" nao.
+  const contexto = await coletarContextoDeChurn(windowStartIso, nowIso);
+
+  // GUARDA CONTRA O ZERO FALSO. Sem nenhum periodo encerrado, "0 saidas" nao e
+  // medicao: e a ausencia da oportunidade de sair.
+  const { count: encerradosCount, error: encerradosError } = await supabaseAdmin
+    .from("subscriptions")
+    .select("id", { count: "exact", head: true })
+    .lte("current_period_end", nowIso);
+  if (encerradosError) throw encerradosError;
+  if ((encerradosCount ?? 0) === 0) {
+    return {
+      status: "insufficient_data",
+      reason: "no_subscription_period_ended",
+      windowDays,
+      canceledInWindow: 0,
+      ...contexto,
+    };
+  }
+
   const { count: activeAtStartCount, error: activeError } = await supabaseAdmin
     .from("subscriptions")
     .select("id", { count: "exact", head: true })
     .lt("created_at", windowStartIso)
-    .or(`canceled_at.is.null,canceled_at.gte.${windowStartIso}`);
+    .or(`canceled_at.is.null,canceled_at.gte.${windowStartIso}`)
+    .or(`current_period_end.is.null,current_period_end.gt.${windowStartIso}`);
   if (activeError) throw activeError;
 
-  const { count: canceledCount, error: canceledError } = await supabaseAdmin
-    .from("subscriptions")
-    .select("id", { count: "exact", head: true })
-    .gte("canceled_at", windowStartIso);
-  if (canceledError) throw canceledError;
+  const canceledInWindow = await contarSaidasEfetivas(windowStartIso, nowIso);
 
   const activeAtStart = activeAtStartCount ?? 0;
-  const canceledInWindow = canceledCount ?? 0;
 
   if (activeAtStart === 0) {
     return {
@@ -364,6 +573,7 @@ export async function getChurnSnapshot(
       windowDays,
       canceledInWindow,
       activeAtStart: 0,
+      ...contexto,
     };
   }
 
@@ -383,5 +593,6 @@ export async function getChurnSnapshot(
     canceledInWindow,
     activeAtStart,
     ltvCents,
+    ...contexto,
   };
 }
