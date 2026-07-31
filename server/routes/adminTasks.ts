@@ -27,11 +27,17 @@ import { createError } from "../middleware/error";
 const router = Router();
 
 const PRIORITIES = ["baixa", "media", "alta", "urgente"] as const;
-// 'bug' saiu: bug tem tela propria (aba Bugs & Erros). Ver a migration
-// 20260728120100. O CHECK do banco tambem foi apertado; esta lista e o espelho
-// dele, e as duas andam juntas.
-const TASK_TYPES = [
+// 'bug' VOLTOU (migration 20260731040000). Saiu em 20260728120100 porque bug
+// tinha tela propria; a aba Bugs & Erros esta sendo aposentada e os bugs passam
+// a viver no quadro BUG deste modulo. Esta lista e o espelho do CHECK do banco,
+// e as duas andam juntas.
+// Exportado para o teste de paridade (adminTasksTipo.test.ts) ler a lista REAL
+// em vez de reconstrui-la por regex sobre este arquivo. Um parser aqui poderia
+// sub-casar e afirmar paridade sobre um conjunto menor, que e a classe de erro
+// que o CLAUDE.md documenta; importar o valor elimina o parser.
+export const TASK_TYPES = [
   "feature",
+  "bug",
   "melhoria",
   "debito_tecnico",
   "tarefa",
