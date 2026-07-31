@@ -70,6 +70,13 @@ import { extractLinkedinPdf, PdfExtractError } from "@/lib/pdfExtract";
 import { cn } from "@/lib/utils";
 import { competenciasDoPdf } from "@shared/linkedin/competenciasDoPdf";
 import { headlineParecCortada } from "@/lib/headlineCortada";
+import {
+  EVENTO_ENVIO,
+  EVENTO_REVISAO,
+  payloadEnvio,
+  payloadRevisao,
+} from "@/lib/headlineAvisoTelemetria";
+import posthog from "posthog-js";
 import { parseLinkedinText } from "@shared/linkedin/parse";
 import { readQualitative } from "@shared/linkedin/readQualitative";
 import {
@@ -758,6 +765,23 @@ export default function LinkedinAnalisar() {
    */
   const headlineCortada = headlineParecCortada(parsed?.headline);
 
+  /**
+   * O aviso apareceu ALGUMA vez nesta sessao de formulario?
+   *
+   * `useRef` e nao `useState`: e so telemetria, ninguem renderiza a partir
+   * disto, e um `setState` aqui causaria render extra a cada tecla. Vive na
+   * pagina, que nao remonta entre o passo de revisao e o envio (diferente do
+   * Header/Footer, que remontam a cada navegacao).
+   */
+  const avisoVistoRef = useRef(false);
+  useEffect(() => {
+    // Em efeito, nao no corpo do render: mutar ref durante o render e o padrao
+    // que quebra em render concorrente, e aqui nao ha ganho nenhum em fazer
+    // isso. Idempotente de proposito, so liga, nunca desliga: a pergunta e "o
+    // aviso apareceu alguma vez", nao "esta aparecendo agora".
+    if (headlineCortada) avisoVistoRef.current = true;
+  }, [headlineCortada]);
+
   async function handleFile(file: File | undefined) {
     if (!file) return;
     setPdfError("");
@@ -802,6 +826,10 @@ export default function LinkedinAnalisar() {
         `PDF lido (${text.length.toLocaleString("pt-BR")} caracteres).`,
       );
       setEntryPath("review");
+      // UMA captura por chegada de arquivo. NAO fica no `useMemo` de `parsed`
+      // (que recomputa por tecla) nem numa transicao de estado (que roda de
+      // novo em re-render): `handleFile` roda uma vez por PDF escolhido.
+      posthog.capture(EVENTO_REVISAO, payloadRevisao(text, "pdf"));
     } catch (err) {
       if (err instanceof PdfExtractError) {
         setPdfError(err.message);
@@ -849,6 +877,13 @@ export default function LinkedinAnalisar() {
     setLoading(true);
     setError("");
     setConfirmReanalyze(false);
+    // Depois do guard e antes da chamada: so conta submit que de fato vai
+    // acontecer. Aqui o texto e o final, entao `parsed?.headline` ja e a
+    // headline que sera analisada.
+    posthog.capture(
+      EVENTO_ENVIO,
+      payloadEnvio(avisoVistoRef.current, parsed?.headline),
+    );
     // A pessoa dispara o submit no fim do form: sobe pro scan card no topo.
     scrollToStageTop();
 
@@ -1316,6 +1351,20 @@ export default function LinkedinAnalisar() {
                               onChange={(event) =>
                                 update("profileText", event.target.value)
                               }
+                              onPaste={(event) => {
+                                // Le do clipboard, e nao do estado: no `onPaste`
+                                // o texto colado ainda nao entrou em
+                                // `form.profileText`, e esperar o `onChange`
+                                // devolveria o caminho por tecla.
+                                const colado =
+                                  event.clipboardData.getData("text");
+                                if (colado.trim().length > 0) {
+                                  posthog.capture(
+                                    EVENTO_REVISAO,
+                                    payloadRevisao(colado, "paste"),
+                                  );
+                                }
+                              }}
                               placeholder="Cole aqui o texto do seu perfil do LinkedIn (headline, Sobre, experiências...)."
                               className={cn(inputClass, "min-h-36")}
                             />

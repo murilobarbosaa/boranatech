@@ -57,16 +57,40 @@ function comecaEmMinuscula(valor: string): boolean {
   return c !== "" && c === c.toLocaleLowerCase() && c !== c.toLocaleUpperCase();
 }
 
+/**
+ * Qual assinatura casou, ou `null` se nenhuma.
+ *
+ * Existe separada do booleano por causa da telemetria: saber QUAL forma dispara
+ * mais e o que permite decidir, depois, se alguma esta frouxa. Um booleano
+ * agregado nao responde isso, e a alternativa seria recalcular no ponto de
+ * captura, criando uma segunda implementacao da mesma regra.
+ *
+ * A ORDEM importa quando mais de uma casa (a headline da NTT DATA casa `inicio`
+ * e `virgula` ao mesmo tempo): devolve a PRIMEIRA da lista, e a lista esta em
+ * ordem de quanto a forma e conclusiva. Nao ha caso em que isso mude o
+ * booleano, so o rotulo.
+ */
+export type AssinaturaDeCorte =
+  | "inicio_pipe"
+  | "fim_pipe"
+  | "virgula"
+  | "minuscula";
+
+export function assinaturaDeCorte(
+  headline: string | null | undefined,
+): AssinaturaDeCorte | null {
+  if (typeof headline !== "string") return null;
+  const t = headline.trim();
+  if (t === "") return null;
+  if (COMECA_EM_SEPARADOR.test(t)) return "inicio_pipe";
+  if (TERMINA_EM_SEPARADOR.test(t)) return "fim_pipe";
+  if (TERMINA_EM_VIRGULA.test(t)) return "virgula";
+  if (comecaEmMinuscula(t)) return "minuscula";
+  return null;
+}
+
 export function headlineParecCortada(
   headline: string | null | undefined,
 ): boolean {
-  if (typeof headline !== "string") return false;
-  const t = headline.trim();
-  if (t === "") return false;
-  return (
-    COMECA_EM_SEPARADOR.test(t) ||
-    TERMINA_EM_SEPARADOR.test(t) ||
-    TERMINA_EM_VIRGULA.test(t) ||
-    comecaEmMinuscula(t)
-  );
+  return assinaturaDeCorte(headline) !== null;
 }
