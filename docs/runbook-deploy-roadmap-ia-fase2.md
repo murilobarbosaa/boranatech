@@ -88,9 +88,19 @@ O que fixa cada elo:
 
 ### Matriz de compatibilidade
 
-|                  | server `47e6a32`                     | server novo |
+A análise foi feita contra `47e6a32` e continua valendo para `bd4b91d`, que é o
+que produção roda hoje. Não é suposição: os 9 arquivos da superfície do Roadmap
+(`server/routes/aiRoadmap.ts`, `server/lib/aiRoadmap/intakeChat.ts` e
+`generate.ts`, `client/src/pages/RoadmapIA.tsx`,
+`client/src/services/aiRoadmapService.ts`, `shared/aiRoadmap.ts`,
+`client/src/components/ai/IntakeChatPanel.tsx`, `server/lib/aiUsage.ts`,
+`server/middleware/auth.ts`) têm **o mesmo hash de blob** nos dois commits. O que
+a main ganhou no meio foi admin, billing, LinkedIn e telemetria, nada do fluxo do
+Roadmap.
+
+|                  | server em produção (`bd4b91d`)       | server novo |
 | ---------------- | ------------------------------------ | ----------- |
-| client `47e6a32` | hoje, ok                             | **ok**      |
+| client `bd4b91d` | hoje, ok                             | **ok**      |
 | client novo      | **QUEBRAVA** (corrigido, ver abaixo) | destino, ok |
 
 **client velho × server novo: seguro.** A resposta do chat é puramente aditiva:
@@ -110,7 +120,7 @@ antigo mandasse e o server antigo aceitasse passa a ser recusado.
 
 **client novo × server velho: era uma quebra dura, e foi corrigida.** O bundle
 novo abre a conversa com **histórico vazio** (`runTurn([], true)`), porque a
-semente passou para o servidor. O backend `47e6a32` rejeitava corpo vazio com
+semente passou para o servidor. O backend em produção rejeita corpo vazio com
 `invalid_request` (`intakeChat.ts:99`, `!Array.isArray(raw) || raw.length === 0`),
 e o client novo mapeia `invalid_request` para um bloqueio **não-transiente**, sem
 botão de tentar de novo. Efeito: **a conversa não abria**, para todo mundo, na
@@ -251,7 +261,7 @@ faça loop de polling contra `boranatech.com.br` (150 requisições em 5 minutos
 dispararam a mitigação da Vercel uma vez, e cegaram a própria medição).
 
 **Estado intermediário (server novo + front antigo):** seguro, célula
-`client 47e6a32 × server novo` da matriz.
+`client em produção × server novo` da matriz.
 
 ### Passo 5 — deploy do FRONT (Vercel) [você]
 

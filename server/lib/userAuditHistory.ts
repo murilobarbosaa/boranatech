@@ -58,6 +58,7 @@ export type RefundRow = {
   stripe_charge_id: string;
   amount_cents: number;
   stripe_refund_id: string | null;
+  settlement: string | null;
 };
 
 export type CancellationRow = {
@@ -119,6 +120,24 @@ function cruzarReembolso(
   );
   if (!achado) return { outcome: "unconfirmed", detail: null };
 
+  // A frase precisa dizer o que a linha É. Uma devolução declarada não foi
+  // emitida por nós, e chamá-la de "reembolso registrado" apagaria justamente a
+  // distinção que a coluna settlement existe para guardar.
+  if (achado.settlement === "external") {
+    return {
+      outcome: "confirmed",
+      detail:
+        "Devolução declarada pelo admin, feita fora da Stripe. A plataforma não tem como verificar.",
+    };
+  }
+  if (achado.settlement === "stripe_dashboard") {
+    return {
+      outcome: "confirmed",
+      detail:
+        "Devolução declarada pelo admin, emitida no painel da Stripe. O valor entra no extrato pelo sync.",
+    };
+  }
+
   return {
     outcome: "confirmed",
     detail: achado.stripe_refund_id
@@ -160,13 +179,14 @@ export function buildAuditHistory(input: {
   const { logs, atores, refunds, cancelamentos } = input;
 
   const entradas = logs.map((log): AuditHistoryEntry => {
-    // `revoke_pro` cruza contra a MESMA tabela de resultado do
+    // `refund_external` cruza contra a MESMA tabela de resultado do `refund`
+    // (admin_refunds); `revoke_pro` contra a mesma de resultado do
     // `cancel_subscription` (subscription_cancellations), porque a revogação
     // imediata grava lá do mesmo jeito. É esse cruzamento que torna visível o
     // estado meio-feito: reembolso emitido e acesso não removido aparece como
     // "Sem confirmação", de forma durável, na mesma tela.
     const cruzamento =
-      log.action === "refund"
+      log.action === "refund" || log.action === "refund_external"
         ? cruzarReembolso(log, refunds)
         : log.action === "cancel_subscription" || log.action === "revoke_pro"
           ? cruzarCancelamento(log, cancelamentos)

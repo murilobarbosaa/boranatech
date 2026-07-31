@@ -38,6 +38,12 @@ export const CAMPOS_VISIVEIS_POR_ACTION: Record<string, readonly string[]> = {
   ],
   update_email: ["email"],
   refund: ["amount_cents", "reason", "stripe_reason"],
+  // `declaration` e `settlement` entram de propósito: são o que distingue uma
+  // devolução DECLARADA de um reembolso emitido, e esconder isso na tela faria
+  // as duas linhas parecerem a mesma coisa. `verified_by_system` fica de fora
+  // por ser sempre `false` nesta ação (dizer o óbvio em toda linha é ruído);
+  // quem precisa dele lê o json cru da auditoria.
+  refund_external: ["amount_cents", "reason", "settlement", "declaration"],
   cancel_subscription: [
     "reason_code",
     "current_period_end",

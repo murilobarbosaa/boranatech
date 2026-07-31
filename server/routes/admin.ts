@@ -2253,6 +2253,315 @@ router.post("/users/:id/refunds", async (req, res, next) => {
   }
 });
 
+// REGISTRO DE DEVOLUCAO FEITA FORA DA PLATAFORMA.
+//
+// ROTA PROPRIA, e nao um ramo do /refunds, porque registrar um fato externo nao
+// e emitir reembolso: aqui nao ha refunds.create, nao ha Idempotency-Key da
+// Stripe e nao ha dinheiro saindo por nossa ordem. Misturar as duas coisas num
+// endpoint faria o nome mentir e daria ao cartao um caminho de "declarar"
+// devolucao que ele nao deve ter (para cartao existe a rota de verdade).
+//
+// SO BOLETO. A recusa mora AQUI e nao so na UI, pelo mesmo motivo da Fatia 6: se
+// a guarda fosse visual, a proxima chamada direta a rota a contornaria.
+//
+// COMO O CODIGO DISTINGUE OS DOIS CASOS. A pergunta que importa nao e "o que o
+// admin fez", e sim "a Stripe vai gerar uma linha de dinheiro para isto?". A
+// resposta e verificavel: se existe objeto Refund na cobranca, a balance
+// transaction dele vira linha em finance_transactions pelo syncBalanceTransactions.
+// Entao o discriminador e refunds.list({ charge }), nao uma pergunta no dialogo.
+// Nao e um proxy da pergunta: a existencia do Refund e a CONDICAO que produz a
+// linha duplicada.
+//
+//   >= 1 Refund  -> settlement='stripe_dashboard'. O sync traz o dinheiro; esta
+//                   linha guarda ator, motivo e vinculo com a auditoria, e NAO
+//                   entra na agregacao do extrato.
+//   0 Refunds    -> settlement='external'. A Stripe nunca soube e nenhum sync
+//                   vai trazer; esta linha e o unico registro que existe, e e a
+//                   unica que CONTA na agregacao.
+//   Stripe muda  -> 502. Sem veredito nao ha escrita: chutar 'external' contaria
+//                   duas vezes e chutar 'stripe_dashboard' perderia o valor.
+//
+// A doc da Stripe se contradiz sobre boleto ser reembolsavel (a pagina do
+// metodo diz que nao; a pagina de refunds lista boleto entre os metodos sem
+// suporte nativo, atendidos por um Refund em `requires_action` com coleta de
+// dados bancarios por e-mail). Por isso o codigo NAO decide por conhecimento
+// previo: ele pergunta a Stripe a cada registro, e as duas versoes do mundo dao
+// o mesmo resultado correto.
+router.post("/users/:id/external-refunds", async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
+      );
+    }
+
+    // Mesmo teto por ator do reembolso emitido: esta rota nao move dinheiro, mas
+    // REMOVE ACESSO, e o efeito de um script disparando dezenas dela e do mesmo
+    // tamanho.
+    if (refundLimiter(req.user!.id)) {
+      return next(
+        createError(
+          429,
+          "rate_limited",
+          "Muitos registros seguidos. Espere um minuto.",
+        ),
+      );
+    }
+
+    const corpo = (req.body ?? {}) as {
+      charge_id?: unknown;
+      amount_cents?: unknown;
+      reason?: unknown;
+      confirmed?: unknown;
+    };
+    const chargeId =
+      typeof corpo.charge_id === "string" ? corpo.charge_id.trim() : "";
+    if (!chargeId) {
+      return next(
+        createError(400, "charge_required", "Informe a cobrança devolvida."),
+      );
+    }
+
+    // DECLARACAO EXPLICITA, exigida na rota e nao so na tela. O sistema nao tem
+    // como verificar que a devolucao aconteceu: o que ele registra e a palavra
+    // do admin, e a rota so aceita quando essa palavra foi dada. `=== true` de
+    // proposito, para "false", "0" e string vazia nao passarem por coercao.
+    if (corpo.confirmed !== true) {
+      return next(
+        createError(
+          400,
+          "confirmation_required",
+          "É preciso confirmar que a devolução foi feita.",
+        ),
+      );
+    }
+
+    const { data: linhas, error: linhasError } = await supabaseAdmin
+      .from("finance_transactions")
+      .select(
+        "id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
+      )
+      .eq("user_id", uid);
+
+    if (linhasError)
+      return next(
+        dbError(
+          "external refund lookup",
+          linhasError,
+          "Erro ao registrar a devolução.",
+        ),
+      );
+
+    const declaradas = await lerDeclaracoesDeDevolucao(uid);
+    if (!declaradas.ok)
+      return next(
+        dbError(
+          "external refund declarations",
+          { message: declaradas.message },
+          "Erro ao registrar a devolução.",
+        ),
+      );
+
+    const extrato = buildTransactionList(
+      (linhas || []) as FinanceRow[],
+      declaradas.linhas,
+    );
+    const alvo = extrato.items.find(
+      (item) => item.stripe_charge_id === chargeId && item.type === "charge",
+    );
+    if (!alvo) {
+      return next(
+        createError(
+          404,
+          "charge_not_found",
+          "Cobrança não encontrada para este usuário.",
+        ),
+      );
+    }
+
+    // Cartao tem rota de verdade; declarar devolucao dele seria criar um jeito
+    // de marcar como devolvido dinheiro que nunca voltou.
+    if (!chargeId.startsWith("py_")) {
+      return next(
+        createError(
+          409,
+          "card_use_refunds_route",
+          "Esta é uma cobrança de cartão: use o reembolso normal, que devolve o dinheiro de verdade.",
+        ),
+      );
+    }
+
+    // IDEMPOTENCIA. O teto recomputado ja barra a segunda declaracao 'external'
+    // (a primeira zera refundable_cents), mas NAO barra a segunda
+    // 'stripe_dashboard', porque essa nao entra na agregacao. Sem esta
+    // pre-checagem, um duplo clique nesse caso geraria duas linhas e duas
+    // auditorias de uma acao que remove acesso.
+    const jaRegistrada = declaradas.linhas.some(
+      (d) => d.stripe_charge_id === chargeId && d.settlement !== "stripe_api",
+    );
+    if (jaRegistrada) {
+      return res.json({
+        data: { registered: false, already_registered: true },
+      });
+    }
+
+    const validacao = validateRefundRequest(
+      alvo,
+      {
+        amountCents:
+          typeof corpo.amount_cents === "number"
+            ? corpo.amount_cents
+            : undefined,
+        reason: typeof corpo.reason === "string" ? corpo.reason : "",
+      },
+      { permitirBoleto: true },
+    );
+    if (!validacao.ok) {
+      return next(
+        createError(400, validacao.error.code, validacao.error.message),
+      );
+    }
+
+    // O DISCRIMINADOR. Antes de qualquer escrita: sem veredito, nada e gravado.
+    let settlement: "stripe_dashboard" | "external";
+    try {
+      const naStripe = await getStripe().refunds.list({
+        charge: chargeId,
+        limit: 100,
+      });
+      settlement =
+        (naStripe.data?.length ?? 0) > 0 ? "stripe_dashboard" : "external";
+    } catch (stripeErr) {
+      console.error(
+        `[admin/external-refund] nao foi possivel checar reembolsos de ${chargeId} na Stripe; nada foi registrado:`,
+        stripeErr,
+      );
+      return next(
+        createError(
+          502,
+          "stripe_unreachable",
+          "Não foi possível confirmar com a Stripe se já existe um reembolso nesta cobrança. Nada foi registrado.",
+        ),
+      );
+    }
+
+    // AUDITORIA DA INTENCAO, fail-closed, ANTES da escrita e da revogacao.
+    // `declaration: true` e `verified_by_system: false` deixam explicito no
+    // proprio registro que isto e a palavra do admin, nao algo que a plataforma
+    // observou. A distincao importa: todo o resto do historico registra acoes
+    // cujo efeito a plataforma executou.
+    const { error: auditError } = await supabaseAdmin
+      .from("content_audit_logs")
+      .insert({
+        actor_user_id: req.user!.id,
+        action: "refund_external",
+        resource_type: "charge",
+        resource_id: uid,
+        resource_slug: chargeId,
+        before_json: {
+          gross_cents: alvo.gross_cents,
+          refunded_cents: alvo.refunded_cents,
+          refundable_cents: alvo.refundable_cents,
+        },
+        after_json: {
+          amount_cents: validacao.amountCents,
+          reason: validacao.reason,
+          settlement,
+          declaration: true,
+          verified_by_system: false,
+        },
+      });
+    if (auditError) {
+      console.error("[admin] external refund audit failed:", auditError);
+      return next(
+        createError(
+          500,
+          "audit_failed",
+          "Não foi possível registrar a auditoria da devolução.",
+        ),
+      );
+    }
+
+    // stripe_refund_id NULO nos dois casos, de proposito: a coluna guarda o id
+    // devolvido por uma chamada NOSSA, e aqui nao houve nenhuma. Quem diz o que
+    // aconteceu e `settlement`.
+    const { error: registroError } = await supabaseAdmin
+      .from("admin_refunds")
+      .insert({
+        user_id: uid,
+        actor_user_id: req.user!.id,
+        stripe_charge_id: chargeId,
+        stripe_refund_id: null,
+        amount_cents: validacao.amountCents,
+        currency: alvo.currency ?? "BRL",
+        reason: validacao.reason,
+        settlement,
+      });
+    if (registroError) {
+      // Ao contrario do /refunds (onde o dinheiro ja saiu quando esta escrita
+      // acontece e falhar nao pode virar erro), AQUI a escrita E a acao. Sem
+      // ela nao ha registro nenhum, entao o erro sobe e nada e revogado.
+      console.error(
+        "[admin/external-refund] insert em admin_refunds falhou:",
+        registroError,
+      );
+      return next(
+        dbError(
+          "external refund insert",
+          registroError,
+          "Não foi possível registrar a devolução.",
+        ),
+      );
+    }
+
+    const acesso = await decidirERevogar({
+      uid,
+      actorUserId: req.user!.id,
+      motivo: validacao.reason,
+      chargeId,
+      refundableAntes: alvo.refundable_cents,
+      valorReembolsado: validacao.amountCents,
+    });
+
+    // So no caso (a): existe objeto Refund na Stripe, entao vale puxar a balance
+    // transaction dele agora em vez de esperar o ciclo. No caso (b) nao ha nada
+    // para sincronizar e a chamada seria custo puro.
+    let extratoAtualizado = true;
+    if (settlement === "stripe_dashboard") {
+      try {
+        await syncBalanceTransactions({
+          since: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        });
+      } catch (syncErr) {
+        extratoAtualizado = false;
+        console.warn(
+          `[admin/external-refund] devolucao de ${chargeId} registrada, mas o sync falhou; o extrato so atualiza no proximo ciclo:`,
+          syncErr,
+        );
+      }
+    }
+
+    await invalidateProStatusCache(uid);
+
+    res.json({
+      data: {
+        registered: true,
+        amount_cents: validacao.amountCents,
+        settlement,
+        statement_synced: extratoAtualizado,
+        access: acesso,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // CANCELAMENTO DE ASSINATURA PELO ADMIN. Primeira acao que REMOVE acesso.
 //
 // Nao e imediato: reusa stripeProvider.cancel, que agenda para o fim do periodo
@@ -2840,6 +3149,7 @@ const ACOES_DE_USUARIO = [
   "update_email",
   "cancel_subscription",
   "refund",
+  "refund_external",
   "revoke_pro",
 ] as const;
 
@@ -2897,7 +3207,7 @@ router.get("/users/:id/audit", async (req, res, next) => {
         : Promise.resolve({ data: [], error: null }),
       supabaseAdmin
         .from("admin_refunds")
-        .select("stripe_charge_id, amount_cents, stripe_refund_id")
+        .select("stripe_charge_id, amount_cents, stripe_refund_id, settlement")
         .eq("user_id", uid),
       supabaseAdmin
         .from("subscription_cancellations")

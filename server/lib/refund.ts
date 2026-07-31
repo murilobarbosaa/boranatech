@@ -92,9 +92,27 @@ export function stripeReasonFor(
   return "requested_by_customer";
 }
 
+export type RefundValidationOptions = {
+  /**
+   * Libera cobrança de boleto.
+   *
+   * `false` (padrão) é a postura da rota que CHAMA refunds.create: a Stripe não
+   * devolve boleto por API, então deixar passar produziria um erro dela, não um
+   * reembolso. `true` é a postura da rota que REGISTRA um ato externo, onde o
+   * boleto é justamente o caso de uso e nenhuma devolução é emitida por nós.
+   *
+   * O restante da validação (motivo obrigatório, teto recomputado, valor
+   * inteiro e positivo) é IDÊNTICO nas duas, e é por isso que existe um
+   * parâmetro em vez de uma segunda função: duas cópias do teto divergiriam, e
+   * o teto é o que impede devolver mais do que entrou.
+   */
+  permitirBoleto?: boolean;
+};
+
 export function validateRefundRequest(
   charge: ChargeParaReembolso,
   pedido: RefundRequest,
+  opcoes: RefundValidationOptions = {},
 ): RefundValidation {
   if (charge.type !== "charge") {
     return {
@@ -106,7 +124,7 @@ export function validateRefundRequest(
     };
   }
 
-  if (charge.is_boleto) {
+  if (charge.is_boleto && !opcoes.permitirBoleto) {
     return {
       ok: false,
       error: {

@@ -1764,3 +1764,370 @@ describe("revogação falhando DEPOIS do reembolso bem-sucedido", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// POST /users/:id/external-refunds — registro de devolução feita FORA daqui.
+//
+// Duas coisas distintas moram nesta rota e os testes separam as duas:
+//   (a) a devolução foi processada pela Stripe (existe objeto Refund) -> o sync
+//       traz a linha de dinheiro, e o registro NÃO pode duplicá-la;
+//   (b) a devolução saiu por fora (PIX, TED) -> a Stripe nunca soube, e o
+//       registro é a ÚNICA fonte que existe.
+// ---------------------------------------------------------------------------
+
+const COBRANCA_BOLETO = {
+  id: "ft-boleto",
+  type: "charge",
+  gross_cents: 14874,
+  fee_cents: 0,
+  net_cents: 14874,
+  currency: "BRL",
+  occurred_at: "2026-07-01T12:00:00Z",
+  stripe_charge_id: "py_1",
+  stripe_invoice_id: null,
+  plan_code: "pro_annual",
+};
+
+const ASSINATURA_BOLETO = {
+  id: "sub-boleto",
+  status: "active",
+  renewal_type: "manual",
+  provider_subscription_id: "cs_1",
+};
+
+function montarRegistro(over: Record<string, RespostaTabela> = {}) {
+  montar({
+    finance_transactions: { rows: [COBRANCA_BOLETO] },
+    content_audit_logs: { rows: [{}] },
+    admin_refunds: { rows: [] },
+    subscriptions: { rows: [ASSINATURA_BOLETO] },
+    subscription_cancellations: { rows: [] },
+    ...over,
+  });
+}
+
+function registrar(corpo: Record<string, unknown> = {}) {
+  return chamarAdmin("POST", `/users/${UID}/external-refunds`, {
+    charge_id: "py_1",
+    reason: "devolvido por PIX",
+    confirmed: true,
+    ...corpo,
+  });
+}
+
+describe("POST /users/:id/external-refunds", () => {
+  it("CASO (b): sem Refund na Stripe, grava settlement='external' e NÃO sincroniza", async () => {
+    // A Stripe nunca soube: não há balance transaction para puxar, e chamar o
+    // sync seria custo puro. Esta linha é o único registro que vai existir.
+    estado.stripeRefundList = vi.fn(async () => ({ data: [] }));
+    montarRegistro();
+
+    const r = await registrar();
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toMatchObject({
+      registered: true,
+      settlement: "external",
+      amount_cents: 14874,
+    });
+
+    const insert = estado.double
+      .de("admin_refunds")
+      .find((c) => c.op === "insert")!;
+    expect(insert.payload).toMatchObject({
+      user_id: UID,
+      actor_user_id: "admin-1",
+      stripe_charge_id: "py_1",
+      // NULO nos dois casos: a coluna guarda o id devolvido por uma chamada
+      // NOSSA, e aqui não houve nenhuma.
+      stripe_refund_id: null,
+      settlement: "external",
+      amount_cents: 14874,
+    });
+    expect(estado.syncBalance).not.toHaveBeenCalled();
+    expect(estado.stripeRefundCreate).not.toHaveBeenCalled();
+  });
+
+  it("CASO (a): com Refund na Stripe, grava 'stripe_dashboard' e sincroniza", async () => {
+    // O sync vai trazer a linha de dinheiro. A nossa linha guarda ator e motivo,
+    // que o sync não tem, e fica FORA da agregação para não contar duas vezes.
+    estado.stripeRefundList = vi.fn(async () => ({
+      data: [{ id: "re_dash", status: "requires_action" }],
+    }));
+    montarRegistro();
+
+    const r = await registrar();
+
+    expect(r.status).toBe(200);
+    expect(r.body.data.settlement).toBe("stripe_dashboard");
+
+    const insert = estado.double
+      .de("admin_refunds")
+      .find((c) => c.op === "insert")!;
+    expect(insert.payload).toMatchObject({ settlement: "stripe_dashboard" });
+    expect(estado.syncBalance).toHaveBeenCalledTimes(1);
+  });
+
+  it("o discriminador pergunta pela COBRANÇA, não por outra coisa", async () => {
+    estado.stripeRefundList = vi.fn(async () => ({ data: [] }));
+    montarRegistro();
+    await registrar();
+
+    expect(estado.stripeRefundList).toHaveBeenCalledTimes(1);
+    expect(estado.stripeRefundList.mock.calls[0][0]).toMatchObject({
+      charge: "py_1",
+    });
+  });
+
+  it("Stripe inalcançável: 502 e NADA é gravado", async () => {
+    // Sem veredito não há escrita. Chutar 'external' contaria duas vezes;
+    // chutar 'stripe_dashboard' perderia o valor do extrato.
+    estado.stripeRefundList = vi.fn(async () => {
+      throw new Error("timeout");
+    });
+    montarRegistro();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await registrar();
+
+    expect(r.status).toBe(502);
+    expect(r.body.error.code).toBe("stripe_unreachable");
+    expect(
+      estado.double.de("admin_refunds").filter((c) => c.op === "insert"),
+    ).toHaveLength(0);
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+    expect(
+      estado.double.de("subscriptions").filter((c) => c.op === "update"),
+    ).toHaveLength(0);
+  });
+
+  it("SEM confirmação explícita a rota recusa, antes de consultar qualquer coisa", async () => {
+    montarRegistro();
+    const r = await chamarAdmin("POST", `/users/${UID}/external-refunds`, {
+      charge_id: "py_1",
+      reason: "x",
+    });
+
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("confirmation_required");
+    expect(estado.double.chamadas).toHaveLength(0);
+  });
+
+  it("confirmação que não é o booleano true não passa por coerção", async () => {
+    // "true", 1 e {} são verdadeiros em JS. A afirmação do admin não pode
+    // depender de coerção: ou ela foi dada, ou não foi.
+    for (const valor of ["true", 1, {}, "sim", null]) {
+      montarRegistro();
+      const r = await registrar({ confirmed: valor });
+      expect(r.status, String(valor)).toBe(400);
+      expect(r.body.error.code, String(valor)).toBe("confirmation_required");
+    }
+  });
+
+  it("a auditoria guarda a declaração COMO declaração", async () => {
+    // O sistema não tem como verificar que a devolução aconteceu. O registro
+    // precisa dizer isso de si mesmo, senão a linha fica indistinguível de uma
+    // ação cujo efeito a plataforma executou e observou.
+    estado.stripeRefundList = vi.fn(async () => ({ data: [] }));
+    montarRegistro();
+    await registrar();
+
+    const audit = auditsDe("refund_external");
+    expect(audit).toHaveLength(1);
+    expect(audit[0].payload).toMatchObject({
+      actor_user_id: "admin-1",
+      resource_type: "charge",
+      resource_slug: "py_1",
+    });
+    expect(audit[0].payload!.after_json).toMatchObject({
+      declaration: true,
+      verified_by_system: false,
+      settlement: "external",
+      reason: "devolvido por PIX",
+      amount_cents: 14874,
+    });
+  });
+
+  it("audita ANTES de gravar e de revogar (fail-closed)", async () => {
+    montarRegistro({ content_audit_logs: { error: { message: "check" } } });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await registrar();
+
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("audit_failed");
+    expect(
+      estado.double.de("admin_refunds").filter((c) => c.op === "insert"),
+    ).toHaveLength(0);
+    expect(
+      estado.double.de("subscriptions").filter((c) => c.op === "update"),
+    ).toHaveLength(0);
+  });
+
+  it("insert falhando é FAIL-LOUD: aqui a escrita É a ação", async () => {
+    // Diferente do /refunds, onde o dinheiro já saiu quando a gravação acontece
+    // e falhar não pode virar erro. Sem esta linha não existe registro nenhum,
+    // então nada é revogado e o erro sobe.
+    let n = 0;
+    montarRegistro({
+      admin_refunds: () => {
+        n += 1;
+        return n === 1 ? { rows: [] } : { error: { message: "timeout" } };
+      },
+    } as unknown as Record<string, RespostaTabela>);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await registrar();
+
+    expect(r.status).toBe(500);
+    expect(
+      estado.double.de("subscriptions").filter((c) => c.op === "update"),
+    ).toHaveLength(0);
+  });
+
+  it("REVOGA pela mesma regra: devolução total zera o saldo", async () => {
+    estado.stripeRefundList = vi.fn(async () => ({ data: [] }));
+    montarRegistro();
+
+    const r = await registrar();
+
+    expect(r.body.data.access).toMatchObject({
+      should_revoke: true,
+      revoked: true,
+      reason: "revoked",
+    });
+    const update = estado.double
+      .de("subscriptions")
+      .find((c) => c.op === "update")!;
+    expect(update.payload).toMatchObject({ status: "canceled" });
+    // BOLETO: não há assinatura recorrente na Stripe para cancelar.
+    expect(estado.stripeSubscriptionCancel).not.toHaveBeenCalled();
+    expect(estado.invalidateProCache).toHaveBeenCalledWith(UID);
+  });
+
+  it("registro PARCIAL não revoga", async () => {
+    estado.stripeRefundList = vi.fn(async () => ({ data: [] }));
+    montarRegistro();
+
+    const r = await registrar({ amount_cents: 5000 });
+
+    expect(r.body.data.access).toMatchObject({
+      should_revoke: false,
+      revoked: false,
+      reason: "partial_refund",
+    });
+    expect(
+      estado.double.de("subscriptions").filter((c) => c.op === "update"),
+    ).toHaveLength(0);
+  });
+
+  it("INFLUENCER continua Pro e a resposta avisa", async () => {
+    montarRegistro({ influencers: { rows: [{ id: "inf-1" }] } });
+    const r = await registrar();
+    expect(r.body.data.access).toMatchObject({
+      revoked: true,
+      still_pro_via_influencer: true,
+    });
+  });
+
+  it("CARTÃO é recusado: para ele existe a rota que devolve de verdade", async () => {
+    montarRegistro({
+      finance_transactions: { rows: [COBRANCA_CARTAO] },
+    });
+
+    const r = await registrar({ charge_id: "ch_1" });
+
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("card_use_refunds_route");
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+  });
+
+  it("cobrança de OUTRO usuário é recusada", async () => {
+    montarRegistro();
+    const r = await registrar({ charge_id: "py_de_outra_pessoa" });
+    expect(r.status).toBe(404);
+    expect(r.body.error.code).toBe("charge_not_found");
+  });
+
+  it("IDEMPOTÊNCIA: segunda chamada não gera segunda linha nem segunda auditoria", async () => {
+    // A pré-checagem existe porque o teto recomputado NÃO cobre o caso (a): uma
+    // declaração 'stripe_dashboard' não entra na agregação, então ela não derruba
+    // refundable_cents e um duplo clique passaria pela validação.
+    montarRegistro({
+      admin_refunds: {
+        rows: [
+          {
+            stripe_charge_id: "py_1",
+            amount_cents: 14874,
+            settlement: "stripe_dashboard",
+          },
+        ],
+      },
+    });
+
+    const r = await registrar();
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toMatchObject({
+      registered: false,
+      already_registered: true,
+    });
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+    expect(
+      estado.double.de("admin_refunds").filter((c) => c.op === "insert"),
+    ).toHaveLength(0);
+  });
+
+  it("cobrança JÁ devolvida pelo sync da Stripe não aceita declaração", async () => {
+    // Caminho DIFERENTE da pré-checagem de idempotência: aqui não existe linha
+    // em admin_refunds nenhuma, então o que barra é o teto recomputado, que já
+    // enxerga a devolução vinda do sync. É a defesa para o caso em que a Stripe
+    // processou e sincronizou antes de alguém pensar em registrar.
+    montarRegistro({
+      admin_refunds: { rows: [] },
+      finance_transactions: {
+        rows: [
+          COBRANCA_BOLETO,
+          {
+            ...COBRANCA_BOLETO,
+            id: "r-sync",
+            type: "refund",
+            gross_cents: -14874,
+            net_cents: -14874,
+          },
+        ],
+      },
+    });
+
+    const r = await registrar();
+
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("nothing_refundable");
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+  });
+
+  it("valor acima do teto é recusado, recomputado no SERVIDOR", async () => {
+    montarRegistro();
+    const r = await registrar({ amount_cents: 14875 });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("amount_above_refundable");
+  });
+
+  it("motivo é obrigatório", async () => {
+    montarRegistro();
+    const r = await registrar({ reason: "   " });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("reason_required");
+  });
+
+  it("UUID inválido vira 400 sem consultar nada", async () => {
+    montar({});
+    const r = await chamarAdmin("POST", "/users/nao-uuid/external-refunds", {
+      charge_id: "py_1",
+      reason: "x",
+      confirmed: true,
+    });
+    expect(r.status).toBe(400);
+    expect(estado.double.chamadas).toHaveLength(0);
+  });
+});

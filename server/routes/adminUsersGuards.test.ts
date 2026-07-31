@@ -135,6 +135,7 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
       "GET /users/:id/transactions",
       "PATCH /users/:id",
       "POST /users/:id/email",
+      "POST /users/:id/external-refunds",
       "POST /users/:id/influencer",
       "POST /users/:id/influencer/revoke",
       "POST /users/:id/refunds",
