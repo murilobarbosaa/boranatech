@@ -434,3 +434,136 @@ describe("as varreduras globais do admin não param no teto", () => {
     expect(r.body.data).toHaveLength(1500);
   });
 });
+
+// ---------------------------------------------------------------------------
+// GET /cancellation-reasons
+// ---------------------------------------------------------------------------
+
+describe("GET /cancellation-reasons", () => {
+  function cancelamento(i: number, over: Record<string, unknown> = {}) {
+    return {
+      id: `c${String(i).padStart(5, "0")}`,
+      reason_code: "expensive",
+      provider_subscription_id: `sub_${i}`,
+      status: "scheduled",
+      ...over,
+    };
+  }
+
+  function assinatura(i: number) {
+    return {
+      id: `s${String(i).padStart(5, "0")}`,
+      provider_subscription_id: `sub_${i}`,
+    };
+  }
+
+  it("o tally não para no teto: conta TODAS as linhas", async () => {
+    // O padrão antigo (`from += PAGE`, break em `rows.length < PAGE`) funcionava
+    // por coincidência, porque PAGE era igual ao db-max-rows. Este cenário põe o
+    // teto ABAIXO do PAGE antigo, que é exatamente onde ele quebrava.
+    montar({
+      subscription_cancellations: {
+        rows: Array.from({ length: 1500 }, (_, i) => cancelamento(i)),
+      },
+      subscriptions: {
+        rows: Array.from({ length: 1500 }, (_, i) => assinatura(i)),
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/cancellation-reasons");
+
+    expect(r.status).toBe(200);
+    expect(r.body.data.total).toBe(1500);
+    const expensive = r.body.data.byReason.find(
+      (x: { code: string }) => x.code === "expensive",
+    );
+    expect(expensive.count).toBe(1500);
+    expect(expensive.percent).toBe(100);
+  });
+
+  it("a varredura ORDENA em toda página", async () => {
+    montar({
+      subscription_cancellations: {
+        rows: Array.from({ length: 1500 }, (_, i) => cancelamento(i)),
+      },
+      subscriptions: { rows: [] },
+    });
+    await chamarAdmin("GET", "/cancellation-reasons");
+
+    // Só a consulta do TALLY: a de comentários também seleciona reason_code, e
+    // ela ordena por canceled_at de propósito (é uma lista, não uma varredura).
+    const tally = estado.double
+      .de("subscription_cancellations")
+      .filter((c) => c.colunas.includes("provider_subscription_id"));
+    expect(tally.length).toBeGreaterThan(1);
+    for (const c of tally) expect(c.ordem).toEqual(["id"]);
+  });
+
+  it("distingue quem NÃO tem assinatura vinculada, sem tirar do total", async () => {
+    // A decisão: as linhas do gateway anterior continuam no total (é churn de
+    // gente real), e o endpoint passa a poder dizer quantas são.
+    montar({
+      subscription_cancellations: {
+        rows: [
+          cancelamento(1),
+          cancelamento(2, { reason_code: "unused" }),
+          // Órfã: a assinatura não existe mais.
+          cancelamento(99, {
+            provider_subscription_id: "sub_d658ndm843tcl3lw",
+            reason_code: "paused",
+          }),
+        ],
+      },
+      subscriptions: { rows: [assinatura(1), assinatura(2)] },
+    });
+
+    const r = await chamarAdmin("GET", "/cancellation-reasons");
+
+    expect(r.body.data.total).toBe(3);
+    expect(r.body.data.unlinkedCount).toBe(1);
+    // E continua contando no motivo: não foi removida da distribuição.
+    expect(
+      r.body.data.byReason.find((x: { code: string }) => x.code === "paused")
+        .count,
+    ).toBe(1);
+  });
+
+  it("cancelamento SEM provider_subscription_id também conta como não vinculado", async () => {
+    montar({
+      subscription_cancellations: {
+        rows: [cancelamento(1, { provider_subscription_id: null })],
+      },
+      subscriptions: { rows: [] },
+    });
+
+    const r = await chamarAdmin("GET", "/cancellation-reasons");
+    expect(r.body.data.unlinkedCount).toBe(1);
+  });
+
+  it("base toda vinculada devolve zero, não um número inventado", async () => {
+    montar({
+      subscription_cancellations: { rows: [cancelamento(1), cancelamento(2)] },
+      subscriptions: { rows: [assinatura(1), assinatura(2)] },
+    });
+
+    const r = await chamarAdmin("GET", "/cancellation-reasons");
+    expect(r.body.data.unlinkedCount).toBe(0);
+    expect(r.body.data.total).toBe(2);
+  });
+
+  it("a lista de assinaturas também é paginada (senão viva vira órfã)", async () => {
+    // Se `idsExistentes` truncasse, assinatura viva viraria "sem vínculo" e o
+    // número mentiria para MAIS.
+    montar({
+      subscription_cancellations: {
+        rows: [cancelamento(1499)],
+      },
+      subscriptions: {
+        rows: Array.from({ length: 1500 }, (_, i) => assinatura(i)),
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/cancellation-reasons");
+    expect(r.body.data.unlinkedCount).toBe(0);
+  });
+});

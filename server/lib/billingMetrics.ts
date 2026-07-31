@@ -372,6 +372,33 @@ function dentroDaJanela(
   return Boolean(iso && iso >= inicio && iso <= fim);
 }
 
+/**
+ * Ids de provedor de TODAS as assinaturas que ainda existem.
+ *
+ * EXPORTADO porque duas coisas precisam da mesma resposta: o churn, para saber
+ * qual cancelamento e orfao, e o agregado de motivos da aba Retencao, para dizer
+ * quantos vieram de assinatura que sumiu. Duas montagens de "o que ainda existe"
+ * divergiriam na primeira mudanca de criterio.
+ *
+ * PAGINADO: uma lista truncada transformaria assinatura viva em orfa.
+ */
+export async function carregarIdsDeAssinaturas(): Promise<Set<string>> {
+  const subs = await coletarTudo<{ provider_subscription_id: string | null }>(
+    (from, to) =>
+      supabaseAdmin
+        .from("subscriptions")
+        .select("provider_subscription_id")
+        .order("id", { ascending: true })
+        .range(from, to),
+    "subscription ids",
+  );
+  return new Set(
+    subs
+      .map((r) => r.provider_subscription_id)
+      .filter((v): v is string => Boolean(v)),
+  );
+}
+
 /** Todas as linhas de cancelamento, com o id das assinaturas que ainda existem. */
 async function lerCancelamentos(): Promise<{
   linhas: LinhaDeCancelamento[];
@@ -380,7 +407,7 @@ async function lerCancelamentos(): Promise<{
   // As duas PAGINADAS: `idsExistentes` decide quais cancelamentos sao orfaos, e
   // uma lista truncada de assinaturas transformaria assinatura viva em orfa,
   // tirando saidas reais do numerador do churn.
-  const [linhas, subs] = await Promise.all([
+  const [linhas, idsExistentes] = await Promise.all([
     coletarTudo<LinhaDeCancelamento>(
       (from, to) =>
         supabaseAdmin
@@ -390,22 +417,9 @@ async function lerCancelamentos(): Promise<{
           .range(from, to),
       "churn cancellations",
     ),
-    coletarTudo<{ provider_subscription_id: string | null }>(
-      (from, to) =>
-        supabaseAdmin
-          .from("subscriptions")
-          .select("provider_subscription_id")
-          .order("id", { ascending: true })
-          .range(from, to),
-      "churn subscriptions",
-    ),
+    carregarIdsDeAssinaturas(),
   ]);
 
-  const idsExistentes = new Set(
-    subs
-      .map((r) => r.provider_subscription_id)
-      .filter((v): v is string => Boolean(v)),
-  );
   return { linhas, idsExistentes };
 }
 

@@ -3,6 +3,7 @@ import { Router } from "express";
 import { logAudit } from "../lib/audit";
 import { deleteAvatarObject } from "../lib/avatarUpload";
 import {
+  carregarIdsDeAssinaturas,
   getChurnSnapshot,
   getMrrSnapshot,
   getSubscriberList,
@@ -47,7 +48,11 @@ import {
   normalizeEmail,
   validateNewEmail,
 } from "../lib/emailChange";
-import { coletarTagueado, paginateRange } from "../lib/paginate";
+import {
+  coletarTagueado,
+  coletarTudo,
+  paginateRange,
+} from "../lib/paginate";
 import { buildProfilePatch } from "../lib/profileEdit";
 import {
   criarLimitadorDeReembolso,
@@ -691,28 +696,56 @@ const CANCELLATION_REASON_CODES = [
 
 router.get("/cancellation-reasons", async (_req, res, next) => {
   try {
-    // Tally paginado do reason_code entre os cancelamentos considerados.
+    // VARREDURA por coletarTudo. Antes era `from += PAGE` com break em
+    // `rows.length < PAGE`, e ela funcionava por coincidencia: PAGE valia
+    // exatamente o `db-max-rows` do PostgREST. Baixar o teto do servidor faria a
+    // PRIMEIRA pagina vir curta, o laco encerrar achando que a origem acabou, e
+    // o agregado de motivos sair menor sem nada acusar. O padrao esta descrito
+    // no topo de server/lib/paginate.ts, que para so em pagina VAZIA e avanca
+    // pelo tamanho REAL da pagina.
+    //
+    // ORDENADO: OFFSET sem ORDER BY tem ordem indefinida no Postgres, e duas
+    // paginas podem repetir ou pular linhas.
+    const linhas = await coletarTudo<{
+      reason_code: string | null;
+      provider_subscription_id: string | null;
+    }>(
+      (from, to) =>
+        supabaseAdmin
+          .from("subscription_cancellations")
+          .select("reason_code, provider_subscription_id")
+          .in("status", ["scheduled", "completed"])
+          .order("id", { ascending: true })
+          .range(from, to),
+      "cancellation-reasons tally",
+    );
+
+    // ORIGEM. O agregado conta cancelamento de assinatura que NAO existe mais em
+    // `subscriptions` junto com os demais, e isso continua certo: sao churn de
+    // gente real. O que faltava era poder DIZER quantos sao.
+    //
+    // O nome afirma a MEDICAO, nao a interpretacao: o que se mede e "sem
+    // assinatura vinculada". Hoje as 2 linhas nessa situacao sao do gateway
+    // Asaas (medido em 2026-07-31, e `provider='asaas'` nao tem nenhuma linha em
+    // subscriptions), mas chamar o campo de "legado" seria afirmar a causa a
+    // partir do efeito, que e o erro que esta base ja cometeu antes com as 35
+    // tabelas "cobertas por policy" que estavam cobertas por privilegio.
+    const idsExistentes = await carregarIdsDeAssinaturas();
+
     const counts: Record<string, number> = {};
     let total = 0;
-    const PAGE = 1000;
-    for (let from = 0; ; from += PAGE) {
-      const { data, error } = await supabaseAdmin
-        .from("subscription_cancellations")
-        .select("reason_code")
-        .in("status", ["scheduled", "completed"])
-        .range(from, from + PAGE - 1);
-      if (error)
-        return next(
-          dbError("cancellation-reasons tally", error, "Erro ao buscar cancelamentos."),
-        );
-      const rows = (data ?? []) as Array<{ reason_code: string | null }>;
-      for (const row of rows) {
-        total += 1;
-        if (row.reason_code) {
-          counts[row.reason_code] = (counts[row.reason_code] ?? 0) + 1;
-        }
+    let unlinked = 0;
+    for (const row of linhas) {
+      total += 1;
+      if (row.reason_code) {
+        counts[row.reason_code] = (counts[row.reason_code] ?? 0) + 1;
       }
-      if (rows.length < PAGE) break;
+      if (
+        !row.provider_subscription_id ||
+        !idsExistentes.has(row.provider_subscription_id)
+      ) {
+        unlinked += 1;
+      }
     }
 
     const byReason = CANCELLATION_REASON_CODES.map((code) => {
@@ -765,7 +798,18 @@ router.get("/cancellation-reasons", async (_req, res, next) => {
       );
 
     res.json({
-      data: { total, byReason, comments, revertedCount: revertedCount ?? 0 },
+      data: {
+        total,
+        byReason,
+        comments,
+        revertedCount: revertedCount ?? 0,
+        // ONDE ENTRA NA UI (nao implementado nesta fatia, de proposito): o
+        // cabecalho do CancellationReasonsDashboard, ao lado do total, como
+        // "13 cancelamentos, 2 sem assinatura vinculada". So aparece quando
+        // `unlinkedCount > 0`; com zero nao ha o que distinguir e a linha vira
+        // ruido.
+        unlinkedCount: unlinked,
+      },
     });
   } catch (err) {
     next(err);
