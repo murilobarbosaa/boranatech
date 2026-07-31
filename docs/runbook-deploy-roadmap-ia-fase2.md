@@ -4,10 +4,69 @@ Escrito em 2026-07-30 para ser **executado por uma pessoa**, não por mim. Nada
 neste documento foi executado: nenhum push, nenhuma migration aplicada, nenhum
 merge.
 
-Estado de partida: branch `fix/roadmap-ia-intake-desbloqueio`, 14 commits, nada
-empurrado. Produção roda `47e6a32`. Três migrations declaradas e não aplicadas
-(uma delas, a órfã `20260713160000`, **não será aplicada**, ver
+Estado de partida (revisado em 2026-07-31): branch
+`fix/roadmap-ia-intake-desbloqueio`, **16 commits**, nada empurrado. `origin/main`
+avançou para `bd4b91d` e a branch está **16 à frente e 3 atrás**. Produção roda
+`bd4b91d`.
+
+**Este runbook cobre DUAS frentes na mesma branch.** Além das migrations do
+Roadmap, a branch carrega `20260730190000` (reembolsos), commitada por `9529487`.
+A órfã `20260713160000` **não será aplicada** (ver
 `docs/debito-ledger-migrations.md`).
+
+## Passo 0-A — a frente de reembolsos está deployável ou desacoplada?
+
+**Pré-condição de tudo. Não pule.** A branch leva a migration de reembolsos, e o
+código que a consome pode não estar junto.
+
+```bash
+cd /home/s0ft/boranatech
+git status --porcelain                     # o que da frente de reembolsos ficou de fora
+git log --oneline origin/main..HEAD | cat  # o que a branch leva
+git show --stat 9529487                    # o que a migration de reembolsos traz
+```
+
+Em 2026-07-31 o estado era: `9529487` commitou **só o arquivo de migration**, e o
+código consumidor (`server/routes/admin.ts`, `server/lib/proRevocation.ts`)
+estava **fora do commit**. Isso é o desacoplamento que torna o push seguro:
+
+- **Migration sem código é inócua aqui.** Migration não é aplicada por deploy
+  nenhum; ela só existe como arquivo até alguém rodar o SQL. E o guard é **cego**
+  para a `190000` (só `ALTER TABLE`, nada que ele conte), então ela não muda o
+  veredito do CI. Verificado: o guard rodado numa worktree SEM esse arquivo dá
+  saída idêntica à da árvore COM ele.
+- **Código sem migration seria o perigoso**, e é o que não pode acontecer: se
+  `admin.ts` lendo `settlement` for para produção antes de a `190000` ser
+  aplicada, a área de reembolsos quebra em runtime.
+
+**Sucesso:** ou (a) a frente de reembolsos não tem código consumidor commitado na
+branch — pode seguir; ou (b) tem, e então a `190000` precisa ser aplicada no
+mesmo deploy, e o passo 6-B abaixo deixa de ser opcional.
+**Se nenhuma das duas:** pare e alinhe com a outra frente antes de empurrar.
+
+## Passo 0-B — sincronizar com a main (rebase, não merge)
+
+A branch está **3 atrás**: `42986d9`, `5926dc2`, `bd4b91d`. A política do projeto
+é fast-forward, e `git rev-list --count <branch>..origin/main` precisa dar **0**
+antes do merge — hoje dá 3.
+
+**Recomendação: `git rebase origin/main`.** Merge criaria merge commit, que a
+política proíbe.
+
+**Risco de conflito: praticamente nulo, e isso foi medido, não estimado.**
+
+- Os únicos arquivos tocados pelas duas pontas são `CLAUDE.md` e
+  `scripts/checkMigrationsApplied.mts`.
+- `git merge-tree --write-tree HEAD origin/main` **não produz conflito** (exit 0,
+  árvore `6ca4772`), e o guard na árvore fundida sai correto: `EXPECTED_TABLE_COUNT
+= 82` e `EXPECTED_RLS_COUNT = 82` uma única vez, comentário não duplicado, e as
+  asserções comportamentais preservadas.
+- `git log --cherry-mark --left-right origin/main...HEAD` marca `3c5f486` e
+  `42986d9` com `=`: **são o mesmo patch**, commitado dos dois lados. O rebase
+  descarta o meu sozinho, sem intervenção.
+
+Depois do rebase, reconferir: `git rev-list --count HEAD..origin/main` = 0, e
+`pnpm check && pnpm test` verdes.
 
 ## A ordem é obrigatória, e não é a intuitiva
 
@@ -81,14 +140,26 @@ Legenda de executor: **[você]** = pessoa; **[eu]** = pode ser delegado a mim.
 
 ```bash
 cd /home/s0ft/boranatech
-git status --porcelain            # tem que estar VAZIO
-git log --oneline -1              # ultimo commit da fase 2
+git status --porcelain            # so o que a outra frente ainda nao commitou
+git log --oneline -1              # ultimo commit
 pnpm check && pnpm test           # verde
 ```
 
-**Sucesso:** árvore limpa, `pnpm check` sem erro, suíte verde.
-**Se falhar:** não prossiga. Em 2026-07-30 este passo estava bloqueado por
-trabalho concorrente de outra frente (refunds) na mesma árvore.
+**Sucesso:** `pnpm check` sem erro, suíte verde.
+**Se falhar por arquivo que não é da Fase 2:** não conserte, não stashe. A
+verificação da Fase 2 se faz numa **worktree limpa**, que é imune ao que está
+solto na árvore principal:
+
+```bash
+git worktree add --detach /tmp/wt-fase2 HEAD
+ln -s /home/s0ft/boranatech/node_modules /tmp/wt-fase2/node_modules
+cd /tmp/wt-fase2 && pnpm check && pnpm test     # sem .env: e a condicao do CI
+git worktree remove --force /tmp/wt-fase2
+```
+
+O symlink de `node_modules` custa 0 bytes e 0 segundo, e evita um
+`pnpm install` inteiro. A worktree também não tem `.env`, então a suíte roda na
+condição real do CI de graça.
 
 ### Passo 1 — aplicar `20260730170000_ai_usage_excluded_tools.sql` [você]
 
@@ -135,15 +206,26 @@ note que o CI voltaria a ficar vermelho, de propósito.
 git push -u origin fix/roadmap-ia-intake-desbloqueio
 ```
 
-**Check:** os dois jobs do CI verdes (`qualidade` e `migrations`). O
-`migrations` só fica verde por causa do passo 1.
+**Check:** os dois jobs do CI verdes (`qualidade` e `migrations`).
+
+**Pré-condição do job `migrations`, medida e não suposta:** ele roda contra
+**produção**, com o conjunto de arquivos da branch. Rodado hoje, o único item
+vermelho é `ausente: public.ai_usage_excluded_tools()` — **da Fase 2, e mais
+nada**. As asserções de tamanho passam (`82 tabelas`, `82 RLS`) porque
+`admin_refunds` já existe em produção desde `1bb48ca`, que já está em
+`origin/main`. A `190000`, não aplicada, **não** deixa o guard vermelho, porque
+ele é cego para `ALTER TABLE`.
+
+Logo: **aplicar a `170000` (passo 1) é a única pré-condição para o CI ficar
+verde.** A frente de reembolsos não bloqueia o push.
+
 **Estado:** produção intocada. Push não deploya.
 **Rollback:** `git push origin --delete fix/roadmap-ia-intake-desbloqueio`.
 
 ### Passo 3 — fast-forward para `main` [você]
 
 ```bash
-git rev-list --count fix/roadmap-ia-intake-desbloqueio..origin/main   # tem que dar 0
+git rev-list --count fix/roadmap-ia-intake-desbloqueio..origin/main   # tem que dar 0 (passo 0-B)
 git checkout main && git merge --ff-only fix/roadmap-ia-intake-desbloqueio
 git push origin main
 ```
@@ -238,6 +320,36 @@ select indexname from pg_indexes
 **Sucesso:** uma linha.
 **Rollback:** `drop index if exists public.ai_roadmaps_one_generating_per_user;`
 Sem perda: índice não guarda dado.
+
+### Passo 6-B — `20260730190000` (reembolsos), se e só se o código dela subiu [você]
+
+**Não é da Fase 2.** Está aqui porque a branch a carrega, e esquecê-la seria
+repetir a `20260710120000` (código no ar, migration no repositório, feature morta
+em produção).
+
+**Ordem entre as três: irrelevante.** Não há objeto em comum. A `170000` mexe em
+funções de cota (`get_ai_usage_today`, `reserve_ai_usage_slot`,
+`ai_usage_excluded_tools`); a `180000` cria um índice em `ai_roadmaps`; a
+`190000` altera `admin_refunds` e `content_audit_logs`. Conjuntos disjuntos.
+
+**Aditiva**, e por isso isenta da janela destrutiva: `ADD COLUMN IF NOT EXISTS
+settlement NOT NULL DEFAULT 'stripe_api'` (as linhas existentes recebem o
+default, que é o que elas são), mais duas trocas de CHECK. A de `admin_refunds`
+restringe a 3 valores, e todas as linhas existentes ficam com `stripe_api`, que
+está no conjunto. A de `content_audit_logs` **alarga** o conjunto (acrescenta
+`refund_external` e `revoke_pro`), e alargar CHECK não pode falhar sobre linha
+existente.
+
+**Check:**
+
+```sql
+select column_name from information_schema.columns
+ where table_schema='public' and table_name='admin_refunds' and column_name='settlement';
+```
+
+**Sucesso:** uma linha. **Atenção:** o guard **não** verifica isto (checks,
+colunas e constraints são pontos cegos, ver `docs/auditoria-pontos-cegos-guard.md`),
+então `check:migrations` verde **não** prova que a `190000` subiu.
 
 ---
 

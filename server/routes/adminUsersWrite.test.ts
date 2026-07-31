@@ -1308,3 +1308,459 @@ describe("POST /users/:id/refunds", () => {
     expect(estado.double.chamadas).toHaveLength(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// REVOGAÇÃO DE ACESSO acoplada ao reembolso.
+//
+// O caso que motivou: R$ 148,74 devolvidos, extrato a R$ 0,00, e a pessoa
+// seguindo Pro até 28/07/2027.
+// ---------------------------------------------------------------------------
+
+const COBRANCA_CARTAO = {
+  id: "ft1",
+  type: "charge",
+  gross_cents: 14874,
+  fee_cents: 0,
+  net_cents: 14874,
+  currency: "BRL",
+  occurred_at: "2026-07-01T12:00:00Z",
+  stripe_charge_id: "ch_1",
+  stripe_invoice_id: null,
+  plan_code: "pro_annual",
+};
+
+const ASSINATURA_CARTAO = {
+  id: "sub-row-1",
+  status: "active",
+  renewal_type: "auto",
+  provider_subscription_id: "sub_1",
+};
+
+/** Cenário completo de um reembolso TOTAL que deve revogar. */
+function montarRevogacao(over: Record<string, RespostaTabela> = {}) {
+  montar({
+    finance_transactions: { rows: [COBRANCA_CARTAO] },
+    content_audit_logs: { rows: [{}] },
+    admin_refunds: { rows: [] },
+    subscriptions: { rows: [ASSINATURA_CARTAO] },
+    subscription_cancellations: { rows: [] },
+    ...over,
+  });
+}
+
+function reembolsarTudo(charge = "ch_1") {
+  return chamarAdmin("POST", `/users/${UID}/refunds`, {
+    charge_id: charge,
+    reason: "devolução total",
+  });
+}
+
+function auditsDe(action: string) {
+  return estado.double
+    .de("content_audit_logs")
+    .filter((c) => (c.payload as { action?: string })?.action === action);
+}
+
+/**
+ * Status que `is_user_pro` aceita, LIDOS DA MIGRATION.
+ *
+ * Escrever `['active','trialing']` à mão aqui seria uma segunda declaração da
+ * regra, e ela passaria a concordar com a função por coincidência: alguém
+ * mudando o SQL não quebraria teste nenhum. Lendo do arquivo, o teste afirma
+ * algo sobre a função de verdade.
+ *
+ * O parser LANÇA quando não acha, em vez de devolver conjunto vazio, que faria
+ * toda asserção abaixo passar sobre nada.
+ */
+function statusesQueDaoProNaMigration(): Set<string> {
+  const sql = readFileSync(
+    resolve(
+      process.cwd(),
+      "supabase/migrations/20260716130100_add_influencer_to_is_user_pro.sql",
+    ),
+    "utf8",
+  );
+  const m = /and\s+s\.status\s+in\s*\(([^)]+)\)/i.exec(sql);
+  if (!m) {
+    throw new Error(
+      "não foi possível ler o filtro de status de is_user_pro na migration",
+    );
+  }
+  const encontrados = Array.from(m[1].matchAll(/'([a-z_]+)'/g)).map(
+    (x) => x[1],
+  );
+  if (encontrados.length === 0) {
+    throw new Error("filtro de status de is_user_pro veio vazio");
+  }
+  return new Set(encontrados);
+}
+
+describe("a revogação faz is_user_pro NEGAR", () => {
+  const STATUS_PRO = statusesQueDaoProNaMigration();
+
+  it("o parser leu a migration de verdade, não um conjunto vazio", () => {
+    // Trava do próprio instrumento: sem isto, um parser que parasse de casar
+    // devolveria Set vazio e os testes abaixo passariam afirmando nada.
+    expect(STATUS_PRO.size).toBe(2);
+    expect(STATUS_PRO.has("active")).toBe(true);
+    expect(STATUS_PRO.has("trialing")).toBe(true);
+  });
+
+  it("o status ANTES dá Pro e o status ESCRITO não dá", async () => {
+    // É o teste que importa: os demais são consequência dele.
+    montarRevogacao();
+    const r = await reembolsarTudo();
+
+    expect(r.status).toBe(200);
+    expect(r.body.data.access).toMatchObject({
+      should_revoke: true,
+      revoked: true,
+      reason: "revoked",
+    });
+
+    const update = estado.double
+      .de("subscriptions")
+      .find((c) => c.op === "update")!;
+    const statusEscrito = (update.payload as { status: string }).status;
+
+    // As duas metades da afirmação. Sem a primeira, um teste que só checasse o
+    // status novo passaria mesmo se o anterior também negasse Pro, e não
+    // provaria que a revogação mudou alguma coisa.
+    expect(STATUS_PRO.has(ASSINATURA_CARTAO.status)).toBe(true);
+    expect(STATUS_PRO.has(statusEscrito)).toBe(false);
+    expect(statusEscrito).toBe("canceled");
+
+    // O outro ramo do WHERE de is_user_pro é o período, e NÃO é ele que estamos
+    // usando: o webhook reescreve current_period_end com a data da Stripe, então
+    // antedatá-lo seria desfeito. O update não pode tocar nesse campo.
+    expect(Object.keys(update.payload!)).not.toContain("current_period_end");
+  });
+
+  it("reembolso PARCIAL não revoga nada", async () => {
+    // A trava da regra. Sem ela a fatia vira "todo reembolso cancela", que é a
+    // decisão explicitamente recusada.
+    montar({
+      finance_transactions: {
+        rows: [{ ...COBRANCA_CARTAO, gross_cents: 20000, net_cents: 20000 }],
+      },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [] },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      amount_cents: 5000,
+      reason: "parcial",
+    });
+
+    expect(r.status).toBe(200);
+    expect(r.body.data.access).toMatchObject({
+      should_revoke: false,
+      revoked: false,
+      reason: "partial_refund",
+    });
+    // Nem consultou a assinatura: `subscriptions` sequer está registrada no
+    // dublê acima, então qualquer consulta a ela derrubaria este teste.
+    expect(estado.stripeSubscriptionCancel).not.toHaveBeenCalled();
+    expect(auditsDe("revoke_pro")).toHaveLength(0);
+  });
+
+  it("parcial que ESGOTA o saldo revoga: a regra é o saldo, não a proporção", async () => {
+    // R$ 100 de R$ 148,74 já tinham voltado; devolver os R$ 48,74 restantes zera
+    // o saldo. É um reembolso "parcial" da cobrança e ainda assim revoga.
+    montarRevogacao({
+      finance_transactions: {
+        rows: [
+          COBRANCA_CARTAO,
+          { ...COBRANCA_CARTAO, id: "r1", type: "refund", gross_cents: -10000 },
+        ],
+      },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      amount_cents: 4874,
+      reason: "resto",
+    });
+
+    expect(r.body.data.access).toMatchObject({
+      should_revoke: true,
+      revoked: true,
+    });
+  });
+
+  it("audita a revogação com action própria, ANTES de tocar a Stripe", async () => {
+    montarRevogacao();
+    await reembolsarTudo();
+
+    const ops = estado.double.chamadas.map((c) => `${c.op} ${c.table}`);
+    expect(ops.indexOf("insert content_audit_logs")).toBeLessThan(
+      ops.lastIndexOf("update subscriptions"),
+    );
+
+    const revoke = auditsDe("revoke_pro");
+    expect(revoke).toHaveLength(1);
+    expect(revoke[0].payload).toMatchObject({
+      actor_user_id: "admin-1",
+      resource_type: "subscription",
+      resource_id: UID,
+      resource_slug: "ch_1",
+    });
+    // O reembolso e a revogação são DUAS linhas, não uma: é o que permite ao
+    // histórico dizer que um deu certo e o outro não.
+    expect(auditsDe("refund")).toHaveLength(1);
+  });
+
+  it("grava a linha de RESULTADO que o histórico cruza", async () => {
+    montarRevogacao();
+    await reembolsarTudo();
+
+    const registro = estado.double
+      .de("subscription_cancellations")
+      .find((c) => c.op === "insert")!;
+    expect(registro.payload).toMatchObject({
+      user_id: UID,
+      canceled_by: "admin-1",
+      reason_code: "admin",
+      // 'completed', não 'scheduled': já aconteceu. O detalhe do usuário lê
+      // cancellation_intent filtrando por 'scheduled', e uma revogação imediata
+      // apareceria lá como "cancelamento agendado" se usasse esse status.
+      status: "completed",
+    });
+  });
+
+  it("invalida o cache de Pro", async () => {
+    montarRevogacao();
+    await reembolsarTudo();
+    expect(estado.invalidateProCache).toHaveBeenCalledWith(UID);
+  });
+
+  it("BOLETO revoga SEM chamar a Stripe", async () => {
+    // provider_subscription_id de boleto é um cs_..., e subscriptions.cancel com
+    // ele falha sempre. Não há assinatura recorrente lá para cancelar.
+    montarRevogacao({
+      finance_transactions: {
+        rows: [{ ...COBRANCA_CARTAO, stripe_charge_id: "py_1" }],
+      },
+      subscriptions: {
+        rows: [
+          {
+            ...ASSINATURA_CARTAO,
+            renewal_type: "manual",
+            provider_subscription_id: "cs_1",
+          },
+        ],
+      },
+    });
+
+    // A rota /refunds recusa boleto; quem revoga boleto é a rota de registro.
+    // Aqui o alvo é só a decisão de NÃO chamar a Stripe, exercitada pelo cartão
+    // com renewal_type manual (que é o que o boleto é no banco).
+    const r = await reembolsarTudo("py_1");
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("boleto_not_refundable");
+  });
+
+  it("cancelamento JÁ AGENDADO não impede a revogação imediata", async () => {
+    // cancel_at_period_end=true mantém Pro até o fim do período pago. Depois de
+    // um reembolso total, manter esse acesso é exatamente o bug.
+    montarRevogacao({
+      subscriptions: {
+        rows: [{ ...ASSINATURA_CARTAO, cancel_at_period_end: true }],
+      },
+    });
+
+    const r = await reembolsarTudo();
+
+    expect(r.body.data.access).toMatchObject({ revoked: true });
+    expect(estado.stripeSubscriptionCancel).toHaveBeenCalledWith("sub_1");
+    const update = estado.double
+      .de("subscriptions")
+      .find((c) => c.op === "update")!;
+    // Volta a false: a assinatura não está mais "agendada para cancelar", ela
+    // acabou. Deixar true faria o cron process-cancellations continuar olhando
+    // para uma linha que não é mais dele.
+    expect(update.payload).toMatchObject({
+      status: "canceled",
+      cancel_at_period_end: false,
+    });
+  });
+
+  it("INFLUENCER continua Pro, e a resposta avisa", async () => {
+    // Ortogonal por construção: is_user_pro tem um segundo ramo que não olha
+    // assinatura nenhuma. Revogar a assinatura de quem tem concessão não remove
+    // o acesso, e a tela precisa dizer isso ou o admin acha que falhou.
+    montarRevogacao({ influencers: { rows: [{ id: "inf-1" }] } });
+
+    const r = await reembolsarTudo();
+
+    expect(r.body.data.access).toMatchObject({
+      revoked: true,
+      still_pro_via_influencer: true,
+    });
+    // E a concessão em si fica INTOCADA.
+    expect(
+      estado.double.de("influencers").filter((c) => c.op === "update"),
+    ).toHaveLength(0);
+  });
+
+  it("sem assinatura vigente não é falha, é 'nada a revogar'", async () => {
+    montarRevogacao({ subscriptions: { rows: [] } });
+    const r = await reembolsarTudo();
+
+    expect(r.status).toBe(200);
+    expect(r.body.data.access).toMatchObject({
+      should_revoke: true,
+      revoked: false,
+      reason: "no_active_subscription",
+    });
+    expect(auditsDe("revoke_pro")).toHaveLength(0);
+  });
+});
+
+describe("revogação falhando DEPOIS do reembolso bem-sucedido", () => {
+  // O ponto mais delicado da fatia: o dinheiro JÁ SAIU quando a revogação é
+  // tentada. Nenhuma falha aqui pode virar mensagem que sugira que o reembolso
+  // não aconteceu, porque o admin tentaria de novo e a segunda tentativa cairia
+  // numa Idempotency-Key diferente, devolvendo DE NOVO.
+
+  it("Stripe recusando o cancelamento: 200, reembolso confirmado, acesso NÃO revogado", async () => {
+    montarRevogacao();
+    estado.stripeSubscriptionCancel = vi.fn(async () => {
+      throw new Error("stripe fora do ar");
+    });
+    const erroSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await reembolsarTudo();
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toMatchObject({ refunded: true, refund_id: "re_1" });
+    expect(r.body.data.access).toMatchObject({
+      should_revoke: true,
+      revoked: false,
+      reason: "revoke_failed",
+    });
+    expect(r.body.data.access.detail).toBeTruthy();
+
+    // Banco intocado: a ordem é Stripe primeiro justamente para isto.
+    expect(
+      estado.double.de("subscriptions").filter((c) => c.op === "update"),
+    ).toHaveLength(0);
+    expect(
+      erroSpy.mock.calls.some((c) => String(c[0]).includes("INCONSISTENCIA")),
+    ).toBe(true);
+  });
+
+  it("banco falhando DEPOIS da Stripe: 200, e a INCONSISTENCIA fica logada", async () => {
+    let chamadasSubs = 0;
+    montarRevogacao({
+      subscriptions: () => {
+        chamadasSubs += 1;
+        // A leitura passa; o UPDATE falha, que é o cenário em que a Stripe já
+        // cancelou.
+        return chamadasSubs === 1
+          ? { rows: [ASSINATURA_CARTAO] }
+          : { error: { message: "timeout" } };
+      },
+    } as unknown as Record<string, RespostaTabela>);
+    const erroSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await reembolsarTudo();
+
+    expect(r.status).toBe(200);
+    expect(r.body.data.refunded).toBe(true);
+    expect(r.body.data.access).toMatchObject({
+      revoked: false,
+      reason: "revoke_failed",
+    });
+    expect(
+      erroSpy.mock.calls.some(
+        (c) =>
+          String(c[0]).includes("INCONSISTENCIA") &&
+          String(c[0]).includes("customer.subscription.deleted"),
+      ),
+    ).toBe(true);
+  });
+
+  it("auditoria da revogação falhando NÃO revoga e NÃO derruba o reembolso", async () => {
+    // Fail-closed do lado da revogação: sem rastro gravado, ninguém perde
+    // acesso. Mas o reembolso continua tendo acontecido.
+    let chamadasAudit = 0;
+    montarRevogacao({
+      content_audit_logs: () => {
+        chamadasAudit += 1;
+        // A primeira é a intenção do reembolso (passa); a segunda é a da
+        // revogação (falha).
+        return chamadasAudit === 1
+          ? { rows: [{}] }
+          : { error: { message: "check" } };
+      },
+    } as unknown as Record<string, RespostaTabela>);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await reembolsarTudo();
+
+    expect(r.status).toBe(200);
+    expect(r.body.data.refunded).toBe(true);
+    expect(r.body.data.access).toMatchObject({
+      revoked: false,
+      reason: "revoke_failed",
+    });
+    expect(estado.stripeSubscriptionCancel).not.toHaveBeenCalled();
+  });
+
+  it("a resposta NUNCA nega o reembolso, em NENHUM modo de falha da revogação", async () => {
+    // Os três modos são DIFERENTES de propósito: uma varredura cujos casos são
+    // cópias do mesmo cenário reporta "3 modos cobertos" tendo coberto um, que é
+    // a classe de instrumento que este projeto já documentou.
+    const modos: Array<{ nome: string; montar: () => void }> = [
+      {
+        nome: "Stripe recusa o cancelamento",
+        montar: () => {
+          montarRevogacao();
+          estado.stripeSubscriptionCancel = vi.fn(async () => {
+            throw new Error("stripe fora do ar");
+          });
+        },
+      },
+      {
+        nome: "banco falha no update depois da Stripe",
+        montar: () => {
+          let n = 0;
+          montarRevogacao({
+            subscriptions: () => {
+              n += 1;
+              return n === 1
+                ? { rows: [ASSINATURA_CARTAO] }
+                : { error: { message: "timeout" } };
+            },
+          } as unknown as Record<string, RespostaTabela>);
+        },
+      },
+      {
+        nome: "auditoria da revogação falha",
+        montar: () => {
+          let n = 0;
+          montarRevogacao({
+            content_audit_logs: () => {
+              n += 1;
+              return n === 1 ? { rows: [{}] } : { error: { message: "check" } };
+            },
+          } as unknown as Record<string, RespostaTabela>);
+        },
+      },
+    ];
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    for (const modo of modos) {
+      modo.montar();
+      const r = await reembolsarTudo();
+      expect(r.status, modo.nome).toBe(200);
+      expect(r.body.data.refunded, modo.nome).toBe(true);
+      expect(r.body.data.refund_id, modo.nome).toBe("re_1");
+      expect(r.body.data.access.revoked, modo.nome).toBe(false);
+      expect(r.body.data.access.reason, modo.nome).toBe("revoke_failed");
+      expect(JSON.stringify(r.body)).not.toContain("Nada foi devolvido");
+    }
+  });
+});

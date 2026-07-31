@@ -59,6 +59,12 @@ import {
   type FinanceRow,
 } from "../lib/userTransactions";
 import {
+  devolucaoZeraOSaldo,
+  precisaCancelarNaStripe,
+  type AssinaturaParaRevogar,
+  type RevocationOutcome,
+} from "../lib/proRevocation";
+import {
   buildAuditHistory,
   type AuditLogRow,
   type CancellationRow,
@@ -1747,6 +1753,230 @@ async function lerDeclaracoesDeDevolucao(
   return { ok: true, linhas: (data || []) as DeclaredRefund[] };
 }
 
+/** Concessão de influencer ativa. Ortogonal à assinatura: revogar uma não toca a outra. */
+async function temInfluencerAtivo(uid: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("influencers")
+    .select("id")
+    .eq("user_id", uid)
+    .is("revoked_at", null)
+    .maybeSingle();
+  // Na dúvida, NÃO afirma que continua Pro: um aviso a menos é melhor que um
+  // aviso falso dizendo que o acesso sobreviveu quando ninguém sabe.
+  if (error) return false;
+  return Boolean(data);
+}
+
+/**
+ * REVOGACAO IMEDIATA do acesso Pro por assinatura.
+ *
+ * COMO ELA FAZ is_user_pro NEGAR. A função (migration 20260716130100) tem dois
+ * ramos: assinatura com `status in ('active','trialing')` e período vigente, ou
+ * concessão de influencer. Esta rotina ataca o PRIMEIRO ramo pelo STATUS, não
+ * pelo período.
+ *
+ * POR QUE STATUS E NAO `current_period_end` NO PASSADO. Os dois negariam hoje,
+ * mas só um sobrevive ao webhook. Quando `customer.subscription.deleted` chega,
+ * `applySubscription` (server/providers/stripe.ts) escreve
+ * `current_period_end = period.end` LIDO DA STRIPE, que continua sendo a data
+ * futura original: um período antedatado por nós seria SOBRESCRITO de volta e o
+ * acesso voltaria. O mesmo handler escreve `status = mapStatus('canceled') =
+ * 'canceled'`, ou seja, ele CONFIRMA a revogação por status. Escolhemos o campo
+ * com que o webhook concorda, não o que ele desfaz.
+ *
+ * ORDEM: STRIPE PRIMEIRO, BANCO DEPOIS. A ordem inversa tem um desfecho
+ * silencioso e ruim: com o banco cancelado e a Stripe intacta, a assinatura
+ * segue viva lá, o próximo `invoice.paid` cai em `applySubscription` e reescreve
+ * `status='active'`, devolvendo o Pro sem ninguém pedir. Nesta ordem, falha da
+ * Stripe deixa tudo como estava, e falha do banco DEPOIS da Stripe é curada pelo
+ * próprio `customer.subscription.deleted`, que escreve o mesmo estado terminal.
+ *
+ * O cron `process-cancellations` não alcança estas linhas: ele filtra
+ * `cancel_at_period_end=true AND status='active'`, e aqui o status já saiu de
+ * 'active' e o cancel_at_period_end vai a false.
+ */
+async function revogarAcessoPro(input: {
+  uid: string;
+  actorUserId: string;
+  motivo: string;
+  chargeId: string;
+}): Promise<{
+  revoked: boolean;
+  reason: RevocationOutcome["reason"];
+  detail: string | null;
+}> {
+  const { uid, actorUserId, motivo, chargeId } = input;
+
+  const { data: sub, error: subError } = await supabaseAdmin
+    .from("subscriptions")
+    .select("id, status, renewal_type, provider_subscription_id")
+    .eq("user_id", uid)
+    .eq("provider", "stripe")
+    .in("status", ["active", "trialing", "past_due"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (subError) {
+    console.error(
+      `[admin/refund] INCONSISTENCIA: reembolso de ${chargeId} emitido, mas a leitura da assinatura de ${uid} falhou; o acesso NAO foi revogado.`,
+      subError,
+    );
+    return {
+      revoked: false,
+      reason: "revoke_failed",
+      detail: "Não foi possível ler a assinatura para revogar o acesso.",
+    };
+  }
+
+  // Sem assinatura vigente não há o que revogar, e isso não é falha: o reembolso
+  // pode ser de uma cobrança cujo período já acabou.
+  if (!sub) {
+    return { revoked: false, reason: "no_active_subscription", detail: null };
+  }
+
+  // AUDITORIA DA INTENÇÃO DE REVOGAR, fail-closed e SEPARADA da do reembolso.
+  // Separada porque os dois efeitos podem terminar diferente, e uma linha só não
+  // conseguiria dizer que um deu certo e o outro não. É esta linha que aparece
+  // como "Sem confirmação" no histórico quando a revogação falha, e é o rastro
+  // DURÁVEL de que alguém precisa revogar à mão (o toast some, o histórico não).
+  const { error: auditError } = await supabaseAdmin
+    .from("content_audit_logs")
+    .insert({
+      actor_user_id: actorUserId,
+      action: "revoke_pro",
+      resource_type: "subscription",
+      resource_id: uid,
+      resource_slug: chargeId,
+      before_json: { status: sub.status },
+      after_json: { status: "canceled", reason: motivo, trigger: "refund" },
+    });
+  if (auditError) {
+    console.error(
+      `[admin/refund] INCONSISTENCIA: reembolso de ${chargeId} emitido, mas a auditoria da revogacao falhou; o acesso NAO foi revogado.`,
+      auditError,
+    );
+    return {
+      revoked: false,
+      reason: "revoke_failed",
+      detail: "Não foi possível registrar a auditoria da revogação.",
+    };
+  }
+
+  const alvo = sub as AssinaturaParaRevogar;
+  if (precisaCancelarNaStripe(alvo)) {
+    try {
+      await getStripe().subscriptions.cancel(alvo.provider_subscription_id);
+    } catch (stripeErr) {
+      console.error(
+        `[admin/refund] INCONSISTENCIA: reembolso de ${chargeId} emitido, mas a Stripe recusou cancelar ${alvo.provider_subscription_id}; o acesso NAO foi revogado.`,
+        stripeErr,
+      );
+      return {
+        revoked: false,
+        reason: "revoke_failed",
+        detail: "A Stripe não cancelou a assinatura.",
+      };
+    }
+  }
+
+  const { error: updateError } = await supabaseAdmin
+    .from("subscriptions")
+    .update({
+      status: "canceled",
+      canceled_at: new Date().toISOString(),
+      cancel_at_period_end: false,
+    })
+    .eq("id", alvo.id);
+
+  if (updateError) {
+    console.error(
+      `[admin/refund] INCONSISTENCIA: reembolso de ${chargeId} emitido e assinatura ${alvo.id} cancelada na Stripe, mas o banco nao gravou; o acesso so cai quando o webhook customer.subscription.deleted chegar.`,
+      updateError,
+    );
+    return {
+      revoked: false,
+      reason: "revoke_failed",
+      detail: "A assinatura não foi marcada como cancelada no banco.",
+    };
+  }
+
+  // Linha de RESULTADO. É contra ela que o histórico cruza a intenção acima
+  // (cruzarCancelamento em server/lib/userAuditHistory.ts).
+  //
+  // status='completed', não 'scheduled': isto já aconteceu, não está agendado, e
+  // o detalhe do usuário lê `cancellation_intent` filtrando por 'scheduled'.
+  // effective_at = agora, pelo mesmo motivo.
+  const agora = new Date().toISOString();
+  const { error: registroError } = await supabaseAdmin
+    .from("subscription_cancellations")
+    .insert({
+      user_id: uid,
+      canceled_by: actorUserId,
+      provider_subscription_id: alvo.provider_subscription_id,
+      reason_code: "admin",
+      reason_text: motivo,
+      effective_at: agora,
+      status: "completed",
+    });
+  if (registroError) {
+    // O acesso JA caiu (o update acima é o que faz is_user_pro negar). Falha
+    // aqui custa a confirmação no histórico, não o efeito.
+    console.error(
+      `[admin/refund] acesso de ${uid} revogado, mas subscription_cancellations nao gravou; a acao aparece como "Sem confirmacao" no historico:`,
+      registroError,
+    );
+  }
+
+  return { revoked: true, reason: "revoked", detail: null };
+}
+
+/**
+ * A regra completa, num lugar só: decide e, se for o caso, executa.
+ *
+ * As DUAS rotas de devolução (a que chama refunds.create e a que registra um ato
+ * externo) passam por aqui. Duplicar a decisão nas duas faria a segunda divergir
+ * da primeira na primeira mudança, e a regra é justamente o que a fatia existe
+ * para fixar.
+ */
+async function decidirERevogar(input: {
+  uid: string;
+  actorUserId: string;
+  motivo: string;
+  chargeId: string;
+  refundableAntes: number;
+  valorReembolsado: number;
+}): Promise<RevocationOutcome> {
+  const shouldRevoke = devolucaoZeraOSaldo(
+    input.refundableAntes,
+    input.valorReembolsado,
+  );
+
+  // Lido SEMPRE, inclusive quando não se revoga nada: o diálogo precisa avisar
+  // que a concessão de influencer mantém o Pro, e essa informação não depende de
+  // a revogação ter acontecido.
+  const influencer = await temInfluencerAtivo(input.uid);
+
+  if (!shouldRevoke) {
+    return {
+      should_revoke: false,
+      revoked: false,
+      reason: "partial_refund",
+      detail: null,
+      still_pro_via_influencer: influencer,
+    };
+  }
+
+  const resultado = await revogarAcessoPro(input);
+  return {
+    should_revoke: true,
+    revoked: resultado.revoked,
+    reason: resultado.reason,
+    detail: resultado.detail,
+    still_pro_via_influencer: influencer,
+  };
+}
+
 // EMISSÃO DE REEMBOLSO. Única ação da demanda sem desfazer.
 //
 // NÃO respeita BILLING_ENABLED de propósito: o kill-switch existe para parar de
@@ -1972,6 +2202,18 @@ router.post("/users/:id/refunds", async (req, res, next) => {
       );
     }
 
+    // REVOGAÇÃO, antes do sync de propósito: ela é o efeito que importa e não
+    // depende do extrato estar fresco (ver devolucaoZeraOSaldo). Um sync lento
+    // ou quebrado não pode atrasar nem impedir a queda do acesso.
+    const acesso = await decidirERevogar({
+      uid,
+      actorUserId: req.user!.id,
+      motivo: validacao.reason,
+      chargeId,
+      refundableAntes: alvo.refundable_cents,
+      valorReembolsado: validacao.amountCents,
+    });
+
     // Extrato fresco. Se falhar, o reembolso continua tendo acontecido.
     let extratoAtualizado = true;
     try {
@@ -1986,11 +2228,15 @@ router.post("/users/:id/refunds", async (req, res, next) => {
       );
     }
 
+    await invalidateProStatusCache(uid);
+
     // 200 SEMPRE que a Stripe aceitou. Devolver erro aqui faria o admin
     // acreditar que o reembolso não aconteceu e tentar de novo — e a segunda
     // tentativa cairia numa Idempotency-Key diferente (o refunded_cents teria
-    // mudado) e devolveria DE NOVO. Os campos abaixo dizem o que ficou por
-    // fazer, sem transformar isso em falha.
+    // mudado) e devolveria DE NOVO. Isso vale IGUALMENTE para a revogação ter
+    // falhado: o dinheiro já saiu quando ela é tentada, então transformá-la em
+    // erro mentiria sobre o reembolso. O que ficou por fazer vai nos campos
+    // abaixo, e o rastro durável está na linha `revoke_pro` do histórico.
     res.json({
       data: {
         refunded: true,
@@ -1999,6 +2245,7 @@ router.post("/users/:id/refunds", async (req, res, next) => {
         status: refund.status,
         statement_synced: extratoAtualizado,
         record_saved: !registroError,
+        access: acesso,
       },
     });
   } catch (err) {
@@ -2593,6 +2840,7 @@ const ACOES_DE_USUARIO = [
   "update_email",
   "cancel_subscription",
   "refund",
+  "revoke_pro",
 ] as const;
 
 router.get("/users/:id/audit", async (req, res, next) => {

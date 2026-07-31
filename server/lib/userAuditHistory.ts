@@ -160,10 +160,15 @@ export function buildAuditHistory(input: {
   const { logs, atores, refunds, cancelamentos } = input;
 
   const entradas = logs.map((log): AuditHistoryEntry => {
+    // `revoke_pro` cruza contra a MESMA tabela de resultado do
+    // `cancel_subscription` (subscription_cancellations), porque a revogação
+    // imediata grava lá do mesmo jeito. É esse cruzamento que torna visível o
+    // estado meio-feito: reembolso emitido e acesso não removido aparece como
+    // "Sem confirmação", de forma durável, na mesma tela.
     const cruzamento =
       log.action === "refund"
         ? cruzarReembolso(log, refunds)
-        : log.action === "cancel_subscription"
+        : log.action === "cancel_subscription" || log.action === "revoke_pro"
           ? cruzarCancelamento(log, cancelamentos)
           : { outcome: "not_verifiable" as AuditOutcome, detail: null };
 

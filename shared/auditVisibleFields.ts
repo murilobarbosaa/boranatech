@@ -43,6 +43,9 @@ export const CAMPOS_VISIVEIS_POR_ACTION: Record<string, readonly string[]> = {
     "current_period_end",
     "cancel_at_period_end",
   ],
+  // `trigger` diz que a revogação veio de uma devolução, e não de uma ação
+  // avulsa. Sem ele a linha não explica por que o acesso caiu.
+  revoke_pro: ["status", "reason", "trigger"],
   reveal: [],
   grant: [],
   revoke: [],
