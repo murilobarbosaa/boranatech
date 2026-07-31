@@ -14,7 +14,8 @@ leitura de código.
 | 0 Auditoria | concluída |
 | 1 Terreno (tipo `bug`, `is_start`, `statsPeriod`) | **concluída** |
 | 2 Schema do feed, etapa fixada e proveniência | **concluída** |
-| 3 a 6 | não iniciadas |
+| 3 O sync, desligado | **concluída** |
+| 4 a 6 | não iniciadas |
 | ~~7 Remover sincronização reversa~~ | **cancelada pela Emenda 1** |
 
 Migrations M1 a M6 escritas e pendentes de aplicação pelo SQL editor. Nenhuma
@@ -757,32 +758,92 @@ de 4 para 5, os dois por causa do trigger de M6. O guard foi rodado **antes** de
 os números serem alterados, e acusou exatamente essas duas divergências: os
 números foram atualizados a partir do que ele mediu, não do que eu supunha.
 
-### Fase 3: o sync, desligado
+### Fase 3: o sync, desligado. CONCLUÍDA
 
-O escritor automático. Fase mais perigosa do projeto e por isso ela nasce inerte:
-`sentry_sync_enabled` é `false` por padrão e ninguém liga ainda.
+O escritor automático. Nasce inerte: `sentry_sync_enabled` é falso por padrão, a
+M8 (agendamento) não foi escrita, e nada dele jamais escreveu em produção.
 
-- `server/lib/sentryTaskIntake.ts` (novo): lê issues, resolve etiqueta por
-  `project.slug`, monta o `jsonb`, insere com `on conflict do nothing`.
-- `server/lib/sentryApi.ts`: função nova para o detalhe da issue
-  (release/environment/tags). Uma requisição por issue **nova**, nunca por issue
-  já vista, que é o que mantém o custo proporcional à novidade e não ao estoque.
-- `server/routes/cron.ts`: endpoint `/api/cron/sync-sentry-tasks`, com
-  `withCronLock` e `recordCronRun`, no molde exato do vizinho.
+| Arquivo | Papel |
+| --- | --- |
+| `server/lib/sentryTaskDecisions.ts` | decisões PURAS (etiqueta, bloco, reabrir/ressuscitar/podar) |
+| `server/lib/sentryTaskIntake.ts` | o job: duas fases, camada de escrita injetada |
+| `server/lib/sentryApi.ts` | `getIssueLatestEvent` novo, e a correção do `statsPeriod` |
+| `server/routes/cron.ts` | `POST /api/cron/sync-sentry-tasks`, com `?dryRun=1` |
+| `server/lib/email.ts` | `sendSentryTasksSummaryEmail`, resumo agrupado |
 
-Invariantes que esta fase precisa provar por teste, não por inspeção:
+#### Dry-run: por que ele é prova e não aproximação
 
-1. sync não move card que saiu da etapa fixada (invariante 1);
-2. sync nunca escreve em `description` nem em `notes` (invariante 2);
-3. segunda run sobre a mesma issue não cria segunda tarefa (invariante 3, e o
-   teste tem que ser sobre a **constraint**, com duas inserções concorrentes, não
-   sobre o `if`);
-4. sync não chama `updateIssueStatus` (invariante 6, controle negativo: um espião
-   que falha se a função for chamada);
-5. `created_by` nulo com `source = 'sentry'` (invariante 7).
+As duas modalidades percorrem **o mesmo** código de decisão. A única diferença é
+qual objeto `Escritor` é injetado: o real ou o inerte. Um dry-run que decidisse
+por um caminho paralelo estaria mostrando um relatório sobre um programa que não
+é o que roda. E como TODA escrita passa por esse objeto, o controle negativo é
+sobre a camada inteira: o teste espiona `supabaseAdmin` durante um dry-run e
+exige zero mutações, então uma escrita nova que esqueça de passar pelo escritor
+aparece ali.
 
-Verificação: rodar o job à mão contra o banco com o quadro ainda desligado, e
-confirmar que ele não faz nada. Depois ligar num quadro de teste.
+O dry-run **não** grava em `cron_run_logs`: ele não é uma execução do job, e
+registrá-lo como se fosse mascararia a cadência real.
+
+#### O custo do detalhe caiu de 3 requisições para 1
+
+A auditoria previa até 3 requisições por issue nova (listagem, detalhe, evento).
+Medido contra a API: `GET /issues/{id}/events/latest/` traz `tags` COM VALOR
+(environment, release, url) e `entries` (onde mora o stack) de uma vez. O detalhe
+da issue (`GET /issues/{id}/`) traz as tags só como `{key, name, totalValues}`,
+sem valor, e por isso não serve. **Uma** requisição extra por issue NOVA, nunca
+por issue já vista.
+
+#### Ausência não pode parecer falha
+
+`sentry_data.coleta.completo` separa "esta issue não tem release" (fato sobre a
+issue) de "o 429 chegou antes de eu ler o release" (fato sobre nós). Os dois
+produzem release vazio na tela. A manutenção retenta exatamente os que estão com
+`completo: false`, com teto próprio. Na Fase 4, card incompleto tem que dizer
+isso; nunca parecer que não havia dado.
+
+#### O que a Fase 3 provou, e como
+
+| Item | Prova |
+| --- | --- |
+| 1. sync não move card triado | decisão pura, 3 testes |
+| 2. nunca escreve `description`/`notes` | varre TODAS as mutações da run |
+| 3. dedup pela constraint | **Postgres real, 12 inserções concorrentes** |
+| 4. job nunca chama `updateIssueStatus` | espião, numa run que reabre de verdade |
+| 5. `created_by` nulo, `source='sentry'` | inspeção do payload do insert |
+| 6. arquivado por humano não ressuscita | decisão pura + job inteiro |
+| 7. run repetida é no-op | **duas runs reais contra Postgres real** |
+| 8. dry-run não escreve nada | zero mutações, com controle que prova que escreveria |
+
+O item 3 tem controle: a MESMA rajada contra uma tabela **sem** o índice deixa 12
+linhas. Sem isso, "sobrou 1" seria compatível com "as inserções nem foram
+concorrentes".
+
+#### Harness da Fase 3
+
+`server/lib/sentryTaskIntake.pg.test.ts` e `server/lib/sentryTaskDedup.pg.test.ts`
+pulam por padrão (declarados em `scripts/skipsDeclarados.test.ts`). Receita:
+
+```bash
+docker run -d --name bnt-fase3-pg -e POSTGRES_PASSWORD=test -e POSTGRES_DB=bnt postgres:16-alpine
+docker exec bnt-fase3-pg psql -U postgres -d bnt -c "
+  create schema if not exists auth;
+  create table if not exists auth.users (id uuid primary key default gen_random_uuid());
+  create or replace function public.set_updated_at() returns trigger language plpgsql as \$\$
+  begin new.updated_at = now(); return new; end \$\$;
+  create role anon nologin; create role authenticated nologin;
+  create role service_role nologin bypassrls;"
+for m in 20260727160000_create_admin_tasks 20260728120100_drop_bug_from_admin_task_type \
+         20260731040000_readd_bug_to_admin_task_type 20260731050000_add_sentry_fields_to_admin_tasks \
+         20260731050100_add_task_automation_flags 20260731050200_allow_system_actor_on_admin_tasks \
+         20260731050300_add_archive_provenance_to_admin_tasks; do
+  docker exec -i bnt-fase3-pg psql -U postgres -d bnt -v ON_ERROR_STOP=1 < supabase/migrations/$m.sql
+done
+# semear o quadro BUG com sentry_sync_enabled=true e a etapa Sentry com
+# is_pinned=true, intake_source='sentry'; depois subir o PostgREST na 55443
+# (PGRST_DB_ANON_ROLE=service_role, PGRST_JWT_SECRET=segredo-de-teste-com-mais-de-32-caracteres-ok)
+BNT_PG_CONTAINER=bnt-fase3-pg npx vitest run server/lib/sentryTaskDedup.pg.test.ts
+BNT_SYNC_HARNESS=1 npx vitest run server/lib/sentryTaskIntake.pg.test.ts
+```
 
 ### Fase 4: interface
 
@@ -952,6 +1013,74 @@ de tarefas com `legacy_bug_id` não nulo, por etapa. Contagem, não pertinência
 Sem isso as duas não estão prontas.
 
 ---
+
+## 4-bis. Dois defeitos que só o harness pegou (2026-07-31)
+
+Os dois são sobre **o que o outro lado aceita**, e nenhum mock os pega. A lição é
+a mesma do CLAUDE.md: o instrumento que não simula a condição é o que pega.
+
+### 1. `on conflict` não casa com índice único PARCIAL
+
+A primeira versão da M3 criava os dois índices com `where <coluna> is not null`,
+para não ocupar espaço com card humano. Contra Postgres real:
+
+```
+ERROR: there is no unique or exclusion constraint matching the ON CONFLICT specification
+```
+
+O Postgres exige que o alvo repita o predicado (`on conflict (col) where ...`), e
+o PostgREST só sabe mandar NOMES DE COLUNA no `onConflict`. Com índice parcial, o
+insert do sync falharia em toda execução e o invariante 3 seria impossível de
+cumprir pelo caminho que o módulo usa.
+
+E o predicado não era necessário: em índice único comum o Postgres trata NULLs
+como distintos, então N cards humanos convivem. Verificado, não suposto: 5 nulos
+inseridos, todos aceitos. **Os dois índices deixaram de ser parciais**, e a M3
+mudou depois de aprovada.
+
+### 2. `statsPeriod=` vazio passou a dar 400, e já quebrava produção
+
+`getIssuesByNumericIds` fazia `set("statsPeriod", "")`, que manda `statsPeriod=`
+na URL. Medido nos dois sentidos contra a API viva:
+
+| Forma | Resposta |
+| --- | --- |
+| `statsPeriod=` | **400** `{"detail":"Invalid statsPeriod: ''"}` |
+| parâmetro ausente | 200 |
+| `statsPeriod=24h` | 200, e recorta (issue de 9 dias não volta) |
+| `statsPeriod=14d` | 200 |
+
+Essa função é a mesma que o job `reconcile-sentry-bugs` usa **em produção**.
+`cron_run_logs` confirma: `partial` com esse erro em **78 runs seguidas**, desde
+2026-07-30 13:15 (última run sadia às 13:00). A reabertura automática de bug do
+tracker antigo estava morta havia cerca de 19 horas, e o que impediu isso de
+virar dano foi o fail-safe "falha de leitura não toca em card nenhum".
+
+O guard funcionou: o motivo real estava gravado no payload. Ninguém olhou. É
+literalmente o que esta fase previa, "vai rodar a cada 15 minutos e ninguém vai
+olhar".
+
+**Correção**: omitir o parâmetro em vez de mandar vazio.
+
+### A correção de desenho que o defeito 2 forçou
+
+Não dá para **provar** que o filtro por id sem `statsPeriod` é ilimitado: a issue
+mais velha da organização tem 9 dias, então não há como testar 21+. E disso
+dependia a poda inteira: se a janela implícita for menor que 21 dias, toda issue
+elegível estaria fora do lote, `lastSeen` viria `undefined`, e a poda **nunca
+dispararia, em silêncio**.
+
+Por isso o silêncio passou a ser medido pelo `sentry_last_seen` **persistido** no
+nosso card, com o valor fresco tendo precedência quando existe. A assimetria é de
+propósito e está travada por teste:
+
+- **recorrência** (reabrir, ressuscitar) exige evidência FRESCA. Usar o
+  persistido faria o card reabrir para sempre, porque o valor guardado não muda
+  sozinho.
+- **silêncio** (podar) pode ser medido pelo que já sabemos. Ausência no lote não
+  é falta de informação aqui: é consistente com "está quieto".
+
+Isso remove a dependência de uma incógnita da API.
 
 ## 5. O que eu acho que vai dar errado
 
