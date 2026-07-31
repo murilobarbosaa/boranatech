@@ -23,6 +23,8 @@
  * Uso:
  *   SMOKE_EMAIL=... SMOKE_PASSWORD=... npx tsx scripts/smokeRoadmapIA.mts --cenario=2
  *   ... --cenario=1
+ *
+ * Persona do interlocutor: SMOKE_PERSONA (default no proprio arquivo).
  */
 const API = process.env.SMOKE_API_URL ?? "http://localhost:3100";
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? "";
@@ -349,8 +351,16 @@ async function cenario2(token: string, userId: string) {
 // confirmacao do resumo. Se a conversa precisar de mais que isto, o harness
 // repete a ultima ate o teto, e o numero de turnos gastos e a medida que
 // interessa: se passar de 15, ROTEIRO_PIOR_CASO esta errado.
-const PERSONA = `Voce e uma pessoa brasileira de 29 anos, hoje auxiliar administrativo, querendo fazer transicao de carreira para desenvolvimento back-end. Voce sabe logica basica e ja mexeu um pouco com Python. Consegue estudar cerca de 8 horas por semana, quer estar empregavel em uns 6 meses, e seu maior obstaculo e o tempo, porque trabalha das 9 as 18.
+// PERSONA do interlocutor, parametrizavel por SMOKE_PERSONA.
+//
+// A Fase 3 vai comparar prompts de geracao; comparar com personas diferentes
+// mediria a persona, nao o prompt. Manter o interlocutor FIXO entre rodadas e
+// o que torna a comparacao valida, e poder trocar por env e o que permite
+// medir personas diferentes de proposito.
+const PERSONA_PADRAO = `Voce e uma pessoa brasileira de 29 anos, hoje auxiliar administrativo, querendo fazer transicao de carreira para desenvolvimento back-end. Voce sabe logica basica e ja mexeu um pouco com Python. Consegue estudar cerca de 8 horas por semana, quer estar empregavel em uns 6 meses, e seu maior obstaculo e o tempo, porque trabalha das 9 as 18.
 Responda A PERGUNTA QUE FOI FEITA, em uma ou duas frases, em portugues do Brasil, de forma direta e concreta. Nunca faca perguntas de volta. Se pedirem confirmacao de um resumo, confirme. Nunca invente que ja sabe tecnologias que a persona nao tem.`;
+
+const PERSONA = process.env.SMOKE_PERSONA || PERSONA_PADRAO;
 
 // Interlocutor ADAPTATIVO. O roteiro fixo mediria o script, nao o roteiro do
 // produto: uma resposta fora do que foi perguntado faz o modelo repergunta, e o
