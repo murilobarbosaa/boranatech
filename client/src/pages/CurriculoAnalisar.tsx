@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { extractPdfText, PdfExtractError } from "@/lib/pdfExtract";
+import { resumeFaixaLabelOf } from "@/components/curriculo/faixaUi";
 import { cn } from "@/lib/utils";
 import { updateMyProfile } from "@/services/profileService";
 import {
@@ -29,7 +30,6 @@ import {
   type ResumeAnalyzeResponse,
 } from "@/services/resumeAnalysisService";
 import {
-  RESUME_FAIXA_LABELS,
   type ResumeSugestaoSecao,
 } from "@shared/resumeAnalysis/schema";
 
@@ -500,7 +500,7 @@ export default function CurriculoAnalisar() {
                     >
                       <div className="min-w-0">
                         <p className="font-bold text-slate-900">
-                          {item.score}/100 · {RESUME_FAIXA_LABELS[item.faixa]}
+                          {item.score}/100 · {resumeFaixaLabelOf(item.faixa)}
                         </p>
                         <p className="truncate text-xs font-semibold text-slate-500">
                           {item.target_role ? `${item.target_role} · ` : ""}

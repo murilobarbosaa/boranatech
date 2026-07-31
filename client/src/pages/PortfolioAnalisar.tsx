@@ -33,9 +33,9 @@ import {
   ResultShowcase,
 } from "@/components/portfolio/AnalyzerIntro";
 import {
-  BAND_UI,
-  BAND_WASH,
-  BAND_WASH_SOFT,
+  bandUiOf,
+  bandWashOf,
+  bandWashSoftOf,
 } from "@/components/portfolio/bandUi";
 import ChecklistByCategory from "@/components/portfolio/ChecklistByCategory";
 import GithubHistory from "@/components/portfolio/GithubHistory";
@@ -170,13 +170,13 @@ function ResultBackdrop({
       <div
         className={cn(
           "absolute inset-x-0 top-0 h-80 bg-gradient-to-b via-transparent to-transparent [mask-image:linear-gradient(to_bottom,black_40%,transparent)]",
-          BAND_WASH[band],
+          bandWashOf(band),
         )}
       />
       <div
         className={cn(
           "absolute right-[-12%] top-[42%] h-96 w-[65%] rounded-full bg-gradient-to-tl via-transparent to-transparent blur-3xl",
-          BAND_WASH[band],
+          bandWashOf(band),
         )}
       />
       {RESULT_DOODLES.map((doodle, i) => {
@@ -450,7 +450,7 @@ function ScoreHero({
   improvements: { done: number; total: number } | null;
 }) {
   const { target, deterministic } = response;
-  const band = BAND_UI[deterministic.band];
+  const band = bandUiOf(deterministic.band);
   const display =
     target.kind === "repo"
       ? `${target.login}/${target.repo}`
@@ -605,7 +605,7 @@ function ScoreHero({
           className={cn(
             "relative isolate flex min-w-0 flex-1 flex-col justify-center gap-5 p-6",
             "[background-image:radial-gradient(rgba(15,23,42,0.05)_1.2px,transparent_1.2px)] [background-size:18px_18px]",
-            BAND_WASH_SOFT[deterministic.band],
+            bandWashSoftOf(deterministic.band),
           )}
         >
           <CornerDoodle
