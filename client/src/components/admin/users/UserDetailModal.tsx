@@ -33,6 +33,7 @@ import { UserTransactions } from "./UserTransactions";
 import { EditableField, GenderField } from "./UserEditFields";
 import { EmailChangeDialog } from "./EmailChangeDialog";
 import { CancelSubscriptionDialog } from "./CancelSubscriptionDialog";
+import { RevokeAccessDialog } from "./RevokeAccessDialog";
 import { ExternalRefundDialog } from "./ExternalRefundDialog";
 import { RefundDialog } from "./RefundDialog";
 import { useProfileEdit } from "./useProfileEdit";
@@ -118,6 +119,15 @@ const ACTION_BUTTON =
 const DESTRUCTIVE_BUTTON =
   "col-span-2 w-full rounded-full border-2 border-rose-600 bg-rose-50 px-4 py-2 text-xs font-black uppercase text-rose-700 transition hover:bg-rose-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60 sm:col-span-1 sm:w-auto sm:py-1.5";
 
+/**
+ * Destrutiva IMEDIATA. Duas ações vermelhas sobre a mesma assinatura convivem no
+ * rodapé, e cor igual entre elas não diz qual é qual: quem carrega a diferença é
+ * o RÓTULO ("no fim do período" x "agora"). O preenchimento sólido só reforça a
+ * ordem de gravidade depois que a leitura já distinguiu as duas.
+ */
+const DESTRUCTIVE_NOW_BUTTON =
+  "col-span-2 w-full rounded-full border-2 border-rose-700 bg-rose-500 px-4 py-2 text-xs font-black uppercase text-white transition hover:bg-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60 sm:col-span-1 sm:w-auto sm:py-1.5";
+
 function Section({
   title,
   children,
@@ -198,6 +208,7 @@ export function UserDetailModal({
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [revokeProOpen, setRevokeProOpen] = useState(false);
   const [refundAlvo, setRefundAlvo] = useState<TransactionItem | null>(null);
   const [externalRefundAlvo, setExternalRefundAlvo] =
     useState<TransactionItem | null>(null);
@@ -224,6 +235,7 @@ export function UserDetailModal({
     // rascunho da troca nao sobrevive de propósito (o dialogo zera ao abrir).
     setEmailOpen(false);
     setCancelOpen(false);
+    setRevokeProOpen(false);
     setRefundAlvo(null);
     setExternalRefundAlvo(null);
     onClose();
@@ -1016,9 +1028,27 @@ export function UserDetailModal({
                       onClick={() => setCancelOpen(true)}
                       className={DESTRUCTIVE_BUTTON}
                     >
-                      Cancelar Pro
+                      Cancelar no fim do período
                     </button>
                   )
+                ) : null}
+                {/* SEGUNDA destrutiva sobre a assinatura. O que separa as duas
+                    não é a cor (as duas são vermelhas, e cor sozinha não diz
+                    QUAL das duas): é QUANDO o acesso cai, e por isso os dois
+                    rótulos dizem o prazo em vez de nomearem a ação. O peso
+                    visual segue a gravidade: esta é sólida, a agendada é
+                    contornada. Aparece com assinatura em qualquer estado que
+                    ainda dê acesso, INCLUSIVE com cancelamento já agendado, que
+                    é justamente o caso em que a pessoa mantém Pro até o fim do
+                    período. */}
+                {detail.subscription ? (
+                  <button
+                    type="button"
+                    onClick={() => setRevokeProOpen(true)}
+                    className={DESTRUCTIVE_NOW_BUTTON}
+                  >
+                    Encerrar Pro agora
+                  </button>
                 ) : null}
               </>
             ) : null}
@@ -1143,6 +1173,17 @@ export function UserDetailModal({
             detail={detail}
             open={cancelOpen}
             onOpenChange={setCancelOpen}
+            onChanged={() => setDetailVersion((version) => version + 1)}
+          />
+        ) : null}
+
+        {detail ? (
+          <RevokeAccessDialog
+            userId={userId}
+            detail={detail}
+            transactions={transactions}
+            open={revokeProOpen}
+            onOpenChange={setRevokeProOpen}
             onChanged={() => setDetailVersion((version) => version + 1)}
           />
         ) : null}

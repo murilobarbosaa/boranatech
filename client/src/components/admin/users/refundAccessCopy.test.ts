@@ -2,10 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import {
   avisoDeAcesso,
+  ehRecuperacaoDeEstadoMeioFeito,
   toastDeDevolucao,
   vaiRevogar,
 } from "./refundAccessCopy";
-import type { RefundAccessOutcome } from "./types";
+import type {
+  RefundAccessOutcome,
+  TransactionItem,
+  TransactionsPayload,
+} from "./types";
 
 /**
  * O que a tela DIZ sobre o acesso depois de uma devolução.
@@ -165,5 +170,109 @@ describe("toastDeDevolucao", () => {
     expect(t.mensagem).toContain("NÃO FOI REMOVIDO");
     expect(t.mensagem).toContain("extrato pode levar alguns minutos");
     expect(t.erro).toBe(true);
+  });
+});
+
+describe("ehRecuperacaoDeEstadoMeioFeito", () => {
+  function item(over: Partial<TransactionItem> = {}): TransactionItem {
+    return {
+      id: "ft1",
+      type: "charge",
+      gross_cents: 14874,
+      fee_cents: 0,
+      net_cents: 14874,
+      currency: "BRL",
+      occurred_at: "2026-07-01T12:00:00Z",
+      stripe_charge_id: "ch_1",
+      stripe_invoice_id: null,
+      plan_code: "pro_annual",
+      refunded_cents: 0,
+      disputed_cents: 0,
+      disputed: false,
+      refund_state: "none",
+      refundable_cents: 14874,
+      ...over,
+    };
+  }
+
+  function payload(
+    over: Partial<TransactionsPayload> = {},
+  ): TransactionsPayload {
+    return {
+      items: [item()],
+      total_paid_cents: 14874,
+      truncated: false,
+      limit: 200,
+      ...over,
+    };
+  }
+
+  it("tudo devolvido e nada restou: é recuperação", () => {
+    expect(
+      ehRecuperacaoDeEstadoMeioFeito(
+        payload({
+          items: [item({ refunded_cents: 14874, refundable_cents: 0 })],
+          total_paid_cents: 0,
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("nada devolvido: é o USO NORMAL da ação, não anomalia", () => {
+    // Este é o caso que não pode ganhar destaque: sinalizar o uso normal como
+    // anomalia treina o admin a ignorar o aviso quando ele importa.
+    expect(ehRecuperacaoDeEstadoMeioFeito(payload())).toBe(false);
+  });
+
+  it("devolução PARCIAL não é recuperação: o acesso mantido é a regra funcionando", () => {
+    expect(
+      ehRecuperacaoDeEstadoMeioFeito(
+        payload({
+          items: [item({ refunded_cents: 5000, refundable_cents: 9874 })],
+          total_paid_cents: 9874,
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("usuário SEM transação nenhuma não vira recuperação por somar zero", () => {
+    // A trava da segunda condição: sem exigir que tenha havido devolução, todo
+    // total zero cairia no destaque.
+    expect(
+      ehRecuperacaoDeEstadoMeioFeito(
+        payload({ items: [], total_paid_cents: 0 }),
+      ),
+    ).toBe(false);
+  });
+
+  it("chargeback sozinho não conta como devolução", () => {
+    // Chargeback não é reembolso voluntário, e `refunded_cents` não o inclui
+    // (decisão de server/lib/userTransactions.ts). O total zera, mas ninguém
+    // devolveu nada por decisão nossa.
+    expect(
+      ehRecuperacaoDeEstadoMeioFeito(
+        payload({
+          items: [
+            item({
+              disputed_cents: 14874,
+              disputed: true,
+              refundable_cents: 0,
+            }),
+          ],
+          total_paid_cents: 0,
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("payload ausente ou de shape inesperado não derruba nem afirma", () => {
+    // Janela de deploy: a Vercel sobe antes do Railway.
+    expect(ehRecuperacaoDeEstadoMeioFeito(null)).toBe(false);
+    expect(ehRecuperacaoDeEstadoMeioFeito(undefined)).toBe(false);
+    expect(
+      ehRecuperacaoDeEstadoMeioFeito({
+        items: undefined,
+      } as unknown as TransactionsPayload),
+    ).toBe(false);
   });
 });

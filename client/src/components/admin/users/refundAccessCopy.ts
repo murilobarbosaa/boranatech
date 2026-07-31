@@ -1,4 +1,4 @@
-import type { RefundAccessOutcome } from "./types";
+import type { RefundAccessOutcome, TransactionsPayload } from "./types";
 
 // O que a tela diz sobre o ACESSO depois de uma devolução.
 //
@@ -114,4 +114,38 @@ export function toastDeDevolucao(input: {
     // um estado meio-feito não pode depender de o admin estar olhando.
     erro: Boolean(aviso?.exigeAcaoManual),
   };
+}
+
+/**
+ * A revogação avulsa está sendo usada para RECUPERAR um estado meio-feito?
+ *
+ * O estado meio-feito é o que motivou a fatia: o dinheiro voltou e o acesso
+ * ficou. Ele acontece quando a revogação automática falha depois de um reembolso
+ * bem-sucedido, e é o único caso em que esta ação merece destaque na tela.
+ *
+ * Fora dele, revogar sem devolver dinheiro é o USO NORMAL da ação (a pessoa
+ * perde o acesso e não recebe nada de volta), e sinalizar isso como anomalia
+ * treinaria o admin a ignorar o aviso justamente quando ele importa.
+ *
+ * DUAS condições, e as duas precisam valer:
+ *
+ *   houve devolução   alguma cobrança com valor reembolsado. Sem isto, um
+ *                     usuário sem transação nenhuma (total zero) cairia no
+ *                     destaque só por ter somado zero.
+ *   nada restou pago  o total já desconta reembolso, chargeback e devolução
+ *                     externa. Devolução PARCIAL deixa saldo, e nesse caso o
+ *                     acesso mantido é a regra funcionando, não uma falha.
+ *
+ * Resposta sem `items` não derruba nada: na janela de deploy o frontend novo
+ * fala com o backend antigo, e um shape diferente chegaria até aqui.
+ */
+export function ehRecuperacaoDeEstadoMeioFeito(
+  payload: TransactionsPayload | null | undefined,
+): boolean {
+  if (!payload || !Array.isArray(payload.items)) return false;
+  const houveDevolucao = payload.items.some(
+    (item) => item.type === "charge" && (item.refunded_cents ?? 0) > 0,
+  );
+  if (!houveDevolucao) return false;
+  return (payload.total_paid_cents ?? 0) <= 0;
 }

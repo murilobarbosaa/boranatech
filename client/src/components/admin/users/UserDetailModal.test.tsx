@@ -1167,7 +1167,9 @@ describe("cancelamento de assinatura (Fatia 6)", () => {
   async function abrirCancelamento() {
     render(<UserDetailModal userId="u1" onClose={() => {}} />);
     await pronto();
-    fireEvent.click(screen.getByRole("button", { name: "Cancelar Pro" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cancelar no fim do período" }),
+    );
     return await screen.findByText("Cancelar assinatura?");
   }
 
@@ -1338,7 +1340,9 @@ describe("cancelamento de assinatura (Fatia 6)", () => {
     render(<UserDetailModal userId="u1" onClose={() => {}} />);
     await pronto();
 
-    expect(screen.queryByRole("button", { name: "Cancelar Pro" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Cancelar no fim do período" }),
+    ).toBeNull();
     expect(screen.getByTestId("boleto-sem-cancelamento")).toBeTruthy();
   });
 
@@ -1351,7 +1355,9 @@ describe("cancelamento de assinatura (Fatia 6)", () => {
     render(<UserDetailModal userId="u1" onClose={() => {}} />);
     await pronto();
 
-    expect(screen.queryByRole("button", { name: "Cancelar Pro" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Cancelar no fim do período" }),
+    ).toBeNull();
   });
 });
 
@@ -2042,5 +2048,290 @@ describe("registro de devolução de boleto", () => {
     expect(screen.getByTestId("user-transactions").textContent).not.toContain(
       "NaN",
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Revogação AVULSA de acesso Pro.
+//
+// A confusão que a tela existe para impedir: alguém usar isto achando que
+// devolve dinheiro. É a única diferença entre esta ação e o reembolso.
+// ---------------------------------------------------------------------------
+
+describe("revogação avulsa de acesso Pro", () => {
+  const ASSINATURA_ATIVA = {
+    plan_code: "pro_annual",
+    status: "active",
+    payment_method: "card",
+    renewal_type: "auto",
+    created_at: "2026-01-10T12:00:00Z",
+    current_period_end: "2027-07-28T12:00:00Z",
+    cancel_at_period_end: false,
+  };
+
+  function compra(over: Record<string, unknown> = {}) {
+    return {
+      id: "ft1",
+      type: "charge",
+      gross_cents: 14874,
+      fee_cents: 0,
+      net_cents: 14874,
+      currency: "BRL",
+      occurred_at: "2026-07-01T12:00:00Z",
+      stripe_charge_id: "ch_1",
+      stripe_invoice_id: null,
+      plan_code: "pro_annual",
+      refunded_cents: 0,
+      disputed_cents: 0,
+      disputed: false,
+      refund_state: "none",
+      refundable_cents: 14874,
+      ...over,
+    };
+  }
+
+  const postados: Array<Record<string, unknown>> = [];
+
+  function rotear(over: Record<string, unknown> = {}) {
+    postados.length = 0;
+    fetchMock.mockImplementation(
+      (path: string, init?: { method?: string; body?: string }) => {
+        if (path.includes("/subscription/revoke")) {
+          postados.push(JSON.parse(init?.body ?? "{}"));
+          const r = over.post;
+          if (r instanceof Error) return Promise.reject(r);
+          return Promise.resolve(
+            r ?? { data: { revoked: true, still_pro_via_influencer: false } },
+          );
+        }
+        if (path.includes("/transactions"))
+          return Promise.resolve(
+            over.transactions ?? {
+              data: {
+                items: [compra()],
+                total_paid_cents: 14874,
+                truncated: false,
+                limit: 200,
+              },
+            },
+          );
+        if (path.includes("/email-usage"))
+          return Promise.resolve({ data: { email: null, usage: [] } });
+        if (path.endsWith("/activity"))
+          return Promise.resolve({ data: { state: "ok", hasData: false } });
+        return Promise.resolve(
+          over.detalhe ??
+            detalhe({
+              subscription: ASSINATURA_ATIVA,
+              paid_total_cents: 14874,
+              is_pro: true,
+              pro_source: "subscription",
+            }),
+        );
+      },
+    );
+  }
+
+  async function abrir(over: Record<string, unknown> = {}) {
+    rotear(over);
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Encerrar Pro agora" }),
+    );
+    return await screen.findByText("Encerrar Pro agora?");
+  }
+
+  it("a afirmação de que NADA será devolvido está no diálogo", async () => {
+    await abrir();
+    const caixa = screen.getByLabelText(/nenhum valor será devolvido/i);
+    expect(caixa).toBeTruthy();
+    // E ela é a CONFIRMAÇÃO, não um texto solto: é o rótulo da caixa que
+    // destrava a ação.
+    expect((caixa as HTMLInputElement).type).toBe("checkbox");
+  });
+
+  it("sem marcar a afirmação, o botão fica travado e nada é enviado", async () => {
+    await abrir();
+    const botao = screen.getByTestId(
+      "confirmar-revogacao",
+    ) as HTMLButtonElement;
+    expect(botao.disabled).toBe(true);
+
+    fireEvent.click(botao);
+    expect(postados).toHaveLength(0);
+  });
+
+  it("marcada a afirmação e com motivo, revoga", async () => {
+    await abrir();
+    fireEvent.click(screen.getByLabelText(/nenhum valor será devolvido/i));
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "reembolso saiu e o acesso ficou" },
+    });
+    fireEvent.click(screen.getByTestId("confirmar-revogacao"));
+
+    await waitFor(() => expect(postados).toHaveLength(1));
+    expect(postados[0]).toEqual({ reason: "reembolso saiu e o acesso ficou" });
+    await waitFor(() => expect(toastSpy.acao).toHaveBeenCalled());
+  });
+
+  it("motivo vazio bloqueia e não chama a rota", async () => {
+    await abrir();
+    fireEvent.click(screen.getByLabelText(/nenhum valor será devolvido/i));
+    fireEvent.click(screen.getByTestId("confirmar-revogacao"));
+
+    expect(
+      await screen.findByText("Informe o motivo da revogação."),
+    ).toBeTruthy();
+    expect(postados).toHaveLength(0);
+  });
+
+  it("CASO NORMAL (cobrança não reembolsada): nenhum destaque de anomalia", async () => {
+    // Revogar sem devolver dinheiro é o uso normal desta ação. Sinalizar isso
+    // como anomalia treinaria o admin a ignorar o aviso quando ele importa.
+    await abrir();
+    expect(screen.queryByTestId("aviso-recuperacao")).toBeNull();
+  });
+
+  it("RECUPERAÇÃO (tudo devolvido e acesso ativo): destaque presente", async () => {
+    await abrir({
+      transactions: {
+        data: {
+          items: [
+            compra({
+              refunded_cents: 14874,
+              refund_state: "full",
+              refundable_cents: 0,
+            }),
+          ],
+          total_paid_cents: 0,
+          truncated: false,
+          limit: 200,
+        },
+      },
+    });
+
+    expect(
+      (await screen.findByTestId("aviso-recuperacao")).textContent,
+    ).toContain("todo o valor devolvido");
+  });
+
+  it("devolução PARCIAL não é recuperação: sobrou saldo, o acesso é legítimo", async () => {
+    await abrir({
+      transactions: {
+        data: {
+          items: [
+            compra({
+              refunded_cents: 5000,
+              refund_state: "partial",
+              refundable_cents: 9874,
+            }),
+          ],
+          total_paid_cents: 9874,
+          truncated: false,
+          limit: 200,
+        },
+      },
+    });
+
+    expect(screen.queryByTestId("aviso-recuperacao")).toBeNull();
+  });
+
+  it("avisa quando pro_source é influencer ou both", async () => {
+    for (const origem of ["influencer", "both"]) {
+      await abrir({
+        detalhe: detalhe({
+          subscription: ASSINATURA_ATIVA,
+          paid_total_cents: 14874,
+          is_pro: true,
+          pro_source: origem,
+        }),
+      });
+      expect(
+        screen.getByTestId("aviso-influencer").textContent,
+        origem,
+      ).toContain("não remove o Pro");
+      cleanup();
+    }
+  });
+
+  it("NÃO avisa quando pro_source é subscription", async () => {
+    await abrir();
+    expect(screen.queryByTestId("aviso-influencer")).toBeNull();
+  });
+
+  it("influencer no RESULTADO vira toast de erro, não de sucesso", async () => {
+    // A ação terminou, mas a pessoa continua Pro. Um toast de sucesso que some
+    // sozinho deixaria isso passar como se o acesso tivesse caído.
+    await abrir({
+      post: { data: { revoked: true, still_pro_via_influencer: true } },
+    });
+    fireEvent.click(screen.getByLabelText(/nenhum valor será devolvido/i));
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "x" },
+    });
+    fireEvent.click(screen.getByTestId("confirmar-revogacao"));
+
+    await waitFor(() => expect(toastSpy.erro).toHaveBeenCalled());
+    expect(String(toastSpy.erro.mock.calls[0][0])).toContain("CONTINUA Pro");
+    expect(toastSpy.acao).not.toHaveBeenCalled();
+  });
+
+  it("já revogado avisa sem afirmar que acabou de revogar", async () => {
+    await abrir({ post: { data: { revoked: false, already_revoked: true } } });
+    fireEvent.click(screen.getByLabelText(/nenhum valor será devolvido/i));
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "x" },
+    });
+    fireEvent.click(screen.getByTestId("confirmar-revogacao"));
+
+    await waitFor(() => expect(toastSpy.acao).toHaveBeenCalled());
+    expect(String(toastSpy.acao.mock.calls[0][0]?.message)).toContain(
+      "já estava revogado",
+    );
+  });
+
+  it("erro da rota vira toast legível", async () => {
+    await abrir({ post: new Error("A Stripe não cancelou a assinatura.") });
+    fireEvent.click(screen.getByLabelText(/nenhum valor será devolvido/i));
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "x" },
+    });
+    fireEvent.click(screen.getByTestId("confirmar-revogacao"));
+
+    await waitFor(() => expect(toastSpy.erro).toHaveBeenCalled());
+    expect(String(toastSpy.erro.mock.calls[0][0])).toContain("Stripe");
+  });
+
+  it("o botão aparece MESMO com cancelamento já agendado", async () => {
+    // É justamente o caso em que a pessoa mantém Pro até o fim do período: se o
+    // botão sumisse aqui, sumiria no cenário que ele existe para resolver.
+    rotear({
+      detalhe: detalhe({
+        subscription: { ...ASSINATURA_ATIVA, cancel_at_period_end: true },
+        paid_total_cents: 14874,
+        is_pro: true,
+      }),
+    });
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    expect(
+      screen.getByRole("button", { name: "Encerrar Pro agora" }),
+    ).toBeTruthy();
+    // E o de agendar some, porque já está agendado.
+    expect(
+      screen.queryByRole("button", { name: "Cancelar no fim do período" }),
+    ).toBeNull();
+  });
+
+  it("quem NUNCA assinou não vê o botão", async () => {
+    rotear({ detalhe: detalhe({ subscription: null }) });
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    expect(
+      screen.queryByRole("button", { name: "Encerrar Pro agora" }),
+    ).toBeNull();
   });
 });

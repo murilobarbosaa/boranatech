@@ -201,20 +201,41 @@ describe("rodapé do modal: hierarquia explícita", () => {
     await screen.findByText("Ana Ferreira Moura");
   }
 
-  it("a ação destrutiva é distinguível de uma ação comum no DOM", async () => {
+  it("as ações destrutivas são distinguíveis de uma ação comum no DOM", async () => {
     await abrir();
-    const destrutiva = screen.getByRole("button", { name: "Cancelar Pro" });
     const comum = screen.getByRole("button", { name: "Editar" });
-    expect(destrutiva.className).not.toBe(comum.className);
-    expect(destrutiva.className).toContain("rose");
+    for (const nome of ["Cancelar no fim do período", "Encerrar Pro agora"]) {
+      const destrutiva = screen.getByRole("button", { name: nome });
+      expect(destrutiva.className, nome).not.toBe(comum.className);
+      expect(destrutiva.className, nome).toContain("rose");
+    }
     expect(comum.className).not.toContain("rose");
   });
 
-  it("a destrutiva ocupa a linha inteira no mobile, para não ser tocada por engano", async () => {
+  it("as DUAS destrutivas se distinguem ENTRE SI, e não só das comuns", async () => {
+    // Duas ações vermelhas sobre a mesma assinatura convivem no rodapé desde a
+    // revogação avulsa. Cor igual entre elas não diz qual é qual: quem carrega a
+    // diferença é o rótulo, e ele precisa nomear QUANDO o acesso cai.
     await abrir();
-    expect(
-      screen.getByRole("button", { name: "Cancelar Pro" }).className,
-    ).toContain("col-span-2");
+    const agendada = screen.getByRole("button", {
+      name: "Cancelar no fim do período",
+    });
+    const imediata = screen.getByRole("button", { name: "Encerrar Pro agora" });
+
+    expect(agendada.className).not.toBe(imediata.className);
+    // O prazo está no PRÓPRIO rótulo, não só na cor.
+    expect(agendada.textContent).toContain("fim do período");
+    expect(imediata.textContent).toContain("agora");
+  });
+
+  it("as destrutivas ocupam a linha inteira no mobile, para não serem tocadas por engano", async () => {
+    await abrir();
+    for (const nome of ["Cancelar no fim do período", "Encerrar Pro agora"]) {
+      expect(
+        screen.getByRole("button", { name: nome }).className,
+        nome,
+      ).toContain("col-span-2");
+    }
   });
 
   it("existe saída no cabeçalho, e ela passa pelo mesmo funil de fechamento", async () => {
@@ -236,7 +257,12 @@ describe("rodapé do modal: hierarquia explícita", () => {
 
   it("todo botão do rodapé tem indicador de foco do projeto", async () => {
     await abrir();
-    for (const nome of ["Editar", "Trocar e-mail", "Cancelar Pro"]) {
+    for (const nome of [
+      "Editar",
+      "Trocar e-mail",
+      "Cancelar no fim do período",
+      "Encerrar Pro agora",
+    ]) {
       expect(screen.getByRole("button", { name: nome }).className).toContain(
         FOCO,
       );
