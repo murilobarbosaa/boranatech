@@ -8,7 +8,7 @@ import { syncNews } from "../jobs/syncNews";
 import { writeAudienceSnapshots } from "../lib/audienceReach";
 import { reindexSearchDocuments } from "../lib/searchIndex";
 import { reconcileSentryBugs } from "../lib/sentryBugReconcile";
-import { coletarTagueado } from "../lib/paginate";
+import { coletarTagueado, paginateRange } from "../lib/paginate";
 import { recordCronRun } from "../lib/cron-logs";
 import { reconcileEmailCampaignBatches } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
@@ -1105,6 +1105,129 @@ async function reconcileExpiredSubscriptions() {
 
 // TTL 900s: 2 fases x ate 25 subscriptions x ate 2 chamadas Stripe cada
 // (teto 15s por chamada); pior caso teorico na casa dos minutos.
+/**
+ * Teto do lote de expiracao de boleto. Paginado por dentro, mas limitado: uma
+ * rodada que tentasse expirar milhares de linhas de uma vez seguraria o lock do
+ * cron e competiria com o resto do job. O que sobra e pego na proxima rodada
+ * (a cada 6 horas), e `capAtingido` na resposta diz quando sobrou — corte
+ * silencioso e a classe de defeito que este projeto ja documentou.
+ */
+const BOLETO_EXPIRY_BATCH = 200;
+
+/**
+ * BOLETO PAGO E VENCIDO: fecha o unico fim de vida que nao tinha dono.
+ *
+ * O buraco: para `renewal_type='manual'` NENHUM dos quatro caminhos que escrevem
+ * `canceled_at` funciona. Nao ha subscription na Stripe (o
+ * `provider_subscription_id` e um Checkout Session `cs_...`), entao
+ * `customer.subscription.deleted` nunca chega; `process-cancellations` filtra
+ * `cancel_at_period_end`, que o cancelamento de boleto NAO seta de proposito; e
+ * `reconcileExpiredSubscriptions` exclui boleto explicitamente porque
+ * `getStripeSubscriptionState` falharia com um id de sessao.
+ * `expire-pending-boletos` cobre o boleto emitido e NAO PAGO. O pago que venceu
+ * nao tinha ninguem: ficava `active` com periodo expirado para sempre.
+ *
+ * O acesso ja estava certo (is_user_pro nega pelo periodo); o que mentia era o
+ * `status`, e ele contamina toda contagem que filtra `status='active'`,
+ * inclusive o MRR.
+ *
+ * NAO CHAMA A STRIPE. Nao ha o que perguntar: a expiracao e decidivel no banco,
+ * e a data de fim ja esta na linha.
+ *
+ * POR QUE A CONDICAO NAO PEGA QUEM DEVIA CONTINUAR ATIVO, por construcao e nao
+ * por sorte:
+ *
+ *   - `current_period_end < now()` e exatamente o complemento do que is_user_pro
+ *     aceita, entao toda linha que este job toca JA nao dava Pro. O acesso e
+ *     inalterado pela mudanca de status, e por isso tambem nao ha cache de Pro a
+ *     invalidar: ele ja respondia `false` antes da escrita;
+ *   - `lt` nao casa NULL, entao assinatura sem data de fim (que da Pro
+ *     indefinidamente por is_user_pro) nunca entra;
+ *   - RENOVACAO EM CURSO nao e afetada: a renovacao de boleto cria uma LINHA
+ *     NOVA, com o id da nova sessao e `status='pending'`
+ *     (onBoletoAsyncPaymentSucceeded busca por `provider_subscription_id` da
+ *     sessao nova e exige `pending`). A linha nova esta fora do filtro por
+ *     status; depois de paga, fica fora pelo periodo futuro. Quem sobra e
+ *     justamente a linha velha que ninguem mais toca.
+ *
+ * ESCREVE `canceled_at` E `status='canceled'`, e NAO grava linha em
+ * `subscription_cancellations`. Essa ausencia e a informacao: cancelamento
+ * VOLUNTARIO tem registro de motivo, vencimento nao tem. Inventar um
+ * `reason_code` aqui poluiria o agregado da aba Retencao com um motivo que
+ * ninguem deu. A distincao entre "cancelou" e "venceu e nao renovou" fica
+ * legivel sem valor de status novo: e churn com registro contra churn sem
+ * registro. Um `status='expired'` novo custaria um valor a mais numa coluna que
+ * varias telas resolvem por mapa, e nao diria nada que a ausencia do registro ja
+ * nao diga.
+ */
+// EXPORTADA para teste, no mesmo criterio de expenseOccurrences em
+// financeMetrics.ts: o que importa provar aqui e QUAIS linhas a condicao pega, e
+// isso so se prova rodando a funcao contra um dublê que APLICA os filtros. Um
+// teste que apenas conferisse o formato da query estaria conferindo a intencao,
+// nao o efeito.
+export async function expirarBoletosVencidos() {
+  const nowIso = new Date().toISOString();
+
+  const alvos: Array<{ id: string; user_id: string | null }> = [];
+  let capAtingido = false;
+  try {
+    for await (const row of paginateRange<{
+      id: string;
+      user_id: string | null;
+    }>(
+      (from, to) =>
+        supabaseAdmin
+          .from("subscriptions")
+          .select("id, user_id")
+          .eq("renewal_type", "manual")
+          .eq("status", "active")
+          .lt("current_period_end", nowIso)
+          .order("id", { ascending: true })
+          .range(from, to),
+      { errorLabel: "expire-ended-boletos" },
+    )) {
+      if (alvos.length >= BOLETO_EXPIRY_BATCH) {
+        capAtingido = true;
+        break;
+      }
+      alvos.push(row);
+    }
+  } catch (err) {
+    throw err instanceof Error ? err : new Error(String(err));
+  }
+
+  let expired = 0;
+  let failed = 0;
+  const failures: Array<{ subscription_id: string; reason: string }> = [];
+
+  for (const alvo of alvos) {
+    // Condicional em `status='active'`: se outro caminho tiver mudado a linha
+    // entre a leitura e agora, o UPDATE nao pega nada e a rodada nao sobrescreve
+    // decisao alheia. Mesma idempotencia do expire-pending-boletos.
+    const { error } = await supabaseAdmin
+      .from("subscriptions")
+      .update({
+        status: "canceled",
+        canceled_at: nowIso,
+        last_event_at: nowIso,
+      })
+      .eq("id", alvo.id)
+      .eq("status", "active");
+    if (error) {
+      failed += 1;
+      failures.push({ subscription_id: alvo.id, reason: error.message });
+      console.error(
+        `[cron/reconcile-subscriptions] falha ao expirar boleto ${alvo.id}:`,
+        error,
+      );
+      continue;
+    }
+    expired += 1;
+  }
+
+  return { processed: alvos.length, expired, failed, capAtingido, failures };
+}
+
 router.post(
   "/reconcile-subscriptions",
   withCronLock("reconcile-subscriptions", 900, async (_req, res, next) => {
@@ -1113,8 +1236,16 @@ router.post(
     try {
       const incomplete = await reconcileIncompleteSubscriptions();
       const expired = await reconcileExpiredSubscriptions();
+      // TERCEIRA FASE, no MESMO job. O trabalho e o mesmo do job ("por a
+      // assinatura no estado certo") e a cadencia serve (6 em 6 horas para algo
+      // que so muda quando um periodo vira). Nao virou cron novo porque isso
+      // custaria migration de agenda, entrada propria em cron_runs e mais um
+      // lock, para um caminho que hoje nao pega nenhuma linha. E nao entrou no
+      // expire-pending-boletos porque o nome daquele job diz `pending`, e este
+      // trata o PAGO: reaproveitar la faria o nome mentir.
+      const boletos = await expirarBoletosVencidos();
 
-      const totalFailed = incomplete.failed + expired.failed;
+      const totalFailed = incomplete.failed + expired.failed + boletos.failed;
       // Contagens separadas por provider (byProvider) + skipped/failed por fase.
       const payload = {
         incomplete: {
@@ -1128,6 +1259,14 @@ router.post(
           byProvider: expired.byProvider,
           skipped: expired.skipped,
           failed: expired.failed,
+        },
+        // `capAtingido` vai na carga de proposito: lote com teto que nao avisa
+        // quando cortou reporta sucesso sobre uma superficie menor.
+        boletosVencidos: {
+          processed: boletos.processed,
+          expired: boletos.expired,
+          failed: boletos.failed,
+          capAtingido: boletos.capAtingido,
         },
       };
 
@@ -1144,6 +1283,7 @@ router.post(
           failures: {
             incomplete: incomplete.failures,
             expired: expired.failures,
+            boletosVencidos: boletos.failures,
           },
         },
       });
