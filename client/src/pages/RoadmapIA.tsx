@@ -35,6 +35,7 @@ import {
 } from "@/lib/analytics";
 import {
   buildGenerationIntake,
+  CHAT_KICKOFF,
   type IntakeRequiredChoiceField,
 } from "@shared/aiRoadmap";
 
@@ -64,8 +65,13 @@ const AVISO_RESTANTES_A_PARTIR_DE = 5;
 // servidor (CHAT_KICKOFF em server/lib/aiRoadmap/intakeChat.ts) e e injetada na
 // montagem do prompt. Enquanto o client a prefixava, ela era contada como
 // mensagem do usuario e comia uma vaga do orcamento de turnos. Nao voltar a
-// mandar semente daqui: o servidor remove a que vier no corpo, mas o teto ja
-// estaria errado antes disso.
+// mandar semente daqui no fluxo normal: o servidor remove a que vier no corpo,
+// mas o teto ja estaria errado antes disso.
+//
+// O texto usado no retry de compatibilidade do turno de abertura (ver runTurn)
+// vem de @shared/aiRoadmap, a MESMA constante que o servidor usa: se as duas
+// divergissem, o backend novo deixaria de reconhecer a semente para remove-la.
+// REMOVER O RETRY APOS 2026-08-30; a constante fica, e do servidor.
 
 // TODO(Ana): revisar TODOS os textos deste bloco (copy da pagina, badges de
 // status, copy do chat e do resumo do intake).
@@ -418,7 +424,33 @@ export default function RoadmapIA() {
       setSending(true);
       setBlock(null);
       try {
-        const result = await sendIntakeChatTurn(history);
+        let result;
+        try {
+          result = await sendIntakeChatTurn(history);
+        } catch (err) {
+          // JANELA DE DEPLOY. O turno de ABERTURA vai com historico vazio, e o
+          // backend anterior a fase 2 rejeitava corpo vazio com invalid_request
+          // (ele contava com a semente que o client prefixava). Vercel e Railway
+          // sobem separados e a Vercel costuma terminar primeiro, entao existe
+          // uma janela de 1 a 3 minutos com este bundle contra aquele backend, e
+          // nela a conversa NAO ABRIA de jeito nenhum. O mesmo vale depois de um
+          // rollback do servidor, que nao tem prazo para acabar.
+          //
+          // A saida e uma tentativa unica com a semente antiga. Contra o backend
+          // NOVO ela e inofensiva (validateIntakeChatBody remove a semente em
+          // qualquer posicao, e o orcamento nao muda); contra o ANTIGO ela e
+          // exatamente o que ele espera. Some quando o backend antigo sair de
+          // circulacao: REMOVER APOS 2026-08-30.
+          const abrindoContraBackendAntigo =
+            isOpening &&
+            history.length === 0 &&
+            err instanceof IntakeChatApiError &&
+            err.code === "invalid_request";
+          if (!abrindoContraBackendAntigo) throw err;
+          result = await sendIntakeChatTurn([
+            { role: "user", content: CHAT_KICKOFF },
+          ]);
+        }
         setMessages([...history, { role: "assistant", content: result.reply }]);
         setIntake(result.intake);
         setMissing(result.missing);

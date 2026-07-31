@@ -33,6 +33,21 @@ export const AI_ROADMAP_SLUG_RE = /^ia-[a-z0-9]{8}$/;
 // modulos puros e o teste le os dois sem tocar em ambiente.
 export const ROADMAP_INTAKE_CHAT_DEFAULT_DAILY_LIMIT = 60;
 
+// Semente de abertura da conversa do chat de intake.
+//
+// Desde a fase 2 ela e INJETADA PELO SERVIDOR na montagem do prompt e nao conta
+// no orcamento de turnos; `validateIntakeChatBody` remove a que vier no corpo,
+// em qualquer posicao, para o bundle antigo em cache nao duplicar a semente.
+//
+// Mora em shared porque os DOIS lados precisam do MESMO texto e a igualdade e
+// silenciosa quando quebra: o client so a usa no retry de compatibilidade do
+// turno de abertura (janela de deploy contra backend antigo), e se os literais
+// divergirem o servidor novo deixa de reconhece-la para remover, a semente vira
+// mensagem de usuario e o orcamento fica um turno menor sem nada acusar. Duas
+// copias mantidas a mao sao a classe de defeito que o CLAUDE.md documenta.
+export const CHAT_KICKOFF =
+  "Quero montar meu roadmap de estudos. Pode comecar.";
+
 // Os 6 primeiros campos sao os do formulario original (enums + stackFocus +
 // extraContext) e NAO mudam: o resume de roadmaps partial legados reparseia o
 // que ficou gravado em ai_roadmaps.inputs, entao qualquer mudanca de shape neles

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { CHAT_KICKOFF } from "../../../shared/aiRoadmap";
 import { AI_TOOLS } from "../aiTools";
 import { env } from "../env";
 import { fetchWithTimeout } from "../http";
@@ -38,7 +39,11 @@ const MAX_TOKENS = 1_500;
 // nunca entra na contagem. `validateIntakeChatBody` REMOVE a semente se ela vier
 // no corpo, para o bundle antigo em cache (que ainda a prefixa) nao produzir
 // semente duplicada depois do deploy.
-export const CHAT_KICKOFF = "Quero montar meu roadmap de estudos. Pode comecar.";
+//
+// O TEXTO vem de shared/aiRoadmap.ts porque o client tambem precisa dele (retry
+// de compatibilidade do turno de abertura na janela de deploy) e as duas copias
+// tinham que ser identicas. Reexportado aqui para nao mudar quem ja importa.
+export { CHAT_KICKOFF };
 
 // ORCAMENTO DE TURNOS.
 //
@@ -78,7 +83,8 @@ export const MAX_USER_MESSAGES = 20;
 // A cota default (ROADMAP_INTAKE_CHAT_DEFAULT_DAILY_LIMIT) da 3 conversas
 // completas por dia, entao ha folga. O teste invariante trava a desigualdade.
 export const CONVERSAS_COMPLETAS_POR_DIA = 2;
-export const COTA_DIARIA_MINIMA = MAX_USER_MESSAGES * CONVERSAS_COMPLETAS_POR_DIA;
+export const COTA_DIARIA_MINIMA =
+  MAX_USER_MESSAGES * CONVERSAS_COMPLETAS_POR_DIA;
 
 // A partir de quantas mensagens restantes o modelo e instruido a aterrissar
 // (pular reperguntas e ir para o resumo). Ver "# Orcamento da conversa" no
@@ -135,15 +141,17 @@ export function compressHistory(
   if (size(messages) <= PROMPT_HISTORY_MAX_CHARS) return messages;
 
   const tail = messages.slice(-COMPRESS_KEEP_TAIL);
-  const head = messages.slice(0, Math.max(0, messages.length - COMPRESS_KEEP_TAIL));
-  while (head.length > 0 && size([...head, ...tail]) > PROMPT_HISTORY_MAX_CHARS) {
+  const head = messages.slice(
+    0,
+    Math.max(0, messages.length - COMPRESS_KEEP_TAIL),
+  );
+  while (
+    head.length > 0 &&
+    size([...head, ...tail]) > PROMPT_HISTORY_MAX_CHARS
+  ) {
     head.shift();
   }
-  return [
-    { role: "assistant", content: COMPRESS_MARKER },
-    ...head,
-    ...tail,
-  ];
+  return [{ role: "assistant", content: COMPRESS_MARKER }, ...head, ...tail];
 }
 
 // Campos do intake proposto pelo chat. NAO inclui format (nao perguntado; o
@@ -164,7 +172,9 @@ export const INTAKE_FIELDS = [
 // RoadmapIntakeSchema; stackFocus e os campos narrativos sao texto livre (o
 // stackFocus e normalizado depois do parse para respeitar o regex do schema).
 const IntakeProposalSchema = z.object({
-  goal: z.enum(["primeira-vaga", "transicao", "freela", "aprofundar"]).nullable(),
+  goal: z
+    .enum(["primeira-vaga", "transicao", "freela", "aprofundar"])
+    .nullable(),
   hoursPerWeek: z.enum(["ate-5", "5-10", "10-20", "20-mais"]).nullable(),
   deadline: z.enum(["3m", "6m", "12m", "sem-prazo"]).nullable(),
   stackFocus: z.string().nullable(),
@@ -187,7 +197,8 @@ export const IntakeChatTurnSchema = z.object({
 export type IntakeProposal = z.infer<typeof IntakeProposalSchema>;
 export type IntakeChatTurn = z.infer<typeof IntakeChatTurnSchema>;
 
-export const INTAKE_CHAT_JSON_SCHEMA = toOpenAIStrictSchema(IntakeChatTurnSchema);
+export const INTAKE_CHAT_JSON_SCHEMA =
+  toOpenAIStrictSchema(IntakeChatTurnSchema);
 
 export interface IntakeChatMessage {
   role: "user" | "assistant";
@@ -204,7 +215,10 @@ export type IntakeChatBodyValidation =
       userCount: number;
       restantes: number;
     }
-  | { ok: false; error: "invalid_request" | "payload_too_large" | "turn_limit" };
+  | {
+      ok: false;
+      error: "invalid_request" | "payload_too_large" | "turn_limit";
+    };
 
 // Remove a semente de abertura de qualquer posicao do historico.
 //
@@ -526,7 +540,10 @@ export async function runIntakeChatTurn(
     // Orcamento numa mensagem PROPRIA e nao no system prompt: o prompt e
     // estatico e o numero muda a cada turno; separa-los mantem o prompt grande
     // identico entre chamadas.
-    { role: "system", content: `Restam ${restantes} mensagens nesta conversa.` },
+    {
+      role: "system",
+      content: `Restam ${restantes} mensagens nesta conversa.`,
+    },
     { role: "user", content: CHAT_KICKOFF },
     ...compressHistory(messages).map((m) => ({
       role: m.role,

@@ -118,6 +118,24 @@ describe("validateIntakeChatBody: a semente NAO conta no orcamento", () => {
       expect(r.restantes).toBe(MAX_USER_MESSAGES);
     }
   });
+
+  // JANELA DE DEPLOY, o outro sentido. O bundle novo abre a conversa com
+  // historico vazio; se a Vercel subir antes do Railway, esse corpo bate no
+  // backend ANTIGO, que rejeitava vazio com invalid_request. O client tem um
+  // retry unico que reenvia so a semente (ver runTurn em RoadmapIA.tsx), e este
+  // teste trava o lado do servidor NOVO: aquele mesmo corpo de compatibilidade
+  // precisa continuar valendo, e a semente nao pode entrar no orcamento.
+  it("o corpo do retry de compatibilidade (so a semente) abre a conversa sem gastar turno", () => {
+    const r = validateIntakeChatBody({
+      messages: [{ role: "user" as const, content: CHAT_KICKOFF }],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.messages).toHaveLength(0);
+      expect(r.userCount).toBe(0);
+      expect(r.restantes).toBe(MAX_USER_MESSAGES);
+    }
+  });
 });
 
 describe("validateIntakeChatBody: desbloqueio de quem ficou preso", () => {
