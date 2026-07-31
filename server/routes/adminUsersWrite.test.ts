@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -21,6 +23,8 @@ const estado = vi.hoisted(() => ({
   invalidateProCache: null as unknown as ReturnType<typeof vi.fn>,
   stripeSubscriptionUpdate: null as unknown as ReturnType<typeof vi.fn>,
   stripeRefundCreate: null as unknown as ReturnType<typeof vi.fn>,
+  stripeRefundList: null as unknown as ReturnType<typeof vi.fn>,
+  stripeSubscriptionCancel: null as unknown as ReturnType<typeof vi.fn>,
   syncBalance: null as unknown as ReturnType<typeof vi.fn>,
 }));
 
@@ -64,8 +68,14 @@ vi.mock("../lib/supabaseAdmin", () => ({
 vi.mock("../lib/stripeClient", () => ({
   getStripe: () => ({
     customers: { update: estado.stripeUpdate },
-    subscriptions: { update: estado.stripeSubscriptionUpdate },
-    refunds: { create: estado.stripeRefundCreate },
+    subscriptions: {
+      update: estado.stripeSubscriptionUpdate,
+      cancel: estado.stripeSubscriptionCancel,
+    },
+    refunds: {
+      create: estado.stripeRefundCreate,
+      list: estado.stripeRefundList,
+    },
   }),
   STRIPE_API_VERSION: "2026-06-24.dahlia",
 }));
@@ -128,11 +138,26 @@ const PERFIL_BASE = {
   updated_at: "2026-07-30T12:00:00Z",
 };
 
+/**
+ * Duas tabelas ganham resposta VAZIA por padrão: `admin_refunds`, lida por toda
+ * rota de devolução para juntar a segunda fonte do extrato, e `influencers`,
+ * lida para saber se o Pro sobrevive à revogação. As duas são consultadas em
+ * TODO caminho, inclusive nos que não têm nada a ver com elas, e obrigar cada
+ * teste a declarar "não tenho nenhuma" seria ruído sem asserção.
+ *
+ * O default NÃO enfraquece as outras defesas do dublê: a validação de coluna
+ * continua valendo (foi ela que recusou `settlement` antes da migration), e
+ * qualquer OUTRA tabela não registrada continua lançando. Um teste que precise
+ * de linhas nelas sobrescreve, porque o spread do chamador vem depois.
+ */
 function montar(
   respostas: Record<string, RespostaTabela | (() => RespostaTabela)>,
   authAdmin: Record<string, unknown> = {},
 ) {
-  estado.double = criarSupabaseDouble(respostas, authAdmin);
+  estado.double = criarSupabaseDouble(
+    { admin_refunds: { rows: [] }, influencers: { rows: [] }, ...respostas },
+    authAdmin,
+  );
 }
 
 beforeEach(() => {
@@ -143,6 +168,9 @@ beforeEach(() => {
     id: "re_1",
     status: "succeeded",
   }));
+  // Padrão: a Stripe NÃO tem reembolso nesta cobrança, que é o caso (b).
+  estado.stripeRefundList = vi.fn(async () => ({ data: [] }));
+  estado.stripeSubscriptionCancel = vi.fn(async () => ({}));
   estado.syncBalance = vi.fn(async () => ({
     processed: 0,
     upserted: 0,
@@ -924,7 +952,10 @@ describe("POST /users/:id/refunds", () => {
     montar({
       finance_transactions: { rows: [linha()] },
       content_audit_logs: { rows: [{}] },
-      admin_refunds: { rows: [{}] },
+      admin_refunds: { rows: [] },
+      // Sem assinatura vigente: a revogação não tem o que revogar, e isso não é
+      // falha. O caminho que REVOGA tem bloco próprio mais abaixo.
+      subscriptions: { rows: [] },
     });
 
     const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
@@ -1105,7 +1136,11 @@ describe("POST /users/:id/refunds", () => {
 
     expect(r.status).toBe(502);
     expect(r.body.error.message).toContain("Nada foi devolvido");
-    expect(estado.double.de("admin_refunds")).toHaveLength(0);
+    // Só INSERTS: a rota LÊ admin_refunds antes de validar (é a segunda fonte
+    // do extrato), então contar todas as chamadas passaria a contar a leitura.
+    expect(
+      estado.double.de("admin_refunds").filter((c) => c.op === "insert"),
+    ).toHaveLength(0);
   });
 
   it("sync falhando DEPOIS do refund responde 200 sinalizando o que faltou", async () => {
@@ -1115,7 +1150,8 @@ describe("POST /users/:id/refunds", () => {
     montar({
       finance_transactions: { rows: [linha()] },
       content_audit_logs: { rows: [{}] },
-      admin_refunds: { rows: [{}] },
+      admin_refunds: { rows: [] },
+      subscriptions: { rows: [] },
     });
     estado.syncBalance = vi.fn(async () => {
       throw new Error("stripe timeout");
@@ -1134,11 +1170,41 @@ describe("POST /users/:id/refunds", () => {
     });
   });
 
+  it("leitura das declarações falhando aborta ANTES da Stripe", async () => {
+    // Fail-closed de propósito: sem as declarações o teto recomputado ficaria
+    // ALTO DEMAIS (uma devolução externa já registrada não seria descontada) e a
+    // rota autorizaria devolver de novo dinheiro que já voltou.
+    montar({
+      finance_transactions: { rows: [linha()] },
+      admin_refunds: { error: { message: "timeout" } },
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      reason: "x",
+    });
+
+    expect(r.status).toBe(500);
+    expect(estado.stripeRefundCreate).not.toHaveBeenCalled();
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+  });
+
   it("gravação local falhando DEPOIS do refund loga INCONSISTENCIA e responde 200", async () => {
+    // A rota toca admin_refunds DUAS vezes: lê as declarações antes de validar e
+    // grava o resultado depois da Stripe. Só a SEGUNDA falha aqui, senão o teste
+    // exercitaria o caminho de leitura (que aborta antes) em vez do de escrita.
+    let chamadasRefunds = 0;
     montar({
       finance_transactions: { rows: [linha()] },
       content_audit_logs: { rows: [{}] },
-      admin_refunds: { error: { message: "timeout" } },
+      admin_refunds: () => {
+        chamadasRefunds += 1;
+        return chamadasRefunds === 1
+          ? { rows: [] }
+          : { error: { message: "timeout" } };
+      },
+      subscriptions: { rows: [] },
     });
     const erroSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 

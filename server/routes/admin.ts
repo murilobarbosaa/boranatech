@@ -52,7 +52,12 @@ import {
   validateRefundRequest,
   type RefundReason,
 } from "../lib/refund";
-import { buildTransactionList, type FinanceRow } from "../lib/userTransactions";
+import {
+  buildTransactionList,
+  totalPagoCents,
+  type DeclaredRefund,
+  type FinanceRow,
+} from "../lib/userTransactions";
 import {
   buildAuditHistory,
   type AuditLogRow,
@@ -1197,8 +1202,14 @@ router.get("/users/:id", async (req, res, next) => {
     // Assinatura (a mais recente), intencao de cancelamento agendada, valor
     // pago real e acesso de influencer, em paralelo. Quem nunca assinou vem com
     // null: estado legitimo, nao erro.
-    const [subResult, cancelResult, financeResult, influencerResult, authResult] =
-      await Promise.all([
+    const [
+      subResult,
+      cancelResult,
+      financeResult,
+      influencerResult,
+      authResult,
+      declaradasResult,
+    ] = await Promise.all([
       // TODAS as assinaturas do usuario, nao a mais recente. A escolha de qual
       // representa a pessoa e de pickSubscription, a MESMA funcao que a lista
       // usa (server/lib/userListEnrichment.ts).
@@ -1225,11 +1236,18 @@ router.get("/users/:id", async (req, res, next) => {
         .order("canceled_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
-      // Valor pago: soma de gross_cents dos types charge, refund e dispute.
+      // Valor pago: a MESMA conta do extrato, pela MESMA funcao
+      // (totalPagoCents em server/lib/userTransactions.ts). Ate 2026-07-30 este
+      // ponto tinha o proprio reduce, e duas somas da mesma coisa divergem no
+      // primeiro caso real: bastava uma devolucao externa registrada para o
+      // extrato dizer "reembolsada" e o total logo acima dizer que o dinheiro
+      // ficou. Uma funcao, uma conta.
+      //
       // gross_cents e NEGATIVO em refund e dispute (invariante declarada na
-      // coluna, migration 20260714130000), entao a soma liquida devolucao e
-      // chargeback sem precisar de sinal aqui. payout e adjustment ficam de
-      // fora: sao movimentos da conta Stripe, nao pagamentos do usuario.
+      // coluna, migration 20260714130000), entao as linhas sincronizadas ja
+      // entram com sinal. payout e adjustment ficam de fora: sao movimentos da
+      // conta Stripe, nao pagamentos do usuario. O filtro por tipo vive DENTRO
+      // de totalPagoCents, por isso a query nao filtra mais aqui.
       //
       // A subtracao DEPENDE de refund/dispute terem user_id preenchido, senao
       // o .eq("user_id", uid) simplesmente nao os enxerga e o total fica bruto.
@@ -1240,9 +1258,8 @@ router.get("/users/:id", async (req, res, next) => {
       // manter a atribuicao volta a mentir aqui, em silencio.
       supabaseAdmin
         .from("finance_transactions")
-        .select("gross_cents")
-        .eq("user_id", uid)
-        .in("type", ["charge", "refund", "dispute"]),
+        .select("type, gross_cents")
+        .eq("user_id", uid),
       // Concessao de influencer ATIVA (revoked_at null); o indice unico parcial
       // garante no maximo uma.
       supabaseAdmin
@@ -1256,6 +1273,9 @@ router.get("/users/:id", async (req, res, next) => {
       // activity_status. Custo O(1) por request de detalhe (nao e o scan de
       // listUsers do filtro ATIVO, que varre a base inteira).
       supabaseAdmin.auth.admin.getUserById(uid),
+      // Segunda fonte do "Valor pago (total)": devolucoes que a Stripe nunca
+      // soube. Ver o comentario da query de finance acima.
+      lerDeclaracoesDeDevolucao(uid),
     ]);
 
     if (subResult.error)
@@ -1285,6 +1305,14 @@ router.get("/users/:id", async (req, res, next) => {
     if (authResult.error)
       return next(
         dbError("user auth lookup", authResult.error, "Erro ao buscar usuário."),
+      );
+    if (!declaradasResult.ok)
+      return next(
+        dbError(
+          "user refund declarations",
+          { message: declaradasResult.message },
+          "Erro ao buscar usuário.",
+        ),
       );
 
     // Status de atividade a partir de last_sign_in_at, com a MESMA janela do
@@ -1393,9 +1421,9 @@ router.get("/users/:id", async (req, res, next) => {
         ? await lerSessaoDeBoleto(subRow.provider_subscription_id)
         : null;
 
-    const paidTotalCents = (financeResult.data || []).reduce(
-      (sum, row) => sum + (row.gross_cents ?? 0),
-      0,
+    const paidTotalCents = totalPagoCents(
+      financeResult.data || [],
+      declaradasResult.linhas,
     );
 
     // Origem do acesso Pro, para o cabecalho do modal usar o MESMO selo da
@@ -1705,6 +1733,20 @@ const refundLimiter = criarLimitadorDeReembolso({
   janelaMs: 60_000,
 });
 
+/** Declarações de devolução do usuário, para a agregação juntar as duas fontes. */
+async function lerDeclaracoesDeDevolucao(
+  uid: string,
+): Promise<
+  { ok: true; linhas: DeclaredRefund[] } | { ok: false; message: string }
+> {
+  const { data, error } = await supabaseAdmin
+    .from("admin_refunds")
+    .select("stripe_charge_id, amount_cents, settlement")
+    .eq("user_id", uid);
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, linhas: (data || []) as DeclaredRefund[] };
+}
+
 // EMISSÃO DE REEMBOLSO. Única ação da demanda sem desfazer.
 //
 // NÃO respeita BILLING_ENABLED de propósito: o kill-switch existe para parar de
@@ -1770,7 +1812,23 @@ router.post("/users/:id/refunds", async (req, res, next) => {
         dbError("refund lookup", linhasError, "Erro ao emitir o reembolso."),
       );
 
-    const extrato = buildTransactionList((linhas || []) as FinanceRow[]);
+    // As declarações entram no MESMO agregado, senão o teto recomputado aqui
+    // ignoraria uma devolução externa já registrada e autorizaria devolver de
+    // novo dinheiro que já voltou.
+    const declaradas = await lerDeclaracoesDeDevolucao(uid);
+    if (!declaradas.ok)
+      return next(
+        dbError(
+          "refund declarations",
+          { message: declaradas.message },
+          "Erro ao emitir o reembolso.",
+        ),
+      );
+
+    const extrato = buildTransactionList(
+      (linhas || []) as FinanceRow[],
+      declaradas.linhas,
+    );
     const alvo = extrato.items.find(
       (item) => item.stripe_charge_id === chargeId && item.type === "charge",
     );
@@ -1902,6 +1960,10 @@ router.post("/users/:id/refunds", async (req, res, next) => {
         reason: validacao.reason,
         stripe_reason: stripeReason,
         stripe_status: refund.status,
+        // Resultado de uma chamada NOSSA. A balance transaction correspondente
+        // vira linha em finance_transactions pelo sync, então esta linha NÃO
+        // entra na agregação do extrato: contaria o mesmo dinheiro duas vezes.
+        settlement: "stripe_api",
       });
     if (registroError) {
       console.error(
@@ -2480,10 +2542,24 @@ router.get("/users/:id/transactions", async (req, res, next) => {
         dbError("user transactions", error, "Erro ao buscar as compras."),
       );
 
+    // Segunda fonte: devoluções que a Stripe nunca soube. Falha aqui é
+    // fail-loud, não lista vazia: um extrato sem as declarações mostraria a
+    // cobrança como não reembolsada e ofereceria um botão de devolver de novo.
+    const declaradas = await lerDeclaracoesDeDevolucao(uid);
+    if (!declaradas.ok)
+      return next(
+        dbError(
+          "user refund declarations",
+          { message: declaradas.message },
+          "Erro ao buscar as compras.",
+        ),
+      );
+
     const rows = data || [];
     const truncated = rows.length > TRANSACTIONS_LIMIT;
     const list = buildTransactionList(
       (truncated ? rows.slice(0, TRANSACTIONS_LIMIT) : rows) as FinanceRow[],
+      declaradas.linhas,
     );
 
     // truncated vai na resposta para a UI poder AVISAR. Corte silencioso e a

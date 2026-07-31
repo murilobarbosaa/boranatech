@@ -93,11 +93,21 @@ const chamarAdmin = criarClienteAdmin(adminRouter);
 const UID = "11111111-1111-1111-1111-111111111111";
 const FUTURO = "2030-01-01T00:00:00Z";
 
+/**
+ * `admin_refunds` ganha resposta VAZIA por padrão: desde 2026-07-30 ela é a
+ * segunda fonte do extrato (devoluções que a Stripe nunca soube) e por isso é
+ * lida no detalhe, no extrato e no histórico. Obrigar cada teste a declarar "não
+ * tenho nenhuma devolução" seria ruído sem asserção. Um teste que precise de
+ * linhas sobrescreve, porque o spread do chamador vem depois.
+ */
 function montar(
   respostas: Record<string, RespostaTabela | (() => RespostaTabela)>,
   authAdmin: Record<string, unknown> = {},
 ) {
-  estado.double = criarSupabaseDouble(respostas, authAdmin);
+  estado.double = criarSupabaseDouble(
+    { admin_refunds: { rows: [] }, ...respostas },
+    authAdmin,
+  );
 }
 
 beforeEach(() => {

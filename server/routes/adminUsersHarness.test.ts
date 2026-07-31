@@ -149,8 +149,9 @@ const EMBEDS_CONHECIDOS = new Set(["plans"]);
  * rodar `pnpm db:types`.
  */
 const COLUNAS_PENDENTES: Array<{ tabela: string; coluna: string }> = [
-  // Vazia agora: a migration 20260730140000 foi aplicada e os tipos foram
-  // regenerados, então canceled_by saiu daqui. É o estado normal.
+  // 20260730190000_admin_refunds_settlement_and_revoke_action.sql, ainda NÃO
+  // aplicada. Sai daqui depois do db:push e do pnpm db:types.
+  { tabela: "admin_refunds", coluna: "settlement" },
 ];
 
 function colunasDeclaradasEmMigrations(): Set<string> {
@@ -462,13 +463,12 @@ describe("o dublê falha em vez de aceitar qualquer query", () => {
 
 describe("a exceção de coluna pendente de migration é conferida, não confiada", () => {
   it("só vale para coluna que ALGUMA migration do repositório declara", () => {
-    // Com a lista VAZIA (estado normal) o laço abaixo não roda, e um teste que
-    // não afirma nada é pior que teste nenhum. Por isso o mecanismo é
-    // exercitado direto: uma coluna real declarada em migration é reconhecida,
-    // e uma inventada não. Assim o teste continua tendo o que provar mesmo
-    // quando não há pendência.
+    // O mecanismo é exercitado direto, e não só através da lista de pendentes:
+    // quando ela está vazia (estado normal) o laço abaixo não roda, e um teste
+    // que não afirma nada é pior que teste nenhum.
     const declaradas = colunasDeclaradasEmMigrations();
     expect(declaradas.has("canceled_by")).toBe(true);
+    expect(declaradas.has("settlement")).toBe(true);
     expect(declaradas.has("coluna_que_nenhuma_migration_declara")).toBe(false);
 
     for (const { tabela, coluna } of COLUNAS_PENDENTES) {

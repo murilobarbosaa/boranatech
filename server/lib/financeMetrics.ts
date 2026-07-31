@@ -5,6 +5,55 @@ import { supabaseAdmin } from "./supabaseAdmin";
 // inteiros. REGRA DE OURO: erro propaga; ausencia e estado nomeado; margem com
 // receita <= 0 e null, nunca 0.
 
+// ---------------------------------------------------------------------------
+// DIVERGENCIA CONHECIDA E NAO CORRIGIDA: devolucao externa.
+//
+// Desde 2026-07-30 o admin pode REGISTRAR uma devolucao feita fora da Stripe
+// (boleto devolvido por PIX ou TED da conta da empresa). Ela vive em
+// admin_refunds com settlement='external' e NAO existe em finance_transactions,
+// porque essa tabela e sincronizada exclusivamente da Stripe e continua assim.
+//
+// Consequencia: o extrato do usuario (server/lib/userTransactions.ts, que junta
+// as duas fontes) desconta a devolucao, e ESTE arquivo nao. Duas telas
+// discordando sobre o mesmo dinheiro.
+//
+// MEDIDO, para uma devolucao externa de N centavos dentro da janela consultada:
+//
+//   getFinanceSummary
+//     reembolsosCents        SUBESTIMADO em N   (so soma linhas type='refund')
+//     receitaLiquidaCents    SUPERESTIMADO em N (so soma net_cents existentes)
+//     lucroCents             SUPERESTIMADO em N (deriva da receita liquida)
+//     margemPercent          SUPERESTIMADO      (deriva dos dois acima)
+//     receitaBrutaCents      correto            (bruto e bruto; so soma charge)
+//     taxasStripeCents       correto            (nao houve taxa da Stripe)
+//     receitaPorPlano        inalterado         (ja e cego a reembolso, porque
+//                                                so acumula em type='charge';
+//                                                vale tambem para reembolso da
+//                                                Stripe, nao e novo)
+//   getFinanceTimeseries
+//     receitaLiquidaCents    SUPERESTIMADO em N no mes da declaracao
+//     lucroCents             SUPERESTIMADO em N no mes da declaracao
+//   getDeferredRevenue
+//     inalterado. A revogacao que acompanha a devolucao poe a assinatura em
+//     status='canceled', e o filtro in('active','trialing') a tira do conjunto
+//     sozinho. Nao ha nada a corrigir aqui.
+//
+// EFEITO HOJE: ZERO. Nenhuma linha com settlement='external' existe ainda.
+//
+// CAMINHO MAIS BARATO DE RECONCILIAR, sem tocar na natureza Stripe-only de
+// finance_transactions: `loadTransactions` e o UNICO ponto de leitura dos dois
+// consumidores acima. Basta ele concatenar, EM MEMORIA, uma linha sintetica por
+// declaracao externa da janela:
+//
+//   { type: 'refund', gross_cents: -amount, fee_cents: 0,
+//     net_cents: -amount, plan_code: null, occurred_at: created_at }
+//
+// Uma consulta a mais e um map. Nada e escrito, e os dois consumidores se
+// corrigem juntos porque os dois ja passam por loadTransactions. NAO foi feito
+// nesta fatia de proposito: a fatia era revogar acesso, e o efeito e zero ate a
+// primeira declaracao existir.
+// ---------------------------------------------------------------------------
+
 // Tipos que compoem a receita (payout e movimento pro banco, nao receita).
 const REVENUE_TYPES: readonly string[] = [
   "charge",
