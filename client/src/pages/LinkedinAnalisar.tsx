@@ -605,6 +605,21 @@ export default function LinkedinAnalisar() {
   const [reguaMudou, setReguaMudou] = useState(false);
   // Confirmacao leve da reanalise (consome 1 uso de IA).
   const [confirmReanalyze, setConfirmReanalyze] = useState(false);
+  /**
+   * A pessoa clicou em reanalisar e voltou para a entrada para trocar o texto.
+   *
+   * O botao RODAVA a analise de novo com o texto que ja estava em memoria, entao
+   * quem aplicava as melhorias e clicava recebia a MESMA nota, gastava cota e
+   * aprendia que as melhorias nao funcionam. Medido nas 157 linhas: 32 pares
+   * consecutivos analisaram texto identico e 25 (78%) devolveram nota identica;
+   * a sequencia mais clara teve 4 cliques em 13 minutos, quatro vezes nota 51.
+   */
+  const [editandoParaReanalisar, setEditandoParaReanalisar] = useState(false);
+  /**
+   * Texto que produziu o resultado exibido. Guardado no momento do envio, nao
+   * derivado do `form`, que a pessoa edita em seguida.
+   */
+  const [textoDoResultado, setTextoDoResultado] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const areaTouched = useRef(false);
   // Ancora do topo do cenario (container do header integrado): alvo da
@@ -825,6 +840,7 @@ export default function LinkedinAnalisar() {
 
     // Nota da analise imediatamente anterior, capturada ANTES da nova entrar
     // no historico (a lista vem em ordem decrescente).
+    const textoEnviado = form.profileText.trim();
     const priorScore = analyses[0]?.score ?? null;
     const priorVersion = analyses[0]
       ? versaoDe(analyses[0].deterministicVersion)
@@ -832,7 +848,8 @@ export default function LinkedinAnalisar() {
 
     try {
       const { data, analysisId: newAnalysisId } = await analyzeLinkedin({
-        profileText: form.profileText.trim(),
+        profileText: textoEnviado,
+        entryPath,
         area: form.area,
         level: form.level,
         mercado: form.mercado,
@@ -846,6 +863,10 @@ export default function LinkedinAnalisar() {
       });
       setResult(data);
       setAnalysisId(newAnalysisId);
+      // Texto que produziu ESTE resultado, para a proxima reanalise saber
+      // comparar. Guardado no envio, nao derivado do form (que a pessoa edita).
+      setTextoDoResultado(textoEnviado);
+      setEditandoParaReanalisar(false);
       // FUNIL UNICO do delta: todas as supressoes moram em decidirDelta.
       aplicarDelta(
         decidirDelta({
@@ -981,11 +1002,28 @@ export default function LinkedinAnalisar() {
   // Estado de ENTRADA: sem analise em andamento, sem erro e sem resultado. E
   // onde vivem o cenario, a explicacao (timeline + vitrine), as pills e o
   // historico colapsavel.
-  const showEntry = !loading && !error && !result;
+  const showEntry = (!loading && !error && !result) || editandoParaReanalisar;
   // Estado de RESULTADO: e o unico em que o palco de intake NAO renderiza (a
   // saida e o link Nova analise do header); erro mantem o palco pra pessoa
   // corrigir o texto e tentar de novo.
-  const showResult = !loading && !error && result !== null;
+  const showResult = !loading && !error && result !== null && !editandoParaReanalisar;
+
+  /**
+   * O texto que a pessoa vai enviar e o MESMO que produziu o resultado exibido?
+   *
+   * Comparacao LOCAL de string, e nao do `textoHash` persistido, de proposito: o
+   * texto que gerou o resultado ja esta aqui (o `form` inteiro vive no
+   * sessionStorage), entao hashear no browser seria trabalho para responder uma
+   * pergunta que uma comparacao direta responde melhor. O `textoHash` gravado no
+   * `input` serve DURABILIDADE e FORENSE (saber depois se duas analises leram o
+   * mesmo perfil, sem guardar o perfil), nao o fluxo desta tela.
+   *
+   * `null` quando nao ha com o que comparar (primeira analise da sessao).
+   */
+  const textoIgualAoAnalisado =
+    textoDoResultado === null
+      ? null
+      : textoDoResultado === form.profileText.trim();
 
   // Checks da analise exibida agrupados por categoria: cada secao do
   // prontuario recebe SO os seus (checks nao aplicaveis ao mercado nem vem
@@ -1522,6 +1560,22 @@ export default function LinkedinAnalisar() {
                             ))}
                           </ul>
                         </div>
+                      ) : null}
+
+                      {/* Aviso AMBAR de texto igual: o botao segue ATIVO de
+                          proposito. Bloquear erraria dois casos legitimos, os
+                          dois medidos nas 157 linhas: mexer so nos 5 sinais
+                          autodeclarados (foto, banner, conexoes) e mexer so no
+                          formulario (area, nivel, mercado, objetivo) movem nota
+                          de verdade e nao tocam no texto. Bloquear diria "nada
+                          mudou" para quem mudou algo. */}
+                      {entryPath !== "pdf" && textoIgualAoAnalisado === true ? (
+                        <FeedbackBanner variant="warn">
+                          Este é o mesmo texto da sua última análise. A nota do
+                          perfil não vai mudar, só o que depende dos campos do
+                          formulário. Exporte o PDF de novo para a gente ver o
+                          que você mudou no perfil.
+                        </FeedbackBanner>
                       ) : null}
 
                       {entryPath !== "pdf" ? (
@@ -2106,11 +2160,23 @@ export default function LinkedinAnalisar() {
                         confirmacao em 2 passos e o custo explicito de
                         sempre, celebrando no N de N. */}
                     <Reveal>
+                      {/* Leva de VOLTA a entrada com o formulario preenchido,
+                          em vez de rodar de novo com o texto velho. Sem texto
+                          novo a nota nao tem como mudar: e o mesmo texto na
+                          mesma regua. */}
                       <ReanalyzeCta
                         confirming={confirmReanalyze}
                         onStart={() => setConfirmReanalyze(true)}
-                        onConfirm={() => void runAnalysis()}
+                        onConfirm={() => {
+                          setConfirmReanalyze(false);
+                          setEditandoParaReanalisar(true);
+                          setEntryPath("pdf");
+                          scrollToStageTop();
+                        }}
                         onCancel={() => setConfirmReanalyze(false)}
+                        startLabel="Apliquei as melhorias, quero medir de novo"
+                        helper="Leva você de volta ao início com tudo preenchido. Exporte o PDF de novo para a gente ver o que mudou."
+                        confirmLabel="Trocar o texto do perfil"
                         spotlight
                         celebrate={allApplied}
                       />
