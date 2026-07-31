@@ -33,6 +33,7 @@ import { UserTransactions } from "./UserTransactions";
 import { EditableField, GenderField } from "./UserEditFields";
 import { EmailChangeDialog } from "./EmailChangeDialog";
 import { CancelSubscriptionDialog } from "./CancelSubscriptionDialog";
+import { ExternalRefundDialog } from "./ExternalRefundDialog";
 import { RefundDialog } from "./RefundDialog";
 import { useProfileEdit } from "./useProfileEdit";
 import {
@@ -198,6 +199,8 @@ export function UserDetailModal({
   const [emailOpen, setEmailOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [refundAlvo, setRefundAlvo] = useState<TransactionItem | null>(null);
+  const [externalRefundAlvo, setExternalRefundAlvo] =
+    useState<TransactionItem | null>(null);
 
   // FUNIL UNICO de fechamento: o botao "Fechar", o Esc e qualquer caminho
   // futuro passam por aqui. Hoje so repassa o onClose; existe porque a Fatia 5
@@ -222,6 +225,7 @@ export function UserDetailModal({
     setEmailOpen(false);
     setCancelOpen(false);
     setRefundAlvo(null);
+    setExternalRefundAlvo(null);
     onClose();
   }
 
@@ -669,6 +673,7 @@ export function UserDetailModal({
                     error={transactionsError}
                     payload={transactions}
                     onRefund={setRefundAlvo}
+                    onExternalRefund={setExternalRefundAlvo}
                   />
                 </div>
               </Section>
@@ -1105,9 +1110,21 @@ export function UserDetailModal({
         <RefundDialog
           userId={userId}
           charge={refundAlvo}
+          influencer={Boolean(detail?.influencer)}
           open={refundAlvo !== null}
           onOpenChange={(aberto) => {
             if (!aberto) setRefundAlvo(null);
+          }}
+          onDone={() => setDetailVersion((version) => version + 1)}
+        />
+
+        <ExternalRefundDialog
+          userId={userId}
+          charge={externalRefundAlvo}
+          influencer={Boolean(detail?.influencer)}
+          open={externalRefundAlvo !== null}
+          onOpenChange={(aberto) => {
+            if (!aberto) setExternalRefundAlvo(null);
           }}
           onDone={() => setDetailVersion((version) => version + 1)}
         />

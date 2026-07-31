@@ -159,6 +159,13 @@ export type TransactionItem = {
   plan_code: string | null;
   /** Magnitude positiva; 0 em linhas que nao sao charge. */
   refunded_cents: number;
+  /**
+   * Quanto de refunded_cents veio de DECLARACAO do admin (devolucao feita fora
+   * da Stripe), nao do sync. OPCIONAL de proposito: na janela de deploy o
+   * frontend novo fala com o backend antigo, que nao manda este campo, e um
+   * acesso direto a `undefined` na aritmetica de exibicao pintaria NaN.
+   */
+  refunded_external_cents?: number;
   disputed_cents: number;
   disputed: boolean;
   refund_state: string;
@@ -220,4 +227,21 @@ export type SubscriptionHistoryItem = {
   payment_method: string | null;
   created_at: string | null;
   current_period_end: string | null;
+};
+
+/**
+ * O que aconteceu com o ACESSO depois de uma devolucao. `should_revoke` e a
+ * decisao do servidor e `revoked` e o resultado: os dois separados porque
+ * `should_revoke && !revoked` e o estado meio-feito (dinheiro devolvido, acesso
+ * mantido) que a tela precisa saber distinguir de "nao havia o que revogar".
+ *
+ * `reason` e `string`, nao a uniao dos valores conhecidos, pela regra do
+ * projeto: um motivo novo no backend nao pode quebrar o bundle em execucao.
+ */
+export type RefundAccessOutcome = {
+  should_revoke: boolean;
+  revoked: boolean;
+  reason: string;
+  detail: string | null;
+  still_pro_via_influencer: boolean;
 };

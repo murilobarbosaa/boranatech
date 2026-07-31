@@ -1402,7 +1402,9 @@ describe("reembolso (Fatia 7)", () => {
         return Promise.resolve({ data: { email: null, usage: [] } });
       if (path.endsWith("/activity"))
         return Promise.resolve({ data: { state: "ok", hasData: false } });
-      return Promise.resolve(detalhe());
+      // `over.detalhe` permite variar o usuário (influencer, por exemplo) sem
+      // duplicar todo o roteamento.
+      return Promise.resolve(over.detalhe ?? detalhe());
     });
   }
 
@@ -1460,7 +1462,11 @@ describe("reembolso (Fatia 7)", () => {
     ).toBeTruthy();
   });
 
-  it("passo 2 diz que é irreversível e que a assinatura NÃO será cancelada", async () => {
+  it("passo 2 avisa que o acesso será removido NA HORA no reembolso total", async () => {
+    // Trava da decisão revertida: até 2026-07-30 este passo dizia que a
+    // assinatura NÃO seria cancelada. Agora um reembolso que zera o saldo
+    // remove o Pro imediatamente, e o texto tem que acompanhar, senão a tela
+    // promete uma coisa e o servidor faz outra.
     await abrirRefund();
     fireEvent.change(screen.getByLabelText(/Motivo/), {
       target: { value: "x" },
@@ -1470,9 +1476,55 @@ describe("reembolso (Fatia 7)", () => {
     expect(
       (await screen.findByTestId("aviso-irreversivel")).textContent,
     ).toContain("irreversível");
-    expect(screen.getByTestId("aviso-assinatura").textContent).toContain(
-      "não será cancelada",
-    );
+
+    const aviso = screen.getByTestId("aviso-assinatura").textContent ?? "";
+    expect(aviso).toContain("acesso Pro será removido na hora");
+    // E a promessa antiga não pode ter sobrado em lugar nenhum do diálogo.
+    expect(aviso).not.toContain("não será cancelada");
+  });
+
+  it("passo 2 diz que o acesso é MANTIDO quando o reembolso é parcial", async () => {
+    // O outro lado da regra condicional. Sem este teste, uma tela que avisasse
+    // "removido na hora" em todo caminho passaria no teste acima e mentiria
+    // exatamente no caso que a fatia existe para preservar.
+    await abrirRefund();
+    fireEvent.click(screen.getByRole("button", { name: "Parcial" }));
+    fireEvent.change(screen.getByLabelText(/Valor \(R\$\)/), {
+      target: { value: "50,00" },
+    });
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "x" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+
+    const aviso =
+      (await screen.findByTestId("aviso-assinatura")).textContent ?? "";
+    expect(aviso).toContain("acesso Pro é mantido");
+    expect(aviso).not.toContain("removido na hora");
+  });
+
+  it("com INFLUENCER, o passo 2 avisa que o Pro sobrevive à revogação", async () => {
+    rotearRefund(compraRef(), {
+      detalhe: detalhe({
+        influencer: {
+          granted_at: "2026-01-01T00:00:00Z",
+          note: null,
+          granted_by_name: "Ana",
+          granted_by_email: null,
+        },
+      }),
+    });
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(await screen.findByRole("button", { name: "Reembolsar" }));
+    fireEvent.change(await screen.findByLabelText(/Motivo/), {
+      target: { value: "x" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(
+      (await screen.findByTestId("aviso-assinatura")).textContent,
+    ).toContain("influencer");
   });
 
   it("o botão só libera quando o valor é DIGITADO corretamente", async () => {
@@ -1729,5 +1781,266 @@ describe("historico administrativo no modal (Fatia 8)", () => {
 
     const secao = await screen.findByTestId("user-audit");
     expect(within(secao).getByText("acao_do_futuro")).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Registro de devolução de boleto.
+//
+// Boleto não tem devolução automática. A tela não devolve dinheiro: ela registra
+// a palavra do admin sobre algo que aconteceu fora daqui.
+// ---------------------------------------------------------------------------
+
+describe("registro de devolução de boleto", () => {
+  function compraBoleto(over: Record<string, unknown> = {}) {
+    return {
+      id: "ft-boleto",
+      type: "charge",
+      gross_cents: 14874,
+      fee_cents: 0,
+      net_cents: 14874,
+      currency: "BRL",
+      occurred_at: "2026-07-01T12:00:00Z",
+      // py_ é o discriminador de boleto, o mesmo que o servidor usa.
+      stripe_charge_id: "py_1",
+      stripe_invoice_id: null,
+      plan_code: "pro_annual",
+      refunded_cents: 0,
+      disputed_cents: 0,
+      disputed: false,
+      refund_state: "none",
+      refundable_cents: 14874,
+      ...over,
+    };
+  }
+
+  const postados: Array<Record<string, unknown>> = [];
+
+  function rotear(
+    item: Record<string, unknown>,
+    over: Record<string, unknown> = {},
+  ) {
+    postados.length = 0;
+    fetchMock.mockImplementation(
+      (path: string, init?: { method?: string; body?: string }) => {
+        if (path.includes("/external-refunds") && init?.method === "POST") {
+          postados.push(JSON.parse(init.body ?? "{}"));
+          const r = over.post;
+          if (r instanceof Error) return Promise.reject(r);
+          return Promise.resolve(
+            r ?? {
+              data: {
+                registered: true,
+                settlement: "external",
+                statement_synced: true,
+                access: {
+                  should_revoke: true,
+                  revoked: true,
+                  reason: "revoked",
+                  detail: null,
+                  still_pro_via_influencer: false,
+                },
+              },
+            },
+          );
+        }
+        if (path.includes("/transactions"))
+          return Promise.resolve({
+            data: {
+              items: [item],
+              total_paid_cents: 14874,
+              truncated: false,
+              limit: 200,
+            },
+          });
+        if (path.includes("/email-usage"))
+          return Promise.resolve({ data: { email: null, usage: [] } });
+        if (path.endsWith("/activity"))
+          return Promise.resolve({ data: { state: "ok", hasData: false } });
+        return Promise.resolve(over.detalhe ?? detalhe());
+      },
+    );
+  }
+
+  async function abrir(
+    item: Record<string, unknown> = compraBoleto(),
+    over: Record<string, unknown> = {},
+  ) {
+    rotear(item, over);
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Registrar devolução" }),
+    );
+    return await screen.findByText("Registrar devolução de boleto");
+  }
+
+  async function irParaPasso2(over: Record<string, unknown> = {}) {
+    await abrir(compraBoleto(), over);
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "devolvido por PIX" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    return await screen.findByLabelText(/Declaro que já devolvi/);
+  }
+
+  it("BOLETO oferece registrar devolução, não reembolsar", async () => {
+    rotear(compraBoleto());
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    expect(
+      await screen.findByRole("button", { name: "Registrar devolução" }),
+    ).toBeTruthy();
+    // O botão de reembolso NÃO aparece: a rota o recusaria com 409, e oferecer
+    // um caminho que o servidor recusa é convidar ao erro.
+    expect(screen.queryByRole("button", { name: "Reembolsar" })).toBeNull();
+  });
+
+  it("CARTÃO continua oferecendo reembolsar, não registrar", async () => {
+    rotear(compraBoleto({ stripe_charge_id: "ch_1" }));
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    expect(
+      await screen.findByRole("button", { name: "Reembolsar" }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Registrar devolução" }),
+    ).toBeNull();
+  });
+
+  it("o passo 1 deixa claro que a tela NÃO devolve dinheiro", async () => {
+    await abrir();
+    expect(screen.getByTestId("aviso-registro").textContent).toContain(
+      "não devolve dinheiro",
+    );
+  });
+
+  it("o valor vem preenchido com o total da cobrança e é editável", async () => {
+    await abrir();
+    const campo = screen.getByLabelText(/Valor devolvido/) as HTMLInputElement;
+    expect(campo.value).toBe("148,74");
+
+    fireEvent.change(campo, { target: { value: "100,00" } });
+    expect(
+      (screen.getByLabelText(/Valor devolvido/) as HTMLInputElement).value,
+    ).toBe("100,00");
+  });
+
+  it("valor acima do teto é barrado antes de sair da tela", async () => {
+    await abrir();
+    fireEvent.change(screen.getByLabelText(/Valor devolvido/), {
+      target: { value: "200,00" },
+    });
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "x" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByText(/O máximo é/)).toBeTruthy();
+    expect(postados).toHaveLength(0);
+  });
+
+  it("motivo é obrigatório", async () => {
+    await abrir();
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(
+      await screen.findByText("Informe o motivo da devolução."),
+    ).toBeTruthy();
+  });
+
+  it("a segunda etapa é uma AFIRMAÇÃO, e sem ela o botão fica travado", async () => {
+    // Caixa de confirmação, não botão: o que a tela pede não é "tem certeza?",
+    // é "você está declarando que devolveu".
+    await irParaPasso2();
+
+    const botao = screen.getByRole("button", {
+      name: "Registrar devolução",
+    }) as HTMLButtonElement;
+    expect(botao.disabled).toBe(true);
+
+    fireEvent.click(botao);
+    expect(postados).toHaveLength(0);
+  });
+
+  it("a caixa diz que a plataforma NÃO tem como verificar", async () => {
+    const caixa = await irParaPasso2();
+    const texto = caixa.closest("label")?.textContent ?? "";
+    expect(texto).toContain("Declaro");
+    expect(texto).toContain("não tem como verificar");
+    // O valor exato aparece na declaração: o admin afirma um número, não "a
+    // devolução".
+    expect(texto).toContain(fmtBrl(14874));
+  });
+
+  it("marcada a caixa, o registro sai com confirmed: true", async () => {
+    const caixa = await irParaPasso2();
+    fireEvent.click(caixa);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Registrar devolução" }),
+    );
+
+    await waitFor(() => expect(postados).toHaveLength(1));
+    expect(postados[0]).toMatchObject({
+      charge_id: "py_1",
+      amount_cents: 14874,
+      reason: "devolvido por PIX",
+      confirmed: true,
+    });
+  });
+
+  it("passo 2 avisa que o acesso cai, e no parcial que ele fica", async () => {
+    await abrir();
+    fireEvent.change(screen.getByLabelText(/Motivo/), {
+      target: { value: "x" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(
+      (await screen.findByTestId("aviso-acesso-registro")).textContent,
+    ).toContain("removido na hora");
+
+    fireEvent.click(screen.getByRole("button", { name: "Voltar" }));
+    fireEvent.change(await screen.findByLabelText(/Valor devolvido/), {
+      target: { value: "50,00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(
+      (await screen.findByTestId("aviso-acesso-registro")).textContent,
+    ).toContain("acesso Pro é mantido");
+  });
+
+  it("devolução externa aparece marcada na linha do extrato", async () => {
+    // Sem esta marcação, o número de reembolsados leria como dinheiro que a
+    // Stripe processou, e ele não foi.
+    rotear(
+      compraBoleto({
+        refunded_cents: 14874,
+        refunded_external_cents: 14874,
+        refund_state: "full",
+        refundable_cents: 0,
+      }),
+    );
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    expect(
+      (await screen.findByTestId("devolucao-externa")).textContent,
+    ).toContain("por fora da Stripe");
+  });
+
+  it("backend antigo sem refunded_external_cents não quebra a linha", async () => {
+    // Janela de deploy: a Vercel sobe antes do Railway. Um `undefined` na
+    // aritmética de exibição pintaria NaN na tela.
+    rotear(compraBoleto({ refunded_cents: 5000, refund_state: "partial" }));
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    expect(await screen.findByTestId("user-transactions")).toBeTruthy();
+    expect(screen.queryByTestId("devolucao-externa")).toBeNull();
+    expect(screen.getByTestId("user-transactions").textContent).not.toContain(
+      "NaN",
+    );
   });
 });

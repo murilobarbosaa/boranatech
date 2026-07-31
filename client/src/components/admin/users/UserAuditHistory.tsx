@@ -39,6 +39,17 @@ const ACAO_META: Record<string, { label: string; className: string }> = {
     label: "Reembolso",
     className: "border-rose-500 bg-rose-50 text-rose-800",
   },
+  // Rótulo DIFERENTE de "Reembolso" de propósito: um foi emitido por nós, o
+  // outro é a palavra do admin sobre algo que aconteceu fora daqui. Chamar os
+  // dois de reembolso apagaria justamente a distinção que o registro guarda.
+  refund_external: {
+    label: "Devolução declarada",
+    className: "border-amber-500 bg-amber-50 text-amber-800",
+  },
+  revoke_pro: {
+    label: "Acesso Pro revogado",
+    className: "border-rose-500 bg-rose-50 text-rose-800",
+  },
 };
 
 const ACAO_DESCONHECIDA = "border-slate-400 bg-slate-100 text-slate-600";

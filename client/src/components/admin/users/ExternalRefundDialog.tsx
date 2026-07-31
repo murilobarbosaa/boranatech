@@ -11,12 +11,18 @@ import {
 import { LAYER_IN_DIALOG } from "@/components/admin/tasks/taskLayers";
 
 import type { TransactionItem } from "./types";
+import { centavosDeTexto } from "./RefundDialog";
 import { toastDeDevolucao, vaiRevogar } from "./refundAccessCopy";
 import { fmtBrl, fmtDate } from "./userFormat";
 
-// Emissão de reembolso, em dois passos. É a ÚNICA ação sem desfazer da aba, e
-// o desenho reflete isso: o passo 2 exige que o admin DIGITE o valor, para
-// forçar leitura em vez de confirmação automática.
+// REGISTRO de uma devolução de boleto feita FORA da plataforma.
+//
+// A diferença de fundo para o RefundDialog: lá o passo 2 libera uma ação que o
+// sistema vai EXECUTAR; aqui ele libera o registro de um fato que o sistema NÃO
+// tem como verificar. Por isso a segunda etapa é uma afirmação explícita (uma
+// caixa de confirmação), e não um botão: o que a tela pede não é "tem certeza?",
+// é "você está declarando que devolveu". O texto diz isso com todas as letras,
+// porque a auditoria vai guardar essa declaração como declaração.
 
 const BOTAO =
   "rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase transition hover:bg-yellow-50 disabled:opacity-60";
@@ -24,34 +30,22 @@ const BOTAO =
 const INPUT =
   "w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:bg-yellow-50 disabled:opacity-60";
 
-/** "12,34" ou "12.34" -> 1234. null quando não dá para ler. */
-export function centavosDeTexto(valor: string): number | null {
-  const limpo = valor.replace(/[^\d.,]/g, "").replace(",", ".");
-  if (!limpo) return null;
-  const n = Number(limpo);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return Math.round(n * 100);
-}
-
-export function RefundDialog({
+export function ExternalRefundDialog({
   charge,
   ...resto
 }: {
   userId: string;
   charge: TransactionItem | null;
-  /** Concessão de influencer ativa: o Pro sobrevive à revogação da assinatura. */
   influencer?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
 }) {
-  // Sem cobrança escolhida não há diálogo. Separar em dois componentes evita
-  // hook condicional e deixa o corpo sem `charge!` espalhado.
   if (!charge) return null;
-  return <RefundDialogInterno charge={charge} {...resto} />;
+  return <ExternalRefundDialogInterno charge={charge} {...resto} />;
 }
 
-function RefundDialogInterno({
+function ExternalRefundDialogInterno({
   userId,
   charge,
   influencer = false,
@@ -67,33 +61,32 @@ function RefundDialogInterno({
   onDone: () => void;
 }) {
   const [passo, setPasso] = useState<1 | 2>(1);
-  const [total, setTotal] = useState(true);
+  const teto = charge.refundable_cents;
+  // PRÉ-PREENCHIDO com o total, e editável. Ao contrário do passo 2 do
+  // RefundDialog (que nasce vazio para obrigar a leitura do número), aqui o
+  // valor é um dado que o admin já conhece: ele acabou de fazer a transferência.
   const [valorTexto, setValorTexto] = useState("");
   const [motivo, setMotivo] = useState("");
-  const [confirmacao, setConfirmacao] = useState("");
+  const [declarado, setDeclarado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [emitindo, setEmitindo] = useState(false);
+  const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setPasso(1);
-    setTotal(true);
-    setValorTexto("");
+    setValorTexto((teto / 100).toFixed(2).replace(".", ","));
     setMotivo("");
-    setConfirmacao("");
+    setDeclarado(false);
     setErro(null);
-    setEmitindo(false);
-  }, [open]);
+    setEnviando(false);
+  }, [open, teto]);
 
-  const teto = charge.refundable_cents;
-  const valorEscolhido = total ? teto : centavosDeTexto(valorTexto);
-  const tetoMenorQueBruto = teto < charge.gross_cents;
-  // PREVISÃO, só para o texto. Quem decide é o servidor, sobre o estado real.
+  const valorEscolhido = centavosDeTexto(valorTexto);
   const revogaraAcesso = vaiRevogar(valorEscolhido, teto);
 
   function avancar() {
     if (!motivo.trim()) {
-      setErro("Informe o motivo do reembolso.");
+      setErro("Informe o motivo da devolução.");
       return;
     }
     if (!valorEscolhido || valorEscolhido <= 0) {
@@ -101,55 +94,61 @@ function RefundDialogInterno({
       return;
     }
     if (valorEscolhido > teto) {
-      setErro(`O máximo reembolsável é ${fmtBrl(teto)}.`);
+      setErro(`O máximo é ${fmtBrl(teto)}.`);
       return;
     }
     setErro(null);
-    setConfirmacao("");
+    setDeclarado(false);
     setPasso(2);
   }
 
-  // O valor digitado no passo 2 tem de bater com o escolhido. O campo nasce
-  // VAZIO de propósito: pré-preencher e pedir "confirmação" seria só mais um
-  // clique, e o objetivo é obrigar a ler o número.
-  const confirmacaoOk =
-    valorEscolhido !== null && centavosDeTexto(confirmacao) === valorEscolhido;
-
-  async function emitir() {
-    if (emitindo || !confirmacaoOk || !valorEscolhido) return;
-    setEmitindo(true);
+  async function registrar() {
+    if (enviando || !declarado || !valorEscolhido) return;
+    setEnviando(true);
     try {
-      const json = await adminFetch(`/users/${userId}/refunds`, {
+      const json = await adminFetch(`/users/${userId}/external-refunds`, {
         method: "POST",
         body: JSON.stringify({
           charge_id: charge.stripe_charge_id,
           amount_cents: valorEscolhido,
           reason: motivo.trim(),
+          // A declaração vai no corpo, e a ROTA a exige. Guarda só na tela seria
+          // contornada pela primeira chamada direta.
+          confirmed: true,
         }),
       });
       onOpenChange(false);
       onDone();
-      // Toda mensagem daqui para baixo parte de "o reembolso aconteceu". Nem o
-      // extrato desatualizado nem a revogação falhando podem sugerir o
-      // contrário: o admin tentaria de novo e a segunda tentativa cairia numa
-      // Idempotency-Key diferente, devolvendo o dinheiro DE NOVO.
-      const { mensagem, erro } = toastDeDevolucao({
-        acaoFeita: "Reembolso emitido.",
+
+      if (json.data?.already_registered) {
+        showActionToast({
+          message: "Esta devolução já estava registrada. Nada foi duplicado.",
+        });
+        return;
+      }
+
+      // A frase muda conforme o caminho da liquidação, porque as consequências
+      // são diferentes: no caso da Stripe o valor entra no extrato sozinho.
+      const acaoFeita =
+        json.data?.settlement === "stripe_dashboard"
+          ? "Devolução registrada. Como já existe um reembolso na Stripe, o valor entra no extrato pelo sync."
+          : "Devolução registrada. Ela existe só aqui: a Stripe não tem registro dela.";
+
+      const { mensagem, erro: ehErro } = toastDeDevolucao({
+        acaoFeita,
         acesso: json.data?.access,
         extratoSincronizado: json.data?.statement_synced !== false,
       });
-      // Toast de ERRO quando ficou algo por fazer: o de sucesso desaparece
-      // sozinho, e um estado meio-feito não pode depender de quem estava olhando.
-      if (erro) showErrorToast(mensagem);
+      if (ehErro) showErrorToast(mensagem);
       else showActionToast({ message: mensagem });
     } catch (err) {
       showErrorToast(
         err instanceof Error
           ? err.message
-          : "Não foi possível emitir o reembolso.",
+          : "Não foi possível registrar a devolução.",
       );
     } finally {
-      setEmitindo(false);
+      setEnviando(false);
     }
   }
 
@@ -160,13 +159,22 @@ function RefundDialogInterno({
         className={`${LAYER_IN_DIALOG} max-h-[85dvh] w-[min(34rem,94vw)] max-w-none overflow-y-auto rounded-2xl border-2 border-slate-950 bg-white p-5 shadow-[6px_6px_0_#0f172a] sm:p-6`}
       >
         <AlertDialogTitle className="font-display text-2xl font-black text-slate-950">
-          Reembolsar cobrança
+          Registrar devolução de boleto
         </AlertDialogTitle>
 
         {passo === 1 ? (
           <>
             <AlertDialogDescription asChild>
               <div className="space-y-3 text-sm font-semibold text-slate-700">
+                <p
+                  data-testid="aviso-registro"
+                  className="rounded-xl border-2 border-amber-500 bg-amber-50 p-3 font-bold text-amber-900"
+                >
+                  Boleto não tem devolução automática. Esta tela{" "}
+                  <strong>não devolve dinheiro</strong>: ela registra na
+                  plataforma uma devolução que você já fez por fora.
+                </p>
+
                 <div className="rounded-xl border-2 border-slate-900 bg-yellow-50 p-3">
                   <p className="font-display text-lg font-black text-slate-950">
                     {fmtBrl(charge.gross_cents)}
@@ -175,72 +183,41 @@ function RefundDialogInterno({
                     {fmtDate(charge.occurred_at)} · {charge.stripe_charge_id}
                   </p>
                   <p
-                    data-testid="teto-reembolso"
+                    data-testid="teto-registro"
                     className="mt-2 text-xs font-black uppercase tracking-wide text-slate-700"
                   >
-                    Disponível para reembolso: {fmtBrl(teto)}
+                    Máximo a registrar: {fmtBrl(teto)}
                   </p>
-                  {/* Teto menor que o bruto tem sempre uma causa concreta; dizer
-                      qual evita o admin achar que o sistema errou. */}
-                  {tetoMenorQueBruto ? (
-                    <p
-                      data-testid="explicacao-teto"
-                      className="mt-1 text-xs font-semibold text-amber-800"
-                    >
-                      {charge.disputed_cents > 0
-                        ? `Menor que o valor da cobrança porque ${fmtBrl(charge.disputed_cents)} saíram em chargeback.`
-                        : `Menor que o valor da cobrança porque ${fmtBrl(charge.refunded_cents)} já foram reembolsados.`}
-                    </p>
-                  ) : null}
                 </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setTotal(true)}
-                    className={`${BOTAO} ${total ? "bg-yellow-300" : ""}`}
-                  >
-                    Total
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTotal(false)}
-                    className={`${BOTAO} ${!total ? "bg-yellow-300" : ""}`}
-                  >
-                    Parcial
-                  </button>
-                </div>
-
-                {!total ? (
-                  <div>
-                    <label
-                      htmlFor="valor-reembolso"
-                      className="block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500"
-                    >
-                      Valor (R$)
-                    </label>
-                    <input
-                      id="valor-reembolso"
-                      inputMode="decimal"
-                      value={valorTexto}
-                      onChange={(e) => {
-                        setValorTexto(e.target.value);
-                        setErro(null);
-                      }}
-                      className={INPUT}
-                    />
-                  </div>
-                ) : null}
 
                 <div>
                   <label
-                    htmlFor="motivo-reembolso"
+                    htmlFor="valor-devolucao"
+                    className="block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500"
+                  >
+                    Valor devolvido (R$)
+                  </label>
+                  <input
+                    id="valor-devolucao"
+                    inputMode="decimal"
+                    value={valorTexto}
+                    onChange={(e) => {
+                      setValorTexto(e.target.value);
+                      setErro(null);
+                    }}
+                    className={INPUT}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="motivo-devolucao"
                     className="block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500"
                   >
                     Motivo (obrigatório)
                   </label>
                   <textarea
-                    id="motivo-reembolso"
+                    id="motivo-devolucao"
                     rows={2}
                     value={motivo}
                     onChange={(e) => {
@@ -278,24 +255,13 @@ function RefundDialogInterno({
           <>
             <AlertDialogDescription asChild>
               <div className="space-y-3 text-sm font-semibold text-slate-700">
-                <p
-                  data-testid="aviso-irreversivel"
-                  className="rounded-xl border-2 border-rose-600 bg-rose-50 p-3 font-bold text-rose-900"
-                >
-                  Reembolso de {fmtBrl(valorEscolhido ?? 0)}. Esta ação é
-                  irreversível: o dinheiro sai e não volta por aqui.
-                </p>
-                {/* A ação ficou mais irreversível do que era: até a Fatia 7 o
-                    reembolso não tocava no acesso, e agora um reembolso que
-                    zera o saldo remove o Pro na hora. O texto acompanha. */}
                 {revogaraAcesso ? (
                   <p
-                    data-testid="aviso-assinatura"
+                    data-testid="aviso-acesso-registro"
                     className="rounded-xl border-2 border-rose-600 bg-rose-50 p-3 font-bold text-rose-900"
                   >
                     Isto zera o valor pago desta cobrança, então{" "}
-                    <strong>o acesso Pro será removido na hora</strong>. A
-                    assinatura é cancelada imediatamente, não no fim do período.
+                    <strong>o acesso Pro será removido na hora</strong>.
                     {influencer ? (
                       <>
                         {" "}
@@ -307,32 +273,36 @@ function RefundDialogInterno({
                   </p>
                 ) : (
                   <p
-                    data-testid="aviso-assinatura"
+                    data-testid="aviso-acesso-registro"
                     className="rounded-xl border-2 border-slate-300 bg-slate-50 p-3"
                   >
                     Devolução parcial: <strong>o acesso Pro é mantido</strong>,
-                    porque continua havendo valor pago. Para encerrar o acesso,
-                    use “Cancelar Pro” depois.
+                    porque continua havendo valor pago.
                   </p>
                 )}
 
-                <div>
-                  <label
-                    htmlFor="confirma-valor"
-                    className="block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500"
-                  >
-                    Digite o valor para liberar
-                  </label>
+                {/* CAIXA, não botão. O sistema não tem como verificar que a
+                    devolução aconteceu, então o que ele grava é a palavra do
+                    admin, e a tela precisa deixar claro que é isso que está
+                    sendo registrado. */}
+                <label
+                  htmlFor="declara-devolucao"
+                  className="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-slate-900 bg-white p-3"
+                >
                   <input
-                    id="confirma-valor"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    placeholder="0,00"
-                    value={confirmacao}
-                    onChange={(e) => setConfirmacao(e.target.value)}
-                    className={INPUT}
+                    id="declara-devolucao"
+                    type="checkbox"
+                    checked={declarado}
+                    onChange={(e) => setDeclarado(e.target.checked)}
+                    className="mt-0.5 h-5 w-5 shrink-0 accent-rose-600"
                   />
-                </div>
+                  <span className="text-sm font-bold text-slate-900">
+                    Declaro que já devolvi {fmtBrl(valorEscolhido ?? 0)} a esta
+                    pessoa por fora da plataforma. A plataforma não tem como
+                    verificar isso e vai registrar esta declaração no histórico,
+                    com o meu nome.
+                  </span>
+                </label>
               </div>
             </AlertDialogDescription>
 
@@ -340,18 +310,18 @@ function RefundDialogInterno({
               <button
                 type="button"
                 onClick={() => setPasso(1)}
-                disabled={emitindo}
+                disabled={enviando}
                 className={BOTAO}
               >
                 Voltar
               </button>
               <button
                 type="button"
-                onClick={() => void emitir()}
-                disabled={emitindo || !confirmacaoOk}
+                onClick={() => void registrar()}
+                disabled={enviando || !declarado}
                 className="rounded-full border-2 border-slate-900 bg-rose-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
               >
-                {emitindo ? "Reembolsando..." : "Reembolsar agora"}
+                {enviando ? "Registrando..." : "Registrar devolução"}
               </button>
             </div>
           </>
