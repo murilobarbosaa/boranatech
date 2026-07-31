@@ -1598,19 +1598,30 @@ export default function LinkedinAnalisar() {
                   />
 
                   {reguaMudou ? (
-                    // TODO(Ana): revisar a copy do aviso de nota nao-comparavel.
-                    // Precisa continuar cobrindo os DOIS motivos: mudanca de
-                    // criterio (v3 -> v4) e mudanca de LEITURA do perfil
-                    // (v4 -> v5), que e o caso da Fase 4. O banner so recebe um
-                    // booleano e nao sabe de qual versao a pessoa veio, entao a
-                    // copy tem que ser verdadeira para qualquer transicao.
+                    // Copy FECHADA. Requisito: o banner recebe so um booleano e
+                    // nao sabe de qual versao a pessoa veio, entao cada frase
+                    // tem que ser verdadeira para QUALQUER transicao.
+                    //
+                    // A versao anterior afirmava "a headline que vinha cortada
+                    // ao meio agora e lida inteira". Era especifica da transicao
+                    // v4 -> v5 e, medido em 2026-07-31 sobre as analises
+                    // persistidas, era FALSA para 39 de 156: a correcao cobre
+                    // quebra na virgula com continuacao forte, e as quebras
+                    // dominantes (separador orfao, termo composto partido, prosa
+                    // cortada) seguem intactas. Prometer conserto que a pessoa
+                    // nao recebeu e pior que nao explicar, e era a unica
+                    // afirmacao verificavel do banner.
+                    //
+                    // O paragrafo de julho FICA: ele e datado ("se a sua analise
+                    // anterior e de antes de julho"), entao continua verdadeiro
+                    // sem depender de qual foi a mudanca mais recente.
                     <FeedbackBanner variant="warn">
                       Esta nota não é comparável com a da sua análise anterior, e
-                      a comparação recomeça a partir daqui. A mudança mais
-                      recente não foi de critério, foi de leitura: a headline que
-                      vinha cortada ao meio agora é lida inteira, e só isso já
-                      move a nota do mesmo perfil, sem você ter mexido em nada.
-                      Se a sua análise anterior é de antes de julho, os critérios
+                      a comparação recomeça a partir daqui. Entre uma análise e
+                      outra, tanto os critérios quanto a forma de ler o seu
+                      perfil podem ter mudado, e qualquer um dos dois move a nota
+                      do mesmo perfil, sem você ter mexido em nada. Se a sua
+                      análise anterior é de antes de julho, os critérios
                       também mudaram, quase tudo para deixar a régua mais justa:
                       a cobertura de palavras-chave pedia metade de todas as
                       tecnologias da área, o que em algumas áreas significava
