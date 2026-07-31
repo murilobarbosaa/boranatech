@@ -14,11 +14,16 @@ que alguém atualizar.
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | `identity_data.email` fica com o endereço antigo     | `server/routes/admin.ts`, cabeçalho de `POST /users/:id/email`                        |
 | `email_suppressions` não acompanha a troca de e-mail | idem                                                                                  |
-| Boleto não tem caminho de reembolso pela plataforma  | `server/routes/admin.ts`, cabeçalho de `POST /users/:id/refunds`                      |
+| Boleto não tem reembolso pela API da Stripe          | `server/routes/admin.ts`, cabeçalho de `POST /users/:id/refunds`                      |
+| Como (a) e (b) são distinguidos no registro manual   | `server/routes/admin.ts`, cabeçalho de `POST /users/:id/external-refunds`             |
+| Por que a revogação usa `status` e não o período     | `server/routes/admin.ts`, docstring de `revogarAcessoPro`                             |
+| A regra de quando revogar (saldo zerado)             | `server/lib/proRevocation.ts`, `devolucaoZeraOSaldo`                                  |
+| Junção das duas fontes de devolução                  | `server/lib/userTransactions.ts`, cabeçalho                                           |
 | Bug latente do cron `process-cancellations`          | `server/routes/cron.ts` e `server/providers/stripe.ts` (`getStripeSubscriptionState`) |
 | Teto de reembolso é por processo                     | `server/lib/refund.ts`, `criarLimitadorDeReembolso`                                   |
 | Allowlist de renderização do histórico               | `shared/auditVisibleFields.ts`                                                        |
 | Overlay dos diálogos do admin                        | `client/src/components/admin/tasks/taskLayers.ts`                                     |
+| FinanceDashboard cego a devolução externa            | `server/lib/financeMetrics.ts`, bloco no topo                                         |
 
 ## Condição de dado: 6 contas com e-mail divergente
 
@@ -47,9 +52,10 @@ select id, email, raw_user_meta_data->>'email' as meta_email
 
 ## Pendências abertas
 
-Quatro, todas conhecidas e nenhuma iniciada. Estão aqui porque a alternativa
-seria elas viverem numa conversa, e checklist que mora em conversa some na
-primeira compactação (é o caso registrado no `CLAUDE.md`).
+Todas conhecidas e nenhuma iniciada. Estão aqui porque a alternativa seria elas
+viverem numa conversa, e checklist que mora em conversa some na primeira
+compactação (é o caso registrado no `CLAUDE.md`). A lista cresce; o total não é
+afirmado aqui, pelo mesmo motivo do parágrafo sobre numerais no `CLAUDE.md`.
 
 ### 1. `filter=pro` da lista é mais frouxo que o gate real
 
@@ -90,3 +96,29 @@ delas não dependa de alguém rodar SQL.
 `CLAUDE.md` (05h-09h de Brasília, com backup `COMPLETED` confirmado). A ingestão
 já foi corrigida, então boleto novo resolve sozinho; o backfill é só para as
 linhas gravadas antes.
+
+**O registro manual de devolução de boleto depende deste backfill.** Conferido
+no código, não suposto: `GET /users/:id/transactions` filtra
+`finance_transactions` por `.eq("user_id", uid)`, e as 4 cobranças de boleto têm
+`user_id` nulo. Elas não entram no extrato de ninguém, e a tela oferece o botão
+"Registrar devolução" a partir das linhas do extrato. **Enquanto o bloco C não
+rodar, a interface não tem nenhuma cobrança de boleto sobre a qual operar**; a
+rota existe e funciona, mas nenhuma tela chega até ela. Depois do backfill as 4
+passam a aparecer no extrato dos respectivos donos e ganham o botão.
+
+### 5. FinanceDashboard não desconta devolução externa
+
+Uma linha em `admin_refunds` com `settlement='external'` entra no extrato do
+usuário e **não** entra no dashboard financeiro global, que lê
+`finance_transactions` direto. Duas telas discordando sobre o mesmo dinheiro.
+
+Medido, por devolução externa de N centavos na janela consultada:
+`reembolsosCents` subestimado em N; `receitaLiquidaCents`, `lucroCents` e
+`margemPercent` superestimados; a série mensal superestima receita e lucro no mês
+da declaração. `receitaBrutaCents`, `taxasStripeCents` e `getDeferredRevenue`
+ficam corretos.
+
+Efeito hoje: **zero**, porque nenhuma linha `external` existe ainda. O caminho de
+correção (uma linha sintética em memória dentro de `loadTransactions`, sem
+escrever nada e sem tocar na natureza Stripe-only de `finance_transactions`) está
+escrito no topo de `server/lib/financeMetrics.ts`.
