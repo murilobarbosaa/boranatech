@@ -68,6 +68,7 @@ import {
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { extractLinkedinPdf, PdfExtractError } from "@/lib/pdfExtract";
 import { cn } from "@/lib/utils";
+import { competenciasDoPdf } from "@shared/linkedin/competenciasDoPdf";
 import { parseLinkedinText } from "@shared/linkedin/parse";
 import { readQualitative } from "@shared/linkedin/readQualitative";
 import {
@@ -759,14 +760,32 @@ export default function LinkedinAnalisar() {
         setPdfError(ENTRY_COPY.parseFail);
         return;
       }
+      const { aceitas: competenciasAceitas, descartadas: competenciasFora } =
+        competenciasDoPdf(detected.skillsPdf);
+      if (competenciasFora.length > 0) {
+        // Rastreavel, nao silencioso: mesmo motivo de `opcoesRenderizaveis`.
+        // Sem isto, "as competencias sumiram" nao teria origem.
+        console.warn(
+          "[linkedin] competencias descartadas do prefill:",
+          competenciasFora,
+        );
+      }
       setForm((prev) => ({
         ...prev,
         profileText: text,
         // Prefill das skills a partir do PDF SO quando o campo esta vazio: o
         // export traz apenas as principais competencias e a pessoa complementa.
+        //
+        // Passa por `competenciasDoPdf` porque `skillsPdf` as vezes carrega o
+        // BLOCO DE IDENTIDADE (nome, cidade, estado, pais) junto, e este e o
+        // unico ponto do fluxo em que o produto ESCREVE dado num campo que a
+        // pessoa submete, e que depois vai para o prompt da OpenAI. A guarda
+        // mora aqui, na entrada do formulario, e nao no parser: cobre a causa
+        // conhecida (corte da secao lateral passando do fim) e a competencia
+        // quebrada de linha, com o mesmo teto e sem esperar conserto de parser.
         skills:
-          prev.skills.trim() === "" && detected.skillsPdf.length > 0
-            ? detected.skillsPdf.join(", ")
+          prev.skills.trim() === "" && competenciasAceitas.length > 0
+            ? competenciasAceitas.join(", ")
             : prev.skills,
       }));
       setPdfStatus(
