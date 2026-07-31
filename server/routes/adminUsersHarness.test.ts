@@ -180,6 +180,46 @@ const COLUNAS_PENDENTES_VALIDAS = (() => {
   return validas;
 })();
 
+/**
+ * Nomes de coluna de um `select` do PostgREST, DESCARTANDO o conteúdo dos
+ * embeds.
+ *
+ * A versão anterior fazia `split(",")` e depois `replace(/\(.*$/, "")`, o que
+ * funciona para `plans(code)` e quebra para `plans(code, name, price_cents)`:
+ * a vírgula de dentro do embed vira separador, e `name` e `price_cents` passam
+ * a ser validados como colunas da tabela EXTERNA. O efeito é recusar uma query
+ * legítima — erra para o lado seguro, mas erra, e o teste que a exercitasse
+ * ficaria impossível de escrever.
+ *
+ * Aqui a varredura conta parênteses: o que está dentro de um embed não é
+ * separador nem coluna, e só o NOME do embed sai na lista (é ele que
+ * EMBEDS_CONHECIDOS reconhece).
+ */
+export function colunasDoSelect(cols: string): string[] {
+  const nomes: string[] = [];
+  let atual = "";
+  let profundidade = 0;
+  for (const ch of cols) {
+    if (ch === "(") {
+      profundidade += 1;
+      continue;
+    }
+    if (ch === ")") {
+      profundidade -= 1;
+      continue;
+    }
+    if (profundidade > 0) continue;
+    if (ch === ",") {
+      if (atual.trim()) nomes.push(atual.trim());
+      atual = "";
+      continue;
+    }
+    atual += ch;
+  }
+  if (atual.trim()) nomes.push(atual.trim());
+  return nomes;
+}
+
 export type LinhaQualquer = Record<string, unknown>;
 
 export type RespostaTabela = {
@@ -289,11 +329,7 @@ export function criarSupabaseDouble(
 
     q.select = (cols?: string, opts?: { count?: string; head?: boolean }) => {
       if (typeof cols === "string" && cols.trim() !== "") {
-        // "user_id, name, plans(code)" -> ["user_id","name","plans"]
-        const nomes = cols
-          .split(",")
-          .map((c) => c.trim().replace(/\(.*$/, ""))
-          .filter(Boolean);
+        const nomes = colunasDoSelect(cols);
         chamada.colunas.push(...nomes);
         validarColunas(table, nomes);
       }
@@ -431,6 +467,27 @@ describe("o parser de colunas afirma o TOTAL, não só a pertinência", () => {
     expect(COLUNAS_POR_TABELA.get("profiles")!.has("coluna_fantasma")).toBe(
       false,
     );
+  });
+});
+
+describe("o parser de colunas do select entende embeds", () => {
+  it("descarta o conteúdo do embed, mantendo só o nome dele", () => {
+    // A versão com split(",") quebrava aqui: `name` e `price_cents` viravam
+    // colunas da tabela externa e a query legítima era recusada.
+    expect(
+      colunasDoSelect("user_id, status, plans(code, name, price_cents)"),
+    ).toEqual(["user_id", "status", "plans"]);
+  });
+
+  it("embed com uma coluna só continua funcionando", () => {
+    expect(colunasDoSelect("user_id, plans(code)")).toEqual([
+      "user_id",
+      "plans",
+    ]);
+  });
+
+  it("select sem embed é o de sempre", () => {
+    expect(colunasDoSelect("id, code, label")).toEqual(["id", "code", "label"]);
   });
 });
 

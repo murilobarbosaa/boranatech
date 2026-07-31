@@ -1,4 +1,5 @@
 import { resolvePlanPriceCents } from "./planPrice";
+import { coletarTudo } from "./paginate";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 // Metricas financeiras reais para o admin. SO calculo, sem UI. Todas as funcoes
@@ -221,14 +222,23 @@ type RawMrrRow = {
 export async function getMrrSnapshot(): Promise<MrrSnapshot> {
   const nowIso = new Date().toISOString();
 
-  const { data, error } = await supabaseAdmin
-    .from("subscriptions")
-    .select("status, plans!inner(code, name, price_cents, interval)")
-    .in("status", ["active", "trialing"])
-    .or(`current_period_end.is.null,current_period_end.gt.${nowIso}`);
-  if (error) throw error;
-
-  const rows = (data ?? []) as RawMrrRow[];
+  // PAGINADO. `.in("status", [...])` filtra por valor, nao limita a quantidade:
+  // este select varre TODAS as assinaturas ativas. Ele produz o MRR, o numero de
+  // receita do painel, e sem paginacao ele erra para MENOS exatamente quando a
+  // base cruzar o teto do PostgREST, ou seja, quando o numero passar a importar.
+  // Errar para menos num numero de receita e invisivel: ninguem estranha um MRR
+  // menor, so um maior.
+  const rows = (await coletarTudo<RawMrrRow>(
+    (from, to) =>
+      supabaseAdmin
+        .from("subscriptions")
+        .select("status, plans!inner(code, name, price_cents, interval)")
+        .in("status", ["active", "trialing"])
+        .or(`current_period_end.is.null,current_period_end.gt.${nowIso}`)
+        .order("id", { ascending: true })
+        .range(from, to),
+    "mrr snapshot",
+  )) as RawMrrRow[];
 
   let mrrCents = 0;
   let activeCount = 0;
@@ -367,24 +377,36 @@ async function lerCancelamentos(): Promise<{
   linhas: LinhaDeCancelamento[];
   idsExistentes: Set<string>;
 }> {
-  const [cancRes, subsRes] = await Promise.all([
-    supabaseAdmin
-      .from("subscription_cancellations")
-      .select("provider_subscription_id, status, canceled_at, effective_at"),
-    supabaseAdmin.from("subscriptions").select("provider_subscription_id"),
+  // As duas PAGINADAS: `idsExistentes` decide quais cancelamentos sao orfaos, e
+  // uma lista truncada de assinaturas transformaria assinatura viva em orfa,
+  // tirando saidas reais do numerador do churn.
+  const [linhas, subs] = await Promise.all([
+    coletarTudo<LinhaDeCancelamento>(
+      (from, to) =>
+        supabaseAdmin
+          .from("subscription_cancellations")
+          .select("provider_subscription_id, status, canceled_at, effective_at")
+          .order("id", { ascending: true })
+          .range(from, to),
+      "churn cancellations",
+    ),
+    coletarTudo<{ provider_subscription_id: string | null }>(
+      (from, to) =>
+        supabaseAdmin
+          .from("subscriptions")
+          .select("provider_subscription_id")
+          .order("id", { ascending: true })
+          .range(from, to),
+      "churn subscriptions",
+    ),
   ]);
-  if (cancRes.error) throw cancRes.error;
-  if (subsRes.error) throw subsRes.error;
 
   const idsExistentes = new Set(
-    ((subsRes.data ?? []) as Array<{ provider_subscription_id: string | null }>)
+    subs
       .map((r) => r.provider_subscription_id)
       .filter((v): v is string => Boolean(v)),
   );
-  return {
-    linhas: (cancRes.data ?? []) as LinhaDeCancelamento[],
-    idsExistentes,
-  };
+  return { linhas, idsExistentes };
 }
 
 /**
@@ -399,18 +421,23 @@ async function contarSaidasEfetivas(
   inicio: string,
   fim: string,
 ): Promise<number> {
-  const { data: porCanceledAt, error } = await supabaseAdmin
-    .from("subscriptions")
-    .select("provider_subscription_id, id, canceled_at")
-    .gte("canceled_at", inicio)
-    .lte("canceled_at", fim);
-  if (error) throw error;
-
-  const saidas = new Set<string>();
-  for (const row of (porCanceledAt ?? []) as Array<{
+  const porCanceledAt = await coletarTudo<{
     provider_subscription_id: string | null;
     id: string;
-  }>) {
+  }>(
+    (from, to) =>
+      supabaseAdmin
+        .from("subscriptions")
+        .select("provider_subscription_id, id, canceled_at")
+        .gte("canceled_at", inicio)
+        .lte("canceled_at", fim)
+        .order("id", { ascending: true })
+        .range(from, to),
+    "churn exits",
+  );
+
+  const saidas = new Set<string>();
+  for (const row of porCanceledAt) {
     // Cai no `id` da linha quando nao ha id de provedor: e o mesmo objeto, e
     // ignora-lo perderia a saida.
     saidas.add(row.provider_subscription_id ?? row.id);

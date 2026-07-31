@@ -14,6 +14,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const estado = vi.hoisted(() => ({
   tabelas: {} as Record<string, { rows: unknown[]; count?: number }>,
+  /** Teto de linhas por página, como o `db-max-rows` do PostgREST. */
+  maxRows: null as number | null,
 }));
 
 /**
@@ -55,6 +57,13 @@ vi.mock("./supabaseAdmin", () => ({
         if (opts?.head || opts?.count === "exact") contar = true;
         return q;
       };
+      let rangeFrom: number | null = null;
+      let rangeTo: number | null = null;
+      q.range = (from: number, to: number) => {
+        rangeFrom = from;
+        rangeTo = to;
+        return q;
+      };
       for (const m of ["gte", "lte", "lt"] as const) {
         q[m] = (coluna: string, valor: string) => {
           intervalos.push({ op: m, coluna, valor });
@@ -77,11 +86,19 @@ vi.mock("./supabaseAdmin", () => ({
           .then(() => {
             const t = estado.tabelas[table];
             if (!t) throw new Error(`tabela nao registrada no teste: ${table}`);
-            const rows = linhas();
+            const todas = linhas();
+            let rows = todas;
+            if (rangeFrom !== null && rangeTo !== null) {
+              rows = todas.slice(rangeFrom, rangeTo + 1);
+            }
+            // Teto DEPOIS do range, igual ao PostgREST.
+            if (estado.maxRows !== null && rows.length > estado.maxRows) {
+              rows = rows.slice(0, estado.maxRows);
+            }
             return {
               data: contar ? null : rows,
               error: null,
-              count: contar ? (t.count ?? rows.length) : null,
+              count: contar ? (t.count ?? todas.length) : null,
             };
           })
           .then(ok, ko);
@@ -133,6 +150,7 @@ function montar(over: {
 
 beforeEach(() => {
   estado.tabelas = {};
+  estado.maxRows = null;
 });
 
 describe("guardas de ausência: estado nomeado, nunca um número inventado", () => {
@@ -322,6 +340,70 @@ describe("o numerador conta EFEITO, não intenção", () => {
     ]);
 
     const r = await getChurnSnapshot({});
+    expect(r.canceledInWindow).toBe(1);
+  });
+});
+
+describe("as varreduras de churn não param no teto do PostgREST", () => {
+  /**
+   * Reproduz o `db-max-rows`: o dublê devolve no MÁXIMO `TETO` linhas por
+   * página, e é o `range` que faz a varredura avançar. Sem paginar, o numerador
+   * pararia na milésima saída — e churn que erra para menos não levanta suspeita
+   * de ninguém.
+   */
+  const TETO = 1000;
+
+  it("conta saídas ACIMA do teto", async () => {
+    const canceladas = Array.from({ length: 1500 }, (_, i) => ({
+      id: `row_${String(i).padStart(5, "0")}`,
+      provider_subscription_id: `sub_${i}`,
+      created_at: HA_60_DIAS,
+      canceled_at: ONTEM,
+      status: "canceled",
+      plans: { code: "pro_monthly", price_cents: 2990, interval: "month" },
+    }));
+    estado.tabelas = {
+      subscriptions: { rows: canceladas, count: 5000 },
+      subscription_cancellations: { rows: [] },
+      plans: { rows: [] },
+    };
+    estado.maxRows = TETO;
+
+    const r = await getChurnSnapshot({});
+
+    expect(r.canceledInWindow).toBe(1500);
+  });
+
+  it("o conjunto de assinaturas existentes não encolhe (senão vira órfã falsa)", async () => {
+    // `idsExistentes` decide o que é órfão. Truncado, assinatura viva viraria
+    // órfã e a saída dela sairia do numerador — erro para menos, de novo.
+    const vivas = Array.from({ length: 1500 }, (_, i) => ({
+      id: `row_${String(i).padStart(5, "0")}`,
+      provider_subscription_id: `sub_${i}`,
+      created_at: HA_60_DIAS,
+      status: "active",
+      plans: { code: "pro_monthly", price_cents: 2990, interval: "month" },
+    }));
+    estado.tabelas = {
+      subscriptions: { rows: vivas, count: 5000 },
+      subscription_cancellations: {
+        rows: [
+          {
+            // A ÚLTIMA da lista: só existe depois do teto.
+            provider_subscription_id: "sub_1499",
+            status: "completed",
+            canceled_at: ONTEM,
+            effective_at: ONTEM,
+          },
+        ],
+      },
+      plans: { rows: [] },
+    };
+    estado.maxRows = TETO;
+
+    const r = await getChurnSnapshot({});
+
+    expect(r.orphanCancellations).toBe(0);
     expect(r.canceledInWindow).toBe(1);
   });
 });

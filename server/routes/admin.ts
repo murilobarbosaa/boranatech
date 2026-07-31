@@ -47,7 +47,7 @@ import {
   normalizeEmail,
   validateNewEmail,
 } from "../lib/emailChange";
-import { paginateRange } from "../lib/paginate";
+import { coletarTagueado, paginateRange } from "../lib/paginate";
 import { buildProfilePatch } from "../lib/profileEdit";
 import {
   criarLimitadorDeReembolso,
@@ -549,10 +549,22 @@ router.get("/integrations/health", async (_req, res, next) => {
 
 router.get("/churn-risk", async (_req, res, next) => {
   try {
-    const { data: subscriptions, error } = await supabaseAdmin
-      .from("subscriptions")
-      .select("user_id, status, plans(code, name, price_cents)")
-      .eq("status", "active");
+    // PAGINADO: varre TODAS as ativas (62 hoje). Truncar tira gente da lista de
+    // risco de churn sem nada indicar que a lista ficou menor.
+    const { data: subscriptions, error } = await coletarTagueado<{
+      user_id: string | null;
+      status: string;
+      plans: unknown;
+    }>(
+      (from, to) =>
+        supabaseAdmin
+          .from("subscriptions")
+          .select("user_id, status, plans(code, name, price_cents)")
+          .eq("status", "active")
+          .order("id", { ascending: true })
+          .range(from, to),
+      "churn-risk subscriptions",
+    );
 
     // Propaga o erro (nao mascara com lista vazia): o client sera ajustado para
     // exibir estado de erro na proxima sessao.
@@ -1096,10 +1108,20 @@ router.get("/users", async (req, res, next) => {
       // Murilo): subscriptions nao tem FK declarada para profiles, entao o join
       // implicito do PostgREST nao e confiavel. A lista e minuscula e o resultado
       // exato. Influencer NAO entra aqui de proposito: Pro = assinante pagante.
-      const { data: subRows, error: subError } = await supabaseAdmin
-        .from("subscriptions")
-        .select("user_id")
-        .eq("status", "active");
+      // PAGINADO: este conjunto E o filtro. Truncado, a lista "Pro" some com
+      // usuarios que sao Pro, e a tela nao tem como saber que faltou alguem.
+      const { data: subRows, error: subError } = await coletarTagueado<{
+        user_id: string | null;
+      }>(
+        (from, to) =>
+          supabaseAdmin
+            .from("subscriptions")
+            .select("user_id")
+            .eq("status", "active")
+            .order("id", { ascending: true })
+            .range(from, to),
+        "users pro filter",
+      );
       if (subError)
         return next(
           dbError("users pro filter", subError, "Erro ao buscar usuários."),
@@ -1117,10 +1139,19 @@ router.get("/users", async (req, res, next) => {
     } else if (filter === "influencers") {
       // Influencer = concessao ATIVA (revoked_at null; o indice unico parcial
       // garante no maximo uma por usuario). Mesma mecanica de lista do Pro.
-      const { data: infRows, error: infError } = await supabaseAdmin
-        .from("influencers")
-        .select("user_id")
-        .is("revoked_at", null);
+      // PAGINADO pelo mesmo motivo do filtro Pro: o conjunto E o filtro.
+      const { data: infRows, error: infError } = await coletarTagueado<{
+        user_id: string | null;
+      }>(
+        (from, to) =>
+          supabaseAdmin
+            .from("influencers")
+            .select("user_id")
+            .is("revoked_at", null)
+            .order("id", { ascending: true })
+            .range(from, to),
+        "users influencer filter",
+      );
       if (infError)
         return next(
           dbError("users influencer filter", infError, "Erro ao buscar usuários."),
@@ -4185,10 +4216,17 @@ router.get("/queue-stats", async (_req, res, next) => {
 
 router.get("/affiliates-stats", async (_req, res, next) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("affiliates")
-      .select("*")
-      .order("revenue_cents", { ascending: false });
+    // PAGINADA: 41 linhas hoje, e cresce com cada parceria nova.
+    const { data, error } = await coletarTagueado<Record<string, unknown>>(
+      (from, to) =>
+        supabaseAdmin
+          .from("affiliates")
+          .select("*")
+          .order("revenue_cents", { ascending: false })
+          .order("id", { ascending: true })
+          .range(from, to),
+      "affiliates",
+    );
 
     // Propaga o erro em vez de mascarar com lista vazia.
     if (error)

@@ -8,6 +8,7 @@ import { syncNews } from "../jobs/syncNews";
 import { writeAudienceSnapshots } from "../lib/audienceReach";
 import { reindexSearchDocuments } from "../lib/searchIndex";
 import { reconcileSentryBugs } from "../lib/sentryBugReconcile";
+import { coletarTagueado } from "../lib/paginate";
 import { recordCronRun } from "../lib/cron-logs";
 import { reconcileEmailCampaignBatches } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
@@ -441,14 +442,24 @@ router.post(
       // Provider-agnostico. cancel_at_period_end=true NAO pode mais ser excluido
       // silenciosamente do reconcile: para a Stripe o webhook de fim de periodo
       // pode se perder, e ausencia de evento nunca pode manter Pro (fail-open).
-      const { data: due, error: dueError } = await supabaseAdmin
-        .from("subscriptions")
-        .select(
-          "id, user_id, provider, status, provider_subscription_id, current_period_end",
-        )
-        .eq("cancel_at_period_end", true)
-        .eq("status", "active")
-        .lte("current_period_end", nowIso);
+      // PAGINADO, e aqui o teto seria FAIL-OPEN: uma pagina truncada deixa de
+      // fora assinaturas que ja deveriam ter perdido o Pro, e elas continuam
+      // ativas ate alguem reparar. O comentario acima ja diz que ausencia de
+      // evento nunca pode manter Pro; ausencia de LINHA tem o mesmo efeito.
+      const { data: due, error: dueError } = await coletarTagueado<SubRow>(
+        (from, to) =>
+          supabaseAdmin
+            .from("subscriptions")
+            .select(
+              "id, user_id, provider, status, provider_subscription_id, current_period_end",
+            )
+            .eq("cancel_at_period_end", true)
+            .eq("status", "active")
+            .lte("current_period_end", nowIso)
+            .order("id", { ascending: true })
+            .range(from, to),
+        "process-cancellations due",
+      );
 
       if (dueError) {
         await recordCronRun({
@@ -556,15 +567,32 @@ router.post(
 
       // Usa o indice parcial subscriptions_manual_renewal_expiry_idx
       // (renewal_type='manual' AND status='active', em current_period_end).
-      const { data: due, error: dueError } = await supabaseAdmin
-        .from("subscriptions")
-        .select(
-          "id, user_id, current_period_end, renewal_reminders_sent, plan_id",
-        )
-        .eq("renewal_type", "manual")
-        .eq("status", "active")
-        .gt("current_period_end", nowIso)
-        .lte("current_period_end", windowIso);
+      // PAGINADO: caminho de ENVIO. Truncar aqui nao erra um numero, deixa de
+      // mandar o lembrete de renovacao para quem esta no fim da lista, e o cron
+      // termina reportando sucesso. Falha silenciosa que so o cliente percebe.
+      const { data: due, error: dueError } = await coletarTagueado<{
+        id: string;
+        // Nao-nulo no schema e usado direto no getUserById logo abaixo.
+        user_id: string;
+        current_period_end: string | null;
+        // Array de codigos de marco (`d7`, `d3`...), nao contador.
+        renewal_reminders_sent: string[] | null;
+        plan_id: string | null;
+      }>(
+        (fromRow, toRow) =>
+          supabaseAdmin
+            .from("subscriptions")
+            .select(
+              "id, user_id, current_period_end, renewal_reminders_sent, plan_id",
+            )
+            .eq("renewal_type", "manual")
+            .eq("status", "active")
+            .gt("current_period_end", nowIso)
+            .lte("current_period_end", windowIso)
+            .order("id", { ascending: true })
+            .range(fromRow, toRow),
+        "expiring-subscriptions due",
+      );
 
       if (dueError) {
         await recordCronRun({
@@ -732,12 +760,24 @@ router.post(
         Date.now() - ORPHAN_BOLETO_DAYS * DAY_MS,
       ).toISOString();
 
-      const { data: orphans, error: orphansError } = await supabaseAdmin
-        .from("subscriptions")
-        .select("id, provider_subscription_id")
-        .eq("payment_method", "boleto")
-        .eq("status", "pending")
-        .lt("created_at", cutoffIso);
+      // PAGINADO: caminho de ESCRITA. Cada linha daqui vira um UPDATE para
+      // status='canceled'; a que ficar fora da pagina continua `pending` para
+      // sempre e segue bloqueando o guard 409 de nova assinatura.
+      const { data: orphans, error: orphansError } = await coletarTagueado<{
+        id: string;
+        provider_subscription_id: string | null;
+      }>(
+        (fromRow, toRow) =>
+          supabaseAdmin
+            .from("subscriptions")
+            .select("id, provider_subscription_id")
+            .eq("payment_method", "boleto")
+            .eq("status", "pending")
+            .lt("created_at", cutoffIso)
+            .order("id", { ascending: true })
+            .range(fromRow, toRow),
+        "expire-pending-boletos orphans",
+      );
 
       if (orphansError) {
         await recordCronRun({

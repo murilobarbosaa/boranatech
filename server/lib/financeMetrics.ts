@@ -1,3 +1,4 @@
+import { coletarTudo } from "./paginate";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 // Metricas financeiras em regime de CAIXA. Fonte de verdade da receita:
@@ -135,7 +136,9 @@ export function expenseOccurrences(
   }
 
   const start = new Date(expense.recurrence_start ?? expense.incurred_on);
-  const hardEnd = expense.recurrence_end ? new Date(expense.recurrence_end) : to;
+  const hardEnd = expense.recurrence_end
+    ? new Date(expense.recurrence_end)
+    : to;
   const limit = to < hardEnd ? to : hardEnd;
   const stepMonths = expense.recurrence_interval === "yearly" ? 12 : 1;
 
@@ -154,26 +157,38 @@ export function expenseOccurrences(
   return occ;
 }
 
+// PAGINADA: alimenta TODOS os numeros do FinanceDashboard (receita bruta,
+// liquida, taxas, reembolsos e a serie mensal). Truncar aqui erra para menos em
+// todos eles de uma vez, e uma receita menor do que a real nao levanta suspeita
+// de ninguem.
 async function loadTransactions(from: Date, to: Date): Promise<FinanceTxRow[]> {
-  const { data, error } = await supabaseAdmin
-    .from("finance_transactions")
-    .select("type, gross_cents, fee_cents, net_cents, plan_code, occurred_at")
-    .gte("occurred_at", from.toISOString())
-    .lte("occurred_at", to.toISOString());
-  if (error) {
-    throw new Error(`finance_transactions query falhou: ${error.message}`);
-  }
-  return (data ?? []) as FinanceTxRow[];
+  return (await coletarTudo<FinanceTxRow>(
+    (fromRow, toRow) =>
+      supabaseAdmin
+        .from("finance_transactions")
+        .select(
+          "type, gross_cents, fee_cents, net_cents, plan_code, occurred_at",
+        )
+        .gte("occurred_at", from.toISOString())
+        .lte("occurred_at", to.toISOString())
+        .order("id", { ascending: true })
+        .range(fromRow, toRow),
+    "finance_transactions query falhou",
+  )) as FinanceTxRow[];
 }
 
 async function loadExpenses(): Promise<ExpenseRow[]> {
-  const { data, error } = await supabaseAdmin
-    .from("expenses")
-    .select(
-      "amount_brl_cents, category, kind, incurred_on, recurrence_start, recurrence_end, recurrence_interval",
-    );
-  if (error) throw new Error(`expenses query falhou: ${error.message}`);
-  return (data ?? []) as ExpenseRow[];
+  return (await coletarTudo<ExpenseRow>(
+    (from, to) =>
+      supabaseAdmin
+        .from("expenses")
+        .select(
+          "amount_brl_cents, category, kind, incurred_on, recurrence_start, recurrence_end, recurrence_interval",
+        )
+        .order("id", { ascending: true })
+        .range(from, to),
+    "expenses query falhou",
+  )) as ExpenseRow[];
 }
 
 export async function getFinanceSummary(params: {
@@ -301,14 +316,20 @@ export async function getDeferredRevenue(): Promise<DeferredRevenue> {
   const now = Date.now();
   const nowIso = new Date(now).toISOString();
 
-  const { data, error } = await supabaseAdmin
-    .from("subscriptions")
-    .select("user_id, current_period_start, current_period_end, plans(interval)")
-    .in("status", ["active", "trialing"])
-    .gt("current_period_end", nowIso);
-  if (error) throw new Error(`subscriptions query falhou: ${error.message}`);
-
-  const subs = (data ?? []) as DeferredSubRow[];
+  // Mesma armadilha do getMrrSnapshot: `.in("status", ...)` filtra, nao limita.
+  const subs = (await coletarTudo<DeferredSubRow>(
+    (from, to) =>
+      supabaseAdmin
+        .from("subscriptions")
+        .select(
+          "user_id, current_period_start, current_period_end, plans(interval)",
+        )
+        .in("status", ["active", "trialing"])
+        .gt("current_period_end", nowIso)
+        .order("id", { ascending: true })
+        .range(from, to),
+    "subscriptions query falhou",
+  )) as DeferredSubRow[];
   let deferredCents = 0;
   let consideredCount = 0;
   let unmappedCount = 0;
@@ -317,7 +338,8 @@ export async function getDeferredRevenue(): Promise<DeferredRevenue> {
     const plan = Array.isArray(s.plans) ? s.plans[0] : s.plans;
     const interval = plan?.interval ?? "";
     if (interval !== "semiannual" && interval !== "year") continue;
-    if (!s.user_id || !s.current_period_start || !s.current_period_end) continue;
+    if (!s.user_id || !s.current_period_start || !s.current_period_end)
+      continue;
 
     const pStart = new Date(s.current_period_start).getTime();
     const pEnd = new Date(s.current_period_end).getTime();
@@ -329,13 +351,18 @@ export async function getDeferredRevenue(): Promise<DeferredRevenue> {
       .select("gross_cents")
       .eq("type", "charge")
       .eq("user_id", s.user_id)
-      .gte("occurred_at", new Date(pStart - 3 * 24 * 60 * 60 * 1000).toISOString())
+      .gte(
+        "occurred_at",
+        new Date(pStart - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      )
       .lte("occurred_at", s.current_period_end)
       .order("occurred_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     if (chargeError) {
-      throw new Error(`finance_transactions charge lookup falhou: ${chargeError.message}`);
+      throw new Error(
+        `finance_transactions charge lookup falhou: ${chargeError.message}`,
+      );
     }
     const charge = chargeData as { gross_cents: number } | null;
     if (!charge) {

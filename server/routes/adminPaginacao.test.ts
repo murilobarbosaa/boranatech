@@ -104,8 +104,9 @@ const MAX_ROWS = 1000;
 function montar(
   respostas: Record<string, RespostaTabela | (() => RespostaTabela)>,
   maxRows: number | null = MAX_ROWS,
+  authAdmin: Record<string, unknown> = {},
 ) {
-  estado.double = criarSupabaseDouble(respostas, {}, undefined, maxRows);
+  estado.double = criarSupabaseDouble(respostas, authAdmin, undefined, maxRows);
 }
 
 afterEach(() => {
@@ -376,5 +377,60 @@ describe("GET /dashboard separa os dois ramos de acesso Pro", () => {
     const r = await chamarAdmin("GET", "/dashboard");
 
     expect(r.body.data.counts.pro_by_subscription).toBe(1200);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Varreduras GLOBAIS que alimentam filtro e lista
+// ---------------------------------------------------------------------------
+
+describe("as varreduras globais do admin não param no teto", () => {
+  function assinaturaAtiva(i: number) {
+    return {
+      id: `s${String(i).padStart(5, "0")}`,
+      user_id: `u${i}`,
+      status: "active",
+      created_at: "2026-07-01T00:00:00Z",
+      current_period_end: "2099-01-01T00:00:00Z",
+      plans: { code: "pro_annual", name: "Pro", price_cents: 2990 },
+    };
+  }
+
+  it("GET /churn-risk enxerga assinatura acima do teto", async () => {
+    montar(
+      {
+        subscriptions: {
+          rows: Array.from({ length: 1500 }, (_, i) => assinaturaAtiva(i)),
+        },
+        profiles: { rows: [] },
+      },
+      MAX_ROWS,
+      // A rota cruza com o Auth para achar quem nunca logou; aqui só precisa
+      // responder, o alvo do teste é a varredura de assinaturas.
+      { listUsers: async () => ({ data: { users: [] }, error: null }) },
+    );
+
+    const r = await chamarAdmin("GET", "/churn-risk");
+
+    expect(r.status).toBe(200);
+    // Sem paginar, a lista de risco pararia em 1000 e ninguém veria a diferença.
+    expect(estado.double.de("subscriptions").length).toBeGreaterThan(1);
+  });
+
+  it("GET /affiliates-stats devolve TODOS os afiliados", async () => {
+    montar({
+      affiliates: {
+        rows: Array.from({ length: 1500 }, (_, i) => ({
+          id: `a${String(i).padStart(5, "0")}`,
+          code: `PARC${i}`,
+          revenue_cents: i,
+        })),
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/affiliates-stats");
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toHaveLength(1500);
   });
 });

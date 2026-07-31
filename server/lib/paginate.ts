@@ -54,3 +54,47 @@ export async function* paginateRange<T>(
     from += rows.length;
   }
 }
+
+/**
+ * Varre TUDO e devolve um array. Erro PROPAGA.
+ *
+ * Para código de lib que já propaga (billingMetrics, financeMetrics): a exceção
+ * sobe e ninguém recebe um agregado parcial achando que é o total.
+ *
+ * Sempre ORDENE dentro do `fetchPage`. Paginação por OFFSET sem ORDER BY tem
+ * ordem indefinida no Postgres, e duas páginas podem repetir ou pular linhas —
+ * o que produziria exatamente o erro silencioso que a paginação existe para
+ * evitar, só que mais difícil de perceber.
+ */
+export async function coletarTudo<T>(
+  fetchPage: (from: number, to: number) => PromiseLike<PaginatedPage<T>>,
+  errorLabel: string,
+): Promise<T[]> {
+  const linhas: T[] = [];
+  for await (const row of paginateRange<T>(fetchPage, { errorLabel })) {
+    linhas.push(row);
+  }
+  return linhas;
+}
+
+/**
+ * O mesmo, no shape tagueado do supabase-js (`{ data, error }`).
+ *
+ * Existe para os chamadores que JÁ tratam a falha de um jeito específico
+ * (cron que marca a rodada como `error`, rota que degrada uma seção). Trocar
+ * esse tratamento por um throw ao paginar mudaria a postura de erro deles de
+ * carona, e postura de erro é decisão, não detalhe.
+ */
+export async function coletarTagueado<T>(
+  fetchPage: (from: number, to: number) => PromiseLike<PaginatedPage<T>>,
+  errorLabel: string,
+): Promise<{ data: T[] | null; error: { message: string } | null }> {
+  try {
+    return { data: await coletarTudo(fetchPage, errorLabel), error: null };
+  } catch (err) {
+    return {
+      data: null,
+      error: { message: err instanceof Error ? err.message : String(err) },
+    };
+  }
+}
