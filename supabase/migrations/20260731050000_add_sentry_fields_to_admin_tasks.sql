@@ -74,16 +74,36 @@ alter table public.admin_tasks
   -- `not exists`, que tem a mesma janela de corrida que o invariante 3 proibe.
   add column if not exists legacy_bug_id uuid;
 
--- Ambos os indices sao PARCIAIS: card humano tem os dois campos nulos e nao
--- pode colidir com ninguem. Criados sobre colunas recem-nascidas (integralmente
--- nulas), entao NAO PODEM falhar por dado existente.
+-- ----------------------------------------------------------------------------
+-- POR QUE ESTES DOIS INDICES NAO SAO PARCIAIS. Leia antes de "otimizar".
+-- ----------------------------------------------------------------------------
+-- A primeira versao desta migration tinha `where <coluna> is not null` nos dois,
+-- com a justificativa de que card humano tem os campos nulos e nao deve ocupar
+-- espaco no indice. Estava errada, e o erro so apareceu contra um Postgres de
+-- verdade (server/lib/sentryTaskDedup.pg.test.ts):
+--
+--   ERROR: there is no unique or exclusion constraint matching the
+--          ON CONFLICT specification
+--
+-- `on conflict (coluna)` NAO casa com indice unico PARCIAL: o Postgres exige que
+-- o alvo repita o predicado (`on conflict (col) where col is not null`). E o
+-- PostgREST/supabase-js so sabe mandar NOMES DE COLUNA no `onConflict`, sem
+-- clausula where. Ou seja: com indice parcial, o insert do sync falharia em toda
+-- execucao, e o invariante 3 (deduplicacao pela constraint) seria impossivel de
+-- cumprir pelo caminho que o modulo usa.
+--
+-- E o predicado nao era necessario para nada. Em indice unico comum o Postgres
+-- trata NULLs como DISTINTOS entre si, entao N cards humanos com a coluna nula
+-- convivem sem colidir. Verificado empiricamente, nao suposto: 5 nulos inseridos
+-- na mesma coluna com indice unico comum, todos aceitos.
+--
+-- Criados sobre colunas recem-nascidas (integralmente nulas), entao NAO PODEM
+-- falhar por dado existente.
 create unique index if not exists admin_tasks_sentry_numeric_id_key
-  on public.admin_tasks (sentry_numeric_id)
-  where sentry_numeric_id is not null;
+  on public.admin_tasks (sentry_numeric_id);
 
 create unique index if not exists admin_tasks_legacy_bug_id_key
-  on public.admin_tasks (legacy_bug_id)
-  where legacy_bug_id is not null;
+  on public.admin_tasks (legacy_bug_id);
 
 -- Varredura da manutencao: so cards vinculados ao Sentry, drenando por quem foi
 -- conferido ha mais tempo. `nulls first` poe os nunca conferidos na frente.

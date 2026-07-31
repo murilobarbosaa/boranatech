@@ -107,8 +107,10 @@ describe("o que a Fase 2 promete ao schema", () => {
     expect(m3).toMatch(
       /create unique index[\s\S]*admin_tasks_sentry_numeric_id_key/i,
     );
-    // Parcial: card humano tem o campo nulo e nao pode colidir com ninguem.
-    expect(m3).toMatch(/where sentry_numeric_id is not null/i);
+    // NAO parcial, de proposito: `on conflict (col)` nao casa com indice
+    // parcial, e o onConflict do PostgREST nao sabe mandar predicado. O
+    // comentario da migration registra a medicao que provou isso.
+    expect(m3).not.toMatch(/admin_tasks \(sentry_numeric_id\)\s*\n\s*where/i);
   });
 
   it("a idempotencia da migracao de dados tambem e por indice unico", () => {
