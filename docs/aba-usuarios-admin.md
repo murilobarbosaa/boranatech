@@ -106,6 +106,22 @@ rodar, a interface não tem nenhuma cobrança de boleto sobre a qual operar**; a
 rota existe e funciona, mas nenhuma tela chega até ela. Depois do backfill as 4
 passam a aparecer no extrato dos respectivos donos e ganham o botão.
 
+### 5. Resíduo em `subscription_cancellations`, script escrito e não rodado
+
+Três linhas órfãs (cancelamento cuja assinatura não existe mais). A varredura por
+formato de id cobriu as seis tabelas de billing e **só esta tem resíduo**;
+`subscriptions` não tem nenhuma linha `provider='asaas'`.
+
+Só **uma** é resíduo de verdade: `cs_test_...`, sessão de teste da Stripe cujo
+dono nunca teve assinatura. As outras duas são do gateway Asaas e pertencem a
+**um cliente atual** (Stripe ativa desde 13/07), então são histórico real e
+ficam. `docs/limpeza-residuo-billing.sql`, **não executado**, com SELECT de
+conferência antes e depois e um statement por vez.
+
+Pendência que fica: `GET /admin/cancellation-reasons` agrega motivos sem excluir
+órfãs, então o cancelamento do Asaas entra no mesmo balde dos da Stripe. É
+decisão de produto, não bug.
+
 ### 5. FinanceDashboard não desconta devolução externa
 
 Uma linha em `admin_refunds` com `settlement='external'` entra no extrato do
