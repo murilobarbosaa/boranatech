@@ -2131,3 +2131,305 @@ describe("POST /users/:id/external-refunds", () => {
     expect(estado.double.chamadas).toHaveLength(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// POST /users/:id/subscription/revoke — revogação AVULSA, sem devolver dinheiro.
+//
+// Existe para o estado meio-feito: reembolso emitido e acesso mantido. Antes
+// dela a única saída na interface era "Cancelar Pro", que agenda para o fim do
+// período e portanto entrega o próprio bug.
+// ---------------------------------------------------------------------------
+
+describe("POST /users/:id/subscription/revoke", () => {
+  const STATUS_PRO = statusesQueDaoProNaMigration();
+
+  function montarRevoke(over: Record<string, RespostaTabela> = {}) {
+    montar({
+      content_audit_logs: { rows: [{}] },
+      subscriptions: { rows: [ASSINATURA_CARTAO] },
+      subscription_cancellations: { rows: [] },
+      ...over,
+    });
+  }
+
+  function revogar(corpo: Record<string, unknown> = {}) {
+    return chamarAdmin("POST", `/users/${UID}/subscription/revoke`, {
+      reason: "reembolso saiu e o acesso ficou",
+      ...corpo,
+    });
+  }
+
+  it("é o teste que importa: is_user_pro passa a NEGAR", async () => {
+    montarRevoke();
+    const r = await revogar();
+
+    expect(r.status).toBe(200);
+    expect(r.body.data.revoked).toBe(true);
+
+    const update = estado.double
+      .de("subscriptions")
+      .find((c) => c.op === "update")!;
+    const statusEscrito = (update.payload as { status: string }).status;
+
+    // As duas metades, contra o conjunto lido da própria migration.
+    expect(STATUS_PRO.has(ASSINATURA_CARTAO.status)).toBe(true);
+    expect(STATUS_PRO.has(statusEscrito)).toBe(false);
+    expect(statusEscrito).toBe("canceled");
+    // O período NÃO é tocado: o webhook o reescreveria de volta.
+    expect(Object.keys(update.payload!)).not.toContain("current_period_end");
+  });
+
+  it("NÃO devolve dinheiro: nenhuma chamada de reembolso, nenhum registro", async () => {
+    // É a diferença que separa esta ação do reembolso, e o servidor tem de
+    // respeitá-la mesmo que a tela um dia esqueça de dizer.
+    montarRevoke();
+    await revogar();
+
+    expect(estado.stripeRefundCreate).not.toHaveBeenCalled();
+    expect(estado.syncBalance).not.toHaveBeenCalled();
+    // `admin_refunds` sequer é consultada: a rota não passa pela agregação.
+    expect(estado.double.de("admin_refunds")).toHaveLength(0);
+  });
+
+  it("mesma ordem do caminho automático: Stripe primeiro, banco depois", async () => {
+    montarRevoke();
+    await revogar();
+
+    expect(estado.stripeSubscriptionCancel).toHaveBeenCalledWith("sub_1");
+
+    const ops = estado.double.chamadas.map((c) => `${c.op} ${c.table}`);
+    // Audita ANTES de qualquer coisa que remova acesso.
+    expect(ops.indexOf("insert content_audit_logs")).toBeLessThan(
+      ops.lastIndexOf("update subscriptions"),
+    );
+    expect(estado.invalidateProCache).toHaveBeenCalledWith(UID);
+  });
+
+  it("reusa a action revoke_pro, e o trigger diz que foi avulsa", async () => {
+    // Uma action nova exigiria entrada em cinco lugares para produzir
+    // comportamento idêntico. O que difere é o motivo, e ele está no trigger.
+    montarRevoke();
+    await revogar();
+
+    const audit = auditsDe("revoke_pro");
+    expect(audit).toHaveLength(1);
+    expect(audit[0].payload).toMatchObject({
+      actor_user_id: "admin-1",
+      resource_type: "subscription",
+      resource_id: UID,
+      // Sem cobrança envolvida: nada a apontar aqui.
+      resource_slug: null,
+    });
+    expect(audit[0].payload!.after_json).toMatchObject({
+      status: "canceled",
+      reason: "reembolso saiu e o acesso ficou",
+      trigger: "standalone",
+    });
+  });
+
+  it("o caminho do REEMBOLSO continua marcando trigger 'refund'", async () => {
+    // Trava do discriminador: se os dois usos passassem a gravar o mesmo
+    // trigger, a action única deixaria de distinguir os casos e a decisão de
+    // reusar `revoke_pro` perderia a justificativa.
+    montarRevogacao();
+    await reembolsarTudo();
+
+    const audit = auditsDe("revoke_pro");
+    expect(audit).toHaveLength(1);
+    expect(audit[0].payload!.after_json).toMatchObject({ trigger: "refund" });
+    expect(audit[0].payload).toMatchObject({ resource_slug: "ch_1" });
+  });
+
+  it("grava a linha de RESULTADO que o histórico cruza", async () => {
+    montarRevoke();
+    await revogar();
+
+    const registro = estado.double
+      .de("subscription_cancellations")
+      .find((c) => c.op === "insert")!;
+    expect(registro.payload).toMatchObject({
+      user_id: UID,
+      canceled_by: "admin-1",
+      reason_code: "admin",
+      reason_text: "reembolso saiu e o acesso ficou",
+      status: "completed",
+    });
+  });
+
+  it("IDEMPOTÊNCIA: já revogado responde sucesso sem reexecutar", async () => {
+    // Nenhuma assinatura ATIVA, mas existe histórico: o efeito desejado já vale.
+    let n = 0;
+    montarRevoke({
+      subscriptions: () => {
+        n += 1;
+        // 1a: a busca por assinatura vigente (vazia). 2a: a busca por qualquer
+        // assinatura, que distingue "já revogado" de "nunca assinou".
+        return n === 1 ? { rows: [] } : { rows: [{ id: "sub-antiga" }] };
+      },
+    } as unknown as Record<string, RespostaTabela>);
+
+    const r = await revogar();
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toMatchObject({
+      revoked: false,
+      already_revoked: true,
+    });
+    // Sem reexecutar NADA: sem auditoria nova, sem Stripe, sem update.
+    expect(estado.double.de("content_audit_logs")).toHaveLength(0);
+    expect(estado.stripeSubscriptionCancel).not.toHaveBeenCalled();
+    expect(
+      estado.double.de("subscriptions").filter((c) => c.op === "update"),
+    ).toHaveLength(0);
+  });
+
+  it("quem NUNCA assinou é 404, não 'já revogado'", async () => {
+    // Dizer sucesso aqui afirmaria um passado que não existiu.
+    montarRevoke({ subscriptions: { rows: [] } });
+
+    const r = await revogar();
+
+    expect(r.status).toBe(404);
+    expect(r.body.error.code).toBe("not_found");
+  });
+
+  it("cancelamento JÁ AGENDADO não impede a revogação imediata", async () => {
+    // É justamente o caso em que a pessoa mantém Pro até o fim do período.
+    montarRevoke({
+      subscriptions: {
+        rows: [{ ...ASSINATURA_CARTAO, cancel_at_period_end: true }],
+      },
+    });
+
+    const r = await revogar();
+
+    expect(r.body.data.revoked).toBe(true);
+    expect(estado.stripeSubscriptionCancel).toHaveBeenCalledWith("sub_1");
+    expect(
+      estado.double.de("subscriptions").find((c) => c.op === "update")!.payload,
+    ).toMatchObject({ status: "canceled", cancel_at_period_end: false });
+  });
+
+  it("BOLETO revoga SEM chamar a Stripe", async () => {
+    // provider_subscription_id de boleto é um cs_..., e cancel com ele falha
+    // sempre. Não há assinatura recorrente lá.
+    montarRevoke({
+      subscriptions: {
+        rows: [
+          {
+            ...ASSINATURA_CARTAO,
+            renewal_type: "manual",
+            provider_subscription_id: "cs_1",
+          },
+        ],
+      },
+    });
+
+    const r = await revogar();
+
+    expect(r.body.data.revoked).toBe(true);
+    expect(estado.stripeSubscriptionCancel).not.toHaveBeenCalled();
+    expect(
+      estado.double.de("subscriptions").find((c) => c.op === "update")!.payload,
+    ).toMatchObject({ status: "canceled" });
+  });
+
+  it("INFLUENCER continua Pro, e a resposta avisa", async () => {
+    montarRevoke({ influencers: { rows: [{ id: "inf-1" }] } });
+
+    const r = await revogar();
+
+    expect(r.body.data).toMatchObject({
+      revoked: true,
+      still_pro_via_influencer: true,
+    });
+    expect(
+      estado.double.de("influencers").filter((c) => c.op === "update"),
+    ).toHaveLength(0);
+  });
+
+  it("motivo ausente vira 400 sem consultar nada", async () => {
+    montar({});
+    const r = await revogar({ reason: "   " });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("reason_required");
+    expect(estado.double.chamadas).toHaveLength(0);
+  });
+
+  it("UUID inválido vira 400 sem consultar nada", async () => {
+    montar({});
+    const r = await chamarAdmin("POST", "/users/nao-uuid/subscription/revoke", {
+      reason: "x",
+    });
+    expect(r.status).toBe(400);
+    expect(estado.double.chamadas).toHaveLength(0);
+  });
+
+  it("falha do AUDIT aborta antes de tocar a Stripe, e é ERRO", async () => {
+    // Postura OPOSTA à do reembolso: ali nada pode virar erro porque o dinheiro
+    // já saiu; aqui nada aconteceu, então dizer "ok" seria mentir.
+    montarRevoke({ content_audit_logs: { error: { message: "check" } } });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await revogar();
+
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("audit_failed");
+    expect(estado.stripeSubscriptionCancel).not.toHaveBeenCalled();
+    expect(estado.invalidateProCache).not.toHaveBeenCalled();
+  });
+
+  it("Stripe falhando NÃO deixa rastro: 502 e banco intocado", async () => {
+    montarRevoke();
+    estado.stripeSubscriptionCancel = vi.fn(async () => {
+      throw new Error("stripe fora do ar");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await revogar();
+
+    expect(r.status).toBe(502);
+    expect(r.body.error.code).toBe("stripe_error");
+    expect(
+      estado.double.de("subscriptions").filter((c) => c.op === "update"),
+    ).toHaveLength(0);
+    expect(estado.invalidateProCache).not.toHaveBeenCalled();
+  });
+
+  it("o log da falha avulsa NÃO diz INCONSISTENCIA", async () => {
+    // A palavra marca o estado meio-feito. Usá-la quando nada aconteceu a
+    // diluiria justamente nos logs em que ela precisa ser procurável.
+    montarRevoke();
+    estado.stripeSubscriptionCancel = vi.fn(async () => {
+      throw new Error("x");
+    });
+    const erroSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await revogar();
+
+    const linhas = erroSpy.mock.calls.map((c) => String(c[0]));
+    expect(linhas.some((l) => l.includes("revogacao avulsa"))).toBe(true);
+    expect(linhas.some((l) => l.includes("INCONSISTENCIA"))).toBe(false);
+  });
+
+  it("banco falhando DEPOIS da Stripe É inconsistência, nos dois gatilhos", async () => {
+    // Exceção anotada em GatilhoDeRevogacao: aqui algo externo já mudou.
+    let n = 0;
+    montarRevoke({
+      subscriptions: () => {
+        n += 1;
+        return n === 1
+          ? { rows: [ASSINATURA_CARTAO] }
+          : { error: { message: "timeout" } };
+      },
+    } as unknown as Record<string, RespostaTabela>);
+    const erroSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await revogar();
+
+    expect(r.status).toBe(500);
+    expect(
+      erroSpy.mock.calls.some((c) => String(c[0]).includes("INCONSISTENCIA")),
+    ).toBe(true);
+  });
+});

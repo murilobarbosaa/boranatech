@@ -141,6 +141,7 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
       "POST /users/:id/refunds",
       "POST /users/:id/reveal-cpf",
       "POST /users/:id/subscription/cancel",
+      "POST /users/:id/subscription/revoke",
     ]);
   });
 });

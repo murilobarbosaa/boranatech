@@ -15,6 +15,34 @@ export type RevocationReason =
   | "revoked"
   | "revoke_failed";
 
+/**
+ * O QUE JA ACONTECEU quando a revogacao e tentada.
+ *
+ * Nao e enfeite de log: as duas situacoes tem gravidade diferente e postura de
+ * erro OPOSTA, e confundi-las produziria mensagem falsa das duas direcoes.
+ *
+ *   refund      o dinheiro JA SAIU. Uma falha aqui deixa metade feita, e por
+ *               isso a rota responde 200 dizendo que o reembolso aconteceu e
+ *               que o acesso nao caiu. Toda falha e INCONSISTENCIA.
+ *
+ *   standalone  nada aconteceu ainda. Uma falha aqui nao deixa metade nenhuma:
+ *               a rota responde ERRO e o estado do usuario e o mesmo de antes.
+ *               Chamar isso de INCONSISTENCIA no log seria alarme falso, e
+ *               alarme falso e o que faz alguem parar de ler o log.
+ *
+ * A excecao esta anotada no proprio sitio: falha do banco DEPOIS de a Stripe ter
+ * cancelado e inconsistencia nos dois gatilhos, porque ai algo externo ja mudou.
+ */
+export type GatilhoDeRevogacao =
+  | { tipo: "refund"; chargeId: string }
+  | { tipo: "standalone" };
+
+/**
+ * ONDE falhou. Existe para o chamador escolher o status HTTP sem reinspecionar
+ * a mensagem de erro, que e a forma fragil de fazer a mesma coisa.
+ */
+export type RevocationFailure = "read" | "audit" | "stripe" | "db";
+
 export type RevocationOutcome = {
   /** A decisao do SERVIDOR, calculada sobre o estado real. Nunca vem do cliente. */
   should_revoke: boolean;
@@ -84,4 +112,21 @@ export function precisaCancelarNaStripe(
   sub: AssinaturaParaRevogar,
 ): sub is AssinaturaParaRevogar & { provider_subscription_id: string } {
   return sub.renewal_type !== "manual" && Boolean(sub.provider_subscription_id);
+}
+
+/**
+ * Prefixo do log de falha, escolhido pelo gatilho.
+ *
+ * `INCONSISTENCIA` e uma palavra com significado nesta base: ela marca o estado
+ * meio-feito, em que uma parte surtiu efeito e a outra nao. Usa-la quando nada
+ * aconteceu diluiria o termo justamente nos logs em que ele precisa ser
+ * procuravel.
+ */
+export function prefixoDeFalhaDeRevogacao(
+  gatilho: GatilhoDeRevogacao,
+  uid: string,
+): string {
+  return gatilho.tipo === "refund"
+    ? `[admin/refund] INCONSISTENCIA: reembolso de ${gatilho.chargeId} emitido, mas`
+    : `[admin/revoke] revogacao avulsa de ${uid} NAO aconteceu:`;
 }

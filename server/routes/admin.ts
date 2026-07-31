@@ -61,7 +61,10 @@ import {
 import {
   devolucaoZeraOSaldo,
   precisaCancelarNaStripe,
+  prefixoDeFalhaDeRevogacao,
   type AssinaturaParaRevogar,
+  type GatilhoDeRevogacao,
+  type RevocationFailure,
   type RevocationOutcome,
 } from "../lib/proRevocation";
 import {
@@ -1799,13 +1802,18 @@ async function revogarAcessoPro(input: {
   uid: string;
   actorUserId: string;
   motivo: string;
-  chargeId: string;
+  /** O que já aconteceu quando esta revogação é tentada. Ver GatilhoDeRevogacao. */
+  gatilho: GatilhoDeRevogacao;
 }): Promise<{
   revoked: boolean;
   reason: RevocationOutcome["reason"];
   detail: string | null;
+  /** Onde falhou, para o chamador escolher o status HTTP. */
+  failure?: RevocationFailure;
 }> {
-  const { uid, actorUserId, motivo, chargeId } = input;
+  const { uid, actorUserId, motivo, gatilho } = input;
+  const prefixo = prefixoDeFalhaDeRevogacao(gatilho, uid);
+  const chargeId = gatilho.tipo === "refund" ? gatilho.chargeId : null;
 
   const { data: sub, error: subError } = await supabaseAdmin
     .from("subscriptions")
@@ -1819,18 +1827,21 @@ async function revogarAcessoPro(input: {
 
   if (subError) {
     console.error(
-      `[admin/refund] INCONSISTENCIA: reembolso de ${chargeId} emitido, mas a leitura da assinatura de ${uid} falhou; o acesso NAO foi revogado.`,
+      `${prefixo} a leitura da assinatura de ${uid} falhou; o acesso NAO foi revogado.`,
       subError,
     );
     return {
       revoked: false,
       reason: "revoke_failed",
       detail: "Não foi possível ler a assinatura para revogar o acesso.",
+      failure: "read",
     };
   }
 
-  // Sem assinatura vigente não há o que revogar, e isso não é falha: o reembolso
-  // pode ser de uma cobrança cujo período já acabou.
+  // Sem assinatura vigente não há o que revogar, e isso não é falha. No caminho
+  // do reembolso a cobrança pode ser de um período que já acabou; no caminho
+  // avulso é a IDEMPOTÊNCIA (já revogado antes), e quem traduz isso em resposta
+  // é a rota.
   if (!sub) {
     return { revoked: false, reason: "no_active_subscription", detail: null };
   }
@@ -1849,17 +1860,20 @@ async function revogarAcessoPro(input: {
       resource_id: uid,
       resource_slug: chargeId,
       before_json: { status: sub.status },
-      after_json: { status: "canceled", reason: motivo, trigger: "refund" },
+      // MESMA action nos dois usos, e o `trigger` é quem os distingue. Ver a
+      // nota sobre a escolha no cabeçalho de POST /users/:id/subscription/revoke.
+      after_json: { status: "canceled", reason: motivo, trigger: gatilho.tipo },
     });
   if (auditError) {
     console.error(
-      `[admin/refund] INCONSISTENCIA: reembolso de ${chargeId} emitido, mas a auditoria da revogacao falhou; o acesso NAO foi revogado.`,
+      `${prefixo} a auditoria da revogacao falhou; o acesso NAO foi revogado.`,
       auditError,
     );
     return {
       revoked: false,
       reason: "revoke_failed",
       detail: "Não foi possível registrar a auditoria da revogação.",
+      failure: "audit",
     };
   }
 
@@ -1869,13 +1883,14 @@ async function revogarAcessoPro(input: {
       await getStripe().subscriptions.cancel(alvo.provider_subscription_id);
     } catch (stripeErr) {
       console.error(
-        `[admin/refund] INCONSISTENCIA: reembolso de ${chargeId} emitido, mas a Stripe recusou cancelar ${alvo.provider_subscription_id}; o acesso NAO foi revogado.`,
+        `${prefixo} a Stripe recusou cancelar ${alvo.provider_subscription_id}; o acesso NAO foi revogado.`,
         stripeErr,
       );
       return {
         revoked: false,
         reason: "revoke_failed",
         detail: "A Stripe não cancelou a assinatura.",
+        failure: "stripe",
       };
     }
   }
@@ -1890,14 +1905,18 @@ async function revogarAcessoPro(input: {
     .eq("id", alvo.id);
 
   if (updateError) {
+    // INCONSISTENCIA nos DOIS gatilhos, e esta é a exceção anotada em
+    // GatilhoDeRevogacao: aqui a Stripe já cancelou, então algo externo mudou
+    // mesmo no caminho avulso, e o log precisa ser procurável pela palavra.
     console.error(
-      `[admin/refund] INCONSISTENCIA: reembolso de ${chargeId} emitido e assinatura ${alvo.id} cancelada na Stripe, mas o banco nao gravou; o acesso so cai quando o webhook customer.subscription.deleted chegar.`,
+      `[admin/revoke] INCONSISTENCIA: assinatura ${alvo.id} cancelada na Stripe, mas o banco nao gravou; o acesso so cai quando o webhook customer.subscription.deleted chegar.`,
       updateError,
     );
     return {
       revoked: false,
       reason: "revoke_failed",
       detail: "A assinatura não foi marcada como cancelada no banco.",
+      failure: "db",
     };
   }
 
@@ -1923,7 +1942,7 @@ async function revogarAcessoPro(input: {
     // O acesso JA caiu (o update acima é o que faz is_user_pro negar). Falha
     // aqui custa a confirmação no histórico, não o efeito.
     console.error(
-      `[admin/refund] acesso de ${uid} revogado, mas subscription_cancellations nao gravou; a acao aparece como "Sem confirmacao" no historico:`,
+      `[admin/revoke] acesso de ${uid} revogado, mas subscription_cancellations nao gravou; a acao aparece como "Sem confirmacao" no historico:`,
       registroError,
     );
   }
@@ -1967,7 +1986,12 @@ async function decidirERevogar(input: {
     };
   }
 
-  const resultado = await revogarAcessoPro(input);
+  const resultado = await revogarAcessoPro({
+    uid: input.uid,
+    actorUserId: input.actorUserId,
+    motivo: input.motivo,
+    gatilho: { tipo: "refund", chargeId: input.chargeId },
+  });
   return {
     should_revoke: true,
     revoked: resultado.revoked,
@@ -2555,6 +2579,147 @@ router.post("/users/:id/external-refunds", async (req, res, next) => {
         settlement,
         statement_synced: extratoAtualizado,
         access: acesso,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// REVOGACAO AVULSA DE ACESSO PRO, sem devolver dinheiro.
+//
+// POR QUE ELA EXISTE. Quando a revogacao automatica falha DEPOIS de um reembolso
+// bem-sucedido (dinheiro devolvido, acesso mantido), a unica saida na interface
+// era "Cancelar Pro", que agenda para o fim do periodo, ou seja, entrega
+// exatamente o bug que a Fatia de reembolso fechou. A instrucao dizia "revogue a
+// mao" e nao havia mao. Esta rota E a mao.
+//
+// ROTA FINA de proposito: ela nao tem regra propria. Toda a decisao de COMO
+// revogar (status e nao periodo, Stripe antes do banco, boleto sem chamada a
+// Stripe) vive em revogarAcessoPro, e uma segunda copia divergiria da primeira
+// na primeira mudanca. O que a rota faz e validar a entrada, escolher o gatilho
+// e traduzir o resultado em status HTTP.
+//
+// AUDITORIA: action `revoke_pro`, a MESMA do caminho automatico. Nao e economia
+// de nome, e o contrario de ambiguidade:
+//
+//   (a) o EFEITO e identico (acesso Pro removido na hora) e a linha de RESULTADO
+//       e a mesma (subscription_cancellations), entao o cruzamento
+//       intencao-vs-resultado da Fatia 8 funciona nos dois usos sem ramo novo;
+//   (b) o que difere e o MOTIVO, e ele ja esta gravado: `after_json.trigger` vale
+//       'refund' ou 'standalone', esta na allowlist de exibicao e aparece na
+//       tela, entao o historico distingue os dois sem precisar de duas actions;
+//   (c) uma action nova exigiria entrada em CINCO lugares (CHECK da migration,
+//       ACOES_DE_USUARIO, CAMPOS_VISIVEIS_POR_ACTION, ACAO_META e o cruzamento)
+//       para produzir comportamento IGUAL, e criaria dois nomes para um efeito:
+//       a pergunta "quando o Pro foi revogado administrativamente?" passaria a
+//       depender de alguem lembrar dos dois.
+//
+// POSTURA DE ERRO OPOSTA A DO REEMBOLSO, e de proposito. La o dinheiro ja saiu
+// quando a revogacao e tentada, entao falha vira 200 com aviso. Aqui NADA
+// aconteceu antes, entao falha vira ERRO: o estado do usuario e o mesmo de antes
+// e dizer "ok" seria mentir.
+router.post("/users/:id/subscription/revoke", async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
+      );
+    }
+
+    const motivoRaw = (req.body as { reason?: unknown } | undefined)?.reason;
+    const motivo = typeof motivoRaw === "string" ? motivoRaw.trim() : "";
+    if (!motivo) {
+      return next(
+        createError(400, "reason_required", "Informe o motivo da revogação."),
+      );
+    }
+
+    const resultado = await revogarAcessoPro({
+      uid,
+      actorUserId: req.user!.id,
+      motivo,
+      gatilho: { tipo: "standalone" },
+    });
+
+    if (resultado.reason === "no_active_subscription") {
+      // IDEMPOTENCIA. `no_active_subscription` cobre dois casos que a resposta
+      // NAO pode confundir: quem ja foi revogado (o efeito desejado ja vale, e a
+      // resposta e sucesso, sem reexecutar nada) e quem nunca assinou (nao ha
+      // sobre o que agir, e dizer "revogado" afirmaria um passado que nao
+      // existiu). A consulta extra so roda neste caminho.
+      const { data: qualquer, error: qualquerError } = await supabaseAdmin
+        .from("subscriptions")
+        .select("id")
+        .eq("user_id", uid)
+        .limit(1)
+        .maybeSingle();
+      if (qualquerError)
+        return next(
+          dbError("revoke history lookup", qualquerError, "Erro ao revogar."),
+        );
+      if (!qualquer) {
+        return next(
+          createError(404, "not_found", "Este usuário nunca teve assinatura."),
+        );
+      }
+      return res.json({
+        data: {
+          revoked: false,
+          already_revoked: true,
+          still_pro_via_influencer: await temInfluencerAtivo(uid),
+        },
+      });
+    }
+
+    if (!resultado.revoked) {
+      // O ponto de falha decide o status. Ler a mensagem para adivinhar seria a
+      // forma frágil de fazer a mesma coisa.
+      const porFalha: Record<
+        RevocationFailure,
+        { status: number; code: string; message: string }
+      > = {
+        read: {
+          status: 500,
+          code: "db_error",
+          message: "Erro ao ler a assinatura.",
+        },
+        audit: {
+          status: 500,
+          code: "audit_failed",
+          message: "Não foi possível registrar a auditoria da revogação.",
+        },
+        stripe: {
+          status: 502,
+          code: "stripe_error",
+          message:
+            "A Stripe não cancelou a assinatura. Nada foi alterado, tente de novo.",
+        },
+        db: {
+          status: 500,
+          code: "db_error",
+          message:
+            "A assinatura foi cancelada no provedor, mas houve erro ao registrar. O acesso cai quando o webhook chegar.",
+        },
+      };
+      const saida = porFalha[resultado.failure ?? "db"];
+      return next(createError(saida.status, saida.code, saida.message));
+    }
+
+    await invalidateProStatusCache(uid);
+
+    res.json({
+      data: {
+        revoked: true,
+        // Concessão de influencer é ORTOGONAL: revogar a assinatura não a toca,
+        // e sem este campo o admin veria a pessoa seguir Pro e acharia que a
+        // ação falhou.
+        still_pro_via_influencer: await temInfluencerAtivo(uid),
       },
     });
   } catch (err) {
