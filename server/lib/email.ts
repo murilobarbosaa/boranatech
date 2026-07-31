@@ -855,3 +855,56 @@ export async function sendBugReopenedEmail(params: {
     html: layout(theme, "Bug reaberto", body),
   });
 }
+
+/**
+ * Resumo AGRUPADO de uma run do sync do Sentry.
+ *
+ * Um e-mail por run, nunca um por card. Numa release ruim o sync cria 15 cards
+ * em dois minutos, e 15 e-mails para a MESMA caixa (o destino e um endereco
+ * fixo, nao uma lista) e o caminho mais curto para alguem criar uma regra de
+ * filtro, e aí o canal morre tambem para o que importa.
+ *
+ * Sem ramo especial para o singular: uma tarefa criada manda o resumo com uma
+ * linha. Template condicional e onde nasce o bug de plural.
+ */
+export async function sendSentryTasksSummaryEmail(params: {
+  criados: Array<{ shortId: string; titulo: string }>;
+  foraDoTeto: number;
+  semEtiqueta: number;
+}) {
+  if (!env.bugNotifyNewEmail) {
+    console.warn("[email] BUG_NOTIFY_NEW_EMAIL ausente. E-mail não enviado.");
+    return;
+  }
+  if (params.criados.length === 0) return;
+
+  const theme = NEUTRAL_THEME;
+  const total = params.criados.length;
+  const itens = params.criados.map(
+    (c) => `<strong>${escapeHtml(c.shortId)}</strong>: ${escapeHtml(c.titulo)}`,
+  );
+  const rodape: string[] = [];
+  if (params.foraDoTeto > 0) {
+    rodape.push(
+      `${params.foraDoTeto} issue(s) ficaram para a próxima execução (teto por run).`,
+    );
+  }
+  if (params.semEtiqueta > 0) {
+    rodape.push(
+      `${params.semEtiqueta} card(s) nasceram sem etiqueta de área (projeto desconhecido).`,
+    );
+  }
+
+  const body = `
+    ${paragraph(`O sync do Sentry criou <strong>${total}</strong> tarefa(s) no quadro de bugs.`)}
+    ${list(theme, itens)}
+    ${rodape.length > 0 ? paragraph(escapeHtml(rodape.join(" "))) : ""}
+    ${button("Abrir o quadro de bugs", `${APP_URL}/admin?section=tarefas`, theme)}
+  `;
+  await sendEmail({
+    to: env.bugNotifyNewEmail,
+    from: FROM_TRANSACTIONAL,
+    subject: `🐛 ${total} tarefa(s) nova(s) do Sentry`,
+    html: layout(theme, "Novas tarefas do Sentry", body),
+  });
+}
