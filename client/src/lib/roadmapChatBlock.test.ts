@@ -141,6 +141,40 @@ describe("REGRESSAO: Retry inutil so no transient", () => {
   });
 });
 
+describe("resposta REAL do servidor, capturada no smoke test", () => {
+  // Corpo verbatim devolvido por POST /api/roadmaps-ia/intake/chat com 21
+  // mensagens de usuario, contra o servidor da fase 2, em 2026-07-31. Nao e
+  // objeto montado a mao: e o que o servidor mandou. `createError` ANINHA sob
+  // `error`, e ler a forma errada foi o que fez o harness reportar "code=-"
+  // para uma rejeicao que tinha acontecido.
+  const CORPO_REAL_TURN_LIMIT = {
+    error: {
+      code: "turn_limit",
+      message:
+        "Chegamos ao limite desta conversa. Prefira preencher o formulario para gerar seu roadmap.",
+    },
+  };
+
+  it("o corpo real vira bloqueio turn_limit e a pessoa tem saida", () => {
+    // Mesmo caminho do client: readErrorBody desaninha, toIntakeChatError tipa.
+    const erro = new IntakeChatApiError(
+      CORPO_REAL_TURN_LIMIT.error.code as never,
+      CORPO_REAL_TURN_LIMIT.error.message,
+    );
+    const bloqueio = blockFromError(erro, "fallback");
+    expect(bloqueio.kind).toBe("turn_limit");
+
+    const semIntake = exitsForBlock(bloqueio, false);
+    expect(semIntake.formulario).toBe(true);
+    expect(semIntake.recomecar).toBe(true);
+    expect(semIntake.tentarDeNovo).toBe(false);
+
+    const comIntake = exitsForBlock(bloqueio, true);
+    expect(comIntake.gerar).toBe(true);
+    expect(comIntake.recomecar).toBe(true);
+  });
+});
+
 describe("copy de bloqueio", () => {
   it("todo kind terminal tem copy propria, e nenhuma e vazia", () => {
     const terminais = TODOS_OS_KINDS.filter((k) => k !== "transient");

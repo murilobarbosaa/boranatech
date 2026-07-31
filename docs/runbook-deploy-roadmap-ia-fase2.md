@@ -476,6 +476,20 @@ set -a && . ./.env && set +a && pnpm check:migrations
 
 **Sucesso:** exit 0, com a asserção comportamental afirmando os 4 tools.
 
+### 4-bis. Excluir a conta do smoke test das métricas
+
+O smoke test de 2026-07-31 rodou contra **produção** (não existe staging), sob a
+conta admin **`6a9063c4-2bcb-4432-8a75-70fccc676851`**. Ela deixou, naquele dia,
+15 linhas em `ai_usage_logs` (10 `success` e 4 `rejected` de `roadmap-intake-chat`,
+1 `success` de `roadmap-generator`) e **1** roadmap, `ia-5de5a6c6`
+(id `89e1b43a-c13a-49e2-a577-21f04cf4484c`).
+
+**Exclua esse `user_id` de toda métrica pós-deploy.** Em especial: as 4 linhas
+`rejected` com motivo `turn_limit` são do teste, e a verificação "zero
+`turn_limit` com `canGenerate` false" precisa filtrá-las, senão parece regressão
+logo no primeiro dia. Nada foi apagado, de propósito: deletar dado de produção
+para arrumar a aparência de um teste é risco maior que o teste.
+
 ### 5. Os dados existentes continuam íntegros
 
 ```sql

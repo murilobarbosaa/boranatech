@@ -75,36 +75,116 @@ async function preVoo() {
   if (!SUPABASE_URL || !ANON_KEY)
     abortar("VITE_SUPABASE_URL/ANON_KEY ausentes.");
   if (!SERVICE_KEY) abortar("SUPABASE_SERVICE_ROLE_KEY ausente.");
-  if (!EMAIL || !PASSWORD) {
-    abortar(
-      "SMOKE_EMAIL e/ou SMOKE_PASSWORD ausentes. Defina-os no ambiente (nao no script).",
-    );
-  }
+  // SMOKE_EMAIL/SMOKE_PASSWORD sao OPCIONAIS: sem eles o harness usa o caminho
+  // sem senha (admin generate_link + verify), que so precisa da service role.
 
-  // GoTrue por fetch, mesma razao do PostgREST acima.
-  const loginRes = await fetch(
-    `${SUPABASE_URL}/auth/v1/token?grant_type=password`,
-    {
+  // AUTENTICACAO. Dois caminhos, e o preferido NAO usa senha.
+  //
+  // (1) SEM SENHA, via service role. `POST /auth/v1/admin/generate_link` devolve
+  //     um `hashed_token`, e `POST /auth/v1/verify` o troca por sessao. A forma
+  //     que funciona e `{ type, token_hash }`; com `{ type, token }` o GoTrue
+  //     responde 400 "Only an email address or phone number should be provided
+  //     on verify". Verificado empiricamente em 2026-07-31 contra a versao em
+  //     uso, nao copiado de documentacao. O token e de USO UNICO: gerar de novo
+  //     a cada rodada e obrigatorio.
+  //
+  // (2) COM SENHA, so se SMOKE_EMAIL e SMOKE_PASSWORD existirem. Fica como
+  //     garantia para o caso de o endpoint de admin mudar de forma.
+  //
+  // O e-mail transita em memoria e nunca e impresso.
+  let token = "";
+  let userId = "";
+
+  if (EMAIL && PASSWORD) {
+    console.log(
+      "[smoke] auth: caminho por SENHA (SMOKE_EMAIL/SMOKE_PASSWORD presentes)",
+    );
+    const loginRes = await fetch(
+      `${SUPABASE_URL}/auth/v1/token?grant_type=password`,
+      {
+        method: "POST",
+        headers: { apikey: ANON_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+      },
+    );
+    const sessao = (await loginRes.json().catch(() => null)) as {
+      access_token?: string;
+      user?: { id?: string };
+      error_description?: string;
+      msg?: string;
+    } | null;
+    if (!loginRes.ok || !sessao?.access_token || !sessao.user?.id) {
+      abortar(
+        `login por senha falhou (HTTP ${loginRes.status}): ${sessao?.error_description ?? sessao?.msg ?? "sem detalhe"}`,
+      );
+    }
+    token = sessao.access_token;
+    userId = sessao.user.id;
+  } else {
+    console.log(
+      "[smoke] auth: caminho SEM SENHA (admin generate_link + verify)",
+    );
+    // Alvo: SMOKE_USER_ID, ou o primeiro admin em ordem estavel de user_id.
+    const admins = (await rest(
+      "admin_roles?select=user_id&order=user_id.asc",
+    )) as Array<{ user_id: string }>;
+    if (!admins.length) abortar("admin_roles esta vazia.");
+    const alvo = process.env.SMOKE_USER_ID || admins[0].user_id;
+    console.log(`[smoke] alvo=${alvo} (de ${admins.length} admins)`);
+
+    const uRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${alvo}`, {
+      headers: {
+        apikey: SERVICE_KEY,
+        Authorization: `Bearer ${SERVICE_KEY}`,
+      },
+    });
+    const u = (await uRes.json().catch(() => null)) as {
+      email?: string;
+    } | null;
+    if (!uRes.ok || !u?.email)
+      abortar(`admin/users/${alvo}: HTTP ${uRes.status}`);
+
+    const linkRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
+      method: "POST",
+      headers: {
+        apikey: SERVICE_KEY,
+        Authorization: `Bearer ${SERVICE_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ type: "magiclink", email: u.email }),
+    });
+    const link = (await linkRes.json().catch(() => null)) as {
+      hashed_token?: string;
+      msg?: string;
+    } | null;
+    if (!linkRes.ok || !link?.hashed_token) {
+      abortar(
+        `generate_link falhou (HTTP ${linkRes.status}): ${link?.msg ?? "sem detalhe"}`,
+      );
+    }
+
+    const vRes = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
       method: "POST",
       headers: { apikey: ANON_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
-    },
-  );
-  const sessao = (await loginRes.json().catch(() => null)) as {
-    access_token?: string;
-    user?: { id?: string };
-    error_description?: string;
-    msg?: string;
-  } | null;
-  if (!loginRes.ok || !sessao?.access_token || !sessao.user?.id) {
-    // Nunca ecoa e-mail nem senha: so o motivo que o GoTrue devolveu.
-    abortar(
-      `login falhou (HTTP ${loginRes.status}): ${sessao?.error_description ?? sessao?.msg ?? "sem detalhe"}`,
-    );
+      body: JSON.stringify({
+        type: "magiclink",
+        token_hash: link.hashed_token,
+      }),
+    });
+    const sessao = (await vRes.json().catch(() => null)) as {
+      access_token?: string;
+      user?: { id?: string };
+      msg?: string;
+    } | null;
+    if (!vRes.ok || !sessao?.access_token || !sessao.user?.id) {
+      abortar(
+        `verify falhou (HTTP ${vRes.status}): ${sessao?.msg ?? "sem detalhe"}`,
+      );
+    }
+    token = sessao.access_token;
+    userId = sessao.user.id;
   }
 
-  const token = sessao.access_token;
-  const userId = sessao.user.id;
   console.log(`[smoke] sessao obtida  token=${mascarar(token)}`);
   console.log(`[smoke] user_id=${userId}`);
 
@@ -164,7 +244,21 @@ async function turno(
     string,
     unknown
   > | null;
-  return { status: res.status, body };
+  // createError ANINHA o erro: {"error":{"code":..,"message":..}}. A primeira
+  // versao deste harness lia `body.code` no topo e imprimia `code=-` para uma
+  // rejeicao que tinha acontecido de verdade, dando a impressao de que o teto
+  // nao havia disparado. Instrumento lendo a forma errada e o mesmo defeito de
+  // sempre, agora do lado do cliente.
+  const erro = (body?.error ?? null) as {
+    code?: string;
+    message?: string;
+  } | null;
+  return {
+    status: res.status,
+    body,
+    code: erro?.code,
+    message: erro?.message,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -190,13 +284,26 @@ async function cenario2(token: string, userId: string) {
   console.log("\n=== CENARIO 2: teto de turnos ===");
   const antes = await lerCota(userId, "antes");
 
-  console.log("\n-- borda de cima: 20 mensagens de usuario (deve REJEITAR) --");
-  const acima = await turno(token, historicoSintetico(20));
-  console.log(`   HTTP ${acima.status}  code=${acima.body?.code ?? "-"}`);
-  console.log(`   message=${acima.body?.message ?? "-"}`);
+  // BORDAS REAIS. `validateIntakeChatBody` rejeita com `userCount > MAX`, entao
+  // MAX_USER_MESSAGES (20) e o numero de mensagens que a pessoa PODE enviar: um
+  // historico com 20 e aceito (restantes=0) e o 21o e recusado. A primeira
+  // versao deste harness testava 20 esperando rejeicao, e o cenario "falhou"
+  // por culpa do teste, nao do codigo. O teste unitario ja afirmava a borda
+  // certa em intakeChat.test.ts ("aceita exatamente o teto" / "rejeita uma
+  // acima do teto"); quem estava errado era a expectativa aqui.
+  //
+  // CUSTO: o caso rejeitado nao chama OpenAI (a validacao e anterior). O caso
+  // aceito CHAMA, porque um turno valido gera resposta. Entao este cenario custa
+  // 1 chamada, nao zero.
+  console.log("\n-- borda de cima: 21 mensagens de usuario (deve REJEITAR) --");
+  const acima = await turno(token, historicoSintetico(21));
+  console.log(`   HTTP ${acima.status}  code=${acima.code ?? "-"}`);
+  console.log(`   message=${acima.message ?? "-"}`);
 
-  console.log("\n-- borda de baixo: 19 mensagens de usuario (deve ACEITAR) --");
-  const abaixo = await turno(token, historicoSintetico(19));
+  console.log(
+    "\n-- borda de baixo: 20 mensagens de usuario (deve ACEITAR, restantes=0) --",
+  );
+  const abaixo = await turno(token, historicoSintetico(20));
   console.log(`   HTTP ${abaixo.status}`);
   if (abaixo.status === 200) {
     console.log(
@@ -205,7 +312,7 @@ async function cenario2(token: string, userId: string) {
     );
     console.log(`   missing=${JSON.stringify(abaixo.body?.missing)}`);
   } else {
-    console.log(`   code=${abaixo.body?.code} message=${abaixo.body?.message}`);
+    console.log(`   code=${abaixo.code} message=${abaixo.message}`);
   }
 
   const depois = await lerCota(userId, "depois");
@@ -229,8 +336,8 @@ async function cenario2(token: string, userId: string) {
   }
 
   return {
-    rejeitou20: acima.status === 400 && acima.body?.code === "turn_limit",
-    aceitou19: abaixo.status === 200,
+    rejeitou21: acima.status === 400 && acima.code === "turn_limit",
+    aceitou20: abaixo.status === 200 && abaixo.body?.restantes === 0,
   };
 }
 
@@ -242,7 +349,45 @@ async function cenario2(token: string, userId: string) {
 // confirmacao do resumo. Se a conversa precisar de mais que isto, o harness
 // repete a ultima ate o teto, e o numero de turnos gastos e a medida que
 // interessa: se passar de 15, ROTEIRO_PIOR_CASO esta errado.
-const RESPOSTAS = [
+const PERSONA = `Voce e uma pessoa brasileira de 29 anos, hoje auxiliar administrativo, querendo fazer transicao de carreira para desenvolvimento back-end. Voce sabe logica basica e ja mexeu um pouco com Python. Consegue estudar cerca de 8 horas por semana, quer estar empregavel em uns 6 meses, e seu maior obstaculo e o tempo, porque trabalha das 9 as 18.
+Responda A PERGUNTA QUE FOI FEITA, em uma ou duas frases, em portugues do Brasil, de forma direta e concreta. Nunca faca perguntas de volta. Se pedirem confirmacao de um resumo, confirme. Nunca invente que ja sabe tecnologias que a persona nao tem.`;
+
+// Interlocutor ADAPTATIVO. O roteiro fixo mediria o script, nao o roteiro do
+// produto: uma resposta fora do que foi perguntado faz o modelo repergunta, e o
+// numero de turnos infla por culpa do teste. Aqui um gpt-4o-mini com persona
+// responde o que de fato foi perguntado, entao o que se mede e o roteiro.
+async function responderComoPessoa(
+  pergunta: string,
+  historico: Array<{ role: string; content: string }>,
+): Promise<string> {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY ?? ""}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      max_tokens: 120,
+      messages: [
+        { role: "system", content: PERSONA },
+        ...historico.slice(-8).map((m) => ({
+          role: m.role === "assistant" ? "user" : "assistant",
+          content: m.content,
+        })),
+        { role: "user", content: pergunta },
+      ],
+    }),
+  });
+  const d = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const texto = d.choices?.[0]?.message?.content?.trim();
+  if (!texto) abortar("persona nao respondeu (OpenAI).");
+  return texto;
+}
+
+const RESPOSTAS_FALLBACK = [
   "Quero conquistar minha primeira vaga em tecnologia.",
   "Consigo estudar de 5 a 10 horas por semana.",
   "Quero chegar la em uns 6 meses.",
@@ -260,6 +405,11 @@ async function cenario1(token: string, userId: string) {
   const antes = await lerCota(userId, "antes");
 
   const messages: Array<{ role: string; content: string }> = [];
+  const transcript: Array<{
+    turno: number;
+    pergunta: string;
+    resposta: string;
+  }> = [];
   let turnos = 0;
   let ultimo: Record<string, unknown> | null = null;
   const MAX = 20;
@@ -269,7 +419,7 @@ async function cenario1(token: string, userId: string) {
     turnos += 1;
     if (r.status !== 200) {
       console.log(
-        `turno ${turnos}: HTTP ${r.status} code=${r.body?.code} message=${r.body?.message}`,
+        `turno ${turnos}: HTTP ${r.status} code=${r.code} message=${r.message}`,
       );
       break;
     }
@@ -284,9 +434,23 @@ async function cenario1(token: string, userId: string) {
       console.log(`\n[smoke] canGenerate virou TRUE no turno ${turnos}.`);
       break;
     }
-    const resposta = RESPOSTAS[Math.min(turnos - 1, RESPOSTAS.length - 1)];
+    const pergunta = String(r.body?.reply ?? "");
+    const resposta = await responderComoPessoa(pergunta, messages);
+    transcript.push({ turno: turnos, pergunta, resposta });
+    console.log(`   P: ${pergunta.slice(0, 150)}`);
+    console.log(`   R: ${resposta.slice(0, 150)}`);
     messages.push({ role: "user", content: resposta });
   }
+
+  await import("node:fs").then((fs) =>
+    fs.writeFileSync(
+      "smoke-transcript.json",
+      JSON.stringify(transcript, null, 2),
+    ),
+  );
+  console.log(
+    `\n[smoke] transcript salvo em smoke-transcript.json (${transcript.length} turnos)`,
+  );
 
   if (ultimo?.canGenerate !== true) {
     console.log(
@@ -371,7 +535,7 @@ async function main() {
   if (CENARIO === "2") {
     const r = await cenario2(token, userId);
     console.log(
-      `\n[smoke] veredito cenario 2: rejeitou20=${r.rejeitou20} aceitou19=${r.aceitou19}`,
+      `\n[smoke] veredito cenario 2: rejeitou21=${r.rejeitou21} aceitou20=${r.aceitou20}`,
     );
   } else if (CENARIO === "1") {
     const r = await cenario1(token, userId);
