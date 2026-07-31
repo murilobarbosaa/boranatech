@@ -8,6 +8,11 @@ import { syncNews } from "../jobs/syncNews";
 import { writeAudienceSnapshots } from "../lib/audienceReach";
 import { reindexSearchDocuments } from "../lib/searchIndex";
 import { reconcileSentryBugs } from "../lib/sentryBugReconcile";
+import {
+  resumoParaLog,
+  runDegradada,
+  syncSentryTasks,
+} from "../lib/sentryTaskIntake";
 import { coletarTagueado, paginateRange } from "../lib/paginate";
 import { recordCronRun } from "../lib/cron-logs";
 import { reconcileEmailCampaignBatches } from "../lib/emailCampaignQueue";
@@ -1648,6 +1653,53 @@ router.post(
         startedAt,
         errorMessage: err instanceof Error ? err.message : String(err),
       });
+      next(err);
+    }
+  }),
+);
+
+// Sync do Sentry para o quadro de tarefas. Duas fases (ingestao a partir da
+// listagem, manutencao a partir dos nossos cards), idempotente e nao destrutivo.
+//
+// `?dryRun=1` percorre tudo, decide tudo e NAO ESCREVE NADA, devolvendo o
+// relatorio completo do que faria, card a card, com o motivo. NAO e ferramenta
+// de desenvolvimento a ser removida depois: e o unico jeito de ver o que um
+// escritor automatico PRETENDE fazer contra o banco de verdade antes de deixa-lo
+// fazer, e ele fica. O roteiro de ativacao (Fase 6) comeca por ele.
+//
+// TTL 600s: ingestao limitada a 25 criacoes por run (1 chamada Sentry cada, teto
+// de 10s) mais duas buscas em lote; pior caso na casa dos minutos.
+router.post(
+  "/sync-sentry-tasks",
+  withCronLock("sync-sentry-tasks", 600, async (req, res, next) => {
+    const startedAt = new Date();
+    // Query string aqui e SEGURA: o segredo vai no header (ver
+    // requireCronSecret), e dryRun nao e informacao sensivel.
+    const dryRun = req.query.dryRun === "1" || req.query.dryRun === "true";
+
+    try {
+      const relatorio = await syncSentryTasks({ dryRun });
+      // Dry-run NUNCA vira linha de cron_run_logs: ele nao e uma execucao do
+      // job, e registrar como se fosse poluiria o historico com runs que nao
+      // aconteceram e mascararia a cadencia real.
+      if (!dryRun) {
+        await recordCronRun({
+          jobName: "sync-sentry-tasks",
+          status: runDegradada(relatorio) ? "partial" : "success",
+          startedAt,
+          payload: resumoParaLog(relatorio),
+        });
+      }
+      res.json({ data: relatorio });
+    } catch (err) {
+      if (!dryRun) {
+        await recordCronRun({
+          jobName: "sync-sentry-tasks",
+          status: "error",
+          startedAt,
+          errorMessage: err instanceof Error ? err.message : String(err),
+        });
+      }
       next(err);
     }
   }),

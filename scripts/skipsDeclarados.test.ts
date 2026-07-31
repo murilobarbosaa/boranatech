@@ -114,6 +114,26 @@ const SKIPS_DECLARADOS = [
       "BNT_PGREST_URL/BNT_TEST_USER_ID/BNT_PGREST_JWT, para o CI (sem Docker) " +
       "seguir verde. Instruções de como subir no cabeçalho do arquivo.",
   },
+  {
+    arquivo: "server/lib/sentryTaskDedup.pg.test.ts",
+    marcador: "skipIf",
+    testesPulados: 3,
+    porque:
+      "Prova do invariante 3 (deduplicação pela constraint) com inserções " +
+      "CONCORRENTES contra um Postgres real em Docker. Concorrência não existe " +
+      "em teste unitário, então só o banco pode provar. Pula sem " +
+      "BNT_PG_CONTAINER; instruções no cabeçalho do arquivo.",
+  },
+  {
+    arquivo: "server/lib/sentryTaskIntake.pg.test.ts",
+    marcador: "skipIf",
+    testesPulados: 2,
+    porque:
+      "Harness de ponta a ponta do sync: schema real em Docker, PostgREST " +
+      "autêntico e a API do Sentry de verdade. Foi ele que pegou os dois " +
+      "defeitos que mock nenhum pegaria (on conflict com índice parcial, e o " +
+      "400 do statsPeriod vazio). Pula sem BNT_SYNC_HARNESS=1.",
+  },
 ] as const;
 
 /** Total de testes que a suíte tem permissão de pular. */
@@ -164,8 +184,11 @@ describe("skips da suite: afirmar o TOTAL, nao a pertinencia", () => {
 
   it("o TOTAL de testes pulados e exatamente o declarado", () => {
     // O numero que a suite imprime como "N skipped". Bateu com o run real de
-    // 2026-07-30: 5 pulados, todos do harness em Docker.
-    expect(EXPECTED_SKIPPED_COUNT).toBe(5);
+    // 2026-07-31: 10 pulados, todos de harness em Docker (5 do rebalance, 3 da
+    // deduplicacao concorrente, 2 do sync de ponta a ponta). Era 5 ate a Fase 3
+    // do projeto de unificacao de bugs; alterar este numero e ato deliberado, no
+    // mesmo commit do harness que entra ou sai.
+    expect(EXPECTED_SKIPPED_COUNT).toBe(10);
   });
 
   it("cada skip declarado desliga o numero de testes que diz desligar", () => {
