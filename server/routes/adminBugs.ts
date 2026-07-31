@@ -28,14 +28,28 @@ const SEVERITY_LABELS: Record<(typeof BUG_SEVERITIES)[number], string> = {
   critical: "crítica",
 };
 
-const SentryQuerySchema = z.object({
+// Exportado para teste: a lista fechada de statsPeriod e a unica coisa neste
+// arquivo que trava um contrato com uma API externa, e ela precisa de asserção
+// propria em vez de depender de alguem exercitar a rota.
+export const SentryQuerySchema = z.object({
   query: z.string().trim().min(1).max(200).default("is:unresolved"),
   cursor: z.string().trim().min(1).max(200).optional(),
-  // Janela relativa no formato do Sentry (24h, 14d...). Valida o formato aqui
-  // pra nao repassar lixo arbitrario de querystring pra API externa.
+  // Janela relativa, LISTA FECHADA e nao regex de formato.
+  //
+  // GET /organizations/{org}/issues/ aceita exatamente '', '24h' e '14d';
+  // qualquer outro valor responde 400 "Invalid stats_period" (o mesmo achado
+  // esta registrado em sentryApi.ts, na busca por id numerico). O regex antigo
+  // (/^\d{1,3}[hdwm]$/) aceitava '90d', '3w' e '1m', que a API recusa: validar o
+  // FORMATO de um dominio fechado deixa passar o valor sintaticamente certo e
+  // semanticamente invalido, e o erro so aparece como 502 vindo do Sentry.
+  //
+  // Inalcancavel pela interface de hoje (a tela so oferece valores validos),
+  // e por isso mesmo apertado agora: no dia em que a janela do feed virar
+  // configuravel, o valor invalido para o job em vez de parar uma tela.
   statsPeriod: z
-    .string()
-    .regex(/^\d{1,3}[hdwm]$/, "statsPeriod inválido (ex: 24h, 14d).")
+    .enum(["", "24h", "14d"], {
+      message: "statsPeriod deve ser '', '24h' ou '14d'.",
+    })
     .default("14d"),
 });
 
