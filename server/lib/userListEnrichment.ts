@@ -168,6 +168,47 @@ export function buildEnrichmentIndex(
 }
 
 /**
+ * Quantas pessoas tem Pro, POR ORIGEM, a partir do indice ja construido.
+ *
+ * NAO e uma contagem nova: e um tally sobre o MESMO indice que a lista de
+ * usuarios e o detalhe usam, entao os tres nunca podem divergir. Este projeto ja
+ * carrega duas montagens da regra de Pro (a RPC `is_user_pro` e esta lib), e a
+ * divida esta registrada; uma terceira, escrita direto numa rota de dashboard,
+ * seria a que diverge primeiro porque ninguem olharia para ela.
+ *
+ * Os dois ramos sao ORTOGONAIS e o total NAO e a soma: quem tem os dois entra em
+ * `both` e apareceria duas vezes. `total` e a uniao, e existe justamente para
+ * ninguem precisar somar por conta propria.
+ */
+export type ProSourceTally = {
+  bySubscription: number;
+  byInfluencer: number;
+  both: number;
+  total: number;
+};
+
+export function tallyProSources(
+  index: Map<string, UserListEnrichment>,
+): ProSourceTally {
+  let bySubscription = 0;
+  let byInfluencer = 0;
+  let both = 0;
+  index.forEach((item) => {
+    if (item.pro_source === "subscription") bySubscription += 1;
+    else if (item.pro_source === "influencer") byInfluencer += 1;
+    else if (item.pro_source === "both") both += 1;
+  });
+  return {
+    // Quem tem os dois conta nos DOIS ramos: "assinantes pagantes" inclui quem
+    // tambem tem concessao.
+    bySubscription: bySubscription + both,
+    byInfluencer: byInfluencer + both,
+    both,
+    total: bySubscription + byInfluencer + both,
+  };
+}
+
+/**
  * Monta o discriminador de origem do Pro. EXPORTADO e usado tambem pela rota de
  * detalhe (GET /users/:id): sem isto, a lista e o modal montavam "both" cada um
  * do seu jeito, e duas montagens da mesma regra divergem na primeira mudanca.

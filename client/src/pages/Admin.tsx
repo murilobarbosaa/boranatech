@@ -226,6 +226,12 @@ type DashboardData = {
   counts?: {
     users: number;
     active_subscriptions: number;
+    // Os dois ramos de is_user_pro, contados no servidor pela mesma lib da
+    // lista de usuarios. OPCIONAIS: na janela de deploy a Vercel sobe antes do
+    // Railway, e o backend antigo nao manda estes campos.
+    pro_by_subscription?: number;
+    pro_by_influencer?: number;
+    pro_total?: number;
     areas: number;
     courses: number;
     ai_calls_total: number;
@@ -363,6 +369,10 @@ const metricCards: MetricCard[] = [
     color: "bg-violet-700 text-white",
   },
   {
+    // O rotulo diz o que o numero CONTA: assinantes pagantes. O acesso Pro tem
+    // um segundo ramo (concessao de influencer) que nao entra neste valor e
+    // aparece no detalhe, logo abaixo. Somar os dois pioraria a metrica de
+    // receita; esconder o segundo foi o que causou a confusao na aba Usuarios.
     label: "Assinantes Pro",
     value: "0",
     detail: "Assinaturas ativas no banco",
@@ -6544,6 +6554,16 @@ export default function Admin() {
     const mrrValue = billingMetrics
       ? formatCents(billingMetrics.mrr.mrrCents)
       : "indisponível";
+    // As concessoes de influencer sao ORTOGONAIS a assinatura: elas dao Pro sem
+    // pagar, e ficar fora do numero principal e deliberado. Mas ficar fora da
+    // TELA nao: era assim que 25 pessoas com acesso sumiam do painel.
+    const influencers = dashboard.counts.pro_by_influencer;
+    const proDetail =
+      influencers === undefined
+        ? metricCards[1].detail
+        : influencers > 0
+          ? `Assinaturas ativas. Mais ${influencers} com acesso por concessão de influencer.`
+          : "Assinaturas ativas. Nenhuma concessão de influencer ativa.";
     const mrrDetail = billingMetrics
       ? "MRR das assinaturas ativas"
       : billingMetricsError
@@ -6555,7 +6575,13 @@ export default function Admin() {
       { ...metricCards[0], value: String(dashboard.counts.users) },
       {
         ...metricCards[1],
-        value: String(dashboard.counts.active_subscriptions),
+        // Fallback para o campo antigo: backend anterior ao tally nao manda
+        // pro_by_subscription, e um `undefined` viraria "undefined" na tela.
+        value: String(
+          dashboard.counts.pro_by_subscription ??
+            dashboard.counts.active_subscriptions,
+        ),
+        detail: proDetail,
       },
       { ...metricCards[2], value: mrrValue, detail: mrrDetail },
       { ...metricCards[3], value: String(dashboard.counts.ai_calls_total) },

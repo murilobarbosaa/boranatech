@@ -32,10 +32,13 @@ import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { lerSessaoDeBoleto } from "../lib/boletoSession";
 import {
+  buildEnrichmentIndex,
   fetchUserListEnrichment,
   pickSubscription,
   resolveProSource,
   subscriptionGrantsPro,
+  tallyProSources,
+  type ProSourceTally,
   type SubscriptionRow,
 } from "../lib/userListEnrichment";
 import {
@@ -337,6 +340,53 @@ async function fetchAuthUsersByIds(
   return result;
 }
 
+/**
+ * Acesso Pro por origem, pela MESMA lib que a lista de usuarios usa.
+ *
+ * Reusa `buildEnrichmentIndex` + `tallyProSources` de propósito: o card da Visao
+ * mostrava `count(subscriptions where status='active')` e ignorava o segundo
+ * ramo de `is_user_pro`, entao exibia 62 onde 87 pessoas tinham acesso (medido
+ * em 2026-07-31: 62 por assinatura, 25 por concessao, interseccao zero).
+ * Escrever a contagem direto aqui seria a terceira montagem da regra de Pro
+ * nesta base, e a que divergiria primeiro.
+ *
+ * Custo: duas leituras completas, das duas tabelas menores do dominio
+ * (63 e 26 linhas hoje). Se qualquer uma passar do teto do PostgREST, o tally
+ * encolhe em silencio — por isso as duas sao PAGINADAS.
+ */
+async function contarProPorOrigem(): Promise<ProSourceTally> {
+  const assinaturas: SubscriptionRow[] = [];
+  for await (const row of paginateRange<SubscriptionRow>(
+    (from, to) =>
+      supabaseAdmin
+        .from("subscriptions")
+        .select("user_id, status, created_at, current_period_end, plans(code)")
+        .order("id", { ascending: true })
+        .range(from, to),
+    { errorLabel: "pro tally subscriptions" },
+  )) {
+    assinaturas.push(row);
+  }
+
+  const influencers = new Set<string>();
+  for await (const row of paginateRange<{ user_id: string | null }>(
+    (from, to) =>
+      supabaseAdmin
+        .from("influencers")
+        .select("user_id")
+        .is("revoked_at", null)
+        .order("id", { ascending: true })
+        .range(from, to),
+    { errorLabel: "pro tally influencers" },
+  )) {
+    if (row.user_id) influencers.add(row.user_id);
+  }
+
+  return tallyProSources(
+    buildEnrichmentIndex(assinaturas, influencers, new Date()),
+  );
+}
+
 router.get("/dashboard", async (_req, res, next) => {
   try {
     const [
@@ -346,6 +396,7 @@ router.get("/dashboard", async (_req, res, next) => {
       { count: coursesCount },
       { count: aiLogsCount },
       recentAudit,
+      proTally,
     ] = await Promise.all([
       supabaseAdmin
         .from("profiles")
@@ -364,13 +415,24 @@ router.get("/dashboard", async (_req, res, next) => {
         .select("action, resource_type, resource_slug, created_at")
         .order("created_at", { ascending: false })
         .limit(10),
+      contarProPorOrigem(),
     ]);
 
     res.json({
       data: {
         counts: {
           users: usersCount || 0,
+          // Contagem CRUA de `status='active'`. Mantida como estava: ela
+          // alimenta o bloco "Assinaturas ativas", que fala de assinatura, nao
+          // de acesso. Quem fala de ACESSO usa os dois campos abaixo.
           active_subscriptions: subsCount || 0,
+          // Os dois ramos de is_user_pro, contados pela MESMA lib que a lista de
+          // usuarios usa. Ortogonais: `pro_by_subscription` sao os pagantes e
+          // `pro_by_influencer` sao as concessoes; somar os dois conta duas
+          // vezes quem tem ambos, e por isso o total vem pronto.
+          pro_by_subscription: proTally.bySubscription,
+          pro_by_influencer: proTally.byInfluencer,
+          pro_total: proTally.total,
           areas: areasCount || 0,
           courses: coursesCount || 0,
           ai_calls_total: aiLogsCount || 0,

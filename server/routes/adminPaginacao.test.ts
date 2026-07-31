@@ -313,3 +313,68 @@ describe("GET /beta-codes conta TODOS os desbloqueios", () => {
     expect(r.body.data[0].success_count).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// GET /dashboard — os dois ramos de acesso Pro
+// ---------------------------------------------------------------------------
+
+describe("GET /dashboard separa os dois ramos de acesso Pro", () => {
+  function assinatura(userId: string) {
+    return {
+      user_id: userId,
+      status: "active",
+      created_at: "2026-07-01T00:00:00Z",
+      current_period_end: "2099-01-01T00:00:00Z",
+      plans: { code: "pro_annual" },
+    };
+  }
+
+  it("expõe assinatura e concessão como campos SEPARADOS", async () => {
+    // O card mostrava só o primeiro ramo e escondia 25 pessoas com acesso.
+    montar({
+      profiles: { rows: [], count: 3346 },
+      subscriptions: {
+        rows: [assinatura("a"), assinatura("b")],
+        count: 2,
+      },
+      areas: { rows: [], count: 10 },
+      courses: { rows: [], count: 450 },
+      ai_usage_logs: { rows: [], count: 1252 },
+      content_audit_logs: { rows: [] },
+      influencers: { rows: [{ user_id: "c" }, { user_id: "d" }] },
+    });
+
+    const r = await chamarAdmin("GET", "/dashboard");
+
+    expect(r.status).toBe(200);
+    expect(r.body.data.counts).toMatchObject({
+      pro_by_subscription: 2,
+      pro_by_influencer: 2,
+      pro_total: 4,
+    });
+    // O campo antigo continua existindo, com o mesmo significado de sempre:
+    // quem lê "Assinaturas ativas" fala de assinatura, não de acesso.
+    expect(r.body.data.counts.active_subscriptions).toBe(2);
+  });
+
+  it("o tally é PAGINADO: base acima do teto não encolhe em silêncio", async () => {
+    // Mesmo teto de 1000 do /ai-stats. Sem paginar, uma base grande faria o
+    // painel subestimar o próprio número de assinantes.
+    montar({
+      profiles: { rows: [], count: 0 },
+      subscriptions: {
+        rows: Array.from({ length: 1200 }, (_, i) => assinatura(`u${i}`)),
+        count: 1200,
+      },
+      areas: { rows: [], count: 0 },
+      courses: { rows: [], count: 0 },
+      ai_usage_logs: { rows: [], count: 0 },
+      content_audit_logs: { rows: [] },
+      influencers: { rows: [] },
+    });
+
+    const r = await chamarAdmin("GET", "/dashboard");
+
+    expect(r.body.data.counts.pro_by_subscription).toBe(1200);
+  });
+});

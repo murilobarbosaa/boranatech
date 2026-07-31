@@ -5,6 +5,7 @@ import {
   fetchUserListEnrichment,
   pickSubscription,
   subscriptionGrantsPro,
+  tallyProSources,
   type SubscriptionRow,
 } from "./userListEnrichment";
 
@@ -249,5 +250,88 @@ describe("fetchUserListEnrichment: custo fixo, sem N+1", () => {
 
     expect(index.get("u1")?.pro_source).toBe("subscription");
     expect(index.get("u9")?.pro_source).toBe("influencer");
+  });
+});
+
+describe("tallyProSources: os dois ramos de is_user_pro, sem soma errada", () => {
+  const AGORA = new Date("2026-07-31T12:00:00Z");
+
+  function assinatura(
+    over: Partial<SubscriptionRow> & { user_id: string },
+  ): SubscriptionRow {
+    return {
+      status: "active",
+      created_at: "2026-07-01T00:00:00Z",
+      current_period_end: "2027-01-01T00:00:00Z",
+      plans: { code: "pro_annual" },
+      ...over,
+    } as SubscriptionRow;
+  }
+
+  it("conta os dois ramos separados, e o total é a UNIÃO", () => {
+    // Foi exatamente isto que o card da Visão escondia: 62 por assinatura e 25
+    // por concessão, e a tela mostrava só o primeiro.
+    const index = buildEnrichmentIndex(
+      [assinatura({ user_id: "a" }), assinatura({ user_id: "b" })],
+      new Set(["c", "d", "e"]),
+      AGORA,
+    );
+
+    expect(tallyProSources(index)).toEqual({
+      bySubscription: 2,
+      byInfluencer: 3,
+      both: 0,
+      total: 5,
+    });
+  });
+
+  it("quem tem os DOIS entra nos dois ramos e UMA vez no total", () => {
+    // A trava contra somar bySubscription + byInfluencer: aqui isso daria 3
+    // para 2 pessoas.
+    const index = buildEnrichmentIndex(
+      [assinatura({ user_id: "a" }), assinatura({ user_id: "b" })],
+      new Set(["b"]),
+      AGORA,
+    );
+
+    const tally = tallyProSources(index);
+    expect(tally).toEqual({
+      bySubscription: 2,
+      byInfluencer: 1,
+      both: 1,
+      total: 2,
+    });
+    expect(tally.bySubscription + tally.byInfluencer).not.toBe(tally.total);
+  });
+
+  it("assinatura que NÃO dá Pro não entra em ramo nenhum", () => {
+    // Período vencido: is_user_pro nega, e o tally tem de negar junto. É a
+    // mesma regra, pela mesma função.
+    const index = buildEnrichmentIndex(
+      [
+        assinatura({
+          user_id: "a",
+          current_period_end: "2026-01-01T00:00:00Z",
+        }),
+      ],
+      new Set(),
+      AGORA,
+    );
+
+    expect(tallyProSources(index)).toEqual({
+      bySubscription: 0,
+      byInfluencer: 0,
+      both: 0,
+      total: 0,
+    });
+  });
+
+  it("base vazia devolve zeros, não erro", () => {
+    expect(tallyProSources(new Map())).toEqual({
+      bySubscription: 0,
+      byInfluencer: 0,
+      both: 0,
+      total: 0,
+    });
   });
 });
