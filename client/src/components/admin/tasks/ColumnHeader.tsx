@@ -71,8 +71,13 @@ function ColumnHeaderBase({
 
   // wip_limit e AVISO, nao bloqueio: o server nao recusa a movimentacao. O
   // destaque aqui e a unica manifestacao do estouro.
+  // Etapa fixada NAO mostra limite de WIP: o limite e aviso visual, e um aviso
+  // permanente numa etapa que o robo alimenta e ruido. Ruido e o que faz alguem
+  // desligar o instrumento.
   const overWip =
-    column.wip_limit !== null && totalBeforeFilter > column.wip_limit;
+    !column.is_pinned &&
+    column.wip_limit !== null &&
+    totalBeforeFilter > column.wip_limit;
   const filtered = taskCount < totalBeforeFilter;
 
   return (
@@ -132,7 +137,7 @@ function ColumnHeaderBase({
         >
           {filtered
             ? `${taskCount} de ${totalBeforeFilter}`
-            : column.wip_limit === null
+            : column.wip_limit === null || column.is_pinned
               ? totalBeforeFilter
               : `${totalBeforeFilter}/${column.wip_limit}`}
         </span>
@@ -190,27 +195,35 @@ function ColumnHeaderBase({
 
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              disabled={!canMoveLeft}
+              disabled={column.is_pinned || !canMoveLeft}
               onSelect={() => onMoveColumn(column.id, -1)}
               className="text-xs font-black"
             >
               <ChevronLeft className="mr-2 h-3.5 w-3.5" /> Mover para a esquerda
             </DropdownMenuItem>
             <DropdownMenuItem
-              disabled={!canMoveRight}
+              disabled={column.is_pinned || !canMoveRight}
               onSelect={() => onMoveColumn(column.id, 1)}
               className="text-xs font-black"
             >
               <ChevronRight className="mr-2 h-3.5 w-3.5" /> Mover para a direita
             </DropdownMenuItem>
 
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={() => onRequestDelete(column.id)}
-              className="text-xs font-black text-rose-700 focus:text-rose-700"
-            >
-              <Trash2 className="mr-2 h-3.5 w-3.5" /> Excluir etapa
-            </DropdownMenuItem>
+            {/* Etapa fixada nao e excluida nem reordenada. O servidor recusa
+                as duas (409 column_pinned_intake); aqui a opcao nem aparece,
+                porque oferecer uma acao que sempre falha e convidar para o
+                erro. */}
+            {column.is_pinned ? null : (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={() => onRequestDelete(column.id)}
+                  className="text-xs font-black text-rose-700 focus:text-rose-700"
+                >
+                  <Trash2 className="mr-2 h-3.5 w-3.5" /> Excluir etapa
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

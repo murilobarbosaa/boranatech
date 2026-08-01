@@ -95,6 +95,7 @@ describe("writeViewState", () => {
         types: ["melhoria" as const],
         due: "week" as const,
         mine: true,
+        origem: "" as const,
       },
       groupBy: "assignee" as const,
       view: "lista" as const,

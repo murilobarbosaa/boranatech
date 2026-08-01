@@ -15,7 +15,13 @@ import {
   labelClass,
   safeHexColor,
 } from "./taskBoardStyles";
-import { activeFilterCount, type DueFilter, type GroupBy, type TaskFilters } from "./taskFilters";
+import {
+  activeFilterCount,
+  type DueFilter,
+  type GroupBy,
+  type OrigemFilter,
+  type TaskFilters,
+} from "./taskFilters";
 import { LAYER_ON_PAGE } from "./taskLayers";
 import type { ViewMode } from "./taskViewState";
 import type { TaskAssignee, TaskBoard, TaskLabel, TaskPriority, TaskType } from "./types";
@@ -59,6 +65,19 @@ type BoardToolbarProps = {
  * borda, e o que impede o valor inventado de vazar para o estado da pagina.
  * Mesmo padrao do "__none__" de VagasDestaque.
  */
+/**
+ * Origem, na interface, e binaria: automático x manual. O `source` do banco tem
+ * tres valores (human, sentry, migrated_bug) e pode ganhar outros, mas quem olha
+ * o quadro quer saber se digitou aquilo, nao de qual robo veio.
+ */
+export const ORIGEM_OPTIONS: Array<{
+  value: Exclude<OrigemFilter, "">;
+  label: string;
+}> = [
+  { value: "sentry", label: "Automático" },
+  { value: "manual", label: "Manual" },
+];
+
 export const DUE_ANY = "__any__";
 
 export const DUE_OPTIONS: Array<{ value: string; label: string }> = [
@@ -297,6 +316,33 @@ export const BoardToolbar = memo(
                           onFiltersChange({
                             ...filters,
                             types: toggle(filters.types, option.value as TaskType),
+                          })
+                        }
+                        className={`${chip} ${on ? "bg-slate-950 text-white" : "bg-white text-slate-700"}`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <p className={labelClass}>Origem</p>
+                <div className="flex flex-wrap gap-1">
+                  {ORIGEM_OPTIONS.map((option) => {
+                    const on = filters.origem === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() =>
+                          onFiltersChange({
+                            ...filters,
+                            // Clicar no que ja esta ativo LIMPA. Sem isso o
+                            // filtro binario vira uma armadilha: nao ha terceiro
+                            // botao para voltar a "tudo".
+                            origem: on ? "" : option.value,
                           })
                         }
                         className={`${chip} ${on ? "bg-slate-950 text-white" : "bg-white text-slate-700"}`}

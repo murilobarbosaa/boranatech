@@ -128,6 +128,8 @@ beforeEach(() => {
     wip_limit: null,
     is_start: false,
     is_done: false,
+    is_pinned: false,
+    intake_source: null,
     created_at: "",
     updated_at: "",
   });

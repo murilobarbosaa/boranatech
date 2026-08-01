@@ -65,6 +65,8 @@ const COLUMNS: TaskColumn[] = [
     wip_limit: null,
     is_start: true,
     is_done: false,
+    is_pinned: false,
+    intake_source: null,
     created_at: "2026-07-27T00:00:00Z",
     updated_at: "2026-07-27T00:00:00Z",
   },
@@ -88,6 +90,11 @@ const TASK: Task = {
   estimate: null,
   completed_at: null,
   archived_at: null,
+  source: "human" as const,
+  sentry_issue_id: null,
+  sentry_issue_url: null,
+  sentry_reopen_event_at: null,
+  archived_source: null,
   created_at: "2026-07-27T00:00:00Z",
   updated_at: "2026-07-27T00:00:00Z",
 };
@@ -97,6 +104,7 @@ function card(id: string, number: number) {
     ...TASK,
     id,
     number,
+    sentry_detalhe_incompleto: false,
     label_ids: [] as string[],
     checklist_total: 0,
     checklist_done: 0,
@@ -142,6 +150,7 @@ beforeEach(() => {
   trace.events = [];
   svc.getTask.mockResolvedValue({
     task: TASK,
+    sentry_detalhe_incompleto: false,
     label_ids: [],
     comments: [],
     checklist: [] as TaskChecklistItem[],
