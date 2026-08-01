@@ -1,4 +1,5 @@
 import type { AreaSlug } from "../../shared/areas";
+import { headlineParecCortada } from "../../shared/linkedin/headlineCortada";
 import {
   LINKEDIN_CAMPOS,
   LINKEDIN_CHECK_CATALOG,
@@ -516,6 +517,21 @@ export function runLinkedinChecks(
     },
   };
 
+  /**
+   * A headline lida tem assinatura de corte?
+   *
+   * Decide `pendente` nos cinco checks de `headline-*` e o `notaIncompleta` do
+   * bloco. NAO entra em `aprovado` nem no peso: cada check continua com o
+   * veredito que a regua calculou, e a nota e identica com ou sem a marcacao.
+   * A inercia esta provada por deep-equals em
+   * `shared/linkedin/reguaV2.pontosPendentes.test.ts`.
+   *
+   * O que a marcacao muda e o que a interface AFIRMA: com a leitura em duvida,
+   * a faixa vira "a confirmar" e a nota ganha o asterisco, em vez de dizer
+   * "Forte" sobre uma headline cortada ao meio.
+   */
+  const headlineCortada = headlineParecCortada(parsed.headline);
+
   const checks: LinkedinCheckResult[] = [];
   for (const entry of LINKEDIN_CHECK_CATALOG) {
     if (!checkAppliesToMercado(entry, mercado)) continue;
@@ -531,6 +547,13 @@ export function runLinkedinChecks(
       tier: resolveTier(entry, mercado),
       aprovado,
       detail,
+      // SEMPRE booleano, nunca ausente. `pendente` e o unico opcional deste
+      // payload cuja ausencia significaria "completo" em vez de "nao sabemos",
+      // e os outros tres (`entryPath`, `textoHash`, `headlineContexto`)
+      // significam o contrario. Quatro opcionais no mesmo objeto com semantica
+      // invertida em um deles e como se erra: escrever sempre, e normalizar na
+      // leitura, faz a ausencia nunca chegar a ser interpretada.
+      pendente: headlineCortada && entry.category === "headline",
     });
   }
 
@@ -595,6 +618,12 @@ export function runLinkedinChecks(
   return {
     score,
     faixa,
+    // A nota esta completa? Booleano proprio, e nao um valor novo em
+    // `LINKEDIN_FAIXAS`: a coluna `faixa` e `text not null` SEM constraint, tem
+    // leitores fora do jsonb, e o bundle antigo na janela de deploy ignoraria o
+    // campo que nao conhece e mostraria a faixa calculada, que e o
+    // comportamento de hoje. Valor novo no enum daria chip vazio la.
+    notaIncompleta: headlineCortada,
     checks,
     keywordsEncontradas: fullCoverage.encontradas,
     keywordsFaltantes: fullCoverage.faltantes,

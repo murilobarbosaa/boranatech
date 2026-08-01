@@ -5,10 +5,22 @@
  * texto ainda esta na mao da pessoa e ela conserta de graca. Avisar depois da
  * analise so ofereceria reanalisar, que gasta outra cota.
  *
- * POR QUE MORA EM `client/src/lib` E NAO EM `shared/linkedin`. Isto e deteccao
- * para UI, e so. Manter fora de `shared/` torna ESTRUTURALMENTE impossivel um
- * check da regua passar a depender dela sem alguem mover o arquivo de proposito
- * e perceber o que esta fazendo. A nota nao pode variar por causa de um aviso.
+ * POR QUE MUDOU DE LUGAR, e a mudanca reverte um argumento anterior. Ate
+ * 2026-08-01 este arquivo morava em `client/src/lib`, e o motivo escrito aqui
+ * era que manter fora de `shared/` tornava ESTRUTURALMENTE impossivel um check
+ * da regua passar a depender dele.
+ *
+ * O argumento caiu quando o `pendente` passou a ser PERSISTIDO: quem escreve o
+ * bloco deterministico e o servidor, entao a deteccao tem de rodar la, e a
+ * barreira por localizacao deixou de ser possivel. Preferiu-se mover o arquivo
+ * a duplicar a regra nos dois lados, porque duas implementacoes da mesma regra
+ * e a classe de defeito desta base.
+ *
+ * A garantia que sobra NAO e mais estrutural, e sim provada por teste:
+ * `reguaV2.pontosPendentes.test.ts` afirma por deep-equals que a flag nao move
+ * parcela nenhuma da decomposicao, com um teste de mutacao ao lado mostrando o
+ * que a implementacao errada produziria. Trocar barreira por asserção e uma
+ * piora real, e fica registrada aqui em vez de sumir na diferenca de um commit.
  *
  * AS QUATRO ASSINATURAS, e o criterio de inclusao e ser INEQUIVOCA: nenhuma
  * pessoa escreve a headline assim de proposito. Medidas sobre as 162 analises

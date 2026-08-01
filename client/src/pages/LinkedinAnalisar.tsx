@@ -69,7 +69,7 @@ import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { extractLinkedinPdf, PdfExtractError } from "@/lib/pdfExtract";
 import { cn } from "@/lib/utils";
 import { competenciasDoPdf } from "@shared/linkedin/competenciasDoPdf";
-import { headlineParecCortada } from "@/lib/headlineCortada";
+import { headlineParecCortada } from "@shared/linkedin/headlineCortada";
 import {
   EVENTO_ENVIO,
   EVENTO_REVISAO,

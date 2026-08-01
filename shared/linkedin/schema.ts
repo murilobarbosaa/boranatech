@@ -409,6 +409,21 @@ export interface LinkedinCheckResult {
   tier: LinkedinCheckTier;
   aprovado: boolean;
   detail: string;
+  /**
+   * A leitura que alimenta este check está em dúvida?
+   *
+   * OBRIGATÓRIO na escrita, e é o único opcional deste payload cuja AUSÊNCIA
+   * significaria "completo" em vez de "não sabemos" (`entryPath`, `textoHash` e
+   * `headlineContexto` significam o contrário). Quatro opcionais no mesmo
+   * objeto, um com semântica invertida, é como se erra. Por isso: escrever
+   * sempre, e normalizar na leitura, para a ausência nunca chegar a ser
+   * interpretada. Ver `readDeterministic`.
+   *
+   * `aprovado` continua com o veredito calculado, e a nota NÃO muda: o marcador
+   * mexe no que a interface afirma (faixa e asterisco), não na aritmética.
+   * Inércia provada em `reguaV2.pontosPendentes.test.ts`.
+   */
+  pendente?: boolean;
 }
 
 /**
@@ -539,6 +554,16 @@ export interface LinkedinKeywordCampos {
 export interface LinkedinDeterministicResult {
   score: number;
   faixa: LinkedinFaixa;
+  /**
+   * A nota está incompleta porque alguma leitura está em dúvida?
+   *
+   * Booleano próprio, e NÃO um valor novo em `LINKEDIN_FAIXAS`: a coluna
+   * `faixa` é `text not null` sem constraint e tem leitores fora do jsonb, e o
+   * bundle antigo na janela de deploy ignora o campo que não conhece e mostra a
+   * faixa calculada (o comportamento de hoje). Valor novo no enum daria chip
+   * vazio lá. Mesma regra de escrita obrigatória do `pendente`.
+   */
+  notaIncompleta?: boolean;
   checks: LinkedinCheckResult[];
   /** Tecnologias-chave da área presentes no perfil (pdf + skills coladas). */
   keywordsEncontradas: string[];

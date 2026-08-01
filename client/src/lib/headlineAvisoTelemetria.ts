@@ -1,6 +1,6 @@
 import { parseLinkedinText } from "@shared/linkedin/parse";
 
-import { assinaturaDeCorte, type AssinaturaDeCorte } from "./headlineCortada";
+import { assinaturaDeCorte, type AssinaturaDeCorte } from "@shared/linkedin/headlineCortada";
 
 /**
  * Telemetria do aviso de headline cortada.
