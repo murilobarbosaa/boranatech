@@ -842,6 +842,29 @@ export const QUALITATIVE_VERSION = 3;
  *   O bump é por comparabilidade e não por régua: o mesmo perfil, sem a pessoa
  *   mexer em nada, passa a declarar menos competências do que declarava.
  *
+ * 7: a nota passou a poder ficar INCOMPLETA. Quando a leitura da headline tem
+ *   assinatura de corte, os cinco checks de `headline-*` são marcados
+ *   `pendente`, o bloco carrega `notaIncompleta`, e a interface deixa de
+ *   afirmar uma faixa sobre uma leitura em dúvida: o chip vira "A confirmar", o
+ *   grupo da decomposição mostra "a conferir" em vez de N/M, e o delta some nas
+ *   duas pontas (o confete junto, porque `delta: null` já desliga a
+ *   celebração).
+ *
+ *   A NOTA NÃO MUDA. `aprovado` continua com o veredito calculado e a
+ *   aritmética é idêntica com ou sem os marcadores; a inércia está provada por
+ *   deep-equals em `reguaV2.pontosPendentes.test.ts`, com um teste de mutação
+ *   ao lado. O bump é por COMPARABILIDADE do que a interface afirma: a mesma
+ *   pessoa, com o mesmo perfil, passa a ver "A confirmar" onde via "Forte".
+ *
+ *   Estimado em 29 de 170 análises persistidas (17,1%), estável em três
+ *   medições independentes (17,3%, 17,8%, 17,1%). Das 29, 19 estavam em
+ *   "em-construção", 5 em "forte" e 5 em "início".
+ *
+ *   `notaIncompleta` é booleano e NÃO valor novo em `LINKEDIN_FAIXAS`: a coluna
+ *   `faixa` é `text not null` sem constraint, tem leitores fora do jsonb, e o
+ *   bundle antigo na janela de deploy ignora o campo que não conhece e mostra a
+ *   faixa calculada, que é o comportamento de hoje.
+ *
  * NÃO bumpado na Fase 2A, e a decisão é deliberada. A fase acrescentou
  * `keywordsCampos`, um campo OPCIONAL e puramente descritivo: nenhum check o
  * lê, a nota das 6 fixtures é idêntica, e a régua não mudou. O que esta
@@ -855,7 +878,7 @@ export const QUALITATIVE_VERSION = 3;
  * `titulosIngles`) passa por `readDeterministic`. Ver
  * docs/divida-leitura-persistida.md.
  */
-export const DETERMINISTIC_VERSION = 6;
+export const DETERMINISTIC_VERSION = 7;
 
 export interface LinkedinAnalysisResponse {
   area: (typeof AREA_SLUGS)[number];

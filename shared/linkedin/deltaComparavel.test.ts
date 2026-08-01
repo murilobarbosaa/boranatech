@@ -91,7 +91,7 @@ describe("delta de nota entre versoes da regua", () => {
     ).toBe(true);
   });
 
-  it("a versao atual e 6: reanalise de qualquer historico existente nao compara", () => {
+  it("a versao atual e 7: reanalise de qualquer historico existente nao compara", () => {
     // Guard contra esquecer de bumpar: se DETERMINISTIC_VERSION voltar a 1,
     // este teste quebra e avisa que o historico voltaria a ser comparado.
     // Alterar este numero e ATO DELIBERADO, no mesmo commit da mudanca que
@@ -100,11 +100,18 @@ describe("delta de nota entre versoes da regua", () => {
     // 5 -> 6: o pre-preenchimento de competencias parou de escrever o bloco de
     // identidade (nome, cidade, estado, pais) no campo `skills`. Move
     // `skills-quantidade` em 7 das 162 analises persistidas, sempre para baixo.
-    expect(DETERMINISTIC_VERSION).toBe(6);
+    //
+    // 6 -> 7: a nota pode ficar INCOMPLETA. A aritmetica nao muda (inercia
+    // provada por deep-equals), mas a interface deixa de afirmar faixa sobre
+    // leitura em duvida: ~17% das analises passam a ver "A confirmar" no lugar
+    // da faixa. Comparar uma nota completa com uma incompleta e o que o bump
+    // impede.
+    expect(DETERMINISTIC_VERSION).toBe(7);
     expect(deltaEhComparavel(null, DETERMINISTIC_VERSION)).toBe(false);
-    // As linhas persistidas sao v1 (sem carimbo), v4 ou v5. Nenhuma das tres
-    // compara com a v6, que e o ponto do bump.
+    // As linhas persistidas sao v1 (sem carimbo), v4, v5 ou v6. Nenhuma delas
+    // compara com a v7, que e o ponto do bump.
     expect(deltaEhComparavel(4, DETERMINISTIC_VERSION)).toBe(false);
     expect(deltaEhComparavel(5, DETERMINISTIC_VERSION)).toBe(false);
+    expect(deltaEhComparavel(6, DETERMINISTIC_VERSION)).toBe(false);
   });
 });
