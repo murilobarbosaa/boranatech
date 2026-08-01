@@ -77,7 +77,7 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
  * 52 desde `GET /subscription-history` (fatia 3 da Visão). Mudar este número é
  * ato deliberado, no commit da rota que o muda.
  */
-const EXPECTED_ROUTE_COUNT = 56;
+const EXPECTED_ROUTE_COUNT = 55;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {

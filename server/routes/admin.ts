@@ -27,7 +27,7 @@ import { getUsageRetention } from "../lib/usageRetention";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { emailQueue } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
-import { RedisOpTimeoutError, withRedisOpTimeout } from "../lib/redisOpTimeout";
+import { withRedisOpTimeout } from "../lib/redisOpTimeout";
 import { stripeProvider } from "../providers/stripe";
 import { getStripe } from "../lib/stripeClient";
 import { syncBalanceTransactions } from "../lib/stripeSync";
@@ -411,59 +411,34 @@ async function contarProPorOrigem(): Promise<ProSourceTally> {
   );
 }
 
+// SOBROU O REGISTRO DE AUDITORIA, e so ele.
+//
+// Ate a fatia 9 esta rota devolvia sete contadores (usuarios, assinaturas
+// ativas, os tres ramos de acesso Pro, areas, cursos, chamadas de IA) mais o log
+// recente, e servia cinco blocos da Visao. Todos aqueles blocos sairam ou foram
+// substituidos: os contadores de gente e dinheiro viraram os cards de /overview
+// (que os calcula com a MESMA lib, `buildEnrichmentIndex`), e areas e cursos nao
+// eram exibidos em lugar nenhum. Medido no client antes de cortar: nenhum campo
+// de `counts` tinha leitor, so o `recent_audit`.
+//
+// O que sai junto e o custo: cinco `count(*)` e a varredura paginada de
+// `contarProPorOrigem`, que lia a base inteira de assinaturas e concessoes a
+// cada carga do admin, para alimentar numeros que ninguem lia.
 router.get("/dashboard", async (_req, res, next) => {
   try {
-    const [
-      { count: usersCount },
-      { count: subsCount },
-      { count: areasCount },
-      { count: coursesCount },
-      { count: aiLogsCount },
-      recentAudit,
-      proTally,
-    ] = await Promise.all([
-      supabaseAdmin
-        .from("profiles")
-        .select("*", { count: "exact", head: true }),
-      supabaseAdmin
-        .from("subscriptions")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "active"),
-      supabaseAdmin.from("areas").select("*", { count: "exact", head: true }),
-      supabaseAdmin.from("courses").select("*", { count: "exact", head: true }),
-      supabaseAdmin
-        .from("ai_usage_logs")
-        .select("*", { count: "exact", head: true }),
-      supabaseAdmin
-        .from("content_audit_logs")
-        .select("action, resource_type, resource_slug, created_at")
-        .order("created_at", { ascending: false })
-        .limit(10),
-      contarProPorOrigem(),
-    ]);
+    const recentAudit = await supabaseAdmin
+      .from("content_audit_logs")
+      .select("action, resource_type, resource_slug, created_at")
+      .order("created_at", { ascending: false })
+      .limit(10);
 
-    res.json({
-      data: {
-        counts: {
-          users: usersCount || 0,
-          // Contagem CRUA de `status='active'`. Mantida como estava: ela
-          // alimenta o bloco "Assinaturas ativas", que fala de assinatura, nao
-          // de acesso. Quem fala de ACESSO usa os dois campos abaixo.
-          active_subscriptions: subsCount || 0,
-          // Os dois ramos de is_user_pro, contados pela MESMA lib que a lista de
-          // usuarios usa. Ortogonais: `pro_by_subscription` sao os pagantes e
-          // `pro_by_influencer` sao as concessoes; somar os dois conta duas
-          // vezes quem tem ambos, e por isso o total vem pronto.
-          pro_by_subscription: proTally.bySubscription,
-          pro_by_influencer: proTally.byInfluencer,
-          pro_total: proTally.total,
-          areas: areasCount || 0,
-          courses: coursesCount || 0,
-          ai_calls_total: aiLogsCount || 0,
-        },
-        recent_audit: recentAudit.data || [],
-      },
-    });
+    if (recentAudit.error) {
+      return next(
+        dbError("dashboard audit", recentAudit.error, "Erro ao carregar."),
+      );
+    }
+
+    res.json({ data: { recent_audit: recentAudit.data || [] } });
   } catch (err) {
     next(err);
   }
@@ -5035,39 +5010,6 @@ router.get("/ai-usage-summary", async (req, res, next) => {
   }
 });
 
-router.get("/queue-stats", async (_req, res, next) => {
-  try {
-    if (!emailQueue) {
-      // Fila indisponivel (sem Redis) e um estado NOMEADO, nao zeros mascarados.
-      return next(
-        // TODO(Ana)
-        createError(503, "queue_unavailable", "Fila de e-mail indisponível."),
-      );
-    }
-
-    // Teto de 2s: com a fila half-open esses contadores ficariam pendentes na
-    // offline queue e pendurariam a rota. No timeout, devolve o MESMO estado
-    // nomeado do "sem Redis" (503 queue_unavailable) em vez de pendurar; outros
-    // erros seguem o fluxo normal (next).
-    const [waiting, active, completed, failed] = await withRedisOpTimeout(
-      Promise.all([
-        emailQueue.getWaitingCount(),
-        emailQueue.getActiveCount(),
-        emailQueue.getCompletedCount(),
-        emailQueue.getFailedCount(),
-      ]),
-      "queue-stats",
-    );
-    res.json({ data: { waiting, active, completed, failed } });
-  } catch (err) {
-    if (err instanceof RedisOpTimeoutError) {
-      return next(
-        createError(503, "queue_unavailable", "Fila de e-mail indisponível."),
-      );
-    }
-    next(err);
-  }
-});
 
 router.get("/affiliates-stats", async (_req, res, next) => {
   try {

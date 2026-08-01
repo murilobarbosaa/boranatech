@@ -257,23 +257,12 @@ type OverviewData = {
   };
 };
 
+// De /dashboard sobrou o registro de auditoria. Os contadores foram podados na
+// fatia 9 junto com os blocos que os exibiam; quem conta gente e dinheiro hoje e
+// /overview.
 type DashboardData = {
-  counts?: {
-    users: number;
-    active_subscriptions: number;
-    // Os dois ramos de is_user_pro, contados no servidor pela mesma lib da
-    // lista de usuarios. OPCIONAIS: na janela de deploy a Vercel sobe antes do
-    // Railway, e o backend antigo nao manda estes campos.
-    pro_by_subscription?: number;
-    pro_by_influencer?: number;
-    pro_total?: number;
-    areas: number;
-    courses: number;
-    ai_calls_total: number;
-  };
   recent_audit?: AuditLog[];
 };
-
 
 type AuditLog = {
   action: "create" | "update" | "delete" | "publish" | "unpublish";
