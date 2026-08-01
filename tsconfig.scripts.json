@@ -1,0 +1,34 @@
+{
+  // Typecheck dos scripts de manutencao e dos guards.
+  //
+  // POR QUE UM ARQUIVO SEPARADO, e nao `scripts/**/*` no include principal:
+  // o `tsconfig.json` da aplicacao NAO declara `target`, entao cai no default
+  // (ES5). Isso e adequado para o que ele governa (o bundle do cliente e o do
+  // servidor, ambos transpilados por outra ferramenta), e a base ja tem
+  // contornos escritos para conviver com ele: `comecaMaiuscula` existe porque
+  // `\p{Lu}` exige a flag `u`, e ha testes que evitam iterar `Set` pelo mesmo
+  // motivo.
+  //
+  // Os scripts sao outra coisa: sao `.mts` executados por `tsx` no Node, usam
+  // top-level await e iteram iteradores modernos. Sob o target ES5 eles
+  // produzem 48 erros que NAO sao defeitos, sao incompatibilidade de
+  // configuracao. Mudar o target da aplicacao inteira para resolver isso seria
+  // trocar um problema de 48 erros num canto por uma mudanca de emissao em
+  // tudo.
+  //
+  // POR QUE ISTO PASSOU A EXISTIR: em 2026-08-01 o `checkMigrationsApplied.mts`
+  // quebrou em producao com `ReferenceError` (variavel de bloco referenciada
+  // fora do bloco) e `pnpm check` estava VERDE, porque `scripts/` nunca esteve
+  // no include. O instrumento que verifica cobertura nao tinha cobertura.
+  "extends": "./tsconfig.json",
+  "include": ["scripts/**/*"],
+  // Sobrescreve o MINIMO: so `target`. `module`, `moduleResolution`, `lib` e
+  // `strict` vem do arquivo base de proposito, para os scripts serem checados
+  // com as mesmas regras do resto. Tentar `moduleResolution: nodenext` aqui
+  // produziu 33 erros novos exigindo extensao `.js` nos imports relativos, que
+  // o `tsx` nao precisa: seria trocar 48 erros de configuracao por 33 de outra.
+  "compilerOptions": {
+    "target": "es2022",
+    "noEmit": true
+  }
+}

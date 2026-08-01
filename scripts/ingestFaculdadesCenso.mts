@@ -82,7 +82,12 @@ const CINE_DETALHADA_SUBAREA: Record<string, Subarea> = {
 
 const PREPOSICOES = new Set(["de", "da", "do", "das", "dos", "e", "em"]);
 
+// `Record<string, unknown>` e o que `upsertAll` exige. As duas interfaces
+// abaixo o satisfazem estruturalmente, mas o TS so aceita a atribuicao com o
+// index signature explicito: sem ele, um objeto com campos conhecidos nao e
+// assinalavel a um mapa aberto.
 interface IesRecord {
+  [campo: string]: unknown;
   co_ies: number;
   no_ies: string;
   sg_ies: string | null;
@@ -100,6 +105,7 @@ interface IesRecord {
 }
 
 interface CursoRecord {
+  [campo: string]: unknown;
   co_curso: number;
   co_ies: number;
   no_curso: string;
@@ -226,7 +232,11 @@ async function existingIds(table: string, pk: string): Promise<Set<number>> {
       .order(pk)
       .range(from, from + PAGE - 1);
     if (error) throw new Error(error.message);
-    const page = (data ?? []) as Array<Record<string, number>>;
+    // `table` e `string`, entao o cliente do Supabase nao infere a linha e
+    // devolve o tipo de erro generico. O `unknown` no meio e exigido pelo TS e
+    // esta certo: nao ha sobreposicao entre os dois tipos, e quem sabe o
+    // formato e a chamada, nao o cliente.
+    const page = (data ?? []) as unknown as Array<Record<string, number>>;
     for (const r of page) ids.add(r[pk]);
     if (page.length < PAGE) break;
   }
@@ -259,7 +269,12 @@ async function upsertAll<T extends Record<string, unknown>>(
     const batch = rows.slice(i, i + BATCH);
     const { error } = await supabaseAdmin
       .from(table)
-      .upsert(batch, { onConflict: pk });
+      // Mesma razao do `existingIds`: com `table: string` o cliente nao tem o
+      // tipo da linha e recusa o array generico. O cast e no limite da
+      // fronteira generica, nao em cima de um dado de formato desconhecido.
+      .upsert(batch as unknown as Record<string, unknown>[], {
+        onConflict: pk,
+      });
     if (error) throw new Error(`upsert ${table} lote ${i}: ${error.message}`);
   }
 }

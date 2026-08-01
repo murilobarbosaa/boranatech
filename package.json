@@ -21,7 +21,7 @@
     "build": "vite build && esbuild server/index.ts --platform=node --bundle --format=esm --outdir=dist --banner:js=\"import { createRequire } from 'module';const require = createRequire(import.meta.url);\" --external:@supabase/supabase-js --external:@supabase/* --external:@sentry/node --external:bullmq --external:ioredis --external:sharp --external:@img/sharp-linux-x64 --external:@img/sharp-darwin-x64 --external:@img/sharp-win32-x64 --external:puppeteer-core --external:@sparticuz/chromium && node scripts/copyCertTemplate.mjs",
     "start": "NODE_ENV=production node dist/index.js",
     "preview": "vite preview --host",
-    "check": "tsc --noEmit && tsx scripts/generateRoadmapMeta.mts --check && tsx scripts/generateSitemap.mts --check && tsx scripts/checkCspHashes.mts",
+    "check": "tsc --noEmit && tsc --noEmit -p tsconfig.scripts.json && tsx scripts/generateRoadmapMeta.mts --check && tsx scripts/generateSitemap.mts --check && tsx scripts/checkCspHashes.mts",
     "check:migrations": "tsx scripts/checkMigrationsApplied.mts",
     "check:hero-counter": "node scripts/checkHeroCounter.mjs",
     "report:ai-usage": "tsx scripts/aiUsageReport.mts",
