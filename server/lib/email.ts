@@ -792,7 +792,7 @@ export async function sendBugCreatedEmail(params: {
   const body = `
     ${paragraph(`Um novo bug acabou de ser registrado no admin: <strong>${safeTitle}</strong>.`)}
     ${list(theme, details)}
-    ${button("Abrir a aba de bugs", `${APP_URL}/admin?section=bugs`, theme)}
+    ${button("Abrir o quadro de bugs", `${APP_URL}/admin?section=tarefas&board=bugs`, theme)}
   `;
   await sendEmail({
     to: env.bugNotifyNewEmail,
@@ -822,7 +822,7 @@ export async function sendBugResolvedEmail(params: {
   const body = `
     ${paragraph(`O bug <strong>${safeTitle}</strong> foi marcado como resolvido.`)}
     ${list(theme, details)}
-    ${button("Abrir a aba de bugs", `${APP_URL}/admin?section=bugs`, theme)}
+    ${button("Abrir o quadro de bugs", `${APP_URL}/admin?section=tarefas&board=bugs`, theme)}
   `;
   await sendEmail({
     to: env.bugNotifyDoneEmail,
@@ -846,7 +846,7 @@ export async function sendBugReopenedEmail(params: {
   const body = `
     ${paragraph(`O bug <strong>${safeTitle}</strong> voltou a acontecer no Sentry e foi reaberto automaticamente.`)}
     ${list(theme, [`Evento novo em: <strong>${escapeHtml(eventDate)}</strong>`])}
-    ${button("Abrir a aba de bugs", `${APP_URL}/admin?section=bugs`, theme)}
+    ${button("Abrir o quadro de bugs", `${APP_URL}/admin?section=tarefas&board=bugs`, theme)}
   `;
   await sendEmail({
     to: env.bugNotifyDoneEmail,

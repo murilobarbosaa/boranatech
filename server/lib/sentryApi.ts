@@ -98,11 +98,37 @@ function toIssue(raw: Record<string, unknown>): SentryIssue {
   };
 }
 
+/**
+ * Janelas que a listagem do Sentry aceita. Lista FECHADA, nao formato.
+ *
+ * A validacao morava no schema de querystring da rota de bugs, que saiu na Fase
+ * 5 junto com a aba. Ela desceu para ca porque o dono da regra sempre foi este
+ * modulo: quem impoe o conjunto e a API do Sentry, e todo chamador desta funcao
+ * esta sujeito a ela. Guarda dentro da funcao cobre os chamadores que ainda nao
+ * existem, que e a regra do CLAUDE.md.
+ *
+ * Medido contra a API viva: `''`, `24h` e `14d` respondem 200; qualquer outro
+ * valor (`7d`, `30d`, `90d`, `1h`) responde 400. Sao sintaticamente impecaveis e
+ * mesmo assim invalidos, e e por isso que validar FORMATO aqui deixaria passar.
+ */
+export const PERIODOS_DE_LISTAGEM = ["", "24h", "14d"] as const;
+
 export async function listSentryIssues(params?: {
   query?: string;
   cursor?: string;
   statsPeriod?: string;
 }): Promise<SentryIssuesResult> {
+  const periodo = params?.statsPeriod ?? "14d";
+  if (!(PERIODOS_DE_LISTAGEM as readonly string[]).includes(periodo)) {
+    // Estado de erro, e nao excecao: o contrato deste modulo e "nunca lanca". E
+    // nao chama a API: mandar um valor que sabemos invalido gastaria uma
+    // requisicao para receber um 400 previsivel.
+    return {
+      state: "error",
+      reason: `statsPeriod inválido: ${periodo}. Aceitos: ${PERIODOS_DE_LISTAGEM.map((p) => p || "(vazio)").join(", ")}.`,
+    };
+  }
+
   const missing: string[] = [];
   if (!env.sentryAuthToken) missing.push("SENTRY_AUTH_TOKEN");
   if (!env.sentryOrgSlug) missing.push("SENTRY_ORG_SLUG");
@@ -112,7 +138,7 @@ export async function listSentryIssues(params?: {
   const url = new URL(`${SENTRY_API_BASE}/organizations/${env.sentryOrgSlug}/issues/`);
   url.searchParams.set("project", TODOS_OS_PROJETOS);
   url.searchParams.set("query", params?.query ?? "is:unresolved");
-  url.searchParams.set("statsPeriod", params?.statsPeriod ?? "14d");
+  url.searchParams.set("statsPeriod", periodo);
   if (params?.cursor) url.searchParams.set("cursor", params.cursor);
 
   const controller = new AbortController();
