@@ -916,9 +916,11 @@ export default function LinkedinAnalisar() {
           notaAnterior: priorScore,
           versaoAnterior: priorVersion,
           checksAnteriores: analyses[0]?.checks,
+          incompletaAnterior: analyses[0]?.notaIncompleta,
           notaAtual: data.deterministic.score,
           versaoAtual: data.deterministicVersion,
           checksAtuais: data.deterministic.checks,
+          incompletaAtual: data.deterministic.notaIncompleta,
         }),
       );
       // Resultado chegou: de volta ao topo (a pessoa pode ter rolado
@@ -963,9 +965,11 @@ export default function LinkedinAnalisar() {
             notaAnterior: anterior?.score ?? null,
             versaoAnterior: anterior?.deterministicVersion,
             checksAnteriores: anterior?.checks,
+            incompletaAnterior: anterior?.notaIncompleta,
             notaAtual: record.result.deterministic.score,
             versaoAtual: record.result.deterministicVersion,
             checksAtuais: record.result.deterministic.checks,
+            incompletaAtual: record.result.deterministic.notaIncompleta,
           }),
         );
         scrollToStageTop();

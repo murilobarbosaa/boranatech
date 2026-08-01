@@ -885,6 +885,15 @@ export interface LinkedinAnalysisSummary {
    */
   deterministicVersion?: number | null;
   /**
+   * A nota desta linha está incompleta (leitura em dúvida)?
+   *
+   * Ausente nas linhas anteriores à v7, e ausência vale `false` — mesma
+   * normalização de `readDeterministic`. Serve para o delta ser suprimido
+   * quando qualquer das duas pontas está incompleta, e para o histórico saber
+   * se mostra a faixa ou "a confirmar".
+   */
+  notaIncompleta?: boolean;
+  /**
    * Vereditos dos checks desta análise, só id/category/aprovado.
    *
    * Existe para o cliente saber se a diferença para a análise seguinte veio SÓ

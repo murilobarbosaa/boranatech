@@ -283,7 +283,11 @@ router.get(
       const { data, error } = await supabaseAdmin
         .from("linkedin_analyses")
         .select(
-          "id, area, level, score, faixa, created_at, result->deterministicVersion, result->deterministic->checks",
+          // `notaIncompleta` entra na lista pelo mesmo motivo de `checks`: o
+          // delta e o historico precisam dela por LINHA, e buscar o `result`
+          // inteiro de 20 analises so para ler um booleano seria caro. Ausente
+          // nas linhas anteriores a v7, e o cliente normaliza para `false`.
+          "id, area, level, score, faixa, created_at, result->deterministicVersion, result->deterministic->checks, result->deterministic->notaIncompleta",
         )
         .eq("user_id", req.user!.id)
         .order("created_at", { ascending: false })
