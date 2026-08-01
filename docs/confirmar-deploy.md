@@ -2,6 +2,18 @@
 
 **Escrito em 2026-07-31**, depois de o instrumento que vinha sendo usado há dez deploys falhar pela primeira vez — e falhar dizendo "não mudou" sobre um deploy que tinha acontecido.
 
+## Passo 0: o worktree de deploy tem de estar atual
+
+```bash
+git -C /home/s0ft/bnt-main fetch origin
+git -C /home/s0ft/bnt-main merge --ff-only origin/main
+```
+
+**Antes de qualquer `cherry-pick` ou `push` ali.** Em 2026-08-01 o `bnt-main` foi encontrado **4 commits
+atrás** da `main` do servidor, por leitura manual. A operação principal daquele worktree é `cherry-pick`, que
+partiria de base velha sem nada avisar: nem o git, nem o CI, nem o hook. O worktree existe para eliminar a
+disputa de checkout, e trocou por um modo de errar mais silencioso.
+
 ## O procedimento
 
 ### 1. Sinal primário: a release do Sentry com `dateFinished`

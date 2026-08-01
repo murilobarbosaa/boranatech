@@ -183,6 +183,7 @@ Ordenadas por mecanismo, não cronologia. Todas medidas nesta base.
 | **Guard abortando por falta de `.env`, lido como "nada a reportar"** (2026-08-01) | `check:migrations` num worktree sem `.env` sai com **`exit 1`, o mesmo código de uma falha real**, e imprime com **o mesmo prefixo do caminho de sucesso**. Um grep na saída procurando o aviso das três tabelas de billing não achou nada, e a leitura foi "pendência resolvida". O guard não tinha verificado coisa nenhuma | Código de saída próprio (`78`, `EX_CONFIG`) e mensagem que diz "ABORTADO SEM VERIFICAR NADA / este resultado NÃO significa que o banco está em dia". Travado em `scripts/lib/guardAmbienteAusente.test.ts`, que roda o script de verdade |
 | Medir antes da coisa existir | Três vezes: release "cobrindo um projeto só" (o backend ainda não subira), "zero artefatos", "o bundle não mudou" | Conferir que o instante da medição é depois do evento |
 | `release` sem artefato | Existir a release não implica os mapas terem subido | Verificar o debug ID do arquivo servido |
+| **O worktree de deploy desatualizado em silêncio** (2026-08-01) | `bnt-main` foi criado para eliminar a disputa de checkout, e ficou **4 commits atrás** da `main` do servidor. A operação principal dele é `cherry-pick`, que partiria de base velha sem nada avisar: nem o git, nem o CI, nem o hook. Encontrado por leitura manual na conferência de encerramento | `git fetch` + `git merge --ff-only origin/main` **antes de qualquer operação** ali, como passo do `docs/confirmar-deploy.md` |
 | **Comparar medição quente com medição fria** (2026-08-01) | `pnpm check` foi reportado como "de ~3s para 90s, 30x". O `~3s` era uma execução com `tsbuildinfo` quente e o `90s` uma a frio. A `main` **sem a mudança** também leva 88s a frio e 17s a quente: o custo real era **~6s**. Dois valores não comparáveis, conclusão confiante, e ela **dirigiu uma decisão de arquitetura do gate** | Medir os dois lados no mesmo estado de cache, e medir o "antes" na branch sem a mudança |
 | **`$?` depois de um pipe para `tail`** (2026-08-01) | Lendo o exit code do `tail` em vez do script, **no dia em que se mediam exit codes de guards**. Deu `exit=0` para um guard que saía `1` | Redirecionar para arquivo e ler `$?` do comando, nunca do pipeline |
 | **Guard que sempre falha e ninguém invoca** (2026-08-01) | `mutateLinkedinThresholds` abortava na árvore limpa havia semanas, com 6 sítios numéricos órfãos, **três produzidos pela própria auditoria**. Não estava no hook nem no CI. *Um guard que sempre falha e que ninguém roda carrega a mesma informação que um que sempre passa: zero* | Modo `--auditar` (menos de 1s, sem mutar) rodando no CI, e os 6 sítios classificados |
@@ -313,6 +314,24 @@ tabela de instâncias aberta na tela, e caiu nela mesmo assim.
 
 Conhecimento não é contramedida. O conserto está em `scripts/checkMigrationsApplied.mts`: exit `78`
 (`EX_CONFIG`), distinto de `1`, e uma mensagem que não pode ser confundida com veredito.
+
+### O que pegou o fim da fila não foi instrumento nenhum
+
+**Duas das últimas três instâncias desta tabela apareceram porque alguém foi conferir o estado, não porque um
+instrumento acusou:**
+
+- o **fast-forward dado como autorizado e não executado** — o commit que fecha este documento ficou uma rodada
+  parado na branch, com CI verde, e os dois lados achando que estava na `main`;
+- o **`bnt-main` 4 commits atrás** — o worktree de deploy, cuja operação principal partiria de base velha.
+
+Nenhum dos quinze guards construídos nesta auditoria olha para isso. O CI valida o que foi empurrado; ele não
+pergunta se o que devia ser empurrado foi. O hook valida o que está sendo commitado; não valida onde. Os dois
+respondem perguntas sobre conteúdo, e as duas falhas eram sobre **estado**.
+
+É a coisa mais desconfortável do documento, e ela não tem contramedida barata: **a auditoria construiu quinze
+instrumentos e o que pegou o fim da fila foi uma leitura manual.** O que dá para fazer é o que foi feito —
+transformar a conferência num roteiro escrito (`docs/confirmar-deploy.md`) para que ela não dependa de alguém
+lembrar de fazê-la, que é a mesma dívida com um passo a menos.
 
 ### E a última: o instrumento que verifica não era verificado
 
@@ -565,6 +584,12 @@ Escrito para quem não tem nenhum contexto desta conversa.
 
 **Este documento está completo em 2026-08-01, e nada nele espera continuação.**
 
+E a última coisa que faltou na auditoria foi **um fast-forward dado como autorizado e não executado**: o
+commit que fecha este documento ficou uma rodada parado na branch, com CI verde, enquanto os dois lados
+achavam que ele já estava na `main`. É a primeira linha da tabela da seção 2 acontecendo na última rodada —
+`git log origin/main` lido como se fosse o servidor, estado afirmado sem `ls-remote`. Foi pego por uma
+conferência de encerramento que existia justamente para isso.
+
 O que ficou aberto está na seção 4, cada item com custo, impacto medido quando existe, e o gatilho que o traz
 de volta. Nenhum depende de alguém lembrar.
 
@@ -576,6 +601,23 @@ de volta. Nenhum depende de alguém lembrar.
    nova. O gatilho para priorizar está em `docs/leitura-telemetria-aviso-headline.md`.
 3. **Endpoint de exclusão de análise** — rota, verificação de posse (padrão existe em 4 lugares), cascata já
    resolvida por FK.
+
+### Fila de ESPERA, que não é fila de trabalho
+
+A distinção importa: os itens abaixo **não têm nada a fazer**. Eles esperam amostra. Tratá-los como pendência
+produz trabalho sobre ruído; ignorá-los perde a única prova de dois consertos.
+
+Medido em **2026-08-01, 07:52 UTC**:
+
+| o que | estado | quando reconferir |
+|---|---|---|
+| **`FRONT-4`** (`profile_fetch_exhausted`) | 50 eventos, **último 80 min ANTES** de o `cb3a197` subir. ~6h de silêncio desde o deploy | **24-48h.** A issue vinha de ~11 eventos/dia, então 6h de silêncio ainda cabe no acaso. **É a única prova do conserto de rate limit por usuário** |
+| **`FRONT-9`** (`BntSelect`) | sem evento novo desde 2026-07-29; o `64dedd4` está no ar desde 31/07 23:06Z | Sinal fraco por construção: disparou **uma vez em três dias**. Ausência não vira prova aqui |
+| **Taxa de `notaIncompleta`** | **n = 1** análise v7 (`notaIncompleta: false`) | **30 análises v7.** Abaixo disso uma linha a mais move a proporção em mais de 3 pontos |
+| **Cruzamento do aviso de headline** | sem amostra | **15 com `aviso_visto: true`.** Critério em `docs/leitura-telemetria-aviso-headline.md` |
+
+Os limiares foram declarados **antes** dos dados existirem, de propósito: limiar declarado antes vale mais que
+interpretação inventada depois.
 
 **Dois scripts de verificação seguem fora de qualquer gate**, e a decisão é consciente:
 `check:hero-counter` precisa de browser e servidor de pé, e `check:persisted` é diagnóstico contra a base de
