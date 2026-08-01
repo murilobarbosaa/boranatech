@@ -183,6 +183,10 @@ Ordenadas por mecanismo, não cronologia. Todas medidas nesta base.
 | **Guard abortando por falta de `.env`, lido como "nada a reportar"** (2026-08-01) | `check:migrations` num worktree sem `.env` sai com **`exit 1`, o mesmo código de uma falha real**, e imprime com **o mesmo prefixo do caminho de sucesso**. Um grep na saída procurando o aviso das três tabelas de billing não achou nada, e a leitura foi "pendência resolvida". O guard não tinha verificado coisa nenhuma | Código de saída próprio (`78`, `EX_CONFIG`) e mensagem que diz "ABORTADO SEM VERIFICAR NADA / este resultado NÃO significa que o banco está em dia". Travado em `scripts/lib/guardAmbienteAusente.test.ts`, que roda o script de verdade |
 | Medir antes da coisa existir | Três vezes: release "cobrindo um projeto só" (o backend ainda não subira), "zero artefatos", "o bundle não mudou" | Conferir que o instante da medição é depois do evento |
 | `release` sem artefato | Existir a release não implica os mapas terem subido | Verificar o debug ID do arquivo servido |
+| **Comparar medição quente com medição fria** (2026-08-01) | `pnpm check` foi reportado como "de ~3s para 90s, 30x". O `~3s` era uma execução com `tsbuildinfo` quente e o `90s` uma a frio. A `main` **sem a mudança** também leva 88s a frio e 17s a quente: o custo real era **~6s**. Dois valores não comparáveis, conclusão confiante, e ela **dirigiu uma decisão de arquitetura do gate** | Medir os dois lados no mesmo estado de cache, e medir o "antes" na branch sem a mudança |
+| **`$?` depois de um pipe para `tail`** (2026-08-01) | Lendo o exit code do `tail` em vez do script, **no dia em que se mediam exit codes de guards**. Deu `exit=0` para um guard que saía `1` | Redirecionar para arquivo e ler `$?` do comando, nunca do pipeline |
+| **Guard que sempre falha e ninguém invoca** (2026-08-01) | `mutateLinkedinThresholds` abortava na árvore limpa havia semanas, com 6 sítios numéricos órfãos, **três produzidos pela própria auditoria**. Não estava no hook nem no CI. *Um guard que sempre falha e que ninguém roda carrega a mesma informação que um que sempre passa: zero* | Modo `--auditar` (menos de 1s, sem mutar) rodando no CI, e os 6 sítios classificados |
+| **Âncora de mutante que parou de casar** (2026-08-01) | Duas entradas de `MUT` referenciavam texto que a fonte não tem mais (`clip da headline` mudou com o `eeda681`; `DETERMINISTIC_VERSION = 4` ficou em 7). O script reportava `??` e **saía com exit 0**: o limiar deixou de ser mutado, logo de ser testado, e o silêncio era indistinguível de cobertura | O modo `--auditar` falha quando qualquer âncora não casa |
 
 #### A interface afirma mais do que sabe
 
@@ -307,7 +311,7 @@ Daí a pergunta que fica aberta para quem continuar:
 
 > **Quantos dos guards desta auditoria já rodaram no caminho de erro?**
 
-**Os quatro foram exercitados no caminho de falha em 2026-08-01, e o resultado é misto.**
+**Resposta, medida em 2026-08-01: os quatro, agora. Antes disso, nenhum.**
 
 | guard | caminho de falha provocado | resultado |
 |---|---|---|
@@ -316,10 +320,29 @@ Daí a pergunta que fica aberta para quem continuar:
 | `skipsDeclarados` | um `it.skip` novo | **falha nomeando arquivo e linha**: `deltaFunil.test.ts:271 -> .skip: expected [ {…} ] to deeply equal []` |
 | `report:ai-usage` | sem ambiente | **falhava em distinguir.** Era `exit 1` com o mesmo prefixo da saída normal — o mesmo defeito do `check:migrations`. **Corrigido no mesmo dia** para `exit 78` com mensagem própria |
 
-Então a resposta é: **três pegavam, um não pegava e foi consertado.** E o que não pegava era o mais
-perigoso dos quatro pelo motivo que o comentário do conserto registra: **um relatório de custo de IA cujo
-resultado esperado às vezes É vazio.** "Nenhuma linha de uso" e "não rodei" eram indistinguíveis, e o
-primeiro é um resultado legítimo.
+### O que exercitar o caminho de falha ensinou
+
+**Três dos quatro tinham defeito no caminho de erro, e nenhum tinha sido exercitado.**
+
+- `report:ai-usage` não distinguia "não consultei" de "não achei nada" — e é o pior lugar possível para esse
+  defeito, porque **o resultado esperado dele às vezes É vazio**. "Nenhuma linha de uso de IA no período" é
+  legítimo, e era indistinguível de "não rodei".
+- `mutateLinkedinThresholds` pegava, mas **abortava na árvore limpa e ninguém o invocava**.
+- Duas âncoras dele **tinham parado de casar com a fonte** e o script saía com exit 0.
+- Só `skipsDeclarados` estava íntegro nos dois caminhos, e é o único que sempre rodou na suíte.
+
+O padrão: **caminho de sucesso testado e caminho de falha não exercitado é meia verificação, e essa metade
+faltava em 75% dos instrumentos que a auditoria construiu.** Os guards foram escritos para pegar defeito em
+código de produto; o defeito estava neles, na perna que ninguém tinha percorrido.
+
+Depois dos consertos:
+
+| guard | caminho de erro | onde roda |
+|---|---|---|
+| `check:migrations` | exit `78` sem ambiente, `1` com contador errado, `0` no caminho feliz | CI |
+| `check:limiares` (`mutateLinkedinThresholds --auditar`) | exit `1` em sítio órfão **e** em âncora que não casa | CI, < 1s |
+| `skipsDeclarados` | falha nomeando arquivo e linha | suíte |
+| `report:ai-usage` | exit `78`, distinto de `1` | manual (é relatório, não gate) |
 
 ### A ressalva do `mutateLinkedinThresholds`, que é um achado próprio
 
@@ -472,7 +495,7 @@ Escrito para quem não tem nenhum contexto desta conversa.
 
 ---
 
-## 6. Índice dos documentos
+### Notas sobre documentos específicos
 
 | arquivo | o que responde | quando consultar |
 |---|---|---|
@@ -500,6 +523,32 @@ Escrito para quem não tem nenhum contexto desta conversa.
 - **O `CLAUDE.md` afirmava que `pnpm check` não cobre `*.test.ts`.** Era falso e foi corrigido em 2026-07-31.
   Regra escrita errada em arquivo de regras é a pior classe de documentação desatualizada, porque ensina o
   erro em vez de só omiti-lo.
+---
+
+## 6. Encerramento
+
+**Este documento está completo em 2026-08-01, e nada nele espera continuação.**
+
+O que ficou aberto está na seção 4, cada item com custo, impacto medido quando existe, e o gatilho que o traz
+de volta. Nenhum depende de alguém lembrar.
+
+**A fila do LinkedIn, na ordem:**
+
+1. **UI da reanálise** — base commitada em `claude/linkedin-fase4` (`abbb919`), falta o teste do caso que a
+   motivou: mesmo texto não gasta cota, aviso âmbar aparece.
+2. **(b) Headline editável** — fecha as três famílias de quebra conhecidas e a que ninguém viu, sem heurística
+   nova. O gatilho para priorizar está em `docs/leitura-telemetria-aviso-headline.md`.
+3. **Endpoint de exclusão de análise** — rota, verificação de posse (padrão existe em 4 lugares), cascata já
+   resolvida por FK.
+
+**Dois scripts de verificação seguem fora de qualquer gate**, e a decisão é consciente:
+`check:hero-counter` precisa de browser e servidor de pé, e `check:persisted` é diagnóstico contra a base de
+produção, não asserção. Ambos são invocados à mão; se algum dia virarem gate, o inventário está aqui.
+
+---
+
+## 7. Índice dos documentos
+
 - **`ideas.md` é brainstorm de design da fundação do projeto, não lista de pendência.** Registra três
   abordagens visuais com a segunda marcada "✅ ESCOLHIDA". **A paleta que ele descreve não é a que vale
   hoje**: ele propõe violeta-índigo `#5B21B6` como primária e branco puro de fundo, enquanto o
