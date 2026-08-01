@@ -1,5 +1,5 @@
 // Dialeto visual da aba Tarefas. As constantes abaixo sao COPIA das do
-// BugsDashboard.tsx (topo do arquivo), de proposito e nao por preguica: o modulo
+// o antigo BugsDashboard.tsx (removido na Fase 5), de proposito e nao por preguica: o modulo
 // tem que parecer nativo do admin, e o jeito de garantir isso e usar exatamente
 // as mesmas strings, nao aproximacoes.
 //
