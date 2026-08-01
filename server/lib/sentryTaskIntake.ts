@@ -16,6 +16,7 @@ import {
   montarSentryData,
   type CardParaManutencao,
 } from "./sentryTaskDecisions";
+import { reenviarPushesPendentes, type ResumoRetry } from "./sentryTaskPush";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { createTargetedNotification } from "./targetedNotifications";
 
@@ -74,6 +75,12 @@ export type RelatorioSync = {
   /** Decisoes de manutencao, TODAS, inclusive as "nada". So no dry-run. */
   decisoes: Array<ItemRelatorio & { tipo: string }>;
   inalterados: number;
+  /**
+   * Reenvio de pushes que uma transicao humana ja decidiu e o Sentry recusou.
+   * ENTREGA, nao decisao: nao viola o invariante 6 emendado. Ver a fronteira no
+   * topo de sentryTaskPush.ts.
+   */
+  pushesReenviados: ResumoRetry;
   ingestaoAbortada: string | null;
   manutencaoAbortada: string | null;
 };
@@ -93,6 +100,12 @@ function relatorioVazio(dryRun: boolean): RelatorioSync {
     recoletados: [],
     decisoes: [],
     inalterados: 0,
+    pushesReenviados: {
+      tentados: 0,
+      entregues: 0,
+      falharam: 0,
+      descartados: 0,
+    },
     ingestaoAbortada: null,
     manutencaoAbortada: null,
   };
@@ -578,6 +591,20 @@ export async function syncSentryTasks(
   const escritor = dryRun ? ESCRITOR_INERTE : ESCRITOR_REAL;
   const agoraIso = new Date().toISOString();
 
+  // FASE 0: reenvio de pushes pendentes.
+  //
+  // Roda ANTES da resolucao de quadro e INDEPENDE dela: uma pendencia e uma
+  // decisao humana ja tomada, e ela precisa chegar ao Sentry mesmo que o feed
+  // daquele quadro esteja desligado. Sem pendencia nenhuma isto e uma leitura
+  // que devolve zero linhas e nao chama o Sentry, entao o job continua inerte
+  // quando nao ha o que fazer.
+  //
+  // Em dry-run NAO reenvia: dry-run nao escreve em lugar nenhum, e o Sentry e
+  // um lugar.
+  if (!dryRun) {
+    rel.pushesReenviados = await reenviarPushesPendentes();
+  }
+
   const config = await resolverQuadros();
   if (config.estado !== "ok") {
     rel.estado = config.estado;
@@ -648,6 +675,7 @@ export function resumoParaLog(rel: RelatorioSync): Record<string, unknown> {
     podados: rel.podados.length,
     inalterados: rel.inalterados,
     recoletados: rel.recoletados.length,
+    pushesReenviados: rel.pushesReenviados,
     foraDoTeto: rel.foraDoTeto.map((i) => i.shortId),
     semEtiqueta: rel.semEtiqueta,
     detalheIncompleto: rel.detalheIncompleto.map((i) => i.shortId),
@@ -664,6 +692,7 @@ export function runDegradada(rel: RelatorioSync): boolean {
     rel.manutencaoAbortada !== null ||
     rel.foraDoTeto.length > 0 ||
     rel.semEtiqueta.length > 0 ||
-    rel.detalheIncompleto.length > 0
+    rel.detalheIncompleto.length > 0 ||
+    rel.pushesReenviados.falharam > 0
   );
 }

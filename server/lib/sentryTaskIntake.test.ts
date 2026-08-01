@@ -114,6 +114,10 @@ const ISSUE = {
 
 /** Semeia o caminho feliz: 1 quadro ligado, 1 etapa de intake, 1 issue nova. */
 function semearQuadroLigado(opts: { cards?: unknown[] } = {}) {
+  // Fase 0 do job: varredura de pushes pendentes. Vazia por padrao, porque a
+  // maioria dos testes nao e sobre retry e uma pendencia perdida contaminaria a
+  // contagem de chamadas ao Sentry.
+  supa.enfileirar("admin_tasks", []);
   supa.enfileirar("admin_task_boards", [{ id: "board-1", key: "BUG" }]);
   supa.enfileirar("admin_task_columns", [{ id: "col-sentry" }]); // etapa de intake
   supa.enfileirar("admin_task_labels", [{ id: "lbl-back", name: "Backend" }]);
@@ -212,8 +216,19 @@ describe("2. o sync nunca escreve em description nem em notes", () => {
   });
 });
 
-describe("4. o job nunca escreve no Sentry", () => {
-  it("updateIssueStatus nao e chamada em nenhuma modalidade", async () => {
+describe("4. as DECISOES do job nunca escrevem no Sentry", () => {
+  // A fronteira da EMENDA 1, e ela precisa da formulacao exata.
+  //
+  // O invariante NAO e "o job nunca chama updateIssueStatus": desde a Fase 5.5 o
+  // job tem uma fase de RETRY, que reenvia um alvo que uma transicao humana ja
+  // gravou. Isso e ENTREGA de decisao alheia, nao decisao.
+  //
+  // O invariante E: reabertura, ressurreicao e poda nao empurram nada. Sao as
+  // tres decisoes que o job toma sozinho, e nenhuma delas pode virar escrita no
+  // Sentry. Este teste roda uma manutencao que DECIDE (reabre um card) e exige
+  // zero chamadas, com a fila de pendencias vazia para o retry nao contaminar a
+  // medicao.
+  it("uma run que REABRE um card nao empurra nada", async () => {
     semearQuadroLigado({
       cards: [
         {
@@ -276,6 +291,7 @@ describe("5. autoria de sistema", () => {
 
 describe("7. run repetida sem mudanca no Sentry e no-op", () => {
   it("issue que ja virou card nao gera criacao nova nem custa requisicao", async () => {
+    supa.enfileirar("admin_tasks", []); // fase 0: nenhum push pendente
     supa.enfileirar("admin_task_boards", [{ id: "board-1", key: "BUG" }]);
     supa.enfileirar("admin_task_columns", [{ id: "col-sentry" }]);
     supa.enfileirar("admin_task_labels", [{ id: "lbl-back", name: "Backend" }]);
@@ -300,6 +316,7 @@ describe("7. run repetida sem mudanca no Sentry e no-op", () => {
 
 describe("configuracao por flag, nunca por sigla", () => {
   it("nenhum quadro ligado: inerte, com estado proprio", async () => {
+    supa.enfileirar("admin_tasks", []); // fase 0
     supa.enfileirar("admin_task_boards", []);
     const rel = await syncSentryTasks({ dryRun: false });
     expect(rel.estado).toBe("sem_quadro_ligado");
@@ -308,6 +325,7 @@ describe("configuracao por flag, nunca por sigla", () => {
   });
 
   it("quadro ligado SEM etapa de intake aborta, e nao escolhe uma", async () => {
+    supa.enfileirar("admin_tasks", []); // fase 0
     supa.enfileirar("admin_task_boards", [{ id: "board-1", key: "BUG" }]);
     supa.enfileirar("admin_task_columns", []); // nenhuma etapa de intake
     const rel = await syncSentryTasks({ dryRun: false });
@@ -403,9 +421,14 @@ describe("6. a varredura de manutencao INCLUI arquivados", () => {
     // antes), entao afirmava sobre a consulta errada e passava com a armadilha
     // instalada. Duas asserções abaixo, e a de unicidade e o que impede o
     // seletor de voltar a ficar ambiguo em silencio.
+    // Ancora no PAR (eq board_id + not sentry_numeric_id), exclusivo da
+    // varredura de manutencao. Ancorar so no `not(sentry_numeric_id)` passou a
+    // casar tambem com a varredura de RETRY que a Fase 5.5 acrescentou, e foi a
+    // asserção de unicidade abaixo que acusou a ambiguidade.
     const varreduras = supa.leituras.filter(
       (l) =>
         l.tabela === "admin_tasks" &&
+        l.filtros.some((f) => f.startsWith('eq("board_id"')) &&
         l.filtros.some(
           (f) => f.startsWith("not(") && f.includes("sentry_numeric_id"),
         ),
