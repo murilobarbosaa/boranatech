@@ -284,9 +284,20 @@ Ainda em **2026-08-01**, consertando o guard acima, ele quebrou em execução re
 `client/src`, `shared` e `server`. **Nenhum dos guards desta auditoria era type-checked.**
 
 A anatomia é a mais fechada da série: **o instrumento que verifica não é verificado, e a afirmação sobre a
-cobertura dele estava errada no documento que cataloga erros de cobertura.** A linha do `CLAUDE.md` dizia
-"`pnpm check` cobre `*.test.ts`" — verdadeira sobre os três diretórios, falsa sobre o repositório, escrita
-por quem estava auditando cobertura de instrumento.
+cobertura dele estava errada no documento que cataloga erros de cobertura.**
+
+E errou **duas vezes seguidas**, sendo a segunda a correção da primeira:
+
+1. A versão original do `CLAUDE.md` dizia *"`pnpm check` NÃO cobre `*.test.ts` (o `tsconfig.json` os
+   exclui)"*. **Falsa**: o `exclude` é só `node_modules`, `build` e `dist`. Ela mandava PULAR uma checagem
+   barata que de fato pega o erro.
+2. A correção de 2026-07-31 disse *"`pnpm check` COBRE `*.test.ts`"*. **Verdadeira sobre os três diretórios
+   do `include`, falsa sobre o repositório** — `scripts/` ficava de fora, e era lá que estava o defeito.
+
+A contramedida adotada é **citar o `include` explicitamente em vez de resumir**: resumo de configuração
+envelhece, referência a configuração não. Uma frase que diz "cobre os testes" fica errada no dia em que
+alguém acrescenta um diretório; uma que diz "cobre `client/src`, `shared` e `server`, e `scripts/` roda em
+`check:scripts` no CI" erra em voz alta quando a configuração muda.
 
 **Como foi encontrada importa mais que o conserto:** por `ReferenceError` em execução real, não por revisão e
 não por teste. O que significa que **os outros guards podem ter o mesmo defeito latente e ninguém sabe,
@@ -296,10 +307,44 @@ Daí a pergunta que fica aberta para quem continuar:
 
 > **Quantos dos guards desta auditoria já rodaram no caminho de erro?**
 
-O `check:migrations` rodou nos dois (exit `78` sem ambiente, exit `1` com contador errado, exit `0` no
-caminho feliz — os três medidos). `mutateLinkedinThresholds`, `skipsDeclarados` e `report:ai-usage`, **não
-necessariamente**. Caminho de sucesso testado e caminho de falha não exercitado é meia verificação — e é o
-estado em que a auditoria termina.
+**Os quatro foram exercitados no caminho de falha em 2026-08-01, e o resultado é misto.**
+
+| guard | caminho de falha provocado | resultado |
+|---|---|---|
+| `check:migrations` | sem ambiente / contador errado / caminho feliz | **exit `78` / `1` / `0`.** Distingue os três |
+| `mutateLinkedinThresholds` | sítio numérico não classificado | **aborta com exit `1` e nomeia.** Pega — ver a ressalva abaixo |
+| `skipsDeclarados` | um `it.skip` novo | **falha nomeando arquivo e linha**: `deltaFunil.test.ts:271 -> .skip: expected [ {…} ] to deeply equal []` |
+| `report:ai-usage` | sem ambiente | **falhava em distinguir.** Era `exit 1` com o mesmo prefixo da saída normal — o mesmo defeito do `check:migrations`. **Corrigido no mesmo dia** para `exit 78` com mensagem própria |
+
+Então a resposta é: **três pegavam, um não pegava e foi consertado.** E o que não pegava era o mais
+perigoso dos quatro pelo motivo que o comentário do conserto registra: **um relatório de custo de IA cujo
+resultado esperado às vezes É vazio.** "Nenhuma linha de uso" e "não rodei" eram indistinguíveis, e o
+primeiro é um resultado legítimo.
+
+### A ressalva do `mutateLinkedinThresholds`, que é um achado próprio
+
+Ele **aborta na árvore limpa**. Rodado sem nenhuma modificação, sai com exit `1` e lista **6 sítios numéricos
+órfãos**:
+
+```
+shared/linkedin/parse.ts:425      while (inicio > 0) {
+shared/linkedin/parse.ts:442      juntou: partes.length > 1,
+shared/linkedin/parse.ts:448      acimaIdx >= 0
+shared/linkedin/schema.ts:881     export const DETERMINISTIC_VERSION = 7;
+shared/linkedin/reguaV2.ts:247    .filter((p) => p.possivel > 0);
+server/lib/linkedinChecks.ts:445  ? `Você cadastrou ${cadastradas === 1 ? ...
+```
+
+**Três deles entraram nesta auditoria, e dois são desta semana** (`headlineContexto` e o bump da v7). O guard
+está funcionando exatamente como projetado — abortar em item não classificado é a contramedida documentada —
+e mesmo assim ninguém classificou os sítios novos, **inclusive quem escreveu este documento, três vezes**.
+
+A causa não é o guard: é que **nada o invoca**. Ele não está no hook nem no CI, é script manual. Um guard que
+sempre falha e que ninguém roda tem a mesma informação que um guard que sempre passa — zero. É o espelho do
+"guard vermelho como estado normal" que esta auditoria recusou duas vezes, com o sinal trocado.
+
+**Fica aberto**, e o conserto não é classificar os 6: é decidir se ele entra num gate. Classificar sem
+invocar só adia o próximo órfão.
 
 ### Pedido de mudança irreversível no fim de rodada cheia
 
