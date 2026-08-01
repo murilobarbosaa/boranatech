@@ -71,6 +71,14 @@ type Camada = {
 
 const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 
+/**
+ * Total de rotas declaradas no router do admin.
+ *
+ * 52 desde `GET /subscription-history` (fatia 3 da Visão). Mudar este número é
+ * ato deliberado, no commit da rota que o muda.
+ */
+const EXPECTED_ROUTE_COUNT = 52;
+
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {
   const guardas: unknown[] = [];
@@ -114,12 +122,21 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
     expect(indicePrimeiraRota).toBeGreaterThan(indiceRequireAdmin);
   });
 
+  it("o TOTAL de rotas do router é afirmado, não só o piso", () => {
+    // `toBeGreaterThan(30)` era um PISO, e piso não é asserção de total: uma
+    // rota nova fora de /users passava sem que nada quebrasse, e a checagem de
+    // que ela está atrás das guardas nunca era exercitada por ninguém. É a
+    // mesma fraqueza que o CLAUDE.md descreve ("os N que eu conheço estão lá"
+    // contra "existem exatamente N").
+    //
+    // Com o total afirmado, TODA rota nova do admin derruba este teste, e quem a
+    // adicionou precisa olhar para as guardas antes de subir o número. Alterar
+    // este valor é ato deliberado, no mesmo commit da rota.
+    expect(rotasDeclaradas()).toHaveLength(EXPECTED_ROUTE_COUNT);
+  });
+
   it("as rotas de usuário estão todas na lista derivada do router", () => {
-    // Não é a fonte da verdade (a fonte é o router); é uma trava para o caso de
-    // a extração de rotas parar de funcionar e a lista virar vazia, o que faria
-    // os testes acima passarem sobre nada.
     const rotas = rotasDeclaradas();
-    expect(rotas.length).toBeGreaterThan(30);
 
     const deUsuario = rotas
       .filter((r) => r.caminho.startsWith("/users"))

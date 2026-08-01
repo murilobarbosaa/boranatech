@@ -694,6 +694,228 @@ const CANCELLATION_REASON_CODES = [
   "other",
 ] as const;
 
+// HISTORICO DIARIO DE ASSINATURAS, de subscription_snapshots.
+//
+// A tabela roda no cron desde 16/07 (`snapshot-subscriptions`, 05:10 UTC) e ate
+// aqui NENHUMA rota a lia. E o unico dado com dimensao de tempo que o painel
+// tem, e a Visao inteira e foto sem ele.
+//
+// FONTE DE CADA NUMERO, para nao existir uma terceira contagem de MRR:
+//
+//   activeCount, trialingCount, mrrCents   LIDOS da linha do snapshot, sem
+//                                          recalculo. Quem os produziu foi
+//                                          `collectSubscriptionSnapshot`, que
+//                                          chama `getMrrSnapshot` — a MESMA
+//                                          funcao do MRR ao vivo. Ou seja: uma
+//                                          regra, duas materializacoes (ao vivo
+//                                          e historica), zero copias.
+//   change.*                               SUBTRACAO de dois valores lidos. Nao
+//                                          e calculo de MRR, e diferenca entre
+//                                          dois MRRs ja calculados.
+//
+// Esta rota NAO devolve MRR ao vivo de proposito. Ele ja vem de
+// `/billing-metrics`, e os dois numeros divergem LEGITIMAMENTE: o snapshot e uma
+// foto das 05:10 UTC, e qualquer assinatura criada depois disso aparece no vivo
+// e nao no historico (medido em 2026-07-31: 62 no snapshot, 63 ao vivo, uma
+// mensal criada as 16:27). Servi-los pela mesma rota convidaria a exibi-los como
+// se fossem comparaveis no mesmo instante.
+//
+// NAO INTERPOLA. Dia sem snapshot volta marcado, com metricas nulas: uma serie
+// com buraco preenchido mente pior que serie ausente, porque o grafico desenha
+// uma reta onde nao houve medicao.
+
+/** Janelas oferecidas. 90 dias NAO entra: a serie tem 16 dias, e oferecer uma
+ * janela que nao existe e preencher com mentira. `all` declara o inicio real. */
+const SUBSCRIPTION_HISTORY_WINDOWS = ["7", "30", "all"] as const;
+type SubscriptionHistoryWindow = (typeof SUBSCRIPTION_HISTORY_WINDOWS)[number];
+
+/**
+ * Teto de pontos. Uma linha por dia, entao 400 = ~13 meses.
+ *
+ * Com a serie comecando em 2026-07-16, o teto so seria alcancado em 2027-08-20.
+ * Ele existe como para-quedas, e AVISA quando corta (`truncated`): corte
+ * silencioso faria o grafico parecer completo sendo parcial, que e a classe de
+ * defeito que este projeto ja documentou.
+ */
+const SUBSCRIPTION_HISTORY_LIMIT = 400;
+
+type SnapshotRow = {
+  snapshot_date: string;
+  active_count: number | null;
+  trialing_count: number | null;
+  mrr_cents: number | null;
+};
+
+/** Dias entre duas datas ISO (YYYY-MM-DD), em UTC puro. */
+function diasEntre(inicio: string, fim: string): number {
+  const MS_DIA = 24 * 60 * 60 * 1000;
+  return Math.round(
+    (Date.parse(`${fim}T00:00:00Z`) - Date.parse(`${inicio}T00:00:00Z`)) / MS_DIA,
+  );
+}
+
+function somarDias(data: string, dias: number): string {
+  const d = new Date(`${data}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
+router.get("/subscription-history", async (req, res, next) => {
+  try {
+    const janelaRaw =
+      typeof req.query.window === "string" ? req.query.window : "30";
+    const janela = (
+      SUBSCRIPTION_HISTORY_WINDOWS as readonly string[]
+    ).includes(janelaRaw)
+      ? (janelaRaw as SubscriptionHistoryWindow)
+      : "30";
+
+    // FAIL-LOUD. Serie vazia por falha de leitura desenharia um grafico plano,
+    // que e afirmacao falsa sobre o negocio. `coletarTudo` propaga o erro e o
+    // catch abaixo devolve 500.
+    const linhas = await coletarTudo<SnapshotRow>(
+      (from, to) =>
+        supabaseAdmin
+          .from("subscription_snapshots")
+          .select("snapshot_date, active_count, trialing_count, mrr_cents")
+          .order("snapshot_date", { ascending: true })
+          .range(from, to),
+      "subscription history",
+    );
+
+    if (linhas.length === 0) {
+      return res.json({
+        data: {
+          window: janela,
+          points: [],
+          firstSnapshotDate: null,
+          lastSnapshotDate: null,
+          staleDays: null,
+          gaps: [],
+          truncated: false,
+          limit: SUBSCRIPTION_HISTORY_LIMIT,
+          change: null,
+          previousPeriodAvailable: false,
+        },
+      });
+    }
+
+    const firstSnapshotDate = linhas[0].snapshot_date;
+    const lastSnapshotDate = linhas[linhas.length - 1].snapshot_date;
+
+    // A janela termina no ULTIMO SNAPSHOT, nao em "hoje". O snapshot do dia so
+    // e gravado as 05:10 UTC, entao entre 21h e 2h de Brasilia o mais recente e
+    // o de ontem; ancorar em hoje criaria um "buraco" que e so o dia ainda nao
+    // ter acontecido. Quem precisa saber se o cron parou le `staleDays`.
+    const hojeUtc = new Date().toISOString().slice(0, 10);
+    const staleDays = diasEntre(lastSnapshotDate, hojeUtc);
+
+    const inicioJanela =
+      janela === "all"
+        ? firstSnapshotDate
+        : somarDias(lastSnapshotDate, -(Number(janela) - 1));
+
+    const porData = new Map(linhas.map((l) => [l.snapshot_date, l]));
+    // O primeiro dia da serie limita: janela maior que o historico nao inventa
+    // dias anteriores ao primeiro snapshot. `firstSnapshotDate` na resposta e o
+    // que permite a tela dizer "desde 16/07" em vez de fingir 30 dias.
+    const inicioReal =
+      inicioJanela < firstSnapshotDate ? firstSnapshotDate : inicioJanela;
+
+    const todosOsDias: string[] = [];
+    for (let d = inicioReal; d <= lastSnapshotDate; d = somarDias(d, 1)) {
+      todosOsDias.push(d);
+    }
+
+    const truncated = todosOsDias.length > SUBSCRIPTION_HISTORY_LIMIT;
+    const dias = truncated
+      ? todosOsDias.slice(todosOsDias.length - SUBSCRIPTION_HISTORY_LIMIT)
+      : todosOsDias;
+
+    const gaps: string[] = [];
+    const points = dias.map((date) => {
+      const linha = porData.get(date);
+      if (!linha) {
+        gaps.push(date);
+        // Dia faltante volta EXPLICITO, com metricas nulas. A rota nao maquia:
+        // quem desenha decide se quebra a linha, se pontilha ou se avisa.
+        return {
+          date,
+          missing: true,
+          activeCount: null,
+          trialingCount: null,
+          mrrCents: null,
+        };
+      }
+      return {
+        date,
+        missing: false,
+        activeCount: linha.active_count ?? 0,
+        trialingCount: linha.trialing_count ?? 0,
+        mrrCents: linha.mrr_cents ?? 0,
+      };
+    });
+
+    // VARIACAO DENTRO DA JANELA: primeiro ponto COM medicao contra o ultimo.
+    // Dia faltante nao vira extremo, senao a variacao sairia contra null.
+    const medidos = points.filter((p) => !p.missing);
+    const change =
+      medidos.length >= 2
+        ? (() => {
+            const ini = medidos[0];
+            const fim = medidos[medidos.length - 1];
+            const mrrDelta = (fim.mrrCents ?? 0) - (ini.mrrCents ?? 0);
+            return {
+              fromDate: ini.date,
+              toDate: fim.date,
+              fromMrrCents: ini.mrrCents ?? 0,
+              toMrrCents: fim.mrrCents ?? 0,
+              mrrDeltaCents: mrrDelta,
+              // PERCENTUAL NULO quando a base e zero, nunca infinito. Um card
+              // com "+∞%" destroi a confianca na pagina inteira.
+              mrrDeltaPercent:
+                ini.mrrCents && ini.mrrCents > 0
+                  ? (mrrDelta / ini.mrrCents) * 100
+                  : null,
+              fromActiveCount: ini.activeCount ?? 0,
+              toActiveCount: fim.activeCount ?? 0,
+              activeDelta: (fim.activeCount ?? 0) - (ini.activeCount ?? 0),
+            };
+          })()
+        : null;
+
+    // COMPARACAO COM O PERIODO ANTERIOR: so DIZ se seria possivel, e nao a
+    // calcula. Com 16 dias de historico, "30 dias vs 30 anteriores" nao existe,
+    // e comparar contra zero produziria o +∞ que a fatia 5 nao pode exibir.
+    // Para `all` a pergunta nao se aplica: nao ha periodo anterior ao primeiro.
+    const previousPeriodAvailable =
+      janela === "all"
+        ? false
+        : diasEntre(firstSnapshotDate, lastSnapshotDate) + 1 >=
+          Number(janela) * 2;
+
+    res.json({
+      data: {
+        window: janela,
+        points,
+        firstSnapshotDate,
+        lastSnapshotDate,
+        // Dias desde o ultimo snapshot. 0 = o de hoje ja existe; 1 = normal
+        // antes das 05:10 UTC; maior que isso significa cron parado, e e o
+        // unico sinal que a serie da de que parou de crescer.
+        staleDays,
+        gaps,
+        truncated,
+        limit: SUBSCRIPTION_HISTORY_LIMIT,
+        change,
+        previousPeriodAvailable,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/cancellation-reasons", async (_req, res, next) => {
   try {
     // VARREDURA por coletarTudo. Antes era `from += PAGE` com break em

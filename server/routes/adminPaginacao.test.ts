@@ -567,3 +567,229 @@ describe("GET /cancellation-reasons", () => {
     expect(r.body.data.unlinkedCount).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// GET /subscription-history
+// ---------------------------------------------------------------------------
+
+describe("GET /subscription-history", () => {
+  /** Série contígua terminando na data dada. */
+  function serie(dias: number, ate: string) {
+    const fim = new Date(`${ate}T00:00:00Z`);
+    return Array.from({ length: dias }, (_, i) => {
+      const d = new Date(fim);
+      d.setUTCDate(d.getUTCDate() - (dias - 1 - i));
+      return {
+        id: `sn${String(i).padStart(4, "0")}`,
+        snapshot_date: d.toISOString().slice(0, 10),
+        active_count: 10 + i,
+        trialing_count: 0,
+        mrr_cents: 100000 + i * 1000,
+      };
+    });
+  }
+
+  it("série contígua sai sem buracos e com os extremos declarados", async () => {
+    montar({ subscription_snapshots: { rows: serie(16, "2026-07-31") } });
+
+    const r = await chamarAdmin("GET", "/subscription-history?window=all");
+
+    expect(r.status).toBe(200);
+    expect(r.body.data.points).toHaveLength(16);
+    expect(r.body.data.gaps).toEqual([]);
+    expect(r.body.data.firstSnapshotDate).toBe("2026-07-16");
+    expect(r.body.data.lastSnapshotDate).toBe("2026-07-31");
+    expect(
+      r.body.data.points.every((p: { missing: boolean }) => !p.missing),
+    ).toBe(true);
+  });
+
+  it("BURACO é reportado como buraco, sem interpolar nem omitir", async () => {
+    // Série com 18/07 e 19/07 ausentes. A rota não pode nem pular os dias (o
+    // gráfico ligaria 17 a 20 numa reta) nem inventar valores.
+    const rows = serie(16, "2026-07-31").filter(
+      (r) => !["2026-07-18", "2026-07-19"].includes(r.snapshot_date),
+    );
+    montar({ subscription_snapshots: { rows } });
+
+    const r = await chamarAdmin("GET", "/subscription-history?window=all");
+
+    expect(r.body.data.gaps).toEqual(["2026-07-18", "2026-07-19"]);
+    // Os dias continuam NA série, marcados e com métricas nulas.
+    expect(r.body.data.points).toHaveLength(16);
+    const faltante = r.body.data.points.find(
+      (p: { date: string }) => p.date === "2026-07-18",
+    );
+    expect(faltante).toMatchObject({
+      missing: true,
+      activeCount: null,
+      mrrCents: null,
+    });
+  });
+
+  it("janela MAIOR que o histórico declara o início real", async () => {
+    // Pedir 30 dias com 16 de série não pode devolver 30 pontos: os 14
+    // anteriores ao primeiro snapshot não existem e inventá-los seria mentira.
+    montar({ subscription_snapshots: { rows: serie(16, "2026-07-31") } });
+
+    const r = await chamarAdmin("GET", "/subscription-history?window=30");
+
+    expect(r.body.data.points).toHaveLength(16);
+    expect(r.body.data.firstSnapshotDate).toBe("2026-07-16");
+    expect(r.body.data.gaps).toEqual([]);
+  });
+
+  it("janela de 7 dias recorta a partir do ÚLTIMO snapshot, não de hoje", async () => {
+    // O snapshot do dia só é gravado às 05:10 UTC. Ancorar em "hoje" criaria um
+    // buraco que é só o dia ainda não ter acontecido.
+    montar({ subscription_snapshots: { rows: serie(16, "2026-07-31") } });
+
+    const r = await chamarAdmin("GET", "/subscription-history?window=7");
+
+    expect(r.body.data.points).toHaveLength(7);
+    expect(r.body.data.points[0].date).toBe("2026-07-25");
+    expect(r.body.data.points[6].date).toBe("2026-07-31");
+  });
+
+  it("janela desconhecida cai no padrão, não em erro nem em 90 dias", async () => {
+    montar({ subscription_snapshots: { rows: serie(16, "2026-07-31") } });
+    const r = await chamarAdmin("GET", "/subscription-history?window=90");
+    expect(r.body.data.window).toBe("30");
+  });
+
+  it("série VAZIA devolve estado nomeado, não gráfico plano", async () => {
+    montar({ subscription_snapshots: { rows: [] } });
+
+    const r = await chamarAdmin("GET", "/subscription-history");
+
+    expect(r.status).toBe(200);
+    expect(r.body.data.points).toEqual([]);
+    expect(r.body.data.firstSnapshotDate).toBeNull();
+    expect(r.body.data.change).toBeNull();
+  });
+
+  it("erro de banco é FAIL-LOUD: 500, não série vazia", async () => {
+    // Série vazia por falha silenciosa desenharia um gráfico plano, que é
+    // afirmação falsa sobre o negócio.
+    montar({ subscription_snapshots: { error: { message: "timeout" } } });
+    const r = await chamarAdmin("GET", "/subscription-history");
+    expect(r.status).toBe(500);
+  });
+
+  it("staleDays denuncia cron parado", async () => {
+    // É o único sinal que a série dá de que parou de crescer: nada lê
+    // cron_run_logs hoje.
+    const ontem = new Date(Date.now() - 24 * 3600_000)
+      .toISOString()
+      .slice(0, 10);
+    montar({ subscription_snapshots: { rows: serie(5, ontem) } });
+
+    const r = await chamarAdmin("GET", "/subscription-history?window=all");
+    expect(r.body.data.staleDays).toBe(1);
+  });
+
+  it("a leitura é paginada e avisa quando trunca", async () => {
+    montar({ subscription_snapshots: { rows: serie(1200, "2029-01-01") } });
+
+    const r = await chamarAdmin("GET", "/subscription-history?window=all");
+
+    expect(r.body.data.truncated).toBe(true);
+    expect(r.body.data.points).toHaveLength(400);
+    // Mantém a PONTA RECENTE: é ela que interessa num gráfico de tendência.
+    expect(r.body.data.points[399].date).toBe("2029-01-01");
+  });
+});
+
+describe("variação da série", () => {
+  function serie(dias: number, ate: string, mrrInicial = 100000) {
+    const fim = new Date(`${ate}T00:00:00Z`);
+    return Array.from({ length: dias }, (_, i) => {
+      const d = new Date(fim);
+      d.setUTCDate(d.getUTCDate() - (dias - 1 - i));
+      return {
+        id: `sn${String(i).padStart(4, "0")}`,
+        snapshot_date: d.toISOString().slice(0, 10),
+        active_count: 10 + i,
+        trialing_count: 0,
+        mrr_cents: mrrInicial + i * 1000,
+      };
+    });
+  }
+
+  it("com dois pontos ou mais, devolve início, fim e variação", async () => {
+    montar({ subscription_snapshots: { rows: serie(16, "2026-07-31") } });
+
+    const r = await chamarAdmin("GET", "/subscription-history?window=all");
+
+    expect(r.body.data.change).toMatchObject({
+      fromDate: "2026-07-16",
+      toDate: "2026-07-31",
+      fromMrrCents: 100000,
+      toMrrCents: 115000,
+      mrrDeltaCents: 15000,
+      fromActiveCount: 10,
+      toActiveCount: 25,
+      activeDelta: 15,
+    });
+    expect(r.body.data.change.mrrDeltaPercent).toBeCloseTo(15, 6);
+  });
+
+  it("com UM ponto só, NÃO inventa variação", async () => {
+    // Card sem Δ é honesto; card com Δ falso não.
+    montar({ subscription_snapshots: { rows: serie(1, "2026-07-31") } });
+
+    const r = await chamarAdmin("GET", "/subscription-history?window=all");
+    expect(r.body.data.change).toBeNull();
+  });
+
+  it("base ZERO devolve percentual NULO, nunca infinito", async () => {
+    // "+∞%" num card destrói a confiança na página inteira.
+    montar({
+      subscription_snapshots: {
+        rows: serie(3, "2026-07-31", 0).map((r, i) => ({
+          ...r,
+          mrr_cents: i === 0 ? 0 : 5000,
+        })),
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/subscription-history?window=all");
+
+    expect(r.body.data.change.fromMrrCents).toBe(0);
+    expect(r.body.data.change.mrrDeltaCents).toBe(5000);
+    expect(r.body.data.change.mrrDeltaPercent).toBeNull();
+  });
+
+  it("dia faltante não vira extremo da variação", async () => {
+    // Se o primeiro dia da janela estiver ausente, comparar contra ele daria
+    // uma variação contra null.
+    const rows = serie(5, "2026-07-31").filter(
+      (r) => r.snapshot_date !== "2026-07-27",
+    );
+    montar({ subscription_snapshots: { rows } });
+
+    const r = await chamarAdmin("GET", "/subscription-history?window=all");
+    expect(r.body.data.change.fromDate).toBe("2026-07-28");
+  });
+
+  it("período anterior: indisponível com histórico curto, disponível com longo", async () => {
+    // 16 dias não sustentam "30 vs 30 anteriores". A rota DIZ que não dá, em vez
+    // de comparar contra zero.
+    montar({ subscription_snapshots: { rows: serie(16, "2026-07-31") } });
+    let r = await chamarAdmin("GET", "/subscription-history?window=30");
+    expect(r.body.data.previousPeriodAvailable).toBe(false);
+    // Mas 16 dias JÁ sustentam "7 vs 7 anteriores".
+    r = await chamarAdmin("GET", "/subscription-history?window=7");
+    expect(r.body.data.previousPeriodAvailable).toBe(true);
+
+    montar({ subscription_snapshots: { rows: serie(60, "2026-09-13") } });
+    r = await chamarAdmin("GET", "/subscription-history?window=30");
+    expect(r.body.data.previousPeriodAvailable).toBe(true);
+  });
+
+  it("para 'all' o período anterior não se aplica", async () => {
+    montar({ subscription_snapshots: { rows: serie(60, "2026-09-13") } });
+    const r = await chamarAdmin("GET", "/subscription-history?window=all");
+    expect(r.body.data.previousPeriodAvailable).toBe(false);
+  });
+});
