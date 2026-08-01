@@ -32,7 +32,6 @@ import {
   LayoutDashboard,
   Link as LinkIcon,
   LockKeyhole,
-  SquareKanban,
   LogOut,
   Mail,
   MousePointerClick,
@@ -44,14 +43,16 @@ import {
   Server,
   ShieldCheck,
   Sparkles,
+  SquareKanban,
   Star,
   Tag,
   TicketPercent,
+  TrendingDown,
   Trophy,
-  X,
   UserRound,
   Users,
   WalletCards,
+  X,
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -82,6 +83,12 @@ import {
 } from "@/components/ui/popover";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { IntegrationsHealthPanel } from "@/components/admin/IntegrationsHealthPanel";
+import {
+  OverviewPeriod,
+  parseOverviewWindow,
+  type OverviewWindow,
+} from "@/components/admin/overview/OverviewPeriod";
+import { rotuloDeVariacao } from "@/components/admin/overview/overviewChange";
 import { PagesDashboard } from "@/components/admin/PagesDashboard";
 import { UsersDashboard } from "@/components/admin/users/UsersDashboard";
 import PendingIntegration from "@/components/admin/PendingIntegration";
@@ -118,6 +125,10 @@ type MetricCard = {
   detail: string;
   icon: ReactNode;
   color: string;
+  /** Rótulo de variação. `null` = a série não sustenta comparação. */
+  change?: { texto: string; tom: "alta" | "baixa" | "neutro" } | null;
+  /** Aba que aprofunda. Sem isto o card não é clicável. */
+  destino?: AdminSectionId;
 };
 
 type AiUsage = {
@@ -221,6 +232,47 @@ type AdminSectionId =
   | "vagas"
   | "bugs"
   | "tarefas";
+
+/** O que GET /admin/overview devolve. Ver o cabeçalho da rota para as fontes. */
+type OverviewChange =
+  | {
+      disponivel: true;
+      atual: number;
+      anterior: number;
+      delta: number;
+      percent: number | null;
+    }
+  | { disponivel: false; atual: number; motivo: string };
+
+type OverviewData = {
+  window: string;
+  windowStartIso: string | null;
+  windowEndIso: string;
+  cards: {
+    novosUsuarios: {
+      value: number;
+      historicoDesde: string | null;
+      change: OverviewChange;
+    };
+    acessoPro: {
+      bySubscription: number;
+      byInfluencer: number;
+      total: number;
+    };
+    mrr: { value: number };
+    receita: {
+      value: number;
+      historicoDesde: string | null;
+      change: OverviewChange;
+    };
+    receitaEmRisco: {
+      count: number;
+      mrrCents: number;
+      percentOfMrr: number | null;
+    };
+    custoIa: { valueBrl: number };
+  };
+};
 
 type DashboardData = {
   counts?: {
@@ -394,11 +446,14 @@ const metricCards: MetricCard[] = [
     color: "bg-pink-600 text-white",
   },
   {
-    label: "Cursos cadastrados",
+    // "Cursos cadastrados" saiu daqui: inventário não sustenta decisão, e era o
+    // único número da página que ninguém usava para agir. Este é o oposto: muda
+    // sozinho, tem data marcada e ainda dá para agir.
+    label: "Receita em risco",
     value: "0",
-    detail: "Itens na tabela courses",
-    icon: <FileText className="h-6 w-6" />,
-    color: "bg-blue-600 text-white",
+    detail: "Assinaturas com saída agendada",
+    icon: <TrendingDown className="h-6 w-6" />,
+    color: "bg-rose-600 text-white",
   },
   {
     label: "Custo de IA",
@@ -801,6 +856,77 @@ function ChurnContextTiles({ churn }: { churn: ChurnSnapshot }) {
         />
       ) : null}
     </>
+  );
+}
+
+/**
+ * Um card da Visão.
+ *
+ * CLICÁVEL quando tem destino: o card responde "como estamos?" e a aba responde
+ * "por quê?", e obrigar a pessoa a achar a aba na navegação lateral é fricção
+ * sem motivo. Vira `<button>` de verdade, não `<div onClick>`, para o teclado e
+ * o leitor de tela alcançarem.
+ *
+ * A VARIAÇÃO só aparece quando existe; quando não existe, aparece o MOTIVO. Um
+ * espaço vazio no lugar do Δ parece defeito.
+ */
+function MetricCardView({
+  metric,
+  onNavigate,
+}: {
+  metric: MetricCard;
+  onNavigate: (section: AdminSectionId) => void;
+}) {
+  const corpo = (
+    <>
+      <div className="flex items-start justify-between gap-4">
+        <span
+          className={`flex h-13 w-13 items-center justify-center rounded-2xl border-2 border-slate-900 shadow-[3px_3px_0_#0f172a] ${metric.color}`}
+        >
+          {metric.icon}
+        </span>
+      </div>
+      <p className="mt-5 text-sm font-black uppercase tracking-wide text-slate-500">
+        {metric.label}
+      </p>
+      <p className="font-display mt-1 text-4xl font-black text-slate-950">
+        {metric.value}
+      </p>
+      <p className="mt-2 text-sm font-semibold text-slate-600">
+        {metric.detail}
+      </p>
+      {metric.change ? (
+        <p
+          data-testid={`card-variacao-${metric.label}`}
+          className={`mt-2 text-xs font-black uppercase tracking-wide ${
+            metric.change.tom === "alta"
+              ? "text-emerald-700"
+              : metric.change.tom === "baixa"
+                ? "text-rose-700"
+                : "text-slate-500"
+          }`}
+        >
+          {metric.change.texto}
+        </p>
+      ) : null}
+    </>
+  );
+
+  if (!metric.destino) {
+    return (
+      <article className="card-brutal rounded-3xl bg-white p-5">{corpo}</article>
+    );
+  }
+
+  const destino = metric.destino;
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate(destino)}
+      className="card-brutal rounded-3xl bg-white p-5 text-left transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+    >
+      {corpo}
+    </button>
   );
 }
 
@@ -6024,12 +6150,66 @@ export default function Admin() {
   const search = useSearch();
   const [, setLocation] = useLocation();
   const activeSection = sectionFromSearch(search);
+  // PRESERVA os demais parametros. Antes reescrevia a query inteira, entao
+  // trocar de aba (inclusive clicando num card da Visao) descartava o ?window=
+  // e a janela escolhida voltava ao padrao sem ninguem pedir.
   const setActiveSection = useCallback(
     (section: AdminSectionId) => {
-      setLocation(`/admin?section=${section}`);
+      const params = new URLSearchParams(window.location.search);
+      params.set("section", section);
+      setLocation(`/admin?${params.toString()}`);
     },
     [setLocation],
   );
+
+  // JANELA NA URL, nao em estado local. A Visao e a pagina que se deixa aberta e
+  // recarrega, e estado local devolveria o padrao a cada F5; na URL ela
+  // sobrevive ao reload e o link fica compartilhavel. O custo era o
+  // setActiveSection acima descartar o parametro, e ele foi corrigido junto.
+  const [overview, setOverview] = useState<OverviewData | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
+
+  const overviewWindow = parseOverviewWindow(
+    new URLSearchParams(search).get("window"),
+  );
+  const setOverviewWindow = useCallback(
+    (proxima: OverviewWindow) => {
+      const params = new URLSearchParams(window.location.search);
+      params.set("window", proxima);
+      setLocation(`/admin?${params.toString()}`);
+    },
+    [setLocation],
+  );
+  // EFEITO PROPRIO, so para /overview: a janela governa os seis cards e mais
+  // nada, entao trocar de 7 para 30 nao pode refazer as oito chamadas da pagina
+  // (PostHog, fila, saude, afiliados...). O escopo do seletor esta aqui.
+  useEffect(() => {
+    let cancelled = false;
+    setOverviewLoading(true);
+    setOverviewError(null);
+    adminFetch(`/overview?window=${overviewWindow}`)
+      .then((json) => {
+        if (cancelled) return;
+        setOverview(json.data as OverviewData);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        // Falha vira ESTADO de erro, nunca zeros: card zerado é afirmação falsa
+        // sobre o negócio.
+        setOverview(null);
+        setOverviewError(
+          err instanceof Error ? err.message : "Erro ao carregar os cards.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setOverviewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [overviewWindow]);
+
   const [affiliateName, setAffiliateName] = useState("Nova parceira tech");
   const [affiliateCode, setAffiliateCode] = useState("PARCEIRA20");
   const [affiliateDiscount, setAffiliateDiscount] = useState(20);
@@ -6536,59 +6716,75 @@ export default function Admin() {
     (couponCurrentPage - 1) * COUPON_PAGE_SIZE,
     couponCurrentPage * COUPON_PAGE_SIZE,
   );
+  // OS SEIS CARDS, montados do /overview.
+  //
+  // Uma fonte so para os seis, com a MESMA janela: antes cada card puxava de um
+  // endpoint diferente e nenhum tinha dimensao de tempo. `change` vem por card,
+  // porque as series tem idades diferentes e uma regra global da pagina erraria
+  // em pelo menos um deles.
+  //
+  // AUSENCIA e estado NOMEADO: falha vira "indisponível", nunca R$ 0,00 falso.
   const adminMetricCards = useMemo<MetricCard[]>(() => {
-    if (!dashboard?.counts) return metricCards;
+    if (!overview) {
+      const indisponivel = overviewError ? "indisponível" : "…";
+      return metricCards.map((c) => ({ ...c, value: indisponivel }));
+    }
+    const c = overview.cards;
+    const janelaLabel =
+      overview.window === "all" ? "no período todo" : `nos últimos ${overview.window} dias`;
 
-    // Custo de IA cai em "indisponivel" (nunca R$ 0,00 falso) quando /ai-stats
-    // falha. TODO(Ana): copy do estado indisponivel do card de custo de IA.
-    const aiCost = aiStatsError
-      ? "indisponível"
-      : formatCurrency(
-          Object.values(aiStats).reduce((sum, item) => sum + item.cost, 0),
-        );
-    const aiCostDetail = aiStatsError
-      ? "Falha ao carregar uso de IA"
-      : "Custo estimado dos últimos 30 dias";
-    // MRR real quando disponivel. Ausencia e estado nomeado, nunca um 0 falso.
-    // TODO(Ana): copy do estado indisponivel do card de receita.
-    const mrrValue = billingMetrics
-      ? formatCents(billingMetrics.mrr.mrrCents)
-      : "indisponível";
-    // As concessoes de influencer sao ORTOGONAIS a assinatura: elas dao Pro sem
-    // pagar, e ficar fora do numero principal e deliberado. Mas ficar fora da
-    // TELA nao: era assim que 25 pessoas com acesso sumiam do painel.
-    const influencers = dashboard.counts.pro_by_influencer;
-    const proDetail =
-      influencers === undefined
-        ? metricCards[1].detail
-        : influencers > 0
-          ? `Assinaturas ativas. Mais ${influencers} com acesso por concessão de influencer.`
-          : "Assinaturas ativas. Nenhuma concessão de influencer ativa.";
-    const mrrDetail = billingMetrics
-      ? "MRR das assinaturas ativas"
-      : billingMetricsError
-        ? "Falha ao carregar métricas"
-        : "Carregando métricas";
-
-    // So os VALORES sao preenchidos; o label vem da base e nunca e sobrescrito.
     return [
-      { ...metricCards[0], value: String(dashboard.counts.users) },
+      {
+        ...metricCards[0],
+        label: "Novos usuários",
+        value: String(c.novosUsuarios.value),
+        detail: `Cadastros ${janelaLabel}`,
+        change: rotuloDeVariacao(
+          c.novosUsuarios.change,
+          c.novosUsuarios.historicoDesde,
+        ),
+        destino: "usuarios",
+      },
       {
         ...metricCards[1],
-        // Fallback para o campo antigo: backend anterior ao tally nao manda
-        // pro_by_subscription, e um `undefined` viraria "undefined" na tela.
-        value: String(
-          dashboard.counts.pro_by_subscription ??
-            dashboard.counts.active_subscriptions,
-        ),
-        detail: proDetail,
+        value: String(c.acessoPro.bySubscription),
+        detail:
+          c.acessoPro.byInfluencer > 0
+            ? `Assinaturas ativas. Mais ${c.acessoPro.byInfluencer} com acesso por concessão de influencer.`
+            : "Assinaturas ativas. Nenhuma concessão de influencer ativa.",
+        destino: "usuarios",
       },
-      { ...metricCards[2], value: mrrValue, detail: mrrDetail },
-      { ...metricCards[3], value: String(dashboard.counts.ai_calls_total) },
-      { ...metricCards[4], value: String(dashboard.counts.courses) },
-      { ...metricCards[5], value: aiCost, detail: aiCostDetail },
+      {
+        ...metricCards[2],
+        value: formatCents(c.mrr.value),
+        detail: "MRR das assinaturas ativas (estado atual)",
+        destino: "financeiro",
+      },
+      {
+        ...metricCards[3],
+        label: "Receita no período",
+        value: formatCents(c.receita.value),
+        detail: `Cobranças ${janelaLabel}`,
+        change: rotuloDeVariacao(c.receita.change, c.receita.historicoDesde),
+        destino: "financeiro",
+      },
+      {
+        ...metricCards[4],
+        value: formatCents(c.receitaEmRisco.mrrCents),
+        detail:
+          c.receitaEmRisco.percentOfMrr !== null
+            ? `${c.receitaEmRisco.count} assinaturas saindo (${c.receitaEmRisco.percentOfMrr.toFixed(1).replace(".", ",")}% do MRR)`
+            : `${c.receitaEmRisco.count} assinaturas com saída agendada`,
+        destino: "retencao",
+      },
+      {
+        ...metricCards[5],
+        value: formatCurrency(c.custoIa.valueBrl),
+        detail: `Custo estimado ${janelaLabel}`,
+        destino: "ia",
+      },
     ];
-  }, [dashboard, aiStats, aiStatsError, billingMetrics, billingMetricsError]);
+  }, [overview, overviewError]);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -7000,34 +7196,29 @@ export default function Admin() {
           {activeSection === "visao-geral" ? (
             <>
               <IntegrationsHealthPanel />
-              {dashboardLoading ? (
+
+              {/* O seletor governa OS SEIS CARDS e nada mais. Os blocos abaixo
+                  que têm janela própria a declaram na tela; os que são estado
+                  atual dizem isso. Um seletor que governa metade da página sem
+                  dizer qual metade é pior que não ter seletor. */}
+              <OverviewPeriod
+                window={overviewWindow}
+                onChange={setOverviewWindow}
+                seriesStart={overview?.cards.novosUsuarios.historicoDesde}
+              />
+
+              {overviewLoading ? (
                 <LoadingBlock />
-              ) : dashboardError ? (
-                <ErrorBlock message={dashboardError} />
+              ) : overviewError ? (
+                <ErrorBlock message={overviewError} />
               ) : (
                 <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                   {adminMetricCards.map((metric) => (
-                    <article
+                    <MetricCardView
                       key={metric.label}
-                      className="card-brutal rounded-3xl bg-white p-5"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <span
-                          className={`flex h-13 w-13 items-center justify-center rounded-2xl border-2 border-slate-900 shadow-[3px_3px_0_#0f172a] ${metric.color}`}
-                        >
-                          {metric.icon}
-                        </span>
-                      </div>
-                      <p className="mt-5 text-sm font-black uppercase tracking-wide text-slate-500">
-                        {metric.label}
-                      </p>
-                      <p className="font-display mt-1 text-4xl font-black text-slate-950">
-                        {metric.value}
-                      </p>
-                      <p className="mt-2 text-sm font-semibold text-slate-600">
-                        {metric.detail}
-                      </p>
-                    </article>
+                      metric={metric}
+                      onNavigate={setActiveSection}
+                    />
                   ))}
                 </div>
               )}
@@ -7042,6 +7233,17 @@ export default function Admin() {
                       <h2 className="font-display text-2xl font-black text-slate-950">
                         Do visitante ao assinante Pro
                       </h2>
+                      {/* O funil NÃO obedece ao seletor: ele vem do PostHog com
+                          janela própria de 30 dias e cache de 5 min, e a aba
+                          Conversão oferece mês/3m/12m. Herdar a janela do
+                          seletor em silêncio faria o número mudar de rótulo sem
+                          mudar de conteúdo. */}
+                      <p
+                        data-testid="funil-janela-propria"
+                        className="mt-1 text-xs font-bold text-amber-700"
+                      >
+                        Janela própria: últimos 30 dias (não segue o seletor)
+                      </p>
                       {!posthogLoading && posthogComputedAt ? (
                         <p className="mt-1 text-xs font-semibold text-slate-500">
                           analytics atualizados{" "}
@@ -7167,6 +7369,14 @@ export default function Admin() {
                       <h2 className="font-display text-2xl font-black text-slate-950">
                         Fila de e-mails
                       </h2>
+                      {/* Estado ATUAL, não série: a fila é uma foto do
+                          instante. Não há janela a obedecer. */}
+                      <p
+                        data-testid="fila-estado-atual"
+                        className="text-xs font-bold text-slate-500"
+                      >
+                        Estado atual
+                      </p>
                     </div>
                   </div>
                   {queueError ? (
@@ -7207,6 +7417,16 @@ export default function Admin() {
                     </h2>
                     <p className="mt-2 text-sm font-semibold text-slate-600">
                       Custos por recurso, volume de uso e alertas de orçamento.
+                    </p>
+                    {/* Esta LISTA continua em 30 dias fixos (vem de /ai-stats).
+                        O CARD de custo de IA acima obedece ao seletor, então os
+                        dois números divergem quando a janela não é 30 — e o
+                        aviso existe para isso não parecer erro. */}
+                    <p
+                      data-testid="ia-janela-propria"
+                      className="mt-1 text-xs font-bold text-amber-700"
+                    >
+                      Janela própria: últimos 30 dias (não segue o seletor)
                     </p>
                   </div>
                   <div className="divide-y-2 divide-slate-100">
@@ -8820,6 +9040,13 @@ export default function Admin() {
                     <Activity className="h-6 w-6" />
                     Saúde do sistema
                   </h2>
+                  {/* Estado ATUAL por natureza: saúde não tem janela. */}
+                  <p
+                    data-testid="saude-estado-atual"
+                    className="text-xs font-bold text-slate-500"
+                  >
+                    Estado atual
+                  </p>
                   <div className="mt-5 grid gap-4 sm:grid-cols-2">
                     {healthLoading ? (
                       <div className="sm:col-span-2">
