@@ -416,6 +416,29 @@ export interface LinkedinCheckResult {
  * de todos os checks aplicáveis ao contexto, arredondada. Checks não
  * aplicáveis ao mercado nem entram no array, então ficam fora do denominador.
  */
+/**
+ * Dado NOSSO chegou invalido ao calculo da nota.
+ *
+ * Existe para a rota poder distinguir isto de falha de terceiro. Antes, um tier
+ * corrompido caia no ramo generico do catch e virava `502 upstream_error`, com
+ * a mensagem "Nao foi possivel concluir a analise agora": quem fosse
+ * diagnosticar comecaria olhando a OpenAI, e o problema esta no payload.
+ *
+ * Erro classificado pela CAMADA onde foi capturado, e nao pela ORIGEM, manda o
+ * diagnostico para o lugar errado. E a razao de esta classe existir em vez de
+ * um `Error` cru.
+ *
+ * Mora aqui, ao lado de quem lanca, e nao em `server/lib/linkedinAnalyze.ts`
+ * com as irmas (`LinkedinUnreadableError`, `LinkedinTruncatedError`): a funcao
+ * que lanca e compartilhada, e `shared/` nao pode importar de `server/`.
+ */
+export class LinkedinDadoInvalidoError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LinkedinDadoInvalidoError";
+  }
+}
+
 export function computeLinkedinScore(checks: LinkedinCheckResult[]): {
   score: number;
   faixa: LinkedinFaixa;
@@ -449,7 +472,7 @@ export function computeLinkedinScore(checks: LinkedinCheckResult[]): {
     // correta dele. Esta funcao roda no SERVIDOR, dentro do try da rota, entao
     // a excecao vira 500 com evento no Sentry, nao tela branca.
     if (typeof weight !== "number") {
-      throw new Error(
+      throw new LinkedinDadoInvalidoError(
         `[linkedin] tier fora do catalogo ao calcular a nota: ` +
           `tier=${JSON.stringify(check.tier)} check.id=${JSON.stringify(check.id)}. ` +
           `Tiers validos: ${Object.keys(TIER_WEIGHTS).join(", ")}.`,

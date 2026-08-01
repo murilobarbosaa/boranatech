@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextFunction, Request, Response, Router } from "express";
 
 import {
+  LinkedinDadoInvalidoError,
   LinkedinAnalyzeRequestSchema,
   type LinkedinAnalysisResponse,
   type LinkedinAnalyzeRequest,
@@ -245,6 +246,22 @@ router.post(
             502,
             "analysis_truncated",
             "A análise ficou grande demais e foi cortada no meio. Tente de novo com um texto de perfil mais enxuto.",
+          ),
+        );
+      }
+      // Dado NOSSO invalido nao e falha de terceiro. Antes desta distincao, um
+      // check com tier corrompido caia no ramo generico abaixo e virava
+      // `502 upstream_error`, com a mensagem que sugere instabilidade da
+      // OpenAI: o diagnostico comecava no lugar errado. 500, e nao 502, porque
+      // nao ha upstream envolvido; e `code` proprio para o painel separar os
+      // dois. O `errorHandler` reporta ao Sentry a partir de 500, entao o
+      // evento continua saindo.
+      if (err instanceof LinkedinDadoInvalidoError) {
+        return next(
+          createError(
+            500,
+            "analysis_data_invalid",
+            "Algo saiu errado do nosso lado ao montar sua análise. Já registramos o problema. Tente de novo em instantes.",
           ),
         );
       }
