@@ -83,7 +83,7 @@ import { useBoardSnapshot } from "./useBoardSnapshot";
 // toda mutacao; os filhos (BoardColumn, TaskCard, ColumnHeader, NewTaskComposer)
 // sao memo e so recebem dados e handlers estaveis.
 //
-// Update otimista no formato do moveBug (BugsDashboard.tsx): snapshot do estado
+// Update otimista no formato do antigo moveBug (BugsDashboard, removido na Fase 5): snapshot do estado
 // anterior, muta local, await, rollback + toast no erro, refresh como fonte de
 // verdade no sucesso. Duas diferencas obrigatorias aqui:
 //
@@ -158,10 +158,20 @@ export function TasksDashboard() {
   const patchSeqRef = useRef(new Map<string, number>());
   const tempCounter = useRef(0);
 
-  // Primeiro board vira o ativo. Nao reescreve a URL: quadro nao esta no deep
-  // link nesta fase.
+  // Quadro ativo: `?board=<slug>` quando existir, senao o primeiro.
+  //
+  // O parametro nasceu para o redirect de `?section=bugs` ter um DESTINO REAL:
+  // sem ele o link dos e-mails ja enviados cairia no primeiro quadro por
+  // posicao, que nao e o de bugs. De quebra, torna qualquer quadro linkavel.
+  //
+  // FALLBACK EXPLICITO: slug que nao resolve (quadro renomeado, arquivado ou
+  // excluido) cai no primeiro em vez de deixar a tela sem quadro. O redirect
+  // nao pode presumir que o quadro BUG existe, e este e o tratamento.
   useEffect(() => {
-    if (!boardId && boards.length > 0) setBoardId(boards[0].id);
+    if (boardId || boards.length === 0) return;
+    const slug = new URLSearchParams(window.location.search).get("board");
+    const alvo = slug ? boards.find((b) => b.slug === slug) : undefined;
+    setBoardId((alvo ?? boards[0]).id);
   }, [boardId, boards]);
 
   const markPending = useCallback((taskId: string, pending: boolean) => {

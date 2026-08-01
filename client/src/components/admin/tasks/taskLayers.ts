@@ -22,7 +22,7 @@
 // aceitar `overlayClassName` (`components/ui/dialog.tsx`, `alert-dialog.tsx`) e
 // todos os dialogos desta aba ja o passam, entao o overlay sobe junto.
 //
-// O QUE CONTINUA VALENDO: `BugsDashboard.tsx` ainda monta `DialogContent` sem
+// O QUE CONTINUA VALENDO: o antigo `BugsDashboard.tsx` (removido na Fase 5) ainda monta `DialogContent` sem
 // `overlayClassName`, com o mesmo defeito pre-existente. Nao e escopo daqui, e
 // fica registrado para nao ser redescoberto.
 

@@ -55,7 +55,6 @@ import { CancellationReasonsDashboard } from "@/components/admin/CancellationRea
 import { UsageRetentionDashboard } from "@/components/admin/UsageRetentionDashboard";
 import { ContactListsManager } from "@/components/admin/ContactListsManager";
 import { ConversionDashboard } from "@/components/admin/ConversionDashboard";
-import { BugsDashboard } from "@/components/admin/BugsDashboard";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { TasksErrorBoundary } from "@/components/admin/tasks/TasksErrorBoundary";
 import { TasksPanelSkeleton } from "@/components/admin/tasks/TasksPanelSkeleton";
@@ -214,7 +213,6 @@ type AdminSectionId =
   | "notificacoes"
   | "beta"
   | "vagas"
-  | "bugs"
   | "tarefas";
 
 /** O que GET /admin/overview devolve. Ver o cabeçalho da rota para as fontes. */
@@ -487,11 +485,6 @@ const adminNavItems: AdminNavItem[] = [
     icon: <Bell className="h-4 w-4" />,
   },
   {
-    href: "#bugs",
-    label: "Bugs & Erros",
-    icon: <Bug className="h-4 w-4" />,
-  },
-  {
     href: "#tarefas",
     label: "Tarefas",
     icon: <SquareKanban className="h-4 w-4" />,
@@ -510,10 +503,38 @@ const ADMIN_SECTION_IDS = new Set<string>(
   adminNavItems.map((item) => item.href.replace("#", "")),
 );
 
+/**
+ * Secoes APOSENTADAS e para onde elas vao.
+ *
+ * `bugs` saiu na Fase 5 da unificacao com Tarefas. O redirect nao e cortesia: os
+ * TRES e-mails ja enviados (bug novo, resolvido, reaberto) apontam para
+ * `?section=bugs`, e sao o unico caminho externo que sobreviveu ao modulo.
+ * Medido na auditoria: nunca existiu identificador curto de bug, entao o link da
+ * aba e literalmente tudo o que circulou. Cair em "visao-geral" seria degradacao
+ * aceitavel e ruim; mandar para o quadro certo custa uma linha.
+ *
+ * O destino leva `board=bugs`. Se o quadro nao existir mais, o TasksDashboard
+ * cai no primeiro quadro em vez de ficar sem destino.
+ */
+const SECOES_APOSENTADAS: Record<string, string> = {
+  bugs: "tarefas&board=bugs",
+};
+
+/** A secao aposentada, ou null. Exportado para teste. */
+export function redirecionamentoDeSecao(search: string): string | null {
+  const value = new URLSearchParams(search).get("section");
+  if (!value) return null;
+  const destino = SECOES_APOSENTADAS[value];
+  return destino ? `/admin?section=${destino}` : null;
+}
+
 // Le ?section= da URL e devolve um AdminSectionId valido, ou o default seguro.
 // Centraliza a validacao: ausente ou lixo -> "visao-geral".
 function sectionFromSearch(search: string): AdminSectionId {
   const value = new URLSearchParams(search).get("section");
+  // Secao aposentada resolve para o DESTINO, para a tela ja renderizar certo no
+  // primeiro paint em vez de piscar "visao-geral" antes do redirect.
+  if (value && SECOES_APOSENTADAS[value]) return "tarefas";
   return value && ADMIN_SECTION_IDS.has(value)
     ? (value as AdminSectionId)
     : "visao-geral";
@@ -6057,6 +6078,16 @@ export default function Admin() {
   const search = useSearch();
   const [, setLocation] = useLocation();
   const activeSection = sectionFromSearch(search);
+
+  // Reescreve a URL das secoes aposentadas. `replace` e nao `push`: o link do
+  // e-mail nao deve virar uma entrada no historico que leve de volta a uma aba
+  // que nao existe mais. A tela ja renderiza o destino (sectionFromSearch
+  // resolve antes), entao isto so acerta a barra de enderecos.
+  useEffect(() => {
+    const destino = redirecionamentoDeSecao(search);
+    if (destino) window.history.replaceState(null, "", destino);
+  }, [search]);
+
   // PRESERVA os demais parametros. Antes reescrevia a query inteira, entao
   // trocar de aba (inclusive clicando num card da Visao) descartava o ?window=
   // e a janela escolhida voltava ao padrao sem ninguem pedir.
@@ -6147,7 +6178,7 @@ export default function Admin() {
     string | null
   >(null);
 
-  // Toggle Afiliados | Cupons da secao, mesmo padrao do BugsDashboard
+  // Toggle Afiliados | Cupons da secao, mesmo padrao do antigo BugsDashboard
   // (Tabs local, sem persistencia na URL, default na primeira visao).
   const [affiliatesTab, setAffiliatesTab] = useState<"afiliados" | "cupons">(
     "afiliados",
@@ -7586,17 +7617,6 @@ export default function Admin() {
             </AdminSection>
           ) : null}
 
-          {activeSection === "bugs" ? (
-            <AdminSection
-              id="bugs"
-              eyebrow="bugs & erros"
-              icon={<Bug className="h-4 w-4" />}
-              title="Bugs & Erros"
-              subtitle="Erros capturados pelo Sentry e bug tracker interno. Criar um bug a partir de um erro vincula os dois; concluir um bug dispara o aviso por email."
-            >
-              <BugsDashboard />
-            </AdminSection>
-          ) : null}
 
           {activeSection === "tarefas" ? (
             <AdminSection

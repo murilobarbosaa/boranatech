@@ -5,9 +5,9 @@ import { getBoardSnapshot, listBoards } from "@/services/adminTasksService";
 import type { TaskBoard, TaskBoardSnapshot } from "./types";
 
 // Carregamento do board: useState + useEffect + service, sem React Query e sem
-// lib de estado, igual ao BugsDashboard.
+// lib de estado, igual ao antigo BugsDashboard (removido na Fase 5).
 //
-// A parte que NAO e igual ao BugsDashboard e a guarda de resposta obsoleta. La,
+// A parte que NAO e igual ao antigo BugsDashboard (removido na Fase 5) e a guarda de resposta obsoleta. La,
 // um refresh sozinho por vez basta. Aqui cada mover/criar/renomear dispara um
 // refresh, entao duas respostas podem voltar fora de ordem e a mais VELHA
 // sobrescrever a mais nova, desfazendo na tela algo que ja esta gravado. O
