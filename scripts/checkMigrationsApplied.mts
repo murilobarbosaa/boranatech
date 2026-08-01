@@ -35,11 +35,41 @@ const migrationsDir = path.join(root, "supabase", "migrations");
 const supabaseUrl = process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+/**
+ * Codigo de saida para "NAO CONSEGUI OLHAR", distinto do "olhei e achei
+ * problema" (que continua 1).
+ *
+ * 78 e `EX_CONFIG` do `sysexits.h`: erro de configuracao do ambiente, nao do
+ * dado. A escolha e por convencao, para nao inventar numero.
+ *
+ * POR QUE ISTO EXISTE, e a data importa: em 2026-08-01, ESCREVENDO o documento
+ * que cataloga esta classe de defeito, o autor rodou este guard num worktree
+ * sem `.env`, grepou a saida procurando o aviso das tres tabelas de billing,
+ * nao encontrou nada, e quase registrou "pendencia resolvida". O guard tinha
+ * abortado aqui: nao verificou coisa nenhuma. `exit(1)` e o mesmo codigo de uma
+ * falha real, e o prefixo `[checkMigrationsApplied]` e o mesmo do sucesso,
+ * entao nem o codigo nem um grep no texto distinguiam os dois casos.
+ *
+ * E a mesma anatomia do `env -i` e do endpoint legado que devolvia 200 com
+ * lista vazia: AUSENCIA DE RESPOSTA LIDA COMO RESPOSTA. Conhecer a classe nao
+ * imuniza contra ela.
+ */
+const EXIT_AMBIENTE_AUSENTE = 78;
+
 if (!supabaseUrl || !serviceRoleKey) {
   console.error(
-    "[checkMigrationsApplied] faltam VITE_SUPABASE_URL e/ou SUPABASE_SERVICE_ROLE_KEY no ambiente.",
+    "[checkMigrationsApplied] ABORTADO SEM VERIFICAR NADA: faltam " +
+      "VITE_SUPABASE_URL e/ou SUPABASE_SERVICE_ROLE_KEY no ambiente.",
   );
-  process.exit(1);
+  console.error(
+    "[checkMigrationsApplied] NENHUMA tabela, funcao ou policy foi conferida. " +
+      "Este resultado NAO significa que o banco esta em dia.",
+  );
+  console.error(
+    `[checkMigrationsApplied] exit=${EXIT_AMBIENTE_AUSENTE} (EX_CONFIG) e ` +
+      "deliberadamente diferente de exit=1, que significa 'verifiquei e achei problema'.",
+  );
+  process.exit(EXIT_AMBIENTE_AUSENTE);
 }
 
 // "create table [if not exists] public.<nome>", com ou sem aspas no nome.
