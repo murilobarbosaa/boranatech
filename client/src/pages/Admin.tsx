@@ -81,6 +81,8 @@ import {
 } from "@/components/ui/popover";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { HealthBand } from "@/components/admin/overview/HealthBand";
+import { SignupChart } from "@/components/admin/overview/SignupChart";
+import { SubscriptionChart } from "@/components/admin/overview/SubscriptionChart";
 import {
   OverviewPeriod,
   parseOverviewWindow,
@@ -7166,6 +7168,14 @@ export default function Admin() {
                   ))}
                 </div>
               )}
+
+              {/* Os dois gráficos OBEDECEM ao seletor: cada um refaz a busca
+                  quando a janela muda. São os únicos blocos abaixo dos cards que
+                  o seguem, e por isso não precisam declarar janela própria. */}
+              <div className="grid gap-6 xl:grid-cols-2">
+                <SubscriptionChart window={overviewWindow} />
+                <SignupChart window={overviewWindow} />
+              </div>
 
               <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
                 <article className="card-brutal rounded-3xl bg-white p-6">
