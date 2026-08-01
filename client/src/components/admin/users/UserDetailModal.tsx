@@ -22,6 +22,7 @@ import {
 } from "@/components/admin/tasks/taskLayers";
 
 import { ActivityBlock } from "./ActivityBlock";
+import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
 import { UserAuditHistory } from "./UserAuditHistory";
 import { BoletoBlock } from "./BoletoBlock";
 import { SubscriptionHistory } from "./SubscriptionHistory";
@@ -688,13 +689,21 @@ export function UserDetailModal({
                   data-testid="user-transactions"
                   className="overflow-hidden rounded-2xl border-2 border-slate-200 bg-white"
                 >
-                  <UserTransactions
-                    loading={transactionsLoading}
-                    error={transactionsError}
-                    payload={transactions}
-                    onRefund={setRefundAlvo}
-                    onExternalRefund={setExternalRefundAlvo}
-                  />
+                  {/* Os dois blocos com BUSCA PRÓPRIA do modal (`/transactions`
+                      e `/audit`) sao os que ganham boundary aqui: um payload
+                      estranho neles derrubaria o modal inteiro, junto com o
+                      cadastro e a assinatura, que vieram de outra chamada e
+                      estao intactos. Os demais blocos leem o mesmo `detail` ja
+                      guardado e nao ganham nada com casca propria. */}
+                  <BlocoBoundary nome="Extrato de compras">
+                    <UserTransactions
+                      loading={transactionsLoading}
+                      error={transactionsError}
+                      payload={transactions}
+                      onRefund={setRefundAlvo}
+                      onExternalRefund={setExternalRefundAlvo}
+                    />
+                  </BlocoBoundary>
                 </div>
               </Section>
 
@@ -942,11 +951,13 @@ export function UserDetailModal({
                       data-testid="user-audit"
                       className="overflow-hidden rounded-2xl border-2 border-slate-200 bg-white"
                     >
-                      <UserAuditHistory
-                        loading={auditLoading}
-                        error={auditError}
-                        payload={audit}
-                      />
+                      <BlocoBoundary nome="Histórico de ações">
+                        <UserAuditHistory
+                          loading={auditLoading}
+                          error={auditError}
+                          payload={audit}
+                        />
+                      </BlocoBoundary>
                     </div>
                   </Section>
                 </div>

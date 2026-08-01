@@ -77,6 +77,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
+import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
 import { HealthBand } from "@/components/admin/overview/HealthBand";
 import { PaidFunnel } from "@/components/admin/overview/PaidFunnel";
 import { SignupChart } from "@/components/admin/overview/SignupChart";
@@ -7042,7 +7043,9 @@ export default function Admin() {
               {/* Substitui os dois cartões de saúde que ocupavam o topo (o de
                   integrações aqui e o "Saúde do sistema" mais abaixo). Verde é
                   ausência: uma linha e some. */}
-              <HealthBand />
+              <BlocoBoundary nome="Saúde do sistema" compacto>
+                <HealthBand />
+              </BlocoBoundary>
 
               {/* O seletor governa OS SEIS CARDS e nada mais. Os blocos abaixo
                   que têm janela própria a declaram na tela; os que são estado
@@ -7059,23 +7062,37 @@ export default function Admin() {
               ) : overviewError ? (
                 <ErrorBlock message={overviewError} />
               ) : (
-                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                  {adminMetricCards.map((metric) => (
-                    <MetricCardView
-                      key={metric.label}
-                      metric={metric}
-                      onNavigate={setActiveSection}
-                    />
-                  ))}
-                </div>
+                // ALCANCE LIMITADO, e a limitação é declarada: este boundary
+                // pega erro DENTRO do MetricCardView, mas NÃO pega o `useMemo`
+                // que monta `adminMetricCards`, porque ele roda no corpo do
+                // Admin, acima daqui. Foi lá que estava o defeito nº 8 da
+                // varredura, e quem o contém é a guarda de `overview.cards`, não
+                // este boundary. Mover a derivação para dentro de um componente
+                // filho resolveria de verdade, e é reestruturação, não fatia
+                // curta.
+                <BlocoBoundary nome="Cards do período">
+                  <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    {adminMetricCards.map((metric) => (
+                      <MetricCardView
+                        key={metric.label}
+                        metric={metric}
+                        onNavigate={setActiveSection}
+                      />
+                    ))}
+                  </div>
+                </BlocoBoundary>
               )}
 
               {/* Os dois gráficos OBEDECEM ao seletor: cada um refaz a busca
                   quando a janela muda. São os únicos blocos abaixo dos cards que
                   o seguem, e por isso não precisam declarar janela própria. */}
               <div className="grid gap-6 xl:grid-cols-2">
-                <SubscriptionChart window={overviewWindow} />
-                <SignupChart window={overviewWindow} />
+                <BlocoBoundary nome="Receita recorrente e assinantes">
+                  <SubscriptionChart window={overviewWindow} />
+                </BlocoBoundary>
+                <BlocoBoundary nome="Cadastros por dia">
+                  <SignupChart window={overviewWindow} />
+                </BlocoBoundary>
               </div>
 
               <div className="grid gap-6">
@@ -7108,7 +7125,9 @@ export default function Admin() {
                     </div>
                   </div>
                   <div className="mt-6">
-                    <PaidFunnel />
+                    <BlocoBoundary nome="Funil até o assinante pago">
+                      <PaidFunnel />
+                    </BlocoBoundary>
                   </div>
                 </article>
 
@@ -7116,111 +7135,117 @@ export default function Admin() {
               </div>
 
               <div className="grid gap-6 xl:grid-cols-3">
-                <article className="card-brutal rounded-3xl bg-white p-6 xl:col-span-2">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                        <Globe2 className="h-6 w-6" />
-                        Aquisição de usuários
-                      </h2>
-                      {/* Este bloco responde DE ONDE vem o topo do funil, e o
-                          funil logo acima mostra que o maior vazamento está
-                          entre cadastro e checkout. A pergunta seguinte natural
-                          é o que essas pessoas fazem depois de chegar, e a
-                          resposta mudou de lugar: saiu daqui (o antigo "Páginas
-                          mais acessadas", que só listava views) e virou a aba
-                          Páginas, que tem tempo, scroll e taxa de saída. Sem
-                          este link o destino existiria e ninguém acharia. */}
-                      <p className="mt-1 text-xs font-semibold text-slate-500">
-                        Janela própria: últimos 30 dias (não segue o seletor)
-                      </p>
+                <BlocoBoundary nome="Aquisição de usuários">
+                  <article className="card-brutal rounded-3xl bg-white p-6 xl:col-span-2">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                          <Globe2 className="h-6 w-6" />
+                          Aquisição de usuários
+                        </h2>
+                        {/* Este bloco responde DE ONDE vem o topo do funil, e o
+                            funil logo acima mostra que o maior vazamento está
+                            entre cadastro e checkout. A pergunta seguinte natural
+                            é o que essas pessoas fazem depois de chegar, e a
+                            resposta mudou de lugar: saiu daqui (o antigo "Páginas
+                            mais acessadas", que só listava views) e virou a aba
+                            Páginas, que tem tempo, scroll e taxa de saída. Sem
+                            este link o destino existiria e ninguém acharia. */}
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          Janela própria: últimos 30 dias (não segue o seletor)
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        data-testid="link-paginas"
+                        onClick={() => setActiveSection("paginas")}
+                        className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase text-slate-900 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                      >
+                        Comportamento por página
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      data-testid="link-paginas"
-                      onClick={() => setActiveSection("paginas")}
-                      className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase text-slate-900 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
-                    >
-                      Comportamento por página
-                    </button>
-                  </div>
-                  <div className="mt-6 space-y-4">
-                    {posthogLoading ? (
-                      <LoadingBlock />
-                    ) : posthogHasData && posthogStats?.acquisition?.length ? (
-                      posthogStats.acquisition.map((channel) => {
-                        const percent =
-                          posthogAcquisitionTotal > 0
-                            ? Math.round(
-                                (channel.users / posthogAcquisitionTotal) * 100,
-                              )
-                            : 0;
-                        return (
+                    <div className="mt-6 space-y-4">
+                      {posthogLoading ? (
+                        <LoadingBlock />
+                      ) : posthogHasData &&
+                        posthogStats?.acquisition?.length ? (
+                        posthogStats.acquisition.map((channel) => {
+                          const percent =
+                            posthogAcquisitionTotal > 0
+                              ? Math.round(
+                                  (channel.users / posthogAcquisitionTotal) *
+                                    100,
+                                )
+                              : 0;
+                          return (
+                            <div
+                              key={channel.channel}
+                              className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
+                            >
+                              <div className="flex items-center justify-between gap-4">
+                                <p className="font-display text-lg font-black text-slate-950">
+                                  {channel.channel === "None"
+                                    ? "Direto"
+                                    : channel.channel}
+                                </p>
+                                <p className="text-sm font-black text-violet-700">
+                                  {formatCount(channel.users)} usuários
+                                </p>
+                              </div>
+                              <div className="mt-3 h-3 rounded-full border-2 border-slate-900 bg-white">
+                                <div
+                                  className="h-full rounded-full bg-emerald-600"
+                                  style={{ width: `${percent}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <PosthogStateNotice state={posthogState} />
+                      )}
+                    </div>
+                  </article>
+                </BlocoBoundary>
+
+                <BlocoBoundary nome="Eventos recentes">
+                  <article className="card-brutal rounded-3xl bg-white p-6">
+                    <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                      <Zap className="h-6 w-6" />
+                      Eventos recentes
+                    </h2>
+                    <div className="mt-5 space-y-4">
+                      {dashboardLoading ? (
+                        <LoadingBlock />
+                      ) : auditLogs.length ? (
+                        auditLogs.map((event) => (
                           <div
-                            key={channel.channel}
+                            key={`${event.created_at}-${event.resource_type}-${event.resource_slug || ""}`}
                             className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
                           >
-                            <div className="flex items-center justify-between gap-4">
-                              <p className="font-display text-lg font-black text-slate-950">
-                                {channel.channel === "None"
-                                  ? "Direto"
-                                  : channel.channel}
-                              </p>
-                              <p className="text-sm font-black text-violet-700">
-                                {formatCount(channel.users)} usuários
-                              </p>
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="flex items-center gap-2 text-xs font-black uppercase text-violet-700">
+                                <FileText className="h-4 w-4" />
+                                {formatRelativeTime(event.created_at)}
+                              </span>
+                              <Clock3 className="h-4 w-4 text-slate-400" />
                             </div>
-                            <div className="mt-3 h-3 rounded-full border-2 border-slate-900 bg-white">
-                              <div
-                                className="h-full rounded-full bg-emerald-600"
-                                style={{ width: `${percent}%` }}
-                              />
-                            </div>
+                            <p className="mt-2 font-display text-lg font-black text-slate-950">
+                              {auditTitle(event.action)}
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-slate-600">
+                              {event.resource_type} {event.resource_slug || ""}
+                            </p>
                           </div>
-                        );
-                      })
-                    ) : (
-                      <PosthogStateNotice state={posthogState} />
-                    )}
-                  </div>
-                </article>
-
-                <article className="card-brutal rounded-3xl bg-white p-6">
-                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                    <Zap className="h-6 w-6" />
-                    Eventos recentes
-                  </h2>
-                  <div className="mt-5 space-y-4">
-                    {dashboardLoading ? (
-                      <LoadingBlock />
-                    ) : auditLogs.length ? (
-                      auditLogs.map((event) => (
-                        <div
-                          key={`${event.created_at}-${event.resource_type}-${event.resource_slug || ""}`}
-                          className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="flex items-center gap-2 text-xs font-black uppercase text-violet-700">
-                              <FileText className="h-4 w-4" />
-                              {formatRelativeTime(event.created_at)}
-                            </span>
-                            <Clock3 className="h-4 w-4 text-slate-400" />
-                          </div>
-                          <p className="mt-2 font-display text-lg font-black text-slate-950">
-                            {auditTitle(event.action)}
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-slate-600">
-                            {event.resource_type} {event.resource_slug || ""}
-                          </p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4 text-sm font-black text-slate-600">
-                        Nenhuma ação registrada ainda.
-                      </p>
-                    )}
-                  </div>
-                </article>
+                        ))
+                      ) : (
+                        <p className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4 text-sm font-black text-slate-600">
+                          Nenhuma ação registrada ainda.
+                        </p>
+                      )}
+                    </div>
+                  </article>
+                </BlocoBoundary>
               </div>
             </>
           ) : null}
@@ -7263,7 +7288,13 @@ export default function Admin() {
               // TODO(Ana): revisar copy do subtitulo da aba Usuarios.
               subtitle="Clique em um usuário para ver cadastro, área de interesse, assinatura, onboarding, status, funcionalidades usadas e histórico de navegação."
             >
-              <UsersDashboard />
+              {/* Nivel de ABA, como o de Tarefas: o UsersDashboard e um bloco
+                  so (uma lista com filtros), entao nao ha sub-blocos para
+                  isolar aqui. Os blocos internos com busca propria ganham
+                  boundary dentro do UserDetailModal. */}
+              <BlocoBoundary nome="Lista de usuários">
+                <UsersDashboard />
+              </BlocoBoundary>
             </AdminSection>
           ) : null}
 
