@@ -34,7 +34,6 @@ import {
   LogOut,
   Mail,
   MousePointerClick,
-  PieChart,
   PlusCircle,
   RefreshCcw,
   Search,
@@ -81,6 +80,7 @@ import {
 } from "@/components/ui/popover";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { HealthBand } from "@/components/admin/overview/HealthBand";
+import { PaidFunnel } from "@/components/admin/overview/PaidFunnel";
 import { SignupChart } from "@/components/admin/overview/SignupChart";
 import { SubscriptionChart } from "@/components/admin/overview/SubscriptionChart";
 import {
@@ -6557,29 +6557,6 @@ export default function Admin() {
   const posthogHasData = Boolean(
     posthogState?.state === "ok" && posthogState.hasData,
   );
-  const posthogSignupConversion =
-    posthogStats && posthogStats.uniqueUsers > 0
-      ? Math.round(
-          (posthogStats.events.user_signed_up / posthogStats.uniqueUsers) * 100,
-        )
-      : 0;
-  const posthogCheckoutConversion =
-    posthogStats && posthogStats.uniqueUsers > 0
-      ? Math.round(
-          (posthogStats.events.checkout_started / posthogStats.uniqueUsers) *
-            100,
-        )
-      : 0;
-  const posthogFunnel = posthogStats
-    ? [
-        { label: "Visitantes únicos", value: posthogStats.uniqueUsers },
-        { label: "Cadastros", value: posthogStats.events.user_signed_up },
-        {
-          label: "Checkouts iniciados",
-          value: posthogStats.events.checkout_started,
-        },
-      ]
-    : [];
   const posthogAcquisitionTotal =
     posthogStats?.acquisition.reduce(
       (sum, channel) => sum + channel.users,
@@ -7205,54 +7182,9 @@ export default function Admin() {
                         </p>
                       ) : null}
                     </div>
-                    {posthogHasData ? (
-                      <span className="inline-flex w-fit items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-50 px-3 py-2 text-xs font-black text-violet-800">
-                        <PieChart className="h-4 w-4" />
-                        conversão cadastro {posthogSignupConversion}%
-                      </span>
-                    ) : null}
                   </div>
-                  <div className="mt-6 space-y-4">
-                    {posthogLoading ? (
-                      <LoadingBlock />
-                    ) : posthogHasData && posthogFunnel.length ? (
-                      posthogFunnel.map((step, index) => {
-                        const maxValue = Math.max(
-                          posthogFunnel[0]?.value || 1,
-                          1,
-                        );
-                        return (
-                          <div
-                            key={step.label}
-                            className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <p className="text-sm font-black uppercase text-violet-700">
-                                  {step.label}
-                                </p>
-                                <p className="font-display text-3xl font-black text-slate-950">
-                                  {formatCount(step.value)}
-                                </p>
-                              </div>
-                              <span className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black">
-                                etapa {index + 1}
-                              </span>
-                            </div>
-                            <div className="mt-3 h-3 rounded-full border-2 border-slate-900 bg-white">
-                              <div
-                                className="h-full rounded-full bg-violet-700"
-                                style={{
-                                  width: `${Math.max((step.value / maxValue) * 100, step.value > 0 ? 5 : 0)}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <PosthogStateNotice state={posthogState} />
-                    )}
+                  <div className="mt-6">
+                    <PaidFunnel />
                   </div>
                 </article>
 
