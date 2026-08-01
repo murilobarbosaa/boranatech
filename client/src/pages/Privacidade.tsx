@@ -87,6 +87,7 @@ export default function Privacidade() {
               "Dados técnicos: endereço IP, navegador, dispositivo, data e hora de acesso, cookies e identificadores similares.",
               "Dados de pagamento: status de assinatura, plano contratado, identificadores de cobrança e informações necessárias para confirmação de pagamento. Dados completos de cartão ou boleto são tratados pelo provedor de pagamento.",
               "Dados enviados às ferramentas: textos de currículo, LinkedIn, objetivos de carreira, mensagens, respostas de quiz e demais informações que você inserir voluntariamente.",
+              "Campos pré-preenchidos: para agilizar, alguns campos do formulário podem vir pré-preenchidos com o que lemos do arquivo que você enviou. Você pode editar ou apagar qualquer um antes de enviar a análise.",
               "Dados de comunicação: mensagens enviadas, solicitações de suporte, e-mails transacionais e registros de consentimento quando aplicável.",
             ],
           },

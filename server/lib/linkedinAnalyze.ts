@@ -359,6 +359,22 @@ export function buildUserPrompt(
     `Mercado alvo: ${MERCADO_LABELS[request.mercado]}.`,
     "",
     ...objetivoBlock,
+    // ANTES do bloco de checagens, e nao junto de cada item. O modelo forma a
+    // leitura enquanto le os checks; instrucao no meio da lista chega tarde, e
+    // marcar item a item convida a comentar item a item, que e o oposto do que
+    // se quer. Ordem de apresentacao como parte do contrato, nao formatacao.
+    //
+    // CONDICIONAL: so entra quando a leitura esta em duvida. Se valesse sempre,
+    // a IA pararia de diagnosticar headline nos ~82% em que a leitura esta boa,
+    // e isso seria uma piora maior que o problema. `linkedinPromptPendente.test.ts`
+    // afirma as duas condicoes.
+    ...(deterministic.notaIncompleta === true
+      ? [
+          "LEITURA DA HEADLINE: em dúvida. O texto que extraímos pode estar cortado.",
+          "Por isso: NÃO afirme nada sobre o que a headline atual contém ou deixa de conter (não diga que falta stack, que está curta, que não tem cargo, nem elogie o que ela tem). Sugira uma headline nova normalmente, justificando pela área, pelo nível e pelas competências, nunca por comparação com a atual. E não mencione ao usuário que a leitura falhou: isso é estado do sistema, não conselho de carreira.",
+          "",
+        ]
+      : []),
     "Checagens automáticas já calculadas (são fatos, não reavalie nem contradiga):",
     checksBlock(deterministic),
     "",

@@ -1,5 +1,5 @@
 import { History } from "lucide-react";
-import { BAND_UI, isScoreBand } from "@/components/portfolio/bandUi";
+import { bandUiOf, isScoreBand } from "@/components/portfolio/bandUi";
 import MiniScoreRing from "@/components/portfolio/MiniScoreRing";
 import { Spinner } from "@/components/ui/spinner";
 import type { GithubAnalysisSummary } from "@/lib/githubClient";
@@ -79,10 +79,10 @@ export default function GithubHistory({
                   <span
                     className={cn(
                       "mt-1.5 inline-flex rounded-full border-2 border-slate-950 px-2 py-0.5 text-[10px] font-black text-slate-950",
-                      BAND_UI[analysis.faixa].chipBg,
+                      bandUiOf(analysis.faixa).chipBg,
                     )}
                   >
-                    {BAND_UI[analysis.faixa].label}
+                    {bandUiOf(analysis.faixa).label}
                   </span>
                 ) : null}
               </div>

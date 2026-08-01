@@ -1,19 +1,15 @@
+import {
+  resumeFaixaLabelOf,
+  resumeFaixaUiOf,
+} from "@/components/curriculo/faixaUi";
 import { cn } from "@/lib/utils";
 import {
-  RESUME_FAIXA_LABELS,
   type ResumeFaixa,
   type ResumeScoreCriterion,
 } from "@shared/resumeAnalysis/schema";
 
 // Card de nota do Analisador de Curriculo, no molde do LinkedinScoreCard,
 // com o breakdown deterministico por criterio (a nota nao vem da IA).
-
-const FAIXA_UI: Record<ResumeFaixa, { cardBg: string; chipBg: string }> = {
-  inicio: { cardBg: "bg-red-100", chipBg: "bg-red-300" },
-  "em-construcao": { cardBg: "bg-amber-100", chipBg: "bg-amber-300" },
-  forte: { cardBg: "bg-sky-100", chipBg: "bg-sky-300" },
-  magnetico: { cardBg: "bg-emerald-100", chipBg: "bg-emerald-300" },
-};
 
 interface ResumeScoreCardProps {
   score: number;
@@ -26,7 +22,7 @@ export default function ResumeScoreCard({
   faixa,
   criterios,
 }: ResumeScoreCardProps) {
-  const ui = FAIXA_UI[faixa];
+  const ui = resumeFaixaUiOf(faixa);
   return (
     <div
       className={cn(
@@ -49,7 +45,7 @@ export default function ResumeScoreCard({
             ui.chipBg,
           )}
         >
-          {RESUME_FAIXA_LABELS[faixa]}
+          {resumeFaixaLabelOf(faixa)}
         </span>
       </div>
       <div className="mt-6 space-y-2.5">

@@ -206,3 +206,63 @@ describe("Fase 4 (v5): mudanca de LEITURA suprime delta e celebracao", () => {
     expect(v.motivo).toBe("delta");
   });
 });
+
+describe("supressao por nota incompleta", () => {
+  const CHECK = { id: "headline-existe", category: "headline", aprovado: true };
+  // `notaAnterior !== notaAtual` e checks iguais: sem a supressao nova, este
+  // conjunto produz delta. E o que faz o teste medir a supressao, e nao um
+  // caminho que ja estava suprimido por outro motivo.
+  const base: EntradaDelta = {
+    notaAnterior: 70,
+    versaoAnterior: 7,
+    checksAnteriores: [CHECK],
+    notaAtual: 74,
+    versaoAtual: 7,
+    checksAtuais: [CHECK],
+  };
+
+  it("suprime quando a ATUAL esta incompleta", () => {
+    const v = decidirDelta({ ...base, incompletaAtual: true });
+    expect(v.delta).toBeNull();
+    expect(v.motivo).toBe("nota-incompleta");
+  });
+
+  it("suprime quando a ANTERIOR esta incompleta", () => {
+    const v = decidirDelta({ ...base, incompletaAnterior: true });
+    expect(v.delta).toBeNull();
+    expect(v.motivo).toBe("nota-incompleta");
+  });
+
+  it("suprime quando as DUAS estao incompletas", () => {
+    const v = decidirDelta({
+      ...base,
+      incompletaAnterior: true,
+      incompletaAtual: true,
+    });
+    expect(v.delta).toBeNull();
+  });
+
+  it("NAO suprime quando nenhuma esta, nem com os campos ausentes", () => {
+    expect(decidirDelta(base).delta).not.toBeNull();
+    expect(
+      decidirDelta({ ...base, incompletaAnterior: false, incompletaAtual: false })
+        .delta,
+    ).not.toBeNull();
+  });
+
+  it("ausencia vale FALSE, nao true: linha antiga nao vira suprimida", () => {
+    // As 170 linhas gravadas antes da v7 nao tem o campo. Se ausencia valesse
+    // `true`, o delta sumiria para todo mundo com historico.
+    const v = decidirDelta({ ...base, incompletaAtual: undefined });
+    expect(v.delta).not.toBeNull();
+  });
+
+  it("`delta: null` desliga a celebracao: o confete morre de graca", () => {
+    // O contrato esta no doc de `VeredictoDelta` ("Null tambem desliga a
+    // celebracao"). Este teste trava a consequencia: nao existe segundo lugar
+    // onde alguem precise lembrar de suprimir o confete.
+    const v = decidirDelta({ ...base, incompletaAtual: true });
+    expect(v.delta).toBeNull();
+    expect(v.reguaMudou).toBe(false);
+  });
+});

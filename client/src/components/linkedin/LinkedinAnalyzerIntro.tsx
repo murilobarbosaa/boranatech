@@ -27,6 +27,10 @@ const TIMELINE_STEPS: string[] = [
 const EXAMPLE_SCORE = 25;
 // Faixa REAL da nota de exemplo: cores e rotulo da fonte unica compartilhada.
 const EXAMPLE_FAIXA = faixaFromScore(EXAMPLE_SCORE);
+// Acesso DIRETO de proposito: `EXAMPLE_FAIXA` sai de `faixaFromScore` sobre um
+// literal deste arquivo, nunca do servidor, entao nao ha valor desconhecido a
+// resolver. Usar `faixaUiOf` aqui aplicaria a protecao onde o risco nao existe
+// e diluiria o sinal de que resolver significa "valor externo".
 const EXAMPLE_FAIXA_UI = FAIXA_UI[EXAMPLE_FAIXA];
 const EXAMPLE_FAIXA_LABEL = FAIXA_LABELS[EXAMPLE_FAIXA];
 // red-600: o vermelho legivel da familia da faixa inicio para o anel.

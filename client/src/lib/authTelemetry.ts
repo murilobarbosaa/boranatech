@@ -280,8 +280,39 @@ export function authErrorFields(error: unknown): {
  *
  * O PostHog continua recebendo tudo em `auth_failure`, sem mudança: lá o evento
  * é agregação, não triagem, e o `stage`/`error_code` seguem como propriedade.
+ *
+ * `otp_expired` e `access_denied` entraram depois, e a demora é a lição: os dois
+ * atendem o mesmo critério do parágrafo de cima desde sempre (link vencido e
+ * pessoa que fechou a tela do Google são o produto funcionando), mas a lista é
+ * mantida à mão e ficou para trás do conjunto que ela deveria descrever. O
+ * `otp_expired` só apareceu porque abriu uma issue nova no Sentry com
+ * `level: error`; o `access_denied` estava lá desde o início e ninguém viu.
+ *
+ * `bad_oauth_state` fica de FORA de propósito, e não por esquecimento: o
+ * parágrafo acima o nomeia como falha de verdade. Ter copy em
+ * `authCallbackMessages.ts` significa que a interface trata o caso, não que o
+ * caso seja normal. É por isso que a lista NÃO pode ser derivada daquele
+ * arquivo, e é por isso que `authTelemetry.codigosEsperados.test.ts` compara os
+ * dois conjuntos e trava a diferença: quem sobra precisa estar declarado lá,
+ * com motivo, e um código novo com copy derruba o teste até alguém decidir.
  */
-const CODIGOS_ESPERADOS = new Set(["invalid_credentials", "user_already_exists"]);
+const CODIGOS_ESPERADOS_LISTA = [
+  "invalid_credentials",
+  "user_already_exists",
+  "otp_expired",
+  "access_denied",
+];
+const CODIGOS_ESPERADOS = new Set(CODIGOS_ESPERADOS_LISTA);
+
+/**
+ * Só para o teste que trava a lista contra a copy. Não use em runtime.
+ *
+ * Exposto como ARRAY e não como `ReadonlySet` porque o `target` do
+ * `tsconfig.json` não tem `downlevelIteration`, e iterar `Set` no teste quebra
+ * o `pnpm check` (que, por não cobrir `*.test.ts`, só acusa quando o hook roda).
+ */
+export const CODIGOS_ESPERADOS_PARA_TESTE: readonly string[] =
+  CODIGOS_ESPERADOS_LISTA;
 
 /** Nível do evento no Sentry. Fora da allowlist, continua `error`. */
 export function nivelSentry(errorCode: string | null): "error" | "info" {

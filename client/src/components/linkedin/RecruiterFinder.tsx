@@ -13,9 +13,28 @@ interface RecruiterFinderProps {
   mercado: Mercado;
 }
 
+/**
+ * Rotulo de um campo, com fallback.
+ *
+ * `campos` vem de `deterministic.keywordsCampos`, ou seja, do servidor e do
+ * `result` jsonb PERSISTIDO. Um campo novo antes do deploy do front nao
+ * derrubava nada aqui, mas produzia algo pior de perceber: `undefined` entrava
+ * no array, sobrevivia ao `join` e a pessoa lia "adicione em undefined".
+ * String que parece texto e nao e.
+ *
+ * O fallback aqui e de APRESENTACAO (rotulo), entao devolver algo neutro esta
+ * certo: o resto da frase continua util. Diferente do `TIER_WEIGHTS`, onde o
+ * valor E a informacao e a decisao foi lancar. Criterio no CLAUDE.md.
+ */
+function rotuloDeCampo(campo: string): string {
+  return LINKEDIN_CAMPO_LABELS[campo as LinkedinCampo] ?? "";
+}
+
 /** "Competências", "Competências e Headline", "A, B e C". */
 function listar(campos: LinkedinCampo[]): string {
-  const nomes = campos.map((c) => LINKEDIN_CAMPO_LABELS[c]);
+  // Filtra o vazio ANTES de montar a frase: sem isto, um campo desconhecido
+  // vira ", e " no meio do texto, que e o mesmo defeito com outra cara.
+  const nomes = campos.map(rotuloDeCampo).filter((n) => n !== "");
   if (nomes.length <= 1) return nomes[0] ?? "";
   return `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}`;
 }

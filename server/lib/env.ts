@@ -203,6 +203,26 @@ export const env = {
     );
     return 180;
   })(),
+  // Amostragem do DENOMINADOR do rate limit. 0 = desligada (default).
+  //
+  // Existe porque `FATOR_TETO_IP` foi calibrado por raciocinio, nao por dado: o
+  // log de escopo so fala quando ESTOURA, e o silencio dele e indistinguivel de
+  // "esta folgado" e de "nunca chegou perto". Ligada, emite a contagem da janela
+  // a cada N requisicoes da MESMA chave, o que da a distribuicao de requisicoes
+  // por minuto por IP. Ver docs/denominador-rate-limit.md.
+  //
+  // Por env e nao por constante: a ideia e ligar por uma semana, colher e
+  // desligar sem deploy. Invalido (nao inteiro ou < 0) cai em 0 com warn.
+  rateLimitSampleN: (() => {
+    const raw = process.env.RATE_LIMIT_SAMPLE_N;
+    if (!raw) return 0;
+    const parsed = parseInt(raw, 10);
+    if (Number.isInteger(parsed) && parsed >= 0) return parsed;
+    console.warn(
+      `[env] AVISO: RATE_LIMIT_SAMPLE_N invalido ("${raw}"), amostragem desligada`,
+    );
+    return 0;
+  })(),
   cronSecret: process.env.CRON_SECRET || "",
   githubToken: process.env.GITHUB_TOKEN || "",
   // Portao de lancamento. "gated" mantem o portao fechado; "open" libera geral.

@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextFunction, Request, Response, Router } from "express";
 
 import {
+  LinkedinDadoInvalidoError,
   LinkedinAnalyzeRequestSchema,
   type LinkedinAnalysisResponse,
   type LinkedinAnalyzeRequest,
@@ -15,6 +16,7 @@ import {
   LinkedinUnreadableError,
 } from "../lib/linkedinAnalyze";
 import type { LinkedinParsed } from "../../shared/linkedin/parse";
+import { hashDoTexto } from "../lib/linkedinTextoHash";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -54,8 +56,20 @@ async function persistAnalysis(
       conexoes: request.conexoes,
       atividade: request.atividade,
       objetivo: request.objetivo ?? null,
+      // Caminho de entrada e impressao digital do texto. As duas chaves sao
+      // NOVAS: as 157 linhas ja gravadas nao as tem, e a leitura tolera isso
+      // (linkedinInputTolerante.test.ts trava a propriedade). `entryPath` vem
+      // null quando o bundle antigo nao mandou, que e o caso da janela de deploy.
+      entryPath: request.entryPath ?? null,
+      textoHash: hashDoTexto(request.profileText),
       parseResumo: {
         headline: parsed.headline,
+        // Contexto da leitura da headline. Chave NOVA, pelo mesmo padrao de
+        // `entryPath`/`textoHash`: as linhas ja gravadas nao a tem e o leitor
+        // tolera a ausencia. Existe porque `headline` sozinha nao distingue "o
+        // parser cortou" de "a pessoa escreveu assim", e sem `profileText`
+        // (que nao e guardado, de proposito) nao havia como saber depois.
+        headlineContexto: parsed.headlineContexto,
         sobreTamanho: response.deterministic.sobreTamanho,
         experienciasContagem: response.deterministic.experienciasContagem,
         skillsPdf: parsed.skillsPdf,
@@ -235,6 +249,22 @@ router.post(
           ),
         );
       }
+      // Dado NOSSO invalido nao e falha de terceiro. Antes desta distincao, um
+      // check com tier corrompido caia no ramo generico abaixo e virava
+      // `502 upstream_error`, com a mensagem que sugere instabilidade da
+      // OpenAI: o diagnostico comecava no lugar errado. 500, e nao 502, porque
+      // nao ha upstream envolvido; e `code` proprio para o painel separar os
+      // dois. O `errorHandler` reporta ao Sentry a partir de 500, entao o
+      // evento continua saindo.
+      if (err instanceof LinkedinDadoInvalidoError) {
+        return next(
+          createError(
+            500,
+            "analysis_data_invalid",
+            "Algo saiu errado do nosso lado ao montar sua análise. Já registramos o problema. Tente de novo em instantes.",
+          ),
+        );
+      }
       return next(
         createError(
           502,
@@ -253,7 +283,11 @@ router.get(
       const { data, error } = await supabaseAdmin
         .from("linkedin_analyses")
         .select(
-          "id, area, level, score, faixa, created_at, result->deterministicVersion, result->deterministic->checks",
+          // `notaIncompleta` entra na lista pelo mesmo motivo de `checks`: o
+          // delta e o historico precisam dela por LINHA, e buscar o `result`
+          // inteiro de 20 analises so para ler um booleano seria caro. Ausente
+          // nas linhas anteriores a v7, e o cliente normaliza para `false`.
+          "id, area, level, score, faixa, created_at, result->deterministicVersion, result->deterministic->checks, result->deterministic->notaIncompleta",
         )
         .eq("user_id", req.user!.id)
         .order("created_at", { ascending: false })

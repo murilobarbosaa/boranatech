@@ -42,6 +42,13 @@ export interface LinkedinParsed {
    */
   formacao: string[];
   certificacoes: string[];
+  /**
+   * Contexto da headline, para diagnosticar truncamento depois do fato.
+   *
+   * `null` quando não houve headline detectada. Campo NOVO: leitor precisa
+   * tolerar ausência, porque as linhas já gravadas não o têm.
+   */
+  headlineContexto?: LinkedinHeadlineContexto | null;
   /** Falso quando o texto não tem nada de aproveitável. Vira 422 na rota. */
   usable: boolean;
 }
@@ -347,10 +354,60 @@ const HEADLINE_ABERTA_EM_VIRGULA = /,$/;
  * que vêm depois de uma headline FECHADA, e headline legítima não termina em
  * vírgula. Na dúvida, não junta, e o resultado é o comportamento anterior.
  */
+/**
+ * Como a linha ACIMA da headline terminou. Só a classe, nunca o conteúdo.
+ *
+ * O preâmbulo do export tem o NOME da pessoa logo antes da headline, e guardar
+ * a linha de cima crua passaria a persistir nome onde hoje não se persiste. A
+ * classe responde a pergunta do diagnóstico (houve quebra? em quê?) sem o dado.
+ */
+export type HeadlineTerminacaoAcima = "virgula" | "pipe" | "palavra" | "outro";
+
+/**
+ * Contexto da headline lida, para diagnosticar truncamento DEPOIS do fato.
+ *
+ * Por que existe: as três famílias de quebra medidas em produção (vírgula, pipe
+ * órfão, termo composto partido) são indistinguíveis, no que fica persistido, de
+ * uma headline que a pessoa escreveu daquele jeito. `headline` sozinha não
+ * separa "o parser cortou" de "a pessoa digitou assim", e sem `profileText` (que
+ * não é guardado, de propósito) não havia como saber. `juntou` responde
+ * diretamente; `acima` diz em que a linha anterior terminou, sem guardá-la.
+ *
+ * `linhasAbaixo` começa DEPOIS da headline exatamente pelo motivo acima: para
+ * cima só vai classificação, para baixo vai conteúdo.
+ *
+ * Campo NOVO e opcional: as 163 linhas já gravadas não o têm, e a leitura
+ * precisa tolerar a ausência (travado em `parse.headlineContexto.test.ts`).
+ */
+export interface LinkedinHeadlineContexto {
+  /** Índice da primeira linha da headline no preâmbulo. */
+  indiceEscolhido: number;
+  /** A junção para trás disparou? Separa "o parser cortou" de "foi digitado". */
+  juntou: boolean;
+  /** Até duas linhas cruas DEPOIS da headline. Vazio se não houver. */
+  linhasAbaixo: string[];
+  /** Classificação da linha acima, sem conteúdo. `null` se a headline abre o texto. */
+  acima: { terminaEm: HeadlineTerminacaoAcima; forte: boolean } | null;
+}
+
+function classificarTerminacao(linha: string): HeadlineTerminacaoAcima {
+  const s = linha.trim();
+  if (s.endsWith(",")) return "virgula";
+  if (s.endsWith("|")) return "pipe";
+  // Sem `\p{L}`: o target do tsconfig nao aceita a flag `u` (mesmo motivo
+  // de `comecaMaiuscula`). A faixa acentuada cobre o que aparece aqui.
+  if (/[A-Za-z0-9\u00c0-\u024f]$/.test(s)) return "palavra";
+  return "outro";
+}
+
 function detectHeadline(
   lines: string[],
   firstMainIndex: number,
-): { valor: string | null; indice: number } {
+): {
+  valor: string | null;
+  indice: number;
+  contexto: LinkedinHeadlineContexto | null;
+} {
   const limite = firstMainIndex >= 0 ? firstMainIndex : Math.min(20, lines.length);
   const preamble = lines.slice(0, limite);
   const ehForte = (linha: string) =>
@@ -358,7 +415,7 @@ function detectHeadline(
   const strong = preamble
     .map((linha, indice) => ({ linha, indice }))
     .filter(({ linha }) => ehForte(linha));
-  if (strong.length === 0) return { valor: null, indice: -1 };
+  if (strong.length === 0) return { valor: null, indice: -1, contexto: null };
   // O nome vem antes da headline; pegamos a candidata forte mais próxima da
   // primeira seção principal (a última da lista).
   const escolhida = strong[strong.length - 1];
@@ -373,9 +430,28 @@ function detectHeadline(
     inicio -= 1;
   }
 
+  // Diagnóstico apenas: NADA aqui altera `valor` nem `indice`. O fim da headline
+  // é a última linha absorvida, que com junção para trás é sempre a escolhida.
+  const fim = escolhida.indice;
+  const acimaIdx = inicio - 1;
   return {
     valor: clip(partes.join(" ").replace(/\s+/g, " "), 250),
     indice: inicio,
+    contexto: {
+      indiceEscolhido: inicio,
+      juntou: partes.length > 1,
+      linhasAbaixo: preamble
+        .slice(fim + 1, fim + 3)
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0),
+      acima:
+        acimaIdx >= 0
+          ? {
+              terminaEm: classificarTerminacao(preamble[acimaIdx]),
+              forte: ehForte(preamble[acimaIdx]),
+            }
+          : null,
+    },
   };
 }
 
@@ -570,6 +646,7 @@ export function parseLinkedinText(text: string): LinkedinParsed {
   if (lines.length === 0) {
     return {
       headline: null,
+      headlineContexto: null,
       sobre: null,
       experiencias: [],
       skillsPdf: [],
@@ -584,7 +661,11 @@ export function parseLinkedinText(text: string): LinkedinParsed {
   const firstMain = hits.find((hit) => mainKeys.includes(hit.key));
   const firstMainIndex = firstMain ? firstMain.index : -1;
 
-  const { valor: headline, indice: headlineIdx } = detectHeadline(
+  const {
+    valor: headline,
+    indice: headlineIdx,
+    contexto: headlineContexto,
+  } = detectHeadline(
     lines,
     firstMainIndex,
   );
@@ -630,6 +711,7 @@ export function parseLinkedinText(text: string): LinkedinParsed {
 
   return {
     headline,
+    headlineContexto,
     sobre,
     experiencias,
     skillsPdf,

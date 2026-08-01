@@ -27,6 +27,24 @@ function formatDate(iso: string): string {
   });
 }
 
+/**
+ * Rotulo da faixa numa linha do historico.
+ *
+ * "A confirmar" SO a partir da v7, que e a versao que introduziu o conceito.
+ * Uma analise da v1 a v6 nao tinha `notaIncompleta`, foi calculada por uma
+ * regua que nao conhecia pendencia, e a faixa que a pessoa viu na epoca era a
+ * dela: marcar retroativamente reescreveria a historia de uma medicao honesta.
+ *
+ * O `>= 7` e explicito de proposito, e nao "tem o campo": uma linha futura sem
+ * o campo (payload truncado, bug de escrita) deve cair na faixa calculada, nao
+ * virar "a confirmar" por ausencia. Ausencia nao e valor.
+ */
+function rotuloDaFaixa(analysis: LinkedinAnalysisSummary): string {
+  const versao = analysis.deterministicVersion ?? 1;
+  if (versao >= 7 && analysis.notaIncompleta === true) return "A confirmar";
+  return FAIXA_LABELS[analysis.faixa as LinkedinFaixa] ?? analysis.faixa;
+}
+
 export default function LinkedinHistory({
   analyses,
   onOpen,
@@ -58,8 +76,7 @@ export default function LinkedinHistory({
                 </p>
                 <p className="text-xs font-medium text-slate-500">
                   {formatDate(analysis.created_at)} ·{" "}
-                  {FAIXA_LABELS[analysis.faixa as LinkedinFaixa] ??
-                    analysis.faixa}
+                  {rotuloDaFaixa(analysis)}
                 </p>
               </div>
               <span className="flex items-center gap-2">

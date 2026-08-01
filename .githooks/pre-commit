@@ -27,13 +27,20 @@
 # importa `analyzeLinkedin`, que importa. Enumerar isso da fonte exige seguir o
 # grafo de imports, ou seja, um parser que pode sub-casar em silencio, que e a
 # classe de defeito que este hook existe para nao repetir. Rodar tudo duas vezes
-# custa ~8s e nao depende de nenhum parser meu estar certo.
+# nao depende de nenhum parser meu estar certo.
 #
-# Roda: suite (~7,6s) + suite sem .env (~7,6s) + pnpm check (~3,3s).
+# Roda: suite + suite sem .env + pnpm check. A DURACAO NAO E AFIRMADA AQUI: ela
+# depende da maquina e da carga, e este projeto ja registrou quatro valores
+# diferentes para ela em dois arquivos. Ver o paragrafo do hook no CLAUDE.md.
 #
-# ATENCAO: `pnpm check` NAO cobre arquivos de teste, porque tsconfig.json os
-# exclui. Erro de tipo em teste so aparece quando o teste roda, e e por isso que
-# rodar a suite aqui importa ainda mais.
+# `pnpm check` COBRE arquivos de teste. A frase anterior aqui dizia o contrario
+# ("NAO cobre, porque tsconfig.json os exclui") e era FALSA: o `include` do
+# tsconfig.json e client/src, shared e server, e o `exclude` e so node_modules,
+# build e dist. A qualificacao que falta e outra: ele cobre DENTRO dos
+# diretorios do include, e `scripts/` ficava de fora ate o `tsconfig.scripts.json`
+# (que roda como `pnpm check:scripts`, no CI, nao aqui). O CLAUDE.md corrigiu
+# esta afirmacao duas vezes e este cabecalho ficou carregando a versao errada,
+# que e a pior classe de documentacao desatualizada: ensina o erro.
 #
 # Emergencia: git commit --no-verify. Use com parcimonia e conserte depois.
 #

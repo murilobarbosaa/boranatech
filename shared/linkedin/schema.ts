@@ -409,6 +409,21 @@ export interface LinkedinCheckResult {
   tier: LinkedinCheckTier;
   aprovado: boolean;
   detail: string;
+  /**
+   * A leitura que alimenta este check está em dúvida?
+   *
+   * OBRIGATÓRIO na escrita, e é o único opcional deste payload cuja AUSÊNCIA
+   * significaria "completo" em vez de "não sabemos" (`entryPath`, `textoHash` e
+   * `headlineContexto` significam o contrário). Quatro opcionais no mesmo
+   * objeto, um com semântica invertida, é como se erra. Por isso: escrever
+   * sempre, e normalizar na leitura, para a ausência nunca chegar a ser
+   * interpretada. Ver `readDeterministic`.
+   *
+   * `aprovado` continua com o veredito calculado, e a nota NÃO muda: o marcador
+   * mexe no que a interface afirma (faixa e asterisco), não na aritmética.
+   * Inércia provada em `reguaV2.pontosPendentes.test.ts`.
+   */
+  pendente?: boolean;
 }
 
 /**
@@ -416,6 +431,29 @@ export interface LinkedinCheckResult {
  * de todos os checks aplicáveis ao contexto, arredondada. Checks não
  * aplicáveis ao mercado nem entram no array, então ficam fora do denominador.
  */
+/**
+ * Dado NOSSO chegou invalido ao calculo da nota.
+ *
+ * Existe para a rota poder distinguir isto de falha de terceiro. Antes, um tier
+ * corrompido caia no ramo generico do catch e virava `502 upstream_error`, com
+ * a mensagem "Nao foi possivel concluir a analise agora": quem fosse
+ * diagnosticar comecaria olhando a OpenAI, e o problema esta no payload.
+ *
+ * Erro classificado pela CAMADA onde foi capturado, e nao pela ORIGEM, manda o
+ * diagnostico para o lugar errado. E a razao de esta classe existir em vez de
+ * um `Error` cru.
+ *
+ * Mora aqui, ao lado de quem lanca, e nao em `server/lib/linkedinAnalyze.ts`
+ * com as irmas (`LinkedinUnreadableError`, `LinkedinTruncatedError`): a funcao
+ * que lanca e compartilhada, e `shared/` nao pode importar de `server/`.
+ */
+export class LinkedinDadoInvalidoError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LinkedinDadoInvalidoError";
+  }
+}
+
 export function computeLinkedinScore(checks: LinkedinCheckResult[]): {
   score: number;
   faixa: LinkedinFaixa;
@@ -433,6 +471,28 @@ export function computeLinkedinScore(checks: LinkedinCheckResult[]): {
   let ganho = 0;
   for (const check of checks) {
     const weight = TIER_WEIGHTS[check.tier];
+    // LANCA, e nao devolve peso de fallback. Esta e a excecao deliberada a
+    // regra dos resolvers, e o criterio que a separa esta no CLAUDE.md:
+    // fallback serve para valor de APRESENTACAO (cor, rotulo, icone), onde
+    // degradar mantem a informacao certa. Aqui o peso E a informacao.
+    //
+    // Sem isto, `undefined` entrava na soma e a nota inteira saia `NaN`, sem
+    // erro nenhum. Peso zero ou peso de `opcional` seriam PIORES que o NaN:
+    // devolveriam um numero plausivel que ninguem consegue distinguir de
+    // correto, e a auditoria desta base tem uma instancia exata disso (o
+    // `contarLinhas` devolvendo -1, em que falha de rede virou "protegida").
+    //
+    // Um tier fora do catalogo nao e valor novo do dominio: e payload
+    // corrompido ou versao futura lida por codigo antigo. Nao existe leitura
+    // correta dele. Esta funcao roda no SERVIDOR, dentro do try da rota, entao
+    // a excecao vira 500 com evento no Sentry, nao tela branca.
+    if (typeof weight !== "number") {
+      throw new LinkedinDadoInvalidoError(
+        `[linkedin] tier fora do catalogo ao calcular a nota: ` +
+          `tier=${JSON.stringify(check.tier)} check.id=${JSON.stringify(check.id)}. ` +
+          `Tiers validos: ${Object.keys(TIER_WEIGHTS).join(", ")}.`,
+      );
+    }
     possivel += weight;
     if (check.aprovado) ganho += weight;
   }
@@ -494,6 +554,16 @@ export interface LinkedinKeywordCampos {
 export interface LinkedinDeterministicResult {
   score: number;
   faixa: LinkedinFaixa;
+  /**
+   * A nota está incompleta porque alguma leitura está em dúvida?
+   *
+   * Booleano próprio, e NÃO um valor novo em `LINKEDIN_FAIXAS`: a coluna
+   * `faixa` é `text not null` sem constraint e tem leitores fora do jsonb, e o
+   * bundle antigo na janela de deploy ignora o campo que não conhece e mostra a
+   * faixa calculada (o comportamento de hoje). Valor novo no enum daria chip
+   * vazio lá. Mesma regra de escrita obrigatória do `pendente`.
+   */
+  notaIncompleta?: boolean;
   checks: LinkedinCheckResult[];
   /** Tecnologias-chave da área presentes no perfil (pdf + skills coladas). */
   keywordsEncontradas: string[];
@@ -660,6 +730,20 @@ export const LinkedinAnalyzeRequestSchema = z.object({
   conexoes: ConexoesSchema,
   atividade: AtividadeSchema,
   objetivo: z.string().max(300).optional(),
+  /**
+   * Por onde o texto entrou: PDF, colagem manual, ou revisão de sessão restaurada.
+   *
+   * OPCIONAL de propósito, e não é preguiça de validação: o deploy não é atômico
+   * (Vercel e Railway sobem separados, janela de 1 a 3 minutos), então o backend
+   * novo precisa aceitar o bundle antigo, que não manda este campo. Obrigatório
+   * aqui derrubaria toda análise da janela com 400.
+   *
+   * Existe porque a ausência dele custou uma investigação inteira: com uma
+   * headline errada persistida em produção não havia como distinguir bug do
+   * parser de PDF de bug da colagem manual, e o valor JÁ existia no browser
+   * (`EntryPath` em LinkedinAnalisar.tsx) sem nunca sair de lá.
+   */
+  entryPath: z.enum(["pdf", "manual", "review"]).optional(),
 });
 
 export type LinkedinAnalyzeRequest = z.infer<
@@ -740,6 +824,47 @@ export const QUALITATIVE_VERSION = 3;
  *   ESTRUTURA DE LINHA, então reparsear o dedup não reproduz nem corrige. O
  *   número acima é teto por peso de check, não medição.
  *
+ * 6: o campo de competências parou de receber o que não é competência. O
+ *   pré-preenchimento a partir do PDF escrevia `skillsPdf` inteiro no
+ *   formulário quando a pessoa deixava o campo vazio, e `skillsPdf` às vezes
+ *   carrega o bloco de identidade junto (nome, cidade, estado, país, e em
+ *   três linhas o empregador ou a instituição). A régua não mudou e o parser
+ *   não mudou: mudou o que ENTRA no campo `skills`, que é fonte de
+ *   `skills-quantidade`, `skills-quantidade-otima` e das duas coberturas.
+ *
+ *   Medido sobre as 162 análises persistidas: em 17 o campo `skills` era
+ *   exatamente o pré-preenchimento não editado E carregava excedente; dessas,
+ *   7 PASSAVAM em `skills-quantidade` (essencial, 10 pontos) contando o
+ *   próprio nome e a cidade como competência, e passam a reprovar. Movimento
+ *   de 10 pontos em 194, sempre para baixo, em 7 de 162 (4,3%). As outras 10
+ *   tinham de 4 a 6 itens, já reprovavam o corte de 10, e não se movem.
+ *
+ *   O bump é por comparabilidade e não por régua: o mesmo perfil, sem a pessoa
+ *   mexer em nada, passa a declarar menos competências do que declarava.
+ *
+ * 7: a nota passou a poder ficar INCOMPLETA. Quando a leitura da headline tem
+ *   assinatura de corte, os cinco checks de `headline-*` são marcados
+ *   `pendente`, o bloco carrega `notaIncompleta`, e a interface deixa de
+ *   afirmar uma faixa sobre uma leitura em dúvida: o chip vira "A confirmar", o
+ *   grupo da decomposição mostra "a conferir" em vez de N/M, e o delta some nas
+ *   duas pontas (o confete junto, porque `delta: null` já desliga a
+ *   celebração).
+ *
+ *   A NOTA NÃO MUDA. `aprovado` continua com o veredito calculado e a
+ *   aritmética é idêntica com ou sem os marcadores; a inércia está provada por
+ *   deep-equals em `reguaV2.pontosPendentes.test.ts`, com um teste de mutação
+ *   ao lado. O bump é por COMPARABILIDADE do que a interface afirma: a mesma
+ *   pessoa, com o mesmo perfil, passa a ver "A confirmar" onde via "Forte".
+ *
+ *   Estimado em 29 de 170 análises persistidas (17,1%), estável em três
+ *   medições independentes (17,3%, 17,8%, 17,1%). Das 29, 19 estavam em
+ *   "em-construção", 5 em "forte" e 5 em "início".
+ *
+ *   `notaIncompleta` é booleano e NÃO valor novo em `LINKEDIN_FAIXAS`: a coluna
+ *   `faixa` é `text not null` sem constraint, tem leitores fora do jsonb, e o
+ *   bundle antigo na janela de deploy ignora o campo que não conhece e mostra a
+ *   faixa calculada, que é o comportamento de hoje.
+ *
  * NÃO bumpado na Fase 2A, e a decisão é deliberada. A fase acrescentou
  * `keywordsCampos`, um campo OPCIONAL e puramente descritivo: nenhum check o
  * lê, a nota das 6 fixtures é idêntica, e a régua não mudou. O que esta
@@ -753,7 +878,7 @@ export const QUALITATIVE_VERSION = 3;
  * `titulosIngles`) passa por `readDeterministic`. Ver
  * docs/divida-leitura-persistida.md.
  */
-export const DETERMINISTIC_VERSION = 5;
+export const DETERMINISTIC_VERSION = 7;
 
 export interface LinkedinAnalysisResponse {
   area: (typeof AREA_SLUGS)[number];
@@ -782,6 +907,15 @@ export interface LinkedinAnalysisSummary {
    * notas NÃO são comparáveis, e não comemorar melhoria que não houve.
    */
   deterministicVersion?: number | null;
+  /**
+   * A nota desta linha está incompleta (leitura em dúvida)?
+   *
+   * Ausente nas linhas anteriores à v7, e ausência vale `false` — mesma
+   * normalização de `readDeterministic`. Serve para o delta ser suprimido
+   * quando qualquer das duas pontas está incompleta, e para o histórico saber
+   * se mostra a faixa ou "a confirmar".
+   */
+  notaIncompleta?: boolean;
   /**
    * Vereditos dos checks desta análise, só id/category/aprovado.
    *
