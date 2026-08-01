@@ -1,0 +1,347 @@
+# Auditoria do Avaliador de LinkedIn: fechamento
+
+Encerrada em 2026-08-01. Cobre da rodada 1 (`docs/auditoria-avaliador-linkedin.md`, 2026-07-26) até o
+fechamento do check pendente (`DETERMINISTIC_VERSION = 7`, 2026-08-01).
+
+**Como ler os números daqui.** Cada um tem data e fonte. Onde não há medição, está escrito **estimativa** e
+por quê. Nenhum número deste documento foi arredondado para soar melhor, e a seção 3 existe para o resto não
+virar propaganda.
+
+---
+
+## 1. O arco, em números
+
+| o que | antes | depois | data / fonte |
+|---|---|---|---|
+| Teto real da nota | **85-87**, "Magnético" inalcançável | fixture `perfil-a-senior` foi de 82 para **91** | 2026-07-27, `docs/fase3-fechamento.md` §3 |
+| `skills-cobertura` essencial | **1 de 107** aprovavam | **25 de 107** | 2026-07-27, `docs/simulacao-regua-v2.md` §5 (variante C) |
+| `skills-cobertura` ótima | **0 de 107** | (não medido isolado) | idem |
+| Fabricação (afirmações inventadas) | **58** | **0** | 2026-07-26 a 2026-07-27, `docs/rubrica-fidelidade.md` §6 |
+| Custo por análise | US$ 0,0077 a 0,0162 (constante inflada **5,4x a 5,7x**) | **US$ 0,00122** medido | 2026-07-26, `docs/auditoria-avaliador-linkedin-rodada2.md` |
+| Suíte | — | **1542 passando, 5 pulados** | 2026-08-01, execução local |
+| Golden fixtures do parser | — | **6** (`server/lib/__fixtures__/linkedin/*.txt`) | 2026-08-01, contagem direta |
+| Nota média sobre as 107 | 46,0 | **47,5** (27 sobem, **0 descem**) | 2026-07-27, `docs/fase3-fechamento.md` §3 |
+
+### A curva da fabricação, com a ressalva que ela exige
+
+`docs/rubrica-fidelidade.md` §6, **n = 10 por medição** nas quatro primeiras:
+
+```
+2026-07-26  antes da Fase 0                          58 inventadas,  3 distorcidas
+2026-07-26  Fase 0 item 7 (lastro por experiência)   22             0
+2026-07-26  Fase 0 campos separados (v2)              3             0
+2026-07-26  Fase 0 skillsParaAdicionarAgora (v3)      0             0
+```
+
+**Não parou em zero.** As fases seguintes remediram e o número voltou a subir antes de estabilizar:
+
+```
+2026-07-26  Fase 1A     n=10   3 inventadas
+2026-07-27  Fase 1A-bis n=30   2
+2026-07-27  Fase 1A-ter n=30   4
+2026-07-27  Fase 1B     n=30   1
+2026-07-27  Fase 2B     n=30   0 inventadas, 0 distorcidas, 431 afirmações avaliadas
+```
+
+O `0` que vale é o da **Fase 2B, n=30, rubrica v1.2** — não o da Fase 0, que era n=10 e foi seguido de
+regressões. Reportar "58 → 0" sem essa curva seria contar uma história mais limpa que a medição.
+
+**E o `58` é ele mesmo uma instância da classe de defeito.** A rodada 2 tinha medido `2` no mesmo prompt. A
+diferença não era comportamento, era **unidade de contagem**: a rodada 2 contou frases inteiras julgadas à mão
+em 3 execuções; a Fase 0 contou cada item de array em 10. Os dois números estavam certos e não significavam a
+mesma coisa. A rubrica congelada nasceu disso.
+
+### Os dois bugs que abriram a auditoria, e o que se revelaram
+
+1. **Checklist de melhorias devolvendo 500** no meio de um resultado que dera certo. Causa: a migration
+   `linkedin_improvement_progress` estava declarada no repositório e **nunca fora aplicada no banco**. Não era
+   bug de código: era um passo de deploy que dependia de alguém lembrar.
+2. **Resultado pago virando tela de erro**: o refresh de histórico rodava dentro do `try` da análise, e uma
+   falha nele acionava o `catch`, apagando o resultado recém-gerado.
+
+O que os dois se revelaram ser: **a causa do primeiro era invisível porque quatro rotas descartavam o
+`error.message` do Supabase.** A string `Could not find the table` existia e ninguém a via. Os bugs eram
+sintomas; o defeito era o silêncio.
+
+### O que NÃO melhorou
+
+**O truncamento de headline continua.** A correção `eeda681` (2026-07-30) cobre uma família de quebra
+(vírgula com continuação forte) e a medição mostrou que ela é **1 caso em 156**. As famílias dominantes
+seguem intactas.
+
+Medição de 2026-08-01, sobre 170 análises persistidas, pelas **quatro assinaturas inequívocas**:
+
+```
+29 de 170  (17,1%)   termina em `|` 14 · começa em `|` 10 · minúscula 4 · vírgula 1
+```
+
+**Correção de um número que circulou:** o "39 de 156" é da família `F2b` (primeira seção com uma palavra
+só), que **tem falso positivo** — `Student | Open to Internships` e `Estudante | Análise e Desenvolvimento`
+são headlines legítimas. Ela ficou de fora da detecção de propósito. O número defensável é 29 de 170.
+
+O que existe hoje: um aviso no passo de revisão (antes de gastar cota), a nota deixando de afirmar faixa
+sobre leitura em dúvida (v7), e `headlineContexto` persistido para o próximo caso ser diagnosticável. **O
+parser não foi corrigido**, e a razão está na seção 4.
+
+---
+
+## 2. A classe de defeito
+
+### A anatomia
+
+> **O instrumento mede um proxy da coisa, e o proxy coincide com a verdade quase sempre.**
+
+Três consequências, e são elas que tornam a classe difícil:
+
+1. **Falha PASSANDO.** Um instrumento que erra para menos não acusa: ele reporta sucesso sobre uma superfície
+   menor. Verde é indistinguível de verde.
+2. **Sobrevive à revisão.** O proxy é escolhido justamente porque é barato e correlacionado. Quem revisa
+   confere se o instrumento roda, não se ele enxerga.
+3. **Só aparece quando o proxy descola.** Pode levar 17 dias (o `get_ai_usage_today`), 13 rodadas (o
+   truncamento de headline) ou dez deploys (o hash do entry).
+
+O corolário operacional: **verificar que algo respondeu não é verificar o que ele respondeu.**
+
+### As instâncias
+
+Ordenadas por mecanismo, não cronologia. Todas medidas nesta base.
+
+#### Escopo derivado por parser que sub-casa
+
+| instância | como falhava | contramedida |
+|---|---|---|
+| Migration que dependia de alguém lembrar | Não havia instrumento nenhum | Guard comparando declarado com banco |
+| Regex de `create table` | Enxergava **38 de 72** tabelas | Contagem ampla contra a lida, abortando na diferença |
+| Pre-commit com lista de arquivos | Liberou árvore com 10 testes vermelhos | Rodar a suíte inteira, sem enumerar |
+| Janela de 4000 chars no `returns trigger` | Classificou 2 RPC reais como trigger | Escopo até o primeiro `returns` + contagem esperada |
+| `stripSqlComments` por regex | `/api/cron/*` casou com `*/6` e apagou 3663 chars de SQL | Lexer mínimo com dollar-quoting |
+| `CREATE` antes de `DROP` | `drop x; create x;` terminava sem `x` | Aplicar eventos em ordem de origem |
+| `check:migrations` verificando função por NOME | Guard **verde por 17 dias** sobre banco em que a mudança não estava | Asserção comportamental afirmando o conteúdo |
+| Checklist de smoke que morava só na conversa | Sumiu numa compactação, perdeu 3 de 11 passos | Artefato de release é arquivo versionado |
+| `S1` construída de um exemplo | "Termina em vírgula" achou **1 em 156** e foi reportada como família | Medir a assinatura sobre o corpo inteiro antes de nomeá-la |
+| Classificar por FORMA em vez de origem | 3 sítios acusados, **2 falsos positivos** | Seguir a origem da chave, não o formato do acesso |
+| Sub-casar para MAIS | Contou 4 onde esperava 3 — o caminho do import casava a string | Separar código de caminho antes de contar |
+
+#### Falha que se propaga como dado, não como exceção
+
+| instância | como falhava | contramedida |
+|---|---|---|
+| `contarLinhas` devolvendo `-1` | Erro de rede virou "protegida"; falha de infra contada como sucesso de segurança | Distinguir "não sei" de "zero" |
+| `TIER_WEIGHTS[tier]` desconhecido | `possivel += undefined` → nota inteira `NaN`, sem erro | **Lançar**, não devolver peso de fallback |
+| `env -i` | Limpou variáveis do shell, não o arquivo que o `dotenv` lê. 549 testes verdes sobre condição inexistente | Renomear o ARQUIVO, conferir md5 |
+| Receita não-determinística no passo 12 do smoke | Dois operadores obtinham resultados diferentes | Receita com entrada fixa |
+
+#### A superfície responde, e a resposta é lida como veredito
+
+| instância | como falhava | contramedida |
+|---|---|---|
+| Blip de disponibilidade para detectar deploy | Railway troca sem downtime: 150 amostras, 200 sem exceção. E o loop disparou a mitigação da Vercel, cegando a medição | Endpoint que DECLARA estado (`uptime`), amostra única |
+| Endpoint legado `releases/{v}/files/` | 200 com lista vazia — indexa por URL, e o upload moderno é por debug ID | Endpoint `artifact-bundles`, e conferir o debug ID do chunk servido |
+| Hash do entry como prova de deploy | **Cego para mudança em chunk lazy.** Funcionou por dez deploys porque as mudanças tocavam o entry | Release do Sentry com `dateFinished` como sinal primário |
+| Pedir o bundle antigo | **200 com o `index.html`** do catch-all da Vercel, nunca 404 | Comparar tamanho ou conteúdo, nunca status |
+| `git log origin/main -1` | Mostra o que o clone acha, não o que o servidor tem | `git ls-remote` |
+| Medir antes da coisa existir | Três vezes: release "cobrindo um projeto só" (o backend ainda não subira), "zero artefatos", "o bundle não mudou" | Conferir que o instante da medição é depois do evento |
+| `release` sem artefato | Existir a release não implica os mapas terem subido | Verificar o debug ID do arquivo servido |
+
+#### A interface afirma mais do que sabe
+
+| instância | como falhava | contramedida |
+|---|---|---|
+| Chip verde "headline detectada" | Presença não é correção. Uma headline cortada ao meio produzia o mesmo verde tranquilizador | Âmbar quando falta, neutro quando existe, e a pessoa confere |
+| `[Filtered]` do scrubber do Sentry | `error_code`, `error_message` e `method` chegavam mascarados; o diagnóstico recomeçava do zero | Safe Fields nos campos que não são texto livre |
+| `userCount: 0` lido como "ninguém afetado" | É pré-login: não há usuário identificado, não que não haja gente | Ler o que o campo mede, não o que ele parece dizer |
+| 502 `upstream_error` para dado nosso | Mensagem culpa terceiro; quem diagnostica começa olhando a OpenAI | Erro tipado, classificado pela ORIGEM e não pela camada |
+| Barra cheia num grupo pendente | Mesma afirmação do chip verde, com outra forma | Barra neutra e "a conferir" |
+
+#### Barreira que não cobre o que se supõe
+
+| instância | como falhava | contramedida |
+|---|---|---|
+| `git worktree --lock` | Protege contra remoção e `prune`, **não contra edição** | Convenção documentada, e worktree de deploy separado |
+| `cherry-pick` não dispara `pre-commit` | Um hook que recusasse commit no worktree de deploy cobriria o caso secundário e deixaria passar o principal | Descartado; convenção escrita |
+| Guarda no call site | `setScoreDelta` tinha 2 call sites e 1 desprotegido | Funil único (`decidirDelta`) |
+| Três colisões de working tree | Duas frentes no mesmo checkout | Worktree por frente, e `bnt-main` só para deploy |
+
+### As contramedidas que funcionaram, com quantas vezes
+
+| contramedida | vezes aplicada | onde |
+|---|---|---|
+| **Afirmar o TOTAL, não a pertinência** | 4 | `EXPECTED_TABLE_COUNT`/`RLS`/`FUNCTION`; contagem ampla contra a lida; total de usos no teste de ausência de dependência; `pontosPendentes` contra o total |
+| **Proteção dentro da função, nunca no call site** | 3 | `logAiUsage` (84 call sites cobertos); `decidirDelta`; `competenciasDoPdf` |
+| **Enumerar da fonte com aborto em item não classificado** | 3 | `mutateLinkedinThresholds`; `aiUsageTool.test.ts`; `linkedinDeteccaoNaoMoveNota.test.ts` |
+| **Barreira estrutural em vez de regra escrita** | 2 | CI sem `.env` (não simula a ausência, genuinamente não tem); worktree de deploy |
+| **Reproduzir ausência de ARQUIVO renomeando o arquivo** | 1 | `docs/harness-fidelidade-instrumento.md` §2-bis |
+| **Medir por endpoint que DECLARA estado** | 6+ | `uptime`; release com `dateFinished`; `docs/confirmar-deploy.md` |
+
+**A mais forte é a barreira estrutural, e ela nem sempre está disponível.** O CI não *simula* a ausência do
+`.env`: ele não tem `.env`. Não existe parser decidindo escopo, então não há escopo para encolher. Foi ele
+quem pegou o que o `env -i` deixou passar, no primeiro push.
+
+**E a barreira pode ser perdida por necessidade.** `headlineCortada.ts` morava em `client/src/lib` para que
+um check da régua não pudesse depender dele — impossibilidade, não disciplina. Quando `pendente` passou a ser
+persistido, o arquivo teve de ir para `shared/`, e a garantia caiu de "impossível" para "testado". A troca foi
+correta (duplicar a regra seria pior) e **a perda está registrada dentro do próprio arquivo**, com dois testes
+no lugar da barreira.
+
+---
+
+## 3. Método: o que não funcionou
+
+Sem esta seção o documento não vale nada.
+
+### O lote de 94 commits
+
+A régua v2, os instrumentos, a Fase 0, 1, 2 e 3 subiram **num deploy só**, quando cada fase deveria ter sido
+um deploy com 24h de observação. Lote grande transforma qualquer problema numa investigação entre 94
+suspeitos, e adia a única verificação que vale.
+
+**A culpa é de quem escreveu os prompts.** O executor entregou o que foi pedido, na cadência pedida.
+
+### O que foi reportado como feito e não estava
+
+O achado #5 da rodada 1 (separação visual dos sinais autodeclarados) foi dado como concluído e não estava.
+Ficou pendente até a Fase 3, que criou o bloco rotulado "você declarou".
+
+### Contramedida escrita não previne
+
+**Cinco violações em cinco rodadas, três delas pelo próprio autor no dia seguinte de escrever a regra:**
+
+- `vi.mock("./env")` documentado e esquecido no commit imediatamente seguinte;
+- `cd` em vez de `git -C`, na primeira oportunidade depois de eu mesmo propor a regra;
+- `/tmp/pai.mts` em vez de `.claude/tmp/`, duas rodadas seguidas;
+- edição no `bnt-main` na mesma rodada em que a regra "ninguém edita lá" foi escrita;
+- `git add .` que enfiou quatro `.forenseN.mjs` na árvore.
+
+**A conclusão operacional: regra escrita é a contramedida mais fraca da lista.** Ela serve para explicar por
+que a barreira existe, não para substituí-la.
+
+### Pedido de mudança irreversível no fim de rodada cheia
+
+Três vezes o passo que muda payload persistido foi pedido no fim de uma rodada que já tinha dois deploys. Nas
+três o executor parou e reportou. **O defeito é do pedido, não da entrega:** item sem desfazer barato precisa
+de rodada própria, e quem enche a rodada é quem escreve o prompt.
+
+### Treze rodadas não pegaram o que um dia de uso pegou
+
+O truncamento de headline sobreviveu a toda a auditoria. Duas razões, e as duas são estruturais:
+
+1. **Nenhuma das 6 golden fixtures continha aquela família de quebra.** Golden file protege contra regressão
+   e é cego para caso não amostrado.
+2. **A UI dizia "detectada" em verde justamente quando errava**, então o uso real também não acusava — até
+   alguém olhar o texto.
+
+É a instância mais consequente da série, e a que melhor mostra a anatomia: a fixture é um proxy do perfil
+real, e o proxy coincidia com a verdade em 6 de 6 casos escolhidos.
+
+### Duas instruções incompatíveis na mesma mensagem
+
+"Implemente a config antes de rodar a suíte" e "ninguém edita no worktree de deploy", no mesmo prompt. O
+executor resolveu sozinho em vez de apontar. **A contramedida não é disciplina de quem executa, é revisão de
+quem escreve o pedido** — mas apontar continua sendo obrigação de quem executa.
+
+### Erros de execução, nomeados
+
+- **"Fast-forward feito" sem medir.** Afirmação de estado de git sem `ls-remote`. Três vezes na série.
+- **Dano do `FAIXA_UI` classificado errado.** Reportado como "chip vazio, degrada"; era `TypeError` derrubando
+  a árvore. A diferença entre `{MAPA[x]}` no JSX (renderiza nada) e `const ui = MAPA[x]; ui.chipBg` (lança).
+- **Premissa de que o vazamento do nome era independente** do bug da headline. Era o mesmo
+  `inicioDaIdentidade`: dois sintomas do mesmo defeito lidos como dois defeitos.
+- **Bump de uma linha autorizado sobre um defeito de duas metades.** `EXPECTED_TABLE_COUNT` seria corrigido e
+  `EXPECTED_RLS_COUNT` quebraria em seguida, disparando o sinal de parada como falso positivo.
+- **Critério lexical de nome próprio**: acusou 64 de 149 incluindo `Vector Databases` e `Microsoft Word`.
+  Descartado em público antes de virar número oficial.
+
+---
+
+## 4. O que ficou aberto
+
+Cada item com custo, impacto medido quando houver, e **o gatilho que o traz de volta**.
+
+| item | custo | impacto | gatilho |
+|---|---|---|---|
+| **Famílias de quebra de headline** (pipe órfão, termo composto partido, prosa cortada) | Alto. O espaço é ABERTO: o ponto de quebra é escolhido pela largura da coluna do PDF, não pela gramática. Empilhar heurística perde por construção | 29 de 170 (17,1%), 2026-08-01 | A telemetria do aviso: taxa muito acima de 17% significa detecção frouxa; `corrigiu_apos_aviso` abaixo de 10% significa que o aviso não basta |
+| **(b) Headline editável** | Médio. Campo opcional atravessando cliente, schema e servidor. Não precisa de alias (é campo de entrada) | Fecha as famílias conhecidas E a que ninguém viu | `corrigiu_apos_aviso` entre 10% e 30% é o cenário que mais o fortalece |
+| **UI da reanálise** | Baixo. Base commitada em `claude/linkedin-fase4` (`abbb919`), **falta o teste** | 32 pares consecutivos com texto idêntico, 25 (78%) com nota idêntica, em 157 análises | Nenhum. É a próxima da fila |
+| **Endpoint de exclusão de análise** | Baixo-médio. Rota + posse (padrão existe em 4 lugares); cascata **já resolvida** por FK | Hoje: SQL manual | Pedido de exclusão de uma das 13 pessoas do vazamento de identidade |
+| **Gate do texto gerado** (`sobre-gancho`) | Alto. É decisão de produto antes de código | Reprova 38% do que a própria ferramenta escreve | Não instrumentado em produção |
+| **Nível sênior** | Alto, feature nova | Sem medição | — |
+| **Headers de rate limit** (`RateLimit-Limit`/`Remaining`) | Baixo. Três `setHeader` com valores já calculados. **Só o balde do chamador, nunca o de IP** | Transforma verificação de 181 requisições em 2 | Próxima vez que a validação do limiter precisar ser refeita |
+| **Os mapas do admin** | Médio, 11 sítios | `STATUS_META` com 8 sítios no `Admin.tsx` é o mapa do incidente original; `ICON_MAP` vem do banco e pode ganhar valor novo sem deploy | `docs/mapas-indexados-por-valor-do-servidor.md`, ordem já definida |
+| **Source map do backend** | Desconhecido | Stack trace do servidor chega minificada | — |
+| **Retenção da identidade persistida** | Alto se feito certo (três cópias) | 13 pessoas, 11-30 de julho | Os quatro gatilhos em `docs/retencao-identidade-em-competencias.md` |
+| **`termos-bilingues`, lista-núcleo curada, fronteiras de faixa, comparação de modelos** | Não estimados | Sem medição | — |
+| **Os 5 testes pulados** | Baixo | `server/routes/adminTasks.rebalance.test.ts`, travados pelo guard de total exato | — |
+| **Deprecação do `environmentMatchGlobs`** | Baixo | Aviso em toda execução do vitest | Upgrade de major do vitest |
+| **Policies (72) e índices (139)** | Alto. Exige `DATABASE_URL` | Enumerados, não verificados | `docs/limites-do-guard-de-migrations.md` |
+
+---
+
+## 5. O que a próxima sessão pode assumir
+
+Escrito para quem não tem nenhum contexto desta conversa.
+
+### Pode assumir
+
+- **Toda tabela e função declarada em migration existe no banco**, ou `pnpm check:migrations` falha nomeando.
+  Prova: o guard roda no CI (job `migrations`).
+- **A nota é reprodutível a partir dos `checks` persistidos.** Verificado recalculando 162 linhas: **162 de
+  162, zero divergência** (2026-07-31).
+- **Um tier fora do catálogo LANÇA**, não produz `NaN`. Prova: `server/routes/linkedinTierInvalido.test.ts`,
+  com teste de rota HTTP real devolvendo 500 `analysis_data_invalid`.
+- **O marcador `pendente` não move a nota.** Prova: `shared/linkedin/reguaV2.pontosPendentes.test.ts`
+  (deep-equals + teste de mutação) e `server/lib/linkedinDeteccaoNaoMoveNota.test.ts` (ausência de
+  dependência, enumerada da fonte).
+- **Campos novos em payload persistido são normalizados num ponto só.** `readDeterministic` devolve booleano,
+  nunca `undefined`. Prova: `shared/linkedin/readDeterministic.pendente.test.ts` contra a fixture legada real.
+- **Delta e celebração são suprimidos por um funil único.** `decidirDelta` — `delta: null` desliga a
+  celebração, então não há segundo lugar para lembrar.
+- **Source maps do frontend estão no ar**, verificados por debug ID do chunk servido, não por contagem.
+- **O deploy se confirma pelo procedimento de `docs/confirmar-deploy.md`**, não pelo hash do bundle.
+
+### NÃO pode assumir
+
+- **Que a headline lida está correta.** 17,1% têm assinatura de corte, e a detecção só pega o inequívoco —
+  86 de 156 headlines antigas não têm assinatura nenhuma, e uma cortada que termine em palavra é indetectável.
+- **Que "17,1%" é a taxa real.** É estimativa sobre headline persistida de quem TERMINOU o fluxo. Quem
+  abandonou no passo de revisão nunca virou linha. A medição direta (`notaIncompleta` em análises v7) ainda
+  não tem amostra: **0 análises v7 em 2026-08-01**.
+- **Que policies e índices estão verificados.** Estão enumerados.
+- **Que o guard de migrations cobre coluna, trigger, view, enum ou grant.** Cobre tabela, função e RLS.
+- **Que os mapas do admin estão protegidos.** 11 sítios sem resolver, com dano classificado mas **não
+  traçado** — dois de três palpites por forma foram falso positivo.
+- **Que o `perfilDedup` permite reprocessar o parser.** Ele começa NA headline e vem sem quebra de linha; o
+  bug é de estrutura de linha, então reparsear não reproduz nem corrige.
+- **Que uma contramedida escrita será seguida.** Cinco violações em cinco rodadas.
+
+---
+
+## 6. Índice dos documentos
+
+| arquivo | o que responde | quando consultar |
+|---|---|---|
+| `auditoria-avaliador-linkedin.md` | Rodada 1: o levantamento original | Arqueologia. Vários achados foram corrigidos pela rodada 2 |
+| `auditoria-avaliador-linkedin-rodada2.md` | Causa raiz, e as correções formais da rodada 1 | Antes de citar qualquer número da rodada 1 |
+| `fase0-fechamento.md` | O que parou o sangramento, sem tocar em nota | Molde de fechamento de fase |
+| `fase3-fechamento.md` | A régua v2, com o número líquido sobre as 107 | Qualquer pergunta sobre por que a nota mudou |
+| `rubrica-fidelidade.md` | Definições congeladas de fabricação, e o histórico de medições | **Antes de medir fidelidade.** Alterar definição invalida a comparação |
+| `simulacao-regua-v2.md` | As três variantes de cobertura simuladas sobre as 107 | Por que a cobertura é por corte relativo |
+| `harness-fidelidade-instrumento.md` | O caso `env -i` e a fidelidade do instrumento | Antes de escrever qualquer verificação |
+| `confirmar-deploy.md` | Como confirmar que um deploy chegou | **Todo deploy** |
+| `leitura-telemetria-aviso-headline.md` | Os limiares declarados antes do dado | Quando houver amostra do aviso |
+| `mapas-indexados-por-valor-do-servidor.md` | Os 11 sítios abertos, com "traçado" vs "candidato" | Antes de consertar qualquer um deles |
+| `retencao-identidade-em-competencias.md` | A decisão de não limpar, e os gatilhos | Pedido de exclusão, ou abertura do repo |
+| `limites-do-guard-de-migrations.md` | O que o guard NÃO verifica | Antes de confiar num CI verde de migrations |
+| `divida-leitura-persistida.md` | O conjunto mínimo de leitura tolerante | Ao acrescentar campo ao payload |
+| `smoke-linkedin.md` | O checklist de release do analisador | Todo deploy que toque o analisador |
+| `validacao-rate-limit.md` / `denominador-rate-limit.md` | A validação manual executada e a amostragem | Se o limiter mudar |
+| `erro-engolido.md` | Onde a causa de erro ainda é descartada | Ao investigar silêncio |
+
+### Obsoleto ou contraditório
+
+- **`auditoria-avaliador-linkedin.md` (rodada 1)** tem números corrigidos pela rodada 2, entre eles o custo
+  por análise (US$ 0,0077-0,0162 → US$ 0,00122). **Sempre cruzar com a rodada 2 antes de citar.**
+- **O `CLAUDE.md` afirmava que `pnpm check` não cobre `*.test.ts`.** Era falso e foi corrigido em 2026-07-31.
+  Regra escrita errada em arquivo de regras é a pior classe de documentação desatualizada, porque ensina o
+  erro em vez de só omiti-lo.
+- **`ideas.md` e `copy-provisoria-e-pendencias.md`** não foram revisados nesta auditoria e podem conter
+  pendências já resolvidas.
