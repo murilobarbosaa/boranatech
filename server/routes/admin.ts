@@ -18,6 +18,7 @@ import {
 import { fetchUsdBrlRate } from "../lib/fx/ptax";
 import {
   getPosthogHealth,
+  getPaidFunnelSignals,
   getPosthogStats,
   getPosthogUserActivity,
 } from "../lib/posthog";
@@ -53,6 +54,11 @@ import {
   custoTotalDeIa,
 } from "../lib/aiUsageStats";
 import { calcularProblemas } from "../lib/healthBand";
+import {
+  assinaturaChegouAValer,
+  maiorVazamento,
+  montarFunil,
+} from "../lib/paidFunnel";
 import { montarSerieDeCadastros, somarDia } from "../lib/signupSeries";
 import { diaBrasilia } from "../../shared/brasiliaDay";
 import {
@@ -988,6 +994,149 @@ router.get("/overview", async (req, res, next) => {
     next(err);
   }
 });
+
+// FUNIL ATE O ASSINANTE PAGO.
+//
+// Junta PostHog (comportamento) com o banco (pagamento). A defesa da juncao
+// inteira mora em `server/lib/paidFunnel.ts`; aqui fica so o que precisa de I/O.
+//
+// JANELA FIXA DE 30 DIAS, e ela NAO segue o seletor de periodo (decisao da
+// fatia 5, mantida): o PostHog e cacheado por chave fixa e a aba Conversao ja
+// oferece as janelas longas. O importante e que o banco use A MESMA janela, e
+// usa: `created_at` filtrado no mesmo intervalo que vai para o HogQL.
+//
+// DEGRADA SEM CAIR. Se o PostHog estiver fora, os passos de comportamento somem
+// e o passo do BANCO continua: "63 assinaturas pagas em 30 dias" e um fato que
+// nao depende do PostHog, e apaga-lo por causa de uma sonda seria perder o unico
+// numero da tela que vem de dentro de casa.
+const PAID_FUNNEL_CACHE_TTL_S = 300;
+const PAID_FUNNEL_WINDOW_DAYS = 30;
+
+router.get("/paid-funnel", async (_req, res, next) => {
+  try {
+    const { result, computedAt } = await getOrCompute(
+      "admincache:paid-funnel:default30d",
+      PAID_FUNNEL_CACHE_TTL_S,
+      async () => ({
+        result: await computarFunilPago(),
+        computedAt: new Date().toISOString(),
+      }),
+    );
+    res.json({ data: result, computedAt });
+  } catch (err) {
+    next(err);
+  }
+});
+
+async function computarFunilPago() {
+  const to = new Date();
+  const from = new Date(
+    to.getTime() - PAID_FUNNEL_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+  );
+
+  // As duas leituras em paralelo, e a do PostHog NAO derruba a do banco: o
+  // estado dela e um union, nunca uma excecao.
+  const [sinais, assinaturas] = await Promise.all([
+    getPaidFunnelSignals({ from, to }),
+    coletarTudo<{
+      user_id: string | null;
+      status: string;
+      current_period_start: string | null;
+      plans:
+        | { price_cents: number | null }
+        | Array<{ price_cents: number | null }>
+        | null;
+    }>(
+      (inicio, fim) =>
+        supabaseAdmin
+          .from("subscriptions")
+          .select("user_id, status, current_period_start, plans(price_cents)")
+          .gte("created_at", from.toISOString())
+          .lte("created_at", to.toISOString())
+          .order("created_at", { ascending: true })
+          .range(inicio, fim),
+      "paid funnel subscriptions",
+    ),
+  ]);
+
+  const pagantes = new Set<string>();
+  let boletosPendentes = 0;
+  let boletosPendentesCents = 0;
+  for (const linha of assinaturas) {
+    if (assinaturaChegouAValer(linha)) {
+      if (linha.user_id) pagantes.add(linha.user_id);
+      continue;
+    }
+    // NAO PAGOU AINDA. Hoje isso e o boleto emitido e nao compensado: nao e
+    // conversao (nao entrou dinheiro) e nao e vazamento (o prazo nao venceu).
+    // Sai do funil e volta declarado, com o valor parado.
+    boletosPendentes += 1;
+    const plano = Array.isArray(linha.plans) ? linha.plans[0] : linha.plans;
+    boletosPendentesCents += plano?.price_cents ?? 0;
+  }
+
+  const janela = {
+    from: from.toISOString(),
+    to: to.toISOString(),
+    days: PAID_FUNNEL_WINDOW_DAYS,
+  };
+
+  // BANCO SEM POSTHOG: sem os passos de comportamento nao ha funil, mas o fato
+  // do banco continua de pe e volta sozinho.
+  if (sinais.state !== "ok") {
+    return {
+      janela,
+      posthog: sinais,
+      steps: [],
+      biggestLeak: null,
+      pagantesNaJanela: pagantes.size,
+      assinantesSemRastro: null,
+      retornos: null,
+      boletosPendentes: {
+        count: boletosPendentes,
+        cents: boletosPendentesCents,
+      },
+      truncated: false,
+    };
+  }
+
+  const iniciaram = new Set(sinais.signals.checkoutIds);
+  // A INTERSECAO e o ultimo passo: quem iniciou checkout E pagou, as duas coisas
+  // dentro da janela. Ver paidFunnel.ts para por que nao e a razao dos totais.
+  const pagantesComRastro = Array.from(pagantes).filter((id) =>
+    iniciaram.has(id),
+  );
+  const steps = montarFunil({
+    visitantes: sinais.signals.visitantes,
+    cadastros: sinais.signals.cadastros,
+    checkouts: iniciaram.size,
+    pagantesComRastro: pagantesComRastro.length,
+  });
+
+  const retornaram = new Set(sinais.signals.retornoIds);
+  return {
+    janela,
+    posthog: { state: "ok" as const },
+    steps,
+    biggestLeak: maiorVazamento(steps),
+    pagantesNaJanela: pagantes.size,
+    // Quem pagou e nao aparece no PostHog. NAO entra no funil (nao ha rastro para
+    // entrar), e nao e erro: bloqueador de script e o suspeito obvio. Volta
+    // separado porque some-lo ao passo final produziria uma conversao sobre uma
+    // populacao que nunca esteve no denominador.
+    assinantesSemRastro: pagantes.size - pagantesComRastro.length,
+    // RETORNO DA STRIPE SEM CONCLUIR: nao e um passo do funil. Medido, todo mundo
+    // que abandonou tambem iniciou (subconjunto), e parte deles assinou depois.
+    // Como passo, duplicaria gente; como anotacao do passo de checkout, informa.
+    retornos: {
+      pessoas: retornaram.size,
+      converteramDepois: Array.from(retornaram).filter((id) => pagantes.has(id))
+        .length,
+    },
+    boletosPendentes: { count: boletosPendentes, cents: boletosPendentesCents },
+    truncated: sinais.signals.truncated,
+  };
+}
 
 // SERIE DIARIA DE CADASTROS.
 //
