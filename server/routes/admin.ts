@@ -53,6 +53,7 @@ import {
   custoTotalDeIa,
 } from "../lib/aiUsageStats";
 import { calcularProblemas } from "../lib/healthBand";
+import { montarSerieDeCadastros, somarDia } from "../lib/signupSeries";
 import { diaBrasilia } from "../../shared/brasiliaDay";
 import {
   calcularVariacao,
@@ -983,6 +984,100 @@ router.get("/overview", async (req, res, next) => {
         },
       },
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// SERIE DIARIA DE CADASTROS.
+//
+// CUSTO E CACHE. Nao ha agregacao por dia no banco, entao a rota le
+// `profiles.created_at` da janela e agrupa em memoria. Medido em 2026-08-01:
+// ~3.4k linhas em 30 dias, uma pagina de 1000 custa 650-1700ms, entao a
+// varredura completa fica em 4 paginas. Por isso o resultado vive atras de um
+// cache de 300s: a serie muda uma vez por dia no que importa, e o custo por
+// carga de pagina passa a ser proximo de zero.
+//
+// A evolucao natural, se doer, e uma funcao de agregacao no banco devolvendo ~30
+// linhas em vez de 3.4k. Nao entrou aqui porque exigiria migration, com a ordem
+// de deploy e a assercao comportamental que ela implica, para um custo que o
+// cache ja resolve. Mesmo raciocinio do /ai-stats.
+const SIGNUP_HISTORY_CACHE_TTL_S = 300;
+
+router.get("/signup-history", async (req, res, next) => {
+  try {
+    const janela = parseOverviewWindow(req.query.window);
+
+    const data = await getOrCompute(
+      `admincache:signup-history:${janela}`,
+      SIGNUP_HISTORY_CACHE_TTL_S,
+      async () => {
+        const hoje = diaBrasilia(new Date().toISOString())!;
+
+        // Primeiro cadastro da base: e ele que define o inicio real de "tudo", e
+        // e o que a tela mostra em vez de fingir uma janela que nao existe.
+        const { data: primeiro, error: primeiroErro } = await supabaseAdmin
+          .from("profiles")
+          .select("created_at")
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (primeiroErro) throw primeiroErro;
+
+        const primeiroDia =
+          diaBrasilia(
+            (primeiro as { created_at: string } | null)?.created_at ?? null,
+          ) ?? hoje;
+
+        const inicioPedido =
+          janela === "all"
+            ? primeiroDia
+            : somarDia(hoje, -(Number(janela) - 1));
+        // A janela nunca comeca antes do primeiro cadastro: inventar dias
+        // anteriores a base seria desenhar zeros que nao sao medicao.
+        const inicio = inicioPedido < primeiroDia ? primeiroDia : inicioPedido;
+
+        // FAIL-LOUD: erro propaga e a rota devolve 500. Serie vazia por falha
+        // silenciosa desenharia um grafico plano, que afirma que ninguem se
+        // cadastrou.
+        const linhas = await coletarTudo<{ created_at: string }>(
+          (from, to) =>
+            supabaseAdmin
+              .from("profiles")
+              .select("created_at")
+              // O CORTE INFERIOR JA E FOLGADO, e o sentido do fuso e o motivo:
+              // Brasilia esta ATRAS de UTC, entao o dia civil `inicio` comeca em
+              // `inicio T03:00Z`, que e depois deste limite. Nenhum instante do
+              // primeiro dia fica de fora. As tres horas a mais que entram
+              // pertencem ao dia anterior em Brasilia e o agrupamento as
+              // descarta, porque a chave e o dia de Brasilia, nao o de UTC.
+              //
+              // Se o fuso alvo algum dia ficar A FRENTE de UTC, este limite
+              // passa a cortar o comeco do primeiro dia e precisa de um dia de
+              // folga. Hoje seria custo sem efeito.
+              .gte("created_at", `${inicio}T00:00:00Z`)
+              .order("created_at", { ascending: true })
+              .range(from, to),
+          "signup history",
+        );
+
+        const points = montarSerieDeCadastros({
+          criadosEm: linhas.map((l) => l.created_at),
+          inicio,
+          fim: hoje,
+          hoje,
+        });
+
+        return {
+          window: janela,
+          points,
+          firstSignupDate: primeiroDia,
+          lastDate: hoje,
+        };
+      },
+    );
+
+    res.json({ data });
   } catch (err) {
     next(err);
   }

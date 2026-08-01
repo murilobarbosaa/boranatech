@@ -93,6 +93,8 @@ import {
   criarSupabaseDouble,
   type RespostaTabela,
 } from "./adminUsersHarness.test";
+import { diaBrasilia } from "../../shared/brasiliaDay";
+import { somarDia } from "../lib/signupSeries";
 import adminRouter from "./admin";
 import { criarClienteAdmin } from "./adminTestClient";
 
@@ -697,6 +699,167 @@ describe("GET /subscription-history", () => {
     expect(r.body.data.points).toHaveLength(400);
     // Mantém a PONTA RECENTE: é ela que interessa num gráfico de tendência.
     expect(r.body.data.points[399].date).toBe("2029-01-01");
+  });
+});
+
+describe("GET /signup-history", () => {
+  // "Hoje" vem do relógio real, como na rota. Fixar por fuso é o que impede o
+  // teste de passar em -03 e falhar no CI, que roda em UTC (`vitest.config.ts`
+  // fixa TZ, e este cálculo respeita a mesma regra da rota).
+  const hoje = diaBrasilia(new Date().toISOString())!;
+
+  /** Um instante às 15h de Brasília do dia dado (18:00Z), sem ambiguidade. */
+  function meioDia(dia: string) {
+    return { id: `p-${dia}-${Math.random()}`, created_at: `${dia}T18:00:00Z` };
+  }
+
+  it("conta TODAS as linhas: a série não para no teto de 1000", async () => {
+    // O defeito de classe: 1500 cadastros num dia, e o gráfico desenharia uma
+    // barra de 1000 sem nada acusar. É o mesmo mecanismo que cortou o custo de
+    // IA em produção, e aqui sairia como "queda de cadastros".
+    const ontem = somarDia(hoje, -1);
+    montar({
+      profiles: {
+        rows: Array.from({ length: 1500 }, (_, i) => ({
+          id: `p${i}`,
+          created_at: `${ontem}T18:00:00Z`,
+        })),
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/signup-history?window=7");
+
+    expect(r.status).toBe(200);
+    const ponto = r.body.data.points.find(
+      (p: { date: string }) => p.date === ontem,
+    );
+    expect(ponto.count).toBe(1500);
+  });
+
+  it("a varredura ORDENA: sem ordem, o OFFSET pula ou repete linha", async () => {
+    montar({ profiles: { rows: [meioDia(hoje)] } });
+    await chamarAdmin("GET", "/signup-history?window=7");
+
+    for (const chamada of estado.double.de("profiles")) {
+      expect(chamada.ordem).toContain("created_at");
+    }
+  });
+
+  it("agrupa pelo dia de BRASÍLIA, não pelo dia UTC", async () => {
+    // 02:30Z é 23:30 do dia anterior em Brasília. Agrupar por UTC empurraria
+    // este cadastro para a barra de amanhã.
+    const ontem = somarDia(hoje, -1);
+    montar({
+      profiles: { rows: [{ id: "p1", created_at: `${hoje}T02:30:00Z` }] },
+    });
+
+    const r = await chamarAdmin("GET", "/signup-history?window=7");
+
+    const pontos = r.body.data.points as Array<{ date: string; count: number }>;
+    expect(pontos.find((p) => p.date === ontem)!.count).toBe(1);
+    expect(pontos.find((p) => p.date === hoje)!.count).toBe(0);
+  });
+
+  it("o corte inferior cobre o dia inteiro em Brasília", async () => {
+    // O limite é `inicio T00:00:00Z`, e ele é folgado porque Brasília está
+    // ATRÁS de UTC: o dia civil só começa às 03:00Z. Se este filtro virar uma
+    // data com hora, o começo do primeiro dia some do gráfico.
+    montar({ profiles: { rows: [meioDia(somarDia(hoje, -10))] } });
+    await chamarAdmin("GET", "/signup-history?window=7");
+
+    const varredura = estado.double
+      .de("profiles")
+      .flatMap((c) => c.filtros)
+      .filter((f) => f.tipo === "gte" && f.coluna === "created_at");
+    expect(varredura.length).toBeGreaterThan(0);
+    for (const f of varredura) {
+      expect(f.valor).toBe(`${somarDia(hoje, -6)}T00:00:00Z`);
+    }
+  });
+
+  it("dia sem cadastro é uma barra ZERO, não um buraco omitido", async () => {
+    montar({
+      profiles: {
+        rows: [meioDia(somarDia(hoje, -6)), meioDia(somarDia(hoje, -2))],
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/signup-history?window=7");
+
+    const pontos = r.body.data.points as Array<{ date: string; count: number }>;
+    // Sete dias contíguos, nenhum omitido: aqui zero É medição, ao contrário
+    // do histórico de snapshots, onde dia ausente significa que ninguém mediu.
+    expect(pontos).toHaveLength(7);
+    expect(pontos.filter((p) => p.count === 0)).toHaveLength(5);
+    expect(pontos.every((p) => typeof p.count === "number")).toBe(true);
+  });
+
+  it("marca SÓ o último dia como parcial", async () => {
+    montar({ profiles: { rows: [meioDia(hoje)] } });
+
+    const r = await chamarAdmin("GET", "/signup-history?window=7");
+
+    const pontos = r.body.data.points as Array<{
+      date: string;
+      partial: boolean;
+    }>;
+    expect(pontos.filter((p) => p.partial)).toHaveLength(1);
+    expect(pontos[pontos.length - 1]).toMatchObject({
+      date: hoje,
+      partial: true,
+    });
+  });
+
+  it("janela MAIOR que a base declara o início real, sem inventar zeros", async () => {
+    const primeiro = somarDia(hoje, -3);
+    montar({ profiles: { rows: [meioDia(primeiro)] } });
+
+    const r = await chamarAdmin("GET", "/signup-history?window=30");
+
+    // Quatro dias, não trinta: dias anteriores ao primeiro cadastro não são
+    // zeros medidos, são dias em que a base não existia.
+    expect(r.body.data.points).toHaveLength(4);
+    expect(r.body.data.points[0].date).toBe(primeiro);
+    expect(r.body.data.firstSignupDate).toBe(primeiro);
+  });
+
+  it("'tudo' começa no primeiro cadastro", async () => {
+    const primeiro = somarDia(hoje, -5);
+    montar({ profiles: { rows: [meioDia(primeiro)] } });
+
+    const r = await chamarAdmin("GET", "/signup-history?window=all");
+
+    expect(r.body.data.points).toHaveLength(6);
+    expect(r.body.data.points[0].date).toBe(primeiro);
+  });
+
+  it("janela desconhecida cai em 30, não em erro", async () => {
+    montar({ profiles: { rows: [meioDia(hoje)] } });
+    const r = await chamarAdmin("GET", "/signup-history?window=90");
+    expect(r.status).toBe(200);
+    expect(r.body.data.window).toBe("30");
+  });
+
+  it("base VAZIA devolve o dia de hoje, não uma série falsa", async () => {
+    montar({ profiles: { rows: [] } });
+
+    const r = await chamarAdmin("GET", "/signup-history?window=7");
+
+    expect(r.status).toBe(200);
+    expect(r.body.data.firstSignupDate).toBe(hoje);
+    expect(r.body.data.points).toEqual([
+      { date: hoje, count: 0, partial: true },
+    ]);
+  });
+
+  it("erro de banco é FAIL-LOUD: 500, não série zerada", async () => {
+    // Série vazia por falha de leitura desenharia um gráfico plano, que afirma
+    // que ninguém se cadastrou.
+    montar({ profiles: { error: { message: "boom" } } });
+
+    const r = await chamarAdmin("GET", "/signup-history?window=7");
+
+    expect(r.status).toBe(500);
   });
 });
 
