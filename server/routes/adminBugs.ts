@@ -1,90 +1,64 @@
 import { Router } from "express";
 import { z } from "zod";
 
-import { sendBugCreatedEmail, sendBugResolvedEmail } from "../lib/email";
-import { env } from "../lib/env";
-import { listSentryIssues } from "../lib/sentryApi";
-import { syncBugStatusToSentry } from "../lib/sentryBugSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
-import { createTargetedNotification } from "../lib/targetedNotifications";
 import { createError } from "../middleware/error";
 
-// Aba Bugs & Erros do admin: issues lidas da API do Sentry (read-only) e bug
-// tracker manual em admin_bugs. Sub-montado em admin.ts DEPOIS de
-// requireAuth + requireAdmin; nenhum guard local.
+// Aba Bugs & Erros APOSENTADA na Fase 5 (docs/plano-unificar-bugs-tarefas.md).
+// Os 25 bugs viraram tarefas no quadro BUG; `admin_bugs` continua de pe com as
+// 25 linhas (invariante 4: drop e irreversivel, o ledger de migrations nao e
+// confiavel, e nao existe rollback). Dropar a tabela e card no quadro DEV.
 //
-// Emails de notificacao (bug novo / bug resolvido) sao fire-and-forget: a
-// resposta HTTP nao espera nem falha por causa do envio, erro so vira log.
+// O QUE SOBROU AQUI, e por que:
+//
+//   GET /  -> LEITURA da tabela, sem cliente nenhum chamando. Existe para
+//             conferir a migracao sem restaurar backup, e para o dia em que
+//             alguem perguntar "o que tinha ali antes". Custa nada e e a unica
+//             janela para um dado que ninguem mais enxerga.
+//
+//   POST, PATCH, DELETE -> 410 Gone. Nao 404: 404 diz "nunca existiu" e mentiria
+//             sobre a historia; 410 diz "existia e acabou", que e o fato. A
+//             tabela e somente leitura a partir daqui.
+//
+// O QUE SAIU:
+//
+//   GET /sentry-issues -> a listagem ao vivo do Sentry pertencia a aba removida.
+//             Quem le o Sentry agora e o sync (server/lib/sentryTaskIntake.ts),
+//             e manter uma segunda porta para a mesma API seria dois caminhos
+//             para a mesma coisa, que e o que este projeto inteiro esta
+//             desfazendo.
+//
+//   Emails e notificacoes de bug novo/resolvido -> saiam da escrita, que acabou.
+//             As funcoes em email.ts continuam existindo (ver abaixo).
+//
+// O QUE FICOU EM OUTRO LUGAR, INTACTO:
+//
+//   server/lib/sentryBugSync.ts     (syncBugStatusToSentry)
+//   server/lib/sentryApi.ts         (updateIssueStatus)
+//   server/lib/sentryBugReconcile.ts (retryPendingSyncs e as demais fases)
+//   server/lib/email.ts             (sendBugCreatedEmail, sendBugResolvedEmail,
+//                                    sendBugReopenedEmail)
+//
+// Os tres primeiros sobrevivem por causa da EMENDA 1 ao plano, que revogou o
+// invariante 6 original: o push de resolucao disparado por transicao HUMANA
+// fica, e so o job e proibido de escrever no Sentry.
+//
+// ATENCAO, E A DIVIDA QUE ESTA FASE CRIA: com o PATCH virando 410, o push
+// perdeu seu UNICO gatilho. Ele nao morreu, ficou DORMENTE. Religa-lo na
+// transicao do card exige `admin_tasks.sentry_sync_pending`, coluna que NAO
+// existe (a Fase 2 nao a criou, porque na epoca o push ainda tinha casa). Isso e
+// migration, e migration nova nao cabe nesta fase. Registrado no plano.
 
 const router = Router();
 
 const BUG_STATUSES = ["open", "in_progress", "done"] as const;
-const BUG_SEVERITIES = ["low", "medium", "high", "critical"] as const;
-
-const SEVERITY_LABELS: Record<(typeof BUG_SEVERITIES)[number], string> = {
-  low: "baixa",
-  medium: "média",
-  high: "alta",
-  critical: "crítica",
-};
-
-// Exportado para teste: a lista fechada de statsPeriod e a unica coisa neste
-// arquivo que trava um contrato com uma API externa, e ela precisa de asserção
-// propria em vez de depender de alguem exercitar a rota.
-export const SentryQuerySchema = z.object({
-  query: z.string().trim().min(1).max(200).default("is:unresolved"),
-  cursor: z.string().trim().min(1).max(200).optional(),
-  // Janela relativa, LISTA FECHADA e nao regex de formato.
-  //
-  // GET /organizations/{org}/issues/ aceita exatamente '', '24h' e '14d';
-  // qualquer outro valor responde 400 "Invalid stats_period" (o mesmo achado
-  // esta registrado em sentryApi.ts, na busca por id numerico). O regex antigo
-  // (/^\d{1,3}[hdwm]$/) aceitava '90d', '3w' e '1m', que a API recusa: validar o
-  // FORMATO de um dominio fechado deixa passar o valor sintaticamente certo e
-  // semanticamente invalido, e o erro so aparece como 502 vindo do Sentry.
-  //
-  // Inalcancavel pela interface de hoje (a tela so oferece valores validos),
-  // e por isso mesmo apertado agora: no dia em que a janela do feed virar
-  // configuravel, o valor invalido para o job em vez de parar uma tela.
-  statsPeriod: z
-    .enum(["", "24h", "14d"], {
-      message: "statsPeriod deve ser '', '24h' ou '14d'.",
-    })
-    .default("14d"),
-});
-
-const CreateSchema = z.object({
-  title: z.string().trim().min(1).max(200),
-  description: z.string().trim().min(1).max(5000).nullable().optional(),
-  severity: z.enum(BUG_SEVERITIES).default("medium"),
-  sentry_issue_id: z.string().trim().min(1).max(100).nullable().optional(),
-  sentry_issue_url: z.string().trim().url().max(2048).nullable().optional(),
-  // issue.id numerico do Sentry (groupId), enviado na criacao a partir de uma
-  // issue. Evita ter que resolver o shortId depois para a primeira sincronizacao.
-  sentry_numeric_id: z.string().trim().min(1).max(100).nullable().optional(),
-});
-
-const PatchSchema = z
-  .object({
-    title: z.string().trim().min(1).max(200).optional(),
-    description: z.string().trim().min(1).max(5000).nullable().optional(),
-    severity: z.enum(BUG_SEVERITIES).optional(),
-    status: z.enum(BUG_STATUSES).optional(),
-  })
-  .refine((data) => Object.keys(data).length > 0, {
-    message: "Nenhum campo para atualizar.",
-  });
-
-const ListQuerySchema = z.object({
-  status: z.enum(BUG_STATUSES).optional(),
-});
 
 type BugRow = {
   id: string;
   title: string;
   description: string | null;
   status: (typeof BUG_STATUSES)[number];
-  severity: (typeof BUG_SEVERITIES)[number];
+  severity: string;
   sentry_issue_id: string | null;
   sentry_issue_url: string | null;
   sentry_numeric_id: string | null;
@@ -101,50 +75,20 @@ type BugRow = {
 const BUG_COLUMNS =
   "id, title, description, status, severity, sentry_issue_id, sentry_issue_url, sentry_numeric_id, sentry_sync_pending, sentry_reopen_event_at, sentry_last_checked_at, sentry_orphaned_at, created_by, created_at, updated_at, resolved_at";
 
-router.get("/sentry-issues", async (req, res, next) => {
-  const parsed = SentryQuerySchema.safeParse(req.query);
-  if (!parsed.success) {
-    return next(
-      createError(
-        400,
-        "invalid_request",
-        parsed.error.issues[0]?.message ?? "Parâmetros inválidos.",
-      ),
-    );
-  }
-
-  const result = await listSentryIssues(parsed.data);
-  if (result.state === "not_configured") {
-    return next(
-      createError(
-        503,
-        "sentry_not_configured",
-        `Integração com o Sentry não configurada (faltam: ${result.missing.join(", ")}).`,
-      ),
-    );
-  }
-  if (result.state === "rate_limited") {
-    return next(
-      createError(
-        429,
-        "sentry_rate_limited",
-        "A API do Sentry limitou as requisições. Tente de novo em instantes.",
-      ),
-    );
-  }
-  if (result.state === "error") {
-    console.error("[admin-bugs] Falha na API do Sentry:", result.reason);
-    return next(
-      createError(502, "sentry_error", "Erro ao consultar a API do Sentry."),
-    );
-  }
-
-  res.json({
-    issues: result.issues,
-    nextCursor: result.nextCursor,
-    prevCursor: result.prevCursor,
-  });
+const ListQuerySchema = z.object({
+  status: z.enum(BUG_STATUSES).optional(),
 });
+
+/** Escrita encerrada. Resposta unica para as tres rotas que sobraram. */
+function escritaEncerrada(res: import("express").Response) {
+  res.status(410).json({
+    error: {
+      code: "bugs_module_retired",
+      message:
+        "O módulo de bugs foi unificado com Tarefas. Use o quadro BUG em /admin?section=tarefas&board=bugs.",
+    },
+  });
+}
 
 router.get("/", async (req, res, next) => {
   const parsed = ListQuerySchema.safeParse(req.query);
@@ -192,197 +136,8 @@ router.get("/", async (req, res, next) => {
   });
 });
 
-router.post("/", async (req, res, next) => {
-  const parsed = CreateSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return next(
-      createError(
-        400,
-        "invalid_request",
-        parsed.error.issues[0]?.message ?? "Payload inválido.",
-      ),
-    );
-  }
-
-  const { data, error } = await supabaseAdmin
-    .from("admin_bugs")
-    .insert({
-      title: parsed.data.title,
-      description: parsed.data.description ?? null,
-      severity: parsed.data.severity,
-      sentry_issue_id: parsed.data.sentry_issue_id ?? null,
-      sentry_issue_url: parsed.data.sentry_issue_url ?? null,
-      sentry_numeric_id: parsed.data.sentry_numeric_id ?? null,
-      created_by: req.user!.id,
-    })
-    .select(BUG_COLUMNS)
-    .single();
-
-  if (error || !data) {
-    console.error("[admin-bugs] Falha ao criar bug:", error);
-    return next(createError(500, "db_error", "Erro ao criar bug."));
-  }
-
-  const bug = data as BugRow;
-  // Email e notificacao in-app sao independentes: cada um com seu catch, a
-  // falha de um nao segura o outro e nenhum bloqueia a resposta.
-  void sendBugCreatedEmail({
-    title: bug.title,
-    severity: bug.severity,
-    description: bug.description,
-    sentryIssueUrl: bug.sentry_issue_url,
-  }).catch((emailError) => {
-    console.error("[admin-bugs] Falha no email de bug novo:", emailError);
-  });
-  void createTargetedNotification({
-    email: env.bugNotifyNewEmail,
-    title: `🐛 Novo bug: ${bug.title}`,
-    body: `Um novo bug de severidade ${SEVERITY_LABELS[bug.severity]} foi registrado no admin.`,
-    createdBy: req.user!.id,
-  }).catch((notificationError) => {
-    console.error(
-      "[admin-bugs] Falha na notificação de bug novo:",
-      notificationError,
-    );
-  });
-
-  res.status(201).json(bug);
-});
-
-router.patch("/:id", async (req, res, next) => {
-  const id = z.string().uuid().safeParse(req.params.id);
-  if (!id.success) {
-    return next(createError(404, "not_found", "Bug não encontrado."));
-  }
-  const parsed = PatchSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return next(
-      createError(
-        400,
-        "invalid_request",
-        parsed.error.issues[0]?.message ?? "Payload inválido.",
-      ),
-    );
-  }
-
-  const { data: existing, error: fetchError } = await supabaseAdmin
-    .from("admin_bugs")
-    .select(BUG_COLUMNS)
-    .eq("id", id.data)
-    .maybeSingle();
-  if (fetchError) {
-    console.error("[admin-bugs] Falha ao buscar bug:", fetchError);
-    return next(createError(500, "db_error", "Erro ao buscar bug."));
-  }
-  if (!existing) {
-    return next(createError(404, "not_found", "Bug não encontrado."));
-  }
-
-  const current = existing as BugRow;
-  const patch = parsed.data;
-  const update: Record<string, unknown> = {
-    ...patch,
-    updated_at: new Date().toISOString(),
-  };
-
-  // resolved_at e derivado do status, nunca aceito do client: setado na
-  // transicao pra done, limpo quando o bug sai de done (reaberto). done ->
-  // done nao reseta o timestamp nem reenvia o email de conclusao.
-  const becameDone = patch.status === "done" && current.status !== "done";
-  const leftDone =
-    Boolean(patch.status) &&
-    patch.status !== "done" &&
-    current.status === "done";
-  if (becameDone) update.resolved_at = new Date().toISOString();
-  if (leftDone) {
-    update.resolved_at = null;
-    // Reabertura manual limpa o motivo de reabertura automatica: o banner "voltou
-    // a acontecer" so vale ate a proxima resolucao/reabertura decidir de novo.
-    update.sentry_reopen_event_at = null;
-  }
-
-  const { data, error } = await supabaseAdmin
-    .from("admin_bugs")
-    .update(update)
-    .eq("id", id.data)
-    .select(BUG_COLUMNS)
-    .single();
-
-  if (error || !data) {
-    console.error("[admin-bugs] Falha ao atualizar bug:", error);
-    return next(createError(500, "db_error", "Erro ao atualizar bug."));
-  }
-
-  const bug = data as BugRow;
-  // Ambos os avisos atras do MESMO gate becameDone (anti-duplicata da
-  // transicao); entre si sao independentes, cada um com seu catch.
-  if (becameDone) {
-    void sendBugResolvedEmail({
-      title: bug.title,
-      createdAt: bug.created_at,
-      resolvedAt: bug.resolved_at ?? new Date().toISOString(),
-      resolvedBy: req.user?.email ?? null,
-    }).catch((emailError) => {
-      console.error(
-        "[admin-bugs] Falha no email de bug resolvido:",
-        emailError,
-      );
-    });
-    void createTargetedNotification({
-      email: env.bugNotifyDoneEmail,
-      title: `✅ Bug resolvido: ${bug.title}`,
-      body: `O bug de severidade ${SEVERITY_LABELS[bug.severity]} foi marcado como corrigido.`,
-      createdBy: req.user?.id ?? null,
-    }).catch((notificationError) => {
-      console.error(
-        "[admin-bugs] Falha na notificação de bug resolvido:",
-        notificationError,
-      );
-    });
-  }
-
-  // Sincronizacao de status com o Sentry, so para cards vinculados a uma issue.
-  // Fire-and-forget no mesmo padrao dos emails acima: NAO segura a resposta nem
-  // falha a transicao do card. syncBugStatusToSentry ja e best-effort e persiste
-  // sentry_sync_pending em caso de falha, para o job de reconciliacao repetir.
-  if (bug.sentry_issue_id && (becameDone || leftDone)) {
-    void syncBugStatusToSentry({
-      bugId: bug.id,
-      shortId: bug.sentry_issue_id,
-      numericId: bug.sentry_numeric_id,
-      target: becameDone ? "resolved" : "unresolved",
-    }).catch((syncError) => {
-      console.error(
-        "[admin-bugs] Falha ao sincronizar status no Sentry:",
-        syncError,
-      );
-    });
-  }
-
-  res.json(bug);
-});
-
-router.delete("/:id", async (req, res, next) => {
-  const id = z.string().uuid().safeParse(req.params.id);
-  if (!id.success) {
-    return next(createError(404, "not_found", "Bug não encontrado."));
-  }
-
-  const { data, error } = await supabaseAdmin
-    .from("admin_bugs")
-    .delete()
-    .eq("id", id.data)
-    .select("id");
-
-  if (error) {
-    console.error("[admin-bugs] Falha ao excluir bug:", error);
-    return next(createError(500, "db_error", "Erro ao excluir bug."));
-  }
-  if (!data || data.length === 0) {
-    return next(createError(404, "not_found", "Bug não encontrado."));
-  }
-
-  res.json({ ok: true });
-});
+router.post("/", (_req, res) => escritaEncerrada(res));
+router.patch("/:id", (_req, res) => escritaEncerrada(res));
+router.delete("/:id", (_req, res) => escritaEncerrada(res));
 
 export default router;
