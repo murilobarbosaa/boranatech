@@ -18,38 +18,76 @@ virar propaganda.
 | `skills-cobertura` ótima | **0 de 107** | (não medido isolado) | idem |
 | Fabricação (afirmações inventadas) | **58** | **0** | 2026-07-26 a 2026-07-27, `docs/rubrica-fidelidade.md` §6 |
 | Custo por análise | US$ 0,0077 a 0,0162 (constante inflada **5,4x a 5,7x**) | **US$ 0,00122** medido | 2026-07-26, `docs/auditoria-avaliador-linkedin-rodada2.md` |
-| Suíte | — | **1542 passando, 5 pulados** | 2026-08-01, execução local |
-| Golden fixtures do parser | — | **6** (`server/lib/__fixtures__/linkedin/*.txt`) | 2026-08-01, contagem direta |
+| Testes do parser, dos checks e do score | **zero** | cobertos, com **6 golden fixtures** | rodada 1 §12.1 / 2026-08-01, contagem direta |
+| Suíte inteira | 2 testes na feature (65 linhas) | **1542 passando, 5 pulados** | rodada 1 §12.1 / 2026-08-01, execução local |
 | Nota média sobre as 107 | 46,0 | **47,5** (27 sobem, **0 descem**) | 2026-07-27, `docs/fase3-fechamento.md` §3 |
 
-### A curva da fabricação, com a ressalva que ela exige
+### A cobertura de teste, com a precisão que a diferença exige
 
-`docs/rubrica-fidelidade.md` §6, **n = 10 por medição** nas quatro primeiras:
+Rodada 1, §12.1:
+
+> "Não há teste nenhum para `shared/linkedin/parse.ts` (342 linhas),
+> `server/lib/linkedinChecks.ts` (467 linhas), `computeLinkedinScore`,
+> `faixaFromScore`, `skillNormalize.ts`. Cobertura real do fluxo: próxima de zero."
+
+**"Zero teste no parser" é verdade; "zero teste na feature" não era.** Existiam dois:
+`checkLinks.test.ts` (37 linhas) e `stripPdfPageNoise.test.ts` (28). Nenhum tocava parser, checks ou score.
+
+A diferença parece pedantismo e não é: "zero na feature" é o tipo de arredondamento para o lado dramático
+que esta auditoria passou treze rodadas combatendo. Um número que soa melhor e é falso não é resumo, é a
+mesma classe de defeito com sinal trocado.
+
+### A curva da fabricação: a forma dela é o conteúdo
+
+A série completa, `docs/rubrica-fidelidade.md` §6. Cada linha traz o n, porque ele muda no meio:
 
 ```
-2026-07-26  antes da Fase 0                          58 inventadas,  3 distorcidas
-2026-07-26  Fase 0 item 7 (lastro por experiência)   22             0
-2026-07-26  Fase 0 campos separados (v2)              3             0
-2026-07-26  Fase 0 skillsParaAdicionarAgora (v3)      0             0
+2026-07-26  antes da Fase 0                          n=10   58 inventadas   3 distorcidas
+2026-07-26  Fase 0, item 7 (lastro por experiência)  n=10   22              0
+2026-07-26  Fase 0, campos separados (v2)            n=10    3              0
+2026-07-26  Fase 0, skillsParaAdicionarAgora (v3)    n=10    0              0
+2026-07-26  Fase 1A, normalização de line-wrap       n=10    3              0
+2026-07-27  Fase 1A-bis, saneamento de numeral       n=30    2              1
+2026-07-27  Fase 1A-ter, camada única de lastro      n=30    4              0
+2026-07-27  Fase 1B, reescrita do bloco de exp.      n=30    1              0
+2026-07-27  Fase 2B, orçamento repartido             n=30    0              0    431 afirmações
 ```
 
-**Não parou em zero.** As fases seguintes remediram e o número voltou a subir antes de estabilizar:
+**A curva não é uma descida.** Ela chega a zero na Fase 0, sobe de novo para 3, 2, 4, e só estabiliza em 0
+na Fase 2B. Quem citar "58 → 0" está contando uma história que a medição não sustenta.
+
+#### Por que subiu de novo
+
+Cada fase mexeu na ENTRADA do modelo, e mudar a entrada muda o comportamento inteiro, não só o defeito
+que se queria corrigir:
+
+- **Fase 1A** normalizou quebra de linha e rodapé de PDF. O modelo passou a ver um texto diferente do que
+  vinha vendo, e o resíduo reapareceu em 3.
+- **Fase 1A-bis e 1A-ter** trocaram a camada de lastro. Duas vezes o resíduo **migrou de campo em vez de
+  desaparecer**: o que era invenção de numeral em bullet virou invenção de tecnologia noutro lugar. O total
+  subiu (2 → 4) sem que nada tivesse regredido no alvo original.
+- **Fase 1B e 2B** deram ao modelo mais cabeçalhos e mais descrições (6 de 6 contra 5, 5 de 5 contra 3), com
+  o orçamento de 6.000 caracteres repartido em vez de corte por posição.
+
+Duas dessas medições têm ressalva declarada na própria rubrica: com n=10, uma execução suja a mais ou a
+menos move o placar o bastante para ser indistinguível de ruído amostral. Foi por isso que o n subiu para 30.
+
+#### A leitura que sobrevive
+
+**As três reduções que funcionaram vieram de TIRAR TRABALHO DO MODELO, não de pedir melhor.**
 
 ```
-2026-07-26  Fase 1A     n=10   3 inventadas
-2026-07-27  Fase 1A-bis n=30   2
-2026-07-27  Fase 1A-ter n=30   4
-2026-07-27  Fase 1B     n=30   1
-2026-07-27  Fase 2B     n=30   0 inventadas, 0 distorcidas, 431 afirmações avaliadas
+58 → 22   lastro por experiência: o modelo deixou de ter que localizar a evidência
+22 →  3   campos separados: deixou de ter que decidir onde cada coisa vai
+ 3 →  0   skillsParaAdicionarAgora calculado em CÓDIGO: deixou de gerar a lista
 ```
 
-O `0` que vale é o da **Fase 2B, n=30, rubrica v1.2** — não o da Fase 0, que era n=10 e foi seguido de
-regressões. Reportar "58 → 0" sem essa curva seria contar uma história mais limpa que a medição.
+Nenhuma das três foi instrução melhor no prompt. As três removeram uma decisão do modelo e a colocaram em
+código determinístico. **E a estabilidade só apareceu quando o último cálculo saiu do prompt** — a Fase 2B
+é a primeira medição com n=30 em que o modelo não faz nenhuma conta que a plataforma já saiba fazer.
 
-**E o `58` é ele mesmo uma instância da classe de defeito.** A rodada 2 tinha medido `2` no mesmo prompt. A
-diferença não era comportamento, era **unidade de contagem**: a rodada 2 contou frases inteiras julgadas à mão
-em 3 execuções; a Fase 0 contou cada item de array em 10. Os dois números estavam certos e não significavam a
-mesma coisa. A rubrica congelada nasceu disso.
+O corolário para a próxima feature de IA: cada cálculo que fica no prompt é uma superfície de fabricação, e
+a taxa não cai de forma estável enquanto ele estiver lá.
 
 ### Os dois bugs que abriram a auditoria, e o que se revelaram
 
@@ -119,6 +157,7 @@ Ordenadas por mecanismo, não cronologia. Todas medidas nesta base.
 | `check:migrations` verificando função por NOME | Guard **verde por 17 dias** sobre banco em que a mudança não estava | Asserção comportamental afirmando o conteúdo |
 | Checklist de smoke que morava só na conversa | Sumiu numa compactação, perdeu 3 de 11 passos | Artefato de release é arquivo versionado |
 | `S1` construída de um exemplo | "Termina em vírgula" achou **1 em 156** e foi reportada como família | Medir a assinatura sobre o corpo inteiro antes de nomeá-la |
+| **O `58` que abre a série de sucesso** | A rodada 2 mediu **2** no mesmo prompt. A diferença era **unidade de contagem** (frases inteiras à mão em 3 execuções contra item de array em 10), não comportamento. Os dois estavam certos e não significavam a mesma coisa — e o número inflado é o que faz a melhora parecer maior | Rubrica congelada em `docs/rubrica-fidelidade.md`, com a unidade de contagem declarada e versionada: mudar definição obriga criar v2 |
 | Classificar por FORMA em vez de origem | 3 sítios acusados, **2 falsos positivos** | Seguir a origem da chave, não o formato do acesso |
 | Sub-casar para MAIS | Contou 4 onde esperava 3 — o caminho do import casava a string | Separar código de caminho antes de contar |
 
@@ -270,6 +309,10 @@ Cada item com custo, impacto medido quando houver, e **o gatilho que o traz de v
 | **Source map do backend** | Desconhecido | Stack trace do servidor chega minificada | — |
 | **Retenção da identidade persistida** | Alto se feito certo (três cópias) | 13 pessoas, 11-30 de julho | Os quatro gatilhos em `docs/retencao-identidade-em-competencias.md` |
 | **`termos-bilingues`, lista-núcleo curada, fronteiras de faixa, comparação de modelos** | Não estimados | Sem medição | — |
+| **Billing: `fix/billing-customer-reuse` não subiu, e o prazo vence hoje** | Alto e crescendo. A branch está **20 commits à frente e 119 atrás** da `main` (era 10 atrás quando o prazo foi marcado, depois 15). Rebase, 5 migrations à mão, `backfillStripeCustomers.mjs` nunca executado, e duas migrations pedem janela destrutiva | O `check:migrations` reporta **hoje** as 3 tabelas expostas e não declaradas (`payment_recovery_emails`, `stripe_customers`, `billing_failed_payments`) — inconsistência real na direção inversa, verde com aviso | **Prazo 2026-08-01, hoje.** `docs/copy-provisoria-e-pendencias.md` §2.3 define as duas únicas saídas aceitas: adiar com data nova escrita no mesmo commit, ou transformar o aviso em erro temporário. O silêncio não é saída |
+| **33 `TODO(Ana)` do escopo de consentimento, no ar desde 2026-07-28** | Baixo por item, revisão editorial | 30 dos 33 são lidos na tela. `ConsentGate` é modal bloqueante sem botão de fechar | Reconferido em 2026-08-01: **os 33 continuam lá**, número idêntico ao levantamento. `docs/copy-provisoria-e-pendencias.md` §1 |
+| **`TODO(Ana)` fora do escopo de consentimento** | Não estimado | **1196 na base**, sendo 144 só no `Admin.tsx`, 36 no `RoadmapQuiz.tsx`, 32 em `server/routes/aiRoadmap.ts` | Nunca inventariado. O `copy-provisoria` cobre só os 33 do consentimento e diz que "existem outros"; a ordem de grandeza não estava registrada em lugar nenhum |
+| **Achados de design registrados sem correção** | Baixo a médio | CLS residual de 0,015 no hero; `tracking-[0.18em]` contra `[0.2em]`; sombra flat ausente nos cards da home; resíduo de 22px no skeleton da dica; o `<br>` do badge do hero que **envelhece quando a contagem passar de 10.000** | `docs/copy-provisoria-e-pendencias.md` §3 e §3-bis. O do `<br>` tem gatilho automático: a contagem cruzar 10.000 |
 | **Os 5 testes pulados** | Baixo | `server/routes/adminTasks.rebalance.test.ts`, travados pelo guard de total exato | — |
 | **Deprecação do `environmentMatchGlobs`** | Baixo | Aviso em toda execução do vitest | Upgrade de major do vitest |
 | **Policies (72) e índices (139)** | Alto. Exige `DATABASE_URL` | Enumerados, não verificados | `docs/limites-do-guard-de-migrations.md` |
@@ -343,5 +386,10 @@ Escrito para quem não tem nenhum contexto desta conversa.
 - **O `CLAUDE.md` afirmava que `pnpm check` não cobre `*.test.ts`.** Era falso e foi corrigido em 2026-07-31.
   Regra escrita errada em arquivo de regras é a pior classe de documentação desatualizada, porque ensina o
   erro em vez de só omiti-lo.
-- **`ideas.md` e `copy-provisoria-e-pendencias.md`** não foram revisados nesta auditoria e podem conter
-  pendências já resolvidas.
+- **`ideas.md` é brainstorm de design da fundação do projeto, não lista de pendência.** Registra três
+  abordagens visuais com a segunda marcada "✅ ESCOLHIDA". **A paleta que ele descreve não é a que vale
+  hoje**: ele propõe violeta-índigo `#5B21B6` como primária e branco puro de fundo, enquanto o
+  `CLAUDE.md` documenta amarelo `#FFB800` e cream `#faf8f4`. É registro de decisão histórica; para saber a
+  paleta atual, o `CLAUDE.md` e `docs/color-system.md` mandam. Nenhuma pendência viva.
+- **`copy-provisoria-e-pendencias.md` (2026-07-28) está VIVO, e uma seção dele vence hoje.** Reconferido em
+  2026-08-01, item a item, na seção 4 acima.
