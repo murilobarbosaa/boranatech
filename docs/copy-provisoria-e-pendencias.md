@@ -189,7 +189,46 @@ conhecida e temporária. **O risco não é o aviso, é o aviso virar paisagem.**
 Depois de algumas semanas ninguém lê mais, e o dia em que ele mudar de conteúdo
 não vai chamar atenção de ninguém.
 
-### 2.3. Prazo: 2026-08-01
+### 2.3. Prazo: 2026-08-08
+
+**Adiado de 2026-08-01 para 2026-08-08 em 2026-08-01**, no dia do vencimento, por ato deliberado.
+
+#### A distancia, ao lado da data
+
+Registrada aqui porque **sem ela a data parece um prazo e e um sintoma**:
+
+| medicao | a frente da `main` | atras da `main` |
+| --- | --- | --- |
+| quando o prazo foi marcado (2026-07-28) | | **10** |
+| primeiro adiamento (2026-07-29) | | **15** |
+| **hoje (2026-08-01)** | **20** | **119** |
+
+O mecanismo e circular e esta medido: **cada adiamento aumenta o custo do proximo rebase, que causa o
+adiamento seguinte.** Em quatro dias a distancia multiplicou por doze. Nenhuma das duas prorrogacoes mexeu
+nisso: as duas trataram a data, nao a causa.
+
+#### A pergunta que a proxima revisao TEM de responder antes de adiar de novo
+
+> **A billing sobe, ou a branch e descartada e o trabalho recomeca a partir da `main`?**
+
+119 commits atras e o ponto em que rebase deixa de ser barato: sao quatro dias de auth, home, LinkedIn e
+admin passando por baixo, e o custo de reconciliar nao e linear no numero de commits, e no numero de
+arquivos que os dois lados tocaram.
+
+**Ninguem decidiu isso.** As duas prorrogacoes anteriores adiaram a data sem colocar a pergunta, e ela e a
+decisao real. Um terceiro adiamento que nao a responda e o mesmo movimento pela terceira vez.
+
+Insumos para decidir, medidos em 2026-08-01:
+
+- as **3 tabelas ja existem em producao** e estao **protegidas**: RLS declarada mais
+  `REVOKE ALL FROM PUBLIC, anon, authenticated` nas tres migrations, e a leitura com a chave anon devolve
+  `42501 permission denied` nas tres;
+- as **5 migrations nao aplicadas** continuam nao aplicadas;
+- o `backfillStripeCustomers.mjs` **nunca foi executado**;
+- o aviso do `check:migrations` continua saindo, e desde 2026-08-01 o guard **tambem verifica a RLS delas**
+  (direcao inversa), entao a lacuna de seguranca que a demora abria esta fechada independentemente da branch.
+
+#### Prazo anterior: 2026-08-01
 
 **Adiado de 2026-07-31 para 2026-08-01 em 2026-07-29**, por ato deliberado e não
 por esquecimento, que é a única forma de mudança de prazo que este documento
