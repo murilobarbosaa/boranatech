@@ -599,6 +599,20 @@ const DE_EXTENSAO = new Set([
   "custom_access_token_hook",
 ]);
 
+/**
+ * Tabelas/views que o PostgREST expoe e nenhuma migration declara.
+ *
+ * Calculada FORA do `if (expostas !== null)` de proposito: ela nao depende da
+ * leitura de funcoes, e a verificacao de RLS da direcao inversa (mais abaixo)
+ * precisa dela. Quando morava dentro daquele bloco, a referencia de baixo
+ * compilava e quebrava em runtime com `ReferenceError` — e `pnpm check` NAO
+ * pegou, porque o `include` do tsconfig.json e `client/src`, `shared` e
+ * `server`: `scripts/` fica de fora do typecheck.
+ */
+const recursosNaoDeclarados = [...(recursosExpostos ?? [])].filter(
+  (r) => !declared.has(r),
+);
+
 if (expostas !== null) {
   const funcoesNaoDeclaradas = [...expostas].filter(
     (f) => !funcoesDeclaradas.has(f) && !DE_EXTENSAO.has(f),
@@ -612,9 +626,6 @@ if (expostas !== null) {
       "[checkMigrationsApplied] direcao inversa: nenhuma funcao existe no banco sem estar declarada.",
     );
   }
-  const recursosNaoDeclarados = [...(recursosExpostos ?? [])].filter(
-    (r) => !declared.has(r),
-  );
   if (recursosNaoDeclarados.length > 0) {
     console.warn(
       `[checkMigrationsApplied] ${recursosNaoDeclarados.length} tabela(s)/view(s) expostas pelo PostgREST e NAO declaradas: ${recursosNaoDeclarados.join(", ")}.`,
@@ -736,6 +747,57 @@ if (!anonKey) {
       `[checkMigrationsApplied] ${expostas.length} tabela(s) com RLS declarada estao LEGIVEIS pela chave anon sem policy publica que justifique:`,
     );
     for (const e of expostas) console.error(`  EXPOSTA: public.${e}`);
+  }
+
+  // ---------------------------------------------------------------------
+  // DIRECAO INVERSA da RLS: tabela que EXISTE no banco, e exposta pelo
+  // PostgREST, e nenhuma migration declara.
+  //
+  // Por que faltava: o laco acima percorre `rlsVivas`, que sai das migrations.
+  // Tabela nao declarada nao entra la, entao ficava exposta pelo PostgREST e
+  // FORA do escopo da verificacao de seguranca. O guard dizia "0 expostas"
+  // sobre um conjunto que nao continha essas tabelas. E a mesma forma que esta
+  // auditoria cataloga: veredito certo sobre uma superficie menor.
+  //
+  // O caso concreto que motivou (2026-08-01): `stripe_customers`,
+  // `billing_failed_payments` e `payment_recovery_emails` existem em producao
+  // desde 2026-07-28, as migrations que as declaram vivem numa branch que nao
+  // subiu, e ninguem estava afirmando que a chave anon nao as le.
+  //
+  // O criterio aqui e MAIS ESTRITO que o de tabela declarada, e de proposito:
+  // para uma tabela declarada, ler com anon pode ser legitimo (policy publica
+  // declarada). Para uma NAO declarada nao existe declaracao nenhuma que
+  // justifique, entao QUALQUER leitura bem-sucedida e achado, inclusive com
+  // zero linhas: 200 com lista vazia significa que o privilegio existe e a
+  // tabela so esta vazia hoje.
+  const expostasNaoDeclaradas: string[] = [];
+  for (const tabela of recursosNaoDeclarados) {
+    const comAnon = await contarLinhas(tabela, anonKey);
+    if (comAnon.tipo === "ok") {
+      expostasNaoDeclaradas.push(
+        `${tabela} (anon leu, ${comAnon.n} linha(s) visiveis)`,
+      );
+    }
+    // `sem-privilegio` e o REVOKE fazendo efeito, que e o desejado. `erro`
+    // nao vira verde: cai no relatorio abaixo como inconclusivo, pelo mesmo
+    // motivo do `contarLinhas` devolvendo -1 nesta base (falha de infra nunca
+    // conta como sucesso de seguranca).
+    else if (comAnon.tipo === "erro") {
+      inconclusivas.push(`${tabela} (nao declarada, ${comAnon.detalhe})`);
+    }
+  }
+  if (expostasNaoDeclaradas.length > 0) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] ${expostasNaoDeclaradas.length} tabela(s) NAO declaradas estao LEGIVEIS pela chave anon:`,
+    );
+    for (const e of expostasNaoDeclaradas) {
+      console.error(`  EXPOSTA E NAO DECLARADA: public.${e}`);
+    }
+  } else if (recursosNaoDeclarados.length > 0) {
+    console.log(
+      `[checkMigrationsApplied] direcao inversa da RLS: as ${recursosNaoDeclarados.length} tabela(s) nao declaradas NAO sao legiveis pela chave anon.`,
+    );
   }
   console.log(
     `[checkMigrationsApplied] RLS: ${protegidas} protegida(s) por policy, ${semPrivilegio} protegida(s) por REVOKE (anon sem privilegio), ${publicasDeclaradas} publica(s) por policy declarada, ${expostas.length} exposta(s), ${inconclusivas.length} inconclusiva(s) de ${rlsVivas.length}.`,
