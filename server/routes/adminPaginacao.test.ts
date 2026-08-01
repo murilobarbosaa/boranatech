@@ -793,3 +793,175 @@ describe("variação da série", () => {
     expect(r.body.data.previousPeriodAvailable).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// GET /overview — os seis cards
+// ---------------------------------------------------------------------------
+
+describe("GET /overview", () => {
+  function assinatura(over: Record<string, unknown> = {}) {
+    return {
+      id: "s1",
+      user_id: "u1",
+      status: "active",
+      cancel_at_period_end: false,
+      created_at: "2026-07-01T00:00:00Z",
+      current_period_end: "2099-01-01T00:00:00Z",
+      provider_subscription_id: "sub_1",
+      plans: {
+        code: "pro_monthly",
+        name: "Mensal",
+        price_cents: 2990,
+        interval: "month",
+      },
+      ...over,
+    };
+  }
+
+  function base(over: Record<string, RespostaTabela> = {}) {
+    montar({
+      profiles: { rows: [], count: 100 },
+      subscriptions: { rows: [assinatura()] },
+      influencers: { rows: [] },
+      finance_transactions: { rows: [] },
+      expenses: { rows: [] },
+      ai_usage_logs: { rows: [] },
+      ...over,
+    });
+  }
+
+  it("devolve os seis cards e a janela resolvida", async () => {
+    base();
+    const r = await chamarAdmin("GET", "/overview?window=30");
+
+    expect(r.status).toBe(200);
+    expect(r.body.data.window).toBe("30");
+    expect(Object.keys(r.body.data.cards).sort()).toEqual([
+      "acessoPro",
+      "custoIa",
+      "mrr",
+      "novosUsuarios",
+      "receita",
+      "receitaEmRisco",
+    ]);
+  });
+
+  it("window inválida cai em 30, não em 90", async () => {
+    base();
+    const r = await chamarAdmin("GET", "/overview?window=90");
+    expect(r.body.data.window).toBe("30");
+  });
+
+  it("RECEITA EM RISCO usa a MESMA normalização mensal do MRR", async () => {
+    // A trava contra a terceira implementação: se alguém recalcular
+    // 22200/12 ou 12900/6 noutro lugar, os números aqui deixam de bater com o
+    // MRR e este teste cai.
+    base({
+      subscriptions: {
+        rows: [
+          // anual, agendada: 22200/12 = 1850
+          assinatura({
+            id: "a",
+            cancel_at_period_end: true,
+            plans: {
+              code: "pro_annual",
+              name: "Anual",
+              price_cents: 22200,
+              interval: "year",
+            },
+          }),
+          // semestral, agendada: 12900/6 = 2150
+          assinatura({
+            id: "b",
+            cancel_at_period_end: true,
+            plans: {
+              code: "pro_semiannual",
+              name: "Semestral",
+              price_cents: 12900,
+              interval: "semiannual",
+            },
+          }),
+          // mensal, NÃO agendada: entra no MRR e fica fora do risco
+          assinatura({ id: "c" }),
+        ],
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/overview");
+
+    expect(r.body.data.cards.mrr.value).toBe(1850 + 2150 + 2990);
+    expect(r.body.data.cards.receitaEmRisco).toMatchObject({
+      count: 2,
+      mrrCents: 1850 + 2150,
+    });
+    // O percentual é do MRR, e sai da mesma soma.
+    expect(r.body.data.cards.receitaEmRisco.percentOfMrr).toBeCloseTo(
+      ((1850 + 2150) / (1850 + 2150 + 2990)) * 100,
+      6,
+    );
+  });
+
+  it("sem MRR, o percentual em risco é NULO e não divide por zero", async () => {
+    base({ subscriptions: { rows: [] } });
+    const r = await chamarAdmin("GET", "/overview");
+    expect(r.body.data.cards.mrr.value).toBe(0);
+    expect(r.body.data.cards.receitaEmRisco.percentOfMrr).toBeNull();
+  });
+
+  it("acesso Pro traz os dois ramos separados", async () => {
+    base({ influencers: { rows: [{ user_id: "u9" }] } });
+    const r = await chamarAdmin("GET", "/overview");
+    expect(r.body.data.cards.acessoPro).toMatchObject({
+      bySubscription: 1,
+      byInfluencer: 1,
+      total: 2,
+    });
+  });
+
+  it("cada card decide o Δ pela SUA série", async () => {
+    // profiles desde 2026-05-04 (sustenta 30 dias); finance desde 2026-07-13
+    // (não sustenta). Uma regra global da página erraria em um dos dois.
+    base({
+      profiles: { rows: [{ created_at: "2026-05-04T00:00:00Z" }], count: 100 },
+      finance_transactions: {
+        rows: [
+          {
+            id: "f1",
+            type: "charge",
+            gross_cents: 1000,
+            fee_cents: 0,
+            net_cents: 1000,
+            plan_code: "pro_monthly",
+            occurred_at: "2026-07-13T00:00:00Z",
+          },
+        ],
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/overview?window=30");
+
+    expect(r.body.data.cards.novosUsuarios.change.disponivel).toBe(true);
+    expect(r.body.data.cards.receita.change).toMatchObject({
+      disponivel: false,
+      motivo: "historico_insuficiente",
+    });
+  });
+
+  it("em 'tudo' nenhum card promete Δ", async () => {
+    base({
+      profiles: { rows: [{ created_at: "2026-01-01T00:00:00Z" }], count: 100 },
+    });
+    const r = await chamarAdmin("GET", "/overview?window=all");
+    expect(r.body.data.cards.novosUsuarios.change).toMatchObject({
+      disponivel: false,
+      motivo: "janela_sem_anterior",
+    });
+    expect(r.body.data.windowStartIso).toBeNull();
+  });
+
+  it("erro de banco é fail-loud, não card zerado", async () => {
+    base({ profiles: { error: { message: "timeout" } } });
+    const r = await chamarAdmin("GET", "/overview");
+    expect(r.status).toBe(500);
+  });
+});

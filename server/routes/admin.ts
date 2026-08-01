@@ -49,6 +49,15 @@ import {
   validateNewEmail,
 } from "../lib/emailChange";
 import {
+  agregarUsoDeIa,
+  custoTotalDeIa,
+} from "../lib/aiUsageStats";
+import {
+  calcularVariacao,
+  parseOverviewWindow,
+  resolverJanela,
+} from "../lib/overviewWindow";
+import {
   coletarTagueado,
   coletarTudo,
   paginateRange,
@@ -693,6 +702,150 @@ const CANCELLATION_REASON_CODES = [
   "paused",
   "other",
 ] as const;
+
+// OS SEIS CARDS DA VISAO, para uma janela.
+//
+// UMA rota em vez de acrescentar `window` a quatro endpoints existentes. O
+// motivo nao e economia de requisicao: e que a JANELA precisa significar a mesma
+// coisa nos seis numeros, e espalhar a resolucao dela por /dashboard,
+// /ai-stats, /finance/summary e /billing-metrics criaria quatro interpretacoes
+// da mesma palavra. Aqui `resolverJanela` roda uma vez e todo mundo recebe o
+// mesmo intervalo. Os endpoints antigos ficam INTOCADOS, porque outras abas
+// dependem deles.
+//
+// NAO HA ARITMETICA NOVA AQUI. Cada numero vem de quem ja sabia calcula-lo:
+//
+//   novos usuarios     count em profiles.created_at (o unico calculo proprio, e
+//                      e uma contagem)
+//   acesso Pro         contarProPorOrigem -> buildEnrichmentIndex, a MESMA lib
+//                      da lista de usuarios
+//   MRR e em risco     getMrrSnapshot (o `atRisk` sai do mesmo laco)
+//   receita            getFinanceSummary
+//   custo de IA        agregarUsoDeIa, a MESMA funcao que /ai-stats usa
+//
+// DELTA POR CARD, nunca por pagina. As series tem idades diferentes (perfis
+// desde 04/05, receita desde 13/07, snapshot desde 16/07), entao uma regra
+// global marcaria como indisponivel um Δ que existe e vice-versa. Cada card
+// declara a propria disponibilidade e, quando nao ha, o MOTIVO.
+router.get("/overview", async (req, res, next) => {
+  try {
+    const janela = resolverJanela(parseOverviewWindow(req.query.window));
+
+    const contarPerfis = async (
+      desde: string | null,
+      ate: string,
+    ): Promise<number> => {
+      let q = supabaseAdmin
+        .from("profiles")
+        .select("user_id", { count: "exact", head: true })
+        .lte("created_at", ate);
+      if (desde) q = q.gte("created_at", desde);
+      const { count, error } = await q;
+      if (error) throw new Error(`overview profiles: ${error.message}`);
+      return count ?? 0;
+    };
+
+    /** Data do registro mais antigo de uma tabela; null se estiver vazia. */
+    const inicioDaSerie = async (
+      tabela: "profiles" | "finance_transactions",
+      coluna: "created_at" | "occurred_at",
+    ): Promise<string | null> => {
+      const { data, error } = await supabaseAdmin
+        .from(tabela)
+        .select(coluna)
+        .order(coluna, { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error(`overview ${tabela}: ${error.message}`);
+      return (data as Record<string, string> | null)?.[coluna] ?? null;
+    };
+
+    const [
+      novosAtual,
+      novosAnterior,
+      perfisDesde,
+      proTally,
+      mrr,
+      receitaAtual,
+      receitaAnterior,
+      receitaDesde,
+      iaStats,
+    ] = await Promise.all([
+      contarPerfis(janela.startIso, janela.endIso),
+      janela.previousStartIso
+        ? contarPerfis(janela.previousStartIso, janela.previousEndIso!)
+        : Promise.resolve(null),
+      inicioDaSerie("profiles", "created_at"),
+      contarProPorOrigem(),
+      getMrrSnapshot(),
+      getFinanceSummary({
+        from: new Date(janela.startIso ?? 0),
+        to: new Date(janela.endIso),
+      }),
+      janela.previousStartIso
+        ? getFinanceSummary({
+            from: new Date(janela.previousStartIso),
+            to: new Date(janela.previousEndIso!),
+          })
+        : Promise.resolve(null),
+      inicioDaSerie("finance_transactions", "occurred_at"),
+      agregarUsoDeIa(janela.startIso ?? new Date(0).toISOString()),
+    ]);
+
+    res.json({
+      data: {
+        window: janela.window,
+        windowStartIso: janela.startIso,
+        windowEndIso: janela.endIso,
+        cards: {
+          novosUsuarios: {
+            value: novosAtual,
+            historicoDesde: perfisDesde,
+            change: calcularVariacao({
+              janela,
+              atual: novosAtual,
+              anterior: novosAnterior,
+              historicoDesdeIso: perfisDesde,
+            }),
+          },
+          // ESTADO ATUAL, nao serie: quantas pessoas tem Pro AGORA. O Δ dele sai
+          // do historico de snapshots (rota /subscription-history), que a tela
+          // ja consulta para o grafico; duplicar aqui seria uma segunda fonte.
+          acessoPro: {
+            bySubscription: proTally.bySubscription,
+            byInfluencer: proTally.byInfluencer,
+            total: proTally.total,
+          },
+          mrr: { value: mrr.mrrCents },
+          receita: {
+            value: receitaAtual.receitaBrutaCents,
+            historicoDesde: receitaDesde,
+            change: calcularVariacao({
+              janela,
+              atual: receitaAtual.receitaBrutaCents,
+              anterior: receitaAnterior?.receitaBrutaCents ?? null,
+              historicoDesdeIso: receitaDesde,
+            }),
+          },
+          // RECEITA EM RISCO e estado atual, nao serie: sao as assinaturas que
+          // JA tem data de saida. Nao tem Δ nem janela, e por isso a tela precisa
+          // dizer que ela ignora o seletor.
+          receitaEmRisco: {
+            count: mrr.atRisk.count,
+            mrrCents: mrr.atRisk.mrrCents,
+            percentOfMrr:
+              mrr.mrrCents > 0
+                ? (mrr.atRisk.mrrCents / mrr.mrrCents) * 100
+                : null,
+          },
+          custoIa: { valueBrl: custoTotalDeIa(iaStats) },
+        },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // HISTORICO DIARIO DE ASSINATURAS, de subscription_snapshots.
 //
@@ -4385,32 +4538,7 @@ router.get("/ai-stats", async (_req, res, next) => {
   try {
     const desde = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    const stats: Record<
-      string,
-      { calls: number; success: number; cost: number }
-    > = {};
-
-    for await (const log of paginateRange<{
-      tool: string;
-      status: string | null;
-      cost_estimate: string | null;
-    }>(
-      (from, to) =>
-        supabaseAdmin
-          .from("ai_usage_logs")
-          .select("tool, status, cost_estimate")
-          .gte("created_at", desde)
-          .order("id", { ascending: true })
-          .range(from, to),
-      { errorLabel: "ai-stats" },
-    )) {
-      if (!stats[log.tool]) stats[log.tool] = { calls: 0, success: 0, cost: 0 };
-      stats[log.tool].calls += 1;
-      if (log.status === "success") stats[log.tool].success += 1;
-      stats[log.tool].cost += parseFloat(log.cost_estimate || "0");
-    }
-
-    res.json({ data: stats });
+    res.json({ data: await agregarUsoDeIa(desde) });
   } catch (err) {
     next(err);
   }

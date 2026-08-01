@@ -217,7 +217,11 @@ export function colunasDoSelect(cols: string): string[] {
     atual += ch;
   }
   if (atual.trim()) nomes.push(atual.trim());
-  return nomes;
+  // `plans!inner`, `plans!left`, `plans!fk_nome`: o `!` e uma DICA de join do
+  // PostgREST, nao parte do nome da relacao. Sem tirar, `plans!inner` era
+  // validado como se fosse uma coluna chamada "plans!inner" e recusava a query
+  // do getMrrSnapshot, que usa exatamente essa forma.
+  return nomes.map((n) => n.split("!")[0].trim()).filter(Boolean);
 }
 
 export type LinhaQualquer = Record<string, unknown>;
@@ -488,6 +492,13 @@ describe("o parser de colunas do select entende embeds", () => {
 
   it("select sem embed é o de sempre", () => {
     expect(colunasDoSelect("id, code, label")).toEqual(["id", "code", "label"]);
+  });
+
+  it("descarta a dica de join (`!inner`), que não é nome de coluna", () => {
+    // `getMrrSnapshot` usa essa forma; sem isto o dublê recusava a query dele.
+    expect(
+      colunasDoSelect("status, plans!inner(code, name, price_cents, interval)"),
+    ).toEqual(["status", "plans"]);
   });
 });
 

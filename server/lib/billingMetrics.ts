@@ -205,10 +205,18 @@ export type MrrSnapshot = {
   activeCount: number;
   trialingCount: number;
   byPlan: PlanMrr[];
+  /**
+   * RECEITA EM RISCO: o subconjunto de `mrrCents` que ja tem data de saida
+   * (`cancel_at_period_end = true`). Nao e um numero novo, e um recorte do
+   * mesmo: sai do MESMO laco, sobre as MESMAS linhas, com a MESMA normalizacao
+   * mensal. Medido em 2026-07-31: 10 assinaturas, R$ 267,80, 15,4% do MRR.
+   */
+  atRisk: { count: number; mrrCents: number };
 };
 
 type RawMrrRow = {
   status: string | null;
+  cancel_at_period_end: boolean | null;
   plans: EmbeddedPlan | EmbeddedPlan[] | null;
 };
 
@@ -232,7 +240,9 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
     (from, to) =>
       supabaseAdmin
         .from("subscriptions")
-        .select("status, plans!inner(code, name, price_cents, interval)")
+        .select(
+          "status, cancel_at_period_end, plans!inner(code, name, price_cents, interval)",
+        )
         .in("status", ["active", "trialing"])
         .or(`current_period_end.is.null,current_period_end.gt.${nowIso}`)
         .order("id", { ascending: true })
@@ -243,6 +253,8 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
   let mrrCents = 0;
   let activeCount = 0;
   let trialingCount = 0;
+  let atRiskCents = 0;
+  let atRiskCount = 0;
   const byPlan = new Map<string, PlanMrr>();
 
   for (const row of rows) {
@@ -273,6 +285,17 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
     mrrCents += perMonth;
     activeCount += 1;
 
+    // RECEITA EM RISCO, computada NA MESMA PASSADA, sobre as MESMAS linhas, com
+    // o MESMO `monthlyEquivalentCents`. E deliberado: calcular isto num segundo
+    // lugar significaria uma TERCEIRA implementacao da normalizacao mensal
+    // (22200/12, 12900/6) nesta base, e a terceira e sempre a que diverge
+    // primeiro, porque ninguem olha para ela. Aqui nao ha aritmetica nova: so um
+    // acumulador a mais no laco que ja existe.
+    if (row.cancel_at_period_end) {
+      atRiskCents += perMonth;
+      atRiskCount += 1;
+    }
+
     const entry = byPlan.get(plan.code) ?? {
       code: plan.code,
       name: plan.name,
@@ -292,6 +315,7 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
     activeCount,
     trialingCount,
     byPlan: Array.from(byPlan.values()),
+    atRisk: { count: atRiskCount, mrrCents: atRiskCents },
   };
 }
 
