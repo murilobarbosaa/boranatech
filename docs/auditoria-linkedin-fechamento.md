@@ -179,6 +179,7 @@ Ordenadas por mecanismo, não cronologia. Todas medidas nesta base.
 | Hash do entry como prova de deploy | **Cego para mudança em chunk lazy.** Funcionou por dez deploys porque as mudanças tocavam o entry | Release do Sentry com `dateFinished` como sinal primário |
 | Pedir o bundle antigo | **200 com o `index.html`** do catch-all da Vercel, nunca 404 | Comparar tamanho ou conteúdo, nunca status |
 | `git log origin/main -1` | Mostra o que o clone acha, não o que o servidor tem | `git ls-remote` |
+| **O instrumento que verifica cobertura não tinha cobertura** (2026-08-01) | `scripts/` nunca esteve no `include` do `tsconfig.json`, então **nenhum guard desta auditoria era type-checked**. `checkMigrationsApplied.mts` subiu com um `ReferenceError` (variável de bloco referenciada fora do bloco) e `pnpm check` estava **verde**. Foi encontrado pelo próprio guard quebrando em execução real — **não por revisão, não por teste** | `tsconfig.scripts.json` sobrescrevendo só `target`, e `pnpm check` rodando os dois. Provado: reintroduzir o defeito original faz o check falhar com `TS2304` |
 | **Guard abortando por falta de `.env`, lido como "nada a reportar"** (2026-08-01) | `check:migrations` num worktree sem `.env` sai com **`exit 1`, o mesmo código de uma falha real**, e imprime com **o mesmo prefixo do caminho de sucesso**. Um grep na saída procurando o aviso das três tabelas de billing não achou nada, e a leitura foi "pendência resolvida". O guard não tinha verificado coisa nenhuma | Código de saída próprio (`78`, `EX_CONFIG`) e mensagem que diz "ABORTADO SEM VERIFICAR NADA / este resultado NÃO significa que o banco está em dia". Travado em `scripts/lib/guardAmbienteAusente.test.ts`, que roda o script de verdade |
 | Medir antes da coisa existir | Três vezes: release "cobrindo um projeto só" (o backend ainda não subira), "zero artefatos", "o bundle não mudou" | Conferir que o instante da medição é depois do evento |
 | `release` sem artefato | Existir a release não implica os mapas terem subido | Verificar o debug ID do arquivo servido |
@@ -275,6 +276,30 @@ tabela de instâncias aberta na tela, e caiu nela mesmo assim.
 
 Conhecimento não é contramedida. O conserto está em `scripts/checkMigrationsApplied.mts`: exit `78`
 (`EX_CONFIG`), distinto de `1`, e uma mensagem que não pode ser confundida com veredito.
+
+### E a última: o instrumento que verifica não era verificado
+
+Ainda em **2026-08-01**, consertando o guard acima, ele quebrou em execução real com `ReferenceError` — e
+`pnpm check` estava **verde**. Causa: `scripts/` nunca esteve no `include` do `tsconfig.json`, que cobre
+`client/src`, `shared` e `server`. **Nenhum dos guards desta auditoria era type-checked.**
+
+A anatomia é a mais fechada da série: **o instrumento que verifica não é verificado, e a afirmação sobre a
+cobertura dele estava errada no documento que cataloga erros de cobertura.** A linha do `CLAUDE.md` dizia
+"`pnpm check` cobre `*.test.ts`" — verdadeira sobre os três diretórios, falsa sobre o repositório, escrita
+por quem estava auditando cobertura de instrumento.
+
+**Como foi encontrada importa mais que o conserto:** por `ReferenceError` em execução real, não por revisão e
+não por teste. O que significa que **os outros guards podem ter o mesmo defeito latente e ninguém sabe,
+porque nunca falharam.**
+
+Daí a pergunta que fica aberta para quem continuar:
+
+> **Quantos dos guards desta auditoria já rodaram no caminho de erro?**
+
+O `check:migrations` rodou nos dois (exit `78` sem ambiente, exit `1` com contador errado, exit `0` no
+caminho feliz — os três medidos). `mutateLinkedinThresholds`, `skipsDeclarados` e `report:ai-usage`, **não
+necessariamente**. Caminho de sucesso testado e caminho de falha não exercitado é meia verificação — e é o
+estado em que a auditoria termina.
 
 ### Pedido de mudança irreversível no fim de rodada cheia
 
