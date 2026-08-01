@@ -36,8 +36,14 @@ function task(overrides: Partial<TaskCard> = {}): TaskCard {
     estimate: null,
     completed_at: null,
     archived_at: null,
+    source: "human" as const,
+    sentry_issue_id: null,
+    sentry_issue_url: null,
+    sentry_reopen_event_at: null,
+    archived_source: null,
     created_at: "2026-07-01T00:00:00Z",
     updated_at: "2026-07-01T00:00:00Z",
+    sentry_detalhe_incompleto: false,
     label_ids: [],
     checklist_total: 0,
     checklist_done: 0,
@@ -171,6 +177,8 @@ describe("buildGroups", () => {
       wip_limit: null,
       is_start: true,
       is_done: false,
+      is_pinned: false,
+      intake_source: null,
       created_at: "",
       updated_at: "",
     },
@@ -183,6 +191,8 @@ describe("buildGroups", () => {
       wip_limit: null,
       is_start: false,
       is_done: true,
+      is_pinned: false,
+      intake_source: null,
       created_at: "",
       updated_at: "",
     },
@@ -240,5 +250,35 @@ describe("ids de grupo", () => {
     expect(groupValueOf("group:alta")).toBe("alta");
     expect(groupValueOf("group:none")).toBeNull();
     expect(groupValueOf("col-a")).toBeNull();
+  });
+});
+
+describe("filtro de origem", () => {
+  it("separa automático de manual", () => {
+    const doSync = task({ source: "sentry" });
+    const manual = task({ source: "human" });
+    expect(matchesFilters(doSync, withFilters({ origem: "sentry" }), CTX)).toBe(true);
+    expect(matchesFilters(manual, withFilters({ origem: "sentry" }), CTX)).toBe(false);
+    expect(matchesFilters(manual, withFilters({ origem: "manual" }), CTX)).toBe(true);
+    expect(matchesFilters(doSync, withFilters({ origem: "manual" }), CTX)).toBe(false);
+  });
+
+  it("sem filtro de origem, os dois aparecem", () => {
+    expect(matchesFilters(task({ source: "sentry" }), EMPTY_FILTERS, CTX)).toBe(true);
+    expect(matchesFilters(task({ source: "human" }), EMPTY_FILTERS, CTX)).toBe(true);
+  });
+
+  it("source DESCONHECIDO conta como automático, e nao some dos dois lados", () => {
+    // "manual" e o COMPLEMENTO de "human", nao a lista dos valores automaticos.
+    // Se fosse a lista, um `source` novo sumiria dos DOIS filtros e ninguem
+    // notaria: o card simplesmente nao apareceria em filtro nenhum.
+    const novo = task({ source: "robo_do_futuro" as never });
+    expect(matchesFilters(novo, withFilters({ origem: "sentry" }), CTX)).toBe(true);
+    expect(matchesFilters(novo, withFilters({ origem: "manual" }), CTX)).toBe(false);
+  });
+
+  it("origem entra na contagem de filtros ativos", () => {
+    expect(activeFilterCount(withFilters({ origem: "sentry" }))).toBe(1);
+    expect(activeFilterCount(EMPTY_FILTERS)).toBe(0);
   });
 });

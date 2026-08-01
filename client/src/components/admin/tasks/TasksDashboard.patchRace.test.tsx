@@ -74,6 +74,7 @@ function column(id: string, name: string, position: number) {
   return {
     id, board_id: "b1", name, color: "#94A3B8", position,
     wip_limit: null, is_start: position === 1000, is_done: false,
+    is_pinned: false, intake_source: null,
     created_at: "", updated_at: "",
   };
 }
@@ -86,6 +87,12 @@ function task(columnId: string, archived: string | null) {
     type: "tarefa" as const, assignee_id: null, created_by: "u1", updated_by: null,
     due_date: null, estimate: null, completed_at: null, archived_at: archived,
     created_at: "2026-07-28T00:00:00Z", updated_at: "2026-07-28T00:00:00Z",
+    source: "human" as const, sentry_issue_id: null, sentry_issue_url: null,
+    sentry_reopen_event_at: null,
+    // Arquivado POR HUMANO: e o estado que a tela chama de silenciado quando o
+    // card e da etapa fixada. Aqui o card e manual, entao e so arquivado mesmo.
+    archived_source: archived ? ("human" as const) : null,
+    sentry_detalhe_incompleto: false,
     label_ids: [], checklist_total: 0, checklist_done: 0, comment_count: 0,
   };
 }

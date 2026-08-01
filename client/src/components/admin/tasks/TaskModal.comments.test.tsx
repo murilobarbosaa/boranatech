@@ -67,6 +67,8 @@ const COLUMNS: TaskColumn[] = [
     wip_limit: null,
     is_start: true,
     is_done: false,
+    is_pinned: false,
+    intake_source: null,
     created_at: "2026-07-27T00:00:00Z",
     updated_at: "2026-07-27T00:00:00Z",
   },
@@ -90,6 +92,11 @@ const TASK: Task = {
   estimate: null,
   completed_at: null,
   archived_at: null,
+  source: "human" as const,
+  sentry_issue_id: null,
+  sentry_issue_url: null,
+  sentry_reopen_event_at: null,
+  archived_source: null,
   created_at: "2026-07-27T00:00:00Z",
   updated_at: "2026-07-27T00:00:00Z",
 };
@@ -164,6 +171,7 @@ beforeEach(() => {
   vi.setSystemTime(NOW);
   svc.getTask.mockResolvedValue({
     task: TASK,
+    sentry_detalhe_incompleto: false,
     label_ids: [],
     comments: [],
     checklist: [],
@@ -186,6 +194,7 @@ describe("TaskModal: comentarios", () => {
   it("lista com autor e data relativa", async () => {
     svc.getTask.mockResolvedValue({
       task: TASK,
+      sentry_detalhe_incompleto: false,
       label_ids: [],
       comments: [comment("c1", "user-2", "olha esse caso", 5)],
       checklist: [],
@@ -257,6 +266,7 @@ describe("TaskModal: comentarios", () => {
   it("editar e excluir aparecem SO nos proprios comentarios", async () => {
     svc.getTask.mockResolvedValue({
       task: TASK,
+      sentry_detalhe_incompleto: false,
       label_ids: [],
       comments: [
         comment("meu", "user-1", "meu comentario", 5),
@@ -278,6 +288,7 @@ describe("TaskModal: comentarios", () => {
     editado.updated_at = new Date(NOW - 30 * 60_000).toISOString();
     svc.getTask.mockResolvedValue({
       task: TASK,
+      sentry_detalhe_incompleto: false,
       label_ids: [],
       comments: [editado],
       checklist: [],
@@ -293,6 +304,7 @@ describe("TaskModal: histórico", () => {
   it("renderiza a frase a partir do payload denormalizado", async () => {
     svc.getTask.mockResolvedValue({
       task: TASK,
+      sentry_detalhe_incompleto: false,
       label_ids: [],
       comments: [],
       checklist: [],
@@ -316,6 +328,7 @@ describe("TaskModal: histórico", () => {
   it("action DESCONHECIDO nao derruba a aba, cai na frase generica", async () => {
     svc.getTask.mockResolvedValue({
       task: TASK,
+      sentry_detalhe_incompleto: false,
       label_ids: [],
       comments: [],
       checklist: [],
@@ -331,6 +344,7 @@ describe("TaskModal: histórico", () => {
   it("ator que nao e mais admin renderiza sem quebrar", async () => {
     svc.getTask.mockResolvedValue({
       task: TASK,
+      sentry_detalhe_incompleto: false,
       label_ids: [],
       comments: [],
       checklist: [],
@@ -349,6 +363,7 @@ describe("TaskModal: histórico", () => {
   it("carregar mais so aparece quando ha mais, e emenda a pagina", async () => {
     svc.getTask.mockResolvedValue({
       task: TASK,
+      sentry_detalhe_incompleto: false,
       label_ids: [],
       comments: [],
       checklist: [],
