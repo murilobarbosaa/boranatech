@@ -10,6 +10,7 @@ import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import {
   decomporNota,
+  pontosPendentes,
   parcelaAutodeclarada,
 } from "@shared/linkedin/reguaV2";
 import { AREA_LABELS } from "@shared/areas";
@@ -102,6 +103,18 @@ export default function LinkedinScoreHero({
     LINKEDIN_CATEGORIES,
   );
   const totalPossivel = decomposicao.reduce((s, d) => s + d.possivel, 0);
+
+  /**
+   * Pontos aguardando confirmacao, e a nota esta incompleta?
+   *
+   * O numero sai de `pontosPendentes`, a MESMA fonte de pesos da decomposicao.
+   * Um `35` escrito aqui seria uma segunda implementacao, livre para divergir
+   * no dia em que um check de headline mudar de tier;
+   * `reguaV2.pontosPendentes.test.ts` trava isso trocando o tier e conferindo
+   * que o numero acompanha.
+   */
+  const pendentes = pontosPendentes(deterministic.checks, TIER_WEIGHTS);
+  const notaIncompleta = deterministic.notaIncompleta === true;
 
   // Burst localizado quando a reanalise SUBIU a nota, sincronizado com a
   // chegada do contador. reduce nao dispara nada. Condicao identica ao GitHub.
@@ -204,8 +217,32 @@ export default function LinkedinScoreHero({
                 faixaUi.chipBg,
               )}
             >
-              {faixaLabelOf(deterministic.faixa)}
+              {notaIncompleta ? "A confirmar" : faixaLabelOf(deterministic.faixa)}
             </motion.span>
+            {notaIncompleta ? (
+              /*
+               * O asterisco da nota. A porcentagem sai de `pontosPendentes`
+               * dividido pelo total possivel, as duas da MESMA fonte de pesos
+               * da decomposicao: nao ha numero escrito aqui, e trocar o tier de
+               * um check de headline move este texto sozinho.
+               *
+               * Por que PORCENTAGEM e nao "35 dos 194 pontos": o total de 194
+               * nao aparece em lugar nenhum da tela, entao "35" e um numero sem
+               * denominador, e "35 de 194" convida uma conta que a pessoa nao
+               * pediu. A proporcao responde a pergunta que ela tem ("quanto
+               * disso esta em aberto?") sem ensinar a regua.
+               *
+               * A copy NAO promete melhora: "pode subir ou descer". Prometer
+               * subida seria a mesma classe do chip verde de "detectada" que a
+               * Fase 4 removeu, que tranquilizava sobre uma leitura errada.
+               */
+              <span className="mt-3 block max-w-prose text-xs font-bold text-slate-600">
+                Não conseguimos ler sua headline com certeza, e ela pesa{" "}
+                {Math.round((pendentes / totalPossivel) * 100)}% da nota. Esses
+                pontos ficam em aberto até você conferir: confira o texto acima
+                e analise de novo. A nota pode subir ou descer depois disso.
+              </span>
+            ) : null}
             {improvements && improvements.total > 0 ? (
               <motion.span
                 // key muda a cada avanco: o remount reanima; no N de N, o
@@ -268,6 +305,14 @@ export default function LinkedinScoreHero({
               <ul className="mt-3 space-y-2">
                 {decomposicao.map((d) => {
                   const autodeclarado = d.categoria === "sinais";
+                  // O grupo cuja leitura esta em duvida. Derivado do MESMO
+                  // conjunto de checks: se um check de headline deixar de ser
+                  // pendente, o marcador some sozinho.
+                  const grupoPendente =
+                    notaIncompleta &&
+                    deterministic.checks.some(
+                      (c) => c.category === d.categoria && c.pendente === true,
+                    );
                   return (
                     <li key={d.categoria} className="flex items-center gap-2">
                       <span
@@ -282,15 +327,29 @@ export default function LinkedinScoreHero({
                         <span
                           className={cn(
                             "block h-full rounded-full",
-                            autodeclarado ? "bg-amber-400" : "bg-sky-600",
+                            grupoPendente
+                              ? "bg-slate-300"
+                              : autodeclarado
+                                ? "bg-amber-400"
+                                : "bg-sky-600",
                           )}
                           style={{
-                            width: `${Math.round((d.ganho / d.possivel) * 100)}%`,
+                            // Grupo pendente nao mostra progresso: a barra cheia
+                            // seria a mesma afirmacao que o chip "Forte" fazia
+                            // sobre uma headline cortada.
+                            width: grupoPendente
+                              ? "100%"
+                              : `${Math.round((d.ganho / d.possivel) * 100)}%`,
                           }}
                         />
                       </span>
-                      <span className="w-14 shrink-0 text-right text-xs font-bold tabular-nums text-slate-500">
-                        {d.ganho}/{d.possivel}
+                      <span
+                        className={cn(
+                          "w-14 shrink-0 text-right text-xs font-bold tabular-nums",
+                          grupoPendente ? "text-slate-400" : "text-slate-500",
+                        )}
+                      >
+                        {grupoPendente ? "a conferir" : `${d.ganho}/${d.possivel}`}
                       </span>
                     </li>
                   );
