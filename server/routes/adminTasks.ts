@@ -7,6 +7,7 @@ import {
   POSITION_STEP,
 } from "../lib/adminTaskPosition";
 import { paginateRange } from "../lib/paginate";
+import { detalheIncompleto } from "../lib/sentryTaskDecisions";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
 
@@ -101,6 +102,8 @@ type ColumnRow = {
   wip_limit: number | null;
   is_start: boolean;
   is_done: boolean;
+  is_pinned: boolean;
+  intake_source: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -125,6 +128,12 @@ type TaskRow = {
   archived_at: string | null;
   created_at: string;
   updated_at: string;
+  source: string;
+  sentry_issue_id: string | null;
+  sentry_issue_url: string | null;
+  sentry_reopen_event_at: string | null;
+  archived_source: string | null;
+  sentry_data: unknown;
 };
 
 type LabelRow = {
@@ -167,9 +176,15 @@ type ActivityRow = {
 const BOARD_COLUMNS =
   "id, name, key, slug, description, color, position, next_number, archived_at, created_by, created_at, updated_at";
 const COLUMN_COLUMNS =
-  "id, board_id, name, color, position, wip_limit, is_start, is_done, created_at, updated_at";
+  "id, board_id, name, color, position, wip_limit, is_start, is_done, is_pinned, intake_source, created_at, updated_at";
+// `sentry_data` entra na LEITURA e nao na RESPOSTA do snapshot: o servidor
+// precisa dele para derivar um booleano, e o cliente nao precisa dele para
+// desenhar um card. Medido em 2026-07-31 com 22 cards reais: o bloco tem 918
+// bytes em media (2674 no maior), e manda-lo no snapshot levaria o array de
+// tarefas de 17 KB para 38 KB. O bloco inteiro vai no GET /tasks/:id, que e uma
+// tarefa por vez.
 const TASK_COLUMNS =
-  "id, board_id, column_id, number, title, description, notes, position, priority, type, assignee_id, created_by, updated_by, due_date, estimate, completed_at, archived_at, created_at, updated_at";
+  "id, board_id, column_id, number, title, description, notes, position, priority, type, assignee_id, created_by, updated_by, due_date, estimate, completed_at, archived_at, created_at, updated_at, source, sentry_issue_id, sentry_issue_url, sentry_reopen_event_at, archived_source, sentry_data";
 const LABEL_COLUMNS = "id, board_id, name, color, created_at, updated_at";
 const COMMENT_COLUMNS =
   "id, task_id, author_id, body, created_at, updated_at";
@@ -376,6 +391,27 @@ async function userLabel(userId: string | null): Promise<string | null> {
     .maybeSingle();
   if (!data) return null;
   return (data.name as string | null) ?? (data.email as string | null) ?? null;
+}
+
+/**
+ * Recusa card entrando na etapa fixada.
+ *
+ * A etapa fixada significa "criado pelo Sentry, ninguem triou". E essa semantica
+ * que autoriza o job a arquivar automaticamente (poda) e a ressuscitar. Se um
+ * humano puder colocar card ali, o job passa a agir sobre um card que ele nao
+ * criou, e o invariante 1 vira letra morta por um caminho de interface.
+ *
+ * Mora no SERVIDOR e nao so na tela: regra que depende de ninguem fazer a coisa
+ * errada nao e regra. O sync escreve direto pelo supabaseAdmin, sem passar por
+ * estas rotas, entao bloquear aqui nao atrapalha a unica escrita legitima.
+ */
+function recusaEtapaFixada(column: ColumnRow) {
+  if (!column.is_pinned) return null;
+  return createError(
+    409,
+    "column_pinned_intake",
+    "Esta etapa é alimentada automaticamente pelo Sentry e não aceita cards manuais.",
+  );
 }
 
 /** Coluna onde um card novo nasce: a is_start, ou a de menor posicao. */
@@ -781,13 +817,21 @@ router.get("/boards/:id/snapshot", async (req, res, next) => {
       columns: (columnsResult.data ?? []) as ColumnRow[],
       labels: (labelsResult.data ?? []) as LabelRow[],
       admins,
-      tasks: tasks.map((task) => ({
-        ...task,
-        label_ids: labelsByTask.get(task.id) ?? [],
-        checklist_total: checklistByTask.get(task.id)?.total ?? 0,
-        checklist_done: checklistByTask.get(task.id)?.done ?? 0,
-        comment_count: commentsByTask.get(task.id) ?? 0,
-      })),
+      tasks: tasks.map((task) => {
+        // sentry_data e LIDO e descartado aqui de proposito. O card so precisa
+        // saber SE o detalhe esta incompleto (para desenhar o selo); o bloco
+        // inteiro vai no detalhe da tarefa. Ver o comentario em TASK_COLUMNS
+        // para os bytes medidos.
+        const { sentry_data, ...semBloco } = task;
+        return {
+          ...semBloco,
+          sentry_detalhe_incompleto: detalheIncompleto(sentry_data),
+          label_ids: labelsByTask.get(task.id) ?? [],
+          checklist_total: checklistByTask.get(task.id)?.total ?? 0,
+          checklist_done: checklistByTask.get(task.id)?.done ?? 0,
+          comment_count: commentsByTask.get(task.id) ?? 0,
+        };
+      }),
     });
   } catch (error) {
     console.error("[admin-tasks] Falha ao montar snapshot:", error);
@@ -848,13 +892,33 @@ router.patch("/columns/reorder", async (req, res, next) => {
   // ordem indefinida em relacao as reescritas, e nada acusaria.
   const { data: existing, error } = await supabaseAdmin
     .from("admin_task_columns")
-    .select("id")
+    .select("id, is_pinned, position")
     .eq("board_id", parsed.data.board_id);
   if (error) {
     console.error("[admin-tasks] Falha ao ler colunas para reordenar:", error);
     return next(createError(500, "db_error", "Erro ao reordenar etapas."));
   }
-  const knownIds = (existing ?? []).map((row) => row.id as string);
+  const colunas = (existing ?? []) as Array<{
+    id: string;
+    is_pinned: boolean;
+    position: number;
+  }>;
+  const knownIds = colunas.map((row) => row.id);
+
+  // A etapa fixada nao entra na reordenacao: ela e a porta de entrada do feed e
+  // precisa continuar sendo a primeira coisa que se ve. Recusa em vez de
+  // reposicionar em silencio, porque mover a etapa e uma intencao explicita e
+  // ignora-la sem dizer nada seria pior que recusar.
+  const fixada = colunas.find((c) => c.is_pinned);
+  if (fixada && parsed.data.ids[0] !== fixada.id) {
+    return next(
+      createError(
+        409,
+        "column_pinned_intake",
+        "A etapa do feed automático não pode sair da primeira posição.",
+      ),
+    );
+  }
   // Set no lado enviado tambem pega id repetido: com duplicata, sent.size fica
   // menor que a lista e a comparacao de tamanho ja recusa.
   const sent = new Set(parsed.data.ids);
@@ -915,6 +979,15 @@ router.delete("/columns/:id", async (req, res, next) => {
 
   const column = await fetchColumn(id.data);
   if (!column) return next(createError(404, "not_found", "Etapa não encontrada."));
+  if (column.is_pinned) {
+    return next(
+      createError(
+        409,
+        "column_pinned_intake",
+        "A etapa do feed automático não pode ser excluída.",
+      ),
+    );
+  }
 
   const { count, error: countError } = await supabaseAdmin
     .from("admin_tasks")
@@ -998,6 +1071,8 @@ router.post("/tasks", async (req, res, next) => {
   if (!column || column.board_id !== parsed.data.board_id) {
     return next(createError(400, "invalid_column", "Etapa inválida para este quadro."));
   }
+  const recusa = recusaEtapaFixada(column);
+  if (recusa) return next(recusa);
 
   const placement = await resolveTaskPosition(
     column.id,
@@ -1255,6 +1330,11 @@ router.patch("/tasks/:id/move", async (req, res, next) => {
   if (!destination || destination.board_id !== current.board_id) {
     return next(createError(400, "invalid_column", "Etapa inválida para este quadro."));
   }
+  // Sair da etapa fixada e o fluxo principal (e a triagem). ENTRAR nela e que e
+  // recusado, e a recusa vale inclusive para o card que ja esteve la: uma vez
+  // triado, ele e do humano.
+  const recusaDestino = recusaEtapaFixada(destination);
+  if (recusaDestino) return next(recusaDestino);
   const origin = await fetchColumn(current.column_id);
 
   const placement = await resolveTaskPosition(
