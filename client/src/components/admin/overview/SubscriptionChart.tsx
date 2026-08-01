@@ -203,7 +203,12 @@ function rodapeDeSnapshots(
   data: Historico | null,
   eixoTruncado: boolean,
 ): string[] {
-  if (!data || data.points.length === 0) return [];
+  // `points` ausente NAO pode virar TypeError: na janela de deploy o frontend
+  // novo fala com o backend antigo, e este rodapé roda no corpo do componente,
+  // então uma leitura solta aqui derruba o gráfico inteiro em vez de degradar.
+  if (!data || !Array.isArray(data.points) || data.points.length === 0) {
+    return [];
+  }
   const avisos: string[] = [];
 
   if (data.staleDays !== null && data.staleDays > 1 && data.lastSnapshotDate) {

@@ -32,14 +32,12 @@ import {
   Link as LinkIcon,
   LockKeyhole,
   LogOut,
-  Mail,
   MousePointerClick,
   PlusCircle,
   RefreshCcw,
   Search,
   Send,
   ShieldCheck,
-  Sparkles,
   SquareKanban,
   Star,
   Tag,
@@ -109,7 +107,6 @@ import {
   renderCampaignBodyHtml,
 } from "@shared/emailCampaignBody";
 import { readAdminClaim } from "@/lib/adminClaim";
-import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 
 type AdminSession = {
@@ -141,12 +138,6 @@ type AiUsage = {
   status: "ok" | "watch" | "high";
 };
 
-type QueueStats = {
-  waiting: number;
-  active: number;
-  completed: number;
-  failed: number;
-};
 
 type AffiliateRecord = {
   id: string;
@@ -283,12 +274,6 @@ type DashboardData = {
   recent_audit?: AuditLog[];
 };
 
-type HealthResponse = {
-  status: string;
-  uptime?: number;
-  responseTime?: number;
-  checks?: Record<string, string>;
-};
 
 type AuditLog = {
   action: "create" | "update" | "delete" | "publish" | "unpublish";
@@ -6046,18 +6031,9 @@ export default function Admin() {
   const [accessState, setAccessState] = useState<
     "loading" | "login" | "forbidden" | "allowed"
   >("loading");
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [dashboardError, setDashboardError] = useState<string | null>(null);
-  const [health, setHealth] = useState<HealthResponse | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [aiStats, setAiStats] = useState<AiStatsData>({});
   const [aiStatsError, setAiStatsError] = useState<string | null>(null);
-  const [queueStats, setQueueStats] = useState<QueueStats>({
-    waiting: 0,
-    active: 0,
-    completed: 0,
-    failed: 0,
-  });
   const [posthogState, setPosthogState] = useState<PosthogState | null>(null);
   // Horario REAL de calculo do funil (vem do envelope da janela default, cacheada
   // 5 min). null na janela custom/erro (que sao live). O PostHog e a unica fonte
@@ -6073,16 +6049,13 @@ export default function Admin() {
   const [billingMetricsError, setBillingMetricsError] = useState<string | null>(
     null,
   );
-  const [queueError, setQueueError] = useState<string | null>(null);
   const [churnError, setChurnError] = useState<string | null>(null);
   const [affiliatesError, setAffiliatesError] = useState<string | null>(null);
   const [financeRefreshKey, setFinanceRefreshKey] = useState(0);
   // Loading por fonte de dado, nao um flag unico: cada card renderiza assim que
   // SEU dado chega, sem ficar refem do endpoint mais lento (PostHog/churn). Os
   // fetches seguem em paralelo (Promise.all em loadDashboardData); o que muda e
-  // so o estado de UI. queue nao tem flag (usa queueError + default).
   const [dashboardLoading, setDashboardLoading] = useState(true);
-  const [healthLoading, setHealthLoading] = useState(true);
   const [aiStatsLoading, setAiStatsLoading] = useState(true);
   const [posthogLoading, setPosthogLoading] = useState(true);
   const [churnLoading, setChurnLoading] = useState(true);
@@ -6236,7 +6209,6 @@ export default function Admin() {
     // nao deve, no caminho da claim, fechar o gate (so deixa os dados vazios).
     const loadDashboardData = async () => {
       setDashboardLoading(true);
-      setHealthLoading(true);
       setAiStatsLoading(true);
       setPosthogLoading(true);
       setChurnLoading(true);
@@ -6257,13 +6229,6 @@ export default function Admin() {
           error:
             err instanceof Error ? err.message : "Erro ao carregar o dashboard.",
         }));
-      const healthPromise = fetch(apiUrl("/api/health"))
-        .then((res) => res.json())
-        .then((data) => ({
-          ok: true as const,
-          data: data as HealthResponse,
-        }))
-        .catch(() => ({ ok: false as const }));
       const aiPromise = adminFetch("/ai-stats")
         .then((json) => ({
           ok: true as const,
@@ -6273,17 +6238,6 @@ export default function Admin() {
           ok: false as const,
           error:
             err instanceof Error ? err.message : "Erro ao carregar uso de IA.",
-        }));
-      // Sem colapso: falha de fetch vira estado de erro da secao, nao zeros.
-      const queuePromise = adminFetch("/queue-stats")
-        .then((json) => ({
-          ok: true as const,
-          data: json.data as QueueStats,
-        }))
-        .catch((err: unknown) => ({
-          ok: false as const,
-          error:
-            err instanceof Error ? err.message : "Erro ao carregar a fila.",
         }));
       // PostHog: union do backend; falha de fetch vira o proprio estado error.
       // computedAt vem no envelope so na janela default (cacheada); ausente/erro
@@ -6343,27 +6297,17 @@ export default function Admin() {
               : "Erro ao carregar métricas de cobrança.",
         }));
 
+      // De /dashboard so sobra `recent_audit`: os contadores morreram junto com
+      // os blocos que os exibiam (ver a poda do servidor no commit seguinte).
       void dashboardPromise.then((dashboardResult) => {
         if (cancelled) return;
-        if (dashboardResult.ok) {
-          setDashboard(dashboardResult.data);
-          setDashboardError(null);
-          setAuditLogs(
+        setAuditLogs(
+          dashboardResult.ok &&
             Array.isArray(dashboardResult.data?.recent_audit)
-              ? dashboardResult.data.recent_audit
-              : [],
-          );
-        } else {
-          setDashboard(null);
-          setDashboardError(dashboardResult.error);
-          setAuditLogs([]);
-        }
+            ? dashboardResult.data.recent_audit
+            : [],
+        );
         setDashboardLoading(false);
-      });
-      void healthPromise.then((healthResult) => {
-        if (cancelled) return;
-        setHealth(healthResult.ok ? healthResult.data : null);
-        setHealthLoading(false);
       });
       void aiPromise.then((aiResult) => {
         if (cancelled) return;
@@ -6375,15 +6319,6 @@ export default function Admin() {
           setAiStatsError(aiResult.error);
         }
         setAiStatsLoading(false);
-      });
-      void queuePromise.then((queueResult) => {
-        if (cancelled) return;
-        if (queueResult.ok) {
-          setQueueStats(queueResult.data);
-          setQueueError(null);
-        } else {
-          setQueueError(queueResult.error);
-        }
       });
       void posthogPromise.then((posthogResult) => {
         if (cancelled) return;
@@ -6430,9 +6365,7 @@ export default function Admin() {
       // acima ja aplicaram cada estado; aqui so aguardamos o conjunto.
       await Promise.all([
         dashboardPromise,
-        healthPromise,
         aiPromise,
-        queuePromise,
         posthogPromise,
         churnPromise,
         affiliatesPromise,
@@ -6486,20 +6419,15 @@ export default function Admin() {
         .catch(() => {
           if (cancelled) return;
           setSession(null);
-          setDashboard(null);
-          setDashboardError(null);
-          setHealth(null);
           setAuditLogs([]);
           setAiStats({});
           setAiStatsError(null);
-          setQueueStats({ waiting: 0, active: 0, completed: 0, failed: 0 });
           setPosthogState(null);
           setPosthogComputedAt(null);
           setChurnRiskUsers(null);
           setChurnError(null);
           setAffiliates([]);
           setAffiliatesError(null);
-          setQueueError(null);
           setBillingMetrics(null);
           setBillingMetricsError(null);
           setAccessState("forbidden");
@@ -7154,7 +7082,7 @@ export default function Admin() {
                 <SignupChart window={overviewWindow} />
               </div>
 
-              <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+              <div className="grid gap-6">
                 <article className="card-brutal rounded-3xl bg-white p-6">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -7188,209 +7116,113 @@ export default function Admin() {
                   </div>
                 </article>
 
-                <article className="card-brutal rounded-3xl bg-violet-700 p-6 text-white">
-                  <div className="flex items-center gap-3">
-                    <span className="rounded-2xl border-2 border-slate-950 bg-yellow-300 p-3 text-slate-950 shadow-[3px_3px_0_#0f172a]">
-                      <Sparkles className="h-6 w-6" />
-                    </span>
-                    <div>
-                      <p className="text-xs font-black uppercase text-violet-100">
-                        insight rápido
-                      </p>
-                      <h2 className="font-display text-2xl font-black">
-                        {/* TODO(Ana): copy do estado indisponivel de uso de IA. */}
-                        {aiStatsError
-                          ? "Uso de IA indisponível."
-                          : aiUsageReal.length
-                            ? "Uso de IA conectado."
-                            : "Sem uso de IA registrado."}
-                      </h2>
-                    </div>
-                  </div>
-                  <p className="mt-5 text-sm font-semibold leading-relaxed text-violet-100">
-                    {aiUsageReal.length
-                      ? "Os custos e chamadas abaixo vêm de ai_usage_logs nos últimos 30 dias."
-                      : "Quando houver chamadas registradas, este resumo passa a exibir custos e volume real por ferramenta."}
-                  </p>
-                  <div className="mt-6 grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl border-2 border-white/80 bg-white/10 p-4">
-                      <p className="text-2xl font-black">
-                        {dashboardLoading
-                          ? "…"
-                          : dashboard?.counts
-                            ? formatCount(dashboard.counts.ai_calls_total)
-                            : "indisponível"}
-                      </p>
-                      <p className="text-xs font-bold text-violet-100">
-                        chamadas registradas
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border-2 border-white/80 bg-white/10 p-4">
-                      <p className="text-2xl font-black">
-                        {aiStatsError
-                          ? "indisponível"
-                          : formatCurrency(
-                              Object.values(aiStats).reduce(
-                                (sum, item) => sum + item.cost,
-                                0,
-                              ),
-                            )}
-                      </p>
-                      <p className="text-xs font-bold text-violet-100">
-                        custo estimado
-                      </p>
-                    </div>
-                  </div>
-                </article>
 
-                <article className="card-brutal rounded-3xl bg-white p-6">
-                  <div className="flex items-center gap-3">
-                    <span className="rounded-2xl border-2 border-slate-950 bg-yellow-300 p-3 text-slate-950 shadow-[3px_3px_0_#0f172a]">
-                      <Mail className="h-6 w-6" />
-                    </span>
-                    <div>
-                      <p className="text-xs font-black uppercase text-violet-700">
-                        sistema
-                      </p>
-                      <h2 className="font-display text-2xl font-black text-slate-950">
-                        Fila de e-mails
-                      </h2>
-                      {/* Estado ATUAL, não série: a fila é uma foto do
-                          instante. Não há janela a obedecer. */}
-                      <p
-                        data-testid="fila-estado-atual"
-                        className="text-xs font-bold text-slate-500"
-                      >
-                        Estado atual
-                      </p>
-                    </div>
-                  </div>
-                  {queueError ? (
-                    <div className="mt-6">
-                      <ErrorBlock message={queueError} />
-                    </div>
-                  ) : (
-                    <div className="mt-6 grid grid-cols-2 gap-3">
-                      {[
-                        { label: "na fila", value: queueStats.waiting },
-                        { label: "processando", value: queueStats.active },
-                        { label: "enviados", value: queueStats.completed },
-                        { label: "com falha", value: queueStats.failed },
-                      ].map((item) => (
-                        <div
-                          key={item.label}
-                          className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
-                        >
-                          <p className="text-2xl font-black text-slate-950">
-                            {item.value}
-                          </p>
-                          <p className="text-xs font-bold text-slate-500">
-                            {item.label}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </article>
               </div>
 
-              <div className="grid gap-6 xl:grid-cols-2">
-                <article className="card-brutal overflow-hidden rounded-3xl bg-white">
-                  <div className="border-b-2 border-slate-900 bg-pink-100 p-6">
-                    <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                      <Bot className="h-6 w-6" />
-                      Consumo de créditos de IA
-                    </h2>
-                    <p className="mt-2 text-sm font-semibold text-slate-600">
-                      Custos por recurso, volume de uso e alertas de orçamento.
-                    </p>
-                    {/* Esta LISTA continua em 30 dias fixos (vem de /ai-stats).
-                        O CARD de custo de IA acima obedece ao seletor, então os
-                        dois números divergem quando a janela não é 30 — e o
-                        aviso existe para isso não parecer erro. */}
-                    <p
-                      data-testid="ia-janela-propria"
-                      className="mt-1 text-xs font-bold text-amber-700"
+              <div className="grid gap-6 xl:grid-cols-3">
+                <article className="card-brutal rounded-3xl bg-white p-6 xl:col-span-2">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                        <Globe2 className="h-6 w-6" />
+                        Aquisição de usuários
+                      </h2>
+                      {/* Este bloco responde DE ONDE vem o topo do funil, e o
+                          funil logo acima mostra que o maior vazamento está
+                          entre cadastro e checkout. A pergunta seguinte natural
+                          é o que essas pessoas fazem depois de chegar, e a
+                          resposta mudou de lugar: saiu daqui (o antigo "Páginas
+                          mais acessadas", que só listava views) e virou a aba
+                          Páginas, que tem tempo, scroll e taxa de saída. Sem
+                          este link o destino existiria e ninguém acharia. */}
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        Janela própria: últimos 30 dias (não segue o seletor)
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      data-testid="link-paginas"
+                      onClick={() => setActiveSection("paginas")}
+                      className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase text-slate-900 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
                     >
-                      Janela própria: últimos 30 dias (não segue o seletor)
-                    </p>
+                      Comportamento por página
+                    </button>
                   </div>
-                  <div className="divide-y-2 divide-slate-100">
-                    {aiStatsLoading ? (
-                      <div className="p-5">
-                        <LoadingBlock />
-                      </div>
-                    ) : aiStatsError ? (
-                      <div className="p-5">
-                        <ErrorBlock message={aiStatsError} />
-                      </div>
-                    ) : aiUsageReal.length ? (
-                      aiUsageReal.map((item) => (
-                        <div
-                          key={item.feature}
-                          className="grid gap-3 p-5 sm:grid-cols-[1fr_auto] sm:items-center"
-                        >
-                          <div>
-                            <p className="font-display text-lg font-black text-slate-950">
-                              {item.feature}
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-slate-500">
-                              {item.requests} chamadas • {item.credits} créditos
-                            </p>
+                  <div className="mt-6 space-y-4">
+                    {posthogLoading ? (
+                      <LoadingBlock />
+                    ) : posthogHasData && posthogStats?.acquisition.length ? (
+                      posthogStats.acquisition.map((channel) => {
+                        const percent =
+                          posthogAcquisitionTotal > 0
+                            ? Math.round(
+                                (channel.users / posthogAcquisitionTotal) * 100,
+                              )
+                            : 0;
+                        return (
+                          <div
+                            key={channel.channel}
+                            className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
+                          >
+                            <div className="flex items-center justify-between gap-4">
+                              <p className="font-display text-lg font-black text-slate-950">
+                                {channel.channel === "None"
+                                  ? "Direto"
+                                  : channel.channel}
+                              </p>
+                              <p className="text-sm font-black text-violet-700">
+                                {formatCount(channel.users)} usuários
+                              </p>
+                            </div>
+                            <div className="mt-3 h-3 rounded-full border-2 border-slate-900 bg-white">
+                              <div
+                                className="h-full rounded-full bg-emerald-600"
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3 sm:justify-end">
-                            <p className="font-display text-xl font-black text-slate-950">
-                              {item.cost}
-                            </p>
-                            <StatusPill status={item.status} />
-                          </div>
-                        </div>
-                      ))
+                        );
+                      })
                     ) : (
-                      <div className="p-5">
-                        <p className="font-display text-xl font-black text-slate-950">
-                          Nenhuma chamada de IA registrada
-                        </p>
-                        <p className="mt-2 text-sm font-semibold text-slate-500">
-                          Os dados aparecem quando ai_usage_logs receber
-                          eventos.
-                        </p>
-                      </div>
+                      <PosthogStateNotice state={posthogState} />
                     )}
                   </div>
                 </article>
 
                 <article className="card-brutal rounded-3xl bg-white p-6">
                   <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                    <WalletCards className="h-6 w-6" />
-                    Assinaturas e planos
+                    <Zap className="h-6 w-6" />
+                    Eventos recentes
                   </h2>
-                  <div className="mt-6 space-y-5">
-                    <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
-                      <p className="text-xs font-black uppercase text-violet-700">
-                        Assinaturas ativas
+                  <div className="mt-5 space-y-4">
+                    {dashboardLoading ? (
+                      <LoadingBlock />
+                    ) : auditLogs.length ? (
+                      auditLogs.map((event) => (
+                        <div
+                          key={`${event.created_at}-${event.resource_type}-${event.resource_slug || ""}`}
+                          className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="flex items-center gap-2 text-xs font-black uppercase text-violet-700">
+                              <FileText className="h-4 w-4" />
+                              {formatRelativeTime(event.created_at)}
+                            </span>
+                            <Clock3 className="h-4 w-4 text-slate-400" />
+                          </div>
+                          <p className="mt-2 font-display text-lg font-black text-slate-950">
+                            {auditTitle(event.action)}
+                          </p>
+                          <p className="mt-1 text-sm font-semibold text-slate-600">
+                            {event.resource_type} {event.resource_slug || ""}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4 text-sm font-black text-slate-600">
+                        Nenhuma ação registrada ainda.
                       </p>
-                      <p className="font-display text-3xl font-black text-slate-950">
-                        {dashboardLoading
-                          ? "…"
-                          : dashboard?.counts
-                            ? formatCount(dashboard.counts.active_subscriptions)
-                            : "indisponível"}
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-slate-500">
-                        Fonte: /api/admin/dashboard
-                      </p>
-                    </div>
-                    <BillingMetricsPanel
-                      loading={billingLoading}
-                      error={billingMetricsError}
-                      metrics={billingMetrics}
-                    />
-                  </div>
-                  <div className="mt-6">
-                    <SubscribersSummary
-                      onSeeAll={() => setActiveSection("financeiro")}
-                    />
+                    )}
                   </div>
                 </article>
               </div>
@@ -8918,130 +8750,6 @@ export default function Admin() {
             </Tabs>
           ) : null}
 
-          {activeSection === "visao-geral" ? (
-            <>
-              <div className="grid gap-6">
-                <article className="card-brutal rounded-3xl bg-white p-6">
-                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                    <Eye className="h-6 w-6" />
-                    Páginas mais acessadas
-                  </h2>
-                  <div className="mt-5 overflow-hidden rounded-2xl border-2 border-slate-900">
-                    {posthogLoading ? (
-                      <div className="p-5">
-                        <LoadingBlock />
-                      </div>
-                    ) : posthogHasData && posthogStats?.pages.length ? (
-                      <div className="divide-y-2 divide-slate-100">
-                        {posthogStats.pages.slice(0, 5).map((page) => (
-                          <div
-                            key={page.page}
-                            className="flex items-center justify-between gap-4 p-4"
-                          >
-                            <p className="truncate text-sm font-black text-slate-950">
-                              {page.page}
-                            </p>
-                            <p className="font-display text-lg font-black text-violet-700">
-                              {formatCount(page.views)}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-5">
-                        <PosthogStateNotice state={posthogState} />
-                      </div>
-                    )}
-                  </div>
-                </article>
-              </div>
-
-              <div className="grid gap-6 xl:grid-cols-3">
-                <article className="card-brutal rounded-3xl bg-white p-6 xl:col-span-2">
-                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                    <Globe2 className="h-6 w-6" />
-                    Aquisição de usuários
-                  </h2>
-                  <div className="mt-6 space-y-4">
-                    {posthogLoading ? (
-                      <LoadingBlock />
-                    ) : posthogHasData && posthogStats?.acquisition.length ? (
-                      posthogStats.acquisition.map((channel) => {
-                        const percent =
-                          posthogAcquisitionTotal > 0
-                            ? Math.round(
-                                (channel.users / posthogAcquisitionTotal) * 100,
-                              )
-                            : 0;
-                        return (
-                          <div
-                            key={channel.channel}
-                            className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
-                          >
-                            <div className="flex items-center justify-between gap-4">
-                              <p className="font-display text-lg font-black text-slate-950">
-                                {channel.channel === "None"
-                                  ? "Direto"
-                                  : channel.channel}
-                              </p>
-                              <p className="text-sm font-black text-violet-700">
-                                {formatCount(channel.users)} usuários
-                              </p>
-                            </div>
-                            <div className="mt-3 h-3 rounded-full border-2 border-slate-900 bg-white">
-                              <div
-                                className="h-full rounded-full bg-emerald-600"
-                                style={{ width: `${percent}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <PosthogStateNotice state={posthogState} />
-                    )}
-                  </div>
-                </article>
-
-                <article className="card-brutal rounded-3xl bg-white p-6">
-                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                    <Zap className="h-6 w-6" />
-                    Eventos recentes
-                  </h2>
-                  <div className="mt-5 space-y-4">
-                    {dashboardLoading ? (
-                      <LoadingBlock />
-                    ) : auditLogs.length ? (
-                      auditLogs.map((event) => (
-                        <div
-                          key={`${event.created_at}-${event.resource_type}-${event.resource_slug || ""}`}
-                          className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="flex items-center gap-2 text-xs font-black uppercase text-violet-700">
-                              <FileText className="h-4 w-4" />
-                              {formatRelativeTime(event.created_at)}
-                            </span>
-                            <Clock3 className="h-4 w-4 text-slate-400" />
-                          </div>
-                          <p className="mt-2 font-display text-lg font-black text-slate-950">
-                            {auditTitle(event.action)}
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-slate-600">
-                            {event.resource_type} {event.resource_slug || ""}
-                          </p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4 text-sm font-black text-slate-600">
-                        Nenhuma ação registrada ainda.
-                      </p>
-                    )}
-                  </div>
-                </article>
-              </div>
-            </>
-          ) : null}
         </div>
       </section>
       {deleteAffiliateTarget ? (

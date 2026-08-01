@@ -68,7 +68,14 @@ export function HealthBand() {
   // que deve ficar invisível quando está tudo bem.
   if (!data) return null;
 
-  if (data.ok) {
+  // LEITURA DEFENSIVA, e não zelo: na janela de deploy o frontend novo fala com
+  // o backend antigo, e um `problemas` ausente aqui derrubaria o render inteiro
+  // da Visão com TypeError, porque esta faixa é o primeiro bloco da página. É a
+  // mesma classe do `STATUS_META[item.status].label` que já quebrou o admin em
+  // produção. Sem a lista, a faixa degrada para o estado silencioso.
+  const problemas = Array.isArray(data.problemas) ? data.problemas : [];
+
+  if (data.ok || problemas.length === 0) {
     return (
       <p
         data-testid="health-band"
@@ -81,15 +88,15 @@ export function HealthBand() {
     );
   }
 
-  const erros = data.problemas.filter((p) => p.severidade === "erro").length;
+  const erros = problemas.filter((p) => p.severidade === "erro").length;
   const resumo =
     erros > 0
       ? `${erros} ${erros === 1 ? "falha" : "falhas"}${
-          data.problemas.length > erros
-            ? ` e ${data.problemas.length - erros} aviso(s)`
+          problemas.length > erros
+            ? ` e ${problemas.length - erros} aviso(s)`
             : ""
         }`
-      : `${data.problemas.length} aviso(s)`;
+      : `${problemas.length} aviso(s)`;
 
   return (
     <div
@@ -120,7 +127,7 @@ export function HealthBand() {
 
       {aberta ? (
         <ul data-testid="health-band-lista" className="space-y-1 px-4 pb-3">
-          {data.problemas.map((p) => (
+          {problemas.map((p) => (
             <li key={p.id} className="text-xs font-semibold text-slate-800">
               <span
                 className={`font-black ${
