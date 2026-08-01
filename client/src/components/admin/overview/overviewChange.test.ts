@@ -64,25 +64,28 @@ describe("rotuloDeVariacao", () => {
   });
 
   it("sem variação, diz o MOTIVO e cita a data do histórico", () => {
-    // "Sem comparação" sozinho não explica; a data explica.
+    // "Sem comparação" sozinho não explica; a data explica. O instante é
+    // realista de propósito: meia-noite UTC é um valor que o campo (timestamptz
+    // de created_at) praticamente nunca tem, e testar com ele levou, na fatia 5,
+    // a "consertar" a exibição para UTC — corrigindo o sintoma pelo lado errado.
     const r = rotuloDeVariacao(
       { disponivel: false, atual: 10, motivo: "historico_insuficiente" },
-      "2026-07-16T00:00:00Z",
+      "2026-07-16T08:10:01Z",
     )!;
     expect(r.texto).toContain("16/07/2026");
     expect(r.tom).toBe("neutro");
   });
 
-  it("a data do histórico é lida em UTC, não no fuso do navegador", () => {
-    // `2026-07-16T00:00:00Z` vira 15/07 em qualquer fuso a oeste de Greenwich,
-    // inclusive o de Brasília: o rótulo diria um dia a menos do que a série
-    // realmente começou. Foi assim que este teste pegou o defeito.
+  it("a data do histórico é o dia LOCAL do instante", () => {
+    // `historicoDesde` vem de `timestamptz` (profiles.created_at): é um
+    // instante, e para instante o dia local é o correto. 04/05 16:04 em Brasília
+    // é 04/05, não 05/05.
     expect(
       rotuloDeVariacao(
         { disponivel: false, atual: 0, motivo: "historico_insuficiente" },
-        "2026-07-16T00:00:00Z",
+        "2026-05-04T19:04:20Z",
       )!.texto,
-    ).toContain("16/07/2026");
+    ).toContain("04/05/2026");
   });
 
   it("motivo DESCONHECIDO não derruba: cai no genérico", () => {

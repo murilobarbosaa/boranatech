@@ -32,21 +32,29 @@ function pct(valor: number): string {
  * que `STATUS_META[item.status].label` quebrou o admin em produção).
  */
 /**
- * Data em UTC, sempre.
+ * Data de um INSTANTE, no fuso de quem lê.
  *
- * `toLocaleDateString` sem `timeZone` usa o fuso do NAVEGADOR, e um instante
- * gravado como `2026-07-16T00:00:00Z` vira 15/07 em qualquer fuso a oeste de
- * Greenwich — inclusive no de Brasília. O rótulo diria um dia a menos do que a
- * série realmente começou. Os carimbos do admin são UTC, então a leitura é UTC.
+ * `historicoDesde` e `seriesStart` vêm de `timestamptz` (`profiles.created_at`,
+ * `finance_transactions.occurred_at`): são instantes, e para um instante o dia
+ * LOCAL é o correto a exibir. Na fatia 5 eu tinha forçado `timeZone: "UTC"`
+ * aqui, corrigindo o sintoma pelo lado errado — um teste com meia-noite UTC
+ * falhava, e a resposta foi mudar o fuso da exibição em vez de reconhecer que o
+ * valor de teste é que não representava o campo. Para instante, UTC mostra o dia
+ * errado na direção oposta (um evento das 22h em Brasília apareceria como do dia
+ * seguinte).
+ *
+ * Quem precisa do outro caso — coluna `date`, onde o dia é o próprio dado — usa
+ * `formatarDiaCivil` de `@shared/brasiliaDay`, que recorta a string sem passar
+ * por `new Date`.
  */
-export function dataUtc(iso: string): string {
-  return new Date(iso).toLocaleDateString("pt-BR", { timeZone: "UTC" });
+export function dataDeInstante(iso: string): string {
+  return new Date(iso).toLocaleDateString("pt-BR");
 }
 
 function motivoLegivel(motivo: string, historicoDesde?: string | null): string {
   if (motivo === "historico_insuficiente") {
     return historicoDesde
-      ? `Sem comparação: histórico desde ${dataUtc(historicoDesde)}`
+      ? `Sem comparação: histórico desde ${dataDeInstante(historicoDesde)}`
       : "Sem comparação: histórico insuficiente";
   }
   if (motivo === "janela_sem_anterior")

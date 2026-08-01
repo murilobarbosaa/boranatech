@@ -15,6 +15,18 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // FUSO FIXADO EM BRASILIA, e nao herdado da maquina.
+    //
+    // O produto e brasileiro e a producao le datas nesse fuso; o CI do GitHub
+    // roda em UTC. Sem fixar, o mesmo teste de data passa aqui (a maquina esta
+    // em -03) e da outro resultado la, e a classe de defeito que mais aparece
+    // nesta base — dia deslocado por fuso — fica INVISIVEL exatamente onde a
+    // verificacao deveria ser mais dura. E o mesmo raciocinio do job `qualidade`
+    // rodar sem `.env`: o instrumento tem de reproduzir a condicao real.
+    //
+    // Efeito colateral desejado: teste de data escrito daqui em diante falha se
+    // trocar o dia, em vez de depender de quem roda.
+    env: { TZ: "America/Sao_Paulo" },
     include: [
       "client/src/**/*.test.{ts,tsx}",
       "server/**/*.test.ts",

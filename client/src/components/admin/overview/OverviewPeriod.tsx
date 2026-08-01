@@ -12,7 +12,7 @@
 // desktop volta a ser a fileira de pílulas do FinanceDashboard, que é o padrão
 // que já existe no admin.
 
-import { dataUtc } from "./overviewChange";
+import { dataDeInstante } from "./overviewChange";
 
 export const OVERVIEW_WINDOWS = ["7", "30", "all"] as const;
 export type OverviewWindow = (typeof OVERVIEW_WINDOWS)[number];
@@ -67,7 +67,7 @@ export function OverviewPeriod({
           data-testid="overview-periodo-inicio"
           className="text-xs font-bold text-slate-500"
         >
-          Desde {dataUtc(seriesStart)}
+          Desde {dataDeInstante(seriesStart)}
         </p>
       ) : null}
     </div>
