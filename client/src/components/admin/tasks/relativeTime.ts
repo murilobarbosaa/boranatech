@@ -3,7 +3,7 @@ import { formatBrasiliaDateTime } from "@/lib/brasiliaTime";
 // Data relativa em portugues para comentarios e histórico.
 //
 // Por que uma funcao nova em vez de reusar: o projeto tem TRES implementacoes
-// ad hoc disso (BugsDashboard, NotificationsPanel, VagasJobCard), todas locais,
+// ad hoc disso (NotificationsPanel, VagasJobCard; a terceira saiu com o BugsDashboard na Fase 5), todas locais,
 // nenhuma exportada, e nenhuma com relogio injetavel. Unificar as tres e
 // refatoracao fora do escopo desta fase; o que esta aqui e o que este modulo
 // precisa, com duas diferencas que as outras nao tem: `now` entra por parametro
