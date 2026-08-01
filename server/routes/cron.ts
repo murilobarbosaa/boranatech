@@ -19,6 +19,7 @@ import { cacheConnection } from "../lib/redis";
 import { issueRenewalToken } from "../lib/renewalToken";
 import { getStripe } from "../lib/stripeClient";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
+import { SYNC_FINANCE_WINDOW_DAYS } from "../lib/financeSyncWindow";
 import { syncBalanceTransactions } from "../lib/stripeSync";
 import { collectSubscriptionSnapshot } from "../lib/subscriptionSnapshots";
 import { createError } from "../middleware/error";
@@ -1351,16 +1352,19 @@ router.post(
   }),
 );
 
-// Rede de seguranca do financeiro: sincroniza as balance transactions das
-// ultimas 72h. O webhook e o caminho rapido; este cron garante contra evento
-// perdido. Idempotente pelo bt id. TTL 600s: poucos itens por dia.
+// Rede de seguranca do financeiro. O webhook e o caminho rapido; este cron
+// garante contra evento perdido E alcanca linha gravada antes de uma correcao de
+// codigo (o upsert reescreve o dono). Idempotente pelo bt id. A janela e o custo
+// dela estao em ../lib/financeSyncWindow. TTL 600s: poucos itens por dia.
 router.post(
   "/sync-finance",
   withCronLock("sync-finance", 600, async (_req, res, next) => {
     const startedAt = new Date();
 
     try {
-      const since = new Date(Date.now() - 72 * 60 * 60 * 1000);
+      const since = new Date(
+        Date.now() - SYNC_FINANCE_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+      );
       const result = await syncBalanceTransactions({ since });
       await recordCronRun({
         jobName: "sync-finance",
