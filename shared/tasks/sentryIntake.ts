@@ -48,3 +48,24 @@ export const INTAKE_SENTRY = "sentry" as const;
 /** Proveniencia do arquivamento. Espelha o CHECK de admin_tasks.archived_source. */
 export const ARQUIVADO_PELO_SYNC = "sentry_sync" as const;
 export const ARQUIVADO_POR_HUMANO = "human" as const;
+
+/**
+ * Runs nao-sadias CONSECUTIVAS antes de o cron avisar.
+ *
+ * 3 runs de 15 minutos = 45 minutos de silencio antes do aviso. Mora aqui, junto
+ * do outro numero da familia, para os dois serem definidos uma vez so.
+ *
+ * POR QUE ESTE ALERTA EXISTE. O reconcile-sentry-bugs gravou `partial` com o
+ * motivo certo no payload 78 vezes seguidas e ninguem abriu. Foi a segunda vez
+ * neste projeto que um instrumento reportou corretamente para o vazio (a
+ * primeira foi o check:migrations acusando ai_usage_excluded_tools). Um cron que
+ * morre em silencio e pior que um cron que nao existe: uma fila que para de
+ * receber parece uma fila calma.
+ *
+ * POR QUE 3 E NAO 1. Medido em 2026-07-31 sobre o historico real de
+ * cron_run_logs: com N=1 o sync-news sozinho teria disparado 71 avisos (o
+ * `partial` dele e rotina, alguns artigos falham no enriquecimento). Com N=3,
+ * cai para 10. A sequencia consecutiva e o que separa falha transitoria de job
+ * morto.
+ */
+export const RUNS_NAO_SADIAS_PARA_AVISAR = 3;
