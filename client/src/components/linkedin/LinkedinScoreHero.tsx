@@ -235,12 +235,21 @@ export default function LinkedinScoreHero({
                * A copy NAO promete melhora: "pode subir ou descer". Prometer
                * subida seria a mesma classe do chip verde de "detectada" que a
                * Fase 4 removeu, que tranquilizava sobre uma leitura errada.
+               *
+               * E NAO manda "conferir o texto acima". Este hero vive em
+               * `showResult`, e o texto da headline vive no `details` do passo
+               * de revisao, que e `showEntry`: os dois sao mutuamente
+               * exclusivos, entao "acima" apontaria para algo que nao esta na
+               * tela. A conferencia acontece na PROXIMA analise, e a copy diz
+               * isso e diz o custo (outra analise), em vez de prometer uma
+               * revisao que ali nao existe.
                */
               <span className="mt-3 block max-w-prose text-xs font-bold text-slate-600">
                 Não conseguimos ler sua headline com certeza, e ela pesa{" "}
-                {Math.round((pendentes / totalPossivel) * 100)}% da nota. Esses
-                pontos ficam em aberto até você conferir: confira o texto acima
-                e analise de novo. A nota pode subir ou descer depois disso.
+                {Math.round((pendentes / totalPossivel) * 100)}% da nota, então
+                esses pontos ficam em aberto. Em Nova análise, o passo de
+                revisão mostra a headline que lemos: é ali que dá para conferir
+                antes de enviar. A nota pode subir ou descer depois disso.
               </span>
             ) : null}
             {improvements && improvements.total > 0 ? (
