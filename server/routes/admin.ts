@@ -634,7 +634,7 @@ router.get("/health-band", async (_req, res, next) => {
       "admincache:health-band",
       HEALTH_BAND_CACHE_TTL_S,
       async () => {
-        const [integracoes, dbPing, ultimoSnapshot, pendentes, semDono] =
+        const [integracoes, dbPing, ultimoSnapshot, pendentes, fila, semDono] =
           await Promise.all([
             computarSaudeDeIntegracoes(),
             // Ping de banco, o mesmo do /api/health. Erro aqui NAO derruba a
@@ -672,6 +672,24 @@ router.get("/health-band", async (_req, res, next) => {
             // Sem `count: exact`: a soma em reais exige as linhas de qualquer
             // jeito, e o conjunto e minusculo por construcao (se nao fosse, o
             // problema seria outro e maior).
+            // FILA DE E-MAILS: so os contadores que viram acao. Sonda com teto
+            // (withRedisOpTimeout) e falha vira `null`, o estado "indisponivel",
+            // que NAO e zero: zero afirmaria que nao ha falha nenhuma.
+            (async (): Promise<{ failed: number; waiting: number } | null> => {
+              if (!emailQueue) return null;
+              try {
+                const [failed, waiting] = await withRedisOpTimeout(
+                  Promise.all([
+                    emailQueue.getFailedCount(),
+                    emailQueue.getWaitingCount(),
+                  ]),
+                  "health-band-queue",
+                );
+                return { failed, waiting };
+              } catch {
+                return null;
+              }
+            })(),
             supabaseAdmin
               .from("finance_transactions")
               .select("gross_cents")
@@ -740,6 +758,7 @@ router.get("/health-band", async (_req, res, next) => {
           resendApiKey: integracoes.resend.apiKey,
           snapshotStaleDays,
           boletosPendentes,
+          filaDeEmail: fila,
           chargesSemDono: agregarChargesSemDono(
             semDono as {
               data: Array<{ gross_cents: number | null }> | null;

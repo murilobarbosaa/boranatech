@@ -51,6 +51,12 @@ export type SinaisDeSaude = {
    * não alcançar mais. Ver `CHARGE_SEM_DONO_CORTE_DIAS`.
    */
   chargesSemDono: { count: number; grossCents: number };
+  /**
+   * Fila de e-mails. `null` quando ela está indisponível (sem Redis ou sonda
+   * estourada), que é DIFERENTE de estar vazia: uma é ausência de informação, a
+   * outra é informação de ausência.
+   */
+  filaDeEmail: { failed: number; waiting: number } | null;
 };
 
 /** Um boleto emitido expira após este prazo; depois vira órfão. */
@@ -163,6 +169,31 @@ export function calcularProblemas(
       label: "Cron de snapshot parado",
       detalhe: `Sem snapshot há ${sinais.snapshotStaleDays} dias. A série de MRR parou de crescer.`,
       severidade: "erro",
+    });
+  }
+
+  // FILA DE E-MAILS: só o que exige ação.
+  //
+  // Substituiu um bloco de quatro números fixos na Visão (aguardando, ativos,
+  // concluídos, falhas), que ocupava um cartão inteiro para dizer "está tudo
+  // normal" 99% do tempo. Dos quatro, só `failed` pede alguém: `completed` é um
+  // contador de vida inteira, `active` é transitório por definição, e `waiting`
+  // maior que zero é o funcionamento normal de uma fila, não um problema.
+  //
+  // NÃO INVENTEI heurística de "fila travada" (waiting alto com active zero):
+  // ela exige histórico que a faixa não tem, e um limiar chutado viraria alarme
+  // que dispara sem motivo, que é alarme que alguém desliga. `failed` é um fato,
+  // não uma inferência.
+  //
+  // Fila indisponível NÃO vira problema aqui: o sinal de Redis logo acima já
+  // cobre isso, e dois avisos para a mesma causa treinam a pessoa a ignorar.
+  if (sinais.filaDeEmail && sinais.filaDeEmail.failed > 0) {
+    const n = sinais.filaDeEmail.failed;
+    problemas.push({
+      id: "fila-email",
+      label: "Fila de e-mails",
+      detalhe: `${n} ${n === 1 ? "envio falhou" : "envios falharam"} e ${n === 1 ? "está" : "estão"} parados na fila.`,
+      severidade: "atencao",
     });
   }
 

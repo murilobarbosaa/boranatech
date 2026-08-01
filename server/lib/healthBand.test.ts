@@ -30,6 +30,7 @@ function sinais(over: Partial<SinaisDeSaude> = {}): SinaisDeSaude {
     snapshotStaleDays: 0,
     boletosPendentes: [],
     chargesSemDono: { count: 0, grossCents: 0 },
+    filaDeEmail: { failed: 0, waiting: 0 },
     ...over,
   };
 }
@@ -240,5 +241,42 @@ describe("cobrança sem dono", () => {
       AGORA,
     ).find((x) => x.id === "charge-sem-dono")!;
     expect(p.detalhe).toContain(String(CHARGE_SEM_DONO_CORTE_DIAS));
+  });
+});
+
+describe("fila de e-mails", () => {
+  it("falha na fila vira aviso, com a contagem", () => {
+    const p = calcularProblemas(
+      sinais({ filaDeEmail: { failed: 3, waiting: 12 } }),
+      AGORA,
+    ).find((x) => x.id === "fila-email");
+    expect(p).toBeDefined();
+    expect(p!.detalhe).toContain("3");
+    expect(p!.severidade).toBe("atencao");
+  });
+
+  it("fila com trabalho AGUARDANDO e sem falha é silêncio", () => {
+    // `waiting` maior que zero é o funcionamento normal de uma fila. Acusar
+    // isso encheria a faixa de vermelho toda vez que uma campanha fosse
+    // disparada, que é exatamente quando ninguém quer ruído.
+    expect(
+      calcularProblemas(
+        sinais({ filaDeEmail: { failed: 0, waiting: 400 } }),
+        AGORA,
+      ),
+    ).toEqual([]);
+  });
+
+  it("fila INDISPONÍVEL não vira problema próprio: quem cobre é o Redis", () => {
+    // Dois avisos para a mesma causa treinam a pessoa a ignorar os dois.
+    expect(calcularProblemas(sinais({ filaDeEmail: null }), AGORA)).toEqual([]);
+  });
+
+  it("indisponível com Redis fora acusa UMA vez, pelo Redis", () => {
+    const problemas = calcularProblemas(
+      sinais({ filaDeEmail: null, redisConfigured: true, redisOk: false }),
+      AGORA,
+    );
+    expect(problemas.map((p) => p.id)).toEqual(["redis"]);
   });
 });
