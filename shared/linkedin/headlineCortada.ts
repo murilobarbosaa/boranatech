@@ -16,11 +16,22 @@
  * a duplicar a regra nos dois lados, porque duas implementacoes da mesma regra
  * e a classe de defeito desta base.
  *
- * A garantia que sobra NAO e mais estrutural, e sim provada por teste:
- * `reguaV2.pontosPendentes.test.ts` afirma por deep-equals que a flag nao move
- * parcela nenhuma da decomposicao, com um teste de mutacao ao lado mostrando o
- * que a implementacao errada produziria. Trocar barreira por asserção e uma
- * piora real, e fica registrada aqui em vez de sumir na diferenca de um commit.
+ * A garantia que sobra NAO e mais estrutural, e sim provada por DOIS testes,
+ * que afirmam coisas diferentes:
+ *
+ *   `server/lib/linkedinDeteccaoNaoMoveNota.test.ts` prova AUSENCIA DE
+ *   DEPENDENCIA: le `linkedinChecks.ts` da fonte, recorta o bloco dos
+ *   avaliadores e afirma que nenhum deles consulta as funcoes deste arquivo;
+ *   afirma o TOTAL de usos (exatamente um, o marcador) e que nenhuma linha que
+ *   atribui `aprovado` menciona a deteccao. E o mais perto do que se perdeu:
+ *   quebra na hora em que alguem importar, nao seis meses depois.
+ *
+ *   `shared/linkedin/reguaV2.pontosPendentes.test.ts` prova INERCIA DO
+ *   RESULTADO: a flag nao move parcela nenhuma da decomposicao, com um teste de
+ *   mutacao ao lado mostrando o que a implementacao errada produziria.
+ *
+ * Trocar barreira por asserção e uma piora real, e fica registrada aqui em vez
+ * de sumir na diferenca de um commit.
  *
  * AS QUATRO ASSINATURAS, e o criterio de inclusao e ser INEQUIVOCA: nenhuma
  * pessoa escreve a headline assim de proposito. Medidas sobre as 162 analises
