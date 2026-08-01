@@ -48,6 +48,13 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      # Typecheck dos scripts (guards e utilitarios). Roda AQUI e nao no hook
+      # de pre-commit por escolha deliberada: e um `tsc` separado, com o
+      # `target` proprio dos `.mts`, e o hook ja e o gate mais caro do fluxo.
+      # Motivo de existir: `scripts/` ficava fora do `include` do
+      # tsconfig.json, e em 2026-08-01 o checkMigrationsApplied.mts subiu com
+      # um ReferenceError com o `pnpm check` verde.
+      - run: pnpm check:scripts
       - run: pnpm test
 
   migrations:
