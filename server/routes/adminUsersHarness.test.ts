@@ -137,8 +137,10 @@ const EMBEDS_CONHECIDOS = new Set(["plans"]);
 
 /**
  * Colunas que o código já escreve e que ainda NÃO estão em
- * `shared/database.types.ts` porque a migration que as cria não foi aplicada
- * (e portanto os tipos não foram regenerados).
+ * `shared/database.types.ts`. A causa pode ser a migration não ter sido
+ * aplicada OU ter sido aplicada sem o `pnpm db:types` depois; os dois estados
+ * são indistinguíveis daqui, então a entrada não deve AFIRMAR qual é sem que
+ * alguém tenha conferido contra o banco.
  *
  * A exceção NÃO é uma lista de confiança: cada entrada é conferida contra os
  * arquivos de `supabase/migrations/`, e só vale se alguma migration do
@@ -149,9 +151,14 @@ const EMBEDS_CONHECIDOS = new Set(["plans"]);
  * rodar `pnpm db:types`.
  */
 const COLUNAS_PENDENTES: Array<{ tabela: string; coluna: string }> = [
-  // 20260730190000_admin_refunds_settlement_and_revoke_action.sql, ainda NÃO
-  // aplicada. Sai daqui depois do db:push e do pnpm db:types.
-  { tabela: "admin_refunds", coluna: "settlement" },
+  // Vazia: `admin_refunds.settlement` saiu daqui em 2026-08-01, depois de o
+  // `pnpm db:types` ser rodado sobre o banco onde a migration 20260730190000 já
+  // estava aplicada. É o estado normal.
+  //
+  // O comentário anterior desta entrada afirmava que a migration "ainda NÃO"
+  // tinha sido aplicada, e isso era falso havia dias: a coluna existia no banco
+  // e só os tipos estavam atrasados. Exceção com motivo errado é pior que
+  // exceção sem motivo, porque manda investigar o lugar errado.
 ];
 
 function colunasDeclaradasEmMigrations(): Set<string> {

@@ -104,6 +104,7 @@ export type Database = {
           currency: string;
           id: string;
           reason: string;
+          settlement: string;
           stripe_charge_id: string;
           stripe_reason: string | null;
           stripe_refund_id: string | null;
@@ -117,6 +118,7 @@ export type Database = {
           currency?: string;
           id?: string;
           reason: string;
+          settlement?: string;
           stripe_charge_id: string;
           stripe_reason?: string | null;
           stripe_refund_id?: string | null;
@@ -130,6 +132,7 @@ export type Database = {
           currency?: string;
           id?: string;
           reason?: string;
+          settlement?: string;
           stripe_charge_id?: string;
           stripe_reason?: string | null;
           stripe_refund_id?: string | null;
@@ -3852,6 +3855,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      ai_usage_excluded_tools: { Args: never; Returns: string[] };
       buscar_faculdades_cursos: {
         Args: {
           p_grau?: number;
