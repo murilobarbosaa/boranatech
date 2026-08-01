@@ -55,6 +55,13 @@ jobs:
       # tsconfig.json, e em 2026-08-01 o checkMigrationsApplied.mts subiu com
       # um ReferenceError com o `pnpm check` verde.
       - run: pnpm check:scripts
+      # Auditoria de escopo dos limiares numericos do Analisador de LinkedIn:
+      # todo sitio numerico classificado, e toda ancora de mutante casando com
+      # a fonte. NAO roda as mutacoes (aquilo leva 10+ min, uma suite por
+      # mutante); so a parte que cabe num gate, que leva menos de 1s.
+      # Motivo: o script ficou FORA de qualquer gate e abortava na arvore limpa
+      # havia semanas, com 6 sitios orfaos, 3 deles criados pela auditoria.
+      - run: pnpm check:limiares
       - run: pnpm test
 
   migrations:

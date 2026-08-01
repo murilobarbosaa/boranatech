@@ -48,7 +48,7 @@ const MUT = [
   [P, "preambulo sem secao (20 linhas)", "Math.min(20, lines.length)", "Math.min(2, lines.length)"],
   [P, "linha de nome, len max (60)", "anterior.length <= 60 &&", "anterior.length <= 6 &&"],
   [P, "linha de nome, max palavras (6)", "anterior.split(/\\s+/).length <= 6 &&", "anterior.split(/\\s+/).length <= 1 &&"],
-  [P, "clip da headline (250)", "clip(escolhida.linha, 250)", "clip(escolhida.linha, 25)"],
+  [P, "clip da headline (250)", 'clip(partes.join(" ").replace(/\\s+/g, " "), 250)', 'clip(partes.join(" ").replace(/\\s+/g, " "), 25)'],
   [P, "skill, len min (2)", "if (skill.length >= 2 && skill.length <= 60) out.push(skill);", "if (skill.length >= 20 && skill.length <= 60) out.push(skill);"],
   [P, "skill, len max (60)", "if (skill.length >= 2 && skill.length <= 60) out.push(skill);", "if (skill.length >= 2 && skill.length <= 6) out.push(skill);"],
   [P, "teto de skills (50)", "return Array.from(new Set(out)).slice(0, 50);", "return Array.from(new Set(out)).slice(0, 1);"],
@@ -57,7 +57,7 @@ const MUT = [
   [S, "faixa em-construcao (69)", "if (score <= 69) return \"em-construcao\";", "if (score <= 6) return \"em-construcao\";"],
   [S, "faixa forte (89)", "if (score <= 89) return \"forte\";", "if (score <= 8) return \"forte\";"],
   [S, "QUALITATIVE_VERSION", "export const QUALITATIVE_VERSION = 3;", "export const QUALITATIVE_VERSION = 9;"],
-  [S, "DETERMINISTIC_VERSION", "export const DETERMINISTIC_VERSION = 4;", "export const DETERMINISTIC_VERSION = 9;"],
+  [S, "DETERMINISTIC_VERSION", "export const DETERMINISTIC_VERSION = 7;", "export const DETERMINISTIC_VERSION = 99;"],
   [S, "peso essencial (10)", "  essencial: 10,", "  essencial: 11,"],
   [S, "peso importante (6)", "  importante: 6,", "  importante: 7,"],
   [S, "peso opcional (3)", "  opcional: 3,", "  opcional: 4,"],
@@ -174,6 +174,16 @@ const NAO_LIMIAR = [
   [/temperature:/, "parametro do modelo, nao limiar de regra"],
   [/const (?:AI_MAX_ATTEMPTS|MAX_TOKENS) =/, "parametro operacional da chamada de IA"],
   [/const AI_BACKOFF_MS/, "backoff de retry"],
+  // --- Classificados em 2026-08-01, ao colocar este guard num gate. Ele
+  // abortava na arvore limpa havia semanas com 6 orfaos, tres deles produzidos
+  // pela propria auditoria. Cada regex e estreita de proposito: uma ampla
+  // engoliria limiar de verdade no futuro, que e o oposto do que este arquivo
+  // existe para fazer.
+  [/^while \(\w+ > 0\)/, "guarda de laco para tras na juncao de headline, nao e fronteira"],
+  [/juntou: partes\.length > 1/, "quantos pedacos foram juntados, nao e limiar de regra"],
+  [/^\s*acimaIdx >= 0$/, "guarda de indice nao encontrado (sem parentese, o padrao geral nao casa)"],
+  [/p\.possivel > 0/, "descarte de grupo vazio na decomposicao, nao e fronteira"],
+  [/cadastradas === 1/, "singular\/plural na copy do detalhe, nao e limiar"],
   [/possivel === 0/, "divisao por zero"],
   [/keyTechs\.length === 0/, "divisao por zero"],
   [/faixaFromScore|score <= /, "fronteira de faixa, coberta em VIZINHOS"],
@@ -284,9 +294,56 @@ function auditarCobertura() {
 const ALVOS = "shared/linkedin server/lib/linkedin client/src/components/linkedin";
 const VIZINHANCA = process.argv.includes("--vizinhanca");
 
+/**
+ * MODO AUDITORIA (--auditar). Roda so a descoberta e a conferencia de ancoras,
+ * sem mutar nada e sem rodar a suite. Leva segundos; o modo completo leva mais
+ * de dez minutos, porque roda a suite inteira uma vez por mutante.
+ *
+ * Existe porque este script estava FORA de qualquer gate e abortava na arvore
+ * limpa havia semanas, com 6 sitios numericos orfaos, tres deles produzidos
+ * pela propria auditoria que o criou. Guard que ninguem invoca carrega a mesma
+ * informacao que um que sempre passa: zero. E o modo completo nao cabe num
+ * gate, entao a parte que cabe e esta.
+ *
+ * O que ele afirma, e sao duas direcoes:
+ *   - todo sitio numerico da fonte esta classificado (em MUT ou NAO_LIMIAR);
+ *   - toda ancora de MUT ainda CASA com a fonte.
+ *
+ * A segunda foi acrescentada em 2026-08-01 porque duas ancoras estavam
+ * obsoletas e o script reportava `??` saindo com exit 0: `clip da headline
+ * (250)` parou de casar quando o `eeda681` mudou a linha, e `DETERMINISTIC_VERSION`
+ * quando a versao passou de 4. Limiar que deixa de ser mutado nao e testado, e
+ * o silencio era indistinguivel de cobertura.
+ */
+const AUDITAR = process.argv.includes("--auditar");
+
 // Auditoria de escopo SEMPRE, nos dois modos: um limiar novo nao pode passar
 // despercebido so porque a rodada era de vizinhanca.
 auditarCobertura();
+
+if (AUDITAR) {
+  const semAncora = MUT.filter(([rel, , de]) => {
+    const fonte = readFileSync(`${R}/${rel}`, "utf8");
+    return !fonte.includes(de);
+  });
+  if (semAncora.length > 0) {
+    console.error(
+      `\nANCORA DE MUTANTE QUE NAO CASA MAIS COM A FONTE (${semAncora.length}).`,
+    );
+    console.error(
+      "O limiar deixou de ser mutado, entao deixou de ser testado, e o script",
+    );
+    console.error("reportava isso como `??` saindo com exit 0.\n");
+    for (const [rel, nome, de] of semAncora) {
+      console.error(`  ${rel}  ${nome}\n      esperava: ${de}`);
+    }
+    process.exit(1);
+  }
+  console.log(
+    `[auditar] ok: todo sitio numerico classificado, e as ${MUT.length} ancoras de mutante casam com a fonte.`,
+  );
+  process.exit(0);
+}
 
 function rodarTestes(R, ALVOS) {
   try {
