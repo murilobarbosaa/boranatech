@@ -92,11 +92,22 @@ export function PaidFunnel() {
     return <div className="h-64 animate-pulse rounded-2xl bg-slate-100" />;
   }
 
-  const base = data.steps[0]?.people ?? 0;
+  // NORMALIZAÇÃO NUMA LINHA SÓ, e não guarda espalhada por 12 pontos de leitura.
+  // O payload desta rota tem oito campos e o render toca todos; guardar cada um
+  // no ponto de uso é a versão que alguém esquece de repetir no décimo terceiro.
+  // Aqui o shape é resolvido uma vez, e o JSX abaixo lê valores que existem.
+  const steps = Array.isArray(data.steps) ? data.steps : [];
+  const posthog: PosthogEstado = data.posthog ?? {
+    state: "error",
+    reason: "Resposta sem o estado do PostHog.",
+  };
+  const janelaDias = data.janela?.days ?? 30;
+  const boletos = data.boletosPendentes ?? { count: 0, cents: 0 };
+  const base = steps[0]?.people ?? 0;
 
   return (
     <div data-testid="funil-pago" className="space-y-4">
-      {data.posthog.state === "ok" ? null : (
+      {posthog.state === "ok" ? null : (
         // POSTHOG FORA NÃO APAGA O BLOCO: o estado é nomeado e o fato do banco
         // sobrevive logo abaixo. Um funil zerado diria "ninguém converteu", que
         // é uma afirmação sobre o negócio feita a partir de uma falha de sonda.
@@ -105,22 +116,22 @@ export function PaidFunnel() {
           className="rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 p-4"
         >
           <p className="font-display text-base font-black text-amber-900">
-            {data.posthog.state === "not_configured"
+            {posthog.state === "not_configured"
               ? "PostHog não configurado"
               : `Falha ao consultar o PostHog${
-                  typeof data.posthog.httpStatus === "number"
-                    ? ` (HTTP ${data.posthog.httpStatus})`
+                  typeof posthog.httpStatus === "number"
+                    ? ` (HTTP ${posthog.httpStatus})`
                     : ""
                 }`}
           </p>
           <p className="mt-1 text-xs font-semibold text-amber-800">
-            {data.posthog.state === "not_configured"
+            {posthog.state === "not_configured"
               ? `Faltando no servidor: ${
-                  data.posthog.missing.length
-                    ? data.posthog.missing.join(", ")
+                  posthog.missing?.length
+                    ? posthog.missing.join(", ")
                     : "credenciais do PostHog"
                 }.`
-              : data.posthog.reason}
+              : posthog.reason}
           </p>
           <p
             data-testid="funil-fato-do-banco"
@@ -128,14 +139,14 @@ export function PaidFunnel() {
           >
             As etapas de comportamento ficam indisponíveis. O que veio do banco
             continua valendo: {numero.format(data.pagantesNaJanela)}{" "}
-            assinatura(s) paga(s) nos últimos {data.janela.days} dias.
+            assinatura(s) paga(s) nos últimos {janelaDias} dias.
           </p>
         </div>
       )}
 
-      {data.steps.length > 0 ? (
+      {steps.length > 0 ? (
         <ol className="space-y-3">
-          {data.steps.map((passo) => (
+          {steps.map((passo) => (
             <li
               key={passo.id}
               data-testid={`funil-passo-${passo.id}`}
@@ -223,8 +234,8 @@ export function PaidFunnel() {
 
       <ul className="space-y-1 border-t-2 border-slate-100 pt-3 text-xs font-semibold text-slate-500">
         <li data-testid="funil-janela-fixa">
-          Janela fixa de {data.janela.days} dias nas duas fontes. Não segue o
-          seletor de período.
+          Janela fixa de {janelaDias} dias nas duas fontes. Não segue o seletor
+          de período.
         </li>
         {data.assinantesSemRastro ? (
           <li data-testid="funil-sem-rastro">
@@ -243,12 +254,11 @@ export function PaidFunnel() {
             depois. Não é uma etapa: está dentro de quem iniciou checkout.
           </li>
         ) : null}
-        {data.boletosPendentes.count > 0 ? (
+        {boletos.count > 0 ? (
           <li data-testid="funil-boleto-pendente">
-            {numero.format(data.boletosPendentes.count)} boleto(s) emitido(s) e
-            não pago(s) ({brl.format(data.boletosPendentes.cents / 100)}) estão
-            fora do funil: não são conversão nem vazamento enquanto o prazo
-            corre.
+            {numero.format(boletos.count)} boleto(s) emitido(s) e não pago(s) (
+            {brl.format(boletos.cents / 100)}) estão fora do funil: não são
+            conversão nem vazamento enquanto o prazo corre.
           </li>
         ) : null}
         {data.truncated ? (

@@ -216,14 +216,17 @@ function rodapeDeSnapshots(
       `A série termina em ${rotuloDeDia(data.lastSnapshotDate)}: é a última medição registrada.`,
     );
   }
-  if (data.gaps.length > 0) {
+  // `gaps` recebe o mesmo tratamento que `points`: o guard acima cobre um campo
+  // só, e um payload com pontos e sem buracos passaria por ele e estouraria aqui.
+  const gaps = Array.isArray(data.gaps) ? data.gaps : [];
+  if (gaps.length > 0) {
     avisos.push(
-      `${data.gaps.length} ${data.gaps.length === 1 ? "dia sem medição" : "dias sem medição"} (${data.gaps
+      `${gaps.length} ${gaps.length === 1 ? "dia sem medição" : "dias sem medição"} (${gaps
         .slice(0, 3)
         .map(rotuloDeDia)
         .join(
           ", ",
-        )}${data.gaps.length > 3 ? "..." : ""}): a linha interrompe, não atravessa.`,
+        )}${gaps.length > 3 ? "..." : ""}): a linha interrompe, não atravessa.`,
     );
   }
   if (eixoTruncado) {

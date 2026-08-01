@@ -6475,7 +6475,7 @@ export default function Admin() {
     posthogState?.state === "ok" && posthogState.hasData,
   );
   const posthogAcquisitionTotal =
-    posthogStats?.acquisition.reduce(
+    posthogStats?.acquisition?.reduce(
       (sum, channel) => sum + channel.users,
       0,
     ) || 0;
@@ -6566,7 +6566,14 @@ export default function Admin() {
       const indisponivel = overviewError ? "indisponível" : "…";
       return metricCards.map((c) => ({ ...c, value: indisponivel }));
     }
+    // `cards` AUSENTE não pode virar TypeError: este useMemo roda no corpo do
+    // render, então um payload sem ele não derruba só os cards, derruba a página
+    // inteira (o ErrorBoundary da App troca tudo pela tela de falha). Sem os
+    // cards, o mesmo caminho de "indisponível" que já existe para erro de rede.
     const c = overview.cards;
+    if (!c) {
+      return metricCards.map((card) => ({ ...card, value: "indisponível" }));
+    }
     const janelaLabel =
       overview.window === "all" ? "no período todo" : `nos últimos ${overview.window} dias`;
 
@@ -7044,7 +7051,7 @@ export default function Admin() {
               <OverviewPeriod
                 window={overviewWindow}
                 onChange={setOverviewWindow}
-                seriesStart={overview?.cards.novosUsuarios.historicoDesde}
+                seriesStart={overview?.cards?.novosUsuarios?.historicoDesde}
               />
 
               {overviewLoading ? (
@@ -7140,7 +7147,7 @@ export default function Admin() {
                   <div className="mt-6 space-y-4">
                     {posthogLoading ? (
                       <LoadingBlock />
-                    ) : posthogHasData && posthogStats?.acquisition.length ? (
+                    ) : posthogHasData && posthogStats?.acquisition?.length ? (
                       posthogStats.acquisition.map((channel) => {
                         const percent =
                           posthogAcquisitionTotal > 0

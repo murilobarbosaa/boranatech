@@ -52,6 +52,20 @@ vi.mock("@/lib/supabase", () => ({
 
 vi.mock("@/lib/api", () => ({ apiUrl: (p: string) => p }));
 
+// O ResponsiveContainer do Recharts observa o tamanho do pai, e o jsdom não tem
+// ResizeObserver. Só o teste de payload PARCIAL chega a montar um gráfico com
+// pontos (os demais param no estado vazio), e sem este stub ele deixa dois erros
+// não tratados no relatório da suíte, que viram ruído capaz de esconder falha de
+// verdade depois.
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+(globalThis as { ResizeObserver?: unknown }).ResizeObserver =
+  (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??
+  ResizeObserverStub;
+
 import Admin from "./Admin";
 
 /** Blocos que a fatia 9 REMOVEU, com o destino que ficou no lugar de cada um. */
@@ -202,41 +216,111 @@ describe("inventário de blocos da Visão", () => {
   });
 
   it("payload sem os campos esperados NÃO derruba a Visão", async () => {
-    // JANELA DE DEPLOY: a Vercel sobe antes do Railway, então o frontend novo
-    // fala com o backend antigo por 1 a 3 minutos. Este teste encontrou TRÊS
-    // leituras soltas que viravam TypeError no corpo do componente e levavam a
-    // Visão inteira junto: `problemas` na faixa e `points` nos dois gráficos.
+    // JANELA DE DEPLOY e mudança de contrato: a Vercel sobe antes do Railway, e
+    // qualquer alteração futura no shape destas rotas chega ao bundle novo antes
+    // de o backend acompanhar (ou depois de ele já ter mudado).
+    //
+    // Este teste é o CASO EXTREMO de propósito: TODAS as rotas da Visão
+    // respondem 200 com `{}`. Nenhuma leitura pode estourar, porque um erro de
+    // render aqui não derruba um bloco, derruba a página inteira: o
+    // ErrorBoundary da App troca tudo pela tela de falha.
+    //
+    // Encontrou seis leituras soltas no PaidFunnel, duas no Admin.tsx e uma em
+    // cada gráfico. A versão anterior deste teste passava um payload COMPLETO
+    // para /paid-funnel e /overview, então não exercia nenhuma delas.
+    fetchMock.mockImplementation(() => Promise.resolve({ data: {} }));
+
+    render(<Admin />);
+
+    // A Visão continua de pé: o funil, o bloco de aquisição e a auditoria
+    // renderizam, e a faixa degrada para o estado silencioso.
+    await waitFor(() =>
+      expect(screen.getByText(/Do visitante ao assinante Pro/i)).toBeTruthy(),
+    );
+    expect(screen.getByText(/Aquisição de usuários/i)).toBeTruthy();
+    expect(screen.getByText(/Eventos recentes/i)).toBeTruthy();
+    const faixa = await screen.findByTestId("health-band");
+    expect(faixa.getAttribute("data-estado")).toBe("ok");
+    // Os cards caem no estado nomeado, não em R$ 0,00 falso.
+    expect(screen.getAllByText("indisponível").length).toBeGreaterThan(0);
+  });
+
+  it("payload de ERRO no lugar do de sucesso também não derruba", async () => {
+    // O outro sentido: a rota existe e responde, mas com o envelope de falha.
+    fetchMock.mockImplementation(() =>
+      Promise.resolve({ data: null, error: "boom" }),
+    );
+
+    render(<Admin />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Do visitante ao assinante Pro/i)).toBeTruthy(),
+    );
+  });
+
+  it("payload PARCIAL (com os campos antigos, sem os novos) não derruba", async () => {
+    // O caso que o payload vazio NÃO exercita, e o mais realista de todos: a
+    // resposta traz o que sempre trouxe e falta só o campo acrescentado depois.
+    // As guardas de primeiro nível passam e o estouro acontece adiante — foi
+    // exatamente assim que `gaps` sobreviveu à primeira rodada desta varredura.
     fetchMock.mockImplementation((rota: unknown) => {
       const r = String(rota);
-      if (r.startsWith("/health-band")) return Promise.resolve({ data: {} });
-      if (r.startsWith("/overview"))
-        return Promise.reject(new Error("sem dados no teste"));
-      if (r.startsWith("/dashboard"))
-        return Promise.resolve({ data: { recent_audit: [] } });
-      if (r.startsWith("/paid-funnel"))
+      if (r.startsWith("/subscription-history")) {
         return Promise.resolve({
           data: {
-            janela: { from: "", to: "", days: 30 },
-            posthog: { state: "ok" },
-            steps: [],
-            biggestLeak: null,
-            pagantesNaJanela: 0,
-            assinantesSemRastro: 0,
-            retornos: null,
-            boletosPendentes: { count: 0, cents: 0 },
-            truncated: false,
+            window: "30",
+            points: [
+              {
+                date: "2026-07-30",
+                missing: false,
+                activeCount: 62,
+                mrrCents: 170680,
+              },
+            ],
+            lastSnapshotDate: "2026-07-30",
+            staleDays: 0,
+            // `gaps` e `truncated` ausentes de propósito.
           },
         });
+      }
+      if (r.startsWith("/signup-history")) {
+        return Promise.resolve({
+          data: {
+            window: "30",
+            points: [{ date: "2026-07-30", count: 10, partial: false }],
+            // `firstSignupDate` ausente.
+          },
+        });
+      }
+      if (r.startsWith("/paid-funnel")) {
+        return Promise.resolve({
+          data: {
+            steps: [
+              {
+                id: "visitantes",
+                label: "Visitantes únicos",
+                people: 100,
+                fonte: "posthog",
+                conversionFromPrev: null,
+                lostFromPrev: null,
+                smallSample: false,
+              },
+            ],
+            posthog: { state: "ok" },
+            // `janela`, `boletosPendentes` e `retornos` ausentes.
+          },
+        });
+      }
       return Promise.resolve({ data: {} });
     });
 
     render(<Admin />);
-    // A Visão inteira continua de pé, e a faixa degrada para o estado
-    // silencioso em vez de derrubar o render.
+
     await waitFor(() =>
       expect(screen.getByText(/Do visitante ao assinante Pro/i)).toBeTruthy(),
     );
-    const faixa = await screen.findByTestId("health-band");
-    expect(faixa.getAttribute("data-estado")).toBe("ok");
+    // O gráfico desenhou com o ponto que veio, sem estourar no campo ausente.
+    expect(await screen.findByTestId("grafico-assinaturas")).toBeTruthy();
+    expect(await screen.findByTestId("funil-passo-visitantes")).toBeTruthy();
   });
 });
