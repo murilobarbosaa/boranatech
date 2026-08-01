@@ -117,6 +117,71 @@ As 3 tabelas expostas pelo PostgREST e não declaradas em migration nenhuma
 reportadas pelo guard a cada execução e continuam pendentes. 82 declaradas + 3
 não declaradas = 85, que fecha com a contagem de produção.
 
+#### Por que o warn das 3 é ESPERADO nesta árvore, e não defeito
+
+Rastreado em 2026-08-01. As três existem no banco desde 2026-07-28 porque as
+migrations foram aplicadas **deliberadamente**, antes do deploy do código que as
+consome — a ordem que o `CLAUDE.md` manda seguir. Os quatro arquivos que as
+declaram (`20260728190000_create_billing_failed_payments`,
+`20260728200000_create_stripe_customers`,
+`20260728210000_create_payment_recovery_emails` e
+`20260728230000_add_episodio_to_payment_recovery_emails`, este último trazendo a
+coluna `episodio`) vivem na branch **`fix/billing-customer-reuse`**, que ainda
+não subiu. Conferido: nenhum arquivo em `supabase/migrations/` desta árvore
+menciona qualquer uma das três, e nenhum código desta árvore as referencia fora
+de `shared/database.types.ts` (que é gerado do banco e portanto as conhece).
+
+Nesta branch, então, o warn **descreve a realidade corretamente**: as tabelas
+existem, a declaração delas não está aqui. Ele desaparece sozinho quando a branch
+de billing entrar, e nesse momento `EXPECTED_TABLE_COUNT` e `EXPECTED_RLS_COUNT`
+sobem de 82 para 85 (medido: com os quatro arquivos presentes o guard conta 85 e
+aborta pedindo o ajuste, que é o comportamento correto dele).
+
+Trazer os quatro arquivos para cá foi **testado e descartado**: criaria os mesmos
+arquivos em duas branches, garantindo conflito no merge seguinte e repetindo o
+risco de bump duplo do contador que este mesmo projeto já viu no 81 -> 82. A
+declaração entra uma vez, pelo merge da branch que a criou.
+
+### LACUNA: "tabela não declarada" avisa, mas não reprova
+
+Registrada em 2026-08-01, separada do item acima de propósito: aquele é um estado
+esperado desta branch, **este é um defeito do instrumento**.
+
+`recursosNaoDeclarados` (em `scripts/checkMigrationsApplied.mts`) emite
+`console.warn` e **não alimenta `houveFalha`**. Verificado seguindo os doze
+pontos que setam a flag: nenhum deles é este. O guard sai com código 0 mesmo
+listando tabelas que existem no banco e que migration nenhuma declara.
+
+**Consequência prática.** Alguém cria uma tabela pelo painel do Supabase, por um
+script solto ou por um `psql` manual, e o guard **nunca acusa** — nem no CI. A
+reconstrução a partir das migrations (que é o que um ambiente de ensaio faz)
+nasce sem ela, e a divergência só aparece quando alguém for usar o ambiente e
+descobrir que a tabela não existe lá. É a classe que o `CLAUDE.md` documenta:
+veredito certo sobre uma superfície menor que a real. A direção "o que declarei
+existe?" reprova; a direção inversa, "o que existe está declarado?", só avisa.
+
+**Por que não pode virar falha incondicional hoje.** Três motivos medidos:
+
+1. Reprovaria esta própria branch, e a de billing, e qualquer branch que aplique
+   a migration antes do deploy do código — que é a ordem que o `CLAUDE.md`
+   EXIGE. A janela entre aplicar e mergear é legítima e pode durar dias.
+2. Reprovaria trabalho paralelo: com dois worktrees ativos, a branch A vê as
+   tabelas que a branch B aplicou e ainda não mergeou.
+3. O PostgREST expõe o que ele expõe. Uma view criada por uma extensão ou por um
+   recurso gerenciado do Supabase apareceria como "não declarada" sem que
+   ninguém tenha feito nada errado (o guard já mantém `DE_EXTENSAO` para o caso
+   equivalente em funções, e a lista de exceção de tabelas não existe).
+
+**Critério proposto** (não implementado): falhar quando a tabela não declarada
+estiver no banco **e não estiver em nenhuma branch conhecida**. Operacionalmente,
+uma lista de exceção explícita e datada no próprio guard, no molde de
+`DE_EXTENSAO`, com o nome da tabela, a branch onde a migration vive e a data de
+entrada; a ausência da tabela nessa lista vira falha. Isso inverte o default de
+"avisa e segue" para "reprova salvo declaração", e a declaração custa uma linha
+no commit que aplica a migration. O que ela compra: uma tabela criada pelo painel
+não tem branch para citar, então não entra na lista, então quebra o CI — que é
+exatamente o caso que hoje passa despercebido.
+
 ### Migrations que não deixam rastro estrutural nenhum
 
 **21 dos 123 arquivos** não declaram estrutura: são DML puro ou agendamento de
