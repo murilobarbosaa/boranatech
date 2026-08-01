@@ -15,7 +15,8 @@ leitura de código.
 | 1 Terreno (tipo `bug`, `is_start`, `statsPeriod`) | **concluída** |
 | 2 Schema do feed, etapa fixada e proveniência | **concluída** |
 | 3 O sync, desligado | **concluída** |
-| 4 a 6 | não iniciadas |
+| 4 Interface do feed | **concluída** |
+| 5 e 6 | não iniciadas |
 | ~~7 Remover sincronização reversa~~ | **cancelada pela Emenda 1** |
 
 Migrations M1 a M6 escritas e pendentes de aplicação pelo SQL editor. Nenhuma
@@ -169,6 +170,64 @@ de 14d, para a poda não alcançar nada que ainda esteja aparecendo no feed
 normal. A relação está travada por teste, não só por comentário.
 
 ---
+
+## Adendo à Fase 3: o cron precisa avisar (2026-07-31)
+
+Duas vezes neste projeto um instrumento reportou corretamente para o vazio: o
+`check:migrations` acusando `ai_usage_excluded_tools`, e o `cron_run_logs`
+gravando `partial` 78 vezes com o motivo certo no payload. O sync novo é mais um
+cron capaz de morrer do mesmo jeito, e o silêncio dele seria pior: **uma fila que
+para de receber parece uma fila calma.**
+
+**Regra**: N runs não-sadias consecutivas disparam a notificação interna (a que
+já existe, a dos bugs). Não e-mail. Uma run sadia zera. `N = 3` (45 minutos), em
+`shared/tasks/sentryIntake.ts`, junto do `N = 21` dias.
+
+Mora **dentro do `recordCronRun`**, não em cada endpoint: são 14 jobs hoje e os
+próximos ainda não existem. Guarda no chamador sumiria no primeiro que alguém
+esquecesse.
+
+**Dispara em N exatamente, nunca depois.** A condição é "as N últimas são
+não-sadias E a anterior era sadia". Sem isso, a sequência real de 372 runs
+quebradas teria gerado 370 notificações, e o aviso viraria o ruído que ele existe
+para evitar.
+
+**Por que a lista de jobs é opt-in, e não todos.** Medido sobre o histórico real,
+com a regra de 3 consecutivas:
+
+| Job | Disparos históricos |
+| --- | --- |
+| `sync-news` | **10** (partial ali é rotina: alguns artigos falham no enriquecimento) |
+| `reindex-search` | 1 |
+| `sync-jobs` | 0 |
+| `reconcile-sentry-bugs` | 1, e é o defeito real |
+
+Dez avisos por algo que não exige ação é o caminho mais curto para o
+destinatário ignorar o próximo, que será o que importa. O custo da escolha está
+declarado no código: job novo não avisa até alguém incluí-lo. É falha de
+**omissão**, não falso-verde, e o teste trava o conteúdo do conjunto.
+
+Sem painel de saúde de cron: o problema era ninguém olhar o log, e a resposta é o
+sino, não mais uma tela para ninguém abrir.
+
+## Passo que faltava no roteiro da Fase 6
+
+Descoberto no primeiro dry-run real. O quadro `BUG` de produção foi montado à
+mão antes destas migrations, então suas colunas nascem com o default e **nenhuma
+é a etapa de intake**. Depois de aplicar M3 a M6, o job responderia
+`sem_quadro_ligado` e, se o quadro fosse ligado assim, `sem_etapa_de_intake`.
+
+Antes de ligar:
+
+```sql
+update public.admin_task_columns c
+set is_pinned = true, intake_source = 'sentry'
+from public.admin_task_boards b
+where c.board_id = b.id and b.key = 'BUG' and c.name = 'Sentry';
+```
+
+E só então `sentry_sync_enabled = true` no quadro. A ordem importa: quadro ligado
+sem etapa de intake é estado inválido, e o job aborta nele de propósito.
 
 ## 0. Três achados que mudam o enunciado do projeto
 
@@ -865,6 +924,74 @@ Arquivos: `TaskModal.tsx`, `TaskCard.tsx`, `TasksDashboard.tsx`,
 Antes de escrever qualquer mutação aqui: a seção "Regra das mutações otimistas"
 do `docs/tarefas-modulo.md` (invariante 9). Em particular, se a recusa de drop
 gerar rollback, ele é **por campo tocado**, nunca do snapshot.
+
+### Fase 4: interface. CONCLUÍDA
+
+#### Payload do snapshot, medido
+
+Com 22 cards reais do Sentry num Postgres de verdade:
+
+| Conteúdo do array de tarefas | Bytes | Por card |
+| --- | --- | --- |
+| Campos de hoje, sem nada novo | 11.542 | 525 |
+| Com os campos do feed, **sem** `sentry_data` | 17.196 | 782 |
+| Com `sentry_data` junto | 37.713 | 1.714 |
+
+Produção hoje, para escala: o quadro `DEV` tem 25 tarefas e 16 KB.
+
+**Decisão tomada com número: `sentry_data` fica FORA do snapshot.** Ele mais que
+dobraria o payload (17 KB para 38 KB) e cresce com o stack, que é o campo mais
+volumoso e o menos útil num card. O servidor lê o bloco, deriva
+`sentry_detalhe_incompleto` (booleano) e descarta o resto; o bloco inteiro vai
+no `GET /tasks/:id`, uma tarefa por vez.
+
+Projeção para o pior caso previsto (22 do feed + 25 migrados na Fase 5 = 47
+cards): **~37 KB**, cerca de 2,3× o quadro `DEV` de hoje. Com `sentry_data`
+seriam ~81 KB. A poda por silêncio é o que impede esse número de crescer sem
+limite.
+
+#### O bloqueio da etapa fixada NÃO existia
+
+A Fase 2 registrou a decisão e a Fase 3 não a implementou: o enunciado da Fase 4
+supunha que o servidor já recusava, e ele não recusava. Entrou agora, em três
+rotas: `POST /tasks`, `PATCH /tasks/:id/move` e `DELETE /columns/:id`, mais a
+recusa de reordenação em `PATCH /columns/reorder`. Todas com 409
+`column_pinned_intake`.
+
+A interface não oferece o que o servidor recusa: sem "+ Nova tarefa", sem alça de
+arrastar a coluna, sem opção de excluir no menu, sem badge de WIP, e
+`resolveBoardDrop` devolve `none` para qualquer drop entrando na etapa fixada.
+Sair dela continua liberado, e é o fluxo principal.
+
+#### A semântica de silenciar aparece
+
+| Onde | O que muda |
+| --- | --- |
+| Ação na etapa fixada | chama-se **Silenciar**, com o significado no `title` |
+| Ação fora dela | continua **Arquivar** |
+| Card arquivado por humano | selo **Silenciado**, "não volta mesmo se acontecer de novo" |
+| Card podado pelo job | selo **Arquivado pelo Sentry**, "volta sozinho na próxima recorrência" |
+| Desfazer | **Dessilenciar** x **Desarquivar** |
+
+Os dois rótulos serem diferentes é o ponto, e tem teste próprio: mostrar ambos
+como "arquivado" faria a pessoa achar que silenciar é só limpar a tela, e ela
+nunca descobriria que tem o recurso.
+
+#### Como testar com o quadro desligado
+
+Toda a interface se comporta sem nenhum card do Sentry existir, porque tudo é
+condicional a dado que hoje é nulo ou falso:
+
+- `is_pinned` é `false` em todas as colunas, então nenhuma coluna vira fixada e
+  nada some do menu;
+- `source` é `'human'` em todas as 26 tarefas, então nenhum selo de origem
+  aparece e o filtro de origem mostra tudo em "Manual";
+- `sentry_data` é nulo, então a seção do modal não é renderizada;
+- `archived_source` é nulo, e o resolver cai no neutro "Arquivado".
+
+Roteiro: abrir `#tarefas`, conferir que nada mudou visualmente, abrir o popover
+de filtros e ver **Origem** com "Automático" e "Manual", marcar "Automático" e
+confirmar que a lista fica vazia (nenhum card automático existe ainda), limpar.
 
 ### Fase 5: migração dos dados e desligar a aba
 
