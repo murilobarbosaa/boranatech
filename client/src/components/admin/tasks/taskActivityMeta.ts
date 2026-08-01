@@ -72,6 +72,24 @@ function formatDay(value: string | null): string {
   return formatIsoDay(value) || value;
 }
 
+/** A linha foi escrita pelo sync? O payload se declara; nada e inferido. */
+export function ehDoSync(payload: Record<string, unknown>): boolean {
+  return str(payload, "ator") === "sentry" || str(payload, "origem") === "sentry";
+}
+
+/**
+ * Acrescenta o MOTIVO quando o payload traz um.
+ *
+ * "reabriu a tarefa" nao ajuda ninguem as 3 da manha; "reabriu a tarefa (novo
+ * evento em 12/08 depois da conclusao)" ajuda. O motivo e texto ja pronto,
+ * escrito pelo job no momento da decisao, entao ele nao se reescreve depois nem
+ * depende de resolver id contra o estado atual.
+ */
+function comMotivo(payload: Record<string, unknown>, base: string): string {
+  const motivo = str(payload, "motivo");
+  return motivo ? `${base} (${motivo})` : base;
+}
+
 /**
  * Traduz uma linha do histórico. NUNCA lanca e NUNCA devolve string vazia: uma
  * linha em branco no meio do histórico e pior que uma frase generica, porque
@@ -82,6 +100,15 @@ export function activityLineOf(activity: TaskActivity): ActivityLine {
 
   switch (activity.action) {
     case "created":
+      if (ehDoSync(payload)) {
+        const shortId = str(payload, "short_id");
+        return {
+          kind: "created",
+          text: shortId
+            ? `criou a tarefa a partir da issue ${shortId}`
+            : "criou a tarefa a partir do Sentry",
+        };
+      }
       return {
         kind: "created",
         text: `criou a tarefa em ${labelOf(payload, "column_name", "column_id", "uma etapa")}`,
@@ -132,13 +159,19 @@ export function activityLineOf(activity: TaskActivity): ActivityLine {
         text: `removeu a etiqueta ${labelOf(payload, "label_name", "label_id", "uma etiqueta")}`,
       };
     case "archived":
-      return { kind: "archive", text: "arquivou a tarefa" };
+      return {
+        kind: "archive",
+        text: comMotivo(payload, ehDoSync(payload) ? "arquivou a tarefa" : "arquivou a tarefa"),
+      };
     case "unarchived":
-      return { kind: "archive", text: "desarquivou a tarefa" };
+      return {
+        kind: "archive",
+        text: comMotivo(payload, "desarquivou a tarefa"),
+      };
     case "completed":
       return { kind: "done", text: "concluiu a tarefa" };
     case "reopened":
-      return { kind: "done", text: "reabriu a tarefa" };
+      return { kind: "done", text: comMotivo(payload, "reabriu a tarefa") };
     default:
       // Action que este bundle nao conhece. Degrada em vez de derrubar a aba.
       return { kind: "other", text: "registrou uma alteração" };

@@ -11,12 +11,13 @@ import {
   MessageSquare,
 } from "lucide-react";
 
+import { arquivamentoMetaOf, origemMetaOf } from "./sentryMeta";
 import {
   badgeClass,
+  LABEL_COLOR_FALLBACK,
   priorityMetaOf,
   safeHexColor,
   typeMetaOf,
-  LABEL_COLOR_FALLBACK,
 } from "./taskBoardStyles";
 import { shortIdOf } from "./taskDeepLink";
 import type { TaskAssignee, TaskCard as TaskCardData, TaskLabel } from "./types";
@@ -93,6 +94,13 @@ export function TaskCardBody({
 }: Pick<TaskCardProps, "task" | "boardKey" | "labelsById" | "assigneesById">) {
   const priority = priorityMetaOf(task.priority);
   const type = typeMetaOf(task.type);
+  const origem = origemMetaOf(task.source);
+  // So desenha o selo de arquivamento quando o card ESTA arquivado: com o toggle
+  // de arquivadas ligado, silenciado e podado precisam ser distinguiveis, porque
+  // um nunca volta e o outro volta na proxima recorrencia.
+  const arquivamento = task.archived_at
+    ? arquivamentoMetaOf(task.archived_source)
+    : null;
   const due = dueState(task.due_date);
   // Etiqueta que sumiu do quadro (excluida enquanto a tela estava aberta) some
   // do card em vez de virar `undefined.name`.
@@ -132,6 +140,44 @@ export function TaskCardBody({
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <span className={`${badgeClass} ${priority.badge}`}>{priority.label}</span>
         <span className={`${badgeClass} ${type.badge}`}>{type.label}</span>
+        {/* Selos do feed. DISCRETOS e SO QUANDO VALEM: um selo permanente em 22
+            cards vira textura de fundo e para de ser sinal. */}
+        {origem.selo ? (
+          <span
+            className={`${badgeClass} bg-slate-900 text-white`}
+            title={
+              task.sentry_issue_id
+                ? `Criado pelo feed automático a partir de ${task.sentry_issue_id}`
+                : "Criado automaticamente"
+            }
+          >
+            {origem.selo}
+          </span>
+        ) : null}
+        {task.sentry_reopen_event_at ? (
+          <span
+            className={`${badgeClass} bg-amber-100 text-amber-900`}
+            title="O erro voltou a acontecer depois de resolvido ou arquivado"
+          >
+            Voltou
+          </span>
+        ) : null}
+        {task.sentry_detalhe_incompleto ? (
+          <span
+            className={`${badgeClass} bg-slate-200 text-slate-700`}
+            title="Não foi possível ler todo o detalhe no Sentry. A próxima manutenção completa."
+          >
+            Detalhe parcial
+          </span>
+        ) : null}
+        {arquivamento ? (
+          <span
+            className={`${badgeClass} bg-slate-100 text-slate-600`}
+            title={arquivamento.descricao}
+          >
+            {arquivamento.rotulo}
+          </span>
+        ) : null}
       </div>
 
       {task.due_date ||

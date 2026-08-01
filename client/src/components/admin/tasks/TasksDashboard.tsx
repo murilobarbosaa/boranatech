@@ -288,6 +288,19 @@ export function TasksDashboard() {
 
   const filtersActive = hasActiveFilters(filters);
 
+
+  // Etapas alimentadas pelo feed. Memo porque entra no contexto de drop, que e
+
+  // recalculado a cada movimento do ponteiro durante o arraste.
+
+  const pinnedColumnIds = useMemo(
+
+    () => (snapshot?.columns ?? []).filter((c) => c.is_pinned).map((c) => c.id),
+
+    [snapshot],
+
+  );
+
   const visibleTasks = useMemo(
     () =>
       filtersActive
@@ -366,7 +379,9 @@ export function TasksDashboard() {
   const groupByRef = useRef(groupBy);
   groupByRef.current = groupBy;
   const filtersActiveRef = useRef(filtersActive);
+  const pinnedColumnIdsRef = useRef<readonly string[]>(pinnedColumnIds);
   filtersActiveRef.current = filtersActive;
+  pinnedColumnIdsRef.current = pinnedColumnIds;
 
   /** Ids dos containers para o SortableContext horizontal. Referencia estavel. */
   const columnIds = useMemo(() => groups.map((group) => group.id), [groups]);
@@ -560,6 +575,15 @@ export function TasksDashboard() {
         title,
         description: null,
         notes: null,
+        // Card criado pela tela e sempre humano e sem vinculo com o Sentry. O
+        // otimista precisa dizer isso desde o primeiro render, senao o selo de
+        // origem pisca "Sentry" ate a resposta chegar.
+        source: "human",
+        sentry_issue_id: null,
+        sentry_issue_url: null,
+        sentry_reopen_event_at: null,
+        archived_source: null,
+        sentry_detalhe_incompleto: false,
         position: optimisticPosition,
         priority: "media",
         type: "tarefa",
@@ -973,6 +997,7 @@ export function TasksDashboard() {
           groups: groupsRef.current,
           groupBy: groupByRef.current,
           filtersActive: filtersActiveRef.current,
+          pinnedColumnIds: pinnedColumnIdsRef.current,
           task,
         },
         overId,

@@ -1,5 +1,6 @@
 import { EMPTY_FILTERS, type GroupBy, type TaskFilters } from "./taskFilters";
-import type { DueFilter } from "./taskFilters";
+import type { DueFilter,
+  OrigemFilter } from "./taskFilters";
 import type { TaskPriority, TaskType } from "./types";
 
 // Estado da tela (busca, filtros, agrupamento, visao, arquivadas) na query
@@ -31,6 +32,7 @@ export const DEFAULT_VIEW_STATE: TaskViewState = {
 const PRIORITIES: TaskPriority[] = ["baixa", "media", "alta", "urgente"];
 const TYPES: TaskType[] = ["feature", "melhoria", "debito_tecnico", "tarefa"];
 const GROUPS: GroupBy[] = ["column", "assignee", "priority"];
+const ORIGENS = ["sentry", "manual"] as const;
 const DUES: DueFilter[] = ["", "late", "week"];
 
 /** Lista separada por virgula, filtrada contra os valores conhecidos. */
@@ -57,6 +59,7 @@ export function readViewState(search: string): TaskViewState {
   const groupRaw = params.get("group");
   const viewRaw = params.get("view");
   const dueRaw = params.get("due");
+  const origemRaw = params.get("origem");
 
   return {
     filters: {
@@ -71,6 +74,11 @@ export function readViewState(search: string): TaskViewState {
         ? ((dueRaw ?? "") as DueFilter)
         : "",
       mine: params.get("mine") === "1",
+      // Mesmo tratamento do `due`: valor fora do conjunto conhecido vira "sem
+      // filtro", nunca um estado que nenhum componente sabe desenhar.
+      origem: (ORIGENS as readonly string[]).includes(origemRaw ?? "")
+        ? ((origemRaw ?? "") as OrigemFilter)
+        : "",
     },
     // Valor desconhecido cai no padrao em vez de deixar a tela num estado que
     // nenhum componente sabe renderizar.
@@ -95,6 +103,7 @@ export function writeViewState(search: string, state: TaskViewState): string {
     else params.delete(key);
   };
 
+  set("origem", state.filters.origem);
   set("q", state.filters.query.trim());
   set("assignee", state.filters.assigneeIds.join(","));
   set("labels", state.filters.labelIds.join(","));

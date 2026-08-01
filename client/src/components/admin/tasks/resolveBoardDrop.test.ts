@@ -29,8 +29,14 @@ function card(id: string, overrides: Partial<TaskCard> = {}): TaskCard {
     estimate: null,
     completed_at: null,
     archived_at: null,
+    source: "human" as const,
+    sentry_issue_id: null,
+    sentry_issue_url: null,
+    sentry_reopen_event_at: null,
+    archived_source: null,
     created_at: "2026-07-01T00:00:00Z",
     updated_at: "2026-07-01T00:00:00Z",
+    sentry_detalhe_incompleto: false,
     label_ids: [],
     checklist_total: 0,
     checklist_done: 0,
@@ -74,6 +80,7 @@ function context(overrides: Partial<DropContext> = {}): DropContext {
     groups: columnGroups([["a1", "a2", "a3"], ["b1"]]),
     groupBy: "column",
     filtersActive: false,
+    pinnedColumnIds: [],
     task: { id: "a1", column_id: "col-a", priority: "media", assignee_id: null },
     ...overrides,
   };
@@ -201,5 +208,47 @@ describe("resolveBoardDrop: agrupado por responsavel", () => {
 
   it("soltar no grupo em que ja esta nao faz nada", () => {
     expect(resolveBoardDrop(ctx, "group:none")).toEqual({ kind: "none" });
+  });
+});
+
+describe("etapa fixada: nao aceita card", () => {
+  // A tela nao pode CONVIDAR para um erro que o servidor recusa: soltar e ver um
+  // 409 e pior que nao poder soltar.
+  it("mover PARA a etapa fixada nao emite acao", () => {
+    const acao = resolveBoardDrop(
+      context({ pinnedColumnIds: ["col-b"] }),
+      "col-b",
+    );
+    expect(acao.kind).toBe("none");
+  });
+
+  it("reordenar DENTRO da etapa fixada tambem nao", () => {
+    // A ordem ali e a de chegada do feed; mexer nela seria estado que o proximo
+    // sync ignora.
+    const acao = resolveBoardDrop(
+      context({
+        pinnedColumnIds: ["col-a"],
+        task: { id: "a1", column_id: "col-a", priority: "media", assignee_id: null },
+      }),
+      "a3",
+    );
+    expect(acao.kind).toBe("none");
+  });
+
+  it("CONTROLE: SAIR da etapa fixada continua valendo, e e o fluxo principal", () => {
+    // Sem esta, "nenhuma acao" seria compativel com "bloqueei o card inteiro".
+    const acao = resolveBoardDrop(
+      context({
+        pinnedColumnIds: ["col-a"],
+        task: { id: "a1", column_id: "col-a", priority: "media", assignee_id: null },
+      }),
+      "col-b",
+    );
+    expect(acao.kind).toBe("move");
+  });
+
+  it("CONTROLE: sem etapa fixada, o mesmo drop emite move", () => {
+    const acao = resolveBoardDrop(context({ pinnedColumnIds: [] }), "col-b");
+    expect(acao.kind).toBe("move");
   });
 });
