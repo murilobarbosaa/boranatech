@@ -22,7 +22,6 @@ import {
   Compass,
   Copy,
   CreditCard,
-  Database,
   DollarSign,
   Eye,
   FileText,
@@ -40,7 +39,6 @@ import {
   RefreshCcw,
   Search,
   Send,
-  Server,
   ShieldCheck,
   Sparkles,
   SquareKanban,
@@ -82,7 +80,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
-import { IntegrationsHealthPanel } from "@/components/admin/IntegrationsHealthPanel";
+import { HealthBand } from "@/components/admin/overview/HealthBand";
 import {
   OverviewPeriod,
   parseOverviewWindow,
@@ -146,14 +144,6 @@ type QueueStats = {
   active: number;
   completed: number;
   failed: number;
-};
-
-type HealthItem = {
-  service: string;
-  status: string;
-  detail: string;
-  icon: ReactNode;
-  tone: string;
 };
 
 type AffiliateRecord = {
@@ -691,54 +681,6 @@ function auditTitle(action: AuditLog["action"]) {
   };
 
   return labels[action];
-}
-
-function buildHealthItems(health: HealthResponse | null): HealthItem[] {
-  if (!health) return [];
-
-  const databaseOk = health.checks?.database === "ok";
-  const openaiOk = health.checks?.openai === "ok";
-
-  return [
-    {
-      service: "Supabase Auth",
-      status: databaseOk ? "Operando" : "Falha",
-      detail: databaseOk
-        ? "Validação dependente do banco operacional"
-        : "Banco indisponível no health check",
-      icon: <ShieldCheck className="h-5 w-5" />,
-      tone: databaseOk
-        ? "bg-emerald-50 text-emerald-800"
-        : "bg-rose-50 text-rose-800",
-    },
-    {
-      service: "Banco de dados",
-      status: databaseOk ? "Estável" : "Falha",
-      detail: `Resposta em ${health.responseTime ?? 0}ms`,
-      icon: <Database className="h-5 w-5" />,
-      tone: databaseOk
-        ? "bg-blue-50 text-blue-800"
-        : "bg-rose-50 text-rose-800",
-    },
-    {
-      service: "Serviços de IA",
-      status: openaiOk ? "Operando" : "Sem chave",
-      detail: openaiOk
-        ? "OpenAI respondeu no health check"
-        : "OPENAI_API_KEY ausente ou inválida",
-      icon: <BrainCircuit className="h-5 w-5" />,
-      tone: openaiOk
-        ? "bg-emerald-50 text-emerald-800"
-        : "bg-amber-50 text-amber-900",
-    },
-    {
-      service: "Servidor web",
-      status: "Online",
-      detail: `Uptime ${Math.round((health.uptime || 0) / 60)} min`,
-      icon: <Server className="h-5 w-5" />,
-      tone: "bg-violet-50 text-violet-800",
-    },
-  ];
 }
 
 function contentTitle(item: ContentItem) {
@@ -6606,7 +6548,6 @@ export default function Admin() {
     (max, item) => Math.max(max, item.costValue),
     0,
   );
-  const healthItemsReal = useMemo(() => buildHealthItems(health), [health]);
   // Deriva os stats so quando o estado e "ok"; caso contrario null. Mantem o
   // nome posthogStats para as leituras de render continuarem validas.
   const posthogStats = posthogState?.state === "ok" ? posthogState.stats : null;
@@ -7195,7 +7136,10 @@ export default function Admin() {
         <div className="container space-y-10">
           {activeSection === "visao-geral" ? (
             <>
-              <IntegrationsHealthPanel />
+              {/* Substitui os dois cartões de saúde que ocupavam o topo (o de
+                  integrações aqui e o "Saúde do sistema" mais abaixo). Verde é
+                  ausência: uma linha e some. */}
+              <HealthBand />
 
               {/* O seletor governa OS SEIS CARDS e nada mais. Os blocos abaixo
                   que têm janela própria a declaram na tela; os que são estado
@@ -9034,55 +8978,7 @@ export default function Admin() {
 
           {activeSection === "visao-geral" ? (
             <>
-              <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-                <article className="card-brutal rounded-3xl bg-white p-6">
-                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                    <Activity className="h-6 w-6" />
-                    Saúde do sistema
-                  </h2>
-                  {/* Estado ATUAL por natureza: saúde não tem janela. */}
-                  <p
-                    data-testid="saude-estado-atual"
-                    className="text-xs font-bold text-slate-500"
-                  >
-                    Estado atual
-                  </p>
-                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                    {healthLoading ? (
-                      <div className="sm:col-span-2">
-                        <LoadingBlock />
-                      </div>
-                    ) : healthItemsReal.length ? (
-                      healthItemsReal.map((item) => (
-                        <div
-                          key={item.service}
-                          className={`rounded-2xl border-2 border-slate-900 p-4 ${item.tone}`}
-                        >
-                          <div className="flex items-center gap-2">
-                            {item.icon}
-                            <p className="font-display text-lg font-black">
-                              {item.service}
-                            </p>
-                          </div>
-                          <p className="mt-3 text-sm font-black uppercase">
-                            {item.status}
-                          </p>
-                          <p className="mt-1 text-sm font-semibold opacity-80">
-                            {item.detail}
-                          </p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="sm:col-span-2">
-                        <PendingIntegration
-                          tool="/api/health"
-                          description="Health check indisponível no momento"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </article>
-
+              <div className="grid gap-6">
                 <article className="card-brutal rounded-3xl bg-white p-6">
                   <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
                     <Eye className="h-6 w-6" />

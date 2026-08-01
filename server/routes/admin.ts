@@ -52,6 +52,8 @@ import {
   agregarUsoDeIa,
   custoTotalDeIa,
 } from "../lib/aiUsageStats";
+import { calcularProblemas } from "../lib/healthBand";
+import { diaBrasilia } from "../../shared/brasiliaDay";
 import {
   calcularVariacao,
   parseOverviewWindow,
@@ -515,47 +517,186 @@ router.get("/posthog-stats", async (req, res, next) => {
 // fixa (sem params). Fail-open do getOrCompute: Redis fora = compute roda igual.
 const INTEGRATIONS_HEALTH_CACHE_TTL_S = 180;
 
-router.get("/integrations/health", async (_req, res, next) => {
+/**
+ * Compute da saude das integracoes, EXTRAIDO para ser compartilhado.
+ *
+ * A faixa de saude e o painel antigo consomem exatamente o mesmo resultado, sob
+ * a MESMA chave de cache: assim a faixa nao acrescenta sonda nenhuma ao custo da
+ * pagina, ela reaproveita a que ja estava sendo feita. Duas sondas do PostHog
+ * por carga seria o oposto do que a fatia pede.
+ */
+function computarSaudeDeIntegracoes() {
+  return getOrCompute(
+    "admincache:integrations-health",
+    INTEGRATIONS_HEALTH_CACHE_TTL_S,
+    async () => {
+    // Sonda leve (1 query), nao o funil completo: o painel so le state/hasData.
+    const posthog = await getPosthogHealth();
+
+    let redis: { configured: boolean; ok: boolean } = {
+      configured: Boolean(env.redisUrl),
+      ok: false,
+    };
+    if (cacheConnection) {
+      try {
+        const pong = await cacheConnection.ping();
+        redis = { configured: true, ok: pong === "PONG" };
+      } catch {
+        redis = { configured: true, ok: false };
+      }
+    }
+
+    return {
+      billingEnabled: env.billingEnabled,
+      posthog,
+      stripe: {
+        secretKey: Boolean(env.stripeSecretKey),
+        webhookSecret: Boolean(env.stripeWebhookSecret),
+        priceIds: {
+          pro_monthly: Boolean(env.stripePriceIds.pro_monthly),
+          pro_semiannual: Boolean(env.stripePriceIds.pro_semiannual),
+          pro_annual: Boolean(env.stripePriceIds.pro_annual),
+        },
+      },
+      redis,
+    resend: { apiKey: Boolean(env.resendApiKey) },
+      };
+    },
+  );
+}
+
+// FAIXA DE SAUDE: os oito sinais dos dois cartoes antigos, num lugar so, mais
+// duas coisas que ninguem via.
+//
+// CUSTO. A faixa NAO acrescenta sonda nenhuma: ela chama
+// `computarSaudeDeIntegracoes`, que usa a MESMA chave de cache do painel antigo
+// (TTL 180s), e reaproveita o ping de banco que o /api/health ja fazia. As duas
+// consultas novas sao a tabela de snapshots (16 linhas) e os boletos pendentes
+// (1 linha hoje), as duas triviais. Medido: 358-599ms para o ping de banco, que
+// e a peca mais cara, e ela ja existia.
+//
+// POR QUE A CHECAGEM GERAL DE CRON NAO ENTROU. Medi: `cron_run_logs` tem 12.541
+// linhas e as ULTIMAS 1000 cobrem apenas 23 horas (tres jobs rodam de 5 em 5
+// minutos e dominam a janela). Isso quebra a checagem geral de duas formas:
+//
+//   (a) CUSTO: transferir 1000 linhas por checagem custa mais que os dois
+//       cartoes que a faixa substitui, o que a fatia proibe;
+//   (b) FURO, e este e o pior: como a lista de jobs seria DERIVADA da janela, um
+//       job parado ha mais de 23h simplesmente SOME dela, e a faixa nao
+//       reportaria nada. Seria um instrumento que falha PASSANDO — exatamente a
+//       classe que o CLAUDE.md documenta.
+//
+// Uma checagem geral honesta exige um REGISTRO ESTAVEL de jobs esperados (com a
+// cadencia de cada um), e ele nao existe: derivar da agenda do pg_cron seria uma
+// lista escrita a mao, que e o caso degenerado da mesma classe. Fica como fatia
+// propria. O snapshot entra porque tem sinal barato e ESTAVEL: a propria tabela
+// de snapshots, de 16 linhas, cuja ausencia de linha nova E o alarme.
+const HEALTH_BAND_CACHE_TTL_S = 60;
+
+router.get("/health-band", async (_req, res, next) => {
   try {
     const data = await getOrCompute(
-      "admincache:integrations-health",
-      INTEGRATIONS_HEALTH_CACHE_TTL_S,
+      "admincache:health-band",
+      HEALTH_BAND_CACHE_TTL_S,
       async () => {
-        // Sonda leve (1 query), nao o funil completo: o painel so le state/hasData.
-        const posthog = await getPosthogHealth();
+        const [integracoes, dbPing, ultimoSnapshot, pendentes] =
+          await Promise.all([
+            computarSaudeDeIntegracoes(),
+            // Ping de banco, o mesmo do /api/health. Erro aqui NAO derruba a
+            // faixa: vira o sinal "database" apagado, que e o que ele significa.
+            (async (): Promise<string> => {
+              try {
+                const { error } = await supabaseAdmin
+                  .from("profiles")
+                  .select("user_id")
+                  .limit(1);
+                return error ? "error" : "ok";
+              } catch {
+                return "error";
+              }
+            })(),
+            supabaseAdmin
+              .from("subscription_snapshots")
+              .select("snapshot_date")
+              .order("snapshot_date", { ascending: false })
+              .limit(1)
+              .maybeSingle(),
+            supabaseAdmin
+              .from("subscriptions")
+              .select("created_at, plans(code, price_cents)")
+              .eq("status", "pending"),
+          ]);
 
-        let redis: { configured: boolean; ok: boolean } = {
-          configured: Boolean(env.redisUrl),
-          ok: false,
-        };
-        if (cacheConnection) {
-          try {
-            const pong = await cacheConnection.ping();
-            redis = { configured: true, ok: pong === "PONG" };
-          } catch {
-            redis = { configured: true, ok: false };
-          }
+        const faltandoStripe: string[] = [];
+        if (!integracoes.stripe.secretKey) faltandoStripe.push("secret key");
+        if (!integracoes.stripe.webhookSecret)
+          faltandoStripe.push("webhook secret");
+        for (const [plano, presente] of Object.entries(
+          integracoes.stripe.priceIds,
+        )) {
+          if (!presente) faltandoStripe.push(`price ${plano}`);
         }
 
-        return {
-          billingEnabled: env.billingEnabled,
-          posthog,
-          stripe: {
-            secretKey: Boolean(env.stripeSecretKey),
-            webhookSecret: Boolean(env.stripeWebhookSecret),
-            priceIds: {
-              pro_monthly: Boolean(env.stripePriceIds.pro_monthly),
-              pro_semiannual: Boolean(env.stripePriceIds.pro_semiannual),
-              pro_annual: Boolean(env.stripePriceIds.pro_annual),
-            },
-          },
-          redis,
-          resend: { apiKey: Boolean(env.resendApiKey) },
-        };
+        const snapshotDate =
+          (ultimoSnapshot.data as { snapshot_date: string } | null)
+            ?.snapshot_date ?? null;
+        // `snapshot_date` e coluna `date`: comparacao de dia, sem converter para
+        // instante (ver shared/brasiliaDay.ts para por que isso importa).
+        const hoje = diaBrasilia(new Date().toISOString());
+        const snapshotStaleDays =
+          snapshotDate && hoje
+            ? Math.round(
+                (Date.parse(`${hoje}T00:00:00Z`) -
+                  Date.parse(`${snapshotDate}T00:00:00Z`)) /
+                  86400000,
+              )
+            : null;
+
+        // `plans` chega como objeto ou array conforme a cardinalidade que o
+        // PostgREST infere; `unwrap` cobre as duas sem apostar numa.
+        const boletosPendentes = (
+          (pendentes.data ?? []) as unknown as Array<{
+            created_at: string | null;
+            plans:
+              | { price_cents: number | null }
+              | Array<{ price_cents: number | null }>
+              | null;
+          }>
+        ).map((row) => {
+          const plano = Array.isArray(row.plans) ? row.plans[0] : row.plans;
+          return {
+            valorCents: plano?.price_cents ?? 0,
+            emitidoEm: row.created_at,
+          };
+        });
+
+        const problemas = calcularProblemas({
+          database: dbPing,
+          openai: env.openaiApiKey ? "ok" : "error",
+          currents: env.currentsApiKey ? "ok" : "error",
+          jooble: env.joobleApiKey ? "ok" : "error",
+          posthogState: integracoes.posthog?.state ?? null,
+          stripeFaltando: faltandoStripe,
+          redisConfigured: integracoes.redis.configured,
+          redisOk: integracoes.redis.ok,
+          resendApiKey: integracoes.resend.apiKey,
+          snapshotStaleDays,
+          boletosPendentes,
+        });
+
+        return { ok: problemas.length === 0, problemas };
       },
     );
 
     res.json({ data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/integrations/health", async (_req, res, next) => {
+  try {
+    res.json({ data: await computarSaudeDeIntegracoes() });
   } catch (err) {
     next(err);
   }
