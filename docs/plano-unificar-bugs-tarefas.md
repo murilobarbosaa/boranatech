@@ -16,7 +16,8 @@ leitura de código.
 | 2 Schema do feed, etapa fixada e proveniência | **concluída** |
 | 3 O sync, desligado | **concluída** |
 | 4 Interface do feed | **concluída** |
-| 5 e 6 | não iniciadas |
+| 5 Migração dos dados e aposentadoria da aba | **concluída** |
+| 6 Ligar o sync | não iniciada |
 | ~~7 Remover sincronização reversa~~ | **cancelada pela Emenda 1** |
 
 Migrations M1 a M6 escritas e pendentes de aplicação pelo SQL editor. Nenhuma
@@ -217,7 +218,16 @@ mão antes destas migrations, então suas colunas nascem com o default e **nenhu
 é a etapa de intake**. Depois de aplicar M3 a M6, o job responderia
 `sem_quadro_ligado` e, se o quadro fosse ligado assim, `sem_etapa_de_intake`.
 
-Antes de ligar:
+Antes de ligar, e nesta ordem:
+
+1. desagendar o job legado (ver "O `reconcile-sentry-bugs` deixou de fazer
+   sentido", na Fase 5):
+
+```sql
+select cron.unschedule(jobid) from cron.job where jobname = 'reconcile-sentry-bugs';
+```
+
+2. marcar a etapa de intake:
 
 ```sql
 update public.admin_task_columns c
@@ -1012,6 +1022,104 @@ Esta fase roda **fora** da janela de migration destrutiva? Sim: ela não altera
 nem remove dado, só insere em `admin_tasks`. Mas eu recomendo tratar como se
 estivesse na janela mesmo assim, porque é a única com volume de escrita e a
 única cujo erro custa reverter à mão.
+
+### Fase 5: migração dos dados e aposentadoria da aba. CONCLUÍDA
+
+#### As três perguntas bloqueantes, respondidas com dado
+
+| Pergunta | Resposta |
+| --- | --- |
+| O `sentry_numeric_id` das 6 está no banco? | **Sim, nas 6, zero nulos.** O backfill do job legado já fez o trabalho. Migration SQL pura; não vira script. |
+| `admin_bugs` tem satélites? | **Não.** Uma tabela só, zero FKs apontando para ela, zero tabelas com `bug` no nome além dela. Não há comentário nem histórico a perder. |
+| As 10 concluídas têm `resolved_at`? | **Sim, as 10.** `completed_at` migra direto e a reabertura funciona para elas. |
+
+#### O risco número 1, encerrado com prova
+
+A migration tem bloco de asserção que afirma por contagem, **nos dois sentidos**:
+25 migradas de 25, 6 com `sentry_numeric_id` de 6, e **zero** tarefas com
+`sentry_issue_id` preenchido e `sentry_numeric_id` nulo (o estado exato que faria
+o sync duplicar). Divergência levanta exceção e desfaz a transação inteira.
+
+Verificado contra o schema real com os 25 bugs de produção copiados para um
+ambiente isolado:
+
+| Prova | Resultado |
+| --- | --- |
+| 25 viraram 25 | sim |
+| Divergência campo a campo (título, descrição, autor, conclusão, shortId, numericId, criação) | **0 em todos** |
+| Mapa status para etapa | 10 Concluido, 9 Em Progresso, 6 Bugs Reportados |
+| Mapa severidade para prioridade | 7 urgente, 14 alta, 4 media |
+| `admin_bugs` depois | 25 linhas, intacta |
+| Reaplicar a migration | 25, não 50 |
+| **Dry-run pós-migração** | **zero criação para as 6**; a manutenção viu exatamente as 6 e decidiu "nada" |
+
+O dry-run criaria 18 cards, todos de issues que nunca tiveram bug. Nenhum dos 6
+shortIds migrados aparece na lista de criação.
+
+#### Decisões
+
+**`source = 'human'` nas 6 vinculadas**, como você propôs. `source` responde
+"quem criou", e quem criou foi uma pessoa clicando "criar bug a partir desta
+issue". O vínculo é outra coisa e mora nas colunas `sentry_*`. A manutenção do
+job age sobre o **vínculo**, não sobre a autoria, então as 6 continuam sendo
+reabertas normalmente.
+
+**`legacy_bug_id` em todas as 25.** É a corda de volta e o alvo do
+`on conflict do nothing` que dá idempotência por constraint.
+
+#### O que sobrou de `adminBugs.ts`, e onde
+
+| Ficou | Onde |
+| --- | --- |
+| `GET /` (leitura) | `server/routes/adminBugs.ts`, sem cliente chamando |
+| `POST`, `PATCH`, `DELETE` | mesma rota, agora **410 Gone** |
+| `syncBugStatusToSentry` | `server/lib/sentryBugSync.ts`, intacto |
+| `updateIssueStatus` | `server/lib/sentryApi.ts`, intacto |
+| `retryPendingSyncs` e as 3 fases | `server/lib/sentryBugReconcile.ts`, intacto |
+| Os 3 e-mails de bug | `server/lib/email.ts`, intactos (links repontados) |
+| Validação do `statsPeriod` | **desceu** para dentro de `listSentryIssues` |
+
+410 e não 404: 404 diz "nunca existiu" e mentiria sobre a história; 410 diz
+"existia e acabou".
+
+`GET /sentry-issues` **saiu**: pertencia à aba removida, e quem lê o Sentry agora
+é o sync. Duas portas para a mesma API seria o que este projeto está desfazendo.
+
+A validação do `statsPeriod` desceu para o cliente da API porque o dono da regra
+sempre foi ele: quem impõe o conjunto é o Sentry, e todo chamador está sujeito.
+Guarda no call site cobriria só o chamador que existia.
+
+#### A dívida que esta fase cria
+
+**O push de resolução ficou dormente.** Com o `PATCH` virando 410, ele perdeu o
+único gatilho. Não morreu (emenda 1), mas não dispara.
+
+Religá-lo na transição do card exige `admin_tasks.sentry_sync_pending`, coluna
+que **não existe**: a Fase 2 não a criou porque na época o push ainda tinha casa.
+Isso é migration nova, e migration nova não cabe numa fase cujo escopo é migrar
+dados e remover interface. Os testes obrigatórios da emenda 1 ("transição para
+`is_done` empurra resolvido") só podem ser escritos depois disso.
+
+#### O `reconcile-sentry-bugs` deixou de fazer sentido
+
+Medido: **zero** linhas com `sentry_sync_pending`, **zero** cards precisando de
+backfill. As três fases do job ficam assim depois da migração:
+
+| Fase | Depois |
+| --- | --- |
+| 1. Backfill de numeric id | nada a fazer, e nunca haverá linha nova |
+| 2. Retry de sync pendente | nada a fazer, e o push não tem mais gatilho |
+| 3. Reabrir cards em done | **ativamente errado** |
+
+A fase 3 é o problema: ela escreveria em `admin_bugs`, que passa a ser somente
+leitura, e mandaria e-mail e notificação sobre um bug cuja representação viva
+agora é o card em Tarefas. Resultado seria aviso duplicado e divergência entre as
+duas cópias.
+
+**Recomendação: desagendar `reconcile-sentry-bugs`.** É ação de banco
+(`cron.unschedule`), então vai para o roteiro da Fase 6, não para esta. Até lá
+ele continua rodando e, com a correção do `statsPeriod`, voltará a funcionar
+sobre uma tabela que ninguém lê.
 
 ### Fase 6: ligar o sync
 
