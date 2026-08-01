@@ -1,3 +1,5 @@
+import { CHARGE_SEM_DONO_CORTE_DIAS } from "./financeSyncWindow";
+
 // A FAIXA DE SAÚDE: os sinais dos dois cartões antigos, num lugar só.
 //
 // A regra de exibição vive aqui, pura, porque é ela que decide se a faixa some
@@ -44,6 +46,11 @@ export type SinaisDeSaude = {
   snapshotStaleDays: number | null;
   /** Boletos emitidos e não pagos, com o valor parado e a data de emissão. */
   boletosPendentes: Array<{ valorCents: number; emitidoEm: string | null }>;
+  /**
+   * Cobranças com dinheiro na conta e SEM dono, velhas o bastante para o sync
+   * não alcançar mais. Ver `CHARGE_SEM_DONO_CORTE_DIAS`.
+   */
+  chargesSemDono: { count: number; grossCents: number };
 };
 
 /** Um boleto emitido expira após este prazo; depois vira órfão. */
@@ -156,6 +163,41 @@ export function calcularProblemas(
       label: "Cron de snapshot parado",
       detalhe: `Sem snapshot há ${sinais.snapshotStaleDays} dias. A série de MRR parou de crescer.`,
       severidade: "erro",
+    });
+  }
+
+  // COBRANÇA SEM DONO: o dinheiro entrou, a atribuição não.
+  //
+  // Nasceu de um caso que ninguém viu por 8 dias: uma cobrança de boleto de
+  // 24/07 ficou com `user_id` nulo porque a correção que a resolveria subiu
+  // depois de ela sair da janela do sync. R$ 90,30 que não apareciam no extrato
+  // do próprio cliente, não entravam na receita por plano, não contavam no
+  // diferido e tornavam impossível registrar a devolução dela. Foi achado por
+  // acidente, investigando outra coisa.
+  //
+  // AVISO, NÃO ERRO, e a distinção é sobre o que está em risco: o dinheiro está
+  // na conta da Stripe e o total de receita da página está certo, porque as
+  // somas gerais não filtram por dono. O que quebra é tudo que é POR PESSOA.
+  // Chamar isso de erro nivelaria com "o Stripe está sem credencial", e quem
+  // recebe dois alarmes do mesmo tamanho para coisas de tamanhos diferentes
+  // para de acreditar nos dois.
+  //
+  // O CORTE vem de `financeSyncWindow` de propósito: linha mais nova que ele
+  // ainda está no alcance do cron e pode se resolver sozinha na próxima passada,
+  // como aconteceu com uma cobrança de cartão órfã por uma corrida de 5
+  // segundos. Acusar essa seria gritar com problema que se cura.
+  if (sinais.chargesSemDono.count > 0) {
+    const quantas = sinais.chargesSemDono.count;
+    problemas.push({
+      id: "charge-sem-dono",
+      label: "Cobrança sem dono",
+      // VALOR EM REAIS, não só contagem: "1 cobrança sem dono" não move
+      // ninguém, "R$ 90,30 sem dono" move.
+      detalhe:
+        `${formatarBrl(sinais.chargesSemDono.grossCents)} em ${quantas} ` +
+        `${quantas === 1 ? "cobrança" : "cobranças"} sem usuário atribuído há mais de ` +
+        `${CHARGE_SEM_DONO_CORTE_DIAS} dias. O dinheiro entrou; o extrato da pessoa não mostra.`,
+      severidade: "atencao",
     });
   }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { CHARGE_SEM_DONO_CORTE_DIAS } from "./financeSyncWindow";
 import {
   calcularProblemas,
   SNAPSHOT_TOLERANCIA_DIAS,
@@ -28,6 +29,7 @@ function sinais(over: Partial<SinaisDeSaude> = {}): SinaisDeSaude {
     resendApiKey: true,
     snapshotStaleDays: 0,
     boletosPendentes: [],
+    chargesSemDono: { count: 0, grossCents: 0 },
     ...over,
   };
 }
@@ -189,5 +191,54 @@ describe("boleto em limbo", () => {
       AGORA,
     );
     expect(p[0].severidade).toBe("atencao");
+  });
+});
+
+describe("cobrança sem dono", () => {
+  it("acusa com o VALOR em reais, não só a contagem", () => {
+    // "1 cobrança sem dono" não move ninguém; "R$ 90,30" move. É o caso real:
+    // um boleto pago em 24/07 cuja atribuição nunca chegou.
+    const problemas = calcularProblemas(
+      sinais({ chargesSemDono: { count: 1, grossCents: 9030 } }),
+      AGORA,
+    );
+    const p = problemas.find((x) => x.id === "charge-sem-dono");
+    expect(p).toBeDefined();
+    expect(p!.detalhe).toContain("90,30");
+  });
+
+  it("é AVISO, não erro: o dinheiro está na conta, falta a atribuição", () => {
+    const problemas = calcularProblemas(
+      sinais({ chargesSemDono: { count: 1, grossCents: 9030 } }),
+      AGORA,
+    );
+    expect(problemas.find((x) => x.id === "charge-sem-dono")!.severidade).toBe(
+      "atencao",
+    );
+  });
+
+  it("zero órfãs deixa a faixa SILENCIOSA", () => {
+    const problemas = calcularProblemas(
+      sinais({ chargesSemDono: { count: 0, grossCents: 0 } }),
+      AGORA,
+    );
+    expect(problemas).toEqual([]);
+  });
+
+  it("concorda em número e plural com mais de uma cobrança", () => {
+    const p = calcularProblemas(
+      sinais({ chargesSemDono: { count: 3, grossCents: 15000 } }),
+      AGORA,
+    ).find((x) => x.id === "charge-sem-dono")!;
+    expect(p.detalhe).toContain("3 cobranças");
+    expect(p.detalhe).toContain("150,00");
+  });
+
+  it("cita o corte em dias, para o aviso dizer o que já foi tentado", () => {
+    const p = calcularProblemas(
+      sinais({ chargesSemDono: { count: 1, grossCents: 100 } }),
+      AGORA,
+    ).find((x) => x.id === "charge-sem-dono")!;
+    expect(p.detalhe).toContain(String(CHARGE_SEM_DONO_CORTE_DIAS));
   });
 });

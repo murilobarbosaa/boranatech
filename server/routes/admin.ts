@@ -53,6 +53,7 @@ import {
   agregarUsoDeIa,
   custoTotalDeIa,
 } from "../lib/aiUsageStats";
+import { CHARGE_SEM_DONO_CORTE_DIAS } from "../lib/financeSyncWindow";
 import { calcularProblemas } from "../lib/healthBand";
 import {
   assinaturaChegouAValer,
@@ -598,6 +599,33 @@ function computarSaudeDeIntegracoes() {
 // lista escrita a mao, que e o caso degenerado da mesma classe. Fica como fatia
 // propria. O snapshot entra porque tem sinal barato e ESTAVEL: a propria tabela
 // de snapshots, de 16 linhas, cuja ausencia de linha nova E o alarme.
+/**
+ * Soma as cobrancas sem dono.
+ *
+ * FALHA DE LEITURA NAO PODE VIRAR "esta tudo bem", e por isso esta funcao
+ * recebe o envelope inteiro e LANCA no erro, em vez de receber `data ?? []`.
+ * O supabase-js devolve `{ data: null, error }` sem lancar, entao ler `data`
+ * direto transformaria erro do PostgREST em zero, e zero aqui APAGA o aviso.
+ * E o `contarLinhas` devolvendo -1 do CLAUDE.md com o sinal trocado: falha de
+ * infra contada como sucesso de saude. Lancando, a faixa cai no estado
+ * "indisponivel" que ela ja sabe mostrar.
+ */
+function agregarChargesSemDono(resposta: {
+  data: Array<{ gross_cents: number | null }> | null;
+  error: { message: string } | null;
+}): { count: number; grossCents: number } {
+  if (resposta.error) {
+    throw new Error(
+      `leitura de cobrancas sem dono falhou: ${resposta.error.message}`,
+    );
+  }
+  const linhas = resposta.data ?? [];
+  return {
+    count: linhas.length,
+    grossCents: linhas.reduce((soma, l) => soma + (l.gross_cents ?? 0), 0),
+  };
+}
+
 const HEALTH_BAND_CACHE_TTL_S = 60;
 
 router.get("/health-band", async (_req, res, next) => {
@@ -606,7 +634,7 @@ router.get("/health-band", async (_req, res, next) => {
       "admincache:health-band",
       HEALTH_BAND_CACHE_TTL_S,
       async () => {
-        const [integracoes, dbPing, ultimoSnapshot, pendentes] =
+        const [integracoes, dbPing, ultimoSnapshot, pendentes, semDono] =
           await Promise.all([
             computarSaudeDeIntegracoes(),
             // Ping de banco, o mesmo do /api/health. Erro aqui NAO derruba a
@@ -632,6 +660,29 @@ router.get("/health-band", async (_req, res, next) => {
               .from("subscriptions")
               .select("created_at, plans(code, price_cents)")
               .eq("status", "pending"),
+            // COBRANCA SEM DONO. No MESMO Promise.all das demais: a faixa ja
+            // espera pela sonda mais lenta (PostHog), entao uma consulta a mais
+            // em paralelo nao acrescenta tempo de parede.
+            //
+            // O filtro por `type=charge` e o que mantem payout fora da conta
+            // (payout nao tem dono POR DEFINICAO, e ficar sem e o correto), e
+            // tambem refund e dispute, que tem caminho proprio de atribuicao
+            // pela cobranca-mae.
+            //
+            // Sem `count: exact`: a soma em reais exige as linhas de qualquer
+            // jeito, e o conjunto e minusculo por construcao (se nao fosse, o
+            // problema seria outro e maior).
+            supabaseAdmin
+              .from("finance_transactions")
+              .select("gross_cents")
+              .eq("type", "charge")
+              .is("user_id", null)
+              .lt(
+                "occurred_at",
+                new Date(
+                  Date.now() - CHARGE_SEM_DONO_CORTE_DIAS * 24 * 60 * 60 * 1000,
+                ).toISOString(),
+              ),
           ]);
 
         const faltandoStripe: string[] = [];
@@ -689,6 +740,12 @@ router.get("/health-band", async (_req, res, next) => {
           resendApiKey: integracoes.resend.apiKey,
           snapshotStaleDays,
           boletosPendentes,
+          chargesSemDono: agregarChargesSemDono(
+            semDono as {
+              data: Array<{ gross_cents: number | null }> | null;
+              error: { message: string } | null;
+            },
+          ),
         });
 
         return { ok: problemas.length === 0, problemas };

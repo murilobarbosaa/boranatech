@@ -351,6 +351,8 @@ export function criarSupabaseDouble(
       "ilike",
       "gte",
       "lte",
+      // `lt` entrou com o guard de cobranca sem dono (corte por idade da linha).
+      "lt",
       "or",
     ]) {
       q[metodo] = (coluna: string, valor: unknown) => {
