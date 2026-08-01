@@ -3,11 +3,12 @@ import { diaBrasilia } from "../../shared/brasiliaDay";
 // Série DIÁRIA de cadastros.
 //
 // GRANULARIDADE DIÁRIA, e ela foi MEDIDA, não herdada. No diagnóstico de
-// 2026-07-30 a série era serrilhada (3.303 perfis em 13 dias distintos) e a
-// decisão foi semanal. Remedido em 2026-08-01: 24 dos últimos 30 dias têm
-// cadastro, e do dia 13/07 em diante são 19 dias CONSECUTIVOS com 79 a 477 por
-// dia, mediana 131. A serrilha era do período anterior à tração, e agrupar por
-// semana hoje só esconderia o formato do dado.
+// 2026-07-30 a série era serrilhada e a decisão foi semanal. Remedido em
+// 2026-08-01, na janela de 30 dias terminando em 01/08: 3.422 cadastros, 23 dos
+// 30 dias com cadastro, e os 7 dias vazios são TODOS anteriores a 13/07. De
+// 13/07 a 31/07 são 19 dias CONSECUTIVOS, de 79 a 477 por dia, mediana 156.
+// A serrilha era do período anterior à tração, e agrupar por semana hoje só
+// esconderia o formato do dado.
 //
 // ZERO É MEDIÇÃO, ausência não é. Nesta série um dia sem linha significa que
 // ninguém se cadastrou — isso é um zero de verdade e a barra é desenhada. É o
