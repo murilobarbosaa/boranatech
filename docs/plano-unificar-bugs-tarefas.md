@@ -17,6 +17,7 @@ leitura de código.
 | 3 O sync, desligado | **concluída** |
 | 4 Interface do feed | **concluída** |
 | 5 Migração dos dados e aposentadoria da aba | **concluída** |
+| 5.5 Religar o push de resolução | **concluída** |
 | 6 Ligar o sync | não iniciada |
 | ~~7 Remover sincronização reversa~~ | **cancelada pela Emenda 1** |
 
@@ -39,6 +40,12 @@ invariante supunha: um push de **um campo**, disparado por **transição humana*
 > **Invariante 6, vigente:** o job nunca escreve no Sentry. A única escrita é o
 > push de resolução disparado por transição humana explícita, e ela é simétrica
 > nos dois sentidos.
+
+**Situação em 2026-08-01: revogada e COBERTA.** Os sete testes que esta emenda
+exigiu foram escritos na Fase 5.5, depois que o push ganhou gatilho novo e
+coluna de retry própria. Até então ela estava revogada e **não testada**, que era
+o pior dos dois mundos: o comportamento preservado por decisão, sem nada
+impedindo alguém de removê-lo por engano.
 
 `sentry_sync_pending`, `retryPendingSyncs`, `updateIssueStatus` e
 `syncBugStatusToSentry` **ficam**, e ganham a cobertura que hoje não têm. O
@@ -1120,6 +1127,79 @@ duas cópias.
 (`cron.unschedule`), então vai para o roteiro da Fase 6, não para esta. Até lá
 ele continua rodando e, com a correção do `statsPeriod`, voltará a funcionar
 sobre uma tabela que ninguém lê.
+
+### Fase 5.5: religar o push de resolução. CONCLUÍDA
+
+Entrou entre a 5 e a 6 porque a dívida da Fase 5 não podia atravessar a
+ativação. Com o push dormente no momento em que o quadro liga, concluir card
+deixaria de marcar a issue resolvida no Sentry, **sem erro nenhum**, e como a
+fila do Sentry é a fonte da ingestão, o feed seguiria tratando como abertas
+issues já corrigidas. Na prática seria entregar a Fase 7 cancelada, por omissão.
+
+#### A fronteira, escrita no código
+
+O invariante vigente divide o código em dois lados que não podem se misturar:
+
+| Lado | Onde | Pode empurrar? |
+| --- | --- | --- |
+| **Decide** | `sentryTaskDecisions.ts`: reabrir, ressuscitar, podar | **não** |
+| **Entrega** | `sentryTaskPush.ts`: push da transição, e o retry | sim |
+
+O retry é **entrega**, não decisão: ele reenvia um alvo que a transição humana
+já gravou. É por isso que ele cabe dentro do job sem quebrar o invariante, e por
+isso o teste do invariante mudou de formulação.
+
+**O teste 4 deixou de ser "o job nunca chama `updateIssueStatus`"** e passou a
+ser "uma run que **reabre** um card não empurra nada". A primeira formulação
+ficaria vermelha por causa do retry, e a "correção" natural seria afrouxá-la, o
+que apagaria justamente o que ela protege. A segunda mira as três decisões que o
+job toma sozinho.
+
+#### Gatilho: um caminho só
+
+O push mora dentro de `PATCH /tasks/:id/move`, usando **os mesmos booleanos** que
+derivam `completed_at`. Arrasto, setas e o select de etapa do modal chamam essa
+rota. Preso a um dos três, os outros dois divergiriam no primeiro conserto que só
+um recebesse, que é a lição já registrada em `docs/tarefas-modulo.md`.
+
+#### Onde mora o retry, e por quê
+
+Fase 0 do `sync-sentry-tasks`, **antes** da resolução de quadro e independente
+dela: uma pendência é uma decisão humana já tomada e precisa chegar ao Sentry
+mesmo com o feed daquele quadro desligado.
+
+Quatro razões para não criar um cron próprio: o job já roda a cada 15 minutos,
+já fala com o Sentry (orçamento de rate limit num lugar só), a M8 já o agenda
+(**nenhuma migration de agendamento nova é necessária**), e o `reconcile-sentry-bugs`,
+que hospedava o retry antigo, está sendo desagendado.
+
+Em dry-run o retry **não** roda: dry-run não escreve em lugar nenhum, e o Sentry
+é um lugar.
+
+#### Os 10 concluídos migrados ficaram inertes
+
+Provado em dois níveis:
+
+- **Estrutural**: o push só existe dentro de `moveTask`, e `moveTask` exige um
+  movimento. Os 10 nasceram em Concluido pela migração, não por transição.
+  `alvoDaTransicao` devolve `null` para comum→comum e terminal→terminal.
+- **Medido**, contra o schema real com os 25 bugs migrados: 10 concluídos, 10
+  com `completed_at`, 2 com vínculo, e **0 com push pendente**. A consulta exata
+  da varredura de retry devolve **0 linhas**.
+
+#### Detalhe de desenho: 404 não vira pendência
+
+Issue apagada no Sentry não tem o que sincronizar. Insistir seria ruído
+permanente num job de 15 em 15 minutos, então o 404 limpa a pendência. Foi o que
+dispensou uma coluna de "órfão" como a de `admin_bugs`.
+
+#### Duplicação deliberada
+
+`sentryTaskPush.ts` é novo e não um refactor de `sentryBugSync.ts`. O módulo
+antigo continua importado por `sentryBugReconcile.ts`, que a Fase 5 deixou
+intacto de propósito; mexer nele seria alterar código que uma fase anterior
+decidiu não tocar. Quando `admin_bugs` for finalmente dropada, os dois saem
+juntos.
 
 ### Fase 6: ligar o sync
 
