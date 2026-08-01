@@ -19,7 +19,7 @@ virar propaganda.
 | Fabricação (afirmações inventadas) | **58** | **0** | 2026-07-26 a 2026-07-27, `docs/rubrica-fidelidade.md` §6 |
 | Custo por análise | US$ 0,0077 a 0,0162 (constante inflada **5,4x a 5,7x**) | **US$ 0,00122** medido | 2026-07-26, `docs/auditoria-avaliador-linkedin-rodada2.md` |
 | Testes do parser, dos checks e do score | **zero** | cobertos, com **6 golden fixtures** | rodada 1 §12.1 / 2026-08-01, contagem direta |
-| Suíte inteira | 2 testes na feature (65 linhas) | **1542 passando, 5 pulados** | rodada 1 §12.1 / 2026-08-01, execução local |
+| Suíte inteira | 2 testes na feature (65 linhas) | **1546 passando, 5 pulados** | rodada 1 §12.1 / 2026-08-01, execução local |
 | Nota média sobre as 107 | 46,0 | **47,5** (27 sobem, **0 descem**) | 2026-07-27, `docs/fase3-fechamento.md` §3 |
 
 ### A cobertura de teste, com a precisão que a diferença exige
@@ -110,12 +110,12 @@ seguem intactas.
 Medição de 2026-08-01, sobre 170 análises persistidas, pelas **quatro assinaturas inequívocas**:
 
 ```
-29 de 170  (17,1%)   termina em `|` 14 · começa em `|` 10 · minúscula 4 · vírgula 1
+29 de 171  (17,0%)   termina em `|` 14 · começa em `|` 10 · minúscula 4 · vírgula 1
 ```
 
 **Correção de um número que circulou:** o "39 de 156" é da família `F2b` (primeira seção com uma palavra
 só), que **tem falso positivo** — `Student | Open to Internships` e `Estudante | Análise e Desenvolvimento`
-são headlines legítimas. Ela ficou de fora da detecção de propósito. O número defensável é 29 de 170.
+são headlines legítimas. Ela ficou de fora da detecção de propósito. O número defensável é 29 de 171.
 
 O que existe hoje: um aviso no passo de revisão (antes de gastar cota), a nota deixando de afirmar faixa
 sobre leitura em dúvida (v7), e `headlineContexto` persistido para o próximo caso ser diagnosticável. **O
@@ -186,7 +186,7 @@ Ordenadas por mecanismo, não cronologia. Todas medidas nesta base.
 | **Comparar medição quente com medição fria** (2026-08-01) | `pnpm check` foi reportado como "de ~3s para 90s, 30x". O `~3s` era uma execução com `tsbuildinfo` quente e o `90s` uma a frio. A `main` **sem a mudança** também leva 88s a frio e 17s a quente: o custo real era **~6s**. Dois valores não comparáveis, conclusão confiante, e ela **dirigiu uma decisão de arquitetura do gate** | Medir os dois lados no mesmo estado de cache, e medir o "antes" na branch sem a mudança |
 | **`$?` depois de um pipe para `tail`** (2026-08-01) | Lendo o exit code do `tail` em vez do script, **no dia em que se mediam exit codes de guards**. Deu `exit=0` para um guard que saía `1` | Redirecionar para arquivo e ler `$?` do comando, nunca do pipeline |
 | **Guard que sempre falha e ninguém invoca** (2026-08-01) | `mutateLinkedinThresholds` abortava na árvore limpa havia semanas, com 6 sítios numéricos órfãos, **três produzidos pela própria auditoria**. Não estava no hook nem no CI. *Um guard que sempre falha e que ninguém roda carrega a mesma informação que um que sempre passa: zero* | Modo `--auditar` (menos de 1s, sem mutar) rodando no CI, e os 6 sítios classificados |
-| **Âncora de mutante que parou de casar** (2026-08-01) | Duas entradas de `MUT` referenciavam texto que a fonte não tem mais (`clip da headline` mudou com o `eeda681`; `DETERMINISTIC_VERSION = 4` ficou em 7). O script reportava `??` e **saía com exit 0**: o limiar deixou de ser mutado, logo de ser testado, e o silêncio era indistinguível de cobertura | O modo `--auditar` falha quando qualquer âncora não casa |
+| **Âncora de mutante quebrada pelas próprias correções da auditoria** (2026-08-01) | Ver abaixo: é a instância que fecha a tabela | O modo `--auditar` falha quando qualquer âncora não casa |
 
 #### A interface afirma mais do que sabe
 
@@ -206,6 +206,39 @@ Ordenadas por mecanismo, não cronologia. Todas medidas nesta base.
 | `cherry-pick` não dispara `pre-commit` | Um hook que recusasse commit no worktree de deploy cobriria o caso secundário e deixaria passar o principal | Descartado; convenção escrita |
 | Guarda no call site | `setScoreDelta` tinha 2 call sites e 1 desprotegido | Funil único (`decidirDelta`) |
 | Três colisões de working tree | Duas frentes no mesmo checkout | Worktree por frente, e `bnt-main` só para deploy |
+
+### A instância que fecha a tabela: cegar o instrumento consertando o produto
+
+`mutateLinkedinThresholds` existe para garantir que **todo limiar numérico do analisador é testado**: ele muda
+o número e confere se algum teste quebra. Limiar cuja mutação não quebra nada é limiar sem rede.
+
+Em 2026-08-01, duas das suas âncoras não casavam mais com a fonte:
+
+| âncora | esperava | quem mudou |
+|---|---|---|
+| `clip da headline (250)` | `clip(escolhida.linha, 250)` | **`eeda681`**, a correção do truncamento de headline |
+| `DETERMINISTIC_VERSION` | `= 4;` | **`acc2d31`**, o bump da v7 do check pendente |
+
+**As duas quebraram por mudanças desta auditoria.** O `eeda681` é a correção da headline — o defeito que
+motivou metade das rodadas. O `acc2d31` é o bump do check pendente — a última entrega. As duas corretas.
+
+E o script reportava as duas como `??` **saindo com exit 0**. Ou seja: o guard construído para garantir que
+todo limiar é testado tinha **dois limiares que deixaram de ser testados**, e dizia que estava tudo bem.
+
+**Não foi descuido e não foi pressa.** As duas correções eram certas, revisadas, testadas e deployadas com
+CI verde. O que aconteceu é mais incômodo:
+
+> **Manter um instrumento acoplado à fonte custa atenção contínua que ninguém orçou.**
+
+A âncora é uma cópia literal de uma linha de código. Toda vez que a linha muda, alguém teria de lembrar de
+atualizar a cópia — e "lembrar" é exatamente o mecanismo que esta auditoria passou 45 rodadas substituindo
+por barreira. O acoplamento por texto literal é barato de escrever e caro de manter, e o custo é cobrado em
+silêncio, na forma de cobertura que evapora.
+
+A contramedida não elimina o acoplamento (não há como mutar um limiar sem referenciá-lo): **ela torna a
+evaporação ruidosa.** `pnpm check:limiares` falha quando qualquer âncora não casa, e roda no CI a cada push.
+
+---
 
 ### As contramedidas que funcionaram, com quantas vezes
 
@@ -366,8 +399,10 @@ A causa não é o guard: é que **nada o invoca**. Ele não está no hook nem no
 sempre falha e que ninguém roda tem a mesma informação que um guard que sempre passa — zero. É o espelho do
 "guard vermelho como estado normal" que esta auditoria recusou duas vezes, com o sinal trocado.
 
-**Fica aberto**, e o conserto não é classificar os 6: é decidir se ele entra num gate. Classificar sem
-invocar só adia o próximo órfão.
+**Fechado em 2026-08-01**, e o conserto não foi só classificar os 6: os sítios foram classificados **e** o
+script ganhou um modo `--auditar` (descoberta e conferência de âncoras, sem mutar, menos de 1s) que roda no
+CI a cada push. O modo completo continua manual, porque roda a suíte uma vez por mutante e leva mais de dez
+minutos: **a parte que cabe num gate é a que entrou nele.**
 
 ### Pedido de mudança irreversível no fim de rodada cheia
 
@@ -424,7 +459,7 @@ Cada item com custo, impacto medido quando houver, e **o gatilho que o traz de v
 | **Source map do backend** | Desconhecido | Stack trace do servidor chega minificada | — |
 | **Retenção da identidade persistida** | Alto se feito certo (três cópias) | 13 pessoas, 11-30 de julho | Os quatro gatilhos em `docs/retencao-identidade-em-competencias.md` |
 | **`termos-bilingues`, lista-núcleo curada, fronteiras de faixa, comparação de modelos** | Não estimados | Sem medição | — |
-| **Billing: `fix/billing-customer-reuse` não subiu, e o prazo vence hoje** | Alto e crescendo. A branch está **20 commits à frente e 119 atrás** da `main` (era 10 atrás quando o prazo foi marcado, depois 15). Rebase, 5 migrations à mão, `backfillStripeCustomers.mjs` nunca executado, e duas migrations pedem janela destrutiva | O `check:migrations` reporta **hoje** as 3 tabelas expostas e não declaradas (`payment_recovery_emails`, `stripe_customers`, `billing_failed_payments`) — inconsistência real na direção inversa, verde com aviso | **Prazo 2026-08-01, hoje.** `docs/copy-provisoria-e-pendencias.md` §2.3 define as duas únicas saídas aceitas: adiar com data nova escrita no mesmo commit, ou transformar o aviso em erro temporário. O silêncio não é saída |
+| **Billing: `fix/billing-customer-reuse` não subiu** | Alto e crescendo. A branch estava **20 à frente e 132 atrás** da `main` ao fim de 2026-08-01 (era 10 atrás quando o prazo foi marcado, depois 15). Rebase, 5 migrations à mão, `backfillStripeCustomers.mjs` nunca executado, e duas migrations pedem janela destrutiva | As 3 tabelas existem e estão **protegidas** (RLS declarada + `REVOKE ALL`, verificado por leitura anon: `42501` nas três), e desde 2026-08-01 o `check:migrations` cobre a RLS delas na direção inversa. O aviso de não-declaradas continua | **Prazo adiado para 2026-08-08** em `docs/copy-provisoria-e-pendencias.md` §2.3, que registra a distância ao lado da data e a pergunta que a próxima revisão tem de responder antes de adiar de novo: **a billing sobe, ou a branch é descartada e o trabalho recomeça da `main`?** |
 | **33 `TODO(Ana)` do escopo de consentimento, no ar desde 2026-07-28** | Baixo por item, revisão editorial | 30 dos 33 são lidos na tela. `ConsentGate` é modal bloqueante sem botão de fechar | Reconferido em 2026-08-01: **os 33 continuam lá**, número idêntico ao levantamento. `docs/copy-provisoria-e-pendencias.md` §1 |
 | **`TODO(Ana)` fora do escopo de consentimento** | Não estimado. A alavanca é por arquivo, não pelo total | **1196 na base** (2026-08-01). Os dez maiores estão abaixo | Nunca inventariado. O `copy-provisoria` cobre só os 33 do consentimento e diz que "existem outros"; a ordem de grandeza não estava registrada em lugar nenhum |
 | **Achados de design registrados sem correção** | Baixo a médio | CLS residual de 0,015 no hero; `tracking-[0.18em]` contra `[0.2em]`; sombra flat ausente nos cards da home; resíduo de 22px no skeleton da dica; o `<br>` do badge do hero que **envelhece quando a contagem passar de 10.000** | `docs/copy-provisoria-e-pendencias.md` §3 e §3-bis. O do `<br>` tem gatilho automático: a contagem cruzar 10.000 |
@@ -482,9 +517,10 @@ Escrito para quem não tem nenhum contexto desta conversa.
 
 - **Que a headline lida está correta.** 17,1% têm assinatura de corte, e a detecção só pega o inequívoco —
   86 de 156 headlines antigas não têm assinatura nenhuma, e uma cortada que termine em palavra é indetectável.
-- **Que "17,1%" é a taxa real.** É estimativa sobre headline persistida de quem TERMINOU o fluxo. Quem
-  abandonou no passo de revisão nunca virou linha. A medição direta (`notaIncompleta` em análises v7) ainda
-  não tem amostra: **0 análises v7 em 2026-08-01**.
+- **Que "17,0%" é a taxa real.** É estimativa sobre headline persistida de quem TERMINOU o fluxo. Quem
+  abandonou no passo de revisão nunca virou linha. A medição direta mal começou: **1 análise v7 em
+  2026-08-01** (`notaIncompleta: false`). Um caso não é taxa; o limiar declarado para o número valer é **30
+  análises v7**, e está em `docs/leitura-telemetria-aviso-headline.md`.
 - **Que policies e índices estão verificados.** Estão enumerados.
 - **Que o guard de migrations cobre coluna, trigger, view, enum ou grant.** Cobre tabela, função e RLS.
 - **Que os mapas do admin estão protegidos.** 11 sítios sem resolver, com dano classificado mas **não
@@ -549,10 +585,14 @@ produção, não asserção. Ambos são invocados à mão; se algum dia virarem 
 
 ## 7. Índice dos documentos
 
+- **`fase3-fechamento.md` §5 afirma "a régua v2 não está em produção" e "mais de 80 commits à frente de
+  `origin/main`".** Era verdade em 2026-07-27 e **não é mais**: a régua v2 subiu, e a versão determinística está
+  em 7. O documento é um instantâneo de fechamento de fase e fica como está; quem o ler precisa saber que o
+  §5 descreve o estado daquele dia, não o de hoje.
 - **`ideas.md` é brainstorm de design da fundação do projeto, não lista de pendência.** Registra três
   abordagens visuais com a segunda marcada "✅ ESCOLHIDA". **A paleta que ele descreve não é a que vale
   hoje**: ele propõe violeta-índigo `#5B21B6` como primária e branco puro de fundo, enquanto o
   `CLAUDE.md` documenta amarelo `#FFB800` e cream `#faf8f4`. É registro de decisão histórica; para saber a
   paleta atual, o `CLAUDE.md` e `docs/color-system.md` mandam. Nenhuma pendência viva.
-- **`copy-provisoria-e-pendencias.md` (2026-07-28) está VIVO, e uma seção dele vence hoje.** Reconferido em
-  2026-08-01, item a item, na seção 4 acima.
+- **`copy-provisoria-e-pendencias.md` (2026-07-28) está VIVO.** Reconferido em 2026-08-01, item a item, na seção 4
+  acima. O prazo da billing foi adiado para **2026-08-08** no mesmo dia, com a distância medida ao lado da data.
