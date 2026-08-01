@@ -179,6 +179,7 @@ Ordenadas por mecanismo, não cronologia. Todas medidas nesta base.
 | Hash do entry como prova de deploy | **Cego para mudança em chunk lazy.** Funcionou por dez deploys porque as mudanças tocavam o entry | Release do Sentry com `dateFinished` como sinal primário |
 | Pedir o bundle antigo | **200 com o `index.html`** do catch-all da Vercel, nunca 404 | Comparar tamanho ou conteúdo, nunca status |
 | `git log origin/main -1` | Mostra o que o clone acha, não o que o servidor tem | `git ls-remote` |
+| **Guard abortando por falta de `.env`, lido como "nada a reportar"** (2026-08-01) | `check:migrations` num worktree sem `.env` sai com **`exit 1`, o mesmo código de uma falha real**, e imprime com **o mesmo prefixo do caminho de sucesso**. Um grep na saída procurando o aviso das três tabelas de billing não achou nada, e a leitura foi "pendência resolvida". O guard não tinha verificado coisa nenhuma | Código de saída próprio (`78`, `EX_CONFIG`) e mensagem que diz "ABORTADO SEM VERIFICAR NADA / este resultado NÃO significa que o banco está em dia". Travado em `scripts/lib/guardAmbienteAusente.test.ts`, que roda o script de verdade |
 | Medir antes da coisa existir | Três vezes: release "cobrindo um projeto só" (o backend ainda não subira), "zero artefatos", "o bundle não mudou" | Conferir que o instante da medição é depois do evento |
 | `release` sem artefato | Existir a release não implica os mapas terem subido | Verificar o debug ID do arquivo servido |
 
@@ -254,6 +255,27 @@ Ficou pendente até a Fase 3, que criou o bloco rotulado "você declarou".
 **A conclusão operacional: regra escrita é a contramedida mais fraca da lista.** Ela serve para explicar por
 que a barreira existe, não para substituí-la.
 
+### Conhecer a classe não imuniza
+
+Em **2026-08-01**, escrevendo **este documento**, na seção que cataloga esta classe de defeito, o autor:
+
+1. rodou `pnpm check:migrations` no worktree de documentação, que não tem `.env`;
+2. grepou a saída procurando o aviso das três tabelas de billing;
+3. não encontrou nada;
+4. e quase registrou aqui que a pendência estava resolvida.
+
+O guard tinha **abortado antes de verificar qualquer coisa**. `exit 1` é o mesmo código de uma falha real, e
+o prefixo `[checkMigrationsApplied]` é o mesmo do caminho de sucesso — nem o código nem o texto distinguiam
+"não achei" de "não consegui olhar".
+
+**É a anatomia exata do `env -i` e do endpoint legado que devolvia 200 com lista vazia: ausência de resposta
+lida como resposta.** E é o argumento mais forte deste documento a favor de barreira sobre regra escrita:
+não houve desatenção nem pressa. Houve alguém que conhecia a classe, estava escrevendo sobre a classe, com a
+tabela de instâncias aberta na tela, e caiu nela mesmo assim.
+
+Conhecimento não é contramedida. O conserto está em `scripts/checkMigrationsApplied.mts`: exit `78`
+(`EX_CONFIG`), distinto de `1`, e uma mensagem que não pode ser confundida com veredito.
+
 ### Pedido de mudança irreversível no fim de rodada cheia
 
 Três vezes o passo que muda payload persistido foi pedido no fim de uma rodada que já tinha dois deploys. Nas
@@ -311,11 +333,33 @@ Cada item com custo, impacto medido quando houver, e **o gatilho que o traz de v
 | **`termos-bilingues`, lista-núcleo curada, fronteiras de faixa, comparação de modelos** | Não estimados | Sem medição | — |
 | **Billing: `fix/billing-customer-reuse` não subiu, e o prazo vence hoje** | Alto e crescendo. A branch está **20 commits à frente e 119 atrás** da `main` (era 10 atrás quando o prazo foi marcado, depois 15). Rebase, 5 migrations à mão, `backfillStripeCustomers.mjs` nunca executado, e duas migrations pedem janela destrutiva | O `check:migrations` reporta **hoje** as 3 tabelas expostas e não declaradas (`payment_recovery_emails`, `stripe_customers`, `billing_failed_payments`) — inconsistência real na direção inversa, verde com aviso | **Prazo 2026-08-01, hoje.** `docs/copy-provisoria-e-pendencias.md` §2.3 define as duas únicas saídas aceitas: adiar com data nova escrita no mesmo commit, ou transformar o aviso em erro temporário. O silêncio não é saída |
 | **33 `TODO(Ana)` do escopo de consentimento, no ar desde 2026-07-28** | Baixo por item, revisão editorial | 30 dos 33 são lidos na tela. `ConsentGate` é modal bloqueante sem botão de fechar | Reconferido em 2026-08-01: **os 33 continuam lá**, número idêntico ao levantamento. `docs/copy-provisoria-e-pendencias.md` §1 |
-| **`TODO(Ana)` fora do escopo de consentimento** | Não estimado | **1196 na base**, sendo 144 só no `Admin.tsx`, 36 no `RoadmapQuiz.tsx`, 32 em `server/routes/aiRoadmap.ts` | Nunca inventariado. O `copy-provisoria` cobre só os 33 do consentimento e diz que "existem outros"; a ordem de grandeza não estava registrada em lugar nenhum |
+| **`TODO(Ana)` fora do escopo de consentimento** | Não estimado. A alavanca é por arquivo, não pelo total | **1196 na base** (2026-08-01). Os dez maiores estão abaixo | Nunca inventariado. O `copy-provisoria` cobre só os 33 do consentimento e diz que "existem outros"; a ordem de grandeza não estava registrada em lugar nenhum |
 | **Achados de design registrados sem correção** | Baixo a médio | CLS residual de 0,015 no hero; `tracking-[0.18em]` contra `[0.2em]`; sombra flat ausente nos cards da home; resíduo de 22px no skeleton da dica; o `<br>` do badge do hero que **envelhece quando a contagem passar de 10.000** | `docs/copy-provisoria-e-pendencias.md` §3 e §3-bis. O do `<br>` tem gatilho automático: a contagem cruzar 10.000 |
 | **Os 5 testes pulados** | Baixo | `server/routes/adminTasks.rebalance.test.ts`, travados pelo guard de total exato | — |
 | **Deprecação do `environmentMatchGlobs`** | Baixo | Aviso em toda execução do vitest | Upgrade de major do vitest |
 | **Policies (72) e índices (139)** | Alto. Exige `DATABASE_URL` | Enumerados, não verificados | `docs/limites-do-guard-de-migrations.md` |
+
+### Os dez arquivos com mais `TODO(Ana)`
+
+Medido em 2026-08-01 sobre `client/`, `server/` e `shared/`. **1196 no total** — o número sozinho é volume
+sem alavanca; a distribuição é que diz por onde começar.
+
+```
+client/src/pages/Admin.tsx                    144
+client/src/pages/RoadmapQuiz.tsx               36
+server/routes/aiRoadmap.ts                     32
+client/public/lancamento.html                  32
+client/src/pages/EntrevistaSessao.tsx          28
+client/src/pages/Plataformas.tsx               25
+client/src/pages/PlanoCarreira.tsx             21
+client/src/pages/LinkedinAnalisar.tsx          21
+client/src/components/agent/AgentWidget.tsx    21
+server/lib/email.ts                            20
+```
+
+**Um arquivo concentra 12% do total.** `Admin.tsx` é interno, então a copy dele tem alcance pequeno e custo
+de revisão alto — o inverso do critério de alcance que ordena os 33 do consentimento. Qualquer plano de
+revisão editorial que ordene por volume vai começar pelo lugar errado.
 
 ---
 
