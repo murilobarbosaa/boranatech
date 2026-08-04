@@ -256,10 +256,18 @@ branch que a outra frente também usa é planejar para um mundo que não existe.
 as frentes se isolam em worktrees de verdade, ou o deploy é da `main`, e a
 "branch da fase" é só um lugar de trabalho.
 
-## 10. `schema_mismatch` no chat de intake (entrada da Fase 3)
+## 10. `schema_mismatch`: o invariante funcionando, não um defeito
 
 **Primeiro achado que a observabilidade do P2 produziu sozinha.** Antes dela, estes
 7 turnos seriam invisíveis.
+
+**CORREÇÃO DE LEITURA, e ela importa para a Fase 3 não consertar a coisa errada:
+isto NÃO é 6,9% de perda.** É uma pessoa, uma sessão de cinco minutos, e ela
+**chegou ao roadmap** (`ia-70f4bc45`, `ready`). O erro é transitório, o botão de
+"tentar de novo" (que só aparece em `transient`, por desenho desta fase) fez o
+trabalho dele, e ela atravessou. O achado é **positivo**: é o invariante das
+saídas funcionando com gente de verdade, medido em produção. O que sobra para a
+Fase 3 é reduzir o atrito, não destravar ninguém.
 
 **Medido em 2026-08-04**, sobre 101 turnos pós-deploy:
 
@@ -290,6 +298,13 @@ desenho desta fase) **funcionou**, e ela atravessou.
   do Zod. Foi decisão de privacidade deliberada (o detalhe cru pode conter a fala
   da pessoa), e o preço aparece agora.
 
-**Para a Fase 3:** gravar o **caminho do campo** que falhou (`issues[].path` do
-Zod), que não é conteúdo do usuário e por isso não fere a regra de privacidade.
-Sem isso, o diagnóstico para em "o modelo errou o schema" e não avança.
+**FEITO em 2026-08-04**, commit `feat(observability): record which schema fields
+the model missed, never the values`. `caminhosDoSchema` extrai só `issues[].path`
+e o motivo passa a ser `schema_mismatch:intake.goal,reply`. O `message` e o
+`received` do Zod saíram inclusive da mensagem que ia para o `console.error` do
+servidor, então a correção também **fechou um vazamento** que existia no log: em
+erro de enum o Zod embute o valor recebido, que pode ser a fala da pessoa. Cinco
+testes travam isso, um deles usando uma frase sensível como valor recebido.
+
+**O que a Fase 3 herda:** na próxima ocorrência o registro dirá qual campo, e aí
+o conserto do prompt tem alvo.

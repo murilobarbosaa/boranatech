@@ -21,6 +21,43 @@
 | Rejeições por `turn_limit`        | **ZERO**                                                           |
 | Conversão conversou → gerou       | **50%** nos dias fechados                                          |
 
+### Os dois testes da janela imediata, executados em 2026-08-04
+
+Ambos rodaram contra produção, na conta de teste
+`6a9063c4-2bcb-4432-8a75-70fccc676851`.
+
+**Índice único: PASSOU.** Dois `POST /generate` concorrentes, mesmo payload:
+
+| Requisição | Resultado                                                        |
+| ---------- | ---------------------------------------------------------------- |
+| Vencedora  | `ia-dcffb368`, 8 seções, chegou a **`ready`**                    |
+| Perdedora  | `generation_in_progress` ("Voce ja tem um roadmap sendo gerado") |
+
+A perdedora recebeu o erro **depois** do `sseInit`, como frame SSE em HTTP 200.
+Isso é o esperado e é a prova de que veio do **índice**, não da checagem prévia de
+concorrência: aquela responde antes de os headers saírem, com 429 de verdade.
+Depois que o SSE abre, 429 deixa de ser expressável e o contrato vira o frame de
+erro, com a mesma mensagem.
+
+**Zero HTTP 500** e **zero ocorrências do caminho das 3 tentativas de slug** no log
+do servidor, que eram os dois modos de falha que a D2 previu. **A perdedora não
+deixou lixo**: nenhuma linha `generating`, e apenas 1 roadmap novo.
+
+**Cobrança dupla: PARADA, agora com tráfego novo.**
+
+| Momento         | Global | Dedicada |
+| --------------- | ------ | -------- |
+| Antes do turno  | 0      | 0        |
+| Depois do turno | **0**  | **1**    |
+
+Dedicada **+1**, global **+0**. Antes desta fase seria +1 nas duas. A prova
+anterior (11 → 1) era recálculo histórico; esta é com requisição real.
+
+**Efeito colateral verificado:** a geração perdedora gravou
+`roadmap-generator / error / generation_in_progress` e **devolveu a vaga de
+cota** — a global terminou em 1, não 2. É o `logAiUsage` com status diferente de
+`success` liberando a reserva, exatamente como desenhado.
+
 O número que responde à demanda original: **zero `turn_limit` em 101 turnos**. O
 beco sem saída que motivou a fase não aconteceu nenhuma vez.
 
