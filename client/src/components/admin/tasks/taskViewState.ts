@@ -1,6 +1,5 @@
 import { EMPTY_FILTERS, type GroupBy, type TaskFilters } from "./taskFilters";
-import type { DueFilter,
-  OrigemFilter } from "./taskFilters";
+import type { DueFilter, OrigemFilter } from "./taskFilters";
 import type { TaskPriority, TaskType } from "./types";
 
 // Estado da tela (busca, filtros, agrupamento, visao, arquivadas) na query
@@ -115,6 +114,57 @@ export function writeViewState(search: string, state: TaskViewState): string {
   set("view", state.view === "board" ? "" : state.view);
   set("archived", state.includeArchived ? "1" : "");
 
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+/**
+ * Chaves da URL que pertencem A ABA DE TAREFAS, e so a ela.
+ *
+ * Existe porque `setActiveSection` (Admin.tsx) passou a PRESERVAR os demais
+ * parametros ao trocar de aba. A preservacao esta certa e resolveu um problema
+ * real (o `?window=` da Visao voltava ao padrao a cada troca de aba), mas ela
+ * inverteu o risco: enquanto a query era reescrita do zero, chave de escopo de
+ * secao nao vazava; agora vaza toda.
+ *
+ * O sintoma comeca cosmetico (`board=bugs` viajando para a aba de Financeiro) e
+ * nao para ai: `task=BUG-12` num deep link de outra aba e um estado que nenhuma
+ * delas sabe ler, e filtro de tarefa preservado fora de Tarefas e ruido que a
+ * pessoa nao consegue limpar sem editar a URL a mao.
+ *
+ * A lista mora AQUI, e nao no Admin.tsx, porque este e o arquivo que LE e
+ * ESCREVE essas chaves. Uma segunda copia do outro lado divergiria no primeiro
+ * filtro novo, e o modo de falha seria silencioso: a chave nova simplesmente
+ * vazaria, sem nada quebrar.
+ *
+ * `board` e `task` entram junto com as de filtro por serem do mesmo tipo:
+ * identificam O QUE se olha DENTRO da aba, e nao fazem sentido fora dela.
+ */
+export const CHAVES_DA_ABA_TAREFAS = [
+  "q",
+  "assignee",
+  "labels",
+  "priority",
+  "type",
+  "due",
+  "origem",
+  "mine",
+  "group",
+  "view",
+  "archived",
+  "board",
+  "task",
+] as const;
+
+/**
+ * Remove as chaves de escopo de secao ao TROCAR de secao, preservando o resto.
+ *
+ * Recebe e devolve a search, no mesmo contrato de writeViewState e withTaskParam:
+ * nenhuma funcao deste modulo monta a query do zero.
+ */
+export function limparChavesDeSecao(search: string): string {
+  const params = new URLSearchParams(search);
+  for (const chave of CHAVES_DA_ABA_TAREFAS) params.delete(chave);
   const query = params.toString();
   return query ? `?${query}` : "";
 }

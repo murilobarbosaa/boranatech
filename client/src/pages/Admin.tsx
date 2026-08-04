@@ -56,6 +56,7 @@ import { UsageRetentionDashboard } from "@/components/admin/UsageRetentionDashbo
 import { ContactListsManager } from "@/components/admin/ContactListsManager";
 import { ConversionDashboard } from "@/components/admin/ConversionDashboard";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import { limparChavesDeSecao } from "@/components/admin/tasks/taskViewState";
 import { TasksErrorBoundary } from "@/components/admin/tasks/TasksErrorBoundary";
 import { TasksPanelSkeleton } from "@/components/admin/tasks/TasksPanelSkeleton";
 
@@ -6093,7 +6094,13 @@ export default function Admin() {
   // e a janela escolhida voltava ao padrao sem ninguem pedir.
   const setActiveSection = useCallback(
     (section: AdminSectionId) => {
-      const params = new URLSearchParams(window.location.search);
+      // Preserva o que e da PAGINA (o ?window= da Visao) e descarta o que e de
+      // UMA secao so (filtros, quadro e tarefa da aba de Tarefas). A lista mora
+      // em taskViewState, junto de onde essas chaves sao lidas e escritas: uma
+      // copia aqui divergiria no primeiro filtro novo, e em silencio.
+      const params = new URLSearchParams(
+        limparChavesDeSecao(window.location.search),
+      );
       params.set("section", section);
       setLocation(`/admin?${params.toString()}`);
     },

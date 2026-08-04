@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_VIEW_STATE, readViewState, writeViewState } from "./taskViewState";
+import {
+  CHAVES_DA_ABA_TAREFAS,
+  DEFAULT_VIEW_STATE,
+  limparChavesDeSecao,
+  readViewState,
+  writeViewState,
+} from "./taskViewState";
 import { EMPTY_FILTERS } from "./taskFilters";
 
 describe("readViewState", () => {
@@ -101,7 +107,9 @@ describe("writeViewState", () => {
       view: "lista" as const,
       includeArchived: true,
     };
-    expect(readViewState(writeViewState("?section=tarefas", state))).toEqual(state);
+    expect(readViewState(writeViewState("?section=tarefas", state))).toEqual(
+      state,
+    );
   });
 
   it("busca so com espacos nao vai para a URL", () => {
@@ -110,5 +118,74 @@ describe("writeViewState", () => {
       filters: { ...EMPTY_FILTERS, query: "   " },
     });
     expect(next).toBe("?section=tarefas");
+  });
+});
+
+describe("chaves de escopo de secao", () => {
+  it("trocar de aba a partir do quadro de bugs NAO leva o board", () => {
+    // O caso concreto: `?section=bugs` redireciona para o quadro BUG com
+    // `board=bugs`, e clicar em Financeiro levaria o quadro junto.
+    const limpo = limparChavesDeSecao("?section=tarefas&board=bugs");
+    expect(limpo).not.toContain("board");
+  });
+
+  it("trocar de aba NAO descarta o window da Visao", () => {
+    // O controle. A preservacao existe por um motivo real: sem ela, a janela
+    // escolhida na Visao voltava ao padrao a cada troca de aba. Limpar demais
+    // reintroduziria esse defeito.
+    expect(limparChavesDeSecao("?section=tarefas&window=30d")).toContain(
+      "window=30d",
+    );
+  });
+
+  it("leva embora TODAS as chaves da aba, nao so o board", () => {
+    // Afirma o conjunto inteiro. "board sumiu" passaria com um delete escrito a
+    // mao, e o filtro seguinte vazaria sem nada acusar.
+    const search =
+      "?section=tarefas&" +
+      CHAVES_DA_ABA_TAREFAS.map((k) => `${k}=x`).join("&") +
+      "&window=30d";
+    const limpo = limparChavesDeSecao(search);
+    for (const chave of CHAVES_DA_ABA_TAREFAS) {
+      expect(limpo).not.toContain(`${chave}=`);
+    }
+    expect(limpo).toContain("window=30d");
+    expect(limpo).toContain("section=tarefas");
+  });
+
+  it("a lista cobre tudo que writeViewState escreve", () => {
+    // PARIDADE nos dois sentidos, contra o proprio escritor. Um filtro novo em
+    // writeViewState que ninguem acrescentar aqui passa a vazar, e o modo de
+    // falha e silencioso. Este teste transforma o esquecimento em vermelho.
+    const escritas = writeViewState("", {
+      filters: {
+        query: "q",
+        assigneeIds: ["a"],
+        labelIds: ["l"],
+        priorities: ["alta"],
+        types: ["bug"],
+        due: "late",
+        mine: true,
+        origem: "sentry",
+      },
+      groupBy: "assignee",
+      view: "lista",
+      includeArchived: true,
+    });
+    // forEach e nao `for...of`: o tsconfig do projeto nao habilita
+    // downlevelIteration, entao iterar URLSearchParams direto nao compila.
+    const escritasKeys: string[] = [];
+    new URLSearchParams(escritas).forEach((_valor, chave) => {
+      escritasKeys.push(chave);
+    });
+    expect(escritasKeys.length).toBeGreaterThan(0);
+    for (const chave of escritasKeys) {
+      expect(CHAVES_DA_ABA_TAREFAS).toContain(chave as never);
+    }
+  });
+
+  it("search vazia continua vazia, sem '?' solto", () => {
+    expect(limparChavesDeSecao("")).toBe("");
+    expect(limparChavesDeSecao("?board=bugs")).toBe("");
   });
 });
