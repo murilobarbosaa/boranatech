@@ -84,7 +84,7 @@ exatamente isso.
 
 ### Passos de banco
 
-Em `docs/runbook-ativacao-sentry.md` (3.1 a 3.6, comando do dry-run e os oito
+Em `docs/runbook-ativacao-sentry.md` (3.1, 3.1-B, 3.2 a 3.6, comando do dry-run e os oito
 critérios de abortar) e `docs/runbook-ligar-sentry.md` (o `sentry_sync_enabled`,
 em arquivo separado de propósito).
 

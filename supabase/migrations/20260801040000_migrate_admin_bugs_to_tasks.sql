@@ -163,6 +163,7 @@ declare
   v_com_vinculo_sem_id integer;
   v_sem_autor   integer;
   v_done_sem_conclusao integer;
+  v_tipo_errado integer;
 begin
   select count(*) into v_bugs from public.admin_bugs;
 
@@ -219,6 +220,22 @@ begin
     raise exception
       '% tarefa(s) concluidas ficaram sem completed_at e nunca reabririam',
       v_done_sem_conclusao;
+  end if;
+
+  -- TIPO, afirmado explicitamente.
+  --
+  -- Parece redundante (o insert acima escreve 'bug' literal) e nao e: esta
+  -- migration DEPENDE de 20260731040000 ter alargado o CHECK de
+  -- admin_tasks.type. Sem ela o insert falha por violacao de constraint, com uma
+  -- mensagem que fala de CHECK e nao de migracao. Com esta assercao, o dia em
+  -- que alguem inserir por outro caminho (ou aceitar um default) tem contagem
+  -- afirmando o valor, e nao so o numero de linhas: 25 linhas com o tipo errado
+  -- passariam em todas as demais verificacoes.
+  select count(*) into v_tipo_errado
+  from public.admin_tasks where legacy_bug_id is not null and type <> 'bug';
+  if v_tipo_errado <> 0 then
+    raise exception
+      '% tarefa(s) migradas ficaram com type diferente de bug', v_tipo_errado;
   end if;
 
   raise notice

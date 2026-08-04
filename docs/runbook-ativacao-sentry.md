@@ -5,15 +5,29 @@ está em produção; daqui para a frente é SQL editor.
 
 **Estado de partida** (verificado em 2026-08-03, antes de qualquer bloco):
 
-| Item | Valor |
-| --- | --- |
-| `admin_bugs` | 25 linhas, 6 com `sentry_numeric_id`, 0 órfãs |
-| ShortIds vinculados | `NODE-EXPRESS-1, 2, 3, 7, 8, 9` |
-| Quadro `BUG` | 5 etapas, `Sentry` na posição 1000, `is_start` ainda nela |
-| Cards no `BUG` | 1 (`BUG-1`) |
+| Item                             | Valor                                                     |
+| -------------------------------- | --------------------------------------------------------- |
+| `admin_bugs`                     | 25 linhas, 6 com `sentry_numeric_id`, 0 órfãs             |
+| ShortIds vinculados              | `NODE-EXPRESS-1, 2, 3, 7, 8, 9`                           |
+| Quadro `BUG`                     | 5 etapas, `Sentry` na posição 1000, `is_start` ainda nela |
+| Cards no `BUG`                   | 1 (`BUG-1`)                                               |
+| `admin_tasks.type` aceita `bug`? | **NAO** (CHECK ainda sem `bug`)                           |
+| Migrations da Fase 1             | **as duas pendentes**                                     |
+| Migrations da Fase 2             | pendentes                                                 |
 
-Se qualquer um divergir agora, **pare**: as migrations 3.1, 3.5 e a asserção da
-3.4 casam etapa por nome e contam linhas.
+### Ha um defeito ATIVO em producao agora, e o 3.1-B o fecha
+
+O deploy desta serie devolveu a opcao **Bug** ao campo Tipo da tarefa
+(`TASK_TYPES`, `TaskType`, `TYPE_META`), e o `CHECK` do banco continua sem esse
+valor. **Escolher Bug numa tarefa hoje devolve 400.**
+
+E a janela de deploy invertida: o codigo novo esperando um schema que nao chegou.
+Ela existe porque a regra do projeto manda deployar codigo ANTES da migration, e
+a migration ainda nao foi aplicada. O bloco **3.1-B** e o que a fecha, e por isso
+ele e o mais urgente da lista, apesar de nao ser o mais perigoso.
+
+Se qualquer um divergir agora, **pare**: a segunda migration do 3.1-B, o bloco
+3.5 e a asserção do 3.4 casam etapa por nome e contam linhas.
 
 **Ordem obrigatória.** Cada bloco depende do anterior. O 3.6 é o último porque
 agenda um cron que chama um endpoint, e agendar antes do endpoint existir seria
@@ -50,6 +64,82 @@ select jobname, schedule, active from cron.job order by jobname;
 **Se divergir:** zero linhas no `unschedule` significa que ele já não estava
 agendado; confira a verificação e siga. Se ainda aparecer na lista, não siga:
 ele voltaria a rodar sobre uma tabela congelada.
+
+---
+
+## 3.1-B Migrations da Fase 1 (2 arquivos, nesta ordem)
+
+**Estas duas ficaram de fora da primeira versao deste runbook.** Sem elas o bloco
+3.4 falha por violacao de constraint e a emenda 2 do plano fica desfeita. O que
+cada uma resolve esta abaixo.
+
+### Por que aqui, e nao depois
+
+Verificado, nao suposto: nenhuma das duas referencia coluna criada na Fase 2
+(`is_pinned`, `intake_source`, `source`, `sentry_*`, `archived_source`,
+`legacy_bug_id`). A primeira so altera um CHECK de `admin_tasks`; a segunda so
+atualiza `is_start` em `admin_task_columns`. Ambas dependem apenas do schema que
+ja esta em producao desde julho, entao rodam antes de tudo.
+
+### 1. `20260731040000_readd_bug_to_admin_task_type.sql`
+
+Devolve `bug` ao CHECK de `admin_tasks.type`. **ALARGA** o dominio: nao existe
+linha que possa violar um CHECK mais permissivo, entao nao pode falhar por dado
+existente.
+
+Fecha o 400 descrito no estado de partida, e e pre-requisito do 3.4: a migracao
+de dados insere as 25 tarefas com `type = 'bug'`.
+
+**Esperado:** dois `ALTER TABLE` e `COMMIT`.
+
+### 2. `20260731040100_fix_bug_board_start_column.sql`
+
+Move o `is_start` do quadro `BUG` da etapa `Sentry` para `Bugs Reportados`.
+
+Isto e a **emenda 2** do plano, e nao acabamento. A etapa fixada significa
+"criado pelo Sentry, ninguem triou", e e essa semantica que autoriza o job a
+arquivar sozinho (poda) e a ressuscitar. Com o `is_start` nela:
+
+- card novo criado a mao sem etapa explicita nasce dentro do balde do robo;
+- card REABERTO volta para la, e a poda por silencio pode arquivar sozinho um
+  card que voce sabe que regrediu.
+
+O segundo e o buraco que a emenda 2 fechou. Sem esta migration, o job entraria em
+producao com ele aberto.
+
+A migration casa a etapa **por nome** e por isso termina num bloco de assercao
+que afirma o total: exatamente uma etapa `is_start` no quadro `BUG`, e o nome
+dela e `Bugs Reportados`. Divergencia levanta excecao e desfaz.
+
+**Esperado:** dois `UPDATE` e `COMMIT`, sem `NOTICE`.
+
+### Verificacao dos dois
+
+```sql
+select
+  (select count(*) from pg_constraint
+    where conname = 'admin_tasks_type_check'
+      and pg_get_constraintdef(oid) like '%''bug''%') as check_aceita_bug_esperado_1,
+  (select count(*) from admin_task_columns c
+     join admin_task_boards b on b.id = c.board_id
+   where b.key = 'BUG' and c.is_start) as etapas_iniciais_esperado_1;
+
+-- Qual e a etapa inicial agora. Esperado: Bugs Reportados.
+select c.name, c.position, c.is_start
+from admin_task_columns c join admin_task_boards b on b.id = c.board_id
+where b.key = 'BUG' order by c.position;
+```
+
+**Se ja estiverem aplicadas:** as duas sao idempotentes. A primeira faz
+`drop constraint if exists` seguido de `add constraint`, entao reaplicar so
+reescreve o mesmo CHECK. A segunda tem os `update` condicionados
+(`and c.is_start` / `and not c.is_start`), entao a segunda passada casa zero
+linhas e a assercao continua verdadeira. Reaplicar e seguro; basta conferir a
+saida acima.
+
+**Se a assercao da segunda disparar:** a etapa foi renomeada. Nada foi alterado
+(transacao). Ajuste o nome no `update` e reaplique. Este e o mesmo cuidado do
+bloco 3.5, que casa a mesma etapa pelo mesmo nome.
 
 ---
 
@@ -141,12 +231,25 @@ manda o `CLAUDE.md`.
 supabase/migrations/20260801040000_migrate_admin_bugs_to_tasks.sql
 ```
 
+**DEPENDE DO 3.1-B.** As 25 tarefas nascem com `type = 'bug'`, e sem a
+`20260731040000` o CHECK ainda recusa esse valor. O modo de falha e diferente do
+das assercoes: violacao de constraint, com mensagem falando de
+`admin_tasks_type_check` e nao de migracao. Medido contra Postgres real: a
+transacao inteira e desfeita e ficam **0 tarefas**, sem dano, mas a mensagem nao
+explica a causa.
+
 **Esta é a única que pode falhar de propósito, e falhar aqui é o desenho
 funcionando.**
 
 Ela termina num bloco `do $$ ... $$` que afirma por contagem: 25 de 25 migradas,
 6 de 6 com vínculo do Sentry, zero com shortId sem id numérico, zero sem autor,
-zero concluídas sem `completed_at`. Qualquer divergência levanta exceção.
+zero concluídas sem `completed_at` e **zero com `type` diferente de `bug`**.
+Qualquer divergência levanta exceção.
+
+A do `type` foi acrescentada depois da primeira versão deste runbook. Ela parece
+redundante (o insert escreve `'bug'` literal) e não é: sem ela, 25 linhas com o
+tipo errado passariam em todas as demais verificações, porque as outras contam
+linhas e não afirmam valores. Testada por quebra deliberada.
 
 **Exceção aqui significa "não migrou nada e o banco está intacto", não "quebrou
 o banco".** Tudo roda dentro de uma transação: a exceção desfaz o insert inteiro,
@@ -170,7 +273,9 @@ select
   (select count(*) from admin_tasks
     where legacy_bug_id is not null and sentry_numeric_id is not null) as com_vinculo_esperado_6,
   (select count(*) from admin_tasks
-    where legacy_bug_id is not null and sentry_sync_pending is not null) as push_pendente_esperado_0;
+    where legacy_bug_id is not null and sentry_sync_pending is not null) as push_pendente_esperado_0,
+  (select count(*) from admin_tasks
+    where legacy_bug_id is not null and type <> 'bug') as tipo_errado_esperado_0;
 
 -- distribuicao por etapa: 6 Bugs Reportados, 9 Em Progresso, 10 Concluido
 select c.name, count(*)
@@ -325,19 +430,19 @@ Se `jq` não estiver à mão, tire o `| jq` e leia cru.
 
 ### O que esperar
 
-| Campo | Esperado |
-| --- | --- |
-| `estado` | `"ok"` |
-| `quadrosProcessados` | `1` |
-| `criados` | **~18**, e nenhum dos 6 migrados |
-| Divisão do `motivo` | Frontend e Backend, sem terceira categoria |
-| `semEtiqueta` | `[]` |
-| `foraDoTeto` | `[]` |
-| `detalheIncompleto` | poucos ou vazio |
-| `decisoes` | 25, todas com `tipo: "nada"` |
-| `ingestaoAbortada` | `null` |
-| `manutencaoAbortada` | `null` |
-| `pushesReenviados` | tudo em zero |
+| Campo                | Esperado                                   |
+| -------------------- | ------------------------------------------ |
+| `estado`             | `"ok"`                                     |
+| `quadrosProcessados` | `1`                                        |
+| `criados`            | **~18**, e nenhum dos 6 migrados           |
+| Divisão do `motivo`  | Frontend e Backend, sem terceira categoria |
+| `semEtiqueta`        | `[]`                                       |
+| `foraDoTeto`         | `[]`                                       |
+| `detalheIncompleto`  | poucos ou vazio                            |
+| `decisoes`           | 25, todas com `tipo: "nada"`               |
+| `ingestaoAbortada`   | `null`                                     |
+| `manutencaoAbortada` | `null`                                     |
+| `pushesReenviados`   | tudo em zero                               |
 
 O número 18 foi medido em 2026-08-01 contra o Sentry real, com os 25 bugs já
 migrados. Ele **vai variar**: issues novas apareceram desde então. O que não pode
@@ -396,3 +501,37 @@ Se qualquer um aparecer, **não ligue**:
 
 Os critérios 1, 2, 3 e 8 são bloqueantes absolutos. Os 4, 5, 6 e 7 pedem
 decisão sua antes de seguir.
+
+---
+
+## Nota: por que o 3.1-B faltava
+
+Registrado para quem revisar este documento depois.
+
+Ao escrever a primeira versão eu enumerei os blocos a partir das **fases do
+plano** que ainda tinham passo de banco pendente, e a Fase 1 não parecia ter um:
+ela foi majoritariamente código (o tipo `bug` de volta na interface), com as duas
+migrations como detalhe. Enumerei a partir da minha memória do trabalho, e não a
+partir do que existe no repositório.
+
+É a classe de erro que o `CLAUDE.md` documenta: **escopo derivado de uma fonte
+que encolhe em silêncio**. A lista de blocos parecia completa porque nada a
+contradizia dentro do próprio documento, exceto uma contradição que ficou lá,
+escrita, e que eu não vi: a tabela de estado de partida dizia que `is_start`
+estava na etapa `Sentry`, e a verificação do 3.5 esperava `Bugs Reportados`, sem
+nenhum bloco entre as duas movendo isso.
+
+**A verificação que fecha essa classe**, e que agora está feita: comparar as
+migrations do projeto no repositório com as citadas no runbook.
+
+```bash
+ls supabase/migrations/2026073*.sql supabase/migrations/2026080*.sql \
+  | xargs -n1 basename | sort > /tmp/repo.txt
+grep -ohE "2026(073|080)[0-9_a-z]+\.sql" docs/runbook-*.md | sort -u > /tmp/runbook.txt
+comm -23 /tmp/repo.txt /tmp/runbook.txt
+```
+
+Resultado em 2026-08-04: **9 migrations no repositório e fora do runbook, das
+quais 7 são de outras frentes** (reembolsos, `ai_usage_excluded_tools`, roadmap,
+ações de auditoria) e não pertencem a este roteiro. As 2 restantes eram
+exatamente as da Fase 1, agora no 3.1-B. **Nenhuma outra omissão.**

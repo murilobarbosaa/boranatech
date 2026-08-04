@@ -6,7 +6,7 @@ engano junto com os passos de schema.
 
 ## Pré-requisitos
 
-Todos os blocos 3.1 a 3.6 aplicados, e o **dry-run lido**, com nenhum dos oito
+Todos os blocos 3.1, **3.1-B**, 3.2 a 3.6 aplicados, e o **dry-run lido**, com nenhum dos oito
 critérios de abortar presente. Se você não leu o relatório do dry-run, volte.
 
 ## O bloco
@@ -40,16 +40,16 @@ order by started_at desc limit 1;
 
 **Esperado:** `status = success`, e no `payload`:
 
-| Campo | Esperado |
-| --- | --- |
-| `estado` | `ok` |
-| `quadros` | `1` |
-| `criados` | o mesmo número do dry-run, mais ou menos as issues que apareceram no intervalo |
-| `foraDoTeto` | `[]` |
-| `semEtiqueta` | `[]` |
-| `detalheIncompleto` | vazio ou poucos |
-| `ingestaoAbortada` | `null` |
-| `manutencaoAbortada` | `null` |
+| Campo                | Esperado                                                                       |
+| -------------------- | ------------------------------------------------------------------------------ |
+| `estado`             | `ok`                                                                           |
+| `quadros`            | `1`                                                                            |
+| `criados`            | o mesmo número do dry-run, mais ou menos as issues que apareceram no intervalo |
+| `foraDoTeto`         | `[]`                                                                           |
+| `semEtiqueta`        | `[]`                                                                           |
+| `detalheIncompleto`  | vazio ou poucos                                                                |
+| `ingestaoAbortada`   | `null`                                                                         |
+| `manutencaoAbortada` | `null`                                                                         |
 
 `status = partial` **não é falha**: significa que algo entrou em `foraDoTeto`,
 `semEtiqueta`, `detalheIncompleto` ou houve aborto de fase. O motivo está no
