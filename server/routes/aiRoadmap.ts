@@ -674,7 +674,16 @@ function classificarFalhaDeTurno(message: string): string {
   if (message.includes("upstream_timeout")) return "timeout";
   const status = /OpenAI respondeu (\d{3})/.exec(message);
   if (status) return `openai_${status[1]}`;
-  if (message.includes("nao bateu com o schema")) return "schema_mismatch";
+  // O codigo sozinho nao diz QUAL campo o modelo errou, e sem isso o
+  // `schema_mismatch` nao e diagnosticavel (foi o que aconteceu com os 7 de
+  // 2026-08-03). `runIntakeChatTurn` ja monta a mensagem com `campos [...]`
+  // contendo APENAS caminhos de campo, nunca valores; aqui so extraimos.
+  if (message.includes("nao bateu com o schema")) {
+    const campos = /campos \[([^\]]*)\]/.exec(message);
+    return campos && campos[1]
+      ? `schema_mismatch:${campos[1]}`.slice(0, 200)
+      : "schema_mismatch";
+  }
   if (message.includes("JSON valido")) return "invalid_json";
   if (message.includes("nao retornou conteudo")) return "no_content";
   return "upstream_error";

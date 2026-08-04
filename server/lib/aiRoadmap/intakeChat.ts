@@ -30,6 +30,38 @@ const AI_BACKOFF_MS = [400, 800];
 const AI_TIMEOUT_MS = 90_000;
 const MAX_TOKENS = 1_500;
 
+/**
+ * Caminhos dos campos que falharam a validacao, e SO os caminhos.
+ *
+ * Recebe `error.issues` do Zod e devolve algo como `intake.goal,reply`. Nunca
+ * toca em `message`, `received`, `expected` ou qualquer outro campo do issue:
+ * esses podem carregar o valor que veio do modelo, que por sua vez pode conter a
+ * fala da pessoa.
+ *
+ * Deduplicado e ordenado para o registro ser estavel entre ocorrencias iguais, e
+ * limitado a 10 caminhos porque a lista existe para diagnosticar, nao para
+ * reproduzir a resposta.
+ */
+export function caminhosDoSchema(issues: readonly unknown[]): string {
+  const caminhos = new Set<string>();
+  for (const issue of issues) {
+    const p = (issue as { path?: unknown })?.path;
+    if (!Array.isArray(p)) {
+      caminhos.add("(desconhecido)");
+      continue;
+    }
+    // Cada segmento vira string por conta propria; indices numericos de array
+    // sao posicao, nao conteudo, entao sao seguros.
+    const caminho = p
+      .map((seg) => (typeof seg === "number" ? String(seg) : String(seg)))
+      .join(".");
+    caminhos.add(caminho || "(raiz)");
+  }
+  // Array.from em vez de spread: o `target` deste tsconfig nao permite iterar
+  // Set com spread (TS2802).
+  return Array.from(caminhos).sort().slice(0, 10).join(",");
+}
+
 // Semente de abertura da conversa. Ela existe so para dar um primeiro turno
 // nao-vazio ao modelo e NAO aparece como bolha na tela.
 //
@@ -491,8 +523,21 @@ async function callModelOnce(
 
   const validation = IntakeChatTurnSchema.safeParse(parsed);
   if (!validation.success) {
-    const issues = JSON.stringify(validation.error.issues).slice(0, 300);
-    throw new Error(`Resposta da IA nao bateu com o schema: ${issues}`);
+    // SO OS CAMINHOS, nunca `message` nem `received`.
+    //
+    // A versao anterior mandava `JSON.stringify(issues)` inteiro, e o Zod
+    // inclui ali o VALOR recebido em erro de enum e de tipo. Esse valor pode ser
+    // a fala da pessoa, e a mensagem vai para o `console.error` do servidor.
+    // Trocar por caminho de campo mantem o diagnostico (que campo o modelo
+    // errou) e elimina a classe inteira de vazamento, no log e no banco.
+    //
+    // Motivo de existir: em 2026-08-03 sete turnos falharam com
+    // `schema_mismatch` e o unico rastro era o codigo, sem dizer QUAL campo. Um
+    // caminho sem rastro e um caminho que ninguem conserta, que e a licao da
+    // fase 2 inteira. Ver docs/divida-fase2-roadmap-ia.md, item 10.
+    throw new Error(
+      `Resposta da IA nao bateu com o schema: campos [${caminhosDoSchema(validation.error.issues)}]`,
+    );
   }
 
   const inputChars = modelMessages.reduce(

@@ -12,6 +12,7 @@ vi.mock("../env", async (importActual) => {
 });
 
 import {
+  caminhosDoSchema,
   CHAT_KICKOFF,
   COMPRESS_KEEP_TAIL,
   compressHistory,
@@ -273,5 +274,64 @@ describe("INVARIANTE: o orcamento de turnos cabe na cota diaria", () => {
 
   it("a cota permite pelo menos duas conversas completas", () => {
     expect(CONVERSAS_COMPLETAS_POR_DIA).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("caminhosDoSchema: diagnostico sem vazamento", () => {
+  // Fala da pessoa, do tipo que o Zod embute em `received` num erro de enum.
+  const FALA = "quero sair do meu emprego porque meu chefe me humilha";
+
+  it("devolve os caminhos dos campos que falharam", () => {
+    const issues = [
+      {
+        path: ["intake", "goal"],
+        message: "Invalid enum value",
+        received: FALA,
+      },
+      { path: ["reply"], message: "Expected string", received: 42 },
+    ];
+    expect(caminhosDoSchema(issues)).toBe("intake.goal,reply");
+  });
+
+  it("NAO vaza o valor recebido, nem a mensagem do Zod", () => {
+    // Este e o teste que importa: erro de enum e onde o Zod inclui `received`.
+    const issues = [
+      {
+        code: "invalid_enum_value",
+        path: ["intake", "goal"],
+        message: `Invalid enum value. Received '${FALA}'`,
+        received: FALA,
+        options: ["primeira-vaga", "transicao"],
+      },
+    ];
+    const saida = caminhosDoSchema(issues);
+    expect(saida).toBe("intake.goal");
+    expect(saida).not.toContain(FALA);
+    expect(saida).not.toContain("humilha");
+    expect(saida).not.toContain("Invalid enum");
+    expect(saida).not.toContain("primeira-vaga");
+  });
+
+  it("indice de array e posicao, nao conteudo", () => {
+    const issues = [{ path: ["messages", 3, "content"], received: FALA }];
+    expect(caminhosDoSchema(issues)).toBe("messages.3.content");
+  });
+
+  it("deduplica, ordena e limita a 10", () => {
+    const issues = [
+      { path: ["b"] },
+      { path: ["a"] },
+      { path: ["b"] },
+      ...Array.from({ length: 15 }, (_, i) => ({ path: [`z${i}`] })),
+    ];
+    const saida = caminhosDoSchema(issues);
+    expect(saida.split(",")).toHaveLength(10);
+    expect(saida.startsWith("a,b,")).toBe(true);
+  });
+
+  it("issue sem path nao explode nem vaza", () => {
+    expect(caminhosDoSchema([{ received: FALA }])).toBe("(desconhecido)");
+    expect(caminhosDoSchema([{ path: [] }])).toBe("(raiz)");
+    expect(caminhosDoSchema([null, undefined])).toBe("(desconhecido)");
   });
 });
