@@ -1,18 +1,165 @@
 # Runbook de deploy: Fase 2 do Roadmap com IA
 
-Escrito em 2026-07-30 para ser **executado por uma pessoa**, não por mim. Nada
-neste documento foi executado: nenhum push, nenhuma migration aplicada, nenhum
-merge.
+> **FASE CONCLUÍDA E VERIFICADA EM 2026-08-04.** O que está abaixo da linha é o
+> plano como foi escrito, mantido porque o raciocínio continua valendo para as
+> próximas fases. O deploy em si **não seguiu este roteiro**: os commits da Fase 2
+> foram para a `main` carregados por uma merge da frente de admin, e subiram
+> junto com ela. O runbook não foi executado; foi ultrapassado.
 
-Estado de partida (revisado em 2026-07-31): branch
-`fix/roadmap-ia-intake-desbloqueio`, **16 commits**, nada empurrado. `origin/main`
-avançou para `bd4b91d` e a branch está **16 à frente e 3 atrás**. Produção roda
-`bd4b91d`.
+## Como terminou, com os números medidos
 
-**Este runbook cobre DUAS frentes na mesma branch.** Além das migrations do
-Roadmap, a branch carrega `20260730190000` (reembolsos), commitada por `9529487`.
-A órfã `20260713160000` **não será aplicada** (ver
-`docs/debito-ledger-migrations.md`).
+| Verificação                       | Resultado                                                          |
+| --------------------------------- | ------------------------------------------------------------------ |
+| Código na `main`                  | 36 arquivos da fase, **nenhum ausente**, 29 idênticos ao preparado |
+| `20260730170000` (lista canônica) | aplicada; asserção comportamental do guard **ok**                  |
+| `20260730180000` (índice único)   | aplicado                                                           |
+| `pnpm check:migrations`           | **verde**, nos dois sentidos, 0 tabelas expostas                   |
+| Suíte na `main`                   | **2254 testes**, 0 falhas                                          |
+| Roadmaps `ready`                  | 19 → **28** (+9 desde o deploy)                                    |
+| Roadmaps `partial`                | 2 → **2** (não cresceu)                                            |
+| Turnos de chat                    | **101** em 4 dias                                                  |
+| Rejeições por `turn_limit`        | **ZERO**                                                           |
+| Conversão conversou → gerou       | **50%** nos dias fechados                                          |
+
+O número que responde à demanda original: **zero `turn_limit` em 101 turnos**. O
+beco sem saída que motivou a fase não aconteceu nenhuma vez.
+
+## O que este runbook errou, e vale para a próxima fase
+
+O plano assumia uma branch isolada indo para a `main` por fast-forward. A
+realidade foi outra: as duas frentes compartilharam a árvore de trabalho, e a
+Fase 2 viajou dentro da merge da outra. **Nada disso quebrou o produto**, mas
+invalidou quatro rodadas de preparação (rebase, `fase2-rebaseada`, `fase2-limpa`,
+janela de freeze) que existiam para um caminho que não foi o usado.
+
+A lição não é "o plano estava errado", é: **quando duas frentes dividem árvore, a
+branch não é a unidade de deploy.** Ver "O episódio do índice sujo" em
+`docs/divida-fase2-roadmap-ia.md`.
+
+---
+
+## Branches de preparação (todas obsoletas)
+
+`fase2-rebaseada`, `fase2-limpa` e `backup-antes-rebase-0304` foram tentativas de
+levar a fase à `main` por fast-forward. Nenhuma foi usada: a fase chegou lá pela
+merge da frente de admin. Podem ser apagadas depois de confirmado que os últimos
+commits de instrumento entraram.
+
+## Nunca abrir o preview da Vercel para "testar"
+
+O push da branch cria um preview. Ele fala com o **Railway e o Supabase de
+produção** (`VITE_API_URL`, `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` estão
+no escopo Production _and_ Preview, ver `CLAUDE.md`). Uma conversa iniciada ali
+grava linha real em `ai_usage_logs`, consome cota de IA de verdade e entra nas
+métricas que este runbook usa para validar o deploy.
+
+Preview serve para **ver a interface**, nunca para exercitar fluxo.
+
+## Commits órfãos a resgatar DEPOIS do deploy
+
+Dois commits da frente de admin existem **só** na branch de trabalho
+`fix/roadmap-ia-intake-desbloqueio` e **não** entram no deploy da Fase 2:
+
+| Hash      | Assunto                                                                                 |
+| --------- | --------------------------------------------------------------------------------------- |
+| `45a2171` | fix(admin): paginate the ai usage and beta unlock aggregates past the postgrest row cap |
+| `859e324` | fix(admin): measure churn by effective exits instead of an always-null timestamp        |
+
+Vão para a `main` depois, pela frente de admin. O rename da branch de trabalho
+fica para depois disso, para não haver peça móvel durante o deploy.
+
+## PRÉ-FREEZE: o que precisa estar verdadeiro ANTES de a outra frente parar
+
+A `20260730170000` **não é etapa do freeze, é pré-condição**. Se ela entrar na
+janela e algo falhar, o freeze estica com a outra frente parada esperando.
+
+| #   | O quê                                               | Como confirmar                                                                              | Dono  |
+| --- | --------------------------------------------------- | ------------------------------------------------------------------------------------------- | ----- |
+| 1   | `20260730170000` aplicada                           | `docs/verificacao-migration-170000.sql`, blocos ANTES e DEPOIS, as 4 verificações passando  | admin |
+| 2   | `pnpm check:migrations` verde contra produção       | exit 0, sem linha `ausente:`                                                                | eu    |
+| 3   | Árvore principal sem nada que bloqueie `git rebase` | `git status --porcelain` sem modificações não commitadas                                    | admin |
+| 4   | O que for para o commit empurrado compila e passa   | `pnpm check && pnpm test` verdes na árvore que vai subir                                    | ambos |
+| 5   | Decisão sobre `040000`/`040100` tomada              | se o código de bugs vai junto, as duas precisam estar aplicadas ANTES (ver ordem combinada) | admin |
+| 6   | Cota da conta de teste disponível                   | dedicada abaixo de ~50/60, para o teste do índice pós-deploy                                | eu    |
+
+Só depois dos seis o freeze começa.
+
+## Sequência do FREEZE (NÃO EXECUTADA)
+
+Mantida como referência: a janela medida foi de ~9 minutos, com o CI em 115s de
+mediana. Não foi usada porque o deploy veio pela merge.
+
+e o push. Na sessão de 2026-07-30 ela andou **cinco vezes**.
+
+**Começa** quando a frente de admin para de commitar E para de empurrar para a
+`main`. **Termina** no passo 4. Os passos 5 em diante **não** exigem freeze.
+
+| #   | Quem  | O quê                                          | Comando                                                                                                                          | Tempo |
+| --- | ----- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| 1   | admin | parar de commitar e de empurrar para a `main`  | —                                                                                                                                | —     |
+| 2   | eu    | rebase final                                   | `git fetch origin && git rebase origin/main`                                                                                     | 1 min |
+| 3   | eu    | reverificação completa, na worktree sem `.env` | `pnpm check && pnpm test`, as 4 constantes uma vez cada, asserções do Q1.a, `pnpm check:migrations`                              | 4 min |
+| 4   | você  | push da branch, CI verde, ff-only              | `git push -u origin fase2-rebaseada` e depois `git checkout main && git merge --ff-only fase2-rebaseada && git push origin main` | 8 min |
+| —   | —     | **FIM DO FREEZE**                              | a frente de admin volta a commitar                                                                                               | —     |
+| 5   | você  | confirmar server no ar                         | `curl -s https://<api>/api/health \| grep -o '"uptime":[0-9.]*'`                                                                 | 5 min |
+| 6   | você  | aplicar a `180000`                             | SQL editor                                                                                                                       | 2 min |
+| 7   | eu    | testar o índice                                | dois `/generate` concorrentes; sucesso = 429                                                                                     | 3 min |
+| 8   | eu    | verificação pós-deploy                         | cota, integridade, funil                                                                                                         | 5 min |
+
+**Janela de freeze: cerca de 9 minutos** (passos 2 a 4). O total até a
+verificação imediata é de cerca de **24 minutos**, mas só os 9 primeiros
+bloqueiam a outra frente.
+
+O número do CI não é estimativa: medido em 2026-07-31 pela API do GitHub, sobre
+as **15 execuções mais recentes** do `ci.yml`, todas com sucesso. **Mediana 115s,
+média 116s, máximo 132s.** É por isso que o passo 4 caiu de 8 para 4 minutos.
+
+**Se a frente de admin commitar por acidente no meio:** não quebra nada, **custa
+uma reverificação**. Commit em branch própria é inofensivo; o que dói é **push
+para a `main`**, porque aí o `merge-base --is-ancestor` falha e o ciclo dos
+passos 2 e 3 recomeça do zero. A regra prática: durante o freeze, commitar local
+é tolerável, empurrar para a `main` não é.
+
+## Ordem combinada das DUAS frentes
+
+Cinco migrations pendentes, e os conjuntos de objetos são **disjuntos**:
+
+| Migration        | Frente       | Objetos                                                                          |
+| ---------------- | ------------ | -------------------------------------------------------------------------------- |
+| `20260730170000` | Roadmap      | funções `ai_usage_excluded_tools`, `get_ai_usage_today`, `reserve_ai_usage_slot` |
+| `20260730180000` | Roadmap      | índice `ai_roadmaps_one_generating_per_user`                                     |
+| `20260730190000` | reembolsos   | `admin_refunds.settlement`, CHECK de `content_audit_logs`                        |
+| `20260731040000` | tarefas/bugs | CHECK `admin_tasks_type_check`                                                   |
+| `20260731040100` | tarefas/bugs | DML em `admin_task_columns`                                                      |
+
+**Nenhuma toca objeto de outra. A ordem ENTRE frentes é livre**; o que não é
+livre é a ordem **dentro** de cada uma, em relação ao código que a consome.
+
+**O risco concreto, e é da frente de tarefas:** o código de bugs lê
+`type = 'bug'`, e o CHECK em produção **ainda não aceita esse valor** (medido em
+2026-07-31: `CHECK (type = ANY (ARRAY['feature','melhoria','debito_tecnico','tarefa']))`).
+Se esse código subir para a `main` junto com a Fase 2 **sem a `040000` aplicada**,
+criar tarefa do tipo `bug` falha com violação de constraint. Não é degradação
+suave: é erro na cara de quem usa.
+
+**Checklist única, na ordem:**
+
+1. **[admin]** aplicar `20260730190000` **se** o código de `settlement` já estiver na `main`.
+2. **[tarefas]** aplicar `20260731040000` e `20260731040100` **antes** de o código de bugs chegar à `main`. Estas duas são a exceção à regra "código antes de migration": o CHECK precisa aceitar o valor **antes** de alguém tentar gravá-lo.
+3. **[roadmap]** aplicar `20260730170000` (pré-condição do CI verde).
+4. **[roadmap]** freeze, rebase, reverificar, push, CI, ff-only.
+5. **[roadmap]** deploy das duas plataformas; confirmar server no ar.
+6. **[roadmap]** aplicar `20260730180000`; testar o índice.
+7. **[roadmap]** verificação pós-deploy.
+
+## Nota da Fase 3: o roadmap montado não é revalidado
+
+`concludeGeneration` decide `ready` versus `partial` **só** por
+`failed.length === 0`; não há `safeParse` do `RoadmapV2` montado. O risco é
+estreito e não foi observado: o número de seções é validado no esqueleto
+(`.min(7).max(10)`, `generate.ts:787`) e não muda depois, os `children` de cada
+seção são validados por chamada, e seção que falha vira `partial`. Nenhuma
+instância nos 19 `ready`. Fica registrado, não é para consertar agora.
 
 ## Passo 0-A — a frente de reembolsos está deployável ou desacoplada?
 
@@ -422,6 +569,64 @@ uso, não uma janela de backup.
 ---
 
 ## Verificação pós-deploy
+
+## Verificação em TRÊS janelas
+
+"Fase 2 verificada" não acontece no mesmo dia. O funil é client-side e precisa de
+gente real; antes de 24h, ausência de evento é indistinguível de "ninguém entrou
+ainda", que é o defeito do blip de disponibilidade registrado no `CLAUDE.md`.
+
+### Janela 1 — IMEDIATA (minutos após o deploy)
+
+| O quê                     | Onde consultar                                                                                                                                               | Sucesso                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------- |
+| Server no ar              | `curl -s https://<api>/api/health`                                                                                                                           | `uptime` baixo, amostra única               |
+| Índice único ativo        | dois `/generate` concorrentes pelo harness                                                                                                                   | **429 `generation_in_progress`**, e não 500 |
+| Cobrança dupla parada     | um turno de chat real, medindo antes e depois: `select public.get_ai_usage_today('<uid>'), public.get_ai_usage_today_by_tool('<uid>','roadmap-intake-chat')` | dedicada **+1**, global **+0**              |
+| Nenhuma geração presa     | `select status, count(*) from public.ai_roadmaps group by status`                                                                                            | **0** linhas `generating`                   |
+| Dados anteriores íntegros | mesma query                                                                                                                                                  | **19 `ready`** e **2 `partial`** ainda lá   |
+| Guard                     | `pnpm check:migrations`                                                                                                                                      | exit 0                                      |
+
+### Janela 2 — PRIMEIRO DIA (24h)
+
+Tudo no PostHog, **filtrando a conta de teste `6a9063c4-2bcb-4432-8a75-70fccc676851`**.
+
+| O quê                         | Onde                                                                                                                                                                          | Sucesso                                     |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Funil completo de alguém real | PostHog, eventos `roadmap_ia_chat_iniciado` → `roadmap_ia_can_generate` → `roadmap_ia_geracao_iniciada` → `roadmap_ia_geracao_concluida`, mesmo `distinct_id`                 | **pelo menos 1 pessoa** atravessa os quatro |
+| Beco sem saída de volta       | SQL: `select count(*) from public.ai_usage_logs where status='rejected' and error_message='turn_limit' and created_at > '<instante do deploy>' and user_id <> '6a9063c4-...'` | **0**                                       |
+| Issue de pessoa travada       | Sentry, fingerprint `roadmap-ia-travado`                                                                                                                                      | **nenhuma nova**                            |
+
+As **4 linhas `rejected`** do smoke test (ids `1a08b64b`, `00234a4d`, `4e851a4c`, `25d0048a`) são anteriores ao deploy e da conta de teste; o filtro por instante e por `user_id` já as exclui.
+
+### Janela 3 — PRIMEIRA SEMANA
+
+É esta que responde à pergunta que abriu a demanda.
+
+**Métrica: taxa de conversão `chat_iniciado` → roadmap `ready`, por semana.**
+
+Três períodos para comparar, e o SQL de referência é o mesmo mudando a janela:
+
+```sql
+select date_trunc('week', created_at) as semana,
+       count(distinct user_id) as pessoas_que_conversaram,
+       (select count(distinct user_id) from public.ai_roadmaps r
+         where r.status = 'ready'
+           and date_trunc('week', r.created_at) = date_trunc('week', l.created_at))
+         as pessoas_com_roadmap
+  from public.ai_usage_logs l
+ where l.tool = 'roadmap-intake-chat' and l.status = 'success'
+ group by 1 order by 1;
+```
+
+| Período             | O que era                               | Referência                              |
+| ------------------- | --------------------------------------- | --------------------------------------- |
+| Antes de 2026-07-13 | o formulário estático ainda existia     | linha de base do produto que funcionava |
+| 13/07 a 31/07       | chat guiado com o teto de 12, quebrado  | o fundo do poço                         |
+| Depois do deploy    | chat com teto de 20 e saídas garantidas | o que precisa superar os dois           |
+
+**Sucesso: acima de 50%**, e as 2 linhas `partial` não crescendo. Abaixo disso o
+problema mudou de lugar, e o funil do P2 diz para onde.
 
 ### 1. A cobrança dupla parou
 

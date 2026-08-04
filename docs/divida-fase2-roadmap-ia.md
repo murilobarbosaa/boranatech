@@ -189,3 +189,107 @@ não é inspeção manual e sim o ensaio descrito no item 6, que responde
 qualquer coisa que ela dependa nessas cinco categorias precisa de verificação
 escrita à mão, no molde da asserção comportamental de `ai_usage_excluded_tools()`,
 afirmando o **conteúdo** por igualdade de conjunto e não a existência.
+
+## 8. Rede em tempo de import na suíte de testes (local, nunca no CI)
+
+**Onde:** `server/lib/redis.ts:17` e `:64`. As duas conexões são criadas no
+**import do módulo**, com `lazyConnect: false`:
+
+```ts
+export const queueConnection = env.redisUrl ? new IORedis(env.redisUrl, {...
+export const cacheConnection = env.redisUrl ? new IORedis(env.redisUrl, {...
+```
+
+**Efeito:** qualquer teste que importe esse módulo, direto ou transitivamente,
+abre TCP para o Redis de **produção**, e é flaky por construção. Observado uma
+vez em 2026-07-31 durante esta demanda, com
+`getaddrinfo EAI_AGAIN tramway.proxy.rlwy.net` na saída da suíte.
+
+**Por que o CI não é afetado:** o job `qualidade` não recebe secret nenhum, então
+`REDIS_URL` é vazia, `env.redisUrl` é falsy e nenhuma conexão é criada. O guard
+estrutural aqui é o mesmo que o `CLAUDE.md` elogia: o CI **não tem** a variável,
+não a simula.
+
+**Quem é afetado:** rodadas locais e a **primeira rodada do pre-commit**, que
+roda na árvore principal com `.env`. A segunda rodada do hook é imune, porque
+renomeia o `.env`.
+
+**Por que não agora:** `redis.ts` é infraestrutura compartilhada por várias
+frentes, e torná-lo lazy muda o comportamento de fila e cache em produção. Não é
+conserto de passagem, e não é da Fase 2.
+
+**Custo de deixar:** ruído e instabilidade em rodada local. Zero em CI.
+
+## 9. O episódio do índice sujo, e a cadeia que ele custou
+
+**A causa raiz de quatro rodadas de retrabalho, e ela cabe numa frase:** eu deixei
+um arquivo meu no índice do git entre duas operações, e a outra frente commitou.
+
+A cadeia, em ordem:
+
+1. `docs/runbook-deploy-roadmap-ia-fase2.md` ficou **staged** enquanto eu fazia
+   outra coisa.
+2. A frente de admin rodou `git commit` e o arquivo foi junto. **139 linhas do
+   runbook entraram em `5674aee` e `f3edd26`**, dois commits de reembolso.
+3. Isso criou uma dependência invisível: o runbook passou a existir só dentro de
+   commits que não eram meus.
+4. No rebase da fase, o `CLAUDE.md` conflitou entre duas versões da própria frente
+   de admin, e o rebase abortou.
+5. Nasceu a `fase2-rebaseada`, que para resolver arrastou **14 commits da outra
+   frente** já superados na `main`.
+6. Nasceu a `fase2-limpa`, com cherry-pick de 23 commits, que conflitou **três
+   vezes** no mesmo runbook.
+7. Descobriu-se que **18 dos 22 já estavam na `main`**, carregados pela merge, e
+   que todo o esforço de branch tinha sido para um caminho que ninguém usou.
+
+**Custo:** quatro rodadas de preparação, três branches descartáveis, e um plano de
+freeze que nunca foi executado.
+
+**A regra que evita:** com duas frentes na mesma árvore, `git add` e `git commit`
+são **um** ato, nunca dois separados por outra tarefa. E `git commit <pathspec>`
+em vez de `git add` + `git commit`, porque o pathspec ignora o índice para tudo o
+que não foi nomeado.
+
+**A regra maior, que é o aprendizado da fase:** quando duas frentes dividem a
+árvore, **a branch não é a unidade de deploy.** Planejar fast-forward de uma
+branch que a outra frente também usa é planejar para um mundo que não existe. Ou
+as frentes se isolam em worktrees de verdade, ou o deploy é da `main`, e a
+"branch da fase" é só um lugar de trabalho.
+
+## 10. `schema_mismatch` no chat de intake (entrada da Fase 3)
+
+**Primeiro achado que a observabilidade do P2 produziu sozinha.** Antes dela, estes
+7 turnos seriam invisíveis.
+
+**Medido em 2026-08-04**, sobre 101 turnos pós-deploy:
+
+| Medida                               | Valor                                |
+| ------------------------------------ | ------------------------------------ |
+| Turnos com `schema_mismatch`         | **7** de 101 (6,9%)                  |
+| Pessoas afetadas                     | **1** (`a618848e`)                   |
+| Janela                               | 5 minutos, 03/08 entre 23:23 e 23:28 |
+| `input_chars` / `output_chars` nos 7 | **0** nos dois                       |
+
+**O padrão, e ele é tranquilizador:** a pessoa **conseguiu o roadmap**
+(`ia-70f4bc45`, `ready`, 23:28:19). A sequência dela foi 7 turnos bons, 3 erros,
+**2 turnos bons**, 4 erros, e então a geração completa. Ou seja: o erro é
+transitório, o botão de "tentar de novo" (que só aparece em `transient`, por
+desenho desta fase) **funcionou**, e ela atravessou.
+
+**O que o dado sugere e o que ele não prova:**
+
+- `input_chars = 0` significa que o callback de I/O nunca disparou, então a falha
+  está na validação da resposta do modelo, não na chamada.
+- Os erros começam com o histórico já grande (o último turno bom antes deles tinha
+  7422 chars de entrada) mas **não há limiar**: dois turnos bons aconteceram
+  depois, com 8254 e 8814 chars. Não é comprimento.
+- Cada linha de erro representa uma requisição que **esgotou as 3 tentativas
+  internas**. Os 7 são 7 requisições, não 7 tentativas.
+- **Não sabemos qual campo do `IntakeProposalSchema` falhou**, porque
+  `classificarFalhaDeTurno` guarda só o código `schema_mismatch`, sem o feedback
+  do Zod. Foi decisão de privacidade deliberada (o detalhe cru pode conter a fala
+  da pessoa), e o preço aparece agora.
+
+**Para a Fase 3:** gravar o **caminho do campo** que falhou (`issues[].path` do
+Zod), que não é conteúdo do usuário e por isso não fere a regra de privacidade.
+Sem isso, o diagnóstico para em "o modelo errou o schema" e não avança.
