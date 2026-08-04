@@ -18,11 +18,75 @@ leitura de código.
 | 4 Interface do feed | **concluída** |
 | 5 Migração dos dados e aposentadoria da aba | **concluída** |
 | 5.5 Religar o push de resolução | **concluída** |
-| 6 Ligar o sync | não iniciada |
+| 6 Merge, deploy e ativação | **código em produção; passos de banco pendentes** |
 | ~~7 Remover sincronização reversa~~ | **cancelada pela Emenda 1** |
 
 Migrations M1 a M6 escritas e pendentes de aplicação pelo SQL editor. Nenhuma
 delas é consumida por código ainda: o sync só nasce na Fase 3, desligado.
+
+## Merge e deploy (2026-08-03)
+
+Publicado em `main` por fast-forward, `9e46de2` para `22c6f72`, **21 commits**.
+CI verde nos dois jobs (`qualidade` e `migrations`).
+
+**A branch nasceu de `fix/roadmap-ia-intake-desbloqueio`, não de `main`**, e isso
+custou um bloqueio e dois rebases. Fica registrado porque a lição vale para a
+próxima frente longa: 63 commits separavam a branch de `main`, e só 20 eram deste
+projeto. Publicar tudo teria deployado 42 commits de outra frente como efeito
+colateral, o lote de 94 do `CLAUDE.md` outra vez.
+
+A saída foi `git rebase --onto main <merge-base>`, publicando só o que é do
+projeto. A outra frente subiu depois, sozinha, com CI próprio.
+
+### O que os rebases ensinaram
+
+**Resolução de conflito é datada.** O mesmo arquivo, na mesma região, exigiu
+resoluções OPOSTAS nas duas tentativas, porque entre elas a outra frente foi
+publicada:
+
+| Arquivo | 1ª tentativa (main em `7ead9ba`) | 2ª (main em `9e46de2`) |
+| --- | --- | --- |
+| `cron.ts` | **descartar** o import do `paginate` (main não conhecia) | **manter os dois** (main usa em 4 call sites) |
+| `Admin.tsx` | **descartar** o comentário do `PRESERVA` | **manter os dois** (main preserva params agora) |
+| `checkMigrationsApplied.mts` | 26 + 1 = **27** | 26 + 2 = **28** |
+
+O caso do contador é o mais instrutivo: os dois lados diziam **27**, por somas
+diferentes, e aceitar "os dois concordam" daria o número errado. Não era conflito
+de conteúdo, era **de premissa**.
+
+### Resíduos de carona
+
+Duas linhas entraram nos commits por resoluções minhas no ramo antigo, corretas
+lá e sem sentido em `main`. O método que as encontra: interseção entre os
+arquivos que eu toquei e os que a outra frente tocou. Deu exatamente os três que
+conflitaram, e nenhum outro.
+
+Um terceiro achado veio de outra fonte: `npx prettier --write` no `Admin.tsx`
+reformatou o arquivo inteiro, somando **34 linhas** de ruído a um diff de 39. O
+`Admin.tsx` de `main` não passa no prettier (o `CLAUDE.md` avisa que vários não
+passam), então `--write` num arquivo desses reformata o que não é seu. Desfeito;
+o diff caiu de 73/42 para 47/20. **Use `--check` para conferir e `--write` só em
+arquivo que você criou.**
+
+### Um defeito real que o merge expôs
+
+Enquanto `setActiveSection` reescrevia a query do zero, chave de escopo de seção
+não vazava. `main` passou a **preservar** os parâmetros (correto: o `?window=` da
+Visão voltava ao padrão a cada troca de aba), e com isso `board=bugs` passou a
+viajar para as outras abas. Hoje `board`, amanhã `task` e os filtros.
+
+Corrigido em `fix(admin): drop section-scoped url keys when switching tabs`:
+`limparChavesDeSecao` remove as 13 chaves da aba de Tarefas ao trocar de seção, e
+a lista mora em `taskViewState.ts`, junto de onde essas chaves já são lidas e
+escritas. Uma cópia no `Admin.tsx` divergiria no primeiro filtro novo, em
+silêncio, e há teste de paridade contra o próprio `writeViewState` para pegar
+exatamente isso.
+
+### Passos de banco
+
+Em `docs/runbook-ativacao-sentry.md` (3.1 a 3.6, comando do dry-run e os oito
+critérios de abortar) e `docs/runbook-ligar-sentry.md` (o `sentry_sync_enabled`,
+em arquivo separado de propósito).
 
 ## Emendas ao plano aprovado (2026-07-31)
 
