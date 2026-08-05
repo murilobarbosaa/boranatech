@@ -1,0 +1,471 @@
+{
+  "medido_em": "2026-08-05",
+  "mudanca": "estimatedTime (string livre) -> estimatedHours (inteiro, horas de esforco, 1 a 40). Substituicao, nao adicao: o campo antigo nao tinha leitor.",
+  "eco_eliminado": {
+    "antes": "'4h a 6h' em 56,3% dos passos reais e 64,7% dos de teste; os tres literais do exemplo somavam 74,6% / 74,4%.",
+    "depois": "o valor modal (4) responde por 104 de 295 passos = 35,3%, e a instrucao nova nao da exemplo numerico nenhum.",
+    "ressalva": "35,3% ainda e concentracao alta. Nao afirmo que o eco acabou; afirmo que caiu pela metade e que a causa conhecida (o literal no prompt) foi removida."
+  },
+  "diagnostico_hoursPerWeek": {
+    "achado": "O modelo NAO usa hoursPerWeek para dimensionar o volume.",
+    "prova": "As horas GERADAS variam de 223 a 325 (amplitude 102h, fator 1,46x) enquanto as horas DISPONIVEIS variam de 130 a 780 (fator 6x). O volume e praticamente constante, ~270h, independente do tempo que a pessoa declarou ter.",
+    "pior_caso": "A persona com MENOS tempo (ate-5, 130h em 12 meses) recebeu o plano mais sobrecarregado (razao 1,78); a com MAIS tempo (10-20 em 12 meses, 780h) recebeu o mais folgado (0,38). A relacao e INVERSA a que a regra do prompt promete.",
+    "consequencia": "4 dos 5 fora da faixa [0,40 .. 1,00]. Isto e diagnostico, nao conserto: nao mexi no prompt para corrigir, conforme combinado.",
+    "carga_por_persona": {
+      "ia-8cd88f9a": {
+        "persona": "lista-de-cursos",
+        "hoursPerWeek": "5-10",
+        "deadline": "6m",
+        "disponiveis": 195,
+        "geradas": 287,
+        "razao": 1.47,
+        "passos": 60
+      },
+      "ia-8b430213": {
+        "persona": "basico-impreciso",
+        "hoursPerWeek": "10-20",
+        "deadline": "6m",
+        "disponiveis": 390,
+        "geradas": 325,
+        "razao": 0.83,
+        "passos": 67
+      },
+      "ia-08062731": {
+        "persona": "curto-institucional",
+        "hoursPerWeek": "10-20",
+        "deadline": "12m",
+        "disponiveis": 780,
+        "geradas": 298,
+        "razao": 0.38,
+        "passos": 62
+      },
+      "ia-84e1fd6b": {
+        "persona": "CONTROLE-zero",
+        "hoursPerWeek": "ate-5",
+        "deadline": "12m",
+        "disponiveis": 130,
+        "geradas": 231,
+        "razao": 1.78,
+        "passos": 58
+      },
+      "ia-e2c618bf": {
+        "persona": "CONTROLE-vazio",
+        "hoursPerWeek": "5-10",
+        "deadline": "6m",
+        "disponiveis": 195,
+        "geradas": 223,
+        "razao": 1.14,
+        "passos": 48
+      }
+    }
+  },
+  "juiz": {
+    "nota": "Os dois bracos foram RE-JULGADOS depois de corrigir um confundidor: o prompt do juiz renderizava [${estimatedTime ?? '?'}], entao no braco novo todo passo aparecia como [?]. Os numeros abaixo sao do re-julgamento, com os dois bracos mostrando tempo ao juiz.",
+    "por_dimensao": {
+      "especificidade": {
+        "antes": 4.0,
+        "depois": 4.4,
+        "delta": 0.4,
+        "ruido": 0.0,
+        "creditavel": true,
+        "leitura": "O sinal mais forte da rodada, e o unico numa dimensao de ruido zero. Obrigar o modelo a comprometer-se com um numero por passo parece force-lo a delimitar o passo."
+      },
+      "acionabilidade": {
+        "antes": 3.0,
+        "depois": 3.8,
+        "delta": 0.8,
+        "ruido": 0.2,
+        "creditavel": true
+      },
+      "obstaculos": {
+        "antes": 2.4,
+        "depois": 2.6,
+        "delta": 0.2,
+        "ruido": 0.2,
+        "creditavel": false,
+        "leitura": "EMPATA com o piso de ruido. Nao creditavel."
+      },
+      "ponto_de_partida": {
+        "antes": 2.2,
+        "depois": 2.4,
+        "delta": 0.2,
+        "ruido": 0.2,
+        "creditavel": false
+      },
+      "objetivo": {
+        "antes": 2.6,
+        "depois": 3.6,
+        "delta": 1.0,
+        "ruido": 1.2,
+        "creditavel": false
+      },
+      "stack": {
+        "antes": 3.5,
+        "depois": 4.5,
+        "delta": 1.0,
+        "ruido": 1.0,
+        "creditavel": false,
+        "n": 2
+      }
+    },
+    "leitura": "A mudanca entregou QUALIDADE (especificidade e acionabilidade), nao personalizacao. Era o esperado: o campo abre o canal, ainda nao o usa."
+  },
+  "rejulgamento": [
+    {
+      "arm": "antes (estimatedTime)",
+      "slug": "ia-3a49eb95",
+      "veredito": {
+        "objetivo": {
+          "nota": 3,
+          "evidencia": "Projeto Final com Framework [2 semanas]: O que dominar: integração de tudo que você aprendeu. Escolha entre React ou Vue.js e desenvolva uma aplicação completa que consuma uma API. O mini desafio é implementar funcionalidades como autenticação de usuário ou um sistema de comentários. Esse projeto será uma peça chave para seu portfólio.",
+          "justificativa": "O roadmap inclui a criação de um projeto final que pode ser usado como portfólio, o que é relevante para a empregabilidade, mas não há menção específica a preparação para entrevistas ou outras etapas de obtenção de emprego."
+        },
+        "ponto_de_partida": {
+          "nota": 1,
+          "evidencia": "Fundamentos de JavaScript - Revisão de Variáveis e Tipos de Dados [4h a 6h]: Domine os seguintes subtemas: declaração de variáveis (var, let, const), tipos de dados primitivos (string, number, boolean, null, undefined) e tipos de dados complexos (objetos e arrays).",
+          "justificativa": "O roadmap começa com uma revisão de fundamentos que a pessoa já estudou, como variáveis e tipos de dados, sem considerar que ela já tem um curso de JavaScript, HTML e CSS da DIO em andamento."
+        },
+        "stack": {
+          "nota": 4,
+          "evidencia": "Introdução a Frameworks JavaScript - Introdução ao React [4h a 6h]: O que dominar: componentes, estado e propriedades.",
+          "justificativa": "O roadmap foca em JavaScript e inclui frameworks como React e Vue.js, que são relevantes para a stack desejada, mas poderia ser mais específico em relação a projetos ou práticas diretamente ligadas ao stack."
+        },
+        "obstaculos": {
+          "nota": 2,
+          "evidencia": "Manipulação de Eventos Assíncronos [4h a 6h]: Domine a manipulação de eventos assíncronos, como eventos de clique e carregamento de dados.",
+          "justificativa": "O roadmap não considera explicitamente as restrições de tempo da pessoa, como trabalhar das 9 às 18 e ter apenas 5-10 horas por semana para estudar. As seções são extensas e podem não ser realistas dentro das limitações de tempo."
+        },
+        "especificidade": {
+          "nota": 4,
+          "evidencia": "Manipulação de Strings [4h a 6h]: Domine os métodos de manipulação de strings, como concatenação, substring, split e replace.",
+          "justificativa": "O roadmap é bastante específico em termos de tópicos e subtemas, como métodos de manipulação de strings e eventos de teclado e mouse, mas poderia incluir mais detalhes em algumas áreas, como a integração de APIs."
+        },
+        "acionabilidade": {
+          "nota": 3,
+          "evidencia": "Para praticar, crie um pequeno script que declare variáveis de diferentes tipos e exiba seus valores e tipos no console.",
+          "justificativa": "O roadmap oferece algumas instruções práticas, mas não fornece recursos ou links diretos para começar a estudar imediatamente, o que limita a acionabilidade."
+        }
+      },
+      "P": 2.5,
+      "Q": 3.5
+    },
+    {
+      "arm": "antes (estimatedTime)",
+      "slug": "ia-9ed160e4",
+      "veredito": {
+        "objetivo": {
+          "nota": 1,
+          "evidencia": "O roadmap não menciona empregabilidade, portfólio ou entrevistas, que são essenciais para uma transição de carreira.",
+          "justificativa": "O plano não está alinhado com o objetivo de transição de carreira, pois não inclui elementos que levem à empregabilidade, como construção de portfólio ou preparação para entrevistas."
+        },
+        "ponto_de_partida": {
+          "nota": 2,
+          "evidencia": "O roadmap começa com 'Python Avançado', mas não reconhece o conhecimento básico já existente.",
+          "justificativa": "Embora o roadmap comece com tópicos avançados de Python, ele não reconhece explicitamente o conhecimento básico já existente em Python, SQL e Power BI, o que poderia otimizar o tempo de estudo."
+        },
+        "stack": {
+          "nota": 3,
+          "evidencia": "O roadmap inclui seções como 'Bibliotecas Populares' e 'Frameworks Python (Django/Flask)', que são relevantes para Python.",
+          "justificativa": "O plano inclui tópicos relevantes para Python, mas não é totalmente centrado na stack, pois aborda muitos outros tópicos que não são específicos de Python."
+        },
+        "obstaculos": {
+          "nota": 2,
+          "evidencia": "O roadmap é extenso e não menciona a limitação de tempo ou o inglês fraco.",
+          "justificativa": "O plano não considera as limitações de tempo (10-20 horas por semana) e o inglês fraco, o que pode dificultar o cumprimento do cronograma proposto."
+        },
+        "especificidade": {
+          "nota": 4,
+          "evidencia": "O roadmap detalha subtemas como 'Programação Orientada a Objetos', 'Manipulação de Arquivos', e 'RESTful APIs'.",
+          "justificativa": "O plano é bastante específico em termos de tópicos e subtemas, fornecendo detalhes concretos sobre o que estudar em cada área."
+        },
+        "acionabilidade": {
+          "nota": 3,
+          "evidencia": "O roadmap fornece passos concretos como 'crie um script que leia dados de um arquivo CSV', mas não menciona recursos ou materiais específicos para começar.",
+          "justificativa": "Embora o plano forneça passos concretos para prática, ele não menciona recursos ou materiais específicos, o que pode dificultar o início imediato dos estudos."
+        }
+      },
+      "P": 2,
+      "Q": 3.5
+    },
+    {
+      "arm": "antes (estimatedTime)",
+      "slug": "ia-28a9e835",
+      "veredito": {
+        "objetivo": {
+          "nota": 3,
+          "evidencia": "## Preparação para Entrevistas Técnicas",
+          "justificativa": "O roadmap inclui uma seção de preparação para entrevistas técnicas, o que é relevante para alguém buscando a primeira vaga. No entanto, não há menção específica a estágios ou a criação de um portfólio, que são cruciais para empregabilidade."
+        },
+        "ponto_de_partida": {
+          "nota": 2,
+          "evidencia": "## Fundamentos Avançados de Back-end",
+          "justificativa": "O roadmap não considera que a pessoa está no 5º semestre de Análise e Desenvolvimento de Sistemas, sugerindo começar por fundamentos avançados sem verificar o que já foi coberto no curso."
+        },
+        "stack": null,
+        "obstaculos": {
+          "nota": 2,
+          "evidencia": "faculdade a noite",
+          "justificativa": "O roadmap não menciona a necessidade de ajustar o plano para alguém que tem faculdade à noite e pode dedicar 10-20 horas por semana. As seções são divididas em blocos de horas, mas não há ajuste explícito para a carga horária disponível."
+        },
+        "especificidade": {
+          "nota": 4,
+          "evidencia": "Autenticação e Autorização [4h a 6h]: Domine os conceitos de autenticação (verificação da identidade do usuário) e autorização (permissão de acesso a recursos).",
+          "justificativa": "O roadmap é bastante específico em termos de tópicos e práticas, como autenticação, segurança, e escalabilidade, com desafios práticos claros."
+        },
+        "acionabilidade": {
+          "nota": 3,
+          "evidencia": "Para praticar, implemente um sistema de autenticação simples em uma aplicação que você já tenha desenvolvido.",
+          "justificativa": "Embora o roadmap forneça passos práticos, ele assume que a pessoa já tem projetos existentes para aplicar os conceitos, o que pode não ser o caso para todos os iniciantes."
+        }
+      },
+      "P": 2.33,
+      "Q": 3.5
+    },
+    {
+      "arm": "antes (estimatedTime)",
+      "slug": "ia-2537ad96",
+      "veredito": {
+        "objetivo": {
+          "nota": 4,
+          "evidencia": "## Preparação para o Mercado de Trabalho",
+          "justificativa": "O roadmap inclui uma seção dedicada à preparação para o mercado de trabalho, com tópicos como revisão do currículo, otimização do LinkedIn e preparação para entrevistas, o que é consistente com o objetivo de conseguir a primeira vaga."
+        },
+        "ponto_de_partida": {
+          "nota": 5,
+          "evidencia": "## Fundamentos do Back-end\n- O que é Back-end? [2 horas]: Você vai dominar os conceitos de back-end...",
+          "justificativa": "O roadmap começa com conceitos básicos e fundamentais, como 'O que é Back-end?' e 'Introdução à Lógica de Programação', o que é adequado para alguém que nunca programou."
+        },
+        "stack": null,
+        "obstaculos": {
+          "nota": 4,
+          "evidencia": "constraints: 'dois filhos pequenos', hoursPerWeek: 'ate-5'",
+          "justificativa": "O roadmap é dividido em seções com tempos de estudo curtos, como '2 horas' ou '4h a 6h', o que é compatível com alguém que tem apenas até 5 horas por semana para estudar devido a responsabilidades familiares."
+        },
+        "especificidade": {
+          "nota": 4,
+          "evidencia": "- Linguagens de Programação para Back-end [4 horas]: Você vai dominar as linguagens de programação mais comuns no back-end, como: Python, JavaScript, Java e Ruby.",
+          "justificativa": "O roadmap menciona linguagens específicas e conceitos concretos, como 'Python, JavaScript, Java e Ruby', além de práticas e desafios específicos para cada tópico."
+        },
+        "acionabilidade": {
+          "nota": 3,
+          "evidencia": "Para praticar, faça um resumo em suas próprias palavras sobre cada um desses conceitos e como eles se interligam.",
+          "justificativa": "Embora o roadmap forneça práticas e desafios, ele não fornece links ou recursos específicos para começar a estudar imediatamente, exigindo que o usuário busque materiais por conta própria."
+        }
+      },
+      "P": 4.33,
+      "Q": 3.5
+    },
+    {
+      "arm": "antes (estimatedTime)",
+      "slug": "ia-b823b14f",
+      "veredito": {
+        "objetivo": {
+          "nota": 2,
+          "evidencia": "O roadmap inclui \"Preparação para Entrevistas Técnicas\" e \"Criação do Portfólio\", mas não há foco claro em empregabilidade.",
+          "justificativa": "Embora mencione preparação para entrevistas e portfólio, o plano não é estruturado para garantir empregabilidade ao final, como seria esperado para alguém buscando a primeira vaga."
+        },
+        "ponto_de_partida": {
+          "nota": 1,
+          "evidencia": "O roadmap começa com \"Fundamentos do Back-end Avançados\" sem considerar o que a pessoa já sabe.",
+          "justificativa": "O plano não leva em conta o ponto de partida da pessoa, começando diretamente com tópicos avançados sem verificar o conhecimento prévio."
+        },
+        "stack": null,
+        "obstaculos": {
+          "nota": 2,
+          "evidencia": "O plano é extenso e não parece considerar a disponibilidade de 5-10 horas por semana.",
+          "justificativa": "Embora o plano seja detalhado, ele não parece ajustar-se à restrição de tempo disponível da pessoa, que é de 5-10 horas por semana."
+        },
+        "especificidade": {
+          "nota": 4,
+          "evidencia": "O roadmap detalha tópicos como \"JWT para gerenciar sessões de usuários\" e \"integração de modelos de IA com suas APIs\".",
+          "justificativa": "O plano é bastante específico em relação aos tópicos e práticas a serem dominados, nomeando tecnologias e conceitos concretos."
+        },
+        "acionabilidade": {
+          "nota": 3,
+          "evidencia": "O roadmap fornece práticas e mini desafios, mas pode ser difícil começar sem recursos adicionais.",
+          "justificativa": "Embora o plano ofereça práticas e desafios, ele não fornece recursos ou referências diretas para começar a estudar imediatamente."
+        }
+      },
+      "P": 1.67,
+      "Q": 3.5
+    },
+    {
+      "arm": "depois (estimatedHours)",
+      "slug": "ia-8cd88f9a",
+      "veredito": {
+        "objetivo": {
+          "nota": 4,
+          "evidencia": "Projeto Final: Aplicação JavaScript Completa [4h de esforco]: O que dominar: integração de todos os conceitos avançados de JavaScript. Para este projeto, desenvolva uma aplicação web que utilize API externa, manipulação de DOM e boas práticas de código. Mini desafio: implemente uma aplicação de gerenciamento de tarefas que permita adicionar, editar e remover tarefas, utilizando todos os conceitos aprendidos. Este projeto será um ótimo adicionado ao seu portf",
+          "justificativa": "O roadmap inclui projetos finais que são adequados para a criação de um portfólio, essencial para a empregabilidade, mas não menciona diretamente a preparação para entrevistas, que é crucial para o objetivo de \"primeira-vaga\"."
+        },
+        "ponto_de_partida": {
+          "nota": 2,
+          "evidencia": "Fundamentos Avançados de JavaScript",
+          "justificativa": "O roadmap começa com 'Fundamentos Avançados de JavaScript', sem considerar que a pessoa já está em uma trilha de front-end e já fez um curso de JavaScript, HTML e CSS. Não há reconhecimento explícito do que a pessoa já sabe."
+        },
+        "stack": {
+          "nota": 5,
+          "evidencia": "Frameworks e Bibliotecas JavaScript - Introdução ao React [6h de esforco]: O que dominar: componentes, JSX, props e state.",
+          "justificativa": "O roadmap é claramente focado em JavaScript, com seções dedicadas a frameworks e bibliotecas JavaScript, como React, que é consistente com o stackFocus em JavaScript."
+        },
+        "obstaculos": {
+          "nota": 3,
+          "evidencia": "trabalho das 9 as 18",
+          "justificativa": "O roadmap não menciona explicitamente a necessidade de adaptar o estudo ao horário de trabalho das 9 às 18, mas os tempos de esforço sugeridos para cada tópico são relativamente curtos, o que pode ser compatível com a disponibilidade de 5-10 horas por semana."
+        },
+        "especificidade": {
+          "nota": 5,
+          "evidencia": "Closures [4h de esforco]: O que dominar: closures, escopo léxico e funções de alta ordem.",
+          "justificativa": "O roadmap é altamente específico, detalhando sub-tópicos concretos como 'closures, escopo léxico e funções de alta ordem'."
+        },
+        "acionabilidade": {
+          "nota": 4,
+          "evidencia": "Pratique criando uma função que retorne outra função, demonstrando o uso de closures.",
+          "justificativa": "O roadmap fornece instruções práticas e desafios que permitem começar a estudar imediatamente, mas pode exigir recursos adicionais para completar alguns desafios."
+        }
+      },
+      "P": 3.5,
+      "Q": 4.5
+    },
+    {
+      "arm": "depois (estimatedHours)",
+      "slug": "ia-8b430213",
+      "veredito": {
+        "objetivo": {
+          "nota": 3,
+          "evidencia": "## Projetos Práticos e Portfólio",
+          "justificativa": "O roadmap inclui uma seção de 'Projetos Práticos e Portfólio', que é relevante para alguém que busca uma transição de carreira, mas não há menção específica a empregabilidade ou preparação para entrevistas, que são cruciais para uma transição completa."
+        },
+        "ponto_de_partida": {
+          "nota": 2,
+          "evidencia": "## Fundamentos Avançados de Python",
+          "justificativa": "O roadmap começa com 'Fundamentos Avançados de Python', mas não reconhece explicitamente o conhecimento básico que a pessoa já possui em Python, SQL e Power BI. Não há ajuste no conteúdo inicial para evitar redundância."
+        },
+        "stack": {
+          "nota": 4,
+          "evidencia": "## Fundamentos Avançados de Python",
+          "justificativa": "O roadmap foca consistentemente em Python, desde fundamentos avançados até frameworks web e integração com banco de dados, alinhando-se bem com o stackFocus declarado."
+        },
+        "obstaculos": {
+          "nota": 2,
+          "evidencia": "ingles fraco",
+          "justificativa": "Não há menção de recursos em português ou consideração explícita para o inglês fraco, apesar de o roadmap ser extenso e potencialmente exigir materiais em inglês."
+        },
+        "especificidade": {
+          "nota": 5,
+          "evidencia": "Manipulação de Arquivos [4h de esforco]: Domine os conceitos de leitura e escrita de arquivos, incluindo: abertura de arquivos, leitura de texto, escrita de texto e manipulação de arquivos CSV.",
+          "justificativa": "O roadmap é altamente específico, detalhando sub-tópicos concretos e práticas para cada seção, como manipulação de arquivos e uso de bibliotecas específicas."
+        },
+        "acionabilidade": {
+          "nota": 4,
+          "evidencia": "Para praticar, crie um script que leia um arquivo de texto, conte o número de palavras e escreva o resultado em um novo arquivo.",
+          "justificativa": "O roadmap fornece instruções práticas e desafios claros que permitem começar a estudar imediatamente, embora a ausência de links ou referências diretas a materiais possa ser uma limitação."
+        }
+      },
+      "P": 2.75,
+      "Q": 4.5
+    },
+    {
+      "arm": "depois (estimatedHours)",
+      "slug": "ia-08062731",
+      "veredito": {
+        "objetivo": {
+          "nota": 4,
+          "evidencia": "Projeto Final: API Completa [8h de esforco]: Utilize todos os conhecimentos adquiridos para criar uma API robusta que inclua autenticação, versionamento, documentação e integração com microserviços.",
+          "justificativa": "O roadmap inclui um projeto final que visa consolidar os conhecimentos adquiridos, o que é relevante para a empregabilidade e preparação para uma vaga, mas não menciona diretamente a preparação para entrevistas ou construção de portfólio, que são essenciais para o objetivo de conseguir a primeira vaga."
+        },
+        "ponto_de_partida": {
+          "nota": 2,
+          "evidencia": "Fundamentos do Back-end: Conceitos Fundamentais de Back-end [5h de esforco]: Domine os conceitos de arquitetura de software, padrões de design, e o funcionamento de servidores.",
+          "justificativa": "O roadmap começa com fundamentos que podem ser considerados básicos para alguém no 5º semestre de Análise e Desenvolvimento de Sistemas, sugerindo que não leva totalmente em conta o ponto de partida do usuário."
+        },
+        "stack": null,
+        "obstaculos": {
+          "nota": 3,
+          "evidencia": "faculdade a noite, hoursPerWeek: 10-20",
+          "justificativa": "O roadmap não menciona explicitamente a necessidade de conciliar estudos com a faculdade à noite, mas a distribuição de horas de estudo por tópico parece compatível com a carga horária semanal disponível."
+        },
+        "especificidade": {
+          "nota": 4,
+          "evidencia": "Estruturas de Dados e Algoritmos: listas, filas, pilhas, árvores, algoritmos de busca e ordenação.",
+          "justificativa": "O roadmap menciona tópicos específicos e detalhados, como estruturas de dados e algoritmos, mas poderia ser mais específico em algumas áreas, como as ferramentas exatas a serem usadas em cada etapa."
+        },
+        "acionabilidade": {
+          "nota": 3,
+          "evidencia": "Pratique conectando seu código a um banco de dados PostgreSQL e realizando operações CRUD em uma tabela de usuários.",
+          "justificativa": "O roadmap fornece algumas instruções práticas, mas não é totalmente acionável sem que o usuário busque recursos adicionais ou tenha conhecimento prévio sobre como realizar as tarefas sugeridas."
+        }
+      },
+      "P": 3,
+      "Q": 3.5
+    },
+    {
+      "arm": "depois (estimatedHours)",
+      "slug": "ia-84e1fd6b",
+      "veredito": {
+        "objetivo": {
+          "nota": 4,
+          "evidencia": "## Preparação para o Mercado",
+          "justificativa": "O roadmap inclui uma seção dedicada à preparação para o mercado, com tópicos como elaboração de currículo, otimização do LinkedIn e preparação para entrevistas, que são essenciais para alguém buscando a primeira vaga."
+        },
+        "ponto_de_partida": {
+          "nota": 5,
+          "evidencia": "## Fundamentos de Programação\n- Variáveis e Tipos de Dados [2h de esforco]: O que dominar: tipos de dados (inteiros, strings, booleanos) e como declarar variáveis.",
+          "justificativa": "O roadmap começa com fundamentos básicos de programação, adequados para alguém que nunca programou, como indicado no intake."
+        },
+        "stack": null,
+        "obstaculos": {
+          "nota": 3,
+          "evidencia": "constraints: dois filhos pequenos, hoursPerWeek: ate-5",
+          "justificativa": "O roadmap não menciona explicitamente a limitação de tempo, mas a divisão em pequenos blocos de horas sugere uma consideração parcial das restrições de tempo."
+        },
+        "especificidade": {
+          "nota": 4,
+          "evidencia": "- Estruturas de Controle [3h de esforco]: O que dominar: estruturas condicionais (if, else) e loops (for, while).",
+          "justificativa": "O roadmap detalha subtemas específicos dentro de cada tópico, como estruturas condicionais e loops, o que demonstra um bom nível de especificidade."
+        },
+        "acionabilidade": {
+          "nota": 5,
+          "evidencia": "- Variáveis e Tipos de Dados [2h de esforco]: O que dominar: tipos de dados (inteiros, strings, booleanos) e como declarar variáveis. Como praticar: crie um programa simples que declare variáveis de diferentes tipos e exiba seus valores.",
+          "justificativa": "O roadmap fornece instruções claras e práticas para começar a estudar imediatamente, com exercícios e desafios específicos para cada tópico."
+        }
+      },
+      "P": 4,
+      "Q": 4.5
+    },
+    {
+      "arm": "depois (estimatedHours)",
+      "slug": "ia-e2c618bf",
+      "veredito": {
+        "objetivo": {
+          "nota": 3,
+          "evidencia": "## Preparação para o Mercado",
+          "justificativa": "O roadmap inclui uma seção de 'Preparação para o Mercado', que aborda a elaboração de currículo, simulações de entrevista e construção de portfólio, mas não há uma integração clara com o restante do plano para garantir a empregabilidade."
+        },
+        "ponto_de_partida": {
+          "nota": 1,
+          "evidencia": "## Fundamentos da Programação",
+          "justificativa": "O roadmap começa com fundamentos básicos de programação, sem considerar o que a pessoa já sabe, o que pode ser redundante se ela já tiver algum conhecimento prévio."
+        },
+        "stack": null,
+        "obstaculos": {
+          "nota": 2,
+          "evidencia": "\"hoursPerWeek\": \"5-10\"",
+          "justificativa": "O plano não parece considerar a limitação de tempo disponível (5-10 horas por semana), pois inclui uma carga extensa de tópicos e projetos que podem ser difíceis de conciliar com essa disponibilidade."
+        },
+        "especificidade": {
+          "nota": 4,
+          "evidencia": "\"Domine os conceitos de autenticação e autorização, incluindo: JWT, OAuth 2.0, e controle de acesso baseado em funções (RBAC).\"",
+          "justificativa": "O roadmap é bastante específico em relação aos tópicos a serem estudados, como JWT, OAuth 2.0, e RBAC, o que ajuda a direcionar o estudo."
+        },
+        "acionabilidade": {
+          "nota": 3,
+          "evidencia": "\"Para praticar, crie um pequeno programa que declare diferentes variáveis e exiba seus valores no console.\"",
+          "justificativa": "O roadmap fornece instruções práticas e desafios, mas pode exigir recursos externos ou conhecimentos prévios não mencionados para começar imediatamente."
+        }
+      },
+      "P": 2,
+      "Q": 3.5
+    }
+  ]
+}

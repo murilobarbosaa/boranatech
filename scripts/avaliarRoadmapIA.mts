@@ -65,6 +65,7 @@ type Passo = {
   title?: string;
   content?: string;
   estimatedTime?: string;
+  estimatedHours?: number;
   project?: string;
   children?: unknown[];
 };
@@ -106,7 +107,9 @@ export function metricasComputadas(roadmap: Roadmap, intake: Intake) {
     for (const c of s.children ?? []) passos.push(c);
 
   const emHoras = passos
-    .map((p) => horasDe(p.estimatedTime))
+    .map((p) =>
+      typeof p.estimatedHours === "number" ? p.estimatedHours : horasDe(p.estimatedTime),
+    )
     .filter((h): h is number => h !== null);
   const emSemanas = passos.filter((p) =>
     /semana|mes|mês/i.test(p.estimatedTime ?? ""),
@@ -215,7 +218,7 @@ function textoDoRoadmap(r: Roadmap): string {
     linhas.push(`## ${s.title ?? "(sem titulo)"}`);
     for (const c of s.children ?? []) {
       linhas.push(
-        `- ${c.title ?? ""} [${c.estimatedTime ?? "?"}]: ${(c.content ?? "").slice(0, 400)}`,
+        `- ${c.title ?? ""} [${typeof c.estimatedHours === "number" ? `${c.estimatedHours}h de esforco` : (c.estimatedTime ?? "?")}]: ${(c.content ?? "").slice(0, 400)}`,
       );
     }
   }

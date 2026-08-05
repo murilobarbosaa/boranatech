@@ -22,6 +22,7 @@
     "start": "NODE_ENV=production node dist/index.js",
     "preview": "vite preview --host",
     "check": "tsc --noEmit && tsx scripts/generateRoadmapMeta.mts --check && tsx scripts/generateSitemap.mts --check && tsx scripts/checkCspHashes.mts",
+    "check:carga": "tsx scripts/checkCargaRoadmap.mts",
     "check:scripts": "tsc --noEmit -p tsconfig.scripts.json",
     "check:limiares": "node scripts/mutateLinkedinThresholds.mjs --auditar",
     "check:migrations": "tsx scripts/checkMigrationsApplied.mts",
