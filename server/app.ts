@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import { env } from "./lib/env";
+import { falhaOpenAiNaCadeia } from "./lib/openaiFailure";
 import { isRateLimitExempt } from "./lib/rateLimitExempt";
 import {
   alvoAnonimo,
@@ -612,6 +613,18 @@ app.use(
         if (req.user?.id) scope.setUser({ id: req.user.id });
         // Contexto estruturado que o handler anexou via createError(..., {context}).
         if (err.context) scope.setContext("handler", err.context);
+        // Falha da OpenAI classificada, achada na cadeia de `cause`. Sem estas
+        // tags o evento de `502 upstream_error` e identico para saldo esgotado
+        // e para rate limit, e o diagnostico recomeca do zero (foi o que custou
+        // o incidente de 2026-08-05). Fica aqui, num lugar so, em vez de em
+        // cada rota: quem embrulha o erro so precisa passar `cause`.
+        const falhaOpenAi = falhaOpenAiNaCadeia(err);
+        if (falhaOpenAi) {
+          scope.setTag("openai_classificacao", falhaOpenAi.classificacao);
+          scope.setTag("openai_code", falhaOpenAi.openaiCode ?? "ausente");
+          scope.setTag("openai_type", falhaOpenAi.openaiType ?? "ausente");
+          scope.setTag("openai_status", String(falhaOpenAi.httpStatus));
+        }
         Sentry.captureException(err);
       });
     }

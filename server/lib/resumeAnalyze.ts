@@ -7,6 +7,7 @@ import {
 import { env } from "./env";
 import { fetchWithTimeout } from "./http";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "./openai";
+import { erroDaRespostaOpenAi, isCotaEsgotada } from "./openaiFailure";
 import { toOpenAIStrictSchema } from "./openaiStrictSchema";
 
 // Parte qualitativa do Analisador de Curriculo, no molde EXATO de
@@ -116,10 +117,7 @@ async function runQualitativeOnce(
   );
 
   if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(
-      `OpenAI respondeu ${response.status}: ${text.slice(0, 300)}`,
-    );
+    throw await erroDaRespostaOpenAi(response);
   }
 
   const payload = (await response.json()) as {
@@ -170,6 +168,10 @@ export async function runResumeQualitative(
       console.error(
         `[resume-analyze] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} falhou: ${detail}`,
       );
+      // Cota/saldo esgotado da OpenAI: permanente dentro desta requisicao. A
+      // tentativa seguinte colhe o mesmo 429, entao so custa um round-trip e o
+      // backoff. Rate limit e falha nao classificada seguem retentando.
+      if (isCotaEsgotada(err)) break;
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
       }
