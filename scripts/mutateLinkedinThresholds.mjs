@@ -57,6 +57,21 @@ const MUT = [
   [S, "faixa em-construcao (69)", "if (score <= 69) return \"em-construcao\";", "if (score <= 6) return \"em-construcao\";"],
   [S, "faixa forte (89)", "if (score <= 89) return \"forte\";", "if (score <= 8) return \"forte\";"],
   [S, "QUALITATIVE_VERSION", "export const QUALITATIVE_VERSION = 3;", "export const QUALITATIVE_VERSION = 9;"],
+  // Classificado em 2026-08-05, no commit que criou o sitio (o campo de
+  // headline editavel). Entra em MUT e nao em NAO_LIMIAR porque E fronteira:
+  // decide o que a rota aceita e o que devolve 422. NAO e limiar da regua: nao
+  // entra em check nenhum, e o ideal de qualidade da headline (220) e outro
+  // numero, no `headline-tamanho`.
+  //
+  // QUEM PEGA A MUTACAO: so `linkedinHeadlineManual.test.ts`, que afirma o
+  // valor literal. `linkedinHeadlineManualRota.test.ts` NAO pega, e a razao
+  // vale registrar: ele monta os casos com `HEADLINE_MANUAL_MAX + 1` e
+  // `"x".repeat(HEADLINE_MANUAL_MAX)`, entao mutar a constante move os dois
+  // lados juntos e ele continua verde. Teste que deriva a expectativa da
+  // constante que testa e invariante ao valor dela: prova o COMPORTAMENTO
+  // (recusa acima do teto, aceita no teto) e nao o NUMERO. Os dois sao uteis,
+  // mas so o literal e rede contra mudanca acidental do teto.
+  [S, "HEADLINE_MANUAL_MAX", "export const HEADLINE_MANUAL_MAX = 250;", "export const HEADLINE_MANUAL_MAX = 25;"],
   [S, "DETERMINISTIC_VERSION", "export const DETERMINISTIC_VERSION = 7;", "export const DETERMINISTIC_VERSION = 99;"],
   [S, "peso essencial (10)", "  essencial: 10,", "  essencial: 11,"],
   [S, "peso importante (6)", "  importante: 6,", "  importante: 7,"],
