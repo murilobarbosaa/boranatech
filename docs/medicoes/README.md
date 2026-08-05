@@ -176,6 +176,50 @@ Ver `experimento-A-startingPoint-2026-08-04.json`.
 isto: a regra empurrava o modelo para longe de "começar do zero", e para quem
 declarou "nunca programei" começar do zero era o certo.
 
+## Intervenção B: critério primário falhou, resto passou
+
+Ver `experimento-B-classificacao-2026-08-04.json`. Personas refeitas no registro
+real (mediana de 78 caracteres, marcadores de imprecisão), `pont` médio das três
+não-zero no antes = **1,67** contra 1,96 de produção.
+
+| Persona             | P antes | P depois | Δ         | `ponto_de_partida` |
+| ------------------- | ------- | -------- | --------- | ------------------ |
+| lista-de-cursos     | 2,25    | 3,25     | **+1,00** | 1 → 2              |
+| basico-impreciso    | 2,00    | 2,50     | +0,50     | 2 → 2              |
+| curto-institucional | 3,00    | 3,00     | 0         | 2 → 2              |
+| CONTROLE zero       | 2,00    | 3,67     | **+1,67** | **1 → 5**          |
+| CONTROLE vazio      | 2,33    | 2,00     | −0,33     | 1 → 1              |
+
+**Soma +2,84, sem dano em controle. Mas o critério primário falhou:**
+`ponto_de_partida` subiu em **1 de 3** personas não-zero.
+
+**O que B resolveu, verificado à mão:** o caso ZERO. Antes, quem declarou "nunca
+programei" recebia um plano cuja segunda seção era "Construindo Aplicações
+Completas" e a quarta "Inteligência Artificial Aplicada". Depois, entram
+"Programação Básica com Python" e "Estruturas de Dados e Algoritmos". **Mudança
+real de estrutura**, não menção.
+
+**O que B não resolveu:** o caso parcial/impreciso, que é o comum. Para quem
+declarou "curso de JavaScript, HTML e CSS da DIO", o roadmap continua abrindo em
+"Fundamentos do JavaScript" antes e depois. O ganho de P veio de `objetivo` e
+`obstaculos`, **não** de ponto de partida.
+
+**Diagnóstico para C:** a classe (b) pede que o modelo entre "um degrau acima",
+mas ele não tem como saber o que "curso de JavaScript da DIO" cobre. A instrução
+pede um julgamento que o modelo não consegue ancorar. O bloqueio não é força de
+instrução, é **falta de mapeamento entre nome de curso vago e tópico concreto**.
+Isso aponta para elicitar especificidade na conversa, ou dar ao modelo um
+critério de tradução, e não para reescrever a regra outra vez.
+
+## Decisão registrada: `estimatedHours`
+
+Aprovada a separação entre carga e calendário: `estimatedHours` numérico
+obrigatório no schema, `estimatedTime` mantido como texto de exibição, e os 27
+existentes derivados **na leitura**, sem backfill (reinterpretar texto livre com
+IA e gravar palpite como declaração é pior que a lacuna). **Entra junto com o
+enriquecimento estrutural**, porque as duas mudanças tocam o mesmo schema e o
+mesmo prompt de seção, e não cabem duas migrations onde cabe uma.
+
 ## Limites e vieses declarados
 
 **O que ele NÃO mede:**

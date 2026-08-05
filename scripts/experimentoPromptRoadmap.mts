@@ -51,8 +51,10 @@ function abortar(m: string): never {
  * para provar que a intervencao nao quebra quem comeca do zero.
  */
 const PERSONAS: Array<{ nome: string; intake: Record<string, string> }> = [
+  // Lista de cursos, sem dizer o nivel. E o formato mais comum: 10 dos 24
+  // startingPoint reais citam curso ou plataforma.
   {
-    nome: "intermediario",
+    nome: "lista-de-cursos",
     intake: {
       goal: "primeira-vaga",
       hoursPerWeek: "5-10",
@@ -60,49 +62,63 @@ const PERSONAS: Array<{ nome: string; intake: Record<string, string> }> = [
       format: "misto",
       stackFocus: "javascript",
       startingPoint:
-        "ja terminei curso de JavaScript e sei bem logica, arrays, objetos e funcoes. Ja fiz uns projetinhos de front com HTML e CSS. Travo em back-end e banco de dados.",
-      motivation: "quero sair do administrativo e trabalhar com programacao",
-      constraints: "trabalho das 9 as 18, so consigo estudar de noite",
+        "curso de JavaScript, HTML e CSS da DIO, trilha de front em andamento",
+      motivation: "quero sair do administrativo",
+      constraints: "trabalho das 9 as 18",
     },
   },
+  // Marcador de imprecisao ("basico"), que aparece em 8 dos 24 reais. O modelo
+  // precisa decidir o que "basico" libera, e e onde ele erra hoje.
   {
-    nome: "ja-atua",
-    intake: {
-      goal: "aprofundar",
-      hoursPerWeek: "10-20",
-      deadline: "6m",
-      format: "misto",
-      stackFocus: "react",
-      startingPoint:
-        "ja trabalho como dev front-end junior ha 1 ano, uso React e TypeScript todo dia, faco integracao com API REST e testes com Testing Library. Quero evoluir para pleno.",
-      motivation: "quero ser promovido a pleno",
-      constraints: "tenho pouco tempo e ja estou cansado no fim do dia",
-    },
-  },
-  {
-    nome: "stack-dominada",
+    nome: "basico-impreciso",
     intake: {
       goal: "transicao",
       hoursPerWeek: "10-20",
       deadline: "6m",
       format: "misto",
       stackFocus: "python",
-      startingPoint:
-        "sou analista de dados ha 3 anos, dominio de Python (pandas, numpy), SQL avancado e Power BI. Nunca fiz back-end nem API.",
-      motivation: "quero migrar de analise de dados para engenharia de dados",
-      constraints: "ingles de leitura apenas",
+      startingPoint: "Python basico, SQL basico, Power BI basico",
+      motivation: "quero mudar de area",
+      constraints: "ingles fraco",
     },
   },
+  // Curto e institucional, como os mais curtos do corpus real (min 9 chars).
   {
-    nome: "CONTROLE-iniciante",
+    nome: "curto-institucional",
+    intake: {
+      goal: "primeira-vaga",
+      hoursPerWeek: "10-20",
+      deadline: "12m",
+      format: "misto",
+      startingPoint: "5o semestre de Analise e Desenvolvimento de Sistemas",
+      motivation: "quero estagio",
+      constraints: "faculdade a noite",
+    },
+  },
+  // CONTROLE 1: declara ZERO. Comecar do zero e o resultado CERTO aqui, e foi
+  // este caso que a intervencao A quebrou (5 -> 1).
+  {
+    nome: "CONTROLE-zero",
     intake: {
       goal: "primeira-vaga",
       hoursPerWeek: "ate-5",
       deadline: "12m",
       format: "misto",
-      startingPoint: "nunca programei, estou comecando do zero agora",
+      startingPoint: "nunca programei",
       motivation: "quero mudar de vida",
-      constraints: "pouco tempo, dois filhos pequenos",
+      constraints: "dois filhos pequenos",
+    },
+  },
+  // CONTROLE 2: startingPoint AUSENTE. Verifica que a instrucao condicional nao
+  // faz nada quando nao ha o que classificar. 4 dos 27 roadmaps reais sao assim.
+  {
+    nome: "CONTROLE-vazio",
+    intake: {
+      goal: "primeira-vaga",
+      hoursPerWeek: "5-10",
+      deadline: "6m",
+      format: "misto",
+      motivation: "quero trabalhar com tecnologia",
     },
   },
 ];
