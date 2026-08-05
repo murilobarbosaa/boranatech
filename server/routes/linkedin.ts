@@ -2,10 +2,13 @@ import crypto from "crypto";
 import { NextFunction, Request, Response, Router } from "express";
 
 import {
+  HEADLINE_MANUAL_MAX,
   LinkedinDadoInvalidoError,
   LinkedinAnalyzeRequestSchema,
+  headlineFinalDe,
   type LinkedinAnalysisResponse,
   type LinkedinAnalyzeRequest,
+  type LinkedinHeadlineOrigem,
 } from "../../shared/linkedin/schema";
 import { estimateCost, estimateCostFromTokens } from "../lib/aiTools";
 import { DEFAULT_MODEL } from "../lib/openai";
@@ -63,7 +66,16 @@ async function persistAnalysis(
       entryPath: request.entryPath ?? null,
       textoHash: hashDoTexto(request.profileText),
       parseResumo: {
-        headline: parsed.headline,
+        // A headline que a analise USOU, que pode ser a digitada. `headline`
+        // sozinha nunca respondeu "de onde veio", e por isso vem acompanhada
+        // de `headlineOrigem`.
+        headline: headlineFinalDe(parsed.headline, request.headlineManual),
+        // Chave NOVA, no mesmo padrao de `entryPath`/`textoHash`: as 185 linhas
+        // ja gravadas nao a tem, e a leitura tolera a ausencia tratando-a como
+        // "parser" (que e o que de fato aconteceu em todas elas).
+        headlineOrigem: (request.headlineManual?.trim()
+          ? "manual"
+          : "parser") satisfies LinkedinHeadlineOrigem,
         // Contexto da leitura da headline. Chave NOVA, pelo mesmo padrao de
         // `entryPath`/`textoHash`: as linhas ja gravadas nao a tem e o leitor
         // tolera a ausencia. Existe porque `headline` sozinha nao distingue "o
@@ -116,6 +128,29 @@ router.post(
           403,
           "forbidden",
           "Recurso Pro. Assine o Plano Pro para usar o analisador de LinkedIn.",
+        ),
+      );
+    }
+
+    // Headline longa demais tem codigo e mensagem PROPRIOS, antes do parse
+    // generico. Duas razoes. A primeira: o zod devolveria 400
+    // `invalid_request` com "confira o texto do perfil e os campos", que manda
+    // a pessoa procurar defeito no lugar errado. A segunda, e a que importa:
+    // NAO cortar em silencio. Clipar em 250 aqui devolveria uma analise
+    // plausivel sobre um texto que a rota mutilou, que e a classe de defeito
+    // do `docs/auditoria-linkedin-fechamento.md`. O `.max(250)` do schema fica
+    // como rede: so e alcancavel se esta checagem estiver errada.
+    const headlineManualBruta = (req.body as { headlineManual?: unknown })
+      ?.headlineManual;
+    if (
+      typeof headlineManualBruta === "string" &&
+      headlineManualBruta.trim().length > HEADLINE_MANUAL_MAX
+    ) {
+      return next(
+        createError(
+          422,
+          "headline_manual_longa",
+          `A headline tem ${headlineManualBruta.trim().length} caracteres e o limite é ${HEADLINE_MANUAL_MAX}. Encurte antes de continuar.`,
         ),
       );
     }

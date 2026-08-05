@@ -101,6 +101,7 @@ import {
   type Mercado,
   type OpenToWork,
   type SimNao,
+  HEADLINE_MANUAL_MAX,
 } from "@shared/linkedin/schema";
 
 const ac = getPageAccentUi("sky");
@@ -757,13 +758,38 @@ export default function LinkedinAnalisar() {
   );
 
   /**
+   * Headline digitada no passo de revisao. `null` significa "ninguem mexeu",
+   * e NAO "vazia": o campo mostra a leitura do parser enquanto for null.
+   *
+   * Zerado quando o TEXTO muda, e nao a cada render: um PDF novo torna a
+   * edicao anterior obsoleta (ela se referia a outro documento), mas navegar,
+   * abrir e fechar o `details` ou mexer em qualquer outro campo do formulario
+   * nao pode descartar o que a pessoa digitou. `form.profileText` e a
+   * identidade certa porque e exatamente o que alimenta o `parsed`.
+   */
+  const [headlineManual, setHeadlineManual] = useState<string | null>(null);
+  useEffect(() => {
+    setHeadlineManual(null);
+  }, [form.profileText]);
+
+  // O que o campo MOSTRA e o que a analise vai usar. Mesma precedencia do
+  // `headlineFinalDe` do servidor, e de proposito: se as duas divergirem, a
+  // pessoa confere um texto e a nota sai de outro.
+  const headlineExibida = headlineManual ?? parsed?.headline ?? "";
+  const headlineFoiEditada =
+    headlineManual !== null &&
+    headlineManual.trim() !== (parsed?.headline ?? "").trim();
+
+  /**
    * A headline lida tem assinatura de corte? Decide o terceiro estado do chip.
    *
    * Derivado, nao estado: o texto e a unica fonte, entao guardar isto em
    * `useState` criaria uma segunda verdade que precisaria ser sincronizada. E o
    * Header/Footer desta base ja ensinou o custo disso.
    */
-  const headlineCortada = headlineParecCortada(parsed?.headline);
+  // Sobre a headline EXIBIDA, nao a do parser: quem corrige no campo tem de
+  // ver o aviso sumir, e quem corrige errado tem de ve-lo continuar.
+  const headlineCortada = headlineParecCortada(headlineExibida);
 
   /**
    * O aviso apareceu ALGUMA vez nesta sessao de formulario?
@@ -882,7 +908,7 @@ export default function LinkedinAnalisar() {
     // headline que sera analisada.
     posthog.capture(
       EVENTO_ENVIO,
-      payloadEnvio(avisoVistoRef.current, parsed?.headline),
+      payloadEnvio(avisoVistoRef.current, headlineExibida),
     );
     // A pessoa dispara o submit no fim do form: sobe pro scan card no topo.
     scrollToStageTop();
@@ -907,6 +933,12 @@ export default function LinkedinAnalisar() {
         conexoes,
         atividade,
         objetivo: form.objetivo.trim() || undefined,
+        // So vai quando DIFERE da leitura do parser. Mandar um valor igual
+        // gravaria `headlineOrigem: "manual"` para quem so clicou no campo e
+        // saiu, e a telemetria passaria a contar edicao que nao houve.
+        headlineManual: headlineFoiEditada
+          ? headlineManual!.trim()
+          : undefined,
       });
       setResult(data);
       setAnalysisId(newAnalysisId);
@@ -1497,25 +1529,39 @@ export default function LinkedinAnalisar() {
                                 className="rounded-xl border-2 border-slate-900 bg-white p-3"
                               >
                                 <summary className="cursor-pointer text-sm font-black text-slate-800">
-                                  É esta a sua headline?
+                                  Headline lida do seu PDF
                                 </summary>
-                                <p className="mt-2 text-sm text-slate-700">
-                                  {parsed.headline}
-                                </p>
+                                {/* O aviso fica ACIMA do campo e diz so a
+                                    observacao. O que fazer esta no texto de
+                                    apoio, que e o mesmo para todo mundo: com o
+                                    campo editavel logo abaixo, repetir "ajuste"
+                                    aqui seriam duas vozes dando a mesma
+                                    instrucao, e a antiga ainda mandava colar o
+                                    texto de novo, que deixou de ser necessario. */}
                                 {headlineCortada ? (
                                   <p className="mt-2 rounded-lg bg-[#FFB800]/20 p-2 text-xs font-bold text-slate-900">
                                     A headline que lemos parece estar cortada.
-                                    Confira se ela está inteira aqui em cima; se
-                                    não estiver, cole o texto do perfil de novo
-                                    ou ajuste antes de analisar.
                                   </p>
-                                ) : (
-                                  <p className="mt-2 text-xs font-medium text-slate-500">
-                                    Se estiver cortada ou faltando parte, corrija
-                                    no texto completo antes de analisar: é o
-                                    campo que mais pesa na nota.
-                                  </p>
-                                )}
+                                ) : null}
+                                <textarea
+                                  value={headlineExibida}
+                                  onChange={(e) =>
+                                    setHeadlineManual(e.target.value)
+                                  }
+                                  maxLength={HEADLINE_MANUAL_MAX}
+                                  rows={2}
+                                  aria-label="Headline lida do seu PDF"
+                                  className="mt-2 w-full resize-y rounded-lg border-2 border-slate-900 bg-white p-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FFB800]"
+                                />
+                                <p className="mt-1 text-right text-xs font-bold tabular-nums text-slate-500">
+                                  {headlineExibida.length} / {HEADLINE_MANUAL_MAX}
+                                </p>
+                                <p className="mt-1 text-xs font-medium text-slate-500">
+                                  Foi isto que lemos do arquivo. A análise usa o
+                                  que estiver neste campo, então, se ficou
+                                  diferente da sua headline no LinkedIn, ajuste
+                                  antes de continuar.
+                                </p>
                               </details>
                             ) : null}
                             {parsed?.sobre ? (

@@ -718,6 +718,14 @@ export type LinkedinQualitative = z.infer<typeof LinkedinQualitativeSchema>;
 
 // Request do endpoint de análise
 
+/**
+ * Teto da headline digitada. MESMO numero do `clip(..., 250)` do parser, e nao
+ * o 220 do check `headline-tamanho`: 220 e limiar de QUALIDADE, e usar como
+ * limite de ENTRADA faria o campo recusar o valor que o proprio parser
+ * produziu. Fonte unica: a rota, o schema e o cliente leem daqui.
+ */
+export const HEADLINE_MANUAL_MAX = 250;
+
 export const LinkedinAnalyzeRequestSchema = z.object({
   profileText: z.string().min(200).max(12_000),
   area: z.enum(AREA_SLUGS),
@@ -744,7 +752,56 @@ export const LinkedinAnalyzeRequestSchema = z.object({
    * (`EntryPath` em LinkedinAnalisar.tsx) sem nunca sair de lá.
    */
   entryPath: z.enum(["pdf", "manual", "review"]).optional(),
+  /**
+   * Headline digitada pela pessoa no passo de revisão, quando o que o parser
+   * leu não bate com o perfil dela.
+   *
+   * OPCIONAL pela mesma razão do `entryPath`: o deploy não é atômico, e o
+   * bundle antigo não manda este campo. Ausente significa "usar o que o parser
+   * leu", que é o comportamento de hoje.
+   *
+   * MÁXIMO 250, e o número não é arbitrário: é o mesmo teto do
+   * `clip(..., 250)` do parser. Limitar em 220 (o ideal do check
+   * `headline-tamanho`) faria o campo RECUSAR o valor que o próprio parser
+   * produziu numa headline longa e legítima. 220 continua sendo reportado pelo
+   * check, que é onde essa informação pertence.
+   *
+   * Acima de 250 a rota RECUSA com 422, e não corta em silêncio: entregar
+   * resultado plausível sobre entrada mutilada é a classe de defeito que o
+   * `docs/auditoria-linkedin-fechamento.md` inteiro documenta.
+   */
+  headlineManual: z.string().max(HEADLINE_MANUAL_MAX).optional(),
 });
+
+/**
+ * Qual headline vale: a digitada, se houver, senão a que o parser leu.
+ *
+ * PONTO ÚNICO DE DECISÃO, e mora aqui em vez de em cada chamador de propósito
+ * (`CLAUDE.md`, "proteção dentro da função, nunca no call site"). Um `??`
+ * repetido em cada sítio que precisa da headline some no primeiro que alguém
+ * esquecer, e o sítio esquecido avaliaria a headline errada sem nada acusar.
+ *
+ * Vazio ou só espaço conta como ausente: o campo vem pré-preenchido, e alguém
+ * que apaga tudo está pedindo a leitura do parser de volta, não uma análise
+ * sobre string vazia.
+ */
+export function headlineFinalDe(
+  headlineDoParser: string | null,
+  headlineManual: string | null | undefined,
+): string | null {
+  const manual = headlineManual?.trim();
+  if (manual) return manual;
+  return headlineDoParser;
+}
+
+/**
+ * De onde veio a headline que a análise usou. Persistido junto do resultado.
+ *
+ * Sem ele os dados não separam "o parser leu isto" de "a pessoa digitou isto",
+ * que é exatamente a pergunta para a qual `headlineContexto` foi criado. As 185
+ * linhas já gravadas não têm o campo, e a leitura tolera a ausência.
+ */
+export type LinkedinHeadlineOrigem = "parser" | "manual";
 
 export type LinkedinAnalyzeRequest = z.infer<
   typeof LinkedinAnalyzeRequestSchema

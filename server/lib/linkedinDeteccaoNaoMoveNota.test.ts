@@ -82,8 +82,19 @@ describe("a deteccao de headline cortada nao entra na regua", () => {
     const usos = FONTE.split("headlineParecCortada").length - 1;
     expect(usos).toBe(2); // 1 no import + 1 na chamada
 
+    // Ancora atualizada em 2026-08-05, no commit do campo de headline
+    // editavel. O argumento e `headlineFinal` e nao mais `parsed.headline`
+    // porque a deteccao passou a rodar sobre a headline QUE A ANALISE USA,
+    // que pode ser a digitada. A propriedade que este arquivo protege nao
+    // mudou: continua sendo UMA chamada, e ela so decide `pendente` e
+    // `notaIncompleta`, nunca `aprovado` nem peso.
+    //
+    // Este teste foi quem interceptou a mudanca, e e o comportamento correto:
+    // ancora acoplada a fonte cobra atualizacao deliberada em vez de deixar
+    // passar. Vale registrar porque a instancia inversa (ancora que parou de
+    // casar e saiu com exit 0) esta no `docs/auditoria-linkedin-fechamento.md`.
     expect(FONTE).toContain(
-      "const headlineCortada = headlineParecCortada(parsed.headline)",
+      "const headlineCortada = headlineParecCortada(headlineFinal)",
     );
     // `assinaturaDeCorte` nao e usada aqui de forma nenhuma.
     expect(FONTE).not.toContain("assinaturaDeCorte");

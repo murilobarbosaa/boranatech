@@ -892,6 +892,7 @@ export async function analyzeLinkedin(
     openToWork: request.openToWork,
     conexoes: request.conexoes,
     atividade: request.atividade,
+    headlineManual: request.headlineManual,
   });
 
   const quaseVazio =
