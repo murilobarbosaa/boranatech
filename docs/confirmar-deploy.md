@@ -30,6 +30,35 @@ Saída esperada: `vercel-production 2026-07-31T07:18:22Z`.
 
 **É o único que declara o instante em que terminou.** Só ele responde "já acabou?" — todos os outros respondem "como está agora", e "agora" pode ser antes.
 
+#### Mas NÃO leia `lastDeploy`: leia a lista e procure o ambiente
+
+**Corrigido em 2026-08-05.** O `lastDeploy` é o deploy MAIS RECENTE, e o mais recente frequentemente não é o de produção: o preview termina antes. Medido naquele dia, o mesmo release respondia
+
+```
+lastDeploy = vercel-preview      02:09:36Z     <- terminou primeiro
+             vercel-production   02:12:29Z     <- o que interessa, 3 min depois
+```
+
+Ler `lastDeploy` na primeira amostra devolve `vercel-preview` e conclui "produção não chegou" sobre um deploy que estava a caminho. É a mesma família da release amostrada às 20:07 com o Railway terminando às 20:10, com o sujeito trocado em vez do instante: o valor está certo e descreve outro objeto.
+
+```bash
+curl -s -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+  "https://sentry.io/api/0/organizations/$SENTRY_ORG_SLUG/releases/$FULL/deploys/" \
+  | python3 -c "import sys,json; print(' | '.join(f\"{x['environment']}={x['dateFinished']}\" for x in json.load(sys.stdin)))"
+```
+
+E confira o **ambiente pelo nome**, não a posição na lista.
+
+### 1-bis. O CI verde morre junto com o SHA
+
+**Acrescentado em 2026-08-05.** A política manda subir só com CI verde. Se entre a medição e o push houver
+`rebase`, `amend` ou `squash`, **o verde medido se refere a um commit que não existe mais**. Aconteceu com duas
+branches autorizadas no mesmo lote: a primeira subiu, a segunda ficou 1 atrás, o rebase trocou `d6ee466` por
+`b916bec`, e o verde de `d6ee466` deixou de significar qualquer coisa sobre o que seria empurrado.
+
+**Meça o CI DEPOIS da última operação que altera SHA**, e compare o `head_sha` do run com o `HEAD` da branch
+antes de empurrar. Guardar "CI verde" sem o SHA é guardar um valor sem o sujeito dele.
+
 ### 2. Backend: `uptime` do `/api/health`, amostra única
 
 ```bash

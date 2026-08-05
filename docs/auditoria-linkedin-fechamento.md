@@ -223,6 +223,8 @@ Ordenadas por mecanismo, não cronologia. Todas medidas nesta base.
 | Medir antes da coisa existir | Três vezes: release "cobrindo um projeto só" (o backend ainda não subira), "zero artefatos", "o bundle não mudou" | Conferir que o instante da medição é depois do evento |
 | `release` sem artefato | Existir a release não implica os mapas terem subido | Verificar o debug ID do arquivo servido |
 | **O worktree de deploy desatualizado em silêncio** (2026-08-01) | `bnt-main` foi criado para eliminar a disputa de checkout, e ficou **4 commits atrás** da `main` do servidor. A operação principal dele é `cherry-pick`, que partiria de base velha sem nada avisar: nem o git, nem o CI, nem o hook. Encontrado por leitura manual na conferência de encerramento | `git fetch` + `git merge --ff-only origin/main` **antes de qualquer operação** ali, como passo do `docs/confirmar-deploy.md` |
+| **CI verde que morreu com o SHA** (2026-08-05) | Duas branches autorizadas para fast-forward, CI verde medido nas duas. A primeira subiu; a segunda ficou **1 atrás** e precisou de rebase, que trocou os SHAs. **O verde medido passou a se referir a commits que não existem mais.** Empurrar confiando nele seria subir com aprovação de um artefato inexistente | Medir o CI DEPOIS da última operação que altera SHA, nunca antes. Rebase, amend e squash invalidam a medição inteira |
+| **`lastDeploy` respondendo pelo ambiente errado** (2026-08-05) | O sinal primário do `docs/confirmar-deploy.md` é `lastDeploy.dateFinished`. Na primeira amostra ele veio `vercel-preview`, porque **o preview termina antes da produção**: o "último" deploy não é o deploy que interessa. Uma leitura ingênua concluiria "produção não chegou" sobre um deploy a caminho | Ler `/deploys/` (a lista) e **procurar o ambiente**, em vez de `lastDeploy` (o mais recente). Corrigido no `docs/confirmar-deploy.md` |
 | **Comparar medição quente com medição fria** (2026-08-01) | `pnpm check` foi reportado como "de ~3s para 90s, 30x". O `~3s` era uma execução com `tsbuildinfo` quente e o `90s` uma a frio. A `main` **sem a mudança** também leva 88s a frio e 17s a quente: o custo real era **~6s**. Dois valores não comparáveis, conclusão confiante, e ela **dirigiu uma decisão de arquitetura do gate** | Medir os dois lados no mesmo estado de cache, e medir o "antes" na branch sem a mudança |
 | **`$?` depois de um pipe para `tail`** (2026-08-01) | Lendo o exit code do `tail` em vez do script, **no dia em que se mediam exit codes de guards**. Deu `exit=0` para um guard que saía `1` | Redirecionar para arquivo e ler `$?` do comando, nunca do pipeline |
 | **Guard que sempre falha e ninguém invoca** (2026-08-01) | `mutateLinkedinThresholds` abortava na árvore limpa havia semanas, com 6 sítios numéricos órfãos, **três produzidos pela própria auditoria**. Não estava no hook nem no CI. *Um guard que sempre falha e que ninguém roda carrega a mesma informação que um que sempre passa: zero* | Modo `--auditar` (menos de 1s, sem mutar) rodando no CI, e os 6 sítios classificados |
@@ -280,6 +282,33 @@ A contramedida não elimina o acoplamento (não há como mutar um limiar sem ref
 evaporação ruidosa.** `pnpm check:limiares` falha quando qualquer âncora não casa, e roda no CI a cada push.
 
 ---
+
+### A família de 2026-08-05: medição reusada depois de o objeto medido mudar
+
+As duas instâncias novas parecem operacionais e são a mesma coisa, com o tempo invertido em relação a um erro
+já registrado aqui.
+
+A tabela já tem **"medi antes de a coisa existir"**: a release do Sentry amostrada às 20:07 com o Railway
+terminando às 20:10, e o bundle conferido antes de a Vercel terminar. As duas de 2026-08-05 são
+**"medi depois de a coisa deixar de existir"**:
+
+- o **CI verde** foi medido sobre `d6ee466`, e o rebase o transformou em `b916bec`. O verde continuou
+  existindo, verdadeiro, e sobre um objeto que não estava mais em lugar nenhum;
+- o **`lastDeploy`** respondeu corretamente sobre o deploy de preview, que não era o objeto da pergunta.
+
+Em nenhum dos dois o instrumento errou. **Os dois responderam com precisão a uma pergunta ligeiramente
+diferente da que foi feita**, e a diferença estava no sujeito: *qual* commit, *qual* ambiente.
+
+> **Toda medição tem um sujeito implícito, e ele pode mudar sem a medição mudar.** O valor continua lá,
+> continua verdadeiro, e passa a descrever outra coisa.
+
+A contramedida é a mesma nos dois casos, e é barata: **carregar o identificador junto do valor.** "CI verde"
+é inútil; "CI verde em `b916bec`" quebra sozinho quando o SHA muda, porque a comparação com o `HEAD` atual é
+imediata. "Deploy terminou" é inútil; "`vercel-production` terminou em 02:12:29Z" responde à pergunta certa.
+
+Foi o que se fez na prática nas duas: o push só aconteceu depois de o CI completar **no SHA pós-rebase**, e a
+confirmação de deploy passou a ler a lista de deploys procurando `vercel-production` em vez de aceitar o
+último evento.
 
 ### A instância de 2026-08-04, que não é "ninguém viu": é "viram, escreveram, e ficou"
 
