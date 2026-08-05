@@ -13,15 +13,17 @@ O conteúdo foi escrito para esta fixture; nada aqui é dado de usuário. A **fo
 foi conferida contra os 18 roadmaps `ready` que existiam em produção em
 2026-07-30 (869 passos de primeiro nível medidos):
 
-| característica                      | produção                               | fixture                            |
-| ----------------------------------- | -------------------------------------- | ---------------------------------- |
-| seções por roadmap                  | 9 em média (schema aceita 7 a 10)      | 7                                  |
-| `content` preenchido                | 869 de 869 (100%)                      | 100%                               |
-| `estimatedTime` preenchido          | 869 de 869 (100%)                      | 100%                               |
-| sub-passos (`children` de 2º nível) | **0 de 869**                           | 0                                  |
-| `resources` / `byLanguage`          | 0 (fora do schema na v1)               | ausentes                           |
-| `optional`                          | 26 de 869 (3%)                         | 1 de 28                            |
-| `project`                           | só na última seção, id do catálogo Pro | `pro-saas-dashboard`, último passo |
+| característica             | produção                          | fixture |
+| -------------------------- | --------------------------------- | ------- |
+| seções por roadmap         | 9 em média (schema aceita 7 a 10) | 7       |
+| `content` preenchido       | 869 de 869 (100%)                 | 100%    |
+| `estimatedTime` preenchido | 869 de 869 (100%)                 | 100%    |
+
+> **A fixture e LEGADO de proposito.** Ela retrata os 58 roadmaps ja persistidos, que usam `estimatedTime` (string). A geracao passou a emitir `estimatedHours` (inteiro) em 2026-08-05, e o campo antigo nao e mais produzido. A fixture continua sendo o retrato fiel do que esta no banco hoje, e e para isso que ela serve; o formato novo e coberto pelas asserçoes de faixa em `shared/aiRoadmap.test.ts` e pela aritmetica em `shared/aiRoadmap/carga.test.ts`. Motivo da troca em `docs/medicoes/experimento-estimatedHours-2026-08-05.json`.
+> | sub-passos (`children` de 2º nível) | **0 de 869** | 0 |
+> | `resources` / `byLanguage` | 0 (fora do schema na v1) | ausentes |
+> | `optional` | 26 de 869 (3%) | 1 de 28 |
+> | `project` | só na última seção, id do catálogo Pro | `pro-saas-dashboard`, último passo |
 
 Os campos `project` e `optional` aparecem **apenas onde existem** (a conversão
 `toRoadmapNode` remove os `null`), que é exatamente o que o banco mostra.

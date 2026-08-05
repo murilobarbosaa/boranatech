@@ -212,8 +212,33 @@ export type RoadmapSkeleton = z.infer<typeof RoadmapSkeletonSchema>;
 
 // No de conteudo gerado. Espelho de RoadmapNode SEM resources e SEM byLanguage
 // (v1). Campos opcionais sao nullable pelo strict mode (ver topo). content e
-// estimatedTime sao OBRIGATORIOS (nao-nullable): todo passo ensina e estima;
+// estimatedHours sao OBRIGATORIOS (nao-nullable): todo passo ensina e estima;
 // o describe orienta o modelo e o safeParse pune ausencia com retry.
+//
+// estimatedHours SUBSTITUI o antigo estimatedTime (string livre), que era eco
+// do prompt: 74,6% dos passos dos 25 roadmaps reais e 74,4% dos 31 de teste
+// usavam um dos tres literais que o proprio exemplo da regra oferecia, e
+// "4h a 6h" sozinho respondia por 56,3% deles. Medicao em
+// docs/medicoes/experimento-D-restricoes-2026-08-05.json. O campo antigo nao
+// tinha leitor nenhum (nem cliente, nem servidor, nem computeHours), so um
+// serializador e um teste de fixture, entao a troca e substituicao, nao adicao.
+//
+// LIMITES. O minimo e o maximo NAO chegam ao modelo: toOpenAIStrictSchema
+// deleta `minimum` e `maximum` porque a API nao os aceita no modo strict. Quem
+// os faz valer e o safeParse, com o retry corretivo. `integer` esse sim a API
+// impoe, porque `type` sobrevive. Por isso a faixa aparece TAMBEM no describe,
+// em palavras: e o unico canal que o modelo enxerga.
+// Faixa de horas de esforco por passo. O piso e 1 porque passo que nao custa
+// uma hora nao e passo, e o inteiro ja proibe o 0,5 que o modelo produziria
+// para "ler a documentacao". O teto e 40 porque a secao mira de 6 a 8 passos e
+// o roadmap de 7 a 10 secoes: um passo de mais de 40h de esforco (uma semana
+// util inteira com a mao no teclado) nao e passo, e uma secao disfarcada, e
+// aceita-lo esconderia justamente o desequilibrio que a verificacao de carga
+// existe para achar. Alterar qualquer um dos dois muda o que
+// scripts/checkCargaRoadmap.mts considera calibrado.
+export const MIN_STEP_HOURS = 1;
+export const MAX_STEP_HOURS = 40;
+
 const SectionContentChildSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -224,10 +249,13 @@ const SectionContentChildSchema = z.object({
       "Markdown de 4 a 8 frases, estruturado em: o que dominar (com subtopicos nomeados), como praticar, e um mini desafio pratico concreto. Profundo o bastante para a pessoa saber exatamente o que estudar e como praticar hoje.",
     ),
   project: z.string().nullable(),
-  estimatedTime: z
-    .string()
+  estimatedHours: z
+    .number()
+    .int()
+    .min(MIN_STEP_HOURS)
+    .max(MAX_STEP_HOURS)
     .describe(
-      'Estimativa realista de tempo, sempre preenchida. Exemplos: "2 semanas", "10 horas", "4h a 6h".',
+      `Horas de ESFORCO que uma pessoa no nivel declarado leva para concluir o passo: tempo com a mao no teclado, somando estudo e pratica. NUNCA duracao de calendario, e nunca o intervalo entre comecar e terminar. Numero inteiro, de ${MIN_STEP_HOURS} a ${MAX_STEP_HOURS}.`,
     ),
   optional: z.boolean().nullable(),
 });

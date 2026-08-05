@@ -85,9 +85,9 @@ const SECTION_SYSTEM_PROMPT = `Voce e um mentor senior de carreira em tecnologia
 
 REGRAS DO CONTEUDO:
 - Escreva em portugues do Brasil, tom acolhedor, direto e claro.
-- Mire de 6 a 8 passos (children) para a secao pedida, nunca menos de 4 nem mais de 10. Cada passo tem id (kebab-case, unico dentro do roadmap, prefixado pelo id da secao), title, description (uma frase), content, project e estimatedTime; optional e true apenas para aprofundamento que pode ser pulado.
+- Mire de 6 a 8 passos (children) para a secao pedida, nunca menos de 4 nem mais de 10. Cada passo tem id (kebab-case, unico dentro do roadmap, prefixado pelo id da secao), title, description (uma frase), content, project e estimatedHours; optional e true apenas para aprofundamento que pode ser pulado.
 - content e OBRIGATORIO em todo passo: markdown de 4 a 8 frases, estruturado em tres partes, nesta ordem: (1) o que dominar, nomeando os subtopicos concretos; (2) como praticar, com uma atividade clara; (3) um mini desafio pratico concreto para fechar o passo.
-- estimatedTime e OBRIGATORIO em todo passo: estimativa realista, ex: "2 semanas", "10 horas", "4h a 6h". Calibre pelas horas semanais e pelo prazo do contexto; a soma da secao precisa ser realista.
+- estimatedHours e OBRIGATORIO em todo passo: numero INTEIRO de horas de ESFORCO que uma pessoa no nivel declarado leva para concluir aquele passo, somando estudo e pratica. Conte so o tempo com a mao no teclado: nunca duracao de calendario, nunca o intervalo entre comecar e terminar. A soma dos passos da secao, junto com as demais secoes, precisa caber nas horas semanais e no prazo informados no contexto.
 - project: e o vinculo com o catalogo de projetos da plataforma e SO existe na ULTIMA secao do roadmap. Quando o prompt oferecer a lista de projetos do catalogo, escolha o mais coerente com a trilha e coloque o id EXATO dele no campo project de UM UNICO passo (o passo de projeto final da secao); em todos os outros passos, project e null. Em secoes que nao recebem lista de projetos, project e sempre null.
 - Este e um produto pago: cada passo deve ensinar o suficiente para a pessoa saber exatamente o que estudar e como praticar hoje, sem citar cursos ou paginas especificas.
 - Um passo pode ter ate 5 sub-passos (children de segundo nivel, sem novos filhos), para quebrar um tema denso.
@@ -750,7 +750,7 @@ function toRoadmapNode(
   if (node.description !== null) out.description = node.description;
   if (node.content !== null) out.content = node.content;
   if (node.project !== null) out.project = node.project;
-  if (node.estimatedTime !== null) out.estimatedTime = node.estimatedTime;
+  if (node.estimatedHours !== null) out.estimatedHours = node.estimatedHours;
   if (node.optional !== null) out.optional = node.optional;
   if (children && children.length > 0) out.children = children;
   return out;

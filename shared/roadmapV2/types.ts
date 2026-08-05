@@ -21,7 +21,12 @@ export type RoadmapNode = {
   // (o card cai no fallback de indisponivel); normalizar a geracao e assunto
   // da fase 5c.
   project?: string;
+  // Trilhas estaticas e roadmaps de IA gerados ate 2026-08-05. Mantido para os
+  // 58 roadmaps ja persistidos: nada le este campo, mas remove-lo do tipo faria
+  // o TypeScript reclamar de dado que continua no jsonb.
   estimatedTime?: string;
+  // Horas de ESFORCO, inteiro. Substitui estimatedTime na geracao por IA.
+  estimatedHours?: number;
   optional?: boolean;
   resources?: RoadmapResource[];
   children?: RoadmapNode[];

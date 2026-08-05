@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildGenerationIntake,
+  buildSectionContentSchema,
+  MAX_STEP_HOURS,
+  MIN_STEP_HOURS,
   DEFAULT_INTAKE_FORMAT,
   INTAKE_REQUIRED_CHOICE_FIELDS,
   type IntakeProposalLike,
@@ -169,5 +172,66 @@ describe("INVARIANTE: canGenerate false implica missing nao-vazio", () => {
     // Afirma o TOTAL varrido, nao so que "passou": se alguem mexer na matriz e
     // ela encolher, o numero denuncia em vez de o teste passar sobre menos.
     expect(checadas).toBe(6 * 6 * 6);
+  });
+});
+
+/**
+ * estimatedHours: a faixa NAO chega ao modelo.
+ *
+ * `toOpenAIStrictSchema` deleta `minimum` e `maximum` porque a API nao os aceita
+ * no modo strict, entao o unico lugar em que MIN_STEP_HOURS e MAX_STEP_HOURS
+ * viram comportamento e o safeParse deste schema, que dispara o retry corretivo.
+ * Um teste que so verificasse "o campo existe" passaria com a faixa apagada, que
+ * e exatamente a classe de falha que este repositorio ja pagou caro: o objeto
+ * estava la, o comportamento nao. Por isso as asserçoes abaixo sao sobre os
+ * limites e sobre o tipo, nunca sobre a presenca da chave.
+ */
+describe("estimatedHours: limites impostos pelo safeParse", () => {
+  const schema = buildSectionContentSchema(null);
+  const passo = (id: string, estimatedHours: unknown) => ({
+    id,
+    title: "Passo",
+    description: null,
+    content: "conteudo",
+    project: null,
+    estimatedHours,
+    optional: null,
+    children: null,
+  });
+  // O schema exige no MINIMO 4 passos por secao. A primeira versao deste bloco
+  // mandava um passo so, e as tres rejeicoes passaram verdes por `too_small`,
+  // sem nunca exercitar a faixa de horas. Por isso os tres passos de enchimento
+  // ficam sempre validos: assim a unica coisa que pode reprovar a secao e o
+  // valor sob teste.
+  const secao = (estimatedHours: unknown) => ({
+    children: [
+      passo("p-1", estimatedHours),
+      passo("p-2", 8),
+      passo("p-3", 8),
+      passo("p-4", 8),
+    ],
+  });
+  const motivos = (estimatedHours: unknown) => {
+    const r = schema.safeParse(secao(estimatedHours));
+    return r.success ? [] : r.error.issues.map((i) => i.path.join("."));
+  };
+
+  it("ACEITA inteiro dentro da faixa (ancora: sem isto, as rejeicoes nao provam nada)", () => {
+    expect(schema.safeParse(secao(MIN_STEP_HOURS)).success).toBe(true);
+    expect(schema.safeParse(secao(MAX_STEP_HOURS)).success).toBe(true);
+    expect(schema.safeParse(secao(8)).success).toBe(true);
+  });
+
+  it("REJEITA fracionario, que e a precisao falsa que o inteiro existe pra impedir", () => {
+    expect(motivos(2.5)).toEqual(["children.0.estimatedHours"]);
+  });
+
+  it("REJEITA abaixo do minimo e acima do maximo", () => {
+    expect(motivos(MIN_STEP_HOURS - 1)).toEqual(["children.0.estimatedHours"]);
+    expect(motivos(MAX_STEP_HOURS + 1)).toEqual(["children.0.estimatedHours"]);
+  });
+
+  it("REJEITA string, que e o formato do campo antigo", () => {
+    expect(motivos("4h a 6h")).toEqual(["children.0.estimatedHours"]);
   });
 });
