@@ -4,7 +4,10 @@ import type { RoadmapV2 } from "../roadmapV2/types";
 
 import {
   cargaDoRoadmap,
+  FATOR_OCUPACAO,
   HORAS_POR_SEMANA,
+  MINIMO_POR_SECAO,
+  orcamentoDaSecao,
   RAZAO_MAXIMA,
   SEMANAS_POR_PRAZO,
 } from "./carga";
@@ -96,5 +99,73 @@ describe("cargaDoRoadmap: os casos que nao podem degradar em silencio", () => {
     );
     expect(c.horasGeradas).toBe(10);
     expect(c.passosSemHoras).toBe(1);
+  });
+});
+
+describe("orcamentoDaSecao: o orcamento e conta nossa, nao estimativa do modelo", () => {
+  const vazio = (n: number): RoadmapV2 =>
+    ({
+      sections: Array.from({ length: n }, (_, i) => ({
+        id: `s${i}`,
+        title: `S${i}`,
+        children: [],
+      })),
+    }) as never;
+  const intake = { hoursPerWeek: "5-10", deadline: "6m" } as const;
+
+  it("na PRIMEIRA secao e o total ocupavel dividido pelas secoes", () => {
+    // 5-10h/sem x 6m = 195h disponiveis; x0,7 = 136,5 ocupaveis; /7 = 19,5 -> 20
+    const o = orcamentoDaSecao(vazio(7), intake, 0);
+    expect(o).toBe(Math.round((195 * FATOR_OCUPACAO) / 7));
+    expect(o).toBe(20);
+  });
+
+  it("ACOMPANHA a disponibilidade: quem tem 6x mais tempo recebe orcamento 6x maior", () => {
+    // E o defeito exato que esta funcao existe para corrigir: antes dela o
+    // volume gerado era constante enquanto a disponibilidade variava 6x.
+    const pouco = orcamentoDaSecao(
+      vazio(8),
+      { hoursPerWeek: "ate-5", deadline: "12m" },
+      0,
+    )!;
+    const muito = orcamentoDaSecao(
+      vazio(8),
+      { hoursPerWeek: "10-20", deadline: "12m" },
+      0,
+    )!;
+    // 6,18 e nao 6,00 exatos por causa do Math.round do orcamento (68/11).
+    // A tolerancia e sobre o ERRO RELATIVO e nao sobre casas decimais, para o
+    // teste falhar se a proporcao se perder e nao quando o arredondamento mexe.
+    expect(Math.abs(muito / pouco - 15 / 2.5) / (15 / 2.5)).toBeLessThan(0.05);
+  });
+
+  it("AUTOCORRIGE: secao que estourou encolhe o orcamento das seguintes", () => {
+    const r = vazio(4);
+    // 195h disponiveis, 136,5 ocupaveis, 34 por secao. A primeira gasta 100.
+    (r.sections[0] as { children: unknown }).children = [
+      { id: "a", title: "A", estimatedHours: 100 },
+    ];
+    const segunda = orcamentoDaSecao(r, intake, 1)!;
+    // Sobram 36,5 para 3 secoes: 12, nao 34.
+    expect(segunda).toBe(Math.round((195 * FATOR_OCUPACAO - 100) / 3));
+    expect(segunda).toBeLessThan(34);
+  });
+
+  it("nunca desce abaixo do minimo viavel, mesmo com o orcamento estourado", () => {
+    const r = vazio(3);
+    (r.sections[0] as { children: unknown }).children = [
+      { id: "a", title: "A", estimatedHours: 9999 },
+    ];
+    expect(orcamentoDaSecao(r, intake, 1)).toBe(MINIMO_POR_SECAO);
+  });
+
+  it('"sem-prazo" devolve null, e quem chama omite a instrucao', () => {
+    expect(
+      orcamentoDaSecao(
+        vazio(7),
+        { hoursPerWeek: "5-10", deadline: "sem-prazo" },
+        0,
+      ),
+    ).toBeNull();
   });
 });

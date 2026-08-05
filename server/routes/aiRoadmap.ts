@@ -285,12 +285,13 @@ async function runSections(
   context: string,
   indexes: number[],
   io: SectionLoopIo,
+  intake: Pick<RoadmapIntake, "hoursPerWeek" | "deadline">,
 ): Promise<Array<{ index: number; detail: string }>> {
   const total = roadmap.sections.length;
   const failed: Array<{ index: number; detail: string }> = [];
   for (const index of indexes) {
     try {
-      const section = await generateSectionContent(context, roadmap, index);
+      const section = await generateSectionContent(context, roadmap, index, intake);
       io.inputChars += section.inputChars;
       io.outputChars += section.outputChars;
       roadmap.sections[index].children = section.data;
@@ -638,7 +639,7 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
     });
 
     const indexes = roadmap.sections.map((_, i) => i);
-    const failed = await runSections(res, userId, rowId, roadmap, context, indexes, io);
+    const failed = await runSections(res, userId, rowId, roadmap, context, indexes, io, intake);
     await concludeGeneration(
       res,
       userId,
@@ -967,7 +968,7 @@ router.post("/:slug/resume", async (req: Request, res: Response, next: NextFunct
       .map(({ i }) => i);
 
     const io: SectionLoopIo = { inputChars: 0, outputChars: 0 };
-    const failed = await runSections(res, userId, row.id, roadmap, context, pending, io);
+    const failed = await runSections(res, userId, row.id, roadmap, context, pending, io, parsedIntake.data);
     // Conclusao (sem falhas) cobra a unidade da geracao, nao cobrada antes;
     // parcial marca partial de novo e nao cobra, retomavel outra vez.
     await concludeGeneration(

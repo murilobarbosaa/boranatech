@@ -125,3 +125,80 @@ export function cargaDoRoadmap(
       razao === null ? null : razao >= RAZAO_MINIMA && razao <= RAZAO_MAXIMA,
   };
 }
+
+/**
+ * Fracao das horas disponiveis que o plano pode ocupar.
+ *
+ * 0,70 e nao 1,0 porque plano que consome 100% do tempo declarado pressupoe que
+ * a pessoa nunca perca uma semana, e ao longo de 6 a 12 meses ela perde: doenca,
+ * pico no trabalho, festa de fim de ano, semana de prova. O prazo do intake e
+ * "desejado", nao contratual.
+ *
+ * 0,70 e nao 0,60 nem 0,80 por um motivo verificavel: o criterio de sucesso
+ * desta rodada e a razao final ficar entre 0,6 e 0,9, e 0,70 e o alvo que deixa
+ * folga parecida para os dois lados do erro do modelo. Mirar 0,60 encostaria no
+ * piso e transformaria qualquer subestimativa em reprovacao; mirar 0,80
+ * encostaria no teto e faria o mesmo com qualquer superestimativa.
+ */
+export const FATOR_OCUPACAO = 0.7;
+
+/**
+ * Piso de um orcamento de secao. O schema exige no minimo 4 passos por secao e
+ * no minimo MIN_STEP_HOURS por passo, entao uma secao viavel custa pelo menos
+ * isto. Sem o piso, uma secao que herdasse orcamento zero (porque as anteriores
+ * estouraram) receberia uma meta impossivel de cumprir, e o modelo resolveria
+ * ignorando a instrucao inteira em vez de chegar perto dela.
+ */
+export const MINIMO_POR_SECAO = 4;
+
+/**
+ * Orcamento de horas da secao `sectionIndex`, calculado EM CODIGO.
+ *
+ * POR QUE ISTO EXISTE, e por que instruir melhor nao resolveria. Cada secao e
+ * uma chamada independente a IA. O prompt de secao ja recebe as horas semanais
+ * e o prazo (a primeira linha do contexto e "Disponibilidade"), e desde
+ * 2026-08-05 tambem recebia a instrucao de caber nelas. Nao adiantou: medido em
+ * 5 personas, o volume gerado ficou praticamente constante (223h a 325h,
+ * amplitude de 1,46x) enquanto a disponibilidade variava 6x, e a relacao era
+ * INVERSA (quem tinha 130h recebeu o plano mais pesado). O motivo e estrutural,
+ * nao de redacao: nenhuma chamada sabe quanto as outras ja custaram, e um
+ * orcamento global nao pode ser respeitado por chamadas que nao conversam. A
+ * unica pessoa na conversa capaz de somar e o nosso codigo.
+ *
+ * AUTOCORRECAO. O loop de secoes e sequencial e escreve `children` no proprio
+ * objeto `roadmap` antes da chamada seguinte, entao o que ja foi gerado esta
+ * disponivel aqui. Em vez de dividir o total pelo numero de secoes uma vez so,
+ * esta funcao divide o que SOBROU pelas secoes que FALTAM. Na primeira secao os
+ * dois calculos dao o mesmo numero; a partir da segunda, um estouro inicial e
+ * absorvido pelas seguintes em vez de propagar para o total. Divisao fixa
+ * herdaria o defeito que a rodada anterior mediu: um erro no comeco vira erro
+ * no fim, sem ninguem para notar.
+ */
+export function orcamentoDaSecao(
+  roadmap: RoadmapV2,
+  intake: Pick<RoadmapIntake, "hoursPerWeek" | "deadline">,
+  sectionIndex: number,
+): number | null {
+  const semanas = SEMANAS_POR_PRAZO[intake.deadline] ?? null;
+  const porSemana = HORAS_POR_SEMANA[intake.hoursPerWeek];
+  // Sem prazo declarado nao existe orcamento. Devolve null, e quem chama omite
+  // a instrucao inteira: um default silencioso aqui inventaria um teto que a
+  // pessoa nunca declarou.
+  if (semanas === null || typeof porSemana !== "number") return null;
+
+  const secoes = roadmap.sections ?? [];
+  if (sectionIndex < 0 || sectionIndex >= secoes.length) return null;
+
+  const total = semanas * porSemana * FATOR_OCUPACAO;
+
+  let gasto = 0;
+  for (let i = 0; i < sectionIndex; i += 1) {
+    const acc = { horas: 0, sem: 0, total: 0 };
+    somar(secoes[i]?.children, acc);
+    gasto += acc.horas;
+  }
+
+  const restante = Math.max(0, total - gasto);
+  const secoesFaltando = secoes.length - sectionIndex;
+  return Math.max(MINIMO_POR_SECAO, Math.round(restante / secoesFaltando));
+}

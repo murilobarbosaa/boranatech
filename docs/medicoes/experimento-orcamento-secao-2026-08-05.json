@@ -1,0 +1,371 @@
+{
+  "medido_em": "2026-08-05",
+  "intervencao": "Orcamento de horas POR SECAO, calculado em codigo e interpolado no prompt de secao. Uma variavel: so o orcamento.",
+  "diagnostico_que_motivou": {
+    "o_gerador_de_secao_ve_hoursPerWeek": "VE. O userPrompt da secao comeca com o `context` inteiro, cuja primeira linha e '- Disponibilidade: <faixa>' e a terceira '- Prazo desejado: <prazo>'. Passar o dado nao era o problema: o dado ja estava la, e desde 2026-08-05 a instrucao de caber nele tambem.",
+    "regra_de_dimensionamento_existente": "A do esqueleto (linha 76) dimensiona SECOES ('menos horas ou prazo curto pedem menos secoes, perto de 7'), nunca horas. Nao havia nenhuma regra ligando horas disponiveis a esforco total antes desta.",
+    "hipotese_de_arquitetura": "CONFIRMADA. Cada secao e uma chamada independente (`callStructured`) cujo prompt carrega o contexto da pessoa e o OUTLINE das secoes (id, titulo, nivel, descricao), e nada mais. O outline nao tem horas, porque o esqueleto nao tem o campo. Entao a secao N nao pode saber quanto as secoes 1..N-1 custaram, e um orcamento global nao pode ser respeitado por chamadas que nao conversam. Detalhe agravante: o loop e SEQUENCIAL e escreve `children` no proprio objeto `roadmap` antes da chamada seguinte, entao a informacao EXISTE em memoria e e descartada na hora de montar o prompt."
+  },
+  "desenho": {
+    "fator_ocupacao": 0.7,
+    "distribuicao": "uniforme, com autocorrecao: o que SOBROU dividido pelas secoes que FALTAM, recalculado a cada secao",
+    "por_que_uniforme": "Ponderar por `level` exigiria mapear tres valores de texto livre da IA para pesos, o que e mais um lookup por valor do servidor e mais uma variavel nao testada no mesmo experimento. Sem base medida para a ponderacao, uniforme e a escolha honesta. Se os dados mostrarem estouro sistematico por posicao, pondera-se depois.",
+    "por_que_autocorrecao": "Divisao fixa herdaria o defeito medido: erro no comeco vira erro no fim sem ninguem notar. Na primeira secao os dois calculos coincidem.",
+    "sem_literais": "O numero e interpolado do calculo no userPrompt. O SECTION_SYSTEM_PROMPT so referencia 'o ORCAMENTO DE HORAS informado', sem nenhum valor."
+  },
+  "criterios": {
+    "1_razao_entre_0.6_e_0.9": {
+      "resultado": "PASSOU",
+      "valores": [0.73, 0.7, 0.69, 0.72, 0.7]
+    },
+    "2_variacao_acompanha_disponibilidade": {
+      "resultado": "PASSOU",
+      "antes": "1.46x geradas contra 6.00x disponiveis",
+      "depois": "5.72x geradas contra 6.00x disponiveis"
+    },
+    "3_relacao_inversa_desaparece": {
+      "resultado": "PASSOU",
+      "antes": "quem tinha 130h recebia 231h (a mais pesada); quem tinha 780h recebia 298h",
+      "depois": "130h -> 94h e 780h -> 538h; a ordem virou monotonica"
+    },
+    "4_piso_de_passos_e_truncamento": {
+      "resultado": "PASSOU",
+      "detalhe": "minimo de 4 passos por secao em todas (o piso exato do schema), zero truncamento, zero retry corretivo, zero section_failed"
+    }
+  },
+  "carga": {
+    "antes": {
+      "lista-de-cursos": [195, 287, 1.47],
+      "basico-impreciso": [390, 325, 0.83],
+      "curto-institucional": [780, 298, 0.38],
+      "CONTROLE-zero": [130, 231, 1.78],
+      "CONTROLE-vazio": [195, 223, 1.14]
+    },
+    "depois": {
+      "lista-de-cursos": [195, 142, 0.73],
+      "basico-impreciso": [390, 273, 0.7],
+      "curto-institucional": [780, 538, 0.69],
+      "CONTROLE-zero": [130, 94, 0.72],
+      "CONTROLE-vazio": [195, 137, 0.7]
+    },
+    "legenda": "[horas disponiveis, horas geradas, razao]"
+  },
+  "trade_off_de_profundidade": {
+    "passos_totais": {
+      "antes": 295,
+      "depois": 234,
+      "delta_pct": -20.7
+    },
+    "caracteres_por_passo": {
+      "antes": 356,
+      "depois": 343,
+      "delta_pct": -3.7
+    },
+    "leitura": "O modelo cortou PASSOS (-20,7%) e quase nao encurtou o conteudo de cada passo (-3,7%). E o modo de falha bom: menos passos com a mesma profundidade, em vez dos mesmos passos esvaziados. Ainda assim e perda de cobertura, e a decisao de aceita-la e do dono do produto, nao minha."
+  },
+  "juiz": {
+    "especificidade": {
+      "antes": 4.4,
+      "depois": 4.2,
+      "delta": -0.2,
+      "ruido": 0.0,
+      "veredito": "QUEDA REAL"
+    },
+    "acionabilidade": {
+      "antes": 3.8,
+      "depois": 3.8,
+      "delta": 0.0,
+      "ruido": 0.2,
+      "veredito": "estavel"
+    },
+    "obstaculos": {
+      "antes": 2.6,
+      "depois": 3.0,
+      "delta": 0.4,
+      "ruido": 0.2,
+      "veredito": "GANHO REAL"
+    },
+    "objetivo": {
+      "antes": 3.6,
+      "depois": 3.8,
+      "delta": 0.2,
+      "ruido": 1.2,
+      "veredito": "dentro do ruido"
+    },
+    "ponto_de_partida": {
+      "antes": 2.4,
+      "depois": 2.4,
+      "delta": 0.0,
+      "ruido": 0.2,
+      "veredito": "estavel"
+    },
+    "stack": {
+      "antes": 4.5,
+      "depois": 4.5,
+      "delta": 0.0,
+      "ruido": 1.0,
+      "veredito": "dentro do ruido"
+    },
+    "leitura": "obstaculos subiu 0,40 contra ruido 0,20, e e o achado inesperado: o orcamento entregou por ESTRUTURA o que a intervencao D tentou e falhou em entregar por INSTRUCAO. Faz sentido mecanico, porque a dimensao obstaculos pergunta se quem tem pouco tempo recebe blocos compativeis, e agora recebe. Em troca, especificidade caiu 0,20 numa dimensao de ruido zero: e a queda que acompanha o corte de 20,7% dos passos."
+  },
+  "resultados": [
+    {
+      "rotulo": "orcamento",
+      "persona": "lista-de-cursos",
+      "slug": "ia-87fe880e",
+      "status": "ready",
+      "secoes_falhas": 0,
+      "P": 3.25,
+      "Q": 4.5,
+      "veredito": {
+        "objetivo": {
+          "nota": 4,
+          "evidencia": "Preparação para Entrevistas, Desenvolvimento de Projeto para Portfólio",
+          "justificativa": "O roadmap inclui seções específicas para preparação de entrevistas e desenvolvimento de portfólio, que são essenciais para alguém buscando a primeira vaga. No entanto, poderia ser mais explícito sobre a criação de um portfólio e simulações de entrevistas."
+        },
+        "ponto_de_partida": {
+          "nota": 2,
+          "evidencia": "Fundamentos de JavaScript: Variáveis e Tipos de Dados",
+          "justificativa": "O roadmap começa com fundamentos de JavaScript que a pessoa já estudou, como variáveis e tipos de dados, sem considerar que ela já tem um curso de JavaScript concluído."
+        },
+        "stack": {
+          "nota": 4,
+          "evidencia": "Front-end Avançado: Introdução ao React",
+          "justificativa": "O roadmap foca bastante em JavaScript e tecnologias relacionadas, como React, que são parte do stack desejado. No entanto, poderia integrar mais práticas específicas de JavaScript no contexto de desenvolvimento web."
+        },
+        "obstaculos": {
+          "nota": 3,
+          "evidencia": "trabalho das 9 as 18",
+          "justificativa": "O roadmap não menciona explicitamente a necessidade de adaptar o estudo ao horário de trabalho, mas a divisão em blocos de horas sugere uma consideração parcial das limitações de tempo."
+        },
+        "especificidade": {
+          "nota": 5,
+          "evidencia": "Manipulação de Strings: métodos como length, toUpperCase, toLowerCase",
+          "justificativa": "O roadmap é altamente específico, listando métodos e conceitos concretos que devem ser dominados, como métodos de strings e manipulação de eventos assíncronos."
+        },
+        "acionabilidade": {
+          "nota": 4,
+          "evidencia": "Pratique criando funções que realizam operações em strings",
+          "justificativa": "O roadmap fornece instruções claras e práticas para começar a estudar, mas poderia incluir mais referências a recursos específicos, como livros ou cursos, para ser totalmente acionável."
+        }
+      },
+      "computado": {
+        "passos": 44,
+        "secoes": 8,
+        "passos_em_horas": 44,
+        "passos_em_semanas": 0,
+        "unidade_mista": false,
+        "carga_declarada_h": 142,
+        "carga_disponivel_h": 195,
+        "razao_carga": 0.73,
+        "com_project": 1,
+        "com_subpassos": 0,
+        "sem_content": 0
+      }
+    },
+    {
+      "rotulo": "orcamento",
+      "persona": "basico-impreciso",
+      "slug": "ia-5824405d",
+      "status": "ready",
+      "secoes_falhas": 0,
+      "P": 3.25,
+      "Q": 5,
+      "veredito": {
+        "objetivo": {
+          "nota": 4,
+          "evidencia": "Construindo um Portfólio Sólido [5h de esforco]: O que dominar: estrutura do portfólio, apresentação de projetos, uso de GitHub e README.",
+          "justificativa": "O roadmap inclui seções que visam a construção de um portfólio e preparação para entrevistas, o que é consistente com o objetivo de transição de carreira. No entanto, poderia haver mais foco em empregabilidade e preparação para entrevistas técnicas."
+        },
+        "ponto_de_partida": {
+          "nota": 2,
+          "evidencia": "Fundamentos Avançados de Python",
+          "justificativa": "O roadmap começa com 'Fundamentos Avançados de Python', mas não reconhece explicitamente o conhecimento prévio em Python, SQL e Power BI. Poderia ter ajustado o conteúdo para avançar mais rapidamente nessas áreas."
+        },
+        "stack": {
+          "nota": 5,
+          "evidencia": "Frameworks de Desenvolvimento Web com Python",
+          "justificativa": "O roadmap é claramente centrado em Python, com seções dedicadas a frameworks como Flask, o que está alinhado com o stackFocus em Python."
+        },
+        "obstaculos": {
+          "nota": 2,
+          "evidencia": "Construindo um Portfólio Sólido [5h de esforco]: O que dominar: estrutura do portfólio, apresentação de projetos, uso de GitHub e README.",
+          "justificativa": "O roadmap não aborda diretamente a limitação de inglês fraco, como sugerir recursos em português ou materiais visuais. A carga horária semanal parece compatível, mas não há menção explícita a isso."
+        },
+        "especificidade": {
+          "nota": 5,
+          "evidencia": "Manipulação de Arquivos [6h de esforco]: Você irá dominar os seguintes subtemas: leitura e escrita de arquivos de texto, manipulação de arquivos CSV e JSON.",
+          "justificativa": "O roadmap é altamente específico, detalhando subtemas e práticas concretas para cada tópico abordado."
+        },
+        "acionabilidade": {
+          "nota": 5,
+          "evidencia": "Para praticar, crie um script que leia um arquivo de texto, processe seu conteúdo e salve o resultado em um novo arquivo.",
+          "justificativa": "O roadmap fornece instruções claras e práticas que permitem começar a estudar imediatamente, com desafios e práticas bem definidas."
+        }
+      },
+      "computado": {
+        "passos": 48,
+        "secoes": 8,
+        "passos_em_horas": 48,
+        "passos_em_semanas": 0,
+        "unidade_mista": false,
+        "carga_declarada_h": 273,
+        "carga_disponivel_h": 390,
+        "razao_carga": 0.7,
+        "com_project": 1,
+        "com_subpassos": 0,
+        "sem_content": 0
+      }
+    },
+    {
+      "rotulo": "orcamento",
+      "persona": "curto-institucional",
+      "slug": "ia-6188bfa3",
+      "status": "ready",
+      "secoes_falhas": 0,
+      "P": 3,
+      "Q": 3.5,
+      "veredito": {
+        "objetivo": {
+          "nota": 3,
+          "evidencia": "O roadmap inclui uma seção de 'Preparação para Entrevistas' e 'Desenvolvimento de Projetos Reais', que são relevantes para a empregabilidade.",
+          "justificativa": "Embora o roadmap inclua elementos que ajudam na empregabilidade, como preparação para entrevistas e desenvolvimento de projetos, ele não foca especificamente em criar um portfólio ou simular entrevistas, que são cruciais para conseguir a primeira vaga."
+        },
+        "ponto_de_partida": {
+          "nota": 2,
+          "evidencia": "O roadmap começa com 'Fundamentos do Back-end', sem considerar o conhecimento prévio do 5º semestre de ADS.",
+          "justificativa": "O roadmap não leva em conta que a pessoa já está no 5º semestre de ADS, o que provavelmente significa que já possui conhecimento básico em muitos dos tópicos abordados."
+        },
+        "stack": null,
+        "obstaculos": {
+          "nota": 4,
+          "evidencia": "O plano é dividido em blocos de 8 a 25 horas, o que é compatível com a disponibilidade de 10-20 horas semanais.",
+          "justificativa": "O roadmap considera a disponibilidade semanal e a faculdade à noite, oferecendo blocos de estudo que podem ser ajustados ao tempo disponível."
+        },
+        "especificidade": {
+          "nota": 4,
+          "evidencia": "O roadmap detalha subtopicos como 'OAuth 2.0', 'JWT', 'Swagger', e 'Redis'.",
+          "justificativa": "O roadmap é bastante específico em relação aos tópicos a serem estudados, nomeando tecnologias e práticas concretas."
+        },
+        "acionabilidade": {
+          "nota": 3,
+          "evidencia": "O roadmap fornece passos como 'desenhe a arquitetura de um sistema simples', mas não indica recursos específicos para começar.",
+          "justificativa": "Embora o roadmap ofereça atividades práticas, ele não fornece links ou referências diretas para materiais de estudo, o que limita a capacidade de começar imediatamente."
+        }
+      },
+      "computado": {
+        "passos": 52,
+        "secoes": 8,
+        "passos_em_horas": 52,
+        "passos_em_semanas": 0,
+        "unidade_mista": false,
+        "carga_declarada_h": 538,
+        "carga_disponivel_h": 780,
+        "razao_carga": 0.69,
+        "com_project": 1,
+        "com_subpassos": 0,
+        "sem_content": 0
+      }
+    },
+    {
+      "rotulo": "orcamento",
+      "persona": "CONTROLE-zero",
+      "slug": "ia-43b84060",
+      "status": "ready",
+      "secoes_falhas": 0,
+      "P": 4.33,
+      "Q": 3.5,
+      "veredito": {
+        "objetivo": {
+          "nota": 4,
+          "evidencia": "## Conquista da Primeira Vaga",
+          "justificativa": "O roadmap inclui uma seção específica para a conquista da primeira vaga, com tópicos como 'Preparação do Currículo', 'Otimização do LinkedIn', e 'Aplicação para Vagas', que são essenciais para alguém buscando a primeira vaga."
+        },
+        "ponto_de_partida": {
+          "nota": 5,
+          "evidencia": "## Fundamentos de Programação",
+          "justificativa": "O roadmap começa com 'Fundamentos de Programação', que é adequado para alguém que 'nunca programei', cobrindo desde introdução à programação até variáveis e tipos de dados."
+        },
+        "stack": null,
+        "obstaculos": {
+          "nota": 4,
+          "evidencia": "hoursPerWeek: 'ate-5', constraints: 'dois filhos pequenos'",
+          "justificativa": "O roadmap é dividido em pequenos blocos de estudo, geralmente de 1 a 3 horas, o que é compatível com a disponibilidade de tempo limitada e a necessidade de flexibilidade devido aos filhos pequenos."
+        },
+        "especificidade": {
+          "nota": 3,
+          "evidencia": "- Estruturas de Controle [2h de esforco]: Você deve dominar as estruturas de controle, como condicionais (if, else) e loops (for, while).",
+          "justificativa": "O roadmap menciona tópicos específicos como 'estruturas de controle', 'autenticação e autorização', mas também possui seções mais gerais como 'Fundamentos de Programação' sem detalhar subtemas."
+        },
+        "acionabilidade": {
+          "nota": 4,
+          "evidencia": "- Introdução à Programação [2h de esforco]: Você deve dominar os conceitos básicos de programação, como o que é um algoritmo, a lógica de programação...",
+          "justificativa": "O roadmap fornece passos claros e práticos para começar a estudar, como 'escrevendo algoritmos simples' e 'criando um pequeno programa', permitindo que a pessoa comece a estudar imediatamente."
+        }
+      },
+      "computado": {
+        "passos": 48,
+        "secoes": 10,
+        "passos_em_horas": 48,
+        "passos_em_semanas": 0,
+        "unidade_mista": false,
+        "carga_declarada_h": 94,
+        "carga_disponivel_h": 156,
+        "razao_carga": 0.6,
+        "com_project": 1,
+        "com_subpassos": 0,
+        "sem_content": 0
+      }
+    },
+    {
+      "rotulo": "orcamento",
+      "persona": "CONTROLE-vazio",
+      "slug": "ia-740de67f",
+      "status": "ready",
+      "secoes_falhas": 0,
+      "P": 2.33,
+      "Q": 3.5,
+      "veredito": {
+        "objetivo": {
+          "nota": 4,
+          "evidencia": "## Preparação para Entrevistas",
+          "justificativa": "O roadmap inclui uma seção dedicada à preparação para entrevistas e construção de portfólio, que são essenciais para alcançar o objetivo de conseguir a primeira vaga."
+        },
+        "ponto_de_partida": {
+          "nota": 1,
+          "evidencia": "## Fundamentos de Back-end",
+          "justificativa": "O roadmap começa com fundamentos de back-end sem considerar o que a pessoa já sabe, indicando que o plano é genérico e não adaptado ao ponto de partida do usuário."
+        },
+        "stack": null,
+        "obstaculos": {
+          "nota": 2,
+          "evidencia": "hoursPerWeek: \"5-10\"",
+          "justificativa": "Embora o roadmap forneça estimativas de horas para cada tópico, ele não parece considerar a limitação de tempo semanal de forma integrada ao plano geral."
+        },
+        "especificidade": {
+          "nota": 4,
+          "evidencia": "- Revisão de Estruturas de Dados [4h de esforco]: Você deve dominar as estruturas de dados como arrays, listas ligadas, pilhas, filas e dicionários.",
+          "justificativa": "O roadmap é bastante específico em termos de tópicos e sub-tópicos, como estruturas de dados e algoritmos específicos."
+        },
+        "acionabilidade": {
+          "nota": 3,
+          "evidencia": "Para praticar, implemente uma pequena aplicação que utilize essas estruturas para gerenciar dados, como um sistema de cadastro de usuários.",
+          "justificativa": "O roadmap fornece instruções práticas, mas algumas atividades podem exigir recursos ou conhecimentos prévios não mencionados, o que pode dificultar o início imediato."
+        }
+      },
+      "computado": {
+        "passos": 42,
+        "secoes": 8,
+        "passos_em_horas": 42,
+        "passos_em_semanas": 0,
+        "unidade_mista": false,
+        "carga_declarada_h": 137,
+        "carga_disponivel_h": 195,
+        "razao_carga": 0.7,
+        "com_project": 1,
+        "com_subpassos": 0,
+        "sem_content": 0
+      }
+    }
+  ]
+}
