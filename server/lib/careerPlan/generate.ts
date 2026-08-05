@@ -11,7 +11,7 @@ import { AI_TOOLS } from "../aiTools";
 import { env } from "../env";
 import { fetchWithTimeout } from "../http";
 import { buildOpenAIHeaders, OPENAI_BASE_URL } from "../openai";
-import { erroDaRespostaOpenAi, isCotaEsgotada } from "../openaiFailure";
+import { erroDaRespostaOpenAi, isFalhaPermanente } from "../openaiFailure";
 import { toOpenAIStrictSchema } from "../openaiStrictSchema";
 import { fetchUserContextPool } from "../userContext/pool";
 
@@ -475,10 +475,11 @@ export async function generateCareerPlan(
       console.error(
         `[career-plan] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} falhou: ${detail}`,
       );
-      // Cota/saldo esgotado da OpenAI: permanente dentro desta requisicao. A
-      // tentativa seguinte colhe o mesmo 429, entao so custa um round-trip e o
-      // backoff. Rate limit e falha nao classificada seguem retentando.
-      if (isCotaEsgotada(err)) break;
+      // Falha permanente da OpenAI (saldo esgotado, ou credencial invalida
+      // num 401/403): a tentativa seguinte colhe exatamente o mesmo erro,
+      // entao so custa um round-trip e o backoff. Rate limit e falha nao
+      // classificada seguem retentando.
+      if (isFalhaPermanente(err)) break;
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
       }

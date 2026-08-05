@@ -16,7 +16,7 @@ import type { RoadmapNode, RoadmapV2 } from "../../../shared/roadmapV2/types";
 import { env } from "../env";
 import { fetchWithTimeout, isUpstreamTimeoutError } from "../http";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "../openai";
-import { erroDaRespostaOpenAi, isCotaEsgotada } from "../openaiFailure";
+import { erroDaRespostaOpenAi, isFalhaPermanente } from "../openaiFailure";
 import { toOpenAIStrictSchema } from "../openaiStrictSchema";
 import { supabaseAdmin } from "../supabaseAdmin";
 import { fetchUserContextPool } from "../userContext/pool";
@@ -612,7 +612,7 @@ async function callStructuredOnce(
   );
 
   if (!response.ok) {
-    // O erro classificado vai como `cause`: `isCotaEsgotada` passeia pela
+    // O erro classificado vai como `cause`: `isFalhaPermanente` passeia pela
     // cadeia, entao o StructuredCallError por fora nao esconde a classificacao.
     const falha = await erroDaRespostaOpenAi(response);
     throw new StructuredCallError("upstream", falha.message, {
@@ -697,11 +697,12 @@ async function callStructured<T>(
       // Acumula a correcao (nunca limpa): se validou mal e depois deu 429, a
       // proxima tentativa ainda leva a correcao de conteudo.
       if (plan.correction) correction = plan.correction;
-      // Cota/saldo esgotado da OpenAI: permanente dentro desta requisicao. A
-      // tentativa seguinte colhe o mesmo 429, entao so custa um round-trip e o
-      // backoff (aqui, o Retry-After da resposta, que pode ser longo). Rate
-      // limit e falha nao classificada seguem retentando.
-      if (isCotaEsgotada(err)) break;
+      // Falha permanente da OpenAI (saldo esgotado, ou credencial invalida
+      // num 401/403): a tentativa seguinte colhe exatamente o mesmo erro,
+      // entao so custa um round-trip e o backoff (aqui, o Retry-After da
+      // resposta, que pode ser longo). Rate limit e falha nao classificada
+      // seguem retentando.
+      if (isFalhaPermanente(err)) break;
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(plan.delayMs);
       }

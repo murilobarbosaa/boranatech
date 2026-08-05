@@ -34,7 +34,7 @@ import {
   OPENAI_BASE_URL,
   TRANSCRIPTION_MODEL,
 } from "../lib/openai";
-import { erroDaRespostaOpenAi, isCotaEsgotada } from "../lib/openaiFailure";
+import { erroDaRespostaOpenAi, isFalhaPermanente } from "../lib/openaiFailure";
 import { toOpenAIStrictSchema } from "../lib/openaiStrictSchema";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
@@ -376,10 +376,11 @@ async function callHintModel(
       console.error(
         `[interview] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} (hint) falhou: ${detail}`,
       );
-      // Cota/saldo esgotado da OpenAI: permanente dentro desta requisicao. A
-      // tentativa seguinte colhe o mesmo 429, entao so custa um round-trip e o
-      // backoff. Rate limit e falha nao classificada seguem retentando.
-      if (isCotaEsgotada(err)) break;
+      // Falha permanente da OpenAI (saldo esgotado, ou credencial invalida
+      // num 401/403): a tentativa seguinte colhe exatamente o mesmo erro,
+      // entao so custa um round-trip e o backoff. Rate limit e falha nao
+      // classificada seguem retentando.
+      if (isFalhaPermanente(err)) break;
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
       }
@@ -410,10 +411,11 @@ async function callInterviewModel(
       console.error(
         `[interview] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} (${expect}) falhou: ${detail}`,
       );
-      // Cota/saldo esgotado da OpenAI: permanente dentro desta requisicao. A
-      // tentativa seguinte colhe o mesmo 429, entao so custa um round-trip e o
-      // backoff. Rate limit e falha nao classificada seguem retentando.
-      if (isCotaEsgotada(err)) break;
+      // Falha permanente da OpenAI (saldo esgotado, ou credencial invalida
+      // num 401/403): a tentativa seguinte colhe exatamente o mesmo erro,
+      // entao so custa um round-trip e o backoff. Rate limit e falha nao
+      // classificada seguem retentando.
+      if (isFalhaPermanente(err)) break;
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
       }
