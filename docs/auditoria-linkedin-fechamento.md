@@ -310,6 +310,31 @@ que o código FAZ (contrato, e teste trava) e o que ele DEIXA de fazer (limitaç
 positiva). Quando a limitação vira `expect(...).toBe("palavra")`, ela ganhou o mesmo status do
 comportamento desejado, e a suíte passa a defendê-la.
 
+**E a parte que generaliza, que é a razão de esta instância ter seção própria:**
+
+> **Limitação conhecida precisa de GATILHO, não de explicação. Comentário não volta.**
+
+As outras instâncias desta tabela são instrumentos que **não enxergavam**: o regex que via 38 de 72 tabelas,
+a janela de 4000 caracteres, o `contarLinhas` devolvendo -1. O conserto delas é fazer o instrumento enxergar.
+
+Esta enxergou. O mecanismo foi identificado corretamente, escrito com precisão, e o registro **passou a ser a
+razão de não consertar**. Quem chegou depois leu quinze linhas de raciocínio correto e concluiu que a questão
+tinha sido ponderada e decidida. Foi, e a decisão era "fica assim por ora" — só que "por ora" não tem prazo, e
+nada no repositório voltava a perguntar.
+
+Um comentário é **passivo por construção**: ele só é lido por quem já foi até aquele arquivo, e quem vai até
+lá normalmente está fazendo outra coisa. O que volta a incomodar é outra categoria de artefato:
+
+| em vez de | use | por que volta |
+|---|---|---|
+| comentário explicando a limitação | `it.todo(...)` com a condição | aparece em toda execução da suíte, como pulado |
+| `expect(x).toBe(<valor errado>)` | asserção do que se QUER, marcada como pendente | teste vermelho ou pulado cobra; teste verde absolve |
+| "quem for consertar precisa saber disto" | entrada na fila com **condição de reabertura** | a fila é lida em toda rodada de planejamento |
+
+O caso concreto: a limitação do `terminaEm` deveria ter nascido como uma linha na seção 4 com o gatilho
+*"reabrir quando aparecer caso real da família do pipe"*. O caso real apareceu em 2026-08-04, quatro dias
+depois — e não encontrou nada esperando por ele.
+
 ### As contramedidas que funcionaram, com quantas vezes
 
 | contramedida | vezes aplicada | onde |
