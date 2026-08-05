@@ -45,17 +45,50 @@ const CODIGOS_DE_COTA = new Set([
 // dois retentam, mas so este e uma AFIRMACAO sobre a causa.
 const CODIGOS_TRANSITORIOS = new Set(["rate_limit_exceeded"]);
 
-export type ClassificacaoOpenAi = "cota" | "transitorio" | "nao_classificado";
+/**
+ * CREDENCIAL: chave revogada, escopo insuficiente, conta desativada ou regiao
+ * bloqueada. Classificado pelo STATUS HTTP (401 e 403), nao por codigo.
+ *
+ * Por que status aqui e codigo no resto: status HTTP e campo estrutural e
+ * contratual, tao verificavel quanto `error.code`, e para estes dois casos ele
+ * e MAIS confiavel que o corpo, porque um 401 pode vir sem corpo nenhum (e ai
+ * o corpo nao classificaria nada). A regra que este arquivo persegue e "nao
+ * casar por TEXTO LIVRE"; status nao e texto livre.
+ *
+ * Por que estado proprio e nao `cota` estendido: a reacao humana e outra. Cota
+ * se resolve com dinheiro e o auto-recharge cobre sozinho; credencial exige
+ * alguem entrar na conta. Colapsar os dois faria o alerta dizer "poe saldo"
+ * num caso em que saldo nao e o problema.
+ *
+ * PRECEDENCIA: credencial e avaliada ANTES de cota, entao um 401 vence
+ * qualquer `code` do corpo. Se a OpenAI algum dia mandar 401 com
+ * `insufficient_quota` no corpo, a acao correta continua sendo olhar a
+ * credencial: sem credencial valida, saldo nao resolve nada.
+ *
+ * RISCO ACEITO: um 403 de intermediario (proxy, WAF) por causa transitoria
+ * seria classificado como permanente e perderia o retry. As chamadas vao
+ * diretas para api.openai.com, sem intermediario nosso, entao o caso e remoto;
+ * e o rotulo carrega o codigo, quando houver, para o diagnostico nao comecar
+ * do zero se acontecer.
+ */
+const STATUS_DE_CREDENCIAL = new Set([401, 403]);
+
+export type ClassificacaoOpenAi =
+  | "cota"
+  | "credencial"
+  | "transitorio"
+  | "nao_classificado";
 
 export interface FalhaOpenAiClassificada {
   classificacao: ClassificacaoOpenAi;
-  // Unico campo que decide retry. So `cota` e permanente.
+  // Unico campo que decide retry. `cota` e `credencial` sao permanentes;
+  // `transitorio` e `nao_classificado` retentam.
   permanente: boolean;
   type: string | null;
   code: string | null;
   // Forma curta para log e para ai_usage_logs.error_message, ex.:
-  // "cota:credit_balance_exhausted", "transitorio:rate_limit_exceeded",
-  // "nao_classificado".
+  // "cota:credit_balance_exhausted", "credencial:invalid_api_key",
+  // "transitorio:rate_limit_exceeded", "nao_classificado".
   rotulo: string;
 }
 
@@ -63,7 +96,10 @@ function campoTexto(valor: unknown): string | null {
   return typeof valor === "string" && valor.length > 0 ? valor : null;
 }
 
-export function classificarFalhaOpenAi(corpo: string): FalhaOpenAiClassificada {
+export function classificarFalhaOpenAi(
+  httpStatus: number,
+  corpo: string,
+): FalhaOpenAiClassificada {
   let type: string | null = null;
   let code: string | null = null;
 
@@ -86,10 +122,22 @@ export function classificarFalhaOpenAi(corpo: string): FalhaOpenAiClassificada {
     rotulo: "nao_classificado",
   };
 
-  if (!type && !code) return naoClassificado;
-
   const marcado = (campo: string | null, lista: Set<string>) =>
     campo !== null && lista.has(campo);
+
+  // ANTES de tudo, e independente do corpo: um 401/403 e afirmacao suficiente
+  // por si so, e e o unico ramo que sobrevive a corpo vazio.
+  if (STATUS_DE_CREDENCIAL.has(httpStatus)) {
+    return {
+      classificacao: "credencial",
+      permanente: true,
+      type,
+      code,
+      rotulo: code || type ? `credencial:${code ?? type}` : "credencial",
+    };
+  }
+
+  if (!type && !code) return naoClassificado;
 
   if (marcado(type, CODIGOS_DE_COTA) || marcado(code, CODIGOS_DE_COTA)) {
     return {
@@ -162,7 +210,7 @@ export async function erroDaRespostaOpenAi(response: {
   return new OpenAiFalhaError(
     response.status,
     corpo,
-    classificarFalhaOpenAi(corpo),
+    classificarFalhaOpenAi(response.status, corpo),
   );
 }
 
@@ -187,9 +235,17 @@ export function falhaOpenAiNaCadeia(err: unknown): OpenAiFalhaError | null {
 }
 
 /**
- * Predicado do retry. Verdadeiro SO para cota confirmada: transitorio e
- * nao-classificado continuam retentando, como antes.
+ * Predicado do retry: a tentativa seguinte e garantidamente inutil?
+ *
+ * Verdadeiro SO para as duas classificacoes afirmadas como permanentes (`cota`
+ * e `credencial`). `transitorio` e `nao_classificado` continuam retentando,
+ * exatamente como antes de qualquer uma destas mudancas.
+ *
+ * O nome nao diz "cota" de proposito. A versao anterior se chamava
+ * `isCotaEsgotada` e ja perguntava `permanente`, entao acrescentar um segundo
+ * estado permanente teria feito o nome mentir sem nada quebrar, que e a forma
+ * mais barata de um predicado passar a responder outra pergunta em silencio.
  */
-export function isCotaEsgotada(err: unknown): boolean {
+export function isFalhaPermanente(err: unknown): boolean {
   return falhaOpenAiNaCadeia(err)?.permanente === true;
 }

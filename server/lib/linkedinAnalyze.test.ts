@@ -161,6 +161,26 @@ describe("analyzeLinkedin: 429 da OpenAI, cota versus rate limit", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  // Credencial revogada: permanente pelo mesmo motivo, e a prova de que o
+  // estado novo chega ate o caminho real da analise, nao so ao classificador.
+  it("401 de chave invalida NAO gasta a segunda tentativa", async () => {
+    const fetchMock = vi.fn(async () =>
+      erroResponse(401, {
+        error: {
+          message: "Incorrect API key provided: sk-xxx.",
+          type: "invalid_request_error",
+          code: "invalid_api_key",
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(analyzeLinkedin(REQUEST)).rejects.toThrow(
+      /\[credencial:invalid_api_key\]/,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   // O ramo que nao pode nascer por omissao: 429 sem corpo classificavel se
   // comporta como antes da mudanca, retentando.
   it("429 sem corpo classificavel segue retentando (2 tentativas)", async () => {
