@@ -845,6 +845,7 @@ router.post("/intake/chat", async (req: Request, res: Response, next: NextFuncti
         502,
         "upstream_error",
         "Nao foi possivel responder agora. Tente de novo.",
+        { cause: err },
       ),
     );
   }

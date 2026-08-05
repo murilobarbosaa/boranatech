@@ -243,6 +243,7 @@ router.post(
             502,
             "upstream_error",
             "Falha ao consultar o GitHub. Tente de novo.",
+            { cause: err },
           ),
         );
       }
@@ -251,6 +252,7 @@ router.post(
           502,
           "upstream_error",
           "Nao foi possivel concluir a analise agora. Tente de novo.",
+          { cause: err },
         ),
       );
     } finally {

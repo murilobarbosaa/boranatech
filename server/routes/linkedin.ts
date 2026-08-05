@@ -305,6 +305,7 @@ router.post(
           502,
           "upstream_error",
           "Não foi possível concluir a análise agora. Tente de novo.",
+          { cause: err },
         ),
       );
     }

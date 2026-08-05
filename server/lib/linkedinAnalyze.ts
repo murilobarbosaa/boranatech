@@ -37,6 +37,7 @@ import {
   type LinkedinParsed,
 } from "../../shared/linkedin/parse";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "./openai";
+import { erroDaRespostaOpenAi, isCotaEsgotada } from "./openaiFailure";
 import { toOpenAIStrictSchema } from "./openaiStrictSchema";
 
 /**
@@ -455,10 +456,7 @@ async function runQualitativeOnce(
   );
 
   if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(
-      `OpenAI respondeu ${response.status}: ${text.slice(0, 300)}`,
-    );
+    throw await erroDaRespostaOpenAi(response);
   }
 
   const payload = (await response.json()) as {
@@ -528,6 +526,10 @@ async function runQualitative(
       // corta de novo. Retentar so faz a pessoa esperar o dobro pelo mesmo
       // erro, entao aborta o loop na hora.
       if (err instanceof LinkedinTruncatedError) break;
+      // Cota/saldo esgotado da OpenAI: permanente dentro desta requisicao. A
+      // tentativa seguinte colhe o mesmo 429, entao so custa um round-trip e o
+      // backoff. Rate limit e falha nao classificada seguem retentando.
+      if (isCotaEsgotada(err)) break;
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
       }

@@ -16,6 +16,7 @@ import type { RoadmapNode, RoadmapV2 } from "../../../shared/roadmapV2/types";
 import { env } from "../env";
 import { fetchWithTimeout, isUpstreamTimeoutError } from "../http";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "../openai";
+import { erroDaRespostaOpenAi, isCotaEsgotada } from "../openaiFailure";
 import { toOpenAIStrictSchema } from "../openaiStrictSchema";
 import { supabaseAdmin } from "../supabaseAdmin";
 import { fetchUserContextPool } from "../userContext/pool";
@@ -97,6 +98,11 @@ REGRAS DO CONTEUDO:
   (b) Conhecimento PARCIAL ou IMPRECISO (ex: "basico", "uns cursos", nome de curso sem nivel): NAO pule o tema. Entre nele um degrau acima, gaste no maximo uma frase relembrando o basico e dedique o resto do content ao que falta para a pessoa usar aquilo de verdade.
   (c) DOMINIO REAL e especifico de um tema (a pessoa nomeia o que faz com ele): se este passo for exatamente esse tema, condense-o em um paragrafo de revisao e use o espaco para o proximo nivel do mesmo assunto.
   Na duvida entre (a) e (b), escolha (b). Na duvida entre (b) e (c), escolha (b).
+- RESTRICOES. Se o contexto trouxer "Restricoes", elas mudam a FORMA do passo. NUNCA escreva que a pessoa tem a restricao; escreva o passo que ela consegue cumprir. Frase reconhecendo a restricao nao vale nada. Classifique e aja (mais de uma classe pode valer ao mesmo tempo; aplique todas):
+  (a) TEMPO escasso ou partido (trabalho, faculdade, filhos, cansaco, "conciliar"): o passo tem que caber em sessoes curtas. Diga no content como fatiar o estudo em blocos que fecham sozinhos, e calibre o estimatedTime para esse ritmo em vez do ritmo de quem estuda em bloco unico.
+  (b) IDIOMA (ingles fraco ou intermediario): indique o caminho em portugues quando existir, e avise no content quando o passo depender de material que so existe em ingles.
+  (c) FOCO, ansiedade, procrastinacao, TDAH ou falta de clareza: nada de passo aberto do tipo "estude os fundamentos". Diga exatamente o que fazer, em que ordem, e qual e o entregavel que prova que o passo terminou.
+  (d) PORTFOLIO ou falta de projeto: o passo precisa terminar em algo publicavel, nao em leitura.
 - NUNCA invente dados sobre a pessoa alem do contexto recebido.
 - NUNCA gere URLs nem cite paginas, cursos ou produtos especificos de nenhuma plataforma. Ensine o caminho e os conceitos; o conteudo e autocontido.
 - Nunca use travessao nem meia-risca em nenhum texto (nem no markdown). Use ponto, virgula ou parenteses. Hifen apenas em palavras compostas legitimas.
@@ -435,9 +441,14 @@ class StructuredCallError extends Error {
   constructor(
     kind: StructuredErrorKind,
     message: string,
-    extra?: { status?: number; retryAfterMs?: number | null; feedback?: string },
+    extra?: {
+      status?: number;
+      retryAfterMs?: number | null;
+      feedback?: string;
+      cause?: unknown;
+    },
   ) {
-    super(message);
+    super(message, extra?.cause !== undefined ? { cause: extra.cause } : undefined);
     this.name = "StructuredCallError";
     this.kind = kind;
     this.status = extra?.status;
@@ -601,15 +612,14 @@ async function callStructuredOnce(
   );
 
   if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new StructuredCallError(
-      "upstream",
-      `OpenAI respondeu ${response.status}: ${text.slice(0, 300)}`,
-      {
-        status: response.status,
-        retryAfterMs: parseRetryAfterMs(response.headers.get("retry-after")),
-      },
-    );
+    // O erro classificado vai como `cause`: `isCotaEsgotada` passeia pela
+    // cadeia, entao o StructuredCallError por fora nao esconde a classificacao.
+    const falha = await erroDaRespostaOpenAi(response);
+    throw new StructuredCallError("upstream", falha.message, {
+      status: response.status,
+      retryAfterMs: parseRetryAfterMs(response.headers.get("retry-after")),
+      cause: falha,
+    });
   }
 
   const payload = (await response.json()) as {
@@ -687,6 +697,11 @@ async function callStructured<T>(
       // Acumula a correcao (nunca limpa): se validou mal e depois deu 429, a
       // proxima tentativa ainda leva a correcao de conteudo.
       if (plan.correction) correction = plan.correction;
+      // Cota/saldo esgotado da OpenAI: permanente dentro desta requisicao. A
+      // tentativa seguinte colhe o mesmo 429, entao so custa um round-trip e o
+      // backoff (aqui, o Retry-After da resposta, que pode ser longo). Rate
+      // limit e falha nao classificada seguem retentando.
+      if (isCotaEsgotada(err)) break;
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(plan.delayMs);
       }

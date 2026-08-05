@@ -215,6 +215,7 @@ router.post(
           502,
           "upstream_error",
           "Nao foi possivel gerar o plano agora. Tente de novo.",
+          { cause: err },
         ),
       );
     }
@@ -477,6 +478,7 @@ router.post(
           502,
           "upstream_error",
           "Nao foi possivel responder agora. Tente de novo.",
+          { cause: err },
         ),
       );
     }
