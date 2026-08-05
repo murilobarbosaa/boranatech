@@ -92,7 +92,11 @@ REGRAS DO CONTEUDO:
 - Este e um produto pago: cada passo deve ensinar o suficiente para a pessoa saber exatamente o que estudar e como praticar hoje, sem citar cursos ou paginas especificas.
 - Um passo pode ter ate 5 sub-passos (children de segundo nivel, sem novos filhos), para quebrar um tema denso.
 - Campos nullable que nao se aplicam ao passo devem vir como null, nunca texto vazio.
-- Se o contexto mostrar que a pessoa ja domina parte do tema, reconheca isso no content e foque no que falta.
+- PONTO DE PARTIDA. Antes de escrever o content, CLASSIFIQUE o campo "Ponto de partida" do contexto em uma destas tres classes, e siga a acao da classe:
+  (a) NADA declarado, ou a pessoa diz que nunca fez / esta comecando do zero: escreva o passo do zero, definindo o basico. Comecar do inicio e o CERTO aqui; nao pule nem suba o nivel.
+  (b) Conhecimento PARCIAL ou IMPRECISO (ex: "basico", "uns cursos", nome de curso sem nivel): NAO pule o tema. Entre nele um degrau acima, gaste no maximo uma frase relembrando o basico e dedique o resto do content ao que falta para a pessoa usar aquilo de verdade.
+  (c) DOMINIO REAL e especifico de um tema (a pessoa nomeia o que faz com ele): se este passo for exatamente esse tema, condense-o em um paragrafo de revisao e use o espaco para o proximo nivel do mesmo assunto.
+  Na duvida entre (a) e (b), escolha (b). Na duvida entre (b) e (c), escolha (b).
 - NUNCA invente dados sobre a pessoa alem do contexto recebido.
 - NUNCA gere URLs nem cite paginas, cursos ou produtos especificos de nenhuma plataforma. Ensine o caminho e os conceitos; o conteudo e autocontido.
 - Nunca use travessao nem meia-risca em nenhum texto (nem no markdown). Use ponto, virgula ou parenteses. Hifen apenas em palavras compostas legitimas.
