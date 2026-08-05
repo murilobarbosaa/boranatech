@@ -117,6 +117,45 @@ Medição de 2026-08-01, sobre 170 análises persistidas, pelas **quatro assinat
 só), que **tem falso positivo** — `Student | Open to Internships` e `Estudante | Análise e Desenvolvimento`
 são headlines legítimas. Ela ficou de fora da detecção de propósito. O número defensável é 29 de 171.
 
+### O que as quatro assinaturas NÃO cobrem, e por que 17% não é piso
+
+**Reescrito em 2026-08-04**, depois de um caso real com o PDF na mão. As quatro assinaturas são inequívocas
+naquilo que afirmam, e continuam sendo o número honesto para o que elas medem. O problema é o que fica de
+fora, e ele é maior que o que fica dentro.
+
+Elas leem **a headline persistida**. Quando o PDF quebra a headline e o parser fica com a segunda metade, o
+valor guardado é uma string perfeitamente bem formada: `TypeScript, React, Node.js, PostgreSQL | Remote`.
+Não começa em `|`, não termina em `|` nem em vírgula, não começa em minúscula. **Nenhuma das quatro dispara,
+e o corte perdeu 68 caracteres, incluindo o cargo-alvo.** Esse caso não está entre os 29: está contado como
+headline limpa.
+
+Duas medições de 2026-08-04, sobre 180 headlines persistidas:
+
+**1. A família `termina em |` está MORTA.** As 14 ocorrências são **todas** anteriores a
+2026-07-30T23:06, e há **zero** depois. Não é coincidência: `limparSeparadorOrfao` remove o separador do fim
+de toda linha, então uma headline persistida terminando em `|` deixou de ser alcançável quando o normalizador
+subiu. Ou seja, **quase metade do numerador dos 29 é de uma família que não pode mais ocorrer.** Nas 24
+análises posteriores ao normalizador, as assinaturas pegam 3 (12,5%), e a composição é outra: `termina em |`
+some, sobram `começa em |` (2) e vírgula (3).
+
+**2. O tamanho do erro, nas linhas que carregam o diagnóstico.** Só 18 linhas têm `headlineContexto`
+gravado, e nelas dá para comparar os dois detectores:
+
+| detector | pega |
+|---|---|
+| as 4 assinaturas (o aviso do cliente) | **1** de 18 |
+| o sinal do parser (`acima.forte && !juntou`) | **6** de 18 |
+| sobreposição entre os dois | **0** |
+| qualquer um dos dois | **7** de 18 (39%) |
+
+**O aviso encontra 1 dos 7, ou 14% do que os dois juntos encontram.** As 6 invisíveis são exatamente a
+família do caso real, e a forma delas é reconhecível a olho: `Dados & IA`, `JavaScript | TypeScript | Golang
+| Python`, `Linux | AD | Docker | GCP | N1/N2` — a seção de stack sem o cargo, que ficou na linha de cima.
+
+**Portanto 17% não é piso, é aproximadamente um quarto.** A melhor estimativa disponível é 39%, com a
+ressalva que a torna provisória: **n = 18**. O limiar para tratá-la como número é o mesmo já declarado para
+`notaIncompleta`, 30 análises com o campo.
+
 O que existe hoje: um aviso no passo de revisão (antes de gastar cota), a nota deixando de afirmar faixa
 sobre leitura em dúvida (v7), e `headlineContexto` persistido para o próximo caso ser diagnosticável. **O
 parser não foi corrigido**, e a razão está na seção 4.
@@ -188,6 +227,7 @@ Ordenadas por mecanismo, não cronologia. Todas medidas nesta base.
 | **`$?` depois de um pipe para `tail`** (2026-08-01) | Lendo o exit code do `tail` em vez do script, **no dia em que se mediam exit codes de guards**. Deu `exit=0` para um guard que saía `1` | Redirecionar para arquivo e ler `$?` do comando, nunca do pipeline |
 | **Guard que sempre falha e ninguém invoca** (2026-08-01) | `mutateLinkedinThresholds` abortava na árvore limpa havia semanas, com 6 sítios numéricos órfãos, **três produzidos pela própria auditoria**. Não estava no hook nem no CI. *Um guard que sempre falha e que ninguém roda carrega a mesma informação que um que sempre passa: zero* | Modo `--auditar` (menos de 1s, sem mutar) rodando no CI, e os 6 sítios classificados |
 | **Âncora de mutante quebrada pelas próprias correções da auditoria** (2026-08-01) | Ver abaixo: é a instância que fecha a tabela | O modo `--auditar` falha quando qualquer âncora não casa |
+| **O campo de diagnóstico cego na família que ele existia para diagnosticar** (2026-08-04) | `headlineContexto.acima.terminaEm` foi criado para dizer em que a linha acima da headline terminou, e era **estruturalmente incapaz de devolver `"pipe"`**: `limparSeparadorOrfao` apaga o `\|` do fim de toda linha antes de `detectHeadline` rodar. A família mais comum de quebra chegava classificada como `"palavra"`. **E isto era CONHECIDO**: um teste travava `"palavra"` e explicava o motivo em quinze linhas | `normalizeProfileLinesComSinal` devolve os índices onde removeu separador; `classificarTerminacao` lê o sinal antes do texto. Três testes travam `"pipe"`, a precedência sobre vírgula, e o caso que NÃO deve virar pipe |
 
 #### A interface afirma mais do que sabe
 
@@ -240,6 +280,35 @@ A contramedida não elimina o acoplamento (não há como mutar um limiar sem ref
 evaporação ruidosa.** `pnpm check:limiares` falha quando qualquer âncora não casa, e roda no CI a cada push.
 
 ---
+
+### A instância de 2026-08-04, que não é "ninguém viu": é "viram, escreveram, e ficou"
+
+Todas as instâncias acima têm a mesma forma: o instrumento mediu uma superfície menor e ninguém percebeu.
+Esta é diferente, e por isso vale separada.
+
+O ponto cego do `terminaEm` **não passou despercebido**. Ele estava num teste, com nome próprio, assim:
+
+> `it("na familia do PIPE o sinal util e `forte`, NAO `terminaEm`")`
+
+e quinze linhas de comentário explicando que `normalizeProfileLines` remove o separador antes, que a
+evidência do `|` já foi embora, que o contorno é `forte && !juntou`, e — literalmente — *"quem for consertar
+a deteccao um dia precisa saber disto"*. O teste então **travava `terminaEm: "palavra"`**, congelando o
+comportamento errado como se fosse contrato.
+
+O defeito não foi de observação. Foi o que se fez com a observação:
+
+> **Um teste que trava um comportamento errado e o documenta bem é indistinguível, para quem chega depois,
+> de uma decisão de projeto.**
+
+Documentação boa piorou a situação, e esse é o desconforto real da instância. Um `TODO` teria envelhecido
+como dívida visível; um comentário longo e bem escrito envelheceu como justificativa. A pessoa seguinte lê
+quinze linhas de raciocínio correto, conclui que foi ponderado, e não reabre. Foi preciso um caso real com o
+PDF na mão, em que o dono do perfil viu a headline errada, para alguém voltar a perguntar.
+
+**A contramedida não é escrever menos comentário.** É separar as duas coisas que aquele texto misturava: o
+que o código FAZ (contrato, e teste trava) e o que ele DEIXA de fazer (limitação, e não vira asserção
+positiva). Quando a limitação vira `expect(...).toBe("palavra")`, ela ganhou o mesmo status do
+comportamento desejado, e a suíte passa a defendê-la.
 
 ### As contramedidas que funcionaram, com quantas vezes
 
@@ -429,6 +498,30 @@ Três vezes o passo que muda payload persistido foi pedido no fim de uma rodada 
 três o executor parou e reportou. **O defeito é do pedido, não da entrega:** item sem desfazer barato precisa
 de rodada própria, e quem enche a rodada é quem escreve o prompt.
 
+### O (b) sobe para primeiro da fila, e o gatilho muda de natureza
+
+**Registrado em 2026-08-04.** O gatilho anterior era `corrigiu_apos_aviso` entre 10% e 30%, e ele **nunca
+disparou porque nunca houve amostra**. Um gatilho que depende de uma taxa que ninguém está medindo é um
+item parado com aparência de item priorizado.
+
+O caso real trocou o gatilho por um argumento que não precisa de número:
+
+> **Existe família de quebra sem assinatura e sem conserto.** O aviso não dispara (as quatro assinaturas
+> leem a headline persistida, e nessa família ela sai bem formada), e mesmo se disparasse a pessoa **não
+> tem o que fazer**: a única saída é editar a headline no LinkedIn, exportar o PDF de novo e subir outra vez.
+
+As duas metades importam. Se o aviso falhasse mas houvesse conserto, seria problema de detecção. Se
+detectasse mas não houvesse conserto, seria problema de produto. Estão as duas ao mesmo tempo, e **o (b)
+resolve as duas de uma vez, sem heurística nenhuma**: quem vê a headline errada digita a certa.
+
+**Ele não depende do (2b) e pode subir antes.** São ortogonais: o (2b) melhora o que o parser extrai, o (b)
+dá saída para quando o parser erra. Nenhum bloqueia o outro, e o (b) tem a propriedade que o (2b) não tem:
+funciona para família que ninguém mapeou ainda, inclusive as que não existem hoje.
+
+**Escopo, já mapeado:** campo editável no passo de revisão (cliente), `headlineManual?` opcional no schema,
+`?? parsed.headline` no servidor, e persistir qual dos dois venceu para a telemetria continuar separando
+"o parser acertou" de "a pessoa corrigiu".
+
 ### Treze rodadas não pegaram o que um dia de uso pegou
 
 O truncamento de headline sobreviveu a toda a auditoria. Duas razões, e as duas são estruturais:
@@ -468,7 +561,7 @@ Cada item com custo, impacto medido quando houver, e **o gatilho que o traz de v
 | item | custo | impacto | gatilho |
 |---|---|---|---|
 | **Famílias de quebra de headline** (pipe órfão, termo composto partido, prosa cortada) | Alto. O espaço é ABERTO: o ponto de quebra é escolhido pela largura da coluna do PDF, não pela gramática. Empilhar heurística perde por construção | 29 de 170 (17,1%), 2026-08-01 | A telemetria do aviso: taxa muito acima de 17% significa detecção frouxa; `corrigiu_apos_aviso` abaixo de 10% significa que o aviso não basta |
-| **(b) Headline editável** | Médio. Campo opcional atravessando cliente, schema e servidor. Não precisa de alias (é campo de entrada) | Fecha as famílias conhecidas E a que ninguém viu | `corrigiu_apos_aviso` entre 10% e 30% é o cenário que mais o fortalece |
+| **(b) Headline editável** | Médio. Campo opcional atravessando cliente, schema e servidor. Não precisa de alias (é campo de entrada) | Fecha as famílias conhecidas E a que ninguém viu | **PRIMEIRO DA FILA desde 2026-08-04, e o gatilho deixou de ser medição.** Ver abaixo |
 | **UI da reanálise** | Baixo. Base commitada em `claude/linkedin-fase4` (`abbb919`), **falta o teste** | 32 pares consecutivos com texto idêntico, 25 (78%) com nota idêntica, em 157 análises | Nenhum. É a próxima da fila |
 | **Endpoint de exclusão de análise** | Baixo-médio. Rota + posse (padrão existe em 4 lugares); cascata **já resolvida** por FK | Hoje: SQL manual | Pedido de exclusão de uma das 13 pessoas do vazamento de identidade |
 | **Gate do texto gerado** (`sobre-gancho`) | Alto. É decisão de produto antes de código | Reprova 38% do que a própria ferramenta escreve | Não instrumentado em produção |
@@ -536,6 +629,10 @@ Escrito para quem não tem nenhum contexto desta conversa.
 
 - **Que a headline lida está correta.** 17,1% têm assinatura de corte, e a detecção só pega o inequívoco —
   86 de 156 headlines antigas não têm assinatura nenhuma, e uma cortada que termine em palavra é indetectável.
+  **Atualizado em 2026-08-04: "indetectável" deixou de ser hipótese.** Um caso real, com o PDF na mão, perdeu
+  68 caracteres (incluindo o cargo-alvo) e saiu com headline bem formada, sem nenhuma das quatro assinaturas.
+  Nas 18 linhas que carregam `headlineContexto`, o aviso pega 1 e o sinal do parser pega 6, sem sobreposição:
+  **o aviso encontra 14% do que os dois juntos encontram.** Ver "O que as quatro assinaturas NÃO cobrem".
 - **Que "17,0%" é a taxa real.** É estimativa sobre headline persistida de quem TERMINOU o fluxo. Quem
   abandonou no passo de revisão nunca virou linha. A medição direta mal começou: **1 análise v7 em
   2026-08-01** (`notaIncompleta: false`). Um caso não é taxa; o limiar declarado para o número valer é **30
@@ -595,11 +692,18 @@ de volta. Nenhum depende de alguém lembrar.
 
 **A fila do LinkedIn, na ordem:**
 
-1. **UI da reanálise** — base commitada em `claude/linkedin-fase4` (`abbb919`), falta o teste do caso que a
+**Reordenada em 2026-08-04:** o (b) era o 2 e passou a ser o 1, pelo argumento da seção "O (b) sobe para
+primeiro da fila". O gatilho antigo (`corrigiu_apos_aviso` entre 10% e 30%, em
+`docs/leitura-telemetria-aviso-headline.md`) está **revogado** e não deve ser reaberto: ele condicionava o
+item a uma medição que nunca teve amostra.
+
+1. **(b) Headline editável** — fecha as famílias conhecidas e as que ninguém mapeou, sem heurística nova.
+   Não depende do (2b) e pode subir antes dele.
+2. **UI da reanálise** — base commitada em `claude/linkedin-fase4` (`abbb919`), falta o teste do caso que a
    motivou: mesmo texto não gasta cota, aviso âmbar aparece.
-2. **(b) Headline editável** — fecha as três famílias de quebra conhecidas e a que ninguém viu, sem heurística
-   nova. O gatilho para priorizar está em `docs/leitura-telemetria-aviso-headline.md`.
-3. **Endpoint de exclusão de análise** — rota, verificação de posse (padrão existe em 4 lugares), cascata já
+3. **(2b) Junção da headline por separador estrutural** — só depois de o `terminaEm` corrigido dar número.
+   O (2a) subiu em 2026-08-04 e tornou a família contável; o (2b) é o que muda o que se extrai, e move nota.
+4. **Endpoint de exclusão de análise** — rota, verificação de posse (padrão existe em 4 lugares), cascata já
    resolvida por FK.
 
 ### Fila de ESPERA, que não é fila de trabalho
