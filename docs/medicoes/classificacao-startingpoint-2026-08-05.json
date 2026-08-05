@@ -1,0 +1,261 @@
+{
+  "medido_em": "2026-08-05",
+  "pergunta": "Um startingPoint mais acionavel produz nota de ponto_de_partida mais alta? Se sim, mexer no chat de intake (intervencao C) tem retorno. Se nao, C nao tem alvo.",
+  "corpus": "25 roadmaps de usuarios reais com status ready. NAO sao 27: o baseline-personalizacao-2026-08-04.json tem 29 resultados e exclui 2 slugs de smoke, mas outros 2 (ia-bf1839e1, ia-c209bae0) sao da conta de teste e passaram despercebidos. Media de ponto_de_partida do corpus REAL: 1.88 (n=25). A media 1.81 que circulou antes e sobre 27, incluindo os 2 da conta de teste.",
+  "rubrica": {
+    "acionavel": "declara uma CAPACIDADE concreta (o que a pessoa consegue construir ou fazer) ou um travamento especifico em tecnica nomeada.",
+    "vago-ancorado": "nomeia tecnologia, curso, instituicao ou semestre (uma ancora) sem dizer o que faz com ela.",
+    "inutil": "nenhuma ancora e nenhuma capacidade: vazio, ou so um sentimento/dificuldade sem objeto tecnico.",
+    "zero-declarado": "declara EXPLICITAMENTE nao saber ('iniciante', 'sem conhecimento previo'). Separada de 'inutil' de proposito: misturar as duas foi o que produziu a leitura errada anterior."
+  },
+  "metodo": "Classe atribuida a mao, uma por slug, com o texto integral preservado em `linhas` para que a discordancia seja por LINHA e nao pela media. As 4 linhas em que a rubrica nao decide sozinha estao marcadas com borda=true, e `agregado_bordas_trocadas` mostra o resultado com as 4 jogadas para a outra classe plausivel. Nao ha regex nem palavra-chave decidindo escopo aqui: as 25 linhas estao todas no arquivo, e o script aborta se algum slug do banco nao estiver na tabela de classificacao.",
+  "agregado": {
+    "acionavel": {
+      "n": 2,
+      "media": 1.5,
+      "notas": [1, 2]
+    },
+    "inutil": {
+      "n": 4,
+      "media": 1.5,
+      "notas": [1, 1, 2, 2]
+    },
+    "vago-ancorado": {
+      "n": 17,
+      "media": 1.76,
+      "notas": [1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+    },
+    "zero-declarado": {
+      "n": 2,
+      "media": 4.0,
+      "notas": [3, 5]
+    }
+  },
+  "agregado_bordas_trocadas": {
+    "acionavel": {
+      "n": 1,
+      "media": 2.0,
+      "notas": [2]
+    },
+    "inutil": {
+      "n": 3,
+      "media": 1.33,
+      "notas": [1, 1, 2]
+    },
+    "vago-ancorado": {
+      "n": 19,
+      "media": 1.74,
+      "notas": [1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+    },
+    "zero-declarado": {
+      "n": 2,
+      "media": 4.0,
+      "notas": [3, 5]
+    }
+  },
+  "leitura": "Entre TODOS os que declaram algum conhecimento previo a nota e PLANA: acionavel 1.50 (n=2), vago-ancorado 1.76 (n=17), inutil 1.50 (n=4). A diferenca entre as tres e menor que o ruido de +-1 do proprio juiz. So `zero-declarado` se destaca, com 4.00 (n=2). Robusto: trocar as 4 bordas nao move nada (1.74 a 2.00 nas tres).",
+  "consequencia": "C fica ARQUIVADA. Tornar o intake mais acionavel move a pessoa de vago-ancorado (1.76) para acionavel (1.50), e o dado observado nao mostra ganho nenhum nessa transicao. A correlacao INVERTIDA relatada antes (acionavel 1.50 / vago-ancorado 1.83 / inutil 2.20 sobre 24) esta SUPERSEDIDA: o 2.20 do balde 'inutil' era efeito de ter jogado os dois casos zero-declarado (notas 5 e 3) dentro dele. Separando as classes, nao ha inversao, ha planicie.",
+  "limite": "n=2 em acionavel e n=2 em zero-declarado. Nenhuma media de classe com n<5 sustenta afirmacao forte sozinha. O que sustenta o arquivamento e a combinacao: a planicie observacional (n=23 nas tres classes com conhecimento previo) MAIS o experimento de teto controlado, que deu +1 com n=1, dentro do ruido do instrumento.",
+  "linhas": [
+    {
+      "slug": "ia-9a7f1bcf",
+      "startingPoint": "já atua em projeto com React e TypeScript, integração de APIs, mas sente que sua base ainda é baixa",
+      "chars": 99,
+      "classe": "acionavel",
+      "borda": true,
+      "ponto_de_partida": 2
+    },
+    {
+      "slug": "ia-17437e11",
+      "startingPoint": "fazendo curso de JavaScript, prestes a iniciar Express, considerando migrar para Java",
+      "chars": 85,
+      "classe": "vago-ancorado",
+      "borda": false,
+      "ponto_de_partida": 2
+    },
+    {
+      "slug": "ia-b5777d05",
+      "startingPoint": "base em JavaScript, mas sem confiança em criar algo em Node.js",
+      "chars": 62,
+      "classe": "vago-ancorado",
+      "borda": true,
+      "ponto_de_partida": 2
+    },
+    {
+      "slug": "ia-3a47acbf",
+      "startingPoint": "SQL em aprofundamento, conhecimento em C, Git e GitHub",
+      "chars": 54,
+      "classe": "vago-ancorado",
+      "borda": false,
+      "ponto_de_partida": 1
+    },
+    {
+      "slug": "ia-6133f824",
+      "startingPoint": "dificuldade em guardar os conceitos",
+      "chars": 35,
+      "classe": "inutil",
+      "borda": false,
+      "ponto_de_partida": 2
+    },
+    {
+      "slug": "ia-23584789",
+      "startingPoint": "bom conhecimento de Python, focando em ferramentas de backend",
+      "chars": 61,
+      "classe": "vago-ancorado",
+      "borda": false,
+      "ponto_de_partida": 1
+    },
+    {
+      "slug": "ia-375b2f86",
+      "startingPoint": "base em desenvolvimento full stack, com conhecimentos em HTML e CSS, tendo desenvolvido projetos completos, mas buscando ganhar confiança e aprofundar em áreas como arquitetura e testes automatizados",
+      "chars": 199,
+      "classe": "acionavel",
+      "borda": true,
+      "ponto_de_partida": 1
+    },
+    {
+      "slug": "ia-e57b4424",
+      "startingPoint": "conhecimento em Java e ecossistema, pouco contato com Node.js",
+      "chars": 61,
+      "classe": "vago-ancorado",
+      "borda": false,
+      "ponto_de_partida": 2
+    },
+    {
+      "slug": "ia-bb3a606b",
+      "startingPoint": "especialização em IA pela Alura",
+      "chars": 31,
+      "classe": "vago-ancorado",
+      "borda": false,
+      "ponto_de_partida": 1
+    },
+    {
+      "slug": "ia-03643158",
+      "startingPoint": "especialização em IA pela Alura",
+      "chars": 31,
+      "classe": "vago-ancorado",
+      "borda": false,
+      "ponto_de_partida": 1
+    },
+    {
+      "slug": "ia-deb4b0d2",
+      "startingPoint": "",
+      "chars": 0,
+      "classe": "inutil",
+      "borda": false,
+      "ponto_de_partida": 1
+    },
+    {
+      "slug": "ia-d5ffa059",
+      "startingPoint": "curso de Java, curso de JavaScript, HTML e CSS da DIO, formação em ADS e curso de UI/UX",
+      "chars": 87,
+      "classe": "vago-ancorado",
+      "borda": false,
+      "ponto_de_partida": 2
+    },
+    {
+      "slug": "ia-e9bab33b",
+      "startingPoint": "curso de Java, curso de JavaScript, HTML e CSS da DIO, formação em ADS e curso de UI/UX",
+      "chars": 87,
+      "classe": "vago-ancorado",
+      "borda": false,
+      "ponto_de_partida": 2
+    },
+    {
+      "slug": "ia-349939cd",
+      "startingPoint": "",
+      "chars": 0,
+      "classe": "inutil",
+      "borda": false,
+      "ponto_de_partida": 1
+    },
+    {
+      "slug": "ia-e8077c12",
+      "startingPoint": "6º semestre de Ciências da Computação, com experiência acadêmica em ciência de dados, front-end e back-end.",
+      "chars": 107,
+      "classe": "vago-ancorado",
+      "borda": false,
+      "ponto_de_partida": 2
+    },
+    {
+      "slug": "ia-99ec0174",
+      "startingPoint": "6º semestre de Ciências da Computação, com experiência acadêmica em ciência de dados, front-end e back-end.",
+      "chars": 107,
+      "classe": "vago-ancorado",
+      "borda": false,
+      "ponto_de_partida": 2
+    },
+    {
+      "slug": "ia-b27f7f86",
+      "startingPoint": "cursos na DIO de Introdução à IA",
+      "chars": 32,
+      "classe": "vago-ancorado",
+      "borda": false,
+      "ponto_de_partida": 2
+    },
+    {
+      "slug": "ia-1a882fce",
+      "startingPoint": "estudo Angular, React, e trilhas em andamento: fullstack e engenharia-software",
+      "chars": 78,
+      "classe": "vago-ancorado",
+      "borda": false,
+      "ponto_de_partida": 2
+    },
+    {
+      "slug": "ia-760e4a4a",
+      "startingPoint": "sem conhecimento prévio em frontend e lógica",
+      "chars": 44,
+      "classe": "zero-declarado",
+      "borda": false,
+      "ponto_de_partida": 5
+    },
+    {
+      "slug": "ia-b9ec1b72",
+      "startingPoint": "iniciante",
+      "chars": 9,
+      "classe": "zero-declarado",
+      "borda": false,
+      "ponto_de_partida": 3
+    },
+    {
+      "slug": "ia-702a7a58",
+      "startingPoint": "no início da jornada, com conhecimentos em Python e SQL",
+      "chars": 55,
+      "classe": "vago-ancorado",
+      "borda": false,
+      "ponto_de_partida": 2
+    },
+    {
+      "slug": "ia-84e9a9d1",
+      "startingPoint": "estudando Python e SQL, com 17 passos concluídos na trilha de análise de dados.",
+      "chars": 79,
+      "classe": "vago-ancorado",
+      "borda": false,
+      "ponto_de_partida": 2
+    },
+    {
+      "slug": "ia-8013f81e",
+      "startingPoint": "dificuldades em saber por onde começar um projeto prático",
+      "chars": 57,
+      "classe": "inutil",
+      "borda": true,
+      "ponto_de_partida": 2
+    },
+    {
+      "slug": "ia-70f4bc45",
+      "startingPoint": "Conhecimento básico em lógica de programação, deseja entender mais sobre software para hardware e IA.",
+      "chars": 101,
+      "classe": "vago-ancorado",
+      "borda": false,
+      "ponto_de_partida": 2
+    },
+    {
+      "slug": "ia-c8490899",
+      "startingPoint": "Python (básico), SQL (básico), Power BI (básico), Excel (intermediário), conhecimento de negócio na parte financeira",
+      "chars": 116,
+      "classe": "vago-ancorado",
+      "borda": false,
+      "ponto_de_partida": 2
+    }
+  ]
+}
