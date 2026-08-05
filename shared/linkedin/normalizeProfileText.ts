@@ -204,10 +204,40 @@ function limparSeparadorOrfao(linha: string): string {
 }
 
 /**
+ * Linhas normalizadas MAIS o registro de onde um separador estrutural foi
+ * removido do fim.
+ *
+ * Por que o registro existe: `limparSeparadorOrfao` roda no fim desta função e
+ * apaga o `|` final de toda linha, então `detectHeadline`, que roda depois,
+ * nunca vê o separador. A consequência foi medida: `classificarTerminacao`
+ * devolvia "palavra" para uma linha que terminava em `|`, e o campo
+ * `headlineContexto.acima.terminaEm` ficava incapaz de devolver "pipe" na
+ * família de quebra mais comum. Isto era CONHECIDO e estava travado num teste
+ * (`parse.headlineContexto.test.ts`, "na familia do PIPE o sinal util e
+ * `forte`"), que registrava a limitação e apontava o contorno (`forte &&
+ * !juntou`). Aqui o sinal deixa de precisar de contorno.
+ *
+ * O texto NÃO muda: `linhas` é exatamente o que a função devolvia antes, byte a
+ * byte. O conjunto é informação lateral, e só `detectHeadline` a lê.
+ */
+export interface LinhasNormalizadas {
+  linhas: string[];
+  /** Índices, já na saída final, de linhas que perderam separador no fim. */
+  separadorRemovidoEm: Set<number>;
+}
+
+/**
  * Devolve as linhas já normalizadas: sem rodapé de paginação, sem linha vazia,
  * com continuações unidas e separadores órfãos limpos.
+ *
+ * Mantida com a assinatura antiga de propósito: quem só quer o texto continua
+ * chamando esta. Quem precisa do sinal chama `normalizeProfileLinesComSinal`.
  */
 export function normalizeProfileLines(text: string): string[] {
+  return normalizeProfileLinesComSinal(text).linhas;
+}
+
+export function normalizeProfileLinesComSinal(text: string): LinhasNormalizadas {
   const brutas = text
     .split(/\r?\n/)
     .map((linha) => linha.trim())
@@ -226,5 +256,16 @@ export function normalizeProfileLines(text: string): string[] {
     saida.push(linha);
   }
 
-  return saida.map(limparSeparadorOrfao).filter((linha) => linha.length > 0);
+  // Equivalente exato de `saida.map(limparSeparadorOrfao).filter(l => l.length > 0)`,
+  // com o índice de saída anotado quando a limpeza tirou alguma coisa. A ordem
+  // (limpar, depois descartar vazia) é a mesma, então os índices são os finais.
+  const linhas: string[] = [];
+  const separadorRemovidoEm = new Set<number>();
+  for (const bruta of saida) {
+    const limpa = limparSeparadorOrfao(bruta);
+    if (limpa.length === 0) continue;
+    if (limpa !== bruta.trimEnd()) separadorRemovidoEm.add(linhas.length);
+    linhas.push(limpa);
+  }
+  return { linhas, separadorRemovidoEm };
 }

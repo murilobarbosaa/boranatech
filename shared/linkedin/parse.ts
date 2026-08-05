@@ -12,7 +12,7 @@
  * é best-effort: prefere null a devolver lixo (o nome da pessoa, um e-mail).
  */
 
-import { normalizeProfileLines } from "./normalizeProfileText";
+import { normalizeProfileLinesComSinal } from "./normalizeProfileText";
 
 export interface LinkedinExperiencia {
   /** Só o cargo. A empresa nunca vem colada aqui. */
@@ -390,7 +390,17 @@ export interface LinkedinHeadlineContexto {
   acima: { terminaEm: HeadlineTerminacaoAcima; forte: boolean } | null;
 }
 
-function classificarTerminacao(linha: string): HeadlineTerminacaoAcima {
+/**
+ * `separadorRemovido` vem do normalizador e é consultado ANTES de olhar o texto,
+ * porque descreve como a linha ORIGINAL terminou. Uma linha `"... ,  |"` chega
+ * aqui como `"... ,"`: sem o sinal, seria classificada "virgula", e o que o PDF
+ * quebrou foi o `|`. Ler o sinal primeiro é o que torna "pipe" alcançável.
+ */
+function classificarTerminacao(
+  linha: string,
+  separadorRemovido: boolean,
+): HeadlineTerminacaoAcima {
+  if (separadorRemovido) return "pipe";
   const s = linha.trim();
   if (s.endsWith(",")) return "virgula";
   if (s.endsWith("|")) return "pipe";
@@ -403,6 +413,7 @@ function classificarTerminacao(linha: string): HeadlineTerminacaoAcima {
 function detectHeadline(
   lines: string[],
   firstMainIndex: number,
+  separadorRemovidoEm: Set<number>,
 ): {
   valor: string | null;
   indice: number;
@@ -447,7 +458,13 @@ function detectHeadline(
       acima:
         acimaIdx >= 0
           ? {
-              terminaEm: classificarTerminacao(preamble[acimaIdx]),
+              // `preamble` é `lines.slice(0, limite)`, então o índice no
+              // preâmbulo É o índice na saída do normalizador, que é a base do
+              // conjunto. Sem essa igualdade o sinal viria deslocado.
+              terminaEm: classificarTerminacao(
+                preamble[acimaIdx],
+                separadorRemovidoEm.has(acimaIdx),
+              ),
               forte: ehForte(preamble[acimaIdx]),
             }
           : null,
@@ -641,7 +658,7 @@ export function parseLinkedinText(text: string): LinkedinParsed {
   // UMA passada de normalizacao antes de qualquer parser especifico: junta
   // continuacao de linha quebrada pelo PDF e remove rodape de paginacao. Client
   // e servidor chamam esta mesma funcao, entao veem exatamente o mesmo texto.
-  const lines = normalizeProfileLines(text);
+  const { linhas: lines, separadorRemovidoEm } = normalizeProfileLinesComSinal(text);
 
   if (lines.length === 0) {
     return {
@@ -665,10 +682,7 @@ export function parseLinkedinText(text: string): LinkedinParsed {
     valor: headline,
     indice: headlineIdx,
     contexto: headlineContexto,
-  } = detectHeadline(
-    lines,
-    firstMainIndex,
-  );
+  } = detectHeadline(lines, firstMainIndex, separadorRemovidoEm);
   const identidadeStart = inicioDaIdentidade(lines, headlineIdx);
 
   const sobreRaw = sectionLines(lines, hits, "sobre").join(" ").trim();

@@ -89,21 +89,23 @@ describe("headlineContexto", () => {
     });
   });
 
-  it("na familia do PIPE o sinal util e `forte`, NAO `terminaEm`", () => {
-    // Medido ao escrever este teste, e e a razao de ele existir com este nome:
-    // `normalizeProfileLines` REMOVE o separador orfao do fim da linha antes de
-    // `detectHeadline` rodar. Quando a quebra do PDF cai num `|`, a evidencia
-    // do separador ja foi embora, e `terminaEm` chega como "palavra".
+  it("na familia do PIPE, `terminaEm` devolve \"pipe\"", () => {
+    // ESTE TESTE JA AFIRMOU O CONTRARIO, e a historia importa mais que a
+    // assercao. Ele nasceu chamado "na familia do PIPE o sinal util e `forte`,
+    // NAO `terminaEm`", travando `terminaEm: "palavra"` e documentando por que:
+    // `normalizeProfileLines` remove o separador orfao do fim da linha ANTES de
+    // `detectHeadline` rodar, entao a evidencia do `|` ja tinha ido embora e
+    // "pipe" era inalcancavel. O contorno registrado era `forte && !juntou`.
     //
-    // O sinal que sobrevive e `forte: true` com `juntou: false`: a linha de
-    // cima ERA candidata forte (tinha cara de headline) e mesmo assim nao foi
-    // absorvida. Headline legitima quase nunca vem precedida de outra candidata
-    // forte; o caso comum e o nome, que da `forte: false`. Entao
-    // `forte && !juntou` e a assinatura de "havia headline acima e o parser
-    // deixou para tras".
+    // Ou seja: a limitacao era conhecida, estava escrita, e mesmo assim o campo
+    // `terminaEm` seguiu em producao respondendo "palavra" para a familia de
+    // quebra mais comum. Teste que trava um comportamento ERRADO e o documenta
+    // bem parece cobertura e e o oposto: congela o defeito e faz a proxima
+    // pessoa achar que foi decidido.
     //
-    // Quem for consertar a deteccao um dia precisa saber disto: adiantar o
-    // diagnostico do `|` exige olhar ANTES da normalizacao, nao aqui.
+    // O que mudou: `normalizeProfileLinesComSinal` devolve os indices de onde
+    // removeu separador, e `classificarTerminacao` le esse sinal antes de olhar
+    // o texto. `forte && !juntou` continua valendo, mas deixou de ser contorno.
     const parsed = parseLinkedinText(
       perfil([
         ...LATERAL,
@@ -116,8 +118,53 @@ describe("headlineContexto", () => {
 
     expect(parsed.headline).toBe("ETL | Data Architecture | Analista de Dados");
     expect(parsed.headlineContexto?.juntou).toBe(false);
-    expect(parsed.headlineContexto?.acima?.terminaEm).toBe("palavra");
+    expect(parsed.headlineContexto?.acima?.terminaEm).toBe("pipe");
     expect(parsed.headlineContexto?.acima?.forte).toBe(true);
+  });
+
+  it("`pipe` vence `virgula` quando a linha tinha os dois", () => {
+    // A linha original termina em `", |"`. Depois da limpeza ela chega ao
+    // classificador terminando em virgula, e sem o sinal seria classificada
+    // "virgula": um veredito plausivel e errado sobre o que o PDF quebrou.
+    // E a razao de `separadorRemovido` ser consultado ANTES do texto.
+    //
+    // A linha de cima e DE PROPOSITO uma candidata fraca. A primeira versao
+    // deste teste usou "Engenheiro de Dados, |", e ela nao mede o que diz:
+    // depois da limpeza sobra "Engenheiro de Dados,", que e candidata forte
+    // aberta em virgula, entao a juncao do `eeda681` a absorve na headline e
+    // `acima` passa a ser o NOME. O caso so isola a precedencia quando a
+    // juncao nao dispara.
+    const parsed = parseLinkedinText(
+      perfil([
+        ...LATERAL,
+        "Joana Teste",
+        "Consultoria Exemplo, |",
+        "ETL | Data Architecture | Analista de Dados",
+        "Sao Paulo, Brasil",
+      ]),
+    );
+
+    expect(parsed.headline).toBe("ETL | Data Architecture | Analista de Dados");
+    expect(parsed.headlineContexto?.juntou).toBe(false);
+    expect(parsed.headlineContexto?.acima?.terminaEm).toBe("pipe");
+    expect(parsed.headlineContexto?.acima?.forte).toBe(false);
+  });
+
+  it("linha que NAO perdeu separador continua classificada pelo texto", () => {
+    // O contrapeso do teste acima: o sinal novo nao pode virar um "pipe" para
+    // tudo. Aqui a linha de cima e o nome, que nao terminava em separador
+    // nenhum, e a classificacao tem de seguir vindo do texto.
+    const parsed = parseLinkedinText(
+      perfil([
+        ...LATERAL,
+        "Joana Teste",
+        "Analista de Dados | Power BI | SQL",
+        "Sao Paulo, Brasil",
+      ]),
+    );
+
+    expect(parsed.headlineContexto?.acima?.terminaEm).toBe("palavra");
+    expect(parsed.headlineContexto?.acima?.forte).toBe(false);
   });
 
   it("nao guarda o CONTEUDO da linha de cima em lugar nenhum", () => {
