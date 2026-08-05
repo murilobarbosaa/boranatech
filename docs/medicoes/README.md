@@ -150,6 +150,32 @@ mais cara de coletar (texto livre, custa turnos de conversa) e a menos usada.
 
 Segundo alvo: `obstaculos`, em 2,44, com o mesmo formato de problema.
 
+## Regra de leitura (vale para toda a Fase 3)
+
+**Dimensão isolada tem ruído de ±1 ponto. Só o composto é conclusivo.** Medido em
+três execuções do mesmo par com `temperature: 0`: composto variou 0,50, dimensões
+isoladas variaram 1,00. Diferença de 1 ponto numa dimensão não é resultado.
+
+**A dimensão `escrita` foi REMOVIDA em 2026-08-04.** Deu 4 em 27 de 27, variância
+zero. Tirando ela, a amplitude do composto de qualidade sobe de 1,33 para 2,00: a
+dimensão não media, só diluía. Compostos corrigidos do baseline: personalização
+**2,61** (inalterada) e qualidade **3,83** (era 3,89).
+
+## Intervenção A: revertida
+
+Ver `experimento-A-startingPoint-2026-08-04.json`.
+
+| Persona                | P antes  | P depois | Δ         | `ponto_de_partida` |
+| ---------------------- | -------- | -------- | --------- | ------------------ |
+| intermediario          | 3,25     | 3,75     | +0,50     | 2 → 3              |
+| ja-atua                | 4,00     | 4,00     | 0         | 4 → 4              |
+| stack-dominada         | 2,50     | 2,00     | −0,50     | 2 → 2              |
+| **CONTROLE iniciante** | **4,00** | **2,00** | **−2,00** | **5 → 1**          |
+
+**Soma dos deltas: −2,00. Revertida.** O controle existe exatamente para pegar
+isto: a regra empurrava o modelo para longe de "começar do zero", e para quem
+declarou "nunca programei" começar do zero era o certo.
+
 ## Limites e vieses declarados
 
 **O que ele NÃO mede:**

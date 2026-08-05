@@ -164,7 +164,6 @@ DIMENSOES DE PERSONALIZACAO (dependem do intake):
 DIMENSOES DE QUALIDADE (NAO dependem do intake; julgue o texto por si):
 - especificidade: nomeia subtopicos concretos ("closures, event loop, promises") ou fica em "estude os fundamentos"?
 - acionabilidade: da para comecar a estudar HOJE so com o que esta escrito?
-- escrita: clareza, progressao logica entre secoes, ausencia de repeticao.
 
 REGRAS:
 - Toda nota exige EVIDENCIA: uma citacao curta e literal do roadmap. Nota sem evidencia e opiniao.
@@ -182,7 +181,6 @@ const SCHEMA = {
     "obstaculos",
     "especificidade",
     "acionabilidade",
-    "escrita",
   ],
   properties: Object.fromEntries(
     [
@@ -192,7 +190,6 @@ const SCHEMA = {
       "obstaculos",
       "especificidade",
       "acionabilidade",
-      "escrita",
     ].map((d) => [
       d,
       {
@@ -287,7 +284,11 @@ export const DIMS_PERSONALIZACAO = [
   "stack",
   "obstaculos",
 ];
-export const DIMS_QUALIDADE = ["especificidade", "acionabilidade", "escrita"];
+// `escrita` FOI REMOVIDA em 2026-08-04. No baseline dos 27 ela deu 4 em 27 de
+// 27, variancia zero: nao discriminava nada e so diluia o composto. Medido:
+// tirando ela, a amplitude do composto de qualidade sobe de 1,33 para 2,00.
+// Dimensao que nao varia nao e dimensao, e ruido caro.
+export const DIMS_QUALIDADE = ["especificidade", "acionabilidade"];
 
 // ---------------------------------------------------------------------------
 
