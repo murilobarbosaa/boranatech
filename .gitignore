@@ -22,7 +22,10 @@ yarn-error.log*
 .env*-bak
 
 # Claude Code
-.claude/
+# Ignorar `.claude/` inteiro deixava o `git status` cego para o diretorio: arquivo
+# novo em `.claude/rules/` nao aparecia e o commit saia sem ele, com a arvore
+# parecendo limpa. Agora so o que e local de verdade fica de fora.
+.claude/settings.local.json
 .agents/
 skills-lock.json
 
