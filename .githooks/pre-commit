@@ -115,10 +115,29 @@ trap preservar_se_falhou EXIT
 # `set -o pipefail` resolveria, mas nao existe em dash, e este hook e
 # `#!/bin/sh` de proposito. O arquivo de status e a solucao POSIX: o subshell
 # grava o codigo de saida antes de a pipeline terminar.
+#
+# O `set +e` DENTRO do grupo nao e detalhe de estilo, e a correcao de um defeito
+# que deixou este gate INTEIRO passando de 2026-07-31 ate 2026-08-06. Medido e
+# reproduzido: com o `set -e` do topo ativo, o subshell do grupo MORRE no
+# proprio comando quando ele falha, ANTES de executar `echo $? > "$STATUS"`. O
+# arquivo entao guarda o valor da chamada ANTERIOR, e como as duas primeiras
+# (as suites) normalmente passam e gravam `0`, toda falha posterior era lida
+# como sucesso. Na pratica: `pnpm check` vermelho commitava com "[pre-commit]
+# ok". Confirmado com um commit deliberadamente vermelho.
+#
+# As outras duas linhas sao a contramedida da MESMA classe, nao redundancia:
+#   `: > "$STATUS"` impede herdar status de chamada anterior, que era o veiculo
+#   do defeito; e o teste de vazio faz "nao consegui ler o status" ABORTAR em
+#   vez de virar sucesso por omissao. Um gate so pode falhar acusando.
 STATUS="$(mktemp)"
 rodar() {
-  { "$@" 2>&1; echo $? > "$STATUS"; } | tee -a "$LOG"
-  read st < "$STATUS"
+  : > "$STATUS"
+  { set +e; "$@" 2>&1; echo $? > "$STATUS"; } | tee -a "$LOG"
+  st=$(cat "$STATUS")
+  if [ -z "$st" ]; then
+    echo "[pre-commit] ERRO: status de '$*' nao foi gravado." >&2
+    return 1
+  fi
   return "$st"
 }
 
