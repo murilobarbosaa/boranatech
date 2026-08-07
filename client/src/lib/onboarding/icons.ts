@@ -52,6 +52,17 @@ export const ONBOARDING_ICONS = {
   cloud:
     '<path d="M7 18a4 4 0 0 1 .6-8 5.2 5.2 0 0 1 9.8 1.4A3.5 3.5 0 0 1 17 18Z"/>',
   cursor: '<path d="M6 3.5 18.5 12 12.6 13.2 10 19.5Z"/>',
+  // ACRESCENTADA no Lote A, nao veio do objeto `I` do HTML de referencia.
+  //
+  // Motivo: `Onboarding_16_Ferramentas.html` usa `['star','Importante',...]` em
+  // `points`, e `star` nao existe no `I` de nenhum dos 33 arquivos. A estrela de
+  // 4 pontas mora la numa funcao `star()` separada, que o helper `svg()` nao
+  // consulta; como `svg()` faz `I[n] || ''`, aquele card renderiza um <svg>
+  // VAZIO no navegador, sem erro. Defeito do material, nao decisao de design.
+  //
+  // O path e o mesmo da funcao `star()`. Preenchida com currentColor e sem
+  // traco, igual ao que `compass` e `target` ja fazem nos miolos solidos deles.
+  star: '<path d="M12 1.6 14.1 9.9 22.4 12 14.1 14.1 12 22.4 9.9 14.1 1.6 12 9.9 9.9Z" fill="currentColor" stroke="none"/>',
 } as const;
 
 export type OnboardingIconName = keyof typeof ONBOARDING_ICONS;
