@@ -86,11 +86,39 @@ describe("registry de onboarding: cobertura nos dois sentidos", () => {
     expect(semMotivo).toEqual([]);
   });
 
-  it("a home e a unica rota com onboarding nesta etapa", () => {
+  it("afirma QUAIS rotas tem onboarding portado", () => {
+    // Lista literal, e nao contagem: e o registro deliberado do que ja foi
+    // portado, na ordem de declaracao do registry. Ela quebra a cada lote, e e
+    // para quebrar. Que o CONTEUDO bate com o HTML de referencia e outra
+    // conferencia, em steps/fidelidade.test.ts.
     const comOnboarding = Object.entries(ONBOARDING_REGISTRY)
       .filter(([, entry]) => entry.type === "onboarding")
       .map(([key]) => key);
-    expect(comOnboarding).toEqual(["/"]);
+
+    expect(comOnboarding).toEqual([
+      "/", // 01_Home_1
+      "/areas", // 02_Areas
+      "/tecnologias", // 05_Tecnologias
+      "/tecnologias/por-area", // 06_MapaTecnologias
+      "/tecnologias/ranking", // 07_RankingTecnologias
+      "/empresas", // 19_Empresas
+      "/salarios", // 26_Salarios
+      "/evolucao", // 25_Evolucao
+      "/ingles", // 15_Ingles
+      "/ferramentas", // 16_Ferramentas
+      "/ia", // 17_GuiaIA
+      "/mentorias", // 32_Mentorias
+      "/roadmaps", // 09_Roadmaps
+      "/faculdades", // 04_Faculdades
+      "/eventos", // 28_Eventos
+      "/noticias", // 27_Noticias
+      "/comunidades", // 30_Comunidades
+      "/sobre", // 31_Sobre
+      "/dicas", // 29_Dicas
+      "/mulheres", // 33_Mulheres
+      "/dicionario", // 08_Dicionario
+      "/quiz-carreira", // 03_QuizCarreira
+    ]);
   });
 
   it("o import dinamico da home resolve para um OnboardingDef", async () => {
