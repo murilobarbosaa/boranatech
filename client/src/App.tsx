@@ -11,6 +11,8 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import LaunchGate from "./components/gate/LaunchGate";
 import ScrollToTop from "./components/ScrollToTop";
 import SuperInterstitial from "./components/notifications/SuperInterstitial";
+import OnboardingHost from "./components/onboarding/OnboardingHost";
+import { OnboardingCoordinatorProvider } from "./lib/onboarding/coordinator";
 import RequireAuth from "./components/auth/RequireAuth";
 import { AuthProvider } from "./contexts/AuthContext";
 import { FavoritesProvider } from "./contexts/FavoritesContext";
@@ -388,8 +390,16 @@ function App() {
                         aceite de uma sessão que não conseguimos confirmar. */}
                     <AuthCallbackGate>
                       <ConsentGate>
-                        <SuperInterstitial />
-                        <Router />
+                        {/* O provider é PAI dos dois de propósito: é ele que
+                            decide quem ocupa a tela nesta carga, e ser pai
+                            garante que o estado existe antes de qualquer um
+                            dos dois renderizar. Sem isso a coordenação viraria
+                            ordem de irmãos ou timer. */}
+                        <OnboardingCoordinatorProvider>
+                          <OnboardingHost />
+                          <SuperInterstitial />
+                          <Router />
+                        </OnboardingCoordinatorProvider>
                       </ConsentGate>
                     </AuthCallbackGate>
                   </LaunchGate>
