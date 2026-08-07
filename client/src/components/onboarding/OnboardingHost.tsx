@@ -9,6 +9,7 @@ import {
 import { useLocation } from "wouter";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useOnboardingCoordinator } from "@/lib/onboarding/coordinator";
 import { resolveRouteOnboarding } from "@/lib/onboarding/registry";
 import {
@@ -28,15 +29,44 @@ import type { OnboardingResultData } from "./OnboardingStories";
 
 const OnboardingStories = lazy(() => import("./OnboardingStories"));
 
+/**
+ * Quanto o overlay espera, depois de DECIDIR abrir, antes de aparecer. Existe
+ * para a pessoa ver a pagina primeiro: onboarding que cobre a tela no instante
+ * do carregamento e indistinguivel de um pop-up.
+ *
+ * Nao adia a PRECEDENCIA. O coordenador e reivindicado na decisao, nao aqui,
+ * senao o SuperInterstitial abriria dentro desta janela e os dois apareceriam.
+ */
+export const DELAY_ABERTURA_MS = 2500;
+
+/**
+ * Duracao da animacao de saida, casada com `.bnt-onb.saindo` do onboarding.css.
+ * O host so desmonta depois dela; com movimento reduzido a animacao tem duracao
+ * zerada pelo CSS e aqui o valor vira 0, senao ficaria um overlay invisivel
+ * segurando o scroll lock por 220ms.
+ */
+export const SAIDA_MS = 220;
+
 export default function OnboardingHost() {
   const [location] = useLocation();
   const { user, profile, profileStatus, loading } = useAuth();
   const { decision, claimForOnboarding, releaseToOthers, beginDecision } =
     useOnboardingCoordinator();
 
+  const reducedMotion = usePrefersReducedMotion();
+
   const [open, setOpen] = useState(false);
+  const [saindo, setSaindo] = useState(false);
   const [def, setDef] = useState<OnboardingDef | null>(null);
   const routeKeyRef = useRef<string | null>(null);
+
+  // Timers vivos: o do atraso de abertura e o da animacao de saida. Ficam em
+  // ref para o efeito de rota poder cancelar os dois sem depender de estado.
+  const timersRef = useRef<number[]>([]);
+  const limparTimers = useCallback(() => {
+    for (const id of timersRef.current) window.clearTimeout(id);
+    timersRef.current = [];
+  }, []);
 
   // routeKeys ENCERRADOS nesta carga de pagina (concluidos ou pulados).
   //
@@ -71,10 +101,18 @@ export default function OnboardingHost() {
   useEffect(() => {
     let cancelled = false;
 
-    // Rota nova: fecha o que estiver aberto SEM marcar como visto. Quem sai da
-    // pagina no meio do onboarding nao decidiu nada, entao ele reaparece na
-    // proxima visita. Marcar aqui trocaria "nao terminei" por "ja vi".
+    // Rota nova: cancela o atraso pendente e fecha o que estiver aberto SEM
+    // marcar como visto. Quem sai da pagina no meio do onboarding (ou antes de
+    // ele aparecer) nao decidiu nada, entao ele reaparece na proxima visita.
+    // Marcar aqui trocaria "nao terminei" por "ja vi".
+    //
+    // Cancelar dentro do atraso NAO devolve a vez ao SuperInterstitial: a
+    // reivindicacao do coordenador e sticky pela carga, de proposito. A pessoa
+    // ja esta navegando; abrir um interstitial em cima disso seria trocar um
+    // pop-up por outro.
+    limparTimers();
     setOpen(false);
+    setSaindo(false);
     setDef(null);
     beginDecision();
 
@@ -132,7 +170,10 @@ export default function OnboardingHost() {
       .then((module) => {
         if (cancelled) return;
         setDef(module.default);
-        setOpen(true);
+        // O atraso conta a partir daqui, com os passos ja em maos: assim ele e
+        // o tempo que a pessoa ve a pagina, e nao tempo de download disfarcado.
+        const id = window.setTimeout(() => setOpen(true), DELAY_ABERTURA_MS);
+        timersRef.current.push(id);
       })
       .catch((error: unknown) => {
         if (cancelled) return;
@@ -154,7 +195,13 @@ export default function OnboardingHost() {
     // a rota resolve, e `authResolved` ja garante que ele chegou.
   }, [location, authResolved]);
 
+  // Timer sobrevivente a desmontagem chamaria setState em componente morto.
+  useEffect(() => limparTimers, [limparTimers]);
+
   /* --- travar a rolagem da pagina de baixo ------------------------------ */
+  // Mesmo mecanismo do SuperModal: guarda o valor anterior e restaura na saida,
+  // em vez de assumir que era "". O overlay so trava enquanto esta montado,
+  // entao a fase de saida ainda segura o scroll, que e o desejado.
   useEffect(() => {
     if (!open) return;
     const previous = document.body.style.overflow;
@@ -167,9 +214,18 @@ export default function OnboardingHost() {
   const handleFinish = useCallback(
     (how: OnboardingHow, data: OnboardingResultData) => {
       const routeKey = routeKeyRef.current;
-      // Fecha ANTES de persistir: a escrita e de rede e a pessoa ja decidiu.
-      setOpen(false);
-      setDef(null);
+      // Anima a saida e so entao desmonta. A persistencia nao espera a
+      // animacao: a pessoa ja decidiu, e a escrita e de rede.
+      setSaindo(true);
+      const id = window.setTimeout(
+        () => {
+          setOpen(false);
+          setSaindo(false);
+          setDef(null);
+        },
+        reducedMotion ? 0 : SAIDA_MS,
+      );
+      timersRef.current.push(id);
       if (!routeKey) return;
       handledRef.current.add(routeKey);
       void markOnboardingSeen({
@@ -184,7 +240,7 @@ export default function OnboardingHost() {
         },
       });
     },
-    [profile, signedIn],
+    [profile, signedIn, reducedMotion],
   );
 
   if (!open || !def) return null;
@@ -194,7 +250,7 @@ export default function OnboardingHost() {
 
   return (
     <Suspense fallback={null}>
-      <OnboardingStories def={def} onFinish={handleFinish} />
+      <OnboardingStories def={def} onFinish={handleFinish} saindo={saindo} />
     </Suspense>
   );
 }

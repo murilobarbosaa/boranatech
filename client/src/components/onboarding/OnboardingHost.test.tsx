@@ -1,4 +1,10 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,11 +14,17 @@ import {
   useOnboardingCoordinator,
 } from "@/lib/onboarding/coordinator";
 import type { Profile } from "@/services/contracts";
-import OnboardingHost from "./OnboardingHost";
+import OnboardingHost, { DELAY_ABERTURA_MS, SAIDA_MS } from "./OnboardingHost";
 
 // Host + coordenacao. O ponto do arquivo e o invariante que a tarefa pediu para
 // ser EXPLICITO e testavel: se o onboarding da rota abrir nesta carga, o
 // SuperInterstitial nao abre, e enquanto o host nao decidiu, ninguem abre.
+//
+// TIMERS FALSOS. O overlay so aparece DELAY_ABERTURA_MS depois de decidir, e
+// esperar isso em tempo real multiplicaria a suite por segundos a cada caso.
+// `avancar()` empurra o relogio e drena as microtasks, entao o import dinamico
+// dos steps e o lazy() do motor resolvem no mesmo passo. Nada de `waitFor` aqui:
+// com relogio falso ele nao avanca sozinho, e a espera vira impasse.
 
 const updateMyProfile = vi.fn();
 vi.mock("@/services/profileService", () => ({
@@ -42,25 +54,51 @@ function Sonda() {
   );
 }
 
+function arvore(hook: ReturnType<typeof memoryLocation>["hook"]) {
+  return (
+    <Router hook={hook}>
+      <OnboardingCoordinatorProvider>
+        <OnboardingHost />
+        <Sonda />
+      </OnboardingCoordinatorProvider>
+    </Router>
+  );
+}
+
 function montar(path: string) {
   const { hook, navigate } = memoryLocation({ path });
-  return {
-    ...render(
-      <Router hook={hook}>
-        <OnboardingCoordinatorProvider>
-          <OnboardingHost />
-          <Sonda />
-        </OnboardingCoordinatorProvider>
-      </Router>,
-    ),
-    navigate,
-  };
+  return { ...render(arvore(hook)), navigate, hook };
 }
 
 const sonda = () => screen.getByTestId("sonda").textContent;
 const overlay = () => document.querySelector(".bnt-onb");
 
-beforeEach(() => {
+/** Avanca o relogio falso drenando as promises pendentes a cada passo. */
+async function avancar(ms: number) {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ms);
+  });
+}
+
+/** So resolve as promises pendentes, sem deixar o atraso vencer. */
+const assentar = () => avancar(0);
+
+/** Deixa o atraso de abertura vencer e o overlay montar. */
+const abrir = () => avancar(DELAY_ABERTURA_MS + 50);
+
+/** Deixa a animacao de saida terminar e o host desmontar o overlay. */
+const fechar = () => avancar(SAIDA_MS + 50);
+
+beforeEach(async () => {
+  // Aquece o cache de modulos ANTES do relogio falso. O `lazy()` do motor e o
+  // import dinamico dos steps sao carregamento de modulo, ou seja, I/O real:
+  // relogio falso nao o adianta, e `advanceTimersByTimeAsync` so drena
+  // microtask. Com os dois ja carregados, os `import()` do host resolvem de
+  // cache e cabem numa microtask.
+  await import("./OnboardingStories");
+  await import("@/lib/onboarding/steps/home");
+
+  vi.useFakeTimers();
   window.localStorage.clear();
   updateMyProfile.mockReset();
   updateMyProfile.mockResolvedValue({});
@@ -69,12 +107,14 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
 });
 
 describe("OnboardingHost: abertura", () => {
   it("abre na home para anonimo que nunca viu", async () => {
     montar("/");
-    await waitFor(() => expect(overlay()).not.toBeNull());
+    await abrir();
+    expect(overlay()).not.toBeNull();
     expect(screen.getByText("Essa é a sua bússola pra tech")).toBeInstanceOf(
       HTMLElement,
     );
@@ -83,13 +123,15 @@ describe("OnboardingHost: abertura", () => {
 
   it("nao abre em rota classificada como sem-onboarding", async () => {
     montar("/login");
-    await waitFor(() => expect(sonda()).toBe("free:super-ok"));
+    await abrir();
+    expect(sonda()).toBe("free:super-ok");
     expect(overlay()).toBeNull();
   });
 
   it("nao abre em rota pendente", async () => {
     montar("/cursos");
-    await waitFor(() => expect(sonda()).toBe("free:super-ok"));
+    await abrir();
+    expect(sonda()).toBe("free:super-ok");
     expect(overlay()).toBeNull();
   });
 
@@ -99,7 +141,8 @@ describe("OnboardingHost: abertura", () => {
       JSON.stringify({ seen: true, how: "pulado", at: "2026-08-01T00:00:00Z" }),
     );
     montar("/");
-    await waitFor(() => expect(sonda()).toBe("free:super-ok"));
+    await abrir();
+    expect(sonda()).toBe("free:super-ok");
     expect(overlay()).toBeNull();
   });
 
@@ -118,7 +161,8 @@ describe("OnboardingHost: abertura", () => {
       loading: false,
     };
     montar("/");
-    await waitFor(() => expect(sonda()).toBe("free:super-ok"));
+    await abrir();
+    expect(sonda()).toBe("free:super-ok");
     expect(overlay()).toBeNull();
   });
 
@@ -133,7 +177,11 @@ describe("OnboardingHost: abertura", () => {
     });
     try {
       montar("/");
-      await waitFor(() => expect(sonda()).toBe("free:super-ok"));
+      // A guarda decide ANTES de qualquer timer: o prerender nao pode depender
+      // de o atraso vencer ou nao dentro da janela do puppeteer.
+      await assentar();
+      expect(sonda()).toBe("free:super-ok");
+      await abrir();
       expect(overlay()).toBeNull();
     } finally {
       if (original)
@@ -147,35 +195,137 @@ describe("OnboardingHost: abertura", () => {
   });
 });
 
+describe("OnboardingHost: atraso de abertura", () => {
+  it("nao aparece antes de DELAY_ABERTURA_MS, e a vez ja esta reservada", async () => {
+    montar("/");
+    await avancar(DELAY_ABERTURA_MS - 100);
+
+    expect(overlay()).toBeNull();
+    // A precedencia vale desde a DECISAO, nao desde o aparecimento: dentro
+    // desta janela o SuperInterstitial ja esta bloqueado.
+    expect(sonda()).toBe("onboarding:super-bloqueado");
+
+    await avancar(200);
+    expect(overlay()).not.toBeNull();
+  });
+
+  it("navegar DURANTE o atraso cancela a abertura", async () => {
+    const { navigate } = montar("/");
+    await avancar(DELAY_ABERTURA_MS - 100);
+    expect(overlay()).toBeNull();
+
+    act(() => navigate("/cursos"));
+    await avancar(DELAY_ABERTURA_MS * 2);
+
+    // O timer foi limpo: o overlay nao aparece na rota nova nem depois.
+    expect(overlay()).toBeNull();
+    // Nada persistido: nao chegou a ser visto.
+    expect(window.localStorage.getItem("bnt_onb:/")).toBeNull();
+    // A reivindicacao continua STICKY pela carga, de proposito: cancelar a
+    // abertura nao devolve a vez ao SuperInterstitial.
+    expect(sonda()).toBe("onboarding:super-bloqueado");
+  });
+
+  it("cancelado no atraso, o onboarding volta a aparecer ao voltar para a rota", async () => {
+    const { navigate } = montar("/");
+    await avancar(DELAY_ABERTURA_MS - 100);
+    act(() => navigate("/cursos"));
+    await assentar();
+
+    act(() => navigate("/"));
+    await abrir();
+    expect(overlay()).not.toBeNull();
+  });
+
+  it("timer da visita anterior nao antecipa a abertura da visita nova", async () => {
+    // Este e o caso que prova que o timer foi mesmo LIMPO, e nao apenas que o
+    // overlay ficou fechado. Sem `limparTimers()` na troca de rota, o timer da
+    // primeira visita sobrevive e dispara `setOpen(true)` no meio do ciclo
+    // novo, que ja tem `def` carregado: o overlay abriria 150ms depois de
+    // voltar, e nao 2500ms. A versao anterior deste teste so conferia que
+    // "nao abriu" apos navegar para fora, o que passa mesmo com o timer vivo,
+    // porque `def` esta nulo naquele instante.
+    const { navigate } = montar("/");
+    await avancar(DELAY_ABERTURA_MS - 100); // timer antigo a 100ms de vencer
+
+    act(() => navigate("/cursos"));
+    await assentar();
+    act(() => navigate("/")); // ciclo novo, atraso reiniciado do zero
+
+    await avancar(150); // o timer ANTIGO venceria dentro desta janela
+    expect(overlay()).toBeNull();
+
+    await avancar(DELAY_ABERTURA_MS); // agora sim, o atraso do ciclo novo
+    expect(overlay()).not.toBeNull();
+  });
+});
+
+describe("OnboardingHost: scroll da pagina de baixo", () => {
+  it("trava enquanto aberto e restaura o valor ANTERIOR ao fechar", async () => {
+    // Valor previo nao vazio de proposito: restaurar para "" seria destruir um
+    // lock de outro componente em vez de devolver o que estava.
+    document.body.style.overflow = "clip";
+
+    montar("/");
+    await avancar(DELAY_ABERTURA_MS - 100);
+    // Durante o atraso a pagina ainda rola: e justamente o tempo de ve-la.
+    expect(document.body.style.overflow).toBe("clip");
+
+    await avancar(200);
+    expect(overlay()).not.toBeNull();
+    expect(document.body.style.overflow).toBe("hidden");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await fechar();
+
+    expect(overlay()).toBeNull();
+    expect(document.body.style.overflow).toBe("clip");
+    document.body.style.overflow = "";
+  });
+
+  it("restaura tambem quando a saida e por navegacao", async () => {
+    const { navigate } = montar("/");
+    await abrir();
+    expect(document.body.style.overflow).toBe("hidden");
+
+    act(() => navigate("/cursos"));
+    await assentar();
+    expect(document.body.style.overflow).toBe("");
+  });
+});
+
 describe("OnboardingHost: navegacao com o overlay aberto", () => {
   it("sair no meio fecha SEM marcar como visto, e voltar reabre", async () => {
     const { navigate } = montar("/");
-    await waitFor(() => expect(overlay()).not.toBeNull());
+    await abrir();
+    expect(overlay()).not.toBeNull();
 
-    const { act } = await import("@testing-library/react");
     act(() => navigate("/cursos"));
+    await assentar();
 
-    await waitFor(() => expect(overlay()).toBeNull());
+    expect(overlay()).toBeNull();
     // Nada foi persistido: sair da pagina nao e uma decisao.
     expect(window.localStorage.getItem("bnt_onb:/")).toBeNull();
     expect(updateMyProfile).not.toHaveBeenCalled();
 
     act(() => navigate("/"));
-    await waitFor(() => expect(overlay()).not.toBeNull());
+    await abrir();
+    expect(overlay()).not.toBeNull();
   });
 
   it("depois de ENCERRAR, voltar para a rota nao reabre", async () => {
     const { navigate } = montar("/");
-    await waitFor(() => expect(overlay()).not.toBeNull());
+    await abrir();
 
-    const { act, fireEvent } = await import("@testing-library/react");
     fireEvent.keyDown(document, { key: "Escape" });
-    await waitFor(() => expect(overlay()).toBeNull());
+    await fechar();
+    expect(overlay()).toBeNull();
     expect(window.localStorage.getItem("bnt_onb:/")).not.toBeNull();
 
     act(() => navigate("/cursos"));
     act(() => navigate("/"));
-    await waitFor(() => expect(sonda()).toBe("onboarding:super-bloqueado"));
+    await abrir();
+    expect(sonda()).toBe("onboarding:super-bloqueado");
     expect(overlay()).toBeNull();
   });
 });
@@ -192,7 +342,8 @@ describe("OnboardingHost: espera o AuthContext resolver", () => {
 
     // Ninguem abre nesta janela: nem o onboarding (nao sabe se a pessoa ja
     // viu), nem o SuperInterstitial (o coordenador ainda nao liberou).
-    await waitFor(() => expect(sonda()).toBe("deciding:super-bloqueado"));
+    await abrir();
+    expect(sonda()).toBe("deciding:super-bloqueado");
     expect(overlay()).toBeNull();
 
     auth = {
@@ -202,16 +353,10 @@ describe("OnboardingHost: espera o AuthContext resolver", () => {
       loading: false,
     };
     const { hook } = memoryLocation({ path: "/" });
-    rerender(
-      <Router hook={hook}>
-        <OnboardingCoordinatorProvider>
-          <OnboardingHost />
-          <Sonda />
-        </OnboardingCoordinatorProvider>
-      </Router>,
-    );
+    rerender(arvore(hook));
 
-    await waitFor(() => expect(overlay()).not.toBeNull());
+    await abrir();
+    expect(overlay()).not.toBeNull();
     expect(sonda()).toBe("onboarding:super-bloqueado");
   });
 
@@ -223,23 +368,23 @@ describe("OnboardingHost: espera o AuthContext resolver", () => {
       loading: false,
     };
     montar("/");
-    await waitFor(() => expect(overlay()).not.toBeNull());
+    await abrir();
+    expect(overlay()).not.toBeNull();
   });
 });
 
 describe("OnboardingHost: persistencia", () => {
   it("concluir grava o registro (anonimo -> localStorage) e fecha", async () => {
     montar("/");
-    await waitFor(() => expect(overlay()).not.toBeNull());
+    await abrir();
 
-    const { fireEvent } = await import("@testing-library/react");
     const next = () =>
       document.querySelector<HTMLButtonElement>(".next") as HTMLButtonElement;
     for (let i = 0; i < 5; i += 1) fireEvent.click(next());
     fireEvent.click(next());
+    await fechar();
 
-    await waitFor(() => expect(overlay()).toBeNull());
-
+    expect(overlay()).toBeNull();
     const raw = window.localStorage.getItem("bnt_onb:/");
     expect(raw).not.toBeNull();
     const record = JSON.parse(raw as string) as Record<string, unknown>;
@@ -260,14 +405,14 @@ describe("OnboardingHost: persistencia", () => {
       loading: false,
     };
     montar("/");
-    await waitFor(() => expect(overlay()).not.toBeNull());
+    await abrir();
 
-    const { fireEvent } = await import("@testing-library/react");
     fireEvent.click(
       document.querySelectorAll<HTMLButtonElement>(".side .ghost")[1],
     );
+    await fechar();
 
-    await waitFor(() => expect(updateMyProfile).toHaveBeenCalledTimes(1));
+    expect(updateMyProfile).toHaveBeenCalledTimes(1);
     const payload = updateMyProfile.mock.calls[0][0] as {
       preferences: Record<string, unknown>;
     };
@@ -287,11 +432,11 @@ describe("coordenacao com o SuperInterstitial", () => {
 
   it("reivindicado na home, o super continua bloqueado depois de fechar", async () => {
     montar("/");
-    await waitFor(() => expect(overlay()).not.toBeNull());
+    await abrir();
 
-    const { fireEvent } = await import("@testing-library/react");
     fireEvent.keyDown(document, { key: "Escape" });
-    await waitFor(() => expect(overlay()).toBeNull());
+    await fechar();
+    expect(overlay()).toBeNull();
 
     // A reivindicacao vale para a CARGA inteira: fechar o onboarding nao
     // devolve a vez ao SuperInterstitial nesta mesma sessao de pagina.

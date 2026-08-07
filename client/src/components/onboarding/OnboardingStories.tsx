@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
-import { ONBOARDING_ICON_NAMES } from "@/lib/onboarding/icons";
 import {
   ONBOARDING_PERFIS,
   ONBOARDING_TOURS,
@@ -11,6 +10,7 @@ import {
   type OnboardingStepDef,
   type OnboardingTour,
 } from "@/lib/onboarding/types";
+import type { OnboardingIconName } from "@/lib/onboarding/icons";
 import { OnbIcon, OnbLogo, OnbStar } from "./icons";
 import "./onboarding.css";
 
@@ -26,6 +26,12 @@ import "./onboarding.css";
 //      proximo visitante); aqui o overlay fecha na hora.
 //   2. o scroll de volta ao topo e do CONTAINER do overlay, nao da window: a
 //      pagina embaixo continua onde estava.
+//   3. o fundo da pagina standalone (`.dots-bg` e os icones flutuantes) NAO foi
+//      mantido: aqui quem fica atras e a pagina de verdade, desfocada pelo
+//      backdrop. Cenario proprio em cima de conteudo real seria ruido.
+//
+// A fase de saida vem do `saindo` do host: o overlay precisa continuar montado
+// enquanto a animacao roda, entao quem desmonta e o host, depois dela.
 
 export interface OnboardingResultData {
   perfil?: OnboardingPerfil;
@@ -36,18 +42,15 @@ interface OnboardingStoriesProps {
   def: OnboardingDef;
   /** Chamado uma unica vez, no concluir ou no pular. */
   onFinish: (how: OnboardingHow, data: OnboardingResultData) => void;
+  /** Fase de saida: liga a animacao de fechamento antes de o host desmontar. */
+  saindo?: boolean;
 }
 
 const SWIPE_THRESHOLD = 68;
 
 /** Icones fantasma no fundo do card, em posicoes fixas por indice. */
 const GHOSTS: ReadonlyArray<
-  readonly [
-    name: (typeof ONBOARDING_ICON_NAMES)[number],
-    x: number,
-    y: number,
-    size: number,
-  ]
+  readonly [name: OnboardingIconName, x: number, y: number, size: number]
 > = [
   ["code", 6, 22, 44],
   ["braces", 88, 16, 40],
@@ -66,17 +69,6 @@ const SPARKS: ReadonlyArray<
   [90, 62, 12, "#fff"],
   [10, 68, 14, "#FFC61E"],
   [80, 88, 11, "#fff"],
-];
-
-/** Paleta dos icones flutuantes do fundo da pagina. */
-const PAL = [
-  "#A9BCEC",
-  "#C9ACEF",
-  "#F3A9CC",
-  "#A9DCC2",
-  "#F3C08D",
-  "#8FD3E0",
-  "#E7A400",
 ];
 
 const CONFETTI_COLORS = [
@@ -111,6 +103,7 @@ function emit(
 export default function OnboardingStories({
   def,
   onFinish,
+  saindo = false,
 }: OnboardingStoriesProps) {
   const steps = def.steps;
   const total = steps.length;
@@ -132,20 +125,6 @@ export default function OnboardingStories({
   // render seguinte.
   const doneRef = useRef(false);
   const confettiFiredRef = useRef(false);
-
-  // Sorteados uma vez por montagem: em render puro, o fundo tremeria a cada
-  // troca de card.
-  const bgIcons = useMemo(() => {
-    return Array.from({ length: 18 }, (_, k) => ({
-      name: ONBOARDING_ICON_NAMES[(k * 5) % ONBOARDING_ICON_NAMES.length],
-      left: rnd(1, 93).toFixed(1),
-      top: rnd(1, 92).toFixed(1),
-      rot: rnd(-16, 16) | 0,
-      delay: (-rnd(0, 9)).toFixed(1),
-      size: (28 + rnd(0, 22)) | 0,
-      color: PAL[k % PAL.length],
-    }));
-  }, []);
 
   const isLast = step === total - 1;
   const currentStep = steps[step];
@@ -393,31 +372,7 @@ export default function OnboardingStories({
   };
 
   return (
-    <div className="bnt-onb">
-      <div className="dots-bg" aria-hidden="true" />
-      <div className="bgicons" aria-hidden="true">
-        {bgIcons.map((icon, k) => (
-          <span
-            key={k}
-            style={
-              {
-                left: `${icon.left}%`,
-                top: `${icon.top}%`,
-                "--rot": `${icon.rot}deg`,
-                animationDelay: `${icon.delay}s`,
-              } as React.CSSProperties
-            }
-          >
-            <OnbIcon
-              name={icon.name}
-              size={icon.size}
-              color={icon.color}
-              width={1.7}
-            />
-          </span>
-        ))}
-      </div>
-
+    <div className={saindo ? "bnt-onb saindo" : "bnt-onb"}>
       <main className="stage">
         <section
           className="modal"

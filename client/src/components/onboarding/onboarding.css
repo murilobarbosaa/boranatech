@@ -14,14 +14,26 @@
        z-index 95, rolagem propria) com o de "pagina" do HTML original.
      - os seletores universais e os de elemento (`button`, `a`) ganharam o
        prefixo .bnt-onb.
-   Nenhum valor foi alterado.
+   Dentro dos CARDS, nenhum valor foi alterado.
+
+   O ENTORNO mudou (2026-08-07), e so ele:
+     - o fundo chapado cream com `.dots-bg` e `.bgicons` era cenario da pagina
+       standalone. Aqui a pagina de verdade fica atras, entao o fundo virou
+       backdrop translucido escuro com blur, e aquelas duas regras (mais o
+       keyframe `float` e o token `--cream`, que ficaram sem uso) sairam.
+     - `.foot` ganhou respiro: a sombra do card projeta 11px para baixo e o
+       `offsetHeight` que dimensiona a pilha nao a inclui, entao os 16px do HTML
+       deixavam so 5px de folga visual e o "Próximo" encostava no card.
+     - `.hint` e `.ghost` clarearam. Nao e enfeite: os dois eram cinza-arroxeado
+       para ler sobre cream, e sobre o backdrop escuro sumiam.
+     - entrada e saida animadas (o HTML abria a pagina inteira de uma vez; um
+       overlay que aparece por cima de conteudo precisa se anunciar).
    ============================================================================ */
 
 /* ============================================================
    TOKENS + RAIZ DO OVERLAY
    ============================================================ */
 .bnt-onb {
-  --cream: #fdf4da;
   --yel: #fcc700;
   --gold: #e7a400;
   --navy: #0b1020;
@@ -62,8 +74,23 @@
     Roboto,
     Arial,
     sans-serif;
-  background: var(--cream);
   color: var(--ink);
+
+  /* Backdrop: a pagina continua visivel por baixo, desfocada. Mesma linguagem
+     do SuperModal (escuro translucido + blur), com o navy do design no lugar do
+     slate-950 do Tailwind e opacidade menor (.45 contra .70): aqui deixar a
+     pagina aparecer e o proposito, nao um efeito.
+
+     O rgba sozinho ja escurece o suficiente, entao onde `backdrop-filter` nao
+     existe o overlay continua legivel, so sem o desfoque. E por isso que a cor
+     mora nesta regra e nao dentro do @supports. */
+  background: rgba(11, 16, 32, 0.45);
+}
+@supports (backdrop-filter: blur(6px)) or (-webkit-backdrop-filter: blur(6px)) {
+  .bnt-onb {
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
 }
 
 .bnt-onb,
@@ -74,36 +101,52 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* fundo da página ----------------------------------------- */
-.bnt-onb .dots-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image: radial-gradient(
-    rgba(11, 16, 32, 0.1) 1.4px,
-    transparent 1.4px
-  );
-  background-size: 22px 22px;
+/* entrada e saida ------------------------------------------ */
+/* O bloco `prefers-reduced-motion` no fim do arquivo zera a duracao destas
+   animacoes, entao com movimento reduzido o overlay aparece e some direto. O
+   ATRASO de abertura nao mora aqui: e do OnboardingHost, e vale sempre. */
+.bnt-onb {
+  animation: bnt-onb-fundo-entra 0.4s var(--ease) both;
 }
-.bnt-onb .bgicons {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  overflow: hidden;
+.bnt-onb .modal {
+  animation: bnt-onb-modal-entra 0.4s var(--ease) both;
 }
-.bnt-onb .bgicons > span {
-  position: absolute;
-  opacity: 0.16;
-  animation: bnt-onb-float 9s var(--ease) infinite alternate;
+.bnt-onb.saindo {
+  animation: bnt-onb-fundo-sai 0.22s var(--ease) both;
 }
-@keyframes bnt-onb-float {
+.bnt-onb.saindo .modal {
+  animation: bnt-onb-modal-sai 0.22s var(--ease) both;
+}
+@keyframes bnt-onb-fundo-entra {
   from {
-    transform: translateY(0) rotate(var(--rot, 0deg));
+    opacity: 0;
   }
   to {
-    transform: translateY(-14px) rotate(var(--rot, 0deg));
+    opacity: 1;
+  }
+}
+@keyframes bnt-onb-fundo-sai {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes bnt-onb-modal-entra {
+  from {
+    transform: translateY(18px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes bnt-onb-modal-sai {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(10px);
   }
 }
 
@@ -680,7 +723,11 @@
 
 /* controles fora do card -------------------------------------- */
 .bnt-onb .foot {
-  margin-top: 16px;
+  /* 28px, e nao os 16px do HTML: a sombra do card projeta 11px para baixo e o
+     `.stack` e dimensionado por `offsetHeight`, que NAO inclui box-shadow.
+     Com 16px sobravam 5px de folga visual e o "Próximo" encostava no card.
+     11 + 17 = 28 devolve o respiro que o HTML aparentava ter. */
+  margin-top: 28px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -698,14 +745,18 @@
   font: inherit;
   font-weight: 700;
   font-size: 13.5px;
-  color: var(--mut);
+  /* Era var(--mut) (#5F5D72), calibrado para ler sobre o cream do HTML. Sobre o
+     backdrop escuro aquele cinza-arroxeado desaparece. A sombra existe porque o
+     que esta atras e a pagina, e nao uma cor conhecida. */
+  color: rgba(255, 255, 255, 0.86);
+  text-shadow: 0 1px 2px rgba(11, 16, 32, 0.55);
   cursor: pointer;
   padding: 9px 8px;
   border-radius: 9px;
   white-space: nowrap;
 }
 .bnt-onb .ghost:hover {
-  color: var(--ink);
+  color: #fff;
 }
 .bnt-onb .ghost[hidden] {
   display: none;
@@ -733,7 +784,9 @@
 .bnt-onb .hint {
   margin: 11px 0 0;
   text-align: center;
-  color: #5f5d72;
+  /* Mesmo motivo do .ghost: #5F5D72 era para o cream. */
+  color: rgba(255, 255, 255, 0.86);
+  text-shadow: 0 1px 2px rgba(11, 16, 32, 0.55);
   font-size: 11.5px;
   font-weight: 600;
 }
