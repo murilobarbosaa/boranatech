@@ -1,0 +1,854 @@
+/* ============================================================================
+   CSS DO ONBOARDING, copiado de design/onboardings/Onboarding_01_Home_1.html
+   (bloco <style>), com UMA mudanca: tudo escopado sob a raiz .bnt-onb.
+
+   NAO reescrever em Tailwind e NAO ajustar cores, sombras, bordas, spacing ou
+   fontes para a paleta do projeto. O onboarding tem identidade visual propria
+   de proposito, e o alvo e ficar 100% identico ao HTML de referencia. O escopo
+   existe so para nao colidir com o index.css e com o preflight do Tailwind.
+
+   O que mudou em relacao ao HTML, e por que:
+     - `:root` virou `.bnt-onb`: os tokens ficam presos ao overlay.
+     - `html{}` sumiu: e regra de documento, nao do overlay.
+     - `body{}` virou `.bnt-onb`, que acumula o papel de overlay (fixed inset-0,
+       z-index 95, rolagem propria) com o de "pagina" do HTML original.
+     - os seletores universais e os de elemento (`button`, `a`) ganharam o
+       prefixo .bnt-onb.
+   Nenhum valor foi alterado.
+   ============================================================================ */
+
+/* ============================================================
+   TOKENS + RAIZ DO OVERLAY
+   ============================================================ */
+.bnt-onb {
+  --cream: #fdf4da;
+  --yel: #fcc700;
+  --gold: #e7a400;
+  --navy: #0b1020;
+  --ink: #171426;
+  --mut: #5f5d72;
+
+  /* fundos de story */
+  --s-blue: #1d4ed8;
+  --s-pink: #f25ca2;
+  --s-indigo: #1e1b4b;
+  --s-red: #e5252f;
+  --s-green: #15803d;
+  --s-purple: #6d28d9;
+
+  --r-card: 26px;
+  --r-md: 14px;
+  --r-sm: 11px;
+  --bw: 2px;
+  --ease: cubic-bezier(0.2, 0.75, 0.2, 1);
+  --dur: 0.42s;
+  --card-w: min(94vw, 420px);
+
+  /* z-95: ABAIXO do ConsentGate (z-100). Nunca coexiste com o SuperModal
+     (z-90) porque o coordenador impede, nao porque a pilha resolveria. */
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  /* do body{} do HTML de referencia */
+  font-family:
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    Inter,
+    Roboto,
+    Arial,
+    sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+}
+
+.bnt-onb,
+.bnt-onb *,
+.bnt-onb *::before,
+.bnt-onb *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* fundo da página ----------------------------------------- */
+.bnt-onb .dots-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    rgba(11, 16, 32, 0.1) 1.4px,
+    transparent 1.4px
+  );
+  background-size: 22px 22px;
+}
+.bnt-onb .bgicons {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.bnt-onb .bgicons > span {
+  position: absolute;
+  opacity: 0.16;
+  animation: bnt-onb-float 9s var(--ease) infinite alternate;
+}
+@keyframes bnt-onb-float {
+  from {
+    transform: translateY(0) rotate(var(--rot, 0deg));
+  }
+  to {
+    transform: translateY(-14px) rotate(var(--rot, 0deg));
+  }
+}
+
+.bnt-onb .stage {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(14px, 3.2vw, 30px);
+  padding-top: max(clamp(14px, 3.2vw, 30px), env(safe-area-inset-top));
+  padding-bottom: max(clamp(14px, 3.2vw, 30px), env(safe-area-inset-bottom));
+}
+.bnt-onb .modal {
+  position: relative;
+  width: var(--card-w);
+}
+
+/* barra de progresso -------------------------------------- */
+.bnt-onb .bar {
+  height: 10px;
+  border: var(--bw) solid var(--navy);
+  border-radius: 99px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 2px 2px 0 var(--navy);
+  margin-bottom: 14px;
+}
+.bnt-onb .bar > i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--yel);
+  border-right: var(--bw) solid var(--navy);
+  transition: width 0.45s var(--ease);
+}
+
+/* ============================================================
+   PILHA + CARD (o "story")
+   ============================================================ */
+.bnt-onb .stack {
+  position: relative;
+  height: 600px;
+  transition: height var(--dur) var(--ease);
+  touch-action: pan-y;
+}
+
+.bnt-onb .card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg, #1d4ed8);
+  border: 3px solid var(--navy);
+  border-radius: var(--r-card);
+  overflow: hidden;
+  box-shadow: 9px 11px 0 var(--navy);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(34px) scale(0.9);
+  transition:
+    transform var(--dur) var(--ease),
+    opacity 0.34s linear;
+  will-change: transform, opacity;
+  display: flex;
+  flex-direction: column;
+}
+.bnt-onb .card.front {
+  bottom: auto;
+  height: auto;
+  transform: none;
+  opacity: 1;
+  z-index: 5;
+  pointer-events: auto;
+}
+.bnt-onb .card.b1 {
+  transform: translateY(14px) scale(0.955);
+  opacity: 0.97;
+  z-index: 4;
+}
+.bnt-onb .card.b2 {
+  transform: translateY(26px) scale(0.912);
+  opacity: 0.9;
+  z-index: 3;
+}
+.bnt-onb .card.gone {
+  transform: translateX(-128%) rotate(-8deg);
+  opacity: 0;
+  z-index: 6;
+}
+.bnt-onb .card.dragging {
+  transition: none;
+}
+
+/* grade + fantasmas + brilhos ----------------------------- */
+.bnt-onb .gridbg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+.bnt-onb .ghosts {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.bnt-onb .ghosts span {
+  position: absolute;
+  opacity: 0.13;
+  color: #fff;
+}
+.bnt-onb .sparks {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+.bnt-onb .sparks span {
+  position: absolute;
+  line-height: 0;
+}
+
+/* topo ---------------------------------------------------- */
+.bnt-onb .top {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 15px 0;
+}
+.bnt-onb .brandbit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.bnt-onb .brandbit img,
+.bnt-onb .sig img,
+.bnt-onb .hero img {
+  display: block;
+}
+.bnt-onb .tagpill {
+  background: var(--yel);
+  color: var(--navy);
+  border: var(--bw) solid var(--navy);
+  border-radius: 20px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  padding: 5px 10px;
+  box-shadow: 3px 3px 0 var(--navy);
+  transform: rotate(-1deg);
+  white-space: nowrap;
+}
+.bnt-onb .steppill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--yel);
+  color: var(--navy);
+  border: var(--bw) solid var(--navy);
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  padding: 5px 10px 5px 5px;
+  box-shadow: 3px 3px 0 var(--navy);
+  white-space: nowrap;
+}
+.bnt-onb .steppill i {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--navy);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 15px;
+}
+
+/* miolo --------------------------------------------------- */
+.bnt-onb .inner {
+  position: relative;
+  z-index: 3;
+  flex: 1;
+  padding: 16px 20px 10px;
+  text-align: center;
+}
+
+.bnt-onb .eyebrow {
+  margin: 0 0 9px;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 3.2px;
+  text-transform: uppercase;
+}
+
+.bnt-onb .plaque {
+  display: inline-block;
+  margin: 0 0 4px;
+  background: var(--yel);
+  color: var(--navy);
+  border: 3px solid var(--navy);
+  border-radius: 18px;
+  padding: 9px 17px;
+  box-shadow: 7px 8px 0 var(--navy);
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.22;
+  letter-spacing: -0.3px;
+  transform: rotate(-1.4deg);
+}
+
+/* herói: círculo tracejado -------------------------------- */
+.bnt-onb .hero {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0 4px;
+}
+.bnt-onb .hero .ring {
+  width: var(--hs, 96px);
+  height: var(--hs, 96px);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  border: 3px dashed rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 5px 6px 0 rgba(11, 16, 32, 0.45);
+}
+.bnt-onb .hero .coin {
+  filter: drop-shadow(4px 5px 0 rgba(11, 16, 32, 0.45));
+}
+
+.bnt-onb .lead {
+  margin: 14px 0 0;
+  color: #fff;
+  font-size: 14.5px;
+  line-height: 1.52;
+  font-weight: 600;
+  text-shadow: 0 1px 0 rgba(11, 16, 32, 0.12);
+}
+
+/* pill escura com texto amarelo (assinatura da marca) ------ */
+.bnt-onb .punch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 15px;
+  background: var(--navy);
+  color: var(--yel);
+  border-radius: 22px;
+  padding: 9px 16px;
+  font-size: 12.5px;
+  font-weight: 800;
+  line-height: 1.3;
+  box-shadow: 4px 5px 0 rgba(11, 16, 32, 0.35);
+  text-align: left;
+}
+
+/* chips ---------------------------------------------------- */
+.bnt-onb .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 15px;
+  justify-content: center;
+}
+.bnt-onb .chip {
+  background: #fff;
+  color: var(--ink);
+  border: var(--bw) solid var(--navy);
+  border-radius: 20px;
+  padding: 5px 11px;
+  font-size: 11.5px;
+  font-weight: 800;
+  box-shadow: 2px 2px 0 var(--navy);
+  white-space: nowrap;
+}
+
+/* lista de pontos ------------------------------------------ */
+.bnt-onb .points {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  text-align: left;
+}
+.bnt-onb .points li {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  margin: 11px 0;
+  transition: opacity 0.3s;
+}
+.bnt-onb .points .s {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  background: var(--yel);
+  border: var(--bw) solid var(--navy);
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 3px 0 var(--navy);
+}
+.bnt-onb .points .pt {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.35;
+}
+.bnt-onb .points .pt .tag {
+  display: inline-block;
+  vertical-align: 2px;
+  margin-left: 6px;
+  font-weight: 800;
+  background: var(--yel);
+  color: var(--navy);
+  border: 1.5px solid var(--navy);
+  border-radius: 20px;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  box-shadow: 1.5px 1.5px 0 var(--navy);
+}
+.bnt-onb .points .pt .tag[hidden] {
+  display: none;
+}
+.bnt-onb .points p {
+  margin: 2px 0 0;
+  font-size: 12.6px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.8);
+}
+.bnt-onb .points p strong {
+  color: #fff;
+  font-weight: 800;
+}
+
+/* grade de ferramentas ------------------------------------- */
+.bnt-onb .grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 15px;
+  grid-template-columns: repeat(auto-fit, minmax(94px, 1fr));
+}
+.bnt-onb .tool {
+  position: relative;
+  background: #fff;
+  border: var(--bw) solid var(--navy);
+  border-radius: var(--r-sm);
+  padding: 10px 6px 9px;
+  box-shadow: 2px 3px 0 var(--navy);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 70px;
+}
+.bnt-onb .tool span {
+  font-size: 10.6px;
+  font-weight: 800;
+  line-height: 1.22;
+  color: var(--ink);
+}
+.bnt-onb .tool .pro {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: var(--navy);
+  color: var(--yel);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 0 var(--r-sm) 0 8px;
+}
+
+/* números --------------------------------------------------- */
+.bnt-onb .stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 9px;
+  margin-top: 15px;
+}
+.bnt-onb .stat {
+  background: rgba(255, 255, 255, 0.13);
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  border-radius: var(--r-md);
+  padding: 11px 12px;
+  text-align: left;
+}
+.bnt-onb .stat b {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--yel);
+  letter-spacing: -0.6px;
+}
+.bnt-onb .stat span {
+  display: block;
+  margin-top: 4px;
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* preço ------------------------------------------------------ */
+.bnt-onb .price {
+  margin-top: 15px;
+  background: var(--yel);
+  color: var(--navy);
+  border: 3px solid var(--navy);
+  border-radius: var(--r-md);
+  padding: 11px 14px;
+  box-shadow: 5px 6px 0 rgba(11, 16, 32, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+}
+.bnt-onb .price b {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.bnt-onb .price span {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  opacity: 0.78;
+}
+.bnt-onb .price svg {
+  flex: 0 0 auto;
+}
+
+/* opções (escolhas) ------------------------------------------ */
+.bnt-onb .opts {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  text-align: left;
+}
+.bnt-onb .opt {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: #fff;
+  border: var(--bw) solid var(--navy);
+  border-radius: var(--r-md);
+  padding: 11px 13px;
+  box-shadow: 4px 5px 0 var(--navy);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition:
+    transform 0.12s var(--ease),
+    box-shadow 0.12s var(--ease),
+    background 0.12s linear;
+}
+.bnt-onb .opt:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 6px 7px 0 var(--navy);
+}
+.bnt-onb .opt:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 3px 0 var(--navy);
+}
+.bnt-onb .opt[aria-checked="true"] {
+  background: var(--yel);
+}
+.bnt-onb .opt .oic {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  background: var(--yel);
+  border: var(--bw) solid var(--navy);
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bnt-onb .opt[aria-checked="true"] .oic {
+  background: #fff;
+}
+.bnt-onb .opt b {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.25;
+}
+.bnt-onb .opt em {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--mut);
+  margin-top: 1px;
+}
+
+/* rodapé do card --------------------------------------------- */
+.bnt-onb .cardfoot {
+  position: relative;
+  z-index: 3;
+  padding: 0 20px 15px;
+}
+.bnt-onb .dash {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 11px;
+}
+.bnt-onb .dash i {
+  flex: 1;
+  height: 0;
+  border-top: 1.5px dashed rgba(255, 255, 255, 0.42);
+}
+.bnt-onb .sig {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.bnt-onb .sig .who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.bnt-onb .sig .who b {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.bnt-onb .sig .slog {
+  background: #fff;
+  color: var(--navy);
+  border: var(--bw) solid var(--navy);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 2px 3px 0 rgba(11, 16, 32, 0.4);
+  white-space: nowrap;
+}
+
+/* controles fora do card -------------------------------------- */
+.bnt-onb .foot {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.bnt-onb .side {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.bnt-onb .ghost {
+  background: none;
+  border: none;
+  font: inherit;
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--mut);
+  cursor: pointer;
+  padding: 9px 8px;
+  border-radius: 9px;
+  white-space: nowrap;
+}
+.bnt-onb .ghost:hover {
+  color: var(--ink);
+}
+.bnt-onb .ghost[hidden] {
+  display: none;
+}
+.bnt-onb .next {
+  border: var(--bw) solid var(--navy);
+  background: var(--yel);
+  color: var(--navy);
+  font: inherit;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 12px 22px;
+  border-radius: var(--r-md);
+  box-shadow: 4px 4px 0 var(--navy);
+  transition:
+    transform 0.09s var(--ease),
+    box-shadow 0.09s var(--ease);
+  white-space: nowrap;
+}
+.bnt-onb .next:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--navy);
+}
+.bnt-onb .hint {
+  margin: 11px 0 0;
+  text-align: center;
+  color: #5f5d72;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.bnt-onb .counter {
+  font-variant-numeric: tabular-nums;
+}
+
+.bnt-onb button:focus-visible,
+.bnt-onb a:focus-visible {
+  outline: 3px solid var(--navy);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+.bnt-onb .plaque:focus,
+.bnt-onb .plaque:focus-visible {
+  outline: none;
+}
+
+/* confete ------------------------------------------------------ */
+.bnt-onb .confetti {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 9;
+}
+.bnt-onb .confetti i {
+  position: absolute;
+  top: -14px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  animation: bnt-onb-fall linear forwards;
+}
+@keyframes bnt-onb-fall {
+  to {
+    transform: translateY(115vh) rotate(720deg);
+    opacity: 0.15;
+  }
+}
+
+.bnt-onb .sr {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* responsivo ---------------------------------------------------- */
+@media (max-width: 400px) {
+  .bnt-onb .inner {
+    padding: 14px 16px 8px;
+  }
+  .bnt-onb .cardfoot {
+    padding: 0 16px 13px;
+  }
+  .bnt-onb .plaque {
+    font-size: 19px;
+    padding: 8px 14px;
+  }
+  .bnt-onb .lead {
+    font-size: 13.8px;
+  }
+  .bnt-onb .next {
+    padding: 11px 16px;
+    font-size: 14px;
+  }
+  .bnt-onb .ghost {
+    font-size: 12.5px;
+    padding: 9px 5px;
+  }
+  .bnt-onb .tagpill,
+  .bnt-onb .steppill {
+    font-size: 9.5px;
+  }
+  .bnt-onb .sig .slog {
+    font-size: 10px;
+    padding: 5px 9px;
+  }
+  .bnt-onb .grid {
+    grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  }
+}
+@media (max-width: 340px) {
+  .bnt-onb .stats {
+    grid-template-columns: 1fr;
+  }
+  .bnt-onb .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .bnt-onb .sig .slog {
+    display: none;
+  }
+}
+@media (min-width: 760px) {
+  .bnt-onb {
+    --card-w: 436px;
+  }
+  .bnt-onb .plaque {
+    font-size: 22.5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bnt-onb,
+  .bnt-onb *,
+  .bnt-onb *::before,
+  .bnt-onb *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
