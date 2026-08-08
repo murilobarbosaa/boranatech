@@ -5,7 +5,7 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import { Router } from "wouter";
+import { Router, useLocation } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -44,6 +44,12 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => auth,
 }));
 
+/** Sonda de rota: expoe a location atual do wouter como texto. */
+function Rota() {
+  const [location] = useLocation();
+  return <p data-testid="rota">{location}</p>;
+}
+
 /** Sonda: expoe a decisao do coordenador como texto. */
 function Sonda() {
   const { decision, superInterstitialAllowed } = useOnboardingCoordinator();
@@ -60,6 +66,7 @@ function arvore(hook: ReturnType<typeof memoryLocation>["hook"]) {
       <OnboardingCoordinatorProvider>
         <OnboardingHost />
         <Sonda />
+        <Rota />
       </OnboardingCoordinatorProvider>
     </Router>
   );
@@ -71,6 +78,7 @@ function montar(path: string) {
 }
 
 const sonda = () => screen.getByTestId("sonda").textContent;
+const rota = () => screen.getByTestId("rota").textContent;
 const overlay = () => document.querySelector(".bnt-onb");
 
 /** Avanca o relogio falso drenando as promises pendentes a cada passo. */
@@ -97,6 +105,7 @@ beforeEach(async () => {
   // cache e cabem numa microtask.
   await import("./OnboardingStories");
   await import("@/lib/onboarding/steps/home");
+  await import("@/lib/onboarding/steps/cursos");
 
   vi.useFakeTimers();
   window.localStorage.clear();
@@ -129,7 +138,10 @@ describe("OnboardingHost: abertura", () => {
   });
 
   it("nao abre em rota pendente", async () => {
-    montar("/cursos");
+    // /creators, e nao /cursos: cursos ganhou onboarding no Lote B. Rota usada
+    // como "sem onboarding" precisa continuar sem ele, senao o teste passa a
+    // medir outra coisa em silencio.
+    montar("/creators");
     await abrir();
     expect(sonda()).toBe("free:super-ok");
     expect(overlay()).toBeNull();
@@ -214,7 +226,7 @@ describe("OnboardingHost: atraso de abertura", () => {
     await avancar(DELAY_ABERTURA_MS - 100);
     expect(overlay()).toBeNull();
 
-    act(() => navigate("/cursos"));
+    act(() => navigate("/creators"));
     await avancar(DELAY_ABERTURA_MS * 2);
 
     // O timer foi limpo: o overlay nao aparece na rota nova nem depois.
@@ -229,7 +241,7 @@ describe("OnboardingHost: atraso de abertura", () => {
   it("cancelado no atraso, o onboarding volta a aparecer ao voltar para a rota", async () => {
     const { navigate } = montar("/");
     await avancar(DELAY_ABERTURA_MS - 100);
-    act(() => navigate("/cursos"));
+    act(() => navigate("/creators"));
     await assentar();
 
     act(() => navigate("/"));
@@ -248,7 +260,7 @@ describe("OnboardingHost: atraso de abertura", () => {
     const { navigate } = montar("/");
     await avancar(DELAY_ABERTURA_MS - 100); // timer antigo a 100ms de vencer
 
-    act(() => navigate("/cursos"));
+    act(() => navigate("/creators"));
     await assentar();
     act(() => navigate("/")); // ciclo novo, atraso reiniciado do zero
 
@@ -288,7 +300,7 @@ describe("OnboardingHost: scroll da pagina de baixo", () => {
     await abrir();
     expect(document.body.style.overflow).toBe("hidden");
 
-    act(() => navigate("/cursos"));
+    act(() => navigate("/creators"));
     await assentar();
     expect(document.body.style.overflow).toBe("");
   });
@@ -300,7 +312,7 @@ describe("OnboardingHost: navegacao com o overlay aberto", () => {
     await abrir();
     expect(overlay()).not.toBeNull();
 
-    act(() => navigate("/cursos"));
+    act(() => navigate("/creators"));
     await assentar();
 
     expect(overlay()).toBeNull();
@@ -322,7 +334,7 @@ describe("OnboardingHost: navegacao com o overlay aberto", () => {
     expect(overlay()).toBeNull();
     expect(window.localStorage.getItem("bnt_onb:/")).not.toBeNull();
 
-    act(() => navigate("/cursos"));
+    act(() => navigate("/creators"));
     act(() => navigate("/"));
     await abrir();
     expect(sonda()).toBe("onboarding:super-bloqueado");
@@ -421,6 +433,45 @@ describe("OnboardingHost: persistencia", () => {
     expect(payload.preferences.onboardings).toMatchObject({
       "/": { seen: true, how: "pulado" },
     });
+  });
+});
+
+describe("OnboardingHost: botao do Pro (proCta)", () => {
+  it("fecha, persiste como concluido e navega para /planos SEM sair da SPA", async () => {
+    montar("/cursos");
+    await abrir();
+    expect(overlay()).not.toBeNull();
+
+    // O passo com proCta e o ultimo do onboarding de cursos.
+    const next = () =>
+      document.querySelector<HTMLButtonElement>(".next") as HTMLButtonElement;
+    while (!document.querySelector(".bnt-onb .procta")) fireEvent.click(next());
+
+    const botao =
+      document.querySelector<HTMLAnchorElement>(".bnt-onb .procta")!;
+    // O href renderizado ja e a rota interna, e nao a URL absoluta do conteudo:
+    // a normalizacao e do renderizador. Sem target=_blank, senao a SPA seria
+    // recarregada numa aba nova.
+    expect(botao.getAttribute("href")).toBe("/planos");
+    expect(botao.hasAttribute("target")).toBe(false);
+
+    fireEvent.click(botao, { button: 0 });
+    await fechar();
+
+    expect(rota()).toBe("/planos");
+    expect(overlay()).toBeNull();
+    const raw = window.localStorage.getItem("bnt_onb:/cursos");
+    expect(raw).not.toBeNull();
+    expect(JSON.parse(raw as string)).toMatchObject({
+      seen: true,
+      how: "concluido",
+    });
+  });
+
+  it("o conteudo continua guardando a URL absoluta do HTML de referencia", async () => {
+    const cursos = (await import("@/lib/onboarding/steps/cursos")).default;
+    const comProCta = cursos.steps.find((passo) => passo.proCta);
+    expect(comProCta?.proCta?.[1]).toBe("https://www.boranatech.com.br/planos");
   });
 });
 

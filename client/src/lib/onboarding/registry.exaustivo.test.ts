@@ -6,6 +6,7 @@ import {
   EXPECTED_APP_ROUTE_COUNT,
   NON_ROUTE_KEYS,
   ONBOARDING_REGISTRY,
+  resolveRouteOnboarding,
   resolveRoutePattern,
 } from "./registry";
 
@@ -96,29 +97,55 @@ describe("registry de onboarding: cobertura nos dois sentidos", () => {
       .map(([key]) => key);
 
     expect(comOnboarding).toEqual([
-      "/", // 01_Home_1
-      "/areas", // 02_Areas
-      "/tecnologias", // 05_Tecnologias
-      "/tecnologias/por-area", // 06_MapaTecnologias
-      "/tecnologias/ranking", // 07_RankingTecnologias
-      "/empresas", // 19_Empresas
-      "/salarios", // 26_Salarios
-      "/evolucao", // 25_Evolucao
-      "/ingles", // 15_Ingles
-      "/ferramentas", // 16_Ferramentas
-      "/ia", // 17_GuiaIA
-      "/mentorias", // 32_Mentorias
-      "/roadmaps", // 09_Roadmaps
-      "/faculdades", // 04_Faculdades
-      "/eventos", // 28_Eventos
-      "/noticias", // 27_Noticias
-      "/comunidades", // 30_Comunidades
-      "/sobre", // 31_Sobre
-      "/dicas", // 29_Dicas
-      "/mulheres", // 33_Mulheres
-      "/dicionario", // 08_Dicionario
-      "/quiz-carreira", // 03_QuizCarreira
+      "/", // home
+      "/areas", // areas
+      "/tecnologias", // tecnologias
+      "/tecnologias/por-area", // tecnologiasMapa
+      "/tecnologias/ranking", // tecnologiasRanking
+      "/empresas", // empresas
+      "/salarios", // salarios
+      "/entrevistas", // entrevistas
+      "/portfolio/analisar", // portfolioAnalisar
+      "/curriculo/analisar", // curriculoAnalisar
+      "/curriculo/gerar", // curriculoGerar
+      "/linkedin/analisar", // linkedinAnalisar
+      "/plano-carreira", // planoCarreira
+      "/evolucao", // evolucao
+      "/ingles", // ingles
+      "/ferramentas", // ferramentas
+      "/ia", // guiaIa
+      "/mentorias", // mentorias
+      "/roadmaps", // roadmaps
+      "/roadmaps/ia", // roadmapIa
+      "/cursos", // cursos
+      "/plataformas", // plataformas
+      "/faculdades", // faculdades
+      "/eventos", // eventos
+      "/projetos", // projetos
+      "/projetos/:id", // projetos, mesma chave de persistencia
+      "/vagas", // vagas
+      "/noticias", // noticias
+      "/comunidades", // comunidades
+      "/sobre", // sobre
+      "/dicas", // dicas
+      "/mulheres", // mulheres
+      "/dicionario", // dicionario
+      "/quiz-carreira", // quizCarreira
     ]);
+  });
+
+  it("/projetos/:id compartilha a chave de persistencia com /projetos", () => {
+    // Mesma pagina, um onboarding so. Sem isto seriam dois registros e o
+    // overlay reapareceria ao abrir um projeto depois de ver a listagem.
+    expect(resolveRouteOnboarding("/projetos")?.routeKey).toBe("/projetos");
+    expect(resolveRouteOnboarding("/projetos/42")?.routeKey).toBe("/projetos");
+  });
+
+  it("storageKey so existe onde foi declarado de proposito", () => {
+    const comChavePropria = Object.entries(ONBOARDING_REGISTRY)
+      .filter(([, e]) => e.type === "onboarding" && e.storageKey)
+      .map(([k, e]) => [k, (e as { storageKey?: string }).storageKey]);
+    expect(comChavePropria).toEqual([["/projetos/:id", "/projetos"]]);
   });
 
   it("o import dinamico da home resolve para um OnboardingDef", async () => {

@@ -102,6 +102,44 @@ const ORIGEM: Record<
     html: "Onboarding_32_Mentorias.html",
     load: () => import("./mentorias"),
   },
+  roadmapIa: {
+    html: "Onboarding_10_RoadmapIA.html",
+    load: () => import("./roadmapIa"),
+  },
+  planoCarreira: {
+    html: "Onboarding_11_PlanoCarreira.html",
+    load: () => import("./planoCarreira"),
+  },
+  cursos: { html: "Onboarding_12_Cursos.html", load: () => import("./cursos") },
+  plataformas: {
+    html: "Onboarding_13_Plataformas.html",
+    load: () => import("./plataformas"),
+  },
+  projetos: {
+    html: "Onboarding_14_Projetos.html",
+    load: () => import("./projetos"),
+  },
+  vagas: { html: "Onboarding_18_Vagas.html", load: () => import("./vagas") },
+  entrevistas: {
+    html: "Onboarding_20_Entrevistas.html",
+    load: () => import("./entrevistas"),
+  },
+  curriculoGerar: {
+    html: "Onboarding_21_CurriculoGerar.html",
+    load: () => import("./curriculoGerar"),
+  },
+  curriculoAnalisar: {
+    html: "Onboarding_22_CurriculoAnalisar.html",
+    load: () => import("./curriculoAnalisar"),
+  },
+  linkedinAnalisar: {
+    html: "Onboarding_23_LinkedinAnalisar.html",
+    load: () => import("./linkedinAnalisar"),
+  },
+  portfolioAnalisar: {
+    html: "Onboarding_24_PortfolioAnalisar.html",
+    load: () => import("./portfolioAnalisar"),
+  },
   mulheres: {
     html: "Onboarding_33_Mulheres.html",
     load: () => import("./mulheres"),
@@ -151,16 +189,26 @@ describe("steps portados x HTML de referencia", () => {
   it("afirma o total de onboardings portados", () => {
     // Mesmo contrato de EXPECTED_TABLE_COUNT. Mudar este numero e ato
     // deliberado, no commit que porta o onboarding novo.
-    expect(modulos).toHaveLength(22);
+    expect(modulos).toHaveLength(33);
   });
 
   it("todo onboarding do registry tem entrada aqui, e vice-versa", () => {
-    // Sentido 1: rota marcada como 'onboarding' sem conferencia de fidelidade
-    // seria conteudo em producao que nenhum teste compara com a fonte.
-    const noRegistry = Object.values(ONBOARDING_REGISTRY).filter(
-      (entry) => entry.type === "onboarding",
-    ).length;
-    expect(noRegistry).toBe(modulos.length);
+    // Rota marcada como 'onboarding' sem conferencia de fidelidade seria
+    // conteudo em producao que nenhum teste compara com a fonte.
+    //
+    // Compara CHAVES DE PERSISTENCIA distintas, e nao entradas do registry: uma
+    // pagina pode ter duas rotas (/projetos e /projetos/:id) e continua sendo
+    // um onboarding so, com um arquivo de conteudo so.
+    const chaves = new Set(
+      Object.entries(ONBOARDING_REGISTRY)
+        .filter(([, entry]) => entry.type === "onboarding")
+        .map(([rota, entry]) =>
+          entry.type === "onboarding" && entry.storageKey
+            ? entry.storageKey
+            : rota,
+        ),
+    );
+    expect(chaves.size).toBe(modulos.length);
   });
 
   it("cada arquivo HTML e origem de um unico modulo", () => {

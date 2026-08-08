@@ -15,7 +15,20 @@ import type { OnboardingDef } from "./types";
 
 export type RouteOnboarding =
   /** Tem onboarding. `load` e import dinamico: o conteudo fica fora do bundle inicial. */
-  | { type: "onboarding"; load: () => Promise<{ default: OnboardingDef }> }
+  | {
+      type: "onboarding";
+      load: () => Promise<{ default: OnboardingDef }>;
+      /**
+       * Chave de persistencia, quando ela NAO e o proprio padrao de rota.
+       *
+       * Serve para duas rotas que sao a mesma pagina compartilharem o "ja vi".
+       * Unico caso hoje: /projetos/:id abre o mesmo componente que /projetos,
+       * entao quem viu numa viu na outra. Declarado, e nao duplicado em
+       * silencio: sem isto seriam dois registros e o onboarding reapareceria
+       * ao abrir um projeto.
+       */
+      storageKey?: string;
+    }
   /** Decidido que NAO tera onboarding, com o motivo escrito. */
   | { type: "sem-onboarding"; motivo: string }
   /** Ainda nao portado. Vira 'onboarding' ou 'sem-onboarding' nas proximas etapas. */
@@ -85,19 +98,37 @@ export const ONBOARDING_REGISTRY: Record<string, RouteOnboarding> = {
     type: "onboarding",
     load: () => import("./steps/salarios"),
   },
-  "/entrevistas": { type: "pendente" },
+  "/entrevistas": {
+    type: "onboarding",
+    load: () => import("./steps/entrevistas"),
+  },
   "/entrevistas/perguntas": REDIRECT("/entrevistas"),
   "/entrevistas/simulador": REDIRECT("/entrevistas"),
   "/entrevistas/sessao/:id": { type: "pendente" },
   "/entrevistas/desafios": REDIRECT("/entrevistas"),
   "/portfolio": REDIRECT("/portfolio/analisar"),
-  "/portfolio/analisar": { type: "pendente" },
+  "/portfolio/analisar": {
+    type: "onboarding",
+    load: () => import("./steps/portfolioAnalisar"),
+  },
   "/curriculo": REDIRECT("/curriculo/analisar"),
-  "/curriculo/analisar": { type: "pendente" },
-  "/curriculo/gerar": { type: "pendente" },
+  "/curriculo/analisar": {
+    type: "onboarding",
+    load: () => import("./steps/curriculoAnalisar"),
+  },
+  "/curriculo/gerar": {
+    type: "onboarding",
+    load: () => import("./steps/curriculoGerar"),
+  },
   "/curriculo/linkedin": REDIRECT("/linkedin/analisar"),
-  "/linkedin/analisar": { type: "pendente" },
-  "/plano-carreira": { type: "pendente" },
+  "/linkedin/analisar": {
+    type: "onboarding",
+    load: () => import("./steps/linkedinAnalisar"),
+  },
+  "/plano-carreira": {
+    type: "onboarding",
+    load: () => import("./steps/planoCarreira"),
+  },
   "/estudos": REDIRECT("/plano-carreira"),
   "/estudos/diario": { type: "pendente" },
   "/empregabilidade": REDIRECT("/entrevistas"),
@@ -133,14 +164,23 @@ export const ONBOARDING_REGISTRY: Record<string, RouteOnboarding> = {
     type: "onboarding",
     load: () => import("./steps/roadmaps"),
   },
-  "/roadmaps/ia": { type: "pendente" },
+  "/roadmaps/ia": {
+    type: "onboarding",
+    load: () => import("./steps/roadmapIa"),
+  },
   "/roadmaps/ia/:slug": { type: "pendente" },
   "/roadmaps/:slug/prova": { type: "pendente" },
   "/roadmaps/:slug": { type: "pendente" },
   "/roadmaps-novo": REDIRECT("/roadmaps"),
   "/roadmaps-novo/:slug": REDIRECT("/roadmaps/:slug"),
-  "/cursos": { type: "pendente" },
-  "/plataformas": { type: "pendente" },
+  "/cursos": {
+    type: "onboarding",
+    load: () => import("./steps/cursos"),
+  },
+  "/plataformas": {
+    type: "onboarding",
+    load: () => import("./steps/plataformas"),
+  },
   "/faculdades/:slug": { type: "pendente" },
   "/faculdades": {
     type: "onboarding",
@@ -150,9 +190,20 @@ export const ONBOARDING_REGISTRY: Record<string, RouteOnboarding> = {
     type: "onboarding",
     load: () => import("./steps/eventos"),
   },
-  "/projetos": { type: "pendente" },
-  "/projetos/:id": { type: "pendente" },
-  "/vagas": { type: "pendente" },
+  "/projetos": {
+    type: "onboarding",
+    load: () => import("./steps/projetos"),
+  },
+  "/projetos/:id": {
+    type: "onboarding",
+    load: () => import("./steps/projetos"),
+    // Mesma pagina que /projetos: viu numa, viu na outra.
+    storageKey: "/projetos",
+  },
+  "/vagas": {
+    type: "onboarding",
+    load: () => import("./steps/vagas"),
+  },
   "/estagio/freelance": REDIRECT("/vagas"),
   "/estagio": REDIRECT("/vagas"),
   "/carreiras": REDIRECT("/linkedin/analisar"),
@@ -255,7 +306,13 @@ export function resolveRouteOnboarding(pathname: string): {
   const pattern = resolveRoutePattern(pathname);
   const entry = ONBOARDING_REGISTRY[pattern];
   if (!entry) return null;
-  return { routeKey: pattern, entry };
+  // `storageKey` quando declarado: e ele que identifica o onboarding para a
+  // persistencia, nao o padrao de rota que casou.
+  const routeKey =
+    entry.type === "onboarding" && entry.storageKey
+      ? entry.storageKey
+      : pattern;
+  return { routeKey, entry };
 }
 
 function stripTrailingSlash(value: string): string {
