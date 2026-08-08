@@ -17,6 +17,9 @@ export const ONBOARDINGS_PREFERENCE_KEY = "onboardings";
 /** Prefixo da chave de localStorage do fluxo anonimo: `bnt_onb:<routeKey>`. */
 export const ONBOARDING_LOCAL_PREFIX = "bnt_onb:";
 
+/** Chave do estado do tour guiado. Sempre localStorage, logado ou nao. */
+export const ONBOARDING_TOUR_STORAGE_KEY = "bnt_onb_tour";
+
 export const onboardingHowSchema = z.enum(["concluido", "pulado"]);
 
 export const onboardingPerfilSchema = z.enum([
@@ -66,6 +69,34 @@ export function parseOnboardingRecords(value: unknown): OnboardingRecordMap {
     if (parsed.success) out[key] = parsed.data;
   }
   return out;
+}
+
+/**
+ * Estado do tour guiado.
+ *
+ * Nao guarda INDICE de propósito. A posicao e derivada da ordem canonica mais o
+ * que ja esta visto, entao um indice salvo seria uma segunda fonte de verdade
+ * capaz de divergir da primeira (a pessoa ve uma rota fora do tour, ou o lote
+ * seguinte acrescenta rotas no meio da ordem). O que precisa sobreviver ao
+ * reload e so "o tour esta rolando", que e um booleano.
+ *
+ * `active` e literal `true` pelo mesmo motivo de `seen`: o registro so existe
+ * enquanto o tour roda, e `active:false` gravado seria lido como ativo por
+ * qualquer checagem de existencia.
+ */
+export const onboardingTourStateSchema = z.object({
+  active: z.literal(true),
+  /** ISO. Usado para expirar tour esquecido, nunca para calcular posicao. */
+  startedAt: z.string(),
+});
+
+export type OnboardingTourState = z.infer<typeof onboardingTourStateSchema>;
+
+export function parseOnboardingTourState(
+  value: unknown,
+): OnboardingTourState | null {
+  const parsed = onboardingTourStateSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
 }
 
 /** Le um registro solto (o caso do localStorage, uma chave por rota). */
