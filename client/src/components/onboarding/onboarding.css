@@ -56,11 +56,27 @@
   --dur: 0.42s;
   --card-w: min(94vw, 420px);
 
-  /* z-95: ABAIXO do ConsentGate (z-100). Nunca coexiste com o SuperModal
-     (z-90) porque o coordenador impede, nao porque a pilha resolveria. */
+  /* z-1003, MEDIDO contra o que existe na pagina, nao escolhido no chute:
+       header publico ............ 1000  (Header.tsx, `fixed ... z-[1000]`)
+       dropdown do header ........ 1001
+       backdrop do drawer mobile . 1001
+       drawer mobile ............. 1002
+       FAB do Natechinho ......... 40    (AgentWidget.tsx)
+     O overlay comecou em 95, que perde para as quatro primeiras: o header
+     ficava NITIDO por cima do backdrop e escondia a barra de progresso.
+
+     Isto passa por cima do ConsentGate (z-100), e e proposital. A ordem
+     contra o consentimento NAO e numerica, e estrutural: o OnboardingHost e
+     filho do ConsentGate e so existe quando ele libera os children, entao os
+     dois nunca estao na tela ao mesmo tempo. Mesmo raciocinio ja escrito no
+     SuperInterstitial. Empilhar 1003 abaixo de 1000 e impossivel; o que
+     protege o consentimento e a montagem.
+
+     Nota para quem passar por aqui: o SuperModal (z-90) tem o MESMO problema
+     contra o header z-1000. Nao foi mexido aqui por estar fora do escopo. */
   position: fixed;
   inset: 0;
-  z-index: 95;
+  z-index: 1003;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -156,10 +172,22 @@
   min-height: 100dvh;
   display: flex;
   align-items: center;
+  /* `safe center` e o que impede o card mais alto que a viewport de ter o TOPO
+     cortado. Com `center` puro, o item transborda igual em cima e embaixo, e o
+     de cima fica inalcancavel: o scroll so vai para baixo, entao a barra de
+     progresso simplesmente nao existe para quem rola. Navegador sem suporte
+     ignora esta linha e fica com o `center` acima, que e o comportamento que
+     sempre teve. */
+  align-items: safe center;
   justify-content: center;
   padding: clamp(14px, 3.2vw, 30px);
-  padding-top: max(clamp(14px, 3.2vw, 30px), env(safe-area-inset-top));
-  padding-bottom: max(clamp(14px, 3.2vw, 30px), env(safe-area-inset-bottom));
+  /* Respiro vertical maior que o horizontal, e somado ao safe-area em vez de
+     comparado: `max(28px, env(...))` daria 28px num aparelho com notch de 20px,
+     ou seja, o notch comeria o respiro em vez de acrescentar. */
+  padding-top: calc(clamp(20px, 3.2vw, 30px) + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(
+    clamp(20px, 3.2vw, 30px) + env(safe-area-inset-bottom, 0px)
+  );
 }
 .bnt-onb .modal {
   position: relative;
