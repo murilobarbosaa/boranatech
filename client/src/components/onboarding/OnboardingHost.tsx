@@ -48,7 +48,7 @@ export const DELAY_ABERTURA_MS = 2500;
 export const SAIDA_MS = 220;
 
 export default function OnboardingHost() {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { user, profile, profileStatus, loading } = useAuth();
   const { decision, claimForOnboarding, releaseToOthers, beginDecision } =
     useOnboardingCoordinator();
@@ -212,7 +212,7 @@ export default function OnboardingHost() {
   }, [open]);
 
   const handleFinish = useCallback(
-    (how: OnboardingHow, data: OnboardingResultData) => {
+    (how: OnboardingHow, data: OnboardingResultData, destino?: string) => {
       const routeKey = routeKeyRef.current;
       // Anima a saida e so entao desmonta. A persistencia nao espera a
       // animacao: a pessoa ja decidiu, e a escrita e de rede.
@@ -226,6 +226,14 @@ export default function OnboardingHost() {
         reducedMotion ? 0 : SAIDA_MS,
       );
       timersRef.current.push(id);
+
+      // Navegacao do proCta. Vai ANTES da persistencia de proposito: a troca de
+      // rota e o que a pessoa pediu, e nao pode esperar uma escrita de rede.
+      // O efeito de rota vai rodar e cancelar o que estiver pendente, entao a
+      // persistencia abaixo precisa nao depender de nada do ciclo atual (nao
+      // depende: `routeKey` ja esta em maos).
+      if (destino) navigate(destino);
+
       if (!routeKey) return;
       handledRef.current.add(routeKey);
       void markOnboardingSeen({
@@ -240,7 +248,7 @@ export default function OnboardingHost() {
         },
       });
     },
-    [profile, signedIn, reducedMotion],
+    [profile, signedIn, reducedMotion, navigate],
   );
 
   if (!open || !def) return null;

@@ -701,6 +701,113 @@
   margin-top: 1px;
 }
 
+/* botão de assinatura Pro, com brilho que varre e estrelas piscando */
+/* Copiado dos HTMLs 09 a 33 (bloco identico nos 25), na mesma posicao relativa
+   do original: entre `.opt em` e o rodape do card. Os keyframes `twinkle` e
+   `sweep` ganharam prefixo, como `float` e `fall` antes deles. */
+.bnt-onb .proglow {
+  position: relative;
+  display: inline-block;
+  margin-top: 17px;
+}
+.bnt-onb .proglow > i {
+  position: absolute;
+  pointer-events: none;
+  line-height: 0;
+  animation: bnt-onb-twinkle 1.9s ease-in-out infinite;
+}
+.bnt-onb .proglow > i.s1 {
+  top: -11px;
+  left: -13px;
+  animation-delay: 0s;
+}
+.bnt-onb .proglow > i.s2 {
+  top: -7px;
+  right: -11px;
+  animation-delay: 0.45s;
+}
+.bnt-onb .proglow > i.s3 {
+  bottom: -10px;
+  right: 14px;
+  animation-delay: 0.9s;
+}
+.bnt-onb .proglow > i.s4 {
+  bottom: -8px;
+  left: 16px;
+  animation-delay: 1.35s;
+}
+@keyframes bnt-onb-twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.6) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2) rotate(30deg);
+  }
+}
+
+.bnt-onb .procta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--yel);
+  color: var(--navy);
+  text-decoration: none;
+  border: 3px solid var(--navy);
+  border-radius: 16px;
+  padding: 12px 22px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.1px;
+  box-shadow: 6px 7px 0 var(--navy);
+  overflow: hidden;
+  transition:
+    transform 0.1s var(--ease),
+    box-shadow 0.1s var(--ease);
+}
+.bnt-onb .procta:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 8px 9px 0 var(--navy);
+}
+.bnt-onb .procta:active {
+  transform: translate(3px, 4px);
+  box-shadow: 3px 3px 0 var(--navy);
+}
+.bnt-onb .procta > span {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+}
+.bnt-onb .procta::after {
+  content: "";
+  position: absolute;
+  top: -60%;
+  bottom: -60%;
+  left: -70%;
+  width: 42%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0.92),
+    transparent
+  );
+  transform: skewX(-18deg);
+  animation: bnt-onb-sweep 2.8s ease-in-out infinite;
+}
+@keyframes bnt-onb-sweep {
+  0% {
+    left: -70%;
+  }
+  55%,
+  100% {
+    left: 135%;
+  }
+}
+
 /* rodapé do card --------------------------------------------- */
 .bnt-onb .cardfoot {
   position: relative;

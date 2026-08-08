@@ -42,6 +42,15 @@ export type OnboardingStat = readonly [value: string, label: string];
 /** `price:['R$ ...','...']` */
 export type OnboardingPrice = readonly [title: string, description: string];
 
+/**
+ * `proCta:['Assinar o Pro','https://www.boranatech.com.br/planos']`
+ *
+ * O href vem do CONTEUDO como esta no HTML de referencia, absoluto. Decidir que
+ * uma URL do proprio site e rota interna e do RENDERIZADOR, nao daqui: o
+ * conteudo e transcricao 1:1 e nao pode carregar decisao de navegacao.
+ */
+export type OnboardingProCta = readonly [label: string, href: string];
+
 /** `punch:['flag','A gente existe pra resolver isso.']` */
 export type OnboardingPunch = readonly [icon: OnboardingIconName, text: string];
 
@@ -64,6 +73,8 @@ export interface OnboardingStepDef {
   tools?: readonly OnboardingTool[];
   stats?: readonly OnboardingStat[];
   price?: OnboardingPrice;
+  /** Botao de assinatura do Pro. Renderiza entre `price` e `punch`. */
+  proCta?: OnboardingProCta;
   punch?: OnboardingPunch;
   /** Rotulo do botao principal no ultimo passo. Default: "Começar". */
   cta?: string;

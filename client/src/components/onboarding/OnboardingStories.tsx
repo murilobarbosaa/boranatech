@@ -7,6 +7,7 @@ import {
   type OnboardingDef,
   type OnboardingHow,
   type OnboardingPerfil,
+  type OnboardingProCta,
   type OnboardingStepDef,
   type OnboardingTour,
 } from "@/lib/onboarding/types";
@@ -40,8 +41,15 @@ export interface OnboardingResultData {
 
 interface OnboardingStoriesProps {
   def: OnboardingDef;
-  /** Chamado uma unica vez, no concluir ou no pular. */
-  onFinish: (how: OnboardingHow, data: OnboardingResultData) => void;
+  /**
+   * Chamado uma unica vez, no concluir ou no pular. `destino`, quando vem,
+   * e a rota interna para onde navegar depois de persistir (hoje so o proCta).
+   */
+  onFinish: (
+    how: OnboardingHow,
+    data: OnboardingResultData,
+    destino?: string,
+  ) => void;
   /** Fase de saida: liga a animacao de fechamento antes de o host desmontar. */
   saindo?: boolean;
 }
@@ -84,6 +92,40 @@ const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
 /** Mesma funcao do HTML: usada nos rotulos acessiveis, nunca no render visual. */
 const stripTags = (value: string) => String(value).replace(/<[^>]+>/g, "");
+
+/** Hosts que sao o proprio site. www e apex contam como o mesmo lugar. */
+const HOSTS_DO_SITE = ["boranatech.com.br", "www.boranatech.com.br"];
+
+/**
+ * Traduz o href do `proCta` para rota INTERNA quando ele aponta para o proprio
+ * site; devolve null quando e link externo de verdade.
+ *
+ * DESVIO DELIBERADO do HTML de referencia, aprovado. La o botao e
+ * `<a href="https://www.boranatech.com.br/planos" target="_blank">`, que numa
+ * pagina standalone e o certo. Dentro da SPA aquilo recarrega a aplicacao
+ * inteira e joga a pessoa em outra aba, no meio de um onboarding. Aqui vira
+ * navegacao do wouter.
+ *
+ * A normalizacao mora no RENDERIZADOR, nunca no conteudo: `steps/*.ts` guarda o
+ * href absoluto exatamente como o HTML o escreve, e e isso que o teste de
+ * fidelidade compara. Conteudo que carrega decisao de navegacao deixa de ser
+ * transcricao.
+ */
+export function rotaInternaDe(href: string): string | null {
+  if (href.startsWith("/")) return href;
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return null;
+  }
+  const mesmoSite =
+    HOSTS_DO_SITE.includes(url.hostname) ||
+    (typeof window !== "undefined" &&
+      url.hostname === window.location.hostname);
+  if (!mesmoSite) return null;
+  return `${url.pathname}${url.search}${url.hash}`;
+}
 
 function emit(
   screen: string,
@@ -160,7 +202,7 @@ export default function OnboardingStories({
   }, [def.screen, scrollOverlayTop, step, steps]);
 
   const finish = useCallback(
-    (how: OnboardingHow) => {
+    (how: OnboardingHow, destino?: string) => {
       if (doneRef.current) return;
       doneRef.current = true;
       const data: OnboardingResultData = {};
@@ -175,7 +217,7 @@ export default function OnboardingStories({
           tour: data.tour ?? null,
         },
       });
-      onFinish(how, data);
+      onFinish(how, data, destino);
     },
     [def.screen, onFinish, profileIndex, tourIndex],
   );
@@ -421,6 +463,7 @@ export default function OnboardingStories({
                       ? tourIndex
                       : null
                 }
+                onProCta={(destino) => finish("concluido", destino)}
                 onChoice={(choiceIndex) => onChoice(index, choiceIndex)}
                 onChoiceKeyDown={onChoiceKeyDown}
                 cardRef={(node) => {
@@ -507,6 +550,8 @@ interface CardProps {
   /** Perfil escolhido, para a etiqueta "PRA VOCÊ" e a opacidade dos points. */
   profileIndex: number | null;
   selectedChoice: number | null;
+  /** Clique no botao do Pro, ja com a rota interna resolvida. */
+  onProCta: (destino: string) => void;
   onChoice: (choiceIndex: number) => void;
   onChoiceKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
   cardRef: (node: HTMLElement | null) => void;
@@ -520,6 +565,7 @@ function Card({
   inactive,
   profileIndex,
   selectedChoice,
+  onProCta,
   onChoice,
   onChoiceKeyDown,
   cardRef,
@@ -672,6 +718,8 @@ function Card({
           </div>
         )}
 
+        {step.proCta && <ProCta proCta={step.proCta} onNavigate={onProCta} />}
+
         {step.punch && (
           <div className="punch">
             <OnbIcon
@@ -700,6 +748,65 @@ function Card({
         </div>
       </div>
     </article>
+  );
+}
+
+function ProCta({
+  proCta,
+  onNavigate,
+}: {
+  proCta: OnboardingProCta;
+  onNavigate: (destino: string) => void;
+}) {
+  const [label, href] = proCta;
+  const interno = rotaInternaDe(href);
+
+  // Continua sendo <a> com href de verdade: preserva "abrir em nova aba",
+  // "copiar link" e a semantica de link para leitor de tela. O clique comum e
+  // interceptado para virar navegacao do wouter, sem recarregar a SPA.
+  // Modificador pressionado (ctrl/cmd/shift/alt) ou botao do meio passam
+  // direto, que e o que a pessoa pediu ao segurar a tecla.
+  return (
+    <div className="proglow">
+      <i className="s1">
+        <OnbStar size={13} color="#FCC700" />
+      </i>
+      <i className="s2">
+        <OnbStar size={10} color="#fff" />
+      </i>
+      <i className="s3">
+        <OnbStar size={12} color="#FCC700" />
+      </i>
+      <i className="s4">
+        <OnbStar size={9} color="#fff" />
+      </i>
+      <a
+        className="procta"
+        href={interno ?? href}
+        {...(interno ? {} : { target: "_blank", rel: "noopener noreferrer" })}
+        onClick={(event) => {
+          if (!interno) return;
+          if (
+            event.defaultPrevented ||
+            event.button !== 0 ||
+            event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            event.altKey
+          ) {
+            return;
+          }
+          event.preventDefault();
+          onNavigate(interno);
+        }}
+      >
+        <span>
+          <OnbIcon name="spark" size={18} color="#0B1020" width={2.3} />
+        </span>
+        <span>{label}</span>
+        <span>&rarr;</span>
+      </a>
+    </div>
   );
 }
 

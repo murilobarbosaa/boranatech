@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import homeOnboarding from "@/lib/onboarding/steps/home";
 import type { OnboardingEventDetail } from "@/lib/onboarding/types";
-import OnboardingStories from "./OnboardingStories";
+import OnboardingStories, { rotaInternaDe } from "./OnboardingStories";
 
 // Smoke do motor: renderiza os passos da home, navega, escolhe o perfil e
 // conclui. O que importa e o contrato de saida (evento 'bnt:onboarding' e o
@@ -144,9 +144,13 @@ describe("OnboardingStories", () => {
     fireEvent.click(proximo());
 
     expect(onFinish).toHaveBeenCalledTimes(1);
-    expect(onFinish).toHaveBeenCalledWith("concluido", {
-      perfil: "sei-mas-e-agora",
-    });
+    // 3o argumento = destino de navegacao. `undefined` porque este fim veio do
+    // botao "Explorar a plataforma", nao do proCta.
+    expect(onFinish).toHaveBeenCalledWith(
+      "concluido",
+      { perfil: "sei-mas-e-agora" },
+      undefined,
+    );
     expect(eventos.at(-1)).toMatchObject({
       type: "finish",
       how: "concluido",
@@ -163,7 +167,11 @@ describe("OnboardingStories", () => {
     await waitFor(() => expect(contador()).toBe("6/6"), { timeout: 2000 });
 
     fireEvent.click(proximo());
-    expect(onFinish).toHaveBeenCalledWith("concluido", { tour: "guiado" });
+    expect(onFinish).toHaveBeenCalledWith(
+      "concluido",
+      { tour: "guiado" },
+      undefined,
+    );
   });
 
   it("Esc e o botao Pular terminam como 'pulado', uma vez so", () => {
@@ -176,7 +184,7 @@ describe("OnboardingStories", () => {
 
     // `finish` e idempotente: Esc segurado nao dispara tres persistencias.
     expect(onFinish).toHaveBeenCalledTimes(1);
-    expect(onFinish).toHaveBeenCalledWith("pulado", {});
+    expect(onFinish).toHaveBeenCalledWith("pulado", {}, undefined);
   });
 
   it("cards inativos ficam fora da arvore acessivel", () => {
@@ -201,5 +209,38 @@ describe("OnboardingStories", () => {
 
     expect(document.activeElement).toBe(opcoes[1]);
     expect(contador()).toBe("2/6");
+  });
+});
+
+describe("rotaInternaDe", () => {
+  // O conteudo guarda a URL absoluta do HTML de referencia; quem decide que ela
+  // e rota interna e este helper, no renderizador.
+  it("reconhece o proprio site, com e sem www", () => {
+    expect(rotaInternaDe("https://www.boranatech.com.br/planos")).toBe(
+      "/planos",
+    );
+    expect(rotaInternaDe("https://boranatech.com.br/planos")).toBe("/planos");
+  });
+
+  it("preserva query e hash", () => {
+    expect(rotaInternaDe("https://boranatech.com.br/planos?p=anual#faq")).toBe(
+      "/planos?p=anual#faq",
+    );
+  });
+
+  it("aceita caminho relativo direto", () => {
+    expect(rotaInternaDe("/planos")).toBe("/planos");
+  });
+
+  it("devolve null para link externo de verdade", () => {
+    // null = mantem o comportamento do HTML (abre em nova aba). Um host
+    // parecido NAO conta como o site: `boranatech.com.br.exemplo.com` e outro
+    // dominio.
+    expect(rotaInternaDe("https://exemplo.com/planos")).toBeNull();
+    expect(rotaInternaDe("https://boranatech.com.br.exemplo.com/x")).toBeNull();
+  });
+
+  it("nao lanca em href invalido", () => {
+    expect(rotaInternaDe("isto nao e url")).toBeNull();
   });
 });
