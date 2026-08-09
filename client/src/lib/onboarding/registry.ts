@@ -31,7 +31,13 @@ export type RouteOnboarding =
     }
   /** Decidido que NAO tera onboarding, com o motivo escrito. */
   | { type: "sem-onboarding"; motivo: string }
-  /** Ainda nao portado. Vira 'onboarding' ou 'sem-onboarding' nas proximas etapas. */
+  /**
+   * Ainda nao portado. Vira 'onboarding' ou 'sem-onboarding' quando alguem
+   * decidir. A classificacao PROPOSTA para as 26 de hoje esta em
+   * `docs/onboarding-rotas-pendentes.md`, amarrada a este arquivo por
+   * `rotasPendentes.test.ts`: classificar uma de verdade obriga a tirar ela do
+   * doc no mesmo commit.
+   */
   | { type: "pendente" };
 
 const REDIRECT = (para: string): RouteOnboarding => ({
