@@ -33,6 +33,8 @@ import { CancelSubscriptionModal } from "@/components/profile/CancelSubscription
 import { ConquistasPreview } from "@/components/profile/ConquistasPreview";
 import { ProfileBackground } from "@/components/profile/ProfileBackground";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
+import FiscalDataModal from "@/components/fiscal/FiscalDataModal";
+import FiscalInvoicesSection from "@/components/fiscal/FiscalInvoicesSection";
 import ProGate from "@/components/pro/ProGate";
 import { ProInlineBadge, ProStarIcon } from "@/components/pro/ProStarIcon";
 import ProUpsellModal from "@/components/pro/ProUpsellModal";
@@ -81,6 +83,7 @@ import {
 } from "@/services/avatarService";
 import type { Profile } from "@/services/contracts";
 import { updateMyProfile } from "@/services/profileService";
+import { hasFiscalIdentity } from "@shared/fiscalIdentity";
 import { greet } from "@shared/greeting";
 import { getPlanPriceCents, isPlanId, PLAN_PRICING } from "@shared/planPricing";
 
@@ -698,6 +701,35 @@ export default function Perfil() {
     useState<AvatarSection>("border");
   const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null);
   const [proUpsellOpen, setProUpsellOpen] = useState(false);
+  const [fiscalModalOpen, setFiscalModalOpen] = useState(false);
+
+  // Resumo dos dados fiscais. `localProfile` primeiro porque ele reflete a
+  // edicao otimista da propria pagina; `profile` e o do contexto.
+  const fiscalProfile = localProfile ?? profile;
+  const fiscalCompleto = useMemo(
+    // MESMA funcao do servidor e do banner: um criterio proprio aqui faria o
+    // botao dizer "editar" com a nota bloqueada.
+    () => hasFiscalIdentity(fiscalProfile ?? null),
+    [fiscalProfile],
+  );
+  const fiscalDocumentoMascarado = useMemo(() => {
+    const pj = fiscalProfile?.fiscal_documento_preferencia === "cnpj";
+    const digits = (pj ? fiscalProfile?.cnpj : fiscalProfile?.cpf) ?? "";
+    if (!digits) return "";
+    // So os quatro ultimos digitos: suficiente para conferir, insuficiente para
+    // vazar o documento de quem esta com a tela compartilhada.
+    return `${"•".repeat(Math.max(digits.length - 4, 0))}${digits.slice(-4)}`;
+  }, [fiscalProfile]);
+  const fiscalEnderecoResumo = useMemo(() => {
+    const partes = [
+      fiscalProfile?.endereco_logradouro,
+      fiscalProfile?.endereco_numero,
+      fiscalProfile?.endereco_bairro,
+      fiscalProfile?.endereco_cidade,
+      fiscalProfile?.endereco_uf,
+    ].filter((parte) => (parte ?? "").trim() !== "");
+    return partes.join(", ");
+  }, [fiscalProfile]);
   const [savingProfile, setSavingProfile] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelingSubscription, setCancelingSubscription] = useState(false);
@@ -2048,6 +2080,80 @@ export default function Perfil() {
               </div>
             </section>
           </div>
+
+          {/* Bloco 7: Dados fiscais.
+              Resumo + botao que abre a MESMA FiscalDataModal usada pelo gate do
+              checkout e pelo banner. Um segundo formulario aqui divergiria do
+              primeiro na primeira mudanca de regra, e o dado e o mesmo. */}
+          <section className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">
+              Dados fiscais
+            </p>
+            <h2 className="mt-2 font-display text-2xl font-black text-slate-950">
+              Para emitir sua nota
+            </h2>
+            <p className="mt-2 text-sm font-semibold text-slate-600">
+              Dados usados na emissão das notas fiscais da sua assinatura.
+            </p>
+
+            <dl className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <dt className="text-xs font-black uppercase tracking-wider text-slate-500">
+                  {fiscalProfile?.fiscal_documento_preferencia === "cnpj"
+                    ? "Razão social"
+                    : "Nome completo"}
+                </dt>
+                <dd className="text-sm font-bold text-slate-950">
+                  {(fiscalProfile?.fiscal_documento_preferencia === "cnpj"
+                    ? fiscalProfile?.razao_social
+                    : fiscalProfile?.full_name) || "Não informado"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-black uppercase tracking-wider text-slate-500">
+                  {fiscalProfile?.fiscal_documento_preferencia === "cnpj"
+                    ? "CNPJ"
+                    : "CPF"}
+                </dt>
+                <dd className="text-sm font-bold text-slate-950">
+                  {/* Documento nunca e exibido inteiro: a pagina fica aberta em
+                      tela compartilhada e o valor completo nao acrescenta nada
+                      a quem so quer conferir se cadastrou. */}
+                  {fiscalDocumentoMascarado || "Não informado"}
+                </dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-xs font-black uppercase tracking-wider text-slate-500">
+                  Endereço
+                </dt>
+                <dd className="text-sm font-bold text-slate-950">
+                  {fiscalEnderecoResumo || "Não informado (recomendado)"}
+                </dd>
+              </div>
+            </dl>
+
+            <button
+              type="button"
+              onClick={() => setFiscalModalOpen(true)}
+              className="mt-6 inline-flex items-center justify-center rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-3 font-display font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-y-0.5"
+            >
+              {fiscalCompleto ? "Editar dados fiscais" : "Completar dados"}
+            </button>
+          </section>
+
+          {/* Bloco 8: notas fiscais emitidas. Fica DEPOIS dos dados fiscais,
+              na ordem em que as coisas acontecem: primeiro o cadastro, depois
+              as notas que ele permite emitir. */}
+          <FiscalInvoicesSection />
+
+          <FiscalDataModal
+            open={fiscalModalOpen}
+            onClose={() => setFiscalModalOpen(false)}
+            onSaved={() => {
+              setFiscalModalOpen(false);
+              void refreshProfile();
+            }}
+          />
 
           <CancelSubscriptionModal
             isOpen={cancelModalOpen}

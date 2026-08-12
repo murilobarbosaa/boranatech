@@ -35,6 +35,24 @@ export const PROFILE_TEXT_LIMITS: Record<string, number> = {
   // handle e UNIQUE em profiles e nao e editavel pelo admin, mas o limite vale
   // para /api/me. 60 e generoso para um slug de perfil.
   handle: 60,
+  // Campos fiscais (Fase 2 da NFS-e). Os limites aqui sao a checagem de TIPO e
+  // de tamanho; a validacao de CONTEUDO (digito verificador, UF da lista
+  // fechada, CEP) vive em shared/fiscalIdentity.ts e roda em me.ts. Ambas
+  // valem: esta impede blob no corpo, aquela impede dado que a prefeitura
+  // rejeitaria.
+  razao_social: 200,
+  endereco_cep: 20,
+  endereco_logradouro: 200,
+  endereco_numero: 20,
+  endereco_complemento: 120,
+  endereco_bairro: 120,
+  endereco_cidade: 120,
+  // 2 caracteres: a lista de UF e fechada e isValidUf recusa qualquer coisa
+  // fora dela. NAO confundir com `uf` (limite 40), que e o campo livre do
+  // perfil publico e existe desde antes.
+  endereco_uf: 2,
+  // Codigo IBGE tem 7 digitos; 10 da folga sem virar campo livre.
+  endereco_codigo_municipio: 10,
 };
 
 export const PROFILE_URL_FIELDS = [
@@ -77,6 +95,19 @@ export const EDITABLE_FIELDS = [
   "website_url",
   "full_name",
   "cpf",
+  // Identidade fiscal (Fase 2 da NFS-e). Todos escritos pelo DONO da conta, via
+  // a FiscalDataModal ou a secao de dados fiscais do perfil.
+  "cnpj",
+  "razao_social",
+  "fiscal_documento_preferencia",
+  "endereco_cep",
+  "endereco_logradouro",
+  "endereco_numero",
+  "endereco_complemento",
+  "endereco_bairro",
+  "endereco_cidade",
+  "endereco_uf",
+  "endereco_codigo_municipio",
 ] as const;
 
 /**
@@ -118,6 +149,23 @@ export const ADMIN_EXCLUDED_PROFILE_FIELDS: Record<string, string> = {
   // escrever CPF de outra pessoa nao e correcao de cadastro, e falsificacao de
   // identidade fiscal.
   cpf: "dado sensível; só leitura auditada",
+  // Os doze campos fiscais abaixo saem da MESMA regra do cpf, e a regra e uma
+  // so: o conjunto deles compoe a identidade que vai impressa numa NOTA FISCAL.
+  // Corrigir o bairro de outra pessoa nao parece grave isolado, mas o endereco
+  // do tomador e parte do documento, e um admin alterando qualquer peca dele
+  // altera o que foi declarado ao municipio. Quem corrige e o titular; o admin,
+  // se precisar, pede. Nao ha caso de suporte que exija escrever isto.
+  cnpj: "dado sensível; identidade fiscal, só o titular escreve",
+  razao_social: "compõe a nota fiscal; só o titular escreve",
+  fiscal_documento_preferencia: "decide o documento da nota; só o titular",
+  endereco_cep: "endereço do tomador na nota fiscal; só o titular",
+  endereco_logradouro: "endereço do tomador na nota fiscal; só o titular",
+  endereco_numero: "endereço do tomador na nota fiscal; só o titular",
+  endereco_complemento: "endereço do tomador na nota fiscal; só o titular",
+  endereco_bairro: "endereço do tomador na nota fiscal; só o titular",
+  endereco_cidade: "endereço do tomador na nota fiscal; só o titular",
+  endereco_uf: "endereço do tomador na nota fiscal; só o titular",
+  endereco_codigo_municipio: "derivado do CEP; só o titular",
   // UNIQUE em profiles: colisao precisa de tratamento proprio (mensagem, 409,
   // sugestao). Fatia dele.
   handle: "UNIQUE; colisão precisa de tratamento próprio",

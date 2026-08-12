@@ -17,6 +17,7 @@ import { coletarTagueado, paginateRange } from "../lib/paginate";
 import { recordCronRun } from "../lib/cron-logs";
 import { reconcileEmailCampaignBatches } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
+import { reconcileFiscalInvoices } from "../lib/fiscalReconcile";
 import { clampWindowDays, detectOrphanPayments } from "../lib/orphanPayments";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
@@ -1296,6 +1297,74 @@ router.post(
     } catch (err) {
       await recordCronRun({
         jobName: "reconcile-subscriptions",
+        status: "error",
+        startedAt,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+      next(err);
+    }
+  }),
+);
+
+// Rede de seguranca do pipeline FISCAL. Quatro varreduras, na ordem em que
+// fazem sentido: cobranca sem nota, notas paradas em processing, paradas em
+// pending, e bloqueadas cujo cadastro ja foi completado.
+//
+// `?dryRun=true` executa tudo e NAO escreve: e como o backfill dos assinantes
+// antigos e conferido antes de disparar de verdade. O contador `created` no
+// modo seco responde "quantas notas isto criaria", que e a pergunta que se faz
+// antes de emitir documento fiscal retroativo.
+//
+// TTL 900s: a varredura A pagina finance_transactions desde a data de corte, e
+// no primeiro backfill isso e a base inteira do periodo.
+router.post(
+  "/reconcile-fiscal-invoices",
+  withCronLock("reconcile-fiscal-invoices", 900, async (req, res, next) => {
+    const startedAt = new Date();
+    const dryRun = req.query.dryRun === "true";
+
+    try {
+      // Kill-switch respeitado tambem aqui: com a emissao desligada nao ha
+      // pipeline para reconciliar, e varrer criaria linhas que ninguem
+      // processaria.
+      if (!env.nfseEnabled) {
+        await recordCronRun({
+          jobName: "reconcile-fiscal-invoices",
+          status: "success",
+          startedAt,
+          payload: { skipped: "nfse_disabled" },
+        });
+        res.json({ data: { skipped: "nfse_disabled" } });
+        return;
+      }
+
+      const resultado = await reconcileFiscalInvoices({ dryRun });
+
+      const payload = {
+        dryRun,
+        created: resultado.created,
+        requeued_processing: resultado.requeued_processing,
+        requeued_pending: resultado.requeued_pending,
+        unblocked: resultado.unblocked,
+        skipped_no_user: resultado.skipped_no_user,
+        skipped_before_cutoff: resultado.skipped_before_cutoff,
+      };
+
+      // 'partial' quando ha cobranca paga sem dono: o job rodou inteiro, mas o
+      // resultado exige acao humana (ninguem sabe para quem emitir) e nao pode
+      // aparecer como sucesso limpo na lista de crons. Mesmo criterio do
+      // detect-orphan-payments.
+      await recordCronRun({
+        jobName: "reconcile-fiscal-invoices",
+        status: resultado.skipped_no_user > 0 ? "partial" : "success",
+        startedAt,
+        payload,
+      });
+
+      res.json({ data: { ...payload, amostra: resultado.amostra } });
+    } catch (err) {
+      await recordCronRun({
+        jobName: "reconcile-fiscal-invoices",
         status: "error",
         startedAt,
         errorMessage: err instanceof Error ? err.message : String(err),

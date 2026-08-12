@@ -47,6 +47,9 @@ import {
   type CheckoutPaymentMethod,
 } from "@/services/subscriptionService";
 import PaymentMethodDialog from "@/components/pro/PaymentMethodDialog";
+import FiscalDataModal from "@/components/fiscal/FiscalDataModal";
+import { getMyProfile } from "@/services/profileService";
+import { hasFiscalIdentity } from "@shared/fiscalIdentity";
 import { apiUrl } from "@/lib/api";
 import {
   discountedPriceCents,
@@ -628,6 +631,15 @@ export default function Checkout() {
   const [selectedPlan, setSelectedPlan] = useState("pro_semiannual");
   const [loading, setLoading] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  // Gate fiscal: quando falta nome/documento, a modal entra ANTES do checkout e,
+  // ao salvar, o fluxo continua sozinho de onde parou (sem passo extra para a
+  // pessoa). `fiscalPendente` guarda o que fazer depois de salvar.
+  const [fiscalModalOpen, setFiscalModalOpen] = useState(false);
+  const [fiscalPendente, setFiscalPendente] = useState<
+    | null
+    | { tipo: "dialog" }
+    | { tipo: "checkout"; metodo: CheckoutPaymentMethod }
+  >(null);
   const reduce = useReducedMotion();
 
   // Kill-switch do pagamento, lido do endpoint publico de flags. Fail-closed
@@ -730,8 +742,42 @@ export default function Checkout() {
       return;
     }
 
-    if (selectedPlan === "pro_monthly") {
-      void doCheckout("card");
+    void seguirComGateFiscal(
+      selectedPlan === "pro_monthly"
+        ? { tipo: "checkout", metodo: "card" }
+        : { tipo: "dialog" },
+    );
+  }
+
+  /**
+   * Gate fiscal antes de qualquer caminho de pagamento.
+   *
+   * Falha de leitura do perfil SEGUE para o pagamento em vez de bloquear: a
+   * venda nao pode ser barrada por um erro nosso de rede, e a nota tem duas
+   * outras chances de ser destravada depois (o banner e a reconciliacao da
+   * Fase 4). Bloquear aqui trocaria uma nota atrasada por uma assinatura
+   * perdida.
+   */
+  async function seguirComGateFiscal(
+    proximo:
+      | { tipo: "dialog" }
+      | { tipo: "checkout"; metodo: CheckoutPaymentMethod },
+  ) {
+    try {
+      const profile = await getMyProfile();
+      if (!hasFiscalIdentity(profile)) {
+        setFiscalPendente(proximo);
+        setFiscalModalOpen(true);
+        return;
+      }
+    } catch (error) {
+      console.error(
+        "[Checkout] leitura de perfil para o gate fiscal falhou",
+        error,
+      );
+    }
+    if (proximo.tipo === "checkout") {
+      void doCheckout(proximo.metodo);
       return;
     }
     setPaymentDialogOpen(true);
@@ -1311,6 +1357,31 @@ export default function Checkout() {
         open={paymentDialogOpen}
         onOpenChange={setPaymentDialogOpen}
         onSelect={(method) => void doCheckout(method)}
+      />
+
+      {/* Gate fiscal. Ao salvar, retoma exatamente o passo que estava
+          pendente: quem clicou em "assinar mensal" vai direto para o checkout
+          de cartao, quem escolheu semestral/anual cai no dialog de metodo. Sem
+          isso a pessoa teria que clicar em "assinar" de novo depois de
+          preencher, e o abandono acontece exatamente nesse clique extra. */}
+      <FiscalDataModal
+        open={fiscalModalOpen}
+        contexto="checkout"
+        onClose={() => {
+          setFiscalModalOpen(false);
+          setFiscalPendente(null);
+        }}
+        onSaved={() => {
+          setFiscalModalOpen(false);
+          const proximo = fiscalPendente;
+          setFiscalPendente(null);
+          if (!proximo) return;
+          if (proximo.tipo === "checkout") {
+            void doCheckout(proximo.metodo);
+            return;
+          }
+          setPaymentDialogOpen(true);
+        }}
       />
     </Layout>
   );

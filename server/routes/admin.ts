@@ -23,6 +23,9 @@ import {
   getPosthogUserActivity,
 } from "../lib/posthog";
 import { fetchAuthTimes } from "../lib/authUsers";
+import { isRetryableFiscalStatus } from "../lib/fiscalInvoice";
+import { enqueueFiscalInvoice } from "../lib/fiscalQueue";
+import { applyRefundToFiscalInvoice } from "../lib/fiscalRefund";
 import { getUsageRetention } from "../lib/usageRetention";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { emailQueue } from "../lib/queue";
@@ -1872,6 +1875,220 @@ router.get("/audit-logs", async (req, res, next) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// NOTAS FISCAIS (Fase 4 da NFS-e): visibilidade e retry manual.
+//
+// O que estas rotas existem para responder, e por que sem elas o pipeline e
+// cego: a emissao inteira roda em background, e os dois estados que EXIGEM
+// acao humana (blocked_missing_data e precisa_revisao) nao aparecem em lugar
+// nenhum da interface do usuario final, de proposito. Se tambem nao aparecerem
+// no admin, ninguem descobre.
+// ---------------------------------------------------------------------------
+
+const FISCAL_STATUSES = [
+  "pending",
+  "processing",
+  "issued",
+  "failed",
+  "canceled",
+  "blocked_missing_data",
+] as const;
+
+/** Mostra so os 4 ultimos digitos, coerente com a politica do reveal de CPF. */
+function mascararDocumento(documento: string | null): string | null {
+  if (!documento) return null;
+  return `${"•".repeat(Math.max(documento.length - 4, 0))}${documento.slice(-4)}`;
+}
+
+router.get("/fiscal-invoices/summary", async (_req, res, next) => {
+  try {
+    // Contagem por status em UMA leitura, agregada em memoria. A alternativa
+    // (uma query `count` por status) seriam seis viagens ao banco para uma
+    // tabela que cresce uma linha por cobranca.
+    const { data, error } = await supabaseAdmin
+      .from("fiscal_invoices")
+      .select("status, precisa_revisao")
+      .limit(10000);
+    if (error) {
+      return next(dbError("fiscal summary", error, "Erro ao carregar notas."));
+    }
+
+    const linhas = (data ?? []) as Array<{
+      status: string;
+      precisa_revisao: boolean;
+    }>;
+    const porStatus: Record<string, number> = {};
+    for (const status of FISCAL_STATUSES) porStatus[status] = 0;
+    let precisaRevisao = 0;
+    for (const linha of linhas) {
+      porStatus[linha.status] = (porStatus[linha.status] ?? 0) + 1;
+      if (linha.precisa_revisao) precisaRevisao += 1;
+    }
+
+    // Ultima execucao do cron: e ela que diz se os numeros acima estao
+    // atualizados. Um resumo sem isso pareceria fresco mesmo com o cron parado
+    // ha uma semana, que e o silencio que este bloco existe para evitar.
+    const { data: ultimaRun } = await supabaseAdmin
+      .from("cron_run_logs")
+      .select("status, finished_at, started_at, payload")
+      .eq("job_name", "reconcile-fiscal-invoices")
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const payload = (ultimaRun?.payload ?? null) as {
+      skipped_no_user?: number;
+      created?: number;
+    } | null;
+
+    res.json({
+      data: {
+        porStatus,
+        precisaRevisao,
+        total: linhas.length,
+        ultimaReconciliacao: ultimaRun
+          ? {
+              status: ultimaRun.status,
+              startedAt: ultimaRun.started_at,
+              finishedAt: ultimaRun.finished_at,
+              skippedNoUser: payload?.skipped_no_user ?? 0,
+              created: payload?.created ?? 0,
+            }
+          : null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/fiscal-invoices", async (req, res, next) => {
+  try {
+    const status = String(req.query.status ?? "");
+    const precisaRevisao = req.query.precisa_revisao === "true";
+    const limit = Math.min(parseInt(String(req.query.limit ?? "50"), 10) || 50, 100);
+    const offset = parseInt(String(req.query.offset ?? "0"), 10) || 0;
+
+    let query = supabaseAdmin
+      .from("fiscal_invoices")
+      .select(
+        "id, user_id, status, precisa_revisao, amount_cents, plan_code, numero, attempts, error_code, error_message, issued_at, created_at, tomador_nome, tomador_documento, tomador_email",
+      )
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    // Filtro por status so quando o valor e CONHECIDO: um status inventado na
+    // query string devolveria lista vazia, que alguem leria como "nao ha
+    // notas" em vez de "o filtro esta errado".
+    if (status && (FISCAL_STATUSES as readonly string[]).includes(status)) {
+      query = query.eq("status", status);
+    }
+    if (precisaRevisao) query = query.eq("precisa_revisao", true);
+
+    const { data, error } = await query;
+    if (error) {
+      return next(dbError("fiscal list", error, "Erro ao buscar notas."));
+    }
+
+    const linhas = (data ?? []) as Array<Record<string, unknown>>;
+    // Falha de leitura do Auth NAO derruba a lista: cai para o e-mail do
+    // snapshot da propria nota, que e o que foi usado na emissao.
+    const emails = await fetchAuthUsersByIds(
+      linhas.map((l) => String(l.user_id)),
+    ).catch(() => new Map<string, AuthUserLite>());
+
+    res.json({
+      data: linhas.map((linha) => ({
+        id: linha.id,
+        userId: linha.user_id,
+        // E-mail do AUTH quando houver; o do snapshot da nota como reserva.
+        email:
+          (emails.get(String(linha.user_id))?.email ?? null) ||
+          (linha.tomador_email as string | null),
+        status: linha.status,
+        precisaRevisao: linha.precisa_revisao,
+        amountCents: linha.amount_cents,
+        planCode: linha.plan_code,
+        numero: linha.numero,
+        attempts: linha.attempts,
+        errorCode: linha.error_code,
+        errorMessage: linha.error_message,
+        issuedAt: linha.issued_at,
+        createdAt: linha.created_at,
+        tomadorNome: linha.tomador_nome,
+        // Documento MASCARADO: a lista do admin nao e leitura auditada, e o
+        // CPF inteiro so sai pelo caminho que registra quem olhou.
+        tomadorDocumento: mascararDocumento(
+          linha.tomador_documento as string | null,
+        ),
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/fiscal-invoices/:id/retry", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!UUID_RE.test(id)) {
+      return next(createError(400, "invalid_id", "Id inválido."));
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("fiscal_invoices")
+      .select("id, status, stripe_charge_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) {
+      return next(dbError("fiscal retry", error, "Erro ao buscar a nota."));
+    }
+    if (!data) return next(createError(404, "not_found", "Nota não encontrada."));
+
+    const nota = data as {
+      id: string;
+      status: string;
+      stripe_charge_id: string;
+    };
+
+    // A regra de quais estados sao retentaveis mora em lib/fiscalInvoice.ts,
+    // com os motivos de cada exclusao, e e testada la sem subir o Express.
+    if (!isRetryableFiscalStatus(nota.status)) {
+      return next(
+        createError(
+          409,
+          "not_retryable",
+          `Nota em "${nota.status}" não é retentável. Só failed e blocked_missing_data.`,
+        ),
+      );
+    }
+
+    const { error: updateError } = await supabaseAdmin
+      .from("fiscal_invoices")
+      .update({ status: "pending", error_code: null, error_message: null })
+      .eq("id", nota.id)
+      .eq("status", nota.status);
+    if (updateError) {
+      return next(dbError("fiscal retry", updateError, "Erro ao reprocessar."));
+    }
+
+    await enqueueFiscalInvoice(nota.stripe_charge_id);
+
+    await logAudit({
+      actorUserId: req.user!.id,
+      action: "update",
+      resourceType: "fiscal_invoice",
+      resourceId: nota.id,
+      before: { status: nota.status },
+      after: { status: "pending" },
+    });
+
+    res.json({ data: { id: nota.id, status: "pending" } });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Aceita apenas UUID: as chaves de auth.users / profiles.user_id sao UUID.
 // Barra qualquer coisa fora desse formato antes de tocar o banco ou o PostHog.
 const UUID_RE =
@@ -3202,6 +3419,21 @@ router.post("/users/:id/refunds", async (req, res, next) => {
     }
 
     await invalidateProStatusCache(uid);
+
+    // Efeito fiscal, DEPOIS de tudo que importa para o acesso e para o
+    // registro. Integral cancela a nota; parcial marca para revisao humana.
+    // `applyRefundToFiscalInvoice` nunca lanca (mesmo contrato dos ganchos da
+    // Fase 1): o dinheiro ja saiu, e nada do lado fiscal pode fazer esta rota
+    // parecer que falhou. O total reembolsado e o de ANTES mais o desta
+    // operacao, que e o acumulado com que a classificacao trabalha.
+    if (env.nfseEnabled && chargeId) {
+      await applyRefundToFiscalInvoice({
+        stripeChargeId: chargeId,
+        grossCents: alvo.gross_cents,
+        refundedTotalCents: alvo.refunded_cents + validacao.amountCents,
+        origem: "admin",
+      });
+    }
 
     // 200 SEMPRE que a Stripe aceitou. Devolver erro aqui faria o admin
     // acreditar que o reembolso não aconteceu e tentar de novo — e a segunda

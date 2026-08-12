@@ -62,25 +62,12 @@ export interface PublicCertificate {
 // "concluida" > "em_progresso". Fonte unica: server e client leem daqui.
 export type CertificateStatus = "em_progresso" | "concluida" | "certificada";
 
-// Valida CPF pelos dois digitos verificadores. Opera so sobre digitos
-// (qualquer mascara e ignorada). Rejeita comprimento != 11 e as sequencias de
-// digito repetido (00000000000 ... 99999999999), que passam na conta mas nao
-// sao CPFs validos.
-export function isValidCpf(raw: string): boolean {
-  const digits = (raw ?? "").replace(/\D/g, "");
-  if (digits.length !== 11) return false;
-  if (/^(\d)\1{10}$/.test(digits)) return false;
-
-  const nums = digits.split("").map((d) => Number(d));
-
-  const checkDigit = (length: number): number => {
-    let sum = 0;
-    for (let i = 0; i < length; i += 1) {
-      sum += nums[i] * (length + 1 - i);
-    }
-    const remainder = (sum * 10) % 11;
-    return remainder === 10 ? 0 : remainder;
-  };
-
-  return checkDigit(9) === nums[9] && checkDigit(10) === nums[10];
-}
+// Valida CPF pelos dois digitos verificadores.
+//
+// A IMPLEMENTACAO MUDOU DE CASA na Fase 2 da NFS-e: agora mora em
+// shared/fiscalIdentity.ts, ao lado da validacao de CNPJ, CEP e UF, porque o
+// CPF passou a ter dois donos (certificado e nota fiscal). Este re-export
+// preserva `import { isValidCpf } from "@shared/certificates/types"` em todos os
+// chamadores existentes, e garante que nao exista uma segunda copia da conta
+// para divergir da primeira.
+export { isValidCpf } from "../fiscalIdentity";

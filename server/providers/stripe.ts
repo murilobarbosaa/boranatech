@@ -1,7 +1,10 @@
+import * as Sentry from "@sentry/node";
 import Stripe from "stripe";
 
 import { findValidCoupon } from "../lib/coupons";
 import { env } from "../lib/env";
+import { registerFiscalInvoice } from "../lib/fiscalQueue";
+import { applyRefundToFiscalInvoice } from "../lib/fiscalRefund";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { getStripe } from "../lib/stripeClient";
@@ -772,6 +775,16 @@ async function onBoletoAsyncPaymentSucceeded(
     revenueCents: session.amount_total ?? 0,
     planName: plan?.name || plan?.code || "Pro",
   });
+
+  // Gancho fiscal por ULTIMO: o acesso ja foi concedido e os efeitos ja
+  // dispararam, entao nada do que acontecer aqui pode desfazer o que importa.
+  await registrarNotaFiscalDeBoleto(session, {
+    userId: row.user_id,
+    subscriptionRowId: pendingRow.id,
+    planCode: plan?.code ?? null,
+    periodStart,
+    periodEnd,
+  });
 }
 
 // Boleto nao pago / expirado: cancela a linha pendente. Apenas o flip
@@ -803,6 +816,201 @@ async function onBoletoAsyncPaymentFailed(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Gancho fiscal (NFS-e). Fase 1: registra a intencao e enfileira; quem emite e
+// o worker (server/lib/fiscalQueue.ts).
+//
+// REGRA QUE MANDA EM TODO ESTE BLOCO: nada aqui pode lancar para fora. O
+// contrato de erro dos handlers deste arquivo e "lanca -> apaga o billing_event
+// -> a Stripe reprocessa o evento inteiro". Deixar uma falha fiscal escapar
+// faria uma prefeitura fora do ar reprocessar ATIVACAO DE ACESSO, e a Stripe
+// desabilita endpoint que falha por dias. Acesso pago tem prioridade sobre nota;
+// o que escapar daqui e problema da reconciliacao da Fase 4, que varre
+// finance_transactions contra fiscal_invoices.
+// ---------------------------------------------------------------------------
+
+function idOf(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (
+    value &&
+    typeof value === "object" &&
+    typeof (value as { id?: unknown }).id === "string"
+  ) {
+    return (value as { id: string }).id;
+  }
+  return null;
+}
+
+async function chargeIdFromPaymentIntent(
+  paymentIntentId: string,
+): Promise<string | null> {
+  const intent = await getStripe().paymentIntents.retrieve(paymentIntentId);
+  return idOf(intent.latest_charge);
+}
+
+/**
+ * Cobranca por tras de uma invoice paga.
+ *
+ * Nesta versao da API (2026-06-24.dahlia, fixada em lib/stripeClient) a Invoice
+ * NAO tem mais `charge` nem `payment_intent`: o vinculo com o dinheiro mudou
+ * para os objetos InvoicePayment. Por isso a resolucao passa por
+ * `invoicePayments.list` e nao por um campo direto, que e o que a maioria dos
+ * exemplos antigos ainda mostra.
+ */
+async function chargeRefsFromInvoice(invoice: Stripe.Invoice): Promise<{
+  chargeId: string | null;
+  paymentIntentId: string | null;
+}> {
+  const vazio = { chargeId: null, paymentIntentId: null };
+  if (!invoice.id) return vazio;
+
+  const pagamentos = await getStripe().invoicePayments.list({
+    invoice: invoice.id,
+    limit: 10,
+  });
+  // O pagamento LIQUIDADO e o que interessa. Uma invoice pode ter tentativa
+  // cancelada e pagamento parcial; pegar o primeiro da lista traria o objeto
+  // errado numa fatura com historico.
+  const pago = pagamentos.data.find((p) => p.status === "paid");
+  if (!pago) return vazio;
+
+  if (pago.payment.type === "charge") {
+    return { chargeId: idOf(pago.payment.charge), paymentIntentId: null };
+  }
+  if (pago.payment.type === "payment_intent") {
+    const paymentIntentId = idOf(pago.payment.payment_intent);
+    if (!paymentIntentId) return vazio;
+    return {
+      chargeId: await chargeIdFromPaymentIntent(paymentIntentId),
+      paymentIntentId,
+    };
+  }
+  // payment_record: forma de pagamento fora do fluxo de cartao/boleto que o
+  // produto cria. Sem cobranca para vincular, entao nao vira nota aqui.
+  return vazio;
+}
+
+/** Cartao: primeira cobranca e renovacoes. Nunca lanca. */
+async function registrarNotaFiscalDeInvoice(
+  invoice: Stripe.Invoice,
+  sub: Stripe.Subscription,
+): Promise<void> {
+  if (!env.nfseEnabled) return;
+  try {
+    // Valor BRUTO efetivamente pago. Zero significa que nao houve servico
+    // cobrado (trial, cupom de 100%), e nota de valor zero nao existe.
+    const amountCents = invoice.amount_paid ?? 0;
+    if (amountCents <= 0) return;
+
+    const userId = sub.metadata?.supabase_user_id;
+    if (!userId) return; // applySubscription ja gritou sobre isto.
+
+    const refs = await chargeRefsFromInvoice(invoice);
+    if (!refs.chargeId) {
+      console.error(
+        `[fiscal] invoice ${invoice.id} paga sem cobranca resolvivel; nota nao registrada.`,
+      );
+      return;
+    }
+
+    const { data: row } = await supabaseAdmin
+      .from("subscriptions")
+      .select("id")
+      .eq("provider_subscription_id", sub.id)
+      .maybeSingle();
+
+    const period = subItemPeriod(sub);
+    await registerFiscalInvoice({
+      userId,
+      subscriptionId: row?.id ?? null,
+      stripeChargeId: refs.chargeId,
+      stripeInvoiceId: invoice.id ?? null,
+      stripePaymentIntentId: refs.paymentIntentId,
+      amountCents,
+      planCode: resolvePlanCode(sub),
+      periodStart: period.start,
+      periodEnd: period.end,
+    });
+  } catch (fiscalErr) {
+    console.error(
+      `[fiscal] falha ao registrar nota da invoice ${invoice.id}; ativacao NAO afetada:`,
+      fiscalErr,
+    );
+    Sentry.captureException(fiscalErr);
+  }
+}
+
+/** Boleto: e o unico evento de caixa dele (mode:payment nao gera invoice). */
+async function registrarNotaFiscalDeBoleto(
+  session: Stripe.Checkout.Session,
+  dados: {
+    userId: string;
+    subscriptionRowId: string;
+    planCode: string | null;
+    periodStart: string;
+    periodEnd: string;
+  },
+): Promise<void> {
+  if (!env.nfseEnabled) return;
+  try {
+    const amountCents = session.amount_total ?? 0;
+    if (amountCents <= 0) return;
+
+    const paymentIntentId = idOf(session.payment_intent);
+    if (!paymentIntentId) {
+      console.error(
+        `[fiscal] boleto ${session.id} sem payment intent; nota nao registrada.`,
+      );
+      return;
+    }
+    const chargeId = await chargeIdFromPaymentIntent(paymentIntentId);
+    if (!chargeId) {
+      console.error(
+        `[fiscal] boleto ${session.id} sem cobranca no payment intent ${paymentIntentId}; nota nao registrada.`,
+      );
+      return;
+    }
+
+    await registerFiscalInvoice({
+      userId: dados.userId,
+      subscriptionId: dados.subscriptionRowId,
+      stripeChargeId: chargeId,
+      // Boleto nao tem invoice na Stripe.
+      stripeInvoiceId: null,
+      stripePaymentIntentId: paymentIntentId,
+      amountCents,
+      planCode: dados.planCode,
+      periodStart: dados.periodStart,
+      periodEnd: dados.periodEnd,
+    });
+  } catch (fiscalErr) {
+    console.error(
+      `[fiscal] falha ao registrar nota do boleto ${session.id}; ativacao NAO afetada:`,
+      fiscalErr,
+    );
+    Sentry.captureException(fiscalErr);
+  }
+}
+
+/**
+ * Reembolso confirmado pela Stripe: repercute na nota fiscal. Nunca lanca.
+ *
+ * Fora do `try` que registra o billing_event nao: ele roda DENTRO do switch,
+ * como os demais handlers. O que garante que ele nao derruba o webhook e o
+ * proprio `applyRefundToFiscalInvoice`, que engole e reporta ao Sentry. Aqui so
+ * fica o gate do kill-switch e a leitura dos valores.
+ */
+async function aplicarReembolsoNaNota(charge: Stripe.Charge): Promise<void> {
+  if (!env.nfseEnabled) return;
+  if (!charge.id) return;
+  await applyRefundToFiscalInvoice({
+    stripeChargeId: charge.id,
+    grossCents: charge.amount ?? 0,
+    refundedTotalCents: charge.amount_refunded ?? 0,
+    origem: "webhook",
+  });
+}
+
 async function onInvoicePaid(
   event: Stripe.Event,
   eventCreatedAt: Date,
@@ -812,6 +1020,9 @@ async function onInvoicePaid(
   if (!subId) return;
   const sub = await getStripe().subscriptions.retrieve(subId);
   await applySubscription(sub, event, eventCreatedAt);
+  // DEPOIS da logica existente, de proposito: a assinatura precisa estar
+  // gravada para a nota poder apontar para ela.
+  await registrarNotaFiscalDeInvoice(invoice, sub);
 }
 
 async function onInvoiceFailed(
@@ -942,6 +1153,14 @@ const BOLETO_ACCESS_DAYS: Partial<Record<PlanId, number>> = {
   pro_annual: 365,
 };
 
+// DECISAO (Fase 2 da NFS-e): a sessao de Checkout NAO usa
+// `billing_address_collection` nem `tax_id_collection`.
+//
+// As duas existem e resolveriam a coleta sem UI nova, mas criariam uma SEGUNDA
+// fonte para o dado fiscal, ao lado de `profiles`. Duas fontes do mesmo dado
+// divergem: a pessoa corrige o CPF no perfil, a Stripe continua com o antigo, e
+// a nota sai com um dos dois sem que ninguem saiba qual. A fonte unica e
+// `profiles`, coletada pela FiscalDataModal antes do checkout.
 async function createCheckout(
   input: CreateCheckoutInput,
 ): Promise<CreateCheckoutResult> {
@@ -1625,6 +1844,12 @@ async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
         await syncBalanceTransactions({
           since: new Date(eventCreatedAt.getTime() - 2 * 24 * 60 * 60 * 1000),
         });
+        // Efeito fiscal do reembolso. Le `amount` e `amount_refunded` do
+        // proprio evento: a Charge ja traz o ACUMULADO devolvido, que e
+        // exatamente o que distingue integral de parcial, sem consulta extra.
+        if (event.type === "charge.refunded") {
+          await aplicarReembolsoNaNota(event.data.object as Stripe.Charge);
+        }
         break;
       default:
         // Evento NAO tratado: nao ha mutacao, entao o dedup nao protege nada aqui e

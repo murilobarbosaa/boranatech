@@ -22,6 +22,36 @@ export async function getMySubscription() {
   return json.data;
 }
 
+export type FiscalInvoiceListItem = {
+  id: string;
+  numero: string | null;
+  serie: string | null;
+  codigoVerificacao: string | null;
+  status: "issued" | "canceled";
+  issuedAt: string | null;
+  amountCents: number;
+  planCode: string | null;
+  descricao: string | null;
+  /** URL ASSINADA de curta duracao, gerada a cada leitura. Nunca persistir. */
+  pdfUrl: string | null;
+  xmlUrl: string | null;
+};
+
+/**
+ * Notas fiscais do usuario.
+ *
+ * As URLs vem assinadas e EXPIRAM em minutos. Por isso esta funcao e chamada
+ * quando a secao e aberta, e o resultado nao e cacheado: um link guardado em
+ * estado por meia hora vira um botao de download que devolve erro.
+ */
+export async function getMyFiscalInvoices(): Promise<FiscalInvoiceListItem[]> {
+  const headers = await getAuthHeader();
+  const res = await fetch(`${API_BASE}/billing/invoices`, { headers });
+  if (!res.ok) throw new Error("Erro ao buscar notas fiscais");
+  const json = (await res.json()) as { data?: FiscalInvoiceListItem[] };
+  return json.data ?? [];
+}
+
 export type CheckoutPaymentMethod = "card" | "boleto";
 
 // Preserva o error.code que o server manda (createError -> { error: { code } }),

@@ -222,6 +222,12 @@ const CSP_POLICY = [
     // dos eventos (mais um silencio). Wildcard cobre o subdominio de ingest de
     // qualquer regiao (o<org>.ingest[.us|.de].sentry.io).
     "https://*.sentry.io",
+    // ViaCEP: autofill de endereco na coleta de dados fiscais (Fase 2 da
+    // NFS-e). Sem este host o fetch e bloqueado e o autofill vira silencio:
+    // o formulario degrada para digitacao manual e ninguem descobre que a
+    // consulta nunca funcionou. Precisa estar nas DUAS copias da policy
+    // (aqui e em vercel.json); o check:csp so confere os hashes de script.
+    "https://viacep.com.br",
   ].join(" "),
   // 'self' necessario pro iframe da landing de lancamento (client/public/lancamento.html).
   // Nao remover sem migrar a landing pra fora de iframe.

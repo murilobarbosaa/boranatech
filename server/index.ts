@@ -11,6 +11,8 @@ import {
   createEmailCampaignWorker,
   reconcileEmailCampaignBatches,
 } from "./lib/emailCampaignQueue";
+import { createFiscalInvoiceWorker } from "./lib/fiscalQueue";
+import { checkFiscalBucket } from "./lib/fiscalStorage";
 import { createEmailWorker } from "./lib/queue";
 import { cacheConnection, queueConnection } from "./lib/redis";
 
@@ -62,6 +64,43 @@ async function startServer() {
         }
       })()
     : null;
+  // Bucket dos documentos fiscais: conferido no boot, nao na primeira emissao.
+  //
+  // Nao aborta o processo (ao contrario das credenciais em env.ts): o Storage e
+  // uma dependencia de rede e um blip dele no deploy derrubaria a aplicacao
+  // inteira, incluindo o que nao tem nada a ver com nota fiscal. O que ele faz
+  // e GRITAR, com a instrucao exata de correcao, e deixar o pipeline seguir: a
+  // nota continua sendo emitida na prefeitura e o arquivamento e o passo que
+  // degrada (ver arquivarDocumentos em lib/fiscalQueue.ts).
+  if (env.nfseEnabled) {
+    void checkFiscalBucket()
+      .then((problema) => {
+        if (problema) {
+          console.error(`[fiscal] ATENCAO: ${problema}`);
+          Sentry.captureException(new Error(`[fiscal] ${problema}`));
+          return;
+        }
+        console.log("[fiscal] bucket privado verificado.");
+      })
+      .catch((err) => {
+        console.error("[fiscal] falha ao verificar o bucket:", err);
+      });
+  }
+
+  // Worker fiscal: so sobe com a emissao LIGADA. Com o kill-switch desligado
+  // nao existe produtor enfileirando, entao um worker aqui seria processo
+  // ocioso segurando conexao de Redis a toa.
+  const fiscalWorker =
+    env.redisUrl && env.nfseEnabled
+      ? (() => {
+          try {
+            return createFiscalInvoiceWorker();
+          } catch (err) {
+            console.error("[fiscal] Erro ao iniciar worker fiscal:", err);
+            return null;
+          }
+        })()
+      : null;
   // Reconciliacao dos lotes agendados: Postgres e a fonte de verdade, o Redis
   // so guarda o gatilho. Roda em background pra nao atrasar o listen; jobIds
   // deterministicos tornam a recriacao idempotente.
@@ -78,6 +117,7 @@ async function startServer() {
     await Promise.allSettled([
       emailWorker?.close(),
       emailCampaignWorker?.close(),
+      fiscalWorker?.close(),
     ]);
     server.close(() => {
       process.exit(0);

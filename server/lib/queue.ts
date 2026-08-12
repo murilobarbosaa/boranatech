@@ -8,6 +8,7 @@ import { withRedisOpTimeout } from "./redisOpTimeout";
 import {
   sendCancellationEmail,
   sendCancellationScheduledEmail,
+  sendFiscalInvoiceEmail,
   sendNewsletterConfirmEmail,
   sendNewsletterWelcomeEmail,
   sendPaymentFailedEmail,
@@ -35,7 +36,22 @@ export type EmailJobData =
     } & Recipient)
   | ({ type: "waitlist_confirmation" } & Recipient)
   | { type: "newsletter_confirm"; to: string; confirmUrl: string }
-  | { type: "newsletter_welcome"; to: string; unsubscribeUrl: string };
+  | { type: "newsletter_welcome"; to: string; unsubscribeUrl: string }
+  | {
+      type: "fiscal_invoice_issued";
+      to: string;
+      numero: string | null;
+      codigoVerificacao: string | null;
+      descricao: string | null;
+      valorLabel: string;
+      /**
+       * PDF em base64, quando existir. Viaja DENTRO do job de propósito: o
+       * worker de e-mail nao fala com o Storage, e um caminho aqui exigiria
+       * assinar uma URL que expiraria antes da ultima tentativa do backoff.
+       */
+      pdfBase64: string | null;
+      pdfFilename: string | null;
+    };
 
 // Criticidade por tipo de e-mail, explicita (nunca inferida por string):
 // "critical" = o usuario perde algo que pagou ou fica travado sem ele (cobranca,
@@ -59,6 +75,9 @@ const EMAIL_CRITICALITY: Record<
   waitlist_confirmation: "standard",
   newsletter_confirm: "standard",
   newsletter_welcome: "standard",
+  // Critico: e o recibo fiscal de algo que a pessoa pagou, e o unico envio que
+  // carrega o documento. Com o Redis fora, sai direto, como os demais criticos.
+  fiscal_invoice_issued: "critical",
 };
 
 function isCriticalEmail(type: EmailJobData["type"]): boolean {
@@ -119,6 +138,18 @@ async function sendDirect(data: EmailJobData) {
       break;
     case "newsletter_welcome":
       await sendNewsletterWelcomeEmail(data.to, data.unsubscribeUrl);
+      break;
+    case "fiscal_invoice_issued":
+      await sendFiscalInvoiceEmail(data.to, {
+        numero: data.numero,
+        codigoVerificacao: data.codigoVerificacao,
+        descricao: data.descricao,
+        valorLabel: data.valorLabel,
+        pdf:
+          data.pdfBase64 && data.pdfFilename
+            ? { filename: data.pdfFilename, content: data.pdfBase64 }
+            : null,
+      });
       break;
   }
 }

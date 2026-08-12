@@ -2,6 +2,8 @@ import { config } from "dotenv";
 
 import { ROADMAP_INTAKE_CHAT_DEFAULT_DAILY_LIMIT } from "../../shared/aiRoadmap";
 import type { PlanId } from "../../shared/planPricing";
+// Type-only: nao cria dependencia de runtime de env.ts para os providers.
+import type { FiscalProviderName } from "../providers/fiscalTypes";
 
 config({ quiet: true });
 
@@ -96,6 +98,108 @@ export const env = {
     );
     return false;
   })(),
+  // Kill-switch da emissao de NFS-e, no MESMO desenho do billingEnabled e pelo
+  // mesmo motivo: fail-closed, so o literal exato "true" liga. Desligado, nada
+  // do pipeline fiscal roda (os ganchos do webhook nem chegam a registrar
+  // linha), e o resto do billing segue intocado.
+  nfseEnabled: (() => {
+    const raw = process.env.NFSE_ENABLED;
+    if (!raw) return false; // ausente: emissao off, esperado em dev, sem alarde.
+    if (raw === "true") {
+      console.log("[env] NFS-e LIGADA (NFSE_ENABLED=true).");
+      return true;
+    }
+    console.warn(
+      `[env] AVISO: NFSE_ENABLED="${raw}" nao liga a emissao de NFS-e. Apenas o literal exato "true" liga (sem aspas, sem espaco, case-sensitive); emissao DESLIGADA.`,
+    );
+    return false;
+  })(),
+  // Qual adapter atende a emissao. NAO tem fallback silencioso para valor
+  // desconhecido: qual provedor emitiu a nota E a informacao, nao apresentacao
+  // dela, e cair em 'mock' por engano produziria "nota emitida" com numero
+  // falso, indistinguivel de uma real na tabela. Valor invalido derruba o boot
+  // com NFSE_ENABLED=true (verificacao abaixo do objeto env) e vira warn com a
+  // emissao desligada.
+  nfseProvider: ((): FiscalProviderName => {
+    const raw = process.env.NFSE_PROVIDER;
+    if (!raw) return "mock";
+    if (raw === "mock" || raw === "focus_nfse" || raw === "focus_nfsen") {
+      return raw;
+    }
+    console.warn(
+      `[env] AVISO: NFSE_PROVIDER="${raw}" nao e um provedor conhecido ("mock", "focus_nfse" ou "focus_nfsen").`,
+    );
+    return "mock";
+  })(),
+  // Credencial da Focus NFe. Exigida no boot quando a emissao esta ligada com um
+  // provedor Focus, pelo mesmo motivo das credenciais Stripe (site que aparenta
+  // emitir e nao consegue e pior que emissao declaradamente desligada).
+  nfseFocusToken: process.env.NFSE_FOCUS_TOKEN || "",
+  // Ambiente da Focus. DEFAULT HOMOLOGACAO, e nao producao, de proposito: o
+  // erro de esquecer a env manda a nota para o sandbox (recuperavel) em vez de
+  // emitir documento fiscal de verdade sem querer (nao recuperavel).
+  nfseFocusEnv: ((): "homologacao" | "producao" => {
+    const raw = process.env.NFSE_FOCUS_ENV;
+    if (!raw) return "homologacao";
+    if (raw === "homologacao" || raw === "producao") return raw;
+    console.warn(
+      `[env] AVISO: NFSE_FOCUS_ENV="${raw}" invalido ("homologacao" ou "producao"); usando homologacao.`,
+    );
+    return "homologacao";
+  })(),
+  // Dados do PRESTADOR (nos). Vem do cadastro na prefeitura, nao do codigo.
+  nfsePrestadorCnpj: process.env.NFSE_PRESTADOR_CNPJ || "",
+  nfsePrestadorInscricaoMunicipal:
+    process.env.NFSE_PRESTADOR_INSCRICAO_MUNICIPAL || "",
+  nfsePrestadorCodigoMunicipio:
+    process.env.NFSE_PRESTADOR_CODIGO_MUNICIPIO || "",
+  // Classificacao do servico. Os dois primeiros vem do CONTADOR; errar aqui
+  // produz nota valida com imposto errado, que e pior que nota recusada.
+  nfseServicoItemLista: process.env.NFSE_SERVICO_ITEM_LISTA || "",
+  nfseServicoAliquota: process.env.NFSE_SERVICO_ALIQUOTA || "",
+  // Opcional: so alguns municipios exigem.
+  nfseServicoCodigoTributarioMunicipio:
+    process.env.NFSE_SERVICO_CODIGO_TRIBUTARIO_MUNICIPIO || "",
+  // ENQUADRAMENTO TRIBUTARIO, definido pelo contador.
+  //
+  // `null` significa "ausente ou invalido", e NAO "false": a diferenca importa
+  // porque optante e nao-optante do Simples produzem tributacao diferente na
+  // mesma nota. Um default `false` transformaria env esquecida em declaracao
+  // fiscal errada, que sai como nota valida e so aparece no fechamento. O boot
+  // aborta com null no caminho focus_nfse, e o serializer tambem lanca.
+  nfseOptanteSimples: ((): boolean | null => {
+    const raw = process.env.NFSE_OPTANTE_SIMPLES;
+    if (raw === "true") return true;
+    if (raw === "false") return false;
+    if (raw) {
+      console.warn(
+        `[env] AVISO: NFSE_OPTANTE_SIMPLES="${raw}" invalido. Use exatamente "true" ou "false".`,
+      );
+    }
+    return null;
+  })(),
+  // Opcionais: vao VERBATIM quando presentes, sem conversao nossa. Os dois sao
+  // codigos do padrao ABRASF cujo valor correto depende do municipio e do
+  // enquadramento; qualquer traducao feita aqui seria um palpite sobre
+  // tributacao.
+  nfseNaturezaOperacao: process.env.NFSE_NATUREZA_OPERACAO || "",
+  nfseRegimeEspecialTributacao:
+    process.env.NFSE_REGIME_ESPECIAL_TRIBUTACAO || "",
+  // Data de corte da emissao (YYYY-MM-DD). Cobranca anterior a ela NUNCA vira
+  // nota pela reconciliacao.
+  //
+  // SEM DEFAULT, e o boot aborta se faltar (verificacao abaixo). Nao e zelo: a
+  // data e uma decisao CONTABIL, e qualquer valor que o codigo escolhesse
+  // estaria errado nas duas direcoes. Cedo demais emitiria notas retroativas de
+  // meses ja fechados pelo contador; tarde demais deixaria de emitir nota de
+  // quem pagou e tem direito a ela. As duas sao caras e nenhuma aparece como
+  // erro: aparecem como nota que nao deveria existir, ou que ninguem percebeu
+  // faltar.
+  nfseEmitirDesde: process.env.NFSE_EMITIR_DESDE || "",
+  // Gatilho de teste manual do adapter mock: faz o issue devolver uma falha
+  // RETENTAVEL, para exercitar o backoff da fila sem depender de prefeitura.
+  // Fail-closed no mesmo formato dos demais: so o literal "true" liga.
+  nfseMockFail: process.env.NFSE_MOCK_FAIL === "true",
   aiDailyLimitFree: parseInt(process.env.AI_DAILY_LIMIT_FREE || "5", 10),
   aiDailyLimitPro: parseInt(process.env.AI_DAILY_LIMIT_PRO || "50", 10),
   // Teto diario do agente conversacional, separado das ferramentas de IA para o
@@ -304,4 +408,101 @@ if (env.billingEnabled) {
     process.exit(1);
   }
   console.log("[env] Stripe: credenciais completas, billing pronto.");
+}
+
+// Fail-closed fiscal, mesma filosofia do bloco acima: com a emissao LIGADA, uma
+// configuracao incompleta produz cobranca sem nota, que e obrigacao legal
+// perdida em silencio. Entao o processo NAO sobe.
+if (env.nfseEnabled) {
+  const nfseProviderRaw = process.env.NFSE_PROVIDER;
+  if (
+    nfseProviderRaw &&
+    nfseProviderRaw !== "mock" &&
+    nfseProviderRaw !== "focus_nfse" &&
+    nfseProviderRaw !== "focus_nfsen"
+  ) {
+    console.error(
+      `[env] ERRO FATAL: NFSE_ENABLED=true com NFSE_PROVIDER="${nfseProviderRaw}" desconhecido. Use "mock", "focus_nfse" ou "focus_nfsen".`,
+    );
+    process.exit(1);
+  }
+
+  // NFS-e NACIONAL ainda e scaffold (serializer da DPS pendente). Recusar no
+  // BOOT, e nao na primeira cobranca: a falha precisa acontecer no deploy, com
+  // alguem olhando, em vez de virar nota nao emitida semanas depois.
+  if (env.nfseProvider === "focus_nfsen") {
+    console.error(
+      "[env] ERRO FATAL: NFSE_PROVIDER=focus_nfsen ainda nao esta implementado (ver TODO(nfsen) em server/providers/fiscalFocusNacional.ts). Use focus_nfse.",
+    );
+    process.exit(1);
+  }
+
+  // O mock emite nota FALSA, com numero deterministico e sem prefeitura
+  // nenhuma. Em producao isso seria pior que nao emitir: a tabela ficaria cheia
+  // de linhas 'issued' que nao existem em municipio nenhum, e a reconciliacao
+  // da Fase 4 leria esse conjunto como saudavel. Boot abortado.
+  if (env.nfseProvider === "mock" && env.nodeEnv === "production") {
+    console.error(
+      "[env] ERRO FATAL: NFSE_PROVIDER=mock com NODE_ENV=production. O mock emite nota falsa; use um provedor real ou desligue NFSE_ENABLED.",
+    );
+    process.exit(1);
+  }
+
+  // Data de corte: exigida SEMPRE que a emissao esta ligada, inclusive com o
+  // mock. A reconciliacao usa esta data para decidir o que e passado fechado, e
+  // rodar o backfill sem ela varreria a base inteira desde a primeira cobranca.
+  //
+  // Valida a FORMA e a EXISTENCIA da data: "2026-02-31" casa o regex e nao e um
+  // dia real, e `new Date` o aceitaria deslizando para marco. Um corte deslizado
+  // em um dia e silencioso e erra justamente na virada do mes.
+  const cutoffValido = (() => {
+    const raw = env.nfseEmitirDesde;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
+    const data = new Date(`${raw}T00:00:00Z`);
+    if (Number.isNaN(data.getTime())) return false;
+    return data.toISOString().slice(0, 10) === raw;
+  })();
+
+  if (!cutoffValido) {
+    console.error(
+      `[env] ERRO FATAL: NFSE_ENABLED=true exige NFSE_EMITIR_DESDE no formato YYYY-MM-DD (recebido: "${env.nfseEmitirDesde}"). ` +
+        "Esta data e decisao do contador e NAO tem default: sem ela a reconciliacao nao sabe onde comeca o periodo a emitir.",
+    );
+    process.exit(1);
+  }
+
+  if (env.nfseProvider === "focus_nfse") {
+    // Fail-closed COMPLETO, nao so o token: uma emissao sem inscricao municipal
+    // ou sem item da lista de servico e aceita pela nossa fila, enviada a
+    // prefeitura e rejeitada la, de forma assincrona. O custo de descobrir isso
+    // no boot e zero; o de descobrir na primeira cobranca do mes e uma nota
+    // atrasada por dia ate alguem notar.
+    const missingNfse: string[] = [];
+    if (!env.nfseFocusToken) missingNfse.push("NFSE_FOCUS_TOKEN");
+    if (!env.nfsePrestadorCnpj) missingNfse.push("NFSE_PRESTADOR_CNPJ");
+    if (!env.nfsePrestadorInscricaoMunicipal) {
+      missingNfse.push("NFSE_PRESTADOR_INSCRICAO_MUNICIPAL");
+    }
+    if (!env.nfsePrestadorCodigoMunicipio) {
+      missingNfse.push("NFSE_PRESTADOR_CODIGO_MUNICIPIO");
+    }
+    if (!env.nfseServicoItemLista) missingNfse.push("NFSE_SERVICO_ITEM_LISTA");
+    if (!env.nfseServicoAliquota) missingNfse.push("NFSE_SERVICO_ALIQUOTA");
+    // Sexta obrigatoria: `null` cobre ausente E invalido, e os dois precisam
+    // abortar. Uma env com "1" ou "sim" nao pode virar `false` por omissao.
+    if (env.nfseOptanteSimples === null) {
+      missingNfse.push('NFSE_OPTANTE_SIMPLES (exatamente "true" ou "false")');
+    }
+    if (missingNfse.length > 0) {
+      console.error(
+        `[env] ERRO FATAL: NFSE_ENABLED=true com NFSE_PROVIDER=focus_nfse mas faltam credenciais: ${missingNfse.join(", ")}. Configure todas ou desligue NFSE_ENABLED.`,
+      );
+      process.exit(1);
+    }
+    console.log(`[env] NFS-e: ambiente Focus "${env.nfseFocusEnv}".`);
+  }
+
+  console.log(
+    `[env] NFS-e: configuracao completa, provedor "${env.nfseProvider}".`,
+  );
 }

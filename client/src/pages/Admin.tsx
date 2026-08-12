@@ -77,6 +77,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
+import { FiscalInvoicesDashboard } from "@/components/admin/FiscalInvoicesDashboard";
 import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
 import { HealthBand } from "@/components/admin/overview/HealthBand";
 import { PaidFunnel } from "@/components/admin/overview/PaidFunnel";
@@ -7449,6 +7450,23 @@ export default function Admin() {
               {/* TODO(Ana): titulo e subtitulo da secao financeiro (title/subtitle acima). */}
               {/* RESULTADO DE CAIXA (fonte: Stripe balance transactions) */}
               <FinanceDashboard refreshKey={financeRefreshKey} />
+
+              {/* NOTAS FISCAIS (NFS-e). Fica no financeiro porque o que ele
+                  mostra e obrigacao sobre o dinheiro que entrou, e os dois
+                  estados que exigem acao humana nao aparecem em lugar nenhum
+                  fora daqui. */}
+              <div className="mt-10">
+                <h2 className="font-display text-3xl font-black text-slate-950">
+                  Notas fiscais
+                </h2>
+                <p className="mb-5 mt-1 max-w-3xl text-sm font-semibold text-slate-600">
+                  Emissão automática por cobrança confirmada. Bloqueadas
+                  dependem do cadastro fiscal do assinante; as marcadas para
+                  revisão vieram de reembolso parcial ou cancelamento recusado
+                  pela prefeitura.
+                </p>
+                <FiscalInvoicesDashboard />
+              </div>
 
               {/* DESPESAS (CRUD manual, cambio travado no lancamento) */}
               <div className="mt-10">

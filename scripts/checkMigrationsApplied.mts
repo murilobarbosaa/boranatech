@@ -197,13 +197,14 @@ const naoReconhecidasOutras: string[] = [];
 // quase nunca e "atualizar o numero": e descobrir o que parou de ser
 // reconhecido. Foi exatamente assim que a auditoria concluiu "so falta uma
 // tabela" olhando 38 de 72.
-// 82 desde 20260730160000_create_admin_refunds.sql (cria admin_refunds). O
-// commit que criou a tabela nao subiu este numero, e o guard ficou vermelho
-// abortando antes de qualquer outra verificacao. Conferido antes de mexer, como
-// manda o CLAUDE.md: a tabela e declarada de verdade (CREATE TABLE IF NOT
-// EXISTS public.admin_refunds) e existe no banco alvo, entao o parser esta
-// certo e quem estava desatualizado era o numero.
-const EXPECTED_TABLE_COUNT = 82;
+// 83 desde 20260804120000_create_fiscal_invoices.sql (cria fiscal_invoices).
+// Era 82 desde 20260730160000_create_admin_refunds.sql (cria admin_refunds). O
+// commit que criou a admin_refunds nao subiu este numero, e o guard ficou
+// vermelho abortando antes de qualquer outra verificacao. Conferido antes de
+// mexer, como manda o CLAUDE.md: a tabela e declarada de verdade (CREATE TABLE
+// IF NOT EXISTS public.admin_refunds) e existe no banco alvo, entao o parser
+// esta certo e quem estava desatualizado era o numero.
+const EXPECTED_TABLE_COUNT = 83;
 
 // Mesma assercao de tamanho das tabelas, pelo mesmo motivo: pegar o caso em que
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
@@ -708,6 +709,180 @@ for (const assercao of ASSERCOES) {
 }
 
 // ---------------------------------------------------------------------------
+// ASSERCOES DE COLUNA: a tabela existe E TEM as colunas que a migration declara.
+//
+// POR QUE ESTA SECAO EXISTE. A verificacao de tabela responde "public.profiles
+// existe?", e ela existe desde sempre. Uma migration puramente ADITIVA (`alter
+// table ... add column`) e portanto INVISIVEL para tudo que veio antes: o
+// guard fica verde sobre um banco que nao tem as colunas novas, e o sintoma
+// aparece em producao como erro de PostgREST na primeira escrita.
+//
+// E a MESMA lacuna que o `create or replace` de funcao abriu (get_ai_usage_today,
+// 17 dias verde sobre um banco sem a mudanca), com outro suporte: existencia do
+// objeto nao implica o conteudo dele.
+//
+// COMO: um SELECT com `limit=0` por coluna, com o service role. Coluna ausente
+// devolve 400 com codigo 42703 (undefined_column); presente devolve 200 com
+// lista vazia. Nao le NENHUM dado (limit=0), entao roda contra producao sem
+// tocar em CPF de ninguem.
+//
+// Manter esta lista e ato deliberado, como os EXPECTED_*: toda migration que
+// acrescenta coluna acrescenta a coluna aqui, no mesmo commit.
+// ---------------------------------------------------------------------------
+
+const COLUNAS_ESPERADAS: Record<string, string[]> = {
+  // 20260714120000_add_profile_identity_fields.sql
+  // 20260804130000_add_profile_fiscal_fields.sql
+  profiles: [
+    "full_name",
+    "cpf",
+    "cnpj",
+    "razao_social",
+    "fiscal_documento_preferencia",
+    "endereco_cep",
+    "endereco_logradouro",
+    "endereco_numero",
+    "endereco_complemento",
+    "endereco_bairro",
+    "endereco_cidade",
+    "endereco_uf",
+    "endereco_codigo_municipio",
+  ],
+  // 20260804120000_create_fiscal_invoices.sql
+  fiscal_invoices: [
+    "user_id",
+    "subscription_id",
+    "stripe_charge_id",
+    "stripe_invoice_id",
+    "stripe_payment_intent_id",
+    "provider",
+    "provider_invoice_id",
+    "status",
+    "amount_cents",
+    "plan_code",
+    "service_description",
+    "numero",
+    "serie",
+    "codigo_verificacao",
+    "pdf_path",
+    "xml_path",
+    "error_code",
+    "error_message",
+    "attempts",
+    "issued_at",
+    "tomador_nome",
+    "tomador_documento",
+    "tomador_tipo_documento",
+    "tomador_email",
+    "tomador_endereco",
+    // 20260804140000_add_precisa_revisao_to_fiscal_invoices.sql
+    "precisa_revisao",
+  ],
+};
+
+/**
+ * TRES desfechos, nao dois, pelo mesmo motivo do `contarLinhas`: "nao consegui
+ * perguntar" nao pode ser contado como "a coluna esta la". Erro de rede vira
+ * `indeterminado` e reprova, em vez de virar sucesso silencioso.
+ */
+async function colunaExiste(
+  tabela: string,
+  coluna: string,
+): Promise<{ tipo: "existe" } | { tipo: "ausente" } | { tipo: "indeterminado"; detalhe: string }> {
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/${tabela}?select=${encodeURIComponent(coluna)}&limit=0`,
+      {
+        headers: {
+          apikey: serviceRoleKey!,
+          Authorization: `Bearer ${serviceRoleKey}`,
+        },
+      },
+    );
+    if (response.ok) return { tipo: "existe" };
+    const corpo = (await response.json().catch(() => null)) as {
+      code?: string;
+      message?: string;
+    } | null;
+    // 42703 = undefined_column. E o unico codigo que AFIRMA ausencia; qualquer
+    // outro erro (tabela inexistente, permissao, schema cache) e indeterminado.
+    if (corpo?.code === "42703") return { tipo: "ausente" };
+    return {
+      tipo: "indeterminado",
+      detalhe: `HTTP ${response.status} ${corpo?.code ?? ""} ${corpo?.message ?? ""}`.trim(),
+    };
+  } catch (err) {
+    return {
+      tipo: "indeterminado",
+      detalhe: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+for (const [tabela, colunas] of Object.entries(COLUNAS_ESPERADAS)) {
+  // Tabela ausente ou sem veredito ja foi reportada acima; nao repete o mesmo
+  // erro N vezes, uma por coluna.
+  if (missing.includes(tabela) || inconclusive.includes(tabela)) {
+    console.warn(
+      `[checkMigrationsApplied] colunas de public.${tabela} nao verificadas: a tabela nao existe (ou nao teve veredito) no banco alvo.`,
+    );
+    continue;
+  }
+
+  // CAMINHO RAPIDO: uma requisicao pedindo TODAS as colunas de uma vez. Se ela
+  // passa, todas existem, e acabou.
+  //
+  // Existe porque a versao anterior fazia uma requisicao POR COLUNA (38 no
+  // total) e uma rodada real devolveu 9 colunas "sem veredito: fetch failed",
+  // por soluco de rede no meio da sequencia. O guard reprovou, que e o
+  // comportamento certo, mas reprovou por fragilidade do instrumento e nao por
+  // problema no banco. Um guard que fica vermelho por conta propria e um guard
+  // que alguem desliga.
+  //
+  // O caminho lento (coluna a coluna) so roda quando o rapido falha, e e ele
+  // que diz QUAL coluna falta: um `select` com varias colunas para na primeira
+  // que nao existe e nao lista o resto.
+  const todasDeUmaVez = await colunaExiste(tabela, colunas.join(","));
+  if (todasDeUmaVez.tipo === "existe") {
+    console.log(
+      `[checkMigrationsApplied] as ${colunas.length} coluna(s) declaradas de public.${tabela} existem no banco alvo.`,
+    );
+    continue;
+  }
+
+  const ausentes: string[] = [];
+  const indeterminadas: string[] = [];
+  for (const coluna of colunas) {
+    const veredito = await colunaExiste(tabela, coluna);
+    if (veredito.tipo === "ausente") ausentes.push(coluna);
+    if (veredito.tipo === "indeterminado") {
+      indeterminadas.push(`${coluna} (${veredito.detalhe})`);
+    }
+  }
+
+  if (ausentes.length > 0) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] ${ausentes.length} coluna(s) declarada(s) NAO existem em public.${tabela}:`,
+    );
+    for (const coluna of ausentes) {
+      console.error(`  ausente: public.${tabela}.${coluna}`);
+    }
+  }
+  if (indeterminadas.length > 0) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] coluna(s) de public.${tabela} SEM VEREDITO: ${indeterminadas.join(", ")}`,
+    );
+  }
+  if (ausentes.length === 0 && indeterminadas.length === 0) {
+    console.log(
+      `[checkMigrationsApplied] as ${colunas.length} coluna(s) declaradas de public.${tabela} existem no banco alvo.`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // DIRECAO INVERSA: existe no banco e nenhuma migration declara.
 //
 // O guard responde "declarado existe?". Esta secao responde "existente e
@@ -769,9 +944,12 @@ if (expostas !== null) {
 // ---------------------------------------------------------------------------
 // RLS: verificada de fato, lendo com a chave anon.
 // ---------------------------------------------------------------------------
-// 82 pela mesma causa do EXPECTED_TABLE_COUNT: admin_refunds declara
-// `alter table ... enable row level security` e entrou sem o numero subir.
-const EXPECTED_RLS_COUNT = 82;
+// Sobe junto com EXPECTED_TABLE_COUNT sempre que a tabela nova declara
+// `alter table ... enable row level security`, que e o caso de todas as tabelas
+// novas deste projeto. 83 desde 20260804120000_create_fiscal_invoices.sql.
+// Era 82 pela mesma causa: admin_refunds declarou RLS e entrou sem o numero
+// subir.
+const EXPECTED_RLS_COUNT = 83;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 const rlsVivas = [...rlsDeclarada].filter((t) => declared.has(t)).sort();

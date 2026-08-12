@@ -1,8 +1,20 @@
+import * as Sentry from "@sentry/node";
 import { Router } from "express";
 import type { Request } from "express";
 
 import { isValidCpf } from "../../shared/certificates/types";
+import {
+  isFiscalDocumentType,
+  isValidCep,
+  isValidCnpj,
+  isValidUf,
+  onlyDigits,
+  resolveFiscalDocumentType,
+  type FiscalIdentityFields,
+} from "../../shared/fiscalIdentity";
 import { PRO_AVATAR_BORDERS } from "../lib/avatarBorders";
+import { env } from "../lib/env";
+import { unblockFiscalInvoices } from "../lib/fiscalQueue";
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
@@ -328,6 +340,168 @@ router.patch("/", checkProStatus, async (req, res, next) => {
       updates.cpf = digits;
     }
 
+    // ---------------------------------------------------------------------
+    // Identidade fiscal (Fase 2 da NFS-e).
+    //
+    // Os campos abaixo aceitam LIMPEZA (null ou string vazia viram null), ao
+    // contrario do cpf logo acima, que so aceita um CPF valido. A diferenca e
+    // deliberada e tem caso de uso: quem troca a preferencia de CNPJ para CPF
+    // precisa poder apagar o CNPJ, e quem digitou o endereco errado precisa
+    // poder esvaziar o campo. Nao mexi na regra do cpf porque ela e do
+    // certificado e mudar o contrato dela nao e desta tarefa.
+    // ---------------------------------------------------------------------
+
+    /**
+     * null/"" -> null (limpar). Qualquer outra coisa devolve a string crua, e
+     * `undefined` sinaliza tipo errado no corpo.
+     *
+     * Arrow function em `const`, e nao `function`: declaracao de funcao dentro
+     * de bloco nao e permitida com o `target` deste tsconfig (o `tsc` reprova
+     * com TS1252).
+     */
+    const fiscalRawValue = (value: unknown): string | null | undefined => {
+      if (value === null) return null;
+      if (typeof value !== "string") return undefined; // tipo errado
+      return value.trim() === "" ? null : value;
+    };
+
+    if ("cnpj" in updates) {
+      const raw = fiscalRawValue(updates.cnpj);
+      if (raw === undefined) {
+        return next(createError(400, "invalid_cnpj", "CNPJ inválido."));
+      }
+      if (raw === null) {
+        updates.cnpj = null;
+      } else {
+        const digits = onlyDigits(raw);
+        if (!isValidCnpj(digits)) {
+          return next(createError(400, "invalid_cnpj", "CNPJ inválido."));
+        }
+        updates.cnpj = digits;
+      }
+    }
+
+    if ("fiscal_documento_preferencia" in updates) {
+      const raw = fiscalRawValue(updates.fiscal_documento_preferencia);
+      if (raw === undefined || (raw !== null && !isFiscalDocumentType(raw))) {
+        return next(
+          createError(
+            400,
+            "invalid_fiscal_document_type",
+            "Tipo de documento fiscal inválido.",
+          ),
+        );
+      }
+      updates.fiscal_documento_preferencia = raw;
+    }
+
+    if ("endereco_cep" in updates) {
+      const raw = fiscalRawValue(updates.endereco_cep);
+      if (raw === undefined) {
+        return next(createError(400, "invalid_cep", "CEP inválido."));
+      }
+      if (raw === null) {
+        updates.endereco_cep = null;
+      } else {
+        const digits = onlyDigits(raw);
+        if (!isValidCep(digits)) {
+          return next(createError(400, "invalid_cep", "CEP inválido."));
+        }
+        updates.endereco_cep = digits;
+      }
+    }
+
+    if ("endereco_uf" in updates) {
+      const raw = fiscalRawValue(updates.endereco_uf);
+      if (raw === undefined || (raw !== null && !isValidUf(raw))) {
+        return next(createError(400, "invalid_uf", "UF inválida."));
+      }
+      // Normaliza para maiuscula: a lista e fechada e "sp" e "SP" sao a mesma
+      // UF, mas gravar as duas grafias faria qualquer comparacao futura errar.
+      updates.endereco_uf = raw === null ? null : raw.trim().toUpperCase();
+    }
+
+    if ("endereco_codigo_municipio" in updates) {
+      const raw = fiscalRawValue(updates.endereco_codigo_municipio);
+      if (raw === undefined) {
+        return next(
+          createError(
+            400,
+            "invalid_municipio",
+            "Código de município inválido.",
+          ),
+        );
+      }
+      if (raw === null) {
+        updates.endereco_codigo_municipio = null;
+      } else {
+        const digits = onlyDigits(raw);
+        // Codigo IBGE de municipio tem 7 digitos, sempre.
+        if (digits.length !== 7) {
+          return next(
+            createError(
+              400,
+              "invalid_municipio",
+              "Código de município inválido.",
+            ),
+          );
+        }
+        updates.endereco_codigo_municipio = digits;
+      }
+    }
+
+    // Consistencia da PESSOA JURIDICA, verificada sobre o estado FINAL (o que
+    // esta no banco mais o que este PATCH muda), nunca so sobre o corpo.
+    //
+    // O corpo sozinho nao responde a pergunta: um PATCH que manda apenas
+    // `fiscal_documento_preferencia: "cnpj"` e valido se o CNPJ e a razao social
+    // ja estiverem gravados, e invalido se nao estiverem. Validar so o payload
+    // deixaria passar o segundo caso, e o resultado seria uma nota bloqueada
+    // depois do pagamento, que e tarde demais para descobrir.
+    const FISCAL_FIELDS = [
+      "cnpj",
+      "razao_social",
+      "fiscal_documento_preferencia",
+      "endereco_cep",
+      "endereco_logradouro",
+      "endereco_numero",
+      "endereco_complemento",
+      "endereco_bairro",
+      "endereco_cidade",
+      "endereco_uf",
+      "endereco_codigo_municipio",
+      "full_name",
+      "cpf",
+    ];
+    const tocaFiscal = FISCAL_FIELDS.some((field) => field in updates);
+
+    if (tocaFiscal) {
+      const { data: atual } = await supabaseAdmin
+        .from("profiles")
+        .select("cnpj, razao_social, fiscal_documento_preferencia")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const final = {
+        ...(atual ?? {}),
+        ...updates,
+      } as FiscalIdentityFields;
+
+      if (resolveFiscalDocumentType(final) === "cnpj") {
+        const cnpjFinal = onlyDigits(final.cnpj);
+        const razaoFinal = (final.razao_social ?? "").trim();
+        if (!isValidCnpj(cnpjFinal) || !razaoFinal) {
+          return next(
+            createError(
+              400,
+              "fiscal_cnpj_incomplete",
+              "Para emitir nota com CNPJ, informe CNPJ válido e razão social.",
+            ),
+          );
+        }
+      }
+    }
+
     for (const field of PROFILE_URL_FIELDS) {
       if (field in updates) {
         const urlError = validateProfileUrl(field, updates[field]);
@@ -354,6 +528,26 @@ router.patch("/", checkProStatus, async (req, res, next) => {
 
     if (error) {
       return next(createError(500, "db_error", "Erro ao atualizar perfil."));
+    }
+
+    // Destravamento das notas fiscais que pararam por falta de cadastro.
+    //
+    // MESMO CONTRATO DE ERRO DOS GANCHOS DA FASE 1: nada aqui pode derrubar o
+    // save do perfil. O usuario acabou de corrigir um dado; devolver erro
+    // porque a fila fiscal falhou faria a correcao parecer recusada, e ele
+    // tentaria de novo (gravando o mesmo dado) sem que o problema real fosse
+    // esse. O que escapar daqui e coberto pela reconciliacao da Fase 4, que
+    // chama exatamente esta funcao.
+    if (env.nfseEnabled && tocaFiscal) {
+      try {
+        await unblockFiscalInvoices(userId);
+      } catch (fiscalErr) {
+        console.error(
+          `[fiscal] falha ao destravar notas do usuario ${userId}; perfil SALVO normalmente:`,
+          fiscalErr,
+        );
+        Sentry.captureException(fiscalErr);
+      }
     }
 
     res.json({ data: profile });

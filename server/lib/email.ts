@@ -192,6 +192,18 @@ function layout(theme: EmailTheme, title: string, body: string) {
   </table>`;
 }
 
+/**
+ * Anexo, no formato que o Resend aceita.
+ *
+ * `content` em base64. Nao ha "anexo por URL" aqui de proposito: a URL das
+ * nossas notas e assinada e de curta duracao, entao um anexo por link expiraria
+ * dentro da caixa de entrada de quem recebeu.
+ */
+export type EmailAttachment = {
+  filename: string;
+  content: string;
+};
+
 async function sendEmail(params: {
   to: string;
   from: string;
@@ -199,6 +211,7 @@ async function sendEmail(params: {
   html: string;
   text?: string;
   headers?: Record<string, string>;
+  attachments?: EmailAttachment[];
 }) {
   if (!env.resendApiKey || !resend) {
     console.warn("[email] RESEND_API_KEY ausente. E-mail não enviado.");
@@ -373,6 +386,71 @@ export async function sendProUpgradeEmail(
     from: FROM_TRANSACTIONAL,
     subject: title,
     html: layout(theme, title, body),
+  });
+}
+
+/**
+ * Nota fiscal emitida.
+ *
+ * O ANEXO E OPCIONAL, e a copy muda com ele. Quando o PDF nao chegou ao nosso
+ * storage (download falhou, provedor ainda nao publicou o documento), o e-mail
+ * SAI MESMO ASSIM, dizendo onde encontrar a nota. Segurar o e-mail ate ter o
+ * PDF trocaria "recibo sem anexo" por "nenhum aviso de que a nota existe", e a
+ * nota existe: ela ja foi autorizada pela prefeitura.
+ */
+export async function sendFiscalInvoiceEmail(
+  to: string,
+  params: {
+    numero: string | null;
+    codigoVerificacao: string | null;
+    /**
+     * O que foi cobrado, incluindo o periodo.
+     *
+     * E o `service_description` da nota, verbatim. NAO ha um campo "periodo"
+     * separado porque `fiscal_invoices` nao guarda as datas como dado: elas
+     * existem so dentro deste texto. Recuperar o periodo dali exigiria casar
+     * um padrao contra uma string que nos mesmos geramos, que e a classe de
+     * parser que este projeto cataloga como falha silenciosa.
+     */
+    descricao: string | null;
+    valorLabel: string;
+    pdf: EmailAttachment | null;
+  },
+) {
+  const theme = NEUTRAL_THEME;
+  const title = "Sua nota fiscal da assinatura Bora na Tech";
+
+  const linhas: string[] = [];
+  if (params.numero) {
+    linhas.push(`Número da nota: <strong>${escapeHtml(params.numero)}</strong>`);
+  }
+  if (params.codigoVerificacao) {
+    linhas.push(
+      `Código de verificação: <strong>${escapeHtml(params.codigoVerificacao)}</strong>`,
+    );
+  }
+  if (params.descricao) {
+    linhas.push(escapeHtml(params.descricao));
+  }
+  linhas.push(`Valor: <strong>${escapeHtml(params.valorLabel)}</strong>`);
+
+  const body = `
+    ${paragraph("A nota fiscal da sua assinatura foi emitida.")}
+    ${list(theme, linhas)}
+    ${paragraph(
+      params.pdf
+        ? "O PDF está anexado neste e-mail e também fica disponível na sua conta."
+        : "O documento fica disponível na sua conta, na seção de notas fiscais.",
+    )}
+    ${button("Ver minhas notas", `${APP_URL}/perfil`, theme)}
+  `;
+
+  await sendEmail({
+    to,
+    from: FROM_TRANSACTIONAL,
+    subject: title,
+    html: layout(theme, title, body),
+    ...(params.pdf ? { attachments: [params.pdf] } : {}),
   });
 }
 

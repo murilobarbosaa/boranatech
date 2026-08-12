@@ -56,6 +56,23 @@ export interface Profile {
   // Consentimento de comunicacao promocional (carimbo gravado pelo server).
   marketing_opt_in?: boolean;
   marketing_opt_in_at?: string | null;
+  // Identidade fiscal (Fase 2 da NFS-e). Todos opcionais: a coleta e posterior
+  // ao cadastro e a maioria das contas nao tem nenhum deles preenchido.
+  // full_name e cpf ja existiam no banco desde o certificado; entram aqui
+  // porque a modal fiscal e o banner precisam le-los.
+  full_name?: string | null;
+  cpf?: string | null;
+  cnpj?: string | null;
+  razao_social?: string | null;
+  fiscal_documento_preferencia?: "cpf" | "cnpj" | null;
+  endereco_cep?: string | null;
+  endereco_logradouro?: string | null;
+  endereco_numero?: string | null;
+  endereco_complemento?: string | null;
+  endereco_bairro?: string | null;
+  endereco_cidade?: string | null;
+  endereco_uf?: string | null;
+  endereco_codigo_municipio?: string | null;
   created_at: string;
   updated_at: string;
 }

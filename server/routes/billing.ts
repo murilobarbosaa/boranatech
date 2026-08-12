@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { env } from "../lib/env";
+import { signedFiscalUrl } from "../lib/fiscalStorage";
 import { verifyRenewalToken } from "../lib/renewalToken";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
@@ -265,6 +266,77 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
         accessSource,
       },
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Notas fiscais do proprio usuario.
+ *
+ * So `issued` e `canceled`: os demais estados sao de PROCESSO nosso (pending,
+ * processing, failed, blocked_missing_data) e nao dizem nada util para quem
+ * comprou. Mostrar "falhou" na conta do cliente transformaria um problema
+ * nosso, que a reconciliacao ainda pode resolver, num aviso que ele nao tem
+ * como agir.
+ *
+ * As URLs sao ASSINADAS SOB DEMANDA e de curta duracao. Nunca sao persistidas:
+ * uma URL assinada guardada no banco vira um link que expira sem ninguem
+ * entender por que parou de funcionar.
+ */
+router.get("/invoices", requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.user!.id;
+
+    const { data, error } = await supabaseAdmin
+      .from("fiscal_invoices")
+      .select(
+        "id, numero, serie, codigo_verificacao, status, issued_at, amount_cents, plan_code, service_description, pdf_path, xml_path",
+      )
+      .eq("user_id", userId)
+      .in("status", ["issued", "canceled"])
+      .order("issued_at", { ascending: false })
+      .limit(100);
+
+    if (error) {
+      return next(
+        createError(500, "db_error", "Erro ao buscar notas fiscais."),
+      );
+    }
+
+    const linhas = (data ?? []) as Array<{
+      id: string;
+      numero: string | null;
+      serie: string | null;
+      codigo_verificacao: string | null;
+      status: string;
+      issued_at: string | null;
+      amount_cents: number;
+      plan_code: string | null;
+      service_description: string | null;
+      pdf_path: string | null;
+      xml_path: string | null;
+    }>;
+
+    const invoices = await Promise.all(
+      linhas.map(async (linha) => ({
+        id: linha.id,
+        numero: linha.numero,
+        serie: linha.serie,
+        codigoVerificacao: linha.codigo_verificacao,
+        status: linha.status,
+        issuedAt: linha.issued_at,
+        amountCents: linha.amount_cents,
+        planCode: linha.plan_code,
+        descricao: linha.service_description,
+        // null quando o documento nao chegou ao storage ou a assinatura falhou:
+        // a linha aparece sem botao de download, em vez de a lista inteira cair.
+        pdfUrl: await signedFiscalUrl(linha.pdf_path),
+        xmlUrl: await signedFiscalUrl(linha.xml_path),
+      })),
+    );
+
+    res.json({ data: invoices });
   } catch (err) {
     next(err);
   }
