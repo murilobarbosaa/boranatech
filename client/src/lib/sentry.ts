@@ -44,8 +44,18 @@ const ERROR_SAMPLE_RATE = 0.25;
  *   ocorrencia e o dado. Falha de login e do segundo tipo. Com 0.25, de cada 4
  *   pessoas que nao conseguiram entrar 3 ficariam invisiveis, que e literalmente
  *   o problema que a instrumentacao existe para resolver.
+ * - `chunk-reload`: tag posta por `reportChunkReload` (lib/lazyWithRetry.ts,
+ *   `SENTRY_ORIGEM_CHUNK_RELOAD`). Terceiro caso do mesmo argumento: so acontece
+ *   quando um chunk some, e a pergunta que o evento existe para responder ("skew
+ *   de deploy ou falha de CDN?") depende do numero ABSOLUTO de tentativas. A
+ *   0.25 a medicao nasceria truncada e a conta de "quantos reloads resolveram"
+ *   sairia errada em silencio.
  */
-const ORIGENS_NAO_AMOSTRADAS = new Set(["error-boundary", "auth"]);
+const ORIGENS_NAO_AMOSTRADAS = new Set([
+  "error-boundary",
+  "auth",
+  "chunk-reload",
+]);
 
 /**
  * PII EM BREADCRUMB: o vetor que os scrubbers do Sentry NAO cobrem.

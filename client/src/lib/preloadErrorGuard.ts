@@ -30,10 +30,13 @@ import { reloadOnceForStaleChunk } from "./lazyWithRetry";
  */
 export function registerPreloadErrorGuard(
   target: EventTarget = window,
-  onPreloadError: () => void = reloadOnceForStaleChunk,
+  onPreloadError: (error?: unknown) => void = reloadOnceForStaleChunk,
 ): void {
   target.addEventListener("vite:preloadError", (event) => {
     event.preventDefault();
-    onPreloadError();
+    // `payload` e o erro original, anexado pelo Vite em config.js:23423. Sem
+    // repassar, o `reportChunkReload` registra "unknown" justamente no caminho
+    // do preload de CSS, que e o unico que passa por aqui.
+    onPreloadError((event as Event & { payload?: unknown }).payload);
   });
 }

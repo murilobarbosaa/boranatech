@@ -34,6 +34,18 @@ describe("amostrarPorOrigem", () => {
     expect(amostrarPorOrigem(evento, undefined, () => 1)).toBe(evento);
   });
 
+  /**
+   * `chunk-reload` entrou pelo MESMO argumento dos dois de cima: o evento e raro
+   * (so acontece quando um chunk some) e cada ocorrencia e o dado. Amostrar a
+   * 0.25 faria a medicao nascer truncada, e a pergunta que ela existe para
+   * responder ("skew de deploy ou falha de CDN?") depende do numero absoluto.
+   */
+  it("evento de chunk-reload passa SEMPRE, mesmo no pior sorteio", () => {
+    const evento = { tags: { origem: "chunk-reload" } };
+    expect(amostrarPorOrigem(evento, undefined, () => 0.99)).toBe(evento);
+    expect(amostrarPorOrigem(evento, undefined, () => 1)).toBe(evento);
+  });
+
   it("evento comum continua amostrado a 0.25", () => {
     const evento = { tags: { origem: "outra-coisa" } };
     // Abaixo do corte passa.

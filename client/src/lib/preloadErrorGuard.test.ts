@@ -46,6 +46,26 @@ describe("registerPreloadErrorGuard", () => {
     expect(naoCancelado).toBe(false);
   });
 
+  /**
+   * O Vite anexa o erro original ao evento antes de despachar:
+   *   config.js:23423  e$1.payload = err$2;
+   * Sem repassar isso, o `reportChunkReload` do lazyWithRetry registra a
+   * mensagem como "unknown" justamente neste caminho, que e o unico em que o
+   * preload de CSS falha (BORANATECH-FRONT-K).
+   */
+  it("entrega o payload do evento ao efeito, em vez de perder o erro", () => {
+    const { alvo, recarregar } = guardaSobreAlvoLimpo();
+    const original = new Error(
+      "Unable to preload CSS for /assets/X-abc123.css",
+    );
+    const evento = new Event("vite:preloadError", { cancelable: true });
+    (evento as Event & { payload?: unknown }).payload = original;
+
+    alvo.dispatchEvent(evento);
+
+    expect(recarregar).toHaveBeenCalledWith(original);
+  });
+
   it("CONTROLE NEGATIVO: nao reage a 'vite:preloaderror', a caixa errada do bug", () => {
     const { alvo, recarregar } = guardaSobreAlvoLimpo();
     const evento = new Event("vite:preloaderror", { cancelable: true });

@@ -1,4 +1,5 @@
 import { lazy, type FunctionComponent } from "react";
+import * as Sentry from "@sentry/react";
 import posthog from "posthog-js";
 
 // Skew de deploy: apos um novo deploy o index.html em memoria aponta para
@@ -8,23 +9,82 @@ import posthog from "posthog-js";
 // index.html novo. Um reload resolve porque o HTML passa a apontar para os
 // hashes atuais.
 
+/**
+ * Tag `origem` lida por `amostrarPorOrigem` (lib/sentry.ts) para NAO amostrar
+ * este evento. Mesmo papel de `SENTRY_ORIGEM_AUTH` em authTelemetry.ts, e o
+ * literal e repetido la pelo mesmo motivo que o de auth: `sentry.ts` nao importa
+ * de ninguem. Os dois lados estao presos por teste (sentry.test.ts).
+ */
+export const SENTRY_ORIGEM_CHUNK_RELOAD = "chunk-reload";
+
 const RELOAD_KEY = "bnt:chunk-reload";
 const RELOAD_COOLDOWN_MS = 10_000;
 const RETRY_DELAY_MS = 300;
 
-// Telemetria (PostHog + console) antes de recarregar: registra o erro de import
-// que causou o reload e se o cooldown foi atingido. Sync + best-effort, ja que o
-// reload logo em seguida pode cortar o envio em voo do posthog.
-function reportChunkReload(importError: unknown, cooldownHit: boolean): void {
+/**
+ * Arquivo do chunk citado na mensagem do erro de import.
+ *
+ * Existe para a tag do Sentry poder responder "e sempre o mesmo chunk ou e
+ * qualquer um?", que separa asset especifico quebrado de skew de deploy.
+ *
+ * Cada engine escreve a falha de um jeito, e uma delas nao cita URL nenhuma
+ * ("Importing a module script failed.", Safari). Nesse caso devolve `"unknown"`
+ * EXPLICITO: string vazia viraria uma tag que agrupa como se fosse valor, e
+ * lancar aqui derrubaria o reload, que e a unica coisa que ainda pode salvar a
+ * navegacao. Mesma familia do `faixaUiOf`: degradar para valor neutro em dado
+ * de APRESENTACAO, nunca em dado que e a informacao.
+ */
+export function chunkDaMensagem(message: string): string {
+  const achado = message.match(/[^\s/"']+\.(?:mjs|js|css)\b/);
+  return achado ? achado[0] : "unknown";
+}
+
+// Telemetria antes de recarregar: registra o erro de import que causou o reload
+// e se o cooldown foi atingido. Sync + best-effort, ja que o reload logo em
+// seguida pode cortar o envio em voo.
+//
+// TRES destinos, e nenhum substitui o outro. Console serve em dev e em build sem
+// DSN; PostHog agrega; o Sentry entrou porque ele so via o DESFECHO deste
+// caminho (a pagina caindo no ErrorBoundary, BORANATECH-FRONT-G e -N) e nunca a
+// TENTATIVA. Sem a tentativa nao da para dizer se o reload resolveu na maioria
+// das vezes, nem em qual chunk isso acontece.
+//
+// `fingerprint` fixo de proposito: o interesse e a serie no tempo. Um issue por
+// hash de chunk faria cada deploy criar issues novas e a curva desapareceria.
+export function reportChunkReload(
+  importError: unknown,
+  cooldownHit: boolean,
+): void {
   const message =
     importError instanceof Error
       ? importError.message
       : String(importError ?? "unknown");
-  console.error("[lazyWithRetry] stale chunk reload", { message, cooldownHit });
+  const chunk = chunkDaMensagem(message);
+  console.error("[lazyWithRetry] stale chunk reload", {
+    message,
+    chunk,
+    cooldownHit,
+  });
   try {
-    posthog.capture("chunk_reload", { message, cooldownHit });
+    posthog.capture("chunk_reload", { message, chunk, cooldownHit });
   } catch {
     // posthog pode nao estar pronto; nunca bloquear o reload.
+  }
+  try {
+    Sentry.captureMessage("chunk_reload", {
+      level: "warning",
+      tags: {
+        origem: SENTRY_ORIGEM_CHUNK_RELOAD,
+        chunk,
+        // String, nao boolean: tag do Sentry so agrega texto. `true` aqui e o
+        // caso que termina no ErrorBoundary, e e o que se quer contar.
+        cooldown: String(cooldownHit),
+      },
+      fingerprint: ["chunk-reload"],
+      extra: { message },
+    });
+  } catch {
+    // Sentry sem DSN e no-op; e ele nunca pode bloquear o reload.
   }
 }
 
