@@ -85,7 +85,13 @@ const CertificationSchema = z.object({
 
 const ScheduleSchema = z.object({
   monthsLabel: z.string().min(1).max(40),
-  focus: z.string().min(80).max(300),
+  // 20, e nao 80: o piso do Zod so pode exigir o que a camada de baixo sustenta.
+  // `toOpenAIStrictSchema` remove `minLength` (openaiStrictSchema.ts:19), entao o
+  // modelo nunca recebe o limite e o pedido de ~80 vive so no SYSTEM_PROMPT. Com
+  // 80 aqui, um focus curto derrubava as 3 tentativas (mesmo prompt, mesma falha)
+  // e virava 502 na cara do usuario. 20 barra vazio e degenerado sem prometer o
+  // que nao da para cobrar. O prompt segue pedindo 80 a 300 de proposito.
+  focus: z.string().min(20).max(300),
   // Ids dos degraus (steps[].id) cobertos pelo bloco; vazio e permitido
   // (bloco sem degrau especifico, como revisao geral).
   stepIds: z.array(z.string()).max(6),
