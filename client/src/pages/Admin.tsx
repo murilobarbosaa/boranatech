@@ -88,6 +88,8 @@ import {
   type OverviewWindow,
 } from "@/components/admin/overview/OverviewPeriod";
 import { rotuloDeVariacao } from "@/components/admin/overview/overviewChange";
+import { AttentionPanel } from "@/components/admin/overview/AttentionPanel";
+import { WindowBadge } from "@/components/admin/overview/WindowBadge";
 import { PagesDashboard } from "@/components/admin/PagesDashboard";
 import { UsersDashboard } from "@/components/admin/users/UsersDashboard";
 import PendingIntegration from "@/components/admin/PendingIntegration";
@@ -138,7 +140,6 @@ type AiUsage = {
   costValue: number;
   status: "ok" | "watch" | "high";
 };
-
 
 type AffiliateRecord = {
   id: string;
@@ -231,7 +232,16 @@ type OverviewData = {
   window: string;
   windowStartIso: string | null;
   windowEndIso: string;
+  /** Dias civis da janela e o rótulo pronto. Ver server/lib/overviewWindow.ts. */
+  windowFirstDay: string | null;
+  windowLastDay: string;
+  windowLabel: string;
+  previousLabel: string | null;
+  /** Fuso que governa a Visão inteira, declarado pelo servidor. */
+  tz: string;
   cards: {
+    /** Total SEM janela, da mesma fonte do contador público da home. */
+    usuariosTotais: { value: number | null };
     novosUsuarios: {
       value: number;
       historicoDesde: string | null;
@@ -240,11 +250,22 @@ type OverviewData = {
     acessoPro: {
       bySubscription: number;
       byInfluencer: number;
+      /** Interseção dos dois ramos. `bySubscription` e `byInfluencer` a INCLUEM. */
+      both: number;
+      /** União deduplicada. É este o headline: somar as parcelas conta `both` duas vezes. */
       total: number;
     };
-    mrr: { value: number };
+    mrr: {
+      value: number;
+      activeCount: number;
+      trialingCount: number;
+      arpuCents: number | null;
+    };
     receita: {
       value: number;
+      reembolsosCents: number;
+      taxasCents: number;
+      liquidaCents: number;
       historicoDesde: string | null;
       change: OverviewChange;
     };
@@ -253,8 +274,32 @@ type OverviewData = {
       mrrCents: number;
       percentOfMrr: number | null;
     };
-    custoIa: { valueBrl: number };
+    custoIa: {
+      /** O valor é em DÓLAR: MODEL_PRICING é cotada em US$/1M tokens. */
+      valueUsd: number;
+      /** Alias do rename, mesmo número. Remover a partir de 2026-09-15. */
+      valueBrl: number;
+      chamadasSemCustoMedido: number;
+      /** Null quando AI_COST_USD_BRL_RATE não está definida. Ausência, não 0. */
+      valorEmBrl: number | null;
+      cotacaoUsdBrl: number | null;
+    };
   };
+};
+
+/** O que GET /admin/attention devolve. Ver server/lib/atencaoNecessaria.ts. */
+type AttentionData = {
+  itens: Array<{
+    tipo: string;
+    chave: string;
+    severidade: "critico" | "atencao";
+    titulo: string;
+    detalhe: string;
+    valorCents?: number;
+    url: string;
+  }>;
+  fontesIndisponiveis: string[];
+  janelaDias: number;
 };
 
 // De /dashboard sobrou o registro de auditoria. Os contadores foram podados na
@@ -380,9 +425,21 @@ type ContentType =
 // valores reais, nunca troca o label por outro nao relacionado.
 const metricCards: MetricCard[] = [
   {
-    label: "Usuários",
+    // TOTAL, SEM JANELA, e a MESMA fonte do contador público da home
+    // (server/lib/profilesCount.ts). Existe porque a única forma de ver o total
+    // era mudar o seletor para "Tudo", o que muda os outros cinco cards junto —
+    // e a ausência dele foi lida como divergência contra a home (4.790 vs 5.456)
+    // quando os dois números estavam certos e respondiam perguntas diferentes.
+    label: "Usuários totais",
     value: "0",
-    detail: "Perfis cadastrados no banco",
+    detail: "Desde o início, sem recorte de período",
+    icon: <Users className="h-6 w-6" />,
+    color: "bg-violet-800 text-white",
+  },
+  {
+    label: "Novos usuários",
+    value: "0",
+    detail: "Cadastros na janela selecionada",
     icon: <Users className="h-6 w-6" />,
     color: "bg-violet-700 text-white",
   },
@@ -855,7 +912,9 @@ function MetricCardView({
 
   if (!metric.destino) {
     return (
-      <article className="card-brutal rounded-3xl bg-white p-5">{corpo}</article>
+      <article className="card-brutal rounded-3xl bg-white p-5">
+        {corpo}
+      </article>
     );
   }
 
@@ -3090,7 +3149,9 @@ function EmailCampaignsAdminSection() {
             count: null,
             funnel: null,
             error:
-              err instanceof Error ? err.message : "Erro ao contar os elegíveis.",
+              err instanceof Error
+                ? err.message
+                : "Erro ao contar os elegíveis.",
           },
         }));
       }
@@ -3280,7 +3341,8 @@ function EmailCampaignsAdminSection() {
     });
   // Só bloqueia o disparo IMEDIATO: o agendado reavalia a audiência no disparo,
   // então uma lista vazia agora pode ter gente até a data agendada.
-  const blockImmediateEmpty = whenMode === "now" && allSelectedOriginsKnownEmpty;
+  const blockImmediateEmpty =
+    whenMode === "now" && allSelectedOriginsKnownEmpty;
 
   useEffect(() => {
     if (
@@ -3518,9 +3580,7 @@ function EmailCampaignsAdminSection() {
             .map(
               (result) =>
                 `${EMAIL_BATCH_SOURCE_META[result.source]}${
-                  result.scheduled
-                    ? " (agendado)"
-                    : `: ${result.enqueued ?? 0}`
+                  result.scheduled ? " (agendado)" : `: ${result.enqueued ?? 0}`
                 }`,
             )
             .join(" · ") + skippedNote,
@@ -4521,9 +4581,10 @@ function EmailCampaignsAdminSection() {
                       {/* TODO(Ana): copy das origens combinadas. */}
                       Cada origem vira um lote próprio, disparado na ordem
                       Usuários → Newsletter → Waitlist. Quem está em mais de uma
-                      base recebe pelo primeiro lote (e o rodapé daquela origem).
-                      O limite "próximos N" se aplica a cada origem. Em campanha
-                      promocional, a origem Usuários só alcança quem tem opt-in.
+                      base recebe pelo primeiro lote (e o rodapé daquela
+                      origem). O limite "próximos N" se aplica a cada origem. Em
+                      campanha promocional, a origem Usuários só alcança quem
+                      tem opt-in.
                     </PopoverContent>
                   </Popover>
                 </div>
@@ -4649,7 +4710,8 @@ function EmailCampaignsAdminSection() {
                     }${
                       batchSource === "users"
                         ? ` · Segmento: ${
-                            EMAIL_USER_SEGMENT_META[batchSegment] ?? batchSegment
+                            EMAIL_USER_SEGMENT_META[batchSegment] ??
+                            batchSegment
                           }`
                         : ""
                     } → ${
@@ -4727,9 +4789,9 @@ function EmailCampaignsAdminSection() {
             {extraSources.size > 0 ? (
               <p className="mt-1 text-xs font-bold text-slate-500">
                 {/* TODO(Ana): copy da dedup entre origens. */}
-                Com múltiplas origens, quem está em mais de uma base é enviado uma
-                única vez, pelo primeiro lote na ordem Usuários → Newsletter →
-                Waitlist.
+                Com múltiplas origens, quem está em mais de uma base é enviado
+                uma única vez, pelo primeiro lote na ordem Usuários → Newsletter
+                → Waitlist.
               </p>
             ) : null}
 
@@ -5078,8 +5140,8 @@ function EmailCampaignsAdminSection() {
                 {selectedQueueOrigins.length > 1
                   ? "nas origens selecionadas"
                   : "nesta origem"}{" "}
-                com os filtros atuais. Ajuste a origem ou o segmento, ou agende o
-                envio (a audiência é recontada no disparo).
+                com os filtros atuais. Ajuste a origem ou o segmento, ou agende
+                o envio (a audiência é recontada no disparo).
               </p>
             ) : null}
 
@@ -6114,6 +6176,9 @@ export default function Admin() {
   const [overview, setOverview] = useState<OverviewData | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState<string | null>(null);
+  const [attention, setAttention] = useState<AttentionData | null>(null);
+  const [attentionLoading, setAttentionLoading] = useState(true);
+  const [attentionError, setAttentionError] = useState<string | null>(null);
 
   const overviewWindow = parseOverviewWindow(
     new URLSearchParams(search).get("window"),
@@ -6154,6 +6219,38 @@ export default function Admin() {
       cancelled = true;
     };
   }, [overviewWindow]);
+
+  // ATENCAO NECESSARIA: estado proprio, e NAO segue o seletor.
+  //
+  // Os itens sao estado atual (assinatura em atraso, saida agendada, orfao) ou
+  // tem janela propria declarada pelo servidor (`janelaDias`). Fazer trocar de 7
+  // para 30 refazer esta chamada mudaria o rotulo sem mudar o conteudo, que e a
+  // mesma armadilha do funil.
+  useEffect(() => {
+    let cancelled = false;
+    setAttentionLoading(true);
+    setAttentionError(null);
+    adminFetch("/attention")
+      .then((json) => {
+        if (cancelled) return;
+        setAttention(json.data as AttentionData);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        // Falha vira ESTADO de erro. Um painel vazio aqui diria "tudo em ordem"
+        // sobre uma medicao que nao aconteceu.
+        setAttention(null);
+        setAttentionError(
+          err instanceof Error ? err.message : "Erro ao carregar.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setAttentionLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [affiliateName, setAffiliateName] = useState("Nova parceira tech");
   const [affiliateCode, setAffiliateCode] = useState("PARCEIRA20");
@@ -6255,7 +6352,9 @@ export default function Admin() {
         .catch((err: unknown) => ({
           ok: false as const,
           error:
-            err instanceof Error ? err.message : "Erro ao carregar o dashboard.",
+            err instanceof Error
+              ? err.message
+              : "Erro ao carregar o dashboard.",
         }));
       const aiPromise = adminFetch("/ai-stats")
         .then((json) => ({
@@ -6613,14 +6712,31 @@ export default function Admin() {
     if (!c) {
       return metricCards.map((card) => ({ ...card, value: "indisponível" }));
     }
-    const janelaLabel =
-      overview.window === "all" ? "no período todo" : `nos últimos ${overview.window} dias`;
+    // O INTERVALO EXATO, vindo pronto do servidor, em vez de "nos últimos 30
+    // dias". O rótulo genérico era o que permitia dois blocos com definições
+    // diferentes de janela parecerem o mesmo recorte: card e gráfico diziam
+    // "últimos 30 dias" e diferiam em 182 cadastros (medido em 2026-08-14).
+    // `windowLabel` e `tz` são calculados uma vez, no servidor.
+    const janelaLabel = overview.windowLabel
+      ? `de ${overview.windowLabel} (${overview.tz})`
+      : overview.window === "all"
+        ? "no período todo"
+        : `nos últimos ${overview.window} dias`;
 
     return [
       {
         ...metricCards[0],
-        label: "Novos usuários",
-        value: String(c.novosUsuarios.value),
+        // Null é AUSÊNCIA (degradação do Supabase), nunca 0: "0 usuários" é
+        // indistinguível de base vazia e seria lido como fato.
+        value:
+          c.usuariosTotais.value === null
+            ? "indisponível"
+            : formatCount(c.usuariosTotais.value),
+        destino: "usuarios",
+      },
+      {
+        ...metricCards[1],
+        value: formatCount(c.novosUsuarios.value),
         detail: `Cadastros ${janelaLabel}`,
         change: rotuloDeVariacao(
           c.novosUsuarios.change,
@@ -6629,30 +6745,47 @@ export default function Admin() {
         destino: "usuarios",
       },
       {
-        ...metricCards[1],
-        value: String(c.acessoPro.bySubscription),
-        detail:
-          c.acessoPro.byInfluencer > 0
-            ? `Assinaturas ativas. Mais ${c.acessoPro.byInfluencer} com acesso por concessão de influencer.`
-            : "Assinaturas ativas. Nenhuma concessão de influencer ativa.",
+        ...metricCards[2],
+        // TOTAL DEDUPLICADO no headline. `bySubscription` e `byInfluencer`
+        // INCLUEM quem tem os dois (`tallyProSources`: "quem tem os dois conta
+        // nos DOIS ramos"), então somar as parcelas conta essas pessoas duas
+        // vezes: em 2026-08-14 eram 99 + 28 = 127 contra 124 reais. O `total` já
+        // vinha pronto na resposta e não era usado.
+        label: "Acesso Pro",
+        value: formatCount(c.acessoPro.total),
+        detail: [
+          `${c.acessoPro.bySubscription} por assinatura, ${c.acessoPro.byInfluencer} por concessão`,
+          c.acessoPro.both > 0
+            ? `${c.acessoPro.both} com as duas (contadas uma vez aqui)`
+            : null,
+          // TRIALING FORA DO HEADLINE: trial não paga, e por isso o MRR o exclui
+          // de propósito. Somá-lo ao número de pagantes faria o card divergir do
+          // MRR no primeiro trial.
+          c.mrr.trialingCount > 0 ? `${c.mrr.trialingCount} em trial` : null,
+        ]
+          .filter(Boolean)
+          .join(". "),
         destino: "usuarios",
       },
       {
-        ...metricCards[2],
-        value: formatCents(c.mrr.value),
-        detail: "MRR das assinaturas ativas (estado atual)",
-        destino: "financeiro",
-      },
-      {
         ...metricCards[3],
-        label: "Receita no período",
-        value: formatCents(c.receita.value),
-        detail: `Cobranças ${janelaLabel}`,
-        change: rotuloDeVariacao(c.receita.change, c.receita.historicoDesde),
+        value: formatCents(c.mrr.value),
+        detail: `MRR de ${formatCount(c.mrr.activeCount)} assinaturas ativas (estado atual, ignora o seletor)`,
         destino: "financeiro",
       },
       {
         ...metricCards[4],
+        label: "Receita no período",
+        value: formatCents(c.receita.value),
+        // BRUTO como principal (base do Simples) e LÍQUIDO ao lado: bruto
+        // sozinho afirma uma receita que não entrou. Os três números já eram
+        // calculados no mesmo laço e dois eram descartados.
+        detail: `Bruto ${janelaLabel}. Líquido ${formatCents(c.receita.liquidaCents)} (taxas ${formatCents(c.receita.taxasCents)}, reembolsos ${formatCents(c.receita.reembolsosCents)}).`,
+        change: rotuloDeVariacao(c.receita.change, c.receita.historicoDesde),
+        destino: "financeiro",
+      },
+      {
+        ...metricCards[5],
         value: formatCents(c.receitaEmRisco.mrrCents),
         detail:
           c.receitaEmRisco.percentOfMrr !== null
@@ -6661,9 +6794,27 @@ export default function Admin() {
         destino: "retencao",
       },
       {
-        ...metricCards[5],
-        value: formatCurrency(c.custoIa.valueBrl),
-        detail: `Custo estimado ${janelaLabel}`,
+        ...metricCards[6],
+        // EM DÓLAR. `MODEL_PRICING` (server/lib/aiTools.ts) é cotada em US$ por
+        // 1M de tokens, e até 2026-08-14 este card formatava o mesmo número com
+        // símbolo de real.
+        value: `US$ ${c.custoIa.valueUsd.toFixed(2)}`,
+        detail: [
+          `Custo estimado ${janelaLabel}`,
+          // PISO DECLARADO: sem isto, "US$ 2,41" parece completo, e ele é a soma
+          // de um subconjunto (7 ferramentas gravam custo 0 por falta de
+          // costEstimate no call site).
+          c.custoIa.chamadasSemCustoMedido > 0
+            ? `${formatCount(c.custoIa.chamadasSemCustoMedido)} chamadas sem custo medido`
+            : null,
+          // Linha em BRL só existe com cotação configurada. Ausente = ausente,
+          // nunca conversão por 1.
+          c.custoIa.valorEmBrl !== null
+            ? `≈ ${formatCurrency(c.custoIa.valorEmBrl)}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(". "),
         destino: "ia",
       },
     ];
@@ -7089,11 +7240,23 @@ export default function Admin() {
                   que têm janela própria a declaram na tela; os que são estado
                   atual dizem isso. Um seletor que governa metade da página sem
                   dizer qual metade é pior que não ter seletor. */}
-              <OverviewPeriod
-                window={overviewWindow}
-                onChange={setOverviewWindow}
-                seriesStart={overview?.cards?.novosUsuarios?.historicoDesde}
-              />
+              <div className="flex flex-wrap items-center gap-3">
+                <OverviewPeriod
+                  window={overviewWindow}
+                  onChange={setOverviewWindow}
+                  seriesStart={overview?.cards?.novosUsuarios?.historicoDesde}
+                />
+                {/* O INTERVALO EXATO ao lado do seletor. Um badge por card seria
+                    seis repetições do mesmo texto: o seletor governa os seis, e é
+                    aqui que a informação pertence. O gráfico "Cadastros por dia"
+                    traz o seu próprio badge, com o rótulo que o MESMO servidor
+                    calculou — é o par que provava divergir em 182 cadastros. */}
+                <WindowBadge
+                  label={overview?.windowLabel}
+                  tz={overview?.tz}
+                  partial={overview?.window !== "all"}
+                />
+              </div>
 
               {overviewLoading ? (
                 <LoadingBlock />
@@ -7168,8 +7331,6 @@ export default function Admin() {
                     </BlocoBoundary>
                   </div>
                 </article>
-
-
               </div>
 
               <div className="grid gap-6 xl:grid-cols-3">
@@ -7246,43 +7407,19 @@ export default function Admin() {
                   </article>
                 </BlocoBoundary>
 
-                <BlocoBoundary nome="Eventos recentes">
-                  <article className="card-brutal rounded-3xl bg-white p-6">
-                    <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                      <Zap className="h-6 w-6" />
-                      Eventos recentes
-                    </h2>
-                    <div className="mt-5 space-y-4">
-                      {dashboardLoading ? (
-                        <LoadingBlock />
-                      ) : auditLogs.length ? (
-                        auditLogs.map((event) => (
-                          <div
-                            key={`${event.created_at}-${event.resource_type}-${event.resource_slug || ""}`}
-                            className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="flex items-center gap-2 text-xs font-black uppercase text-violet-700">
-                                <FileText className="h-4 w-4" />
-                                {formatRelativeTime(event.created_at)}
-                              </span>
-                              <Clock3 className="h-4 w-4 text-slate-400" />
-                            </div>
-                            <p className="mt-2 font-display text-lg font-black text-slate-950">
-                              {auditTitle(event.action)}
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-slate-600">
-                              {event.resource_type} {event.resource_slug || ""}
-                            </p>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4 text-sm font-black text-slate-600">
-                          Nenhuma ação registrada ainda.
-                        </p>
-                      )}
-                    </div>
-                  </article>
+                {/* ATENCAO NECESSARIA substitui "Eventos recentes".
+                    O bloco antigo listava as 10 ultimas linhas de
+                    `content_audit_logs`, ou seja, historico de edicao de
+                    conteudo: o espaco mais visivel da Visao era o unico sobre o
+                    qual nao havia nada a fazer. `auditLogs` e o fetch de
+                    /dashboard que o alimentavam continuam existindo; o que sai e
+                    o JSX. */}
+                <BlocoBoundary nome="Atenção necessária">
+                  <AttentionPanel
+                    data={attention}
+                    loading={attentionLoading}
+                    error={attentionError}
+                  />
                 </BlocoBoundary>
               </div>
             </>
@@ -7623,7 +7760,6 @@ export default function Admin() {
               <NotificationsManager />
             </AdminSection>
           ) : null}
-
 
           {activeSection === "tarefas" ? (
             <AdminSection
@@ -8803,7 +8939,6 @@ export default function Admin() {
               </TabsContent>
             </Tabs>
           ) : null}
-
         </div>
       </section>
       {deleteAffiliateTarget ? (

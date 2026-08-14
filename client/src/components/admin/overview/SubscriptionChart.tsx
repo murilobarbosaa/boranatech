@@ -47,6 +47,14 @@ type Historico = {
   staleDays: number | null;
   gaps: string[];
   truncated: boolean;
+  /**
+   * Intervalo e fuso, do servidor. Este bloco tem janela PRÓPRIA: ela termina no
+   * último snapshot, não em hoje (o cron grava às 05:10 UTC). Dizer só "últimos
+   * 30 dias" o faria parecer o mesmo recorte dos cards, que é exatamente o
+   * defeito que a Fase 2 fechou.
+   */
+  windowLabel?: string | null;
+  tz?: string | null;
 };
 
 const brl = new Intl.NumberFormat("pt-BR", {
@@ -210,6 +218,12 @@ function rodapeDeSnapshots(
     return [];
   }
   const avisos: string[] = [];
+
+  if (data.windowLabel) {
+    avisos.push(
+      `Período: ${data.windowLabel}${data.tz ? ` (${data.tz})` : ""}, terminando no último snapshot.`,
+    );
+  }
 
   if (data.staleDays !== null && data.staleDays > 1 && data.lastSnapshotDate) {
     avisos.push(

@@ -76,11 +76,7 @@ import {
   resolverJanela,
   rotuloDeIntervalo,
 } from "../lib/overviewWindow";
-import {
-  coletarTagueado,
-  coletarTudo,
-  paginateRange,
-} from "../lib/paginate";
+import { coletarTagueado, coletarTudo, paginateRange } from "../lib/paginate";
 import { buildProfilePatch } from "../lib/profileEdit";
 import {
   criarLimitadorDeReembolso,
@@ -522,36 +518,36 @@ function computarSaudeDeIntegracoes() {
     "admincache:integrations-health",
     INTEGRATIONS_HEALTH_CACHE_TTL_S,
     async () => {
-    // Sonda leve (1 query), nao o funil completo: o painel so le state/hasData.
-    const posthog = await getPosthogHealth();
+      // Sonda leve (1 query), nao o funil completo: o painel so le state/hasData.
+      const posthog = await getPosthogHealth();
 
-    let redis: { configured: boolean; ok: boolean } = {
-      configured: Boolean(env.redisUrl),
-      ok: false,
-    };
-    if (cacheConnection) {
-      try {
-        const pong = await cacheConnection.ping();
-        redis = { configured: true, ok: pong === "PONG" };
-      } catch {
-        redis = { configured: true, ok: false };
+      let redis: { configured: boolean; ok: boolean } = {
+        configured: Boolean(env.redisUrl),
+        ok: false,
+      };
+      if (cacheConnection) {
+        try {
+          const pong = await cacheConnection.ping();
+          redis = { configured: true, ok: pong === "PONG" };
+        } catch {
+          redis = { configured: true, ok: false };
+        }
       }
-    }
 
-    return {
-      billingEnabled: env.billingEnabled,
-      posthog,
-      stripe: {
-        secretKey: Boolean(env.stripeSecretKey),
-        webhookSecret: Boolean(env.stripeWebhookSecret),
-        priceIds: {
-          pro_monthly: Boolean(env.stripePriceIds.pro_monthly),
-          pro_semiannual: Boolean(env.stripePriceIds.pro_semiannual),
-          pro_annual: Boolean(env.stripePriceIds.pro_annual),
+      return {
+        billingEnabled: env.billingEnabled,
+        posthog,
+        stripe: {
+          secretKey: Boolean(env.stripeSecretKey),
+          webhookSecret: Boolean(env.stripeWebhookSecret),
+          priceIds: {
+            pro_monthly: Boolean(env.stripePriceIds.pro_monthly),
+            pro_semiannual: Boolean(env.stripePriceIds.pro_semiannual),
+            pro_annual: Boolean(env.stripePriceIds.pro_annual),
+          },
         },
-      },
-      redis,
-    resend: { apiKey: Boolean(env.resendApiKey) },
+        redis,
+        resend: { apiKey: Boolean(env.resendApiKey) },
       };
     },
   );
@@ -1475,7 +1471,8 @@ type SnapshotRow = {
 function diasEntre(inicio: string, fim: string): number {
   const MS_DIA = 24 * 60 * 60 * 1000;
   return Math.round(
-    (Date.parse(`${fim}T00:00:00Z`) - Date.parse(`${inicio}T00:00:00Z`)) / MS_DIA,
+    (Date.parse(`${fim}T00:00:00Z`) - Date.parse(`${inicio}T00:00:00Z`)) /
+      MS_DIA,
   );
 }
 
@@ -1508,9 +1505,9 @@ router.get("/subscription-history", async (req, res, next) => {
   try {
     const janelaRaw =
       typeof req.query.window === "string" ? req.query.window : "30";
-    const janela = (
-      SUBSCRIPTION_HISTORY_WINDOWS as readonly string[]
-    ).includes(janelaRaw)
+    const janela = (SUBSCRIPTION_HISTORY_WINDOWS as readonly string[]).includes(
+      janelaRaw,
+    )
       ? (janelaRaw as SubscriptionHistoryWindow)
       : "30";
 
@@ -1675,6 +1672,12 @@ router.get("/subscription-history", async (req, res, next) => {
         points,
         firstSnapshotDate,
         lastSnapshotDate,
+        // ROTULO DO INTERVALO pela MESMA funcao dos cards e do outro grafico.
+        // Aqui ele termina no ULTIMO SNAPSHOT, nao em hoje, e e justamente por
+        // isso que precisa ser explicito: este bloco tem janela propria e dizer
+        // "ultimos 30 dias" o faria parecer o mesmo recorte dos cards.
+        windowLabel: rotuloDeIntervalo(inicioReal, lastSnapshotDate),
+        tz: OVERVIEW_TZ_LABEL,
         // Dias desde o ultimo snapshot. 0 = o de hoje ja existe; 1 = normal
         // antes das 05:10 UTC; maior que isso significa cron parado, e e o
         // unico sinal que a serie da de que parou de crescer.
@@ -1766,7 +1769,11 @@ router.get("/cancellation-reasons", async (_req, res, next) => {
       .limit(50);
     if (commentsError)
       return next(
-        dbError("cancellation-reasons comments", commentsError, "Erro ao buscar comentários."),
+        dbError(
+          "cancellation-reasons comments",
+          commentsError,
+          "Erro ao buscar comentários.",
+        ),
       );
 
     const comments = (
@@ -1791,7 +1798,11 @@ router.get("/cancellation-reasons", async (_req, res, next) => {
       .eq("status", "reverted");
     if (revertedError)
       return next(
-        dbError("cancellation-reasons reverted", revertedError, "Erro ao buscar revertidos."),
+        dbError(
+          "cancellation-reasons reverted",
+          revertedError,
+          "Erro ao buscar revertidos.",
+        ),
       );
 
     res.json({
@@ -2015,7 +2026,9 @@ router.delete("/content/:type/:id", async (req, res, next) => {
         .update({ is_published: false })
         .eq("id", id);
       if (error)
-        return next(dbError("content unpublish", error, "Erro ao despublicar item."));
+        return next(
+          dbError("content unpublish", error, "Erro ao despublicar item."),
+        );
     }
 
     await logAudit({
@@ -2195,7 +2208,11 @@ router.get("/users", async (req, res, next) => {
       );
       if (infError)
         return next(
-          dbError("users influencer filter", infError, "Erro ao buscar usuários."),
+          dbError(
+            "users influencer filter",
+            infError,
+            "Erro ao buscar usuários.",
+          ),
         );
       const influencerIds = Array.from(
         new Set((infRows || []).map((row) => row.user_id)),
@@ -2315,7 +2332,11 @@ router.get("/users/:id", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
 
@@ -2424,7 +2445,11 @@ router.get("/users/:id", async (req, res, next) => {
 
     if (subResult.error)
       return next(
-        dbError("user subscription", subResult.error, "Erro ao buscar usuário."),
+        dbError(
+          "user subscription",
+          subResult.error,
+          "Erro ao buscar usuário.",
+        ),
       );
     if (cancelResult.error)
       return next(
@@ -2436,7 +2461,11 @@ router.get("/users/:id", async (req, res, next) => {
       );
     if (financeResult.error)
       return next(
-        dbError("user paid total", financeResult.error, "Erro ao buscar usuário."),
+        dbError(
+          "user paid total",
+          financeResult.error,
+          "Erro ao buscar usuário.",
+        ),
       );
     if (influencerResult.error)
       return next(
@@ -2448,7 +2477,11 @@ router.get("/users/:id", async (req, res, next) => {
       );
     if (authResult.error)
       return next(
-        dbError("user auth lookup", authResult.error, "Erro ao buscar usuário."),
+        dbError(
+          "user auth lookup",
+          authResult.error,
+          "Erro ao buscar usuário.",
+        ),
       );
     if (!declaradasResult.ok)
       return next(
@@ -2519,7 +2552,9 @@ router.get("/users/:id", async (req, res, next) => {
       todasAsAssinaturas,
       new Date(),
     ) as LinhaAssinatura | null;
-    const subPlan = Array.isArray(subRow?.plans) ? subRow?.plans[0] : subRow?.plans;
+    const subPlan = Array.isArray(subRow?.plans)
+      ? subRow?.plans[0]
+      : subRow?.plans;
 
     // HISTORICO: as OUTRAS assinaturas do usuario, sem a escolhida acima.
     //
@@ -2645,7 +2680,11 @@ router.post("/users/:id/reveal-cpf", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
 
@@ -2705,7 +2744,11 @@ router.post("/users/:id/influencer", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
     const noteRaw = (req.body as { note?: unknown } | undefined)?.note;
@@ -2790,7 +2833,11 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
 
@@ -3911,7 +3958,9 @@ router.post("/users/:id/subscription/cancel", async (req, res, next) => {
       .maybeSingle();
 
     if (subError)
-      return next(dbError("admin cancel lookup", subError, "Erro ao cancelar."));
+      return next(
+        dbError("admin cancel lookup", subError, "Erro ao cancelar."),
+      );
     if (!sub) {
       return next(
         createError(404, "not_found", "Nenhuma assinatura ativa encontrada."),
@@ -3998,7 +4047,11 @@ router.get("/users/:id/email-usage", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
 
@@ -4076,7 +4129,11 @@ router.post("/users/:id/email", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
 
@@ -4247,7 +4304,11 @@ router.patch("/users/:id", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
 
@@ -4332,7 +4393,8 @@ router.patch("/users/:id", async (req, res, next) => {
     if (typeof expectedUpdatedAt === "string") {
       update = update.eq("updated_at", expectedUpdatedAt);
     }
-    const { data: updated, error: updateError } = await update.select("user_id");
+    const { data: updated, error: updateError } =
+      await update.select("user_id");
 
     if (updateError)
       return next(dbError("PATCH /users/:id", updateError, "Erro ao salvar."));
@@ -4375,7 +4437,11 @@ router.get("/users/:id/transactions", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
 
@@ -4561,7 +4627,11 @@ router.get("/users/:id/activity", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
     const result = await getPosthogUserActivity(uid);
@@ -4581,7 +4651,9 @@ router.get("/subscriptions", async (_req, res, next) => {
       .limit(100);
 
     if (error)
-      return next(dbError("subscriptions fetch", error, "Erro ao buscar assinaturas."));
+      return next(
+        dbError("subscriptions fetch", error, "Erro ao buscar assinaturas."),
+      );
 
     // Mantem a forma da resposta, mas o preco exibido vem do planPricing.ts (fonte
     // unica), nao de plans.price_cents. Fallback defensivo para o banco (helper
@@ -4732,7 +4804,11 @@ function parsePageParams(query: Record<string, unknown>): {
 async function resolveBrlAmount(
   amountCents: number,
   currency: string,
-): Promise<{ amountBrlCents: number; fxRate: number | null; fxDate: string | null }> {
+): Promise<{
+  amountBrlCents: number;
+  fxRate: number | null;
+  fxDate: string | null;
+}> {
   const cur = currency.toUpperCase();
   if (cur === "BRL") {
     return { amountBrlCents: amountCents, fxRate: null, fxDate: null };
@@ -4793,7 +4869,11 @@ function parseExpenseBody(body: Record<string, unknown>): ExpenseInput {
   const kind = typeof body.kind === "string" ? body.kind : "";
   if (!EXPENSE_KINDS.has(kind)) {
     // TODO(Ana)
-    throw createError(400, "invalid_kind", "Tipo inválido (recurring ou one_off).");
+    throw createError(
+      400,
+      "invalid_kind",
+      "Tipo inválido (recurring ou one_off).",
+    );
   }
 
   const amountCents = Number(body.amount_cents);
@@ -4953,13 +5033,14 @@ router.get("/finance/transactions", async (req, res, next) => {
       .order("occurred_at", { ascending: false })
       .range(rangeFrom, rangeTo);
 
-    const typeFilter =
-      typeof req.query.type === "string" ? req.query.type : "";
+    const typeFilter = typeof req.query.type === "string" ? req.query.type : "";
     if (typeFilter) query = query.eq("type", typeFilter);
 
     const { data, count, error } = await query;
     if (error)
-      return next(dbError("finance transactions", error, "Erro ao buscar transações."));
+      return next(
+        dbError("finance transactions", error, "Erro ao buscar transações."),
+      );
 
     res.json({
       data: { rows: data ?? [], total: count ?? 0, page, pageSize },
@@ -5029,7 +5110,9 @@ router.patch("/finance/expenses/:id", async (req, res, next) => {
       .select()
       .maybeSingle();
     if (error)
-      return next(dbError("expense update", error, "Erro ao atualizar despesa."));
+      return next(
+        dbError("expense update", error, "Erro ao atualizar despesa."),
+      );
     if (!data)
       return next(createError(404, "not_found", "Despesa não encontrada."));
     res.json({ data });
@@ -5077,7 +5160,11 @@ router.get("/finance/fx-preview", async (req, res, next) => {
     if (currency !== "USD") {
       // TODO(Ana)
       return next(
-        createError(400, "unsupported_currency", "Moeda não suportada. Use BRL ou USD."),
+        createError(
+          400,
+          "unsupported_currency",
+          "Moeda não suportada. Use BRL ou USD.",
+        ),
       );
     }
     const rate = await fetchUsdBrlRate();
@@ -5168,8 +5255,10 @@ router.get("/ai-stats", async (_req, res, next) => {
 
 router.get("/ai-usage-summary", async (req, res, next) => {
   try {
-    const sinceRaw = typeof req.query.since === "string" ? req.query.since : null;
-    const untilRaw = typeof req.query.until === "string" ? req.query.until : null;
+    const sinceRaw =
+      typeof req.query.since === "string" ? req.query.since : null;
+    const untilRaw =
+      typeof req.query.until === "string" ? req.query.until : null;
     const since =
       sinceRaw && !Number.isNaN(Date.parse(sinceRaw)) ? sinceRaw : null;
     const until =
@@ -5195,7 +5284,6 @@ router.get("/ai-usage-summary", async (req, res, next) => {
     next(err);
   }
 });
-
 
 router.get("/affiliates-stats", async (_req, res, next) => {
   try {
@@ -5254,7 +5342,9 @@ router.get("/avatar-reports", async (_req, res, next) => {
       .eq("status", "open");
 
     if (reportsError)
-      return next(dbError("reports fetch", reportsError, "Erro ao buscar denúncias."));
+      return next(
+        dbError("reports fetch", reportsError, "Erro ao buscar denúncias."),
+      );
 
     const agg = new Map<
       string,
@@ -5303,7 +5393,9 @@ router.post("/avatar-reports/:userId/restore", async (req, res, next) => {
       .eq("user_id", targetUserId);
 
     if (profileError)
-      return next(dbError("avatar restore", profileError, "Erro ao restaurar avatar."));
+      return next(
+        dbError("avatar restore", profileError, "Erro ao restaurar avatar."),
+      );
 
     const { error: reportsError } = await supabaseAdmin
       .from("avatar_reports")
@@ -5312,7 +5404,9 @@ router.post("/avatar-reports/:userId/restore", async (req, res, next) => {
       .eq("status", "open");
 
     if (reportsError)
-      return next(dbError("close reports", reportsError, "Erro ao fechar denúncias."));
+      return next(
+        dbError("close reports", reportsError, "Erro ao fechar denúncias."),
+      );
 
     res.json({ ok: true });
   } catch (err) {
@@ -5345,7 +5439,9 @@ router.post("/avatar-reports/:userId/confirm", async (req, res, next) => {
       .eq("user_id", targetUserId);
 
     if (profileError)
-      return next(dbError("avatar remove", profileError, "Erro ao remover avatar."));
+      return next(
+        dbError("avatar remove", profileError, "Erro ao remover avatar."),
+      );
 
     // Nao deixa a imagem de violacao confirmada no bucket (best-effort).
     await deleteAvatarObject(target?.avatar_storage_path ?? null);
@@ -5357,7 +5453,9 @@ router.post("/avatar-reports/:userId/confirm", async (req, res, next) => {
       .eq("status", "open");
 
     if (reportsError)
-      return next(dbError("close reports", reportsError, "Erro ao fechar denúncias."));
+      return next(
+        dbError("close reports", reportsError, "Erro ao fechar denúncias."),
+      );
 
     res.json({ ok: true });
   } catch (err) {
@@ -5410,7 +5508,13 @@ router.get("/newsletter/subscribers", async (req, res, next) => {
     );
     for (const result of countResults) {
       if (result.error)
-        return next(dbError("subscribers count", result.error, "Erro ao contar assinantes."));
+        return next(
+          dbError(
+            "subscribers count",
+            result.error,
+            "Erro ao contar assinantes.",
+          ),
+        );
     }
     const counts = {
       pending_confirmation: countResults[0].count ?? 0,
@@ -5435,7 +5539,9 @@ router.get("/newsletter/subscribers", async (req, res, next) => {
 
     const { data, count, error } = await listQuery;
     if (error)
-      return next(dbError("subscribers list", error, "Erro ao buscar assinantes."));
+      return next(
+        dbError("subscribers list", error, "Erro ao buscar assinantes."),
+      );
 
     res.json({
       data: {
@@ -5468,7 +5574,9 @@ router.get("/beta-codes", async (_req, res, next) => {
     ]);
 
     if (codesRes.error)
-      return next(dbError("beta codes", codesRes.error, "Erro ao buscar códigos."));
+      return next(
+        dbError("beta codes", codesRes.error, "Erro ao buscar códigos."),
+      );
 
     // Falha nos logs nao derruba a lista: agregado zera, os codigos aparecem.
     const usage = new Map<string, { count: number; last: string | null }>();
@@ -5499,7 +5607,10 @@ router.get("/beta-codes", async (_req, res, next) => {
 router.get("/beta-logs", async (req, res, next) => {
   try {
     const { limit = "100" } = req.query;
-    const parsedLimit = Math.min(Math.max(parseInt(String(limit), 10) || 100, 1), 500);
+    const parsedLimit = Math.min(
+      Math.max(parseInt(String(limit), 10) || 100, 1),
+      500,
+    );
 
     const { data, error } = await supabaseAdmin
       .from("beta_unlock_logs")
@@ -5509,7 +5620,8 @@ router.get("/beta-logs", async (req, res, next) => {
       .order("created_at", { ascending: false })
       .limit(parsedLimit);
 
-    if (error) return next(dbError("audit logs", error, "Erro ao buscar logs."));
+    if (error)
+      return next(dbError("audit logs", error, "Erro ao buscar logs."));
 
     res.json({ data: data || [] });
   } catch (err) {
@@ -5531,7 +5643,9 @@ router.post("/beta-codes/:id/revoke", async (req, res, next) => {
       .maybeSingle();
 
     if (error)
-      return next(dbError("beta code revoke", error, "Erro ao revogar código."));
+      return next(
+        dbError("beta code revoke", error, "Erro ao revogar código."),
+      );
     if (!data)
       return next(createError(404, "not_found", "Código não encontrado."));
 

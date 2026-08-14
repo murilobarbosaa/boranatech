@@ -75,13 +75,17 @@ const SAIRAM: Array<{ titulo: string | RegExp; substituto: string }> = [
   { titulo: /Assinaturas e planos/i, substituto: "aba Financeiro" },
   { titulo: /Páginas mais acessadas/i, substituto: "aba Páginas" },
   { titulo: /Fila de e-mails/i, substituto: "faixa de saúde" },
+  // Rodada 5 (2026-08-14): "Eventos recentes" listava as 10 últimas linhas de
+  // `content_audit_logs`, ou seja, histórico de edição de conteúdo. O espaço
+  // mais visível da Visão era o único sobre o qual não havia nada a fazer.
+  { titulo: /Eventos recentes/i, substituto: "painel Atenção necessária" },
 ];
 
 /** Blocos que FICARAM, na ordem em que aparecem na tela. */
 const FICARAM = [
   /Do visitante ao assinante Pro/i,
   /Aquisição de usuários/i,
-  /Eventos recentes/i,
+  /Atenção necessária/i,
 ];
 
 beforeEach(() => {
@@ -232,13 +236,16 @@ describe("inventário de blocos da Visão", () => {
 
     render(<Admin />);
 
-    // A Visão continua de pé: o funil, o bloco de aquisição e a auditoria
-    // renderizam, e a faixa degrada para o estado silencioso.
+    // A Visão continua de pé: o funil, o bloco de aquisição e o painel de
+    // atenção renderizam, e a faixa degrada para o estado silencioso. O painel
+    // de atenção com `{}` é o caso que pegou um TypeError real na integração da
+    // rodada 5: `data.itens.length` sobre payload degradado derrubaria a ABA
+    // INTEIRA, não só o bloco.
     await waitFor(() =>
       expect(screen.getByText(/Do visitante ao assinante Pro/i)).toBeTruthy(),
     );
     expect(screen.getByText(/Aquisição de usuários/i)).toBeTruthy();
-    expect(screen.getByText(/Eventos recentes/i)).toBeTruthy();
+    expect(screen.getByText(/Atenção necessária/i)).toBeTruthy();
     const faixa = await screen.findByTestId("health-band");
     expect(faixa.getAttribute("data-estado")).toBe("ok");
     // Os cards caem no estado nomeado, não em R$ 0,00 falso.

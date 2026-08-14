@@ -39,6 +39,15 @@ type Serie = {
   points: Ponto[];
   firstSignupDate: string | null;
   lastDate: string | null;
+  /**
+   * Rótulo do intervalo e fuso, CALCULADOS NO SERVIDOR pela mesma função que os
+   * cards usam (`rotuloDeIntervalo`). É o par que provava divergir: card e
+   * gráfico diziam "últimos 30 dias" e mediam populações diferentes, 4.788
+   * contra 4.606 em 2026-08-14. Vindo pronto, os dois dizem o mesmo texto ou
+   * nenhum diz.
+   */
+  windowLabel?: string | null;
+  tz?: string | null;
 };
 
 export function SignupChart({ window: janela }: { window: OverviewWindow }) {
@@ -162,6 +171,13 @@ function rodapeDeCadastros(
   }
   const avisos: string[] = [];
 
+  // INTERVALO EXPLICITO, primeiro aviso: "últimos N dias" é o rótulo que
+  // permitia dois blocos com janelas diferentes parecerem o mesmo recorte.
+  if (data.windowLabel) {
+    avisos.push(
+      `Período: ${data.windowLabel}${data.tz ? ` (${data.tz})` : ""}.`,
+    );
+  }
   if (data.points.some((p) => p.partial)) {
     avisos.push(
       "A última barra é o dia de hoje, ainda em andamento: o número vai subir.",

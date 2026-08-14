@@ -68,6 +68,18 @@ export function AttentionPanel({
   loading?: boolean;
   error?: string | null;
 }) {
+  // CAMPOS AUSENTES NAO DERRUBAM A ABA. Este componente roda dentro da Visao, e
+  // um `data.itens.length` sobre um payload degradado ({} do backend antigo na
+  // janela de deploy, ou envelope de erro) seria um TypeError no render — o que
+  // troca a PAGINA INTEIRA pela tela de falha do ErrorBoundary, nao so este
+  // bloco. Foi exatamente isso que `Admin.visao.test.tsx` acusou na primeira
+  // versao. Array ausente vira array vazio; a distincao que importa (vazio por
+  // sucesso vs vazio por fonte fora do ar) continua vindo de `fontes`.
+  const itens = Array.isArray(data?.itens) ? data.itens : [];
+  const fontes = Array.isArray(data?.fontesIndisponiveis)
+    ? data.fontesIndisponiveis
+    : [];
+
   return (
     <article className="card-brutal rounded-3xl bg-white p-6">
       <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
@@ -91,19 +103,18 @@ export function AttentionPanel({
         </p>
       ) : !data ? null : (
         <div className="mt-5 space-y-4">
-          {data.fontesIndisponiveis.length > 0 ? (
+          {fontes.length > 0 ? (
             <p
               data-testid="atencao-fontes-indisponiveis"
               className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-3 text-xs font-bold text-amber-900"
             >
-              Sem resposta de:{" "}
-              {data.fontesIndisponiveis.map(rotuloDeFonte).join(", ")}. O que
+              Sem resposta de: {fontes.map(rotuloDeFonte).join(", ")}. O que
               aparece abaixo pode estar incompleto.
             </p>
           ) : null}
 
-          {data.itens.length === 0 ? (
-            data.fontesIndisponiveis.length === 0 ? (
+          {itens.length === 0 ? (
+            fontes.length === 0 ? (
               <p
                 data-testid="atencao-vazio"
                 className="flex items-center gap-2 rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-4 text-sm font-black text-emerald-800"
@@ -113,7 +124,7 @@ export function AttentionPanel({
               </p>
             ) : null
           ) : (
-            data.itens.map((item) => (
+            itens.map((item) => (
               <div
                 key={item.chave}
                 data-testid="atencao-item"

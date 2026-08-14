@@ -109,7 +109,7 @@ describe("um bloco quebrado não derruba a Visão", () => {
     expect(screen.getByTestId("grafico-cadastros")).toBeTruthy();
     expect(screen.getByTestId("overview-periodo")).toBeTruthy();
     expect(screen.getByText(/Aquisição de usuários/i)).toBeTruthy();
-    expect(screen.getByText(/Eventos recentes/i)).toBeTruthy();
+    expect(screen.getByText(/Atenção necessária/i)).toBeTruthy();
   });
 
   it("a navegação entre abas continua funcionando com o bloco quebrado", async () => {
