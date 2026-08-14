@@ -107,7 +107,7 @@ import {
 } from "./adminUsersHarness.test";
 import { contarPerfisTotal } from "../lib/profilesCount";
 import adminRouter from "./admin";
-import { criarClienteAdmin } from "./adminTestClient";
+import { criarClienteAdmin, type RespostaHttp } from "./adminTestClient";
 import statsRouter, { __resetForTests } from "./stats";
 
 const chamarAdmin = criarClienteAdmin(adminRouter);
@@ -143,6 +143,7 @@ function base(over: Record<string, RespostaTabela> = {}) {
       finance_transactions: { rows: [] },
       expenses: { rows: [] },
       ai_usage_logs: { rows: [] },
+      subscription_snapshots: { rows: [] },
       ...over,
     },
     {},
@@ -613,7 +614,7 @@ describe("card e gráfico concordam sobre o intervalo (regressão dos 182)", () 
 // 2.4 — staleDays: comportamento ATUAL fixado, pendência declarada
 // ---------------------------------------------------------------------------
 
-describe("staleDays do /subscription-history (decisão pendente)", () => {
+describe("frescor do snapshot no /subscription-history (D14)", () => {
   /**
    * Este bloco NÃO afirma que o comportamento está certo. Ele fixa o
    * comportamento atual para que a mudança futura seja deliberada, e mede a
@@ -655,21 +656,34 @@ describe("staleDays do /subscription-history (decisão pendente)", () => {
     expect(r.body.data.staleDays).toBe(0);
   });
 
-  it("ANTES da execução do dia, acusa 1 dia sem nada estar atrasado", async () => {
-    // É a janela de falso positivo, medida e fixada aqui. Se um dia alguém
-    // consertar (duração em vez de rótulo), este teste cai — e cair é o ponto:
-    // a mudança tem de ser deliberada.
+  it("D14: ANTES da execução do dia, com o snapshot de ontem, NÃO acusa atraso", async () => {
+    // ESTE TESTE FOI INVERTIDO na Fase 4. Ele fixava o defeito (o campo acusava
+    // 1 dia às 01:30Z sem nada estar atrasado, 5h10 por dia); agora fixa a
+    // correção. `staleHours` mede DURAÇÃO desde a última execução esperada, e
+    // às 01:30Z a execução das 05:10Z ainda não era devida.
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-14T01:30:00Z")); // 22:30 BRT de 13/08
     comSnapshots(["2026-08-12", "2026-08-13"]);
 
     const r = await chamarAdmin("GET", "/subscription-history?window=7");
 
-    expect(r.body.data.staleDays).toBe(1);
-    // CONTROLE NEGATIVO explícito da alternativa: em dia civil de Brasília
-    // ainda é 13/08, e o valor honesto seria 0. Fica registrado que a opção
-    // existe e não foi tomada nesta fase.
-    expect(r.body.data.staleDays).not.toBe(0);
+    expect(r.body.data.staleHours).toBe(0);
+    expect(r.body.data.snapshotAtrasado).toBe(false);
+    // CONTROLE NEGATIVO: o comportamento ANTIGO daria 1 neste mesmo instante.
+    // O alias `staleDays` (expand/contract) deriva do novo e também dá 0.
+    expect(r.body.data.staleDays).toBe(0);
+  });
+
+  it("D14: uma execução inteira perdida continua sendo acusada", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-14T06:00:00Z"));
+    comSnapshots(["2026-08-12"]);
+
+    const r = await chamarAdmin("GET", "/subscription-history?window=7");
+
+    expect(r.body.data.staleHours).toBe(48);
+    expect(r.body.data.snapshotAtrasado).toBe(true);
+    expect(r.body.data.staleDays).toBe(2);
   });
 
   it("cron parado de verdade continua sendo acusado", async () => {
@@ -679,6 +693,237 @@ describe("staleDays do /subscription-history (decisão pendente)", () => {
 
     const r = await chamarAdmin("GET", "/subscription-history?window=7");
 
+    expect(r.body.data.staleHours).toBe(96);
+    expect(r.body.data.snapshotAtrasado).toBe(true);
     expect(r.body.data.staleDays).toBe(4);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FASE 4 — séries diárias, funil e uso por ferramenta
+// ---------------------------------------------------------------------------
+
+describe("GET /overview-series", () => {
+  /** Um cadastro num dia civil de Brasília (15:00Z = 12:00 local). */
+  function perfil(dia: string, id: string) {
+    // 03:30Z = 00:30 em Brasília do MESMO dia civil (a meia-noite local é
+    // 03:00Z), e no passado em relação a qualquer hora de execução do teste. Com
+    // 15:00Z a linha de "hoje" ficava no FUTURO e caía fora da janela, que é
+    // como esta fixture descobriu que série e funil usavam critérios diferentes.
+    return { user_id: id, created_at: `${dia}T03:30:00Z` };
+  }
+  function serie(r: RespostaHttp, chave: string) {
+    return (
+      r.body.data.series as Array<{
+        chave: string;
+        tipo: string;
+        pontos: Array<{ date: string; value: number | null }>;
+        total: number | null;
+      }>
+    ).find((s) => s.chave === chave)!;
+  }
+
+  it("FLUXO tem zero-fill: dia sem cadastro é uma barra ZERO, não um buraco", async () => {
+    // Zero aqui é medição: ninguém se cadastrou. Omitir o dia faria o gráfico
+    // parecer mais curto que o período.
+    base({
+      profiles: {
+        rows: [perfil("2026-08-14", "u1"), perfil("2026-08-12", "u2")],
+        count: 2,
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/overview-series?window=7");
+
+    const cadastros = serie(r, "cadastros");
+    expect(cadastros.tipo).toBe("fluxo");
+    expect(cadastros.pontos).toHaveLength(7);
+    expect(cadastros.pontos.every((p) => typeof p.value === "number")).toBe(
+      true,
+    );
+    expect(cadastros.pontos.filter((p) => p.value === 0).length).toBe(5);
+  });
+
+  it("ESTOQUE não fabrica dia: sem snapshot, o ponto é NULL, nunca 0", async () => {
+    // A diferença que impede o gráfico de afirmar que o MRR caiu a zero num dia
+    // em que ninguém mediu.
+    base({
+      profiles: { rows: [perfil("2026-08-14", "u1")], count: 1 },
+      subscription_snapshots: {
+        rows: [
+          {
+            snapshot_date: "2026-08-14",
+            mrr_cents: 272550,
+            active_count: 99,
+          },
+        ],
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/overview-series?window=7");
+
+    const mrr = serie(r, "mrrCents");
+    expect(mrr.tipo).toBe("estoque");
+    const nulos = mrr.pontos.filter((p) => p.value === null);
+    expect(nulos.length).toBe(6);
+    // CONTROLE NEGATIVO: nenhum dia sem snapshot virou zero.
+    expect(mrr.pontos.filter((p) => p.value === 0)).toEqual([]);
+    // O total do estoque é o ÚLTIMO valor medido, não a soma.
+    expect(mrr.total).toBe(272550);
+  });
+
+  it("toda série declara a DIREÇÃO, para o client não inferir pelo nome", async () => {
+    base({ profiles: { rows: [perfil("2026-08-14", "u1")], count: 1 } });
+    const r = await chamarAdmin("GET", "/overview-series?window=7");
+    const direcoes = Object.fromEntries(
+      (r.body.data.series as Array<{ chave: string; direcao: string }>).map(
+        (s) => [s.chave, s.direcao],
+      ),
+    );
+    expect(direcoes.cadastros).toBe("up_bom");
+    expect(direcoes.receitaBrutaCents).toBe("up_bom");
+    // Custo subindo é RUIM, e isso não está no nome da métrica.
+    expect(direcoes.custoIaUsd).toBe("up_ruim");
+    expect(direcoes.chamadasSemCustoMedido).toBe("up_ruim");
+  });
+
+  it("REGRESSÃO DOS 182, estendida: card e série somam o MESMO número", async () => {
+    // A mesma fixture alimenta o card (contagem com janela) e a série diária. Se
+    // o bucketing da série divergir da janela do card, os dois números se
+    // separam — que é exatamente o defeito que a Fase 2 fechou entre card e
+    // gráfico de cadastros.
+    const linhas = [
+      perfil("2026-08-14", "u1"),
+      perfil("2026-08-13", "u2"),
+      perfil("2026-08-10", "u3"),
+    ];
+    base({ profiles: { rows: linhas, count: linhas.length } });
+
+    const cards = await chamarAdmin("GET", "/overview?window=7");
+    base({ profiles: { rows: linhas, count: linhas.length } });
+    const series = await chamarAdmin("GET", "/overview-series?window=7");
+
+    const soma = serie(series, "cadastros").pontos.reduce(
+      (a, p) => a + (p.value ?? 0),
+      0,
+    );
+    expect(soma).toBe(cards.body.data.cards.novosUsuarios.value);
+    // E os dois blocos declaram o MESMO intervalo, com o mesmo texto.
+    expect(series.body.data.windowLabel).toBe(cards.body.data.windowLabel);
+  });
+
+  it("funil traz taxas adjacentes e NENHUM delta entre janelas", async () => {
+    base({
+      profiles: {
+        rows: [perfil("2026-08-14", "u1"), perfil("2026-08-13", "u2")],
+        count: 2,
+      },
+      ai_usage_logs: {
+        rows: [
+          {
+            id: "l1",
+            user_id: "u1",
+            tool: "linkedin-analyzer",
+            status: "success",
+            cost_estimate: "0.5",
+            created_at: "2026-08-14T03:30:00Z",
+          },
+        ],
+      },
+      subscriptions: {
+        rows: [
+          assinatura({ user_id: "u1", created_at: "2026-08-14T15:00:00Z" }),
+        ],
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/overview-series?window=7");
+    const f = r.body.data.funil;
+
+    expect(f.passos.map((p: { valor: number }) => p.valor)).toEqual([2, 1, 1]);
+    expect(f.passos[1].taxaSobreAnterior).toBeCloseTo(50, 6);
+    expect(f.passos[2].taxaSobreAnterior).toBeCloseTo(100, 6);
+    // O delta NÃO existe, e o motivo é nomeado: coortes de maturidades
+    // diferentes produzem um delta negativo por construção.
+    expect(f.motivoSemDelta).toBe("coortes_de_maturidade_diferente");
+    expect(f.destaque).toBe("ativacao");
+  });
+
+  it("CONTROLE NEGATIVO: base vazia não vira NaN em lugar nenhum", async () => {
+    base({
+      profiles: { rows: [], count: 0 },
+      subscriptions: { rows: [] },
+      ai_usage_logs: { rows: [] },
+      finance_transactions: { rows: [] },
+    });
+
+    const r = await chamarAdmin("GET", "/overview-series?window=7");
+
+    expect(r.status).toBe(200);
+    const f = r.body.data.funil;
+    expect(f.passos[1].taxaSobreAnterior).toBeNull();
+    expect(f.destaque).toBeNull();
+    expect(r.body.data.ferramentas).toEqual([]);
+    const texto = JSON.stringify(r.body.data);
+    expect(texto).not.toContain("NaN");
+    expect(texto).not.toContain("Infinity");
+  });
+
+  it("uso por ferramenta separa custo medido de NÃO medido", async () => {
+    // É este número que prioriza a Fase 5: a ferramenta com mais chamadas sem
+    // custo é a que mais distorce o total.
+    base({
+      profiles: { rows: [perfil("2026-08-14", "u1")], count: 1 },
+      ai_usage_logs: {
+        rows: [
+          {
+            id: "l1",
+            user_id: "u1",
+            tool: "github-perfil",
+            status: "success",
+            cost_estimate: "0",
+            created_at: "2026-08-14T03:30:00Z",
+          },
+          {
+            id: "l2",
+            user_id: "u1",
+            tool: "linkedin-analyzer",
+            status: "success",
+            cost_estimate: "0.25",
+            created_at: "2026-08-14T03:30:00Z",
+          },
+        ],
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/overview-series?window=7");
+    const porTool = Object.fromEntries(
+      (
+        r.body.data.ferramentas as Array<{
+          tool: string;
+          chamadas: number;
+          custoUsd: number;
+          semCustoMedido: number;
+        }>
+      ).map((f) => [f.tool, f]),
+    );
+
+    expect(porTool["github-perfil"]).toMatchObject({
+      chamadas: 1,
+      custoUsd: 0,
+      semCustoMedido: 1,
+    });
+    expect(porTool["linkedin-analyzer"].semCustoMedido).toBe(0);
+    expect(porTool["linkedin-analyzer"].custoUsd).toBeCloseTo(0.25, 6);
+  });
+
+  it("declara o que NÃO tem fonte local, em vez de omitir em silêncio", async () => {
+    base({ profiles: { rows: [perfil("2026-08-14", "u1")], count: 1 } });
+    const r = await chamarAdmin("GET", "/overview-series?window=7");
+    const chaves = (
+      r.body.data.semFonteLocal as Array<{ chave: string; motivo: string }>
+    ).map((x) => x.chave);
+    expect(chaves).toContain("chargesFalhadasPorDia");
+    expect(chaves).toContain("aquisicaoPorCanal");
   });
 });

@@ -55,6 +55,7 @@ import {
   custoTotalDeIa,
 } from "../lib/aiUsageStats";
 import { montarPainelDeAtencao } from "../lib/atencaoNecessaria";
+import { calcularFrescor, montarSeriesDaVisao } from "../lib/overviewSeries";
 import { CHARGE_SEM_DONO_CORTE_DIAS } from "../lib/financeSyncWindow";
 import { calcularProblemas } from "../lib/healthBand";
 import {
@@ -1174,6 +1175,44 @@ router.get("/paid-funnel", async (_req, res, next) => {
   }
 });
 
+// SERIES, FUNIL E USO POR FERRAMENTA da Visao (Fase 4).
+//
+// ROTA IRMA do /overview, com a MESMA janela (`resolverJanela`) e o mesmo cache
+// de 60s. Separada em vez de embutida porque o payload e uma ordem de grandeza
+// maior (uma serie por metrica) e nem toda tela precisa dele: os cards carregam
+// sozinhos e as series chegam depois, sem segurar o primeiro render.
+//
+// SO TABELAS LOCAIS. Ver o cabecalho de server/lib/overviewSeries.ts.
+const OVERVIEW_SERIES_CACHE_TTL_S = 60;
+
+router.get("/overview-series", async (req, res, next) => {
+  try {
+    const janela = resolverJanela(parseOverviewWindow(req.query.window));
+    const { result, computedAt } = await getOrCompute(
+      `admincache:overview-series:${janela.window}`,
+      OVERVIEW_SERIES_CACHE_TTL_S,
+      async () => ({
+        result: await montarSeriesDaVisao(janela),
+        computedAt: new Date().toISOString(),
+      }),
+    );
+    res.json({
+      data: {
+        ...result,
+        window: janela.window,
+        windowLabel: rotuloDeIntervalo(
+          janela.primeiroDiaCivil,
+          janela.ultimoDiaCivil,
+        ),
+        tz: OVERVIEW_TZ_LABEL,
+      },
+      computedAt,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ATENCAO NECESSARIA: o que pede acao humana AGORA. Substitui "Eventos
 // recentes", que listava edicoes de conteudo — historico, nao decisao.
 //
@@ -1549,38 +1588,20 @@ router.get("/subscription-history", async (req, res, next) => {
     // o de ontem; ancorar em hoje criaria um "buraco" que e so o dia ainda nao
     // ter acontecido. Quem precisa saber se o cron parou le `staleDays`.
     //
-    // `staleDays` FICA EM UTC, e a Fase 2 NAO o converteu para dia civil. Mas
-    // isto e DECISAO PENDENTE, nao excecao justificada, e o motivo esta medido
-    // abaixo — a justificativa que a primeira versao deste comentario deu estava
-    // errada e vale registrar por que.
+    // FRESCOR POR DURACAO (D14), nao por subtracao de rotulos de dia.
     //
-    // O que ele faz hoje: subtrai dois ROTULOS de dia. `lastSnapshotDate` e o dia
-    // UTC do instante da coleta (`collectSubscriptionSnapshot` faz
-    // `toISOString().slice(0,10)`), e o outro lado e o dia de "hoje". Isso NAO e
-    // uma duracao; e a diferenca entre duas etiquetas de calendario.
+    // O que havia ate 2026-08-14: `diasEntre(ultimoSnapshot, hojeUTC)`, a
+    // diferenca entre duas ETIQUETAS de calendario. Como o cron roda as 05:10
+    // UTC (migration 20260715150100), entre 00:00Z e 05:10Z o rotulo de hoje ja
+    // virou e o snapshot ainda nao rodou: o campo acusava 1 dia de atraso sem
+    // nada estar atrasado, 5h10 por dia. Trocar para o dia civil de Brasilia
+    // reduziria para 2h10 e continuaria errado, porque o problema nunca foi o
+    // fuso: era comparar rotulos onde a pergunta e duracao.
     //
-    // A cadencia do cron e 05:10 UTC (migration 20260715150100). Contando a
-    // janela diaria em que cada opcao mente:
-    //
-    //   dia UTC       de 00:00Z a 05:10Z o rotulo de hoje ja virou e o snapshot
-    //                 ainda nao rodou -> staleDays = 1 sem nada estar atrasado.
-    //                 5h10 por dia de falso positivo.
-    //   dia Brasilia  de 00:00Z a 03:00Z ainda e "ontem" em Brasilia e o valor da
-    //                 0 (certo); de 03:00Z a 05:10Z da 1 (falso). 2h10 por dia.
-    //
-    // Ou seja, o dia civil de Brasilia seria ESTRITAMENTE MELHOR aqui, e a frase
-    // "a cadencia e UTC, entao a unidade certa e UTC" nao se sustenta: nenhuma
-    // das duas mede atraso, as duas comparam etiquetas.
-    //
-    // O CONSERTO DE VERDADE nao e trocar o fuso, e sim medir DURACAO desde o
-    // instante em que a proxima execucao era esperada (05:10 UTC do dia da
-    // ultima coleta + 24h). Isso muda o tipo do campo e o que a faixa de saude
-    // exibe, entao fica para uma fase propria em vez de entrar de carona na
-    // unificacao de janela. Mantido em UTC AQUI para nao mudar comportamento sem
-    // o conserto certo; o teste abaixo fixa o comportamento atual e a pendencia
-    // esta registrada em docs/plano-admin-visao-overview.md.
-    const hojeNaCadenciaDoJob = new Date().toISOString().slice(0, 10);
-    const staleDays = diasEntre(lastSnapshotDate, hojeNaCadenciaDoJob);
+    // Agora a conta e "quantas horas desde a ultima execucao ESPERADA", e
+    // atrasado exige uma execucao inteira perdida. Ver `calcularFrescor` em
+    // server/lib/overviewSeries.ts.
+    const frescor = calcularFrescor(lastSnapshotDate, new Date());
 
     const inicioJanela =
       janela === "all"
@@ -1678,10 +1699,18 @@ router.get("/subscription-history", async (req, res, next) => {
         // "ultimos 30 dias" o faria parecer o mesmo recorte dos cards.
         windowLabel: rotuloDeIntervalo(inicioReal, lastSnapshotDate),
         tz: OVERVIEW_TZ_LABEL,
-        // Dias desde o ultimo snapshot. 0 = o de hoje ja existe; 1 = normal
-        // antes das 05:10 UTC; maior que isso significa cron parado, e e o
-        // unico sinal que a serie da de que parou de crescer.
-        staleDays,
+        // FRESCOR: horas desde a ultima execucao esperada do cron, e o
+        // veredito. Ver `calcularFrescor`.
+        staleHours: frescor.horasDesdeOEsperado,
+        snapshotAtrasado: frescor.atrasado,
+        // ALIAS do campo antigo, por um ciclo de deploy: aba de admin aberta
+        // desde antes do deploy segue lendo `staleDays` ate recarregar
+        // (CLAUDE.md, "Renomear campo de resposta"). Derivado do novo, em dias
+        // inteiros. REMOVER a partir de 2026-09-15.
+        staleDays:
+          frescor.horasDesdeOEsperado === null
+            ? null
+            : Math.floor(frescor.horasDesdeOEsperado / 24),
         gaps,
         truncated,
         limit: SUBSCRIPTION_HISTORY_LIMIT,

@@ -78,11 +78,13 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
  * ato deliberado, no commit da rota que o muda.
  */
 // 55 -> 56 em 2026-08-14, com a rota `GET /admin/attention` (painel "Atenção
-// necessária"). Subir este número é ato deliberado: quem acrescenta rota confere
-// antes que ela está atrás de `requireAuth` + `requireAdmin`, e a nova está — o
-// router monta as duas no topo e a rota entra depois, o que os dois testes acima
-// verificam por posição.
-const EXPECTED_ROUTE_COUNT = 56;
+// necessária"). 56 -> 57 na mesma data, com `GET /admin/overview-series` (séries
+// diárias, funil e uso por ferramenta da Fase 4). Subir este número é ato
+// deliberado: quem acrescenta rota confere antes que ela está atrás de
+// `requireAuth` + `requireAdmin`, e as duas novas estão — o router monta as
+// guardas no topo e as rotas entram depois, o que os dois testes acima verificam
+// por posição.
+const EXPECTED_ROUTE_COUNT = 57;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {
