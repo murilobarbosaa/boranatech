@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { diaBrasilia, formatarDiaCivil } from "./brasiliaDay";
+import {
+  diaBrasilia,
+  formatarDiaCivil,
+  inicioDoDiaBrasilia,
+  somarDiaCivil,
+} from "./brasiliaDay";
 
 /**
  * A distinção que este arquivo existe para manter: `date` é dia, `timestamptz` é
@@ -70,5 +75,62 @@ describe("formatarDiaCivil: coluna `date`, sem passar por Date", () => {
     expect(formatarDiaCivil(null)).toBe("");
     expect(formatarDiaCivil(undefined)).toBe("");
     expect(formatarDiaCivil("qualquer coisa")).toBe("");
+  });
+});
+
+describe("inicioDoDiaBrasilia", () => {
+  it("devolve a MEIA-NOITE de Brasília, não a de UTC", () => {
+    // É a diferença que separava 4.788 de 4.606 na aba Visão.
+    expect(inicioDoDiaBrasilia("2026-07-16")).toBe("2026-07-16T03:00:00.000Z");
+    expect(inicioDoDiaBrasilia("2026-07-16")).not.toBe(
+      "2026-07-16T00:00:00.000Z",
+    );
+  });
+
+  it("o instante devolvido pertence ao dia pedido, e o anterior NÃO", () => {
+    // Propriedade que fecha o intervalo pelos dois lados, em vez de afirmar um
+    // offset. Se o Brasil voltar a ter horário de verão, o offset muda e este
+    // teste continua válido — um teste que só afirmasse "-03:00" viraria a
+    // documentação de uma circunstância.
+    for (const dia of ["2026-01-15", "2026-07-16", "2026-12-31"]) {
+      const inicio = inicioDoDiaBrasilia(dia);
+      expect(diaBrasilia(inicio)).toBe(dia);
+      const umMsAntes = new Date(Date.parse(inicio) - 1).toISOString();
+      expect(diaBrasilia(umMsAntes)).not.toBe(dia);
+    }
+  });
+
+  it("dia inválido LANÇA em vez de devolver um limite plausível", () => {
+    // Um corte de janela silenciosamente errado produz um número que ninguém
+    // desconfia.
+    expect(() => inicioDoDiaBrasilia("14/08/2026")).toThrow();
+    expect(() => inicioDoDiaBrasilia("")).toThrow();
+    expect(() => inicioDoDiaBrasilia("2026-13-45")).toThrow();
+  });
+});
+
+describe("somarDiaCivil", () => {
+  it("anda para frente e para trás sobre o dia civil", () => {
+    expect(somarDiaCivil("2026-08-14")).toBe("2026-08-15");
+    expect(somarDiaCivil("2026-08-14", -1)).toBe("2026-08-13");
+    expect(somarDiaCivil("2026-08-14", 0)).toBe("2026-08-14");
+  });
+
+  it("atravessa fim de mês e ano bissexto", () => {
+    expect(somarDiaCivil("2026-08-31")).toBe("2026-09-01");
+    expect(somarDiaCivil("2026-01-01", -1)).toBe("2025-12-31");
+    expect(somarDiaCivil("2028-02-28")).toBe("2028-02-29");
+  });
+
+  it("NÃO desliza por fuso: somar 1 a um dia é o dia seguinte, sempre", () => {
+    // Controle negativo da armadilha clássica: se a implementação passasse por
+    // fuso local, N somas seguidas poderiam pular ou repetir um dia.
+    let d = "2026-10-15";
+    for (let i = 0; i < 40; i += 1) d = somarDiaCivil(d);
+    expect(d).toBe("2026-11-24");
+  });
+
+  it("dia inválido LANÇA", () => {
+    expect(() => somarDiaCivil("ontem")).toThrow();
   });
 });

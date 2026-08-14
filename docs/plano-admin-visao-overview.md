@@ -376,17 +376,20 @@ vai **na direção** do que ele já faz — não é preciso tocá-lo.
 - `server/routes/admin.ts`: `/signup-history` e `/subscription-history` passam a derivar o
   intervalo **da mesma função**, em vez de recalcular. `somarDias` (1346) é deletado em favor
   de `somarDia` (`signupSeries.ts`) — uma aritmética de dia, num lugar só.
-- **`staleDays` do `/subscription-history` fica em UTC — exceção deliberada, não esquecimento.**
-  Ele não mede "quantos dias civis o usuário percebe": mede **atraso de um job**, e a
-  cadência do job é UTC. Verificado nesta rodada em
-  `supabase/migrations/20260715150100_schedule_subscription_snapshot.sql:18-24`: o `pg_cron`
-  roda `snapshot-subscriptions` **uma vez por dia às 05:10 UTC**. Converter a comparação
-  para dia civil de Brasília faria o `staleDays` pular de 0 para 1 às 21h de Brasília todo
-  dia, sem que nada tivesse atrasado — alarme falso diário, e alarme falso é alarme que
-  alguém desliga. **Decisão: manter UTC/duração absoluta, e trocar o nome da variável de
-  `hojeUtc` para algo que diga por quê** (ex.: `hojeNaCadenciaDoJob`), com o comentário
-  apontando a migration. Se um dia a cadência do cron virar horário de Brasília, esta
-  exceção cai junto — e é por isso que o comentário cita a migration, não o valor.
+- **`staleDays` do `/subscription-history` continua em UTC, como DECISÃO PENDENTE, não
+  como exceção justificada.** A verificação da cadência (pedida em 2.4) foi feita e
+  **refutou a justificativa**: o cron roda às 05:10 UTC
+  (`supabase/migrations/20260715150100_schedule_subscription_snapshot.sql`), e `staleDays`
+  não mede duração, subtrai dois **rótulos de dia**. Contando a janela diária em que cada
+  opção mente: **dia UTC erra 5h10 por dia** (de 00:00Z a 05:10Z o rótulo de hoje já virou
+  e o snapshot ainda não rodou, então acusa 1 sem nada estar atrasado); **dia civil de
+  Brasília erraria 2h10** (só de 03:00Z a 05:10Z). Ou seja, Brasília seria estritamente
+  melhor, e a frase "a cadência é UTC, logo a unidade certa é UTC" não se sustenta.
+  O conserto de verdade é medir **duração desde o instante em que a próxima execução era
+  esperada**, o que muda o tipo do campo e o que a faixa de saúde exibe — fase própria, não
+  carona na unificação de janela. Comportamento atual fixado por teste
+  (`adminOverviewCards.test.ts`, bloco "staleDays … (decisão pendente)"), com a alternativa
+  registrada como controle negativo.
 - Resposta ganha `windowLabel` (ex.: `"15 jul – 14 ago"`) e `windowTz: "America/Sao_Paulo"`,
   **calculados no servidor**, para o client não reimplementar fuso.
 - `OverviewPeriod.tsx` e cada card/gráfico exibem o badge de intervalo

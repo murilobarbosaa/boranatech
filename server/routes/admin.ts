@@ -62,12 +62,18 @@ import {
   montarFunil,
 } from "../lib/paidFunnel";
 import { contarPerfisTotal } from "../lib/profilesCount";
-import { montarSerieDeCadastros, somarDia } from "../lib/signupSeries";
-import { diaBrasilia } from "../../shared/brasiliaDay";
+import { montarSerieDeCadastros } from "../lib/signupSeries";
+import {
+  diaBrasilia,
+  inicioDoDiaBrasilia,
+  somarDiaCivil,
+} from "../../shared/brasiliaDay";
 import {
   calcularVariacao,
+  OVERVIEW_TZ_LABEL,
   parseOverviewWindow,
   resolverJanela,
+  rotuloDeIntervalo,
 } from "../lib/overviewWindow";
 import {
   coletarTagueado,
@@ -1005,6 +1011,27 @@ router.get("/overview", async (req, res, next) => {
         window: janela.window,
         windowStartIso: janela.startIso,
         windowEndIso: janela.endIso,
+        // INTERVALO EM DIAS CIVIS, e o ROTULO ja pronto.
+        //
+        // O rotulo vem do servidor para a tela nao reimplementar fuso: sao seis
+        // cards e dois graficos, e cada um formatando por conta propria seria
+        // uma chance nova de o MESMO intervalo aparecer com dois nomes. Com
+        // `tz` declarado ao lado, o badge pode dizer "16 jul - 14 ago
+        // (Brasilia)" sem que o client precise saber onde e Brasilia.
+        windowFirstDay: janela.primeiroDiaCivil,
+        windowLastDay: janela.ultimoDiaCivil,
+        windowLabel: rotuloDeIntervalo(
+          janela.primeiroDiaCivil,
+          janela.ultimoDiaCivil,
+        ),
+        previousLabel:
+          janela.previousPrimeiroDiaCivil && janela.previousUltimoDiaCivil
+            ? rotuloDeIntervalo(
+                janela.previousPrimeiroDiaCivil,
+                janela.previousUltimoDiaCivil,
+              )
+            : null,
+        tz: OVERVIEW_TZ_LABEL,
         cards: {
           // TOTAL, SEM JANELA. Existe porque a unica forma de o admin ver o
           // total era escolher "Tudo" no seletor, o que muda os outros cinco
@@ -1277,13 +1304,18 @@ const SIGNUP_HISTORY_CACHE_TTL_S = 300;
 
 router.get("/signup-history", async (req, res, next) => {
   try {
-    const janela = parseOverviewWindow(req.query.window);
+    const janelaId = parseOverviewWindow(req.query.window);
 
     const data = await getOrCompute(
-      `admincache:signup-history:${janela}`,
+      `admincache:signup-history:${janelaId}`,
       SIGNUP_HISTORY_CACHE_TTL_S,
       async () => {
-        const hoje = diaBrasilia(new Date().toISOString())!;
+        // MESMA `resolverJanela` DOS CARDS. Antes esta rota calculava o proprio
+        // `hoje` e o proprio `inicio`, e os cards calculavam instantes UTC
+        // deslizantes: duas definicoes de "ultimos 30 dias" na mesma tela, 182
+        // cadastros de diferenca medidos em 2026-08-14. Agora ha uma.
+        const janela = resolverJanela(janelaId);
+        const hoje = janela.ultimoDiaCivil;
 
         // Primeiro cadastro da base: e ele que define o inicio real de "tudo", e
         // e o que a tela mostra em vez de fingir uma janela que nao existe.
@@ -1300,10 +1332,7 @@ router.get("/signup-history", async (req, res, next) => {
             (primeiro as { created_at: string } | null)?.created_at ?? null,
           ) ?? hoje;
 
-        const inicioPedido =
-          janela === "all"
-            ? primeiroDia
-            : somarDia(hoje, -(Number(janela) - 1));
+        const inicioPedido = janela.primeiroDiaCivil ?? primeiroDia;
         // A janela nunca comeca antes do primeiro cadastro: inventar dias
         // anteriores a base seria desenhar zeros que nao sao medicao.
         const inicio = inicioPedido < primeiroDia ? primeiroDia : inicioPedido;
@@ -1316,17 +1345,17 @@ router.get("/signup-history", async (req, res, next) => {
             supabaseAdmin
               .from("profiles")
               .select("created_at")
-              // O CORTE INFERIOR JA E FOLGADO, e o sentido do fuso e o motivo:
-              // Brasilia esta ATRAS de UTC, entao o dia civil `inicio` comeca em
-              // `inicio T03:00Z`, que e depois deste limite. Nenhum instante do
-              // primeiro dia fica de fora. As tres horas a mais que entram
-              // pertencem ao dia anterior em Brasilia e o agrupamento as
-              // descarta, porque a chave e o dia de Brasilia, nao o de UTC.
+              // CORTE EXATO no instante em que o dia civil `inicio` comeca em
+              // Brasilia, pela MESMA funcao que os cards usam
+              // (`inicioDoDiaBrasilia`).
               //
-              // Se o fuso alvo algum dia ficar A FRENTE de UTC, este limite
-              // passa a cortar o comeco do primeiro dia e precisa de um dia de
-              // folga. Hoje seria custo sem efeito.
-              .gte("created_at", `${inicio}T00:00:00Z`)
+              // Antes era `${inicio}T00:00:00Z`, ou seja, meia-noite UTC, com um
+              // comentario explicando que a folga de 3h era inofensiva porque o
+              // agrupamento por dia de Brasilia descartava o excedente. Estava
+              // certo para o GRAFICO e errado como limite compartilhado: o card
+              // conta linhas, nao agrupa, entao a mesma folga que o grafico
+              // descarta o card somaria. Um limite, uma funcao.
+              .gte("created_at", inicioDoDiaBrasilia(inicio))
               .order("created_at", { ascending: true })
               .range(from, to),
           "signup history",
@@ -1340,10 +1369,16 @@ router.get("/signup-history", async (req, res, next) => {
         });
 
         return {
-          window: janela,
+          window: janelaId,
           points,
           firstSignupDate: primeiroDia,
           lastDate: hoje,
+          // MESMO rotulo e MESMO fuso dos cards, pela mesma funcao. E o que
+          // permite a tela afirmar, no badge, que os dois blocos falam do mesmo
+          // intervalo — em vez de os dois dizerem "ultimos 30 dias" e medirem
+          // coisas diferentes, que foi o defeito.
+          windowLabel: rotuloDeIntervalo(inicio, hoje),
+          tz: OVERVIEW_TZ_LABEL,
         };
       },
     );
@@ -1414,11 +1449,30 @@ function diasEntre(inicio: string, fim: string): number {
   );
 }
 
-function somarDias(data: string, dias: number): string {
-  const d = new Date(`${data}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + dias);
-  return d.toISOString().slice(0, 10);
-}
+// `somarDias` local foi REMOVIDO em 2026-08-14: era uma segunda copia, byte a
+// byte, do `somarDia` de signupSeries.ts. As duas viraram `somarDiaCivil` em
+// shared/brasiliaDay.ts. Duas copias da mesma aritmetica e a que diverge na
+// primeira correcao aplicada so numa delas.
+
+// MAPEAMENTO SNAPSHOT -> DIA CIVIL DE BRASILIA.
+//
+// `subscription_snapshots.snapshot_date` e gravado por
+// `collectSubscriptionSnapshot` como `new Date().toISOString().slice(0,10)`, ou
+// seja, o dia UTC do instante da coleta. O cron roda as **05:10 UTC**
+// (`supabase/migrations/20260715150100_schedule_subscription_snapshot.sql`).
+//
+// 05:10 UTC e DEPOIS de 03:00 UTC, que e a meia-noite de Brasilia. Logo, para
+// esta cadencia, o dia UTC da coleta e o dia civil de Brasilia da coleta sao o
+// MESMO dia, e o mapeamento e a identidade. Nao ha conversao a fazer, e e por
+// isso que ela nao esta escrita aqui: escrever uma conversao que e identidade
+// daria a impressao de que a fonte tem granularidade sub-diaria, que ela nao tem.
+//
+// A CONDICAO, para quem mexer no cron: se o horario passar para antes de 03:00
+// UTC, um snapshot coletado, por exemplo, as 02:00 UTC do dia D pertence ao dia
+// civil D-1 em Brasilia, e a identidade quebra em silencio — a serie inteira
+// desliza um dia. Mudar o `cron.schedule` daquela migration exige revisitar este
+// bloco. E UMA linha por dia civil, por construcao (unique em snapshot_date).
+const SNAPSHOT_CRON_UTC_HOUR = 5;
 
 router.get("/subscription-history", async (req, res, next) => {
   try {
@@ -1467,13 +1521,44 @@ router.get("/subscription-history", async (req, res, next) => {
     // e gravado as 05:10 UTC, entao entre 21h e 2h de Brasilia o mais recente e
     // o de ontem; ancorar em hoje criaria um "buraco" que e so o dia ainda nao
     // ter acontecido. Quem precisa saber se o cron parou le `staleDays`.
-    const hojeUtc = new Date().toISOString().slice(0, 10);
-    const staleDays = diasEntre(lastSnapshotDate, hojeUtc);
+    //
+    // `staleDays` FICA EM UTC, e a Fase 2 NAO o converteu para dia civil. Mas
+    // isto e DECISAO PENDENTE, nao excecao justificada, e o motivo esta medido
+    // abaixo — a justificativa que a primeira versao deste comentario deu estava
+    // errada e vale registrar por que.
+    //
+    // O que ele faz hoje: subtrai dois ROTULOS de dia. `lastSnapshotDate` e o dia
+    // UTC do instante da coleta (`collectSubscriptionSnapshot` faz
+    // `toISOString().slice(0,10)`), e o outro lado e o dia de "hoje". Isso NAO e
+    // uma duracao; e a diferenca entre duas etiquetas de calendario.
+    //
+    // A cadencia do cron e 05:10 UTC (migration 20260715150100). Contando a
+    // janela diaria em que cada opcao mente:
+    //
+    //   dia UTC       de 00:00Z a 05:10Z o rotulo de hoje ja virou e o snapshot
+    //                 ainda nao rodou -> staleDays = 1 sem nada estar atrasado.
+    //                 5h10 por dia de falso positivo.
+    //   dia Brasilia  de 00:00Z a 03:00Z ainda e "ontem" em Brasilia e o valor da
+    //                 0 (certo); de 03:00Z a 05:10Z da 1 (falso). 2h10 por dia.
+    //
+    // Ou seja, o dia civil de Brasilia seria ESTRITAMENTE MELHOR aqui, e a frase
+    // "a cadencia e UTC, entao a unidade certa e UTC" nao se sustenta: nenhuma
+    // das duas mede atraso, as duas comparam etiquetas.
+    //
+    // O CONSERTO DE VERDADE nao e trocar o fuso, e sim medir DURACAO desde o
+    // instante em que a proxima execucao era esperada (05:10 UTC do dia da
+    // ultima coleta + 24h). Isso muda o tipo do campo e o que a faixa de saude
+    // exibe, entao fica para uma fase propria em vez de entrar de carona na
+    // unificacao de janela. Mantido em UTC AQUI para nao mudar comportamento sem
+    // o conserto certo; o teste abaixo fixa o comportamento atual e a pendencia
+    // esta registrada em docs/plano-admin-visao-overview.md.
+    const hojeNaCadenciaDoJob = new Date().toISOString().slice(0, 10);
+    const staleDays = diasEntre(lastSnapshotDate, hojeNaCadenciaDoJob);
 
     const inicioJanela =
       janela === "all"
         ? firstSnapshotDate
-        : somarDias(lastSnapshotDate, -(Number(janela) - 1));
+        : somarDiaCivil(lastSnapshotDate, -(Number(janela) - 1));
 
     const porData = new Map(linhas.map((l) => [l.snapshot_date, l]));
     // O primeiro dia da serie limita: janela maior que o historico nao inventa
@@ -1483,7 +1568,7 @@ router.get("/subscription-history", async (req, res, next) => {
       inicioJanela < firstSnapshotDate ? firstSnapshotDate : inicioJanela;
 
     const todosOsDias: string[] = [];
-    for (let d = inicioReal; d <= lastSnapshotDate; d = somarDias(d, 1)) {
+    for (let d = inicioReal; d <= lastSnapshotDate; d = somarDiaCivil(d, 1)) {
       todosOsDias.push(d);
     }
 

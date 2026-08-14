@@ -93,8 +93,11 @@ import {
   criarSupabaseDouble,
   type RespostaTabela,
 } from "./adminUsersHarness.test";
-import { diaBrasilia } from "../../shared/brasiliaDay";
-import { somarDia } from "../lib/signupSeries";
+import {
+  diaBrasilia,
+  inicioDoDiaBrasilia,
+  somarDiaCivil as somarDia,
+} from "../../shared/brasiliaDay";
 import adminRouter from "./admin";
 import { criarClienteAdmin } from "./adminTestClient";
 
@@ -753,10 +756,13 @@ describe("GET /signup-history", () => {
     expect(pontos.find((p) => p.date === hoje)!.count).toBe(0);
   });
 
-  it("o corte inferior cobre o dia inteiro em Brasília", async () => {
-    // O limite é `inicio T00:00:00Z`, e ele é folgado porque Brasília está
-    // ATRÁS de UTC: o dia civil só começa às 03:00Z. Se este filtro virar uma
-    // data com hora, o começo do primeiro dia some do gráfico.
+  it("o corte inferior é o instante EXATO da meia-noite de Brasília", async () => {
+    // MUDOU NA FASE 2. Era `${inicio}T00:00:00Z` (meia-noite UTC), com uma folga
+    // de 3h considerada inofensiva porque o agrupamento por dia de Brasília
+    // descartava o excedente. Isso valia para o GRÁFICO e não vale para um
+    // limite compartilhado com os cards, que CONTAM linhas em vez de agrupar: a
+    // mesma folga que o gráfico descarta, o card somaria. Agora os dois usam
+    // `inicioDoDiaBrasilia`.
     montar({ profiles: { rows: [meioDia(somarDia(hoje, -10))] } });
     await chamarAdmin("GET", "/signup-history?window=7");
 
@@ -765,8 +771,11 @@ describe("GET /signup-history", () => {
       .flatMap((c) => c.filtros)
       .filter((f) => f.tipo === "gte" && f.coluna === "created_at");
     expect(varredura.length).toBeGreaterThan(0);
+    const esperado = inicioDoDiaBrasilia(somarDia(hoje, -6));
     for (const f of varredura) {
-      expect(f.valor).toBe(`${somarDia(hoje, -6)}T00:00:00Z`);
+      expect(f.valor).toBe(esperado);
+      // CONTROLE NEGATIVO: não é mais meia-noite UTC.
+      expect(f.valor).not.toBe(`${somarDia(hoje, -6)}T00:00:00Z`);
     }
   });
 

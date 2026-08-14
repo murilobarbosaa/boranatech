@@ -523,3 +523,162 @@ describe("card Custo de IA (D6)", () => {
     expect(r.body.data.cards.custoIa.cotacaoUsdBrl).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// FASE 2 — card e gráfico sobre a MESMA janela
+// ---------------------------------------------------------------------------
+
+describe("card e gráfico concordam sobre o intervalo (regressão dos 182)", () => {
+  /**
+   * O defeito medido em 2026-08-14 às 04:53 UTC: o card "Novos usuários" dizia
+   * 4.788 e o gráfico "Cadastros por dia" logo abaixo dizia 4.606, os dois
+   * rotulados "últimos 30 dias". Nenhum estava errado por dentro; eles usavam
+   * definições diferentes de "30 dias" — instante deslizante em UTC contra dia
+   * civil de Brasília.
+   *
+   * ALCANCE DECLARADO deste teste. O dublê devolve o `count` configurado sem
+   * aplicar filtro, então ele NÃO pode provar "os dois somam o mesmo número" —
+   * uma asserção assim aqui mediria o dublê. O que ele prova, e é a causa raiz,
+   * é que **as duas rotas pedem ao banco o MESMO instante de corte** e que o
+   * gráfico cobre exatamente os dias civis que o card declara. Divergência de
+   * intervalo era o mecanismo; igualdade de intervalo é o que fecha a classe.
+   */
+  it("as duas rotas usam o MESMO instante de corte inferior", async () => {
+    // A fixture precisa de um perfil ANTIGO: o gráfico nunca começa antes do
+    // primeiro cadastro da base (inventar dias anteriores seria desenhar zeros
+    // que não são medição), então com a base vazia ele colapsaria em um dia só
+    // e o teste compararia a janela contra esse colapso, não contra si mesma.
+    base();
+    await chamarAdmin("GET", "/overview?window=7");
+    const corteDoCard = estado.double
+      .de("profiles")
+      .flatMap((c) => c.filtros)
+      .filter((f) => f.tipo === "gte" && f.coluna === "created_at")
+      .map((f) => f.valor);
+
+    base();
+    await chamarAdmin("GET", "/signup-history?window=7");
+    const corteDoGrafico = estado.double
+      .de("profiles")
+      .flatMap((c) => c.filtros)
+      .filter((f) => f.tipo === "gte" && f.coluna === "created_at")
+      .map((f) => f.valor);
+
+    expect(corteDoCard.length).toBeGreaterThan(0);
+    expect(corteDoGrafico.length).toBeGreaterThan(0);
+    // O card faz DUAS contagens de perfis, a da janela atual e a do período
+    // anterior, então registra dois cortes. O que tem de coincidir com o
+    // gráfico é o da janela ATUAL, que é o mais recente dos dois.
+    const inicioAtualDoCard = corteDoCard.slice().sort().at(-1);
+    expect(inicioAtualDoCard).toBe(corteDoGrafico[0]);
+    // E ele é meia-noite de Brasília, não meia-noite UTC.
+    expect(String(inicioAtualDoCard)).toMatch(/T03:00:00\.000Z$/);
+  });
+
+  it("o gráfico cobre exatamente os dias civis que a janela declara", async () => {
+    base();
+    const cards = await chamarAdmin("GET", "/overview?window=7");
+
+    base();
+    const grafico = await chamarAdmin("GET", "/signup-history?window=7");
+
+    const pontos = grafico.body.data.points as Array<{ date: string }>;
+    expect(pontos).toHaveLength(7);
+    expect(pontos[0].date).toBe(cards.body.data.windowFirstDay);
+    expect(pontos[pontos.length - 1].date).toBe(cards.body.data.windowLastDay);
+    // E o rótulo é literalmente o mesmo texto nos dois blocos.
+    expect(grafico.body.data.windowLabel).toBe(cards.body.data.windowLabel);
+    expect(grafico.body.data.tz).toBe(cards.body.data.tz);
+  });
+
+  it("o payload declara o intervalo e o fuso, para o badge não recalcular fuso", async () => {
+    base();
+    const r = await chamarAdmin("GET", "/overview?window=30");
+
+    expect(r.body.data.tz).toBe("Brasília");
+    expect(r.body.data.windowLabel).toMatch(/^\d{1,2} \w{3} - \d{1,2} \w{3}$/);
+    expect(r.body.data.previousLabel).toMatch(
+      /^\d{1,2} \w{3} - \d{1,2} \w{3}$/,
+    );
+    // CONTROLE NEGATIVO: em 'tudo' não existe período anterior, e o rótulo dele
+    // é ausência declarada, não string vazia.
+    base();
+    const tudo = await chamarAdmin("GET", "/overview?window=all");
+    expect(tudo.body.data.previousLabel).toBeNull();
+    expect(tudo.body.data.windowFirstDay).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2.4 — staleDays: comportamento ATUAL fixado, pendência declarada
+// ---------------------------------------------------------------------------
+
+describe("staleDays do /subscription-history (decisão pendente)", () => {
+  /**
+   * Este bloco NÃO afirma que o comportamento está certo. Ele fixa o
+   * comportamento atual para que a mudança futura seja deliberada, e mede a
+   * janela diária em que ele mente.
+   *
+   * `staleDays` subtrai dois RÓTULOS de dia: o dia UTC gravado em
+   * `snapshot_date` e o dia UTC de agora. O cron roda às 05:10 UTC, então entre
+   * 00:00Z e 05:10Z o rótulo de hoje já virou e o snapshot ainda não rodou —
+   * `staleDays = 1` sem nada estar atrasado. São 5h10 por dia.
+   *
+   * O dia civil de Brasília seria melhor (2h10), e mesmo assim não é o conserto:
+   * o certo é medir duração desde o instante em que a próxima execução era
+   * esperada. Ver o comentário em `server/routes/admin.ts`.
+   */
+  function comSnapshots(datas: string[]) {
+    base({
+      subscription_snapshots: {
+        rows: datas.map((d) => ({
+          snapshot_date: d,
+          active_count: 1,
+          trialing_count: 0,
+          mrr_cents: 2990,
+        })),
+      },
+    });
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("depois da execução do dia, staleDays é 0", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-14T06:00:00Z")); // depois das 05:10Z
+    comSnapshots(["2026-08-13", "2026-08-14"]);
+
+    const r = await chamarAdmin("GET", "/subscription-history?window=7");
+
+    expect(r.body.data.staleDays).toBe(0);
+  });
+
+  it("ANTES da execução do dia, acusa 1 dia sem nada estar atrasado", async () => {
+    // É a janela de falso positivo, medida e fixada aqui. Se um dia alguém
+    // consertar (duração em vez de rótulo), este teste cai — e cair é o ponto:
+    // a mudança tem de ser deliberada.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-14T01:30:00Z")); // 22:30 BRT de 13/08
+    comSnapshots(["2026-08-12", "2026-08-13"]);
+
+    const r = await chamarAdmin("GET", "/subscription-history?window=7");
+
+    expect(r.body.data.staleDays).toBe(1);
+    // CONTROLE NEGATIVO explícito da alternativa: em dia civil de Brasília
+    // ainda é 13/08, e o valor honesto seria 0. Fica registrado que a opção
+    // existe e não foi tomada nesta fase.
+    expect(r.body.data.staleDays).not.toBe(0);
+  });
+
+  it("cron parado de verdade continua sendo acusado", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-14T06:00:00Z"));
+    comSnapshots(["2026-08-10"]);
+
+    const r = await chamarAdmin("GET", "/subscription-history?window=7");
+
+    expect(r.body.data.staleDays).toBe(4);
+  });
+});
