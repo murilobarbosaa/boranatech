@@ -14,76 +14,97 @@
 
 ## Estado de execução
 
-**Fases 1, 2, 3 e a integração de UI estão em `main`**, no sha
-`2168f88b2929b073b49db79606a168f4fdf8edda` (fast-forward em 2026-08-14 08:13:57 UTC, com o
-CI verde nesse sha exato: 1 workflow, jobs `qualidade` e `migrations`, ambos `success`).
+**Fases 1 a 4 estão em `main`.** Última entrega: sha
+`2af86a8bc699fb8ea14510378cb67db85af2f5a1` (fast-forward em 2026-08-14 12:01:27 UTC, CI
+verde nesse sha exato: 1 workflow, jobs `qualidade` e `migrations`, ambos `success`).
 
-| Fase | Estado | Onde |
+| Fase | Estado | Sha |
 | --- | --- | --- |
-| **1** Exatidão dos cards | **EM MAIN** | backend + UI |
-| **D8** Exclusão de conta cancela Stripe | **EM MAIN** | servidor + copy no `Perfil.tsx` |
-| **livemode** no webhook | **EM MAIN** | recusa evento de sandbox em produção |
-| **2** Janela e fuso unificados | **EM MAIN** | dias civis de `America/Sao_Paulo` |
-| **3** Atenção necessária | **EM MAIN** | `GET /admin/attention` + painel |
-| **4** Cards digeridos e gráficos | não iniciada | |
-| **5** Instrumentação de custo de IA | não iniciada | gated (ver abaixo) |
+| **1** Exatidão dos cards | **EM MAIN** | `2168f88b` |
+| **D8** Exclusão de conta cancela Stripe | **EM MAIN** | `2168f88b` |
+| **livemode** no webhook | **EM MAIN** | `2168f88b` |
+| **2** Janela e fuso unificados | **EM MAIN** | `2168f88b` |
+| **3** Atenção necessária | **EM MAIN** | `2168f88b` |
+| **4** Cards digeridos, funil em taxas, gráficos novos | **EM MAIN** | `2af86a8b` |
+| **D14** staleDays por duração | **EM MAIN** | `2af86a8b` |
+| **5** Instrumentação de custo de IA | não iniciada | gated (ver pendências) |
 
-### O que mudou na tela
+### Decisões D9-D14 (rodada 6)
 
-- Card **"Usuários totais"** (sem janela, mesma fonte do contador da home) ao lado de
-  **"Novos usuários"** (com janela).
-- **"Acesso Pro"** passou a exibir o **total deduplicado** (124 em 2026-08-14) em vez de
-  `bySubscription` (99). Os dois ramos são inclusivos, então a soma antiga contava duas
-  vezes quem tem assinatura **e** concessão. Trial saiu do headline e aparece no detalhe.
-- **"Receita no período"**: bruto como principal, líquido, taxas e reembolsos ao lado.
-- **"Custo de IA"** em **US$**, com "N chamadas sem custo medido" e a linha em BRL apenas
-  se `AI_COST_USD_BRL_RATE` estiver definida.
-- **Badge de intervalo** ao lado do seletor, e o intervalo declarado no rodapé dos dois
-  gráficos, todos com o rótulo calculado pelo mesmo servidor.
-- **"Atenção necessária"** substituiu **"Eventos recentes"**.
+| # | Decisão | Como ficou |
+| --- | --- | --- |
+| **D9** | ARPU e custo por assinante como linha secundária | `secundaria` no card de MRR (`ARPU R$ X por assinante`) e no de custo (`US$ X por assinante ativo (custo parcial)`). Sem cards novos |
+| **D10** | Aquisição só com fonte real | **A seção SAIU.** Varredura do `information_schema` em 2026-08-14 não achou nenhuma coluna de UTM, referrer ou canal em `profiles` nem em `subscriptions`. O bloco rankeava `$referring_domain` do PostHog, que não é atribuição e não se liga a receita. Instrumentação de canal/UTM virou **frente futura** |
+| **D11** | Funil com etapas verificáveis | cadastro (`profiles`) → ativação (`ai_usage_logs`) → Pro (`subscriptions`), coorte aninhada, taxas adjacentes. **Sem delta entre janelas** e o motivo está abaixo |
+| **D12** | Custo × receita | BRL único quando `AI_COST_USD_BRL_RATE` existe; sem cotação, **dois painéis alinhados**, nunca eixo duplo. Selo "custo parcial" enquanto houver chamada sem custo medido |
+| **D13** | Linha de `billing_orphan_payments` fica | removida das pendências: é dado verdadeiro |
+| **D14** | staleness por duração | `staleHours` + `snapshotAtrasado`, medidos contra a execução esperada (05:10 UTC + margem de 2 h). `staleDays` fica como alias derivado por um ciclo |
+
+### Definição de conversão Pro (adotada)
+
+**Conversão = a PRIMEIRA linha de `subscriptions` da pessoa, pelo dia civil de
+`created_at` (Brasília).** A linha só nasce em pagamento confirmado (cartão via
+`checkout.session.completed`, boleto via `async_payment_succeeded`).
+
+Evidência de que a definição não distorce, medida em 2026-08-14 na janela de 30 dias:
+usuários distintos com primeira `subscriptions` = **88**; usuários distintos com cobrança
+paga em `finance_transactions` = **88**; linhas de `subscriptions` criadas = **88**. E
+**nenhum usuário tem mais de uma linha** em `subscriptions`, então "primeira" e "única"
+coincidem hoje — o `Set` no código existe para o dia em que deixarem de coincidir.
+
+### Funil: por que NÃO há delta entre janelas
+
+As coortes têm maturidades diferentes: quem entrou ontem teve um dia para ativar, quem
+entrou há 45 dias teve 45. Um delta seria negativo por construção, todos os dias, sem nada
+ter piorado. Medido em 2026-08-14 08:28 UTC:
+
+| | cadastros | ativados | Pro |
+| --- | --- | --- | --- |
+| janela atual (30 dias) | 4.807 | 134 (2,79%) | 76 (56,72% dos ativados) |
+| janela anterior | 619 | 31 (5,01%) | 25 (80,65%) |
+| atual com piso de 7 dias de maturidade | 3.940 | 137 | 87 |
+| anterior com piso de 7 dias | **10** | 2 | 1 |
+
+Sem piso, a comparação é entre coortes de idades diferentes; com piso, o denominador
+anterior cai para **dez pessoas**. Nenhuma das duas sustenta um delta. O campo não existe, e
+`motivoSemDelta: "coortes_de_maturidade_diferente"` diz por quê, no mesmo espírito dos
+`motivo` de `calcularVariacao`. **Isso diverge do que a rodada pediu** (destaque pela maior
+queda de taxa vs janela anterior): o critério de desempate previsto — menor taxa absoluta —
+virou o critério principal, e continua sendo regra fixa escrita no servidor.
+
+### Séries: fluxo tem zero-fill, estoque não
+
+Cadastros, receita, conversões e custo de IA são **fluxo**: dia sem linha é zero de verdade
+e a barra é desenhada. MRR e assinantes são **estoque**, vêm de `subscription_snapshots`, e
+dia sem snapshot volta `null` — preencher com zero afirmaria que o MRR caiu a zero num dia
+em que ninguém mediu.
+
+### Sem fonte local, declarado no payload
+
+| Chave | Motivo |
+| --- | --- |
+| `chargesFalhadasPorDia` | só existe na Stripe; `billing_failed_payments` não tem escritor, e a regra desta fase é não chamar a Stripe em request-time. O contador agregado segue no painel de atenção |
+| `aquisicaoPorCanal` | nenhuma coluna de UTM/referrer/canal no banco (D10) |
 
 ### Verificação de deploy (2026-08-14)
 
-- Backend: redeploy detectado às **08:16:10 UTC** pela queda de `uptime` no `/api/health`
-  (4.306 s → 19 s), amostra única, como manda a regra de medir estado que se afirma.
-- `GET /api/stats/users-count`: **HTTP 200**, `{"count":5462}` às 08:16:23 UTC — a fonte
-  única do contador segue de pé depois da mudança.
-- Frontend: bundle servido às 08:16:55 UTC é `assets/index-Bg4ckJCL.js` (amostra única).
-- **Instrumento que NÃO serviu, registrado para ninguém repetir:** tentei provar que a rota
-  `/api/admin/attention` subiu comparando 401 (rota existe, guarda barra) contra 404 (rota
-  não existe). Não discrimina: `requireAuth` é montado com `router.use` no topo do router,
-  então **rota inexistente também devolve 401**. O silêncio dele é indistinguível das duas
-  condições, que é exatamente a classe documentada em
-  `docs/postmortems-instrumentos.md`.
-
-### Conferência visual pendente (precisa de credencial admin)
-
-Não há credencial de admin no ambiente desta máquina (nem JWT nem login de serviço), então
-`/admin/overview` e `/admin/attention` de produção não foram lidos. A conferência fica com
-a Ana Julia, contra esta lista de expectativas em `/admin?section=visao-geral`:
-
-1. **sete** cards, começando por "Usuários totais" e "Novos usuários" (números diferentes
-   entre si — se forem iguais, o total ganhou um filtro que não deveria ter);
-2. badge de intervalo ao lado do seletor, no formato `16 jul - 14 ago (Brasília)`;
-3. "Acesso Pro" com o total deduplicado, e o detalhe somando **mais** que o headline;
-4. "Receita no período" com líquido, taxas e reembolsos no detalhe;
-5. "Custo de IA" prefixado por **US$**, com a contagem de chamadas sem custo medido;
-6. rodapé dos dois gráficos declarando o período;
-7. "Atenção necessária" no lugar de "Eventos recentes" — e, se estiver vazio, dizendo
-   "Tudo em ordem" só quando não houver fonte indisponível.
+- Backend: redeploy detectado às **12:04:18 UTC** pela queda de `uptime` (13.676 s → 37 s).
+- `GET /api/stats/users-count`: **HTTP 200**, `{"count":5485}` às 12:04:32 UTC.
+- Bundle Vercel às 12:04:35 UTC (amostra única): `assets/index-BLzymVBj.js`.
+- A sonda 401/404 **não** foi usada: `requireAuth` é montado com `router.use` no topo, então
+  rota inexistente também devolve 401 e o instrumento não discrimina (registrado na rodada 5).
 
 ### Pendências vivas
 
 | Pendência | Estado |
 | --- | --- |
-| **Remover o alias `custoIa.valueBrl`** | contract do expand/contract, **a partir de 2026-09-15**, no mesmo commit que atualizar `server/lib/janelaDeDeployInversa.test.ts`. O client já lê `valueUsd` |
-| **Linha `cs_test_…` em `billing_events` de produção** | 1 linha de modo teste gravada em 2026-07-15. A Parte 3 impede novas; a limpeza é `delete`, portanto destrutiva, e depende de autorização e da janela de 05h-09h |
-| **`staleDays` do `/subscription-history`** | decisão pendente. Comportamento atual (rótulos de dia UTC, 5h10 de falso positivo por dia) fixado por teste; o conserto é medir duração desde a execução esperada, em fase própria |
-| **Linha em `billing_orphan_payments`** | 1 linha gravada por engano em 2026-08-14 05:52:27 UTC, durante uma verificação. Não apagada de propósito (apagar seria a segunda escrita). É a linha que o cron gravaria de todo jeito |
-| **Fase 4** (cards digeridos, sparklines, gráficos novos, ARPU) | a fazer. Não depende de fator externo |
-| **Fase 5** (custo de IA: 7 call sites + `aiEnrich`) | **gated** no merge da `fix/openai-cota-credencial` + rebase, porque toca `github.ts`, `careerPlan.ts` e `interview.ts`, que aquela branch já commitou |
-| **Backfill das 251 chamadas sem custo** | recomendação é NÃO fazer (nenhuma tem tokens; só `CHARS_PER_TOKEN=4`, que o próprio código documenta como errado) |
-| **Zona de colisão da frente paralela** | ainda ativa: `fix/openai-cota-credencial` tem 40 entradas não commitadas (LinkedIn, SEO do client, `design/`), recapturada 4 vezes sem mudança |
+| **Remover o alias `custoIa.valueBrl`** | contract do expand/contract, **a partir de 2026-09-15**, no mesmo commit que atualizar `server/lib/janelaDeDeployInversa.test.ts` |
+| **Remover o alias `staleDays`** | mesmo contract, mesma data: o client já pode ler `staleHours`/`snapshotAtrasado` |
+| **Linha `cs_test_…` em `billing_events`** | 1 linha de modo teste gravada em 2026-07-15. Novas já são recusadas; a limpeza é `delete`, destrutiva, e depende de autorização e da janela de 05h-09h |
+| **Fase 5** (7 call sites sem `costEstimate` + `aiEnrich`) | **gated** no merge da `fix/openai-cota-credencial` + rebase. O painel "uso por ferramenta" já mostra quais ferramentas mais distorcem o total, o que dá a ordem do trabalho |
+| **Instrumentação de aquisição (canal/UTM)** | frente futura, criada por D10. Exige coluna nova em `profiles` (migration aditiva) e captura no cadastro |
+| **Backfill das 251 chamadas sem custo** | recomendação é NÃO fazer (nenhuma tem tokens) |
+| **Zona de colisão da frente paralela** | ativa: `fix/openai-cota-credencial` com 40 entradas não commitadas, recapturada 6 vezes sem mudança |
 
 ---
 
