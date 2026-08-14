@@ -175,6 +175,7 @@ router.post("/:id/read", async (req, res, next) => {
         500,
         "notification_read_failed",
         "Não foi possível marcar a notificação como lida.",
+        { cause: err },
       ),
     );
   }
@@ -213,6 +214,7 @@ router.post("/read-all", async (req, res, next) => {
         500,
         "notifications_read_all_failed",
         "Não foi possível marcar as notificações como lidas.",
+        { cause: err },
       ),
     );
   }
@@ -288,6 +290,7 @@ superRouter.post("/:id/dismiss", async (req, res, next) => {
         500,
         "notification_dismiss_failed",
         "Não foi possível dispensar a notificação.",
+        { cause: err },
       ),
     );
   }
