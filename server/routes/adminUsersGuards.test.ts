@@ -77,7 +77,12 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
  * 52 desde `GET /subscription-history` (fatia 3 da Visão). Mudar este número é
  * ato deliberado, no commit da rota que o muda.
  */
-const EXPECTED_ROUTE_COUNT = 55;
+// 55 -> 56 em 2026-08-14, com a rota `GET /admin/attention` (painel "Atenção
+// necessária"). Subir este número é ato deliberado: quem acrescenta rota confere
+// antes que ela está atrás de `requireAuth` + `requireAdmin`, e a nova está — o
+// router monta as duas no topo e a rota entra depois, o que os dois testes acima
+// verificam por posição.
+const EXPECTED_ROUTE_COUNT = 56;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {

@@ -54,6 +54,7 @@ import {
   chamadasSemCustoMedido,
   custoTotalDeIa,
 } from "../lib/aiUsageStats";
+import { montarPainelDeAtencao } from "../lib/atencaoNecessaria";
 import { CHARGE_SEM_DONO_CORTE_DIAS } from "../lib/financeSyncWindow";
 import { calcularProblemas } from "../lib/healthBand";
 import {
@@ -1168,6 +1169,35 @@ router.get("/paid-funnel", async (_req, res, next) => {
       PAID_FUNNEL_CACHE_TTL_S,
       async () => ({
         result: await computarFunilPago(),
+        computedAt: new Date().toISOString(),
+      }),
+    );
+    res.json({ data: result, computedAt });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ATENCAO NECESSARIA: o que pede acao humana AGORA. Substitui "Eventos
+// recentes", que listava edicoes de conteudo — historico, nao decisao.
+//
+// SO LEITURA, e isso e uma propriedade que o codigo garante, nao uma intencao:
+// a rota le `billing_orphan_payments`, ela NAO chama `detectOrphanPayments`.
+// Quem varre a Stripe e persiste e o cron. Uma rota de painel que escrevesse
+// seria a repeticao do erro de 2026-08-14 documentado em
+// docs/postmortems-instrumentos.md ("somente leitura e propriedade da funcao").
+//
+// CACHE de 60s, mais curto que os 300s do funil: estes numeros existem para
+// alguem agir, e agir sobre estado de tres minutos atras e pior que esperar.
+const ATENCAO_CACHE_TTL_S = 60;
+
+router.get("/attention", async (_req, res, next) => {
+  try {
+    const { result, computedAt } = await getOrCompute(
+      "admincache:attention:v1",
+      ATENCAO_CACHE_TTL_S,
+      async () => ({
+        result: await montarPainelDeAtencao(),
         computedAt: new Date().toISOString(),
       }),
     );

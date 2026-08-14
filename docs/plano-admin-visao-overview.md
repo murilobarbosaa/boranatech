@@ -479,6 +479,38 @@ a tela.
 - novo `client/src/components/admin/overview/AttentionPanel.tsx`.
 - `client/src/pages/Admin.tsx` — troca do bloco "Eventos recentes".
 
+### 3.2-bis PRINCÍPIO: todo item precisa de condição NATURAL de resolução
+
+**Sem ack manual na v1.** "Natural" quer dizer que o item SOME quando o mundo muda, sem
+ninguém clicar. Ack é uma tabela, uma migration e um estado novo para manter, e sobretudo é
+a porta de entrada do painel que ninguém lê: quem marca como visto uma vez marca sempre.
+Item que só sai por clique não entra.
+
+Conferido item a item, e é isso que autoriza cada um a existir:
+
+| Item | Condição natural de resolução |
+| --- | --- |
+| `assinatura_past_due` | a Stripe muda o status (pagou, ou cancelou) |
+| `saida_agendada` | a assinatura termina, ou é reativada |
+| `cobrancas_falhadas` | saem da janela sozinhas, porque a janela desliza |
+| `pagamento_orfao` | a assinatura na Stripe morre (sem cobrança futura), ou a linha local aparece |
+| `custo_ia_spike` | é sobre o DIA CIVIL de hoje; amanhã o dia é outro |
+
+**Órfão acionável = assinatura viva ou cobrança futura.** Sub expirada ou cancelada sem
+cobrança futura vira histórico e sai do painel. Consequência concreta e verificável: o órfão
+do dossiê (`sub_1Tv4SX…`, `cancel_at` em **2026-08-19**) **sai sozinho depois daquela data**,
+sem ninguém tocar em nada. Há teste para os dois lados (`atencaoNecessaria.test.ts`).
+
+**Tabela de acks manuais: evolução futura, sem migration nesta frente.** Só faria sentido
+para um item que não tenha condição natural — e a regra acima é justamente não aceitar um
+desses no painel.
+
+**O que NÃO entrou, e o motivo:** a fila **BullMQ**. O acesso existe e funciona
+(`emailQueue.getFailedCount()` com teto de tempo, já usado na apuração da faixa de saúde em
+`server/routes/admin.ts`), então o inventário da Parte C se sustenta na prática. Mas a
+contagem **já é exibida no `HealthBand`**, no topo da mesma tela, e a regra 3.5 deste plano
+proíbe duplicar. Se um dia sair da faixa, entra aqui.
+
 ### 3.4 Ações por item
 
 Cada item leva link: **abrir no Stripe** (`https://dashboard.stripe.com/subscriptions/<id>`)
