@@ -67,3 +67,31 @@ Duas lições, e a segunda é a que dói:
 1. **Dois mecanismos disputando a mesma recuperação é uma corrida, não uma redundância.** A guarda e o `lazyWithRetry` chamavam ambos `reloadOnceForStaleChunk`. O reload até acontecia (`cooldown=false` em 10 de 10 eventos medidos), só não chegava antes do React ler `.default`, porque `location.reload()` não interrompe o JS que já está rodando. Contramedida: dono único. A guarda virou observador puro, sem `preventDefault` e sem reload.
 
 2. **O teste passou a assertar o design defeituoso.** Havia teste da guarda, com controle negativo, escrito com cuidado, e ele afirmava `expect(evento.defaultPrevented).toBe(true)` — ou seja, exigia exatamente a linha que causava o bug. Testar que o código faz o que o código faz não é verificação; o teste que faltava era o do CONTEXTO em que a função roda, e nenhuma das três rodadas que mexeram nesse arquivo exercitou o `.catch` encadeado do Vite. **A pergunta que separa os dois: o teste roda contra uma descrição do ambiente ou contra o ambiente?** Hoje o arquivo tem uma cópia literal do `handlePreloadError` do `config.js` e afirma o desfecho da promise (`rejects.toBe(erro)`), mais um controle negativo que reproduz o comportamento antigo e mostra a promise resolvendo `undefined`. É a mesma família do CI que não tem `.env` em vez de simular a ausência dele.
+
+<a id="escopo-somente-leitura"></a>
+
+## "Somente leitura" é propriedade da FUNÇÃO, não da intenção de quem chama
+
+**Escopo de leitura se julga pelo efeito COMPLETO da função chamada, nunca pelas chamadas que se tem em mente.** Em 2026-08-14, sob uma regra explícita de sessão que proibia escrita em produção, uma verificação do detector de pagamentos órfãos rodou `detectOrphanPayments({ full: true })` e **gravou uma linha em `billing_orphan_payments` às 05:52:27 UTC**. O raciocínio que levou ao erro é curto e vale registrar inteiro: a operação foi classificada como leitura porque as chamadas à Stripe eram `list` e `retrieve`, e essas eram as chamadas que estavam na cabeça de quem rodou. O `persistFindings` no fim da função não estava, e não estava porque ninguém releu a função antes de chamá-la — ela era "o detector", e detectar soa como ler.
+
+A linha não foi apagada, e o motivo é o mesmo princípio: apagar seria uma **segunda** escrita em produção para consertar a primeira. Ela é, aliás, exatamente a linha que o cron gravaria em operação normal, então o dano é zero e o registro do erro fica visível no banco.
+
+Três coisas mudaram:
+
+1. **Contramedida estrutural: o parâmetro `dryRun`.** Antes dele a regra "verificação é somente leitura" era **inverificável**, porque a função não tinha modo de leitura. Regra que depende de quem chama lembrar de não chamar é a mesma família da guarda escrita no call site: some no primeiro esquecimento. `dryRun: true` devolve `dryRun` na resposta de propósito, para `persisted: false` de dry-run não ser confundido com `persisted: false` por falha de escrita — as duas coisas pedem reações opostas.
+2. **Verificação em sessão SEMPRE com `dryRun: true`**, sem exceção de "só esta vez para ver".
+3. **Persistência é exclusiva do job agendado.** Quem grava é o cron, com `recordCronRun` em volta; execução manual observa.
+
+A generalização: antes de chamar qualquer função sob uma regra de leitura, a pergunta não é "as chamadas que eu vou fazer escrevem?", é **"esta função, do começo ao fim, escreve?"**. E se a resposta exigir ler o corpo dela, ler o corpo dela é parte do custo da verificação.
+
+<a id="replica-nao-e-evidencia"></a>
+
+## Réplica não é evidência de comportamento
+
+**Uma réplica que eu escrevo para "conferir" o que uma função faz é uma segunda implementação, e ela pode divergir da função exatamente no ponto que estou investigando.** Em 2026-08-14 uma investigação afirmou que o card "Assinantes Pro" do admin exibia 96 e 25 e perdia 3 pessoas (as com assinatura **e** concessão de influencer). A evidência era uma query SQL rotulada, no relatório, como "réplica de `tallyProSources`". Ela contava as três categorias como **mutuamente exclusivas**. A função conta os dois ramos como **inclusivos** — `bySubscription = só_assinatura + both` —, e diz isso num comentário logo acima do `return`: "quem tem os dois conta nos DOIS ramos".
+
+O resultado é a assinatura da classe: a réplica **falhou passando**. Produziu números plausíveis (96, 25, 3, 124, e o total até estava certo), fechou uma decomposição contra a Stripe sem resíduo, e inverteu o mecanismo do defeito. O card exibe **99** e **28**; a soma dá 127 contra 124 reais, ou seja, as 3 pessoas são contadas **duas vezes**, não perdidas. A ação corretiva era a mesma (headline = `total` deduplicado), o que é justamente o que torna esse tipo de erro difícil de pegar: o veredito prático não muda, e nada cobra a diferença.
+
+Quem acusou foi um **teste escrito contra a função real** (`server/routes/adminOverviewCards.test.ts`), na primeira execução. Não foi releitura, não foi revisão: foi o único instrumento da rodada que não era uma descrição do código.
+
+Regra: **evidência de comportamento é o código lido ou um teste contra a função real.** Réplica serve para explorar, para achar candidato, para estimar ordem de grandeza. Não serve para afirmar o que o sistema faz, e **não pode ser rotulada com o nome da função** — o rótulo "réplica de X" foi o que transportou a autoridade de X para uma query que não era X. É a mesma família das 35 tabelas reportadas como cobertas por policy quando estavam cobertas por privilégio: veredito certo sobre o efeito, errado sobre o mecanismo.

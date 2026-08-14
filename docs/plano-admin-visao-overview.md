@@ -12,6 +12,40 @@
 
 ---
 
+## Estado de execução
+
+| Fase | Estado | Observação |
+| --- | --- | --- |
+| **1** Exatidão | **ENTREGUE** no backend (`56c135c1`) | **Pendência: integração de UI.** Ver abaixo |
+| **D8** Exclusão de conta | **ENTREGUE** (`39d1c575`) | servidor + copy no `Perfil.tsx` |
+| **Parte 3** livemode | **ENTREGUE** (`88a0ec3f`) | webhook recusa evento de sandbox em produção |
+| **2** Janela/TZ | em andamento | |
+| **3** Atenção necessária | em andamento | backend + componente; integração na UI pendente |
+| **4** Cards e gráficos | não iniciada | |
+| **5** Custo de IA | não iniciada | depende de merge externo (0.2) |
+
+### Pendência aberta da Fase 1: integração de UI
+
+O backend da Fase 1 está pronto e testado, e **nenhum card novo aparece na tela**, porque
+`client/src/pages/Admin.tsx` está na zona de colisão da frente paralela (0.1) desde o
+início desta frente. O que existe na API e não tem leitor:
+
+| Campo em `/overview` | O que falta na UI |
+| --- | --- |
+| `cards.usuariosTotais.value` | card "Usuários totais" ao lado de "Novos usuários" |
+| `cards.acessoPro.both` e `.total` | headline passa a ser `total`; parcelas viram detalhe |
+| `cards.mrr.trialingCount` | chip "N em trial", fora do headline |
+| `cards.mrr.arpuCents` | (só na Fase 4) |
+| `cards.receita.{liquidaCents,taxasCents,reembolsosCents}` | líquido ao lado do bruto |
+| `cards.custoIa.valueUsd` | formatar em **US$**, não R$ |
+| `cards.custoIa.chamadasSemCustoMedido` | "N chamadas sem custo medido" |
+| `cards.custoIa.valorEmBrl` / `.cotacaoUsdBrl` | linha secundária em BRL, só se a env existir |
+
+Enquanto isso não integra, **a tela continua mostrando os números antigos**, incluindo
+"R$" no custo de IA. O backend já está certo; o leitor é que não existe.
+
+---
+
 ## 0. Zona de colisão e regra de exclusão
 
 ### 0.1 Zona proibida desta frente (trabalho NÃO commitado da frente paralela)
