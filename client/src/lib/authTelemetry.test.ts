@@ -146,9 +146,14 @@ describe("authErrorFields", () => {
     });
   });
 
-  it("devolve null em vez de inventar codigo para erro de rede", () => {
+  // BUG-38: este caso saia com `code: null` e virava "unknown" na mensagem, no
+  // mesmo balde de causas sem relacao. Hoje e classificado pelo `name` do erro,
+  // que e campo e nao muda por engine. A regra que a versao anterior deste teste
+  // protegia continua valendo e esta em authTelemetry.codigoFallback.test.ts: o
+  // codigo nao pode sair da MENSAGEM, so de campo estruturado.
+  it("classifica erro de rede pelo name, sem ler a mensagem", () => {
     const fields = authErrorFields(new TypeError("Failed to fetch"));
-    expect(fields.code).toBeNull();
+    expect(fields.code).toBe("network_error");
     expect(fields.status).toBeNull();
     expect(fields.message).toBe("Failed to fetch");
   });

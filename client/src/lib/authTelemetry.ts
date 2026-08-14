@@ -236,10 +236,76 @@ export function reportAuthDiagnostic(
   return payload;
 }
 
+// ─── Codigo de fallback (BUG-38) ─────────────────────────────────────────────
+// Sem code, o evento saia como "auth <stage> failure: unknown", e "unknown" nao
+// e diagnostico: e um balde onde cabem rede, HTTP e defeito de codigo, todos
+// somados numa issue que nao se investiga porque nao afirma nada.
+//
+// As regras abaixo derivam um codigo de CAMPO (`status`, `name`), nunca da
+// mensagem. As tres engines escrevem a MESMA falha de rede com tres frases
+// distintas, e foi assim que um bug do contador da home virou tres issues
+// (BUG-29/39/57); `name` e o que nao muda entre elas.
+//
+// O LIMITE E CARDINALIDADE. Codigo vira nome de issue: um codigo derivado de
+// texto livre trocaria um balde cego por mil baldes de um evento cada, que e
+// pior. Dai a faixa fechada no status e o charset/comprimento fechados no nome.
+const HTTP_STATUS_MIN = 100;
+const HTTP_STATUS_MAX = 599;
+const MAX_CODE_LEN = 40;
+
+// `name` que nao acrescenta nada ao "unknown" que ja existia. `Error` e o
+// default de qualquer `new Error()`, entao classificar por ele seria trocar o
+// nome do balde, nao dividi-lo.
+const NOMES_SEM_INFORMACAO = new Set(["error", "object"]);
+
+function normalizarNomeDeErro(name: string): string | null {
+  const slug = name
+    // camelCase -> snake_case ANTES do lowercase, senao "AbortError" viraria
+    // "aborterror" e o codigo ficaria ilegivel no painel.
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .slice(0, MAX_CODE_LEN)
+    .replace(/^_+|_+$/g, "");
+
+  if (!slug || NOMES_SEM_INFORMACAO.has(slug)) return null;
+  return slug;
+}
+
+function codigoDeFallback(
+  status: number | null,
+  name: string | null,
+): string | null {
+  // Status primeiro: quando existe, e a informacao mais especifica que ha.
+  if (
+    status !== null &&
+    Number.isInteger(status) &&
+    status >= HTTP_STATUS_MIN &&
+    status <= HTTP_STATUS_MAX
+  ) {
+    return `http_${status}`;
+  }
+
+  // `fetch` rejeita com TypeError quando a requisicao nem sai (rede, CORS,
+  // ad-block) - e comportamento de especificacao, igual nas tres engines. A
+  // interpretacao "rede" carrega um falso positivo conhecido: um TypeError de
+  // defeito de codigo dentro do supabase-js cairia aqui com o mesmo rotulo.
+  // Quem abrir o evento separa os dois pelo `error_message` do extra; o que nao
+  // da para fazer e adivinhar isso pelo texto, que e o que muda por engine.
+  if (name === "TypeError") return "network_error";
+
+  return name === null ? null : normalizarNomeDeErro(name);
+}
+
 // Extrai code/message/status de um erro do supabase-js sem depender de instanceof
 // (o erro pode chegar embrulhado) e sem parsear a mensagem. `AuthError` traz `code`
-// e `status`; erro de rede traz nenhum dos dois, e nesse caso o code fica null em
-// vez de virar uma string inventada.
+// e `status`; erro de rede traz nenhum dos dois, e nesse caso o code e DERIVADO
+// por `codigoDeFallback`, que devolve null quando nada e classificavel (a
+// mensagem do evento segue renderizando "unknown" nesse caso).
+//
+// `code` explicito tem PRECEDENCIA sobre tudo, e isso e o que garante que nenhum
+// evento que ja tinha codigo mude de mensagem, logo de issue: as series de
+// `profile_fetch_exhausted` e `bad_oauth_state` em medicao nao podem se partir.
 export function authErrorFields(error: unknown): {
   code: string | null;
   message: string | null;
@@ -256,11 +322,18 @@ export function authErrorFields(error: unknown): {
     code?: unknown;
     message?: unknown;
     status?: unknown;
+    name?: unknown;
   };
+  const status = typeof candidate.status === "number" ? candidate.status : null;
+  const name = typeof candidate.name === "string" ? candidate.name : null;
+
   return {
-    code: typeof candidate.code === "string" ? candidate.code : null,
+    code:
+      typeof candidate.code === "string"
+        ? candidate.code
+        : codigoDeFallback(status, name),
     message: typeof candidate.message === "string" ? candidate.message : null,
-    status: typeof candidate.status === "number" ? candidate.status : null,
+    status,
   };
 }
 
