@@ -57,8 +57,11 @@ class ResizeObserverStub {
   ResizeObserverStub;
 
 // O funil lanca no render, como lancaria com um payload de shape inesperado.
-vi.mock("@/components/admin/overview/PaidFunnel", () => ({
-  PaidFunnel: () => {
+// O bloco sacrificado passou a ser o FunnelDigest: o `PaidFunnel` saiu da Visão
+// na Fase 4 (funil agora vem de tabelas locais). O que o teste prova continua
+// sendo o mesmo — um bloco que estoura não leva a aba junto.
+vi.mock("@/components/admin/overview/FunnelDigest", () => ({
+  FunnelDigest: () => {
     throw new Error("campo ausente no payload do funil");
   },
 }));
@@ -100,7 +103,7 @@ describe("um bloco quebrado não derruba a Visão", () => {
 
     const quebrado = await screen.findByTestId("bloco-quebrado");
     expect(quebrado.getAttribute("data-bloco")).toBe(
-      "Funil até o assinante pago",
+      "Funil principal",
     );
 
     // Os vizinhos do mesmo lado da página seguem vivos. Sem o boundary, o
@@ -108,7 +111,7 @@ describe("um bloco quebrado não derruba a Visão", () => {
     expect(await screen.findByTestId("grafico-assinaturas")).toBeTruthy();
     expect(screen.getByTestId("grafico-cadastros")).toBeTruthy();
     expect(screen.getByTestId("overview-periodo")).toBeTruthy();
-    expect(screen.getByText(/Aquisição de usuários/i)).toBeTruthy();
+    expect(screen.getByText(/uso de IA por ferramenta/i)).toBeTruthy();
     expect(screen.getByText(/Atenção necessária/i)).toBeTruthy();
   });
 

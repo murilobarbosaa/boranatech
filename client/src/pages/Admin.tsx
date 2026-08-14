@@ -90,6 +90,15 @@ import {
 import { rotuloDeVariacao } from "@/components/admin/overview/overviewChange";
 import { AttentionPanel } from "@/components/admin/overview/AttentionPanel";
 import { WindowBadge } from "@/components/admin/overview/WindowBadge";
+import { DeltaBadge } from "@/components/admin/overview/DeltaBadge";
+import { FunnelDigest } from "@/components/admin/overview/FunnelDigest";
+import { MetricSparkline } from "@/components/admin/overview/MetricSparkline";
+import {
+  CostVsRevenueChart,
+  ProConversionsChart,
+  serieDe,
+} from "@/components/admin/overview/SeriesCharts";
+import { ToolUsagePanel } from "@/components/admin/overview/ToolUsagePanel";
 import { PagesDashboard } from "@/components/admin/PagesDashboard";
 import { UsersDashboard } from "@/components/admin/users/UsersDashboard";
 import PendingIntegration from "@/components/admin/PendingIntegration";
@@ -129,6 +138,17 @@ type MetricCard = {
   change?: { texto: string; tom: "alta" | "baixa" | "neutro" } | null;
   /** Aba que aprofunda. Sem isto o card não é clicável. */
   destino?: AdminSectionId;
+  /**
+   * Mini-gráfico da série do card. NÃO entra em métrica cumulativa
+   * ("Usuários totais" só sobe por construção, e a diagonal não informa nada).
+   */
+  sparkline?: ReactNode;
+  /**
+   * Uma linha a mais, para o que é derivado do próprio card (ARPU, custo por
+   * assinante). Card novo para cada derivada encheria a tela sem responder
+   * pergunta nova.
+   */
+  secundaria?: string | null;
 };
 
 type AiUsage = {
@@ -285,6 +305,37 @@ type OverviewData = {
       cotacaoUsdBrl: number | null;
     };
   };
+};
+
+/** O que GET /admin/overview-series devolve. Ver server/lib/overviewSeries.ts. */
+type SeriesData = {
+  series: Array<{
+    chave: string;
+    rotulo: string;
+    tipo: string;
+    direcao: "up_bom" | "up_ruim";
+    pontos: Array<{ date: string; value: number | null; partial: boolean }>;
+    total: number | null;
+  }>;
+  funil: {
+    passos: Array<{
+      chave: string;
+      rotulo: string;
+      valor: number;
+      taxaSobreAnterior: number | null;
+    }>;
+    destaque: string | null;
+    anterior: { cadastro: number; ativacao: number; pro: number } | null;
+    motivoSemDelta: string;
+  };
+  ferramentas: Array<{
+    tool: string;
+    chamadas: number;
+    custoUsd: number;
+    semCustoMedido: number;
+  }>;
+  windowLabel: string;
+  tz: string;
 };
 
 /** O que GET /admin/attention devolve. Ver server/lib/atencaoNecessaria.ts. */
@@ -893,6 +944,15 @@ function MetricCardView({
       <p className="mt-2 text-sm font-semibold text-slate-600">
         {metric.detail}
       </p>
+      {metric.secundaria ? (
+        <p
+          data-testid={`card-secundaria-${metric.label}`}
+          className="mt-1 text-sm font-bold text-slate-500"
+        >
+          {metric.secundaria}
+        </p>
+      ) : null}
+      {metric.sparkline}
       {metric.change ? (
         <p
           data-testid={`card-variacao-${metric.label}`}
@@ -6176,6 +6236,9 @@ export default function Admin() {
   const [overview, setOverview] = useState<OverviewData | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState<string | null>(null);
+  const [seriesData, setSeriesData] = useState<SeriesData | null>(null);
+  const [seriesLoading, setSeriesLoading] = useState(true);
+  const [seriesError, setSeriesError] = useState<string | null>(null);
   const [attention, setAttention] = useState<AttentionData | null>(null);
   const [attentionLoading, setAttentionLoading] = useState(true);
   const [attentionError, setAttentionError] = useState<string | null>(null);
@@ -6214,6 +6277,33 @@ export default function Admin() {
       })
       .finally(() => {
         if (!cancelled) setOverviewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [overviewWindow]);
+
+  // SERIES DA VISAO: SEGUE o seletor, porque e a mesma janela dos cards. Efeito
+  // separado do /overview de proposito: o payload e uma ordem de grandeza maior
+  // e nao pode segurar o primeiro render dos numeros.
+  useEffect(() => {
+    let cancelled = false;
+    setSeriesLoading(true);
+    setSeriesError(null);
+    adminFetch(`/overview-series?window=${overviewWindow}`)
+      .then((json) => {
+        if (cancelled) return;
+        setSeriesData(json.data as SeriesData);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setSeriesData(null);
+        setSeriesError(
+          err instanceof Error ? err.message : "Erro ao carregar as séries.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setSeriesLoading(false);
       });
     return () => {
       cancelled = true;
@@ -6723,6 +6813,18 @@ export default function Admin() {
         ? "no período todo"
         : `nos últimos ${overview.window} dias`;
 
+    // SPARKLINE POR CARD, a partir da MESMA série que o gráfico grande usa. Se
+    // as duas viessem de lugares diferentes, o mini e o grande poderiam contar
+    // histórias distintas na mesma tela — a divergência de 182 cadastros em
+    // miniatura.
+    const spark = (chave: string, direcao: "up_bom" | "up_ruim") => (
+      <MetricSparkline
+        pontos={serieDe(seriesData?.series, chave)}
+        direcao={direcao}
+        testId={`sparkline-${chave}`}
+      />
+    );
+
     return [
       {
         ...metricCards[0],
@@ -6732,12 +6834,15 @@ export default function Admin() {
           c.usuariosTotais.value === null
             ? "indisponível"
             : formatCount(c.usuariosTotais.value),
+        // SEM SPARKLINE de propósito: é métrica cumulativa, só sobe por
+        // construção, e a diagonal ascendente seria ruído com cara de dado.
         destino: "usuarios",
       },
       {
         ...metricCards[1],
         value: formatCount(c.novosUsuarios.value),
         detail: `Cadastros ${janelaLabel}`,
+        sparkline: spark("cadastros", "up_bom"),
         change: rotuloDeVariacao(
           c.novosUsuarios.change,
           c.novosUsuarios.historicoDesde,
@@ -6771,6 +6876,13 @@ export default function Admin() {
         ...metricCards[3],
         value: formatCents(c.mrr.value),
         detail: `MRR de ${formatCount(c.mrr.activeCount)} assinaturas ativas (estado atual, ignora o seletor)`,
+        // ARPU como LINHA SECUNDÁRIA (D9), não card novo: é uma divisão do que
+        // já está no card. `arpuCents` é null sem assinante ativo — ausência.
+        secundaria:
+          c.mrr.arpuCents !== null
+            ? `ARPU ${formatCents(c.mrr.arpuCents)} por assinante`
+            : null,
+        sparkline: spark("mrrCents", "up_bom"),
         destino: "financeiro",
       },
       {
@@ -6781,6 +6893,7 @@ export default function Admin() {
         // sozinho afirma uma receita que não entrou. Os três números já eram
         // calculados no mesmo laço e dois eram descartados.
         detail: `Bruto ${janelaLabel}. Líquido ${formatCents(c.receita.liquidaCents)} (taxas ${formatCents(c.receita.taxasCents)}, reembolsos ${formatCents(c.receita.reembolsosCents)}).`,
+        sparkline: spark("receitaBrutaCents", "up_bom"),
         change: rotuloDeVariacao(c.receita.change, c.receita.historicoDesde),
         destino: "financeiro",
       },
@@ -6799,6 +6912,14 @@ export default function Admin() {
         // 1M de tokens, e até 2026-08-14 este card formatava o mesmo número com
         // símbolo de real.
         value: `US$ ${c.custoIa.valueUsd.toFixed(2)}`,
+        // CUSTO POR ASSINANTE ATIVO (D9), com selo de parcial: o numerador é um
+        // piso enquanto 7 ferramentas gravarem custo 0, e uma unidade econômica
+        // derivada de um piso afirma margem melhor que a real.
+        secundaria:
+          c.mrr.activeCount > 0
+            ? `US$ ${(c.custoIa.valueUsd / c.mrr.activeCount).toFixed(3)} por assinante ativo${c.custoIa.chamadasSemCustoMedido > 0 ? " (custo parcial)" : ""}`
+            : null,
+        sparkline: spark("custoIaUsd", "up_ruim"),
         detail: [
           `Custo estimado ${janelaLabel}`,
           // PISO DECLARADO: sem isto, "US$ 2,41" parece completo, e ele é a soma
@@ -6818,7 +6939,7 @@ export default function Admin() {
         destino: "ia",
       },
     ];
-  }, [overview, overviewError]);
+  }, [overview, overviewError, seriesData]);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -7296,116 +7417,90 @@ export default function Admin() {
                 </BlocoBoundary>
               </div>
 
+              {/* FUNIL DIGERIDO substitui o `PaidFunnel`.
+                  O bloco antigo vinha do PostHog e mostrava contagens; este vem
+                  de tabelas locais e mostra TAXAS entre etapas adjacentes, que e
+                  a pergunta ("onde vaza?"). As etapas sao verificaveis no banco:
+                  cadastro (profiles) -> ativacao (ai_usage_logs) -> Pro
+                  (subscriptions). Nao comeca em visitantes porque nao existe
+                  fonte local de visitante. */}
               <div className="grid gap-6">
-                <article className="card-brutal rounded-3xl bg-white p-6">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-wide text-violet-700">
-                        funil principal
-                      </p>
-                      <h2 className="font-display text-2xl font-black text-slate-950">
-                        Do visitante ao assinante Pro
-                      </h2>
-                      {/* O funil NÃO obedece ao seletor: ele vem do PostHog com
-                          janela própria de 30 dias e cache de 5 min, e a aba
-                          Conversão oferece mês/3m/12m. Herdar a janela do
-                          seletor em silêncio faria o número mudar de rótulo sem
-                          mudar de conteúdo. */}
-                      <p
-                        data-testid="funil-janela-propria"
-                        className="mt-1 text-xs font-bold text-amber-700"
-                      >
-                        Janela própria: últimos 30 dias (não segue o seletor)
-                      </p>
-                      {!posthogLoading && posthogComputedAt ? (
-                        <p className="mt-1 text-xs font-semibold text-slate-500">
-                          analytics atualizados{" "}
-                          {formatRelativeTime(posthogComputedAt)}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="mt-6">
-                    <BlocoBoundary nome="Funil até o assinante pago">
-                      <PaidFunnel />
-                    </BlocoBoundary>
-                  </div>
-                </article>
+                <BlocoBoundary nome="Funil principal">
+                  <FunnelDigest
+                    data={seriesData?.funil}
+                    loading={seriesLoading}
+                    error={seriesError}
+                    windowLabel={
+                      seriesData?.windowLabel ?? overview?.windowLabel
+                    }
+                    tz={seriesData?.tz ?? overview?.tz}
+                  />
+                </BlocoBoundary>
+              </div>
+
+              {/* GRAFICOS NOVOS da Fase 4, no mesmo frame dos dois de cima. */}
+              <div className="grid gap-6 xl:grid-cols-2">
+                <BlocoBoundary nome="Conversões Pro por dia">
+                  <ProConversionsChart
+                    series={seriesData?.series}
+                    erro={seriesError}
+                    carregando={seriesLoading}
+                  />
+                </BlocoBoundary>
+                <BlocoBoundary nome="Custo de IA e receita">
+                  <CostVsRevenueChart
+                    series={seriesData?.series}
+                    cotacaoUsdBrl={overview?.cards?.custoIa?.cotacaoUsdBrl}
+                    chamadasSemCustoMedido={
+                      overview?.cards?.custoIa?.chamadasSemCustoMedido
+                    }
+                    erro={seriesError}
+                    carregando={seriesLoading}
+                  />
+                </BlocoBoundary>
+              </div>
+
+              <div className="grid gap-6">
+                <BlocoBoundary nome="Uso de IA por ferramenta">
+                  <ToolUsagePanel
+                    ferramentas={seriesData?.ferramentas}
+                    loading={seriesLoading}
+                    error={seriesError}
+                    windowLabel={
+                      seriesData?.windowLabel
+                        ? `${seriesData.windowLabel} (${seriesData.tz})`
+                        : null
+                    }
+                  />
+                </BlocoBoundary>
               </div>
 
               <div className="grid gap-6 xl:grid-cols-3">
-                <BlocoBoundary nome="Aquisição de usuários">
-                  <article className="card-brutal rounded-3xl bg-white p-6 xl:col-span-2">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                          <Globe2 className="h-6 w-6" />
-                          Aquisição de usuários
-                        </h2>
-                        {/* Este bloco responde DE ONDE vem o topo do funil, e o
-                            funil logo acima mostra que o maior vazamento está
-                            entre cadastro e checkout. A pergunta seguinte natural
-                            é o que essas pessoas fazem depois de chegar, e a
-                            resposta mudou de lugar: saiu daqui (o antigo "Páginas
-                            mais acessadas", que só listava views) e virou a aba
-                            Páginas, que tem tempo, scroll e taxa de saída. Sem
-                            este link o destino existiria e ninguém acharia. */}
-                        <p className="mt-1 text-xs font-semibold text-slate-500">
-                          Janela própria: últimos 30 dias (não segue o seletor)
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        data-testid="link-paginas"
-                        onClick={() => setActiveSection("paginas")}
-                        className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase text-slate-900 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
-                      >
-                        Comportamento por página
-                      </button>
-                    </div>
-                    <div className="mt-6 space-y-4">
-                      {posthogLoading ? (
-                        <LoadingBlock />
-                      ) : posthogHasData &&
-                        posthogStats?.acquisition?.length ? (
-                        posthogStats.acquisition.map((channel) => {
-                          const percent =
-                            posthogAcquisitionTotal > 0
-                              ? Math.round(
-                                  (channel.users / posthogAcquisitionTotal) *
-                                    100,
-                                )
-                              : 0;
-                          return (
-                            <div
-                              key={channel.channel}
-                              className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
-                            >
-                              <div className="flex items-center justify-between gap-4">
-                                <p className="font-display text-lg font-black text-slate-950">
-                                  {channel.channel === "None"
-                                    ? "Direto"
-                                    : channel.channel}
-                                </p>
-                                <p className="text-sm font-black text-violet-700">
-                                  {formatCount(channel.users)} usuários
-                                </p>
-                              </div>
-                              <div className="mt-3 h-3 rounded-full border-2 border-slate-900 bg-white">
-                                <div
-                                  className="h-full rounded-full bg-emerald-600"
-                                  style={{ width: `${percent}%` }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <PosthogStateNotice state={posthogState} />
-                      )}
-                    </div>
-                  </article>
-                </BlocoBoundary>
+                {/* "Aquisicao de usuarios" SAIU (D10, 2026-08-14).
+                    Ela rankeava `$referring_domain` do PostHog, que nao e
+                    atribuicao: nao ha coluna de UTM, referrer ou canal em
+                    `profiles` nem em `subscriptions` (varredura do
+                    information_schema nesta data), entao o numero nao se liga a
+                    receita nem sobrevive a bloqueador de script. Exibir um
+                    ranking que ninguem consegue usar para decidir e pior que nao
+                    exibir. Instrumentacao de canal/UTM virou frente futura,
+                    registrada no plano.
+
+                    O LINK PARA A ABA PAGINAS VOLTA AQUI. Ele morava dentro do
+                    bloco removido, e era o unico caminho da Visao para aquela
+                    aba: sem ele o destino existiria e ninguem acharia. Removi
+                    junto por descuido na primeira versao desta rodada, e o teste
+                    de inventario acusou. */}
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    data-testid="link-paginas"
+                    onClick={() => setActiveSection("paginas")}
+                    className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase text-slate-900 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                  >
+                    Comportamento por página
+                  </button>
+                </div>
 
                 {/* ATENCAO NECESSARIA substitui "Eventos recentes".
                     O bloco antigo listava as 10 ultimas linhas de

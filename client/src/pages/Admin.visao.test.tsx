@@ -79,12 +79,22 @@ const SAIRAM: Array<{ titulo: string | RegExp; substituto: string }> = [
   // `content_audit_logs`, ou seja, histórico de edição de conteúdo. O espaço
   // mais visível da Visão era o único sobre o qual não havia nada a fazer.
   { titulo: /Eventos recentes/i, substituto: "painel Atenção necessária" },
+  // Rodada 6 (2026-08-14, D10): "Aquisição de usuários" rankeava
+  // `$referring_domain` do PostHog, que NÃO é atribuição — não há coluna de UTM,
+  // referrer ou canal em `profiles` nem em `subscriptions`, então o número não
+  // se liga a receita nem sobrevive a bloqueador de script. Instrumentação de
+  // canal virou frente futura.
+  { titulo: /Aquisição de usuários/i, substituto: "nenhum (sem fonte real)" },
 ];
 
 /** Blocos que FICARAM, na ordem em que aparecem na tela. */
 const FICARAM = [
-  /Do visitante ao assinante Pro/i,
-  /Aquisição de usuários/i,
+  // "Do visitante ao assinante Pro" virou "Onde as pessoas param?": o funil saiu
+  // do PostHog para tabelas locais e passou a mostrar TAXAS entre etapas.
+  /Onde as pessoas param\?/i,
+  /Conversões Pro por dia/i,
+  /Custo de IA e receita/i,
+  /uso de IA por ferramenta/i,
   /Atenção necessária/i,
 ];
 
@@ -178,7 +188,7 @@ describe("inventário de blocos da Visão", () => {
   it("todo bloco declarado como REMOVIDO sumiu da tela", async () => {
     render(<Admin />);
     await waitFor(() =>
-      expect(screen.getByText(/Do visitante ao assinante Pro/i)).toBeTruthy(),
+      expect(screen.getByText(/Onde as pessoas param\?/i)).toBeTruthy(),
     );
 
     for (const { titulo, substituto } of SAIRAM) {
@@ -212,7 +222,7 @@ describe("inventário de blocos da Visão", () => {
   it("a faixa de saúde e o seletor de período seguem no topo", async () => {
     render(<Admin />);
     await waitFor(() =>
-      expect(screen.getByText(/Do visitante ao assinante Pro/i)).toBeTruthy(),
+      expect(screen.getByText(/Onde as pessoas param\?/i)).toBeTruthy(),
     );
     // A ordem é a hierarquia: saúde e seletor antes de tudo que decide.
     expect(await screen.findByTestId("health-band")).toBeTruthy();
@@ -242,9 +252,9 @@ describe("inventário de blocos da Visão", () => {
     // rodada 5: `data.itens.length` sobre payload degradado derrubaria a ABA
     // INTEIRA, não só o bloco.
     await waitFor(() =>
-      expect(screen.getByText(/Do visitante ao assinante Pro/i)).toBeTruthy(),
+      expect(screen.getByText(/Onde as pessoas param\?/i)).toBeTruthy(),
     );
-    expect(screen.getByText(/Aquisição de usuários/i)).toBeTruthy();
+    expect(screen.getByText(/uso de IA por ferramenta/i)).toBeTruthy();
     expect(screen.getByText(/Atenção necessária/i)).toBeTruthy();
     const faixa = await screen.findByTestId("health-band");
     expect(faixa.getAttribute("data-estado")).toBe("ok");
@@ -261,7 +271,7 @@ describe("inventário de blocos da Visão", () => {
     render(<Admin />);
 
     await waitFor(() =>
-      expect(screen.getByText(/Do visitante ao assinante Pro/i)).toBeTruthy(),
+      expect(screen.getByText(/Onde as pessoas param\?/i)).toBeTruthy(),
     );
   });
 
@@ -324,10 +334,10 @@ describe("inventário de blocos da Visão", () => {
     render(<Admin />);
 
     await waitFor(() =>
-      expect(screen.getByText(/Do visitante ao assinante Pro/i)).toBeTruthy(),
+      expect(screen.getByText(/Onde as pessoas param\?/i)).toBeTruthy(),
     );
     // O gráfico desenhou com o ponto que veio, sem estourar no campo ausente.
     expect(await screen.findByTestId("grafico-assinaturas")).toBeTruthy();
-    expect(await screen.findByTestId("funil-passo-visitantes")).toBeTruthy();
+    expect(await screen.findByTestId("funil-digerido")).toBeTruthy();
   });
 });
