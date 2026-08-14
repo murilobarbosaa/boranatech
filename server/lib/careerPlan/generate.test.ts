@@ -257,3 +257,91 @@ describe("piso de schedule[].focus", () => {
     );
   });
 });
+
+/**
+ * Os outros dois pisos inalcancaveis do MESMO schema.
+ *
+ * `certifications[].rationale` (era 80) e `outOfScope[].reason` (era 60) sao a
+ * mesma classe do `focus`: o `minLength` e removido por
+ * `toOpenAIStrictSchema` (openaiStrictSchema.ts:19) e nunca chega ao modelo, e a
+ * unica coisa que sobra e o pedido em prosa no SYSTEM_PROMPT. Nenhum dos dois
+ * abriu evento no Sentry ainda, mas o mecanismo que derrubou o `focus` esta
+ * inteiro nos dois: um dia ruim do modelo produz o mesmo 502.
+ *
+ * Preventivo, entao, e nao conserto de incidente. A varredura da rodada 1 mediu
+ * 32 constraints declaradas no Zod e ZERO chegando a OpenAI; estes dois eram os
+ * unicos com piso alto o bastante para o modelo errar.
+ */
+const TEXTO_ENTRE_20_E_60 = "Fecha a base antes de escalar";
+
+function planoValidoCom(over: {
+  certificationRationale?: string;
+  outOfScopeReason?: string;
+}) {
+  const base = planoValidoComFoco(FOCO_LONGO);
+  return {
+    ...base,
+    certifications: [
+      {
+        catalogId: "aws-cloud-practitioner",
+        stepId: "degrau-1",
+        whenLabel: "depois do degrau 1",
+        optional: false,
+        rationale: over.certificationRationale ?? FOCO_LONGO,
+      },
+    ],
+    outOfScope: [
+      {
+        label: "kubernetes",
+        reason: over.outOfScopeReason ?? FOCO_LONGO,
+      },
+    ],
+  };
+}
+
+describe("pisos preventivos do mesmo schema", () => {
+  it("certifications[].rationale aceita texto entre o piso novo e o antigo", () => {
+    expect(TEXTO_ENTRE_20_E_60.length).toBeGreaterThanOrEqual(20);
+    expect(TEXTO_ENTRE_20_E_60.length).toBeLessThan(80);
+
+    const parsed = CareerPlanResultSchema.safeParse(
+      planoValidoCom({ certificationRationale: TEXTO_ENTRE_20_E_60 }),
+    );
+
+    expect(parsed.error?.issues).toBeUndefined();
+    expect(parsed.success).toBe(true);
+  });
+
+  it("outOfScope[].reason aceita texto entre o piso novo e o antigo", () => {
+    expect(TEXTO_ENTRE_20_E_60.length).toBeLessThan(60);
+
+    const parsed = CareerPlanResultSchema.safeParse(
+      planoValidoCom({ outOfScopeReason: TEXTO_ENTRE_20_E_60 }),
+    );
+
+    expect(parsed.error?.issues).toBeUndefined();
+    expect(parsed.success).toBe(true);
+  });
+
+  it("CONTROLE NEGATIVO: certifications[].rationale abaixo de 20 e recusado", () => {
+    const parsed = CareerPlanResultSchema.safeParse(
+      planoValidoCom({ certificationRationale: "vale a pena" }),
+    );
+
+    expect(parsed.success).toBe(false);
+    expect(parsed.error?.issues.map((i) => i.path.join("."))).toContain(
+      "certifications.0.rationale",
+    );
+  });
+
+  it("CONTROLE NEGATIVO: outOfScope[].reason abaixo de 20 e recusado", () => {
+    const parsed = CareerPlanResultSchema.safeParse(
+      planoValidoCom({ outOfScopeReason: "cedo demais" }),
+    );
+
+    expect(parsed.success).toBe(false);
+    expect(parsed.error?.issues.map((i) => i.path.join("."))).toContain(
+      "outOfScope.0.reason",
+    );
+  });
+});
