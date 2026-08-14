@@ -922,9 +922,12 @@ function ChurnContextTiles({ churn }: { churn: ChurnSnapshot }) {
 function MetricCardView({
   metric,
   onNavigate,
+  destaque,
 }: {
   metric: MetricCard;
   onNavigate: (section: AdminSectionId) => void;
+  /** Card da linha principal: número maior e mais respiro. */
+  destaque?: boolean;
 }) {
   const corpo = (
     <>
@@ -938,7 +941,11 @@ function MetricCardView({
       <p className="mt-5 text-sm font-black uppercase tracking-wide text-slate-500">
         {metric.label}
       </p>
-      <p className="font-display mt-1 text-4xl font-black text-slate-950">
+      <p
+        className={`font-display mt-1 font-black text-slate-950 ${
+          destaque ? "text-5xl" : "text-3xl"
+        }`}
+      >
         {metric.value}
       </p>
       <p className="mt-2 text-sm font-semibold text-slate-600">
@@ -6807,11 +6814,23 @@ export default function Admin() {
     // diferentes de janela parecerem o mesmo recorte: card e gráfico diziam
     // "últimos 30 dias" e diferiam em 182 cadastros (medido em 2026-08-14).
     // `windowLabel` e `tz` são calculados uma vez, no servidor.
-    const janelaLabel = overview.windowLabel
-      ? `de ${overview.windowLabel} (${overview.tz})`
-      : overview.window === "all"
-        ? "no período todo"
-        : `nos últimos ${overview.window} dias`;
+    // Em "tudo" o rótulo do intervalo é "até 14 ago", e prefixá-lo com "de"
+    // produzia "de até 14 ago". Aqui o texto espelha o BADGE: com janela, o
+    // intervalo; sem janela, "desde <primeiro cadastro>", que é a mesma data que
+    // o seletor mostra ao lado de "Tudo".
+    const desde = overview.cards?.novosUsuarios?.historicoDesde;
+    const janelaLabel =
+      overview.windowFirstDay && overview.windowLabel
+        ? `de ${overview.windowLabel} (${overview.tz})`
+        : desde
+          ? `desde ${new Date(desde).toLocaleDateString("pt-BR", {
+              day: "2-digit",
+              month: "2-digit",
+              timeZone: "America/Sao_Paulo",
+            })}`
+          : overview.window === "all"
+            ? "no período todo"
+            : `nos últimos ${overview.window} dias`;
 
     // SPARKLINE POR CARD, a partir da MESMA série que o gráfico grande usa. Se
     // as duas viessem de lugares diferentes, o mini e o grande poderiam contar
@@ -6940,6 +6959,22 @@ export default function Admin() {
       },
     ];
   }, [overview, overviewError, seriesData]);
+
+  // HIERARQUIA 3 + 4 (D15). Os sete cards existem desde a Fase 1; o que muda é
+  // o PESO: os três que respondem "como o negócio está" ficam grandes na
+  // primeira linha, e os quatro de detalhe ficam compactos na segunda. Sete
+  // cards do mesmo tamanho é uma lista, não uma hierarquia — quem lê não sabe
+  // por onde começar.
+  //
+  // A separação é por RÓTULO e não por índice: um card novo inserido no meio do
+  // array não pode reordenar a tela em silêncio.
+  const PRINCIPAIS = ["Usuários totais", "Acesso Pro", "Receita no período"];
+  const cardsPrincipais = PRINCIPAIS.map((rotulo) =>
+    adminMetricCards.find((c) => c.label === rotulo),
+  ).filter((c): c is MetricCard => Boolean(c));
+  const cardsSecundarios = adminMetricCards.filter(
+    (c) => !PRINCIPAIS.includes(c.label),
+  );
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -7393,14 +7428,35 @@ export default function Admin() {
                 // filho resolveria de verdade, e é reestruturação, não fatia
                 // curta.
                 <BlocoBoundary nome="Cards do período">
-                  <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                    {adminMetricCards.map((metric) => (
-                      <MetricCardView
-                        key={metric.label}
-                        metric={metric}
-                        onNavigate={setActiveSection}
-                      />
-                    ))}
+                  <div className="space-y-5">
+                    {/* LINHA 1: os três principais, maiores. */}
+                    <div
+                      data-testid="cards-principais"
+                      className="grid gap-5 md:grid-cols-2 xl:grid-cols-3"
+                    >
+                      {cardsPrincipais.map((metric) => (
+                        <MetricCardView
+                          key={metric.label}
+                          metric={metric}
+                          destaque
+                          onNavigate={setActiveSection}
+                        />
+                      ))}
+                    </div>
+                    {/* LINHA 2: os quatro de detalhe, compactos. Empilham no
+                        mobile pelo mesmo mecanismo da linha de cima. */}
+                    <div
+                      data-testid="cards-secundarios"
+                      className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+                    >
+                      {cardsSecundarios.map((metric) => (
+                        <MetricCardView
+                          key={metric.label}
+                          metric={metric}
+                          onNavigate={setActiveSection}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </BlocoBoundary>
               )}
@@ -7475,33 +7531,19 @@ export default function Admin() {
                 </BlocoBoundary>
               </div>
 
-              <div className="grid gap-6 xl:grid-cols-3">
-                {/* "Aquisicao de usuarios" SAIU (D10, 2026-08-14).
-                    Ela rankeava `$referring_domain` do PostHog, que nao e
-                    atribuicao: nao ha coluna de UTM, referrer ou canal em
-                    `profiles` nem em `subscriptions` (varredura do
-                    information_schema nesta data), entao o numero nao se liga a
-                    receita nem sobrevive a bloqueador de script. Exibir um
-                    ranking que ninguem consegue usar para decidir e pior que nao
-                    exibir. Instrumentacao de canal/UTM virou frente futura,
-                    registrada no plano.
+              {/* "Aquisicao de usuarios" SAIU na rodada 6 (D10): nao ha coluna
+                  de UTM, referrer ou canal em `profiles` nem em `subscriptions`,
+                  entao o ranking do PostHog nao era atribuicao.
 
-                    O LINK PARA A ABA PAGINAS VOLTA AQUI. Ele morava dentro do
-                    bloco removido, e era o unico caminho da Visao para aquela
-                    aba: sem ele o destino existiria e ninguem acharia. Removi
-                    junto por descuido na primeira versao desta rodada, e o teste
-                    de inventario acusou. */}
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    data-testid="link-paginas"
-                    onClick={() => setActiveSection("paginas")}
-                    className="bnt-pressable rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase text-slate-900 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
-                  >
-                    Comportamento por página
-                  </button>
-                </div>
-
+                  O CONTEINER dela e o botao "Comportamento por pagina" saem
+                  AGORA (D17, rodada 7). O grid de tres colunas sobreviveu ao
+                  bloco que o preenchia e ficou hospedando so o botao: como item
+                  de grid estica na altura da linha, e o painel ao lado passou de
+                  vinte itens, o botao virou um pill gigante. O botao so fazia
+                  `setActiveSection("paginas")`, que e exatamente o que a aba
+                  "Paginas" do nav superior faz (linha do `NAV_ITEMS`), entao ele
+                  duplicava navegacao em vez de alcancar destino proprio. */}
+              <div className="grid gap-6">
                 {/* ATENCAO NECESSARIA substitui "Eventos recentes".
                     O bloco antigo listava as 10 ultimas linhas de
                     `content_audit_logs`, ou seja, historico de edicao de

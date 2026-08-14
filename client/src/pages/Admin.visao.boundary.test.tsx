@@ -102,9 +102,7 @@ describe("um bloco quebrado não derruba a Visão", () => {
     render(<Admin />);
 
     const quebrado = await screen.findByTestId("bloco-quebrado");
-    expect(quebrado.getAttribute("data-bloco")).toBe(
-      "Funil principal",
-    );
+    expect(quebrado.getAttribute("data-bloco")).toBe("Funil principal");
 
     // Os vizinhos do mesmo lado da página seguem vivos. Sem o boundary, o
     // ErrorBoundary da App teria trocado tudo isto pela tela cheia de falha.
@@ -121,7 +119,9 @@ describe("um bloco quebrado não derruba a Visão", () => {
     render(<Admin />);
     await screen.findByTestId("bloco-quebrado");
 
-    (await screen.findByTestId("link-paginas")).click();
+    // Pelo NAV, agora que o botão duplicado da Visão saiu (D17). Dois navs
+    // (desktop e mobile) carregam o mesmo rótulo; o primeiro basta.
+    (await screen.findAllByRole("button", { name: /páginas/i }))[0].click();
 
     await waitFor(() =>
       expect(screen.getByText(/Qualidade real das páginas/i)).toBeTruthy(),

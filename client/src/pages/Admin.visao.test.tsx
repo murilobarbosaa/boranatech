@@ -85,6 +85,11 @@ const SAIRAM: Array<{ titulo: string | RegExp; substituto: string }> = [
   // se liga a receita nem sobrevive a bloqueador de script. Instrumentação de
   // canal virou frente futura.
   { titulo: /Aquisição de usuários/i, substituto: "nenhum (sem fonte real)" },
+  // Rodada 7 (D17): o botão "Comportamento por página" saiu junto com o
+  // contêiner órfão que o hospedava. Ele só fazia `setActiveSection("paginas")`,
+  // que é exatamente o que a aba "Páginas" do nav superior faz — duplicava
+  // navegação, e o contêiner de 3 colunas esticava na altura do painel vizinho.
+  { titulo: /Comportamento por página/i, substituto: "aba Páginas do nav" },
 ];
 
 /** Blocos que FICARAM, na ordem em que aparecem na tela. */
@@ -207,12 +212,16 @@ describe("inventário de blocos da Visão", () => {
     }
   });
 
-  it("o link para a aba Páginas existe e leva ao destino", async () => {
-    // Nenhum card aponta para `paginas`, então sem este botão o destino do
-    // "Páginas mais acessadas" existiria e ninguém o encontraria.
+  it("a aba Páginas é alcançável pelo nav (o botão duplicado saiu)", async () => {
+    // O botão "Comportamento por página" saiu na rodada 7 (D17): ele só fazia
+    // `setActiveSection("paginas")`, o MESMO que o item do nav faz. O que
+    // precisa continuar verdadeiro é o destino ser alcançável — e é o nav que
+    // responde por isso agora.
     render(<Admin />);
-    const link = await screen.findByTestId("link-paginas");
-    link.click();
+    // Há dois navs (desktop e mobile) com o mesmo rótulo; o primeiro basta e a
+    // escolha é determinística.
+    const links = await screen.findAllByRole("button", { name: /páginas/i });
+    links[0].click();
 
     await waitFor(() =>
       expect(screen.getByText(/Qualidade real das páginas/i)).toBeTruthy(),
