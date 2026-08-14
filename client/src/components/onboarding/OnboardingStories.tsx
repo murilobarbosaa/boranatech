@@ -52,6 +52,14 @@ interface OnboardingStoriesProps {
   ) => void;
   /** Fase de saida: liga a animacao de fechamento antes de o host desmontar. */
   saindo?: boolean;
+  /**
+   * Rotulo do botao do ULTIMO card, no lugar do cta do conteudo. Override de
+   * APRESENTACAO: quem passa e o host, no modo tour, para o botao dizer que
+   * leva para a proxima pagina da sequencia (e nao para onde o cta promete).
+   * Vem inteiro, seta inclusa, porque o fim do tour nao leva a lugar nenhum e
+   * nao tem seta. Ausente, vale o cta dos arquivos de passos, intocados.
+   */
+  ctaFinal?: string;
 }
 
 const SWIPE_THRESHOLD = 68;
@@ -146,6 +154,7 @@ export default function OnboardingStories({
   def,
   onFinish,
   saindo = false,
+  ctaFinal,
 }: OnboardingStoriesProps) {
   const steps = def.steps;
   const total = steps.length;
@@ -497,7 +506,9 @@ export default function OnboardingStories({
               type="button"
               onClick={() => (isLast ? finish("concluido") : go(step + 1))}
             >
-              {isLast ? `${currentStep.cta || "Começar"} →` : "Próximo →"}
+              {isLast
+                ? ctaFinal || `${currentStep.cta || "Começar"} →`
+                : "Próximo →"}
             </button>
           </div>
 

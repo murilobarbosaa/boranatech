@@ -41,6 +41,18 @@ export interface OnboardingCoordinatorValue {
   releaseToOthers: () => void;
   /** Trocou de rota: volta a "deciding", a menos que ja tenha sido reivindicado. */
   beginDecision: () => void;
+  /**
+   * Contador de pedidos de abertura MANUAL (o botao "?" do Header). Contador, e
+   * nao booleano, porque a pessoa pode pedir de novo depois de fechar, e o host
+   * precisa distinguir o segundo pedido do primeiro.
+   */
+  pedidoManual: number;
+  /** O botao "?" pede a abertura do onboarding da rota atual. */
+  pedirOnboardingManual: () => void;
+  /** Ha overlay de onboarding na tela agora. */
+  overlayAberto: boolean;
+  /** O host publica que abriu ou fechou. Quem le e o botao "?". */
+  marcarOverlayAberto: (aberto: boolean) => void;
 }
 
 // Default PERMISSIVO: sem provider, o SuperInterstitial se comporta como antes
@@ -52,6 +64,10 @@ const FALLBACK: OnboardingCoordinatorValue = {
   claimForOnboarding: () => {},
   releaseToOthers: () => {},
   beginDecision: () => {},
+  pedidoManual: 0,
+  pedirOnboardingManual: () => {},
+  overlayAberto: false,
+  marcarOverlayAberto: () => {},
 };
 
 const OnboardingCoordinatorContext =
@@ -78,6 +94,20 @@ export function OnboardingCoordinatorProvider({
     setDecision((current) => (current === "onboarding" ? current : "deciding"));
   }, []);
 
+  const [pedidoManual, setPedidoManual] = useState(0);
+  const [overlayAberto, setOverlayAberto] = useState(false);
+
+  // Iniciativa da pessoa, e nao decisao de quem ocupa a tela: por isso NAO
+  // consulta `decision`. O onboarding manual abre mesmo depois de o
+  // SuperInterstitial ter tido a vez nesta carga.
+  const pedirOnboardingManual = useCallback(() => {
+    setPedidoManual((n) => n + 1);
+  }, []);
+
+  const marcarOverlayAberto = useCallback((aberto: boolean) => {
+    setOverlayAberto(aberto);
+  }, []);
+
   const value = useMemo<OnboardingCoordinatorValue>(
     () => ({
       decision,
@@ -85,8 +115,21 @@ export function OnboardingCoordinatorProvider({
       claimForOnboarding,
       releaseToOthers,
       beginDecision,
+      pedidoManual,
+      pedirOnboardingManual,
+      overlayAberto,
+      marcarOverlayAberto,
     }),
-    [decision, claimForOnboarding, releaseToOthers, beginDecision],
+    [
+      decision,
+      claimForOnboarding,
+      releaseToOthers,
+      beginDecision,
+      pedidoManual,
+      pedirOnboardingManual,
+      overlayAberto,
+      marcarOverlayAberto,
+    ],
   );
 
   return (

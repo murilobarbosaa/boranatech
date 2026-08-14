@@ -11,6 +11,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useOnboardingCoordinator } from "@/lib/onboarding/coordinator";
+import { foiEncerrado, marcarEncerrado } from "@/lib/onboarding/encerrados";
 import { resolveRouteOnboarding } from "@/lib/onboarding/registry";
 import {
   hasSeenOnboarding,
@@ -18,7 +19,7 @@ import {
   migrateLocalRecordsToProfile,
 } from "@/lib/onboarding/storage";
 import { encerrarTour, iniciarTour, tourAtivo } from "@/lib/onboarding/tour";
-import { proximaRotaDoTour } from "@/lib/onboarding/tourOrder";
+import { ctaFinalDoTour, proximaRotaDoTour } from "@/lib/onboarding/tourOrder";
 import type { OnboardingDef, OnboardingHow } from "@/lib/onboarding/types";
 import type { OnboardingResultData } from "./OnboardingStories";
 
@@ -61,14 +62,26 @@ export const DELAY_TOUR_MS = 1500;
 export default function OnboardingHost() {
   const [location, navigate] = useLocation();
   const { user, profile, profileStatus, loading } = useAuth();
-  const { decision, claimForOnboarding, releaseToOthers, beginDecision } =
-    useOnboardingCoordinator();
+  const {
+    decision,
+    claimForOnboarding,
+    releaseToOthers,
+    beginDecision,
+    pedidoManual,
+    marcarOverlayAberto,
+  } = useOnboardingCoordinator();
 
   const reducedMotion = usePrefersReducedMotion();
 
   const [open, setOpen] = useState(false);
   const [saindo, setSaindo] = useState(false);
   const [def, setDef] = useState<OnboardingDef | null>(null);
+  // Rotulo do botao final quando o tour esta rolando. `null` = o cta que o
+  // arquivo de passos declara.
+  const [ctaFinal, setCtaFinal] = useState<string | null>(null);
+  // Esta abertura veio do botao "?" do Header? Muda o desfecho: reabertura
+  // manual persiste normalmente, mas nao mexe na maquina do tour.
+  const [manual, setManual] = useState(false);
   const routeKeyRef = useRef<string | null>(null);
 
   // Timers vivos: o do atraso de abertura e o da animacao de saida. Ficam em
@@ -79,17 +92,22 @@ export default function OnboardingHost() {
     timersRef.current = [];
   }, []);
 
-  // routeKeys ENCERRADOS nesta carga de pagina (concluidos ou pulados).
+  // routeKeys ENCERRADOS nesta carga de pagina (concluidos ou pulados) moram em
+  // `@/lib/onboarding/encerrados`, fora do componente.
   //
   // Existe porque a persistencia do logado vai para `profiles.preferences` e o
   // AuthContext so enxerga o registro novo no proximo refresh do perfil: sem
   // isto, voltar para a mesma rota reabriria o onboarding que a pessoa acabou
   // de fechar.
   //
+  // FORA do componente porque o escopo e a CARGA, e ref e escopo de MONTAGEM: o
+  // host remonta dentro da mesma carga (o ConsentGate desmonta os children a
+  // cada re-checagem) e o registro em ref nascia vazio.
+  //
   // Preenchido no ENCERRAMENTO, nunca na abertura. Quem sai da pagina no meio
   // do onboarding nao decidiu nada, entao ele reabre ao voltar, na mesma carga
   // ou em outra.
-  const handledRef = useRef<Set<string>>(new Set());
+  const donoDosRegistros = user?.id ?? null;
 
   // Rota para onde o tour acabou de navegar. Serve para detectar guarda: se a
   // location que chegar nao for esta, alguem redirecionou (RequireAuth manda
@@ -114,17 +132,29 @@ export default function OnboardingHost() {
     void migrateLocalRecordsToProfile(profile);
   }, [signedIn, authResolved, profile]);
 
+  // Perfil e dono por ref: `jaViu` (e portanto `avancarTour`, e portanto o
+  // efeito de decisao) NAO pode trocar de identidade quando o AuthContext
+  // refaz o fetch do perfil. Trocando, o efeito reexecutava a cada
+  // TOKEN_REFRESHED e o overlay ABERTO sumia e voltava do primeiro card. E a
+  // mesma razao pela qual `profile` esta fora das dependencias do efeito; sem
+  // as refs, ele entrava de novo por esta porta.
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+  const donoRef = useRef(donoDosRegistros);
+  donoRef.current = donoDosRegistros;
+
   /**
    * Ja viu? Soma o que esta persistido com o que foi encerrado NESTA carga.
    *
-   * `handledRef` entra porque a persistencia do logado so aparece no perfil no
-   * proximo refresh: sem ele o tour ofereceria de novo a rota que a pessoa
-   * acabou de concluir e andaria em circulo.
+   * O registro da carga entra porque a persistencia do logado so aparece no
+   * perfil no proximo refresh: sem ele o tour ofereceria de novo a rota que a
+   * pessoa acabou de concluir e andaria em circulo.
    */
   const jaViu = useCallback(
     (rk: string) =>
-      handledRef.current.has(rk) || hasSeenOnboarding(rk, profile),
-    [profile],
+      foiEncerrado(rk, donoRef.current) ||
+      hasSeenOnboarding(rk, profileRef.current),
+    [],
   );
 
   /** Leva o tour para a proxima rota da ordem, ou encerra se acabou. */
@@ -158,6 +188,8 @@ export default function OnboardingHost() {
     setOpen(false);
     setSaindo(false);
     setDef(null);
+    setCtaFinal(null);
+    setManual(false);
     beginDecision();
 
     const settle = () => {
@@ -214,7 +246,7 @@ export default function OnboardingHost() {
     }
 
     const { routeKey, entry } = resolved;
-    if (handledRef.current.has(routeKey)) {
+    if (foiEncerrado(routeKey, donoDosRegistros)) {
       settle();
       return () => {
         cancelled = true;
@@ -229,7 +261,7 @@ export default function OnboardingHost() {
     }
 
     if (hasSeenOnboarding(routeKey, profile)) {
-      handledRef.current.add(routeKey);
+      marcarEncerrado(routeKey, donoDosRegistros);
       settle();
       return () => {
         cancelled = true;
@@ -252,6 +284,10 @@ export default function OnboardingHost() {
           () => {
             // Abriu: o alvo chegou de verdade e deixa de estar pendente.
             alvoDoTourRef.current = null;
+            // No tour, o botao final leva para a proxima pagina da sequencia,
+            // entao e isso que ele diz. Calculado AQUI, no instante da
+            // abertura, com o mesmo `jaViu` que a navegacao vai usar no clique.
+            setCtaFinal(emTour ? ctaFinalDoTour(routeKey, jaViu) : null);
             setOpen(true);
           },
           emTour ? DELAY_TOUR_MS : DELAY_ABERTURA_MS,
@@ -265,7 +301,7 @@ export default function OnboardingHost() {
         // `handled` para nao repetir a tentativa (e o aviso) a cada navegacao
         // de volta nesta mesma carga.
         console.warn("[onboarding] falha ao carregar os passos", error);
-        handledRef.current.add(routeKey);
+        marcarEncerrado(routeKey, donoDosRegistros);
         settle();
       });
 
@@ -276,7 +312,63 @@ export default function OnboardingHost() {
     // AuthContext, e reexecutar a decisao a cada mudanca reabriria o overlay
     // que a pessoa acabou de fechar. O que importa e o valor no momento em que
     // a rota resolve, e `authResolved` ja garante que ele chegou.
-  }, [location, authResolved, avancarTour]);
+  }, [location, authResolved, avancarTour, donoDosRegistros]);
+
+  /* --- abertura MANUAL (botao "?" do Header) --------------------------- */
+  // Iniciativa da pessoa, entao ignora tudo o que existe para conter abertura
+  // AUTOMATICA: nao consulta "ja viu", nao espera o atraso (quem clicou nao
+  // precisa ver a pagina primeiro, acabou de estar nela) e nao entra na maquina
+  // do tour. A guarda de webdriver tambem nao se aplica: ela existe para o
+  // overlay nao entrar no HTML do prerender, e o prerender nao clica em nada.
+  //
+  // Depende SO do contador: `location` fora das dependencias porque navegar nao
+  // e pedir, e o pedido vale para a rota que estava na tela quando ele foi
+  // feito. O valor lido aqui e o da renderizacao atual, que e essa mesma.
+  //
+  // O contador vem do provider, que e PAI e sobrevive a remontagem do host.
+  // Guardar o ultimo pedido atendido (semeado com o valor do momento da
+  // montagem) e o que impede uma remontagem de republicar um pedido velho e
+  // reabrir o overlay sozinho.
+  const ultimoPedidoRef = useRef(pedidoManual);
+  useEffect(() => {
+    if (pedidoManual === ultimoPedidoRef.current) return;
+    ultimoPedidoRef.current = pedidoManual;
+    const resolved = resolveRouteOnboarding(location.split("?")[0]);
+    if (!resolved || resolved.entry.type !== "onboarding") return;
+
+    let cancelled = false;
+    // Ocupa a tela: dois overlays ao mesmo tempo continua sendo o que o
+    // coordenador existe para impedir, venha o pedido de onde vier.
+    claimForOnboarding();
+    routeKeyRef.current = resolved.routeKey;
+
+    resolved.entry
+      .load()
+      .then((module) => {
+        if (cancelled) return;
+        limparTimers();
+        setDef(module.default);
+        setCtaFinal(null);
+        setManual(true);
+        setSaindo(false);
+        setOpen(true);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        console.warn("[onboarding] falha ao carregar os passos", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pedidoManual]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Quem le e o botao "?", para ficar inerte enquanto o overlay esta na tela.
+  useEffect(() => {
+    marcarOverlayAberto(open);
+    // Desmontagem com overlay na tela deixaria o botao inerte para sempre.
+    return () => marcarOverlayAberto(false);
+  }, [open, marcarOverlayAberto]);
 
   // Timer sobrevivente a desmontagem chamaria setState em componente morto.
   useEffect(() => limparTimers, [limparTimers]);
@@ -305,6 +397,8 @@ export default function OnboardingHost() {
           setOpen(false);
           setSaindo(false);
           setDef(null);
+          setCtaFinal(null);
+          setManual(false);
         },
         reducedMotion ? 0 : SAIDA_MS,
       );
@@ -318,7 +412,7 @@ export default function OnboardingHost() {
       if (destino) navigate(destino);
 
       if (!routeKey) return;
-      handledRef.current.add(routeKey);
+      marcarEncerrado(routeKey, donoDosRegistros);
       void markOnboardingSeen({
         routeKey,
         profile,
@@ -332,6 +426,10 @@ export default function OnboardingHost() {
       });
 
       /* --- maquina do tour guiado ------------------------------------- */
+      // Reabertura manual nao participa: nao inicia tour (mesmo com o card 5
+      // marcado como "guiado"), nao avanca e nao encerra o que estiver rolando.
+      // Quem clicou no "?" pediu para rever ESTA pagina, e mais nada.
+      if (manual) return;
       if (destino) {
         // proCta durante o tour: a pessoa escolheu sair do fluxo para assinar.
         // Persiste esta pagina como concluida (acima) e ABORTA o resto.
@@ -355,7 +453,15 @@ export default function OnboardingHost() {
       }
       if (tourAtivo()) avancarTour(routeKey);
     },
-    [profile, signedIn, reducedMotion, navigate, avancarTour],
+    [
+      profile,
+      signedIn,
+      reducedMotion,
+      navigate,
+      avancarTour,
+      donoDosRegistros,
+      manual,
+    ],
   );
 
   if (!open || !def) return null;
@@ -365,7 +471,12 @@ export default function OnboardingHost() {
 
   return (
     <Suspense fallback={null}>
-      <OnboardingStories def={def} onFinish={handleFinish} saindo={saindo} />
+      <OnboardingStories
+        def={def}
+        onFinish={handleFinish}
+        saindo={saindo}
+        ctaFinal={ctaFinal ?? undefined}
+      />
     </Suspense>
   );
 }

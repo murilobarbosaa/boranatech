@@ -28,6 +28,7 @@ import {
 } from "@/constants/avatarOptions";
 import UserAvatar, { effectiveOwnAvatar } from "@/components/UserAvatar";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import BotaoGuiaDaPagina from "@/components/onboarding/BotaoGuiaDaPagina";
 import { SignOutConfirmModal } from "./profile/SignOutConfirmModal";
 type MenuItem = {
   label: string;
@@ -829,6 +830,11 @@ export default function Header() {
           <DesktopNav location={location} />
 
           <div className="hidden items-center gap-1.5 2xl:flex 2xl:gap-2">
+            {/* Primeiro do bloco da direita, logo depois do Comparador (ultimo
+                item do DesktopNav) e antes do avatar. Fica fora do ramo
+                logado/anonimo de proposito: rever o guia da pagina nao depende
+                de sessao. */}
+            <BotaoGuiaDaPagina variant="desktop" />
             {!user ? (
               <>
                 <Link
@@ -853,6 +859,9 @@ export default function Header() {
                   className="inline-flex"
                   aria-label="Abrir perfil"
                 >
+                  {/* size="header" = 40px, alinhado com o sino e o "?", que são
+                      os vizinhos imediatos. O drawer mobile segue em "sm": lá o
+                      avatar fica ao lado do nome, e não de botão nenhum. */}
                   <UserAvatar
                     name={userName}
                     border={avatarBorder}
@@ -860,7 +869,7 @@ export default function Header() {
                     bg={avatarBg}
                     mode={ownAvatar.mode}
                     avatarUrl={ownAvatar.avatarUrl}
-                    size="sm"
+                    size="header"
                     loading={avatarLoading}
                   />
                 </Link>
@@ -1022,6 +1031,10 @@ export default function Header() {
             Comparador
             <ProStarBadge />
           </Link>
+          {/* Ultimo item do drawer, na mesma forma de pilula larga do
+              Comparador. Fecha o menu antes de pedir a abertura: o overlay
+              cobre a tela, e o drawer aberto por baixo dele nao faz sentido. */}
+          <BotaoGuiaDaPagina variant="mobile" onOpen={closeMobileDrawer} />
         </nav>
 
         {!user ? (
