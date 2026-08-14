@@ -62,8 +62,14 @@ export const DELAY_TOUR_MS = 1500;
 export default function OnboardingHost() {
   const [location, navigate] = useLocation();
   const { user, profile, profileStatus, loading } = useAuth();
-  const { decision, claimForOnboarding, releaseToOthers, beginDecision } =
-    useOnboardingCoordinator();
+  const {
+    decision,
+    claimForOnboarding,
+    releaseToOthers,
+    beginDecision,
+    pedidoManual,
+    marcarOverlayAberto,
+  } = useOnboardingCoordinator();
 
   const reducedMotion = usePrefersReducedMotion();
 
@@ -73,6 +79,9 @@ export default function OnboardingHost() {
   // Rotulo do botao final quando o tour esta rolando. `null` = o cta que o
   // arquivo de passos declara.
   const [ctaFinal, setCtaFinal] = useState<string | null>(null);
+  // Esta abertura veio do botao "?" do Header? Muda o desfecho: reabertura
+  // manual persiste normalmente, mas nao mexe na maquina do tour.
+  const [manual, setManual] = useState(false);
   const routeKeyRef = useRef<string | null>(null);
 
   // Timers vivos: o do atraso de abertura e o da animacao de saida. Ficam em
@@ -180,6 +189,7 @@ export default function OnboardingHost() {
     setSaindo(false);
     setDef(null);
     setCtaFinal(null);
+    setManual(false);
     beginDecision();
 
     const settle = () => {
@@ -304,6 +314,62 @@ export default function OnboardingHost() {
     // a rota resolve, e `authResolved` ja garante que ele chegou.
   }, [location, authResolved, avancarTour, donoDosRegistros]);
 
+  /* --- abertura MANUAL (botao "?" do Header) --------------------------- */
+  // Iniciativa da pessoa, entao ignora tudo o que existe para conter abertura
+  // AUTOMATICA: nao consulta "ja viu", nao espera o atraso (quem clicou nao
+  // precisa ver a pagina primeiro, acabou de estar nela) e nao entra na maquina
+  // do tour. A guarda de webdriver tambem nao se aplica: ela existe para o
+  // overlay nao entrar no HTML do prerender, e o prerender nao clica em nada.
+  //
+  // Depende SO do contador: `location` fora das dependencias porque navegar nao
+  // e pedir, e o pedido vale para a rota que estava na tela quando ele foi
+  // feito. O valor lido aqui e o da renderizacao atual, que e essa mesma.
+  //
+  // O contador vem do provider, que e PAI e sobrevive a remontagem do host.
+  // Guardar o ultimo pedido atendido (semeado com o valor do momento da
+  // montagem) e o que impede uma remontagem de republicar um pedido velho e
+  // reabrir o overlay sozinho.
+  const ultimoPedidoRef = useRef(pedidoManual);
+  useEffect(() => {
+    if (pedidoManual === ultimoPedidoRef.current) return;
+    ultimoPedidoRef.current = pedidoManual;
+    const resolved = resolveRouteOnboarding(location.split("?")[0]);
+    if (!resolved || resolved.entry.type !== "onboarding") return;
+
+    let cancelled = false;
+    // Ocupa a tela: dois overlays ao mesmo tempo continua sendo o que o
+    // coordenador existe para impedir, venha o pedido de onde vier.
+    claimForOnboarding();
+    routeKeyRef.current = resolved.routeKey;
+
+    resolved.entry
+      .load()
+      .then((module) => {
+        if (cancelled) return;
+        limparTimers();
+        setDef(module.default);
+        setCtaFinal(null);
+        setManual(true);
+        setSaindo(false);
+        setOpen(true);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        console.warn("[onboarding] falha ao carregar os passos", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pedidoManual]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Quem le e o botao "?", para ficar inerte enquanto o overlay esta na tela.
+  useEffect(() => {
+    marcarOverlayAberto(open);
+    // Desmontagem com overlay na tela deixaria o botao inerte para sempre.
+    return () => marcarOverlayAberto(false);
+  }, [open, marcarOverlayAberto]);
+
   // Timer sobrevivente a desmontagem chamaria setState em componente morto.
   useEffect(() => limparTimers, [limparTimers]);
 
@@ -332,6 +398,7 @@ export default function OnboardingHost() {
           setSaindo(false);
           setDef(null);
           setCtaFinal(null);
+          setManual(false);
         },
         reducedMotion ? 0 : SAIDA_MS,
       );
@@ -359,6 +426,10 @@ export default function OnboardingHost() {
       });
 
       /* --- maquina do tour guiado ------------------------------------- */
+      // Reabertura manual nao participa: nao inicia tour (mesmo com o card 5
+      // marcado como "guiado"), nao avanca e nao encerra o que estiver rolando.
+      // Quem clicou no "?" pediu para rever ESTA pagina, e mais nada.
+      if (manual) return;
       if (destino) {
         // proCta durante o tour: a pessoa escolheu sair do fluxo para assinar.
         // Persiste esta pagina como concluida (acima) e ABORTA o resto.
@@ -382,7 +453,15 @@ export default function OnboardingHost() {
       }
       if (tourAtivo()) avancarTour(routeKey);
     },
-    [profile, signedIn, reducedMotion, navigate, avancarTour, donoDosRegistros],
+    [
+      profile,
+      signedIn,
+      reducedMotion,
+      navigate,
+      avancarTour,
+      donoDosRegistros,
+      manual,
+    ],
   );
 
   if (!open || !def) return null;

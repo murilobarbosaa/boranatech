@@ -5,6 +5,7 @@ import {
   render,
   screen,
 } from "@testing-library/react";
+import { useState } from "react";
 import { Router, useLocation } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,6 +15,7 @@ import {
   useOnboardingCoordinator,
 } from "@/lib/onboarding/coordinator";
 import { limparEncerrados } from "@/lib/onboarding/encerrados";
+import { encerrarTour, tourAtivo } from "@/lib/onboarding/tour";
 import type { Profile } from "@/services/contracts";
 import OnboardingHost, { DELAY_ABERTURA_MS, SAIDA_MS } from "./OnboardingHost";
 
@@ -61,6 +63,37 @@ function Sonda() {
   );
 }
 
+/** Sonda do botao "?": pede a abertura manual e mostra se o overlay esta aberto. */
+function Manual() {
+  const { pedirOnboardingManual, overlayAberto } = useOnboardingCoordinator();
+  return (
+    <button
+      type="button"
+      data-testid="pedir-guia"
+      onClick={pedirOnboardingManual}
+    >
+      {overlayAberto ? "aberto" : "fechado"}
+    </button>
+  );
+}
+
+/** Host que some e volta SEM levar o provider junto, para testar remontagem. */
+function HostRemontavel() {
+  const [montado, setMontado] = useState(true);
+  return (
+    <>
+      {montado ? <OnboardingHost /> : null}
+      <button
+        type="button"
+        data-testid="alternar-host"
+        onClick={() => setMontado((m) => !m)}
+      >
+        alternar
+      </button>
+    </>
+  );
+}
+
 function arvore(hook: ReturnType<typeof memoryLocation>["hook"]) {
   return (
     <Router hook={hook}>
@@ -68,6 +101,7 @@ function arvore(hook: ReturnType<typeof memoryLocation>["hook"]) {
         <OnboardingHost />
         <Sonda />
         <Rota />
+        <Manual />
       </OnboardingCoordinatorProvider>
     </Router>
   );
@@ -113,6 +147,7 @@ beforeEach(async () => {
   // Escopo de CARGA DE PAGINA: no navegador some no reload, aqui nao, entao os
   // casos herdariam o que o anterior encerrou.
   limparEncerrados();
+  encerrarTour();
   updateMyProfile.mockReset();
   updateMyProfile.mockResolvedValue({});
   auth = { user: null, profile: null, profileStatus: "idle", loading: false };
@@ -575,6 +610,114 @@ describe("OnboardingHost: decidido continua decidido nesta carga", () => {
 
     expect(overlay()).not.toBeNull();
     expect(document.querySelector(".counter")?.textContent).toBe("3/6");
+  });
+});
+
+describe("OnboardingHost: abertura manual pelo botao do Header", () => {
+  const pedirGuia = () => fireEvent.click(screen.getByTestId("pedir-guia"));
+  const estadoDoBotao = () =>
+    screen.getByTestId("pedir-guia").textContent as string;
+
+  it("abre na hora, ignorando o 'ja visto' e sem esperar o atraso", async () => {
+    window.localStorage.setItem(
+      "bnt_onb:/",
+      JSON.stringify({ seen: true, how: "pulado", at: "2026-08-01T00:00:00Z" }),
+    );
+    montar("/");
+    await abrir();
+    // Nada abriu sozinho, e a vez ja foi devolvida ao SuperInterstitial.
+    expect(overlay()).toBeNull();
+    expect(sonda()).toBe("free:super-ok");
+
+    pedirGuia();
+    // Sem DELAY_ABERTURA_MS: o unico tempo aqui e o do import dos passos.
+    await assentar();
+    expect(overlay()).not.toBeNull();
+    expect(estadoDoBotao()).toBe("aberto");
+    // Ocupando a tela, o SuperInterstitial nao entra por cima.
+    expect(sonda()).toBe("onboarding:super-bloqueado");
+  });
+
+  it("nao inicia tour nem navega, mesmo escolhendo 'me mostra cada aba'", async () => {
+    montar("/");
+    pedirGuia();
+    await assentar();
+    expect(overlay()).not.toBeNull();
+
+    const next = () =>
+      document.querySelector<HTMLButtonElement>(".next") as HTMLButtonElement;
+    for (let i = 0; i < 4; i += 1) fireEvent.click(next());
+    fireEvent.click(screen.getByRole("radio", { name: /Me mostra cada aba/ }));
+    await avancar(400);
+
+    // O botao final e o cta do conteudo, nao a proxima parada de um tour.
+    expect(next().textContent).toBe("Explorar a plataforma →");
+    fireEvent.click(next());
+    await fechar();
+
+    expect(tourAtivo()).toBe(false);
+    expect(rota()).toBe("/");
+    expect(overlay()).toBeNull();
+    expect(estadoDoBotao()).toBe("fechado");
+    // Fechar pela reabertura manual regrava o registro, o que e inofensivo.
+    expect(window.localStorage.getItem("bnt_onb:/")).not.toBeNull();
+  });
+
+  it("navegar com o overlay manual aberto fecha sem marcar", async () => {
+    const { navigate } = montar("/cursos");
+    pedirGuia();
+    await assentar();
+    expect(overlay()).not.toBeNull();
+
+    act(() => navigate("/creators"));
+    await assentar();
+    expect(overlay()).toBeNull();
+    expect(estadoDoBotao()).toBe("fechado");
+    expect(window.localStorage.getItem("bnt_onb:/cursos")).toBeNull();
+  });
+
+  it("remontar SO o host com um pedido ja atendido nao reabre", async () => {
+    // O contador vive no provider, que e PAI do host. Hoje o remount conhecido
+    // (o ConsentGate) derruba os dois juntos e zera o contador, mas o host nao
+    // pode depender disso: se ele sozinho remontar, o pedido velho continua la
+    // e seria republicado como se fosse novo.
+    //
+    // Ja visto, para o unico caminho capaz de abrir aqui ser o do pedido.
+    window.localStorage.setItem(
+      "bnt_onb:/cursos",
+      JSON.stringify({ seen: true, how: "pulado", at: "2026-08-01T00:00:00Z" }),
+    );
+    const { hook } = memoryLocation({ path: "/cursos" });
+    render(
+      <Router hook={hook}>
+        <OnboardingCoordinatorProvider>
+          <HostRemontavel />
+          <Sonda />
+          <Rota />
+          <Manual />
+        </OnboardingCoordinatorProvider>
+      </Router>,
+    );
+
+    pedirGuia();
+    await assentar();
+    expect(overlay()).not.toBeNull();
+
+    const alternar = () => fireEvent.click(screen.getByTestId("alternar-host"));
+    alternar();
+    await assentar();
+    expect(overlay()).toBeNull();
+    alternar();
+    await abrir();
+
+    expect(overlay()).toBeNull();
+  });
+
+  it("pedido em rota sem onboarding nao abre nada", async () => {
+    montar("/login");
+    pedirGuia();
+    await abrir();
+    expect(overlay()).toBeNull();
   });
 });
 
