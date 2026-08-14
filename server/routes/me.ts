@@ -1,7 +1,9 @@
+import * as Sentry from "@sentry/node";
 import { Router } from "express";
 import type { Request } from "express";
 
 import { isValidCpf } from "../../shared/certificates/types";
+import { prepararExclusaoDeConta } from "../lib/accountDeletion";
 import { PRO_AVATAR_BORDERS } from "../lib/avatarBorders";
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -433,19 +435,84 @@ router.get("/roadmaps", async (req, res, next) => {
   }
 });
 
+// EXCLUSAO DE CONTA. A ORDEM AQUI E A CORRECAO (D8).
+//
+// Ate 2026-08-14 esta rota chamava `deleteUser` e nada mais. Como todos os FKs
+// para `auth.users` sao ON DELETE CASCADE, `subscriptions` (e com ela o
+// `provider_customer_id`) desaparecia no mesmo instante, e a assinatura na
+// Stripe ficava viva, cobrando alguem que nao existe mais no produto. Foi
+// exatamente isso que aconteceu com `sub_1Tv4SX...` (ver
+// docs/investigacoes/2026-08-14-admin-visao-metricas.md).
+//
+// Por isso a Stripe vem PRIMEIRO: depois do delete nao ha mais como descobrir
+// quem era o customer. E por isso a falha dela ABORTA a exclusao: conta apagada
+// com cobranca viva e o pior dos estados possiveis, e e irreversivel do lado do
+// banco.
 router.delete("/", async (req, res, next) => {
   try {
     const userId = req.user!.id;
+
+    // FAIL-CLOSED. Se isto lancar, o `deleteUser` abaixo NAO roda.
+    let preparacao;
+    try {
+      preparacao = await prepararExclusaoDeConta(userId);
+    } catch (err) {
+      const mensagem =
+        `[me] exclusao ABORTADA para ${userId}: nao foi possivel encerrar a ` +
+        `assinatura na Stripe. Causa: ${err instanceof Error ? err.message : String(err)}`;
+      console.error(mensagem);
+      try {
+        Sentry.captureException(err, {
+          level: "error",
+          tags: { area: "account-deletion", etapa: "stripe" },
+          extra: { deleted_user_id: userId },
+          fingerprint: ["account-deletion-stripe"],
+        });
+      } catch {
+        // Sentry desligado: no-op, o console.error acima ja e o rastro.
+      }
+      return next(
+        createError(
+          502,
+          "subscription_cancel_failed",
+          "Não foi possível encerrar sua assinatura agora, então a conta NÃO foi excluída. Tente de novo em alguns minutos.",
+        ),
+      );
+    }
+
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
     if (error) {
-      console.error("[me] Erro ao excluir conta:", error);
+      // A assinatura JA foi cancelada e a conta continua de pe. E um estado
+      // meio-feito, e ele precisa aparecer nomeado em vez de virar so um 500.
+      console.error(
+        `[me] INCONSISTENCIA: assinatura de ${userId} cancelada na Stripe, mas a conta NAO foi excluida:`,
+        error,
+      );
+      try {
+        Sentry.captureMessage(
+          "[account-deletion] assinatura cancelada e conta NAO excluida",
+          {
+            level: "error",
+            tags: { area: "account-deletion", etapa: "supabase" },
+            extra: {
+              deleted_user_id: userId,
+              canceladas: preparacao.canceladas,
+            },
+            fingerprint: ["account-deletion-supabase"],
+          },
+        );
+      } catch {
+        // Sentry desligado: no-op.
+      }
       return next(
         createError(500, "delete_account_failed", "Erro ao excluir conta."),
       );
     }
 
-    console.log("[me] Conta excluída:", userId);
+    console.log(
+      `[me] Conta excluída: ${userId} (assinaturas canceladas: ${preparacao.canceladas.length})`,
+    );
     res.json({ success: true });
   } catch (err) {
     next(err);
