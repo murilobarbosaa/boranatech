@@ -4,6 +4,7 @@ import { ONBOARDING_REGISTRY } from "./registry";
 import {
   EXPECTED_TOUR_LENGTH,
   TOUR_LABELS,
+  TOUR_LABELS_EXCECOES,
   TOUR_ORDER,
   ctaFinalDoTour,
   estaNaOrdemDoTour,
@@ -96,8 +97,12 @@ describe("rotulos das paginas do tour", () => {
     expect(new Set(Object.keys(TOUR_LABELS))).toEqual(new Set(TOUR_ORDER));
   });
 
-  it("o rotulo e o nome que o onboarding da rota declara", async () => {
+  it("o rotulo e o nome que o onboarding da rota declara, salvo excecao declarada", async () => {
     const divergentes: string[] = [];
+    // Excecao que nao e mais necessaria e lixo que ninguem percebe: se o
+    // conteudo passar a bater com o rotulo, o teste manda remover a entrada.
+    const obsoletas: string[] = [];
+
     for (const rota of TOUR_ORDER) {
       const entry = ONBOARDING_REGISTRY[rota];
       if (entry?.type !== "onboarding") continue;
@@ -105,11 +110,35 @@ describe("rotulos das paginas do tour", () => {
       const nome = def.ariaTitle.startsWith(PREFIXO)
         ? def.ariaTitle.slice(PREFIXO.length)
         : def.ariaTitle;
+
+      const excecao = TOUR_LABELS_EXCECOES[rota];
+      if (excecao !== undefined) {
+        // O valor do qual a excecao diverge ainda e este?
+        if (excecao !== nome) {
+          divergentes.push(
+            `${rota}: excecao aponta para "${excecao}", mas o conteudo diz "${nome}"`,
+          );
+        }
+        if (TOUR_LABELS[rota] === nome) obsoletas.push(rota);
+        continue;
+      }
+
       if (TOUR_LABELS[rota] !== nome) {
-        divergentes.push(`${rota}: "${TOUR_LABELS[rota]}" != "${nome}"`);
+        divergentes.push(
+          `${rota}: "${TOUR_LABELS[rota]}" != "${nome}" (declare em TOUR_LABELS_EXCECOES se for de proposito)`,
+        );
       }
     }
+
     expect(divergentes).toEqual([]);
+    expect(obsoletas).toEqual([]);
+  });
+
+  it("toda excecao declarada e de uma rota da ordem", () => {
+    const fora = Object.keys(TOUR_LABELS_EXCECOES).filter(
+      (rota) => !(TOUR_ORDER as readonly string[]).includes(rota),
+    );
+    expect(fora).toEqual([]);
   });
 });
 

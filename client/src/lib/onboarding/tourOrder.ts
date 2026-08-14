@@ -86,7 +86,8 @@ export const TOUR_LABELS: Record<(typeof TOUR_ORDER)[number], string> = {
   "/ia": "Guia de IA",
   "/vagas": "Vagas",
   "/empresas": "Empresas",
-  "/entrevistas": "Entrevista",
+  // Excecao ao ariaTitle, registrada em TOUR_LABELS_EXCECOES logo abaixo.
+  "/entrevistas": "Entrevistas",
   "/curriculo/gerar": "Gerar Currículo",
   "/curriculo/analisar": "Avaliador de Currículo",
   "/linkedin/analisar": "Avaliador de LinkedIn",
@@ -100,6 +101,28 @@ export const TOUR_LABELS: Record<(typeof TOUR_ORDER)[number], string> = {
   "/sobre": "Sobre nós",
   "/mentorias": "Mentorias e Ebooks",
   "/mulheres": "Mulheres",
+};
+
+/**
+ * As UNICAS entradas de TOUR_LABELS que divergem do `ariaTitle` do onboarding
+ * da rota, com o valor do qual elas divergem.
+ *
+ * Existe para a divergencia ser deliberada e verificavel, em vez de virar
+ * "alguem digitou diferente". `tourOrder.test.ts` afirma as duas direcoes:
+ *   - o `ariaTitle` da rota ainda e exatamente este valor (se ele mudar, o
+ *     teste quebra e alguem decide de novo);
+ *   - o rotulo ainda DIFERE dele (se o conteudo for corrigido para o plural, a
+ *     excecao deixa de ser necessaria e o teste manda remove-la).
+ *
+ * Sem a segunda direcao, uma excecao resolvida apodreceria aqui em silencio.
+ */
+export const TOUR_LABELS_EXCECOES: Partial<
+  Record<(typeof TOUR_ORDER)[number], string>
+> = {
+  // O onboarding se chama "Entrevista", no singular, e a pagina e /entrevistas.
+  // No botao ("Próximo: ... →") o plural e o que le direito, e mexer no
+  // `ariaTitle` sairia da transcricao dos 33 arquivos de design.
+  "/entrevistas": "Entrevista",
 };
 
 /**
