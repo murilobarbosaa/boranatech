@@ -95,3 +95,19 @@ O resultado é a assinatura da classe: a réplica **falhou passando**. Produziu 
 Quem acusou foi um **teste escrito contra a função real** (`server/routes/adminOverviewCards.test.ts`), na primeira execução. Não foi releitura, não foi revisão: foi o único instrumento da rodada que não era uma descrição do código.
 
 Regra: **evidência de comportamento é o código lido ou um teste contra a função real.** Réplica serve para explorar, para achar candidato, para estimar ordem de grandeza. Não serve para afirmar o que o sistema faz, e **não pode ser rotulada com o nome da função** — o rótulo "réplica de X" foi o que transportou a autoridade de X para uma query que não era X. É a mesma família das 35 tabelas reportadas como cobertas por policy quando estavam cobertas por privilégio: veredito certo sobre o efeito, errado sobre o mecanismo.
+
+<a id="guard-nao-ve-rendering"></a>
+
+## Guard estrutural afirma presença e posição, nunca legibilidade
+
+**Duas famílias de instrumento passaram verdes sobre uma tela que estava quebrada para quem a usa.** Na revisão visual da Fase 4 a Ana Julia achou, em minutos, o que 2.735 testes não viram: o contêiner da antiga "Aquisição de usuários" ficou órfão hospedando só um botão e, ao lado de um painel sem teto de altura com ~26 itens, esticou até virar um pill gigante; vinte cards idênticos de "Saída agendada" empilhados; centavos crus impressos num badge ("39333 → 14846"); links "Abrir" que não levavam a lugar nenhum.
+
+Os dois instrumentos que deveriam ter pego, e por que não pegaram:
+
+1. **O teste de inventário da Visão afirma PRESENÇA, não integridade.** Ele pergunta "o bloco X está na tela?" e responde certo: o botão estava lá. Ele não pergunta "o contêiner que sobrou faz sentido sem o conteúdo que saiu?". Foi por isso que, ao remover a Aquisição, o botão **ressuscitou dentro de um contêiner esvaziado** — e o teste comemorou, porque o que ele mede é exatamente o que continuou verdadeiro. É a mesma classe do `git status` cego para `.claude/`: a pergunta que o instrumento faz bem não é a pergunta que importa.
+
+2. **O autocheque de hunks verifica POSIÇÃO, não rendering.** Ele garante que toda edição caiu dentro de uma região mapeada, o que impede editar a aba errada (e impediu, duas vezes). Não tem nada a dizer sobre o resultado visual da edição: um `grid xl:grid-cols-3` com um filho é tão "dentro do mapa" quanto qualquer outra coisa.
+
+**Contramedida, e ela é de PROCESSO porque o defeito é de processo:** rodada que toca UI **não mergeia para `main`**. Entrega na branch e num preview, e o merge acontece na rodada seguinte, depois do OK visual de quem usa a tela. Não existe asserção barata que substitua olhar; o que existe é não deixar o não-olhado chegar em produção.
+
+A consequência arquitetural vale registrar, porque restringe o desenho e não só o calendário: **o preview roda contra a API de PRODUÇÃO**. Então mudança de UI precisa ser client-side ou estritamente aditiva no servidor — o client novo tem de funcionar contra o `/overview` e o `/admin/attention` que já estão no ar. Foi por isso que o agrupamento do painel de atenção nasceu no client, a partir do `itens[]` que a API já devolve, em vez de virar um campo novo no servidor.

@@ -12,6 +12,47 @@
 
 ---
 
+## Regra de processo: rodada de UI não mergeia
+
+**Desde a rodada 7:** rodada que toca UI entrega na branch + preview, e o merge acontece na
+rodada seguinte, após OK visual. O motivo está em
+`docs/postmortems-instrumentos.md` ("Guard estrutural afirma presença e posição, nunca
+legibilidade"): os guards deste projeto verificam que o bloco existe e que a edição caiu no
+lugar certo, e nenhum deles enxerga que a tela ficou ilegível.
+
+Consequência que restringe o desenho, não só o calendário: **o preview roda contra a API de
+produção**, então mudança de UI é client-side ou estritamente aditiva no servidor.
+
+### BLOQUEIO do preview: CORS por allowlist
+
+Medido em 2026-08-14 14:50 UTC, com `OPTIONS` contra `api.boranatech.com.br`:
+
+| Origin enviada | `Access-Control-Allow-Origin` na resposta |
+| --- | --- |
+| `https://boranatech.com.br` | `https://boranatech.com.br` |
+| `https://boranatech-git-feat-admin-visao-overview-r2.vercel.app` | **ausente** |
+| `https://exemplo-preview.vercel.app` | **ausente** |
+
+`server/app.ts` monta a allowlist com `env.corsOrigin.split(",")` e compara por **igualdade
+exata** (`allowedOrigins.includes(origin)`). Nenhuma origem `.vercel.app` está lá, então o
+navegador bloqueia toda chamada do preview à API: a tela carrega e todos os blocos caem em
+estado de erro.
+
+**Não improvisei um contorno.** Duas saídas, as duas da Ana Julia:
+
+1. **Acrescentar a origem do preview ao `CORS_ORIGIN` no Railway** (variável de ambiente,
+   sem deploy de código; o valor é lista separada por vírgula). O alias de branch da Vercel
+   é estável, então basta uma vez por frente: `https://boranatech-git-<branch>-<escopo>.vercel.app`.
+2. Ou revisar o preview **sem** dados: a estrutura, a hierarquia 3+4 e o comportamento de
+   estado vazio aparecem; números, não.
+
+Curinga (`*.vercel.app`) **não** funciona com o código atual, que compara por igualdade — e
+transformá-lo em regex seria alargar a allowlist de produção para conseguir revisar, que é
+a troca errada.
+
+Não há credencial Vercel neste ambiente (`VERCEL_*` ausente do `.env`), então a URL do
+preview precisa ser pega no dashboard.
+
 ## Estado de execução
 
 **Fases 1 a 4 estão em `main`.** Última entrega: sha
