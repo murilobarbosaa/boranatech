@@ -19,30 +19,61 @@
 | **1** Exatidão | **ENTREGUE** no backend (`56c135c1`) | **Pendência: integração de UI.** Ver abaixo |
 | **D8** Exclusão de conta | **ENTREGUE** (`39d1c575`) | servidor + copy no `Perfil.tsx` |
 | **Parte 3** livemode | **ENTREGUE** (`88a0ec3f`) | webhook recusa evento de sandbox em produção |
-| **2** Janela/TZ | em andamento | |
-| **3** Atenção necessária | em andamento | backend + componente; integração na UI pendente |
+| **2** Janela/TZ | **ENTREGUE** no backend + `WindowBadge` | integração de UI pendente (ver abaixo) |
+| **3** Atenção necessária | **ENTREGUE** backend + `AttentionPanel` | integração de UI pendente (ver abaixo) |
 | **4** Cards e gráficos | não iniciada | |
 | **5** Custo de IA | não iniciada | depende de merge externo (0.2) |
 
-### Pendência aberta da Fase 1: integração de UI
+### Pendência aberta: integração de UI (Fases 1, 2 e 3)
 
-O backend da Fase 1 está pronto e testado, e **nenhum card novo aparece na tela**, porque
-`client/src/pages/Admin.tsx` está na zona de colisão da frente paralela (0.1) desde o
-início desta frente. O que existe na API e não tem leitor:
+`client/src/pages/Admin.tsx` está na zona de colisão da frente paralela desde o início desta
+frente, e a zona foi **recapturada três vezes** (2026-08-14 02:08, 04:05 e 04:42 BRT):
+40 entradas, idêntica nas três, `Admin.tsx` presente em todas. Por isso **nenhum card novo
+aparece na tela ainda**. Todo o resto vive fora dele, em componentes novos, para a
+integração ser **uma edição só**.
 
-| Campo em `/overview` | O que falta na UI |
+O que já existe e não tem leitor:
+
+| Onde está | O que falta na UI |
 | --- | --- |
-| `cards.usuariosTotais.value` | card "Usuários totais" ao lado de "Novos usuários" |
-| `cards.acessoPro.both` e `.total` | headline passa a ser `total`; parcelas viram detalhe |
-| `cards.mrr.trialingCount` | chip "N em trial", fora do headline |
-| `cards.mrr.arpuCents` | (só na Fase 4) |
-| `cards.receita.{liquidaCents,taxasCents,reembolsosCents}` | líquido ao lado do bruto |
-| `cards.custoIa.valueUsd` | formatar em **US$**, não R$ |
-| `cards.custoIa.chamadasSemCustoMedido` | "N chamadas sem custo medido" |
-| `cards.custoIa.valorEmBrl` / `.cotacaoUsdBrl` | linha secundária em BRL, só se a env existir |
+| `/overview` → `cards.usuariosTotais.value` | card "Usuários totais" ao lado de "Novos usuários" |
+| `/overview` → `cards.acessoPro.{both,total}` | headline = `total`; parcelas viram detalhe |
+| `/overview` → `cards.mrr.{trialingCount,activeCount,arpuCents}` | chip "N em trial" fora do headline |
+| `/overview` → `cards.receita.{liquidaCents,taxasCents,reembolsosCents}` | líquido ao lado do bruto |
+| `/overview` → `cards.custoIa.valueUsd` | formatar em **US$**, não R$ |
+| `/overview` → `cards.custoIa.chamadasSemCustoMedido` | "N chamadas sem custo medido" |
+| `/overview` → `cards.custoIa.{valorEmBrl,cotacaoUsdBrl}` | linha em BRL, só se a env existir |
+| `/overview` e `/signup-history` → `windowLabel`, `windowFirstDay/LastDay`, `tz` | `WindowBadge` em cada card e gráfico |
+| `GET /admin/attention` | `AttentionPanel` no lugar de "Eventos recentes" |
 
-Enquanto isso não integra, **a tela continua mostrando os números antigos**, incluindo
-"R$" no custo de IA. O backend já está certo; o leitor é que não existe.
+**Consequência que a Ana Julia precisa saber:** enquanto isso não integra, a tela mostra os
+números ANTIGOS, incluindo "R$" no custo de IA (que é US$) e o headline de Pro contando duas
+vezes quem tem assinatura e concessão. O backend já está certo; o leitor é que não existe.
+
+#### Diff de integração previsto (linhas de `origin/main`, arquivo com 8.875 linhas)
+
+Conferido que `Admin.tsx` em `origin/main` é **idêntico** ao da base desta frente
+(`6a57d4d2`) — os 8 commits de onboarding que avançaram a `main` não o tocaram. Então estes
+números continuam valendo na hora de integrar.
+
+| Ponto | Linha | Ação |
+| --- | --- | --- |
+| imports de `overview/` | 89-90 | acrescentar `WindowBadge` e `AttentionPanel` |
+| `type OverviewData` | 230 | acrescentar os campos novos do payload |
+| `const metricCards` (fallback estático) | 381 | acrescentar a entrada de "Usuários totais" |
+| efeito que busca `/overview` | 6136 | acrescentar o fetch de `/attention` (estado próprio) |
+| `adminMetricCards` useMemo | 6603 | card novo + trocar os 4 valores abaixo |
+| card "Novos usuários" | 6622-6623 | badge de intervalo |
+| card Pro | 6633 | `bySubscription` → `total`, chip de trial |
+| card Receita | 6649 | líquido ao lado do bruto |
+| card Custo de IA | 6665 | `valueBrl` → `valueUsd`, em US$ |
+| `<OverviewPeriod>` | 7092 | badge do intervalo ao lado do seletor |
+| `BlocoBoundary "Cards do período"` | 7111 | badge por card |
+| bloco "Eventos recentes" | **7249-7286** | substituir inteiro por `<AttentionPanel>` |
+
+O bloco a remover é o `BlocoBoundary nome="Eventos recentes"` que abre em 7249 e fecha em
+7286. `auditLogs` e o fetch de `/dashboard` que o alimentam **continuam** existindo (outras
+partes leem), então a remoção é só do JSX.
 
 ---
 
