@@ -319,6 +319,42 @@ export function nivelSentry(errorCode: string | null): "error" | "info" {
   return errorCode !== null && CODIGOS_ESPERADOS.has(errorCode) ? "info" : "error";
 }
 
+/**
+ * Tags do evento de auth. Exportada para ser testavel sem subir Sentry nem
+ * PostHog, mesmo padrao de `buildAuthFailurePayload` e de `amostrarPorOrigem`.
+ *
+ * `http_status` e `hostname` entraram porque `extra` NAO e agregavel: o painel
+ * do Sentry nao filtra nem quebra a contagem por ele. Com 200 eventos de
+ * `profile_fetch_exhausted` e 109 de `bad_oauth_state`, a pergunta que decide o
+ * conserto ("quantos sao 5xx, quantos 401, quantos rede?", "quantos vieram de
+ * www e quantos do apex?") nao se responde com `extra`. Ele FICA de qualquer
+ * jeito: tag serve para agregar, extra para ler o caso individual.
+ *
+ * O `?? "none"` e a parte que nao pode ser esquecida. Tag `undefined` some do
+ * evento e tag vazia agrupa como se fosse valor; nos dois casos o denominador
+ * some em silencio, e "150 dos 200 tem status" nao diz o que houve com os
+ * outros 50. "none" e explicito, contavel e visivel.
+ *
+ * NAO altera agrupamento. O fingerprint default do Sentry para `captureMessage`
+ * vem da MENSAGEM (e do stack), e a mensagem segue identica; tag nao entra no
+ * fingerprint default. As issues existentes continuam as mesmas, com dimensao
+ * nova para quebrar a contagem.
+ */
+export function sentryTagsDeAuth(
+  payload: AuthFailurePayload,
+): Record<string, string> {
+  return {
+    origem: SENTRY_ORIGEM_AUTH,
+    auth_stage: payload.stage,
+    auth_method: payload.method,
+    auth_provider: payload.provider ?? "none",
+    auth_is_webview: String(payload.is_webview),
+    http_status:
+      payload.http_status === null ? "none" : String(payload.http_status),
+    hostname: payload.hostname ?? "none",
+  };
+}
+
 export function reportAuthFailure(input: AuthFailureInput): AuthFailurePayload {
   const payload = buildAuthFailurePayload(input);
 
@@ -336,13 +372,7 @@ export function reportAuthFailure(input: AuthFailureInput): AuthFailurePayload {
       `auth ${payload.stage} failure: ${payload.error_code ?? "unknown"}`,
       {
         level: nivelSentry(payload.error_code),
-        tags: {
-          origem: SENTRY_ORIGEM_AUTH,
-          auth_stage: payload.stage,
-          auth_method: payload.method,
-          auth_provider: payload.provider ?? "none",
-          auth_is_webview: String(payload.is_webview),
-        },
+        tags: sentryTagsDeAuth(payload),
         extra: { ...payload },
       },
     );

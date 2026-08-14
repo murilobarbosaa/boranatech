@@ -5,6 +5,8 @@ import {
   buildAuthFailurePayload,
   redactSensitive,
   nivelSentry,
+  sentryTagsDeAuth,
+  SENTRY_ORIGEM_AUTH,
 } from "./authTelemetry";
 
 const ENV = {
@@ -180,5 +182,92 @@ describe("nivelSentry", () => {
   it("codigo ausente ou desconhecido continua error, que e o default seguro", () => {
     expect(nivelSentry(null)).toBe("error");
     expect(nivelSentry("codigo_que_ainda_nao_existe")).toBe("error");
+  });
+});
+
+/**
+ * Tags do evento de auth no Sentry.
+ *
+ * POR QUE TAG E NAO SO `extra`. `extra` nao e agregavel: o painel nao filtra
+ * nem quebra a contagem por ele. Com 200 eventos de `profile_fetch_exhausted`
+ * (BORANATECH-FRONT-4) e 109 de `bad_oauth_state` (BORANATECH-FRONT-7), a
+ * pergunta que decide o conserto e "quantos sao 5xx, quantos sao 401, quantos
+ * sao rede?" e "quantos vieram de www e quantos do apex?". Nenhuma das duas se
+ * responde com `extra`. O `extra` FICA, porque tag e para agregar e extra e
+ * para ler o caso individual.
+ *
+ * O `?? "none"` nao e cosmetico. Tag com `undefined` some do evento, e tag com
+ * string vazia agrupa como se fosse um valor. Nos dois casos o denominador da
+ * conta fica errado em silencio: 200 eventos viram "150 tem status" e ninguem
+ * sabe o que aconteceu com os outros 50. "none" e um valor explicito, contavel
+ * e visivel no painel.
+ */
+describe("sentryTagsDeAuth", () => {
+  function payloadCom(over: Partial<Parameters<typeof buildAuthFailurePayload>[0]>) {
+    return buildAuthFailurePayload(
+      {
+        stage: "profile",
+        method: "oauth_redirect",
+        provider: null,
+        errorCode: "profile_fetch_exhausted",
+        ...over,
+      },
+      ENV,
+    );
+  }
+
+  it("leva http_status e hostname para tag, como string", () => {
+    const tags = sentryTagsDeAuth(payloadCom({ httpStatus: 503 }));
+
+    expect(tags.http_status).toBe("503");
+    expect(tags.hostname).toBe("boranatech.com.br");
+  });
+
+  it("distingue os hostnames que a hipotese www-vs-apex precisa separar", () => {
+    const apex = sentryTagsDeAuth(
+      buildAuthFailurePayload({ stage: "provider", method: "oauth_redirect" }, ENV),
+    );
+    const www = sentryTagsDeAuth(
+      buildAuthFailurePayload(
+        { stage: "provider", method: "oauth_redirect" },
+        { ...ENV, hostname: "www.boranatech.com.br" },
+      ),
+    );
+
+    expect(apex.hostname).toBe("boranatech.com.br");
+    expect(www.hostname).toBe("www.boranatech.com.br");
+  });
+
+  // CONTROLE NEGATIVO: e o caso da falha de rede pura, que nao tem status. Sem
+  // esta assercao, `undefined` passaria e a tag sumiria do evento justamente na
+  // fatia que mais interessa distinguir.
+  it("CONTROLE NEGATIVO: nenhuma tag sai undefined ou vazia quando o dado falta", () => {
+    const tags = sentryTagsDeAuth(
+      buildAuthFailurePayload(
+        { stage: "profile", method: "oauth_redirect" },
+        { hostname: null, pathname: null, userAgent: null },
+      ),
+    );
+
+    expect(tags.http_status).toBe("none");
+    expect(tags.hostname).toBe("none");
+    for (const [chave, valor] of Object.entries(tags)) {
+      expect(typeof valor, `tag ${chave}`).toBe("string");
+      expect(valor.length, `tag ${chave}`).toBeGreaterThan(0);
+    }
+  });
+
+  it("preserva as tags que ja existiam", () => {
+    const tags = sentryTagsDeAuth(
+      payloadCom({ method: "email_password", provider: "email" }),
+    );
+
+    expect(tags).toMatchObject({
+      origem: SENTRY_ORIGEM_AUTH,
+      auth_stage: "profile",
+      auth_method: "email_password",
+      auth_provider: "email",
+      auth_is_webview: "false",
+    });
   });
 });
