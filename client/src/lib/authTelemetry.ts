@@ -295,12 +295,21 @@ export function authErrorFields(error: unknown): {
  * arquivo, e é por isso que `authTelemetry.codigosEsperados.test.ts` compara os
  * dois conjuntos e trava a diferença: quem sobra precisa estar declarado lá,
  * com motivo, e um código novo com copy derruba o teste até alguém decidir.
+ *
+ * `flow_state_already_used` e o unico da lista SEM copy, e isso e consequencia,
+ * nao esquecimento: o codigo so existe depois de um flow state ter sido usado
+ * com SUCESSO. E o segundo exchange do mesmo `code` (voltar, recarregar, efeito
+ * duplo), entao o primeiro ja concluiu o login e ha sessao; e com sessao o
+ * `AuthContext` nao monta aviso nenhum (`AuthContext.tsx:478`). Nao ha tela para
+ * escrever copy. Por isso o teste que trava a lista contra a copy segue valendo
+ * sem mudanca: a relacao que ele afirma e copy -> esperado, nunca o inverso.
  */
 const CODIGOS_ESPERADOS_LISTA = [
   "invalid_credentials",
   "user_already_exists",
   "otp_expired",
   "access_denied",
+  "flow_state_already_used",
 ];
 const CODIGOS_ESPERADOS = new Set(CODIGOS_ESPERADOS_LISTA);
 
