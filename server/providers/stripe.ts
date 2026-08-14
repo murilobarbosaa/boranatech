@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import Stripe from "stripe";
 
 import { findValidCoupon } from "../lib/coupons";
@@ -1549,6 +1550,36 @@ async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
   const subscriptionId = extractSubscriptionId(event);
 
   console.log(`[webhook/stripe] event: ${event.type} (${event.id})`);
+
+  // EVENTO DE SANDBOX NO BANCO DE PRODUCAO: recusado aqui, antes de qualquer
+  // escrita.
+  //
+  // Nao e hipotese. Em 2026-08-14 a varredura achou em `billing_events` de
+  // PRODUCAO um `checkout.session.completed` de `cs_test_a1hjDcpNU...`
+  // (murilo1234@gmail.com, R$ 24,90, 2026-07-15). Ele ficou la, contando como
+  // uma das duas sessoes "sem linha em subscriptions", ou seja, virou um falso
+  // positivo permanente na unica ferramenta que existe para achar pagamento
+  // perdido. Alarme com ruido conhecido dentro e alarme que alguem desliga.
+  //
+  // Por que 2xx e nao erro: para a Stripe, 4xx/5xx significa "tente de novo", e
+  // o evento voltaria em loop pelo prazo de retry inteiro. O evento chegou e foi
+  // entendido; a decisao de nao guarda-lo e NOSSA, e um retry nao mudaria nada.
+  //
+  // So em producao: fora dela, o comportamento atual fica intacto, porque e
+  // justamente ali que evento de teste E o fluxo normal.
+  if (env.isProd && event.livemode === false) {
+    console.warn(
+      `[webhook/stripe] evento de MODO TESTE ignorado em producao: ${event.type} (${event.id}). ` +
+        `Nao persistido, nao processado.`,
+    );
+    Sentry.addBreadcrumb({
+      category: "webhook",
+      level: "warning",
+      message: "stripe test-mode event ignored in production",
+      data: { eventId: event.id, eventType: event.type },
+    });
+    return { received: true, ignoredTestMode: true };
+  }
 
   // Dedupe/idempotencia: mesma tabela billing_events do Asaas, provider='stripe'.
   const { data: recorded, error: dedupeError } = await supabaseAdmin
