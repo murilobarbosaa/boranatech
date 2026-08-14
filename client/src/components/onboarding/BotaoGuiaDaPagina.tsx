@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
 
+import { HEADER_ICON_BUTTON_CLASS } from "@/lib/headerIconButton";
 import { useOnboardingCoordinator } from "@/lib/onboarding/coordinator";
 import { resolveRouteOnboarding } from "@/lib/onboarding/registry";
 
@@ -16,18 +17,12 @@ import { resolveRouteOnboarding } from "@/lib/onboarding/registry";
 // Header e fica no HTML prerenderizado (UI legitima), enquanto `bnt-onb` e o
 // marcador que a verificacao do prerender usa para achar overlay vazado.
 //
-// VISUAL: os tokens sao do proprio Header, nao inventados aqui.
-//   - moldura e sombra do pill "Entrar", vizinho imediato: `border-2
-//     border-slate-900` e `shadow-[2px_2px_0_#0f172a]` crescendo para 3px no
-//     hover, com `transition-all`;
-//   - altura 40px, a mesma do "Entrar" e do "Cadastre-se agora" (py-2 +
-//     text-sm + 2px de borda), para os tres alinharem;
-//   - `bnt-pressable` e o foco por outline vem do sino, que e o outro botao de
-//     icone circular do mesmo bloco.
-// Fundo TRANSPARENTE de proposito: o botao e so um glifo, e o branco chapado
-// dos pills de texto pesava mais que os vizinhos. O glifo e um "?" tipografico
-// em vez do HelpCircle da lucide, que traz o proprio circulo e, dentro da
-// pilula, virava borda dupla.
+// VISUAL: nao ha token proprio aqui. O botao veste
+// `HEADER_ICON_BUTTON_CLASS`, a familia dos botoes-icone circulares do header,
+// a mesma que o sino veste. Foi assim que os dois pararam de divergir.
+//
+// O glifo e um "?" TIPOGRAFICO, e nao o HelpCircle da lucide: o icone ja traz o
+// proprio circulo, que dentro da pilula virava borda dupla.
 
 export default function BotaoGuiaDaPagina({
   variant,
@@ -49,14 +44,15 @@ export default function BotaoGuiaDaPagina({
   }
 
   const rotulo = "Rever o guia desta página";
-  // Mesmo foco do sino: outline, e nao o ring de 4px dos itens de menu, que num
-  // alvo circular de 40px encostaria no vizinho.
-  const foco =
-    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900";
   // `aria-hidden` porque o nome acessivel ja vem do aria-label; sem isso o
   // leitor de tela anunciaria a interrogacao solta depois do rotulo.
-  const glifo = (
-    <span aria-hidden="true" className="text-base font-black leading-none">
+  //
+  // No circulo de 40px o glifo vai a text-2xl (24px): medido contra o icone do
+  // sino, que ocupa 20x20, o "?" a 20px ficava visivelmente mais leve, porque a
+  // altura da letra e menor que a caixa da fonte. Na pilula do drawer ele
+  // acompanha o rotulo ao lado, que e text-sm, e fica em text-base.
+  const glifo = (tamanho: string) => (
+    <span aria-hidden="true" className={`${tamanho} font-black leading-none`}>
       ?
     </span>
   );
@@ -68,9 +64,9 @@ export default function BotaoGuiaDaPagina({
         onClick={pedir}
         disabled={overlayAberto}
         aria-label={rotulo}
-        className={`bnt-guia-botao bnt-pressable mx-4 mt-3 flex w-[calc(100%-2rem)] items-center justify-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-3 text-center text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a] disabled:opacity-50 ${foco}`}
+        className="bnt-guia-botao bnt-pressable mx-4 mt-3 flex w-[calc(100%-2rem)] items-center justify-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-3 text-center text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:opacity-50"
       >
-        {glifo}
+        {glifo("text-base")}
         {rotulo}
       </button>
     );
@@ -83,9 +79,9 @@ export default function BotaoGuiaDaPagina({
       disabled={overlayAberto}
       aria-label={rotulo}
       title={rotulo}
-      className={`bnt-guia-botao bnt-pressable inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-900 bg-transparent text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] disabled:opacity-50 disabled:hover:shadow-[2px_2px_0_#0f172a] ${foco}`}
+      className={`bnt-guia-botao ${HEADER_ICON_BUTTON_CLASS} disabled:opacity-50 disabled:hover:shadow-[2px_2px_0_#0f172a]`}
     >
-      {glifo}
+      {glifo("text-2xl")}
     </button>
   );
 }
