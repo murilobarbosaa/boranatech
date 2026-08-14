@@ -1440,6 +1440,56 @@ type StuckCampaign = {
   last_sent_at: string | null;
 };
 
+/**
+ * Janela de realerta por campanha. 60 min contra um tick de 5 min: a mesma
+ * campanha travada gera no maximo 1 evento por hora, em vez de 12.
+ */
+export const JANELA_REALERTA_MS = 60 * 60 * 1000;
+
+/**
+ * Ultimo alerta por campanha. EM MEMORIA de proposito.
+ *
+ * Restart do Railway zera o mapa e a proxima passagem realerta, o que e
+ * fail-open por construcao: o pior caso de perder o estado e um evento a mais.
+ * Tabela ou chave no Redis seria estado duravel novo para economizar um evento
+ * por hora, e ainda daria a este cron uma dependencia que ele hoje NAO tem (o
+ * comentario acima registra que ele funciona com a fila congelada justamente
+ * por nao tocar a queueConnection).
+ *
+ * Cresce uma entrada por campanha travada vista no processo. Campanha travada e
+ * evento raro e o processo reinicia a cada deploy; nao ha o que podar.
+ */
+const ultimoAlertaPorCampanha = new Map<string, number>();
+
+/**
+ * Esta campanha deve gerar evento AGORA?
+ *
+ * FAIL-OPEN, e essa e a propriedade que nao pode ser perdida numa refatoracao:
+ * qualquer defeito na propria supressao devolve `true`. Alerta repetido
+ * incomoda; alerta suprimido por bug desaparece, e watchdog silencioso parece
+ * fila calma, que e exatamente o desenho que este projeto ja pagou caro (ver o
+ * RUNS_NAO_SADIAS_PARA_AVISAR em shared/tasks/sentryIntake.ts).
+ *
+ * `agora` e `memoria` entram por parametro para o teste nao depender do relogio
+ * nem de estado global entre casos.
+ */
+export function deveAlertarCampanhaTravada(
+  campaignId: string,
+  agora: number,
+  memoria: Map<string, number> = ultimoAlertaPorCampanha,
+): boolean {
+  try {
+    const ultimo = memoria.get(campaignId);
+    if (ultimo !== undefined && agora - ultimo < JANELA_REALERTA_MS) {
+      return false;
+    }
+    memoria.set(campaignId, agora);
+    return true;
+  } catch {
+    return true;
+  }
+}
+
 router.post(
   "/campaign-liveness",
   withCronLock("campaign-liveness", 120, async (_req, res, next) => {
@@ -1461,6 +1511,13 @@ router.post(
             `pending=${c.pending_count} sent=${c.sent_count} failed=${c.failed_count} ` +
             `total=${c.total_recipients} last_sent_at=${c.last_sent_at}`,
         );
+        // O LOG sai em toda passagem, mesmo com o evento suprimido: e ele que da
+        // a contagem exata de por quantos ticks a campanha ficou travada. So a
+        // captura no Sentry e deduplicada. Mesmo arranjo de `registrarViolacao`
+        // em lib/linkedinAnalyze.ts.
+        if (!deveAlertarCampanhaTravada(c.campaign_id, Date.now())) {
+          continue;
+        }
         Sentry.withScope((scope) => {
           scope.setTag("cron", "campaign-liveness");
           scope.setTag("campaignId", c.campaign_id);
