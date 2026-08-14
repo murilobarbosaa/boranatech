@@ -54,6 +54,75 @@ export const TOUR_ORDER = [
 export const EXPECTED_TOUR_LENGTH = 33;
 
 /**
+ * Nome curto de cada pagina, para o botao final do tour dizer para onde leva.
+ *
+ * NAO e texto novo: cada valor e o nome que o onboarding daquela rota ja
+ * declara no proprio `ariaTitle`, sem o prefixo "Onboarding do Bora na Tech: ".
+ * `tourOrder.test.ts` confere isso contra os arquivos de passos, entao mudar um
+ * `ariaTitle` sem mudar aqui derruba o teste.
+ *
+ * Escrito, e nao derivado em tempo de execucao, porque derivar exigiria carregar
+ * o modulo da PROXIMA rota (import dinamico, chunk proprio) so para pintar um
+ * rotulo. O `Record` sobre a uniao literal de TOUR_ORDER cobre o outro lado: rota
+ * nova na ordem sem rotulo aqui nao compila.
+ */
+export const TOUR_LABELS: Record<(typeof TOUR_ORDER)[number], string> = {
+  "/": "Home",
+  "/areas": "Áreas de TI",
+  "/quiz-carreira": "Quiz de Carreira",
+  "/faculdades": "Faculdades",
+  "/tecnologias": "Tecnologias",
+  "/tecnologias/por-area": "Mapa de Tecnologias",
+  "/tecnologias/ranking": "Ranking de Tecnologias",
+  "/dicionario": "Dicionário",
+  "/roadmaps": "Roadmaps",
+  "/roadmaps/ia": "Roadmap com IA",
+  "/plano-carreira": "Plano de Carreira",
+  "/cursos": "Cursos",
+  "/plataformas": "Plataformas",
+  "/projetos": "Projetos",
+  "/ingles": "Inglês",
+  "/ferramentas": "Ferramentas",
+  "/ia": "Guia de IA",
+  "/vagas": "Vagas",
+  "/empresas": "Empresas",
+  "/entrevistas": "Entrevista",
+  "/curriculo/gerar": "Gerar Currículo",
+  "/curriculo/analisar": "Avaliador de Currículo",
+  "/linkedin/analisar": "Avaliador de LinkedIn",
+  "/portfolio/analisar": "Avaliador de GitHub",
+  "/evolucao": "Evolução de Carreira",
+  "/salarios": "Salários",
+  "/noticias": "Notícias",
+  "/eventos": "Eventos",
+  "/dicas": "Dicas",
+  "/comunidades": "Comunidades",
+  "/sobre": "Sobre nós",
+  "/mentorias": "Mentorias e Ebooks",
+  "/mulheres": "Mulheres",
+};
+
+/**
+ * Texto do botao final DENTRO do tour, no lugar do cta do conteudo.
+ *
+ * O clique nesse botao leva para a proxima pagina da sequencia, e nao para onde
+ * o cta do conteudo promete ("Ver as áreas da TI" em /areas levava para
+ * /quiz-carreira). Aqui o rotulo passa a dizer o que o clique faz.
+ *
+ * Usa a MESMA `proximaRotaDoTour` que a navegacao usa, com o mesmo `jaViu`:
+ * calcular o rotulo por outro caminho seria uma segunda fonte de verdade, capaz
+ * de anunciar uma pagina e abrir outra. Sem proxima, o tour acaba aqui.
+ */
+export function ctaFinalDoTour(
+  depoisDe: string | null,
+  jaViu: (routeKey: string) => boolean,
+): string {
+  const proxima = proximaRotaDoTour(depoisDe, jaViu);
+  if (!proxima) return "Concluir tour";
+  return `Próximo: ${TOUR_LABELS[proxima]} →`;
+}
+
+/**
  * Proxima rota da sequencia depois de `depoisDe`, pulando o que ja foi visto.
  *
  * `depoisDe = null` comeca do inicio. Devolve null quando nao ha mais nada, o
@@ -67,7 +136,7 @@ export const EXPECTED_TOUR_LENGTH = 33;
 export function proximaRotaDoTour(
   depoisDe: string | null,
   jaViu: (routeKey: string) => boolean,
-): string | null {
+): (typeof TOUR_ORDER)[number] | null {
   let inicio = 0;
   if (depoisDe !== null) {
     const at = TOUR_ORDER.indexOf(depoisDe as (typeof TOUR_ORDER)[number]);

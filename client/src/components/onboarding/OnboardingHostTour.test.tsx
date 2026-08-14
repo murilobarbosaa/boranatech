@@ -16,7 +16,8 @@ import {
 } from "@/lib/onboarding/coordinator";
 import { limparEncerrados } from "@/lib/onboarding/encerrados";
 import { ONBOARDING_REGISTRY } from "@/lib/onboarding/registry";
-import { tourAtivo } from "@/lib/onboarding/tour";
+import { iniciarTour, tourAtivo } from "@/lib/onboarding/tour";
+import { TOUR_ORDER } from "@/lib/onboarding/tourOrder";
 import type { Profile } from "@/services/contracts";
 import OnboardingHost, {
   DELAY_ABERTURA_MS,
@@ -107,6 +108,19 @@ async function avancar(ms: number) {
 const abrirAvulso = () => avancar(DELAY_ABERTURA_MS + 50);
 const abrirNoTour = () => avancar(DELAY_TOUR_MS + 50);
 const fechar = () => avancar(SAIDA_MS + 50);
+
+/**
+ * Avanca ate o ultimo card pelo CONTADOR, nunca pelo rotulo do botao: dentro do
+ * tour o botao final anuncia a proxima pagina e tambem comeca com "Próximo".
+ */
+function irAteOUltimoCard() {
+  for (let guarda = 0; guarda < 30; guarda += 1) {
+    const [atual, total] = (contador() ?? "").split("/");
+    if (!atual || atual === total) return;
+    fireEvent.click(next());
+  }
+  throw new Error("nao chegou ao ultimo card");
+}
 
 /** Marca rotas como ja vistas por fora, no localStorage do fluxo anonimo. */
 function marcarVistas(...rotas: string[]) {
@@ -207,6 +221,65 @@ describe("tour guiado: inicio", () => {
   });
 });
 
+describe("tour guiado: botao do ultimo card", () => {
+  // O botao final leva para a PROXIMA pagina do tour, entao e isso que ele
+  // precisa dizer. O cta do conteudo ("Ver as áreas da TI") descrevia um
+  // destino que o clique nao tinha. A troca e de APRESENTACAO, no host: os
+  // arquivos de passos continuam com o cta original, e fora do tour ele volta.
+  it("anuncia a proxima pagina em vez do cta do conteudo", async () => {
+    montar("/");
+    await concluirHomeComTour("guiado");
+    expect(rota()).toBe("/areas");
+    await abrirNoTour();
+
+    irAteOUltimoCard();
+    expect(next().textContent).toBe("Próximo: Quiz de Carreira →");
+  });
+
+  it("pula o ja visto tambem no rotulo, como a navegacao pula", async () => {
+    marcarVistas("/quiz-carreira");
+    montar("/");
+    await concluirHomeComTour("guiado");
+    await abrirNoTour();
+
+    irAteOUltimoCard();
+    expect(next().textContent).toBe("Próximo: Faculdades →");
+
+    fireEvent.click(next());
+    await fechar();
+    expect(rota()).toBe("/faculdades");
+  });
+
+  it("no ultimo item da ordem, o botao encerra o tour", async () => {
+    marcarVistas(...TOUR_ORDER.filter((r) => r !== "/mulheres"));
+    iniciarTour();
+    montar("/mulheres");
+    await abrirNoTour();
+
+    irAteOUltimoCard();
+    expect(next().textContent).toBe("Concluir tour");
+
+    fireEvent.click(next());
+    await fechar();
+    expect(tourAtivo()).toBe(false);
+    expect(rota()).toBe("/mulheres");
+  });
+
+  it("FORA do tour, o botao continua sendo o cta do conteudo", async () => {
+    montar("/areas");
+    await abrirAvulso();
+
+    irAteOUltimoCard();
+    expect(next().textContent).toBe("Ver as áreas da TI →");
+
+    // E o comportamento tambem: conclui, fecha e fica na pagina.
+    fireEvent.click(next());
+    await fechar();
+    expect(overlay()).toBeNull();
+    expect(rota()).toBe("/areas");
+  });
+});
+
 describe("tour guiado: sequencia", () => {
   it("encadeia na ordem dos arquivos de design", async () => {
     montar("/");
@@ -217,7 +290,7 @@ describe("tour guiado: sequencia", () => {
     for (const proxima of ["/quiz-carreira", "/faculdades"]) {
       await abrirNoTour();
       expect(overlay()).not.toBeNull();
-      while (next().textContent?.startsWith("Próximo")) fireEvent.click(next());
+      irAteOUltimoCard();
       fireEvent.click(next());
       await fechar();
       expect(rota()).toBe(proxima);
@@ -373,7 +446,7 @@ describe("tour guiado: fim e retomada", () => {
     expect(tourAtivo()).toBe(true);
 
     await abrirNoTour();
-    while (next().textContent?.startsWith("Próximo")) fireEvent.click(next());
+    irAteOUltimoCard();
     fireEvent.click(next());
     await fechar();
 
@@ -400,7 +473,7 @@ describe("tour guiado: fim e retomada", () => {
     );
 
     // E o fluxo segue: concluir aqui leva para a proxima da ordem.
-    while (next().textContent?.startsWith("Próximo")) fireEvent.click(next());
+    irAteOUltimoCard();
     fireEvent.click(next());
     await fechar();
     expect(rota()).toBe("/quiz-carreira");

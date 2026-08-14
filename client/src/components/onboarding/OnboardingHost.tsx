@@ -19,7 +19,7 @@ import {
   migrateLocalRecordsToProfile,
 } from "@/lib/onboarding/storage";
 import { encerrarTour, iniciarTour, tourAtivo } from "@/lib/onboarding/tour";
-import { proximaRotaDoTour } from "@/lib/onboarding/tourOrder";
+import { ctaFinalDoTour, proximaRotaDoTour } from "@/lib/onboarding/tourOrder";
 import type { OnboardingDef, OnboardingHow } from "@/lib/onboarding/types";
 import type { OnboardingResultData } from "./OnboardingStories";
 
@@ -70,6 +70,9 @@ export default function OnboardingHost() {
   const [open, setOpen] = useState(false);
   const [saindo, setSaindo] = useState(false);
   const [def, setDef] = useState<OnboardingDef | null>(null);
+  // Rotulo do botao final quando o tour esta rolando. `null` = o cta que o
+  // arquivo de passos declara.
+  const [ctaFinal, setCtaFinal] = useState<string | null>(null);
   const routeKeyRef = useRef<string | null>(null);
 
   // Timers vivos: o do atraso de abertura e o da animacao de saida. Ficam em
@@ -176,6 +179,7 @@ export default function OnboardingHost() {
     setOpen(false);
     setSaindo(false);
     setDef(null);
+    setCtaFinal(null);
     beginDecision();
 
     const settle = () => {
@@ -270,6 +274,10 @@ export default function OnboardingHost() {
           () => {
             // Abriu: o alvo chegou de verdade e deixa de estar pendente.
             alvoDoTourRef.current = null;
+            // No tour, o botao final leva para a proxima pagina da sequencia,
+            // entao e isso que ele diz. Calculado AQUI, no instante da
+            // abertura, com o mesmo `jaViu` que a navegacao vai usar no clique.
+            setCtaFinal(emTour ? ctaFinalDoTour(routeKey, jaViu) : null);
             setOpen(true);
           },
           emTour ? DELAY_TOUR_MS : DELAY_ABERTURA_MS,
@@ -323,6 +331,7 @@ export default function OnboardingHost() {
           setOpen(false);
           setSaindo(false);
           setDef(null);
+          setCtaFinal(null);
         },
         reducedMotion ? 0 : SAIDA_MS,
       );
@@ -383,7 +392,12 @@ export default function OnboardingHost() {
 
   return (
     <Suspense fallback={null}>
-      <OnboardingStories def={def} onFinish={handleFinish} saindo={saindo} />
+      <OnboardingStories
+        def={def}
+        onFinish={handleFinish}
+        saindo={saindo}
+        ctaFinal={ctaFinal ?? undefined}
+      />
     </Suspense>
   );
 }
