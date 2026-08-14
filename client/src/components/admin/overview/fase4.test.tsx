@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -340,5 +340,149 @@ describe("ToolUsagePanel", () => {
   it("payload degradado vira estado vazio, não TypeError", () => {
     render(<ToolUsagePanel ferramentas={undefined} />);
     expect(screen.getByTestId("ferramentas-vazio")).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RODADA 7 — legibilidade
+// ---------------------------------------------------------------------------
+
+describe("ToolUsagePanel compacto (v2)", () => {
+  const muitas = Array.from({ length: 12 }, (_, i) => ({
+    tool: `tool-${i}`,
+    chamadas: 100 - i,
+    custoUsd: 0.5,
+    semCustoMedido: i === 0 ? 5 : 0,
+  }));
+
+  it("mostra o top 8 e agrega o resto numa linha só", () => {
+    render(<ToolUsagePanel ferramentas={muitas} />);
+    expect(screen.getAllByTestId("ferramenta-linha")).toHaveLength(8);
+    const outras = screen.getByTestId("ferramentas-outras");
+    expect(outras.textContent).toContain("outras 4 ferramentas");
+  });
+
+  it("a linha TOTAL é sobre TUDO, não sobre o top 8", () => {
+    // Total sobre o recorte seria um número menor com cara de total — a classe
+    // de erro que este projeto persegue.
+    render(<ToolUsagePanel ferramentas={muitas} />);
+    const total = screen.getByTestId("ferramentas-total");
+    const soma = muitas.reduce((a, f) => a + f.chamadas, 0);
+    expect(total.textContent).toContain(soma.toLocaleString("pt-BR"));
+    expect(total.textContent).toContain("US$ 6.00");
+  });
+
+  it("expandir revela todas as ferramentas", () => {
+    render(<ToolUsagePanel ferramentas={muitas} />);
+    fireEvent.click(screen.getByTestId("ferramentas-expandir"));
+    expect(screen.getAllByTestId("ferramenta-linha")).toHaveLength(12);
+    expect(screen.queryByTestId("ferramentas-outras")).toBeNull();
+  });
+
+  it("com cotação, o TOTAL ganha o equivalente em BRL", () => {
+    render(<ToolUsagePanel ferramentas={muitas} cotacaoUsdBrl={5} />);
+    expect(
+      screen.getByTestId("ferramentas-total").textContent?.replace(/ /g, " "),
+    ).toContain("R$ 30,00");
+  });
+
+  it("CONTROLE NEGATIVO: sem cotação, nenhuma linha em BRL", () => {
+    render(<ToolUsagePanel ferramentas={muitas} />);
+    expect(screen.getByTestId("ferramentas-total").textContent).not.toContain(
+      "R$",
+    );
+  });
+
+  it("poucas ferramentas não geram linha de 'outras'", () => {
+    render(<ToolUsagePanel ferramentas={muitas.slice(0, 3)} />);
+    expect(screen.queryByTestId("ferramentas-outras")).toBeNull();
+    expect(screen.getByTestId("ferramentas-total")).toBeTruthy();
+  });
+});
+
+describe("badges do custo × receita (v2)", () => {
+  /** 8 dias completos, receita em centavos e custo em dólar. */
+  const series = [
+    {
+      chave: "receitaBrutaCents",
+      rotulo: "Receita",
+      pontos: Array.from({ length: 8 }, (_, i) => ({
+        date: `2026-08-0${i + 1}`,
+        value: i < 4 ? 10000 : 20000,
+        partial: false,
+      })),
+      total: 120000,
+    },
+    {
+      chave: "custoIaUsd",
+      rotulo: "Custo",
+      pontos: Array.from({ length: 8 }, (_, i) => ({
+        date: `2026-08-0${i + 1}`,
+        value: i < 4 ? 0.1 : 0.5,
+        partial: false,
+      })),
+      total: 2.4,
+    },
+  ];
+
+  it("formata CADA série na sua unidade, nunca centavos crus", () => {
+    // O defeito da v1: "39333 → 14846 por dia", que não é receita nem custo.
+    render(<CostVsRevenueChart series={series} cotacaoUsdBrl={null} />);
+    const receita = screen
+      .getByTestId("badge-receita")
+      .textContent?.replace(/ /g, " ");
+    expect(receita).toContain("R$ 400,00");
+    expect(receita).toContain("R$ 800,00");
+    expect(receita).not.toContain("40000");
+
+    const custo = screen.getByTestId("badge-custo").textContent;
+    expect(custo).toContain("US$ 0.40");
+    expect(custo).toContain("US$ 2.00");
+  });
+
+  it("custo subindo é VERMELHO (goodDirection do custo é para baixo)", () => {
+    render(<CostVsRevenueChart series={series} cotacaoUsdBrl={null} />);
+    expect(screen.getByTestId("badge-custo").className).toContain("rose");
+  });
+
+  it("a regra da comparação é enunciada no rodapé", () => {
+    render(<CostVsRevenueChart series={series} cotacaoUsdBrl={null} />);
+    expect(screen.getByTestId("grafico-custo-receita").textContent).toContain(
+      "segunda metade",
+    );
+  });
+
+  it("série curta demais não gera badge (não compara 2 pontos)", () => {
+    render(
+      <CostVsRevenueChart
+        series={[{ ...series[0], pontos: series[0].pontos.slice(0, 2) }]}
+        cotacaoUsdBrl={null}
+      />,
+    );
+    expect(screen.queryByTestId("badge-receita")).toBeNull();
+  });
+});
+
+describe("FunnelDigest: como ler", () => {
+  it("traz a explicação estática, sem texto gerado", () => {
+    render(
+      <FunnelDigest
+        data={{
+          passos: [
+            {
+              chave: "cadastro",
+              rotulo: "Cadastros",
+              valor: 10,
+              taxaSobreAnterior: null,
+            },
+          ],
+          destaque: null,
+          anterior: null,
+        }}
+      />,
+    );
+    expect(screen.getByTestId("funil-como-ler").textContent).toContain(
+      "maior perda",
+    );
   });
 });

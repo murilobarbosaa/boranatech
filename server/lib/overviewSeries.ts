@@ -118,6 +118,24 @@ export type PassoDoFunil = {
   taxaSobreAnterior: number | null;
 };
 
+/**
+ * CONDICOES PARA O DELTA DO FUNIL VOLTAR A EXISTIR.
+ *
+ * O delta foi desligado na Fase 4 porque coortes de maturidades diferentes
+ * produzem uma queda negativa por construcao. Ele volta quando as duas janelas
+ * forem comparaveis, e "comparavel" precisa ser uma condicao VERIFICAVEL, nao um
+ * julgamento: ambas as coortes com pelo menos `FUNIL_MIN_CADASTROS` pessoas que
+ * ja tiveram `FUNIL_MIN_MATURIDADE_DIAS` para ativar.
+ *
+ * Os dois numeros vem da medicao de 2026-08-14: com piso de 7 dias, a janela
+ * anterior tinha DEZ cadastros, e uma taxa sobre dez pessoas oscila 10 pontos
+ * com uma pessoa a mais. Cem e o menor denominador em que um ponto percentual
+ * significa alguma coisa. Sao constantes nomeadas de proposito: quando a base
+ * crescer, o delta liga sozinho e a mudanca aparece no diff de quem mexer nelas.
+ */
+export const FUNIL_MIN_CADASTROS = 100;
+export const FUNIL_MIN_MATURIDADE_DIAS = 7;
+
 export type Funil = {
   passos: PassoDoFunil[];
   /** Chave do passo com a PIOR transicao. `null` quando nao ha transicao medivel. */
@@ -125,11 +143,19 @@ export type Funil = {
   /** Contagens da janela anterior, como informacao. NAO viram delta. Ver abaixo. */
   anterior: { cadastro: number; ativacao: number; pro: number } | null;
   /**
-   * Por que nao ha delta de taxa entre janelas. Ver o bloco de comentario de
-   * `montarFunil` — nao e ausencia de dado, e recusa de exibir um numero
-   * enviesado por construcao.
+   * Por que nao ha delta de taxa entre janelas. `null` quando o delta EXISTE.
+   * Nao e ausencia de dado, e recusa de exibir um numero enviesado por
+   * construcao — ver o comentario de `montarFunilDeCoorte`.
    */
-  motivoSemDelta: "coortes_de_maturidade_diferente";
+  motivoSemDelta:
+    | "coortes_de_maturidade_diferente"
+    | "coorte_anterior_pequena"
+    | null;
+  /**
+   * Delta em PONTOS PERCENTUAIS por transicao, quando as coortes sao
+   * comparaveis. `null` enquanto `motivoSemDelta` estiver preenchido.
+   */
+  deltaPp: Record<string, number> | null;
 };
 
 /**
@@ -178,6 +204,12 @@ export function montarFunilDeCoorte(input: {
   ativacao: number;
   pro: number;
   anterior: { cadastro: number; ativacao: number; pro: number } | null;
+  /**
+   * Dias que a coorte ANTERIOR ja teve para ativar. Quando ausente, o delta nao
+   * liga: sem saber a maturidade nao da para afirmar que as janelas sao
+   * comparaveis.
+   */
+  maturidadeAnteriorDias?: number;
 }): Funil {
   const taxa = (num: number, den: number) =>
     den > 0 ? (num / den) * 100 : null;
@@ -213,12 +245,37 @@ export function montarFunilDeCoorte(input: {
           atual.taxaSobreAnterior < pior.taxaSobreAnterior ? atual : pior,
         ).chave;
 
-  return {
-    passos,
-    destaque,
-    anterior: input.anterior,
-    motivoSemDelta: "coortes_de_maturidade_diferente",
-  };
+  // DELTA SO QUANDO AS DUAS COORTES SAO COMPARAVEIS. Ver o bloco acima das
+  // constantes: a condicao e verificavel, nao um julgamento.
+  const ant = input.anterior;
+  const maturidade = input.maturidadeAnteriorDias ?? 0;
+  const comparavel =
+    ant !== null &&
+    ant.cadastro >= FUNIL_MIN_CADASTROS &&
+    input.cadastro >= FUNIL_MIN_CADASTROS &&
+    maturidade >= FUNIL_MIN_MATURIDADE_DIAS;
+
+  let deltaPp: Record<string, number> | null = null;
+  let motivoSemDelta: Funil["motivoSemDelta"] =
+    "coortes_de_maturidade_diferente";
+  if (comparavel) {
+    const taxaAnt = {
+      ativacao: taxa(ant.ativacao, ant.cadastro),
+      pro: taxa(ant.pro, ant.ativacao),
+    };
+    deltaPp = {};
+    for (const p of comTaxa) {
+      const base = taxaAnt[p.chave as "ativacao" | "pro"];
+      if (base !== null) deltaPp[p.chave] = p.taxaSobreAnterior - base;
+    }
+    motivoSemDelta = null;
+  } else if (ant !== null && ant.cadastro < FUNIL_MIN_CADASTROS) {
+    // Motivo MAIS ESPECIFICO quando o problema e so o tamanho: "maturidade
+    // diferente" mandaria investigar a coisa errada.
+    motivoSemDelta = "coorte_anterior_pequena";
+  }
+
+  return { passos, destaque, anterior: ant, motivoSemDelta, deltaPp };
 }
 
 // ---------------------------------------------------------------------------
@@ -379,8 +436,26 @@ export async function montarSeriesDaVisao(
     ),
   ]);
 
-  const primeiroPerfil =
-    perfis.length > 0 ? diaBrasilia(perfis[0].created_at) : null;
+  // O PRIMEIRO DIA DA BASE E O MENOR `created_at`, e nao `perfis[0]`.
+  //
+  // BUG MEDIDO em 2026-08-14: a varredura ordena por `user_id` (exigencia da
+  // paginacao por OFFSET, que sem ORDER BY pode repetir ou pular linhas), entao
+  // `perfis[0]` era o perfil de menor UUID — uma linha arbitraria. Em `window=
+  // all` isso definia o inicio da serie: o menor `user_id` era de 2026-08-10 e o
+  // menor `created_at` de 2026-05-04, entao o grafico de "tudo" desenhava
+  // CINCO dias e somava 19 conversoes onde existiam 104. Nada acusava: cinco
+  // barras plausiveis.
+  //
+  // O conserto e o minimo sobre TODAS as linhas lidas. Trocar o ORDER BY para
+  // `created_at` seria pior: a coluna nao e unica, e paginacao por OFFSET sobre
+  // chave nao unica volta a poder pular linha.
+  let primeiroPerfil: string | null = null;
+  for (const p of perfis) {
+    const dia = diaBrasilia(p.created_at);
+    if (dia && (primeiroPerfil === null || dia < primeiroPerfil)) {
+      primeiroPerfil = dia;
+    }
+  }
   const dias = diasDaJanela(janela, primeiroPerfil ?? hoje);
 
   // --- FLUXOS -------------------------------------------------------------
@@ -513,7 +588,19 @@ export async function montarSeriesDaVisao(
     anteriorInicio && anteriorFim
       ? contar(coorte(anteriorInicio, anteriorFim))
       : null;
-  const funil = montarFunilDeCoorte({ ...atual, anterior });
+  // Maturidade da coorte ANTERIOR: dias entre o fim daquela janela e agora. E
+  // quanto tempo a pessoa mais nova daquele grupo ja teve para ativar.
+  const maturidadeAnteriorDias = anteriorFim
+    ? Math.floor(
+        (Date.parse(janela.endIso) - Date.parse(anteriorFim)) /
+          (24 * 60 * 60 * 1000),
+      )
+    : 0;
+  const funil = montarFunilDeCoorte({
+    ...atual,
+    anterior,
+    maturidadeAnteriorDias,
+  });
 
   // --- FERRAMENTAS ---------------------------------------------------------
   const porFerramenta = new Map<string, UsoPorFerramenta>();

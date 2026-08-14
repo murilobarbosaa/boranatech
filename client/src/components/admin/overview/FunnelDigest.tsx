@@ -66,6 +66,16 @@ export function FunnelDigest({
       <h3 className="font-display text-lg font-black text-slate-950 sm:text-xl">
         Onde as pessoas param?
       </h3>
+      {/* COPY DETERMINISTICA, escrita aqui. Nada de texto gerado por heurística
+          ou por modelo: o painel explica como se lê, e a regra do destaque é
+          fixa no servidor (a transição de menor taxa). */}
+      <p
+        data-testid="funil-como-ler"
+        className="mt-1 text-sm font-semibold text-slate-600"
+      >
+        Cada etapa mostra quantos dos cadastrados chegaram ali; a marcação
+        aponta a maior perda, que é onde melhoria rende mais.
+      </p>
       {windowLabel ? (
         <p className="mt-1 text-xs font-bold text-slate-500">
           Coorte de quem se cadastrou em {windowLabel}

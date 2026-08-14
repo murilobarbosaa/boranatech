@@ -843,9 +843,11 @@ describe("GET /overview-series", () => {
     expect(f.passos.map((p: { valor: number }) => p.valor)).toEqual([2, 1, 1]);
     expect(f.passos[1].taxaSobreAnterior).toBeCloseTo(50, 6);
     expect(f.passos[2].taxaSobreAnterior).toBeCloseTo(100, 6);
-    // O delta NÃO existe, e o motivo é nomeado: coortes de maturidades
-    // diferentes produzem um delta negativo por construção.
-    expect(f.motivoSemDelta).toBe("coortes_de_maturidade_diferente");
+    // O delta NÃO existe, e o motivo é nomeado. Com 2 cadastros na fixture, o
+    // motivo específico é o TAMANHO da coorte (mínimo de 100), não a
+    // maturidade: motivo genérico mandaria investigar a coisa errada.
+    expect(f.motivoSemDelta).toBe("coorte_anterior_pequena");
+    expect(f.deltaPp).toBeNull();
     expect(f.destaque).toBe("ativacao");
   });
 
@@ -925,5 +927,39 @@ describe("GET /overview-series", () => {
     ).map((x) => x.chave);
     expect(chaves).toContain("chargesFalhadasPorDia");
     expect(chaves).toContain("aquisicaoPorCanal");
+  });
+});
+
+describe("REGRESSÃO: série de 'tudo' começa no PRIMEIRO cadastro", () => {
+  it("o início da série é o menor created_at, não a primeira linha lida", async () => {
+    // BUG MEDIDO em 2026-08-14: a varredura de perfis ordena por `user_id`
+    // (exigência da paginação por OFFSET), e o código usava `perfis[0]` como
+    // primeiro dia da base. O menor UUID era de 2026-08-10 e o menor
+    // `created_at` de 2026-05-04, então `window=all` desenhava CINCO dias e
+    // somava 19 conversões onde existiam 104. Cinco barras plausíveis, nada
+    // acusando.
+    //
+    // A fixture reproduz a condição: a linha ANTIGA vem DEPOIS na ordem de
+    // leitura, exatamente como acontecia com o UUID.
+    base({
+      profiles: {
+        rows: [
+          { user_id: "aaa", created_at: "2026-08-13T03:30:00Z" },
+          { user_id: "zzz", created_at: "2026-05-04T03:30:00Z" },
+        ],
+        count: 2,
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/overview-series?window=all");
+
+    const cadastros = (
+      r.body.data.series as Array<{ chave: string; pontos: unknown[] }>
+    ).find((s) => s.chave === "cadastros")!;
+    // De 04/05 até hoje são bem mais que os 5 dias do bug.
+    expect(cadastros.pontos.length).toBeGreaterThan(90);
+    expect((cadastros.pontos as Array<{ date: string }>)[0].date).toBe(
+      "2026-05-04",
+    );
   });
 });

@@ -1,23 +1,26 @@
+import { useState } from "react";
 import { AlertTriangle, CheckCircle2, ExternalLink } from "lucide-react";
 
 /**
- * Painel "Atenção necessária". Substitui "Eventos recentes".
+ * Painel "Atenção necessária", v2 (rodada 7).
  *
- * O bloco antigo listava as 10 últimas linhas de `content_audit_logs`, ou seja,
- * histórico de edição de conteúdo: o espaço mais visível da Visão era o único
- * sobre o qual não havia nada a fazer.
+ * O QUE QUEBROU NA v1, visto na revisão visual e invisível para os guards
+ * estruturais: com ~26 itens, o painel virava uma coluna sem fim de cards
+ * idênticos (uns 20 "Saída agendada" empilhados), e como ele não tinha teto de
+ * altura, esticava a linha inteira do grid — o vizinho ao lado virava um pill
+ * gigante. Nenhum teste de posição ou de payload pega isso: eles verificam que o
+ * bloco está lá e não quebra, não que ele é legível.
  *
- * TRÊS ESTADOS, e nenhum deles é o outro:
+ * v2, e as três decisões:
  *
- *   itens          o que pede ação, crítico primeiro.
- *   vazio          "Tudo em ordem" — e ele só aparece quando TODAS as fontes
- *                  responderam. Painel vazio por sucesso e painel vazio por
- *                  sonda quebrada são estados opostos, e chamar o segundo de
- *                  "tudo em ordem" é mentira.
- *   erro/loading   declarados, nunca disfarçados de vazio.
- *
- * ARQUIVO NOVO de propósito: `client/src/pages/Admin.tsx` está na zona de
- * colisão da frente paralela, então a integração precisa ser uma edição só.
+ * 1. AGRUPAMENTO POR TIPO, feito NO CLIENT a partir de `itens[]`. No client de
+ *    propósito: esta rodada entrega preview contra a API de PRODUÇÃO, então
+ *    nada pode depender de shape novo no servidor. Vinte "Saída agendada" viram
+ *    um card "Saídas agendadas · 20 · R$ 566,80", que é a informação que se usa
+ *    para decidir; a lista individual continua a um clique.
+ * 2. TETO DE ALTURA no painel e na lista interna. Um painel que cresce sem
+ *    limite não é um painel, é a página.
+ * 3. Grupos de severidade baixa nascem RECOLHIDOS. O que é crítico abre sozinho.
  */
 
 export type ItemAtencao = {
@@ -50,13 +53,185 @@ const ROTULO_DE_FONTE: Record<string, string> = {
   custo_ia: "custo de IA",
 };
 
-/**
- * Resolver com fallback neutro, como manda a convenção do projeto para todo
- * lookup indexado por valor que vem do servidor: uma fonte nova que o bundle
- * ainda não conhece não pode derrubar a página.
- */
+/** Resolver com fallback neutro: tipo novo do servidor não pode derrubar a aba. */
 function rotuloDeFonte(id: string): string {
   return ROTULO_DE_FONTE[id] ?? id;
+}
+
+const TITULO_DE_GRUPO: Record<string, string> = {
+  assinatura_past_due: "Pagamentos em atraso",
+  saida_agendada: "Saídas agendadas",
+  cobrancas_falhadas: "Cobranças falhadas",
+  pagamento_orfao: "Pagamentos sem assinatura",
+  custo_ia_spike: "Custo de IA acima do normal",
+};
+
+function tituloDeGrupo(tipo: string, exemplo: ItemAtencao): string {
+  return TITULO_DE_GRUPO[tipo] ?? exemplo.titulo ?? tipo;
+}
+
+/**
+ * DEEP LINK PARA A STRIPE, validado no client.
+ *
+ * O servidor já manda `url` pronta, montada a partir do
+ * `provider_subscription_id`. Aqui ela é VALIDADA antes de virar botão: só
+ * `https://dashboard.stripe.com/...` passa. Um href vazio, relativo ou de outro
+ * host vira ausência de botão, e não um "Abrir" que não abre nada — que é pior,
+ * porque promete uma ação.
+ *
+ * A `chave` do item NÃO serve como fonte do link: ela carrega o id da linha
+ * local (`past_due:<uuid>`), não o id da Stripe. Quem tem o id certo é a `url`.
+ */
+export function linkDaStripe(url: unknown): string | null {
+  if (typeof url !== "string" || url.length === 0) return null;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:") return null;
+    if (u.hostname !== "dashboard.stripe.com") return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
+type Grupo = {
+  tipo: string;
+  titulo: string;
+  itens: ItemAtencao[];
+  totalCents: number;
+  severidade: "critico" | "atencao";
+};
+
+/** Agrupa por tipo preservando a ordem em que os tipos aparecem. */
+export function agruparItens(itens: ItemAtencao[]): Grupo[] {
+  const porTipo = new Map<string, Grupo>();
+  for (const item of itens) {
+    if (!item || typeof item.tipo !== "string") continue;
+    const g = porTipo.get(item.tipo) ?? {
+      tipo: item.tipo,
+      titulo: tituloDeGrupo(item.tipo, item),
+      itens: [],
+      totalCents: 0,
+      severidade: "atencao" as const,
+    };
+    g.itens.push(item);
+    g.totalCents += typeof item.valorCents === "number" ? item.valorCents : 0;
+    // A severidade do grupo é a PIOR do grupo: um crítico entre vinte avisos não
+    // pode ficar escondido atrás da média.
+    if (item.severidade === "critico") g.severidade = "critico";
+    porTipo.set(item.tipo, g);
+  }
+  return Array.from(porTipo.values()).sort(
+    (a, b) =>
+      (a.severidade === "critico" ? 0 : 1) -
+        (b.severidade === "critico" ? 0 : 1) || b.totalCents - a.totalCents,
+  );
+}
+
+function GrupoView({ grupo }: { grupo: Grupo }) {
+  // Grupo de severidade baixa nasce recolhido; crítico nasce aberto.
+  const [aberto, setAberto] = useState(grupo.severidade === "critico");
+  const critico = grupo.severidade === "critico";
+  const unico = grupo.itens.length === 1;
+
+  return (
+    <div
+      data-testid="atencao-grupo"
+      data-tipo={grupo.tipo}
+      data-severidade={grupo.severidade}
+      data-aberto={aberto ? "sim" : "nao"}
+      className={`rounded-2xl border-2 p-4 ${
+        critico ? "border-rose-500 bg-rose-50" : "border-amber-400 bg-amber-50"
+      }`}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="font-display text-lg font-black text-slate-950">
+          {grupo.titulo}
+          {!unico ? (
+            <span className="ml-2 rounded-full border-2 border-slate-900 bg-white px-2 py-0.5 text-xs font-black">
+              {grupo.itens.length}
+            </span>
+          ) : null}
+        </p>
+        {grupo.totalCents > 0 ? (
+          <p className="text-sm font-black text-slate-700">
+            {formatCents(grupo.totalCents)}
+          </p>
+        ) : null}
+      </div>
+
+      {unico ? (
+        // GRUPO DE UM: o resumo JA e o item. Renderizar a lista embaixo
+        // repetiria o mesmo texto duas vezes na tela — foi o que o teste pegou.
+        <>
+          <p className="mt-1 text-sm font-semibold text-slate-600">
+            {grupo.itens[0].detalhe}
+          </p>
+          {linkDaStripe(grupo.itens[0].url) ? (
+            <a
+              href={linkDaStripe(grupo.itens[0].url)!}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1 text-xs font-black uppercase text-violet-700 hover:underline"
+            >
+              Abrir na Stripe <ExternalLink className="h-3 w-3" />
+            </a>
+          ) : null}
+        </>
+      ) : (
+        <button
+          type="button"
+          data-testid="atencao-grupo-toggle"
+          onClick={() => setAberto((v) => !v)}
+          className="mt-2 text-xs font-black uppercase text-violet-700 hover:underline"
+        >
+          {aberto ? "ocultar" : `ver ${grupo.itens.length} itens`}
+        </button>
+      )}
+
+      {aberto && !unico ? (
+        <ul
+          data-testid="atencao-grupo-lista"
+          className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1"
+        >
+          {grupo.itens.map((item) => {
+            const href = linkDaStripe(item.url);
+            return (
+              <li
+                key={item.chave}
+                data-testid="atencao-item"
+                className="rounded-xl border-2 border-slate-200 bg-white/70 p-2"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-sm font-bold text-slate-800">
+                    {item.titulo}
+                  </span>
+                  {typeof item.valorCents === "number" ? (
+                    <span className="text-xs font-black text-slate-600">
+                      {formatCents(item.valorCents)}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  {item.detalhe}
+                </p>
+                {href ? (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-xs font-black uppercase text-violet-700 hover:underline"
+                  >
+                    Abrir na Stripe <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </div>
+  );
 }
 
 export function AttentionPanel({
@@ -68,17 +243,13 @@ export function AttentionPanel({
   loading?: boolean;
   error?: string | null;
 }) {
-  // CAMPOS AUSENTES NAO DERRUBAM A ABA. Este componente roda dentro da Visao, e
-  // um `data.itens.length` sobre um payload degradado ({} do backend antigo na
-  // janela de deploy, ou envelope de erro) seria um TypeError no render — o que
-  // troca a PAGINA INTEIRA pela tela de falha do ErrorBoundary, nao so este
-  // bloco. Foi exatamente isso que `Admin.visao.test.tsx` acusou na primeira
-  // versao. Array ausente vira array vazio; a distincao que importa (vazio por
-  // sucesso vs vazio por fonte fora do ar) continua vindo de `fontes`.
+  // Campos ausentes não derrubam a aba: um throw no render da Visão troca a
+  // PÁGINA inteira pela tela do ErrorBoundary, não só este bloco.
   const itens = Array.isArray(data?.itens) ? data.itens : [];
   const fontes = Array.isArray(data?.fontesIndisponiveis)
     ? data.fontesIndisponiveis
     : [];
+  const grupos = agruparItens(itens);
 
   return (
     <article className="card-brutal rounded-3xl bg-white p-6">
@@ -102,7 +273,12 @@ export function AttentionPanel({
           {error}
         </p>
       ) : !data ? null : (
-        <div className="mt-5 space-y-4">
+        // TETO DE ALTURA. Sem ele o painel estica a linha do grid e deforma o
+        // vizinho — foi exatamente o que aconteceu na v1.
+        <div
+          data-testid="atencao-corpo"
+          className="mt-5 max-h-[32rem] space-y-4 overflow-y-auto pr-1"
+        >
           {fontes.length > 0 ? (
             <p
               data-testid="atencao-fontes-indisponiveis"
@@ -113,7 +289,7 @@ export function AttentionPanel({
             </p>
           ) : null}
 
-          {itens.length === 0 ? (
+          {grupos.length === 0 ? (
             fontes.length === 0 ? (
               <p
                 data-testid="atencao-vazio"
@@ -124,42 +300,7 @@ export function AttentionPanel({
               </p>
             ) : null
           ) : (
-            itens.map((item) => (
-              <div
-                key={item.chave}
-                data-testid="atencao-item"
-                data-severidade={item.severidade}
-                className={`rounded-2xl border-2 p-4 ${
-                  item.severidade === "critico"
-                    ? "border-rose-500 bg-rose-50"
-                    : "border-amber-400 bg-amber-50"
-                }`}
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="font-display text-lg font-black text-slate-950">
-                    {item.titulo}
-                  </p>
-                  {typeof item.valorCents === "number" ? (
-                    <p className="text-sm font-black text-slate-700">
-                      {formatCents(item.valorCents)}
-                    </p>
-                  ) : null}
-                </div>
-                <p className="mt-1 text-sm font-semibold text-slate-600">
-                  {item.detalhe}
-                </p>
-                {item.url ? (
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 inline-flex items-center gap-1 text-xs font-black uppercase text-violet-700 hover:underline"
-                  >
-                    Abrir <ExternalLink className="h-3 w-3" />
-                  </a>
-                ) : null}
-              </div>
-            ))
+            grupos.map((g) => <GrupoView key={g.tipo} grupo={g} />)
           )}
         </div>
       )}

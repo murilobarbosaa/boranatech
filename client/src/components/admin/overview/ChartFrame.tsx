@@ -28,6 +28,7 @@ export function ChartFrame({
   carregando,
   tendencia,
   rodape,
+  extra,
   children,
 }: {
   titulo: string;
@@ -40,6 +41,13 @@ export function ChartFrame({
   tendencia: Tendencia;
   /** Ressalvas. Vazio quando não há nada de excepcional a dizer. */
   rodape: string[];
+  /**
+   * Slot opcional logo abaixo da tendência, para badges POR SÉRIE. Existe porque
+   * um gráfico com duas séries em unidades diferentes (receita em centavos,
+   * custo em dólar) não cabe numa frase de tendência só — a v1 tentou e imprimiu
+   * centavos crus na tela.
+   */
+  extra?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -83,6 +91,7 @@ export function ChartFrame({
           >
             {tendencia.texto}
           </p>
+          {extra}
           {/* Altura fixa e largura 100%: o ResponsiveContainer precisa de um pai
               com altura, e a largura acompanha a coluna. Em 380px o cartão
               encolhe e NÃO gera rolagem horizontal. */}

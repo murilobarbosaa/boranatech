@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 /**
  * Uso por ferramenta: chamadas, custo MEDIDO e chamadas SEM custo medido.
  *
@@ -15,21 +17,44 @@ export type UsoPorFerramenta = {
   semCustoMedido: number;
 };
 
+/**
+ * Quantas ferramentas aparecem antes de "outras N". Oito porque a base tem 17
+ * tools e as 8 primeiras cobrem a esmagadora maioria das chamadas; o resto vira
+ * uma linha só, e a soma continua batendo porque a linha TOTAL é sobre TUDO.
+ */
+export const TOP_FERRAMENTAS = 8;
+
 export function ToolUsagePanel({
   ferramentas,
   loading,
   error,
   windowLabel,
+  cotacaoUsdBrl,
 }: {
   ferramentas?: UsoPorFerramenta[] | null;
   loading?: boolean;
   error?: string | null;
   windowLabel?: string | null;
+  /** Quando existe, a linha TOTAL ganha o equivalente em BRL. */
+  cotacaoUsdBrl?: number | null;
 }) {
+  const [expandido, setExpandido] = useState(false);
   // Payload degradado vira lista vazia, nunca throw no render da Visão.
-  const linhas = Array.isArray(ferramentas) ? ferramentas : [];
-  const totalChamadas = linhas.reduce((a, f) => a + (f.chamadas ?? 0), 0);
-  const totalSemCusto = linhas.reduce((a, f) => a + (f.semCustoMedido ?? 0), 0);
+  const todas = Array.isArray(ferramentas) ? ferramentas : [];
+  const totalChamadas = todas.reduce((a, f) => a + (f.chamadas ?? 0), 0);
+  const totalSemCusto = todas.reduce((a, f) => a + (f.semCustoMedido ?? 0), 0);
+  const totalCusto = todas.reduce((a, f) => a + (f.custoUsd ?? 0), 0);
+  // A TABELA encurta; os TOTAIS não. Um total sobre o top 8 seria um número
+  // menor com cara de total, que é a classe de erro que este projeto persegue.
+  const linhas = expandido ? todas : todas.slice(0, TOP_FERRAMENTAS);
+  const ocultas = todas.slice(linhas.length);
+  const chamadasOcultas = ocultas.reduce((a, f) => a + (f.chamadas ?? 0), 0);
+  const custoOculto = ocultas.reduce((a, f) => a + (f.custoUsd ?? 0), 0);
+  const semCustoOculto = ocultas.reduce(
+    (a, f) => a + (f.semCustoMedido ?? 0),
+    0,
+  );
+  const temCotacao = typeof cotacaoUsdBrl === "number" && cotacaoUsdBrl > 0;
 
   return (
     <article
@@ -60,7 +85,7 @@ export function ToolUsagePanel({
         >
           {error}
         </p>
-      ) : linhas.length === 0 ? (
+      ) : todas.length === 0 ? (
         <p
           data-testid="ferramentas-vazio"
           className="mt-5 text-sm font-bold text-slate-500"
@@ -69,8 +94,8 @@ export function ToolUsagePanel({
         </p>
       ) : (
         <>
-          <div className="mt-5 overflow-x-auto">
-            <table className="w-full text-left text-sm">
+          <div className="mt-5 max-h-96 overflow-auto">
+            <table className="w-full text-left text-xs sm:text-sm">
               <thead>
                 <tr className="text-xs font-black uppercase text-slate-500">
                   <th className="pb-2">Ferramenta</th>
@@ -87,15 +112,17 @@ export function ToolUsagePanel({
                     data-tool={f.tool}
                     className="border-t-2 border-slate-200"
                   >
-                    <td className="py-2 font-bold text-slate-900">{f.tool}</td>
-                    <td className="py-2 text-right font-semibold text-slate-700">
+                    <td className="py-1.5 font-bold text-slate-900">
+                      {f.tool}
+                    </td>
+                    <td className="py-1.5 text-right font-semibold text-slate-700">
                       {(f.chamadas ?? 0).toLocaleString("pt-BR")}
                     </td>
-                    <td className="py-2 text-right font-semibold text-slate-700">
+                    <td className="py-1.5 text-right font-semibold text-slate-700">
                       US$ {(f.custoUsd ?? 0).toFixed(2)}
                     </td>
                     <td
-                      className={`py-2 text-right font-black ${
+                      className={`py-1.5 text-right font-black ${
                         (f.semCustoMedido ?? 0) > 0
                           ? "text-amber-700"
                           : "text-slate-400"
@@ -105,6 +132,61 @@ export function ToolUsagePanel({
                     </td>
                   </tr>
                 ))}
+                {ocultas.length > 0 ? (
+                  <tr
+                    data-testid="ferramentas-outras"
+                    className="border-t-2 border-slate-200"
+                  >
+                    <td className="py-1.5">
+                      <button
+                        type="button"
+                        data-testid="ferramentas-expandir"
+                        onClick={() => setExpandido(true)}
+                        className="font-black uppercase text-violet-700 hover:underline"
+                      >
+                        outras {ocultas.length} ferramentas
+                      </button>
+                    </td>
+                    <td className="py-1.5 text-right font-semibold text-slate-700">
+                      {chamadasOcultas.toLocaleString("pt-BR")}
+                    </td>
+                    <td className="py-1.5 text-right font-semibold text-slate-700">
+                      US$ {custoOculto.toFixed(2)}
+                    </td>
+                    <td className="py-1.5 text-right font-black text-slate-400">
+                      {semCustoOculto.toLocaleString("pt-BR")}
+                    </td>
+                  </tr>
+                ) : null}
+                <tr
+                  data-testid="ferramentas-total"
+                  className="border-t-2 border-slate-900"
+                >
+                  <td className="py-2 font-black uppercase text-slate-900">
+                    Total
+                  </td>
+                  <td className="py-2 text-right font-black text-slate-900">
+                    {totalChamadas.toLocaleString("pt-BR")}
+                  </td>
+                  <td className="py-2 text-right font-black text-slate-900">
+                    US$ {totalCusto.toFixed(2)}
+                    {temCotacao ? (
+                      <span className="block text-[11px] font-bold text-slate-500">
+                        {(totalCusto * cotacaoUsdBrl!).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </span>
+                    ) : null}
+                  </td>
+                  <td
+                    className={`py-2 text-right font-black ${
+                      totalSemCusto > 0 ? "text-amber-700" : "text-slate-400"
+                    }`}
+                  >
+                    {totalSemCusto.toLocaleString("pt-BR")}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>

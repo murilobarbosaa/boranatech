@@ -1,6 +1,7 @@
 import {
   Bar,
   BarChart,
+  Brush,
   CartesianGrid,
   Line,
   LineChart,
@@ -55,6 +56,12 @@ function comoFluxo(pontos: PontoSerie[]) {
   }));
 }
 
+/**
+ * A partir de quantos pontos o gráfico ganha navegação. 30 é a maior janela do
+ * seletor, então só "tudo" (hoje ~102 dias) passa disso.
+ */
+export const DIAS_PARA_NAVEGACAO = 30;
+
 function eixoX(pontos: Array<{ date: string }>) {
   return {
     dataKey: "date" as const,
@@ -104,9 +111,25 @@ export function ProConversionsChart({
           />
           <Tooltip
             labelFormatter={rotuloDeDia}
-            formatter={(v: number) => [v, "conversões"]}
+            formatter={(v: number) => [
+              `${v} ${v === 1 ? "conversão" : "conversões"}`,
+              "",
+            ]}
           />
           <Bar dataKey="count" fill="#7c3aed" isAnimationActive={false} />
+          {/* NAVEGACAO so quando ha o que navegar. O `Brush` ja vem no recharts
+              que o projeto usa (nenhuma dependencia nova); abaixo de 31 dias ele
+              seria um controle a mais sem funcao, ocupando altura do grafico. */}
+          {pontos.length > DIAS_PARA_NAVEGACAO ? (
+            <Brush
+              dataKey="date"
+              height={18}
+              travellerWidth={8}
+              stroke="#7c3aed"
+              tickFormatter={rotuloDeDia}
+              startIndex={Math.max(0, pontos.length - DIAS_PARA_NAVEGACAO)}
+            />
+          ) : null}
         </BarChart>
       </ResponsiveContainer>
     </ChartFrame>
@@ -149,7 +172,29 @@ export function CostVsRevenueChart({
 
   const parcial =
     typeof chamadasSemCustoMedido === "number" && chamadasSemCustoMedido > 0;
+
+  // BADGE POR SERIE, cada uma na SUA unidade. A v1 mandava as duas séries para
+  // um `tendenciaDeFluxo` só e imprimia centavos crus ("39333 -> 14846"), que
+  // não é receita nem custo: é o número interno vazando na tela.
+  //
+  // REGRA DA COMPARACAO, escrita aqui e enunciada no rodapé: metade final do
+  // período contra metade inicial, dias completos apenas (o dia de hoje é
+  // parcial e puxaria a segunda metade para baixo todo dia de manhã).
+  const metades = (pontos: PontoSerie[]) => {
+    const completos = pontos.filter((p) => !p.partial);
+    if (completos.length < 4) return null;
+    const meio = Math.floor(completos.length / 2);
+    const soma = (xs: PontoSerie[]) =>
+      xs.reduce((a, p) => a + (typeof p.value === "number" ? p.value : 0), 0);
+    return {
+      antes: soma(completos.slice(0, meio)),
+      depois: soma(completos.slice(meio)),
+    };
+  };
+  const badgeReceita = metades(receita);
+  const badgeCusto = metades(custo);
   const rodape = [
+    "Comparação: soma da segunda metade do período contra a primeira, só dias completos.",
     parcial
       ? `Custo parcial: ${chamadasSemCustoMedido.toLocaleString("pt-BR")} chamadas sem custo medido no período.`
       : null,
@@ -177,6 +222,40 @@ export function CostVsRevenueChart({
       carregando={Boolean(carregando)}
       tendencia={tendenciaDeFluxo(comoFluxo(receita))}
       rodape={rodape}
+      extra={
+        <div
+          data-testid="custo-receita-badges"
+          className="mt-2 flex flex-wrap gap-3 text-xs font-black uppercase"
+        >
+          {badgeReceita ? (
+            <span data-testid="badge-receita" className="text-emerald-700">
+              receita{" "}
+              {(badgeReceita.antes / 100).toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}{" "}
+              →{" "}
+              {(badgeReceita.depois / 100).toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}
+            </span>
+          ) : null}
+          {badgeCusto ? (
+            <span
+              data-testid="badge-custo"
+              className={
+                badgeCusto.depois > badgeCusto.antes
+                  ? "text-rose-700"
+                  : "text-emerald-700"
+              }
+            >
+              custo US$ {badgeCusto.antes.toFixed(2)} → US${" "}
+              {badgeCusto.depois.toFixed(2)}
+            </span>
+          ) : null}
+        </div>
+      }
     >
       {temCotacao ? (
         <ResponsiveContainer width="100%" height="100%">

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   calcularFrescor,
+  FUNIL_MIN_CADASTROS,
+  FUNIL_MIN_MATURIDADE_DIAS,
   montarFunilDeCoorte,
   SNAPSHOT_MARGEM_HORAS,
 } from "./overviewSeries";
@@ -88,7 +90,9 @@ describe("funil de coorte: taxas adjacentes", () => {
       anterior: { cadastro: 619, ativacao: 31, pro: 25 },
     });
 
+    // 619 >= 100, mas sem maturidade declarada o delta continua desligado.
     expect(f.motivoSemDelta).toBe("coortes_de_maturidade_diferente");
+    expect(f.deltaPp).toBeNull();
     expect(f.anterior).toEqual({ cadastro: 619, ativacao: 31, pro: 25 });
     // CONTROLE NEGATIVO: nenhum passo carrega um campo de delta.
     for (const p of f.passos) {
@@ -192,5 +196,58 @@ describe("frescor do snapshot (D14): duração, não rótulo de dia", () => {
       new Date("2026-08-14T06:00:00Z"),
     );
     expect(f.horasDesdeOEsperado).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("delta do funil: liga só quando as coortes são comparáveis", () => {
+  const grande = { cadastro: 1000, ativacao: 100, pro: 50 };
+
+  it("LIGA com as duas coortes acima do mínimo e maturidade suficiente", () => {
+    const f = montarFunilDeCoorte({
+      ...grande,
+      anterior: { cadastro: 800, ativacao: 96, pro: 48 },
+      maturidadeAnteriorDias: FUNIL_MIN_MATURIDADE_DIAS,
+    });
+
+    expect(f.motivoSemDelta).toBeNull();
+    // ativação: 10% agora contra 12% antes = -2 pontos percentuais.
+    expect(f.deltaPp!.ativacao).toBeCloseTo(-2, 6);
+    // Pro: 50% contra 50% = 0.
+    expect(f.deltaPp!.pro).toBeCloseTo(0, 6);
+  });
+
+  it("CONTROLE NEGATIVO: coorte anterior pequena NÃO liga, e o motivo é específico", () => {
+    // Foi o caso real de 2026-08-14: com piso de maturidade, a janela anterior
+    // tinha DEZ cadastros. "Maturidade diferente" mandaria investigar a coisa
+    // errada; o problema ali é tamanho.
+    const f = montarFunilDeCoorte({
+      ...grande,
+      anterior: { cadastro: 10, ativacao: 2, pro: 1 },
+      maturidadeAnteriorDias: 30,
+    });
+
+    expect(f.deltaPp).toBeNull();
+    expect(f.motivoSemDelta).toBe("coorte_anterior_pequena");
+  });
+
+  it("CONTROLE NEGATIVO: maturidade insuficiente NÃO liga", () => {
+    const f = montarFunilDeCoorte({
+      ...grande,
+      anterior: { cadastro: 800, ativacao: 96, pro: 48 },
+      maturidadeAnteriorDias: FUNIL_MIN_MATURIDADE_DIAS - 1,
+    });
+    expect(f.deltaPp).toBeNull();
+    expect(f.motivoSemDelta).toBe("coortes_de_maturidade_diferente");
+  });
+
+  it("CONTROLE NEGATIVO: sem janela anterior, não liga", () => {
+    const f = montarFunilDeCoorte({ ...grande, anterior: null });
+    expect(f.deltaPp).toBeNull();
+    expect(f.motivoSemDelta).toBe("coortes_de_maturidade_diferente");
+  });
+
+  it("os limiares são constantes nomeadas, não números soltos", () => {
+    expect(FUNIL_MIN_CADASTROS).toBe(100);
+    expect(FUNIL_MIN_MATURIDADE_DIAS).toBe(7);
   });
 });
