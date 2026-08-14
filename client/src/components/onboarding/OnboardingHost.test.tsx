@@ -13,6 +13,7 @@ import {
   OnboardingCoordinatorProvider,
   useOnboardingCoordinator,
 } from "@/lib/onboarding/coordinator";
+import { limparEncerrados } from "@/lib/onboarding/encerrados";
 import type { Profile } from "@/services/contracts";
 import OnboardingHost, { DELAY_ABERTURA_MS, SAIDA_MS } from "./OnboardingHost";
 
@@ -109,6 +110,9 @@ beforeEach(async () => {
 
   vi.useFakeTimers();
   window.localStorage.clear();
+  // Escopo de CARGA DE PAGINA: no navegador some no reload, aqui nao, entao os
+  // casos herdariam o que o anterior encerrou.
+  limparEncerrados();
   updateMyProfile.mockReset();
   updateMyProfile.mockResolvedValue({});
   auth = { user: null, profile: null, profileStatus: "idle", loading: false };
@@ -472,6 +476,105 @@ describe("OnboardingHost: botao do Pro (proCta)", () => {
     const cursos = (await import("@/lib/onboarding/steps/cursos")).default;
     const comProCta = cursos.steps.find((passo) => passo.proCta);
     expect(comProCta?.proCta?.[1]).toBe("https://www.boranatech.com.br/planos");
+  });
+});
+
+describe("OnboardingHost: decidido continua decidido nesta carga", () => {
+  // Bug de producao: a pessoa clica em Pular, continua na pagina, e o
+  // onboarding aparece de novo.
+  //
+  // Causa: no logado a decisao vai para `profiles.preferences` por PATCH, e o
+  // AuthContext NAO atualiza o perfil em memoria depois disso. Quem sabe que a
+  // rota ja foi encerrada, no resto da carga, e so o registro em memoria do
+  // host. Ele nascia por MONTAGEM, e o host remonta dentro da mesma carga
+  // (medido com o ConsentGate real: voltar de /privacidade desmonta e remonta
+  // os children do gate). Remontou, o registro nasce vazio, o perfil em maos
+  // continua sem a chave, e o overlay reabre.
+  it("pular no logado e remontar o host na mesma carga NAO reabre", async () => {
+    auth = {
+      user: { id: "u1" },
+      profile: { id: "u1", preferences: {} } as unknown as Profile,
+      profileStatus: "ready",
+      loading: false,
+    };
+    const { unmount, hook } = montar("/");
+    await abrir();
+    expect(overlay()).not.toBeNull();
+
+    fireEvent.click(
+      document.querySelectorAll<HTMLButtonElement>(".side .ghost")[1],
+    );
+    await fechar();
+    expect(overlay()).toBeNull();
+    expect(updateMyProfile).toHaveBeenCalledTimes(1);
+
+    // O PATCH foi aceito, mas o perfil em memoria continua o de antes: e essa
+    // a janela que o registro da carga cobre.
+    unmount();
+    render(arvore(hook));
+    await abrir();
+
+    expect(overlay()).toBeNull();
+  });
+
+  it("outra sessao na mesma carga volta a receber o onboarding", async () => {
+    auth = {
+      user: { id: "u1" },
+      profile: { id: "u1", preferences: {} } as unknown as Profile,
+      profileStatus: "ready",
+      loading: false,
+    };
+    const { unmount, hook } = montar("/");
+    await abrir();
+    fireEvent.click(
+      document.querySelectorAll<HTMLButtonElement>(".side .ghost")[1],
+    );
+    await fechar();
+
+    // Sair e entrar com outra conta sem recarregar a pagina: o que a primeira
+    // pessoa decidiu nao vale para a segunda.
+    unmount();
+    auth = {
+      user: { id: "u2" },
+      profile: { id: "u2", preferences: {} } as unknown as Profile,
+      profileStatus: "ready",
+      loading: false,
+    };
+    render(arvore(hook));
+    await abrir();
+
+    expect(overlay()).not.toBeNull();
+  });
+
+  it("refresh do perfil NAO fecha nem reinicia o overlay aberto", async () => {
+    auth = {
+      user: { id: "u1" },
+      profile: { id: "u1", preferences: {} } as unknown as Profile,
+      profileStatus: "ready",
+      loading: false,
+    };
+    const { rerender, hook } = montar("/");
+    await abrir();
+    expect(overlay()).not.toBeNull();
+
+    const next = () =>
+      document.querySelector<HTMLButtonElement>(".next") as HTMLButtonElement;
+    fireEvent.click(next());
+    fireEvent.click(next());
+    expect(document.querySelector(".counter")?.textContent).toBe("3/6");
+
+    // TOKEN_REFRESHED: o AuthContext refaz o fetch e troca o objeto do perfil.
+    // A decisao por rota nao pode reagir a isso, senao o overlay aberto some e
+    // volta do primeiro card no meio da leitura.
+    auth = {
+      ...auth,
+      profile: { id: "u1", preferences: {} } as unknown as Profile,
+    };
+    rerender(arvore(hook));
+    await assentar();
+
+    expect(overlay()).not.toBeNull();
+    expect(document.querySelector(".counter")?.textContent).toBe("3/6");
   });
 });
 

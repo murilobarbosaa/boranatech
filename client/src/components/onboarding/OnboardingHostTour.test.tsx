@@ -14,6 +14,7 @@ import {
   OnboardingCoordinatorProvider,
   useOnboardingCoordinator,
 } from "@/lib/onboarding/coordinator";
+import { limparEncerrados } from "@/lib/onboarding/encerrados";
 import { ONBOARDING_REGISTRY } from "@/lib/onboarding/registry";
 import { tourAtivo } from "@/lib/onboarding/tour";
 import type { Profile } from "@/services/contracts";
@@ -153,6 +154,9 @@ beforeEach(async () => {
 
   vi.useFakeTimers();
   window.localStorage.clear();
+  // Escopo de CARGA DE PAGINA: no navegador some no reload, aqui nao, entao os
+  // casos herdariam o que o anterior encerrou.
+  limparEncerrados();
   updateMyProfile.mockReset();
   updateMyProfile.mockResolvedValue({});
   auth = { user: null, profile: null, profileStatus: "idle", loading: false };

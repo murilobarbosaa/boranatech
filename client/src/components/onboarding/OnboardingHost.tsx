@@ -11,6 +11,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useOnboardingCoordinator } from "@/lib/onboarding/coordinator";
+import { foiEncerrado, marcarEncerrado } from "@/lib/onboarding/encerrados";
 import { resolveRouteOnboarding } from "@/lib/onboarding/registry";
 import {
   hasSeenOnboarding,
@@ -79,17 +80,22 @@ export default function OnboardingHost() {
     timersRef.current = [];
   }, []);
 
-  // routeKeys ENCERRADOS nesta carga de pagina (concluidos ou pulados).
+  // routeKeys ENCERRADOS nesta carga de pagina (concluidos ou pulados) moram em
+  // `@/lib/onboarding/encerrados`, fora do componente.
   //
   // Existe porque a persistencia do logado vai para `profiles.preferences` e o
   // AuthContext so enxerga o registro novo no proximo refresh do perfil: sem
   // isto, voltar para a mesma rota reabriria o onboarding que a pessoa acabou
   // de fechar.
   //
+  // FORA do componente porque o escopo e a CARGA, e ref e escopo de MONTAGEM: o
+  // host remonta dentro da mesma carga (o ConsentGate desmonta os children a
+  // cada re-checagem) e o registro em ref nascia vazio.
+  //
   // Preenchido no ENCERRAMENTO, nunca na abertura. Quem sai da pagina no meio
   // do onboarding nao decidiu nada, entao ele reabre ao voltar, na mesma carga
   // ou em outra.
-  const handledRef = useRef<Set<string>>(new Set());
+  const donoDosRegistros = user?.id ?? null;
 
   // Rota para onde o tour acabou de navegar. Serve para detectar guarda: se a
   // location que chegar nao for esta, alguem redirecionou (RequireAuth manda
@@ -114,17 +120,29 @@ export default function OnboardingHost() {
     void migrateLocalRecordsToProfile(profile);
   }, [signedIn, authResolved, profile]);
 
+  // Perfil e dono por ref: `jaViu` (e portanto `avancarTour`, e portanto o
+  // efeito de decisao) NAO pode trocar de identidade quando o AuthContext
+  // refaz o fetch do perfil. Trocando, o efeito reexecutava a cada
+  // TOKEN_REFRESHED e o overlay ABERTO sumia e voltava do primeiro card. E a
+  // mesma razao pela qual `profile` esta fora das dependencias do efeito; sem
+  // as refs, ele entrava de novo por esta porta.
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+  const donoRef = useRef(donoDosRegistros);
+  donoRef.current = donoDosRegistros;
+
   /**
    * Ja viu? Soma o que esta persistido com o que foi encerrado NESTA carga.
    *
-   * `handledRef` entra porque a persistencia do logado so aparece no perfil no
-   * proximo refresh: sem ele o tour ofereceria de novo a rota que a pessoa
-   * acabou de concluir e andaria em circulo.
+   * O registro da carga entra porque a persistencia do logado so aparece no
+   * perfil no proximo refresh: sem ele o tour ofereceria de novo a rota que a
+   * pessoa acabou de concluir e andaria em circulo.
    */
   const jaViu = useCallback(
     (rk: string) =>
-      handledRef.current.has(rk) || hasSeenOnboarding(rk, profile),
-    [profile],
+      foiEncerrado(rk, donoRef.current) ||
+      hasSeenOnboarding(rk, profileRef.current),
+    [],
   );
 
   /** Leva o tour para a proxima rota da ordem, ou encerra se acabou. */
@@ -214,7 +232,7 @@ export default function OnboardingHost() {
     }
 
     const { routeKey, entry } = resolved;
-    if (handledRef.current.has(routeKey)) {
+    if (foiEncerrado(routeKey, donoDosRegistros)) {
       settle();
       return () => {
         cancelled = true;
@@ -229,7 +247,7 @@ export default function OnboardingHost() {
     }
 
     if (hasSeenOnboarding(routeKey, profile)) {
-      handledRef.current.add(routeKey);
+      marcarEncerrado(routeKey, donoDosRegistros);
       settle();
       return () => {
         cancelled = true;
@@ -265,7 +283,7 @@ export default function OnboardingHost() {
         // `handled` para nao repetir a tentativa (e o aviso) a cada navegacao
         // de volta nesta mesma carga.
         console.warn("[onboarding] falha ao carregar os passos", error);
-        handledRef.current.add(routeKey);
+        marcarEncerrado(routeKey, donoDosRegistros);
         settle();
       });
 
@@ -276,7 +294,7 @@ export default function OnboardingHost() {
     // AuthContext, e reexecutar a decisao a cada mudanca reabriria o overlay
     // que a pessoa acabou de fechar. O que importa e o valor no momento em que
     // a rota resolve, e `authResolved` ja garante que ele chegou.
-  }, [location, authResolved, avancarTour]);
+  }, [location, authResolved, avancarTour, donoDosRegistros]);
 
   // Timer sobrevivente a desmontagem chamaria setState em componente morto.
   useEffect(() => limparTimers, [limparTimers]);
@@ -318,7 +336,7 @@ export default function OnboardingHost() {
       if (destino) navigate(destino);
 
       if (!routeKey) return;
-      handledRef.current.add(routeKey);
+      marcarEncerrado(routeKey, donoDosRegistros);
       void markOnboardingSeen({
         routeKey,
         profile,
@@ -355,7 +373,7 @@ export default function OnboardingHost() {
       }
       if (tourAtivo()) avancarTour(routeKey);
     },
-    [profile, signedIn, reducedMotion, navigate, avancarTour],
+    [profile, signedIn, reducedMotion, navigate, avancarTour, donoDosRegistros],
   );
 
   if (!open || !def) return null;
