@@ -50,11 +50,18 @@ const ERROR_SAMPLE_RATE = 0.25;
  *   de deploy ou falha de CDN?") depende do numero ABSOLUTO de tentativas. A
  *   0.25 a medicao nasceria truncada e a conta de "quantos reloads resolveram"
  *   sairia errada em silencio.
+ * - `preload-event`: tag posta por `reportPreloadEvent`
+ *   (lib/preloadErrorGuard.ts, `SENTRY_ORIGEM_PRELOAD_EVENT`). Mesmo argumento,
+ *   mais um: ele e o PAR do `chunk-reload`, e a razao entre as duas series
+ *   ("quantos avisos do Vite viraram reload de fato?") so significa alguma coisa
+ *   se as duas forem contadas na mesma base. Uma a 100% e outra a 25% daria uma
+ *   razao errada por um fator de 4, e nada acusaria.
  */
 const ORIGENS_NAO_AMOSTRADAS = new Set([
   "error-boundary",
   "auth",
   "chunk-reload",
+  "preload-event",
 ]);
 
 /**

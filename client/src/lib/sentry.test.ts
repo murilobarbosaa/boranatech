@@ -46,6 +46,19 @@ describe("amostrarPorOrigem", () => {
     expect(amostrarPorOrigem(evento, undefined, () => 1)).toBe(evento);
   });
 
+  /**
+   * `preload-event` entra pelo mesmo argumento, e por um a mais: ele e o PAR do
+   * `chunk-reload`. Um incidente de skew produz os dois, e a razao entre as duas
+   * series ("quantos avisos do Vite viraram reload?") so significa alguma coisa
+   * se as duas forem contadas na mesma base. Uma a 100% e outra a 25% daria uma
+   * razao errada por um fator de 4, sem nada acusando.
+   */
+  it("evento de preload-event passa SEMPRE, mesmo no pior sorteio", () => {
+    const evento = { tags: { origem: "preload-event" } };
+    expect(amostrarPorOrigem(evento, undefined, () => 0.99)).toBe(evento);
+    expect(amostrarPorOrigem(evento, undefined, () => 1)).toBe(evento);
+  });
+
   it("evento comum continua amostrado a 0.25", () => {
     const evento = { tags: { origem: "outra-coisa" } };
     // Abaixo do corte passa.

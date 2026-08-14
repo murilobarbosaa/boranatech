@@ -53,3 +53,17 @@ Consequência prática para quem escreve teste: **teste que lê `env.*` precisa 
 ## Verificar nos dois sentidos
 
 **Verificar nos dois sentidos.** "O que declarei existe?" não é a mesma pergunta que "o que existe está declarado?". A segunda é o que separa backup físico de reconstrução a partir das migrations, que é o que um ambiente de ensaio faz.
+
+<a id="codigo-morto-ativado"></a>
+
+## Ativar código morto é mudança de comportamento, não conserto de digitação
+
+**Quando um conserto ATIVA código que nunca rodou, o que sobe é código NOVO e sem produção nenhuma atrás dele, por mais antigo que o arquivo seja.** A `registerPreloadErrorGuard` escutava `"vite:preloaderror"`, tudo minúsculo, contra o `"vite:preloadError"` que o Vite despacha. Nome de evento DOM é case-sensitive, então o listener nunca disparou: a guarda era código morto desde que foi escrita. Corrigir a letra parecia conserto de digitação de risco zero. Não era. A linha que passou a rodar junto foi um `event.preventDefault()` incondicional, e ela custou duas issues novas em produção (`BORANATECH-FRONT-P` e `-Q`, 7 eventos, 3 releases).
+
+O mecanismo, que é o que vale guardar: o Vite chama o handler dentro de um `.catch` encadeado (`baseModule().catch(handlePreloadError)`, `config.js:23433`) e só relança se ninguém cancelou (`if (!e$1.defaultPrevented) throw err$2;`, `config.js:23425`). **Cancelar o evento não impede apenas o relance: faz o handler do `.catch` retornar normalmente, e um `.catch` que retorna normalmente RESOLVE a promise, com `undefined`.** Quem recebia esse `undefined` era o `React.lazy`, que lê `.default` dele. E como a promise passou a resolver em vez de rejeitar, o `try/catch` do `lazyWithRetry` parou de rodar: o retry de 300ms, a guarda anti-loop e a queda controlada no ErrorBoundary ficaram desligados. **A guarda desligou o mecanismo que já tratava o problema que ela existia para tratar.**
+
+Duas lições, e a segunda é a que dói:
+
+1. **Dois mecanismos disputando a mesma recuperação é uma corrida, não uma redundância.** A guarda e o `lazyWithRetry` chamavam ambos `reloadOnceForStaleChunk`. O reload até acontecia (`cooldown=false` em 10 de 10 eventos medidos), só não chegava antes do React ler `.default`, porque `location.reload()` não interrompe o JS que já está rodando. Contramedida: dono único. A guarda virou observador puro, sem `preventDefault` e sem reload.
+
+2. **O teste passou a assertar o design defeituoso.** Havia teste da guarda, com controle negativo, escrito com cuidado, e ele afirmava `expect(evento.defaultPrevented).toBe(true)` — ou seja, exigia exatamente a linha que causava o bug. Testar que o código faz o que o código faz não é verificação; o teste que faltava era o do CONTEXTO em que a função roda, e nenhuma das três rodadas que mexeram nesse arquivo exercitou o `.catch` encadeado do Vite. **A pergunta que separa os dois: o teste roda contra uma descrição do ambiente ou contra o ambiente?** Hoje o arquivo tem uma cópia literal do `handlePreloadError` do `config.js` e afirma o desfecho da promise (`rejects.toBe(erro)`), mais um controle negativo que reproduz o comportamento antigo e mostra a promise resolvendo `undefined`. É a mesma família do CI que não tem `.env` em vez de simular a ausência dele.

@@ -14,10 +14,13 @@ import "./index.css";
 initClientSentry();
 
 // Skew de deploy: o Vite emite vite:preloadError quando falha o preload de um
-// chunk cujo hash sumiu apos um novo deploy. Recarrega uma vez (mesma guarda
-// anti-loop do lazyWithRetry) em vez de deixar a navegacao quebrar. Precisa
-// vir antes do primeiro render. O nome do evento e case-sensitive e ja esteve
-// errado aqui; mora em lib/preloadErrorGuard.ts, com teste, por isso.
+// chunk cujo hash sumiu apos um novo deploy. Isto aqui so OBSERVA e reporta:
+// nao cancela o evento e nao recarrega. Quem recupera e o lazyWithRetry, dono
+// unico do reload (retry, guarda anti-loop, ErrorBoundary). Cancelar o evento
+// chegou a ser feito aqui e desligava justamente esse mecanismo; o porque esta
+// no topo de lib/preloadErrorGuard.ts. Precisa vir antes do primeiro render.
+// O nome do evento e case-sensitive e ja esteve errado aqui; mora em
+// lib/preloadErrorGuard.ts, com teste, por isso.
 registerPreloadErrorGuard();
 
 // CSP: desliga o probe de eval e o JIT fastpass do Zod (new Function), que
