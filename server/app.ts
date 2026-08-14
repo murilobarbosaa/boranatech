@@ -17,7 +17,7 @@ import {
 import { cacheConnection } from "./lib/redis";
 import { supabaseAdmin } from "./lib/supabaseAdmin";
 import { validateSupabaseJwt } from "./middleware/auth";
-import { errorHandler } from "./middleware/error";
+import { bodyParseContext, errorHandler } from "./middleware/error";
 import adminRouter from "./routes/admin";
 import agentRouter from "./routes/agent";
 import agentHistoryRouter from "./routes/agentHistory";
@@ -625,6 +625,11 @@ app.use(
           scope.setTag("openai_type", falhaOpenAi.openaiType ?? "ausente");
           scope.setTag("openai_status", String(falhaOpenAi.httpStatus));
         }
+        // Headers de transporte do 500 do body parser. So MEDE: nada no
+        // `express.json` nem na ordem dos middlewares muda. Ver o comentario de
+        // `bodyParseContext` em middleware/error.ts.
+        const bodyParse = bodyParseContext(err, req);
+        if (bodyParse) scope.setContext("body_parse", bodyParse);
         Sentry.captureException(err);
       });
     }
