@@ -243,10 +243,16 @@ describe("GET /ai-stats soma TODAS as linhas da janela", () => {
 
     const r = await chamarAdmin("GET", "/ai-stats");
 
+    // `toEqual` (não `toMatchObject`) de propósito: afirma a FORMA inteira do
+    // agregado, então um campo novo passa por aqui deliberadamente. Foi assim
+    // que `semCustoMedido` apareceu em 2026-08-14.
     expect(r.body.data["agent-chat"]).toEqual({
       calls: 2,
       success: 1,
       cost: 0.75,
+      // Nenhuma das duas linhas é "executou sem custo": a que teve sucesso tem
+      // custo, e a outra não teve sucesso.
+      semCustoMedido: 0,
     });
   });
 
@@ -980,12 +986,15 @@ describe("GET /overview", () => {
     });
   }
 
-  it("devolve os seis cards e a janela resolvida", async () => {
+  it("devolve os sete cards e a janela resolvida", async () => {
     base();
     const r = await chamarAdmin("GET", "/overview?window=30");
 
     expect(r.status).toBe(200);
     expect(r.body.data.window).toBe("30");
+    // AFIRMA O CONJUNTO INTEIRO, não a pertinência: acrescentar um card sem
+    // passar por aqui é impossível. Foi este teste que acusou a adição de
+    // `usuariosTotais` em 2026-08-14; mudar esta lista é ato deliberado.
     expect(Object.keys(r.body.data.cards).sort()).toEqual([
       "acessoPro",
       "custoIa",
@@ -993,6 +1002,7 @@ describe("GET /overview", () => {
       "novosUsuarios",
       "receita",
       "receitaEmRisco",
+      "usuariosTotais",
     ]);
   });
 

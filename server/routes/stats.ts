@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/node";
 import { Router } from "express";
 
-import { supabaseAdmin } from "../lib/supabaseAdmin";
+import { contarPerfisTotal } from "../lib/profilesCount";
 
 const router = Router();
 
@@ -34,21 +34,18 @@ function captureUsersCountDegraded(
   });
 }
 
-async function queryProfilesCount(): Promise<number | null> {
-  const { count, error } = await supabaseAdmin
-    .from("profiles")
-    .select("*", { count: "exact", head: true });
-  if (error) throw error;
-  return typeof count === "number" ? count : null;
-}
-
+// A CONTAGEM em si saiu daqui para `server/lib/profilesCount.ts`, e o motivo está
+// documentado lá: o card "Usuários totais" da Visão do admin precisa do MESMO
+// número, e escrever a query uma segunda vez seria criar a divergência de graça.
+// O que fica neste arquivo é a política de SERVIR (lkg + TTL), que é específica
+// deste endpoint público e não pertence ao admin.
 router.get("/users-count", async (_req, res) => {
   if (lastKnownGood !== null && Date.now() - lastFetchAt < FRESH_TTL_MS) {
     return res.json({ count: lastKnownGood });
   }
 
   try {
-    const fresh = await queryProfilesCount();
+    const fresh = await contarPerfisTotal();
     if (fresh !== null) {
       lastKnownGood = fresh;
       lastFetchAt = Date.now();

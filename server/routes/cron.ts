@@ -1317,14 +1317,22 @@ router.post(
     const startedAt = new Date();
 
     try {
-      const scan = await detectOrphanPayments({
-        windowDays: clampWindowDays(req.query.days),
-      });
+      // `?full=1` varre o HISTORICO INTEIRO, ignorando `days`. Sob demanda, nao
+      // no agendamento: o diario continua barato e pega o caso novo em horas, e
+      // o full e a rede para o que ja escapou dele — foi assim que o orfao de
+      // 2026-07-19 ficou 26 dias invisivel para um job que reportava sucesso.
+      const full = req.query.full === "1" || req.query.full === "true";
+      const scan = await detectOrphanPayments(
+        full ? { full: true } : { windowDays: clampWindowDays(req.query.days) },
+      );
 
-      // 'partial' quando ha orfao: o job rodou inteiro, mas o resultado exige
-      // acao humana e nao pode aparecer como sucesso limpo na lista de crons.
-      // Tambem 'partial' quando o registro nao gravou (migration pendente).
-      const needsAttention = scan.orphans > 0 || !scan.persisted;
+      // 'partial' pelos ACIONAVEIS, nao pelo bruto: `modo_teste` e
+      // `conta_excluida` sao ruido conhecido e nomeado, e deixar o job amarelo
+      // por causa deles e o caminho para ninguem mais olhar a lista de crons.
+      // Tambem 'partial' quando o registro nao gravou (migration pendente) —
+      // mas NAO quando foi dry-run, onde nao gravar e o comportamento pedido.
+      const needsAttention =
+        scan.orphansAcionaveis > 0 || (!scan.persisted && !scan.dryRun);
 
       await recordCronRun({
         jobName: "detect-orphan-payments",
@@ -1332,9 +1340,12 @@ router.post(
         startedAt,
         payload: {
           windowDays: scan.windowDays,
+          full: scan.full,
           paidSessions: scan.paidSessions,
           skippedRecent: scan.skippedRecent,
           orphans: scan.orphans,
+          orphansAcionaveis: scan.orphansAcionaveis,
+          porCategoria: scan.porCategoria,
           newOrphans: scan.newOrphans,
           persisted: scan.persisted,
           // Lista inteira no payload de proposito: cron_run_logs existe hoje e

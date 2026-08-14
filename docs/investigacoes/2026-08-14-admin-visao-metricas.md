@@ -352,11 +352,22 @@ Todas as leituras do Stripe são `GET` paginados (`/v1/subscriptions`, `/v1/char
 
 ### 2.1 Assinantes Pro — local vs Stripe
 
-Local, réplica de `tallyProSources` (04:46 UTC):
+> **CORREÇÃO de 2026-08-14 05:45 UTC.** A primeira versão desta seção trouxe uma réplica SQL
+> com contagem **mutuamente exclusiva** e a rotulou "réplica de `tallyProSources`". Ela não
+> era fiel: `tallyProSources` (`server/lib/userListEnrichment.ts`) devolve
+> `bySubscription = só_assinatura + both` e `byInfluencer = só_influencer + both`, com o
+> comentário no próprio código dizendo "quem tem os dois conta nos DOIS ramos". A réplica
+> errada inverteu a conclusão sobre o defeito da tela (ver a correção no achado 5). MRR,
+> receita e receita em risco não dependiam disso e seguem válidos.
 
-```json
-{"by_subscription":96,"by_influencer":25,"both":3,"total":124}
-```
+Local, réplica FIEL de `tallyProSources` (05:45 UTC):
+
+| só assinatura | só influencer | `both` | **`bySubscription` (é o exibido)** | **`byInfluencer` (é o exibido)** | `total` |
+| --- | --- | --- | --- | --- | --- |
+| 96 | 25 | 3 | **99** | **28** | **124** |
+
+Confere com as contagens brutas: `subscriptions` tem 99 linhas `active` (todas concedendo
+Pro) e `influencers` tem 28 concessões não revogadas.
 
 Local, `subscriptions` por status:
 
@@ -552,7 +563,7 @@ computado pela réplica exata da query do handler.
 | Card | Valor exibido | Fonte independente | Delta | Causa provável |
 | --- | --- | --- | --- | --- |
 | **Novos usuários** (default 30d) | 4.790 | contador da home: 5.456 | −666 | Não é erro: janela default de 30 dias vs total sem recorte. Com `window=all` o admin dá 5.456, exato. |
-| **Assinantes Pro** | 96 | Stripe: 92 `active` | +4 | 8 pagamentos avulsos (`cs_live_…`) que só existem no banco, menos 3 pessoas que estão em `both` e o card não conta, menos 1 assinatura Stripe sem linha local. Ver decomposição abaixo. |
+| **Assinantes Pro** | 99 | Stripe: 92 `active` | +7 | 8 pagamentos avulsos (`cs_live_…`) que só existem no banco, menos 1 assinatura Stripe sem linha local. Ver decomposição abaixo. |
 | **Receita recorrente (MRR)** | R$ 2.725,50 | Stripe recomputado: R$ 2.589,40 | +R$ 136,10 | 8 avulsos locais (+R$ 166,00) − 1 assinatura Stripe ausente do banco (−R$ 29,90). Resíduo 0. |
 | **Receita no período** (30d) | R$ 4.213,15 (89 charges) | Stripe: R$ 4.243,05 (90 charges) | −R$ 29,90 | 1 charge não sincronizada, do cliente órfão. Resíduo 0. Além disso o card é **bruto**: ignora R$ 189,42 de taxas e R$ 148,74 de reembolso na janela. |
 | **Receita em risco** | R$ 566,80 (20 assinaturas) | Stripe: R$ 596,70 (21 `active` com `cancel_at_period_end`) | −R$ 29,90 | A mesma assinatura órfã. Resíduo 0. A definição também exclui `past_due` (1 assinatura, R$ 29,90/mês) e as 88 charges falhadas de 30 dias. |
@@ -561,9 +572,7 @@ computado pela réplica exata da query do handler.
 Decomposição do delta de "Assinantes Pro", que é o único não trivial:
 
 ```
-96  bySubscription exibido
-+3  pessoas em `both` (assinatura E concessão de influencer) que o card não conta
-= 99  linhas active no banco
+99  bySubscription exibido (= 96 só-assinatura + 3 que também têm concessão)
 -8  pagamentos avulsos cs_live_… (não existem como Subscription no Stripe)
 +1  sub_1Tv4SX… (existe no Stripe, não existe no banco)
 = 92  active no Stripe  ✔
@@ -575,13 +584,14 @@ Duas observações sobre esse card, independentes da divergência com o Stripe:
   (`STATUS_QUE_DAO_PRO = {active, trialing}`). Hoje é inofensivo — há zero em trial nos dois
   lados — mas o número deixaria de bater com o MRR no primeiro trial, porque
   `getMrrSnapshot` exclui `trialing` do MRR de propósito.
-- **As 3 pessoas em `both` somem da tela.** O card mostra `bySubscription` (96) e o
-  `detail` mostra `byInfluencer` (25). Quem lê soma 121; o `total` real é 124. O tally
-  calcula `both` e o `total` corretamente e o endpoint **não envia nenhum dos dois** ao
-  client (`admin.ts:1013-1017` envia só `bySubscription`, `byInfluencer` e `total`;
-  o client usa só os dois primeiros). O comentário em `userListEnrichment.ts:170-176`
-  antecipa exatamente esse risco ("o total NAO e a soma") — e a UI reintroduziu o problema
-  do outro lado, exibindo duas parcelas cuja soma não é o total.
+- **As 3 pessoas em `both` são contadas DUAS vezes por quem lê a tela.** O card mostra
+  `bySubscription` (**99**) e o `detail` mostra `byInfluencer` (**28**); os dois ramos são
+  INCLUSIVOS, então quem soma chega a 127 e o total real é **124**. O `total` deduplicado é
+  calculado e **enviado** pelo endpoint (`admin.ts`), e o client simplesmente não o usa
+  (`Admin.tsx` lê só `bySubscription` e `byInfluencer`). O comentário em
+  `userListEnrichment.ts:170-176` avisa exatamente disso ("o total NAO e a soma",
+  "`total` é a união, e existe justamente para ninguém precisar somar por conta própria") —
+  e a UI faz o leitor somar mesmo assim.
 
 ---
 
@@ -791,14 +801,26 @@ para o inventário: hoje não há dado fiscal para exibir.
    `diaBrasilia`. 4.788 contra 4.606 às 04:53 UTC. Cada um é internamente coerente; juntos,
    na mesma tela, com o mesmo rótulo, não somam.
 
-5. **O card "Assinantes Pro" apresenta duas parcelas cuja soma não é o total, e o total
-   real nem chega à tela.** Ele exibe `bySubscription` (96) e, no detalhe,
-   `byInfluencer` (25) — 121. O total de pessoas com Pro é **124**: faltam as 3 em `both`
-   (assinatura **e** concessão de influencer). O `tallyProSources` calcula `both` e `total`
-   corretamente e o endpoint envia `total`; o client simplesmente não o usa. Somam-se a
-   isso dois desalinhamentos de rótulo: "Assinaturas ativas" inclui `trialing` (que o MRR
-   exclui de propósito), e o card ignora o seletor de período sem dizer isso — ao contrário
-   do card de Receita em risco, que declara.
+5. **O card "Assinantes Pro" apresenta duas parcelas que se SOBREPÕEM, e o total
+   deduplicado, que o backend envia, não é usado.** Ele exibe `bySubscription` (**99**) e,
+   no detalhe, `byInfluencer` (**28**); quem soma chega a 127 e o total real de pessoas com
+   Pro é **124**. As 3 pessoas em `both` (assinatura **e** concessão de influencer) entram
+   nas duas parcelas, por decisão explícita de `tallyProSources`
+   (`bySubscription = só_assinatura + both`, comentada no código como "quem tem os dois
+   conta nos DOIS ramos"). O `total` já vem pronto na resposta; o client simplesmente não o
+   lê. Somam-se dois desalinhamentos de rótulo: "Assinaturas ativas" inclui `trialing` (que
+   o MRR exclui de propósito), e o card ignora o seletor de período sem dizer isso — ao
+   contrário do card de Receita em risco, que declara.
+
+   > **Este achado foi CORRIGIDO em 2026-08-14 05:45 UTC**, e a correção inverte o
+   > mecanismo. A primeira versão dizia que as 3 pessoas "somem da tela" (96 + 25 = 121 <
+   > 124). O erro foi meu, e foi de instrumento: escrevi uma réplica SQL com contagem
+   > mutuamente exclusiva e a chamei de "réplica de `tallyProSources`" sem conferir a função
+   > contra a fonte. É a mesma classe que este documento persegue — um instrumento cujo
+   > escopo eu derivei em vez de ler, e que falhou **passando**, com um número plausível.
+   > Quem acusou foi um teste (`server/routes/adminOverviewCards.test.ts`) escrito contra o
+   > código real, não contra a minha réplica. A conclusão prática (headline = `total`
+   > deduplicado) não muda; o que muda é que o defeito é dupla contagem, não omissão.
 
 ## Estado do repositório ao final
 

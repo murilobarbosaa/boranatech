@@ -156,10 +156,16 @@ layout, sem gráfico novo.
 
 ### 1.2 Assinantes Pro: total deduplicado, trialing em chip, past_due fora (D3)
 
-- **Por quê:** o client soma `bySubscription` (96) + `byInfluencer` (25) = 121, e o total
-  real é **124** — as 3 pessoas em `both` somem. O backend **já envia** `total`
-  (`admin.ts:1013-1017`); o client só não o usa. Além disso o rótulo "Assinaturas ativas"
+- **Por quê:** os dois ramos do tally são **inclusivos** —
+  `bySubscription = só_assinatura + both` e `byInfluencer = só_influencer + both`
+  (`userListEnrichment.ts`, comentado como "quem tem os dois conta nos DOIS ramos"). A tela
+  exibe **99** e **28**; quem soma chega a 127 e o total deduplicado é **124**. O backend
+  **já envia** `total`; o client só não o usa. Além disso o rótulo "Assinaturas ativas"
   inclui `trialing`, que o MRR exclui de propósito.
+  > Correção de 2026-08-14 05:45: a primeira versão deste plano dizia "96 + 25 = 121, as 3
+  > pessoas somem". O mecanismo é o oposto (dupla contagem, não omissão) e os números
+  > exibidos são 99 e 28 — a réplica SQL que gerou aquela frase usava contagem
+  > mutuamente exclusiva e não era fiel à função. A ação continua a mesma.
 - **Arquivos:**
   - `client/src/pages/Admin.tsx` — headline passa a `c.acessoPro.total`; `bySubscription`,
     `byInfluencer` e `both` viram detalhe/chips.
@@ -167,8 +173,8 @@ layout, sem gráfico novo.
     descarta) e expor `trialingCount` de `getMrrSnapshot` (já calculado, também descartado).
   - `client/src/pages/Admin.tsx` — `past_due` sai daqui e vai para o card de risco (1.5).
 - **Query nova:** **nenhuma.** Tudo já é computado; só para de ser jogado fora.
-- **Risco:** o headline muda de 96 para 124 sem mudança de realidade. Precisa de nota na
-  tela, senão lê como salto de 29%.
+- **Risco:** o headline muda de 99 para 124 sem mudança de realidade. Precisa de nota na
+  tela, senão lê como salto de 25%.
 - **NÃO fazer:** não reimplementar a regra de Pro. `buildEnrichmentIndex`/`tallyProSources`
   continuam a fonte única; o comentário em `userListEnrichment.ts:170-176` já explica por quê.
 

@@ -51,6 +51,7 @@ import {
 } from "../lib/emailChange";
 import {
   agregarUsoDeIa,
+  chamadasSemCustoMedido,
   custoTotalDeIa,
 } from "../lib/aiUsageStats";
 import { CHARGE_SEM_DONO_CORTE_DIAS } from "../lib/financeSyncWindow";
@@ -60,6 +61,7 @@ import {
   maiorVazamento,
   montarFunil,
 } from "../lib/paidFunnel";
+import { contarPerfisTotal } from "../lib/profilesCount";
 import { montarSerieDeCadastros, somarDia } from "../lib/signupSeries";
 import { diaBrasilia } from "../../shared/brasiliaDay";
 import {
@@ -962,6 +964,7 @@ router.get("/overview", async (req, res, next) => {
     const [
       novosAtual,
       novosAnterior,
+      usuariosTotais,
       perfisDesde,
       proTally,
       mrr,
@@ -974,6 +977,12 @@ router.get("/overview", async (req, res, next) => {
       janela.previousStartIso
         ? contarPerfis(janela.previousStartIso, janela.previousEndIso!)
         : Promise.resolve(null),
+      // TOTAL SEM RECORTE, pela MESMA funcao que serve o contador publico da
+      // home (server/lib/profilesCount.ts). Nao e `contarPerfis(null, endIso)`:
+      // aquilo tem `.lte(created_at, agora)` e ja nao contaria uma linha com
+      // `created_at` nulo. Sao dois numeros que precisam bater com a home, e a
+      // unica forma de garantir isso e nao existir uma segunda query.
+      contarPerfisTotal(),
       inicioDaSerie("profiles", "created_at"),
       contarProPorOrigem(),
       getMrrSnapshot(),
@@ -997,6 +1006,16 @@ router.get("/overview", async (req, res, next) => {
         windowStartIso: janela.startIso,
         windowEndIso: janela.endIso,
         cards: {
+          // TOTAL, SEM JANELA. Existe porque a unica forma de o admin ver o
+          // total era escolher "Tudo" no seletor, o que muda os outros cinco
+          // cards junto; e porque a ausencia dele foi lida como divergencia
+          // contra a home (4.790 vs 5.456), quando os dois numeros estavam
+          // certos e respondiam perguntas diferentes.
+          //
+          // `value` pode ser NULL: e a degradacao silenciosa do Supabase que o
+          // contador da home ja tratava. Null e ausencia, nunca 0 — um "0
+          // usuarios" no painel e indistinguivel de base vazia.
+          usuariosTotais: { value: usuariosTotais },
           novosUsuarios: {
             value: novosAtual,
             historicoDesde: perfisDesde,
@@ -1010,14 +1029,41 @@ router.get("/overview", async (req, res, next) => {
           // ESTADO ATUAL, nao serie: quantas pessoas tem Pro AGORA. O Δ dele sai
           // do historico de snapshots (rota /subscription-history), que a tela
           // ja consulta para o grafico; duplicar aqui seria uma segunda fonte.
+          //
+          // `both` passa a ir junto. Ele SEMPRE foi calculado por
+          // `tallyProSources` e era descartado aqui, e o resultado e que a tela
+          // exibia 96 + 25 e o total era 124: as 3 pessoas com assinatura E
+          // concessao de influencer nao apareciam em lugar nenhum. Os tres ramos
+          // sao mutuamente exclusivos e `total` e a UNIAO — quem le nao deve
+          // somar nada.
           acessoPro: {
             bySubscription: proTally.bySubscription,
             byInfluencer: proTally.byInfluencer,
+            both: proTally.both,
             total: proTally.total,
           },
-          mrr: { value: mrr.mrrCents },
+          // `trialingCount` e `arpuCents` tambem ja eram calculados por
+          // getMrrSnapshot e descartados. Trial NAO paga e por isso fica FORA do
+          // MRR, do ARPU e da distribuicao por plano; ele vem separado para a
+          // tela poder mostrar um chip em vez de somar no headline de pagantes.
+          // `arpuCents` e null quando nao ha assinante ativo (ausencia, nao 0).
+          mrr: {
+            value: mrr.mrrCents,
+            activeCount: mrr.activeCount,
+            trialingCount: mrr.trialingCount,
+            arpuCents: mrr.arpuCents,
+          },
+          // BRUTO segue sendo o principal (e a base do Simples). O liquido vem
+          // ao lado porque bruto sozinho afirma uma receita que nao entrou: na
+          // janela medida em 2026-08-14 eram R$ 4.213,15 brutos contra
+          // R$ 3.874,99 liquidos, com R$ 189,42 de taxa e R$ 148,74 devolvidos.
+          // Os tres numeros JA eram calculados por getFinanceSummary no mesmo
+          // laco; nenhum e aritmetica nova.
           receita: {
             value: receitaAtual.receitaBrutaCents,
+            reembolsosCents: receitaAtual.reembolsosCents,
+            taxasCents: receitaAtual.taxasStripeCents,
+            liquidaCents: receitaAtual.receitaLiquidaCents,
             historicoDesde: receitaDesde,
             change: calcularVariacao({
               janela,
@@ -1037,7 +1083,32 @@ router.get("/overview", async (req, res, next) => {
                 ? (mrr.atRisk.mrrCents / mrr.mrrCents) * 100
                 : null,
           },
-          custoIa: { valueBrl: custoTotalDeIa(iaStats) },
+          // CUSTO DE IA EM DOLAR, e o campo antigo continua junto por um ciclo.
+          //
+          // `valueBrl` era o nome, e o valor NUNCA foi em real: sai de
+          // `MODEL_PRICING`, cotada em US$/1M tokens. O client formatava com
+          // `currency: "BRL"` e exibia R$ onde era US$.
+          //
+          // EXPAND/CONTRACT, nao troca seca: aba de admin aberta desde antes do
+          // deploy segue lendo `valueBrl` ate recarregar, e nao existe prazo
+          // para isso (CLAUDE.md, "Renomear campo de resposta"). Os dois nomes
+          // carregam o MESMO numero.
+          // REMOVER `valueBrl` a partir de 2026-09-15, no mesmo commit que
+          // atualizar server/lib/janelaDeDeployInversa.test.ts.
+          custoIa: {
+            valueUsd: custoTotalDeIa(iaStats),
+            valueBrl: custoTotalDeIa(iaStats),
+            // Piso declarado: quantas chamadas rodaram e nao tem custo medido.
+            // Vai ao lado, nunca somado.
+            chamadasSemCustoMedido: chamadasSemCustoMedido(iaStats),
+            // Null quando AI_COST_USD_BRL_RATE nao esta definida. Ausencia, nao
+            // conversao por 1.
+            valorEmBrl:
+              env.aiCostUsdBrlRate !== null
+                ? custoTotalDeIa(iaStats) * env.aiCostUsdBrlRate
+                : null,
+            cotacaoUsdBrl: env.aiCostUsdBrlRate,
+          },
         },
       },
     });
