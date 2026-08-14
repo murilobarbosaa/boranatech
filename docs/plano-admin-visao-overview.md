@@ -14,66 +14,76 @@
 
 ## Estado de execução
 
-| Fase | Estado | Observação |
+**Fases 1, 2, 3 e a integração de UI estão em `main`**, no sha
+`2168f88b2929b073b49db79606a168f4fdf8edda` (fast-forward em 2026-08-14 08:13:57 UTC, com o
+CI verde nesse sha exato: 1 workflow, jobs `qualidade` e `migrations`, ambos `success`).
+
+| Fase | Estado | Onde |
 | --- | --- | --- |
-| **1** Exatidão | **ENTREGUE** no backend (`56c135c1`) | **Pendência: integração de UI.** Ver abaixo |
-| **D8** Exclusão de conta | **ENTREGUE** (`39d1c575`) | servidor + copy no `Perfil.tsx` |
-| **Parte 3** livemode | **ENTREGUE** (`88a0ec3f`) | webhook recusa evento de sandbox em produção |
-| **2** Janela/TZ | **ENTREGUE** no backend + `WindowBadge` | integração de UI pendente (ver abaixo) |
-| **3** Atenção necessária | **ENTREGUE** backend + `AttentionPanel` | integração de UI pendente (ver abaixo) |
-| **4** Cards e gráficos | não iniciada | |
-| **5** Custo de IA | não iniciada | depende de merge externo (0.2) |
+| **1** Exatidão dos cards | **EM MAIN** | backend + UI |
+| **D8** Exclusão de conta cancela Stripe | **EM MAIN** | servidor + copy no `Perfil.tsx` |
+| **livemode** no webhook | **EM MAIN** | recusa evento de sandbox em produção |
+| **2** Janela e fuso unificados | **EM MAIN** | dias civis de `America/Sao_Paulo` |
+| **3** Atenção necessária | **EM MAIN** | `GET /admin/attention` + painel |
+| **4** Cards digeridos e gráficos | não iniciada | |
+| **5** Instrumentação de custo de IA | não iniciada | gated (ver abaixo) |
 
-### Pendência aberta: integração de UI (Fases 1, 2 e 3)
+### O que mudou na tela
 
-`client/src/pages/Admin.tsx` está na zona de colisão da frente paralela desde o início desta
-frente, e a zona foi **recapturada três vezes** (2026-08-14 02:08, 04:05 e 04:42 BRT):
-40 entradas, idêntica nas três, `Admin.tsx` presente em todas. Por isso **nenhum card novo
-aparece na tela ainda**. Todo o resto vive fora dele, em componentes novos, para a
-integração ser **uma edição só**.
+- Card **"Usuários totais"** (sem janela, mesma fonte do contador da home) ao lado de
+  **"Novos usuários"** (com janela).
+- **"Acesso Pro"** passou a exibir o **total deduplicado** (124 em 2026-08-14) em vez de
+  `bySubscription` (99). Os dois ramos são inclusivos, então a soma antiga contava duas
+  vezes quem tem assinatura **e** concessão. Trial saiu do headline e aparece no detalhe.
+- **"Receita no período"**: bruto como principal, líquido, taxas e reembolsos ao lado.
+- **"Custo de IA"** em **US$**, com "N chamadas sem custo medido" e a linha em BRL apenas
+  se `AI_COST_USD_BRL_RATE` estiver definida.
+- **Badge de intervalo** ao lado do seletor, e o intervalo declarado no rodapé dos dois
+  gráficos, todos com o rótulo calculado pelo mesmo servidor.
+- **"Atenção necessária"** substituiu **"Eventos recentes"**.
 
-O que já existe e não tem leitor:
+### Verificação de deploy (2026-08-14)
 
-| Onde está | O que falta na UI |
+- Backend: redeploy detectado às **08:16:10 UTC** pela queda de `uptime` no `/api/health`
+  (4.306 s → 19 s), amostra única, como manda a regra de medir estado que se afirma.
+- `GET /api/stats/users-count`: **HTTP 200**, `{"count":5462}` às 08:16:23 UTC — a fonte
+  única do contador segue de pé depois da mudança.
+- Frontend: bundle servido às 08:16:55 UTC é `assets/index-Bg4ckJCL.js` (amostra única).
+- **Instrumento que NÃO serviu, registrado para ninguém repetir:** tentei provar que a rota
+  `/api/admin/attention` subiu comparando 401 (rota existe, guarda barra) contra 404 (rota
+  não existe). Não discrimina: `requireAuth` é montado com `router.use` no topo do router,
+  então **rota inexistente também devolve 401**. O silêncio dele é indistinguível das duas
+  condições, que é exatamente a classe documentada em
+  `docs/postmortems-instrumentos.md`.
+
+### Conferência visual pendente (precisa de credencial admin)
+
+Não há credencial de admin no ambiente desta máquina (nem JWT nem login de serviço), então
+`/admin/overview` e `/admin/attention` de produção não foram lidos. A conferência fica com
+a Ana Julia, contra esta lista de expectativas em `/admin?section=visao-geral`:
+
+1. **sete** cards, começando por "Usuários totais" e "Novos usuários" (números diferentes
+   entre si — se forem iguais, o total ganhou um filtro que não deveria ter);
+2. badge de intervalo ao lado do seletor, no formato `16 jul - 14 ago (Brasília)`;
+3. "Acesso Pro" com o total deduplicado, e o detalhe somando **mais** que o headline;
+4. "Receita no período" com líquido, taxas e reembolsos no detalhe;
+5. "Custo de IA" prefixado por **US$**, com a contagem de chamadas sem custo medido;
+6. rodapé dos dois gráficos declarando o período;
+7. "Atenção necessária" no lugar de "Eventos recentes" — e, se estiver vazio, dizendo
+   "Tudo em ordem" só quando não houver fonte indisponível.
+
+### Pendências vivas
+
+| Pendência | Estado |
 | --- | --- |
-| `/overview` → `cards.usuariosTotais.value` | card "Usuários totais" ao lado de "Novos usuários" |
-| `/overview` → `cards.acessoPro.{both,total}` | headline = `total`; parcelas viram detalhe |
-| `/overview` → `cards.mrr.{trialingCount,activeCount,arpuCents}` | chip "N em trial" fora do headline |
-| `/overview` → `cards.receita.{liquidaCents,taxasCents,reembolsosCents}` | líquido ao lado do bruto |
-| `/overview` → `cards.custoIa.valueUsd` | formatar em **US$**, não R$ |
-| `/overview` → `cards.custoIa.chamadasSemCustoMedido` | "N chamadas sem custo medido" |
-| `/overview` → `cards.custoIa.{valorEmBrl,cotacaoUsdBrl}` | linha em BRL, só se a env existir |
-| `/overview` e `/signup-history` → `windowLabel`, `windowFirstDay/LastDay`, `tz` | `WindowBadge` em cada card e gráfico |
-| `GET /admin/attention` | `AttentionPanel` no lugar de "Eventos recentes" |
-
-**Consequência que a Ana Julia precisa saber:** enquanto isso não integra, a tela mostra os
-números ANTIGOS, incluindo "R$" no custo de IA (que é US$) e o headline de Pro contando duas
-vezes quem tem assinatura e concessão. O backend já está certo; o leitor é que não existe.
-
-#### Diff de integração previsto (linhas de `origin/main`, arquivo com 8.875 linhas)
-
-Conferido que `Admin.tsx` em `origin/main` é **idêntico** ao da base desta frente
-(`6a57d4d2`) — os 8 commits de onboarding que avançaram a `main` não o tocaram. Então estes
-números continuam valendo na hora de integrar.
-
-| Ponto | Linha | Ação |
-| --- | --- | --- |
-| imports de `overview/` | 89-90 | acrescentar `WindowBadge` e `AttentionPanel` |
-| `type OverviewData` | 230 | acrescentar os campos novos do payload |
-| `const metricCards` (fallback estático) | 381 | acrescentar a entrada de "Usuários totais" |
-| efeito que busca `/overview` | 6136 | acrescentar o fetch de `/attention` (estado próprio) |
-| `adminMetricCards` useMemo | 6603 | card novo + trocar os 4 valores abaixo |
-| card "Novos usuários" | 6622-6623 | badge de intervalo |
-| card Pro | 6633 | `bySubscription` → `total`, chip de trial |
-| card Receita | 6649 | líquido ao lado do bruto |
-| card Custo de IA | 6665 | `valueBrl` → `valueUsd`, em US$ |
-| `<OverviewPeriod>` | 7092 | badge do intervalo ao lado do seletor |
-| `BlocoBoundary "Cards do período"` | 7111 | badge por card |
-| bloco "Eventos recentes" | **7249-7286** | substituir inteiro por `<AttentionPanel>` |
-
-O bloco a remover é o `BlocoBoundary nome="Eventos recentes"` que abre em 7249 e fecha em
-7286. `auditLogs` e o fetch de `/dashboard` que o alimentam **continuam** existindo (outras
-partes leem), então a remoção é só do JSX.
+| **Remover o alias `custoIa.valueBrl`** | contract do expand/contract, **a partir de 2026-09-15**, no mesmo commit que atualizar `server/lib/janelaDeDeployInversa.test.ts`. O client já lê `valueUsd` |
+| **Linha `cs_test_…` em `billing_events` de produção** | 1 linha de modo teste gravada em 2026-07-15. A Parte 3 impede novas; a limpeza é `delete`, portanto destrutiva, e depende de autorização e da janela de 05h-09h |
+| **`staleDays` do `/subscription-history`** | decisão pendente. Comportamento atual (rótulos de dia UTC, 5h10 de falso positivo por dia) fixado por teste; o conserto é medir duração desde a execução esperada, em fase própria |
+| **Linha em `billing_orphan_payments`** | 1 linha gravada por engano em 2026-08-14 05:52:27 UTC, durante uma verificação. Não apagada de propósito (apagar seria a segunda escrita). É a linha que o cron gravaria de todo jeito |
+| **Fase 4** (cards digeridos, sparklines, gráficos novos, ARPU) | a fazer. Não depende de fator externo |
+| **Fase 5** (custo de IA: 7 call sites + `aiEnrich`) | **gated** no merge da `fix/openai-cota-credencial` + rebase, porque toca `github.ts`, `careerPlan.ts` e `interview.ts`, que aquela branch já commitou |
+| **Backfill das 251 chamadas sem custo** | recomendação é NÃO fazer (nenhuma tem tokens; só `CHARS_PER_TOKEN=4`, que o próprio código documenta como errado) |
+| **Zona de colisão da frente paralela** | ainda ativa: `fix/openai-cota-credencial` tem 40 entradas não commitadas (LinkedIn, SEO do client, `design/`), recapturada 4 vezes sem mudança |
 
 ---
 
