@@ -9,7 +9,12 @@ import {
   type AvatarIconId,
 } from "@/constants/avatarOptions";
 
-type UserAvatarSize = "sm" | "md" | "lg" | "xl" | "preview";
+// `header` e um tamanho proprio, e nao um `sm` esticado: no header o avatar fica
+// ao lado do sino e do "?" do guia, que sao circulos de 40px, e 36 ao lado de 40
+// aparece. Token separado porque `sm` e consumido por outras telas, onde ele
+// espelha outras coisas, e mexer nele arrastaria todas elas. Mesma logica do
+// `preview`, que ja e um tamanho nomeado pelo lugar onde e usado.
+type UserAvatarSize = "sm" | "header" | "md" | "lg" | "xl" | "preview";
 
 interface UserAvatarProps {
   name: string;
@@ -50,6 +55,7 @@ export function effectiveOwnAvatar(
 
 const sizeClasses: Record<UserAvatarSize, string> = {
   sm: "h-9 w-9 text-xs",
+  header: "h-10 w-10 text-sm",
   md: "h-14 w-14 text-lg",
   lg: "h-28 w-28 text-4xl",
   xl: "h-32 w-32 text-5xl",
@@ -58,6 +64,7 @@ const sizeClasses: Record<UserAvatarSize, string> = {
 
 const iconSizeClasses: Record<UserAvatarSize, string> = {
   sm: "h-4 w-4",
+  header: "h-[18px] w-[18px]",
   md: "h-6 w-6",
   lg: "h-11 w-11",
   xl: "h-14 w-14",
@@ -66,6 +73,7 @@ const iconSizeClasses: Record<UserAvatarSize, string> = {
 
 const offsetClasses: Record<UserAvatarSize, string> = {
   sm: "translate-x-[3px] translate-y-[3px]",
+  header: "translate-x-[3px] translate-y-[3px]",
   md: "translate-x-1 translate-y-1",
   lg: "translate-x-2 translate-y-2",
   xl: "translate-x-2.5 translate-y-2.5",
@@ -76,6 +84,7 @@ const offsetClasses: Record<UserAvatarSize, string> = {
 // pra 2px porque 3px pesa demais num avatar pequeno.
 const proRingWidth: Record<UserAvatarSize, string> = {
   sm: "2px",
+  header: "2px",
   md: "3px",
   lg: "3px",
   xl: "3px",
@@ -87,6 +96,7 @@ const proRingWidth: Record<UserAvatarSize, string> = {
 // anel no mesmo ponto do conic da sombra, virando um gradiente continuo so.
 const proOffsetPx: Record<UserAvatarSize, string> = {
   sm: "3px",
+  header: "3px",
   md: "4px",
   lg: "8px",
   xl: "10px",

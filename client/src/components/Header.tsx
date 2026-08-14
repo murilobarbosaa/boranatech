@@ -859,6 +859,9 @@ export default function Header() {
                   className="inline-flex"
                   aria-label="Abrir perfil"
                 >
+                  {/* size="header" = 40px, alinhado com o sino e o "?", que são
+                      os vizinhos imediatos. O drawer mobile segue em "sm": lá o
+                      avatar fica ao lado do nome, e não de botão nenhum. */}
                   <UserAvatar
                     name={userName}
                     border={avatarBorder}
@@ -866,7 +869,7 @@ export default function Header() {
                     bg={avatarBg}
                     mode={ownAvatar.mode}
                     avatarUrl={ownAvatar.avatarUrl}
-                    size="sm"
+                    size="header"
                     loading={avatarLoading}
                   />
                 </Link>
