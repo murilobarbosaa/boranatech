@@ -33,12 +33,32 @@ export type AuthFailureStage =
 
 export type AuthMethod = "oauth_redirect" | "email_password" | "email_signup";
 
+/**
+ * Categoria estrutural da falha. Uniao FECHADA, mesmo idioma do campo `tipo` do
+ * contador da home: e ela que separa desfechos que o `http_status` sozinho nao
+ * separa.
+ *
+ * `http` e `invalid_body` sao declarados na origem (`profileService`), porque
+ * quem lanca e quem sabe. `network` e a AUSENCIA de declaracao somada a um erro
+ * que o item BUG-38 classificou como rede: se nao passou pelo nosso
+ * `profileError`, nao houve resposta para inspecionar.
+ */
+export type AuthErrorKind = "http" | "invalid_body" | "network" | "unknown";
+
+const AUTH_ERROR_KINDS = new Set<string>([
+  "http",
+  "invalid_body",
+  "network",
+  "unknown",
+]);
+
 export interface AuthFailureInput {
   stage: AuthFailureStage;
   method: AuthMethod;
   provider?: "google" | "email" | null;
   errorCode?: string | null;
   errorMessage?: string | null;
+  errorKind?: string | null;
   httpStatus?: number | null;
   // Tempo entre o inicio do desfecho observado (deteccao do callback, inicio da
   // requisicao de perfil) e a falha. E o numero que diz se o limite de tempo esta
@@ -94,6 +114,7 @@ export interface AuthFailurePayload {
   provider: string | null;
   error_code: string | null;
   error_message: string | null;
+  error_kind: string | null;
   http_status: number | null;
   hostname: string | null;
   // Somente o pathname do callback. A query fica FORA: e onde vive o `code`.
@@ -133,6 +154,7 @@ export function buildAuthFailurePayload(
     provider: input.provider ?? null,
     error_code: safeText(input.errorCode),
     error_message: safeText(input.errorMessage),
+    error_kind: input.errorKind ?? null,
     http_status: input.httpStatus ?? null,
     hostname: env.hostname,
     callback_path: env.pathname,
@@ -338,6 +360,36 @@ export function authErrorFields(error: unknown): {
 }
 
 /**
+ * Categoria estrutural de um erro, para a tag `auth_error_kind`.
+ *
+ * A ordem das regras e a decisao. Primeiro o que a ORIGEM declarou, porque quem
+ * lanca e quem sabe o que aconteceu; depois o que da para derivar de campo. A
+ * mensagem nao entra em nenhuma delas: a copy do `profileService` pode ser
+ * editada por qualquer motivo, e um classificador que dependa dela passa a
+ * mentir sem quebrar nada.
+ *
+ * A ausencia de declaracao com codigo de rede e a regra que faz o item valer:
+ * um erro que nao passou pelo `profileError` nao teve resposta HTTP para
+ * inspecionar, entao "sem marcador" mais "TypeError" e rede, e nao um terceiro
+ * caso desconhecido.
+ */
+export function authErrorKindOf(error: unknown): AuthErrorKind {
+  const declarado = (error as { authErrorKind?: unknown } | null | undefined)
+    ?.authErrorKind;
+  // Uniao fechada tambem NA ENTRADA: o marcador vem de um objeto de erro, e
+  // objeto de erro aceita qualquer coisa. Valor de fora vira "unknown" em vez de
+  // virar uma tag nova.
+  if (typeof declarado === "string" && AUTH_ERROR_KINDS.has(declarado)) {
+    return declarado as AuthErrorKind;
+  }
+
+  const { code, status } = authErrorFields(error);
+  if (status !== null) return "http";
+  if (code === "network_error") return "network";
+  return "unknown";
+}
+
+/**
  * Códigos que são COMPORTAMENTO NORMAL do produto, não defeito.
  *
  * Senha errada e e-mail já cadastrado são o sistema funcionando: a pessoa errou
@@ -434,6 +486,19 @@ export function sentryTagsDeAuth(
     http_status:
       payload.http_status === null ? "none" : String(payload.http_status),
     hostname: payload.hostname ?? "none",
+    // Refinamento do "none" acima. Com 200 eventos de `profile_fetch_exhausted`
+    // caindo quase todos em `http_status: "none"`, a tag anterior diz que nao
+    // houve status e para por ai; esta diz POR QUE nao houve, que e a pergunta
+    // seguinte: 200 com corpo invalido e problema nosso, rede e problema do
+    // caminho ate nos, e os dois estavam somados no mesmo balde.
+    //
+    // O fechamento da uniao mora AQUI DENTRO, e nao no chamador, pelo mesmo
+    // motivo do `?? "none"`: guarda no call site cobre so os call sites que
+    // alguem lembrou. Kind desconhecido vira "unknown", nunca tag nova.
+    auth_error_kind:
+      payload.error_kind !== null && AUTH_ERROR_KINDS.has(payload.error_kind)
+        ? payload.error_kind
+        : "unknown",
   };
 }
 
