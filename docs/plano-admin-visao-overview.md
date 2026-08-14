@@ -87,6 +87,49 @@ Fase 5 sai do escopo desta frente e Fase 1 perde o item de moeda. Diga e eu ajus
 
 ---
 
+## 0.3 D8 — Exclusão de conta cancela assinatura Stripe
+
+**Decisão tomada em 2026-08-14, a partir do dossiê do cliente órfão.**
+
+O dossiê mostrou que o caso NÃO era "pagou sem ter conta". A sessão de checkout carrega
+`client_reference_id` e `metadata.supabase_user_id` = `79022fea-…` (a rota
+`POST /billing/checkout` exige `requireAuth`, `server/routes/billing.ts:330`), logo a conta
+existia. Ela sumiu depois: o id não está em `auth.users`, não há linha em nenhuma das 35
+tabelas com coluna `user_id`, e `auth.audit_log_entries` está vazia.
+
+A causa é `DELETE /api/me` (`server/routes/me.ts:434-451`): chama
+`supabaseAdmin.auth.admin.deleteUser(userId)` e **nada mais**. Todos os FKs
+`user_id → auth.users` são `ON DELETE CASCADE` (medido em `pg_constraint`), então
+`profiles`, `subscriptions` e `subscription_cancellations` somem juntos; e
+`finance_transactions.user_id` é `SET NULL`, o que explica a cobrança de R$ 29,90 sem dono.
+A assinatura na Stripe fica viva e cobrando.
+
+**D8, e a regra é fail-closed:**
+
+1. resolver customer e assinaturas do usuário **ANTES** do `deleteUser` (depois, o CASCADE
+   já apagou o mapeamento e não há como descobrir o customer);
+2. cancelar **imediatamente** na Stripe toda assinatura `active`/`trialing`/`past_due`,
+   inclusive as que já têm `cancel_at_period_end` (nesse caso a data de saída é antecipada
+   para agora, o que é o efeito desejado: a conta não existe mais);
+3. **sem reembolso** do período restante;
+4. gravar `metadata { account_deleted_at, deleted_user_id }` no customer, para o detector de
+   órfãos poder classificar em vez de gritar;
+5. só então `deleteUser`;
+6. falha na Stripe **aborta a exclusão** com erro claro ao usuário e evento no Sentry.
+   Deletar a conta e deixar a cobrança viva é o pior dos dois resultados possíveis.
+
+Usuário sem customer/assinatura: fluxo atual intocado, zero chamadas à Stripe. Avulso de
+boleto (`provider_subscription_id` = `cs_…`): não há Subscription na Stripe para cancelar, e
+o acesso morre com a conta.
+
+## 0.4 Pendências registradas (não executadas nesta frente)
+
+| Pendência | Por quê fica registrada aqui |
+| --- | --- |
+| **Remover o alias `custoIa.valueBrl`** | O rename para `valueUsd` é expand/contract. O contract (remoção do alias) é ato deliberado de uma fase posterior, no mesmo commit que atualiza `server/lib/janelaDeDeployInversa.test.ts`. Sem esta linha, o alias vira lixo permanente |
+| **Apagar a linha `cs_test_…` de `billing_events`** | Um evento de **modo teste** (`cs_test_a1hjDcpNU…`, `murilo1234@gmail.com`, R$ 24,90, 2026-07-15) está gravado no banco de **produção**. A Parte 3 desta rodada impede novos; **a linha já existente NÃO é apagada** (escrita em produção proibida). Limpeza a autorizar em rodada futura, e é `delete` de uma linha, portanto migration destrutiva sujeita à janela de 05h-09h |
+| **Backfill das 251 chamadas sem custo** | Recomendação é NÃO fazer (ver 5.2: nenhuma das 251 tem tokens). Se for feito assim mesmo, exige script idempotente com `--dry-run` e autorização em rodada separada |
+
 ## 1. FASE 1 — Correções de exatidão
 
 Objetivo: cada número da tela passa a dizer a verdade sobre o que mede. Sem mudança de
@@ -293,7 +336,17 @@ vai **na direção** do que ele já faz — não é preciso tocá-lo.
 - `server/routes/admin.ts`: `/signup-history` e `/subscription-history` passam a derivar o
   intervalo **da mesma função**, em vez de recalcular. `somarDias` (1346) é deletado em favor
   de `somarDia` (`signupSeries.ts`) — uma aritmética de dia, num lugar só.
-- `hojeUtc` do `staleDays` vira `diaBrasilia(...)`.
+- **`staleDays` do `/subscription-history` fica em UTC — exceção deliberada, não esquecimento.**
+  Ele não mede "quantos dias civis o usuário percebe": mede **atraso de um job**, e a
+  cadência do job é UTC. Verificado nesta rodada em
+  `supabase/migrations/20260715150100_schedule_subscription_snapshot.sql:18-24`: o `pg_cron`
+  roda `snapshot-subscriptions` **uma vez por dia às 05:10 UTC**. Converter a comparação
+  para dia civil de Brasília faria o `staleDays` pular de 0 para 1 às 21h de Brasília todo
+  dia, sem que nada tivesse atrasado — alarme falso diário, e alarme falso é alarme que
+  alguém desliga. **Decisão: manter UTC/duração absoluta, e trocar o nome da variável de
+  `hojeUtc` para algo que diga por quê** (ex.: `hojeNaCadenciaDoJob`), com o comentário
+  apontando a migration. Se um dia a cadência do cron virar horário de Brasília, esta
+  exceção cai junto — e é por isso que o comentário cita a migration, não o valor.
 - Resposta ganha `windowLabel` (ex.: `"15 jul – 14 ago"`) e `windowTz: "America/Sao_Paulo"`,
   **calculados no servidor**, para o client não reimplementar fuso.
 - `OverviewPeriod.tsx` e cada card/gráfico exibem o badge de intervalo
@@ -465,7 +518,8 @@ receita afirma uma margem melhor do que a real. Sem o aviso, é a mesma família
 
 **Pré-condição obrigatória:** `git fetch && git rebase origin/main`, e
 `fix/openai-cota-credencial` já mergeada. Motivo em 0.2 — os três arquivos desta fase são os
-que a frente paralela tocou.
+que a frente paralela tocou. É por isso que esta fase é a **última**: é a única cuja
+liberação não depende desta frente. A Fase 4 não espera por ela (ver seção 7).
 
 ### 5.1 Os 7 call sites
 
@@ -563,13 +617,22 @@ foi mergeado. Não é dívida desta frente.
 
 ## 7. Ordem de execução e critério de pronto
 
+**Ordem oficial: 1 → 2 → 3 → 4 → (merge de `fix/openai-cota-credencial` + rebase) → 5.**
+
 | Ordem | Fase | Por que nesta posição |
 | --- | --- | --- |
 | 1 | **Fase 1** | corrige o que está errado hoje; não depende de nada |
 | 2 | **Fase 2** | muda todos os números de uma vez; melhor sozinha num deploy, com 24 h de observação |
 | 3 | **Fase 3** | independente das duas primeiras; entrega o maior valor operacional |
-| 4 | **Fase 5** | **antes** da 4, porque o gráfico de custo × receita da 4.4 depende do custo estar certo. Pré-condição: rebase pós-merge da frente paralela |
-| 5 | **Fase 4** | por último; é a única puramente estética/derivada |
+| 4 | **Fase 4** | entra ANTES da 5, e o custo de IA ainda incompleto **não a bloqueia**: os visuais de custo saem com selo "custo parcial / não medido" (4.4 e 4.5), que é informação honesta, não placeholder |
+| 5 | **Fase 5** | por último, porque é a única que depende de fator externo: exige o merge de `fix/openai-cota-credencial` e um rebase (ver 0.2) |
+
+> **Correção de uma contradição da primeira versão deste plano.** A versão anterior
+> colocava a Fase 5 antes da 4 "porque o gráfico depende do custo estar certo", e ao mesmo
+> tempo condicionava a Fase 5 a um merge que não está sob controle desta frente. As duas
+> coisas juntas travariam a Fase 4 atrás de uma dependência externa. O selo de custo parcial
+> resolve: a 4 entrega, declarando o que ainda não é medido, e a 5 remove o selo quando
+> chegar.
 
 Cada fase é **um deploy próprio**, com observação antes da seguinte — CLAUDE.md,
 "branch de dias, não de semanas". Antes de cada uma: `pnpm check` verde e o `pre-commit`
