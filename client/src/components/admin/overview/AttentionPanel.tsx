@@ -29,7 +29,16 @@ export type ItemAtencao = {
   severidade: "critico" | "atencao";
   titulo: string;
   detalhe: string;
+  /** Valor NOMINAL do contrato (R$ 222,00 no anual). */
   valorCents?: number;
+  /**
+   * O mesmo valor em equivalente MENSAL, pela mesma função que produz o MRR.
+   * Opcional: o backend antigo da janela de deploy não manda, e o plano sem
+   * ciclo normalizável também não.
+   */
+  mrrMensalCents?: number;
+  /** Contagem e janela do item agregado (cobranças falhadas). */
+  agregado?: { quantidade: number; janelaDias: number };
   url: string;
 };
 
@@ -98,7 +107,18 @@ type Grupo = {
   tipo: string;
   titulo: string;
   itens: ItemAtencao[];
+  /** Soma dos valores NOMINAIS de contrato. */
   totalCents: number;
+  /**
+   * Soma dos equivalentes MENSAIS, ou `null` quando NENHUM item do grupo trouxe
+   * o campo. Null e zero são estados diferentes aqui: null é "o servidor não
+   * mandou" (janela de deploy) e zero seria "não há receita", que é falso.
+   */
+  totalMrrMensalCents: number | null;
+  /** Quantos itens do grupo NÃO trouxeram o equivalente mensal. */
+  semMensal: number;
+  /** Contagem e janela, quando o grupo é um agregado (cobranças falhadas). */
+  agregado?: { quantidade: number; janelaDias: number };
   severidade: "critico" | "atencao";
 };
 
@@ -112,10 +132,23 @@ export function agruparItens(itens: ItemAtencao[]): Grupo[] {
       titulo: tituloDeGrupo(item.tipo, item),
       itens: [],
       totalCents: 0,
+      totalMrrMensalCents: null,
+      semMensal: 0,
       severidade: "atencao" as const,
     };
     g.itens.push(item);
     g.totalCents += typeof item.valorCents === "number" ? item.valorCents : 0;
+    // SOMA PARCIAL DECLARADA: um item sem `mrrMensalCents` não vira zero na
+    // soma (isso baixaria o total em silêncio), ele é CONTADO à parte para o
+    // rodapé do grupo poder dizer que o número é um piso.
+    if (typeof item.mrrMensalCents === "number") {
+      g.totalMrrMensalCents = (g.totalMrrMensalCents ?? 0) + item.mrrMensalCents;
+    } else if (typeof item.valorCents === "number") {
+      g.semMensal += 1;
+    }
+    if (item.agregado && typeof item.agregado.quantidade === "number") {
+      g.agregado = item.agregado;
+    }
     // A severidade do grupo é a PIOR do grupo: um crítico entre vinte avisos não
     // pode ficar escondido atrás da média.
     if (item.severidade === "critico") g.severidade = "critico";
@@ -153,12 +186,54 @@ function GrupoView({ grupo }: { grupo: Grupo }) {
             </span>
           ) : null}
         </p>
-        {grupo.totalCents > 0 ? (
-          <p className="text-sm font-black text-slate-700">
+        {/* MENSAL COMO PRINCIPAL (D21). O card "Receita em risco" soma
+            equivalentes mensais; este grupo somava valores NOMINAIS de ciclos
+            diferentes, e as duas telas exibiam números diferentes sobre a mesma
+            coisa. O nominal não sumiu, desceu para linha secundária: ele é o que
+            o cliente paga, e continua sendo a resposta certa para outra
+            pergunta. */}
+        {grupo.totalMrrMensalCents !== null ? (
+          <div className="text-right">
+            <p
+              data-testid="atencao-grupo-mensal"
+              className="text-sm font-black text-slate-700"
+            >
+              {formatCents(grupo.totalMrrMensalCents)}/mês
+              {grupo.semMensal > 0 ? " (parcial)" : ""}
+            </p>
+            {grupo.totalCents > 0 ? (
+              <p
+                data-testid="atencao-grupo-nominal"
+                className="text-xs font-bold text-slate-500"
+              >
+                {formatCents(grupo.totalCents)} em contratos
+              </p>
+            ) : null}
+          </div>
+        ) : grupo.totalCents > 0 ? (
+          // Sem NENHUM mensal (backend antigo, ou grupo que não tem plano): o
+          // nominal volta a ser o principal. É o que existe, e é verdadeiro.
+          <p
+            data-testid="atencao-grupo-nominal"
+            className="text-sm font-black text-slate-700"
+          >
             {formatCents(grupo.totalCents)}
           </p>
         ) : null}
       </div>
+
+      {/* CONTAGEM E JANELA do agregado. O agrupamento troca o título do servidor
+          ("24 cobrancas falharam em 7 dias") pelo rótulo do grupo ("Cobranças
+          falhadas"), e nessa troca os dois números sumiram da tela. */}
+      {grupo.agregado ? (
+        <p
+          data-testid="atencao-grupo-agregado"
+          className="mt-1 text-xs font-black uppercase tracking-wide text-slate-600"
+        >
+          {grupo.agregado.quantidade.toLocaleString("pt-BR")} cobranças ·
+          últimos {grupo.agregado.janelaDias} dias
+        </p>
+      ) : null}
 
       {unico ? (
         // GRUPO DE UM: o resumo JA e o item. Renderizar a lista embaixo

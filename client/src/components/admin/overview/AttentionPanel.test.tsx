@@ -86,6 +86,53 @@ describe("agruparItens", () => {
     const g = agruparItens([past, null as never, {} as never]);
     expect(g).toHaveLength(1);
   });
+
+  it("D21: soma o MENSAL em separado do NOMINAL, sem misturar os dois", () => {
+    // Ciclos diferentes: anual (22200 nominal, 1850/mês) e mensal (2990 nos
+    // dois). Somar nominais daria R$ 251,90 de coisa nenhuma.
+    const g = agruparItens([
+      { ...saida(1), valorCents: 22200, mrrMensalCents: 1850 },
+      { ...saida(2), valorCents: 2990, mrrMensalCents: 2990 },
+    ]);
+    expect(g[0].totalCents).toBe(25190);
+    expect(g[0].totalMrrMensalCents).toBe(4840);
+    expect(g[0].semMensal).toBe(0);
+  });
+
+  it("item SEM mensal não vira zero na soma: é contado como parcial", () => {
+    // Baixar o total em silêncio é a falha que este projeto já documentou várias
+    // vezes: o número fica plausível e menor, e ninguém estranha um valor menor.
+    const g = agruparItens([
+      { ...saida(1), valorCents: 22200, mrrMensalCents: 1850 },
+      { ...saida(2), valorCents: 2990 },
+    ]);
+    expect(g[0].totalMrrMensalCents).toBe(1850);
+    expect(g[0].semMensal).toBe(1);
+  });
+
+  it("JANELA DE DEPLOY: nenhum item com mensal deixa o total mensal NULO, não 0", () => {
+    // Null é "o servidor não mandou"; zero seria "não há receita em risco", que
+    // é falso e indistinguível de um estado bom.
+    const g = agruparItens([saida(1), saida(2)]);
+    expect(g[0].totalMrrMensalCents).toBeNull();
+    expect(g[0].totalCents).toBe(5980);
+  });
+
+  it("o agregado (contagem e janela) sobe do item para o grupo", () => {
+    const g = agruparItens([
+      {
+        tipo: "cobrancas_falhadas",
+        chave: "falhadas:7d",
+        severidade: "critico" as const,
+        titulo: "24 cobrancas falharam em 7 dias",
+        detalhe: "Somam R$ 700,00 que não entraram.",
+        valorCents: 70000,
+        agregado: { quantidade: 24, janelaDias: 7 },
+        url: "https://dashboard.stripe.com/payments",
+      },
+    ]);
+    expect(g[0].agregado).toEqual({ quantidade: 24, janelaDias: 7 });
+  });
 });
 
 describe("AttentionPanel v2", () => {
@@ -185,6 +232,79 @@ describe("AttentionPanel v2", () => {
   it("payload degradado ({}) não vira TypeError", () => {
     render(<AttentionPanel data={{} as never} />);
     expect(screen.getByTestId("atencao-corpo")).toBeTruthy();
+  });
+
+  it("D21: o grupo mostra o MENSAL como principal e o nominal como secundário", () => {
+    const itens = [
+      { ...saida(1), valorCents: 22200, mrrMensalCents: 1850 },
+      { ...saida(2), valorCents: 2990, mrrMensalCents: 2990 },
+    ];
+    render(<AttentionPanel data={painel({ itens })} />);
+
+    const semNbsp = (t: string | null | undefined) =>
+      (t ?? "").replace(/ /g, " ");
+
+    // 1850 + 2990 = 4840, e é ESTE o número que o card "Receita em risco" soma.
+    expect(semNbsp(screen.getByTestId("atencao-grupo-mensal").textContent)).toBe(
+      "R$ 48,40/mês",
+    );
+    // O nominal não sumiu: desceu de posição.
+    expect(
+      semNbsp(screen.getByTestId("atencao-grupo-nominal").textContent),
+    ).toBe("R$ 251,90 em contratos");
+  });
+
+  it("mensal PARCIAL é declarado, não arredondado em silêncio", () => {
+    const itens = [
+      { ...saida(1), valorCents: 22200, mrrMensalCents: 1850 },
+      { ...saida(2), valorCents: 2990 },
+    ];
+    render(<AttentionPanel data={painel({ itens })} />);
+    expect(screen.getByTestId("atencao-grupo-mensal").textContent).toContain(
+      "parcial",
+    );
+  });
+
+  it("JANELA DE DEPLOY: sem mensal nenhum, o nominal volta a ser o principal", () => {
+    render(<AttentionPanel data={painel({ itens: [saida(1), saida(2)] })} />);
+    expect(screen.queryByTestId("atencao-grupo-mensal")).toBeNull();
+    expect(
+      screen.getByTestId("atencao-grupo-nominal").textContent?.replace(
+        / /g,
+        " ",
+      ),
+    ).toBe("R$ 59,80");
+  });
+
+  it("cobranças falhadas voltam a exibir CONTAGEM e JANELA no resumo", () => {
+    // O agrupamento troca o título do servidor pelo rótulo do grupo, e nessa
+    // troca os dois números sumiram da tela (revisão de 2026-08-16).
+    render(
+      <AttentionPanel
+        data={painel({
+          itens: [
+            {
+              tipo: "cobrancas_falhadas",
+              chave: "falhadas:7d",
+              severidade: "critico" as const,
+              titulo: "24 cobrancas falharam em 7 dias",
+              detalhe: "Somam R$ 700,00 que não entraram.",
+              valorCents: 70000,
+              agregado: { quantidade: 24, janelaDias: 7 },
+              url: "https://dashboard.stripe.com/payments",
+            },
+          ],
+        })}
+      />,
+    );
+    const resumo = screen.getByTestId("atencao-grupo-agregado").textContent;
+    expect(resumo).toContain("24 cobranças");
+    expect(resumo).toContain("7 dias");
+  });
+
+  it("CONTROLE NEGATIVO: item sem agregado não inventa contagem nem janela", () => {
+    render(<AttentionPanel data={painel({ itens: [saida(1)] })} />);
+    expect(screen.queryByTestId("atencao-grupo-agregado")).toBeNull();
   });
 
   it("loading e erro são estados próprios, não vazio", () => {

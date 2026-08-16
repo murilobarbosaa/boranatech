@@ -102,7 +102,7 @@ function sub(over: Record<string, unknown> = {}) {
     cancel_at_period_end: false,
     current_period_end: "2026-09-14T00:00:00Z",
     provider_subscription_id: "sub_1",
-    plans: { code: "pro_monthly", price_cents: 2990 },
+    plans: { code: "pro_monthly", price_cents: 2990, interval: "month" },
     ...over,
   };
 }
@@ -177,6 +177,74 @@ describe("assinaturas", () => {
     expect(p.itens).toEqual([]);
   });
 
+  it("D21: cada item leva o equivalente MENSAL, além do valor nominal", async () => {
+    // O painel somava valores NOMINAIS de ciclos diferentes, e R$ 222,00/ano com
+    // R$ 129,00/semestre não dá R$ 351,00 de receita nenhuma. Os dois números
+    // convivem: nominal é quanto o cliente paga, mensal é quanto ele vale por
+    // mês, e só o segundo é somável com o MRR.
+    supaSpy.subscriptions = [
+      sub({
+        id: "anual",
+        cancel_at_period_end: true,
+        plans: { code: "pro_annual", price_cents: 22200, interval: "year" },
+      }),
+      sub({
+        id: "semestral",
+        cancel_at_period_end: true,
+        plans: {
+          code: "pro_semiannual",
+          price_cents: 12900,
+          interval: "semiannual",
+        },
+      }),
+    ];
+
+    const p = await montar();
+    const porId = new Map(p.itens.map((i) => [i.chave, i]));
+
+    // 22200/12 = 1850 e 12900/6 = 2150: os MESMOS valores que
+    // `adminPaginacao.test.ts` afirma para o card, pela MESMA função.
+    expect(porId.get("saida:anual")).toMatchObject({
+      valorCents: 22200,
+      mrrMensalCents: 1850,
+    });
+    expect(porId.get("saida:semestral")).toMatchObject({
+      valorCents: 12900,
+      mrrMensalCents: 2150,
+    });
+    // CONTROLE NEGATIVO: o nominal NÃO foi substituído pelo mensal. Se fosse, o
+    // painel passaria a mentir sobre quanto o cliente paga.
+    expect(porId.get("saida:anual")!.valorCents).not.toBe(1850);
+  });
+
+  it("mensal: nominal e equivalente mensal são o MESMO número (1 mês)", async () => {
+    supaSpy.subscriptions = [sub({ cancel_at_period_end: true })];
+    const p = await montar();
+    expect(p.itens[0]).toMatchObject({
+      valorCents: 2990,
+      mrrMensalCents: 2990,
+    });
+  });
+
+  it("plano SEM ciclo: mensal AUSENTE, e o painel continua de pé", async () => {
+    // Fallback é para valor de apresentação; aqui o valor É a informação, então
+    // ele some declaradamente em vez de virar um número plausível. E derrubar o
+    // painel inteiro (com os itens críticos dentro) por causa de uma linha seria
+    // trocar um dado faltando por uma tela em branco.
+    supaSpy.subscriptions = [
+      sub({
+        cancel_at_period_end: true,
+        plans: { code: "pro_monthly", price_cents: 2990, interval: null },
+      }),
+    ];
+
+    const p = await montar();
+
+    expect(p.itens).toHaveLength(1);
+    expect(p.itens[0].valorCents).toBe(2990);
+    expect(p.itens[0].mrrMensalCents).toBeUndefined();
+  });
+
   it("erro ao ler assinaturas vira AUSÊNCIA declarada, não painel vazio", async () => {
     // "Tudo em ordem" sobre uma fonte quebrada é mentira.
     supaSpy.erroSubscriptions = { message: "timeout" };
@@ -202,6 +270,23 @@ describe("cobranças falhadas", () => {
     expect(falhadas).toHaveLength(1);
     expect(falhadas[0].severidade).toBe("critico");
     expect(falhadas[0].titulo).toContain("12");
+    // CONTAGEM E JANELA COMO CAMPOS: o painel troca o título do servidor pelo
+    // rótulo do grupo, e nessa troca os dois números sumiram da tela. Reparsear
+    // o título com regex seria a classe de instrumento que este projeto já
+    // documentou falhando em silêncio.
+    expect(falhadas[0].agregado).toEqual({ quantidade: 12, janelaDias: 7 });
+  });
+
+  it("a janela do agregado acompanha a janela pedida, não uma constante", async () => {
+    const p = await montar({
+      janelaDias: 30,
+      fonteDeCobrancasFalhadas: {
+        contar: async () => ({ count: 88, cents: 100000 }),
+      },
+    });
+    const falhadas = p.itens.filter((i) => i.tipo === "cobrancas_falhadas");
+    expect(falhadas[0].agregado).toEqual({ quantidade: 88, janelaDias: 30 });
+    expect(p.janelaDias).toBe(30);
   });
 
   it("CONTROLE NEGATIVO: zero falhas não gera item", async () => {

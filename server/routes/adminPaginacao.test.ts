@@ -1070,6 +1070,51 @@ describe("GET /overview", () => {
     );
   });
 
+  it("D21: o card soma SAÍDA AGENDADA e EM ATRASO, e manda o breakdown", async () => {
+    // A inconsistência que motivou o D21: o card mostrava só as saídas e o
+    // painel de atenção mostrava as duas famílias, então as duas telas diziam
+    // números diferentes sobre a mesma pergunta.
+    base({
+      subscriptions: {
+        rows: [
+          // anual, agendada: 22200/12 = 1850
+          assinatura({
+            id: "a",
+            cancel_at_period_end: true,
+            plans: {
+              code: "pro_annual",
+              name: "Anual",
+              price_cents: 22200,
+              interval: "year",
+            },
+          }),
+          // mensal em atraso: 2990, e a MESMA normalização (1 mês = ele mesmo)
+          assinatura({ id: "b", status: "past_due" }),
+          // mensal saudável: MRR, fora do risco
+          assinatura({ id: "c" }),
+        ],
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/overview");
+    const risco = r.body.data.cards.receitaEmRisco;
+
+    expect(risco.saindo).toEqual({ count: 1, mrrCents: 1850 });
+    expect(risco.emAtraso).toEqual({ count: 1, mrrCents: 2990 });
+    // O headline é a SOMA, e o breakdown tem de fechar com ele.
+    expect(risco.count).toBe(2);
+    expect(risco.mrrCents).toBe(1850 + 2990);
+    expect(risco.mrrCents).toBe(risco.saindo.mrrCents + risco.emAtraso.mrrCents);
+
+    // CONTROLE NEGATIVO: em atraso é receita que PAROU de entrar. Somá-la ao
+    // MRR afirmaria uma recorrência que hoje não existe. O MRR aqui é a anual
+    // ('a', 1850) mais a mensal saudável ('c', 2990); 'b' está fora. As duas
+    // somas dão 4840 por coincidência de preço, e é o `activeCount` que separa
+    // os dois cenários sem ambiguidade: 2 assinaturas ativas, não 3.
+    expect(r.body.data.cards.mrr.value).toBe(1850 + 2990);
+    expect(r.body.data.cards.mrr.activeCount).toBe(2);
+  });
+
   it("sem MRR, o percentual em risco é NULO e não divide por zero", async () => {
     base({ subscriptions: { rows: [] } });
     const r = await chamarAdmin("GET", "/overview");

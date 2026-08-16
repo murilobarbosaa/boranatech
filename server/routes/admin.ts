@@ -1097,12 +1097,19 @@ router.get("/overview", async (req, res, next) => {
               historicoDesdeIso: receitaDesde,
             }),
           },
-          // RECEITA EM RISCO e estado atual, nao serie: sao as assinaturas que
-          // JA tem data de saida. Nao tem Δ nem janela, e por isso a tela precisa
-          // dizer que ela ignora o seletor.
+          // RECEITA EM RISCO e estado atual, nao serie: as assinaturas que JA tem
+          // data de saida MAIS as que estao em atraso. Nao tem Δ nem janela, e por
+          // isso a tela precisa dizer que ela ignora o seletor.
           receitaEmRisco: {
             count: mrr.atRisk.count,
             mrrCents: mrr.atRisk.mrrCents,
+            // BREAKDOWN ADITIVO (D21): o total sozinho nao diz o que fazer, e as
+            // duas metades pedem acoes opostas (saida agendada = reter; atraso =
+            // recuperar cobranca). Campos NOVOS ao lado dos antigos, nunca troca
+            // seca: aba aberta desde antes do deploy segue lendo `count` e
+            // `mrrCents`, que continuam existindo e continuam somando o total.
+            saindo: mrr.atRisk.saindo,
+            emAtraso: mrr.atRisk.emAtraso,
             percentOfMrr:
               mrr.mrrCents > 0
                 ? (mrr.atRisk.mrrCents / mrr.mrrCents) * 100

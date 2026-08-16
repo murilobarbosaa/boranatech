@@ -3,6 +3,7 @@ import {
   inicioDoDiaBrasilia,
   somarDiaCivil,
 } from "../../shared/brasiliaDay";
+import { monthlyEquivalentCents } from "./billingMetrics";
 import { coletarTudo } from "./paginate";
 import { resolvePlanPriceCents } from "./planPrice";
 import { getStripe } from "./stripeClient";
@@ -57,7 +58,29 @@ export type ItemAtencao = {
   severidade: SeveridadeAtencao;
   titulo: string;
   detalhe: string;
+  /**
+   * Valor NOMINAL do contrato (o preco cheio do plano: R$ 222,00 no anual). E o
+   * que a pessoa pagou, e continua sendo o numero certo para "quanto vale este
+   * cliente".
+   */
   valorCents?: number;
+  /**
+   * O MESMO valor normalizado para o equivalente MENSAL, pela MESMA
+   * `monthlyEquivalentCents` que produz o MRR. Existe porque somar valores
+   * nominais de ciclos diferentes nao da receita nenhuma: R$ 222,00/ano com
+   * R$ 129,00/semestre da R$ 351,00 de coisa alguma. Esta e a soma que o card
+   * "Receita em risco" exibe, e e por dividir a mesma funcao que as duas telas
+   * nao podem divergir (D21).
+   *
+   * Ausente quando o item nao tem plano com ciclo (cobranca falhada, pagamento
+   * orfao, spike de custo). Ausencia, nunca zero.
+   */
+  mrrMensalCents?: number;
+  /**
+   * Contagem e janela do item AGREGADO, para o resumo poder dizer "24 cobrancas
+   * nos ultimos 7 dias" sem reparsear o titulo. Ausente nos itens unitarios.
+   */
+  agregado?: { quantidade: number; janelaDias: number };
   /** Para onde ir para agir. Stripe, ou a aba do proprio admin. */
   url: string;
 };
@@ -75,6 +98,44 @@ export type PainelDeAtencao = {
 };
 
 const STRIPE_SUB_URL = "https://dashboard.stripe.com/subscriptions/";
+
+type PlanoDoItem = {
+  code: string | null;
+  price_cents: number | null;
+  interval?: string | null;
+};
+
+/**
+ * Equivalente mensal do plano, ou `null` quando nao da para saber.
+ *
+ * DELEGA a `monthlyEquivalentCents` de `billingMetrics.ts`, que e a mesma que
+ * produz o MRR e o card de receita em risco. Nao ha aritmetica aqui de
+ * proposito: a divisao por ciclo existe em UM lugar nesta base, e este arquivo
+ * so a chama.
+ *
+ * NAO LANCA, e a diferenca importa. No MRR, interval desconhecido e erro: um MRR
+ * silenciosamente menor e invisivel. Aqui o resultado e uma LINHA A MAIS num
+ * painel de alerta, e derrubar o painel inteiro (junto com os itens criticos que
+ * ele ja tinha) por causa de um plano com ciclo estranho seria trocar uma linha
+ * faltando por uma tela em branco. O valor nominal continua exibido; so a
+ * normalizacao some, declaradamente ausente.
+ */
+function mensalDoPlano(
+  plano: PlanoDoItem | null | undefined,
+  valorCents: number,
+): number | null {
+  const interval = plano?.interval;
+  if (typeof interval !== "string" || interval.length === 0) return null;
+  try {
+    return monthlyEquivalentCents(valorCents, interval);
+  } catch (err) {
+    console.warn(
+      "[atencao] plano sem ciclo normalizavel:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return null;
+  }
+}
 
 /**
  * Fonte das cobrancas falhadas, atras de uma interface.
@@ -256,8 +317,8 @@ export async function montarPainelDeAtencao(
     provider_subscription_id: string | null;
     // O PostgREST devolve o relacionamento ora como objeto, ora como array.
     plans:
-      | { code: string | null; price_cents: number | null }
-      | Array<{ code: string | null; price_cents: number | null }>
+      | PlanoDoItem
+      | Array<PlanoDoItem>
       | null;
   };
   try {
@@ -268,7 +329,7 @@ export async function montarPainelDeAtencao(
         supabaseAdmin
           .from("subscriptions")
           .select(
-            "id, status, cancel_at_period_end, current_period_end, provider_subscription_id, plans(code, price_cents)",
+            "id, status, cancel_at_period_end, current_period_end, provider_subscription_id, plans(code, price_cents, interval)",
           )
           .in("status", ["active", "trialing", "past_due"])
           .order("id", { ascending: true })
@@ -283,6 +344,7 @@ export async function montarPainelDeAtencao(
         Number(plano?.price_cents ?? 0),
         "atencao-necessaria",
       );
+      const mrrMensalCents = mensalDoPlano(plano, valorCents);
       const url = s.provider_subscription_id?.startsWith("sub_")
         ? `${STRIPE_SUB_URL}${s.provider_subscription_id}`
         : "";
@@ -296,6 +358,7 @@ export async function montarPainelDeAtencao(
           detalhe:
             "A cobranca falhou e a Stripe esta tentando de novo. Sem acao, a assinatura cancela sozinha.",
           valorCents,
+          ...(mrrMensalCents !== null ? { mrrMensalCents } : {}),
           url,
         });
         continue;
@@ -313,6 +376,7 @@ export async function montarPainelDeAtencao(
           titulo: "Saida agendada",
           detalhe: `Assinatura com cancelamento marcado; o acesso termina em ${fim}.`,
           valorCents,
+          ...(mrrMensalCents !== null ? { mrrMensalCents } : {}),
           url,
         });
       }
@@ -344,6 +408,12 @@ export async function montarPainelDeAtencao(
       titulo: `${falhadas.count} cobrancas falharam em ${janelaDias} dias`,
       detalhe: `Somam ${reais(falhadas.cents)} que nao entraram. Cartao recusado e o motivo mais comum.`,
       valorCents: falhadas.cents,
+      // CONTAGEM E JANELA COMO CAMPOS, nao so dentro do titulo. O painel agrupa
+      // por tipo e troca o titulo do servidor pelo rotulo do grupo, e nessa troca
+      // os dois numeros sumiram da tela (revisao de 2026-08-16). Reparsear o
+      // titulo com regex seria a mesma classe de instrumento que este projeto ja
+      // documentou falhando; o dado vem estruturado.
+      agregado: { quantidade: falhadas.count, janelaDias },
       url: "https://dashboard.stripe.com/payments?status%5B%5D=failed",
     });
   }
