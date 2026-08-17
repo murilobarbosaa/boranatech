@@ -130,6 +130,15 @@ type AdminSession = {
 };
 
 type MetricCard = {
+  /**
+   * IDENTIDADE ESTAVEL do card, independente da copy.
+   *
+   * A hierarquia 3+4 casava por RÓTULO VISÍVEL, e a rodada 8 renomeou "Acesso
+   * Pro" para "Assinantes Pro" sem tocar na lista: o card caiu para a linha
+   * secundária e a tela virou 2+5, sem nada acusar. Renomear copy é operação
+   * corriqueira; reordenar a tela não pode ser efeito colateral dela.
+   */
+  key: string;
   label: string;
   value: string;
   detail: string;
@@ -376,9 +385,22 @@ type AuditLog = {
   created_at: string;
 };
 
+// O que GET /admin/ai-stats devolve: `agregarUsoDeIa` cru. Ver
+// server/lib/aiUsageStats.ts, que declara a unidade de `cost` como DOLAR.
 type AiStatsData = Record<
   string,
-  { calls: number; success: number; cost: number }
+  {
+    calls: number;
+    success: number;
+    /** Soma de `cost_estimate`, em DÓLAR (MODEL_PRICING é cotada em US$/1M). */
+    cost: number;
+    /**
+     * OPCIONAL de propósito: a Vercel sobe antes do Railway, e na janela de
+     * deploy o bundle novo ainda pode receber a resposta do backend anterior a
+     * este campo. Ausente é ausente, não zero: zero afirmaria "tudo medido".
+     */
+    semCustoMedido?: number;
+  }
 >;
 
 type ChurnRiskUser = {
@@ -480,11 +502,16 @@ type ContentType =
   | "courses"
   | "roadmaps";
 
-// Cada card declara seu proprio label junto do proprio valor (sem override em
-// runtime). O label da base e o mesmo exibido; adminMetricCards so preenche os
-// valores reais, nunca troca o label por outro nao relacionado.
-const metricCards: MetricCard[] = [
+// Cada card declara seu proprio label junto do proprio valor. O label da base e
+// o MESMO exibido pelo card carregado: `adminMetricCards` preenche valores
+// reais, nunca troca o label por outro nao relacionado. Isso importa porque esta
+// base e o que a tela mostra quando o payload chega sem `cards`, e um label de
+// fallback divergente do carregado seria um card fantasma, com outro assunto.
+//
+// A `key` e o que a hierarquia 3+4 usa. Ela e estavel; o `label` e copy.
+export const metricCards: MetricCard[] = [
   {
+    key: "usuarios_totais",
     // TOTAL, SEM JANELA, e a MESMA fonte do contador público da home
     // (server/lib/profilesCount.ts). Existe porque a única forma de ver o total
     // era mudar o seletor para "Tudo", o que muda os outros cinco cards junto —
@@ -497,6 +524,7 @@ const metricCards: MetricCard[] = [
     color: "bg-violet-800 text-white",
   },
   {
+    key: "novos_usuarios",
     label: "Novos usuários",
     value: "0",
     detail: "Cadastros na janela selecionada",
@@ -504,6 +532,7 @@ const metricCards: MetricCard[] = [
     color: "bg-violet-700 text-white",
   },
   {
+    key: "assinantes_pro",
     // O rotulo diz o que o numero CONTA: assinantes pagantes. O acesso Pro tem
     // um segundo ramo (concessao de influencer) que nao entra neste valor e
     // aparece no detalhe, logo abaixo. Somar os dois pioraria a metrica de
@@ -515,6 +544,7 @@ const metricCards: MetricCard[] = [
     color: "bg-[#ffb800] text-slate-950",
   },
   {
+    key: "mrr",
     label: "Receita recorrente",
     value: "0",
     detail: "MRR das assinaturas ativas",
@@ -522,13 +552,22 @@ const metricCards: MetricCard[] = [
     color: "bg-emerald-600 text-white",
   },
   {
-    label: "Chamadas de IA",
+    // ESTE SLOT E "Receita no período", nao "Chamadas de IA".
+    //
+    // O `useMemo` sempre sobrescreveu o label deste slot, e a base ficou
+    // descrevendo outra metrica (registros em `ai_usage_logs`). Enquanto isso
+    // durou, o payload sem `cards` desenhava um card fantasma, com assunto e
+    // icone que nao existem na tela carregada.
+    key: "receita_periodo",
+    label: "Receita no período",
     value: "0",
-    detail: "Registros em ai_usage_logs",
-    icon: <Bot className="h-6 w-6" />,
+    // TODO(Ana)
+    detail: "Cobranças na janela selecionada",
+    icon: <DollarSign className="h-6 w-6" />,
     color: "bg-pink-600 text-white",
   },
   {
+    key: "receita_risco",
     // "Cursos cadastrados" saiu daqui: inventário não sustenta decisão, e era o
     // único número da página que ninguém usava para agir. Este é o oposto: muda
     // sozinho, tem data marcada e ainda dá para agir.
@@ -539,12 +578,29 @@ const metricCards: MetricCard[] = [
     color: "bg-rose-600 text-white",
   },
   {
+    key: "custo_ia",
     label: "Custo de IA",
     value: "0",
     detail: "Custo estimado dos últimos 30 dias",
     icon: <Zap className="h-6 w-6" />,
     color: "bg-orange-500 text-white",
   },
+];
+
+// HIERARQUIA 3 + 4 (D15). Os sete cards existem desde a Fase 1; o que muda é o
+// PESO: os três que respondem "como o negócio está" ficam grandes na primeira
+// linha, e os quatro de detalhe ficam compactos na segunda. Sete cards do mesmo
+// tamanho é uma lista, não uma hierarquia, e quem lê não sabe por onde começar.
+//
+// A separação é por CHAVE, não por índice nem por rótulo. Índice quebraria com
+// um card novo inserido no meio do array; rótulo quebrou de verdade na rodada 8,
+// quando "Acesso Pro" virou "Assinantes Pro" (D19) e esta lista ficou para trás,
+// derrubando o card para a segunda linha e transformando a tela em 2+5 sem nada
+// acusar. `key` é identidade e não muda com copy.
+export const PRINCIPAIS = [
+  "usuarios_totais",
+  "assinantes_pro",
+  "receita_periodo",
 ];
 
 const adminNavItems: AdminNavItem[] = [
@@ -6700,7 +6756,11 @@ export default function Admin() {
         feature: tool,
         requests: String(stats.calls),
         credits: `${successRate}% sucesso`,
-        cost: formatCurrency(stats.cost),
+        // EM DÓLAR, no MESMO formato do card "Custo de IA" da Visão. Os dois
+        // blocos somam o mesmo `cost_estimate` (`agregarUsoDeIa` alimenta as
+        // duas rotas), e até aqui a Visão dizia "US$ 2,41" e a aba IA dizia
+        // "R$ 2,41" sobre o mesmo número. `formatCurrency` é BRL e não serve.
+        cost: `US$ ${stats.cost.toFixed(2)}`,
         costValue: stats.cost,
         status: stats.cost > 50 ? "high" : successRate < 80 ? "watch" : "ok",
       };
@@ -6711,6 +6771,25 @@ export default function Admin() {
     (max, item) => Math.max(max, item.costValue),
     0,
   );
+  // PISO DECLARADO da aba IA, a mesma frase que o card da Visão já mostra: a
+  // soma acima é de um SUBCONJUNTO, porque há ferramentas cujo call site não
+  // passa `costEstimate` para `logAiUsage`. Sem esta linha, "US$ 2,41" parece
+  // completo.
+  //
+  // O detalhamento POR FERRAMENTA existe no agregado (`semCustoMedido` por
+  // tool), mas exibi-lo linha a linha muda o desenho do bloco e fica para a
+  // Fase 5; aqui vai só o total, que é o que o card da Visão declara.
+  //
+  // `null` (e não 0) quando nenhuma ferramenta reporta o campo: é a resposta do
+  // backend anterior a ele, e "0 chamadas sem custo medido" afirmaria que está
+  // tudo medido.
+  const aiSemCustoMedido = useMemo<number | null>(() => {
+    const medidos = Object.values(aiStats)
+      .map((s) => s.semCustoMedido)
+      .filter((n): n is number => typeof n === "number");
+    if (medidos.length === 0) return null;
+    return medidos.reduce((soma, n) => soma + n, 0);
+  }, [aiStats]);
   // Deriva os stats so quando o estado e "ok"; caso contrario null. Mantem o
   // nome posthogStats para as leituras de render continuarem validas.
   const posthogStats = posthogState?.state === "ok" ? posthogState.stats : null;
@@ -6987,20 +7066,11 @@ export default function Admin() {
     ];
   }, [overview, overviewError, seriesData]);
 
-  // HIERARQUIA 3 + 4 (D15). Os sete cards existem desde a Fase 1; o que muda é
-  // o PESO: os três que respondem "como o negócio está" ficam grandes na
-  // primeira linha, e os quatro de detalhe ficam compactos na segunda. Sete
-  // cards do mesmo tamanho é uma lista, não uma hierarquia — quem lê não sabe
-  // por onde começar.
-  //
-  // A separação é por RÓTULO e não por índice: um card novo inserido no meio do
-  // array não pode reordenar a tela em silêncio.
-  const PRINCIPAIS = ["Usuários totais", "Acesso Pro", "Receita no período"];
-  const cardsPrincipais = PRINCIPAIS.map((rotulo) =>
-    adminMetricCards.find((c) => c.label === rotulo),
+  const cardsPrincipais = PRINCIPAIS.map((chave) =>
+    adminMetricCards.find((c) => c.key === chave),
   ).filter((c): c is MetricCard => Boolean(c));
   const cardsSecundarios = adminMetricCards.filter(
-    (c) => !PRINCIPAIS.includes(c.label),
+    (c) => !PRINCIPAIS.includes(c.key),
   );
 
   async function handleLogout() {
@@ -7463,7 +7533,7 @@ export default function Admin() {
                     >
                       {cardsPrincipais.map((metric) => (
                         <MetricCardView
-                          key={metric.label}
+                          key={metric.key}
                           metric={metric}
                           destaque
                           onNavigate={setActiveSection}
@@ -7478,7 +7548,7 @@ export default function Admin() {
                     >
                       {cardsSecundarios.map((metric) => (
                         <MetricCardView
-                          key={metric.label}
+                          key={metric.key}
                           metric={metric}
                           onNavigate={setActiveSection}
                         />
@@ -7895,6 +7965,17 @@ export default function Admin() {
                       </p>
                     )}
                   </div>
+                  {!aiStatsError &&
+                  aiSemCustoMedido !== null &&
+                  aiSemCustoMedido > 0 ? (
+                    <p
+                      data-testid="ia-piso-custo"
+                      className="mt-4 text-xs font-semibold text-slate-500"
+                    >
+                      {/* TODO(Ana) */}
+                      {formatCount(aiSemCustoMedido)} chamadas sem custo medido
+                    </p>
+                  ) : null}
                 </article>
                 <article className="card-brutal rounded-3xl bg-white p-6">
                   <h3 className="font-display text-2xl font-black">
