@@ -135,10 +135,126 @@ em que ninguém mediu.
 - A sonda 401/404 **não** foi usada: `requireAuth` é montado com `router.use` no topo, então
   rota inexistente também devolve 401 e o instrumento não discrimina (registrado na rodada 5).
 
+## Rodada 8 (2026-08-16/17): D19, D20, D21 — ajustes da revisão visual
+
+A revisão em localhost aprovou a estrutura v2 e apontou três coisas. Nenhuma delas é bug de
+render: são três lugares em que a tela dizia um número certo respondendo a pergunta errada.
+
+### D19 — o card Pro passa a destacar quem PAGA
+
+A rodada 7 trocou o headline por `total` (união deduplicada) e a aritmética estava certa:
+somar `bySubscription` com `byInfluencer` conta duas vezes quem tem os dois. O que estava
+errado era a **pergunta**: "Acesso Pro" mistura pagante com cortesia num número só, e é o
+primeiro card que alguém lê para saber o tamanho do negócio.
+
+- **Headline:** `bySubscription` (quem tem linha ativa em `subscriptions`). Ele já inclui
+  quem também tem concessão, então o número não perde ninguém.
+- **Rótulo:** "Assinantes Pro".
+- **Subtexto:** `+N só por concessão · TOTAL com acesso no total`, com `N = byInfluencer -
+  both`. A subtração é o que faz o "+N" não recontar quem já está no headline.
+
+Medido em 2026-08-17 pela função real (`tallyProSources`, não réplica):
+`bySubscription=107`, `byInfluencer=28`, `both=3`, `total=132` → **"107" / "+25 só por
+concessão · 132 com acesso no total"**.
+
+### D20 — o funil reordenado, e por que a ordem antiga mentia
+
+Ordem nova: **cadastro → assinou Pro → assinantes que já usaram alguma ferramenta.**
+
+A ordem anterior (cadastro → ativou → assinou) afirma que a ativação é pré-requisito da
+compra, e os dados não sustentam isso: quem assina antes de usar aparecia como perda numa
+etapa que já tinha passado. A ordem nova responde as duas perguntas que se fazem de fato,
+quanto do cadastro vira receita e quanto de quem pagou chega a usar o que comprou. O terceiro
+passo é **engajamento pós-compra**, e o rótulo diz isso: chamá-lo de conversão mandaria
+otimizar aquisição quando o problema é retenção.
+
+O aninhamento continua garantido por construção: `proComUso` é a **interseção** de "tem linha
+em `subscriptions`" com "tem linha em `ai_usage_logs`", calculada em `contarCoorte`
+(`server/lib/overviewSeries.ts`), exportada pura justamente para o controle negativo ter onde
+morar. **Não pressupõe ordem temporal:** quem usou de graça e assinou depois conta igual a
+quem assinou e só então usou. Medir "usou DEPOIS de assinar" responderia outra pergunta, e
+uma que a base não sustenta, porque o uso gratuito antecede a compra por construção do
+produto.
+
+Medido em 2026-08-17, rodando `montarSeriesDaVisao`, a mesma função da rota:
+
+| janela | cadastro | assinou Pro | assinantes com uso |
+| --- | --- | --- | --- |
+| TUDO | 5.813 | 115 (**2,0%**) | 97 (**84,3%**) |
+| 30 dias | 4.499 | 72 (**1,6%**) | 59 (**81,9%**) |
+
+> **Os números do prompt da rodada (104 → 93, com 1,9% e 89,4%) NÃO se confirmaram**, e a
+> diferença não é de definição: a medição original é de 2026-08-14 e a base andou. O que fica
+> registrado é a medição desta sessão, feita pela função real. Se o critério for reaberto, é
+> este parágrafo que diz contra o quê comparar.
+
+O destaque (menor taxa absoluta, regra inalterada) cai no passo `pro` nas duas janelas. O
+rótulo do destaque passou de "maior perda" para **"menor taxa do funil"**: na terceira etapa
+"perda" seria errado, porque ninguém se perde depois de pagar, deixa de usar.
+
+### D21 — receita em risco consistente entre o card e o painel
+
+O card somava só as saídas agendadas; o painel listava saídas **e** atrasos, com valores
+**nominais** de contrato. Duas telas, dois números, a mesma pergunta.
+
+- **Card** = `cancel_at_period_end` + `past_due`, os dois normalizados para o equivalente
+  mensal, com breakdown no subtexto.
+- **Painel** = o grupo exibe o **MRR mensal** como principal e o nominal como linha
+  secundária ("R$ 1.021,50 em contratos").
+- **A função de normalização é UMA**: `monthlyEquivalentCents` deixou de ser privada de
+  `billingMetrics.ts` e passou a ser chamada pelo painel. O comentário de `getMrrSnapshot` já
+  avisava que "a terceira implementação é sempre a que diverge primeiro"; compartilhar a
+  função é o que impede a terceira de nascer.
+- **`past_due` NÃO entra no MRR.** Ele sai do laço antes de `mrrCents`, `activeCount`, ARPU e
+  `byPlan`: a cobrança falhou, o dinheiro parou de entrar, e somá-lo afirmaria uma
+  recorrência que hoje não existe.
+
+Medido em 2026-08-17, e o ponto do D21 é justamente os dois baterem:
+
+| | contagem | mensal | nominal |
+| --- | --- | --- | --- |
+| painel, saídas agendadas | 18 | R$ 507,00/mês | R$ 1.021,50 |
+| painel, pagamentos em atraso | 1 | R$ 29,90/mês | R$ 29,90 |
+| **card "Receita em risco"** | **19** | **R$ 536,90/mês** | — |
+
+`536,90 = 507,00 + 29,90`, pela mesma função, sem aritmética nova em lugar nenhum.
+
+### Degradação declarada: todos os campos novos são aditivos
+
+`saindo`, `emAtraso`, `mrrMensalCents` e `agregado` nasceram nesta rodada, e o backend antigo
+da janela de deploy não os manda. Cada um tem caminho degradado **testado**, não
+inspecionado: o card cai numa frase genérica que continua verdadeira, e o grupo do painel
+volta a exibir o nominal como principal. Item sem `mrrMensalCents` **não vira zero na soma**,
+é contado à parte e o total é marcado "(parcial)": baixar um total em silêncio é a falha que
+este projeto já documentou várias vezes.
+
+### Achado colateral: dois testes falhavam por RELÓGIO, não por defeito
+
+Os dois reproduziram na baseline intocada (`7e690eb8`, em worktree separado), então não
+vieram desta rodada:
+
+- `staleDays denuncia cron parado` afirmava `staleDays === 1` com um snapshot de "ontem". Só
+  é verdade **depois das 05:10 UTC**, o horário do cron: antes disso a última execução
+  esperada ainda é a de ontem, o snapshot de ontem a cobre, e o valor certo é 0. Vermelho
+  toda madrugada, numa janela de cerca de duas horas.
+- `REGRESSÃO DOS 182, estendida` usava a data fixa `2026-08-10` numa janela de 7 dias, e ela
+  saiu da janela na virada do dia.
+
+Consertados afirmando a **regra** em vez do calendário: fixture relativa a hoje, e asserção
+sobre a relação `staleDays === floor(staleHours / 24)` mais um piso. Mesma família dos
+instrumentos que este projeto documenta, com o defeito ao contrário: em vez de falhar
+passando, **falhavam por relógio**, e teste que fica vermelho sem defeito treina quem o vê a
+ignorar vermelho.
+
+---
+
 ### Pendências vivas
 
 | Pendência | Estado |
 | --- | --- |
+| **OK visual da rodada 8 em localhost** | **aberta.** Checklist entregue: card Pro, card de risco batendo com o grupo do painel, funil na ordem nova, badge de comparação, cobranças falhadas com contagem e janela |
+| **Merge da `-r2` para `main`** | **bloqueado** pela regra "rodada de UI não mergeia": só depois do OK visual acima |
+| **Divergência dos números do funil vs. o prompt da rodada 8** | registrada acima. Não é bug: base andou entre 14/08 e 17/08. Fica aqui para não ser rediscutida do zero |
 | **Remover o alias `custoIa.valueBrl`** | contract do expand/contract, **a partir de 2026-09-15**, no mesmo commit que atualizar `server/lib/janelaDeDeployInversa.test.ts` |
 | **Remover o alias `staleDays`** | mesmo contract, mesma data: o client já pode ler `staleHours`/`snapshotAtrasado` |
 | **Linha `cs_test_…` em `billing_events`** | 1 linha de modo teste gravada em 2026-07-15. Novas já são recusadas; a limpeza é `delete`, destrutiva, e depende de autorização e da janela de 05h-09h |
