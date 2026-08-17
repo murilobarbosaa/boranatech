@@ -152,6 +152,28 @@ function base(over: Record<string, RespostaTabela> = {}) {
   );
 }
 
+/**
+ * Um dia civil de Brasília N dias atrás, para fixture que precisa cair DENTRO
+ * de uma janela em qualquer data de execução.
+ *
+ * Data fixa na fixture é dependência de calendário: `2026-08-10` estava dentro
+ * da janela de 7 dias no dia em que o teste foi escrito e saiu dela na virada
+ * seguinte, deixando a suíte vermelha sem nada ter quebrado. É a mesma família
+ * do teste que falhava por hora do dia (`staleDays`, em adminPaginacao).
+ *
+ * NASCEU dentro do `describe` de `/overview-series` e subiu para o escopo do
+ * módulo quando a conversão alcançou o card de receita, que usa janela de 30
+ * dias e tinha o mesmo defeito com pavio mais longo. Uma segunda cópia local
+ * seria a mesma aritmética em dois lugares, que é a que diverge na primeira
+ * correção aplicada só num deles.
+ */
+function diasAtras(n: number) {
+  const d = new Date(Date.now() - n * 24 * 3600_000);
+  // 03:30Z do dia civil de Brasília: o mesmo instante que `perfil` usa, então
+  // o recorte é o mesmo dos dois lados.
+  return new Date(d.getTime() - 3 * 3600_000).toISOString().slice(0, 10);
+}
+
 afterEach(() => {
   vi.clearAllMocks();
   estado.totalDePerfis = 5456;
@@ -422,7 +444,7 @@ describe("card Receita no período (D4)", () => {
             fee_cents: 158,
             net_cents: 2832,
             plan_code: "pro_monthly",
-            occurred_at: "2026-08-01T00:00:00Z",
+            occurred_at: `${diasAtras(3)}T00:00:00Z`,
           },
           {
             id: "f2",
@@ -431,7 +453,7 @@ describe("card Receita no período (D4)", () => {
             fee_cents: 0,
             net_cents: -1000,
             plan_code: null,
-            occurred_at: "2026-08-02T00:00:00Z",
+            occurred_at: `${diasAtras(2)}T00:00:00Z`,
           },
           // payout NÃO é receita e não pode entrar em nenhum dos números.
           {
@@ -441,7 +463,7 @@ describe("card Receita no período (D4)", () => {
             fee_cents: 0,
             net_cents: -5000,
             plan_code: null,
-            occurred_at: "2026-08-03T00:00:00Z",
+            occurred_at: `${diasAtras(1)}T00:00:00Z`,
           },
         ],
       },
@@ -712,21 +734,6 @@ describe("GET /overview-series", () => {
     // como esta fixture descobriu que série e funil usavam critérios diferentes.
     return { user_id: id, created_at: `${dia}T03:30:00Z` };
   }
-  /**
-   * Um dia civil de Brasília N dias atrás, para fixture que precisa cair DENTRO
-   * de uma janela de 7 dias em qualquer data de execução.
-   *
-   * Data fixa na fixture é dependência de calendário: `2026-08-10` estava dentro
-   * da janela de 7 dias no dia em que o teste foi escrito e saiu dela na virada
-   * seguinte, deixando a suíte vermelha sem nada ter quebrado. É a mesma família
-   * do teste que falhava por hora do dia (`staleDays`, em adminPaginacao).
-   */
-  function diasAtras(n: number) {
-    const d = new Date(Date.now() - n * 24 * 3600_000);
-    // 03:30Z do dia civil de Brasília: o mesmo instante que `perfil` usa, então
-    // o recorte é o mesmo dos dois lados.
-    return new Date(d.getTime() - 3 * 3600_000).toISOString().slice(0, 10);
-  }
   function serie(r: RespostaHttp, chave: string) {
     return (
       r.body.data.series as Array<{
@@ -743,7 +750,7 @@ describe("GET /overview-series", () => {
     // parecer mais curto que o período.
     base({
       profiles: {
-        rows: [perfil("2026-08-14", "u1"), perfil("2026-08-12", "u2")],
+        rows: [perfil(diasAtras(1), "u1"), perfil(diasAtras(3), "u2")],
         count: 2,
       },
     });
@@ -763,11 +770,11 @@ describe("GET /overview-series", () => {
     // A diferença que impede o gráfico de afirmar que o MRR caiu a zero num dia
     // em que ninguém mediu.
     base({
-      profiles: { rows: [perfil("2026-08-14", "u1")], count: 1 },
+      profiles: { rows: [perfil(diasAtras(1), "u1")], count: 1 },
       subscription_snapshots: {
         rows: [
           {
-            snapshot_date: "2026-08-14",
+            snapshot_date: diasAtras(1),
             mrr_cents: 272550,
             active_count: 99,
           },
@@ -788,7 +795,7 @@ describe("GET /overview-series", () => {
   });
 
   it("toda série declara a DIREÇÃO, para o client não inferir pelo nome", async () => {
-    base({ profiles: { rows: [perfil("2026-08-14", "u1")], count: 1 } });
+    base({ profiles: { rows: [perfil(diasAtras(1), "u1")], count: 1 } });
     const r = await chamarAdmin("GET", "/overview-series?window=7");
     const direcoes = Object.fromEntries(
       (r.body.data.series as Array<{ chave: string; direcao: string }>).map(
@@ -842,10 +849,10 @@ describe("GET /overview-series", () => {
       // reordenação passaria sem ninguém notar.
       profiles: {
         rows: [
-          perfil("2026-08-14", "u1"),
-          perfil("2026-08-13", "u2"),
-          perfil("2026-08-13", "u3"),
-          perfil("2026-08-12", "u4"),
+          perfil(diasAtras(1), "u1"),
+          perfil(diasAtras(2), "u2"),
+          perfil(diasAtras(2), "u3"),
+          perfil(diasAtras(3), "u4"),
         ],
         count: 4,
       },
@@ -857,7 +864,7 @@ describe("GET /overview-series", () => {
             tool: "linkedin-analyzer",
             status: "success",
             cost_estimate: "0.5",
-            created_at: "2026-08-14T03:30:00Z",
+            created_at: `${diasAtras(1)}T03:30:00Z`,
           },
           {
             id: "l2",
@@ -865,7 +872,7 @@ describe("GET /overview-series", () => {
             tool: "linkedin-analyzer",
             status: "success",
             cost_estimate: "0.5",
-            created_at: "2026-08-13T03:30:00Z",
+            created_at: `${diasAtras(2)}T03:30:00Z`,
           },
         ],
       },
@@ -874,12 +881,12 @@ describe("GET /overview-series", () => {
           assinatura({
             id: "s1",
             user_id: "u1",
-            created_at: "2026-08-14T15:00:00Z",
+            created_at: `${diasAtras(1)}T15:00:00Z`,
           }),
           assinatura({
             id: "s2",
             user_id: "u2",
-            created_at: "2026-08-13T15:00:00Z",
+            created_at: `${diasAtras(2)}T15:00:00Z`,
           }),
         ],
       },
@@ -933,7 +940,7 @@ describe("GET /overview-series", () => {
     // É este número que prioriza a Fase 5: a ferramenta com mais chamadas sem
     // custo é a que mais distorce o total.
     base({
-      profiles: { rows: [perfil("2026-08-14", "u1")], count: 1 },
+      profiles: { rows: [perfil(diasAtras(1), "u1")], count: 1 },
       ai_usage_logs: {
         rows: [
           {
@@ -942,7 +949,7 @@ describe("GET /overview-series", () => {
             tool: "github-perfil",
             status: "success",
             cost_estimate: "0",
-            created_at: "2026-08-14T03:30:00Z",
+            created_at: `${diasAtras(1)}T03:30:00Z`,
           },
           {
             id: "l2",
@@ -950,7 +957,7 @@ describe("GET /overview-series", () => {
             tool: "linkedin-analyzer",
             status: "success",
             cost_estimate: "0.25",
-            created_at: "2026-08-14T03:30:00Z",
+            created_at: `${diasAtras(1)}T03:30:00Z`,
           },
         ],
       },
@@ -978,7 +985,7 @@ describe("GET /overview-series", () => {
   });
 
   it("declara o que NÃO tem fonte local, em vez de omitir em silêncio", async () => {
-    base({ profiles: { rows: [perfil("2026-08-14", "u1")], count: 1 } });
+    base({ profiles: { rows: [perfil(diasAtras(1), "u1")], count: 1 } });
     const r = await chamarAdmin("GET", "/overview-series?window=7");
     const chaves = (
       r.body.data.semFonteLocal as Array<{ chave: string; motivo: string }>
