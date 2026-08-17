@@ -677,13 +677,44 @@ describe("GET /subscription-history", () => {
   it("staleDays denuncia cron parado", async () => {
     // É o único sinal que a série dá de que parou de crescer: nada lê
     // cron_run_logs hoje.
-    const ontem = new Date(Date.now() - 24 * 3600_000)
+    //
+    // FIXTURE RELATIVA AO CRON, NÃO AO CALENDÁRIO. A versão anterior usava
+    // "ontem" e afirmava `staleDays === 1`, o que só é verdade DEPOIS das 05:10
+    // UTC, o horário do cron (`SNAPSHOT_HORA_UTC`): antes disso a última
+    // execução ESPERADA ainda é a de ontem, o snapshot de ontem a cobre, e o
+    // valor correto passa a ser 0. O teste ficava vermelho todas as madrugadas,
+    // por virada de dia, sem nada ter quebrado — e um teste que falha por
+    // relógio treina quem o vê a ignorar vermelho.
+    //
+    // A propriedade que importa não é "1 dia", é: cron parado há dias produz um
+    // sinal grande, e o alias em dias continua sendo o mesmo número do campo
+    // canônico em horas. As duas coisas valem a qualquer hora.
+    const cincoDiasAtras = new Date(Date.now() - 5 * 24 * 3600_000)
       .toISOString()
       .slice(0, 10);
-    montar({ subscription_snapshots: { rows: serie(5, ontem) } });
+    montar({ subscription_snapshots: { rows: serie(5, cincoDiasAtras) } });
 
     const r = await chamarAdmin("GET", "/subscription-history?window=all");
-    expect(r.body.data.staleDays).toBe(1);
+
+    expect(r.body.data.staleHours).toBeGreaterThanOrEqual(96);
+    expect(r.body.data.snapshotAtrasado).toBe(true);
+    expect(r.body.data.staleDays).toBe(
+      Math.floor(r.body.data.staleHours / 24),
+    );
+  });
+
+  it("CONTROLE NEGATIVO: snapshot de hoje NÃO é acusado de atraso", async () => {
+    // O outro lado da mesma pergunta, e ele também precisa ser independente de
+    // hora: o snapshot do dia corrente cobre a última execução esperada, seja
+    // ela a de hoje ou a de ontem.
+    const hoje = new Date().toISOString().slice(0, 10);
+    montar({ subscription_snapshots: { rows: serie(5, hoje) } });
+
+    const r = await chamarAdmin("GET", "/subscription-history?window=all");
+
+    expect(r.body.data.staleHours).toBe(0);
+    expect(r.body.data.snapshotAtrasado).toBe(false);
+    expect(r.body.data.staleDays).toBe(0);
   });
 
   it("a leitura é paginada e avisa quando trunca", async () => {
