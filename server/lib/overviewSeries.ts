@@ -111,12 +111,43 @@ function agrupar(
 // ---------------------------------------------------------------------------
 
 export type PassoDoFunil = {
-  chave: "cadastro" | "ativacao" | "pro";
+  chave: "cadastro" | "pro" | "engajamento";
   rotulo: string;
   valor: number;
   /** Taxa sobre o passo ANTERIOR. `null` no primeiro e quando o denominador e 0. */
   taxaSobreAnterior: number | null;
 };
+
+/** Contagens de uma coorte, nos tres passos. Mesma forma nas duas janelas. */
+export type ContagemDeCoorte = {
+  cadastro: number;
+  pro: number;
+  /** Assinantes que ja usaram alguma ferramenta. Subconjunto de `pro`. */
+  proComUso: number;
+};
+
+/**
+ * As tres contagens de uma coorte, a partir dos conjuntos de pertinencia.
+ *
+ * PURA E EXPORTADA de proposito. O aninhamento do funil (passo 3 subconjunto do
+ * passo 2) e uma propriedade que precisa ser AFIRMADA por teste, e ela vive
+ * exatamente nesta linha: `proComUso` exige as DUAS pertinencias na mesma
+ * pessoa. Deixada dentro do fecho de `computarSeries`, so um teste com I/O
+ * mockado a alcancaria, e o controle negativo que importa (assinante sem uso NAO
+ * conta no terceiro passo) nao teria onde morar.
+ */
+export function contarCoorte(
+  pessoas: Array<{ user_id: string }>,
+  pro: Set<string>,
+  usaram: Set<string>,
+): ContagemDeCoorte {
+  return {
+    cadastro: pessoas.length,
+    pro: pessoas.filter((p) => pro.has(p.user_id)).length,
+    proComUso: pessoas.filter((p) => pro.has(p.user_id) && usaram.has(p.user_id))
+      .length,
+  };
+}
 
 /**
  * CONDICOES PARA O DELTA DO FUNIL VOLTAR A EXISTIR.
@@ -141,7 +172,7 @@ export type Funil = {
   /** Chave do passo com a PIOR transicao. `null` quando nao ha transicao medivel. */
   destaque: string | null;
   /** Contagens da janela anterior, como informacao. NAO viram delta. Ver abaixo. */
-  anterior: { cadastro: number; ativacao: number; pro: number } | null;
+  anterior: ContagemDeCoorte | null;
   /**
    * Por que nao ha delta de taxa entre janelas. `null` quando o delta EXISTE.
    * Nao e ausencia de dado, e recusa de exibir um numero enviesado por
@@ -167,12 +198,28 @@ export type Funil = {
  * a regra desta fase e serie de tabela local.
  *
  * OS PASSOS SAO SUBCONJUNTOS ANINHADOS das MESMAS pessoas: de quem se cadastrou
- * na janela, quantas ja usaram alguma ferramenta de IA, e quantas ja tem linha
- * em `subscriptions`. Aninhados de proposito: assim a taxa nunca passa de 100% e
- * "taxa entre passos adjacentes" quer dizer alguma coisa. Um funil de atividade
- * na janela (nao aninhado) permitiria conversao maior que o topo.
+ * na janela, quantas ja tem linha em `subscriptions`, e destas quantas ja usaram
+ * alguma ferramenta de IA. Aninhados de proposito: assim a taxa nunca passa de
+ * 100% e "taxa entre passos adjacentes" quer dizer alguma coisa. Um funil de
+ * atividade na janela (nao aninhado) permitiria conversao maior que o topo.
  *
- * ATIVACAO = ao menos uma linha em `ai_usage_logs`. Medido em 2026-08-14: 2.347
+ * A ORDEM MUDOU NA RODADA 8 (D20), e a mudanca nao e cosmetica. Ate aqui era
+ * cadastro -> ativou -> assinou, que afirma um caminho que os dados nao
+ * sustentam: a ativacao nao e pre-requisito da compra, e uma pessoa que assina
+ * antes de usar aparecia como perda numa etapa que ela ja tinha passado. A ordem
+ * nova responde as duas perguntas que se faz de fato: quanto do cadastro vira
+ * receita, e quanto de quem pagou chega a usar o que comprou. O terceiro passo
+ * e ENGAJAMENTO POS-COMPRA, nao conversao, e o rotulo diz isso.
+ *
+ * O ANINHAMENTO NAO PRESSUPOE ORDEM TEMPORAL. `proComUso` e a INTERSECAO de
+ * "tem linha em subscriptions" com "tem linha em ai_usage_logs", em qualquer
+ * ordem de acontecimento: quem usou o LinkedIn de graca e assinou depois conta
+ * igual a quem assinou e so depois usou. Medir "usou DEPOIS de assinar" exigiria
+ * comparar `ai_usage_logs.created_at` com `subscriptions.created_at`, e isso
+ * responderia outra pergunta (e uma que a base de hoje nao sustenta, porque a
+ * maior parte do uso gratuito antecede a compra por construcao do produto).
+ *
+ * USO = ao menos uma linha em `ai_usage_logs`. Medido em 2026-08-14: 2.347
  * linhas, 175 usuarios distintos, desde 2026-05-09, e ela cobre LinkedIn,
  * curriculo, roadmap, GitHub, entrevista, plano de carreira e o agente. E a
  * unica tabela local que registra "usou o produto" de forma transversal.
@@ -199,18 +246,17 @@ export type Funil = {
  * existe; o desempate previsto virou o criterio principal, e continua sendo uma
  * regra fixa escrita aqui, nao um texto gerado.
  */
-export function montarFunilDeCoorte(input: {
-  cadastro: number;
-  ativacao: number;
-  pro: number;
-  anterior: { cadastro: number; ativacao: number; pro: number } | null;
-  /**
-   * Dias que a coorte ANTERIOR ja teve para ativar. Quando ausente, o delta nao
-   * liga: sem saber a maturidade nao da para afirmar que as janelas sao
-   * comparaveis.
-   */
-  maturidadeAnteriorDias?: number;
-}): Funil {
+export function montarFunilDeCoorte(
+  input: ContagemDeCoorte & {
+    anterior: ContagemDeCoorte | null;
+    /**
+     * Dias que a coorte ANTERIOR ja teve para converter e usar. Quando ausente,
+     * o delta nao liga: sem saber a maturidade nao da para afirmar que as
+     * janelas sao comparaveis.
+     */
+    maturidadeAnteriorDias?: number;
+  },
+): Funil {
   const taxa = (num: number, den: number) =>
     den > 0 ? (num / den) * 100 : null;
   const passos: PassoDoFunil[] = [
@@ -221,16 +267,20 @@ export function montarFunilDeCoorte(input: {
       taxaSobreAnterior: null,
     },
     {
-      chave: "ativacao",
-      rotulo: "Já usaram alguma ferramenta",
-      valor: input.ativacao,
-      taxaSobreAnterior: taxa(input.ativacao, input.cadastro),
+      chave: "pro",
+      rotulo: "Assinaram Pro",
+      valor: input.pro,
+      taxaSobreAnterior: taxa(input.pro, input.cadastro),
     },
     {
-      chave: "pro",
-      rotulo: "Já assinaram Pro",
-      valor: input.pro,
-      taxaSobreAnterior: taxa(input.pro, input.ativacao),
+      // "Engajamento pos-compra", nao conversao: e o unico passo cujo
+      // denominador ja pagou, e chama-lo de conversao mandaria otimizar a coisa
+      // errada. O que uma taxa baixa aqui diz e que o produto nao esta sendo
+      // usado por quem comprou, que e um problema de retencao, nao de funil.
+      chave: "engajamento",
+      rotulo: "Assinantes que já usaram alguma ferramenta",
+      valor: input.proComUso,
+      taxaSobreAnterior: taxa(input.proComUso, input.pro),
     },
   ];
 
@@ -260,12 +310,12 @@ export function montarFunilDeCoorte(input: {
     "coortes_de_maturidade_diferente";
   if (comparavel) {
     const taxaAnt = {
-      ativacao: taxa(ant.ativacao, ant.cadastro),
-      pro: taxa(ant.pro, ant.ativacao),
+      pro: taxa(ant.pro, ant.cadastro),
+      engajamento: taxa(ant.proComUso, ant.pro),
     };
     deltaPp = {};
     for (const p of comTaxa) {
-      const base = taxaAnt[p.chave as "ativacao" | "pro"];
+      const base = taxaAnt[p.chave as "pro" | "engajamento"];
       if (base !== null) deltaPp[p.chave] = p.taxaSobreAnterior - base;
     }
     motivoSemDelta = null;
@@ -578,11 +628,8 @@ export async function montarSeriesDaVisao(
       (p) => (!de || p.created_at >= de) && (!ate || p.created_at <= ate),
     );
   // A coorte da janela ATUAL usa exatamente o mesmo `naJanela` das series.
-  const contar = (linhas: typeof perfis) => ({
-    cadastro: linhas.length,
-    ativacao: linhas.filter((p) => usuariosAtivados.has(p.user_id)).length,
-    pro: linhas.filter((p) => usuariosPro.has(p.user_id)).length,
-  });
+  const contar = (linhas: typeof perfis) =>
+    contarCoorte(linhas, usuariosPro, usuariosAtivados);
   const atual = contar(perfis.filter((p) => naJanela(p.created_at)));
   const anterior =
     anteriorInicio && anteriorFim

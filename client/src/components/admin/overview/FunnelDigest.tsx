@@ -28,12 +28,33 @@ export type PassoDoFunil = {
 export type FunilDigerido = {
   passos: PassoDoFunil[];
   destaque: string | null;
-  anterior: { cadastro: number; ativacao: number; pro: number } | null;
+  anterior: { cadastro: number; pro: number; proComUso: number } | null;
   motivoSemDelta?: string;
 };
 
 function pct(v: number) {
   return `${v.toFixed(1).replace(".", ",")}%`;
+}
+
+/**
+ * O que a taxa daquela etapa SIGNIFICA, em duas palavras.
+ *
+ * Existe porque a terceira etapa não é conversão: o denominador dela já pagou.
+ * Chamá-la de conversão mandaria otimizar aquisição quando o problema é o
+ * cliente não estar usando o que comprou.
+ *
+ * RESOLVER COM FALLBACK NEUTRO, não acesso direto: a chave vem do SERVIDOR, e um
+ * passo novo que o bundle ainda não conhece não pode derrubar a Visão inteira
+ * (regra do projeto, e foi assim que `STATUS_META[item.status].label` quebrou o
+ * admin em produção). Aqui a ausência é uma legenda a menos, nada mais.
+ */
+const LEGENDA_DO_PASSO: Record<string, string> = {
+  pro: "conversão em receita",
+  engajamento: "engajamento pós-compra",
+};
+
+export function legendaDoPasso(chave: string): string | null {
+  return LEGENDA_DO_PASSO[chave] ?? null;
 }
 
 export function FunnelDigest({
@@ -73,8 +94,9 @@ export function FunnelDigest({
         data-testid="funil-como-ler"
         className="mt-1 text-sm font-semibold text-slate-600"
       >
-        Cada etapa mostra quantos dos cadastrados chegaram ali; a marcação
-        aponta a maior perda, que é onde melhoria rende mais.
+        A taxa de cada etapa é sobre a etapa ACIMA dela, não sobre o topo: quanto
+        do cadastro virou assinatura, e quanto de quem assinou chegou a usar o
+        produto. A marcação aponta a menor dessas taxas.
       </p>
       {windowLabel ? (
         <p className="mt-1 text-xs font-bold text-slate-500">
@@ -124,6 +146,14 @@ export function FunnelDigest({
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="text-sm font-black text-slate-950">
                       {p.rotulo}
+                      {legendaDoPasso(p.chave) ? (
+                        <span
+                          data-testid="funil-passo-legenda"
+                          className="ml-2 text-xs font-bold uppercase tracking-wide text-slate-500"
+                        >
+                          {legendaDoPasso(p.chave)}
+                        </span>
+                      ) : null}
                     </p>
                     <p className="font-display text-xl font-black text-slate-950">
                       {p.taxaSobreAnterior === null ? (
@@ -140,9 +170,13 @@ export function FunnelDigest({
                       : " que chegaram até aqui"}
                   </p>
                   {destacado ? (
+                    /* "MENOR TAXA", não "maior perda": a regra do servidor é a
+                       transição de menor taxa absoluta, e na terceira etapa
+                       "perda" seria errado (ninguém se perde depois de pagar,
+                       deixa de usar o que comprou). O rótulo nomeia a regra. */
                     <p className="mt-2 flex items-center gap-1 text-xs font-black uppercase text-amber-800">
                       <AlertTriangle className="h-3 w-3" />
-                      maior perda
+                      menor taxa do funil
                     </p>
                   ) : null}
                 </div>
@@ -158,7 +192,7 @@ export function FunnelDigest({
               Sem comparação com o período anterior: as coortes têm tempos de
               vida diferentes, e a diferença seria negativa por construção.
               {data.anterior
-                ? ` No período anterior: ${data.anterior.cadastro.toLocaleString("pt-BR")} cadastros, ${data.anterior.ativacao.toLocaleString("pt-BR")} ativados, ${data.anterior.pro.toLocaleString("pt-BR")} Pro.`
+                ? ` No período anterior: ${data.anterior.cadastro.toLocaleString("pt-BR")} cadastros, ${data.anterior.pro.toLocaleString("pt-BR")} assinantes, ${data.anterior.proComUso.toLocaleString("pt-BR")} deles com uso.`
                 : ""}
             </p>
           ) : null}

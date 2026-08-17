@@ -712,6 +712,21 @@ describe("GET /overview-series", () => {
     // como esta fixture descobriu que série e funil usavam critérios diferentes.
     return { user_id: id, created_at: `${dia}T03:30:00Z` };
   }
+  /**
+   * Um dia civil de Brasília N dias atrás, para fixture que precisa cair DENTRO
+   * de uma janela de 7 dias em qualquer data de execução.
+   *
+   * Data fixa na fixture é dependência de calendário: `2026-08-10` estava dentro
+   * da janela de 7 dias no dia em que o teste foi escrito e saiu dela na virada
+   * seguinte, deixando a suíte vermelha sem nada ter quebrado. É a mesma família
+   * do teste que falhava por hora do dia (`staleDays`, em adminPaginacao).
+   */
+  function diasAtras(n: number) {
+    const d = new Date(Date.now() - n * 24 * 3600_000);
+    // 03:30Z do dia civil de Brasília: o mesmo instante que `perfil` usa, então
+    // o recorte é o mesmo dos dois lados.
+    return new Date(d.getTime() - 3 * 3600_000).toISOString().slice(0, 10);
+  }
   function serie(r: RespostaHttp, chave: string) {
     return (
       r.body.data.series as Array<{
@@ -792,10 +807,14 @@ describe("GET /overview-series", () => {
     // o bucketing da série divergir da janela do card, os dois números se
     // separam — que é exatamente o defeito que a Fase 2 fechou entre card e
     // gráfico de cadastros.
+    // DIAS RELATIVOS: os três precisam cair dentro da janela de 7 dias em
+    // qualquer data de execução. Com datas fixas, `2026-08-10` saiu da janela na
+    // virada do dia e a soma da série passou a divergir do card por calendário,
+    // não por defeito.
     const linhas = [
-      perfil("2026-08-14", "u1"),
-      perfil("2026-08-13", "u2"),
-      perfil("2026-08-10", "u3"),
+      perfil(diasAtras(0), "u1"),
+      perfil(diasAtras(1), "u2"),
+      perfil(diasAtras(4), "u3"),
     ];
     base({ profiles: { rows: linhas, count: linhas.length } });
 
@@ -814,9 +833,21 @@ describe("GET /overview-series", () => {
 
   it("funil traz taxas adjacentes e NENHUM delta entre janelas", async () => {
     base({
+      // QUATRO PESSOAS, escolhidas para separar os três passos de ponta a ponta:
+      //   u1  assinou E usou       -> conta nos três
+      //   u2  assinou e NUNCA usou -> conta no 2º, NÃO no 3º (controle negativo)
+      //   u3  usou e NÃO assinou   -> não conta em nenhum dos dois
+      //   u4  só se cadastrou      -> só no topo
+      // Com um assinante só, os passos 2 e 3 dariam o mesmo número e a
+      // reordenação passaria sem ninguém notar.
       profiles: {
-        rows: [perfil("2026-08-14", "u1"), perfil("2026-08-13", "u2")],
-        count: 2,
+        rows: [
+          perfil("2026-08-14", "u1"),
+          perfil("2026-08-13", "u2"),
+          perfil("2026-08-13", "u3"),
+          perfil("2026-08-12", "u4"),
+        ],
+        count: 4,
       },
       ai_usage_logs: {
         rows: [
@@ -828,11 +859,28 @@ describe("GET /overview-series", () => {
             cost_estimate: "0.5",
             created_at: "2026-08-14T03:30:00Z",
           },
+          {
+            id: "l2",
+            user_id: "u3",
+            tool: "linkedin-analyzer",
+            status: "success",
+            cost_estimate: "0.5",
+            created_at: "2026-08-13T03:30:00Z",
+          },
         ],
       },
       subscriptions: {
         rows: [
-          assinatura({ user_id: "u1", created_at: "2026-08-14T15:00:00Z" }),
+          assinatura({
+            id: "s1",
+            user_id: "u1",
+            created_at: "2026-08-14T15:00:00Z",
+          }),
+          assinatura({
+            id: "s2",
+            user_id: "u2",
+            created_at: "2026-08-13T15:00:00Z",
+          }),
         ],
       },
     });
@@ -840,15 +888,25 @@ describe("GET /overview-series", () => {
     const r = await chamarAdmin("GET", "/overview-series?window=7");
     const f = r.body.data.funil;
 
-    expect(f.passos.map((p: { valor: number }) => p.valor)).toEqual([2, 1, 1]);
+    // D20: cadastro -> assinou Pro -> assinantes que já usaram.
+    expect(f.passos.map((p: { chave: string }) => p.chave)).toEqual([
+      "cadastro",
+      "pro",
+      "engajamento",
+    ]);
+    expect(f.passos.map((p: { valor: number }) => p.valor)).toEqual([4, 2, 1]);
     expect(f.passos[1].taxaSobreAnterior).toBeCloseTo(50, 6);
-    expect(f.passos[2].taxaSobreAnterior).toBeCloseTo(100, 6);
-    // O delta NÃO existe, e o motivo é nomeado. Com 2 cadastros na fixture, o
+    // CONTROLE NEGATIVO ponta a ponta: 'u2' pagou e nunca usou, então o 3º passo
+    // é 1 de 2, não 2 de 2. E 'u3' usou sem assinar e NÃO entra: se entrasse, a
+    // taxa daria 100% e o problema de engajamento sumiria da tela.
+    expect(f.passos[2].taxaSobreAnterior).toBeCloseTo(50, 6);
+    // O delta NÃO existe, e o motivo é nomeado. Com 4 cadastros na fixture, o
     // motivo específico é o TAMANHO da coorte (mínimo de 100), não a
     // maturidade: motivo genérico mandaria investigar a coisa errada.
     expect(f.motivoSemDelta).toBe("coorte_anterior_pequena");
     expect(f.deltaPp).toBeNull();
-    expect(f.destaque).toBe("ativacao");
+    // Empate em 50%: o `reduce` mantém o PRIMEIRO, e a regra é determinística.
+    expect(f.destaque).toBe("pro");
   });
 
   it("CONTROLE NEGATIVO: base vazia não vira NaN em lugar nenhum", async () => {

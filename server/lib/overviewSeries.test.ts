@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   calcularFrescor,
+  contarCoorte,
   FUNIL_MIN_CADASTROS,
   FUNIL_MIN_MATURIDADE_DIAS,
   montarFunilDeCoorte,
@@ -16,17 +17,34 @@ import {
  */
 
 describe("funil de coorte: taxas adjacentes", () => {
+  it("a ORDEM é cadastro, Pro, engajamento pós-compra (D20)", () => {
+    // A ordem antiga (cadastro -> ativou -> assinou) afirmava que a ativação é
+    // pré-requisito da compra, o que os dados não sustentam: quem assina antes
+    // de usar aparecia como perda numa etapa que já tinha passado.
+    const f = montarFunilDeCoorte({
+      cadastro: 1000,
+      pro: 100,
+      proComUso: 50,
+      anterior: null,
+    });
+    expect(f.passos.map((p) => p.chave)).toEqual([
+      "cadastro",
+      "pro",
+      "engajamento",
+    ]);
+  });
+
   it("calcula taxa sobre o passo anterior, não sobre o topo", () => {
     const f = montarFunilDeCoorte({
       cadastro: 1000,
-      ativacao: 100,
-      pro: 50,
+      pro: 100,
+      proComUso: 50,
       anterior: null,
     });
 
     expect(f.passos.map((p) => p.valor)).toEqual([1000, 100, 50]);
     expect(f.passos[1].taxaSobreAnterior).toBeCloseTo(10, 6);
-    // 50 de 100 ATIVADOS = 50%, não 5% do topo. Taxa sobre o topo faria a
+    // 50 de 100 ASSINANTES = 50%, não 5% do topo. Taxa sobre o topo faria a
     // última etapa parecer sempre catastrófica.
     expect(f.passos[2].taxaSobreAnterior).toBeCloseTo(50, 6);
   });
@@ -34,8 +52,8 @@ describe("funil de coorte: taxas adjacentes", () => {
   it("CONTROLE NEGATIVO: denominador zero vira taxa NULL, nunca NaN nem Infinity", () => {
     const f = montarFunilDeCoorte({
       cadastro: 0,
-      ativacao: 0,
       pro: 0,
+      proComUso: 0,
       anterior: null,
     });
 
@@ -49,8 +67,8 @@ describe("funil de coorte: taxas adjacentes", () => {
   it("o primeiro passo NÃO tem taxa (não existe passo anterior)", () => {
     const f = montarFunilDeCoorte({
       cadastro: 10,
-      ativacao: 5,
-      pro: 1,
+      pro: 5,
+      proComUso: 1,
       anterior: null,
     });
     expect(f.passos[0].taxaSobreAnterior).toBeNull();
@@ -59,18 +77,31 @@ describe("funil de coorte: taxas adjacentes", () => {
   it("destaca a transição de MENOR taxa absoluta, deterministicamente", () => {
     const f = montarFunilDeCoorte({
       cadastro: 1000,
-      ativacao: 30, // 3%
-      pro: 15, // 50%
+      pro: 30, // 3%
+      proComUso: 15, // 50%
       anterior: null,
     });
-    expect(f.destaque).toBe("ativacao");
+    expect(f.destaque).toBe("pro");
+  });
+
+  it("o destaque acompanha a ordem nova: engajamento baixo vence conversão alta", () => {
+    // A regra do destaque não mudou (menor taxa absoluta); o que mudou foi
+    // QUAIS transições existem. Sem este caso, a reordenação passaria com o
+    // destaque sempre no mesmo passo e ninguém saberia.
+    const f = montarFunilDeCoorte({
+      cadastro: 100,
+      pro: 90, // 90%
+      proComUso: 9, // 10%
+      anterior: null,
+    });
+    expect(f.destaque).toBe("engajamento");
   });
 
   it("com todas as transições sem denominador, não há destaque", () => {
     const f = montarFunilDeCoorte({
       cadastro: 0,
-      ativacao: 0,
       pro: 0,
+      proComUso: 0,
       anterior: null,
     });
     expect(f.destaque).toBeNull();
@@ -78,22 +109,19 @@ describe("funil de coorte: taxas adjacentes", () => {
 
   it("NÃO produz delta de taxa entre janelas, e diz por quê", () => {
     // As coortes têm maturidades diferentes: quem se cadastrou ontem teve um dia
-    // para ativar, quem se cadastrou há 45 dias teve 45. Um delta aqui seria
-    // negativo por construção, todo dia, sem nada ter piorado. Medido em
-    // 2026-08-14: sem piso, 4.807->134->76 contra 619->31->25; com piso de 7
-    // dias, a janela anterior cai para DEZ pessoas. Nenhuma das duas sustenta
-    // uma comparação, então o campo não existe.
+    // para converter, quem se cadastrou há 45 dias teve 45. Um delta aqui seria
+    // negativo por construção, todo dia, sem nada ter piorado.
     const f = montarFunilDeCoorte({
       cadastro: 4807,
-      ativacao: 134,
       pro: 76,
-      anterior: { cadastro: 619, ativacao: 31, pro: 25 },
+      proComUso: 60,
+      anterior: { cadastro: 619, pro: 25, proComUso: 20 },
     });
 
     // 619 >= 100, mas sem maturidade declarada o delta continua desligado.
     expect(f.motivoSemDelta).toBe("coortes_de_maturidade_diferente");
     expect(f.deltaPp).toBeNull();
-    expect(f.anterior).toEqual({ cadastro: 619, ativacao: 31, pro: 25 });
+    expect(f.anterior).toEqual({ cadastro: 619, pro: 25, proComUso: 20 });
     // CONTROLE NEGATIVO: nenhum passo carrega um campo de delta.
     for (const p of f.passos) {
       expect(p).not.toHaveProperty("delta");
@@ -107,8 +135,8 @@ describe("funil de coorte: taxas adjacentes", () => {
     // significar alguma coisa.
     const f = montarFunilDeCoorte({
       cadastro: 100,
-      ativacao: 100,
       pro: 100,
+      proComUso: 100,
       anterior: null,
     });
     for (const p of f.passos) {
@@ -116,6 +144,55 @@ describe("funil de coorte: taxas adjacentes", () => {
         expect(p.taxaSobreAnterior).toBeLessThanOrEqual(100);
       }
     }
+  });
+});
+
+describe("contagem da coorte: o 3º passo é INTERSEÇÃO, não união", () => {
+  const pessoa = (id: string) => ({ user_id: id });
+
+  it("conta cadastro, Pro e Pro-que-usou nas mesmas pessoas", () => {
+    const coorte = [pessoa("a"), pessoa("b"), pessoa("c"), pessoa("d")];
+    const pro = new Set(["a", "b", "c"]);
+    const usaram = new Set(["a", "b", "d"]);
+
+    // 'd' usou mas não assinou: entra em `usaram` e NÃO entra em `proComUso`.
+    expect(contarCoorte(coorte, pro, usaram)).toEqual({
+      cadastro: 4,
+      pro: 3,
+      proComUso: 2,
+    });
+  });
+
+  it("CONTROLE NEGATIVO: assinante SEM uso não conta no 3º passo", () => {
+    const coorte = [pessoa("a"), pessoa("b")];
+    const pro = new Set(["a", "b"]);
+    const usaram = new Set<string>(["a"]);
+
+    const c = contarCoorte(coorte, pro, usaram);
+    expect(c.pro).toBe(2);
+    // 'b' pagou e nunca usou: é exatamente o cliente que o passo existe para
+    // encontrar, e somá-lo aqui apagaria o problema que a etapa mede.
+    expect(c.proComUso).toBe(1);
+  });
+
+  it("CONTROLE NEGATIVO: uso sem assinatura NÃO pode fazer a taxa passar de 100%", () => {
+    // Se o 3º passo fosse "quem usou" (sem cruzar com Pro), 30 usuários sobre 2
+    // assinantes daria 1.500%. O aninhamento existe para isso ser impossível.
+    const coorte = Array.from({ length: 30 }, (_, i) => pessoa(`u${i}`));
+    const pro = new Set(["u0", "u1"]);
+    const usaram = new Set(coorte.map((p) => p.user_id));
+
+    const c = contarCoorte(coorte, pro, usaram);
+    const f = montarFunilDeCoorte({ ...c, anterior: null });
+    expect(f.passos[2].taxaSobreAnterior).toBeCloseTo(100, 6);
+  });
+
+  it("coorte vazia dá zeros, não NaN", () => {
+    expect(contarCoorte([], new Set(), new Set())).toEqual({
+      cadastro: 0,
+      pro: 0,
+      proComUso: 0,
+    });
   });
 });
 
@@ -200,20 +277,20 @@ describe("frescor do snapshot (D14): duração, não rótulo de dia", () => {
 });
 
 describe("delta do funil: liga só quando as coortes são comparáveis", () => {
-  const grande = { cadastro: 1000, ativacao: 100, pro: 50 };
+  const grande = { cadastro: 1000, pro: 100, proComUso: 50 };
 
   it("LIGA com as duas coortes acima do mínimo e maturidade suficiente", () => {
     const f = montarFunilDeCoorte({
       ...grande,
-      anterior: { cadastro: 800, ativacao: 96, pro: 48 },
+      anterior: { cadastro: 800, pro: 96, proComUso: 48 },
       maturidadeAnteriorDias: FUNIL_MIN_MATURIDADE_DIAS,
     });
 
     expect(f.motivoSemDelta).toBeNull();
-    // ativação: 10% agora contra 12% antes = -2 pontos percentuais.
-    expect(f.deltaPp!.ativacao).toBeCloseTo(-2, 6);
-    // Pro: 50% contra 50% = 0.
-    expect(f.deltaPp!.pro).toBeCloseTo(0, 6);
+    // Pro: 10% agora contra 12% antes = -2 pontos percentuais.
+    expect(f.deltaPp!.pro).toBeCloseTo(-2, 6);
+    // Engajamento: 50% contra 50% = 0.
+    expect(f.deltaPp!.engajamento).toBeCloseTo(0, 6);
   });
 
   it("CONTROLE NEGATIVO: coorte anterior pequena NÃO liga, e o motivo é específico", () => {
@@ -222,7 +299,7 @@ describe("delta do funil: liga só quando as coortes são comparáveis", () => {
     // errada; o problema ali é tamanho.
     const f = montarFunilDeCoorte({
       ...grande,
-      anterior: { cadastro: 10, ativacao: 2, pro: 1 },
+      anterior: { cadastro: 10, pro: 2, proComUso: 1 },
       maturidadeAnteriorDias: 30,
     });
 
@@ -233,7 +310,7 @@ describe("delta do funil: liga só quando as coortes são comparáveis", () => {
   it("CONTROLE NEGATIVO: maturidade insuficiente NÃO liga", () => {
     const f = montarFunilDeCoorte({
       ...grande,
-      anterior: { cadastro: 800, ativacao: 96, pro: 48 },
+      anterior: { cadastro: 800, pro: 96, proComUso: 48 },
       maturidadeAnteriorDias: FUNIL_MIN_MATURIDADE_DIAS - 1,
     });
     expect(f.deltaPp).toBeNull();

@@ -33,7 +33,7 @@ vi.mock("recharts", async () => {
 });
 
 import { DeltaBadge } from "./DeltaBadge";
-import { FunnelDigest } from "./FunnelDigest";
+import { FunnelDigest, legendaDoPasso } from "./FunnelDigest";
 import { MetricSparkline } from "./MetricSparkline";
 import {
   CostVsRevenueChart,
@@ -132,20 +132,20 @@ describe("FunnelDigest", () => {
         taxaSobreAnterior: null,
       },
       {
-        chave: "ativacao",
-        rotulo: "Já usaram alguma ferramenta",
-        valor: 134,
-        taxaSobreAnterior: 2.787,
+        chave: "pro",
+        rotulo: "Assinaram Pro",
+        valor: 91,
+        taxaSobreAnterior: 1.893,
       },
       {
-        chave: "pro",
-        rotulo: "Já assinaram Pro",
-        valor: 76,
-        taxaSobreAnterior: 56.716,
+        chave: "engajamento",
+        rotulo: "Assinantes que já usaram alguma ferramenta",
+        valor: 81,
+        taxaSobreAnterior: 89.011,
       },
     ],
-    destaque: "ativacao",
-    anterior: { cadastro: 619, ativacao: 31, pro: 25 },
+    destaque: "pro",
+    anterior: { cadastro: 619, pro: 25, proComUso: 20 },
     motivoSemDelta: "coortes_de_maturidade_diferente",
   };
 
@@ -155,10 +155,47 @@ describe("FunnelDigest", () => {
     expect(passos).toHaveLength(3);
     expect(
       passos
-        .find((p) => p.getAttribute("data-chave") === "ativacao")
+        .find((p) => p.getAttribute("data-chave") === "pro")
         ?.getAttribute("data-destaque"),
     ).toBe("sim");
-    expect(screen.getByText("2,8%")).toBeTruthy();
+    expect(screen.getByText("1,9%")).toBeTruthy();
+  });
+
+  it("renderiza a ORDEM do servidor, sem reordenar (D20)", () => {
+    render(<FunnelDigest data={funil} />);
+    expect(
+      screen
+        .getAllByTestId("funil-passo")
+        .map((p) => p.getAttribute("data-chave")),
+    ).toEqual(["cadastro", "pro", "engajamento"]);
+  });
+
+  it("a 3ª etapa é rotulada como ENGAJAMENTO, não como conversão", () => {
+    render(<FunnelDigest data={funil} />);
+    const passo = screen
+      .getAllByTestId("funil-passo")
+      .find((p) => p.getAttribute("data-chave") === "engajamento")!;
+    expect(passo.textContent).toContain("engajamento pós-compra");
+    expect(passo.textContent).not.toContain("conversão em receita");
+  });
+
+  it("CONTROLE NEGATIVO: chave desconhecida não derruba o bloco, só fica sem legenda", () => {
+    // A chave vem do servidor. Um passo novo que este bundle não conhece tem de
+    // renderizar sem legenda, nunca lançar (regra dos lookups por valor do
+    // servidor: foi assim que `STATUS_META[status].label` quebrou o admin).
+    expect(legendaDoPasso("passo_que_ainda_nao_existe")).toBeNull();
+    render(
+      <FunnelDigest
+        data={{
+          ...funil,
+          passos: [
+            { chave: "inedito", rotulo: "Novo", valor: 3, taxaSobreAnterior: 5 },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getAllByTestId("funil-passo")).toHaveLength(1);
+    expect(screen.queryByTestId("funil-passo-legenda")).toBeNull();
   });
 
   it("o topo do funil NÃO inventa taxa", () => {
@@ -481,8 +518,11 @@ describe("FunnelDigest: como ler", () => {
         }}
       />,
     );
-    expect(screen.getByTestId("funil-como-ler").textContent).toContain(
-      "maior perda",
-    );
+    // A frase explica a REGRA (taxa sobre a etapa acima, marcação na menor
+    // delas). O que este teste protege é a copy ser estática: nada de texto
+    // gerado por heurística ou por modelo neste painel.
+    const texto = screen.getByTestId("funil-como-ler").textContent ?? "";
+    expect(texto).toContain("sobre a etapa ACIMA dela");
+    expect(texto).toContain("menor dessas taxas");
   });
 });

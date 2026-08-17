@@ -88,6 +88,7 @@ import {
   type OverviewWindow,
 } from "@/components/admin/overview/OverviewPeriod";
 import { rotuloDeVariacao } from "@/components/admin/overview/overviewChange";
+import { detalheDeRisco } from "@/components/admin/overview/riskCopy";
 import { AttentionPanel } from "@/components/admin/overview/AttentionPanel";
 import { WindowBadge } from "@/components/admin/overview/WindowBadge";
 import { DeltaBadge } from "@/components/admin/overview/DeltaBadge";
@@ -290,8 +291,16 @@ type OverviewData = {
       change: OverviewChange;
     };
     receitaEmRisco: {
+      /** Soma das duas famílias abaixo. É este o headline do card. */
       count: number;
       mrrCents: number;
+      /**
+       * Breakdown D21. OPCIONAIS de propósito: na janela de deploy o backend
+       * antigo ainda responde sem eles, e o card precisa cair na frase genérica
+       * em vez de imprimir "undefined saindo".
+       */
+      saindo?: { count: number; mrrCents: number };
+      emAtraso?: { count: number; mrrCents: number };
       percentOfMrr: number | null;
     };
     custoIa: {
@@ -325,7 +334,7 @@ type SeriesData = {
       taxaSobreAnterior: number | null;
     }>;
     destaque: string | null;
-    anterior: { cadastro: number; ativacao: number; pro: number } | null;
+    anterior: { cadastro: number; pro: number; proComUso: number } | null;
     motivoSemDelta: string;
   };
   ferramentas: Array<{
@@ -501,7 +510,7 @@ const metricCards: MetricCard[] = [
     // receita; esconder o segundo foi o que causou a confusao na aba Usuarios.
     label: "Assinantes Pro",
     value: "0",
-    detail: "Assinaturas ativas no banco",
+    detail: "Quem tem assinatura paga",
     icon: <CreditCard className="h-6 w-6" />,
     color: "bg-[#ffb800] text-slate-950",
   },
@@ -525,7 +534,7 @@ const metricCards: MetricCard[] = [
     // sozinho, tem data marcada e ainda dá para agir.
     label: "Receita em risco",
     value: "0",
-    detail: "Assinaturas com saída agendada",
+    detail: "Saídas agendadas e pagamentos em atraso",
     icon: <TrendingDown className="h-6 w-6" />,
     color: "bg-rose-600 text-white",
   },
@@ -6870,25 +6879,34 @@ export default function Admin() {
       },
       {
         ...metricCards[2],
-        // TOTAL DEDUPLICADO no headline. `bySubscription` e `byInfluencer`
-        // INCLUEM quem tem os dois (`tallyProSources`: "quem tem os dois conta
-        // nos DOIS ramos"), então somar as parcelas conta essas pessoas duas
-        // vezes: em 2026-08-14 eram 99 + 28 = 127 contra 124 reais. O `total` já
-        // vinha pronto na resposta e não era usado.
-        label: "Acesso Pro",
-        value: formatCount(c.acessoPro.total),
+        // PAGANTES NO HEADLINE (D19), e a decisão inverte a da rodada 7.
+        //
+        // Ali o headline virou `total` (a união deduplicada) para consertar um
+        // erro real: somar `bySubscription` com `byInfluencer` conta duas vezes
+        // quem tem os dois, e 99 + 28 = 127 contra 124 reais. A aritmética está
+        // certa e continua valendo; o que estava errado era a PERGUNTA. "Acesso
+        // Pro" mistura quem paga com quem ganhou de graça num número só, e é o
+        // primeiro card que alguém lê para saber o tamanho do negócio.
+        //
+        // `bySubscription` já inclui quem tem os dois (é ele quem paga), então o
+        // headline não perde ninguém: o que sai dele é só a concessão PURA, que
+        // volta explícita na linha de baixo, junto com o total de acesso. As três
+        // informações continuam na tela; muda qual delas está em corpo 40.
+        label: "Assinantes Pro",
+        value: formatCount(c.acessoPro.bySubscription),
         detail: [
-          `${c.acessoPro.bySubscription} por assinatura, ${c.acessoPro.byInfluencer} por concessão`,
-          c.acessoPro.both > 0
-            ? `${c.acessoPro.both} com as duas (contadas uma vez aqui)`
-            : null,
+          // CONCESSÃO PURA: `byInfluencer` inclui quem também paga, e essas
+          // pessoas já estão no headline. Subtrair `both` é o que faz a linha
+          // dizer "+N" de verdade, sem recontar ninguém.
+          `+${formatCount(Math.max(c.acessoPro.byInfluencer - c.acessoPro.both, 0))} só por concessão`,
+          `${formatCount(c.acessoPro.total)} com acesso no total`,
           // TRIALING FORA DO HEADLINE: trial não paga, e por isso o MRR o exclui
           // de propósito. Somá-lo ao número de pagantes faria o card divergir do
           // MRR no primeiro trial.
           c.mrr.trialingCount > 0 ? `${c.mrr.trialingCount} em trial` : null,
         ]
           .filter(Boolean)
-          .join(". "),
+          .join(" · "),
         destino: "usuarios",
       },
       {
@@ -6918,11 +6936,20 @@ export default function Admin() {
       },
       {
         ...metricCards[5],
-        value: formatCents(c.receitaEmRisco.mrrCents),
-        detail:
-          c.receitaEmRisco.percentOfMrr !== null
-            ? `${c.receitaEmRisco.count} assinaturas saindo (${c.receitaEmRisco.percentOfMrr.toFixed(1).replace(".", ",")}% do MRR)`
-            : `${c.receitaEmRisco.count} assinaturas com saída agendada`,
+        // "/mês" NO VALOR (D21): o número é a soma de equivalentes MENSAIS, e
+        // sem a unidade ele é lido como "R$ 596,70 saindo", que é falso para
+        // quem tem plano anual. A unidade é a diferença entre um número certo e
+        // um número entendido.
+        value: `${formatCents(c.receitaEmRisco.mrrCents)}/mês`,
+        // BREAKDOWN em vez do "% do MRR". O percentual respondia "quanto disso é
+        // grande", e o card já mostra o valor; a pergunta que sobra é O QUE
+        // fazer, e as duas metades pedem ações opostas (reter quem agendou saída,
+        // recuperar a cobrança de quem está em atraso).
+        //
+        // O `?.` não é decoração: `saindo` e `emAtraso` nasceram nesta rodada, e
+        // uma aba aberta desde antes do deploy recebe a resposta ANTIGA, sem
+        // eles. Sem a guarda o card imprimiria "undefined saindo".
+        detail: detalheDeRisco(c.receitaEmRisco),
         destino: "retencao",
       },
       {
