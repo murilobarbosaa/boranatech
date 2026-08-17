@@ -1,15 +1,9 @@
-import {
-  Suspense,
-  lazy,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { useOnboardingCoordinator } from "@/lib/onboarding/coordinator";
 import { foiEncerrado, marcarEncerrado } from "@/lib/onboarding/encerrados";
 import { resolveRouteOnboarding } from "@/lib/onboarding/registry";
@@ -29,8 +23,14 @@ import type { OnboardingResultData } from "./OnboardingStories";
 //
 // O motor entra por lazy() para o CSS e os icones ficarem fora do bundle
 // inicial; o conteudo dos passos entra pelo import dinamico do registry.
+//
+// `lazyWithRetry` e nao `lazy` cru, pelo mesmo motivo das 72 rotas de App.tsx:
+// depois de um deploy o index.html em memoria aponta para um hash de chunk que
+// nao existe mais, e o import falha. Com o `lazy` cru este chunk nao tinha nem
+// retry, nem guarda anti-loop, nem o evento `chunk_reload` no Sentry: ele caia
+// direto no ErrorBoundary, sem deixar rastro de qual chunk sumiu.
 
-const OnboardingStories = lazy(() => import("./OnboardingStories"));
+const OnboardingStories = lazyWithRetry(() => import("./OnboardingStories"));
 
 /**
  * Quanto o overlay espera, depois de DECIDIR abrir, antes de aparecer. Existe
