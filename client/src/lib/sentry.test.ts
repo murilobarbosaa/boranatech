@@ -59,6 +59,18 @@ describe("amostrarPorOrigem", () => {
     expect(amostrarPorOrigem(evento, undefined, () => 1)).toBe(evento);
   });
 
+  /**
+   * `chunk-import` e a TERCEIRA serie da mesma familia (import de modulo de
+   * DADO que falhou depois do retry). Entra pelo mesmo argumento do
+   * `preload-event`: ela so vale comparada com as outras duas, e comparar series
+   * contadas em bases diferentes da razao errada sem nada acusar.
+   */
+  it("evento de chunk-import passa SEMPRE, mesmo no pior sorteio", () => {
+    const evento = { tags: { origem: "chunk-import" } };
+    expect(amostrarPorOrigem(evento, undefined, () => 0.99)).toBe(evento);
+    expect(amostrarPorOrigem(evento, undefined, () => 1)).toBe(evento);
+  });
+
   it("evento comum continua amostrado a 0.25", () => {
     const evento = { tags: { origem: "outra-coisa" } };
     // Abaixo do corte passa.

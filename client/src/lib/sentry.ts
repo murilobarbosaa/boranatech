@@ -56,12 +56,19 @@ const ERROR_SAMPLE_RATE = 0.25;
  *   ("quantos avisos do Vite viraram reload de fato?") so significa alguma coisa
  *   se as duas forem contadas na mesma base. Uma a 100% e outra a 25% daria uma
  *   razao errada por um fator de 4, e nada acusaria.
+ * - `chunk-import`: tag posta por `reportChunkImportFailure`
+ *   (lib/lazyWithRetry.ts, `SENTRY_ORIGEM_CHUNK_IMPORT`). Terceira serie da
+ *   familia do chunk stale, e entra pelos dois argumentos ja escritos acima: so
+ *   acontece quando um chunk de DADO some e as duas tentativas falham, e so
+ *   significa alguma coisa comparada com as outras duas, o que exige a mesma
+ *   base de contagem.
  */
 const ORIGENS_NAO_AMOSTRADAS = new Set([
   "error-boundary",
   "auth",
   "chunk-reload",
   "preload-event",
+  "chunk-import",
 ]);
 
 /**
