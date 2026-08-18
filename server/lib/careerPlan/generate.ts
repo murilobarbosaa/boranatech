@@ -14,6 +14,7 @@ import { buildOpenAIHeaders, OPENAI_BASE_URL } from "../openai";
 import { erroDaRespostaOpenAi, isFalhaPermanente } from "../openaiFailure";
 import { toOpenAIStrictSchema } from "../openaiStrictSchema";
 import { fetchUserContextPool } from "../userContext/pool";
+import { textoDaNotaLinkedin } from "../linkedinNotaPendente";
 
 /**
  * Gerador do plano de carreira (feature Pro). Trava de honestidade: o modelo
@@ -270,7 +271,7 @@ async function buildUserContext(
     const li = pool.linkedin.data;
     if (typeof li.score === "number") {
       lines.push(
-        `- Análise de LinkedIn mais recente: nota ${li.score}${li.faixa ? `, faixa ${li.faixa}` : ""}.`,
+        `- Análise de LinkedIn mais recente: ${textoDaNotaLinkedin(li.score, li.faixa, li.notaIncompleta)}.`,
       );
     }
   }

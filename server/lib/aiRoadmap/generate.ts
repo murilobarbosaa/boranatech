@@ -20,6 +20,7 @@ import { erroDaRespostaOpenAi, isFalhaPermanente } from "../openaiFailure";
 import { toOpenAIStrictSchema } from "../openaiStrictSchema";
 import { supabaseAdmin } from "../supabaseAdmin";
 import { fetchUserContextPool } from "../userContext/pool";
+import { textoDaNotaLinkedin } from "../linkedinNotaPendente";
 
 // Geracao do Roadmap com IA, no molde EXATO dos analisadores (linkedinAnalyze/
 // githubAnalyze): fetch cru para a OpenAI, gpt-4o-mini, json_schema strict via
@@ -349,8 +350,9 @@ export async function buildGenerationContext(
     const li = pool.linkedin.data;
     const parts = [
       li.area ? `area ${li.area}` : null,
-      typeof li.score === "number" ? `nota ${li.score}` : null,
-      li.faixa ? `faixa ${li.faixa}` : null,
+      typeof li.score === "number"
+        ? textoDaNotaLinkedin(li.score, li.faixa, li.notaIncompleta)
+        : null,
     ].filter((p): p is string => p !== null);
     if (parts.length > 0) {
       lines.push(`- Analise de LinkedIn mais recente: ${parts.join(", ")}.`);

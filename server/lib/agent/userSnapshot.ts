@@ -2,6 +2,7 @@ import {
   fetchUserContextPool,
   type UserContextPool,
 } from "../userContext/pool";
+import { textoDaNotaLinkedin } from "../linkedinNotaPendente";
 
 // Formatter FINO do snapshot do agente Pro: converte o pool de contexto
 // estruturado (server/lib/userContext/pool.ts, fonte unica de coleta) em texto
@@ -101,7 +102,7 @@ function buildSourceBlocks(pool: UserContextPool): string[][] {
   if (pool.linkedin.ok && pool.linkedin.data) {
     const l = pool.linkedin.data;
     blocks.push([
-      `- Analise de LinkedIn mais recente: area ${l.area ?? "nao registrada"}, nivel ${l.level ?? "nao registrado"}, nota ${l.score ?? "?"} (faixa ${l.faixa ?? "?"}), em ${day(l.createdAt)}.`,
+      `- Analise de LinkedIn mais recente: area ${l.area ?? "nao registrada"}, nivel ${l.level ?? "nao registrado"}, ${textoDaNotaLinkedin(l.score, l.faixa, l.notaIncompleta, l.deterministicVersion)}, em ${day(l.createdAt)}.`,
     ]);
   }
 

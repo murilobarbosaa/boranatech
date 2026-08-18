@@ -1,6 +1,10 @@
 import { parseLinkedinText } from "@shared/linkedin/parse";
 
-import { assinaturaDeCorte, type AssinaturaDeCorte } from "@shared/linkedin/headlineCortada";
+import {
+  assinaturaDeCorte,
+  headlineParecCortada,
+  type AssinaturaDeCorte,
+} from "@shared/linkedin/headlineCortada";
 
 /**
  * Telemetria do aviso de headline cortada.
@@ -53,8 +57,16 @@ export function payloadRevisao(
   origem: OrigemDoTexto,
 ): PayloadRevisao {
   const texto = textoDoPerfil.trim();
-  const headline = texto.length > 0 ? parseLinkedinText(texto).headline : null;
-  const assinatura = assinaturaDeCorte(headline);
+  const parsed = texto.length > 0 ? parseLinkedinText(texto) : null;
+  const headline = parsed?.headline ?? null;
+  // A assinatura pode estar no VALOR da headline ou na linha logo abaixo dela,
+  // quando o parser escolheu a primeira metade e a continuacao ficou orfa. Os
+  // dois casos sao o mesmo corte, e a telemetria mediria metade do fenomeno se
+  // olhasse so para o valor: era o que fazia o aviso sumir sem o corte sumir.
+  const contexto = parsed?.headlineContexto ?? null;
+  const assinatura =
+    assinaturaDeCorte(headline) ??
+    (headlineParecCortada(headline, contexto) ? "inicio_pipe" : null);
   return { cortada: assinatura !== null, assinatura, origem };
 }
 

@@ -1,11 +1,12 @@
 import type { AreaSlug } from "../../shared/areas";
 import { headlineParecCortada } from "../../shared/linkedin/headlineCortada";
-import { headlineFinalDe } from "../../shared/linkedin/schema";
 import {
   LINKEDIN_CAMPOS,
   LINKEDIN_CHECK_CATALOG,
   checkAppliesToMercado,
   computeLinkedinScore,
+  headlineManualAtiva,
+  headlineFinalDe,
   resolveTier,
   type LinkedinCampo,
   type LinkedinCheckResult,
@@ -15,7 +16,10 @@ import {
   type Mercado,
 } from "../../shared/linkedin/schema";
 import { ENGLISH_TITLES, PT_TITLES } from "../../shared/linkedin/titles";
-import type { LinkedinParsed } from "../../shared/linkedin/parse";
+import {
+  textoComHeadlineManual,
+  type LinkedinParsed,
+} from "../../shared/linkedin/parse";
 import {
   countKnownTechnologies,
   isMostlyEnglish,
@@ -54,15 +58,7 @@ export interface LinkedinChecksInput {
   openToWork: "sim" | "nao" | "nao-sei";
   conexoes: "ate-50" | "50-100" | "100-500" | "500-mais";
   atividade: "nunca" | "raramente" | "semanal" | "diaria";
-  /**
-   * Headline digitada no passo de revisão. Ausente na esmagadora maioria das
-   * chamadas, e ausente significa "usar a do parser".
-   *
-   * Entra AQUI, e não é resolvida pelo chamador, para que `runLinkedinChecks`
-   * seja o ponto único: nenhum sítio de check pode ler `parsed.headline` e
-   * escapar da decisão. `linkedinHeadlineFinalUnica.test.ts` enumera da fonte
-   * e falha se aparecer outro leitor.
-   */
+  /** Correção opcional feita no passo de revisão. */
   headlineManual?: string | null;
 }
 
@@ -172,14 +168,34 @@ export function runLinkedinChecks(
   const densidade = limiaresDensidade(input.level);
   const cortes = cortesDeCobertura(keyTechnologiesForArea(area).length);
 
-  // UMA resolucao, no topo, e daqui para baixo `parsed.headline` nao e mais
-  // lido: todo check, o `pendente` e o valor persistido saem de `headlineFinal`.
   const headlineFinal = headlineFinalDe(parsed.headline, input.headlineManual);
   const headline = headlineFinal ?? "";
   const sobre = parsed.sobre ?? "";
   const skillsForm = parseSkillsInput(input.skills);
   const skillsText = skillsForm.join(", ");
-  const fullText = `${profileText} ${skillsText}`;
+  const manualAtiva = headlineManualAtiva(input.headlineManual);
+  // Substitui SOMENTE o intervalo estrutural da headline sobre a visão
+  // normalizada completa. Não reconstrói o perfil por campos conhecidos:
+  // Projects, idiomas, voluntariado e seções futuras continuam participando.
+  const statusDaRegiao = parsed.headlineRegion?.status ?? "confirmed";
+  const textoEstruturadoConservador = [
+    headline,
+    parsed.sobre ?? "",
+    ...parsed.experiencias.flatMap((exp) => [
+      exp.titulo,
+      exp.empresa ?? "",
+      exp.descricao,
+    ]),
+    ...(parsed.skillsPdfConfiaveis === false ? [] : parsed.skillsPdf),
+    ...parsed.formacao,
+    ...parsed.certificacoes,
+  ].join(" ");
+  const profileTextEfetivo = manualAtiva
+    ? statusDaRegiao === "confirmed"
+      ? textoComHeadlineManual(profileText, headlineFinal)
+      : textoEstruturadoConservador
+    : profileText;
+  const fullText = `${profileTextEfetivo} ${skillsText}`;
   const expDescricoes = parsed.experiencias
     .map((exp) => exp.descricao)
     .join(" ")
@@ -313,7 +329,7 @@ export function runLinkedinChecks(
           ? `O Sobre tem ${len} caracteres, um tamanho equilibrado.`
           : len === 0
             ? "Sem Sobre para medir o tamanho."
-            : `O Sobre tem ${len} caracteres (o ideal fica entre 500 e 2200).`,
+            : `O Sobre tem ${len} caracteres (o ideal para este nível fica entre ${densidade.sobreMin} e ${densidade.sobreMax}).`,
       };
     },
     "exp-existe": () => ({
@@ -414,8 +430,8 @@ export function runLinkedinChecks(
       };
     },
     "termos-bilingues": () => {
-      const pt = matchesAnyTitle(profileText, PT_TITLES[area]);
-      const en = matchesAnyTitle(profileText, ENGLISH_TITLES[area]);
+      const pt = matchesAnyTitle(profileTextEfetivo, PT_TITLES[area]);
+      const en = matchesAnyTitle(profileTextEfetivo, ENGLISH_TITLES[area]);
       const ok = pt && en;
       return {
         aprovado: ok,
@@ -544,11 +560,12 @@ export function runLinkedinChecks(
    * a faixa vira "a confirmar" e a nota ganha o asterisco, em vez de dizer
    * "Forte" sobre uma headline cortada ao meio.
    */
-  // Sobre a headline FINAL, nao a do parser. E o que faz o `pendente` sair
-  // sozinho quando a pessoa corrige, sem regra de "editou, entao limpou": o que
-  // vale e o texto resultante. Quem editar e ainda deixar assinatura de corte
-  // continua com `notaIncompleta: true`, e deve mesmo.
-  const headlineCortada = headlineParecCortada(headlineFinal);
+  const headlineCortada =
+    statusDaRegiao === "ambiguous" ||
+    headlineParecCortada(
+      headlineFinal,
+      manualAtiva ? null : parsed.headlineContexto,
+    );
 
   const checks: LinkedinCheckResult[] = [];
   for (const entry of LINKEDIN_CHECK_CATALOG) {
@@ -579,7 +596,7 @@ export function runLinkedinChecks(
 
   const titulosIngles = ENGLISH_TITLES[area].map((titulo) => ({
     titulo,
-    encontrado: matchesAnyTitle(profileText, [titulo]),
+    encontrado: matchesAnyTitle(profileTextEfetivo, [titulo]),
   }));
 
   // Subtracao de conjuntos, nao julgamento: tecnologias da area que o PERFIL
@@ -603,7 +620,8 @@ export function runLinkedinChecks(
   };
   const keywordsCampos: LinkedinKeywordCampos[] = keyTechs.map((termo) => {
     const presenteEm = LINKEDIN_CAMPOS.filter(
-      (campo) => matchTechnologies(textoPorCampo[campo], [termo]).encontradas.length > 0,
+      (campo) =>
+        matchTechnologies(textoPorCampo[campo], [termo]).encontradas.length > 0,
     );
     const comprovado = presenteEm.length > 0;
     // Destino so existe para o que o perfil comprova. Mandar escrever na
@@ -627,7 +645,7 @@ export function runLinkedinChecks(
     headline,
     ...parsed.formacao,
     ...parsed.certificacoes,
-    ...parsed.skillsPdf,
+    ...(parsed.skillsPdfConfiaveis === false ? [] : parsed.skillsPdf),
     skillsText,
   ]
     .join(" | ")

@@ -1,4 +1,5 @@
 import { AI_ROADMAP_SLUG_RE } from "../../../shared/aiRoadmap";
+import { readLinkedinScoreState } from "../../../shared/linkedin/readScore";
 import { supabaseAdmin } from "../supabaseAdmin";
 
 // Pool de contexto do usuario: FONTE UNICA de coleta dos dados de estado do
@@ -78,6 +79,9 @@ export interface AnalysisSummaryContext {
   score: number | null;
   faixa: string | null;
   createdAt: string | null;
+  /** Só LinkedIn: true significa que score/faixa são provisórios. */
+  notaIncompleta?: boolean;
+  deterministicVersion?: number | null;
 }
 
 export interface BadgeContext {
@@ -510,6 +514,29 @@ interface AnalysisRow {
   score: number | null;
   faixa: string | null;
   created_at: string | null;
+  notaIncompleta?: unknown;
+  deterministicVersion?: unknown;
+}
+
+/** Reader isolado do resumo LinkedIn retornado pelo banco. */
+export function linkedinAnalysisContextFromRow(
+  row: AnalysisRow,
+): AnalysisSummaryContext {
+  const scoreState = readLinkedinScoreState({
+    score: row.score,
+    faixa: row.faixa,
+    deterministicVersion: row.deterministicVersion,
+    notaIncompleta: row.notaIncompleta,
+  });
+  return {
+    area: row.area,
+    level: row.level,
+    score: scoreState.score,
+    faixa: scoreState.faixa,
+    createdAt: row.created_at,
+    notaIncompleta: scoreState.notaIncompleta,
+    deterministicVersion: scoreState.deterministicVersion,
+  };
 }
 
 // linkedin_analyses e github_analyses compartilham o mesmo shape de resumo.
@@ -523,7 +550,9 @@ async function fetchLatestAnalysis(
   try {
     const { data, error } = await supabaseAdmin
       .from(table)
-      .select("area, level, score, faixa, created_at")
+      .select(
+        "area, level, score, faixa, created_at, deterministicVersion:result->deterministicVersion, notaIncompleta:result->deterministic->notaIncompleta",
+      )
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -531,6 +560,12 @@ async function fetchLatestAnalysis(
     if (error) return warnSource(source, error.message);
     if (!data) return { ok: true, data: null };
     const row = data as AnalysisRow;
+    if (table === "linkedin_analyses") {
+      return {
+        ok: true,
+        data: linkedinAnalysisContextFromRow(row),
+      };
+    }
     return {
       ok: true,
       data: {

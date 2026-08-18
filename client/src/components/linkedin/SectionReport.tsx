@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronDown, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, CircleHelp, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { resolveCheckPassos } from "@shared/linkedin/checkLinks";
 import {
@@ -20,13 +20,16 @@ const HINT_BY_ID = new Map(
 // reprovados = bom com ajustes (os pontos ficam listados nos proprios
 // checks); tudo aprovado = esta bom. Secao sem checks (ex: mensagem para
 // recrutador) fica sem veredito, o card nao inventa selo.
-export type SectionVerdict = "trocar" | "ajustes" | "bom";
+export type SectionVerdict = "pendente" | "trocar" | "ajustes" | "bom";
 
 export function deriveSectionVerdict(
   checks: LinkedinCheckResult[],
 ): SectionVerdict | null {
   if (checks.length === 0) return null;
-  const reprovados = checks.filter((check) => !check.aprovado);
+  if (checks.some((check) => check.pendente === true)) return "pendente";
+  const reprovados = checks.filter(
+    (check) => !check.aprovado && check.pendente !== true,
+  );
   if (reprovados.length === 0) return "bom";
   if (reprovados.some((check) => check.tier === "essencial")) return "trocar";
   return "ajustes";
@@ -45,6 +48,7 @@ export function deriveSectionVerdict(
 // ambar, verde) e com o verbo que a pessoa precisa executar. "Precisa trocar"
 // diz o que fazer, nao so que esta ruim.
 const VERDICT_UI: Record<SectionVerdict, { label: string; chip: string }> = {
+  pendente: { label: "A confirmar", chip: "bg-sky-200" },
   trocar: { label: "Precisa trocar", chip: "bg-red-300" },
   ajustes: { label: "Bom, com ajustes", chip: "bg-amber-300" },
   bom: { label: "Está bom", chip: "bg-emerald-300" },
@@ -90,7 +94,10 @@ export default function SectionReport({
   const verdict = deriveSectionVerdict(checks);
   const verdictUi = verdict ? VERDICT_UI[verdict] : null;
   const pasteOpen = verdict !== "bom";
-  const pendentes = checks.filter((check) => !check.aprovado).length;
+  const aConfirmar = checks.filter((check) => check.pendente === true).length;
+  const reprovados = checks.filter(
+    (check) => !check.aprovado && check.pendente !== true,
+  ).length;
 
   return (
     // Triagem por veredito: o card nasce aberto SO quando "precisa trocar";
@@ -101,7 +108,7 @@ export default function SectionReport({
     // o chevron gira por transition-transform, padrao do historico.
     <details
       className="card-brutal group rounded-2xl border-slate-950 bg-white"
-      open={verdict === "trocar"}
+      open={verdict === "trocar" || verdict === "pendente"}
     >
       <summary className="cursor-pointer list-none p-5 sm:p-6">
         <span className="flex flex-wrap items-center justify-between gap-3">
@@ -133,9 +140,11 @@ export default function SectionReport({
                 "N criterios ok" e confiavel: `exp-descricoes` passou a olhar
                 cada experiencia, entao ele nao aprova mais um perfil com
                 experiencia vazia. Antes este texto podia estar mentindo. */}
-            {pendentes > 0
-              ? `${pendentes} de ${checks.length} critérios pendentes`
-              : `${checks.length} critérios ok`}
+            {aConfirmar > 0
+              ? `${aConfirmar} de ${checks.length} critérios a confirmar`
+              : reprovados > 0
+                ? `${reprovados} de ${checks.length} critérios pendentes`
+                : `${checks.length} critérios ok`}
           </span>
         ) : paste ? (
           <span className="mt-2 block text-xs font-bold text-slate-500">
@@ -150,28 +159,45 @@ export default function SectionReport({
         {checks.length > 0 ? (
           <ul className="mt-4 space-y-3">
             {checks.map((check) => {
-              const Icon = check.aprovado ? CheckCircle2 : XCircle;
+              const pendente = check.pendente === true;
+              const Icon = pendente
+                ? CircleHelp
+                : check.aprovado
+                  ? CheckCircle2
+                  : XCircle;
               // Caminho em passos (shared/linkedin/checkLinks): so nos
               // reprovados. Substituiu o botao "Resolver agora", que levava os
               // 28 checks editaveis para a MESMA URL (/in/me) e nao resolvia
               // nada. Ver o cabecalho de checkLinks.ts.
-              const passos = !check.aprovado
-                ? resolveCheckPassos(check.id)
-                : null;
+              const passos =
+                !pendente && !check.aprovado
+                  ? resolveCheckPassos(check.id)
+                  : null;
               return (
                 <li key={check.id} className="flex items-start gap-3">
                   <Icon
                     className={cn(
                       "mt-0.5 h-5 w-5 shrink-0",
-                      check.aprovado ? "text-emerald-600" : "text-red-600",
+                      pendente
+                        ? "text-sky-700"
+                        : check.aprovado
+                          ? "text-emerald-600"
+                          : "text-red-600",
                     )}
+                    aria-hidden
                   />
                   <div className="min-w-0">
                     <p className="text-sm font-black text-slate-900">
                       {check.label}
                     </p>
-                    <p className="text-sm text-slate-500">{check.detail}</p>
-                    {!check.aprovado && HINT_BY_ID.has(check.id) ? (
+                    <p className="text-sm text-slate-500">
+                      {pendente
+                        ? "Não foi possível confirmar este critério porque a headline pode estar incompleta."
+                        : check.detail}
+                    </p>
+                    {!pendente &&
+                    !check.aprovado &&
+                    HINT_BY_ID.has(check.id) ? (
                       <p className="mt-0.5 text-xs font-medium text-slate-400">
                         {/* Rotulo em minuscula e proposital: e uma etiqueta de
                             apoio dentro do check, nao um titulo concorrente. */}

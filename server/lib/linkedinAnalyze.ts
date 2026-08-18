@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/node";
 
-import { AREA_LABELS, type AreaSlug } from "../../shared/areas";
+import { AREA_LABELS } from "../../shared/areas";
 import {
   LINKEDIN_LEVEL_LABELS,
   LinkedinQualitativeSchema,
@@ -13,7 +13,6 @@ import {
   type LinkedinDeterministicResult,
   type LinkedinMelhoria,
   type LinkedinQualitative,
-  type Mercado,
 } from "../../shared/linkedin/schema";
 import { ENGLISH_TITLES, PT_TITLES } from "../../shared/linkedin/titles";
 import { env } from "./env";
@@ -132,9 +131,9 @@ export class LinkedinTruncatedError extends Error {
   }
 }
 
-const SYSTEM_PROMPT = `Você é um especialista sênior em LinkedIn para carreiras de tecnologia no Brasil, mentor da plataforma BoraNaTech. Seu público vai de iniciantes (estagiários, trainees, juniores, pessoas em transição de carreira) a profissionais experientes. Seu trabalho é interpretar uma análise já calculada e reescrever as partes do perfil para que ele seja encontrado por recrutadores e receba mensagens.
+export const SYSTEM_PROMPT = `Você é um especialista sênior em LinkedIn para carreiras de tecnologia no Brasil, mentor da plataforma BoraNaTech. Seu público inclui iniciantes, profissionais intermediários e profissionais experientes. Seu trabalho é interpretar uma análise já calculada e reescrever as partes do perfil para que ele seja encontrado por recrutadores e receba mensagens.
 
-REGRA DOS FATOS: as checagens automáticas, a nota e as listas de palavras-chave encontradas e faltantes que você vai receber já foram calculadas e são fatos. Você não reavalia, não recalcula nota, não contradiz as checagens e não inventa informações que não estão no perfil. Se o perfil não menciona algo, você não pode afirmar que a pessoa sabe aquilo. Nas sugestões de skills, proponha apenas o que é plausível a partir do que o perfil já evidencia, e deixe claro que a pessoa só deve adicionar o que realmente sabe.
+REGRA DOS FATOS: as checagens automáticas confirmadas e as listas de palavras-chave encontradas e faltantes que você vai receber já foram calculadas e são fatos. Quando a leitura estiver marcada como incompleta, os checks pendentes e a nota/faixa são provisórios, não fatos definitivos. Você não reavalia nem recalcula a nota, não contradiz as checagens confirmadas e não inventa informações que não estão no perfil. Se o perfil não menciona algo, você não pode afirmar que a pessoa sabe aquilo. Nas sugestões de skills, proponha apenas o que é plausível a partir do que o perfil já evidencia, e deixe claro que a pessoa só deve adicionar o que realmente sabe.
 
 DIVERGÊNCIA ENTRE CHECAGEM E TEXTO (válvula da regra dos fatos): as checagens são automáticas e podem estar erradas em um caso específico. Se o texto do perfil contradisser uma checagem de forma verificável, aponte a divergência em vez de repetir a checagem. Exemplo: se uma checagem disser que as experiências têm descrição, mas houver no texto uma experiência sem nenhuma descrição própria, diga isso e cite qual. Isso não é recalcular a nota nem discutir a checagem: é relatar o que você está vendo no texto. Na dúvida, siga a checagem.
 
@@ -160,11 +159,9 @@ ESTRUTURA DO SOBRE: primeira linha é um gancho de até 140 caracteres, porque �
 
 EXPERIÊNCIAS PARA INICIANTES: quem não tem experiência formal deve cadastrar projetos próprios como experiência, com título honesto (por exemplo: Desenvolvedor Back-end, Projeto pessoal) e descrição em bullets. Cada bullet segue verbo de ação no passado, o que foi feito, com qual tecnologia, e resultado ou métrica quando existir. Isso é prática legítima e recomendada, não é mentira, desde que descreva trabalho real.
 
-CALIBRAGEM DE TOM: a nota e a faixa indicam o estágio do perfil. Faixa início pede acolhimento e foco nos 3 passos de maior impacto, sem soterrar a pessoa. Faixa em construção pede reconhecimento do que existe e direção objetiva. Faixas forte e magnético pedem refinamento fino e ambição. Sempre direto, encorajador e concreto, nunca condescendente.
+CALIBRAGEM DE TOM: quando a leitura estiver completa, a nota e a faixa ajudam a calibrar o estágio do perfil. Faixa início pede acolhimento e foco nos 3 passos de maior impacto, sem soterrar a pessoa. Faixa em construção pede reconhecimento do que existe e direção objetiva. Faixas forte e magnético pedem refinamento fino e ambição. Se a nota estiver marcada como provisória, NÃO elogie, critique nem calibre fortemente o tom por ela ou pela faixa; use somente as evidências confirmadas do perfil. Sempre direto, encorajador e concreto, nunca condescendente.
 
-NÍVEL PLENO: quando o nível do usuário for Pleno, trate como senioridade intermediária, não como iniciante. Aprofunde o lado técnico e os resultados: arquitetura, decisões de projeto, impacto medível e métricas nas reescritas. As orientações de projetos próprios como experiência valem menos aqui; priorize dar densidade ao que a pessoa já viveu profissionalmente.
-
-SENIORIDADE, NOS DOIS SENTIDOS: não atribua à pessoa cargo, escopo ou liderança que o perfil não evidencia. E o inverso vale igual: quando o perfil EVIDENCIA senioridade (anos de experiência, cargo de liderança, decisão de arquitetura, fundação de empresa), não a rebaixe nem escreva como se ela estivesse começando. O que o perfil comprova é o teto e o piso ao mesmo tempo.
+SENIORIDADE E SELETOR, NOS DOIS SENTIDOS: o nível escolhido no formulário é contexto inicial de linguagem, nunca teto nem autorização para reduzir ou inflar a senioridade. Use as evidências do próprio perfil, como anos de atuação, cargos, responsabilidade por arquitetura, liderança, escopo e impacto, para calibrar a profundidade. Se a pessoa marcou Pleno ou Júnior, mas o perfil comprova atuação experiente, não a trate como iniciante nem a rebaixe artificialmente. Se marcou Júnior e o perfil não comprova senioridade superior, não a chame de sênior, especialista ou líder. Nunca atribua cargo, escopo ou liderança que o perfil não evidencia. O perfil comprovado define ao mesmo tempo o piso e o teto da senioridade usada na resposta.
 
 ESTILO: português do Brasil. Proibido travessão e meia-risca, use ponto, vírgula ou parênteses. Sem emojis. Textos reescritos prontos para copiar e colar, na primeira pessoa quando for texto do perfil do usuário.
 
@@ -172,21 +169,6 @@ QUANTIDADES OBRIGATÓRIAS: de 3 a 5 pontosFortes, de 3 a 5 pontosFracos e de 4 a
 
 Responda apenas com o JSON do schema.`;
 // TODO(Ana): revisar o bloco de quantidades e proximoPasso do prompt.
-// Copy FECHADA em 2026-08-04 (frase de publico + senioridade).
-//
-// O que saiu e por que: a frase de publico dizia "a profissionais de nivel
-// pleno", e o paragrafo NIVEL PLENO dizia "nada de se vender como senior,
-// especialista ou lider se o perfil nao evidencia isso". A condicional estava
-// certa; a ENUMERACAO e que fazia o dano, porque nomeava "senior, especialista,
-// lider" como coisas fora do alcance do publico, e o teto declarado na primeira
-// frase confirmava a leitura. Quem e senior de fato recebia isso como conselho.
-//
-// A regra anti-inflacao FICA, e continua sendo a certa: nao atribuir o que o
-// perfil nao evidencia. O que se acrescentou foi a simetria, que faltava: nao
-// REBAIXAR quem o perfil evidencia como senior. `LINKEDIN_LEVELS` ainda nao tem
-// `senior` (o seletor vai ate `pleno`), entao um senior de fato se declara
-// `pleno` e caia justamente no paragrafo que o mandava nao se vender como
-// senior. O nivel no seletor e outro item, com levantamento proprio.
 
 export interface AnalyzeAiIo {
   inputChars: number;
@@ -207,9 +189,10 @@ function truncate(text: string, limit: number): string {
 
 function checksBlock(deterministic: LinkedinDeterministicResult): string {
   return deterministic.checks
-    .map(
-      (check) =>
-        `- [${check.aprovado ? "aprovado" : "reprovado"}] ${check.label}: ${check.detail}`,
+    .map((check) =>
+      check.pendente
+        ? `- [pendente] ${check.label}: não foi possível confirmar este critério com a headline extraída.`
+        : `- [${check.aprovado ? "aprovado" : "reprovado"}] ${check.label}: ${check.detail}`,
     )
     .join("\n");
 }
@@ -233,7 +216,9 @@ export function estadoDescricao(
 }
 
 /** A experiencia tem descricao propria suficiente para sustentar bullets? */
-function temConteudoParaBullets(exp: LinkedinParsed["experiencias"][number]): boolean {
+function temConteudoParaBullets(
+  exp: LinkedinParsed["experiencias"][number],
+): boolean {
   return estadoDescricao(exp) === "suficiente";
 }
 
@@ -318,12 +303,19 @@ export function experienciasBlock(parsed: LinkedinParsed): string {
   // (são curtas e carregam instrução), e o que sobra do orçamento é repartido
   // entre as descrições. Cortar por igual custa detalhe do fim de uma descrição
   // longa; cortar por posição custava a experiência inteira.
-  const cortaveis = partes.map((p, i) => (p.cortavel ? i : -1)).filter((i) => i >= 0);
-  const fixo = partes.reduce(
-    (soma, p, i) =>
-      soma + p.cabecalho.length + 1 + (p.cortavel ? MARCA_CORTE.length : p.corpo.length),
-    0,
-  ) + (partes.length - 1) * 2;
+  const cortaveis = partes
+    .map((p, i) => (p.cortavel ? i : -1))
+    .filter((i) => i >= 0);
+  const fixo =
+    partes.reduce(
+      (soma, p, i) =>
+        soma +
+        p.cabecalho.length +
+        1 +
+        (p.cortavel ? MARCA_CORTE.length : p.corpo.length),
+      0,
+    ) +
+    (partes.length - 1) * 2;
   const cotas = repartirOrcamento(
     EXPERIENCIAS_LIMIT - fixo,
     cortaveis.map((i) => partes[i].corpo.length),
@@ -332,7 +324,8 @@ export function experienciasBlock(parsed: LinkedinParsed): string {
   cortaveis.forEach((idx, k) => {
     const cota = Math.max(cotas[k], 0);
     if (partes[idx].corpo.length > cota) {
-      corpos[idx] = `${partes[idx].corpo.slice(0, cota).trimEnd()}${MARCA_CORTE}`;
+      corpos[idx] =
+        `${partes[idx].corpo.slice(0, cota).trimEnd()}${MARCA_CORTE}`;
     }
   });
   return montar(corpos);
@@ -388,6 +381,7 @@ export function buildUserPrompt(
     ...(deterministic.notaIncompleta === true
       ? [
           "LEITURA DA HEADLINE: em dúvida. O texto que extraímos pode estar cortado.",
+          `A nota ${deterministic.score} e a faixa ${FAIXA_LABELS[deterministic.faixa]} abaixo são PROVISÓRIAS e NÃO podem ser apresentadas ao usuário como avaliação definitiva. Não diga \"sua nota é\", não elogie nem critique a faixa e não calibre fortemente o tom por esses valores.`,
           "Por isso: NÃO afirme nada sobre o que a headline atual contém ou deixa de conter (não diga que falta stack, que está curta, que não tem cargo, nem elogie o que ela tem). Sugira uma headline nova normalmente, justificando pela área, pelo nível e pelas competências, nunca por comparação com a atual. E não mencione ao usuário que a leitura falhou: isso é estado do sistema, não conselho de carreira.",
           "",
         ]
@@ -395,7 +389,9 @@ export function buildUserPrompt(
     "Checagens automáticas já calculadas (são fatos, não reavalie nem contradiga):",
     checksBlock(deterministic),
     "",
-    `Nota determinística já calculada: ${deterministic.score} de 100 (faixa ${FAIXA_LABELS[deterministic.faixa]}). Não recalcule a nota.`,
+    deterministic.notaIncompleta === true
+      ? `Nota determinística provisória, a confirmar: ${deterministic.score} de 100 (faixa provisória ${FAIXA_LABELS[deterministic.faixa]}). Não recalcule nem apresente como definitiva.`
+      : `Nota determinística já calculada: ${deterministic.score} de 100 (faixa ${FAIXA_LABELS[deterministic.faixa]}). Não recalcule a nota.`,
     "",
     `Palavras-chave da área encontradas no perfil: ${
       deterministic.keywordsEncontradas.join(", ") || "nenhuma"
@@ -412,7 +408,7 @@ export function buildUserPrompt(
       deterministic.keywordsFaltantes.join(", ") || "nenhuma"
     }.`,
     "",
-    `Headline extraída: ${parsed.headline ?? "(não detectada)"}`,
+    `Headline efetiva da análise: ${deterministic.headline ?? "(não detectada)"}`,
     "",
     "Sobre (texto cru, pode estar truncado):",
     parsed.sobre ? truncate(parsed.sobre, SOBRE_LIMIT) : "(sem seção Sobre)",
@@ -492,6 +488,14 @@ async function runQualitativeOnce(
       `Resposta da IA não bateu com o schema esperado: ${issues}`,
     );
   }
+  // O contrato persistido aceita zero pontos fortes apenas no fallback
+  // determinístico de perfil quase vazio. A saída do modelo continua obrigada
+  // a trazer de 3 a 5, como declara o prompt, e uma violação segue retentando.
+  if (validation.data.pontosFortes.length < 3) {
+    throw new Error(
+      "Resposta da IA não bateu com o schema esperado: pontosFortes exige ao menos 3 itens.",
+    );
+  }
 
   // Tokens exatos quando a OpenAI mandar; chars seguem gravados para o
   // fallback de custo e para comparacao historica.
@@ -545,26 +549,71 @@ async function runQualitative(
 /**
  * Qualitativo determinístico e caloroso para perfil quase vazio (sem
  * headline, sem Sobre, sem experiências). Garante o tom e evita gastar token.
- * Edge case aceito: os textos ficam em português mesmo com mercado exterior
- * (só o cargo das headlines troca pra inglês). Perfil quase vazio não tem o
- * que colar ainda, então a regra IDIOMA DA SAÍDA do prompt não se aplica.
+ * Os campos para copiar respeitam o idioma do mercado mesmo sem chamar a IA.
+ * Como não há evidência suficiente, o fallback prefere listas vazias e texto
+ * explicitamente aspiracional a inventar tecnologias, projetos ou senioridade.
  */
-function warmEmptyQualitative(
-  area: AreaSlug,
-  mercado: Mercado,
+export function warmEmptyQualitative(
+  request: Pick<LinkedinAnalyzeRequest, "area" | "level" | "mercado" | "skills">,
+  parsed: Pick<LinkedinParsed, "formacao" | "certificacoes" | "experiencias">,
   deterministic: LinkedinDeterministicResult,
 ): LinkedinQualitative {
+  const { area, level, mercado } = request;
   const cargoPt = PT_TITLES[area][0];
   const cargoEn = ENGLISH_TITLES[area][0];
+  const exterior = mercado === "exterior";
   const cargo = mercado === "brasil" ? cargoPt : cargoEn;
+  const areaLabel = AREA_LABELS[area];
   const faltantesTop = deterministic.keywordsFaltantes.slice(0, 6);
+  const evidenciasDisponiveis = [
+    `o nível ${LINKEDIN_LEVEL_LABELS[level]} informado no formulário`,
+    request.skills.trim().length > 0 ? "as competências informadas" : null,
+    parsed.formacao.length > 0 ? "a formação detectada" : null,
+    parsed.certificacoes.length > 0 ? "as certificações detectadas" : null,
+    parsed.experiencias.length > 0 ? "as experiências detectadas" : null,
+  ].filter((item): item is string => item !== null);
+  const evidencias =
+    evidenciasDisponiveis.length > 0
+      ? ` Há evidência parcial em ${evidenciasDisponiveis.join(", ")}, mas ela não basta para inferir senioridade nem avaliar o perfil inteiro.`
+      : " Isso não permite inferir senioridade nem dizer que a pessoa é iniciante.";
+  const temSkillsInformadas = request.skills.trim().length > 0;
+
+  const headlines = exterior
+    ? [
+        `Target role: ${cargoEn} | ${areaLabel}`,
+        `${cargoEn} | Profile in progress | ${areaLabel}`,
+        `${cargoEn} | Focused on ${areaLabel}`,
+      ]
+    : mercado === "ambos"
+      ? [
+          `Target role: ${cargoEn} | ${areaLabel}`,
+          `${cargoEn} | Profile in progress | ${areaLabel}`,
+          `${cargoEn} | Focused on ${areaLabel}`,
+        ]
+      : [
+          `Objetivo: ${cargoPt} | ${areaLabel}`,
+          `${cargoPt} | Perfil em construção | ${areaLabel}`,
+          `${cargoPt} | Foco em ${areaLabel}`,
+        ];
+
+  const sobrePt =
+    `Estou estruturando meu perfil para atuar como ${cargoPt} na área de ${areaLabel}. ` +
+    "Antes de publicar uma versão definitiva, vou acrescentar os projetos que realmente desenvolvi, as tecnologias que uso e os resultados que consigo comprovar. " +
+    "Se você recruta para essa área, pode me chamar aqui no LinkedIn para conversarmos.";
+  const sobreEn =
+    `I am structuring my profile for a ${cargoEn} role in ${areaLabel}. ` +
+    "Before publishing a final version, I will add the projects I have actually built, the technologies I use, and results I can support with evidence. " +
+    "If you recruit for this area, feel free to contact me here on LinkedIn.";
 
   return {
     resumo:
-      "Seu perfil está praticamente em branco, e tudo bem, todo mundo começa assim. O caminho aqui é simples: preencher a headline, escrever um Sobre curto e cadastrar pelo menos um projeto como experiência. Esses três passos já fazem você aparecer nas buscas.",
-    pontosFortes: [
-      "Você já deu o primeiro passo, que é querer melhorar o perfil.",
-    ],
+      "Não encontrei informações suficientes para avaliar esta parte do perfil com segurança." +
+      evidencias +
+      " Revise a extração e complete somente os campos que realmente estiverem ausentes.",
+    // Não há evidência no perfil para declarar pontos fortes. O schema de
+    // persistência permite vazio neste fallback; preencher três itens aqui
+    // seria inventar qualidades apenas para satisfazer quantidade.
+    pontosFortes: [],
     pontosFracos: [
       "A headline ainda não comunica seu cargo nem sua stack.",
       "Falta uma seção Sobre que conte sua história.",
@@ -574,43 +623,44 @@ function warmEmptyQualitative(
       {
         prioridade: "alta",
         titulo: "Escreva uma headline com cargo e tecnologias",
-        comoFazer: `Use a fórmula cargo, barra, tecnologias. Por exemplo: ${cargo} | comece listando as tecnologias que você estuda.`,
+        comoFazer: `Abra a headline hoje e comece com o cargo-alvo ${cargo}. Depois acrescente somente as tecnologias que você realmente usa em projetos, separadas por barra vertical.`,
       },
       {
         prioridade: "alta",
         titulo: "Cadastre um projeto como experiência",
         comoFazer:
-          "Pegue um projeto que você já fez (mesmo de curso) e cadastre como experiência, com um título honesto e 3 bullets do que você fez e com qual tecnologia.",
+          "Escolha hoje um projeto que você realmente fez, inclusive de curso, e cadastre como experiência. Use um título honesto e três bullets sobre o que você fez, com qual tecnologia e qual foi o resultado quando houver.",
       },
       {
         prioridade: "media",
         titulo: "Escreva um Sobre curto",
         comoFazer:
-          "Comece com uma frase de gancho, conte o que você estuda e está construindo, liste sua stack por extenso e termine com um convite ao contato.",
+          "Escreva hoje uma primeira versão com uma frase de abertura e seu objetivo profissional. Conte apenas o que você estuda ou construiu de verdade, liste a stack comprovável por extenso e termine com um convite ao contato.",
       },
       {
-        // TODO(Ana): revisar a quarta melhoria do perfil quase vazio.
         prioridade: "baixa",
-        titulo: "Cadastre suas competências",
-        comoFazer:
-          "Na seção Competências, adicione as tecnologias que você já estuda, começando pelas da sua área. Adicione só o que você realmente sabe, mesmo que no básico.",
+        titulo: temSkillsInformadas
+          ? "Revise as competências informadas"
+          : "Cadastre suas competências",
+        comoFazer: temSkillsInformadas
+          ? "Abra hoje a seção Competências e confirme se as tecnologias informadas estão cadastradas e ordenadas no LinkedIn. Mantenha somente ferramentas que você realmente usa e não trate ausência de leitura do PDF como ausência de experiência."
+          : "Abra hoje a seção Competências e liste as tecnologias que você já consegue usar. Comece pelas mais ligadas à sua área e não adicione ferramentas que ainda estão apenas no plano de estudo.",
       },
     ],
-    // TODO(Ana): revisar o proximo passo do perfil quase vazio.
-    proximoPasso: `Preencha hoje sua headline com a fórmula cargo e tecnologias, por exemplo: ${cargo} | listando as tecnologias que você estuda.`,
-    headlines: [
-      `${cargo} | em busca da primeira oportunidade, construindo projetos`,
-      `${cargo} | estudando e praticando todos os dias`,
-      `${cargo} | foco em ${AREA_LABELS[area]}, aprendendo na prática`,
-    ],
-    sobreReescrito:
-      "Estou começando minha jornada em tecnologia e construindo meu portfólio na prática. Tenho estudado as bases da área e aplicado em projetos pessoais. Quero uma primeira oportunidade para crescer junto a um time. Pode me chamar aqui no LinkedIn para conversar.",
+    proximoPasso: `Preencha hoje a headline com o cargo-alvo ${cargo} e acrescente apenas tecnologias que você realmente usa em projetos.`,
+    headlines,
+    sobreReescrito: exterior
+      ? sobreEn
+      : mercado === "ambos"
+        ? `${sobrePt}\n\n${sobreEn}`
+        : sobrePt,
     bulletsReescritos: [],
     // Perfil quase vazio nao comprova tecnologia nenhuma, entao "adicionar
     // agora" fica legitimamente vazio e as faltantes viram trilha de estudo.
     skillsParaEstudar: faltantesTop,
-    modeloMensagemRecrutador:
-      "Olá, tudo bem? Estou começando na área de tecnologia e tenho acompanhado as vagas da sua empresa. Adoraria me conectar e ficar no seu radar para futuras oportunidades de início de carreira. Obrigado!",
+    modeloMensagemRecrutador: exterior
+      ? `Hello, [name]. I am structuring my profile for a ${cargoEn} role and would like to learn more about opportunities in this area at [company]. Thank you for connecting.`
+      : `Olá, [nome]. Estou estruturando meu perfil para atuar como ${cargoPt} e gostaria de conhecer melhor as oportunidades dessa área na [empresa]. Obrigado pela conexão.`,
   };
 }
 
@@ -689,7 +739,8 @@ function registrarViolacao(v: Violacao): void {
       campo: v.campo,
       contexto: v.contexto,
       termo: v.termo,
-      acao: v.tipo === "bullet_sem_origem" ? "bloco_removido" : "termo_removido",
+      acao:
+        v.tipo === "bullet_sem_origem" ? "bloco_removido" : "termo_removido",
       retry: false,
     }),
   );
@@ -842,38 +893,6 @@ function aplicarLastro(
   return { ...qualitative, headlines, bulletsReescritos, melhorias };
 }
 
-/**
- * ALIAS DE TRANSIÇÃO. Reemite `skillsSugeridas` como cópia de
- * `skillsParaEstudar`. REMOVER, não manter.
- *
- * POR QUE EXISTE: `f70f1b3` ("feat(linkedin): split suggested skills into
- * add-now and study lists", 2026-07-26) renomeou `skillsSugeridas` para
- * `skillsParaEstudar`. Foi a ÚNICA mudança não-aditiva do contrato de resposta
- * em 94 commits, e o bundle anterior lê o campo antigo sem guarda, em
- * `client/src/pages/LinkedinAnalisar.tsx:1714` (`.length` direto). A ausência
- * não degrada: derruba o render inteiro do resultado com `TypeError`.
- *
- * POR QUE AQUI, e não no schema da IA: o modelo continua produzindo UM campo
- * só. Isto é montagem de resposta, não pedido ao modelo. E como a rota persiste
- * o mesmo objeto (`server/routes/linkedin.ts:74`, `result: response`), o alias
- * entra na resposta E no que é gravado pelo mesmo caminho, o que importa
- * porque análise v4 reaberta por bundle antigo quebraria igual.
- *
- * POR QUE NÃO É SÓ A JANELA DE DEPLOY: redeploy da Vercel não alcança quem está
- * com a aba aberta desde antes. O JS antigo já baixado continua rodando até a
- * pessoa recarregar, e não há prazo para isso. Alias no backend alcança todos.
- *
- * GATILHO DE REMOÇÃO: a partir de **2026-08-10** (duas semanas), quando não
- * houver cliente antigo plausível em execução. Ao remover, atualizar
- * `QUEBRAS_CONHECIDAS` em `server/lib/janelaDeDeployInversa.test.ts` de volta
- * para `["skillsSugeridas"]`, que é o teste que trava esta decisão.
- */
-function comAliasDeTransicao(
-  qualitative: LinkedinQualitative,
-): LinkedinQualitative & { skillsSugeridas: string[] } {
-  return { ...qualitative, skillsSugeridas: qualitative.skillsParaEstudar };
-}
-
 export async function analyzeLinkedin(
   request: LinkedinAnalyzeRequest,
   onAiIo?: (io: AnalyzeAiIo) => void,
@@ -899,16 +918,27 @@ export async function analyzeLinkedin(
   });
 
   const quaseVazio =
-    !parsed.headline && !parsed.sobre && parsed.experiencias.length === 0;
+    !deterministic.headline &&
+    !parsed.sobre &&
+    parsed.experiencias.length === 0;
 
   const qualitativeCru = quaseVazio
-    ? warmEmptyQualitative(request.area, request.mercado, deterministic)
+    ? warmEmptyQualitative(request, parsed, deterministic)
     : await runQualitative(
         buildUserPrompt(request, parsed, deterministic),
         onAiIo,
       );
 
   const qualitative = aplicarLastro(qualitativeCru, parsed, deterministic);
+  /**
+   * @deprecated Alias de compatibilidade para bundles antigos ainda abertos.
+   * A remoção exige uma estratégia confiável de versionamento/telemetria de
+   * clientes; tempo desde o deploy, sozinho, não prova que o cliente recarregou.
+   */
+  const qualitativeComAlias = {
+    ...qualitative,
+    skillsSugeridas: qualitative.skillsParaEstudar,
+  };
 
   return {
     response: {
@@ -919,7 +949,7 @@ export async function analyzeLinkedin(
       qualitativeVersion: QUALITATIVE_VERSION,
       deterministicVersion: DETERMINISTIC_VERSION,
       deterministic,
-      qualitative: comAliasDeTransicao(qualitative),
+      qualitative: qualitativeComAlias,
     },
     parsed,
   };

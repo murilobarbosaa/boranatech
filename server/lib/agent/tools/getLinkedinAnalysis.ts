@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "../../supabaseAdmin";
+import { notaLinkedinParaContexto } from "../../linkedinNotaPendente";
 import type { AgentTool } from "../types";
 
 // O result e o jsonb completo persistido pela rota de analise; aqui so os
@@ -11,6 +12,8 @@ interface LinkedinRow {
   faixa: string | null;
   created_at: string | null;
   result: {
+    deterministicVersion?: unknown;
+    deterministic?: { notaIncompleta?: unknown };
     qualitative?: {
       melhorias?: Array<{ prioridade?: unknown; titulo?: unknown }>;
       proximoPasso?: unknown;
@@ -22,7 +25,7 @@ export const getLinkedinAnalysis: AgentTool = {
   name: "get_linkedin_analysis",
   tier: "pro",
   description:
-    "Retorna a analise de LinkedIn mais recente do proprio usuario: area, nivel, nota, faixa, data, as melhorias sugeridas (titulo e prioridade) e o proximo passo de maior impacto. Esta e a unica ferramenta cujo resultado fica salvo, entao retorna o resultado de fato. Recurso do Plano Pro. A identidade vem do contexto seguro do servidor, nunca de argumentos.",
+    "Retorna a analise de LinkedIn mais recente do proprio usuario: area, nivel, nota, faixa, estado da nota (definitiva ou provisoria a confirmar), data, melhorias e proximo passo. Quando notaIncompleta for true, score e faixa nao podem ser apresentados como avaliacao definitiva. Recurso do Plano Pro. A identidade vem do contexto seguro do servidor, nunca de argumentos.",
   parameters: {
     type: "object",
     properties: {},
@@ -74,6 +77,12 @@ export const getLinkedinAnalysis: AgentTool = {
     // quando existir (shapes antigos degradam pra lista vazia/null, nunca
     // inventam conteudo).
     const qualitative = row.result?.qualitative;
+    const nota = notaLinkedinParaContexto(
+      row.score,
+      row.faixa,
+      row.result?.deterministic?.notaIncompleta,
+      row.result?.deterministicVersion,
+    );
     const melhorias = Array.isArray(qualitative?.melhorias)
       ? qualitative.melhorias
           .filter(
@@ -91,8 +100,7 @@ export const getLinkedinAnalysis: AgentTool = {
       data: {
         area: row.area,
         nivel: row.level,
-        score: row.score,
-        faixa: row.faixa,
+        ...nota,
         data: row.created_at ? row.created_at.slice(0, 10) : null,
         melhorias,
         proximoPasso:

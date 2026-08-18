@@ -1,7 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createElement } from "react";
+
+import SectionReport, { deriveSectionVerdict } from "./SectionReport";
+import type { LinkedinCheckResult } from "@shared/linkedin/schema";
+
+afterEach(cleanup);
 
 /**
  * Todo bloco "pronto para colar" precisa dizer ONDE colar e o que fazer com o
@@ -63,5 +70,42 @@ describe("blocos pronto para colar declaram destino e operacao", () => {
     );
     expect(secao).not.toContain("TODO(Ana): revisar o rotulo da camada pronta");
     expect(secao).not.toContain("TODO(Ana): revisar o convite do para colar");
+  });
+});
+
+describe("SectionReport: estado pendente", () => {
+  const pendente: LinkedinCheckResult = {
+    id: "headline-stack",
+    label: "Headline com tecnologias",
+    category: "headline",
+    tier: "importante",
+    aprovado: false,
+    detail: "A headline cita menos de 2 tecnologias reconhecidas.",
+    pendente: true,
+  };
+
+  it("tem precedência sobre aprovado e reprovado no veredito", () => {
+    expect(deriveSectionVerdict([{ ...pendente, aprovado: true }])).toBe(
+      "pendente",
+    );
+  });
+
+  it("renderiza A confirmar sem falso veredito ou instrução de correção", () => {
+    render(
+      createElement(
+        SectionReport,
+        { title: "Headline", checks: [pendente] },
+        "conteúdo",
+      ),
+    );
+
+    expect(screen.getByText("A confirmar")).toBeTruthy();
+    expect(
+      screen.getByText(/Não foi possível confirmar este critério/),
+    ).toBeTruthy();
+    expect(screen.queryByText("Está bom")).toBeNull();
+    expect(screen.queryByText("Precisa trocar")).toBeNull();
+    expect(screen.queryByText("como resolver:")).toBeNull();
+    expect(screen.getByText("1 de 1 critérios a confirmar")).toBeTruthy();
   });
 });

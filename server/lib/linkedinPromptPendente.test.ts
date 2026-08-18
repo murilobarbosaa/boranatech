@@ -93,13 +93,21 @@ describe("instrucao de headline em duvida no prompt", () => {
   it("APARECE quando a nota esta incompleta", () => {
     const p = prompt(true);
     expect(p).toContain(MARCADOR);
+    expect(p).toContain("são PROVISÓRIAS");
+    expect(p).toContain("NÃO podem ser apresentadas ao usuário como avaliação definitiva");
+    expect(p).toContain("Nota determinística provisória, a confirmar: 70");
+    expect(p).not.toContain("Nota determinística já calculada: 70");
     expect(p).toContain("NÃO afirme nada sobre o que a headline atual contém");
+    expect(p).toContain("[pendente] Headline presente");
+    expect(p).not.toContain("[aprovado] Headline presente");
+    expect(p).not.toContain("[reprovado] Headline presente");
   });
 
   it("NAO aparece quando a leitura esta boa (o lado que importa)", () => {
     const p = prompt(false);
     expect(p).not.toContain(MARCADOR);
     expect(p).not.toContain("NÃO afirme nada sobre o que a headline atual");
+    expect(p).toContain("Nota determinística já calculada: 70");
   });
 
   it("vem ANTES do bloco de checagens, nao depois nem no meio", () => {
