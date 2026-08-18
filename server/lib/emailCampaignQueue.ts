@@ -1096,24 +1096,54 @@ export function createEmailCampaignWorker() {
 
   worker.on("failed", (job, err) => {
     console.error(`[email-campaign] Job ${job?.id} falhou:`, err.message);
-    Sentry.withScope((scope) => {
-      scope.setTag("jobName", QUEUE_NAME);
-      scope.setTag("jobId", String(job?.id ?? "unknown"));
-      Sentry.captureException(err);
-    });
+
+    // failed definitivo SO depois de esgotar as tentativas (attempts 3 com
+    // backoff exponencial). Antes disso o BullMQ reagenda e o recipient segue
+    // pending. Erro nunca colapsa em sucesso.
+    //
+    // A MESMA condicao decide o reporte ao Sentry, e e por isso que ela subiu
+    // para antes dos `return` de cima. Capturar em TODA tentativa mandava ate 3
+    // eventos por destinatario, e numa janela ruim do Resend isso multiplica
+    // pelo tamanho do lote: 400 destinatarios viram 1200 eventos de uma causa
+    // so. O que interessa contar e quantos destinatarios de fato ficaram sem
+    // e-mail, e esse numero e o das tentativas TERMINAIS. A tentativa
+    // intermediaria continua registrada no log, onde o volume nao custa cota.
+    //
+    // `job` ausente e um caso a parte: e falha de nivel do worker, nao de um
+    // destinatario, entao nao ha tentativa a contar e ela vai ao Sentry sempre.
+    const maxAttempts =
+      typeof job?.opts.attempts === "number"
+        ? job.opts.attempts
+        : CAMPAIGN_ATTEMPTS;
+    const tentativa = job?.attemptsMade ?? 0;
+    const definitiva = !job || tentativa >= maxAttempts;
+
+    if (definitiva) {
+      Sentry.withScope((scope) => {
+        scope.setTag("jobName", QUEUE_NAME);
+        scope.setTag("jobId", String(job?.id ?? "unknown"));
+        // Quantas tentativas queimaram antes de desistir. Separa "falhou de
+        // primeira e nao adiantou insistir" de "so falhou na terceira", que sao
+        // diagnosticos diferentes do mesmo texto de erro.
+        scope.setTag("attemptsMade", String(tentativa));
+        // `name` e nao a mensagem: a mensagem do timeout carrega o numero de ms
+        // e agrupa mal; o `name` separa timeout de erro de rede e de erro do
+        // SDK sem depender de casar texto.
+        scope.setTag("errorName", err.name);
+        Sentry.captureException(err);
+      });
+    } else {
+      console.warn(
+        `[email-campaign] tentativa ${tentativa}/${maxAttempts} falhou para o job ${job?.id}: ${err.message}`,
+      );
+    }
+
     if (!job) return;
     // Gatilho de lote: o dispatch ja devolveu o batch pra pending no erro;
     // retry do BullMQ e reconciliacao no boot cuidam do resto. Nao ha
     // recipient pra marcar como failed.
     if ("batchId" in job.data) return;
-    // failed definitivo SO depois de esgotar as tentativas (attempts 3 com
-    // backoff exponencial). Antes disso o BullMQ reagenda e o recipient segue
-    // pending. Erro nunca colapsa em sucesso.
-    const maxAttempts =
-      typeof job.opts.attempts === "number"
-        ? job.opts.attempts
-        : CAMPAIGN_ATTEMPTS;
-    if (job.attemptsMade >= maxAttempts) {
+    if (tentativa >= maxAttempts) {
       void recordResult(
         job.data.recipientId,
         false,
