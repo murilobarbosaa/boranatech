@@ -228,6 +228,30 @@ const NAO_LIMIAR = [
   [/mudaram\.length > 0/, "guarda de lista vazia na deteccao de autodeclaracao"],
   [/skillsRatio/, "razao antiga, mantida so no calculo do detail informativo"],
   [/\.filter\(\(i\) => i > 0\)/, "sentinela 0 = indice base-1 valido, nao e limiar"],
+  // --- Classificados em 2026-08-18, com a contagem de violacoes de lastro
+  // (`registrarViolacao`, linkedinAnalyze.ts). Sao os tres campos do estado
+  // inicial do contador POR TIPO, zerados na criacao da entrada do mapa. Mesma
+  // categoria de "inicializacao de acumulador" que ja existe acima, em outra
+  // forma sintatica: la e `let x = 0`, aqui e propriedade de objeto literal, e
+  // por isso o padrao antigo nao casava.
+  //
+  // A fronteira de verdade daquele bloco e o `INTERVALO_LASTRO_MS`, e ela tem
+  // teste discriminante (linkedinLastroContagem.test.ts avanca o relogio em
+  // exatamente 60_000 e exige o segundo evento).
+  //
+  // `ultimoEnvioMs: 0` merece a nota: alem de inicializacao, ele e a sentinela
+  // de "nunca enviou", e como `agora - 0` supera qualquer intervalo, e ele que
+  // garante que a PRIMEIRA ocorrencia sempre sai. Esse comportamento tambem
+  // esta preso por teste (o caso que afirma 1 evento na primeira ocorrencia),
+  // entao a classificacao aqui nao silencia nada: ela diz que o numero nao e
+  // limiar de REGRA, que e o dominio deste script.
+  //
+  // Regex por NOME dos tres campos, de proposito: um campo numerico novo neste
+  // mesmo objeto continua caindo como orfao, que e o que se quer.
+  [
+    /^(?:ultimoEnvioMs|suprimidasDesdeUltimo|totalNoProcesso): 0,?$/,
+    "estado inicial do contador de violacoes de lastro, nao e fronteira",
+  ],
 ];
 
 function descobrirSitios() {
