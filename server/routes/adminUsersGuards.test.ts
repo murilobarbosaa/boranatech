@@ -83,8 +83,10 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // deliberado: quem acrescenta rota confere antes que ela está atrás de
 // `requireAuth` + `requireAdmin`, e as duas novas estão — o router monta as
 // guardas no topo e as rotas entram depois, o que os dois testes acima verificam
-// por posição.
-const EXPECTED_ROUTE_COUNT = 57;
+// por posição. 57 -> 58 em 2026-08-17, com `GET /admin/online-now` (presença do
+// card "Atividade agora" da Visão); ela entra depois dos dois `router.use` do
+// topo, como as anteriores, e este arquivo é quem confere isso.
+const EXPECTED_ROUTE_COUNT = 58;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {

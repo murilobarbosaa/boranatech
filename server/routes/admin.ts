@@ -17,6 +17,7 @@ import {
 } from "../lib/financeMetrics";
 import { fetchUsdBrlRate } from "../lib/fx/ptax";
 import {
+  contarAtividadeAgora,
   getPosthogHealth,
   getPaidFunnelSignals,
   getPosthogStats,
@@ -606,6 +607,34 @@ function agregarChargesSemDono(resposta: {
     grossCents: linhas.reduce((soma, l) => soma + (l.gross_cents ?? 0), 0),
   };
 }
+
+// PRESENCA AGORA, para o card "Atividade agora" da Visao.
+//
+// TTL CURTO (30s) e nao zero: o card se atualiza a cada 60s no cliente, e sem
+// cache cada admin com a aba aberta viraria uma query HogQL por minuto. Com 30s
+// o numero nunca esta mais de meio minuto atrasado, que e imperceptivel para uma
+// medida de presenca, e a carga fica limitada mesmo com varias abas abertas.
+//
+// FORA do /overview de proposito: presenca e ESTADO ATUAL, e o /overview e
+// governado pelo seletor de janela. Acoplar os dois faria "online agora" mudar
+// quando alguem trocasse para "ultimos 7 dias", o que nao quer dizer nada.
+const ONLINE_NOW_CACHE_TTL_S = 30;
+
+router.get("/online-now", async (_req, res, next) => {
+  try {
+    const { result, computedAt } = await getOrCompute(
+      "admincache:online-now",
+      ONLINE_NOW_CACHE_TTL_S,
+      async () => ({
+        result: await contarAtividadeAgora(),
+        computedAt: new Date().toISOString(),
+      }),
+    );
+    res.json({ data: result, computedAt });
+  } catch (err) {
+    next(err);
+  }
+});
 
 const HEALTH_BAND_CACHE_TTL_S = 60;
 

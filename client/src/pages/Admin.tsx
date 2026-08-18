@@ -403,6 +403,85 @@ type AiStatsData = Record<
   }
 >;
 
+/**
+ * Linha de cadastros do card "Usuarios totais".
+ *
+ * Ausencia e NOMEADA: `formatCount` devolve "0" para `null` (`value || 0`), e
+ * "0 cadastros" e indistinguivel de "nenhum cadastro no periodo", que e um fato
+ * diferente. A guarda de tipo e explicita por isso, e nao por paranoia com o
+ * contrato: o campo e `number` no tipo, mas quem responde e a rede.
+ *
+ * A VARIACAO entra como TEXTO, nunca como o badge `change` do card. O badge
+ * deste card seria lido como variacao do TOTAL de usuarios, que e falso: o total
+ * nao tem periodo anterior, ele so acumula. Aqui a variacao esta claramente
+ * presa a frase dos cadastros.
+ *
+ * E ela so entra quando a comparacao EXISTE. A frase de motivo ("Dados comecam
+ * no meio do periodo, sem comparacao") existe para o caso em que o Δ ausente
+ * deixaria um vazio com cara de defeito; aqui nao ha vazio nenhum, a linha ja
+ * diz quantos cadastros houve, e o parentese explicando uma comparacao que o
+ * card nunca prometeu seria ruido.
+ */
+function secundariaDeCadastros(
+  novosUsuarios: OverviewData["cards"]["novosUsuarios"] | undefined,
+  janelaLabel: string,
+): string {
+  const valor = novosUsuarios?.value;
+  // TODO(Ana)
+  if (typeof valor !== "number") return "Cadastros indisponíveis no período";
+  // TODO(Ana)
+  const base = `${formatCount(valor)} cadastros ${janelaLabel}`;
+  const variacao = novosUsuarios?.change?.disponivel
+    ? rotuloDeVariacao(novosUsuarios.change, novosUsuarios.historicoDesde)
+    : null;
+  return variacao ? `${base} (${variacao.texto})` : base;
+}
+
+/**
+ * O que GET /admin/online-now devolve (server/lib/posthog.ts).
+ *
+ * Union DISCRIMINADO, e nunca um numero solto: "0 online" e indistinguivel de
+ * "PostHog fora do ar", e a segunda leitura e a que muda o que alguem faz.
+ */
+type OnlineNowData =
+  | { state: "not_configured"; missing?: string[] }
+  | { state: "error"; reason?: string; httpStatus?: number }
+  | { state: "ok"; atividade?: { online: number; hojePessoas: number } };
+
+/** De quanto em quanto tempo o card de presenca se refaz. */
+const ONLINE_NOW_REFRESH_MS = 60_000;
+
+/**
+ * Valor e linha secundaria do card "Atividade agora", por RESOLVER.
+ *
+ * Nunca por acesso direto ao estado: um `state` novo no servidor que o bundle
+ * ainda nao conheca cai no ramo neutro ("indisponivel") em vez de derrubar a
+ * pagina, que e a regra do projeto. E o fallback de ausencia e SEMPRE textual:
+ * zero aqui seria um numero plausivel sobre uma medicao que nao aconteceu.
+ */
+function atividadeDoCard(dado: OnlineNowData | null): {
+  value: string;
+  secundaria: string;
+} {
+  // TODO(Ana)
+  if (!dado) return { value: "...", secundaria: "Consultando o PostHog" };
+  if (dado.state === "ok" && typeof dado.atividade?.online === "number") {
+    return {
+      value: formatCount(dado.atividade.online),
+      // TODO(Ana)
+      secundaria: `${formatCount(dado.atividade.hojePessoas)} pessoas ativas hoje`,
+    };
+  }
+  return {
+    // TODO(Ana)
+    value: "indisponível",
+    secundaria:
+      dado.state === "not_configured"
+        ? "PostHog não configurado"
+        : "PostHog indisponível",
+  };
+}
+
 type ChurnRiskUser = {
   name: string;
   email: string;
@@ -524,12 +603,21 @@ export const metricCards: MetricCard[] = [
     color: "bg-violet-800 text-white",
   },
   {
-    key: "novos_usuarios",
-    label: "Novos usuários",
+    // "Novos usuários" SAIU daqui, e o motivo não foi espaço: na janela "Tudo"
+    // ele repetia o card de total, e cadastro é a derivada do total, não uma
+    // segunda pergunta. A série foi para dentro de "Usuários totais" (slot 0), e
+    // este slot passou a responder o que a Visão não respondia: quem está no
+    // site AGORA.
+    key: "atividade_agora",
+    label: "Atividade agora",
     value: "0",
-    detail: "Cadastros na janela selecionada",
-    icon: <Users className="h-6 w-6" />,
-    color: "bg-violet-700 text-white",
+    // A RESSALVA VIVE NO CARD, não numa nota de rodapé: presença medida por
+    // analytics é sempre um piso, e quem lê precisa saber disso no mesmo olhar.
+    // TODO(Ana)
+    detail:
+      "Estado atual, ignora o seletor. PostHog nos últimos 5 minutos, sem quem bloqueia rastreio.",
+    icon: <Activity className="h-6 w-6" />,
+    color: "bg-sky-600 text-white",
   },
   {
     key: "assinantes_pro",
@@ -983,6 +1071,16 @@ function ChurnContextTiles({ churn }: { churn: ChurnSnapshot }) {
  *
  * A VARIAÇÃO só aparece quando existe; quando não existe, aparece o MOTIVO. Um
  * espaço vazio no lugar do Δ parece defeito.
+ *
+ * ALINHAMENTO POR CONSTRUÇÃO, e não por altura combinada. Os ícones apareciam
+ * cada um numa altura porque todo card tem `destino` e portanto é um `<button>`,
+ * e o navegador CENTRALIZA verticalmente o conteúdo de um botão mais alto que
+ * ele (folha de estilo do agente de usuário, não classe deste arquivo). Como o
+ * grid estica todos à altura da linha e cada card tem conteúdo de tamanho
+ * diferente, cada botão centralizava por uma sobra diferente. `flex h-full
+ * flex-col` no wrapper substitui essa centralização anônima por uma coluna
+ * explícita ancorada no topo, e `mt-auto` no rodapé empurra sparkline e Δ para a
+ * base. Nenhuma das duas depende de os cards terem o mesmo conteúdo.
  */
 function MetricCardView({
   metric,
@@ -994,6 +1092,30 @@ function MetricCardView({
   /** Card da linha principal: número maior e mais respiro. */
   destaque?: boolean;
 }) {
+  // RODAPÉ ANCORADO NA BASE, e só quando existe. Card sem sparkline e sem Δ
+  // (hoje "Assinantes Pro" e "Receita em risco") não ganha um rodapé vazio: o
+  // conteúdo fica no topo, alinhado com os vizinhos, que é o desejado.
+  const rodape =
+    metric.sparkline || metric.change ? (
+      <div className="mt-auto">
+        {metric.sparkline}
+        {metric.change ? (
+          <p
+            data-testid={`card-variacao-${metric.label}`}
+            className={`mt-2 text-xs font-black uppercase tracking-wide ${
+              metric.change.tom === "alta"
+                ? "text-emerald-700"
+                : metric.change.tom === "baixa"
+                  ? "text-rose-700"
+                  : "text-slate-500"
+            }`}
+          >
+            {metric.change.texto}
+          </p>
+        ) : null}
+      </div>
+    ) : null;
+
   const corpo = (
     <>
       <div className="flex items-start justify-between gap-4">
@@ -1024,27 +1146,13 @@ function MetricCardView({
           {metric.secundaria}
         </p>
       ) : null}
-      {metric.sparkline}
-      {metric.change ? (
-        <p
-          data-testid={`card-variacao-${metric.label}`}
-          className={`mt-2 text-xs font-black uppercase tracking-wide ${
-            metric.change.tom === "alta"
-              ? "text-emerald-700"
-              : metric.change.tom === "baixa"
-                ? "text-rose-700"
-                : "text-slate-500"
-          }`}
-        >
-          {metric.change.texto}
-        </p>
-      ) : null}
+      {rodape}
     </>
   );
 
   if (!metric.destino) {
     return (
-      <article className="card-brutal rounded-3xl bg-white p-5">
+      <article className="card-brutal flex h-full flex-col rounded-3xl bg-white p-5">
         {corpo}
       </article>
     );
@@ -1055,7 +1163,7 @@ function MetricCardView({
     <button
       type="button"
       onClick={() => onNavigate(destino)}
-      className="card-brutal rounded-3xl bg-white p-5 text-left transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+      className="card-brutal flex h-full flex-col rounded-3xl bg-white p-5 text-left transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
     >
       {corpo}
     </button>
@@ -6306,6 +6414,8 @@ export default function Admin() {
   // sobrevive ao reload e o link fica compartilhavel. O custo era o
   // setActiveSection acima descartar o parametro, e ele foi corrigido junto.
   const [overview, setOverview] = useState<OverviewData | null>(null);
+  // PRESENCA, em estado PROPRIO. `null` e "ainda nao respondeu", nao "zero".
+  const [onlineNow, setOnlineNow] = useState<OnlineNowData | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [seriesData, setSeriesData] = useState<SeriesData | null>(null);
@@ -6354,6 +6464,39 @@ export default function Admin() {
       cancelled = true;
     };
   }, [overviewWindow]);
+
+  // PRESENCA, com efeito e ritmo PROPRIOS.
+  //
+  // Fora do efeito do /overview de proposito: aquele e governado pelo seletor de
+  // janela, e presenca e estado ATUAL. Acoplar os dois faria "online agora"
+  // mudar ao trocar para "ultimos 7 dias", o que nao quer dizer nada, e refaria
+  // a query HogQL a cada mexida no seletor.
+  //
+  // 60s e o intervalo de RENOVACAO da tela; o cache da rota (30s) e que limita a
+  // carga real no PostHog quando ha varias abas abertas.
+  useEffect(() => {
+    let cancelled = false;
+    const buscar = () => {
+      adminFetch("/online-now")
+        .then((json) => {
+          if (cancelled) return;
+          // Payload degradado (sem `data`) e FALHA, nao sucesso vazio: sem esta
+          // guarda o card ficaria "carregando" para sempre, que e o unico estado
+          // do resolver que nao diz nada a quem le.
+          setOnlineNow((json.data as OnlineNowData) ?? { state: "error" });
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setOnlineNow({ state: "error" });
+        });
+    };
+    buscar();
+    const id = setInterval(buscar, ONLINE_NOW_REFRESH_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
 
   // SERIES DA VISAO: SEGUE o seletor, porque e a mesma janela dos cards. Efeito
   // separado do /overview de proposito: o payload e uma ordem de grandeza maior
@@ -6887,7 +7030,14 @@ export default function Admin() {
   const adminMetricCards = useMemo<MetricCard[]>(() => {
     if (!overview) {
       const indisponivel = overviewError ? "indisponível" : "…";
-      return metricCards.map((c) => ({ ...c, value: indisponivel }));
+      // O card de presenca NAO depende do /overview, entao ele nao herda a
+      // degradacao dele: manda a propria fonte responder, senao a tela diria
+      // "indisponivel" sobre um PostHog que esta de pe.
+      return metricCards.map((c) =>
+        c.key === "atividade_agora"
+          ? { ...c, ...atividadeDoCard(onlineNow) }
+          : { ...c, value: indisponivel },
+      );
     }
     // `cards` AUSENTE não pode virar TypeError: este useMemo roda no corpo do
     // render, então um payload sem ele não derruba só os cards, derruba a página
@@ -6895,7 +7045,11 @@ export default function Admin() {
     // cards, o mesmo caminho de "indisponível" que já existe para erro de rede.
     const c = overview.cards;
     if (!c) {
-      return metricCards.map((card) => ({ ...card, value: "indisponível" }));
+      return metricCards.map((card) =>
+        card.key === "atividade_agora"
+          ? { ...card, ...atividadeDoCard(onlineNow) }
+          : { ...card, value: "indisponível" },
+      );
     }
     // O INTERVALO EXATO, vindo pronto do servidor, em vez de "nos últimos 30
     // dias". O rótulo genérico era o que permitia dois blocos com definições
@@ -6941,19 +7095,29 @@ export default function Admin() {
           c.usuariosTotais.value === null
             ? "indisponível"
             : formatCount(c.usuariosTotais.value),
-        // SEM SPARKLINE de propósito: é métrica cumulativa, só sobe por
-        // construção, e a diagonal ascendente seria ruído com cara de dado.
+        // OS CADASTROS VIERAM PARA CÁ, e o card de "Novos usuários" saiu.
+        //
+        // Cadastro na janela é a DERIVADA do total, não uma segunda pergunta: em
+        // "Tudo" os dois cards mostravam o mesmo número, e nas outras janelas o
+        // segundo respondia "quanto o primeiro subiu". Duas caixas para uma
+        // pergunta só é o que fazia a linha de detalhe ter sete cards do mesmo
+        // peso.
+        //
+        // O HEADLINE NÃO SE MOVE com o seletor: continua o total de sempre, e o
+        // `detail` continua dizendo isso. Quem obedece à janela é a secundária
+        // (que a declara no próprio texto) e o sparkline.
+        //
+        // O SPARKLINE agora é legítimo: a série é `cadastros`, não o acumulado.
+        // A ressalva antiga ("sem sparkline, é métrica cumulativa") valia para
+        // plotar o TOTAL, que só sobe por construção e desenharia sempre a mesma
+        // diagonal. A derivada tem forma de verdade.
+        secundaria: secundariaDeCadastros(c.novosUsuarios, janelaLabel),
+        sparkline: spark("cadastros", "up_bom"),
         destino: "usuarios",
       },
       {
         ...metricCards[1],
-        value: formatCount(c.novosUsuarios.value),
-        detail: `Cadastros ${janelaLabel}`,
-        sparkline: spark("cadastros", "up_bom"),
-        change: rotuloDeVariacao(
-          c.novosUsuarios.change,
-          c.novosUsuarios.historicoDesde,
-        ),
+        ...atividadeDoCard(onlineNow),
         destino: "usuarios",
       },
       {
@@ -7064,7 +7228,7 @@ export default function Admin() {
         destino: "ia",
       },
     ];
-  }, [overview, overviewError, seriesData]);
+  }, [overview, overviewError, seriesData, onlineNow]);
 
   const cardsPrincipais = PRINCIPAIS.map((chave) =>
     adminMetricCards.find((c) => c.key === chave),

@@ -9,9 +9,14 @@ import { Line, LineChart, ResponsiveContainer } from "recharts";
  *
  * MESMA LIB dos gráficos existentes (recharts), sem dependência nova.
  *
- * ONDE NÃO USAR: em métrica CUMULATIVA. "Usuários totais" só sobe por
- * construção, então a linha é sempre uma diagonal ascendente e não carrega
- * informação nenhuma — é ruído com aparência de dado.
+ * ONDE NÃO USAR: com uma SÉRIE cumulativa. Um acumulado só sobe por construção,
+ * então a linha é sempre a mesma diagonal ascendente e não carrega informação
+ * nenhuma, é ruído com aparência de dado.
+ *
+ * A regra é sobre a SÉRIE, não sobre o card. O card "Usuários totais" era o
+ * exemplo citado aqui e hoje TEM sparkline: ele plota `cadastros`, a derivada,
+ * depois que o card de "Novos usuários" foi absorvido por ele. O que continuaria
+ * proibido é plotar o total acumulado.
  */
 
 export type PontoSparkline = { date: string; value: number | null };

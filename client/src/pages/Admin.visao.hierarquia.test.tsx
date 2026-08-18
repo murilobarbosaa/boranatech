@@ -20,6 +20,11 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
  *   3. `PRINCIPAIS` referencia chaves que EXISTEM na base. A versao anterior
  *      falhava exatamente por referenciar um rotulo que ninguem mais emitia, e
  *      um teste de tela sozinho nao diz QUAL das tres o quebrou.
+ *
+ * A rodada seguinte acrescentou aqui os outros dois contratos da MESMA grade,
+ * porque compartilham o payload e as duas linhas: o ALINHAMENTO dos cards (por
+ * classe, ver o bloco proprio) e a troca do card de "Novos usuarios" pelo de
+ * presenca, cuja fonte e independente do /overview.
  */
 
 const fetchMock = vi.hoisted(() => vi.fn());
@@ -133,14 +138,55 @@ const OVERVIEW_CHEIO = {
   },
 };
 
+/** Serie de cadastros com pontos MEDIDOS: o sparkline exige dois ou mais. */
+const SERIES_COM_CADASTROS = {
+  series: [
+    {
+      chave: "cadastros",
+      rotulo: "Cadastros por dia",
+      tipo: "fluxo",
+      direcao: "up_bom",
+      pontos: [
+        { date: "2026-08-12", value: 4, partial: false },
+        { date: "2026-08-13", value: 9, partial: false },
+        { date: "2026-08-14", value: 7, partial: false },
+      ],
+      total: 20,
+    },
+  ],
+  funil: {
+    passos: [],
+    destaque: null,
+    anterior: null,
+    motivoSemDelta: "",
+  },
+  ferramentas: [],
+  windowLabel: "16 jul a 14 ago",
+  tz: "America/Sao_Paulo",
+};
+
+const ONLINE_NOW_OK = {
+  state: "ok",
+  atividade: { online: 12, hojePessoas: 340 },
+};
+
 /**
- * Mock base: so /overview e interessante aqui, e as demais rotas devolvem o
- * SHAPE REAL vazio para nenhum outro bloco estourar e roubar a falha.
+ * Mock base: so /overview e /online-now sao interessantes aqui, e as demais
+ * rotas devolvem o SHAPE REAL vazio para nenhum outro bloco estourar e roubar a
+ * falha.
  */
-function mockDeRotas(overview: () => Promise<unknown>) {
+function mockDeRotas(
+  overview: () => Promise<unknown>,
+  onlineNow: () => Promise<unknown> = () =>
+    Promise.resolve({ data: ONLINE_NOW_OK }),
+) {
   fetchMock.mockImplementation((rota: unknown) => {
     const r = String(rota);
     if (r.startsWith("/overview?")) return overview();
+    if (r.startsWith("/overview-series")) {
+      return Promise.resolve({ data: SERIES_COM_CADASTROS });
+    }
+    if (r.startsWith("/online-now")) return onlineNow();
     if (r.startsWith("/health-band")) {
       return Promise.resolve({ data: { ok: true, problemas: [] } });
     }
@@ -208,7 +254,11 @@ describe("hierarquia 3 + 4 dos cards da Visao", () => {
     // carregava na base, e so aparecia neste caminho.
     expect(screen.queryByText(/Chamadas de IA/i)).toBeNull();
     expect(screen.queryByText(/Registros em ai_usage_logs/i)).toBeNull();
-    expect(screen.getAllByText("indisponível").length).toBe(7);
+    // SEIS, nao sete: o card de presenca NAO se degrada junto com o /overview,
+    // porque nao vem dele. Aqui o /online-now respondeu, e o card mostra o
+    // numero. E o controle de que a independencia das duas fontes e real.
+    expect(screen.getAllByText("indisponível").length).toBe(6);
+    expect(screen.getByText("12")).toBeTruthy();
   });
 
   it("o conjunto de rotulos e o MESMO nos dois caminhos", async () => {
@@ -249,5 +299,171 @@ describe("hierarquia 3 + 4 dos cards da Visao", () => {
     // propria seria dois cards com a mesma identidade.
     expect(metricCards).toHaveLength(7);
     expect(new Set(chavesDaBase).size).toBe(7);
+  });
+});
+
+/**
+ * ALINHAMENTO dos cards.
+ *
+ * O jsdom NAO faz layout: `getBoundingClientRect` devolve zeros, entao nao ha
+ * como perguntar "os icones estao na mesma altura?" aqui. O que este bloco trava
+ * e a REGRA que produz o alinhamento, nas classes, no mesmo espirito do teste de
+ * overflow do kanban. A altura de verdade se confere no navegador, e e por isso
+ * que a frente tem rodada de OK visual.
+ *
+ * A regra: wrapper com `flex h-full flex-col` (substitui a centralizacao que o
+ * navegador aplica ao conteudo de um `<button>` mais alto que ele) e rodape com
+ * `mt-auto` (ancora sparkline e Δ na base). O controle negativo importa tanto
+ * quanto: card sem sparkline e sem Δ nao pode ganhar um rodape vazio.
+ */
+function wrappersDeCard(): HTMLElement[] {
+  return [
+    ...Array.from(screen.getByTestId("cards-principais").children),
+    ...Array.from(screen.getByTestId("cards-secundarios").children),
+  ] as HTMLElement[];
+}
+
+describe("alinhamento dos cards da Visao", () => {
+  it("todo card e uma coluna flex de altura cheia", async () => {
+    mockDeRotas(() => Promise.resolve({ data: OVERVIEW_CHEIO }));
+    render(<Admin />);
+    await waitFor(() =>
+      expect(screen.getByTestId("cards-principais")).toBeTruthy(),
+    );
+
+    const wrappers = wrappersDeCard();
+    // Os SETE, nao "algum": a regra so alinha se valer para a linha inteira.
+    expect(wrappers).toHaveLength(7);
+    for (const card of wrappers) {
+      const classes = card.className.split(/\s+/);
+      expect(classes, `card sem h-full: ${card.textContent}`).toContain(
+        "h-full",
+      );
+      expect(classes, `card sem flex: ${card.textContent}`).toContain("flex");
+      expect(classes, `card sem flex-col: ${card.textContent}`).toContain(
+        "flex-col",
+      );
+    }
+  });
+
+  it("card COM sparkline ancora o rodape na base", async () => {
+    mockDeRotas(() => Promise.resolve({ data: OVERVIEW_CHEIO }));
+    render(<Admin />);
+    const spark = await screen.findByTestId("sparkline-cadastros");
+
+    const rodape = spark.parentElement;
+    expect(rodape).toBeTruthy();
+    expect(rodape?.className.split(/\s+/)).toContain("mt-auto");
+  });
+
+  it("card SEM sparkline e SEM variacao nao ganha rodape vazio", async () => {
+    // CONTROLE NEGATIVO. Sem ele, "todo card tem um `mt-auto`" seria uma regra
+    // que passa criando uma div vazia em cada card, o que nao alinha nada e
+    // ainda acrescenta um no de layout sem conteudo.
+    mockDeRotas(() => Promise.resolve({ data: OVERVIEW_CHEIO }));
+    render(<Admin />);
+    await waitFor(() =>
+      expect(screen.getByTestId("cards-principais")).toBeTruthy(),
+    );
+
+    const semRodape = wrappersDeCard().filter((card) =>
+      /Assinantes Pro|Receita em risco/.test(card.textContent || ""),
+    );
+    expect(semRodape).toHaveLength(2);
+    for (const card of semRodape) {
+      expect(
+        card.querySelector(".mt-auto"),
+        `rodape vazio criado em: ${card.textContent}`,
+      ).toBeNull();
+    }
+  });
+});
+
+describe("presenca e cadastros na linha secundaria", () => {
+  it('"Novos usuarios" saiu e "Atividade agora" ocupou o slot', async () => {
+    mockDeRotas(() => Promise.resolve({ data: OVERVIEW_CHEIO }));
+    render(<Admin />);
+    await waitFor(() =>
+      expect(screen.getByTestId("cards-secundarios")).toBeTruthy(),
+    );
+
+    const secundarios = rotulosDaLinha("cards-secundarios");
+    expect(secundarios).toHaveLength(4);
+    const atividade = secundarios.find((t) => t.includes("Atividade agora"));
+    expect(atividade).toBeTruthy();
+    expect(atividade).toContain("12");
+    expect(atividade).toContain("340 pessoas ativas hoje");
+    // O SEGUNDO SENTIDO: o card antigo nao pode ter sobrado em lugar nenhum.
+    expect(screen.queryByText(/Novos usuários/i)).toBeNull();
+  });
+
+  it('"Usuarios totais" absorveu a linha de cadastros e a serie', async () => {
+    mockDeRotas(() => Promise.resolve({ data: OVERVIEW_CHEIO }));
+    render(<Admin />);
+    await waitFor(() =>
+      expect(screen.getByTestId("cards-principais")).toBeTruthy(),
+    );
+
+    const total = rotulosDaLinha("cards-principais").find((t) =>
+      t.includes("Usuários totais"),
+    );
+    expect(total).toBeTruthy();
+    // O HEADLINE nao se moveu: continua o total sem recorte de periodo.
+    expect(total).toContain("5.456");
+    expect(total).toContain("Desde o início, sem recorte de período");
+    // A secundaria DECLARA a janela no proprio texto, porque so ela a obedece.
+    expect(total).toContain("182 cadastros de 16 jul a 14 ago");
+    // Variacao como TEXTO da secundaria, nunca como badge do card: um Δ neste
+    // card seria lido como variacao do TOTAL, que nao tem periodo anterior.
+    expect(total).toContain("+21,3% vs. período anterior");
+    expect(screen.queryByTestId("card-variacao-Usuários totais")).toBeNull();
+    expect(await screen.findByTestId("sparkline-cadastros")).toBeTruthy();
+  });
+
+  it("com /online-now fora, o card diz indisponivel e NUNCA zero", async () => {
+    // CONTROLE NEGATIVO da regra que mais importa neste card: "0 online" e
+    // indistinguivel de "PostHog fora do ar", e as duas leituras levam a acoes
+    // diferentes. A grade continua 3 + 4: o slot existe mesmo sem a fonte.
+    mockDeRotas(
+      () => Promise.resolve({ data: OVERVIEW_CHEIO }),
+      () => Promise.reject(new Error("posthog fora")),
+    );
+    render(<Admin />);
+    await waitFor(() =>
+      expect(screen.getByTestId("cards-secundarios")).toBeTruthy(),
+    );
+
+    const atividade = await waitFor(() => {
+      const achado = rotulosDaLinha("cards-secundarios").find((t) =>
+        t.includes("Atividade agora"),
+      );
+      expect(achado).toContain("indisponível");
+      return achado as string;
+    });
+    expect(atividade).toContain("PostHog indisponível");
+    expect(atividade).not.toMatch(/(^|[^0-9])0([^0-9]|$)/);
+    expect(rotulosDaLinha("cards-principais")).toHaveLength(3);
+    expect(rotulosDaLinha("cards-secundarios")).toHaveLength(4);
+  });
+
+  it("PostHog sem env vira `nao configurado`, que nao e a mesma coisa que fora do ar", async () => {
+    mockDeRotas(
+      () => Promise.resolve({ data: OVERVIEW_CHEIO }),
+      () =>
+        Promise.resolve({
+          data: { state: "not_configured", missing: ["POSTHOG_API_KEY"] },
+        }),
+    );
+    render(<Admin />);
+    await waitFor(() =>
+      expect(screen.getByTestId("cards-secundarios")).toBeTruthy(),
+    );
+
+    await waitFor(() => {
+      const atividade = rotulosDaLinha("cards-secundarios").find((t) =>
+        t.includes("Atividade agora"),
+      );
+      expect(atividade).toContain("PostHog não configurado");
+    });
   });
 });
