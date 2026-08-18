@@ -129,7 +129,15 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
       ]);
 
     if (error) {
-      return next(createError(500, "db_error", "Erro ao buscar assinatura."));
+      // `cause` para o LinkedErrors do Sentry anexar o erro real do Supabase.
+      // Sem ele o evento chega com a mensagem generica e um stack que aponta
+      // para esta linha, e a causa (timeout, permissao, coluna ausente) fica
+      // fora do relatorio. O texto exibido ao usuario nao muda.
+      return next(
+        createError(500, "db_error", "Erro ao buscar assinatura.", {
+          cause: error,
+        }),
+      );
     }
 
     if (rpcError) {
