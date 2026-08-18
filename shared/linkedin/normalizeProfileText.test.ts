@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeProfileLines } from "./normalizeProfileText";
+import {
+  normalizeProfileLines,
+  normalizeProfileLinesComSinal,
+} from "./normalizeProfileText";
 
 const n = (texto: string) => normalizeProfileLines(texto);
 
@@ -36,10 +39,37 @@ describe("normalizeProfileLines: junta o que o PDF quebrou", () => {
   });
 });
 
+describe("normalizeProfileLinesComSinal: preserva estrutura removida", () => {
+  it("registra o índice do pipe órfão mesmo com espaços em volta", () => {
+    const r = normalizeProfileLinesComSinal(
+      "Engenheiro de Dados   |   \nSummary\nTexto",
+    );
+    expect(r.linhas).toEqual(["Engenheiro de Dados", "Summary", "Texto"]);
+    expect(Array.from(r.separadorRemovidoEm)).toEqual([0]);
+  });
+
+  it("não registra pipe que foi unido a uma cauda multilinha", () => {
+    const r = normalizeProfileLinesComSinal(
+      "Software Developer | React |\nNode\nSummary",
+    );
+    expect(r.linhas[0]).toBe("Software Developer | React | Node");
+    expect(Array.from(r.separadorRemovidoEm)).toEqual([]);
+  });
+
+  it("não desloca o índice quando remove rodapé e linha vazia", () => {
+    const r = normalizeProfileLinesComSinal(
+      "Page 1 of 2\n\nEngenheiro de Dados |\nExperience",
+    );
+    expect(r.linhas).toEqual(["Engenheiro de Dados", "Experience"]);
+    expect(Array.from(r.separadorRemovidoEm)).toEqual([0]);
+  });
+});
+
 describe("normalizeProfileLines: barra orfa NAO absorve o vizinho errado", () => {
   // REGRESSAO da Fase 1A: headline terminada em "|" sem continuacao real
   // absorvia a linha seguinte. Antes ficava truncada; passou a ficar poluida.
-  const headline = "Software Developer | Full-Stack Engineer | AI Agent Expert |";
+  const headline =
+    "Software Developer | Full-Stack Engineer | AI Agent Expert |";
 
   it("nao absorve linha de LOCALIZACAO", () => {
     expect(n(`${headline}\nGreater São Paulo Area`)).toEqual([
@@ -88,7 +118,9 @@ describe("normalizeProfileLines: barra orfa NAO absorve o vizinho errado", () =>
       n("I am also adept in developing,\ncustomizing, and deploying"),
     ).toEqual(["I am also adept in developing, customizing, and deploying"]);
     expect(
-      n("I have the ability to solve problems,\ndevelop new solutions, and apply ITIL"),
+      n(
+        "I have the ability to solve problems,\ndevelop new solutions, and apply ITIL",
+      ),
     ).toEqual([
       "I have the ability to solve problems, develop new solutions, and apply ITIL",
     ]);
@@ -168,16 +200,18 @@ describe("normalizeProfileLines: NAO junta (falsos positivos)", () => {
   });
 
   it("linha longa e conteudo proprio, nao continuacao", () => {
-    const longa = "esta linha comeca em minuscula mas tem mais de quarenta caracteres";
+    const longa =
+      "esta linha comeca em minuscula mas tem mais de quarenta caracteres";
     expect(n(`Alguma coisa\n${longa}`)).toEqual(["Alguma coisa", longa]);
   });
 });
 
 describe("normalizeProfileLines: rodape de paginacao", () => {
   it("remove Page N of M e Pagina N de M, com espacamento multiplo", () => {
-    expect(
-      n("Cargo\nPage   1   of   5\njaneiro de 2022 - Present"),
-    ).toEqual(["Cargo", "janeiro de 2022 - Present"]);
+    expect(n("Cargo\nPage   1   of   5\njaneiro de 2022 - Present")).toEqual([
+      "Cargo",
+      "janeiro de 2022 - Present",
+    ]);
     expect(n("Cargo\nPágina 2 de 3\nTexto")).toEqual(["Cargo", "Texto"]);
     expect(n("Cargo\nPagina 10 de 20\nTexto")).toEqual(["Cargo", "Texto"]);
   });

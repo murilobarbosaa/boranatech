@@ -40,9 +40,7 @@
  */
 export const PAGE_FOOTER_RE = /^(?:page|p[aá]gina)\s+\d+\s+(?:of|de)\s+\d+$/i;
 
-/** Cabeçalho de seção não é continuação de nada. Espelha SECTION_HEADERS. */
-const SECTION_HEADER_LIKE =
-  /^(?:contact|contato|summary|resumo|sobre|about|experience|experi[eê]ncia|experi[eê]ncia profissional|education|forma[cç][aã]o acad[eê]mica|forma[cç][aã]o|educa[cç][aã]o|top skills|principais compet[eê]ncias|skills|compet[eê]ncias|aptid[oõ]es|languages|idiomas|licenses & certifications|licen[cç]as e certificados|certifications|certifica[cç][oõ]es|certificados)$/i;
+import { isLinkedinSectionHeading } from "./sectionHeadings";
 
 /** Linha que é só um intervalo de datas, tolerante o bastante para o guard. */
 const DATE_LINE_LIKE =
@@ -140,13 +138,16 @@ function ehFragmentoDeCauda(linha: string): boolean {
  */
 function ehContinuacao(anterior: string, atual: string): boolean {
   if (!anterior || !atual) return false;
-  if (SECTION_HEADER_LIKE.test(atual.trim())) return false;
-  if (SECTION_HEADER_LIKE.test(anterior.trim())) return false;
+  if (isLinkedinSectionHeading(atual)) return false;
+  if (isLinkedinSectionHeading(anterior)) return false;
   if (BULLET_START.test(atual)) return false;
   if (DATE_LINE_LIKE.test(atual) && atual.length <= 80) return false;
 
   // 3. parêntese solto: "(RAG)" continua "Retrieval-Augmented Generation".
-  if (PARENTHETICAL_ONLY.test(atual.trim()) && atual.trim().length <= MAX_CONTINUATION_LEN) {
+  if (
+    PARENTHETICAL_ONLY.test(atual.trim()) &&
+    atual.trim().length <= MAX_CONTINUATION_LEN
+  ) {
     return true;
   }
   // 1. separador órfão: a anterior ficou aberta, mas só junta se a seguinte
@@ -160,7 +161,8 @@ function ehContinuacao(anterior: string, atual: string): boolean {
 
   if (ENDS_CLOSED.test(anterior.trim())) return false;
   // 4. minúscula e curta: continuação de frase quebrada.
-  if (atual.length <= MAX_CONTINUATION_LEN && /^[a-zà-ÿ]/.test(atual)) return true;
+  if (atual.length <= MAX_CONTINUATION_LEN && /^[a-zà-ÿ]/.test(atual))
+    return true;
 
   return false;
 }
@@ -204,68 +206,81 @@ function limparSeparadorOrfao(linha: string): string {
 }
 
 /**
- * Linhas normalizadas MAIS o registro de onde um separador estrutural foi
- * removido do fim.
+ * Linhas normalizadas e o sinal estrutural removido no fim de cada linha.
  *
- * Por que o registro existe: `limparSeparadorOrfao` roda no fim desta função e
- * apaga o `|` final de toda linha, então `detectHeadline`, que roda depois,
- * nunca vê o separador. A consequência foi medida: `classificarTerminacao`
- * devolvia "palavra" para uma linha que terminava em `|`, e o campo
- * `headlineContexto.acima.terminaEm` ficava incapaz de devolver "pipe" na
- * família de quebra mais comum. Isto era CONHECIDO e estava travado num teste
- * (`parse.headlineContexto.test.ts`, "na familia do PIPE o sinal util e
- * `forte`"), que registrava a limitação e apontava o contorno (`forte &&
- * !juntou`). Aqui o sinal deixa de precisar de contorno.
- *
- * O texto NÃO muda: `linhas` é exatamente o que a função devolvia antes, byte a
- * byte. O conjunto é informação lateral, e só `detectHeadline` a lê.
+ * O texto público continua limpo. O sinal lateral existe porque o parser roda
+ * depois da normalização e precisa distinguir uma palavra fechada de uma linha
+ * que originalmente terminava em `|` ou `/`. Guardar só o texto normalizado
+ * tornava essa informação irrecuperável.
  */
 export interface LinhasNormalizadas {
   linhas: string[];
-  /** Índices, já na saída final, de linhas que perderam separador no fim. */
   separadorRemovidoEm: Set<number>;
+  /** Intervalo no texto bruto que originou cada linha normalizada. */
+  origens: Array<{ inicio: number; fim: number }>;
 }
 
 /**
  * Devolve as linhas já normalizadas: sem rodapé de paginação, sem linha vazia,
  * com continuações unidas e separadores órfãos limpos.
- *
- * Mantida com a assinatura antiga de propósito: quem só quer o texto continua
- * chamando esta. Quem precisa do sinal chama `normalizeProfileLinesComSinal`.
  */
 export function normalizeProfileLines(text: string): string[] {
   return normalizeProfileLinesComSinal(text).linhas;
 }
 
-export function normalizeProfileLinesComSinal(text: string): LinhasNormalizadas {
-  const brutas = text
-    .split(/\r?\n/)
-    .map((linha) => linha.trim())
-    .filter((linha) => linha.length > 0)
+export function normalizeProfileLinesComSinal(
+  text: string,
+): LinhasNormalizadas {
+  const linhasBrutas: Array<{ texto: string; inicio: number; fim: number }> = [];
+  const quebra = /\r\n|\r|\n/g;
+  let inicio = 0;
+  let match: RegExpExecArray | null;
+  while ((match = quebra.exec(text)) !== null) {
+    const fim = match.index;
+    linhasBrutas.push({ texto: text.slice(inicio, fim), inicio, fim });
+    inicio = fim + match[0].length;
+  }
+  linhasBrutas.push({
+    texto: text.slice(inicio),
+    inicio,
+    fim: text.length,
+  });
+
+  const brutas = linhasBrutas
+    .map((linha) => ({ ...linha, texto: linha.texto.trim() }))
+    .filter((linha) => linha.texto.length > 0)
     // Rodapé some ANTES do parse: não entra em título, descrição, contagem de
     // caracteres nem no regex de métricas.
-    .filter((linha) => !PAGE_FOOTER_RE.test(linha));
+    .filter((linha) => !PAGE_FOOTER_RE.test(linha.texto));
 
-  const saida: string[] = [];
+  const saida: Array<{ texto: string; inicio: number; fim: number }> = [];
   for (const linha of brutas) {
     const anterior = saida[saida.length - 1];
-    if (anterior !== undefined && ehContinuacao(anterior, linha)) {
-      saida[saida.length - 1] = juntar(anterior, linha);
+    if (
+      anterior !== undefined &&
+      ehContinuacao(anterior.texto, linha.texto)
+    ) {
+      saida[saida.length - 1] = {
+        texto: juntar(anterior.texto, linha.texto),
+        inicio: anterior.inicio,
+        fim: linha.fim,
+      };
       continue;
     }
     saida.push(linha);
   }
 
-  // Equivalente exato de `saida.map(limparSeparadorOrfao).filter(l => l.length > 0)`,
-  // com o índice de saída anotado quando a limpeza tirou alguma coisa. A ordem
-  // (limpar, depois descartar vazia) é a mesma, então os índices são os finais.
   const linhas: string[] = [];
+  const origens: Array<{ inicio: number; fim: number }> = [];
   const separadorRemovidoEm = new Set<number>();
   for (const bruta of saida) {
-    const limpa = limparSeparadorOrfao(bruta);
+    const limpa = limparSeparadorOrfao(bruta.texto);
     if (limpa.length === 0) continue;
-    if (limpa !== bruta.trimEnd()) separadorRemovidoEm.add(linhas.length);
+    if (limpa !== bruta.texto.trimEnd()) {
+      separadorRemovidoEm.add(linhas.length);
+    }
     linhas.push(limpa);
+    origens.push({ inicio: bruta.inicio, fim: bruta.fim });
   }
-  return { linhas, separadorRemovidoEm };
+  return { linhas, separadorRemovidoEm, origens };
 }

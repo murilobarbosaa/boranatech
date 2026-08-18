@@ -13,6 +13,13 @@
  */
 
 import { normalizeProfileLinesComSinal } from "./normalizeProfileText";
+import {
+  isLinkedinSectionHeading,
+  linkedinSectionHeading,
+  normalizeLinkedinSectionLabel,
+  type LinkedinSectionId,
+} from "./sectionHeadings";
+import { normalizarHeadlineManual } from "./schema";
 
 export interface LinkedinExperiencia {
   /** Só o cargo. A empresa nunca vem colada aqui. */
@@ -27,12 +34,31 @@ export interface LinkedinExperiencia {
   descricao: string;
 }
 
+export type HeadlineRegion =
+  | {
+      status: "confirmed";
+      /** Offsets no texto bruto; `end` é exclusivo. */
+      start: number;
+      end: number;
+      text: string;
+    }
+  | { status: "ambiguous" }
+  | { status: "not_found" };
+
 export interface LinkedinParsed {
   headline: string | null;
+  /** Segurança estrutural da região que poderia ser substituída manualmente. */
+  headlineRegion?: HeadlineRegion;
   sobre: string | null;
   experiencias: LinkedinExperiencia[];
   /** Competências lidas da seção do PDF (sinal extra, não é o form). */
   skillsPdf: string[];
+  /**
+   * O parser conseguiu provar a fronteira da seção de competências?
+   * `false` impede prefill automático e pede revisão; ausente em objetos
+   * históricos/manuais equivale ao comportamento anterior.
+   */
+  skillsPdfConfiaveis?: boolean;
   /**
    * Linhas das seções Formação e Certificações, cruas.
    *
@@ -45,15 +71,15 @@ export interface LinkedinParsed {
   /**
    * Contexto da headline, para diagnosticar truncamento depois do fato.
    *
-   * `null` quando não houve headline detectada. Campo NOVO: leitor precisa
-   * tolerar ausência, porque as linhas já gravadas não o têm.
+   * `null` quando não houve nem candidata. Campo NOVO: leitor precisa tolerar
+   * ausência, porque as linhas já gravadas não o têm.
    */
   headlineContexto?: LinkedinHeadlineContexto | null;
   /** Falso quando o texto não tem nada de aproveitável. Vira 422 na rota. */
   usable: boolean;
 }
 
-type SectionKey =
+type ParsedSectionKey =
   | "contato"
   | "sobre"
   | "experiencia"
@@ -64,55 +90,16 @@ type SectionKey =
 
 interface SectionHeaderHit {
   index: number;
-  key: SectionKey;
+  key: LinkedinSectionId;
+  principal: boolean;
 }
 
 function stripAccentsLower(value: string): string {
-  return value.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+  return normalizeLinkedinSectionLabel(value);
 }
 
-// Cabeçalhos de seção, já em forma sem acento e minúscula.
-const SECTION_HEADERS: { key: SectionKey; labels: string[] }[] = [
-  { key: "contato", labels: ["contact", "contato"] },
-  { key: "sobre", labels: ["summary", "resumo", "sobre", "about"] },
-  {
-    key: "experiencia",
-    labels: ["experience", "experiencia", "experiencia profissional"],
-  },
-  {
-    key: "formacao",
-    labels: ["education", "formacao academica", "formacao", "educacao"],
-  },
-  {
-    key: "skills",
-    labels: [
-      "top skills",
-      "principais competencias",
-      "skills",
-      "competencias",
-      "aptidoes",
-    ],
-  },
-  { key: "idiomas", labels: ["languages", "idiomas"] },
-  {
-    key: "certificacoes",
-    labels: [
-      "licenses & certifications",
-      "licencas e certificados",
-      "certifications",
-      "certificacoes",
-      "certificados",
-    ],
-  },
-];
-
-function matchSectionHeader(line: string): SectionKey | null {
-  const l = stripAccentsLower(line);
-  if (l.length === 0 || l.length > 40) return null;
-  for (const entry of SECTION_HEADERS) {
-    if (entry.labels.includes(l)) return entry.key;
-  }
-  return null;
+function matchSectionHeader(line: string): LinkedinSectionId | null {
+  return linkedinSectionHeading(line)?.id ?? null;
 }
 
 // Dashes (hífen ASCII e variantes Unicode) sem usar o caractere literal,
@@ -208,9 +195,7 @@ function ehLinhaDeLocalizacao(linha: string): boolean {
     .map((p) => p.trim())
     .filter((p) => p.length > 0);
   if (partes.length === 0 || partes.length > 4) return false;
-  return partes.every(
-    (p) => comecaMaiuscula(p) && p.split(/\s+/).length <= 4,
-  );
+  return partes.every((p) => comecaMaiuscula(p) && p.split(/\s+/).length <= 4);
 }
 
 /**
@@ -330,6 +315,35 @@ function clip(value: string, max: number): string {
  */
 const HEADLINE_ABERTA_EM_VIRGULA = /,$/;
 
+interface HeadlineLineRegion {
+  inicio: number;
+  fim: number;
+  partes: string[];
+  aberta: boolean;
+}
+
+interface DetectedHeadline {
+  valor: string | null;
+  indice: number;
+  intervalo: { inicio: number; fim: number } | null;
+  status: HeadlineRegion["status"];
+  contexto: LinkedinHeadlineContexto | null;
+}
+
+/**
+ * Bloco inicial de nome/headline/localização do perfil.
+ *
+ * Os índices são das linhas normalizadas e `end` é exclusivo. Uma candidata
+ * só autoriza `confirmed` e substituição no texto bruto quando estiver dentro
+ * de uma região cuja identidade foi provada por estrutura, não por semântica
+ * de cargo nem pela mera existência de uma seção posterior.
+ */
+interface IdentityRegion {
+  start: number;
+  end: number;
+  confidence: "confirmed" | "ambiguous";
+}
+
 /**
  * Headline detectada e ONDE ela começa.
  *
@@ -346,13 +360,10 @@ const HEADLINE_ABERTA_EM_VIRGULA = /,$/;
  * para a segunda linha, o corte da seção lateral caía tarde demais e o NOME da
  * pessoa mais o primeiro pedaço da headline vazavam para `skillsPdf`.
  *
- * A junção é para TRÁS e exige DOIS sinais ao mesmo tempo: a linha de cima ser
- * candidata forte E ter ficado aberta em vírgula. Exigir os dois é o que
- * protege os falsos positivos que importam, todos cobertos em
- * `parse.headlineMultilinha.test.ts`: localização, nome de empresa, headline de
- * outro perfil colada em seguida e cargo de experiência logo abaixo são linhas
- * que vêm depois de uma headline FECHADA, e headline legítima não termina em
- * vírgula. Na dúvida, não junta, e o resultado é o comportamento anterior.
+ * A extensão exige abertura explícita por vírgula/pipe e continuação curta
+ * coerente; localização, empresa, cabeçalho e outra candidata independente não
+ * são absorvidos. Se a fronteira não puder ser provada, a região fica ambígua
+ * e deixa de autorizar splice.
  */
 /**
  * Como a linha ACIMA da headline terminou. Só a classe, nunca o conteúdo.
@@ -390,12 +401,6 @@ export interface LinkedinHeadlineContexto {
   acima: { terminaEm: HeadlineTerminacaoAcima; forte: boolean } | null;
 }
 
-/**
- * `separadorRemovido` vem do normalizador e é consultado ANTES de olhar o texto,
- * porque descreve como a linha ORIGINAL terminou. Uma linha `"... ,  |"` chega
- * aqui como `"... ,"`: sem o sinal, seria classificada "virgula", e o que o PDF
- * quebrou foi o `|`. Ler o sinal primeiro é o que torna "pipe" alcançável.
- */
 function classificarTerminacao(
   linha: string,
   separadorRemovido: boolean,
@@ -410,44 +415,354 @@ function classificarTerminacao(
   return "outro";
 }
 
+function pareceNomeEstrutural(linha: string): boolean {
+  const anterior = linha.trim();
+  return (
+    anterior.length > 0 &&
+    anterior.length <= 60 &&
+    !anterior.includes("|") &&
+    anterior.split(/\s+/).length <= 6 &&
+    !matchSectionHeader(anterior) &&
+    !hasHeadlineSignal(anterior) &&
+    comecaMaiuscula(anterior)
+  );
+}
+
+const SINAL_SECAO_DESCONHECIDA_RE =
+  /\b(?:section|secao|contributions?|contribuicoes?|activities|atividades|accomplishments?|realizacoes|portfolio|portifolio)\b/i;
+
+/**
+ * Sinal conservador de um heading ainda fora do catálogo compartilhado.
+ *
+ * TitleCase sozinho é insuficiente (`React`, `Docker` e `Machine Learning`
+ * podem ser skills). Exigimos mais de uma palavra, forma curta de rótulo e um
+ * substantivo que expresse bloco/seção. O resultado nunca vira conteúdo: ele
+ * apenas torna a fronteira inconclusiva e impede prefill/splice.
+ */
+function pareceInicioDeSecaoDesconhecida(linha: string): boolean {
+  const t = linha.trim();
+  if (t.length < 6 || t.length > 60) return false;
+  if (isLinkedinSectionHeading(t)) return false;
+  if (/[|,;:.!?]/.test(t)) return false;
+  const palavras = t.split(/\s+/);
+  if (palavras.length < 2 || palavras.length > 6) return false;
+  if (!comecaMaiuscula(t)) return false;
+  return SINAL_SECAO_DESCONHECIDA_RE.test(stripAccentsLower(t));
+}
+
+const LOCALIZACAO_UNITARIA = /^(?:brasil|brazil|portugal|canada|usa|uk)$/i;
+const SINAL_LOCALIZACAO =
+  /(?:,|\b(?:area|region|regiao|greater|remoto|remote|hibrido|hybrid|presencial|on-site)\b)/i;
+
+function ehLocalizacaoEstrutural(linha: string): boolean {
+  return (
+    SINAL_LOCALIZACAO.test(stripAccentsLower(linha)) &&
+    ehLinhaDeLocalizacao(linha)
+  );
+}
+
+/** Continuação curta que ainda pode pertencer ao campo de headline. */
+function ehContinuacaoDeHeadline(linha: string): boolean {
+  const t = linha.trim();
+  if (t.length < 2 || t.length > 60) return false;
+  if (isLinkedinSectionHeading(t)) return false;
+  if (EMAIL_RE.test(t) || URL_RE.test(t) || PHONE_RE.test(t)) return false;
+  if (isDateRangeLine(t) || BULLET_RE.test(t) || /[.!?;:]$/.test(t)) {
+    return false;
+  }
+  const palavras = t.split(/\s+/);
+  if (LOCALIZACAO_UNITARIA.test(stripAccentsLower(t))) return false;
+  if (ehLocalizacaoEstrutural(t)) return false;
+  // Uma tecnologia isolada (React) é a forma mais comum. Com mais palavras,
+  // exigimos um separador/sinal próprio de stack para não absorver empresa.
+  return palavras.length === 1 || /[|/&+#.,]/.test(t) || hasHeadlineSignal(t);
+}
+
+function grupoDeHeadline(
+  preamble: string[],
+  seed: number,
+  ehForte: (linha: string) => boolean,
+  separadorRemovidoEm: Set<number>,
+): HeadlineLineRegion {
+  let inicio = seed;
+  while (inicio > 0) {
+    const anteriorIdx = inicio - 1;
+    const anterior = preamble[anteriorIdx].trim();
+    const abertoEmPipe = separadorRemovidoEm.has(anteriorIdx);
+    if (!abertoEmPipe && !HEADLINE_ABERTA_EM_VIRGULA.test(anterior)) break;
+    if (!ehForte(anterior) || !ehContinuacaoDeHeadline(preamble[inicio])) {
+      break;
+    }
+    inicio = anteriorIdx;
+  }
+
+  const partes: string[] = [];
+  let fim = inicio;
+  let aberta = false;
+  while (fim < preamble.length) {
+    const atual = preamble[fim].trim();
+    partes.push(atual);
+    const abertoEmVirgula = HEADLINE_ABERTA_EM_VIRGULA.test(atual);
+    const abertoEmPipe = separadorRemovidoEm.has(fim);
+    if (!abertoEmVirgula && !abertoEmPipe) break;
+    const proximo = fim + 1;
+    if (proximo >= preamble.length) {
+      aberta = true;
+      break;
+    }
+    if (!ehContinuacaoDeHeadline(preamble[proximo])) {
+      // Localização/cabeçalho prova a fronteira da região mesmo que a headline
+      // extraída tenha terminado aberta. Empresa ou texto livre não prova.
+      aberta = !(
+        ehLocalizacaoEstrutural(preamble[proximo]) ||
+        isLinkedinSectionHeading(preamble[proximo])
+      );
+      break;
+    }
+    fim = proximo;
+  }
+  return { inicio, fim, partes, aberta };
+}
+
+/**
+ * O bloco de identidade pode ser DESTACADO da cauda de uma seção conhecida?
+ *
+ * O conteúdo de uma seção vai do heading até a linha anterior ao próximo
+ * heading, medido sobre as linhas INTEIRAS. Medir isso sobre o preâmbulo é o
+ * que cegava `dentroDeSecaoLateralFechada`: o preâmbulo termina ANTES da
+ * primeira seção principal, então o heading que fecha a coluna lateral
+ * (`Summary`) fica justamente de fora, e `Top Skills / React / Frontend
+ * Developer / Summary` produzia identidade `confirmed` com duas linhas que são
+ * conteúdo de Top Skills, esvaziando a seção e autorizando splice.
+ *
+ * O destaque NÃO pode ser proibido em bloco, porque o export real põe nome,
+ * headline e localização exatamente aí, entre a última seção lateral e
+ * `Summary` (é o layout das fixtures de `parse.headlineMultilinha` e
+ * `parse.skillsEstruturais`). Então ele é ancorado em três condições
+ * estruturais, nenhuma delas lexical:
+ *
+ *   (a) o destaque deixa a seção com pelo menos uma linha de conteúdo. Seção
+ *       esvaziada é evidência de que o bloco era o conteúdo, não identidade;
+ *   (b) a âncora de nome tem mais de uma palavra. Dentro de uma seção, uma
+ *       âncora de UMA palavra é indistinguível de um item da lista, e é o que
+ *       promovia `React` a nome e `TypeScript` a nome. A contagem já é o
+ *       critério estrutural usado por `skillsTemPossivelIdentidade` para a
+ *       pergunta espelhada ("esta linha de skills parece identidade?");
+ *   (c) o bloco contém uma linha de LOCALIZAÇÃO estrutural. Sem ela, (a) e (b)
+ *       sozinhas ainda aceitavam `Top Skills / Python / Machine Learning /
+ *       Vector Databases / Summary`, que é o caso original com uma linha a
+ *       mais: `Machine Learning` tem duas palavras e sobra `Python` na seção.
+ *       Uma lista de competências não tem cidade no meio dela; o preâmbulo de
+ *       perfil tem. É o único sinal que separa os dois sem saber o que as
+ *       linhas SIGNIFICAM, e reusa `ehLocalizacaoEstrutural` sem afrouxar nada.
+ *
+ * A "cauda contígua encostada no próximo heading" foi AVALIADA como condição
+ * e descartada: `parse.headlineMultilinha.test.ts` tem perfis legítimos em que
+ * sobra uma linha de conteúdo entre o bloco e `Summary` (o cargo de
+ * experiência logo abaixo da headline), e exigir contiguidade os derrubaria.
+ *
+ * A quarta condição (cada linha passa no validador estrutural do seu papel)
+ * já vale por construção: o intervalo é exatamente {nome?} + linhas do grupo +
+ * {localização?}, validadas por `pareceNomeEstrutural`, `grupoDeHeadline` e
+ * `ehLocalizacaoEstrutural`. Nenhuma linha entra aqui sem ter passado por uma
+ * das três.
+ *
+ * CUSTO ACEITO como decisão de produto: perfil cujo bloco de identidade fica
+ * dentro de uma seção e NÃO traz linha de localização deixa de ser `confirmed`
+ * e passa a `ambiguous`, o que só remove o splice automático e marca a nota
+ * como incompleta. Fora de seção (`dono < 0`) nada muda.
+ */
+function identidadeDestacavelDaSecao(
+  lines: string[],
+  start: number,
+  end: number,
+  nomeAncora: string | null,
+): boolean {
+  const hits = findSectionHeaders(lines);
+  let dono = -1;
+  for (let i = 0; i < hits.length; i += 1) {
+    if (hits[i].index >= start) break;
+    dono = i;
+  }
+  // Sem heading antes do bloco, ele não é conteúdo de seção nenhuma.
+  if (dono < 0) return true;
+  const proximo = hits[dono + 1];
+  const inicio = hits[dono].index + 1;
+  const fim = (proximo ? proximo.index : lines.length) - 1;
+  const dentro = Math.min(end, fim + 1) - start;
+  if (fim - inicio + 1 - dentro < 1) return false;
+  if (nomeAncora === null || nomeAncora.trim().split(/\s+/).length < 2) {
+    return false;
+  }
+  return lines.slice(start, end).some(ehLocalizacaoEstrutural);
+}
+
+function regiaoDeIdentidade(
+  lines: string[],
+  grupo: HeadlineLineRegion,
+  firstMainIndex: number,
+): IdentityRegion {
+  const anterior = lines[grupo.inicio - 1];
+  const abaixo = lines[grupo.fim + 1];
+  const ancoraNoTopo = grupo.inicio === 0;
+  const ancoraDeNome =
+    anterior !== undefined &&
+    pareceNomeEstrutural(anterior) &&
+    !pareceInicioDeSecaoDesconhecida(anterior);
+  const localizacaoAbaixo =
+    abaixo !== undefined && ehLocalizacaoEstrutural(abaixo);
+  const fronteiraPrincipalProxima =
+    firstMainIndex > grupo.fim && firstMainIndex - grupo.fim <= 4;
+  const janela = lines.slice(
+    Math.max(0, grupo.inicio - 1),
+    Math.min(
+      lines.length,
+      firstMainIndex > grupo.fim ? firstMainIndex : grupo.fim + 3,
+    ),
+  );
+  const pareceExperiencia = janela.some(
+    (linha) => isDateRangeLine(linha) || ehLinhaDeDuracao(linha),
+  );
+  const start = ancoraDeNome ? grupo.inicio - 1 : grupo.inicio;
+  const end = localizacaoAbaixo ? grupo.fim + 2 : grupo.fim + 1;
+  const confirmada =
+    !pareceExperiencia &&
+    identidadeDestacavelDaSecao(
+      lines,
+      start,
+      end,
+      ancoraDeNome ? anterior : null,
+    ) &&
+    (ancoraNoTopo ||
+      (ancoraDeNome && (localizacaoAbaixo || fronteiraPrincipalProxima)));
+
+  return {
+    start,
+    end,
+    confidence: confirmada ? "confirmed" : "ambiguous",
+  };
+}
+
+/** Conteúdo seguramente fechado entre dois headings da coluna lateral. */
+function dentroDeSecaoLateralFechada(
+  preamble: string[],
+  grupo: HeadlineLineRegion,
+): boolean {
+  let headingAnterior = -1;
+  let headingPosterior = -1;
+  for (let index = 0; index < preamble.length; index += 1) {
+    if (!isLinkedinSectionHeading(preamble[index])) continue;
+    if (index < grupo.inicio) headingAnterior = index;
+    if (index > grupo.fim) {
+      headingPosterior = index;
+      break;
+    }
+  }
+  return headingAnterior >= 0 && headingPosterior >= 0;
+}
+
 function detectHeadline(
   lines: string[],
   firstMainIndex: number,
   separadorRemovidoEm: Set<number>,
-): {
-  valor: string | null;
-  indice: number;
-  contexto: LinkedinHeadlineContexto | null;
-} {
-  const limite = firstMainIndex >= 0 ? firstMainIndex : Math.min(20, lines.length);
+): DetectedHeadline {
+  const limite =
+    firstMainIndex >= 0 ? firstMainIndex : Math.min(20, lines.length);
   const preamble = lines.slice(0, limite);
   const ehForte = (linha: string) =>
     isHeadlineCandidate(linha) && hasHeadlineSignal(linha);
   const strong = preamble
     .map((linha, indice) => ({ linha, indice }))
     .filter(({ linha }) => ehForte(linha));
-  if (strong.length === 0) return { valor: null, indice: -1, contexto: null };
-  // O nome vem antes da headline; pegamos a candidata forte mais próxima da
-  // primeira seção principal (a última da lista).
-  const escolhida = strong[strong.length - 1];
-
-  const partes = [escolhida.linha.trim()];
-  let inicio = escolhida.indice;
-  while (inicio > 0) {
-    const anterior = preamble[inicio - 1].trim();
-    if (!HEADLINE_ABERTA_EM_VIRGULA.test(anterior)) break;
-    if (!ehForte(anterior)) break;
-    partes.unshift(anterior);
-    inicio -= 1;
+  if (strong.length === 0) {
+    return {
+      valor: null,
+      indice: -1,
+      intervalo: null,
+      status: "not_found",
+      contexto: null,
+    };
   }
 
-  // Diagnóstico apenas: NADA aqui altera `valor` nem `indice`. O fim da headline
-  // é a última linha absorvida, que com junção para trás é sempre a escolhida.
-  const fim = escolhida.indice;
+  const grupos = Array.from(
+    new Map(
+      strong.map(({ indice }) => {
+        const grupo = grupoDeHeadline(
+          preamble,
+          indice,
+          ehForte,
+          separadorRemovidoEm,
+        );
+        return [`${grupo.inicio}:${grupo.fim}`, grupo] as const;
+      }),
+    ).values(),
+  );
+  // Uma linha com "data" dentro de Top Skills, por exemplo, pode passar no
+  // sinal lexical de headline. Se ainda há outro heading lateral depois dela,
+  // porém, a estrutura prova que é conteúdo daquela seção, não identidade.
+  const gruposPossiveis = grupos.filter(
+    (grupo) => !dentroDeSecaoLateralFechada(preamble, grupo),
+  );
+  if (gruposPossiveis.length === 0) {
+    return {
+      valor: null,
+      indice: -1,
+      intervalo: null,
+      status: "not_found",
+      contexto: null,
+    };
+  }
+  const temAncoraDeIdentidade = (grupo: HeadlineLineRegion) =>
+    grupo.inicio === 0 ||
+    (grupo.inicio > 0 &&
+      pareceNomeEstrutural(preamble[grupo.inicio - 1]) &&
+      !pareceInicioDeSecaoDesconhecida(preamble[grupo.inicio - 1]));
+  const ancorados = gruposPossiveis.filter(temAncoraDeIdentidade);
+  const confirmadosPorIdentidade = gruposPossiveis.filter(
+    (grupo) =>
+      regiaoDeIdentidade(lines, grupo, firstMainIndex).confidence ===
+      "confirmed",
+  );
+  const doisBlocosDePerfilAdjacentes = ancorados.some((grupo, index) =>
+    ancorados
+      .slice(index + 1)
+      .some(
+        (seguinte) =>
+          seguinte.inicio === grupo.fim + 2 &&
+          pareceNomeEstrutural(preamble[grupo.fim + 1]),
+      ),
+  );
+  const candidatos = doisBlocosDePerfilAdjacentes
+    ? ancorados
+    : confirmadosPorIdentidade.length > 0
+      ? confirmadosPorIdentidade
+      : ancorados.length > 0
+        ? ancorados
+        : gruposPossiveis;
+  const regiaoUnica = candidatos.length === 1;
+  const escolhido = candidatos[0];
+  const { inicio, fim, partes } = escolhido;
+  const identityRegion = regiaoDeIdentidade(lines, escolhido, firstMainIndex);
+  const confirmado =
+    !escolhido.aberta &&
+    regiaoUnica &&
+    identityRegion.confidence === "confirmed" &&
+    inicio >= identityRegion.start &&
+    fim < identityRegion.end;
   const acimaIdx = inicio - 1;
+  const valorComposto = partes.reduce((acc, parte, offset) => {
+    if (offset === 0) return parte;
+    const anteriorIdx = inicio + offset - 1;
+    const separador = separadorRemovidoEm.has(anteriorIdx) ? " | " : " ";
+    return `${acc}${separador}${parte}`;
+  }, "");
   return {
-    valor: clip(partes.join(" ").replace(/\s+/g, " "), 250),
-    indice: inicio,
+    // Com mais de uma região empatada, nem o valor deve fingir que sabemos
+    // qual é a headline. Uma única região aberta ainda é mostrada para revisão.
+    valor: !regiaoUnica ? null : clip(valorComposto.replace(/\s+/g, " "), 250),
+    indice: confirmado ? inicio : -1,
+    intervalo: confirmado ? { inicio, fim } : null,
+    status: confirmado ? "confirmed" : "ambiguous",
     contexto: {
       indiceEscolhido: inicio,
       juntou: partes.length > 1,
@@ -458,9 +773,6 @@ function detectHeadline(
       acima:
         acimaIdx >= 0
           ? {
-              // `preamble` é `lines.slice(0, limite)`, então o índice no
-              // preâmbulo É o índice na saída do normalizador, que é a base do
-              // conjunto. Sem essa igualdade o sinal viria deslocado.
               terminaEm: classificarTerminacao(
                 preamble[acimaIdx],
                 separadorRemovidoEm.has(acimaIdx),
@@ -493,14 +805,7 @@ function inicioDaIdentidade(lines: string[], headlineIdx: number): number {
   // desempata é a POSIÇÃO: no export, localização vem DEPOIS da headline e o
   // nome vem antes. Custo assumido: num export sem linha de nome, uma linha
   // real da seção lateral é cortada.
-  const pareceNome =
-    anterior.length > 0 &&
-    anterior.length <= 60 &&
-    !anterior.includes("|") &&
-    anterior.split(/\s+/).length <= 6 &&
-    !matchSectionHeader(anterior) &&
-    !hasHeadlineSignal(anterior) &&
-    comecaMaiuscula(anterior);
+  const pareceNome = pareceNomeEstrutural(anterior);
   return pareceNome ? headlineIdx - 1 : headlineIdx;
 }
 
@@ -508,8 +813,14 @@ function inicioDaIdentidade(lines: string[], headlineIdx: number): number {
 function findSectionHeaders(lines: string[]): SectionHeaderHit[] {
   const hits: SectionHeaderHit[] = [];
   for (let i = 0; i < lines.length; i += 1) {
-    const key = matchSectionHeader(lines[i]);
-    if (key) hits.push({ index: i, key });
+    const heading = linkedinSectionHeading(lines[i]);
+    if (heading) {
+      hits.push({
+        index: i,
+        key: heading.id,
+        principal: heading.principal,
+      });
+    }
   }
   return hits;
 }
@@ -518,7 +829,7 @@ function findSectionHeaders(lines: string[]): SectionHeaderHit[] {
 function sectionLines(
   lines: string[],
   hits: SectionHeaderHit[],
-  key: SectionKey,
+  key: ParsedSectionKey,
   /**
    * Corte do bloco de identidade. A última seção da coluna lateral termina no
    * próximo cabeçalho reconhecido, que é `Summary`, e no meio do caminho estão
@@ -541,12 +852,28 @@ function sectionLines(
 function parseSkills(lines: string[]): string[] {
   const out: string[] = [];
   for (const line of lines) {
+    if (isLinkedinSectionHeading(line)) continue;
     for (const part of line.split(/[,;|]/)) {
       const skill = part.trim();
       if (skill.length >= 2 && skill.length <= 60) out.push(skill);
     }
   }
   return Array.from(new Set(out)).slice(0, 50);
+}
+
+interface SkillsRegion {
+  lines: string[];
+  suspectedBoundary: boolean;
+}
+
+function delimitarSkills(lines: string[]): SkillsRegion {
+  const boundary = lines.findIndex(
+    (line, index) =>
+      index + 1 < lines.length && pareceInicioDeSecaoDesconhecida(line),
+  );
+  return boundary < 0
+    ? { lines, suspectedBoundary: false }
+    : { lines: lines.slice(0, boundary), suspectedBoundary: true };
 }
 
 /**
@@ -658,11 +985,16 @@ export function parseLinkedinText(text: string): LinkedinParsed {
   // UMA passada de normalizacao antes de qualquer parser especifico: junta
   // continuacao de linha quebrada pelo PDF e remove rodape de paginacao. Client
   // e servidor chamam esta mesma funcao, entao veem exatamente o mesmo texto.
-  const { linhas: lines, separadorRemovidoEm } = normalizeProfileLinesComSinal(text);
+  const {
+    linhas: lines,
+    separadorRemovidoEm,
+    origens,
+  } = normalizeProfileLinesComSinal(text);
 
   if (lines.length === 0) {
     return {
       headline: null,
+      headlineRegion: { status: "not_found" },
       headlineContexto: null,
       sobre: null,
       experiencias: [],
@@ -674,16 +1006,42 @@ export function parseLinkedinText(text: string): LinkedinParsed {
   }
 
   const hits = findSectionHeaders(lines);
-  const mainKeys: SectionKey[] = ["sobre", "experiencia", "formacao"];
-  const firstMain = hits.find((hit) => mainKeys.includes(hit.key));
+  const firstMain = hits.find((hit) => hit.principal);
   const firstMainIndex = firstMain ? firstMain.index : -1;
 
+  const detectedHeadline = detectHeadline(
+    lines,
+    firstMainIndex,
+    separadorRemovidoEm,
+  );
   const {
     valor: headline,
     indice: headlineIdx,
+    intervalo: headlineIntervalo,
     contexto: headlineContexto,
-  } = detectHeadline(lines, firstMainIndex, separadorRemovidoEm);
-  const identidadeStart = inicioDaIdentidade(lines, headlineIdx);
+  } = detectedHeadline;
+  const headlineRegion: HeadlineRegion = (() => {
+    if (detectedHeadline.status !== "confirmed" || !headlineIntervalo) {
+      return detectedHeadline.status === "not_found"
+        ? { status: "not_found" }
+        : { status: "ambiguous" };
+    }
+    const inicio = origens[headlineIntervalo.inicio]?.inicio;
+    const fim = origens[headlineIntervalo.fim]?.fim;
+    if (typeof inicio !== "number" || typeof fim !== "number") {
+      return { status: "ambiguous" };
+    }
+    return {
+      status: "confirmed",
+      start: inicio,
+      end: fim,
+      text: headline ?? "",
+    };
+  })();
+  const identidadeStart = inicioDaIdentidade(
+    lines,
+    headlineIntervalo?.inicio ?? headlineIdx,
+  );
 
   const sobreRaw = sectionLines(lines, hits, "sobre").join(" ").trim();
   const sobre = sobreRaw.length > 0 ? sobreRaw : null;
@@ -692,9 +1050,30 @@ export function parseLinkedinText(text: string): LinkedinParsed {
     sectionLines(lines, hits, "experiencia"),
   );
 
-  const skillsPdf = parseSkills(
-    sectionLines(lines, hits, "skills", identidadeStart),
+  const skillsHit = hits.find((hit) => hit.key === "skills");
+  const rawSkillsLines = sectionLines(lines, hits, "skills", identidadeStart);
+  const skillsRegion = delimitarSkills(rawSkillsLines);
+  const skillsLines = skillsRegion.lines;
+  const skillsPdf = parseSkills(skillsLines);
+  const nextSkillsBoundary = skillsHit
+    ? hits.find((hit) => hit.index > skillsHit.index)
+    : undefined;
+  const identidadeEncerraSkills = Boolean(
+    skillsHit && identidadeStart > skillsHit.index,
   );
+  const skillsTemPossivelIdentidade = skillsLines.some((linha) => {
+    const palavras = linha.trim().split(/\s+/);
+    return (
+      ehLocalizacaoEstrutural(linha) ||
+      (palavras.length >= 2 && pareceNomeEstrutural(linha))
+    );
+  });
+  const skillsPdfConfiaveis =
+    !skillsRegion.suspectedBoundary &&
+    (!skillsHit ||
+      skillsLines.length === 0 ||
+      identidadeEncerraSkills ||
+      (nextSkillsBoundary !== undefined && !skillsTemPossivelIdentidade));
   const formacao = sectionLines(lines, hits, "formacao", identidadeStart).slice(
     0,
     20,
@@ -725,12 +1104,52 @@ export function parseLinkedinText(text: string): LinkedinParsed {
 
   return {
     headline,
+    headlineRegion,
     headlineContexto,
     sobre,
     experiencias,
     skillsPdf,
+    skillsPdfConfiaveis,
     formacao,
     certificacoes,
     usable,
   };
+}
+
+/**
+ * Visão efetiva do perfil quando a pessoa corrige a headline.
+ *
+ * A função trabalha sobre a mesma estrutura de linhas usada pelo parser e
+ * troca somente o intervalo confirmado. Nenhuma enumeração parcial de seções é
+ * feita aqui: Projects, idiomas, voluntariado e qualquer cabeçalho desconhecido
+ * continuam no texto. Região ambígua ou ausente preserva o bruto byte a byte;
+ * a régua analisa a manual sobre uma visão estruturada conservadora.
+ */
+export function textoComHeadlineManual(
+  text: string,
+  headlineManual: string | null | undefined,
+): string {
+  const manual = normalizarHeadlineManual(headlineManual);
+  if (manual === null) return text;
+
+  const { linhas, separadorRemovidoEm, origens } =
+    normalizeProfileLinesComSinal(text);
+  const hits = findSectionHeaders(linhas);
+  const firstMain = hits.find((hit) => hit.principal);
+  const detected = detectHeadline(
+    linhas,
+    firstMain?.index ?? -1,
+    separadorRemovidoEm,
+  );
+
+  if (detected.status === "confirmed" && detected.intervalo) {
+    const inicio = origens[detected.intervalo.inicio]?.inicio;
+    const fim = origens[detected.intervalo.fim]?.fim;
+    if (typeof inicio === "number" && typeof fim === "number") {
+      return `${text.slice(0, inicio)}${manual}${text.slice(fim)}`;
+    }
+  }
+  // Região ambígua/ausente nunca autoriza apagar nem mover conteúdo bruto.
+  // O chamador da régua usa campos estruturados para evitar contaminação.
+  return text;
 }

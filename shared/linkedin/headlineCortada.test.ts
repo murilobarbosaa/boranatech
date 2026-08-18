@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { headlineParecCortada } from "./headlineCortada";
+import { parseLinkedinText } from "./parse";
 
 /**
  * As duas listas abaixo saem das analises persistidas reais (2026-07-31). Sao
@@ -78,5 +79,122 @@ describe("headlineParecCortada", () => {
   it("ignora espaço em volta antes de decidir", () => {
     expect(headlineParecCortada("  | ETL | Data  ")).toBe(true);
     expect(headlineParecCortada("  Analista de Dados | SQL  ")).toBe(false);
+  });
+
+  it("usa o contexto estrutural quando a normalização já removeu o pipe", () => {
+    expect(
+      headlineParecCortada("ETL | Data Architecture | Analista de Dados", {
+        juntou: false,
+        acima: { terminaEm: "pipe", forte: true },
+      }),
+    ).toBe(true);
+  });
+
+  it("não acusa linha anterior fraca nem headline que foi unida", () => {
+    const headline = "Analista de Dados | SQL";
+    expect(
+      headlineParecCortada(headline, {
+        juntou: false,
+        acima: { terminaEm: "pipe", forte: false },
+      }),
+    ).toBe(false);
+    expect(
+      headlineParecCortada(headline, {
+        juntou: true,
+        acima: { terminaEm: "pipe", forte: true },
+      }),
+    ).toBe(false);
+  });
+});
+
+/**
+ * Direção de BAIXO: a headline escolhida é a PRIMEIRA metade.
+ *
+ * O parser passou a ancorar a escolha no nome, então a continuação órfã deixou
+ * de cair acima e passou a cair abaixo. A regra que só olhava para cima ficava
+ * muda, e o resultado era pior que o erro anterior: `Consultor de Dados` é
+ * plausível e indistinguível de uma headline curta legítima, enquanto
+ * `| ETL | ...` era visivelmente cortada. Detecção que emudece quando o valor
+ * fica bonito é a mesma família do `contarLinhas` devolvendo -1.
+ */
+describe("headlineParecCortada: continuação órfã ABAIXO", () => {
+  const CONTINUACAO = "| ETL | Data Architecture | Analista de Dados";
+
+  it("acusa corte quando a linha de baixo começa em separador", () => {
+    expect(
+      headlineParecCortada("Consultor de Dados", {
+        juntou: false,
+        acima: null,
+        linhasAbaixo: [CONTINUACAO, "São Paulo, Brasil"],
+      }),
+    ).toBe(true);
+  });
+
+  // Ponta a ponta a partir do TEXTO, nas duas quebras de linha. O caso do
+  // fixture de telemetria: o parser escolhe `Consultor de Dados` e joga a
+  // continuação para `linhasAbaixo[0]`. Passar pelo parser é o que prova que o
+  // campo chega preenchido, em vez de afirmar isso sobre um objeto montado à
+  // mão que sempre teria o formato que o teste quis.
+  const PERFIL_CORTADO = [
+    "Contato",
+    "www.linkedin.com/in/exemplo",
+    "Principais competências",
+    "Ciência da computação",
+    "Joana Teste",
+    "Consultor de Dados",
+    CONTINUACAO,
+    "São Paulo, Brasil",
+    "Summary",
+    "Analista com foco em dados, trabalhando com SQL e BI todos os dias.",
+  ];
+
+  it.each([
+    ["LF", "\n"],
+    ["CRLF", "\r\n"],
+  ])("acusa o corte real do perfil em %s", (_rotulo, quebra) => {
+    const parsed = parseLinkedinText(PERFIL_CORTADO.join(quebra));
+
+    expect(parsed.headline).toBe("Consultor de Dados");
+    expect(parsed.headlineContexto?.linhasAbaixo[0]).toBe(CONTINUACAO);
+    expect(headlineParecCortada(parsed.headline, parsed.headlineContexto)).toBe(
+      true,
+    );
+  });
+
+  it("não acusa quando a linha de baixo é conteúdo normal", () => {
+    expect(
+      headlineParecCortada("Analista de Dados | Power BI | SQL", {
+        juntou: false,
+        acima: null,
+        linhasAbaixo: ["São Paulo, Brasil", "Summary"],
+      }),
+    ).toBe(false);
+  });
+
+  it("não acusa quando a headline já foi unida ou não há linhas abaixo", () => {
+    expect(
+      headlineParecCortada("Consultor de Dados", {
+        juntou: true,
+        acima: null,
+        linhasAbaixo: [CONTINUACAO],
+      }),
+    ).toBe(false);
+    expect(
+      headlineParecCortada("Consultor de Dados", {
+        juntou: false,
+        acima: null,
+        linhasAbaixo: [],
+      }),
+    ).toBe(false);
+  });
+
+  it("ausência de linhasAbaixo degrada para o comportamento anterior", () => {
+    // Objetos historicos e o bundle da janela de deploy nao tem o campo.
+    expect(
+      headlineParecCortada("Consultor de Dados", {
+        juntou: false,
+        acima: null,
+      }),
+    ).toBe(false);
   });
 });

@@ -22,6 +22,7 @@ import { execSync } from "node:child_process";
 const R = process.cwd();
 const N = "shared/linkedin/normalizeProfileText.ts";
 const P = "shared/linkedin/parse.ts";
+const H = "shared/linkedin/sectionHeadings.ts";
 const L = "shared/linkedin/numeralLastro.ts";
 const S = "shared/linkedin/schema.ts";
 const V = "shared/linkedin/reguaV2.ts";
@@ -30,77 +31,385 @@ const A = "server/lib/linkedinAnalyze.ts";
 
 // [arquivo, nome do limiar, string original, string mutada]
 const MUT = [
-  [N, "MAX_CONTINUATION_LEN", "const MAX_CONTINUATION_LEN = 40;", "const MAX_CONTINUATION_LEN = 4;"],
-  [N, "MAX_FRAGMENTO_LEN", "const MAX_FRAGMENTO_LEN = 30;", "const MAX_FRAGMENTO_LEN = 3;"],
-  [N, "MAX_FRAGMENTO_TOKENS", "const MAX_FRAGMENTO_TOKENS = 3;", "const MAX_FRAGMENTO_TOKENS = 1;"],
-  [N, "guarda de linha de data (80)", "DATE_LINE_LIKE.test(atual) && atual.length <= 80", "DATE_LINE_LIKE.test(atual) && atual.length <= 8"],
-  [L, "faixa de ano (1900..2100)", "if (n >= 1900 && n <= 2100) return true;", "if (n >= 1990 && n <= 1991) return true;"],
-  [P, "cabecalho de secao, len max (40)", "if (l.length === 0 || l.length > 40) return null;", "if (l.length === 0 || l.length > 4) return null;"],
-  [P, "isDateRangeLine, len max (80)", "if (l.length > 80) return false;", "if (l.length > 8) return false;"],
-  [P, "localizacao, len max (60)", "if (t.length === 0 || t.length > 60) return false;", "if (t.length === 0 || t.length > 6) return false;"],
-  [P, "localizacao, max palavras (7)", "if (t.split(/\\s+/).length > 7) return false;", "if (t.split(/\\s+/).length > 1) return false;"],
-  [P, "localizacao, max partes (4)", "if (partes.length === 0 || partes.length > 4) return false;", "if (partes.length === 0 || partes.length > 1) return false;"],
-  [P, "localizacao, palavras por parte (4)", "(p) => comecaMaiuscula(p) && p.split(/\\s+/).length <= 4,", "(p) => comecaMaiuscula(p) && p.split(/\\s+/).length <= 1,"],
-  [P, "cabecalho de bloco, len max (80)", "if (t.length === 0 || t.length > 80) return false;", "if (t.length === 0 || t.length > 8) return false;"],
-  [P, "cabecalho de bloco, max palavras (12)", "if (t.split(/\\s+/).length > 12) return false;", "if (t.split(/\\s+/).length > 2) return false;"],
-  [P, "headline candidata, len min (6)", "if (trimmed.length < 6 || trimmed.length > 250) return false;", "if (trimmed.length < 60 || trimmed.length > 250) return false;"],
-  [P, "headline candidata, len max (250)", "if (trimmed.length < 6 || trimmed.length > 250) return false;", "if (trimmed.length < 6 || trimmed.length > 25) return false;"],
-  [P, "preambulo sem secao (20 linhas)", "Math.min(20, lines.length)", "Math.min(2, lines.length)"],
-  [P, "linha de nome, len max (60)", "anterior.length <= 60 &&", "anterior.length <= 6 &&"],
-  [P, "linha de nome, max palavras (6)", "anterior.split(/\\s+/).length <= 6 &&", "anterior.split(/\\s+/).length <= 1 &&"],
-  [P, "clip da headline (250)", 'clip(partes.join(" ").replace(/\\s+/g, " "), 250)', 'clip(partes.join(" ").replace(/\\s+/g, " "), 25)'],
-  [P, "skill, len min (2)", "if (skill.length >= 2 && skill.length <= 60) out.push(skill);", "if (skill.length >= 20 && skill.length <= 60) out.push(skill);"],
-  [P, "skill, len max (60)", "if (skill.length >= 2 && skill.length <= 60) out.push(skill);", "if (skill.length >= 2 && skill.length <= 6) out.push(skill);"],
-  [P, "teto de skills (50)", "return Array.from(new Set(out)).slice(0, 50);", "return Array.from(new Set(out)).slice(0, 1);"],
-  [P, "linhas de metadado apos a data (2)", "for (let n = 0; n < 2 && inicio < fim; n += 1) {", "for (let n = 0; n < 0 && inicio < fim; n += 1) {"],
-  [S, "faixa inicio (39)", "if (score <= 39) return \"inicio\";", "if (score <= 3) return \"inicio\";"],
-  [S, "faixa em-construcao (69)", "if (score <= 69) return \"em-construcao\";", "if (score <= 6) return \"em-construcao\";"],
-  [S, "faixa forte (89)", "if (score <= 89) return \"forte\";", "if (score <= 8) return \"forte\";"],
-  [S, "QUALITATIVE_VERSION", "export const QUALITATIVE_VERSION = 3;", "export const QUALITATIVE_VERSION = 9;"],
-  // Classificado em 2026-08-05, no commit que criou o sitio (o campo de
-  // headline editavel). Entra em MUT e nao em NAO_LIMIAR porque E fronteira:
-  // decide o que a rota aceita e o que devolve 422. NAO e limiar da regua: nao
-  // entra em check nenhum, e o ideal de qualidade da headline (220) e outro
-  // numero, no `headline-tamanho`.
-  //
-  // QUEM PEGA A MUTACAO: so `linkedinHeadlineManual.test.ts`, que afirma o
-  // valor literal. `linkedinHeadlineManualRota.test.ts` NAO pega, e a razao
-  // vale registrar: ele monta os casos com `HEADLINE_MANUAL_MAX + 1` e
-  // `"x".repeat(HEADLINE_MANUAL_MAX)`, entao mutar a constante move os dois
-  // lados juntos e ele continua verde. Teste que deriva a expectativa da
-  // constante que testa e invariante ao valor dela: prova o COMPORTAMENTO
-  // (recusa acima do teto, aceita no teto) e nao o NUMERO. Os dois sao uteis,
-  // mas so o literal e rede contra mudanca acidental do teto.
-  [S, "HEADLINE_MANUAL_MAX", "export const HEADLINE_MANUAL_MAX = 250;", "export const HEADLINE_MANUAL_MAX = 25;"],
-  [S, "DETERMINISTIC_VERSION", "export const DETERMINISTIC_VERSION = 7;", "export const DETERMINISTIC_VERSION = 99;"],
+  [
+    N,
+    "MAX_CONTINUATION_LEN",
+    "const MAX_CONTINUATION_LEN = 40;",
+    "const MAX_CONTINUATION_LEN = 4;",
+  ],
+  [
+    N,
+    "MAX_FRAGMENTO_LEN",
+    "const MAX_FRAGMENTO_LEN = 30;",
+    "const MAX_FRAGMENTO_LEN = 3;",
+  ],
+  [
+    N,
+    "MAX_FRAGMENTO_TOKENS",
+    "const MAX_FRAGMENTO_TOKENS = 3;",
+    "const MAX_FRAGMENTO_TOKENS = 1;",
+  ],
+  [
+    N,
+    "guarda de linha de data (80)",
+    "DATE_LINE_LIKE.test(atual) && atual.length <= 80",
+    "DATE_LINE_LIKE.test(atual) && atual.length <= 8",
+  ],
+  [
+    L,
+    "faixa de ano (1900..2100)",
+    "if (n >= 1900 && n <= 2100) return true;",
+    "if (n >= 1990 && n <= 1991) return true;",
+  ],
+  [
+    H,
+    "cabecalho de secao, len max (60)",
+    "if (normalized.length === 0 || normalized.length > 60) return null;",
+    "if (normalized.length === 0 || normalized.length > 6) return null;",
+  ],
+  [
+    P,
+    "isDateRangeLine, len max (80)",
+    "if (l.length > 80) return false;",
+    "if (l.length > 8) return false;",
+  ],
+  [
+    P,
+    "identidade em secao, sobra minima da secao (1)",
+    "if (fim - inicio + 1 - dentro < 1) return false;",
+    "if (fim - inicio + 1 - dentro < 2) return false;",
+  ],
+  [
+    P,
+    "identidade em secao, palavras minimas da ancora de nome (2)",
+    "nomeAncora.trim().split(/\\s+/).length < 2",
+    "nomeAncora.trim().split(/\\s+/).length < 1",
+  ],
+  [
+    P,
+    "localizacao, len max (60)",
+    "if (t.length === 0 || t.length > 60) return false;",
+    "if (t.length === 0 || t.length > 6) return false;",
+  ],
+  [
+    P,
+    "localizacao, max palavras (7)",
+    "if (t.split(/\\s+/).length > 7) return false;",
+    "if (t.split(/\\s+/).length > 1) return false;",
+  ],
+  [
+    P,
+    "localizacao, max partes (4)",
+    "if (partes.length === 0 || partes.length > 4) return false;",
+    "if (partes.length === 0 || partes.length > 1) return false;",
+  ],
+  [
+    P,
+    "localizacao, palavras por parte (4)",
+    "return partes.every((p) => comecaMaiuscula(p) && p.split(/\\s+/).length <= 4);",
+    "return partes.every((p) => comecaMaiuscula(p) && p.split(/\\s+/).length <= 1);",
+  ],
+  [
+    P,
+    "cabecalho de bloco, len max (80)",
+    "if (t.length === 0 || t.length > 80) return false;",
+    "if (t.length === 0 || t.length > 8) return false;",
+  ],
+  [
+    P,
+    "cabecalho de bloco, max palavras (12)",
+    "if (t.split(/\\s+/).length > 12) return false;",
+    "if (t.split(/\\s+/).length > 2) return false;",
+  ],
+  [
+    P,
+    "headline candidata, len min (6)",
+    "if (trimmed.length < 6 || trimmed.length > 250) return false;",
+    "if (trimmed.length < 60 || trimmed.length > 250) return false;",
+  ],
+  [
+    P,
+    "headline candidata, len max (250)",
+    "if (trimmed.length < 6 || trimmed.length > 250) return false;",
+    "if (trimmed.length < 6 || trimmed.length > 25) return false;",
+  ],
+  [
+    P,
+    "continuacao de headline, len min (2)",
+    "if (t.length < 2 || t.length > 60) return false;",
+    "if (t.length < 20 || t.length > 60) return false;",
+  ],
+  [
+    P,
+    "continuacao de headline, len max (60)",
+    "if (t.length < 2 || t.length > 60) return false;",
+    "if (t.length < 2 || t.length > 6) return false;",
+  ],
+  [
+    P,
+    "heading desconhecido, faixa de tamanho (6..60)",
+    "if (t.length < 6 || t.length > 60) return false;",
+    "if (t.length < 60 || t.length > 60) return false;",
+  ],
+  [
+    P,
+    "heading desconhecido, faixa de palavras (2..6)",
+    "if (palavras.length < 2 || palavras.length > 6) return false;",
+    "if (palavras.length < 20 || palavras.length > 6) return false;",
+  ],
+  [
+    P,
+    "fronteira principal proxima da identidade (4 linhas)",
+    "firstMainIndex > grupo.fim && firstMainIndex - grupo.fim <= 4;",
+    "firstMainIndex > grupo.fim && firstMainIndex - grupo.fim <= 1;",
+  ],
+  [
+    P,
+    "preambulo sem secao (20 linhas)",
+    "Math.min(20, lines.length)",
+    "Math.min(2, lines.length)",
+  ],
+  [
+    P,
+    "linha de nome, len max (60)",
+    "anterior.length <= 60 &&",
+    "anterior.length <= 6 &&",
+  ],
+  [
+    P,
+    "linha de nome, max palavras (6)",
+    "anterior.split(/\\s+/).length <= 6 &&",
+    "anterior.split(/\\s+/).length <= 1 &&",
+  ],
+  [
+    P,
+    "clip da headline (250)",
+    'clip(valorComposto.replace(/\\s+/g, " "), 250)',
+    'clip(valorComposto.replace(/\\s+/g, " "), 25)',
+  ],
+  [
+    P,
+    "possivel identidade em skills, min palavras (2)",
+    "palavras.length >= 2 && pareceNomeEstrutural(linha)",
+    "palavras.length >= 20 && pareceNomeEstrutural(linha)",
+  ],
+  [
+    P,
+    "skill, len min (2)",
+    "if (skill.length >= 2 && skill.length <= 60) out.push(skill);",
+    "if (skill.length >= 20 && skill.length <= 60) out.push(skill);",
+  ],
+  [
+    P,
+    "skill, len max (60)",
+    "if (skill.length >= 2 && skill.length <= 60) out.push(skill);",
+    "if (skill.length >= 2 && skill.length <= 6) out.push(skill);",
+  ],
+  [
+    P,
+    "teto de skills (50)",
+    "return Array.from(new Set(out)).slice(0, 50);",
+    "return Array.from(new Set(out)).slice(0, 1);",
+  ],
+  [
+    P,
+    "linhas de metadado apos a data (2)",
+    "for (let n = 0; n < 2 && inicio < fim; n += 1) {",
+    "for (let n = 0; n < 0 && inicio < fim; n += 1) {",
+  ],
+  [
+    S,
+    "faixa inicio (39)",
+    'if (score <= 39) return "inicio";',
+    'if (score <= 3) return "inicio";',
+  ],
+  [
+    S,
+    "faixa em-construcao (69)",
+    'if (score <= 69) return "em-construcao";',
+    'if (score <= 6) return "em-construcao";',
+  ],
+  [
+    S,
+    "faixa forte (89)",
+    'if (score <= 89) return "forte";',
+    'if (score <= 8) return "forte";',
+  ],
+  [
+    S,
+    "QUALITATIVE_VERSION",
+    "export const QUALITATIVE_VERSION = 3;",
+    "export const QUALITATIVE_VERSION = 9;",
+  ],
+  // Limites de entrada e persistência, não pesos da régua. Ainda são
+  // fronteiras de contrato e uma mudança acidental precisa quebrar teste.
+  [
+    S,
+    "LINKEDIN_SKILLS_MAX",
+    "export const LINKEDIN_SKILLS_MAX = 3_000;",
+    "export const LINKEDIN_SKILLS_MAX = 300;",
+  ],
+  [
+    S,
+    "HEADLINE_MANUAL_MAX",
+    "export const HEADLINE_MANUAL_MAX = 250;",
+    "export const HEADLINE_MANUAL_MAX = 25;",
+  ],
+  [
+    S,
+    "DETERMINISTIC_VERSION",
+    "export const DETERMINISTIC_VERSION = 8;",
+    "export const DETERMINISTIC_VERSION = 99;",
+  ],
   [S, "peso essencial (10)", "  essencial: 10,", "  essencial: 11,"],
   [S, "peso importante (6)", "  importante: 6,", "  importante: 7,"],
   [S, "peso opcional (3)", "  opcional: 3,", "  opcional: 4,"],
-  [A, "MIN_DESCRICAO_PARA_BULLETS (48)", "const MIN_DESCRICAO_PARA_BULLETS = 48;", "const MIN_DESCRICAO_PARA_BULLETS = 999;"],
-  [A, "SOBRE_LIMIT (3000)", "const SOBRE_LIMIT = 3000;", "const SOBRE_LIMIT = 30;"],
-  [A, "EXPERIENCIAS_LIMIT (6000)", "const EXPERIENCIAS_LIMIT = 6000;", "const EXPERIENCIAS_LIMIT = 60;"],
-  [C, "headline-stack, min techs (2)", "aprovado: headlineTechs >= 2,", "aprovado: headlineTechs >= 9,"],
-  [C, "headline-tamanho, min (40)", "const ok = len >= 40 && len <= 220;", "const ok = len >= 400 && len <= 220;"],
-  [C, "headline-tamanho, max (220)", "const ok = len >= 40 && len <= 220;", "const ok = len >= 40 && len <= 22;"],
-  [C, "sobre-existe, min (200)", "const ok = sobre.trim().length >= 200;", "const ok = sobre.trim().length >= 2000;"],
-  [C, "sobre-gancho, max 1a frase (140)", "        first.length <= 140 &&", "        first.length <= 14 &&"],
-  [C, "sobre-stack, min techs (3)", "aprovado: sobreTechs >= 3,", "aprovado: sobreTechs >= 9,"],
-  [C, "exp-existe, min (1)", "aprovado: parsed.experiencias.length >= 1,", "aprovado: parsed.experiencias.length >= 9,"],
-  [C, "exp-verbos-acao, min (2)", "aprovado: verbCount >= 2,", "aprovado: verbCount >= 99,"],
-  [C, "exp-tecnologias, min (2)", "aprovado: expTechs >= 2,", "aprovado: expTechs >= 99,"],
-  [C, "skills-quantidade (10)", "aprovado: skillsForm.length >= 10,", "aprovado: skillsForm.length >= 1,"],
-  [C, "skills-quantidade-otima (25)", "aprovado: skillsForm.length >= 25,", "aprovado: skillsForm.length >= 1,"],
-  [V, "cobertura v2, teto absoluto essencial (6)", "Math.min(6, Math.ceil(pool / 2))", "Math.min(1, Math.ceil(pool / 2))"],
-  [V, "corte de competencias: limitado pelo comprovado", "Math.min(essencial, tecnologiasComprovadas)", "Math.min(essencial, tecnologiasComprovadas + 9)"],
-  [V, "corte de competencias: guarda de zero", "alcancavel: tecnologiasComprovadas > 0", "alcancavel: tecnologiasComprovadas >= 0"],
-  [V, "cobertura v2, teto absoluto otima (10)", "Math.min(10, Math.ceil(pool * 0.75))", "Math.min(1, Math.ceil(pool * 0.75))"],
-  [V, "cobertura v2, proporcao essencial (2)", "Math.ceil(pool / 2)", "Math.ceil(pool / 9)"],
-  [V, "cobertura v2, proporcao otima (0.75)", "Math.ceil(pool * 0.75)", "Math.ceil(pool * 0.05)"],
+  [
+    A,
+    "MIN_DESCRICAO_PARA_BULLETS (48)",
+    "const MIN_DESCRICAO_PARA_BULLETS = 48;",
+    "const MIN_DESCRICAO_PARA_BULLETS = 999;",
+  ],
+  [
+    A,
+    "SOBRE_LIMIT (3000)",
+    "const SOBRE_LIMIT = 3000;",
+    "const SOBRE_LIMIT = 30;",
+  ],
+  [
+    A,
+    "EXPERIENCIAS_LIMIT (6000)",
+    "const EXPERIENCIAS_LIMIT = 6000;",
+    "const EXPERIENCIAS_LIMIT = 60;",
+  ],
+  [
+    A,
+    "pontosFortes da resposta da IA (3)",
+    "if (validation.data.pontosFortes.length < 3) {",
+    "if (validation.data.pontosFortes.length < 30) {",
+  ],
+  [
+    C,
+    "headline-stack, min techs (2)",
+    "aprovado: headlineTechs >= 2,",
+    "aprovado: headlineTechs >= 9,",
+  ],
+  [
+    C,
+    "headline-tamanho, min (40)",
+    "const ok = len >= 40 && len <= 220;",
+    "const ok = len >= 400 && len <= 220;",
+  ],
+  [
+    C,
+    "headline-tamanho, max (220)",
+    "const ok = len >= 40 && len <= 220;",
+    "const ok = len >= 40 && len <= 22;",
+  ],
+  [
+    C,
+    "sobre-existe, min (200)",
+    "const ok = sobre.trim().length >= 200;",
+    "const ok = sobre.trim().length >= 2000;",
+  ],
+  [
+    C,
+    "sobre-gancho, max 1a frase (140)",
+    "        first.length <= 140 &&",
+    "        first.length <= 14 &&",
+  ],
+  [
+    C,
+    "sobre-stack, min techs (3)",
+    "aprovado: sobreTechs >= 3,",
+    "aprovado: sobreTechs >= 9,",
+  ],
+  [
+    C,
+    "exp-existe, min (1)",
+    "aprovado: parsed.experiencias.length >= 1,",
+    "aprovado: parsed.experiencias.length >= 9,",
+  ],
+  [
+    C,
+    "exp-verbos-acao, min (2)",
+    "aprovado: verbCount >= 2,",
+    "aprovado: verbCount >= 99,",
+  ],
+  [
+    C,
+    "exp-tecnologias, min (2)",
+    "aprovado: expTechs >= 2,",
+    "aprovado: expTechs >= 99,",
+  ],
+  [
+    C,
+    "skills-quantidade (10)",
+    "aprovado: skillsForm.length >= 10,",
+    "aprovado: skillsForm.length >= 1,",
+  ],
+  [
+    C,
+    "skills-quantidade-otima (25)",
+    "aprovado: skillsForm.length >= 25,",
+    "aprovado: skillsForm.length >= 1,",
+  ],
+  [
+    V,
+    "cobertura v2, teto absoluto essencial (6)",
+    "Math.min(6, Math.ceil(pool / 2))",
+    "Math.min(1, Math.ceil(pool / 2))",
+  ],
+  [
+    V,
+    "corte de competencias: limitado pelo comprovado",
+    "Math.min(essencial, tecnologiasComprovadas)",
+    "Math.min(essencial, tecnologiasComprovadas + 9)",
+  ],
+  [
+    V,
+    "corte de competencias: guarda de zero",
+    "alcancavel: tecnologiasComprovadas > 0",
+    "alcancavel: tecnologiasComprovadas >= 0",
+  ],
+  [
+    V,
+    "cobertura v2, teto absoluto otima (10)",
+    "Math.min(10, Math.ceil(pool * 0.75))",
+    "Math.min(1, Math.ceil(pool * 0.75))",
+  ],
+  [
+    V,
+    "cobertura v2, proporcao essencial (2)",
+    "Math.ceil(pool / 2)",
+    "Math.ceil(pool / 9)",
+  ],
+  [
+    V,
+    "cobertura v2, proporcao otima (0.75)",
+    "Math.ceil(pool * 0.75)",
+    "Math.ceil(pool * 0.05)",
+  ],
   [V, "densidade leve, sobreMin (300)", "sobreMin: 300,", "sobreMin: 30,"],
-  [V, "sobreMax (2200)", "sobreMax: 2200,\n        descricaoPorExperiencia: 50,", "sobreMax: 220,\n        descricaoPorExperiencia: 50,"],
+  [
+    V,
+    "sobreMax (2200)",
+    "sobreMax: 2200,\n        descricaoPorExperiencia: 50,",
+    "sobreMax: 220,\n        descricaoPorExperiencia: 50,",
+  ],
   [V, "densidade padrao, sobreMin (500)", "sobreMin: 500,", "sobreMin: 50,"],
-  [V, "densidade leve, descricao por experiencia (50)", "descricaoPorExperiencia: 50,", "descricaoPorExperiencia: 5,"],
-  [V, "densidade padrao, descricao por experiencia (100)", "descricaoPorExperiencia: 100,", "descricaoPorExperiencia: 10,"],
+  [
+    V,
+    "densidade leve, descricao por experiencia (50)",
+    "descricaoPorExperiencia: 50,",
+    "descricaoPorExperiencia: 5,",
+  ],
+  [
+    V,
+    "densidade padrao, descricao por experiencia (100)",
+    "descricaoPorExperiencia: 100,",
+    "descricaoPorExperiencia: 10,",
+  ],
 ];
 
 // MODO VIZINHANCA (--vizinhanca). As mutacoes da tabela acima sao de ordem de
@@ -120,11 +429,21 @@ const VIZINHOS = [
   [C, "sobre-tamanho, min", "const ok = len >= {N} && len <= 2200;", "500"],
   [C, "sobre-tamanho, max", "const ok = len >= 500 && len <= {N};", "2200"],
   [C, "exp-descricoes", "const ok = len >= {N};", "100"],
-  [S, "faixa inicio", "if (score <= {N}) return \"inicio\";", "39"],
-  [S, "faixa em-construcao", "if (score <= {N}) return \"em-construcao\";", "69"],
-  [S, "faixa forte", "if (score <= {N}) return \"forte\";", "89"],
-  [V, "densidade leve, sobreMin", "sobreMin: {N},\n        sobreMax: 2200,\n        descricaoPorExperiencia: 50,", "300"],
-  [V, "densidade leve, descricao/exp", "descricaoPorExperiencia: {N},\n      }", "50"],
+  [S, "faixa inicio", 'if (score <= {N}) return "inicio";', "39"],
+  [S, "faixa em-construcao", 'if (score <= {N}) return "em-construcao";', "69"],
+  [S, "faixa forte", 'if (score <= {N}) return "forte";', "89"],
+  [
+    V,
+    "densidade leve, sobreMin",
+    "sobreMin: {N},\n        sobreMax: 2200,\n        descricaoPorExperiencia: 50,",
+    "300",
+  ],
+  [
+    V,
+    "densidade leve, descricao/exp",
+    "descricaoPorExperiencia: {N},\n      }",
+    "50",
+  ],
 ];
 
 // Passo por limiar: razao usa 0.01 e 0.02, inteiro usa 1 e 2.
@@ -157,6 +476,7 @@ const FONTES = [
   "shared/linkedin/normalizeProfileText.ts",
   "shared/linkedin/numeralLastro.ts",
   "shared/linkedin/parse.ts",
+  "shared/linkedin/sectionHeadings.ts",
   "shared/linkedin/schema.ts",
   "shared/linkedin/proximosPassos.ts",
   "shared/linkedin/molduraAspiracional.ts",
@@ -183,21 +503,43 @@ const NAO_LIMIAR = [
   [/^for \(let \w+ = 1;/, "contador de laco"],
   [/^\s*(?:let|const) \w+ = -?[01];?$/, "inicializacao de acumulador"],
   [/i \+= 1|n \+= 1|from \+= |\+= PAGE/, "passo de laco"],
-  [/melhor < 0|idx < 0|posTermo < 0|indexOf\(.*\) >= 0|>= 0\)/, "guarda de indice nao encontrado"],
+  [
+    /melhor < 0|idx < 0|posTermo < 0|indexOf\(.*\) >= 0|>= 0\)/,
+    "guarda de indice nao encontrado",
+  ],
   [/slice\(0, 300\)/, "corte de mensagem de erro para log"],
   [/slice\(0, 1500\)/, "teto do texto de dedup persistido, nao entra em check"],
   [/temperature:/, "parametro do modelo, nao limiar de regra"],
-  [/const (?:AI_MAX_ATTEMPTS|MAX_TOKENS) =/, "parametro operacional da chamada de IA"],
+  [
+    /const (?:AI_MAX_ATTEMPTS|MAX_TOKENS) =/,
+    "parametro operacional da chamada de IA",
+  ],
   [/const AI_BACKOFF_MS/, "backoff de retry"],
   // --- Classificados em 2026-08-01, ao colocar este guard num gate. Ele
   // abortava na arvore limpa havia semanas com 6 orfaos, tres deles produzidos
   // pela propria auditoria. Cada regex e estreita de proposito: uma ampla
   // engoliria limiar de verdade no futuro, que e o oposto do que este arquivo
   // existe para fazer.
-  [/^while \(\w+ > 0\)/, "guarda de laco para tras na juncao de headline, nao e fronteira"],
-  [/juntou: partes\.length > 1/, "quantos pedacos foram juntados, nao e limiar de regra"],
-  [/^\s*acimaIdx >= 0$/, "guarda de indice nao encontrado (sem parentese, o padrao geral nao casa)"],
-  [/p\.possivel > 0/, "descarte de grupo vazio na decomposicao, nao e fronteira"],
+  [
+    /^while \(\w+ > 0\)/,
+    "guarda de laco para tras na juncao de headline, nao e fronteira",
+  ],
+  [
+    /juntou: partes\.length > 1/,
+    "quantos pedacos foram juntados, nao e limiar de regra",
+  ],
+  [
+    /^\s*acimaIdx >= 0$/,
+    "guarda de indice nao encontrado (sem parentese, o padrao geral nao casa)",
+  ],
+  [
+    /^if \(dono < 0\) return true;$/,
+    "guarda de indice nao encontrado: sem heading antes do bloco, ele nao e conteudo de secao",
+  ],
+  [
+    /p\.possivel > 0/,
+    "descarte de grupo vazio na decomposicao, nao e fronteira",
+  ],
   [/cadastradas === 1/, "singular\/plural na copy do detalhe, nao e limiar"],
   [/possivel === 0/, "divisao por zero"],
   [/keyTechs\.length === 0/, "divisao por zero"],
@@ -206,28 +548,79 @@ const NAO_LIMIAR = [
   [/\+ 1\]|\- 1\]|\[i \+ 1\]|\[i - 1\]/, "acesso a vizinho de array"],
   [/hashEstavel|2166136261|16777619/, "constantes do hash FNV-1a"],
   [/charCodeAt|>>> 0/, "aritmetica do hash"],
-  [/cobre\.length === 1|nomes\.length <= 1|partes\.length === 0/, "formatacao de lista"],
-  [/saida\.length >= MAX_ITENS|slice\(0, MAX_ITENS\)|< MAX_ITENS/, "uso do teto MAX_ITENS, declarado abaixo"],
+  [
+    /cobre\.length === 1|nomes\.length <= 1|partes\.length === 0/,
+    "formatacao de lista",
+  ],
+  [
+    /saida\.length >= MAX_ITENS|slice\(0, MAX_ITENS\)|< MAX_ITENS/,
+    "uso do teto MAX_ITENS, declarado abaixo",
+  ],
   [/const MAX_ITENS = 3;/, "teto de itens recomendados, nao entra em nota"],
-  [/t\.length >= 4|length >= 4|length < 4/, "tamanho minimo de token de credencial, nao entra em nota"],
-  [/\.slice\(0, 20\)/, "teto de linhas de formacao e certificacoes, nao entra em check"],
-  [/\.slice\(0, 6\)|\.slice\(0, 7\)|slice\(0, -1\)|slice\(0, 2\)/, "teto de itens em texto de prompt ou copy"],
-  [/n === 0/, "estado vazio de descricao, coberto por MIN_DESCRICAO_PARA_BULLETS"],
-  [/nivel === alvo \? 1 : 0|cobre\.length \* 3/, "pesos da recomendacao, nao entram em nota"],
+  [
+    /t\.length >= 4|length >= 4|length < 4/,
+    "tamanho minimo de token de credencial, nao entra em nota",
+  ],
+  [
+    /\.slice\(0, 20\)/,
+    "teto de linhas de formacao e certificacoes, nao entra em check",
+  ],
+  [
+    /\.slice\(0, 6\)|\.slice\(0, 7\)|slice\(0, -1\)|slice\(0, 2\)/,
+    "teto de itens em texto de prompt ou copy",
+  ],
+  [
+    /n === 0/,
+    "estado vazio de descricao, coberto por MIN_DESCRICAO_PARA_BULLETS",
+  ],
+  [
+    /nivel === alvo \? 1 : 0|cobre\.length \* 3/,
+    "pesos da recomendacao, nao entram em nota",
+  ],
   [/for \(let n = 0; n < 2/, "metadados apos a data, coberto em MUT"],
-  [/abertos\.length > 0|restante \/ abertos\.length/, "water-filling do orcamento"],
+  [
+    /abertos\.length > 0|restante \/ abertos\.length/,
+    "water-filling do orcamento",
+  ],
   [/token\.length > 3/, "tamanho minimo de token no casamento de contexto"],
   [/\bn >= 1900\b|n <= 2100/, "faixa de ano, coberta em MUT"],
   [/content\.slice\(1\)/, "pula a linha de titulo quando a secao nao tem data"],
-  [/posMarcador >= 0 && posMarcador < posTermo/, "ordem entre indices, nao e numero de regra"],
+  [
+    /posMarcador >= 0 && posMarcador < posTermo/,
+    "ordem entre indices, nao e numero de regra",
+  ],
   [/headlineIdx <= 0/, "guarda de indice: nao ha linha anterior a headline"],
+  [
+    /indice: -1|indice: confirmado \? inicio : -1|grupo\.inicio === 0|grupo\.inicio > 0|inicio > 0|offset === 0/,
+    "sentinelas e guardas de posição na região estrutural, não são limiares",
+  ],
+  [
+    /identidadeStart >= 0|firstMainIndex >= 0/,
+    "sentinela de posicao estrutural encontrada no parser, nao e limiar",
+  ],
+  [
+    /headingAnterior >= 0 && headingPosterior >= 0|boundary < 0/,
+    "sentinelas de fronteira estrutural encontrada, nao sao limiares",
+  ],
   [/porItem\.total > 0/, "guarda de lista vazia no veredito por item"],
   [/porItem\.reprovadas\.length > 1/, "plural de copy"],
-  [/sobreMax: 2200,/, "teto do Sobre, coberto em VIZINHOS pelo mutante de sobre-tamanho"],
-  [/Math\.max\(essencial \+ 1/, "trava otima > essencial, coberta por teste dedicado com pool 1"],
-  [/mudaram\.length > 0/, "guarda de lista vazia na deteccao de autodeclaracao"],
+  [
+    /sobreMax: 2200,/,
+    "teto do Sobre, coberto em VIZINHOS pelo mutante de sobre-tamanho",
+  ],
+  [
+    /Math\.max\(essencial \+ 1/,
+    "trava otima > essencial, coberta por teste dedicado com pool 1",
+  ],
+  [
+    /mudaram\.length > 0/,
+    "guarda de lista vazia na deteccao de autodeclaracao",
+  ],
   [/skillsRatio/, "razao antiga, mantida so no calculo do detail informativo"],
-  [/\.filter\(\(i\) => i > 0\)/, "sentinela 0 = indice base-1 valido, nao e limiar"],
+  [
+    /\.filter\(\(i\) => i > 0\)/,
+    "sentinela 0 = indice base-1 valido, nao e limiar",
+  ],
 ];
 
 function descobrirSitios() {
@@ -300,13 +693,15 @@ function auditarCobertura() {
       "limiar, acrescente em MUT (e em VIZINHOS se a Fase 3 mexer nele); se nao",
     );
     console.log("for, acrescente em NAO_LIMIAR com o motivo.\n");
-    for (const o of orfaos) console.log(`  ${o.rel}:${o.linha}  ${o.texto.slice(0, 100)}`);
+    for (const o of orfaos)
+      console.log(`  ${o.rel}:${o.linha}  ${o.texto.slice(0, 100)}`);
     process.exit(1);
   }
   return sitios.length;
 }
 
-const ALVOS = "shared/linkedin server/lib/linkedin client/src/components/linkedin";
+const ALVOS =
+  "shared/linkedin server/lib/linkedin client/src/components/linkedin";
 const VIZINHANCA = process.argv.includes("--vizinhanca");
 
 /**
@@ -362,7 +757,11 @@ if (AUDITAR) {
 
 function rodarTestes(R, ALVOS) {
   try {
-    execSync(`npx vitest run ${ALVOS} --silent 2>&1`, { cwd: R, encoding: "utf8", stdio: "pipe" });
+    execSync(`npx vitest run ${ALVOS} --silent 2>&1`, {
+      cwd: R,
+      encoding: "utf8",
+      stdio: "pipe",
+    });
     return false;
   } catch {
     return true;
@@ -393,15 +792,26 @@ if (VIZINHANCA) {
     const menor = passos(valor)[0];
     const cobertoNoMenor = resultado[`-${menor}`] || resultado[`+${menor}`];
     out.push({ nome, rel, linha, valor, resultado, cobertoNoMenor });
-    const marca = Object.entries(resultado).map(([k, v]) => `${k}:${v ? "quebra" : "PASSA"}`).join("  ");
-    console.log(`${cobertoNoMenor ? "OK  " : "GAP "} ${nome.padEnd(26)} ${valor.padEnd(6)} ${marca}`);
+    const marca = Object.entries(resultado)
+      .map(([k, v]) => `${k}:${v ? "quebra" : "PASSA"}`)
+      .join("  ");
+    console.log(
+      `${cobertoNoMenor ? "OK  " : "GAP "} ${nome.padEnd(26)} ${valor.padEnd(6)} ${marca}`,
+    );
   }
   // Artefato so quando pedido: escrever na raiz do repo por padrao ja fez
   // um vizinhanca.json entrar em commit por engano.
-  if (process.env.SP) writeFileSync(`${process.env.SP}/vizinhanca.json`, JSON.stringify(out, null, 2));
+  if (process.env.SP)
+    writeFileSync(
+      `${process.env.SP}/vizinhanca.json`,
+      JSON.stringify(out, null, 2),
+    );
   const gaps = out.filter((o) => o.cobertoNoMenor === false);
-  console.log(`\n=== vizinhanca: ${out.length} limiares | com cobertura de fronteira: ${out.length - gaps.length} | SEM: ${gaps.length} ===`);
-  for (const g of gaps) console.log(`  GAP  ${g.rel}:${g.linha}  ${g.nome} (${g.valor})`);
+  console.log(
+    `\n=== vizinhanca: ${out.length} limiares | com cobertura de fronteira: ${out.length - gaps.length} | SEM: ${gaps.length} ===`,
+  );
+  for (const g of gaps)
+    console.log(`  GAP  ${g.rel}:${g.linha}  ${g.nome} (${g.valor})`);
   process.exit(0);
 }
 
@@ -411,25 +821,54 @@ for (const [rel, nome, de, para] of MUT) {
   const orig = readFileSync(abs, "utf8");
   const ocorrencias = orig.split(de).length - 1;
   if (ocorrencias !== 1) {
-    linhas.push({ rel, nome, status: ocorrencias === 0 ? "ANCORA NAO ENCONTRADA" : `ANCORA AMBIGUA (${ocorrencias}x)` });
+    linhas.push({
+      rel,
+      nome,
+      status:
+        ocorrencias === 0
+          ? "ANCORA NAO ENCONTRADA"
+          : `ANCORA AMBIGUA (${ocorrencias}x)`,
+    });
     continue;
   }
   const linha = orig.slice(0, orig.indexOf(de)).split("\n").length;
   writeFileSync(abs, orig.replace(de, para));
-  let coberto = false, saida = "";
+  let coberto = false,
+    saida = "";
   try {
-    execSync(`npx vitest run ${ALVOS} --silent 2>&1`, { cwd: R, encoding: "utf8", stdio: "pipe" });
+    execSync(`npx vitest run ${ALVOS} --silent 2>&1`, {
+      cwd: R,
+      encoding: "utf8",
+      stdio: "pipe",
+    });
   } catch (e) {
     coberto = true;
     saida = String(e.stdout ?? "");
   }
   writeFileSync(abs, orig);
-  const quebrados = [...saida.matchAll(/^\s+×\s+(.+?)\s+\d+ms$/gm)].map((m) => m[1]);
-  linhas.push({ rel, linha, nome, de: de.trim(), para: para.trim(), coberto, quebrados: quebrados.slice(0, 2) });
+  const quebrados = [...saida.matchAll(/^\s+×\s+(.+?)\s+\d+ms$/gm)].map(
+    (m) => m[1],
+  );
+  linhas.push({
+    rel,
+    linha,
+    nome,
+    de: de.trim(),
+    para: para.trim(),
+    coberto,
+    quebrados: quebrados.slice(0, 2),
+  });
   console.log(`${coberto ? "OK  " : "GAP "} ${rel}:${linha}  ${nome}`);
 }
-if (process.env.SP) writeFileSync(`${process.env.SP}/mutacao.json`, JSON.stringify(linhas, null, 2));
+if (process.env.SP)
+  writeFileSync(
+    `${process.env.SP}/mutacao.json`,
+    JSON.stringify(linhas, null, 2),
+  );
 const gaps = linhas.filter((l) => l.coberto === false);
-console.log(`\n=== ${linhas.length} limiares | cobertos: ${linhas.filter((l) => l.coberto).length} | DESCOBERTOS: ${gaps.length} ===`);
+console.log(
+  `\n=== ${linhas.length} limiares | cobertos: ${linhas.filter((l) => l.coberto).length} | DESCOBERTOS: ${gaps.length} ===`,
+);
 for (const g of gaps) console.log(`  GAP  ${g.rel}:${g.linha}  ${g.nome}`);
-for (const l of linhas.filter((x) => x.status)) console.log(`  ??   ${l.rel}  ${l.nome}: ${l.status}`);
+for (const l of linhas.filter((x) => x.status))
+  console.log(`  ??   ${l.rel}  ${l.nome}: ${l.status}`);

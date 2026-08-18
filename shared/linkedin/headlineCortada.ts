@@ -112,8 +112,53 @@ export function assinaturaDeCorte(
   return null;
 }
 
+/**
+ * A linha logo ABAIXO da headline é a continuação órfã dela?
+ *
+ * Simétrico de `contexto.acima`, e existe porque o parser mudou de lado. Com a
+ * escolha ancorada no nome, a headline escolhida passou a ser a PRIMEIRA
+ * metade, e o resto (`| ETL | Data Architecture | Analista de Dados`) ficou em
+ * `linhasAbaixo[0]`. A regra que só olhava para cima ficava muda exatamente aí,
+ * e o resultado era pior que o erro anterior: antes a headline saía visivelmente
+ * cortada (começava em pipe) e o aviso disparava; depois passou a sair como
+ * `Consultor de Dados`, plausível e indistinguível de uma headline curta real,
+ * com a nota afirmada como completa. Degradar para um valor que alguém pode
+ * confundir com o certo é o modo de falha que esta base já pagou caro.
+ */
+function continuacaoOrfaAbaixo(linhasAbaixo: readonly string[]): boolean {
+  const primeira = linhasAbaixo[0];
+  return typeof primeira === "string" && COMECA_EM_SEPARADOR.test(primeira);
+}
+
 export function headlineParecCortada(
   headline: string | null | undefined,
+  contexto?: {
+    juntou: boolean;
+    acima: { terminaEm: string; forte: boolean } | null;
+    linhasAbaixo?: readonly string[];
+  } | null,
 ): boolean {
-  return assinaturaDeCorte(headline) !== null;
+  if (assinaturaDeCorte(headline) !== null) return true;
+  if (!contexto) return false;
+
+  // A normalização limpa o pipe órfão do texto que o parser usa, mas preserva
+  // o sinal em `headlineContexto`. Uma candidata forte imediatamente acima,
+  // aberta em pipe e não unida, significa que a headline escolhida pode ser só
+  // a segunda metade. Sem o contexto esse caso pareceria conclusivo.
+  if (
+    contexto.juntou === false &&
+    contexto.acima?.terminaEm === "pipe" &&
+    contexto.acima.forte
+  ) {
+    return true;
+  }
+
+  // A direção oposta: a headline escolhida é a primeira metade e a continuação
+  // ficou abaixo. `linhasAbaixo` é opcional porque objetos históricos e o
+  // bundle da janela de deploy não a têm, e ausência aqui significa "não sei",
+  // que degrada para o comportamento anterior em vez de afirmar corte.
+  return (
+    contexto.juntou === false &&
+    continuacaoOrfaAbaixo(contexto.linhasAbaixo ?? [])
+  );
 }

@@ -14,20 +14,13 @@
  * vai para o prompt da OpenAI. Dado de identidade viajando como declaracao de
  * skill e de outra natureza que ponto a mais ou a menos.
  *
- * CRITERIO: POSICIONAL, nunca lexical.
+ * CRITERIO: a origem estrutural e responsabilidade do parser, nunca da
+ * quantidade nem de uma tentativa lexical de adivinhar nomes de pessoas.
  *
- * O export "Salvar como PDF" do LinkedIn lista exatamente TRES competencias na
- * secao "Principais competencias". Nos dados: 114 das 149 linhas tem exatamente
- * 3, 8 tem zero (secao ausente), e TODAS as demais passam de 3 por duas causas
- * que nao sao competencia nova:
- *
- *   (A) a competencia quebrou de linha no PDF e virou dois itens
- *       (`Retrieval-Augmented Generation` + `(RAG)`);
- *   (B) o corte da secao lateral passou do fim e engoliu identidade
- *       (nome, headline, cidade, estado, pais).
- *
- * As duas somem com o mesmo teto, e por isso o teto vem antes de qualquer
- * conserto de parser: cobre a causa conhecida e a que ainda nao foi vista.
+ * O produto comunica e aceita até CINCO competências extraídas. Uma seção
+ * legítima pode ter seis, dez ou mais itens: o teto só limita o prefill e não
+ * tenta classificar a lista como anômala. A fronteira da identidade é resolvida
+ * em `parse.ts`, usando posição de cabeçalhos e da headline detectada.
  *
  * POR QUE NAO O CRITERIO LEXICAL. A primeira tentativa perguntava "isto parece
  * nome de pessoa?" (2 a 4 palavras capitalizadas, sem digito, fora de um
@@ -38,10 +31,9 @@
  * dentro de uma competencia legitima e regra, nao excecao. Um filtro que le o
  * CONTEUDO vai errar nos dois sentidos para sempre.
  *
- * O teto posicional NAO OLHA o texto. Por construcao, ele nao consegue
- * descartar `Kanban` por parecer nome, nem manter `Joana Silva` por nao
- * parecer: a decisao e o indice. E a propriedade que o teste
- * `competenciasDoPdf.test.ts` afirma diretamente.
+ * Este helper recebe a lista já delimitada e só deduplica, limpa e limita a
+ * cinco itens. Se a origem estrutural estiver inconclusiva, o parser deve
+ * produzir uma lista conservadora para revisão; comprimento não é evidência.
  *
  * NAO E SILENCIOSO. Devolve o que descartou e por que, no molde de
  * `opcoesRenderizaveis` do BntSelect: descarte que some sem rastro vira "as
@@ -49,13 +41,9 @@
  */
 
 /**
- * Quantas competencias o export do LinkedIn realmente lista.
- *
- * Mudar este numero e ato deliberado: se o LinkedIn passar a exportar mais, o
- * teto passa a cortar competencia legitima, e o sinal disso e o `descartadas`
- * encher de termo tecnico em vez de nome e cidade.
+ * Máximo de competências válidas que o produto extrai para o formulário.
  */
-export const COMPETENCIAS_NO_EXPORT = 3;
+export const COMPETENCIAS_NO_EXPORT = 5;
 
 export interface CompetenciasDoPdf {
   /** O que pode ser escrito no formulario. */
@@ -66,8 +54,18 @@ export interface CompetenciasDoPdf {
 
 export function competenciasDoPdf(
   skillsPdf: readonly string[] | null | undefined,
+  origemConfiavel = true,
 ): CompetenciasDoPdf {
   const lista = (skillsPdf ?? []).map((s) => s.trim()).filter((s) => s !== "");
+  if (!origemConfiavel) {
+    return {
+      aceitas: [],
+      descartadas: lista.map((valor, indice) => ({
+        valor,
+        motivo: `fronteira estrutural da seção inconclusiva (posição ${indice + 1}); exige revisão manual`,
+      })),
+    };
+  }
   const aceitas: string[] = [];
   const descartadas: { valor: string; motivo: string }[] = [];
 
@@ -78,7 +76,7 @@ export function competenciasDoPdf(
     }
     descartadas.push({
       valor,
-      motivo: `alem das ${COMPETENCIAS_NO_EXPORT} competencias que o export lista (posicao ${indice + 1})`,
+      motivo: `além das ${COMPETENCIAS_NO_EXPORT} competências oferecidas para revisão (posição ${indice + 1})`,
     });
   });
 

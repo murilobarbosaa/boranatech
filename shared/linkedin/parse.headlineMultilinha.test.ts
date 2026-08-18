@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseLinkedinText } from "./parse";
+import { parseLinkedinText, textoComHeadlineManual } from "./parse";
 
 /**
  * Headline que ocupa MAIS DE UMA LINHA (Fase 4, item 1).
@@ -106,7 +106,7 @@ describe("falsos positivos: a juncao NAO pode disparar", () => {
     expect(parsed.headline).toBe("Analista de Dados | Power BI | SQL");
   });
 
-  it("duas headlines de perfis diferentes coladas no mesmo texto", () => {
+  it("duas headlines de perfis diferentes ficam ambiguas", () => {
     // As duas sao candidatas fortes e contiguas. A de cima esta FECHADA (nao
     // termina em virgula), entao continua valendo a regra antiga: vence a
     // ultima, e nada e fundido.
@@ -119,17 +119,15 @@ describe("falsos positivos: a juncao NAO pode disparar", () => {
         "Designer de Produto | Figma | UX",
       ]),
     );
-    expect(parsed.headline).toBe("Designer de Produto | Figma | UX");
-    expect(parsed.headline).not.toContain("Java");
+    expect(parsed.headline).toBeNull();
+    expect(parsed.headlineRegion?.status).toBe("ambiguous");
   });
 
   it("linha de cargo de experiencia logo abaixo da headline nao e fundida", () => {
     // `Desenvolvedor Backend Pleno` E candidata forte (casa `desenvolvedor`),
-    // entao e o caso adversarial de verdade: duas fortes e contiguas. Quem
-    // decide continua sendo a virgula, que nao existe aqui, entao NAO ha
-    // juncao. Que a de baixo venca e comportamento ANTERIOR a esta correcao
-    // (`strong[strong.length - 1]`), preservado de proposito: mexer nisso e
-    // outro item.
+    // entao e o caso adversarial de verdade: duas fortes e contiguas. A
+    // evidência de nome antes da primeira impede a regra antiga de escolher
+    // cegamente a última linha forte.
     const parsed = parseLinkedinText(
       perfil([
         ...LATERAL,
@@ -138,8 +136,9 @@ describe("falsos positivos: a juncao NAO pode disparar", () => {
         "Desenvolvedor Backend Pleno",
       ]),
     );
-    expect(parsed.headline).toBe("Desenvolvedor Backend Pleno");
-    expect(parsed.headline).not.toContain("Kubernetes");
+    expect(parsed.headline).toBe("Engenheira de Software | Go | Kubernetes");
+    // Bloco de identidade dentro de secao e sem linha de localizacao passou a ser ambiguo (custo aceito da condicao (c), que mata o confirmed falso dentro de Top Skills).
+    expect(parsed.headlineRegion?.status).toBe("ambiguous");
   });
 
   it("cargo de experiencia FRACO abaixo da headline deixa a headline vencer", () => {
@@ -171,5 +170,121 @@ describe("falsos positivos: a juncao NAO pode disparar", () => {
       ]),
     );
     expect(parsed.headline).toBe("Desenvolvedora Backend | Java | Spring Boot");
+  });
+});
+
+describe("região estrutural da headline multiline", () => {
+  it("abrange a tecnologia curta na linha seguinte", () => {
+    const text = "Frontend Developer,\nReact";
+    const parsed = parseLinkedinText(text);
+    expect(parsed.headline).toBe("Frontend Developer, React");
+    expect(parsed.headlineRegion).toMatchObject({ status: "confirmed" });
+    expect(textoComHeadlineManual(text, "Frontend Developer | Vue")).toBe(
+      "Frontend Developer | Vue",
+    );
+  });
+
+  it("abrange quebra por pipe e preserva a localização abaixo", () => {
+    const text = [
+      "Ana Silva",
+      "Frontend Developer |",
+      "React",
+      "São Paulo, Brasil",
+      "Projects",
+      "Projeto acessível.",
+    ].join("\n");
+    const replaced = textoComHeadlineManual(text, "Frontend Developer | Vue");
+    expect(replaced).not.toContain("React");
+    expect(replaced).toContain("São Paulo, Brasil");
+    expect(replaced).toContain("Projects\nProjeto acessível.");
+  });
+
+  it("não absorve localização depois de continuação por vírgula", () => {
+    const text = ["Frontend Developer,", "React", "São Paulo, Brasil"].join(
+      "\n",
+    );
+    expect(parseLinkedinText(text).headline).toBe("Frontend Developer, React");
+    expect(textoComHeadlineManual(text, "Frontend Developer | Vue")).toBe(
+      "Frontend Developer | Vue\nSão Paulo, Brasil",
+    );
+  });
+
+  it("vírgula antes de empresa não autoriza splice", () => {
+    const text = [
+      "Frontend Developer,",
+      "Empresa Exemplo",
+      "Projects",
+      "Projeto preservado.",
+    ].join("\n");
+    const parsed = parseLinkedinText(text);
+    expect(parsed.headlineRegion?.status).toBe("ambiguous");
+    expect(textoComHeadlineManual(text, "Frontend Developer | Vue")).toBe(text);
+  });
+
+  it("não confirma cargo consumido dentro de Top Skills", () => {
+    const text = ["Top Skills", "Frontend Developer", "React", "Summary"].join(
+      "\n",
+    );
+    const parsed = parseLinkedinText(text);
+
+    expect(parsed.headlineRegion?.status).toBe("ambiguous");
+    expect(textoComHeadlineManual(text, "Frontend Developer | Vue")).toBe(text);
+  });
+
+  it("não apaga cargo localizado depois de heading desconhecido", () => {
+    const text = [
+      "Seção desconhecida",
+      "Frontend Developer | React",
+      "outra informação",
+    ].join("\n");
+    const parsed = parseLinkedinText(text);
+
+    expect(parsed.headlineRegion?.status).toBe("ambiguous");
+    expect(textoComHeadlineManual(text, "Frontend Developer | Vue")).toBe(text);
+  });
+
+  it("não confirma cargo de experiência sem heading reconhecido", () => {
+    const text = [
+      "Empresa Exemplo",
+      "Frontend Developer | React",
+      "janeiro de 2024 - Present",
+      "Construí a interface do produto.",
+      "Summary",
+      "Resumo profissional.",
+    ].join("\n");
+    const parsed = parseLinkedinText(text);
+
+    expect(parsed.headlineRegion?.status).toBe("ambiguous");
+    expect(textoComHeadlineManual(text, "Frontend Developer | Vue")).toBe(text);
+  });
+
+  it("mantém headline real confirmada dentro de nome e localização", () => {
+    const text = [
+      "Ana Silva",
+      "Frontend Developer | React",
+      "São Paulo, Brasil",
+      "Summary",
+      "Resumo profissional.",
+    ].join("\n");
+
+    expect(parseLinkedinText(text)).toMatchObject({
+      headline: "Frontend Developer | React",
+      headlineRegion: { status: "confirmed" },
+    });
+  });
+
+  it("Projects continua sendo fronteira e nunca vira identidade", () => {
+    const text = [
+      "Projects",
+      "Frontend Developer | React",
+      "Projeto acessível.",
+      "Summary",
+      "Resumo profissional.",
+    ].join("\n");
+    const parsed = parseLinkedinText(text);
+
+    expect(parsed.headline).toBeNull();
+    expect(parsed.headlineRegion?.status).toBe("not_found");
+    expect(textoComHeadlineManual(text, "Frontend Developer | Vue")).toBe(text);
   });
 });
