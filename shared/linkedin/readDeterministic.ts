@@ -1,22 +1,24 @@
 import { z } from "zod";
 
 import {
-  DETERMINISTIC_VERSION,
+  CHECK_TIERS,
   LINKEDIN_CAMPOS,
+  LINKEDIN_CATEGORIES,
+  type LinkedinDeterministicResult,
   type LinkedinKeywordCampos,
   type TituloInglesMatch,
 } from "./schema";
+import { readLinkedinScoreState } from "./readScore";
 
 /**
  * Leitura VERSIONADA e tolerante do `deterministic` persistido, irmã de
  * `readQualitative`.
  *
- * Escopo deliberado: cobre o CONJUNTO MÍNIMO levantado em
- * `docs/divida-leitura-persistida.md`, que são as três leituras capazes de
- * derrubar a página (as únicas que chamam método em array vindo do jsonb):
- * `keywordsEncontradas`, `keywordsFaltantes` e `titulosIngles`, consumidas por
- * `RecruiterFinder`. Os outros 17 acessos diretos do LinkedIn são números e
- * strings que degradam feio mas não lançam, e seguem documentados e intocados.
+ * Começou cobrindo apenas as listas iteradas pelo `RecruiterFinder`. Na Fase 1
+ * passou a ser o ponto de leitura de todo o bloco consumido pela página, porque
+ * score, faixa, checks e contagens também podem vir de JSONB legado ou
+ * corrompido. Campos ilegíveis degradam individualmente; o envelope decide se
+ * o núcleo ainda é suficiente para montar um resultado.
  *
  * `pendente` e `notaIncompleta` entraram no conjunto mínimo por um critério
  * DIFERENTE dos demais, e a diferença é a razão de estarem aqui: os outros
@@ -58,27 +60,50 @@ const KeywordCamposSchema = z.object({
   comprovado: z.boolean(),
 });
 
-// Só os campos do conjunto mínimo. Tudo opcional de propósito: este schema não
-// valida a escrita (isso é papel de runLinkedinChecks), ele resgata a leitura.
+// Tudo opcional de propósito: este schema não valida a escrita (isso é papel de
+// runLinkedinChecks), ele resgata a leitura persistida.
 const CheckPendenteSchema = z.object({
   id: z.string(),
-  tier: z.string(),
+  label: z.string(),
+  category: z.enum(LINKEDIN_CATEGORIES),
+  tier: z.enum(CHECK_TIERS),
   aprovado: z.boolean(),
+  detail: z.string(),
   pendente: z.boolean().optional(),
 });
 
 const LenientDeterministicSchema = z.object({
-  keywordsEncontradas: z.array(z.string()).optional(),
-  keywordsFaltantes: z.array(z.string()).optional(),
-  titulosIngles: z.array(TituloInglesSchema).optional(),
-  keywordsCampos: z.array(KeywordCamposSchema).optional(),
-  notaIncompleta: z.boolean().optional(),
-  checks: z.array(CheckPendenteSchema).optional(),
+  score: z.unknown().optional(),
+  faixa: z.unknown().optional(),
+  keywordsEncontradas: z.array(z.string()).optional().catch(undefined),
+  keywordsFaltantes: z.array(z.string()).optional().catch(undefined),
+  skillsParaAdicionarAgora: z.array(z.string()).optional().catch(undefined),
+  titulosIngles: z.array(TituloInglesSchema).optional().catch(undefined),
+  keywordsCampos: z.array(KeywordCamposSchema).optional().catch(undefined),
+  notaIncompleta: z.boolean().optional().catch(undefined),
+  checks: z.array(CheckPendenteSchema).optional().catch(undefined),
+  perfilDedup: z.string().optional().catch(undefined),
+  experienciasDescricaoTamanhos: z
+    .array(z.number().int().nonnegative())
+    .optional()
+    .catch(undefined),
+  headline: z.string().nullable().optional().catch(undefined),
+  sobreTamanho: z.number().int().nonnegative().optional().catch(undefined),
+  experienciasContagem: z
+    .number()
+    .int()
+    .nonnegative()
+    .optional()
+    .catch(undefined),
+  skillsContagem: z.number().int().nonnegative().optional().catch(undefined),
 });
 
-export interface DeterministicView {
+export interface DeterministicView
+  extends Omit<LinkedinDeterministicResult, "score" | "faixa"> {
   /** Versão detectada do formato lido. */
-  version: number;
+  version: number | null;
+  score: number | null;
+  faixa: LinkedinDeterministicResult["faixa"] | null;
   keywordsEncontradas: string[];
   keywordsFaltantes: string[];
   titulosIngles: TituloInglesMatch[];
@@ -88,6 +113,8 @@ export interface DeterministicView {
   notaIncompleta: boolean;
   /** Ids dos checks pendentes. Vazio nas linhas anteriores à v7. */
   checksPendentes: string[];
+  /** Os campos centrais necessários para montar o resultado estavam legíveis. */
+  validCore: boolean;
   /** Nomes dos campos do conjunto mínimo que não vieram. */
   camposAusentes: string[];
 }
@@ -105,20 +132,37 @@ export function readDeterministic(
 ): DeterministicView {
   const parsed = LenientDeterministicSchema.safeParse(raw);
   const d = parsed.success ? parsed.data : {};
+  const checks = d.checks ?? [];
+  const scoreState = readLinkedinScoreState({
+    score: d.score,
+    faixa: d.faixa,
+    deterministicVersion: declaredVersion,
+    notaIncompleta: d.notaIncompleta,
+  });
 
   return {
-    version: declaredVersion ?? DETERMINISTIC_VERSION,
+    version: scoreState.deterministicVersion,
+    score: scoreState.score,
+    faixa: scoreState.faixa,
+    checks,
     keywordsEncontradas: d.keywordsEncontradas ?? [],
     keywordsFaltantes: d.keywordsFaltantes ?? [],
+    skillsParaAdicionarAgora: d.skillsParaAdicionarAgora ?? [],
     titulosIngles: d.titulosIngles ?? [],
     keywordsCampos: d.keywordsCampos ?? [],
+    perfilDedup: d.perfilDedup ?? "",
+    experienciasDescricaoTamanhos: d.experienciasDescricaoTamanhos ?? [],
+    headline: d.headline ?? null,
+    sobreTamanho: d.sobreTamanho ?? 0,
+    experienciasContagem: d.experienciasContagem ?? 0,
+    skillsContagem: d.skillsContagem ?? 0,
     // As duas normalizações. Ausência vira `false`/vazio AQUI, e não no
     // consumidor: é o ponto único, e é o que garante que nenhum lugar da UI
     // precise saber que o campo pode não existir.
-    notaIncompleta: d.notaIncompleta === true,
-    checksPendentes: (d.checks ?? [])
-      .filter((c) => c.pendente === true)
-      .map((c) => c.id),
+    notaIncompleta: scoreState.notaIncompleta,
+    checksPendentes: checks.filter((c) => c.pendente === true).map((c) => c.id),
+    validCore:
+      scoreState.valid && d.checks !== undefined,
     camposAusentes: CAMPOS_MINIMOS.filter(
       (campo) => (d as Record<string, unknown>)[campo] === undefined,
     ),

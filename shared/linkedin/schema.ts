@@ -220,7 +220,7 @@ export const LINKEDIN_CHECK_CATALOG: LinkedinCheckCatalogEntry[] = [
     tier: "opcional",
     category: "sobre",
     fonte: "pdf",
-    hint: "Entre 500 e 2200 caracteres: com substância, sem virar um texto infinito.",
+    hint: "O intervalo ideal varia com o nível e aparece no detalhe deste critério.",
   },
   // Experiências
   {
@@ -655,9 +655,14 @@ export const LinkedinQualitativeSchema = z.object({
   // declara as quantidades explicitamente.
   pontosFortes: z
     .array(z.string())
-    .min(3)
     .max(5)
-    .describe("3 a 5 pontos fortes observados no perfil."),
+    .refine((itens) => itens.length === 0 || itens.length >= 3, {
+      message:
+        "pontosFortes deve ficar vazio no fallback honesto ou conter de 3 a 5 itens",
+    })
+    .describe(
+      "3 a 5 pontos fortes observados no perfil. Pode ser vazio apenas no fallback determinístico de perfil quase vazio, onde inventar pontos fortes violaria o contrato de honestidade.",
+    ),
   pontosFracos: z
     .array(z.string())
     .min(3)
@@ -718,20 +723,34 @@ export type LinkedinQualitative = z.infer<typeof LinkedinQualitativeSchema>;
 
 // Request do endpoint de análise
 
+/** Fonte única do limite aceito e persistido para competências. */
+export const LINKEDIN_SKILLS_MAX = 3_000;
+
 /**
- * Teto da headline digitada. MESMO numero do `clip(..., 250)` do parser, e nao
- * o 220 do check `headline-tamanho`: 220 e limiar de QUALIDADE, e usar como
- * limite de ENTRADA faria o campo recusar o valor que o proprio parser
- * produziu. Fonte unica: a rota, o schema e o cliente leem daqui.
+ * Teto da headline corrigida na revisão. É capacidade de entrada, não o
+ * limiar de qualidade de 220 caracteres do check `headline-tamanho`.
  */
 export const HEADLINE_MANUAL_MAX = 250;
+
+/** Normalização única da correção manual, compartilhada por browser e servidor. */
+export function normalizarHeadlineManual(
+  value: unknown,
+): string | null {
+  if (typeof value !== "string") return null;
+  const normalizada = value.trim();
+  return normalizada.length > 0 ? normalizada : null;
+}
+
+export function headlineManualAtiva(value: unknown): boolean {
+  return normalizarHeadlineManual(value) !== null;
+}
 
 export const LinkedinAnalyzeRequestSchema = z.object({
   profileText: z.string().min(200).max(12_000),
   area: z.enum(AREA_SLUGS),
   level: LinkedinLevelSchema,
   mercado: MercadoSchema,
-  skills: z.string().max(3_000),
+  skills: z.string().max(LINKEDIN_SKILLS_MAX),
   foto: SimNaoSchema,
   banner: SimNaoSchema,
   openToWork: OpenToWorkSchema,
@@ -753,54 +772,25 @@ export const LinkedinAnalyzeRequestSchema = z.object({
    */
   entryPath: z.enum(["pdf", "manual", "review"]).optional(),
   /**
-   * Headline digitada pela pessoa no passo de revisão, quando o que o parser
-   * leu não bate com o perfil dela.
-   *
-   * OPCIONAL pela mesma razão do `entryPath`: o deploy não é atômico, e o
-   * bundle antigo não manda este campo. Ausente significa "usar o que o parser
-   * leu", que é o comportamento de hoje.
-   *
-   * MÁXIMO 250, e o número não é arbitrário: é o mesmo teto do
-   * `clip(..., 250)` do parser. Limitar em 220 (o ideal do check
-   * `headline-tamanho`) faria o campo RECUSAR o valor que o próprio parser
-   * produziu numa headline longa e legítima. 220 continua sendo reportado pelo
-   * check, que é onde essa informação pertence.
-   *
-   * Acima de 250 a rota RECUSA com 422, e não corta em silêncio: entregar
-   * resultado plausível sobre entrada mutilada é a classe de defeito que o
-   * `docs/auditoria-linkedin-fechamento.md` inteiro documenta.
+   * Correção isolada da headline lida pelo parser. Opcional para manter a
+   * janela de deploy e análises antigas compatíveis; vazio equivale a ausente.
    */
-  headlineManual: z.string().max(HEADLINE_MANUAL_MAX).optional(),
+  headlineManual: z.string().trim().max(HEADLINE_MANUAL_MAX).optional(),
 });
 
 /**
- * Qual headline vale: a digitada, se houver, senão a que o parser leu.
+ * Ponto único de decisão da headline usada na análise.
  *
- * PONTO ÚNICO DE DECISÃO, e mora aqui em vez de em cada chamador de propósito
- * (`CLAUDE.md`, "proteção dentro da função, nunca no call site"). Um `??`
- * repetido em cada sítio que precisa da headline some no primeiro que alguém
- * esquecer, e o sítio esquecido avaliaria a headline errada sem nada acusar.
- *
- * Vazio ou só espaço conta como ausente: o campo vem pré-preenchido, e alguém
- * que apaga tudo está pedindo a leitura do parser de volta, não uma análise
- * sobre string vazia.
+ * A correção manual válida vence. Ausente, vazia ou só com espaços preserva a
+ * leitura do parser, inclusive `null` quando nenhuma headline foi detectada.
  */
 export function headlineFinalDe(
   headlineDoParser: string | null,
   headlineManual: string | null | undefined,
 ): string | null {
-  const manual = headlineManual?.trim();
-  if (manual) return manual;
-  return headlineDoParser;
+  return normalizarHeadlineManual(headlineManual) ?? headlineDoParser;
 }
 
-/**
- * De onde veio a headline que a análise usou. Persistido junto do resultado.
- *
- * Sem ele os dados não separam "o parser leu isto" de "a pessoa digitou isto",
- * que é exatamente a pergunta para a qual `headlineContexto` foi criado. As 185
- * linhas já gravadas não têm o campo, e a leitura tolera a ausência.
- */
 export type LinkedinHeadlineOrigem = "parser" | "manual";
 
 export type LinkedinAnalyzeRequest = z.infer<
@@ -922,6 +912,15 @@ export const QUALITATIVE_VERSION = 3;
  *   bundle antigo na janela de deploy ignora o campo que não conhece e mostra a
  *   faixa calculada, que é o comportamento de hoje.
  *
+ * 8: a correção manual da headline passou a substituir estruturalmente apenas
+ *   o intervalo detectado no texto normalizado, preservando seções desconhecidas
+ *   e removendo da régua fragmentos antigos que antes podiam reaparecer por
+ *   reconstruções parciais. A origem das competências também passou a respeitar
+ *   a fronteira estrutural da identidade, sem classificar lista legítima como
+ *   anômala apenas por ter mais de cinco itens. Pesos, faixas e limiares não
+ *   mudaram, mas o mesmo input pode produzir outra nota; v7 e v8 não são
+ *   comparáveis para delta.
+ *
  * NÃO bumpado na Fase 2A, e a decisão é deliberada. A fase acrescentou
  * `keywordsCampos`, um campo OPCIONAL e puramente descritivo: nenhum check o
  * lê, a nota das 6 fixtures é idêntica, e a régua não mudou. O que esta
@@ -935,7 +934,7 @@ export const QUALITATIVE_VERSION = 3;
  * `titulosIngles`) passa por `readDeterministic`. Ver
  * docs/divida-leitura-persistida.md.
  */
-export const DETERMINISTIC_VERSION = 7;
+export const DETERMINISTIC_VERSION = 8;
 
 export interface LinkedinAnalysisResponse {
   area: (typeof AREA_SLUGS)[number];
@@ -956,18 +955,39 @@ export interface LinkedinAnalysisSummary {
   area: string;
   level: string;
   score: number;
-  faixa: string;
+  faixa: LinkedinFaixa;
   created_at: string;
+  /**
+   * SHA-256 do texto normalizado. Ausente em análises antigas. Serve apenas
+   * para identidade do perfil e nunca permite reconstruir o texto bruto.
+   */
+  textoHash?: string | null;
   /**
    * Versão da régua determinística que produziu esta nota. Ausente (null) nas
    * linhas gravadas antes do carimbo. Serve para o cliente saber que duas
    * notas NÃO são comparáveis, e não comemorar melhoria que não houve.
    */
   deterministicVersion?: number | null;
+  /** Versão qualitativa, relevante para comparações qualitativas futuras. */
+  qualitativeVersion?: number | null;
+  /**
+   * Versão da assinatura de inputs comparáveis. Ausente em linhas anteriores
+   * à v8; ausência impede delta automático por regra conservadora.
+   */
+  comparacaoVersion?: number | null;
+  mercado?: string | null;
+  headlineComparacao?: string | null;
+  headlineOrigem?: LinkedinHeadlineOrigem | null;
+  skillsComparacao?: string | null;
+  foto?: string | null;
+  banner?: string | null;
+  openToWork?: string | null;
+  conexoes?: string | null;
+  atividade?: string | null;
   /**
    * A nota desta linha está incompleta (leitura em dúvida)?
    *
-   * Ausente nas linhas anteriores à v7, e ausência vale `false` — mesma
+   * Ausente nas linhas anteriores à v7, e ausência vale `false`, mesma
    * normalização de `readDeterministic`. Serve para o delta ser suprimido
    * quando qualquer das duas pontas está incompleta, e para o histórico saber
    * se mostra a faixa ou "a confirmar".

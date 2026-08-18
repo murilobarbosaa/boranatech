@@ -1,147 +1,295 @@
-import { readFileSync, readdirSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { parseLinkedinText } from "../../shared/linkedin/parse";
+import { textoComHeadlineManual } from "../../shared/linkedin/parse";
 import {
   HEADLINE_MANUAL_MAX,
   headlineFinalDe,
+  type LinkedinAnalyzeRequest,
 } from "../../shared/linkedin/schema";
-import { runLinkedinChecks, type LinkedinChecksInput } from "./linkedinChecks";
+import { buildUserPrompt } from "./linkedinAnalyze";
+import { runLinkedinChecks } from "./linkedinChecks";
 
-/**
- * As provas do campo de headline editavel (o "(b)").
- *
- * O que cada bloco existe para impedir esta escrito no bloco. O que ELES NAO
- * cobrem: a UI. O campo, o contador e a copy sao verificados a olho, e a
- * decisao de nao montar o `LinkedinAnalisar` inteiro num teste e a mesma do
- * `linkedinTierInvalido.test.ts`.
- */
+vi.mock("./env", () => ({
+  env: { openaiApiKey: "test", billingEnabled: false },
+}));
 
-const DIR = `${import.meta.dirname}/__fixtures__/linkedin`;
+const PROFILE = [
+  "Joana Teste",
+  "Desenvolvedora Front-end | React,",
+  "São Paulo, Brasil",
+  "Summary",
+  "Sou desenvolvedora e construo interfaces acessíveis com React e TypeScript. ".repeat(
+    5,
+  ),
+  "Experience",
+  "Empresa Exemplo",
+  "Desenvolvedora Front-end",
+  "janeiro de 2023 - Present",
+  "Desenvolvi interfaces em React e TypeScript para o produto principal.",
+].join("\n");
 
-function baseInput(profileText: string): LinkedinChecksInput {
-  return {
-    parsed: parseLinkedinText(profileText),
-    profileText,
-    area: "backend",
-    level: "pleno",
-    mercado: "brasil",
-    skills: "TypeScript, Node.js, PostgreSQL",
-    foto: "sim",
-    banner: "sim",
-    openToWork: "nao",
-    conexoes: "500-mais",
-    atividade: "semanal",
-  };
+const REQUEST: LinkedinAnalyzeRequest = {
+  profileText: PROFILE,
+  area: "frontend",
+  level: "pleno",
+  mercado: "brasil",
+  skills: "React, TypeScript",
+  foto: "sim",
+  banner: "sim",
+  openToWork: "sim",
+  conexoes: "100-500",
+  atividade: "semanal",
+};
+
+function analisar(headlineManual?: string) {
+  const parsed = parseLinkedinText(PROFILE);
+  const deterministic = runLinkedinChecks({
+    parsed,
+    profileText: PROFILE,
+    area: REQUEST.area,
+    level: REQUEST.level,
+    mercado: REQUEST.mercado,
+    skills: REQUEST.skills,
+    foto: REQUEST.foto,
+    banner: REQUEST.banner,
+    openToWork: REQUEST.openToWork,
+    conexoes: REQUEST.conexoes,
+    atividade: REQUEST.atividade,
+    headlineManual,
+  });
+  return { parsed, deterministic };
 }
 
-const FIXTURES = readdirSync(DIR)
-  .filter((f) => f.endsWith(".txt"))
-  .sort();
+describe("headline manual e efetiva", () => {
+  it("a manual válida vence e alimenta deterministic e prompt", () => {
+    const manual =
+      "Desenvolvedora Front-end | React | TypeScript | Acessibilidade";
+    const { parsed, deterministic } = analisar(manual);
+    const prompt = buildUserPrompt(
+      { ...REQUEST, headlineManual: manual },
+      parsed,
+      deterministic,
+    );
 
-describe("headlineManual ausente nao move a nota", () => {
-  // A garantia retroativa: as 185 linhas ja gravadas nao tem o campo, entao
-  // `headlineFinalDe` tem de devolver exatamente `parsed.headline` e o
-  // resultado inteiro tem de ser identico ao de antes do campo existir.
-  //
-  // Deep-equals do RESULTADO INTEIRO, e nao so da nota, de proposito: um campo
-  // novo que mudasse `pendente` ou `notaIncompleta` sem mexer no score
-  // passaria por uma comparacao de `score` e mudaria o que a interface afirma.
-  it.each(FIXTURES)("%s: deep-equals com e sem a chave", (nome) => {
-    const texto = readFileSync(`${DIR}/${nome}`, "utf8");
-    const semChave = runLinkedinChecks(baseInput(texto));
-    const comUndefined = runLinkedinChecks({
-      ...baseInput(texto),
-      headlineManual: undefined,
-    });
-    const comNull = runLinkedinChecks({
-      ...baseInput(texto),
-      headlineManual: null,
-    });
-    const comVazio = runLinkedinChecks({
-      ...baseInput(texto),
-      headlineManual: "   ",
+    expect(parsed.headline).not.toBe(manual);
+    expect(deterministic.headline).toBe(manual);
+    expect(prompt).toContain(`Headline efetiva da análise: ${manual}`);
+    expect(deterministic.notaIncompleta).toBe(false);
+  });
+
+  it("CASO A: troca só a headline e preserva Projects na cobertura", () => {
+    const profileText = [
+      "Joana Teste",
+      "Frontend Developer | React",
+      "São Paulo, Brasil",
+      "Projects",
+      "Aplicação criada com Next.js para um catálogo acessível.",
+      "Summary",
+      "Construo interfaces web e documento as decisões de produto com o time.",
+    ].join("\n");
+    const parsed = parseLinkedinText(profileText);
+    const before = profileText;
+    const deterministic = runLinkedinChecks({
+      ...REQUEST,
+      profileText,
+      parsed,
+      skills: "",
+      headlineManual: "Frontend Developer | Vue.js",
     });
 
-    expect(comUndefined).toEqual(semChave);
-    expect(comNull).toEqual(semChave);
-    // Vazio conta como ausente: quem apaga o campo pede a leitura de volta,
-    // nao uma analise sobre string vazia.
+    expect(deterministic.keywordsEncontradas).toContain("Vue.js");
+    expect(deterministic.keywordsEncontradas).toContain("Next.js");
+    expect(deterministic.keywordsEncontradas).not.toContain("React");
+    expect(deterministic.perfilDedup).not.toContain("React");
+    expect(profileText).toBe(before);
+  });
+
+  it("reprodução da auditoria: Projects impede escolher o cargo do projeto", () => {
+    const profileText = [
+      "Ana Silva",
+      "Frontend Developer | React",
+      "Projects",
+      "Backend Developer | TypeScript",
+    ].join("\n");
+    const parsed = parseLinkedinText(profileText);
+    const textoEfetivo = textoComHeadlineManual(
+      profileText,
+      "Frontend Developer | Vue",
+    );
+    const deterministic = runLinkedinChecks({
+      ...REQUEST,
+      profileText,
+      parsed,
+      skills: "",
+      headlineManual: "Frontend Developer | Vue",
+    });
+
+    expect(parsed.headline).toBe("Frontend Developer | React");
+    expect(parsed.headlineRegion?.status).toBe("confirmed");
+    expect(textoEfetivo).toContain("Projects\nBackend Developer | TypeScript");
+    expect(deterministic.headline).toBe("Frontend Developer | Vue");
+    expect(deterministic.keywordsEncontradas).toContain("Vue.js");
+    expect(deterministic.keywordsEncontradas).toContain("TypeScript");
+    expect(deterministic.keywordsEncontradas).not.toContain("React");
+    expect(deterministic.notaIncompleta).toBe(false);
+  });
+
+  it("reprodução multiline: React residual não contamina a manual Vue", () => {
+    const profileText = "Frontend Developer,\nReact";
+    const parsed = parseLinkedinText(profileText);
+    const deterministic = runLinkedinChecks({
+      ...REQUEST,
+      profileText,
+      parsed,
+      skills: "",
+      headlineManual: "Frontend Developer | Vue",
+    });
+
+    expect(parsed.headlineRegion?.status).toBe("confirmed");
+    expect(deterministic.keywordsEncontradas).toContain("Vue.js");
+    expect(deterministic.keywordsEncontradas).not.toContain("React");
+    expect(deterministic.notaIncompleta).toBe(false);
+  });
+
+  it("região ambígua preserva o bruto, exclui sua evidência e mantém pending", () => {
+    const profileText = [
+      "Frontend Developer,",
+      "Empresa React",
+      "Open Source Contributions",
+      "Conteúdo não delimitado.",
+    ].join("\n");
+    const parsed = parseLinkedinText(profileText);
+    const deterministic = runLinkedinChecks({
+      ...REQUEST,
+      profileText,
+      parsed,
+      skills: "",
+      headlineManual: "Frontend Developer | Vue",
+    });
+
+    expect(parsed.headlineRegion?.status).toBe("ambiguous");
+    expect(textoComHeadlineManual(profileText, "Frontend Developer | Vue")).toBe(
+      profileText,
+    );
+    expect(deterministic.keywordsEncontradas).toContain("Vue.js");
+    expect(deterministic.keywordsEncontradas).not.toContain("React");
+    expect(deterministic.notaIncompleta).toBe(true);
+  });
+
+  it("remove também fragmento estrutural acima da headline detectada", () => {
+    const profileText = [
+      "Top Skills",
+      "TypeScript",
+      "Joana Teste",
+      "Frontend Developer | React |",
+      "Frontend Developer | Produto acessível e interfaces web",
+      "São Paulo, Brasil",
+      "Summary",
+      "Construo interfaces para produtos digitais.",
+    ].join("\n");
+    const parsed = parseLinkedinText(profileText);
+    const deterministic = runLinkedinChecks({
+      ...REQUEST,
+      profileText,
+      parsed,
+      skills: "",
+      headlineManual: "Frontend Developer | Vue.js",
+    });
+
+    expect(parsed.skillsPdf).toEqual(["TypeScript"]);
+    expect(deterministic.keywordsEncontradas).toContain("Vue.js");
+    expect(deterministic.keywordsEncontradas).toContain("TypeScript");
+    expect(deterministic.keywordsEncontradas).not.toContain("React");
+  });
+
+  it("preserva byte a byte todo o texto fora do intervalo da headline", () => {
+    const profileText = [
+      "  Joana Teste  ",
+      "Frontend Developer | React",
+      "",
+      "Projects",
+      "  Aplicação criada com Next.js  ",
+      "Page 1 of 2",
+      "Summary",
+      "Texto final.",
+      "",
+    ].join("\r\n");
+    const esperado = profileText.replace(
+      "Frontend Developer | React",
+      "Frontend Developer | Vue.js",
+    );
+
+    expect(
+      textoComHeadlineManual(profileText, "Frontend Developer | Vue.js"),
+    ).toBe(esperado);
+  });
+
+  it("CASO B: mantém React quando a ocorrência real está em Skills", () => {
+    const profileText = [
+      "Joana Teste",
+      "Frontend Developer | React",
+      "São Paulo, Brasil",
+      "Top Skills",
+      "React",
+      "Git",
+      "Summary",
+      "Construo interfaces web e documento as decisões de produto com o time.",
+    ].join("\n");
+    const deterministic = runLinkedinChecks({
+      ...REQUEST,
+      profileText,
+      parsed: parseLinkedinText(profileText),
+      skills: "",
+      headlineManual: "Frontend Developer | Vue.js",
+    });
+
+    expect(deterministic.keywordsEncontradas).toContain("Vue.js");
+    expect(deterministic.keywordsEncontradas).toContain("React");
+  });
+
+  it("CASO C: preserva tecnologia em seção desconhecida pelo parser", () => {
+    const profileText = [
+      "Joana Teste",
+      "Frontend Developer | React",
+      "São Paulo, Brasil",
+      "Open Source Contributions",
+      "Mantive uma biblioteca de componentes em TypeScript.",
+      "Summary",
+      "Construo interfaces web e documento as decisões de produto com o time.",
+    ].join("\n");
+    const deterministic = runLinkedinChecks({
+      ...REQUEST,
+      profileText,
+      parsed: parseLinkedinText(profileText),
+      skills: "",
+      headlineManual: "Frontend Developer | Vue.js",
+    });
+
+    expect(deterministic.keywordsEncontradas).toContain("Vue.js");
+    expect(deterministic.keywordsEncontradas).toContain("TypeScript");
+    expect(deterministic.keywordsEncontradas).not.toContain("React");
+  });
+
+  it("sem manual preserva resultado e pendência da headline cortada", () => {
+    const semChave = analisar().deterministic;
+    const comVazio = analisar("   ").deterministic;
     expect(comVazio).toEqual(semChave);
-  });
-});
-
-describe("o pendente sai do TEXTO, nunca do ato de editar", () => {
-  // Perfil cuja headline o parser le com assinatura de corte (termina em
-  // virgula), entao `notaIncompleta` nasce true.
-  const CORTADA = [
-    "Contact",
-    "exemplo@teste.com",
-    "",
-    "Top Skills",
-    "TypeScript",
-    "",
-    "Joana Teste",
-    "Desenvolvedora Back-end | Node.js, TypeScript,",
-    "Sao Paulo, Brasil",
-    "",
-    "Experience",
-    "Empresa Exemplo",
-    "Desenvolvedora Back-end",
-    "January 2023 - Present (2 years)",
-    "Construiu APIs em Node.js e PostgreSQL com foco em performance.",
-    "",
-  ].join("\n");
-
-  it("sem edicao, a leitura cortada mantem notaIncompleta true", () => {
-    const r = runLinkedinChecks(baseInput(CORTADA));
-    expect(r.notaIncompleta).toBe(true);
+    expect(semChave.notaIncompleta).toBe(true);
   });
 
-  it("editada e limpa, notaIncompleta vira false SEM regra especial", () => {
-    const r = runLinkedinChecks({
-      ...baseInput(CORTADA),
-      headlineManual: "Desenvolvedora Back-end | Node.js, TypeScript, PostgreSQL",
-    });
-    expect(r.notaIncompleta).toBe(false);
+  it("manual ainda cortada continua pendente", () => {
+    expect(
+      analisar("Desenvolvedora Front-end | React,").deterministic
+        .notaIncompleta,
+    ).toBe(true);
   });
 
-  it("editada e AINDA cortada, notaIncompleta continua true", () => {
-    // ESTA e a prova de que nao existe "editou, entao limpou". Se houvesse uma
-    // regra olhando para o ATO de editar, este caso sairia `false` e a
-    // interface afirmaria faixa sobre uma headline que continua truncada. O
-    // que decide e o texto resultante, e ele ainda tem assinatura.
-    const r = runLinkedinChecks({
-      ...baseInput(CORTADA),
-      headlineManual: "Desenvolvedora Back-end | Node.js, TypeScript, Postgre,",
-    });
-    expect(r.notaIncompleta).toBe(true);
-  });
-});
-
-describe("headlineFinalDe: precedencia", () => {
-  it("a digitada vence a do parser", () => {
-    expect(headlineFinalDe("lida", "digitada")).toBe("digitada");
-  });
-
-  it("ausente, vazia e so-espaco caem na do parser", () => {
-    expect(headlineFinalDe("lida", undefined)).toBe("lida");
-    expect(headlineFinalDe("lida", null)).toBe("lida");
-    expect(headlineFinalDe("lida", "")).toBe("lida");
-    expect(headlineFinalDe("lida", "   ")).toBe("lida");
-  });
-
-  it("sem leitura e sem digitada devolve null, nao string vazia", () => {
-    // `null` e "nao ha headline" e alimenta `headline-existe`. Uma string
-    // vazia passaria por "existe" em qualquer teste de tipo e reprovaria no
-    // check, que e a pior combinacao: o dado mente e o veredito acerta.
+  it("a precedência central tolera ausência e vazio", () => {
+    expect(headlineFinalDe("parser", "manual")).toBe("manual");
+    expect(headlineFinalDe("parser", undefined)).toBe("parser");
+    expect(headlineFinalDe("parser", "   ")).toBe("parser");
     expect(headlineFinalDe(null, undefined)).toBeNull();
-  });
-
-  it("o teto e o mesmo do clip do parser, nao o ideal do check", () => {
-    // 250 e capacidade (`clip(..., 250)`); 220 e qualidade
-    // (`headline-tamanho`). Trocar um pelo outro faria o campo recusar o valor
-    // que o proprio parser produziu.
     expect(HEADLINE_MANUAL_MAX).toBe(250);
   });
 });

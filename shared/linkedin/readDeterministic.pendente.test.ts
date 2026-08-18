@@ -43,9 +43,9 @@ describe("readDeterministic: linha legada real", () => {
     expect(bruto.notaIncompleta).toBeUndefined();
     const checks = bruto.checks ?? [];
     expect(checks.length).toBeGreaterThan(0);
-    expect(checks.every((c: { pendente?: boolean }) => !("pendente" in c))).toBe(
-      true,
-    );
+    expect(
+      checks.every((c: { pendente?: boolean }) => !("pendente" in c)),
+    ).toBe(true);
   });
 
   it("sai FALSE e vazio, nunca undefined", () => {
@@ -63,13 +63,32 @@ describe("readDeterministic: linha legada real", () => {
 });
 
 describe("readDeterministic: linha nova, com os campos", () => {
+  const check = (
+    id: string,
+    tier: "essencial" | "importante" | "opcional",
+    aprovado: boolean,
+    pendente?: boolean,
+  ) => ({
+    id,
+    label: id,
+    category: id.startsWith("headline")
+      ? ("headline" as const)
+      : ("sobre" as const),
+    tier,
+    aprovado,
+    detail: "Detalhe persistido.",
+    pendente,
+  });
   const novo = {
     notaIncompleta: true,
     checks: [
-      { id: "headline-existe", tier: "essencial", aprovado: true, pendente: true },
-      { id: "headline-stack", tier: "importante", aprovado: false, pendente: true },
-      { id: "sobre-tamanho", tier: "essencial", aprovado: true, pendente: false },
-      { id: "foto-profissional", tier: "opcional", aprovado: true },
+      check("headline-existe", "essencial", true, true),
+      check("headline-stack", "importante", false, true),
+      check("sobre-tamanho", "essencial", true, false),
+      {
+        ...check("foto-profissional", "opcional", true),
+        category: "sinais" as const,
+      },
     ],
   };
 
@@ -98,9 +117,9 @@ describe("readDeterministic: entrada corrompida", () => {
   it("notaIncompleta com tipo errado nao vira true por coercao", () => {
     // `"true"` (string) e `1` sao truthy em JS. O schema recusa, e o `=== true`
     // fecha a porta: so booleano verdadeiro conta.
-    expect(readDeterministic({ notaIncompleta: "true" }, 7).notaIncompleta).toBe(
-      false,
-    );
+    expect(
+      readDeterministic({ notaIncompleta: "true" }, 7).notaIncompleta,
+    ).toBe(false);
     expect(readDeterministic({ notaIncompleta: 1 }, 7).notaIncompleta).toBe(
       false,
     );

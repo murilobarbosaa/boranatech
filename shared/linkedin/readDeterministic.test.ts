@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { readDeterministic } from "./readDeterministic";
-import { DETERMINISTIC_VERSION } from "./schema";
 
 // Mesma fixture legada real usada em readQualitative.test.ts: a linha
 // `cf02e168-...` de linkedin_analyses, com PII trocada.
@@ -41,7 +40,7 @@ describe("readDeterministic: linha legada real", () => {
     // ausencia tem que aparecer como ausencia, nao como lista vazia silenciosa.
     expect(view.keywordsCampos).toEqual([]);
     expect(view.camposAusentes).toEqual(["keywordsCampos"]);
-    expect(view.version).toBe(DETERMINISTIC_VERSION);
+    expect(view.version).toBeNull();
   });
 
   it("titulosIngles mantem o shape que a UI mapeia", () => {

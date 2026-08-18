@@ -30,18 +30,21 @@ import {
 // respondeu certo (isso é papel do LinkedinQualitativeSchema na escrita); ele
 // só resgata o que der para resgatar de um jsonb que pode ter qualquer idade.
 const LenientQualitativeSchema = z.object({
-  resumo: z.string().optional(),
-  pontosFortes: z.array(z.string()).optional(),
-  pontosFracos: z.array(z.string()).optional(),
-  melhorias: z.array(LinkedinMelhoriaSchema).optional(),
-  proximoPasso: z.string().optional(),
-  headlines: z.array(z.string()).optional(),
-  sobreReescrito: z.string().optional(),
-  bulletsReescritos: z.array(LinkedinBulletsReescritosSchema).optional(),
-  skillsParaEstudar: z.array(z.string()).optional(),
+  resumo: z.string().optional().catch(undefined),
+  pontosFortes: z.array(z.string()).optional().catch(undefined),
+  pontosFracos: z.array(z.string()).optional().catch(undefined),
+  melhorias: z.array(LinkedinMelhoriaSchema).optional().catch(undefined),
+  proximoPasso: z.string().optional().catch(undefined),
+  headlines: z.array(z.string()).optional().catch(undefined),
+  sobreReescrito: z.string().optional().catch(undefined),
+  bulletsReescritos: z
+    .array(LinkedinBulletsReescritosSchema)
+    .optional()
+    .catch(undefined),
+  skillsParaEstudar: z.array(z.string()).optional().catch(undefined),
   /** Versão 1: campo único, derivado das palavras-chave faltantes. */
-  skillsSugeridas: z.array(z.string()).optional(),
-  modeloMensagemRecrutador: z.string().optional(),
+  skillsSugeridas: z.array(z.string()).optional().catch(undefined),
+  modeloMensagemRecrutador: z.string().optional().catch(undefined),
 });
 
 export interface QualitativeView {
@@ -84,7 +87,8 @@ export function readQualitative(
   // Versão: o carimbo do result manda; sem carimbo, a presença de
   // skillsParaEstudar decide. Linha antiga não tem carimbo nem o campo novo.
   const version =
-    declaredVersion ?? (q.skillsParaEstudar !== undefined ? QUALITATIVE_VERSION : 1);
+    declaredVersion ??
+    (q.skillsParaEstudar !== undefined ? QUALITATIVE_VERSION : 1);
 
   // Legado (v1): `skillsSugeridas` era derivado das FALTANTES, então vira
   // trilha de estudo, nunca "adicione agora". Renderizar aquela lista como
