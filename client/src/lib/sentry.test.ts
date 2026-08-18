@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { amostrarPorOrigem, buildSentryUser, limparBreadcrumb } from "./sentry";
+import {
+  amostrarPorOrigem,
+  buildSentryUser,
+  limparBreadcrumb,
+  mensagemIgnorada,
+} from "./sentry";
 
 /** Trecho realista do que o usuário cola: tem telefone e e-mail no meio. */
 const TEXTO_DE_PERFIL =
@@ -91,6 +96,59 @@ describe("amostrarPorOrigem", () => {
     const evento = { tags: { origem: "x" } };
     expect(amostrarPorOrigem(evento, undefined, () => 0.25)).toBeNull();
     expect(amostrarPorOrigem(evento, undefined, () => 0.2499)).toBe(evento);
+  });
+});
+
+/**
+ * Ruido de ponte nativa (BUG-27, BUG-49, BUG-32, BUG-54).
+ *
+ * As mensagens abaixo sao as que chegaram ao Sentry, copiadas como estao. O
+ * teste tem DOIS lados de propósito, e o segundo é o que importa: um filtro
+ * largo demais apaga erro nosso e nada acusa, porque o sintoma de um filtro
+ * exagerado é justamente a AUSÊNCIA de eventos.
+ */
+describe("mensagemIgnorada", () => {
+  it("casa as três mensagens de ponte nativa que motivaram o filtro", () => {
+    expect(
+      mensagemIgnorada(
+        "undefined is not an object (evaluating 'window.webkit.messageHandlers')",
+      ),
+    ).toBe(true);
+    expect(
+      mensagemIgnorada("Error invoking postMessage: Java object is gone"),
+    ).toBe(true);
+    expect(
+      mensagemIgnorada("Java exception was raised during method invocation"),
+    ).toBe(true);
+  });
+
+  it("CONTROLE NEGATIVO: erro NOSSO não é apagado pelo filtro", () => {
+    // Os nossos eventos de chunk, que são justamente o que as rodadas
+    // anteriores instrumentaram: apagá-los desligaria a medição em silêncio.
+    expect(mensagemIgnorada("chunk_import_failed")).toBe(false);
+    expect(mensagemIgnorada("chunk_reload")).toBe(false);
+    expect(mensagemIgnorada("vite_preload_error")).toBe(false);
+    expect(
+      mensagemIgnorada(
+        "Failed to fetch dynamically imported module: https://boranatech.com.br/assets/Cadastro-Z_ulgmR3.js",
+      ),
+    ).toBe(false);
+    // Falha de rede comum e falha de auth: as duas séries em medição.
+    expect(
+      mensagemIgnorada("NetworkError when attempting to fetch resource."),
+    ).toBe(false);
+    expect(
+      mensagemIgnorada("auth profile failure: profile_fetch_exhausted"),
+    ).toBe(false);
+  });
+
+  it("CONTROLE NEGATIVO: o postMessage legítimo da landing NÃO casa", () => {
+    // `client/public/lancamento.js` usa `window.parent.postMessage`. Um padrão
+    // ancorado em "postMessage" apagaria erro real dessa página, e foi por isso
+    // que a entrada da lista ancorou em "Java object is gone".
+    expect(
+      mensagemIgnorada("Failed to execute 'postMessage' on 'Window'"),
+    ).toBe(false);
   });
 });
 
