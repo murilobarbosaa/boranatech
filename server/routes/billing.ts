@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Router } from "express";
 
 import { env } from "../lib/env";
@@ -142,6 +143,18 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
 
     if (rpcError) {
       console.error("[billing/subscription] is_user_pro RPC failed:", rpcError);
+      // DEGRADACAO SILENCIOSA, capturada de proposito. A rota responde 200 e o
+      // fluxo nao muda: o `isPro` abaixo ja e fail-closed e devolve FREE quando
+      // a RPC falha. Justamente por isso o unico rastro era o console do
+      // Railway, que ninguem abre, e `server/lib/sentry.ts` nao instala
+      // integracao de console (docs/erro-engolido.md). Um usuario Pro vendo
+      // paywall por falha de RPC e exatamente o caso que precisa aparecer.
+      // Mesma forma do `captureConsentMethodColumnMissing` em routes/consent.ts.
+      Sentry.withScope((scope) => {
+        scope.setTag("route", "billing/subscription");
+        scope.setTag("rpc", "is_user_pro");
+        Sentry.captureException(rpcError);
+      });
     }
 
     const isPro = !rpcError && isProRpc === true;
