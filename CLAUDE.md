@@ -9,7 +9,7 @@
 - Solução mais simples primeiro. Não introduzir abstração, dependência ou camada que a tarefa não pediu.
 - Leitura direcionada: abrir arquivo e trecho específicos, não "ler o projeto inteiro".
 - Antes de considerar pronto: rodar `pnpm check`. Mudança em auth, controle de acesso ou deploy exige validação manual antes de subir.
-- O hook de pre-commit está em `.githooks/pre-commit` e roda a suíte inteira, a suíte de novo sem `.env` e o `pnpm check`. `--no-verify` só em emergência; se o hook não estiver rodando, `git config core.hooksPath .githooks` (por quê: `docs/decisoes.md#hook-de-pre-commit`).
+- O hook de pre-commit está em `.githooks/pre-commit` e roda a suíte inteira, a suíte de novo sem `.env`, o `pnpm check` e o `pnpm check:limiares` (só a auditoria; as mutações passam de dez minutos e nunca entram em gate). `--no-verify` só em emergência; se o hook não estiver rodando, `git config core.hooksPath .githooks` (por quê: `docs/decisoes.md#hook-de-pre-commit`).
 - Instrumento de verificação cujo escopo é derivado por um parser que pode sub-casar em silêncio sempre falha PASSANDO (detalhe: `docs/postmortems-instrumentos.md#escopo-derivado-por-parser`).
 - Guard afirma o TOTAL, não só a pertinência: "existem exatamente N, e são estes", nunca "os N que eu conheço estão lá" (detalhe: `docs/postmortems-instrumentos.md#afirmar-o-total`).
 - Reproduzir ausência de ARQUIVO renomeando o arquivo, nunca limpando variável de ambiente (detalhe: `docs/postmortems-instrumentos.md#ausencia-de-arquivo`).
