@@ -4,7 +4,7 @@ import type { RoadmapV2 } from "@/lib/roadmapV2/types";
 // Carregamento sob demanda do conteudo completo de cada trilha v2, um chunk
 // por trilha. Cada entrada importa DIRETO o arquivo da trilha, nunca o index
 // agregado (shared/roadmapV2/content/index.ts): import do agregado faria o
-// Vite fundir as 25 trilhas num chunk so.
+// Vite fundir todas as trilhas num chunk so.
 //
 // Trilha nova exige tres registros: o arquivo da trilha aqui, o import no
 // index agregado e regenerar o meta (pnpm gen:roadmap-meta). O pnpm check
@@ -13,11 +13,16 @@ import type { RoadmapV2 } from "@/lib/roadmapV2/types";
 // build-next-trilha com esse passo.
 //
 // MAPA CRU. Retry e telemetria NAO sao escritos aqui dentro: entram de uma vez
-// so no envelopamento logo abaixo. Repetir `importWithRetry` em cada entrada
-// seria guarda no call site 25 vezes, e a 26a trilha nasceria sem ela no
+// so no envelopamento logo abaixo. Repetir `importWithRetry` em cada uma das
+// entradas seria guarda no call site, e a proxima trilha nasceria sem ela no
 // primeiro dia em que alguem esquecesse. O formato de cada linha (`slug: () =>`)
 // e o que o parser textual de `scripts/generateRoadmapMeta.mts` le, entao ele
 // precisa continuar exatamente assim.
+//
+// SEM NUMERAL de proposito: a contagem de trilhas muda, e comentario que afirma
+// numero fica errado no primeiro registro novo sem nada acusar. Quem quer o
+// total confere no agregado, e o `pnpm check` ja valida a sincronia nos dois
+// sentidos. Este comentario ja carregou "25" quando as entradas eram 30.
 const loadersCrus: Record<string, () => Promise<RoadmapV2>> = {
   frontend: () =>
     import("@shared/roadmapV2/content/frontend").then((m) => m.frontend),
