@@ -74,7 +74,14 @@ describe("headline manual e efetiva", () => {
 
     expect(parsed.headline).not.toBe(manual);
     expect(deterministic.headline).toBe(manual);
-    expect(prompt).toContain(`Headline efetiva da análise: ${manual}`);
+    // A headline efetiva e texto do usuario, entao desde o lote 3 da Fase 2 ela
+    // viaja DENTRO do bloco delimitado, e nao mais colada a um rotulo em linha
+    // corrida. A protecao afirmada aqui e a mesma de antes (e a manual que
+    // chega ao prompt, nao a lida pelo parser); a assercao so passou a apontar
+    // para o lugar novo, e de quebra afirma o enquadramento.
+    expect(prompt).toContain(
+      `<dados_do_usuario campo="headline_efetiva">\n${manual}\n</dados_do_usuario>`,
+    );
     expect(deterministic.notaIncompleta).toBe(false);
   });
 

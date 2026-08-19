@@ -508,6 +508,12 @@ const FONTES = [
   "shared/linkedin/reguaV2.ts",
   "server/lib/linkedinChecks.ts",
   "server/lib/linkedinAnalyze.ts",
+  // Modulo da delimitacao anti-injection (Fase 2, lote 3). Entra aqui HOJE sem
+  // nenhum sitio numerico, e e esse o ponto: o escopo do guard acompanha o
+  // codigo, entao um limiar que nasca nele ja nasce tendo de ser classificado.
+  // Guard cujo escopo e escrito a mao e revisto depois e a falha que este
+  // arquivo inteiro documenta.
+  "server/lib/linkedinBlocoDeDados.ts",
 ];
 
 const PADROES_SITIO = [
