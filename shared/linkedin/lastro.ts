@@ -1,5 +1,3 @@
-import { numeraisSemLastro, removerNumeralSemLastro } from "./numeralLastro";
-
 /**
  * Camada ÚNICA de lastro do texto gerado pela IA.
  *
@@ -50,23 +48,4 @@ export interface Violacao {
   campo: "headlines" | "bulletsReescritos";
   contexto: string;
   termo: string;
-}
-
-/**
- * Remove de um texto uma tecnologia sem lastro, preservando a frase.
- *
- * Cuida do separador que sobra: numa headline `A | B | C`, tirar `B` não pode
- * deixar `A |  | C`.
- */
-export function removerTermoSemLastro(texto: string, termo: string): string {
-  const escapado = termo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return texto
-    .replace(new RegExp(`\\s*\\b${escapado}\\b\\s*`, "gi"), " ")
-    .replace(/\s*\|\s*(?=\|)/g, "")
-    .replace(/^\s*\|\s*/, "")
-    .replace(/\s*\|\s*$/, "")
-    .replace(/\s*,\s*(?=,)/g, "")
-    .replace(/\s{2,}/g, " ")
-    .replace(/\s+([.,;:])/g, "$1")
-    .trim();
 }

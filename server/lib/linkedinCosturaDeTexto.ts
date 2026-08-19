@@ -100,8 +100,10 @@ export function normalizarPontuacao(texto: string): string {
 }
 
 /**
- * CAMADA 1 mais CAMADA 2. Substitui `removerTermoSemLastro` nos call sites do
- * lastro: mesmo veredito, texto costurado.
+ * CAMADA 1 mais CAMADA 2. E o removedor usado pelos call sites do lastro desde
+ * o lote 4: mesmo veredito de antes, texto costurado. O removedor anterior era
+ * `removerTermoSemLastro`, apagado no lote 5 para nao existirem duas fontes de
+ * comportamento para a mesma operacao.
  *
  * ORDEM das regras, e o porque de cada uma:
  *   1. conectivo orfao primeiro, porque ele precisa enxergar o termo ainda no
