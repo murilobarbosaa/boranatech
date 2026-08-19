@@ -6,7 +6,10 @@ import {
   removerNumeralSemLastro,
 } from "./numeralLastro";
 
-const canon = (t: string) => extrairNumerais(t).map((n) => n.canonico).sort();
+const canon = (t: string) =>
+  extrairNumerais(t)
+    .map((n) => n.canonico)
+    .sort();
 
 describe("extrairNumerais: variacao de forma", () => {
   it("percentual com e sem aproximacao", () => {
@@ -43,7 +46,8 @@ describe("extrairNumerais: variacao de forma", () => {
 
 describe("numeraisSemLastro: o caso real medido", () => {
   // Experiencia SEM descricao no PDF: o parser entrega o cabecalho da seguinte.
-  const origemCto = "Startup Alfa CTO & Co-founder NexoRH Artificial Intelligence Engineer";
+  const origemCto =
+    "Startup Alfa CTO & Co-founder NexoRH Artificial Intelligence Engineer";
   const origemNexo =
     "NexoRH Artificial Intelligence Engineer Built an LLM orchestrator backed by deterministic pre-routers that cut latency by ~86% on common queries. Architected and deployed a semantic search engine over 3M+ candidate profiles.";
   const origemBotvia =
@@ -52,21 +56,27 @@ describe("numeraisSemLastro: o caso real medido", () => {
   it("pega os tres percentuais fabricados na medicao da Fase 1A", () => {
     expect(
       numeraisSemLastro(
-        ["Liderou o desenvolvimento de sistemas de AI para otimização de processos de RH, melhorando a eficiência em 30%."],
+        [
+          "Liderou o desenvolvimento de sistemas de AI para otimização de processos de RH, melhorando a eficiência em 30%.",
+        ],
         origemCto,
       ).map((x) => x.numeral),
     ).toEqual(["30%"]);
 
     expect(
       numeraisSemLastro(
-        ["Arquitetou um mecanismo de busca semântico para mais de 3 milhões de perfis, melhorando a eficácia de busca em 40%."],
+        [
+          "Arquitetou um mecanismo de busca semântico para mais de 3 milhões de perfis, melhorando a eficácia de busca em 40%.",
+        ],
         origemNexo,
       ).map((x) => x.numeral),
     ).toEqual(["40%"]);
 
     expect(
       numeraisSemLastro(
-        ["Aumentou o engajamento do cliente em 25% com soluções de AI adaptadas às necessidades específicas."],
+        [
+          "Aumentou o engajamento do cliente em 25% com soluções de AI adaptadas às necessidades específicas.",
+        ],
         origemBotvia,
       ).map((x) => x.numeral),
     ).toEqual(["25%"]);
@@ -88,21 +98,31 @@ describe("numeraisSemLastro: o caso real medido", () => {
     expect(
       numeraisSemLastro(["Criou mais de 20 agentes."], origemBotvia),
     ).toEqual([]);
-    expect(
-      numeraisSemLastro(["Criou vinte agentes."], origemBotvia),
-    ).toEqual([]);
+    expect(numeraisSemLastro(["Criou vinte agentes."], origemBotvia)).toEqual(
+      [],
+    );
   });
 
   it("numero de VERSAO colado a letra nao conta como metrica", () => {
     // "ITIL v4", "ES6", "Vue3": identificador, nao resultado.
-    expect(numeraisSemLastro(["Implementei ITIL v4 no time."], origemBotvia)).toEqual([]);
-    expect(numeraisSemLastro(["Migrei para ES6 e Vue3."], origemBotvia)).toEqual([]);
+    expect(
+      numeraisSemLastro(["Implementei ITIL v4 no time."], origemBotvia),
+    ).toEqual([]);
+    expect(
+      numeraisSemLastro(["Migrei para ES6 e Vue3."], origemBotvia),
+    ).toEqual([]);
   });
 
   it("data e duracao nao contam como metrica", () => {
-    expect(numeraisSemLastro(["Atuou em 2024 no projeto."], origemBotvia)).toEqual([]);
-    expect(numeraisSemLastro(["Liderou por 4 meses o time."], origemBotvia)).toEqual([]);
-    expect(numeraisSemLastro(["Led the team for 2 years."], origemBotvia)).toEqual([]);
+    expect(
+      numeraisSemLastro(["Atuou em 2024 no projeto."], origemBotvia),
+    ).toEqual([]);
+    expect(
+      numeraisSemLastro(["Liderou por 4 meses o time."], origemBotvia),
+    ).toEqual([]);
+    expect(
+      numeraisSemLastro(["Led the team for 2 years."], origemBotvia),
+    ).toEqual([]);
   });
 
   it("TIPO TROCADO: contagem na origem usada como percentual no bullet", () => {
@@ -111,7 +131,9 @@ describe("numeraisSemLastro: o caso real medido", () => {
     const origem =
       "OGF Intern Enhanced support systems for 25+ IT professionals. Improved IT service delivery.";
     const fora = numeraisSemLastro(
-      ["Implementei frameworks ITIL v4, melhorando a satisfação do usuário em 25%."],
+      [
+        "Implementei frameworks ITIL v4, melhorando a satisfação do usuário em 25%.",
+      ],
       origem,
     );
     expect(fora.map((x) => x.numeral)).toEqual(["25%"]);
@@ -120,7 +142,9 @@ describe("numeraisSemLastro: o caso real medido", () => {
 
   it("percentual na origem sustenta percentual no bullet", () => {
     const origem = "pre-routers that cut latency by ~86% on common queries";
-    expect(numeraisSemLastro(["Reduziu a latencia em 86%."], origem)).toEqual([]);
+    expect(numeraisSemLastro(["Reduziu a latencia em 86%."], origem)).toEqual(
+      [],
+    );
     // "86 percent" por extenso tambem conta como percentual na origem.
     expect(
       numeraisSemLastro(["Cut latency by 86%."], "cut latency by 86 percent"),
@@ -149,7 +173,9 @@ describe("removerNumeralSemLastro: preserva a frase", () => {
         "Liderou o desenvolvimento de sistemas de AI, melhorando a eficiência em 30%.",
         "30%",
       ),
-    ).toBe("Liderou o desenvolvimento de sistemas de AI, melhorando a eficiência.");
+    ).toBe(
+      "Liderou o desenvolvimento de sistemas de AI, melhorando a eficiência.",
+    );
   });
 
   it("funciona em ingles", () => {
@@ -176,5 +202,74 @@ describe("removerNumeralSemLastro: preserva a frase", () => {
     expect(saida.length).toBeGreaterThan(20);
     expect(saida).not.toContain("40");
     expect(saida.endsWith(".")).toBe(true);
+  });
+});
+
+/**
+ * Tolerancias acrescentadas no lote 5 da Fase 2, quando o lastro passou a
+ * cobrir PROSA. As duas nascem de falso positivo medido, e as duas sao OPT-IN:
+ * sem opcao, o comportamento e o de sempre, entao os bullets continuam
+ * identicos byte a byte.
+ */
+describe("tolerancias de prosa (opt-in)", () => {
+  const ehTecnologia = (palavra: string) =>
+    ["react", "node", "python", "vue"].includes(palavra.toLowerCase());
+  const origem = "Desenvolvi telas em React para 12 squads internos.";
+
+  it("versao com ESPACO conta como versao quando ha vocabulario", () => {
+    const texto = "Migrou para React 18 e testou Python 3.11 no time.";
+    // Sem o vocabulario, o comportamento e o antigo: numeral fabricado.
+    expect(numeraisSemLastro([texto], origem).map((n) => n.numeral)).toEqual([
+      "18",
+      "3.11",
+    ]);
+    // Com ele, versao nao e metrica de resultado.
+    expect(numeraisSemLastro([texto], origem, { ehTecnologia })).toEqual([]);
+  });
+
+  it("percentual NUNCA vira versao, mesmo colado em tecnologia", () => {
+    // A porta que nao pode abrir: "React 40%" nao existe, e trata-la como
+    // versao perderia justamente o claim fabricado.
+    const fora = numeraisSemLastro(
+      ["Melhorou React 40% no trimestre."],
+      origem,
+      {
+        ehTecnologia,
+      },
+    );
+    expect(fora.map((n) => n.numeral)).toEqual(["40%"]);
+  });
+
+  it("numero por extenso pode ser ignorado no texto conferido", () => {
+    const texto = "Sao tres pontos fortes e dois pontos fracos.";
+    expect(
+      numeraisSemLastro([texto], origem)
+        .map((n) => n.numeral)
+        .sort(),
+    ).toEqual(["dois", "tres"]);
+    expect(
+      numeraisSemLastro([texto], origem, { ignorarPorExtenso: true }),
+    ).toEqual([]);
+  });
+
+  it("a ORIGEM continua lendo por extenso, e e isso que a opcao preserva", () => {
+    // A opcao vale SO para o texto conferido. Aqui o perfil escreve o numero
+    // por extenso e o texto o escreve em digito: o lastro so existe porque a
+    // origem continua sendo lida por extenso. Se a opcao valesse dos dois
+    // lados, este caso legitimo viraria violacao.
+    expect(
+      numeraisSemLastro(["Atendeu 3 squads internos."], "Sao tres squads.", {
+        ignorarPorExtenso: true,
+      }),
+    ).toEqual([]);
+    // Limite PRE-EXISTENTE, nao introduzido aqui e nao corrigido aqui: o
+    // por extenso nao aplica palavra de escala, entao "tres milhoes" na origem
+    // canoniza como 3 e nao casa com "3M" (3000000) no texto.
+    expect(
+      numeraisSemLastro(
+        ["Alcancou 3M de usuarios."],
+        "Base de tres milhoes de usuarios ativos.",
+      ).map((n) => n.numeral),
+    ).toEqual(["3M"]);
   });
 });

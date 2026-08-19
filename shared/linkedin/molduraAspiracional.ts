@@ -2,10 +2,15 @@
  * Régua de medição: uma tecnologia sem lastro está dentro de moldura de
  * aprendizado, ou é afirmação de experiência?
  *
- * NÃO é código de produto. Nada em `server/` ou `client/` importa este arquivo:
- * quem usa é o harness de fidelidade, que vive fora do repositório. Mora aqui,
- * versionado e com teste, porque a régua é o que decide se uma medição reprova,
- * e régua sem teste foi exatamente o problema que originou esta auditoria.
+ * DESDE O LOTE 5 DA FASE 2 ISTO É CÓDIGO DE PRODUTO. Até então nada em
+ * `server/` ou `client/` importava este arquivo e quem usava era só o harness
+ * de fidelidade, que vive fora do repositório; agora
+ * `server/lib/linkedinLastroProsa.ts` chama `enquadramentoDeTermo` para separar
+ * afirmação de aspiração antes de acusar violação em prosa. Consequência
+ * prática: mudar um marcador daqui muda o que chega ao usuário, não só o
+ * placar de uma medição. Continua morando em `shared/` e com teste próprio,
+ * porque a régua é o que decide se uma medição reprova, e régua sem teste foi
+ * exatamente o problema que originou esta auditoria.
  *
  * Por que existe (docs/tecnologia-aspiracional-sobre.md): em duas medições de
  * 30 execuções, todas as 5 ocorrências de "tecnologia sem lastro no

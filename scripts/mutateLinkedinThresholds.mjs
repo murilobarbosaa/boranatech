@@ -518,6 +518,10 @@ const FONTES = [
   // modulo acima: entra sem sitio numerico nenhum hoje, para que um limiar que
   // nasca aqui ja nasca tendo de ser classificado.
   "server/lib/linkedinCosturaDeTexto.ts",
+  // Deteccao de invento em prosa (Fase 2, lote 5). Mesmo motivo dos dois
+  // modulos acima: entra sem sitio numerico hoje, para que um limiar que nasca
+  // aqui ja nasca tendo de ser classificado.
+  "server/lib/linkedinLastroProsa.ts",
 ];
 
 const PADROES_SITIO = [
@@ -627,6 +631,10 @@ const NAO_LIMIAR = [
   [
     /posMarcador >= 0 && posMarcador < posTermo/,
     "ordem entre indices, nao e numero de regra",
+  ],
+  [
+    /if \(idx <= 0\) return null;/,
+    "guarda de indice em palavraAnterior: zero significa numeral no inicio do texto, nao ha palavra antes. Nao e fronteira de valor",
   ],
   [/headlineIdx <= 0/, "guarda de indice: nao ha linha anterior a headline"],
   [

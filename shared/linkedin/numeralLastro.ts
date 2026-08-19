@@ -46,15 +46,51 @@ export interface NumeralEncontrado {
 // como numeral produz falso positivo em quase todo bullet. Perde-se o caso
 // raro de "um" querendo dizer 1; o custo do inverso e maior.
 const POR_EXTENSO: Record<string, string> = {
-  zero: "0", dois: "2", duas: "2", tres: "3", quatro: "4",
-  cinco: "5", seis: "6", sete: "7", oito: "8", nove: "9", dez: "10",
-  onze: "11", doze: "12", vinte: "20", trinta: "30", quarenta: "40",
-  cinquenta: "50", sessenta: "60", setenta: "70", oitenta: "80", noventa: "90",
-  cem: "100", cento: "100", mil: "1000",
-  two: "2", three: "3", four: "4", five: "5", six: "6", seven: "7",
-  eight: "8", nine: "9", ten: "10", eleven: "11", twelve: "12", twenty: "20",
-  thirty: "30", forty: "40", fifty: "50", sixty: "60", seventy: "70",
-  eighty: "80", ninety: "90", hundred: "100", thousand: "1000",
+  zero: "0",
+  dois: "2",
+  duas: "2",
+  tres: "3",
+  quatro: "4",
+  cinco: "5",
+  seis: "6",
+  sete: "7",
+  oito: "8",
+  nove: "9",
+  dez: "10",
+  onze: "11",
+  doze: "12",
+  vinte: "20",
+  trinta: "30",
+  quarenta: "40",
+  cinquenta: "50",
+  sessenta: "60",
+  setenta: "70",
+  oitenta: "80",
+  noventa: "90",
+  cem: "100",
+  cento: "100",
+  mil: "1000",
+  two: "2",
+  three: "3",
+  four: "4",
+  five: "5",
+  six: "6",
+  seven: "7",
+  eight: "8",
+  nine: "9",
+  ten: "10",
+  eleven: "11",
+  twelve: "12",
+  twenty: "20",
+  thirty: "30",
+  forty: "40",
+  fifty: "50",
+  sixty: "60",
+  seventy: "70",
+  eighty: "80",
+  ninety: "90",
+  hundred: "100",
+  thousand: "1000",
 };
 
 function semAcento(v: string): string {
@@ -78,8 +114,15 @@ function canonizar(bruto: string): string {
   // Sufixo de escala.
   const escala = v.match(/^([\d.,]+)(m|mm|k|mil|bi|b)$/);
   if (escala) {
-    const base = Number(escala[1].replace(/[.,](?=\d{3}\b)/g, "").replace(",", "."));
-    const mult = escala[2] === "k" || escala[2] === "mil" ? 1e3 : escala[2] === "bi" || escala[2] === "b" ? 1e9 : 1e6;
+    const base = Number(
+      escala[1].replace(/[.,](?=\d{3}\b)/g, "").replace(",", "."),
+    );
+    const mult =
+      escala[2] === "k" || escala[2] === "mil"
+        ? 1e3
+        : escala[2] === "bi" || escala[2] === "b"
+          ? 1e9
+          : 1e6;
     if (Number.isFinite(base)) return String(Math.round(base * mult));
   }
   // Separador de milhar: ponto ou virgula seguidos de exatamente 3 digitos.
@@ -92,23 +135,36 @@ function canonizar(bruto: string): string {
 
 // Palavra de escala DEPOIS do digito: "3 milhoes" tem de casar com "3M+".
 const ESCALA_PALAVRA: Record<string, number> = {
-  mil: 1e3, milhar: 1e3, milhares: 1e3,
-  milhao: 1e6, milhoes: 1e6, million: 1e6, millions: 1e6,
-  bilhao: 1e9, bilhoes: 1e9, billion: 1e9, billions: 1e9,
+  mil: 1e3,
+  milhar: 1e3,
+  milhares: 1e3,
+  milhao: 1e6,
+  milhoes: 1e6,
+  million: 1e6,
+  millions: 1e6,
+  bilhao: 1e9,
+  bilhoes: 1e9,
+  billion: 1e9,
+  billions: 1e9,
 };
 
 const NUMERAL_RE =
   /(?:~\s*)?\d[\d.,\s]*\d(?:\s*%|\s*(?:m|mm|k|mil|bi|b)\b)?|\d(?:\s*%|\s*(?:m|mm|k|mil|bi|b)\b)?/gi;
 
 /** Extrai todos os numerais de um texto, em dígito e por extenso. */
-export function extrairNumerais(texto: string): NumeralEncontrado[] {
+export function extrairNumerais(
+  texto: string,
+  opcoes: { ignorarPorExtenso?: boolean } = {},
+): NumeralEncontrado[] {
   const out: NumeralEncontrado[] = [];
   for (const m of Array.from(texto.matchAll(NUMERAL_RE))) {
     const bruto = m[0].trim();
     if (!/\d/.test(bruto)) continue;
     const inicio = m.index ?? 0;
     // Letra colada antes: "v4", "ES6", "Vue3". Versao, nao metrica.
-    const versao = /[a-zà-ÿ]/i.test(texto.slice(Math.max(0, inicio - 1), inicio));
+    const versao = /[a-zà-ÿ]/i.test(
+      texto.slice(Math.max(0, inicio - 1), inicio),
+    );
     const fim = inicio + m[0].length;
     const seguinte = texto.slice(fim, fim + 2);
     // "40%", "40 %", "40 percent", "40 por cento" e "40 pct" sao percentual.
@@ -118,19 +174,34 @@ export function extrairNumerais(texto: string): NumeralEncontrado[] {
       /^\s*%/.test(seguinte) ||
       /^\s*(?:percent|per cento|por cento|pct)\b/.test(depois);
     // "3 milhoes" vira 3000000, para casar com "3M+" na origem.
-    const palavraSeguinte = semAcento(texto.slice(fim, fim + 12)).match(/^\s*([a-z]+)/);
-    const escala = palavraSeguinte ? ESCALA_PALAVRA[palavraSeguinte[1]] : undefined;
+    const palavraSeguinte = semAcento(texto.slice(fim, fim + 12)).match(
+      /^\s*([a-z]+)/,
+    );
+    const escala = palavraSeguinte
+      ? ESCALA_PALAVRA[palavraSeguinte[1]]
+      : undefined;
     const canonico = canonizar(bruto);
     if (escala && /^\d+(\.\d+)?$/.test(canonico)) {
-      out.push({ bruto: `${bruto} ${palavraSeguinte![1]}`, canonico: String(Math.round(Number(canonico) * escala)), percentual, versao });
+      out.push({
+        bruto: `${bruto} ${palavraSeguinte![1]}`,
+        canonico: String(Math.round(Number(canonico) * escala)),
+        percentual,
+        versao,
+      });
       continue;
     }
     out.push({ bruto, canonico, percentual, versao });
   }
+  if (opcoes.ignorarPorExtenso) return out;
   const semAc = semAcento(texto);
   for (const [palavra, digito] of Object.entries(POR_EXTENSO)) {
     if (new RegExp(`\\b${palavra}\\b`).test(semAc)) {
-      out.push({ bruto: palavra, canonico: digito, percentual: false, versao: false });
+      out.push({
+        bruto: palavra,
+        canonico: digito,
+        percentual: false,
+        versao: false,
+      });
     }
   }
   return out;
@@ -146,8 +217,60 @@ function ehDataOuDuracao(bruto: string, contexto: string): boolean {
   if (n >= 1900 && n <= 2100) return true;
   const idx = contexto.indexOf(bruto);
   if (idx < 0) return false;
-  const depois = semAcento(contexto.slice(idx + bruto.length, idx + bruto.length + 14));
-  return /^\s*(anos?|meses|mes|months?|years?|yrs?|mos?|semanas?|weeks?|dias?|days?)\b/.test(depois);
+  const depois = semAcento(
+    contexto.slice(idx + bruto.length, idx + bruto.length + 14),
+  );
+  return /^\s*(anos?|meses|mes|months?|years?|yrs?|mos?|semanas?|weeks?|dias?|days?)\b/.test(
+    depois,
+  );
+}
+
+/**
+ * Versão de tecnologia escrita com espaço: "React 18", "Node 20",
+ * "Python 3.11".
+ *
+ * O flag `versao` de `extrairNumerais` só pega o dígito COLADO na letra ("v4",
+ * "ES6", "Vue3"), que é a forma que aparecia nos bullets. Em prosa a forma
+ * comum é com espaço, e sem esta checagem "migrei para o React 18" vira numeral
+ * fabricado: um falso positivo que acusaria o texto certo.
+ *
+ * O VOCABULÁRIO vem de fora, por predicado, e isto é deliberado. A lista de
+ * tecnologias mora em `server/lib/skillNormalize.ts` com o normalizador e os
+ * sinônimos dela ("Node" casando "Node.js"); reescrever esse casamento aqui
+ * seria uma segunda derivação do mesmo fato, que é a classe de defeito que o
+ * CLAUDE.md documenta. Sem o predicado o comportamento é o de sempre, então os
+ * chamadores antigos (bullets) continuam idênticos byte a byte.
+ */
+export interface OpcoesDeLastro {
+  /** Devolve true se a palavra é nome de tecnologia do catálogo. */
+  ehTecnologia?: (palavra: string) => boolean;
+  /**
+   * Ignora número escrito por extenso no texto CONFERIDO (não na origem).
+   *
+   * Existe por causa da prosa. Em bullet, "dois" e "três" quase sempre contam
+   * alguma coisa; em prosa de conversa eles são a palavra comum da língua
+   * ("dois pontos fortes", "as três melhorias"), e cada ocorrência virava
+   * violação porque o número não estava no perfil. Medido: o texto NEUTRO da
+   * fixture de teste, sem nenhum invento, gerava sete violações só assim.
+   *
+   * A troca é deliberada e assimétrica: perde-se a detecção do caso raro
+   * ("reduzi custos em quarenta por cento", que o modelo praticamente não
+   * escreve, porque métrica ele escreve com dígito) para não inundar a
+   * telemetria que este lastro existe para alimentar. Guard ruidoso é guard que
+   * alguém desliga. A ORIGEM continua lendo por extenso, então "3 milhões" no
+   * perfil segue casando com "3M+" no texto.
+   */
+  ignorarPorExtenso?: boolean;
+}
+
+/** A palavra imediatamente anterior ao numeral, se houver. */
+function palavraAnterior(contexto: string, bruto: string): string | null {
+  const idx = contexto.indexOf(bruto);
+  if (idx <= 0) return null;
+  const antes = contexto.slice(0, idx).trimEnd();
+  if (antes.length === contexto.slice(0, idx).length) return null;
+  const m = antes.match(/([\wà-ÿ.+#]+)$/i);
+  return m ? m[1] : null;
 }
 
 export interface NumeralSemLastro {
@@ -166,6 +289,7 @@ export interface NumeralSemLastro {
 export function numeraisSemLastro(
   bullets: string[],
   origem: string,
+  opcoes: OpcoesDeLastro = {},
 ): NumeralSemLastro[] {
   const daOrigem = extrairNumerais(origem);
   const valores = new Set(daOrigem.map((n) => n.canonico));
@@ -177,9 +301,17 @@ export function numeraisSemLastro(
 
   const fora: NumeralSemLastro[] = [];
   for (const bullet of bullets) {
-    for (const n of extrairNumerais(bullet)) {
+    for (const n of extrairNumerais(bullet, {
+      ignorarPorExtenso: opcoes.ignorarPorExtenso,
+    })) {
       if (n.versao) continue;
       if (ehDataOuDuracao(n.bruto, bullet)) continue;
+      // "React 18" e irmãos. Percentual nunca é versão: "React 40%" não existe,
+      // e deixar essa porta aberta perderia justamente o claim fabricado.
+      if (!n.percentual && opcoes.ehTecnologia) {
+        const anterior = palavraAnterior(bullet, n.bruto);
+        if (anterior !== null && opcoes.ehTecnologia(anterior)) continue;
+      }
       if (!valores.has(n.canonico)) {
         fora.push({ bullet, numeral: n.bruto, motivo: "ausente" });
         continue;
@@ -207,7 +339,10 @@ export function numeraisSemLastro(
  * afirmação sustentada pelo perfil. O bullet sem número é pior de ler e
  * honesto; com número inventado é melhor de ler e falso.
  */
-export function removerNumeralSemLastro(bullet: string, numeral: string): string {
+export function removerNumeralSemLastro(
+  bullet: string,
+  numeral: string,
+): string {
   const escapado = numeral.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return (
     bullet
