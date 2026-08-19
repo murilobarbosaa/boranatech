@@ -54,3 +54,41 @@ aquelas linhas serem identidade o nome da pessoa teria que ser `React`.
 Direcao de aperto: tratar como sinal de identidade, dentro do filtro de
 prefill, tambem a linha que passa como headline plausivel dentro de uma secao,
 e nao so a que passa como nome.
+
+## 3. Linha de stack com quatro partes por virgula bloqueia a juncao da headline
+
+Mesma raiz do item 1, `ehLocalizacaoEstrutural`, com sintoma diferente e pior,
+porque aqui a perda e da propria headline e nao do prefill.
+
+Quando o PDF quebra a headline em duas linhas e a continuacao tem ate quatro
+partes separadas por virgula, cada uma comecando em maiuscula e com ate quatro
+palavras, o validador a classifica como LOCALIZACAO. Sendo localizacao, ela e
+recusada por `ehContinuacaoDeHeadline`, a juncao nao dispara, e o parser fica
+so com a primeira metade. Como a metade que sobra e bem formada, nenhuma das
+quatro assinaturas dispara, e a clausula de `linhasAbaixo` tambem nao, porque a
+continuacao nao comeca em separador. Resultado: `headlineRegion: confirmed` e
+`notaIncompleta: false` sobre uma headline pela metade.
+
+Reproduzido com o codigo commitado da Fase 1, sobre o fixture real registrado em
+`docs/auditoria-linkedin-fechamento.md`:
+
+```
+Joana Teste
+Desenvolvedora Full Stack |
+TypeScript, React, Node.js, PostgreSQL | Remote
+```
+
+Devolve `headline: "Desenvolvedora Full Stack"`, perdendo a stack inteira. O
+MESMO fixture com cinco partes por virgula, ou sem virgula nenhuma, junta
+corretamente: a falha vive numa faixa estreita do validador, o teto de quatro
+partes de `ehLinhaDeLocalizacao`.
+
+Por que nao bloqueia a Fase 1: a familia ja existia antes dela e nao foi
+introduzida por ela; a Fase 1 fechou a familia da continuacao orfa, que era a
+que tinha caso real com PDF em maos. Esta continua aberta e agora tem mecanismo
+identificado, que e mais do que se sabia antes.
+
+Direcao de aperto: exigir sinal geografico de verdade em `ehLocalizacaoEstrutural`
+(nome de cidade, estado, pais, ou uma das palavras de regiao ja listadas) em vez
+de aceitar qualquer enumeracao curta e capitalizada. Isso ataca os itens 1 e 3 de
+uma vez, porque os dois saem do mesmo validador.
