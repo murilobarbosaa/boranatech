@@ -4,13 +4,14 @@ import { AREA_LABELS, isAreaSlug } from "@shared/areas";
 import {
   FAIXA_LABELS,
   type LinkedinAnalysisSummary,
-  type LinkedinFaixa,
 } from "@shared/linkedin/schema";
 
 interface LinkedinHistoryProps {
   analyses: LinkedinAnalysisSummary[];
   onOpen: (id: string) => void;
   loadingId: string | null;
+  status: "loading" | "success_empty" | "success_with_data" | "error";
+  openError?: string;
 }
 
 function areaLabel(area: string): string {
@@ -42,20 +43,54 @@ function formatDate(iso: string): string {
 function rotuloDaFaixa(analysis: LinkedinAnalysisSummary): string {
   const versao = analysis.deterministicVersion ?? 1;
   if (versao >= 7 && analysis.notaIncompleta === true) return "A confirmar";
-  return FAIXA_LABELS[analysis.faixa as LinkedinFaixa] ?? analysis.faixa;
+  return FAIXA_LABELS[analysis.faixa];
 }
 
 export default function LinkedinHistory({
   analyses,
   onOpen,
   loadingId,
+  status,
+  openError = "",
 }: LinkedinHistoryProps) {
-  if (analyses.length === 0) return null;
+  if (status === "error") {
+    return (
+      <div
+        role="alert"
+        className="rounded-2xl border-2 border-amber-500 bg-amber-50 p-5 text-slate-900 shadow-[3px_3px_0_#0f172a]"
+      >
+        <p className="font-black">
+          Não conseguimos carregar seu histórico agora.
+        </p>
+        <p className="mt-1 text-sm font-medium text-slate-700">
+          Sua análise atual continua disponível. Tente novamente ao recarregar a
+          página.
+        </p>
+      </div>
+    );
+  }
+  if (status === "loading") {
+    return (
+      <p role="status" className="text-sm font-bold text-slate-600">
+        Carregando análises anteriores...
+      </p>
+    );
+  }
+  if (status === "success_empty" || analyses.length === 0) return null;
 
   // O delta de nota e responsabilidade da pagina (banner e hero do
   // resultado), como no molde do GitHub; aqui e so a lista.
   return (
-    <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
+    <div className="space-y-3">
+      {openError ? (
+        <div
+          role="alert"
+          className="rounded-xl border-2 border-amber-500 bg-amber-50 p-3 text-sm font-bold text-slate-900"
+        >
+          {openError}
+        </div>
+      ) : null}
+      <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
       <h3 className="mb-4 flex items-center gap-2 font-display text-xl font-black text-slate-950">
         <History className="h-5 w-5 text-sky-700" />
         Minhas análises
@@ -75,8 +110,7 @@ export default function LinkedinHistory({
                   {areaLabel(analysis.area)}
                 </p>
                 <p className="text-xs font-medium text-slate-500">
-                  {formatDate(analysis.created_at)} ·{" "}
-                  {rotuloDaFaixa(analysis)}
+                  {formatDate(analysis.created_at)} · {rotuloDaFaixa(analysis)}
                 </p>
               </div>
               <span className="flex items-center gap-2">
@@ -91,6 +125,7 @@ export default function LinkedinHistory({
           </li>
         ))}
       </ul>
+      </div>
     </div>
   );
 }

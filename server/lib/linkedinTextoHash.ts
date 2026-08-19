@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { normalizarTextoParaHash } from "../../shared/linkedin/textoHash";
 
 /**
  * Impressão digital do texto analisado, para saber se DUAS análises leram o
@@ -35,6 +36,6 @@ import crypto from "crypto";
  * consertando, uma camada abaixo.
  */
 export function hashDoTexto(texto: string): string {
-  const normalizado = texto.replace(/\r\n?/g, "\n").trim();
+  const normalizado = normalizarTextoParaHash(texto);
   return crypto.createHash("sha256").update(normalizado, "utf8").digest("hex");
 }

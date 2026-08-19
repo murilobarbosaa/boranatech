@@ -91,7 +91,7 @@ describe("delta de nota entre versoes da regua", () => {
     ).toBe(true);
   });
 
-  it("a versao atual e 7: reanalise de qualquer historico existente nao compara", () => {
+  it("a versao atual e 8: v7 e versões anteriores não comparam", () => {
     // Guard contra esquecer de bumpar: se DETERMINISTIC_VERSION voltar a 1,
     // este teste quebra e avisa que o historico voltaria a ser comparado.
     // Alterar este numero e ATO DELIBERADO, no mesmo commit da mudanca que
@@ -106,12 +106,17 @@ describe("delta de nota entre versoes da regua", () => {
     // leitura em duvida: ~17% das analises passam a ver "A confirmar" no lugar
     // da faixa. Comparar uma nota completa com uma incompleta e o que o bump
     // impede.
-    expect(DETERMINISTIC_VERSION).toBe(7);
+    //
+    // 7 -> 8: a headline manual deixou de reconstruir um perfil parcial e
+    // passou a substituir somente a região estrutural detectada. Seções
+    // desconhecidas voltam a contar e fragmentos antigos deixam de vazar.
+    expect(DETERMINISTIC_VERSION).toBe(8);
     expect(deltaEhComparavel(null, DETERMINISTIC_VERSION)).toBe(false);
     // As linhas persistidas sao v1 (sem carimbo), v4, v5 ou v6. Nenhuma delas
-    // compara com a v7, que e o ponto do bump.
+    // compara com a v8, que e o ponto do bump.
     expect(deltaEhComparavel(4, DETERMINISTIC_VERSION)).toBe(false);
     expect(deltaEhComparavel(5, DETERMINISTIC_VERSION)).toBe(false);
     expect(deltaEhComparavel(6, DETERMINISTIC_VERSION)).toBe(false);
+    expect(deltaEhComparavel(7, DETERMINISTIC_VERSION)).toBe(false);
   });
 });
