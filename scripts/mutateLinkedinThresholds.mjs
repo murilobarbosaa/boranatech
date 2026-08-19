@@ -241,6 +241,19 @@ const MUT = [
     "export const QUALITATIVE_VERSION = 3;",
     "export const QUALITATIVE_VERSION = 9;",
   ],
+  // Piso do numero da experiencia (Fase 2, lote 1). Entra em MUT, e nao em
+  // NAO_LIMIAR, porque e fronteira de verdade: e ele que faz zero e negativo
+  // serem barrados pelo SCHEMA, uma camada antes do lastro. Note que a
+  // descoberta automatica NAO enxerga `.min(1)` (nenhum PADROES_SITIO casa com
+  // essa forma), entao sem esta entrada o limiar ficaria sem cobertura e o
+  // guard reportaria sucesso, que e a falha classica deste arquivo. A ancora e
+  // conferida contra a fonte pelo modo --auditar.
+  [
+    S,
+    "piso do experienciaNumero (1)",
+    "    .int()\n    .min(1)",
+    "    .int()\n    .min(0)",
+  ],
   // Limites de entrada e persistência, não pesos da régua. Ainda são
   // fronteiras de contrato e uma mudança acidental precisa quebrar teste.
   [

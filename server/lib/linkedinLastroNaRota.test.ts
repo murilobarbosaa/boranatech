@@ -80,6 +80,10 @@ function respostaComViolacao() {
     sobreReescrito: "Sobre de teste.",
     bulletsReescritos: [
       {
+        // A experiencia 2 desta fixture e "Artificial Intelligence Engineer
+        // (NexoRH)". O numero e o que atribui o bloco desde a Fase 2; o
+        // `contexto` ficou sendo so o titulo que a interface exibe.
+        experienciaNumero: 2,
         contexto: "Artificial Intelligence Engineer (NexoRH)",
         // VIOLACAO 2: 97% nao aparece no texto daquela experiencia.
         bullets: ["Reduzi a latencia em 97% com pre-routers deterministicos."],

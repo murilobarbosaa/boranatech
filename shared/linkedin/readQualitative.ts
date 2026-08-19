@@ -4,7 +4,6 @@ import {
   LinkedinBulletsReescritosSchema,
   LinkedinMelhoriaSchema,
   QUALITATIVE_VERSION,
-  type LinkedinBulletsReescritos,
   type LinkedinMelhoria,
 } from "./schema";
 
@@ -26,6 +25,25 @@ import {
  *   - Traduz a versão 1 (campo único `skillsSugeridas`) para o formato atual.
  */
 
+/**
+ * Bloco de bullets como ele pode estar GRAVADO, que é diferente do que a IA
+ * pode RESPONDER.
+ *
+ * `experienciaNumero` é obrigatório na escrita (é o que sustenta a atribuição
+ * estrutural do lastro), mas as análises gravadas antes dele existir só têm
+ * `contexto` e `bullets`. Exigi-lo aqui faria o `.catch(undefined)` da lista
+ * inteira disparar e o histórico dessas pessoas abrir sem bullets nenhum, que é
+ * exatamente o incidente que este arquivo existe para não repetir.
+ *
+ * Derivado do schema de escrita com `.extend`, e não reescrito à mão: assim um
+ * campo novo do bloco não precisa ser lembrado em dois lugares.
+ */
+const BlocoLidoSchema = LinkedinBulletsReescritosSchema.extend({
+  experienciaNumero: z.number().int().min(1).optional(),
+});
+
+export type LinkedinBulletsReescritosLido = z.infer<typeof BlocoLidoSchema>;
+
 // Schema de LEITURA: tudo opcional de propósito. Ele não valida se a IA
 // respondeu certo (isso é papel do LinkedinQualitativeSchema na escrita); ele
 // só resgata o que der para resgatar de um jsonb que pode ter qualquer idade.
@@ -37,10 +55,7 @@ const LenientQualitativeSchema = z.object({
   proximoPasso: z.string().optional().catch(undefined),
   headlines: z.array(z.string()).optional().catch(undefined),
   sobreReescrito: z.string().optional().catch(undefined),
-  bulletsReescritos: z
-    .array(LinkedinBulletsReescritosSchema)
-    .optional()
-    .catch(undefined),
+  bulletsReescritos: z.array(BlocoLidoSchema).optional().catch(undefined),
   skillsParaEstudar: z.array(z.string()).optional().catch(undefined),
   /** Versão 1: campo único, derivado das palavras-chave faltantes. */
   skillsSugeridas: z.array(z.string()).optional().catch(undefined),
@@ -57,7 +72,7 @@ export interface QualitativeView {
   proximoPasso: string;
   headlines: string[];
   sobreReescrito: string;
-  bulletsReescritos: LinkedinBulletsReescritos[];
+  bulletsReescritos: LinkedinBulletsReescritosLido[];
   skillsParaEstudar: string[];
   modeloMensagemRecrutador: string;
   /** Nomes dos campos que não vieram ou não puderam ser lidos. */

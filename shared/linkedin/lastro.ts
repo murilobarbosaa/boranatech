@@ -12,7 +12,11 @@ import { numeraisSemLastro, removerNumeralSemLastro } from "./numeralLastro";
  * CAMPOS COBERTOS:
  *   - `headlines`: lastro de TECNOLOGIA (contra keywordsEncontradas).
  *   - `bulletsReescritos`: lastro de TECNOLOGIA e de NUMERAL, os dois contra o
- *     texto da experiência daquele bloco, nunca contra o perfil inteiro.
+ *     texto da experiência daquele bloco, nunca contra o perfil inteiro. A
+ *     experiência do bloco é identificada pelo `experienciaNumero` que o modelo
+ *     devolve, o mesmo que o prompt numerou. Número fora do intervalo real
+ *     descarta o bloco inteiro: não existe caminho que devolva bullet sem ter
+ *     sido conferido contra uma experiência de verdade.
  *
  * CAMPOS NÃO COBERTOS, com o motivo:
  *   - `sobreReescrito`: parafraseia a seção Sobre, cuja fonte legítima é o
@@ -31,7 +35,15 @@ export type TipoViolacao =
   | "numeral_fabricado"
   | "numeral_tipo_trocado"
   | "tecnologia_sem_lastro"
-  | "bullet_sem_origem";
+  | "bullet_sem_origem"
+  /**
+   * O bloco aponta para um `experienciaNumero` que não existe na lista enviada
+   * ao modelo. Tipo próprio, e não `bullet_sem_origem`, porque a causa é outra
+   * e a leitura do painel muda: aqui o modelo inventou a ÂNCORA, não escreveu
+   * bullet para uma experiência vazia. Era este o caso que, sob o casamento por
+   * token, devolvia o bloco intacto.
+   */
+  | "bloco_experiencia_invalida";
 
 export interface Violacao {
   tipo: TipoViolacao;

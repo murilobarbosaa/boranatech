@@ -632,7 +632,31 @@ export const LinkedinMelhoriaSchema = z.object({
     .describe("Passo a passo concreto de como aplicar a melhoria."),
 });
 
+/**
+ * IDENTIDADE ESTRUTURAL, não textual.
+ *
+ * `experienciaNumero` é o número que a lista de experiências do prompt mostra
+ * (`1. Cargo (Empresa)`), devolvido pelo modelo. É por ele, e só por ele, que o
+ * lastro decide contra qual texto conferir tecnologia e numeral. `contexto`
+ * continua existindo porque é o título que a interface exibe acima dos bullets,
+ * mas não decide mais nada.
+ *
+ * Sobre a tradução para a OpenAI: `toOpenAIStrictSchema` preserva
+ * `type: "integer"` e REMOVE `minimum` (está em UNSUPPORTED_KEYWORDS). Ou seja,
+ * o structured output garante o inteiro e o `safeParse` local garante o piso,
+ * transformando violação em retry. É o mesmo arranjo já usado pelos `min`/`max`
+ * das listas deste schema. O intervalo de verdade (quantas experiências existem
+ * naquele perfil) não cabe num schema estático e é verificado no lastro, que
+ * descarta o bloco inteiro quando o número não existe.
+ */
 export const LinkedinBulletsReescritosSchema = z.object({
+  experienciaNumero: z
+    .number()
+    .int()
+    .min(1)
+    .describe(
+      "O número da experiência à qual estes bullets se referem, exatamente como aparece na lista numerada de experiências que você recebeu. Obrigatório. Não invente um número que não esteja naquela lista e não escreva bloco para experiência marcada como sem descrição própria ou com descrição curta demais.",
+    ),
   contexto: z
     .string()
     .describe("A qual experiência ou projeto do perfil os bullets se referem."),
@@ -694,7 +718,7 @@ export const LinkedinQualitativeSchema = z.object({
   bulletsReescritos: z
     .array(LinkedinBulletsReescritosSchema)
     .describe(
-      "Bullets reescritos por experiência ou projeto do perfil. Idioma pela regra do mercado-alvo: inglês para mercado exterior; para Brasil ou ambos, português com os termos técnicos em inglês.",
+      "Bullets reescritos por experiência do perfil. Cada bloco traz o experienciaNumero da experiência correspondente, tirado da lista numerada que você recebeu. Idioma pela regra do mercado-alvo: inglês para mercado exterior; para Brasil ou ambos, português com os termos técnicos em inglês.",
     ),
   // Um campo so ("skillsSugeridas") carregava dois significados incompativeis:
   // "adicione isto hoje" e "estude isto". Como ele era derivado da lista de
@@ -808,6 +832,17 @@ export type LinkedinAnalyzeRequest = z.infer<
  *   `skillsParaEstudar`, os dois escritos pelo modelo.
  * 3: `skillsParaAdicionarAgora` saiu do modelo e virou campo calculado em
  *   `deterministic`. O modelo escreve só `skillsParaEstudar`.
+ *
+ * NÃO bumpado no lote 1 da Fase 2, e a decisão é deliberada. O lote acrescentou
+ * `experienciaNumero` dentro de cada bloco de `bulletsReescritos`: obrigatório
+ * na ESCRITA (é ele que atribui o bloco a uma experiência no lastro) e opcional
+ * na LEITURA. O que esta constante governa é tradução na volta, e os três bumps
+ * acima existem porque um campo mudou de nome ou de dono e a linha antiga
+ * precisava ser reinterpretada. Aqui não há o que traduzir: o bloco antigo é
+ * lido pelo mesmo caminho, só sem o número, e `readQualitative` não consulta a
+ * versão para isso. Bumpar marcaria como formatos distintos duas linhas que a
+ * leitura trata de forma idêntica, e esvaziaria o significado da constante.
+ * Mesmo critério já registrado em DETERMINISTIC_VERSION para campo aditivo.
  *
  * Quem lê análise persistida NUNCA acessa `result.qualitative.x` direto: usa
  * `readQualitative` (shared/linkedin/readQualitative.ts), que resolve a versão

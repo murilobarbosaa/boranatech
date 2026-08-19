@@ -127,6 +127,10 @@ function respostaValida() {
     sobreReescrito: "Sobre de teste.",
     bulletsReescritos: [
       {
+        // Campo acrescentado na Fase 2. Ele e ADITIVO dentro do bloco: o bundle
+        // antigo le so `contexto` e `bullets`, entao a chave a mais nao muda o
+        // que ele renderiza, e e por isso que a mudanca cabe na janela.
+        experienciaNumero: 2,
         contexto: "Artificial Intelligence Engineer (NexoRH)",
         bullets: ["Entreguei o pre-router deterministico da plataforma."],
       },

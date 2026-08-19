@@ -108,6 +108,51 @@ describe("readQualitative: formato atual e entradas quebradas", () => {
     expect(view.camposAusentes).not.toContain("resumo");
   });
 
+  // `experienciaNumero` e OBRIGATORIO na escrita (e o que atribui o bloco a uma
+  // experiencia no lastro) e OPCIONAL aqui. Exigi-lo na leitura faria o
+  // `.catch(undefined)` da lista disparar e o historico gravado antes da Fase 2
+  // abrir sem bullet nenhum, que e o incidente que este leitor existe para
+  // evitar.
+  it("bloco gravado ANTES do campo novo continua legivel", () => {
+    const view = readQualitative(atual, QUALITATIVE_VERSION);
+    expect(view.bulletsReescritos).toHaveLength(1);
+    expect(view.bulletsReescritos[0].contexto).toBe("ctx");
+    expect(view.bulletsReescritos[0].bullets).toEqual(["x"]);
+    expect(view.bulletsReescritos[0].experienciaNumero).toBeUndefined();
+    expect(view.camposAusentes).not.toContain("bulletsReescritos");
+  });
+
+  it("bloco gravado COM o campo novo preserva o numero", () => {
+    const view = readQualitative(
+      {
+        ...atual,
+        bulletsReescritos: [
+          { experienciaNumero: 2, contexto: "ctx", bullets: ["x"] },
+        ],
+      },
+      QUALITATIVE_VERSION,
+    );
+    expect(view.bulletsReescritos[0].experienciaNumero).toBe(2);
+    expect(view.camposAusentes).not.toContain("bulletsReescritos");
+  });
+
+  it("bloco com numero corrompido nao derruba a lista inteira do render", () => {
+    // `.catch(undefined)` e por LISTA, entao um numero invalido apaga os
+    // bullets daquela analise. O contrato que importa e nao lancar e nao
+    // inventar: a lista some, a pagina abre, e o campo entra em camposAusentes.
+    const view = readQualitative(
+      {
+        ...atual,
+        bulletsReescritos: [
+          { experienciaNumero: "dois", contexto: "ctx", bullets: ["x"] },
+        ],
+      },
+      QUALITATIVE_VERSION,
+    );
+    expect(view.bulletsReescritos).toEqual([]);
+    expect(view.camposAusentes).toContain("bulletsReescritos");
+  });
+
   it("NUNCA lanca, nem com lixo total", () => {
     for (const lixo of [null, undefined, 42, "texto", [], { melhorias: "nao e array" }]) {
       expect(() => readQualitative(lixo)).not.toThrow();

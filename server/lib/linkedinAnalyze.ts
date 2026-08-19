@@ -23,6 +23,7 @@ import {
 } from "../../shared/linkedin/numeralLastro";
 import {
   removerTermoSemLastro,
+  type TipoViolacao,
   type Violacao,
 } from "../../shared/linkedin/lastro";
 import {
@@ -143,6 +144,8 @@ EXPERIÊNCIA SEM DESCRIÇÃO: se uma experiência vier marcada como SEM DESCRIÇ
 
 EXPERIÊNCIA COM DESCRIÇÃO CURTA DEMAIS: se uma experiência vier marcada como DESCRIÇÃO CURTA DEMAIS PARA REESCREVER, também não escreva bullets para ela. A diferença para o caso acima é que aqui existe texto, e ele vem transcrito na marcação: use esse texto para escrever uma melhoria específica, citando o que a pessoa já escreveu e dizendo o que falta acrescentar. Não trate essa experiência como vazia, porque ela não está.
 
+NÚMERO DA EXPERIÊNCIA (REGRA DURA): a lista de experiências que você recebe é numerada. Todo bloco de bulletsReescritos tem de trazer, no campo experienciaNumero, o número da experiência a que os bullets se referem, copiado daquela lista. Só valem números que estão nela. Bloco com número que não existe é descartado inteiro pela plataforma, então inventar um número não faz o texto passar, só faz o trabalho ser jogado fora. Não escreva bloco para experiência marcada como SEM DESCRIÇÃO PRÓPRIA NO PERFIL nem como DESCRIÇÃO CURTA DEMAIS PARA REESCREVER. O campo contexto continua sendo o título que a pessoa lê acima dos bullets, mas quem manda na atribuição é o número.
+
 NÚMERO NÃO MUDA DE DONO: métricas, percentuais e volumes só podem ser reescritos com o MESMO sujeito e o MESMO recorte que têm no perfil. Se o texto diz que uma técnica específica reduziu a latência em uma situação específica, não atribua esse número ao projeto inteiro, a outra técnica, nem a outra métrica. Na dúvida sobre a que o número se refere, escreva o bullet sem o número.
 
 CAMPOS PARA COLAR SÓ COM O QUE EXISTE: headlines, sobreReescrito e bulletsReescritos só podem citar tecnologias que aparecem no perfil. As tecnologias marcadas como SEM NENHUMA evidência no perfil não entram em nenhum texto para colar: elas só podem aparecer em skillsParaEstudar, escolhidas daquela lista e escritas exatamente como aparecem nela. A lista de tecnologias que o perfil comprova e que faltam nas competências já vem calculada e é exibida pela plataforma: você não a reescreve nem a repete como lista, no máximo comenta na prosa.
@@ -251,12 +254,56 @@ function repartirOrcamento(disponivel: number, tamanhos: number[]): number[] {
   return cotas;
 }
 
-// Exportada para teste: e o texto exato que chega ao modelo, e as tres
-// marcacoes (vazia, curta, suficiente) so tem valor se forem verificaveis.
-export function experienciasBlock(parsed: LinkedinParsed): string {
-  if (parsed.experiencias.length === 0)
-    return "(nenhuma experiência detectada)";
+/**
+ * Uma experiencia exatamente como ela chega ao modelo.
+ *
+ * FONTE UNICA da numeracao, do intervalo valido e do texto enviado. O prompt
+ * renderiza esta lista e o lastro valida contra ela; nao existe uma segunda
+ * derivacao do mesmo fato.
+ *
+ * Ate a Fase 2 a numeracao vivia dentro de `experienciasBlock` e o lastro
+ * reencontrava a experiencia por sobreposicao de tokens entre o `contexto`
+ * escrito pelo modelo e `titulo + empresa`. Duas derivacoes independentes do
+ * mesmo fato erram em direcoes diferentes, e esta errava em tres: bloco cujo
+ * contexto nao casava com nada voltava INTACTO (unico caminho em que conteudo
+ * inteiramente fabricado chegava ao usuario), empate escolhia a primeira
+ * experiencia em silencio, e dois cargos iguais em empresas diferentes so se
+ * distinguiam se o modelo tivesse escrito a empresa no contexto.
+ */
+export interface ExperienciaNumerada {
+  /** 1-based. E o mesmo numero que o prompt mostra e que o bloco devolve. */
+  numero: number;
+  experiencia: LinkedinParsed["experiencias"][number];
+  estado: EstadoDescricao;
+  /** `1. Cargo (Empresa)`, a linha que o modelo le. */
+  cabecalho: string;
+  /**
+   * Corpo enviado ao modelo, JA com o corte de EXPERIENCIAS_LIMIT aplicado.
+   * Em `vazia` e `curta` e a marcacao, nao a descricao: esses estados nao
+   * sustentam bullet nenhum e o bloco correspondente e descartado.
+   */
+  corpo: string;
+}
 
+/**
+ * Texto que serve de lastro para os bullets desta experiencia.
+ *
+ * E o que o modelo VIU, nao a descricao inteira do perfil: numeral que ficou
+ * fora do prompt por corte de orcamento nao pode lastrear nada, porque o
+ * modelo nao teve como le-lo. Hoje nenhuma das seis fixtures chega perto do
+ * teto (a maior da 4905 de 6000), entao a escolha e inerte na pratica e so
+ * fecha o caso patologico.
+ */
+export function origemDoLastro(item: ExperienciaNumerada): string {
+  return `${item.experiencia.titulo} ${item.corpo}`;
+}
+
+// Exportada para teste: daqui saem o texto exato que chega ao modelo E o
+// intervalo de numeros que o lastro aceita. As tres marcacoes (vazia, curta,
+// suficiente) so tem valor se forem verificaveis.
+export function listaDeExperiencias(
+  parsed: LinkedinParsed,
+): ExperienciaNumerada[] {
   const partes = parsed.experiencias.map((exp, index) => {
     // Cargo e empresa vêm separados do parser. Aqui eles voltam a aparecer
     // juntos, mas atribuídos ao bloco certo: antes a empresa caía na
@@ -269,9 +316,10 @@ export function experienciasBlock(parsed: LinkedinParsed): string {
     // precisa saber que ele existe para poder cita-lo na melhoria.
     const estado = estadoDescricao(exp);
     const cabecalho = `${index + 1}. ${titulo}`;
+    const comum = { numero: index + 1, experiencia: exp, estado, cabecalho };
     if (estado === "vazia") {
       return {
-        cabecalho,
+        ...comum,
         corpo:
           "(SEM DESCRIÇÃO PRÓPRIA NO PERFIL: não escreva bullets para esta experiência)",
         cortavel: false,
@@ -279,19 +327,30 @@ export function experienciasBlock(parsed: LinkedinParsed): string {
     }
     if (estado === "curta") {
       return {
-        cabecalho,
+        ...comum,
         corpo: `(DESCRIÇÃO CURTA DEMAIS PARA REESCREVER, transcrita aqui só como contexto: "${exp.descricao}". Não escreva bullets para esta experiência: o que existe não sustenta um bullet sem você completar o que não está escrito)`,
         cortavel: false,
       };
     }
-    return { cabecalho, corpo: exp.descricao, cortavel: true };
+    return { ...comum, corpo: exp.descricao, cortavel: true };
   });
 
-  const montar = (corpos: string[]) =>
-    partes.map((p, i) => `${p.cabecalho}\n${corpos[i]}`).join("\n\n");
+  const comCorpos = (corpos: string[]): ExperienciaNumerada[] =>
+    partes.map(({ cortavel: _cortavel, ...item }, i) => ({
+      ...item,
+      corpo: corpos[i],
+    }));
 
-  const inteiro = montar(partes.map((p) => p.corpo));
-  if (inteiro.length <= EXPERIENCIAS_LIMIT) return inteiro;
+  const tamanhoDoBloco = (corpos: string[]) =>
+    partes.reduce(
+      (soma, p, i) => soma + p.cabecalho.length + 1 + corpos[i].length,
+      0,
+    ) +
+    Math.max(partes.length - 1, 0) * 2;
+
+  const originais = partes.map((p) => p.corpo);
+  if (tamanhoDoBloco(originais) <= EXPERIENCIAS_LIMIT)
+    return comCorpos(originais);
 
   // ORÇAMENTO ESTOURADO. O corte antigo era um `slice` no fim do texto, o que
   // significa: as experiências mais antigas somem inteiras, sem cabeçalho, sem
@@ -328,7 +387,14 @@ export function experienciasBlock(parsed: LinkedinParsed): string {
         `${partes[idx].corpo.slice(0, cota).trimEnd()}${MARCA_CORTE}`;
     }
   });
-  return montar(corpos);
+  return comCorpos(corpos);
+}
+
+/** O bloco de experiências do prompt, renderizado da lista numerada única. */
+export function experienciasBlock(parsed: LinkedinParsed): string {
+  const lista = listaDeExperiencias(parsed);
+  if (lista.length === 0) return "(nenhuma experiência detectada)";
+  return lista.map((item) => `${item.cabecalho}\n${item.corpo}`).join("\n\n");
 }
 
 // Exportada para teste: e o unico lugar onde SOBRE_LIMIT e observavel, e um
@@ -413,7 +479,9 @@ export function buildUserPrompt(
     "Sobre (texto cru, pode estar truncado):",
     parsed.sobre ? truncate(parsed.sobre, SOBRE_LIMIT) : "(sem seção Sobre)",
     "",
-    "Experiências (texto cru, pode estar truncado):",
+    // O rótulo declara a numeração no mesmo lugar em que ela aparece. A lista
+    // e o intervalo que o lastro aceita saem os dois de `listaDeExperiencias`.
+    `Experiências (texto cru, pode estar truncado). A lista é numerada de 1 a ${listaDeExperiencias(parsed).length}, e cada bloco de bulletsReescritos tem de devolver esse número em experienciaNumero:`,
     experienciasBlock(parsed),
     "",
     `Competências coladas pelo usuário: ${request.skills.trim() || "(nenhuma)"}.`,
@@ -665,32 +733,6 @@ export function warmEmptyQualitative(
 }
 
 /**
- * Casa um bloco de bulletsReescritos com a experiencia de origem pelo campo
- * `contexto`, por sobreposicao de tokens do titulo. Mesmo criterio da rubrica.
- */
-function experienciaDoBloco(
-  contexto: string,
-  experiencias: LinkedinParsed["experiencias"],
-): LinkedinParsed["experiencias"][number] | null {
-  const alvo = contexto.toLowerCase();
-  let melhor = -1;
-  let score = 0;
-  experiencias.forEach((exp, index) => {
-    // Cargo E empresa: é o mesmo par que o prompt mostra em `contexto`, e a
-    // empresa é o que desempata dois cargos parecidos no mesmo perfil.
-    const hits = `${exp.titulo} ${exp.empresa ?? ""}`
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((token) => token.length > 3 && alvo.includes(token)).length;
-    if (hits > score) {
-      score = hits;
-      melhor = index;
-    }
-  });
-  return melhor < 0 ? null : experiencias[melhor];
-}
-
-/**
  * Teto de eventos de lastro no Sentry, por tipo e por processo.
  *
  * Mesmo cuidado do modo degradado da cota: um dia ruim do modelo geraria um
@@ -699,6 +741,12 @@ function experienciaDoBloco(
  * amostra que faz o problema aparecer no painel.
  */
 const INTERVALO_LASTRO_MS = 60 * 1000;
+
+/** Violações que descartam o bloco inteiro, em vez de remover um termo dele. */
+const TIPOS_DE_BLOCO: ReadonlySet<TipoViolacao> = new Set<TipoViolacao>([
+  "bullet_sem_origem",
+  "bloco_experiencia_invalida",
+]);
 const ultimoLastroPorTipo = new Map<string, number>();
 
 function registrarViolacao(v: Violacao): void {
@@ -739,8 +787,10 @@ function registrarViolacao(v: Violacao): void {
       campo: v.campo,
       contexto: v.contexto,
       termo: v.termo,
-      acao:
-        v.tipo === "bullet_sem_origem" ? "bloco_removido" : "termo_removido",
+      // Os dois tipos de bloco descartam a unidade inteira; os de termo removem
+      // uma palavra ou um numeral de dentro do texto. O rotulo tem de dizer
+      // qual dos dois aconteceu, porque a leitura do log depende disso.
+      acao: TIPOS_DE_BLOCO.has(v.tipo) ? "bloco_removido" : "termo_removido",
       retry: false,
     }),
   );
@@ -805,18 +855,35 @@ function aplicarLastro(
     return saida;
   });
 
-  // 2. BULLETS: bloco sem origem com conteudo sai inteiro; nos que ficam,
-  // tecnologia e numeral conferidos contra o texto DAQUELA experiencia.
+  // 2. BULLETS: atribuicao ESTRUTURAL, pelo numero da lista que foi ao prompt.
+  //
+  // FAIL-CLOSED, sem excecao: numero fora do intervalo real e experiencia sem
+  // descricao suficiente descartam o bloco inteiro, e nao existe terceiro
+  // caminho. O desenho anterior casava `contexto` por token e tinha um ramo
+  // "nao identifiquei, deixa passar"; era por ele que um bloco inteiramente
+  // fabricado chegava ao usuario sem uma unica conferencia.
+  //
+  // Numero repetido em dois blocos e permitido de proposito: os dois conferem
+  // contra a MESMA experiencia, entao nao ha risco de lastro, e nenhum
+  // consumidor assume unicidade (a interface renderiza a lista com chave por
+  // indice e so le `contexto` e `bullets`). Deduplicar aqui seria descartar
+  // bullet legitimo por uma regra que ninguem precisa.
+  const porNumero = new Map(
+    listaDeExperiencias(parsed).map((item) => [item.numero, item]),
+  );
   const bulletsReescritos: typeof qualitative.bulletsReescritos = [];
   for (const bloco of qualitative.bulletsReescritos) {
-    const exp = experienciaDoBloco(bloco.contexto, parsed.experiencias);
-    // Sem origem identificavel, o bloco fica intacto: nao da para afirmar que
-    // e falso, e apagar por precaucao destruiria dado bom.
-    if (!exp) {
-      bulletsReescritos.push(bloco);
+    const item = porNumero.get(bloco.experienciaNumero);
+    if (!item) {
+      violacoes.push({
+        tipo: "bloco_experiencia_invalida",
+        campo: "bulletsReescritos",
+        contexto: bloco.contexto,
+        termo: `experienciaNumero ${bloco.experienciaNumero} fora de 1..${porNumero.size}`,
+      });
       continue;
     }
-    if (!temConteudoParaBullets(exp)) {
+    if (item.estado !== "suficiente") {
       // Origem sem descricao propria: TODO bullet aqui e fabricado, inclusive
       // os que nao citam numero nem tecnologia e por isso passariam batido.
       violacoes.push({
@@ -828,7 +895,7 @@ function aplicarLastro(
       continue;
     }
 
-    const origem = `${exp.titulo} ${exp.descricao}`;
+    const origem = origemDoLastro(item);
     const daOrigem = new Set(
       matchTechnologies(origem, ALL_TECHNOLOGIES).encontradas.map((t) =>
         t.toLowerCase(),
