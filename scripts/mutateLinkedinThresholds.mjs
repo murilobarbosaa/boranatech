@@ -28,6 +28,7 @@ const S = "shared/linkedin/schema.ts";
 const V = "shared/linkedin/reguaV2.ts";
 const C = "server/lib/linkedinChecks.ts";
 const A = "server/lib/linkedinAnalyze.ts";
+const I = "server/lib/linkedinIdioma.ts";
 
 // [arquivo, nome do limiar, string original, string mutada]
 const MUT = [
@@ -253,6 +254,35 @@ const MUT = [
     "piso do experienciaNumero (1)",
     "    .int()\n    .min(1)",
     "    .int()\n    .min(0)",
+  ],
+  // Limiares do detector de idioma (Fase 2, lote 6). Todos em MUT, e nao em
+  // NAO_LIMIAR, porque sao fronteira de verdade: mexer neles muda quem reprova,
+  // e reprovar de menos deixa passar texto no idioma errado enquanto reprovar
+  // de mais custa uma chamada paga e troca texto bom por generico. Os testes
+  // que travam cada um estao em server/lib/linkedinIdioma.test.ts.
+  [
+    I,
+    "MIN_PALAVRAS do detector de idioma",
+    "const MIN_PALAVRAS = 6;",
+    "const MIN_PALAVRAS = 1;",
+  ],
+  [
+    I,
+    "MIN_SINAIS do detector de idioma",
+    "const MIN_SINAIS = 2;",
+    "const MIN_SINAIS = 1;",
+  ],
+  [
+    I,
+    "MARGEM_MINIMA do detector de idioma",
+    "const MARGEM_MINIMA = 2;",
+    "const MARGEM_MINIMA = 1;",
+  ],
+  [
+    I,
+    "FATOR_DOMINANCIA do detector de idioma",
+    "const FATOR_DOMINANCIA = 2;",
+    "const FATOR_DOMINANCIA = 1;",
   ],
   // Teto do texto da trilha de tentativas gravado em
   // `ai_usage_logs.error_message` (Fase 2, lote 2). Entra em MUT porque e
@@ -522,6 +552,10 @@ const FONTES = [
   // modulos acima: entra sem sitio numerico hoje, para que um limiar que nasca
   // aqui ja nasca tendo de ser classificado.
   "server/lib/linkedinLastroProsa.ts",
+  // Detector de idioma (Fase 2, lote 6). Este ENTRA com limiares de verdade, e
+  // os quatro estao em MUT: sao eles que decidem se um campo reprova e custa
+  // uma chamada.
+  "server/lib/linkedinIdioma.ts",
 ];
 
 const PADROES_SITIO = [
@@ -538,6 +572,10 @@ const PADROES_SITIO = [
 const NAO_LIMIAR = [
   [/\.length\s*===?\s*0\b/, "checagem de vazio, nao e fronteira"],
   [/\.length\s*>\s*0\b/, "checagem de nao-vazio, nao e fronteira"],
+  [
+    /\.size > 0\b/,
+    "checagem de conjunto nao-vazio, mesma familia de .length > 0",
+  ],
   [/^for \(let \w+ = 0;/, "contador de laco"],
   [/^for \(let \w+ = 1;/, "contador de laco"],
   [/^\s*(?:let|const) \w+ = -?[01];?$/, "inicializacao de acumulador"],

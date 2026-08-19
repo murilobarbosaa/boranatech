@@ -82,7 +82,16 @@ export type TipoViolacao =
   | "prosa_numeral_sem_lastro"
   /** TEXTO PARA COLAR (política 3): o campo inteiro foi para o fallback. */
   | "colar_tecnologia_sem_lastro"
-  | "colar_numeral_sem_lastro";
+  | "colar_numeral_sem_lastro"
+  /**
+   * GATES DE SAÍDA (lote 6). O campo saiu em idioma diferente do que o prompt
+   * exige para o mercado escolhido, ou ecoou a tag de delimitação dos blocos de
+   * dados. Os dois só são registrados depois de gasto o orçamento de
+   * tentativas: com tentativa restante, a reprovação vira retry contextual e
+   * não violação, porque ainda pode ser corrigida.
+   */
+  | "idioma_incorreto"
+  | "vazamento_delimitador";
 
 /**
  * Campos que o lastro cobre. União fechada, e não `string`: o campo vai para o

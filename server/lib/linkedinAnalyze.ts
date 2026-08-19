@@ -33,8 +33,10 @@ import {
   matchTechnologies,
 } from "./skillNormalize";
 import { estimateCost, estimateCostFromTokens } from "./aiTools";
-import { blocoDeDados } from "./linkedinBlocoDeDados";
+import { blocoDeDados, TAG_DADOS } from "./linkedinBlocoDeDados";
+import { detectarIdioma } from "./linkedinIdioma";
 import {
+  diagnosticoDeGate,
   diagnosticoDeJsonInvalido,
   diagnosticoDeSchema,
   type IssueDeSchema,
@@ -140,6 +142,157 @@ export class LinkedinUnreadableError extends Error {
  * A mensagem continua a de sempre, palavra por palavra: ela e afirmada por
  * teste em outros arquivos, e o lote 6 nao muda contrato de erro.
  */
+/**
+ * O que cada campo reprovou, e onde.
+ *
+ * `indice` só existe para os campos de lista (`headlines`), porque a política
+ * final ali é remover o item reprovado, não o campo inteiro.
+ */
+/**
+ * Abertura da tag dos blocos do lote 3, para DETECTAR o eco na saida do modelo.
+ *
+ * Derivada de `TAG_DADOS`, e nao escrita a mao aqui: a tag tem um dono, e duas
+ * grafias do mesmo delimitador divergiriam na primeira vez que alguem mexesse
+ * numa delas, deixando o gate procurando o que a plataforma nao emite mais.
+ */
+const ABERTURA_DE_BLOCO = `<${TAG_DADOS}`;
+
+export interface ReprovaDeGate {
+  campo: CampoDeViolacao;
+  indice: number | null;
+  motivo: "idioma" | "vazamento";
+  /** Frase para o diagnóstico da tentativa seguinte. Nunca cita o texto. */
+  detalhe: string;
+}
+
+/**
+ * IDIOMA EXIGIDO POR CAMPO E POR MERCADO, espelhando o prompt.
+ *
+ * Fonte: os parágrafos MERCADO-ALVO e IDIOMA DA SAÍDA do `SYSTEM_PROMPT`. A
+ * tabela só lista o que o prompt exige em UM idioma; onde ele pede mistura
+ * deliberada, a entrada é `null` e o campo não é gateado, porque um texto misto
+ * correto não pode virar retry pago.
+ *
+ *   - `sobreReescrito`: PT no Brasil, EN no exterior. Em "ambos" o prompt pede
+ *     português com um parágrafo final em inglês, ou seja, misto por desenho;
+ *   - `modeloMensagemRecrutador`: EN só no exterior, PT nos demais, e isso vale
+ *     também para "ambos", onde o prompt é explícito;
+ *   - `headlines`: EN no exterior. No Brasil o prompt abre exceção ("só o cargo
+ *     na headline pode ficar em inglês") e em "ambos" pede cargo e tecnologias
+ *     em inglês, então nos dois a exigência não é de idioma único;
+ *   - conversa com o usuário (`resumo`, `proximoPasso`, `pontosFortes`,
+ *     `pontosFracos`, `melhorias`): PT em qualquer mercado, sem exceção.
+ */
+function idiomaExigido(
+  campo: CampoDeViolacao,
+  mercado: LinkedinAnalyzeRequest["mercado"],
+): "pt" | "en" | null {
+  switch (campo) {
+    case "sobreReescrito":
+      return mercado === "exterior" ? "en" : mercado === "brasil" ? "pt" : null;
+    case "modeloMensagemRecrutador":
+      return mercado === "exterior" ? "en" : "pt";
+    case "headlines":
+      return mercado === "exterior" ? "en" : null;
+    case "resumo":
+    case "proximoPasso":
+    case "pontosFortes":
+    case "pontosFracos":
+    case "melhorias":
+      return "pt";
+    default:
+      return null;
+  }
+}
+
+const NOME_DO_IDIOMA = { pt: "português", en: "inglês" } as const;
+
+/**
+ * Avalia os dois gates sobre a resposta que JÁ passou no schema.
+ *
+ * G1, idioma: só reprova quando o detector tem veredito E ele diverge do
+ * exigido. `indeterminado` nunca reprova, e essa é a regra que impede o gate de
+ * custar uma chamada por causa de uma headline curta ou de uma frase técnica.
+ *
+ * G2, vazamento: qualquer campo que ecoe a tag de abertura dos blocos do lote 3
+ * reprova. Aqui não há dúvida possível, então vale para todo campo de texto,
+ * inclusive os que não têm exigência de idioma.
+ */
+export function avaliarGates(
+  qualitative: LinkedinQualitative,
+  mercado: LinkedinAnalyzeRequest["mercado"],
+): ReprovaDeGate[] {
+  const reprovas: ReprovaDeGate[] = [];
+
+  const checar = (
+    campo: CampoDeViolacao,
+    texto: string,
+    indice: number | null,
+  ) => {
+    const onde = indice === null ? campo : `${campo}[${indice}]`;
+    if (texto.includes(ABERTURA_DE_BLOCO)) {
+      reprovas.push({
+        campo,
+        indice,
+        motivo: "vazamento",
+        detalhe: `${onde}: o texto repetiu a marcação interna da plataforma. Escreva apenas o texto do perfil, sem nenhuma tag.`,
+      });
+      return;
+    }
+    const exigido = idiomaExigido(campo, mercado);
+    if (exigido === null) return;
+    const detectado = detectarIdioma(texto);
+    if (detectado === "indeterminado" || detectado === exigido) return;
+    reprovas.push({
+      campo,
+      indice,
+      motivo: "idioma",
+      detalhe: `${onde}: este campo tem de sair em ${NOME_DO_IDIOMA[exigido]} para o mercado escolhido, e saiu em outro idioma.`,
+    });
+  };
+
+  checar("resumo", qualitative.resumo, null);
+  checar("proximoPasso", qualitative.proximoPasso, null);
+  checar("sobreReescrito", qualitative.sobreReescrito, null);
+  checar(
+    "modeloMensagemRecrutador",
+    qualitative.modeloMensagemRecrutador,
+    null,
+  );
+  qualitative.headlines.forEach((h, i) => checar("headlines", h, i));
+  qualitative.pontosFortes.forEach((p, i) => checar("pontosFortes", p, i));
+  qualitative.pontosFracos.forEach((p, i) => checar("pontosFracos", p, i));
+  qualitative.melhorias.forEach((m, i) => {
+    checar("melhorias", m.titulo, i);
+    checar("melhorias", m.comoFazer, i);
+  });
+  return reprovas;
+}
+
+/**
+ * Reprovação de gate de saída. Carrega a resposta, porque ela ainda pode ser
+ * usada: gasto o orçamento, o que reprovou cai no fallback e o resto do JSON
+ * (que passou no schema e no lastro) continua valendo para o usuário.
+ */
+export class LinkedinGateError extends Error {
+  readonly qualitative: LinkedinQualitative;
+  readonly reprovas: readonly ReprovaDeGate[];
+
+  constructor(
+    qualitative: LinkedinQualitative,
+    reprovas: readonly ReprovaDeGate[],
+  ) {
+    super(
+      `Resposta da IA reprovou nos gates de saída: ${reprovas
+        .map((r) => r.campo)
+        .join(", ")}`,
+    );
+    this.name = "LinkedinGateError";
+    this.qualitative = qualitative;
+    this.reprovas = reprovas;
+  }
+}
+
 export class LinkedinJsonError extends Error {
   constructor(mensagem: string) {
     super(mensagem);
@@ -231,7 +384,14 @@ export type DesfechoTentativa =
   | "http_erro"
   | "timeout"
   | "rede"
-  | "nao_classificado";
+  | "nao_classificado"
+  /**
+   * A resposta passou no schema e reprovou num gate de saída (idioma ou
+   * vazamento de delimitador). Desfecho próprio, e não `sucesso`: a chamada foi
+   * paga e não entregou, que é exatamente a distinção que o lote 2 existe para
+   * mostrar no painel.
+   */
+  | "gate_reprovado";
 
 /**
  * Por que nao houve `usage`. E o estado NOMEADO que substitui o zero.
@@ -805,6 +965,7 @@ async function runQualitativeOnce(
   userText: string,
   registro: RegistroDaTentativa,
   diagnostico: string | null,
+  mercado: LinkedinAnalyzeRequest["mercado"],
 ): Promise<LinkedinQualitative> {
   // O diagnostico entra DEPOIS do texto do usuario, e nao antes: ele e
   // instrucao da plataforma sobre a tentativa anterior, e a ultima palavra da
@@ -910,14 +1071,32 @@ async function runQualitativeOnce(
     );
   }
 
+  // GATES DE SAIDA, sobre a resposta que ja passou no schema. Rodam AQUI, e
+  // nao depois do laco, por um motivo so: aqui ainda existe tentativa para
+  // gastar, e corrigir com um retry contextual e mais barato do que entregar o
+  // fallback generico. Gasto o orcamento, quem decide e a politica final, em
+  // `aplicarLastro`.
+  const reprovas = avaliarGates(validation.data, mercado);
+  if (reprovas.length > 0) {
+    registro.desfecho = "gate_reprovado";
+    throw new LinkedinGateError(validation.data, reprovas);
+  }
+
   registro.desfecho = "sucesso";
   return validation.data;
 }
 
+/** O que sobra do laco: a resposta e o que continuou reprovado no fim. */
+export interface ResultadoQualitativo {
+  qualitative: LinkedinQualitative;
+  reprovas: readonly ReprovaDeGate[];
+}
+
 async function runQualitative(
   userText: string,
+  mercado: LinkedinAnalyzeRequest["mercado"],
   onAiIo?: (io: AnalyzeAiIo) => void,
-): Promise<LinkedinQualitative> {
+): Promise<ResultadoQualitativo> {
   if (!env.openaiApiKey) {
     throw new Error("Serviço de IA não configurado.");
   }
@@ -938,9 +1117,23 @@ async function runQualitative(
       uso: { medido: false, motivo: "sem_resposta" },
     };
     try {
-      return await runQualitativeOnce(userText, registro, diagnostico);
+      return {
+        qualitative: await runQualitativeOnce(
+          userText,
+          registro,
+          diagnostico,
+          mercado,
+        ),
+        reprovas: [],
+      };
     } catch (err) {
       lastError = err;
+      // GATE REPROVADO NA ULTIMA TENTATIVA. Nao ha mais chamada para gastar,
+      // entao a resposta volta COM as reprovas e a politica final decide campo
+      // a campo. Nao lanca: o resto do JSON passou no schema e continua valendo.
+      if (err instanceof LinkedinGateError && attempt >= AI_MAX_ATTEMPTS) {
+        return { qualitative: err.qualitative, reprovas: err.reprovas };
+      }
       // Falhas ANTES da resposta nao passam por `runQualitativeOnce`, entao o
       // desfecho delas e classificado aqui, que continua sendo dentro da
       // tentativa. `??=` de proposito: o que a tentativa ja rotulou tem
@@ -968,7 +1161,9 @@ async function runQualitative(
           ? diagnosticoDeSchema(err.issues)
           : err instanceof LinkedinJsonError
             ? diagnosticoDeJsonInvalido()
-            : null;
+            : err instanceof LinkedinGateError
+              ? diagnosticoDeGate(err.reprovas.map((r) => r.detalhe))
+              : null;
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
       }
@@ -1286,6 +1481,7 @@ function aplicarLastro(
   parsed: LinkedinParsed,
   deterministic: LinkedinDeterministicResult,
   request: LinkedinAnalyzeRequest,
+  reprovasDeGate: readonly ReprovaDeGate[] = [],
 ): LinkedinQualitative {
   const violacoes: Violacao[] = [];
 
@@ -1544,6 +1740,48 @@ function aplicarLastro(
     ? conservador.mensagem
     : qualitative.modeloMensagemRecrutador;
 
+  // 6. POLITICA FINAL DOS GATES. So chega aqui o que continuou reprovado
+  // depois de gasto o orcamento de tentativas: com tentativa restante o laco ja
+  // teria retentado. Tres acoes, por classe de campo, e nenhuma delas edita
+  // texto palavra a palavra.
+  const tipoDaReprova = (motivo: ReprovaDeGate["motivo"]): TipoViolacao =>
+    motivo === "idioma" ? "idioma_incorreto" : "vazamento_delimitador";
+  const headlinesReprovadas = new Set<number>();
+  let sobreReprovadoNoGate = false;
+  let mensagemReprovadaNoGate = false;
+  for (const reprova of reprovasDeGate) {
+    violacoes.push({
+      tipo: tipoDaReprova(reprova.motivo),
+      campo: reprova.campo,
+      contexto: reprova.detalhe,
+      termo: reprova.motivo,
+    });
+    if (reprova.campo === "headlines" && reprova.indice !== null) {
+      headlinesReprovadas.add(reprova.indice);
+    }
+    if (reprova.campo === "sobreReescrito") sobreReprovadoNoGate = true;
+    if (reprova.campo === "modeloMensagemRecrutador") {
+      mensagemReprovadaNoGate = true;
+    }
+  }
+  // TEXTO PARA COLAR: cai no mesmo fallback deterministico do lote 5, que ja
+  // respeita o idioma do mercado. Ele NUNCA e re-gateado nem re-retentado: e
+  // correto por construcao, e mandar o modelo tentar de novo custaria chamada.
+  const sobreFinal = sobreReprovadoNoGate ? conservador.sobre : sobreReescrito;
+  const mensagemFinal = mensagemReprovadaNoGate
+    ? conservador.mensagem
+    : modeloMensagemRecrutador;
+  // HEADLINES: o item reprovado SAI da lista. A lista pode encolher ate vazia,
+  // e vazia e o estado honesto: completar com item que o modelo nao devolveu
+  // seria a plataforma escrevendo headline e atribuindo a ele.
+  const headlinesFinais =
+    headlinesReprovadas.size > 0
+      ? headlines.filter((_, i) => !headlinesReprovadas.has(i))
+      : headlines;
+  // Os demais campos gateados (conversa com o usuario) seguem a politica da
+  // classe 1 do lote 5: a violacao acima ja foi registrada e o texto vai
+  // INTEGRO, porque editar prosa quebraria a frase.
+
   for (const v of violacoes) registrarViolacao(v);
   if (
     violacoes.length === 0 &&
@@ -1554,12 +1792,12 @@ function aplicarLastro(
   }
   return {
     ...qualitative,
-    headlines,
+    headlines: headlinesFinais,
     bulletsReescritos,
     melhorias,
     skillsParaEstudar,
-    sobreReescrito,
-    modeloMensagemRecrutador,
+    sobreReescrito: sobreFinal,
+    modeloMensagemRecrutador: mensagemFinal,
   };
 }
 
@@ -1592,18 +1830,25 @@ export async function analyzeLinkedin(
     !parsed.sobre &&
     parsed.experiencias.length === 0;
 
-  const qualitativeCru = quaseVazio
-    ? warmEmptyQualitative(request, parsed, deterministic)
+  // O atalho sem IA nao passa por gate nenhum: ele e deterministico e ja sai
+  // no idioma do mercado por construcao.
+  const resultado: ResultadoQualitativo = quaseVazio
+    ? {
+        qualitative: warmEmptyQualitative(request, parsed, deterministic),
+        reprovas: [],
+      }
     : await runQualitative(
         buildUserPrompt(request, parsed, deterministic),
+        request.mercado,
         onAiIo,
       );
 
   const qualitative = aplicarLastro(
-    qualitativeCru,
+    resultado.qualitative,
     parsed,
     deterministic,
     request,
+    resultado.reprovas,
   );
   /**
    * @deprecated Alias de compatibilidade para bundles antigos ainda abertos.
