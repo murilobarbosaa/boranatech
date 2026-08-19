@@ -6,6 +6,10 @@ import type {
   LinkedinAnalysisSummary,
   LinkedinAnalyzeRequest,
 } from "@shared/linkedin/schema";
+import { type LinkedinHeadlineOrigem } from "@shared/linkedin/schema";
+import { readLinkedinAnalysisResponse } from "@shared/linkedin/readAnalysis";
+import { readLinkedinScoreState } from "@shared/linkedin/readScore";
+import { textoHashValido } from "@shared/linkedin/textoHash";
 
 /**
  * Cliente do analisador de LinkedIn, no mesmo estilo de githubClient.ts.
@@ -29,6 +33,7 @@ async function getAuthHeader(): Promise<Record<string, string>> {
 export interface AnalyzeLinkedinResult {
   data: LinkedinAnalysisResponse;
   analysisId: string | null;
+  textoHash: string | null;
 }
 
 // Teto do client com folga sobre o pior caso do server (~90s: 2 tentativas de
@@ -82,13 +87,16 @@ export async function analyzeLinkedin(
   }
 
   const body = (await response.json()) as Partial<{
-    data: LinkedinAnalysisResponse;
+    data: unknown;
     analysisId: string | null;
+    textoHash: string | null;
   }>;
-  if (!body.data) throw new Error("ANALYSIS_FAILED");
+  const data = readLinkedinAnalysisResponse(body.data);
+  if (!data) throw new Error("ANALYSIS_FAILED");
   return {
-    data: body.data,
+    data,
     analysisId: typeof body.analysisId === "string" ? body.analysisId : null,
+    textoHash: textoHashValido(body.textoHash) ? body.textoHash : null,
   };
 }
 
@@ -120,20 +128,42 @@ function readErrorMessage(body: unknown): string {
 export interface LinkedinImprovementsState {
   applied: number[];
   progressAvailable: boolean;
+  /** Revisão monotônica criada pelo servidor nesta abertura. */
+  revision: number | null;
+}
+
+export function sanitizeLinkedinImprovementIndexes(
+  value: unknown,
+  total = Number.MAX_SAFE_INTEGER,
+): number[] {
+  if (!Array.isArray(value) || !Number.isInteger(total) || total < 0) return [];
+  return Array.from(
+    new Set(
+      value.filter(
+        (index): index is number =>
+          typeof index === "number" &&
+          Number.isInteger(index) &&
+          index >= 0 &&
+          index < total,
+      ),
+    ),
+  );
 }
 
 // Erro de PUT quando a feature esta indisponivel, distinto de falha de salvar.
 export const PROGRESS_UNAVAILABLE = "PROGRESS_UNAVAILABLE";
+export const STALE_PROGRESS_REVISION = "STALE_PROGRESS_REVISION";
 
 export async function getLinkedinImprovements(
   analysisId: string,
+  signal?: AbortSignal,
 ): Promise<LinkedinImprovementsState> {
   const authHeader = await getAuthHeader();
   const response = await fetch(
     apiUrl(
       `/api/linkedin/analyses/${encodeURIComponent(analysisId)}/improvements`,
     ),
-    { headers: authHeader },
+    { headers: authHeader, signal },
   );
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as unknown;
@@ -142,11 +172,20 @@ export async function getLinkedinImprovements(
   const payload = (await response.json()) as {
     applied?: number[];
     progressAvailable?: boolean;
+    revision?: unknown;
   };
+  const revision =
+    typeof payload.revision === "number" &&
+    Number.isSafeInteger(payload.revision) &&
+    payload.revision >= 1
+      ? payload.revision
+      : null;
   return {
-    applied: Array.isArray(payload.applied) ? payload.applied : [],
-    // Ausente = servidor antigo, que so respondia 200 quando havia tabela.
-    progressAvailable: payload.progressAvailable !== false,
+    applied: sanitizeLinkedinImprovementIndexes(payload.applied),
+    // Sem revisão (servidor antigo) o checklist fica somente leitura/oculto:
+    // aceitar PUT sem geração reintroduziria a race que este contrato fecha.
+    progressAvailable: payload.progressAvailable !== false && revision !== null,
+    revision,
   };
 }
 
@@ -154,6 +193,8 @@ export async function setLinkedinImprovement(
   analysisId: string,
   index: number,
   done: boolean,
+  revision: number,
+  signal?: AbortSignal,
 ): Promise<void> {
   const authHeader = await getAuthHeader();
   const response = await fetch(
@@ -163,7 +204,8 @@ export async function setLinkedinImprovement(
     {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...authHeader },
-      body: JSON.stringify({ done }),
+      body: JSON.stringify({ done, revision }),
+      signal,
     },
   );
   if (!response.ok) {
@@ -171,34 +213,150 @@ export async function setLinkedinImprovement(
     if (readErrorCode(body) === "progress_unavailable") {
       throw new Error(PROGRESS_UNAVAILABLE);
     }
+    if (readErrorCode(body) === "stale_progress_revision") {
+      throw new Error(STALE_PROGRESS_REVISION);
+    }
     throw new Error(readErrorMessage(body));
   }
 }
 
-export async function listLinkedinAnalyses(): Promise<
-  LinkedinAnalysisSummary[]
-> {
+export async function listLinkedinAnalyses(
+  signal?: AbortSignal,
+): Promise<LinkedinAnalysisSummary[]> {
   const authHeader = await getAuthHeader();
   const response = await fetch(apiUrl("/api/linkedin/analyses"), {
     headers: { ...authHeader },
+    signal,
   });
-  if (!response.ok) return [];
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as unknown;
+    throw new Error(readErrorMessage(body));
+  }
   const body = (await response.json()) as Partial<{
-    data: LinkedinAnalysisSummary[];
+    data: unknown;
   }>;
-  return body.data ?? [];
+  if (!Array.isArray(body.data)) throw new Error("Histórico inválido.");
+  const summaries = body.data
+    .map(readAnalysisSummary)
+    .filter((item): item is LinkedinAnalysisSummary => item !== null);
+  // Uma resposta não vazia inteiramente ilegível é erro de contrato, não
+  // "nenhum histórico". Se houver ao menos uma linha válida, preserva o que
+  // ainda pode ser mostrado e descarta somente as corrompidas.
+  if (body.data.length > 0 && summaries.length === 0) {
+    throw new Error("Histórico inválido.");
+  }
+  return summaries;
 }
 
 export async function getLinkedinAnalysis(
   id: string,
 ): Promise<LinkedinAnalysisRecord | null> {
   const authHeader = await getAuthHeader();
-  const response = await fetch(apiUrl(`/api/linkedin/analyses/${id}`), {
-    headers: { ...authHeader },
-  });
+  const response = await fetch(
+    apiUrl(`/api/linkedin/analyses/${encodeURIComponent(id)}`),
+    {
+      headers: { ...authHeader },
+    },
+  );
   if (!response.ok) return null;
   const body = (await response.json()) as Partial<{
-    data: LinkedinAnalysisRecord;
+    data: unknown;
   }>;
-  return body.data ?? null;
+  if (!body.data || typeof body.data !== "object" || Array.isArray(body.data)) {
+    return null;
+  }
+  const raw = body.data as Record<string, unknown>;
+  const summary = readAnalysisSummary(raw);
+  const result = readLinkedinAnalysisResponse(raw.result);
+  return summary && result ? { ...summary, result } : null;
+}
+
+function inteiroPositivoOuNull(value: unknown): number | null {
+  const numero =
+    typeof value === "string" && /^\d+$/.test(value) ? Number(value) : value;
+  return typeof numero === "number" && Number.isInteger(numero) && numero > 0
+    ? numero
+    : null;
+}
+
+function stringOuNull(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+export function readAnalysisSummary(
+  raw: unknown,
+): LinkedinAnalysisSummary | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  const scoreState = readLinkedinScoreState({
+    score: value.score,
+    faixa: value.faixa,
+    deterministicVersion: inteiroPositivoOuNull(value.deterministicVersion),
+    notaIncompleta: value.notaIncompleta,
+  });
+  if (
+    typeof value.id !== "string" ||
+    typeof value.area !== "string" ||
+    typeof value.level !== "string" ||
+    !scoreState.valid ||
+    scoreState.score === null ||
+    scoreState.faixa === null ||
+    typeof value.created_at !== "string"
+  ) {
+    return null;
+  }
+
+  const checks = Array.isArray(value.checks)
+    ? value.checks.flatMap((rawCheck) => {
+        if (
+          !rawCheck ||
+          typeof rawCheck !== "object" ||
+          Array.isArray(rawCheck)
+        ) {
+          return [];
+        }
+        const check = rawCheck as Record<string, unknown>;
+        return typeof check.id === "string" &&
+          typeof check.category === "string" &&
+          typeof check.aprovado === "boolean"
+          ? [
+              {
+                id: check.id,
+                category: check.category,
+                aprovado: check.aprovado,
+              },
+            ]
+          : [];
+      })
+    : null;
+
+  return {
+    id: value.id,
+    area: value.area,
+    level: value.level,
+    score: scoreState.score,
+    faixa: scoreState.faixa,
+    created_at: value.created_at,
+    deterministicVersion: scoreState.deterministicVersion,
+    qualitativeVersion: inteiroPositivoOuNull(value.qualitativeVersion),
+    comparacaoVersion: inteiroPositivoOuNull(value.comparacaoVersion),
+    mercado: stringOuNull(value.mercado),
+    headlineComparacao: stringOuNull(value.headlineComparacao),
+    headlineOrigem:
+      value.headlineOrigem === "parser" || value.headlineOrigem === "manual"
+        ? (value.headlineOrigem as LinkedinHeadlineOrigem)
+        : null,
+    skillsComparacao:
+      typeof value.skillsComparacao === "string"
+        ? value.skillsComparacao.trim()
+        : null,
+    foto: stringOuNull(value.foto),
+    banner: stringOuNull(value.banner),
+    openToWork: stringOuNull(value.openToWork),
+    conexoes: stringOuNull(value.conexoes),
+    atividade: stringOuNull(value.atividade),
+    notaIncompleta: scoreState.notaIncompleta,
+    checks,
+    textoHash: textoHashValido(value.textoHash) ? value.textoHash : null,
+  };
 }

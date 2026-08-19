@@ -33,11 +33,11 @@ import {
 } from "@/components/portfolio/QualitativePanels";
 import { NextStepCard } from "@/components/shared/NextStepCard";
 import NextStepsByArea from "@/components/shared/NextStepsByArea";
+import { decidirDelta, type VeredictoDelta } from "@shared/linkedin/deltaFunil";
 import {
-  decidirDelta,
-  versaoDe,
-  type VeredictoDelta,
-} from "@shared/linkedin/deltaFunil";
+  analiseAnteriorComparavel,
+  montarAnaliseComparavel,
+} from "@shared/linkedin/comparabilidade";
 import {
   BenefitPills,
   HowItWorksTimeline,
@@ -57,15 +57,10 @@ import { openAgentWidget } from "@/components/agent/AgentWidget";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import FeedbackBanner from "@/components/shared/FeedbackBanner";
-import {
-  analyzeLinkedin,
-  getLinkedinAnalysis,
-  getLinkedinImprovements,
-  listLinkedinAnalyses,
-  PROGRESS_UNAVAILABLE,
-  setLinkedinImprovement,
-} from "@/lib/linkedinClient";
+import { analyzeLinkedin, getLinkedinAnalysis } from "@/lib/linkedinClient";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
+import { useLinkedinImprovementProgress } from "@/lib/useLinkedinImprovementProgress";
+import { useLinkedinHistory } from "@/lib/useLinkedinHistory";
 import { extractLinkedinPdf, PdfExtractError } from "@/lib/pdfExtract";
 import { cn } from "@/lib/utils";
 import { competenciasDoPdf } from "@shared/linkedin/competenciasDoPdf";
@@ -79,6 +74,13 @@ import {
 import posthog from "posthog-js";
 import { parseLinkedinText } from "@shared/linkedin/parse";
 import { readQualitative } from "@shared/linkedin/readQualitative";
+import { readDeterministic } from "@shared/linkedin/readDeterministic";
+import { mesmoTextoHash } from "@shared/linkedin/textoHash";
+import { hashLinkedinTextNoCliente } from "@/lib/linkedinTextHash";
+import {
+  decodeLinkedinStoredState,
+  encodeLinkedinStoredState,
+} from "@/lib/linkedinStoredState";
 import {
   AREA_LABELS,
   AREA_SLUGS,
@@ -95,25 +97,21 @@ import {
   type Atividade,
   type Conexoes,
   type LinkedinAnalysisResponse,
+  type LinkedinAnalyzeRequest,
   type LinkedinCheckCategory,
-  type LinkedinAnalysisSummary,
   type LinkedinLevel,
   type Mercado,
   type OpenToWork,
   type SimNao,
   HEADLINE_MANUAL_MAX,
+  headlineManualAtiva,
+  headlineFinalDe,
+  normalizarHeadlineManual,
 } from "@shared/linkedin/schema";
 
 const ac = getPageAccentUi("sky");
 
 const STORAGE_KEY = "boranatech:linkedin-analyzer";
-// Bump sempre que a forma da resposta ou do estado salvo mudar. A versao 3
-// adiciona analysisId ao lado do result (o checklist de melhorias aplicadas e
-// chaveado pelo id da analise persistida). A versao 2 tem o MESMO shape de
-// result e segue restauravel: result valido com analysisId null, ou seja,
-// progresso indisponivel com aviso, SEM recuperacao por nota (o fallback do
-// GitHub foi rejeitado para o LinkedIn). Versoes anteriores descartam result.
-const STORAGE_SHAPE_VERSION = 3;
 
 const LEVEL_LABEL = LINKEDIN_LEVEL_LABELS;
 
@@ -184,6 +182,8 @@ interface StoredState {
   result: LinkedinAnalysisResponse | null;
   // Id da analise persistida exibida (null = sem checklist de melhorias).
   analysisId: string | null;
+  textoHash: string | null;
+  headlineManual: string | null;
 }
 
 function coerceForm(value: unknown): FormState {
@@ -222,40 +222,43 @@ function coerceForm(value: unknown): FormState {
 
 function loadState(): StoredState {
   if (typeof window === "undefined") {
-    return { form: emptyForm(), result: null, analysisId: null };
-  }
-  try {
-    const raw = window.sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return { form: emptyForm(), result: null, analysisId: null };
-    const parsed = JSON.parse(raw) as {
-      form?: unknown;
-      result?: unknown;
-      analysisId?: unknown;
-      version?: unknown;
-    };
-    const form = coerceForm(parsed.form);
-    // v3 e o shape atual; v2 tem o mesmo shape de result (so sem analysisId),
-    // entao restaura com progresso indisponivel. Nada de recuperar id por
-    // nota. Outras versoes descartam o result.
-    const versionOk =
-      parsed.version === STORAGE_SHAPE_VERSION || parsed.version === 2;
-    const result =
-      versionOk && parsed.result && typeof parsed.result === "object"
-        ? (parsed.result as LinkedinAnalysisResponse)
-        : null;
     return {
-      form,
-      result,
-      analysisId:
-        parsed.version === STORAGE_SHAPE_VERSION &&
-        result !== null &&
-        typeof parsed.analysisId === "string"
-          ? parsed.analysisId
-          : null,
+      form: emptyForm(),
+      result: null,
+      analysisId: null,
+      textoHash: null,
+      headlineManual: null,
     };
-  } catch {
-    return { form: emptyForm(), result: null, analysisId: null };
   }
+  let raw: string | null;
+  try {
+    raw = window.sessionStorage.getItem(STORAGE_KEY);
+  } catch {
+    return {
+      form: emptyForm(),
+      result: null,
+      analysisId: null,
+      textoHash: null,
+      headlineManual: null,
+    };
+  }
+  const decoded = decodeLinkedinStoredState(raw);
+  if (!decoded) {
+    return {
+      form: emptyForm(),
+      result: null,
+      analysisId: null,
+      textoHash: null,
+      headlineManual: null,
+    };
+  }
+  return {
+    form: coerceForm(decoded.form),
+    result: decoded.result,
+    analysisId: decoded.analysisId,
+    textoHash: decoded.textoHash,
+    headlineManual: decoded.headlineManual,
+  };
 }
 
 function Field({
@@ -567,6 +570,8 @@ function ResultadoIndisponivel({
 export default function LinkedinAnalisar() {
   const { isPro } = useSubscription();
   const { profile } = useAuth();
+  const { analyses, analysesRef, historyStatus, refreshLinkedinHistory } =
+    useLinkedinHistory({ enabled: isPro });
 
   const [bootstrap] = useState(loadState);
   const [form, setForm] = useState<FormState>(bootstrap.form);
@@ -579,15 +584,20 @@ export default function LinkedinAnalisar() {
   const [analysisId, setAnalysisId] = useState<string | null>(
     bootstrap.analysisId,
   );
-  // Indices das melhorias marcadas como aplicadas (carregado por analysisId).
-  const [applied, setApplied] = useState<Set<number>>(new Set());
-  const [progressError, setProgressError] = useState("");
-  // A feature de progresso existe no banco alvo? false = checklist escondido e
-  // aviso ameno, nunca erro vermelho (rede de seguranca para migration ausente).
-  const [progressAvailable, setProgressAvailable] = useState(true);
+  const [resultTextoHash, setResultTextoHash] = useState<string | null>(
+    bootstrap.textoHash,
+  );
+  const [headlineManual, setHeadlineManual] = useState<string | null>(
+    bootstrap.headlineManual,
+  );
   // PDF e a porta de entrada; quem ja tem texto (sessao restaurada) cai
   // direto no modo revisao.
   const [entryPath, setEntryPath] = useState<EntryPath>(() =>
+    bootstrap.form.profileText.trim().length > 0 ? "review" : "pdf",
+  );
+  // Origem efetiva do texto, separada do passo visual `review`: um PDF segue
+  // sendo PDF depois que a interface avança para a revisão.
+  const [entrySource, setEntrySource] = useState<EntryPath>(() =>
     bootstrap.form.profileText.trim().length > 0 ? "review" : "pdf",
   );
   const [dragOver, setDragOver] = useState(false);
@@ -596,12 +606,8 @@ export default function LinkedinAnalisar() {
   const [pdfStatus, setPdfStatus] = useState("");
   const [pdfError, setPdfError] = useState("");
   const [extracting, setExtracting] = useState(false);
-  const [analyses, setAnalyses] = useState<LinkedinAnalysisSummary[]>([]);
-  // Historico assentou (sucesso OU falha do fetch). analyses comeca [], entao
-  // a faixa "Como funciona" so pode decidir por Pro depois disso: evita o
-  // flash pra quem ja tem analise.
-  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [historyOpenError, setHistoryOpenError] = useState("");
   // Delta de nota vs a analise IMEDIATAMENTE anterior (toda analise de
   // LinkedIn e do mesmo perfil da pessoa, entao nao ha alvo a normalizar).
   const [scoreDelta, setScoreDelta] = useState<{
@@ -621,6 +627,10 @@ export default function LinkedinAnalisar() {
   // rolagem nas trocas de estado.
   const stageTopRef = useRef<HTMLDivElement>(null);
 
+  function replaceAnalysisId(id: string | null): void {
+    setAnalysisId(id);
+  }
+
   useEffect(() => {
     if (areaTouched.current) return;
     const fromProfile = profile?.area_interesse;
@@ -634,101 +644,18 @@ export default function LinkedinAnalisar() {
     try {
       window.sessionStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({
+        encodeLinkedinStoredState({
           form,
           result,
           analysisId,
-          version: STORAGE_SHAPE_VERSION,
+          textoHash: resultTextoHash,
+          headlineManual,
         }),
       );
     } catch {
       // storage cheio ou indisponivel: segue so em memoria.
     }
-  }, [form, result, analysisId]);
-
-  // Carga do checklist por analise: analyze novo comeca vazio (a tabela nao
-  // tem linhas pra analise recem-criada), openHistory carrega o salvo. Falha
-  // de carga NUNCA colapsa em vazio silencioso: liga o progressError.
-  useEffect(() => {
-    setProgressError("");
-    setProgressAvailable(true);
-    if (!analysisId) {
-      setApplied(new Set());
-      return;
-    }
-    let alive = true;
-    getLinkedinImprovements(analysisId)
-      .then((state) => {
-        if (!alive) return;
-        setApplied(new Set(state.applied));
-        setProgressAvailable(state.progressAvailable);
-      })
-      .catch(() => {
-        if (!alive) return;
-        setApplied(new Set());
-        // TODO(Ana): revisar a mensagem de falha ao carregar o progresso.
-        setProgressError(
-          "Não foi possível carregar seu progresso salvo. Recarregue a página para tentar de novo.",
-        );
-      });
-    return () => {
-      alive = false;
-    };
-  }, [analysisId]);
-
-  // Toggle otimista do checklist: atualiza na hora, PUT em background e
-  // rollback com aviso quando o server recusar.
-  function toggleImprovement(index: number) {
-    if (!analysisId) return;
-    const wasDone = applied.has(index);
-    setProgressError("");
-    setApplied((prev) => {
-      const next = new Set(prev);
-      if (wasDone) next.delete(index);
-      else next.add(index);
-      return next;
-    });
-    setLinkedinImprovement(analysisId, index, !wasDone).catch(
-      (err: unknown) => {
-        setApplied((prev) => {
-          const reverted = new Set(prev);
-          if (wasDone) reverted.add(index);
-          else reverted.delete(index);
-          return reverted;
-        });
-        // Recurso indisponivel (tabela ausente) nao e falha de salvar: esconde o
-        // checklist e cai no aviso ameno, sem pedir "tente de novo". Na pratica
-        // este ramo nao dispara, porque sem progressAvailable o checkbox nem
-        // renderiza; fica como defesa se o banco sumir no meio da sessao.
-        if (err instanceof Error && err.message === PROGRESS_UNAVAILABLE) {
-          setProgressAvailable(false);
-          return;
-        }
-        // TODO(Ana): revisar a mensagem de falha ao salvar o progresso.
-        setProgressError(
-          "Não foi possível salvar seu progresso. Tente de novo.",
-        );
-      },
-    );
-  }
-
-  useEffect(() => {
-    if (!isPro) return;
-    let active = true;
-    void listLinkedinAnalyses()
-      .then((data) => {
-        if (active) setAnalyses(data);
-      })
-      .catch(() => {
-        // Falha no fetch: analyses segue [], a faixa fica no fail-open.
-      })
-      .finally(() => {
-        if (active) setHistoryLoaded(true);
-      });
-    return () => {
-      active = false;
-    };
-  }, [isPro]);
+  }, [form, result, analysisId, resultTextoHash, headlineManual]);
 
   // Versao ausente = linha gravada antes do carimbo, tratada como 1.
   /**
@@ -757,28 +684,25 @@ export default function LinkedinAnalisar() {
     [form.profileText],
   );
 
-  /**
-   * Headline digitada no passo de revisao. `null` significa "ninguem mexeu",
-   * e NAO "vazia": o campo mostra a leitura do parser enquanto for null.
-   *
-   * Zerado quando o TEXTO muda, e nao a cada render: um PDF novo torna a
-   * edicao anterior obsoleta (ela se referia a outro documento), mas navegar,
-   * abrir e fechar o `details` ou mexer em qualquer outro campo do formulario
-   * nao pode descartar o que a pessoa digitou. `form.profileText` e a
-   * identidade certa porque e exatamente o que alimenta o `parsed`.
-   */
-  const [headlineManual, setHeadlineManual] = useState<string | null>(null);
+  const headlineProfileTextRef = useRef(form.profileText);
   useEffect(() => {
+    if (headlineProfileTextRef.current === form.profileText) return;
+    headlineProfileTextRef.current = form.profileText;
     setHeadlineManual(null);
   }, [form.profileText]);
 
-  // O que o campo MOSTRA e o que a analise vai usar. Mesma precedencia do
-  // `headlineFinalDe` do servidor, e de proposito: se as duas divergirem, a
-  // pessoa confere um texto e a nota sai de outro.
-  const headlineExibida = headlineManual ?? parsed?.headline ?? "";
+  const manualAtiva = headlineManualAtiva(headlineManual);
+  const headlineManualNormalizada = normalizarHeadlineManual(headlineManual);
+  const headlineExibida = manualAtiva
+    ? (headlineManual ?? "")
+    : (parsed?.headline ?? "");
+  const headlineEfetiva = headlineFinalDe(
+    parsed?.headline ?? null,
+    headlineManual,
+  );
   const headlineFoiEditada =
-    headlineManual !== null &&
-    headlineManual.trim() !== (parsed?.headline ?? "").trim();
+    manualAtiva &&
+    headlineManualNormalizada !== (parsed?.headline ?? "").trim();
 
   /**
    * A headline lida tem assinatura de corte? Decide o terceiro estado do chip.
@@ -787,9 +711,25 @@ export default function LinkedinAnalisar() {
    * `useState` criaria uma segunda verdade que precisaria ser sincronizada. E o
    * Header/Footer desta base ja ensinou o custo disso.
    */
-  // Sobre a headline EXIBIDA, nao a do parser: quem corrige no campo tem de
-  // ver o aviso sumir, e quem corrige errado tem de ve-lo continuar.
-  const headlineCortada = headlineParecCortada(headlineExibida);
+  const headlineCortada =
+    parsed?.headlineRegion?.status === "ambiguous" ||
+    headlineParecCortada(
+      headlineEfetiva,
+      headlineFoiEditada ? null : parsed?.headlineContexto,
+    );
+
+  const [formTextoHash, setFormTextoHash] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    setFormTextoHash(null);
+    if (form.profileText.trim().length === 0) return () => undefined;
+    void hashLinkedinTextNoCliente(form.profileText).then((hash) => {
+      if (active) setFormTextoHash(hash);
+    });
+    return () => {
+      active = false;
+    };
+  }, [form.profileText]);
 
   /**
    * O aviso apareceu ALGUMA vez nesta sessao de formulario?
@@ -821,14 +761,19 @@ export default function LinkedinAnalisar() {
         return;
       }
       const { aceitas: competenciasAceitas, descartadas: competenciasFora } =
-        competenciasDoPdf(detected.skillsPdf);
-      if (competenciasFora.length > 0) {
-        // Rastreavel, nao silencioso: mesmo motivo de `opcoesRenderizaveis`.
-        // Sem isto, "as competencias sumiram" nao teria origem.
-        console.warn(
-          "[linkedin] competencias descartadas do prefill:",
-          competenciasFora,
+        competenciasDoPdf(
+          detected.skillsPdf,
+          detected.skillsPdfConfiaveis !== false,
         );
+      const competenciasPedemRevisao =
+        detected.skillsPdf.length > 0 && detected.skillsPdfConfiaveis === false;
+      if (competenciasFora.length > 0) {
+        // Só metadados: os valores podem ser nome, headline ou localização e
+        // não devem sair do formulário para o console.
+        console.warn("[linkedin] competencias descartadas do prefill:", {
+          quantidade: competenciasFora.length,
+          origemConfiavel: detected.skillsPdfConfiaveis !== false,
+        });
       }
       setForm((prev) => ({
         ...prev,
@@ -849,8 +794,13 @@ export default function LinkedinAnalisar() {
             : prev.skills,
       }));
       setPdfStatus(
-        `PDF lido (${text.length.toLocaleString("pt-BR")} caracteres).`,
+        `PDF lido (${text.length.toLocaleString("pt-BR")} caracteres).${
+          competenciasPedemRevisao
+            ? " Confirme as competências manualmente: a fronteira da seção não ficou clara."
+            : ""
+        }`,
       );
+      setEntrySource("pdf");
       setEntryPath("review");
       // UMA captura por chegada de arquivo. NAO fica no `useMemo` de `parsed`
       // (que recomputa por tecla) nem numa transicao de estado (que roda de
@@ -908,20 +858,13 @@ export default function LinkedinAnalisar() {
     // headline que sera analisada.
     posthog.capture(
       EVENTO_ENVIO,
-      payloadEnvio(avisoVistoRef.current, headlineExibida),
+      payloadEnvio(avisoVistoRef.current, headlineEfetiva),
     );
     // A pessoa dispara o submit no fim do form: sobe pro scan card no topo.
     scrollToStageTop();
 
-    // Nota da analise imediatamente anterior, capturada ANTES da nova entrar
-    // no historico (a lista vem em ordem decrescente).
-    const priorScore = analyses[0]?.score ?? null;
-    const priorVersion = analyses[0]
-      ? versaoDe(analyses[0].deterministicVersion)
-      : null;
-
     try {
-      const { data, analysisId: newAnalysisId } = await analyzeLinkedin({
+      const request: LinkedinAnalyzeRequest = {
         profileText: form.profileText.trim(),
         area: form.area,
         level: form.level,
@@ -933,22 +876,39 @@ export default function LinkedinAnalisar() {
         conexoes,
         atividade,
         objetivo: form.objetivo.trim() || undefined,
-        // So vai quando DIFERE da leitura do parser. Mandar um valor igual
-        // gravaria `headlineOrigem: "manual"` para quem so clicou no campo e
-        // saiu, e a telemetria passaria a contar edicao que nao houve.
+        entryPath: entrySource,
         headlineManual: headlineFoiEditada
-          ? headlineManual!.trim()
+          ? (headlineManualNormalizada ?? undefined)
           : undefined,
-      });
+      };
+      const {
+        data,
+        analysisId: newAnalysisId,
+        textoHash,
+      } = await analyzeLinkedin(request);
       setResult(data);
-      setAnalysisId(newAnalysisId);
+      replaceAnalysisId(newAnalysisId);
+      setResultTextoHash(textoHash);
+      const atualComparavel = montarAnaliseComparavel(
+        request,
+        {
+          headline: data.deterministic.headline,
+          deterministicVersion: data.deterministicVersion,
+          qualitativeVersion: data.qualitativeVersion,
+        },
+        textoHash,
+      );
+      const anterior = analiseAnteriorComparavel(
+        analysesRef.current,
+        atualComparavel,
+      );
       // FUNIL UNICO do delta: todas as supressoes moram em decidirDelta.
       aplicarDelta(
         decidirDelta({
-          notaAnterior: priorScore,
-          versaoAnterior: priorVersion,
-          checksAnteriores: analyses[0]?.checks,
-          incompletaAnterior: analyses[0]?.notaIncompleta,
+          notaAnterior: anterior?.score ?? null,
+          versaoAnterior: anterior?.deterministicVersion,
+          checksAnteriores: anterior?.checks,
+          incompletaAnterior: anterior?.notaIncompleta,
           notaAtual: data.deterministic.score,
           versaoAtual: data.deterministicVersion,
           checksAtuais: data.deterministic.checks,
@@ -963,11 +923,7 @@ export default function LinkedinAnalisar() {
       // o estado de resultado some (showResult exige error vazio), trocando um
       // resultado pago por uma tela de erro. Falha aqui so deixa a lista
       // desatualizada ate a proxima carga.
-      void listLinkedinAnalyses()
-        .then(setAnalyses)
-        .catch(() => {
-          // Historico desatualizado nao invalida o resultado exibido.
-        });
+      void refreshLinkedinHistory({ showLoading: false });
     } catch (err) {
       setError(err instanceof Error ? err.message : "ANALYSIS_FAILED");
     } finally {
@@ -978,34 +934,51 @@ export default function LinkedinAnalisar() {
   async function openHistory(id: string) {
     if (openingId) return;
     setOpeningId(id);
+    setHistoryOpenError("");
     try {
       const record = await getLinkedinAnalysis(id);
-      if (record) {
+      if (!record) {
+        setHistoryOpenError(
+          "Não conseguimos abrir esta análise agora. Tente novamente.",
+        );
+        return;
+      }
+      {
         setResult(record.result);
+        setResultTextoHash(record.textoHash ?? null);
         // O id da linha do historico chaveia o checklist salvo da analise.
-        setAnalysisId(record.id);
+        replaceAnalysisId(record.id);
         setError("");
         setConfirmReanalyze(false);
-        // Anterior = a entrada logo DEPOIS da aberta na lista (desc), pulando
-        // a propria linha. Mesmo criterio do analyze: delta so quando a nota
-        // mudou de fato.
-        const idx = analyses.findIndex((item) => item.id === id);
-        const anterior = idx >= 0 ? analyses[idx + 1] : undefined;
+        // Procura depois da linha aberta porque a lista está em ordem
+        // decrescente, mas só aceita uma análise com o mesmo SHA-256.
+        const latestAnalyses = analysesRef.current;
+        const idx = latestAnalyses.findIndex((item) => item.id === id);
         // FUNIL UNICO do delta: todas as supressoes moram em decidirDelta.
+        const currentDeterministic = record.result.deterministic;
+        const anterior = analiseAnteriorComparavel(
+          latestAnalyses,
+          record,
+          idx >= 0 ? idx + 1 : latestAnalyses.length,
+        );
         aplicarDelta(
           decidirDelta({
             notaAnterior: anterior?.score ?? null,
             versaoAnterior: anterior?.deterministicVersion,
             checksAnteriores: anterior?.checks,
             incompletaAnterior: anterior?.notaIncompleta,
-            notaAtual: record.result.deterministic.score,
+            notaAtual: currentDeterministic.score,
             versaoAtual: record.result.deterministicVersion,
-            checksAtuais: record.result.deterministic.checks,
-            incompletaAtual: record.result.deterministic.notaIncompleta,
+            checksAtuais: currentDeterministic.checks,
+            incompletaAtual: currentDeterministic.notaIncompleta,
           }),
         );
         scrollToStageTop();
       }
+    } catch {
+      setHistoryOpenError(
+        "Não conseguimos abrir esta análise agora. Tente novamente.",
+      );
     } finally {
       setOpeningId(null);
     }
@@ -1023,12 +996,13 @@ export default function LinkedinAnalisar() {
   // analysisId vira null.
   function startNewAnalysis() {
     setResult(null);
-    setAnalysisId(null);
-    setProgressError("");
+    replaceAnalysisId(null);
+    setResultTextoHash(null);
     setError("");
     setScoreDelta(null);
     setReguaMudou(false);
     setConfirmReanalyze(false);
+    setHistoryOpenError("");
   }
 
   const profileChars = form.profileText.trim().length;
@@ -1042,8 +1016,18 @@ export default function LinkedinAnalisar() {
 
   // Lista calculada em codigo (deterministic). Ausente nas analises gravadas
   // antes da v3, entao leitura guardada.
-  const skillsAdicionarAgora =
-    result?.deterministic.skillsParaAdicionarAgora ?? [];
+  const deterministic = result?.deterministic ?? null;
+  const deterministicView = useMemo(
+    () =>
+      result
+        ? readDeterministic(result.deterministic, result.deterministicVersion)
+        : null,
+    [result],
+  );
+  const deterministicCamposAusentes = deterministicView?.camposAusentes ?? [];
+  const deterministicKeywordsCampos = deterministicView?.keywordsCampos ?? [];
+
+  const skillsAdicionarAgora = deterministic?.skillsParaAdicionarAgora ?? [];
 
   // Leitura VERSIONADA do qualitative persistido: nunca acessar
   // result.qualitative.x direto (o jsonb pode ter sido gravado por outra versao
@@ -1056,17 +1040,35 @@ export default function LinkedinAnalisar() {
     [result],
   );
 
+  const improvementsTotal = qual?.melhorias.length ?? 0;
+  const {
+    applied,
+    progressError,
+    progressAvailable,
+    initialLoaded: progressInitialLoaded,
+    toggle: toggleImprovement,
+  } = useLinkedinImprovementProgress({
+    analysisId,
+    total: improvementsTotal,
+    // O objeto muda a cada abertura, inclusive ao reabrir a mesma analysisId.
+    sessionIdentity: result,
+  });
+
   // Checklist interativo: exige analise persistida E a feature disponivel no
-  // banco. Sem os dois, os cards de melhoria renderizam sem checkbox.
-  const checklistEnabled = Boolean(analysisId) && progressAvailable;
+  // banco. O GET inicial precisa terminar antes de liberar os checkboxes.
+  const checklistEnabled =
+    Boolean(analysisId) &&
+    progressAvailable &&
+    progressInitialLoaded &&
+    !progressError;
 
   // Placar do checklist: so conta indices dentro do range das melhorias da
   // analise exibida. Sem analysisId (persistencia falhou ou storage v2), com a
   // feature indisponivel, ou com erro de progresso, o placar e null e o chip
   // NAO renderiza: erro nunca vira um "0 de N" falso.
-  const improvementsTotal = result?.qualitative.melhorias.length ?? 0;
   const appliedCount = Array.from(applied).filter(
-    (index) => index < improvementsTotal,
+    (index) =>
+      Number.isInteger(index) && index >= 0 && index < improvementsTotal,
   ).length;
   const improvementsScore =
     checklistEnabled && !progressError && improvementsTotal > 0
@@ -1074,6 +1076,7 @@ export default function LinkedinAnalisar() {
       : null;
   const allApplied =
     !reguaMudou &&
+    deterministic?.notaIncompleta !== true &&
     improvementsScore !== null &&
     improvementsScore.done === improvementsScore.total;
 
@@ -1091,28 +1094,29 @@ export default function LinkedinAnalisar() {
   // prontuario recebe SO os seus (checks nao aplicaveis ao mercado nem vem
   // no array, entao a lista ja chega filtrada do server).
   const checksByCategory = (category: LinkedinCheckCategory) =>
-    result?.deterministic.checks.filter(
-      (check) => check.category === category,
-    ) ?? [];
+    deterministic?.checks.filter((check) => check.category === category) ?? [];
 
   // Fonte honesta da camada "seu atual" do prontuario: o result NAO carrega
   // o texto do Sobre nem os titulos das experiencias; so o parsed do form
   // tem. Ao abrir uma analise do historico o form pode conter OUTRO texto,
-  // entao o parsed so vale quando a impressao digital bate com a analise
-  // exibida (tamanho do Sobre, contagem de experiencias). Sem match, os
-  // cards degradam para as contagens do proprio deterministic; nunca texto
-  // de outra analise.
+  // entao o parsed so vale quando o SHA-256 do texto bate com a analise
+  // exibida. Sem match, os
+  // cards degradam para as contagens do próprio deterministic; nunca texto de
+  // outra análise. Linhas antigas sem hash não recebem fallback heurístico.
+  const textoAtualEhDaAnalise = mesmoTextoHash(formTextoHash, resultTextoHash);
   const sobreAtual =
-    result !== null &&
+    deterministic !== null &&
+    textoAtualEhDaAnalise &&
     parsed?.sobre &&
-    parsed.sobre.trim().length === result.deterministic.sobreTamanho
+    parsed.sobre.trim().length === deterministic.sobreTamanho
       ? parsed.sobre
       : null;
   const experienciasAtual =
-    result !== null &&
+    deterministic !== null &&
+    textoAtualEhDaAnalise &&
     parsed !== null &&
     parsed.experiencias.length > 0 &&
-    parsed.experiencias.length === result.deterministic.experienciasContagem
+    parsed.experiencias.length === deterministic.experienciasContagem
       ? parsed.experiencias
       : null;
 
@@ -1145,11 +1149,8 @@ export default function LinkedinAnalisar() {
         {showEntry ? <LinkedinBackdrop reduce={reduce} /> : null}
         {/* Cenario do resultado tingido pela faixa da nota; o estado de erro
             fica sem backdrop (so o pontilhado cream). */}
-        {!loading && !error && result && qual ? (
-          <LinkedinResultBackdrop
-            faixa={result.deterministic.faixa}
-            reduce={reduce}
-          />
+        {!loading && !error && result && deterministic && qual ? (
+          <LinkedinResultBackdrop faixa={deterministic.faixa} reduce={reduce} />
         ) : null}
         <div className="container relative z-10">
           {/* Cabecalho integrado, presente nos 3 estados (entrada, loading,
@@ -1207,13 +1208,11 @@ export default function LinkedinAnalisar() {
             </p>
           </motion.div>
 
-          {/* Faixa "Como funciona" de largura total: so na entrada. Nao-Pro
-              nunca carrega historico, entao ve a faixa sempre (nunca analisou).
-              Pro so decide depois que o historico assenta (historyLoaded), pra
-              nao piscar a faixa antes do fetch retornar. Falha no fetch =
-              historyLoaded true com analyses vazio = faixa visivel (fail-open).
-              Fica acima do grid e, pra quem nao e Pro, acima do ProGate. */}
-          {showEntry && (!isPro || (historyLoaded && analyses.length === 0)) ? (
+          {/* A introdução espera o histórico assentar para não piscar. Erro é
+              fail-open para esta faixa, mas continua visível como erro próprio
+              no bloco de histórico abaixo. */}
+          {showEntry &&
+          (!isPro || (historyStatus !== "loading" && analyses.length === 0)) ? (
             <div className="mb-10">
               <HowItWorksTimeline />
             </div>
@@ -1221,7 +1220,7 @@ export default function LinkedinAnalisar() {
           {!isPro ? (
             <ProGate
               feature="linkedin_analyzer"
-              description="A análise lê seu perfil do LinkedIn, calcula uma nota e entrega os textos prontos para você ser encontrado por recrutadores de estágio, trainee, júnior ou pleno."
+              description="A análise lê seu perfil do LinkedIn, considera as evidências da sua trajetória e entrega textos prontos para diferentes momentos de carreira."
             />
           ) : (
             <div className="space-y-8">
@@ -1350,7 +1349,10 @@ export default function LinkedinAnalisar() {
 
                           <button
                             type="button"
-                            onClick={() => setEntryPath("manual")}
+                            onClick={() => {
+                              setEntryPath("manual");
+                              setEntrySource("manual");
+                            }}
                             className="text-sm font-bold text-slate-500 underline underline-offset-2 hover:text-slate-800"
                           >
                             {ENTRY_COPY.manualLink}
@@ -1371,7 +1373,10 @@ export default function LinkedinAnalisar() {
                             </div>
                             <button
                               type="button"
-                              onClick={() => setEntryPath("pdf")}
+                              onClick={() => {
+                                setEntryPath("pdf");
+                                setEntrySource("pdf");
+                              }}
                               className="text-sm font-bold text-sky-700 underline underline-offset-2 hover:text-sky-900"
                             >
                               {ENTRY_COPY.backToPdf}
@@ -1444,7 +1449,10 @@ export default function LinkedinAnalisar() {
                             </div>
                             <button
                               type="button"
-                              onClick={() => setEntryPath("pdf")}
+                              onClick={() => {
+                                setEntryPath("pdf");
+                                setEntrySource("pdf");
+                              }}
                               className="text-sm font-bold text-sky-700 underline underline-offset-2 hover:text-sky-900"
                             >
                               {ENTRY_COPY.swapPdf}
@@ -1472,7 +1480,7 @@ export default function LinkedinAnalisar() {
                             <span
                               className={cn(
                                 "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
-                                !parsed?.headline
+                                !headlineEfetiva
                                   ? "bg-amber-100"
                                   : headlineCortada
                                     ? "bg-[#FFB800]"
@@ -1480,11 +1488,13 @@ export default function LinkedinAnalisar() {
                               )}
                             >
                               Headline:{" "}
-                              {!parsed?.headline
+                              {!headlineEfetiva
                                 ? ENTRY_COPY.reviewNotFound
-                                : headlineCortada
-                                  ? "parece cortada"
-                                  : "confira abaixo"}
+                                : headlineFoiEditada
+                                  ? "corrigida por você"
+                                  : headlineCortada
+                                    ? "parece cortada"
+                                    : "confira abaixo"}
                             </span>
                             <span
                               className={cn(
@@ -1523,47 +1533,67 @@ export default function LinkedinAnalisar() {
                                 pontos, mais as duas coberturas) e o que mais
                                 sofre com quebra de linha do export. Escondido
                                 atras de um clique, ninguem conferia. */}
-                            {parsed?.headline ? (
-                              <details
-                                open
-                                className="rounded-xl border-2 border-slate-900 bg-white p-3"
+                            <details
+                              open
+                              className="rounded-xl border-2 border-slate-900 bg-white p-3"
+                            >
+                              <summary className="cursor-pointer text-sm font-black text-slate-800">
+                                Headline detectada: confira e corrija se
+                                precisar
+                              </summary>
+                              {!parsed?.headline ? (
+                                <p className="mt-2 rounded-lg bg-amber-100 p-2 text-xs font-bold text-slate-900">
+                                  Não detectamos uma headline. Você pode
+                                  preenchê-la isoladamente abaixo.
+                                </p>
+                              ) : null}
+                              {headlineCortada ? (
+                                <p
+                                  role="status"
+                                  className="mt-2 rounded-lg bg-[#FFB800]/20 p-2 text-xs font-bold text-slate-900"
+                                >
+                                  A headline que lemos pode estar cortada.
+                                  Corrija o campo abaixo antes de analisar.
+                                </p>
+                              ) : null}
+                              <label
+                                htmlFor="linkedin-headline-manual"
+                                className="mt-3 block text-xs font-black text-slate-700"
                               >
-                                <summary className="cursor-pointer text-sm font-black text-slate-800">
-                                  Headline lida do seu PDF
-                                </summary>
-                                {/* O aviso fica ACIMA do campo e diz so a
-                                    observacao. O que fazer esta no texto de
-                                    apoio, que e o mesmo para todo mundo: com o
-                                    campo editavel logo abaixo, repetir "ajuste"
-                                    aqui seriam duas vozes dando a mesma
-                                    instrucao, e a antiga ainda mandava colar o
-                                    texto de novo, que deixou de ser necessario. */}
-                                {headlineCortada ? (
-                                  <p className="mt-2 rounded-lg bg-[#FFB800]/20 p-2 text-xs font-bold text-slate-900">
-                                    A headline que lemos parece estar cortada.
-                                  </p>
-                                ) : null}
-                                <textarea
-                                  value={headlineExibida}
-                                  onChange={(e) =>
-                                    setHeadlineManual(e.target.value)
-                                  }
-                                  maxLength={HEADLINE_MANUAL_MAX}
-                                  rows={2}
-                                  aria-label="Headline lida do seu PDF"
-                                  className="mt-2 w-full resize-y rounded-lg border-2 border-slate-900 bg-white p-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FFB800]"
-                                />
-                                <p className="mt-1 text-right text-xs font-bold tabular-nums text-slate-500">
-                                  {headlineExibida.length} / {HEADLINE_MANUAL_MAX}
+                                Headline usada na análise
+                              </label>
+                              <textarea
+                                id="linkedin-headline-manual"
+                                value={headlineExibida}
+                                onChange={(event) =>
+                                  setHeadlineManual(
+                                    event.target.value === ""
+                                      ? null
+                                      : event.target.value,
+                                  )
+                                }
+                                maxLength={HEADLINE_MANUAL_MAX}
+                                rows={2}
+                                aria-describedby="linkedin-headline-help linkedin-headline-count"
+                                className="mt-1 w-full resize-y rounded-lg border-2 border-slate-900 bg-white p-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FFB800]"
+                              />
+                              <div className="mt-1 flex items-start justify-between gap-3 text-xs">
+                                <p
+                                  id="linkedin-headline-help"
+                                  className="font-medium text-slate-500"
+                                >
+                                  A correção muda só a headline analisada. O
+                                  texto bruto extraído do PDF permanece intacto.
                                 </p>
-                                <p className="mt-1 text-xs font-medium text-slate-500">
-                                  Foi isto que lemos do arquivo. A análise usa o
-                                  que estiver neste campo, então, se ficou
-                                  diferente da sua headline no LinkedIn, ajuste
-                                  antes de continuar.
-                                </p>
-                              </details>
-                            ) : null}
+                                <span
+                                  id="linkedin-headline-count"
+                                  className="shrink-0 font-bold tabular-nums text-slate-500"
+                                >
+                                  {headlineExibida.length} /{" "}
+                                  {HEADLINE_MANUAL_MAX}
+                                </span>
+                              </div>
+                            </details>
                             {parsed?.sobre ? (
                               <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
                                 <summary className="cursor-pointer text-sm font-black text-slate-800">
@@ -1719,7 +1749,7 @@ export default function LinkedinAnalisar() {
                 />
               ) : null}
 
-              {!loading && !error && result && qual ? (
+              {!loading && !error && result && deterministic && qual ? (
                 /* Boundary ESTREITO. Sem ele, um erro de render aqui sobe ate o
                    boundary do App e derruba a pagina inteira, header e tudo.
                    Foi o que aconteceu com `skillsSugeridas`: a analise foi
@@ -1735,560 +1765,569 @@ export default function LinkedinAnalisar() {
                     />
                   )}
                 >
-                <div
-                  className="area-rise space-y-8"
-                  style={{ animationDelay: "0.08s" }}
-                >
-                  <LinkedinScoreHero
-                    response={result}
-                    scoreDelta={scoreDelta}
-                    reduce={reduce}
-                    improvements={improvementsScore}
-                  />
-
-                  {reguaMudou ? (
-                    // Copy FECHADA. Requisito: o banner recebe so um booleano e
-                    // nao sabe de qual versao a pessoa veio, entao cada frase
-                    // tem que ser verdadeira para QUALQUER transicao.
-                    //
-                    // A versao anterior afirmava "a headline que vinha cortada
-                    // ao meio agora e lida inteira". Era especifica da transicao
-                    // v4 -> v5 e, medido em 2026-07-31 sobre as analises
-                    // persistidas, era FALSA para 39 de 156: a correcao cobre
-                    // quebra na virgula com continuacao forte, e as quebras
-                    // dominantes (separador orfao, termo composto partido, prosa
-                    // cortada) seguem intactas. Prometer conserto que a pessoa
-                    // nao recebeu e pior que nao explicar, e era a unica
-                    // afirmacao verificavel do banner.
-                    //
-                    // O paragrafo de julho FICA: ele e datado ("se a sua analise
-                    // anterior e de antes de julho"), entao continua verdadeiro
-                    // sem depender de qual foi a mudanca mais recente.
-                    //
-                    // "o que lemos do seu perfil para preencher a analise" cobre
-                    // as TRES coisas que ja causaram bump: criterio (v3 -> v4),
-                    // leitura do parser (v4 -> v5) e o que e escrito no
-                    // formulario a partir do PDF (v5 -> v6, o pre-preenchimento
-                    // de competencias). Foi escolhida por cobrir as tres sem
-                    // afirmar qual foi a ultima, que e o requisito do booleano.
-                    <FeedbackBanner variant="warn">
-                      Esta nota não é comparável com a da sua análise anterior, e
-                      a comparação recomeça a partir daqui. Entre uma análise e
-                      outra, podem ter mudado os critérios da régua ou o que
-                      lemos do seu perfil para preencher a análise, e qualquer um
-                      dos dois move a nota do mesmo perfil, sem você ter mexido
-                      em nada. Se a sua
-                      análise anterior é de antes de julho, os critérios
-                      também mudaram, quase tudo para deixar a régua mais justa:
-                      a cobertura de palavras-chave pedia metade de todas as
-                      tecnologias da área, o que em algumas áreas significava
-                      mais de trinta, e agora considera quantas existem na sua
-                      área de verdade; o nível que você informa passou a contar,
-                      então quem está começando não é medido pela régua de quem
-                      está há anos na área; e cada experiência passou a ser
-                      avaliada por si, então uma sem descrição não é mais
-                      compensada por outra bem escrita.
-                    </FeedbackBanner>
-                  ) : scoreDelta ? (
-                    <ScoreDeltaBanner
-                      from={scoreDelta.from}
-                      to={scoreDelta.to}
-                    />
-                  ) : null}
-
-                  {/* Spotlight fora das colunas: a ponte nota -> acao. */}
-                  <motion.div
-                    initial={
-                      reduce ? false : { opacity: 0, y: 16, scale: 0.98 }
-                    }
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={
-                      reduce
-                        ? { duration: 0 }
-                        : { delay: 0.3, duration: 0.4, ease: "easeOut" }
-                    }
-                    className="rotate-[0.5deg]"
+                  <div
+                    className="area-rise space-y-8"
+                    style={{ animationDelay: "0.08s" }}
                   >
-                    <NextStepCard proximoPasso={qual.proximoPasso} />
-                  </motion.div>
+                    <LinkedinScoreHero
+                      response={{ ...result, deterministic }}
+                      scoreDelta={scoreDelta}
+                      reduce={reduce}
+                      improvements={improvementsScore}
+                    />
 
-                  {/* Corpo prontuario: coluna unica de leitura vertical (o
+                    {reguaMudou ? (
+                      // Copy FECHADA. Requisito: o banner recebe so um booleano e
+                      // nao sabe de qual versao a pessoa veio, entao cada frase
+                      // tem que ser verdadeira para QUALQUER transicao.
+                      //
+                      // A versao anterior afirmava "a headline que vinha cortada
+                      // ao meio agora e lida inteira". Era especifica da transicao
+                      // v4 -> v5 e, medido em 2026-07-31 sobre as analises
+                      // persistidas, era FALSA para 39 de 156: a correcao cobre
+                      // quebra na virgula com continuacao forte, e as quebras
+                      // dominantes (separador orfao, termo composto partido, prosa
+                      // cortada) seguem intactas. Prometer conserto que a pessoa
+                      // nao recebeu e pior que nao explicar, e era a unica
+                      // afirmacao verificavel do banner.
+                      //
+                      // O paragrafo de julho FICA: ele e datado ("se a sua analise
+                      // anterior e de antes de julho"), entao continua verdadeiro
+                      // sem depender de qual foi a mudanca mais recente.
+                      //
+                      // "o que lemos do seu perfil para preencher a analise" cobre
+                      // as TRES coisas que ja causaram bump: criterio (v3 -> v4),
+                      // leitura do parser (v4 -> v5) e o que e escrito no
+                      // formulario a partir do PDF (v5 -> v6, o pre-preenchimento
+                      // de competencias). Foi escolhida por cobrir as tres sem
+                      // afirmar qual foi a ultima, que e o requisito do booleano.
+                      <FeedbackBanner variant="warn">
+                        Esta nota não é comparável com a da sua análise
+                        anterior, e a comparação recomeça a partir daqui. Entre
+                        uma análise e outra, podem ter mudado os critérios da
+                        régua ou o que lemos do seu perfil para preencher a
+                        análise, e qualquer um dos dois move a nota do mesmo
+                        perfil, sem você ter mexido em nada. Se a sua análise
+                        anterior é de antes de julho, os critérios também
+                        mudaram, quase tudo para deixar a régua mais justa: a
+                        cobertura de palavras-chave pedia metade de todas as
+                        tecnologias da área, o que em algumas áreas significava
+                        mais de trinta, e agora considera quantas existem na sua
+                        área de verdade; o nível que você informa passou a
+                        contar, então quem está começando não é medido pela
+                        régua de quem está há anos na área; e cada experiência
+                        passou a ser avaliada por si, então uma sem descrição
+                        não é mais compensada por outra bem escrita.
+                      </FeedbackBanner>
+                    ) : scoreDelta ? (
+                      <ScoreDeltaBanner
+                        from={scoreDelta.from}
+                        to={scoreDelta.to}
+                      />
+                    ) : null}
+
+                    {/* Spotlight fora das colunas: a ponte nota -> acao. */}
+                    <motion.div
+                      initial={
+                        reduce ? false : { opacity: 0, y: 16, scale: 0.98 }
+                      }
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={
+                        reduce
+                          ? { duration: 0 }
+                          : { delay: 0.3, duration: 0.4, ease: "easeOut" }
+                      }
+                      className="rotate-[0.5deg]"
+                    >
+                      <NextStepCard proximoPasso={qual.proximoPasso} />
+                    </motion.div>
+
+                    {/* Corpo prontuario: coluna unica de leitura vertical (o
                       grid revista 7/5 morreu). Resumo curto da IA, o bloco
                       compacto de fortes/fracos justificando o veredito
                       geral, o loop de melhorias intacto e um card por secao
                       do perfil: veredito derivado dos checks, o atual
                       detectado e o texto pronto pra colar. */}
-                  <div className="mx-auto mt-14 max-w-3xl space-y-8">
-                    <Reveal>
-                      <AiSummary
-                        resumo={qual.resumo}
-                        accent={ac}
-                        onAskAgent={() =>
-                          // TODO(Ana): revisar o texto pre-preenchido da ponte.
-                          openAgentWidget(
-                            "Sobre minha análise de LinkedIn de hoje: ",
-                          )
-                        }
-                      />
-                    </Reveal>
-                    <Reveal delay={0.05}>
-                      <StrengthsWeaknesses
-                        pontosFortes={qual.pontosFortes}
-                        pontosFracos={qual.pontosFracos}
-                        accent={ac}
-                      />
-                    </Reveal>
-                    <Reveal delay={0.05}>
-                      <div className="space-y-3">
-                        {!checklistEnabled ? (
-                          <FeedbackBanner variant="warn">
-                            {/* TODO(Ana): revisar o aviso de progresso indisponivel. */}
-                            O progresso de melhorias está indisponível para esta
-                            análise.
-                          </FeedbackBanner>
-                        ) : null}
-                        {progressError ? (
-                          <FeedbackBanner variant="error">
-                            {progressError}
-                          </FeedbackBanner>
-                        ) : null}
-                        <Improvements
-                          melhorias={qual.melhorias}
+                    <div className="mx-auto mt-14 max-w-3xl space-y-8">
+                      <Reveal>
+                        <AiSummary
+                          resumo={qual.resumo}
                           accent={ac}
-                          applied={checklistEnabled ? applied : undefined}
-                          onToggle={
-                            checklistEnabled ? toggleImprovement : undefined
+                          onAskAgent={() =>
+                            // TODO(Ana): revisar o texto pre-preenchido da ponte.
+                            openAgentWidget(
+                              "Sobre minha análise de LinkedIn de hoje: ",
+                            )
                           }
                         />
-                      </div>
-                    </Reveal>
-
-                    <Reveal>
-                      {/* TODO(Ana): revisar o rotulo do prontuario. */}
-                      <SectionLabel ac={ac}>
-                        Prontuário do seu perfil
-                      </SectionLabel>
-                    </Reveal>
-
-                    <Reveal>
-                      <SectionReport
-                        title="Headline"
-                        pasteHint="Cole no campo de headline do seu perfil, no lugar do que está lá. A headline é um campo único: isto SUBSTITUI o texto atual, não soma."
-                        icon={
-                          <Type className={SECTION_ICON_CLASS} aria-hidden />
-                        }
-                        checks={checksByCategory("headline")}
-                        atual={
-                          result.deterministic.headline ? (
-                            <p className="break-words">
-                              {result.deterministic.headline}
-                            </p>
-                          ) : null
-                        }
-                        paste={
-                          <ul className="space-y-3">
-                            {qual.headlines.map((headline, index) => (
-                              <li
-                                key={index}
-                                className="flex items-start justify-between gap-3 rounded-xl border-2 border-slate-200 bg-white p-3"
-                              >
-                                <p className="min-w-0 text-sm font-medium text-slate-800">
-                                  {headline}
-                                </p>
-                                <CopyButton text={headline} />
-                              </li>
-                            ))}
-                          </ul>
-                        }
-                      >
-                        {result.deterministic.headline === null ? (
-                          // TODO(Ana): revisar a nota de headline nao detectada.
-                          <p className={EMPTY_NOTE_CLASS}>
-                            Não detectamos uma headline no texto analisado.
-                            Comece pelas versões prontas abaixo e cole a sua
-                            preferida no perfil.
-                          </p>
-                        ) : null}
-                      </SectionReport>
-                    </Reveal>
-
-                    <Reveal>
-                      <SectionReport
-                        title="Sobre"
-                        pasteHint="Cole na seção Sobre, no lugar do texto atual. É um campo único, então isto SUBSTITUI o que está lá. Se você tem um trecho que quer manter, junte antes de salvar."
-                        icon={
-                          <FileText
-                            className={SECTION_ICON_CLASS}
-                            aria-hidden
+                      </Reveal>
+                      <Reveal delay={0.05}>
+                        <StrengthsWeaknesses
+                          pontosFortes={qual.pontosFortes}
+                          pontosFracos={qual.pontosFracos}
+                          accent={ac}
+                        />
+                      </Reveal>
+                      <Reveal delay={0.05}>
+                        <div className="space-y-3">
+                          {analysisId &&
+                          !progressInitialLoaded &&
+                          !progressError ? (
+                            <FeedbackBanner variant="warn">
+                              Carregando seu progresso salvo…
+                            </FeedbackBanner>
+                          ) : !checklistEnabled && !progressError ? (
+                            <FeedbackBanner variant="warn">
+                              {/* TODO(Ana): revisar o aviso de progresso indisponivel. */}
+                              O progresso de melhorias está indisponível para
+                              esta análise.
+                            </FeedbackBanner>
+                          ) : null}
+                          {progressError ? (
+                            <FeedbackBanner variant="error">
+                              {progressError}
+                            </FeedbackBanner>
+                          ) : null}
+                          <Improvements
+                            melhorias={qual.melhorias}
+                            accent={ac}
+                            applied={checklistEnabled ? applied : undefined}
+                            onToggle={
+                              checklistEnabled ? toggleImprovement : undefined
+                            }
                           />
-                        }
-                        checks={checksByCategory("sobre")}
-                        atual={
-                          sobreAtual ? (
-                            <p className="whitespace-pre-wrap leading-relaxed">
-                              {sobreAtual}
-                            </p>
-                          ) : null
-                        }
-                        paste={
-                          <div>
-                            <div className="mb-2 flex justify-end">
-                              <CopyButton text={qual.sobreReescrito} />
-                            </div>
-                            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
-                              {qual.sobreReescrito}
-                            </p>
-                          </div>
-                        }
-                      >
-                        {result.deterministic.sobreTamanho === 0 ? (
-                          // TODO(Ana): revisar a nota de Sobre nao detectado.
-                          <p className={EMPTY_NOTE_CLASS}>
-                            Não detectamos a seção Sobre no texto analisado. O
-                            texto pronto abaixo resolve isso: é só colar no seu
-                            perfil.
-                          </p>
-                        ) : sobreAtual === null ? (
-                          // TODO(Ana): revisar a nota do Sobre sem texto salvo.
-                          <p className={EMPTY_NOTE_CLASS}>
-                            Detectamos um Sobre com{" "}
-                            {result.deterministic.sobreTamanho} caracteres nesta
-                            análise (o texto completo não fica salvo no
-                            histórico).
-                          </p>
-                        ) : null}
-                      </SectionReport>
-                    </Reveal>
+                        </div>
+                      </Reveal>
 
-                    <Reveal>
-                      <SectionReport
-                        title="Experiências"
-                        pasteHint="Cole na descrição da experiência de mesmo nome, dentro do LinkedIn. Aqui depende de você: estes bullets reescrevem os que já existem, mas se a sua descrição tiver algo que não aparece aqui (um projeto, uma ferramenta, um número), mantenha essa parte e troque o resto."
-                        icon={
-                          <Briefcase
-                            className={SECTION_ICON_CLASS}
-                            aria-hidden
-                          />
-                        }
-                        checks={checksByCategory("experiencias")}
-                        atual={
-                          experienciasAtual ? (
-                            <ul className="space-y-2">
-                              {experienciasAtual.map((exp, index) => {
-                                // Ruido de paginacao do PDF sai SO daqui (a
-                                // exibicao); o parse que pontuou fica intacto.
-                                // Sem limpeza aqui: o rodape de paginacao ja
-                                // sai na normalizacao, antes do parse.
-                                const titulo = exp.titulo || "(sem título)";
-                                const descricao = exp.descricao;
-                                return (
-                                  <li key={index}>
-                                    <span className="font-bold text-slate-900">
-                                      {titulo}
-                                    </span>
-                                    {exp.empresa ? (
-                                      <span className="text-slate-500">
-                                        {" "}
-                                        em {exp.empresa}
-                                      </span>
-                                    ) : null}
-                                    {descricao ? (
-                                      <span>
-                                        {" "}
-                                        · {descricao.slice(0, 160)}
-                                        {descricao.length > 160 ? "..." : ""}
-                                      </span>
-                                    ) : null}
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          ) : null
-                        }
-                        paste={
-                          qual.bulletsReescritos.length > 0 ? (
-                            <div className="space-y-4">
-                              {qual.bulletsReescritos.map((item, index) => (
-                                <div
-                                  key={index}
-                                  className="rounded-xl border-2 border-slate-200 bg-white p-4"
-                                >
-                                  <div className="mb-2 flex items-start justify-between gap-3">
-                                    <p className="min-w-0 text-sm font-black text-slate-900">
-                                      {item.contexto}
-                                    </p>
-                                    <CopyButton
-                                      text={item.bullets.join("\n")}
-                                    />
-                                  </div>
-                                  <ul className="space-y-2">
-                                    {item.bullets.map((bullet, bulletIndex) => (
-                                      <li
-                                        key={bulletIndex}
-                                        className="flex items-start gap-2 text-sm text-slate-700"
-                                      >
-                                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-sky-500" />
-                                        {bullet}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              ))}
-                            </div>
-                          ) : null
-                        }
-                      >
-                        {result.deterministic.experienciasContagem === 0 ? (
-                          // TODO(Ana): revisar a nota de experiencias nao detectadas.
-                          <p className={EMPTY_NOTE_CLASS}>
-                            Não detectamos experiências no texto analisado.
-                            Comece pela melhoria priorizada correspondente:
-                            cadastre um projeto seu como experiência.
-                          </p>
-                        ) : experienciasAtual === null ? (
-                          // TODO(Ana): revisar a nota das experiencias sem titulos salvos.
-                          <p className={EMPTY_NOTE_CLASS}>
-                            Detectamos{" "}
-                            {result.deterministic.experienciasContagem}{" "}
-                            experiência
-                            {result.deterministic.experienciasContagem === 1
-                              ? ""
-                              : "s"}{" "}
-                            nesta análise (os títulos não ficam salvos no
-                            histórico).
-                          </p>
-                        ) : null}
-                      </SectionReport>
-                    </Reveal>
+                      <Reveal>
+                        {/* TODO(Ana): revisar o rotulo do prontuario. */}
+                        <SectionLabel ac={ac}>
+                          Prontuário do seu perfil
+                        </SectionLabel>
+                      </Reveal>
 
-                    <Reveal>
-                      <SectionReport
-                        title="Competências"
-                        pasteHint="Adicione uma a uma em Competências, no seu perfil. Aqui é SOMA, não troca: nada do que você já cadastrou precisa sair."
-                        icon={
-                          <Award className={SECTION_ICON_CLASS} aria-hidden />
-                        }
-                        checks={checksByCategory("skills")}
-                        atual={
-                          result.deterministic.skillsContagem > 0 ? (
-                            <p>
-                              {result.deterministic.skillsContagem} competência
-                              {result.deterministic.skillsContagem === 1
-                                ? " informada"
-                                : "s informadas"}{" "}
-                              nesta análise.
-                            </p>
-                          ) : null
-                        }
-                        paste={
-                          skillsAdicionarAgora.length > 0 ||
-                          qual.skillsParaEstudar.length > 0 ? (
-                            <div className="space-y-5">
-                              {/* Bloco 1: o que a pessoa JA comprova no perfil
-                                  e pode cadastrar hoje. Este tem CopyButton. */}
-                              {skillsAdicionarAgora.length > 0 ? (
-                                <div>
-                                  <div className="flex items-start justify-between gap-3">
-                                    <p className="text-sm text-slate-600">
-                                      {/* TODO(Ana): revisar a copy do bloco de adicionar agora. */}
-                                      <span className="font-black text-slate-900">
-                                        Adicione agora:
-                                      </span>{" "}
-                                      seu perfil já demonstra estas tecnologias,
-                                      mas elas não estão nas suas competências.
-                                    </p>
-                                    <CopyButton
-                                      text={skillsAdicionarAgora.join(", ")}
-                                    />
-                                  </div>
-                                  <div className="mt-3 flex flex-wrap gap-2">
-                                    {skillsAdicionarAgora.map((skill) => (
-                                      <span
-                                        key={skill}
-                                        className="inline-flex rounded-full border-2 border-emerald-500 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800"
-                                      >
-                                        {skill}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              ) : null}
-
-                              {/* Bloco 2: trilha de estudo. SEM CopyButton de
-                                  proposito: copiar em massa para as
-                                  competencias e exatamente o conselho errado
-                                  que este bloco existe para evitar. */}
-                              {qual.skillsParaEstudar.length > 0 ? (
-                                <div
-                                  className={
-                                    skillsAdicionarAgora.length > 0
-                                      ? "border-t-2 border-dashed border-slate-200 pt-5"
-                                      : undefined
-                                  }
-                                >
-                                  <p className="text-sm text-slate-600">
-                                    {/* TODO(Ana): revisar a copy do bloco de estudo. */}
-                                    <span className="font-black text-slate-900">
-                                      Para estudar:
-                                    </span>{" "}
-                                    comuns na sua área e ainda sem sinal no seu
-                                    perfil. Não adicione às competências antes
-                                    de realmente saber usar.
-                                  </p>
-                                  <div className="mt-3 flex flex-wrap gap-2">
-                                    {qual.skillsParaEstudar.map((skill) => (
-                                      <span
-                                        key={skill}
-                                        className="inline-flex rounded-full border-2 border-slate-300 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600"
-                                      >
-                                        {skill}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              ) : null}
-                            </div>
-                          ) : null
-                        }
-                      >
-                        {result.deterministic.skillsContagem === 0 ? (
-                          // TODO(Ana): revisar a nota de competencias nao informadas.
-                          <p className={EMPTY_NOTE_CLASS}>
-                            Você não informou competências nesta análise.
-                            Cadastre as suas na seção Competências do LinkedIn e
-                            cole aqui na próxima análise.
-                          </p>
-                        ) : null}
-                      </SectionReport>
-                    </Reveal>
-
-                    <Reveal>
-                      <SectionReport
-                        title="Sinais do perfil (você declarou)"
-                        icon={
-                          <BadgeCheck
-                            className={SECTION_ICON_CLASS}
-                            aria-hidden
-                          />
-                        }
-                        checks={checksByCategory("sinais")}
-                      >
-                        {/* Separacao visual do que a ferramenta LEU do PDF.
-                            Estes cinco vem do formulario e a plataforma nao tem
-                            como conferir; deixar isso explicito e metade do que
-                            substituiu o teto de peso que existiu e foi
-                            revertido. A outra metade e a supressao de delta. */}
-                        <p className="mt-4 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50 p-3 text-xs font-medium text-amber-900">
-                          Estes cinco pontos vêm das suas respostas no
-                          formulário, não do PDF: a gente não consegue conferir
-                          foto, banner, Open to Work, conexões nem frequência de
-                          posts. Eles contam na nota porque são ações reais e
-                          fáceis de fazer, mas valem pelo que você fizer de
-                          verdade, não pelo que marcar aqui.
-                        </p>
-                      </SectionReport>
-                    </Reveal>
-
-                    {/* RecruiterFinder dentro do prontuario: agrupado logo
-                        abaixo do card da secao (card-brutal aninhado em
-                        card-brutal ficaria pesado). */}
-                    <Reveal>
-                      <div className="space-y-4">
+                      <Reveal>
                         <SectionReport
-                          title="Como recrutadores te encontram"
+                          title="Headline"
+                          pasteHint="Cole no campo de headline do seu perfil, no lugar do que está lá. A headline é um campo único: isto SUBSTITUI o texto atual, não soma."
                           icon={
-                            <Search
+                            <Type className={SECTION_ICON_CLASS} aria-hidden />
+                          }
+                          checks={checksByCategory("headline")}
+                          atual={
+                            deterministic.headline ? (
+                              <p className="break-words">
+                                {deterministic.headline}
+                              </p>
+                            ) : null
+                          }
+                          paste={
+                            <ul className="space-y-3">
+                              {qual.headlines.map((headline, index) => (
+                                <li
+                                  key={index}
+                                  className="flex items-start justify-between gap-3 rounded-xl border-2 border-slate-200 bg-white p-3"
+                                >
+                                  <p className="min-w-0 text-sm font-medium text-slate-800">
+                                    {headline}
+                                  </p>
+                                  <CopyButton text={headline} />
+                                </li>
+                              ))}
+                            </ul>
+                          }
+                        >
+                          {deterministic.headline === null ? (
+                            // TODO(Ana): revisar a nota de headline nao detectada.
+                            <p className={EMPTY_NOTE_CLASS}>
+                              Não detectamos uma headline no texto analisado.
+                              Comece pelas versões prontas abaixo e cole a sua
+                              preferida no perfil.
+                            </p>
+                          ) : null}
+                        </SectionReport>
+                      </Reveal>
+
+                      <Reveal>
+                        <SectionReport
+                          title="Sobre"
+                          pasteHint="Cole na seção Sobre, no lugar do texto atual. É um campo único, então isto SUBSTITUI o que está lá. Se você tem um trecho que quer manter, junte antes de salvar."
+                          icon={
+                            <FileText
                               className={SECTION_ICON_CLASS}
                               aria-hidden
                             />
                           }
-                          checks={checksByCategory("encontrabilidade")}
-                        />
-                        <RecruiterFinder
-                          deterministic={result.deterministic}
-                          mercado={result.mercado}
-                        />
-                      </div>
-                    </Reveal>
-
-                    <Reveal>
-                      <SectionReport
-                        title="Mensagem para recrutador"
-                        pasteHint="Esta não vai no seu perfil. Copie e envie no chat do LinkedIn quando responder um recrutador, trocando o que estiver entre colchetes."
-                        icon={
-                          <MessageSquare
-                            className={SECTION_ICON_CLASS}
-                            aria-hidden
-                          />
-                        }
-                        checks={[]}
-                        paste={
-                          <div>
-                            <div className="mb-2 flex justify-end">
-                              <CopyButton
-                                text={qual.modeloMensagemRecrutador}
-                              />
+                          checks={checksByCategory("sobre")}
+                          atual={
+                            sobreAtual ? (
+                              <p className="whitespace-pre-wrap leading-relaxed">
+                                {sobreAtual}
+                              </p>
+                            ) : null
+                          }
+                          paste={
+                            <div>
+                              <div className="mb-2 flex justify-end">
+                                <CopyButton text={qual.sobreReescrito} />
+                              </div>
+                              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
+                                {qual.sobreReescrito}
+                              </p>
                             </div>
-                            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
-                              {qual.modeloMensagemRecrutador}
+                          }
+                        >
+                          {deterministic.sobreTamanho === 0 ? (
+                            // TODO(Ana): revisar a nota de Sobre nao detectado.
+                            <p className={EMPTY_NOTE_CLASS}>
+                              Não detectamos a seção Sobre no texto analisado. O
+                              texto pronto abaixo resolve isso: é só colar no
+                              seu perfil.
                             </p>
-                          </div>
-                        }
-                      />
-                    </Reveal>
+                          ) : sobreAtual === null ? (
+                            // TODO(Ana): revisar a nota do Sobre sem texto salvo.
+                            <p className={EMPTY_NOTE_CLASS}>
+                              Detectamos um Sobre com{" "}
+                              {deterministic.sobreTamanho} caracteres nesta
+                              análise (o texto completo não fica salvo no
+                              histórico).
+                            </p>
+                          ) : null}
+                        </SectionReport>
+                      </Reveal>
 
-                    <Reveal>
-                      <NextStepsByArea
-                        area={result.area}
-                        contexto={
-                          // Sem keywordsCampos (analise anterior a Fase 2A) o
-                          // componente volta ao modo so-area sozinho: preferir
-                          // recomendacao generica a recomendacao com contexto
-                          // pela metade.
-                          result.deterministic.keywordsCampos
-                            ? {
-                                nivelUsuario: result.level,
-                                lacunas: result.deterministic.keywordsCampos
-                                  .filter((k) => !k.comprovado)
-                                  .map((k) => k.termo),
-                                tecnologiasDaArea:
-                                  result.deterministic.keywordsCampos.map(
-                                    (k) => k.termo,
-                                  ),
-                                textoPerfil:
-                                  result.deterministic.perfilDedup ?? "",
-                                // Semente estavel: a mesma analise reaberta
-                                // recebe a mesma ordem. Sem id (persistencia
-                                // falhou), cai num derivado do proprio
-                                // resultado, que tambem e estavel.
-                                seed:
-                                  analysisId ??
-                                  `${result.area}:${result.deterministic.score}:${result.deterministic.sobreTamanho}`,
-                              }
-                            : undefined
-                        }
-                      />
-                    </Reveal>
+                      <Reveal>
+                        <SectionReport
+                          title="Experiências"
+                          pasteHint="Cole na descrição da experiência de mesmo nome, dentro do LinkedIn. Aqui depende de você: estes bullets reescrevem os que já existem, mas se a sua descrição tiver algo que não aparece aqui (um projeto, uma ferramenta, um número), mantenha essa parte e troque o resto."
+                          icon={
+                            <Briefcase
+                              className={SECTION_ICON_CLASS}
+                              aria-hidden
+                            />
+                          }
+                          checks={checksByCategory("experiencias")}
+                          atual={
+                            experienciasAtual ? (
+                              <ul className="space-y-2">
+                                {experienciasAtual.map((exp, index) => {
+                                  // Ruido de paginacao do PDF sai SO daqui (a
+                                  // exibicao); o parse que pontuou fica intacto.
+                                  // Sem limpeza aqui: o rodape de paginacao ja
+                                  // sai na normalizacao, antes do parse.
+                                  const titulo = exp.titulo || "(sem título)";
+                                  const descricao = exp.descricao;
+                                  return (
+                                    <li key={index}>
+                                      <span className="font-bold text-slate-900">
+                                        {titulo}
+                                      </span>
+                                      {exp.empresa ? (
+                                        <span className="text-slate-500">
+                                          {" "}
+                                          em {exp.empresa}
+                                        </span>
+                                      ) : null}
+                                      {descricao ? (
+                                        <span>
+                                          {" "}
+                                          · {descricao.slice(0, 160)}
+                                          {descricao.length > 160 ? "..." : ""}
+                                        </span>
+                                      ) : null}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            ) : null
+                          }
+                          paste={
+                            qual.bulletsReescritos.length > 0 ? (
+                              <div className="space-y-4">
+                                {qual.bulletsReescritos.map((item, index) => (
+                                  <div
+                                    key={index}
+                                    className="rounded-xl border-2 border-slate-200 bg-white p-4"
+                                  >
+                                    <div className="mb-2 flex items-start justify-between gap-3">
+                                      <p className="min-w-0 text-sm font-black text-slate-900">
+                                        {item.contexto}
+                                      </p>
+                                      <CopyButton
+                                        text={item.bullets.join("\n")}
+                                      />
+                                    </div>
+                                    <ul className="space-y-2">
+                                      {item.bullets.map(
+                                        (bullet, bulletIndex) => (
+                                          <li
+                                            key={bulletIndex}
+                                            className="flex items-start gap-2 text-sm text-slate-700"
+                                          >
+                                            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-sky-500" />
+                                            {bullet}
+                                          </li>
+                                        ),
+                                      )}
+                                    </ul>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null
+                          }
+                        >
+                          {deterministic.experienciasContagem === 0 ? (
+                            // TODO(Ana): revisar a nota de experiencias nao detectadas.
+                            <p className={EMPTY_NOTE_CLASS}>
+                              Não detectamos experiências no texto analisado.
+                              Comece pela melhoria priorizada correspondente:
+                              cadastre um projeto seu como experiência.
+                            </p>
+                          ) : experienciasAtual === null ? (
+                            // TODO(Ana): revisar a nota das experiencias sem titulos salvos.
+                            <p className={EMPTY_NOTE_CLASS}>
+                              Detectamos {deterministic.experienciasContagem}{" "}
+                              experiência
+                              {deterministic.experienciasContagem === 1
+                                ? ""
+                                : "s"}{" "}
+                              nesta análise (os títulos não ficam salvos no
+                              histórico).
+                            </p>
+                          ) : null}
+                        </SectionReport>
+                      </Reveal>
 
-                    {/* Climax do loop fechando o prontuario, com a
+                      <Reveal>
+                        <SectionReport
+                          title="Competências"
+                          pasteHint="Adicione uma a uma em Competências, no seu perfil. Aqui é SOMA, não troca: nada do que você já cadastrou precisa sair."
+                          icon={
+                            <Award className={SECTION_ICON_CLASS} aria-hidden />
+                          }
+                          checks={checksByCategory("skills")}
+                          atual={
+                            deterministic.skillsContagem > 0 ? (
+                              <p>
+                                {deterministic.skillsContagem} competência
+                                {deterministic.skillsContagem === 1
+                                  ? " informada"
+                                  : "s informadas"}{" "}
+                                nesta análise.
+                              </p>
+                            ) : null
+                          }
+                          paste={
+                            skillsAdicionarAgora.length > 0 ||
+                            qual.skillsParaEstudar.length > 0 ? (
+                              <div className="space-y-5">
+                                {/* Bloco 1: o que a pessoa JA comprova no perfil
+                                  e pode cadastrar hoje. Este tem CopyButton. */}
+                                {skillsAdicionarAgora.length > 0 ? (
+                                  <div>
+                                    <div className="flex items-start justify-between gap-3">
+                                      <p className="text-sm text-slate-600">
+                                        {/* TODO(Ana): revisar a copy do bloco de adicionar agora. */}
+                                        <span className="font-black text-slate-900">
+                                          Adicione agora:
+                                        </span>{" "}
+                                        seu perfil já demonstra estas
+                                        tecnologias, mas elas não estão nas suas
+                                        competências.
+                                      </p>
+                                      <CopyButton
+                                        text={skillsAdicionarAgora.join(", ")}
+                                      />
+                                    </div>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                      {skillsAdicionarAgora.map((skill) => (
+                                        <span
+                                          key={skill}
+                                          className="inline-flex rounded-full border-2 border-emerald-500 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800"
+                                        >
+                                          {skill}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null}
+
+                                {/* Bloco 2: trilha de estudo. SEM CopyButton de
+                                  proposito: copiar em massa para as
+                                  competencias e exatamente o conselho errado
+                                  que este bloco existe para evitar. */}
+                                {qual.skillsParaEstudar.length > 0 ? (
+                                  <div
+                                    className={
+                                      skillsAdicionarAgora.length > 0
+                                        ? "border-t-2 border-dashed border-slate-200 pt-5"
+                                        : undefined
+                                    }
+                                  >
+                                    <p className="text-sm text-slate-600">
+                                      {/* TODO(Ana): revisar a copy do bloco de estudo. */}
+                                      <span className="font-black text-slate-900">
+                                        Para estudar:
+                                      </span>{" "}
+                                      comuns na sua área e ainda sem sinal no
+                                      seu perfil. Não adicione às competências
+                                      antes de realmente saber usar.
+                                    </p>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                      {qual.skillsParaEstudar.map((skill) => (
+                                        <span
+                                          key={skill}
+                                          className="inline-flex rounded-full border-2 border-slate-300 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600"
+                                        >
+                                          {skill}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null
+                          }
+                        >
+                          {deterministic.skillsContagem === 0 ? (
+                            // TODO(Ana): revisar a nota de competencias nao informadas.
+                            <p className={EMPTY_NOTE_CLASS}>
+                              Você não informou competências nesta análise.
+                              Cadastre as suas na seção Competências do LinkedIn
+                              e cole aqui na próxima análise.
+                            </p>
+                          ) : null}
+                        </SectionReport>
+                      </Reveal>
+
+                      <Reveal>
+                        <SectionReport
+                          title="Sinais do perfil (você declarou)"
+                          icon={
+                            <BadgeCheck
+                              className={SECTION_ICON_CLASS}
+                              aria-hidden
+                            />
+                          }
+                          checks={checksByCategory("sinais")}
+                        >
+                          {/* Separacao visual do que a ferramenta LEU do PDF.
+                            Estes cinco vem do formulario e a plataforma nao tem
+                            como conferir; deixar isso explicito e metade do que
+                            substituiu o teto de peso que existiu e foi
+                            revertido. A outra metade e a supressao de delta. */}
+                          <p className="mt-4 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50 p-3 text-xs font-medium text-amber-900">
+                            Estes cinco pontos vêm das suas respostas no
+                            formulário, não do PDF: a gente não consegue
+                            conferir foto, banner, Open to Work, conexões nem
+                            frequência de posts. Eles contam na nota porque são
+                            ações reais e fáceis de fazer, mas valem pelo que
+                            você fizer de verdade, não pelo que marcar aqui.
+                          </p>
+                        </SectionReport>
+                      </Reveal>
+
+                      {/* RecruiterFinder dentro do prontuario: agrupado logo
+                        abaixo do card da secao (card-brutal aninhado em
+                        card-brutal ficaria pesado). */}
+                      <Reveal>
+                        <div className="space-y-4">
+                          <SectionReport
+                            title="Como recrutadores te encontram"
+                            icon={
+                              <Search
+                                className={SECTION_ICON_CLASS}
+                                aria-hidden
+                              />
+                            }
+                            checks={checksByCategory("encontrabilidade")}
+                          />
+                          <RecruiterFinder
+                            deterministic={deterministic}
+                            mercado={result.mercado}
+                          />
+                        </div>
+                      </Reveal>
+
+                      <Reveal>
+                        <SectionReport
+                          title="Mensagem para recrutador"
+                          pasteHint="Esta não vai no seu perfil. Copie e envie no chat do LinkedIn quando responder um recrutador, trocando o que estiver entre colchetes."
+                          icon={
+                            <MessageSquare
+                              className={SECTION_ICON_CLASS}
+                              aria-hidden
+                            />
+                          }
+                          checks={[]}
+                          paste={
+                            <div>
+                              <div className="mb-2 flex justify-end">
+                                <CopyButton
+                                  text={qual.modeloMensagemRecrutador}
+                                />
+                              </div>
+                              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
+                                {qual.modeloMensagemRecrutador}
+                              </p>
+                            </div>
+                          }
+                        />
+                      </Reveal>
+
+                      <Reveal>
+                        <NextStepsByArea
+                          area={result.area}
+                          contexto={
+                            // Sem keywordsCampos (analise anterior a Fase 2A) o
+                            // componente volta ao modo so-area sozinho: preferir
+                            // recomendacao generica a recomendacao com contexto
+                            // pela metade.
+                            !deterministicCamposAusentes.includes(
+                              "keywordsCampos",
+                            )
+                              ? {
+                                  nivelUsuario: result.level,
+                                  lacunas: deterministicKeywordsCampos
+                                    .filter((k) => !k.comprovado)
+                                    .map((k) => k.termo),
+                                  tecnologiasDaArea:
+                                    deterministicKeywordsCampos.map(
+                                      (k) => k.termo,
+                                    ),
+                                  textoPerfil: deterministic.perfilDedup ?? "",
+                                  // Semente estavel: a mesma analise reaberta
+                                  // recebe a mesma ordem. Sem id (persistencia
+                                  // falhou), cai num derivado do proprio
+                                  // resultado, que tambem e estavel.
+                                  seed:
+                                    analysisId ??
+                                    `${result.area}:${deterministic.score}:${deterministic.sobreTamanho}`,
+                                }
+                              : undefined
+                          }
+                        />
+                      </Reveal>
+
+                      {/* Climax do loop fechando o prontuario, com a
                         confirmacao em 2 passos e o custo explicito de
                         sempre, celebrando no N de N. */}
-                    <Reveal>
-                      <ReanalyzeCta
-                        confirming={confirmReanalyze}
-                        onStart={() => setConfirmReanalyze(true)}
-                        onConfirm={() => void runAnalysis()}
-                        onCancel={() => setConfirmReanalyze(false)}
-                        spotlight
-                        celebrate={allApplied}
-                      />
-                    </Reveal>
+                      <Reveal>
+                        <ReanalyzeCta
+                          confirming={confirmReanalyze}
+                          onStart={() => setConfirmReanalyze(true)}
+                          onConfirm={() => void runAnalysis()}
+                          onCancel={() => setConfirmReanalyze(false)}
+                          spotlight
+                          celebrate={allApplied}
+                        />
+                      </Reveal>
+                    </div>
                   </div>
-                </div>
                 </ErrorBoundary>
               ) : null}
 
-              {showEntry && analyses.length > 0 ? (
+              {showEntry && historyStatus === "success_with_data" ? (
                 <details
                   className={cn(
                     "area-rise group rounded-2xl border-2 border-slate-950 bg-white shadow-[4px_4px_0_#0f172a] transition-shadow",
@@ -2325,9 +2364,20 @@ export default function LinkedinAnalisar() {
                       analyses={analyses}
                       onOpen={(id) => void openHistory(id)}
                       loadingId={openingId}
+                      status={historyStatus}
+                      openError={historyOpenError}
                     />
                   </div>
                 </details>
+              ) : showEntry &&
+                (historyStatus === "loading" || historyStatus === "error") ? (
+                <LinkedinHistory
+                  analyses={analyses}
+                  onOpen={(id) => void openHistory(id)}
+                  loadingId={openingId}
+                  status={historyStatus}
+                  openError={historyOpenError}
+                />
               ) : null}
             </div>
           )}

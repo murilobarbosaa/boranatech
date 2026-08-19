@@ -2,13 +2,10 @@ import crypto from "crypto";
 import { NextFunction, Request, Response, Router } from "express";
 
 import {
-  HEADLINE_MANUAL_MAX,
   LinkedinDadoInvalidoError,
   LinkedinAnalyzeRequestSchema,
-  headlineFinalDe,
   type LinkedinAnalysisResponse,
   type LinkedinAnalyzeRequest,
-  type LinkedinHeadlineOrigem,
 } from "../../shared/linkedin/schema";
 import { estimateCost, estimateCostFromTokens } from "../lib/aiTools";
 import { DEFAULT_MODEL } from "../lib/openai";
@@ -20,6 +17,16 @@ import {
 } from "../lib/linkedinAnalyze";
 import type { LinkedinParsed } from "../../shared/linkedin/parse";
 import { hashDoTexto } from "../lib/linkedinTextoHash";
+import {
+  beginLinkedinProgressSession,
+  beginLinkedinProgressSessionViaRpc,
+  indicesDeMelhoriaValidos,
+  mutateLinkedinImprovementViaRpc,
+  quantidadeDeMelhorias,
+  saveLinkedinImprovement,
+} from "../lib/linkedinImprovementProgress";
+import { headlineManualLonga } from "../lib/linkedinHeadlineManual";
+import { montarLinkedinInputPersistido } from "../lib/linkedinPersistence";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -46,47 +53,17 @@ async function persistAnalysis(
   request: LinkedinAnalyzeRequest,
   response: LinkedinAnalysisResponse,
   parsed: LinkedinParsed,
+  textoHash: string,
 ): Promise<string | null> {
   try {
-    const input = {
-      area: request.area,
-      level: request.level,
-      mercado: request.mercado,
-      skills: request.skills.slice(0, 2000),
-      foto: request.foto,
-      banner: request.banner,
-      openToWork: request.openToWork,
-      conexoes: request.conexoes,
-      atividade: request.atividade,
-      objetivo: request.objetivo ?? null,
-      // Caminho de entrada e impressao digital do texto. As duas chaves sao
-      // NOVAS: as 157 linhas ja gravadas nao as tem, e a leitura tolera isso
-      // (linkedinInputTolerante.test.ts trava a propriedade). `entryPath` vem
-      // null quando o bundle antigo nao mandou, que e o caso da janela de deploy.
-      entryPath: request.entryPath ?? null,
-      textoHash: hashDoTexto(request.profileText),
-      parseResumo: {
-        // A headline que a analise USOU, que pode ser a digitada. `headline`
-        // sozinha nunca respondeu "de onde veio", e por isso vem acompanhada
-        // de `headlineOrigem`.
-        headline: headlineFinalDe(parsed.headline, request.headlineManual),
-        // Chave NOVA, no mesmo padrao de `entryPath`/`textoHash`: as 185 linhas
-        // ja gravadas nao a tem, e a leitura tolera a ausencia tratando-a como
-        // "parser" (que e o que de fato aconteceu em todas elas).
-        headlineOrigem: (request.headlineManual?.trim()
-          ? "manual"
-          : "parser") satisfies LinkedinHeadlineOrigem,
-        // Contexto da leitura da headline. Chave NOVA, pelo mesmo padrao de
-        // `entryPath`/`textoHash`: as linhas ja gravadas nao a tem e o leitor
-        // tolera a ausencia. Existe porque `headline` sozinha nao distingue "o
-        // parser cortou" de "a pessoa escreveu assim", e sem `profileText`
-        // (que nao e guardado, de proposito) nao havia como saber depois.
-        headlineContexto: parsed.headlineContexto,
-        sobreTamanho: response.deterministic.sobreTamanho,
-        experienciasContagem: response.deterministic.experienciasContagem,
-        skillsPdf: parsed.skillsPdf,
-      },
-    };
+    // Não guarda profileText. O helper centraliza entryPath, hash, skills e a
+    // mesma headline efetiva que alimentou checks, prompt e resultado.
+    const input = montarLinkedinInputPersistido(
+      request,
+      response,
+      parsed,
+      textoHash,
+    );
 
     const { data, error } = await supabaseAdmin
       .from("linkedin_analyses")
@@ -132,25 +109,15 @@ router.post(
       );
     }
 
-    // Headline longa demais tem codigo e mensagem PROPRIOS, antes do parse
-    // generico. Duas razoes. A primeira: o zod devolveria 400
-    // `invalid_request` com "confira o texto do perfil e os campos", que manda
-    // a pessoa procurar defeito no lugar errado. A segunda, e a que importa:
-    // NAO cortar em silencio. Clipar em 250 aqui devolveria uma analise
-    // plausivel sobre um texto que a rota mutilou, que e a classe de defeito
-    // do `docs/auditoria-linkedin-fechamento.md`. O `.max(250)` do schema fica
-    // como rede: so e alcancavel se esta checagem estiver errada.
-    const headlineManualBruta = (req.body as { headlineManual?: unknown })
-      ?.headlineManual;
-    if (
-      typeof headlineManualBruta === "string" &&
-      headlineManualBruta.trim().length > HEADLINE_MANUAL_MAX
-    ) {
+    const headlineLonga = headlineManualLonga(
+      (req.body as { headlineManual?: unknown })?.headlineManual,
+    );
+    if (headlineLonga) {
       return next(
         createError(
           422,
           "headline_manual_longa",
-          `A headline tem ${headlineManualBruta.trim().length} caracteres e o limite é ${HEADLINE_MANUAL_MAX}. Encurte antes de continuar.`,
+          `A headline tem ${headlineLonga.tamanho} caracteres e o limite é ${headlineLonga.limite}. Encurte antes de continuar.`,
         ),
       );
     }
@@ -171,7 +138,12 @@ router.post(
     const requestId =
       (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
 
-    const usage = await checkAiDailyLimit(userId, !!req.isPro, "[linkedin]", TOOL);
+    const usage = await checkAiDailyLimit(
+      userId,
+      !!req.isPro,
+      "[linkedin]",
+      TOOL,
+    );
     if (!usage.allowed) {
       // Falha de verificacao (RPC fora) e distinta de cota estourada: 503, nao
       // 429, e loga como "error" pra nao poluir a metrica de rate_limited.
@@ -209,12 +181,18 @@ router.post(
     }
 
     let aiUsed = false;
-    let aiIo = { inputChars: 0, outputChars: 0, inputTokens: 0, outputTokens: 0 };
+    let aiIo = {
+      inputChars: 0,
+      outputChars: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+    };
     try {
       const { response, parsed } = await analyzeLinkedin(request, (io) => {
         aiUsed = true;
         aiIo = io;
       });
+      const textoHash = hashDoTexto(request.profileText);
       // outputChars mede a SAIDA DO MODELO (aiIo.outputChars, o tamanho do
       // content devolvido pela OpenAI), nao JSON.stringify(response): a
       // resposta da rota carrega tambem o bloco deterministico inteiro, que a
@@ -252,9 +230,10 @@ router.post(
         request,
         response,
         parsed,
+        textoHash,
       );
 
-      res.json({ data: response, analysisId });
+      res.json({ data: response, analysisId, textoHash });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro desconhecido";
       await logAiUsage({
@@ -305,7 +284,9 @@ router.post(
           502,
           "upstream_error",
           "Não foi possível concluir a análise agora. Tente de novo.",
-          { cause: err },
+          {
+            cause: err,
+          },
         ),
       );
     }
@@ -323,17 +304,14 @@ router.get(
           // delta e o historico precisam dela por LINHA, e buscar o `result`
           // inteiro de 20 analises so para ler um booleano seria caro. Ausente
           // nas linhas anteriores a v7, e o cliente normaliza para `false`.
-          "id, area, level, score, faixa, created_at, result->deterministicVersion, result->deterministic->checks, result->deterministic->notaIncompleta",
+          "id, area, level, score, faixa, created_at, input->>textoHash, comparacaoVersion:input->comparacaoVersion, mercado:input->>mercado, headlineComparacao:input->parseResumo->>headline, headlineOrigem:input->parseResumo->>headlineOrigem, skillsComparacao:input->>skills, foto:input->>foto, banner:input->>banner, openToWork:input->>openToWork, conexoes:input->>conexoes, atividade:input->>atividade, result->deterministicVersion, result->qualitativeVersion, result->deterministic->checks, result->deterministic->notaIncompleta",
         )
         .eq("user_id", req.user!.id)
         .order("created_at", { ascending: false })
         .limit(20);
 
       if (error) {
-        console.error(
-          "[linkedin] Falha ao listar analises:",
-          error.message,
-        );
+        console.error("[linkedin] Falha ao listar analises:", error.message);
         return next(
           createError(500, "db_error", "Erro ao buscar suas análises."),
         );
@@ -355,16 +333,15 @@ router.get(
     try {
       const { data, error } = await supabaseAdmin
         .from("linkedin_analyses")
-        .select("id, area, level, score, faixa, created_at, result")
+        .select(
+          "id, area, level, score, faixa, created_at, input->>textoHash, comparacaoVersion:input->comparacaoVersion, mercado:input->>mercado, headlineComparacao:input->parseResumo->>headline, headlineOrigem:input->parseResumo->>headlineOrigem, skillsComparacao:input->>skills, foto:input->>foto, banner:input->>banner, openToWork:input->>openToWork, conexoes:input->>conexoes, atividade:input->>atividade, result->deterministicVersion, result->qualitativeVersion, result",
+        )
         .eq("user_id", req.user!.id)
         .eq("id", id)
         .maybeSingle();
 
       if (error) {
-        console.error(
-          "[linkedin] Falha ao buscar a analise:",
-          error.message,
-        );
+        console.error("[linkedin] Falha ao buscar a analise:", error.message);
         return next(createError(500, "db_error", "Erro ao buscar a análise."));
       }
       if (!data) {
@@ -382,9 +359,6 @@ router.get(
 // router: e progresso do PROPRIO dado (um ex-Pro segue marcando as analises
 // antigas). Nenhum custo de IA aqui.
 
-// Teto do indice aceito (as melhorias vem 4 a 7 por analise; folga proposital).
-const MAX_IMPROVEMENT_INDEX = 20;
-
 /**
  * A tabela de progresso nao existe no banco alvo?
  *
@@ -396,19 +370,34 @@ const MAX_IMPROVEMENT_INDEX = 20;
  * PGRST205 e o schema cache do PostgREST sem a tabela; 42P01 e o undefined_table
  * do proprio Postgres. Checagem por codigo, nunca por texto da mensagem.
  */
-function isMissingProgressTable(error: { code?: string | null }): boolean {
-  return error.code === "PGRST205" || error.code === "42P01";
+function isMissingProgressPersistence(error: {
+  code?: string | null;
+}): boolean {
+  return (
+    error.code === "PGRST205" ||
+    error.code === "PGRST202" ||
+    error.code === "42P01" ||
+    error.code === "42883"
+  );
 }
 
-// Posse da analise ANTES de qualquer leitura/escrita de progresso: true/false
-// pela existencia da linha do dono, null em erro de query (vira 500).
-async function ownsLinkedinAnalysis(
+const linkedinProgressRpc = async (
+  functionName: string,
+  args: Record<string, unknown>,
+) => {
+  const { data, error } = await supabaseAdmin.rpc(functionName, args);
+  return { data, error };
+};
+
+// Busca pelo dono antes de qualquer leitura/escrita de progresso. `undefined`
+// significa inexistente ou de outro usuário; `null`, falha da consulta.
+async function ownedLinkedinAnalysis(
   userId: string,
   analysisId: string,
-): Promise<boolean | null> {
+): Promise<{ result: unknown } | null | undefined> {
   const { data, error } = await supabaseAdmin
     .from("linkedin_analyses")
-    .select("id")
+    .select("result")
     .eq("user_id", userId)
     .eq("id", analysisId)
     .maybeSingle();
@@ -419,7 +408,8 @@ async function ownsLinkedinAnalysis(
     );
     return null;
   }
-  return Boolean(data);
+  if (!data || typeof data !== "object") return undefined;
+  return { result: (data as { result?: unknown }).result };
 }
 
 router.get(
@@ -430,8 +420,8 @@ router.get(
     if (!UUID_RE.test(id)) {
       return next(createError(404, "not_found", "Análise não encontrada."));
     }
-    const owns = await ownsLinkedinAnalysis(userId, id);
-    if (owns === null) {
+    const analysis = await ownedLinkedinAnalysis(userId, id);
+    if (analysis === null) {
       // TODO(Ana): mensagem de falha ao carregar o progresso.
       return next(
         createError(
@@ -441,9 +431,43 @@ router.get(
         ),
       );
     }
-    if (!owns) {
+    if (!analysis) {
       // 404 tambem para analise de OUTRO usuario: nao vaza existencia.
       return next(createError(404, "not_found", "Análise não encontrada."));
+    }
+    const session = await beginLinkedinProgressSession({
+      beginAtomically: () =>
+        beginLinkedinProgressSessionViaRpc(
+          { userId, analysisId: id },
+          linkedinProgressRpc,
+        ),
+    });
+    if (session.status === "not_found") {
+      return next(createError(404, "not_found", "Análise não encontrada."));
+    }
+    if (session.status === "start_failed") {
+      const error = session.error as {
+        code?: string | null;
+        message?: string;
+      };
+      if (isMissingProgressPersistence(error ?? {})) {
+        return res.json({
+          applied: [],
+          progressAvailable: false,
+          revision: null,
+        });
+      }
+      console.error(
+        "[linkedin] Falha ao iniciar sessão de progresso:",
+        error?.message ?? "erro_sem_mensagem",
+      );
+      return next(
+        createError(
+          500,
+          "load_failed",
+          "Não foi possível carregar o progresso.",
+        ),
+      );
     }
     const { data, error } = await supabaseAdmin
       .from("linkedin_improvement_progress")
@@ -459,8 +483,12 @@ router.get(
       // Tabela ausente: 200 com progressAvailable false. A UI esconde o
       // checklist e avisa que o recurso esta indisponivel, em vez de exibir
       // erro vermelho sobre um resultado que deu certo.
-      if (isMissingProgressTable(error)) {
-        return res.json({ applied: [], progressAvailable: false });
+      if (isMissingProgressPersistence(error)) {
+        return res.json({
+          applied: [],
+          progressAvailable: false,
+          revision: null,
+        });
       }
       return next(
         createError(
@@ -471,10 +499,14 @@ router.get(
       );
     }
     res.json({
-      applied: ((data ?? []) as Array<{ improvement_index: number }>).map(
-        (row) => row.improvement_index,
+      applied: indicesDeMelhoriaValidos(
+        ((data ?? []) as Array<{ improvement_index?: unknown }>).map(
+          (row) => row.improvement_index,
+        ),
+        quantidadeDeMelhorias(analysis.result),
       ),
       progressAvailable: true,
+      revision: session.revision,
     });
   },
 );
@@ -488,52 +520,56 @@ router.put(
       return next(createError(404, "not_found", "Análise não encontrada."));
     }
     const index = Number(req.params.index);
-    if (
-      !Number.isInteger(index) ||
-      index < 0 ||
-      index > MAX_IMPROVEMENT_INDEX
-    ) {
-      // TODO(Ana): mensagem de indice invalido.
+    const body = (req.body ?? {}) as { done?: unknown; revision?: unknown };
+    const outcome = await saveLinkedinImprovement(
+      {
+        userId,
+        analysisId: id,
+        index,
+        done: body.done,
+        revision: body.revision,
+      },
+      {
+        mutateAtomically: (value) =>
+          mutateLinkedinImprovementViaRpc(value, linkedinProgressRpc),
+      },
+    );
+
+    if (outcome.status === "invalid_request") {
       return next(
-        createError(400, "invalid_request", "Índice de melhoria inválido."),
+        createError(400, "invalid_request", "Índice ou estado inválido."),
       );
     }
-    const body = (req.body ?? {}) as { done?: unknown };
-    if (typeof body.done !== "boolean") {
-      // TODO(Ana): mensagem de body invalido do progresso.
-      return next(
-        createError(400, "invalid_request", "Envie done como boolean."),
-      );
-    }
-    const owns = await ownsLinkedinAnalysis(userId, id);
-    if (owns === null) {
-      // TODO(Ana): mensagem de falha ao salvar o progresso.
-      return next(
-        createError(500, "save_failed", "Não foi possível salvar o progresso."),
-      );
-    }
-    if (!owns) {
+    if (outcome.status === "not_found") {
       return next(createError(404, "not_found", "Análise não encontrada."));
     }
-    const { error } = await supabaseAdmin
-      .from("linkedin_improvement_progress")
-      .upsert(
-        {
-          user_id: userId,
-          analysis_id: id,
-          improvement_index: index,
-          done: body.done,
-        },
-        { onConflict: "user_id,analysis_id,improvement_index" },
+    if (outcome.status === "invalid_improvement_index") {
+      return next(
+        createError(
+          400,
+          "invalid_improvement_index",
+          "Essa melhoria não existe nesta análise.",
+        ),
       );
-    if (error) {
+    }
+    if (outcome.status === "stale_progress_revision") {
+      return next(
+        createError(
+          409,
+          "stale_progress_revision",
+          "Esta sessão de progresso foi substituída por uma mais recente.",
+        ),
+      );
+    }
+    if (outcome.status === "save_failed") {
+      const error = outcome.error as { code?: string | null; message?: string };
       console.error(
         "[linkedin] Falha ao salvar o progresso de melhorias:",
-        error.message,
+        error?.message ?? "erro_sem_mensagem",
       );
       // Codigo proprio: o client trata como recurso indisponivel (esconde o
       // checklist), nao como falha de salvar (que pediria "tente de novo").
-      if (isMissingProgressTable(error)) {
+      if (isMissingProgressPersistence(error ?? {})) {
         return next(
           createError(
             503,

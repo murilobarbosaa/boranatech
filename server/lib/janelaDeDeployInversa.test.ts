@@ -87,23 +87,6 @@ const LIDOS_QUALITATIVE = [
 const TOTAL_DETERMINISTIC = 7;
 const TOTAL_QUALITATIVE = 10;
 
-/**
- * QUEBRAS CONHECIDAS: agora VAZIO, e isso é o resultado do conserto.
- *
- * `skillsSugeridas` foi renomeado para `skillsParaEstudar` em `f70f1b3`, a
- * única mudança não-aditiva do contrato em 94 commits, e o bundle antigo lê o
- * campo antigo sem guarda (`client/src/pages/LinkedinAnalisar.tsx:1714`), o que
- * derrubava o render inteiro. `comAliasDeTransicao` em `linkedinAnalyze.ts`
- * reemite o nome antigo, então nenhum campo lido pelo bundle antigo falta.
- *
- * Continua sendo asserção de IGUALDADE, não de pertinência: se alguém remover
- * outro campo, o conjunto cresce e o teste fica vermelho; quando o alias for
- * retirado (gatilho de 2026-08-10), ele volta a `["skillsSugeridas"]` e esta
- * constante precisa ser atualizada no mesmo commit. Nos dois sentidos o teste
- * exige uma decisão explícita.
- */
-const QUEBRAS_CONHECIDAS = [] as const;
-
 const PERFIL = readFileSync(
   path.join(
     path.dirname(fileURLToPath(import.meta.url)),
@@ -210,15 +193,13 @@ describe("janela de deploy inversa: bundle antigo lendo backend novo", () => {
     expect(typeof d.faixa).toBe("string");
   });
 
-  it("QUEBRA REAL: `qualitative` perdeu exatamente os campos congelados", async () => {
+  it("bundle antigo encontra todos os campos que lê sem guarda", async () => {
     vi.spyOn(http, "fetchWithTimeout").mockResolvedValue(respostaValida());
     const { response } = await analyzeLinkedin(PEDIDO);
     const q = response.qualitative as unknown as Record<string, unknown>;
 
     const ausentes = LIDOS_QUALITATIVE.filter((campo) => !(campo in q));
-    // Igualdade, não `toContain`: um campo novo sumindo faz crescer e quebra;
-    // a compatibilidade voltando faz encolher e também quebra.
-    expect(ausentes).toEqual([...QUEBRAS_CONHECIDAS]);
+    expect(ausentes).toEqual([]);
   });
 
   it("os outros 9 campos de `qualitative` sobrevivem com o tipo que o antigo espera", async () => {
@@ -247,24 +228,40 @@ describe("janela de deploy inversa: bundle antigo lendo backend novo", () => {
     }
   });
 
-  it("o alias NÃO faz o front novo achar que a análise é legado", async () => {
+  it("emite alias idêntico ao campo atual para deploy inverso", async () => {
     vi.spyOn(http, "fetchWithTimeout").mockResolvedValue(respostaValida());
     const { response } = await analyzeLinkedin(PEDIDO);
     const q = response.qualitative as unknown as Record<string, unknown>;
 
-    // Os dois nomes coexistem agora. O risco do alias seria o front novo
-    // confundir "tem skillsSugeridas" com "é v1" e degradar sozinho.
     expect("skillsSugeridas" in q).toBe(true);
     expect("skillsParaEstudar" in q).toBe(true);
+    expect(q.skillsSugeridas).toBe(q.skillsParaEstudar);
+    const jsonPersistido = JSON.parse(JSON.stringify(response)) as {
+      qualitative: {
+        skillsSugeridas: string[];
+        skillsParaEstudar: string[];
+      };
+    };
+    expect(jsonPersistido.qualitative.skillsSugeridas).toEqual(
+      jsonPersistido.qualitative.skillsParaEstudar,
+    );
 
     const view = readQualitative(response.qualitative, response.qualitativeVersion);
     // `readQualitative.ts:86` decide a versão por `skillsParaEstudar !== undefined`,
     // e `:96` decide `legado` pelo mesmo campo. Ambos continuam vendo a v3.
     expect(view.version).toBe(response.qualitativeVersion);
     expect(view.version).not.toBe(1);
-    // E `:95` (`skillsParaEstudar ?? skillsSugeridas`) continua pegando o novo.
     expect(view.skillsParaEstudar).toEqual(q.skillsParaEstudar);
     expect(view.camposAusentes).toEqual([]);
+  });
+
+  it("readQualitative ainda traduz resultado antigo com skillsSugeridas", () => {
+    const view = readQualitative({
+      skillsSugeridas: ["Tecnologia legada"],
+    });
+    expect(view.version).toBe(1);
+    expect(view.skillsParaEstudar).toEqual(["Tecnologia legada"]);
+    expect(view.camposAusentes).not.toContain("skillsParaEstudar");
   });
 
   it("o campo que substituiu `skillsSugeridas` existe, com outro nome", async () => {

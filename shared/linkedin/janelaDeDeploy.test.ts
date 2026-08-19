@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { decidirDelta } from "./deltaFunil";
+import { analisesSaoComparaveis } from "./comparabilidade";
 import { readDeterministic } from "./readDeterministic";
 import { readQualitative } from "./readQualitative";
 import { decomporNota } from "./reguaV2";
@@ -116,17 +117,13 @@ describe("janela de deploy: front novo lendo backend antigo", () => {
     expect(v.motivo).toBe("nota-igual");
   });
 
-  it("front novo + backend antigo com notas diferentes ainda mostra delta", () => {
-    const d = RESPOSTA_DO_BACKEND_ANTIGO.deterministic as { checks: never[]; score: number };
-    const v = decidirDelta({
-      notaAnterior: 60,
-      versaoAnterior: undefined,
-      checksAnteriores: undefined,
-      notaAtual: d.score,
-      versaoAtual: undefined,
-      checksAtuais: d.checks,
-    });
-    expect(v.delta).toEqual({ from: 60, to: d.score });
+  it("front novo + backend antigo abre, mas não inventa delta sem assinatura", () => {
+    expect(
+      analisesSaoComparaveis(
+        { ...SUMMARY_ANTIGO, textoHash: "a".repeat(64) },
+        { ...SUMMARY_ANTIGO, textoHash: "a".repeat(64) },
+      ),
+    ).toBe(false);
   });
 
   it("o campo que o front NAO le nao pode virar dependencia sem teste", () => {
