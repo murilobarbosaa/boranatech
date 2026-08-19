@@ -27,8 +27,10 @@ produz a linha necessaria.
 
 Direcao de aperto, se um caso real aparecer: exigir que a localizacao esteja
 ABAIXO da headline, em vez de varrer o bloco inteiro (hoje a propria headline
-com virgula pode satisfazer a condicao), e apertar `ehLocalizacaoEstrutural`
-para nao aceitar enumeracao de duas partes sem sinal geografico.
+com virgula pode satisfazer a condicao), e exigir sinal geografico de verdade
+para enumeracao de DUAS partes. O aperto de 2026-08-19 (barra nunca e endereco,
+teto de tres partes) fechou o item 3 e nao alcanca estas sondas, porque
+`Comunicacao, Lideranca` e `CI/CD, DevOps` tem duas partes e nenhuma barra.
 
 ## 2. Ancora de identidade com nome de uma palavra escapa do fail-closed do prefill
 
@@ -55,40 +57,27 @@ Direcao de aperto: tratar como sinal de identidade, dentro do filtro de
 prefill, tambem a linha que passa como headline plausivel dentro de uma secao,
 e nao so a que passa como nome.
 
-## 3. Linha de stack com quatro partes por virgula bloqueia a juncao da headline
+## 3. RESOLVIDO em 2026-08-19: stack quebrada lida como localizacao
 
-Mesma raiz do item 1, `ehLocalizacaoEstrutural`, com sintoma diferente e pior,
-porque aqui a perda e da propria headline e nao do prefill.
+Ficava aqui a familia em que a headline quebrava em duas linhas e a segunda,
+sendo uma stack separada por virgula, era classificada como LOCALIZACAO. Isso
+fazia `ehContinuacaoDeHeadline` recusa-la, a juncao nao disparava, e o parser
+ficava so com a primeira metade, com regiao `confirmed` e `notaIncompleta`
+falso: a stack sumia em silencio.
 
-Quando o PDF quebra a headline em duas linhas e a continuacao tem ate quatro
-partes separadas por virgula, cada uma comecando em maiuscula e com ate quatro
-palavras, o validador a classifica como LOCALIZACAO. Sendo localizacao, ela e
-recusada por `ehContinuacaoDeHeadline`, a juncao nao dispara, e o parser fica
-so com a primeira metade. Como a metade que sobra e bem formada, nenhuma das
-quatro assinaturas dispara, e a clausula de `linhasAbaixo` tambem nao, porque a
-continuacao nao comeca em separador. Resultado: `headlineRegion: confirmed` e
-`notaIncompleta: false` sobre uma headline pela metade.
+Corrigido por dois sinais estruturais, nenhum deles lista de tecnologia:
 
-Reproduzido com o codigo commitado da Fase 1, sobre o fixture real registrado em
-`docs/auditoria-linkedin-fechamento.md`:
+1. linha com barra de cargo nunca e localizacao, porque endereco nao tem barra;
+2. o teto de partes por virgula caiu de quatro para tres, que e o endereco mais
+   longo que o export produz (`Campinas, Sao Paulo, Brasil`). A quarta parte so
+   aparecia em enumeracao de stack, e era o que tornava as duas formas
+   indistinguiveis.
 
-```
-Joana Teste
-Desenvolvedora Full Stack |
-TypeScript, React, Node.js, PostgreSQL | Remote
-```
+Travado por `shared/linkedin/parse.stackNaoEhLocalizacao.test.ts`, que cobre as
+duas fronteiras separadamente (tres partes com barra prende o sinal 1, quatro
+partes sem barra prende o sinal 2) e mantem as localizacoes legitimas de duas e
+tres partes, `Remote` e `Greater Sao Paulo Area`.
 
-Devolve `headline: "Desenvolvedora Full Stack"`, perdendo a stack inteira. O
-MESMO fixture com cinco partes por virgula, ou sem virgula nenhuma, junta
-corretamente: a falha vive numa faixa estreita do validador, o teto de quatro
-partes de `ehLinhaDeLocalizacao`.
-
-Por que nao bloqueia a Fase 1: a familia ja existia antes dela e nao foi
-introduzida por ela; a Fase 1 fechou a familia da continuacao orfa, que era a
-que tinha caso real com PDF em maos. Esta continua aberta e agora tem mecanismo
-identificado, que e mais do que se sabia antes.
-
-Direcao de aperto: exigir sinal geografico de verdade em `ehLocalizacaoEstrutural`
-(nome de cidade, estado, pais, ou uma das palavras de regiao ja listadas) em vez
-de aceitar qualquer enumeracao curta e capitalizada. Isso ataca os itens 1 e 3 de
-uma vez, porque os dois saem do mesmo validador.
+Fica registrado como resolvido, e nao apagado, porque a familia foi medida com
+PDF real e o registro dela e o que impede alguem afrouxar o validador de
+localizacao de novo sem saber o que estava em jogo.

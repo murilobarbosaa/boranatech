@@ -179,7 +179,14 @@ aceita. Sendo localização, ela é recusada por `ehContinuacaoDeHeadline` e nã
 
 O mesmo fixture com cinco partes por vírgula, ou sem vírgula nenhuma, junta corretamente. Ou seja, o corte
 sobrevive numa faixa estreita e identificável do validador de localização, não na detecção de corte.
-Registrado como item 3 de `docs/linkedin-limitacoes-parser.md`, com a direção de aperto.
+
+**Fechado em 2026-08-19.** A faixa era artefato de duas regras do validador, e as duas foram apertadas por
+sinal estrutural: linha com barra de cargo deixou de poder ser localização (endereço não tem barra), e o teto
+de partes por vírgula caiu de quatro para três, que é o endereço mais longo que o export produz. O fixture
+desta seção passa a juntar a headline inteira, e com a linha de localização real presente a região fecha
+`confirmed` com a localização no lugar certo. Travado em
+`shared/linkedin/parse.stackNaoEhLocalizacao.test.ts`, com as duas fronteiras presas separadamente. O item 3
+de `docs/linkedin-limitacoes-parser.md` está marcado como resolvido.
 
 O que existe hoje: um aviso no passo de revisão (antes de gastar cota), a nota deixando de afirmar faixa
 sobre leitura em dúvida (v7), e `headlineContexto` persistido para o próximo caso ser diagnosticável. **O
