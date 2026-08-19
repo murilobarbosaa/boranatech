@@ -35,12 +35,18 @@ const parsedBase = (over: Partial<LinkedinParsed> = {}): LinkedinParsed => ({
 
 const rodar = (
   parsed: LinkedinParsed,
-  over: { skills?: string; profileText?: string; area?: "fullstack" | "backend" } = {},
+  over: {
+    skills?: string;
+    profileText?: string;
+    area?: "fullstack" | "backend";
+    level?: "junior" | "pleno";
+  } = {},
 ) =>
   runLinkedinChecks({
     parsed,
-      level: "pleno",
-    profileText: over.profileText ?? `${parsed.headline ?? ""} ${parsed.sobre ?? ""}`,
+    level: over.level ?? "pleno",
+    profileText:
+      over.profileText ?? `${parsed.headline ?? ""} ${parsed.sobre ?? ""}`,
     area: over.area ?? "fullstack",
     mercado: "brasil",
     skills: over.skills ?? "",
@@ -68,10 +74,29 @@ describe("fronteira: sobre-tamanho (500 e 2200)", () => {
   });
 });
 
+describe("fronteira: sobre-tamanho para nível inicial (300)", () => {
+  const comSobre = (n: number) =>
+    rodar(parsedBase({ sobre: "a".repeat(n) }), { level: "junior" });
+
+  it("299 reprova e 300 aprova", () => {
+    expect(aprovado(comSobre(299), "sobre-tamanho")).toBe(false);
+    expect(aprovado(comSobre(300), "sobre-tamanho")).toBe(true);
+  });
+
+  it("o detalhe usa exatamente a mesma fonte do critério", () => {
+    const check = comSobre(299).checks.find((c) => c.id === "sobre-tamanho");
+    expect(check?.detail).toContain("entre 300 e 2200");
+  });
+});
+
 describe("fronteira: sobre-existe (200)", () => {
   it("199 reprova e 200 aprova", () => {
-    expect(aprovado(rodar(parsedBase({ sobre: "a".repeat(199) })), "sobre-existe")).toBe(false);
-    expect(aprovado(rodar(parsedBase({ sobre: "a".repeat(200) })), "sobre-existe")).toBe(true);
+    expect(
+      aprovado(rodar(parsedBase({ sobre: "a".repeat(199) })), "sobre-existe"),
+    ).toBe(false);
+    expect(
+      aprovado(rodar(parsedBase({ sobre: "a".repeat(200) })), "sobre-existe"),
+    ).toBe(true);
   });
 });
 
@@ -81,7 +106,11 @@ describe("fronteira: exp-descricoes (100 caracteres somados)", () => {
     rodar(
       parsedBase({
         experiencias: [
-          { titulo: "Desenvolvedora", empresa: "Empresa Alfa", descricao: "a".repeat(n) },
+          {
+            titulo: "Desenvolvedora",
+            empresa: "Empresa Alfa",
+            descricao: "a".repeat(n),
+          },
         ],
       }),
     );
@@ -94,7 +123,9 @@ describe("fronteira: exp-descricoes (100 caracteres somados)", () => {
 
 describe("fronteira: skills-quantidade (10) e skills-quantidade-otima (25)", () => {
   const comSkills = (n: number) =>
-    rodar(parsedBase(), { skills: Array.from({ length: n }, (_, i) => `Skill${i}`).join(", ") });
+    rodar(parsedBase(), {
+      skills: Array.from({ length: n }, (_, i) => `Skill${i}`).join(", "),
+    });
 
   it("9 reprova e 10 aprova o basico", () => {
     expect(aprovado(comSkills(9), "skills-quantidade")).toBe(false);
@@ -198,7 +229,10 @@ describe("fronteira: cobertura por razao (0.5, 0.75) e skills-cobertura (0.5)", 
   it("REGUA V2: quem comprova ZERO nao ganha o check de graca", () => {
     // Sem a guarda, min(6, 0) = 0 e `0 >= 0` aprovaria: 27 das 107 ganhariam um
     // check essencial de 10 pontos por nao ter nada.
-    expect(corteDeCompetencias(22, 0)).toEqual({ minimo: 0, alcancavel: false });
+    expect(corteDeCompetencias(22, 0)).toEqual({
+      minimo: 0,
+      alcancavel: false,
+    });
     const vazio = rodar(parsedBase({ headline: "Pessoa" }), {
       profileText: "Pessoa",
       skills: "",
