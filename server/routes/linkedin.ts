@@ -7,13 +7,13 @@ import {
   type LinkedinAnalysisResponse,
   type LinkedinAnalyzeRequest,
 } from "../../shared/linkedin/schema";
-import { estimateCost, estimateCostFromTokens } from "../lib/aiTools";
-import { DEFAULT_MODEL } from "../lib/openai";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import {
   analyzeLinkedin,
+  camposDeUsoDaAnalise,
   LinkedinTruncatedError,
   LinkedinUnreadableError,
+  type AnalyzeAiIo,
 } from "../lib/linkedinAnalyze";
 import type { LinkedinParsed } from "../../shared/linkedin/parse";
 import { hashDoTexto } from "../lib/linkedinTextoHash";
@@ -180,49 +180,46 @@ router.post(
       );
     }
 
-    let aiUsed = false;
-    let aiIo = {
-      inputChars: 0,
-      outputChars: 0,
-      inputTokens: 0,
-      outputTokens: 0,
-    };
+    // TODAS as tentativas, na ordem. Declarado FORA do try porque o ramo de
+    // erro precisa das mesmas tentativas: era ali que o custo sumia por
+    // inteiro, justamente quando se pagou duas chamadas e nao se entregou nada.
+    const tentativas: AnalyzeAiIo[] = [];
     try {
       const { response, parsed } = await analyzeLinkedin(request, (io) => {
-        aiUsed = true;
-        aiIo = io;
+        tentativas.push(io);
       });
       const textoHash = hashDoTexto(request.profileText);
-      // outputChars mede a SAIDA DO MODELO (aiIo.outputChars, o tamanho do
-      // content devolvido pela OpenAI), nao JSON.stringify(response): a
-      // resposta da rota carrega tambem o bloco deterministico inteiro, que a
-      // IA nao gerou e ninguem pagou. Com o response completo, a linha de
-      // exemplo media 10.432 caracteres contra os ~3.900 de saida real.
+      // outputChars mede a SAIDA DO MODELO (o tamanho do content devolvido
+      // pela OpenAI, agora somado sobre as tentativas), nao
+      // JSON.stringify(response): a resposta da rota carrega tambem o bloco
+      // deterministico inteiro, que a IA nao gerou e ninguem pagou. Com o
+      // response completo, a linha de exemplo media 10.432 caracteres contra
+      // os ~3.900 de saida real.
       // O atalho sem IA (perfil quase vazio) fica com zero, que e o correto.
       // So conta no limite diario quando a IA rodou de fato. O atalho caloroso
       // (perfil quase vazio) loga como "skipped", que nao conta na cota.
+      //
+      // Os totais somam TODAS as tentativas: um sucesso na segunda tentativa
+      // custou as duas, e ate a Fase 2 a primeira desaparecia da conta.
+      // Sem `costEstimate` a ferramenta aparecia com custo zero nos paineis
+      // admin (/ai-stats e get_ai_usage_admin_summary somam cost_estimate).
+      const uso = camposDeUsoDaAnalise(tentativas);
       await logAiUsage({
         userId,
         tool: TOOL,
         requestId,
-        status: aiUsed ? "success" : "skipped",
-        inputChars: aiIo.inputChars,
-        outputChars: aiIo.outputChars,
-        inputTokens: aiIo.inputTokens,
-        outputTokens: aiIo.outputTokens,
-        // Sem isto a ferramenta aparecia com custo zero nos paineis admin
-        // (/ai-stats e get_ai_usage_admin_summary somam cost_estimate).
-        // Tokens EXATOS de usage quando vierem; a conta por chars fica so de
-        // fallback, porque CHARS_PER_TOKEN subestima a entrada.
-        costEstimate: aiUsed
-          ? aiIo.inputTokens > 0
-            ? estimateCostFromTokens(
-                aiIo.inputTokens,
-                aiIo.outputTokens,
-                DEFAULT_MODEL,
-              )
-            : estimateCost(aiIo.inputChars, aiIo.outputChars, DEFAULT_MODEL)
-          : 0,
+        status: uso.tentativas > 0 ? "success" : "skipped",
+        inputChars: uso.inputChars,
+        outputChars: uso.outputChars,
+        inputTokens: uso.inputTokens,
+        outputTokens: uso.outputTokens,
+        costEstimate: uso.costEstimate,
+        // A trilha so aparece quando houve tentativa PERDIDA dentro de um
+        // sucesso, que e o unico caso em que ela informa algo. Sucesso de
+        // primeira segue gravando `error_message` nulo, como sempre gravou.
+        // Nao ha coluna estruturada para o detalhe por tentativa e criar uma
+        // exigiria migration; ver o relatorio do lote.
+        errorMessage: uso.tentativas > 1 ? uso.trilha : undefined,
       });
 
       const analysisId = await persistAnalysis(
@@ -236,12 +233,26 @@ router.post(
       res.json({ data: response, analysisId, textoHash });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro desconhecido";
+      // MESMOS totais do ramo de sucesso, pela MESMA funcao. `status` continua
+      // "error", entao a reserva de cota e devolvida exatamente como antes:
+      // `get_ai_usage_today` conta so 'success', e `reserve_ai_usage_slot`
+      // conta 'success' e 'reserved'. Linha 'error' nao entra em nenhuma das
+      // duas, tenha ela token gravado ou nao.
+      // Erro antes de qualquer chamada (perfil ilegivel, dado invalido) tem
+      // lista vazia e grava zeros, que e o que ja acontecia.
+      const uso = camposDeUsoDaAnalise(tentativas);
       await logAiUsage({
         userId,
         tool: TOOL,
         requestId,
         status: "error",
-        errorMessage: message,
+        errorMessage:
+          uso.tentativas > 0 ? `${message} | ${uso.trilha}` : message,
+        inputChars: uso.inputChars,
+        outputChars: uso.outputChars,
+        inputTokens: uso.inputTokens,
+        outputTokens: uso.outputTokens,
+        costEstimate: uso.costEstimate,
       });
 
       if (err instanceof LinkedinUnreadableError) {

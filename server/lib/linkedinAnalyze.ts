@@ -31,7 +31,8 @@ import {
   keyTechnologiesForArea,
   matchTechnologies,
 } from "./skillNormalize";
-import { fetchWithTimeout } from "./http";
+import { estimateCost, estimateCostFromTokens } from "./aiTools";
+import { fetchWithTimeout, UpstreamTimeoutError } from "./http";
 import {
   parseLinkedinText,
   type LinkedinParsed,
@@ -173,12 +174,180 @@ QUANTIDADES OBRIGATÓRIAS: de 3 a 5 pontosFortes, de 3 a 5 pontosFracos e de 4 a
 Responda apenas com o JSON do schema.`;
 // TODO(Ana): revisar o bloco de quantidades e proximoPasso do prompt.
 
+/**
+ * Desfecho de UMA tentativa de chamada a OpenAI, com nome proprio.
+ *
+ * Cada nome corresponde a um ponto de saida real de `runQualitativeOnce`, e a
+ * lista existe para o painel poder responder "o que custou e nao entregou".
+ * `nao_classificado` nao deve acontecer: ele cobre um caminho de saida futuro
+ * que alguem esqueca de rotular, e existe para aparecer como lacuna em vez de
+ * se disfarcar de `rede`, que seria um diagnostico plausivel e errado.
+ */
+export type DesfechoTentativa =
+  | "sucesso"
+  | "json_invalido"
+  | "schema_invalido"
+  | "truncada"
+  | "sem_conteudo"
+  | "http_erro"
+  | "timeout"
+  | "rede"
+  | "nao_classificado";
+
+/**
+ * Por que nao houve `usage`. E o estado NOMEADO que substitui o zero.
+ *
+ *   - `sem_resposta`: a tentativa nao chegou a receber corpo (timeout, rede);
+ *   - `corpo_de_erro`: a OpenAI respondeu nao-ok, e corpo de erro dela nao
+ *     carrega `usage`;
+ *   - `ausente_no_corpo`: veio 200, mas sem o objeto `usage`.
+ */
+export type MotivoSemUso =
+  | "sem_resposta"
+  | "corpo_de_erro"
+  | "ausente_no_corpo";
+
+/**
+ * Tokens de uma tentativa: ou MEDIDOS, ou indisponiveis com motivo.
+ *
+ * Uniao discriminada, e nao dois numeros com zero de sentinela, porque era
+ * exatamente essa a confusao antiga: `inputTokens: 0` significava tanto "a
+ * OpenAI nao mandou usage" quanto "custou zero", e nenhum consumidor tinha como
+ * separar os dois. Mesma familia do `contarLinhas` devolvendo -1 registrada no
+ * CLAUDE.md, onde falha de medicao virava numero plausivel.
+ */
+export type UsoDaTentativa =
+  | { medido: true; inputTokens: number; outputTokens: number }
+  | { medido: false; motivo: MotivoSemUso };
+
+/**
+ * Evento de contabilizacao de UMA tentativa.
+ *
+ * Ate a Fase 2 este evento nascia uma unica vez, depois do JSON valido e do Zod
+ * valido, entao toda tentativa que falhou era gratuita aos olhos do painel: a
+ * tentativa 1 invalida sumia atras da 2 valida, e duas tentativas falhas viravam
+ * uma linha de erro sem token nenhum, no exato caso em que se pagou duas vezes.
+ * Agora o evento nasce por tentativa, no ponto em que o desfecho e conhecido.
+ */
 export interface AnalyzeAiIo {
+  /** 1-based, na ordem em que as tentativas aconteceram. */
+  tentativa: number;
+  desfecho: DesfechoTentativa;
+  inputChars: number;
+  /** Ausente quando a tentativa nao chegou a receber conteudo do modelo. */
+  outputChars?: number;
+  uso: UsoDaTentativa;
+}
+
+/**
+ * O mesmo evento enquanto esta sendo PREENCHIDO, dentro da tentativa.
+ *
+ * `desfecho: null` e o estado inicial e nao vaza para fora: quem emite converte
+ * em `nao_classificado`. O registro e criado pelo LACO e nao pela funcao da
+ * tentativa, de proposito: assim ele existe mesmo quando a tentativa morre
+ * antes da primeira linha util, e o `finally` do laco garante um evento por
+ * tentativa por construcao, sem depender de alguem lembrar de emitir em cada
+ * um dos sete pontos de saida.
+ */
+interface RegistroDaTentativa {
+  tentativa: number;
+  desfecho: DesfechoTentativa | null;
+  inputChars: number;
+  outputChars?: number;
+  uso: UsoDaTentativa;
+}
+
+/**
+ * Teto do texto da trilha gravado em `ai_usage_logs.error_message`. A coluna e
+ * `text` e nao tem limite no Postgres, entao isto e higiene de log, no mesmo
+ * espirito do `ZOD_ISSUES_LOG_MAX` de `server/routes/ai.ts`. Com o teto atual
+ * de duas tentativas a trilha tem cerca de 60 caracteres.
+ */
+const TRILHA_LOG_MAX = 500;
+
+/** O que a rota grava em `ai_usage_logs`, somado sobre TODAS as tentativas. */
+export interface CamposDeUsoDaAnalise {
+  /** Quantas tentativas alcancaram a OpenAI. Zero no atalho sem IA. */
+  tentativas: number;
   inputChars: number;
   outputChars: number;
-  /** Tokens EXATOS de `usage` da OpenAI. 0 quando a resposta nao trouxe. */
+  /** Soma dos tokens MEDIDOS. Ver `tokensMedidos` antes de ler como custo. */
   inputTokens: number;
   outputTokens: number;
+  /** Houve ao menos uma tentativa com `usage` de verdade. */
+  tokensMedidos: boolean;
+  costEstimate: number;
+  /** Desfecho e tokens de cada tentativa, para o campo de texto do log. */
+  trilha: string;
+}
+
+/** `9999/888`, ou o motivo nomeado de nao haver medicao. */
+function tokensNaTrilha(uso: UsoDaTentativa): string {
+  return uso.medido
+    ? `${uso.inputTokens}/${uso.outputTokens}`
+    : `sem tokens (${uso.motivo})`;
+}
+
+/**
+ * Fecha a conta da analise inteira a partir dos eventos por tentativa.
+ *
+ * Uma funcao so, chamada pelos DOIS ramos da rota (sucesso e catch), porque a
+ * linha de erro precisa carregar exatamente os mesmos totais da linha de
+ * sucesso. Duas formulas para o mesmo fato divergem na primeira mudanca de
+ * criterio, e o ramo de erro e justamente o que ninguem olha.
+ *
+ * REGRA DO CUSTO, em tres degraus, do mais medido ao menos:
+ *   1. algum `usage` medido: conta pelos tokens somados, que e o dado exato;
+ *   2. nenhum `usage`, mas houve conteudo de saida: cai na estimativa por
+ *      chars, que e o fallback que ja existia no caminho de sucesso;
+ *   3. nenhum dos dois (timeout, 401): custo ZERO e a trilha dizendo por que.
+ *      Estimar por chars aqui inventaria um numero: nao se sabe se a OpenAI
+ *      chegou a processar a chamada, e numero plausivel e pior que lacuna.
+ */
+export function camposDeUsoDaAnalise(
+  tentativas: readonly AnalyzeAiIo[],
+  model: string = DEFAULT_MODEL,
+): CamposDeUsoDaAnalise {
+  let inputChars = 0;
+  let outputChars = 0;
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let tokensMedidos = false;
+  const partes: string[] = [];
+
+  for (const t of tentativas) {
+    inputChars += t.inputChars;
+    outputChars += t.outputChars ?? 0;
+    if (t.uso.medido) {
+      tokensMedidos = true;
+      inputTokens += t.uso.inputTokens;
+      outputTokens += t.uso.outputTokens;
+    }
+    partes.push(`${t.tentativa} ${t.desfecho} ${tokensNaTrilha(t.uso)}`);
+  }
+
+  const costEstimate = tokensMedidos
+    ? estimateCostFromTokens(inputTokens, outputTokens, model)
+    : outputChars > 0
+      ? estimateCost(inputChars, outputChars, model)
+      : 0;
+
+  return {
+    tentativas: tentativas.length,
+    inputChars,
+    outputChars,
+    inputTokens,
+    outputTokens,
+    tokensMedidos,
+    costEstimate,
+    trilha:
+      tentativas.length === 0
+        ? ""
+        : `tentativas: ${tentativas.length} | ${partes.join("; ")}`.slice(
+            0,
+            TRILHA_LOG_MAX,
+          ),
+  };
 }
 
 function sleep(ms: number): Promise<void> {
@@ -489,9 +658,56 @@ export function buildUserPrompt(
   ].join("\n");
 }
 
+/** Le `usage` da resposta. Ausencia vira motivo nomeado, nunca zero. */
+function usoDoPayload(usage?: {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+}): UsoDaTentativa {
+  const entrada = usage?.prompt_tokens;
+  const saida = usage?.completion_tokens;
+  if (typeof entrada !== "number" || typeof saida !== "number") {
+    return { medido: false, motivo: "ausente_no_corpo" };
+  }
+  return { medido: true, inputTokens: entrada, outputTokens: saida };
+}
+
+/**
+ * Emite o evento da tentativa. Blindado: telemetria de custo nao pode derrubar
+ * a analise que ela existe para medir, entao a falha do consumidor vira aviso.
+ * Guarda DENTRO da funcao, e nao em cada chamador, pelo motivo do CLAUDE.md.
+ */
+function emitirTentativa(
+  registro: RegistroDaTentativa,
+  onAiIo?: (io: AnalyzeAiIo) => void,
+): void {
+  if (!onAiIo) return;
+  try {
+    onAiIo({
+      tentativa: registro.tentativa,
+      desfecho: registro.desfecho ?? "nao_classificado",
+      inputChars: registro.inputChars,
+      outputChars: registro.outputChars,
+      uso: registro.uso,
+    });
+  } catch (err) {
+    console.warn(
+      "[linkedin-analyze] falha ao contabilizar a tentativa:",
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+}
+
+/**
+ * UMA tentativa. Ela nao emite nada: PREENCHE `registro` a medida que os fatos
+ * ficam conhecidos (o `usage` assim que o corpo e lido, o desfecho na linha
+ * imediatamente anterior a cada saida), e quem emite e o `finally` do laco.
+ *
+ * O usage NAO viaja dentro da excecao: erro continua sendo erro, e o dado de
+ * custo continua sendo dado, gravado onde foi medido.
+ */
 async function runQualitativeOnce(
   userText: string,
-  onAiIo?: (io: AnalyzeAiIo) => void,
+  registro: RegistroDaTentativa,
 ): Promise<LinkedinQualitative> {
   const response = await fetchWithTimeout(
     OPENAI_BASE_URL,
@@ -520,6 +736,10 @@ async function runQualitativeOnce(
   );
 
   if (!response.ok) {
+    // Corpo de erro da OpenAI nao traz `usage`, e ele ja foi consumido como
+    // texto por `erroDaRespostaOpenAi`. Estado nomeado, nao zero.
+    registro.desfecho = "http_erro";
+    registro.uso = { medido: false, motivo: "corpo_de_erro" };
     throw await erroDaRespostaOpenAi(response);
   }
 
@@ -527,17 +747,24 @@ async function runQualitativeOnce(
     choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
     usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
+  // A PARTIR DAQUI o custo desta tentativa esta medido, tenha ela desfecho bom
+  // ou ruim: a OpenAI cobra a chamada, nao o nosso parser.
+  registro.uso = usoDoPayload(payload.usage);
   const choice = payload.choices?.[0];
+  const conteudo = choice?.message?.content;
+  if (typeof conteudo === "string") registro.outputChars = conteudo.length;
   // finish_reason "length" = a resposta bateu no max_tokens e veio cortada. Sem
   // esta checagem o sintoma era "JSON invalido", que manda diagnosticar o
   // parser quando o problema e orcamento de saida. Erro proprio, e a tentativa
   // seguinte nao adianta nada (o mesmo prompt corta no mesmo lugar), entao
   // LinkedinTruncatedError nao e retentado.
   if (choice?.finish_reason === "length") {
+    registro.desfecho = "truncada";
     throw new LinkedinTruncatedError();
   }
-  const content = choice?.message?.content;
+  const content = conteudo;
   if (!content) {
+    registro.desfecho = "sem_conteudo";
     throw new Error("A IA não retornou conteúdo.");
   }
 
@@ -546,12 +773,14 @@ async function runQualitativeOnce(
     parsed = JSON.parse(content);
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
+    registro.desfecho = "json_invalido";
     throw new Error(`Resposta da IA não veio em JSON válido: ${detail}.`);
   }
 
   const validation = LinkedinQualitativeSchema.safeParse(parsed);
   if (!validation.success) {
     const issues = JSON.stringify(validation.error.issues).slice(0, 300);
+    registro.desfecho = "schema_invalido";
     throw new Error(
       `Resposta da IA não bateu com o schema esperado: ${issues}`,
     );
@@ -560,19 +789,13 @@ async function runQualitativeOnce(
   // determinístico de perfil quase vazio. A saída do modelo continua obrigada
   // a trazer de 3 a 5, como declara o prompt, e uma violação segue retentando.
   if (validation.data.pontosFortes.length < 3) {
+    registro.desfecho = "schema_invalido";
     throw new Error(
       "Resposta da IA não bateu com o schema esperado: pontosFortes exige ao menos 3 itens.",
     );
   }
 
-  // Tokens exatos quando a OpenAI mandar; chars seguem gravados para o
-  // fallback de custo e para comparacao historica.
-  onAiIo?.({
-    inputChars: userText.length,
-    outputChars: content.length,
-    inputTokens: payload.usage?.prompt_tokens ?? 0,
-    outputTokens: payload.usage?.completion_tokens ?? 0,
-  });
+  registro.desfecho = "sucesso";
   return validation.data;
 }
 
@@ -586,10 +809,24 @@ async function runQualitative(
 
   let lastError: unknown;
   for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
+    // Um registro POR TENTATIVA, criado antes da chamada: se ela morrer no
+    // transporte, o evento ainda sai, com o motivo nomeado do estado inicial.
+    const registro: RegistroDaTentativa = {
+      tentativa: attempt,
+      desfecho: null,
+      inputChars: userText.length,
+      uso: { medido: false, motivo: "sem_resposta" },
+    };
     try {
-      return await runQualitativeOnce(userText, onAiIo);
+      return await runQualitativeOnce(userText, registro);
     } catch (err) {
       lastError = err;
+      // Falhas ANTES da resposta nao passam por `runQualitativeOnce`, entao o
+      // desfecho delas e classificado aqui, que continua sendo dentro da
+      // tentativa. `??=` de proposito: o que a tentativa ja rotulou tem
+      // precedencia, porque e mais especifico.
+      registro.desfecho ??=
+        err instanceof UpstreamTimeoutError ? "timeout" : "rede";
       const detail = err instanceof Error ? err.message : String(err);
       console.error(
         `[linkedin-analyze] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} falhou: ${detail}`,
@@ -606,6 +843,11 @@ async function runQualitative(
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
       }
+    } finally {
+      // UM evento por tentativa, em TODA saida: sucesso (o `return` do `try`
+      // passa por aqui antes de propagar), falha retentada, falha que aborta o
+      // laco. E o `finally` que torna a garantia estrutural.
+      emitirTentativa(registro, onAiIo);
     }
   }
 

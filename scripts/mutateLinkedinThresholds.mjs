@@ -254,6 +254,18 @@ const MUT = [
     "    .int()\n    .min(1)",
     "    .int()\n    .min(0)",
   ],
+  // Teto do texto da trilha de tentativas gravado em
+  // `ai_usage_logs.error_message` (Fase 2, lote 2). Entra em MUT porque e
+  // fronteira de persistencia: encolher o teto corta o detalhe por tentativa,
+  // que e justamente o dado que o lote existe para nao perder, e a rota nao
+  // tem coluna estruturada onde guarda-lo. O teste que trava a trilha inteira
+  // e `server/lib/linkedinCustoPorTentativa.test.ts`.
+  [
+    A,
+    "TRILHA_LOG_MAX",
+    "const TRILHA_LOG_MAX = 500;",
+    "const TRILHA_LOG_MAX = 5;",
+  ],
   // Limites de entrada e persistência, não pesos da régua. Ainda são
   // fronteiras de contrato e uma mudança acidental precisa quebrar teste.
   [
@@ -598,6 +610,10 @@ const NAO_LIMIAR = [
   [/token\.length > 3/, "tamanho minimo de token no casamento de contexto"],
   [/\bn >= 1900\b|n <= 2100/, "faixa de ano, coberta em MUT"],
   [/content\.slice\(1\)/, "pula a linha de titulo quando a secao nao tem data"],
+  [
+    /: outputChars > 0/,
+    "houve saida do modelo, mesma checagem de nao-vazio de .length > 0: decide entre estimar por chars e nao estimar, nao e fronteira de valor",
+  ],
   [
     /posMarcador >= 0 && posMarcador < posTermo/,
     "ordem entre indices, nao e numero de regra",
