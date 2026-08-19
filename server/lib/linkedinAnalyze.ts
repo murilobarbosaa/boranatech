@@ -1010,14 +1010,38 @@ export function warmEmptyQualitative(
  */
 const INTERVALO_LASTRO_MS = 60 * 1000;
 
+/**
+ * Violação de `skillsParaEstudar`, que existe SÓ no servidor.
+ *
+ * O tipo não entra em `shared/linkedin/lastro.ts` com os irmãos porque aquela
+ * união é o vocabulário COMPARTILHADO (o client importa de lá), e esta
+ * violação nasce e morre no log do servidor: nenhum consumidor do client
+ * conhece o campo `skillsParaEstudar` como origem de violação. Se um dia o
+ * painel passar a ler os tipos, o lugar dela é lá, e a mudança é de uma linha.
+ */
+type TipoViolacaoLocal = TipoViolacao | "skill_estudo_sem_lastro";
+
+/**
+ * O que `registrarViolacao` aceita: a violação compartilhada, mais a de skills.
+ * `Violacao` continua atribuível a isto por estrutura, então todos os pontos
+ * que já existiam seguem iguais.
+ */
+interface ViolacaoRegistravel {
+  tipo: TipoViolacaoLocal;
+  campo: Violacao["campo"] | "skillsParaEstudar";
+  contexto: string;
+  termo: string;
+}
+
 /** Violações que descartam o bloco inteiro, em vez de remover um termo dele. */
-const TIPOS_DE_BLOCO: ReadonlySet<TipoViolacao> = new Set<TipoViolacao>([
-  "bullet_sem_origem",
-  "bloco_experiencia_invalida",
-]);
+const TIPOS_DE_BLOCO: ReadonlySet<TipoViolacaoLocal> =
+  new Set<TipoViolacaoLocal>([
+    "bullet_sem_origem",
+    "bloco_experiencia_invalida",
+  ]);
 const ultimoLastroPorTipo = new Map<string, number>();
 
-function registrarViolacao(v: Violacao): void {
+function registrarViolacao(v: ViolacaoRegistravel): void {
   // NIVEL: `warning`, nao `error`, e a diferenca e deliberada. O modo degradado
   // da cota e `error` porque significa que uma PROTECAO ESTA DESLIGADA; uma
   // violacao de lastro significa o oposto, que a protecao FUNCIONOU e removeu o
@@ -1092,6 +1116,16 @@ function melhoriaSemBullets(
   };
 }
 
+/** Chave de comparacao de skill: sem espaco nas pontas e sem caixa. */
+function chaveDeSkill(skill: string): string {
+  return skill.trim().toLowerCase();
+}
+
+/** Igualdade posicional de duas listas de texto. */
+function mesmaLista(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((item, i) => item === b[i]);
+}
+
 /**
  * Camada unica de lastro sobre o texto gerado. Ver shared/linkedin/lastro.ts
  * para a lista de campos cobertos e nao cobertos, com o motivo de cada um.
@@ -1101,7 +1135,7 @@ function aplicarLastro(
   parsed: LinkedinParsed,
   deterministic: LinkedinDeterministicResult,
 ): LinkedinQualitative {
-  const violacoes: Violacao[] = [];
+  const violacoes: ViolacaoRegistravel[] = [];
 
   // 1. HEADLINES: tecnologia so com lastro em keywordsEncontradas.
   const comprovadas = new Set(
@@ -1221,11 +1255,59 @@ function aplicarLastro(
     if (!jaCitada) melhorias = [nova, ...melhorias].slice(0, 7);
   }
 
+  // 4. skillsParaEstudar: SO o que estava na lista entregue ao modelo.
+  //
+  // A intersecao e com `deterministic.keywordsFaltantes`, a MESMA lista que o
+  // prompt manda ("e DESTA lista, e so dela, que sai skillsParaEstudar"), nao
+  // uma recalculada aqui: duas derivacoes do mesmo fato divergem na primeira
+  // mudanca de criterio. Isso exclui por construcao os dois defeitos medidos,
+  // o ja evidenciado (React e TypeScript nao estao em faltantes) e o inventado
+  // (nunca esteve em lista nenhuma), sem precisar de regra separada para cada.
+  //
+  // A lista pode terminar VAZIA, e isso e o estado honesto: completar com item
+  // que o modelo nao devolveu seria a plataforma escrevendo conselho e
+  // atribuindo ao modelo.
+  const canonicaPorChave = new Map(
+    deterministic.keywordsFaltantes.map((t) => [chaveDeSkill(t), t]),
+  );
+  const jaIncluidas = new Set<string>();
+  const skillsParaEstudar: string[] = [];
+  for (const skill of qualitative.skillsParaEstudar) {
+    const chave = chaveDeSkill(skill);
+    const canonica = canonicaPorChave.get(chave);
+    if (canonica === undefined) {
+      violacoes.push({
+        tipo: "skill_estudo_sem_lastro",
+        campo: "skillsParaEstudar",
+        contexto: "skillsParaEstudar",
+        termo: skill,
+      });
+      continue;
+    }
+    // Duplicata NAO e violacao: o item tem lastro, o modelo so repetiu. Sai da
+    // lista em silencio, e a ordem de quem ficou e a que ele devolveu.
+    if (jaIncluidas.has(chave)) continue;
+    jaIncluidas.add(chave);
+    // A grafia que vale e a da lista de faltantes, fonte unica de como o nome
+    // se escreve. Sem isto, "node.js" chegaria ao usuario assim.
+    skillsParaEstudar.push(canonica);
+  }
+
   for (const v of violacoes) registrarViolacao(v);
-  if (violacoes.length === 0 && melhorias === qualitative.melhorias) {
+  if (
+    violacoes.length === 0 &&
+    melhorias === qualitative.melhorias &&
+    mesmaLista(skillsParaEstudar, qualitative.skillsParaEstudar)
+  ) {
     return qualitative;
   }
-  return { ...qualitative, headlines, bulletsReescritos, melhorias };
+  return {
+    ...qualitative,
+    headlines,
+    bulletsReescritos,
+    melhorias,
+    skillsParaEstudar,
+  };
 }
 
 export async function analyzeLinkedin(
