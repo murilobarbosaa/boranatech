@@ -7,6 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import {
   LABEL_COLOR_FALLBACK,
@@ -39,8 +40,16 @@ type BoardToolbarProps = {
   groupBy: GroupBy;
   view: ViewMode;
   includeArchived: boolean;
-  visibleCount: number;
-  totalCount: number;
+  /**
+   * `null` = AINDA NAO SE SABE (troca de quadro em curso).
+   *
+   * Nao e o mesmo que zero, e a diferenca importa: durante a troca a barra fica
+   * montada, e tanto o numero do quadro ANTIGO quanto um `0` inventado seriam
+   * lidos como contagem verdadeira do quadro novo. Sem saber, a linha vira
+   * esqueleto em vez de afirmar um numero.
+   */
+  visibleCount: number | null;
+  totalCount: number | null;
   onSelectBoard: (boardId: string) => void;
   onFiltersChange: (filters: TaskFilters) => void;
   onGroupByChange: (groupBy: GroupBy) => void;
@@ -427,11 +436,17 @@ export const BoardToolbar = memo(
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs font-black uppercase tracking-wide text-slate-500">
-          <span>
-            {activeCount > 0
-              ? `${visibleCount} de ${totalCount} tarefa${totalCount === 1 ? "" : "s"}`
-              : `${totalCount} tarefa${totalCount === 1 ? "" : "s"}`}
-          </span>
+          {totalCount === null ? (
+            // Contagem desconhecida durante a troca de quadro: forma no lugar do
+            // numero, sem texto novo para traduzir ou revisar.
+            <Skeleton className="h-3 w-24 bg-slate-200" />
+          ) : (
+            <span>
+              {activeCount > 0
+                ? `${visibleCount} de ${totalCount} tarefa${totalCount === 1 ? "" : "s"}`
+                : `${totalCount} tarefa${totalCount === 1 ? "" : "s"}`}
+            </span>
+          )}
           {includeArchived ? (
             <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] text-slate-700">
               incluindo arquivadas

@@ -11,7 +11,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 // modulo inteiro (e o dnd-kit junto) para o chunk do Admin, desfazendo
 // exatamente o lazy que ele existe para servir.
 
-export function TasksPanelSkeleton() {
+/**
+ * So a AREA DAS COLUNAS.
+ *
+ * Existe separado porque a TROCA de quadro precisa dele sozinho: la a barra de
+ * quadros continua montada (a pessoa acabou de clicar nela) e apenas as colunas
+ * viram esqueleto. E o mesmo desenho do painel inteiro pela razao do comentario
+ * acima, agora com um terceiro uso: dois desenhos fariam a troca piscar de um
+ * esqueleto para outro.
+ */
+export function BoardColumnsSkeleton() {
   return (
     <div className="flex gap-4 overflow-hidden">
       {[0, 1, 2, 3].map((index) => (
@@ -29,4 +38,8 @@ export function TasksPanelSkeleton() {
       ))}
     </div>
   );
+}
+
+export function TasksPanelSkeleton() {
+  return <BoardColumnsSkeleton />;
 }

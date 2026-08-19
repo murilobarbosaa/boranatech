@@ -19,7 +19,17 @@ import type { TaskBoard, TaskBoardSnapshot } from "./types";
 type SnapshotState = {
   boards: TaskBoard[];
   snapshot: TaskBoardSnapshot | null;
-  /** Primeiro carregamento: e o unico que mostra skeleton. */
+  /**
+   * De QUAL quadro e o snapshot acima.
+   *
+   * Sem este campo o estado nao sabe responder "o que esta na tela e do quadro
+   * que a pessoa escolheu?", e era essa a pergunta que faltava: na troca de
+   * quadro o snapshot antigo existia, o carregamento ficava falso e o quadro
+   * VELHO seguia renderizado ate o novo chegar. E gravado no MESMO setState que
+   * grava o snapshot, com o boardId daquela requisicao, nunca com o atual.
+   */
+  snapshotBoardId: string | null;
+  /** Carregando: primeiro carregamento OU troca de quadro. Ver o efeito abaixo. */
   loading: boolean;
   error: string | null;
 };
@@ -33,6 +43,7 @@ export function useBoardSnapshot(
   const [state, setState] = useState<SnapshotState>({
     boards: [],
     snapshot: null,
+    snapshotBoardId: null,
     loading: true,
     error: null,
   });
@@ -81,10 +92,16 @@ export function useBoardSnapshot(
       const snapshot = await getBoardSnapshot(boardId, { includeArchived });
       // Chegou atrasada: outra requisicao ja partiu depois desta, e o estado
       // dela e mais novo que este. Descarta em silencio.
+      //
+      // A guarda protege TAMBEM o `snapshotBoardId`: resposta do quadro antigo
+      // que volta depois da troca nao pode carimbar o estado com o quadro dela,
+      // senao a transicao terminaria cedo mostrando o quadro errado.
       if (!mounted.current || seq !== snapshotSeq.current) return;
       setState((current) => ({
         ...current,
         snapshot,
+        // `boardId` do closure DESTA requisicao, nao o atual: e dele o snapshot.
+        snapshotBoardId: boardId,
         loading: false,
         error: null,
       }));
@@ -107,7 +124,15 @@ export function useBoardSnapshot(
     if (!boardId) return;
     setState((current) => ({
       ...current,
-      loading: current.snapshot === null,
+      // DOIS casos, que a condicao antiga (`snapshot === null`) fundia num so:
+      //
+      //   1. refresh SILENCIOSO do mesmo quadro (mover, criar, renomear, trocar
+      //      `includeArchived`): snapshot presente e do mesmo quadro, entao
+      //      carregando fica falso e a tela nao pisca. Comportamento bom, mantido;
+      //   2. TROCA de quadro: o snapshot presente e de OUTRO quadro, e exibi-lo
+      //      como se fosse o atual e o bug. Carregando fica verdadeiro ate a
+      //      resposta do quadro novo chegar.
+      loading: current.snapshot === null || current.snapshotBoardId !== boardId,
     }));
     void refresh();
   }, [boardId, refresh]);
@@ -147,10 +172,18 @@ export function useBoardSnapshot(
     [],
   );
 
+  // As duas telas de espera sao DIFERENTES e quem decide isso e aqui, nao o
+  // componente: no primeiro carregamento nao existe barra de quadros para
+  // manter (nem se sabe quais quadros existem), entao o painel inteiro vira
+  // esqueleto; na troca a barra fica, porque a pessoa acabou de clicar nela, e
+  // so a area das colunas vira esqueleto.
+  const trocandoDeBoard = state.loading && state.snapshot !== null;
+
   return {
     boards: state.boards,
     snapshot: state.snapshot,
     loading: state.loading,
+    trocandoDeBoard,
     error: state.error,
     refresh,
     reloadBoards: loadBoards,
