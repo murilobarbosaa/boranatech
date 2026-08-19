@@ -173,9 +173,9 @@ function comecaMinuscula(valor: string): boolean {
  * fazendo trabalho de regra de forma: pulava "Brazil" e "São Paulo, Brazil" mas
  * deixava "Campinas, São Paulo, Brazil" (27 caracteres) entrar na descrição.
  *
- * A forma de uma localização é: poucas palavras, no máximo quatro partes
- * separadas por vírgula, cada parte começando em maiúscula, sem pontuação de
- * fim de frase e sem marcador de bullet. Uma frase de descrição que comece com
+ * A forma de uma localização é: poucas palavras, no máximo TRES partes
+ * separadas por vírgula, cada parte começando em maiúscula, sem barra de cargo,
+ * sem pontuação de fim de frase e sem marcador de bullet. Uma frase de descrição que comece com
  * nome de cidade não passa, porque tem mais de sete palavras ou termina em
  * ponto. Só é consultada na posição logo após a data, onde o export põe a
  * localização, nunca no meio do texto.
@@ -188,13 +188,22 @@ function ehLinhaDeLocalizacao(linha: string): boolean {
   if (isDateRangeLine(t)) return false;
   if (ehLinhaDeDuracao(t)) return false;
   if (matchSectionHeader(t)) return false;
+  // Barra de cargo nunca aparece em endereco. Ela aparece em headline e em
+  // linha de stack, que e a familia que estava sendo lida como localizacao:
+  // `TypeScript, React, Node.js, PostgreSQL | Remote` passava por ter partes
+  // curtas e capitalizadas, e com isso a continuacao da headline era recusada.
+  if (t.includes("|")) return false;
   if (t.split(/\s+/).length > 7) return false;
   if (MODALIDADE_RE.test(stripAccentsLower(t))) return true;
   const partes = t
     .split(",")
     .map((p) => p.trim())
     .filter((p) => p.length > 0);
-  if (partes.length === 0 || partes.length > 4) return false;
+  // Tres partes, nao quatro. `Campinas, Sao Paulo, Brasil` e o endereco mais
+  // longo que o export produz; a quarta parte so aparecia em enumeracao de
+  // stack (`JavaScript, TypeScript, React, PostgreSQL`), e o teto de 4 era o
+  // que tornava as duas indistinguiveis.
+  if (partes.length === 0 || partes.length > 3) return false;
   return partes.every((p) => comecaMaiuscula(p) && p.split(/\s+/).length <= 4);
 }
 

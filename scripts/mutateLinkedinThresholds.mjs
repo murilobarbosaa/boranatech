@@ -99,8 +99,8 @@ const MUT = [
   ],
   [
     P,
-    "localizacao, max partes (4)",
-    "if (partes.length === 0 || partes.length > 4) return false;",
+    "localizacao, max partes (3)",
+    "if (partes.length === 0 || partes.length > 3) return false;",
     "if (partes.length === 0 || partes.length > 1) return false;",
   ],
   [
