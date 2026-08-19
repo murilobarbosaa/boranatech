@@ -137,7 +137,15 @@ export async function listSentryIssues(params?: {
   // ORGANIZACAO, nao projeto. Ver TODOS_OS_PROJETOS.
   const url = new URL(`${SENTRY_API_BASE}/organizations/${env.sentryOrgSlug}/issues/`);
   url.searchParams.set("project", TODOS_OS_PROJETOS);
-  url.searchParams.set("query", params?.query ?? "is:unresolved");
+  // `!level:info` exclui RASTRO DELIBERADO DE SUCESSO, que nao e defeito e nao
+  // deve virar card: o caso concreto foi `[account-deletion] assinaturas
+  // encerradas`, um `captureMessage` com `level: "info"` que registra o
+  // cancelamento bem-sucedido antes de excluir a conta, e que virou BUG-69.
+  // `warning` CONTINUA entrando de proposito: as series de telemetria
+  // (`chunk_import_failed`, `vite_preload_error`, `ai_lastro_violado`) sao
+  // exatamente o que se quer ver virar card se o volume explodir, e filtrar
+  // warning aqui devolveria o silencio que elas existem para quebrar.
+  url.searchParams.set("query", params?.query ?? "is:unresolved !level:info");
   url.searchParams.set("statsPeriod", periodo);
   if (params?.cursor) url.searchParams.set("cursor", params.cursor);
 
