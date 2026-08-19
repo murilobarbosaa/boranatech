@@ -8,6 +8,7 @@ import { NewTaskComposer } from "./NewTaskComposer";
 import { TaskCard } from "./TaskCard";
 import {
   COLUMN_COLOR_FALLBACK,
+  columnShellClass,
   emptyBlockClass,
   safeHexColor,
 } from "./taskBoardStyles";
@@ -112,9 +113,7 @@ function BoardColumnBase({
         borderTopColor: accent,
         borderTopWidth: 6,
       }}
-      className={`flex w-[85vw] shrink-0 snap-start flex-col rounded-3xl border-2 border-slate-900 p-3 shadow-[3px_3px_0_#0f172a] transition-colors sm:w-[19rem] ${
-        isDragging ? "opacity-40" : ""
-      } ${
+      className={`${columnShellClass} ${isDragging ? "opacity-40" : ""} ${
         isDropTarget
           ? overWip
             ? "bg-rose-100 ring-4 ring-rose-400"
