@@ -39,7 +39,13 @@ function lerRotas(): Rota[] {
     const fonte = readFileSync(path.join(ROUTES, arquivo), "utf8");
     // 4o argumento de checkAiDailyLimit(userId, isPro, escopo, TOOL)
     const reservas = Array.from(
-      fonte.matchAll(/checkAiDailyLimit\(\s*[^,]+,\s*[^,]+,\s*[^,]+,\s*([^)\s]+)\s*\)/g),
+      // `[^),\s]` exclui a virgula do grupo, e o `,?` aceita a virgula a
+      // direita da forma multilinha, que e a que o Prettier produz quando a
+      // chamada passa da largura. Sem o `,?` o regex nao casa nada e a rota
+      // sairia da auditoria em silencio, que e pior que a falha que ele tinha.
+      fonte.matchAll(
+        /checkAiDailyLimit\(\s*[^,]+,\s*[^,]+,\s*[^,]+,\s*([^),\s]+)\s*,?\s*\)/g,
+      ),
       (m) => m[1],
     );
     if (reservas.length === 0) continue;
