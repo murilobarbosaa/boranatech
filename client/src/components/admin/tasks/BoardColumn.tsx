@@ -192,7 +192,12 @@ function BoardColumnBase({
         </div>
       ) : null}
 
-      <div className="flex max-h-[calc(100vh-22rem)] min-h-[4rem] flex-1 flex-col gap-2.5 overflow-y-auto pr-0.5">
+      {/* `overflow-x-hidden` EXPLICITO ao lado do `overflow-y-auto`. Pela spec
+          de overflow, um eixo `visible` ao lado de um eixo que nao e `visible`
+          computa para `auto`: so o `overflow-y-auto` ja criava um
+          `overflow-x: auto` silencioso aqui, e era ele a barra horizontal que
+          aparecia na coluna quando um card estourava a largura. */}
+      <div className="flex max-h-[calc(100vh-22rem)] min-h-[4rem] flex-1 flex-col gap-2.5 overflow-y-auto overflow-x-hidden pr-0.5">
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           {group.tasks.length === 0 ? (
             // Coluna vazia e coluna FILTRADA a zero sao coisas diferentes, e

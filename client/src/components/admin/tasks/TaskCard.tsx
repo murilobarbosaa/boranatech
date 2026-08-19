@@ -113,8 +113,14 @@ export function TaskCardBody({
 
   return (
     <>
+      {/* `anywhere` e NAO `break-words`: os dois quebram o token na hora de
+          desenhar, mas so o `anywhere` entra no calculo do min-content. Como o
+          card e item de flex, e o min-content dele que define ate onde ele pode
+          encolher, entao com `break-words` o texto quebraria e o card
+          continuaria largo do mesmo jeito. Titulo do Sentry e o caso real:
+          `window.webkit.messageHandlers...` nao tem um espaco. */}
       <p
-        className={`mt-1.5 text-sm font-black leading-snug ${
+        className={`mt-1.5 text-sm font-black leading-snug [overflow-wrap:anywhere] ${
           task.archived_at ? "text-slate-500 line-through" : "text-slate-950"
         }`}
       >
@@ -126,7 +132,7 @@ export function TaskCardBody({
           {labels.map((label) => (
             <span
               key={label.id}
-              className="rounded-full border border-slate-900 px-1.5 py-0.5 text-[10px] font-black text-slate-900"
+              className="rounded-full border border-slate-900 px-1.5 py-0.5 text-[10px] font-black text-slate-900 [overflow-wrap:anywhere]"
               style={{
                 backgroundColor: safeHexColor(label.color, LABEL_COLOR_FALLBACK),
               }}
@@ -314,7 +320,11 @@ function TaskCardBase({
         transform: CSS.Transform.toString(transform),
         transition,
       }}
-      className={`group relative touch-none rounded-2xl border-2 p-3 text-left shadow-[3px_3px_0_#0f172a] transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 active:cursor-grabbing ${
+      // `min-w-0` derruba o `min-width:auto` que todo item de flex tem por
+      // padrao, que e o que impedia o card de encolher abaixo do min-content do
+      // texto. `max-w-full` e `overflow-hidden` sao a contencao de ultimo
+      // recurso, para conteudo futuro que escape do `overflow-wrap`.
+      className={`group relative min-w-0 max-w-full touch-none overflow-hidden rounded-2xl border-2 p-3 text-left shadow-[3px_3px_0_#0f172a] transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 active:cursor-grabbing ${
         archived
           ? "border-dashed border-slate-400 bg-slate-100"
           : "border-slate-900 bg-white"
