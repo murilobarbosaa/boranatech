@@ -1010,38 +1010,14 @@ export function warmEmptyQualitative(
  */
 const INTERVALO_LASTRO_MS = 60 * 1000;
 
-/**
- * Violação de `skillsParaEstudar`, que existe SÓ no servidor.
- *
- * O tipo não entra em `shared/linkedin/lastro.ts` com os irmãos porque aquela
- * união é o vocabulário COMPARTILHADO (o client importa de lá), e esta
- * violação nasce e morre no log do servidor: nenhum consumidor do client
- * conhece o campo `skillsParaEstudar` como origem de violação. Se um dia o
- * painel passar a ler os tipos, o lugar dela é lá, e a mudança é de uma linha.
- */
-type TipoViolacaoLocal = TipoViolacao | "skill_estudo_sem_lastro";
-
-/**
- * O que `registrarViolacao` aceita: a violação compartilhada, mais a de skills.
- * `Violacao` continua atribuível a isto por estrutura, então todos os pontos
- * que já existiam seguem iguais.
- */
-interface ViolacaoRegistravel {
-  tipo: TipoViolacaoLocal;
-  campo: Violacao["campo"] | "skillsParaEstudar";
-  contexto: string;
-  termo: string;
-}
-
 /** Violações que descartam o bloco inteiro, em vez de remover um termo dele. */
-const TIPOS_DE_BLOCO: ReadonlySet<TipoViolacaoLocal> =
-  new Set<TipoViolacaoLocal>([
-    "bullet_sem_origem",
-    "bloco_experiencia_invalida",
-  ]);
+const TIPOS_DE_BLOCO: ReadonlySet<TipoViolacao> = new Set<TipoViolacao>([
+  "bullet_sem_origem",
+  "bloco_experiencia_invalida",
+]);
 const ultimoLastroPorTipo = new Map<string, number>();
 
-function registrarViolacao(v: ViolacaoRegistravel): void {
+function registrarViolacao(v: Violacao): void {
   // NIVEL: `warning`, nao `error`, e a diferenca e deliberada. O modo degradado
   // da cota e `error` porque significa que uma PROTECAO ESTA DESLIGADA; uma
   // violacao de lastro significa o oposto, que a protecao FUNCIONOU e removeu o
@@ -1135,7 +1111,7 @@ function aplicarLastro(
   parsed: LinkedinParsed,
   deterministic: LinkedinDeterministicResult,
 ): LinkedinQualitative {
-  const violacoes: ViolacaoRegistravel[] = [];
+  const violacoes: Violacao[] = [];
 
   // 1. HEADLINES: tecnologia so com lastro em keywordsEncontradas.
   const comprovadas = new Set(
