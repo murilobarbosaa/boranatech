@@ -35,6 +35,11 @@ import {
 import { estimateCost, estimateCostFromTokens } from "./aiTools";
 import { blocoDeDados } from "./linkedinBlocoDeDados";
 import {
+  diagnosticoDeJsonInvalido,
+  diagnosticoDeSchema,
+  type IssueDeSchema,
+} from "./linkedinDiagnostico";
+import {
   numeraisSemLastroEmProsa,
   tecnologiasSemLastroEmProsa,
   type EvidenciaDoPerfil,
@@ -124,6 +129,31 @@ export class LinkedinUnreadableError extends Error {
   constructor() {
     super("Não foi possível ler o perfil a partir do texto enviado.");
     this.name = "LinkedinUnreadableError";
+  }
+}
+
+/**
+ * Falha de SCHEMA que carrega os issues, para a tentativa seguinte poder dizer
+ * ao modelo o que reprovou. Sem isto o retry reenvia o mesmo prompt e colhe o
+ * mesmo erro, agora pago duas vezes.
+ *
+ * A mensagem continua a de sempre, palavra por palavra: ela e afirmada por
+ * teste em outros arquivos, e o lote 6 nao muda contrato de erro.
+ */
+export class LinkedinJsonError extends Error {
+  constructor(mensagem: string) {
+    super(mensagem);
+    this.name = "LinkedinJsonError";
+  }
+}
+
+export class LinkedinSchemaError extends Error {
+  readonly issues: readonly IssueDeSchema[];
+
+  constructor(mensagem: string, issues: readonly IssueDeSchema[]) {
+    super(mensagem);
+    this.name = "LinkedinSchemaError";
+    this.issues = issues;
   }
 }
 
@@ -774,7 +804,15 @@ function emitirTentativa(
 async function runQualitativeOnce(
   userText: string,
   registro: RegistroDaTentativa,
+  diagnostico: string | null,
 ): Promise<LinkedinQualitative> {
+  // O diagnostico entra DEPOIS do texto do usuario, e nao antes: ele e
+  // instrucao da plataforma sobre a tentativa anterior, e a ultima palavra da
+  // mensagem e o que o modelo mais pesa. O conteudo do usuario continua todo
+  // dentro dos blocos delimitados do lote 3, acima daqui.
+  const mensagemDoUsuario = diagnostico
+    ? `${userText}\n\n${diagnostico}`
+    : userText;
   const response = await fetchWithTimeout(
     OPENAI_BASE_URL,
     {
@@ -786,7 +824,7 @@ async function runQualitativeOnce(
         max_tokens: MAX_TOKENS,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userText },
+          { role: "user", content: mensagemDoUsuario },
         ],
         response_format: {
           type: "json_schema",
@@ -840,15 +878,18 @@ async function runQualitativeOnce(
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     registro.desfecho = "json_invalido";
-    throw new Error(`Resposta da IA não veio em JSON válido: ${detail}.`);
+    throw new LinkedinJsonError(
+      `Resposta da IA não veio em JSON válido: ${detail}.`,
+    );
   }
 
   const validation = LinkedinQualitativeSchema.safeParse(parsed);
   if (!validation.success) {
     const issues = JSON.stringify(validation.error.issues).slice(0, 300);
     registro.desfecho = "schema_invalido";
-    throw new Error(
+    throw new LinkedinSchemaError(
       `Resposta da IA não bateu com o schema esperado: ${issues}`,
+      validation.error.issues,
     );
   }
   // O contrato persistido aceita zero pontos fortes apenas no fallback
@@ -856,8 +897,16 @@ async function runQualitativeOnce(
   // a trazer de 3 a 5, como declara o prompt, e uma violação segue retentando.
   if (validation.data.pontosFortes.length < 3) {
     registro.desfecho = "schema_invalido";
-    throw new Error(
+    // Regra do prompt que o schema nao expressa (o array aceita menos), entao
+    // o issue equivalente e montado a mao para o diagnostico ter o campo.
+    throw new LinkedinSchemaError(
       "Resposta da IA não bateu com o schema esperado: pontosFortes exige ao menos 3 itens.",
+      [
+        {
+          path: ["pontosFortes"],
+          message: "Deve trazer de 3 a 5 itens.",
+        },
+      ],
     );
   }
 
@@ -874,17 +923,22 @@ async function runQualitative(
   }
 
   let lastError: unknown;
+  // Diagnostico da tentativa ANTERIOR, quando ela falhou de um jeito que a
+  // seguinte pode corrigir. Null na primeira, e null tambem depois de falha
+  // que nao ensina nada (timeout, rede, http).
+  let diagnostico: string | null = null;
   for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
     // Um registro POR TENTATIVA, criado antes da chamada: se ela morrer no
     // transporte, o evento ainda sai, com o motivo nomeado do estado inicial.
     const registro: RegistroDaTentativa = {
       tentativa: attempt,
       desfecho: null,
-      inputChars: userText.length,
+      inputChars: (diagnostico ? `${userText}\n\n${diagnostico}` : userText)
+        .length,
       uso: { medido: false, motivo: "sem_resposta" },
     };
     try {
-      return await runQualitativeOnce(userText, registro);
+      return await runQualitativeOnce(userText, registro, diagnostico);
     } catch (err) {
       lastError = err;
       // Falhas ANTES da resposta nao passam por `runQualitativeOnce`, entao o
@@ -906,6 +960,15 @@ async function runQualitative(
       // entao so custa um round-trip e o backoff. Rate limit e falha nao
       // classificada seguem retentando.
       if (isFalhaPermanente(err)) break;
+      // O QUE A PROXIMA TENTATIVA VAI SABER. Só as duas falhas que o modelo
+      // consegue corrigir geram diagnostico; as outras nao ensinam nada e o
+      // prompt segue limpo.
+      diagnostico =
+        err instanceof LinkedinSchemaError
+          ? diagnosticoDeSchema(err.issues)
+          : err instanceof LinkedinJsonError
+            ? diagnosticoDeJsonInvalido()
+            : null;
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
       }
