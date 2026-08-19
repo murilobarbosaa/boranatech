@@ -21,11 +21,8 @@ import {
   numeraisSemLastro,
   removerNumeralSemLastro,
 } from "../../shared/linkedin/numeralLastro";
-import {
-  removerTermoSemLastro,
-  type TipoViolacao,
-  type Violacao,
-} from "../../shared/linkedin/lastro";
+import { type TipoViolacao, type Violacao } from "../../shared/linkedin/lastro";
+import { removerTermoComCostura } from "./linkedinCosturaDeTexto";
 import {
   ALL_TECHNOLOGIES,
   keyTechnologiesForArea,
@@ -1121,7 +1118,7 @@ function aplicarLastro(
         contexto: headline,
         termo: tech,
       });
-      saida = removerTermoSemLastro(saida, tech);
+      saida = removerTermoComCostura(saida, tech);
     }
     return saida;
   });
@@ -1183,7 +1180,7 @@ function aplicarLastro(
           contexto: bloco.contexto,
           termo: tech,
         });
-        saida = removerTermoSemLastro(saida, tech);
+        saida = removerTermoComCostura(saida, tech);
       }
       return saida;
     });

@@ -514,6 +514,10 @@ const FONTES = [
   // Guard cujo escopo e escrito a mao e revisto depois e a falha que este
   // arquivo inteiro documenta.
   "server/lib/linkedinBlocoDeDados.ts",
+  // Costura do texto depois da remocao (Fase 2, lote 4). Mesmo motivo do
+  // modulo acima: entra sem sitio numerico nenhum hoje, para que um limiar que
+  // nasca aqui ja nasca tendo de ser classificado.
+  "server/lib/linkedinCosturaDeTexto.ts",
 ];
 
 const PADROES_SITIO = [
