@@ -324,7 +324,16 @@ function TaskCardBase({
       // padrao, que e o que impedia o card de encolher abaixo do min-content do
       // texto. `max-w-full` e `overflow-hidden` sao a contencao de ultimo
       // recurso, para conteudo futuro que escape do `overflow-wrap`.
-      className={`group relative min-w-0 max-w-full touch-none overflow-hidden rounded-2xl border-2 p-3 text-left shadow-[3px_3px_0_#0f172a] transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 active:cursor-grabbing ${
+      //
+      // `shrink-0` e a CONTRAPARTE VERTICAL, e nao e opcional junto com o
+      // `overflow-hidden` acima: o tamanho minimo automatico de item de flex so
+      // vale enquanto o overflow e `visible`, entao o `overflow-hidden` zera o
+      // `min-height:auto` que impedia o card de encolher abaixo do proprio
+      // conteudo. Sem `shrink-0`, a lista (que e `flex-col` com `max-h`)
+      // espremia os cards ate a coluna caber, proporcionalmente a lotacao, e o
+      // proprio `overflow-hidden` cortava o titulo. Coluna cheia rola pela
+      // LISTA (`overflow-y-auto`), nunca encolhendo o card.
+      className={`group relative min-w-0 max-w-full shrink-0 touch-none overflow-hidden rounded-2xl border-2 p-3 text-left shadow-[3px_3px_0_#0f172a] transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 active:cursor-grabbing ${
         archived
           ? "border-dashed border-slate-400 bg-slate-100"
           : "border-slate-900 bg-white"

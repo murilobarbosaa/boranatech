@@ -91,11 +91,11 @@ const GRUPO: TaskGroup = {
   totalBeforeFilter: 1,
 };
 
-function renderColuna() {
+function renderColuna(group: TaskGroup = GRUPO) {
   return render(
     <DndContext>
       <BoardColumn
-        group={GRUPO}
+        group={group}
         column={null}
         boardKey="DEV"
         labelsById={new Map([[LABEL.id, LABEL]])}
@@ -162,6 +162,11 @@ describe("token longo nao gera scroll lateral na coluna", () => {
     expect(classes).toContain("min-w-0");
     expect(classes).toContain("max-w-full");
     expect(classes).toContain("overflow-hidden");
+    // O `overflow-hidden` acima cobra um preco: com overflow diferente de
+    // `visible`, o tamanho minimo automatico do item de flex vai a zero nos DOIS
+    // eixos. No X e o que queremos; no Y e regressao, e o `shrink-0` e o que
+    // devolve ao card a recusa de encolher. Detalhe no teste dedicado abaixo.
+    expect(classes).toContain("shrink-0");
   });
 
   it("a lista da coluna esconde o eixo X E mantem o Y rolavel", () => {
@@ -176,6 +181,44 @@ describe("token longo nao gera scroll lateral na coluna", () => {
     const classes = (lista as HTMLElement).className.split(/\s+/);
     expect(classes).toContain("overflow-y-auto");
     expect(classes).toContain("overflow-x-hidden");
+  });
+
+  it("TODO card de uma coluna lotada recusa encolher na vertical", () => {
+    // O ESMAGAMENTO VERTICAL, que foi regressao real do commit anterior desta
+    // frente: a lista e `flex-col` com `max-h-[calc(100vh-22rem)]`, e os cards
+    // sao itens de flex com `flex-shrink: 1` por padrao. Enquanto o card tinha
+    // overflow `visible`, o `min-height:auto` (tamanho minimo automatico =
+    // min-content) o impedia de encolher abaixo do proprio conteudo, e a coluna
+    // cheia rolava. Com `overflow-hidden` esse minimo computa para ZERO, entao
+    // os cards passaram a ser comprimidos ate a soma caber no `max-h`, e o
+    // proprio `overflow-hidden` cortava o titulo: quanto mais lotada a coluna,
+    // mais fina a pilula. E o gemeo vertical da armadilha horizontal que os
+    // testes acima cobrem.
+    //
+    // O jsdom NAO faz layout, entao aqui nao se mede altura nenhuma: o teste
+    // trava a REGRA na classe, como todos os outros deste arquivo. A prova de
+    // que a coluna volta a rolar em vez de espremer e o OK visual no navegador.
+    //
+    // Sao MUITOS cards de proposito: a compressao so aparece quando a soma das
+    // alturas naturais estoura o `max-h`, e a asercao e sobre TODOS eles, nao
+    // sobre o primeiro. Card que nascesse com className condicional (arquivado,
+    // selecionado, pendente) e perdesse o `shrink-0` no caminho seria invisivel
+    // para uma asercao de amostra.
+    const tarefas: TaskCard[] = Array.from({ length: 24 }, (_, indice) => ({
+      ...TAREFA,
+      id: `task-lotada-${indice}`,
+      number: 100 + indice,
+      title: `${TITULO_SEM_ESPACO}#${indice}`,
+    }));
+    const { container } = renderColuna({ ...GRUPO, tasks: tarefas });
+
+    const cards = Array.from(container.querySelectorAll("article"));
+    expect(cards.length, "a coluna lotada nao renderizou os cards").toBe(
+      tarefas.length,
+    );
+    for (const card of cards) {
+      expect(card.className.split(/\s+/)).toContain("shrink-0");
+    }
   });
 
   it("o card renderizado e mesmo o da coluna, com o titulo inteiro", () => {
