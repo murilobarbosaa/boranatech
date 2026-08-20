@@ -65,7 +65,11 @@ import { analyzeLinkedin, getLinkedinAnalysis } from "@/lib/linkedinClient";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { useLinkedinImprovementProgress } from "@/lib/useLinkedinImprovementProgress";
 import { useLinkedinHistory } from "@/lib/useLinkedinHistory";
-import { extractLinkedinPdf, PdfExtractError } from "@/lib/pdfExtract";
+import {
+  extractLinkedinPdf,
+  PdfExtractError,
+  type PdfErrorCode,
+} from "@/lib/pdfExtract";
 import { cn } from "@/lib/utils";
 import { competenciasDoPdf } from "@shared/linkedin/competenciasDoPdf";
 import { headlineParecCortada } from "@shared/linkedin/headlineCortada";
@@ -296,6 +300,46 @@ type EntryPath = "pdf" | "manual" | "review";
 
 // TODO(Ana): revisar TODA a copy do fluxo de entrada por PDF (passos,
 // dropzone, revisao, erros e links).
+/**
+ * UMA MENSAGEM POR CAUSA, e as seis precisam ser distintas.
+ *
+ * Ate este lote quatro causas diferentes (senha, PDF corrompido, arquivo que
+ * nao e PDF, e falha nao identificada) chegavam aqui com a MESMA frase, porque
+ * `pdfExtract` descartava a identidade do erro num `catch` sem parametro. A
+ * pessoa lia "tente colar o texto manualmente" tanto para um PDF com senha
+ * (que ela resolve em dez segundos removendo a senha) quanto para um download
+ * pela metade (que ela resolve baixando de novo).
+ *
+ * `Record<PdfErrorCode, string>` e deliberado: um estado novo em
+ * `PDF_ERROR_CODES` sem copy aqui nao compila. O `tsc` cobre a direcao
+ * "faltou mensagem"; o teste de totalidade cobre a outra, "sobrou mensagem
+ * para um estado que nao existe mais".
+ *
+ * Exportado para o teste comparar os conjuntos. As frases citam o export
+ * oficial do LinkedIn porque este produto tem UM caminho recomendado de
+ * entrada, e a orientacao util e sempre voltar para ele.
+ */
+export const PDF_ERROR_COPY: Record<PdfErrorCode, string> = {
+  // TODO(Ana): copy de arquivo enviado que não é PDF.
+  wrong_type:
+    "Esse arquivo não é um PDF. Exporte seu perfil no LinkedIn em Mais, Salvar como PDF, e envie o arquivo que baixar.",
+  // TODO(Ana): copy de PDF acima de 5MB.
+  too_large:
+    "Esse PDF passa de 5MB, e o export de perfil do LinkedIn costuma ser bem menor. Confira se você enviou o arquivo certo.",
+  // TODO(Ana): copy de PDF sem texto selecionável (escaneado ou imagem).
+  too_little_text:
+    "Esse PDF não tem texto que dê para copiar: ele parece ser digitalizado ou uma imagem. Use o export oficial do LinkedIn (Mais, Salvar como PDF), ou cole o texto do perfil na mão.",
+  // TODO(Ana): copy de PDF protegido por senha.
+  senha_protegido:
+    "Esse PDF está protegido por senha, então não consigo abrir. Remova a senha do arquivo e envie de novo, ou cole o texto do perfil na mão.",
+  // TODO(Ana): copy de PDF corrompido, incompleto ou que não abre.
+  pdf_invalido:
+    "Esse arquivo não abriu como PDF. Ele pode ter sido baixado pela metade ou estar corrompido. Baixe de novo o export oficial do LinkedIn (Mais, Salvar como PDF) e tente outra vez.",
+  // TODO(Ana): copy de falha não identificada ao ler o PDF.
+  erro_desconhecido:
+    "Não consegui ler esse PDF e não descobri o motivo. O problema é nosso, não seu. Tente enviar o arquivo de novo, ou cole o texto do perfil na mão.",
+};
+
 const ENTRY_COPY = {
   pdfTitle: "Traga seu perfil em 30 segundos",
   pdfSubtitle:
@@ -812,7 +856,17 @@ export default function LinkedinAnalisar() {
       posthog.capture(EVENTO_REVISAO, payloadRevisao(text, "pdf"));
     } catch (err) {
       if (err instanceof PdfExtractError) {
-        setPdfError(err.message);
+        // `PDF_ERROR_COPY[err.code]` e nao `err.message`: a mensagem que vive
+        // em `pdfExtract` e neutra, para servir tambem ao analisador de
+        // curriculo. Aqui a orientacao aponta para o export oficial do
+        // LinkedIn, que e o unico caminho recomendado deste fluxo.
+        //
+        // Acesso direto ao mapa, sem resolver com fallback, e a excecao
+        // consciente a convencao do projeto: a chave NAO vem do servidor nem de
+        // dado persistido, vem de uma uniao fechada declarada no modulo ao
+        // lado, e o `Record<PdfErrorCode, string>` garante em compilacao que
+        // toda chave possivel tem valor.
+        setPdfError(PDF_ERROR_COPY[err.code]);
       } else {
         setPdfError(ENTRY_COPY.parseFail);
       }
