@@ -1,0 +1,107 @@
+{
+  "cenario": "costura-headline-limpa",
+  "chamadas": 1,
+  "deterministico": {
+    "faixa": "forte",
+    "keywordsEncontradas": ["TypeScript", "React"],
+    "score": 70
+  },
+  "diagnosticoPorChamada": [
+    {
+      "cita": [],
+      "presente": false
+    }
+  ],
+  "entrada": {
+    "area": "frontend",
+    "fixture": "perfil-f-front-junior.txt",
+    "level": "junior",
+    "mercado": "brasil",
+    "skills": "React, TypeScript"
+  },
+  "erro": null,
+  "politica": "Lote 4: removido o termo sem lastro, a headline e o bullet saem costurados, sem separador orfao nem conectivo solto.",
+  "qualitative": {
+    "bulletsReescritos": [
+      {
+        "bullets": ["Desenvolvi telas em React no pipeline de deploy."],
+        "contexto": "Desenvolvedora Front-end (Estudio Alfa)",
+        "experienciaNumero": 1
+      }
+    ],
+    "headlines": [
+      "Desenvolvedora Front-end | React | foco em produto",
+      "Desenvolvedora Front-end | design system",
+      "Front-end | React | acessibilidade e produto"
+    ],
+    "melhorias": [
+      {
+        "comoFazer": "Comece hoje colocando o cargo-alvo no primeiro campo.",
+        "prioridade": "alta",
+        "titulo": "Reescreva a headline"
+      },
+      {
+        "comoFazer": "Cadastre as tecnologias que voce ja usa no trabalho.",
+        "prioridade": "alta",
+        "titulo": "Complete as competencias"
+      },
+      {
+        "comoFazer": "Termine o texto dizendo como querem falar com voce.",
+        "prioridade": "media",
+        "titulo": "Feche o Sobre com um convite"
+      },
+      {
+        "comoFazer": "Confira se a mais recente aparece no topo do perfil.",
+        "prioridade": "baixa",
+        "titulo": "Revise a ordem das experiencias"
+      }
+    ],
+    "modeloMensagemRecrutador": "Ola, [nome]. Atuo como desenvolvedora front-end e gostaria de conhecer as oportunidades da empresa.",
+    "pontosFortes": [
+      "Descricoes de experiencia com metrica e contexto.",
+      "Stack coerente com a area escolhida.",
+      "Design system citado como responsabilidade."
+    ],
+    "pontosFracos": [
+      "A headline nao repete o cargo-alvo em ingles.",
+      "As competencias cadastradas sao poucas.",
+      "Falta um convite ao contato no Sobre."
+    ],
+    "proximoPasso": "Comece hoje pela headline e pelo convite ao contato no Sobre.",
+    "resumo": "O perfil mostra experiencia real em front-end e uma base boa de acessibilidade no time.",
+    "skillsParaEstudar": [],
+    "skillsSugeridas": [],
+    "sobreReescrito": "Atuo como desenvolvedora front-end e cuido da acessibilidade das entregas do time."
+  },
+  "tentativas": [
+    {
+      "desfecho": "sucesso",
+      "tentativa": 1,
+      "uso": {
+        "inputTokens": 3120,
+        "medido": true,
+        "outputTokens": 665
+      }
+    }
+  ],
+  "violacoes": [
+    {
+      "acao": "termo_removido",
+      "campo": "headlines",
+      "termo": "Kubernetes",
+      "tipo": "tecnologia_sem_lastro"
+    },
+    {
+      "acao": "termo_removido",
+      "campo": "headlines",
+      "termo": "Angular",
+      "tipo": "tecnologia_sem_lastro"
+    },
+    {
+      "acao": "termo_removido",
+      "campo": "bulletsReescritos",
+      "termo": "Kubernetes",
+      "tipo": "tecnologia_sem_lastro"
+    }
+  ]
+}

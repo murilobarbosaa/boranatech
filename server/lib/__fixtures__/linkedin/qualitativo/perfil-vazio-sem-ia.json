@@ -1,0 +1,77 @@
+{
+  "cenario": "perfil-vazio-sem-ia",
+  "chamadas": 0,
+  "deterministico": {
+    "faixa": "inicio",
+    "keywordsEncontradas": [],
+    "score": 16
+  },
+  "diagnosticoPorChamada": [],
+  "entrada": {
+    "area": "frontend",
+    "fixture": "perfil-g-vazio.txt",
+    "level": "junior",
+    "mercado": "brasil",
+    "skills": ""
+  },
+  "erro": null,
+  "politica": "Perfil quase vazio nao chama a IA: o fallback caloroso responde, sem tentativa e sem custo.",
+  "qualitative": {
+    "bulletsReescritos": [],
+    "headlines": [
+      "Objetivo: Desenvolvedor Front-end Júnior | Front-end",
+      "Desenvolvedor Front-end Júnior | Perfil em construção | Front-end",
+      "Desenvolvedor Front-end Júnior | Foco em Front-end"
+    ],
+    "melhorias": [
+      {
+        "comoFazer": "Abra a headline hoje e comece com o cargo-alvo Desenvolvedor Front-end Júnior. Depois acrescente somente as tecnologias que você realmente usa em projetos, separadas por barra vertical.",
+        "prioridade": "alta",
+        "titulo": "Escreva uma headline com cargo e tecnologias"
+      },
+      {
+        "comoFazer": "Escolha hoje um projeto que você realmente fez, inclusive de curso, e cadastre como experiência. Use um título honesto e três bullets sobre o que você fez, com qual tecnologia e qual foi o resultado quando houver.",
+        "prioridade": "alta",
+        "titulo": "Cadastre um projeto como experiência"
+      },
+      {
+        "comoFazer": "Escreva hoje uma primeira versão com uma frase de abertura e seu objetivo profissional. Conte apenas o que você estuda ou construiu de verdade, liste a stack comprovável por extenso e termine com um convite ao contato.",
+        "prioridade": "media",
+        "titulo": "Escreva um Sobre curto"
+      },
+      {
+        "comoFazer": "Abra hoje a seção Competências e liste as tecnologias que você já consegue usar. Comece pelas mais ligadas à sua área e não adicione ferramentas que ainda estão apenas no plano de estudo.",
+        "prioridade": "baixa",
+        "titulo": "Cadastre suas competências"
+      }
+    ],
+    "modeloMensagemRecrutador": "Olá, [nome]. Estou estruturando meu perfil para atuar como Desenvolvedor Front-end Júnior e gostaria de conhecer melhor as oportunidades dessa área na [empresa]. Obrigado pela conexão.",
+    "pontosFortes": [],
+    "pontosFracos": [
+      "A headline ainda não comunica seu cargo nem sua stack.",
+      "Falta uma seção Sobre que conte sua história.",
+      "Não há experiências ou projetos cadastrados para os recrutadores verem."
+    ],
+    "proximoPasso": "Preencha hoje a headline com o cargo-alvo Desenvolvedor Front-end Júnior e acrescente apenas tecnologias que você realmente usa em projetos.",
+    "resumo": "Não encontrei informações suficientes para avaliar esta parte do perfil com segurança. Há evidência parcial em o nível Júnior informado no formulário, a formação detectada, mas ela não basta para inferir senioridade nem avaliar o perfil inteiro. Revise a extração e complete somente os campos que realmente estiverem ausentes.",
+    "skillsParaEstudar": [
+      "HTML",
+      "CSS",
+      "JavaScript",
+      "TypeScript",
+      "React",
+      "Vue.js"
+    ],
+    "skillsSugeridas": [
+      "HTML",
+      "CSS",
+      "JavaScript",
+      "TypeScript",
+      "React",
+      "Vue.js"
+    ],
+    "sobreReescrito": "Estou estruturando meu perfil para atuar como Desenvolvedor Front-end Júnior na área de Front-end. Antes de publicar uma versão definitiva, vou acrescentar os projetos que realmente desenvolvi, as tecnologias que uso e os resultados que consigo comprovar. Se você recruta para essa área, pode me chamar aqui no LinkedIn para conversarmos."
+  },
+  "tentativas": [],
+  "violacoes": []
+}

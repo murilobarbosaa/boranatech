@@ -1,0 +1,22 @@
+Contato
+mariana.souza@email.com
+Mariana Souza
+Desenvolvedora Front-end | React, TypeScript
+Resumo
+Sou desenvolvedora front-end e trabalho construindo interfaces de produto para times distribuidos. Cuido de acessibilidade, de componentes reutilizaveis e da qualidade das entregas junto com design e produto. Gosto de medir o impacto do que entrego e de deixar o time mais rapido.
+Experience
+Estudio Alfa
+Desenvolvedora Front-end
+janeiro de 2022 - Present
+2 anos
+Sao Paulo
+Desenvolvi telas em React e TypeScript para 12 squads internos e acompanhei as metricas de qualidade em cada ciclo de entrega. Mantive o design system do produto e documentei os componentes usados pelos times.
+Cooperativa Beta
+Estagiaria de Front-end
+janeiro de 2021 - dezembro de 2021
+1 ano
+Ajudei na manutencao de paginas institucionais e na correcao de bugs simples de interface.
+Education
+Faculdade Gamma
+Analise e Desenvolvimento de Sistemas
+2020 - 2023

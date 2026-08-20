@@ -1,0 +1,82 @@
+{
+  "cenario": "mercado-exterior-limpo",
+  "chamadas": 1,
+  "deterministico": {
+    "faixa": "forte",
+    "keywordsEncontradas": ["Python", "Go"],
+    "score": 84
+  },
+  "diagnosticoPorChamada": [
+    {
+      "cita": [],
+      "presente": false
+    }
+  ],
+  "entrada": {
+    "area": "backend",
+    "fixture": "perfil-d-ingles.txt",
+    "level": "pleno",
+    "mercado": "exterior",
+    "skills": "Go, Kubernetes, Python"
+  },
+  "erro": null,
+  "politica": "Lote 6: mercado exterior com resposta em ingles e com lastro no perfil passa nos dois gates, sem retry.",
+  "qualitative": {
+    "bulletsReescritos": [],
+    "headlines": [
+      "Backend Engineer | Go | Distributed Systems at scale",
+      "Backend Engineer | Python | Platform reliability",
+      "Backend Engineer | Go | Payments platforms"
+    ],
+    "melhorias": [
+      {
+        "comoFazer": "Comece hoje colocando o cargo-alvo no primeiro campo.",
+        "prioridade": "alta",
+        "titulo": "Reescreva a headline"
+      },
+      {
+        "comoFazer": "Cadastre as tecnologias que voce ja usa no trabalho.",
+        "prioridade": "alta",
+        "titulo": "Complete as competencias"
+      },
+      {
+        "comoFazer": "Termine o texto dizendo como querem falar com voce.",
+        "prioridade": "media",
+        "titulo": "Feche o Sobre com um convite"
+      },
+      {
+        "comoFazer": "Confira se a mais recente aparece no topo do perfil.",
+        "prioridade": "baixa",
+        "titulo": "Revise a ordem das experiencias"
+      }
+    ],
+    "modeloMensagemRecrutador": "Hello, [name]. I work as a backend engineer with Go and I would like to know more about the opportunities at your company.",
+    "pontosFortes": [
+      "Experiencia com sistemas distribuidos bem descrita.",
+      "Stack coerente com a area escolhida.",
+      "Escala do negocio aparece no texto."
+    ],
+    "pontosFracos": [
+      "A headline nao traz um diferencial claro.",
+      "As competencias cadastradas sao poucas.",
+      "Falta convite ao contato no Sobre."
+    ],
+    "proximoPasso": "Comece hoje pela headline e pelo convite ao contato no Sobre.",
+    "resumo": "O perfil mostra experiencia real em sistemas distribuidos e boa base de plataforma.",
+    "skillsParaEstudar": [],
+    "skillsSugeridas": [],
+    "sobreReescrito": "I work as a backend engineer and I design and operate payment services written in Go and Python for the platform team."
+  },
+  "tentativas": [
+    {
+      "desfecho": "sucesso",
+      "tentativa": 1,
+      "uso": {
+        "inputTokens": 3800,
+        "medido": true,
+        "outputTokens": 700
+      }
+    }
+  ],
+  "violacoes": []
+}

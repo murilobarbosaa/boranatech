@@ -1,0 +1,90 @@
+{
+  "cenario": "bullet-orfao-descartado",
+  "chamadas": 1,
+  "deterministico": {
+    "faixa": "forte",
+    "keywordsEncontradas": ["TypeScript", "React"],
+    "score": 70
+  },
+  "diagnosticoPorChamada": [
+    {
+      "cita": [],
+      "presente": false
+    }
+  ],
+  "entrada": {
+    "area": "frontend",
+    "fixture": "perfil-f-front-junior.txt",
+    "level": "junior",
+    "mercado": "brasil",
+    "skills": "React, TypeScript"
+  },
+  "erro": null,
+  "nota": "COMPORTAMENTO CONGELADO QUE MERECE REVISAO: descartar TODOS os blocos nao injeta a melhoria de experiencia sem bullets. A injecao (passo 3 do lastro) depende de existir experiencia SEM DESCRICAO no perfil, e nao de a lista de bullets ter ficado vazia. Neste perfil as duas experiencias tem descricao, entao o usuario fica sem bullets e sem o conselho que explicaria a ausencia. Nao corrigido nesta sessao: o lote 7 nao muda producao. Decisao pendente para a Fase 3.",
+  "politica": "Lote 1: bloco com experienciaNumero fora do intervalo e descartado inteiro. A lista de bullets termina vazia, sem completamento.",
+  "qualitative": {
+    "bulletsReescritos": [],
+    "headlines": [
+      "Desenvolvedora Front-end | React | foco em produto",
+      "Desenvolvedora Front-end | TypeScript | design system",
+      "Front-end | React | acessibilidade e produto"
+    ],
+    "melhorias": [
+      {
+        "comoFazer": "Comece hoje colocando o cargo-alvo no primeiro campo.",
+        "prioridade": "alta",
+        "titulo": "Reescreva a headline"
+      },
+      {
+        "comoFazer": "Cadastre as tecnologias que voce ja usa no trabalho.",
+        "prioridade": "alta",
+        "titulo": "Complete as competencias"
+      },
+      {
+        "comoFazer": "Termine o texto dizendo como querem falar com voce.",
+        "prioridade": "media",
+        "titulo": "Feche o Sobre com um convite"
+      },
+      {
+        "comoFazer": "Confira se a mais recente aparece no topo do perfil.",
+        "prioridade": "baixa",
+        "titulo": "Revise a ordem das experiencias"
+      }
+    ],
+    "modeloMensagemRecrutador": "Ola, [nome]. Atuo como desenvolvedora front-end e gostaria de conhecer as oportunidades da empresa.",
+    "pontosFortes": [
+      "Descricoes de experiencia com metrica e contexto.",
+      "Stack coerente com a area escolhida.",
+      "Design system citado como responsabilidade."
+    ],
+    "pontosFracos": [
+      "A headline nao repete o cargo-alvo em ingles.",
+      "As competencias cadastradas sao poucas.",
+      "Falta um convite ao contato no Sobre."
+    ],
+    "proximoPasso": "Comece hoje pela headline e pelo convite ao contato no Sobre.",
+    "resumo": "O perfil mostra experiencia real em front-end e uma base boa de acessibilidade no time.",
+    "skillsParaEstudar": [],
+    "skillsSugeridas": [],
+    "sobreReescrito": "Atuo como desenvolvedora front-end e cuido da acessibilidade das entregas do time."
+  },
+  "tentativas": [
+    {
+      "desfecho": "sucesso",
+      "tentativa": 1,
+      "uso": {
+        "inputTokens": 3120,
+        "medido": true,
+        "outputTokens": 658
+      }
+    }
+  ],
+  "violacoes": [
+    {
+      "acao": "bloco_removido",
+      "campo": "bulletsReescritos",
+      "termo": "experienciaNumero 9 fora de 1..2",
+      "tipo": "bloco_experiencia_invalida"
+    }
+  ]
+}

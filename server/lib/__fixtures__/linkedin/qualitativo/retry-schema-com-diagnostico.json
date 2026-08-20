@@ -1,0 +1,101 @@
+{
+  "cenario": "retry-schema-com-diagnostico",
+  "chamadas": 2,
+  "deterministico": {
+    "faixa": "forte",
+    "keywordsEncontradas": ["TypeScript", "React"],
+    "score": 70
+  },
+  "diagnosticoPorChamada": [
+    {
+      "cita": [],
+      "presente": false
+    },
+    {
+      "cita": ["pontosFortes", "proximoPasso"],
+      "presente": true
+    }
+  ],
+  "entrada": {
+    "area": "frontend",
+    "fixture": "perfil-f-front-junior.txt",
+    "level": "junior",
+    "mercado": "brasil",
+    "skills": "React, TypeScript"
+  },
+  "erro": null,
+  "politica": "Lote 6: falha de schema gera diagnostico nomeando os campos reprovados na chamada seguinte, e a contabilizacao soma as duas tentativas.",
+  "qualitative": {
+    "bulletsReescritos": [
+      {
+        "bullets": ["Desenvolvi telas em React para 12 squads internos."],
+        "contexto": "Desenvolvedora Front-end (Estudio Alfa)",
+        "experienciaNumero": 1
+      }
+    ],
+    "headlines": [
+      "Desenvolvedora Front-end | React | foco em produto",
+      "Desenvolvedora Front-end | TypeScript | design system",
+      "Front-end | React | acessibilidade e produto"
+    ],
+    "melhorias": [
+      {
+        "comoFazer": "Comece hoje colocando o cargo-alvo no primeiro campo.",
+        "prioridade": "alta",
+        "titulo": "Reescreva a headline"
+      },
+      {
+        "comoFazer": "Cadastre as tecnologias que voce ja usa no trabalho.",
+        "prioridade": "alta",
+        "titulo": "Complete as competencias"
+      },
+      {
+        "comoFazer": "Termine o texto dizendo como querem falar com voce.",
+        "prioridade": "media",
+        "titulo": "Feche o Sobre com um convite"
+      },
+      {
+        "comoFazer": "Confira se a mais recente aparece no topo do perfil.",
+        "prioridade": "baixa",
+        "titulo": "Revise a ordem das experiencias"
+      }
+    ],
+    "modeloMensagemRecrutador": "Ola, [nome]. Atuo como desenvolvedora front-end e gostaria de conhecer as oportunidades da empresa.",
+    "pontosFortes": [
+      "Descricoes de experiencia com metrica e contexto.",
+      "Stack coerente com a area escolhida.",
+      "Design system citado como responsabilidade."
+    ],
+    "pontosFracos": [
+      "A headline nao repete o cargo-alvo em ingles.",
+      "As competencias cadastradas sao poucas.",
+      "Falta um convite ao contato no Sobre."
+    ],
+    "proximoPasso": "Comece hoje pela headline e pelo convite ao contato no Sobre.",
+    "resumo": "O perfil mostra experiencia real em front-end e uma base boa de acessibilidade no time.",
+    "skillsParaEstudar": [],
+    "skillsSugeridas": [],
+    "sobreReescrito": "Atuo como desenvolvedora front-end e cuido da acessibilidade das entregas do time."
+  },
+  "tentativas": [
+    {
+      "desfecho": "schema_invalido",
+      "tentativa": 1,
+      "uso": {
+        "inputTokens": 3120,
+        "medido": true,
+        "outputTokens": 300
+      }
+    },
+    {
+      "desfecho": "sucesso",
+      "tentativa": 2,
+      "uso": {
+        "inputTokens": 3500,
+        "medido": true,
+        "outputTokens": 648
+      }
+    }
+  ],
+  "violacoes": []
+}
