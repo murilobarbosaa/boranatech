@@ -52,6 +52,25 @@ export interface ModelPricing {
   outputPerMillion: number;
 }
 
+/**
+ * FONTE UNICA dos precos, e o unico lugar do repositorio onde estes numeros
+ * aparecem. Nenhum call site recalcula: todos passam por
+ * `estimateCostFromTokens` ou pelo fallback `estimateCost`.
+ *
+ * FONTE OFICIAL DOS VALORES: https://openai.com/api/pricing/
+ * ULTIMA CONFERENCIA HUMANA: nunca registrada ate 2026-08-20.
+ *
+ * A linha acima diz "nunca registrada" de proposito, e nao uma data inventada.
+ * Os numeros abaixo entraram no codigo sem carimbo de quando foram lidos da
+ * tabela oficial, entao afirmar uma data aqui seria fabricar a procedencia que
+ * este comentario existe para dar. Quem reconferir na pagina acima troca a
+ * linha pela data real, e ATUALIZA A DATA mesmo que nenhum valor mude: o que
+ * envelhece aqui e a conferencia, nao o numero.
+ *
+ * Por que isto importa: `cost_estimate` alimenta as conferencias financeiras
+ * contra a Stripe. Sem a data, um numero divergente no painel nao distingue
+ * erro nosso de tabela velha, e a investigacao comeca no lugar errado.
+ */
 export const MODEL_PRICING: Record<string, ModelPricing> = {
   "gpt-4o-mini": { inputPerMillion: 0.15, outputPerMillion: 0.6 },
   "gpt-4o": { inputPerMillion: 2.5, outputPerMillion: 10 },
