@@ -1,10 +1,12 @@
 import { z } from "zod";
 
 import {
+  LINKEDIN_ORIGENS_DE_CAMPO,
   LinkedinBulletsReescritosSchema,
   LinkedinMelhoriaSchema,
   QUALITATIVE_VERSION,
   type LinkedinMelhoria,
+  type LinkedinOrigemDeCampo,
 } from "./schema";
 
 /**
@@ -44,10 +46,81 @@ const BlocoLidoSchema = LinkedinBulletsReescritosSchema.extend({
 
 export type LinkedinBulletsReescritosLido = z.infer<typeof BlocoLidoSchema>;
 
+/**
+ * AUSÊNCIA DA PROCEDÊNCIA, em dois estados NOMEADOS.
+ *
+ * Toda análise gravada antes do lote que criou a procedência não tem o objeto,
+ * e isso não é o mesmo que "veio do modelo" nem que "removeu zero itens". A
+ * plataforma simplesmente não registrou o fato na época, e a interface precisa
+ * poder dizer isso em vez de afirmar algo que ninguém mediu.
+ *
+ * Por que sentinela de STRING e não `null`: `null` convida `?? 0`, e o primeiro
+ * `?? 0` transforma "não sei" em "medi zero" em silêncio, que é exatamente o
+ * colapso que este reader existe para impedir. Com a união `number | "…"`, o
+ * TypeScript recusa a aritmética e o erro aparece no `pnpm check`, não em
+ * produção.
+ */
+export const PROCEDENCIA_DESCONHECIDA = "desconhecida";
+export const CONTAGEM_INDISPONIVEL = "indisponivel";
+
+export type OrigemLida =
+  | LinkedinOrigemDeCampo
+  | typeof PROCEDENCIA_DESCONHECIDA;
+export type ContagemLida = number | typeof CONTAGEM_INDISPONIVEL;
+
+export interface ProcedenciaView {
+  sobreReescrito: OrigemLida;
+  modeloMensagemRecrutador: OrigemLida;
+  sugestoesHeadline: {
+    entregues: ContagemLida;
+    removidasPorGate: ContagemLida;
+  };
+  camposProsaLimpos: ContagemLida;
+}
+
+const ORIGENS_VALIDAS = new Set<string>(LINKEDIN_ORIGENS_DE_CAMPO);
+
+/**
+ * Origem por campo: só um dos valores conhecidos passa.
+ *
+ * Valor gravado por uma versão FUTURA que invente uma quarta origem cai em
+ * `desconhecida`, e não no valor mais próximo. É o mesmo critério do resto do
+ * arquivo: ausência e ilegibilidade são a mesma resposta honesta, "não sei".
+ */
+function lerOrigem(valor: unknown): OrigemLida {
+  return typeof valor === "string" && ORIGENS_VALIDAS.has(valor)
+    ? (valor as LinkedinOrigemDeCampo)
+    : PROCEDENCIA_DESCONHECIDA;
+}
+
+/** Contagem: inteiro não negativo, ou o estado nomeado de indisponível. */
+function lerContagem(valor: unknown): ContagemLida {
+  return typeof valor === "number" && Number.isInteger(valor) && valor >= 0
+    ? valor
+    : CONTAGEM_INDISPONIVEL;
+}
+
+const ProcedenciaLidaSchema = z
+  .object({
+    sobreReescrito: z.unknown(),
+    modeloMensagemRecrutador: z.unknown(),
+    sugestoesHeadline: z
+      .object({
+        entregues: z.unknown(),
+        removidasPorGate: z.unknown(),
+      })
+      .optional()
+      .catch(undefined),
+    camposProsaLimpos: z.unknown(),
+  })
+  .optional()
+  .catch(undefined);
+
 // Schema de LEITURA: tudo opcional de propósito. Ele não valida se a IA
 // respondeu certo (isso é papel do LinkedinQualitativeSchema na escrita); ele
 // só resgata o que der para resgatar de um jsonb que pode ter qualquer idade.
 const LenientQualitativeSchema = z.object({
+  procedencia: ProcedenciaLidaSchema,
   resumo: z.string().optional().catch(undefined),
   pontosFortes: z.array(z.string()).optional().catch(undefined),
   pontosFracos: z.array(z.string()).optional().catch(undefined),
@@ -75,6 +148,13 @@ export interface QualitativeView {
   bulletsReescritos: LinkedinBulletsReescritosLido[];
   skillsParaEstudar: string[];
   modeloMensagemRecrutador: string;
+  /**
+   * O que a plataforma decidiu na entrega. Sempre presente na view: o que muda
+   * com a idade do payload são os VALORES, que caem nos estados nomeados de
+   * desconhecida e indisponível. Nunca é `undefined`, para o consumidor não ter
+   * um segundo jeito de escrever "não sei".
+   */
+  procedencia: ProcedenciaView;
   /** Nomes dos campos que não vieram ou não puderam ser lidos. */
   camposAusentes: string[];
 }
@@ -126,6 +206,19 @@ export function readQualitative(
     bulletsReescritos: q.bulletsReescritos ?? [],
     skillsParaEstudar,
     modeloMensagemRecrutador: q.modeloMensagemRecrutador ?? "",
+    procedencia: {
+      sobreReescrito: lerOrigem(q.procedencia?.sobreReescrito),
+      modeloMensagemRecrutador: lerOrigem(
+        q.procedencia?.modeloMensagemRecrutador,
+      ),
+      sugestoesHeadline: {
+        entregues: lerContagem(q.procedencia?.sugestoesHeadline?.entregues),
+        removidasPorGate: lerContagem(
+          q.procedencia?.sugestoesHeadline?.removidasPorGate,
+        ),
+      },
+      camposProsaLimpos: lerContagem(q.procedencia?.camposProsaLimpos),
+    },
     camposAusentes: [],
   };
 

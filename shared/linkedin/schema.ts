@@ -745,6 +745,100 @@ export type LinkedinBulletsReescritos = z.infer<
 >;
 export type LinkedinQualitative = z.infer<typeof LinkedinQualitativeSchema>;
 
+/**
+ * PROCEDÊNCIA DA ENTREGA: metadado NOSSO, nunca campo do modelo.
+ *
+ * Por que existe: o servidor toma decisões de entrega que o payload não
+ * comunicava. `sobreReescrito` e `modeloMensagemRecrutador` podem ser
+ * substituídos pelo fallback determinístico (lastro de classe 2 ou gate que
+ * continuou reprovando depois do orçamento de tentativas), a lista de
+ * sugestões de headline pode encolher até vazia, e campos de prosa podem ter
+ * passado pela limpeza de tag vazada. O cliente recebia tudo com a mesma cara
+ * de texto escrito pelo modelo, e nenhuma interface honesta é possível assim.
+ *
+ * DUAS REGRAS DE DESENHO, e as duas são o motivo de o objeto ter esta forma:
+ *
+ *   1. FATOS PRIMITIVOS, nunca flag derivada. Não existe aqui um booleano
+ *      `entregaConservadora`: quem consome deriva o que precisa a partir dos
+ *      fatos. Um agregado seria uma segunda verdade a manter em sincronia com
+ *      as origens, e a primeira divergência entre os dois seria silenciosa.
+ *   2. O valor NASCE no ponto da decisão, dentro de `aplicarLastro` e no ramo
+ *      do atalho sem IA. Nada aqui é inferido depois comparando o texto
+ *      entregue com o texto do fallback: dois textos iguais por coincidência
+ *      dariam o mesmo veredito que uma substituição real.
+ *
+ * ESTE OBJETO NÃO ENTRA NO SCHEMA DO MODELO. `LinkedinQualitativeSchema` é o
+ * contrato de saída da OpenAI e segue intacto; a procedência é montada pelo
+ * servidor DEPOIS do `safeParse`. `linkedinProcedencia.test.ts` afirma que
+ * `toOpenAIStrictSchema` não carrega nenhuma destas chaves.
+ */
+
+/**
+ * De onde veio o texto de UM campo para colar.
+ *
+ * São TRÊS estados porque existem três caminhos reais, e colapsar dois deles
+ * seria a mesma classe de erro que este objeto existe para corrigir:
+ *
+ *   - `modelo`: a IA escreveu e o texto dela atravessou inteiro;
+ *   - `fallback`: a IA escreveu, o texto foi RECUSADO (lastro de classe 2 ou
+ *     gate persistente) e a plataforma entregou o texto determinístico;
+ *   - `sem_modelo`: nenhuma chamada aconteceu. É o atalho de perfil quase
+ *     vazio (`warmEmptyQualitative`), que escreve o próprio texto e loga a
+ *     tentativa como `skipped`. Chamar isso de `fallback` afirmaria uma
+ *     tentativa rejeitada que nunca houve; chamar de `modelo` atribuiria à IA
+ *     um texto que ela não escreveu.
+ *
+ * A ausência do objeto inteiro (payload gravado antes deste lote) é um QUARTO
+ * estado, e ele mora na leitura, não aqui: ver `PROCEDENCIA_DESCONHECIDA`.
+ */
+export const LINKEDIN_ORIGENS_DE_CAMPO = [
+  "modelo",
+  "fallback",
+  "sem_modelo",
+] as const;
+
+export type LinkedinOrigemDeCampo = (typeof LINKEDIN_ORIGENS_DE_CAMPO)[number];
+
+export interface LinkedinProcedencia {
+  /** Origem do texto entregue em `sobreReescrito`. */
+  sobreReescrito: LinkedinOrigemDeCampo;
+  /** Origem do texto entregue em `modeloMensagemRecrutador`. */
+  modeloMensagemRecrutador: LinkedinOrigemDeCampo;
+  /**
+   * Sugestões de headline (o campo `headlines` do payload).
+   *
+   * `entregues` é o tamanho da lista que foi para o usuário e `removidasPorGate`
+   * é quantos itens saíram por reprova de gate. As duas são contagens separadas
+   * de propósito: `entregues: 0` com `removidasPorGate: 3` é o caso em que a
+   * lista sumiu inteira, e é diferente de um modelo que devolveu lista vazia.
+   * Remoção de TERMO dentro de uma headline (costura do lastro de classe 1) não
+   * entra aqui: aquilo edita o item, não o remove da lista.
+   */
+  sugestoesHeadline: {
+    entregues: number;
+    removidasPorGate: number;
+  };
+  /**
+   * Quantos campos de PROSA (classe 1) passaram pela limpeza de tag vazada.
+   *
+   * Conta DECISÃO, não byte alterado: é o número de reprovas por vazamento em
+   * campo de conversa (`resumo`, `proximoPasso`, `pontosFortes`, `pontosFracos`,
+   * `melhorias`) que dispararam a limpeza depois de gasto o orçamento. A prosa
+   * em si vai íntegra, então isto não é entrega conservadora; é o registro de
+   * que a plataforma tocou no texto, que é o fato que faltava no payload.
+   */
+  camposProsaLimpos: number;
+}
+
+/**
+ * O qualitativo COMO É ENTREGUE E PERSISTIDO: o que o modelo escreveu mais o
+ * metadado de procedência. `LinkedinQualitative` continua sendo só o contrato
+ * do modelo, e é ele que vai para o `toOpenAIStrictSchema`.
+ */
+export interface LinkedinQualitativeEntregue extends LinkedinQualitative {
+  procedencia: LinkedinProcedencia;
+}
+
 // Request do endpoint de análise
 
 /** Fonte única do limite aceito e persistido para competências. */
@@ -980,7 +1074,12 @@ export interface LinkedinAnalysisResponse {
   /** Ausente nas linhas gravadas antes da Fase 0. Ver DETERMINISTIC_VERSION. */
   deterministicVersion?: number;
   deterministic: LinkedinDeterministicResult;
-  qualitative: LinkedinQualitative;
+  /**
+   * O bloco entregue, com a procedência montada pelo servidor. Análises
+   * gravadas antes deste lote não têm `procedencia`, e quem lê o persistido
+   * passa por `readQualitative`, que resolve a ausência em estado nomeado.
+   */
+  qualitative: LinkedinQualitativeEntregue;
 }
 
 // Histórico (GET /api/linkedin/analyses)

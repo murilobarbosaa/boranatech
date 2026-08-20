@@ -52,6 +52,15 @@
       "Falta uma seção Sobre que conte sua história.",
       "Não há experiências ou projetos cadastrados para os recrutadores verem."
     ],
+    "procedencia": {
+      "camposProsaLimpos": 0,
+      "modeloMensagemRecrutador": "sem_modelo",
+      "sobreReescrito": "sem_modelo",
+      "sugestoesHeadline": {
+        "entregues": 3,
+        "removidasPorGate": 0
+      }
+    },
     "proximoPasso": "Preencha hoje a headline com o cargo-alvo Desenvolvedor Front-end Júnior e acrescente apenas tecnologias que você realmente usa em projetos.",
     "resumo": "Não encontrei informações suficientes para avaliar esta parte do perfil com segurança. Há evidência parcial em o nível Júnior informado no formulário, a formação detectada, mas ela não basta para inferir senioridade nem avaliar o perfil inteiro. Revise a extração e complete somente os campos que realmente estiverem ausentes.",
     "skillsParaEstudar": [

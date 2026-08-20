@@ -61,6 +61,15 @@
       "As competencias cadastradas sao poucas.",
       "Falta convite ao contato no Sobre."
     ],
+    "procedencia": {
+      "camposProsaLimpos": 0,
+      "modeloMensagemRecrutador": "modelo",
+      "sobreReescrito": "modelo",
+      "sugestoesHeadline": {
+        "entregues": 3,
+        "removidasPorGate": 0
+      }
+    },
     "proximoPasso": "Comece hoje pela headline e pelo convite ao contato no Sobre.",
     "resumo": "O perfil mostra experiencia real em sistemas distribuidos e boa base de plataforma.",
     "skillsParaEstudar": [],

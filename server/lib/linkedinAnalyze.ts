@@ -12,7 +12,10 @@ import {
   type LinkedinAnalyzeRequest,
   type LinkedinDeterministicResult,
   type LinkedinMelhoria,
+  type LinkedinOrigemDeCampo,
+  type LinkedinProcedencia,
   type LinkedinQualitative,
+  type LinkedinQualitativeEntregue,
 } from "../../shared/linkedin/schema";
 import { ENGLISH_TITLES, PT_TITLES } from "../../shared/linkedin/titles";
 import { env } from "./env";
@@ -1486,7 +1489,16 @@ function aplicarLastro(
   deterministic: LinkedinDeterministicResult,
   request: LinkedinAnalyzeRequest,
   reprovasDeGate: readonly ReprovaDeGate[] = [],
-): LinkedinQualitative {
+  /**
+   * Origem do texto ANTES de qualquer decisão desta função: `modelo` quando a
+   * IA respondeu, `sem_modelo` no atalho de perfil quase vazio. Chega como
+   * parâmetro porque quem sabe disso é o ramo que escolheu o caminho, em
+   * `analyzeLinkedin`; aqui dentro não há como distinguir um texto do modelo de
+   * um texto do atalho sem comparar strings, que é exatamente o que a
+   * procedência existe para não fazer.
+   */
+  origemDeBase: LinkedinOrigemDeCampo = "modelo",
+): LinkedinQualitativeEntregue {
   const violacoes: Violacao[] = [];
 
   // 1. HEADLINES: tecnologia so com lastro em keywordsEncontradas.
@@ -1743,6 +1755,14 @@ function aplicarLastro(
   const modeloMensagemRecrutador = mensagemRejeitada
     ? conservador.mensagem
     : qualitative.modeloMensagemRecrutador;
+  // PROCEDENCIA, ponto 1 de 3: a substituicao de classe 2. Nasce colada ao
+  // ternario que troca o texto, e nao depois: o booleano ao lado E a decisao.
+  let origemSobre: LinkedinOrigemDeCampo = sobreRejeitado
+    ? "fallback"
+    : origemDeBase;
+  let origemMensagem: LinkedinOrigemDeCampo = mensagemRejeitada
+    ? "fallback"
+    : origemDeBase;
 
   // 6. POLITICA FINAL DOS GATES. So chega aqui o que continuou reprovado
   // depois de gasto o orcamento de tentativas: com tentativa restante o laco ja
@@ -1775,6 +1795,11 @@ function aplicarLastro(
   const mensagemFinal = mensagemReprovadaNoGate
     ? conservador.mensagem
     : modeloMensagemRecrutador;
+  // PROCEDENCIA, ponto 2 de 3: o fallback pos-orcamento. Sobrescreve o valor do
+  // ponto 1 porque a substituicao aqui e a que decide o texto entregue; quando
+  // os dois disparam, `fallback` ja era o valor e nada muda.
+  if (sobreReprovadoNoGate) origemSobre = "fallback";
+  if (mensagemReprovadaNoGate) origemMensagem = "fallback";
   // HEADLINES: o item reprovado SAI da lista. A lista pode encolher ate vazia,
   // e vazia e o estado honesto: completar com item que o modelo nao devolveu
   // seria a plataforma escrevendo headline e atribuindo a ele.
@@ -1782,6 +1807,13 @@ function aplicarLastro(
     headlinesReprovadas.size > 0
       ? headlines.filter((_, i) => !headlinesReprovadas.has(i))
       : headlines;
+  // PROCEDENCIA, ponto 3 de 3: o encolhimento da lista de sugestoes. As duas
+  // contagens saem das MESMAS estruturas que decidiram a lista entregue, entao
+  // nao ha como uma dizer uma coisa e a lista dizer outra.
+  const sugestoesHeadline = {
+    entregues: headlinesFinais.length,
+    removidasPorGate: headlinesReprovadas.size,
+  };
   // CONVERSA COM O USUARIO (classe 1): a violacao acima ja foi registrada e o
   // texto vai INTEGRO, porque editar prosa quebraria a frase. Com UMA excecao,
   // e ela nao afrouxa a regra: quando a reprova foi por VAZAMENTO, a tag dos
@@ -1801,25 +1833,34 @@ function aplicarLastro(
   let pontosFortesFinais = qualitative.pontosFortes;
   let pontosFracosFinais = qualitative.pontosFracos;
   let melhoriasFinais = melhorias;
+  // PROCEDENCIA, extra: quantos campos de prosa passaram pela limpeza de tag.
+  // Incrementa DENTRO do switch, um por caso tratado, e nao pelo tamanho de
+  // `reprovasDeGate`: reprova de vazamento em campo de classe 2 nao chega aqui
+  // (ja virou fallback), e contar a lista inteira misturaria as duas politicas.
+  let camposProsaLimpos = 0;
   for (const reprova of reprovasDeGate) {
     if (reprova.motivo !== "vazamento") continue;
     const i = reprova.indice;
     switch (reprova.campo) {
       case "resumo":
         resumoFinal = removerVazamentoDeDelimitador(resumoFinal);
+        camposProsaLimpos += 1;
         break;
       case "proximoPasso":
         proximoPassoFinal = removerVazamentoDeDelimitador(proximoPassoFinal);
+        camposProsaLimpos += 1;
         break;
       case "pontosFortes":
         pontosFortesFinais = pontosFortesFinais.map((p, j) =>
           j === i ? removerVazamentoDeDelimitador(p) : p,
         );
+        camposProsaLimpos += 1;
         break;
       case "pontosFracos":
         pontosFracosFinais = pontosFracosFinais.map((p, j) =>
           j === i ? removerVazamentoDeDelimitador(p) : p,
         );
+        camposProsaLimpos += 1;
         break;
       case "melhorias":
         // Titulo e comoFazer sao conferidos separadamente mas compartilham o
@@ -1834,6 +1875,7 @@ function aplicarLastro(
               }
             : m,
         );
+        camposProsaLimpos += 1;
         break;
       default:
         break;
@@ -1841,15 +1883,31 @@ function aplicarLastro(
   }
 
   for (const v of violacoes) registrarViolacao(v);
+
+  /**
+   * A procedência montada dos fatos coletados acima, e ela sai nos DOIS ramos
+   * de retorno. O ramo curto abaixo devolvia `qualitative` intacto quando nada
+   * mudou; devolvê-lo agora sem procedência criaria justamente o caso em que a
+   * entrega mais limpa é a única sem sinal, e o cliente teria que tratar
+   * "ausente" como "modelo", que é a inferência proibida.
+   */
+  const procedencia: LinkedinProcedencia = {
+    sobreReescrito: origemSobre,
+    modeloMensagemRecrutador: origemMensagem,
+    sugestoesHeadline,
+    camposProsaLimpos,
+  };
+
   if (
     violacoes.length === 0 &&
     melhorias === qualitative.melhorias &&
     mesmaLista(skillsParaEstudar, qualitative.skillsParaEstudar)
   ) {
-    return qualitative;
+    return { ...qualitative, procedencia };
   }
   return {
     ...qualitative,
+    procedencia,
     resumo: resumoFinal,
     proximoPasso: proximoPassoFinal,
     pontosFortes: pontosFortesFinais,
@@ -1904,6 +1962,13 @@ export async function analyzeLinkedin(
         request.mercado,
         onAiIo,
       );
+  // PROCEDENCIA: a origem de base nasce AQUI, no unico ponto do fluxo que sabe
+  // se houve chamada. `quaseVazio` e a mesma condicao que escolheu o atalho
+  // logo acima, entao os dois nunca podem discordar. Nao ha terceiro caminho:
+  // ou o atalho respondeu, ou `runQualitative` respondeu.
+  const origemDeBase: LinkedinOrigemDeCampo = quaseVazio
+    ? "sem_modelo"
+    : "modelo";
 
   const qualitative = aplicarLastro(
     resultado.qualitative,
@@ -1911,6 +1976,7 @@ export async function analyzeLinkedin(
     deterministic,
     request,
     resultado.reprovas,
+    origemDeBase,
   );
   /**
    * @deprecated Alias de compatibilidade para bundles antigos ainda abertos.
