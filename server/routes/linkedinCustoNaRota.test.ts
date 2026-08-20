@@ -245,26 +245,33 @@ describe("a rota grava o custo de TODAS as tentativas", () => {
     );
   });
 
-  it("erro antes de qualquer chamada grava zeros, sem trilha", async () => {
+  it("texto ilegivel nao gera linha nenhuma: recusado antes da reserva", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const fetchDublado = vi.spyOn(http, "fetchWithTimeout");
     await pronto;
     const porta = (servidor.address() as AddressInfo).port;
-    // Texto longo o bastante para passar no schema e ilegivel para o parser:
-    // `analyzeLinkedin` lanca antes de existir tentativa.
+    // Texto longo o bastante para passar no schema e ilegivel para o parser.
     const r = await fetch(`http://127.0.0.1:${porta}/api/linkedin/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...CORPO, profileText: "x ".repeat(200) }),
     });
     await r.text();
-    const linha = linhaGravada();
 
+    // ESTE TESTE MUDOU DE AFIRMACAO, e a mudanca e o ponto.
+    //
+    // Ate o lote de entrada de PDF ele exercia o ramo de erro da rota com a
+    // lista de tentativas vazia (`status: "error"`, tokens zerados, sem
+    // trilha), usando texto ilegivel como gatilho. A rota passou a recusar
+    // ilegivel ANTES do `checkAiDailyLimit`, entao esse gatilho nao alcanca
+    // mais o ramo de erro: nao ha reserva, nao ha linha, nao ha o que zerar.
+    //
+    // A afirmacao antiga NAO foi perdida: `camposDeUsoDaAnalise([])` devolvendo
+    // zeros e `trilha: ""` esta travada, campo a campo, em
+    // `server/lib/linkedinCustoPorTentativa.test.ts` ("perfil quase vazio nao
+    // gera tentativa, nem custo").
     expect(r.status).toBe(422);
     expect(fetchDublado).not.toHaveBeenCalled();
-    expect(linha.status).toBe("error");
-    expect(linha.inputTokens).toBe(0);
-    expect(linha.costEstimate).toBe(0);
-    expect(linha.errorMessage).not.toContain("tentativas:");
+    expect(logAiUsage).not.toHaveBeenCalled();
   });
 });

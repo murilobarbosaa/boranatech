@@ -1957,6 +1957,13 @@ export async function analyzeLinkedin(
   onAiIo?: (io: AnalyzeAiIo) => void,
 ): Promise<{ response: LinkedinAnalysisResponse; parsed: LinkedinParsed }> {
   const parsed = parseLinkedinText(request.profileText);
+  // GUARDA DE INVARIANTE, e nao mais a primeira linha de defesa: desde o lote
+  // de entrada de PDF a rota recusa texto ilegivel ANTES de reservar cota
+  // (`unreadable_text`, em `routes/linkedin.ts`). Fica porque esta funcao e
+  // exportada e chamada de outros lugares alem da rota, e porque protecao
+  // dentro da funcao cobre todo chamador por construcao, inclusive os que ainda
+  // nao existem. Chegar aqui com texto ilegivel significa que alguem entrou por
+  // um caminho sem a guarda nova, e falhar alto e melhor que analisar lixo.
   if (!parsed.usable) {
     throw new LinkedinUnreadableError();
   }

@@ -16,7 +16,10 @@ import {
   LinkedinUnreadableError,
   type AnalyzeAiIo,
 } from "../lib/linkedinAnalyze";
-import type { LinkedinParsed } from "../../shared/linkedin/parse";
+import {
+  parseLinkedinText,
+  type LinkedinParsed,
+} from "../../shared/linkedin/parse";
 import { hashDoTexto } from "../lib/linkedinTextoHash";
 import {
   beginLinkedinProgressSession,
@@ -160,6 +163,34 @@ router.post(
     const userId = req.user!.id;
     const requestId =
       (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
+
+    // LEGIBILIDADE ANTES DA RESERVA.
+    //
+    // O zod acima so mede TAMANHO (200 a 12000 caracteres), e tamanho nao
+    // distingue perfil de lixo: rodape de scanner repetido e ruido de glifo
+    // passam folgados. Quem distingue e `parseLinkedinText(...).usable`, que ja
+    // existe e ja e a fonte unica desse veredito.
+    //
+    // Por que AQUI e nao la dentro: a checagem e local, pura e barata, e ate
+    // agora rodava so depois da reserva de cota. A linha `reserved` acabava
+    // anulada pelo ramo de erro, entao nao havia cobranca indevida, mas existia
+    // a janela reservar-para-depois-anular: se o processo morresse no meio, a
+    // vaga ficava presa por dez minutos. Recusar antes elimina a janela e evita
+    // criar estado no banco para um pedido que nunca teve chance.
+    //
+    // Custo: um parse a mais por requisicao, da mesma funcao pura que o cliente
+    // roda a cada tecla no textarea. `analyzeLinkedin` segue com a propria
+    // guarda de invariante, para os outros chamadores dela.
+    if (!parseLinkedinText(request.profileText).usable) {
+      // TODO(Ana): revisar a mensagem de texto ilegivel na analise.
+      return next(
+        createError(
+          422,
+          "unreadable_text",
+          "Não conseguimos reconhecer um perfil no texto enviado. Se você usou um PDF, confira se ele é o export oficial do LinkedIn; se colou o texto, cole as seções do perfil (headline, Sobre e experiências).",
+        ),
+      );
+    }
 
     const usage = await checkAiDailyLimit(
       userId,
