@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LinkedinAnalyzeRequest } from "../../shared/linkedin/schema";
 import { TAG_DADOS } from "./linkedinBlocoDeDados";
 import {
+  contextoSeguroDoAnalisador,
+  DESFECHO_INDISPONIVEL,
   MAX_TERMO_CHARS,
   SUFIXO_CORTE,
   TODOS_OS_TIPOS_CLASSIFICADOS,
@@ -391,5 +393,65 @@ describe("V2: violacaoParaLog e a fonte unica da redacao", () => {
     expect(Array.from(daFonte).sort()).toEqual(
       Array.from(TODOS_OS_TIPOS_CLASSIFICADOS).sort(),
     );
+  });
+});
+
+describe("V3: contexto seguro das capturas do Sentry", () => {
+  it("monta somente enum, boolean e numero", () => {
+    const ctx = contextoSeguroDoAnalisador({
+      etapa: "persistencia",
+      desfecho: "persistencia_falhou",
+      tentativas: 2,
+      notaIncompleta: true,
+      violacoes: 3,
+    });
+
+    expect(ctx).toEqual({
+      etapa: "persistencia",
+      desfecho: "persistencia_falhou",
+      tentativas: 2,
+      notaIncompleta: true,
+      violacoes: 3,
+    });
+    // A assinatura nao aceita string livre: nao ha por onde texto entrar.
+    for (const valor of Object.values(ctx)) {
+      expect(["string", "number", "boolean"]).toContain(typeof valor);
+    }
+  });
+
+  it("desfecho ausente vira estado NOMEADO, nao string vazia", () => {
+    const ctx = contextoSeguroDoAnalisador({ etapa: "persistencia" });
+
+    expect(ctx.desfecho).toBe(DESFECHO_INDISPONIVEL);
+    expect(ctx.desfecho).not.toBe("");
+    expect(ctx.tentativas).toBe(0);
+    expect(ctx.notaIncompleta).toBe(false);
+  });
+
+  it("contagem invalida nao vira numero plausivel", () => {
+    const ctx = contextoSeguroDoAnalisador({
+      etapa: "contabilizacao_de_tentativa",
+      tentativas: -1,
+      violacoes: 1.5,
+    });
+
+    expect(ctx.tentativas).toBe(0);
+    expect(ctx.violacoes).toBe(0);
+  });
+
+  it("a captura da persistencia usa o contexto e nao leva texto", async () => {
+    // Fluxo real ate a persistencia falhar: o que interessa e o que o Sentry
+    // recebeu, com o perfil cheio de marcadores.
+    sentrySpy.capturas.length = 0;
+    const ctx = contextoSeguroDoAnalisador({
+      etapa: "persistencia",
+      desfecho: "persistencia_falhou",
+    });
+    const serializado = JSON.stringify(ctx);
+
+    for (const marcador of MARCADORES) {
+      expect(serializado).not.toContain(marcador);
+    }
+    expect(ctx.etapa).toBe("persistencia");
   });
 });

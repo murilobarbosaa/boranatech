@@ -30,7 +30,10 @@ import {
   type Violacao,
 } from "../../shared/linkedin/lastro";
 import { removerTermoComCostura } from "./linkedinCosturaDeTexto";
-import { violacaoParaLog } from "./linkedinObservabilidade";
+import {
+  contextoSeguroDoAnalisador,
+  violacaoParaLog,
+} from "./linkedinObservabilidade";
 import {
   ALL_TECHNOLOGIES,
   keyTechnologiesForArea,
@@ -958,6 +961,25 @@ function emitirTentativa(
       "[linkedin-analyze] falha ao contabilizar a tentativa:",
       err instanceof Error ? err.message : String(err),
     );
+    // CAPTURA (a): perder a contabilizacao e perder o dado de CUSTO da
+    // tentativa, e custo que some nao aparece em painel nenhum. Embrulhada
+    // pelo mesmo motivo de sempre.
+    try {
+      Sentry.withScope((scope) => {
+        scope.setTag("area", "linkedin-analyzer");
+        scope.setContext(
+          "analisador",
+          contextoSeguroDoAnalisador({
+            etapa: "contabilizacao_de_tentativa",
+            desfecho: registro.desfecho ?? undefined,
+            tentativas: registro.tentativa,
+          }),
+        );
+        Sentry.captureException(err);
+      });
+    } catch {
+      // Sentry desligado (DSN ausente) e no-op por desenho.
+    }
   }
 }
 
@@ -1199,7 +1221,10 @@ async function runQualitative(
  * explicitamente aspiracional a inventar tecnologias, projetos ou senioridade.
  */
 export function warmEmptyQualitative(
-  request: Pick<LinkedinAnalyzeRequest, "area" | "level" | "mercado" | "skills">,
+  request: Pick<
+    LinkedinAnalyzeRequest,
+    "area" | "level" | "mercado" | "skills"
+  >,
   parsed: Pick<LinkedinParsed, "formacao" | "certificacoes" | "experiencias">,
   deterministic: LinkedinDeterministicResult,
 ): LinkedinQualitative {

@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import * as Sentry from "@sentry/node";
 import { NextFunction, Request, Response, Router } from "express";
 
 import {
@@ -27,6 +28,7 @@ import {
 } from "../lib/linkedinImprovementProgress";
 import { headlineManualLonga } from "../lib/linkedinHeadlineManual";
 import { montarLinkedinInputPersistido } from "../lib/linkedinPersistence";
+import { contextoSeguroDoAnalisador } from "../lib/linkedinObservabilidade";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -94,6 +96,25 @@ async function persistAnalysis(
       "[linkedin] Erro inesperado ao persistir analise (fail-soft):",
       err instanceof Error ? err.name : "erro_nao_Error",
     );
+    // CAPTURA (a): fail-soft que ate aqui sumia. E o caso "a analise foi
+    // cobrada e nao ficou no historico", que ninguem descobre pelo log.
+    // Embrulhada: observabilidade nunca derruba o caminho que a contem, e este
+    // caminho ja e o de excecao.
+    try {
+      Sentry.withScope((scope) => {
+        scope.setTag("area", "linkedin-analyzer");
+        scope.setContext(
+          "analisador",
+          contextoSeguroDoAnalisador({
+            etapa: "persistencia",
+            desfecho: "persistencia_falhou",
+          }),
+        );
+        Sentry.captureException(err);
+      });
+    } catch {
+      // Sentry desligado (DSN ausente) e no-op por desenho.
+    }
     return null;
   }
 }
@@ -331,6 +352,8 @@ router.get(
       }
       res.json({ data: data ?? [] });
     } catch (err) {
+      // Silencio (b): `next(err)` leva ao errorHandler central, que ja captura
+      // no Sentry a partir de 500. Capturar aqui duplicaria o issue.
       next(err);
     }
   },
@@ -362,6 +385,8 @@ router.get(
       }
       res.json({ data });
     } catch (err) {
+      // Silencio (b): `next(err)` leva ao errorHandler central, que ja captura
+      // no Sentry a partir de 500. Capturar aqui duplicaria o issue.
       next(err);
     }
   },

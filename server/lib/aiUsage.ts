@@ -123,6 +123,8 @@ export async function checkAiDailyLimit(
     console.warn(`${logScope} RPC de rate limit retornou erro/null para`, userId);
     return { allowed: false, count: 0, limit, verificationFailed: true };
   } catch {
+    // Silencio (b) deliberado: fail-closed, ja logado, e indisponibilidade
+    // transitoria da RPC viraria ruido de plantao sem acao possivel.
     console.warn(`${logScope} Falha ao verificar rate limit para`, userId);
     return { allowed: false, count: 0, limit, verificationFailed: true };
   }
@@ -170,6 +172,8 @@ export async function checkAgentDailyLimit(
     console.warn(`${logScope} RPC de rate limit do agente retornou erro/null para`, userId);
     return { allowed: false, count: 0, limit, verificationFailed: true };
   } catch {
+    // Silencio (b) deliberado: fail-closed, ja logado, e indisponibilidade
+    // transitoria da RPC viraria ruido de plantao sem acao possivel.
     console.warn(`${logScope} Falha ao verificar rate limit do agente para`, userId);
     return { allowed: false, count: 0, limit, verificationFailed: true };
   }
@@ -209,6 +213,8 @@ export async function checkInterviewTurnDailyLimit(
     console.warn(`${logScope} RPC de rate limit de turnos retornou erro/null para`, userId);
     return { allowed: false, count: 0, limit, verificationFailed: true };
   } catch {
+    // Silencio (b) deliberado: fail-closed, ja logado, e indisponibilidade
+    // transitoria da RPC viraria ruido de plantao sem acao possivel.
     console.warn(`${logScope} Falha ao verificar rate limit de turnos para`, userId);
     return { allowed: false, count: 0, limit, verificationFailed: true };
   }
@@ -237,6 +243,8 @@ export async function checkInterviewTtsDailyLimit(
     console.warn(`${logScope} RPC de rate limit de TTS retornou erro/null para`, userId);
     return { allowed: false, count: 0, limit, verificationFailed: true };
   } catch {
+    // Silencio (b) deliberado: fail-closed, ja logado, e indisponibilidade
+    // transitoria da RPC viraria ruido de plantao sem acao possivel.
     console.warn(`${logScope} Falha ao verificar rate limit de TTS para`, userId);
     return { allowed: false, count: 0, limit, verificationFailed: true };
   }
@@ -273,6 +281,8 @@ export async function checkCareerPlanChatDailyLimit(
     console.warn(`${logScope} RPC de rate limit do chat de intake retornou erro/null para`, userId);
     return { allowed: false, count: 0, limit, verificationFailed: true };
   } catch {
+    // Silencio (b) deliberado: fail-closed, ja logado, e indisponibilidade
+    // transitoria da RPC viraria ruido de plantao sem acao possivel.
     console.warn(`${logScope} Falha ao verificar rate limit do chat de intake para`, userId);
     return { allowed: false, count: 0, limit, verificationFailed: true };
   }
@@ -309,6 +319,8 @@ export async function checkRoadmapIntakeChatDailyLimit(
     console.warn(`${logScope} RPC de rate limit do chat de intake retornou erro/null para`, userId);
     return { allowed: false, count: 0, limit, verificationFailed: true };
   } catch {
+    // Silencio (b) deliberado: fail-closed, ja logado, e indisponibilidade
+    // transitoria da RPC viraria ruido de plantao sem acao possivel.
     console.warn(`${logScope} Falha ao verificar rate limit do chat de intake para`, userId);
     return { allowed: false, count: 0, limit, verificationFailed: true };
   }

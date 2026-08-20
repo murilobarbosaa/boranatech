@@ -115,3 +115,63 @@ export function violacaoParaLog(v: Violacao): ViolacaoParaLog {
     termo: comTeto(v.termo),
   };
 }
+
+/**
+ * ETAPAS do fluxo do analisador, para o Sentry saber ONDE quebrou.
+ *
+ * Uniao fechada de proposito: um campo livre aqui seria a porta por onde texto
+ * de usuario voltaria a entrar, dois commits depois de sair.
+ */
+export const ETAPAS_DO_ANALISADOR = [
+  "persistencia",
+  "contabilizacao_de_tentativa",
+] as const;
+
+export type EtapaDoAnalisador = (typeof ETAPAS_DO_ANALISADOR)[number];
+
+/**
+ * `type` e nao `interface` de proposito: o `setContext` do Sentry exige algo
+ * atribuivel a `Record<string, unknown>`, e interface sem index signature nao
+ * e. Trocar por `type` resolve sem afrouxar nenhum campo.
+ */
+export type ContextoSeguro = {
+  etapa: EtapaDoAnalisador;
+  /** Desfecho ja classificado pelo fluxo, ou o estado nomeado de ausencia. */
+  desfecho: string;
+  tentativas: number;
+  notaIncompleta: boolean;
+  violacoes: number;
+};
+
+/** Estado nomeado para desfecho ausente: nunca string vazia nem "ok" chutado. */
+export const DESFECHO_INDISPONIVEL = "indisponivel";
+
+/**
+ * Contexto seguro das capturas do analisador.
+ *
+ * TUDO o que sai daqui e enum, boolean ou numero, e a assinatura nao aceita
+ * outra coisa: nao ha parametro de string livre, entao nao existe caminho pelo
+ * qual um chamador distraido injete texto de usuario. Essa e a razao de a
+ * funcao existir em vez de cada captura montar o proprio objeto.
+ *
+ * Fail-closed nos numeros: contagem ausente vira zero MEDIDO so quando o
+ * chamador de fato mediu zero; quando ele nao sabe, passa o desfecho
+ * `DESFECHO_INDISPONIVEL` e a leitura do painel nao confunde os dois.
+ */
+export function contextoSeguroDoAnalisador(entrada: {
+  etapa: EtapaDoAnalisador;
+  desfecho?: string;
+  tentativas?: number;
+  notaIncompleta?: boolean;
+  violacoes?: number;
+}): ContextoSeguro {
+  const inteiroNaoNegativo = (n: number | undefined): number =>
+    typeof n === "number" && Number.isInteger(n) && n >= 0 ? n : 0;
+  return {
+    etapa: entrada.etapa,
+    desfecho: entrada.desfecho ?? DESFECHO_INDISPONIVEL,
+    tentativas: inteiroNaoNegativo(entrada.tentativas),
+    notaIncompleta: entrada.notaIncompleta === true,
+    violacoes: inteiroNaoNegativo(entrada.violacoes),
+  };
+}
