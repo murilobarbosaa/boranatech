@@ -48,6 +48,10 @@ import LinkedinHistory from "@/components/linkedin/LinkedinHistory";
 import LinkedinResultBackdrop from "@/components/linkedin/LinkedinResultBackdrop";
 import LinkedinScanCard from "@/components/linkedin/LinkedinScanCard";
 import LinkedinScoreHero from "@/components/linkedin/LinkedinScoreHero";
+import {
+  ProcedenciaNota,
+  SugestoesRemovidas,
+} from "@/components/linkedin/ProcedenciaNota";
 import ErrorBoundary, { CodigoDoErro } from "@/components/ErrorBoundary";
 import { LinkedinError } from "@/components/linkedin/LinkedinStates";
 import ScoreDeltaBanner from "@/components/shared/ScoreDeltaBanner";
@@ -1922,19 +1926,34 @@ export default function LinkedinAnalisar() {
                             ) : null
                           }
                           paste={
-                            <ul className="space-y-3">
-                              {qual.headlines.map((headline, index) => (
-                                <li
-                                  key={index}
-                                  className="flex items-start justify-between gap-3 rounded-xl border-2 border-slate-200 bg-white p-3"
-                                >
-                                  <p className="min-w-0 text-sm font-medium text-slate-800">
-                                    {headline}
-                                  </p>
-                                  <CopyButton text={headline} />
-                                </li>
-                              ))}
-                            </ul>
+                            <div>
+                              <ul className="space-y-3">
+                                {qual.headlines.map((headline, index) => (
+                                  <li
+                                    key={index}
+                                    className="flex items-start justify-between gap-3 rounded-xl border-2 border-slate-200 bg-white p-3"
+                                  >
+                                    <p className="min-w-0 text-sm font-medium text-slate-800">
+                                      {headline}
+                                    </p>
+                                    <CopyButton text={headline} />
+                                  </li>
+                                ))}
+                              </ul>
+                              {/* Lista encolhida por gate: sem esta linha, uma
+                                  lista de 2 parecia a lista completa, e uma
+                                  lista vazia por remocao parecia a IA nao ter
+                                  sugerido nada. */}
+                              <SugestoesRemovidas
+                                entregues={
+                                  qual.procedencia.sugestoesHeadline.entregues
+                                }
+                                removidas={
+                                  qual.procedencia.sugestoesHeadline
+                                    .removidasPorGate
+                                }
+                              />
+                            </div>
                           }
                         >
                           {deterministic.headline === null ? (
@@ -1974,6 +1993,10 @@ export default function LinkedinAnalisar() {
                               <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
                                 {qual.sobreReescrito}
                               </p>
+                              <ProcedenciaNota
+                                campo="sobreReescrito"
+                                origem={qual.procedencia.sobreReescrito}
+                              />
                             </div>
                           }
                         >
@@ -2270,6 +2293,12 @@ export default function LinkedinAnalisar() {
                               <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
                                 {qual.modeloMensagemRecrutador}
                               </p>
+                              <ProcedenciaNota
+                                campo="modeloMensagemRecrutador"
+                                origem={
+                                  qual.procedencia.modeloMensagemRecrutador
+                                }
+                              />
                             </div>
                           }
                         />
