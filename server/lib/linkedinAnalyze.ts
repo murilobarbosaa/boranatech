@@ -30,6 +30,7 @@ import {
   type Violacao,
 } from "../../shared/linkedin/lastro";
 import { removerTermoComCostura } from "./linkedinCosturaDeTexto";
+import { violacaoParaLog } from "./linkedinObservabilidade";
 import {
   ALL_TECHNOLOGIES,
   keyTechnologiesForArea,
@@ -1147,9 +1148,12 @@ async function runQualitative(
       // precedencia, porque e mais especifico.
       registro.desfecho ??=
         err instanceof UpstreamTimeoutError ? "timeout" : "rede";
-      const detail = err instanceof Error ? err.message : String(err);
+      // NOME do erro, nao a mensagem: a mensagem da OpenAI ecoa trecho do
+      // prompt em falha de conteudo, e o prompt carrega o perfil da pessoa.
+      // O desfecho classificado logo acima ja diz o que aconteceu.
+      const causa = err instanceof Error ? err.name : "erro_nao_Error";
       console.error(
-        `[linkedin-analyze] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} falhou: ${detail}`,
+        `[linkedin-analyze] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} falhou: ${causa} (desfecho ${registro.desfecho})`,
       );
       // Truncamento e deterministico: o mesmo prompt com o mesmo max_tokens
       // corta de novo. Retentar so faz a pessoa esperar o dobro pelo mesmo
@@ -1395,6 +1399,9 @@ const TIPOS_DE_BLOCO: ReadonlySet<TipoViolacao> = new Set<TipoViolacao>([
 const ultimoLastroPorTipo = new Map<string, number>();
 
 function registrarViolacao(v: Violacao): void {
+  // UMA conversao, usada nos DOIS destinos. Duas montagens separadas seriam
+  // duas verdades sobre o que pode sair, e a primeira divergencia seria muda.
+  const seguro = violacaoParaLog(v);
   // NIVEL: `warning`, nao `error`, e a diferenca e deliberada. O modo degradado
   // da cota e `error` porque significa que uma PROTECAO ESTA DESLIGADA; uma
   // violacao de lastro significa o oposto, que a protecao FUNCIONOU e removeu o
@@ -1415,7 +1422,9 @@ function registrarViolacao(v: Violacao): void {
         // Um issue por TIPO: os quatro tipos sao problemas diferentes e nao
         // devem se esconder atras do volume um do outro.
         fingerprint: ["ai-lastro-violado", v.tipo],
-        extra: { campo: v.campo, termo: v.termo, contexto: v.contexto },
+        // Payload REDIGIDO, mesma fonte do log estruturado abaixo: o
+        // `extra` do Sentry viaja para fora tanto quanto o stdout.
+        extra: { ...seguro },
       });
     } catch {
       // Sentry desligado (DSN ausente) e no-op por desenho.
@@ -1428,10 +1437,7 @@ function registrarViolacao(v: Violacao): void {
       level: "warn",
       msg: "ai_lastro_violado",
       tool: "linkedin-analyzer",
-      tipo: v.tipo,
-      campo: v.campo,
-      contexto: v.contexto,
-      termo: v.termo,
+      ...seguro,
       // Os dois tipos de bloco descartam a unidade inteira; os de termo removem
       // uma palavra ou um numeral de dentro do texto. O rotulo tem de dizer
       // qual dos dois aconteceu, porque a leitura do log depende disso.

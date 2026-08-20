@@ -88,9 +88,11 @@ async function persistAnalysis(
     }
     return (data as { id: string } | null)?.id ?? null;
   } catch (err) {
+    // `err` cru NAO sai: um erro do supabase-js pode carregar trecho do
+    // payload rejeitado, e o payload aqui e a analise inteira da pessoa.
     console.error(
       "[linkedin] Erro inesperado ao persistir analise (fail-soft):",
-      err,
+      err instanceof Error ? err.name : "erro_nao_Error",
     );
     return null;
   }
