@@ -341,14 +341,20 @@ describe("G2: vazamento de delimitador", () => {
     );
   });
 
-  it("vazamento em campo de conversa: violacao, e o texto segue INTEGRO", async () => {
+  it("vazamento em campo de conversa: a TAG sai, o resto do texto fica", async () => {
     const resumoVazado = `${ABERTURA_DE_BLOCO} campo="sobre"> O perfil mostra base boa de front-end no time.`;
     const { qual, violacoes } = await analisar([
       { resumo: resumoVazado },
       { resumo: resumoVazado },
     ]);
-    // Classe 1 do lote 5: sinaliza e nao edita.
-    expect(qual.resumo).toBe(resumoVazado);
+    // EXPECTATIVA ATUALIZADA no mini-lote de fechamento da Fase 2. Antes este
+    // caso afirmava `toBe(resumoVazado)`, ou seja, a tag chegando literalmente
+    // a tela da pessoa. A regra da classe 1 protege conteudo SEMANTICO; a tag e
+    // artefato do nosso proprio prompt ecoado pelo modelo, e tira-la nao muda
+    // nada do que ele disse. O que continua valendo, e esta afirmado abaixo: o
+    // texto do modelo permanece palavra por palavra, e a violacao e registrada.
+    expect(qual.resumo).toBe("O perfil mostra base boa de front-end no time.");
+    expect(qual.resumo).not.toContain(ABERTURA_DE_BLOCO);
     expect(
       violacoes.some(
         (v) => v.tipo === "vazamento_delimitador" && v.campo === "resumo",

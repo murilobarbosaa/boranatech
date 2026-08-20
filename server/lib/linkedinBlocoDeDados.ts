@@ -72,6 +72,43 @@ export function sanitizarConteudoDoUsuario(texto: string): string {
 }
 
 /**
+ * A tag INTEIRA, abertura ou fechamento, com qualquer atributo.
+ *
+ * Padrao estrutural, e nao lista de campos: o que se procura e o eco da nossa
+ * marcacao, e uma lista de `campo="..."` teria de ser lembrada a cada campo
+ * novo, que e a classe de defeito que este repositorio documenta. O `>` final e
+ * opcional de proposito, para que a limpeza alcance pelo menos tudo o que a
+ * deteccao do gate G2 alcanca: ela procura por `<dados_do_usuario` sem exigir
+ * fechamento, entao um eco truncado seria acusado e, sem o `>?`, sobreviveria.
+ */
+const TAG_INTEIRA = new RegExp(`<\\s*/?\\s*${TAG_DADOS}\\b[^>]*>?`, "gi");
+
+/** Espaco horizontal. NAO casa \r nem \n: CRLF do conteudo e preservado. */
+const H = "[^\\S\\r\\n]";
+
+/**
+ * Tira do texto entregue toda ocorrencia da nossa marcacao.
+ *
+ * ONDE ELA ENTRA, e por que isso nao contradiz a regra de nao editar prosa: a
+ * politica da classe 1 proibe mexer em conteudo SEMANTICO, porque remover um
+ * termo de uma frase corrida quebra o sentido e pode inverte-lo. A tag nao e
+ * afirmacao sobre o perfil: e artefato estrutural do NOSSO prompt, ecoado pelo
+ * modelo. Tira-la nao muda nada do que ele disse, e deixa-la fazia
+ * `<dados_do_usuario campo="sobre">` aparecer na tela da pessoa.
+ *
+ * Faz so isso: remove a tag, colapsa o espaco horizontal duplo que a remocao
+ * deixa e apara as pontas. Nenhuma outra normalizacao, nenhum outro toque no
+ * conteudo.
+ */
+export function removerVazamentoDeDelimitador(texto: string): string {
+  return texto
+    .replace(TAG_INTEIRA, "")
+    .replace(new RegExp(`${H}{2,}`, "g"), " ")
+    .replace(new RegExp(`^${H}+`), "")
+    .replace(new RegExp(`${H}+$`), "");
+}
+
+/**
  * Monta o bloco delimitado de um campo. Sanitiza SEMPRE, por construcao.
  *
  * Abertura e fechamento em linhas proprias: assim um conteudo que termine sem

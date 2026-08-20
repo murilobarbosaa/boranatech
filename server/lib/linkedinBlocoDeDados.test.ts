@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   blocoDeDados,
   FECHAMENTO_DO_BLOCO,
+  removerVazamentoDeDelimitador,
   sanitizarConteudoDoUsuario,
   TAG_DADOS,
 } from "./linkedinBlocoDeDados";
@@ -81,5 +82,93 @@ describe("blocoDeDados", () => {
     // Um unico fechamento, o nosso, e ele e o fim do bloco.
     expect(bloco.split(FECHAMENTO_DO_BLOCO)).toHaveLength(2);
     expect(bloco.endsWith(FECHAMENTO_DO_BLOCO)).toBe(true);
+  });
+});
+
+/**
+ * LIMPEZA DO VAZAMENTO (mini-lote de fechamento da Fase 2).
+ *
+ * Operacao espelho do `sanitizarConteudoDoUsuario`: aquele neutraliza a tag na
+ * ENTRADA, para o conteudo do usuario nao fechar o proprio bloco; este a remove
+ * na SAIDA, quando o modelo ecoa a marcacao e o campo e de classe 1, que nao
+ * cai em fallback. Sem ele, `<dados_do_usuario campo="sobre">` chegava
+ * literalmente a tela da pessoa.
+ */
+describe("removerVazamentoDeDelimitador", () => {
+  it("tira a ABERTURA no meio do texto e apara o que sobra", () => {
+    expect(
+      removerVazamentoDeDelimitador(
+        `<${TAG_DADOS} campo="sobre"> O perfil mostra base boa.`,
+      ),
+    ).toBe("O perfil mostra base boa.");
+  });
+
+  it("tira o FECHAMENTO sem colar as palavras vizinhas", () => {
+    expect(
+      removerVazamentoDeDelimitador(
+        `Texto antes ${FECHAMENTO_DO_BLOCO} depois.`,
+      ),
+    ).toBe("Texto antes depois.");
+  });
+
+  it("tira as DUAS quando o modelo ecoa o bloco inteiro", () => {
+    expect(
+      removerVazamentoDeDelimitador(
+        `<${TAG_DADOS} campo="objetivo">meio</${TAG_DADOS}>`,
+      ),
+    ).toBe("meio");
+  });
+
+  it("tira TODAS as ocorrencias, com atributo variado", () => {
+    expect(
+      removerVazamentoDeDelimitador(
+        `a <${TAG_DADOS} campo="experiencias"> b <${TAG_DADOS} campo="competencias_coladas"> c`,
+      ),
+    ).toBe("a b c");
+  });
+
+  it("texto limpo e IDENTIDADE, byte a byte", () => {
+    const limpo = "O perfil mostra base boa de front-end no time.";
+    expect(removerVazamentoDeDelimitador(limpo)).toBe(limpo);
+  });
+
+  it("texto que e SO a tag vira vazio", () => {
+    expect(removerVazamentoDeDelimitador(`<${TAG_DADOS} campo="sobre">`)).toBe(
+      "",
+    );
+  });
+
+  it("eco TRUNCADO, sem o fechamento em maior, tambem sai", () => {
+    // A deteccao do gate G2 procura por `<dados_do_usuario` sem exigir o `>`.
+    // Se a limpeza exigisse, ela acusaria um caso que nao consegue limpar.
+    expect(
+      removerVazamentoDeDelimitador(`truncado <${TAG_DADOS} campo="sobre"`),
+    ).toBe("truncado");
+  });
+
+  it("CRLF preservado: a quebra de linha nao e espaco a colapsar", () => {
+    // O espaco que sobra no comeco da linha 2 e o que seguia a tag removida.
+    // Colapsa-lo exigiria mexer no `\n`, e preservar a quebra vale mais.
+    expect(
+      removerVazamentoDeDelimitador(
+        `linha um\r\n<${TAG_DADOS} campo="sobre"> linha dois\r\nlinha tres`,
+      ),
+    ).toBe("linha um\r\n linha dois\r\nlinha tres");
+  });
+
+  it("FONTE UNICA: a limpeza acompanha a constante da tag", () => {
+    // Mesma disciplina do teste de coerencia do lote 1: se `TAG_DADOS` mudar e
+    // a limpeza continuar procurando a grafia velha, este caso quebra. Ele NAO
+    // escreve a tag a mao em lugar nenhum.
+    const texto = `antes <${TAG_DADOS} campo="sobre"> depois`;
+    expect(texto).toContain(TAG_DADOS);
+    expect(removerVazamentoDeDelimitador(texto)).toBe("antes depois");
+    expect(removerVazamentoDeDelimitador(texto)).not.toContain(TAG_DADOS);
+    // E o que ela remove e exatamente o que o bloco emite. As quebras de linha
+    // que sobram sao as do proprio bloco (abertura e fechamento saem em linhas
+    // proprias), e a limpeza NAO mexe em `\n` de proposito: colapsar quebra de
+    // linha seria a "outra normalizacao" que esta funcao se proibe de fazer.
+    const bloco = blocoDeDados("sobre", "conteudo");
+    expect(removerVazamentoDeDelimitador(bloco)).toBe("\nconteudo\n");
   });
 });

@@ -33,7 +33,11 @@ import {
   matchTechnologies,
 } from "./skillNormalize";
 import { estimateCost, estimateCostFromTokens } from "./aiTools";
-import { blocoDeDados, TAG_DADOS } from "./linkedinBlocoDeDados";
+import {
+  blocoDeDados,
+  removerVazamentoDeDelimitador,
+  TAG_DADOS,
+} from "./linkedinBlocoDeDados";
 import { detectarIdioma } from "./linkedinIdioma";
 import {
   diagnosticoDeGate,
@@ -1778,9 +1782,63 @@ function aplicarLastro(
     headlinesReprovadas.size > 0
       ? headlines.filter((_, i) => !headlinesReprovadas.has(i))
       : headlines;
-  // Os demais campos gateados (conversa com o usuario) seguem a politica da
-  // classe 1 do lote 5: a violacao acima ja foi registrada e o texto vai
-  // INTEGRO, porque editar prosa quebraria a frase.
+  // CONVERSA COM O USUARIO (classe 1): a violacao acima ja foi registrada e o
+  // texto vai INTEGRO, porque editar prosa quebraria a frase. Com UMA excecao,
+  // e ela nao afrouxa a regra: quando a reprova foi por VAZAMENTO, a tag dos
+  // blocos de dados sai do texto entregue.
+  //
+  // O que a regra da classe 1 protege e conteudo SEMANTICO: remover um termo de
+  // uma frase corrida muda o que foi dito e pode inverter o sentido. A tag nao
+  // e afirmacao sobre o perfil, e artefato estrutural do NOSSO prompt que o
+  // modelo repetiu. Tira-la nao muda nada do que ele disse; deixa-la fazia
+  // `<dados_do_usuario campo="sobre">` aparecer na tela da pessoa.
+  //
+  // Vale so aqui, no ramo pos-orcamento: com tentativa restante o laco retenta,
+  // e classe 2 e headlines nem chegam neste ponto (caem no fallback e na
+  // remocao do item, respectivamente).
+  let resumoFinal = qualitative.resumo;
+  let proximoPassoFinal = qualitative.proximoPasso;
+  let pontosFortesFinais = qualitative.pontosFortes;
+  let pontosFracosFinais = qualitative.pontosFracos;
+  let melhoriasFinais = melhorias;
+  for (const reprova of reprovasDeGate) {
+    if (reprova.motivo !== "vazamento") continue;
+    const i = reprova.indice;
+    switch (reprova.campo) {
+      case "resumo":
+        resumoFinal = removerVazamentoDeDelimitador(resumoFinal);
+        break;
+      case "proximoPasso":
+        proximoPassoFinal = removerVazamentoDeDelimitador(proximoPassoFinal);
+        break;
+      case "pontosFortes":
+        pontosFortesFinais = pontosFortesFinais.map((p, j) =>
+          j === i ? removerVazamentoDeDelimitador(p) : p,
+        );
+        break;
+      case "pontosFracos":
+        pontosFracosFinais = pontosFracosFinais.map((p, j) =>
+          j === i ? removerVazamentoDeDelimitador(p) : p,
+        );
+        break;
+      case "melhorias":
+        // Titulo e comoFazer sao conferidos separadamente mas compartilham o
+        // indice, entao nao da para saber qual deles vazou. Limpar os dois e
+        // seguro: em texto sem tag a funcao e identidade.
+        melhoriasFinais = melhoriasFinais.map((m, j) =>
+          j === i
+            ? {
+                ...m,
+                titulo: removerVazamentoDeDelimitador(m.titulo),
+                comoFazer: removerVazamentoDeDelimitador(m.comoFazer),
+              }
+            : m,
+        );
+        break;
+      default:
+        break;
+    }
+  }
 
   for (const v of violacoes) registrarViolacao(v);
   if (
@@ -1792,9 +1850,13 @@ function aplicarLastro(
   }
   return {
     ...qualitative,
+    resumo: resumoFinal,
+    proximoPasso: proximoPassoFinal,
+    pontosFortes: pontosFortesFinais,
+    pontosFracos: pontosFracosFinais,
     headlines: headlinesFinais,
     bulletsReescritos,
-    melhorias,
+    melhorias: melhoriasFinais,
     skillsParaEstudar,
     sobreReescrito: sobreFinal,
     modeloMensagemRecrutador: mensagemFinal,
