@@ -140,11 +140,21 @@ export default function SectionReport({
                 "N criterios ok" e confiavel: `exp-descricoes` passou a olhar
                 cada experiencia, entao ele nao aprova mais um perfil com
                 experiencia vazia. Antes este texto podia estar mentindo. */}
-            {aConfirmar > 0
-              ? `${aConfirmar} de ${checks.length} critérios a confirmar`
-              : reprovados > 0
-                ? `${reprovados} de ${checks.length} critérios pendentes`
-                : `${checks.length} critérios ok`}
+            {/* TRES contagens possiveis, e nenhuma soma pendente com
+                reprovado. Antes: o ramo do meio dizia "criterios PENDENTES"
+                falando dos REPROVADOS, roubando a palavra do estado vizinho, e
+                o primeiro ramo escondia os reprovados sempre que houvesse ao
+                menos um pendente. Sao coisas diferentes com acoes diferentes
+                (um a pessoa corrige, o outro ela confirma), entao aparecem
+                separadas e com nomes que nao se cruzam. */}
+            {/* TODO(Ana): revisar as contagens de criterios do cabecalho. */}
+            {aConfirmar > 0 && reprovados > 0
+              ? `${aConfirmar} a confirmar e ${reprovados} a corrigir, de ${checks.length} critérios`
+              : aConfirmar > 0
+                ? `${aConfirmar} de ${checks.length} critérios a confirmar`
+                : reprovados > 0
+                  ? `${reprovados} de ${checks.length} critérios a corrigir`
+                  : `${checks.length} critérios ok`}
           </span>
         ) : paste ? (
           <span className="mt-2 block text-xs font-bold text-slate-500">
@@ -189,6 +199,21 @@ export default function SectionReport({
                   <div className="min-w-0">
                     <p className="text-sm font-black text-slate-900">
                       {check.label}
+                      {pendente ? (
+                        // ROTULO proprio do estado pendente, ao lado do nome do
+                        // criterio. O icone `CircleHelp` ja o separava do
+                        // reprovado por forma, mas forma sozinha nao nomeia: o
+                        // que a pessoa precisa saber e que este criterio nao foi
+                        // avaliado, e nao que ele foi avaliado e passou ou
+                        // reprovou. Texto no DOM, nao so cor nem so icone.
+                        // TODO(Ana): revisar o rotulo de critério não avaliado.
+                        <span
+                          data-testid={`check-pendente-${check.id}`}
+                          className="ml-2 inline-block whitespace-nowrap rounded-full border-2 border-slate-900 bg-white px-2 py-0.5 align-middle text-[10px] font-black uppercase tracking-wide text-slate-900"
+                        >
+                          não avaliado
+                        </span>
+                      ) : null}
                     </p>
                     <p className="text-sm text-slate-500">
                       {pendente

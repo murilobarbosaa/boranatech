@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import { motion } from "framer-motion";
-import { ArrowRight, Linkedin, Sparkles } from "lucide-react";
+import { ArrowRight, CircleHelp, Linkedin, Sparkles } from "lucide-react";
 import {
   faixaLabelOf,
   faixaUiOf,
@@ -219,6 +219,39 @@ export default function LinkedinScoreHero({
             >
               {notaIncompleta ? "A confirmar" : faixaLabelOf(deterministic.faixa)}
             </motion.span>
+            {notaIncompleta ? (
+              /*
+               * O NOME do estado, separado da explicacao que vem logo abaixo.
+               *
+               * O chip acima troca a faixa por "A confirmar", e isso sozinho
+               * nao bastava: quem nunca viu a faixa normal nao tem como saber
+               * que aquele rotulo e excepcional, e a nota grande ao lado
+               * continua com cara de veredito fechado. Esta linha diz o fato em
+               * uma frase ("a nota e parcial, e por que"), e o asterisco abaixo
+               * segue com o resto (qual campo, quanto pesa, o que fazer). Uma
+               * nomeia o estado, o outro explica a causa e o caminho: nao ha
+               * duplicacao, e nenhum dos dois repete o ponteiro para o passo de
+               * revisao, que continua morando so no asterisco.
+               *
+               * Sem depender de cor: o icone e uma FORMA distinta e a frase
+               * carrega o sentido inteiro se o estilo nao carregar.
+               */
+              // TODO(Ana): revisar o selo de nota parcial.
+              <span
+                role="note"
+                data-testid="nota-parcial"
+                className="mt-3 inline-flex max-w-full items-start gap-1.5 rounded-xl border-2 border-slate-900 bg-white px-3 py-1.5 text-left text-xs font-black text-slate-900"
+              >
+                <CircleHelp
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                  aria-hidden
+                />
+                <span className="min-w-0 break-words">
+                  Nota parcial: alguns critérios não puderam ser avaliados com
+                  segurança.
+                </span>
+              </span>
+            ) : null}
             {notaIncompleta ? (
               /*
                * O asterisco da nota. A porcentagem sai de `pontosPendentes`
