@@ -213,17 +213,14 @@ const naoReconhecidasOutras: string[] = [];
 // EXISTS public.admin_refunds) e existe no banco alvo, entao o parser esta
 // certo e quem estava desatualizado era o numero.
 //
-// MERGE 2026-08-21 (frente billing): esta branch declara mais 3 tabelas,
-// billing_failed_payments (3694855c), stripe_customers e
-// payment_recovery_emails (c9ec5c7e). Partindo de 81, que era a base comum,
-// a main somou 1 e esta frente somou 3.
-//
-// O VALOR ABAIXO AINDA E O DA MAIN, e por isso esta ERRADO neste commit de
-// merge, DE PROPOSITO: a recontagem vem da fonte declarada, num commit
-// separado, para o diff do merge nao esconder a decisao de numero. Escolher
-// entre 82 e 84 seria a armadilha, porque as duas contribuicoes sao disjuntas
-// e nenhum dos dois valores descreve o conjunto resultante.
-const EXPECTED_TABLE_COUNT = 82;
+// 85 desde o merge da frente billing (2026-08-21), que declara mais 3 tabelas:
+// billing_failed_payments (3694855c), stripe_customers e payment_recovery_emails
+// (c9ec5c7e). CONTADO DA FONTE, nao escolhido entre os dois lados do merge: nem
+// 82 (main) nem 84 (branch) descreviam o conjunto resultante, porque as
+// contribuicoes sao disjuntas. Partindo de 81, a base comum, a main somou 1
+// (admin_refunds) e esta frente somou 3. O proprio guard reportou
+// "o conjunto declarado mudou: 85 tabela(s)" antes de este numero ser escrito.
+const EXPECTED_TABLE_COUNT = 85;
 
 // Mesma assercao de tamanho das tabelas, pelo mesmo motivo: pegar o caso em que
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
@@ -797,11 +794,11 @@ if (expostas !== null) {
 // 82 pela mesma causa do EXPECTED_TABLE_COUNT: admin_refunds declara
 // `alter table ... enable row level security` e entrou sem o numero subir.
 //
-// MERGE 2026-08-21 (frente billing): as 3 tabelas desta frente tambem declaram
-// `enable row level security`, entao este numero anda junto com o de tabelas.
-// Valor da main preservado aqui e recontado no commit seguinte, pelo mesmo
-// motivo explicado em EXPECTED_TABLE_COUNT.
-const EXPECTED_RLS_COUNT = 82;
+// 85 desde o merge da frente billing (2026-08-21): as 3 tabelas novas declaram
+// `alter table ... enable row level security` cada uma, entao este numero anda
+// junto com o de tabelas. Conferido na fonte, arquivo a arquivo, e nao deduzido
+// do contador de tabelas.
+const EXPECTED_RLS_COUNT = 85;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 const rlsVivas = [...rlsDeclarada].filter((t) => declared.has(t)).sort();
@@ -995,17 +992,26 @@ if (esquema.naoClassificados.length > 0) {
 
 // Assercao de tamanho do conjunto, mesma regra dos outros EXPECTED_*: MEXER
 // NESTES NUMEROS E ATO DELIBERADO, no mesmo commit da migration que cria ou
-// remove o objeto, com o nome dele na mensagem. Valores medidos em 2026-07-28
-// sobre as 117 migrations do diretorio.
-// 915 nesta branch, nao 916. A migration de consentimento
-// (20260728180000_add_consent_method_to_user_consents.sql) e da outra frente e nao
-// existe aqui, porque esta branch nasceu de origin/main. A coluna
-// `user_consents.consent_method` JA existe no banco (a outra sessao aplicou), e por
-// isso o guard reporta "1 coluna no banco sem declaracao": correto e esperado.
-// Quando aquele trabalho entrar na main, quem o mergear sobe este numero para 916
-// no mesmo commit da migration, que e a regra da casa.
-const EXPECTED_COLUMN_COUNT = 915;
-const EXPECTED_INDEX_COUNT = 137;
+// remove o objeto, com o nome dele na mensagem.
+//
+// RECONTADOS em 2026-08-21, no merge da main nesta frente. Os valores anteriores
+// (915 colunas, 137 indices) foram medidos em 2026-07-28 sobre as 117 migrations
+// que o diretorio tinha ENTAO, e o diretorio andou: 16 migrations da main mais as
+// 5 desta frente. Os tres numeros saem do MESMO parser que faz a comparacao (a
+// fonte declarada, sem banco), lidos da saida do proprio guard antes de serem
+// escritos aqui.
+//
+// A previsao que estava escrita aqui se cumpriu: o comentario antigo dizia "915 e
+// nao 916" porque 20260728180000_add_consent_method_to_user_consents.sql era da
+// outra frente e nao existia nesta branch, e mandava somar quando ela chegasse.
+// Ela chegou no merge, junto com as outras 15.
+//
+// 915 -> 943 colunas e 137 -> 146 indices. POLICY continua 68: as 5 migrations
+// desta frente usam RLS deny-all sem policy nomeada (so o service role le e
+// escreve), entao nenhuma policy nova foi declarada. Nao reclamar tambem e uma
+// leitura do guard, e vale registrar qual foi.
+const EXPECTED_COLUMN_COUNT = 943;
+const EXPECTED_INDEX_COUNT = 146;
 const EXPECTED_POLICY_COUNT = 68;
 
 const conjuntos: Array<[string, number, number]> = [
