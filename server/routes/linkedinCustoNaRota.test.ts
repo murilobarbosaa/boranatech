@@ -36,6 +36,7 @@ interface ParamsDoLog {
   outputChars?: number;
   costEstimate?: number;
   errorMessage?: string;
+  attemptDetails?: readonly unknown[];
 }
 
 interface UsuarioDoTeste {
@@ -191,9 +192,10 @@ describe("a rota grava o custo de TODAS as tentativas", () => {
     expect(linha.inputTokens).toBe(1111);
     expect(linha.outputTokens).toBe(222);
     expect(linha.costEstimate).toBeGreaterThan(0);
-    // Sem tentativa perdida nao ha o que contar: a coluna de texto fica nula,
-    // exatamente como nas linhas ja gravadas em producao.
+    // `error_message` significa UMA coisa so, e sucesso nao tem erro.
     expect(linha.errorMessage).toBeUndefined();
+    // O detalhe da unica tentativa vai integro para a coluna estruturada.
+    expect(linha.attemptDetails).toHaveLength(1);
   });
 
   it("sucesso na segunda tentativa: a linha leva a soma das duas", async () => {
@@ -216,9 +218,33 @@ describe("a rota grava o custo de TODAS as tentativas", () => {
     // Antes: 1111 e 222, com os 9999 tokens da tentativa 1 fora da conta.
     expect(linha.inputTokens).toBe(11110);
     expect(linha.outputTokens).toBe(1110);
-    expect(linha.errorMessage).toBe(
-      "tentativas: 2 | 1 json_invalido 9999/888; 2 sucesso 1111/222",
-    );
+
+    // ESTA ASSERCAO MUDOU DE ALVO, e a mudanca e o ponto do lote.
+    //
+    // Ate a Fase 3 ela afirmava a string espremida
+    // "tentativas: 2 | 1 json_invalido 9999/888; 2 sucesso 1111/222" dentro de
+    // `errorMessage`, num caso de SUCESSO. Ou seja: o teste travava a propria
+    // limitacao, que era a contabilidade da chamada morar no campo do erro,
+    // como texto livre com teto de 500 caracteres.
+    //
+    // Agora `error_message` volta a ser so a mensagem (nula no sucesso) e o
+    // detalhe vai INTEGRO e estruturado. O que se afirma aqui e mais forte que
+    // antes: nao a formatacao do texto, e sim que as duas tentativas chegaram
+    // com desfecho e tokens proprios, consultaveis.
+    expect(linha.errorMessage).toBeUndefined();
+    const detalhe = linha.attemptDetails as Array<{
+      tentativa: number;
+      desfecho: string;
+      uso: { medido: boolean; inputTokens: number; outputTokens: number };
+    }>;
+    expect(detalhe).toHaveLength(2);
+    expect(detalhe[0].tentativa).toBe(1);
+    expect(detalhe[0].desfecho).toBe("json_invalido");
+    expect(detalhe[0].uso.inputTokens).toBe(9999);
+    expect(detalhe[0].uso.outputTokens).toBe(888);
+    expect(detalhe[1].tentativa).toBe(2);
+    expect(detalhe[1].desfecho).toBe("sucesso");
+    expect(detalhe[1].uso.inputTokens).toBe(1111);
   });
 
   it("duas tentativas falhando: linha de ERRO com os tokens das duas", async () => {
@@ -238,11 +264,22 @@ describe("a rota grava o custo de TODAS as tentativas", () => {
     expect(linha.inputTokens).toBe(10000);
     expect(linha.outputTokens).toBe(1000);
     expect(linha.costEstimate).toBeGreaterThan(0);
-    // A mensagem original continua na frente; a trilha entra depois dela.
+    // TAMBEM MUDOU DE ALVO, pelo mesmo motivo do teste acima: ele afirmava que
+    // a trilha vinha concatenada por um pipe atras da mensagem. Hoje
+    // `error_message` carrega SOMENTE a mensagem, sem teto artificial, e o
+    // detalhe e estruturado.
     expect(linha.errorMessage).toContain("JSON válido");
-    expect(linha.errorMessage).toContain(
-      "tentativas: 2 | 1 json_invalido 5000/500; 2 json_invalido 5000/500",
-    );
+    expect(linha.errorMessage).not.toContain("tentativas:");
+    expect(linha.errorMessage).not.toContain("|");
+    const detalhe = linha.attemptDetails as Array<{
+      tentativa: number;
+      desfecho: string;
+    }>;
+    expect(detalhe).toHaveLength(2);
+    expect(detalhe.map((d) => d.desfecho)).toEqual([
+      "json_invalido",
+      "json_invalido",
+    ]);
   });
 
   it("texto ilegivel nao gera linha nenhuma: recusado antes da reserva", async () => {

@@ -268,12 +268,18 @@ router.post(
         inputTokens: uso.inputTokens,
         outputTokens: uso.outputTokens,
         costEstimate: uso.costEstimate,
-        // A trilha so aparece quando houve tentativa PERDIDA dentro de um
-        // sucesso, que e o unico caso em que ela informa algo. Sucesso de
-        // primeira segue gravando `error_message` nulo, como sempre gravou.
-        // Nao ha coluna estruturada para o detalhe por tentativa e criar uma
-        // exigiria migration; ver o relatorio do lote.
-        errorMessage: uso.tentativas > 1 ? uso.trilha : undefined,
+        // AGORA HA COLUNA ESTRUTURADA, e o texto espremido saiu.
+        //
+        // Ate a Fase 3 a trilha da chamada era colada aqui, em
+        // `error_message`, porque nao existia campo proprio: sucesso com
+        // tentativa perdida gravava a contabilidade no campo do ERRO. Somar
+        // tokens por desfecho exigiria parsear texto livre em SQL.
+        //
+        // `error_message` volta a significar so uma coisa, e no ramo de
+        // sucesso isso e `undefined`, como sempre foi para sucesso de primeira.
+        // O array vai INTEGRO para `attempt_details`, sem teto e sem segunda
+        // serializacao: e o mesmo objeto que alimentava o texto.
+        attemptDetails: tentativas,
       });
 
       const analysisId = await persistAnalysis(
@@ -300,13 +306,15 @@ router.post(
         tool: TOOL,
         requestId,
         status: "error",
-        errorMessage:
-          uso.tentativas > 0 ? `${message} | ${uso.trilha}` : message,
+        // SO A MENSAGEM. O detalhe por tentativa mora em `attempt_details`
+        // desde a Fase 3, e nao mais concatenado por um pipe atras do erro.
+        errorMessage: message,
         inputChars: uso.inputChars,
         outputChars: uso.outputChars,
         inputTokens: uso.inputTokens,
         outputTokens: uso.outputTokens,
         costEstimate: uso.costEstimate,
+        attemptDetails: tentativas,
       });
 
       if (err instanceof LinkedinUnreadableError) {

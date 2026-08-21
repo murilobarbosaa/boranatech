@@ -112,15 +112,21 @@ export async function checkAiDailyLimit(
   }
 
   try {
-    const { data: usageCount, error: usageError } = await supabaseAdmin.rpc("get_ai_usage_today", {
-      p_user_id: userId,
-    });
+    const { data: usageCount, error: usageError } = await supabaseAdmin.rpc(
+      "get_ai_usage_today",
+      {
+        p_user_id: userId,
+      },
+    );
 
     if (!usageError && usageCount !== null) {
       return { allowed: usageCount < limit, count: usageCount, limit };
     }
 
-    console.warn(`${logScope} RPC de rate limit retornou erro/null para`, userId);
+    console.warn(
+      `${logScope} RPC de rate limit retornou erro/null para`,
+      userId,
+    );
     return { allowed: false, count: 0, limit, verificationFailed: true };
   } catch {
     // Silencio (b) deliberado: fail-closed, ja logado, e indisponibilidade
@@ -169,12 +175,18 @@ export async function checkAgentDailyLimit(
       return { allowed: usageCount < limit, count: usageCount, limit };
     }
 
-    console.warn(`${logScope} RPC de rate limit do agente retornou erro/null para`, userId);
+    console.warn(
+      `${logScope} RPC de rate limit do agente retornou erro/null para`,
+      userId,
+    );
     return { allowed: false, count: 0, limit, verificationFailed: true };
   } catch {
     // Silencio (b) deliberado: fail-closed, ja logado, e indisponibilidade
     // transitoria da RPC viraria ruido de plantao sem acao possivel.
-    console.warn(`${logScope} Falha ao verificar rate limit do agente para`, userId);
+    console.warn(
+      `${logScope} Falha ao verificar rate limit do agente para`,
+      userId,
+    );
     return { allowed: false, count: 0, limit, verificationFailed: true };
   }
 }
@@ -210,12 +222,18 @@ export async function checkInterviewTurnDailyLimit(
       return { allowed: usageCount < limit, count: usageCount, limit };
     }
 
-    console.warn(`${logScope} RPC de rate limit de turnos retornou erro/null para`, userId);
+    console.warn(
+      `${logScope} RPC de rate limit de turnos retornou erro/null para`,
+      userId,
+    );
     return { allowed: false, count: 0, limit, verificationFailed: true };
   } catch {
     // Silencio (b) deliberado: fail-closed, ja logado, e indisponibilidade
     // transitoria da RPC viraria ruido de plantao sem acao possivel.
-    console.warn(`${logScope} Falha ao verificar rate limit de turnos para`, userId);
+    console.warn(
+      `${logScope} Falha ao verificar rate limit de turnos para`,
+      userId,
+    );
     return { allowed: false, count: 0, limit, verificationFailed: true };
   }
 }
@@ -240,12 +258,18 @@ export async function checkInterviewTtsDailyLimit(
       return { allowed: usageCount < limit, count: usageCount, limit };
     }
 
-    console.warn(`${logScope} RPC de rate limit de TTS retornou erro/null para`, userId);
+    console.warn(
+      `${logScope} RPC de rate limit de TTS retornou erro/null para`,
+      userId,
+    );
     return { allowed: false, count: 0, limit, verificationFailed: true };
   } catch {
     // Silencio (b) deliberado: fail-closed, ja logado, e indisponibilidade
     // transitoria da RPC viraria ruido de plantao sem acao possivel.
-    console.warn(`${logScope} Falha ao verificar rate limit de TTS para`, userId);
+    console.warn(
+      `${logScope} Falha ao verificar rate limit de TTS para`,
+      userId,
+    );
     return { allowed: false, count: 0, limit, verificationFailed: true };
   }
 }
@@ -278,12 +302,18 @@ export async function checkCareerPlanChatDailyLimit(
       return { allowed: usageCount < limit, count: usageCount, limit };
     }
 
-    console.warn(`${logScope} RPC de rate limit do chat de intake retornou erro/null para`, userId);
+    console.warn(
+      `${logScope} RPC de rate limit do chat de intake retornou erro/null para`,
+      userId,
+    );
     return { allowed: false, count: 0, limit, verificationFailed: true };
   } catch {
     // Silencio (b) deliberado: fail-closed, ja logado, e indisponibilidade
     // transitoria da RPC viraria ruido de plantao sem acao possivel.
-    console.warn(`${logScope} Falha ao verificar rate limit do chat de intake para`, userId);
+    console.warn(
+      `${logScope} Falha ao verificar rate limit do chat de intake para`,
+      userId,
+    );
     return { allowed: false, count: 0, limit, verificationFailed: true };
   }
 }
@@ -316,12 +346,18 @@ export async function checkRoadmapIntakeChatDailyLimit(
       return { allowed: usageCount < limit, count: usageCount, limit };
     }
 
-    console.warn(`${logScope} RPC de rate limit do chat de intake retornou erro/null para`, userId);
+    console.warn(
+      `${logScope} RPC de rate limit do chat de intake retornou erro/null para`,
+      userId,
+    );
     return { allowed: false, count: 0, limit, verificationFailed: true };
   } catch {
     // Silencio (b) deliberado: fail-closed, ja logado, e indisponibilidade
     // transitoria da RPC viraria ruido de plantao sem acao possivel.
-    console.warn(`${logScope} Falha ao verificar rate limit do chat de intake para`, userId);
+    console.warn(
+      `${logScope} Falha ao verificar rate limit do chat de intake para`,
+      userId,
+    );
     return { allowed: false, count: 0, limit, verificationFailed: true };
   }
 }
@@ -338,6 +374,50 @@ export interface LogAiUsageParams {
   outputTokens?: number;
   model?: string;
   costEstimate?: number;
+  /**
+   * Detalhe POR TENTATIVA da chamada, gravado em `ai_usage_logs.attempt_details`.
+   *
+   * `readonly unknown[]` e nao um tipo concreto: `logAiUsage` serve nove
+   * ferramentas e nao deve conhecer o formato de tentativa de nenhuma delas.
+   * Quem monta o array e o dono do fluxo (hoje so a rota do analisador de
+   * LinkedIn), e o array vai INTEGRO para o jsonb. Nao ha segunda serializacao
+   * aqui: e o mesmo objeto que a rota ja tinha em maos.
+   *
+   * Ausente vira NULL na coluna, e NULL significa "esta linha nao registrou
+   * detalhe". Array VAZIO e coisa diferente, e uma medicao: significa que a
+   * chamada nao teve tentativa nenhuma (o atalho sem IA). Os dois nao podem
+   * colapsar, e o reader abaixo e o que garante isso na volta.
+   */
+  attemptDetails?: readonly unknown[];
+}
+
+/**
+ * ESTADO NOMEADO da ausencia de detalhe, na leitura.
+ *
+ * String sentinela e nao `null`, pelo mesmo motivo de `CONTAGEM_INDISPONIVEL`
+ * em `shared/linkedin/readQualitative.ts`: `null` convida `?? []`, e o primeiro
+ * `?? []` transforma "nao sei" em "medi zero tentativa" em silencio. Com a
+ * uniao, o TypeScript recusa iterar antes de checar, e o erro aparece no
+ * `pnpm check` em vez de num painel que soma errado.
+ */
+export const DETALHE_DE_TENTATIVAS_INDISPONIVEL = "indisponivel";
+
+export type DetalheDeTentativasLido =
+  | readonly unknown[]
+  | typeof DETALHE_DE_TENTATIVAS_INDISPONIVEL;
+
+/**
+ * Leitura FAIL-CLOSED do detalhe por tentativa.
+ *
+ * Toda linha gravada antes desta coluna existir tem NULL, e isso NAO e o mesmo
+ * que "a chamada nao teve tentativa". Qualquer coisa que nao seja um array
+ * (null, objeto, numero, jsonb corrompido) vira o estado nomeado; array vazio
+ * passa como array vazio, porque ele e uma medicao legitima.
+ */
+export function lerDetalheDeTentativas(
+  valor: unknown,
+): DetalheDeTentativasLido {
+  return Array.isArray(valor) ? valor : DETALHE_DE_TENTATIVAS_INDISPONIVEL;
 }
 
 /**
@@ -419,12 +499,19 @@ export async function logAiUsage(params: LogAiUsageParams) {
           output_tokens: params.outputTokens || 0,
           model: params.model || DEFAULT_MODEL,
           cost_estimate: params.costEstimate || 0,
+          // `?? null` e nao `|| null`: array vazio e um valor legitimo (o
+          // atalho sem IA nao tem tentativa) e `||` o converteria em NULL,
+          // apagando a diferenca entre "medi zero" e "nao registrei".
+          attempt_details: params.attemptDetails ?? null,
         })
         .eq("id", reserva);
       if (!error) return;
       avisarReservaOrfa(params, error.message);
     } catch (err) {
-      avisarReservaOrfa(params, err instanceof Error ? err.message : String(err));
+      avisarReservaOrfa(
+        params,
+        err instanceof Error ? err.message : String(err),
+      );
     }
     return;
   }
@@ -441,6 +528,7 @@ export async function logAiUsage(params: LogAiUsageParams) {
       output_tokens: params.outputTokens || 0,
       model: params.model || DEFAULT_MODEL,
       cost_estimate: params.costEstimate || 0,
+      attempt_details: params.attemptDetails ?? null,
     });
   } catch (err) {
     console.warn("[ai] Falha ao registrar uso:", err);

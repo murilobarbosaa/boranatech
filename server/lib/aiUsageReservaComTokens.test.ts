@@ -99,8 +99,13 @@ describe("linha de erro COM tokens nao consome cota", () => {
       tool: "linkedin-analyzer",
       requestId: "req-1",
       status: "error",
-      errorMessage:
-        "Resposta da IA não veio em JSON válido | tentativas: 2 | 1 json_invalido 5000/500; 2 json_invalido 5000/500",
+      // A mensagem LIMPA, sem a trilha colada por um pipe. Ate a Fase 3 este
+      // teste passava a string espremida aqui, reproduzindo a limitacao que o
+      // lote do detalhe estruturado removeu: o detalhe por tentativa agora vai
+      // em `attempt_details`, e `error_message` carrega so a mensagem. A
+      // afirmacao do arquivo nao muda com isso (ela e sobre a COTA, e a cota
+      // nao olha para nenhum dos dois campos).
+      errorMessage: "Resposta da IA não veio em JSON válido",
       inputChars: 8000,
       outputChars: 20,
       inputTokens: 10000,
