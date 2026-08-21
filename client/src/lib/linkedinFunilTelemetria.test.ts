@@ -117,17 +117,22 @@ describe("EIXO 2: todo erro que o cliente lanca vira desfecho instrumentado", ()
   it("o parser leu TODOS os throws do analyze, sem encolher em silencio", () => {
     const { literais, totalThrows } = codigosDoCliente();
     // A CONTA QUE FECHA, e e ela que impede o parser de encolher em silencio:
-    // sao 10 `throw new Error(` no corpo de `analyzeLinkedin`. Nove sao
-    // alcancados pelos dois regex (8 literais simples mais o template com
-    // prefixo `RATE_LIMITED:`), e o decimo e
+    // sao 11 `throw new Error(` no corpo de `analyzeLinkedin`. Dez sao
+    // alcancados pelos dois regex (9 literais simples mais o template com
+    // prefixo `RATE_LIMITED:`), e o decimo primeiro e
     // `body.error?.message || "ANALYSIS_FAILED"`, que nenhum literal casa
-    // porque o valor e a frase escrita pela rota. Esse decimo e exatamente o
+    // porque o valor e a frase escrita pela rota. Esse ultimo e exatamente o
     // balde de texto livre, coberto por `erro_generico`.
+    //
+    // Era 10 e 9 ate a Fase 4, lote 2, que acrescentou `ANALISE_EM_ANDAMENTO`
+    // (o 409 da segunda analise simultanea). CRESCIMENTO ADITIVO: nenhum codigo
+    // saiu, nenhum desfecho mudou de significado, e a diferenca entre os dois
+    // numeros continua sendo exatamente 1, que e o balde de texto livre.
     //
     // Mudar estes numeros e ato deliberado, no commit que mexe em
     // `linkedinClient`: e o mesmo contrato de `EXPECTED_TABLE_COUNT`.
-    expect(totalThrows).toBe(10);
-    expect(literais.length).toBe(9);
+    expect(totalThrows).toBe(11);
+    expect(literais.length).toBe(10);
     expect(totalThrows - literais.length).toBe(1);
   });
 

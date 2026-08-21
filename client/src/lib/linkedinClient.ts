@@ -83,6 +83,16 @@ export async function analyzeLinkedin(
       `RATE_LIMITED: ${body.error?.message || "Limite atingido"}`,
     );
   }
+  // 409 SO POR STATUS, sem ler o corpo, e isto foi medido antes de escrito.
+  //
+  // A rota `/analyze` nao devolve 409 em nenhum outro ramo: o unico outro 409 do
+  // analisador e `stale_progress_revision`, e ele vive no endpoint de progresso
+  // de melhorias, que tem cliente proprio (`setLinkedinImprovement`, que le o
+  // codigo do corpo). Aqui o status sozinho ja e distintivo, e ler o corpo
+  // acrescentaria um `await response.json()` num caminho de erro sem ganhar
+  // distincao nenhuma. Se um dia a rota ganhar um SEGUNDO 409, esta linha passa
+  // a precisar do codigo do corpo.
+  if (response.status === 409) throw new Error("ANALISE_EM_ANDAMENTO");
   if (response.status === 503) throw new Error("LINKEDIN_BUSY");
   if (response.status === 422) throw new Error("UNREADABLE");
   if (response.status === 400) throw new Error("INVALID_REQUEST");

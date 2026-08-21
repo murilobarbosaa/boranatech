@@ -62,6 +62,27 @@ export const LINKEDIN_TIMEOUT_COPY = {
     "Ainda não encontramos essa análise no seu histórico. Se ela tiver terminado, costuma aparecer em instantes: espere um pouco e procure de novo, ou peça uma nova análise.",
 } as const;
 
+/**
+ * COPY DA SEGUNDA ANALISE SIMULTANEA (409 `analise_em_andamento`).
+ *
+ * Estado NOVO, e nao um sabor de "limite atingido". As duas sao recusas, e e por
+ * isso que precisam de frases diferentes: quem esgotou a cota tem de voltar
+ * amanha, e quem tem uma analise rodando so precisa esperar alguns segundos.
+ * Colapsar as duas mandaria a pessoa embora de um problema que se resolve
+ * sozinho.
+ *
+ * A frase NAO manda tentar de novo, e o botao de tentar de novo tambem some
+ * neste estado: tentar de novo aqui e exatamente o que produz a cobranca dupla
+ * que o lote fecha. O que ela oferece e a busca no historico, que ja e provada
+ * sem custo de IA nem de cota.
+ */
+// TODO(Ana): copy do estado de analise ja em andamento (409).
+export const LINKEDIN_EM_ANDAMENTO_COPY =
+  "Você já tem uma análise deste perfil em andamento, provavelmente em outra aba ou de um envio de alguns segundos atrás. Espere ela terminar: o resultado aparece na aba que está rodando e também fica salvo no seu histórico.";
+
+/** Estados em que procurar no historico e a acao util, e nao analisar de novo. */
+const ESTADOS_COM_BUSCA_NO_HISTORICO = ["TIMEOUT", "ANALISE_EM_ANDAMENTO"];
+
 function resolveError(error: string): string {
   if (error === "LOGIN_REQUIRED") return "Faça login para usar a análise.";
   if (error.startsWith("RATE_LIMITED")) {
@@ -79,6 +100,7 @@ function resolveError(error: string): string {
     return "Não consegui completar a análise agora. Tente de novo.";
   }
   if (error === "TIMEOUT") return LINKEDIN_TIMEOUT_COPY.mensagem;
+  if (error === "ANALISE_EM_ANDAMENTO") return LINKEDIN_EM_ANDAMENTO_COPY;
   // TODO(Ana): copy do estado de falha de rede.
   if (error === "NETWORK") {
     return "Não conseguimos falar com o servidor. Verifique sua conexão e tente de novo; se persistir, a plataforma pode estar em manutenção.";
@@ -131,9 +153,15 @@ export function LinkedinError({
     );
   }
 
-  // A recuperacao so faz sentido no timeout: nos outros erros nao ha analise em
-  // voo para procurar, e oferecer a busca seria prometer o que nao existe.
-  const podeRecuperar = error === "TIMEOUT" && !!onRecuperar;
+  // A busca no historico so faz sentido onde PODE haver analise a encontrar:
+  // depois de um timeout do client (o servidor nao percebe o aborto e termina) e
+  // quando a rota recusou porque ja existe uma rodando. Nos outros erros nao ha
+  // nada em voo, e oferecer a busca seria prometer o que nao existe.
+  const podeRecuperar =
+    ESTADOS_COM_BUSCA_NO_HISTORICO.includes(error) && !!onRecuperar;
+  // TENTAR DE NOVO SOME quando ja existe uma analise rodando: e literalmente a
+  // acao que cobra a segunda chamada de IA que este estado existe para evitar.
+  const podeTentarDeNovo = error !== "ANALISE_EM_ANDAMENTO" && !!onRetry;
 
   return (
     <div className="card-brutal rounded-2xl border-slate-300 bg-red-50 p-6 text-center">
@@ -148,7 +176,7 @@ export function LinkedinError({
           {LINKEDIN_TIMEOUT_COPY.vazio}
         </p>
       ) : null}
-      {podeRecuperar || onRetry ? (
+      {podeRecuperar || podeTentarDeNovo ? (
         <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
           {podeRecuperar ? (
             <button
@@ -163,7 +191,7 @@ export function LinkedinError({
                 : LINKEDIN_TIMEOUT_COPY.acao}
             </button>
           ) : null}
-          {onRetry ? (
+          {podeTentarDeNovo ? (
             /* SECUNDARIA no timeout, primaria no resto. Tentar de novo continua
                disponivel de proposito: ela e a saida certa quando a analise
                realmente nao completou. O que mudou e a ORDEM, porque a acao

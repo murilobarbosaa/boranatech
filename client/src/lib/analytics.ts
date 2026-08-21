@@ -371,6 +371,12 @@ export const LINKEDIN_DESFECHOS_ANALISE = [
   "invalid_request",
   "rate_limited",
   "linkedin_busy",
+  // Segunda analise do mesmo usuario recusada enquanto a primeira ainda roda
+  // (Fase 4, lote 2). Desfecho PROPRIO e nao um sabor de `rate_limited`: os dois
+  // sao recusas, mas medem coisas opostas. `rate_limited` conta gente que
+  // esgotou a cota do dia; este conta gente que abriu duas abas, e a acao que
+  // cada um pede e diferente.
+  "analise_em_andamento",
   "pro_required",
   "login_required",
   "timeout",
@@ -391,6 +397,7 @@ const DESFECHO_POR_CODIGO: Record<string, DesfechoAnalise> = {
   UNREADABLE: "unreadable",
   INVALID_REQUEST: "invalid_request",
   LINKEDIN_BUSY: "linkedin_busy",
+  ANALISE_EM_ANDAMENTO: "analise_em_andamento",
   PRO_REQUIRED: "pro_required",
   LOGIN_REQUIRED: "login_required",
   TIMEOUT: "timeout",
