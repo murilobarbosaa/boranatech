@@ -172,7 +172,7 @@ Ela **não está em produção** e **não é mais fast-forward**.
 | # | Pendência | Estado em 2026-07-28 |
 | --- | --- | --- |
 | 1 | **Rebase sobre a `main`** | Necessário: a branch ficou atrás quando auth, hero counter e Dicas entraram. Não foi feito de propósito, para não reescrever a branch sem decisão. |
-| 2 | **5 migrations não aplicadas** | `20260728190000_create_billing_failed_payments`, `20260728200000_create_stripe_customers`, `20260728210000_create_payment_recovery_emails`, `20260728220000_schedule_payment_recovery`, `20260728230000_add_episodio_to_payment_recovery_emails` |
+| 2 | **5 migrations não aplicadas** | `20260822100000_create_billing_failed_payments`, `20260822100100_create_stripe_customers`, `20260822100200_create_payment_recovery_emails`, `20260822100300_schedule_payment_recovery`, `20260822100400_add_episodio_to_payment_recovery_emails` |
 | 3 | **`scripts/backfillStripeCustomers.mjs` nunca executado** | Tem dry-run por padrão e exige `--confirm`. Nenhuma execução real registrada. |
 | 4 | **Aviso das 3 tabelas na `main`** | `check:migrations` reporta `payment_recovery_emails, stripe_customers, billing_failed_payments` expostas pelo PostgREST e não declaradas. Some sozinho quando a billing entrar. |
 
@@ -266,8 +266,8 @@ Vale repetir aqui porque o merge da billing dispara deploy automático (seção 
    deliberada;
 6. smoke test.
 
-Atenção ao passo 3: `20260728220000_schedule_payment_recovery` mexe em
-`cron.schedule` e `20260728230000_add_episodio_...` altera tabela existente.
+Atenção ao passo 3: `20260822100300_schedule_payment_recovery` mexe em
+`cron.schedule` e `20260822100400_add_episodio_...` altera tabela existente.
 Conferir a janela de migration destrutiva antes.
 
 ---

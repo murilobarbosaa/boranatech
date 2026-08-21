@@ -2,7 +2,7 @@
 //
 // Antes: `createCheckout` passava `customer_email` e nunca `customer`, e o
 // Checkout criava um Customer NOVO em cada sessao submetida. Ver a migration
-// 20260728200000_create_stripe_customers.sql para a medicao e o porque.
+// 20260822100100_create_stripe_customers.sql para a medicao e o porque.
 //
 // TODA a resolucao vive AQUI, e o call site apenas pede o id. E a regra de guarda
 // dentro da funcao: `createCheckout` tem dois ramos (cartao e boleto) e ambos

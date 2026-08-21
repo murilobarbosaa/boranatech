@@ -13,7 +13,7 @@
 // stage 1, o upsert conflitava com a linha de stage 1 do episodio anterior,
 // ignoreDuplicates transformava em DO NOTHING, e o runner contava como
 // `ja_registrado`. Quem falhasse em agosto e voltasse em outubro nunca receberia
-// e-mail, e o contador diria "ja tratado". Ver a migration 20260728230000.
+// e-mail, e o contador diria "ja tratado". Ver a migration 20260822100400.
 
 import {
   classificarMotivo,

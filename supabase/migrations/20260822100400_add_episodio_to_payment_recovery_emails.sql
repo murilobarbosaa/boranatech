@@ -1,4 +1,4 @@
--- Corrige um bug de desenho da 20260728210000: a reabertura de episodio era
+-- Corrige um bug de desenho da 20260822100200: a reabertura de episodio era
 -- INALCANCAVEL.
 --
 -- O QUE ESTAVA ERRADO

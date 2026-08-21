@@ -122,10 +122,10 @@ não declaradas = 85, que fecha com a contagem de produção.
 Rastreado em 2026-08-01. As três existem no banco desde 2026-07-28 porque as
 migrations foram aplicadas **deliberadamente**, antes do deploy do código que as
 consome — a ordem que o `CLAUDE.md` manda seguir. Os quatro arquivos que as
-declaram (`20260728190000_create_billing_failed_payments`,
-`20260728200000_create_stripe_customers`,
-`20260728210000_create_payment_recovery_emails` e
-`20260728230000_add_episodio_to_payment_recovery_emails`, este último trazendo a
+declaram (`20260822100000_create_billing_failed_payments`,
+`20260822100100_create_stripe_customers`,
+`20260822100200_create_payment_recovery_emails` e
+`20260822100400_add_episodio_to_payment_recovery_emails`, este último trazendo a
 coluna `episodio`) vivem na branch **`fix/billing-customer-reuse`**, que ainda
 não subiu. Conferido: nenhum arquivo em `supabase/migrations/` desta árvore
 menciona qualquer uma das três, e nenhum código desta árvore as referencia fora
