@@ -37,17 +37,34 @@ function lerRotas(): Rota[] {
   const out: Rota[] = [];
   for (const arquivo of readdirSync(ROUTES).filter((f) => f.endsWith(".ts"))) {
     const fonte = readFileSync(path.join(ROUTES, arquivo), "utf8");
-    // 4o argumento de checkAiDailyLimit(userId, isPro, escopo, TOOL)
+    // 4o argumento de checkAiDailyLimit(userId, isPro, escopo, TOOL, ...)
     const reservas = Array.from(
       // `[^),\s]` exclui a virgula do grupo, e o `,?` aceita a virgula a
       // direita da forma multilinha, que e a que o Prettier produz quando a
       // chamada passa da largura. Sem o `,?` o regex nao casa nada e a rota
       // sairia da auditoria em silencio, que e pior que a falha que ele tinha.
+      //
+      // O `(?:\s*[^),\s]+\s*,?)*` aceita argumentos DEPOIS do quarto. Sem ele,
+      // o prazo de banco que a Fase 4 acrescentou em `linkedin.ts` tirou a rota
+      // inteira desta auditoria, e so nao passou despercebido porque a assercao
+      // de TOTAL abaixo quebrou. Foi ela quem pegou; o regex sozinho reportaria
+      // sete rotas certinhas sobre uma superficie menor.
       fonte.matchAll(
-        /checkAiDailyLimit\(\s*[^,]+,\s*[^,]+,\s*[^,]+,\s*([^),\s]+)\s*,?\s*\)/g,
+        /checkAiDailyLimit\(\s*[^,]+,\s*[^,]+,\s*[^,]+,\s*([^),\s]+)\s*,?(?:\s*[^),\s]+\s*,?)*\s*\)/g,
       ),
       (m) => m[1],
     );
+    // ABORTO EM ITEM NAO EXTRAIDO, nos dois sentidos. "As que eu li estao ok"
+    // nao e a mesma pergunta que "eu li todas as que existem": contar as
+    // ocorrencias amplas e comparar com as que o parser leu e o que transforma
+    // um encolhimento silencioso em falha ruidosa, sem depender de alguem ter
+    // escrito o numero 8 la embaixo.
+    const mencoes = (fonte.match(/checkAiDailyLimit\(/g) ?? []).length;
+    if (mencoes !== reservas.length) {
+      throw new Error(
+        `${arquivo}: ha ${mencoes} chamada(s) de checkAiDailyLimit e o parser extraiu ${reservas.length}. Conserte o regex antes de mexer no numero esperado.`,
+      );
+    }
     if (reservas.length === 0) continue;
     // Duas formas: `tool: IDENT` e a abreviada `{ userId, tool, ... }`, que
     // significa que o identificador se chama literalmente `tool`. A primeira
@@ -55,7 +72,9 @@ function lerRotas(): Rota[] {
     // como sem log nenhum: parser cego dando veredito, o defeito de sempre.
     const logs = [
       ...Array.from(
-        fonte.matchAll(/logAiUsage\(\{[\s\S]{0,400}?\btool:\s*([A-Za-z_$][\w$]*)/g),
+        fonte.matchAll(
+          /logAiUsage\(\{[\s\S]{0,400}?\btool:\s*([A-Za-z_$][\w$]*)/g,
+        ),
         (m) => m[1],
       ),
       ...Array.from(

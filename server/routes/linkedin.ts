@@ -10,6 +10,10 @@ import {
 } from "../../shared/linkedin/schema";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import {
+  comPrazoDeBanco,
+  PRAZO_BANCO_ANALISE_MS,
+} from "../../shared/linkedin/prazos";
+import {
   analyzeLinkedin,
   camposDeUsoDaAnalise,
   LinkedinTruncatedError,
@@ -70,19 +74,32 @@ async function persistAnalysis(
       textoHash,
     );
 
-    const { data, error } = await supabaseAdmin
-      .from("linkedin_analyses")
-      .insert({
-        user_id: userId,
-        area: request.area,
-        level: request.level,
-        score: response.deterministic.score,
-        faixa: response.deterministic.faixa,
-        input,
-        result: response,
-      })
-      .select("id")
-      .single();
+    // PRAZO DENTRO DA FUNCAO, nao no call site: assim ele vale para qualquer
+    // chamador futuro sem ninguem ter de lembrar, e o `catch` fail-soft que ja
+    // existe aqui embaixo e quem trata o estouro, sem ramo novo.
+    //
+    // SEMANTICA DE ESTOURO AQUI: a analise JA ESTA PRONTA e continua sendo
+    // entregue; o que se perde e o `analysisId`, e com ele o checklist de
+    // melhorias desta sessao. O insert segue em voo, entao a analise PODE
+    // aparecer no historico mesmo tendo devolvido `analysisId` nulo. Nao ha
+    // linha duplicada nesse caso: o insert e um so, e nada aqui o repete.
+    const { data, error } = await comPrazoDeBanco(
+      supabaseAdmin
+        .from("linkedin_analyses")
+        .insert({
+          user_id: userId,
+          area: request.area,
+          level: request.level,
+          score: response.deterministic.score,
+          faixa: response.deterministic.faixa,
+          input,
+          result: response,
+        })
+        .select("id")
+        .single(),
+      "persistencia",
+      PRAZO_BANCO_ANALISE_MS,
+    );
 
     if (error) {
       console.error(
@@ -197,6 +214,7 @@ router.post(
       !!req.isPro,
       "[linkedin]",
       TOOL,
+      PRAZO_BANCO_ANALISE_MS,
     );
     if (!usage.allowed) {
       // Falha de verificacao (RPC fora) e distinta de cota estourada: 503, nao
@@ -207,6 +225,7 @@ router.post(
           userId,
           tool: TOOL,
           requestId,
+          prazoBancoMs: PRAZO_BANCO_ANALISE_MS,
           status: "error",
           errorMessage: "rate limit check failed",
         });
@@ -223,6 +242,7 @@ router.post(
         userId,
         tool: TOOL,
         requestId,
+        prazoBancoMs: PRAZO_BANCO_ANALISE_MS,
         status: "rate_limited",
       });
       return next(
@@ -262,6 +282,7 @@ router.post(
         userId,
         tool: TOOL,
         requestId,
+        prazoBancoMs: PRAZO_BANCO_ANALISE_MS,
         status: uso.tentativas > 0 ? "success" : "skipped",
         inputChars: uso.inputChars,
         outputChars: uso.outputChars,
@@ -305,6 +326,7 @@ router.post(
         userId,
         tool: TOOL,
         requestId,
+        prazoBancoMs: PRAZO_BANCO_ANALISE_MS,
         status: "error",
         // SO A MENSAGEM. O detalhe por tentativa mora em `attempt_details`
         // desde a Fase 3, e nao mais concatenado por um pipe atras do erro.

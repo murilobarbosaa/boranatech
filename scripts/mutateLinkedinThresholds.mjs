@@ -29,6 +29,7 @@ const V = "shared/linkedin/reguaV2.ts";
 const C = "server/lib/linkedinChecks.ts";
 const A = "server/lib/linkedinAnalyze.ts";
 const I = "server/lib/linkedinIdioma.ts";
+const PZ = "shared/linkedin/prazos.ts";
 
 // [arquivo, nome do limiar, string original, string mutada]
 const MUT = [
@@ -283,6 +284,17 @@ const MUT = [
     "FATOR_DOMINANCIA do detector de idioma",
     "const FATOR_DOMINANCIA = 2;",
     "const FATOR_DOMINANCIA = 1;",
+  ],
+  // Prazo por round-trip de banco no caminho da analise (Fase 4, lote 1). Entra
+  // em MUT porque ele e uma parcela da conta do pior caso do servidor: encolher
+  // transforma lentidao passageira em erro para a pessoa, e esticar traz de
+  // volta o defeito que este lote fecha, o aborto do client acontecendo ANTES do
+  // pior caso legitimo do servidor. Morre em `shared/linkedin/prazos.test.ts`.
+  [
+    PZ,
+    "PRAZO_BANCO_ANALISE_MS",
+    "export const PRAZO_BANCO_ANALISE_MS = 5_000;",
+    "export const PRAZO_BANCO_ANALISE_MS = 50;",
   ],
   // Limites de entrada e persistência, não pesos da régua. Ainda são
   // fronteiras de contrato e uma mudança acidental precisa quebrar teste.
@@ -550,10 +562,19 @@ const FONTES = [
   // existe para nao deixar passar. Os dois estao em NAO_LIMIAR com motivo: nao
   // decidem veredito nenhum sobre perfil.
   "shared/linkedin/lastro.ts",
+  // Prazos do caminho da analise (Fase 4, lote 1). Entra com um limiar de
+  // verdade, o prazo por round-trip de banco, que e parcela da conta do pior
+  // caso do servidor e portanto do teto de aborto do client.
+  "shared/linkedin/prazos.ts",
 ];
 
 const PADROES_SITIO = [
-  /^(?:export\s+)?const\s+[A-Z][A-Z0-9_]*\s*=\s*-?\d+(?:\.\d+)?\s*;/,
+  // `\d[\d_]*` e nao `\d+`: o separador numerico do JavaScript escondia o sitio
+  // do proprio descobridor. `LINKEDIN_SKILLS_MAX = 3_000` estava em MUT havia
+  // fases e NUNCA foi descoberto, entao a auditoria de escopo nao o contava, e
+  // um limiar novo escrito com separador nasceria invisivel do mesmo jeito. E o
+  // parser que sub-casa em silencio, aplicado ao parser deste guard.
+  /^(?:export\s+)?const\s+[A-Z][A-Z0-9_]*\s*=\s*-?\d[\d_]*(?:\.\d+)?\s*;/,
   /[<>]=?\s*-?\d+(?:\.\d+)?/,
   /===?\s*-?\d+(?:\.\d+)?/,
   /\.slice\(\s*-?\d+\s*(?:,\s*-?\d+\s*)?\)/,

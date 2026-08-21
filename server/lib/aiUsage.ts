@@ -1,5 +1,9 @@
 import * as Sentry from "@sentry/node";
 
+import {
+  comPrazoDeBanco,
+  PrazoDeBancoEstourado,
+} from "../../shared/linkedin/prazos";
 import { env } from "./env";
 import { DEFAULT_MODEL } from "./openai";
 import { supabaseAdmin } from "./supabaseAdmin";
@@ -74,6 +78,19 @@ export async function checkAiDailyLimit(
   isPro: boolean,
   logScope = "[ai]",
   tool = "ai",
+  /**
+   * PRAZO PROPRIO por round-trip, em ms. Ausente = sem prazo, que e como as
+   * outras oito ferramentas de IA chamam esta funcao e continuam chamando: o
+   * unico teto delas segue sendo o global de 15s do `supabaseAdmin`.
+   *
+   * SEMANTICA DE ESTOURO AQUI: fail-closed sem cobranca. Os dois ramos abaixo
+   * ja tratam falha de verificacao como `verificationFailed`, e o prazo entra
+   * por eles, entao a analise nem comeca e nenhuma chamada de IA e paga. A RPC
+   * pode aterrissar depois e criar a linha `reserved`; ela deixa de ocupar vaga
+   * em 10 minutos pelo TTL de reserva orfa da propria migration
+   * (`20260727150000_reserve_ai_usage_slot.sql`).
+   */
+  prazoBancoMs?: number,
 ): Promise<AiDailyLimitResult> {
   const limit = isPro ? env.aiDailyLimitPro : env.aiDailyLimitFree;
 
@@ -90,11 +107,15 @@ export async function checkAiDailyLimit(
   // advisory lock do usuario, e o que a rota faz depois e CONFIRMAR a linha que
   // ja existe.
   try {
-    const { data, error } = await supabaseAdmin.rpc("reserve_ai_usage_slot", {
-      p_user_id: userId,
-      p_tool: tool,
-      p_limit: limit,
-    });
+    const { data, error } = await comPrazoDeBanco(
+      supabaseAdmin.rpc("reserve_ai_usage_slot", {
+        p_user_id: userId,
+        p_tool: tool,
+        p_limit: limit,
+      }),
+      "reserva_atomica",
+      prazoBancoMs,
+    );
     const linha = Array.isArray(data) ? data[0] : data;
     if (!error && linha && typeof linha.allowed === "boolean") {
       return {
@@ -112,11 +133,12 @@ export async function checkAiDailyLimit(
   }
 
   try {
-    const { data: usageCount, error: usageError } = await supabaseAdmin.rpc(
-      "get_ai_usage_today",
-      {
+    const { data: usageCount, error: usageError } = await comPrazoDeBanco(
+      supabaseAdmin.rpc("get_ai_usage_today", {
         p_user_id: userId,
-      },
+      }),
+      "reserva_degradada",
+      prazoBancoMs,
     );
 
     if (!usageError && usageCount !== null) {
@@ -389,6 +411,17 @@ export interface LogAiUsageParams {
    * colapsar, e o reader abaixo e o que garante isso na volta.
    */
   attemptDetails?: readonly unknown[];
+  /**
+   * PRAZO PROPRIO por round-trip de banco desta gravacao, em ms. Ausente = sem
+   * prazo, que e como as outras oito ferramentas chamam e continuam chamando.
+   *
+   * SEMANTICA DE ESTOURO AQUI: nao cancela a escrita, so para de esperar. Uma
+   * confirmacao que aterrissa depois do prazo fecha a reserva com atraso, o que
+   * e inofensivo (o painel le a linha ja confirmada). Uma que nunca aterrissa
+   * deixa a linha em `reserved`, e o TTL de 10 minutos da reserva orfa a
+   * devolve. Em nenhum dos dois a analise ja entregue e desfeita.
+   */
+  prazoBancoMs?: number;
 }
 
 /**
@@ -428,21 +461,34 @@ export function lerDetalheDeTentativas(
 async function acharReserva(
   userId: string,
   tool: string,
+  prazoBancoMs?: number,
 ): Promise<string | null> {
-  try {
-    const { data, error } = await supabaseAdmin
-      .from("ai_usage_logs")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("tool", tool)
-      .eq("status", "reserved")
-      .order("created_at", { ascending: true })
-      .limit(1);
-    if (error || !data || data.length === 0) return null;
-    return (data[0] as { id: string }).id;
-  } catch {
-    return null;
-  }
+  // O PRAZO EMBRULHA O `try`, e nao o contrario. O catch de dentro traduz
+  // "consultei e nao achei" para `null`, e `null` manda `logAiUsage` INSERIR
+  // uma linha nova. Estourar o prazo nao e "nao achei", e "nao sei": deixar o
+  // `PrazoDeBancoEstourado` escapar por cima do catch e o que impede o chamador
+  // de inserir uma segunda linha por cima de uma reserva que talvez exista, o
+  // que dobraria a contagem do dia da pessoa.
+  return comPrazoDeBanco(
+    (async () => {
+      try {
+        const { data, error } = await supabaseAdmin
+          .from("ai_usage_logs")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("tool", tool)
+          .eq("status", "reserved")
+          .order("created_at", { ascending: true })
+          .limit(1);
+        if (error || !data || data.length === 0) return null;
+        return (data[0] as { id: string }).id;
+      } catch {
+        return null;
+      }
+    })(),
+    "log_busca_reserva",
+    prazoBancoMs,
+  );
 }
 
 /**
@@ -484,30 +530,61 @@ export async function logAiUsage(params: LogAiUsageParams) {
   // A DEVOLUCAO tambem sai de graca: a rota ja chama esta funcao com status
   // 'error' quando a chamada falha, e o contador do dia so soma 'success' e
   // 'reserved'. Uma reserva que vira 'error' deixa de ocupar vaga sozinha.
-  const reserva = await acharReserva(params.userId, params.tool);
+  let reserva: string | null;
+  try {
+    reserva = await acharReserva(
+      params.userId,
+      params.tool,
+      params.prazoBancoMs,
+    );
+  } catch (err) {
+    // NAO SEI SE EXISTE RESERVA, entao nao escrevo nada. Cair no insert daqui
+    // criaria uma segunda linha para a MESMA chamada (a reservada continua
+    // 'reserved' e a nova entraria como 'success'), e o contador do dia soma as
+    // duas: a pessoa perderia duas vagas por uma analise. Undercount e o erro
+    // seguro nesta escolha, e a reserva em voo devolve a vaga pelo TTL.
+    console.warn(
+      "[ai] Prazo estourado ao procurar a reserva; nada foi gravado:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return;
+  }
   if (reserva) {
     try {
-      const { error } = await supabaseAdmin
-        .from("ai_usage_logs")
-        .update({
-          request_id: params.requestId,
-          status: params.status,
-          error_message: params.errorMessage || null,
-          input_chars: params.inputChars || 0,
-          output_chars: params.outputChars || 0,
-          input_tokens: params.inputTokens || 0,
-          output_tokens: params.outputTokens || 0,
-          model: params.model || DEFAULT_MODEL,
-          cost_estimate: params.costEstimate || 0,
-          // `?? null` e nao `|| null`: array vazio e um valor legitimo (o
-          // atalho sem IA nao tem tentativa) e `||` o converteria em NULL,
-          // apagando a diferenca entre "medi zero" e "nao registrei".
-          attempt_details: params.attemptDetails ?? null,
-        })
-        .eq("id", reserva);
+      const { error } = await comPrazoDeBanco(
+        supabaseAdmin
+          .from("ai_usage_logs")
+          .update({
+            request_id: params.requestId,
+            status: params.status,
+            error_message: params.errorMessage || null,
+            input_chars: params.inputChars || 0,
+            output_chars: params.outputChars || 0,
+            input_tokens: params.inputTokens || 0,
+            output_tokens: params.outputTokens || 0,
+            model: params.model || DEFAULT_MODEL,
+            cost_estimate: params.costEstimate || 0,
+            // `?? null` e nao `|| null`: array vazio e um valor legitimo (o
+            // atalho sem IA nao tem tentativa) e `||` o converteria em NULL,
+            // apagando a diferenca entre "medi zero" e "nao registrei".
+            attempt_details: params.attemptDetails ?? null,
+          })
+          .eq("id", reserva),
+        "log_grava_uso",
+        params.prazoBancoMs,
+      );
       if (!error) return;
       avisarReservaOrfa(params, error.message);
     } catch (err) {
+      // PRAZO NAO E ORFANDADE, e confundir os dois enche o Sentry de alarme
+      // falso. O update segue em voo e provavelmente aterrissa; se aterrissar,
+      // a reserva fecha com atraso e nada se perde. Se nao aterrissar, o TTL de
+      // 10 minutos devolve a vaga. Alarme so no caso em que a escrita realmente
+      // FALHOU, que e o ramo do `error` acima e o `catch` de erro de verdade.
+      if (err instanceof PrazoDeBancoEstourado) {
+        console.warn(`[ai] ${err.message} Confirmacao da reserva em voo.`);
+        return;
+      }
       avisarReservaOrfa(
         params,
         err instanceof Error ? err.message : String(err),
@@ -516,20 +593,24 @@ export async function logAiUsage(params: LogAiUsageParams) {
     return;
   }
   try {
-    await supabaseAdmin.from("ai_usage_logs").insert({
-      user_id: params.userId,
-      tool: params.tool,
-      request_id: params.requestId,
-      status: params.status,
-      error_message: params.errorMessage || null,
-      input_chars: params.inputChars || 0,
-      output_chars: params.outputChars || 0,
-      input_tokens: params.inputTokens || 0,
-      output_tokens: params.outputTokens || 0,
-      model: params.model || DEFAULT_MODEL,
-      cost_estimate: params.costEstimate || 0,
-      attempt_details: params.attemptDetails ?? null,
-    });
+    await comPrazoDeBanco(
+      supabaseAdmin.from("ai_usage_logs").insert({
+        user_id: params.userId,
+        tool: params.tool,
+        request_id: params.requestId,
+        status: params.status,
+        error_message: params.errorMessage || null,
+        input_chars: params.inputChars || 0,
+        output_chars: params.outputChars || 0,
+        input_tokens: params.inputTokens || 0,
+        output_tokens: params.outputTokens || 0,
+        model: params.model || DEFAULT_MODEL,
+        cost_estimate: params.costEstimate || 0,
+        attempt_details: params.attemptDetails ?? null,
+      }),
+      "log_grava_uso",
+      params.prazoBancoMs,
+    );
   } catch (err) {
     console.warn("[ai] Falha ao registrar uso:", err);
   }
