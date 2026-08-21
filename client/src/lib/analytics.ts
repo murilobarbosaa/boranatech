@@ -1,6 +1,10 @@
 import posthog from "posthog-js";
 
 import { getPlanPriceCents } from "@shared/planPricing";
+import { CONTAGEM_INDISPONIVEL } from "@shared/linkedin/readQualitative";
+// `import type`: `pdfExtract` puxa `pdfjs-dist`, que nem carrega fora do
+// navegador. O tipo e apagado na compilacao e este modulo segue leve.
+import type { PdfErrorCode } from "./pdfExtract";
 
 // Funil de conversao instrumentado no client (PostHog). Nomes de evento e
 // propriedades centralizados aqui para nao divergirem entre CTAs e gates.
@@ -271,4 +275,156 @@ export function captureRoadmapGeracaoConcluida(props: {
 // generation_in_progress, pro_required...) ou "stream_error"/"conexao_caiu".
 export function captureRoadmapGeracaoFalhou(props: { motivo: string }): void {
   posthog.capture("roadmap_ia_geracao_falhou", props);
+}
+
+// ---------------------------------------------------------------------------
+// FUNIL DO ANALISADOR DE LINKEDIN (Fase 3, lote 4)
+//
+// O que faltava: o funil so tinha os dois degraus do MEIO. `linkedin_headline_review`
+// dispara quando o texto CHEGA e `linkedin_analysis_submitted` quando a analise
+// e PEDIDA, mas nada media a entrada (quantas pessoas nem conseguem extrair o
+// PDF) nem a saida (quantas recebem resultado). Sem as pontas, "quantos usuarios
+// batem em PDF escaneado ou com senha" nao era uma pergunta respondivel, era um
+// palpite.
+//
+// PRIVACIDADE, e ela nao e negociavel aqui: nenhuma property carrega texto do
+// usuario, nome de arquivo, headline, trecho, prompt ou resposta do modelo. So
+// entram enums de uniao FECHADA, booleans e contagens. Ha teste permanente
+// varrendo todas as chamadas com marcadores plantados.
+//
+// CARDINALIDADE: os dois desfechos sao conjuntos fechados e pequenos. Em
+// especial, a mensagem de erro do servidor NUNCA vira property: ela e texto
+// livre (a rota devolve frases inteiras), e mandar isso ao PostHog explodiria os
+// valores distintos alem de vazar conteudo que ninguem auditou.
+// ---------------------------------------------------------------------------
+
+export const EVENTO_EXTRACAO = "linkedin_pdf_extracao";
+export const EVENTO_DESFECHO = "linkedin_analysis_result";
+
+/**
+ * Desfecho da extracao do PDF: os estados de falha da entrada MAIS o sucesso.
+ *
+ * `PdfErrorCode` e IMPORTADO de `./pdfExtract`, e nao redigitado: a uniao de la
+ * e a fonte unica, e um estado novo de entrada precisa aparecer aqui por
+ * construcao. O teste de totalidade compara os dois conjuntos e quebra se
+ * divergirem.
+ *
+ * `import type` de proposito: `pdfExtract` importa `pdfjs-dist` no topo, que
+ * nem carrega fora do navegador (falta `DOMMatrix`). O tipo e apagado na
+ * compilacao, entao este modulo continua leve e testavel sem dublar a lib.
+ */
+export type DesfechoExtracao =
+  | PdfErrorCode
+  | "ok"
+  /**
+   * O PDF abriu e trouxe texto, mas o texto NAO e um perfil do LinkedIn (o
+   * `parseLinkedinText(...).usable` reprovou). Estado proprio, e nao reuso de
+   * `too_little_text`: "nao ha texto" e "ha texto de outra coisa" pedem
+   * mensagens e acoes diferentes, e somar os dois esconderia justamente quantas
+   * pessoas estao enviando o arquivo errado. E o mesmo veredito que a rota da
+   * em `unreadable_text`, do lado do cliente.
+   */
+  | "perfil_nao_reconhecido";
+
+/**
+ * Os dois desfechos de extracao que NAO vem de `PdfErrorCode`. Existe como
+ * constante para o teste de totalidade poder afirmar o conjunto inteiro
+ * (`PDF_ERROR_CODES` mais estes dois) sem nenhuma lista escrita a mao no teste.
+ */
+export const DESFECHOS_EXTRACAO_EXTRAS = [
+  "ok",
+  "perfil_nao_reconhecido",
+] as const;
+
+/**
+ * Chegada de PDF, em TODA saida: uma captura por arquivo escolhido, com o
+ * desfecho nomeado. `ok` inclusive, porque taxa de falha sem o denominador nao
+ * e taxa, e um numero absoluto de falhas nao diz se o fluxo esta ruim.
+ */
+export function captureLinkedinExtracao(props: {
+  desfecho: DesfechoExtracao;
+}): void {
+  posthog.capture(EVENTO_EXTRACAO, props);
+}
+
+/**
+ * DESFECHOS DA ANALISE, conjunto fechado.
+ *
+ * Os codigos em MAIUSCULA sao os que `client/src/lib/linkedinClient.ts` lanca,
+ * normalizados para minuscula aqui; `sucesso` e `warm_empty` sao os dois
+ * desfechos bons, e `erro_generico` e o balde EXPLICITO do que nao foi
+ * reconhecido.
+ *
+ * Por que a granularidade para no que o CLIENTE distingue: a rota tem mais
+ * codigos do que isto (`unreadable_text` e `unreadable_profile` sao dois, e
+ * `analysis_truncated` e `upstream_error` tambem), mas `linkedinClient`
+ * classifica por STATUS HTTP antes de ler o corpo, entao os pares colapsam
+ * antes de chegar aqui. Instrumentar uma distincao que o cliente nao possui
+ * produziria uma property sempre com o mesmo valor, o que e pior que nao ter:
+ * pareceria medicao. O caminho para separa-los passa por `linkedinClient`, e
+ * esta registrado no relatorio do lote.
+ */
+export const LINKEDIN_DESFECHOS_ANALISE = [
+  "sucesso",
+  "warm_empty",
+  "unreadable",
+  "invalid_request",
+  "rate_limited",
+  "linkedin_busy",
+  "pro_required",
+  "login_required",
+  "timeout",
+  "network",
+  "erro_generico",
+] as const;
+
+export type DesfechoAnalise = (typeof LINKEDIN_DESFECHOS_ANALISE)[number];
+
+/**
+ * Codigos que `linkedinClient` lanca, mapeados para o desfecho instrumentado.
+ *
+ * `RATE_LIMITED` fica de fora deste mapa porque ele chega com PREFIXO
+ * (`RATE_LIMITED: <mensagem do servidor>`) e e tratado a parte, justamente para
+ * a mensagem nao vazar junto.
+ */
+const DESFECHO_POR_CODIGO: Record<string, DesfechoAnalise> = {
+  UNREADABLE: "unreadable",
+  INVALID_REQUEST: "invalid_request",
+  LINKEDIN_BUSY: "linkedin_busy",
+  PRO_REQUIRED: "pro_required",
+  LOGIN_REQUIRED: "login_required",
+  TIMEOUT: "timeout",
+  NETWORK: "network",
+  ANALYSIS_FAILED: "erro_generico",
+};
+
+/**
+ * FAIL-CLOSED, e aqui isso e uma decisao de PRIVACIDADE, nao so de robustez.
+ *
+ * A ultima linha de `linkedinClient` lanca `body.error?.message`, ou seja a
+ * frase que a rota escreveu. Qualquer coisa fora do conjunto conhecido vira
+ * `erro_generico` e a mensagem e DESCARTADA. Um `desfecho: mensagem` seria a
+ * forma mais facil de vazar texto de servidor para a telemetria, e cardinalidade
+ * infinita de brinde.
+ */
+export function classificarDesfechoDeErro(mensagem: string): DesfechoAnalise {
+  if (mensagem.startsWith("RATE_LIMITED")) return "rate_limited";
+  return DESFECHO_POR_CODIGO[mensagem] ?? "erro_generico";
+}
+
+/**
+ * Fim da analise, em TODA saida.
+ *
+ * `nota_incompleta` e `violacoes_total` so existem quando houve resultado; nos
+ * ramos de erro vao como `null` e como o estado nomeado de indisponivel, nunca
+ * como `false` e `0`. Zero e uma medicao ("rodou e nao violou nada"), e usa-lo
+ * para "nao rodou" e o colapso que o resto desta base ja pagou caro para
+ * evitar.
+ */
+export function captureLinkedinDesfecho(props: {
+  desfecho: DesfechoAnalise;
+  nota_incompleta: boolean | null;
+  violacoes_total: number | typeof CONTAGEM_INDISPONIVEL;
+}): void {
+  posthog.capture(EVENTO_DESFECHO, props);
 }

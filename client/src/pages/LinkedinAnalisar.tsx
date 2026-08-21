@@ -79,9 +79,17 @@ import {
   payloadEnvio,
   payloadRevisao,
 } from "@/lib/headlineAvisoTelemetria";
+import {
+  captureLinkedinDesfecho,
+  captureLinkedinExtracao,
+  classificarDesfechoDeErro,
+} from "@/lib/analytics";
 import posthog from "posthog-js";
 import { parseLinkedinText } from "@shared/linkedin/parse";
-import { readQualitative } from "@shared/linkedin/readQualitative";
+import {
+  CONTAGEM_INDISPONIVEL,
+  readQualitative,
+} from "@shared/linkedin/readQualitative";
 import { readDeterministic } from "@shared/linkedin/readDeterministic";
 import { mesmoTextoHash } from "@shared/linkedin/textoHash";
 import { hashLinkedinTextNoCliente } from "@/lib/linkedinTextHash";
@@ -806,6 +814,12 @@ export default function LinkedinAnalisar() {
       const detected = parseLinkedinText(text);
       if (!detected.usable) {
         setPdfError(ENTRY_COPY.parseFail);
+        // O PDF abriu e trouxe texto, mas o texto nao e um perfil. Reusa o
+        // estado `too_little_text`? Nao: sao coisas diferentes, e colapsa-las
+        // apagaria a distincao entre "PDF sem texto" e "PDF com texto de outra
+        // coisa". Este caminho e o mesmo veredito que a rota da em
+        // `unreadable_text`, e por isso usa esse nome.
+        captureLinkedinExtracao({ desfecho: "perfil_nao_reconhecido" });
         return;
       }
       const { aceitas: competenciasAceitas, descartadas: competenciasFora } =
@@ -850,6 +864,12 @@ export default function LinkedinAnalisar() {
       );
       setEntrySource("pdf");
       setEntryPath("review");
+      // DESFECHO `ok` da extracao. Fica aqui, e nao logo apos
+      // `extractLinkedinPdf`, porque so neste ponto o PDF passou TAMBEM pelo
+      // `detected.usable`: um PDF que abre mas nao e perfil do LinkedIn nao e
+      // uma entrada bem sucedida do ponto de vista de quem esta medindo o
+      // funil.
+      captureLinkedinExtracao({ desfecho: "ok" });
       // UMA captura por chegada de arquivo. NAO fica no `useMemo` de `parsed`
       // (que recomputa por tecla) nem numa transicao de estado (que roda de
       // novo em re-render): `handleFile` roda uma vez por PDF escolhido.
@@ -867,8 +887,12 @@ export default function LinkedinAnalisar() {
         // lado, e o `Record<PdfErrorCode, string>` garante em compilacao que
         // toda chave possivel tem valor.
         setPdfError(PDF_ERROR_COPY[err.code]);
+        captureLinkedinExtracao({ desfecho: err.code });
       } else {
         setPdfError(ENTRY_COPY.parseFail);
+        // Erro que nem `pdfExtract` classificou. Fail-closed tambem na
+        // telemetria: nada do erro cru entra no evento.
+        captureLinkedinExtracao({ desfecho: "erro_desconhecido" });
       }
     } finally {
       setExtracting(false);
@@ -906,6 +930,15 @@ export default function LinkedinAnalisar() {
       !atividade
     ) {
       setError("INVALID_REQUEST");
+      // Desfecho tambem quando o pedido nem sai. Sem isto o funil teria um
+      // vazamento mudo: `linkedin_analysis_submitted` nao dispara aqui (ele
+      // fica abaixo, so para submit que vai acontecer), entao a pessoa some
+      // entre os dois degraus sem nenhum evento explicando por que.
+      captureLinkedinDesfecho({
+        desfecho: "invalid_request",
+        nota_incompleta: null,
+        violacoes_total: CONTAGEM_INDISPONIVEL,
+      });
       return;
     }
     setLoading(true);
@@ -947,6 +980,28 @@ export default function LinkedinAnalisar() {
       setResult(data);
       replaceAnalysisId(newAnalysisId);
       setResultTextoHash(textoHash);
+      // DESFECHO BOM, em dois sabores. `warm_empty` sai do atalho sem IA, e
+      // quem sabe disso e a PROCEDENCIA (`sem_modelo`), nao uma heuristica
+      // sobre o tamanho do texto: o servidor ja carimba a origem do campo, e
+      // reinferir aqui seria uma segunda verdade sobre o mesmo fato.
+      const qualitativeDoResultado = readQualitative(
+        data.qualitative,
+        data.qualitativeVersion,
+      );
+      captureLinkedinDesfecho({
+        desfecho:
+          qualitativeDoResultado.procedencia.sobreReescrito === "sem_modelo"
+            ? "warm_empty"
+            : "sucesso",
+        nota_incompleta: data.deterministic.notaIncompleta === true,
+        // INDISPONIVEL, e este e o valor CERTO enquanto o servidor nao
+        // persistir o resumo de lastro junto da analise. Nao e um placeholder:
+        // mesmo depois que o resumo existir, toda analise gravada antes dele
+        // vai continuar lendo assim, e `0` seria a afirmacao falsa de que a
+        // analise rodou e nao violou nada. O lote liga a fonte no commit do
+        // resumo persistido, sem tocar neste ponto de captura.
+        violacoes_total: CONTAGEM_INDISPONIVEL,
+      });
       const atualComparavel = montarAnaliseComparavel(
         request,
         {
@@ -983,7 +1038,18 @@ export default function LinkedinAnalisar() {
       // desatualizada ate a proxima carga.
       void refreshLinkedinHistory({ showLoading: false });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "ANALYSIS_FAILED");
+      const mensagem = err instanceof Error ? err.message : "ANALYSIS_FAILED";
+      setError(mensagem);
+      // A MENSAGEM NAO ENTRA NO EVENTO. `classificarDesfechoDeErro` a reduz a
+      // um valor de conjunto fechado; o que nao for reconhecido vira
+      // `erro_generico`. A ultima linha de `linkedinClient` lanca a frase que a
+      // rota escreveu, e mandar isso ao PostHog seria vazamento de texto de
+      // servidor com cardinalidade infinita de brinde.
+      captureLinkedinDesfecho({
+        desfecho: classificarDesfechoDeErro(mensagem),
+        nota_incompleta: null,
+        violacoes_total: CONTAGEM_INDISPONIVEL,
+      });
     } finally {
       setLoading(false);
     }
