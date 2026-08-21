@@ -25,6 +25,7 @@ import {
   removerNumeralSemLastro,
 } from "../../shared/linkedin/numeralLastro";
 import {
+  resumirViolacoes,
   type CampoDeViolacao,
   type TipoViolacao,
   type Violacao,
@@ -1916,6 +1917,23 @@ function aplicarLastro(
   for (const v of violacoes) registrarViolacao(v);
 
   /**
+   * O RESUMO NASCE DA LISTA COMPLETA, e nao do que foi ao Sentry.
+   *
+   * `registrarViolacao`, logo acima, amostra: um evento por tipo por minuto.
+   * Contar a partir dele produziria um numero menor que o real sem nenhum sinal
+   * de que subcontou, que e a familia de defeito que esta base ja catalogou
+   * varias vezes (instrumento que falha PASSANDO, sobre uma superficie menor).
+   * `violacoes` aqui e determinstico e integral, e e a mesma lista que os
+   * goldens congelam.
+   *
+   * Sai nos DOIS ramos de retorno, pelo mesmo motivo da procedencia: o ramo
+   * curto responde quando nada mudou, e devolve-lo sem o resumo faria a analise
+   * mais limpa ser a unica sem o dado, obrigando o leitor a inferir zero a
+   * partir de ausencia. E essa inferencia que o reader existe para proibir.
+   */
+  const lastroResumo = resumirViolacoes(violacoes);
+
+  /**
    * A procedência montada dos fatos coletados acima, e ela sai nos DOIS ramos
    * de retorno. O ramo curto abaixo devolvia `qualitative` intacto quando nada
    * mudou; devolvê-lo agora sem procedência criaria justamente o caso em que a
@@ -1934,11 +1952,12 @@ function aplicarLastro(
     melhorias === qualitative.melhorias &&
     mesmaLista(skillsParaEstudar, qualitative.skillsParaEstudar)
   ) {
-    return { ...qualitative, procedencia };
+    return { ...qualitative, procedencia, lastroResumo };
   }
   return {
     ...qualitative,
     procedencia,
+    lastroResumo,
     resumo: resumoFinal,
     proximoPasso: proximoPassoFinal,
     pontosFortes: pontosFortesFinais,

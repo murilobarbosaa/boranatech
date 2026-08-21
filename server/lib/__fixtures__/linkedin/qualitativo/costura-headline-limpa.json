@@ -34,6 +34,12 @@
       "Desenvolvedora Front-end | design system",
       "Front-end | React | acessibilidade e produto"
     ],
+    "lastroResumo": {
+      "porTipo": {
+        "tecnologia_sem_lastro": 3
+      },
+      "total": 3
+    },
     "melhorias": [
       {
         "comoFazer": "Comece hoje colocando o cargo-alvo no primeiro campo.",

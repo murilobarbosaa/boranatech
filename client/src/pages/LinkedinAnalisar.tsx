@@ -994,13 +994,12 @@ export default function LinkedinAnalisar() {
             ? "warm_empty"
             : "sucesso",
         nota_incompleta: data.deterministic.notaIncompleta === true,
-        // INDISPONIVEL, e este e o valor CERTO enquanto o servidor nao
-        // persistir o resumo de lastro junto da analise. Nao e um placeholder:
-        // mesmo depois que o resumo existir, toda analise gravada antes dele
-        // vai continuar lendo assim, e `0` seria a afirmacao falsa de que a
-        // analise rodou e nao violou nada. O lote liga a fonte no commit do
-        // resumo persistido, sem tocar neste ponto de captura.
-        violacoes_total: CONTAGEM_INDISPONIVEL,
+        // FONTE UNICA com o painel do admin: os dois somam o mesmo resumo que
+        // o servidor persiste junto da analise, nascido da lista completa de
+        // violacoes. Analise gravada antes do resumo existir le como o estado
+        // nomeado de indisponivel, nunca como zero: `0` seria a afirmacao falsa
+        // de que a analise rodou e nao violou nada.
+        violacoes_total: qualitativeDoResultado.lastroResumo.total,
       });
       const atualComparavel = montarAnaliseComparavel(
         request,

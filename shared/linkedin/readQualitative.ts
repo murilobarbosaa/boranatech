@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { TIPOS_DE_VIOLACAO, type TipoViolacao } from "./lastro";
 import {
   LINKEDIN_ORIGENS_DE_CAMPO,
   LinkedinBulletsReescritosSchema,
@@ -68,6 +69,23 @@ export type OrigemLida =
   | typeof PROCEDENCIA_DESCONHECIDA;
 export type ContagemLida = number | typeof CONTAGEM_INDISPONIVEL;
 
+/**
+ * RESUMO DE LASTRO COMO ELE E LIDO, com a mesma disciplina da procedencia.
+ *
+ * `total` e `ContagemLida`, entao payload sem o resumo devolve o estado nomeado
+ * de indisponivel e o TypeScript recusa somar. Se fosse `number` com `?? 0`, a
+ * primeira analise antiga viraria "rodou e nao violou nada", que e uma
+ * afirmacao que ninguem mediu, e ela apareceria somada no painel do admin como
+ * se fosse dado.
+ *
+ * `porTipo` fica vazio quando indisponivel, e cabe ao consumidor olhar `total`
+ * antes de interpretar o mapa. E por isso que o total vem primeiro.
+ */
+export interface LastroResumoView {
+  total: ContagemLida;
+  porTipo: Partial<Record<TipoViolacao, number>>;
+}
+
 export interface ProcedenciaView {
   sobreReescrito: OrigemLida;
   modeloMensagemRecrutador: OrigemLida;
@@ -91,6 +109,41 @@ function lerOrigem(valor: unknown): OrigemLida {
   return typeof valor === "string" && ORIGENS_VALIDAS.has(valor)
     ? (valor as LinkedinOrigemDeCampo)
     : PROCEDENCIA_DESCONHECIDA;
+}
+
+/**
+ * Resumo de lastro, FAIL-CLOSED nos dois eixos.
+ *
+ * `total` ausente ou ilegível vira o estado nomeado, e nesse caso `porTipo` sai
+ * VAZIO mesmo que o payload traga alguma coisa lá: um mapa de contagens sem
+ * total confiável é pior que nenhum, porque convida a somar os valores e obter
+ * um total que a análise nunca afirmou.
+ *
+ * Cada valor de `porTipo` passa por `lerContagem` e só entra se for inteiro não
+ * negativo. Chave desconhecida (um tipo que uma versão futura inventou) é
+ * DESCARTADA em vez de propagada: quem lê o mapa espera chaves de
+ * `TipoViolacao`, e devolver uma fora da união faria o consumidor renderizar um
+ * rótulo que ele não tem.
+ */
+const TIPOS_CONHECIDOS = new Set<string>(TIPOS_DE_VIOLACAO);
+
+function lerLastroResumo(valor: unknown): LastroResumoView {
+  const bruto = valor as
+    | { total?: unknown; porTipo?: Record<string, unknown> }
+    | undefined;
+  const total = lerContagem(bruto?.total);
+  if (total === CONTAGEM_INDISPONIVEL) {
+    return { total, porTipo: {} };
+  }
+  const porTipo: Partial<Record<TipoViolacao, number>> = {};
+  for (const [chave, cru] of Object.entries(bruto?.porTipo ?? {})) {
+    if (!TIPOS_CONHECIDOS.has(chave)) continue;
+    const contagem = lerContagem(cru);
+    if (contagem !== CONTAGEM_INDISPONIVEL && contagem > 0) {
+      porTipo[chave as TipoViolacao] = contagem;
+    }
+  }
+  return { total, porTipo };
 }
 
 /** Contagem: inteiro não negativo, ou o estado nomeado de indisponível. */
@@ -119,8 +172,17 @@ const ProcedenciaLidaSchema = z
 // Schema de LEITURA: tudo opcional de propósito. Ele não valida se a IA
 // respondeu certo (isso é papel do LinkedinQualitativeSchema na escrita); ele
 // só resgata o que der para resgatar de um jsonb que pode ter qualquer idade.
+const LastroResumoLidoSchema = z
+  .object({
+    total: z.unknown(),
+    porTipo: z.record(z.string(), z.unknown()).optional().catch(undefined),
+  })
+  .optional()
+  .catch(undefined);
+
 const LenientQualitativeSchema = z.object({
   procedencia: ProcedenciaLidaSchema,
+  lastroResumo: LastroResumoLidoSchema,
   resumo: z.string().optional().catch(undefined),
   pontosFortes: z.array(z.string()).optional().catch(undefined),
   pontosFracos: z.array(z.string()).optional().catch(undefined),
@@ -155,6 +217,12 @@ export interface QualitativeView {
    * um segundo jeito de escrever "não sei".
    */
   procedencia: ProcedenciaView;
+  /**
+   * Contagem de violações de lastro da análise. Sempre presente na view; o que
+   * muda com a idade do payload é o VALOR de `total`, que cai no estado nomeado
+   * de indisponível.
+   */
+  lastroResumo: LastroResumoView;
   /** Nomes dos campos que não vieram ou não puderam ser lidos. */
   camposAusentes: string[];
 }
@@ -219,6 +287,7 @@ export function readQualitative(
       },
       camposProsaLimpos: lerContagem(q.procedencia?.camposProsaLimpos),
     },
+    lastroResumo: lerLastroResumo(q.lastroResumo),
     camposAusentes: [],
   };
 

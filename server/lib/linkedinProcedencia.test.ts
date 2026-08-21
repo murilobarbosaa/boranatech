@@ -425,6 +425,13 @@ describe("P9: o schema do modelo nao muda", () => {
     "removidasPorGate",
     "camposProsaLimpos",
     "sem_modelo",
+    // Fase 3, lote 4: o resumo de lastro e METADADO DE ENTREGA, decidido pelo
+    // servidor DEPOIS da resposta do modelo. Se vazasse para o schema estrito,
+    // a OpenAI passaria a ser cobrada por gerar um campo que ela nao tem como
+    // saber, e pior, poderia preenche-lo com um numero inventado que o painel
+    // do admin somaria como se fosse medicao.
+    "lastroResumo",
+    "porTipo",
   ];
 
   it("toOpenAIStrictSchema nao carrega nenhuma chave da procedencia", () => {

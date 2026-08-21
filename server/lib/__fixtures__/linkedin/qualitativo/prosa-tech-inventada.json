@@ -35,6 +35,12 @@
       "Desenvolvedora Front-end | TypeScript | design system",
       "Front-end | React | acessibilidade e produto"
     ],
+    "lastroResumo": {
+      "porTipo": {
+        "prosa_tecnologia_sem_lastro": 2
+      },
+      "total": 2
+    },
     "melhorias": [
       {
         "comoFazer": "Comece hoje colocando o cargo-alvo no primeiro campo.",

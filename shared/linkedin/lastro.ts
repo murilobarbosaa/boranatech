@@ -110,9 +110,77 @@ export type CampoDeViolacao =
   | "sobreReescrito"
   | "modeloMensagemRecrutador";
 
+/**
+ * A UNIAO `TipoViolacao` EM RUNTIME.
+ *
+ * Uniao de tipo nao existe depois da compilacao, e quem le um mapa indexado por
+ * ela precisa poder perguntar "esta chave e conhecida?" sem redigitar a lista.
+ * E o mesmo papel de `PDF_ERROR_CODES` no lote da entrada de PDF.
+ *
+ * Nao esta escrita como `(typeof TIPOS_DE_VIOLACAO)[number]` de proposito: a
+ * uniao acima carrega comentarios de bloco por membro, que sao a documentacao
+ * de por que cada tipo e proprio em vez de somado a outro, e converte-la em
+ * const array perderia isso. O preco e que as duas precisam concordar, e a
+ * concordancia e AFIRMADA POR TESTE, que le a uniao da fonte e compara por
+ * igualdade de conjunto.
+ */
+export const TIPOS_DE_VIOLACAO = [
+  "numeral_fabricado",
+  "numeral_tipo_trocado",
+  "tecnologia_sem_lastro",
+  "bullet_sem_origem",
+  "bloco_experiencia_invalida",
+  "skill_estudo_sem_lastro",
+  "prosa_tecnologia_sem_lastro",
+  "prosa_numeral_sem_lastro",
+  "colar_tecnologia_sem_lastro",
+  "colar_numeral_sem_lastro",
+  "idioma_incorreto",
+  "vazamento_delimitador",
+] as const satisfies readonly TipoViolacao[];
+
 export interface Violacao {
   tipo: TipoViolacao;
   campo: CampoDeViolacao;
   contexto: string;
   termo: string;
+}
+
+/**
+ * RESUMO DE VIOLACOES POR ANALISE.
+ *
+ * Por que existe: as violacoes de lastro so viviam no Sentry, e por um caminho
+ * AMOSTRADO (`registrarViolacao` faz throttle de um evento por tipo por minuto).
+ * Isso serve para alertar, nao para contar: duas analises seguidas com o mesmo
+ * tipo produzem UM evento, e qualquer agregacao sobre esse dado subconta sem
+ * dizer que subcontou. Este resumo nasce da lista COMPLETA e deterministica,
+ * antes de qualquer amostragem, e e ele que o painel do admin soma.
+ *
+ * PRIVACIDADE: `Violacao` carrega `contexto` e `termo`, que sao texto derivado
+ * da resposta do modelo. Nada disso entra aqui. O resumo e so contagem, e essa
+ * e a razao de a agregacao morar nesta funcao em vez de o consumidor receber a
+ * lista e somar por conta propria: um unico ponto decide o que sai.
+ *
+ * `Partial<Record<...>>` e deliberado: tipo que nao ocorreu fica AUSENTE, e nao
+ * zero. Zero explicito para doze tipos em toda analise limpa engordaria o jsonb
+ * de todas elas para dizer "nada aconteceu", e a chave ausente ja diz isso.
+ */
+export interface LastroResumo {
+  /** Total de violacoes, igual ao tamanho da lista completa. */
+  total: number;
+  /** Contagem por tipo. Tipo sem ocorrencia nao aparece. */
+  porTipo: Partial<Record<TipoViolacao, number>>;
+}
+
+/**
+ * Agrega a lista completa de violacoes. FONTE UNICA do numero que vai para o
+ * jsonb, para a telemetria e para o painel: os tres leem daqui, e nao ha uma
+ * segunda contagem em lugar nenhum para divergir desta.
+ */
+export function resumirViolacoes(violacoes: readonly Violacao[]): LastroResumo {
+  const porTipo: Partial<Record<TipoViolacao, number>> = {};
+  for (const v of violacoes) {
+    porTipo[v.tipo] = (porTipo[v.tipo] ?? 0) + 1;
+  }
+  return { total: violacoes.length, porTipo };
 }

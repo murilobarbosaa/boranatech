@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AREA_SLUGS } from "../areas";
+import type { LastroResumo } from "./lastro";
 
 /**
  * Contrato do analisador de LinkedIn.
@@ -837,6 +838,13 @@ export interface LinkedinProcedencia {
  */
 export interface LinkedinQualitativeEntregue extends LinkedinQualitative {
   procedencia: LinkedinProcedencia;
+  /**
+   * Contagem das violacoes de lastro desta analise, da lista COMPLETA (antes da
+   * amostragem do Sentry). Aditivo no jsonb: analise gravada antes deste lote
+   * simplesmente nao tem a chave, e `readQualitative` a le como indisponivel,
+   * nunca como zero.
+   */
+  lastroResumo: LastroResumo;
 }
 
 // Request do endpoint de análise
@@ -851,9 +859,7 @@ export const LINKEDIN_SKILLS_MAX = 3_000;
 export const HEADLINE_MANUAL_MAX = 250;
 
 /** Normalização única da correção manual, compartilhada por browser e servidor. */
-export function normalizarHeadlineManual(
-  value: unknown,
-): string | null {
+export function normalizarHeadlineManual(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const normalizada = value.trim();
   return normalizada.length > 0 ? normalizada : null;
