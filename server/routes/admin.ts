@@ -59,6 +59,14 @@ import {
 import { CHARGE_SEM_DONO_CORTE_DIAS } from "../lib/financeSyncWindow";
 import { calcularProblemas } from "../lib/healthBand";
 import {
+  LASTRO_ANALISES_MAX,
+  LASTRO_JANELA_DIAS,
+} from "../../shared/linkedin/lastro";
+import {
+  agregarResumos,
+  readQualitative,
+} from "../../shared/linkedin/readQualitative";
+import {
   assinaturaChegouAValer,
   maiorVazamento,
   montarFunil,
@@ -886,6 +894,72 @@ router.get("/usage-retention", async (_req, res, next) => {
   try {
     const result = await getUsageRetention();
     res.json({ data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * VIOLACOES DE LASTRO DO ANALISADOR DE LINKEDIN, na janela fixa.
+ *
+ * Por que existe: as violacoes so viviam no Sentry, por um caminho AMOSTRADO
+ * (`registrarViolacao` faz throttle de um evento por tipo por minuto). Isso
+ * serve para alertar que ALGO aconteceu, nao para contar quanto. Nao havia
+ * painel nem agregacao, entao a pergunta que decide calibracao de prompt
+ * ("qual invento o modelo mais tenta, nesta semana?") nao tinha resposta.
+ *
+ * SO LEITURA, e o que ela le e apenas contagem. `contexto` e `termo` da
+ * `Violacao` sao texto derivado da resposta do modelo e NUNCA entram no resumo
+ * persistido, entao nao ha o que filtrar aqui: o dado que chega ja e numerico.
+ * O `select` pede so `result->qualitative->lastroResumo`, e nao a analise
+ * inteira, pelo mesmo motivo: o texto nem sai do banco.
+ *
+ * CUSTO: `linkedin_analyses` tem indice em `(user_id, created_at desc)`, e nao
+ * em `created_at` sozinho, entao esta varredura por janela nao o usa. Com o
+ * volume atual do analisador (recurso Pro, produto novo) e trivial;
+ * `LASTRO_ANALISES_MAX` e o teto que impede a rota de pendurar no dia em que
+ * deixar de ser, e `truncado` avisa a interface em vez de apresentar um total
+ * parcial como se fosse completo.
+ */
+router.get("/linkedin-lastro", async (_req, res, next) => {
+  try {
+    const desde = new Date(
+      Date.now() - LASTRO_JANELA_DIAS * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    const { data, error } = await supabaseAdmin
+      .from("linkedin_analyses")
+      .select("result->qualitative->lastroResumo")
+      .gte("created_at", desde)
+      .order("created_at", { ascending: false })
+      .limit(LASTRO_ANALISES_MAX);
+
+    if (error) {
+      console.error("[admin] Falha ao ler lastro do linkedin:", error.message);
+      return next(
+        createError(500, "db_error", "Erro ao buscar violacoes de lastro."),
+      );
+    }
+
+    const linhas = (data ?? []) as Array<{ lastroResumo?: unknown }>;
+    // `readQualitative` e nao leitura direta do jsonb: e ele que decide que
+    // resumo ausente vale INDISPONIVEL e nao zero, e essa decisao nao pode ter
+    // uma segunda versao aqui dentro. Analise antiga somada como zero afirmaria
+    // que ela rodou limpa, que e o oposto de "ninguem mediu".
+    const agregado = agregarResumos(
+      linhas.map(
+        (linha) =>
+          readQualitative({ lastroResumo: linha.lastroResumo }).lastroResumo,
+      ),
+    );
+
+    res.json({
+      data: {
+        ...agregado,
+        janelaDias: LASTRO_JANELA_DIAS,
+        truncado: linhas.length >= LASTRO_ANALISES_MAX,
+      },
+    });
   } catch (err) {
     next(err);
   }

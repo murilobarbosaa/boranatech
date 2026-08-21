@@ -74,7 +74,13 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 /**
  * Total de rotas declaradas no router do admin.
  *
- * 58 desde as três rotas de notas fiscais da Fase 4 da NFS-e:
+ * 59 desde `GET /linkedin-lastro` (Fase 3, lote 4), o painel de violações de
+ * lastro do analisador. Subir este número é o que AUTORIZA a rota nova: a
+ * conferência abaixo já verificou que ela está atrás de requireAuth e
+ * requireAdmin, e é essa verificação, e não o número, que impede uma rota de
+ * admin nascer exposta.
+ *
+ * Era 58 desde as três rotas de notas fiscais da Fase 4 da NFS-e:
  * `GET /fiscal-invoices/summary`, `GET /fiscal-invoices` e
  * `POST /fiscal-invoices/:id/retry`. Era 55, e antes 52 desde
  * `GET /subscription-history` (fatia 3 da Visão).
@@ -85,7 +91,7 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
  * primeira rodada com as rotas fiscais, e a conferência abaixo (que verifica
  * requireAuth + requireAdmin em CADA rota) é o que autoriza subir o número.
  */
-const EXPECTED_ROUTE_COUNT = 58;
+const EXPECTED_ROUTE_COUNT = 59;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {

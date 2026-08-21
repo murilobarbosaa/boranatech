@@ -556,6 +556,12 @@ const FONTES = [
   // os quatro estao em MUT: sao eles que decidem se um campo reprova e custa
   // uma chamada.
   "server/lib/linkedinIdioma.ts",
+  // Tipos e agregacao do lastro (Fase 3, lote 4). Entra porque a janela do
+  // painel de violacoes e o teto de sanidade da consulta nasceram aqui, e um
+  // numero de consulta que ninguem classifica e exatamente o que este guard
+  // existe para nao deixar passar. Os dois estao em NAO_LIMIAR com motivo: nao
+  // decidem veredito nenhum sobre perfil.
+  "shared/linkedin/lastro.ts",
 ];
 
 const PADROES_SITIO = [
@@ -592,6 +598,19 @@ const NAO_LIMIAR = [
     "parametro operacional da chamada de IA",
   ],
   [/const AI_BACKOFF_MS/, "backoff de retry"],
+  // --- Fase 3, lote 4: painel de violacoes de lastro no admin. Os dois sao de
+  // CONSULTA, nao de regra: nenhum deles participa de check, nota, faixa ou
+  // veredito sobre perfil de usuario. Mudar qualquer um muda o que o admin
+  // enxerga, nunca o que a pessoa recebe, entao nao ha teste de comportamento
+  // para um mutante derrubar. Regex estreitos de proposito, casando o nome.
+  [
+    /const LASTRO_JANELA_DIAS =/,
+    "janela do painel do admin, nao entra em check nem em nota",
+  ],
+  [
+    /const LASTRO_ANALISES_MAX =/,
+    "teto de sanidade da consulta do admin, nao entra em check nem em nota",
+  ],
   // --- Classificados em 2026-08-01, ao colocar este guard num gate. Ele
   // abortava na arvore limpa havia semanas com 6 orfaos, tres deles produzidos
   // pela propria auditoria. Cada regex e estreita de proposito: uma ampla

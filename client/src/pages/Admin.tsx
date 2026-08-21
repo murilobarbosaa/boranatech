@@ -53,6 +53,7 @@ import {
 import { toast } from "sonner";
 import { CancellationReasonsDashboard } from "@/components/admin/CancellationReasonsDashboard";
 import { UsageRetentionDashboard } from "@/components/admin/UsageRetentionDashboard";
+import { LinkedinLastroDashboard } from "@/components/admin/LinkedinLastroDashboard";
 import { ContactListsManager } from "@/components/admin/ContactListsManager";
 import { ConversionDashboard } from "@/components/admin/ConversionDashboard";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
@@ -7625,6 +7626,7 @@ export default function Admin() {
                   </div>
                 </article>
               </div>
+              <LinkedinLastroDashboard />
             </AdminSection>
           ) : null}
 

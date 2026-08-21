@@ -301,3 +301,61 @@ export function readQualitative(
 
   return view;
 }
+
+/**
+ * AGREGADO DE VIOLAÇÕES sobre um conjunto de análises.
+ *
+ * `comResumo` e `semResumo` não são detalhe de implementação: são o DENOMINADOR
+ * honesto. Toda análise gravada antes do lote que criou o resumo entra na
+ * janela sem o dado, e somá-las como zero produziria a frase "nenhuma violação
+ * nesta semana" a partir de análises que ninguém mediu. O painel precisa poder
+ * dizer "de 40 análises, 12 têm medição" em vez de fingir que mediu 40.
+ *
+ * Por isso `total` conta SOMENTE as análises com resumo, e o card apresenta os
+ * dois números lado a lado.
+ */
+export interface LastroAgregado {
+  /** Análises consideradas na janela. */
+  analises: number;
+  /** Quantas delas carregam o resumo (o denominador do que se pode afirmar). */
+  comResumo: number;
+  /** Quantas não carregam, por serem anteriores ao resumo existir. */
+  semResumo: number;
+  /** Soma das violações, apenas sobre `comResumo`. */
+  total: number;
+  /** Soma por tipo, apenas sobre `comResumo`. Tipo sem ocorrência fica ausente. */
+  porTipo: Partial<Record<TipoViolacao, number>>;
+}
+
+/**
+ * Função PURA de agregação: recebe as views já lidas e devolve as contagens.
+ *
+ * Pura de propósito, e separada da rota, porque é ela que carrega a decisão que
+ * pode errar em silêncio (o que conta e o que não conta). Rota testada com
+ * storage dublado prova a fiação; esta função prova a aritmética.
+ */
+export function agregarResumos(
+  resumos: readonly LastroResumoView[],
+): LastroAgregado {
+  const porTipo: Partial<Record<TipoViolacao, number>> = {};
+  let comResumo = 0;
+  let total = 0;
+
+  for (const resumo of resumos) {
+    if (resumo.total === CONTAGEM_INDISPONIVEL) continue;
+    comResumo += 1;
+    total += resumo.total;
+    for (const [tipo, contagem] of Object.entries(resumo.porTipo)) {
+      const chave = tipo as TipoViolacao;
+      porTipo[chave] = (porTipo[chave] ?? 0) + (contagem ?? 0);
+    }
+  }
+
+  return {
+    analises: resumos.length,
+    comResumo,
+    semResumo: resumos.length - comResumo,
+    total,
+    porTipo,
+  };
+}

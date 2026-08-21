@@ -184,3 +184,30 @@ export function resumirViolacoes(violacoes: readonly Violacao[]): LastroResumo {
   }
   return { total: violacoes.length, porTipo };
 }
+
+/**
+ * JANELA DO PAINEL DE VIOLACOES, em dias.
+ *
+ * Fixa, e nao selecionavel: seletor de periodo ficou de fora do lote de
+ * proposito (backlog). Sete dias porque a pergunta do painel e "a calibracao do
+ * prompt piorou nesta semana?", nao "qual o historico". Janela maior tornaria a
+ * consulta mais cara sem responder melhor a pergunta que ele existe para
+ * responder.
+ */
+export const LASTRO_JANELA_DIAS = 7;
+
+/**
+ * TETO DE SANIDADE de analises lidas por consulta.
+ *
+ * `linkedin_analyses` tem indice em `(user_id, created_at desc)`, e nao em
+ * `created_at` sozinho: uma varredura por janela sem filtro de usuario NAO usa
+ * esse indice. Com o volume atual do analisador (recurso Pro, produto novo) o
+ * scan e trivial, e o teto existe para o dia em que deixar de ser: melhor o
+ * painel mostrar um numero explicitamente truncado do que a rota do admin
+ * pendurar.
+ *
+ * Nao e um limiar de produto: mudar este numero nao muda veredito nenhum sobre
+ * perfil de usuario. Se o volume crescer, a correcao e um indice em
+ * `created_at`, nao um teto maior.
+ */
+export const LASTRO_ANALISES_MAX = 2000;
