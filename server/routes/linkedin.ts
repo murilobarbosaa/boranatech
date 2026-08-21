@@ -12,6 +12,7 @@ import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import {
   comPrazoDeBanco,
   PRAZO_BANCO_ANALISE_MS,
+  TETO_CLIENT_MS,
 } from "../../shared/linkedin/prazos";
 import {
   analyzeLinkedin,
@@ -209,14 +210,41 @@ router.post(
       );
     }
 
+    // JANELA DE ANALISE EM VOO = o teto de aborto do client.
+    //
+    // Nao e um numero escolhido: e o unico ja derivado que responde a pergunta
+    // certa. Uma reserva mais VELHA que o teto do client nao pode estar em voo,
+    // porque o servidor ou terminou (pior caso 115,4s) ou estourou, e o client
+    // ja desistiu (130,4s) e nao esta mais esperando resposta nenhuma. Recusar
+    // dentro dessa janela e recusar exatamente enquanto alguem ainda espera.
     const usage = await checkAiDailyLimit(
       userId,
       !!req.isPro,
       "[linkedin]",
       TOOL,
       PRAZO_BANCO_ANALISE_MS,
+      TETO_CLIENT_MS,
     );
     if (!usage.allowed) {
+      // ANALISE EM VOO: 409, e SEM `logAiUsage`.
+      //
+      // A ausencia do log aqui NAO e esquecimento, e o ponto mais delicado deste
+      // lote. `logAiUsage` procura a reserva pendente por (usuario, tool) e a
+      // CONFIRMA. Chamada neste ramo, ela fecharia a reserva da analise que
+      // ainda esta rodando: a vaga seria liberada no meio do caminho, a linha
+      // daquela analise viraria 'error' com dados desta requisicao, e a corrida
+      // de cota que este lote fecha voltaria por outra porta. Nada aconteceu
+      // aqui que precise de linha: nao houve reserva nova nem chamada de IA.
+      if (usage.analiseEmAndamento) {
+        // TODO(Ana): mensagem de analise ja em andamento (409).
+        return next(
+          createError(
+            409,
+            "analise_em_andamento",
+            "Você já tem uma análise deste perfil em andamento. Aguarde ela terminar antes de pedir outra.",
+          ),
+        );
+      }
       // Falha de verificacao (RPC fora) e distinta de cota estourada: 503, nao
       // 429, e loga como "error" pra nao poluir a metrica de rate_limited.
       // Espelha server/routes/github.ts.

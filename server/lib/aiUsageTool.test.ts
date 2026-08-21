@@ -35,7 +35,18 @@ interface Rota {
 
 function lerRotas(): Rota[] {
   const out: Rota[] = [];
-  for (const arquivo of readdirSync(ROUTES).filter((f) => f.endsWith(".ts"))) {
+  // ARQUIVO DE TESTE NAO E ROTA. A varredura audita as rotas de producao de
+  // `server/routes`; um teste que mora ali e chama `checkAiDailyLimit` num duble
+  // nao declara ferramenta nenhuma, e passaria a ser cobrado como se declarasse.
+  // O buraco existia desde sempre e so apareceu quando o primeiro teste de rota
+  // passou a chamar a funcao direto (Fase 4, lote 2): ele acusou tres falhas
+  // sobre um "arquivo de rota" que e um `.test.ts`. A assercao de TOTAL de
+  // arquivos, logo abaixo, continua sendo o anteparo contra este filtro esconder
+  // uma rota de verdade.
+  const deRota = readdirSync(ROUTES).filter(
+    (f) => f.endsWith(".ts") && !/\.test\.tsx?$/.test(f),
+  );
+  for (const arquivo of deRota) {
     const fonte = readFileSync(path.join(ROUTES, arquivo), "utf8");
     // 4o argumento de checkAiDailyLimit(userId, isPro, escopo, TOOL, ...)
     const reservas = Array.from(

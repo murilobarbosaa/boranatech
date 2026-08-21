@@ -23,6 +23,16 @@ export interface AiDailyLimitResult {
   // true quando NAO foi possivel verificar o uso (RPC com erro/null ou excecao).
   // Distingue "falha de verificacao" (503) de "limite real atingido" (429).
   verificationFailed?: boolean;
+  /**
+   * true quando a RPC recusou porque JA EXISTE uma reserva em voo do mesmo
+   * usuario e da mesma ferramenta dentro da janela informada.
+   *
+   * Terceiro estado, e nao um sabor de `allowed: false`: sem ele, "ja tem uma
+   * analise rodando" seria indistinguivel de "sua cota do dia acabou", e as
+   * duas pedem respostas opostas (esperar a que esta rodando contra voltar
+   * amanha). So aparece para quem passa `janelaAndamentoMs`.
+   */
+  analiseEmAndamento?: boolean;
 }
 
 /**
@@ -73,6 +83,15 @@ function avisarModoDegradado(logScope: string, causa: string): void {
   }
 }
 
+/**
+ * Valor de `motivo` com que a RPC nomeia a recusa por analise em voo.
+ *
+ * Exportado porque o teste da rota precisa produzir exatamente esta string no
+ * duble da RPC: se o literal divergir entre o duble e o codigo, o teste passaria
+ * verde sobre um desfecho que nunca acontece.
+ */
+export const MOTIVO_ANALISE_EM_ANDAMENTO = "analise_em_andamento";
+
 export async function checkAiDailyLimit(
   userId: string,
   isPro: boolean,
@@ -91,6 +110,16 @@ export async function checkAiDailyLimit(
    * (`20260727150000_reserve_ai_usage_slot.sql`).
    */
   prazoBancoMs?: number,
+  /**
+   * JANELA DE ANALISE EM VOO, em ms. Ausente = a checagem nem existe, que e como
+   * as outras oito ferramentas de IA chamam esta funcao e continuam chamando.
+   *
+   * Ausente tambem muda a FORMA da chamada: sem ela, a RPC e invocada com os
+   * TRES argumentos de sempre, entao o Postgres resolve para a funcao de tres
+   * argumentos, que este lote nao alterou. As outras ferramentas nao dependem de
+   * nenhuma decisao minha aqui: elas nem chegam ao corpo novo.
+   */
+  janelaAndamentoMs?: number,
 ): Promise<AiDailyLimitResult> {
   const limit = isPro ? env.aiDailyLimitPro : env.aiDailyLimitFree;
 
@@ -107,17 +136,37 @@ export async function checkAiDailyLimit(
   // advisory lock do usuario, e o que a rota faz depois e CONFIRMAR a linha que
   // ja existe.
   try {
+    // ARIDADE CONDICIONAL, e ela e a garantia de que as outras oito ferramentas
+    // seguem intocadas. Sem janela, tres argumentos e a funcao antiga; com
+    // janela, quatro argumentos e a funcao nova. Nao ha DEFAULT no banco
+    // justamente para nao existir chamada que case as duas (ver o cabecalho da
+    // migration 20260821130000).
+    const argumentos =
+      janelaAndamentoMs === undefined
+        ? { p_user_id: userId, p_tool: tool, p_limit: limit }
+        : {
+            p_user_id: userId,
+            p_tool: tool,
+            p_limit: limit,
+            p_janela_andamento_ms: janelaAndamentoMs,
+          };
     const { data, error } = await comPrazoDeBanco(
-      supabaseAdmin.rpc("reserve_ai_usage_slot", {
-        p_user_id: userId,
-        p_tool: tool,
-        p_limit: limit,
-      }),
+      supabaseAdmin.rpc("reserve_ai_usage_slot", argumentos),
       "reserva_atomica",
       prazoBancoMs,
     );
     const linha = Array.isArray(data) ? data[0] : data;
     if (!error && linha && typeof linha.allowed === "boolean") {
+      // `motivo` so existe na funcao de quatro argumentos. Em tudo que chama com
+      // tres ele vem `undefined`, a comparacao e falsa, e o retorno e byte a
+      // byte o de antes.
+      const motivo: unknown = (linha as { motivo?: unknown }).motivo;
+      if (motivo === MOTIVO_ANALISE_EM_ANDAMENTO) {
+        // `count` NAO e lido neste desfecho: a RPC nem contou (devolve NULL de
+        // proposito, e nao zero). O `?? 0` abaixo nao se aplica aqui porque o
+        // caller trata `analiseEmAndamento` antes de olhar a contagem.
+        return { allowed: false, count: 0, limit, analiseEmAndamento: true };
+      }
       return {
         allowed: linha.allowed,
         count: linha.usage_count ?? 0,
