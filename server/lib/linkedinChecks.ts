@@ -1,4 +1,6 @@
 import type { AreaSlug } from "../../shared/areas";
+import { headlineParecCortada } from "../../shared/linkedin/headlineCortada";
+import { headlineFinalDe } from "../../shared/linkedin/schema";
 import {
   LINKEDIN_CAMPOS,
   LINKEDIN_CHECK_CATALOG,
@@ -52,6 +54,16 @@ export interface LinkedinChecksInput {
   openToWork: "sim" | "nao" | "nao-sei";
   conexoes: "ate-50" | "50-100" | "100-500" | "500-mais";
   atividade: "nunca" | "raramente" | "semanal" | "diaria";
+  /**
+   * Headline digitada no passo de revisão. Ausente na esmagadora maioria das
+   * chamadas, e ausente significa "usar a do parser".
+   *
+   * Entra AQUI, e não é resolvida pelo chamador, para que `runLinkedinChecks`
+   * seja o ponto único: nenhum sítio de check pode ler `parsed.headline` e
+   * escapar da decisão. `linkedinHeadlineFinalUnica.test.ts` enumera da fonte
+   * e falha se aparecer outro leitor.
+   */
+  headlineManual?: string | null;
 }
 
 /** Quebra a string de skills do formulário em itens limpos e únicos. */
@@ -160,7 +172,10 @@ export function runLinkedinChecks(
   const densidade = limiaresDensidade(input.level);
   const cortes = cortesDeCobertura(keyTechnologiesForArea(area).length);
 
-  const headline = parsed.headline ?? "";
+  // UMA resolucao, no topo, e daqui para baixo `parsed.headline` nao e mais
+  // lido: todo check, o `pendente` e o valor persistido saem de `headlineFinal`.
+  const headlineFinal = headlineFinalDe(parsed.headline, input.headlineManual);
+  const headline = headlineFinal ?? "";
   const sobre = parsed.sobre ?? "";
   const skillsForm = parseSkillsInput(input.skills);
   const skillsText = skillsForm.join(", ");
@@ -516,6 +531,25 @@ export function runLinkedinChecks(
     },
   };
 
+  /**
+   * A headline lida tem assinatura de corte?
+   *
+   * Decide `pendente` nos cinco checks de `headline-*` e o `notaIncompleta` do
+   * bloco. NAO entra em `aprovado` nem no peso: cada check continua com o
+   * veredito que a regua calculou, e a nota e identica com ou sem a marcacao.
+   * A inercia esta provada por deep-equals em
+   * `shared/linkedin/reguaV2.pontosPendentes.test.ts`.
+   *
+   * O que a marcacao muda e o que a interface AFIRMA: com a leitura em duvida,
+   * a faixa vira "a confirmar" e a nota ganha o asterisco, em vez de dizer
+   * "Forte" sobre uma headline cortada ao meio.
+   */
+  // Sobre a headline FINAL, nao a do parser. E o que faz o `pendente` sair
+  // sozinho quando a pessoa corrige, sem regra de "editou, entao limpou": o que
+  // vale e o texto resultante. Quem editar e ainda deixar assinatura de corte
+  // continua com `notaIncompleta: true`, e deve mesmo.
+  const headlineCortada = headlineParecCortada(headlineFinal);
+
   const checks: LinkedinCheckResult[] = [];
   for (const entry of LINKEDIN_CHECK_CATALOG) {
     if (!checkAppliesToMercado(entry, mercado)) continue;
@@ -531,6 +565,13 @@ export function runLinkedinChecks(
       tier: resolveTier(entry, mercado),
       aprovado,
       detail,
+      // SEMPRE booleano, nunca ausente. `pendente` e o unico opcional deste
+      // payload cuja ausencia significaria "completo" em vez de "nao sabemos",
+      // e os outros tres (`entryPath`, `textoHash`, `headlineContexto`)
+      // significam o contrario. Quatro opcionais no mesmo objeto com semantica
+      // invertida em um deles e como se erra: escrever sempre, e normalizar na
+      // leitura, faz a ausencia nunca chegar a ser interpretada.
+      pendente: headlineCortada && entry.category === "headline",
     });
   }
 
@@ -595,6 +636,12 @@ export function runLinkedinChecks(
   return {
     score,
     faixa,
+    // A nota esta completa? Booleano proprio, e nao um valor novo em
+    // `LINKEDIN_FAIXAS`: a coluna `faixa` e `text not null` SEM constraint, tem
+    // leitores fora do jsonb, e o bundle antigo na janela de deploy ignoraria o
+    // campo que nao conhece e mostraria a faixa calculada, que e o
+    // comportamento de hoje. Valor novo no enum daria chip vazio la.
+    notaIncompleta: headlineCortada,
     checks,
     keywordsEncontradas: fullCoverage.encontradas,
     keywordsFaltantes: fullCoverage.faltantes,
@@ -605,7 +652,7 @@ export function runLinkedinChecks(
       (exp) => exp.descricao.trim().length,
     ),
     titulosIngles,
-    headline: parsed.headline,
+    headline: headlineFinal,
     sobreTamanho: sobre.trim().length,
     experienciasContagem: parsed.experiencias.length,
     skillsContagem: skillsForm.length,

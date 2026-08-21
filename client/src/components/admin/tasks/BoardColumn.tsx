@@ -1,13 +1,14 @@
 import { memo, useMemo } from "react";
 import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Zap } from "lucide-react";
 
 import { ColumnHeader } from "./ColumnHeader";
 import { NewTaskComposer } from "./NewTaskComposer";
 import { TaskCard } from "./TaskCard";
 import {
   COLUMN_COLOR_FALLBACK,
+  columnShellClass,
   emptyBlockClass,
   safeHexColor,
 } from "./taskBoardStyles";
@@ -98,7 +99,9 @@ function BoardColumnBase({
   const taskIds = useMemo(() => group.tasks.map((task) => task.id), [group.tasks]);
 
   const overWip =
-    column?.wip_limit != null && group.totalBeforeFilter > column.wip_limit;
+    column?.is_pinned !== true &&
+    column?.wip_limit != null &&
+    group.totalBeforeFilter > column.wip_limit;
   const filtered = group.tasks.length < group.totalBeforeFilter;
 
   return (
@@ -110,9 +113,7 @@ function BoardColumnBase({
         borderTopColor: accent,
         borderTopWidth: 6,
       }}
-      className={`flex w-[85vw] shrink-0 snap-start flex-col rounded-3xl border-2 border-slate-900 p-3 shadow-[3px_3px_0_#0f172a] transition-colors sm:w-[19rem] ${
-        isDragging ? "opacity-40" : ""
-      } ${
+      className={`${columnShellClass} ${isDragging ? "opacity-40" : ""} ${
         isDropTarget
           ? overWip
             ? "bg-rose-100 ring-4 ring-rose-400"
@@ -127,12 +128,25 @@ function BoardColumnBase({
               de card ou clicar no menu tambem arrastaria a coluna. */}
           <button
             type="button"
-            aria-label={`Reordenar a etapa ${column.name}`}
-            className="mt-0.5 shrink-0 cursor-grab touch-none rounded text-slate-400 hover:text-slate-900 active:cursor-grabbing"
-            {...attributes}
-            {...listeners}
+            aria-label={
+              column.is_pinned
+                ? `A etapa ${column.name} é fixa e não pode ser reordenada`
+                : `Reordenar a etapa ${column.name}`
+            }
+            disabled={column.is_pinned}
+            className={`mt-0.5 shrink-0 touch-none rounded ${
+              column.is_pinned
+                ? "cursor-default text-slate-300"
+                : "cursor-grab text-slate-400 hover:text-slate-900 active:cursor-grabbing"
+            }`}
+            {...(column.is_pinned ? {} : attributes)}
+            {...(column.is_pinned ? {} : listeners)}
           >
-            <GripVertical className="h-4 w-4" />
+            {column.is_pinned ? (
+              <Zap className="h-4 w-4" />
+            ) : (
+              <GripVertical className="h-4 w-4" />
+            )}
           </button>
           <div className="min-w-0 flex-1">
             <ColumnHeader
@@ -162,7 +176,12 @@ function BoardColumnBase({
         </header>
       )}
 
-      {column ? (
+      {/* Etapa fixada NAO oferece entrada manual. O servidor recusa (409
+          column_pinned_intake), e a interface nao pode convidar para o erro: um
+          botao que sempre falha e pior que a ausencia dele. A semantica "aqui so
+          entra o que o Sentry trouxe, e ninguem triou" e o que autoriza o job a
+          arquivar e ressuscitar sozinho. */}
+      {column && !column.is_pinned ? (
         <div className="mb-2">
           <NewTaskComposer
             columnId={column.id}
@@ -172,7 +191,12 @@ function BoardColumnBase({
         </div>
       ) : null}
 
-      <div className="flex max-h-[calc(100vh-22rem)] min-h-[4rem] flex-1 flex-col gap-2.5 overflow-y-auto pr-0.5">
+      {/* `overflow-x-hidden` EXPLICITO ao lado do `overflow-y-auto`. Pela spec
+          de overflow, um eixo `visible` ao lado de um eixo que nao e `visible`
+          computa para `auto`: so o `overflow-y-auto` ja criava um
+          `overflow-x: auto` silencioso aqui, e era ele a barra horizontal que
+          aparecia na coluna quando um card estourava a largura. */}
+      <div className="flex max-h-[calc(100vh-22rem)] min-h-[4rem] flex-1 flex-col gap-2.5 overflow-y-auto overflow-x-hidden pr-0.5">
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           {group.tasks.length === 0 ? (
             // Coluna vazia e coluna FILTRADA a zero sao coisas diferentes, e
@@ -193,7 +217,11 @@ function BoardColumnBase({
                 Nenhuma tarefa nesta etapa.
                 <br />
                 <span className="font-semibold text-slate-400">
-                  {column ? "Arraste um card para cá ou use “Nova tarefa”." : "Arraste um card para cá."}
+                  {column?.is_pinned
+                    ? "O Sentry ainda não trouxe nada. Esta etapa é alimentada automaticamente."
+                    : column
+                      ? "Arraste um card para cá ou use “Nova tarefa”."
+                      : "Arraste um card para cá."}
                 </span>
               </p>
             )

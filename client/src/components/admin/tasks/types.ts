@@ -15,11 +15,28 @@
 export type TaskPriority = "baixa" | "media" | "alta" | "urgente";
 
 /**
- * 'bug' saiu do conjunto aceito (bug tem tela propria). O valor continua sendo
- * RENDERIZAVEL pelo typeMetaOf, porque linha antiga de histórico pode cita-lo e
- * registro historico nao vira buraco por causa de uma opcao removida do menu.
+ * 'bug' VOLTOU ao conjunto aceito (migration 20260731040000). Tinha saido
+ * porque bug tinha tela propria; a aba Bugs & Erros esta sendo aposentada e os
+ * bugs passam a viver no quadro BUG deste modulo.
  */
-export type TaskType = "feature" | "melhoria" | "debito_tecnico" | "tarefa";
+export type TaskType =
+  | "feature"
+  | "bug"
+  | "melhoria"
+  | "debito_tecnico"
+  | "tarefa";
+
+/**
+ * Quem criou o card. 'sentry' = feed automatico, 'migrated_bug' = veio da
+ * migracao do admin_bugs. Espelha o CHECK de admin_tasks.source.
+ *
+ * Como toda uniao vinda do servidor, passa por resolver com fallback neutro
+ * (sourceMetaOf): o bundle no navegador pode ser mais antigo que o backend.
+ */
+export type TaskSource = "human" | "sentry" | "migrated_bug";
+
+/** Quem arquivou. null quando o card nao esta arquivado. */
+export type TaskArchivedSource = "human" | "sentry_sync";
 
 export type TaskActivityAction =
   | "created"
@@ -63,6 +80,13 @@ export type TaskColumn = {
   wip_limit: number | null;
   is_start: boolean;
   is_done: boolean;
+  /**
+   * Etapa FIXADA: alimentada pelo feed automatico. Nao e excluida, nao entra na
+   * reordenacao, nao aceita card manual e nao mostra limite de WIP.
+   */
+  is_pinned: boolean;
+  /** Qual feed cai nesta etapa. 'sentry' hoje; null em etapa comum. */
+  intake_source: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -91,10 +115,29 @@ export type Task = {
   archived_at: string | null;
   created_at: string;
   updated_at: string;
+  source: TaskSource;
+  /** ID curto legivel da issue (NODE-EXPRESS-1). Null em card manual. */
+  sentry_issue_id: string | null;
+  sentry_issue_url: string | null;
+  /** Instante do evento que trouxe o card de volta (reabertura ou ressurreicao). */
+  sentry_reopen_event_at: string | null;
+  /**
+   * Quem arquivou. 'human' = SILENCIADO (nao volta nem se o erro acontecer de
+   * novo); 'sentry_sync' = podado pelo job (volta na proxima recorrencia). Sao
+   * estados diferentes com futuros diferentes, e a tela precisa distinguir.
+   */
+  archived_source: TaskArchivedSource | null;
 };
 
 /** Task como vem no snapshot do board: com o que o card precisa desenhar. */
 export type TaskCard = Task & {
+  /**
+   * Derivado no servidor a partir de sentry_data, que NAO vem no snapshot.
+   * Medido: o bloco tem ~918 bytes por card e levaria o array de 17 KB para
+   * 38 KB com 22 cards. O card so precisa do booleano; o bloco inteiro vem no
+   * detalhe.
+   */
+  sentry_detalhe_incompleto: boolean;
   label_ids: string[];
   checklist_total: number;
   checklist_done: number;
@@ -156,8 +199,32 @@ export type TaskBoardSnapshot = {
   admins: TaskAssignee[];
 };
 
+/** Bloco do Sentry, como o servidor persiste em admin_tasks.sentry_data. */
+export type SentryDataBloco = {
+  coleta: { em: string; completo: boolean; motivo: string | null };
+  issue: {
+    shortId: string;
+    titulo: string;
+    culprit: string;
+    level: string;
+    status: string;
+    projeto: string;
+    eventos: number;
+    usuarios: number;
+    primeiroEvento: string;
+    ultimoEvento: string;
+    permalink: string;
+  };
+  detalhe: {
+    environment: string | null;
+    release: string | null;
+    url: string | null;
+    stack: string | null;
+  } | null;
+};
+
 export type TaskDetail = {
-  task: Task;
+  task: Task & { sentry_data: SentryDataBloco | null };
   label_ids: string[];
   comments: TaskComment[];
   checklist: TaskChecklistItem[];

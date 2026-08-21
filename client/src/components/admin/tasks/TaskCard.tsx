@@ -11,12 +11,13 @@ import {
   MessageSquare,
 } from "lucide-react";
 
+import { arquivamentoMetaOf, origemMetaOf } from "./sentryMeta";
 import {
   badgeClass,
+  LABEL_COLOR_FALLBACK,
   priorityMetaOf,
   safeHexColor,
   typeMetaOf,
-  LABEL_COLOR_FALLBACK,
 } from "./taskBoardStyles";
 import { shortIdOf } from "./taskDeepLink";
 import type { TaskAssignee, TaskCard as TaskCardData, TaskLabel } from "./types";
@@ -93,6 +94,13 @@ export function TaskCardBody({
 }: Pick<TaskCardProps, "task" | "boardKey" | "labelsById" | "assigneesById">) {
   const priority = priorityMetaOf(task.priority);
   const type = typeMetaOf(task.type);
+  const origem = origemMetaOf(task.source);
+  // So desenha o selo de arquivamento quando o card ESTA arquivado: com o toggle
+  // de arquivadas ligado, silenciado e podado precisam ser distinguiveis, porque
+  // um nunca volta e o outro volta na proxima recorrencia.
+  const arquivamento = task.archived_at
+    ? arquivamentoMetaOf(task.archived_source)
+    : null;
   const due = dueState(task.due_date);
   // Etiqueta que sumiu do quadro (excluida enquanto a tela estava aberta) some
   // do card em vez de virar `undefined.name`.
@@ -105,8 +113,14 @@ export function TaskCardBody({
 
   return (
     <>
+      {/* `anywhere` e NAO `break-words`: os dois quebram o token na hora de
+          desenhar, mas so o `anywhere` entra no calculo do min-content. Como o
+          card e item de flex, e o min-content dele que define ate onde ele pode
+          encolher, entao com `break-words` o texto quebraria e o card
+          continuaria largo do mesmo jeito. Titulo do Sentry e o caso real:
+          `window.webkit.messageHandlers...` nao tem um espaco. */}
       <p
-        className={`mt-1.5 text-sm font-black leading-snug ${
+        className={`mt-1.5 text-sm font-black leading-snug [overflow-wrap:anywhere] ${
           task.archived_at ? "text-slate-500 line-through" : "text-slate-950"
         }`}
       >
@@ -118,7 +132,7 @@ export function TaskCardBody({
           {labels.map((label) => (
             <span
               key={label.id}
-              className="rounded-full border border-slate-900 px-1.5 py-0.5 text-[10px] font-black text-slate-900"
+              className="rounded-full border border-slate-900 px-1.5 py-0.5 text-[10px] font-black text-slate-900 [overflow-wrap:anywhere]"
               style={{
                 backgroundColor: safeHexColor(label.color, LABEL_COLOR_FALLBACK),
               }}
@@ -132,6 +146,44 @@ export function TaskCardBody({
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <span className={`${badgeClass} ${priority.badge}`}>{priority.label}</span>
         <span className={`${badgeClass} ${type.badge}`}>{type.label}</span>
+        {/* Selos do feed. DISCRETOS e SO QUANDO VALEM: um selo permanente em 22
+            cards vira textura de fundo e para de ser sinal. */}
+        {origem.selo ? (
+          <span
+            className={`${badgeClass} bg-slate-900 text-white`}
+            title={
+              task.sentry_issue_id
+                ? `Criado pelo feed automático a partir de ${task.sentry_issue_id}`
+                : "Criado automaticamente"
+            }
+          >
+            {origem.selo}
+          </span>
+        ) : null}
+        {task.sentry_reopen_event_at ? (
+          <span
+            className={`${badgeClass} bg-amber-100 text-amber-900`}
+            title="O erro voltou a acontecer depois de resolvido ou arquivado"
+          >
+            Voltou
+          </span>
+        ) : null}
+        {task.sentry_detalhe_incompleto ? (
+          <span
+            className={`${badgeClass} bg-slate-200 text-slate-700`}
+            title="Não foi possível ler todo o detalhe no Sentry. A próxima manutenção completa."
+          >
+            Detalhe parcial
+          </span>
+        ) : null}
+        {arquivamento ? (
+          <span
+            className={`${badgeClass} bg-slate-100 text-slate-600`}
+            title={arquivamento.descricao}
+          >
+            {arquivamento.rotulo}
+          </span>
+        ) : null}
       </div>
 
       {task.due_date ||
@@ -268,7 +320,20 @@ function TaskCardBase({
         transform: CSS.Transform.toString(transform),
         transition,
       }}
-      className={`group relative touch-none rounded-2xl border-2 p-3 text-left shadow-[3px_3px_0_#0f172a] transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 active:cursor-grabbing ${
+      // `min-w-0` derruba o `min-width:auto` que todo item de flex tem por
+      // padrao, que e o que impedia o card de encolher abaixo do min-content do
+      // texto. `max-w-full` e `overflow-hidden` sao a contencao de ultimo
+      // recurso, para conteudo futuro que escape do `overflow-wrap`.
+      //
+      // `shrink-0` e a CONTRAPARTE VERTICAL, e nao e opcional junto com o
+      // `overflow-hidden` acima: o tamanho minimo automatico de item de flex so
+      // vale enquanto o overflow e `visible`, entao o `overflow-hidden` zera o
+      // `min-height:auto` que impedia o card de encolher abaixo do proprio
+      // conteudo. Sem `shrink-0`, a lista (que e `flex-col` com `max-h`)
+      // espremia os cards ate a coluna caber, proporcionalmente a lotacao, e o
+      // proprio `overflow-hidden` cortava o titulo. Coluna cheia rola pela
+      // LISTA (`overflow-y-auto`), nunca encolhendo o card.
+      className={`group relative min-w-0 max-w-full shrink-0 touch-none overflow-hidden rounded-2xl border-2 p-3 text-left shadow-[3px_3px_0_#0f172a] transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 active:cursor-grabbing ${
         archived
           ? "border-dashed border-slate-400 bg-slate-100"
           : "border-slate-900 bg-white"

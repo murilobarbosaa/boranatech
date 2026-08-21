@@ -8,6 +8,12 @@ import { syncNews } from "../jobs/syncNews";
 import { writeAudienceSnapshots } from "../lib/audienceReach";
 import { reindexSearchDocuments } from "../lib/searchIndex";
 import { reconcileSentryBugs } from "../lib/sentryBugReconcile";
+import {
+  resumoParaLog,
+  runDegradada,
+  syncSentryTasks,
+} from "../lib/sentryTaskIntake";
+import { coletarTagueado, paginateRange } from "../lib/paginate";
 import { recordCronRun } from "../lib/cron-logs";
 import { reconcileEmailCampaignBatches } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
@@ -19,9 +25,11 @@ import { issueRenewalToken } from "../lib/renewalToken";
 import { getStripe } from "../lib/stripeClient";
 import { runPaymentRecovery } from "../lib/paymentRecovery";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
+import { SYNC_FINANCE_WINDOW_DAYS } from "../lib/financeSyncWindow";
 import { syncBalanceTransactions } from "../lib/stripeSync";
 import { collectSubscriptionSnapshot } from "../lib/subscriptionSnapshots";
 import { createError } from "../middleware/error";
+import { lerSessaoDeBoleto } from "../lib/boletoSession";
 import { getStripeSubscriptionState } from "../providers/stripe";
 import { isPlanId, PLAN_PRICING } from "../../shared/planPricing";
 
@@ -362,6 +370,18 @@ async function reconcileStripeCancellation(sub: SubRow): Promise<RowOutcome> {
     };
   }
 
+  // BUG LATENTE, so BOLETO. `provider_subscription_id` de linha com
+  // `renewal_type='manual'` e um id de SESSAO (`cs_...`), nao de assinatura, e
+  // getStripeSubscriptionState chama subscriptions.retrieve com ele. Se uma
+  // linha dessas entrar aqui com cancel_at_period_end, a chamada falha a cada
+  // execucao, para sempre.
+  //
+  // Medido em 2026-07-30: 0 boletos com cancel_at_period_end, 0 linhas vencidas,
+  // 0 travadas, 1744 execucoes deste cron sem falha. Esta latente, nao ativo, e
+  // por isso nao foi consertado nesta rodada. A entrada pela UI esta fechada na
+  // rota de cancelamento administrativo (admin.ts, POST
+  // /users/:id/subscription/cancel), que recusa boleto no servidor.
+  //
   // Se esta leitura FALHAR (rede/5xx/rate limit), a excecao propaga ANTES de
   // qualquer escrita e o caller conta failed. Falha de leitura nunca vira
   // decisao: nem concede nem revoga acesso.
@@ -429,14 +449,24 @@ router.post(
       // Provider-agnostico. cancel_at_period_end=true NAO pode mais ser excluido
       // silenciosamente do reconcile: para a Stripe o webhook de fim de periodo
       // pode se perder, e ausencia de evento nunca pode manter Pro (fail-open).
-      const { data: due, error: dueError } = await supabaseAdmin
-        .from("subscriptions")
-        .select(
-          "id, user_id, provider, status, provider_subscription_id, current_period_end",
-        )
-        .eq("cancel_at_period_end", true)
-        .eq("status", "active")
-        .lte("current_period_end", nowIso);
+      // PAGINADO, e aqui o teto seria FAIL-OPEN: uma pagina truncada deixa de
+      // fora assinaturas que ja deveriam ter perdido o Pro, e elas continuam
+      // ativas ate alguem reparar. O comentario acima ja diz que ausencia de
+      // evento nunca pode manter Pro; ausencia de LINHA tem o mesmo efeito.
+      const { data: due, error: dueError } = await coletarTagueado<SubRow>(
+        (from, to) =>
+          supabaseAdmin
+            .from("subscriptions")
+            .select(
+              "id, user_id, provider, status, provider_subscription_id, current_period_end",
+            )
+            .eq("cancel_at_period_end", true)
+            .eq("status", "active")
+            .lte("current_period_end", nowIso)
+            .order("id", { ascending: true })
+            .range(from, to),
+        "process-cancellations due",
+      );
 
       if (dueError) {
         await recordCronRun({
@@ -544,15 +574,32 @@ router.post(
 
       // Usa o indice parcial subscriptions_manual_renewal_expiry_idx
       // (renewal_type='manual' AND status='active', em current_period_end).
-      const { data: due, error: dueError } = await supabaseAdmin
-        .from("subscriptions")
-        .select(
-          "id, user_id, current_period_end, renewal_reminders_sent, plan_id",
-        )
-        .eq("renewal_type", "manual")
-        .eq("status", "active")
-        .gt("current_period_end", nowIso)
-        .lte("current_period_end", windowIso);
+      // PAGINADO: caminho de ENVIO. Truncar aqui nao erra um numero, deixa de
+      // mandar o lembrete de renovacao para quem esta no fim da lista, e o cron
+      // termina reportando sucesso. Falha silenciosa que so o cliente percebe.
+      const { data: due, error: dueError } = await coletarTagueado<{
+        id: string;
+        // Nao-nulo no schema e usado direto no getUserById logo abaixo.
+        user_id: string;
+        current_period_end: string | null;
+        // Array de codigos de marco (`d7`, `d3`...), nao contador.
+        renewal_reminders_sent: string[] | null;
+        plan_id: string | null;
+      }>(
+        (fromRow, toRow) =>
+          supabaseAdmin
+            .from("subscriptions")
+            .select(
+              "id, user_id, current_period_end, renewal_reminders_sent, plan_id",
+            )
+            .eq("renewal_type", "manual")
+            .eq("status", "active")
+            .gt("current_period_end", nowIso)
+            .lte("current_period_end", windowIso)
+            .order("id", { ascending: true })
+            .range(fromRow, toRow),
+        "expiring-subscriptions due",
+      );
 
       if (dueError) {
         await recordCronRun({
@@ -720,12 +767,24 @@ router.post(
         Date.now() - ORPHAN_BOLETO_DAYS * DAY_MS,
       ).toISOString();
 
-      const { data: orphans, error: orphansError } = await supabaseAdmin
-        .from("subscriptions")
-        .select("id, provider_subscription_id")
-        .eq("payment_method", "boleto")
-        .eq("status", "pending")
-        .lt("created_at", cutoffIso);
+      // PAGINADO: caminho de ESCRITA. Cada linha daqui vira um UPDATE para
+      // status='canceled'; a que ficar fora da pagina continua `pending` para
+      // sempre e segue bloqueando o guard 409 de nova assinatura.
+      const { data: orphans, error: orphansError } = await coletarTagueado<{
+        id: string;
+        provider_subscription_id: string | null;
+      }>(
+        (fromRow, toRow) =>
+          supabaseAdmin
+            .from("subscriptions")
+            .select("id, provider_subscription_id")
+            .eq("payment_method", "boleto")
+            .eq("status", "pending")
+            .lt("created_at", cutoffIso)
+            .order("id", { ascending: true })
+            .range(fromRow, toRow),
+        "expire-pending-boletos orphans",
+      );
 
       if (orphansError) {
         await recordCronRun({
@@ -756,22 +815,23 @@ router.post(
 
           // Guard definitivo antes de matar: 1 retrieve por orfao (raros, e o
           // conjunto ja veio filtrado por idade), custo negligivel.
-          let session: Awaited<
-            ReturnType<typeof stripe.checkout.sessions.retrieve>
-          >;
-          try {
-            session = await stripe.checkout.sessions.retrieve(sessionId);
-          } catch (stripeErr) {
+          //
+          // MESMO caminho que o detalhe do admin usa (server/lib/boletoSession.ts).
+          // Antes era um retrieve escrito aqui; virou funcao compartilhada para
+          // os dois lados nao divergirem, ja que os dois decidem sobre o mesmo
+          // boleto. A funcao nao lanca: incerteza vira estado 'indisponivel'.
+          const estado = await lerSessaoDeBoleto(sessionId, stripe);
+
+          if (estado.estado === "indisponivel") {
             // Falha na consulta = incerteza: NAO cancela (fail-safe, deixa viva).
             console.error(
-              `[cron/expire-pending-boletos] retrieve falhou para ${sessionId}; mantendo linha viva:`,
-              stripeErr,
+              `[cron/expire-pending-boletos] leitura da sessao falhou para ${sessionId}; mantendo linha viva: ${estado.motivo}`,
             );
             failed++;
             continue;
           }
 
-          if (session.payment_status === "paid") {
+          if (estado.pago) {
             // Boleto PAGO cujo async_payment_succeeded se perdeu: dinheiro entrou,
             // acesso nao saiu. NUNCA cancelar; grita para investigacao (a reativacao
             // passa pelo handler de webhook, fora do escopo deste cron).
@@ -1052,6 +1112,129 @@ async function reconcileExpiredSubscriptions() {
 
 // TTL 900s: 2 fases x ate 25 subscriptions x ate 2 chamadas Stripe cada
 // (teto 15s por chamada); pior caso teorico na casa dos minutos.
+/**
+ * Teto do lote de expiracao de boleto. Paginado por dentro, mas limitado: uma
+ * rodada que tentasse expirar milhares de linhas de uma vez seguraria o lock do
+ * cron e competiria com o resto do job. O que sobra e pego na proxima rodada
+ * (a cada 6 horas), e `capAtingido` na resposta diz quando sobrou — corte
+ * silencioso e a classe de defeito que este projeto ja documentou.
+ */
+const BOLETO_EXPIRY_BATCH = 200;
+
+/**
+ * BOLETO PAGO E VENCIDO: fecha o unico fim de vida que nao tinha dono.
+ *
+ * O buraco: para `renewal_type='manual'` NENHUM dos quatro caminhos que escrevem
+ * `canceled_at` funciona. Nao ha subscription na Stripe (o
+ * `provider_subscription_id` e um Checkout Session `cs_...`), entao
+ * `customer.subscription.deleted` nunca chega; `process-cancellations` filtra
+ * `cancel_at_period_end`, que o cancelamento de boleto NAO seta de proposito; e
+ * `reconcileExpiredSubscriptions` exclui boleto explicitamente porque
+ * `getStripeSubscriptionState` falharia com um id de sessao.
+ * `expire-pending-boletos` cobre o boleto emitido e NAO PAGO. O pago que venceu
+ * nao tinha ninguem: ficava `active` com periodo expirado para sempre.
+ *
+ * O acesso ja estava certo (is_user_pro nega pelo periodo); o que mentia era o
+ * `status`, e ele contamina toda contagem que filtra `status='active'`,
+ * inclusive o MRR.
+ *
+ * NAO CHAMA A STRIPE. Nao ha o que perguntar: a expiracao e decidivel no banco,
+ * e a data de fim ja esta na linha.
+ *
+ * POR QUE A CONDICAO NAO PEGA QUEM DEVIA CONTINUAR ATIVO, por construcao e nao
+ * por sorte:
+ *
+ *   - `current_period_end < now()` e exatamente o complemento do que is_user_pro
+ *     aceita, entao toda linha que este job toca JA nao dava Pro. O acesso e
+ *     inalterado pela mudanca de status, e por isso tambem nao ha cache de Pro a
+ *     invalidar: ele ja respondia `false` antes da escrita;
+ *   - `lt` nao casa NULL, entao assinatura sem data de fim (que da Pro
+ *     indefinidamente por is_user_pro) nunca entra;
+ *   - RENOVACAO EM CURSO nao e afetada: a renovacao de boleto cria uma LINHA
+ *     NOVA, com o id da nova sessao e `status='pending'`
+ *     (onBoletoAsyncPaymentSucceeded busca por `provider_subscription_id` da
+ *     sessao nova e exige `pending`). A linha nova esta fora do filtro por
+ *     status; depois de paga, fica fora pelo periodo futuro. Quem sobra e
+ *     justamente a linha velha que ninguem mais toca.
+ *
+ * ESCREVE `canceled_at` E `status='canceled'`, e NAO grava linha em
+ * `subscription_cancellations`. Essa ausencia e a informacao: cancelamento
+ * VOLUNTARIO tem registro de motivo, vencimento nao tem. Inventar um
+ * `reason_code` aqui poluiria o agregado da aba Retencao com um motivo que
+ * ninguem deu. A distincao entre "cancelou" e "venceu e nao renovou" fica
+ * legivel sem valor de status novo: e churn com registro contra churn sem
+ * registro. Um `status='expired'` novo custaria um valor a mais numa coluna que
+ * varias telas resolvem por mapa, e nao diria nada que a ausencia do registro ja
+ * nao diga.
+ */
+// EXPORTADA para teste, no mesmo criterio de expenseOccurrences em
+// financeMetrics.ts: o que importa provar aqui e QUAIS linhas a condicao pega, e
+// isso so se prova rodando a funcao contra um dublê que APLICA os filtros. Um
+// teste que apenas conferisse o formato da query estaria conferindo a intencao,
+// nao o efeito.
+export async function expirarBoletosVencidos() {
+  const nowIso = new Date().toISOString();
+
+  const alvos: Array<{ id: string; user_id: string | null }> = [];
+  let capAtingido = false;
+  try {
+    for await (const row of paginateRange<{
+      id: string;
+      user_id: string | null;
+    }>(
+      (from, to) =>
+        supabaseAdmin
+          .from("subscriptions")
+          .select("id, user_id")
+          .eq("renewal_type", "manual")
+          .eq("status", "active")
+          .lt("current_period_end", nowIso)
+          .order("id", { ascending: true })
+          .range(from, to),
+      { errorLabel: "expire-ended-boletos" },
+    )) {
+      if (alvos.length >= BOLETO_EXPIRY_BATCH) {
+        capAtingido = true;
+        break;
+      }
+      alvos.push(row);
+    }
+  } catch (err) {
+    throw err instanceof Error ? err : new Error(String(err));
+  }
+
+  let expired = 0;
+  let failed = 0;
+  const failures: Array<{ subscription_id: string; reason: string }> = [];
+
+  for (const alvo of alvos) {
+    // Condicional em `status='active'`: se outro caminho tiver mudado a linha
+    // entre a leitura e agora, o UPDATE nao pega nada e a rodada nao sobrescreve
+    // decisao alheia. Mesma idempotencia do expire-pending-boletos.
+    const { error } = await supabaseAdmin
+      .from("subscriptions")
+      .update({
+        status: "canceled",
+        canceled_at: nowIso,
+        last_event_at: nowIso,
+      })
+      .eq("id", alvo.id)
+      .eq("status", "active");
+    if (error) {
+      failed += 1;
+      failures.push({ subscription_id: alvo.id, reason: error.message });
+      console.error(
+        `[cron/reconcile-subscriptions] falha ao expirar boleto ${alvo.id}:`,
+        error,
+      );
+      continue;
+    }
+    expired += 1;
+  }
+
+  return { processed: alvos.length, expired, failed, capAtingido, failures };
+}
+
 router.post(
   "/reconcile-subscriptions",
   withCronLock("reconcile-subscriptions", 900, async (_req, res, next) => {
@@ -1060,8 +1243,16 @@ router.post(
     try {
       const incomplete = await reconcileIncompleteSubscriptions();
       const expired = await reconcileExpiredSubscriptions();
+      // TERCEIRA FASE, no MESMO job. O trabalho e o mesmo do job ("por a
+      // assinatura no estado certo") e a cadencia serve (6 em 6 horas para algo
+      // que so muda quando um periodo vira). Nao virou cron novo porque isso
+      // custaria migration de agenda, entrada propria em cron_runs e mais um
+      // lock, para um caminho que hoje nao pega nenhuma linha. E nao entrou no
+      // expire-pending-boletos porque o nome daquele job diz `pending`, e este
+      // trata o PAGO: reaproveitar la faria o nome mentir.
+      const boletos = await expirarBoletosVencidos();
 
-      const totalFailed = incomplete.failed + expired.failed;
+      const totalFailed = incomplete.failed + expired.failed + boletos.failed;
       // Contagens separadas por provider (byProvider) + skipped/failed por fase.
       const payload = {
         incomplete: {
@@ -1075,6 +1266,14 @@ router.post(
           byProvider: expired.byProvider,
           skipped: expired.skipped,
           failed: expired.failed,
+        },
+        // `capAtingido` vai na carga de proposito: lote com teto que nao avisa
+        // quando cortou reporta sucesso sobre uma superficie menor.
+        boletosVencidos: {
+          processed: boletos.processed,
+          expired: boletos.expired,
+          failed: boletos.failed,
+          capAtingido: boletos.capAtingido,
         },
       };
 
@@ -1091,6 +1290,7 @@ router.post(
           failures: {
             incomplete: incomplete.failures,
             expired: expired.failures,
+            boletosVencidos: boletos.failures,
           },
         },
       });
@@ -1118,14 +1318,22 @@ router.post(
     const startedAt = new Date();
 
     try {
-      const scan = await detectOrphanPayments({
-        windowDays: clampWindowDays(req.query.days),
-      });
+      // `?full=1` varre o HISTORICO INTEIRO, ignorando `days`. Sob demanda, nao
+      // no agendamento: o diario continua barato e pega o caso novo em horas, e
+      // o full e a rede para o que ja escapou dele — foi assim que o orfao de
+      // 2026-07-19 ficou 26 dias invisivel para um job que reportava sucesso.
+      const full = req.query.full === "1" || req.query.full === "true";
+      const scan = await detectOrphanPayments(
+        full ? { full: true } : { windowDays: clampWindowDays(req.query.days) },
+      );
 
-      // 'partial' quando ha orfao: o job rodou inteiro, mas o resultado exige
-      // acao humana e nao pode aparecer como sucesso limpo na lista de crons.
-      // Tambem 'partial' quando o registro nao gravou (migration pendente).
-      const needsAttention = scan.orphans > 0 || !scan.persisted;
+      // 'partial' pelos ACIONAVEIS, nao pelo bruto: `modo_teste` e
+      // `conta_excluida` sao ruido conhecido e nomeado, e deixar o job amarelo
+      // por causa deles e o caminho para ninguem mais olhar a lista de crons.
+      // Tambem 'partial' quando o registro nao gravou (migration pendente) —
+      // mas NAO quando foi dry-run, onde nao gravar e o comportamento pedido.
+      const needsAttention =
+        scan.orphansAcionaveis > 0 || (!scan.persisted && !scan.dryRun);
 
       await recordCronRun({
         jobName: "detect-orphan-payments",
@@ -1133,9 +1341,12 @@ router.post(
         startedAt,
         payload: {
           windowDays: scan.windowDays,
+          full: scan.full,
           paidSessions: scan.paidSessions,
           skippedRecent: scan.skippedRecent,
           orphans: scan.orphans,
+          orphansAcionaveis: scan.orphansAcionaveis,
+          porCategoria: scan.porCategoria,
           newOrphans: scan.newOrphans,
           persisted: scan.persisted,
           // Lista inteira no payload de proposito: cron_run_logs existe hoje e
@@ -1158,16 +1369,19 @@ router.post(
   }),
 );
 
-// Rede de seguranca do financeiro: sincroniza as balance transactions das
-// ultimas 72h. O webhook e o caminho rapido; este cron garante contra evento
-// perdido. Idempotente pelo bt id. TTL 600s: poucos itens por dia.
+// Rede de seguranca do financeiro. O webhook e o caminho rapido; este cron
+// garante contra evento perdido E alcanca linha gravada antes de uma correcao de
+// codigo (o upsert reescreve o dono). Idempotente pelo bt id. A janela e o custo
+// dela estao em ../lib/financeSyncWindow. TTL 600s: poucos itens por dia.
 router.post(
   "/sync-finance",
   withCronLock("sync-finance", 600, async (_req, res, next) => {
     const startedAt = new Date();
 
     try {
-      const since = new Date(Date.now() - 72 * 60 * 60 * 1000);
+      const since = new Date(
+        Date.now() - SYNC_FINANCE_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+      );
       const result = await syncBalanceTransactions({ since });
       await recordCronRun({
         jobName: "sync-finance",
@@ -1238,6 +1452,56 @@ type StuckCampaign = {
   last_sent_at: string | null;
 };
 
+/**
+ * Janela de realerta por campanha. 60 min contra um tick de 5 min: a mesma
+ * campanha travada gera no maximo 1 evento por hora, em vez de 12.
+ */
+export const JANELA_REALERTA_MS = 60 * 60 * 1000;
+
+/**
+ * Ultimo alerta por campanha. EM MEMORIA de proposito.
+ *
+ * Restart do Railway zera o mapa e a proxima passagem realerta, o que e
+ * fail-open por construcao: o pior caso de perder o estado e um evento a mais.
+ * Tabela ou chave no Redis seria estado duravel novo para economizar um evento
+ * por hora, e ainda daria a este cron uma dependencia que ele hoje NAO tem (o
+ * comentario acima registra que ele funciona com a fila congelada justamente
+ * por nao tocar a queueConnection).
+ *
+ * Cresce uma entrada por campanha travada vista no processo. Campanha travada e
+ * evento raro e o processo reinicia a cada deploy; nao ha o que podar.
+ */
+const ultimoAlertaPorCampanha = new Map<string, number>();
+
+/**
+ * Esta campanha deve gerar evento AGORA?
+ *
+ * FAIL-OPEN, e essa e a propriedade que nao pode ser perdida numa refatoracao:
+ * qualquer defeito na propria supressao devolve `true`. Alerta repetido
+ * incomoda; alerta suprimido por bug desaparece, e watchdog silencioso parece
+ * fila calma, que e exatamente o desenho que este projeto ja pagou caro (ver o
+ * RUNS_NAO_SADIAS_PARA_AVISAR em shared/tasks/sentryIntake.ts).
+ *
+ * `agora` e `memoria` entram por parametro para o teste nao depender do relogio
+ * nem de estado global entre casos.
+ */
+export function deveAlertarCampanhaTravada(
+  campaignId: string,
+  agora: number,
+  memoria: Map<string, number> = ultimoAlertaPorCampanha,
+): boolean {
+  try {
+    const ultimo = memoria.get(campaignId);
+    if (ultimo !== undefined && agora - ultimo < JANELA_REALERTA_MS) {
+      return false;
+    }
+    memoria.set(campaignId, agora);
+    return true;
+  } catch {
+    return true;
+  }
+}
+
 router.post(
   "/campaign-liveness",
   withCronLock("campaign-liveness", 120, async (_req, res, next) => {
@@ -1259,6 +1523,13 @@ router.post(
             `pending=${c.pending_count} sent=${c.sent_count} failed=${c.failed_count} ` +
             `total=${c.total_recipients} last_sent_at=${c.last_sent_at}`,
         );
+        // O LOG sai em toda passagem, mesmo com o evento suprimido: e ele que da
+        // a contagem exata de por quantos ticks a campanha ficou travada. So a
+        // captura no Sentry e deduplicada. Mesmo arranjo de `registrarViolacao`
+        // em lib/linkedinAnalyze.ts.
+        if (!deveAlertarCampanhaTravada(c.campaign_id, Date.now())) {
+          continue;
+        }
         Sentry.withScope((scope) => {
           scope.setTag("cron", "campaign-liveness");
           scope.setTag("campaignId", c.campaign_id);
@@ -1451,6 +1722,53 @@ router.post(
         startedAt,
         errorMessage: err instanceof Error ? err.message : String(err),
       });
+      next(err);
+    }
+  }),
+);
+
+// Sync do Sentry para o quadro de tarefas. Duas fases (ingestao a partir da
+// listagem, manutencao a partir dos nossos cards), idempotente e nao destrutivo.
+//
+// `?dryRun=1` percorre tudo, decide tudo e NAO ESCREVE NADA, devolvendo o
+// relatorio completo do que faria, card a card, com o motivo. NAO e ferramenta
+// de desenvolvimento a ser removida depois: e o unico jeito de ver o que um
+// escritor automatico PRETENDE fazer contra o banco de verdade antes de deixa-lo
+// fazer, e ele fica. O roteiro de ativacao (Fase 6) comeca por ele.
+//
+// TTL 600s: ingestao limitada a 25 criacoes por run (1 chamada Sentry cada, teto
+// de 10s) mais duas buscas em lote; pior caso na casa dos minutos.
+router.post(
+  "/sync-sentry-tasks",
+  withCronLock("sync-sentry-tasks", 600, async (req, res, next) => {
+    const startedAt = new Date();
+    // Query string aqui e SEGURA: o segredo vai no header (ver
+    // requireCronSecret), e dryRun nao e informacao sensivel.
+    const dryRun = req.query.dryRun === "1" || req.query.dryRun === "true";
+
+    try {
+      const relatorio = await syncSentryTasks({ dryRun });
+      // Dry-run NUNCA vira linha de cron_run_logs: ele nao e uma execucao do
+      // job, e registrar como se fosse poluiria o historico com runs que nao
+      // aconteceram e mascararia a cadencia real.
+      if (!dryRun) {
+        await recordCronRun({
+          jobName: "sync-sentry-tasks",
+          status: runDegradada(relatorio) ? "partial" : "success",
+          startedAt,
+          payload: resumoParaLog(relatorio),
+        });
+      }
+      res.json({ data: relatorio });
+    } catch (err) {
+      if (!dryRun) {
+        await recordCronRun({
+          jobName: "sync-sentry-tasks",
+          status: "error",
+          startedAt,
+          errorMessage: err instanceof Error ? err.message : String(err),
+        });
+      }
       next(err);
     }
   }),

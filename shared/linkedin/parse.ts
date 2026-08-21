@@ -12,7 +12,7 @@
  * é best-effort: prefere null a devolver lixo (o nome da pessoa, um e-mail).
  */
 
-import { normalizeProfileLines } from "./normalizeProfileText";
+import { normalizeProfileLinesComSinal } from "./normalizeProfileText";
 
 export interface LinkedinExperiencia {
   /** Só o cargo. A empresa nunca vem colada aqui. */
@@ -42,6 +42,13 @@ export interface LinkedinParsed {
    */
   formacao: string[];
   certificacoes: string[];
+  /**
+   * Contexto da headline, para diagnosticar truncamento depois do fato.
+   *
+   * `null` quando não houve headline detectada. Campo NOVO: leitor precisa
+   * tolerar ausência, porque as linhas já gravadas não o têm.
+   */
+  headlineContexto?: LinkedinHeadlineContexto | null;
   /** Falso quando o texto não tem nada de aproveitável. Vira 422 na rota. */
   usable: boolean;
 }
@@ -306,27 +313,163 @@ function clip(value: string, max: number): string {
 }
 
 /**
- * Headline detectada e ONDE ela está.
+ * A linha ficou ABERTA em vírgula, ou seja, o item seguinte foi quebrado.
+ *
+ * É o irmão do separador órfão da Fase 1A, na direção oposta: lá a linha
+ * terminava em `|` e a cauda vinha curta na linha de baixo; aqui a headline
+ * termina em `,` no meio da enumeração de stack e a continuação começa em
+ * MAIÚSCULA (`... NestJS, TypeScript ,` + `PostgreSQL | SaaS B2B & B2C`), então
+ * a regra 4 de `normalizeProfileText` (que só junta quando a seguinte começa em
+ * minúscula) não junta, e as duas linhas viram candidatas independentes.
+ *
+ * A vírgula continua FORA de `ENDS_ORPHAN_SEPARATOR` no normalizador, e isso é
+ * deliberado: lá a regra vale para o texto inteiro, e vírgula é pontuação
+ * normal de prosa (o comentário do módulo documenta o estrago de tratá-la como
+ * separador estrutural). Aqui o escopo é só o preâmbulo e só entre candidatas
+ * fortes, onde vírgula no fim da linha não é prosa, é enumeração cortada.
+ */
+const HEADLINE_ABERTA_EM_VIRGULA = /,$/;
+
+/**
+ * Headline detectada e ONDE ela começa.
  *
  * O índice existe por causa do bloco de identidade: no export real, o nome, a
  * headline e a localização ficam entre a última seção da coluna lateral e a
  * primeira seção principal, sem cabeçalho nenhum separando. Sem saber onde a
  * headline começa, a seção lateral anterior engole os três.
+ *
+ * A headline pode OCUPAR MAIS DE UMA LINHA. Escolher uma só era o bug medido em
+ * produção: com a headline quebrada em duas, a última candidata vencia e o
+ * cargo-alvo mais metade da stack ficavam de fora (`PostgreSQL | SaaS B2B &
+ * B2C` no lugar de `Desenvolvedor Full Stack | React, ... | SaaS B2B & B2C`).
+ * O dano era duplo, porque `indice` alimenta `inicioDaIdentidade`: apontando
+ * para a segunda linha, o corte da seção lateral caía tarde demais e o NOME da
+ * pessoa mais o primeiro pedaço da headline vazavam para `skillsPdf`.
+ *
+ * A junção é para TRÁS e exige DOIS sinais ao mesmo tempo: a linha de cima ser
+ * candidata forte E ter ficado aberta em vírgula. Exigir os dois é o que
+ * protege os falsos positivos que importam, todos cobertos em
+ * `parse.headlineMultilinha.test.ts`: localização, nome de empresa, headline de
+ * outro perfil colada em seguida e cargo de experiência logo abaixo são linhas
+ * que vêm depois de uma headline FECHADA, e headline legítima não termina em
+ * vírgula. Na dúvida, não junta, e o resultado é o comportamento anterior.
  */
+/**
+ * Como a linha ACIMA da headline terminou. Só a classe, nunca o conteúdo.
+ *
+ * O preâmbulo do export tem o NOME da pessoa logo antes da headline, e guardar
+ * a linha de cima crua passaria a persistir nome onde hoje não se persiste. A
+ * classe responde a pergunta do diagnóstico (houve quebra? em quê?) sem o dado.
+ */
+export type HeadlineTerminacaoAcima = "virgula" | "pipe" | "palavra" | "outro";
+
+/**
+ * Contexto da headline lida, para diagnosticar truncamento DEPOIS do fato.
+ *
+ * Por que existe: as três famílias de quebra medidas em produção (vírgula, pipe
+ * órfão, termo composto partido) são indistinguíveis, no que fica persistido, de
+ * uma headline que a pessoa escreveu daquele jeito. `headline` sozinha não
+ * separa "o parser cortou" de "a pessoa digitou assim", e sem `profileText` (que
+ * não é guardado, de propósito) não havia como saber. `juntou` responde
+ * diretamente; `acima` diz em que a linha anterior terminou, sem guardá-la.
+ *
+ * `linhasAbaixo` começa DEPOIS da headline exatamente pelo motivo acima: para
+ * cima só vai classificação, para baixo vai conteúdo.
+ *
+ * Campo NOVO e opcional: as 163 linhas já gravadas não o têm, e a leitura
+ * precisa tolerar a ausência (travado em `parse.headlineContexto.test.ts`).
+ */
+export interface LinkedinHeadlineContexto {
+  /** Índice da primeira linha da headline no preâmbulo. */
+  indiceEscolhido: number;
+  /** A junção para trás disparou? Separa "o parser cortou" de "foi digitado". */
+  juntou: boolean;
+  /** Até duas linhas cruas DEPOIS da headline. Vazio se não houver. */
+  linhasAbaixo: string[];
+  /** Classificação da linha acima, sem conteúdo. `null` se a headline abre o texto. */
+  acima: { terminaEm: HeadlineTerminacaoAcima; forte: boolean } | null;
+}
+
+/**
+ * `separadorRemovido` vem do normalizador e é consultado ANTES de olhar o texto,
+ * porque descreve como a linha ORIGINAL terminou. Uma linha `"... ,  |"` chega
+ * aqui como `"... ,"`: sem o sinal, seria classificada "virgula", e o que o PDF
+ * quebrou foi o `|`. Ler o sinal primeiro é o que torna "pipe" alcançável.
+ */
+function classificarTerminacao(
+  linha: string,
+  separadorRemovido: boolean,
+): HeadlineTerminacaoAcima {
+  if (separadorRemovido) return "pipe";
+  const s = linha.trim();
+  if (s.endsWith(",")) return "virgula";
+  if (s.endsWith("|")) return "pipe";
+  // Sem `\p{L}`: o target do tsconfig nao aceita a flag `u` (mesmo motivo
+  // de `comecaMaiuscula`). A faixa acentuada cobre o que aparece aqui.
+  if (/[A-Za-z0-9\u00c0-\u024f]$/.test(s)) return "palavra";
+  return "outro";
+}
+
 function detectHeadline(
   lines: string[],
   firstMainIndex: number,
-): { valor: string | null; indice: number } {
+  separadorRemovidoEm: Set<number>,
+): {
+  valor: string | null;
+  indice: number;
+  contexto: LinkedinHeadlineContexto | null;
+} {
   const limite = firstMainIndex >= 0 ? firstMainIndex : Math.min(20, lines.length);
   const preamble = lines.slice(0, limite);
+  const ehForte = (linha: string) =>
+    isHeadlineCandidate(linha) && hasHeadlineSignal(linha);
   const strong = preamble
     .map((linha, indice) => ({ linha, indice }))
-    .filter(({ linha }) => isHeadlineCandidate(linha) && hasHeadlineSignal(linha));
-  if (strong.length === 0) return { valor: null, indice: -1 };
+    .filter(({ linha }) => ehForte(linha));
+  if (strong.length === 0) return { valor: null, indice: -1, contexto: null };
   // O nome vem antes da headline; pegamos a candidata forte mais próxima da
   // primeira seção principal (a última da lista).
   const escolhida = strong[strong.length - 1];
-  return { valor: clip(escolhida.linha, 250), indice: escolhida.indice };
+
+  const partes = [escolhida.linha.trim()];
+  let inicio = escolhida.indice;
+  while (inicio > 0) {
+    const anterior = preamble[inicio - 1].trim();
+    if (!HEADLINE_ABERTA_EM_VIRGULA.test(anterior)) break;
+    if (!ehForte(anterior)) break;
+    partes.unshift(anterior);
+    inicio -= 1;
+  }
+
+  // Diagnóstico apenas: NADA aqui altera `valor` nem `indice`. O fim da headline
+  // é a última linha absorvida, que com junção para trás é sempre a escolhida.
+  const fim = escolhida.indice;
+  const acimaIdx = inicio - 1;
+  return {
+    valor: clip(partes.join(" ").replace(/\s+/g, " "), 250),
+    indice: inicio,
+    contexto: {
+      indiceEscolhido: inicio,
+      juntou: partes.length > 1,
+      linhasAbaixo: preamble
+        .slice(fim + 1, fim + 3)
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0),
+      acima:
+        acimaIdx >= 0
+          ? {
+              // `preamble` é `lines.slice(0, limite)`, então o índice no
+              // preâmbulo É o índice na saída do normalizador, que é a base do
+              // conjunto. Sem essa igualdade o sinal viria deslocado.
+              terminaEm: classificarTerminacao(
+                preamble[acimaIdx],
+                separadorRemovidoEm.has(acimaIdx),
+              ),
+              forte: ehForte(preamble[acimaIdx]),
+            }
+          : null,
+    },
+  };
 }
 
 /**
@@ -515,11 +658,12 @@ export function parseLinkedinText(text: string): LinkedinParsed {
   // UMA passada de normalizacao antes de qualquer parser especifico: junta
   // continuacao de linha quebrada pelo PDF e remove rodape de paginacao. Client
   // e servidor chamam esta mesma funcao, entao veem exatamente o mesmo texto.
-  const lines = normalizeProfileLines(text);
+  const { linhas: lines, separadorRemovidoEm } = normalizeProfileLinesComSinal(text);
 
   if (lines.length === 0) {
     return {
       headline: null,
+      headlineContexto: null,
       sobre: null,
       experiencias: [],
       skillsPdf: [],
@@ -534,10 +678,11 @@ export function parseLinkedinText(text: string): LinkedinParsed {
   const firstMain = hits.find((hit) => mainKeys.includes(hit.key));
   const firstMainIndex = firstMain ? firstMain.index : -1;
 
-  const { valor: headline, indice: headlineIdx } = detectHeadline(
-    lines,
-    firstMainIndex,
-  );
+  const {
+    valor: headline,
+    indice: headlineIdx,
+    contexto: headlineContexto,
+  } = detectHeadline(lines, firstMainIndex, separadorRemovidoEm);
   const identidadeStart = inicioDaIdentidade(lines, headlineIdx);
 
   const sobreRaw = sectionLines(lines, hits, "sobre").join(" ").trim();
@@ -580,6 +725,7 @@ export function parseLinkedinText(text: string): LinkedinParsed {
 
   return {
     headline,
+    headlineContexto,
     sobre,
     experiencias,
     skillsPdf,

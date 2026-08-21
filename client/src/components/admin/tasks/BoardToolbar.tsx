@@ -7,6 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import {
   LABEL_COLOR_FALLBACK,
@@ -15,7 +16,13 @@ import {
   labelClass,
   safeHexColor,
 } from "./taskBoardStyles";
-import { activeFilterCount, type DueFilter, type GroupBy, type TaskFilters } from "./taskFilters";
+import {
+  activeFilterCount,
+  type DueFilter,
+  type GroupBy,
+  type OrigemFilter,
+  type TaskFilters,
+} from "./taskFilters";
 import { LAYER_ON_PAGE } from "./taskLayers";
 import type { ViewMode } from "./taskViewState";
 import type { TaskAssignee, TaskBoard, TaskLabel, TaskPriority, TaskType } from "./types";
@@ -33,8 +40,16 @@ type BoardToolbarProps = {
   groupBy: GroupBy;
   view: ViewMode;
   includeArchived: boolean;
-  visibleCount: number;
-  totalCount: number;
+  /**
+   * `null` = AINDA NAO SE SABE (troca de quadro em curso).
+   *
+   * Nao e o mesmo que zero, e a diferenca importa: durante a troca a barra fica
+   * montada, e tanto o numero do quadro ANTIGO quanto um `0` inventado seriam
+   * lidos como contagem verdadeira do quadro novo. Sem saber, a linha vira
+   * esqueleto em vez de afirmar um numero.
+   */
+  visibleCount: number | null;
+  totalCount: number | null;
   onSelectBoard: (boardId: string) => void;
   onFiltersChange: (filters: TaskFilters) => void;
   onGroupByChange: (groupBy: GroupBy) => void;
@@ -44,8 +59,38 @@ type BoardToolbarProps = {
   onManageBoards: () => void;
 };
 
-const DUE_OPTIONS: Array<{ value: DueFilter; label: string }> = [
-  { value: "", label: "Qualquer data" },
+/**
+ * Sentinela para o "sem filtro" do select de Vencimento.
+ *
+ * `DueFilter` usa "" para "qualquer data", e "" e proibido como value de item do
+ * Radix Select: ele LANCA de dentro do render. Hoje o BntSelect protege a arvore
+ * descartando a opcao invalida (opcoesRenderizaveis), mas descartar resolve o
+ * crash e nao o produto: sem esta sentinela a opcao "Qualquer data" simplesmente
+ * nao aparece no menu, e quem escolhe "Atrasadas" nao consegue voltar atras pelo
+ * proprio select. O warn no console a cada abertura do popover era o aviso.
+ *
+ * A sentinela mora SO na interface: `filters.due` continua sendo "" | "late" |
+ * "week", que e o que vai para a URL e para applyFilters. Traduzir aqui, na
+ * borda, e o que impede o valor inventado de vazar para o estado da pagina.
+ * Mesmo padrao do "__none__" de VagasDestaque.
+ */
+/**
+ * Origem, na interface, e binaria: automático x manual. O `source` do banco tem
+ * tres valores (human, sentry, migrated_bug) e pode ganhar outros, mas quem olha
+ * o quadro quer saber se digitou aquilo, nao de qual robo veio.
+ */
+export const ORIGEM_OPTIONS: Array<{
+  value: Exclude<OrigemFilter, "">;
+  label: string;
+}> = [
+  { value: "sentry", label: "Automático" },
+  { value: "manual", label: "Manual" },
+];
+
+export const DUE_ANY = "__any__";
+
+export const DUE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: DUE_ANY, label: "Qualquer data" },
   { value: "late", label: "Atrasadas" },
   { value: "week", label: "Esta semana" },
 ];
@@ -292,6 +337,33 @@ export const BoardToolbar = memo(
               </div>
 
               <div>
+                <p className={labelClass}>Origem</p>
+                <div className="flex flex-wrap gap-1">
+                  {ORIGEM_OPTIONS.map((option) => {
+                    const on = filters.origem === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() =>
+                          onFiltersChange({
+                            ...filters,
+                            // Clicar no que ja esta ativo LIMPA. Sem isso o
+                            // filtro binario vira uma armadilha: nao ha terceiro
+                            // botao para voltar a "tudo".
+                            origem: on ? "" : option.value,
+                          })
+                        }
+                        className={`${chip} ${on ? "bg-slate-950 text-white" : "bg-white text-slate-700"}`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
                 <label htmlFor="tasks-due" className={labelClass}>
                   Vencimento
                 </label>
@@ -300,14 +372,14 @@ export const BoardToolbar = memo(
                   size="sm"
                   accent="gold"
                   fullWidth
-                  value={filters.due}
+                  value={filters.due === "" ? DUE_ANY : filters.due}
                   onValueChange={(value) =>
-                    onFiltersChange({ ...filters, due: value as DueFilter })
+                    onFiltersChange({
+                      ...filters,
+                      due: value === DUE_ANY ? "" : (value as DueFilter),
+                    })
                   }
-                  options={DUE_OPTIONS.map((option) => ({
-                    value: option.value,
-                    label: option.label,
-                  }))}
+                  options={DUE_OPTIONS}
                 />
               </div>
 
@@ -364,11 +436,17 @@ export const BoardToolbar = memo(
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs font-black uppercase tracking-wide text-slate-500">
-          <span>
-            {activeCount > 0
-              ? `${visibleCount} de ${totalCount} tarefa${totalCount === 1 ? "" : "s"}`
-              : `${totalCount} tarefa${totalCount === 1 ? "" : "s"}`}
-          </span>
+          {totalCount === null ? (
+            // Contagem desconhecida durante a troca de quadro: forma no lugar do
+            // numero, sem texto novo para traduzir ou revisar.
+            <Skeleton className="h-3 w-24 bg-slate-200" />
+          ) : (
+            <span>
+              {activeCount > 0
+                ? `${visibleCount} de ${totalCount} tarefa${totalCount === 1 ? "" : "s"}`
+                : `${totalCount} tarefa${totalCount === 1 ? "" : "s"}`}
+            </span>
+          )}
           {includeArchived ? (
             <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] text-slate-700">
               incluindo arquivadas

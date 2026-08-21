@@ -5,11 +5,14 @@ import { Spinner } from "@/components/ui/spinner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Redirect, Route, Switch } from "wouter";
+import AuthCallbackGate from "./components/auth/AuthCallbackGate";
 import ConsentGate from "./components/consent/ConsentGate";
 import ErrorBoundary from "./components/ErrorBoundary";
 import LaunchGate from "./components/gate/LaunchGate";
 import ScrollToTop from "./components/ScrollToTop";
 import SuperInterstitial from "./components/notifications/SuperInterstitial";
+import OnboardingHost from "./components/onboarding/OnboardingHost";
+import { OnboardingCoordinatorProvider } from "./lib/onboarding/coordinator";
 import RequireAuth from "./components/auth/RequireAuth";
 import { AuthProvider } from "./contexts/AuthContext";
 import { FavoritesProvider } from "./contexts/FavoritesContext";
@@ -383,10 +386,22 @@ function App() {
                   <AffiliateTracker />
                   <ScrollToTop />
                   <LaunchGate>
-                    <ConsentGate>
-                      <SuperInterstitial />
-                      <Router />
-                    </ConsentGate>
+                    {/* Acima do ConsentGate de propósito: não faz sentido pedir
+                        aceite de uma sessão que não conseguimos confirmar. */}
+                    <AuthCallbackGate>
+                      <ConsentGate>
+                        {/* O provider é PAI dos dois de propósito: é ele que
+                            decide quem ocupa a tela nesta carga, e ser pai
+                            garante que o estado existe antes de qualquer um
+                            dos dois renderizar. Sem isso a coordenação viraria
+                            ordem de irmãos ou timer. */}
+                        <OnboardingCoordinatorProvider>
+                          <OnboardingHost />
+                          <SuperInterstitial />
+                          <Router />
+                        </OnboardingCoordinatorProvider>
+                      </ConsentGate>
+                    </AuthCallbackGate>
                   </LaunchGate>
                 </TooltipProvider>
               </NotificationsProvider>

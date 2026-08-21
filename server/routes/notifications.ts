@@ -120,10 +120,14 @@ router.get("/", async (req, res, next) => {
   } catch (err) {
     console.error("[notifications] list failed", err);
     return next(
+      // `cause` e o que faz o LinkedErrors do Sentry anexar o erro real do
+      // Supabase. Sem ele o evento dizia QUE falhou e nao POR QUE: o stack
+      // terminava em `createError` (foi o caso do NODE-EXPRESS-5).
       createError(
         500,
         "notifications_fetch_failed",
         "Não foi possível carregar as notificações.",
+        { cause: err },
       ),
     );
   }
@@ -171,6 +175,7 @@ router.post("/:id/read", async (req, res, next) => {
         500,
         "notification_read_failed",
         "Não foi possível marcar a notificação como lida.",
+        { cause: err },
       ),
     );
   }
@@ -209,6 +214,7 @@ router.post("/read-all", async (req, res, next) => {
         500,
         "notifications_read_all_failed",
         "Não foi possível marcar as notificações como lidas.",
+        { cause: err },
       ),
     );
   }
@@ -284,6 +290,7 @@ superRouter.post("/:id/dismiss", async (req, res, next) => {
         500,
         "notification_dismiss_failed",
         "Não foi possível dispensar a notificação.",
+        { cause: err },
       ),
     );
   }

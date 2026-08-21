@@ -1,6 +1,9 @@
 import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
-import type { RoadmapIntake } from "@shared/aiRoadmap";
+import type {
+  IntakeRequiredChoiceField,
+  RoadmapIntake,
+} from "@shared/aiRoadmap";
 import type { RoadmapV2 } from "@shared/roadmapV2/types";
 
 // Cliente do Roadmap com IA (/api/roadmaps-ia): lista, detalhe e os streams
@@ -290,8 +293,21 @@ export interface IntakeChatProposal {
 export interface IntakeChatTurnResult {
   reply: string;
   intake: IntakeChatProposal;
+  // O que falta para a CONVERSA terminar (sinal do modelo).
   missing: string[];
   ready: boolean;
+  // O que falta para GERAR, calculado pelo servidor com buildGenerationIntake.
+  // canGenerate, e nao ready, e quem decide se o botao de gerar existe. null =
+  // backend antigo na janela de deploy; o client recalcula localmente com a
+  // mesma funcao compartilhada, entao a UI degrada sem quebrar.
+  canGenerate: boolean | null;
+  missingToGenerate: IntakeRequiredChoiceField[] | null;
+  // Quantas mensagens a pessoa ainda pode mandar nesta conversa, e o teto total.
+  // Degradam para null quando o backend antigo responde sem eles (janela de
+  // deploy: front novo contra backend velho); a UI so mostra o aviso quando o
+  // numero existe.
+  restantes: number | null;
+  maxMensagens: number | null;
 }
 
 export type IntakeChatErrorCode =
@@ -361,7 +377,22 @@ export async function sendIntakeChatTurn(
     const body = (await response.json().catch(() => null)) as unknown;
     throw toIntakeChatError(response.status, body);
   }
-  const data = (await response.json()) as Partial<IntakeChatTurnResult>;
+  return parseIntakeChatResponse(await response.json());
+}
+
+/**
+ * Parse da resposta de um turno, separado do fetch para ser testavel sem rede.
+ *
+ * CONTRATO DA JANELA DE DEPLOY. Os quatro campos da fase 2 (`canGenerate`,
+ * `missingToGenerate`, `restantes`, `maxMensagens`) degradam para `null` quando
+ * ausentes, porque o backend ANTERIOR nao os manda e a Vercel costuma subir
+ * antes do Railway. Os quatro originais (`reply`, `intake`, `missing`, `ready`)
+ * sao EXIGIDOS: `ready` em especial, porque foi ele que o bundle antigo usou por
+ * meses e removê-lo da resposta derrubaria o render, e porque o unico jeito de
+ * essa exigencia continuar valendo e alguem afirmar isso num teste.
+ */
+export function parseIntakeChatResponse(raw: unknown): IntakeChatTurnResult {
+  const data = (raw ?? {}) as Partial<IntakeChatTurnResult>;
   if (
     typeof data.reply !== "string" ||
     typeof data.ready !== "boolean" ||
@@ -379,5 +410,13 @@ export async function sendIntakeChatTurn(
     intake: data.intake,
     missing: data.missing as string[],
     ready: data.ready,
+    restantes: typeof data.restantes === "number" ? data.restantes : null,
+    maxMensagens:
+      typeof data.maxMensagens === "number" ? data.maxMensagens : null,
+    canGenerate:
+      typeof data.canGenerate === "boolean" ? data.canGenerate : null,
+    missingToGenerate: Array.isArray(data.missingToGenerate)
+      ? (data.missingToGenerate as IntakeRequiredChoiceField[])
+      : null,
   };
 }

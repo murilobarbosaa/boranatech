@@ -208,7 +208,32 @@ async function apiFetch(path: string, options?: RequestInit) {
     },
   });
 
-  if (!res.ok) throw new Error(`Erro ${res.status}`);
+  if (!res.ok) {
+    // O `code` do corpo vai JUNTO no erro. Sem isto, um 502
+    // `subscription_cancel_failed` (a exclusão de conta que aborta porque a
+    // Stripe não respondeu) chegaria a quem chama como "Erro 502" e viraria a
+    // mensagem genérica de sempre, escondendo justamente o motivo que a rota
+    // se deu ao trabalho de nomear. Todo caller antigo continua tratando isto
+    // como uma falha qualquer; só quem quiser o motivo precisa olhar.
+    let code: string | null = null;
+    let mensagemDaApi: string | null = null;
+    try {
+      const corpo = await res.json();
+      code = corpo?.error?.code ?? null;
+      mensagemDaApi = corpo?.error?.message ?? null;
+    } catch {
+      // Corpo não-JSON (ex.: 502 do proxy). Segue sem código.
+    }
+    const erro = new Error(`Erro ${res.status}`) as Error & {
+      status: number;
+      code: string | null;
+      apiMessage: string | null;
+    };
+    erro.status = res.status;
+    erro.code = code;
+    erro.apiMessage = mensagemDaApi;
+    throw erro;
+  }
   return res.json();
 }
 
@@ -1065,8 +1090,18 @@ export default function Perfil() {
       await supabase?.auth.signOut();
       toast.success("Sua conta foi excluída.");
       setLocation("/", { replace: true });
-    } catch {
-      toast.error("Não foi possível excluir sua conta. Tente novamente.");
+    } catch (err) {
+      // A rota ABORTA a exclusão quando não consegue encerrar a assinatura na
+      // Stripe (fail-closed). Nesse caso a conta continua de pé, e a mensagem
+      // genérica ("não foi possível excluir, tente novamente") esconderia que
+      // NADA foi perdido e que o motivo é temporário.
+      const motivo = (err as { apiMessage?: string | null })?.apiMessage;
+      const codigo = (err as { code?: string | null })?.code;
+      toast.error(
+        codigo === "subscription_cancel_failed" && motivo
+          ? motivo
+          : "Não foi possível excluir sua conta. Tente novamente.",
+      );
     } finally {
       setDeletingAccount(false);
     }
@@ -2098,8 +2133,28 @@ export default function Perfil() {
                 </h2>
                 <p className="mt-2 text-sm font-semibold text-slate-600">
                   Esta ação é permanente e irreversível. Todos os seus dados,
-                  favoritos, histórico de estudos e assinatura serão apagados.
+                  favoritos e histórico de estudos serão apagados.
                 </p>
+                {/* AVISO DE ASSINATURA, e ele só existe porque o comportamento
+                    mudou. Até 2026-08-14 excluir a conta NÃO cancelava nada na
+                    Stripe: a cobrança continuava viva contra alguém que não
+                    existia mais no produto. Agora cancela, e a pessoa precisa
+                    saber disso ANTES, porque não há como desfazer.
+
+                    Boleto tem copy própria: não há assinatura recorrente para
+                    cancelar (a chave é uma sessão `cs_...`), o que morre é o
+                    período já pago. Dizer "cancelará a assinatura" ali seria
+                    descrever uma ação que não acontece. */}
+                {hasRealSubscription ? (
+                  <p
+                    data-testid="excluir-conta-aviso-assinatura"
+                    className="mt-3 rounded-2xl border-2 border-rose-300 bg-rose-50 p-3 text-sm font-bold text-rose-900"
+                  >
+                    {isBoletoSubscription
+                      ? "Você tem uma assinatura ativa. Excluir sua conta encerra o acesso Pro imediatamente, sem reembolso do período restante que você já pagou. Esta ação é permanente."
+                      : "Você tem uma assinatura ativa. Excluir sua conta cancelará a assinatura imediatamente, sem reembolso do período restante. Esta ação é permanente."}
+                  </p>
+                ) : null}
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                   <button
                     type="button"

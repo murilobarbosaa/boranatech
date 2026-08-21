@@ -1,5 +1,5 @@
 // Dialeto visual da aba Tarefas. As constantes abaixo sao COPIA das do
-// BugsDashboard.tsx (topo do arquivo), de proposito e nao por preguica: o modulo
+// o antigo BugsDashboard.tsx (removido na Fase 5), de proposito e nao por preguica: o modulo
 // tem que parecer nativo do admin, e o jeito de garantir isso e usar exatamente
 // as mesmas strings, nao aproximacoes.
 //
@@ -19,6 +19,24 @@ export const badgeClass =
   "inline-flex items-center rounded-full border-2 border-slate-900 px-2 py-0.5 text-[11px] font-black uppercase";
 export const emptyBlockClass =
   "rounded-2xl border-2 border-dashed border-slate-300 bg-white p-4 text-center text-xs font-black text-slate-400";
+
+/**
+ * Moldura da coluna do board: largura, borda, cantos, sombra e eixo do flex.
+ *
+ * O esqueleto de carregamento e a coluna real usam esta MESMA string de
+ * proposito, para nunca divergirem: quando os dados chegam, a coluna de verdade
+ * ocupa o mesmo espaco e a tela nao salta.
+ *
+ * Mora aqui, e nao em BoardColumn.tsx, porque o Admin.tsx importa o esqueleto
+ * de forma estatica para o fallback do Suspense: puxar a constante do
+ * BoardColumn levaria o TaskCard e o dnd-kit inteiros para o chunk do Admin,
+ * desfazendo o lazy do modulo de tarefas.
+ *
+ * FUNDO fica de fora porque na coluna real ele e ESTADO (alvo de drop, acima do
+ * WIP); o repouso e `bg-slate-50`, e e esse que o esqueleto usa.
+ */
+export const columnShellClass =
+  "flex w-[85vw] shrink-0 snap-start flex-col rounded-3xl border-2 border-slate-900 p-3 shadow-[3px_3px_0_#0f172a] transition-colors sm:w-[19rem]";
 
 // ---------------------------------------------------------------------------
 // Resolvers de valor vindo do servidor
@@ -42,6 +60,7 @@ const PRIORITY_META: Record<TaskPriority, BadgeMeta> = {
 
 const TYPE_META: Record<TaskType, BadgeMeta> = {
   feature: { label: "Feature", badge: "bg-violet-100 text-violet-800" },
+  bug: { label: "Bug", badge: "bg-rose-100 text-rose-800" },
   melhoria: { label: "Melhoria", badge: "bg-sky-100 text-sky-800" },
   debito_tecnico: { label: "Débito técnico", badge: "bg-amber-100 text-amber-900" },
   tarefa: { label: "Tarefa", badge: "bg-slate-100 text-slate-700" },
@@ -50,15 +69,16 @@ const TYPE_META: Record<TaskType, BadgeMeta> = {
 /**
  * Tipos que saíram do conjunto aceito mas continuam RENDERIZAVEIS.
  *
- * `bug` deixou de ser opcao (bug tem tela propria), e tirar o rotulo junto faria
- * uma linha de histórico dizendo "mudou o tipo para bug" virar "Outro", ou pior,
- * um card antigo perder a identificacao. Registro historico nao pode degradar
- * porque o menu mudou; o fallback neutro e para o que NUNCA existiu, nao para o
- * que existiu e saiu.
+ * VAZIO no momento: `bug` era o unico morador e voltou ao conjunto aceito
+ * (migration 20260731040000), entao subiu para TYPE_META. O mapa e o elo do meio
+ * de typeMetaOf continuam de pe de proposito, e nao por inercia: eles sao o
+ * mecanismo que separa "valor que NUNCA existiu" (cai no neutro) de "valor que
+ * existiu e saiu do menu" (mantem o rotulo). Um card antigo ou uma linha de
+ * histórico dizendo "mudou o tipo para X" nao pode virar "Outro" so porque o
+ * menu mudou. Aposentar um tipo no futuro e mover a entrada para ca, e o
+ * caminho ja esta pronto e testado.
  */
-const TYPE_META_HISTORICO: Record<string, BadgeMeta> = {
-  bug: { label: "Bug", badge: "bg-rose-100 text-rose-800" },
-};
+const TYPE_META_HISTORICO: Record<string, BadgeMeta> = {};
 
 const NEUTRAL_META: BadgeMeta = {
   label: "Outro",

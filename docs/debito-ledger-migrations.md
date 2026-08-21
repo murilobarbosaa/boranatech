@@ -11,13 +11,13 @@ Consulta ao `supabase_migrations.schema_migrations` do projeto de produção, vi
 Management API, comparada com os arquivos de `supabase/migrations/*.sql` (fora do
 `_archive`):
 
-| Medida | Valor |
-| --- | --- |
-| Arquivos de migration no repositório | 114 |
-| Versões registradas no ledger | 16 |
-| No repositório e **não** no ledger | 98 |
-| No ledger e **não** no repositório | 0 |
-| Última versão registrada | `20260526143000_add_eight_new_areas` |
+| Medida                               | Valor                                |
+| ------------------------------------ | ------------------------------------ |
+| Arquivos de migration no repositório | 114                                  |
+| Versões registradas no ledger        | 16                                   |
+| No repositório e **não** no ledger   | 98                                   |
+| No ledger e **não** no repositório   | 0                                    |
+| Última versão registrada             | `20260526143000_add_eight_new_areas` |
 
 Reproduzir:
 
@@ -185,3 +185,87 @@ Ordem sugerida, para um PR próprio de quem cuida do deploy:
    falhando e ainda invisível;
 4. `migration repair --status applied` nas versões ausentes;
 5. só então `db push` volta a ser um comando utilizável.
+
+---
+
+## 2026-07-30: a primeira migration órfã encontrada, e por que o guard não a viu
+
+O risco descrito acima deixou de ser hipotético. Durante a Fase 2 do Roadmap com
+IA, a leitura do corpo vivo das funções (`pg_get_functiondef`, via Management
+API) mostrou que **`20260713160000_split_roadmap_intake_chat_quota.sql` nunca foi
+aplicada**. A irmã dela do mesmo dia (`20260713150000`, career-plan) foi.
+
+| Objeto                  | No repositório | Em produção (2026-07-30) |
+| ----------------------- | -------------- | ------------------------ |
+| `get_ai_usage_today`    | exclui 4 tools | excluía **3**            |
+| `reserve_ai_usage_slot` | exclui 3 tools | excluía 3                |
+
+**Efeito medido:** `roadmap-intake-chat` tem cota dedicada própria, mas continuava
+consumindo também a cota global de 50/dia. Uma conversa de 20 turnos comia 40% da
+cota de IA do dia da pessoa. Cobrança dupla pelo mesmo uso, por 17 dias.
+
+**Por que `pnpm check:migrations` ficou verde o tempo todo:** ele enumera funções
+por **nome**, pelo OpenAPI do PostgREST. `get_ai_usage_today` existia. O corpo
+nunca foi verificado por nada. Este é o ponto cego que a seção "Enumerado, NÃO
+verificado" de `docs/limites-do-guard-de-migrations.md` não cobria, porque ela
+tratava de policies e índices, e este objeto estava na coluna "coberto".
+
+**Correção estrutural**, em `20260730170000_ai_usage_excluded_tools.sql`:
+
+1. A lista canônica virou uma função `ai_usage_excluded_tools()` (IMMUTABLE), e as
+   duas consumidoras passam a lê-la. Duas listas mantidas à mão não podem mais
+   divergir porque não existem mais duas listas.
+2. A migration carrega junto a mudança órfã de 2026-07-13, então aplicá-la quita
+   as duas de uma vez.
+3. O guard ganhou a seção **ASSERÇÕES COMPORTAMENTAIS**: chama a RPC e afirma o
+   **conteúdo** do conjunto, com igualdade de total, não pertinência. Regra nova
+   registrada no `CLAUDE.md`: toda migration que só faz `create or replace` de
+   função precisa de uma entrada ali.
+
+**Verificação de que a contramedida funciona:** rodado contra produção _antes_ de
+aplicar a migration, o guard falhou com a mensagem certa, nomeando a função e
+dizendo que a migration que a cria não foi aplicada. É o comportamento desejado:
+o guard fica vermelho até a migration chegar ao banco.
+
+**Efeito retroativo de aplicar:** benigno e desejado. As duas funções são
+calculadas na hora da chamada, então quem gastou cota global com turnos de chat
+recupera as vagas assim que a migration roda. Nenhum dado é reescrito.
+
+### Decisão: a órfã será SUPERADA, não aplicada
+
+Tomada em 2026-07-30, no fechamento da Fase 2. A
+`20260713160000_split_roadmap_intake_chat_quota.sql` **não vai ser aplicada
+nunca**, e ganhou um cabeçalho no próprio arquivo dizendo isso.
+
+O motivo é ordem, não preguiça. A `20260730170000` carrega a mesma mudança de
+comportamento por um mecanismo melhor. Rodar a órfã antes dela criaria o corpo
+antigo (cadeia de `is distinct from`, lista à mão) só para a `170000`
+substituí-lo minutos depois: duas escritas em `get_ai_usage_today` onde uma
+basta, com janela de risco entre elas e nenhum ganho. Rodar a órfã **depois** da
+`170000` seria pior: reverteria a unificação e traria de volta as duas listas
+mantidas à mão, que é exatamente o defeito que a `170000` existe para fechar.
+
+O arquivo fica no repositório por rastreabilidade. É ele que explica de onde veio
+a quarta entrada da lista canônica, e apagá-lo deixaria a `170000` parecendo uma
+decisão sem história.
+
+**Por que isso não deixa nada vermelho**, verificado e não suposto:
+
+- O guard é **cego para a órfã**. Ela declara `get_ai_usage_today`, que existe em
+  produção e continua existindo; a verificação é por nome. Medido: a saída de
+  `pnpm check:migrations` antes e depois de acrescentar o cabeçalho é
+  **byte a byte idêntica** (`diff` vazio). O cabeçalho usa só comentário de
+  linha, e o `stripSqlComments` do guard remove comentário antes de qualquer
+  regex, então não há como o texto novo virar declaração fantasma.
+- **Nenhum outro mecanismo do projeto exige que todo arquivo tenha sido
+  aplicado.** `grep` por `schema_migrations` em `scripts/` e `.github/` não
+  retorna nada: o ledger do Supabase não é lido por ferramenta nenhuma do
+  repositório. `db:push` existe no `package.json`, mas o CLI do Supabase não está
+  instalado e não é o fluxo real desde maio (ver o topo deste documento).
+- A asserção comportamental da `170000` é que passa a cobrir o conteúdo. Ela fica
+  vermelha até a migration chegar ao banco, e é esse o comportamento desejado.
+
+**Consequência para o backfill do ledger**, se um dia ele acontecer: a
+`20260713160000` é a primeira entrada conhecida que deve ser marcada como
+**superada**, não como aplicada. Declará-la aplicada seria falso; declará-la
+pendente faria um `db push` futuro tentar rodá-la e reverter a unificação.

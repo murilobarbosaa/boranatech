@@ -33,8 +33,43 @@ import * as Sentry from "@sentry/react";
 // agregado: 25% ja revela a distribuicao (429 vs HTML vs count nulo).
 const ERROR_SAMPLE_RATE = 0.25;
 
-/** Tag posta por `ErrorBoundary.componentDidCatch`. Estes vao 100%. */
-const ORIGEM_NAO_AMOSTRADA = "error-boundary";
+/**
+ * Origens que vao 100%, sem amostragem.
+ *
+ * - `error-boundary`: tag posta por `ErrorBoundary.componentDidCatch`.
+ * - `auth`: tag posta por `reportAuthFailure` (lib/authTelemetry.ts). Entrou pelo
+ *   mesmo argumento que ja justificava a excecao do error-boundary, escrito no
+ *   bloco de ERROR_SAMPLE_RATE: amostrar faz sentido para evento que vale em
+ *   AGREGADO e dispara por carga de pagina, e nao para evento RARO em que cada
+ *   ocorrencia e o dado. Falha de login e do segundo tipo. Com 0.25, de cada 4
+ *   pessoas que nao conseguiram entrar 3 ficariam invisiveis, que e literalmente
+ *   o problema que a instrumentacao existe para resolver.
+ * - `chunk-reload`: tag posta por `reportChunkReload` (lib/lazyWithRetry.ts,
+ *   `SENTRY_ORIGEM_CHUNK_RELOAD`). Terceiro caso do mesmo argumento: so acontece
+ *   quando um chunk some, e a pergunta que o evento existe para responder ("skew
+ *   de deploy ou falha de CDN?") depende do numero ABSOLUTO de tentativas. A
+ *   0.25 a medicao nasceria truncada e a conta de "quantos reloads resolveram"
+ *   sairia errada em silencio.
+ * - `preload-event`: tag posta por `reportPreloadEvent`
+ *   (lib/preloadErrorGuard.ts, `SENTRY_ORIGEM_PRELOAD_EVENT`). Mesmo argumento,
+ *   mais um: ele e o PAR do `chunk-reload`, e a razao entre as duas series
+ *   ("quantos avisos do Vite viraram reload de fato?") so significa alguma coisa
+ *   se as duas forem contadas na mesma base. Uma a 100% e outra a 25% daria uma
+ *   razao errada por um fator de 4, e nada acusaria.
+ * - `chunk-import`: tag posta por `reportChunkImportFailure`
+ *   (lib/lazyWithRetry.ts, `SENTRY_ORIGEM_CHUNK_IMPORT`). Terceira serie da
+ *   familia do chunk stale, e entra pelos dois argumentos ja escritos acima: so
+ *   acontece quando um chunk de DADO some e as duas tentativas falham, e so
+ *   significa alguma coisa comparada com as outras duas, o que exige a mesma
+ *   base de contagem.
+ */
+const ORIGENS_NAO_AMOSTRADAS = new Set([
+  "error-boundary",
+  "auth",
+  "chunk-reload",
+  "preload-event",
+  "chunk-import",
+]);
 
 /**
  * PII EM BREADCRUMB: o vetor que os scrubbers do Sentry NAO cobrem.
@@ -85,6 +120,57 @@ function semQueryString(url: string): string {
   return url.split("?")[0].split("#")[0];
 }
 
+/**
+ * Ruido de PONTE NATIVA de navegador embutido. Descartado no SDK, antes do
+ * envio, entao nao consome cota.
+ *
+ * NAO E CODIGO NOSSO, e a evidencia e uma varredura, nao uma impressao: em
+ * 2026-08-16 o grep por `window.webkit`, `messageHandlers`, `ReactNativeWebView`
+ * e `JSBridge` em `client/src` devolveu ZERO ocorrencias fora de CSS
+ * (`-webkit-*`) e de `lib/webview.ts`, que so le `navigator.userAgent` como
+ * texto e nunca toca na ponte. Quem executa esse codigo e o app hospedeiro
+ * (Instagram, Facebook, WebView do Android) injetando script na nossa pagina.
+ *
+ * RELACAO COM OS INBOUND FILTERS DO PAINEL. Em 2026-07-28 os filtros de entrada
+ * do Sentry passaram a descartar extensao e crawler na origem, e eles CONTINUAM
+ * ligados; ver o bloco de `ERROR_SAMPLE_RATE` acima, que depende disso. Esta
+ * lista NAO substitui aqueles filtros nem duplica o que eles cobrem: e a mesma
+ * decisao, para outra familia de ruido, escrita onde da para revisar em diff.
+ * Auditoria futura que achar os dois nao esta vendo coisas divergentes.
+ *
+ * SO STRING, nunca RegExp, e isso e escolha de testabilidade. O SDK casa string
+ * por `includes` sobre a mensagem; com um padrao literal o teste abaixo afirma
+ * exatamente a mesma operacao que o SDK faz, sem modelar semantica de regex que
+ * poderia divergir da implementacao dele numa atualizacao.
+ *
+ * O risco a evitar aqui e o padrao LARGO: um `postMessage` solto casaria com
+ * erro legitimo nosso (o `lancamento.js` usa `window.parent.postMessage`), entao
+ * cada entrada esta ancorada no texto que so a ponte nativa produz.
+ */
+export const IGNORAR_MENSAGENS = [
+  // iOS/WKWebView: "undefined is not an object (evaluating
+  // 'window.webkit.messageHandlers')". O objeto so existe quando o app
+  // hospedeiro instala a ponte; a pagina aberta no Safari de verdade nunca o
+  // menciona. Decidido em 2026-08-18.
+  "window.webkit.messageHandlers",
+  // Android WebView: "Error invoking postMessage: Java object is gone". Ancorado
+  // em "Java object is gone" e nao em "postMessage", que sozinho pegaria o
+  // `window.parent.postMessage` da landing de lancamento. Decidido em 2026-08-18.
+  "Java object is gone",
+  // Android WebView: "Java exception was raised during method invocation", da
+  // ponte `@JavascriptInterface`. Nao ha Java nesta base. Decidido em 2026-08-18.
+  "Java exception was raised during method invocation",
+];
+
+/**
+ * Reproduz a regra do SDK para padrao em string: casa por `includes` sobre a
+ * mensagem. Exportada para o teste poder afirmar as duas direcoes (o ruido casa,
+ * o erro nosso nao) sem subir o SDK, mesmo padrao de `amostrarPorOrigem`.
+ */
+export function mensagemIgnorada(mensagem: string): boolean {
+  return IGNORAR_MENSAGENS.some((padrao) => mensagem.includes(padrao));
+}
+
 export function initClientSentry(): void {
   const dsn = import.meta.env.VITE_SENTRY_DSN;
   if (!dsn) {
@@ -100,12 +186,59 @@ export function initClientSentry(): void {
     // 1 de proposito: a amostragem real acontece no `beforeSend`, que enxerga
     // as tags. Ver ERROR_SAMPLE_RATE.
     sampleRate: 1,
+    // Descarte no SDK, ANTES do envio: ruido de ponte nativa nao chega a gastar
+    // cota. Ver o bloco de IGNORAR_MENSAGENS.
+    ignoreErrors: IGNORAR_MENSAGENS,
     beforeSend: amostrarPorOrigem,
     beforeBreadcrumb: limparBreadcrumb,
     // false ja era o valor, e fica explicito: sem ele o SDK anexa IP e headers
     // da requisicao. Espelha `server/lib/sentry.ts`.
     sendDefaultPii: false,
   });
+}
+
+/**
+ * Identidade do evento: SÓ o id, nunca contato.
+ *
+ * Por que existe: as 10 issues do projeto de browser vinham com
+ * `usuarios afetados: 0`, e um zero nessa coluna não é "ninguém foi afetado", é
+ * "não dá para saber". Sem ela não há como separar uma pessoa insistindo 29
+ * vezes de 29 pessoas atingidas, que é exatamente a pergunta que decide
+ * prioridade. O servidor já resolveu isso em `server/app.ts` (`scope.setUser({
+ * id: req.user.id })`, com o comentário "sem isto todo evento vinha com 0
+ * usuarios"); o client ficou de fora porque a inicialização do SDK acontece em
+ * `main.tsx`, no load do módulo, quando ainda não existe sessão nenhuma para ler.
+ *
+ * A construção é por ALLOWLIST, não por remoção: o objeto devolvido é montado
+ * campo a campo com uma chave só. Não é `{...user, email: undefined}`, que
+ * carregaria qualquer campo novo que a sessão passe a ter. `sendDefaultPii` fica
+ * `false` no init, então o SDK também não anexa IP nem headers por conta própria.
+ *
+ * O id é um UUID do Supabase: não é e-mail, não é nome, não é handle, e não
+ * resolve para nenhum dos três sem o nosso banco.
+ */
+export function buildSentryUser(
+  session: { user?: { id?: unknown } | null } | null | undefined,
+): { id: string } | null {
+  const id = session?.user?.id;
+  if (typeof id !== "string" || id.length === 0) return null;
+  return { id };
+}
+
+/**
+ * Aplica (ou limpa) a identidade no escopo global do Sentry.
+ *
+ * Chamada de UM lugar só, um efeito sobre `session` no `AuthProvider`, e isso é
+ * a regra do CLAUDE.md sobre guarda dentro da função em vez de no call site: o
+ * `setSession` do AuthContext acontece em cinco pontos diferentes (carga
+ * inicial, recuperação, callback, refresh, `SIGNED_OUT`), e uma chamada por
+ * ponto some no primeiro que alguém esquecer. Reagindo à mudança de `session`,
+ * o logout está coberto por construção: sessão vira null, identidade vira null.
+ */
+export function identifySentryUser(
+  session: { user?: { id?: unknown } | null } | null | undefined,
+): void {
+  Sentry.setUser(buildSentryUser(session));
 }
 
 /**
@@ -119,6 +252,6 @@ export function amostrarPorOrigem<T extends { tags?: Record<string, unknown> }>(
   _hint?: unknown,
   sortear: () => number = Math.random,
 ): T | null {
-  if (event.tags?.origem === ORIGEM_NAO_AMOSTRADA) return event;
+  if (ORIGENS_NAO_AMOSTRADAS.has(String(event.tags?.origem))) return event;
   return sortear() < ERROR_SAMPLE_RATE ? event : null;
 }

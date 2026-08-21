@@ -51,6 +51,8 @@ import {
 } from "@/services/adminTasksService";
 
 import { MarkdownEditor } from "./MarkdownEditor";
+import { acaoDeArquivar } from "./sentryMeta";
+import { SentryBlock } from "./SentryBlock";
 import { TaskActivityList } from "./TaskActivityList";
 import { TaskChecklist } from "./TaskChecklist";
 import { TaskComments } from "./TaskComments";
@@ -70,6 +72,7 @@ import type {
   TaskLabel,
   TaskPriority,
   TaskType,
+  SentryDataBloco,
 } from "./types";
 
 // Modal da tarefa, estilo pagina do Notion. Largo no desktop, TELA CHEIA no
@@ -107,7 +110,7 @@ type TaskModalProps = {
 };
 
 type ModalData = {
-  task: Task;
+  task: Task & { sentry_data?: SentryDataBloco | null };
   labelIds: string[];
   checklist: TaskChecklistItem[];
   comments: TaskComment[];
@@ -272,6 +275,15 @@ export function TaskModal({
   // -------------------------------------------------------------------------
 
   const task = data?.task ?? null;
+  // Bloco do Sentry: so vem no DETALHE, nunca no snapshot (medido: ~918 bytes
+  // por card, levaria o array de 17 KB para 38 KB com 22 cards).
+  const sentryData = data?.task.sentry_data ?? null;
+  // Fora da etapa fixada, arquivar continua sendo arquivar: o card ja foi triado
+  // e o job nao age mais sobre ele, entao "silenciar" nao descreveria nada.
+  const naEtapaFixada = Boolean(
+    task && columns.find((c) => c.id === task.column_id)?.is_pinned,
+  );
+  const acaoArquivar = acaoDeArquivar(naEtapaFixada);
 
   async function withErrorToast(action: () => Promise<void>, fallback: string) {
     try {
@@ -649,9 +661,19 @@ export function TaskModal({
                 <Copy className="mr-1 inline h-3 w-3" />
                 Duplicar
               </button>
-              <button type="button" onClick={archive} className={rowActionClass}>
+              {/* Na etapa fixada, arquivar E SILENCIAR: o card nao volta para
+                  a fila nem se o erro acontecer de novo (o job so ressuscita o
+                  que ELE arquivou). Sem este rotulo a pessoa arquiva achando que
+                  esta limpando a tela, e nunca descobre que tem o recurso. O
+                  `title` diz o que significa ANTES do clique. */}
+              <button
+                type="button"
+                onClick={archive}
+                title={acaoArquivar.explicacao || undefined}
+                className={rowActionClass}
+              >
                 <Archive className="mr-1 inline h-3 w-3" />
-                Arquivar
+                {acaoArquivar.rotulo}
               </button>
               <button
                 type="button"
@@ -770,6 +792,12 @@ export function TaskModal({
                       onBlur={() => void flush()}
                     />
                   </section>
+
+                  {/* Bloco do Sentry DEPOIS de descricao e notas, de proposito:
+                      o que o humano escreve vem primeiro porque e o que ele veio
+                      editar. Somente leitura, secao propria, nunca misturado com
+                      os dois campos acima (invariante 2). */}
+                  {sentryData ? <SentryBlock bloco={sentryData} /> : null}
 
                   <TaskChecklist
                     items={data.checklist}

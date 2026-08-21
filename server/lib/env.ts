@@ -1,5 +1,6 @@
 import { config } from "dotenv";
 
+import { ROADMAP_INTAKE_CHAT_DEFAULT_DAILY_LIMIT } from "../../shared/aiRoadmap";
 import type { PlanId } from "../../shared/planPricing";
 
 config({ quiet: true });
@@ -134,9 +135,15 @@ export const env = {
   // global das ferramentas (padrao career-plan-chat). Pro-only: o gate barra
   // antes de qualquer chamada. Conversar tem quota propria para nao consumir o
   // orcamento de geracao (roadmap-generator).
-  // TODO: calibrar ROADMAP_INTAKE_CHAT_DAILY_LIMIT_PRO.
+  //
+  // O DEFAULT vem de shared/aiRoadmap.ts porque o orcamento de turnos da
+  // conversa precisa caber nele, e quem trava essa conta e um teste (ver o
+  // bloco "COTA DIARIA vs ORCAMENTO DE TURNOS" em aiRoadmap/intakeChat.ts).
+  // Baixar este valor por env sem baixar MAX_USER_MESSAGES junto reabre o beco
+  // sem saida de cota estourada no meio da conversa.
   roadmapIntakeChatDailyLimitPro: parseInt(
-    process.env.ROADMAP_INTAKE_CHAT_DAILY_LIMIT_PRO || "60",
+    process.env.ROADMAP_INTAKE_CHAT_DAILY_LIMIT_PRO ||
+      String(ROADMAP_INTAKE_CHAT_DEFAULT_DAILY_LIMIT),
     10,
   ),
   avatarReportHideThreshold: (() => {
@@ -159,6 +166,9 @@ export const env = {
   // o adapter roda sem auth em modo reduzido (1 pagina) com warn.
   githubVagasToken:
     process.env.GITHUB_VAGAS_TOKEN || process.env.GITHUB_TOKEN || "",
+  // Teto de reembolsos por admin por minuto. Knob operacional: numa onda de
+  // chargebacks pode ser preciso subir. Ver server/lib/refund.ts.
+  refundMaxPerMinute: Number(process.env.REFUND_MAX_PER_MINUTE ?? 10),
   posthogApiKey: process.env.POSTHOG_API_KEY || "",
   posthogProjectId: process.env.POSTHOG_PROJECT_ID || "",
   // Host da API do PostHog (regiao). NUNCA hardcodar a regiao no codigo: projeto
@@ -192,6 +202,48 @@ export const env = {
       `[env] AVISO: RATE_LIMIT_MAX_REQUESTS invalido ("${raw}"), usando 180`,
     );
     return 180;
+  })(),
+  // Amostragem do DENOMINADOR do rate limit. 0 = desligada (default).
+  //
+  // Existe porque `FATOR_TETO_IP` foi calibrado por raciocinio, nao por dado: o
+  // log de escopo so fala quando ESTOURA, e o silencio dele e indistinguivel de
+  // "esta folgado" e de "nunca chegou perto". Ligada, emite a contagem da janela
+  // a cada N requisicoes da MESMA chave, o que da a distribuicao de requisicoes
+  // por minuto por IP. Ver docs/denominador-rate-limit.md.
+  //
+  // Por env e nao por constante: a ideia e ligar por uma semana, colher e
+  // desligar sem deploy. Invalido (nao inteiro ou < 0) cai em 0 com warn.
+  rateLimitSampleN: (() => {
+    const raw = process.env.RATE_LIMIT_SAMPLE_N;
+    if (!raw) return 0;
+    const parsed = parseInt(raw, 10);
+    if (Number.isInteger(parsed) && parsed >= 0) return parsed;
+    console.warn(
+      `[env] AVISO: RATE_LIMIT_SAMPLE_N invalido ("${raw}"), amostragem desligada`,
+    );
+    return 0;
+  })(),
+  // Cotacao USD->BRL para a linha SECUNDARIA do card de custo de IA no admin.
+  //
+  // O numero principal e e continua sendo DOLAR, porque e nele que a tabela de
+  // precos da OpenAI e cotada (MODEL_PRICING em server/lib/aiTools.ts). Esta
+  // env existe so para quem quer a ordem de grandeza em real ao lado.
+  //
+  // OPCIONAL DE PROPOSITO, e ausente significa "nao exibir a linha", nunca
+  // "converter por 1". Buscar cotacao em API externa foi descartado: seria uma
+  // dependencia de rede num painel, para um numero que ninguem usa para decidir,
+  // e que envelheceria em silencio se a API caisse. Valor invalido (nao
+  // numerico, zero ou negativo) tambem desliga a linha, com warn no boot: uma
+  // taxa errada produz um valor plausivel e errado, que e pior que nao ter.
+  aiCostUsdBrlRate: (() => {
+    const raw = process.env.AI_COST_USD_BRL_RATE;
+    if (!raw) return null;
+    const parsed = Number.parseFloat(raw);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    console.warn(
+      `[env] AVISO: AI_COST_USD_BRL_RATE invalido ("${raw}"), linha em BRL desligada`,
+    );
+    return null;
   })(),
   cronSecret: process.env.CRON_SECRET || "",
   githubToken: process.env.GITHUB_TOKEN || "",

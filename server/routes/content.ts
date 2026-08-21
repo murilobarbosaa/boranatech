@@ -84,7 +84,16 @@ router.get("/areas", async (req, res, next) => {
         if (search) query = query.ilike("name", `%${search}%`);
 
         const { data, error } = await query;
-        if (error) throw createError(500, "db_error", "Erro ao buscar áreas.");
+        // `cause` em TODO `db_error` deste arquivo, e o motivo vale para os
+        // outros: sem ele o Sentry recebe a mensagem generica e um stack que
+        // aponta para a nossa propria linha, e a causa real (timeout de
+        // statement, permissao, coluna ausente) some. O `LinkedErrors` percorre
+        // `err.cause` e anexa o erro do Supabase. Nenhum texto exibido ao
+        // usuario muda: `cause` nunca sai na resposta.
+        if (error)
+          throw createError(500, "db_error", "Erro ao buscar áreas.", {
+            cause: error,
+          });
         return { data: data || [] };
       },
       { bypass: Boolean(search) },
@@ -144,7 +153,9 @@ router.get("/technologies", async (req, res, next) => {
 
         const { data, error } = await query;
         if (error)
-          throw createError(500, "db_error", "Erro ao buscar tecnologias.");
+          throw createError(500, "db_error", "Erro ao buscar tecnologias.", {
+            cause: error,
+          });
         return { data: data || [] };
       },
       { bypass: Boolean(search) },
@@ -170,7 +181,9 @@ router.get("/technologies/ranking", async (_req, res, next) => {
           .order("sort_order", { ascending: true });
 
         if (error)
-          throw createError(500, "db_error", "Erro ao buscar ranking.");
+          throw createError(500, "db_error", "Erro ao buscar ranking.", {
+            cause: error,
+          });
         return { data: data || [] };
       },
     );
@@ -206,7 +219,9 @@ router.get("/technologies/compare", async (req, res, next) => {
           .eq("is_published", true);
 
         if (error)
-          throw createError(500, "db_error", "Erro ao comparar tecnologias.");
+          throw createError(500, "db_error", "Erro ao comparar tecnologias.", {
+            cause: error,
+          });
         if (!data || data.length < 2) return null;
         return { data };
       },
@@ -276,7 +291,10 @@ router.get("/courses", checkProStatus, async (req, res, next) => {
         if (search) query = query.ilike("title", `%${search}%`);
 
         const { data, error } = await query;
-        if (error) throw createError(500, "db_error", "Erro ao buscar cursos.");
+        if (error)
+          throw createError(500, "db_error", "Erro ao buscar cursos.", {
+            cause: error,
+          });
         return { data: data || [] };
       },
       { bypass: Boolean(search) },
@@ -310,7 +328,9 @@ router.get("/platforms", checkProStatus, async (req, res, next) => {
           .order("name", { ascending: true });
 
         if (error)
-          throw createError(500, "db_error", "Erro ao buscar plataformas.");
+          throw createError(500, "db_error", "Erro ao buscar plataformas.", {
+            cause: error,
+          });
         return { data: data || [] };
       },
     );
@@ -345,7 +365,9 @@ router.get("/projects", checkProStatus, async (req, res, next) => {
 
         const { data, error } = await query;
         if (error)
-          throw createError(500, "db_error", "Erro ao buscar projetos.");
+          throw createError(500, "db_error", "Erro ao buscar projetos.", {
+            cause: error,
+          });
         return { data: data || [] };
       },
     );
@@ -417,7 +439,9 @@ router.get("/roadmaps", async (req, res, next) => {
 
         const { data, error } = await query;
         if (error)
-          throw createError(500, "db_error", "Erro ao buscar roadmaps.");
+          throw createError(500, "db_error", "Erro ao buscar roadmaps.", {
+            cause: error,
+          });
         return { data: data || [] };
       },
     );
@@ -447,7 +471,11 @@ router.get("/roadmaps/:slug/progress", requireAuth, async (req, res, next) => {
       .eq("roadmap_id", roadmap.id);
 
     if (error)
-      return next(createError(500, "db_error", "Erro ao buscar progresso."));
+      return next(
+        createError(500, "db_error", "Erro ao buscar progresso.", {
+          cause: error,
+        }),
+      );
 
     res.json({ data: data || [] });
   } catch (err) {
@@ -581,6 +609,7 @@ router.get("/sources/status", async (_req, res, next) => {
             500,
             "db_error",
             "Erro ao buscar status das fontes.",
+            { cause: error },
           );
         return { data: data || [] };
       },
@@ -648,7 +677,9 @@ router.get("/news", async (req, res, next) => {
 
         const { data, count, error } = await query;
         if (error)
-          throw createError(500, "db_error", "Erro ao buscar notícias.");
+          throw createError(500, "db_error", "Erro ao buscar notícias.", {
+            cause: error,
+          });
 
         const total = count ?? 0;
         const total_pages = Math.max(1, Math.ceil(total / limit));

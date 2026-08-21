@@ -35,6 +35,16 @@ export type DropContext = {
   groups: TaskGroup[];
   groupBy: GroupBy;
   filtersActive: boolean;
+  /**
+   * Ids das etapas fixadas do quadro. Card NAO entra nelas: elas significam
+   * "criado pelo Sentry, ninguem triou", e e essa semantica que autoriza o job a
+   * arquivar e ressuscitar sozinho. SAIR delas e o fluxo principal e continua
+   * liberado.
+   *
+   * O servidor tambem recusa (rota /tasks/:id/move). Aqui e para a tela nao
+   * CONVIDAR para o erro: soltar e ver um 409 e pior que nao poder soltar.
+   */
+  pinnedColumnIds: readonly string[];
   /** Estado atual da tarefa arrastada, para nao emitir acao que nao muda nada. */
   task: {
     id: string;
@@ -77,6 +87,23 @@ export function resolveBoardDrop(
 
   const target = resolveDropTarget(order, task.id, overId);
   if (!target) return { kind: "none" };
+
+  // Entrada na etapa fixada recusada, inclusive vinda dela mesma (reordenar
+  // dentro). Sair continua valendo: e a triagem.
+  if (
+    target.columnId !== task.column_id &&
+    context.pinnedColumnIds.includes(target.columnId)
+  ) {
+    return { kind: "none" };
+  }
+  if (
+    target.columnId === task.column_id &&
+    context.pinnedColumnIds.includes(target.columnId)
+  ) {
+    // Reordenar DENTRO da etapa fixada nao tem significado: a ordem ali e a de
+    // chegada do feed, e mexer nela seria estado que o proximo sync ignora.
+    return { kind: "none" };
+  }
 
   if (filtersActive) {
     // Reordenar dentro da mesma etapa e ambiguo: nao faz nada.

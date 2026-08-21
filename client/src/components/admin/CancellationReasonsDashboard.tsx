@@ -22,12 +22,13 @@ type CancellationReasonsData = {
 
 // Traducao dos 5 reason_code (CHECK da subscription_cancellations) para pt-BR.
 // TODO(Ana): revisar os rotulos dos motivos de cancelamento.
-const REASON_LABELS: Record<string, string> = {
+export const REASON_LABELS: Record<string, string> = {
   expensive: "Está caro",
   unused: "Não estava usando",
   missing_feature: "Faltou funcionalidade",
   paused: "Vai pausar, volta depois",
   other: "Outro motivo",
+  admin: "Cancelado pelo admin",
 };
 
 // Abaixo disso, percentual e enganoso (1 de 2 = 50%). Mesmo limiar/espirito do

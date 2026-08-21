@@ -6,6 +6,7 @@ import {
   motion,
   useInView,
   useMotionValue,
+  useReducedMotion,
   useTransform,
 } from "framer-motion";
 import {
@@ -22,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import * as Sentry from "@sentry/react";
+import posthog from "posthog-js";
 import { featuredAreas } from "@/lib/homeData.generated";
 import { apiUrl } from "@/lib/api";
 
@@ -178,25 +180,106 @@ function generateSCurvePath(
 // CONTADOR ANIMADO (dispara ao entrar no viewport, uma vez)
 // =========================================
 
-function AnimatedCounter({ value }: { value: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const count = useMotionValue(0);
+// Tempo até o fallback assumir quando o observer não dispara. Curto porque o
+// badge fica acima da dobra: se em 1.2s o gatilho não veio, ele não vem mais.
+const COUNTER_FALLBACK_MS = 1200;
+
+function AnimatedCounter({
+  value,
+  targetRef,
+}: {
+  value: number;
+  targetRef: React.RefObject<HTMLElement | null>;
+}) {
+  const prefersReduced = useReducedMotion();
+  // Sem IntersectionObserver o framer-motion lança dentro de um efeito passivo
+  // e derruba a árvore inteira (pior que exibir 0). Passando um ref vazio o
+  // useInView não observa nada, `isInView` fica false e o fallback resolve.
+  const unobservedRef = useRef<HTMLElement>(null);
+  const observedRef =
+    typeof IntersectionObserver !== "undefined" ? targetRef : unobservedRef;
+  // O alvo do observer é o BADGE, não o span de dígitos. O span tem largura
+  // dependente do conteúdo que ainda vai animar: no primeiro paint ele contém
+  // só o "0" (~10px) e, em viewport estreita, cabia inteiro dentro da faixa
+  // morta lateral criada pela margem negativa, então nunca intersectava e o
+  // contador ficava travado em 0 (medido quebrando em 320/344/375/390/402).
+  // Margem negativa só no eixo VERTICAL: nos lados ela encolhe a root e volta
+  // a excluir alvos estreitos.
+  const isInView = useInView(observedRef, {
+    once: true,
+    margin: "0px 0px -80px 0px",
+  });
+  // Rede de segurança: se o observer não disparar por qualquer motivo (alvo
+  // fora da root, IntersectionObserver indisponível, layout inesperado), o
+  // contador vai pro valor final assim mesmo. 0 nunca é estado final visível.
+  const [fallbackFired, setFallbackFired] = useState(false);
+  const count = useMotionValue(prefersReduced ? value : 0);
   const rounded = useTransform(count, (latest) =>
     Math.round(latest).toLocaleString("pt-BR"),
   );
 
   useEffect(() => {
-    if (isInView) {
-      const controls = animate(count, value, {
-        duration: 1.2,
-        ease: "easeOut",
-      });
-      return () => controls.stop();
+    // Movimento reduzido: valor final direto, sem animação.
+    if (prefersReduced) {
+      count.set(value);
+      return;
     }
-  }, [isInView, value, count]);
+    if (!isInView && !fallbackFired) return;
+    const controls = animate(count, value, {
+      duration: 1.2,
+      ease: "easeOut",
+    });
+    return () => controls.stop();
+  }, [isInView, fallbackFired, prefersReduced, value, count]);
 
-  return <motion.span ref={ref}>{rounded}</motion.span>;
+  useEffect(() => {
+    if (prefersReduced || isInView || fallbackFired) return;
+    const timeoutId = window.setTimeout(
+      () => setFallbackFired(true),
+      COUNTER_FALLBACK_MS,
+    );
+    return () => window.clearTimeout(timeoutId);
+  }, [prefersReduced, isInView, fallbackFired]);
+
+  // Largura RESERVADA pelo valor FINAL, e nao pelo valor atual.
+  //
+  // Sem isto o span cresce junto com os digitos (0 -> 12 -> 917 -> 2.921), o
+  // badge inteiro cresce com ele, e em viewport estreita o texto do badge
+  // QUEBRA PARA A SEGUNDA LINHA e volta, varias vezes, durante a animacao.
+  // Medido em 390px: altura do badge alternando entre 20px e 40px, o `ul.grid`
+  // logo abaixo pulando entre y=768 e y=788, 27 mudancas de geometria em 1.2s, e
+  // CLS de 0.103 (acima do limiar de 0.1). Medido tambem no codigo anterior a
+  // este contador, quando ele ficava travado em 0: CLS 0.00000. Ou seja, o
+  // deslocamento nasceu junto com a animacao, e some reservando o espaco.
+  //
+  // A reserva e uma COPIA INVISIVEL do valor final, e nao um calculo de largura.
+  //
+  // A primeira versao usava `minWidth: ${n}ch`, contando caracteres. Media errado:
+  // `ch` e a largura do glifo "0" PADRAO, e com `tabular-nums` o digito e cerca de
+  // 18% mais estreito. Medido em 390px: caixa reservada de 49,5px para um numero
+  // que ocupa 38,9px, ou seja **10,6px de espaco morto** entre o numero e a
+  // palavra seguinte, visivel em TODAS as larguras, inclusive no desktop, onde
+  // nao ha quebra nenhuma.
+  //
+  // Aqui quem define a largura e o proprio texto final, renderizado e medido pelo
+  // browser. Nao ha unidade a estimar e nao ha o que corrigir quando a fonte
+  // mudar. Mesmo principio dos skeletons da Novidades: derivar do que existe, em
+  // vez de calcular por fora.
+  //
+  // A copia e `aria-hidden` e o numero vivo fica sobreposto em `absolute`, entao
+  // leitor de tela le so uma vez. `tabular-nums` no pai continua necessario: sem
+  // ele "111" e "999" teriam larguras diferentes e o numero animado poderia
+  // estourar a caixa dimensionada pelo valor final.
+  const valorFinal = value.toLocaleString("pt-BR");
+
+  return (
+    <span className="relative inline-block tabular-nums">
+      <span aria-hidden className="invisible">
+        {valorFinal}
+      </span>
+      <motion.span className="absolute inset-0 text-left">{rounded}</motion.span>
+    </span>
+  );
 }
 
 // =========================================
@@ -474,22 +557,62 @@ function writeCachedUsersCount(n: number): void {
 // count degradado) passam por aqui, pra a gente enxergar a distribuição real por
 // dispositivo (429 de rate limit vs CORS/ad-block vs HTML por VITE_API_URL
 // ausente vs count nulo). NÃO muda nada visível: a UI segue no cache/placeholder.
+// Tipo do desfecho, CAMPO e nao texto. A alternativa seria derivar de `message`
+// com um casamento de padrao, que e a classe de instrumento que este projeto ja
+// viu falhar PASSANDO. Uniao fechada: um ramo novo sem tipo nao compila.
+type StatsCounterTipo = "http" | "non_json" | "degraded_payload" | "network";
+
 type StatsCounterContext = {
+  tipo: StatsCounterTipo;
   resolvedUrl: string;
   hadCache: boolean;
   status: number | null;
   contentType: string | null;
 };
 
+/**
+ * DOIS destinos, escolhidos por `hadCache`, e nao por gravidade do erro.
+ *
+ * BUG-29/39/57 sao a MESMA causa em tres issues: cada engine escreve o mesmo
+ * TypeError de rede com outra frase ("Load failed" no Safari, "Failed to fetch"
+ * no Chrome, "NetworkError when attempting to fetch resource." no Firefox). Os
+ * eventos vieram todos com `hadCache: true`, ou seja, o contador seguiu na tela
+ * com o valor em cache e o usuario nao viu absolutamente nada.
+ *
+ * Com cache, a falha vale em AGREGADO ("que fracao das cargas nao consegue
+ * falar com a API?"), e agregacao e o PostHog. Mandar isso para o Sentry e o
+ * que lib/sentry.ts manda NAO fazer: la e stream de erro, com cota. Sem cache o
+ * contador some da tela, e ai e evento de erro mesmo.
+ *
+ * `fingerprint` fixo no ramo do Sentry: e ele que faz as tres frases de engine
+ * colapsarem numa issue so. Sem ele, o default agrupa pela mensagem e cada
+ * navegador continua abrindo a sua.
+ */
 function captureStatsCounterIssue(
   message: string,
   ctx: StatsCounterContext,
   error?: unknown,
 ): void {
+  if (ctx.hadCache) {
+    try {
+      posthog.capture("stats_users_count_fetch_failed", {
+        tipo: ctx.tipo,
+        status: ctx.status,
+        contentType: ctx.contentType,
+        resolvedUrl: ctx.resolvedUrl,
+      });
+    } catch {
+      // Telemetria nunca quebra o render da home.
+    }
+    return;
+  }
+
   Sentry.withScope((scope) => {
     scope.setTag("route", "stats/users-count");
     scope.setLevel("warning");
+    scope.setFingerprint(["stats-users-count-fetch"]);
     scope.setContext("stats_users_count", {
+      tipo: ctx.tipo,
       resolvedUrl: ctx.resolvedUrl,
       hadCache: ctx.hadCache,
       status: ctx.status,
@@ -513,6 +636,9 @@ export default function Hero() {
     readCachedUsersCount(),
   );
   const sectionRef = useRef<HTMLElement>(null);
+  // Alvo estável do observer do contador: largura do badge não depende do
+  // número que ainda vai animar.
+  const badgeRef = useRef<HTMLDivElement>(null);
 
   // Alterna o highlight do headline a cada 3s.
   useEffect(() => {
@@ -535,6 +661,7 @@ export default function Hero() {
           // Não-2xx (ex.: 429 do rate limit em IP compartilhado, 5xx): antes
           // virava null em silêncio.
           captureStatsCounterIssue(`[stats] users-count HTTP ${r.status}`, {
+            tipo: "http",
             resolvedUrl,
             hadCache,
             status: r.status,
@@ -548,6 +675,7 @@ export default function Hero() {
         // catch. Capturamos explícito ANTES do r.json().
         if (!contentType || !contentType.includes("application/json")) {
           captureStatsCounterIssue("[stats] users-count non-JSON response", {
+            tipo: "non_json",
             resolvedUrl,
             hadCache,
             status: r.status,
@@ -564,6 +692,7 @@ export default function Hero() {
           // exibe nem grava no cache (evitaria envenenar o localStorage
           // compartilhado). Mesmo guard do Checkout, agora instrumentado.
           captureStatsCounterIssue("[stats] users-count degraded payload", {
+            tipo: "degraded_payload",
             resolvedUrl,
             hadCache,
             status: r.status,
@@ -579,7 +708,13 @@ export default function Hero() {
         // Rede/CORS/ad-block/JSON malformado: antes engolido pelo catch vazio.
         captureStatsCounterIssue(
           "[stats] users-count fetch failed",
-          { resolvedUrl, hadCache, status: null, contentType: null },
+          {
+            tipo: "network",
+            resolvedUrl,
+            hadCache,
+            status: null,
+            contentType: null,
+          },
           err,
         );
       });
@@ -590,8 +725,9 @@ export default function Hero() {
 
   return (
     <section
+      id="inicio"
       ref={sectionRef}
-      className="relative min-h-screen overflow-hidden bg-[#faf8f4] py-16 md:py-24"
+      className="bnt-ancora relative min-h-screen overflow-hidden bg-[#faf8f4] py-16 md:py-24"
       aria-labelledby="hero-headline"
     >
       <MapBackground sectionRef={sectionRef} />
@@ -599,6 +735,7 @@ export default function Hero() {
       <div className="relative z-10 mx-auto max-w-5xl px-4 text-center">
         {/* 1) Badge social com triângulo de tooltip de mapa abaixo. */}
         <motion.div
+          ref={badgeRef}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.5 }}
@@ -608,8 +745,32 @@ export default function Hero() {
           <span className="text-sm font-bold text-slate-950">
             {usersCount !== null ? (
               <>
-                +<AnimatedCounter value={usersCount} /> pessoas já encontraram
-                seu caminho
+                +<AnimatedCounter value={usersCount} targetRef={badgeRef} />{" "}
+                pessoas{" "}
+                {/* Quebra DELIBERADA, e o limite e MEDIDO, nao um breakpoint do
+                    tema. Varrendo de 380 a 420 pixel a pixel, com o <br>
+                    desligado: em 394px a frase ocupa 2 linhas e em 395px cabe em
+                    1. Usar `sm:` (640px) faria o <br> aparecer em 430, 480 e 600,
+                    forcando duas linhas onde uma serve.
+
+                    O valor na classe e 395 e nao 394 porque foi conferido nas
+                    duas bordas com o <br> LIGADO: com `max-[394px]` o <br>
+                    passava a valer so a partir de 393 e sobrava exatamente uma
+                    largura (394) com a quebra acidental. Com `max-[395px]` o
+                    comportamento medido e o desejado -- 392, 393 e 394 com a
+                    quebra deliberada, 395 em diante numa linha so. O limite veio
+                    da medicao nas bordas, nao de aritmetica sobre o numero.
+
+                    Sem isto a quebra caia no meio da frase e mudava de lugar
+                    conforme a largura ("...encontraram / seu caminho" em 320 e
+                    390, "...seu / caminho" em 402), o que le como acidente. Aqui
+                    ela e sempre no mesmo ponto: o numero e a palavra que carrega
+                    a prova social ficam juntos na primeira linha.
+
+                    Se a copy encurtar a ponto de caber em 320px, este <br> sai e
+                    nada mais precisa mudar. */}
+                <br className="hidden max-[395px]:inline" />
+                já encontraram seu caminho
               </>
             ) : (
               "Já estão encontrando o caminho em tech"

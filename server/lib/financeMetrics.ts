@@ -1,9 +1,59 @@
+import { coletarTudo } from "./paginate";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 // Metricas financeiras em regime de CAIXA. Fonte de verdade da receita:
 // finance_transactions (Stripe), NUNCA plans.price_cents. Tudo em centavos
 // inteiros. REGRA DE OURO: erro propaga; ausencia e estado nomeado; margem com
 // receita <= 0 e null, nunca 0.
+
+// ---------------------------------------------------------------------------
+// DIVERGENCIA CONHECIDA E NAO CORRIGIDA: devolucao externa.
+//
+// Desde 2026-07-30 o admin pode REGISTRAR uma devolucao feita fora da Stripe
+// (boleto devolvido por PIX ou TED da conta da empresa). Ela vive em
+// admin_refunds com settlement='external' e NAO existe em finance_transactions,
+// porque essa tabela e sincronizada exclusivamente da Stripe e continua assim.
+//
+// Consequencia: o extrato do usuario (server/lib/userTransactions.ts, que junta
+// as duas fontes) desconta a devolucao, e ESTE arquivo nao. Duas telas
+// discordando sobre o mesmo dinheiro.
+//
+// MEDIDO, para uma devolucao externa de N centavos dentro da janela consultada:
+//
+//   getFinanceSummary
+//     reembolsosCents        SUBESTIMADO em N   (so soma linhas type='refund')
+//     receitaLiquidaCents    SUPERESTIMADO em N (so soma net_cents existentes)
+//     lucroCents             SUPERESTIMADO em N (deriva da receita liquida)
+//     margemPercent          SUPERESTIMADO      (deriva dos dois acima)
+//     receitaBrutaCents      correto            (bruto e bruto; so soma charge)
+//     taxasStripeCents       correto            (nao houve taxa da Stripe)
+//     receitaPorPlano        inalterado         (ja e cego a reembolso, porque
+//                                                so acumula em type='charge';
+//                                                vale tambem para reembolso da
+//                                                Stripe, nao e novo)
+//   getFinanceTimeseries
+//     receitaLiquidaCents    SUPERESTIMADO em N no mes da declaracao
+//     lucroCents             SUPERESTIMADO em N no mes da declaracao
+//   getDeferredRevenue
+//     inalterado. A revogacao que acompanha a devolucao poe a assinatura em
+//     status='canceled', e o filtro in('active','trialing') a tira do conjunto
+//     sozinho. Nao ha nada a corrigir aqui.
+//
+// EFEITO HOJE: ZERO. Nenhuma linha com settlement='external' existe ainda.
+//
+// CAMINHO MAIS BARATO DE RECONCILIAR, sem tocar na natureza Stripe-only de
+// finance_transactions: `loadTransactions` e o UNICO ponto de leitura dos dois
+// consumidores acima. Basta ele concatenar, EM MEMORIA, uma linha sintetica por
+// declaracao externa da janela:
+//
+//   { type: 'refund', gross_cents: -amount, fee_cents: 0,
+//     net_cents: -amount, plan_code: null, occurred_at: created_at }
+//
+// Uma consulta a mais e um map. Nada e escrito, e os dois consumidores se
+// corrigem juntos porque os dois ja passam por loadTransactions. NAO foi feito
+// nesta fatia de proposito: a fatia era revogar acesso, e o efeito e zero ate a
+// primeira declaracao existir.
+// ---------------------------------------------------------------------------
 
 // Tipos que compoem a receita (payout e movimento pro banco, nao receita).
 const REVENUE_TYPES: readonly string[] = [
@@ -86,7 +136,9 @@ export function expenseOccurrences(
   }
 
   const start = new Date(expense.recurrence_start ?? expense.incurred_on);
-  const hardEnd = expense.recurrence_end ? new Date(expense.recurrence_end) : to;
+  const hardEnd = expense.recurrence_end
+    ? new Date(expense.recurrence_end)
+    : to;
   const limit = to < hardEnd ? to : hardEnd;
   const stepMonths = expense.recurrence_interval === "yearly" ? 12 : 1;
 
@@ -105,26 +157,38 @@ export function expenseOccurrences(
   return occ;
 }
 
+// PAGINADA: alimenta TODOS os numeros do FinanceDashboard (receita bruta,
+// liquida, taxas, reembolsos e a serie mensal). Truncar aqui erra para menos em
+// todos eles de uma vez, e uma receita menor do que a real nao levanta suspeita
+// de ninguem.
 async function loadTransactions(from: Date, to: Date): Promise<FinanceTxRow[]> {
-  const { data, error } = await supabaseAdmin
-    .from("finance_transactions")
-    .select("type, gross_cents, fee_cents, net_cents, plan_code, occurred_at")
-    .gte("occurred_at", from.toISOString())
-    .lte("occurred_at", to.toISOString());
-  if (error) {
-    throw new Error(`finance_transactions query falhou: ${error.message}`);
-  }
-  return (data ?? []) as FinanceTxRow[];
+  return (await coletarTudo<FinanceTxRow>(
+    (fromRow, toRow) =>
+      supabaseAdmin
+        .from("finance_transactions")
+        .select(
+          "type, gross_cents, fee_cents, net_cents, plan_code, occurred_at",
+        )
+        .gte("occurred_at", from.toISOString())
+        .lte("occurred_at", to.toISOString())
+        .order("id", { ascending: true })
+        .range(fromRow, toRow),
+    "finance_transactions query falhou",
+  )) as FinanceTxRow[];
 }
 
 async function loadExpenses(): Promise<ExpenseRow[]> {
-  const { data, error } = await supabaseAdmin
-    .from("expenses")
-    .select(
-      "amount_brl_cents, category, kind, incurred_on, recurrence_start, recurrence_end, recurrence_interval",
-    );
-  if (error) throw new Error(`expenses query falhou: ${error.message}`);
-  return (data ?? []) as ExpenseRow[];
+  return (await coletarTudo<ExpenseRow>(
+    (from, to) =>
+      supabaseAdmin
+        .from("expenses")
+        .select(
+          "amount_brl_cents, category, kind, incurred_on, recurrence_start, recurrence_end, recurrence_interval",
+        )
+        .order("id", { ascending: true })
+        .range(from, to),
+    "expenses query falhou",
+  )) as ExpenseRow[];
 }
 
 export async function getFinanceSummary(params: {
@@ -252,14 +316,20 @@ export async function getDeferredRevenue(): Promise<DeferredRevenue> {
   const now = Date.now();
   const nowIso = new Date(now).toISOString();
 
-  const { data, error } = await supabaseAdmin
-    .from("subscriptions")
-    .select("user_id, current_period_start, current_period_end, plans(interval)")
-    .in("status", ["active", "trialing"])
-    .gt("current_period_end", nowIso);
-  if (error) throw new Error(`subscriptions query falhou: ${error.message}`);
-
-  const subs = (data ?? []) as DeferredSubRow[];
+  // Mesma armadilha do getMrrSnapshot: `.in("status", ...)` filtra, nao limita.
+  const subs = (await coletarTudo<DeferredSubRow>(
+    (from, to) =>
+      supabaseAdmin
+        .from("subscriptions")
+        .select(
+          "user_id, current_period_start, current_period_end, plans(interval)",
+        )
+        .in("status", ["active", "trialing"])
+        .gt("current_period_end", nowIso)
+        .order("id", { ascending: true })
+        .range(from, to),
+    "subscriptions query falhou",
+  )) as DeferredSubRow[];
   let deferredCents = 0;
   let consideredCount = 0;
   let unmappedCount = 0;
@@ -268,7 +338,8 @@ export async function getDeferredRevenue(): Promise<DeferredRevenue> {
     const plan = Array.isArray(s.plans) ? s.plans[0] : s.plans;
     const interval = plan?.interval ?? "";
     if (interval !== "semiannual" && interval !== "year") continue;
-    if (!s.user_id || !s.current_period_start || !s.current_period_end) continue;
+    if (!s.user_id || !s.current_period_start || !s.current_period_end)
+      continue;
 
     const pStart = new Date(s.current_period_start).getTime();
     const pEnd = new Date(s.current_period_end).getTime();
@@ -280,13 +351,18 @@ export async function getDeferredRevenue(): Promise<DeferredRevenue> {
       .select("gross_cents")
       .eq("type", "charge")
       .eq("user_id", s.user_id)
-      .gte("occurred_at", new Date(pStart - 3 * 24 * 60 * 60 * 1000).toISOString())
+      .gte(
+        "occurred_at",
+        new Date(pStart - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      )
       .lte("occurred_at", s.current_period_end)
       .order("occurred_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     if (chargeError) {
-      throw new Error(`finance_transactions charge lookup falhou: ${chargeError.message}`);
+      throw new Error(
+        `finance_transactions charge lookup falhou: ${chargeError.message}`,
+      );
     }
     const charge = chargeData as { gross_cents: number } | null;
     if (!charge) {

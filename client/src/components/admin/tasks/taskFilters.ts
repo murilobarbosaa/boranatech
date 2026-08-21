@@ -18,6 +18,17 @@ import { priorityMetaOf } from "./taskBoardStyles";
 
 export type DueFilter = "" | "late" | "week";
 
+/**
+ * Origem do card. "" = sem filtro.
+ *
+ * Passou a importar quando o quadro ganhou 22 cards automaticos: separar "o que
+ * o Sentry trouxe" de "o que a gente escreveu" e a pergunta mais frequente num
+ * quadro alimentado por robo. Deliberadamente BINARIO na interface (automático
+ * x manual) e nao um seletor por valor de `source`: quem olha quer saber se
+ * digitou aquilo, nao se veio do sync ou da migracao do admin_bugs.
+ */
+export type OrigemFilter = "" | "sentry" | "manual";
+
 export type TaskFilters = {
   query: string;
   assigneeIds: string[];
@@ -26,6 +37,7 @@ export type TaskFilters = {
   types: TaskType[];
   due: DueFilter;
   mine: boolean;
+  origem: OrigemFilter;
 };
 
 export const EMPTY_FILTERS: TaskFilters = {
@@ -36,6 +48,7 @@ export const EMPTY_FILTERS: TaskFilters = {
   types: [],
   due: "",
   mine: false,
+  origem: "",
 };
 
 /**
@@ -97,6 +110,12 @@ export function matchesFilters(
   }
   if (filters.types.length > 0 && !filters.types.includes(task.type)) return false;
 
+  // "manual" e o COMPLEMENTO de "human", nao a lista dos outros valores: um
+  // `source` novo que este bundle nao conhece cai em "automático", que e a
+  // leitura certa (nao foi digitado por ninguem aqui) e nao some da tela.
+  if (filters.origem === "sentry" && task.source === "human") return false;
+  if (filters.origem === "manual" && task.source !== "human") return false;
+
   if (filters.due) {
     if (!task.due_date) return false;
     const today = todayIso(context.nowMs);
@@ -126,6 +145,7 @@ export function activeFilterCount(filters: TaskFilters): number {
   if (filters.types.length > 0) count += 1;
   if (filters.due) count += 1;
   if (filters.mine) count += 1;
+  if (filters.origem) count += 1;
   return count;
 }
 

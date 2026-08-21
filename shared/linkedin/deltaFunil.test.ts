@@ -158,3 +158,111 @@ describe("decidirDelta: as supressoes", () => {
     expect(versaoDe(4)).toBe(4);
   });
 });
+
+describe("Fase 4 (v5): mudanca de LEITURA suprime delta e celebracao", () => {
+  // A regua nao mudou entre a v4 e a v5. O que mudou foi o conteudo que o
+  // parser entrega a ela: a headline que vinha cortada ao meio chega inteira.
+  // O efeito no usuario e identico ao de uma mudanca de regua (a nota do mesmo
+  // perfil se move sozinha), entao a supressao tem que ser a mesma. Este teste
+  // roda pelo funil de verdade, `decidirDelta`, e nao pela copia local da regra
+  // que vive em deltaComparavel.test.ts.
+  const CHECKS = [
+    { id: "headline-cargo-alvo", category: "headline", aprovado: true },
+    { id: "sobre-stack", category: "sobre", aprovado: true },
+  ] as const;
+
+  function entrada(versaoAnterior: number | null, versaoAtual: number): EntradaDelta {
+    return {
+      notaAnterior: 51,
+      versaoAnterior,
+      checksAnteriores: [
+        { id: "headline-cargo-alvo", category: "headline", aprovado: false },
+        { id: "sobre-stack", category: "sobre", aprovado: true },
+      ],
+      notaAtual: 72,
+      versaoAtual,
+      checksAtuais: [...CHECKS],
+    };
+  }
+
+  it("v4 -> v5 nao mostra delta e liga o aviso de nao-comparavel", () => {
+    const v = decidirDelta(entrada(4, 5));
+    expect(v.delta).toBeNull();
+    expect(v.reguaMudou).toBe(true);
+    expect(v.motivo).toBe("regua-mudou");
+  });
+
+  it("linha legada sem carimbo (v1) -> v5 tambem e suprimida", () => {
+    const v = decidirDelta(entrada(null, 5));
+    expect(versaoDe(null)).toBe(1);
+    expect(v.delta).toBeNull();
+    expect(v.reguaMudou).toBe(true);
+  });
+
+  it("v5 -> v5 volta a comparar: e a reanalise honesta depois do deploy", () => {
+    const v = decidirDelta(entrada(5, 5));
+    expect(v.delta).toEqual({ from: 51, to: 72 });
+    expect(v.reguaMudou).toBe(false);
+    expect(v.motivo).toBe("delta");
+  });
+});
+
+describe("supressao por nota incompleta", () => {
+  const CHECK = { id: "headline-existe", category: "headline", aprovado: true };
+  // `notaAnterior !== notaAtual` e checks iguais: sem a supressao nova, este
+  // conjunto produz delta. E o que faz o teste medir a supressao, e nao um
+  // caminho que ja estava suprimido por outro motivo.
+  const base: EntradaDelta = {
+    notaAnterior: 70,
+    versaoAnterior: 7,
+    checksAnteriores: [CHECK],
+    notaAtual: 74,
+    versaoAtual: 7,
+    checksAtuais: [CHECK],
+  };
+
+  it("suprime quando a ATUAL esta incompleta", () => {
+    const v = decidirDelta({ ...base, incompletaAtual: true });
+    expect(v.delta).toBeNull();
+    expect(v.motivo).toBe("nota-incompleta");
+  });
+
+  it("suprime quando a ANTERIOR esta incompleta", () => {
+    const v = decidirDelta({ ...base, incompletaAnterior: true });
+    expect(v.delta).toBeNull();
+    expect(v.motivo).toBe("nota-incompleta");
+  });
+
+  it("suprime quando as DUAS estao incompletas", () => {
+    const v = decidirDelta({
+      ...base,
+      incompletaAnterior: true,
+      incompletaAtual: true,
+    });
+    expect(v.delta).toBeNull();
+  });
+
+  it("NAO suprime quando nenhuma esta, nem com os campos ausentes", () => {
+    expect(decidirDelta(base).delta).not.toBeNull();
+    expect(
+      decidirDelta({ ...base, incompletaAnterior: false, incompletaAtual: false })
+        .delta,
+    ).not.toBeNull();
+  });
+
+  it("ausencia vale FALSE, nao true: linha antiga nao vira suprimida", () => {
+    // As 170 linhas gravadas antes da v7 nao tem o campo. Se ausencia valesse
+    // `true`, o delta sumiria para todo mundo com historico.
+    const v = decidirDelta({ ...base, incompletaAtual: undefined });
+    expect(v.delta).not.toBeNull();
+  });
+
+  it("`delta: null` desliga a celebracao: o confete morre de graca", () => {
+    // O contrato esta no doc de `VeredictoDelta` ("Null tambem desliga a
+    // celebracao"). Este teste trava a consequencia: nao existe segundo lugar
+    // onde alguem precise lembrar de suprimir o confete.
+    const v = decidirDelta({ ...base, incompletaAtual: true });
+    expect(v.delta).toBeNull();
+    expect(v.reguaMudou).toBe(false);
+  });
+});

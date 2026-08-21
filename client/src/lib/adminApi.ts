@@ -7,7 +7,22 @@ async function authHeaders(options?: RequestInit) {
   } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
 
   return {
-    "Content-Type": "application/json",
+    // `Content-Type` SO quando ha corpo. O `express.json()` global decide se le
+    // o corpo pelos HEADERS, nao pelo metodo: com `Content-Type:
+    // application/json` num GET, mais o `Transfer-Encoding: chunked` que a
+    // borda do Railway acrescenta a requisicao sem `Content-Length`, ele conclui
+    // que ha corpo e chama `getRawBody` num stream que ja acabou, e sai
+    // `InternalServerError: stream is not readable` (Sentry NODE-EXPRESS-B).
+    // Explicacao completa e o primeiro caso medido em
+    // client/src/contexts/FavoritesContext.tsx:168.
+    //
+    // A guarda mora AQUI, dentro do helper, e nao em cada chamada: e o helper
+    // que cobre todos os call sites por construcao, inclusive os que ainda nao
+    // existem. Guarda no call site foi o desenho que deixou estes helpers de
+    // fora quando o FavoritesContext foi consertado.
+    ...(options?.body === undefined
+      ? {}
+      : { "Content-Type": "application/json" }),
     Authorization: `Bearer ${session?.access_token || ""}`,
     ...(options?.headers || {}),
   };

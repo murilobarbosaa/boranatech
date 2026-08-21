@@ -1338,6 +1338,9 @@ function Marquee() {
   );
 }
 
+// Tempo até o fallback assumir quando o observer não reporta o card.
+const COUNTUP_FALLBACK_MS = 1200;
+
 function CountUp({
   value,
   label,
@@ -1350,16 +1353,49 @@ function CountUp({
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-40px" });
   const [n, setN] = useState(reduce ? value : 0);
+  const [fallbackFired, setFallbackFired] = useState(false);
+
+  // Rede de segurança: se o observer não disparar, o contador ia ficar preso em
+  // 0 na tela, que é o mesmo sintoma que o contador do hero teve em produção.
+  // Aqui o fallback confere se o card está MESMO na tela antes de assumir: o
+  // card pode estar abaixo da dobra, e nesse caso observer silencioso é o
+  // comportamento certo, não falha. Só depois do timeout é que passamos a
+  // vigiar por conta própria.
+  useEffect(() => {
+    if (reduce || inView || fallbackFired) return;
+    let removeListeners = () => {};
+    const check = () => {
+      const el = ref.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      if (rect.bottom > 0 && rect.top < window.innerHeight) {
+        setFallbackFired(true);
+      }
+    };
+    const timeoutId = window.setTimeout(() => {
+      check();
+      window.addEventListener("scroll", check, { passive: true });
+      window.addEventListener("resize", check);
+      removeListeners = () => {
+        window.removeEventListener("scroll", check);
+        window.removeEventListener("resize", check);
+      };
+    }, COUNTUP_FALLBACK_MS);
+    return () => {
+      window.clearTimeout(timeoutId);
+      removeListeners();
+    };
+  }, [reduce, inView, fallbackFired]);
 
   useEffect(() => {
-    if (reduce || !inView) return;
+    if (reduce || (!inView && !fallbackFired)) return;
     const controls = animate(0, value, {
       duration: 1,
       ease: "easeOut" as const,
       onUpdate: (v) => setN(Math.round(v)),
     });
     return () => controls.stop();
-  }, [inView, reduce, value]);
+  }, [inView, fallbackFired, reduce, value]);
 
   return (
     <div

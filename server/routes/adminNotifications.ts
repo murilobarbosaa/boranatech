@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { diaBrasilia } from "../../shared/brasiliaDay";
 import { z } from "zod";
 
 import { cacheKey, getOrCompute } from "../lib/cache";
@@ -1281,8 +1282,12 @@ router.get("/:id/stats", async (req, res, next) => {
       const rows = data ?? [];
       for (const row of rows) {
         total += 1;
-        const day = String(row.read_at).slice(0, 10);
-        byDay.set(day, (byDay.get(day) ?? 0) + 1);
+        // DIA DE BRASILIA, nao o dia UTC. `slice(0, 10)` agrupava pelo dia
+        // UTC, entao toda leitura depois das 21h locais caia na barra do dia
+        // SEGUINTE e o grafico inteiro saia deslocado. Ninguem percebe isso
+        // olhando um grafico: as barras existem, so estao no lugar errado.
+        const day = diaBrasilia(String(row.read_at));
+        if (day) byDay.set(day, (byDay.get(day) ?? 0) + 1);
       }
       if (rows.length < DB_PAGE) break;
     }

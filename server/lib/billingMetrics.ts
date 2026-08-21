@@ -1,4 +1,5 @@
 import { resolvePlanPriceCents } from "./planPrice";
+import { coletarTudo } from "./paginate";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 // Metricas financeiras reais para o admin. SO calculo, sem UI. Todas as funcoes
@@ -27,7 +28,16 @@ const INTERVAL_MONTHS: Record<string, number> = {
   yearly: 12,
 };
 
-function monthlyEquivalentCents(priceCents: number, interval: string): number {
+/**
+ * EXPORTADA de proposito, e o motivo importa: o painel de atencao precisa da
+ * MESMA normalizacao para exibir a saida agendada em MRR mensal, e o comentario
+ * de `getMrrSnapshot` ja avisava que "a terceira implementacao e sempre a que
+ * diverge primeiro". Compartilhar a funcao e o que impede a terceira de nascer.
+ */
+export function monthlyEquivalentCents(
+  priceCents: number,
+  interval: string,
+): number {
   const months = INTERVAL_MONTHS[interval];
   if (!months) {
     throw new Error(
@@ -204,10 +214,34 @@ export type MrrSnapshot = {
   activeCount: number;
   trialingCount: number;
   byPlan: PlanMrr[];
+  /**
+   * RECEITA EM RISCO: as DUAS formas de perder receita que ja estao visiveis no
+   * banco, somadas, e cada uma tambem separada.
+   *
+   *   saindo    `cancel_at_period_end = true` sobre assinatura ativa. Recorte de
+   *             `mrrCents`: a receita ainda entra, mas tem data de fim.
+   *   emAtraso  `status = 'past_due'`. NAO e recorte de `mrrCents`, porque o MRR
+   *             conta so `active`. E receita que ja parou de entrar e que a
+   *             Stripe ainda esta tentando cobrar.
+   *
+   * As duas saem do MESMO laco, sobre as MESMAS linhas, com a MESMA
+   * `monthlyEquivalentCents`. Somar as duas no card e a decisao D21: quem olha
+   * "receita em risco" quer o total exposto, e ver so metade dele numa tela e a
+   * outra metade noutra foi exatamente a inconsistencia que a revisao apontou.
+   * Medido em 2026-07-31 (so `saindo`): 10 assinaturas, R$ 267,80, 15,4% do MRR.
+   */
+  atRisk: {
+    /** Soma de `saindo` e `emAtraso`. E este o headline do card. */
+    count: number;
+    mrrCents: number;
+    saindo: { count: number; mrrCents: number };
+    emAtraso: { count: number; mrrCents: number };
+  };
 };
 
 type RawMrrRow = {
   status: string | null;
+  cancel_at_period_end: boolean | null;
   plans: EmbeddedPlan | EmbeddedPlan[] | null;
 };
 
@@ -221,18 +255,37 @@ type RawMrrRow = {
 export async function getMrrSnapshot(): Promise<MrrSnapshot> {
   const nowIso = new Date().toISOString();
 
-  const { data, error } = await supabaseAdmin
-    .from("subscriptions")
-    .select("status, plans!inner(code, name, price_cents, interval)")
-    .in("status", ["active", "trialing"])
-    .or(`current_period_end.is.null,current_period_end.gt.${nowIso}`);
-  if (error) throw error;
-
-  const rows = (data ?? []) as RawMrrRow[];
+  // PAGINADO. `.in("status", [...])` filtra por valor, nao limita a quantidade:
+  // este select varre TODAS as assinaturas ativas. Ele produz o MRR, o numero de
+  // receita do painel, e sem paginacao ele erra para MENOS exatamente quando a
+  // base cruzar o teto do PostgREST, ou seja, quando o numero passar a importar.
+  // Errar para menos num numero de receita e invisivel: ninguem estranha um MRR
+  // menor, so um maior.
+  const rows = (await coletarTudo<RawMrrRow>(
+    (from, to) =>
+      supabaseAdmin
+        .from("subscriptions")
+        .select(
+          "status, cancel_at_period_end, plans!inner(code, name, price_cents, interval)",
+        )
+        // `past_due` entra na LEITURA e fica fora do MRR (o `continue` abaixo).
+        // Ele nao e receita ativa, e receita em risco, e sem le-lo aqui o card
+        // teria de somar dois numeros vindos de duas consultas diferentes, que e
+        // como as duas telas passaram a divergir.
+        .in("status", ["active", "trialing", "past_due"])
+        .or(`current_period_end.is.null,current_period_end.gt.${nowIso}`)
+        .order("id", { ascending: true })
+        .range(from, to),
+    "mrr snapshot",
+  )) as RawMrrRow[];
 
   let mrrCents = 0;
   let activeCount = 0;
   let trialingCount = 0;
+  let saindoCents = 0;
+  let saindoCount = 0;
+  let atrasoCents = 0;
+  let atrasoCount = 0;
   const byPlan = new Map<string, PlanMrr>();
 
   for (const row of rows) {
@@ -260,8 +313,29 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
     const interval = String(plan.interval ?? "");
     const perMonth = monthlyEquivalentCents(priceCents, interval);
 
+    // EM ATRASO NAO E MRR. A cobranca falhou: o dinheiro parou de entrar, e
+    // soma-lo ao MRR afirmaria uma receita recorrente que hoje nao existe. Ele
+    // sai do laco aqui, antes de `mrrCents`, `activeCount`, do ARPU e do
+    // `byPlan`, levando so o proprio equivalente mensal para o risco.
+    if (row.status === "past_due") {
+      atrasoCents += perMonth;
+      atrasoCount += 1;
+      continue;
+    }
+
     mrrCents += perMonth;
     activeCount += 1;
+
+    // RECEITA EM RISCO, computada NA MESMA PASSADA, sobre as MESMAS linhas, com
+    // o MESMO `monthlyEquivalentCents`. E deliberado: calcular isto num segundo
+    // lugar significaria uma TERCEIRA implementacao da normalizacao mensal
+    // (22200/12, 12900/6) nesta base, e a terceira e sempre a que diverge
+    // primeiro, porque ninguem olha para ela. Aqui nao ha aritmetica nova: so um
+    // acumulador a mais no laco que ja existe.
+    if (row.cancel_at_period_end) {
+      saindoCents += perMonth;
+      saindoCount += 1;
+    }
 
     const entry = byPlan.get(plan.code) ?? {
       code: plan.code,
@@ -282,6 +356,12 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
     activeCount,
     trialingCount,
     byPlan: Array.from(byPlan.values()),
+    atRisk: {
+      count: saindoCount + atrasoCount,
+      mrrCents: saindoCents + atrasoCents,
+      saindo: { count: saindoCount, mrrCents: saindoCents },
+      emAtraso: { count: atrasoCount, mrrCents: atrasoCents },
+    },
   };
 }
 
@@ -289,15 +369,44 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
 // Churn
 // ---------------------------------------------------------------------------
 
+/**
+ * Contagens que acompanham o churn e NAO entram nele.
+ *
+ * Existem porque a alternativa e a pessoa que le "0% de churn" concluir que
+ * ninguem quer sair, quando ha nove saidas com data marcada. Elas ficam ao lado
+ * do numero, nunca somadas nele.
+ */
+export type ChurnContext = {
+  /**
+   * Cancelamentos AGENDADOS e ainda nao efetivados. Deliberadamente FORA do
+   * churn: eles ja sao a metrica de "receita em risco", e conta-los aqui faria o
+   * mesmo fato aparecer duas vezes no painel.
+   */
+  scheduledNotCounted: number;
+  /**
+   * Cancelamentos REVERTIDOS na janela: gente que pediu para sair e desistiu. E
+   * o unico sinal positivo de retencao que o banco guarda hoje, e ele nao tinha
+   * lugar nenhum na interface.
+   */
+  revertedInWindow: number;
+  /**
+   * Linhas de cancelamento cuja assinatura nao existe mais em `subscriptions`
+   * (residuo do gateway anterior e de dados de teste). NAO entram no numerador:
+   * o denominador vem de `subscriptions`, e misturar as duas populacoes daria
+   * uma razao sem significado. Reportadas para a ausencia nao virar silencio.
+   */
+  orphanCancellations: number;
+};
+
 export type ChurnSnapshot =
-  | {
+  | ({
       status: "insufficient_data";
       reason: string;
       windowDays: number;
       canceledInWindow?: number;
       activeAtStart?: number;
-    }
-  | {
+    } & Partial<ChurnContext>)
+  | ({
       status: "ok";
       windowDays: number;
       churnRate: number;
@@ -305,21 +414,214 @@ export type ChurnSnapshot =
       activeAtStart: number;
       // null quando churnRate = 0 (LTV nao definido): ausencia, nao zero.
       ltvCents: number | null;
-    };
+    } & ChurnContext);
 
-// churnRate = cancelamentos na janela / assinantes ativos no inicio da janela.
-// activeAtStart e uma APROXIMACAO (o banco nao guarda snapshot historico):
-// assinaturas criadas antes do inicio da janela e nao canceladas antes dele.
-// Cancelamentos derivam de canceled_at (subscriptions).
-//
-// Estados nomeados de ausencia (nunca um numero inventado):
-// - base com menos de windowDays de vida -> insufficient_data.
-// - denominador 0 -> insufficient_data.
-// LTV (ARPU / churnRate) so e retornado quando churnRate > 0.
+type LinhaDeCancelamento = {
+  provider_subscription_id: string | null;
+  status: string | null;
+  canceled_at: string | null;
+  effective_at: string | null;
+};
+
+/**
+ * Quando o cancelamento SURTIU EFEITO.
+ *
+ * `effective_at` e a data em que o acesso acaba; `canceled_at` e a data em que a
+ * pessoa pediu. Para medir saida, vale a primeira. O fallback existe porque
+ * `effective_at` e nullable no schema, e uma linha sem ele ainda e um evento.
+ */
+function instanteDoEfeito(linha: LinhaDeCancelamento): string | null {
+  return linha.effective_at ?? linha.canceled_at;
+}
+
+function dentroDaJanela(
+  iso: string | null,
+  inicio: string,
+  fim: string,
+): boolean {
+  return Boolean(iso && iso >= inicio && iso <= fim);
+}
+
+/**
+ * Ids de provedor de TODAS as assinaturas que ainda existem.
+ *
+ * EXPORTADO porque duas coisas precisam da mesma resposta: o churn, para saber
+ * qual cancelamento e orfao, e o agregado de motivos da aba Retencao, para dizer
+ * quantos vieram de assinatura que sumiu. Duas montagens de "o que ainda existe"
+ * divergiriam na primeira mudanca de criterio.
+ *
+ * PAGINADO: uma lista truncada transformaria assinatura viva em orfa.
+ */
+export async function carregarIdsDeAssinaturas(): Promise<Set<string>> {
+  const subs = await coletarTudo<{ provider_subscription_id: string | null }>(
+    (from, to) =>
+      supabaseAdmin
+        .from("subscriptions")
+        .select("provider_subscription_id")
+        .order("id", { ascending: true })
+        .range(from, to),
+    "subscription ids",
+  );
+  return new Set(
+    subs
+      .map((r) => r.provider_subscription_id)
+      .filter((v): v is string => Boolean(v)),
+  );
+}
+
+/** Todas as linhas de cancelamento, com o id das assinaturas que ainda existem. */
+async function lerCancelamentos(): Promise<{
+  linhas: LinhaDeCancelamento[];
+  idsExistentes: Set<string>;
+}> {
+  // As duas PAGINADAS: `idsExistentes` decide quais cancelamentos sao orfaos, e
+  // uma lista truncada de assinaturas transformaria assinatura viva em orfa,
+  // tirando saidas reais do numerador do churn.
+  const [linhas, idsExistentes] = await Promise.all([
+    coletarTudo<LinhaDeCancelamento>(
+      (from, to) =>
+        supabaseAdmin
+          .from("subscription_cancellations")
+          .select("provider_subscription_id, status, canceled_at, effective_at")
+          .order("id", { ascending: true })
+          .range(from, to),
+      "churn cancellations",
+    ),
+    carregarIdsDeAssinaturas(),
+  ]);
+
+  return { linhas, idsExistentes };
+}
+
+/**
+ * Saidas EFETIVAS na janela, deduplicadas por assinatura.
+ *
+ * Dedup por `provider_subscription_id` porque as duas fontes se sobrepoem: uma
+ * assinatura que terminou tem `canceled_at` preenchido E uma linha `completed`
+ * em subscription_cancellations. Sem dedup, ela contaria duas vezes e o churn
+ * sairia dobrado.
+ */
+async function contarSaidasEfetivas(
+  inicio: string,
+  fim: string,
+): Promise<number> {
+  const porCanceledAt = await coletarTudo<{
+    provider_subscription_id: string | null;
+    id: string;
+  }>(
+    (from, to) =>
+      supabaseAdmin
+        .from("subscriptions")
+        .select("provider_subscription_id, id, canceled_at")
+        .gte("canceled_at", inicio)
+        .lte("canceled_at", fim)
+        .order("id", { ascending: true })
+        .range(from, to),
+    "churn exits",
+  );
+
+  const saidas = new Set<string>();
+  for (const row of porCanceledAt) {
+    // Cai no `id` da linha quando nao ha id de provedor: e o mesmo objeto, e
+    // ignora-lo perderia a saida.
+    saidas.add(row.provider_subscription_id ?? row.id);
+  }
+
+  const { linhas, idsExistentes } = await lerCancelamentos();
+  for (const linha of linhas) {
+    if (linha.status !== "completed") continue;
+    if (!dentroDaJanela(instanteDoEfeito(linha), inicio, fim)) continue;
+    // Orfa NAO entra: o denominador vem de `subscriptions`, e contar no
+    // numerador uma assinatura que nao esta la produz uma razao entre
+    // populacoes diferentes.
+    if (
+      !linha.provider_subscription_id ||
+      !idsExistentes.has(linha.provider_subscription_id)
+    ) {
+      continue;
+    }
+    saidas.add(linha.provider_subscription_id);
+  }
+
+  return saidas.size;
+}
+
+/** Agendados, revertidos e orfas: acompanham o churn sem entrar nele. */
+async function coletarContextoDeChurn(
+  inicio: string,
+  fim: string,
+): Promise<ChurnContext> {
+  const { linhas, idsExistentes } = await lerCancelamentos();
+
+  let scheduledNotCounted = 0;
+  let revertedInWindow = 0;
+  let orphanCancellations = 0;
+
+  for (const linha of linhas) {
+    const orfa =
+      !linha.provider_subscription_id ||
+      !idsExistentes.has(linha.provider_subscription_id);
+    if (orfa) {
+      orphanCancellations += 1;
+      continue;
+    }
+    if (linha.status === "scheduled") {
+      // Agendado NAO se limita a janela: o que importa e que ainda vai sair.
+      scheduledNotCounted += 1;
+    } else if (
+      linha.status === "reverted" &&
+      dentroDaJanela(linha.canceled_at, inicio, fim)
+    ) {
+      revertedInWindow += 1;
+    }
+  }
+
+  return { scheduledNotCounted, revertedInWindow, orphanCancellations };
+}
+
+/**
+ * CHURN MEDE EFEITO: quem saiu de fato. Nunca quem AVISOU que vai sair.
+ *
+ * A distincao nao e preciosismo. Um cancelamento agendado ja e contado como
+ * "receita em risco"; se o churn tambem o contasse, o mesmo fato entraria duas
+ * vezes no painel e ele passaria a somar a si mesmo. Por isso `scheduled` fica
+ * de fora do numerador e sai ao lado, em `scheduledNotCounted`.
+ *
+ * DE ONDE VEM O EFEITO, nas duas fontes que existem, deduplicado por assinatura:
+ *
+ *   (a) `subscriptions.canceled_at` — escrito quando a assinatura termina de
+ *       verdade, pelo webhook `customer.subscription.deleted`, pelo cron
+ *       `process-cancellations` ou pela revogacao administrativa;
+ *   (b) `subscription_cancellations` com `status='completed'` — o registro
+ *       proprio, que sobrevive mesmo se a linha de assinatura for alterada.
+ *
+ * POR QUE AS DUAS. Ate 2026-07-31 so (a) era consultada, e (a) tem um buraco
+ * conhecido: assinatura de BOLETO (`renewal_type='manual'`) nao tem subscription
+ * na Stripe, entao nenhum webhook chega e o cron `process-cancellations` a
+ * ignora de proposito. Uma dessas nunca recebe `canceled_at` e some do churn
+ * para sempre. (b) fecha esse caso.
+ *
+ * A GUARDA QUE IMPORTA: `no_subscription_period_ended`. Antes desta versao, a
+ * unica protecao era a idade da base, e ela expira sozinha. Medido em
+ * 2026-07-31: a assinatura mais antiga e de 13/07 e o periodo mais curto termina
+ * em 13/08, entao por volta de 12/08 a guarda de idade deixaria de valer e a
+ * funcao passaria a devolver `0 / N = 0%` — um zero CONFIANTE sobre uma base em
+ * que nenhuma assinatura teve a chance de terminar. Zero medido e zero por
+ * impossibilidade de medir sao coisas diferentes, e so a segunda e mentira.
+ * A guarda nova pergunta o que de fato importa: ja houve algum periodo
+ * encerrado? Se nao, nao ha o que medir, e o estado e nomeado.
+ *
+ * `activeAtStart` continua sendo APROXIMACAO (o banco nao guarda snapshot
+ * historico de quem estava ativo): assinaturas criadas antes do inicio da janela
+ * que nao tinham terminado nem sido canceladas ate ali.
+ *
+ * LTV (ARPU / churnRate) so e retornado quando churnRate > 0.
+ */
 export async function getChurnSnapshot(
   params: { windowDays?: number } = {},
 ): Promise<ChurnSnapshot> {
   const windowDays = params.windowDays ?? 30;
+  const nowIso = new Date().toISOString();
   const windowStartIso = new Date(
     Date.now() - windowDays * 24 * 60 * 60 * 1000,
   ).toISOString();
@@ -341,21 +643,39 @@ export async function getChurnSnapshot(
     };
   }
 
+  // Contexto primeiro: ele acompanha TODOS os desfechos, inclusive os de
+  // ausencia. Um "dados insuficientes" que ainda diz "9 agendados, 2 revertidos"
+  // informa; um que so diz "insuficiente" nao.
+  const contexto = await coletarContextoDeChurn(windowStartIso, nowIso);
+
+  // GUARDA CONTRA O ZERO FALSO. Sem nenhum periodo encerrado, "0 saidas" nao e
+  // medicao: e a ausencia da oportunidade de sair.
+  const { count: encerradosCount, error: encerradosError } = await supabaseAdmin
+    .from("subscriptions")
+    .select("id", { count: "exact", head: true })
+    .lte("current_period_end", nowIso);
+  if (encerradosError) throw encerradosError;
+  if ((encerradosCount ?? 0) === 0) {
+    return {
+      status: "insufficient_data",
+      reason: "no_subscription_period_ended",
+      windowDays,
+      canceledInWindow: 0,
+      ...contexto,
+    };
+  }
+
   const { count: activeAtStartCount, error: activeError } = await supabaseAdmin
     .from("subscriptions")
     .select("id", { count: "exact", head: true })
     .lt("created_at", windowStartIso)
-    .or(`canceled_at.is.null,canceled_at.gte.${windowStartIso}`);
+    .or(`canceled_at.is.null,canceled_at.gte.${windowStartIso}`)
+    .or(`current_period_end.is.null,current_period_end.gt.${windowStartIso}`);
   if (activeError) throw activeError;
 
-  const { count: canceledCount, error: canceledError } = await supabaseAdmin
-    .from("subscriptions")
-    .select("id", { count: "exact", head: true })
-    .gte("canceled_at", windowStartIso);
-  if (canceledError) throw canceledError;
+  const canceledInWindow = await contarSaidasEfetivas(windowStartIso, nowIso);
 
   const activeAtStart = activeAtStartCount ?? 0;
-  const canceledInWindow = canceledCount ?? 0;
 
   if (activeAtStart === 0) {
     return {
@@ -364,6 +684,7 @@ export async function getChurnSnapshot(
       windowDays,
       canceledInWindow,
       activeAtStart: 0,
+      ...contexto,
     };
   }
 
@@ -383,5 +704,6 @@ export async function getChurnSnapshot(
     canceledInWindow,
     activeAtStart,
     ltvCents,
+    ...contexto,
   };
 }

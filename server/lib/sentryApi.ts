@@ -98,11 +98,37 @@ function toIssue(raw: Record<string, unknown>): SentryIssue {
   };
 }
 
+/**
+ * Janelas que a listagem do Sentry aceita. Lista FECHADA, nao formato.
+ *
+ * A validacao morava no schema de querystring da rota de bugs, que saiu na Fase
+ * 5 junto com a aba. Ela desceu para ca porque o dono da regra sempre foi este
+ * modulo: quem impoe o conjunto e a API do Sentry, e todo chamador desta funcao
+ * esta sujeito a ela. Guarda dentro da funcao cobre os chamadores que ainda nao
+ * existem, que e a regra do CLAUDE.md.
+ *
+ * Medido contra a API viva: `''`, `24h` e `14d` respondem 200; qualquer outro
+ * valor (`7d`, `30d`, `90d`, `1h`) responde 400. Sao sintaticamente impecaveis e
+ * mesmo assim invalidos, e e por isso que validar FORMATO aqui deixaria passar.
+ */
+export const PERIODOS_DE_LISTAGEM = ["", "24h", "14d"] as const;
+
 export async function listSentryIssues(params?: {
   query?: string;
   cursor?: string;
   statsPeriod?: string;
 }): Promise<SentryIssuesResult> {
+  const periodo = params?.statsPeriod ?? "14d";
+  if (!(PERIODOS_DE_LISTAGEM as readonly string[]).includes(periodo)) {
+    // Estado de erro, e nao excecao: o contrato deste modulo e "nunca lanca". E
+    // nao chama a API: mandar um valor que sabemos invalido gastaria uma
+    // requisicao para receber um 400 previsivel.
+    return {
+      state: "error",
+      reason: `statsPeriod inválido: ${periodo}. Aceitos: ${PERIODOS_DE_LISTAGEM.map((p) => p || "(vazio)").join(", ")}.`,
+    };
+  }
+
   const missing: string[] = [];
   if (!env.sentryAuthToken) missing.push("SENTRY_AUTH_TOKEN");
   if (!env.sentryOrgSlug) missing.push("SENTRY_ORG_SLUG");
@@ -112,7 +138,7 @@ export async function listSentryIssues(params?: {
   const url = new URL(`${SENTRY_API_BASE}/organizations/${env.sentryOrgSlug}/issues/`);
   url.searchParams.set("project", TODOS_OS_PROJETOS);
   url.searchParams.set("query", params?.query ?? "is:unresolved");
-  url.searchParams.set("statsPeriod", params?.statsPeriod ?? "14d");
+  url.searchParams.set("statsPeriod", periodo);
   if (params?.cursor) url.searchParams.set("cursor", params.cursor);
 
   const controller = new AbortController();
@@ -336,12 +362,30 @@ export async function getIssuesByNumericIds(
     );
     url.searchParams.set("project", TODOS_OS_PROJETOS);
     url.searchParams.set("query", `issue.id:[${chunk.join(", ")}]`);
-    // statsPeriod VAZIO de proposito. Este endpoint (GET .../issues/) so aceita
-    // '', '24h' ou '14d'; qualquer outro valor (ex.: 90d) responde 400 "Invalid
-    // stats_period". Precisamos do lastSeen ABSOLUTO, sem janela que esconda
-    // cards resolvidos ha mais de 14d, e '' nao aplica corte por tempo. NAO
-    // trocar por 90d/30d: a lista de valores aceitos e fechada.
-    url.searchParams.set("statsPeriod", "");
+    // statsPeriod OMITIDO, e nao enviado vazio.
+    //
+    // ATE 2026-07-30 esta linha era `set("statsPeriod", "")`, com o comentario
+    // de que '' nao aplica corte por tempo. A premissa valia; o jeito de
+    // expressa-la deixou de valer. `searchParams.set(k, "")` MANDA `statsPeriod=`
+    // na URL, e em algum ponto de 2026-07-30 a API passou a recusar isso:
+    //
+    //   HTTP 400 {"detail":"Invalid statsPeriod: ''"}
+    //
+    // Medido nos dois sentidos contra a API viva em 2026-07-31:
+    //   statsPeriod=      -> 400
+    //   (parametro ausente) -> 200
+    //   statsPeriod=24h   -> 200, e RECORTA (issue de 9 dias nao volta)
+    //   statsPeriod=14d   -> 200
+    //
+    // Consequencia em producao: reconcileDoneCards, que depende desta funcao,
+    // vinha respondendo `reconcileSkipped: error 400` em TODA run desde
+    // 2026-07-30 13:15 (78 runs seguidas quando isto foi descoberto). A fase de
+    // reabertura automatica de bug estava morta, e o fail-safe "falha de leitura
+    // nao toca em card nenhum" e o que impediu isso de virar dano.
+    //
+    // Omitir preserva a intencao original (sem corte por tempo) sem depender de
+    // como a API trata string vazia. NAO trocar por 14d: a poda por silencio
+    // precisa enxergar issue quieta ha mais de 21 dias, e 14d a esconderia.
 
     const r = await sentryFetch(url, { token: cfg.config.token });
     if (r.kind === "rate_limited")
@@ -370,4 +414,124 @@ export async function getIssuesByNumericIds(
   }
 
   return { state: "ok", issues: collected };
+}
+
+// --- Detalhe do ultimo evento, para o bloco sentry_data do card ------------
+//
+// POR QUE `/events/latest/` E NAO O DETALHE DA ISSUE. Medido contra a API em
+// 2026-07-31, e o resultado corrige a estimativa do plano (que previa ate 3
+// requisicoes por issue nova):
+//
+//   GET /issues/{id}/           -> traz firstRelease/lastRelease, mas as `tags`
+//                                  vem so com {key, name, totalValues}, SEM os
+//                                  valores. Nao da o environment.
+//   GET /issues/{id}/events/latest/ -> traz `tags` com VALOR (environment,
+//                                  release, url), `release` e `entries`, onde
+//                                  mora o stack. Tudo numa requisicao.
+//
+// Entao o custo real e UMA requisicao extra por issue NOVA, nunca por issue ja
+// vista. Quem ja tem card so e atualizado pelos campos que o lote da listagem
+// ja devolve de graca (lastSeen, count, userCount, status).
+
+export type SentryEventDetail = {
+  environment: string | null;
+  release: string | null;
+  url: string | null;
+  /** Resumo textual das frames do topo. Null quando o evento nao tem stack. */
+  stack: string | null;
+};
+
+export type SentryEventResult =
+  | { state: "not_configured"; missing: string[] }
+  | { state: "rate_limited"; retryAfterSeconds: number | null }
+  | { state: "not_found" }
+  | { state: "error"; reason: string; httpStatus?: number }
+  | { state: "ok"; detail: SentryEventDetail };
+
+/** Teto de frames no resumo do stack: o bloco vai para jsonb e e lido por gente. */
+const STACK_MAX_FRAMES = 12;
+
+function extrairStack(entries: unknown): string | null {
+  if (!Array.isArray(entries)) return null;
+  const excecao = entries.find(
+    (e) => (e as Record<string, unknown> | null)?.type === "exception",
+  ) as Record<string, unknown> | undefined;
+  if (!excecao) return null;
+  const values = (excecao.data as Record<string, unknown> | undefined)?.values;
+  if (!Array.isArray(values) || values.length === 0) return null;
+  const frames = (
+    (values[0] as Record<string, unknown>)?.stacktrace as
+      | Record<string, unknown>
+      | undefined
+  )?.frames;
+  if (!Array.isArray(frames) || frames.length === 0) return null;
+  // Sentry devolve da mais antiga para a mais recente; o topo interessa mais.
+  const linhas = frames
+    .slice(-STACK_MAX_FRAMES)
+    .reverse()
+    .map((f) => {
+      const frame = f as Record<string, unknown>;
+      const fn = typeof frame.function === "string" ? frame.function : "?";
+      const arquivo =
+        typeof frame.filename === "string"
+          ? frame.filename
+          : typeof frame.module === "string"
+            ? frame.module
+            : "?";
+      const linha = typeof frame.lineNo === "number" ? `:${frame.lineNo}` : "";
+      return `${fn} (${arquivo}${linha})`;
+    });
+  return linhas.length > 0 ? linhas.join("\n") : null;
+}
+
+export async function getIssueLatestEvent(
+  numericId: string,
+): Promise<SentryEventResult> {
+  const cfg = resolveSentryConfig();
+  if (!cfg.ok) return { state: "not_configured", missing: cfg.missing };
+
+  const url = `${SENTRY_API_BASE}/issues/${encodeURIComponent(numericId)}/events/latest/`;
+  const r = await sentryFetch(url, { token: cfg.config.token });
+  if (r.kind === "rate_limited")
+    return { state: "rate_limited", retryAfterSeconds: r.retryAfterSeconds };
+  if (r.kind === "error") return { state: "error", reason: r.reason };
+
+  const { response } = r;
+  // 404 aqui NAO e issue inexistente: e issue sem evento retido (retencao
+  // vencida). O card continua valido; so o detalhe nao existe mais.
+  if (response.status === 404) return { state: "not_found" };
+  if (!response.ok)
+    return {
+      state: "error",
+      reason: `Sentry respondeu ${response.status}.`,
+      httpStatus: response.status,
+    };
+
+  const payload = (await response.json().catch(() => null)) as Record<
+    string,
+    unknown
+  > | null;
+  if (!payload) return { state: "error", reason: "Evento fora do formato esperado." };
+
+  const tags = Array.isArray(payload.tags)
+    ? (payload.tags as Array<Record<string, unknown>>)
+    : [];
+  const tag = (chave: string): string | null => {
+    const achada = tags.find((t) => t.key === chave);
+    return typeof achada?.value === "string" ? achada.value : null;
+  };
+
+  return {
+    state: "ok",
+    detail: {
+      environment: tag("environment"),
+      release:
+        typeof payload.release === "object" && payload.release !== null
+          ? ((payload.release as Record<string, unknown>).version as string) ??
+            tag("release")
+          : tag("release"),
+      url: tag("url"),
+      stack: extrairStack(payload.entries),
+    },
+  };
 }

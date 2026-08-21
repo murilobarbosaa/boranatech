@@ -1,3 +1,4 @@
+import { diaBrasilia, inicioDoDiaBrasilia } from "../../shared/brasiliaDay";
 import { env } from "./env";
 
 // PostHog como maquina de estados explicita. O host NAO e hardcoded: vem de
@@ -461,6 +462,180 @@ export async function getPosthogPersonActivity(): Promise<PosthogPersonActivityS
       }))
       .filter((person) => person.distinctId && person.lastPageview);
     return { state: "ok", persons };
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    const httpStatus =
+      err instanceof PosthogQueryError ? err.httpStatus : undefined;
+    return { state: "error", reason, httpStatus };
+  }
+}
+
+// SINAIS DO FUNIL ATE O ASSINANTE PAGO, contados por PESSOA.
+//
+// Por que uma funcao nova em vez de reusar getPosthogStats: aquela responde
+// "quantos EVENTOS aconteceram" (`select event, count() ... group by event`), e
+// funil precisa de "quantas PESSOAS chegaram ate aqui". A diferenca nao e
+// cosmetica; medida em 2026-08-01 na janela de 30 dias: checkout_started tem 248
+// eventos e 134 pessoas, porque uma pessoa inicia checkout varias vezes (uma
+// delas 15 vezes). Dividir 248 pelo passo anterior daria uma conversao inflada e
+// um vazamento final subestimado.
+//
+// IDS, nao so contagem. O ultimo passo do funil vem do BANCO (assinatura paga), e
+// ligar os dois por razao de agregados ("134 iniciaram, 64 assinaram") mentiria:
+// medido, 15 dos assinantes NAO tem checkout_started registrado, entao os dois
+// conjuntos nao sao encaixados. A funcao devolve os `distinct_id` para a juncao
+// ser feita por PESSOA, o mesmo mecanismo que `getPosthogPersonActivity` ja usa
+// para a aba Retencao: distinct_id e o uid do Supabase para quem esta logado
+// (posthog.identify no AuthContext), e checkout exige login.
+//
+// A UNIDADE MUDA no meio de proposito, e a mudanca e declarada: visitante e
+// cadastro contam por `person_id` (visitante e anonimo, person_id e a unica
+// unidade que existe), checkout conta por `distinct_id` (precisa casar com o
+// banco). Medido em 2026-08-01: para checkout_started os dois dao 134, entao a
+// troca nao move o numero hoje.
+
+/** Teto de ids trazidos numa varredura. Ver `truncated` no retorno. */
+export const FUNNEL_ID_LIMIT = 5000;
+
+export type PaidFunnelSignals = {
+  /** Pessoas com ao menos um $pageview na janela. */
+  visitantes: number;
+  /** Pessoas com user_signed_up na janela. */
+  cadastros: number;
+  /** distinct_id de quem iniciou checkout na janela. */
+  checkoutIds: string[];
+  /** distinct_id de quem voltou da Stripe sem concluir ao menos uma vez. */
+  retornoIds: string[];
+  /**
+   * Alguma varredura bateu no teto. Com isto ligado a juncao esta INCOMPLETA, e
+   * quem exibe precisa dizer isso em vez de mostrar uma conversao menor do que a
+   * real como se fosse medicao.
+   */
+  truncated: boolean;
+};
+
+export type PaidFunnelSignalsState =
+  | { state: "not_configured"; missing: string[] }
+  | { state: "error"; reason: string; httpStatus?: number }
+  | { state: "ok"; signals: PaidFunnelSignals };
+
+export async function getPaidFunnelSignals(
+  params: { from?: Date; to?: Date } = {},
+): Promise<PaidFunnelSignalsState> {
+  const missing: string[] = [];
+  if (!env.posthogApiKey) missing.push("POSTHOG_API_KEY");
+  if (!env.posthogProjectId) missing.push("POSTHOG_PROJECT_ID");
+  if (missing.length > 0) return { state: "not_configured", missing };
+
+  const to = params.to ?? new Date();
+  const from = params.from ?? new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const win = `timestamp >= toDateTime('${hogTime(from)}') and timestamp <= toDateTime('${hogTime(to)}')`;
+
+  try {
+    const [visitantes, cadastros, checkout, retorno] = await Promise.all([
+      runPosthogQuery(
+        `select count(distinct person_id) from events where event = '$pageview' and ${win}`,
+      ),
+      runPosthogQuery(
+        `select count(distinct person_id) from events where event = 'user_signed_up' and ${win}`,
+      ),
+      // `limit N+1` para DISTINGUIR "coube" de "cortou". Com `limit N` exato, uma
+      // varredura cheia e uma truncada devolvem o mesmo tamanho e o corte fica
+      // invisivel, que e a classe de defeito que este projeto ja documentou.
+      runPosthogQuery(
+        `select distinct_id from events where event = 'checkout_started' and ${win} and distinct_id is not null group by distinct_id limit ${FUNNEL_ID_LIMIT + 1}`,
+      ),
+      runPosthogQuery(
+        `select distinct_id from events where event = 'checkout_abandoned' and ${win} and distinct_id is not null group by distinct_id limit ${FUNNEL_ID_LIMIT + 1}`,
+      ),
+    ]);
+
+    const ids = (r: PosthogQueryResponse) =>
+      (r.results || []).map((row) => String(row[0] ?? "")).filter(Boolean);
+    const checkoutIds = ids(checkout);
+    const retornoIds = ids(retorno);
+
+    return {
+      state: "ok",
+      signals: {
+        visitantes: cellToNumber(visitantes.results?.[0]?.[0]),
+        cadastros: cellToNumber(cadastros.results?.[0]?.[0]),
+        checkoutIds: checkoutIds.slice(0, FUNNEL_ID_LIMIT),
+        retornoIds: retornoIds.slice(0, FUNNEL_ID_LIMIT),
+        truncated:
+          checkoutIds.length > FUNNEL_ID_LIMIT ||
+          retornoIds.length > FUNNEL_ID_LIMIT,
+      },
+    };
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    const httpStatus =
+      err instanceof PosthogQueryError ? err.httpStatus : undefined;
+    return { state: "error", reason, httpStatus };
+  }
+}
+
+// PRESENCA AGORA, para o card "Atividade agora" da Visao.
+//
+// Duas contagens numa query so, porque sao a mesma leitura sobre a mesma tabela:
+// quantas pessoas tiveram evento nos ultimos 5 minutos, e quantas tiveram evento
+// desde o inicio do dia civil de BRASILIA. O corte do dia vem de
+// `inicioDoDiaBrasilia` (shared/brasiliaDay.ts), nunca de offset fixo de -3h: o
+// dia do painel e o dia de quem opera, e escrever o offset na mao transformaria
+// a ausencia atual de horario de verao em regra.
+//
+// `uniqIf` foi CONFERIDO contra o projeto real (2026-08-17): o HogQL aceita e
+// gera `uniqIf(events.distinct_id, ...)` no ClickHouse. O fuso do projeto e UTC,
+// entao `toDateTime('...')` le o literal em UTC, que e o que `hogTime` produz.
+//
+// A UNIDADE E `distinct_id`, nao pessoa, pelo mesmo motivo do restante do
+// modulo: e a unica chave que existe nos eventos anonimos. Quem navega deslogado
+// e depois entra conta duas vezes, e quem usa dois navegadores tambem. E um
+// numero de PRESENCA, com margem, e a tela precisa dizer isso.
+export type PosthogAtividadeAgora = {
+  /** distinct_ids com evento nos ultimos 5 minutos. */
+  online: number;
+  /** distinct_ids com evento desde o inicio do dia civil de Brasilia. */
+  hojePessoas: number;
+};
+
+export type PosthogAtividadeAgoraState =
+  | { state: "not_configured"; missing: string[] }
+  | { state: "error"; reason: string; httpStatus?: number }
+  | { state: "ok"; atividade: PosthogAtividadeAgora };
+
+export async function contarAtividadeAgora(): Promise<PosthogAtividadeAgoraState> {
+  const missing: string[] = [];
+  if (!env.posthogApiKey) missing.push("POSTHOG_API_KEY");
+  if (!env.posthogProjectId) missing.push("POSTHOG_PROJECT_ID");
+  if (missing.length > 0) return { state: "not_configured", missing };
+
+  const hoje = diaBrasilia(new Date().toISOString());
+  if (!hoje) {
+    // Inalcancavel na pratica (a entrada e o relogio do processo), e mesmo assim
+    // vira ERRO e nao uma janela chutada: uma janela errada em silencio devolve
+    // um numero plausivel, que e o pior resultado possivel aqui.
+    return { state: "error", reason: "nao foi possivel resolver o dia atual" };
+  }
+  const inicioDoDia = hogTime(new Date(inicioDoDiaBrasilia(hoje)));
+
+  try {
+    const res = await runPosthogQuery(
+      `select uniqIf(distinct_id, timestamp > now() - interval 5 minute) as online, uniq(distinct_id) as hoje from events where timestamp >= toDateTime('${inicioDoDia}')`,
+    );
+    const linha = res.results?.[0];
+    if (!linha) {
+      // Resposta 2xx SEM linha nao e "zero pessoas": e uma resposta que nao
+      // responde. Zero aqui seria indistinguivel de um site vazio.
+      return { state: "error", reason: "resposta do PostHog sem resultado" };
+    }
+    return {
+      state: "ok",
+      atividade: {
+        online: cellToNumber(linha[0]),
+        hojePessoas: cellToNumber(linha[1]),
+      },
+    };
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     const httpStatus =

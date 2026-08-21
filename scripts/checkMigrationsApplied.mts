@@ -42,11 +42,41 @@ const migrationsDir = path.join(root, "supabase", "migrations");
 const supabaseUrl = process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+/**
+ * Codigo de saida para "NAO CONSEGUI OLHAR", distinto do "olhei e achei
+ * problema" (que continua 1).
+ *
+ * 78 e `EX_CONFIG` do `sysexits.h`: erro de configuracao do ambiente, nao do
+ * dado. A escolha e por convencao, para nao inventar numero.
+ *
+ * POR QUE ISTO EXISTE, e a data importa: em 2026-08-01, ESCREVENDO o documento
+ * que cataloga esta classe de defeito, o autor rodou este guard num worktree
+ * sem `.env`, grepou a saida procurando o aviso das tres tabelas de billing,
+ * nao encontrou nada, e quase registrou "pendencia resolvida". O guard tinha
+ * abortado aqui: nao verificou coisa nenhuma. `exit(1)` e o mesmo codigo de uma
+ * falha real, e o prefixo `[checkMigrationsApplied]` e o mesmo do sucesso,
+ * entao nem o codigo nem um grep no texto distinguiam os dois casos.
+ *
+ * E a mesma anatomia do `env -i` e do endpoint legado que devolvia 200 com
+ * lista vazia: AUSENCIA DE RESPOSTA LIDA COMO RESPOSTA. Conhecer a classe nao
+ * imuniza contra ela.
+ */
+const EXIT_AMBIENTE_AUSENTE = 78;
+
 if (!supabaseUrl || !serviceRoleKey) {
   console.error(
-    "[checkMigrationsApplied] faltam VITE_SUPABASE_URL e/ou SUPABASE_SERVICE_ROLE_KEY no ambiente.",
+    "[checkMigrationsApplied] ABORTADO SEM VERIFICAR NADA: faltam " +
+      "VITE_SUPABASE_URL e/ou SUPABASE_SERVICE_ROLE_KEY no ambiente.",
   );
-  process.exit(1);
+  console.error(
+    "[checkMigrationsApplied] NENHUMA tabela, funcao ou policy foi conferida. " +
+      "Este resultado NAO significa que o banco esta em dia.",
+  );
+  console.error(
+    `[checkMigrationsApplied] exit=${EXIT_AMBIENTE_AUSENTE} (EX_CONFIG) e ` +
+      "deliberadamente diferente de exit=1, que significa 'verifiquei e achei problema'.",
+  );
+  process.exit(EXIT_AMBIENTE_AUSENTE);
 }
 
 // "create table [if not exists] public.<nome>", com ou sem aspas no nome.
@@ -176,14 +206,49 @@ const naoReconhecidasOutras: string[] = [];
 // quase nunca e "atualizar o numero": e descobrir o que parou de ser
 // reconhecido. Foi exatamente assim que a auditoria concluiu "so falta uma
 // tabela" olhando 38 de 72.
-const EXPECTED_TABLE_COUNT = 84;
+// 82 desde 20260730160000_create_admin_refunds.sql (cria admin_refunds). O
+// commit que criou a tabela nao subiu este numero, e o guard ficou vermelho
+// abortando antes de qualquer outra verificacao. Conferido antes de mexer, como
+// manda o CLAUDE.md: a tabela e declarada de verdade (CREATE TABLE IF NOT
+// EXISTS public.admin_refunds) e existe no banco alvo, entao o parser esta
+// certo e quem estava desatualizado era o numero.
+//
+// MERGE 2026-08-21 (frente billing): esta branch declara mais 3 tabelas,
+// billing_failed_payments (3694855c), stripe_customers e
+// payment_recovery_emails (c9ec5c7e). Partindo de 81, que era a base comum,
+// a main somou 1 e esta frente somou 3.
+//
+// O VALOR ABAIXO AINDA E O DA MAIN, e por isso esta ERRADO neste commit de
+// merge, DE PROPOSITO: a recontagem vem da fonte declarada, num commit
+// separado, para o diff do merge nao esconder a decisao de numero. Escolher
+// entre 82 e 84 seria a armadilha, porque as duas contribuicoes sao disjuntas
+// e nenhum dos dois valores descreve o conjunto resultante.
+const EXPECTED_TABLE_COUNT = 82;
 
 // Mesma assercao de tamanho das tabelas, pelo mesmo motivo: pegar o caso em que
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
 // numeros e ato deliberado, no mesmo commit da migration que cria ou remove o
 // objeto.
-const EXPECTED_FUNCTION_COUNT = 26;
-const EXPECTED_TRIGGER_FUNCTION_COUNT = 4;
+// 28 desde 20260731050300_add_archive_provenance_to_admin_tasks.sql (cria
+// set_admin_task_archive_source). Era 27 desde
+// 20260730170000_ai_usage_excluded_tools.sql (cria ai_usage_excluded_tools),
+// que por sua vez era 26.
+//
+// A LINHAGEM importa porque este numero ja apareceu como 27 vindo de DUAS somas
+// diferentes, e as duas estavam certas no mundo em que foram escritas: 26 mais
+// ai_usage_excluded_tools, e 26 mais esta migration. As duas funcoes existem
+// hoje, entao a soma real e 26 + 2.
+//
+// Alterar este numero e ato deliberado, no mesmo commit da migration que cria ou
+// dropa a funcao.
+const EXPECTED_FUNCTION_COUNT = 28;
+// 5 desde a MESMA migration: set_admin_task_archive_source devolve trigger,
+// entao nao e exposta pelo PostgREST e sai do conjunto verificavel por REST. Os
+// dois numeros sobem juntos quando a funcao nova e de trigger, e so o primeiro
+// sobe quando ela e chamavel. Subir so um dos dois esconderia uma funcao real
+// que a classificacao passou a tratar como trigger, que e o defeito que este par
+// de asserções existe para pegar.
+const EXPECTED_TRIGGER_FUNCTION_COUNT = 5;
 
 /** Remove comentarios de linha e de bloco antes de qualquer parse. */
 /**
@@ -557,6 +622,117 @@ if (expostas === null) {
 }
 
 // ---------------------------------------------------------------------------
+// ASSERCOES COMPORTAMENTAIS: a funcao existe E FAZ o que deveria.
+//
+// POR QUE ESTA SECAO EXISTE. Tudo acima verifica EXISTENCIA (a tabela existe, a
+// funcao existe). Existencia nao implica conteudo correto, e essa lacuna ja
+// custou caro: a migration 20260713160000_split_roadmap_intake_chat_quota.sql
+// so fazia `create or replace` do CORPO de get_ai_usage_today. A funcao ja
+// existia, entao o guard ficou verde por 17 dias sobre um banco em que a
+// mudanca nunca tinha sido aplicada, e cada turno do chat de intake do roadmap
+// cobrou uma vaga a mais da cota diaria de quem usava.
+//
+// POR QUE NAO COMPARAR O TEXTO DO CORPO. Porque o Postgres normaliza parte da
+// definicao, os arquivos usam $$ e $func$ aninhados, e mudanca de formatacao
+// viraria alarme falso. Guard ruidoso e guard que alguem desliga. Entao a
+// verificacao e COMPORTAMENTAL: chama a funcao e afirma o RESULTADO.
+//
+// REGRA (registrada tambem no CLAUDE.md): toda migration que so faz
+// `create or replace` de funcao PRECISA entrar aqui. Verificacao por nome nao a
+// enxerga, e sem assercao ela pode nunca chegar em producao sem nada acusar.
+//
+// A assercao e do TOTAL, nao da pertinencia: compara o conjunto inteiro, entao
+// tanto item faltando quanto item a mais derrubam. "Os que eu conheco estao la"
+// seria o mesmo tipo de instrumento que falha passando.
+interface AssercaoComportamental {
+  funcao: string;
+  args: Record<string, unknown>;
+  descricao: string;
+  // Recebe o que a RPC devolveu; devolve null se passou, ou o motivo da falha.
+  verificar: (resultado: unknown) => string | null;
+}
+
+function conjuntoIgual(recebido: unknown, esperado: string[]): string | null {
+  if (!Array.isArray(recebido)) {
+    return `esperava um array, veio ${JSON.stringify(recebido)?.slice(0, 120)}`;
+  }
+  const a = [...recebido].map(String).sort();
+  const b = [...esperado].sort();
+  if (a.length !== b.length || a.some((v, i) => v !== b[i])) {
+    return `esperado [${b.join(", ")}], recebido [${a.join(", ")}]`;
+  }
+  return null;
+}
+
+const ASSERCOES: AssercaoComportamental[] = [
+  {
+    funcao: "ai_usage_excluded_tools",
+    args: {},
+    descricao:
+      "lista canonica de tools com cota dedicada, excluidas da cota global",
+    verificar: (resultado) =>
+      conjuntoIgual(resultado, [
+        "agent-chat",
+        "interview-turn",
+        "career-plan-chat",
+        "roadmap-intake-chat",
+      ]),
+  },
+];
+
+async function chamarRpc(
+  funcao: string,
+  args: Record<string, unknown>,
+): Promise<{ ok: true; valor: unknown } | { ok: false; erro: string }> {
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${funcao}`, {
+      method: "POST",
+      headers: {
+        apikey: serviceRoleKey!,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(args),
+    });
+    if (!response.ok) {
+      const corpo = (await response.json().catch(() => null)) as {
+        code?: string;
+        message?: string;
+      } | null;
+      return {
+        ok: false,
+        erro: `HTTP ${response.status} ${corpo?.code ?? ""} ${corpo?.message ?? ""}`.trim(),
+      };
+    }
+    return { ok: true, valor: await response.json() };
+  } catch (err) {
+    return { ok: false, erro: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+for (const assercao of ASSERCOES) {
+  const chamada = await chamarRpc(assercao.funcao, assercao.args);
+  if (!chamada.ok) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] assercao comportamental SEM VEREDITO em public.${assercao.funcao}(): ${chamada.erro}. Se a funcao nao existe, a migration que a cria nao foi aplicada.`,
+    );
+    continue;
+  }
+  const falha = assercao.verificar(chamada.valor);
+  if (falha) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] public.${assercao.funcao}() nao faz o que a migration declara (${assercao.descricao}): ${falha}.`,
+    );
+  } else {
+    console.log(
+      `[checkMigrationsApplied] assercao comportamental ok: public.${assercao.funcao}() (${assercao.descricao}).`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // DIRECAO INVERSA: existe no banco e nenhuma migration declara.
 //
 // O guard responde "declarado existe?". Esta secao responde "existente e
@@ -577,6 +753,20 @@ const DE_EXTENSAO = new Set([
   "custom_access_token_hook",
 ]);
 
+/**
+ * Tabelas/views que o PostgREST expoe e nenhuma migration declara.
+ *
+ * Calculada FORA do `if (expostas !== null)` de proposito: ela nao depende da
+ * leitura de funcoes, e a verificacao de RLS da direcao inversa (mais abaixo)
+ * precisa dela. Quando morava dentro daquele bloco, a referencia de baixo
+ * compilava e quebrava em runtime com `ReferenceError` — e `pnpm check` NAO
+ * pegou, porque o `include` do tsconfig.json e `client/src`, `shared` e
+ * `server`: `scripts/` fica de fora do typecheck.
+ */
+const recursosNaoDeclarados = [...(recursosExpostos ?? [])].filter(
+  (r) => !declared.has(r),
+);
+
 if (expostas !== null) {
   const funcoesNaoDeclaradas = [...expostas].filter(
     (f) => !funcoesDeclaradas.has(f) && !DE_EXTENSAO.has(f),
@@ -590,9 +780,6 @@ if (expostas !== null) {
       "[checkMigrationsApplied] direcao inversa: nenhuma funcao existe no banco sem estar declarada.",
     );
   }
-  const recursosNaoDeclarados = [...(recursosExpostos ?? [])].filter(
-    (r) => !declared.has(r),
-  );
   if (recursosNaoDeclarados.length > 0) {
     console.warn(
       `[checkMigrationsApplied] ${recursosNaoDeclarados.length} tabela(s)/view(s) expostas pelo PostgREST e NAO declaradas: ${recursosNaoDeclarados.join(", ")}.`,
@@ -607,7 +794,14 @@ if (expostas !== null) {
 // ---------------------------------------------------------------------------
 // RLS: verificada de fato, lendo com a chave anon.
 // ---------------------------------------------------------------------------
-const EXPECTED_RLS_COUNT = 84;
+// 82 pela mesma causa do EXPECTED_TABLE_COUNT: admin_refunds declara
+// `alter table ... enable row level security` e entrou sem o numero subir.
+//
+// MERGE 2026-08-21 (frente billing): as 3 tabelas desta frente tambem declaram
+// `enable row level security`, entao este numero anda junto com o de tabelas.
+// Valor da main preservado aqui e recontado no commit seguinte, pelo mesmo
+// motivo explicado em EXPECTED_TABLE_COUNT.
+const EXPECTED_RLS_COUNT = 82;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 const rlsVivas = [...rlsDeclarada].filter((t) => declared.has(t)).sort();
@@ -712,6 +906,57 @@ if (!anonKey) {
       `[checkMigrationsApplied] ${expostas.length} tabela(s) com RLS declarada estao LEGIVEIS pela chave anon sem policy publica que justifique:`,
     );
     for (const e of expostas) console.error(`  EXPOSTA: public.${e}`);
+  }
+
+  // ---------------------------------------------------------------------
+  // DIRECAO INVERSA da RLS: tabela que EXISTE no banco, e exposta pelo
+  // PostgREST, e nenhuma migration declara.
+  //
+  // Por que faltava: o laco acima percorre `rlsVivas`, que sai das migrations.
+  // Tabela nao declarada nao entra la, entao ficava exposta pelo PostgREST e
+  // FORA do escopo da verificacao de seguranca. O guard dizia "0 expostas"
+  // sobre um conjunto que nao continha essas tabelas. E a mesma forma que esta
+  // auditoria cataloga: veredito certo sobre uma superficie menor.
+  //
+  // O caso concreto que motivou (2026-08-01): `stripe_customers`,
+  // `billing_failed_payments` e `payment_recovery_emails` existem em producao
+  // desde 2026-07-28, as migrations que as declaram vivem numa branch que nao
+  // subiu, e ninguem estava afirmando que a chave anon nao as le.
+  //
+  // O criterio aqui e MAIS ESTRITO que o de tabela declarada, e de proposito:
+  // para uma tabela declarada, ler com anon pode ser legitimo (policy publica
+  // declarada). Para uma NAO declarada nao existe declaracao nenhuma que
+  // justifique, entao QUALQUER leitura bem-sucedida e achado, inclusive com
+  // zero linhas: 200 com lista vazia significa que o privilegio existe e a
+  // tabela so esta vazia hoje.
+  const expostasNaoDeclaradas: string[] = [];
+  for (const tabela of recursosNaoDeclarados) {
+    const comAnon = await contarLinhas(tabela, anonKey);
+    if (comAnon.tipo === "ok") {
+      expostasNaoDeclaradas.push(
+        `${tabela} (anon leu, ${comAnon.n} linha(s) visiveis)`,
+      );
+    }
+    // `sem-privilegio` e o REVOKE fazendo efeito, que e o desejado. `erro`
+    // nao vira verde: cai no relatorio abaixo como inconclusivo, pelo mesmo
+    // motivo do `contarLinhas` devolvendo -1 nesta base (falha de infra nunca
+    // conta como sucesso de seguranca).
+    else if (comAnon.tipo === "erro") {
+      inconclusivas.push(`${tabela} (nao declarada, ${comAnon.detalhe})`);
+    }
+  }
+  if (expostasNaoDeclaradas.length > 0) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] ${expostasNaoDeclaradas.length} tabela(s) NAO declaradas estao LEGIVEIS pela chave anon:`,
+    );
+    for (const e of expostasNaoDeclaradas) {
+      console.error(`  EXPOSTA E NAO DECLARADA: public.${e}`);
+    }
+  } else if (recursosNaoDeclarados.length > 0) {
+    console.log(
+      `[checkMigrationsApplied] direcao inversa da RLS: as ${recursosNaoDeclarados.length} tabela(s) nao declaradas NAO sao legiveis pela chave anon.`,
+    );
   }
   console.log(
     `[checkMigrationsApplied] RLS: ${protegidas} protegida(s) por policy, ${semPrivilegio} protegida(s) por REVOKE (anon sem privilegio), ${publicasDeclaradas} publica(s) por policy declarada, ${expostas.length} exposta(s), ${inconclusivas.length} inconclusiva(s) de ${rlsVivas.length}.`,

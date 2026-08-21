@@ -155,7 +155,7 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
     // Falha da IA nao persiste nada e nao cobra quota (so success conta).
     // TODO(Ana): mensagem de falha da analise.
     return next(
-      createError(502, "upstream_error", "A IA nao conseguiu analisar agora. Tente novamente."),
+      createError(502, "upstream_error", "A IA nao conseguiu analisar agora. Tente novamente.", { cause: err }),
     );
   }
 

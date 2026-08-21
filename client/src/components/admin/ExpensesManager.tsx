@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { formatarDiaCivil } from "@shared/brasiliaDay";
 
 import { adminFetch } from "@/lib/adminApi";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
@@ -612,7 +613,7 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
                         ) : null}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
-                        {new Date(exp.incurred_on).toLocaleDateString("pt-BR")}
+                        {formatarDiaCivil(exp.incurred_on)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">

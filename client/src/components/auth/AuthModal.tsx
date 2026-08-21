@@ -22,11 +22,9 @@ import {
 } from "@/lib/authSchemas";
 import { savePendingIntent, type PendingIntent } from "@/lib/pendingIntent";
 import { cn } from "@/lib/utils";
-import {
-  getMyProfile,
-  PENDING_MARKETING_OPTIN_KEY,
-} from "@/services/profileService";
+import { getMyProfile } from "@/services/profileService";
 import { PENDING_CONSENT_KEY } from "@/services/consentService";
+import SignInWrapNotice from "./SignInWrapNotice";
 import type { Gender } from "@shared/gender";
 import { greet } from "@shared/greeting";
 
@@ -61,28 +59,17 @@ export default function AuthModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<FriendlyError | null>(null);
   const [passwordFocused, setPasswordFocused] = useState(false);
-  const [acceptedConsent, setAcceptedConsent] = useState(false);
-  // Opt-in de marketing: OPCIONAL, nasce desmarcado (exigencia legal). Persistido
-  // em profiles.marketing_opt_in via a flag pendente consumida no SIGNED_IN.
-  const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   useEffect(() => {
     if (open) {
       setTab(defaultTab);
       setError(null);
-      setAcceptedConsent(false);
-      setMarketingOptIn(false);
     }
   }, [open, defaultTab]);
 
   useEffect(() => {
     setError(null);
   }, [name, email, password, gender, tab]);
-
-  useEffect(() => {
-    setAcceptedConsent(false);
-    setMarketingOptIn(false);
-  }, [tab]);
 
   const isSignup = tab === "signup";
 
@@ -98,6 +85,11 @@ export default function AuthModal({
     setIsSubmitting(true);
 
     try {
+      // Item 4.3, mesmo padrao do Auth.tsx: aceite pendente em TODA iniciacao de
+      // auth, cadastro E login, com o aviso do SignInWrapNotice logo abaixo do
+      // formulario nos dois modos.
+      sessionStorage.setItem(PENDING_CONSENT_KEY, "1");
+
       if (isSignup) {
         const parsed = signupSchema.safeParse({
           name,
@@ -110,17 +102,6 @@ export default function AuthModal({
           return;
         }
 
-        // Aceite pendente: gravado pelo AuthContext no SIGNED_IN, quando ha
-        // identidade via JWT. Confirmacao de e-mail OFF -> SIGNED_IN imediato e grava
-        // na hora; ON -> sem sessao agora e a flag nao sobrevive a espera do e-mail:
-        // o ConsentGate cobre no primeiro login (degradacao aceita). Mesmo padrao do
-        // Auth.tsx. Nunca enviamos os flags em metadata do signUp.
-        sessionStorage.setItem(PENDING_CONSENT_KEY, "1");
-        // Opt-in de marketing: so grava a flag se marcado (persistimos so o "true";
-        // o default do banco ja e false). Consumida no SIGNED_IN, igual ao consent.
-        if (marketingOptIn) {
-          sessionStorage.setItem(PENDING_MARKETING_OPTIN_KEY, "1");
-        }
         await signUp(parsed.data);
         getMyProfile().catch((triggerErr) => {
           console.warn(
@@ -201,11 +182,10 @@ export default function AuthModal({
         </div>
 
         {/* Login: social acima do form (inalterado). No cadastro o social vai
-            para baixo do form, junto dos checkboxes (ver abaixo). */}
+            para baixo do form (ver abaixo). */}
         {!isSignup && (
           <SocialAuthButtons
             mode="login"
-            consentAccepted={acceptedConsent}
             onBeforeOAuth={persistIntentForOAuth}
             showDivider={false}
             redirectTo={
@@ -307,54 +287,12 @@ export default function AuthModal({
               isFocused={passwordFocused}
             />
           )}
-          {isSignup && (
-            <label className="flex items-start gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                className="mt-0.5 h-4 w-4 flex-shrink-0"
-                checked={acceptedConsent}
-                onChange={(event) => setAcceptedConsent(event.target.checked)}
-              />
-              {/* TODO(Ana): texto do aceite de Termos e Politica no cadastro. */}
-              <span>
-                Li e aceito os{" "}
-                <a
-                  href="/termos-de-uso"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-bold text-violet-700 underline"
-                >
-                  Termos de Uso
-                </a>{" "}
-                e a{" "}
-                <a
-                  href="/privacidade"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-bold text-violet-700 underline"
-                >
-                  Política de Privacidade
-                </a>
-                .
-              </span>
-            </label>
-          )}
-          {/* Opt-in de marketing: OPCIONAL, nasce desmarcado (exigencia legal),
-              visualmente mais leve que o aceite. Nao bloqueia submit nem Google. */}
-          {isSignup && (
-            <label className="flex items-start gap-2 text-xs text-slate-500">
-              <input
-                type="checkbox"
-                className="mt-0.5 h-3.5 w-3.5 flex-shrink-0"
-                checked={marketingOptIn}
-                onChange={(event) => setMarketingOptIn(event.target.checked)}
-              />
-              <span>Quero receber novidades e ofertas por e-mail</span>
-            </label>
-          )}
+          {/* Itens 4.2 e 5.1: os checkboxes de aceite e de marketing sairam
+              daqui. O aceite virou o SignInWrapNotice abaixo dos botoes; o
+              marketing saiu do cadastro por inteiro (LGPD art. 8 par. 4). */}
           <button
             className="btn-brutal-accent inline-flex w-full justify-center rounded-full px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isSubmitting || (isSignup && !acceptedConsent)}
+            disabled={isSubmitting}
             type="submit"
           >
             {isSubmitting
@@ -376,8 +314,6 @@ export default function AuthModal({
             <div className="mt-3">
               <SocialAuthButtons
                 mode="cadastro"
-                consentAccepted={acceptedConsent}
-                marketingOptIn={marketingOptIn}
                 onBeforeOAuth={persistIntentForOAuth}
                 showDivider={false}
                 redirectTo={
@@ -389,6 +325,8 @@ export default function AuthModal({
             </div>
           </div>
         )}
+        {/* Item 4.2. Abaixo do ultimo controle de auth do modal nos dois modos. */}
+        <SignInWrapNotice className="mt-4 text-sm text-slate-700" />
         {!isSignup && (
           <button
             type="button"

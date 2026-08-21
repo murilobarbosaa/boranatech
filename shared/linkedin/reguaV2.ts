@@ -247,6 +247,43 @@ export function decomporNota(
     .filter((p) => p.possivel > 0);
 }
 
+/**
+ * Pontos que estão AGUARDANDO CONFIRMAÇÃO, e não aprovados nem reprovados.
+ *
+ * Fonte ÚNICA do número que o asterisco da nota exibe ("N dos M pontos
+ * aguardando confirmação"). Mora aqui, coladinha em `decomporNota`, e recebe os
+ * mesmos `pesos`, de propósito: um `35` escrito à mão na tela, ou uma segunda
+ * soma calculada no componente, seria livre para divergir no dia em que um
+ * check de headline mudar de tier. `reguaV2.pontosPendentes.test.ts` afirma
+ * exatamente isso, trocando o tier de um check e conferindo que o número
+ * acompanha.
+ *
+ * NÃO altera a nota, e a inércia é a propriedade que o teste de deep-equals
+ * trava: `pendente` é um marcador, `aprovado` continua carregando o veredito
+ * calculado, e `decomporNota` não sabe que este campo existe. A nota de uma
+ * análise com pendência é idêntica à mesma análise sem o marcador; o que muda
+ * é a faixa exibida e o asterisco.
+ */
+export function pontosPendentes(
+  checks: readonly {
+    tier: LinkedinCheckTier;
+    pendente?: boolean;
+  }[],
+  pesos: Record<LinkedinCheckTier, number>,
+): number {
+  return checks
+    .filter((c) => c.pendente === true)
+    .reduce((soma, c) => soma + pesos[c.tier], 0);
+}
+
+/** Total de pontos possíveis. Mesma soma de `computeLinkedinScore`. */
+export function pontosPossiveis(
+  checks: readonly { tier: LinkedinCheckTier }[],
+  pesos: Record<LinkedinCheckTier, number>,
+): number {
+  return checks.reduce((soma, c) => soma + pesos[c.tier], 0);
+}
+
 /** Pontos possíveis da categoria autodeclarada, 0 se ela não aparecer. */
 export function parcelaAutodeclarada(parcelas: ParcelaDaNota[]): number {
   return (

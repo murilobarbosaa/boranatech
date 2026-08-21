@@ -4,7 +4,7 @@ import { HelmetProvider } from "react-helmet-async";
 import posthog from "posthog-js";
 import { z } from "zod";
 import App from "./App";
-import { reloadOnceForStaleChunk } from "./lib/lazyWithRetry";
+import { registerPreloadErrorGuard } from "./lib/preloadErrorGuard";
 import { initClientSentry } from "./lib/sentry";
 import "./fonts.css";
 import "./index.css";
@@ -13,14 +13,15 @@ import "./index.css";
 // erros de boot. No-op quando VITE_SENTRY_DSN esta ausente.
 initClientSentry();
 
-// Skew de deploy: o Vite emite vite:preloaderror quando falha o preload de um
-// chunk cujo hash sumiu apos um novo deploy. Recarrega uma vez (mesma guarda
-// anti-loop do lazyWithRetry) em vez de deixar a navegacao quebrar. Precisa
-// vir antes do primeiro render.
-window.addEventListener("vite:preloaderror", (event) => {
-  event.preventDefault();
-  reloadOnceForStaleChunk();
-});
+// Skew de deploy: o Vite emite vite:preloadError quando falha o preload de um
+// chunk cujo hash sumiu apos um novo deploy. Isto aqui so OBSERVA e reporta:
+// nao cancela o evento e nao recarrega. Quem recupera e o lazyWithRetry, dono
+// unico do reload (retry, guarda anti-loop, ErrorBoundary). Cancelar o evento
+// chegou a ser feito aqui e desligava justamente esse mecanismo; o porque esta
+// no topo de lib/preloadErrorGuard.ts. Precisa vir antes do primeiro render.
+// O nome do evento e case-sensitive e ja esteve errado aqui; mora em
+// lib/preloadErrorGuard.ts, com teste, por isso.
+registerPreloadErrorGuard();
 
 // CSP: desliga o probe de eval e o JIT fastpass do Zod (new Function), que
 // dispara securitypolicyviolation. Precisa rodar antes do primeiro parse.

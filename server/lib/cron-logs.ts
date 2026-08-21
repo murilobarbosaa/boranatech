@@ -1,3 +1,4 @@
+import { avisarSeCronMorreu } from "./cronAlert";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 export type CronRunStatus = "success" | "error" | "partial";
@@ -23,6 +24,19 @@ export async function recordCronRun(record: CronRunRecord): Promise<void> {
     });
     if (error) {
       console.warn("[cron-logs] Falha ao registrar execução:", error.message);
+      return;
+    }
+
+    // Aviso de cron morto DENTRO do registro, e nao em cada endpoint: sao 14
+    // jobs hoje e os proximos ainda nao existem. Guarda no chamador precisaria
+    // ser repetida em cada um e sumiria no primeiro que alguem esquecesse, que e
+    // a regra do CLAUDE.md e o caso do setScoreDelta. Aqui todo job que gravar
+    // uma run passa por esta linha por construção.
+    //
+    // Roda DEPOIS do insert de proposito: a avaliacao le o cron_run_logs, e a
+    // run que acabou de acontecer precisa estar la para contar.
+    if (record.status !== "success") {
+      await avisarSeCronMorreu(record.jobName);
     }
   } catch (err) {
     console.warn(

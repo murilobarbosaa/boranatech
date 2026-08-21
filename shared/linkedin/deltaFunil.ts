@@ -28,6 +28,15 @@ export interface EntradaDelta {
   notaAtual: number;
   versaoAtual: number | null | undefined;
   checksAtuais: readonly { id: string; category: string; aprovado: boolean }[];
+  /**
+   * Alguma das duas notas está INCOMPLETA (leitura em dúvida)?
+   *
+   * Ausente nas linhas anteriores à v7, e ausência vale `false` — a mesma
+   * normalização de `readDeterministic`, pelo mesmo motivo: uma análise antiga
+   * era completa dentro da régua dela.
+   */
+  incompletaAnterior?: boolean;
+  incompletaAtual?: boolean;
 }
 
 export interface VeredictoDelta {
@@ -42,6 +51,7 @@ export interface VeredictoDelta {
   motivo:
     | "delta"
     | "sem-anterior"
+    | "nota-incompleta"
     | "regua-mudou"
     | "so-autodeclaracao"
     | "nota-igual";
@@ -55,6 +65,16 @@ export function versaoDe(v: number | null | undefined): number {
 export function decidirDelta(e: EntradaDelta): VeredictoDelta {
   if (e.notaAnterior === null) {
     return { delta: null, reguaMudou: false, motivo: "sem-anterior" };
+  }
+  // Pendência em QUALQUER das duas pontas mata o delta, e mata antes de tudo
+  // o mais: comparar 70-incompleta com 74-completa produz um "+4" que não
+  // significa nada. Aqui dentro, e não no call site, porque `delta: null`
+  // também desliga a celebração (ver o comentário de `VeredictoDelta`): o
+  // confete morre de graça, sem um segundo lugar para alguém esquecer. Foi
+  // exatamente assim que a supressão por autodeclaração sumiu de um dos dois
+  // call sites do `setScoreDelta`.
+  if (e.incompletaAnterior === true || e.incompletaAtual === true) {
+    return { delta: null, reguaMudou: false, motivo: "nota-incompleta" };
   }
   const reguaMudou = versaoDe(e.versaoAnterior) !== versaoDe(e.versaoAtual);
   if (reguaMudou) {

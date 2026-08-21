@@ -36,10 +36,20 @@ interface IntakeChatPanelProps {
   // mensagem do usuario sem duplicar o historico.
   error?: string | null;
   onRetry?: () => void;
-  // Limite de turnos atingido: input travado, mensagem propria do caller.
+  // Conversa bloqueada (teto de turnos, cota diaria, payload, Pro): input
+  // travado, mensagem propria do caller. O caller e responsavel por oferecer as
+  // saidas fora do painel (gerar ou formulario); o painel oferece a de recomecar.
   turnLimitReached?: boolean;
   turnLimitMessage?: string;
+  // Recomecar a conversa. Fica SEMPRE visivel (nao so no bloqueio): e a saida
+  // que garante que nenhum estado do chat seja terminal.
+  onRestart?: () => void;
+  restartLabel?: string;
   progress?: IntakeChatProgress | null;
+  // Aviso discreto de que a conversa esta perto do teto ("faltam N mensagens").
+  // O caller decide a partir de quando mostrar; o painel so desenha. Existe para
+  // o teto nunca chegar de surpresa: limite que surpreende parece bug.
+  remainingHint?: string | null;
   placeholder?: string;
   // Trava o input mesmo sem estar enviando (ex: enquanto o caller processa o
   // envio final). Nao usado para o limite de turnos (esse tem prop propria).
@@ -51,6 +61,7 @@ interface IntakeChatPanelProps {
 const COPY = {
   typing: "Digitando",
   retry: "Tentar de novo",
+  restart: "Recomecar a conversa",
   sendHint: "Enter envia, Shift+Enter quebra linha",
   placeholder: "Escreva sua resposta",
   progressLabel: (done: number, total: number) =>
@@ -114,7 +125,10 @@ export default function IntakeChatPanel({
   onRetry,
   turnLimitReached = false,
   turnLimitMessage,
+  onRestart,
+  restartLabel,
   progress,
+  remainingHint,
   placeholder = COPY.placeholder,
   inputDisabled = false,
 }: IntakeChatPanelProps) {
@@ -247,6 +261,18 @@ export default function IntakeChatPanel({
             <p className="text-center text-sm font-bold text-amber-800">
               {turnLimitMessage}
             </p>
+            {onRestart ? (
+              <div className="mt-2 flex justify-center">
+                <button
+                  type="button"
+                  onClick={onRestart}
+                  className="inline-flex items-center gap-1.5 rounded-[10px] border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  {restartLabel ?? COPY.restart}
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="shrink-0 bg-violet-50 px-3 pt-2.5 pb-2.5 sm:px-4 sm:pt-3 sm:pb-3">
@@ -284,6 +310,23 @@ export default function IntakeChatPanel({
             <p className="mt-2 text-center text-xs font-bold text-slate-600">
               {COPY.sendHint}
             </p>
+            {remainingHint ? (
+              <p className="mt-1 text-center text-xs font-bold text-amber-700">
+                {remainingHint}
+              </p>
+            ) : null}
+            {onRestart ? (
+              <div className="mt-1.5 flex justify-center">
+                <button
+                  type="button"
+                  onClick={onRestart}
+                  disabled={sending}
+                  className="text-xs font-bold text-slate-500 underline underline-offset-2 transition-colors hover:text-slate-900 disabled:opacity-50"
+                >
+                  {restartLabel ?? COPY.restart}
+                </button>
+              </div>
+            ) : null}
           </div>
         )}
       </div>

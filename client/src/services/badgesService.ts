@@ -18,7 +18,14 @@ async function apiFetch(path: string, options?: RequestInit) {
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      // `Content-Type` SO quando ha corpo: num GET ele faz o `express.json()`
+      // global concluir que existe corpo e tentar ler um stream que ja acabou,
+      // devolvendo 500 `stream is not readable`. Motivo completo e o primeiro
+      // caso medido em client/src/contexts/FavoritesContext.tsx:168. A guarda
+      // fica dentro do helper para cobrir todo call site por construcao.
+      ...(options?.body === undefined
+        ? {}
+        : { "Content-Type": "application/json" }),
       ...headers,
       ...(options?.headers || {}),
     },

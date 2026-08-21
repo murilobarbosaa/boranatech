@@ -54,6 +54,18 @@ const STATUS_UI: Record<
   na: { Icon: MinusCircle, color: "text-slate-400" },
 };
 
+/**
+ * `check.status` vem do SERVIDOR (e do `result` persistido), entao um status
+ * novo antes do deploy do front faria `ui.Icon` lancar e derrubar a arvore.
+ * `CATEGORY_LABEL` acima NAO precisa do mesmo tratamento: ele e indexado por
+ * `CATEGORY_ORDER`, constante local, e nunca por valor externo.
+ */
+const STATUS_UI_FALLBACK = { Icon: MinusCircle, color: "text-slate-400" };
+
+export function statusUiOf(status: string) {
+  return STATUS_UI[status as CheckStatus] ?? STATUS_UI_FALLBACK;
+}
+
 interface ChecklistByCategoryProps {
   checks: GithubCheckResult[];
   /** Densidade leve pro trilho lateral do resultado; default mantem o atual. */
@@ -94,7 +106,7 @@ export default function ChecklistByCategory({
           </h3>
           <ul className={compact ? "space-y-2.5" : "space-y-3"}>
             {group.items.map((check) => {
-              const ui = STATUS_UI[check.status];
+              const ui = statusUiOf(check.status);
               const actionable =
                 check.status === "warn" || check.status === "fail";
               const actionUrl =

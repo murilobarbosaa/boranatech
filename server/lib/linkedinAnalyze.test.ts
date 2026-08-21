@@ -106,3 +106,90 @@ describe("analyzeLinkedin: resposta cortada por max_tokens", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
+
+// Prova de comportamento do retry diante do 429, que tem duas causas com o
+// mesmo status. O que estes testes travam nao e a classificacao em si (isso e
+// openaiFailure.test.ts), e sim a decisao de RETENTAR OU NAO no caminho real da
+// analise, que e onde o custo aparece.
+describe("analyzeLinkedin: 429 da OpenAI, cota versus rate limit", () => {
+  function erroResponse(status: number, body: unknown) {
+    return {
+      ok: false,
+      status,
+      json: async () => body,
+      text: async () => JSON.stringify(body),
+    } as unknown as Response;
+  }
+
+  // Corpo REAL do incidente de 2026-08-05 (ai_usage_logs, 03:01:44Z).
+  const SALDO_ZERADO = {
+    error: {
+      message:
+        "You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.",
+      type: "insufficient_quota",
+      param: null,
+      code: "credit_balance_exhausted",
+    },
+  };
+
+  const RATE_LIMIT = {
+    error: {
+      message: "Rate limit reached for gpt-4o-mini in organization org-x.",
+      type: "requests",
+      param: null,
+      code: "rate_limit_exceeded",
+    },
+  };
+
+  it("saldo esgotado NAO gasta a segunda tentativa", async () => {
+    const fetchMock = vi.fn(async () => erroResponse(429, SALDO_ZERADO));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(analyzeLinkedin(REQUEST)).rejects.toThrow(
+      /\[cota:credit_balance_exhausted\]/,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("rate limit segue retentando (2 tentativas)", async () => {
+    const fetchMock = vi.fn(async () => erroResponse(429, RATE_LIMIT));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(analyzeLinkedin(REQUEST)).rejects.toThrow(
+      /\[transitorio:rate_limit_exceeded\]/,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  // Credencial revogada: permanente pelo mesmo motivo, e a prova de que o
+  // estado novo chega ate o caminho real da analise, nao so ao classificador.
+  it("401 de chave invalida NAO gasta a segunda tentativa", async () => {
+    const fetchMock = vi.fn(async () =>
+      erroResponse(401, {
+        error: {
+          message: "Incorrect API key provided: sk-xxx.",
+          type: "invalid_request_error",
+          code: "invalid_api_key",
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(analyzeLinkedin(REQUEST)).rejects.toThrow(
+      /\[credencial:invalid_api_key\]/,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  // O ramo que nao pode nascer por omissao: 429 sem corpo classificavel se
+  // comporta como antes da mudanca, retentando.
+  it("429 sem corpo classificavel segue retentando (2 tentativas)", async () => {
+    const fetchMock = vi.fn(async () => erroResponse(429, { erro: "opaco" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(analyzeLinkedin(REQUEST)).rejects.toThrow(
+      /\[nao_classificado\]/,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});

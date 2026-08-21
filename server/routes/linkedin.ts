@@ -2,9 +2,13 @@ import crypto from "crypto";
 import { NextFunction, Request, Response, Router } from "express";
 
 import {
+  HEADLINE_MANUAL_MAX,
+  LinkedinDadoInvalidoError,
   LinkedinAnalyzeRequestSchema,
+  headlineFinalDe,
   type LinkedinAnalysisResponse,
   type LinkedinAnalyzeRequest,
+  type LinkedinHeadlineOrigem,
 } from "../../shared/linkedin/schema";
 import { estimateCost, estimateCostFromTokens } from "../lib/aiTools";
 import { DEFAULT_MODEL } from "../lib/openai";
@@ -15,6 +19,7 @@ import {
   LinkedinUnreadableError,
 } from "../lib/linkedinAnalyze";
 import type { LinkedinParsed } from "../../shared/linkedin/parse";
+import { hashDoTexto } from "../lib/linkedinTextoHash";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -54,8 +59,29 @@ async function persistAnalysis(
       conexoes: request.conexoes,
       atividade: request.atividade,
       objetivo: request.objetivo ?? null,
+      // Caminho de entrada e impressao digital do texto. As duas chaves sao
+      // NOVAS: as 157 linhas ja gravadas nao as tem, e a leitura tolera isso
+      // (linkedinInputTolerante.test.ts trava a propriedade). `entryPath` vem
+      // null quando o bundle antigo nao mandou, que e o caso da janela de deploy.
+      entryPath: request.entryPath ?? null,
+      textoHash: hashDoTexto(request.profileText),
       parseResumo: {
-        headline: parsed.headline,
+        // A headline que a analise USOU, que pode ser a digitada. `headline`
+        // sozinha nunca respondeu "de onde veio", e por isso vem acompanhada
+        // de `headlineOrigem`.
+        headline: headlineFinalDe(parsed.headline, request.headlineManual),
+        // Chave NOVA, no mesmo padrao de `entryPath`/`textoHash`: as 185 linhas
+        // ja gravadas nao a tem, e a leitura tolera a ausencia tratando-a como
+        // "parser" (que e o que de fato aconteceu em todas elas).
+        headlineOrigem: (request.headlineManual?.trim()
+          ? "manual"
+          : "parser") satisfies LinkedinHeadlineOrigem,
+        // Contexto da leitura da headline. Chave NOVA, pelo mesmo padrao de
+        // `entryPath`/`textoHash`: as linhas ja gravadas nao a tem e o leitor
+        // tolera a ausencia. Existe porque `headline` sozinha nao distingue "o
+        // parser cortou" de "a pessoa escreveu assim", e sem `profileText`
+        // (que nao e guardado, de proposito) nao havia como saber depois.
+        headlineContexto: parsed.headlineContexto,
         sobreTamanho: response.deterministic.sobreTamanho,
         experienciasContagem: response.deterministic.experienciasContagem,
         skillsPdf: parsed.skillsPdf,
@@ -102,6 +128,29 @@ router.post(
           403,
           "forbidden",
           "Recurso Pro. Assine o Plano Pro para usar o analisador de LinkedIn.",
+        ),
+      );
+    }
+
+    // Headline longa demais tem codigo e mensagem PROPRIOS, antes do parse
+    // generico. Duas razoes. A primeira: o zod devolveria 400
+    // `invalid_request` com "confira o texto do perfil e os campos", que manda
+    // a pessoa procurar defeito no lugar errado. A segunda, e a que importa:
+    // NAO cortar em silencio. Clipar em 250 aqui devolveria uma analise
+    // plausivel sobre um texto que a rota mutilou, que e a classe de defeito
+    // do `docs/auditoria-linkedin-fechamento.md`. O `.max(250)` do schema fica
+    // como rede: so e alcancavel se esta checagem estiver errada.
+    const headlineManualBruta = (req.body as { headlineManual?: unknown })
+      ?.headlineManual;
+    if (
+      typeof headlineManualBruta === "string" &&
+      headlineManualBruta.trim().length > HEADLINE_MANUAL_MAX
+    ) {
+      return next(
+        createError(
+          422,
+          "headline_manual_longa",
+          `A headline tem ${headlineManualBruta.trim().length} caracteres e o limite é ${HEADLINE_MANUAL_MAX}. Encurte antes de continuar.`,
         ),
       );
     }
@@ -235,11 +284,28 @@ router.post(
           ),
         );
       }
+      // Dado NOSSO invalido nao e falha de terceiro. Antes desta distincao, um
+      // check com tier corrompido caia no ramo generico abaixo e virava
+      // `502 upstream_error`, com a mensagem que sugere instabilidade da
+      // OpenAI: o diagnostico comecava no lugar errado. 500, e nao 502, porque
+      // nao ha upstream envolvido; e `code` proprio para o painel separar os
+      // dois. O `errorHandler` reporta ao Sentry a partir de 500, entao o
+      // evento continua saindo.
+      if (err instanceof LinkedinDadoInvalidoError) {
+        return next(
+          createError(
+            500,
+            "analysis_data_invalid",
+            "Algo saiu errado do nosso lado ao montar sua análise. Já registramos o problema. Tente de novo em instantes.",
+          ),
+        );
+      }
       return next(
         createError(
           502,
           "upstream_error",
           "Não foi possível concluir a análise agora. Tente de novo.",
+          { cause: err },
         ),
       );
     }
@@ -253,7 +319,11 @@ router.get(
       const { data, error } = await supabaseAdmin
         .from("linkedin_analyses")
         .select(
-          "id, area, level, score, faixa, created_at, result->deterministicVersion, result->deterministic->checks",
+          // `notaIncompleta` entra na lista pelo mesmo motivo de `checks`: o
+          // delta e o historico precisam dela por LINHA, e buscar o `result`
+          // inteiro de 20 analises so para ler um booleano seria caro. Ausente
+          // nas linhas anteriores a v7, e o cliente normaliza para `false`.
+          "id, area, level, score, faixa, created_at, result->deterministicVersion, result->deterministic->checks, result->deterministic->notaIncompleta",
         )
         .eq("user_id", req.user!.id)
         .order("created_at", { ascending: false })

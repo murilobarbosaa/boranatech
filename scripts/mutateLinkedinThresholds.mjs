@@ -48,7 +48,7 @@ const MUT = [
   [P, "preambulo sem secao (20 linhas)", "Math.min(20, lines.length)", "Math.min(2, lines.length)"],
   [P, "linha de nome, len max (60)", "anterior.length <= 60 &&", "anterior.length <= 6 &&"],
   [P, "linha de nome, max palavras (6)", "anterior.split(/\\s+/).length <= 6 &&", "anterior.split(/\\s+/).length <= 1 &&"],
-  [P, "clip da headline (250)", "clip(escolhida.linha, 250)", "clip(escolhida.linha, 25)"],
+  [P, "clip da headline (250)", 'clip(partes.join(" ").replace(/\\s+/g, " "), 250)', 'clip(partes.join(" ").replace(/\\s+/g, " "), 25)'],
   [P, "skill, len min (2)", "if (skill.length >= 2 && skill.length <= 60) out.push(skill);", "if (skill.length >= 20 && skill.length <= 60) out.push(skill);"],
   [P, "skill, len max (60)", "if (skill.length >= 2 && skill.length <= 60) out.push(skill);", "if (skill.length >= 2 && skill.length <= 6) out.push(skill);"],
   [P, "teto de skills (50)", "return Array.from(new Set(out)).slice(0, 50);", "return Array.from(new Set(out)).slice(0, 1);"],
@@ -57,7 +57,22 @@ const MUT = [
   [S, "faixa em-construcao (69)", "if (score <= 69) return \"em-construcao\";", "if (score <= 6) return \"em-construcao\";"],
   [S, "faixa forte (89)", "if (score <= 89) return \"forte\";", "if (score <= 8) return \"forte\";"],
   [S, "QUALITATIVE_VERSION", "export const QUALITATIVE_VERSION = 3;", "export const QUALITATIVE_VERSION = 9;"],
-  [S, "DETERMINISTIC_VERSION", "export const DETERMINISTIC_VERSION = 4;", "export const DETERMINISTIC_VERSION = 9;"],
+  // Classificado em 2026-08-05, no commit que criou o sitio (o campo de
+  // headline editavel). Entra em MUT e nao em NAO_LIMIAR porque E fronteira:
+  // decide o que a rota aceita e o que devolve 422. NAO e limiar da regua: nao
+  // entra em check nenhum, e o ideal de qualidade da headline (220) e outro
+  // numero, no `headline-tamanho`.
+  //
+  // QUEM PEGA A MUTACAO: so `linkedinHeadlineManual.test.ts`, que afirma o
+  // valor literal. `linkedinHeadlineManualRota.test.ts` NAO pega, e a razao
+  // vale registrar: ele monta os casos com `HEADLINE_MANUAL_MAX + 1` e
+  // `"x".repeat(HEADLINE_MANUAL_MAX)`, entao mutar a constante move os dois
+  // lados juntos e ele continua verde. Teste que deriva a expectativa da
+  // constante que testa e invariante ao valor dela: prova o COMPORTAMENTO
+  // (recusa acima do teto, aceita no teto) e nao o NUMERO. Os dois sao uteis,
+  // mas so o literal e rede contra mudanca acidental do teto.
+  [S, "HEADLINE_MANUAL_MAX", "export const HEADLINE_MANUAL_MAX = 250;", "export const HEADLINE_MANUAL_MAX = 25;"],
+  [S, "DETERMINISTIC_VERSION", "export const DETERMINISTIC_VERSION = 7;", "export const DETERMINISTIC_VERSION = 99;"],
   [S, "peso essencial (10)", "  essencial: 10,", "  essencial: 11,"],
   [S, "peso importante (6)", "  importante: 6,", "  importante: 7,"],
   [S, "peso opcional (3)", "  opcional: 3,", "  opcional: 4,"],
@@ -174,6 +189,16 @@ const NAO_LIMIAR = [
   [/temperature:/, "parametro do modelo, nao limiar de regra"],
   [/const (?:AI_MAX_ATTEMPTS|MAX_TOKENS) =/, "parametro operacional da chamada de IA"],
   [/const AI_BACKOFF_MS/, "backoff de retry"],
+  // --- Classificados em 2026-08-01, ao colocar este guard num gate. Ele
+  // abortava na arvore limpa havia semanas com 6 orfaos, tres deles produzidos
+  // pela propria auditoria. Cada regex e estreita de proposito: uma ampla
+  // engoliria limiar de verdade no futuro, que e o oposto do que este arquivo
+  // existe para fazer.
+  [/^while \(\w+ > 0\)/, "guarda de laco para tras na juncao de headline, nao e fronteira"],
+  [/juntou: partes\.length > 1/, "quantos pedacos foram juntados, nao e limiar de regra"],
+  [/^\s*acimaIdx >= 0$/, "guarda de indice nao encontrado (sem parentese, o padrao geral nao casa)"],
+  [/p\.possivel > 0/, "descarte de grupo vazio na decomposicao, nao e fronteira"],
+  [/cadastradas === 1/, "singular\/plural na copy do detalhe, nao e limiar"],
   [/possivel === 0/, "divisao por zero"],
   [/keyTechs\.length === 0/, "divisao por zero"],
   [/faixaFromScore|score <= /, "fronteira de faixa, coberta em VIZINHOS"],
@@ -203,6 +228,30 @@ const NAO_LIMIAR = [
   [/mudaram\.length > 0/, "guarda de lista vazia na deteccao de autodeclaracao"],
   [/skillsRatio/, "razao antiga, mantida so no calculo do detail informativo"],
   [/\.filter\(\(i\) => i > 0\)/, "sentinela 0 = indice base-1 valido, nao e limiar"],
+  // --- Classificados em 2026-08-18, com a contagem de violacoes de lastro
+  // (`registrarViolacao`, linkedinAnalyze.ts). Sao os tres campos do estado
+  // inicial do contador POR TIPO, zerados na criacao da entrada do mapa. Mesma
+  // categoria de "inicializacao de acumulador" que ja existe acima, em outra
+  // forma sintatica: la e `let x = 0`, aqui e propriedade de objeto literal, e
+  // por isso o padrao antigo nao casava.
+  //
+  // A fronteira de verdade daquele bloco e o `INTERVALO_LASTRO_MS`, e ela tem
+  // teste discriminante (linkedinLastroContagem.test.ts avanca o relogio em
+  // exatamente 60_000 e exige o segundo evento).
+  //
+  // `ultimoEnvioMs: 0` merece a nota: alem de inicializacao, ele e a sentinela
+  // de "nunca enviou", e como `agora - 0` supera qualquer intervalo, e ele que
+  // garante que a PRIMEIRA ocorrencia sempre sai. Esse comportamento tambem
+  // esta preso por teste (o caso que afirma 1 evento na primeira ocorrencia),
+  // entao a classificacao aqui nao silencia nada: ela diz que o numero nao e
+  // limiar de REGRA, que e o dominio deste script.
+  //
+  // Regex por NOME dos tres campos, de proposito: um campo numerico novo neste
+  // mesmo objeto continua caindo como orfao, que e o que se quer.
+  [
+    /^(?:ultimoEnvioMs|suprimidasDesdeUltimo|totalNoProcesso): 0,?$/,
+    "estado inicial do contador de violacoes de lastro, nao e fronteira",
+  ],
 ];
 
 function descobrirSitios() {
@@ -284,9 +333,56 @@ function auditarCobertura() {
 const ALVOS = "shared/linkedin server/lib/linkedin client/src/components/linkedin";
 const VIZINHANCA = process.argv.includes("--vizinhanca");
 
+/**
+ * MODO AUDITORIA (--auditar). Roda so a descoberta e a conferencia de ancoras,
+ * sem mutar nada e sem rodar a suite. Leva segundos; o modo completo leva mais
+ * de dez minutos, porque roda a suite inteira uma vez por mutante.
+ *
+ * Existe porque este script estava FORA de qualquer gate e abortava na arvore
+ * limpa havia semanas, com 6 sitios numericos orfaos, tres deles produzidos
+ * pela propria auditoria que o criou. Guard que ninguem invoca carrega a mesma
+ * informacao que um que sempre passa: zero. E o modo completo nao cabe num
+ * gate, entao a parte que cabe e esta.
+ *
+ * O que ele afirma, e sao duas direcoes:
+ *   - todo sitio numerico da fonte esta classificado (em MUT ou NAO_LIMIAR);
+ *   - toda ancora de MUT ainda CASA com a fonte.
+ *
+ * A segunda foi acrescentada em 2026-08-01 porque duas ancoras estavam
+ * obsoletas e o script reportava `??` saindo com exit 0: `clip da headline
+ * (250)` parou de casar quando o `eeda681` mudou a linha, e `DETERMINISTIC_VERSION`
+ * quando a versao passou de 4. Limiar que deixa de ser mutado nao e testado, e
+ * o silencio era indistinguivel de cobertura.
+ */
+const AUDITAR = process.argv.includes("--auditar");
+
 // Auditoria de escopo SEMPRE, nos dois modos: um limiar novo nao pode passar
 // despercebido so porque a rodada era de vizinhanca.
 auditarCobertura();
+
+if (AUDITAR) {
+  const semAncora = MUT.filter(([rel, , de]) => {
+    const fonte = readFileSync(`${R}/${rel}`, "utf8");
+    return !fonte.includes(de);
+  });
+  if (semAncora.length > 0) {
+    console.error(
+      `\nANCORA DE MUTANTE QUE NAO CASA MAIS COM A FONTE (${semAncora.length}).`,
+    );
+    console.error(
+      "O limiar deixou de ser mutado, entao deixou de ser testado, e o script",
+    );
+    console.error("reportava isso como `??` saindo com exit 0.\n");
+    for (const [rel, nome, de] of semAncora) {
+      console.error(`  ${rel}  ${nome}\n      esperava: ${de}`);
+    }
+    process.exit(1);
+  }
+  console.log(
+    `[auditar] ok: todo sitio numerico classificado, e as ${MUT.length} ancoras de mutante casam com a fonte.`,
+  );
+  process.exit(0);
+}
 
 function rodarTestes(R, ALVOS) {
   try {

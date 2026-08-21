@@ -16,14 +16,15 @@
 // O modal da tarefa montava em portal no body e ficava ATRAS do header, com o
 // topo inalcancavel.
 //
-// LIMITE CONHECIDO: `DialogContent` e `AlertDialogContent` renderizam o overlay
-// internamente, sem repassar props, entao daqui so da para subir o CONTEUDO. O
-// overlay continua em z-50 e o header aparece por cima do escurecido (cosmetico:
-// o Radix poe `pointer-events: none` no body enquanto o modal esta aberto, entao
-// o header nao fica clicavel). Consertar de vez e uma linha em
-// `components/ui/dialog.tsx` e `alert-dialog.tsx`, o que tambem corrigiria
-// BugsDashboard e NotificationsManager, que tem o MESMO defeito pre-existente.
-// Ficou fora desta rodada de propósito.
+// RESOLVIDO. O texto anterior dizia que `DialogContent` e `AlertDialogContent`
+// renderizavam o overlay sem repassar props, entao daqui so daria para subir o
+// CONTEUDO e o overlay ficaria preso em z-50. Os dois primitivos passaram a
+// aceitar `overlayClassName` (`components/ui/dialog.tsx`, `alert-dialog.tsx`) e
+// todos os dialogos desta aba ja o passam, entao o overlay sobe junto.
+//
+// O QUE CONTINUA VALENDO: o antigo `BugsDashboard.tsx` (removido na Fase 5) ainda monta `DialogContent` sem
+// `overlayClassName`, com o mesmo defeito pre-existente. Nao e escopo daqui, e
+// fica registrado para nao ser redescoberto.
 
 /** Conteudo de modal: acima do header. */
 export const LAYER_DIALOG = "z-[2000]";

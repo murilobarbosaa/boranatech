@@ -1,8 +1,10 @@
 import crypto from "crypto";
+import * as Sentry from "@sentry/node";
 import { NextFunction, Request, Response, Router } from "express";
 
 import {
   AI_ROADMAP_SLUG_RE,
+  buildGenerationIntake,
   RoadmapIntakeSchema,
   type RoadmapIntake,
 } from "../../shared/aiRoadmap";
@@ -15,6 +17,7 @@ import {
   generateSectionContent,
   generateSkeleton,
 } from "../lib/aiRoadmap/generate";
+import { isOneGeneratingCollision } from "../lib/aiRoadmap/oneGenerating";
 import { estimateCost } from "../lib/aiTools";
 import { DEFAULT_MODEL } from "../lib/openai";
 import {
@@ -24,6 +27,7 @@ import {
   ROADMAP_INTAKE_CHAT_TOOL,
 } from "../lib/aiUsage";
 import {
+  MAX_USER_MESSAGES,
   runIntakeChatTurn,
   validateIntakeChatBody,
   type IntakeChatAiIo,
@@ -56,6 +60,72 @@ router.use(requireAuth);
 router.use(checkProStatus);
 
 const ROADMAP_GENERATOR_TOOL = "roadmap-generator";
+
+// REJEICOES DE BORDA: os caminhos que barram a pessoa ANTES de qualquer chamada
+// de IA. Ate a fase 2 nenhum deles deixava rastro no banco, e o beco sem saida
+// do teto de turnos so foi descoberto por distribuicao estatistica, 17 dias
+// depois. Agora cada um grava uma linha com um CODIGO de motivo.
+//
+// PRIVACIDADE: `errorMessage` aqui recebe SOMENTE um codigo desta uniao, nunca
+// texto livre e nunca fala da pessoa. O status 'rejected' e novo e nao conta em
+// cota nenhuma (reserve_ai_usage_slot soma apenas 'success' e 'reserved'), entao
+// registrar nao cobra.
+type MotivoRejeicao =
+  | "turn_limit"
+  | "payload_too_large"
+  | "pro_required"
+  | "invalid_request"
+  | "generation_in_progress"
+  | "concurrency_check_failed"
+  | "context_failed"
+  | "not_resumable"
+  | "resume_in_progress"
+  | "resume_lock_failed"
+  | "corrupted_inputs"
+  | "corrupted_roadmap";
+
+async function registrarRejeicao(
+  userId: string,
+  tool: string,
+  requestId: string,
+  motivo: MotivoRejeicao,
+): Promise<void> {
+  await logAiUsage({
+    userId,
+    tool,
+    requestId,
+    status: "rejected",
+    errorMessage: motivo,
+  });
+}
+
+// Sentry para os estados em que a PESSOA FICA TRAVADA. console.error nao vira
+// issue (server/lib/sentry.ts nao instala integracao de console), entao sem isto
+// o rastro morre no log do Railway. Mesmo padrao de aiUsage.ts:367-380.
+const INTERVALO_AVISO_TRAVADO_MS = 5 * 60 * 1000;
+let ultimoAvisoTravado = 0;
+
+function avisarUsuarioTravado(
+  situacao: string,
+  userId: string,
+  detalhe: string,
+): void {
+  const agora = Date.now();
+  if (agora - ultimoAvisoTravado < INTERVALO_AVISO_TRAVADO_MS) return;
+  ultimoAvisoTravado = agora;
+  const mensagem = `[roadmap-ia] usuario TRAVADO: ${situacao}. user=${userId}. Detalhe: ${detalhe}`;
+  console.error(mensagem);
+  try {
+    Sentry.captureMessage(mensagem, {
+      level: "error",
+      tags: { area: "roadmap-ia", travado: "true", situacao },
+      fingerprint: ["roadmap-ia-travado", situacao],
+    });
+  } catch {
+    // Sentry desligado (DSN ausente) e no-op por desenho; o console.error acima
+    // ja garante o rastro. Mesmo padrao do avisarModoDegradado.
+  }
+}
 // Janela do bloqueio de geracao concorrente. Ajustavel. // TODO: calibrar.
 const CONCURRENT_WINDOW_MS = 5 * 60 * 1000;
 
@@ -121,6 +191,41 @@ async function setStatus(
   return true;
 }
 
+// Marca como failed as linhas `generating` do usuario mais velhas que a janela.
+// Elas sao geracoes que morreram no meio (processo caiu, deploy no meio do
+// stream). Best-effort: falha aqui nao impede a geracao nova, so deixa a linha
+// velha onde estava.
+async function expireStaleGenerating(
+  userId: string,
+  cutoffIso: string,
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("ai_roadmaps")
+    .update({ status: "failed", updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("status", "generating")
+    .lt("updated_at", cutoffIso);
+  if (error) {
+    console.warn(
+      "[roadmap-ia] expiracao de geracoes travadas falhou:",
+      error.message,
+    );
+  }
+}
+
+// A checagem de concorrencia em /generate continua onde esta, para dar o 429 sem
+// custo de insert; o indice unico parcial (20260730180000) fecha a corrida que
+// ela nao fecha, quando dois cliques passam pela checagem antes de qualquer
+// insert. A classificacao do erro mora em modulo puro para ser testavel sem
+// `.env` (ver o cabecalho de oneGenerating.ts).
+
+export class GenerationInProgressError extends Error {
+  constructor() {
+    super("generation_in_progress");
+    this.name = "GenerationInProgressError";
+  }
+}
+
 // Insere a linha do roadmap com retry de colisao de slug (unique global). A
 // colisao e improvavel (8 hex) e o retry regenera o slug sem nova chamada de IA.
 async function insertRoadmapRow(
@@ -145,9 +250,18 @@ async function insertRoadmapRow(
     if (!error && data) {
       return data as { id: string };
     }
-    if (error && error.code === "23505" && attempt < MAX_SLUG_ATTEMPTS) {
-      roadmap.slug = generateAiRoadmapSlug();
-      continue;
+    // 23505 tem DUAS causas aqui e elas pedem tratamentos opostos: colisao de
+    // slug se resolve gerando outro slug; violacao do indice de uma geracao por
+    // usuario significa que outra requisicao ganhou a corrida, e insistir criaria
+    // a geracao duplicada que o indice existe para impedir.
+    if (error && error.code === "23505") {
+      if (isOneGeneratingCollision(error)) {
+        throw new GenerationInProgressError();
+      }
+      if (attempt < MAX_SLUG_ATTEMPTS) {
+        roadmap.slug = generateAiRoadmapSlug();
+        continue;
+      }
     }
     throw new Error(`insert em ai_roadmaps falhou: ${error?.message ?? "sem dados"}`);
   }
@@ -235,6 +349,13 @@ async function concludeGeneration(
   ).length;
 
   if (filled === 0) {
+    // Nenhuma secao vingou: o roadmap existe mas esta vazio, e a unica saida da
+    // pessoa e retomar. Vira issue pelo mesmo motivo do esqueleto.
+    avisarUsuarioTravado(
+      "geracao sem nenhuma secao preenchida",
+      userId,
+      `secoes falhas: ${failed.length}`,
+    );
     // TODO(Ana): mensagem de falha parcial sem nada aproveitavel (retomada).
     sseSend(res, {
       type: "error",
@@ -297,19 +418,54 @@ async function finishGeneration(
   sseDone(res);
 }
 
-// Gate comum de geracao (generate e resume): Pro explicito e quota fail-closed.
-// Retorna false depois de responder via next() quando barrado.
-async function passesGenerationGate(
-  req: Request,
-  next: NextFunction,
-  requestId: string,
-): Promise<boolean> {
-  const userId = req.user!.id;
+// PRIMEIRA metade do gate: Pro explicito e servico configurado. NAO reserva cota.
+//
+// A separacao existe porque a reserva de vaga tem efeito colateral (insere linha
+// 'reserved' que ocupa cota por ate 10 minutos) e antes ela acontecia CEDO
+// demais: quem batia no 429 de geracao concorrente, ou no 500 do
+// buildGenerationContext, perdia uma vaga da propria cota sem nada ter sido
+// gerado, porque nenhum desses caminhos chamava logAiUsage.
+function passesProGate(req: Request, next: NextFunction): boolean {
   if (req.isPro !== true) {
     // TODO(Ana): mensagem de recurso exclusivo Pro.
     next(createError(403, "pro_required", "O Roadmap com IA e exclusivo do Plano Pro."));
     return false;
   }
+  if (!env.openaiApiKey) {
+    // TODO(Ana): mensagem de servico nao configurado.
+    next(createError(503, "upstream_error", "Servico de IA nao configurado."));
+    return false;
+  }
+  return true;
+}
+
+// Devolve a vaga reservada. `logAiUsage` com status diferente de 'success'
+// converte a linha 'reserved' em 'error', e o contador do dia so soma 'success'
+// e 'reserved': a vaga volta a ficar livre na hora, sem esperar os 10 minutos de
+// expiracao da reserva orfa.
+async function releaseReservation(
+  userId: string,
+  requestId: string,
+  motivo: string,
+): Promise<void> {
+  await logAiUsage({
+    userId,
+    tool: ROADMAP_GENERATOR_TOOL,
+    requestId,
+    status: "error",
+    errorMessage: motivo.slice(0, 300),
+  });
+}
+
+// SEGUNDA metade do gate: reserva ATOMICA da vaga. Chamada o mais tarde
+// possivel, imediatamente antes do caminho que fala com a OpenAI.
+// Retorna false depois de responder via next() quando barrado.
+async function reservesQuota(
+  req: Request,
+  next: NextFunction,
+  requestId: string,
+): Promise<boolean> {
+  const userId = req.user!.id;
   const usage = await checkAiDailyLimit(userId, true, "[roadmap-ia]", ROADMAP_GENERATOR_TOOL);
   if (!usage.allowed) {
     if (usage.verificationFailed) {
@@ -346,11 +502,6 @@ async function passesGenerationGate(
     );
     return false;
   }
-  if (!env.openaiApiKey) {
-    // TODO(Ana): mensagem de servico nao configurado.
-    next(createError(503, "upstream_error", "Servico de IA nao configurado."));
-    return false;
-  }
   return true;
 }
 
@@ -360,16 +511,29 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
   const userId = req.user!.id;
 
   try {
-    const parsedBody = RoadmapIntakeSchema.safeParse(req.body);
-    if (!parsedBody.success) {
-      // TODO(Ana): mensagem de respostas invalidas do entendimento.
+    // MESMA funcao que o chat usa para decidir canGenerate: o endpoint nao pode
+    // recusar um payload que a UI considerou gerável, nem aceitar um que ela
+    // considerou incompleto. A mensagem de erro NOMEIA o que falta, em vez do
+    // antigo "Respostas do entendimento invalidas" que nao dizia nada.
+    const readiness = buildGenerationIntake(req.body as Record<string, string>);
+    if (!readiness.canGenerate || !readiness.intake) {
+      await registrarRejeicao(
+        userId,
+        ROADMAP_GENERATOR_TOOL,
+        requestId,
+        "invalid_request",
+      );
       return next(
-        createError(400, "invalid_request", "Respostas do entendimento invalidas."),
+        createError(
+          400,
+          "invalid_request",
+          `Faltam informacoes para gerar: ${readiness.missing.join(", ")}.`,
+        ),
       );
     }
-    const intake = parsedBody.data;
+    const intake = readiness.intake;
 
-    if (!(await passesGenerationGate(req, next, requestId))) return;
+    if (!passesProGate(req, next)) return;
 
     // Anti-abuso: uma geracao ativa por vez. Fail-closed: erro na checagem
     // nao libera geracao concorrente.
@@ -382,6 +546,12 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
       .gte("updated_at", cutoff)
       .limit(1);
     if (activeError) {
+      await registrarRejeicao(
+        userId,
+        ROADMAP_GENERATOR_TOOL,
+        requestId,
+        "concurrency_check_failed",
+      );
       // TODO(Ana): mensagem de falha na checagem de geracao em andamento.
       return next(
         createError(
@@ -392,6 +562,12 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
       );
     }
     if ((activeRows ?? []).length > 0) {
+      await registrarRejeicao(
+        userId,
+        ROADMAP_GENERATOR_TOOL,
+        requestId,
+        "generation_in_progress",
+      );
       // TODO(Ana): mensagem de geracao ja em andamento.
       return next(
         createError(
@@ -402,7 +578,19 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
       );
     }
 
+    // Linha `generating` mais velha que a janela e geracao MORTA (o processo caiu
+    // no meio). Antes ela era so ignorada pelo filtro de cutoff acima e ficava
+    // orfa para sempre, aparecendo como "Interrompido" na lista sem nunca sair
+    // de la. Marcar como failed tambem e o que libera o indice unico parcial
+    // (um `generating` por usuario) para a proxima geracao.
+    await expireStaleGenerating(userId, cutoff);
+
     const context = await buildGenerationContext(userId, intake);
+
+    // RESERVA A VAGA AQUI, e nao no inicio: tudo que podia falhar sem gastar IA
+    // (Pro, concorrencia, contexto) ja passou. Daqui para a frente todo caminho
+    // de saida confirma ou devolve a reserva.
+    if (!(await reservesQuota(req, next, requestId))) return;
 
     sseInit(res);
 
@@ -418,20 +606,25 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
       const inserted = await insertRoadmapRow(userId, intake, roadmap);
       rowId = inserted.id;
     } catch (err) {
-      // Falha antes ou durante o insert: nao ha linha valida, nada cobrado.
+      // Falha antes ou durante o insert: nao ha linha valida, nada cobrado. O
+      // logAiUsage com status error tambem DEVOLVE a vaga reservada.
       const detail = err instanceof Error ? err.message : String(err);
+      const corrida = err instanceof GenerationInProgressError;
       console.error("[roadmap-ia] esqueleto falhou:", detail);
-      await logAiUsage({
-        userId,
-        tool: ROADMAP_GENERATOR_TOOL,
-        requestId,
-        status: "error",
-        errorMessage: detail.slice(0, 300),
-      });
+      await releaseReservation(userId, requestId, detail);
+      if (!corrida) {
+        // Sem esqueleto nao ha roadmap nenhum: a pessoa fica com a tela de erro
+        // e nada para retomar. E o pior desfecho da geracao.
+        avisarUsuarioTravado("esqueleto falhou apos os retries", userId, detail);
+      }
+      // Corrida de clique duplo perdida: a outra requisicao esta gerando de
+      // verdade, entao a mensagem e a mesma do 429, nao um erro de geracao.
       // TODO(Ana): mensagem de falha na geracao do esqueleto.
       sseSend(res, {
         type: "error",
-        message: "Nao consegui montar seu roadmap agora. Tente novamente.",
+        message: corrida
+          ? "Voce ja tem um roadmap sendo gerado. Aguarde alguns minutos."
+          : "Nao consegui montar seu roadmap agora. Tente novamente.",
       });
       sseDone(res);
       return;
@@ -458,6 +651,11 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
     );
   } catch (err) {
     // Barreira final: erro inesperado antes do SSE vira 500; depois, frame.
+    // Nos dois casos DEVOLVE a vaga, se ja havia sido reservada: sem isto um
+    // erro inesperado custaria uma chamada da cota da pessoa sem entregar nada.
+    // Devolver duas vezes e inofensivo (a segunda nao acha reserva em voo).
+    const detail = err instanceof Error ? err.message : String(err);
+    await releaseReservation(userId, requestId, `erro inesperado: ${detail}`);
     if (res.headersSent) {
       console.error("[roadmap-ia] erro inesperado no stream:", err);
       // TODO(Ana): mensagem de erro inesperado na geracao.
@@ -469,6 +667,28 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
   }
 });
 
+// Reduz a mensagem de erro de um turno a um CODIGO de baixa cardinalidade, para
+// o banco nunca receber texto livre vindo do provedor. Ver o comentario de
+// privacidade no catch da rota.
+function classificarFalhaDeTurno(message: string): string {
+  if (message.includes("upstream_timeout")) return "timeout";
+  const status = /OpenAI respondeu (\d{3})/.exec(message);
+  if (status) return `openai_${status[1]}`;
+  // O codigo sozinho nao diz QUAL campo o modelo errou, e sem isso o
+  // `schema_mismatch` nao e diagnosticavel (foi o que aconteceu com os 7 de
+  // 2026-08-03). `runIntakeChatTurn` ja monta a mensagem com `campos [...]`
+  // contendo APENAS caminhos de campo, nunca valores; aqui so extraimos.
+  if (message.includes("nao bateu com o schema")) {
+    const campos = /campos \[([^\]]*)\]/.exec(message);
+    return campos && campos[1]
+      ? `schema_mismatch:${campos[1]}`.slice(0, 200)
+      : "schema_mismatch";
+  }
+  if (message.includes("JSON valido")) return "invalid_json";
+  if (message.includes("nao retornou conteudo")) return "no_content";
+  return "upstream_error";
+}
+
 // POST /api/roadmaps-ia/intake/chat: um turno do chat de intake guiado. NAO gera
 // roadmap e NAO grava nada (efemero; o client mantem o historico e reenvia a
 // cada turno, como o agente e o chat de intake do plano de carreira). A geracao
@@ -477,20 +697,35 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
 router.post("/intake/chat", async (req: Request, res: Response, next: NextFunction) => {
   // Recheck fail-closed: conversar tambem e exclusivo do Pro (senao um usuario
   // free consumiria IA de graca), mesmo padrao do career-plan/intake/chat.
+  const userId = req.user!.id;
+  const requestId =
+    (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
+
   if (req.isPro !== true) {
+    await registrarRejeicao(
+      userId,
+      ROADMAP_INTAKE_CHAT_TOOL,
+      requestId,
+      "pro_required",
+    );
     // TODO(Ana): mensagem de recurso exclusivo Pro.
     return next(
       createError(403, "pro_required", "O Roadmap com IA e exclusivo do Plano Pro."),
     );
   }
 
-  const userId = req.user!.id;
-  const requestId =
-    (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
-
   const body = validateIntakeChatBody(req.body);
   if (!body.ok) {
+    await registrarRejeicao(
+      userId,
+      ROADMAP_INTAKE_CHAT_TOOL,
+      requestId,
+      body.error,
+    );
     if (body.error === "turn_limit") {
+      // O teto atingido e o estado em que a pessoa mais tem chance de ficar sem
+      // saida, entao ele vira issue, nao so linha de log.
+      avisarUsuarioTravado("teto de turnos do chat de intake", userId, "turn_limit");
       // TODO(Ana): mensagem de limite de turnos do chat (a UI oferece o formulario).
       return next(
         createError(
@@ -555,9 +790,14 @@ router.post("/intake/chat", async (req: Request, res: Response, next: NextFuncti
 
   let aiIo: IntakeChatAiIo = { inputChars: 0, outputChars: 0 };
   try {
-    const turn = await runIntakeChatTurn(userId, body.messages, (io) => {
-      aiIo = io;
-    });
+    const turn = await runIntakeChatTurn(
+      userId,
+      body.messages,
+      (io) => {
+        aiIo = io;
+      },
+      body.restantes,
+    );
     await logAiUsage({
       userId,
       tool: ROADMAP_INTAKE_CHAT_TOOL,
@@ -567,20 +807,36 @@ router.post("/intake/chat", async (req: Request, res: Response, next: NextFuncti
       outputChars: aiIo.outputChars,
       costEstimate: estimateCost(aiIo.inputChars, aiIo.outputChars, DEFAULT_MODEL),
     });
+    // canGenerate sai da MESMA funcao que o /generate usa (buildGenerationIntake),
+    // entao o botao da UI e o gate do endpoint nunca discordam. `missing` aqui e
+    // o do INTAKE (o que falta para gerar), diferente do `turn.missing` do
+    // modelo, que e o que falta para a CONVERSA terminar.
+    const readiness = buildGenerationIntake(turn.intake);
+    // `restantes` ja desconta a mensagem que a pessoa acabou de mandar, entao e
+    // quantas ela AINDA pode mandar depois desta resposta.
     res.json({
       reply: turn.reply,
       intake: turn.intake,
       missing: turn.missing,
       ready: turn.ready,
+      canGenerate: readiness.canGenerate,
+      missingToGenerate: readiness.missing,
+      restantes: body.restantes,
+      maxMensagens: MAX_USER_MESSAGES,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro desconhecido";
+    // PRIVACIDADE: o detalhe cru fica SO no log do servidor. Ele pode conter o
+    // corpo de erro da OpenAI, e o prompt que gerou esse erro carrega a fala da
+    // pessoa; gravar isso em ai_usage_logs seria persistir conversa em uma
+    // tabela de telemetria. No banco vai apenas o codigo classificado.
+    console.error(`[roadmap-intake-chat] turno falhou: ${message}`);
     await logAiUsage({
       userId,
       tool: ROADMAP_INTAKE_CHAT_TOOL,
       requestId,
       status: "error",
-      errorMessage: message,
+      errorMessage: classificarFalhaDeTurno(message),
       inputChars: aiIo.inputChars,
     });
     // TODO(Ana): mensagem de erro ao processar o turno do chat (502).
@@ -589,6 +845,7 @@ router.post("/intake/chat", async (req: Request, res: Response, next: NextFuncti
         502,
         "upstream_error",
         "Nao foi possivel responder agora. Tente de novo.",
+        { cause: err },
       ),
     );
   }
@@ -646,7 +903,7 @@ router.post("/:slug/resume", async (req: Request, res: Response, next: NextFunct
       return next(createError(500, "corrupted_roadmap", "Nao foi possivel retomar este roadmap."));
     }
 
-    if (!(await passesGenerationGate(req, next, requestId))) return;
+    if (!passesProGate(req, next)) return;
 
     // Lock otimista: flipa partial -> generating condicionado ao status ATUAL
     // ser partial. Zero linhas afetadas = outra retomada ja flipou (ou o
@@ -660,6 +917,18 @@ router.post("/:slug/resume", async (req: Request, res: Response, next: NextFunct
       .eq("status", "partial")
       .select("id");
     if (lockError) {
+      // O indice unico parcial (20260730180000) alcanca ESTE caminho tambem: o
+      // lock e um UPDATE que poe status='generating', entao ele colide quando a
+      // pessoa ja tem outra geracao ativa. Sem esta traducao a colisao cairia no
+      // 503 generico abaixo, que diz "tente novamente em instantes" sem nomear a
+      // causa. Mesmo 429 do /generate, porque o motivo e a saida sao os mesmos:
+      // esperar a outra geracao terminar.
+      if (isOneGeneratingCollision(lockError)) {
+        await registrarRejeicao(userId, ROADMAP_GENERATOR_TOOL, requestId, "generation_in_progress");
+        return next(
+          createError(429, "generation_in_progress", "Voce ja tem um roadmap sendo gerado. Aguarde alguns minutos."),
+        );
+      }
       // TODO(Ana): mensagem de falha ao iniciar a retomada.
       return next(
         createError(503, "resume_lock_failed", "Nao foi possivel iniciar a retomada agora. Tente novamente em instantes."),
@@ -674,6 +943,14 @@ router.post("/:slug/resume", async (req: Request, res: Response, next: NextFunct
     lockedRowId = row.id;
 
     const context = await buildGenerationContext(userId, parsedIntake.data);
+
+    // Reserva depois do lock e do contexto, mesmo racional do /generate. Se a
+    // reserva for negada, o lock precisa VOLTAR para partial, senao a linha fica
+    // presa em generating e nem a propria pessoa consegue retomar depois.
+    if (!(await reservesQuota(req, next, requestId))) {
+      await setStatus(row.id, userId, "partial");
+      return;
+    }
 
     sseInit(res);
 
@@ -706,10 +983,16 @@ router.post("/:slug/resume", async (req: Request, res: Response, next: NextFunct
     );
   } catch (err) {
     // Erro inesperado depois do lock: restaura partial para a retomada nao
-    // ficar presa em generating (o que bloquearia novas retomadas por 409).
+    // ficar presa em generating (o que bloquearia novas retomadas por 409) e
+    // devolve a vaga, que pode ter sido reservada antes do erro.
     if (lockedRowId) {
       await setStatus(lockedRowId, userId, "partial");
     }
+    await releaseReservation(
+      userId,
+      requestId,
+      `erro inesperado na retomada: ${err instanceof Error ? err.message : String(err)}`,
+    );
     if (res.headersSent) {
       console.error("[roadmap-ia] erro inesperado na retomada:", err);
       // TODO(Ana): mensagem de erro inesperado na retomada.

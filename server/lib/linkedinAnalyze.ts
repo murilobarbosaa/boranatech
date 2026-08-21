@@ -37,6 +37,7 @@ import {
   type LinkedinParsed,
 } from "../../shared/linkedin/parse";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "./openai";
+import { erroDaRespostaOpenAi, isFalhaPermanente } from "./openaiFailure";
 import { toOpenAIStrictSchema } from "./openaiStrictSchema";
 
 /**
@@ -131,7 +132,7 @@ export class LinkedinTruncatedError extends Error {
   }
 }
 
-const SYSTEM_PROMPT = `Você é um especialista sênior em LinkedIn para carreiras de tecnologia no Brasil, mentor da plataforma BoraNaTech. Seu público vai de iniciantes (estagiários, trainees, juniores, pessoas em transição de carreira) a profissionais de nível pleno. Seu trabalho é interpretar uma análise já calculada e reescrever as partes do perfil para que ele seja encontrado por recrutadores e receba mensagens.
+const SYSTEM_PROMPT = `Você é um especialista sênior em LinkedIn para carreiras de tecnologia no Brasil, mentor da plataforma BoraNaTech. Seu público vai de iniciantes (estagiários, trainees, juniores, pessoas em transição de carreira) a profissionais experientes. Seu trabalho é interpretar uma análise já calculada e reescrever as partes do perfil para que ele seja encontrado por recrutadores e receba mensagens.
 
 REGRA DOS FATOS: as checagens automáticas, a nota e as listas de palavras-chave encontradas e faltantes que você vai receber já foram calculadas e são fatos. Você não reavalia, não recalcula nota, não contradiz as checagens e não inventa informações que não estão no perfil. Se o perfil não menciona algo, você não pode afirmar que a pessoa sabe aquilo. Nas sugestões de skills, proponha apenas o que é plausível a partir do que o perfil já evidencia, e deixe claro que a pessoa só deve adicionar o que realmente sabe.
 
@@ -161,7 +162,9 @@ EXPERIÊNCIAS PARA INICIANTES: quem não tem experiência formal deve cadastrar 
 
 CALIBRAGEM DE TOM: a nota e a faixa indicam o estágio do perfil. Faixa início pede acolhimento e foco nos 3 passos de maior impacto, sem soterrar a pessoa. Faixa em construção pede reconhecimento do que existe e direção objetiva. Faixas forte e magnético pedem refinamento fino e ambição. Sempre direto, encorajador e concreto, nunca condescendente.
 
-NÍVEL PLENO: quando o nível do usuário for Pleno, trate como senioridade intermediária, não como iniciante. Aprofunde o lado técnico e os resultados: arquitetura, decisões de projeto, impacto medível e métricas nas reescritas. Não infle senioridade: nada de se vender como sênior, especialista ou líder se o perfil não evidencia isso. As orientações de projetos próprios como experiência valem menos aqui; priorize dar densidade ao que a pessoa já viveu profissionalmente.
+NÍVEL PLENO: quando o nível do usuário for Pleno, trate como senioridade intermediária, não como iniciante. Aprofunde o lado técnico e os resultados: arquitetura, decisões de projeto, impacto medível e métricas nas reescritas. As orientações de projetos próprios como experiência valem menos aqui; priorize dar densidade ao que a pessoa já viveu profissionalmente.
+
+SENIORIDADE, NOS DOIS SENTIDOS: não atribua à pessoa cargo, escopo ou liderança que o perfil não evidencia. E o inverso vale igual: quando o perfil EVIDENCIA senioridade (anos de experiência, cargo de liderança, decisão de arquitetura, fundação de empresa), não a rebaixe nem escreva como se ela estivesse começando. O que o perfil comprova é o teto e o piso ao mesmo tempo.
 
 ESTILO: português do Brasil. Proibido travessão e meia-risca, use ponto, vírgula ou parênteses. Sem emojis. Textos reescritos prontos para copiar e colar, na primeira pessoa quando for texto do perfil do usuário.
 
@@ -169,7 +172,21 @@ QUANTIDADES OBRIGATÓRIAS: de 3 a 5 pontosFortes, de 3 a 5 pontosFracos e de 4 a
 
 Responda apenas com o JSON do schema.`;
 // TODO(Ana): revisar o bloco de quantidades e proximoPasso do prompt.
-// TODO(Ana): revisar o paragrafo NIVEL PLENO e a frase de publico do prompt.
+// Copy FECHADA em 2026-08-04 (frase de publico + senioridade).
+//
+// O que saiu e por que: a frase de publico dizia "a profissionais de nivel
+// pleno", e o paragrafo NIVEL PLENO dizia "nada de se vender como senior,
+// especialista ou lider se o perfil nao evidencia isso". A condicional estava
+// certa; a ENUMERACAO e que fazia o dano, porque nomeava "senior, especialista,
+// lider" como coisas fora do alcance do publico, e o teto declarado na primeira
+// frase confirmava a leitura. Quem e senior de fato recebia isso como conselho.
+//
+// A regra anti-inflacao FICA, e continua sendo a certa: nao atribuir o que o
+// perfil nao evidencia. O que se acrescentou foi a simetria, que faltava: nao
+// REBAIXAR quem o perfil evidencia como senior. `LINKEDIN_LEVELS` ainda nao tem
+// `senior` (o seletor vai ate `pleno`), entao um senior de fato se declara
+// `pleno` e caia justamente no paragrafo que o mandava nao se vender como
+// senior. O nivel no seletor e outro item, com levantamento proprio.
 
 export interface AnalyzeAiIo {
   inputChars: number;
@@ -359,6 +376,22 @@ export function buildUserPrompt(
     `Mercado alvo: ${MERCADO_LABELS[request.mercado]}.`,
     "",
     ...objetivoBlock,
+    // ANTES do bloco de checagens, e nao junto de cada item. O modelo forma a
+    // leitura enquanto le os checks; instrucao no meio da lista chega tarde, e
+    // marcar item a item convida a comentar item a item, que e o oposto do que
+    // se quer. Ordem de apresentacao como parte do contrato, nao formatacao.
+    //
+    // CONDICIONAL: so entra quando a leitura esta em duvida. Se valesse sempre,
+    // a IA pararia de diagnosticar headline nos ~82% em que a leitura esta boa,
+    // e isso seria uma piora maior que o problema. `linkedinPromptPendente.test.ts`
+    // afirma as duas condicoes.
+    ...(deterministic.notaIncompleta === true
+      ? [
+          "LEITURA DA HEADLINE: em dúvida. O texto que extraímos pode estar cortado.",
+          "Por isso: NÃO afirme nada sobre o que a headline atual contém ou deixa de conter (não diga que falta stack, que está curta, que não tem cargo, nem elogie o que ela tem). Sugira uma headline nova normalmente, justificando pela área, pelo nível e pelas competências, nunca por comparação com a atual. E não mencione ao usuário que a leitura falhou: isso é estado do sistema, não conselho de carreira.",
+          "",
+        ]
+      : []),
     "Checagens automáticas já calculadas (são fatos, não reavalie nem contradiga):",
     checksBlock(deterministic),
     "",
@@ -423,10 +456,7 @@ async function runQualitativeOnce(
   );
 
   if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(
-      `OpenAI respondeu ${response.status}: ${text.slice(0, 300)}`,
-    );
+    throw await erroDaRespostaOpenAi(response);
   }
 
   const payload = (await response.json()) as {
@@ -496,6 +526,11 @@ async function runQualitative(
       // corta de novo. Retentar so faz a pessoa esperar o dobro pelo mesmo
       // erro, entao aborta o loop na hora.
       if (err instanceof LinkedinTruncatedError) break;
+      // Falha permanente da OpenAI (saldo esgotado, ou credencial invalida
+      // num 401/403): a tentativa seguinte colhe exatamente o mesmo erro,
+      // entao so custa um round-trip e o backoff. Rate limit e falha nao
+      // classificada seguem retentando.
+      if (isFalhaPermanente(err)) break;
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
       }
@@ -609,14 +644,49 @@ function experienciaDoBloco(
  * Teto de eventos de lastro no Sentry, por tipo e por processo.
  *
  * Mesmo cuidado do modo degradado da cota: um dia ruim do modelo geraria um
- * evento por analise e o alerta viraria ruido. O `console.warn` continua saindo
- * em TODA ocorrencia, entao a contagem exata fica no log; o Sentry recebe a
- * amostra que faz o problema aparecer no painel.
+ * evento por analise e o alerta viraria ruido.
+ *
+ * O TETO SUBCONTAVA, e essa era a divida. O `console.warn` sai em toda
+ * ocorrencia, mas `server/lib/sentry.ts` nao instala integracao de console
+ * (`docs/erro-engolido.md`), entao ele morre no log do Railway: a unica
+ * contagem visivel era a de eventos ENVIADOS, que e um por tipo por minuto e
+ * nao tem relacao com o volume real. Sem volume real, ajustar o prompt e depois
+ * dizer "melhorou" e afirmacao sem instrumento, que e exatamente o que a Etapa
+ * 2 desta frente vai precisar afirmar.
+ *
+ * A correcao NAO eleva o volume de eventos: o teto continua igual e o que muda
+ * e cada evento passar a carregar quantas ocorrencias ele representa. Duas
+ * formas de reconstituir o total na issue, e as duas concordam por construcao:
+ * somar `1 + ocorrencias_suprimidas_desde_ultimo` sobre os eventos do processo,
+ * ou ler o maior `total_no_processo`.
+ *
+ * O estado e POR PROCESSO e some no restart, igual ao teto que ja existia. Isso
+ * e limitacao conhecida e aceita: o alvo aqui e ordem de grandeza por tipo, nao
+ * contabilidade. Para contabilidade seria preciso um contador persistido, que e
+ * outra frente.
  */
 const INTERVALO_LASTRO_MS = 60 * 1000;
-const ultimoLastroPorTipo = new Map<string, number>();
 
-function registrarViolacao(v: Violacao): void {
+type ContagemDeTipo = {
+  /** Instante do ultimo evento ENVIADO ao Sentry, 0 se nunca. */
+  ultimoEnvioMs: number;
+  /** Ocorrencias que o teto engoliu desde aquele envio. */
+  suprimidasDesdeUltimo: number;
+  /** Todas as ocorrencias do tipo desde que o processo subiu. */
+  totalNoProcesso: number;
+};
+
+const contagemPorTipo = new Map<string, ContagemDeTipo>();
+
+/**
+ * Zera o estado por processo. SO para teste: sem isto um caso vaza contagem
+ * para o proximo e a suite fica dependente de ordem.
+ */
+export function __resetContagemDeLastroParaTeste(): void {
+  contagemPorTipo.clear();
+}
+
+export function registrarViolacao(v: Violacao): void {
   // NIVEL: `warning`, nao `error`, e a diferenca e deliberada. O modo degradado
   // da cota e `error` porque significa que uma PROTECAO ESTA DESLIGADA; uma
   // violacao de lastro significa o oposto, que a protecao FUNCIONOU e removeu o
@@ -627,9 +697,17 @@ function registrarViolacao(v: Violacao): void {
   // nao declara `integrations`, e `captureConsoleIntegration` NAO e padrao no
   // @sentry/node, entao console.warn nunca chegava la.
   const agora = Date.now();
-  const ultimo = ultimoLastroPorTipo.get(v.tipo) ?? 0;
-  if (agora - ultimo >= INTERVALO_LASTRO_MS) {
-    ultimoLastroPorTipo.set(v.tipo, agora);
+  const contagem = contagemPorTipo.get(v.tipo) ?? {
+    ultimoEnvioMs: 0,
+    suprimidasDesdeUltimo: 0,
+    totalNoProcesso: 0,
+  };
+  // A ocorrencia e contada ANTES da decisao de enviar: o total nao depende de
+  // ela ter cabido na janela, que e o defeito que este bloco existe para
+  // corrigir.
+  contagem.totalNoProcesso += 1;
+
+  if (agora - contagem.ultimoEnvioMs >= INTERVALO_LASTRO_MS) {
     try {
       Sentry.captureMessage(`ai_lastro_violado: ${v.tipo}`, {
         level: "warning",
@@ -637,12 +715,36 @@ function registrarViolacao(v: Violacao): void {
         // Um issue por TIPO: os quatro tipos sao problemas diferentes e nao
         // devem se esconder atras do volume um do outro.
         fingerprint: ["ai-lastro-violado", v.tipo],
-        extra: { campo: v.campo, termo: v.termo, contexto: v.contexto },
+        extra: {
+          campo: v.campo,
+          termo: v.termo,
+          contexto: v.contexto,
+          // Quantas ocorrencias o teto engoliu entre o evento anterior e este.
+          // Este evento representa ele mesmo MAIS estas.
+          ocorrencias_suprimidas_desde_ultimo: contagem.suprimidasDesdeUltimo,
+          // Acumulado do tipo desde o boot do processo. Redundante com a soma
+          // acima de proposito: se as duas divergirem numa issue, o proprio
+          // instrumento esta errado, e isso e visivel sem precisar de um
+          // terceiro numero para arbitrar.
+          total_no_processo: contagem.totalNoProcesso,
+        },
       });
     } catch {
       // Sentry desligado (DSN ausente) e no-op por desenho.
     }
+    // Zerado FORA do `try`, e de proposito: mesmo que o SDK lance, a janela
+    // reabre. Tratar "lancou" como "nao enviou" removeria o teto exatamente
+    // quando o Sentry esta ruim, que e quando ele menos aguenta volume. Sem DSN
+    // o `captureMessage` e no-op e nao lanca, entao na pratica este caminho e o
+    // do envio normal. O que se perde no caso patologico e a contagem de uma
+    // janela, nao o `total_no_processo`, que ja foi incrementado la em cima.
+    contagem.ultimoEnvioMs = agora;
+    contagem.suprimidasDesdeUltimo = 0;
+  } else {
+    contagem.suprimidasDesdeUltimo += 1;
   }
+
+  contagemPorTipo.set(v.tipo, contagem);
   // Log estruturado, mesmo formato da Fase 1A-bis, agora com o tipo
   // distinguido. Sai em TODA ocorrencia: e ele que da a contagem exata.
   console.warn(
@@ -860,6 +962,7 @@ export async function analyzeLinkedin(
     openToWork: request.openToWork,
     conexoes: request.conexoes,
     atividade: request.atividade,
+    headlineManual: request.headlineManual,
   });
 
   const quaseVazio =

@@ -1,7 +1,9 @@
+import * as Sentry from "@sentry/node";
 import { Router } from "express";
 import type { Request } from "express";
 
 import { isValidCpf } from "../../shared/certificates/types";
+import { prepararExclusaoDeConta } from "../lib/accountDeletion";
 import { PRO_AVATAR_BORDERS } from "../lib/avatarBorders";
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -15,6 +17,14 @@ import {
   type SkillKind,
   type SkillLevel,
 } from "../../shared/profileSkills";
+import {
+  EDITABLE_FIELDS,
+  PROFILE_TEXT_LIMITS,
+  PROFILE_URL_FIELDS,
+  PROFILE_URL_MAX,
+  validateProfileTextValue,
+  validateProfileUrlValue,
+} from "../../shared/profileFields";
 
 const router = Router();
 
@@ -22,40 +32,7 @@ const GENDER_SET = new Set<string>(GENDER_VALUES);
 const SKILL_KIND_SET = new Set<string>(SKILL_KINDS);
 const SKILL_LEVEL_SET = new Set<string>(SKILL_LEVELS);
 
-const PROFILE_TEXT_LIMITS: Record<string, number> = {
-  headline: 140,
-  city: 80,
-  uf: 40,
-  career_goal: 240,
-};
-const PROFILE_URL_FIELDS = ["github_url", "linkedin_url", "website_url"];
-const PROFILE_URL_MAX = 300;
 const SKILL_TEXT_MAX = 80;
-
-const EDITABLE_FIELDS = [
-  "name",
-  "handle",
-  "avatar_border",
-  "avatar_icon",
-  "avatar_bg",
-  "bio",
-  "area_interesse",
-  "nivel_atual",
-  "objetivo",
-  "onboarding_completed",
-  "onboarding_step",
-  "preferences",
-  "gender",
-  "headline",
-  "city",
-  "uf",
-  "career_goal",
-  "github_url",
-  "linkedin_url",
-  "website_url",
-  "full_name",
-  "cpf",
-];
 
 const AVATAR_VALUES = {
   avatar_border: new Set([
@@ -123,41 +100,16 @@ function validateAvatarPreference(
   return null;
 }
 
-function validateProfileText(field: string, value: unknown, max: number) {
-  if (value === null) return null;
-  if (typeof value !== "string") {
-    return createError(400, "invalid_request", `Valor inválido para ${field}.`);
-  }
-  if (value.length > max) {
-    return createError(
-      400,
-      "invalid_request",
-      `O campo ${field} excede o tamanho máximo.`,
-    );
-  }
-  return null;
+// Regra em shared/profileFields.ts: a MESMA que o admin usa. Aqui so envelopa
+// no createError do Express.
+function validateProfileText(field: string, value: unknown) {
+  const erro = validateProfileTextValue(field, value);
+  return erro ? createError(400, erro.code, erro.message) : null;
 }
 
 function validateProfileUrl(field: string, value: unknown) {
-  if (value === null) return null;
-  if (typeof value !== "string") {
-    return createError(400, "invalid_request", `Valor inválido para ${field}.`);
-  }
-  if (value.length > PROFILE_URL_MAX) {
-    return createError(
-      400,
-      "invalid_request",
-      `O campo ${field} excede o tamanho máximo.`,
-    );
-  }
-  if (value.trim() !== "" && !/^https?:\/\/.+/.test(value.trim())) {
-    return createError(
-      400,
-      "invalid_request",
-      `O campo ${field} deve ser uma URL http ou https.`,
-    );
-  }
-  return null;
+  const erro = validateProfileUrlValue(field, value);
+  return erro ? createError(400, erro.code, erro.message) : null;
 }
 
 async function enqueueWelcomeEmailIfNeeded(
@@ -260,10 +212,25 @@ router.patch("/", checkProStatus, async (req, res, next) => {
       }
     }
 
-    // Fora da whitelist de proposito: o carimbo de quando a pessoa consentiu
-    // (marketing_opt_in_at) e gravado pelo SERVER, nunca vindo do cliente.
-    // Desmarcar zera o consentimento e o carimbo. Nao toca a supressao global
+    // Fora da whitelist de proposito: o carimbo (marketing_opt_in_at) e gravado
+    // pelo SERVER, nunca vindo do cliente. Nao toca a supressao global
     // (email_suppressions), que e outra camada e vale acima do opt-in.
+    //
+    // Item 5.2. O carimbo passou a significar "quando a DECISAO foi registrada", e
+    // nao mais "quando a pessoa consentiu". Ou seja, `false` tambem carimba.
+    //
+    // O motivo e que precisamos distinguir "nunca perguntado" de "perguntado e
+    // recusado", e sem uma coluna nova (decisao D: sem migration neste passo) o
+    // unico sinal disponivel e este carimbo. Com a regra antiga (`false` zerava o
+    // carimbo) os dois estados eram literalmente a mesma linha, e por isso o card
+    // do /bem-vindo voltava a perguntar a quem ja tinha dispensado.
+    //
+    // NULL agora significa exatamente uma coisa: nunca perguntamos.
+    //
+    // Seguro para o envio de e-mail: TODA decisao de envio promocional filtra por
+    // `marketing_opt_in === true` (o booleano), nunca pelo carimbo. Conferido em
+    // audienceReach, emailCampaignQueue, notificationAudience e
+    // adminEmailCampaigns; o carimbo so aparece na listagem do admin.
     if ("marketing_opt_in" in body) {
       const value = body.marketing_opt_in;
       if (typeof value !== "boolean") {
@@ -276,7 +243,7 @@ router.patch("/", checkProStatus, async (req, res, next) => {
         );
       }
       updates.marketing_opt_in = value;
-      updates.marketing_opt_in_at = value ? new Date().toISOString() : null;
+      updates.marketing_opt_in_at = new Date().toISOString();
     }
 
     for (const field of Object.keys(AVATAR_VALUES) as Array<
@@ -317,9 +284,14 @@ router.patch("/", checkProStatus, async (req, res, next) => {
       }
     }
 
-    for (const [field, max] of Object.entries(PROFILE_TEXT_LIMITS)) {
+    // Todo campo de TEXTO passa por aqui: os que tem limite declarado (tipo +
+    // tamanho) e `handle`, que nao tem limite mas precisa da checagem de TIPO.
+    // Sem ela, um objeto no corpo chegava ao Postgres e virava erro de banco em
+    // vez de 400 (achado da Fatia 5a). A regra e a mesma que a rota do admin
+    // usa: shared/profileFields.ts.
+    for (const field of [...Object.keys(PROFILE_TEXT_LIMITS), "handle"]) {
       if (field in updates) {
-        const textError = validateProfileText(field, updates[field], max);
+        const textError = validateProfileText(field, updates[field]);
         if (textError) return next(textError);
       }
     }
@@ -463,19 +435,84 @@ router.get("/roadmaps", async (req, res, next) => {
   }
 });
 
+// EXCLUSAO DE CONTA. A ORDEM AQUI E A CORRECAO (D8).
+//
+// Ate 2026-08-14 esta rota chamava `deleteUser` e nada mais. Como todos os FKs
+// para `auth.users` sao ON DELETE CASCADE, `subscriptions` (e com ela o
+// `provider_customer_id`) desaparecia no mesmo instante, e a assinatura na
+// Stripe ficava viva, cobrando alguem que nao existe mais no produto. Foi
+// exatamente isso que aconteceu com `sub_1Tv4SX...` (ver
+// docs/investigacoes/2026-08-14-admin-visao-metricas.md).
+//
+// Por isso a Stripe vem PRIMEIRO: depois do delete nao ha mais como descobrir
+// quem era o customer. E por isso a falha dela ABORTA a exclusao: conta apagada
+// com cobranca viva e o pior dos estados possiveis, e e irreversivel do lado do
+// banco.
 router.delete("/", async (req, res, next) => {
   try {
     const userId = req.user!.id;
+
+    // FAIL-CLOSED. Se isto lancar, o `deleteUser` abaixo NAO roda.
+    let preparacao;
+    try {
+      preparacao = await prepararExclusaoDeConta(userId);
+    } catch (err) {
+      const mensagem =
+        `[me] exclusao ABORTADA para ${userId}: nao foi possivel encerrar a ` +
+        `assinatura na Stripe. Causa: ${err instanceof Error ? err.message : String(err)}`;
+      console.error(mensagem);
+      try {
+        Sentry.captureException(err, {
+          level: "error",
+          tags: { area: "account-deletion", etapa: "stripe" },
+          extra: { deleted_user_id: userId },
+          fingerprint: ["account-deletion-stripe"],
+        });
+      } catch {
+        // Sentry desligado: no-op, o console.error acima ja e o rastro.
+      }
+      return next(
+        createError(
+          502,
+          "subscription_cancel_failed",
+          "Não foi possível encerrar sua assinatura agora, então a conta NÃO foi excluída. Tente de novo em alguns minutos.",
+        ),
+      );
+    }
+
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
     if (error) {
-      console.error("[me] Erro ao excluir conta:", error);
+      // A assinatura JA foi cancelada e a conta continua de pe. E um estado
+      // meio-feito, e ele precisa aparecer nomeado em vez de virar so um 500.
+      console.error(
+        `[me] INCONSISTENCIA: assinatura de ${userId} cancelada na Stripe, mas a conta NAO foi excluida:`,
+        error,
+      );
+      try {
+        Sentry.captureMessage(
+          "[account-deletion] assinatura cancelada e conta NAO excluida",
+          {
+            level: "error",
+            tags: { area: "account-deletion", etapa: "supabase" },
+            extra: {
+              deleted_user_id: userId,
+              canceladas: preparacao.canceladas,
+            },
+            fingerprint: ["account-deletion-supabase"],
+          },
+        );
+      } catch {
+        // Sentry desligado: no-op.
+      }
       return next(
         createError(500, "delete_account_failed", "Erro ao excluir conta."),
       );
     }
 
-    console.log("[me] Conta excluída:", userId);
+    console.log(
+      `[me] Conta excluída: ${userId} (assinaturas canceladas: ${preparacao.canceladas.length})`,
+    );
     res.json({ success: true });
   } catch (err) {
     next(err);

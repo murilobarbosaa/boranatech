@@ -6,6 +6,7 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
 import { PasswordRequirements } from "@/components/auth/PasswordRequirements";
+import SignInWrapNotice from "@/components/auth/SignInWrapNotice";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { sanitizeReturnTo } from "@/lib/returnTo";
@@ -15,10 +16,7 @@ import {
   loginSchema,
   signupSchema,
 } from "@/lib/authSchemas";
-import {
-  getMyProfile,
-  PENDING_MARKETING_OPTIN_KEY,
-} from "@/services/profileService";
+import { getMyProfile } from "@/services/profileService";
 import { PENDING_CONSENT_KEY } from "@/services/consentService";
 import { greet } from "@shared/greeting";
 
@@ -38,10 +36,6 @@ export default function Auth({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<FriendlyError | null>(null);
   const [passwordFocused, setPasswordFocused] = useState(false);
-  const [acceptedConsent, setAcceptedConsent] = useState(false);
-  // Opt-in de marketing: OPCIONAL, nasce desmarcado (exigencia legal). Persistido
-  // em profiles.marketing_opt_in via a flag pendente consumida no SIGNED_IN.
-  const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   useEffect(() => {
     setError(null);
@@ -53,6 +47,22 @@ export default function Auth({
     setIsSubmitting(true);
 
     try {
+      // Item 4.3. Aceite pendente marcado em TODA iniciacao de auth, cadastro E
+      // login, antes de saber qual ramo vai rodar. O aviso do SignInWrapNotice
+      // esta abaixo deste formulario nos dois modos, entao o clique em "Criar
+      // minha conta" e o clique em "Entrar" sao a mesma manifestacao.
+      //
+      // Consumido pelo AuthContext no SIGNED_IN, quando ja ha identidade via JWT.
+      // Confirmacao de e-mail esta DESLIGADA neste projeto (mailer_autoconfirm),
+      // entao o SIGNED_IN sai na hora, nesta mesma aba. Nunca enviamos os flags em
+      // metadata do signUp.
+      //
+      // Marcado ANTES da validacao de propósito: o custo de uma flag que sobra
+      // (um POST idempotente a mais, se a pessoa corrigir e enviar de novo) e
+      // menor que o de uma que falta, e a validacao falhando nem chega a criar
+      // sessao, entao a flag so e consumida se o auth realmente acontecer.
+      sessionStorage.setItem(PENDING_CONSENT_KEY, "1");
+
       if (isSignup) {
         const parsed = signupSchema.safeParse({
           name,
@@ -64,18 +74,6 @@ export default function Auth({
           return;
         }
 
-        // Aceite pendente: gravado pelo AuthContext no SIGNED_IN, quando ha
-        // identidade via JWT. Com confirmacao de e-mail OFF, o signUp ja emite
-        // SIGNED_IN e o consentimento e gravado na hora. Com confirmacao ON nao ha
-        // sessao agora e a flag nao sobrevive a espera do e-mail (horas, outra aba):
-        // o ConsentGate cobre no primeiro login (degradacao aceita). Nunca enviamos
-        // os flags em metadata do signUp.
-        sessionStorage.setItem(PENDING_CONSENT_KEY, "1");
-        // Opt-in de marketing: so grava a flag se marcado (persistimos so o "true";
-        // o default do banco ja e false). Consumida no SIGNED_IN, igual ao consent.
-        if (marketingOptIn) {
-          sessionStorage.setItem(PENDING_MARKETING_OPTIN_KEY, "1");
-        }
         await signUp(parsed.data);
         getMyProfile().catch((triggerErr) => {
           console.warn("[Auth] failed to trigger welcome email:", triggerErr);
@@ -140,7 +138,7 @@ export default function Auth({
             {/* Login: social acima do form (inalterado). No cadastro o social vai
                 para baixo do form, junto dos checkboxes (ver abaixo). */}
             {!isSignup && (
-              <SocialAuthButtons mode={mode} consentAccepted={acceptedConsent} />
+              <SocialAuthButtons mode={mode} />
             )}
             {error && (
               <div
@@ -219,57 +217,15 @@ export default function Auth({
                   isFocused={passwordFocused}
                 />
               )}
-              {isSignup && (
-                <label className="flex items-start gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 h-4 w-4 flex-shrink-0"
-                    checked={acceptedConsent}
-                    onChange={(event) => setAcceptedConsent(event.target.checked)}
-                  />
-                  {/* TODO(Ana): texto do aceite de Termos e Politica no cadastro. */}
-                  <span>
-                    Li e aceito os{" "}
-                    <a
-                      href="/termos-de-uso"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-bold text-violet-700 underline"
-                    >
-                      Termos de Uso
-                    </a>{" "}
-                    e a{" "}
-                    <a
-                      href="/privacidade"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-bold text-violet-700 underline"
-                    >
-                      Política de Privacidade
-                    </a>
-                    .
-                  </span>
-                </label>
-              )}
-              {/* Opt-in de marketing: OPCIONAL, nasce desmarcado (exigencia legal),
-                  visualmente mais leve que o aceite. Nao bloqueia submit nem Google. */}
-              {isSignup && (
-                <label className="flex items-start gap-2 text-xs text-slate-500">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 h-3.5 w-3.5 flex-shrink-0"
-                    checked={marketingOptIn}
-                    onChange={(event) => setMarketingOptIn(event.target.checked)}
-                  />
-                  <span>
-                    Aceito receber novidades, conteúdos e ofertas do Bora na
-                    Tech por e-mail. Você pode cancelar quando quiser.
-                  </span>
-                </label>
-              )}
+              {/* Itens 4.2 e 5.1. Aqui viviam dois checkboxes: o de aceite dos
+                  termos, que bloqueava o submit, e o de opt-in de marketing.
+                  O primeiro virou o SignInWrapNotice abaixo dos botoes; o segundo
+                  saiu do cadastro por inteiro, porque consentimento de marketing
+                  precisa ser especifico e destacado (LGPD art. 8 par. 4) e nao pode
+                  vir empacotado com os termos nem condicionar o uso do servico. */}
               <button
                 className="btn-brutal-accent inline-flex w-full justify-center rounded-full px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isSubmitting || (isSignup && !acceptedConsent)}
+                disabled={isSubmitting}
                 type="submit"
               >
                 {/* TODO(Ana): rotulo do botao de cadastro (agora leva a /bem-vindo). */}
@@ -290,15 +246,15 @@ export default function Auth({
                   <div className="h-px flex-1 bg-slate-200" />
                 </div>
                 <div className="mt-4">
-                  <SocialAuthButtons
-                    mode={mode}
-                    consentAccepted={acceptedConsent}
-                    marketingOptIn={marketingOptIn}
-                    showDivider={false}
-                  />
+                  <SocialAuthButtons mode={mode} showDivider={false} />
                 </div>
               </div>
             )}
+            {/* Item 4.2. Abaixo do ULTIMO controle de auth da tela nos dois modos:
+                no cadastro o botao do Google fecha o bloco, no login o submit do
+                formulario fecha. O aviso precisa estar depois do que a pessoa
+                clica e antes da dobra. */}
+            <SignInWrapNotice />
             {!isSignup && (
               <Link
                 href="/recuperar-senha"

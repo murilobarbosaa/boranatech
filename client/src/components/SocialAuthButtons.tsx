@@ -4,21 +4,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { rememberSignupSource, signupSourceFromUrl } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { PENDING_CONSENT_KEY } from "@/services/consentService";
-import { PENDING_MARKETING_OPTIN_KEY } from "@/services/profileService";
 
 type SocialAuthButtonsProps = {
   mode: "login" | "cadastro";
   onBeforeOAuth?: () => void;
   showDivider?: boolean;
   redirectTo?: string;
-  // Aceite dos termos (so no cadastro). Marca a flag de consentimento pendente
-  // antes do redirect OAuth para o AuthContext gravar no retorno. Sem aceite, o
-  // ConsentGate cobre no primeiro login (degradacao aceita).
-  consentAccepted?: boolean;
-  // Opt-in de marketing (opcional, so no cadastro). Marca a flag pendente antes do
-  // redirect OAuth; o AuthContext grava marketing_opt_in no retorno. Desmarcado nao
-  // grava nada (o default do banco ja e false).
-  marketingOptIn?: boolean;
 };
 
 type SocialProvider = "google";
@@ -65,8 +56,6 @@ export default function SocialAuthButtons({
   onBeforeOAuth,
   showDivider = true,
   redirectTo,
-  consentAccepted = false,
-  marketingOptIn = false,
 }: SocialAuthButtonsProps) {
   const { signInWithOAuth } = useAuth();
   const [loadingProvider, setLoadingProvider] = useState<SocialProvider | null>(
@@ -84,20 +73,27 @@ export default function SocialAuthButtons({
 
     try {
       onBeforeOAuth?.();
+      // Item 4.3. A flag de consentimento pendente e gravada em TODA iniciacao de
+      // auth, e nao so no cadastro, porque com consentimento implicito o CLIQUE e
+      // o consentimento em qualquer caminho: o aviso de Termos e Politica esta ao
+      // lado do botao que a pessoa acabou de clicar, no login e no cadastro.
+      //
+      // Fora do `if (mode === "cadastro")` DE PROPOSITO, e essa e a lacuna
+      // deterministica que explica os 23 usuarios de Google sem linha nenhuma:
+      // conta nova criada por quem clicou em "Entrar com Google" na tela de LOGIN
+      // nascia sem consentimento registrado, porque o unico caminho que gravava a
+      // flag era o de cadastro. O Supabase cria a conta do mesmo jeito nos dois.
+      //
+      // Efeito colateral desejado: para quem ja tem conta, o clique passa a
+      // reafirmar o aceite na versao vigente, e o POST e idempotente
+      // (ON CONFLICT DO NOTHING), entao um bump de versao se auto-resolve no
+      // proximo login em vez de exigir o modal.
+      sessionStorage.setItem(PENDING_CONSENT_KEY, "1");
       if (mode === "cadastro") {
         localStorage.setItem("bnt_social_signup_pending", "true");
         // OAuth perde o returnTo no round-trip; persiste a origem agora (ainda
         // em /cadastro?returnTo=...) pro user_signed_up ler no retorno.
         rememberSignupSource(signupSourceFromUrl());
-        // So grava o aceite se o usuario marcou o checkbox de termos. Sem isso, o
-        // ConsentGate pede o aceite no primeiro login.
-        if (consentAccepted) {
-          sessionStorage.setItem(PENDING_CONSENT_KEY, "1");
-        }
-        // So grava a flag de opt-in se marcado; desmarcado nao persiste (default false).
-        if (marketingOptIn) {
-          sessionStorage.setItem(PENDING_MARKETING_OPTIN_KEY, "1");
-        }
       }
       await signInWithOAuth(provider, redirectTo ? { redirectTo } : undefined);
     } catch (error) {
@@ -121,19 +117,20 @@ export default function SocialAuthButtons({
         </div>
       )}
 
-      {/* No cadastro, exige o aceite dos termos antes do OAuth (igual ao botao de
-          e-mail/senha, que ja e desabilitado sem o aceite). Fecha o buraco de criar
-          conta por Google sem consentimento — vale para /cadastro e para o modal. */}
+      {/* Item 4.1. NENHUM botao de auth fica disabled por causa de termos. O
+          `blockedByConsent` que existia aqui travava o botao do Google ate a
+          pessoa achar e marcar um checkbox que ficava longe dele, e o aviso de
+          consentimento agora vive ABAIXO destes botoes (sign-in wrap): o clique e
+          a manifestacao. O unico disabled que sobra e o de requisicao em voo. */}
       <div className={cn("grid gap-3", showDivider && "mt-4")}>
         {enabledProviders.map((provider) => {
           const isLoading = loadingProvider === provider.id;
-          const blockedByConsent = mode === "cadastro" && !consentAccepted;
           return (
             <button
               key={provider.id}
               type="button"
               onClick={() => handleProviderClick(provider.id)}
-              disabled={loadingProvider !== null || blockedByConsent}
+              disabled={loadingProvider !== null}
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-60"
               aria-label={`${mode === "cadastro" ? "Cadastrar" : "Entrar"} com ${provider.label}`}
             >

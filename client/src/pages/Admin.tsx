@@ -22,7 +22,6 @@ import {
   Compass,
   Copy,
   CreditCard,
-  Database,
   DollarSign,
   Eye,
   FileText,
@@ -32,26 +31,23 @@ import {
   LayoutDashboard,
   Link as LinkIcon,
   LockKeyhole,
-  SquareKanban,
   LogOut,
-  Mail,
   MousePointerClick,
-  PieChart,
   PlusCircle,
   RefreshCcw,
   Search,
   Send,
-  Server,
   ShieldCheck,
-  Sparkles,
+  SquareKanban,
   Star,
   Tag,
   TicketPercent,
+  TrendingDown,
   Trophy,
-  X,
   UserRound,
   Users,
   WalletCards,
+  X,
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -59,8 +55,8 @@ import { CancellationReasonsDashboard } from "@/components/admin/CancellationRea
 import { UsageRetentionDashboard } from "@/components/admin/UsageRetentionDashboard";
 import { ContactListsManager } from "@/components/admin/ContactListsManager";
 import { ConversionDashboard } from "@/components/admin/ConversionDashboard";
-import { BugsDashboard } from "@/components/admin/BugsDashboard";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import { limparChavesDeSecao } from "@/components/admin/tasks/taskViewState";
 import { TasksErrorBoundary } from "@/components/admin/tasks/TasksErrorBoundary";
 import { TasksPanelSkeleton } from "@/components/admin/tasks/TasksPanelSkeleton";
 
@@ -81,9 +77,31 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
-import { IntegrationsHealthPanel } from "@/components/admin/IntegrationsHealthPanel";
+import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
+import { HealthBand } from "@/components/admin/overview/HealthBand";
+import { PaidFunnel } from "@/components/admin/overview/PaidFunnel";
+import { SignupChart } from "@/components/admin/overview/SignupChart";
+import { SubscriptionChart } from "@/components/admin/overview/SubscriptionChart";
+import {
+  OverviewPeriod,
+  parseOverviewWindow,
+  type OverviewWindow,
+} from "@/components/admin/overview/OverviewPeriod";
+import { rotuloDeVariacao } from "@/components/admin/overview/overviewChange";
+import { detalheDeRisco } from "@/components/admin/overview/riskCopy";
+import { AttentionPanel } from "@/components/admin/overview/AttentionPanel";
+import { WindowBadge } from "@/components/admin/overview/WindowBadge";
+import { DeltaBadge } from "@/components/admin/overview/DeltaBadge";
+import { FunnelDigest } from "@/components/admin/overview/FunnelDigest";
+import { MetricSparkline } from "@/components/admin/overview/MetricSparkline";
+import {
+  CostVsRevenueChart,
+  ProConversionsChart,
+  serieDe,
+} from "@/components/admin/overview/SeriesCharts";
+import { ToolUsagePanel } from "@/components/admin/overview/ToolUsagePanel";
 import { PagesDashboard } from "@/components/admin/PagesDashboard";
-import { UsersDashboard } from "@/components/admin/UsersDashboard";
+import { UsersDashboard } from "@/components/admin/users/UsersDashboard";
 import PendingIntegration from "@/components/admin/PendingIntegration";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 import {
@@ -102,7 +120,6 @@ import {
   renderCampaignBodyHtml,
 } from "@shared/emailCampaignBody";
 import { readAdminClaim } from "@/lib/adminClaim";
-import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 
 type AdminSession = {
@@ -113,11 +130,35 @@ type AdminSession = {
 };
 
 type MetricCard = {
+  /**
+   * IDENTIDADE ESTAVEL do card, independente da copy.
+   *
+   * A hierarquia 3+4 casava por RÓTULO VISÍVEL, e a rodada 8 renomeou "Acesso
+   * Pro" para "Assinantes Pro" sem tocar na lista: o card caiu para a linha
+   * secundária e a tela virou 2+5, sem nada acusar. Renomear copy é operação
+   * corriqueira; reordenar a tela não pode ser efeito colateral dela.
+   */
+  key: string;
   label: string;
   value: string;
   detail: string;
   icon: ReactNode;
   color: string;
+  /** Rótulo de variação. `null` = a série não sustenta comparação. */
+  change?: { texto: string; tom: "alta" | "baixa" | "neutro" } | null;
+  /** Aba que aprofunda. Sem isto o card não é clicável. */
+  destino?: AdminSectionId;
+  /**
+   * Mini-gráfico da série do card. NÃO entra em métrica cumulativa
+   * ("Usuários totais" só sobe por construção, e a diagonal não informa nada).
+   */
+  sparkline?: ReactNode;
+  /**
+   * Uma linha a mais, para o que é derivado do próprio card (ARPU, custo por
+   * assinante). Card novo para cada derivada encheria a tela sem responder
+   * pergunta nova.
+   */
+  secundaria?: string | null;
 };
 
 type AiUsage = {
@@ -128,21 +169,6 @@ type AiUsage = {
   // Custo numerico bruto (nao formatado), para a barra de proporcao.
   costValue: number;
   status: "ok" | "watch" | "high";
-};
-
-type QueueStats = {
-  waiting: number;
-  active: number;
-  completed: number;
-  failed: number;
-};
-
-type HealthItem = {
-  service: string;
-  status: string;
-  detail: string;
-  icon: ReactNode;
-  tone: string;
 };
 
 type AffiliateRecord = {
@@ -219,25 +245,137 @@ type AdminSectionId =
   | "notificacoes"
   | "beta"
   | "vagas"
-  | "bugs"
   | "tarefas";
 
-type DashboardData = {
-  counts?: {
-    users: number;
-    active_subscriptions: number;
-    areas: number;
-    courses: number;
-    ai_calls_total: number;
+/** O que GET /admin/overview devolve. Ver o cabeçalho da rota para as fontes. */
+type OverviewChange =
+  | {
+      disponivel: true;
+      atual: number;
+      anterior: number;
+      delta: number;
+      percent: number | null;
+    }
+  | { disponivel: false; atual: number; motivo: string };
+
+type OverviewData = {
+  window: string;
+  windowStartIso: string | null;
+  windowEndIso: string;
+  /** Dias civis da janela e o rótulo pronto. Ver server/lib/overviewWindow.ts. */
+  windowFirstDay: string | null;
+  windowLastDay: string;
+  windowLabel: string;
+  previousLabel: string | null;
+  /** Fuso que governa a Visão inteira, declarado pelo servidor. */
+  tz: string;
+  cards: {
+    /** Total SEM janela, da mesma fonte do contador público da home. */
+    usuariosTotais: { value: number | null };
+    novosUsuarios: {
+      value: number;
+      historicoDesde: string | null;
+      change: OverviewChange;
+    };
+    acessoPro: {
+      bySubscription: number;
+      byInfluencer: number;
+      /** Interseção dos dois ramos. `bySubscription` e `byInfluencer` a INCLUEM. */
+      both: number;
+      /** União deduplicada. É este o headline: somar as parcelas conta `both` duas vezes. */
+      total: number;
+    };
+    mrr: {
+      value: number;
+      activeCount: number;
+      trialingCount: number;
+      arpuCents: number | null;
+    };
+    receita: {
+      value: number;
+      reembolsosCents: number;
+      taxasCents: number;
+      liquidaCents: number;
+      historicoDesde: string | null;
+      change: OverviewChange;
+    };
+    receitaEmRisco: {
+      /** Soma das duas famílias abaixo. É este o headline do card. */
+      count: number;
+      mrrCents: number;
+      /**
+       * Breakdown D21. OPCIONAIS de propósito: na janela de deploy o backend
+       * antigo ainda responde sem eles, e o card precisa cair na frase genérica
+       * em vez de imprimir "undefined saindo".
+       */
+      saindo?: { count: number; mrrCents: number };
+      emAtraso?: { count: number; mrrCents: number };
+      percentOfMrr: number | null;
+    };
+    custoIa: {
+      /** O valor é em DÓLAR: MODEL_PRICING é cotada em US$/1M tokens. */
+      valueUsd: number;
+      /** Alias do rename, mesmo número. Remover a partir de 2026-09-15. */
+      valueBrl: number;
+      chamadasSemCustoMedido: number;
+      /** Null quando AI_COST_USD_BRL_RATE não está definida. Ausência, não 0. */
+      valorEmBrl: number | null;
+      cotacaoUsdBrl: number | null;
+    };
   };
-  recent_audit?: AuditLog[];
 };
 
-type HealthResponse = {
-  status: string;
-  uptime?: number;
-  responseTime?: number;
-  checks?: Record<string, string>;
+/** O que GET /admin/overview-series devolve. Ver server/lib/overviewSeries.ts. */
+type SeriesData = {
+  series: Array<{
+    chave: string;
+    rotulo: string;
+    tipo: string;
+    direcao: "up_bom" | "up_ruim";
+    pontos: Array<{ date: string; value: number | null; partial: boolean }>;
+    total: number | null;
+  }>;
+  funil: {
+    passos: Array<{
+      chave: string;
+      rotulo: string;
+      valor: number;
+      taxaSobreAnterior: number | null;
+    }>;
+    destaque: string | null;
+    anterior: { cadastro: number; pro: number; proComUso: number } | null;
+    motivoSemDelta: string;
+  };
+  ferramentas: Array<{
+    tool: string;
+    chamadas: number;
+    custoUsd: number;
+    semCustoMedido: number;
+  }>;
+  windowLabel: string;
+  tz: string;
+};
+
+/** O que GET /admin/attention devolve. Ver server/lib/atencaoNecessaria.ts. */
+type AttentionData = {
+  itens: Array<{
+    tipo: string;
+    chave: string;
+    severidade: "critico" | "atencao";
+    titulo: string;
+    detalhe: string;
+    valorCents?: number;
+    url: string;
+  }>;
+  fontesIndisponiveis: string[];
+  janelaDias: number;
+};
+
+// De /dashboard sobrou o registro de auditoria. Os contadores foram podados na
+// fatia 9 junto com os blocos que os exibiam; quem conta gente e dinheiro hoje e
+// /overview.
+type DashboardData = {
+  recent_audit?: AuditLog[];
 };
 
 type AuditLog = {
@@ -247,10 +385,102 @@ type AuditLog = {
   created_at: string;
 };
 
+// O que GET /admin/ai-stats devolve: `agregarUsoDeIa` cru. Ver
+// server/lib/aiUsageStats.ts, que declara a unidade de `cost` como DOLAR.
 type AiStatsData = Record<
   string,
-  { calls: number; success: number; cost: number }
+  {
+    calls: number;
+    success: number;
+    /** Soma de `cost_estimate`, em DÓLAR (MODEL_PRICING é cotada em US$/1M). */
+    cost: number;
+    /**
+     * OPCIONAL de propósito: a Vercel sobe antes do Railway, e na janela de
+     * deploy o bundle novo ainda pode receber a resposta do backend anterior a
+     * este campo. Ausente é ausente, não zero: zero afirmaria "tudo medido".
+     */
+    semCustoMedido?: number;
+  }
 >;
+
+/**
+ * Linha de cadastros do card "Usuarios totais".
+ *
+ * Ausencia e NOMEADA: `formatCount` devolve "0" para `null` (`value || 0`), e
+ * "0 cadastros" e indistinguivel de "nenhum cadastro no periodo", que e um fato
+ * diferente. A guarda de tipo e explicita por isso, e nao por paranoia com o
+ * contrato: o campo e `number` no tipo, mas quem responde e a rede.
+ *
+ * A VARIACAO entra como TEXTO, nunca como o badge `change` do card. O badge
+ * deste card seria lido como variacao do TOTAL de usuarios, que e falso: o total
+ * nao tem periodo anterior, ele so acumula. Aqui a variacao esta claramente
+ * presa a frase dos cadastros.
+ *
+ * E ela so entra quando a comparacao EXISTE. A frase de motivo ("Dados comecam
+ * no meio do periodo, sem comparacao") existe para o caso em que o Δ ausente
+ * deixaria um vazio com cara de defeito; aqui nao ha vazio nenhum, a linha ja
+ * diz quantos cadastros houve, e o parentese explicando uma comparacao que o
+ * card nunca prometeu seria ruido.
+ */
+function secundariaDeCadastros(
+  novosUsuarios: OverviewData["cards"]["novosUsuarios"] | undefined,
+  janelaLabel: string,
+): string {
+  const valor = novosUsuarios?.value;
+  // TODO(Ana)
+  if (typeof valor !== "number") return "Cadastros indisponíveis no período";
+  // TODO(Ana)
+  const base = `${formatCount(valor)} cadastros ${janelaLabel}`;
+  const variacao = novosUsuarios?.change?.disponivel
+    ? rotuloDeVariacao(novosUsuarios.change, novosUsuarios.historicoDesde)
+    : null;
+  return variacao ? `${base} (${variacao.texto})` : base;
+}
+
+/**
+ * O que GET /admin/online-now devolve (server/lib/posthog.ts).
+ *
+ * Union DISCRIMINADO, e nunca um numero solto: "0 online" e indistinguivel de
+ * "PostHog fora do ar", e a segunda leitura e a que muda o que alguem faz.
+ */
+type OnlineNowData =
+  | { state: "not_configured"; missing?: string[] }
+  | { state: "error"; reason?: string; httpStatus?: number }
+  | { state: "ok"; atividade?: { online: number; hojePessoas: number } };
+
+/** De quanto em quanto tempo o card de presenca se refaz. */
+const ONLINE_NOW_REFRESH_MS = 60_000;
+
+/**
+ * Valor e linha secundaria do card "Atividade agora", por RESOLVER.
+ *
+ * Nunca por acesso direto ao estado: um `state` novo no servidor que o bundle
+ * ainda nao conheca cai no ramo neutro ("indisponivel") em vez de derrubar a
+ * pagina, que e a regra do projeto. E o fallback de ausencia e SEMPRE textual:
+ * zero aqui seria um numero plausivel sobre uma medicao que nao aconteceu.
+ */
+function atividadeDoCard(dado: OnlineNowData | null): {
+  value: string;
+  secundaria: string;
+} {
+  // TODO(Ana)
+  if (!dado) return { value: "...", secundaria: "Consultando o PostHog" };
+  if (dado.state === "ok" && typeof dado.atividade?.online === "number") {
+    return {
+      value: formatCount(dado.atividade.online),
+      // TODO(Ana)
+      secundaria: `${formatCount(dado.atividade.hojePessoas)} pessoas ativas hoje`,
+    };
+  }
+  return {
+    // TODO(Ana)
+    value: "indisponível",
+    secundaria:
+      dado.state === "not_configured"
+        ? "PostHog não configurado"
+        : "PostHog indisponível",
+  };
+}
 
 type ChurnRiskUser = {
   name: string;
@@ -294,22 +524,31 @@ type MrrSnapshot = {
   byPlan: PlanMrr[];
 };
 
+// Contexto que ACOMPANHA o churn e nao entra nele. Opcional em ambos os ramos
+// porque na janela de deploy o frontend novo fala com o backend antigo, que nao
+// manda estes campos.
+type ChurnContext = {
+  scheduledNotCounted?: number;
+  revertedInWindow?: number;
+  orphanCancellations?: number;
+};
+
 type ChurnSnapshot =
-  | {
+  | ({
       status: "insufficient_data";
       reason: string;
       windowDays: number;
       canceledInWindow?: number;
       activeAtStart?: number;
-    }
-  | {
+    } & ChurnContext)
+  | ({
       status: "ok";
       windowDays: number;
       churnRate: number;
       canceledInWindow: number;
       activeAtStart: number;
       ltvCents: number | null;
-    };
+    } & ChurnContext);
 
 type BillingMetricsData = { mrr: MrrSnapshot; churn: ChurnSnapshot };
 
@@ -342,25 +581,58 @@ type ContentType =
   | "courses"
   | "roadmaps";
 
-// Cada card declara seu proprio label junto do proprio valor (sem override em
-// runtime). O label da base e o mesmo exibido; adminMetricCards so preenche os
-// valores reais, nunca troca o label por outro nao relacionado.
-const metricCards: MetricCard[] = [
+// Cada card declara seu proprio label junto do proprio valor. O label da base e
+// o MESMO exibido pelo card carregado: `adminMetricCards` preenche valores
+// reais, nunca troca o label por outro nao relacionado. Isso importa porque esta
+// base e o que a tela mostra quando o payload chega sem `cards`, e um label de
+// fallback divergente do carregado seria um card fantasma, com outro assunto.
+//
+// A `key` e o que a hierarquia 3+4 usa. Ela e estavel; o `label` e copy.
+export const metricCards: MetricCard[] = [
   {
-    label: "Usuários",
+    key: "usuarios_totais",
+    // TOTAL, SEM JANELA, e a MESMA fonte do contador público da home
+    // (server/lib/profilesCount.ts). Existe porque a única forma de ver o total
+    // era mudar o seletor para "Tudo", o que muda os outros cinco cards junto —
+    // e a ausência dele foi lida como divergência contra a home (4.790 vs 5.456)
+    // quando os dois números estavam certos e respondiam perguntas diferentes.
+    label: "Usuários totais",
     value: "0",
-    detail: "Perfis cadastrados no banco",
+    detail: "Desde o início, sem recorte de período",
     icon: <Users className="h-6 w-6" />,
-    color: "bg-violet-700 text-white",
+    color: "bg-violet-800 text-white",
   },
   {
+    // "Novos usuários" SAIU daqui, e o motivo não foi espaço: na janela "Tudo"
+    // ele repetia o card de total, e cadastro é a derivada do total, não uma
+    // segunda pergunta. A série foi para dentro de "Usuários totais" (slot 0), e
+    // este slot passou a responder o que a Visão não respondia: quem está no
+    // site AGORA.
+    key: "atividade_agora",
+    label: "Atividade agora",
+    value: "0",
+    // A RESSALVA VIVE NO CARD, não numa nota de rodapé: presença medida por
+    // analytics é sempre um piso, e quem lê precisa saber disso no mesmo olhar.
+    // TODO(Ana)
+    detail:
+      "Estado atual, ignora o seletor. PostHog nos últimos 5 minutos, sem quem bloqueia rastreio.",
+    icon: <Activity className="h-6 w-6" />,
+    color: "bg-sky-600 text-white",
+  },
+  {
+    key: "assinantes_pro",
+    // O rotulo diz o que o numero CONTA: assinantes pagantes. O acesso Pro tem
+    // um segundo ramo (concessao de influencer) que nao entra neste valor e
+    // aparece no detalhe, logo abaixo. Somar os dois pioraria a metrica de
+    // receita; esconder o segundo foi o que causou a confusao na aba Usuarios.
     label: "Assinantes Pro",
     value: "0",
-    detail: "Assinaturas ativas no banco",
+    detail: "Quem tem assinatura paga",
     icon: <CreditCard className="h-6 w-6" />,
     color: "bg-[#ffb800] text-slate-950",
   },
   {
+    key: "mrr",
     label: "Receita recorrente",
     value: "0",
     detail: "MRR das assinaturas ativas",
@@ -368,26 +640,55 @@ const metricCards: MetricCard[] = [
     color: "bg-emerald-600 text-white",
   },
   {
-    label: "Chamadas de IA",
+    // ESTE SLOT E "Receita no período", nao "Chamadas de IA".
+    //
+    // O `useMemo` sempre sobrescreveu o label deste slot, e a base ficou
+    // descrevendo outra metrica (registros em `ai_usage_logs`). Enquanto isso
+    // durou, o payload sem `cards` desenhava um card fantasma, com assunto e
+    // icone que nao existem na tela carregada.
+    key: "receita_periodo",
+    label: "Receita no período",
     value: "0",
-    detail: "Registros em ai_usage_logs",
-    icon: <Bot className="h-6 w-6" />,
+    // TODO(Ana)
+    detail: "Cobranças na janela selecionada",
+    icon: <DollarSign className="h-6 w-6" />,
     color: "bg-pink-600 text-white",
   },
   {
-    label: "Cursos cadastrados",
+    key: "receita_risco",
+    // "Cursos cadastrados" saiu daqui: inventário não sustenta decisão, e era o
+    // único número da página que ninguém usava para agir. Este é o oposto: muda
+    // sozinho, tem data marcada e ainda dá para agir.
+    label: "Receita em risco",
     value: "0",
-    detail: "Itens na tabela courses",
-    icon: <FileText className="h-6 w-6" />,
-    color: "bg-blue-600 text-white",
+    detail: "Saídas agendadas e pagamentos em atraso",
+    icon: <TrendingDown className="h-6 w-6" />,
+    color: "bg-rose-600 text-white",
   },
   {
+    key: "custo_ia",
     label: "Custo de IA",
     value: "0",
     detail: "Custo estimado dos últimos 30 dias",
     icon: <Zap className="h-6 w-6" />,
     color: "bg-orange-500 text-white",
   },
+];
+
+// HIERARQUIA 3 + 4 (D15). Os sete cards existem desde a Fase 1; o que muda é o
+// PESO: os três que respondem "como o negócio está" ficam grandes na primeira
+// linha, e os quatro de detalhe ficam compactos na segunda. Sete cards do mesmo
+// tamanho é uma lista, não uma hierarquia, e quem lê não sabe por onde começar.
+//
+// A separação é por CHAVE, não por índice nem por rótulo. Índice quebraria com
+// um card novo inserido no meio do array; rótulo quebrou de verdade na rodada 8,
+// quando "Acesso Pro" virou "Assinantes Pro" (D19) e esta lista ficou para trás,
+// derrubando o card para a segunda linha e transformando a tela em 2+5 sem nada
+// acusar. `key` é identidade e não muda com copy.
+export const PRINCIPAIS = [
+  "usuarios_totais",
+  "assinantes_pro",
+  "receita_periodo",
 ];
 
 const adminNavItems: AdminNavItem[] = [
@@ -446,11 +747,6 @@ const adminNavItems: AdminNavItem[] = [
     icon: <Bell className="h-4 w-4" />,
   },
   {
-    href: "#bugs",
-    label: "Bugs & Erros",
-    icon: <Bug className="h-4 w-4" />,
-  },
-  {
     href: "#tarefas",
     label: "Tarefas",
     icon: <SquareKanban className="h-4 w-4" />,
@@ -469,10 +765,38 @@ const ADMIN_SECTION_IDS = new Set<string>(
   adminNavItems.map((item) => item.href.replace("#", "")),
 );
 
+/**
+ * Secoes APOSENTADAS e para onde elas vao.
+ *
+ * `bugs` saiu na Fase 5 da unificacao com Tarefas. O redirect nao e cortesia: os
+ * TRES e-mails ja enviados (bug novo, resolvido, reaberto) apontam para
+ * `?section=bugs`, e sao o unico caminho externo que sobreviveu ao modulo.
+ * Medido na auditoria: nunca existiu identificador curto de bug, entao o link da
+ * aba e literalmente tudo o que circulou. Cair em "visao-geral" seria degradacao
+ * aceitavel e ruim; mandar para o quadro certo custa uma linha.
+ *
+ * O destino leva `board=bugs`. Se o quadro nao existir mais, o TasksDashboard
+ * cai no primeiro quadro em vez de ficar sem destino.
+ */
+const SECOES_APOSENTADAS: Record<string, string> = {
+  bugs: "tarefas&board=bugs",
+};
+
+/** A secao aposentada, ou null. Exportado para teste. */
+export function redirecionamentoDeSecao(search: string): string | null {
+  const value = new URLSearchParams(search).get("section");
+  if (!value) return null;
+  const destino = SECOES_APOSENTADAS[value];
+  return destino ? `/admin?section=${destino}` : null;
+}
+
 // Le ?section= da URL e devolve um AdminSectionId valido, ou o default seguro.
 // Centraliza a validacao: ausente ou lixo -> "visao-geral".
 function sectionFromSearch(search: string): AdminSectionId {
   const value = new URLSearchParams(search).get("section");
+  // Secao aposentada resolve para o DESTINO, para a tela ja renderizar certo no
+  // primeiro paint em vez de piscar "visao-geral" antes do redirect.
+  if (value && SECOES_APOSENTADAS[value]) return "tarefas";
   return value && ADMIN_SECTION_IDS.has(value)
     ? (value as AdminSectionId)
     : "visao-geral";
@@ -619,54 +943,6 @@ function auditTitle(action: AuditLog["action"]) {
   return labels[action];
 }
 
-function buildHealthItems(health: HealthResponse | null): HealthItem[] {
-  if (!health) return [];
-
-  const databaseOk = health.checks?.database === "ok";
-  const openaiOk = health.checks?.openai === "ok";
-
-  return [
-    {
-      service: "Supabase Auth",
-      status: databaseOk ? "Operando" : "Falha",
-      detail: databaseOk
-        ? "Validação dependente do banco operacional"
-        : "Banco indisponível no health check",
-      icon: <ShieldCheck className="h-5 w-5" />,
-      tone: databaseOk
-        ? "bg-emerald-50 text-emerald-800"
-        : "bg-rose-50 text-rose-800",
-    },
-    {
-      service: "Banco de dados",
-      status: databaseOk ? "Estável" : "Falha",
-      detail: `Resposta em ${health.responseTime ?? 0}ms`,
-      icon: <Database className="h-5 w-5" />,
-      tone: databaseOk
-        ? "bg-blue-50 text-blue-800"
-        : "bg-rose-50 text-rose-800",
-    },
-    {
-      service: "Serviços de IA",
-      status: openaiOk ? "Operando" : "Sem chave",
-      detail: openaiOk
-        ? "OpenAI respondeu no health check"
-        : "OPENAI_API_KEY ausente ou inválida",
-      icon: <BrainCircuit className="h-5 w-5" />,
-      tone: openaiOk
-        ? "bg-emerald-50 text-emerald-800"
-        : "bg-amber-50 text-amber-900",
-    },
-    {
-      service: "Servidor web",
-      status: "Online",
-      detail: `Uptime ${Math.round((health.uptime || 0) / 60)} min`,
-      icon: <Server className="h-5 w-5" />,
-      tone: "bg-violet-50 text-violet-800",
-    },
-  ];
-}
-
 function contentTitle(item: ContentItem) {
   return item.title || item.name || item.slug || item.id;
 }
@@ -752,12 +1028,159 @@ function formatPercent1(value: number) {
 }
 
 // TODO(Ana): revisar as explicacoes de churn insuficiente.
+/**
+ * Agendados e revertidos, ao lado do churn.
+ *
+ * Nao renderiza nada quando o backend nao manda os campos (janela de deploy) nem
+ * quando ambos sao zero: bloco vazio ocupando espaco e ruido, e um "0 agendados"
+ * so vale quando ha algo a comparar.
+ */
+function ChurnContextTiles({ churn }: { churn: ChurnSnapshot }) {
+  const agendados = churn.scheduledNotCounted;
+  const revertidos = churn.revertedInWindow;
+  if (agendados === undefined && revertidos === undefined) return null;
+  if (!agendados && !revertidos) return null;
+
+  return (
+    <>
+      {agendados ? (
+        <MetricTile
+          label="Saídas agendadas"
+          value={String(agendados)}
+          hint="Já avisaram que saem. Fora do churn: viram receita em risco."
+        />
+      ) : null}
+      {revertidos ? (
+        <MetricTile
+          label="Cancelamentos revertidos"
+          value={String(revertidos)}
+          hint="Pediram para sair e desistiram, na janela."
+        />
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * Um card da Visão.
+ *
+ * CLICÁVEL quando tem destino: o card responde "como estamos?" e a aba responde
+ * "por quê?", e obrigar a pessoa a achar a aba na navegação lateral é fricção
+ * sem motivo. Vira `<button>` de verdade, não `<div onClick>`, para o teclado e
+ * o leitor de tela alcançarem.
+ *
+ * A VARIAÇÃO só aparece quando existe; quando não existe, aparece o MOTIVO. Um
+ * espaço vazio no lugar do Δ parece defeito.
+ *
+ * ALINHAMENTO POR CONSTRUÇÃO, e não por altura combinada. Os ícones apareciam
+ * cada um numa altura porque todo card tem `destino` e portanto é um `<button>`,
+ * e o navegador CENTRALIZA verticalmente o conteúdo de um botão mais alto que
+ * ele (folha de estilo do agente de usuário, não classe deste arquivo). Como o
+ * grid estica todos à altura da linha e cada card tem conteúdo de tamanho
+ * diferente, cada botão centralizava por uma sobra diferente. `flex h-full
+ * flex-col` no wrapper substitui essa centralização anônima por uma coluna
+ * explícita ancorada no topo, e `mt-auto` no rodapé empurra sparkline e Δ para a
+ * base. Nenhuma das duas depende de os cards terem o mesmo conteúdo.
+ */
+function MetricCardView({
+  metric,
+  onNavigate,
+  destaque,
+}: {
+  metric: MetricCard;
+  onNavigate: (section: AdminSectionId) => void;
+  /** Card da linha principal: número maior e mais respiro. */
+  destaque?: boolean;
+}) {
+  // RODAPÉ ANCORADO NA BASE, e só quando existe. Card sem sparkline e sem Δ
+  // (hoje "Assinantes Pro" e "Receita em risco") não ganha um rodapé vazio: o
+  // conteúdo fica no topo, alinhado com os vizinhos, que é o desejado.
+  const rodape =
+    metric.sparkline || metric.change ? (
+      <div className="mt-auto">
+        {metric.sparkline}
+        {metric.change ? (
+          <p
+            data-testid={`card-variacao-${metric.label}`}
+            className={`mt-2 text-xs font-black uppercase tracking-wide ${
+              metric.change.tom === "alta"
+                ? "text-emerald-700"
+                : metric.change.tom === "baixa"
+                  ? "text-rose-700"
+                  : "text-slate-500"
+            }`}
+          >
+            {metric.change.texto}
+          </p>
+        ) : null}
+      </div>
+    ) : null;
+
+  const corpo = (
+    <>
+      <div className="flex items-start justify-between gap-4">
+        <span
+          className={`flex h-13 w-13 items-center justify-center rounded-2xl border-2 border-slate-900 shadow-[3px_3px_0_#0f172a] ${metric.color}`}
+        >
+          {metric.icon}
+        </span>
+      </div>
+      <p className="mt-5 text-sm font-black uppercase tracking-wide text-slate-500">
+        {metric.label}
+      </p>
+      <p
+        className={`font-display mt-1 font-black text-slate-950 ${
+          destaque ? "text-5xl" : "text-3xl"
+        }`}
+      >
+        {metric.value}
+      </p>
+      <p className="mt-2 text-sm font-semibold text-slate-600">
+        {metric.detail}
+      </p>
+      {metric.secundaria ? (
+        <p
+          data-testid={`card-secundaria-${metric.label}`}
+          className="mt-1 text-sm font-bold text-slate-500"
+        >
+          {metric.secundaria}
+        </p>
+      ) : null}
+      {rodape}
+    </>
+  );
+
+  if (!metric.destino) {
+    return (
+      <article className="card-brutal flex h-full flex-col rounded-3xl bg-white p-5">
+        {corpo}
+      </article>
+    );
+  }
+
+  const destino = metric.destino;
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate(destino)}
+      className="card-brutal flex h-full flex-col rounded-3xl bg-white p-5 text-left transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+    >
+      {corpo}
+    </button>
+  );
+}
+
 function churnInsufficientReason(reason: string): string {
   switch (reason) {
     case "subscription_base_younger_than_window":
       return "Base de assinaturas ainda nova demais para calcular churn de 30 dias.";
     case "no_active_subscribers_at_window_start":
       return "Não havia assinantes ativos no início da janela para calcular churn.";
+    // Estado que existe para NAO virar "0%". Nenhuma assinatura chegou ao fim do
+    // periodo, entao ninguem teve a chance de sair: zero aqui seria ausencia de
+    // medicao disfarcada de medicao.
+    case "no_subscription_period_ended":
+      return "Nenhuma assinatura chegou ao fim do período ainda: não há saída possível para medir.";
     default:
       return "Dados insuficientes para calcular churn.";
   }
@@ -864,6 +1287,11 @@ function BillingMetricsPanel({
             hint={`${churn.canceledInWindow} de ${churn.activeAtStart} no início da janela`}
           />
         )}
+        {/* Agendados e revertidos vem ao LADO do churn, nunca somados nele. Sem
+            estes dois, "0% de churn" com nove saidas marcadas leria como
+            "ninguem quer sair". Aparecem nos dois desfechos (ok e insuficiente)
+            porque informam igual nos dois. */}
+        <ChurnContextTiles churn={churn} />
         {churn.status === "ok" && churn.ltvCents !== null ? (
           <MetricTile
             label="LTV"
@@ -2961,7 +3389,9 @@ function EmailCampaignsAdminSection() {
             count: null,
             funnel: null,
             error:
-              err instanceof Error ? err.message : "Erro ao contar os elegíveis.",
+              err instanceof Error
+                ? err.message
+                : "Erro ao contar os elegíveis.",
           },
         }));
       }
@@ -3151,7 +3581,8 @@ function EmailCampaignsAdminSection() {
     });
   // Só bloqueia o disparo IMEDIATO: o agendado reavalia a audiência no disparo,
   // então uma lista vazia agora pode ter gente até a data agendada.
-  const blockImmediateEmpty = whenMode === "now" && allSelectedOriginsKnownEmpty;
+  const blockImmediateEmpty =
+    whenMode === "now" && allSelectedOriginsKnownEmpty;
 
   useEffect(() => {
     if (
@@ -3389,9 +3820,7 @@ function EmailCampaignsAdminSection() {
             .map(
               (result) =>
                 `${EMAIL_BATCH_SOURCE_META[result.source]}${
-                  result.scheduled
-                    ? " (agendado)"
-                    : `: ${result.enqueued ?? 0}`
+                  result.scheduled ? " (agendado)" : `: ${result.enqueued ?? 0}`
                 }`,
             )
             .join(" · ") + skippedNote,
@@ -4392,9 +4821,10 @@ function EmailCampaignsAdminSection() {
                       {/* TODO(Ana): copy das origens combinadas. */}
                       Cada origem vira um lote próprio, disparado na ordem
                       Usuários → Newsletter → Waitlist. Quem está em mais de uma
-                      base recebe pelo primeiro lote (e o rodapé daquela origem).
-                      O limite "próximos N" se aplica a cada origem. Em campanha
-                      promocional, a origem Usuários só alcança quem tem opt-in.
+                      base recebe pelo primeiro lote (e o rodapé daquela
+                      origem). O limite "próximos N" se aplica a cada origem. Em
+                      campanha promocional, a origem Usuários só alcança quem
+                      tem opt-in.
                     </PopoverContent>
                   </Popover>
                 </div>
@@ -4520,7 +4950,8 @@ function EmailCampaignsAdminSection() {
                     }${
                       batchSource === "users"
                         ? ` · Segmento: ${
-                            EMAIL_USER_SEGMENT_META[batchSegment] ?? batchSegment
+                            EMAIL_USER_SEGMENT_META[batchSegment] ??
+                            batchSegment
                           }`
                         : ""
                     } → ${
@@ -4598,9 +5029,9 @@ function EmailCampaignsAdminSection() {
             {extraSources.size > 0 ? (
               <p className="mt-1 text-xs font-bold text-slate-500">
                 {/* TODO(Ana): copy da dedup entre origens. */}
-                Com múltiplas origens, quem está em mais de uma base é enviado uma
-                única vez, pelo primeiro lote na ordem Usuários → Newsletter →
-                Waitlist.
+                Com múltiplas origens, quem está em mais de uma base é enviado
+                uma única vez, pelo primeiro lote na ordem Usuários → Newsletter
+                → Waitlist.
               </p>
             ) : null}
 
@@ -4949,8 +5380,8 @@ function EmailCampaignsAdminSection() {
                 {selectedQueueOrigins.length > 1
                   ? "nas origens selecionadas"
                   : "nesta origem"}{" "}
-                com os filtros atuais. Ajuste a origem ou o segmento, ou agende o
-                envio (a audiência é recontada no disparo).
+                com os filtros atuais. Ajuste a origem ou o segmento, ou agende
+                o envio (a audiência é recontada no disparo).
               </p>
             ) : null}
 
@@ -5914,18 +6345,9 @@ export default function Admin() {
   const [accessState, setAccessState] = useState<
     "loading" | "login" | "forbidden" | "allowed"
   >("loading");
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [dashboardError, setDashboardError] = useState<string | null>(null);
-  const [health, setHealth] = useState<HealthResponse | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [aiStats, setAiStats] = useState<AiStatsData>({});
   const [aiStatsError, setAiStatsError] = useState<string | null>(null);
-  const [queueStats, setQueueStats] = useState<QueueStats>({
-    waiting: 0,
-    active: 0,
-    completed: 0,
-    failed: 0,
-  });
   const [posthogState, setPosthogState] = useState<PosthogState | null>(null);
   // Horario REAL de calculo do funil (vem do envelope da janela default, cacheada
   // 5 min). null na janela custom/erro (que sao live). O PostHog e a unica fonte
@@ -5941,16 +6363,13 @@ export default function Admin() {
   const [billingMetricsError, setBillingMetricsError] = useState<string | null>(
     null,
   );
-  const [queueError, setQueueError] = useState<string | null>(null);
   const [churnError, setChurnError] = useState<string | null>(null);
   const [affiliatesError, setAffiliatesError] = useState<string | null>(null);
   const [financeRefreshKey, setFinanceRefreshKey] = useState(0);
   // Loading por fonte de dado, nao um flag unico: cada card renderiza assim que
   // SEU dado chega, sem ficar refem do endpoint mais lento (PostHog/churn). Os
   // fetches seguem em paralelo (Promise.all em loadDashboardData); o que muda e
-  // so o estado de UI. queue nao tem flag (usa queueError + default).
   const [dashboardLoading, setDashboardLoading] = useState(true);
-  const [healthLoading, setHealthLoading] = useState(true);
   const [aiStatsLoading, setAiStatsLoading] = useState(true);
   const [posthogLoading, setPosthogLoading] = useState(true);
   const [churnLoading, setChurnLoading] = useState(true);
@@ -5962,12 +6381,182 @@ export default function Admin() {
   const search = useSearch();
   const [, setLocation] = useLocation();
   const activeSection = sectionFromSearch(search);
+
+  // Reescreve a URL das secoes aposentadas. `replace` e nao `push`: o link do
+  // e-mail nao deve virar uma entrada no historico que leve de volta a uma aba
+  // que nao existe mais. A tela ja renderiza o destino (sectionFromSearch
+  // resolve antes), entao isto so acerta a barra de enderecos.
+  useEffect(() => {
+    const destino = redirecionamentoDeSecao(search);
+    if (destino) window.history.replaceState(null, "", destino);
+  }, [search]);
+
+  // PRESERVA os demais parametros. Antes reescrevia a query inteira, entao
+  // trocar de aba (inclusive clicando num card da Visao) descartava o ?window=
+  // e a janela escolhida voltava ao padrao sem ninguem pedir.
   const setActiveSection = useCallback(
     (section: AdminSectionId) => {
-      setLocation(`/admin?section=${section}`);
+      // Preserva o que e da PAGINA (o ?window= da Visao) e descarta o que e de
+      // UMA secao so (filtros, quadro e tarefa da aba de Tarefas). A lista mora
+      // em taskViewState, junto de onde essas chaves sao lidas e escritas: uma
+      // copia aqui divergiria no primeiro filtro novo, e em silencio.
+      const params = new URLSearchParams(
+        limparChavesDeSecao(window.location.search),
+      );
+      params.set("section", section);
+      setLocation(`/admin?${params.toString()}`);
     },
     [setLocation],
   );
+
+  // JANELA NA URL, nao em estado local. A Visao e a pagina que se deixa aberta e
+  // recarrega, e estado local devolveria o padrao a cada F5; na URL ela
+  // sobrevive ao reload e o link fica compartilhavel. O custo era o
+  // setActiveSection acima descartar o parametro, e ele foi corrigido junto.
+  const [overview, setOverview] = useState<OverviewData | null>(null);
+  // PRESENCA, em estado PROPRIO. `null` e "ainda nao respondeu", nao "zero".
+  const [onlineNow, setOnlineNow] = useState<OnlineNowData | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
+  const [seriesData, setSeriesData] = useState<SeriesData | null>(null);
+  const [seriesLoading, setSeriesLoading] = useState(true);
+  const [seriesError, setSeriesError] = useState<string | null>(null);
+  const [attention, setAttention] = useState<AttentionData | null>(null);
+  const [attentionLoading, setAttentionLoading] = useState(true);
+  const [attentionError, setAttentionError] = useState<string | null>(null);
+
+  const overviewWindow = parseOverviewWindow(
+    new URLSearchParams(search).get("window"),
+  );
+  const setOverviewWindow = useCallback(
+    (proxima: OverviewWindow) => {
+      const params = new URLSearchParams(window.location.search);
+      params.set("window", proxima);
+      setLocation(`/admin?${params.toString()}`);
+    },
+    [setLocation],
+  );
+  // EFEITO PROPRIO, so para /overview: a janela governa os seis cards e mais
+  // nada, entao trocar de 7 para 30 nao pode refazer as oito chamadas da pagina
+  // (PostHog, fila, saude, afiliados...). O escopo do seletor esta aqui.
+  useEffect(() => {
+    let cancelled = false;
+    setOverviewLoading(true);
+    setOverviewError(null);
+    adminFetch(`/overview?window=${overviewWindow}`)
+      .then((json) => {
+        if (cancelled) return;
+        setOverview(json.data as OverviewData);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        // Falha vira ESTADO de erro, nunca zeros: card zerado é afirmação falsa
+        // sobre o negócio.
+        setOverview(null);
+        setOverviewError(
+          err instanceof Error ? err.message : "Erro ao carregar os cards.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setOverviewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [overviewWindow]);
+
+  // PRESENCA, com efeito e ritmo PROPRIOS.
+  //
+  // Fora do efeito do /overview de proposito: aquele e governado pelo seletor de
+  // janela, e presenca e estado ATUAL. Acoplar os dois faria "online agora"
+  // mudar ao trocar para "ultimos 7 dias", o que nao quer dizer nada, e refaria
+  // a query HogQL a cada mexida no seletor.
+  //
+  // 60s e o intervalo de RENOVACAO da tela; o cache da rota (30s) e que limita a
+  // carga real no PostHog quando ha varias abas abertas.
+  useEffect(() => {
+    let cancelled = false;
+    const buscar = () => {
+      adminFetch("/online-now")
+        .then((json) => {
+          if (cancelled) return;
+          // Payload degradado (sem `data`) e FALHA, nao sucesso vazio: sem esta
+          // guarda o card ficaria "carregando" para sempre, que e o unico estado
+          // do resolver que nao diz nada a quem le.
+          setOnlineNow((json.data as OnlineNowData) ?? { state: "error" });
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setOnlineNow({ state: "error" });
+        });
+    };
+    buscar();
+    const id = setInterval(buscar, ONLINE_NOW_REFRESH_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  // SERIES DA VISAO: SEGUE o seletor, porque e a mesma janela dos cards. Efeito
+  // separado do /overview de proposito: o payload e uma ordem de grandeza maior
+  // e nao pode segurar o primeiro render dos numeros.
+  useEffect(() => {
+    let cancelled = false;
+    setSeriesLoading(true);
+    setSeriesError(null);
+    adminFetch(`/overview-series?window=${overviewWindow}`)
+      .then((json) => {
+        if (cancelled) return;
+        setSeriesData(json.data as SeriesData);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setSeriesData(null);
+        setSeriesError(
+          err instanceof Error ? err.message : "Erro ao carregar as séries.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setSeriesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [overviewWindow]);
+
+  // ATENCAO NECESSARIA: estado proprio, e NAO segue o seletor.
+  //
+  // Os itens sao estado atual (assinatura em atraso, saida agendada, orfao) ou
+  // tem janela propria declarada pelo servidor (`janelaDias`). Fazer trocar de 7
+  // para 30 refazer esta chamada mudaria o rotulo sem mudar o conteudo, que e a
+  // mesma armadilha do funil.
+  useEffect(() => {
+    let cancelled = false;
+    setAttentionLoading(true);
+    setAttentionError(null);
+    adminFetch("/attention")
+      .then((json) => {
+        if (cancelled) return;
+        setAttention(json.data as AttentionData);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        // Falha vira ESTADO de erro. Um painel vazio aqui diria "tudo em ordem"
+        // sobre uma medicao que nao aconteceu.
+        setAttention(null);
+        setAttentionError(
+          err instanceof Error ? err.message : "Erro ao carregar.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setAttentionLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const [affiliateName, setAffiliateName] = useState("Nova parceira tech");
   const [affiliateCode, setAffiliateCode] = useState("PARCEIRA20");
   const [affiliateDiscount, setAffiliateDiscount] = useState(20);
@@ -5998,7 +6587,7 @@ export default function Admin() {
     string | null
   >(null);
 
-  // Toggle Afiliados | Cupons da secao, mesmo padrao do BugsDashboard
+  // Toggle Afiliados | Cupons da secao, mesmo padrao do antigo BugsDashboard
   // (Tabs local, sem persistencia na URL, default na primeira visao).
   const [affiliatesTab, setAffiliatesTab] = useState<"afiliados" | "cupons">(
     "afiliados",
@@ -6050,7 +6639,6 @@ export default function Admin() {
     // nao deve, no caminho da claim, fechar o gate (so deixa os dados vazios).
     const loadDashboardData = async () => {
       setDashboardLoading(true);
-      setHealthLoading(true);
       setAiStatsLoading(true);
       setPosthogLoading(true);
       setChurnLoading(true);
@@ -6069,15 +6657,10 @@ export default function Admin() {
         .catch((err: unknown) => ({
           ok: false as const,
           error:
-            err instanceof Error ? err.message : "Erro ao carregar o dashboard.",
+            err instanceof Error
+              ? err.message
+              : "Erro ao carregar o dashboard.",
         }));
-      const healthPromise = fetch(apiUrl("/api/health"))
-        .then((res) => res.json())
-        .then((data) => ({
-          ok: true as const,
-          data: data as HealthResponse,
-        }))
-        .catch(() => ({ ok: false as const }));
       const aiPromise = adminFetch("/ai-stats")
         .then((json) => ({
           ok: true as const,
@@ -6087,17 +6670,6 @@ export default function Admin() {
           ok: false as const,
           error:
             err instanceof Error ? err.message : "Erro ao carregar uso de IA.",
-        }));
-      // Sem colapso: falha de fetch vira estado de erro da secao, nao zeros.
-      const queuePromise = adminFetch("/queue-stats")
-        .then((json) => ({
-          ok: true as const,
-          data: json.data as QueueStats,
-        }))
-        .catch((err: unknown) => ({
-          ok: false as const,
-          error:
-            err instanceof Error ? err.message : "Erro ao carregar a fila.",
         }));
       // PostHog: union do backend; falha de fetch vira o proprio estado error.
       // computedAt vem no envelope so na janela default (cacheada); ausente/erro
@@ -6157,27 +6729,17 @@ export default function Admin() {
               : "Erro ao carregar métricas de cobrança.",
         }));
 
+      // De /dashboard so sobra `recent_audit`: os contadores morreram junto com
+      // os blocos que os exibiam (ver a poda do servidor no commit seguinte).
       void dashboardPromise.then((dashboardResult) => {
         if (cancelled) return;
-        if (dashboardResult.ok) {
-          setDashboard(dashboardResult.data);
-          setDashboardError(null);
-          setAuditLogs(
+        setAuditLogs(
+          dashboardResult.ok &&
             Array.isArray(dashboardResult.data?.recent_audit)
-              ? dashboardResult.data.recent_audit
-              : [],
-          );
-        } else {
-          setDashboard(null);
-          setDashboardError(dashboardResult.error);
-          setAuditLogs([]);
-        }
+            ? dashboardResult.data.recent_audit
+            : [],
+        );
         setDashboardLoading(false);
-      });
-      void healthPromise.then((healthResult) => {
-        if (cancelled) return;
-        setHealth(healthResult.ok ? healthResult.data : null);
-        setHealthLoading(false);
       });
       void aiPromise.then((aiResult) => {
         if (cancelled) return;
@@ -6189,15 +6751,6 @@ export default function Admin() {
           setAiStatsError(aiResult.error);
         }
         setAiStatsLoading(false);
-      });
-      void queuePromise.then((queueResult) => {
-        if (cancelled) return;
-        if (queueResult.ok) {
-          setQueueStats(queueResult.data);
-          setQueueError(null);
-        } else {
-          setQueueError(queueResult.error);
-        }
       });
       void posthogPromise.then((posthogResult) => {
         if (cancelled) return;
@@ -6244,9 +6797,7 @@ export default function Admin() {
       // acima ja aplicaram cada estado; aqui so aguardamos o conjunto.
       await Promise.all([
         dashboardPromise,
-        healthPromise,
         aiPromise,
-        queuePromise,
         posthogPromise,
         churnPromise,
         affiliatesPromise,
@@ -6300,20 +6851,15 @@ export default function Admin() {
         .catch(() => {
           if (cancelled) return;
           setSession(null);
-          setDashboard(null);
-          setDashboardError(null);
-          setHealth(null);
           setAuditLogs([]);
           setAiStats({});
           setAiStatsError(null);
-          setQueueStats({ waiting: 0, active: 0, completed: 0, failed: 0 });
           setPosthogState(null);
           setPosthogComputedAt(null);
           setChurnRiskUsers(null);
           setChurnError(null);
           setAffiliates([]);
           setAffiliatesError(null);
-          setQueueError(null);
           setBillingMetrics(null);
           setBillingMetricsError(null);
           setAccessState("forbidden");
@@ -6353,7 +6899,11 @@ export default function Admin() {
         feature: tool,
         requests: String(stats.calls),
         credits: `${successRate}% sucesso`,
-        cost: formatCurrency(stats.cost),
+        // EM DÓLAR, no MESMO formato do card "Custo de IA" da Visão. Os dois
+        // blocos somam o mesmo `cost_estimate` (`agregarUsoDeIa` alimenta as
+        // duas rotas), e até aqui a Visão dizia "US$ 2,41" e a aba IA dizia
+        // "R$ 2,41" sobre o mesmo número. `formatCurrency` é BRL e não serve.
+        cost: `US$ ${stats.cost.toFixed(2)}`,
         costValue: stats.cost,
         status: stats.cost > 50 ? "high" : successRate < 80 ? "watch" : "ok",
       };
@@ -6364,7 +6914,25 @@ export default function Admin() {
     (max, item) => Math.max(max, item.costValue),
     0,
   );
-  const healthItemsReal = useMemo(() => buildHealthItems(health), [health]);
+  // PISO DECLARADO da aba IA, a mesma frase que o card da Visão já mostra: a
+  // soma acima é de um SUBCONJUNTO, porque há ferramentas cujo call site não
+  // passa `costEstimate` para `logAiUsage`. Sem esta linha, "US$ 2,41" parece
+  // completo.
+  //
+  // O detalhamento POR FERRAMENTA existe no agregado (`semCustoMedido` por
+  // tool), mas exibi-lo linha a linha muda o desenho do bloco e fica para a
+  // Fase 5; aqui vai só o total, que é o que o card da Visão declara.
+  //
+  // `null` (e não 0) quando nenhuma ferramenta reporta o campo: é a resposta do
+  // backend anterior a ele, e "0 chamadas sem custo medido" afirmaria que está
+  // tudo medido.
+  const aiSemCustoMedido = useMemo<number | null>(() => {
+    const medidos = Object.values(aiStats)
+      .map((s) => s.semCustoMedido)
+      .filter((n): n is number => typeof n === "number");
+    if (medidos.length === 0) return null;
+    return medidos.reduce((soma, n) => soma + n, 0);
+  }, [aiStats]);
   // Deriva os stats so quando o estado e "ok"; caso contrario null. Mantem o
   // nome posthogStats para as leituras de render continuarem validas.
   const posthogStats = posthogState?.state === "ok" ? posthogState.stats : null;
@@ -6372,31 +6940,8 @@ export default function Admin() {
   const posthogHasData = Boolean(
     posthogState?.state === "ok" && posthogState.hasData,
   );
-  const posthogSignupConversion =
-    posthogStats && posthogStats.uniqueUsers > 0
-      ? Math.round(
-          (posthogStats.events.user_signed_up / posthogStats.uniqueUsers) * 100,
-        )
-      : 0;
-  const posthogCheckoutConversion =
-    posthogStats && posthogStats.uniqueUsers > 0
-      ? Math.round(
-          (posthogStats.events.checkout_started / posthogStats.uniqueUsers) *
-            100,
-        )
-      : 0;
-  const posthogFunnel = posthogStats
-    ? [
-        { label: "Visitantes únicos", value: posthogStats.uniqueUsers },
-        { label: "Cadastros", value: posthogStats.events.user_signed_up },
-        {
-          label: "Checkouts iniciados",
-          value: posthogStats.events.checkout_started,
-        },
-      ]
-    : [];
   const posthogAcquisitionTotal =
-    posthogStats?.acquisition.reduce(
+    posthogStats?.acquisition?.reduce(
       (sum, channel) => sum + channel.users,
       0,
     ) || 0;
@@ -6474,43 +7019,223 @@ export default function Admin() {
     (couponCurrentPage - 1) * COUPON_PAGE_SIZE,
     couponCurrentPage * COUPON_PAGE_SIZE,
   );
+  // OS SEIS CARDS, montados do /overview.
+  //
+  // Uma fonte so para os seis, com a MESMA janela: antes cada card puxava de um
+  // endpoint diferente e nenhum tinha dimensao de tempo. `change` vem por card,
+  // porque as series tem idades diferentes e uma regra global da pagina erraria
+  // em pelo menos um deles.
+  //
+  // AUSENCIA e estado NOMEADO: falha vira "indisponível", nunca R$ 0,00 falso.
   const adminMetricCards = useMemo<MetricCard[]>(() => {
-    if (!dashboard?.counts) return metricCards;
+    if (!overview) {
+      const indisponivel = overviewError ? "indisponível" : "…";
+      // O card de presenca NAO depende do /overview, entao ele nao herda a
+      // degradacao dele: manda a propria fonte responder, senao a tela diria
+      // "indisponivel" sobre um PostHog que esta de pe.
+      return metricCards.map((c) =>
+        c.key === "atividade_agora"
+          ? { ...c, ...atividadeDoCard(onlineNow) }
+          : { ...c, value: indisponivel },
+      );
+    }
+    // `cards` AUSENTE não pode virar TypeError: este useMemo roda no corpo do
+    // render, então um payload sem ele não derruba só os cards, derruba a página
+    // inteira (o ErrorBoundary da App troca tudo pela tela de falha). Sem os
+    // cards, o mesmo caminho de "indisponível" que já existe para erro de rede.
+    const c = overview.cards;
+    if (!c) {
+      return metricCards.map((card) =>
+        card.key === "atividade_agora"
+          ? { ...card, ...atividadeDoCard(onlineNow) }
+          : { ...card, value: "indisponível" },
+      );
+    }
+    // O INTERVALO EXATO, vindo pronto do servidor, em vez de "nos últimos 30
+    // dias". O rótulo genérico era o que permitia dois blocos com definições
+    // diferentes de janela parecerem o mesmo recorte: card e gráfico diziam
+    // "últimos 30 dias" e diferiam em 182 cadastros (medido em 2026-08-14).
+    // `windowLabel` e `tz` são calculados uma vez, no servidor.
+    // Em "tudo" o rótulo do intervalo é "até 14 ago", e prefixá-lo com "de"
+    // produzia "de até 14 ago". Aqui o texto espelha o BADGE: com janela, o
+    // intervalo; sem janela, "desde <primeiro cadastro>", que é a mesma data que
+    // o seletor mostra ao lado de "Tudo".
+    const desde = overview.cards?.novosUsuarios?.historicoDesde;
+    const janelaLabel =
+      overview.windowFirstDay && overview.windowLabel
+        ? `de ${overview.windowLabel} (${overview.tz})`
+        : desde
+          ? `desde ${new Date(desde).toLocaleDateString("pt-BR", {
+              day: "2-digit",
+              month: "2-digit",
+              timeZone: "America/Sao_Paulo",
+            })}`
+          : overview.window === "all"
+            ? "no período todo"
+            : `nos últimos ${overview.window} dias`;
 
-    // Custo de IA cai em "indisponivel" (nunca R$ 0,00 falso) quando /ai-stats
-    // falha. TODO(Ana): copy do estado indisponivel do card de custo de IA.
-    const aiCost = aiStatsError
-      ? "indisponível"
-      : formatCurrency(
-          Object.values(aiStats).reduce((sum, item) => sum + item.cost, 0),
-        );
-    const aiCostDetail = aiStatsError
-      ? "Falha ao carregar uso de IA"
-      : "Custo estimado dos últimos 30 dias";
-    // MRR real quando disponivel. Ausencia e estado nomeado, nunca um 0 falso.
-    // TODO(Ana): copy do estado indisponivel do card de receita.
-    const mrrValue = billingMetrics
-      ? formatCents(billingMetrics.mrr.mrrCents)
-      : "indisponível";
-    const mrrDetail = billingMetrics
-      ? "MRR das assinaturas ativas"
-      : billingMetricsError
-        ? "Falha ao carregar métricas"
-        : "Carregando métricas";
+    // SPARKLINE POR CARD, a partir da MESMA série que o gráfico grande usa. Se
+    // as duas viessem de lugares diferentes, o mini e o grande poderiam contar
+    // histórias distintas na mesma tela — a divergência de 182 cadastros em
+    // miniatura.
+    const spark = (chave: string, direcao: "up_bom" | "up_ruim") => (
+      <MetricSparkline
+        pontos={serieDe(seriesData?.series, chave)}
+        direcao={direcao}
+        testId={`sparkline-${chave}`}
+      />
+    );
 
-    // So os VALORES sao preenchidos; o label vem da base e nunca e sobrescrito.
     return [
-      { ...metricCards[0], value: String(dashboard.counts.users) },
+      {
+        ...metricCards[0],
+        // Null é AUSÊNCIA (degradação do Supabase), nunca 0: "0 usuários" é
+        // indistinguível de base vazia e seria lido como fato.
+        value:
+          c.usuariosTotais.value === null
+            ? "indisponível"
+            : formatCount(c.usuariosTotais.value),
+        // OS CADASTROS VIERAM PARA CÁ, e o card de "Novos usuários" saiu.
+        //
+        // Cadastro na janela é a DERIVADA do total, não uma segunda pergunta: em
+        // "Tudo" os dois cards mostravam o mesmo número, e nas outras janelas o
+        // segundo respondia "quanto o primeiro subiu". Duas caixas para uma
+        // pergunta só é o que fazia a linha de detalhe ter sete cards do mesmo
+        // peso.
+        //
+        // O HEADLINE NÃO SE MOVE com o seletor: continua o total de sempre, e o
+        // `detail` continua dizendo isso. Quem obedece à janela é a secundária
+        // (que a declara no próprio texto) e o sparkline.
+        //
+        // O SPARKLINE agora é legítimo: a série é `cadastros`, não o acumulado.
+        // A ressalva antiga ("sem sparkline, é métrica cumulativa") valia para
+        // plotar o TOTAL, que só sobe por construção e desenharia sempre a mesma
+        // diagonal. A derivada tem forma de verdade.
+        secundaria: secundariaDeCadastros(c.novosUsuarios, janelaLabel),
+        sparkline: spark("cadastros", "up_bom"),
+        destino: "usuarios",
+      },
       {
         ...metricCards[1],
-        value: String(dashboard.counts.active_subscriptions),
+        ...atividadeDoCard(onlineNow),
+        destino: "usuarios",
       },
-      { ...metricCards[2], value: mrrValue, detail: mrrDetail },
-      { ...metricCards[3], value: String(dashboard.counts.ai_calls_total) },
-      { ...metricCards[4], value: String(dashboard.counts.courses) },
-      { ...metricCards[5], value: aiCost, detail: aiCostDetail },
+      {
+        ...metricCards[2],
+        // PAGANTES NO HEADLINE (D19), e a decisão inverte a da rodada 7.
+        //
+        // Ali o headline virou `total` (a união deduplicada) para consertar um
+        // erro real: somar `bySubscription` com `byInfluencer` conta duas vezes
+        // quem tem os dois, e 99 + 28 = 127 contra 124 reais. A aritmética está
+        // certa e continua valendo; o que estava errado era a PERGUNTA. "Acesso
+        // Pro" mistura quem paga com quem ganhou de graça num número só, e é o
+        // primeiro card que alguém lê para saber o tamanho do negócio.
+        //
+        // `bySubscription` já inclui quem tem os dois (é ele quem paga), então o
+        // headline não perde ninguém: o que sai dele é só a concessão PURA, que
+        // volta explícita na linha de baixo, junto com o total de acesso. As três
+        // informações continuam na tela; muda qual delas está em corpo 40.
+        label: "Assinantes Pro",
+        value: formatCount(c.acessoPro.bySubscription),
+        detail: [
+          // CONCESSÃO PURA: `byInfluencer` inclui quem também paga, e essas
+          // pessoas já estão no headline. Subtrair `both` é o que faz a linha
+          // dizer "+N" de verdade, sem recontar ninguém.
+          `+${formatCount(Math.max(c.acessoPro.byInfluencer - c.acessoPro.both, 0))} só por concessão`,
+          `${formatCount(c.acessoPro.total)} com acesso no total`,
+          // TRIALING FORA DO HEADLINE: trial não paga, e por isso o MRR o exclui
+          // de propósito. Somá-lo ao número de pagantes faria o card divergir do
+          // MRR no primeiro trial.
+          c.mrr.trialingCount > 0 ? `${c.mrr.trialingCount} em trial` : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        destino: "usuarios",
+      },
+      {
+        ...metricCards[3],
+        value: formatCents(c.mrr.value),
+        detail: `MRR de ${formatCount(c.mrr.activeCount)} assinaturas ativas (estado atual, ignora o seletor)`,
+        // ARPU como LINHA SECUNDÁRIA (D9), não card novo: é uma divisão do que
+        // já está no card. `arpuCents` é null sem assinante ativo — ausência.
+        secundaria:
+          c.mrr.arpuCents !== null
+            ? `ARPU ${formatCents(c.mrr.arpuCents)} por assinante`
+            : null,
+        sparkline: spark("mrrCents", "up_bom"),
+        destino: "financeiro",
+      },
+      {
+        ...metricCards[4],
+        label: "Receita no período",
+        value: formatCents(c.receita.value),
+        // BRUTO como principal (base do Simples) e LÍQUIDO ao lado: bruto
+        // sozinho afirma uma receita que não entrou. Os três números já eram
+        // calculados no mesmo laço e dois eram descartados.
+        detail: `Bruto ${janelaLabel}. Líquido ${formatCents(c.receita.liquidaCents)} (taxas ${formatCents(c.receita.taxasCents)}, reembolsos ${formatCents(c.receita.reembolsosCents)}).`,
+        sparkline: spark("receitaBrutaCents", "up_bom"),
+        change: rotuloDeVariacao(c.receita.change, c.receita.historicoDesde),
+        destino: "financeiro",
+      },
+      {
+        ...metricCards[5],
+        // "/mês" NO VALOR (D21): o número é a soma de equivalentes MENSAIS, e
+        // sem a unidade ele é lido como "R$ 596,70 saindo", que é falso para
+        // quem tem plano anual. A unidade é a diferença entre um número certo e
+        // um número entendido.
+        value: `${formatCents(c.receitaEmRisco.mrrCents)}/mês`,
+        // BREAKDOWN em vez do "% do MRR". O percentual respondia "quanto disso é
+        // grande", e o card já mostra o valor; a pergunta que sobra é O QUE
+        // fazer, e as duas metades pedem ações opostas (reter quem agendou saída,
+        // recuperar a cobrança de quem está em atraso).
+        //
+        // O `?.` não é decoração: `saindo` e `emAtraso` nasceram nesta rodada, e
+        // uma aba aberta desde antes do deploy recebe a resposta ANTIGA, sem
+        // eles. Sem a guarda o card imprimiria "undefined saindo".
+        detail: detalheDeRisco(c.receitaEmRisco),
+        destino: "retencao",
+      },
+      {
+        ...metricCards[6],
+        // EM DÓLAR. `MODEL_PRICING` (server/lib/aiTools.ts) é cotada em US$ por
+        // 1M de tokens, e até 2026-08-14 este card formatava o mesmo número com
+        // símbolo de real.
+        value: `US$ ${c.custoIa.valueUsd.toFixed(2)}`,
+        // CUSTO POR ASSINANTE ATIVO (D9), com selo de parcial: o numerador é um
+        // piso enquanto 7 ferramentas gravarem custo 0, e uma unidade econômica
+        // derivada de um piso afirma margem melhor que a real.
+        secundaria:
+          c.mrr.activeCount > 0
+            ? `US$ ${(c.custoIa.valueUsd / c.mrr.activeCount).toFixed(3)} por assinante ativo${c.custoIa.chamadasSemCustoMedido > 0 ? " (custo parcial)" : ""}`
+            : null,
+        sparkline: spark("custoIaUsd", "up_ruim"),
+        detail: [
+          `Custo estimado ${janelaLabel}`,
+          // PISO DECLARADO: sem isto, "US$ 2,41" parece completo, e ele é a soma
+          // de um subconjunto (7 ferramentas gravam custo 0 por falta de
+          // costEstimate no call site).
+          c.custoIa.chamadasSemCustoMedido > 0
+            ? `${formatCount(c.custoIa.chamadasSemCustoMedido)} chamadas sem custo medido`
+            : null,
+          // Linha em BRL só existe com cotação configurada. Ausente = ausente,
+          // nunca conversão por 1.
+          c.custoIa.valorEmBrl !== null
+            ? `≈ ${formatCurrency(c.custoIa.valorEmBrl)}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(". "),
+        destino: "ia",
+      },
     ];
-  }, [dashboard, aiStats, aiStatsError, billingMetrics, billingMetricsError]);
+  }, [overview, overviewError, seriesData, onlineNow]);
+
+  const cardsPrincipais = PRINCIPAIS.map((chave) =>
+    adminMetricCards.find((c) => c.key === chave),
+  ).filter((c): c is MetricCard => Boolean(c));
+  const cardsSecundarios = adminMetricCards.filter(
+    (c) => !PRINCIPAIS.includes(c.key),
+  );
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -6921,294 +7646,179 @@ export default function Admin() {
         <div className="container space-y-10">
           {activeSection === "visao-geral" ? (
             <>
-              <IntegrationsHealthPanel />
-              {dashboardLoading ? (
-                <LoadingBlock />
-              ) : dashboardError ? (
-                <ErrorBlock message={dashboardError} />
-              ) : (
-                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                  {adminMetricCards.map((metric) => (
-                    <article
-                      key={metric.label}
-                      className="card-brutal rounded-3xl bg-white p-5"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <span
-                          className={`flex h-13 w-13 items-center justify-center rounded-2xl border-2 border-slate-900 shadow-[3px_3px_0_#0f172a] ${metric.color}`}
-                        >
-                          {metric.icon}
-                        </span>
-                      </div>
-                      <p className="mt-5 text-sm font-black uppercase tracking-wide text-slate-500">
-                        {metric.label}
-                      </p>
-                      <p className="font-display mt-1 text-4xl font-black text-slate-950">
-                        {metric.value}
-                      </p>
-                      <p className="mt-2 text-sm font-semibold text-slate-600">
-                        {metric.detail}
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              )}
+              {/* Substitui os dois cartões de saúde que ocupavam o topo (o de
+                  integrações aqui e o "Saúde do sistema" mais abaixo). Verde é
+                  ausência: uma linha e some. */}
+              <BlocoBoundary nome="Saúde do sistema" compacto>
+                <HealthBand />
+              </BlocoBoundary>
 
-              <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-                <article className="card-brutal rounded-3xl bg-white p-6">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-wide text-violet-700">
-                        funil principal
-                      </p>
-                      <h2 className="font-display text-2xl font-black text-slate-950">
-                        Do visitante ao assinante Pro
-                      </h2>
-                      {!posthogLoading && posthogComputedAt ? (
-                        <p className="mt-1 text-xs font-semibold text-slate-500">
-                          analytics atualizados{" "}
-                          {formatRelativeTime(posthogComputedAt)}
-                        </p>
-                      ) : null}
-                    </div>
-                    {posthogHasData ? (
-                      <span className="inline-flex w-fit items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-50 px-3 py-2 text-xs font-black text-violet-800">
-                        <PieChart className="h-4 w-4" />
-                        conversão cadastro {posthogSignupConversion}%
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="mt-6 space-y-4">
-                    {posthogLoading ? (
-                      <LoadingBlock />
-                    ) : posthogHasData && posthogFunnel.length ? (
-                      posthogFunnel.map((step, index) => {
-                        const maxValue = Math.max(
-                          posthogFunnel[0]?.value || 1,
-                          1,
-                        );
-                        return (
-                          <div
-                            key={step.label}
-                            className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <p className="text-sm font-black uppercase text-violet-700">
-                                  {step.label}
-                                </p>
-                                <p className="font-display text-3xl font-black text-slate-950">
-                                  {formatCount(step.value)}
-                                </p>
-                              </div>
-                              <span className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black">
-                                etapa {index + 1}
-                              </span>
-                            </div>
-                            <div className="mt-3 h-3 rounded-full border-2 border-slate-900 bg-white">
-                              <div
-                                className="h-full rounded-full bg-violet-700"
-                                style={{
-                                  width: `${Math.max((step.value / maxValue) * 100, step.value > 0 ? 5 : 0)}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <PosthogStateNotice state={posthogState} />
-                    )}
-                  </div>
-                </article>
-
-                <article className="card-brutal rounded-3xl bg-violet-700 p-6 text-white">
-                  <div className="flex items-center gap-3">
-                    <span className="rounded-2xl border-2 border-slate-950 bg-yellow-300 p-3 text-slate-950 shadow-[3px_3px_0_#0f172a]">
-                      <Sparkles className="h-6 w-6" />
-                    </span>
-                    <div>
-                      <p className="text-xs font-black uppercase text-violet-100">
-                        insight rápido
-                      </p>
-                      <h2 className="font-display text-2xl font-black">
-                        {/* TODO(Ana): copy do estado indisponivel de uso de IA. */}
-                        {aiStatsError
-                          ? "Uso de IA indisponível."
-                          : aiUsageReal.length
-                            ? "Uso de IA conectado."
-                            : "Sem uso de IA registrado."}
-                      </h2>
-                    </div>
-                  </div>
-                  <p className="mt-5 text-sm font-semibold leading-relaxed text-violet-100">
-                    {aiUsageReal.length
-                      ? "Os custos e chamadas abaixo vêm de ai_usage_logs nos últimos 30 dias."
-                      : "Quando houver chamadas registradas, este resumo passa a exibir custos e volume real por ferramenta."}
-                  </p>
-                  <div className="mt-6 grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl border-2 border-white/80 bg-white/10 p-4">
-                      <p className="text-2xl font-black">
-                        {dashboardLoading
-                          ? "…"
-                          : dashboard?.counts
-                            ? formatCount(dashboard.counts.ai_calls_total)
-                            : "indisponível"}
-                      </p>
-                      <p className="text-xs font-bold text-violet-100">
-                        chamadas registradas
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border-2 border-white/80 bg-white/10 p-4">
-                      <p className="text-2xl font-black">
-                        {aiStatsError
-                          ? "indisponível"
-                          : formatCurrency(
-                              Object.values(aiStats).reduce(
-                                (sum, item) => sum + item.cost,
-                                0,
-                              ),
-                            )}
-                      </p>
-                      <p className="text-xs font-bold text-violet-100">
-                        custo estimado
-                      </p>
-                    </div>
-                  </div>
-                </article>
-
-                <article className="card-brutal rounded-3xl bg-white p-6">
-                  <div className="flex items-center gap-3">
-                    <span className="rounded-2xl border-2 border-slate-950 bg-yellow-300 p-3 text-slate-950 shadow-[3px_3px_0_#0f172a]">
-                      <Mail className="h-6 w-6" />
-                    </span>
-                    <div>
-                      <p className="text-xs font-black uppercase text-violet-700">
-                        sistema
-                      </p>
-                      <h2 className="font-display text-2xl font-black text-slate-950">
-                        Fila de e-mails
-                      </h2>
-                    </div>
-                  </div>
-                  {queueError ? (
-                    <div className="mt-6">
-                      <ErrorBlock message={queueError} />
-                    </div>
-                  ) : (
-                    <div className="mt-6 grid grid-cols-2 gap-3">
-                      {[
-                        { label: "na fila", value: queueStats.waiting },
-                        { label: "processando", value: queueStats.active },
-                        { label: "enviados", value: queueStats.completed },
-                        { label: "com falha", value: queueStats.failed },
-                      ].map((item) => (
-                        <div
-                          key={item.label}
-                          className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
-                        >
-                          <p className="text-2xl font-black text-slate-950">
-                            {item.value}
-                          </p>
-                          <p className="text-xs font-bold text-slate-500">
-                            {item.label}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </article>
+              {/* O seletor governa OS SEIS CARDS e nada mais. Os blocos abaixo
+                  que têm janela própria a declaram na tela; os que são estado
+                  atual dizem isso. Um seletor que governa metade da página sem
+                  dizer qual metade é pior que não ter seletor. */}
+              <div className="flex flex-wrap items-center gap-3">
+                <OverviewPeriod
+                  window={overviewWindow}
+                  onChange={setOverviewWindow}
+                  seriesStart={overview?.cards?.novosUsuarios?.historicoDesde}
+                />
+                {/* O INTERVALO EXATO ao lado do seletor. Um badge por card seria
+                    seis repetições do mesmo texto: o seletor governa os seis, e é
+                    aqui que a informação pertence. O gráfico "Cadastros por dia"
+                    traz o seu próprio badge, com o rótulo que o MESMO servidor
+                    calculou — é o par que provava divergir em 182 cadastros. */}
+                <WindowBadge
+                  label={overview?.windowLabel}
+                  tz={overview?.tz}
+                  partial={overview?.window !== "all"}
+                />
               </div>
 
-              <div className="grid gap-6 xl:grid-cols-2">
-                <article className="card-brutal overflow-hidden rounded-3xl bg-white">
-                  <div className="border-b-2 border-slate-900 bg-pink-100 p-6">
-                    <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                      <Bot className="h-6 w-6" />
-                      Consumo de créditos de IA
-                    </h2>
-                    <p className="mt-2 text-sm font-semibold text-slate-600">
-                      Custos por recurso, volume de uso e alertas de orçamento.
-                    </p>
-                  </div>
-                  <div className="divide-y-2 divide-slate-100">
-                    {aiStatsLoading ? (
-                      <div className="p-5">
-                        <LoadingBlock />
-                      </div>
-                    ) : aiStatsError ? (
-                      <div className="p-5">
-                        <ErrorBlock message={aiStatsError} />
-                      </div>
-                    ) : aiUsageReal.length ? (
-                      aiUsageReal.map((item) => (
-                        <div
-                          key={item.feature}
-                          className="grid gap-3 p-5 sm:grid-cols-[1fr_auto] sm:items-center"
-                        >
-                          <div>
-                            <p className="font-display text-lg font-black text-slate-950">
-                              {item.feature}
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-slate-500">
-                              {item.requests} chamadas • {item.credits} créditos
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-3 sm:justify-end">
-                            <p className="font-display text-xl font-black text-slate-950">
-                              {item.cost}
-                            </p>
-                            <StatusPill status={item.status} />
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-5">
-                        <p className="font-display text-xl font-black text-slate-950">
-                          Nenhuma chamada de IA registrada
-                        </p>
-                        <p className="mt-2 text-sm font-semibold text-slate-500">
-                          Os dados aparecem quando ai_usage_logs receber
-                          eventos.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </article>
-
-                <article className="card-brutal rounded-3xl bg-white p-6">
-                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                    <WalletCards className="h-6 w-6" />
-                    Assinaturas e planos
-                  </h2>
-                  <div className="mt-6 space-y-5">
-                    <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
-                      <p className="text-xs font-black uppercase text-violet-700">
-                        Assinaturas ativas
-                      </p>
-                      <p className="font-display text-3xl font-black text-slate-950">
-                        {dashboardLoading
-                          ? "…"
-                          : dashboard?.counts
-                            ? formatCount(dashboard.counts.active_subscriptions)
-                            : "indisponível"}
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-slate-500">
-                        Fonte: /api/admin/dashboard
-                      </p>
+              {overviewLoading ? (
+                <LoadingBlock />
+              ) : overviewError ? (
+                <ErrorBlock message={overviewError} />
+              ) : (
+                // ALCANCE LIMITADO, e a limitação é declarada: este boundary
+                // pega erro DENTRO do MetricCardView, mas NÃO pega o `useMemo`
+                // que monta `adminMetricCards`, porque ele roda no corpo do
+                // Admin, acima daqui. Foi lá que estava o defeito nº 8 da
+                // varredura, e quem o contém é a guarda de `overview.cards`, não
+                // este boundary. Mover a derivação para dentro de um componente
+                // filho resolveria de verdade, e é reestruturação, não fatia
+                // curta.
+                <BlocoBoundary nome="Cards do período">
+                  <div className="space-y-5">
+                    {/* LINHA 1: os três principais, maiores. */}
+                    <div
+                      data-testid="cards-principais"
+                      className="grid gap-5 md:grid-cols-2 xl:grid-cols-3"
+                    >
+                      {cardsPrincipais.map((metric) => (
+                        <MetricCardView
+                          key={metric.key}
+                          metric={metric}
+                          destaque
+                          onNavigate={setActiveSection}
+                        />
+                      ))}
                     </div>
-                    <BillingMetricsPanel
-                      loading={billingLoading}
-                      error={billingMetricsError}
-                      metrics={billingMetrics}
-                    />
+                    {/* LINHA 2: os quatro de detalhe, compactos. Empilham no
+                        mobile pelo mesmo mecanismo da linha de cima. */}
+                    <div
+                      data-testid="cards-secundarios"
+                      className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+                    >
+                      {cardsSecundarios.map((metric) => (
+                        <MetricCardView
+                          key={metric.key}
+                          metric={metric}
+                          onNavigate={setActiveSection}
+                        />
+                      ))}
+                    </div>
                   </div>
-                  <div className="mt-6">
-                    <SubscribersSummary
-                      onSeeAll={() => setActiveSection("financeiro")}
-                    />
-                  </div>
-                </article>
+                </BlocoBoundary>
+              )}
+
+              {/* Os dois gráficos OBEDECEM ao seletor: cada um refaz a busca
+                  quando a janela muda. São os únicos blocos abaixo dos cards que
+                  o seguem, e por isso não precisam declarar janela própria. */}
+              <div className="grid gap-6 xl:grid-cols-2">
+                <BlocoBoundary nome="Receita recorrente e assinantes">
+                  <SubscriptionChart window={overviewWindow} />
+                </BlocoBoundary>
+                <BlocoBoundary nome="Cadastros por dia">
+                  <SignupChart window={overviewWindow} />
+                </BlocoBoundary>
+              </div>
+
+              {/* FUNIL DIGERIDO substitui o `PaidFunnel`.
+                  O bloco antigo vinha do PostHog e mostrava contagens; este vem
+                  de tabelas locais e mostra TAXAS entre etapas adjacentes, que e
+                  a pergunta ("onde vaza?"). As etapas sao verificaveis no banco:
+                  cadastro (profiles) -> ativacao (ai_usage_logs) -> Pro
+                  (subscriptions). Nao comeca em visitantes porque nao existe
+                  fonte local de visitante. */}
+              <div className="grid gap-6">
+                <BlocoBoundary nome="Funil principal">
+                  <FunnelDigest
+                    data={seriesData?.funil}
+                    loading={seriesLoading}
+                    error={seriesError}
+                    windowLabel={
+                      seriesData?.windowLabel ?? overview?.windowLabel
+                    }
+                    tz={seriesData?.tz ?? overview?.tz}
+                  />
+                </BlocoBoundary>
+              </div>
+
+              {/* GRAFICOS NOVOS da Fase 4, no mesmo frame dos dois de cima. */}
+              <div className="grid gap-6 xl:grid-cols-2">
+                <BlocoBoundary nome="Conversões Pro por dia">
+                  <ProConversionsChart
+                    series={seriesData?.series}
+                    erro={seriesError}
+                    carregando={seriesLoading}
+                  />
+                </BlocoBoundary>
+                <BlocoBoundary nome="Custo de IA e receita">
+                  <CostVsRevenueChart
+                    series={seriesData?.series}
+                    cotacaoUsdBrl={overview?.cards?.custoIa?.cotacaoUsdBrl}
+                    chamadasSemCustoMedido={
+                      overview?.cards?.custoIa?.chamadasSemCustoMedido
+                    }
+                    erro={seriesError}
+                    carregando={seriesLoading}
+                  />
+                </BlocoBoundary>
+              </div>
+
+              <div className="grid gap-6">
+                <BlocoBoundary nome="Uso de IA por ferramenta">
+                  <ToolUsagePanel
+                    ferramentas={seriesData?.ferramentas}
+                    loading={seriesLoading}
+                    error={seriesError}
+                    windowLabel={
+                      seriesData?.windowLabel
+                        ? `${seriesData.windowLabel} (${seriesData.tz})`
+                        : null
+                    }
+                  />
+                </BlocoBoundary>
+              </div>
+
+              {/* "Aquisicao de usuarios" SAIU na rodada 6 (D10): nao ha coluna
+                  de UTM, referrer ou canal em `profiles` nem em `subscriptions`,
+                  entao o ranking do PostHog nao era atribuicao.
+
+                  O CONTEINER dela e o botao "Comportamento por pagina" saem
+                  AGORA (D17, rodada 7). O grid de tres colunas sobreviveu ao
+                  bloco que o preenchia e ficou hospedando so o botao: como item
+                  de grid estica na altura da linha, e o painel ao lado passou de
+                  vinte itens, o botao virou um pill gigante. O botao so fazia
+                  `setActiveSection("paginas")`, que e exatamente o que a aba
+                  "Paginas" do nav superior faz (linha do `NAV_ITEMS`), entao ele
+                  duplicava navegacao em vez de alcancar destino proprio. */}
+              <div className="grid gap-6">
+                {/* ATENCAO NECESSARIA substitui "Eventos recentes".
+                    O bloco antigo listava as 10 ultimas linhas de
+                    `content_audit_logs`, ou seja, historico de edicao de
+                    conteudo: o espaco mais visivel da Visao era o unico sobre o
+                    qual nao havia nada a fazer. `auditLogs` e o fetch de
+                    /dashboard que o alimentavam continuam existindo; o que sai e
+                    o JSX. */}
+                <BlocoBoundary nome="Atenção necessária">
+                  <AttentionPanel
+                    data={attention}
+                    loading={attentionLoading}
+                    error={attentionError}
+                  />
+                </BlocoBoundary>
               </div>
             </>
           ) : null}
@@ -7251,7 +7861,13 @@ export default function Admin() {
               // TODO(Ana): revisar copy do subtitulo da aba Usuarios.
               subtitle="Clique em um usuário para ver cadastro, área de interesse, assinatura, onboarding, status, funcionalidades usadas e histórico de navegação."
             >
-              <UsersDashboard />
+              {/* Nivel de ABA, como o de Tarefas: o UsersDashboard e um bloco
+                  so (uma lista com filtros), entao nao ha sub-blocos para
+                  isolar aqui. Os blocos internos com busca propria ganham
+                  boundary dentro do UserDetailModal. */}
+              <BlocoBoundary nome="Lista de usuários">
+                <UsersDashboard />
+              </BlocoBoundary>
             </AdminSection>
           ) : null}
 
@@ -7513,6 +8129,17 @@ export default function Admin() {
                       </p>
                     )}
                   </div>
+                  {!aiStatsError &&
+                  aiSemCustoMedido !== null &&
+                  aiSemCustoMedido > 0 ? (
+                    <p
+                      data-testid="ia-piso-custo"
+                      className="mt-4 text-xs font-semibold text-slate-500"
+                    >
+                      {/* TODO(Ana) */}
+                      {formatCount(aiSemCustoMedido)} chamadas sem custo medido
+                    </p>
+                  ) : null}
                 </article>
                 <article className="card-brutal rounded-3xl bg-white p-6">
                   <h3 className="font-display text-2xl font-black">
@@ -7540,18 +8167,6 @@ export default function Admin() {
               subtitle="Crie avisos, cupons e comunicados que aparecem no sino do usuário. Publicado é imutável; arquivar tira do feed sem apagar o histórico."
             >
               <NotificationsManager />
-            </AdminSection>
-          ) : null}
-
-          {activeSection === "bugs" ? (
-            <AdminSection
-              id="bugs"
-              eyebrow="bugs & erros"
-              icon={<Bug className="h-4 w-4" />}
-              title="Bugs & Erros"
-              subtitle="Erros capturados pelo Sentry e bug tracker interno. Criar um bug a partir de um erro vincula os dois; concluir um bug dispara o aviso por email."
-            >
-              <BugsDashboard />
             </AdminSection>
           ) : null}
 
@@ -8732,172 +9347,6 @@ export default function Admin() {
                 </article>
               </TabsContent>
             </Tabs>
-          ) : null}
-
-          {activeSection === "visao-geral" ? (
-            <>
-              <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-                <article className="card-brutal rounded-3xl bg-white p-6">
-                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                    <Activity className="h-6 w-6" />
-                    Saúde do sistema
-                  </h2>
-                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                    {healthLoading ? (
-                      <div className="sm:col-span-2">
-                        <LoadingBlock />
-                      </div>
-                    ) : healthItemsReal.length ? (
-                      healthItemsReal.map((item) => (
-                        <div
-                          key={item.service}
-                          className={`rounded-2xl border-2 border-slate-900 p-4 ${item.tone}`}
-                        >
-                          <div className="flex items-center gap-2">
-                            {item.icon}
-                            <p className="font-display text-lg font-black">
-                              {item.service}
-                            </p>
-                          </div>
-                          <p className="mt-3 text-sm font-black uppercase">
-                            {item.status}
-                          </p>
-                          <p className="mt-1 text-sm font-semibold opacity-80">
-                            {item.detail}
-                          </p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="sm:col-span-2">
-                        <PendingIntegration
-                          tool="/api/health"
-                          description="Health check indisponível no momento"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </article>
-
-                <article className="card-brutal rounded-3xl bg-white p-6">
-                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                    <Eye className="h-6 w-6" />
-                    Páginas mais acessadas
-                  </h2>
-                  <div className="mt-5 overflow-hidden rounded-2xl border-2 border-slate-900">
-                    {posthogLoading ? (
-                      <div className="p-5">
-                        <LoadingBlock />
-                      </div>
-                    ) : posthogHasData && posthogStats?.pages.length ? (
-                      <div className="divide-y-2 divide-slate-100">
-                        {posthogStats.pages.slice(0, 5).map((page) => (
-                          <div
-                            key={page.page}
-                            className="flex items-center justify-between gap-4 p-4"
-                          >
-                            <p className="truncate text-sm font-black text-slate-950">
-                              {page.page}
-                            </p>
-                            <p className="font-display text-lg font-black text-violet-700">
-                              {formatCount(page.views)}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-5">
-                        <PosthogStateNotice state={posthogState} />
-                      </div>
-                    )}
-                  </div>
-                </article>
-              </div>
-
-              <div className="grid gap-6 xl:grid-cols-3">
-                <article className="card-brutal rounded-3xl bg-white p-6 xl:col-span-2">
-                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                    <Globe2 className="h-6 w-6" />
-                    Aquisição de usuários
-                  </h2>
-                  <div className="mt-6 space-y-4">
-                    {posthogLoading ? (
-                      <LoadingBlock />
-                    ) : posthogHasData && posthogStats?.acquisition.length ? (
-                      posthogStats.acquisition.map((channel) => {
-                        const percent =
-                          posthogAcquisitionTotal > 0
-                            ? Math.round(
-                                (channel.users / posthogAcquisitionTotal) * 100,
-                              )
-                            : 0;
-                        return (
-                          <div
-                            key={channel.channel}
-                            className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
-                          >
-                            <div className="flex items-center justify-between gap-4">
-                              <p className="font-display text-lg font-black text-slate-950">
-                                {channel.channel === "None"
-                                  ? "Direto"
-                                  : channel.channel}
-                              </p>
-                              <p className="text-sm font-black text-violet-700">
-                                {formatCount(channel.users)} usuários
-                              </p>
-                            </div>
-                            <div className="mt-3 h-3 rounded-full border-2 border-slate-900 bg-white">
-                              <div
-                                className="h-full rounded-full bg-emerald-600"
-                                style={{ width: `${percent}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <PosthogStateNotice state={posthogState} />
-                    )}
-                  </div>
-                </article>
-
-                <article className="card-brutal rounded-3xl bg-white p-6">
-                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                    <Zap className="h-6 w-6" />
-                    Eventos recentes
-                  </h2>
-                  <div className="mt-5 space-y-4">
-                    {dashboardLoading ? (
-                      <LoadingBlock />
-                    ) : auditLogs.length ? (
-                      auditLogs.map((event) => (
-                        <div
-                          key={`${event.created_at}-${event.resource_type}-${event.resource_slug || ""}`}
-                          className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="flex items-center gap-2 text-xs font-black uppercase text-violet-700">
-                              <FileText className="h-4 w-4" />
-                              {formatRelativeTime(event.created_at)}
-                            </span>
-                            <Clock3 className="h-4 w-4 text-slate-400" />
-                          </div>
-                          <p className="mt-2 font-display text-lg font-black text-slate-950">
-                            {auditTitle(event.action)}
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-slate-600">
-                            {event.resource_type} {event.resource_slug || ""}
-                          </p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4 text-sm font-black text-slate-600">
-                        Nenhuma ação registrada ainda.
-                      </p>
-                    )}
-                  </div>
-                </article>
-              </div>
-            </>
           ) : null}
         </div>
       </section>

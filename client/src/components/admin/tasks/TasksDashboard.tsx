@@ -73,7 +73,10 @@ import {
 } from "./taskViewState";
 import { DRAG_ACTIVATION_DISTANCE, TaskCardBody } from "./TaskCard";
 import { TaskModal } from "./TaskModal";
-import { TasksPanelSkeleton } from "./TasksPanelSkeleton";
+import {
+  BoardColumnsSkeleton,
+  TasksPanelSkeleton,
+} from "./TasksPanelSkeleton";
 import { emptyBlockClass, primaryButtonClass, secondaryButtonClass } from "./taskBoardStyles";
 import { parseShortId, readTaskParam, shortIdOf, withTaskParam } from "./taskDeepLink";
 import type { TaskBoardSnapshot, TaskCard as TaskCardData, TaskColumn } from "./types";
@@ -83,7 +86,7 @@ import { useBoardSnapshot } from "./useBoardSnapshot";
 // toda mutacao; os filhos (BoardColumn, TaskCard, ColumnHeader, NewTaskComposer)
 // sao memo e so recebem dados e handlers estaveis.
 //
-// Update otimista no formato do moveBug (BugsDashboard.tsx): snapshot do estado
+// Update otimista no formato do antigo moveBug (BugsDashboard, removido na Fase 5): snapshot do estado
 // anterior, muta local, await, rollback + toast no erro, refresh como fonte de
 // verdade no sucesso. Duas diferencas obrigatorias aqui:
 //
@@ -127,6 +130,7 @@ export function TasksDashboard() {
     boards,
     snapshot,
     loading,
+    trocandoDeBoard,
     error,
     refresh,
     reloadBoards,
@@ -158,10 +162,20 @@ export function TasksDashboard() {
   const patchSeqRef = useRef(new Map<string, number>());
   const tempCounter = useRef(0);
 
-  // Primeiro board vira o ativo. Nao reescreve a URL: quadro nao esta no deep
-  // link nesta fase.
+  // Quadro ativo: `?board=<slug>` quando existir, senao o primeiro.
+  //
+  // O parametro nasceu para o redirect de `?section=bugs` ter um DESTINO REAL:
+  // sem ele o link dos e-mails ja enviados cairia no primeiro quadro por
+  // posicao, que nao e o de bugs. De quebra, torna qualquer quadro linkavel.
+  //
+  // FALLBACK EXPLICITO: slug que nao resolve (quadro renomeado, arquivado ou
+  // excluido) cai no primeiro em vez de deixar a tela sem quadro. O redirect
+  // nao pode presumir que o quadro BUG existe, e este e o tratamento.
   useEffect(() => {
-    if (!boardId && boards.length > 0) setBoardId(boards[0].id);
+    if (boardId || boards.length === 0) return;
+    const slug = new URLSearchParams(window.location.search).get("board");
+    const alvo = slug ? boards.find((b) => b.slug === slug) : undefined;
+    setBoardId((alvo ?? boards[0]).id);
   }, [boardId, boards]);
 
   const markPending = useCallback((taskId: string, pending: boolean) => {
@@ -288,6 +302,19 @@ export function TasksDashboard() {
 
   const filtersActive = hasActiveFilters(filters);
 
+
+  // Etapas alimentadas pelo feed. Memo porque entra no contexto de drop, que e
+
+  // recalculado a cada movimento do ponteiro durante o arraste.
+
+  const pinnedColumnIds = useMemo(
+
+    () => (snapshot?.columns ?? []).filter((c) => c.is_pinned).map((c) => c.id),
+
+    [snapshot],
+
+  );
+
   const visibleTasks = useMemo(
     () =>
       filtersActive
@@ -366,7 +393,9 @@ export function TasksDashboard() {
   const groupByRef = useRef(groupBy);
   groupByRef.current = groupBy;
   const filtersActiveRef = useRef(filtersActive);
+  const pinnedColumnIdsRef = useRef<readonly string[]>(pinnedColumnIds);
   filtersActiveRef.current = filtersActive;
+  pinnedColumnIdsRef.current = pinnedColumnIds;
 
   /** Ids dos containers para o SortableContext horizontal. Referencia estavel. */
   const columnIds = useMemo(() => groups.map((group) => group.id), [groups]);
@@ -560,6 +589,15 @@ export function TasksDashboard() {
         title,
         description: null,
         notes: null,
+        // Card criado pela tela e sempre humano e sem vinculo com o Sentry. O
+        // otimista precisa dizer isso desde o primeiro render, senao o selo de
+        // origem pisca "Sentry" ate a resposta chegar.
+        source: "human",
+        sentry_issue_id: null,
+        sentry_issue_url: null,
+        sentry_reopen_event_at: null,
+        archived_source: null,
+        sentry_detalhe_incompleto: false,
         position: optimisticPosition,
         priority: "media",
         type: "tarefa",
@@ -973,6 +1011,7 @@ export function TasksDashboard() {
           groups: groupsRef.current,
           groupBy: groupByRef.current,
           filtersActive: filtersActiveRef.current,
+          pinnedColumnIds: pinnedColumnIdsRef.current,
           task,
         },
         overId,
@@ -1095,7 +1134,9 @@ export function TasksDashboard() {
   // Render
   // -------------------------------------------------------------------------
 
-  if (loading) {
+  // PRIMEIRO CARREGAMENTO: nao ha barra de quadros a preservar, porque nem a
+  // lista de quadros chegou. Painel inteiro de esqueleto, como sempre foi.
+  if (loading && !trocandoDeBoard) {
     return <TasksPanelSkeleton />;
   }
 
@@ -1110,6 +1151,43 @@ export function TasksDashboard() {
         >
           Tentar de novo
         </button>
+      </div>
+    );
+  }
+
+  // TROCA DE QUADRO: a barra FICA, porque o clique da pessoa acabou de
+  // acontecer nela e sumir com ela vira flash de recarga; a area das colunas
+  // vira esqueleto. O snapshot que existe aqui e o do quadro ANTIGO, e nada
+  // dele pode ser renderizado, nem por um frame: o dado velho e o bug, nao a
+  // decoracao. Por isso `admins`/`labels` vao VAZIOS (as opcoes de filtro sao
+  // por quadro) e as contagens vao `null`, que a barra desenha como esqueleto
+  // em vez de afirmar um numero que ainda nao se sabe.
+  if (trocandoDeBoard) {
+    return (
+      <div className="space-y-4">
+        <BoardToolbar
+          ref={searchInputRef}
+          boards={boards}
+          activeBoardId={boardId}
+          admins={[]}
+          labels={[]}
+          filters={filters}
+          groupBy={groupBy}
+          view={view}
+          includeArchived={includeArchived}
+          visibleCount={null}
+          totalCount={null}
+          onSelectBoard={setBoardId}
+          onFiltersChange={setFilters}
+          onGroupByChange={setGroupBy}
+          onViewChange={(next) => setViewState({ view: next })}
+          onIncludeArchivedChange={(next) =>
+            setViewState({ includeArchived: next })
+          }
+          onClearFilters={clearFilters}
+          onManageBoards={() => setBoardManagerOpen(true)}
+        />
+        <BoardColumnsSkeleton />
       </div>
     );
   }

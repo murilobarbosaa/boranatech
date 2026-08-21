@@ -22,6 +22,32 @@ import { z } from "zod";
 
 export const AI_ROADMAP_SLUG_RE = /^ia-[a-z0-9]{8}$/;
 
+// Teto diario DEFAULT da cota dedicada do chat de intake
+// (ROADMAP_INTAKE_CHAT_DAILY_LIMIT_PRO em server/lib/env.ts, que importa daqui).
+//
+// Mora em shared, e nao em env.ts, por um motivo especifico: o orcamento de
+// turnos da conversa (MAX_USER_MESSAGES em server/lib/aiRoadmap/intakeChat.ts)
+// precisa CABER nesta cota, e a assercao que trava isso e um teste. Um teste
+// que importasse `server/lib/env` quebraria no CI, que nao tem arquivo .env
+// (regra do CLAUDE.md). Com o numero aqui, os dois lados da conta vivem em
+// modulos puros e o teste le os dois sem tocar em ambiente.
+export const ROADMAP_INTAKE_CHAT_DEFAULT_DAILY_LIMIT = 60;
+
+// Semente de abertura da conversa do chat de intake.
+//
+// Desde a fase 2 ela e INJETADA PELO SERVIDOR na montagem do prompt e nao conta
+// no orcamento de turnos; `validateIntakeChatBody` remove a que vier no corpo,
+// em qualquer posicao, para o bundle antigo em cache nao duplicar a semente.
+//
+// Mora em shared porque os DOIS lados precisam do MESMO texto e a igualdade e
+// silenciosa quando quebra: o client so a usa no retry de compatibilidade do
+// turno de abertura (janela de deploy contra backend antigo), e se os literais
+// divergirem o servidor novo deixa de reconhece-la para remover, a semente vira
+// mensagem de usuario e o orcamento fica um turno menor sem nada acusar. Duas
+// copias mantidas a mao sao a classe de defeito que o CLAUDE.md documenta.
+export const CHAT_KICKOFF =
+  "Quero montar meu roadmap de estudos. Pode comecar.";
+
 // Os 6 primeiros campos sao os do formulario original (enums + stackFocus +
 // extraContext) e NAO mudam: o resume de roadmaps partial legados reparseia o
 // que ficou gravado em ai_roadmaps.inputs, entao qualquer mudanca de shape neles
@@ -49,6 +75,113 @@ export const RoadmapIntakeSchema = z.object({
 });
 
 export type RoadmapIntake = z.infer<typeof RoadmapIntakeSchema>;
+
+// FONTE UNICA da pergunta "da pra gerar com o que temos?".
+//
+// Antes da fase 2 essa pergunta tinha DUAS respostas divergentes: o botao de
+// gerar aparecia quando `ready` (sinal do MODELO de que a conversa acabou) e o
+// payload era montado e validado a parte no client. As duas podiam discordar, e
+// quando discordavam a pessoa via "Faltou alguma informacao essencial pra gerar"
+// sem saber o que faltava e sem saida. `ready` e `canGenerate` sao coisas
+// diferentes: ready e sobre a CONVERSA ter terminado, canGenerate e sobre o
+// INTAKE estar completo. So o segundo decide se da pra gerar.
+//
+// Client e servidor chamam esta funcao; nenhum dos dois reimplementa a regra.
+
+// Os tres campos de escolha sem os quais a geracao nao acontece. `format` fica
+// de fora: o chat nao o pergunta e ele tem default.
+export const INTAKE_REQUIRED_CHOICE_FIELDS = [
+  "goal",
+  "hoursPerWeek",
+  "deadline",
+] as const;
+
+export type IntakeRequiredChoiceField =
+  (typeof INTAKE_REQUIRED_CHOICE_FIELDS)[number];
+
+// Campos que enriquecem o prompt mas nunca bloqueiam a geracao.
+const INTAKE_OPTIONAL_FIELDS = [
+  "stackFocus",
+  "extraContext",
+  "startingPoint",
+  "motivation",
+  "constraints",
+] as const;
+
+// Formato assumido quando o intake nao traz um valido: o chat guiado nao
+// pergunta formato de estudo (decisao de produto) e o gerador nao ramifica
+// sobre ele.
+export const DEFAULT_INTAKE_FORMAT: RoadmapIntake["format"] = "misto";
+
+export interface GenerationReadiness {
+  canGenerate: boolean;
+  // Quais campos de escolha ainda faltam. INVARIANTE: canGenerate false implica
+  // missing nao-vazio, para a UI sempre ter o que dizer e o que pedir. Coberto
+  // por teste em shared/aiRoadmap.test.ts.
+  missing: IntakeRequiredChoiceField[];
+  // Payload pronto para POST /generate, ou null quando falta campo.
+  intake: RoadmapIntake | null;
+}
+
+// Aceita tanto a proposta parcial do chat (campos nullable) quanto um
+// RoadmapIntake ja montado; os dois passam pela MESMA porta.
+export type IntakeProposalLike = Partial<
+  Record<keyof RoadmapIntake, string | null | undefined>
+>;
+
+export function buildGenerationIntake(
+  proposal: IntakeProposalLike | null | undefined,
+): GenerationReadiness {
+  const shape = RoadmapIntakeSchema.shape;
+  const missing: IntakeRequiredChoiceField[] = [];
+  const candidate: Record<string, unknown> = {};
+
+  for (const field of INTAKE_REQUIRED_CHOICE_FIELDS) {
+    const parsed = shape[field].safeParse(proposal?.[field] ?? undefined);
+    if (!parsed.success) {
+      missing.push(field);
+      continue;
+    }
+    candidate[field] = parsed.data;
+  }
+
+  // `format` tem default: um valor invalido nao bloqueia, cai no padrao.
+  const parsedFormat = shape.format.safeParse(proposal?.format ?? undefined);
+  candidate.format = parsedFormat.success
+    ? parsedFormat.data
+    : DEFAULT_INTAKE_FORMAT;
+
+  // Campo opcional invalido e DESCARTADO, nunca bloqueia. E o que impede o
+  // beco sem saida: um stackFocus que o modelo devolveu fora do regex nao pode
+  // custar o roadmap inteiro da pessoa. Descartar degrada o prompt; bloquear
+  // degrada o produto.
+  for (const field of INTAKE_OPTIONAL_FIELDS) {
+    const raw = proposal?.[field];
+    if (raw === null || raw === undefined || raw === "") continue;
+    const parsed = shape[field].safeParse(raw);
+    if (parsed.success && parsed.data !== undefined) {
+      candidate[field] = parsed.data;
+    }
+  }
+
+  if (missing.length > 0) {
+    return { canGenerate: false, missing, intake: null };
+  }
+
+  const parsed = RoadmapIntakeSchema.safeParse(candidate);
+  if (!parsed.success) {
+    // Inalcancavel: todo campo obrigatorio ja passou no proprio safeParse e os
+    // opcionais invalidos foram descartados. Se acontecer, devolve TODOS os
+    // obrigatorios em vez de uma lista vazia, para a UI nunca ficar sem o que
+    // pedir (o invariante vale ate no caso que "nao acontece").
+    return {
+      canGenerate: false,
+      missing: [...INTAKE_REQUIRED_CHOICE_FIELDS],
+      intake: null,
+    };
+  }
+  return { canGenerate: true, missing: [], intake: parsed.data };
+}
 
 const SectionLevelSchema = z.enum(["iniciante", "intermediario", "avancado"]);
 

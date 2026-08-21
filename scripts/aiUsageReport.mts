@@ -45,11 +45,33 @@ const asJson = args.includes("--json");
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+/**
+ * Mesmo codigo e mesma razao de `checkMigrationsApplied.mts`: 78 e `EX_CONFIG`
+ * do `sysexits.h`, e serve para "nao consegui olhar" nao ser confundido com
+ * "olhei e nao achei nada".
+ *
+ * Encontrado em 2026-08-01 exercitando o caminho de FALHA dos guards, depois de
+ * o `check:migrations` ter sido consertado pelo mesmo defeito: `exit(1)` igual
+ * ao de erro real, e uma linha com o mesmo prefixo da saida normal. Um relatorio
+ * de custo de IA que devolve zero linhas e um que nao rodou pareciam a mesma
+ * coisa, e este e um relatorio cujo resultado esperado AS VEZES E vazio.
+ */
+const EXIT_AMBIENTE_AUSENTE = 78;
+
 if (!supabaseUrl || !serviceRoleKey) {
   console.error(
-    "[aiUsageReport] faltam VITE_SUPABASE_URL e/ou SUPABASE_SERVICE_ROLE_KEY.",
+    "[aiUsageReport] ABORTADO SEM CONSULTAR NADA: faltam VITE_SUPABASE_URL " +
+      "e/ou SUPABASE_SERVICE_ROLE_KEY no ambiente.",
   );
-  process.exit(1);
+  console.error(
+    "[aiUsageReport] NENHUMA linha de uso foi lida. Este resultado NAO " +
+      "significa que nao houve uso de IA no periodo.",
+  );
+  console.error(
+    `[aiUsageReport] exit=${EXIT_AMBIENTE_AUSENTE} (EX_CONFIG) e ` +
+      "deliberadamente diferente de exit=1, que significa 'consultei e falhou'.",
+  );
+  process.exit(EXIT_AMBIENTE_AUSENTE);
 }
 
 const days = Number(flag("days") ?? 30);

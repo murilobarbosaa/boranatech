@@ -133,8 +133,9 @@ export default function Pro() {
 function ProPitchVariant() {
   return (
     <section
+      id="bora-na-tech-pro"
       aria-labelledby="pro-pitch-title"
-      className="relative overflow-hidden bg-gradient-to-br from-violet-950 via-purple-900 to-fuchsia-900 py-20 md:py-24"
+      className="bnt-ancora relative overflow-hidden bg-gradient-to-br from-violet-950 via-purple-900 to-fuchsia-900 py-20 md:py-24"
     >
       <BackgroundDecoration />
 
@@ -222,8 +223,9 @@ function ProThankYouVariant() {
 
   return (
     <section
+      id="bora-na-tech-pro"
       aria-labelledby="pro-thanks-title"
-      className="relative overflow-hidden bg-gradient-to-br from-violet-950 via-purple-900 to-fuchsia-900 py-16 md:py-20"
+      className="bnt-ancora relative overflow-hidden bg-gradient-to-br from-violet-950 via-purple-900 to-fuchsia-900 py-16 md:py-20"
     >
       <BackgroundDecoration />
 

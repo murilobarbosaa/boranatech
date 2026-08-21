@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import Stripe from "stripe";
 
 import { findValidCoupon } from "../lib/coupons";
@@ -9,6 +10,7 @@ import { resolveStripeCustomerId } from "../lib/stripeCustomer";
 import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
+import { patchDeMeioDePagamento } from "../lib/paymentMethod";
 import { isFirstPurchase } from "./shared";
 import { getPlanChargeValue, PLAN_PRICING } from "../../shared/planPricing";
 import type { Gender } from "../../shared/gender";
@@ -378,6 +380,13 @@ async function applySubscription(
 
   const status = mapStatus(sub.status);
   const period = subItemPeriod(sub);
+  // A Subscription declara o meio em payment_settings.payment_method_types.
+  // Nao e adivinhacao: createCheckout fixa payment_method_types: ["card"] no
+  // ramo de assinatura (opt-out do dynamic payment methods), entao a lista
+  // chega com um elemento so e o valor e conclusivo.
+  const meioDePagamento = patchDeMeioDePagamento(
+    sub as unknown as Parameters<typeof patchDeMeioDePagamento>[0],
+  );
   const affiliateCode = sub.metadata?.affiliate_code || null;
   const couponCode = sub.metadata?.coupon_code || null;
   const lastEventIso = eventCreatedAt.toISOString();
@@ -396,6 +405,16 @@ async function applySubscription(
         : null,
     last_event_at: lastEventIso,
     raw_provider_payload: event,
+    // Meio de pagamento LIDO, nunca deduzido. Ver server/lib/paymentMethod.ts
+    // para a decisao de canonicidade e para o porque de nao gravar 'card' por
+    // eliminacao.
+    //
+    // A chave so entra no patch quando o meio foi resolvido: sem isto, um
+    // evento cuja carga nao declara o meio (invoice.paid e
+    // customer.subscription.updated as vezes nao declaram) sobrescreveria com
+    // NULL um valor que um evento anterior tinha resolvido. Atualizacao nao
+    // pode apagar informacao que a criacao tinha.
+    ...meioDePagamento,
   };
 
   const baseRequired = {
@@ -1406,6 +1425,7 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
         .from("subscription_cancellations")
         .insert({
           user_id: input.userId,
+          canceled_by: input.actorUserId,
           provider_subscription_id: sub.provider_subscription_id,
           reason_code: input.reasonCode || null,
           reason_text: input.reasonText || null,
@@ -1482,6 +1502,7 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
     .from("subscription_cancellations")
     .insert({
       user_id: input.userId,
+      canceled_by: input.actorUserId,
       provider_subscription_id: sub.provider_subscription_id,
       reason_code: input.reasonCode || null,
       reason_text: input.reasonText || null,
@@ -1713,6 +1734,36 @@ async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
 
   console.log(`[webhook/stripe] event: ${event.type} (${event.id})`);
 
+  // EVENTO DE SANDBOX NO BANCO DE PRODUCAO: recusado aqui, antes de qualquer
+  // escrita.
+  //
+  // Nao e hipotese. Em 2026-08-14 a varredura achou em `billing_events` de
+  // PRODUCAO um `checkout.session.completed` de `cs_test_a1hjDcpNU...`
+  // (murilo1234@gmail.com, R$ 24,90, 2026-07-15). Ele ficou la, contando como
+  // uma das duas sessoes "sem linha em subscriptions", ou seja, virou um falso
+  // positivo permanente na unica ferramenta que existe para achar pagamento
+  // perdido. Alarme com ruido conhecido dentro e alarme que alguem desliga.
+  //
+  // Por que 2xx e nao erro: para a Stripe, 4xx/5xx significa "tente de novo", e
+  // o evento voltaria em loop pelo prazo de retry inteiro. O evento chegou e foi
+  // entendido; a decisao de nao guarda-lo e NOSSA, e um retry nao mudaria nada.
+  //
+  // So em producao: fora dela, o comportamento atual fica intacto, porque e
+  // justamente ali que evento de teste E o fluxo normal.
+  if (env.isProd && event.livemode === false) {
+    console.warn(
+      `[webhook/stripe] evento de MODO TESTE ignorado em producao: ${event.type} (${event.id}). ` +
+        `Nao persistido, nao processado.`,
+    );
+    Sentry.addBreadcrumb({
+      category: "webhook",
+      level: "warning",
+      message: "stripe test-mode event ignored in production",
+      data: { eventId: event.id, eventType: event.type },
+    });
+    return { received: true, ignoredTestMode: true };
+  }
+
   // Dedupe/idempotencia: mesma tabela billing_events do Asaas, provider='stripe'.
   const { data: recorded, error: dedupeError } = await supabaseAdmin
     .from("billing_events")
@@ -1860,6 +1911,13 @@ export type StripeSubscriptionState = {
   canceledAt: string | null;
 };
 
+/**
+ * ATENCAO: `subscriptionId` precisa ser um id de ASSINATURA (`sub_...`).
+ *
+ * Linha de BOLETO (`renewal_type='manual'`) guarda um id de SESSAO (`cs_...`)
+ * em `provider_subscription_id`, e passa-lo aqui faz o retrieve falhar sempre.
+ * Ver a nota no chamador em server/routes/cron.ts (process-cancellations).
+ */
 export async function getStripeSubscriptionState(
   subscriptionId: string,
 ): Promise<StripeSubscriptionState> {

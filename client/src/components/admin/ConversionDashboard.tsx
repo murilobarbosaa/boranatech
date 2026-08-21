@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { adminFetch } from "@/lib/adminApi";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
+import { rateOf } from "@shared/smallSample";
 
 // TODO(Ana): revisar TODA a copy visivel deste bloco (titulos, labels do funil,
 // aviso de amostra pequena, nota de historico, ranking de gates e estados).
@@ -44,9 +45,6 @@ const PRESETS: Array<{ id: Preset; label: string }> = [
   { id: "custom", label: "Personalizado" },
 ];
 
-// Denominador abaixo disso: a taxa e pouco confiavel (mostra o absoluto em
-// destaque e sinaliza "amostra pequena").
-const SMALL_SAMPLE_THRESHOLD = 20;
 
 const numberFmt = new Intl.NumberFormat("pt-BR");
 function fmtCount(n: number): string {
@@ -75,19 +73,6 @@ function computeRange(
   else if (preset === "last_3") start = new Date(Date.UTC(y, m - 2, 1));
   else start = new Date(Date.UTC(y, m - 11, 1));
   return { from: start.toISOString(), to: now.toISOString() };
-}
-
-// Taxa com aviso de amostra pequena. rate = null quando o denominador e 0
-// (ausencia, nao 0%). small = denominador < limiar (taxa pouco confiavel).
-function rateOf(
-  numerator: number,
-  denominator: number,
-): { rate: number | null; small: boolean } {
-  if (denominator <= 0) return { rate: null, small: true };
-  return {
-    rate: (numerator / denominator) * 100,
-    small: denominator < SMALL_SAMPLE_THRESHOLD,
-  };
 }
 
 function RatePill({

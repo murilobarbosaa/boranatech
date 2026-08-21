@@ -1,0 +1,263 @@
+{
+  "slug": "ia-a1b2c3d4",
+  "area": "frontend",
+  "title": "Front-end sob medida para primeira vaga",
+  "level": "Iniciante",
+  "description": "Trilha personalizada do zero ate publicar uma aplicacao React, dimensionada para 5 a 10 horas por semana em 6 meses.",
+  "sections": [
+    {
+      "id": "fundamentos-web",
+      "title": "Fundamentos da web",
+      "description": "Como o navegador, o servidor e o HTTP conversam.",
+      "level": "iniciante",
+      "children": [
+        {
+          "id": "fundamentos-web-passo-1",
+          "title": "Fundamentos da web: etapa 1",
+          "description": "O que dominar sobre fundamentos da web parte 1.",
+          "content": "Neste passo voce domina fundamentos da web parte 1, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "4h a 6h"
+        },
+        {
+          "id": "fundamentos-web-passo-2",
+          "title": "Fundamentos da web: etapa 2",
+          "description": "O que dominar sobre fundamentos da web parte 2.",
+          "content": "Neste passo voce domina fundamentos da web parte 2, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "1 semana"
+        },
+        {
+          "id": "fundamentos-web-passo-3",
+          "title": "Fundamentos da web: etapa 3",
+          "description": "O que dominar sobre fundamentos da web parte 3.",
+          "content": "Neste passo voce domina fundamentos da web parte 3, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "8 horas"
+        },
+        {
+          "id": "fundamentos-web-passo-4",
+          "title": "Fundamentos da web: etapa 4",
+          "description": "O que dominar sobre fundamentos da web parte 4.",
+          "content": "Neste passo voce domina fundamentos da web parte 4, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "2 semanas"
+        }
+      ]
+    },
+    {
+      "id": "html-semantico",
+      "title": "HTML semantico",
+      "description": "Estrutura de pagina com as tags certas para cada conteudo.",
+      "level": "iniciante",
+      "children": [
+        {
+          "id": "html-semantico-passo-1",
+          "title": "HTML semantico: etapa 1",
+          "description": "O que dominar sobre html semantico parte 1.",
+          "content": "Neste passo voce domina html semantico parte 1, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "4h a 6h"
+        },
+        {
+          "id": "html-semantico-passo-2",
+          "title": "HTML semantico: etapa 2",
+          "description": "O que dominar sobre html semantico parte 2.",
+          "content": "Neste passo voce domina html semantico parte 2, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "1 semana"
+        },
+        {
+          "id": "html-semantico-passo-3",
+          "title": "HTML semantico: etapa 3",
+          "description": "O que dominar sobre html semantico parte 3.",
+          "content": "Neste passo voce domina html semantico parte 3, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "8 horas"
+        },
+        {
+          "id": "html-semantico-passo-4",
+          "title": "HTML semantico: etapa 4",
+          "description": "O que dominar sobre html semantico parte 4.",
+          "content": "Neste passo voce domina html semantico parte 4, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "2 semanas"
+        }
+      ]
+    },
+    {
+      "id": "css-layout",
+      "title": "CSS e layout",
+      "description": "Box model, flexbox e grid ate montar layouts responsivos.",
+      "level": "iniciante",
+      "children": [
+        {
+          "id": "css-layout-passo-1",
+          "title": "CSS e layout: etapa 1",
+          "description": "O que dominar sobre css e layout parte 1.",
+          "content": "Neste passo voce domina css e layout parte 1, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "4h a 6h"
+        },
+        {
+          "id": "css-layout-passo-2",
+          "title": "CSS e layout: etapa 2",
+          "description": "O que dominar sobre css e layout parte 2.",
+          "content": "Neste passo voce domina css e layout parte 2, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "1 semana"
+        },
+        {
+          "id": "css-layout-passo-3",
+          "title": "CSS e layout: etapa 3",
+          "description": "O que dominar sobre css e layout parte 3.",
+          "content": "Neste passo voce domina css e layout parte 3, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "8 horas"
+        },
+        {
+          "id": "css-layout-passo-4",
+          "title": "CSS e layout: etapa 4",
+          "description": "O que dominar sobre css e layout parte 4.",
+          "content": "Neste passo voce domina css e layout parte 4, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "2 semanas"
+        }
+      ]
+    },
+    {
+      "id": "javascript-base",
+      "title": "JavaScript essencial",
+      "description": "Tipos, funcoes, arrays e manipulacao do DOM.",
+      "level": "intermediario",
+      "children": [
+        {
+          "id": "javascript-base-passo-1",
+          "title": "JavaScript essencial: etapa 1",
+          "description": "O que dominar sobre javascript essencial parte 1.",
+          "content": "Neste passo voce domina javascript essencial parte 1, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "4h a 6h"
+        },
+        {
+          "id": "javascript-base-passo-2",
+          "title": "JavaScript essencial: etapa 2",
+          "description": "O que dominar sobre javascript essencial parte 2.",
+          "content": "Neste passo voce domina javascript essencial parte 2, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "1 semana"
+        },
+        {
+          "id": "javascript-base-passo-3",
+          "title": "JavaScript essencial: etapa 3",
+          "description": "O que dominar sobre javascript essencial parte 3.",
+          "content": "Neste passo voce domina javascript essencial parte 3, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "8 horas"
+        },
+        {
+          "id": "javascript-base-passo-4",
+          "title": "JavaScript essencial: etapa 4",
+          "description": "O que dominar sobre javascript essencial parte 4.",
+          "content": "Neste passo voce domina javascript essencial parte 4, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "2 semanas",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "id": "consumo-api",
+      "title": "Consumo de API",
+      "description": "Fetch, promises, tratamento de erro e estados de carregamento.",
+      "level": "intermediario",
+      "children": [
+        {
+          "id": "consumo-api-passo-1",
+          "title": "Consumo de API: etapa 1",
+          "description": "O que dominar sobre consumo de api parte 1.",
+          "content": "Neste passo voce domina consumo de api parte 1, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "4h a 6h"
+        },
+        {
+          "id": "consumo-api-passo-2",
+          "title": "Consumo de API: etapa 2",
+          "description": "O que dominar sobre consumo de api parte 2.",
+          "content": "Neste passo voce domina consumo de api parte 2, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "1 semana"
+        },
+        {
+          "id": "consumo-api-passo-3",
+          "title": "Consumo de API: etapa 3",
+          "description": "O que dominar sobre consumo de api parte 3.",
+          "content": "Neste passo voce domina consumo de api parte 3, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "8 horas"
+        },
+        {
+          "id": "consumo-api-passo-4",
+          "title": "Consumo de API: etapa 4",
+          "description": "O que dominar sobre consumo de api parte 4.",
+          "content": "Neste passo voce domina consumo de api parte 4, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "2 semanas"
+        }
+      ]
+    },
+    {
+      "id": "react-componentes",
+      "title": "React e componentes",
+      "description": "Componentes, props, estado e composicao de interface.",
+      "level": "intermediario",
+      "children": [
+        {
+          "id": "react-componentes-passo-1",
+          "title": "React e componentes: etapa 1",
+          "description": "O que dominar sobre react e componentes parte 1.",
+          "content": "Neste passo voce domina react e componentes parte 1, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "4h a 6h"
+        },
+        {
+          "id": "react-componentes-passo-2",
+          "title": "React e componentes: etapa 2",
+          "description": "O que dominar sobre react e componentes parte 2.",
+          "content": "Neste passo voce domina react e componentes parte 2, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "1 semana"
+        },
+        {
+          "id": "react-componentes-passo-3",
+          "title": "React e componentes: etapa 3",
+          "description": "O que dominar sobre react e componentes parte 3.",
+          "content": "Neste passo voce domina react e componentes parte 3, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "8 horas"
+        },
+        {
+          "id": "react-componentes-passo-4",
+          "title": "React e componentes: etapa 4",
+          "description": "O que dominar sobre react e componentes parte 4.",
+          "content": "Neste passo voce domina react e componentes parte 4, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "2 semanas"
+        }
+      ]
+    },
+    {
+      "id": "deploy-portfolio",
+      "title": "Deploy e portfolio",
+      "description": "Publicar o que voce construiu e mostrar isso para recrutador.",
+      "level": "avancado",
+      "children": [
+        {
+          "id": "deploy-portfolio-passo-1",
+          "title": "Deploy e portfolio: etapa 1",
+          "description": "O que dominar sobre deploy e portfolio parte 1.",
+          "content": "Neste passo voce domina deploy e portfolio parte 1, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "4h a 6h"
+        },
+        {
+          "id": "deploy-portfolio-passo-2",
+          "title": "Deploy e portfolio: etapa 2",
+          "description": "O que dominar sobre deploy e portfolio parte 2.",
+          "content": "Neste passo voce domina deploy e portfolio parte 2, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "1 semana"
+        },
+        {
+          "id": "deploy-portfolio-passo-3",
+          "title": "Deploy e portfolio: etapa 3",
+          "description": "O que dominar sobre deploy e portfolio parte 3.",
+          "content": "Neste passo voce domina deploy e portfolio parte 3, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "8 horas"
+        },
+        {
+          "id": "deploy-portfolio-passo-4",
+          "title": "Deploy e portfolio: etapa 4",
+          "description": "O que dominar sobre deploy e portfolio parte 4.",
+          "content": "Neste passo voce domina deploy e portfolio parte 4, comecando pelos subtopicos concretos que sustentam o tema. Estude a definicao, veja um exemplo funcionando e reproduza sem copiar. Para praticar, refaca o exemplo do zero mudando um requisito. Como mini desafio, escreva uma versao propria e explique em voz alta o que cada parte faz.",
+          "estimatedTime": "2 semanas",
+          "project": "pro-saas-dashboard"
+        }
+      ]
+    }
+  ]
+}

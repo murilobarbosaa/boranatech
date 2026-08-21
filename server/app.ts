@@ -6,11 +6,18 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import { env } from "./lib/env";
+import { falhaOpenAiNaCadeia } from "./lib/openaiFailure";
 import { isRateLimitExempt } from "./lib/rateLimitExempt";
+import {
+  alvoAnonimo,
+  chaveDeIp,
+  FATOR_TETO_IP,
+  identidadeDeCota,
+} from "./lib/rateLimitKey";
 import { cacheConnection } from "./lib/redis";
 import { supabaseAdmin } from "./lib/supabaseAdmin";
 import { validateSupabaseJwt } from "./middleware/auth";
-import { errorHandler } from "./middleware/error";
+import { bodyParseContext, errorHandler } from "./middleware/error";
 import adminRouter from "./routes/admin";
 import agentRouter from "./routes/agent";
 import agentHistoryRouter from "./routes/agentHistory";
@@ -269,8 +276,59 @@ app.use(async (req, res, next) => {
   }
 
   const now = Date.now();
-  const key = req.ip || "unknown";
+  // Conta por QUEM CHAMA, nao por de onde. IP nao e identidade: em NAT de
+  // operadora/escola dezenas de pessoas dividiam o mesmo balde de 180/min e
+  // levavam 429 juntas (28 dos 29 `profile_fetch_exhausted` do Sentry eram isso,
+  // espalhados por 6 cidades). Requisicao com token conta no balde do usuario.
+  const identidade = identidadeDeCota(req.headers.authorization, req.ip);
+  const key = identidade.chave;
+  // Requisicao autenticada leva TAMBEM um teto por IP, mais alto. Sem ele, um
+  // `sub` forjado a cada requisicao geraria um balde novo por chamada e escaparia
+  // da cota (o `sub` e lido sem verificar assinatura de proposito: ele nao
+  // autoriza nada, so escolhe balde). Requisicao sem token nao precisa do
+  // segundo teto, porque o IP ja e a chave principal e checar de novo contaria o
+  // mesmo balde duas vezes.
+  const tetoIp = identidade.porUsuario
+    ? {
+        chave: chaveDeIp(req.ip),
+        limite: RATE_LIMIT_MAX_REQUESTS * FATOR_TETO_IP,
+      }
+    : null;
   const windowStart = now - (now % RATE_LIMIT_WINDOW_MS);
+
+  // Escopo no log: sem ele, "429" nao diz se quem estourou foi a pessoa ou o IP
+  // inteiro, que sao problemas diferentes com correcoes diferentes. A CONTAGEM
+  // vem junto porque ela e de graca (ja esta em maos na hora da decisao) e
+  // transforma "estourou" em "estourou por quanto": 1081 contra 1080 e um NAT
+  // grande demais para o fator; 9000 contra 1080 e abuso. Sem o numero, as duas
+  // saem como a mesma linha.
+  const recusar = (
+    escopo: "usuario" | "ip",
+    resetAt: number,
+    contagem: number,
+    limite: number,
+  ) => {
+    res.setHeader("Retry-After", String(Math.ceil((resetAt - now) / 1000)));
+    console.warn(
+      `[ratelimit] 429 escopo=${escopo} contagem=${contagem} limite=${limite}`,
+    );
+    return res.status(429).json({
+      error: {
+        code: "rate_limited",
+        message: "Muitas requisições. Tente novamente em instantes.",
+      },
+    });
+  };
+
+  // Amostra do DENOMINADOR: emite a contagem da JANELA (nao a requisicao) a cada
+  // N chamadas da mesma chave. Desligada por padrao. Ver docs/denominador-rate-limit.md.
+  const amostrar = (escopo: "usuario" | "ip", contagem: number, limite: number) => {
+    const n = env.rateLimitSampleN;
+    if (n <= 0 || contagem % n !== 0) return;
+    console.log(
+      `[ratelimit] amostra escopo=${escopo} alvo=${alvoAnonimo(escopo === "ip" ? chaveDeIp(req.ip) : key)} contagem=${contagem} limite=${limite}`,
+    );
+  };
 
   const redisCount = await redisRateLimitCount(key, windowStart);
   if (redisCount !== null) {
@@ -281,16 +339,15 @@ app.use(async (req, res, next) => {
       );
     }
     if (redisCount > RATE_LIMIT_MAX_REQUESTS) {
-      res.setHeader(
-        "Retry-After",
-        String(Math.ceil((windowStart + RATE_LIMIT_WINDOW_MS - now) / 1000)),
-      );
-      return res.status(429).json({
-        error: {
-          code: "rate_limited",
-          message: "Muitas requisições. Tente novamente em instantes.",
-        },
-      });
+      return recusar("usuario", windowStart + RATE_LIMIT_WINDOW_MS, redisCount, RATE_LIMIT_MAX_REQUESTS);
+    }
+    amostrar("usuario", redisCount, RATE_LIMIT_MAX_REQUESTS);
+    if (tetoIp) {
+      const contagemIp = await redisRateLimitCount(tetoIp.chave, windowStart);
+      if (contagemIp !== null && contagemIp > tetoIp.limite) {
+        return recusar("ip", windowStart + RATE_LIMIT_WINDOW_MS, contagemIp, tetoIp.limite);
+      }
+      if (contagemIp !== null) amostrar("ip", contagemIp, tetoIp.limite);
     }
     return next();
   }
@@ -302,28 +359,35 @@ app.use(async (req, res, next) => {
     );
   }
 
-  const current = rateLimitStore.get(key);
-
-  if (!current || current.resetAt <= now) {
-    if (rateLimitStore.size >= RATE_LIMIT_MAX_ENTRIES) {
-      sweepRateLimitStore(now);
+  // Fallback local: mesma decisao em duas chaves, entao vira funcao para os dois
+  // tetos usarem a MESMA contagem. Guarda dentro da funcao, nao repetida no call
+  // site: era assim que a supressao por autodeclaracao sumiu de um dos dois
+  // call sites de `setScoreDelta`.
+  const contarLocal = (chave: string): { count: number; resetAt: number } => {
+    const atual = rateLimitStore.get(chave);
+    if (!atual || atual.resetAt <= now) {
+      if (rateLimitStore.size >= RATE_LIMIT_MAX_ENTRIES) {
+        sweepRateLimitStore(now);
+      }
+      const novo = { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS };
+      rateLimitStore.set(chave, novo);
+      return novo;
     }
-    rateLimitStore.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return next();
-  }
+    atual.count += 1;
+    return atual;
+  };
 
-  current.count += 1;
-  if (current.count > RATE_LIMIT_MAX_REQUESTS) {
-    res.setHeader(
-      "Retry-After",
-      String(Math.ceil((current.resetAt - now) / 1000)),
-    );
-    return res.status(429).json({
-      error: {
-        code: "rate_limited",
-        message: "Muitas requisições. Tente novamente em instantes.",
-      },
-    });
+  const doUsuario = contarLocal(key);
+  if (doUsuario.count > RATE_LIMIT_MAX_REQUESTS) {
+    return recusar("usuario", doUsuario.resetAt, doUsuario.count, RATE_LIMIT_MAX_REQUESTS);
+  }
+  amostrar("usuario", doUsuario.count, RATE_LIMIT_MAX_REQUESTS);
+  if (tetoIp) {
+    const doIp = contarLocal(tetoIp.chave);
+    if (doIp.count > tetoIp.limite) {
+      return recusar("ip", doIp.resetAt, doIp.count, tetoIp.limite);
+    }
+    amostrar("ip", doIp.count, tetoIp.limite);
   }
 
   next();
@@ -549,6 +613,23 @@ app.use(
         if (req.user?.id) scope.setUser({ id: req.user.id });
         // Contexto estruturado que o handler anexou via createError(..., {context}).
         if (err.context) scope.setContext("handler", err.context);
+        // Falha da OpenAI classificada, achada na cadeia de `cause`. Sem estas
+        // tags o evento de `502 upstream_error` e identico para saldo esgotado
+        // e para rate limit, e o diagnostico recomeca do zero (foi o que custou
+        // o incidente de 2026-08-05). Fica aqui, num lugar so, em vez de em
+        // cada rota: quem embrulha o erro so precisa passar `cause`.
+        const falhaOpenAi = falhaOpenAiNaCadeia(err);
+        if (falhaOpenAi) {
+          scope.setTag("openai_classificacao", falhaOpenAi.classificacao);
+          scope.setTag("openai_code", falhaOpenAi.openaiCode ?? "ausente");
+          scope.setTag("openai_type", falhaOpenAi.openaiType ?? "ausente");
+          scope.setTag("openai_status", String(falhaOpenAi.httpStatus));
+        }
+        // Headers de transporte do 500 do body parser. So MEDE: nada no
+        // `express.json` nem na ordem dos middlewares muda. Ver o comentario de
+        // `bodyParseContext` em middleware/error.ts.
+        const bodyParse = bodyParseContext(err, req);
+        if (bodyParse) scope.setContext("body_parse", bodyParse);
         Sentry.captureException(err);
       });
     }

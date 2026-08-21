@@ -27,11 +27,26 @@ type SubscriberListData = {
 };
 
 const STATUS_META: Record<string, { label: string; className: string }> = {
-  active: { label: "Ativo", className: "border-emerald-600 bg-emerald-50 text-emerald-700" },
-  trialing: { label: "Trial", className: "border-blue-500 bg-blue-50 text-blue-700" },
-  past_due: { label: "Inadimplente", className: "border-amber-500 bg-amber-50 text-amber-700" },
-  canceled: { label: "Cancelado", className: "border-slate-400 bg-slate-100 text-slate-600" },
-  incomplete: { label: "Incompleto", className: "border-rose-400 bg-rose-50 text-rose-700" },
+  active: {
+    label: "Ativo",
+    className: "border-emerald-600 bg-emerald-50 text-emerald-700",
+  },
+  trialing: {
+    label: "Trial",
+    className: "border-blue-500 bg-blue-50 text-blue-700",
+  },
+  past_due: {
+    label: "Inadimplente",
+    className: "border-amber-500 bg-amber-50 text-amber-700",
+  },
+  canceled: {
+    label: "Cancelado",
+    className: "border-slate-400 bg-slate-100 text-slate-600",
+  },
+  incomplete: {
+    label: "Incompleto",
+    className: "border-rose-400 bg-rose-50 text-rose-700",
+  },
 };
 
 // Sentinela de borda p/ o BntSelect (Radix proibe SelectItem value=""). O filtro
@@ -205,14 +220,30 @@ export function SubscribersTable() {
             <table className="w-full border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b-2 border-slate-900 bg-slate-50">
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">E-mail</th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">Plano</th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">Status</th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">Início período</th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">Fim período</th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">Cancelar no fim</th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">Afiliado</th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">Criado em</th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    E-mail
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Plano
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Início período
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Fim período
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Cancelar no fim
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Afiliado
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Criado em
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -242,7 +273,9 @@ export function SubscribersTable() {
                           Agendado
                         </span>
                       ) : (
-                        <span className="text-xs font-bold text-slate-400">Não</span>
+                        <span className="text-xs font-bold text-slate-400">
+                          Não
+                        </span>
                       )}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-700">
@@ -301,8 +334,18 @@ export function SubscribersSummary({ onSeeAll }: { onSeeAll?: () => void }) {
       setLoading(true);
       setError(null);
       try {
+        // status=active NAO e enfeite: sem ele o "Ver todos (N)" contava TODAS
+        // as linhas de subscriptions, inclusive um boleto `pending` (emitido e
+        // NAO pago). O rotulo dizia "assinantes" e o numero incluia quem nao
+        // pagou, entao ele nunca batia com o card de Assinantes Pro ao lado
+        // (medido em 2026-07-31: 63 aqui contra 62 no card, e a diferenca era
+        // exatamente esse boleto).
+        //
+        // O filtro vive AQUI e nao em getSubscriberList: a tabela completa do
+        // Financeiro usa a MESMA funcao e depende de enxergar todos os status,
+        // porque ela oferece o filtro de status na interface.
         const json: { data: SubscriberListData } = await adminFetch(
-          "/subscribers?page=1&pageSize=5",
+          "/subscribers?page=1&pageSize=5&status=active",
         );
         if (cancelled) return;
         setRows(json.data.rows);

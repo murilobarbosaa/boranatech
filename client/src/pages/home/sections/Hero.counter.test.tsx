@@ -7,6 +7,9 @@ import { memoryLocation } from "wouter/memory-location";
 // Mock de framer-motion: AnimatedCounter exibe o `value` no DOM (sem animação
 // de viewport), permitindo provar o que aparece na tela após cada cenário.
 // =============================================================================
+// Ambiente de movimento controlado pelo teste (prefers-reduced-motion).
+const motionEnv = vi.hoisted(() => ({ prefersReduced: false }));
+
 vi.mock("framer-motion", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
 
@@ -80,15 +83,21 @@ vi.mock("framer-motion", async () => {
     return { stop: () => {} };
   }
 
-  function useInView() {
-    return true;
-  }
+  const actual =
+    await vi.importActual<typeof import("framer-motion")>("framer-motion");
 
   return {
     motion: fakeMotion,
     AnimatePresence: ({ children }: { children: React.ReactNode }) =>
       React.createElement(React.Fragment, null, children),
-    useInView,
+    // useInView REAL, de propósito. A versão anterior deste mock era
+    // `useInView: () => true`, o que excluía da suíte exatamente o mecanismo
+    // que estava quebrado: o contador travava em 0 porque o observer nunca
+    // disparava, e o teste passava verde porque nunca exercitou o observer.
+    // Aqui ele roda de verdade, contra o IntersectionObserver stubado abaixo,
+    // que o teste controla (dispara / nunca dispara / ausente).
+    useInView: actual.useInView,
+    useReducedMotion: () => motionEnv.prefersReduced,
     useMotionValue,
     useTransform,
     animate,
@@ -103,7 +112,8 @@ const sentrySpy = vi.hoisted(() => {
   const setTag = vi.fn();
   const setLevel = vi.fn();
   const setContext = vi.fn();
-  const scope = { setTag, setLevel, setContext };
+  const setFingerprint = vi.fn();
+  const scope = { setTag, setLevel, setContext, setFingerprint };
   const captureMessage = vi.fn();
   const captureException = vi.fn();
   const withScope = vi.fn((cb: (s: typeof scope) => void) => cb(scope));
@@ -111,6 +121,7 @@ const sentrySpy = vi.hoisted(() => {
     setTag,
     setLevel,
     setContext,
+    setFingerprint,
     captureMessage,
     captureException,
     withScope,
@@ -123,6 +134,11 @@ vi.mock("@sentry/react", () => ({
   captureException: sentrySpy.captureException,
 }));
 
+// PostHog: destino do caso em que o cache serviu a tela. Ver o describe de
+// instrumentacao mais abaixo.
+const posthogSpy = vi.hoisted(() => ({ capture: vi.fn() }));
+vi.mock("posthog-js", () => ({ default: { capture: posthogSpy.capture } }));
+
 import Hero from "./Hero";
 
 const LS_KEY = "bnt_users_count";
@@ -130,11 +146,35 @@ const PLACEHOLDER_TEXT = "Já estão encontrando o caminho em tech";
 
 let fetchSpy: ReturnType<typeof vi.fn>;
 
-beforeEach(() => {
+// Modo do IntersectionObserver stubado:
+//   "fire"  -> o alvo é reportado como visível (situação normal do badge, que
+//              fica acima da dobra);
+//   "never" -> o observer nunca chama o callback. É o cenário do bug: o alvo
+//              cai fora da root e a animação nunca é disparada.
+let ioMode: "fire" | "never" = "fire";
+// rootMargins efetivamente pedidos ao IntersectionObserver, pra travar a
+// decisão de não usar margem negativa nos lados.
+let ioRootMargins: string[] = [];
+
+function stubIntersectionObserver() {
   vi.stubGlobal(
     "IntersectionObserver",
     class {
-      observe() {}
+      private cb: IntersectionObserverCallback;
+      constructor(cb: IntersectionObserverCallback, opts?: { rootMargin?: string }) {
+        this.cb = cb;
+        ioRootMargins.push(opts?.rootMargin ?? "");
+      }
+      observe(target: Element) {
+        if (ioMode === "never") return;
+        const entry = {
+          target,
+          isIntersecting: true,
+          intersectionRatio: 1,
+        } as unknown as IntersectionObserverEntry;
+        // assíncrono, como o observer real
+        setTimeout(() => this.cb([entry], this as never), 0);
+      }
       unobserve() {}
       disconnect() {}
       takeRecords() {
@@ -142,6 +182,13 @@ beforeEach(() => {
       }
     },
   );
+}
+
+beforeEach(() => {
+  ioMode = "fire";
+  ioRootMargins = [];
+  motionEnv.prefersReduced = false;
+  stubIntersectionObserver();
   vi.stubGlobal(
     "ResizeObserver",
     class {
@@ -158,6 +205,8 @@ beforeEach(() => {
   sentrySpy.captureMessage.mockClear();
   sentrySpy.captureException.mockClear();
   sentrySpy.withScope.mockClear();
+  sentrySpy.setFingerprint.mockClear();
+  posthogSpy.capture.mockClear();
   try {
     window.localStorage.clear();
   } catch {
@@ -181,7 +230,20 @@ function renderHero() {
 }
 
 function bodyText(): string {
-  return (document.body.textContent ?? "").replace(/\s+/g, " ").trim();
+  // Lê o DOM SEM os nós marcados como escondidos.
+  //
+  // O contador reserva a largura da caixa renderizando uma cópia INVISÍVEL do
+  // valor final ao lado do número animado (ver AnimatedCounter em Hero.tsx). Ela
+  // é `aria-hidden`, mas `textContent` não liga para isso: sem removê-la a
+  // leitura sai duplicada ("+2.7760 pessoas...", a cópia mais o valor corrente) e
+  // toda asserção sobre o número reprova por dígitos que ninguém vê.
+  //
+  // A remoção fica AQUI, no leitor único, e não em cada asserção: 14 testes
+  // dependem desta função, e guarda escrita no chamador sumiria no primeiro que
+  // alguém esquecesse. Mesmo princípio do `logAiUsage` citado no CLAUDE.md.
+  const clone = document.body.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove());
+  return (clone.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
 function expectsPlaceholder() {
@@ -404,21 +466,20 @@ describe("Hero: instrumentação Sentry do contador (não muda a UI, só captura
     expectsPlaceholder();
   });
 
-  it("[html-captura-non-json] resposta HTML (Vercel sem VITE_API_URL): captura non-JSON em vez de deixar o parse lançar, mantém cache", async () => {
+  it("[html-com-cache-vai-pro-posthog] resposta HTML com cache servido: conta no PostHog e NAO gera evento de erro no Sentry", async () => {
     window.localStorage.setItem(LS_KEY, "32");
     fetchSpy.mockResolvedValue(htmlResponse());
 
     renderHero();
 
     await waitFor(() => {
-      expect(sentrySpy.captureMessage).toHaveBeenCalledWith(
-        "[stats] users-count non-JSON response",
+      expect(posthogSpy.capture).toHaveBeenCalledWith(
+        "stats_users_count_fetch_failed",
+        expect.objectContaining({ tipo: "non_json", contentType: "text/html" }),
       );
     });
-    expect(sentrySpy.setContext).toHaveBeenCalledWith(
-      "stats_users_count",
-      expect.objectContaining({ contentType: "text/html", hadCache: true }),
-    );
+    expect(sentrySpy.captureMessage).not.toHaveBeenCalled();
+    expect(sentrySpy.captureException).not.toHaveBeenCalled();
     // UI intocada: segue no last-known-good local.
     await expectsNumber("32");
   });
@@ -436,9 +497,36 @@ describe("Hero: instrumentação Sentry do contador (não muda a UI, só captura
     expectsPlaceholder();
   });
 
-  it("[network-error-captura-exception] fetch rejeita (CORS/ad-block/rede): captura a exceção, mantém cache", async () => {
+  /**
+   * BUG-29/39/57 sao UMA causa e TRES issues no Sentry, porque cada engine
+   * escreve o mesmo TypeError de rede com outra frase ("Load failed" no Safari,
+   * "Failed to fetch" no Chrome, "NetworkError when attempting to fetch
+   * resource." no Firefox). Todos os eventos vieram com `hadCache: true`, ou
+   * seja, a tela seguiu mostrando o numero em cache e ninguem viu nada.
+   *
+   * Quando o cache serviu, o evento vale em AGREGADO, e agregacao e o PostHog.
+   * Quando NAO ha cache, o contador some da tela: ai e o Sentry, com fingerprint
+   * fixo para as tres frases colapsarem numa issue so.
+   */
+  it("[network-com-cache-vai-pro-posthog] fetch rejeita com cache servido: PostHog conta, Sentry nao recebe erro", async () => {
     window.localStorage.setItem(LS_KEY, "32");
-    const err = new Error("network failure");
+    fetchSpy.mockRejectedValue(new Error("Load failed"));
+
+    renderHero();
+
+    await waitFor(() => {
+      expect(posthogSpy.capture).toHaveBeenCalledWith(
+        "stats_users_count_fetch_failed",
+        expect.objectContaining({ tipo: "network" }),
+      );
+    });
+    expect(sentrySpy.captureException).not.toHaveBeenCalled();
+    expect(sentrySpy.captureMessage).not.toHaveBeenCalled();
+    await expectsNumber("32");
+  });
+
+  it("[network-sem-cache-captura-com-fingerprint] fetch rejeita sem cache: Sentry recebe com fingerprint fixo", async () => {
+    const err = new Error("NetworkError when attempting to fetch resource.");
     fetchSpy.mockRejectedValue(err);
 
     renderHero();
@@ -446,8 +534,34 @@ describe("Hero: instrumentação Sentry do contador (não muda a UI, só captura
     await waitFor(() => {
       expect(sentrySpy.captureException).toHaveBeenCalledWith(err);
     });
+    expect(sentrySpy.setFingerprint).toHaveBeenCalledWith([
+      "stats-users-count-fetch",
+    ]);
     expect(sentrySpy.setTag).toHaveBeenCalledWith("route", "stats/users-count");
-    await expectsNumber("32");
+    expectsPlaceholder();
+  });
+
+  /**
+   * CONTROLE NEGATIVO do fingerprint: sem esta assercao, as tres frases de
+   * engine continuariam abrindo tres issues e o teste acima passaria igual.
+   * Duas mensagens DIFERENTES tem que produzir o MESMO fingerprint.
+   */
+  it("[fingerprint-colapsa-engines] 'Load failed' e 'Failed to fetch' sem cache produzem o mesmo fingerprint", async () => {
+    fetchSpy.mockRejectedValue(new Error("Load failed"));
+    renderHero();
+    await waitFor(() => expect(sentrySpy.captureException).toHaveBeenCalled());
+    const primeiro = sentrySpy.setFingerprint.mock.calls.at(-1)?.[0];
+
+    cleanup();
+    sentrySpy.captureException.mockClear();
+    sentrySpy.setFingerprint.mockClear();
+    fetchSpy.mockRejectedValue(new Error("Failed to fetch"));
+    renderHero();
+    await waitFor(() => expect(sentrySpy.captureException).toHaveBeenCalled());
+    const segundo = sentrySpy.setFingerprint.mock.calls.at(-1)?.[0];
+
+    expect(primeiro).toEqual(["stats-users-count-fetch"]);
+    expect(segundo).toEqual(primeiro);
   });
 
   it("[sucesso-nao-captura] resposta saudável {count: 45}: mostra +45 e não captura nada", async () => {
@@ -459,5 +573,105 @@ describe("Hero: instrumentação Sentry do contador (não muda a UI, só captura
     await expectsNumber("45");
     expect(sentrySpy.captureMessage).not.toHaveBeenCalled();
     expect(sentrySpy.captureException).not.toHaveBeenCalled();
+  });
+});
+
+// ===========================================================================
+// Gatilho da animação. Estes testes existem porque o contador ficou travado em
+// "+0" em produção e as duas correções anteriores passaram verde: a suíte
+// mockava `useInView` para `true`, então o gatilho, que era o defeito, nunca
+// era exercitado. Aqui o `useInView` é o real e quem varia é o observer.
+// ===========================================================================
+describe("Hero: gatilho da animação do contador (nunca sobra 0 na tela)", () => {
+  it("[observer-dispara] alvo reportado visível: anima até o valor final", async () => {
+    window.localStorage.setItem(LS_KEY, "2776");
+    fetchSpy.mockReturnValue(new Promise(() => {}));
+
+    renderHero();
+
+    await expectsNumber("2776");
+  });
+
+  it("[observer-nunca-dispara-cai-no-fallback] observer mudo: o valor final aparece assim mesmo, sem sobrar 0", async () => {
+    ioMode = "never";
+    window.localStorage.setItem(LS_KEY, "2776");
+    fetchSpy.mockReturnValue(new Promise(() => {}));
+
+    renderHero();
+
+    // Antes do fallback o contador está em 0: é o estado que ficava permanente.
+    expect(bodyText()).toMatch(/\+\s*0\s*pessoas/);
+
+    // E o fallback tem que resgatar sozinho.
+    await waitFor(
+      () => {
+        const m = bodyText().match(
+          /\+\s*([\d.]+)\s*pessoas já encontraram seu caminho/,
+        );
+        expect(m).not.toBeNull();
+        expect(m![1].replace(/[. ]/g, "")).toBe("2776");
+      },
+      { timeout: 4000 },
+    );
+  });
+
+  it("[intersection-observer-ausente] ambiente sem IntersectionObserver: ainda chega no valor final", async () => {
+    vi.stubGlobal("IntersectionObserver", undefined);
+    window.localStorage.setItem(LS_KEY, "2776");
+    fetchSpy.mockReturnValue(new Promise(() => {}));
+
+    renderHero();
+
+    await waitFor(
+      () => {
+        const m = bodyText().match(
+          /\+\s*([\d.]+)\s*pessoas já encontraram seu caminho/,
+        );
+        expect(m).not.toBeNull();
+        expect(m![1].replace(/[. ]/g, "")).toBe("2776");
+      },
+      { timeout: 4000 },
+    );
+  });
+
+  it("[movimento-reduzido-valor-final-direto] prefers-reduced-motion + observer mudo: valor final imediato, sem animação e sem 0", async () => {
+    motionEnv.prefersReduced = true;
+    ioMode = "never";
+    window.localStorage.setItem(LS_KEY, "2776");
+    fetchSpy.mockReturnValue(new Promise(() => {}));
+
+    renderHero();
+
+    // Imediato: sem esperar observer nem timeout de fallback.
+    const txt = bodyText();
+    expect(txt).toContain("2.776");
+    expect(txt).not.toMatch(/\+\s*0\s*pessoas/);
+  });
+
+  it("[sem-margem-negativa-lateral] nenhum observer do hero encolhe a root nos lados", () => {
+    window.localStorage.setItem(LS_KEY, "2776");
+    fetchSpy.mockReturnValue(new Promise(() => {}));
+
+    renderHero();
+
+    // Controle negativo: se ninguém observou nada, o teste não provou nada.
+    expect(ioRootMargins.length).toBeGreaterThan(0);
+
+    for (const margin of ioRootMargins) {
+      // rootMargin CSS-like: top right bottom left (1 a 4 valores).
+      const parts = margin.trim().split(/\s+/);
+      const [top, right = top, bottom = top, left = right] = parts;
+      expect(
+        parseFloat(right),
+        `rootMargin "${margin}" tem margem negativa à direita: encolhe a root e pode excluir alvo estreito`,
+      ).toBeGreaterThanOrEqual(0);
+      expect(
+        parseFloat(left),
+        `rootMargin "${margin}" tem margem negativa à esquerda: encolhe a root e pode excluir alvo estreito`,
+      ).toBeGreaterThanOrEqual(0);
+      // vertical pode ser negativo (dispara um pouco antes de entrar)
+      expect(Number.isNaN(parseFloat(top))).toBe(false);
+      expect(Number.isNaN(parseFloat(bottom))).toBe(false);
+    }
   });
 });

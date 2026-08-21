@@ -34,6 +34,7 @@ import {
   OPENAI_BASE_URL,
   TRANSCRIPTION_MODEL,
 } from "../lib/openai";
+import { erroDaRespostaOpenAi, isFalhaPermanente } from "../lib/openaiFailure";
 import { toOpenAIStrictSchema } from "../lib/openaiStrictSchema";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
@@ -254,10 +255,7 @@ async function callInterviewModelOnce(
   );
 
   if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(
-      `OpenAI respondeu ${response.status}: ${text.slice(0, 300)}`,
-    );
+    throw await erroDaRespostaOpenAi(response);
   }
 
   const payload = (await response.json()) as {
@@ -325,10 +323,7 @@ async function callHintModelOnce(
   );
 
   if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(
-      `OpenAI respondeu ${response.status}: ${text.slice(0, 300)}`,
-    );
+    throw await erroDaRespostaOpenAi(response);
   }
 
   const payload = (await response.json()) as {
@@ -381,6 +376,11 @@ async function callHintModel(
       console.error(
         `[interview] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} (hint) falhou: ${detail}`,
       );
+      // Falha permanente da OpenAI (saldo esgotado, ou credencial invalida
+      // num 401/403): a tentativa seguinte colhe exatamente o mesmo erro,
+      // entao so custa um round-trip e o backoff. Rate limit e falha nao
+      // classificada seguem retentando.
+      if (isFalhaPermanente(err)) break;
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
       }
@@ -411,6 +411,11 @@ async function callInterviewModel(
       console.error(
         `[interview] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} (${expect}) falhou: ${detail}`,
       );
+      // Falha permanente da OpenAI (saldo esgotado, ou credencial invalida
+      // num 401/403): a tentativa seguinte colhe exatamente o mesmo erro,
+      // entao so custa um round-trip e o backoff. Rate limit e falha nao
+      // classificada seguem retentando.
+      if (isFalhaPermanente(err)) break;
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
       }
@@ -770,6 +775,7 @@ router.post(
           502,
           "upstream_error",
           "Nao foi possivel iniciar a entrevista agora. Tente de novo.",
+          { cause: err },
         ),
       );
     }
@@ -977,6 +983,7 @@ router.post(
             502,
             "upstream_error",
             "Nao foi possivel concluir o turno agora. Tente de novo.",
+            { cause: err },
           ),
         );
       }
@@ -1068,6 +1075,7 @@ router.post(
           502,
           "upstream_error",
           "Nao foi possivel avaliar sua resposta agora. Tente de novo.",
+          { cause: err },
         ),
       );
     }
@@ -1190,6 +1198,7 @@ router.post(
           502,
           "upstream_error",
           "Nao foi possivel gerar o veredito final agora. Tente de novo.",
+          { cause: err },
         ),
       );
     }
@@ -1357,6 +1366,7 @@ router.post(
           502,
           "upstream_error",
           "Nao foi possivel gerar a dica agora. Tente de novo.",
+          { cause: err },
         ),
       );
     }
@@ -1549,10 +1559,7 @@ async function translateQuestionToPt(
     { service: "openai", timeoutMs: AI_TIMEOUT_MS },
   );
   if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(
-      `OpenAI respondeu ${response.status}: ${body.slice(0, 300)}`,
-    );
+    throw await erroDaRespostaOpenAi(response);
   }
   const payload = (await response.json()) as {
     choices?: Array<{ message?: { content?: string } }>;

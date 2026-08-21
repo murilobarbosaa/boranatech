@@ -27,53 +27,168 @@
 # importa `analyzeLinkedin`, que importa. Enumerar isso da fonte exige seguir o
 # grafo de imports, ou seja, um parser que pode sub-casar em silencio, que e a
 # classe de defeito que este hook existe para nao repetir. Rodar tudo duas vezes
-# custa ~8s e nao depende de nenhum parser meu estar certo.
+# nao depende de nenhum parser meu estar certo.
 #
-# Roda: suite (~7,6s) + suite sem .env (~7,6s) + pnpm check (~3,3s).
+# Roda: suite + suite sem .env + pnpm check. A DURACAO NAO E AFIRMADA AQUI: ela
+# depende da maquina e da carga, e este projeto ja registrou quatro valores
+# diferentes para ela em dois arquivos. Ver o paragrafo do hook no CLAUDE.md.
 #
-# ATENCAO: `pnpm check` NAO cobre arquivos de teste, porque tsconfig.json os
-# exclui. Erro de tipo em teste so aparece quando o teste roda, e e por isso que
-# rodar a suite aqui importa ainda mais.
+# `pnpm check` COBRE arquivos de teste. A frase anterior aqui dizia o contrario
+# ("NAO cobre, porque tsconfig.json os exclui") e era FALSA: o `include` do
+# tsconfig.json e client/src, shared e server, e o `exclude` e so node_modules,
+# build e dist. A qualificacao que falta e outra: ele cobre DENTRO dos
+# diretorios do include, e `scripts/` ficava de fora ate o `tsconfig.scripts.json`
+# (que roda como `pnpm check:scripts`, no CI, nao aqui). O CLAUDE.md corrigiu
+# esta afirmacao duas vezes e este cabecalho ficou carregando a versao errada,
+# que e a pior classe de documentacao desatualizada: ensina o erro.
 #
 # Emergencia: git commit --no-verify. Use com parcimonia e conserte depois.
+#
+# POR QUE A SEGUNDA RODADA NAO MEXE MAIS NO `.env`. A versao anterior renomeava o
+# arquivo (`mv .env .env.pre-commit-bak`) e restaurava por `trap EXIT INT TERM`.
+# A FIDELIDADE estava certa (ausencia do ARQUIVO, nao `env -i`); a DURABILIDADE,
+# nao: `trap` nao roda em SIGKILL. Em 2026-07-28 um `kill -9` (OOM, duas suites em
+# paralelo) matou o hook entre o `mv` e a restauracao. O `.env` sumiu do disco e a
+# copia integral dos segredos ficou como untracked, a um `git add -A` de vazar.
+#
+# A correcao NAO troca fidelidade por conveniencia. Uma tentativa intermediaria
+# so trocava o `cwd` da segunda rodada, e foi descartada por ser MEIO-CEGA: o
+# `dotenv` resolve por `process.cwd()`, mas o Vite tem carregador proprio ancorado
+# em `envDir`/`root`, entao `import.meta.env.VITE_*` continuava populado. Medido
+# por probe. Enganar carregador por carregador so cobre os que alguem lembrou;
+# remover a coisa em si derrota todos.
+#
+# O QUE FAZ AGORA: materializa o INDICE num diretorio temporario e roda a segunda
+# passada la dentro, com `--root` apontando para ele.
+#
+#   - `git checkout-index -a --prefix=` e nao `git archive`/`write-tree`: le o
+#     indice direto e NAO cria objeto nenhum no banco de objetos. `write-tree`
+#     escreveria uma tree a cada commit, efeito colateral que um hook nao deve ter.
+#   - o INDICE, e nao o HEAD: o hook roda antes do commit existir, entao testar o
+#     HEAD daria veredito sobre a arvore anterior. E nao o working tree: o que vai
+#     ser commitado e o que esta staged.
+#   - `.env` e gitignored, logo nao esta no indice, logo nao existe no temporario.
+#     Os DOIS carregadores ficam cegos: `cwd` e `root` apontam para um lugar sem
+#     `.env`.
+#
+# NAO HA ESTADO A RESTAURAR. Sem `mv`, sem backup, sem `trap`: um SIGKILL custa um
+# commit abortado e um diretorio orfao em /tmp, nunca um ambiente quebrado.
 set -e
 
-ENV_BAK=".env.pre-commit-bak"
+# LOG DA SAIDA. Em 2026-07-31 tres testes falharam numa rodada do hook e passaram
+# na seguinte, e a identidade deles se PERDEU: o hook so imprimia no terminal, e
+# o que sobrou foi a contagem ("3 failed"), sem nome de arquivo. Investigar virou
+# impossivel e a conclusao teve que ser "nao reproduziu".
+#
+# E a mesma classe de defeito da demanda que originou este paragrafo: o
+# `turn_limit` tambem nao deixava rastro, e por isso o beco sem saida do chat
+# ficou 17 dias invisivel. Instrumento que nao grava o que viu nao permite
+# investigar depois.
+#
+# `pre-commit.log` guarda a ULTIMA rodada; uma rodada que FALHA e preservada a
+# parte, com carimbo de tempo, porque e justamente a que nao pode ser
+# sobrescrita pela proxima execucao verde. Os dois casam com `*.log` do
+# .gitignore, entao nunca entram em commit.
+#
+# CONTEUDO: e a mesma saida que ja ia para o terminal, com `--silent` ligado (o
+# vitest suprime console dos testes). Nao ha credencial ali; o que pode aparecer
+# e nome de host de infraestrutura em erro de conexao, que ja aparecia na tela.
+REPO=$(git rev-parse --show-toplevel)
+LOG="$REPO/pre-commit.log"
+: > "$LOG"
 
-# Restauracao do `.env`. Um hook que deixa o `.env` renomeado quebra o ambiente
-# de quem commitou, e seria pior que o problema que ele resolve. Por isso a
-# restauracao e verificada por hash e grita, em vez de falhar em silencio.
-restaurar_env() {
-  [ -f "$ENV_BAK" ] || return 0
-  mv -f "$ENV_BAK" .env
-  DEPOIS=$(md5sum .env | cut -d' ' -f1)
-  if [ "$DEPOIS" != "$ENV_MD5" ]; then
-    echo "" >&2
-    echo "[pre-commit] ERRO GRAVE: o .env restaurado NAO confere." >&2
-    echo "[pre-commit]   antes:  $ENV_MD5" >&2
-    echo "[pre-commit]   depois: $DEPOIS" >&2
-    echo "[pre-commit] Confira o arquivo A MAO antes de continuar." >&2
-    exit 1
+preservar_se_falhou() {
+  status=$?
+  if [ "$status" -ne 0 ]; then
+    FALHA="$REPO/pre-commit-falha-$(date +%Y%m%d-%H%M%S).log"
+    cp "$LOG" "$FALHA" 2>/dev/null || true
+    echo "[pre-commit] FALHOU (status $status). Saida completa em $FALHA" >&2
   fi
+  rm -f "$STATUS" 2>/dev/null || true
+  exit "$status"
+}
+trap preservar_se_falhou EXIT
+
+# Roda um comando mostrando a saida AO VIVO e gravando no log, preservando o
+# status real. `cmd | tee` sozinho nao serve: em pipeline o status e o do ULTIMO
+# elemento (o tee, que sempre da 0), entao uma suite vermelha passaria batido.
+# `set -o pipefail` resolveria, mas nao existe em dash, e este hook e
+# `#!/bin/sh` de proposito. O arquivo de status e a solucao POSIX: o subshell
+# grava o codigo de saida antes de a pipeline terminar.
+#
+# O `set +e` DENTRO do grupo NAO e decorativo, e a ausencia dele era um defeito
+# que deixou este hook meio-cego por tempo indeterminado. Com `set -e` herdado,
+# o subshell da esquerda do pipe MORRE no comando que falha, ANTES de executar
+# `echo $? > "$STATUS"`. O arquivo entao continua com o valor da chamada
+# ANTERIOR, e como a chamada anterior tinha passado, ele continha `0`: a falha
+# era lida como sucesso e o commit saia.
+#
+# O efeito pratico media exatamente isto: so a PRIMEIRA chamada de `rodar`
+# estava protegida, e por acidente (arquivo ainda vazio, o `read` falhava e o
+# `set -e` derrubava o hook pelo motivo errado). Tudo que vinha depois de um
+# passo verde passava batido, inclusive o `pnpm check`.
+#
+# Medido em 2026-08-18, ao acrescentar o `check:limiares`: com um sitio orfao
+# proposital, o `check:limiares` saiu com 1, o hook imprimiu `[pre-commit] ok` e
+# o commit foi criado. Foi a prova de bloqueio EXIGIDA antes de confiar no passo
+# novo que revelou isto; sem ela, o passo novo teria entrado decorativo.
+#
+# `: > "$STATUS"` zera antes de cada uso e o `[ -n "$st" ] || st=1` trata arquivo
+# vazio como FALHA: se o subshell morrer por qualquer outro motivo, o veredito e
+# "falhou", nunca "passou".
+STATUS="$(mktemp)"
+rodar() {
+  : > "$STATUS"
+  { set +e; "$@" 2>&1; echo $? > "$STATUS"; } | tee -a "$LOG"
+  st=$(cat "$STATUS" 2>/dev/null || true)
+  [ -n "$st" ] || st=1
+  return "$st"
 }
 
 echo "[pre-commit] suite de testes..."
-npx vitest run --silent
+rodar npx vitest run --silent
 
-if [ -f .env ]; then
-  echo "[pre-commit] suite sem .env (condicao do CI)..."
-  ENV_MD5=$(md5sum .env | cut -d' ' -f1)
-  trap restaurar_env EXIT INT TERM
-  mv .env "$ENV_BAK"
-  npx vitest run --silent
-  restaurar_env
-  trap - EXIT INT TERM
-  echo "[pre-commit] .env restaurado e conferido ($ENV_MD5)."
-else
-  echo "[pre-commit] sem .env neste checkout, a primeira rodada ja e a condicao do CI."
+echo "[pre-commit] suite sem .env (condicao do CI)..." | tee -a "$LOG"
+SEM_ENV=$(mktemp -d)
+git checkout-index -a --prefix="$SEM_ENV/"
+
+# Guardas de sanidade DO PROPRIO INSTRUMENTO. Sem elas, um temporario vazio ou um
+# `.env` inesperado fariam a segunda rodada passar verde sobre a premissa errada,
+# que e a classe de defeito que este hook existe para nao repetir.
+if [ ! -f "$SEM_ENV/vitest.config.ts" ] || [ ! -f "$SEM_ENV/package.json" ]; then
+  echo "[pre-commit] ERRO: o indice nao materializou em $SEM_ENV." >&2
+  rm -rf "$SEM_ENV"; exit 1
+fi
+if [ -e "$SEM_ENV/.env" ]; then
+  echo "[pre-commit] ERRO: $SEM_ENV tem .env; nao seria a condicao do CI." >&2
+  rm -rf "$SEM_ENV"; exit 1
 fi
 
-echo "[pre-commit] pnpm check..."
-pnpm check
+ln -s "$REPO/node_modules" "$SEM_ENV/node_modules"
+rodar sh -c 'cd "$1" && "$1/node_modules/.bin/vitest" run --root "$1" --silent' _ "$SEM_ENV"
+rm -rf "$SEM_ENV"
+echo "[pre-commit] segunda rodada feita sobre o INDICE, sem .env, e o .env do disco nao foi tocado."
+
+echo "[pre-commit] pnpm check..." | tee -a "$LOG"
+rodar pnpm check
+
+# Auditoria de escopo dos limiares do Analisador de LinkedIn. SO O MODO
+# --auditar, que e o que o script `check:limiares` do package.json ja fixa; as
+# mutacoes rodam a suite uma vez por mutante e passam de dez minutos, entao elas
+# NAO entram em gate nenhum e continuam sendo invocacao manual.
+#
+# ENTROU EM 2026-08-18, e a decisao anterior era o contrario. O motivo de mudar:
+# o `eb032d66` foi mergeado na main com este check VERMELHO, porque ele so
+# existia no CI remoto e o fluxo dependia de alguem conferir o CI pelo SHA antes
+# do merge. Na primeira vez em que isso foi exigido de verdade, falhou, e a main
+# ficou vermelha sem nada avisar localmente: `pnpm check` passava, a suite
+# passava, e o hook nao tinha o que reprovar.
+#
+# O custo medido nesta maquina em 2026-08-18: 0,02s chamando o node direto e
+# 0,24s via `pnpm` (o resto e a partida do proprio pnpm). Contra as duas rodadas
+# de suite que este hook ja paga, e ruido. Foi essa medicao que derrubou o
+# argumento de "nao acrescentar passo a um gate que roda a cada commit".
+echo "[pre-commit] pnpm check:limiares (auditoria, sem mutacoes)..." | tee -a "$LOG"
+rodar pnpm check:limiares
 
 echo "[pre-commit] ok"

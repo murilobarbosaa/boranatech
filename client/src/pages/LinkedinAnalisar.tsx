@@ -68,6 +68,15 @@ import {
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { extractLinkedinPdf, PdfExtractError } from "@/lib/pdfExtract";
 import { cn } from "@/lib/utils";
+import { competenciasDoPdf } from "@shared/linkedin/competenciasDoPdf";
+import { headlineParecCortada } from "@shared/linkedin/headlineCortada";
+import {
+  EVENTO_ENVIO,
+  EVENTO_REVISAO,
+  payloadEnvio,
+  payloadRevisao,
+} from "@/lib/headlineAvisoTelemetria";
+import posthog from "posthog-js";
 import { parseLinkedinText } from "@shared/linkedin/parse";
 import { readQualitative } from "@shared/linkedin/readQualitative";
 import {
@@ -92,6 +101,7 @@ import {
   type Mercado,
   type OpenToWork,
   type SimNao,
+  HEADLINE_MANUAL_MAX,
 } from "@shared/linkedin/schema";
 
 const ac = getPageAccentUi("sky");
@@ -747,6 +757,57 @@ export default function LinkedinAnalisar() {
     [form.profileText],
   );
 
+  /**
+   * Headline digitada no passo de revisao. `null` significa "ninguem mexeu",
+   * e NAO "vazia": o campo mostra a leitura do parser enquanto for null.
+   *
+   * Zerado quando o TEXTO muda, e nao a cada render: um PDF novo torna a
+   * edicao anterior obsoleta (ela se referia a outro documento), mas navegar,
+   * abrir e fechar o `details` ou mexer em qualquer outro campo do formulario
+   * nao pode descartar o que a pessoa digitou. `form.profileText` e a
+   * identidade certa porque e exatamente o que alimenta o `parsed`.
+   */
+  const [headlineManual, setHeadlineManual] = useState<string | null>(null);
+  useEffect(() => {
+    setHeadlineManual(null);
+  }, [form.profileText]);
+
+  // O que o campo MOSTRA e o que a analise vai usar. Mesma precedencia do
+  // `headlineFinalDe` do servidor, e de proposito: se as duas divergirem, a
+  // pessoa confere um texto e a nota sai de outro.
+  const headlineExibida = headlineManual ?? parsed?.headline ?? "";
+  const headlineFoiEditada =
+    headlineManual !== null &&
+    headlineManual.trim() !== (parsed?.headline ?? "").trim();
+
+  /**
+   * A headline lida tem assinatura de corte? Decide o terceiro estado do chip.
+   *
+   * Derivado, nao estado: o texto e a unica fonte, entao guardar isto em
+   * `useState` criaria uma segunda verdade que precisaria ser sincronizada. E o
+   * Header/Footer desta base ja ensinou o custo disso.
+   */
+  // Sobre a headline EXIBIDA, nao a do parser: quem corrige no campo tem de
+  // ver o aviso sumir, e quem corrige errado tem de ve-lo continuar.
+  const headlineCortada = headlineParecCortada(headlineExibida);
+
+  /**
+   * O aviso apareceu ALGUMA vez nesta sessao de formulario?
+   *
+   * `useRef` e nao `useState`: e so telemetria, ninguem renderiza a partir
+   * disto, e um `setState` aqui causaria render extra a cada tecla. Vive na
+   * pagina, que nao remonta entre o passo de revisao e o envio (diferente do
+   * Header/Footer, que remontam a cada navegacao).
+   */
+  const avisoVistoRef = useRef(false);
+  useEffect(() => {
+    // Em efeito, nao no corpo do render: mutar ref durante o render e o padrao
+    // que quebra em render concorrente, e aqui nao ha ganho nenhum em fazer
+    // isso. Idempotente de proposito, so liga, nunca desliga: a pergunta e "o
+    // aviso apareceu alguma vez", nao "esta aparecendo agora".
+    if (headlineCortada) avisoVistoRef.current = true;
+  }, [headlineCortada]);
+
   async function handleFile(file: File | undefined) {
     if (!file) return;
     setPdfError("");
@@ -759,20 +820,42 @@ export default function LinkedinAnalisar() {
         setPdfError(ENTRY_COPY.parseFail);
         return;
       }
+      const { aceitas: competenciasAceitas, descartadas: competenciasFora } =
+        competenciasDoPdf(detected.skillsPdf);
+      if (competenciasFora.length > 0) {
+        // Rastreavel, nao silencioso: mesmo motivo de `opcoesRenderizaveis`.
+        // Sem isto, "as competencias sumiram" nao teria origem.
+        console.warn(
+          "[linkedin] competencias descartadas do prefill:",
+          competenciasFora,
+        );
+      }
       setForm((prev) => ({
         ...prev,
         profileText: text,
         // Prefill das skills a partir do PDF SO quando o campo esta vazio: o
         // export traz apenas as principais competencias e a pessoa complementa.
+        //
+        // Passa por `competenciasDoPdf` porque `skillsPdf` as vezes carrega o
+        // BLOCO DE IDENTIDADE (nome, cidade, estado, pais) junto, e este e o
+        // unico ponto do fluxo em que o produto ESCREVE dado num campo que a
+        // pessoa submete, e que depois vai para o prompt da OpenAI. A guarda
+        // mora aqui, na entrada do formulario, e nao no parser: cobre a causa
+        // conhecida (corte da secao lateral passando do fim) e a competencia
+        // quebrada de linha, com o mesmo teto e sem esperar conserto de parser.
         skills:
-          prev.skills.trim() === "" && detected.skillsPdf.length > 0
-            ? detected.skillsPdf.join(", ")
+          prev.skills.trim() === "" && competenciasAceitas.length > 0
+            ? competenciasAceitas.join(", ")
             : prev.skills,
       }));
       setPdfStatus(
         `PDF lido (${text.length.toLocaleString("pt-BR")} caracteres).`,
       );
       setEntryPath("review");
+      // UMA captura por chegada de arquivo. NAO fica no `useMemo` de `parsed`
+      // (que recomputa por tecla) nem numa transicao de estado (que roda de
+      // novo em re-render): `handleFile` roda uma vez por PDF escolhido.
+      posthog.capture(EVENTO_REVISAO, payloadRevisao(text, "pdf"));
     } catch (err) {
       if (err instanceof PdfExtractError) {
         setPdfError(err.message);
@@ -820,6 +903,13 @@ export default function LinkedinAnalisar() {
     setLoading(true);
     setError("");
     setConfirmReanalyze(false);
+    // Depois do guard e antes da chamada: so conta submit que de fato vai
+    // acontecer. Aqui o texto e o final, entao `parsed?.headline` ja e a
+    // headline que sera analisada.
+    posthog.capture(
+      EVENTO_ENVIO,
+      payloadEnvio(avisoVistoRef.current, headlineExibida),
+    );
     // A pessoa dispara o submit no fim do form: sobe pro scan card no topo.
     scrollToStageTop();
 
@@ -843,6 +933,12 @@ export default function LinkedinAnalisar() {
         conexoes,
         atividade,
         objetivo: form.objetivo.trim() || undefined,
+        // So vai quando DIFERE da leitura do parser. Mandar um valor igual
+        // gravaria `headlineOrigem: "manual"` para quem so clicou no campo e
+        // saiu, e a telemetria passaria a contar edicao que nao houve.
+        headlineManual: headlineFoiEditada
+          ? headlineManual!.trim()
+          : undefined,
       });
       setResult(data);
       setAnalysisId(newAnalysisId);
@@ -852,9 +948,11 @@ export default function LinkedinAnalisar() {
           notaAnterior: priorScore,
           versaoAnterior: priorVersion,
           checksAnteriores: analyses[0]?.checks,
+          incompletaAnterior: analyses[0]?.notaIncompleta,
           notaAtual: data.deterministic.score,
           versaoAtual: data.deterministicVersion,
           checksAtuais: data.deterministic.checks,
+          incompletaAtual: data.deterministic.notaIncompleta,
         }),
       );
       // Resultado chegou: de volta ao topo (a pessoa pode ter rolado
@@ -899,9 +997,11 @@ export default function LinkedinAnalisar() {
             notaAnterior: anterior?.score ?? null,
             versaoAnterior: anterior?.deterministicVersion,
             checksAnteriores: anterior?.checks,
+            incompletaAnterior: anterior?.notaIncompleta,
             notaAtual: record.result.deterministic.score,
             versaoAtual: record.result.deterministicVersion,
             checksAtuais: record.result.deterministic.checks,
+            incompletaAtual: record.result.deterministic.notaIncompleta,
           }),
         );
         scrollToStageTop();
@@ -1287,6 +1387,20 @@ export default function LinkedinAnalisar() {
                               onChange={(event) =>
                                 update("profileText", event.target.value)
                               }
+                              onPaste={(event) => {
+                                // Le do clipboard, e nao do estado: no `onPaste`
+                                // o texto colado ainda nao entrou em
+                                // `form.profileText`, e esperar o `onChange`
+                                // devolveria o caminho por tecla.
+                                const colado =
+                                  event.clipboardData.getData("text");
+                                if (colado.trim().length > 0) {
+                                  posthog.capture(
+                                    EVENTO_REVISAO,
+                                    payloadRevisao(colado, "paste"),
+                                  );
+                                }
+                              }}
                               placeholder="Cole aqui o texto do seu perfil do LinkedIn (headline, Sobre, experiências...)."
                               className={cn(inputClass, "min-h-36")}
                             />
@@ -1337,61 +1451,116 @@ export default function LinkedinAnalisar() {
                             </button>
                           </div>
 
+                          {/* Os chips dizem O QUE FOI LIDO e pedem conferencia.
+                              NAO afirmam que a leitura esta certa: verde de
+                              "detectada" era um sinal tranquilizador que uma
+                              headline cortada ao meio produzia igualzinho, e foi
+                              exatamente por isso que o truncamento passou 13
+                              rodadas de auditoria e so apareceu no uso real.
+                              Presenca nao e correcao, e a cor nao pode dizer que
+                              e. Por isso: ambar quando falta (acao clara) e
+                              neutro quando existe (a pessoa e quem confere, logo
+                              abaixo, com o texto aberto). */}
                           <div className="flex flex-wrap gap-2">
+                            {/* TRES estados, nao dois. O terceiro existe porque
+                                "existe" e "esta inteira" sao perguntas
+                                diferentes, e o neutro respondia a primeira
+                                enquanto a pessoa lia a segunda. Medido: 27 das
+                                156 headlines persistidas tem assinatura
+                                inequivoca de corte, e o chip neutro dizia
+                                "confira abaixo" em todas elas. */}
                             <span
                               className={cn(
                                 "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
-                                parsed?.headline
-                                  ? "bg-emerald-100"
-                                  : "bg-amber-100",
+                                !parsed?.headline
+                                  ? "bg-amber-100"
+                                  : headlineCortada
+                                    ? "bg-[#FFB800]"
+                                    : "bg-white",
                               )}
                             >
                               Headline:{" "}
-                              {parsed?.headline
-                                ? "detectada"
-                                : ENTRY_COPY.reviewNotFound}
+                              {!parsed?.headline
+                                ? ENTRY_COPY.reviewNotFound
+                                : headlineCortada
+                                  ? "parece cortada"
+                                  : "confira abaixo"}
                             </span>
                             <span
                               className={cn(
                                 "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
-                                parsed?.sobre
-                                  ? "bg-emerald-100"
-                                  : "bg-amber-100",
+                                parsed?.sobre ? "bg-white" : "bg-amber-100",
                               )}
                             >
                               Sobre:{" "}
                               {parsed?.sobre
-                                ? `${parsed.sobre.length} caracteres`
+                                ? `${parsed.sobre.length} caracteres lidos`
                                 : ENTRY_COPY.reviewNotFound}
                             </span>
                             <span
                               className={cn(
                                 "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
                                 parsed && parsed.experiencias.length > 0
-                                  ? "bg-emerald-100"
+                                  ? "bg-white"
                                   : "bg-amber-100",
                               )}
                             >
                               Experiências: {parsed?.experiencias.length ?? 0}{" "}
-                              detectada
+                              lida
                               {(parsed?.experiencias.length ?? 0) === 1
                                 ? ""
                                 : "s"}
                             </span>
-                            <span className="rounded-full border-2 border-slate-900 bg-sky-100 px-3 py-1 text-xs font-black text-slate-900">
+                            <span className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-900">
                               Competências no PDF:{" "}
-                              {parsed?.skillsPdf.length ?? 0}
+                              {parsed?.skillsPdf.length ?? 0} lidas
                             </span>
                           </div>
 
                           <div className="space-y-2">
+                            {/* ABERTO por padrao, e o unico do grupo que e. A
+                                headline e o campo de maior peso da regua (35 dos
+                                pontos, mais as duas coberturas) e o que mais
+                                sofre com quebra de linha do export. Escondido
+                                atras de um clique, ninguem conferia. */}
                             {parsed?.headline ? (
-                              <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
+                              <details
+                                open
+                                className="rounded-xl border-2 border-slate-900 bg-white p-3"
+                              >
                                 <summary className="cursor-pointer text-sm font-black text-slate-800">
-                                  Headline detectada
+                                  Headline lida do seu PDF
                                 </summary>
-                                <p className="mt-2 text-sm text-slate-700">
-                                  {parsed.headline}
+                                {/* O aviso fica ACIMA do campo e diz so a
+                                    observacao. O que fazer esta no texto de
+                                    apoio, que e o mesmo para todo mundo: com o
+                                    campo editavel logo abaixo, repetir "ajuste"
+                                    aqui seriam duas vozes dando a mesma
+                                    instrucao, e a antiga ainda mandava colar o
+                                    texto de novo, que deixou de ser necessario. */}
+                                {headlineCortada ? (
+                                  <p className="mt-2 rounded-lg bg-[#FFB800]/20 p-2 text-xs font-bold text-slate-900">
+                                    A headline que lemos parece estar cortada.
+                                  </p>
+                                ) : null}
+                                <textarea
+                                  value={headlineExibida}
+                                  onChange={(e) =>
+                                    setHeadlineManual(e.target.value)
+                                  }
+                                  maxLength={HEADLINE_MANUAL_MAX}
+                                  rows={2}
+                                  aria-label="Headline lida do seu PDF"
+                                  className="mt-2 w-full resize-y rounded-lg border-2 border-slate-900 bg-white p-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FFB800]"
+                                />
+                                <p className="mt-1 text-right text-xs font-bold tabular-nums text-slate-500">
+                                  {headlineExibida.length} / {HEADLINE_MANUAL_MAX}
+                                </p>
+                                <p className="mt-1 text-xs font-medium text-slate-500">
+                                  Foi isto que lemos do arquivo. A análise usa o
+                                  que estiver neste campo, então, se ficou
+                                  diferente da sua headline no LinkedIn, ajuste
+                                  antes de continuar.
                                 </p>
                               </details>
                             ) : null}
@@ -1409,8 +1578,9 @@ export default function LinkedinAnalisar() {
                               <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
                                 <summary className="cursor-pointer text-sm font-black text-slate-800">
                                   Experiências ({parsed.experiencias.length}{" "}
-                                  detectada
-                                  {parsed.experiencias.length === 1 ? "" : "s"})
+                                  lida
+                                  {parsed.experiencias.length === 1 ? "" : "s"}
+                                  ): confira se falta alguma
                                 </summary>
                                 <ul className="mt-2 space-y-2">
                                   {parsed.experiencias.map((exp, i) => (
@@ -1577,20 +1747,47 @@ export default function LinkedinAnalisar() {
                   />
 
                   {reguaMudou ? (
+                    // Copy FECHADA. Requisito: o banner recebe so um booleano e
+                    // nao sabe de qual versao a pessoa veio, entao cada frase
+                    // tem que ser verdadeira para QUALQUER transicao.
+                    //
+                    // A versao anterior afirmava "a headline que vinha cortada
+                    // ao meio agora e lida inteira". Era especifica da transicao
+                    // v4 -> v5 e, medido em 2026-07-31 sobre as analises
+                    // persistidas, era FALSA para 39 de 156: a correcao cobre
+                    // quebra na virgula com continuacao forte, e as quebras
+                    // dominantes (separador orfao, termo composto partido, prosa
+                    // cortada) seguem intactas. Prometer conserto que a pessoa
+                    // nao recebeu e pior que nao explicar, e era a unica
+                    // afirmacao verificavel do banner.
+                    //
+                    // O paragrafo de julho FICA: ele e datado ("se a sua analise
+                    // anterior e de antes de julho"), entao continua verdadeiro
+                    // sem depender de qual foi a mudanca mais recente.
+                    //
+                    // "o que lemos do seu perfil para preencher a analise" cobre
+                    // as TRES coisas que ja causaram bump: criterio (v3 -> v4),
+                    // leitura do parser (v4 -> v5) e o que e escrito no
+                    // formulario a partir do PDF (v5 -> v6, o pre-preenchimento
+                    // de competencias). Foi escolhida por cobrir as tres sem
+                    // afirmar qual foi a ultima, que e o requisito do booleano.
                     <FeedbackBanner variant="warn">
-                      Mudamos os critérios da nota desde a sua última análise, e
-                      quase tudo foi para deixar a régua mais justa. A cobertura
-                      de palavras-chave era impossível de alcançar: ela pedia
-                      metade de todas as tecnologias da área, o que em algumas
-                      áreas significava mais de trinta. Agora ela considera
-                      quantas existem na sua área de verdade. O nível que você
-                      informa passou a contar, então quem está começando não é
-                      medido pela régua de quem está há anos na área. E cada
-                      experiência passou a ser avaliada por si: uma sem
-                      descrição não é mais compensada por outra bem escrita, o
-                      que pode ter feito esse critério específico reprovar.
-                      Por isso esta nota não é comparável com a anterior, e a
-                      comparação recomeça a partir daqui.
+                      Esta nota não é comparável com a da sua análise anterior, e
+                      a comparação recomeça a partir daqui. Entre uma análise e
+                      outra, podem ter mudado os critérios da régua ou o que
+                      lemos do seu perfil para preencher a análise, e qualquer um
+                      dos dois move a nota do mesmo perfil, sem você ter mexido
+                      em nada. Se a sua
+                      análise anterior é de antes de julho, os critérios
+                      também mudaram, quase tudo para deixar a régua mais justa:
+                      a cobertura de palavras-chave pedia metade de todas as
+                      tecnologias da área, o que em algumas áreas significava
+                      mais de trinta, e agora considera quantas existem na sua
+                      área de verdade; o nível que você informa passou a contar,
+                      então quem está começando não é medido pela régua de quem
+                      está há anos na área; e cada experiência passou a ser
+                      avaliada por si, então uma sem descrição não é mais
+                      compensada por outra bem escrita.
                     </FeedbackBanner>
                   ) : scoreDelta ? (
                     <ScoreDeltaBanner
