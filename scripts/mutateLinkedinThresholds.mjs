@@ -284,18 +284,6 @@ const MUT = [
     "const FATOR_DOMINANCIA = 2;",
     "const FATOR_DOMINANCIA = 1;",
   ],
-  // Teto do texto da trilha de tentativas gravado em
-  // `ai_usage_logs.error_message` (Fase 2, lote 2). Entra em MUT porque e
-  // fronteira de persistencia: encolher o teto corta o detalhe por tentativa,
-  // que e justamente o dado que o lote existe para nao perder, e a rota nao
-  // tem coluna estruturada onde guarda-lo. O teste que trava a trilha inteira
-  // e `server/lib/linkedinCustoPorTentativa.test.ts`.
-  [
-    A,
-    "TRILHA_LOG_MAX",
-    "const TRILHA_LOG_MAX = 500;",
-    "const TRILHA_LOG_MAX = 5;",
-  ],
   // Limites de entrada e persistência, não pesos da régua. Ainda são
   // fronteiras de contrato e uma mudança acidental precisa quebrar teste.
   [

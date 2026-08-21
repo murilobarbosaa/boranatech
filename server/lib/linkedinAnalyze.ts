@@ -468,14 +468,6 @@ interface RegistroDaTentativa {
   uso: UsoDaTentativa;
 }
 
-/**
- * Teto do texto da trilha gravado em `ai_usage_logs.error_message`. A coluna e
- * `text` e nao tem limite no Postgres, entao isto e higiene de log, no mesmo
- * espirito do `ZOD_ISSUES_LOG_MAX` de `server/routes/ai.ts`. Com o teto atual
- * de duas tentativas a trilha tem cerca de 60 caracteres.
- */
-const TRILHA_LOG_MAX = 500;
-
 /** O que a rota grava em `ai_usage_logs`, somado sobre TODAS as tentativas. */
 export interface CamposDeUsoDaAnalise {
   /** Quantas tentativas alcancaram a OpenAI. Zero no atalho sem IA. */
@@ -488,15 +480,6 @@ export interface CamposDeUsoDaAnalise {
   /** Houve ao menos uma tentativa com `usage` de verdade. */
   tokensMedidos: boolean;
   costEstimate: number;
-  /** Desfecho e tokens de cada tentativa, para o campo de texto do log. */
-  trilha: string;
-}
-
-/** `9999/888`, ou o motivo nomeado de nao haver medicao. */
-function tokensNaTrilha(uso: UsoDaTentativa): string {
-  return uso.medido
-    ? `${uso.inputTokens}/${uso.outputTokens}`
-    : `sem tokens (${uso.motivo})`;
 }
 
 /**
@@ -511,7 +494,9 @@ function tokensNaTrilha(uso: UsoDaTentativa): string {
  *   1. algum `usage` medido: conta pelos tokens somados, que e o dado exato;
  *   2. nenhum `usage`, mas houve conteudo de saida: cai na estimativa por
  *      chars, que e o fallback que ja existia no caminho de sucesso;
- *   3. nenhum dos dois (timeout, 401): custo ZERO e a trilha dizendo por que.
+ *   3. nenhum dos dois (timeout, 401): custo ZERO, e o porque fica NOMEADO em
+ *      `uso.motivo` de cada tentativa, que a rota grava integro em
+ *      `ai_usage_logs.attempt_details` desde a Fase 3.
  *      Estimar por chars aqui inventaria um numero: nao se sabe se a OpenAI
  *      chegou a processar a chamada, e numero plausivel e pior que lacuna.
  */
@@ -524,7 +509,6 @@ export function camposDeUsoDaAnalise(
   let inputTokens = 0;
   let outputTokens = 0;
   let tokensMedidos = false;
-  const partes: string[] = [];
 
   for (const t of tentativas) {
     inputChars += t.inputChars;
@@ -534,7 +518,6 @@ export function camposDeUsoDaAnalise(
       inputTokens += t.uso.inputTokens;
       outputTokens += t.uso.outputTokens;
     }
-    partes.push(`${t.tentativa} ${t.desfecho} ${tokensNaTrilha(t.uso)}`);
   }
 
   const costEstimate = tokensMedidos
@@ -551,13 +534,6 @@ export function camposDeUsoDaAnalise(
     outputTokens,
     tokensMedidos,
     costEstimate,
-    trilha:
-      tentativas.length === 0
-        ? ""
-        : `tentativas: ${tentativas.length} | ${partes.join("; ")}`.slice(
-            0,
-            TRILHA_LOG_MAX,
-          ),
   };
 }
 

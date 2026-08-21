@@ -202,11 +202,19 @@ describe("2. tentativa invalida seguida de tentativa valida", () => {
     expect(campos.costEstimate).toBe(
       estimateCostFromTokens(11110, 1110, DEFAULT_MODEL),
     );
-    // O detalhe por tentativa vive na trilha, que e o que cabe nas colunas de
-    // hoje: nao existe coluna estruturada e criar uma exigiria migration.
-    expect(campos.trilha).toBe(
-      "tentativas: 2 | 1 json_invalido 9999/888; 2 sucesso 1111/222",
-    );
+    // A TRILHA SAIU, e o que ela dizia continua afirmado aqui.
+    //
+    // Ela era uma RENDERIZACAO em texto de fatos que este teste ja afirma por
+    // estrutura: os desfechos das duas tentativas (acima) e os tokens de cada
+    // uma (abaixo). Desde a Fase 3 a rota grava esses mesmos fatos integros em
+    // `ai_usage_logs.attempt_details`, e o campo de texto deixou de ter
+    // consumidor. Afirmar a string espremida seria travar um formato que
+    // ninguem le mais; o que precisa continuar verdadeiro e o dado por
+    // tentativa, e e ele que esta abaixo.
+    expect(tentativas.map((t) => t.uso)).toEqual([
+      { medido: true, inputTokens: 9999, outputTokens: 888 },
+      { medido: true, inputTokens: 1111, outputTokens: 222 },
+    ]);
   });
 });
 
@@ -285,9 +293,10 @@ describe("5. 401 na primeira tentativa", () => {
       motivo: "corpo_de_erro",
     });
     expect(campos.tokensMedidos).toBe(false);
-    expect(campos.trilha).toBe(
-      "tentativas: 1 | 1 http_erro sem tokens (corpo_de_erro)",
-    );
+    // A trilha dizia "1 tentativa, http_erro, sem tokens (corpo_de_erro)". As
+    // tres partes seguem afirmadas: a contagem aqui, o desfecho e o motivo
+    // nomeado logo acima, por estrutura em vez de por texto.
+    expect(campos.tentativas).toBe(1);
     // Sem medicao e sem saida, custo nao e estimado: numero plausivel aqui
     // seria indistinguivel de um custo real.
     expect(campos.costEstimate).toBe(0);
@@ -312,7 +321,10 @@ describe("6. timeout", () => {
     // A distincao que o zero sozinho nao carrega: nao houve medicao.
     expect(campos.tokensMedidos).toBe(false);
     expect(campos.inputTokens).toBe(0);
-    expect(campos.trilha).toContain("sem tokens (sem_resposta)");
+    // O `sem tokens (sem_resposta)` que a trilha carregava em texto ja esta
+    // afirmado por tentativa no laco acima, para as DUAS, o que e mais forte
+    // que o `toContain` de uma ocorrencia.
+    expect(campos.tentativas).toBe(2);
     expect(campos.costEstimate).toBe(0);
     // As duas tentativas enviaram o prompt, e isso continua registrado.
     expect(campos.inputChars).toBeGreaterThan(0);
@@ -351,7 +363,6 @@ describe("atalho sem IA", () => {
       outputTokens: 0,
       tokensMedidos: false,
       costEstimate: 0,
-      trilha: "",
     });
   });
 });
