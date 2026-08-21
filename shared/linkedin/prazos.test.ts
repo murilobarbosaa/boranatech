@@ -16,12 +16,34 @@ import { afterEach, describe, expect, it, vi } from "vitest";
  * Relogio falso em toda parte: nenhum teste daqui espera tempo de verdade.
  */
 
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import {
   CALL_SITES_BANCO_ANALISE,
   comPrazoDeBanco,
+  FOLGA_CLIENT_MS,
+  IA_BACKOFF_MS,
+  IA_BACKOFF_PADRAO_MS,
+  IA_BACKOFF_TOTAL_MS,
+  IA_MAX_TENTATIVAS,
+  PIOR_CASO_BANCO_MS,
+  PIOR_CASO_IA_MS,
+  PIOR_CASO_SERVIDOR_MS,
   PRAZO_BANCO_ANALISE_MS,
+  PRAZO_IA_POR_TENTATIVA_MS,
   PrazoDeBancoEstourado,
+  ROUND_TRIPS_BANCO_DEGRADADO,
+  ROUND_TRIPS_BANCO_NORMAL,
+  TETO_CLIENT_MS,
 } from "./prazos";
+
+const RAIZ = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+);
 
 /** Promessa que nunca se resolve sozinha, como um banco que travou. */
 function travada<T>(): Promise<T> {
@@ -33,7 +55,105 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("a parcela e contrato, nao preferencia", () => {
+/**
+ * FOLGA MINIMA CONTRATADA entre o pior caso do servidor e o aborto do client.
+ *
+ * Escrita aqui, e nao importada de `prazos.ts`, de proposito: um minimo que le a
+ * si mesmo do arquivo que ele deveria vigiar nao vigia nada. Baixar a folga
+ * abaixo disto tem de quebrar a suite.
+ */
+const FOLGA_CLIENT_MINIMA_MS = 15_000;
+
+describe("a INVARIANTE do teto do client", () => {
+  it("o teto do client e ESTRITAMENTE maior que o pior caso do servidor", () => {
+    // A afirmacao inteira deste lote em uma linha. Ela era FALSA antes:
+    // 120.000 contra 150.400, margem negativa de 30,4s.
+    expect(TETO_CLIENT_MS).toBeGreaterThan(PIOR_CASO_SERVIDOR_MS);
+  });
+
+  it("a folga nomeada respeita o minimo contratado", () => {
+    expect(FOLGA_CLIENT_MS).toBeGreaterThanOrEqual(FOLGA_CLIENT_MINIMA_MS);
+    // E a folga e MESMO a diferenca, nao um numero decorativo ao lado dela.
+    expect(TETO_CLIENT_MS - PIOR_CASO_SERVIDOR_MS).toBe(FOLGA_CLIENT_MS);
+  });
+
+  it("o pior caso soma TODAS as parcelas, e nenhuma esta desligada", () => {
+    // Cada igualdade abaixo mata um mutante que zere ou desligue uma parcela.
+    expect(PIOR_CASO_IA_MS).toBe(
+      PRAZO_IA_POR_TENTATIVA_MS * IA_MAX_TENTATIVAS + IA_BACKOFF_TOTAL_MS,
+    );
+    expect(PIOR_CASO_BANCO_MS).toBe(
+      PRAZO_BANCO_ANALISE_MS * ROUND_TRIPS_BANCO_DEGRADADO,
+    );
+    expect(PIOR_CASO_SERVIDOR_MS).toBe(PIOR_CASO_IA_MS + PIOR_CASO_BANCO_MS);
+    // Nenhuma parcela pode ser zero: parcela zerada e parcela desligada, e a
+    // soma continuaria com cara de conta certa.
+    for (const parcela of [PIOR_CASO_IA_MS, PIOR_CASO_BANCO_MS]) {
+      expect(parcela).toBeGreaterThan(0);
+    }
+  });
+
+  it("o caminho DEGRADADO e o que entra na conta, nao o normal", () => {
+    // O erro que produziu o defeito foi dimensionar pelo caminho feliz. Se
+    // alguem trocar a parcela pelo normal, a conta encolhe 5s e este teste cai.
+    expect(ROUND_TRIPS_BANCO_DEGRADADO).toBeGreaterThan(
+      ROUND_TRIPS_BANCO_NORMAL,
+    );
+    expect(PIOR_CASO_BANCO_MS).not.toBe(
+      PRAZO_BANCO_ANALISE_MS * ROUND_TRIPS_BANCO_NORMAL,
+    );
+  });
+
+  it("a contagem de round-trips VEM da lista de call sites", () => {
+    // Contagem escrita a mao desatualiza no primeiro round-trip novo; derivada
+    // da lista que o TypeScript obriga a crescer, nao tem como.
+    expect(ROUND_TRIPS_BANCO_DEGRADADO).toBe(CALL_SITES_BANCO_ANALISE.length);
+    expect(new Set(CALL_SITES_BANCO_ANALISE).size).toBe(
+      CALL_SITES_BANCO_ANALISE.length,
+    );
+  });
+});
+
+describe("o backoff efetivo, nao o declarado", () => {
+  it("soma so os backoffs que o laco realmente aplica", () => {
+    // Com o teto em 2 o laco dorme UMA vez, no indice 0. O segundo elemento do
+    // array e inalcancavel, e somar o array inteiro inflaria o pior caso em
+    // 800ms de espera que nunca acontece.
+    expect(IA_BACKOFF_TOTAL_MS).toBe(400);
+    expect(IA_BACKOFF_TOTAL_MS).toBeLessThan(
+      IA_BACKOFF_MS.reduce((soma, ms) => soma + ms, 0),
+    );
+  });
+
+  it("o padrao espelha o `??` do laco, para um teto maior que o array", () => {
+    expect(IA_BACKOFF_PADRAO_MS).toBe(800);
+  });
+});
+
+describe("o client NAO escreve teto proprio", () => {
+  it("linkedinClient importa TETO_CLIENT_MS e nao tem literal de milissegundos", () => {
+    const fonte = readFileSync(
+      path.join(RAIZ, "client/src/lib/linkedinClient.ts"),
+      "utf8",
+    );
+    expect(fonte).toContain("TETO_CLIENT_MS");
+    expect(fonte).toContain('from "@shared/linkedin/prazos"');
+    // O literal antigo, pelo nome. Ele voltar e o defeito voltar.
+    expect(fonte).not.toContain("ANALYZE_TIMEOUT_MS");
+    // E QUALQUER numero grande em `setTimeout`, nao so aquele: a proibicao e de
+    // escrever teto local, nao de escrever aquele teto local especifico.
+    const setTimeouts = Array.from(
+      fonte.matchAll(/setTimeout\([\s\S]{0,120}?\)/g),
+      (m) => m[0],
+    );
+    expect(setTimeouts.length).toBeGreaterThan(0);
+    for (const chamada of setTimeouts) {
+      expect(chamada).not.toMatch(/\d[\d_]{3,}/);
+    }
+  });
+});
+
+describe("as parcelas sao contrato, nao preferencia", () => {
   it("PRAZO_BANCO_ANALISE_MS vale 5000ms", () => {
     // MESMO CONTRATO DE `EXPECTED_TABLE_COUNT`: mudar este numero e ato
     // deliberado, feito no commit que explica por que, e nao um arredondamento
@@ -45,6 +165,17 @@ describe("a parcela e contrato, nao preferencia", () => {
     // passaria verde em todos os outros testes deste arquivo, porque eles usam a
     // propria constante para avancar o relogio.
     expect(PRAZO_BANCO_ANALISE_MS).toBe(5_000);
+  });
+
+  it("as demais parcelas e a conta fechada valem o que foi medido", () => {
+    expect(PRAZO_IA_POR_TENTATIVA_MS).toBe(45_000);
+    expect(IA_MAX_TENTATIVAS).toBe(2);
+    expect(FOLGA_CLIENT_MS).toBe(15_000);
+    // A CONTA FECHADA, escrita por extenso uma vez so, aqui. Qualquer mutante
+    // numa parcela muda estes dois numeros e morre nesta linha, inclusive os que
+    // a derivacao sozinha nao pegaria (ela acompanha a parcela mutada).
+    expect(PIOR_CASO_SERVIDOR_MS).toBe(115_400);
+    expect(TETO_CLIENT_MS).toBe(130_400);
   });
 });
 

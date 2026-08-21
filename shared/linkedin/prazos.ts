@@ -10,9 +10,65 @@
  * caso legitimo do servidor, e a pessoa levava "tente de novo" para uma analise
  * que estava a caminho.
  *
- * O que este arquivo cobre HOJE e a parcela de BANCO. A soma das parcelas e a
- * derivacao do teto do client entram no lote seguinte.
+ * Aqui as parcelas ficam JUNTAS e o teto do client passa a ser DERIVADO delas,
+ * nao escolhido. A invariante que sustenta tudo (`TETO_CLIENT_MS` estritamente
+ * maior que `PIOR_CASO_SERVIDOR_MS`) e testada em `prazos.test.ts`, e cada
+ * parcela tem mutante proprio em `scripts/mutateLinkedinThresholds.mjs`: desligar
+ * uma parcela da derivacao, ou inverter a desigualdade, quebra a suite.
  */
+
+/**
+ * TIMEOUT DE UMA TENTATIVA DE IA.
+ *
+ * Era o literal `45_000` no sitio da chamada em `linkedinAnalyze.ts`, sem nome.
+ * Sem nome ele nao entrava em conta nenhuma, e a auditoria de limiares nem o
+ * enxergava, porque o separador numerico escondia o sitio do proprio descobridor.
+ */
+export const PRAZO_IA_POR_TENTATIVA_MS = 45_000;
+
+/**
+ * TETO DE TENTATIVAS DE IA.
+ *
+ * Duas tentativas de 45s (pior caso cerca de 90s mais backoff), nao tres de 60s:
+ * fazer a pessoa esperar quase tres minutos para receber o mesmo erro so castiga.
+ * Melhor falhar rapido e deixar ela tentar de novo.
+ */
+export const IA_MAX_TENTATIVAS = 2;
+
+/**
+ * BACKOFF ENTRE TENTATIVAS, por indice de tentativa concluida.
+ *
+ * O SEGUNDO ELEMENTO E INALCANCAVEL HOJE, e fica documentado em vez de removido.
+ * O laco so dorme com `tentativa < IA_MAX_TENTATIVAS` e le `[tentativa - 1]`,
+ * ou seja, so o indice 0 com o teto em 2. Remover o `800` nao mudaria
+ * comportamento nenhum (o `?? IA_BACKOFF_PADRAO_MS` devolveria o mesmo valor
+ * numa terceira tentativa), mas mudaria onde a informacao mora: passaria a
+ * depender de um `??` no fim de uma linha em vez de um array que se le de uma
+ * vez. O risco real do elemento morto era outro, e esta fechado: ele INFLAVA a
+ * conta do pior caso quando alguem somava o array inteiro. A derivacao abaixo
+ * nao soma o array, soma os backoffs EFETIVAMENTE aplicados.
+ */
+export const IA_BACKOFF_MS = [400, 800];
+
+/** Backoff de uma tentativa que o array nao declara. Espelha o `??` do laco. */
+export const IA_BACKOFF_PADRAO_MS = 800;
+
+/**
+ * Soma dos backoffs REALMENTE aplicados, derivada do teto de tentativas.
+ *
+ * Espelha o laco de `linkedinAnalyze.ts`: ele dorme entre tentativas, logo
+ * `IA_MAX_TENTATIVAS - 1` vezes, lendo `IA_BACKOFF_MS[tentativa - 1]`. Derivar
+ * em vez de escrever `400` a mao e o que faz a conta acompanhar sozinha quem um
+ * dia subir o teto de tentativas.
+ */
+export const IA_BACKOFF_TOTAL_MS = Array.from(
+  { length: Math.max(0, IA_MAX_TENTATIVAS - 1) },
+  (_valor, indice) => IA_BACKOFF_MS[indice] ?? IA_BACKOFF_PADRAO_MS,
+).reduce((soma, ms) => soma + ms, 0);
+
+/** Pior caso da parte de IA: todas as tentativas estourando, mais os backoffs. */
+export const PIOR_CASO_IA_MS =
+  PRAZO_IA_POR_TENTATIVA_MS * IA_MAX_TENTATIVAS + IA_BACKOFF_TOTAL_MS;
 
 /**
  * PRAZO POR ROUND-TRIP DE BANCO NO CAMINHO DA ANALISE.
@@ -67,6 +123,24 @@ export const CALL_SITES_BANCO_ANALISE = [
 export type CallSiteBancoAnalise = (typeof CALL_SITES_BANCO_ANALISE)[number];
 
 /**
+ * Round-trips de banco no PIOR caminho: o degradado, em que a RPC atomica falha
+ * e a de contagem entra no lugar. E o numero que a conta do pior caso usa.
+ *
+ * Derivado da lista, nao escrito: e a lista que o TypeScript obriga a crescer
+ * quando nasce um round-trip novo, entao a conta cresce junto sem ninguem ter de
+ * lembrar. Contagem escrita a mao aqui seria a mesma classe de defeito que este
+ * lote inteiro existe para fechar.
+ */
+export const ROUND_TRIPS_BANCO_DEGRADADO = CALL_SITES_BANCO_ANALISE.length;
+
+/**
+ * Round-trips no caminho NORMAL: um a menos, porque `reserva_atomica` e
+ * `reserva_degradada` sao exclusivos (a segunda so roda quando a primeira
+ * falha). Nao entra na conta do pior caso; existe para a conta poder ser lida.
+ */
+export const ROUND_TRIPS_BANCO_NORMAL = ROUND_TRIPS_BANCO_DEGRADADO - 1;
+
+/**
  * Prazo estourado do NOSSO lado. Nomeia o round-trip, porque a consequencia de
  * estourar e diferente em cada um (ver a tabela de semantica no relatorio da
  * Fase 4 e os comentarios de cada call site).
@@ -105,6 +179,48 @@ export class PrazoDeBancoEstourado extends Error {
  * nesta fase. Guarda que vale para todo mundo por engano e mudanca de
  * comportamento disfarcada de refactor.
  */
+/** Pior caso da parte de banco: todo round-trip do caminho degradado estourando. */
+export const PIOR_CASO_BANCO_MS =
+  PRAZO_BANCO_ANALISE_MS * ROUND_TRIPS_BANCO_DEGRADADO;
+
+/**
+ * PIOR CASO DO SERVIDOR, com o caminho degradado incluido.
+ *
+ * O degradado entra de proposito: ele nao e hipotese, e o que acontece sempre
+ * que a migration da reserva atomica nao esta aplicada, e foi medido em
+ * producao. Dimensionar o teto do client pelo caminho feliz e o erro que
+ * produziu o defeito original.
+ */
+export const PIOR_CASO_SERVIDOR_MS = PIOR_CASO_IA_MS + PIOR_CASO_BANCO_MS;
+
+/**
+ * FOLGA NOMEADA entre o pior caso do servidor e o aborto do client.
+ *
+ * Ela cobre o que a conta acima nao mede e nao tem como medir: latencia de rede
+ * nas duas pontas, fila do proxy da Railway, o proprio tempo de serializar uma
+ * resposta grande. Sem folga, o teto do client encostaria no pior caso e a
+ * primeira variacao de rede reproduziria exatamente o defeito que este lote
+ * fecha, so que mais raro e portanto mais dificil de achar.
+ *
+ * MINIMO CONTRATADO: 15s, afirmado em `prazos.test.ts`. Reduzir e ato
+ * deliberado, no commit que explica por que.
+ */
+export const FOLGA_CLIENT_MS = 15_000;
+
+/**
+ * TETO DE ABORTO DO CLIENT, derivado.
+ *
+ * Era o literal `120_000` em `client/src/lib/linkedinClient.ts`, com um
+ * comentario que dizia "folga sobre o pior caso do server (cerca de 90s)". O
+ * comentario estava certo sobre a IA e nao contava o banco, entao a folga era
+ * negativa em 30,4s: o client abortava ANTES do servidor terminar, e a pessoa
+ * lia "tente de novo" para uma analise que estava a caminho e seria cobrada.
+ *
+ * Agora nao ha numero para acertar: se qualquer parcela mudar, este valor muda
+ * junto, e a invariante testada garante que ele nunca fica abaixo do pior caso.
+ */
+export const TETO_CLIENT_MS = PIOR_CASO_SERVIDOR_MS + FOLGA_CLIENT_MS;
+
 export function comPrazoDeBanco<T>(
   trabalho: PromiseLike<T>,
   callSite: CallSiteBancoAnalise,

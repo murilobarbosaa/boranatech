@@ -10,6 +10,7 @@ import { type LinkedinHeadlineOrigem } from "@shared/linkedin/schema";
 import { readLinkedinAnalysisResponse } from "@shared/linkedin/readAnalysis";
 import { readLinkedinScoreState } from "@shared/linkedin/readScore";
 import { textoHashValido } from "@shared/linkedin/textoHash";
+import { TETO_CLIENT_MS } from "@shared/linkedin/prazos";
 
 /**
  * Cliente do analisador de LinkedIn, no mesmo estilo de githubClient.ts.
@@ -36,16 +37,20 @@ export interface AnalyzeLinkedinResult {
   textoHash: string | null;
 }
 
-// Teto do client com folga sobre o pior caso do server (~90s: 2 tentativas de
-// 45s + backoff). Estourou = aborta em vez de pendurar esperando um proxy cair.
-const ANALYZE_TIMEOUT_MS = 120_000;
+// TETO IMPORTADO, NUNCA LITERAL LOCAL. O literal que morava aqui dizia ter
+// "folga sobre o pior caso do server (~90s)" e contava so a IA: com os cinco
+// round-trips de banco, o pior caso real passava do teto e o aborto disparava
+// ANTES de o servidor terminar, gerando "tente de novo" para uma analise que ja
+// estava a caminho e seria cobrada. `TETO_CLIENT_MS` e derivado das parcelas em
+// `shared/linkedin/prazos.ts`, e um teste trava que este arquivo nao volte a
+// escrever numero proprio.
 
 export async function analyzeLinkedin(
   payload: LinkedinAnalyzeRequest,
 ): Promise<AnalyzeLinkedinResult> {
   const authHeader = await getAuthHeader();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), ANALYZE_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), TETO_CLIENT_MS);
 
   let response: Response;
   try {

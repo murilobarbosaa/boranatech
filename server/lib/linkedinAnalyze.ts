@@ -18,6 +18,12 @@ import {
   type LinkedinQualitativeEntregue,
 } from "../../shared/linkedin/schema";
 import { ENGLISH_TITLES, PT_TITLES } from "../../shared/linkedin/titles";
+import {
+  IA_BACKOFF_MS,
+  IA_BACKOFF_PADRAO_MS,
+  IA_MAX_TENTATIVAS,
+  PRAZO_IA_POR_TENTATIVA_MS,
+} from "../../shared/linkedin/prazos";
 import { env } from "./env";
 import { parseSkillsInput, runLinkedinChecks } from "./linkedinChecks";
 import {
@@ -129,11 +135,11 @@ const SOBRE_LIMIT = 3000;
  */
 const EXPERIENCIAS_LIMIT = 6000;
 
-// Duas tentativas de 45s (pior caso ~90s + backoff), nao tres de 60s: fazer a
-// pessoa esperar quase tres minutos para receber o mesmo erro so castiga. Melhor
-// falhar rapido e deixar ela tentar de novo. Modelo e max_tokens ficam intactos.
-const AI_MAX_ATTEMPTS = 2;
-const AI_BACKOFF_MS = [400, 800];
+// O teto de tentativas, o backoff e o timeout por tentativa moram em
+// `shared/linkedin/prazos.ts` desde a Fase 4: eles sao PARCELAS da conta do pior
+// caso do servidor, e essa conta e quem deriva o teto de aborto do client.
+// Enquanto viviam soltos aqui, ninguem somava nada e a folga do client era
+// negativa em 30,4s. Modelo e max_tokens seguem locais, que nao entram em conta.
 const MAX_TOKENS = 4000;
 
 const QUALITATIVE_JSON_SCHEMA = toOpenAIStrictSchema(LinkedinQualitativeSchema);
@@ -1004,7 +1010,7 @@ async function runQualitativeOnce(
         },
       }),
     },
-    { service: "openai", timeoutMs: 45_000 },
+    { service: "openai", timeoutMs: PRAZO_IA_POR_TENTATIVA_MS },
   );
 
   if (!response.ok) {
@@ -1113,7 +1119,7 @@ async function runQualitative(
   // seguinte pode corrigir. Null na primeira, e null tambem depois de falha
   // que nao ensina nada (timeout, rede, http).
   let diagnostico: string | null = null;
-  for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
+  for (let attempt = 1; attempt <= IA_MAX_TENTATIVAS; attempt += 1) {
     // Um registro POR TENTATIVA, criado antes da chamada: se ela morrer no
     // transporte, o evento ainda sai, com o motivo nomeado do estado inicial.
     const registro: RegistroDaTentativa = {
@@ -1138,7 +1144,7 @@ async function runQualitative(
       // GATE REPROVADO NA ULTIMA TENTATIVA. Nao ha mais chamada para gastar,
       // entao a resposta volta COM as reprovas e a politica final decide campo
       // a campo. Nao lanca: o resto do JSON passou no schema e continua valendo.
-      if (err instanceof LinkedinGateError && attempt >= AI_MAX_ATTEMPTS) {
+      if (err instanceof LinkedinGateError && attempt >= IA_MAX_TENTATIVAS) {
         return { qualitative: err.qualitative, reprovas: err.reprovas };
       }
       // Falhas ANTES da resposta nao passam por `runQualitativeOnce`, entao o
@@ -1152,7 +1158,7 @@ async function runQualitative(
       // O desfecho classificado logo acima ja diz o que aconteceu.
       const causa = err instanceof Error ? err.name : "erro_nao_Error";
       console.error(
-        `[linkedin-analyze] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} falhou: ${causa} (desfecho ${registro.desfecho})`,
+        `[linkedin-analyze] IA tentativa ${attempt}/${IA_MAX_TENTATIVAS} falhou: ${causa} (desfecho ${registro.desfecho})`,
       );
       // Truncamento e deterministico: o mesmo prompt com o mesmo max_tokens
       // corta de novo. Retentar so faz a pessoa esperar o dobro pelo mesmo
@@ -1174,8 +1180,8 @@ async function runQualitative(
             : err instanceof LinkedinGateError
               ? diagnosticoDeGate(err.reprovas.map((r) => r.detalhe))
               : null;
-      if (attempt < AI_MAX_ATTEMPTS) {
-        await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
+      if (attempt < IA_MAX_TENTATIVAS) {
+        await sleep(IA_BACKOFF_MS[attempt - 1] ?? IA_BACKOFF_PADRAO_MS);
       }
     } finally {
       // UM evento por tentativa, em TODA saida: sucesso (o `return` do `try`

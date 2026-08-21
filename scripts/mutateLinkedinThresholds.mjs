@@ -285,16 +285,53 @@ const MUT = [
     "const FATOR_DOMINANCIA = 2;",
     "const FATOR_DOMINANCIA = 1;",
   ],
-  // Prazo por round-trip de banco no caminho da analise (Fase 4, lote 1). Entra
-  // em MUT porque ele e uma parcela da conta do pior caso do servidor: encolher
-  // transforma lentidao passageira em erro para a pessoa, e esticar traz de
-  // volta o defeito que este lote fecha, o aborto do client acontecendo ANTES do
-  // pior caso legitimo do servidor. Morre em `shared/linkedin/prazos.test.ts`.
+  // PARCELAS DA CONTA DO PIOR CASO (Fase 4, lote 1). Todas em MUT, e todas
+  // morrem em `shared/linkedin/prazos.test.ts`, que afirma a conta fechada
+  // (115.400 e 130.400) alem da derivacao. Afirmar so a derivacao NAO mataria
+  // mutante nenhum destes: a derivacao acompanha a parcela mutada e continua
+  // "certa" sobre um numero errado, que e a forma preferida deste projeto de
+  // ficar verde sobre superficie menor.
+  //
+  // O que cada mutante representa: encolher um prazo transforma lentidao
+  // passageira em erro para a pessoa; esticar traz de volta o defeito que o lote
+  // fecha, o aborto do client disparando ANTES do pior caso legitimo do servidor.
+  // O mutante da folga e NEGATIVO de proposito: ele inverte a desigualdade da
+  // invariante, que e o mutante que o enunciado do lote exige que morra.
   [
     PZ,
     "PRAZO_BANCO_ANALISE_MS",
     "export const PRAZO_BANCO_ANALISE_MS = 5_000;",
     "export const PRAZO_BANCO_ANALISE_MS = 50;",
+  ],
+  [
+    PZ,
+    "PRAZO_IA_POR_TENTATIVA_MS",
+    "export const PRAZO_IA_POR_TENTATIVA_MS = 45_000;",
+    "export const PRAZO_IA_POR_TENTATIVA_MS = 450;",
+  ],
+  [
+    PZ,
+    "IA_MAX_TENTATIVAS",
+    "export const IA_MAX_TENTATIVAS = 2;",
+    "export const IA_MAX_TENTATIVAS = 5;",
+  ],
+  [
+    PZ,
+    "IA_BACKOFF_MS (backoff efetivo da derivacao)",
+    "export const IA_BACKOFF_MS = [400, 800];",
+    "export const IA_BACKOFF_MS = [4, 8];",
+  ],
+  [
+    PZ,
+    "IA_BACKOFF_PADRAO_MS",
+    "export const IA_BACKOFF_PADRAO_MS = 800;",
+    "export const IA_BACKOFF_PADRAO_MS = 8;",
+  ],
+  [
+    PZ,
+    "FOLGA_CLIENT_MS (inverte a invariante)",
+    "export const FOLGA_CLIENT_MS = 15_000;",
+    "export const FOLGA_CLIENT_MS = -15_000;",
   ],
   // Limites de entrada e persistência, não pesos da régua. Ainda são
   // fronteiras de contrato e uma mudança acidental precisa quebrar teste.
@@ -575,10 +612,14 @@ const PADROES_SITIO = [
   // um limiar novo escrito com separador nasceria invisivel do mesmo jeito. E o
   // parser que sub-casa em silencio, aplicado ao parser deste guard.
   /^(?:export\s+)?const\s+[A-Z][A-Z0-9_]*\s*=\s*-?\d[\d_]*(?:\.\d+)?\s*;/,
-  /[<>]=?\s*-?\d+(?:\.\d+)?/,
-  /===?\s*-?\d+(?:\.\d+)?/,
+  /[<>]=?\s*-?\d[\d_]*(?:\.\d+)?/,
+  /===?\s*-?\d[\d_]*(?:\.\d+)?/,
   /\.slice\(\s*-?\d+\s*(?:,\s*-?\d+\s*)?\)/,
-  /:\s*-?\d+(?:\.\d+)?\s*,\s*$/,
+  // Tambem com separador. Este era o padrao que deixava `timeoutMs: 45_000`
+  // fora da auditoria em `linkedinAnalyze.ts`: o timeout por tentativa de IA,
+  // parcela do pior caso, nunca foi descoberto por causa do `_`. Ele so pode ser
+  // ligado agora porque aquele literal virou constante nomeada neste commit.
+  /:\s*-?\d[\d_]*(?:\.\d+)?\s*,\s*$/,
 ];
 
 // NAO-LIMIARES declarados, com motivo. Cada entrada e um par [regex, motivo].
@@ -602,11 +643,13 @@ const NAO_LIMIAR = [
   [/slice\(0, 300\)/, "corte de mensagem de erro para log"],
   [/slice\(0, 1500\)/, "teto do texto de dedup persistido, nao entra em check"],
   [/temperature:/, "parametro do modelo, nao limiar de regra"],
-  [
-    /const (?:AI_MAX_ATTEMPTS|MAX_TOKENS) =/,
-    "parametro operacional da chamada de IA",
-  ],
-  [/const AI_BACKOFF_MS/, "backoff de retry"],
+  // `AI_MAX_ATTEMPTS` e `AI_BACKOFF_MS` sairam desta lista na Fase 4: eles
+  // MUDARAM DE CLASSE. Enquanto eram parametro operacional solto de
+  // `linkedinAnalyze.ts`, mudar um nao tinha efeito observavel que valesse
+  // fronteira. Agora sao parcelas da conta que deriva o teto de aborto do
+  // client, viraram `IA_MAX_TENTATIVAS` e `IA_BACKOFF_MS` em
+  // `shared/linkedin/prazos.ts`, e estao em MUT com mutante proprio.
+  [/const MAX_TOKENS =/, "parametro operacional da chamada de IA"],
   // --- Fase 3, lote 4: painel de violacoes de lastro no admin. Os dois sao de
   // CONSULTA, nao de regra: nenhum deles participa de check, nota, faixa ou
   // veredito sobre perfil de usuario. Mudar qualquer um muda o que o admin
