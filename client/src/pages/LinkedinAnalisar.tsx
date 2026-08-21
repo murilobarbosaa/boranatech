@@ -664,6 +664,16 @@ export default function LinkedinAnalisar() {
   const [extracting, setExtracting] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [historyOpenError, setHistoryOpenError] = useState("");
+  // RECUPERACAO DEPOIS DE TIMEOUT do client. O servidor nao percebe o aborto:
+  // ele termina a analise, grava o uso e persiste. Entao, depois de um timeout,
+  // a analise MUITO provavelmente existe no historico, e busca-la nao custa
+  // chamada de IA nem cota.
+  const [recuperando, setRecuperando] = useState(false);
+  const [recuperacaoVazia, setRecuperacaoVazia] = useState(false);
+  // Id da analise mais recente ANTES do submit. Comparar ids e clock-free: uma
+  // comparacao por `created_at` dependeria do relogio do navegador bater com o
+  // do servidor, e nao ha por que assumir isso.
+  const idMaisRecenteAntesRef = useRef<string | null>(null);
   // Delta de nota vs a analise IMEDIATAMENTE anterior (toda analise de
   // LinkedIn e do mesmo perfil da pessoa, entao nao ha alvo a normalizar).
   const [scoreDelta, setScoreDelta] = useState<{
@@ -944,6 +954,10 @@ export default function LinkedinAnalisar() {
     setLoading(true);
     setError("");
     setConfirmReanalyze(false);
+    setRecuperacaoVazia(false);
+    // Fotografia do topo do historico ANTES da chamada: e ela que diz, depois,
+    // se o que apareceu la e desta analise ou ja estava la.
+    idMaisRecenteAntesRef.current = analysesRef.current[0]?.id ?? null;
     // Depois do guard e antes da chamada: so conta submit que de fato vai
     // acontecer. Aqui o texto e o final, entao `parsed?.headline` ja e a
     // headline que sera analisada.
@@ -1054,6 +1068,35 @@ export default function LinkedinAnalisar() {
     }
   }
 
+  /**
+   * BUSCA a analise no historico depois de um timeout do client. NUNCA dispara
+   * analise nova: so `refreshLinkedinHistory` (GET /api/linkedin/analyses) e,
+   * se achar, `openHistory` (GET da linha), e nenhum dos dois toca em IA ou cota.
+   *
+   * O criterio de "achou" e a mudanca do topo da lista contra a fotografia
+   * tirada no submit. Lista vazia, lista inalterada ou falha da consulta caem
+   * todas em `recuperacaoVazia`, que a UI trata como estado e nao como erro: a
+   * analise pode simplesmente ainda nao ter terminado.
+   */
+  async function recuperarAnaliseDoHistorico() {
+    if (recuperando || openingId) return;
+    setRecuperando(true);
+    setRecuperacaoVazia(false);
+    try {
+      const items = await refreshLinkedinHistory({ showLoading: false });
+      const maisRecente = items?.[0] ?? null;
+      if (maisRecente && maisRecente.id !== idMaisRecenteAntesRef.current) {
+        // `openHistory` limpa o erro e mostra o resultado, exatamente como
+        // quando a pessoa clica numa linha do historico. Sem caminho novo.
+        await openHistory(maisRecente.id);
+        return;
+      }
+      setRecuperacaoVazia(true);
+    } finally {
+      setRecuperando(false);
+    }
+  }
+
   async function openHistory(id: string) {
     if (openingId) return;
     setOpeningId(id);
@@ -1126,6 +1169,7 @@ export default function LinkedinAnalisar() {
     setReguaMudou(false);
     setConfirmReanalyze(false);
     setHistoryOpenError("");
+    setRecuperacaoVazia(false);
   }
 
   const profileChars = form.profileText.trim().length;
@@ -1869,6 +1913,9 @@ export default function LinkedinAnalisar() {
                       ? () => void runAnalysis()
                       : undefined
                   }
+                  onRecuperar={() => void recuperarAnaliseDoHistorico()}
+                  recuperando={recuperando}
+                  recuperacaoVazia={recuperacaoVazia}
                 />
               ) : null}
 

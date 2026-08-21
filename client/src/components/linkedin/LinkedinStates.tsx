@@ -1,4 +1,4 @@
-import { AlertCircle, FileText, RefreshCw } from "lucide-react";
+import { AlertCircle, FileText, History, RefreshCw } from "lucide-react";
 import ProGate from "@/components/pro/ProGate";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -34,6 +34,34 @@ export function LinkedinSkeleton() {
   );
 }
 
+/**
+ * COPY DO TIMEOUT E DA RECUPERACAO.
+ *
+ * Exportada porque o teste afirma o TEXTO, e nao a classe nem a cor: a distincao
+ * entre "sua analise talvez exista" e "tente de novo" precisa existir para quem
+ * nao enxerga cor.
+ *
+ * A frase antiga era "A analise demorou mais que o esperado. Isso costuma ser
+ * instabilidade momentanea: tente de novo em alguns minutos." Ela mandava
+ * exatamente a acao mais cara: o servidor NAO percebe o aborto do client, entao
+ * ele termina a analise, grava a linha de uso e persiste normalmente. Quem
+ * seguia o conselho pagava uma segunda analise por um trabalho ja concluido.
+ *
+ * A promessa nova e CONDICIONAL e verificavel pelo clique: "se ela estiver la,
+ * abrir nao gasta uma nova analise" e verdade porque a consulta do historico
+ * (`GET /api/linkedin/analyses`) nao toca em IA nem em cota, e o teste irmao
+ * afirma zero chamada da rota de analise nesse fluxo.
+ */
+// TODO(Ana): copy do estado de timeout da analise e da busca no historico.
+export const LINKEDIN_TIMEOUT_COPY = {
+  mensagem:
+    "A análise demorou mais do que o esperado aqui no navegador, mas ela pode ter terminado no servidor. Procure no seu histórico antes de pedir outra: se ela estiver lá, abrir não gasta uma nova análise.",
+  acao: "Procurar no meu histórico",
+  procurando: "Procurando no histórico...",
+  vazio:
+    "Ainda não encontramos essa análise no seu histórico. Se ela tiver terminado, costuma aparecer em instantes: espere um pouco e procure de novo, ou peça uma nova análise.",
+} as const;
+
 function resolveError(error: string): string {
   if (error === "LOGIN_REQUIRED") return "Faça login para usar a análise.";
   if (error.startsWith("RATE_LIMITED")) {
@@ -50,10 +78,7 @@ function resolveError(error: string): string {
   if (error === "ANALYSIS_FAILED") {
     return "Não consegui completar a análise agora. Tente de novo.";
   }
-  // TODO(Ana): copy do estado de timeout da análise.
-  if (error === "TIMEOUT") {
-    return "A análise demorou mais que o esperado. Isso costuma ser instabilidade momentânea: tente de novo em alguns minutos.";
-  }
+  if (error === "TIMEOUT") return LINKEDIN_TIMEOUT_COPY.mensagem;
   // TODO(Ana): copy do estado de falha de rede.
   if (error === "NETWORK") {
     return "Não conseguimos falar com o servidor. Verifique sua conexão e tente de novo; se persistir, a plataforma pode estar em manutenção.";
@@ -64,12 +89,30 @@ function resolveError(error: string): string {
 interface LinkedinErrorProps {
   error: string;
   onRetry?: () => void;
+  /**
+   * Consulta o HISTORICO ja existente, e so isso. Nunca dispara analise nova:
+   * essa e a diferenca inteira entre esta acao e `onRetry`, e o teste irmao a
+   * afirma pela negativa, com a rota de analise em zero chamada.
+   */
+  onRecuperar?: () => void;
+  recuperando?: boolean;
+  /** A consulta rodou e nao achou analise nova. Estado, nao erro. */
+  recuperacaoVazia?: boolean;
 }
 
-export function LinkedinError({ error, onRetry }: LinkedinErrorProps) {
+export function LinkedinError({
+  error,
+  onRetry,
+  onRecuperar,
+  recuperando = false,
+  recuperacaoVazia = false,
+}: LinkedinErrorProps) {
   if (error === "PRO_REQUIRED") {
     return (
-      <ProGate feature="linkedin_analyzer" description="O analisador de LinkedIn faz parte do Plano Pro. Assine para liberar a análise completa." />
+      <ProGate
+        feature="linkedin_analyzer"
+        description="O analisador de LinkedIn faz parte do Plano Pro. Assine para liberar a análise completa."
+      />
     );
   }
 
@@ -88,6 +131,10 @@ export function LinkedinError({ error, onRetry }: LinkedinErrorProps) {
     );
   }
 
+  // A recuperacao so faz sentido no timeout: nos outros erros nao ha analise em
+  // voo para procurar, e oferecer a busca seria prometer o que nao existe.
+  const podeRecuperar = error === "TIMEOUT" && !!onRecuperar;
+
   return (
     <div className="card-brutal rounded-2xl border-slate-300 bg-red-50 p-6 text-center">
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]">
@@ -96,15 +143,45 @@ export function LinkedinError({ error, onRetry }: LinkedinErrorProps) {
       <p className="mx-auto max-w-2xl text-base font-bold text-slate-800">
         {resolveError(error)}
       </p>
-      {onRetry ? (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="btn-brutal-primary mt-5 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-black text-slate-900"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Tentar de novo
-        </button>
+      {podeRecuperar && recuperacaoVazia ? (
+        <p className="mx-auto mt-3 max-w-2xl text-sm font-bold text-slate-600">
+          {LINKEDIN_TIMEOUT_COPY.vazio}
+        </p>
+      ) : null}
+      {podeRecuperar || onRetry ? (
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+          {podeRecuperar ? (
+            <button
+              type="button"
+              onClick={onRecuperar}
+              disabled={recuperando}
+              className="btn-brutal-primary inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-black text-slate-900 disabled:opacity-60"
+            >
+              <History className="h-4 w-4" />
+              {recuperando
+                ? LINKEDIN_TIMEOUT_COPY.procurando
+                : LINKEDIN_TIMEOUT_COPY.acao}
+            </button>
+          ) : null}
+          {onRetry ? (
+            /* SECUNDARIA no timeout, primaria no resto. Tentar de novo continua
+               disponivel de proposito: ela e a saida certa quando a analise
+               realmente nao completou. O que mudou e a ORDEM, porque a acao
+               barata tem de vir antes da que cobra. */
+            <button
+              type="button"
+              onClick={onRetry}
+              className={
+                podeRecuperar
+                  ? "inline-flex items-center gap-2 rounded-full border-2 border-slate-400 px-5 py-2.5 text-sm font-black text-slate-700"
+                  : "btn-brutal-primary inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-black text-slate-900"
+              }
+            >
+              <RefreshCw className="h-4 w-4" />
+              Tentar de novo
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
