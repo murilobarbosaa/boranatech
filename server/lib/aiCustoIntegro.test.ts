@@ -235,6 +235,10 @@ const CALL_SITES_COM_CUSTO = [
   // Nenhuma entrada saiu, nenhum ramo perdeu significado.
   { arquivo: "server/routes/aiRoadmap.ts", fontes: ["tokens", "chars"] },
   { arquivo: "server/routes/careerPlan.ts", fontes: ["tokens", "chars"] },
+  // Entrou na Fase 4 lote 3d. Seis dos sete call sites com a forma do defeito
+  // eram desta rota: chamadas de TEXTO da OpenAI cujo `usage` era descartado nos
+  // dois callers inline do arquivo. Agora tem os dois ramos.
+  { arquivo: "server/routes/interview.ts", fontes: ["tokens", "chars"] },
   { arquivo: "server/routes/linkedin.ts", fontes: ["repassado"] },
   { arquivo: "server/routes/resumeAnalysis.ts", fontes: ["tokens", "chars"] },
 ] as const;
@@ -351,13 +355,23 @@ describe("3. TOTALIDADE: nenhum call site informa custo sem estar classificado",
         }
       }
     }
-    // OS SETE SAO TODOS DE `interview.ts`, e ele esta FORA do escopo do lote 3c.
-    // Um deles (o TTS) tem custo zero DELIBERADO e documentado: e ElevenLabs,
-    // parceria sem fatura, e nao ha preco por caractere cadastrado. Os outros
-    // seis sao a mesma classe que este lote acabou de fechar no careerPlan, e
-    // estao registrados como backlog no relatorio.
+    // REDUCAO LEGITIMA de sete para UM, na Fase 4 lote 3d.
+    //
+    // Os seis que sairam eram chamadas de TEXTO da OpenAI em `interview.ts`, com
+    // `usage` disponivel e descartado; foram migrados para o ramo de tokens.
+    //
+    // O QUE SOBRA e o TTS da ElevenLabs, e ele NAO e a mesma coisa: outro
+    // fornecedor, outra modalidade, sem tokens comparaveis e sem preco
+    // cadastrado. Aplicar a regua da OpenAI nele seria precificar audio com
+    // tabela de texto, que e a regua errada disfarcada de numero plausivel.
+    // Custo zero aqui e PENDENTE DECLARADO, nao defeito: espera decisao de
+    // produto sobre preco de outro fornecedor. Mesma doutrina de
+    // `NON_TEXT_MODELS`.
+    //
+    // Este numero so pode cair para zero junto com essa decisao. Se ele SUBIR,
+    // alguem acrescentou um call site com a forma do defeito.
     expect(new Set(achados)).toEqual(new Set(["server/routes/interview.ts"]));
-    expect(achados.length).toBe(7);
+    expect(achados.length).toBe(1);
   });
 
   it("NENHUMA rota calcula custo por conta propria", () => {

@@ -201,9 +201,103 @@ interface ModelMessage {
   content: string;
 }
 
-interface AiIo {
+/** O uso medido de uma chamada, como ele viaja nos contratos deste arquivo. */
+export interface UsoMedido {
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export interface AiIo {
   inputChars: number;
   outputChars: number;
+  /**
+   * USO MEDIDO da OpenAI, somado sobre TODAS as tentativas desta chamada.
+   *
+   * AUSENTE quando nenhuma resposta trouxe `usage`. Ausencia e ausencia: nao
+   * existe `inputTokens: 0` aqui, porque zero seria uma medicao ("a chamada nao
+   * consumiu nada") indistinguivel de "nao medi". Quem le decide entre o custo
+   * por tokens e o fallback declarado por caracteres a partir DESTA distincao.
+   *
+   * SOMA POR CHAMADA, e ela inclui as tentativas que a OpenAI RESPONDEU e nos
+   * reprovamos. `callInterviewModelOnce` tem QUATRO portas de reprova depois da
+   * resposta (conteudo vazio, JSON, schema e coerencia com o estado do turno), e
+   * o teto e de tres tentativas: um turno podia custar tres chamadas e reportar
+   * uma. O turno de fechamento soma DUAS chamadas, e ai a soma e entre elas
+   * (`somarUsoDeChamadas`).
+   */
+  uso?: UsoMedido;
+}
+
+/**
+ * ACUMULACAO DO USO MEDIDO, copia local.
+ *
+ * As mesmas auxiliares existem em `server/lib/careerPlan/usoMedido.ts` desde o
+ * lote 3c. NAO as importei, e a razao e direcao de dependencia: a rota de
+ * entrevista passaria a depender do modulo de plano de carreira para chegar num
+ * utilitario que nao pertence a nenhuma das duas features. A alternativa certa e
+ * um modulo neutro compartilhado, e ele nao cabe no escopo deste lote.
+ *
+ * Moram AQUI DENTRO, e nao num modulo proprio de interview, porque quem chama a
+ * OpenAI nesta feature tambem mora aqui: nao ha helper em `server/lib/` para
+ * onde levar. Custo registrado: a base vai de tres para QUATRO copias destas
+ * dezoito linhas, e a consolidacao esta no backlog do relatorio.
+ */
+interface UsoAcumulado {
+  inputTokens: number;
+  outputTokens: number;
+  medido: boolean;
+}
+
+/** Zera o acumulador. `medido` false enquanto nenhuma resposta trouxer `usage`. */
+function novoUsoAcumulado(): UsoAcumulado {
+  return { inputTokens: 0, outputTokens: 0, medido: false };
+}
+
+/**
+ * Soma o `usage` desta resposta ao acumulado da chamada.
+ *
+ * Chamado logo DEPOIS de ler o corpo e ANTES de validar conteudo, JSON, schema
+ * ou coerencia, de proposito: uma tentativa que a OpenAI respondeu e nos
+ * reprovamos foi cobrada igual, e o token dela precisa entrar na conta.
+ */
+function somarUso(
+  acumulado: UsoAcumulado,
+  usage: { prompt_tokens?: number; completion_tokens?: number } | undefined,
+): void {
+  if (typeof usage?.prompt_tokens !== "number") return;
+  acumulado.inputTokens += usage.prompt_tokens;
+  acumulado.outputTokens += usage.completion_tokens ?? 0;
+  acumulado.medido = true;
+}
+
+/** O campo `uso` do contrato, ou undefined quando nada foi medido. */
+function usoDoContrato(acumulado: UsoAcumulado): UsoMedido | undefined {
+  return acumulado.medido
+    ? {
+        inputTokens: acumulado.inputTokens,
+        outputTokens: acumulado.outputTokens,
+      }
+    : undefined;
+}
+
+/**
+ * Soma o uso de DUAS chamadas, preservando a ausencia.
+ *
+ * O turno de fechamento cobra uma unidade de quota por DUAS chamadas de IA
+ * (avaliacao mais veredito), e grava um log so. Se as duas estiverem ausentes, o
+ * resultado e ausente; se so uma trouxer medicao, o total e o dela, e nao uma
+ * soma com zero fingido do outro lado.
+ */
+export function somarUsoDeChamadas(
+  a: UsoMedido | undefined,
+  b: UsoMedido | undefined,
+): UsoMedido | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return {
+    inputTokens: a.inputTokens + b.inputTokens,
+    outputTokens: a.outputTokens + b.outputTokens,
+  };
 }
 
 // O que cada chamada espera do modelo; incoerencia com o modo e falha da
@@ -230,6 +324,7 @@ async function callInterviewModelOnce(
   messages: ModelMessage[],
   expect: ExpectMode,
   onIo: (io: AiIo) => void,
+  acumulado: UsoAcumulado,
 ): Promise<InterviewTurnResult> {
   const response = await fetchWithTimeout(
     OPENAI_BASE_URL,
@@ -260,7 +355,10 @@ async function callInterviewModelOnce(
 
   const payload = (await response.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
+  // ANTES de qualquer reprova nossa: ver `somarUso`.
+  somarUso(acumulado, payload.usage);
   const content = payload.choices?.[0]?.message?.content;
   if (!content) {
     throw new Error("A IA nao retornou conteudo.");
@@ -287,7 +385,11 @@ async function callInterviewModelOnce(
   }
 
   const inputChars = messages.reduce((acc, m) => acc + m.content.length, 0);
-  onIo({ inputChars, outputChars: content.length });
+  onIo({
+    inputChars,
+    outputChars: content.length,
+    uso: usoDoContrato(acumulado),
+  });
   return validation.data;
 }
 
@@ -298,6 +400,7 @@ function sleep(ms: number): Promise<void> {
 async function callHintModelOnce(
   messages: ModelMessage[],
   onIo: (io: AiIo) => void,
+  acumulado: UsoAcumulado,
 ): Promise<string> {
   const response = await fetchWithTimeout(
     OPENAI_BASE_URL,
@@ -328,7 +431,10 @@ async function callHintModelOnce(
 
   const payload = (await response.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
+  // ANTES de qualquer reprova nossa: ver `somarUso`.
+  somarUso(acumulado, payload.usage);
   const content = payload.choices?.[0]?.message?.content;
   if (!content) {
     throw new Error("A IA nao retornou conteudo.");
@@ -354,11 +460,18 @@ async function callHintModelOnce(
   }
 
   const inputChars = messages.reduce((acc, m) => acc + m.content.length, 0);
-  onIo({ inputChars, outputChars: content.length });
+  onIo({
+    inputChars,
+    outputChars: content.length,
+    uso: usoDoContrato(acumulado),
+  });
   return hint;
 }
 
-async function callHintModel(
+// Exportada para teste (mesmo criterio de `findInvalidStepRefs` no careerPlan):
+// e aqui que a acumulacao do uso medido acontece, e ela precisa de prova com
+// numero literal. Nada fora deste arquivo a consome em producao.
+export async function callHintModel(
   messages: ModelMessage[],
   onIo: (io: AiIo) => void,
 ): Promise<string> {
@@ -366,10 +479,11 @@ async function callHintModel(
     throw new Error("Servico de IA nao configurado.");
   }
 
+  const acumulado = novoUsoAcumulado();
   let lastError: unknown;
   for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
     try {
-      return await callHintModelOnce(messages, onIo);
+      return await callHintModelOnce(messages, onIo, acumulado);
     } catch (err) {
       lastError = err;
       const detail = err instanceof Error ? err.message : String(err);
@@ -392,7 +506,8 @@ async function callHintModel(
     : new Error("Falha ao gerar a dica.");
 }
 
-async function callInterviewModel(
+// Exportada para teste, mesmo motivo de `callHintModel`.
+export async function callInterviewModel(
   messages: ModelMessage[],
   expect: ExpectMode,
   onIo: (io: AiIo) => void,
@@ -401,10 +516,11 @@ async function callInterviewModel(
     throw new Error("Servico de IA nao configurado.");
   }
 
+  const acumulado = novoUsoAcumulado();
   let lastError: unknown;
   for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
     try {
-      return await callInterviewModelOnce(messages, expect, onIo);
+      return await callInterviewModelOnce(messages, expect, onIo, acumulado);
     } catch (err) {
       lastError = err;
       const detail = err instanceof Error ? err.message : String(err);
@@ -840,6 +956,16 @@ router.post(
       status: "success",
       inputChars: aiIo.inputChars,
       outputChars: aiIo.outputChars,
+      // MEDICAO quando a OpenAI mandou `usage`, fallback declarado quando nao.
+      // Sem `|| 0`: ausencia de medicao continua sendo ausencia, e cai no
+      // ramo de caracteres em vez de virar custo zero por omissao.
+      custo: aiIo.uso
+        ? {
+            tipo: "tokens",
+            inputTokens: aiIo.uso.inputTokens,
+            outputTokens: aiIo.uso.outputTokens,
+          }
+        : { tipo: "chars" },
     });
 
     res.json({ data: { sessionId, question: firstQuestion, questionTurnId } });
@@ -1017,6 +1143,16 @@ router.post(
         status: "success",
         inputChars: aiIo.inputChars,
         outputChars: aiIo.outputChars,
+        // MEDICAO quando a OpenAI mandou `usage`, fallback declarado quando nao.
+        // Sem `|| 0`: ausencia de medicao continua sendo ausencia, e cai no
+        // ramo de caracteres em vez de virar custo zero por omissao.
+        custo: aiIo.uso
+          ? {
+              tipo: "tokens",
+              inputTokens: aiIo.uso.inputTokens,
+              outputTokens: aiIo.uso.outputTokens,
+            }
+          : { tipo: "chars" },
       });
 
       return res.json({
@@ -1141,6 +1277,16 @@ router.post(
         status: "success",
         inputChars: evalIo.inputChars,
         outputChars: evalIo.outputChars,
+        // MEDICAO quando a OpenAI mandou `usage`, fallback declarado quando nao.
+        // Sem `|| 0`: ausencia de medicao continua sendo ausencia, e cai no
+        // ramo de caracteres em vez de virar custo zero por omissao.
+        custo: evalIo.uso
+          ? {
+              tipo: "tokens",
+              inputTokens: evalIo.uso.inputTokens,
+              outputTokens: evalIo.uso.outputTokens,
+            }
+          : { tipo: "chars" },
       });
       return res.json({
         data: {
@@ -1230,6 +1376,11 @@ router.post(
 
     // Cobranca UNICA do turno de fechamento: 1 acao do usuario = 1 unidade de
     // quota, somando o IO das duas chamadas (avaliacao + veredito) num log so.
+    //
+    // O CUSTO SEGUE A MESMA REGRA que os caracteres desta linha ja seguiam: as
+    // duas chamadas somadas. `somarUsoDeChamadas` preserva a ausencia, entao uma
+    // medida e outra nao medida nao viram soma com zero fingido.
+    const usoDoFechamento = somarUsoDeChamadas(evalIo.uso, closeIo.uso);
     await logAiUsage({
       userId,
       tool: INTERVIEW_TURN_TOOL,
@@ -1237,6 +1388,16 @@ router.post(
       status: "success",
       inputChars: evalIo.inputChars + closeIo.inputChars,
       outputChars: evalIo.outputChars + closeIo.outputChars,
+      // MEDICAO quando a OpenAI mandou `usage`, fallback declarado quando nao.
+      // Sem `|| 0`: ausencia de medicao continua sendo ausencia, e cai no
+      // ramo de caracteres em vez de virar custo zero por omissao.
+      custo: usoDoFechamento
+        ? {
+            tipo: "tokens",
+            inputTokens: usoDoFechamento.inputTokens,
+            outputTokens: usoDoFechamento.outputTokens,
+          }
+        : { tipo: "chars" },
     });
 
     return res.json({
@@ -1385,6 +1546,16 @@ router.post(
       status: "success",
       inputChars: aiIo.inputChars,
       outputChars: aiIo.outputChars,
+      // MEDICAO quando a OpenAI mandou `usage`, fallback declarado quando nao.
+      // Sem `|| 0`: ausencia de medicao continua sendo ausencia, e cai no
+      // ramo de caracteres em vez de virar custo zero por omissao.
+      custo: aiIo.uso
+        ? {
+            tipo: "tokens",
+            inputTokens: aiIo.uso.inputTokens,
+            outputTokens: aiIo.uso.outputTokens,
+          }
+        : { tipo: "chars" },
     });
 
     res.json({ data: { hint } });
@@ -1533,7 +1704,8 @@ router.post(
 
 // Chamada unica de traducao (temperature 0, sem retry: a retentativa e o
 // clique do usuario). Lanca Error com detalhe pro log; a rota responde generico.
-async function translateQuestionToPt(
+// Exportada para teste, mesmo motivo de `callHintModel`.
+export async function translateQuestionToPt(
   text: string,
   onIo: (io: AiIo) => void,
 ): Promise<string> {
@@ -1563,13 +1735,22 @@ async function translateQuestionToPt(
   }
   const payload = (await response.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
+  // Chamada UNICA, sem retry: o acumulador aqui soma uma tentativa so. Ainda
+  // assim vem ANTES da reprova por texto vazio, pelo mesmo motivo dos outros.
+  const acumulado = novoUsoAcumulado();
+  somarUso(acumulado, payload.usage);
   const content = payload.choices?.[0]?.message?.content?.trim();
   if (!content) {
     throw new Error("A traducao nao retornou texto.");
   }
   const inputChars = messages.reduce((acc, m) => acc + m.content.length, 0);
-  onIo({ inputChars, outputChars: content.length });
+  onIo({
+    inputChars,
+    outputChars: content.length,
+    uso: usoDoContrato(acumulado),
+  });
   return content;
 }
 
@@ -1758,6 +1939,16 @@ router.post(
         model: DEFAULT_MODEL,
         inputChars: trIo.inputChars,
         outputChars: trIo.outputChars,
+        // MEDICAO quando a OpenAI mandou `usage`, fallback declarado quando nao.
+        // Sem `|| 0`: ausencia de medicao continua sendo ausencia, e cai no
+        // ramo de caracteres em vez de virar custo zero por omissao.
+        custo: trIo.uso
+          ? {
+              tipo: "tokens",
+              inputTokens: trIo.uso.inputTokens,
+              outputTokens: trIo.uso.outputTokens,
+            }
+          : { tipo: "chars" },
       });
       if (translatedText.length > TTS_MAX_CHARS) {
         // TODO(Ana): mensagem de pergunta longa demais para audio.
