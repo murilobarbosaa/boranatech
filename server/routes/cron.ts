@@ -23,7 +23,10 @@ import { enqueueEmail } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
 import { issueRenewalToken } from "../lib/renewalToken";
 import { getStripe } from "../lib/stripeClient";
-import { runPaymentRecovery } from "../lib/paymentRecovery";
+import {
+  recuperacaoDegradada,
+  runPaymentRecovery,
+} from "../lib/paymentRecovery";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { SYNC_FINANCE_WINDOW_DAYS } from "../lib/financeSyncWindow";
 import { syncBalanceTransactions } from "../lib/stripeSync";
@@ -1817,7 +1820,7 @@ router.post(
       const r = await runPaymentRecovery();
       await recordCronRun({
         jobName: "payment-recovery",
-        status: "success",
+        status: recuperacaoDegradada(r) ? "partial" : "success",
         startedAt,
         payload: r,
       });
