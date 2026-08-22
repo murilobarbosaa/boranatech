@@ -33,6 +33,19 @@ interface Rota {
   toolsDoLog: string[];
 }
 
+/**
+ * O criterio de "isto e uma rota de producao", nomeado para poder ser testado.
+ *
+ * Era um predicado inline dentro do `filter`, e um predicado inline nao tem como
+ * ser exercitado com nome forjado: so dava para conferir o efeito dele sobre os
+ * arquivos que por acaso existem no diretorio hoje. Nomeado, ele responde a
+ * pergunta direta ("este nome entra na varredura?") para qualquer nome, inclusive
+ * os que ainda nao existem.
+ */
+export function ehArquivoDeRota(nome: string): boolean {
+  return nome.endsWith(".ts") && !/\.test\.tsx?$/.test(nome);
+}
+
 function lerRotas(): Rota[] {
   const out: Rota[] = [];
   // ARQUIVO DE TESTE NAO E ROTA. A varredura audita as rotas de producao de
@@ -43,9 +56,7 @@ function lerRotas(): Rota[] {
   // sobre um "arquivo de rota" que e um `.test.ts`. A assercao de TOTAL de
   // arquivos, logo abaixo, continua sendo o anteparo contra este filtro esconder
   // uma rota de verdade.
-  const deRota = readdirSync(ROUTES).filter(
-    (f) => f.endsWith(".ts") && !/\.test\.tsx?$/.test(f),
-  );
+  const deRota = readdirSync(ROUTES).filter(ehArquivoDeRota);
   for (const arquivo of deRota) {
     const fonte = readFileSync(path.join(ROUTES, arquivo), "utf8");
     // 4o argumento de checkAiDailyLimit(userId, isPro, escopo, TOOL, ...)
@@ -106,6 +117,53 @@ function lerRotas(): Rota[] {
 }
 
 const rotas = lerRotas();
+
+describe("o filtro da varredura: teste nao e rota", () => {
+  // O FILTRO ja existia desde a Fase 4 lote 2, mas nao tinha prova propria: o
+  // unico jeito de saber se ele funcionava era o efeito colateral de a suite
+  // ficar verde. Isso responde "funcionou hoje", nao "funciona".
+  it("arquivo de PRODUCAO forjado entra na varredura", () => {
+    for (const nome of [
+      "linkedin.ts",
+      "ai.ts",
+      "rotaQueAindaNaoExiste.ts",
+      "testes.ts",
+      "contest.ts",
+    ]) {
+      expect(ehArquivoDeRota(nome), nome).toBe(true);
+    }
+  });
+
+  it("arquivo de TESTE forjado NAO entra", () => {
+    for (const nome of [
+      "linkedin.test.ts",
+      "linkedinAnaliseEmAndamento.test.ts",
+      "algumaCoisa.test.tsx",
+    ]) {
+      expect(ehArquivoDeRota(nome), nome).toBe(false);
+    }
+  });
+
+  it("o que nem e TypeScript fica de fora", () => {
+    for (const nome of ["README.md", "rota.js", "rota.ts.snap", "pasta"]) {
+      expect(ehArquivoDeRota(nome), nome).toBe(false);
+    }
+  });
+
+  it("o filtro nao esconde nenhuma rota que existe hoje", () => {
+    // O outro sentido: o filtro poderia estar apertado demais e sumir com uma
+    // rota de verdade. A assercao de TOTAL de arquivos (mais abaixo) ja pega
+    // isso, e esta aqui explicita porque e a metade que se costuma esquecer.
+    const todos = readdirSync(ROUTES);
+    const deProducao = todos.filter(ehArquivoDeRota);
+    const deTeste = todos.filter((f) => /\.test\.tsx?$/.test(f));
+    expect(deProducao.length).toBeGreaterThan(10);
+    expect(deTeste.length).toBeGreaterThan(0);
+    // Nenhum arquivo `.ts` do diretorio some das duas listas somadas.
+    const ts = todos.filter((f) => f.endsWith(".ts") || f.endsWith(".tsx"));
+    expect(deProducao.length + deTeste.length).toBe(ts.length);
+  });
+});
 
 describe("identificador de ferramenta: reserva e log usam o mesmo", () => {
   it("ha rotas para auditar, e a enumeracao nao encolheu em silencio", () => {
