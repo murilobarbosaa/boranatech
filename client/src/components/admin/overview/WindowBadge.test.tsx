@@ -14,9 +14,9 @@ afterEach(cleanup);
 
 describe("WindowBadge", () => {
   it("mostra o intervalo e o fuso que o servidor mandou", () => {
-    render(<WindowBadge label="16 jul - 14 ago" tz="Brasília" />);
+    render(<WindowBadge label="16 jul a 14 ago" tz="Brasília" />);
     const badge = screen.getByTestId("window-badge");
-    expect(badge.textContent).toContain("16 jul - 14 ago");
+    expect(badge.textContent).toContain("16 jul a 14 ago");
     expect(badge.textContent).toContain("Brasília");
   });
 
@@ -36,16 +36,16 @@ describe("WindowBadge", () => {
   it("CONTROLE NEGATIVO: sem `partial`, não inventa a marca", () => {
     // Marcar tudo como parcial esvaziaria o sinal, que existe justamente para o
     // último dia não ser lido como queda.
-    render(<WindowBadge label="16 jul - 13 ago" tz="Brasília" />);
+    render(<WindowBadge label="16 jul a 13 ago" tz="Brasília" />);
     expect(screen.queryByTestId("window-badge-parcial")).toBeNull();
   });
 
   it("sem fuso, mostra só o intervalo (não escreve 'Brasília' por conta própria)", () => {
     // O componente não sabe onde é Brasília, e é assim que se garante que ele
     // nunca discorde do servidor.
-    render(<WindowBadge label="16 jul - 14 ago" />);
+    render(<WindowBadge label="16 jul a 14 ago" />);
     expect(screen.getByTestId("window-badge").textContent).toBe(
-      "16 jul - 14 ago",
+      "16 jul a 14 ago",
     );
   });
 });

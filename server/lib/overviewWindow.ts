@@ -84,7 +84,7 @@ export function resolverJanela(
   const hoje = diaBrasilia(endIso);
   if (!hoje) {
     // `agora` inválido: não há como resolver uma janela civil. Lançar em vez de
-    // devolver uma janela plausível — este valor governa SEIS cards.
+    // devolver uma janela plausível, porque este valor governa SEIS cards.
     throw new Error("resolverJanela: instante inválido");
   }
 
@@ -137,7 +137,7 @@ export function resolverJanela(
  * Motivo pelo qual um card NÃO tem variação.
  *
  * Existe porque espaço vazio no lugar do Δ parece defeito. A tela precisa poder
- * dizer, em uma linha, por que não há comparação — e o motivo é diferente por
+ * dizer, em uma linha, por que não há comparação, e o motivo é diferente por
  * card, porque cada série tem a sua própria idade (perfis têm 88 dias, receita
  * tem 18, o snapshot tem 16).
  */
