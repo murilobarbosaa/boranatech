@@ -688,16 +688,36 @@ describe("card e gráfico concordam sobre o intervalo (regressão dos 182)", () 
     const r = await chamarAdmin("GET", "/overview?window=30");
 
     expect(r.body.data.tz).toBe("Brasília");
-    expect(r.body.data.windowLabel).toMatch(/^\d{1,2} \w{3} - \d{1,2} \w{3}$/);
-    expect(r.body.data.previousLabel).toMatch(
-      /^\d{1,2} \w{3} - \d{1,2} \w{3}$/,
-    );
+    // O SEPARADOR É A PALAVRA "a", nunca um traço. `TRACO` nomeia os três de uma
+    // vez: hífen, meia-risca (U+2013) e travessão (U+2014), proibidos pelo
+    // CLAUDE.md em qualquer texto do projeto.
+    //
+    // O REGEX POSITIVO, ancorado, já rejeitaria qualquer traço no rótulo de
+    // intervalo: `\w` não casa traço nenhum. A asserção negativa NÃO está aqui
+    // para duplicá-lo, e sim porque `rotuloDeIntervalo` tem TRÊS ramos e o
+    // regex só descreve um. O ramo sem início ("até 22 ago") e o de dia único
+    // não têm forma fixa para afirmar, e é neles que um traço voltaria sem nada
+    // acusar. É por isso que ela aparece de novo lá embaixo, no 'tudo'.
+    const SEPARADOR_POR_PALAVRA = /^\d{1,2} \w{3} a \d{1,2} \w{3}$/;
+    const TRACO = /[-\u2013\u2014]/;
+    expect(r.body.data.windowLabel).toMatch(SEPARADOR_POR_PALAVRA);
+    expect(r.body.data.windowLabel).not.toMatch(TRACO);
+    expect(r.body.data.previousLabel).toMatch(SEPARADOR_POR_PALAVRA);
+    expect(r.body.data.previousLabel).not.toMatch(TRACO);
     // CONTROLE NEGATIVO: em 'tudo' não existe período anterior, e o rótulo dele
     // é ausência declarada, não string vazia.
     base();
     const tudo = await chamarAdmin("GET", "/overview?window=all");
     expect(tudo.body.data.previousLabel).toBeNull();
     expect(tudo.body.data.windowFirstDay).toBeNull();
+    // O RAMO SEM INÍCIO. A afirmação positiva aqui é DELIBERADAMENTE fraca (só
+    // identifica o ramo), porque um regex ancorado sobre a string inteira
+    // tornaria `TRACO` decorativo: `\w` não casa traço, então o positivo
+    // pegaria o traço primeiro e a asserção negativa nunca falharia sozinha em
+    // lugar nenhum. Com o positivo fraco, `TRACO` é o ÚNICO detector deste ramo,
+    // e a mutação prova isso: "até - 22 ago" passa no `/^até /` e morre aqui.
+    expect(tudo.body.data.windowLabel).toMatch(/^até /);
+    expect(tudo.body.data.windowLabel).not.toMatch(TRACO);
   });
 });
 

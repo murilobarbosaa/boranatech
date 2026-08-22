@@ -210,9 +210,16 @@ export function calcularVariacao(input: {
  * O `Intl` do navegador da Ana Julia não tem obrigação de concordar com o do
  * Railway sobre o que é "hoje".
  *
- * Formato: `15 jul – 14 ago` (mesmo dia: `14 ago`). O travessão é a
- * meia-risca U+2013? NÃO: o CLAUDE.md proíbe travessão e meia-risca em qualquer
- * texto do projeto, então o separador é hífen comum.
+ * Formato: `15 jul a 14 ago` (mesmo dia: `14 ago`; sem início: `até 14 ago`).
+ *
+ * O SEPARADOR É A PALAVRA "a", e não um traço. Meia-risca (U+2013) e travessão
+ * (U+2014) estão proibidos em qualquer texto do projeto pelo CLAUDE.md, e o
+ * hífen comum que ficou no lugar deles resolvia a proibição sem resolver a
+ * leitura: num rótulo curto ao lado de números, o hífen se confunde com sinal.
+ * A palavra não se confunde com nada. O que trava isso está em
+ * `adminOverviewCards.test.ts`, e é uma asserção NEGATIVA: a saída não contém
+ * hífen nem nenhum dos dois traços longos. No ramo sem início ela é o único
+ * detector, porque lá não há forma fixa para afirmar pelo lado positivo.
  */
 export function rotuloDeIntervalo(
   primeiroDiaCivil: string | null,
@@ -238,7 +245,7 @@ export function rotuloDeIntervalo(
   };
   if (!primeiroDiaCivil) return `até ${curto(ultimoDiaCivil)}`;
   if (primeiroDiaCivil === ultimoDiaCivil) return curto(ultimoDiaCivil);
-  return `${curto(primeiroDiaCivil)} - ${curto(ultimoDiaCivil)}`;
+  return `${curto(primeiroDiaCivil)} a ${curto(ultimoDiaCivil)}`;
 }
 
 /** Nome do fuso que governa TODA a Visão. Vai na resposta para a tela declarar. */
