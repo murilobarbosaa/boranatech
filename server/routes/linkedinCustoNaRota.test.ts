@@ -30,11 +30,9 @@ vi.mock("../lib/env", async (importActual) => {
 interface ParamsDoLog {
   status: string;
   tool: string;
-  inputTokens?: number;
-  outputTokens?: number;
+  custo?: FonteDoCusto;
   inputChars?: number;
   outputChars?: number;
-  costEstimate?: number;
   errorMessage?: string;
   attemptDetails?: readonly unknown[];
 }
@@ -76,6 +74,7 @@ vi.mock("../lib/supabaseAdmin", () => ({
   },
 }));
 
+import { type FonteDoCusto } from "../lib/aiTools";
 import * as http from "../lib/http";
 import { errorHandler } from "../middleware/error";
 import linkedinRouter from "./linkedin";
@@ -164,6 +163,29 @@ async function analisar(): Promise<{ status: number }> {
   return { status: r.status };
 }
 
+/**
+ * Os tokens da linha, agora de dentro da fonte do custo.
+ *
+ * ESTAS ASSERCOES MUDARAM DE FORMA, e nao de conteudo. Ate a Fase 4 a rota
+ * mandava `inputTokens`, `outputTokens` e `costEstimate` como tres campos
+ * soltos, e era justamente isso que permitia token real ao lado de custo por
+ * caractere na mesma linha. Agora os tokens viajam DENTRO da variante que
+ * tambem produz o custo, entao ler dali e ler a mesma coisa de antes, com a
+ * garantia extra de que o custo saiu deles.
+ */
+function tokensDaLinha(linha: ParamsDoLog): {
+  inputTokens: number;
+  outputTokens: number;
+} {
+  expect(linha.custo?.tipo).toBe("tokens");
+  const custo = linha.custo as {
+    tipo: "tokens";
+    inputTokens: number;
+    outputTokens: number;
+  };
+  return { inputTokens: custo.inputTokens, outputTokens: custo.outputTokens };
+}
+
 function linhaGravada(): ParamsDoLog {
   expect(logAiUsage).toHaveBeenCalledTimes(1);
   return logAiUsage.mock.calls[0][0];
@@ -189,9 +211,10 @@ describe("a rota grava o custo de TODAS as tentativas", () => {
     expect(status).toBe(200);
     expect(linha.status).toBe("success");
     expect(linha.tool).toBe("linkedin-analyzer");
-    expect(linha.inputTokens).toBe(1111);
-    expect(linha.outputTokens).toBe(222);
-    expect(linha.costEstimate).toBeGreaterThan(0);
+    expect(tokensDaLinha(linha)).toEqual({
+      inputTokens: 1111,
+      outputTokens: 222,
+    });
     // `error_message` significa UMA coisa so, e sucesso nao tem erro.
     expect(linha.errorMessage).toBeUndefined();
     // O detalhe da unica tentativa vai integro para a coluna estruturada.
@@ -216,8 +239,10 @@ describe("a rota grava o custo de TODAS as tentativas", () => {
     expect(status).toBe(200);
     expect(linha.status).toBe("success");
     // Antes: 1111 e 222, com os 9999 tokens da tentativa 1 fora da conta.
-    expect(linha.inputTokens).toBe(11110);
-    expect(linha.outputTokens).toBe(1110);
+    expect(tokensDaLinha(linha)).toEqual({
+      inputTokens: 11110,
+      outputTokens: 1110,
+    });
 
     // ESTA ASSERCAO MUDOU DE ALVO, e a mudanca e o ponto do lote.
     //
@@ -261,9 +286,10 @@ describe("a rota grava o custo de TODAS as tentativas", () => {
     // carrega de custo. A devolucao em si esta provada em
     // server/lib/aiUsageReservaComTokens.test.ts, com o logAiUsage real.
     expect(linha.status).toBe("error");
-    expect(linha.inputTokens).toBe(10000);
-    expect(linha.outputTokens).toBe(1000);
-    expect(linha.costEstimate).toBeGreaterThan(0);
+    expect(tokensDaLinha(linha)).toEqual({
+      inputTokens: 10000,
+      outputTokens: 1000,
+    });
     // TAMBEM MUDOU DE ALVO, pelo mesmo motivo do teste acima: ele afirmava que
     // a trilha vinha concatenada por um pipe atras da mensagem. Hoje
     // `error_message` carrega SOMENTE a mensagem, sem teto artificial, e o

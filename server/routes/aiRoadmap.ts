@@ -18,8 +18,6 @@ import {
   generateSkeleton,
 } from "../lib/aiRoadmap/generate";
 import { isOneGeneratingCollision } from "../lib/aiRoadmap/oneGenerating";
-import { estimateCost } from "../lib/aiTools";
-import { DEFAULT_MODEL } from "../lib/openai";
 import {
   checkAiDailyLimit,
   checkRoadmapIntakeChatDailyLimit,
@@ -412,7 +410,11 @@ async function finishGeneration(
     status: "success",
     inputChars: io.inputChars,
     outputChars: io.outputChars,
-    costEstimate: estimateCost(io.inputChars, io.outputChars, DEFAULT_MODEL),
+    // FALLBACK DECLARADO. A resposta da OpenAI traz `usage` neste caminho, mas
+    // quem a le e o helper em `server/lib/`, fora do escopo deste lote: enquanto
+    // ele nao repassar os tokens, o custo aqui e ESTIMATIVA por caracteres, e
+    // agora ela esta dita no tipo em vez de escondida numa chamada.
+    custo: { tipo: "chars" },
   });
   sseSend(res, { type: "done", slug });
   sseDone(res);
@@ -805,7 +807,11 @@ router.post("/intake/chat", async (req: Request, res: Response, next: NextFuncti
       status: "success",
       inputChars: aiIo.inputChars,
       outputChars: aiIo.outputChars,
-      costEstimate: estimateCost(aiIo.inputChars, aiIo.outputChars, DEFAULT_MODEL),
+      // FALLBACK DECLARADO. A resposta da OpenAI traz `usage` neste caminho, mas
+      // quem a le e o helper em `server/lib/`, fora do escopo deste lote: enquanto
+      // ele nao repassar os tokens, o custo aqui e ESTIMATIVA por caracteres, e
+      // agora ela esta dita no tipo em vez de escondida numa chamada.
+      custo: { tipo: "chars" },
     });
     // canGenerate sai da MESMA funcao que o /generate usa (buildGenerationIntake),
     // entao o botao da UI e o gate do endpoint nunca discordam. `missing` aqui e

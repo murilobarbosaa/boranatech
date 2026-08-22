@@ -7,8 +7,6 @@ import {
   type ResumeAnalysisModel,
   type ResumeScoreResult,
 } from "../../shared/resumeAnalysis/schema";
-import { estimateCost } from "../lib/aiTools";
-import { DEFAULT_MODEL } from "../lib/openai";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import { env } from "../lib/env";
 import { runResumeQualitative, type ResumeAiIo } from "../lib/resumeAnalyze";
@@ -179,7 +177,11 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
     status: "success",
     inputChars: io.inputChars,
     outputChars: io.outputChars,
-    costEstimate: estimateCost(io.inputChars, io.outputChars, DEFAULT_MODEL),
+    // FALLBACK DECLARADO. A resposta da OpenAI traz `usage` neste caminho, mas
+    // quem a le e o helper em `server/lib/`, fora do escopo deste lote: enquanto
+    // ele nao repassar os tokens, o custo aqui e ESTIMATIVA por caracteres, e
+    // agora ela esta dita no tipo em vez de escondida numa chamada.
+    custo: { tipo: "chars" },
   });
 
   res.json({

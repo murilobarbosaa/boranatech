@@ -18,8 +18,6 @@ import {
 import { getToolsForTier } from "../lib/agent/toolRegistry";
 import type { AgentContext } from "../lib/agent/types";
 import { buildUserSnapshot } from "../lib/agent/userSnapshot";
-import { estimateCost } from "../lib/aiTools";
-import { DEFAULT_MODEL } from "../lib/openai";
 import { AGENT_CHAT_TOOL, checkAgentDailyLimit, logAiUsage } from "../lib/aiUsage";
 import { env } from "../lib/env";
 import { checkProStatus, requireAuth } from "../middleware/auth";
@@ -260,9 +258,18 @@ router.post("/chat/stream", async (req: Request, res: Response, next: NextFuncti
       status: "success",
       inputChars,
       outputChars: result.outputChars,
-      inputTokens: result.inputTokens,
-      outputTokens: result.outputTokens,
-      costEstimate: estimateCost(inputChars, result.outputChars, DEFAULT_MODEL),
+      // O laco do agente ja lia `usage` (server/lib/agent/loop.ts) e os tokens
+      // reais chegavam ate aqui, mas o custo saia dos CARACTERES: a linha
+      // gravava as duas coisas discordando entre si. Agora a mesma decisao
+      // produz as duas.
+      custo:
+        result.inputTokens > 0
+          ? {
+              tipo: "tokens" as const,
+              inputTokens: result.inputTokens,
+              outputTokens: result.outputTokens,
+            }
+          : { tipo: "chars" as const },
     });
     // Persiste a resposta do assistente apos o stream (so Pro, conversa ativa e
     // texto nao vazio). Best-effort: falha aqui vira warn, nao afeta o cliente

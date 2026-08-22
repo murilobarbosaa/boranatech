@@ -314,9 +314,7 @@ router.post(
         status: uso.tentativas > 0 ? "success" : "skipped",
         inputChars: uso.inputChars,
         outputChars: uso.outputChars,
-        inputTokens: uso.inputTokens,
-        outputTokens: uso.outputTokens,
-        costEstimate: uso.costEstimate,
+        custo: uso.custo,
         // AGORA HA COLUNA ESTRUTURADA, e o texto espremido saiu.
         //
         // Ate a Fase 3 a trilha da chamada era colada aqui, em
@@ -361,9 +359,7 @@ router.post(
         errorMessage: message,
         inputChars: uso.inputChars,
         outputChars: uso.outputChars,
-        inputTokens: uso.inputTokens,
-        outputTokens: uso.outputTokens,
-        costEstimate: uso.costEstimate,
+        custo: uso.custo,
         attemptDetails: tentativas,
       });
 

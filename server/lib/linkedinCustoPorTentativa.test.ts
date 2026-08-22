@@ -33,13 +33,14 @@ vi.mock("./env", async (importActual) => {
   };
 });
 
-import { estimateCostFromTokens } from "./aiTools";
+import { custoDaLinha, estimateCostFromTokens } from "./aiTools";
 import * as http from "./http";
 import { UpstreamTimeoutError } from "./http";
 import {
   analyzeLinkedin,
   camposDeUsoDaAnalise,
   type AnalyzeAiIo,
+  type CamposDeUsoDaAnalise,
 } from "./linkedinAnalyze";
 import { DEFAULT_MODEL } from "./openai";
 
@@ -144,6 +145,25 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/**
+ * O CUSTO QUE A COLUNA VAI RECEBER, pela MESMA funcao que o escritor usa.
+ *
+ * As assercoes deste arquivo afirmavam `campos.costEstimate`, um numero que a
+ * funcao devolvia pronto. Na Fase 4 a decisao passou a viajar em vez do numero
+ * (`campos.custo`), e quem calcula e `logAiUsage`. Elas NAO estao afirmando
+ * menos: resolvendo aqui pelo mesmo `custoDaLinha`, o que se afirma e o valor
+ * que de fato aterrissa em `ai_usage_logs.cost_estimate`, ponta a ponta, em vez
+ * de um intermediario que ninguem persiste mais.
+ */
+function custoGravado(campos: CamposDeUsoDaAnalise): number {
+  return custoDaLinha(
+    campos.custo,
+    campos.inputChars,
+    campos.outputChars,
+    DEFAULT_MODEL,
+  );
+}
+
 describe("1. sucesso em uma tentativa (nao regressao)", () => {
   it("grava os mesmos totais de antes da mudanca, com contagem 1", async () => {
     vi.spyOn(http, "fetchWithTimeout").mockResolvedValue(
@@ -167,7 +187,7 @@ describe("1. sucesso em uma tentativa (nao regressao)", () => {
     expect(campos.tokensMedidos).toBe(true);
     // A conta de custo do caminho de sucesso e a MESMA de antes: tokens exatos
     // quando existem. Se este numero mudar, o painel muda de valor sem aviso.
-    expect(campos.costEstimate).toBe(
+    expect(custoGravado(campos)).toBe(
       estimateCostFromTokens(1111, 222, DEFAULT_MODEL),
     );
     expect(campos.inputChars).toBeGreaterThan(0);
@@ -199,7 +219,7 @@ describe("2. tentativa invalida seguida de tentativa valida", () => {
     expect(campos.inputTokens).toBe(11110);
     expect(campos.outputTokens).toBe(1110);
     expect(campos.tentativas).toBe(2);
-    expect(campos.costEstimate).toBe(
+    expect(custoGravado(campos)).toBe(
       estimateCostFromTokens(11110, 1110, DEFAULT_MODEL),
     );
     // A TRILHA SAIU, e o que ela dizia continua afirmado aqui.
@@ -237,8 +257,8 @@ describe("3. duas tentativas falhando", () => {
     expect(campos.inputTokens).toBe(10000);
     expect(campos.outputTokens).toBe(1000);
     expect(campos.tentativas).toBe(2);
-    expect(campos.costEstimate).toBeGreaterThan(0);
-    expect(campos.costEstimate).toBe(
+    expect(custoGravado(campos)).toBeGreaterThan(0);
+    expect(custoGravado(campos)).toBe(
       estimateCostFromTokens(10000, 1000, DEFAULT_MODEL),
     );
   });
@@ -266,7 +286,7 @@ describe("4. resposta truncada", () => {
     expect(campos.inputTokens).toBe(7000);
     expect(campos.outputTokens).toBe(4000);
     expect(campos.tokensMedidos).toBe(true);
-    expect(campos.costEstimate).toBeGreaterThan(0);
+    expect(custoGravado(campos)).toBeGreaterThan(0);
     // O conteudo cortado tambem foi pago, entao os chars dele contam.
     expect(campos.outputChars).toBe('{"resumo":"cor'.length);
   });
@@ -299,7 +319,7 @@ describe("5. 401 na primeira tentativa", () => {
     expect(campos.tentativas).toBe(1);
     // Sem medicao e sem saida, custo nao e estimado: numero plausivel aqui
     // seria indistinguivel de um custo real.
-    expect(campos.costEstimate).toBe(0);
+    expect(custoGravado(campos)).toBe(0);
   });
 });
 
@@ -325,7 +345,7 @@ describe("6. timeout", () => {
     // afirmado por tentativa no laco acima, para as DUAS, o que e mais forte
     // que o `toContain` de uma ocorrencia.
     expect(campos.tentativas).toBe(2);
-    expect(campos.costEstimate).toBe(0);
+    expect(custoGravado(campos)).toBe(0);
     // As duas tentativas enviaram o prompt, e isso continua registrado.
     expect(campos.inputChars).toBeGreaterThan(0);
   });
@@ -343,7 +363,7 @@ describe("resposta 200 sem o objeto usage", () => {
     expect(campos.tokensMedidos).toBe(false);
     // Houve saida do modelo, entao a estimativa por chars continua valendo:
     // e o mesmo fallback que o caminho de sucesso ja usava.
-    expect(campos.costEstimate).toBeGreaterThan(0);
+    expect(custoGravado(campos)).toBeGreaterThan(0);
   });
 });
 
@@ -362,7 +382,10 @@ describe("atalho sem IA", () => {
       inputTokens: 0,
       outputTokens: 0,
       tokensMedidos: false,
-      costEstimate: 0,
+      // O atalho sem IA nao teve medicao NEM saida em que basear estimativa, e
+      // agora isso e dito com nome. Antes era um `costEstimate: 0`, e zero e
+      // ambiguo: nao distingue "nao ha o que estimar" de "estimei e deu zero".
+      custo: { tipo: "sem_estimativa" },
     });
   });
 });

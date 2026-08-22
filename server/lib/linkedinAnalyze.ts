@@ -46,7 +46,7 @@ import {
   keyTechnologiesForArea,
   matchTechnologies,
 } from "./skillNormalize";
-import { estimateCost, estimateCostFromTokens } from "./aiTools";
+import { type FonteDoCusto } from "./aiTools";
 import {
   blocoDeDados,
   removerVazamentoDeDelimitador,
@@ -485,7 +485,18 @@ export interface CamposDeUsoDaAnalise {
   outputTokens: number;
   /** Houve ao menos uma tentativa com `usage` de verdade. */
   tokensMedidos: boolean;
-  costEstimate: number;
+  /**
+   * DE ONDE O CUSTO DESTA LINHA SAI, em vez do numero pronto.
+   *
+   * Antes esta funcao devolvia `costEstimate` calculado, e a rota o repassava a
+   * `logAiUsage` junto dos tokens. O analisador ja acertava a conta (foi ele
+   * quem serviu de referencia para o resto), mas mantinha a DECISAO num lugar e
+   * a escrita em outro. Devolver a decisao em vez do numero poe as duas no mesmo
+   * lugar: o escritor calcula, e nao ha como os campos da linha discordarem.
+   *
+   * A regra de tres degraus continua identica, e agora ela e o proprio valor.
+   */
+  custo: FonteDoCusto;
 }
 
 /**
@@ -526,12 +537,6 @@ export function camposDeUsoDaAnalise(
     }
   }
 
-  const costEstimate = tokensMedidos
-    ? estimateCostFromTokens(inputTokens, outputTokens, model)
-    : outputChars > 0
-      ? estimateCost(inputChars, outputChars, model)
-      : 0;
-
   return {
     tentativas: tentativas.length,
     inputChars,
@@ -539,7 +544,13 @@ export function camposDeUsoDaAnalise(
     inputTokens,
     outputTokens,
     tokensMedidos,
-    costEstimate,
+    // OS MESMOS TRES DEGRAUS, agora ditos em vez de calculados. Degrau 1 leva os
+    // tokens junto, porque sao eles que produzem o custo E as colunas de token.
+    custo: tokensMedidos
+      ? { tipo: "tokens", inputTokens, outputTokens }
+      : outputChars > 0
+        ? { tipo: "chars" }
+        : { tipo: "sem_estimativa" },
   };
 }
 

@@ -71,7 +71,9 @@ vi.mock("./supabaseAdmin", () => ({
   },
 }));
 
+import { estimateCostFromTokens } from "./aiTools";
 import { logAiUsage } from "./aiUsage";
+import { DEFAULT_MODEL } from "./openai";
 
 /** `get_ai_usage_today`: conta so 'success'. */
 const cotaDoDia = () => linhas.filter((l) => l.status === "success").length;
@@ -108,9 +110,7 @@ describe("linha de erro COM tokens nao consome cota", () => {
       errorMessage: "Resposta da IA não veio em JSON válido",
       inputChars: 8000,
       outputChars: 20,
-      inputTokens: 10000,
-      outputTokens: 1000,
-      costEstimate: 0.002,
+      custo: { tipo: "tokens", inputTokens: 10000, outputTokens: 1000 },
     });
 
     const reserva = linhas.find((l) => l.id === "l2");
@@ -118,7 +118,19 @@ describe("linha de erro COM tokens nao consome cota", () => {
     // O custo REAL das duas tentativas ficou gravado.
     expect(reserva?.input_tokens).toBe(10000);
     expect(reserva?.output_tokens).toBe(1000);
-    expect(reserva?.cost_estimate).toBe(0.002);
+    // ESTA EXPECTATIVA AFIRMAVA O DEFEITO, e por isso mudou.
+    //
+    // Ela dizia `0.002`, um numero escolhido a mao pelo teste e passado pronto
+    // ao lado dos tokens. Ele nem batia com os proprios tokens da linha: a conta
+    // de 10.000 entrada e 1.000 saida no gpt-4o-mini da 0,0021, nao 0,002. Ou
+    // seja, o teste travava a possibilidade de tokens e custo discordarem, que e
+    // exatamente o que o lote 3 fecha. Agora o escritor deriva, e o que se
+    // afirma e a formula, com o numero literal calculado a mao aqui:
+    //   10000/1e6 * 0,15 + 1000/1e6 * 0,60 = 0,0015 + 0,0006 = 0,0021
+    expect(reserva?.cost_estimate).toBeCloseTo(0.0021, 10);
+    expect(reserva?.cost_estimate).toBe(
+      estimateCostFromTokens(10000, 1000, DEFAULT_MODEL),
+    );
     // E a pessoa nao pagou por isso com a cota dela: a vaga foi devolvida.
     expect(cotaDoDia()).toBe(1);
     expect(vagasOcupadas()).toBe(1);
@@ -132,13 +144,15 @@ describe("linha de erro COM tokens nao consome cota", () => {
       tool: "linkedin-analyzer",
       requestId: "req-2",
       status: "success",
-      inputTokens: 11110,
-      outputTokens: 1110,
-      costEstimate: 0.004,
+      custo: { tipo: "tokens", inputTokens: 11110, outputTokens: 1110 },
     });
 
     expect(linhas[0].status).toBe("success");
     expect(linhas[0].input_tokens).toBe(11110);
+    // Mesmo motivo do caso acima: o `0.004` que vinha pronto era um numero solto
+    // que ninguem conferia contra os tokens da propria linha (a conta da 0,0023325).
+    //   11110/1e6 * 0,15 + 1110/1e6 * 0,60 = 0,0016665 + 0,000666 = 0,0023325
+    expect(linhas[0].cost_estimate).toBeCloseTo(0.0023325, 10);
     expect(cotaDoDia()).toBe(1);
     expect(vagasOcupadas()).toBe(1);
   });

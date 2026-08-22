@@ -2,11 +2,7 @@ import crypto from "crypto";
 import { NextFunction, Request, Response, Router } from "express";
 
 import { env } from "../lib/env";
-import {
-  estimateCost,
-  estimateCostFromTokens,
-  getToolConfig,
-} from "../lib/aiTools";
+import { getToolConfig, type FonteDoCusto } from "../lib/aiTools";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import { buildLoginContextMessage } from "../lib/loginContext";
 import { fetchWithTimeout } from "../lib/http";
@@ -15,6 +11,29 @@ import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 
 const router = Router();
+
+/**
+ * O `usage` da OpenAI virando a fonte do custo da linha.
+ *
+ * Ate a Fase 4 estes tres call sites gravavam `data.usage?.prompt_tokens || 0`
+ * ao lado de um custo calculado por CARACTERES. Os tokens eram reais, o custo
+ * nao vinha deles, e a linha ficava com dois campos discordando. O `|| 0`
+ * tambem apagava a diferenca entre "a OpenAI nao mandou usage" e "custou zero".
+ *
+ * Aqui a distincao fica explicita: sem `usage`, a linha assume o fallback por
+ * caracteres, que e estimativa declarada; com `usage`, o custo sai dos tokens
+ * exatos e sao eles que vao para as colunas.
+ */
+function fonteDoCusto(
+  usage: { prompt_tokens?: number; completion_tokens?: number } | undefined,
+): FonteDoCusto {
+  if (typeof usage?.prompt_tokens !== "number") return { tipo: "chars" };
+  return {
+    tipo: "tokens",
+    inputTokens: usage.prompt_tokens,
+    outputTokens: usage.completion_tokens ?? 0,
+  };
+}
 
 router.use(requireAuth);
 router.use(checkProStatus);
@@ -223,10 +242,8 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
           errorMessage: `Zod validation failed: ${zodIssuesForLog(validation.error.issues)}`,
           inputChars,
           outputChars,
-          inputTokens: data.usage?.prompt_tokens || 0,
-          outputTokens: data.usage?.completion_tokens || 0,
           model: toolConfig.model,
-          costEstimate: estimateCost(inputChars, outputChars, toolConfig.model),
+          custo: fonteDoCusto(data.usage),
         });
         return next(createError(502, "upstream_error", "Resposta da IA não bateu com o schema esperado."));
       }
@@ -238,10 +255,8 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
         status: "success",
         inputChars,
         outputChars,
-        inputTokens: data.usage?.prompt_tokens || 0,
-        outputTokens: data.usage?.completion_tokens || 0,
         model: toolConfig.model,
-        costEstimate: estimateCost(inputChars, outputChars, toolConfig.model),
+        custo: fonteDoCusto(data.usage),
       });
 
       res.json({ data: validation.data });
@@ -255,10 +270,8 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
       status: "success",
       inputChars,
       outputChars,
-      inputTokens: data.usage?.prompt_tokens || 0,
-      outputTokens: data.usage?.completion_tokens || 0,
       model: toolConfig.model,
-      costEstimate: estimateCost(inputChars, outputChars, toolConfig.model),
+      custo: fonteDoCusto(data.usage),
     });
 
     res.json({ result });
@@ -453,13 +466,15 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
       status: "success",
       inputChars,
       outputChars: outputBuf.length,
-      inputTokens,
-      outputTokens,
       model: toolConfig.model,
-      costEstimate:
+      // ESTE CALL SITE JA ESTAVA CERTO antes da Fase 4: ele era o unico que
+      // derivava o custo dos tokens medidos. A troca abaixo e literal, o mesmo
+      // criterio (`inputTokens > 0`) dito na linguagem do escritor, e nao muda
+      // um centavo do que ele grava. Ver o relatorio do lote 3.
+      custo:
         inputTokens > 0
-          ? estimateCostFromTokens(inputTokens, outputTokens, toolConfig.model)
-          : estimateCost(inputChars, outputBuf.length, toolConfig.model),
+          ? { tipo: "tokens" as const, inputTokens, outputTokens }
+          : { tipo: "chars" as const },
     });
   }
 });

@@ -1,11 +1,7 @@
 import { z } from "zod";
 
 import { CurriculoSchema } from "../../shared/curriculo/schema";
-import {
-  DEFAULT_MODEL,
-  MODERATION_MODEL,
-  TRANSCRIPTION_MODEL,
-} from "./openai";
+import { DEFAULT_MODEL, MODERATION_MODEL, TRANSCRIPTION_MODEL } from "./openai";
 import { toOpenAIStrictSchema } from "./openaiStrictSchema";
 
 export interface ResponseFormatConfig {
@@ -656,4 +652,62 @@ export function estimateCost(
     outputChars / CHARS_PER_TOKEN,
     model,
   );
+}
+
+/**
+ * DE ONDE SAI O CUSTO de uma linha de `ai_usage_logs`, e com ele os tokens.
+ *
+ * Uniao DISCRIMINADA, e nao um par de campos opcionais, porque o defeito que ela
+ * fecha e exatamente a combinacao que campos soltos permitem: ate a Fase 4,
+ * `server/routes/ai.ts` e `server/routes/agent.ts` gravavam `input_tokens` REAIS
+ * (lidos do `usage` da OpenAI) e `cost_estimate` calculado por CARACTERES, na
+ * MESMA LINHA. Os dois campos discordavam entre si, e nenhum instrumento
+ * acusava: cada um, sozinho, parecia certo.
+ *
+ * Com a uniao, os tokens so existem dentro da variante que tambem produz o
+ * custo por tokens. Nao ha como escrever uma linha com token medido e custo de
+ * caractere, porque nao existe forma de dizer isso. E prevencao dentro do tipo,
+ * nao guarda no call site.
+ *
+ *   tokens          a resposta trouxe `usage`. Custo pelos tokens exatos, e sao
+ *                   estes que vao para as colunas de token.
+ *   chars           nao houve `usage`. Custo pelo fallback de caracteres, que e
+ *                   ESTIMATIVA declarada; colunas de token ficam em zero, que
+ *                   aqui significa "nao medi" e nao "custou nada".
+ *   sem_estimativa  nem medicao nem saida em que basear estimativa (o atalho sem
+ *                   IA do analisador, por exemplo). Custo zero EXPLICITO, para
+ *                   nao inventar numero plausivel a partir de nada.
+ */
+export type FonteDoCusto =
+  | { tipo: "tokens"; inputTokens: number; outputTokens: number }
+  | { tipo: "chars" }
+  | { tipo: "sem_estimativa" };
+
+/**
+ * O custo da linha, derivado da fonte declarada. UNICO lugar que decide isto.
+ *
+ * `fonte` ausente vale `sem_estimativa`: e o caso das dezenas de call sites que
+ * nunca informaram custo nenhum, e o comportamento delas fica igual ao de antes.
+ */
+export function custoDaLinha(
+  fonte: FonteDoCusto | undefined,
+  inputChars: number,
+  outputChars: number,
+  model: string,
+): number {
+  if (!fonte || fonte.tipo === "sem_estimativa") return 0;
+  if (fonte.tipo === "tokens") {
+    return estimateCostFromTokens(fonte.inputTokens, fonte.outputTokens, model);
+  }
+  return estimateCost(inputChars, outputChars, model);
+}
+
+/** Tokens que vao para as colunas, na mesma decisao que produziu o custo. */
+export function tokensDaLinha(fonte: FonteDoCusto | undefined): {
+  inputTokens: number;
+  outputTokens: number;
+} {
+  return fonte?.tipo === "tokens"
+    ? { inputTokens: fonte.inputTokens, outputTokens: fonte.outputTokens }
+    : { inputTokens: 0, outputTokens: 0 };
 }

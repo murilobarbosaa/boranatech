@@ -4,6 +4,7 @@ import {
   comPrazoDeBanco,
   PrazoDeBancoEstourado,
 } from "../../shared/linkedin/prazos";
+import { custoDaLinha, tokensDaLinha, type FonteDoCusto } from "./aiTools";
 import { env } from "./env";
 import { DEFAULT_MODEL } from "./openai";
 import { supabaseAdmin } from "./supabaseAdmin";
@@ -441,10 +442,21 @@ export interface LogAiUsageParams {
   errorMessage?: string;
   inputChars?: number;
   outputChars?: number;
-  inputTokens?: number;
-  outputTokens?: number;
   model?: string;
-  costEstimate?: number;
+  /**
+   * DE ONDE SAI O CUSTO desta linha, e com ele os tokens gravados.
+   *
+   * Substituiu tres campos soltos (`inputTokens`, `outputTokens` e
+   * `costEstimate`) por um motivo que nao e de estilo: com campos soltos era
+   * possivel, e acontecia, gravar token REAL ao lado de custo por CARACTERE na
+   * mesma linha. Agora os tokens so entram por dentro da variante que tambem
+   * decide o custo, entao os dois nao tem como discordar. Quem calcula e o
+   * ESCRITOR, nunca o call site.
+   *
+   * Ausente = `sem_estimativa`: custo zero, tokens zero, que e exatamente o que
+   * as dezenas de call sites que nunca informaram custo ja gravavam.
+   */
+  custo?: FonteDoCusto;
   /**
    * Detalhe POR TENTATIVA da chamada, gravado em `ai_usage_logs.attempt_details`.
    *
@@ -567,6 +579,22 @@ function avisarReservaOrfa(params: LogAiUsageParams, causa: string) {
 }
 
 export async function logAiUsage(params: LogAiUsageParams) {
+  // O CUSTO E OS TOKENS SAO DERIVADOS AQUI, uma vez so, dos MESMOS dados.
+  //
+  // Antes cada call site mandava os tres campos prontos, e nada obrigava que
+  // eles falassem da mesma coisa. Derivar no escritor faz os campos da linha
+  // concordarem POR CONSTRUCAO: os dois ramos de escrita abaixo (update da
+  // reserva e insert) leem destas duas variaveis, entao nao existe caminho em
+  // que um deles grave uma combinacao diferente do outro.
+  const modelo = params.model || DEFAULT_MODEL;
+  const tokens = tokensDaLinha(params.custo);
+  const custo = custoDaLinha(
+    params.custo,
+    params.inputChars || 0,
+    params.outputChars || 0,
+    modelo,
+  );
+
   // CONFIRMA A RESERVA, se houver uma.
   //
   // Por que a busca e automatica e nao um id passado pela rota: sao NOVE rotas
@@ -609,10 +637,10 @@ export async function logAiUsage(params: LogAiUsageParams) {
             error_message: params.errorMessage || null,
             input_chars: params.inputChars || 0,
             output_chars: params.outputChars || 0,
-            input_tokens: params.inputTokens || 0,
-            output_tokens: params.outputTokens || 0,
-            model: params.model || DEFAULT_MODEL,
-            cost_estimate: params.costEstimate || 0,
+            input_tokens: tokens.inputTokens,
+            output_tokens: tokens.outputTokens,
+            model: modelo,
+            cost_estimate: custo,
             // `?? null` e nao `|| null`: array vazio e um valor legitimo (o
             // atalho sem IA nao tem tentativa) e `||` o converteria em NULL,
             // apagando a diferenca entre "medi zero" e "nao registrei".
@@ -651,10 +679,10 @@ export async function logAiUsage(params: LogAiUsageParams) {
         error_message: params.errorMessage || null,
         input_chars: params.inputChars || 0,
         output_chars: params.outputChars || 0,
-        input_tokens: params.inputTokens || 0,
-        output_tokens: params.outputTokens || 0,
-        model: params.model || DEFAULT_MODEL,
-        cost_estimate: params.costEstimate || 0,
+        input_tokens: tokens.inputTokens,
+        output_tokens: tokens.outputTokens,
+        model: modelo,
+        cost_estimate: custo,
         attempt_details: params.attemptDetails ?? null,
       }),
       "log_grava_uso",
