@@ -15,6 +15,7 @@ import {
   countLeaves,
   generateAiRoadmapSlug,
   generateSectionContent,
+  somarUsoDeChamadas,
   generateSkeleton,
 } from "../lib/aiRoadmap/generate";
 import { isOneGeneratingCollision } from "../lib/aiRoadmap/oneGenerating";
@@ -269,6 +270,11 @@ async function insertRoadmapRow(
 interface SectionLoopIo {
   inputChars: number;
   outputChars: number;
+  /**
+   * Uso medido somado sobre as CHAMADAS do request (esqueleto mais uma por
+   * secao). Ausente enquanto nenhuma delas tiver trazido `usage`.
+   */
+  uso?: { inputTokens: number; outputTokens: number };
 }
 
 // Gera e persiste as secoes pedidas, emitindo um evento SSE por secao. Uma
@@ -291,6 +297,7 @@ async function runSections(
       const section = await generateSectionContent(context, roadmap, index);
       io.inputChars += section.inputChars;
       io.outputChars += section.outputChars;
+      io.uso = somarUsoDeChamadas(io.uso, section.uso);
       roadmap.sections[index].children = section.data;
       const { error: updateError } = await supabaseAdmin
         .from("ai_roadmaps")
@@ -410,11 +417,16 @@ async function finishGeneration(
     status: "success",
     inputChars: io.inputChars,
     outputChars: io.outputChars,
-    // FALLBACK DECLARADO. A resposta da OpenAI traz `usage` neste caminho, mas
-    // quem a le e o helper em `server/lib/`, fora do escopo deste lote: enquanto
-    // ele nao repassar os tokens, o custo aqui e ESTIMATIVA por caracteres, e
-    // agora ela esta dita no tipo em vez de escondida numa chamada.
-    custo: { tipo: "chars" },
+    // MEDICAO quando a OpenAI mandou `usage`, fallback declarado quando nao.
+    // Sem `|| 0`: ausencia de medicao continua sendo ausencia, e cai no ramo
+    // de caracteres em vez de virar custo zero.
+    custo: io.uso
+      ? {
+          tipo: "tokens",
+          inputTokens: io.uso.inputTokens,
+          outputTokens: io.uso.outputTokens,
+        }
+      : { tipo: "chars" },
   });
   sseSend(res, { type: "done", slug });
   sseDone(res);
@@ -604,6 +616,7 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
       const skeleton = await generateSkeleton(context);
       io.inputChars += skeleton.inputChars;
       io.outputChars += skeleton.outputChars;
+      io.uso = somarUsoDeChamadas(io.uso, skeleton.uso);
       roadmap = skeleton.data;
       const inserted = await insertRoadmapRow(userId, intake, roadmap);
       rowId = inserted.id;
@@ -807,11 +820,16 @@ router.post("/intake/chat", async (req: Request, res: Response, next: NextFuncti
       status: "success",
       inputChars: aiIo.inputChars,
       outputChars: aiIo.outputChars,
-      // FALLBACK DECLARADO. A resposta da OpenAI traz `usage` neste caminho, mas
-      // quem a le e o helper em `server/lib/`, fora do escopo deste lote: enquanto
-      // ele nao repassar os tokens, o custo aqui e ESTIMATIVA por caracteres, e
-      // agora ela esta dita no tipo em vez de escondida numa chamada.
-      custo: { tipo: "chars" },
+      // MEDICAO quando a OpenAI mandou `usage`, fallback declarado quando nao.
+      // Sem `|| 0`: ausencia de medicao continua sendo ausencia, e cai no ramo
+      // de caracteres em vez de virar custo zero.
+      custo: aiIo.uso
+        ? {
+            tipo: "tokens",
+            inputTokens: aiIo.uso.inputTokens,
+            outputTokens: aiIo.uso.outputTokens,
+          }
+        : { tipo: "chars" },
     });
     // canGenerate sai da MESMA funcao que o /generate usa (buildGenerationIntake),
     // entao o botao da UI e o gate do endpoint nunca discordam. `missing` aqui e

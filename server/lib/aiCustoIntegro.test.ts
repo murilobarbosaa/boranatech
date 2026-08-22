@@ -227,10 +227,16 @@ const RAIZ = path.join(AQUI, "..", "..");
 const CALL_SITES_COM_CUSTO = [
   { arquivo: "server/routes/agent.ts", fontes: ["tokens", "chars"] },
   { arquivo: "server/routes/ai.ts", fontes: ["tokens", "chars"] },
-  { arquivo: "server/routes/aiRoadmap.ts", fontes: ["chars"] },
-  { arquivo: "server/routes/careerPlan.ts", fontes: ["chars"] },
+  // CRESCIMENTO LEGITIMO da classificacao (Fase 4, lote 3b). Estas quatro
+  // entradas eram `["chars"]` porque os helpers de `server/lib/` descartavam o
+  // `usage` da OpenAI antes de devolver, e a rota nao tinha token para oferecer.
+  // Agora os helpers repassam a medicao, entao os quatro call sites tem os DOIS
+  // ramos: tokens quando a resposta trouxe `usage`, caracteres quando nao.
+  // Nenhuma entrada saiu, nenhum ramo perdeu significado.
+  { arquivo: "server/routes/aiRoadmap.ts", fontes: ["tokens", "chars"] },
+  { arquivo: "server/routes/careerPlan.ts", fontes: ["tokens", "chars"] },
   { arquivo: "server/routes/linkedin.ts", fontes: ["repassado"] },
-  { arquivo: "server/routes/resumeAnalysis.ts", fontes: ["chars"] },
+  { arquivo: "server/routes/resumeAnalysis.ts", fontes: ["tokens", "chars"] },
 ] as const;
 
 /**
@@ -281,6 +287,26 @@ describe("3. TOTALIDADE: nenhum call site informa custo sem estar classificado",
     expect(new Set(naFonte)).toEqual(
       new Set(CALL_SITES_COM_CUSTO.map((c) => c.arquivo)),
     );
+  });
+
+  it("os RAMOS declarados de cada arquivo existem mesmo na fonte", () => {
+    // Ate o lote 3b a lista declarava `fontes` e ninguem conferia: era comentario
+    // com cara de dado. Uma rota podia migrar de `chars` para `tokens` sem a
+    // classificacao acompanhar, e o conjunto de ARQUIVOS continuaria batendo.
+    // `repassado` fica de fora da conferencia de proposito: o analisador nao
+    // escreve a variante no call site, ele repassa a decisao vinda do helper.
+    for (const { arquivo, fontes } of CALL_SITES_COM_CUSTO) {
+      const blocos = blocosDeLogAiUsage(
+        readFileSync(path.join(RAIZ, arquivo), "utf8"),
+      ).join("\n");
+      for (const fonte of fontes) {
+        if (fonte === "repassado") continue;
+        expect(
+          blocos.includes(`tipo: "${fonte}"`),
+          `${arquivo}: declara o ramo "${fonte}" e ele nao aparece em nenhum bloco de logAiUsage`,
+        ).toBe(true);
+      }
+    }
   });
 
   it("a varredura nao esta vazia (o instrumento nao mediu nada)", () => {

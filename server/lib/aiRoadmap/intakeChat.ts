@@ -369,6 +369,61 @@ interface ModelMessage {
 export interface IntakeChatAiIo {
   inputChars: number;
   outputChars: number;
+  /**
+   * USO MEDIDO da OpenAI, somado sobre TODAS as tentativas deste request.
+   *
+   * AUSENTE quando nenhuma resposta trouxe `usage`. Ausencia e ausencia: nao
+   * existe `inputTokens: 0` aqui, porque zero seria uma medicao ("a chamada nao
+   * consumiu nada") indistinguivel de "nao medi". Quem le decide entre o custo
+   * por tokens e o fallback declarado por caracteres a partir DESTA distincao.
+   *
+   * SOMA POR REQUEST, e ela inclui as tentativas que FALHARAM depois de a
+   * OpenAI responder (JSON invalido, schema reprovado). Elas foram cobradas do
+   * mesmo jeito, e ate aqui sumiam da conta: o callback so disparava no sucesso.
+   * E a mesma regra que o analisador de LinkedIn ja aplica desde a Fase 2.
+   */
+  uso?: { inputTokens: number; outputTokens: number };
+}
+
+/** Acumulador do uso medido ao longo das tentativas de um request. */
+interface UsoAcumulado {
+  inputTokens: number;
+  outputTokens: number;
+  medido: boolean;
+}
+
+/** Zera o acumulador. `medido` false enquanto nenhuma resposta trouxer `usage`. */
+function novoUsoAcumulado(): UsoAcumulado {
+  return { inputTokens: 0, outputTokens: 0, medido: false };
+}
+
+/**
+ * Soma o `usage` desta resposta ao acumulado do request.
+ *
+ * Chamado logo DEPOIS de ler o corpo e ANTES de validar conteudo, JSON ou
+ * schema, de proposito: uma tentativa que a OpenAI respondeu e nos reprovamos
+ * foi cobrada igual, e o token dela precisa entrar na conta.
+ */
+function somarUso(
+  acumulado: UsoAcumulado,
+  usage: { prompt_tokens?: number; completion_tokens?: number } | undefined,
+): void {
+  if (typeof usage?.prompt_tokens !== "number") return;
+  acumulado.inputTokens += usage.prompt_tokens;
+  acumulado.outputTokens += usage.completion_tokens ?? 0;
+  acumulado.medido = true;
+}
+
+/** O campo `uso` do contrato, ou undefined quando nada foi medido. */
+function usoDoContrato(
+  acumulado: UsoAcumulado,
+): { inputTokens: number; outputTokens: number } | undefined {
+  return acumulado.medido
+    ? {
+        inputTokens: acumulado.inputTokens,
+        outputTokens: acumulado.outputTokens,
+      }
+    : undefined;
 }
 
 // Monta o bloco de contexto do usuario no mesmo espirito do buildGenerationContext
@@ -476,6 +531,7 @@ async function buildIntakeContext(userId: string): Promise<string> {
 async function callModelOnce(
   modelMessages: ModelMessage[],
   onIo: (io: IntakeChatAiIo) => void,
+  acumulado: UsoAcumulado,
 ): Promise<IntakeChatTurn> {
   const response = await fetchWithTimeout(
     OPENAI_BASE_URL,
@@ -506,7 +562,10 @@ async function callModelOnce(
 
   const payload = (await response.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
+  // ANTES de qualquer reprova nossa: ver `somarUso`.
+  somarUso(acumulado, payload.usage);
   const content = payload.choices?.[0]?.message?.content;
   if (!content) {
     throw new Error("A IA nao retornou conteudo.");
@@ -543,7 +602,11 @@ async function callModelOnce(
     (acc, m) => acc + m.content.length,
     0,
   );
-  onIo({ inputChars, outputChars: content.length });
+  onIo({
+    inputChars,
+    outputChars: content.length,
+    uso: usoDoContrato(acumulado),
+  });
 
   // Normaliza o stackFocus proposto para nao propor um intake que a geracao
   // (RoadmapIntakeSchema) rejeitaria pelo regex.
@@ -595,10 +658,11 @@ export async function runIntakeChatTurn(
     })),
   ];
 
+  const acumulado = novoUsoAcumulado();
   let lastError: unknown;
   for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
     try {
-      return await callModelOnce(modelMessages, onIo);
+      return await callModelOnce(modelMessages, onIo, acumulado);
     } catch (err) {
       lastError = err;
       const detail = err instanceof Error ? err.message : String(err);

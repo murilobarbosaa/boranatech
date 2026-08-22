@@ -452,11 +452,16 @@ router.post(
         status: "success",
         inputChars: aiIo.inputChars,
         outputChars: aiIo.outputChars,
-        // FALLBACK DECLARADO. A resposta da OpenAI traz `usage` neste caminho, mas
-        // quem a le e o helper em `server/lib/`, fora do escopo deste lote: enquanto
-        // ele nao repassar os tokens, o custo aqui e ESTIMATIVA por caracteres, e
-        // agora ela esta dita no tipo em vez de escondida numa chamada.
-        custo: { tipo: "chars" },
+        // MEDICAO quando a OpenAI mandou `usage`, fallback declarado quando nao.
+        // Sem `|| 0`: ausencia de medicao continua sendo ausencia, e cai no ramo
+        // de caracteres em vez de virar custo zero.
+        custo: aiIo.uso
+          ? {
+              tipo: "tokens",
+              inputTokens: aiIo.uso.inputTokens,
+              outputTokens: aiIo.uso.outputTokens,
+            }
+          : { tipo: "chars" },
       });
       res.json({
         reply: turn.reply,

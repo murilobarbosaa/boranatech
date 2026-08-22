@@ -61,6 +61,75 @@ export interface GenerationResult<T> {
   data: T;
   inputChars: number;
   outputChars: number;
+  /**
+   * USO MEDIDO da OpenAI, somado sobre TODAS as tentativas desta chamada.
+   *
+   * AUSENTE quando nenhuma resposta trouxe `usage`. Ausencia e ausencia: nao
+   * existe `inputTokens: 0` aqui, porque zero seria uma medicao indistinguivel
+   * de "nao medi".
+   *
+   * DOIS NIVEIS DE SOMA nesta rota, e sao mesmo dois. Aqui dentro somam-se as
+   * TENTATIVAS de uma chamada (o retry corretivo do `callStructured`), inclusive
+   * as que a OpenAI respondeu e nos reprovamos, que foram cobradas igual. Na
+   * rota somam-se as CHAMADAS do request (o esqueleto mais uma por secao),
+   * exatamente como ela ja soma os caracteres.
+   */
+  uso?: { inputTokens: number; outputTokens: number };
+}
+
+/** Acumulador do uso medido ao longo das tentativas de uma chamada. */
+interface UsoAcumulado {
+  inputTokens: number;
+  outputTokens: number;
+  medido: boolean;
+}
+
+/**
+ * Soma o `usage` desta resposta ao acumulado da chamada.
+ *
+ * Chamado logo DEPOIS de ler o corpo e ANTES de validar conteudo, truncamento,
+ * JSON ou schema, de proposito: uma tentativa que a OpenAI respondeu e nos
+ * reprovamos foi cobrada igual, e o token dela precisa entrar na conta.
+ */
+function somarUso(
+  acumulado: UsoAcumulado,
+  usage: { prompt_tokens?: number; completion_tokens?: number } | undefined,
+): void {
+  if (typeof usage?.prompt_tokens !== "number") return;
+  acumulado.inputTokens += usage.prompt_tokens;
+  acumulado.outputTokens += usage.completion_tokens ?? 0;
+  acumulado.medido = true;
+}
+
+/** O campo `uso` do contrato, ou undefined quando nada foi medido. */
+function usoDoContrato(
+  acumulado: UsoAcumulado,
+): { inputTokens: number; outputTokens: number } | undefined {
+  return acumulado.medido
+    ? {
+        inputTokens: acumulado.inputTokens,
+        outputTokens: acumulado.outputTokens,
+      }
+    : undefined;
+}
+
+/**
+ * Soma o uso de DUAS chamadas, preservando a ausencia.
+ *
+ * Exportada porque quem soma as chamadas de um request e a rota. Se as duas
+ * estiverem ausentes, o resultado e ausente; se so uma trouxer medicao, o total
+ * e o dela, e nao uma soma com zero fingido do outro lado.
+ */
+export function somarUsoDeChamadas(
+  a: { inputTokens: number; outputTokens: number } | undefined,
+  b: { inputTokens: number; outputTokens: number } | undefined,
+): { inputTokens: number; outputTokens: number } | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return {
+    inputTokens: a.inputTokens + b.inputTokens,
+    outputTokens: a.outputTokens + b.outputTokens,
+  };
 }
 
 function sleep(ms: number): Promise<void> {
@@ -581,6 +650,7 @@ function planRetry(
 async function callStructuredOnce(
   params: StructuredCallParams,
   correction: string | null,
+  acumulado: UsoAcumulado,
 ): Promise<{ content: string; parsed: unknown }> {
   const messages: Array<{ role: string; content: string }> = [
     { role: "system", content: params.systemPrompt },
@@ -629,7 +699,10 @@ async function callStructuredOnce(
       message?: { content?: string };
       finish_reason?: string | null;
     }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
+  // ANTES de qualquer reprova nossa: ver `somarUso`.
+  somarUso(acumulado, payload.usage);
   const choice = payload.choices?.[0];
   const content = choice?.message?.content;
   if (!content) {
@@ -672,11 +745,20 @@ async function callStructured<T>(
     throw new Error("Servico de IA nao configurado.");
   }
 
+  const acumulado: UsoAcumulado = {
+    inputTokens: 0,
+    outputTokens: 0,
+    medido: false,
+  };
   let lastError: unknown;
   let correction: string | null = null;
   for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
     try {
-      const { content, parsed } = await callStructuredOnce(params, correction);
+      const { content, parsed } = await callStructuredOnce(
+        params,
+        correction,
+        acumulado,
+      );
       const validation = validate(parsed);
       if (!validation.success) {
         throw new StructuredCallError(
@@ -689,6 +771,7 @@ async function callStructured<T>(
         data: validation.data,
         inputChars: params.systemPrompt.length + params.userPrompt.length,
         outputChars: content.length,
+        uso: usoDoContrato(acumulado),
       };
     } catch (err) {
       lastError = err;
