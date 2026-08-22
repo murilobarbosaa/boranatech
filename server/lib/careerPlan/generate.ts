@@ -15,6 +15,13 @@ import { erroDaRespostaOpenAi, isFalhaPermanente } from "../openaiFailure";
 import { toOpenAIStrictSchema } from "../openaiStrictSchema";
 import { fetchUserContextPool } from "../userContext/pool";
 import { textoDaNotaLinkedin } from "../linkedinNotaPendente";
+import {
+  novoUsoAcumulado,
+  somarUso,
+  usoDoContrato,
+  type UsoAcumulado,
+  type UsoMedido,
+} from "./usoMedido";
 
 /**
  * Gerador do plano de carreira (feature Pro). Trava de honestidade: o modelo
@@ -140,6 +147,21 @@ export type CareerPlanStoredResult = Omit<
 export interface CareerPlanAiIo {
   inputChars: number;
   outputChars: number;
+  /**
+   * USO MEDIDO da OpenAI, somado sobre TODAS as tentativas deste request.
+   *
+   * AUSENTE quando nenhuma resposta trouxe `usage`. Ausencia e ausencia: nao
+   * existe `inputTokens: 0` aqui, porque zero seria uma medicao ("a chamada nao
+   * consumiu nada") indistinguivel de "nao medi". Quem le decide entre o custo
+   * por tokens e o fallback declarado por caracteres a partir DESTA distincao.
+   *
+   * SOMA POR REQUEST, e ela inclui as tentativas que a OpenAI RESPONDEU e nos
+   * reprovamos. Aqui sao QUATRO portas de reprova depois da resposta (conteudo
+   * vazio, JSON invalido, schema, e as duas conferencias de id do catalogo), e
+   * cada uma delas descartava uma chamada ja cobrada. Com o teto de tres
+   * tentativas, um plano podia custar tres chamadas e reportar uma.
+   */
+  uso?: UsoMedido;
 }
 
 // Resolve a area do intake para um slug do catalogo: aceita slug canonico ou
@@ -363,6 +385,7 @@ async function callModelOnce(
   userContext: string,
   citableBlock: string,
   onIo: (io: CareerPlanAiIo) => void,
+  acumulado: UsoAcumulado,
 ): Promise<CareerPlanResult> {
   const userPrompt = [
     userContext,
@@ -403,7 +426,10 @@ async function callModelOnce(
 
   const payload = (await response.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
+  // ANTES de qualquer reprova nossa: ver `somarUso`.
+  somarUso(acumulado, payload.usage);
   const content = payload.choices?.[0]?.message?.content;
   if (!content) {
     throw new Error("A IA nao retornou conteudo.");
@@ -440,6 +466,7 @@ async function callModelOnce(
   onIo({
     inputChars: SYSTEM_PROMPT.length + userPrompt.length,
     outputChars: content.length,
+    uso: usoDoContrato(acumulado),
   });
   return validation.data;
 }
@@ -462,10 +489,16 @@ export async function generateCareerPlan(
   const citableBlock = catalogBlock(citable);
   const userContext = await buildUserContext(userId, intake);
 
+  const acumulado = novoUsoAcumulado();
   let lastError: unknown;
   for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
     try {
-      const result = await callModelOnce(userContext, citableBlock, onIo);
+      const result = await callModelOnce(
+        userContext,
+        citableBlock,
+        onIo,
+        acumulado,
+      );
       return {
         result: { ...result, checklist: deriveChecklist(result) },
         catalogVersion: CAREER_CATALOG_VERSION,

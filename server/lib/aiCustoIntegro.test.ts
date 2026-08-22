@@ -325,6 +325,41 @@ describe("3. TOTALIDADE: nenhum call site informa custo sem estar classificado",
     expect(total).toBeGreaterThan(30);
   });
 
+  it("SUCESSO com caracteres e SEM custo: so os casos declarados", () => {
+    // A FORMA EXATA DO DEFEITO que o lote 3c fechou. Uma linha com
+    // `status: "success"` e `inputChars` diz "a IA rodou e mediu a entrada";
+    // sem `custo`, ela grava `cost_estimate` zero, porque ausencia vale
+    // `sem_estimativa` no escritor. Foi assim que a geracao do plano de carreira
+    // ficou com custo zero no painel sem ninguem escrever zero em lugar nenhum:
+    // o campo simplesmente nao estava la, e nao estar la e legitimo para as
+    // dezenas de call sites que nunca tiveram custo.
+    //
+    // Este assert transforma essa classe invisivel numa contagem declarada.
+    // Alterar o numero e ato deliberado, no commit que acrescenta ou conserta um
+    // call site.
+    const achados: string[] = [];
+    for (const rel of arquivosDeRota()) {
+      for (const bloco of blocosDeLogAiUsage(
+        readFileSync(path.join(RAIZ, rel), "utf8"),
+      )) {
+        if (
+          /status:\s*"success"/.test(bloco) &&
+          /inputChars/.test(bloco) &&
+          !/\bcusto:/.test(bloco)
+        ) {
+          achados.push(rel);
+        }
+      }
+    }
+    // OS SETE SAO TODOS DE `interview.ts`, e ele esta FORA do escopo do lote 3c.
+    // Um deles (o TTS) tem custo zero DELIBERADO e documentado: e ElevenLabs,
+    // parceria sem fatura, e nao ha preco por caractere cadastrado. Os outros
+    // seis sao a mesma classe que este lote acabou de fechar no careerPlan, e
+    // estao registrados como backlog no relatorio.
+    expect(new Set(achados)).toEqual(new Set(["server/routes/interview.ts"]));
+    expect(achados.length).toBe(7);
+  });
+
   it("NENHUMA rota calcula custo por conta propria", () => {
     // A outra metade da fonte unica: depois deste lote, nenhum arquivo de rota
     // pode chamar as funcoes de preco. Quem calcula e o escritor.

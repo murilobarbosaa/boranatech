@@ -277,6 +277,22 @@ router.post(
       status: "success",
       inputChars: aiIo.inputChars,
       outputChars: aiIo.outputChars,
+      // O ZERO MORRE AQUI. Este call site nao passava `custo` nenhum, e ausencia
+      // vale `sem_estimativa` no escritor: a geracao do plano, que e a chamada
+      // MAIS CARA desta rota, aparecia no painel com custo zero. Nao havia um
+      // zero escrito em lugar nenhum, e e por isso que ninguem via: o campo
+      // simplesmente nao estava la, e nao estar la e legitimo para as dezenas de
+      // call sites que nunca tiveram custo.
+      //
+      // MEDICAO quando a OpenAI mandou `usage`, fallback declarado quando nao.
+      // Sem `|| 0`: ausencia de medicao continua sendo ausencia.
+      custo: aiIo.uso
+        ? {
+            tipo: "tokens",
+            inputTokens: aiIo.uso.inputTokens,
+            outputTokens: aiIo.uso.outputTokens,
+          }
+        : { tipo: "chars" },
     });
 
     res.json({ data: { planId } });
