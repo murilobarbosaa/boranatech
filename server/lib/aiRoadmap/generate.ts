@@ -21,6 +21,14 @@ import { toOpenAIStrictSchema } from "../openaiStrictSchema";
 import { supabaseAdmin } from "../supabaseAdmin";
 import { fetchUserContextPool } from "../userContext/pool";
 import { textoDaNotaLinkedin } from "../linkedinNotaPendente";
+import {
+  novoUsoAcumulado,
+  somarUso,
+  somarUsoDeChamadas,
+  usoDoContrato,
+  type UsoAcumulado,
+  type UsoMedido,
+} from "../aiUsoMedido";
 
 // Geracao do Roadmap com IA, no molde EXATO dos analisadores (linkedinAnalyze/
 // githubAnalyze): fetch cru para a OpenAI, gpt-4o-mini, json_schema strict via
@@ -75,61 +83,6 @@ export interface GenerationResult<T> {
    * exatamente como ela ja soma os caracteres.
    */
   uso?: { inputTokens: number; outputTokens: number };
-}
-
-/** Acumulador do uso medido ao longo das tentativas de uma chamada. */
-interface UsoAcumulado {
-  inputTokens: number;
-  outputTokens: number;
-  medido: boolean;
-}
-
-/**
- * Soma o `usage` desta resposta ao acumulado da chamada.
- *
- * Chamado logo DEPOIS de ler o corpo e ANTES de validar conteudo, truncamento,
- * JSON ou schema, de proposito: uma tentativa que a OpenAI respondeu e nos
- * reprovamos foi cobrada igual, e o token dela precisa entrar na conta.
- */
-function somarUso(
-  acumulado: UsoAcumulado,
-  usage: { prompt_tokens?: number; completion_tokens?: number } | undefined,
-): void {
-  if (typeof usage?.prompt_tokens !== "number") return;
-  acumulado.inputTokens += usage.prompt_tokens;
-  acumulado.outputTokens += usage.completion_tokens ?? 0;
-  acumulado.medido = true;
-}
-
-/** O campo `uso` do contrato, ou undefined quando nada foi medido. */
-function usoDoContrato(
-  acumulado: UsoAcumulado,
-): { inputTokens: number; outputTokens: number } | undefined {
-  return acumulado.medido
-    ? {
-        inputTokens: acumulado.inputTokens,
-        outputTokens: acumulado.outputTokens,
-      }
-    : undefined;
-}
-
-/**
- * Soma o uso de DUAS chamadas, preservando a ausencia.
- *
- * Exportada porque quem soma as chamadas de um request e a rota. Se as duas
- * estiverem ausentes, o resultado e ausente; se so uma trouxer medicao, o total
- * e o dela, e nao uma soma com zero fingido do outro lado.
- */
-export function somarUsoDeChamadas(
-  a: { inputTokens: number; outputTokens: number } | undefined,
-  b: { inputTokens: number; outputTokens: number } | undefined,
-): { inputTokens: number; outputTokens: number } | undefined {
-  if (!a) return b;
-  if (!b) return a;
-  return {
-    inputTokens: a.inputTokens + b.inputTokens,
-    outputTokens: a.outputTokens + b.outputTokens,
-  };
 }
 
 function sleep(ms: number): Promise<void> {

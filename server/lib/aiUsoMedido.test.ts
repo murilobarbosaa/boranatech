@@ -49,7 +49,7 @@ import * as http from "./http";
 import { DEFAULT_MODEL } from "./openai";
 import { runIntakeChatTurn as roadmapTurn } from "./aiRoadmap/intakeChat";
 import { runIntakeChatTurn as careerTurn } from "./careerPlan/intakeChat";
-import { somarUsoDeChamadas } from "./aiRoadmap/generate";
+import { somarUsoDeChamadas } from "./aiUsoMedido";
 
 /**
  * Turno valido de cada chat de intake. Os DOIS schemas sao parecidos e

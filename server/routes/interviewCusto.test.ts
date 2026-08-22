@@ -48,10 +48,12 @@ import { DEFAULT_MODEL } from "../lib/openai";
 import {
   callHintModel,
   callInterviewModel,
-  somarUsoDeChamadas,
   translateQuestionToPt,
   type AiIo,
 } from "./interview";
+// `somarUsoDeChamadas` saiu de `interview.ts` para o modulo neutro no lote 5.
+// O teste continua afirmando a MESMA funcao, e nao uma copia dela.
+import { somarUsoDeChamadas } from "../lib/aiUsoMedido";
 
 const MENSAGENS = [
   { role: "system" as const, content: "voce e um entrevistador" },

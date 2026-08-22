@@ -21,7 +21,7 @@ import {
   usoDoContrato,
   type UsoAcumulado,
   type UsoMedido,
-} from "./usoMedido";
+} from "../aiUsoMedido";
 
 /**
  * Gerador do plano de carreira (feature Pro). Trava de honestidade: o modelo

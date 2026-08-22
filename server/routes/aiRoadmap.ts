@@ -15,9 +15,9 @@ import {
   countLeaves,
   generateAiRoadmapSlug,
   generateSectionContent,
-  somarUsoDeChamadas,
   generateSkeleton,
 } from "../lib/aiRoadmap/generate";
+import { somarUsoDeChamadas } from "../lib/aiUsoMedido";
 import { isOneGeneratingCollision } from "../lib/aiRoadmap/oneGenerating";
 import {
   checkAiDailyLimit,

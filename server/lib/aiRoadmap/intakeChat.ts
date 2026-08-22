@@ -7,6 +7,14 @@ import { fetchWithTimeout } from "../http";
 import { buildOpenAIHeaders, OPENAI_BASE_URL } from "../openai";
 import { erroDaRespostaOpenAi, isFalhaPermanente } from "../openaiFailure";
 import { toOpenAIStrictSchema } from "../openaiStrictSchema";
+import {
+  novoUsoAcumulado,
+  somarUso,
+  somarUsoDeChamadas,
+  usoDoContrato,
+  type UsoAcumulado,
+  type UsoMedido,
+} from "../aiUsoMedido";
 import { fetchUserContextPool } from "../userContext/pool";
 import { textoDaNotaLinkedin } from "../linkedinNotaPendente";
 
@@ -383,47 +391,6 @@ export interface IntakeChatAiIo {
    * E a mesma regra que o analisador de LinkedIn ja aplica desde a Fase 2.
    */
   uso?: { inputTokens: number; outputTokens: number };
-}
-
-/** Acumulador do uso medido ao longo das tentativas de um request. */
-interface UsoAcumulado {
-  inputTokens: number;
-  outputTokens: number;
-  medido: boolean;
-}
-
-/** Zera o acumulador. `medido` false enquanto nenhuma resposta trouxer `usage`. */
-function novoUsoAcumulado(): UsoAcumulado {
-  return { inputTokens: 0, outputTokens: 0, medido: false };
-}
-
-/**
- * Soma o `usage` desta resposta ao acumulado do request.
- *
- * Chamado logo DEPOIS de ler o corpo e ANTES de validar conteudo, JSON ou
- * schema, de proposito: uma tentativa que a OpenAI respondeu e nos reprovamos
- * foi cobrada igual, e o token dela precisa entrar na conta.
- */
-function somarUso(
-  acumulado: UsoAcumulado,
-  usage: { prompt_tokens?: number; completion_tokens?: number } | undefined,
-): void {
-  if (typeof usage?.prompt_tokens !== "number") return;
-  acumulado.inputTokens += usage.prompt_tokens;
-  acumulado.outputTokens += usage.completion_tokens ?? 0;
-  acumulado.medido = true;
-}
-
-/** O campo `uso` do contrato, ou undefined quando nada foi medido. */
-function usoDoContrato(
-  acumulado: UsoAcumulado,
-): { inputTokens: number; outputTokens: number } | undefined {
-  return acumulado.medido
-    ? {
-        inputTokens: acumulado.inputTokens,
-        outputTokens: acumulado.outputTokens,
-      }
-    : undefined;
 }
 
 // Monta o bloco de contexto do usuario no mesmo espirito do buildGenerationContext

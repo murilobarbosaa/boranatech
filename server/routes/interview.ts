@@ -39,6 +39,14 @@ import { toOpenAIStrictSchema } from "../lib/openaiStrictSchema";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
+import {
+  novoUsoAcumulado,
+  somarUso,
+  somarUsoDeChamadas,
+  usoDoContrato,
+  type UsoAcumulado,
+  type UsoMedido,
+} from "../lib/aiUsoMedido";
 
 /**
  * Entrevista simulada multi-turn (Pro). Regras de seguranca (molde
@@ -201,12 +209,6 @@ interface ModelMessage {
   content: string;
 }
 
-/** O uso medido de uma chamada, como ele viaja nos contratos deste arquivo. */
-export interface UsoMedido {
-  inputTokens: number;
-  outputTokens: number;
-}
-
 export interface AiIo {
   inputChars: number;
   outputChars: number;
@@ -226,78 +228,6 @@ export interface AiIo {
    * (`somarUsoDeChamadas`).
    */
   uso?: UsoMedido;
-}
-
-/**
- * ACUMULACAO DO USO MEDIDO, copia local.
- *
- * As mesmas auxiliares existem em `server/lib/careerPlan/usoMedido.ts` desde o
- * lote 3c. NAO as importei, e a razao e direcao de dependencia: a rota de
- * entrevista passaria a depender do modulo de plano de carreira para chegar num
- * utilitario que nao pertence a nenhuma das duas features. A alternativa certa e
- * um modulo neutro compartilhado, e ele nao cabe no escopo deste lote.
- *
- * Moram AQUI DENTRO, e nao num modulo proprio de interview, porque quem chama a
- * OpenAI nesta feature tambem mora aqui: nao ha helper em `server/lib/` para
- * onde levar. Custo registrado: a base vai de tres para QUATRO copias destas
- * dezoito linhas, e a consolidacao esta no backlog do relatorio.
- */
-interface UsoAcumulado {
-  inputTokens: number;
-  outputTokens: number;
-  medido: boolean;
-}
-
-/** Zera o acumulador. `medido` false enquanto nenhuma resposta trouxer `usage`. */
-function novoUsoAcumulado(): UsoAcumulado {
-  return { inputTokens: 0, outputTokens: 0, medido: false };
-}
-
-/**
- * Soma o `usage` desta resposta ao acumulado da chamada.
- *
- * Chamado logo DEPOIS de ler o corpo e ANTES de validar conteudo, JSON, schema
- * ou coerencia, de proposito: uma tentativa que a OpenAI respondeu e nos
- * reprovamos foi cobrada igual, e o token dela precisa entrar na conta.
- */
-function somarUso(
-  acumulado: UsoAcumulado,
-  usage: { prompt_tokens?: number; completion_tokens?: number } | undefined,
-): void {
-  if (typeof usage?.prompt_tokens !== "number") return;
-  acumulado.inputTokens += usage.prompt_tokens;
-  acumulado.outputTokens += usage.completion_tokens ?? 0;
-  acumulado.medido = true;
-}
-
-/** O campo `uso` do contrato, ou undefined quando nada foi medido. */
-function usoDoContrato(acumulado: UsoAcumulado): UsoMedido | undefined {
-  return acumulado.medido
-    ? {
-        inputTokens: acumulado.inputTokens,
-        outputTokens: acumulado.outputTokens,
-      }
-    : undefined;
-}
-
-/**
- * Soma o uso de DUAS chamadas, preservando a ausencia.
- *
- * O turno de fechamento cobra uma unidade de quota por DUAS chamadas de IA
- * (avaliacao mais veredito), e grava um log so. Se as duas estiverem ausentes, o
- * resultado e ausente; se so uma trouxer medicao, o total e o dela, e nao uma
- * soma com zero fingido do outro lado.
- */
-export function somarUsoDeChamadas(
-  a: UsoMedido | undefined,
-  b: UsoMedido | undefined,
-): UsoMedido | undefined {
-  if (!a) return b;
-  if (!b) return a;
-  return {
-    inputTokens: a.inputTokens + b.inputTokens,
-    outputTokens: a.outputTokens + b.outputTokens,
-  };
 }
 
 // O que cada chamada espera do modelo; incoerencia com o modo e falha da

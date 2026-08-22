@@ -13,7 +13,7 @@ import {
   usoDoContrato,
   type UsoAcumulado,
   type UsoMedido,
-} from "./usoMedido";
+} from "../aiUsoMedido";
 import { fetchUserContextPool } from "../userContext/pool";
 import { textoDaNotaLinkedin } from "../linkedinNotaPendente";
 import { CAREER_PLAN_BUDGETS } from "./generate";
