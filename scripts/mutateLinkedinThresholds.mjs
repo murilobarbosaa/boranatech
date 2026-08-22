@@ -31,6 +31,7 @@ const A = "server/lib/linkedinAnalyze.ts";
 const I = "server/lib/linkedinIdioma.ts";
 const PZ = "shared/linkedin/prazos.ts";
 const AT = "server/lib/aiTools.ts";
+const CP = "server/lib/linkedinCorpo.ts";
 
 // [arquivo, nome do limiar, string original, string mutada]
 const MUT = [
@@ -346,6 +347,47 @@ const MUT = [
     "export const FOLGA_CLIENT_MS = 15_000;",
     "export const FOLGA_CLIENT_MS = -15_000;",
   ],
+  // Tetos TECNICOS de corpo de requisicao (Fase 4, lote 4). Entram em MUT porque
+  // sao fronteira de aceitacao: encolher derruba corpo legitimo com 413 no lugar
+  // do 400 que explica o problema, e esticar devolve ao processo o trabalho de
+  // parsear lixo que o lote existe para cortar. Morrem em
+  // `server/lib/linkedinCorpoTeto.test.ts`.
+  [
+    CP,
+    "BYTES_POR_CARACTERE_PIOR_CASO",
+    "export const BYTES_POR_CARACTERE_PIOR_CASO = 6;",
+    "export const BYTES_POR_CARACTERE_PIOR_CASO = 1;",
+  ],
+  [
+    CP,
+    "FOLGA_ESTRUTURAL_BYTES",
+    "export const FOLGA_ESTRUTURAL_BYTES = 2_048;",
+    "export const FOLGA_ESTRUTURAL_BYTES = 20;",
+  ],
+  [
+    CP,
+    "TETO_CORPO_ROTA_MENOR_BYTES",
+    "export const TETO_CORPO_ROTA_MENOR_BYTES = 4_096;",
+    "export const TETO_CORPO_ROTA_MENOR_BYTES = 40;",
+  ],
+  // Maximos de campo do request de analise, que a Fase 4 lote 4 tirou de dentro
+  // do `.max()` do zod e nomeou. O valor nao mudou; o nome existe porque o teto
+  // de corpo e DERIVADO deles. Mutar qualquer um muda a derivacao.
+  [
+    S,
+    "LINKEDIN_PROFILE_TEXT_MAX",
+    "export const LINKEDIN_PROFILE_TEXT_MAX = 12_000;",
+    // 1_200 e nao 120: abaixo do `.min(200)` do proprio campo o zod recusa a
+    // montar o schema e o modulo explode no import. O mutante ainda morreria,
+    // mas por erro de carga, e nao pela assercao que ele deveria exercitar.
+    "export const LINKEDIN_PROFILE_TEXT_MAX = 1_200;",
+  ],
+  [
+    S,
+    "LINKEDIN_OBJETIVO_MAX",
+    "export const LINKEDIN_OBJETIVO_MAX = 300;",
+    "export const LINKEDIN_OBJETIVO_MAX = 30;",
+  ],
   // Limites de entrada e persistência, não pesos da régua. Ainda são
   // fronteiras de contrato e uma mudança acidental precisa quebrar teste.
   [
@@ -616,6 +658,9 @@ const FONTES = [
   // verdade, o prazo por round-trip de banco, que e parcela da conta do pior
   // caso do servidor e portanto do teto de aborto do client.
   "shared/linkedin/prazos.ts",
+  // Tetos de corpo do analisador (Fase 4, lote 4). Entra com limiares de
+  // verdade: eles decidem qual requisicao o processo aceita parsear.
+  "server/lib/linkedinCorpo.ts",
   // Ferramentas de IA (Fase 4, lote 3). Entra por causa do `CHARS_PER_TOKEN`,
   // que e a regua do fallback de custo e portanto decide dinheiro no painel.
   // NAO e arquivo do analisador, e esta consciente: o guard nasceu para os

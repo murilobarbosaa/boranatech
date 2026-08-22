@@ -41,6 +41,11 @@ import githubRouter from "./routes/github";
 import interviewRouter from "./routes/interview";
 import launchStateRouter, { betaRouter } from "./routes/launchState";
 import linkedinRouter from "./routes/linkedin";
+import {
+  TETO_CORPO_ANALISE_BYTES,
+  TETO_CORPO_ROTA_MENOR_BYTES,
+  traduzirErroDeCorpo,
+} from "./lib/linkedinCorpo";
 import meAvatarRouter from "./routes/meAvatar";
 import meRouter from "./routes/me";
 import newsletterRouter from "./routes/newsletter";
@@ -441,6 +446,23 @@ app.use(
   "/api/admin/contact-lists/preview",
   express.json({ limit: "10mb" }),
 );
+
+// Analisador de LinkedIn: tetos MENORES que o global, por rota. Mesmo padrao
+// dos tres acima (parser dedicado ANTES do json global, e o global ignora o que
+// ja foi parseado), so que para BAIXO em vez de para cima.
+//
+// Por que aqui e nao dentro do router: o parser global roda antes de qualquer
+// router, entao um `express.json` montado la dentro nao reparsearia nada e o
+// teto seria decorativo. O ponto de montagem e a unica posicao em que o teto
+// protege o que ele existe para proteger, que e o proprio parse.
+//
+// O GLOBAL NAO MUDA: continua 2mb para todo o resto da plataforma.
+app.use(
+  "/api/linkedin/analyze",
+  express.json({ limit: TETO_CORPO_ANALISE_BYTES }),
+);
+app.use("/api/linkedin", express.json({ limit: TETO_CORPO_ROTA_MENOR_BYTES }));
+app.use("/api/linkedin", traduzirErroDeCorpo);
 
 app.use(express.json({ limit: "2mb" }));
 

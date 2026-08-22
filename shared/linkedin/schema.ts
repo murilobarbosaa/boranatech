@@ -849,6 +849,19 @@ export interface LinkedinQualitativeEntregue extends LinkedinQualitative {
 
 // Request do endpoint de análise
 
+/**
+ * Teto do texto do perfil colado ou extraído do PDF.
+ *
+ * NOMEADO na Fase 4 lote 4, e o valor não mudou: era o literal `12_000` dentro
+ * do `.max()` do zod. Precisou de nome porque o teto de CORPO da requisição
+ * (`server/lib/linkedinCorpo.ts`) é derivado dos máximos deste schema, e um
+ * literal solto ali seria um segundo número para manter em sincronia com este.
+ */
+export const LINKEDIN_PROFILE_TEXT_MAX = 12_000;
+
+/** Teto do objetivo de carreira opcional. Mesmo motivo de nome do acima. */
+export const LINKEDIN_OBJETIVO_MAX = 300;
+
 /** Fonte única do limite aceito e persistido para competências. */
 export const LINKEDIN_SKILLS_MAX = 3_000;
 
@@ -870,7 +883,7 @@ export function headlineManualAtiva(value: unknown): boolean {
 }
 
 export const LinkedinAnalyzeRequestSchema = z.object({
-  profileText: z.string().min(200).max(12_000),
+  profileText: z.string().min(200).max(LINKEDIN_PROFILE_TEXT_MAX),
   area: z.enum(AREA_SLUGS),
   level: LinkedinLevelSchema,
   mercado: MercadoSchema,
@@ -880,7 +893,7 @@ export const LinkedinAnalyzeRequestSchema = z.object({
   openToWork: OpenToWorkSchema,
   conexoes: ConexoesSchema,
   atividade: AtividadeSchema,
-  objetivo: z.string().max(300).optional(),
+  objetivo: z.string().max(LINKEDIN_OBJETIVO_MAX).optional(),
   /**
    * Por onde o texto entrou: PDF, colagem manual, ou revisão de sessão restaurada.
    *
