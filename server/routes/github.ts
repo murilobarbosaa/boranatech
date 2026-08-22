@@ -138,6 +138,7 @@ router.post(
           userId,
           tool,
           requestId,
+          reservationId: usage.reservationId,
           status: "error",
           errorMessage: "rate limit check failed",
         });
@@ -149,7 +150,7 @@ router.post(
           ),
         );
       }
-      await logAiUsage({ userId, tool, requestId, status: "rate_limited" });
+      await logAiUsage({ userId, tool, requestId, reservationId: usage.reservationId, status: "rate_limited" });
       return next(
         createError(
           429,
@@ -185,6 +186,7 @@ router.post(
         userId,
         tool,
         requestId,
+        reservationId: usage.reservationId,
         status: aiUsed ? "success" : "skipped",
         inputChars: aiIo.inputChars,
         outputChars,
@@ -197,6 +199,7 @@ router.post(
         userId,
         tool,
         requestId,
+        reservationId: usage.reservationId,
         status: "error",
         errorMessage: message,
       });

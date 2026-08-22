@@ -253,6 +253,7 @@ router.post(
           userId,
           tool: TOOL,
           requestId,
+          reservationId: usage.reservationId,
           prazoBancoMs: PRAZO_BANCO_ANALISE_MS,
           status: "error",
           errorMessage: "rate limit check failed",
@@ -270,6 +271,7 @@ router.post(
         userId,
         tool: TOOL,
         requestId,
+        reservationId: usage.reservationId,
         prazoBancoMs: PRAZO_BANCO_ANALISE_MS,
         status: "rate_limited",
       });
@@ -310,6 +312,7 @@ router.post(
         userId,
         tool: TOOL,
         requestId,
+        reservationId: usage.reservationId,
         prazoBancoMs: PRAZO_BANCO_ANALISE_MS,
         status: uso.tentativas > 0 ? "success" : "skipped",
         inputChars: uso.inputChars,
@@ -352,6 +355,7 @@ router.post(
         userId,
         tool: TOOL,
         requestId,
+        reservationId: usage.reservationId,
         prazoBancoMs: PRAZO_BANCO_ANALISE_MS,
         status: "error",
         // SO A MENSAGEM. O detalhe por tentativa mora em `attempt_details`

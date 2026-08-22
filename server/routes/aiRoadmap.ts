@@ -487,6 +487,7 @@ async function reservesQuota(
         userId,
         tool: ROADMAP_GENERATOR_TOOL,
         requestId,
+        reservationId: usage.reservationId,
         status: "error",
         errorMessage: "rate limit check failed",
       });
@@ -504,6 +505,7 @@ async function reservesQuota(
       userId,
       tool: ROADMAP_GENERATOR_TOOL,
       requestId,
+      reservationId: usage.reservationId,
       status: "rate_limited",
     });
     // TODO(Ana): mensagem de limite diario atingido.

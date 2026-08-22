@@ -795,6 +795,7 @@ router.post(
           userId,
           tool: INTERVIEW_SESSION_TOOL,
           requestId,
+          reservationId: usage.reservationId,
           status: "error",
           errorMessage: "rate limit check failed",
         });
@@ -811,6 +812,7 @@ router.post(
         userId,
         tool: INTERVIEW_SESSION_TOOL,
         requestId,
+        reservationId: usage.reservationId,
         status: "rate_limited",
       });
       return next(
@@ -883,6 +885,7 @@ router.post(
         userId,
         tool: INTERVIEW_SESSION_TOOL,
         requestId,
+        reservationId: usage.reservationId,
         status: "error",
         errorMessage: message,
       });
@@ -953,6 +956,7 @@ router.post(
       userId,
       tool: INTERVIEW_SESSION_TOOL,
       requestId,
+      reservationId: usage.reservationId,
       status: "success",
       inputChars: aiIo.inputChars,
       outputChars: aiIo.outputChars,

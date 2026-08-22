@@ -98,6 +98,7 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
         userId,
         tool: RESUME_ANALYZER_TOOL,
         requestId,
+        reservationId: usage.reservationId,
         status: "error",
         errorMessage: "rate limit check failed",
       });
@@ -114,6 +115,7 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
       userId,
       tool: RESUME_ANALYZER_TOOL,
       requestId,
+      reservationId: usage.reservationId,
       status: "rate_limited",
     });
     // TODO(Ana): mensagem de limite diario atingido.
@@ -146,6 +148,7 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
       userId,
       tool: RESUME_ANALYZER_TOOL,
       requestId,
+      reservationId: usage.reservationId,
       status: "error",
       errorMessage: detail.slice(0, 300),
       inputChars: request.resumeText.length,
@@ -174,6 +177,7 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
     userId,
     tool: RESUME_ANALYZER_TOOL,
     requestId,
+    reservationId: usage.reservationId,
     status: "success",
     inputChars: io.inputChars,
     outputChars: io.outputChars,

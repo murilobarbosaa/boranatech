@@ -34,6 +34,18 @@ export interface AiDailyLimitResult {
    * amanha). So aparece para quem passa `janelaAndamentoMs`.
    */
   analiseEmAndamento?: boolean;
+  /**
+   * ID DA RESERVA QUE ESTA REQUISICAO criou, devolvido pela RPC.
+   *
+   * `null` quando esta requisicao NAO criou reserva nenhuma: cota estourada,
+   * falha de verificacao, analise ja em andamento, ou o modo degradado (que nao
+   * reserva). A distincao importa porque e ela que impede uma requisicao sem
+   * reserva de fechar a reserva de OUTRA que ainda esta em voo.
+   *
+   * A RPC ja devolvia este campo desde a primeira versao dela; ate a Fase 4
+   * lote 5 ele era lido e jogado fora aqui mesmo.
+   */
+  reservationId?: string | null;
 }
 
 /**
@@ -166,12 +178,23 @@ export async function checkAiDailyLimit(
         // `count` NAO e lido neste desfecho: a RPC nem contou (devolve NULL de
         // proposito, e nao zero). O `?? 0` abaixo nao se aplica aqui porque o
         // caller trata `analiseEmAndamento` antes de olhar a contagem.
-        return { allowed: false, count: 0, limit, analiseEmAndamento: true };
+        return {
+          allowed: false,
+          count: 0,
+          limit,
+          analiseEmAndamento: true,
+          reservationId: null,
+        };
       }
+      const reservationId: unknown = (linha as { reservation_id?: unknown })
+        .reservation_id;
       return {
         allowed: linha.allowed,
         count: linha.usage_count ?? 0,
         limit,
+        // `null` explicito quando a RPC nao reservou: quem le precisa distinguir
+        // "nao reservei" de "nao perguntei".
+        reservationId: typeof reservationId === "string" ? reservationId : null,
       };
     }
     avisarModoDegradado(logScope, error?.message ?? "resposta inesperada");
@@ -192,19 +215,38 @@ export async function checkAiDailyLimit(
     );
 
     if (!usageError && usageCount !== null) {
-      return { allowed: usageCount < limit, count: usageCount, limit };
+      // MODO DEGRADADO NAO RESERVA: ele so conta. `null` aqui e o que faz o
+      // escritor inserir em vez de fechar a reserva de outra requisicao.
+      return {
+        allowed: usageCount < limit,
+        count: usageCount,
+        limit,
+        reservationId: null,
+      };
     }
 
     console.warn(
       `${logScope} RPC de rate limit retornou erro/null para`,
       userId,
     );
-    return { allowed: false, count: 0, limit, verificationFailed: true };
+    return {
+      allowed: false,
+      count: 0,
+      limit,
+      verificationFailed: true,
+      reservationId: null,
+    };
   } catch {
     // Silencio (b) deliberado: fail-closed, ja logado, e indisponibilidade
     // transitoria da RPC viraria ruido de plantao sem acao possivel.
     console.warn(`${logScope} Falha ao verificar rate limit para`, userId);
-    return { allowed: false, count: 0, limit, verificationFailed: true };
+    return {
+      allowed: false,
+      count: 0,
+      limit,
+      verificationFailed: true,
+      reservationId: null,
+    };
   }
 }
 
@@ -483,6 +525,29 @@ export interface LogAiUsageParams {
    * devolve. Em nenhum dos dois a analise ja entregue e desfeita.
    */
   prazoBancoMs?: number;
+  /**
+   * A RESERVA QUE ESTA REQUISICAO CRIOU, vinda de `checkAiDailyLimit`.
+   *
+   * Tres estados, e a diferenca entre eles e o defeito que este campo fecha:
+   *
+   *   string     confirma EXATAMENTE esta reserva. Sem busca.
+   *   null       esta requisicao nao criou reserva nenhuma (cota estourada,
+   *              falha de verificacao, modo degradado). NAO procura: grava
+   *              linha propria. Sem isto, uma requisicao que FALHOU fechava a
+   *              reserva de outra que ainda estava em voo.
+   *   undefined  legado: procura a mais antiga de (usuario, ferramenta), que e
+   *              o comportamento de antes. Sobra para os call sites que nunca
+   *              passaram por uma reserva.
+   *
+   * POR QUE O DEFEITO EXISTIA: `acharReserva` seleciona por
+   * `(user_id, tool, status='reserved')` ordenado por `created_at` ASC com
+   * `limit 1`, ou seja a MAIS ANTIGA pendente, sem nenhuma nocao de dona. Com
+   * duas requisicoes do mesmo usuario e ferramenta em voo, quem terminasse
+   * primeiro fechava a reserva da outra, e os dados (tokens, custo, requestId,
+   * detalhe por tentativa) trocavam de linha. O analisador ficou protegido pela
+   * serializacao do lote 2; as outras oito ferramentas nao serializam.
+   */
+  reservationId?: string | null;
 }
 
 /**
@@ -608,23 +673,29 @@ export async function logAiUsage(params: LogAiUsageParams) {
   // 'error' quando a chamada falha, e o contador do dia so soma 'success' e
   // 'reserved'. Uma reserva que vira 'error' deixa de ocupar vaga sozinha.
   let reserva: string | null;
-  try {
-    reserva = await acharReserva(
-      params.userId,
-      params.tool,
-      params.prazoBancoMs,
-    );
-  } catch (err) {
-    // NAO SEI SE EXISTE RESERVA, entao nao escrevo nada. Cair no insert daqui
-    // criaria uma segunda linha para a MESMA chamada (a reservada continua
-    // 'reserved' e a nova entraria como 'success'), e o contador do dia soma as
-    // duas: a pessoa perderia duas vagas por uma analise. Undercount e o erro
-    // seguro nesta escolha, e a reserva em voo devolve a vaga pelo TTL.
-    console.warn(
-      "[ai] Prazo estourado ao procurar a reserva; nada foi gravado:",
-      err instanceof Error ? err.message : String(err),
-    );
-    return;
+  if (params.reservationId !== undefined) {
+    // IDENTIDADE, nao busca. `null` aqui significa "nao tenho reserva", e o
+    // fluxo cai no insert la embaixo em vez de fechar a de outra pessoa.
+    reserva = params.reservationId;
+  } else {
+    try {
+      reserva = await acharReserva(
+        params.userId,
+        params.tool,
+        params.prazoBancoMs,
+      );
+    } catch (err) {
+      // NAO SEI SE EXISTE RESERVA, entao nao escrevo nada. Cair no insert daqui
+      // criaria uma segunda linha para a MESMA chamada (a reservada continua
+      // 'reserved' e a nova entraria como 'success'), e o contador do dia soma as
+      // duas: a pessoa perderia duas vagas por uma analise. Undercount e o erro
+      // seguro nesta escolha, e a reserva em voo devolve a vaga pelo TTL.
+      console.warn(
+        "[ai] Prazo estourado ao procurar a reserva; nada foi gravado:",
+        err instanceof Error ? err.message : String(err),
+      );
+      return;
+    }
   }
   if (reserva) {
     try {

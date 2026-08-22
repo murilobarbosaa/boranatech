@@ -86,7 +86,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
   const usage = await checkAiDailyLimit(userId, !!req.isPro, "[ai]", toolKey);
   if (!usage.allowed) {
     if (usage.verificationFailed) {
-      await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "rate limit check failed", model: toolConfig.model });
+      await logAiUsage({ userId, tool: toolKey, requestId, reservationId: usage.reservationId, status: "error", errorMessage: "rate limit check failed", model: toolConfig.model });
       return next(
         createError(
           503,
@@ -95,7 +95,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
         ),
       );
     }
-    await logAiUsage({ userId, tool: toolKey, requestId, status: "rate_limited", model: toolConfig.model });
+    await logAiUsage({ userId, tool: toolKey, requestId, reservationId: usage.reservationId, status: "rate_limited", model: toolConfig.model });
     return next(
       createError(
         429,
@@ -136,7 +136,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
     }
 
     if (cleaned.length === 0) {
-      await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Invalid messages", model: toolConfig.model });
+      await logAiUsage({ userId, tool: toolKey, requestId, reservationId: usage.reservationId, status: "error", errorMessage: "Invalid messages", model: toolConfig.model });
       return next(createError(400, "invalid_request", "Envie pelo menos uma mensagem válida."));
     }
 
@@ -157,12 +157,12 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
   const inputChars = inputText.length;
 
   if (inputChars > toolConfig.maxInputChars) {
-    await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Payload too large", inputChars, model: toolConfig.model });
+    await logAiUsage({ userId, tool: toolKey, requestId, reservationId: usage.reservationId, status: "error", errorMessage: "Payload too large", inputChars, model: toolConfig.model });
     return next(createError(413, "payload_too_large", `Input muito grande. Máximo: ${toolConfig.maxInputChars} caracteres.`));
   }
 
   if (!env.openaiApiKey) {
-    await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "OpenAI key missing", inputChars, model: toolConfig.model });
+    await logAiUsage({ userId, tool: toolKey, requestId, reservationId: usage.reservationId, status: "error", errorMessage: "OpenAI key missing", inputChars, model: toolConfig.model });
     return next(createError(503, "upstream_error", "Serviço de IA não configurado."));
   }
 
@@ -197,7 +197,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
     if (!response.ok) {
       const text = await response.text();
       console.error("[ai] OpenAI error:", response.status, text);
-      await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: `OpenAI ${response.status}`, inputChars, model: toolConfig.model });
+      await logAiUsage({ userId, tool: toolKey, requestId, reservationId: usage.reservationId, status: "error", errorMessage: `OpenAI ${response.status}`, inputChars, model: toolConfig.model });
       return next(createError(502, "upstream_error", "Erro ao processar com IA. Tente novamente."));
     }
 
@@ -218,6 +218,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
           userId,
           tool: toolKey,
           requestId,
+          reservationId: usage.reservationId,
           status: "error",
           errorMessage: "JSON parse failed",
           inputChars,
@@ -238,6 +239,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
           userId,
           tool: toolKey,
           requestId,
+          reservationId: usage.reservationId,
           status: "error",
           errorMessage: `Zod validation failed: ${zodIssuesForLog(validation.error.issues)}`,
           inputChars,
@@ -252,6 +254,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
         userId,
         tool: toolKey,
         requestId,
+        reservationId: usage.reservationId,
         status: "success",
         inputChars,
         outputChars,
@@ -267,6 +270,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
       userId,
       tool: toolKey,
       requestId,
+      reservationId: usage.reservationId,
       status: "success",
       inputChars,
       outputChars,
@@ -277,7 +281,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
     res.json({ result });
   } catch (error) {
     console.error("[ai] Fetch error:", error);
-    await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Network error", inputChars, model: toolConfig.model });
+    await logAiUsage({ userId, tool: toolKey, requestId, reservationId: usage.reservationId, status: "error", errorMessage: "Network error", inputChars, model: toolConfig.model });
     return next(createError(502, "upstream_error", "Erro de conexão com o serviço de IA."));
   }
 });
@@ -311,7 +315,7 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
   const usage = await checkAiDailyLimit(userId, !!req.isPro, "[ai/stream]", toolKey);
   if (!usage.allowed) {
     if (usage.verificationFailed) {
-      await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "rate limit check failed", model: toolConfig.model });
+      await logAiUsage({ userId, tool: toolKey, requestId, reservationId: usage.reservationId, status: "error", errorMessage: "rate limit check failed", model: toolConfig.model });
       return next(
         createError(
           503,
@@ -320,7 +324,7 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
         ),
       );
     }
-    await logAiUsage({ userId, tool: toolKey, requestId, status: "rate_limited", model: toolConfig.model });
+    await logAiUsage({ userId, tool: toolKey, requestId, reservationId: usage.reservationId, status: "rate_limited", model: toolConfig.model });
     return next(
       createError(
         429,
@@ -399,7 +403,7 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
     );
   } catch (err) {
     console.error("[ai/stream] OpenAI fetch error:", err);
-    await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Network error", inputChars, model: toolConfig.model });
+    await logAiUsage({ userId, tool: toolKey, requestId, reservationId: usage.reservationId, status: "error", errorMessage: "Network error", inputChars, model: toolConfig.model });
     res.write(`data: ${JSON.stringify({ error: "Erro de conexão com o serviço de IA." })}\n\n`);
     res.write(`data: [DONE]\n\n`);
     res.end();
@@ -409,7 +413,7 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
   if (!openaiResponse.ok || !openaiResponse.body) {
     const text = await openaiResponse.text().catch(() => "");
     console.error("[ai/stream] OpenAI error:", openaiResponse.status, text);
-    await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: `OpenAI ${openaiResponse.status}`, inputChars, model: toolConfig.model });
+    await logAiUsage({ userId, tool: toolKey, requestId, reservationId: usage.reservationId, status: "error", errorMessage: `OpenAI ${openaiResponse.status}`, inputChars, model: toolConfig.model });
     res.write(`data: ${JSON.stringify({ error: "Erro ao processar com IA. Tente novamente." })}\n\n`);
     res.write(`data: [DONE]\n\n`);
     res.end();
@@ -463,6 +467,7 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
       userId,
       tool: toolKey,
       requestId,
+      reservationId: usage.reservationId,
       status: "success",
       inputChars,
       outputChars: outputBuf.length,

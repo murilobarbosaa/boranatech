@@ -114,6 +114,7 @@ router.post(
           userId,
           tool: TOOL,
           requestId,
+          reservationId: usage.reservationId,
           status: "error",
           errorMessage: "rate limit check failed",
         });
@@ -129,6 +130,7 @@ router.post(
         userId,
         tool: TOOL,
         requestId,
+        reservationId: usage.reservationId,
         status: "rate_limited",
       });
       return next(
@@ -168,6 +170,7 @@ router.post(
         userId,
         tool: TOOL,
         requestId,
+        reservationId: usage.reservationId,
         status: aiUsed ? "success" : "skipped",
         inputChars: aiIo.inputChars,
         outputChars: JSON.stringify(response).length,
@@ -225,6 +228,7 @@ router.post(
         userId,
         tool: TOOL,
         requestId,
+        reservationId: usage.reservationId,
         status: "error",
         errorMessage: message,
       });
