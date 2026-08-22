@@ -53,7 +53,9 @@ import {
 import {
   agregarUsoDeIa,
   chamadasSemCustoMedido,
+  custoDeIaPorUsuario,
   custoTotalDeIa,
+  inicioDaJanelaDeIa,
 } from "../lib/aiUsageStats";
 import { montarPainelDeAtencao } from "../lib/atencaoNecessaria";
 import { calcularFrescor, montarSeriesDaVisao } from "../lib/overviewSeries";
@@ -5348,9 +5350,117 @@ async function coletarLogsDeBeta(): Promise<{
 // por `id` da uma ordem total e estavel.
 router.get("/ai-stats", async (_req, res, next) => {
   try {
-    const desde = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    res.json({ data: await agregarUsoDeIa(inicioDaJanelaDeIa()) });
+  } catch (err) {
+    next(err);
+  }
+});
 
-    res.json({ data: await agregarUsoDeIa(desde) });
+// CUSTO DE IA POR USUARIO, a tabela que substituiu uma promessa falsa.
+//
+// Ate 2026-08-22 este card exibia um `PendingIntegration` dizendo "Dados
+// agregados por usuario disponiveis apos 30 dias". A copy era FALSA: o
+// `logAiUsage` grava `user_id` em `ai_usage_logs` desde 09/05, entao o dado
+// existia havia mais de cem dias. Placeholder que promete data e pior que
+// placeholder que diz "nao temos": ele para de ser lido como pendencia.
+//
+// MESMA JANELA DA ABA, pela MESMA constante (`inicioDaJanelaDeIa`), nao por uma
+// segunda expressao de 30 dias. A soma desta tabela precisa bater com o card de
+// custo total ao lado, e dois recortes iguais por coincidencia divergem na
+// primeira vez que alguem mexer em um so.
+//
+// CACHE de 60s com chave FIXA: a aba nao tem seletor de janela, entao nao ha
+// parametro para entrar na chave. O `30d` no nome e descritivo e vem da
+// constante compartilhada; se a aba ganhar seletor, a chave passa a precisar da
+// janela, como em `admincache:overview:<janela>`.
+const AI_COST_PER_USER_CACHE_TTL_S = 60;
+
+// TETO DO RANKING. O resto NAO some: vai como `maisUsuarios`, contado.
+const AI_COST_PER_USER_TOP = 20;
+
+router.get("/ai-cost-per-user", async (_req, res, next) => {
+  try {
+    const { result, computedAt } = await getOrCompute(
+      "admincache:ai-cost-per-user:30d",
+      AI_COST_PER_USER_CACHE_TTL_S,
+      async () => {
+        const agregado = await custoDeIaPorUsuario(
+          inicioDaJanelaDeIa(),
+          AI_COST_PER_USER_TOP,
+        );
+
+        // UMA query para os ate 20 do topo, nunca uma por linha e nunca a
+        // tabela inteira de perfis. `user_id` e a coluna de juncao: `profiles`
+        // tem `id` E `user_id`, e `ai_usage_logs.user_id` casa com a segunda
+        // (mesmo precedente de `server/lib/billingMetrics.ts`). Filtrar por
+        // `id` devolveria zero linhas e a tela mostraria "perfil ausente" para
+        // todo mundo, sem erro nenhum.
+        //
+        // O SELECT E A SUPERFICIE DE PRIVACIDADE. So `user_id`, `name` e
+        // `email` saem daqui: `profiles` tem `cpf`, e uma tabela de custo nao e
+        // lugar de documento de ninguem. Ha teste anti-leak travando isto.
+        const ids = agregado.top.map((linha) => linha.userId);
+        const perfilPorId = new Map<
+          string,
+          { name: string | null; email: string | null }
+        >();
+        if (ids.length > 0) {
+          const { data, error } = await supabaseAdmin
+            .from("profiles")
+            .select("user_id, name, email")
+            .in("user_id", ids);
+          // FAIL-LOUD: perfil que nao resolve por FALHA de banco nao pode virar
+          // "perfil ausente", que e uma afirmacao sobre o dado. Sao coisas
+          // diferentes e a tela nao teria como distinguir.
+          if (error)
+            throw new Error(`ai-cost-per-user profiles: ${error.message}`);
+          for (const linha of (data ?? []) as Array<{
+            user_id: string;
+            name: string | null;
+            email: string | null;
+          }>) {
+            perfilPorId.set(linha.user_id, {
+              name: linha.name,
+              email: linha.email,
+            });
+          }
+        }
+
+        return {
+          result: {
+            top: agregado.top.map((linha) => {
+              const perfil = perfilPorId.get(linha.userId) ?? null;
+              return {
+                userId: linha.userId,
+                email: perfil?.email ?? null,
+                nome: perfil?.name ?? null,
+                // Estado NOMEADO: a linha existe em `ai_usage_logs` e nao tem
+                // perfil correspondente. Sem esta marca, e-mail nulo por perfil
+                // apagado seria indistinguivel de e-mail nulo por perfil sem
+                // e-mail cadastrado.
+                perfilAusente: perfil === null,
+                calls: linha.calls,
+                success: linha.success,
+                costUsd: linha.cost,
+                semCustoMedido: linha.semCustoMedido,
+              };
+            }),
+            semUsuario: agregado.semUsuario
+              ? {
+                  calls: agregado.semUsuario.calls,
+                  success: agregado.semUsuario.success,
+                  costUsd: agregado.semUsuario.cost,
+                  semCustoMedido: agregado.semUsuario.semCustoMedido,
+                }
+              : null,
+            maisUsuarios: agregado.maisUsuarios,
+            usuariosDistintos: agregado.usuariosDistintos,
+          },
+          computedAt: new Date().toISOString(),
+        };
+      },
+    );
+    res.json({ data: result, computedAt });
   } catch (err) {
     next(err);
   }

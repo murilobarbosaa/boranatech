@@ -404,6 +404,75 @@ type AiStatsData = Record<
 >;
 
 /**
+ * O que GET /admin/ai-cost-per-user devolve.
+ *
+ * Substituiu um `PendingIntegration` que prometia "Dados agregados por usuario
+ * disponiveis apos 30 dias" enquanto `ai_usage_logs` ja gravava `user_id` havia
+ * mais de cem dias. Placeholder que promete data para de ser lido como
+ * pendencia, e este ficou no ar tempo suficiente para virar paisagem.
+ *
+ * TODOS os campos de ausencia sao NOMEADOS: `perfilAusente` separa "sem perfil"
+ * de "sem e-mail cadastrado", `semUsuario` e null quando nao ha balde (e nao um
+ * objeto zerado, que afirmaria um balde vazio existente), e `maisUsuarios` diz
+ * quantos ficaram fora do topo para a tabela nunca parecer o total.
+ */
+type AiCostPerUserRow = {
+  userId: string;
+  email: string | null;
+  nome: string | null;
+  perfilAusente: boolean;
+  calls: number;
+  success: number;
+  /** Em DOLAR, como o resto da aba. */
+  costUsd: number;
+  semCustoMedido: number;
+};
+
+type AiCostPerUserData = {
+  top: AiCostPerUserRow[];
+  semUsuario: {
+    calls: number;
+    success: number;
+    costUsd: number;
+    semCustoMedido: number;
+  } | null;
+  maisUsuarios: number;
+  usuariosDistintos: number;
+};
+
+/**
+ * Traduz o que a REDE devolveu para o tipo acima, sem confiar em nada.
+ *
+ * O tipo e uma promessa do compilador sobre o codigo, nunca sobre a resposta.
+ * Na janela de deploy (Vercel primeiro, Railway depois) o bundle novo conversa
+ * com o backend antigo, que nao tem esta rota nem estes campos, e um
+ * `payload.top.length` direto derruba a aba inteira com TypeError. Campo que
+ * falta vira o estado vazio equivalente, que a tela ja sabe exibir.
+ */
+function numeroOuZero(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) ? v : 0;
+}
+
+function normalizarCustoPorUsuario(bruto: unknown): AiCostPerUserData {
+  const obj = (bruto ?? {}) as Partial<AiCostPerUserData>;
+  const numero = numeroOuZero;
+  return {
+    top: Array.isArray(obj.top) ? obj.top : [],
+    semUsuario:
+      obj.semUsuario && typeof obj.semUsuario === "object"
+        ? {
+            calls: numero(obj.semUsuario.calls),
+            success: numero(obj.semUsuario.success),
+            costUsd: numero(obj.semUsuario.costUsd),
+            semCustoMedido: numero(obj.semUsuario.semCustoMedido),
+          }
+        : null,
+    maisUsuarios: numero(obj.maisUsuarios),
+    usuariosDistintos: numero(obj.usuariosDistintos),
+  };
+}
+
+/**
  * Linha de cadastros do card "Usuarios totais".
  *
  * Ausencia e NOMEADA: `formatCount` devolve "0" para `null` (`value || 0`), e
@@ -6348,6 +6417,13 @@ export default function Admin() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [aiStats, setAiStats] = useState<AiStatsData>({});
   const [aiStatsError, setAiStatsError] = useState<string | null>(null);
+  const [aiCostPerUser, setAiCostPerUser] = useState<AiCostPerUserData | null>(
+    null,
+  );
+  const [aiCostPerUserError, setAiCostPerUserError] = useState<string | null>(
+    null,
+  );
+  const [aiCostPerUserLoading, setAiCostPerUserLoading] = useState(true);
   const [posthogState, setPosthogState] = useState<PosthogState | null>(null);
   // Horario REAL de calculo do funil (vem do envelope da janela default, cacheada
   // 5 min). null na janela custom/erro (que sao live). O PostHog e a unica fonte
@@ -6640,6 +6716,7 @@ export default function Admin() {
     const loadDashboardData = async () => {
       setDashboardLoading(true);
       setAiStatsLoading(true);
+      setAiCostPerUserLoading(true);
       setPosthogLoading(true);
       setChurnLoading(true);
       setAffiliatesStatsLoading(true);
@@ -6670,6 +6747,27 @@ export default function Admin() {
           ok: false as const,
           error:
             err instanceof Error ? err.message : "Erro ao carregar uso de IA.",
+        }));
+      // Falha aqui vira ESTADO de erro no card, nunca tabela vazia: tabela
+      // vazia diria "ninguem gastou IA nesta janela", que e um fato diferente de
+      // "nao consegui perguntar".
+      const aiCostPerUserPromise = adminFetch("/ai-cost-per-user")
+        .then((json) => ({
+          ok: true as const,
+          // NORMALIZADO NA BORDA, nao confiado. A Vercel sobe antes do Railway e
+          // existe uma janela de 1 a 3 minutos com bundle novo contra backend
+          // ANTIGO, que nao conhece esta rota nem estes campos. Ler `top.length`
+          // de um payload sem `top` derruba a aba INTEIRA com TypeError, que e
+          // pior que nao mostrar a tabela. Aqui a ausencia vira lista vazia e
+          // segue como estado "sem dados", que e o que ela e.
+          data: normalizarCustoPorUsuario(json.data),
+        }))
+        .catch((err: unknown) => ({
+          ok: false as const,
+          error:
+            err instanceof Error
+              ? err.message
+              : "Erro ao carregar custo de IA por usuário.",
         }));
       // PostHog: union do backend; falha de fetch vira o proprio estado error.
       // computedAt vem no envelope so na janela default (cacheada); ausente/erro
@@ -6751,6 +6849,17 @@ export default function Admin() {
           setAiStatsError(aiResult.error);
         }
         setAiStatsLoading(false);
+      });
+      void aiCostPerUserPromise.then((resultado) => {
+        if (cancelled) return;
+        if (resultado.ok) {
+          setAiCostPerUser(resultado.data);
+          setAiCostPerUserError(null);
+        } else {
+          setAiCostPerUser(null);
+          setAiCostPerUserError(resultado.error);
+        }
+        setAiCostPerUserLoading(false);
       });
       void posthogPromise.then((posthogResult) => {
         if (cancelled) return;
@@ -6854,6 +6963,8 @@ export default function Admin() {
           setAuditLogs([]);
           setAiStats({});
           setAiStatsError(null);
+          setAiCostPerUser(null);
+          setAiCostPerUserError(null);
           setPosthogState(null);
           setPosthogComputedAt(null);
           setChurnRiskUsers(null);
@@ -8145,11 +8256,103 @@ export default function Admin() {
                   <h3 className="font-display text-2xl font-black">
                     Custo por usuário
                   </h3>
+                  {/* TODO(Ana) */}
+                  <p className="mt-1 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+                    Últimos 30 dias
+                  </p>
                   <div className="mt-4">
-                    <PendingIntegration
-                      tool="ai_usage_logs por usuário"
-                      description="Dados agregados por usuário disponíveis após 30 dias"
-                    />
+                    {aiCostPerUserError ? (
+                      <ErrorBlock message={aiCostPerUserError} />
+                    ) : aiCostPerUserLoading ? (
+                      <LoadingBlock />
+                    ) : aiCostPerUser && aiCostPerUser.top.length > 0 ? (
+                      <>
+                        <div className="overflow-x-auto">
+                          <table
+                            data-testid="ia-custo-por-usuario"
+                            className="w-full text-left text-sm"
+                          >
+                            <thead>
+                              <tr className="border-b border-slate-200 text-xs font-black uppercase tracking-wider text-slate-500">
+                                {/* TODO(Ana) */}
+                                <th className="pb-2">Usuário</th>
+                                <th className="pb-2 text-right">Chamadas</th>
+                                <th className="pb-2 text-right">Custo</th>
+                                <th className="pb-2 text-right">Sem custo</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {aiCostPerUser.top.map((linha) => (
+                                <tr
+                                  key={linha.userId}
+                                  className="border-b border-slate-100 last:border-0"
+                                >
+                                  <td className="max-w-[16rem] truncate py-2 pr-3 font-bold">
+                                    {linha.email ?? linha.nome ?? (
+                                      <span className="text-slate-500">
+                                        {/* TODO(Ana) */}
+                                        {linha.userId.slice(0, 8)} (perfil
+                                        ausente)
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="py-2 text-right tabular-nums">
+                                    {formatCount(linha.calls)}
+                                  </td>
+                                  <td className="py-2 text-right tabular-nums font-bold">
+                                    US$ {numeroOuZero(linha.costUsd).toFixed(2)}
+                                  </td>
+                                  <td className="py-2 text-right tabular-nums text-slate-500">
+                                    {formatCount(linha.semCustoMedido)}
+                                  </td>
+                                </tr>
+                              ))}
+                              {aiCostPerUser.semUsuario ? (
+                                <tr
+                                  data-testid="ia-custo-sem-usuario"
+                                  className="border-t border-slate-300"
+                                >
+                                  <td className="py-2 pr-3 font-bold text-slate-500">
+                                    {/* TODO(Ana) */}
+                                    Sem usuário
+                                  </td>
+                                  <td className="py-2 text-right tabular-nums">
+                                    {formatCount(
+                                      aiCostPerUser.semUsuario.calls,
+                                    )}
+                                  </td>
+                                  <td className="py-2 text-right tabular-nums font-bold">
+                                    US${" "}
+                                    {aiCostPerUser.semUsuario.costUsd.toFixed(
+                                      2,
+                                    )}
+                                  </td>
+                                  <td className="py-2 text-right tabular-nums text-slate-500">
+                                    {formatCount(
+                                      aiCostPerUser.semUsuario.semCustoMedido,
+                                    )}
+                                  </td>
+                                </tr>
+                              ) : null}
+                            </tbody>
+                          </table>
+                        </div>
+                        {aiCostPerUser.maisUsuarios > 0 ? (
+                          <p
+                            data-testid="ia-custo-resto"
+                            className="mt-3 text-xs font-semibold text-slate-500"
+                          >
+                            {/* TODO(Ana) */}e mais{" "}
+                            {formatCount(aiCostPerUser.maisUsuarios)} usuários
+                          </p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-500">
+                        {/* TODO(Ana) */}
+                        Nenhuma chamada de IA na janela.
+                      </p>
+                    )}
                   </div>
                 </article>
               </div>
