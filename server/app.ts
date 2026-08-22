@@ -5,6 +5,7 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import { commitShaAtual } from "./lib/commitSha";
 import { env } from "./lib/env";
 import { falhaOpenAiNaCadeia } from "./lib/openaiFailure";
 import { isRateLimitExempt } from "./lib/rateLimitExempt";
@@ -546,6 +547,8 @@ app.get("/api/health", async (_req, res) => {
   res.status(status === "ok" ? 200 : 503).json({
     status,
     env: env.nodeEnv,
+    // QUAL BUILD E ESTE. Null fora do Railway; ver server/lib/commitSha.ts.
+    commit: commitShaAtual(),
     uptime: process.uptime(),
     responseTime: Date.now() - startTime,
     checks,

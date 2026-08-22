@@ -961,77 +961,215 @@ const CANCELLATION_REASON_CODES = [
 // desde 04/05, receita desde 13/07, snapshot desde 16/07), entao uma regra
 // global marcaria como indisponivel um Δ que existe e vice-versa. Cada card
 // declara a propria disponibilidade e, quando nao ha, o MOTIVO.
+// CACHE DE 60s, a MESMA duracao da rota irma /overview-series. Sao dez
+// consultas por requisicao (tres contagens em `profiles`, dois resumos de
+// financeiro, o snapshot de MRR e a agregacao de uso de IA), e o F5 do painel
+// as repetia inteiras: medido em 2026-08-22, entre 1,4s e 4,2s por chamada.
+// Sessenta segundos e o teto de atraso que estes numeros toleram, e e o mesmo
+// ja aceito para as series que aparecem na MESMA tela.
+//
+// A CHAVE INCLUI A JANELA. Sem isso `window=7` e `window=30` disputariam a
+// mesma entrada e um seletor envenenaria o outro: seis cards certos sobre o
+// periodo errado, indistinguiveis dos certos.
+//
+// SO OS CARDS ENTRAM NO CACHE. O rotulo e os limites da janela ficam FORA,
+// recalculados a cada requisicao, porque dependem do dia civil corrente e uma
+// virada de meia-noite dentro do TTL serviria um intervalo com o nome do dia
+// anterior. Mesmo recorte da /overview-series.
+const OVERVIEW_CACHE_TTL_S = 60;
+
 router.get("/overview", async (req, res, next) => {
   try {
     const janela = resolverJanela(parseOverviewWindow(req.query.window));
+    const { result: cards, computedAt } = await getOrCompute(
+      `admincache:overview:${janela.window}`,
+      OVERVIEW_CACHE_TTL_S,
+      async () => {
+        const contarPerfis = async (
+          desde: string | null,
+          ate: string,
+        ): Promise<number> => {
+          let q = supabaseAdmin
+            .from("profiles")
+            .select("user_id", { count: "exact", head: true })
+            .lte("created_at", ate);
+          if (desde) q = q.gte("created_at", desde);
+          const { count, error } = await q;
+          if (error) throw new Error(`overview profiles: ${error.message}`);
+          return count ?? 0;
+        };
 
-    const contarPerfis = async (
-      desde: string | null,
-      ate: string,
-    ): Promise<number> => {
-      let q = supabaseAdmin
-        .from("profiles")
-        .select("user_id", { count: "exact", head: true })
-        .lte("created_at", ate);
-      if (desde) q = q.gte("created_at", desde);
-      const { count, error } = await q;
-      if (error) throw new Error(`overview profiles: ${error.message}`);
-      return count ?? 0;
-    };
+        /** Data do registro mais antigo de uma tabela; null se estiver vazia. */
+        const inicioDaSerie = async (
+          tabela: "profiles" | "finance_transactions",
+          coluna: "created_at" | "occurred_at",
+        ): Promise<string | null> => {
+          const { data, error } = await supabaseAdmin
+            .from(tabela)
+            .select(coluna)
+            .order(coluna, { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          if (error) throw new Error(`overview ${tabela}: ${error.message}`);
+          return (data as Record<string, string> | null)?.[coluna] ?? null;
+        };
 
-    /** Data do registro mais antigo de uma tabela; null se estiver vazia. */
-    const inicioDaSerie = async (
-      tabela: "profiles" | "finance_transactions",
-      coluna: "created_at" | "occurred_at",
-    ): Promise<string | null> => {
-      const { data, error } = await supabaseAdmin
-        .from(tabela)
-        .select(coluna)
-        .order(coluna, { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw new Error(`overview ${tabela}: ${error.message}`);
-      return (data as Record<string, string> | null)?.[coluna] ?? null;
-    };
+        const [
+          novosAtual,
+          novosAnterior,
+          usuariosTotais,
+          perfisDesde,
+          proTally,
+          mrr,
+          receitaAtual,
+          receitaAnterior,
+          receitaDesde,
+          iaStats,
+        ] = await Promise.all([
+          contarPerfis(janela.startIso, janela.endIso),
+          janela.previousStartIso
+            ? contarPerfis(janela.previousStartIso, janela.previousEndIso!)
+            : Promise.resolve(null),
+          // TOTAL SEM RECORTE, pela MESMA funcao que serve o contador publico da
+          // home (server/lib/profilesCount.ts). Nao e `contarPerfis(null, endIso)`:
+          // aquilo tem `.lte(created_at, agora)` e ja nao contaria uma linha com
+          // `created_at` nulo. Sao dois numeros que precisam bater com a home, e a
+          // unica forma de garantir isso e nao existir uma segunda query.
+          contarPerfisTotal(),
+          inicioDaSerie("profiles", "created_at"),
+          contarProPorOrigem(),
+          getMrrSnapshot(),
+          getFinanceSummary({
+            from: new Date(janela.startIso ?? 0),
+            to: new Date(janela.endIso),
+          }),
+          janela.previousStartIso
+            ? getFinanceSummary({
+                from: new Date(janela.previousStartIso),
+                to: new Date(janela.previousEndIso!),
+              })
+            : Promise.resolve(null),
+          inicioDaSerie("finance_transactions", "occurred_at"),
+          agregarUsoDeIa(janela.startIso ?? new Date(0).toISOString()),
+        ]);
 
-    const [
-      novosAtual,
-      novosAnterior,
-      usuariosTotais,
-      perfisDesde,
-      proTally,
-      mrr,
-      receitaAtual,
-      receitaAnterior,
-      receitaDesde,
-      iaStats,
-    ] = await Promise.all([
-      contarPerfis(janela.startIso, janela.endIso),
-      janela.previousStartIso
-        ? contarPerfis(janela.previousStartIso, janela.previousEndIso!)
-        : Promise.resolve(null),
-      // TOTAL SEM RECORTE, pela MESMA funcao que serve o contador publico da
-      // home (server/lib/profilesCount.ts). Nao e `contarPerfis(null, endIso)`:
-      // aquilo tem `.lte(created_at, agora)` e ja nao contaria uma linha com
-      // `created_at` nulo. Sao dois numeros que precisam bater com a home, e a
-      // unica forma de garantir isso e nao existir uma segunda query.
-      contarPerfisTotal(),
-      inicioDaSerie("profiles", "created_at"),
-      contarProPorOrigem(),
-      getMrrSnapshot(),
-      getFinanceSummary({
-        from: new Date(janela.startIso ?? 0),
-        to: new Date(janela.endIso),
-      }),
-      janela.previousStartIso
-        ? getFinanceSummary({
-            from: new Date(janela.previousStartIso),
-            to: new Date(janela.previousEndIso!),
-          })
-        : Promise.resolve(null),
-      inicioDaSerie("finance_transactions", "occurred_at"),
-      agregarUsoDeIa(janela.startIso ?? new Date(0).toISOString()),
-    ]);
+        return {
+          result: {
+            // TOTAL, SEM JANELA. Existe porque a unica forma de o admin ver o
+            // total era escolher "Tudo" no seletor, o que muda os outros cinco
+            // cards junto; e porque a ausencia dele foi lida como divergencia
+            // contra a home (4.790 vs 5.456), quando os dois numeros estavam
+            // certos e respondiam perguntas diferentes.
+            //
+            // `value` pode ser NULL: e a degradacao silenciosa do Supabase que o
+            // contador da home ja tratava. Null e ausencia, nunca 0 — um "0
+            // usuarios" no painel e indistinguivel de base vazia.
+            usuariosTotais: { value: usuariosTotais },
+            novosUsuarios: {
+              value: novosAtual,
+              historicoDesde: perfisDesde,
+              change: calcularVariacao({
+                janela,
+                atual: novosAtual,
+                anterior: novosAnterior,
+                historicoDesdeIso: perfisDesde,
+              }),
+            },
+            // ESTADO ATUAL, nao serie: quantas pessoas tem Pro AGORA. O Δ dele sai
+            // do historico de snapshots (rota /subscription-history), que a tela
+            // ja consulta para o grafico; duplicar aqui seria uma segunda fonte.
+            //
+            // `both` passa a ir junto. Ele SEMPRE foi calculado por
+            // `tallyProSources` e era descartado aqui, e o resultado e que a tela
+            // exibia 96 + 25 e o total era 124: as 3 pessoas com assinatura E
+            // concessao de influencer nao apareciam em lugar nenhum. Os tres ramos
+            // sao mutuamente exclusivos e `total` e a UNIAO — quem le nao deve
+            // somar nada.
+            acessoPro: {
+              bySubscription: proTally.bySubscription,
+              byInfluencer: proTally.byInfluencer,
+              both: proTally.both,
+              total: proTally.total,
+            },
+            // `trialingCount` e `arpuCents` tambem ja eram calculados por
+            // getMrrSnapshot e descartados. Trial NAO paga e por isso fica FORA do
+            // MRR, do ARPU e da distribuicao por plano; ele vem separado para a
+            // tela poder mostrar um chip em vez de somar no headline de pagantes.
+            // `arpuCents` e null quando nao ha assinante ativo (ausencia, nao 0).
+            mrr: {
+              value: mrr.mrrCents,
+              activeCount: mrr.activeCount,
+              trialingCount: mrr.trialingCount,
+              arpuCents: mrr.arpuCents,
+            },
+            // BRUTO segue sendo o principal (e a base do Simples). O liquido vem
+            // ao lado porque bruto sozinho afirma uma receita que nao entrou: na
+            // janela medida em 2026-08-14 eram R$ 4.213,15 brutos contra
+            // R$ 3.874,99 liquidos, com R$ 189,42 de taxa e R$ 148,74 devolvidos.
+            // Os tres numeros JA eram calculados por getFinanceSummary no mesmo
+            // laco; nenhum e aritmetica nova.
+            receita: {
+              value: receitaAtual.receitaBrutaCents,
+              reembolsosCents: receitaAtual.reembolsosCents,
+              taxasCents: receitaAtual.taxasStripeCents,
+              liquidaCents: receitaAtual.receitaLiquidaCents,
+              historicoDesde: receitaDesde,
+              change: calcularVariacao({
+                janela,
+                atual: receitaAtual.receitaBrutaCents,
+                anterior: receitaAnterior?.receitaBrutaCents ?? null,
+                historicoDesdeIso: receitaDesde,
+              }),
+            },
+            // RECEITA EM RISCO e estado atual, nao serie: as assinaturas que JA tem
+            // data de saida MAIS as que estao em atraso. Nao tem Δ nem janela, e por
+            // isso a tela precisa dizer que ela ignora o seletor.
+            receitaEmRisco: {
+              count: mrr.atRisk.count,
+              mrrCents: mrr.atRisk.mrrCents,
+              // BREAKDOWN ADITIVO (D21): o total sozinho nao diz o que fazer, e as
+              // duas metades pedem acoes opostas (saida agendada = reter; atraso =
+              // recuperar cobranca). Campos NOVOS ao lado dos antigos, nunca troca
+              // seca: aba aberta desde antes do deploy segue lendo `count` e
+              // `mrrCents`, que continuam existindo e continuam somando o total.
+              saindo: mrr.atRisk.saindo,
+              emAtraso: mrr.atRisk.emAtraso,
+              percentOfMrr:
+                mrr.mrrCents > 0
+                  ? (mrr.atRisk.mrrCents / mrr.mrrCents) * 100
+                  : null,
+            },
+            // CUSTO DE IA EM DOLAR, e o campo antigo continua junto por um ciclo.
+            //
+            // `valueBrl` era o nome, e o valor NUNCA foi em real: sai de
+            // `MODEL_PRICING`, cotada em US$/1M tokens. O client formatava com
+            // `currency: "BRL"` e exibia R$ onde era US$.
+            //
+            // EXPAND/CONTRACT, nao troca seca: aba de admin aberta desde antes do
+            // deploy segue lendo `valueBrl` ate recarregar, e nao existe prazo
+            // para isso (CLAUDE.md, "Renomear campo de resposta"). Os dois nomes
+            // carregam o MESMO numero.
+            // REMOVER `valueBrl` a partir de 2026-09-15, no mesmo commit que
+            // atualizar server/lib/janelaDeDeployInversa.test.ts.
+            custoIa: {
+              valueUsd: custoTotalDeIa(iaStats),
+              valueBrl: custoTotalDeIa(iaStats),
+              // Piso declarado: quantas chamadas rodaram e nao tem custo medido.
+              // Vai ao lado, nunca somado.
+              chamadasSemCustoMedido: chamadasSemCustoMedido(iaStats),
+              // Null quando AI_COST_USD_BRL_RATE nao esta definida. Ausencia, nao
+              // conversao por 1.
+              valorEmBrl:
+                env.aiCostUsdBrlRate !== null
+                  ? custoTotalDeIa(iaStats) * env.aiCostUsdBrlRate
+                  : null,
+              cotacaoUsdBrl: env.aiCostUsdBrlRate,
+            },
+          },
+          computedAt: new Date().toISOString(),
+        };
+      },
+    );
 
     res.json({
       data: {
@@ -1059,119 +1197,9 @@ router.get("/overview", async (req, res, next) => {
               )
             : null,
         tz: OVERVIEW_TZ_LABEL,
-        cards: {
-          // TOTAL, SEM JANELA. Existe porque a unica forma de o admin ver o
-          // total era escolher "Tudo" no seletor, o que muda os outros cinco
-          // cards junto; e porque a ausencia dele foi lida como divergencia
-          // contra a home (4.790 vs 5.456), quando os dois numeros estavam
-          // certos e respondiam perguntas diferentes.
-          //
-          // `value` pode ser NULL: e a degradacao silenciosa do Supabase que o
-          // contador da home ja tratava. Null e ausencia, nunca 0 — um "0
-          // usuarios" no painel e indistinguivel de base vazia.
-          usuariosTotais: { value: usuariosTotais },
-          novosUsuarios: {
-            value: novosAtual,
-            historicoDesde: perfisDesde,
-            change: calcularVariacao({
-              janela,
-              atual: novosAtual,
-              anterior: novosAnterior,
-              historicoDesdeIso: perfisDesde,
-            }),
-          },
-          // ESTADO ATUAL, nao serie: quantas pessoas tem Pro AGORA. O Δ dele sai
-          // do historico de snapshots (rota /subscription-history), que a tela
-          // ja consulta para o grafico; duplicar aqui seria uma segunda fonte.
-          //
-          // `both` passa a ir junto. Ele SEMPRE foi calculado por
-          // `tallyProSources` e era descartado aqui, e o resultado e que a tela
-          // exibia 96 + 25 e o total era 124: as 3 pessoas com assinatura E
-          // concessao de influencer nao apareciam em lugar nenhum. Os tres ramos
-          // sao mutuamente exclusivos e `total` e a UNIAO — quem le nao deve
-          // somar nada.
-          acessoPro: {
-            bySubscription: proTally.bySubscription,
-            byInfluencer: proTally.byInfluencer,
-            both: proTally.both,
-            total: proTally.total,
-          },
-          // `trialingCount` e `arpuCents` tambem ja eram calculados por
-          // getMrrSnapshot e descartados. Trial NAO paga e por isso fica FORA do
-          // MRR, do ARPU e da distribuicao por plano; ele vem separado para a
-          // tela poder mostrar um chip em vez de somar no headline de pagantes.
-          // `arpuCents` e null quando nao ha assinante ativo (ausencia, nao 0).
-          mrr: {
-            value: mrr.mrrCents,
-            activeCount: mrr.activeCount,
-            trialingCount: mrr.trialingCount,
-            arpuCents: mrr.arpuCents,
-          },
-          // BRUTO segue sendo o principal (e a base do Simples). O liquido vem
-          // ao lado porque bruto sozinho afirma uma receita que nao entrou: na
-          // janela medida em 2026-08-14 eram R$ 4.213,15 brutos contra
-          // R$ 3.874,99 liquidos, com R$ 189,42 de taxa e R$ 148,74 devolvidos.
-          // Os tres numeros JA eram calculados por getFinanceSummary no mesmo
-          // laco; nenhum e aritmetica nova.
-          receita: {
-            value: receitaAtual.receitaBrutaCents,
-            reembolsosCents: receitaAtual.reembolsosCents,
-            taxasCents: receitaAtual.taxasStripeCents,
-            liquidaCents: receitaAtual.receitaLiquidaCents,
-            historicoDesde: receitaDesde,
-            change: calcularVariacao({
-              janela,
-              atual: receitaAtual.receitaBrutaCents,
-              anterior: receitaAnterior?.receitaBrutaCents ?? null,
-              historicoDesdeIso: receitaDesde,
-            }),
-          },
-          // RECEITA EM RISCO e estado atual, nao serie: as assinaturas que JA tem
-          // data de saida MAIS as que estao em atraso. Nao tem Δ nem janela, e por
-          // isso a tela precisa dizer que ela ignora o seletor.
-          receitaEmRisco: {
-            count: mrr.atRisk.count,
-            mrrCents: mrr.atRisk.mrrCents,
-            // BREAKDOWN ADITIVO (D21): o total sozinho nao diz o que fazer, e as
-            // duas metades pedem acoes opostas (saida agendada = reter; atraso =
-            // recuperar cobranca). Campos NOVOS ao lado dos antigos, nunca troca
-            // seca: aba aberta desde antes do deploy segue lendo `count` e
-            // `mrrCents`, que continuam existindo e continuam somando o total.
-            saindo: mrr.atRisk.saindo,
-            emAtraso: mrr.atRisk.emAtraso,
-            percentOfMrr:
-              mrr.mrrCents > 0
-                ? (mrr.atRisk.mrrCents / mrr.mrrCents) * 100
-                : null,
-          },
-          // CUSTO DE IA EM DOLAR, e o campo antigo continua junto por um ciclo.
-          //
-          // `valueBrl` era o nome, e o valor NUNCA foi em real: sai de
-          // `MODEL_PRICING`, cotada em US$/1M tokens. O client formatava com
-          // `currency: "BRL"` e exibia R$ onde era US$.
-          //
-          // EXPAND/CONTRACT, nao troca seca: aba de admin aberta desde antes do
-          // deploy segue lendo `valueBrl` ate recarregar, e nao existe prazo
-          // para isso (CLAUDE.md, "Renomear campo de resposta"). Os dois nomes
-          // carregam o MESMO numero.
-          // REMOVER `valueBrl` a partir de 2026-09-15, no mesmo commit que
-          // atualizar server/lib/janelaDeDeployInversa.test.ts.
-          custoIa: {
-            valueUsd: custoTotalDeIa(iaStats),
-            valueBrl: custoTotalDeIa(iaStats),
-            // Piso declarado: quantas chamadas rodaram e nao tem custo medido.
-            // Vai ao lado, nunca somado.
-            chamadasSemCustoMedido: chamadasSemCustoMedido(iaStats),
-            // Null quando AI_COST_USD_BRL_RATE nao esta definida. Ausencia, nao
-            // conversao por 1.
-            valorEmBrl:
-              env.aiCostUsdBrlRate !== null
-                ? custoTotalDeIa(iaStats) * env.aiCostUsdBrlRate
-                : null,
-            cotacaoUsdBrl: env.aiCostUsdBrlRate,
-          },
-        },
+        cards,
       },
+      computedAt,
     });
   } catch (err) {
     next(err);
@@ -1213,8 +1241,18 @@ router.get("/paid-funnel", async (_req, res, next) => {
 
 // SERIES, FUNIL E USO POR FERRAMENTA da Visao (Fase 4).
 //
-// ROTA IRMA do /overview, com a MESMA janela (`resolverJanela`) e o mesmo cache
-// de 60s. Separada em vez de embutida porque o payload e uma ordem de grandeza
+// ROTA IRMA do /overview, com a MESMA janela (`resolverJanela`) e o mesmo
+// mecanismo de cache, com o mesmo TTL de 60s e CHAVES DISTINTAS:
+// `admincache:overview-series:<janela>` aqui, `admincache:overview:<janela>` la.
+// Duas chaves de proposito, porque sao dois payloads; o que precisa coincidir e
+// a duracao, para os cards e as series na mesma tela nunca descreverem instantes
+// diferentes por mais de um minuto.
+//
+// Ate 2026-08-22 esta frase dizia que as duas dividiam "o MESMO cache de 60s" e
+// isso era FALSO: o /overview nao passava por `getOrCompute` nenhum. Ficou
+// falso porque descrevia a rota vizinha, que ninguem reabre ao mexer nesta.
+//
+// Separada em vez de embutida porque o payload e uma ordem de grandeza
 // maior (uma serie por metrica) e nem toda tela precisa dele: os cards carregam
 // sozinhos e as series chegam depois, sem segurar o primeiro render.
 //

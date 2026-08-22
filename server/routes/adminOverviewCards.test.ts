@@ -153,6 +153,14 @@ function base(over: Record<string, RespostaTabela> = {}) {
 }
 
 /**
+ * Hora, dentro do dia civil de Brasília, em que toda linha de fixture nasce:
+ * 03:30Z = 00:30 local. As duas formas do valor existem porque `diasAtras`
+ * precisa da ARITMÉTICA e as fixtures precisam do TEXTO.
+ */
+const FIXTURE_HORA_Z = "03:30:00Z";
+const FIXTURE_OFFSET_MS = 3 * 3600_000 + 30 * 60_000;
+
+/**
  * Um dia civil de Brasília N dias atrás, para fixture que precisa cair DENTRO
  * de uma janela em qualquer data de execução.
  *
@@ -166,17 +174,78 @@ function base(over: Record<string, RespostaTabela> = {}) {
  * dias e tinha o mesmo defeito com pavio mais longo. Uma segunda cópia local
  * seria a mesma aritmética em dois lugares, que é a que diverge na primeira
  * correção aplicada só num deles.
+ *
+ * ANCORADO NO INSTANTE DA FIXTURE, e não nas 03:00Z do dia civil. Foi a
+ * TERCEIRA REINCIDÊNCIA do mesmo flake, e as duas correções anteriores (data
+ * fixa para data relativa) eram metade da resposta: o dia civil de Brasília
+ * começa às 03:00Z, mas a fixture nasce às 03:30Z, então descontando só as 3
+ * horas, entre 03:00Z e 03:30Z (isto é, entre 00:00 e 00:30 em Brasília),
+ * `diasAtras(0)` devolvia o dia que tinha acabado de começar e a linha
+ * correspondente ficava trinta minutos NO FUTURO, fora da janela do card. Meia
+ * hora de vermelho por noite, sem nada ter mudado no código.
+ *
+ * Descontar o offset da própria fixture faz `diasAtras(0)` cair no dia anterior
+ * exatamente nessa faixa, e não muda absolutamente nada fora dela. A trava está
+ * no bloco "a fixture de HOJE nunca nasce no futuro", que percorre as 24 horas.
  */
 function diasAtras(n: number) {
   const d = new Date(Date.now() - n * 24 * 3600_000);
-  // 03:30Z do dia civil de Brasília: o mesmo instante que `perfil` usa, então
-  // o recorte é o mesmo dos dois lados.
-  return new Date(d.getTime() - 3 * 3600_000).toISOString().slice(0, 10);
+  return new Date(d.getTime() - FIXTURE_OFFSET_MS).toISOString().slice(0, 10);
 }
 
 afterEach(() => {
   vi.clearAllMocks();
   estado.totalDePerfis = 5456;
+});
+
+// ---------------------------------------------------------------------------
+// 1.0 — A PRÓPRIA FIXTURE
+// ---------------------------------------------------------------------------
+
+describe("ancoragem das fixtures relativas", () => {
+  it("a fixture de HOJE nunca nasce no futuro, em qualquer hora de execução", () => {
+    // O FREIO da terceira reincidência do flake das 03:30Z. Ele não testa uma
+    // hora escolhida a dedo: varre o dia inteiro de cinco em cinco minutos,
+    // porque a faixa que quebrava tinha meia hora de largura e um teste que
+    // amostrasse só 03:15Z travaria o sintoma, não a regra.
+    //
+    // A afirmação é a que importa e é a que faltava: o instante que a fixture
+    // declara tem de ser PASSADO em relação ao relógio que o teste vai usar.
+    // Uma linha de perfil no futuro sai da janela do card sem erro nenhum, e o
+    // resultado é uma soma menor que a esperada, plausível e silenciosa.
+    const relogio = vi.spyOn(Date, "now");
+    try {
+      for (let minuto = 0; minuto < 24 * 60; minuto += 5) {
+        const instante = Date.UTC(2026, 7, 22) + minuto * 60_000;
+        relogio.mockReturnValue(instante);
+        const nascimento = new Date(
+          `${diasAtras(0)}T${FIXTURE_HORA_Z}`,
+        ).getTime();
+        expect({
+          hora: new Date(instante).toISOString(),
+          futuro: nascimento > instante,
+        }).toEqual({ hora: new Date(instante).toISOString(), futuro: false });
+      }
+    } finally {
+      relogio.mockRestore();
+    }
+  });
+
+  it("dias distintos continuam distintos, inclusive dentro da faixa que quebrava", () => {
+    // CONTROLE NEGATIVO da correção acima. Recuar a âncora em trinta minutos
+    // poderia, no limite, colapsar dois `diasAtras` no mesmo dia civil e fazer
+    // uma fixture de quatro linhas virar uma de três, sem nada acusar. Não
+    // colapsa: o deslocamento é o mesmo para todos os `n`.
+    const relogio = vi.spyOn(Date, "now");
+    try {
+      relogio.mockReturnValue(Date.UTC(2026, 7, 22, 3, 15)); // 00:15 em Brasília
+      const dias = [0, 1, 2, 3, 4].map(diasAtras);
+      expect(new Set(dias).size).toBe(5);
+      expect(dias[0]).toBe("2026-08-21");
+    } finally {
+      relogio.mockRestore();
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -732,7 +801,7 @@ describe("GET /overview-series", () => {
     // 03:00Z), e no passado em relação a qualquer hora de execução do teste. Com
     // 15:00Z a linha de "hoje" ficava no FUTURO e caía fora da janela, que é
     // como esta fixture descobriu que série e funil usavam critérios diferentes.
-    return { user_id: id, created_at: `${dia}T03:30:00Z` };
+    return { user_id: id, created_at: `${dia}T${FIXTURE_HORA_Z}` };
   }
   function serie(r: RespostaHttp, chave: string) {
     return (
@@ -864,7 +933,7 @@ describe("GET /overview-series", () => {
             tool: "linkedin-analyzer",
             status: "success",
             cost_estimate: "0.5",
-            created_at: `${diasAtras(1)}T03:30:00Z`,
+            created_at: `${diasAtras(1)}T${FIXTURE_HORA_Z}`,
           },
           {
             id: "l2",
@@ -872,7 +941,7 @@ describe("GET /overview-series", () => {
             tool: "linkedin-analyzer",
             status: "success",
             cost_estimate: "0.5",
-            created_at: `${diasAtras(2)}T03:30:00Z`,
+            created_at: `${diasAtras(2)}T${FIXTURE_HORA_Z}`,
           },
         ],
       },
@@ -949,7 +1018,7 @@ describe("GET /overview-series", () => {
             tool: "github-perfil",
             status: "success",
             cost_estimate: "0",
-            created_at: `${diasAtras(1)}T03:30:00Z`,
+            created_at: `${diasAtras(1)}T${FIXTURE_HORA_Z}`,
           },
           {
             id: "l2",
@@ -957,7 +1026,7 @@ describe("GET /overview-series", () => {
             tool: "linkedin-analyzer",
             status: "success",
             cost_estimate: "0.25",
-            created_at: `${diasAtras(1)}T03:30:00Z`,
+            created_at: `${diasAtras(1)}T${FIXTURE_HORA_Z}`,
           },
         ],
       },
