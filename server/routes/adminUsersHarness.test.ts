@@ -267,6 +267,45 @@ export type SupabaseDouble = {
  * Cria o dublê. `respostas` mapeia tabela -> resposta; tabela ausente do mapa
  * faz a consulta LANÇAR, nunca devolver vazio.
  */
+/**
+ * ACESSO A JSONB do PostgREST: `coluna->chave->chave`.
+ *
+ * Devolve a COLUNA BASE do caminho (a unica parte que o Postgres valida contra o
+ * schema), ou `null` quando o nome nao e um caminho. As chaves depois da coluna
+ * sao do documento jsonb e nao existem em `database.types.ts`: valida-las seria
+ * inventar um schema que o banco nao tem.
+ *
+ * Medido antes de escrever: existe UMA forma em producao,
+ * `result->qualitative->lastroResumo` (`server/routes/admin.ts`). E so ela que
+ * esta suportada aqui, de proposito.
+ *
+ * FALHA ALTO no que nao entende, em vez de deixar passar. Um caminho com `->>`
+ * (extracao como TEXTO) ou com indice de array muda o TIPO do que volta, e um
+ * duble que os aceitasse calado devolveria o objeto onde a rota espera texto, ou
+ * o array onde ela espera um item: o teste passaria e a producao quebraria. Este
+ * duble existe justamente para nao ter esse tipo de silencio.
+ */
+export function baseDeCaminhoJsonb(col: string): string | null {
+  if (!col.includes("->")) return null;
+  if (col.includes("->>")) {
+    throw new Error(
+      `[double] caminho jsonb "${col}" usa "->>" (extracao como texto), que este duble nao resolve. ` +
+        `O tipo do retorno muda, entao aceitar calado esconderia um erro real.`,
+    );
+  }
+  const partes = col.split("->");
+  const base = partes[0].trim();
+  for (const chave of partes.slice(1)) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(chave.trim())) {
+      throw new Error(
+        `[double] caminho jsonb "${col}" tem o segmento "${chave}", que nao e uma chave simples ` +
+          `(indice de array e aspas nao estao suportados). Ensine o duble antes de usar esta forma.`,
+      );
+    }
+  }
+  return base;
+}
+
 export function criarSupabaseDouble(
   respostas: Record<string, RespostaTabela | (() => RespostaTabela)>,
   authAdmin: Record<string, unknown> = {},
@@ -292,7 +331,8 @@ export function criarSupabaseDouble(
         `[double] tabela "${table}" não existe em shared/database.types.ts`,
       );
     }
-    for (const col of colunas) {
+    for (const bruto of colunas) {
+      const col = baseDeCaminhoJsonb(bruto) ?? bruto;
       if (col === "*" || EMBEDS_CONHECIDOS.has(col)) continue;
       if (COLUNAS_PENDENTES_VALIDAS.has(`${table}.${col}`)) continue;
       if (!validas.has(col)) {
@@ -479,6 +519,57 @@ describe("o parser de colunas afirma o TOTAL, não só a pertinência", () => {
   it("não inventa coluna que não existe", () => {
     expect(COLUNAS_POR_TABELA.get("profiles")!.has("coluna_fantasma")).toBe(
       false,
+    );
+  });
+});
+
+describe("o duble resolve caminho JSONB do PostgREST", () => {
+  // A FORMA MEDIDA em producao, e a unica suportada de proposito:
+  // `result->qualitative->lastroResumo` (server/routes/admin.ts).
+  it("aceita o caminho e valida a COLUNA BASE contra o schema", () => {
+    expect(baseDeCaminhoJsonb("result->qualitative->lastroResumo")).toBe(
+      "result",
+    );
+    expect(baseDeCaminhoJsonb("input->entryPath")).toBe("input");
+  });
+
+  it("nome sem caminho continua sendo nome", () => {
+    expect(baseDeCaminhoJsonb("id")).toBeNull();
+    expect(baseDeCaminhoJsonb("created_at")).toBeNull();
+  });
+
+  it("a query real da rota de lastro passa pelo duble", () => {
+    const d = criarSupabaseDouble({ linkedin_analyses: { rows: [] } });
+    expect(() =>
+      (
+        d.client.from("linkedin_analyses") as {
+          select: (c: string) => unknown;
+        }
+      ).select("result->qualitative->lastroResumo, created_at"),
+    ).not.toThrow();
+  });
+
+  it("a COLUNA BASE inexistente continua sendo recusada", () => {
+    // O caminho jsonb nao pode virar um passe livre: se a base nao existe, o
+    // Postgres recusaria, e o duble tambem tem de recusar.
+    const d = criarSupabaseDouble({ linkedin_analyses: { rows: [] } });
+    expect(() =>
+      (
+        d.client.from("linkedin_analyses") as {
+          select: (c: string) => unknown;
+        }
+      ).select("colunaQueNaoExiste->qualitative"),
+    ).toThrow(/não existe em "linkedin_analyses"/);
+  });
+
+  it("FALHA ALTO na forma que nao entende, nunca resolve calado", () => {
+    // `->>` muda o tipo do retorno (texto em vez de objeto). Aceitar calado
+    // faria o teste passar sobre um formato que a rota nao recebe.
+    expect(() => baseDeCaminhoJsonb("result->>qualitative")).toThrow(/->>/);
+    // Indice de array idem: volta um item, nao a lista.
+    expect(() => baseDeCaminhoJsonb("result->0")).toThrow(/indice de array/);
+    expect(() => baseDeCaminhoJsonb('result->"chave com aspas"')).toThrow(
+      /chave simples/,
     );
   });
 });

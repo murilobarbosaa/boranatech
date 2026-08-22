@@ -17,24 +17,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  */
 
 /**
- * STUB LOCAL do supabase, e nao o `criarSupabaseDouble` da casa.
+ * DUBLE DA CASA, desde a Fase 4 lote 5.
  *
- * O double compartilhado valida cada coluna do `select` contra
- * `shared/database.types.ts` e recusa a query inteira quando nao reconhece o
- * nome. Ele nao conhece a sintaxe de ACESSO A JSONB do PostgREST
- * (`result->qualitative->lastroResumo`), que e a que esta rota usa e que ja
- * roda em producao em `server/routes/linkedin.ts` (o `select` do historico usa
- * a mesma forma). Ensina-lo custaria mexer no harness de todas as suites de
- * admin, que esta fora do escopo deste lote e fica sinalizado no relatorio.
+ * Ate aqui este arquivo usava stub local, e o motivo estava escrito: o
+ * `criarSupabaseDouble` validava cada coluna do `select` contra
+ * `shared/database.types.ts` e nao conhecia a sintaxe de ACESSO A JSONB do
+ * PostgREST (`result->qualitative->lastroResumo`), que e a desta rota. O lote 5
+ * ensinou o duble a resolver essa forma, entao a razao do desvio acabou.
  *
- * O que se perde com o stub local e a validacao de nome de coluna. A
- * contramedida esta no primeiro teste do bloco da rota: ele AFIRMA a string de
- * `select` enviada, entao um nome errado quebra aqui em vez de virar um 500 em
- * producao.
+ * O QUE SE GANHA na volta: a validacao de nome de coluna contra o schema real.
+ * Antes, um nome errado so seria pego pela assercao da string de `select`, que
+ * e defesa em profundidade e continua abaixo, mas confere TEXTO, nao existencia.
+ * Agora as duas coisas valem: a coluna base tem de existir no schema E a string
+ * tem de ser a esperada.
  */
 const estado = vi.hoisted(() => ({
   linhas: [] as unknown[],
-  selects: [] as string[],
+  duble: null as { chamadas: { table: string; colunas: string[] }[] } | null,
   erro: null as { message: string } | null,
 }));
 
@@ -70,33 +69,16 @@ vi.mock("../lib/env", () => ({
     refundMaxPerMinute: 100000,
   },
 }));
-vi.mock("../lib/supabaseAdmin", () => {
-  // Encadeamento minimo do postgrest-js: `.select().gte().order().limit()`,
-  // com o `await` resolvendo no fim. So o que esta rota usa.
-  const construir = (colunas: string) => {
-    estado.selects.push(colunas);
-    const resultado = {
-      data: estado.erro ? null : estado.linhas,
+vi.mock("../lib/supabaseAdmin", async () => {
+  const { criarSupabaseDouble } = await import("./adminUsersHarness.test");
+  const duble = criarSupabaseDouble({
+    linkedin_analyses: () => ({
+      rows: estado.erro ? [] : (estado.linhas as Record<string, unknown>[]),
       error: estado.erro,
-    };
-    const encadeavel: Record<string, unknown> = {
-      then: (resolver: (v: unknown) => unknown) => resolver(resultado),
-    };
-    for (const metodo of ["gte", "lte", "order", "limit", "eq"]) {
-      encadeavel[metodo] = () => encadeavel;
-    }
-    return encadeavel;
-  };
-  return {
-    supabaseAdmin: {
-      from: (tabela: string) => {
-        if (tabela !== "linkedin_analyses") {
-          throw new Error(`[stub] tabela inesperada: ${tabela}`);
-        }
-        return { select: (colunas: string) => construir(colunas) };
-      },
-    },
-  };
+    }),
+  });
+  estado.duble = duble;
+  return { supabaseAdmin: duble.client };
 });
 vi.mock("../lib/stripeClient", () => ({
   getStripe: () => ({}),
@@ -143,7 +125,7 @@ const chamarAdmin = criarClienteAdmin(adminRouter);
 function montar(linhas: unknown[]) {
   estado.linhas = linhas;
   estado.erro = null;
-  estado.selects = [];
+  if (estado.duble) estado.duble.chamadas.length = 0;
 }
 
 afterEach(() => {
@@ -213,7 +195,13 @@ describe("GET /linkedin-lastro: a fiacao", () => {
     // roda em producao no `select` do historico, em `server/routes/linkedin.ts`.
     montar([]);
     await chamarAdmin("GET", "/linkedin-lastro");
-    expect(estado.selects).toEqual(["result->qualitative->lastroResumo"]);
+    // DEFESA EM PROFUNDIDADE, mantida de proposito. O duble ja recusa coluna
+    // base inexistente contra o schema; esta assercao confere o TEXTO exato do
+    // caminho jsonb, que o schema nao tem como validar (as chaves depois da
+    // coluna vivem dentro do documento). As duas cobrem coisas diferentes.
+    expect(
+      (estado.duble?.chamadas ?? []).map((c) => c.colunas.join(",")),
+    ).toEqual(["result->qualitative->lastroResumo"]);
   });
 
   it("agrega as linhas da janela e declara o periodo", async () => {
