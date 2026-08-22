@@ -85,8 +85,14 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // guardas no topo e as rotas entram depois, o que os dois testes acima verificam
 // por posição. 57 -> 58 em 2026-08-17, com `GET /admin/online-now` (presença do
 // card "Atividade agora" da Visão); ela entra depois dos dois `router.use` do
-// topo, como as anteriores, e este arquivo é quem confere isso.
-const EXPECTED_ROUTE_COUNT = 58;
+// topo, como as anteriores, e este arquivo é quem confere isso. 58 -> 59 em
+// 2026-08-22, com `GET /admin/ai-cost-per-user` (a tabela de custo de IA por
+// usuário, que aposentou um placeholder cuja copy prometia dados "após 30 dias"
+// enquanto eles existiam havia mais de cem). Ela é declarada na seção de rotas
+// de IA, depois dos dois `router.use` do topo, e os dois testes acima conferem
+// isso por posição. A rota expõe e-mail de pessoa: estar atrás de
+// `requireAuth` + `requireAdmin` não é detalhe aqui, é o requisito.
+const EXPECTED_ROUTE_COUNT = 59;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {
