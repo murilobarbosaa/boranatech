@@ -1062,7 +1062,7 @@ router.get("/overview", async (req, res, next) => {
             // certos e respondiam perguntas diferentes.
             //
             // `value` pode ser NULL: e a degradacao silenciosa do Supabase que o
-            // contador da home ja tratava. Null e ausencia, nunca 0 — um "0
+            // contador da home ja tratava. Null e ausencia, nunca 0: um "0
             // usuarios" no painel e indistinguivel de base vazia.
             usuariosTotais: { value: usuariosTotais },
             novosUsuarios: {
@@ -1083,8 +1083,8 @@ router.get("/overview", async (req, res, next) => {
             // `tallyProSources` e era descartado aqui, e o resultado e que a tela
             // exibia 96 + 25 e o total era 124: as 3 pessoas com assinatura E
             // concessao de influencer nao apareciam em lugar nenhum. Os tres ramos
-            // sao mutuamente exclusivos e `total` e a UNIAO — quem le nao deve
-            // somar nada.
+            // sao mutuamente exclusivos e `total` e a UNIAO, entao quem le nao
+            // deve somar nada.
             acessoPro: {
               bySubscription: proTally.bySubscription,
               byInfluencer: proTally.byInfluencer,
@@ -1181,7 +1181,7 @@ router.get("/overview", async (req, res, next) => {
         // O rotulo vem do servidor para a tela nao reimplementar fuso: sao seis
         // cards e dois graficos, e cada um formatando por conta propria seria
         // uma chance nova de o MESMO intervalo aparecer com dois nomes. Com
-        // `tz` declarado ao lado, o badge pode dizer "16 jul - 14 ago
+        // `tz` declarado ao lado, o badge pode dizer "16 jul a 14 ago
         // (Brasilia)" sem que o client precise saber onde e Brasilia.
         windowFirstDay: janela.primeiroDiaCivil,
         windowLastDay: janela.ultimoDiaCivil,
