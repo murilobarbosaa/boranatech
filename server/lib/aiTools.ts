@@ -120,13 +120,27 @@ export function estimateCostFromTokens(
 }
 
 /**
- * Aproximacao de tokens a partir de caracteres. Continua sendo uma
- * aproximacao grosseira: medido no analisador de LinkedIn, 9.097 caracteres de
- * entrada viraram 4.130 tokens reais, ou seja 2,2 chars/token e nao 4, entao a
- * conta SUBESTIMA a entrada em portugues com termos tecnicos. Trocar isto exige
- * ler `usage` da resposta da OpenAI em todas as rotas, que e trabalho a parte.
+ * Aproximacao de tokens a partir de caracteres, para o fallback.
+ *
+ * CALIBRADO EM 2026-08-22, na Fase 4 lote 3, de 4 para 2,2.
+ *
+ * ORIGEM DO NUMERO, e ela e uma MEDICAO, nao um palpite: no analisador de
+ * LinkedIn, que le `usage` de verdade, 9.097 caracteres de entrada viraram
+ * 4.130 tokens reais. 9097 / 4130 = 2,2027, arredondado para 2,2. A nota dessa
+ * medicao ja estava neste arquivo desde a Fase 2, dizendo que o 4 subestimava a
+ * entrada; o que faltava era trocar o valor, e e o que este lote faz.
+ *
+ * POR QUE O 4 ERRAVA PARA BAIXO: ele e a regra de bolso do ingles corrido. O
+ * texto daqui e portugues com termos tecnicos, nomes de empresa e pontuacao de
+ * curriculo, que o tokenizador quebra bem mais. Com 4, o fallback reportava
+ * cerca de 45% menos entrada do que a real.
+ *
+ * ISTO CONTINUA SENDO ESTIMATIVA, e nao medicao. Onde ha `usage`, o custo sai
+ * dos tokens exatos e este numero nem e consultado (ver `FonteDoCusto`). Ele so
+ * governa as rotas que ainda nao repassam `usage`, e existe para o painel errar
+ * menos, nao para virar verdade.
  */
-export const CHARS_PER_TOKEN = 4;
+export const CHARS_PER_TOKEN = 2.2;
 
 export const AI_TOOLS: Record<string, AiToolConfig> = {
   // A antiga "interview" (form de disparo unico da rota generica) saiu do

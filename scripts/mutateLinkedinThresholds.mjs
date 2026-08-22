@@ -30,6 +30,7 @@ const C = "server/lib/linkedinChecks.ts";
 const A = "server/lib/linkedinAnalyze.ts";
 const I = "server/lib/linkedinIdioma.ts";
 const PZ = "shared/linkedin/prazos.ts";
+const AT = "server/lib/aiTools.ts";
 
 // [arquivo, nome do limiar, string original, string mutada]
 const MUT = [
@@ -284,6 +285,18 @@ const MUT = [
     "FATOR_DOMINANCIA do detector de idioma",
     "const FATOR_DOMINANCIA = 2;",
     "const FATOR_DOMINANCIA = 1;",
+  ],
+  // Regua do fallback por caracteres (Fase 4, lote 3). Entra em MUT porque ela
+  // decide DINHEIRO no painel: e ela que converte caracteres em tokens nas rotas
+  // que ainda nao repassam o `usage` da OpenAI. Mutar para 4 e voltar a regua
+  // antiga, a regra de bolso do ingles, que subestimava a entrada em cerca de
+  // 45%. Morre em `server/lib/aiToolsCusto.test.ts`, na aritmetica com numeros
+  // literais.
+  [
+    AT,
+    "CHARS_PER_TOKEN (regua do fallback)",
+    "export const CHARS_PER_TOKEN = 2.2;",
+    "export const CHARS_PER_TOKEN = 4;",
   ],
   // PARCELAS DA CONTA DO PIOR CASO (Fase 4, lote 1). Todas em MUT, e todas
   // morrem em `shared/linkedin/prazos.test.ts`, que afirma a conta fechada
@@ -603,6 +616,14 @@ const FONTES = [
   // verdade, o prazo por round-trip de banco, que e parcela da conta do pior
   // caso do servidor e portanto do teto de aborto do client.
   "shared/linkedin/prazos.ts",
+  // Ferramentas de IA (Fase 4, lote 3). Entra por causa do `CHARS_PER_TOKEN`,
+  // que e a regua do fallback de custo e portanto decide dinheiro no painel.
+  // NAO e arquivo do analisador, e esta consciente: o guard nasceu para os
+  // limiares do LinkedIn, mas foi ele quem mediu a regua (9.097 caracteres para
+  // 4.130 tokens reais), e um segundo guard so para uma constante seria um lugar
+  // a mais para manter. Os precos de `MODEL_PRICING` NAO entram em MUT de
+  // proposito: mutar preco em rodada de teste e a ultima coisa que se quer.
+  "server/lib/aiTools.ts",
 ];
 
 const PADROES_SITIO = [
@@ -643,6 +664,10 @@ const NAO_LIMIAR = [
   [/slice\(0, 300\)/, "corte de mensagem de erro para log"],
   [/slice\(0, 1500\)/, "teto do texto de dedup persistido, nao entra em check"],
   [/temperature:/, "parametro do modelo, nao limiar de regra"],
+  [
+    /maxInputChars:/,
+    "teto de entrada por ferramenta de IA, corta o pedido antes de sair; nao decide veredito nem custo",
+  ],
   // `AI_MAX_ATTEMPTS` e `AI_BACKOFF_MS` sairam desta lista na Fase 4: eles
   // MUDARAM DE CLASSE. Enquanto eram parametro operacional solto de
   // `linkedinAnalyze.ts`, mudar um nao tinha efeito observavel que valesse
@@ -856,8 +881,11 @@ function auditarCobertura() {
   return sitios.length;
 }
 
+// `server/lib/aiTools` entrou na Fase 4 lote 3, junto com o CHARS_PER_TOKEN em
+// MUT: mutante cujo teste nao roda na varredura e mutante que sobrevive por
+// engano, e sobrevivencia por engano se le como limiar sem rede.
 const ALVOS =
-  "shared/linkedin server/lib/linkedin client/src/components/linkedin";
+  "shared/linkedin server/lib/linkedin server/lib/aiTools client/src/components/linkedin";
 const VIZINHANCA = process.argv.includes("--vizinhanca");
 
 /**
