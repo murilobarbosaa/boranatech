@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { runPaymentRecovery } from "./paymentRecovery";
+import { recuperacaoDegradada, runPaymentRecovery } from "./paymentRecovery";
 import {
   EPISODIO_NOVO_MS,
   MAX_EPISODIOS,
@@ -35,7 +35,26 @@ const db = {
   envios: [] as LinhaEnvio[],
   assinaturasAtivasDe: new Set<string>(),
   suprimidos: new Set<string>(),
+  /**
+   * Tabelas cuja LEITURA deve devolver erro, para exercitar os estados de falha
+   * com o proprio nome. Chaveado por tabela porque e assim que o erro chega na
+   * vida real: o supabase-js devolve `{ data: null, error }` por consulta, e nao
+   * uma excecao.
+   */
+  erroDeLeituraEm: new Set<string>(),
 };
+
+const sentrySpy = vi.hoisted(() => ({
+  captureException: vi.fn(),
+  setTag: vi.fn(),
+}));
+
+vi.mock("@sentry/node", () => ({
+  captureException: sentrySpy.captureException,
+  withScope: (
+    fn: (scope: { setTag: (k: string, v: string) => void }) => void,
+  ) => fn({ setTag: sentrySpy.setTag }),
+}));
 
 const enviados: { to: string; bucket: string }[] = [];
 /**
@@ -63,6 +82,9 @@ vi.mock("./supabaseAdmin", () => {
       order: async () => ({ data: db.recusas, error: null }),
       in: () => api,
       limit: async () => {
+        if (db.erroDeLeituraEm.has(tabela)) {
+          return { data: null, error: { message: `falha simulada em ${tabela}` } };
+        }
         if (tabela === "subscriptions") {
           const uid = String(filtros.user_id ?? "");
           return {
@@ -140,6 +162,9 @@ beforeEach(() => {
   db.envios = [];
   db.assinaturasAtivasDe = new Set();
   db.suprimidos = new Set();
+  db.erroDeLeituraEm = new Set();
+  sentrySpy.captureException.mockClear();
+  sentrySpy.setTag.mockClear();
   enviados.length = 0;
   tentativasDeEscrita.length = 0;
 });
@@ -247,5 +272,123 @@ describe("runPaymentRecovery com a chave unica do banco", () => {
     const r = await runPaymentRecovery(new Date(T0 + 5 * 60_000));
     expect(r.enviados).toBe(0);
     expect(r.ignorados.debounce).toBe(1);
+  });
+});
+
+/**
+ * FALHA DE LEITURA NAO E ESTADO VALIDO.
+ *
+ * O comportamento na duvida (nao enviar) ja estava certo e nao muda aqui: estes
+ * testes o travam junto. O que eles acrescentam e a asserção sobre o NOME. Antes,
+ * uma falha ao checar assinatura era contada como `converteu` e uma falha ao
+ * checar supressao como `suprimido`, dois estados legitimos e frequentes: um dia
+ * inteiro com o banco fora do ar apareceria no relatorio do cron como um dia de
+ * conversoes, e o job sairia verde.
+ *
+ * Por isso cada teste afirma as TRES coisas juntas: a chave de erro subiu, a
+ * chave legitima NAO foi inflada, e ninguem recebeu e-mail.
+ */
+describe("falha de checagem e contada com o proprio nome", () => {
+  it("erro ao checar assinatura vira erro_checagem_assinatura, nao converteu", async () => {
+    db.recusas = [recusa(T0)];
+    db.erroDeLeituraEm = new Set(["subscriptions"]);
+
+    const r = await runPaymentRecovery(new Date(T0 + 31 * 60_000));
+
+    expect(r.ignorados.erro_checagem_assinatura).toBe(1);
+    expect(r.ignorados.converteu).toBeUndefined();
+    expect(r.enviados).toBe(0);
+    expect(enviados).toHaveLength(0);
+  });
+
+  it("erro ao checar supressao vira erro_checagem_supressao, nao suprimido", async () => {
+    db.recusas = [recusa(T0)];
+    db.erroDeLeituraEm = new Set(["email_suppressions"]);
+
+    const r = await runPaymentRecovery(new Date(T0 + 31 * 60_000));
+
+    expect(r.ignorados.erro_checagem_supressao).toBe(1);
+    expect(r.ignorados.suprimido).toBeUndefined();
+    expect(r.enviados).toBe(0);
+    expect(enviados).toHaveLength(0);
+  });
+
+  it("conta UMA pessoa mesmo com as duas checagens falhando", async () => {
+    db.recusas = [recusa(T0)];
+    db.erroDeLeituraEm = new Set(["subscriptions", "email_suppressions"]);
+
+    const r = await runPaymentRecovery(new Date(T0 + 31 * 60_000));
+
+    // `ignorados` conta pessoas puladas. Somar os dois motivos para a mesma
+    // pessoa faria o total das chaves passar de `pessoasNaJanela`.
+    const total = Object.values(r.ignorados).reduce((a, n) => a + n, 0);
+    expect(total).toBe(r.pessoasNaJanela);
+    expect(r.ignorados.erro_checagem_assinatura).toBe(1);
+    expect(r.ignorados.erro_checagem_supressao).toBeUndefined();
+  });
+
+  it("reporta a falha de leitura ao Sentry, nao so ao console", async () => {
+    db.recusas = [recusa(T0)];
+    db.erroDeLeituraEm = new Set(["subscriptions"]);
+
+    await runPaymentRecovery(new Date(T0 + 31 * 60_000));
+
+    expect(sentrySpy.captureException).toHaveBeenCalledTimes(1);
+    expect(sentrySpy.setTag).toHaveBeenCalledWith("job", "payment-recovery");
+    expect(sentrySpy.setTag).toHaveBeenCalledWith("checagem", "assinatura");
+  });
+
+  it("nao chama o Sentry quando a varredura corre limpa", async () => {
+    db.recusas = [recusa(T0)];
+
+    const r = await runPaymentRecovery(new Date(T0 + 31 * 60_000));
+
+    expect(r.enviados).toBe(1);
+    expect(sentrySpy.captureException).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * O predicado que decide o status gravado em cron_run_logs.
+ *
+ * Testado aqui, e nao pela rota, porque e funcao exportada justamente para isso
+ * (mesmo motivo de `runDegradada` em lib/sentryTaskIntake.ts). Nenhum teste desta
+ * base sobe o router de cron.
+ */
+describe("recuperacaoDegradada", () => {
+  const base = { pessoasNaJanela: 1, enviados: 0 };
+
+  it("e falso na varredura limpa", () => {
+    expect(recuperacaoDegradada({ ...base, ignorados: {} })).toBe(false);
+    expect(
+      recuperacaoDegradada({ ...base, ignorados: { debounce: 3, converteu: 2 } }),
+    ).toBe(false);
+  });
+
+  it("e verdadeiro para QUALQUER chave erro_", () => {
+    for (const chave of [
+      "erro_leitura",
+      "erro_registro",
+      "erro_checagem_assinatura",
+      "erro_checagem_supressao",
+    ]) {
+      expect(recuperacaoDegradada({ ...base, ignorados: { [chave]: 1 } })).toBe(
+        true,
+      );
+    }
+  });
+
+  it("pega uma chave erro_ futura que ninguem cadastrou", () => {
+    // O predicado e por prefixo de proposito: uma lista escrita a mao aqui
+    // deixaria de acusar no primeiro erro novo, em silencio.
+    expect(
+      recuperacaoDegradada({ ...base, ignorados: { erro_inventado_amanha: 1 } }),
+    ).toBe(true);
+  });
+
+  it("ignora chave erro_ zerada", () => {
+    expect(
+      recuperacaoDegradada({ ...base, ignorados: { erro_registro: 0 } }),
+    ).toBe(false);
   });
 });

@@ -15,6 +15,8 @@
 // `ja_registrado`. Quem falhasse em agosto e voltasse em outubro nunca receberia
 // e-mail, e o contador diria "ja tratado". Ver a migration 20260822100400.
 
+import * as Sentry from "@sentry/node";
+
 import {
   classificarMotivo,
   decidirRecuperacao,
@@ -46,6 +48,18 @@ export type ResultadoRecuperacao = {
 };
 
 /**
+ * Leitura com DOIS desfechos distintos, e a distincao e o ponto desta funcao.
+ *
+ * `{ ok: false }` NAO e um `valor` qualquer: e a ausencia de resposta. Colapsar
+ * "nao consegui ler" em `valor: true` faria a falha desaparecer dentro de um
+ * numero legitimo, que e a familia de defeito que esta base ja pagou caro (o
+ * `contarLinhas` devolvendo -1, o endpoint que respondia 200 com lista vazia, e
+ * o all-accounts-Pro). O COMPORTAMENTO na duvida continua o mesmo, pular sem
+ * enviar; o que muda e o nome com que a duvida e contada.
+ */
+type Checagem = { ok: true; valor: boolean } | { ok: false };
+
+/**
  * Converteu = tem assinatura que da acesso (active/trialing).
  *
  * ESTA CHECAGEM SO FUNCIONA COM user_id, e isso e um limite declarado, nao um
@@ -62,8 +76,8 @@ export type ResultadoRecuperacao = {
  * resultado. Parecia uma segunda verificacao e nao verificava nada. Removida: e
  * melhor um limite escrito que uma consulta decorativa.
  */
-async function converteu(userId: string | null): Promise<boolean> {
-  if (!userId) return false;
+async function converteu(userId: string | null): Promise<Checagem> {
+  if (!userId) return { ok: true, valor: false };
   const { data, error } = await supabaseAdmin
     .from("subscriptions")
     .select("id")
@@ -71,18 +85,31 @@ async function converteu(userId: string | null): Promise<boolean> {
     .in("status", ["active", "trialing"])
     .limit(1);
   // Erro de leitura NAO pode virar "nao converteu": mandaria e-mail de recusa
-  // para quem ja e assinante. Na duvida, trata como convertido e nao envia.
+  // para quem ja e assinante. Na duvida NAO se envia, e isso nao mudou.
+  //
+  // O que mudou e que a duvida deixou de se chamar `converteu`. Contada com
+  // aquele nome, uma falha de leitura era indistinguivel de uma conversao real
+  // no relatorio do cron, e um banco fora do ar apareceria como um dia de
+  // conversoes otimo.
   if (error) {
     console.error(
-      "[paymentRecovery] falha ao checar assinatura; tratando como convertido:",
+      "[paymentRecovery] falha ao checar assinatura; pulando esta pessoa:",
       error,
     );
-    return true;
+    // Mesma forma do relato em routes/billing.ts (commit 9e60b0b4): o console
+    // do Railway e o unico rastro hoje, e server/lib/sentry.ts nao instala
+    // integracao de console.
+    Sentry.withScope((scope) => {
+      scope.setTag("job", "payment-recovery");
+      scope.setTag("checagem", "assinatura");
+      Sentry.captureException(error);
+    });
+    return { ok: false };
   }
-  return (data?.length ?? 0) > 0;
+  return { ok: true, valor: (data?.length ?? 0) > 0 };
 }
 
-async function estaSuprimido(email: string): Promise<boolean> {
+async function estaSuprimido(email: string): Promise<Checagem> {
   const { data, error } = await supabaseAdmin
     .from("email_suppressions")
     .select("email")
@@ -91,13 +118,20 @@ async function estaSuprimido(email: string): Promise<boolean> {
   if (error) {
     // Mesma logica: na duvida NAO manda. Enviar para endereco suprimido queima
     // reputacao de dominio, que e dano compartilhado com todo e-mail do produto.
+    // E, como acima, a duvida e contada com o proprio nome em vez de virar
+    // `suprimido`, que e um estado legitimo e frequente.
     console.error(
-      "[paymentRecovery] falha ao checar supressao; tratando como suprimido:",
+      "[paymentRecovery] falha ao checar supressao; pulando esta pessoa:",
       error,
     );
-    return true;
+    Sentry.withScope((scope) => {
+      scope.setTag("job", "payment-recovery");
+      scope.setTag("checagem", "supressao");
+      Sentry.captureException(error);
+    });
+    return { ok: false };
   }
-  return (data?.length ?? 0) > 0;
+  return { ok: true, valor: (data?.length ?? 0) > 0 };
 }
 
 export async function runPaymentRecovery(
@@ -151,11 +185,35 @@ export async function runPaymentRecovery(
         `[paymentRecovery] falha ao ler envios de ${email}; pulando:`,
         erroEnvios,
       );
+      Sentry.withScope((scope) => {
+        scope.setTag("job", "payment-recovery");
+        scope.setTag("checagem", "leitura_envios");
+        Sentry.captureException(erroEnvios);
+      });
       ignorados.erro_leitura = (ignorados.erro_leitura ?? 0) + 1;
       continue;
     }
 
     const userId = doEmail.find((l) => l.supabase_user_id)?.supabase_user_id ?? null;
+
+    // As duas checagens ANTES de decidir, e cada falha com seu proprio nome. Sao
+    // avaliadas em sequencia com saida na primeira que falhar: `ignorados` conta
+    // PESSOAS PULADAS, uma por iteracao, entao somar dois motivos para a mesma
+    // pessoa inflaria o total e faria a soma das chaves deixar de bater com
+    // `pessoasNaJanela`.
+    const chConverteu = await converteu(userId);
+    if (!chConverteu.ok) {
+      ignorados.erro_checagem_assinatura =
+        (ignorados.erro_checagem_assinatura ?? 0) + 1;
+      continue;
+    }
+    const chSuprimido = await estaSuprimido(email);
+    if (!chSuprimido.ok) {
+      ignorados.erro_checagem_supressao =
+        (ignorados.erro_checagem_supressao ?? 0) + 1;
+      continue;
+    }
+
     const decisao = decidirRecuperacao({
       agoraMs: agora.getTime(),
       ultimaTentativaMs,
@@ -166,8 +224,8 @@ export async function runPaymentRecovery(
           episodio: Number(e.episodio),
         }),
       ),
-      converteu: await converteu(userId),
-      suprimido: await estaSuprimido(email),
+      converteu: chConverteu.valor,
+      suprimido: chSuprimido.valor,
       emailValido: validateEmailForSending(email).ok,
     });
 
@@ -211,6 +269,11 @@ export async function runPaymentRecovery(
         `[paymentRecovery] falha ao registrar envio para ${email}; NAO enviando:`,
         erroInsert,
       );
+      Sentry.withScope((scope) => {
+        scope.setTag("job", "payment-recovery");
+        scope.setTag("checagem", "registro_envio");
+        Sentry.captureException(erroInsert);
+      });
       ignorados.erro_registro = (ignorados.erro_registro ?? 0) + 1;
       continue;
     }
@@ -230,4 +293,23 @@ export async function runPaymentRecovery(
   }
 
   return { pessoasNaJanela: porEmail.size, enviados, ignorados };
+}
+
+/**
+ * Houve algo que merece status 'partial' em vez de 'success'?
+ *
+ * Por PREFIXO e nao por lista: as chaves de erro sao `erro_leitura`,
+ * `erro_registro`, `erro_checagem_assinatura` e `erro_checagem_supressao`, e uma
+ * lista escrita a mao aqui envelheceria na quinta, silenciosamente e no sentido
+ * ruim (deixando de acusar). Toda chave de `ignorados` que comece com `erro_` e
+ * degradacao por construcao.
+ *
+ * Funcao exportada, no lugar de um ternario no call site, pelo mesmo motivo de
+ * `runDegradada` em lib/sentryTaskIntake.ts: o predicado fica exercitavel sem
+ * subir o router de cron.
+ */
+export function recuperacaoDegradada(r: ResultadoRecuperacao): boolean {
+  return Object.entries(r.ignorados).some(
+    ([chave, n]) => chave.startsWith("erro_") && n > 0,
+  );
 }
