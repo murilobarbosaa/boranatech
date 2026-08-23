@@ -203,7 +203,11 @@ const naoReconhecidasOutras: string[] = [];
 // manda o CLAUDE.md: a tabela e declarada de verdade (CREATE TABLE IF NOT
 // EXISTS public.admin_refunds) e existe no banco alvo, entao o parser esta
 // certo e quem estava desatualizado era o numero.
-const EXPECTED_TABLE_COUNT = 82;
+// 83 desde 20260811171556_create_external_events.sql (cria external_events).
+// Migration declaratoria: a tabela ja existia em producao, criada fora do
+// repositorio, e o arquivo entrou depois para fechar o historico. O numero sobe
+// pelo mesmo motivo de sempre, porque o CONJUNTO DECLARADO cresceu.
+const EXPECTED_TABLE_COUNT = 83;
 
 // Mesma assercao de tamanho das tabelas, pelo mesmo motivo: pegar o caso em que
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
@@ -221,14 +225,22 @@ const EXPECTED_TABLE_COUNT = 82;
 //
 // Alterar este numero e ato deliberado, no mesmo commit da migration que cria ou
 // dropa a funcao.
-const EXPECTED_FUNCTION_COUNT = 28;
+//
+// 30 desde 20260811171556_create_external_events.sql, que declara DUAS funcoes
+// de trigger de uma vez (external_events_bloqueia_delete e
+// external_events_touch). As duas sobem tambem o contador de trigger abaixo,
+// nunca so um dos dois.
+const EXPECTED_FUNCTION_COUNT = 30;
 // 5 desde a MESMA migration: set_admin_task_archive_source devolve trigger,
 // entao nao e exposta pelo PostgREST e sai do conjunto verificavel por REST. Os
 // dois numeros sobem juntos quando a funcao nova e de trigger, e so o primeiro
 // sobe quando ela e chamavel. Subir so um dos dois esconderia uma funcao real
 // que a classificacao passou a tratar como trigger, que e o defeito que este par
 // de asserções existe para pegar.
-const EXPECTED_TRIGGER_FUNCTION_COUNT = 5;
+// 7 desde 20260811171556_create_external_events.sql: as duas funcoes novas
+// devolvem trigger, entao saem do conjunto verificavel por REST e os dois
+// numeros sobem juntos, como o paragrafo acima exige.
+const EXPECTED_TRIGGER_FUNCTION_COUNT = 7;
 
 /** Remove comentarios de linha e de bloco antes de qualquer parse. */
 /**
@@ -734,7 +746,7 @@ const DE_EXTENSAO = new Set([
  * Calculada FORA do `if (expostas !== null)` de proposito: ela nao depende da
  * leitura de funcoes, e a verificacao de RLS da direcao inversa (mais abaixo)
  * precisa dela. Quando morava dentro daquele bloco, a referencia de baixo
- * compilava e quebrava em runtime com `ReferenceError` — e `pnpm check` NAO
+ * compilava e quebrava em runtime com `ReferenceError`, e `pnpm check` NAO
  * pegou, porque o `include` do tsconfig.json e `client/src`, `shared` e
  * `server`: `scripts/` fica de fora do typecheck.
  */
@@ -771,7 +783,9 @@ if (expostas !== null) {
 // ---------------------------------------------------------------------------
 // 82 pela mesma causa do EXPECTED_TABLE_COUNT: admin_refunds declara
 // `alter table ... enable row level security` e entrou sem o numero subir.
-const EXPECTED_RLS_COUNT = 82;
+// 83 desde 20260811171556_create_external_events.sql: external_events declara
+// `alter table ... enable row level security`, entao entra no conjunto.
+const EXPECTED_RLS_COUNT = 83;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 const rlsVivas = [...rlsDeclarada].filter((t) => declared.has(t)).sort();
