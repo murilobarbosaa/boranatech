@@ -700,7 +700,7 @@ export function UserDetailModal({
                         Nota: {fmtText(detail.influencer.note)}
                       </p>
                       {!edit.editing ? (
-                        <div className="flex flex-wrap gap-2 border-t-2 border-violet-200 pt-3">
+                        <div className="flex flex-wrap justify-center gap-2 border-t-2 border-violet-200 pt-3">
                           {revokeConfirm ? (
                             <>
                               <button
