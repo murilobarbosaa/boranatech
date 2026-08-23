@@ -1990,9 +1990,13 @@ router.get("/content/:type", async (req, res, next) => {
 
     const { search, published } = req.query;
     const orderField = type === "external_jobs" ? "fetched_at" : "created_at";
+    // `count: "exact"` na PROPRIA query, e nao numa segunda chamada: o count sai
+    // com os mesmos filtros da listagem por construcao, entao nao existe o caso
+    // em que os dois divergem porque alguem acrescentou um filtro em um lugar e
+    // esqueceu do outro.
     let query = supabaseAdmin
       .from(tabelaDe(type))
-      .select("*")
+      .select("*", { count: "exact" })
       .order(orderField, { ascending: false })
       .limit(100);
 
@@ -2003,11 +2007,17 @@ router.get("/content/:type", async (req, res, next) => {
       query = query.eq("is_published", published === "true");
     if (search) query = query.ilike(getSearchColumn(type), `%${search}%`);
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
     if (error)
       return next(dbError("content list", error, "Erro ao buscar conteúdo."));
 
-    res.json({ data: data || [] });
+    // `total: null` quando o count nao veio, NUNCA data.length como substituto:
+    // cair para o tamanho da pagina faria "nao sei quantos sao" parecer "sao
+    // exatamente estes", que e o desfecho que este campo existe para evitar.
+    res.json({
+      data: data || [],
+      total: typeof count === "number" ? count : null,
+    });
   } catch (err) {
     next(err);
   }

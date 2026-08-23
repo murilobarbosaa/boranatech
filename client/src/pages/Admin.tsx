@@ -5658,6 +5658,11 @@ function ContentAdminSection() {
   // devolvia 500. A aba Eventos ficou assim por tres meses sem ninguem notar,
   // porque a tela mentia com confianca em vez de acusar a falha.
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Total real no banco, com os mesmos filtros da listagem. `null` significa
+  // "o backend nao informou", que e o caso na janela de deploy em que o
+  // frontend novo conversa com o backend antigo: sem numero, nenhum aviso e
+  // dado, em vez de inventar um.
+  const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -5673,6 +5678,7 @@ function ContentAdminSection() {
     if (!config.supported) {
       setItems([]);
       setLoadError(null);
+      setTotal(null);
       return;
     }
 
@@ -5681,8 +5687,10 @@ function ContentAdminSection() {
     try {
       const json = await adminFetch(`/content/${type}`);
       setItems(Array.isArray(json.data) ? json.data : []);
+      setTotal(typeof json.total === "number" ? json.total : null);
     } catch (error) {
       setItems([]);
+      setTotal(null);
       // TODO(Ana)
       const message =
         error instanceof Error ? error.message : "Erro ao carregar conteúdo.";
@@ -6316,6 +6324,13 @@ function ContentAdminSection() {
                   <span>Status</span>
                   <span>Ações</span>
                 </div>
+                {!loading && total !== null && total > items.length ? (
+                  <div className="border-b-2 border-slate-900 bg-amber-100 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-900">
+                    {/* TODO(Ana) */}
+                    Mostrando {items.length} de {total} registros. Use a busca
+                    para chegar no que não aparece aqui.
+                  </div>
+                ) : null}
                 {loading ? (
                   <div className="p-5">
                     <LoadingBlock />
