@@ -95,6 +95,16 @@ function collectLeaves(nodes: RoadmapNode[]): RoadmapNode[] {
   );
 }
 
+// Todos os nos, folhas e intermediarios. Diferente de collectLeaves de
+// proposito: `byLanguage` nao e privilegio de folha, e um bloco pendurado num
+// no intermediario escaparia de uma varredura que so olha folha.
+function collectNodes(nodes: RoadmapNode[]): RoadmapNode[] {
+  return nodes.flatMap((node) => [
+    node,
+    ...(node.children ? collectNodes(node.children) : []),
+  ]);
+}
+
 const projectIds = new Set(projetos.map((p) => p.id));
 const unknownProjects: string[] = [];
 const projectLinks: Record<
@@ -159,6 +169,49 @@ function checkLoaders(): string[] {
       problems.push(
         `loaders.ts tem entrada "${key}" que nao existe no agregado`,
       );
+    }
+  }
+  return problems;
+}
+
+// Cobertura de byLanguage. Numa trilha que declara `languages`, todo no com
+// `byLanguage` precisa trazer EXATAMENTE os ids declarados.
+//
+// Existe porque a lacuna degrada em SILENCIO: RoadmapNodeItem.tsx resolve o
+// conteudo com `node.byLanguage?.[language.id]`, entao a chave ausente nao
+// quebra render nenhum, ela entrega o texto generico a quem escolheu aquela
+// linguagem, sem nada acusar. Linguagem nova num seletor de 18 nos e
+// exatamente o caso em que um bloco esquecido passa despercebido.
+//
+// Afirma o CONJUNTO, nao a pertinencia: chave faltando e chave sobrando
+// reprovam do mesmo jeito. O sentido "sobrando" nao e simetria decorativa, e
+// o que pega o bloco orfao deixado para tras quando uma linguagem sai do
+// seletor. Trilha sem `languages` nao e afetada.
+function checkLanguageCoverage(): string[] {
+  const problems: string[] = [];
+  for (const roadmap of roadmapsV2) {
+    const declared = roadmap.languages?.map((language) => language.id) ?? [];
+    if (declared.length === 0) continue;
+    const declaredSet = new Set(declared);
+
+    for (const section of roadmap.sections) {
+      for (const node of collectNodes(section.children)) {
+        if (!node.byLanguage) continue;
+        const keys = Object.keys(node.byLanguage);
+        const faltando = declared.filter((id) => !keys.includes(id));
+        const sobrando = keys.filter((key) => !declaredSet.has(key));
+        if (faltando.length === 0 && sobrando.length === 0) continue;
+
+        const detalhe = [
+          faltando.length > 0 ? `faltando [${faltando.join(", ")}]` : "",
+          sobrando.length > 0 ? `sobrando [${sobrando.join(", ")}]` : "",
+        ]
+          .filter(Boolean)
+          .join(", ");
+        problems.push(
+          `trilha "${roadmap.slug}", no "${node.id}": byLanguage ${detalhe} (languages declaradas: [${declared.join(", ")}])`,
+        );
+      }
     }
   }
   return problems;
@@ -279,6 +332,11 @@ if (checkMode) {
   }
 
   for (const problem of checkLoaders()) {
+    console.error(`[generateRoadmapMeta] ${problem}`);
+    failed = true;
+  }
+
+  for (const problem of checkLanguageCoverage()) {
     console.error(`[generateRoadmapMeta] ${problem}`);
     failed = true;
   }
