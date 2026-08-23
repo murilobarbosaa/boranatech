@@ -3,6 +3,7 @@ import { useState } from "react";
 import FiscalDataModal from "@/components/fiscal/FiscalDataModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { useNfseEnabled } from "@/services/nfseStatus";
 import { hasFiscalIdentity } from "@shared/fiscalIdentity";
 
 // Aviso para quem PAGA e ainda nao tem dados fiscais completos.
@@ -45,6 +46,7 @@ function foiDispensado(): boolean {
 export default function FiscalDataBanner() {
   const { user, profile, refreshProfile } = useAuth();
   const { subscription, loading } = useSubscription();
+  const nfseEnabled = useNfseEnabled();
   const [dispensado, setDispensado] = useState(() => foiDispensado());
   const [modalAberto, setModalAberto] = useState(false);
 
@@ -62,7 +64,19 @@ export default function FiscalDataBanner() {
   // transitorio nosso, e pior que demorar um pouco para pedir.
   const faltaDado = profile ? !hasFiscalIdentity(profile) : false;
 
-  if (loading || !user || !assinanteAtivo || !faltaDado || dispensado) {
+  // `nfseEnabled` PRIMEIRO na condicao: com a emissao desligada nao existe nota
+  // para emitir, entao pedir dado fiscal seria cobrar cadastro por um recurso
+  // que nao vai rodar. A guarda mora aqui dentro, junto das outras condicoes, e
+  // nao em quem monta o banner, para valer para todo call site (hoje so o
+  // Layout, mas a regra do projeto e proteger dentro da funcao).
+  if (
+    !nfseEnabled ||
+    loading ||
+    !user ||
+    !assinanteAtivo ||
+    !faltaDado ||
+    dispensado
+  ) {
     return null;
   }
 

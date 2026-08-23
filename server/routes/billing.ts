@@ -272,6 +272,30 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
 });
 
 /**
+ * Estado da emissao de NFS-e, para o frontend decidir o que montar.
+ *
+ * POR QUE UMA ROTA, e nao uma env do bundle: `VITE_NFSE_ENABLED` congelaria o
+ * valor no build, e o deploy nao e atomico (a Vercel sobe antes do Railway).
+ * Uma janela de minutos com frontend afirmando "ligado" contra um backend que
+ * ainda responde desligado e exatamente o que esta rota evita: quem sabe do
+ * kill-switch e o processo que o le.
+ *
+ * PUBLICA de proposito. O banner fiscal mora no Layout, que atravessa TODA
+ * pagina, inclusive as anonimas; com `requireAuth` cada carga deslogada geraria
+ * um 401 previsivel e inutil. O dado nao e do usuario: e uma flag de
+ * configuracao do produto, a mesma para todo mundo, e nao revela nada sobre
+ * quem pergunta.
+ *
+ * O valor POSITIVO tambem e declarado (nao so o "disabled" das outras rotas
+ * fiscais) porque o consumidor e fail-closed: o cliente so mostra superficie
+ * fiscal com o literal "enabled" na mao, e trata ausencia, erro e resposta
+ * desconhecida como desligado.
+ */
+router.get("/nfse-status", (_req, res) => {
+  res.json({ data: { nfse: env.nfseEnabled ? "enabled" : "disabled" } });
+});
+
+/**
  * Notas fiscais do proprio usuario.
  *
  * So `issued` e `canceled`: os demais estados sao de PROCESSO nosso (pending,

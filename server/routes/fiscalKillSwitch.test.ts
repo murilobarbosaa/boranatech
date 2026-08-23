@@ -191,6 +191,33 @@ function chamadasDe(table: string): Chamada[] {
   return estado.chamadas.filter((c) => c.table === table);
 }
 
+describe("GET /billing/nfse-status", () => {
+  it("com a emissao desligada declara disabled", async () => {
+    const r = await chamarBilling("GET", "/nfse-status");
+
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ data: { nfse: "disabled" } });
+  });
+
+  it("com a emissao ligada declara enabled", async () => {
+    estado.nfseEnabled = true;
+
+    const r = await chamarBilling("GET", "/nfse-status");
+
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ data: { nfse: "enabled" } });
+  });
+
+  it("nao toca o banco em nenhum dos dois estados", async () => {
+    await chamarBilling("GET", "/nfse-status");
+    estado.nfseEnabled = true;
+    await chamarBilling("GET", "/nfse-status");
+
+    // E uma flag de configuracao lida do processo, nao um dado consultado.
+    expect(estado.chamadas).toHaveLength(0);
+  });
+});
+
 describe("GET /billing/invoices", () => {
   it("com a emissao desligada devolve 200, lista vazia e o estado nomeado, sem tocar o banco", async () => {
     const r = await chamarBilling("GET", "/invoices");

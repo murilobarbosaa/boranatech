@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { useNfseEnabled } from "@/services/nfseStatus";
+
 import {
   getMyFiscalInvoices,
   type FiscalInvoiceListItem,
@@ -37,12 +39,18 @@ const downloadClass =
   "rounded-full border-2 border-[#1a1a1a] bg-white px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px";
 
 export default function FiscalInvoicesSection() {
+  const nfseEnabled = useNfseEnabled();
   const [invoices, setInvoices] = useState<FiscalInvoiceListItem[] | null>(
     null,
   );
   const [erro, setErro] = useState(false);
 
   useEffect(() => {
+    // Sem emissao ligada NAO ha chamada. O gate precisa estar aqui dentro, e
+    // nao so no render: montar a secao e nao pedir nada e diferente de esconder
+    // a secao depois de ja ter pedido, e era esta chamada que ia ao banco a
+    // cada abertura do /perfil de qualquer usuario logado.
+    if (!nfseEnabled) return;
     let cancelled = false;
     getMyFiscalInvoices()
       .then((lista) => {
@@ -61,7 +69,11 @@ export default function FiscalInvoicesSection() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [nfseEnabled]);
+
+  // Escondida por completo com a emissao desligada: uma secao "Suas notas" que
+  // promete notas de um pipeline que nao roda e pior que a ausencia dela.
+  if (!nfseEnabled) return null;
 
   return (
     <section className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">

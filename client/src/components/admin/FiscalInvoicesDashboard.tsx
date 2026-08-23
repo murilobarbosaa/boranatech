@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { adminFetch } from "@/lib/adminApi";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
+import { useNfseEnabled } from "@/services/nfseStatus";
 
 // Painel das notas fiscais.
 //
@@ -114,6 +115,7 @@ function Contador({
 }
 
 export function FiscalInvoicesDashboard() {
+  const nfseEnabled = useNfseEnabled();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [filtro, setFiltro] = useState("");
@@ -122,6 +124,12 @@ export function FiscalInvoicesDashboard() {
   const [retrying, setRetrying] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
+    // Emissao desligada: nao pergunta nada. O resumo e a lista existem para
+    // descrever um pipeline que nao esta rodando.
+    if (!nfseEnabled) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setErro(null);
     try {
@@ -140,7 +148,7 @@ export function FiscalInvoicesDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [filtro]);
+  }, [filtro, nfseEnabled]);
 
   useEffect(() => {
     void carregar();
@@ -156,6 +164,20 @@ export function FiscalInvoicesDashboard() {
     } finally {
       setRetrying(null);
     }
+  }
+
+  // DIFERENTE das superficies de usuario, que somem: aqui o painel declara o
+  // estado em uma linha. Quem abre o financeiro precisa distinguir "nao ha nota
+  // nenhuma" de "a emissao esta desligada", e um espaco vazio no lugar dos
+  // cartoes diria a primeira coisa enquanto a verdade e a segunda.
+  if (!nfseEnabled) {
+    return (
+      <p className="rounded-2xl border-2 border-slate-900 bg-white px-4 py-3 text-sm font-bold text-slate-700">
+        {/* TODO(Ana): copy do painel fiscal com a emissao desligada. */}
+        Emissão de NFS-e desligada. Nenhuma nota é emitida enquanto o
+        kill-switch estiver desligado.
+      </p>
+    );
   }
 
   if (loading && !summary) return <LoadingBlock />;
