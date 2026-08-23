@@ -5652,6 +5652,12 @@ function EmailCampaignsAdminSection() {
 function ContentAdminSection() {
   const [activeType, setActiveType] = useState<ContentType>("areas");
   const [items, setItems] = useState<ContentItem[]>([]);
+  // Distingue "nao consegui carregar" de "nao ha registros". A versao anterior
+  // caia no mesmo `setItems([])` nos dois casos, e a tela dizia "Nenhum item
+  // encontrado. Crie o primeiro item usando o formulario acima" enquanto a rota
+  // devolvia 500. A aba Eventos ficou assim por tres meses sem ninguem notar,
+  // porque a tela mentia com confianca em vez de acusar a falha.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -5666,18 +5672,22 @@ function ContentAdminSection() {
     const config = contentTabs.find((tab) => tab.type === type)!;
     if (!config.supported) {
       setItems([]);
+      setLoadError(null);
       return;
     }
 
     setLoading(true);
+    setLoadError(null);
     try {
       const json = await adminFetch(`/content/${type}`);
       setItems(Array.isArray(json.data) ? json.data : []);
     } catch (error) {
       setItems([]);
-      toast.error(
-        error instanceof Error ? error.message : "Erro ao carregar conteúdo.",
-      );
+      // TODO(Ana)
+      const message =
+        error instanceof Error ? error.message : "Erro ao carregar conteúdo.";
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -6309,6 +6319,29 @@ function ContentAdminSection() {
                 {loading ? (
                   <div className="p-5">
                     <LoadingBlock />
+                  </div>
+                ) : loadError ? (
+                  <div className="p-6">
+                    {/* TODO(Ana) */}
+                    <p className="font-display text-xl font-black text-rose-800">
+                      Não foi possível carregar esta lista
+                    </p>
+                    {/* TODO(Ana) */}
+                    <p className="mt-2 text-sm font-semibold text-slate-600">
+                      Isto não é uma lista vazia: ela não chegou. Nada foi
+                      apagado.
+                    </p>
+                    <p className="mt-3 rounded-2xl border-2 border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-900">
+                      {loadError}
+                    </p>
+                    {/* TODO(Ana) */}
+                    <button
+                      type="button"
+                      onClick={() => void loadItems()}
+                      className="mt-4 rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black"
+                    >
+                      Tentar de novo
+                    </button>
                   </div>
                 ) : items.length ? (
                   items.map((item) => (
