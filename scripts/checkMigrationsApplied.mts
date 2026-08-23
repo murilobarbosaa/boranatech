@@ -210,7 +210,12 @@ const EXPECTED_TABLE_COUNT = 83;
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
 // numeros e ato deliberado, no mesmo commit da migration que cria ou remove o
 // objeto.
-// 28 desde 20260731050300_add_archive_provenance_to_admin_tasks.sql (cria
+// 30 desde 20260815130000_linkedin_progress_revision.sql, que cria DUAS de uma
+// vez: linkedin_begin_progress_session e linkedin_set_improvement_progress. A
+// mesma pilha traz 20260821130000_serialize_ai_usage_in_flight.sql, e ela NAO
+// entra na soma: e um create or replace de reserve_ai_usage_slot, que ja
+// existia, e o conjunto conta nome declarado, nao declaracao.
+// Era 28 desde 20260731050300_add_archive_provenance_to_admin_tasks.sql (cria
 // set_admin_task_archive_source). Era 27 desde
 // 20260730170000_ai_usage_excluded_tools.sql (cria ai_usage_excluded_tools),
 // que por sua vez era 26.
@@ -222,7 +227,7 @@ const EXPECTED_TABLE_COUNT = 83;
 //
 // Alterar este numero e ato deliberado, no mesmo commit da migration que cria ou
 // dropa a funcao.
-const EXPECTED_FUNCTION_COUNT = 28;
+const EXPECTED_FUNCTION_COUNT = 30;
 // 5 desde a MESMA migration: set_admin_task_archive_source devolve trigger,
 // entao nao e exposta pelo PostgREST e sai do conjunto verificavel por REST. Os
 // dois numeros sobem juntos quando a funcao nova e de trigger, e so o primeiro
