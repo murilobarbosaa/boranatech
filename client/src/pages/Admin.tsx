@@ -161,6 +161,43 @@ type MetricCard = {
   secundaria?: string | null;
 };
 
+/**
+ * Nome de exibicao das ferramentas de IA.
+ *
+ * A aba mostrava o SLUG tecnico ("resume-analyzer", "github-perfil"), que e o
+ * identificador que `logAiUsage` grava em `ai_usage_logs.tool`. O slug e a
+ * chave certa no banco e o rotulo errado numa tela de gestao.
+ *
+ * NAO E EXAUSTIVO, e nao tenta ser: as chaves cobrem as ferramentas que a Ana
+ * nomeou, e existem slugs em producao fora daqui (`career-plan-chat`,
+ * `interview-tts`, `project-validation`, entre outros). Eles caem no fallback
+ * de proposito. Um mapa que se afirmasse completo seria uma lista escrita a mao
+ * sobre um conjunto que cresce, ou seja, a classe de defeito que este projeto
+ * cata por regra: ele passaria a mentir no primeiro slug novo, em silencio.
+ */
+const ROTULO_DA_FERRAMENTA: Record<string, string> = {
+  /* TODO(Ana) */ "resume-analyzer": "Analisador de Currículo",
+  /* TODO(Ana) */ "resume-builder": "Criador de Currículo",
+  /* TODO(Ana) */ "resume-render": "Renderização de Currículo (PDF)",
+  /* TODO(Ana) */ "linkedin-analyzer": "Analisador de LinkedIn",
+  /* TODO(Ana) */ "github-perfil": "Analisador de GitHub (perfil)",
+  /* TODO(Ana) */ "github-repo": "Analisador de GitHub (repositório)",
+  /* TODO(Ana) */ "roadmap-generator": "Gerador de Roadmap",
+  /* TODO(Ana) */ "roadmap-intake-chat": "Chat inicial do Roadmap",
+  /* TODO(Ana) */ "career-plan": "Plano de Carreira",
+  /* TODO(Ana) */ "agent-chat": "Chat do Agente",
+  /* TODO(Ana) */ "interview-session": "Sessão de Entrevista",
+  /* TODO(Ana) */ "interview-turn": "Turno de Entrevista",
+};
+
+// Slug sem traducao aparece CRU, visivel e feio de proposito: feio a mostra
+// pede a traducao que falta, enquanto um rotulo inventado ("Ferramenta
+// desconhecida") ou uma linha omitida esconderiam uma ferramenta que esta
+// gastando dinheiro de verdade.
+function rotuloDaFerramenta(slug: string): string {
+  return ROTULO_DA_FERRAMENTA[slug] ?? slug;
+}
+
 type AiUsage = {
   feature: string;
   requests: string;
@@ -8191,8 +8228,12 @@ export default function Admin() {
                           key={item.feature}
                           className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-3"
                         >
-                          <div className="flex justify-between font-bold">
-                            <span>{item.feature}</span>
+                          <div className="flex justify-between gap-2 font-bold">
+                            {/* `title` guarda o slug tecnico: a tela fica legivel
+                                e a depuracao continua a um hover de distancia. */}
+                            <span title={item.feature}>
+                              {rotuloDaFerramenta(item.feature)}
+                            </span>
                             <span>{item.requests}</span>
                           </div>
                           <p className="text-xs font-semibold text-slate-500">
@@ -8217,9 +8258,13 @@ export default function Admin() {
                     ) : aiUsageReal.length ? (
                       aiUsageReal.map((item) => (
                         <div key={item.feature}>
-                          <div className="mb-1 flex justify-between text-sm font-bold">
-                            <span>{item.feature}</span>
-                            <span>{item.cost}</span>
+                          <div className="mb-1 flex justify-between gap-2 text-sm font-bold">
+                            <span title={item.feature}>
+                              {rotuloDaFerramenta(item.feature)}
+                            </span>
+                            <span className="whitespace-nowrap">
+                              {item.cost}
+                            </span>
                           </div>
                           <div className="h-3 rounded-full border border-slate-900 bg-slate-100">
                             <div
