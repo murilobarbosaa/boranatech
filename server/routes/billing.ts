@@ -286,6 +286,22 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
  */
 router.get("/invoices", requireAuth, async (req, res, next) => {
   try {
+    // Kill-switch ANTES da consulta. Com a emissao desligada nao existe nota
+    // para listar, e perguntar mesmo assim e o unico caminho medido em que
+    // ausencia de configuracao fiscal chega ao banco: se a migration ainda nao
+    // tiver sido aplicada, o erro do PostgREST vira 500 na tela de todo
+    // assinante que abrir o /perfil.
+    //
+    // 200 com lista vazia, NUNCA status de erro: FiscalInvoicesSection trata
+    // qualquer `!res.ok` como falha e mostra "nao conseguimos carregar suas
+    // notas agora", que e mensagem de defeito para um estado que nao e defeito.
+    // O campo `nfse` existe para o estado ficar NOMEADO: sem ele, "emissao
+    // desligada" e "voce nao tem notas" chegariam ao cliente identicos.
+    if (!env.nfseEnabled) {
+      res.json({ data: [], nfse: "disabled" });
+      return;
+    }
+
     const userId = req.user!.id;
 
     const { data, error } = await supabaseAdmin
