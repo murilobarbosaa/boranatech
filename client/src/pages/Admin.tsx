@@ -8273,12 +8273,23 @@ export default function Admin() {
                             className="w-full text-left text-sm"
                           >
                             <thead>
-                              <tr className="border-b border-slate-200 text-xs font-black uppercase tracking-wider text-slate-500">
+                              {/* SEM `tracking-wider` aqui: num card estreito ele
+                                  soma alguns pixels por letra e foi um dos motivos
+                                  de "CHAMADAS" e "CUSTO" colarem um no outro. O
+                                  `nowrap` nas numericas impede que um cabecalho de
+                                  duas palavras dobre e estique a linha inteira. */}
+                              <tr className="border-b border-slate-200 text-xs font-black uppercase text-slate-500">
                                 {/* TODO(Ana) */}
-                                <th className="pb-2">Usuário</th>
-                                <th className="pb-2 text-right">Chamadas</th>
-                                <th className="pb-2 text-right">Custo</th>
-                                <th className="pb-2 text-right">Sem custo</th>
+                                <th className="py-2 pl-0 pr-2">Usuário</th>
+                                <th className="whitespace-nowrap px-2 py-2 text-right">
+                                  Chamadas
+                                </th>
+                                <th className="whitespace-nowrap px-2 py-2 text-right">
+                                  Custo
+                                </th>
+                                <th className="whitespace-nowrap py-2 pl-2 pr-0 text-right">
+                                  Sem custo
+                                </th>
                               </tr>
                             </thead>
                             <tbody>
@@ -8287,7 +8298,13 @@ export default function Admin() {
                                   key={linha.userId}
                                   className="border-b border-slate-100 last:border-0"
                                 >
-                                  <td className="max-w-[16rem] truncate py-2 pr-3 font-bold">
+                                  {/* `w-full max-w-0` e o padrao de tabela para "esta
+                                      coluna absorve a sobra e e a primeira a truncar".
+                                      `max-w-[16rem]` era um TETO: a coluna continuava
+                                      exigindo ate 16rem e espremia as numericas, que e
+                                      o oposto do que se queria. O `overflow-x-auto` do
+                                      wrapper fica como valvula, nao como plano A. */}
+                                  <td className="w-full max-w-0 truncate py-2 pl-0 pr-2 font-bold">
                                     {linha.email ?? linha.nome ?? (
                                       <span className="text-slate-500">
                                         {/* DUAS AUSENCIAS DIFERENTES, dois
@@ -8309,13 +8326,17 @@ export default function Admin() {
                                       </span>
                                     )}
                                   </td>
-                                  <td className="py-2 text-right tabular-nums">
+                                  <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">
                                     {formatCount(linha.calls)}
                                   </td>
-                                  <td className="py-2 text-right tabular-nums font-bold">
+                                  {/* `nowrap` aqui e o conserto do sintoma que a Ana
+                                      viu: o espaco literal entre "US$" e o numero era
+                                      ponto de quebra, e "US$ 0.37" saia em duas linhas
+                                      em toda celula, engordando a tabela inteira. */}
+                                  <td className="whitespace-nowrap px-2 py-2 text-right font-bold tabular-nums">
                                     US$ {numeroOuZero(linha.costUsd).toFixed(2)}
                                   </td>
-                                  <td className="py-2 text-right tabular-nums text-slate-500">
+                                  <td className="whitespace-nowrap py-2 pl-2 pr-0 text-right tabular-nums text-slate-500">
                                     {formatCount(linha.semCustoMedido)}
                                   </td>
                                 </tr>
@@ -8325,22 +8346,22 @@ export default function Admin() {
                                   data-testid="ia-custo-sem-usuario"
                                   className="border-t border-slate-300"
                                 >
-                                  <td className="py-2 pr-3 font-bold text-slate-500">
+                                  <td className="w-full max-w-0 truncate py-2 pl-0 pr-2 font-bold text-slate-500">
                                     {/* TODO(Ana) */}
                                     Sem usuário
                                   </td>
-                                  <td className="py-2 text-right tabular-nums">
+                                  <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">
                                     {formatCount(
                                       aiCostPerUser.semUsuario.calls,
                                     )}
                                   </td>
-                                  <td className="py-2 text-right tabular-nums font-bold">
+                                  <td className="whitespace-nowrap px-2 py-2 text-right font-bold tabular-nums">
                                     US${" "}
                                     {aiCostPerUser.semUsuario.costUsd.toFixed(
                                       2,
                                     )}
                                   </td>
-                                  <td className="py-2 text-right tabular-nums text-slate-500">
+                                  <td className="whitespace-nowrap py-2 pl-2 pr-0 text-right tabular-nums text-slate-500">
                                     {formatCount(
                                       aiCostPerUser.semUsuario.semCustoMedido,
                                     )}
