@@ -1713,7 +1713,9 @@ const contentTabs: Array<{
     type: "events",
     label: "Eventos",
     supported: true,
-    description: "Adicionar, editar e publicar eventos.",
+    // TODO(Ana)
+    description:
+      "Curar a agenda coletada diariamente pelo agente, e adicionar eventos a mão.",
   },
   {
     type: "areas",
@@ -1733,6 +1735,19 @@ const contentTabs: Array<{
     supported: true,
     description: "Editar título, descrição, duração e publicação.",
   },
+];
+
+// A coluna `modality` de external_events e nullable, mas o BntSelect e o Radix
+// por baixo dele nao aceitam item de valor vazio. A sentinela vive SO na UI: o
+// payload a converte de volta para null, entao "sem modalidade" continua sendo
+// null no banco e nao vira a string "Nao informado".
+// TODO(Ana)
+const MODALIDADE_NAO_INFORMADA = "Não informado";
+const MODALIDADES = [
+  MODALIDADE_NAO_INFORMADA,
+  "Presencial",
+  "Online",
+  "Híbrido",
 ];
 
 function emptyContentForm(
@@ -1769,12 +1784,15 @@ function emptyContentForm(
     return {
       title: "",
       description: "",
-      starts_at: "",
-      ends_at: "",
+      organizer: "",
+      source: "admin",
+      url: "",
+      starts_on: "",
+      ends_on: "",
+      modality: MODALIDADE_NAO_INFORMADA,
       location_label: "",
       city: "",
-      online: false,
-      url: "",
+      uf: "",
       is_published: true,
     };
   }
@@ -1846,15 +1864,26 @@ function contentPayload(
   }
 
   if (type === "events") {
+    const startsOn = String(form.starts_on || "").trim() || null;
+    const modality = String(form.modality || MODALIDADE_NAO_INFORMADA);
     return {
       title: String(form.title || "").trim(),
       description: String(form.description || "").trim(),
-      starts_at: String(form.starts_at || "").trim() || null,
-      ends_at: String(form.ends_at || "").trim() || null,
+      organizer: String(form.organizer || "").trim(),
+      // NOT NULL no banco. O default do formulario e "admin" para o evento
+      // criado a mao ficar distinguivel do que a rotina diaria coleta.
+      source: String(form.source || "admin").trim() || "admin",
+      url: String(form.url || "").trim(),
+      starts_on: startsOn,
+      ends_on: String(form.ends_on || "").trim() || null,
+      // external_events_date_coerency_chk exige data OU status "a_confirmar".
+      // Derivar aqui em vez de pedir o status na tela evita o insert recusado
+      // pelo banco quando a data ainda nao foi anunciada.
+      date_status: startsOn ? "confirmada" : "a_confirmar",
+      modality: modality === MODALIDADE_NAO_INFORMADA ? null : modality,
       location_label: String(form.location_label || "").trim(),
       city: String(form.city || "").trim(),
-      online: Boolean(form.online),
-      url: String(form.url || "").trim(),
+      uf: String(form.uf || "").trim(),
       is_published: Boolean(form.is_published),
     };
   }
@@ -5971,6 +6000,32 @@ function ContentAdminSection() {
                         onChange={(value) =>
                           setForm((current) => ({ ...current, url: value }))
                         }
+                        required
+                      />
+                      {/* TODO(Ana) */}
+                      <AdminInput
+                        label="Organizador"
+                        value={String(form.organizer || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            organizer: value,
+                          }))
+                        }
+                      />
+                      {/* TODO(Ana) */}
+                      <AdminSelect
+                        label="Modalidade"
+                        value={String(
+                          form.modality || MODALIDADE_NAO_INFORMADA,
+                        )}
+                        options={MODALIDADES}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            modality: value,
+                          }))
+                        }
                       />
                       <AdminInput
                         label="Local"
@@ -5989,23 +6044,33 @@ function ContentAdminSection() {
                           setForm((current) => ({ ...current, city: value }))
                         }
                       />
+                      {/* TODO(Ana) */}
+                      <AdminInput
+                        label="UF"
+                        value={String(form.uf || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, uf: value }))
+                        }
+                      />
+                      {/* TODO(Ana) */}
                       <AdminInput
                         label="Data de início"
-                        type="datetime-local"
-                        value={String(form.starts_at || "")}
+                        type="date"
+                        value={String(form.starts_on || "")}
                         onChange={(value) =>
                           setForm((current) => ({
                             ...current,
-                            starts_at: value,
+                            starts_on: value,
                           }))
                         }
                       />
+                      {/* TODO(Ana) */}
                       <AdminInput
                         label="Data de fim"
-                        type="datetime-local"
-                        value={String(form.ends_at || "")}
+                        type="date"
+                        value={String(form.ends_on || "")}
                         onChange={(value) =>
-                          setForm((current) => ({ ...current, ends_at: value }))
+                          setForm((current) => ({ ...current, ends_on: value }))
                         }
                       />
                       <AdminTextarea
@@ -6178,18 +6243,6 @@ function ContentAdminSection() {
                           setForm((current) => ({
                             ...current,
                             remote: checked,
-                          }))
-                        }
-                      />
-                    ) : null}
-                    {activeType === "events" ? (
-                      <AdminCheckbox
-                        label="Online"
-                        checked={Boolean(form.online)}
-                        onChange={(checked) =>
-                          setForm((current) => ({
-                            ...current,
-                            online: checked,
                           }))
                         }
                       />
