@@ -167,7 +167,37 @@ describe("aba IA, custo por usuário", () => {
 
     const tabela = await screen.findByTestId("ia-custo-por-usuario");
     expect(tabela.textContent).toContain("uid-fant");
-    expect(tabela.textContent).toContain("perfil ausente");
+    expect(tabela.textContent).toContain("(perfil ausente)");
+    // ESPELHO do teste acima: o outro rótulo não pode vazar para este caso.
+    expect(tabela.textContent).not.toContain("(sem nome cadastrado)");
+  });
+
+  it("perfil que EXISTE sem nome nem e-mail não é chamado de ausente", async () => {
+    // As duas ausências são fatos diferentes e o payload já as separa: uma diz
+    // que não há perfil para este `user_id`, a outra que o perfil existe e não
+    // tem nome nem e-mail cadastrado. Um rótulo só para as duas descarta a
+    // distinção que o servidor pagou uma query para fazer, e a segunda linha
+    // passaria a afirmar algo falso sobre o cadastro da pessoa.
+    mockDeRotas({
+      top: [
+        linha({
+          userId: "uid-sem-nome-longo",
+          email: null,
+          nome: null,
+          perfilAusente: false,
+        }),
+      ],
+      semUsuario: null,
+      maisUsuarios: 0,
+      usuariosDistintos: 1,
+    });
+    await abrirAbaIa();
+
+    const tabela = await screen.findByTestId("ia-custo-por-usuario");
+    expect(tabela.textContent).toContain("uid-sem-");
+    expect(tabela.textContent).toContain("(sem nome cadastrado)");
+    // O FREIO: é o rótulo errado que precisa NÃO aparecer.
+    expect(tabela.textContent).not.toContain("(perfil ausente)");
   });
 
   it("cai para o NOME quando não há e-mail", async () => {

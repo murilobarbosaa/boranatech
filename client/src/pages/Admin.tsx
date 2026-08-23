@@ -8290,9 +8290,22 @@ export default function Admin() {
                                   <td className="max-w-[16rem] truncate py-2 pr-3 font-bold">
                                     {linha.email ?? linha.nome ?? (
                                       <span className="text-slate-500">
-                                        {/* TODO(Ana) */}
-                                        {linha.userId.slice(0, 8)} (perfil
-                                        ausente)
+                                        {/* DUAS AUSENCIAS DIFERENTES, dois
+                                          rotulos. O payload ja SEPARA "nao
+                                          existe perfil para este user_id" de
+                                          "existe e nao tem nome nem e-mail", e
+                                          colapsar as duas num rotulo so joga
+                                          fora a distincao que o servidor pagou
+                                          para fazer: a segunda viraria uma
+                                          afirmacao falsa sobre o cadastro. */}
+                                        {linha.userId.slice(0, 8)}{" "}
+                                        {linha.perfilAusente ? (
+                                          /* TODO(Ana) */
+                                          <>(perfil ausente)</>
+                                        ) : (
+                                          /* TODO(Ana) */
+                                          <>(sem nome cadastrado)</>
+                                        )}
                                       </span>
                                     )}
                                   </td>
