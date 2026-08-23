@@ -248,7 +248,10 @@ describe("toast para ACAO, inline para CARREGAMENTO", () => {
 });
 
 describe("rodape de acoes", () => {
-  it("as acoes de influencer moram no rodape, nao no corpo", async () => {
+  // A CONCESSAO mora no rodape; a REVOGACAO nao mais, e o titulo deste teste
+  // dizia "as acoes" no plural. Quem cobre a revogacao agora e
+  // UserDetailModal.influencer.test.tsx.
+  it("conceder influencer mora no rodape, nao no corpo", async () => {
     rotear(detalhe());
 
     render(<UserDetailModal userId="u1" onClose={() => {}} />);

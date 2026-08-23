@@ -129,6 +129,18 @@ const DESTRUCTIVE_BUTTON =
 const DESTRUCTIVE_NOW_BUTTON =
   "col-span-2 w-full rounded-full border-2 border-rose-700 bg-rose-500 px-4 py-2 text-xs font-black uppercase text-white transition hover:bg-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60 sm:col-span-1 sm:w-auto sm:py-1.5";
 
+/**
+ * Acoes de influencer DENTRO do card de status, nao no rodape. Nao reaproveitam
+ * DESTRUCTIVE_BUTTON nem ACTION_BUTTON na parte de grade porque aquelas carregam
+ * `col-span-2 ... sm:col-span-1`, que so significa alguma coisa na grade do
+ * rodape; aqui seria classe morta pendurada.
+ */
+const INFLUENCER_REVOKE_BUTTON =
+  "w-full rounded-full border-2 border-rose-600 bg-rose-50 px-4 py-2 text-xs font-black uppercase text-rose-700 transition hover:bg-rose-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60 sm:w-auto sm:py-1.5";
+
+const INFLUENCER_REVOKE_CONFIRM_BUTTON =
+  "w-full rounded-full border-2 border-slate-900 bg-rose-300 px-4 py-2 text-xs font-black uppercase focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60 sm:w-auto sm:py-1.5";
+
 function Section({
   title,
   children,
@@ -652,11 +664,22 @@ export function UserDetailModal({
                     </p>
                   )}
 
-                  {/* O ESTADO do influencer e conteudo e fica aqui, junto do
-                      resto do acesso; os BOTOES de conceder e revogar foram
-                      para o rodape, com as demais acoes sobre o usuario. */}
+                  {/* O ESTADO do influencer e o BOTAO que o revoga ficam
+                      JUNTOS. A revogacao morava no rodape, a umas 400 linhas
+                      daqui, sob o rotulo generico "Revogar acesso" e encostada
+                      nas destrutivas da assinatura ("Encerrar Pro agora"), que
+                      sao outra acao com outra consequencia: o rotulo nao dizia
+                      o que caia e a vizinhanca sugeria a acao errada. Acao
+                      destrutiva se le junto do estado que ela destroi, e o
+                      rotulo nomeia o que se perde.
+
+                      A CONCESSAO continua no rodape de proposito: ela nao e a
+                      perigosa, e o rodape nao e defeito para ela. */}
                   {detail.influencer ? (
-                    <div className="space-y-2 rounded-2xl border-2 border-violet-700 bg-violet-50 p-3">
+                    <div
+                      data-testid="influencer-status"
+                      className="space-y-2 rounded-2xl border-2 border-violet-700 bg-violet-50 p-3"
+                    >
                       <span className="inline-block rounded-full border-2 border-violet-700 bg-violet-200 px-3 py-1 text-xs font-black uppercase text-violet-900">
                         Influencer
                       </span>
@@ -676,6 +699,42 @@ export function UserDetailModal({
                       <p className="text-xs font-semibold text-violet-800">
                         Nota: {fmtText(detail.influencer.note)}
                       </p>
+                      {!edit.editing ? (
+                        <div className="flex flex-wrap gap-2 border-t-2 border-violet-200 pt-3">
+                          {revokeConfirm ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={handleRevokeInfluencer}
+                                disabled={influencerBusy}
+                                className={INFLUENCER_REVOKE_CONFIRM_BUTTON}
+                              >
+                                {/* TODO(Ana) */}
+                                {influencerBusy
+                                  ? "Revogando..."
+                                  : "Confirmar revogação de influencer"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setRevokeConfirm(false)}
+                                disabled={influencerBusy}
+                                className={ACTION_BUTTON}
+                              >
+                                Manter acesso
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setRevokeConfirm(true)}
+                              className={INFLUENCER_REVOKE_BUTTON}
+                            >
+                              {/* TODO(Ana) */}
+                              Revogar acesso de influencer
+                            </button>
+                          )}
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
@@ -1063,45 +1122,17 @@ export function UserDetailModal({
                 ) : null}
               </>
             ) : null}
-            {detail && !detailLoading && !edit.editing ? (
-              detail.influencer ? (
-                revokeConfirm ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleRevokeInfluencer}
-                      disabled={influencerBusy}
-                      className="col-span-2 w-full rounded-full border-2 border-slate-900 bg-rose-300 px-4 py-2 text-xs font-black uppercase focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60 sm:col-span-1 sm:w-auto sm:py-1.5"
-                    >
-                      {influencerBusy ? "Revogando..." : "Confirmar revogação"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRevokeConfirm(false)}
-                      disabled={influencerBusy}
-                      className={ACTION_BUTTON}
-                    >
-                      Manter acesso
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setRevokeConfirm(true)}
-                    className={DESTRUCTIVE_BUTTON}
-                  >
-                    Revogar acesso
-                  </button>
-                )
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setGrantOpen((open) => !open)}
-                  className={ACTION_BUTTON}
-                >
-                  Tornar influencer
-                </button>
-              )
+            {/* So a CONCESSAO. Quando a pessoa JA e influencer, o rodape nao
+                oferece nada de influencer: a revogacao mora na secao de status,
+                junto do estado que ela apaga. */}
+            {detail && !detailLoading && !edit.editing && !detail.influencer ? (
+              <button
+                type="button"
+                onClick={() => setGrantOpen((open) => !open)}
+                className={ACTION_BUTTON}
+              >
+                Tornar influencer
+              </button>
             ) : null}
           </div>
 
