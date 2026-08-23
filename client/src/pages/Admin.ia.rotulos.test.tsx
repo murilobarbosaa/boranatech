@@ -114,17 +114,51 @@ describe("rótulos das ferramentas de IA", () => {
     }
   });
 
+  it("os slugs vivos e os históricos têm rótulo, nenhum cai no fallback", async () => {
+    // O censo de 2026-08-22 (ver o comentário do mapa em Admin.tsx): os slugs
+    // que `logAiUsage` grava hoje, mais os dois históricos cujas linhas de 14/08
+    // ainda caem na janela de 30 dias da aba. Se algum destes voltar a aparecer
+    // cru na tela, o mapa perdeu uma entrada.
+    const ESPERADOS: Array<[string, string]> = [
+      ["career-plan-chat", "Chat do Plano de Carreira"],
+      ["interview-tts", "Voz da Entrevista"],
+      ["project-validation", "Validação de Projeto"],
+      ["study-plan-build", "Plano de Estudos (construção)"],
+      ["interview", "Entrevista (formato antigo)"],
+    ];
+    mockDeRotas(
+      Object.fromEntries(
+        ESPERADOS.map(([slug]) => [slug, { calls: 1, success: 1, cost: 0.1 }]),
+      ),
+    );
+    await abrirAbaIa();
+
+    for (const [slug, rotulo] of ESPERADOS) {
+      expect(screen.getAllByText(rotulo).length).toBeGreaterThan(0);
+      // O FREIO: o slug não pode aparecer como texto em lugar nenhum.
+      expect(screen.queryByText(slug)).toBeNull();
+    }
+  });
+
   it("FALLBACK: ferramenta sem tradução aparece pelo slug cru, nunca some", async () => {
-    // O caso que decide o desenho. `career-plan-chat` existe em produção e NÃO
-    // está no mapa. Sumir com a linha, ou trocá-la por "Ferramenta
-    // desconhecida", esconderia gasto real de IA.
+    // O caso que decide o desenho: sumir com a linha, ou trocá-la por
+    // "Ferramenta desconhecida", esconderia gasto real de IA.
+    //
+    // O SLUG É FICTÍCIO DE PROPÓSITO. A primeira versão deste teste usava
+    // `career-plan-chat`, que era um slug real ainda sem tradução; assim que o
+    // mapa foi completado, o exemplo ganhou rótulo e o teste passou a medir o
+    // contrário do que afirma. Um teste de fallback ancorado num slug real tem
+    // prazo de validade igual ao do mapa. Com um nome que nunca vai existir, ele
+    // fica imune ao crescimento do mapa, que é justamente o que se quer testar.
     mockDeRotas({
-      "career-plan-chat": { calls: 7, success: 7, cost: 3.5 },
+      "ferramenta-fantasma-teste": { calls: 7, success: 7, cost: 3.5 },
       "resume-analyzer": { calls: 1, success: 1, cost: 0.1 },
     });
     await abrirAbaIa();
 
-    expect(screen.getAllByText("career-plan-chat").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("ferramenta-fantasma-teste").length,
+    ).toBeGreaterThan(0);
     // E o custo dele continua na tela: a linha não foi engolida.
     expect(screen.getByText("US$ 3.50")).toBeTruthy();
     // CONTROLE NEGATIVO: nada de rótulo inventado para o desconhecido.
@@ -132,13 +166,21 @@ describe("rótulos das ferramentas de IA", () => {
   });
 
   it("traduzida e não traduzida convivem no mesmo card", async () => {
+    // Slug fictício pelo mesmo motivo do teste acima: o exemplo anterior
+    // (`project-validation`) era real e ganhou tradução no commit seguinte.
     mockDeRotas({
       "agent-chat": { calls: 2, success: 2, cost: 0.2 },
-      "project-validation": { calls: 3, success: 3, cost: 0.3 },
+      "outra-ferramenta-inexistente-teste": {
+        calls: 3,
+        success: 3,
+        cost: 0.3,
+      },
     });
     await abrirAbaIa();
 
     expect(screen.getAllByText("Chat do Agente").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("project-validation").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("outra-ferramenta-inexistente-teste").length,
+    ).toBeGreaterThan(0);
   });
 });

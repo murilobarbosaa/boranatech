@@ -168,12 +168,24 @@ type MetricCard = {
  * identificador que `logAiUsage` grava em `ai_usage_logs.tool`. O slug e a
  * chave certa no banco e o rotulo errado numa tela de gestao.
  *
- * NAO E EXAUSTIVO, e nao tenta ser: as chaves cobrem as ferramentas que a Ana
- * nomeou, e existem slugs em producao fora daqui (`career-plan-chat`,
- * `interview-tts`, `project-validation`, entre outros). Eles caem no fallback
- * de proposito. Um mapa que se afirmasse completo seria uma lista escrita a mao
- * sobre um conjunto que cresce, ou seja, a classe de defeito que este projeto
- * cata por regra: ele passaria a mentir no primeiro slug novo, em silencio.
+ * O CONTRATO E O FALLBACK, nao a completude. Este mapa NAO se afirma exaustivo
+ * e nao deve: uma lista escrita a mao sobre um conjunto que cresce e a classe de
+ * defeito que este projeto cata por regra, e ela falha PASSANDO, ficando
+ * silenciosamente desatualizada no primeiro slug novo. Quem garante a correcao
+ * e `rotuloDaFerramenta`, que devolve o slug cru para o que nao esta aqui.
+ *
+ * CENSO DE 2026-08-22: nesta data os 13 slugs vivos nos call sites de
+ * `logAiUsage` em `server/` estavam TODOS cobertos, mais dois historicos
+ * (`study-plan-build` e `interview`), que a docstring de
+ * `server/lib/aiUsageStats.ts` registra como medidos em 14/08 e ainda caem na
+ * janela de 30 dias da aba. A data vai junto de proposito: isto e uma MEDICAO,
+ * nao uma promessa, e sem ela viraria a afirmacao de completude que o paragrafo
+ * acima proibe.
+ *
+ * O UNICO ponto que nem um censo alcanca: `server/routes/github.ts` monta o
+ * slug como `` `github-${mode}` ``, entao um modo novo cria um slug novo em
+ * tempo de execucao, sem passar por lugar nenhum que se possa varrer. E por
+ * isso, tambem, que o fallback e o contrato.
  */
 const ROTULO_DA_FERRAMENTA: Record<string, string> = {
   /* TODO(Ana) */ "resume-analyzer": "Analisador de Currículo",
@@ -188,6 +200,13 @@ const ROTULO_DA_FERRAMENTA: Record<string, string> = {
   /* TODO(Ana) */ "agent-chat": "Chat do Agente",
   /* TODO(Ana) */ "interview-session": "Sessão de Entrevista",
   /* TODO(Ana) */ "interview-turn": "Turno de Entrevista",
+  /* TODO(Ana) */ "career-plan-chat": "Chat do Plano de Carreira",
+  /* TODO(Ana) */ "interview-tts": "Voz da Entrevista",
+  /* TODO(Ana) */ "project-validation": "Validação de Projeto",
+  // HISTORICOS: nao aparecem mais na fonte, mas ha linhas de 14/08 em
+  // `ai_usage_logs` que ainda caem na janela de 30 dias da aba.
+  /* TODO(Ana) */ "study-plan-build": "Plano de Estudos (construção)",
+  /* TODO(Ana) */ interview: "Entrevista (formato antigo)",
 };
 
 // Slug sem traducao aparece CRU, visivel e feio de proposito: feio a mostra
