@@ -35,7 +35,6 @@ import {
   MousePointerClick,
   PlusCircle,
   RefreshCcw,
-  Search,
   Send,
   ShieldCheck,
   SquareKanban,
@@ -293,7 +292,6 @@ type AdminSectionId =
   | "conteudo"
   | "usuarios"
   | "retencao"
-  | "seo"
   | "financeiro"
   | "ia"
   | "afiliados"
@@ -848,7 +846,6 @@ const adminNavItems: AdminNavItem[] = [
     label: "Retenção",
     icon: <RefreshCcw className="h-4 w-4" />,
   },
-  { href: "#seo", label: "SEO", icon: <Search className="h-4 w-4" /> },
   {
     href: "#financeiro",
     label: "Financeiro",
@@ -902,9 +899,24 @@ const ADMIN_SECTION_IDS = new Set<string>(
  *
  * O destino leva `board=bugs`. Se o quadro nao existir mais, o TasksDashboard
  * cai no primeiro quadro em vez de ficar sem destino.
+ *
+ * `seo` saiu porque nunca teve dentro. Nasceu e morreu como PendingIntegration
+ * ("Requer integracao com Search Console API"): a aba prometia pagina que vira
+ * cadastro, keyword organica e status de indexacao, e entregava um aviso de que
+ * a integracao nao existe. Aba vazia na navegacao nao e neutra, ela cobra um
+ * clique para informar que nao ha nada.
+ *
+ * O destino e `paginas`, que e onde mora o conteudo mais proximo do que a aba
+ * prometia (paginas que geram cadastro). Diferente de bugs, aqui NAO existe
+ * caminho externo a resgatar: a varredura do repositorio inteiro (client,
+ * server, e-mails, docs e scripts) achou ZERO ocorrencias de `section=seo`, e a
+ * unica mencao ao slug era o proprio item de nav. Entao este redirect cobre so
+ * link colado, favorito e historico de navegador, que e justamente o que nao da
+ * para varrer.
  */
 const SECOES_APOSENTADAS: Record<string, string> = {
   bugs: "tarefas&board=bugs",
+  seo: "paginas",
 };
 
 /** A secao aposentada, ou null. Exportado para teste. */
@@ -917,11 +929,27 @@ export function redirecionamentoDeSecao(search: string): string | null {
 
 // Le ?section= da URL e devolve um AdminSectionId valido, ou o default seguro.
 // Centraliza a validacao: ausente ou lixo -> "visao-geral".
-function sectionFromSearch(search: string): AdminSectionId {
+// Exportado para teste.
+export function sectionFromSearch(search: string): AdminSectionId {
   const value = new URLSearchParams(search).get("section");
   // Secao aposentada resolve para o DESTINO, para a tela ja renderizar certo no
-  // primeiro paint em vez de piscar "visao-geral" antes do redirect.
-  if (value && SECOES_APOSENTADAS[value]) return "tarefas";
+  // primeiro paint em vez de piscar outra aba antes do redirect.
+  //
+  // A secao sai do DESTINO, nao de um nome cravado. Enquanto bugs era a unica
+  // entrada, `return "tarefas"` acertava por coincidencia de cardinalidade: com
+  // a segunda entrada, cravar o nome renderizaria Tarefas para quem pediu seo.
+  // O destino pode carregar parametros (`tarefas&board=bugs`), entao a secao e
+  // o trecho antes do primeiro `&`.
+  const destino = value ? SECOES_APOSENTADAS[value] : undefined;
+  if (destino) {
+    const secaoDestino = destino.split("&")[0];
+    // Destino fora do conjunto vivo e erro de programador (entrada escrita
+    // errada no mapa), mas cair em "visao-geral" e melhor do que devolver um id
+    // que nenhum bloco da tela reconhece, o que renderizaria pagina em branco.
+    return ADMIN_SECTION_IDS.has(secaoDestino)
+      ? (secaoDestino as AdminSectionId)
+      : "visao-geral";
+  }
   return value && ADMIN_SECTION_IDS.has(value)
     ? (value as AdminSectionId)
     : "visao-geral";
@@ -8219,25 +8247,6 @@ export default function Admin() {
                   </article>
                 </div>
               </div>
-            </AdminSection>
-          ) : null}
-
-          {activeSection === "seo" ? (
-            <AdminSection
-              id="seo"
-              eyebrow="conteúdo e SEO"
-              icon={<Search className="h-4 w-4" />}
-              title="Conteúdo que vira cadastro"
-              subtitle="Veja páginas que geram conta criada, keyword orgânica principal e status de indexação para priorizar SEO."
-            >
-              <article className="card-brutal overflow-hidden rounded-3xl bg-white">
-                <div className="p-6">
-                  <PendingIntegration
-                    tool="Google Search Console"
-                    description="Requer integração com Search Console API"
-                  />
-                </div>
-              </article>
             </AdminSection>
           ) : null}
 
