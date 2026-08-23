@@ -783,11 +783,11 @@ primeiro da fila". O gatilho antigo (`corrigiu_apos_aviso` entre 10% e 30%, em
 `docs/leitura-telemetria-aviso-headline.md`) está **revogado** e não deve ser reaberto: ele condicionava o
 item a uma medição que nunca teve amostra.
 
-1. **UI da reanálise** — base commitada em `claude/linkedin-fase4` (`abbb919`), falta o teste do caso que a
+1. **UI da reanálise**: base commitada em `claude/linkedin-fase4` (`abbb919`), falta o teste do caso que a
    motivou: mesmo texto não gasta cota, aviso âmbar aparece.
 2. **(2b) Junção da headline por separador estrutural**: subiu na Fase 1, e a junção por vírgula e por pipe
    está travada por teste. O que sobrou está em `docs/linkedin-limitacoes-parser.md`, item 3.
-3. **Endpoint de exclusão de análise** — rota, verificação de posse (padrão existe em 4 lugares), cascata já
+3. **Endpoint de exclusão de análise**: rota, verificação de posse (padrão existe em 4 lugares), cascata já
    resolvida por FK.
 
 ### Fila de ESPERA, que não é fila de trabalho
