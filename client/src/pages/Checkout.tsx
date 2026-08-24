@@ -269,7 +269,8 @@ export const COMPARE_GROUPS: Array<{
     rows: [
       { feature: "Quiz de carreira", free: true, pro: true },
       {
-        feature: `Catálogos: ${areasCount} áreas, +60 tecnologias, +20 empresas, +20 faculdades, +42 eventos e dicionário com +${dictionaryTermsCount} termos`,
+        // TODO(Ana)
+        feature: `Catálogos: ${areasCount} áreas, +60 tecnologias, +20 empresas, +20 faculdades, agenda de eventos e dicionário com +${dictionaryTermsCount} termos`,
         free: true,
         pro: true,
       },

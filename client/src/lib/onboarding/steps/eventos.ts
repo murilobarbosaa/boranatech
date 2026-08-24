@@ -26,7 +26,8 @@ const eventosOnboarding: OnboardingDef = {
       heroSize: 88,
       eyebrow: "EVENTOS",
       title: "Onde a tech se encontra",
-      lead: "São 39 eventos entre conferências, hackathons, meetups e workshops, todos com data marcada e link de inscrição.",
+      // TODO(Ana)
+      lead: "Conferências, hackathons, meetups e workshops, com link de inscrição. Alguns têm data marcada; outros são recorrentes ou ainda a confirmar.",
       chips: [
         ["Conferências"],
         ["Hackathons"],
