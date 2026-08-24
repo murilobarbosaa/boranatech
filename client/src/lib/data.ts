@@ -31,6 +31,7 @@ import {
   Bot,
   Code2,
   Factory,
+  ShieldCheck,
 } from "lucide-react";
 
 export interface SubArea {
@@ -3442,8 +3443,9 @@ const baseAreasTI: AreaTI[] = [
           "Platform Engineer é a evolução do DevOps em 2026: profissional que constrói Internal Developer Platforms (IDPs), plataformas internas de self-service que abstraem complexidade de Kubernetes, Terraform e cloud, deixando devs focarem em produto. Diferente do DevOps tradicional (que opera infra), o Platform Engineer trata desenvolvedores internos como clientes e a plataforma como produto. Gartner prevê que 80% das empresas terão times de plataforma até 2027. No BR, Mercado Livre, iFood, Nubank já operam com times maduros. Salário top do DevOps: média SP R$ 15.583, pleno R$ 11k-22k, sêniores chegam a R$ 44.500 (90º percentil, Glassdoor 2026). Mercado super aquecido pelo gap de profissionais.",
         oQueFaz:
           "No dia a dia: constrói plataformas internas usando Backstage (Spotify, padrão global), Crossplane (provisionamento) e ArgoCD (GitOps), define 'Golden Paths', caminhos padronizados pra criar serviços novos, automatiza provisionamento de recursos (databases, caches, queues), reduz cognitive load dos devs, mede adoção da plataforma (devs como clientes), e itera baseado em feedback. Trabalha como product manager de uma plataforma técnica, produto-thinking aplicado a infra.",
+        // TODO(Ana)
         diferencasDaAreaMae:
-          "Dentro de DevOps, o Platform Engineer é a evolução natural, diferente do DevOps tradicional (que opera infra reativamente, com tickets), o Platform Engineer constrói self-service proativo. Diferente do SRE (que foca em confiabilidade), o Platform Engineer foca em developer experience (DX). Diferente do DevSecOps (que adiciona segurança), o Platform Engineer adiciona produto-thinking. É o cargo mais sênior e bem pago de DevOps em 2026. Exige experiência sólida em DevOps + visão de produto.",
+          "Dentro de DevOps, o Platform Engineer é a evolução natural, diferente do DevOps tradicional (que opera infra reativamente, com tickets), o Platform Engineer constrói self-service proativo. Diferente do SRE (que foca em confiabilidade), o Platform Engineer foca em developer experience (DX). Diferente do DevSecOps (hoje área própria, que adiciona segurança ao ciclo), o Platform Engineer adiciona produto-thinking. É o cargo mais sênior e bem pago de DevOps em 2026. Exige experiência sólida em DevOps + visão de produto.",
         habilidadesEspecificas: [
           "Kubernetes profundo (CKA é cobrada em ~40% das vagas)",
           "Infrastructure as Code (Terraform, Crossplane, Pulumi)",
@@ -3488,62 +3490,90 @@ const baseAreasTI: AreaTI[] = [
         dicasIniciais:
           "Cargo mais sênior do DevOps. Não tente entrar sem 3+ anos de DevOps tradicional. Backstage é A ferramenta. Invista 2-3 meses dominando. Mindset de produto é o diferencial: tratar devs como clientes muda tudo. CKA é cobrada em quase metade das vagas. Vale tirar. Inglês é obrigatório (toda doc, talks e community em inglês). Brasil está atrasado nessa onda (~2 anos). Quem entrar agora pega salários acima do normal por 3-5 anos.",
       },
-      {
-        slug: "devsecops",
-        nome: "DevSecOps",
-        descricaoCurta:
-          "Integra segurança no ciclo CI/CD. SAST/DAST, secrets management, hardening de pipelines. Subárea em forte crescimento (3.4k+ vagas BR).",
-        descricaoCompleta:
-          "DevSecOps é a evolução do DevOps com integração obrigatória de segurança em cada etapa do ciclo de desenvolvimento, desde o primeiro commit até o deploy em produção. Não é cargo opcional: virou requisito em fintechs, bancos e empresas que lidam com dados sensíveis (LGPD, PCI-DSS). Profissional integra ferramentas de scan de código (SAST, DAST, SCA), gerencia secrets, faz hardening de pipelines e containers. Mercado super aquecido em 2026: Glassdoor mostra 311+ vagas ativas, BeBee 3.4k+, com média salarial de R$ 9.030 e sêniores chegando a R$ 19.200. Em fintechs e bancos, ultrapassa R$ 25k facilmente.",
-        oQueFaz:
-          "No dia a dia: integra ferramentas de segurança em pipelines CI/CD (Semgrep, SonarQube, Snyk, Burp), automatiza varredura de vulnerabilidades em código e dependências, configura gestão de secrets (Vault, AWS Secrets Manager), faz hardening de containers e clusters Kubernetes, responde a incidentes de segurança em produção, audita ambientes cloud (IAM, redes, configurações), e trabalha com times de dev pra educar sobre práticas seguras (shift-left security). Garante compliance (LGPD, PCI-DSS, ISO 27001).",
-        diferencasDaAreaMae:
-          "Dentro de DevOps, o DevSecOps adiciona uma camada crítica: segurança em cada etapa do pipeline, não como auditoria pós-deploy. Diferente do AppSec (subárea de Cibersegurança focada em código de aplicação), o DevSecOps cobre todo o ciclo: código, build, deploy, runtime, infraestrutura. Diferente do Platform Engineer (que constrói plataformas internas), o DevSecOps protege essas plataformas. É a porta de entrada ideal pra quem vem de DevOps tradicional e quer subir salário. Segurança é o diferencial que mais paga em DevOps moderno.",
-        habilidadesEspecificas: [
-          "CI/CD avançado (Jenkins, GitLab CI, GitHub Actions)",
-          "SAST, DAST e SCA (Semgrep, SonarQube, Snyk, OWASP ZAP)",
-          "Segurança em containers e Kubernetes (image scanning, runtime security)",
-          "Gestão de secrets (Vault, AWS Secrets Manager, sealed-secrets)",
-          "OWASP Top 10 + compliance (LGPD, PCI-DSS, ISO 27001)",
-        ],
-        ferramentasEspecificas: [
-          "Jenkins, GitLab CI ou GitHub Actions (CI/CD)",
-          "SonarQube ou Semgrep (SAST)",
-          "OWASP ZAP ou Burp Suite (DAST)",
-          "Snyk ou Dependabot (SCA)",
-          "HashiCorp Vault (gestão de secrets)",
-          "Docker + Kubernetes + Trivy (segurança de containers)",
-        ],
-        cargos: [
-          "DevSecOps Engineer Pleno (3+ anos de DevOps)",
-          "DevSecOps Engineer Sênior (5+ anos)",
-          "Staff DevSecOps / Tech Lead Security Engineering",
-          "Principal DevSecOps / Head of Platform Security",
-        ],
-        faixaSalarial:
-          "R$ 5.692 (júnior raro) a R$ 25.000+ (sênior em fintechs). Média BR R$ 9.030, Glassdoor 2026. Pleno gira em R$ 11.850. Especialistas em fintechs e bancos chegam a R$ 20-30k. Remoto pra fora paga em dólar (US$ 5-10k/mês).",
-        dificuldade: 5,
-        cursosGratuitos: [
-          "OWASP Cheat Sheet Series (referência gratuita oficial de segurança em desenvolvimento)",
-          "GitHub Security Lab (cursos gratuitos sobre SAST e segurança em pipelines)",
-          "AWS Skill Builder: Security Learning Path (parte gratuita)",
-        ],
-        projetosSugeridos: [
-          "Pipeline CI/CD completo com SAST + DAST + SCA integrados (GitHub Actions público)",
-          "Cluster Kubernetes hardening: image scanning + network policies + RBAC documentado",
-          "Sistema de secrets management end-to-end (Vault + integração com K8s + rotação automática)",
-        ],
-        roadmapEspecifico: [
-          "Ter base sólida em DevOps (CI/CD, Docker, Kubernetes, cloud), 2+ anos",
-          "Estudar OWASP Top 10 + fundamentos de segurança de aplicações",
-          "Aprender ferramentas SAST/DAST/SCA e como integrá-las em pipelines",
-          "Estudar compliance (LGPD obrigatório no BR, PCI-DSS pra fintechs)",
-          "Construir portfolio: pipeline público com segurança integrada + writeup técnico",
-        ],
-        dicasIniciais:
-          "Não tente entrar como DevSecOps sem base de DevOps. Esse cargo cobra os dois mundos. Vindo de DevOps, foque em OWASP + ferramentas de scan + compliance. Vindo de segurança, foque em CI/CD + containers + cloud. Cargo paga muito bem em fintechs e bancos. Invista em entender PCI-DSS e LGPD. Inglês é obrigatório (toda a doc e community estão em inglês). Subárea em crescimento explosivo. Quem entra agora pega salários acima do normal.",
-      },
     ],
+  },
+  {
+    id: "devsecops",
+    nome: "DevSecOps",
+    slug: "devsecops",
+    icon: ShieldCheck,
+    tagClass: "tag-seguranca",
+    // TODO(Ana)
+    descricaoCurta:
+      "Integra segurança no ciclo CI/CD. SAST/DAST, secrets management, hardening de pipelines. Área em forte crescimento (3.4k+ vagas BR).",
+    // TODO(Ana)
+    descricaoCompleta:
+      "DevSecOps é a evolução do DevOps com integração obrigatória de segurança em cada etapa do ciclo de desenvolvimento, desde o primeiro commit até o deploy em produção. Não é cargo opcional: virou requisito em fintechs, bancos e empresas que lidam com dados sensíveis (LGPD, PCI-DSS). Profissional integra ferramentas de scan de código (SAST, DAST, SCA), gerencia secrets, faz hardening de pipelines e containers. Diferente do AppSec (que é mais especializado em código de aplicação e revisão de segurança), o DevSecOps cobre todo o ciclo: código, build, deploy, runtime, infraestrutura. Mercado super aquecido em 2026: Glassdoor mostra 311+ vagas ativas, BeBee 3.4k+, com média salarial de R$ 9.030 e sêniores chegando a R$ 19.200. Em fintechs e bancos, ultrapassa R$ 25k facilmente.",
+    oQueFaz:
+      "No dia a dia: integra ferramentas de segurança em pipelines CI/CD (Semgrep, SonarQube, Snyk, Burp), automatiza varredura de vulnerabilidades em código e dependências, configura gestão de secrets (Vault, AWS Secrets Manager), faz hardening de containers e clusters Kubernetes, responde a incidentes de segurança em produção, audita ambientes cloud (IAM, redes, configurações), e trabalha com times de dev pra educar sobre práticas seguras (shift-left security). Garante compliance (LGPD, PCI-DSS, ISO 27001).",
+    // TODO(Ana)
+    tarefasDiarias: [
+      "Integrar ferramentas de segurança em pipelines CI/CD",
+      "Automatizar varredura de vulnerabilidades em código e dependências",
+      "Configurar e rotacionar gestão de secrets",
+      "Fazer hardening de containers e clusters Kubernetes",
+      "Auditar ambientes cloud (IAM, redes, configurações)",
+      "Orientar times de dev em práticas seguras (shift-left security)",
+    ],
+    // TODO(Ana)
+    perfilIndicado:
+      "Gosta de automação e de segurança na mesma medida, e prefere prevenir a remediar. Tem paciência para investigar configuração e ler documentação técnica, e perfil colaborativo: boa parte do trabalho é convencer times de desenvolvimento a adotar práticas seguras.",
+    habilidades: [
+      "CI/CD avançado (Jenkins, GitLab CI, GitHub Actions)",
+      "SAST, DAST e SCA (Semgrep, SonarQube, Snyk, OWASP ZAP)",
+      "Segurança em containers e Kubernetes (image scanning, runtime security)",
+      "Gestão de secrets (Vault, AWS Secrets Manager, sealed-secrets)",
+      "OWASP Top 10 + compliance (LGPD, PCI-DSS, ISO 27001)",
+    ],
+    ferramentas: [
+      "Jenkins, GitLab CI ou GitHub Actions (CI/CD)",
+      "SonarQube ou Semgrep (SAST)",
+      "OWASP ZAP ou Burp Suite (DAST)",
+      "Snyk ou Dependabot (SCA)",
+      "HashiCorp Vault (gestão de secrets)",
+      "Docker + Kubernetes + Trivy (segurança de containers)",
+    ],
+    dificuldade: 5,
+    cargos: [
+      "DevSecOps Engineer Pleno (3+ anos de DevOps)",
+      "DevSecOps Engineer Sênior (5+ anos)",
+      "Staff DevSecOps / Tech Lead Security Engineering",
+      "Principal DevSecOps / Head of Platform Security",
+    ],
+    faixaSalarial:
+      "R$ 5.692 (júnior raro) a R$ 25.000+ (sênior em fintechs). Média BR R$ 9.030, Glassdoor 2026. Pleno gira em R$ 11.850. Especialistas em fintechs e bancos chegam a R$ 20-30k. Remoto pra fora paga em dólar (US$ 5-10k/mês).",
+    cursosGratuitos: [
+      "OWASP Cheat Sheet Series (referência gratuita oficial de segurança em desenvolvimento)",
+      "GitHub Security Lab (cursos gratuitos sobre SAST e segurança em pipelines)",
+      "AWS Skill Builder: Security Learning Path (parte gratuita)",
+    ],
+    roadmapInicial: [
+      "Ter base sólida em DevOps (CI/CD, Docker, Kubernetes, cloud), 2+ anos",
+      "Estudar OWASP Top 10 + fundamentos de segurança de aplicações",
+      "Aprender ferramentas SAST/DAST/SCA e como integrá-las em pipelines",
+      "Estudar compliance (LGPD obrigatório no BR, PCI-DSS pra fintechs)",
+      "Construir portfolio: pipeline público com segurança integrada + writeup técnico",
+    ],
+    projetos: [
+      "Pipeline CI/CD completo com SAST + DAST + SCA integrados (GitHub Actions público)",
+      "Cluster Kubernetes hardening: image scanning + network policies + RBAC documentado",
+      "Sistema de secrets management end-to-end (Vault + integração com K8s + rotação automática)",
+    ],
+    // TODO(Ana)
+    termosEssenciais: [
+      "SAST",
+      "DAST",
+      "SCA",
+      "Shift-left security",
+      "Secrets management",
+      "Hardening",
+    ],
+    // TODO(Ana)
+    dicasIniciais:
+      "Não tente entrar como DevSecOps sem base de DevOps. Esse cargo cobra os dois mundos. Vindo de DevOps, foque em OWASP + ferramentas de scan + compliance. Vindo de segurança, foque em CI/CD + containers + cloud. Cargo paga muito bem em fintechs e bancos. Invista em entender PCI-DSS e LGPD. Inglês é obrigatório (toda a doc e community estão em inglês). Área em crescimento explosivo. Quem entra agora pega salários acima do normal.",
+    roadmapStatus: "coming-soon" as const,
+    requiresGraduation: "opcional",
+    crescimentoMercado: "alto",
   },
   {
     id: "gamedev",
@@ -5724,6 +5754,15 @@ export const areasPoucoConhecidas: {
       "Usa programação e dados para resolver problemas de biologia, como analisar DNA e proteínas.",
     porQue:
       "Para quem gosta de biologia ou saúde e quer aplicar computação na ciência.",
+  },
+  // TODO(Ana)
+  {
+    nome: "Computação no Agronegócio",
+    oQueE:
+      "Leva software, sensores e dados para a produção agrícola e pecuária: sistemas de gestão da fazenda, telemetria de máquinas, imagens de satélite e drone, e modelos que ajudam a prever clima, safra e pragas.",
+    porQue:
+      "Para quem quer aplicar IoT, dados e visão computacional num setor central da economia brasileira que ainda recebe pouca atenção de quem trabalha com tecnologia.",
+    relatedAreaSlug: "iot",
   },
   {
     nome: "Computação Quântica",

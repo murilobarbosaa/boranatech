@@ -2036,6 +2036,134 @@ export const dictionaryTerms = [
     meaning:
       "Melhorar a organização do código sem mudar o que ele faz por fora.",
   },
+  // TODO(Ana)
+  {
+    term: "SAST",
+    category: "Segurança",
+    tags: ["Segurança", "DevOps"],
+    meaning:
+      "Análise estática de segurança: uma ferramenta lê o código-fonte parado, sem executá-lo, procurando padrões que costumam virar vulnerabilidade. Roda cedo, normalmente a cada commit, e por isso acha problema barato de corrigir.",
+  },
+  // TODO(Ana)
+  {
+    term: "DAST",
+    category: "Segurança",
+    tags: ["Segurança", "QA"],
+    meaning:
+      "Análise dinâmica de segurança: testa a aplicação já rodando, atacando-a de fora como um invasor faria. Enxerga falhas que só aparecem em execução, mas depende de ter um ambiente de teste no ar.",
+  },
+  // TODO(Ana)
+  {
+    term: "SCA",
+    category: "Segurança",
+    tags: ["Segurança", "DevOps"],
+    meaning:
+      "Análise de composição de software: verifica as bibliotecas de terceiros que o projeto usa em busca de versões com vulnerabilidade conhecida. Como a maior parte de um projeto moderno é código de outras pessoas, é aqui que muito risco mora.",
+  },
+  // TODO(Ana)
+  {
+    term: "Shift-left security",
+    category: "Segurança",
+    tags: ["Segurança", "DevOps"],
+    meaning:
+      "Prática de puxar a segurança para o começo do desenvolvimento, em vez de deixá-la como auditoria no fim. A ideia é simples: quanto mais cedo o problema aparece, mais barato e menos traumático é resolver.",
+  },
+  // TODO(Ana)
+  {
+    term: "Secrets management",
+    category: "Segurança",
+    tags: ["Segurança", "Infra"],
+    meaning:
+      "Gestão de segredos: como senhas, chaves de API e tokens são guardados, entregues às aplicações e trocados periodicamente. O objetivo é que esses valores nunca vivam no código nem no repositório.",
+  },
+  // TODO(Ana)
+  {
+    term: "Hardening",
+    category: "Segurança",
+    tags: ["Segurança", "Infra"],
+    meaning:
+      "Endurecimento de um sistema: desligar o que não é usado, fechar portas, restringir permissões e ajustar configurações padrão que vêm permissivas demais. Reduz a superfície disponível para um ataque.",
+  },
+  // TODO(Ana)
+  {
+    term: "Threat modeling",
+    category: "Segurança",
+    tags: ["Segurança", "Arquitetura"],
+    meaning:
+      "Modelagem de ameaças: exercício de sentar antes de construir e perguntar o que poderia dar errado, quem teria interesse em atacar e por onde entraria. Serve para decidir onde vale investir proteção.",
+  },
+  // TODO(Ana)
+  {
+    term: "Zero trust",
+    category: "Segurança",
+    tags: ["Segurança", "Redes"],
+    meaning:
+      "Modelo de segurança que parte do princípio de que nenhuma rede é confiável, nem a interna. Cada acesso é verificado individualmente, em vez de liberar tudo para quem já passou pela porta de entrada.",
+  },
+  // TODO(Ana)
+  {
+    term: "SBOM",
+    category: "Segurança",
+    tags: ["Segurança", "DevOps"],
+    meaning:
+      "Inventário formal de tudo que compõe um software: bibliotecas, versões e licenças. Quando surge uma vulnerabilidade nova em alguma dependência, é o SBOM que responde rápido se você é afetado.",
+  },
+  // TODO(Ana)
+  {
+    term: "Supply chain security",
+    category: "Segurança",
+    tags: ["Segurança", "DevOps"],
+    meaning:
+      "Segurança da cadeia de suprimentos de software: proteger tudo que entra no produto sem ter sido escrito pelo time, como dependências, imagens de container e ferramentas de build. Um elo comprometido contamina quem confia nele.",
+  },
+  // TODO(Ana)
+  {
+    term: "Agricultura de precisão",
+    category: "Dados",
+    tags: ["Dados", "IoT"],
+    meaning:
+      "Abordagem que trata a lavoura por partes em vez de tratar o talhão inteiro igual, usando dados de solo, clima e produtividade para decidir onde aplicar insumo, água ou defensivo.",
+  },
+  // TODO(Ana)
+  {
+    term: "AgTech",
+    category: "Carreira",
+    tags: ["Carreira", "IoT"],
+    meaning:
+      "Nome dado ao conjunto de empresas e produtos que levam tecnologia para a produção agrícola e pecuária, do software de gestão da fazenda ao maquinário conectado.",
+  },
+  // TODO(Ana)
+  {
+    term: "NDVI",
+    category: "Dados",
+    tags: ["Dados", "IA"],
+    meaning:
+      "Índice calculado a partir de imagens de satélite ou drone que estima o vigor da vegetação comparando a luz que a planta reflete em diferentes faixas do espectro. É o indicador mais comum para enxergar de longe onde a lavoura vai bem ou mal.",
+  },
+  // TODO(Ana)
+  {
+    term: "Sensoriamento remoto",
+    category: "Dados",
+    tags: ["Dados", "IA"],
+    meaning:
+      "Técnica de observar uma área à distância, por satélite, avião ou drone, e extrair informação dela sem precisar ir ao local. Na agricultura serve para acompanhar grandes extensões com frequência.",
+  },
+  // TODO(Ana)
+  {
+    term: "Telemetria",
+    category: "IoT",
+    tags: ["IoT", "Dados"],
+    meaning:
+      "Coleta automática de medições de um equipamento em operação e envio delas para um sistema remoto. É o que permite acompanhar consumo, posição e desempenho de uma máquina sem estar perto dela.",
+  },
+  // TODO(Ana)
+  {
+    term: "Agricultura digital",
+    category: "Dados",
+    tags: ["Dados", "IoT"],
+    meaning:
+      "Uso de software, conectividade e dados ao longo de todo o ciclo produtivo do campo, do planejamento do plantio à rastreabilidade do que foi colhido.",
+  },
 ];
 
 export type DictionaryTerm = (typeof dictionaryTerms)[number];

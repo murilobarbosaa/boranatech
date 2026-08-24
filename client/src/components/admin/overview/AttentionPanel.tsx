@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, ExternalLink } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  ExternalLink,
+} from "lucide-react";
+
+import { cancellationReasonLabelOf } from "@/components/admin/users/userFormat";
 
 /**
  * Painel "Atenção necessária", v2 (rodada 7).
@@ -21,6 +28,21 @@ import { AlertTriangle, CheckCircle2, ExternalLink } from "lucide-react";
  * 2. TETO DE ALTURA no painel e na lista interna. Um painel que cresce sem
  *    limite não é um painel, é a página.
  * 3. Grupos de severidade baixa nascem RECOLHIDOS. O que é crítico abre sozinho.
+ *
+ * v3, e o que mudou:
+ *
+ * 4. DESTINO INTERNO como ação primária. Todo item mandava para a Stripe,
+ *    inclusive os que se resolvem aqui dentro (uma saída agendada se olha na aba
+ *    de usuários). Agora o servidor manda `destinoInterno`, e ele vira o botão
+ *    principal; a Stripe desce para secundária.
+ * 5. O TETO DE ALTURA SAIU, e isso NÃO reabre o defeito da v1. O que a v1
+ *    deformava era o VIZINHO de grid, e esse vizinho não existe mais: o bloco
+ *    "Aquisição de usuários" e o botão que sobrou dele saíram na rodada 7 (D17),
+ *    e hoje o painel está sozinho num `grid gap-6` de coluna única. Sem vizinho
+ *    para esticar, o teto só fazia uma coisa: esconder item de alerta atrás de
+ *    uma barra de rolagem, que é o oposto do propósito do painel.
+ * 6. MOTIVO da saída agendada, quando declarado, traduzido pelo resolver que já
+ *    existe (`cancellationReasonLabelOf`), nunca por um mapa novo aqui.
  */
 
 export type ItemAtencao = {
@@ -40,6 +62,13 @@ export type ItemAtencao = {
   /** Contagem e janela do item agregado (cobranças falhadas). */
   agregado?: { quantidade: number; janelaDias: number };
   url: string;
+  /**
+   * Caminho DENTRO do admin. Opcional: na janela de deploy o backend antigo não
+   * manda, e a ausência tem de virar "sem botão interno", nunca erro.
+   */
+  destinoInterno?: string;
+  /** Código do motivo declarado no cancelamento. Traduzido aqui, com fallback. */
+  motivoCodigo?: string;
 };
 
 export type PainelDeAtencao = {
@@ -60,6 +89,9 @@ const ROTULO_DE_FONTE: Record<string, string> = {
   cobrancas_falhadas: "cobranças falhadas",
   pagamentos_orfaos: "pagamentos órfãos",
   custo_ia: "custo de IA",
+  /* TODO(Ana) */ payouts: "repasses bancários",
+  /* TODO(Ana) */ despesas: "despesas",
+  /* TODO(Ana) */ influencers: "influencers",
 };
 
 /** Resolver com fallback neutro: tipo novo do servidor não pode derrubar a aba. */
@@ -73,6 +105,10 @@ const TITULO_DE_GRUPO: Record<string, string> = {
   cobrancas_falhadas: "Cobranças falhadas",
   pagamento_orfao: "Pagamentos sem assinatura",
   custo_ia_spike: "Custo de IA acima do normal",
+  /* TODO(Ana) */ payout_falho: "Repasses que falharam",
+  /* TODO(Ana) */ mes_sem_despesa: "Mês sem despesa registrada",
+  /* TODO(Ana) */ influencer_com_assinatura:
+    "Influencers que viraram assinantes",
 };
 
 function tituloDeGrupo(tipo: string, exemplo: ItemAtencao): string {
@@ -101,6 +137,74 @@ export function linkDaStripe(url: unknown): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * DESTINO INTERNO validado, no mesmo espírito do `linkDaStripe`.
+ *
+ * Só caminho relativo começando em `/admin`. Um valor absoluto vindo do
+ * servidor (`https://...`) viraria link de saída disfarçado de navegação
+ * interna, e um caminho fora de `/admin` levaria o admin para fora da tela sem
+ * dizer. Qualquer outra coisa vira ausência de botão, nunca botão quebrado.
+ */
+export function destinoInternoValido(valor: unknown): string | null {
+  if (typeof valor !== "string" || valor.length === 0) return null;
+  if (!valor.startsWith("/admin")) return null;
+  if (valor.startsWith("//")) return null;
+  return valor;
+}
+
+/**
+ * Ações de UM item: interna primeiro, Stripe depois.
+ *
+ * A ordem é a mensagem. Quando as duas existem, a primária é a que resolve sem
+ * sair do admin; a Stripe fica visível mas secundária, com peso menor.
+ */
+function AcoesDoItem({ item }: { item: ItemAtencao }) {
+  const interno = destinoInternoValido(item.destinoInterno);
+  const externo = linkDaStripe(item.url);
+  if (!interno && !externo) return null;
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-3">
+      {interno ? (
+        <a
+          href={interno}
+          data-testid="atencao-destino-interno"
+          className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-900 hover:bg-yellow-50"
+        >
+          {/* TODO(Ana) */}
+          Resolver no admin <ArrowRight className="h-3 w-3" />
+        </a>
+      ) : null}
+      {externo ? (
+        <a
+          href={externo}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`inline-flex items-center gap-1 text-xs font-black uppercase text-violet-700 hover:underline ${
+            interno ? "opacity-80" : ""
+          }`}
+        >
+          Abrir na Stripe <ExternalLink className="h-3 w-3" />
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
+/** Motivo declarado, quando houver. Rótulo pelo resolver que já existe. */
+function MotivoDaSaida({ item }: { item: ItemAtencao }) {
+  if (!item.motivoCodigo) return null;
+  return (
+    <p
+      data-testid="atencao-item-motivo"
+      className="mt-1 text-xs font-black uppercase tracking-wide text-slate-600"
+    >
+      {/* TODO(Ana) */}
+      Motivo declarado: {cancellationReasonLabelOf(item.motivoCodigo)}
+    </p>
+  );
 }
 
 type Grupo = {
@@ -142,7 +246,8 @@ export function agruparItens(itens: ItemAtencao[]): Grupo[] {
     // soma (isso baixaria o total em silêncio), ele é CONTADO à parte para o
     // rodapé do grupo poder dizer que o número é um piso.
     if (typeof item.mrrMensalCents === "number") {
-      g.totalMrrMensalCents = (g.totalMrrMensalCents ?? 0) + item.mrrMensalCents;
+      g.totalMrrMensalCents =
+        (g.totalMrrMensalCents ?? 0) + item.mrrMensalCents;
     } else if (typeof item.valorCents === "number") {
       g.semMensal += 1;
     }
@@ -242,16 +347,8 @@ function GrupoView({ grupo }: { grupo: Grupo }) {
           <p className="mt-1 text-sm font-semibold text-slate-600">
             {grupo.itens[0].detalhe}
           </p>
-          {linkDaStripe(grupo.itens[0].url) ? (
-            <a
-              href={linkDaStripe(grupo.itens[0].url)!}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-flex items-center gap-1 text-xs font-black uppercase text-violet-700 hover:underline"
-            >
-              Abrir na Stripe <ExternalLink className="h-3 w-3" />
-            </a>
-          ) : null}
+          <MotivoDaSaida item={grupo.itens[0]} />
+          <AcoesDoItem item={grupo.itens[0]} />
         </>
       ) : (
         <button
@@ -265,12 +362,8 @@ function GrupoView({ grupo }: { grupo: Grupo }) {
       )}
 
       {aberto && !unico ? (
-        <ul
-          data-testid="atencao-grupo-lista"
-          className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1"
-        >
+        <ul data-testid="atencao-grupo-lista" className="mt-3 space-y-2 pr-1">
           {grupo.itens.map((item) => {
-            const href = linkDaStripe(item.url);
             return (
               <li
                 key={item.chave}
@@ -290,16 +383,8 @@ function GrupoView({ grupo }: { grupo: Grupo }) {
                 <p className="mt-1 text-xs font-semibold text-slate-500">
                   {item.detalhe}
                 </p>
-                {href ? (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 inline-flex items-center gap-1 text-xs font-black uppercase text-violet-700 hover:underline"
-                  >
-                    Abrir na Stripe <ExternalLink className="h-3 w-3" />
-                  </a>
-                ) : null}
+                <MotivoDaSaida item={item} />
+                <AcoesDoItem item={item} />
               </li>
             );
           })}
@@ -350,10 +435,10 @@ export function AttentionPanel({
       ) : !data ? null : (
         // TETO DE ALTURA. Sem ele o painel estica a linha do grid e deforma o
         // vizinho — foi exatamente o que aconteceu na v1.
-        <div
-          data-testid="atencao-corpo"
-          className="mt-5 max-h-[32rem] space-y-4 overflow-y-auto pr-1"
-        >
+        // O PAINEL CRESCE. Ver a decisão 5 na docstring: o teto de altura da v2
+        // existia para não deformar um vizinho de grid que não existe mais, e
+        // esconder item de alerta atrás de scroll é o oposto do propósito daqui.
+        <div data-testid="atencao-corpo" className="mt-5 space-y-4">
           {fontes.length > 0 ? (
             <p
               data-testid="atencao-fontes-indisponiveis"

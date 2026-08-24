@@ -35,7 +35,6 @@ import {
   MousePointerClick,
   PlusCircle,
   RefreshCcw,
-  Search,
   Send,
   ShieldCheck,
   SquareKanban,
@@ -163,6 +162,62 @@ type MetricCard = {
   secundaria?: string | null;
 };
 
+/**
+ * Nome de exibicao das ferramentas de IA.
+ *
+ * A aba mostrava o SLUG tecnico ("resume-analyzer", "github-perfil"), que e o
+ * identificador que `logAiUsage` grava em `ai_usage_logs.tool`. O slug e a
+ * chave certa no banco e o rotulo errado numa tela de gestao.
+ *
+ * O CONTRATO E O FALLBACK, nao a completude. Este mapa NAO se afirma exaustivo
+ * e nao deve: uma lista escrita a mao sobre um conjunto que cresce e a classe de
+ * defeito que este projeto cata por regra, e ela falha PASSANDO, ficando
+ * silenciosamente desatualizada no primeiro slug novo. Quem garante a correcao
+ * e `rotuloDaFerramenta`, que devolve o slug cru para o que nao esta aqui.
+ *
+ * CENSO DE 2026-08-22: nesta data os 13 slugs vivos nos call sites de
+ * `logAiUsage` em `server/` estavam TODOS cobertos, mais dois historicos
+ * (`study-plan-build` e `interview`), que a docstring de
+ * `server/lib/aiUsageStats.ts` registra como medidos em 14/08 e ainda caem na
+ * janela de 30 dias da aba. A data vai junto de proposito: isto e uma MEDICAO,
+ * nao uma promessa, e sem ela viraria a afirmacao de completude que o paragrafo
+ * acima proibe.
+ *
+ * O UNICO ponto que nem um censo alcanca: `server/routes/github.ts` monta o
+ * slug como `` `github-${mode}` ``, entao um modo novo cria um slug novo em
+ * tempo de execucao, sem passar por lugar nenhum que se possa varrer. E por
+ * isso, tambem, que o fallback e o contrato.
+ */
+const ROTULO_DA_FERRAMENTA: Record<string, string> = {
+  /* TODO(Ana) */ "resume-analyzer": "Analisador de Currículo",
+  /* TODO(Ana) */ "resume-builder": "Criador de Currículo",
+  /* TODO(Ana) */ "resume-render": "Renderização de Currículo (PDF)",
+  /* TODO(Ana) */ "linkedin-analyzer": "Analisador de LinkedIn",
+  /* TODO(Ana) */ "github-perfil": "Analisador de GitHub (perfil)",
+  /* TODO(Ana) */ "github-repo": "Analisador de GitHub (repositório)",
+  /* TODO(Ana) */ "roadmap-generator": "Gerador de Roadmap",
+  /* TODO(Ana) */ "roadmap-intake-chat": "Chat inicial do Roadmap",
+  /* TODO(Ana) */ "career-plan": "Plano de Carreira",
+  /* TODO(Ana) */ "agent-chat": "Chat do Agente",
+  /* TODO(Ana) */ "interview-session": "Sessão de Entrevista",
+  /* TODO(Ana) */ "interview-turn": "Turno de Entrevista",
+  /* TODO(Ana) */ "career-plan-chat": "Chat do Plano de Carreira",
+  /* TODO(Ana) */ "interview-tts": "Voz da Entrevista",
+  /* TODO(Ana) */ "project-validation": "Validação de Projeto",
+  // HISTORICOS: nao aparecem mais na fonte, mas ha linhas de 14/08 em
+  // `ai_usage_logs` que ainda caem na janela de 30 dias da aba.
+  /* TODO(Ana) */ "study-plan-build": "Plano de Estudos (construção)",
+  /* TODO(Ana) */ interview: "Entrevista (formato antigo)",
+};
+
+// Slug sem traducao aparece CRU, visivel e feio de proposito: feio a mostra
+// pede a traducao que falta, enquanto um rotulo inventado ("Ferramenta
+// desconhecida") ou uma linha omitida esconderiam uma ferramenta que esta
+// gastando dinheiro de verdade.
+function rotuloDaFerramenta(slug: string): string {
+  return ROTULO_DA_FERRAMENTA[slug] ?? slug;
+}
+
 type AiUsage = {
   feature: string;
   requests: string;
@@ -239,7 +294,6 @@ type AdminSectionId =
   | "conteudo"
   | "usuarios"
   | "retencao"
-  | "seo"
   | "financeiro"
   | "ia"
   | "afiliados"
@@ -404,6 +458,75 @@ type AiStatsData = Record<
     semCustoMedido?: number;
   }
 >;
+
+/**
+ * O que GET /admin/ai-cost-per-user devolve.
+ *
+ * Substituiu um `PendingIntegration` que prometia "Dados agregados por usuario
+ * disponiveis apos 30 dias" enquanto `ai_usage_logs` ja gravava `user_id` havia
+ * mais de cem dias. Placeholder que promete data para de ser lido como
+ * pendencia, e este ficou no ar tempo suficiente para virar paisagem.
+ *
+ * TODOS os campos de ausencia sao NOMEADOS: `perfilAusente` separa "sem perfil"
+ * de "sem e-mail cadastrado", `semUsuario` e null quando nao ha balde (e nao um
+ * objeto zerado, que afirmaria um balde vazio existente), e `maisUsuarios` diz
+ * quantos ficaram fora do topo para a tabela nunca parecer o total.
+ */
+type AiCostPerUserRow = {
+  userId: string;
+  email: string | null;
+  nome: string | null;
+  perfilAusente: boolean;
+  calls: number;
+  success: number;
+  /** Em DOLAR, como o resto da aba. */
+  costUsd: number;
+  semCustoMedido: number;
+};
+
+type AiCostPerUserData = {
+  top: AiCostPerUserRow[];
+  semUsuario: {
+    calls: number;
+    success: number;
+    costUsd: number;
+    semCustoMedido: number;
+  } | null;
+  maisUsuarios: number;
+  usuariosDistintos: number;
+};
+
+/**
+ * Traduz o que a REDE devolveu para o tipo acima, sem confiar em nada.
+ *
+ * O tipo e uma promessa do compilador sobre o codigo, nunca sobre a resposta.
+ * Na janela de deploy (Vercel primeiro, Railway depois) o bundle novo conversa
+ * com o backend antigo, que nao tem esta rota nem estes campos, e um
+ * `payload.top.length` direto derruba a aba inteira com TypeError. Campo que
+ * falta vira o estado vazio equivalente, que a tela ja sabe exibir.
+ */
+function numeroOuZero(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) ? v : 0;
+}
+
+function normalizarCustoPorUsuario(bruto: unknown): AiCostPerUserData {
+  const obj = (bruto ?? {}) as Partial<AiCostPerUserData>;
+  const numero = numeroOuZero;
+  return {
+    top: Array.isArray(obj.top) ? obj.top : [],
+    semUsuario:
+      obj.semUsuario && typeof obj.semUsuario === "object"
+        ? {
+            calls: numero(obj.semUsuario.calls),
+            success: numero(obj.semUsuario.success),
+            costUsd: numero(obj.semUsuario.costUsd),
+            semCustoMedido: numero(obj.semUsuario.semCustoMedido),
+          }
+        : null,
+    maisUsuarios: numero(obj.maisUsuarios),
+    usuariosDistintos: numero(obj.usuariosDistintos),
+  };
+}
 
 /**
  * Linha de cadastros do card "Usuarios totais".
@@ -725,7 +848,6 @@ const adminNavItems: AdminNavItem[] = [
     label: "Retenção",
     icon: <RefreshCcw className="h-4 w-4" />,
   },
-  { href: "#seo", label: "SEO", icon: <Search className="h-4 w-4" /> },
   {
     href: "#financeiro",
     label: "Financeiro",
@@ -779,9 +901,24 @@ const ADMIN_SECTION_IDS = new Set<string>(
  *
  * O destino leva `board=bugs`. Se o quadro nao existir mais, o TasksDashboard
  * cai no primeiro quadro em vez de ficar sem destino.
+ *
+ * `seo` saiu porque nunca teve dentro. Nasceu e morreu como PendingIntegration
+ * ("Requer integracao com Search Console API"): a aba prometia pagina que vira
+ * cadastro, keyword organica e status de indexacao, e entregava um aviso de que
+ * a integracao nao existe. Aba vazia na navegacao nao e neutra, ela cobra um
+ * clique para informar que nao ha nada.
+ *
+ * O destino e `paginas`, que e onde mora o conteudo mais proximo do que a aba
+ * prometia (paginas que geram cadastro). Diferente de bugs, aqui NAO existe
+ * caminho externo a resgatar: a varredura do repositorio inteiro (client,
+ * server, e-mails, docs e scripts) achou ZERO ocorrencias de `section=seo`, e a
+ * unica mencao ao slug era o proprio item de nav. Entao este redirect cobre so
+ * link colado, favorito e historico de navegador, que e justamente o que nao da
+ * para varrer.
  */
 const SECOES_APOSENTADAS: Record<string, string> = {
   bugs: "tarefas&board=bugs",
+  seo: "paginas",
 };
 
 /** A secao aposentada, ou null. Exportado para teste. */
@@ -794,11 +931,27 @@ export function redirecionamentoDeSecao(search: string): string | null {
 
 // Le ?section= da URL e devolve um AdminSectionId valido, ou o default seguro.
 // Centraliza a validacao: ausente ou lixo -> "visao-geral".
-function sectionFromSearch(search: string): AdminSectionId {
+// Exportado para teste.
+export function sectionFromSearch(search: string): AdminSectionId {
   const value = new URLSearchParams(search).get("section");
   // Secao aposentada resolve para o DESTINO, para a tela ja renderizar certo no
-  // primeiro paint em vez de piscar "visao-geral" antes do redirect.
-  if (value && SECOES_APOSENTADAS[value]) return "tarefas";
+  // primeiro paint em vez de piscar outra aba antes do redirect.
+  //
+  // A secao sai do DESTINO, nao de um nome cravado. Enquanto bugs era a unica
+  // entrada, `return "tarefas"` acertava por coincidencia de cardinalidade: com
+  // a segunda entrada, cravar o nome renderizaria Tarefas para quem pediu seo.
+  // O destino pode carregar parametros (`tarefas&board=bugs`), entao a secao e
+  // o trecho antes do primeiro `&`.
+  const destino = value ? SECOES_APOSENTADAS[value] : undefined;
+  if (destino) {
+    const secaoDestino = destino.split("&")[0];
+    // Destino fora do conjunto vivo e erro de programador (entrada escrita
+    // errada no mapa), mas cair em "visao-geral" e melhor do que devolver um id
+    // que nenhum bloco da tela reconhece, o que renderizaria pagina em branco.
+    return ADMIN_SECTION_IDS.has(secaoDestino)
+      ? (secaoDestino as AdminSectionId)
+      : "visao-geral";
+  }
   return value && ADMIN_SECTION_IDS.has(value)
     ? (value as AdminSectionId)
     : "visao-geral";
@@ -1590,7 +1743,9 @@ const contentTabs: Array<{
     type: "events",
     label: "Eventos",
     supported: true,
-    description: "Adicionar, editar e publicar eventos.",
+    // TODO(Ana)
+    description:
+      "Curar a agenda coletada diariamente pelo agente, e adicionar eventos a mão.",
   },
   {
     type: "areas",
@@ -1610,6 +1765,19 @@ const contentTabs: Array<{
     supported: true,
     description: "Editar título, descrição, duração e publicação.",
   },
+];
+
+// A coluna `modality` de external_events e nullable, mas o BntSelect e o Radix
+// por baixo dele nao aceitam item de valor vazio. A sentinela vive SO na UI: o
+// payload a converte de volta para null, entao "sem modalidade" continua sendo
+// null no banco e nao vira a string "Nao informado".
+// TODO(Ana)
+const MODALIDADE_NAO_INFORMADA = "Não informado";
+const MODALIDADES = [
+  MODALIDADE_NAO_INFORMADA,
+  "Presencial",
+  "Online",
+  "Híbrido",
 ];
 
 function emptyContentForm(
@@ -1646,12 +1814,15 @@ function emptyContentForm(
     return {
       title: "",
       description: "",
-      starts_at: "",
-      ends_at: "",
+      organizer: "",
+      source: "admin",
+      url: "",
+      starts_on: "",
+      ends_on: "",
+      modality: MODALIDADE_NAO_INFORMADA,
       location_label: "",
       city: "",
-      online: false,
-      url: "",
+      uf: "",
       is_published: true,
     };
   }
@@ -1723,15 +1894,26 @@ function contentPayload(
   }
 
   if (type === "events") {
+    const startsOn = String(form.starts_on || "").trim() || null;
+    const modality = String(form.modality || MODALIDADE_NAO_INFORMADA);
     return {
       title: String(form.title || "").trim(),
       description: String(form.description || "").trim(),
-      starts_at: String(form.starts_at || "").trim() || null,
-      ends_at: String(form.ends_at || "").trim() || null,
+      organizer: String(form.organizer || "").trim(),
+      // NOT NULL no banco. O default do formulario e "admin" para o evento
+      // criado a mao ficar distinguivel do que a rotina diaria coleta.
+      source: String(form.source || "admin").trim() || "admin",
+      url: String(form.url || "").trim(),
+      starts_on: startsOn,
+      ends_on: String(form.ends_on || "").trim() || null,
+      // external_events_date_coerency_chk exige data OU status "a_confirmar".
+      // Derivar aqui em vez de pedir o status na tela evita o insert recusado
+      // pelo banco quando a data ainda nao foi anunciada.
+      date_status: startsOn ? "confirmada" : "a_confirmar",
+      modality: modality === MODALIDADE_NAO_INFORMADA ? null : modality,
       location_label: String(form.location_label || "").trim(),
       city: String(form.city || "").trim(),
-      online: Boolean(form.online),
-      url: String(form.url || "").trim(),
+      uf: String(form.uf || "").trim(),
       is_published: Boolean(form.is_published),
     };
   }
@@ -5500,6 +5682,17 @@ function EmailCampaignsAdminSection() {
 function ContentAdminSection() {
   const [activeType, setActiveType] = useState<ContentType>("areas");
   const [items, setItems] = useState<ContentItem[]>([]);
+  // Distingue "nao consegui carregar" de "nao ha registros". A versao anterior
+  // caia no mesmo `setItems([])` nos dois casos, e a tela dizia "Nenhum item
+  // encontrado. Crie o primeiro item usando o formulario acima" enquanto a rota
+  // devolvia 500. A aba Eventos ficou assim por tres meses sem ninguem notar,
+  // porque a tela mentia com confianca em vez de acusar a falha.
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Total real no banco, com os mesmos filtros da listagem. `null` significa
+  // "o backend nao informou", que e o caso na janela de deploy em que o
+  // frontend novo conversa com o backend antigo: sem numero, nenhum aviso e
+  // dado, em vez de inventar um.
+  const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -5514,18 +5707,25 @@ function ContentAdminSection() {
     const config = contentTabs.find((tab) => tab.type === type)!;
     if (!config.supported) {
       setItems([]);
+      setLoadError(null);
+      setTotal(null);
       return;
     }
 
     setLoading(true);
+    setLoadError(null);
     try {
       const json = await adminFetch(`/content/${type}`);
       setItems(Array.isArray(json.data) ? json.data : []);
+      setTotal(typeof json.total === "number" ? json.total : null);
     } catch (error) {
       setItems([]);
-      toast.error(
-        error instanceof Error ? error.message : "Erro ao carregar conteúdo.",
-      );
+      setTotal(null);
+      // TODO(Ana)
+      const message =
+        error instanceof Error ? error.message : "Erro ao carregar conteúdo.";
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -5848,6 +6048,32 @@ function ContentAdminSection() {
                         onChange={(value) =>
                           setForm((current) => ({ ...current, url: value }))
                         }
+                        required
+                      />
+                      {/* TODO(Ana) */}
+                      <AdminInput
+                        label="Organizador"
+                        value={String(form.organizer || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            organizer: value,
+                          }))
+                        }
+                      />
+                      {/* TODO(Ana) */}
+                      <AdminSelect
+                        label="Modalidade"
+                        value={String(
+                          form.modality || MODALIDADE_NAO_INFORMADA,
+                        )}
+                        options={MODALIDADES}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            modality: value,
+                          }))
+                        }
                       />
                       <AdminInput
                         label="Local"
@@ -5866,23 +6092,33 @@ function ContentAdminSection() {
                           setForm((current) => ({ ...current, city: value }))
                         }
                       />
+                      {/* TODO(Ana) */}
+                      <AdminInput
+                        label="UF"
+                        value={String(form.uf || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, uf: value }))
+                        }
+                      />
+                      {/* TODO(Ana) */}
                       <AdminInput
                         label="Data de início"
-                        type="datetime-local"
-                        value={String(form.starts_at || "")}
+                        type="date"
+                        value={String(form.starts_on || "")}
                         onChange={(value) =>
                           setForm((current) => ({
                             ...current,
-                            starts_at: value,
+                            starts_on: value,
                           }))
                         }
                       />
+                      {/* TODO(Ana) */}
                       <AdminInput
                         label="Data de fim"
-                        type="datetime-local"
-                        value={String(form.ends_at || "")}
+                        type="date"
+                        value={String(form.ends_on || "")}
                         onChange={(value) =>
-                          setForm((current) => ({ ...current, ends_at: value }))
+                          setForm((current) => ({ ...current, ends_on: value }))
                         }
                       />
                       <AdminTextarea
@@ -6059,18 +6295,6 @@ function ContentAdminSection() {
                         }
                       />
                     ) : null}
-                    {activeType === "events" ? (
-                      <AdminCheckbox
-                        label="Online"
-                        checked={Boolean(form.online)}
-                        onChange={(checked) =>
-                          setForm((current) => ({
-                            ...current,
-                            online: checked,
-                          }))
-                        }
-                      />
-                    ) : null}
                     {activeType === "courses" ? (
                       <AdminCheckbox
                         label="Gratuito"
@@ -6130,9 +6354,39 @@ function ContentAdminSection() {
                   <span>Status</span>
                   <span>Ações</span>
                 </div>
+                {!loading && total !== null && total > items.length ? (
+                  <div className="border-b-2 border-slate-900 bg-amber-100 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-900">
+                    {/* TODO(Ana) */}
+                    Mostrando {items.length} de {total} registros. Use a busca
+                    para chegar no que não aparece aqui.
+                  </div>
+                ) : null}
                 {loading ? (
                   <div className="p-5">
                     <LoadingBlock />
+                  </div>
+                ) : loadError ? (
+                  <div className="p-6">
+                    {/* TODO(Ana) */}
+                    <p className="font-display text-xl font-black text-rose-800">
+                      Não foi possível carregar esta lista
+                    </p>
+                    {/* TODO(Ana) */}
+                    <p className="mt-2 text-sm font-semibold text-slate-600">
+                      Isto não é uma lista vazia: ela não chegou. Nada foi
+                      apagado.
+                    </p>
+                    <p className="mt-3 rounded-2xl border-2 border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-900">
+                      {loadError}
+                    </p>
+                    {/* TODO(Ana) */}
+                    <button
+                      type="button"
+                      onClick={() => void loadItems()}
+                      className="mt-4 rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black"
+                    >
+                      Tentar de novo
+                    </button>
                   </div>
                 ) : items.length ? (
                   items.map((item) => (
@@ -6350,6 +6604,13 @@ export default function Admin() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [aiStats, setAiStats] = useState<AiStatsData>({});
   const [aiStatsError, setAiStatsError] = useState<string | null>(null);
+  const [aiCostPerUser, setAiCostPerUser] = useState<AiCostPerUserData | null>(
+    null,
+  );
+  const [aiCostPerUserError, setAiCostPerUserError] = useState<string | null>(
+    null,
+  );
+  const [aiCostPerUserLoading, setAiCostPerUserLoading] = useState(true);
   const [posthogState, setPosthogState] = useState<PosthogState | null>(null);
   // Horario REAL de calculo do funil (vem do envelope da janela default, cacheada
   // 5 min). null na janela custom/erro (que sao live). O PostHog e a unica fonte
@@ -6642,6 +6903,7 @@ export default function Admin() {
     const loadDashboardData = async () => {
       setDashboardLoading(true);
       setAiStatsLoading(true);
+      setAiCostPerUserLoading(true);
       setPosthogLoading(true);
       setChurnLoading(true);
       setAffiliatesStatsLoading(true);
@@ -6672,6 +6934,27 @@ export default function Admin() {
           ok: false as const,
           error:
             err instanceof Error ? err.message : "Erro ao carregar uso de IA.",
+        }));
+      // Falha aqui vira ESTADO de erro no card, nunca tabela vazia: tabela
+      // vazia diria "ninguem gastou IA nesta janela", que e um fato diferente de
+      // "nao consegui perguntar".
+      const aiCostPerUserPromise = adminFetch("/ai-cost-per-user")
+        .then((json) => ({
+          ok: true as const,
+          // NORMALIZADO NA BORDA, nao confiado. A Vercel sobe antes do Railway e
+          // existe uma janela de 1 a 3 minutos com bundle novo contra backend
+          // ANTIGO, que nao conhece esta rota nem estes campos. Ler `top.length`
+          // de um payload sem `top` derruba a aba INTEIRA com TypeError, que e
+          // pior que nao mostrar a tabela. Aqui a ausencia vira lista vazia e
+          // segue como estado "sem dados", que e o que ela e.
+          data: normalizarCustoPorUsuario(json.data),
+        }))
+        .catch((err: unknown) => ({
+          ok: false as const,
+          error:
+            err instanceof Error
+              ? err.message
+              : "Erro ao carregar custo de IA por usuário.",
         }));
       // PostHog: union do backend; falha de fetch vira o proprio estado error.
       // computedAt vem no envelope so na janela default (cacheada); ausente/erro
@@ -6753,6 +7036,17 @@ export default function Admin() {
           setAiStatsError(aiResult.error);
         }
         setAiStatsLoading(false);
+      });
+      void aiCostPerUserPromise.then((resultado) => {
+        if (cancelled) return;
+        if (resultado.ok) {
+          setAiCostPerUser(resultado.data);
+          setAiCostPerUserError(null);
+        } else {
+          setAiCostPerUser(null);
+          setAiCostPerUserError(resultado.error);
+        }
+        setAiCostPerUserLoading(false);
       });
       void posthogPromise.then((posthogResult) => {
         if (cancelled) return;
@@ -6856,6 +7150,8 @@ export default function Admin() {
           setAuditLogs([]);
           setAiStats({});
           setAiStatsError(null);
+          setAiCostPerUser(null);
+          setAiCostPerUserError(null);
           setPosthogState(null);
           setPosthogComputedAt(null);
           setChurnRiskUsers(null);
@@ -7956,25 +8252,6 @@ export default function Admin() {
             </AdminSection>
           ) : null}
 
-          {activeSection === "seo" ? (
-            <AdminSection
-              id="seo"
-              eyebrow="conteúdo e SEO"
-              icon={<Search className="h-4 w-4" />}
-              title="Conteúdo que vira cadastro"
-              subtitle="Veja páginas que geram conta criada, keyword orgânica principal e status de indexação para priorizar SEO."
-            >
-              <article className="card-brutal overflow-hidden rounded-3xl bg-white">
-                <div className="p-6">
-                  <PendingIntegration
-                    tool="Google Search Console"
-                    description="Requer integração com Search Console API"
-                  />
-                </div>
-              </article>
-            </AdminSection>
-          ) : null}
-
           {activeSection === "financeiro" ? (
             <AdminSection
               id="financeiro"
@@ -8099,8 +8376,12 @@ export default function Admin() {
                           key={item.feature}
                           className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-3"
                         >
-                          <div className="flex justify-between font-bold">
-                            <span>{item.feature}</span>
+                          <div className="flex justify-between gap-2 font-bold">
+                            {/* `title` guarda o slug tecnico: a tela fica legivel
+                                e a depuracao continua a um hover de distancia. */}
+                            <span title={item.feature}>
+                              {rotuloDaFerramenta(item.feature)}
+                            </span>
                             <span>{item.requests}</span>
                           </div>
                           <p className="text-xs font-semibold text-slate-500">
@@ -8125,9 +8406,13 @@ export default function Admin() {
                     ) : aiUsageReal.length ? (
                       aiUsageReal.map((item) => (
                         <div key={item.feature}>
-                          <div className="mb-1 flex justify-between text-sm font-bold">
-                            <span>{item.feature}</span>
-                            <span>{item.cost}</span>
+                          <div className="mb-1 flex justify-between gap-2 text-sm font-bold">
+                            <span title={item.feature}>
+                              {rotuloDaFerramenta(item.feature)}
+                            </span>
+                            <span className="whitespace-nowrap">
+                              {item.cost}
+                            </span>
                           </div>
                           <div className="h-3 rounded-full border border-slate-900 bg-slate-100">
                             <div
@@ -8164,11 +8449,137 @@ export default function Admin() {
                   <h3 className="font-display text-2xl font-black">
                     Custo por usuário
                   </h3>
+                  {/* TODO(Ana) */}
+                  <p className="mt-1 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+                    Últimos 30 dias
+                  </p>
                   <div className="mt-4">
-                    <PendingIntegration
-                      tool="ai_usage_logs por usuário"
-                      description="Dados agregados por usuário disponíveis após 30 dias"
-                    />
+                    {aiCostPerUserError ? (
+                      <ErrorBlock message={aiCostPerUserError} />
+                    ) : aiCostPerUserLoading ? (
+                      <LoadingBlock />
+                    ) : aiCostPerUser && aiCostPerUser.top.length > 0 ? (
+                      <>
+                        <div className="overflow-x-auto">
+                          <table
+                            data-testid="ia-custo-por-usuario"
+                            className="w-full text-left text-sm"
+                          >
+                            <thead>
+                              {/* SEM `tracking-wider` aqui: num card estreito ele
+                                  soma alguns pixels por letra e foi um dos motivos
+                                  de "CHAMADAS" e "CUSTO" colarem um no outro. O
+                                  `nowrap` nas numericas impede que um cabecalho de
+                                  duas palavras dobre e estique a linha inteira. */}
+                              <tr className="border-b border-slate-200 text-xs font-black uppercase text-slate-500">
+                                {/* TODO(Ana) */}
+                                <th className="py-2 pl-0 pr-2">Usuário</th>
+                                <th className="whitespace-nowrap px-2 py-2 text-right">
+                                  Chamadas
+                                </th>
+                                <th className="whitespace-nowrap px-2 py-2 text-right">
+                                  Custo
+                                </th>
+                                <th className="whitespace-nowrap py-2 pl-2 pr-0 text-right">
+                                  Sem custo
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {aiCostPerUser.top.map((linha) => (
+                                <tr
+                                  key={linha.userId}
+                                  className="border-b border-slate-100 last:border-0"
+                                >
+                                  {/* `w-full max-w-0` e o padrao de tabela para "esta
+                                      coluna absorve a sobra e e a primeira a truncar".
+                                      `max-w-[16rem]` era um TETO: a coluna continuava
+                                      exigindo ate 16rem e espremia as numericas, que e
+                                      o oposto do que se queria. O `overflow-x-auto` do
+                                      wrapper fica como valvula, nao como plano A. */}
+                                  <td className="w-full max-w-0 truncate py-2 pl-0 pr-2 font-bold">
+                                    {linha.email ?? linha.nome ?? (
+                                      <span className="text-slate-500">
+                                        {/* DUAS AUSENCIAS DIFERENTES, dois
+                                          rotulos. O payload ja SEPARA "nao
+                                          existe perfil para este user_id" de
+                                          "existe e nao tem nome nem e-mail", e
+                                          colapsar as duas num rotulo so joga
+                                          fora a distincao que o servidor pagou
+                                          para fazer: a segunda viraria uma
+                                          afirmacao falsa sobre o cadastro. */}
+                                        {linha.userId.slice(0, 8)}{" "}
+                                        {linha.perfilAusente ? (
+                                          /* TODO(Ana) */
+                                          <>(perfil ausente)</>
+                                        ) : (
+                                          /* TODO(Ana) */
+                                          <>(sem nome cadastrado)</>
+                                        )}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">
+                                    {formatCount(linha.calls)}
+                                  </td>
+                                  {/* `nowrap` aqui e o conserto do sintoma que a Ana
+                                      viu: o espaco literal entre "US$" e o numero era
+                                      ponto de quebra, e "US$ 0.37" saia em duas linhas
+                                      em toda celula, engordando a tabela inteira. */}
+                                  <td className="whitespace-nowrap px-2 py-2 text-right font-bold tabular-nums">
+                                    US$ {numeroOuZero(linha.costUsd).toFixed(2)}
+                                  </td>
+                                  <td className="whitespace-nowrap py-2 pl-2 pr-0 text-right tabular-nums text-slate-500">
+                                    {formatCount(linha.semCustoMedido)}
+                                  </td>
+                                </tr>
+                              ))}
+                              {aiCostPerUser.semUsuario ? (
+                                <tr
+                                  data-testid="ia-custo-sem-usuario"
+                                  className="border-t border-slate-300"
+                                >
+                                  <td className="w-full max-w-0 truncate py-2 pl-0 pr-2 font-bold text-slate-500">
+                                    {/* TODO(Ana) */}
+                                    Sem usuário
+                                  </td>
+                                  <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">
+                                    {formatCount(
+                                      aiCostPerUser.semUsuario.calls,
+                                    )}
+                                  </td>
+                                  <td className="whitespace-nowrap px-2 py-2 text-right font-bold tabular-nums">
+                                    US${" "}
+                                    {aiCostPerUser.semUsuario.costUsd.toFixed(
+                                      2,
+                                    )}
+                                  </td>
+                                  <td className="whitespace-nowrap py-2 pl-2 pr-0 text-right tabular-nums text-slate-500">
+                                    {formatCount(
+                                      aiCostPerUser.semUsuario.semCustoMedido,
+                                    )}
+                                  </td>
+                                </tr>
+                              ) : null}
+                            </tbody>
+                          </table>
+                        </div>
+                        {aiCostPerUser.maisUsuarios > 0 ? (
+                          <p
+                            data-testid="ia-custo-resto"
+                            className="mt-3 text-xs font-semibold text-slate-500"
+                          >
+                            {/* TODO(Ana) */}e mais{" "}
+                            {formatCount(aiCostPerUser.maisUsuarios)} usuários
+                          </p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-500">
+                        {/* TODO(Ana) */}
+                        Nenhuma chamada de IA na janela.
+                      </p>
+                    )}
                   </div>
                 </article>
               </div>

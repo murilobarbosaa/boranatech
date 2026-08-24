@@ -99,7 +99,13 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // guardas no topo e as rotas entram depois, o que os dois testes acima verificam
 // por posição. 57 -> 58 em 2026-08-17, com `GET /admin/online-now` (presença do
 // card "Atividade agora" da Visão); ela entra depois dos dois `router.use` do
-// topo, como as anteriores, e este arquivo é quem confere isso.
+// topo, como as anteriores, e este arquivo é quem confere isso. 58 -> 59 em
+// 2026-08-22, com `GET /admin/ai-cost-per-user` (a tabela de custo de IA por
+// usuário, que aposentou um placeholder cuja copy prometia dados "após 30 dias"
+// enquanto eles existiam havia mais de cem). Ela é declarada na seção de rotas
+// de IA, depois dos dois `router.use` do topo, e os dois testes acima conferem
+// isso por posição. A rota expõe e-mail de pessoa: estar atrás de
+// `requireAuth` + `requireAdmin` não é detalhe aqui, é o requisito.
 // Merge da main em 2026-08-22 (Lote C). Os dois lados subiram este contador de
 // forma independente a partir de 55: a main ate 58 (`/attention`,
 // `/overview-series`, `/online-now`) e a pilha ate 59 (`/linkedin-lastro` e as
@@ -108,7 +114,11 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // `rotasDeclaradas().length`, que devolveu 62. A soma 55 + 3 + 4 bate com a
 // medicao, e as sete rotas novas passam pelo teste de posicao acima, que e a
 // verificacao que autoriza subir o numero.
-const EXPECTED_ROUTE_COUNT = 62;
+// MERGE de 2026-08-24 (Lote C2-REV2): a main somou `GET /admin/ai-cost-per-user`
+// enquanto a pilha estava em 62. O valor abaixo NAO foi somado: foi MEDIDO de
+// novo no router mesclado por `rotasDeclaradas().length`, e o teste de posicao
+// acima, que e o que autoriza subir o numero, continua verde para a rota nova.
+const EXPECTED_ROUTE_COUNT = 63;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {

@@ -197,6 +197,16 @@ const naoReconhecidasOutras: string[] = [];
 // quase nunca e "atualizar o numero": e descobrir o que parou de ser
 // reconhecido. Foi exatamente assim que a auditoria concluiu "so falta uma
 // tabela" olhando 38 de 72.
+// 82 desde 20260730160000_create_admin_refunds.sql (cria admin_refunds). O
+// commit que criou a tabela nao subiu este numero, e o guard ficou vermelho
+// abortando antes de qualquer outra verificacao. Conferido antes de mexer, como
+// manda o CLAUDE.md: a tabela e declarada de verdade (CREATE TABLE IF NOT
+// EXISTS public.admin_refunds) e existe no banco alvo, entao o parser esta
+// certo e quem estava desatualizado era o numero.
+// 83 desde 20260811171556_create_external_events.sql (cria external_events).
+// Migration declaratoria: a tabela ja existia em producao, criada fora do
+// repositorio, e o arquivo entrou depois para fechar o historico. O numero sobe
+// pelo mesmo motivo de sempre, porque o CONJUNTO DECLARADO cresceu.
 // 83 desde 20260804120000_create_fiscal_invoices.sql (cria fiscal_invoices).
 // Era 82 desde 20260730160000_create_admin_refunds.sql (cria admin_refunds). O
 // commit que criou a admin_refunds nao subiu este numero, e o guard ficou
@@ -204,7 +214,12 @@ const naoReconhecidasOutras: string[] = [];
 // mexer, como manda o CLAUDE.md: a tabela e declarada de verdade (CREATE TABLE
 // IF NOT EXISTS public.admin_refunds) e existe no banco alvo, entao o parser
 // esta certo e quem estava desatualizado era o numero.
-const EXPECTED_TABLE_COUNT = 83;
+// MERGE de 2026-08-24: os dois historicos acima sao REAIS e chegaram ao mesmo
+// 83 por tabelas DIFERENTES, a pilha por `fiscal_invoices` e a main por
+// `external_events`. Depois do merge o conjunto declarado e a UNIAO das duas,
+// entao 83 deixou de valer para os dois lados. O valor abaixo NAO foi somado:
+// foi medido no estado mesclado (ver o relatorio do Lote C2-REV2).
+const EXPECTED_TABLE_COUNT = 84;
 
 // Mesma assercao de tamanho das tabelas, pelo mesmo motivo: pegar o caso em que
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
@@ -227,14 +242,25 @@ const EXPECTED_TABLE_COUNT = 83;
 //
 // Alterar este numero e ato deliberado, no mesmo commit da migration que cria ou
 // dropa a funcao.
-const EXPECTED_FUNCTION_COUNT = 30;
+//
+// 30 desde 20260811171556_create_external_events.sql, que declara DUAS funcoes
+// de trigger de uma vez (external_events_bloqueia_delete e
+// external_events_touch). As duas sobem tambem o contador de trigger abaixo,
+// nunca so um dos dois.
+// MERGE de 2026-08-24: mesma colisao do contador de tabelas. A pilha chegou a
+// 30 pelas duas funcoes do LinkedIn e a main chegou a 30 pelas duas de trigger
+// de `external_events`. A uniao nao e 30, e o valor abaixo foi medido.
+const EXPECTED_FUNCTION_COUNT = 32;
 // 5 desde a MESMA migration: set_admin_task_archive_source devolve trigger,
 // entao nao e exposta pelo PostgREST e sai do conjunto verificavel por REST. Os
 // dois numeros sobem juntos quando a funcao nova e de trigger, e so o primeiro
 // sobe quando ela e chamavel. Subir so um dos dois esconderia uma funcao real
 // que a classificacao passou a tratar como trigger, que e o defeito que este par
 // de asserções existe para pegar.
-const EXPECTED_TRIGGER_FUNCTION_COUNT = 5;
+// 7 desde 20260811171556_create_external_events.sql: as duas funcoes novas
+// devolvem trigger, entao saem do conjunto verificavel por REST e os dois
+// numeros sobem juntos, como o paragrafo acima exige.
+const EXPECTED_TRIGGER_FUNCTION_COUNT = 7;
 
 /** Remove comentarios de linha e de bloco antes de qualquer parse. */
 /**
@@ -914,7 +940,7 @@ const DE_EXTENSAO = new Set([
  * Calculada FORA do `if (expostas !== null)` de proposito: ela nao depende da
  * leitura de funcoes, e a verificacao de RLS da direcao inversa (mais abaixo)
  * precisa dela. Quando morava dentro daquele bloco, a referencia de baixo
- * compilava e quebrava em runtime com `ReferenceError` — e `pnpm check` NAO
+ * compilava e quebrava em runtime com `ReferenceError`, e `pnpm check` NAO
  * pegou, porque o `include` do tsconfig.json e `client/src`, `shared` e
  * `server`: `scripts/` fica de fora do typecheck.
  */
@@ -949,12 +975,19 @@ if (expostas !== null) {
 // ---------------------------------------------------------------------------
 // RLS: verificada de fato, lendo com a chave anon.
 // ---------------------------------------------------------------------------
+// 82 pela mesma causa do EXPECTED_TABLE_COUNT: admin_refunds declara
+// `alter table ... enable row level security` e entrou sem o numero subir.
+// 83 desde 20260811171556_create_external_events.sql: external_events declara
+// `alter table ... enable row level security`, entao entra no conjunto.
 // Sobe junto com EXPECTED_TABLE_COUNT sempre que a tabela nova declara
 // `alter table ... enable row level security`, que e o caso de todas as tabelas
 // novas deste projeto. 83 desde 20260804120000_create_fiscal_invoices.sql.
 // Era 82 pela mesma causa: admin_refunds declarou RLS e entrou sem o numero
 // subir.
-const EXPECTED_RLS_COUNT = 83;
+// MERGE de 2026-08-24: mesma colisao. `fiscal_invoices` (pilha) e
+// `external_events` (main) declaram RLS cada uma, e as duas entram no conjunto
+// depois do merge. Valor abaixo medido, nao somado.
+const EXPECTED_RLS_COUNT = 84;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 const rlsVivas = [...rlsDeclarada].filter((t) => declared.has(t)).sort();

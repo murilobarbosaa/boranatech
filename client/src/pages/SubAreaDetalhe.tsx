@@ -1,4 +1,4 @@
-import { useRoute, Link } from "wouter";
+import { useRoute, Link, Redirect } from "wouter";
 import {
   ArrowLeft,
   ArrowRight,
@@ -496,6 +496,20 @@ export default function SubAreaDetalhe() {
 
   const parentArea = areasTI.find((a) => a.slug === parent);
   const subarea = parentArea?.subareas?.find((s) => s.slug === subareaSlug);
+
+  // Subarea promovida a area de topo: /areas/<mae>/<slug> vira /areas/<slug>.
+  // O redirect 301 de verdade e o do vercel.json, e e ele que conta para SEO,
+  // mas ele so dispara em carga de pagina. Navegacao client-side (bundle antigo
+  // ainda aberto com o link interno velho, historico do browser, voltar/avancar)
+  // resolve a rota pelo wouter sem tocar na Vercel, e sem isto cairia no "nao
+  // encontrada" de baixo. A condicao e a promocao em si, nao um slug fixo:
+  // qualquer subarea que hoje seja area encontra a pagina nova.
+  const promovidaAArea = !subarea
+    ? areasTI.find((a) => a.slug === subareaSlug)
+    : undefined;
+  if (promovidaAArea) {
+    return <Redirect replace to={`/areas/${promovidaAArea.slug}`} />;
+  }
 
   if (!parentArea || !subarea) {
     return (

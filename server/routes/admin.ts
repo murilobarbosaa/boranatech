@@ -56,7 +56,9 @@ import {
 import {
   agregarUsoDeIa,
   chamadasSemCustoMedido,
+  custoDeIaPorUsuario,
   custoTotalDeIa,
+  inicioDaJanelaDeIa,
 } from "../lib/aiUsageStats";
 import { montarPainelDeAtencao } from "../lib/atencaoNecessaria";
 import { calcularFrescor, montarSeriesDaVisao } from "../lib/overviewSeries";
@@ -172,18 +174,34 @@ const EDITABLE_TABLES: Record<string, string[]> = {
     "published_at",
     "is_published",
   ],
+  // Chave logica "events", tabela fisica external_events (ver TABELA_FISICA).
+  // Os campos sao os da tabela real: starts_on/ends_on sao DATE (nao
+  // timestamp), e modality substituiu o booleano `online`, porque a tabela
+  // distingue Presencial, Online e Hibrido, que um booleano nao expressa.
   events: [
     "title",
     "description",
-    "starts_at",
-    "ends_at",
+    "organizer",
+    "event_type",
+    "url",
+    "calendar_url",
+    "source",
+    "area_slug",
+    "tags",
+    "starts_on",
+    "ends_on",
+    "date_label",
+    "time_label",
+    "date_status",
+    "modality",
     "location_label",
     "city",
     "state",
-    "online",
-    "url",
-    "source",
-    "tags",
+    "uf",
+    "country",
+    "price_type",
+    "price_label",
+    "featured",
     "is_published",
   ],
   areas: [
@@ -307,6 +325,28 @@ const EDITABLE_TABLES: Record<string, string[]> = {
     "applicable_plans",
   ],
 };
+
+// A chave da rota (/content/:type) e a tabela fisica coincidiam ate a aba
+// Eventos: public.events foi dropada em 2026-05-17 pela migration
+// drop_orphan_tables, com o comentario "sem refs no codigo", que era falso,
+// porque este CRUD a referenciava. A aba respondia 500 desde entao. Os dados
+// vivos estao em public.external_events, alimentada diariamente por uma rotina
+// externa. O mapa existe para a chave publica continuar "events": o frontend
+// nao muda de URL e o resource_type dos audit logs nao muda de nome, entao o
+// historico ja gravado continua encontravel pelo mesmo termo.
+const TABELA_FISICA: Record<string, string> = {
+  events: "external_events",
+};
+
+function tabelaDe(type: string): string {
+  return TABELA_FISICA[type] ?? type;
+}
+
+// Tabelas em que DELETE fisico e bloqueado por trigger no banco (external_events
+// levanta P0001) e cuja remocao e soft delete por coluna. Declarar o tipo aqui e
+// o que liga os dois pontos que precisam saber disso: o filtro da listagem, que
+// esconde o que foi removido, e o handler de DELETE.
+const TIPOS_SOFT_DELETE = new Set(["events"]);
 
 function getSearchColumn(type: string) {
   return ["areas", "technologies", "platforms"].includes(type)
@@ -1380,7 +1420,11 @@ const ATENCAO_CACHE_TTL_S = 60;
 router.get("/attention", async (_req, res, next) => {
   try {
     const { result, computedAt } = await getOrCompute(
-      "admincache:attention:v1",
+      // v2: o payload ganhou `destinoInterno`, `motivoCodigo` e tres tipos
+      // novos. Sem o bump, o admin continuaria lendo do Redis, ate o TTL, um
+      // payload da forma antiga, e o painel novo renderizaria sem os destinos
+      // internos sem nada acusar. Chave nova invalida por construcao.
+      "admincache:attention:v2",
       ATENCAO_CACHE_TTL_S,
       async () => ({
         result: await montarPainelDeAtencao(),
@@ -2027,21 +2071,34 @@ router.get("/content/:type", async (req, res, next) => {
 
     const { search, published } = req.query;
     const orderField = type === "external_jobs" ? "fetched_at" : "created_at";
+    // `count: "exact"` na PROPRIA query, e nao numa segunda chamada: o count sai
+    // com os mesmos filtros da listagem por construcao, entao nao existe o caso
+    // em que os dois divergem porque alguem acrescentou um filtro em um lugar e
+    // esqueceu do outro.
     let query = supabaseAdmin
-      .from(type)
-      .select("*")
+      .from(tabelaDe(type))
+      .select("*", { count: "exact" })
       .order(orderField, { ascending: false })
       .limit(100);
 
+    // Item removido por soft delete some da lista, senao "excluir" no admin nao
+    // teria efeito visivel nenhum e a linha continuaria ali.
+    if (TIPOS_SOFT_DELETE.has(type)) query = query.is("deleted_at", null);
     if (published !== undefined)
       query = query.eq("is_published", published === "true");
     if (search) query = query.ilike(getSearchColumn(type), `%${search}%`);
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
     if (error)
       return next(dbError("content list", error, "Erro ao buscar conteúdo."));
 
-    res.json({ data: data || [] });
+    // `total: null` quando o count nao veio, NUNCA data.length como substituto:
+    // cair para o tamanho da pagina faria "nao sei quantos sao" parecer "sao
+    // exatamente estes", que e o desfecho que este campo existe para evitar.
+    res.json({
+      data: data || [],
+      total: typeof count === "number" ? count : null,
+    });
   } catch (err) {
     next(err);
   }
@@ -2056,7 +2113,7 @@ router.get("/content/:type/:id", async (req, res, next) => {
       );
 
     const { data, error } = await supabaseAdmin
-      .from(type)
+      .from(tabelaDe(type))
       .select("*")
       .eq("id", id)
       .single();
@@ -2084,7 +2141,7 @@ router.post("/content/:type", async (req, res, next) => {
     );
 
     const { data, error } = await supabaseAdmin
-      .from(type)
+      .from(tabelaDe(type))
       .insert(payload)
       .select()
       .single();
@@ -2121,7 +2178,7 @@ router.patch("/content/:type/:id", async (req, res, next) => {
       );
 
     const { data: before } = await supabaseAdmin
-      .from(type)
+      .from(tabelaDe(type))
       .select("*")
       .eq("id", id)
       .single();
@@ -2144,7 +2201,7 @@ router.patch("/content/:type/:id", async (req, res, next) => {
       );
 
     const { data, error } = await supabaseAdmin
-      .from(type)
+      .from(tabelaDe(type))
       .update(updates)
       .eq("id", id)
       .select()
@@ -2184,25 +2241,44 @@ router.delete("/content/:type/:id", async (req, res, next) => {
       );
 
     const { data: before } = await supabaseAdmin
-      .from(type)
+      .from(tabelaDe(type))
       .select("*")
       .eq("id", id)
       .single();
     if (!before)
       return next(createError(404, "not_found", "Item não encontrado."));
 
-    // affiliates e coupons nao tem is_published: delete e sempre hard.
-    if (
+    if (TIPOS_SOFT_DELETE.has(type)) {
+      // Antes do teste de `force`, e nao depois, porque aqui `force` nao tem
+      // como ser atendido: a trigger external_events_no_delete levanta P0001 em
+      // qualquer DELETE fisico, entao o caminho de hard delete devolveria 500 em
+      // vez de excluir. Marcar a linha e a unica remocao que a tabela aceita.
+      const { error } = await supabaseAdmin
+        .from(tabelaDe(type))
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_reason: "admin",
+        })
+        .eq("id", id);
+      if (error)
+        return next(
+          dbError("content soft delete", error, "Erro ao excluir item."),
+        );
+    } else if (
+      // affiliates e coupons nao tem is_published: delete e sempre hard.
       req.query.force === "true" ||
       type === "affiliates" ||
       type === "coupons"
     ) {
-      const { error } = await supabaseAdmin.from(type).delete().eq("id", id);
+      const { error } = await supabaseAdmin
+        .from(tabelaDe(type))
+        .delete()
+        .eq("id", id);
       if (error)
         return next(dbError("content delete", error, "Erro ao deletar item."));
     } else {
       const { error } = await supabaseAdmin
-        .from(type)
+        .from(tabelaDe(type))
         .update({ is_published: false })
         .eq("id", id);
       if (error)
@@ -5654,9 +5730,117 @@ async function coletarLogsDeBeta(): Promise<{
 // por `id` da uma ordem total e estavel.
 router.get("/ai-stats", async (_req, res, next) => {
   try {
-    const desde = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    res.json({ data: await agregarUsoDeIa(inicioDaJanelaDeIa()) });
+  } catch (err) {
+    next(err);
+  }
+});
 
-    res.json({ data: await agregarUsoDeIa(desde) });
+// CUSTO DE IA POR USUARIO, a tabela que substituiu uma promessa falsa.
+//
+// Ate 2026-08-22 este card exibia um `PendingIntegration` dizendo "Dados
+// agregados por usuario disponiveis apos 30 dias". A copy era FALSA: o
+// `logAiUsage` grava `user_id` em `ai_usage_logs` desde 09/05, entao o dado
+// existia havia mais de cem dias. Placeholder que promete data e pior que
+// placeholder que diz "nao temos": ele para de ser lido como pendencia.
+//
+// MESMA JANELA DA ABA, pela MESMA constante (`inicioDaJanelaDeIa`), nao por uma
+// segunda expressao de 30 dias. A soma desta tabela precisa bater com o card de
+// custo total ao lado, e dois recortes iguais por coincidencia divergem na
+// primeira vez que alguem mexer em um so.
+//
+// CACHE de 60s com chave FIXA: a aba nao tem seletor de janela, entao nao ha
+// parametro para entrar na chave. O `30d` no nome e descritivo e vem da
+// constante compartilhada; se a aba ganhar seletor, a chave passa a precisar da
+// janela, como em `admincache:overview:<janela>`.
+const AI_COST_PER_USER_CACHE_TTL_S = 60;
+
+// TETO DO RANKING. O resto NAO some: vai como `maisUsuarios`, contado.
+const AI_COST_PER_USER_TOP = 20;
+
+router.get("/ai-cost-per-user", async (_req, res, next) => {
+  try {
+    const { result, computedAt } = await getOrCompute(
+      "admincache:ai-cost-per-user:30d",
+      AI_COST_PER_USER_CACHE_TTL_S,
+      async () => {
+        const agregado = await custoDeIaPorUsuario(
+          inicioDaJanelaDeIa(),
+          AI_COST_PER_USER_TOP,
+        );
+
+        // UMA query para os ate 20 do topo, nunca uma por linha e nunca a
+        // tabela inteira de perfis. `user_id` e a coluna de juncao: `profiles`
+        // tem `id` E `user_id`, e `ai_usage_logs.user_id` casa com a segunda
+        // (mesmo precedente de `server/lib/billingMetrics.ts`). Filtrar por
+        // `id` devolveria zero linhas e a tela mostraria "perfil ausente" para
+        // todo mundo, sem erro nenhum.
+        //
+        // O SELECT E A SUPERFICIE DE PRIVACIDADE. So `user_id`, `name` e
+        // `email` saem daqui: `profiles` tem `cpf`, e uma tabela de custo nao e
+        // lugar de documento de ninguem. Ha teste anti-leak travando isto.
+        const ids = agregado.top.map((linha) => linha.userId);
+        const perfilPorId = new Map<
+          string,
+          { name: string | null; email: string | null }
+        >();
+        if (ids.length > 0) {
+          const { data, error } = await supabaseAdmin
+            .from("profiles")
+            .select("user_id, name, email")
+            .in("user_id", ids);
+          // FAIL-LOUD: perfil que nao resolve por FALHA de banco nao pode virar
+          // "perfil ausente", que e uma afirmacao sobre o dado. Sao coisas
+          // diferentes e a tela nao teria como distinguir.
+          if (error)
+            throw new Error(`ai-cost-per-user profiles: ${error.message}`);
+          for (const linha of (data ?? []) as Array<{
+            user_id: string;
+            name: string | null;
+            email: string | null;
+          }>) {
+            perfilPorId.set(linha.user_id, {
+              name: linha.name,
+              email: linha.email,
+            });
+          }
+        }
+
+        return {
+          result: {
+            top: agregado.top.map((linha) => {
+              const perfil = perfilPorId.get(linha.userId) ?? null;
+              return {
+                userId: linha.userId,
+                email: perfil?.email ?? null,
+                nome: perfil?.name ?? null,
+                // Estado NOMEADO: a linha existe em `ai_usage_logs` e nao tem
+                // perfil correspondente. Sem esta marca, e-mail nulo por perfil
+                // apagado seria indistinguivel de e-mail nulo por perfil sem
+                // e-mail cadastrado.
+                perfilAusente: perfil === null,
+                calls: linha.calls,
+                success: linha.success,
+                costUsd: linha.cost,
+                semCustoMedido: linha.semCustoMedido,
+              };
+            }),
+            semUsuario: agregado.semUsuario
+              ? {
+                  calls: agregado.semUsuario.calls,
+                  success: agregado.semUsuario.success,
+                  costUsd: agregado.semUsuario.cost,
+                  semCustoMedido: agregado.semUsuario.semCustoMedido,
+                }
+              : null,
+            maisUsuarios: agregado.maisUsuarios,
+            usuariosDistintos: agregado.usuariosDistintos,
+          },
+          computedAt: new Date().toISOString(),
+        };
+      },
+    );
+    res.json({ data: result, computedAt });
   } catch (err) {
     next(err);
   }

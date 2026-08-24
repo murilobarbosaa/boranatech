@@ -2,6 +2,11 @@
   "buildCommand": "tsx scripts/checkCspHashes.mts && vite build && node scripts/prerender.mjs",
   "rewrites": [{ "source": "/((?!assets/).*)", "destination": "/app.html" }],
   "redirects": [
+    {
+      "source": "/areas/devops/devsecops",
+      "destination": "/areas/devsecops",
+      "permanent": true
+    },
     { "source": "/pro", "destination": "/planos", "permanent": true },
     {
       "source": "/curriculo/linkedin",
