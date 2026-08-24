@@ -1343,7 +1343,11 @@ const ATENCAO_CACHE_TTL_S = 60;
 router.get("/attention", async (_req, res, next) => {
   try {
     const { result, computedAt } = await getOrCompute(
-      "admincache:attention:v1",
+      // v2: o payload ganhou `destinoInterno`, `motivoCodigo` e tres tipos
+      // novos. Sem o bump, o admin continuaria lendo do Redis, ate o TTL, um
+      // payload da forma antiga, e o painel novo renderizaria sem os destinos
+      // internos sem nada acusar. Chave nova invalida por construcao.
+      "admincache:attention:v2",
       ATENCAO_CACHE_TTL_S,
       async () => ({
         result: await montarPainelDeAtencao(),

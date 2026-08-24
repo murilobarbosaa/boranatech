@@ -24,8 +24,14 @@ const supaSpy = vi.hoisted(() => ({
   subscriptions: [] as unknown[],
   orfaos: [] as unknown[],
   aiLogs: [] as unknown[],
+  despesas: [] as unknown[],
+  influencers: [] as unknown[],
+  perfis: [] as unknown[],
+  cancelamentos: [] as unknown[],
   erroSubscriptions: null as unknown,
   erroOrfaos: null as unknown,
+  erroDespesas: null as unknown,
+  erroInfluencers: null as unknown,
 }));
 
 vi.mock("./stripeClient", () => ({
@@ -52,7 +58,10 @@ vi.mock("./supabaseAdmin", () => {
   function builder(tabela: string) {
     const q: Record<string, unknown> = {};
     q.select = () => q;
-    q.in = () => q;
+    q.in = () =>
+      tabela === "profiles"
+        ? Promise.resolve({ data: supaSpy.perfis, error: null })
+        : q;
     q.gte = () => q;
     q.order = () => q;
     // `range` RECORTA de verdade, e isso não é capricho: `paginateRange` só
@@ -62,7 +71,10 @@ vi.mock("./supabaseAdmin", () => {
     // aconteceu na primeira versão deste arquivo.
     q.range = (from: number, to: number) => {
       if (tabela === "subscriptions" && supaSpy.erroSubscriptions) {
-        return Promise.resolve({ data: null, error: supaSpy.erroSubscriptions });
+        return Promise.resolve({
+          data: null,
+          error: supaSpy.erroSubscriptions,
+        });
       }
       const todas =
         tabela === "subscriptions" ? supaSpy.subscriptions : supaSpy.aiLogs;
@@ -71,11 +83,33 @@ vi.mock("./supabaseAdmin", () => {
         error: null,
       });
     };
-    q.is = () =>
-      Promise.resolve(
+    // `is` encerra a cadeia em DUAS tabelas diferentes (orfaos e influencers),
+    // entao ele resolve pelo nome da tabela em vez de assumir uma so.
+    q.is = () => {
+      if (tabela === "influencers") {
+        return Promise.resolve(
+          supaSpy.erroInfluencers
+            ? { data: null, error: supaSpy.erroInfluencers }
+            : { data: supaSpy.influencers, error: null },
+        );
+      }
+      return Promise.resolve(
         supaSpy.erroOrfaos
           ? { data: null, error: supaSpy.erroOrfaos }
           : { data: supaSpy.orfaos, error: null },
+      );
+    };
+    q.lt = () => q;
+    q.eq = () => q;
+    q.not = () =>
+      tabela === "subscription_cancellations"
+        ? Promise.resolve({ data: supaSpy.cancelamentos, error: null })
+        : q;
+    q.limit = () =>
+      Promise.resolve(
+        supaSpy.erroDespesas
+          ? { data: null, error: supaSpy.erroDespesas }
+          : { data: supaSpy.despesas, error: null },
       );
     return q;
   }
@@ -84,8 +118,10 @@ vi.mock("./supabaseAdmin", () => {
 
 import {
   montarPainelDeAtencao,
+  PAYOUT_JANELA_DIAS,
   SPIKE_PISO_USD,
   type FonteDeCobrancasFalhadas,
+  type FonteDePayoutsFalhos,
 } from "./atencaoNecessaria";
 
 const AGORA = new Date("2026-08-14T18:00:00Z");
@@ -93,6 +129,11 @@ const AGORA = new Date("2026-08-14T18:00:00Z");
 /** Fonte de cobranças falhadas que não fala com ninguém. */
 const semFalhadas: FonteDeCobrancasFalhadas = {
   contar: async () => ({ count: 0, cents: 0 }),
+};
+
+/** Fonte de payouts falhos que não fala com ninguém. */
+const semPayouts: FonteDePayoutsFalhos = {
+  listar: async () => [],
 };
 
 function sub(over: Record<string, unknown> = {}) {
@@ -118,6 +159,7 @@ async function montar(
   return montarPainelDeAtencao({
     agora: AGORA,
     fonteDeCobrancasFalhadas: semFalhadas,
+    fonteDePayoutsFalhos: semPayouts,
     ...over,
   });
 }
@@ -129,8 +171,14 @@ beforeEach(() => {
   supaSpy.subscriptions = [];
   supaSpy.orfaos = [];
   supaSpy.aiLogs = [];
+  supaSpy.despesas = [{ id: "despesa-1" }];
+  supaSpy.influencers = [];
+  supaSpy.perfis = [];
+  supaSpy.cancelamentos = [];
   supaSpy.erroSubscriptions = null;
   supaSpy.erroOrfaos = null;
+  supaSpy.erroDespesas = null;
+  supaSpy.erroInfluencers = null;
 });
 
 describe("assinaturas", () => {
@@ -464,5 +512,212 @@ describe("ordenação e forma do painel", () => {
     const p = await montar();
     expect(p.itens).toEqual([]);
     expect(p.fontesIndisponiveis).toEqual([]);
+  });
+});
+
+describe("payout falho", () => {
+  const payout = (over: Record<string, unknown> = {}) => ({
+    id: "po_1",
+    amountCents: 500000,
+    criadoEm: new Date("2026-08-10T12:00:00Z"),
+    ...over,
+  });
+
+  it("payout DENTRO da janela vira item crítico com o valor retido", async () => {
+    const p = await montar({
+      fonteDePayoutsFalhos: { listar: async () => [payout()] },
+    });
+
+    const item = p.itens.find((i) => i.tipo === "payout_falho");
+    expect(item).toBeTruthy();
+    expect(item!.severidade).toBe("critico");
+    expect(item!.valorCents).toBe(500000);
+    // SEM equivalente mensal: repasse não é contrato com ciclo. Ausência,
+    // nunca zero, senão ele entraria na soma de "receita em risco" como se
+    // fosse assinatura.
+    expect(item!.mrrMensalCents).toBeUndefined();
+    expect(item!.url).toContain("dashboard.stripe.com/payouts");
+  });
+
+  it("CONTROLE NEGATIVO: payout FORA da janela não vira item", async () => {
+    // Um dia antes do limite. Na Stripe, `failed` é permanente: sem a janela
+    // este item ficaria aceso para sempre, que é o que o princípio proíbe.
+    const velho = new Date(
+      AGORA.getTime() - (PAYOUT_JANELA_DIAS + 1) * 24 * 60 * 60 * 1000,
+    );
+    const p = await montar({
+      fonteDePayoutsFalhos: {
+        listar: async () => [payout({ criadoEm: velho })],
+      },
+    });
+
+    expect(p.itens.some((i) => i.tipo === "payout_falho")).toBe(false);
+  });
+
+  it("fonte de payouts FORA DO AR não derruba o resto do painel", async () => {
+    supaSpy.subscriptions = [sub({ status: "past_due" })];
+    const p = await montar({
+      fonteDePayoutsFalhos: { listar: async () => null },
+    });
+
+    expect(p.fontesIndisponiveis).toContain("payouts");
+    // O item crítico que já existia continua lá: fonte caída tira UMA fonte,
+    // não o painel.
+    expect(p.itens.some((i) => i.tipo === "assinatura_past_due")).toBe(true);
+  });
+});
+
+describe("mês sem despesa", () => {
+  it("mês anterior VAZIO vira item de atenção apontando o financeiro", async () => {
+    supaSpy.despesas = [];
+
+    const p = await montar();
+    const item = p.itens.find((i) => i.tipo === "mes_sem_despesa");
+    expect(item).toBeTruthy();
+    expect(item!.severidade).toBe("atencao");
+    expect(item!.destinoInterno).toBe("/admin?section=financeiro");
+    // AGORA é 14/08/2026, então o mês anterior é 07/2026.
+    expect(item!.titulo).toContain("07/2026");
+  });
+
+  it("CONTROLE NEGATIVO: UMA despesa no mês já basta para não gerar item", async () => {
+    supaSpy.despesas = [{ id: "despesa-1" }];
+
+    const p = await montar();
+    expect(p.itens.some((i) => i.tipo === "mes_sem_despesa")).toBe(false);
+  });
+
+  it("despesas fora do ar viram fonte indisponível, não item", async () => {
+    supaSpy.erroDespesas = new Error("timeout");
+
+    const p = await montar();
+    expect(p.fontesIndisponiveis).toContain("despesas");
+    expect(p.itens.some((i) => i.tipo === "mes_sem_despesa")).toBe(false);
+  });
+});
+
+describe("influencer que virou assinante", () => {
+  const ASSINANTE = "user-both";
+
+  it("influencer COM assinatura vigente vira item, com o e-mail no detalhe", async () => {
+    supaSpy.influencers = [{ user_id: ASSINANTE }];
+    supaSpy.subscriptions = [
+      sub({ id: "row-both", user_id: ASSINANTE, status: "active" }),
+    ];
+    supaSpy.perfis = [{ user_id: ASSINANTE, email: "rafa@exemplo.com" }];
+
+    const p = await montar();
+    const item = p.itens.find((i) => i.tipo === "influencer_com_assinatura");
+    expect(item).toBeTruthy();
+    expect(item!.detalhe).toContain("rafa@exemplo.com");
+    expect(item!.severidade).toBe("atencao");
+    // SEM valor: a receita não está em risco e a concessão não vale dinheiro.
+    expect(item!.valorCents).toBeUndefined();
+  });
+
+  it("CONTROLE NEGATIVO: influencer SEM assinatura não vira item", async () => {
+    supaSpy.influencers = [{ user_id: "so-influencer" }];
+    supaSpy.subscriptions = [];
+
+    const p = await montar();
+    expect(p.itens.some((i) => i.tipo === "influencer_com_assinatura")).toBe(
+      false,
+    );
+  });
+
+  it("CONTROLE NEGATIVO: assinante SEM concessão não vira item", async () => {
+    // A lista de influencers NÃO é vazia de propósito, e é outra pessoa.
+    //
+    // A primeira versão deste teste zerava `influencers`, e assim ele passava
+    // pelo motivo errado: o guard `idsInfluencer.size > 0` encerra o bloco
+    // antes de o cruzamento acontecer, então o AND nunca era exercitado. Uma
+    // mutação que apagava a checagem de pertinência sobreviveu, e foi ela que
+    // apontou o furo. Com um influencer presente e um assinante DIFERENTE, a
+    // única coisa que segura o falso positivo é o AND.
+    supaSpy.influencers = [{ user_id: "so-influencer" }];
+    supaSpy.subscriptions = [sub({ user_id: "so-pagante", status: "active" })];
+    supaSpy.perfis = [{ user_id: "so-pagante", email: "pagante@exemplo.com" }];
+
+    const p = await montar();
+    expect(p.itens.some((i) => i.tipo === "influencer_com_assinatura")).toBe(
+      false,
+    );
+  });
+
+  it("e-mail ausente vira estado NOMEADO, nunca string vazia", async () => {
+    supaSpy.influencers = [{ user_id: ASSINANTE }];
+    supaSpy.subscriptions = [
+      sub({ id: "row-both", user_id: ASSINANTE, status: "active" }),
+    ];
+    supaSpy.perfis = [];
+
+    const p = await montar();
+    const item = p.itens.find((i) => i.tipo === "influencer_com_assinatura");
+    expect(item!.detalhe).toContain("e-mail nao encontrado");
+  });
+});
+
+describe("destinos internos e motivo da saída", () => {
+  it("TODO item gerado carrega destinoInterno", async () => {
+    // Teste de CONJUNTO, no molde do que afirma a lista de tipos: um item novo
+    // que esqueça o destino cai aqui, e não numa revisão visual.
+    supaSpy.subscriptions = [
+      sub({ status: "past_due" }),
+      sub({ id: "row-2", cancel_at_period_end: true }),
+    ];
+    supaSpy.despesas = [];
+    supaSpy.orfaos = [
+      {
+        stripe_session_id: "cs_1",
+        expected_provider_subscription_id: "cs_orfa",
+        customer_email: "x@y.com",
+        amount_total_cents: 22200,
+        session_created_at: "2026-08-01T00:00:00Z",
+      },
+    ];
+
+    const p = await montar({
+      fonteDeCobrancasFalhadas: {
+        contar: async () => ({ count: 3, cents: 9000 }),
+      },
+      fonteDePayoutsFalhos: {
+        listar: async () => [
+          {
+            id: "po_1",
+            amountCents: 1000,
+            criadoEm: new Date("2026-08-13T00:00:00Z"),
+          },
+        ],
+      },
+    });
+
+    expect(p.itens.length).toBeGreaterThan(0);
+    const semDestino = p.itens.filter((i) => !i.destinoInterno);
+    expect(semDestino.map((i) => i.tipo)).toEqual([]);
+  });
+
+  it("saída agendada COM motivo declarado carrega o código cru", async () => {
+    supaSpy.subscriptions = [
+      sub({ cancel_at_period_end: true, provider_subscription_id: "sub_9" }),
+    ];
+    supaSpy.cancelamentos = [
+      { provider_subscription_id: "sub_9", reason_code: "expensive" },
+    ];
+
+    const p = await montar();
+    const item = p.itens.find((i) => i.tipo === "saida_agendada");
+    // CÓDIGO, não rótulo: quem traduz é o client, com o mapa que já existe.
+    expect(item!.motivoCodigo).toBe("expensive");
+  });
+
+  it("CONTROLE NEGATIVO: saída SEM motivo não inventa campo", async () => {
+    supaSpy.subscriptions = [
+      sub({ cancel_at_period_end: true, provider_subscription_id: "sub_9" }),
+    ];
+    supaSpy.cancelamentos = [];
+
+    const p = await montar();
+    const item = p.itens.find((i) => i.tipo === "saida_agendada");
+    expect(item!.motivoCodigo).toBeUndefined();
   });
 });
