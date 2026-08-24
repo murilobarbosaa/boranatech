@@ -135,6 +135,60 @@ router.get("/areas/:slug", async (req, res, next) => {
   }
 });
 
+// Eventos da pagina publica /eventos, servidos de external_events.
+//
+// A tabela e alimentada diariamente por uma rotina externa (ver
+// claude/produto/04-prompt-rotina-eventos.md) e NAO tem fallback estatico: o
+// array `eventos` de eventosData.ts foi removido quando esta rota entrou. Por
+// isso o client propaga o erro em vez de cair numa lista, ao contrario das
+// outras fontes deste arquivo.
+//
+// O predicado de exibiveis tem TRES casos, nao um: evento com data futura,
+// evento sem data (recorrente) e evento a confirmar. Filtrar so por
+// `starts_on >= current_date` sumiria com os dois ultimos em silencio.
+router.get("/eventos", async (_req, res, next) => {
+  try {
+    const payload = await getOrCompute(
+      cacheKey("content:eventos", {}),
+      LIST_TTL_SECONDS,
+      async () => {
+        const hoje = new Date().toISOString().slice(0, 10);
+        const { data, error, count } = await supabaseAdmin
+          .from("external_events")
+          .select(
+            "id, external_id, title, description, organizer, event_type, url, calendar_url, price_type, price_label, starts_on, ends_on, date_label, time_label, date_status, recurrence, modality, city, uf, state, location_label",
+            { count: "exact" },
+          )
+          .eq("is_published", true)
+          .is("deleted_at", null)
+          .or(`starts_on.gte.${hoje},starts_on.is.null`)
+          .order("starts_on", { ascending: true, nullsFirst: false })
+          .order("title", { ascending: true })
+          .limit(500);
+
+        if (error)
+          throw createError(500, "db_error", "Erro ao buscar eventos.", {
+            cause: error,
+          });
+
+        // `total: null` quando o count nao veio, NUNCA data.length: cair para o
+        // tamanho da pagina faria "nao sei quantos sao" parecer "sao exatamente
+        // estes", e o teto de 500 existe justamente porque a tabela cresce todo
+        // dia.
+        return {
+          data: data || [],
+          total: typeof count === "number" ? count : null,
+        };
+      },
+    );
+
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
+    res.json(payload);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/technologies", async (req, res, next) => {
   try {
     const { category, search } = req.query;
