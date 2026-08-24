@@ -27,6 +27,7 @@ const supaSpy = vi.hoisted(() => ({
   despesas: [] as unknown[],
   influencers: [] as unknown[],
   perfis: [] as unknown[],
+  chamadasDeProfiles: 0,
   cancelamentos: [] as unknown[],
   erroSubscriptions: null as unknown,
   erroOrfaos: null as unknown,
@@ -58,10 +59,15 @@ vi.mock("./supabaseAdmin", () => {
   function builder(tabela: string) {
     const q: Record<string, unknown> = {};
     q.select = () => q;
-    q.in = () =>
-      tabela === "profiles"
-        ? Promise.resolve({ data: supaSpy.perfis, error: null })
-        : q;
+    q.in = () => {
+      // CONTA as idas a `profiles`: o desenho promete UMA consulta para o
+      // painel inteiro, e sem contador um N+1 passaria despercebido.
+      if (tabela === "profiles") {
+        supaSpy.chamadasDeProfiles += 1;
+        return Promise.resolve({ data: supaSpy.perfis, error: null });
+      }
+      return q;
+    };
     q.gte = () => q;
     q.order = () => q;
     // `range` RECORTA de verdade, e isso não é capricho: `paginateRange` só
@@ -175,6 +181,7 @@ beforeEach(() => {
   supaSpy.influencers = [];
   supaSpy.perfis = [];
   supaSpy.cancelamentos = [];
+  supaSpy.chamadasDeProfiles = 0;
   supaSpy.erroSubscriptions = null;
   supaSpy.erroOrfaos = null;
   supaSpy.erroDespesas = null;
@@ -653,7 +660,7 @@ describe("influencer que virou assinante", () => {
 
     const p = await montar();
     const item = p.itens.find((i) => i.tipo === "influencer_com_assinatura");
-    expect(item!.detalhe).toContain("e-mail nao encontrado");
+    expect(item!.detalhe).toContain("e-mail não encontrado");
   });
 });
 
@@ -719,5 +726,77 @@ describe("destinos internos e motivo da saída", () => {
     const p = await montar();
     const item = p.itens.find((i) => i.tipo === "saida_agendada");
     expect(item!.motivoCodigo).toBeUndefined();
+  });
+});
+
+describe("identidade da pessoa nos itens", () => {
+  it("past_due diz QUEM é, não só quanto", async () => {
+    // O painel dizia "Pagamento em atraso, R$ 29,90" e mais nada: para saber de
+    // quem era, só abrindo a Stripe, o que esvaziava o botão "Resolver no
+    // admin". O e-mail é o que torna o destino interno acionável.
+    supaSpy.subscriptions = [sub({ status: "past_due", user_id: "u-1" })];
+    supaSpy.perfis = [{ user_id: "u-1", email: "rafa@exemplo.com" }];
+
+    const p = await montar();
+    const item = p.itens.find((i) => i.tipo === "assinatura_past_due");
+    expect(item!.detalhe).toContain("rafa@exemplo.com");
+  });
+
+  it("saída agendada também diz QUEM é", async () => {
+    supaSpy.subscriptions = [
+      sub({ cancel_at_period_end: true, user_id: "u-2" }),
+    ];
+    supaSpy.perfis = [{ user_id: "u-2", email: "ana@exemplo.com" }];
+
+    const p = await montar();
+    const item = p.itens.find((i) => i.tipo === "saida_agendada");
+    expect(item!.detalhe).toContain("ana@exemplo.com");
+    // A data continua lá: a identidade ACRESCENTA, não substitui.
+    expect(item!.detalhe).toContain("13/09/2026");
+  });
+
+  it("UMA consulta de perfis para o painel inteiro, nunca uma por item", async () => {
+    // O ponto do desenho. Com assinaturas E ponte de influencer no mesmo
+    // painel, uma consulta por item seria N+1 e não apareceria em teste nenhum
+    // que só olhasse a tela.
+    supaSpy.subscriptions = [
+      sub({ id: "r1", status: "past_due", user_id: "u-1" }),
+      sub({ id: "r2", cancel_at_period_end: true, user_id: "u-2" }),
+      sub({ id: "r3", status: "active", user_id: "u-3" }),
+    ];
+    supaSpy.influencers = [{ user_id: "u-3" }];
+    supaSpy.perfis = [
+      { user_id: "u-1", email: "um@exemplo.com" },
+      { user_id: "u-2", email: "dois@exemplo.com" },
+      { user_id: "u-3", email: "tres@exemplo.com" },
+    ];
+
+    const p = await montar();
+
+    expect(supaSpy.chamadasDeProfiles).toBe(1);
+    // E os três itens saíram com o e-mail certo, da mesma consulta.
+    const texto = p.itens.map((i) => i.detalhe).join(" | ");
+    expect(texto).toContain("um@exemplo.com");
+    expect(texto).toContain("dois@exemplo.com");
+    expect(texto).toContain("tres@exemplo.com");
+  });
+
+  it("perfil sem e-mail vira estado NOMEADO no item de assinatura", async () => {
+    supaSpy.subscriptions = [sub({ status: "past_due", user_id: "u-1" })];
+    supaSpy.perfis = [];
+
+    const p = await montar();
+    const item = p.itens.find((i) => i.tipo === "assinatura_past_due");
+    expect(item!.detalhe).toContain("e-mail não encontrado");
+  });
+
+  it("SEM ids para resolver, nenhuma consulta de perfis é feita", async () => {
+    // CONTROLE NEGATIVO do desenho: painel sem item de pessoa não deve pagar
+    // uma ida ao banco para não perguntar nada.
+    supaSpy.subscriptions = [];
+    supaSpy.despesas = [{ id: "d1" }];
+
+    await montar();
+    expect(supaSpy.chamadasDeProfiles).toBe(0);
   });
 });

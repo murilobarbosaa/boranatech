@@ -463,11 +463,37 @@ export async function montarPainelDeAtencao(
   const itens: ItemAtencao[] = [];
   const fontesIndisponiveis: string[] = [];
 
+  /**
+   * Itens que dependem de saber QUEM e a pessoa, guardados ate a resolucao dos
+   * e-mails.
+   *
+   * Por que adiar em vez de consultar o perfil na hora: os e-mails saem de UMA
+   * consulta a `profiles` para todos os user_ids do painel (assinaturas mais a
+   * ponte de influencer), e essa consulta so pode acontecer depois que os dois
+   * blocos disserem de quem precisam. Consultar dentro do laco daria o mesmo
+   * resultado na tela e um N+1 no banco.
+   */
+  type PendenteDeAssinatura = {
+    tipo: "assinatura_past_due" | "saida_agendada";
+    userId: string | null;
+    chave: string;
+    severidade: SeveridadeAtencao;
+    valorCents: number;
+    mrrMensalCents: number | null;
+    url: string;
+    fim?: string;
+    motivoCodigo?: string;
+  };
+  const pendentesDeAssinatura: PendenteDeAssinatura[] = [];
+  const pontesDeInfluencer: string[] = [];
+  const idsParaEmail = new Set<string>();
+
   // ------------------------------------------------------------------
   // 1 e 2: assinaturas que pedem acao (past_due e saida agendada)
   // ------------------------------------------------------------------
   type LinhaSub = {
     id: string;
+    user_id: string | null;
     status: string;
     cancel_at_period_end: boolean | null;
     current_period_end: string | null;
@@ -483,7 +509,7 @@ export async function montarPainelDeAtencao(
         supabaseAdmin
           .from("subscriptions")
           .select(
-            "id, status, cancel_at_period_end, current_period_end, provider_subscription_id, plans(code, price_cents, interval)",
+            "id, user_id, status, cancel_at_period_end, current_period_end, provider_subscription_id, plans(code, price_cents, interval)",
           )
           .in("status", ["active", "trialing", "past_due"])
           .order("id", { ascending: true })
@@ -500,6 +526,7 @@ export async function montarPainelDeAtencao(
     const motivoPorSub = await motivosDeSaidaAgendada();
 
     for (const s of subs) {
+      if (s.user_id) idsParaEmail.add(s.user_id);
       const plano = Array.isArray(s.plans) ? s.plans[0] : s.plans;
       const valorCents = resolvePlanPriceCents(
         plano?.code ?? undefined,
@@ -512,17 +539,14 @@ export async function montarPainelDeAtencao(
         : "";
 
       if (s.status === "past_due") {
-        itens.push({
+        pendentesDeAssinatura.push({
           tipo: "assinatura_past_due",
+          userId: s.user_id,
           chave: `past_due:${s.id}`,
           severidade: "critico",
-          titulo: "Pagamento em atraso",
-          detalhe:
-            "A cobranca falhou e a Stripe esta tentando de novo. Sem acao, a assinatura cancela sozinha.",
           valorCents,
-          ...(mrrMensalCents !== null ? { mrrMensalCents } : {}),
+          mrrMensalCents,
           url,
-          destinoInterno: ADMIN_USUARIOS,
         });
         continue;
       }
@@ -535,17 +559,16 @@ export async function montarPainelDeAtencao(
               timeZone: "America/Sao_Paulo",
             })
           : "data desconhecida";
-        itens.push({
+        pendentesDeAssinatura.push({
           tipo: "saida_agendada",
+          userId: s.user_id,
           chave: `saida:${s.id}`,
           severidade: "atencao",
-          titulo: "Saida agendada",
-          detalhe: `Assinatura com cancelamento marcado; o acesso termina em ${fim}.`,
-          ...(motivoDaSaida ? { motivoCodigo: motivoDaSaida } : {}),
           valorCents,
-          ...(mrrMensalCents !== null ? { mrrMensalCents } : {}),
+          mrrMensalCents,
           url,
-          destinoInterno: ADMIN_USUARIOS,
+          fim,
+          ...(motivoDaSaida ? { motivoCodigo: motivoDaSaida } : {}),
         });
       }
     }
@@ -573,8 +596,8 @@ export async function montarPainelDeAtencao(
       tipo: "cobrancas_falhadas",
       chave: `falhadas:${janelaDias}d`,
       severidade: falhadas.count >= 10 ? "critico" : "atencao",
-      titulo: `${falhadas.count} cobrancas falharam em ${janelaDias} dias`,
-      detalhe: `Somam ${reais(falhadas.cents)} que nao entraram. Cartao recusado e o motivo mais comum.`,
+      titulo: `${falhadas.count} cobranças falharam em ${janelaDias} dias`,
+      detalhe: `Somam ${reais(falhadas.cents)} que não entraram. Cartão recusado é o motivo mais comum.`,
       valorCents: falhadas.cents,
       // CONTAGEM E JANELA COMO CAMPOS, nao so dentro do titulo. O painel agrupa
       // por tipo e troca o titulo do servidor pelo rotulo do grupo, e nessa troca
@@ -615,7 +638,7 @@ export async function montarPainelDeAtencao(
         chave: `orfao:${o.stripe_session_id}`,
         severidade: "critico",
         titulo: "Pagamento sem assinatura no banco",
-        detalhe: `A Stripe registrou o pagamento e nao existe linha em subscriptions (${chaveEsperada}).`,
+        detalhe: `A Stripe registrou o pagamento e não existe linha em subscriptions (${chaveEsperada}).`,
         valorCents: o.amount_total_cents ?? undefined,
         url: chaveEsperada.startsWith("sub_")
           ? `${STRIPE_SUB_URL}${chaveEsperada}`
@@ -688,7 +711,7 @@ export async function montarPainelDeAtencao(
         // TODO(Ana)
         titulo: "Repasse para o banco falhou",
         // TODO(Ana)
-        detalhe: `A Stripe nao conseguiu transferir ${reais(payout.amountCents)} para a conta bancaria. O dinheiro esta retido no saldo da Stripe.`,
+        detalhe: `A Stripe não conseguiu transferir ${reais(payout.amountCents)} para a conta bancária. O dinheiro está retido no saldo da Stripe.`,
         valorCents: payout.amountCents,
         url: STRIPE_PAYOUTS_URL,
         destinoInterno: ADMIN_FINANCEIRO,
@@ -721,7 +744,7 @@ export async function montarPainelDeAtencao(
         titulo: `Nenhuma despesa registrada em ${mes.rotulo}`,
         // TODO(Ana)
         detalhe:
-          "O mes fechou sem nenhuma despesa lancada, entao o lucro exibido esta contando a receita inteira. Registrar as despesas do mes corrige o numero.",
+          "O mês fechou sem nenhuma despesa lançada, então o lucro exibido está contando a receita inteira. Registrar as despesas do mês corrige o número.",
         url: "",
         destinoInterno: ADMIN_FINANCEIRO,
       });
@@ -786,34 +809,11 @@ export async function montarPainelDeAtencao(
         if (periodoOk) comAssinatura.add(linha.user_id);
       }
 
-      if (comAssinatura.size > 0) {
-        const { data: perfis } = await supabaseAdmin
-          .from("profiles")
-          .select("user_id, email")
-          .in("user_id", Array.from(comAssinatura));
-        const emailPorId = new Map(
-          ((perfis ?? []) as Array<{ user_id: string; email: string | null }>)
-            .filter((p) => p.email)
-            .map((p) => [p.user_id, p.email as string]),
-        );
-        for (const userId of Array.from(comAssinatura)) {
-          // E-mail AUSENTE e estado nomeado, nao string vazia: um item que diz
-          // "e-mail nao encontrado" ainda e acionavel (da para achar pelo id),
-          // e um que mostra vazio parece bug do painel.
-          // TODO(Ana)
-          const email = emailPorId.get(userId) ?? "e-mail nao encontrado";
-          itens.push({
-            tipo: "influencer_com_assinatura",
-            chave: `influencer_pagante:${userId}`,
-            severidade: "atencao",
-            // TODO(Ana)
-            titulo: "Influencer que virou assinante",
-            // TODO(Ana)
-            detalhe: `${email} tem concessao de influencer ativa E assinatura paga vigente. Revogar a concessao nao tira o Pro, que fica de pe pela assinatura.`,
-            url: "",
-            destinoInterno: ADMIN_USUARIOS,
-          });
-        }
+      // So COLETA aqui; o item nasce no bloco 9, junto dos de assinatura, para
+      // que os e-mails de todos saiam de uma consulta unica.
+      for (const userId of Array.from(comAssinatura)) {
+        pontesDeInfluencer.push(userId);
+        idsParaEmail.add(userId);
       }
     }
   } catch (err) {
@@ -822,6 +822,96 @@ export async function montarPainelDeAtencao(
       err instanceof Error ? err.message : String(err),
     );
     fontesIndisponiveis.push("influencers");
+  }
+
+  // ------------------------------------------------------------------
+  // 9: QUEM e a pessoa. Uma consulta de perfis para o painel inteiro.
+  //
+  // O painel dizia "Pagamento em atraso, R$ 29,90" e mais nada: para saber de
+  // quem era, so abrindo a Stripe, o que esvaziava o botao "Resolver no admin".
+  // Os itens de assinatura e os da ponte de influencer nascem aqui, depois que
+  // os blocos acima disseram de QUAIS user_ids precisam.
+  // ------------------------------------------------------------------
+  const emailPorId = new Map<string, string>();
+  if (idsParaEmail.size > 0) {
+    try {
+      const { data: perfis, error } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id, email")
+        .in("user_id", Array.from(idsParaEmail));
+      if (error) throw error;
+      for (const perfil of (perfis ?? []) as Array<{
+        user_id: string;
+        email: string | null;
+      }>) {
+        if (perfil.email) emailPorId.set(perfil.user_id, perfil.email);
+      }
+    } catch (err) {
+      console.warn(
+        "[atencao] falha ao ler perfis:",
+        err instanceof Error ? err.message : String(err),
+      );
+      fontesIndisponiveis.push("perfis");
+    }
+  }
+
+  // E-mail AUSENTE e estado NOMEADO, nunca string vazia: o item continua
+  // acionavel (da para achar pelo id) e nao parece bug do painel. Vale tanto
+  // para perfil sem e-mail quanto para a consulta que nao respondeu.
+  const emailDe = (userId: string | null): string =>
+    // TODO(Ana)
+    (userId ? emailPorId.get(userId) : undefined) ?? "e-mail não encontrado";
+
+  for (const p of pendentesDeAssinatura) {
+    const email = emailDe(p.userId);
+    if (p.tipo === "assinatura_past_due") {
+      itens.push({
+        tipo: "assinatura_past_due",
+        chave: p.chave,
+        severidade: p.severidade,
+        // TODO(Ana)
+        titulo: "Pagamento em atraso",
+        // TODO(Ana)
+        detalhe: `${email}: a cobrança falhou e a Stripe está tentando de novo. Sem ação, a assinatura cancela sozinha.`,
+        valorCents: p.valorCents,
+        ...(p.mrrMensalCents !== null
+          ? { mrrMensalCents: p.mrrMensalCents }
+          : {}),
+        url: p.url,
+        destinoInterno: ADMIN_USUARIOS,
+      });
+      continue;
+    }
+    itens.push({
+      tipo: "saida_agendada",
+      chave: p.chave,
+      severidade: p.severidade,
+      // TODO(Ana)
+      titulo: "Saída agendada",
+      // TODO(Ana)
+      detalhe: `${email}: cancelamento marcado, o acesso termina em ${p.fim}.`,
+      ...(p.motivoCodigo ? { motivoCodigo: p.motivoCodigo } : {}),
+      valorCents: p.valorCents,
+      ...(p.mrrMensalCents !== null
+        ? { mrrMensalCents: p.mrrMensalCents }
+        : {}),
+      url: p.url,
+      destinoInterno: ADMIN_USUARIOS,
+    });
+  }
+
+  for (const userId of pontesDeInfluencer) {
+    itens.push({
+      tipo: "influencer_com_assinatura",
+      chave: `influencer_pagante:${userId}`,
+      severidade: "atencao",
+      // TODO(Ana)
+      titulo: "Influencer que virou assinante",
+      // TODO(Ana)
+      detalhe: `${emailDe(userId)} tem concessão de influencer ativa E assinatura paga vigente. Revogar a concessão não tira o Pro, que fica de pé pela assinatura.`,
+      url: "",
+      destinoInterno: ADMIN_USUARIOS,
+    });
   }
 
   // CRITICO PRIMEIRO. Dentro da mesma severidade, o de maior valor: quem abre o
