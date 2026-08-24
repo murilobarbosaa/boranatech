@@ -65,13 +65,18 @@ where deleted_at is null and (starts_on is null or starts_on >= current_date)
 order by starts_on nulls last;
 ```
 
-IMPORTANTE: as linhas com `source = 'legado-site'` e `is_published = false` são
-SENTINELAS. Elas representam 36 eventos que já estão publicados no site por uma
-lista fixa no front-end, fora do banco. Elas existem só para impedir
-recadastro. **Trate cada uma como "já cadastrado" e nunca insira esses eventos
-de novo**, mesmo que você os encontre com nome ou URL um pouco diferente (ex.:
-"HackTown" vs "HackTown 2026"). Não tente publicá-las, corrigi-las nem
-apagá-las.
+IMPORTANTE: as linhas com `source = 'legado-site'` são as 36 que vieram da
+lista fixa que o site mantinha no front-end antes de a página de eventos passar
+a ler do banco. Hoje elas são servidas como qualquer outra linha da tabela, e
+`is_published` nelas é `true`: **a origem é o único critério que as identifica,
+não o estado de publicação**.
+
+O que continua valendo, e é a única coisa que importa aqui: **trate cada uma
+como "já cadastrado" e nunca insira esses eventos de novo**, mesmo que você os
+encontre com nome ou URL um pouco diferente (ex.: "HackTown" vs "HackTown
+2026"). A deduplicação em si é feita pelos índices únicos do Passo 4, que não
+olham `is_published`, então o risco real não é o banco recusar: é você gastar a
+rodada recadastrando o que já está lá. Não apague nem reescreva essas linhas.
 
 Guarde a lista inteira. Não gaste tempo procurando o que já está lá.
 
