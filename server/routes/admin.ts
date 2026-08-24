@@ -9,6 +9,7 @@ import {
   getSubscriberList,
 } from "../lib/billingMetrics";
 import { getOrCompute } from "../lib/cache";
+import { montarVidaNoSite } from "../lib/userSiteLife";
 import { env } from "../lib/env";
 import {
   getDeferredRevenue,
@@ -4815,6 +4816,45 @@ router.get("/users/:id/activity", async (req, res, next) => {
     }
     const result = await getPosthogUserActivity(uid);
     res.json({ data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * VIDA NO SITE do usuario: certificados, badges, roadmaps e trilhas.
+ *
+ * SEPARADA de `/users/:id` de proposito. O detalhe do usuario ja e a chamada
+ * mais pesada do admin, e esta aqui soma quatro fontes que so interessam a quem
+ * abre a secao. O client busca sob demanda, com o mesmo latch preguicoso que a
+ * atividade do PostHog usa.
+ *
+ * Nao se chama `/activity` porque esse caminho ja e do PostHog, logo acima.
+ */
+router.get("/users/:id/site-life", async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
+      );
+    }
+    // CACHE POR USUARIO. A chave carrega o uid: sem ele, o primeiro usuario
+    // aberto responderia pelos sessenta segundos seguintes por todos os outros,
+    // que e um vazamento de dado entre pessoas disfarcado de cache.
+    const { result, computedAt } = await getOrCompute(
+      `admincache:user-site-life:${uid}`,
+      60,
+      async () => ({
+        result: await montarVidaNoSite(uid),
+        computedAt: new Date().toISOString(),
+      }),
+    );
+    res.json({ data: result, computedAt });
   } catch (err) {
     next(err);
   }

@@ -92,7 +92,7 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // de IA, depois dos dois `router.use` do topo, e os dois testes acima conferem
 // isso por posição. A rota expõe e-mail de pessoa: estar atrás de
 // `requireAuth` + `requireAdmin` não é detalhe aqui, é o requisito.
-const EXPECTED_ROUTE_COUNT = 59;
+const EXPECTED_ROUTE_COUNT = 60;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {
@@ -164,6 +164,7 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
       "GET /users/:id/activity",
       "GET /users/:id/audit",
       "GET /users/:id/email-usage",
+      "GET /users/:id/site-life",
       "GET /users/:id/transactions",
       "PATCH /users/:id",
       "POST /users/:id/email",
