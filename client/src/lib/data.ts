@@ -5755,6 +5755,15 @@ export const areasPoucoConhecidas: {
     porQue:
       "Para quem gosta de biologia ou saúde e quer aplicar computação na ciência.",
   },
+  // TODO(Ana)
+  {
+    nome: "Computação no Agronegócio",
+    oQueE:
+      "Leva software, sensores e dados para a produção agrícola e pecuária: sistemas de gestão da fazenda, telemetria de máquinas, imagens de satélite e drone, e modelos que ajudam a prever clima, safra e pragas.",
+    porQue:
+      "Para quem quer aplicar IoT, dados e visão computacional num setor central da economia brasileira que ainda recebe pouca atenção de quem trabalha com tecnologia.",
+    relatedAreaSlug: "iot",
+  },
   {
     nome: "Computação Quântica",
     oQueE:
