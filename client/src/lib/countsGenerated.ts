@@ -4,4 +4,4 @@
 
 export const areasCount = 26;
 export const roadmapsCount = 18;
-export const dictionaryTermsCount = 307;
+export const dictionaryTermsCount = 313;

@@ -2116,6 +2116,54 @@ export const dictionaryTerms = [
     meaning:
       "Segurança da cadeia de suprimentos de software: proteger tudo que entra no produto sem ter sido escrito pelo time, como dependências, imagens de container e ferramentas de build. Um elo comprometido contamina quem confia nele.",
   },
+  // TODO(Ana)
+  {
+    term: "Agricultura de precisão",
+    category: "Dados",
+    tags: ["Dados", "IoT"],
+    meaning:
+      "Abordagem que trata a lavoura por partes em vez de tratar o talhão inteiro igual, usando dados de solo, clima e produtividade para decidir onde aplicar insumo, água ou defensivo.",
+  },
+  // TODO(Ana)
+  {
+    term: "AgTech",
+    category: "Carreira",
+    tags: ["Carreira", "IoT"],
+    meaning:
+      "Nome dado ao conjunto de empresas e produtos que levam tecnologia para a produção agrícola e pecuária, do software de gestão da fazenda ao maquinário conectado.",
+  },
+  // TODO(Ana)
+  {
+    term: "NDVI",
+    category: "Dados",
+    tags: ["Dados", "IA"],
+    meaning:
+      "Índice calculado a partir de imagens de satélite ou drone que estima o vigor da vegetação comparando a luz que a planta reflete em diferentes faixas do espectro. É o indicador mais comum para enxergar de longe onde a lavoura vai bem ou mal.",
+  },
+  // TODO(Ana)
+  {
+    term: "Sensoriamento remoto",
+    category: "Dados",
+    tags: ["Dados", "IA"],
+    meaning:
+      "Técnica de observar uma área à distância, por satélite, avião ou drone, e extrair informação dela sem precisar ir ao local. Na agricultura serve para acompanhar grandes extensões com frequência.",
+  },
+  // TODO(Ana)
+  {
+    term: "Telemetria",
+    category: "IoT",
+    tags: ["IoT", "Dados"],
+    meaning:
+      "Coleta automática de medições de um equipamento em operação e envio delas para um sistema remoto. É o que permite acompanhar consumo, posição e desempenho de uma máquina sem estar perto dela.",
+  },
+  // TODO(Ana)
+  {
+    term: "Agricultura digital",
+    category: "Dados",
+    tags: ["Dados", "IoT"],
+    meaning:
+      "Uso de software, conectividade e dados ao longo de todo o ciclo produtivo do campo, do planejamento do plantio à rastreabilidade do que foi colhido.",
+  },
 ];
 
 export type DictionaryTerm = (typeof dictionaryTerms)[number];
