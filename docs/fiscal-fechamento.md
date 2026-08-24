@@ -1,8 +1,13 @@
 # Frente fiscal (NFS-e): fechamento do Marco 1 e runbook de ativacao
 
-Escrito em 2026-08-24, no fim do lote 5. Registra o que o Marco 1 entregou (a
-plataforma sobe com o pipeline fiscal PRESENTE, INVISIVEL e DESLIGADO), e a
-sequencia literal para liga-lo no Marco 2.
+Escrito em 2026-08-24, no fim do lote 5, e emendado no lote 6. Registra o que o
+Marco 1 entregou (a plataforma sobe com o pipeline fiscal PRESENTE, INVISIVEL e
+DESLIGADO), e a sequencia literal para liga-lo no Marco 2.
+
+O deploy do Marco 1 nao LIGA nada, mas **APLICA as 5 migrations**, porque elas
+sao pre-condicao de CI verde (secao 4). A distincao presente, invisivel e
+desligado continua valendo: o que muda e que o banco passa a ter as estruturas
+vazias, que ninguem consome.
 
 O pipeline inteiro ja estava no codigo desde `33000fa7`
 (`feat(fiscal): automatic NFS-e issuance pipeline (phases 1-5.1)`, 60 arquivos,
@@ -44,11 +49,16 @@ depois.
 
 Este e o ponto do marco. Subir estes quatro commits NAO:
 
-- **aplica migration nenhuma**. As 5 continuam so no repositorio.
 - **liga env fiscal nenhuma**. `NFSE_ENABLED` ausente resolve para desligado, em
   silencio e sem warn (`server/lib/env.ts:107`, `if (!raw) return false`).
   Qualquer valor diferente do literal exato `"true"` tambem desliga, com warn
   nomeando o valor recebido.
+- **nao emite, nao enfileira e nao mostra nada**, conforme a tabela abaixo.
+
+O deploy APLICA as 5 migrations, e isso nao contradiz o acima: elas criam
+estrutura vazia que ninguem consome com o switch desligado, e sao pre-condicao
+de CI verde (secao 4). O banco passa a ter as tabelas; o produto continua sem
+qualquer superficie fiscal.
 
 Com o switch desligado, o comportamento medido em cada superficie:
 
@@ -97,54 +107,30 @@ superficie fiscal. Resolvem para ESCONDIDO, sem excecao:
 Os quatro casos tem teste nomeado em `client/src/services/nfseStatus.test.tsx`,
 dois deles chamados "JANELA DE DEPLOY" exatamente por isso.
 
-## 4. Runbook de ativacao (Marco 2)
+## 4. Checklist do deploy unificado (Marco 1)
 
-Ordem literal. Cada passo tem verificacao com resultado esperado.
+Estes passos rodam **na mesma sessao de trabalho do deploy, imediatamente ANTES
+do merge para a `main`**. Nao sao do Marco 2.
 
-### 4.1 Pre-requisitos de NEGOCIO (bloqueiam, e nao sao tecnicos)
+### Por que a aplicacao nao pode esperar a ativacao
 
-Nenhum passo tecnico abaixo deve comecar antes destes tres:
+O job `migrations` do CI compara as tabelas DECLARADAS em `supabase/migrations`
+com as que existem no banco alvo. Os arquivos fiscais estao no repositorio desde
+`33000fa7` (12 de agosto), e o banco nao tem nada fiscal (medicao de 2026-08-24,
+no topo deste documento). Logo, o job falha, e continua falhando enquanto as 5
+nao forem aplicadas.
 
-1. **Confirmacao do contador.** O item da lista de servicos (LC 116) e a
-   aliquota de ISS do municipio, para Brasilia/DF. O `.env.example` ja registra
-   os valores desta empresa como `item 1.09, aliquota 2`, mas com o aviso de que
-   vem do CONTADOR, nao de tentativa e erro: **errar aqui nao produz erro
-   visivel, produz nota valida com imposto errado**. O mesmo vale para
-   `NFSE_OPTANTE_SIMPLES`, que nao tem default de proposito.
-2. **Contrato e homologacao do provedor Focus.** O token e o cadastro na
-   prefeitura. A homologacao roda pelo script dedicado
-   (`scripts/homologarNfse.mts`), que se recusa a rodar fora de homologacao
-   (`scripts/lib/homologacaoGuard.mts` aborta se `NFSE_FOCUS_ENV` nao for
-   `homologacao`, se `NFSE_ENABLED` nao for `true`, ou se o provider nao for
-   `focus_nfse`).
-3. **Aprovacao da copy pela Ana.** O dominio fiscal tem **33 marcadores
-   `TODO(Ana)`**, distribuidos assim (medido em 2026-08-24):
+O rito de publicacao exige CI verde job a job no `head_sha` do deploy. **Aplicar
+e o que deixa esse job verde; nao aplicar e o que o mantem vermelho.** Nao ha
+como publicar primeiro e aplicar depois.
 
-   | Arquivo                                                   | Marcadores fiscais |
-   | --------------------------------------------------------- | ------------------ |
-   | `client/src/components/admin/FiscalInvoicesDashboard.tsx` | 11                 |
-   | `client/src/components/fiscal/FiscalDataModal.tsx`        | 7                  |
-   | `client/src/components/fiscal/FiscalInvoicesSection.tsx`  | 4                  |
-   | `server/routes/admin.ts`                                  | 4                  |
-   | `server/lib/email.ts`                                     | 3                  |
-   | `client/src/components/fiscal/FiscalDataBanner.tsx`       | 1                  |
-   | `client/src/pages/Admin.tsx`                              | 1                  |
-   | `client/src/pages/Perfil.tsx`                             | 1                  |
-   | `server/routes/billing.ts`                                | 1                  |
+Aplicar com o switch desligado e seguro pelo que a secao 2 ja estabelece: nada
+consome as tabelas (o worker nao sobe, os ganchos retornam antes de qualquer
+efeito, as 4 rotas nao chegam ao banco), a RLS de `fiscal_invoices` nega tudo
+por nao ter policy nenhuma, e o cron passa a pular declaradamente assim que o
+backend novo subir.
 
-   Mais duas coisas que dependem dela e nao sao marcador:
-   - as **4 strings de `server/routes/me.ts`** ("CPF invalido.", "CNPJ
-     invalido.", "CEP invalido.", "UF invalida.", em 6 sitios), que ficaram sem
-     marcacao porque o arquivo e um dos 7 em conflito com a frente do LinkedIn
-     (ver secao 6);
-   - a **decisao sobre o placeholder de celula vazia**. O lote 4 trocou o
-     em-dash por `"sem dado"` no painel fiscal, mas o resto do admin usa o
-     em-dash como marcador de campo vazio, e ha teste que depende disso
-     (`client/src/components/admin/users/mobileLayout.test.tsx:147`). Hoje os
-     dois padroes convivem. Unificar e decisao dela, e e trabalho de outra
-     frente.
-
-### 4.2 Aplicacao das migrations
+### 4.1 Aplicacao das migrations
 
 **Manual, no SQL Editor do Supabase, arquivo INTEIRO de uma vez, em ordem de
 timestamp.** Nunca `supabase db push`.
@@ -181,11 +167,37 @@ alter table public.profiles
   validate constraint profiles_fiscal_documento_preferencia_check;
 ```
 
-**Nota da 4 (`20260804140100`).** Ela agenda o cron
-`reconcile-fiscal-invoices` (`55 */6 * * *`). Aplica-la ANTES da ativacao e
-seguro: com `NFSE_ENABLED` desligado o job roda a cada 6 horas e pula
-declaradamente, gravando `{ skipped: "nfse_disabled" }` no `cron_run_logs`. Nao
-cria linha, nao emite nada, e deixa rastro de que rodou.
+### 4.2 A janela do cron, entre aplicar a 4 e o backend novo subir
+
+A `20260804140100` agenda `reconcile-fiscal-invoices` em `55 */6 * * *`. Entre
+aplica-la e o backend novo entrar no ar, o job bate em
+`/api/cron/reconcile-fiscal-invoices`, que ainda nao existe.
+
+**O que acontece de fato, medido em
+`supabase/migrations/20260518003955_schedule_cron_jobs.sql:17-48`**: a funcao
+`public.call_cron_endpoint` chama `net.http_post` (pg_net) e guarda apenas o
+`request_id` que ele devolve. Ela **nao le a resposta** e **nao trata status**.
+Consequencias, uma a uma:
+
+- o 404 **nao levanta excecao** (a unica `RAISE EXCEPTION` da funcao e para
+  `cron_secret` ausente no vault, linha 33);
+- o job aparece como **bem-sucedido** em `cron.job_run_details`, porque o
+  comando SQL executou sem erro: ele disparou a requisicao e retornou o id. O
+  sucesso e sobre o SQL, nao sobre o HTTP;
+- **nada e gravado em `cron_run_logs`**, porque quem grava e o backend
+  (`recordCronRun`, em `server/lib/cron-logs.ts`), e ele nunca e alcancado;
+- **nenhum alerta externo dispara**. O Sentry nao roda dentro do banco, e
+  nenhuma migration le `net._http_response` (verificado por grep em
+  `supabase/migrations/`).
+
+Ou seja: o 404 nessa janela e **silencioso**, e o unico rastro fica na tabela do
+pg_net, que tem retencao curta.
+
+Recomendacao: aplicar as 5 na mesma sessao do deploy, o que reduz a janela a
+minutos. Se ela cruzar um disparo (minuto 55 de hora multipla de 6), o efeito e
+exatamente o descrito acima e **cessa sozinho** quando o backend novo sobe, sem
+nada a limpar. Depois disso o job passa a pular declaradamente, gravando
+`{ skipped: "nfse_disabled" }` no `cron_run_logs`, que ja e rastro visivel.
 
 ### 4.3 Carimbo no historico de migrations
 
@@ -199,9 +211,79 @@ supabase migration repair --status applied 20260804140100
 supabase migration repair --status applied 20260810120000
 ```
 
-Verificacao: as 5 passam a constar em `supabase_migrations.schema_migrations`.
+Verificacao: as 5 passam a constar em `supabase_migrations.schema_migrations`, e
+o job `migrations` do CI passa a ficar verde no proximo push.
 
-### 4.4 Regeneracao dos types
+## 5. Runbook de ativacao (Marco 2)
+
+Ordem literal. Cada passo tem verificacao com resultado esperado.
+
+### 5.1 Pre-requisitos de NEGOCIO (bloqueiam, e nao sao tecnicos)
+
+Nenhum passo tecnico abaixo deve comecar antes destes tres:
+
+1. **Confirmacao do contador.** O item da lista de servicos (LC 116) e a
+   aliquota de ISS do municipio, para Brasilia/DF. O `.env.example` ja registra
+   os valores desta empresa como `item 1.09, aliquota 2`, mas com o aviso de que
+   vem do CONTADOR, nao de tentativa e erro: **errar aqui nao produz erro
+   visivel, produz nota valida com imposto errado**. O mesmo vale para
+   `NFSE_OPTANTE_SIMPLES`, que nao tem default de proposito.
+2. **Contrato e homologacao do provedor Focus.** O token e o cadastro na
+   prefeitura. A homologacao roda pelo script dedicado
+   (`scripts/homologarNfse.mts`), que se recusa a rodar fora de homologacao
+   (`scripts/lib/homologacaoGuard.mts` aborta se `NFSE_FOCUS_ENV` nao for
+   `homologacao`, se `NFSE_ENABLED` nao for `true`, ou se o provider nao for
+   `focus_nfse`).
+3. **Aprovacao da copy pela Ana.** O dominio fiscal tem **33 marcadores
+   `TODO(Ana)`**, distribuidos assim (medido em 2026-08-24):
+
+   | Arquivo                                                   | Marcadores fiscais |
+   | --------------------------------------------------------- | ------------------ |
+   | `client/src/components/admin/FiscalInvoicesDashboard.tsx` | 11                 |
+   | `client/src/components/fiscal/FiscalDataModal.tsx`        | 7                  |
+   | `client/src/components/fiscal/FiscalInvoicesSection.tsx`  | 4                  |
+   | `server/routes/admin.ts`                                  | 4                  |
+   | `server/lib/email.ts`                                     | 3                  |
+   | `client/src/components/fiscal/FiscalDataBanner.tsx`       | 1                  |
+   | `client/src/pages/Admin.tsx`                              | 1                  |
+   | `client/src/pages/Perfil.tsx`                             | 1                  |
+   | `server/routes/billing.ts`                                | 1                  |
+
+   Mais duas coisas que dependem dela e nao sao marcador:
+   - as **4 strings de `server/routes/me.ts`** ("CPF invalido.", "CNPJ
+     invalido.", "CEP invalido.", "UF invalida.", em 6 sitios), que ficaram sem
+     marcacao porque o arquivo e um dos 7 em conflito com a frente do LinkedIn
+     (ver secao 7);
+   - a **decisao sobre o placeholder de celula vazia**. O lote 4 trocou o
+     em-dash por `"sem dado"` no painel fiscal, mas o resto do admin usa o
+     em-dash como marcador de campo vazio, e ha teste que depende disso
+     (`client/src/components/admin/users/mobileLayout.test.tsx:147`). Hoje os
+     dois padroes convivem. Unificar e decisao dela, e e trabalho de outra
+     frente.
+
+### 5.2 Aplicacao das migrations
+
+**Feita no deploy do Marco 1**, conforme a secao 4.1: ela e pre-condicao de CI
+verde, e nao pode esperar a ativacao. Se por qualquer motivo a ativacao ocorrer
+sem que isso tenha acontecido, pare aqui e execute a secao 4 inteira (aplicacao,
+verificacao do `convalidated` e carimbo) antes de seguir.
+
+Verificacao rapida de que ja foi feito:
+
+```sql
+select to_regclass('public.fiscal_invoices') is not null as tabela_existe,
+       (select convalidated from pg_constraint
+        where conname = 'profiles_fiscal_documento_preferencia_check') as check_valido;
+```
+
+Esperado: `true` nas duas colunas.
+
+### 5.3 Carimbo no historico de migrations
+
+Tambem feito no deploy do Marco 1 (secao 4.3). Verificacao: as 5 constam em
+`supabase_migrations.schema_migrations`.
+
+### 5.4 Regeneracao dos types
 
 `shared/database.types.ts` NAO contem `fiscal_invoices` hoje (medido no lote 2:
 o arquivo declara 85 tabelas e a fiscal nao esta entre elas). Depois de aplicar:
@@ -218,7 +300,7 @@ pending table exception`.
 Verificacao: `grep -c "fiscal_invoices:" shared/database.types.ts` passa a
 devolver pelo menos 1, e a contagem de tabelas no bloco `Tables` vai de 85 para 86.
 
-### 4.5 Contadores: qual muda, e quando
+### 5.5 Contadores: qual muda, e quando
 
 **Medido, e e o contrario do que parece.** Os tres contadores de
 `scripts/checkMigrationsApplied.mts` contam o que as MIGRATIONS DO REPOSITORIO
@@ -260,7 +342,7 @@ invocado **no CI**, em `.github/workflows/ci.yml:95`, dentro do job `migrations`
 de pre-commit: `.githooks/pre-commit` roda a suite, a suite de novo sem `.env` e
 `pnpm check`, e so isso.
 
-### 4.6 Envs na Railway
+### 5.6 Envs na Railway
 
 As 15 chaves lidas por `server/lib/env.ts`, todas com prefixo `NFSE_`:
 
@@ -286,7 +368,7 @@ O desenho e fail-closed no boot: **configuracao incompleta com o switch LIGADO
 nao sobe o processo**, em vez de subir e cobrar sem emitir nota. A mensagem do
 `process.exit(1)` lista os nomes exatos das envs faltantes.
 
-### 4.7 Smoke test pos-ativacao
+### 5.7 Smoke test pos-ativacao
 
 Na ordem, e o passo 2 antes de qualquer coisa em producao:
 
@@ -311,7 +393,7 @@ Na ordem, e o passo 2 antes de qualquer coisa em producao:
 6. **Painel do admin**: a aba financeiro deve mostrar os cartoes e a tabela, e
    nao mais a linha "Emissao de NFS-e desligada".
 
-### 4.8 Rollback
+### 5.8 Rollback
 
 `NFSE_ENABLED=false` na Railway, e redeploy.
 
@@ -338,7 +420,7 @@ continua visivel para quem tem nota, porque o `GET /api/billing/invoices`
 passa a devolver lista vazia, o que e a unica perda real do rollback e e
 temporaria.
 
-## 5. Pendencias externas
+## 6. Pendencias externas
 
 Duas, ambas pertencentes a frente do LinkedIn e nao a esta:
 
@@ -351,7 +433,7 @@ Duas, ambas pertencentes a frente do LinkedIn e nao a esta:
    e nao atualizou a prosa. O numero esta certo; a explicacao dele e que ficou
    sem o ultimo degrau.
 
-## 6. Nota de integracao para a frente do LinkedIn
+## 7. Nota de integracao para a frente do LinkedIn
 
 Para o merge de `feat/fiscal-fechamento` na `feat/linkedin-fase-4`:
 
@@ -364,6 +446,31 @@ Para o merge de `feat/fiscal-fechamento` na `feat/linkedin-fase-4`:
   A rota nova (`GET /api/billing/nfse-status`) mora no router de BILLING, que
   nao tem contador de rotas (verificado: `adminUsersGuards.test.ts` importa
   `adminRouter` e conta so ele).
+- **O job `migrations` do CI da `feat/linkedin-fase-4` esta vermelho desde 12 de
+  agosto, e as 5 fiscais precisam entrar na sequencia de deploy de voces.**
+  Medido: `.github/workflows/ci.yml` dispara em `on: push:` SEM filtro de branch
+  (linha 33, com o comentario "Dispara em push de QUALQUER branch, nao so
+  main"), e o job `migrations` roda sempre que o evento e `push`
+  (`if: github.event_name == 'push' || ...`, linha 72). O commit `33000fa7` e
+  ancestral de `origin/feat/linkedin-fase-4` (verificado com
+  `git merge-base --is-ancestor`), entao os arquivos fiscais estao no remoto
+  desde 2026-08-12, declarando `fiscal_invoices` para um guard que a procura num
+  banco onde ela nao existe.
+
+  Ressalva de metodo: o veredito acima e DEDUZIDO de quatro medicoes (o gatilho
+  roda nessa branch; o guard compara declarado com aplicado; o declarado inclui
+  o fiscal desde 33000fa7; o banco nao tem nada fiscal). Nenhum run do GitHub
+  Actions foi consultado desta maquina.
+
+  Consequencia pratica: aplicar as 5 fiscais e o que deixa esse job verde, e
+  vale para a `fase-4` tanto quanto para esta frente. `docs/linkedin-fase3-fechamento.md`
+  ja manda migration antes de backend, e as 5 fiscais entram nessa mesma regra.
+  **A ordem entre as migrations fiscais e as do LinkedIn e livre**: os conjuntos
+  de objetos sao disjuntos (medido na secao F.4 do Passo 0 desta frente:
+  `fiscal_invoices`, `dps_numero_seq` e colunas de `profiles` de um lado;
+  `linkedin_analyses` e `linkedin_improvement_progress` do outro, e nenhuma das
+  do LinkedIn toca `profiles`).
+
 - **`scripts/mutateLinkedinThresholds.mjs` nao precisou mudar.** A lista
   `FONTES` dele nao inclui `server/routes/billing.ts` nem
   `server/routes/admin.ts`, e nenhum sitio numerico novo foi criado (as guardas
