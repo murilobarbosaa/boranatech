@@ -77,6 +77,7 @@ export default function FiscalInvoicesSection() {
 
   return (
     <section className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">
+      {/* TODO(Ana): eyebrow e titulo da secao de notas do perfil. */}
       <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">
         Notas fiscais
       </p>
@@ -84,6 +85,9 @@ export default function FiscalInvoicesSection() {
         Suas notas
       </h2>
 
+      {/* TODO(Ana): os tres estados abaixo (carregando, falha de leitura e
+          nenhuma nota ainda). Os dois ultimos dizem coisas diferentes de
+          proposito e a copy precisa manter a distincao. */}
       {invoices === null ? (
         <p className="mt-4 text-sm font-semibold text-slate-500">
           Carregando...
@@ -105,6 +109,7 @@ export default function FiscalInvoicesSection() {
             >
               <div className="flex-1">
                 <p className="text-sm font-black text-slate-950">
+                  {/* TODO(Ana): rotulo da nota (com e sem numero) e selo de cancelada. */}
                   {nota.numero ? `Nota ${nota.numero}` : "Nota emitida"}
                   {nota.status === "canceled" ? (
                     <span className="ml-2 rounded-full border-2 border-rose-300 bg-rose-50 px-2 py-0.5 text-xs font-black uppercase text-rose-700">
@@ -120,6 +125,7 @@ export default function FiscalInvoicesSection() {
               </div>
 
               <div className="flex gap-2">
+                {/* TODO(Ana): rotulos dos botoes de download (PDF e XML). */}
                 {/* Botao so aparece com URL: nota sem documento arquivado
                     mostra os dados e omite o download, em vez de oferecer um
                     link que devolve erro. */}

@@ -81,4 +81,44 @@ describe("FiscalInvoicesDashboard", () => {
     expect(screen.queryByText(/Emissão de NFS-e desligada/i)).toBeNull();
     expect(adminFetch).toHaveBeenCalled();
   });
+
+  it("celula sem dado mostra texto NOMEADO, nunca um traco", async () => {
+    // A ausencia de e-mail e de documento e um estado, e estado tem nome. O
+    // placeholder anterior era um em-dash, caractere proibido no repositorio, e
+    // um simbolo solto tambem nao diz a quem le se o dado falta ou se a celula
+    // quebrou.
+    estado.nfseEnabled = true;
+    adminFetch.mockImplementation(async (caminho: string) =>
+      caminho.startsWith("/fiscal-invoices/summary")
+        ? SUMMARY
+        : {
+            data: [
+              {
+                id: "nota-1",
+                userId: "u9",
+                email: null,
+                status: "failed",
+                precisaRevisao: false,
+                amountCents: 4990,
+                planCode: "pro_monthly",
+                numero: null,
+                attempts: 1,
+                errorCode: null,
+                errorMessage: null,
+                issuedAt: null,
+                createdAt: "2026-08-01T00:00:00.000Z",
+                tomadorNome: null,
+                tomadorDocumento: null,
+              },
+            ],
+          },
+    );
+
+    render(<FiscalInvoicesDashboard />);
+
+    // Duas celulas: a de usuario (sem e-mail e sem nome) e a de documento.
+    await waitFor(() =>
+      expect(screen.getAllByText("sem dado")).toHaveLength(2),
+    );
+  });
 });

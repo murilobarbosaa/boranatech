@@ -155,6 +155,7 @@ export default function FiscalDataModal({
     if (!encontrado) {
       // Nao e erro: CEP novo pode nao estar na base, e o servico pode estar
       // fora. A pessoa preenche a mao e segue.
+      // TODO(Ana): aviso de CEP nao encontrado (nao e erro, e convite a preencher a mao).
       setCepAviso("Não encontramos esse CEP. Você pode preencher à mão.");
       return;
     }
@@ -195,6 +196,8 @@ export default function FiscalDataModal({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="max-h-[85vh] overflow-y-auto border-[2.5px] border-slate-900 bg-[#faf8f4] shadow-[6px_6px_0_#7c3aed]">
+        {/* TODO(Ana): titulo nos dois contextos (checkout e perfil) e o
+            paragrafo de finalidade logo abaixo. */}
         <DialogHeader>
           <DialogTitle className="font-display text-2xl font-black text-slate-950">
             {contexto === "checkout"
@@ -208,6 +211,9 @@ export default function FiscalDataModal({
           </DialogDescription>
         </DialogHeader>
 
+        {/* TODO(Ana): rotulos, placeholders e legendas de TODOS os campos do
+            formulario abaixo (tipo de documento, razao social, nome completo,
+            CPF ou CNPJ, e o bloco de endereco). */}
         <div className="mt-2 flex flex-col gap-4">
           <fieldset>
             <legend className={labelClass}>Tipo de documento</legend>
@@ -293,6 +299,8 @@ export default function FiscalDataModal({
           </label>
 
           <div className="rounded-[11px] border-[2.5px] border-dashed border-slate-300 p-3">
+            {/* TODO(Ana): titulo do bloco de endereco e a frase que explica
+                por que ele e pedido. */}
             <p className="mb-1 text-xs font-black uppercase tracking-wider text-slate-500">
               Endereço (recomendado)
             </p>
@@ -313,6 +321,7 @@ export default function FiscalDataModal({
               />
               {cepLoading ? (
                 <span className="mt-1 block text-xs font-bold text-slate-500">
+                  {/* TODO(Ana): estado de busca do CEP. */}
                   Buscando endereço...
                 </span>
               ) : null}
@@ -413,6 +422,8 @@ export default function FiscalDataModal({
             disabled={saving}
             className="inline-flex items-center justify-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-50"
           >
+            {/* TODO(Ana): os tres rotulos do botao de salvar (salvando, e os
+                dois textos por contexto). */}
             {saving
               ? "Salvando..."
               : contexto === "checkout"

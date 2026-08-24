@@ -340,6 +340,7 @@ router.get("/invoices", requireAuth, async (req, res, next) => {
 
     if (error) {
       return next(
+        // TODO(Ana): mensagem de falha ao listar as notas do assinante.
         createError(500, "db_error", "Erro ao buscar notas fiscais."),
       );
     }

@@ -86,6 +86,8 @@ export default function FiscalDataBanner() {
         role="status"
         className="border-b-2 border-slate-900 bg-[#FFB800] px-4 py-3"
       >
+        {/* TODO(Ana): copy do aviso de dados fiscais pendentes (frase, rotulo
+            do botao de acao, rotulo e aria-label do botao de dispensa). */}
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
           <p className="flex-1 text-sm font-bold text-slate-950">
             Falta pouco para suas notas fiscais: complete seus dados fiscais

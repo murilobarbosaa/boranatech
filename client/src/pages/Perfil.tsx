@@ -2094,6 +2094,8 @@ export default function Perfil() {
               ("dados usados na emissao"). */}
           {nfseEnabled ? (
             <section className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">
+              {/* TODO(Ana): eyebrow, titulo e subtitulo do bloco de dados
+                  fiscais, e o rotulo do botao (nos dois estados). */}
               <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">
                 Dados fiscais
               </p>

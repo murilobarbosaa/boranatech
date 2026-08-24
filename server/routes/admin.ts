@@ -2157,6 +2157,7 @@ router.post("/fiscal-invoices/:id/retry", async (req, res, next) => {
 
     const { id } = req.params;
     if (!UUID_RE.test(id)) {
+      // TODO(Ana): mensagem de id invalido no retry de nota fiscal.
       return next(createError(400, "invalid_id", "Id inválido."));
     }
 
@@ -2168,7 +2169,9 @@ router.post("/fiscal-invoices/:id/retry", async (req, res, next) => {
     if (error) {
       return next(dbError("fiscal retry", error, "Erro ao buscar a nota."));
     }
-    if (!data) return next(createError(404, "not_found", "Nota não encontrada."));
+    // TODO(Ana): mensagem de nota inexistente.
+    if (!data)
+      return next(createError(404, "not_found", "Nota não encontrada."));
 
     const nota = data as {
       id: string;
@@ -2183,6 +2186,7 @@ router.post("/fiscal-invoices/:id/retry", async (req, res, next) => {
         createError(
           409,
           "not_retryable",
+          // TODO(Ana): mensagem de nota em estado nao retentavel.
           `Nota em "${nota.status}" não é retentável. Só failed e blocked_missing_data.`,
         ),
       );

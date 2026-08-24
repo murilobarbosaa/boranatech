@@ -418,8 +418,10 @@ export async function sendFiscalInvoiceEmail(
   },
 ) {
   const theme = NEUTRAL_THEME;
+  // TODO(Ana): subject e titulo do e-mail de nota fiscal emitida.
   const title = "Sua nota fiscal da assinatura Bora na Tech";
 
+  // TODO(Ana): rotulos das linhas da nota (numero, codigo de verificacao e valor).
   const linhas: string[] = [];
   if (params.numero) {
     linhas.push(`Número da nota: <strong>${escapeHtml(params.numero)}</strong>`);
@@ -434,6 +436,9 @@ export async function sendFiscalInvoiceEmail(
   }
   linhas.push(`Valor: <strong>${escapeHtml(params.valorLabel)}</strong>`);
 
+  // TODO(Ana): corpo do e-mail (frase de abertura, as duas variantes sobre o
+  // PDF e o rotulo do botao). A copy MUDA com o anexo de proposito: sem PDF o
+  // e-mail sai mesmo assim, dizendo onde a nota esta.
   const body = `
     ${paragraph("A nota fiscal da sua assinatura foi emitida.")}
     ${list(theme, linhas)}

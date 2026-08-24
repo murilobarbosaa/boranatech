@@ -48,6 +48,7 @@ type Invoice = {
   tomadorDocumento: string | null;
 };
 
+// TODO(Ana): rotulos dos botoes de filtro por status (o array inteiro).
 const STATUS_FILTROS = [
   { valor: "", label: "Todas" },
   { valor: "blocked_missing_data", label: "Bloqueadas" },
@@ -61,6 +62,7 @@ const STATUS_FILTROS = [
 // Rotulo por status, com resolver de fallback: um status novo no servidor que
 // o bundle ainda nao conhece mostra o valor cru, e nao derruba a pagina
 // (regra dos lookups por valor do servidor, CLAUDE.md).
+// TODO(Ana): rotulos de status das notas (o mapa inteiro).
 const STATUS_LABEL: Record<string, string> = {
   pending: "Pendente",
   processing: "Processando",
@@ -144,6 +146,7 @@ export function FiscalInvoicesDashboard() {
       setSummary(resumo.data);
       setInvoices(lista.data);
     } catch {
+      // TODO(Ana): mensagem de erro ao carregar o painel de notas.
       setErro("Não foi possível carregar as notas fiscais.");
     } finally {
       setLoading(false);
@@ -160,6 +163,7 @@ export function FiscalInvoicesDashboard() {
       await adminFetch(`/fiscal-invoices/${id}/retry`, { method: "POST" });
       await carregar();
     } catch {
+      // TODO(Ana): mensagem de erro ao reprocessar uma nota.
       setErro("Não foi possível reprocessar essa nota.");
     } finally {
       setRetrying(null);
@@ -188,6 +192,7 @@ export function FiscalInvoicesDashboard() {
 
   return (
     <div>
+      {/* TODO(Ana): rotulos dos quatro cartoes de contagem abaixo. */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Contador label="Bloqueadas" valor={bloqueadas} destaque="alerta" />
         <Contador
@@ -216,7 +221,8 @@ export function FiscalInvoicesDashboard() {
         // Ausencia de execucao e um ACHADO, nao um espaco vazio: significa que
         // a rede de seguranca nunca rodou.
         <p className="mt-3 text-xs font-bold text-amber-700">
-          O cron de reconciliação ainda não rodou nenhuma vez.
+          {/* TODO(Ana): aviso de cron de reconciliacao que nunca rodou. */}O
+          cron de reconciliação ainda não rodou nenhuma vez.
         </p>
       )}
 
@@ -244,6 +250,7 @@ export function FiscalInvoicesDashboard() {
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[900px] border-collapse text-sm">
           <thead>
+            {/* TODO(Ana): cabecalhos da tabela de notas. */}
             <tr className="border-b-2 border-slate-900 text-left">
               <th className="p-2 text-xs font-black uppercase">Usuário</th>
               <th className="p-2 text-xs font-black uppercase">Documento</th>
@@ -258,6 +265,7 @@ export function FiscalInvoicesDashboard() {
             {invoices.length === 0 ? (
               <tr>
                 <td colSpan={7} className="p-4 text-slate-500">
+                  {/* TODO(Ana): mensagem de filtro sem resultado. */}
                   Nenhuma nota neste filtro.
                 </td>
               </tr>
@@ -273,11 +281,12 @@ export function FiscalInvoicesDashboard() {
                       nota.precisaRevisao ? "bg-rose-50" : ""
                     }`}
                   >
+                    {/* TODO(Ana): texto de celula sem dado (as duas abaixo). */}
                     <td className="p-2 font-semibold">
-                      {nota.email ?? nota.tomadorNome ?? "—"}
+                      {nota.email ?? nota.tomadorNome ?? "sem dado"}
                     </td>
                     <td className="p-2 font-mono text-xs">
-                      {nota.tomadorDocumento ?? "—"}
+                      {nota.tomadorDocumento ?? "sem dado"}
                     </td>
                     <td className="p-2 font-bold">
                       {formatBrl(nota.amountCents)}
@@ -288,6 +297,7 @@ export function FiscalInvoicesDashboard() {
                       </span>
                       {nota.precisaRevisao ? (
                         <span className="ml-2 rounded-full border-2 border-rose-500 bg-white px-2 py-0.5 text-[10px] font-black uppercase text-rose-700">
+                          {/* TODO(Ana): selo de nota que precisa de revisao. */}
                           Revisar
                         </span>
                       ) : null}
