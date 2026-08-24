@@ -1,5 +1,17 @@
 # Analisador de LinkedIn, Fase 4: fechamento e sequencia de deploy
 
+> **A SEQUENCIA DE DEPLOY DESTE DOCUMENTO ESTA SUPERADA.** A fonte vigente e
+> `docs/deploy-pilha-linkedin-fiscal.md`, que descreve a pilha real: tres merges,
+> **dez** migrations pendentes (nao cinco) e o Marco 1 fiscal embarcado. A secao
+> 5 daqui foi escrita quando a pilha tinha 56 commits e nenhum merge, e a
+> premissa de "nada pushado" tambem nao vale mais.
+>
+> **O resto deste documento continua valendo** e nao foi reescrito: os lotes, as
+> politicas, as limitacoes conhecidas, a fila da Ana e o inventario `TODO(Ana)`
+> sao o registro do que a Fase 4 fez, e o doc novo aponta para ca em vez de
+> duplicar. As quatro notas de descontinuidade de custo e a janela de 130,4s
+> contra 150,4s foram herdadas de la, com a fonte citada.
+
 Continuacao de `docs/linkedin-fase3-fechamento.md`. **A sequencia de deploy da
 secao 5 deste arquivo substitui a daquele** como fonte operacional; o resto
 daquele doc (historico da Fase 3, decisoes anteriores) segue valendo e nao esta
