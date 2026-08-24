@@ -35,6 +35,7 @@ import { EditableField, GenderField } from "./UserEditFields";
 import { EmailChangeDialog } from "./EmailChangeDialog";
 import { CancelSubscriptionDialog } from "./CancelSubscriptionDialog";
 import { RevokeAccessDialog } from "./RevokeAccessDialog";
+import { UserSiteLife, type VidaNoSite } from "./UserSiteLife";
 import { ExternalRefundDialog } from "./ExternalRefundDialog";
 import { RefundDialog } from "./RefundDialog";
 import { useProfileEdit } from "./useProfileEdit";
@@ -191,6 +192,14 @@ export function UserDetailModal({
   // carregando para sempre). Mora atras do mesmo dropdown em vez de ganhar um
   // colapsavel proprio: uma affordance nova para a mesma classe de informacao
   // secundaria seria mecanismo a mais sem pergunta a mais respondida.
+  // Vida no site: MESMO padrao preguicoso da atividade e do historico, e o latch
+  // e ref pelo mesmo motivo ja registrado acima. Quatro fontes que so interessam
+  // a quem abre o dropdown nao podem entrar na carga do detalhe.
+  const [vida, setVida] = useState<VidaNoSite | null>(null);
+  const [vidaLoading, setVidaLoading] = useState(false);
+  const [vidaError, setVidaError] = useState<string | null>(null);
+  const vidaRequested = useRef(false);
+
   const [audit, setAudit] = useState<AuditPayload | null>(null);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
@@ -403,6 +412,36 @@ export function UserDetailModal({
       })
       .finally(() => {
         if (!cancelled) setAuditLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, moreOpen]);
+
+  useEffect(() => {
+    if (!moreOpen || vidaRequested.current) return;
+
+    let cancelled = false;
+    vidaRequested.current = true;
+    setVidaLoading(true);
+    setVidaError(null);
+    adminFetch(`/users/${userId}/site-life`)
+      .then((json) => {
+        if (cancelled) return;
+        setVida((json.data as VidaNoSite) ?? null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setVidaError(
+          err instanceof Error
+            ? err.message
+            : "Erro ao buscar a atividade no site.",
+        );
+        setVida(null);
+      })
+      .finally(() => {
+        if (!cancelled) setVidaLoading(false);
       });
 
     return () => {
@@ -1000,6 +1039,17 @@ export function UserDetailModal({
                       error={activityError}
                       state={activity}
                     />
+                  </Section>
+
+                  {/* TODO(Ana) */}
+                  <Section title="Vida no site">
+                    <BlocoBoundary nome="Vida no site">
+                      <UserSiteLife
+                        vida={vida}
+                        loading={vidaLoading}
+                        error={vidaError}
+                      />
+                    </BlocoBoundary>
                   </Section>
 
                   {/* Somente LEITURA. Um historico com botao seria um lugar de

@@ -2338,3 +2338,41 @@ describe("revogação avulsa de acesso Pro", () => {
     ).toBeNull();
   });
 });
+
+describe("vida no site: busca sob demanda", () => {
+  it("NAO busca antes de abrir o dropdown, e busca ao abrir", async () => {
+    // Mesmo contrato da atividade do PostHog: quatro fontes que so interessam a
+    // quem abre a secao nao podem entrar na carga do detalhe.
+    rotear(detalhe());
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    const chamou = () =>
+      fetchMock.mock.calls.some(
+        (c) => typeof c[0] === "string" && c[0].includes("/site-life"),
+      );
+    expect(chamou()).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+
+    await waitFor(() => expect(chamou()).toBe(true));
+    expect(fetchMock).toHaveBeenCalledWith("/users/u1/site-life");
+  });
+
+  it("erro da vida no site fica inline, sem derrubar a secao vizinha", async () => {
+    rotear(detalhe(), {
+      "/site-life": new Error("Erro ao buscar a atividade no site."),
+    });
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+
+    expect(
+      await screen.findByText("Erro ao buscar a atividade no site."),
+    ).toBeTruthy();
+    // A secao Atividade, vizinha, continua montada.
+    expect(screen.getAllByText("Atividade").length).toBeGreaterThan(0);
+  });
+});

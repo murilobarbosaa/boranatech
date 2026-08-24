@@ -179,6 +179,11 @@ const COPY_ESTATICA = new Set<string>([
   "Marketing",
   "Sistema",
   "Atividade",
+  // Seção "Vida no site" (certificados, conquistas, roadmaps e trilhas). Os
+  // rótulos dos blocos internos não entram aqui porque só aparecem quando a
+  // seção tem dado, e o inventário roda sobre o modal com o payload padrão.
+  "Vida no site",
+  "Ainda não há atividade registrada no site.",
   "Compras",
   "Histórico administrativo",
   "Nome",
