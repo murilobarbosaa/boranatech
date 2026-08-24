@@ -293,6 +293,30 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
 });
 
 /**
+ * Estado da emissao de NFS-e, para o frontend decidir o que montar.
+ *
+ * POR QUE UMA ROTA, e nao uma env do bundle: `VITE_NFSE_ENABLED` congelaria o
+ * valor no build, e o deploy nao e atomico (a Vercel sobe antes do Railway).
+ * Uma janela de minutos com frontend afirmando "ligado" contra um backend que
+ * ainda responde desligado e exatamente o que esta rota evita: quem sabe do
+ * kill-switch e o processo que o le.
+ *
+ * PUBLICA de proposito. O banner fiscal mora no Layout, que atravessa TODA
+ * pagina, inclusive as anonimas; com `requireAuth` cada carga deslogada geraria
+ * um 401 previsivel e inutil. O dado nao e do usuario: e uma flag de
+ * configuracao do produto, a mesma para todo mundo, e nao revela nada sobre
+ * quem pergunta.
+ *
+ * O valor POSITIVO tambem e declarado (nao so o "disabled" das outras rotas
+ * fiscais) porque o consumidor e fail-closed: o cliente so mostra superficie
+ * fiscal com o literal "enabled" na mao, e trata ausencia, erro e resposta
+ * desconhecida como desligado.
+ */
+router.get("/nfse-status", (_req, res) => {
+  res.json({ data: { nfse: env.nfseEnabled ? "enabled" : "disabled" } });
+});
+
+/**
  * Notas fiscais do proprio usuario.
  *
  * So `issued` e `canceled`: os demais estados sao de PROCESSO nosso (pending,
@@ -307,6 +331,22 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
  */
 router.get("/invoices", requireAuth, async (req, res, next) => {
   try {
+    // Kill-switch ANTES da consulta. Com a emissao desligada nao existe nota
+    // para listar, e perguntar mesmo assim e o unico caminho medido em que
+    // ausencia de configuracao fiscal chega ao banco: se a migration ainda nao
+    // tiver sido aplicada, o erro do PostgREST vira 500 na tela de todo
+    // assinante que abrir o /perfil.
+    //
+    // 200 com lista vazia, NUNCA status de erro: FiscalInvoicesSection trata
+    // qualquer `!res.ok` como falha e mostra "nao conseguimos carregar suas
+    // notas agora", que e mensagem de defeito para um estado que nao e defeito.
+    // O campo `nfse` existe para o estado ficar NOMEADO: sem ele, "emissao
+    // desligada" e "voce nao tem notas" chegariam ao cliente identicos.
+    if (!env.nfseEnabled) {
+      res.json({ data: [], nfse: "disabled" });
+      return;
+    }
+
     const userId = req.user!.id;
 
     const { data, error } = await supabaseAdmin
@@ -321,6 +361,7 @@ router.get("/invoices", requireAuth, async (req, res, next) => {
 
     if (error) {
       return next(
+        // TODO(Ana): mensagem de falha ao listar as notas do assinante.
         createError(500, "db_error", "Erro ao buscar notas fiscais."),
       );
     }

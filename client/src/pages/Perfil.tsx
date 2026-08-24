@@ -35,6 +35,7 @@ import { ProfileBackground } from "@/components/profile/ProfileBackground";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
 import FiscalDataModal from "@/components/fiscal/FiscalDataModal";
 import FiscalInvoicesSection from "@/components/fiscal/FiscalInvoicesSection";
+import { useNfseEnabled } from "@/services/nfseStatus";
 import ProGate from "@/components/pro/ProGate";
 import { ProInlineBadge, ProStarIcon } from "@/components/pro/ProStarIcon";
 import ProUpsellModal from "@/components/pro/ProUpsellModal";
@@ -689,6 +690,7 @@ function ProToolCard({
 
 export default function Perfil() {
   const [, setLocation] = useLocation();
+  const nfseEnabled = useNfseEnabled();
   const {
     loading: authLoading,
     profile,
@@ -2119,62 +2121,71 @@ export default function Perfil() {
           {/* Bloco 7: Dados fiscais.
               Resumo + botao que abre a MESMA FiscalDataModal usada pelo gate do
               checkout e pelo banner. Um segundo formulario aqui divergiria do
-              primeiro na primeira mudanca de regra, e o dado e o mesmo. */}
-          <section className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">
-            <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">
-              Dados fiscais
-            </p>
-            <h2 className="mt-2 font-display text-2xl font-black text-slate-950">
-              Para emitir sua nota
-            </h2>
-            <p className="mt-2 text-sm font-semibold text-slate-600">
-              Dados usados na emissão das notas fiscais da sua assinatura.
-            </p>
+              primeiro na primeira mudanca de regra, e o dado e o mesmo.
 
-            <dl className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <dt className="text-xs font-black uppercase tracking-wider text-slate-500">
-                  {fiscalProfile?.fiscal_documento_preferencia === "cnpj"
-                    ? "Razão social"
-                    : "Nome completo"}
-                </dt>
-                <dd className="text-sm font-bold text-slate-950">
-                  {(fiscalProfile?.fiscal_documento_preferencia === "cnpj"
-                    ? fiscalProfile?.razao_social
-                    : fiscalProfile?.full_name) || "Não informado"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-black uppercase tracking-wider text-slate-500">
-                  {fiscalProfile?.fiscal_documento_preferencia === "cnpj"
-                    ? "CNPJ"
-                    : "CPF"}
-                </dt>
-                <dd className="text-sm font-bold text-slate-950">
-                  {/* Documento nunca e exibido inteiro: a pagina fica aberta em
+              Escondido com a emissao desligada: coletar CPF, CNPJ e endereco
+              para uma nota que ninguem vai emitir e pedir dado pessoal sem
+              finalidade, que e o oposto do que a propria copy do bloco promete
+              ("dados usados na emissao"). */}
+          {nfseEnabled ? (
+            <section className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">
+              {/* TODO(Ana): eyebrow, titulo e subtitulo do bloco de dados
+                  fiscais, e o rotulo do botao (nos dois estados). */}
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">
+                Dados fiscais
+              </p>
+              <h2 className="mt-2 font-display text-2xl font-black text-slate-950">
+                Para emitir sua nota
+              </h2>
+              <p className="mt-2 text-sm font-semibold text-slate-600">
+                Dados usados na emissão das notas fiscais da sua assinatura.
+              </p>
+
+              <dl className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs font-black uppercase tracking-wider text-slate-500">
+                    {fiscalProfile?.fiscal_documento_preferencia === "cnpj"
+                      ? "Razão social"
+                      : "Nome completo"}
+                  </dt>
+                  <dd className="text-sm font-bold text-slate-950">
+                    {(fiscalProfile?.fiscal_documento_preferencia === "cnpj"
+                      ? fiscalProfile?.razao_social
+                      : fiscalProfile?.full_name) || "Não informado"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-black uppercase tracking-wider text-slate-500">
+                    {fiscalProfile?.fiscal_documento_preferencia === "cnpj"
+                      ? "CNPJ"
+                      : "CPF"}
+                  </dt>
+                  <dd className="text-sm font-bold text-slate-950">
+                    {/* Documento nunca e exibido inteiro: a pagina fica aberta em
                       tela compartilhada e o valor completo nao acrescenta nada
                       a quem so quer conferir se cadastrou. */}
-                  {fiscalDocumentoMascarado || "Não informado"}
-                </dd>
-              </div>
-              <div className="sm:col-span-2">
-                <dt className="text-xs font-black uppercase tracking-wider text-slate-500">
-                  Endereço
-                </dt>
-                <dd className="text-sm font-bold text-slate-950">
-                  {fiscalEnderecoResumo || "Não informado (recomendado)"}
-                </dd>
-              </div>
-            </dl>
+                    {fiscalDocumentoMascarado || "Não informado"}
+                  </dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-xs font-black uppercase tracking-wider text-slate-500">
+                    Endereço
+                  </dt>
+                  <dd className="text-sm font-bold text-slate-950">
+                    {fiscalEnderecoResumo || "Não informado (recomendado)"}
+                  </dd>
+                </div>
+              </dl>
 
-            <button
-              type="button"
-              onClick={() => setFiscalModalOpen(true)}
-              className="mt-6 inline-flex items-center justify-center rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-3 font-display font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-y-0.5"
-            >
-              {fiscalCompleto ? "Editar dados fiscais" : "Completar dados"}
-            </button>
-          </section>
+              <button
+                type="button"
+                onClick={() => setFiscalModalOpen(true)}
+                className="mt-6 inline-flex items-center justify-center rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-3 font-display font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-y-0.5"
+              >
+                {fiscalCompleto ? "Editar dados fiscais" : "Completar dados"}
+              </button>
+            </section>
+          ) : null}
 
           {/* Bloco 8: notas fiscais emitidas. Fica DEPOIS dos dados fiscais,
               na ordem em que as coisas acontecem: primeiro o cadastro, depois

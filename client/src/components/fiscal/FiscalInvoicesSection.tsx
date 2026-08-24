@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { useNfseEnabled } from "@/services/nfseStatus";
+
 import {
   getMyFiscalInvoices,
   type FiscalInvoiceListItem,
@@ -37,12 +39,18 @@ const downloadClass =
   "rounded-full border-2 border-[#1a1a1a] bg-white px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px";
 
 export default function FiscalInvoicesSection() {
+  const nfseEnabled = useNfseEnabled();
   const [invoices, setInvoices] = useState<FiscalInvoiceListItem[] | null>(
     null,
   );
   const [erro, setErro] = useState(false);
 
   useEffect(() => {
+    // Sem emissao ligada NAO ha chamada. O gate precisa estar aqui dentro, e
+    // nao so no render: montar a secao e nao pedir nada e diferente de esconder
+    // a secao depois de ja ter pedido, e era esta chamada que ia ao banco a
+    // cada abertura do /perfil de qualquer usuario logado.
+    if (!nfseEnabled) return;
     let cancelled = false;
     getMyFiscalInvoices()
       .then((lista) => {
@@ -61,10 +69,15 @@ export default function FiscalInvoicesSection() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [nfseEnabled]);
+
+  // Escondida por completo com a emissao desligada: uma secao "Suas notas" que
+  // promete notas de um pipeline que nao roda e pior que a ausencia dela.
+  if (!nfseEnabled) return null;
 
   return (
     <section className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">
+      {/* TODO(Ana): eyebrow e titulo da secao de notas do perfil. */}
       <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">
         Notas fiscais
       </p>
@@ -72,6 +85,9 @@ export default function FiscalInvoicesSection() {
         Suas notas
       </h2>
 
+      {/* TODO(Ana): os tres estados abaixo (carregando, falha de leitura e
+          nenhuma nota ainda). Os dois ultimos dizem coisas diferentes de
+          proposito e a copy precisa manter a distincao. */}
       {invoices === null ? (
         <p className="mt-4 text-sm font-semibold text-slate-500">
           Carregando...
@@ -93,6 +109,7 @@ export default function FiscalInvoicesSection() {
             >
               <div className="flex-1">
                 <p className="text-sm font-black text-slate-950">
+                  {/* TODO(Ana): rotulo da nota (com e sem numero) e selo de cancelada. */}
                   {nota.numero ? `Nota ${nota.numero}` : "Nota emitida"}
                   {nota.status === "canceled" ? (
                     <span className="ml-2 rounded-full border-2 border-rose-300 bg-rose-50 px-2 py-0.5 text-xs font-black uppercase text-rose-700">
@@ -108,6 +125,7 @@ export default function FiscalInvoicesSection() {
               </div>
 
               <div className="flex gap-2">
+                {/* TODO(Ana): rotulos dos botoes de download (PDF e XML). */}
                 {/* Botao so aparece com URL: nota sem documento arquivado
                     mostra os dados e omite o download, em vez de oferecer um
                     link que devolve erro. */}

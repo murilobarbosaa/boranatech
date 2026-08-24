@@ -48,6 +48,7 @@ import {
 } from "@/services/subscriptionService";
 import PaymentMethodDialog from "@/components/pro/PaymentMethodDialog";
 import FiscalDataModal from "@/components/fiscal/FiscalDataModal";
+import { useNfseEnabled } from "@/services/nfseStatus";
 import { getMyProfile } from "@/services/profileService";
 import { hasFiscalIdentity } from "@shared/fiscalIdentity";
 import { apiUrl } from "@/lib/api";
@@ -634,6 +635,7 @@ export default function Checkout() {
   // Gate fiscal: quando falta nome/documento, a modal entra ANTES do checkout e,
   // ao salvar, o fluxo continua sozinho de onde parou (sem passo extra para a
   // pessoa). `fiscalPendente` guarda o que fazer depois de salvar.
+  const nfseEnabled = useNfseEnabled();
   const [fiscalModalOpen, setFiscalModalOpen] = useState(false);
   const [fiscalPendente, setFiscalPendente] = useState<
     | null
@@ -763,6 +765,19 @@ export default function Checkout() {
       | { tipo: "dialog" }
       | { tipo: "checkout"; metodo: CheckoutPaymentMethod },
   ) {
+    // Emissao desligada: NAO ha gate. Segue direto ao pagamento, sem nem ler o
+    // perfil. E o mesmo desfecho que a falha de leitura ja tem logo abaixo, e
+    // pelo mesmo motivo: a venda nao pode ser barrada por causa de um dado que
+    // so serve a uma nota que nao vai ser emitida.
+    if (!nfseEnabled) {
+      if (proximo.tipo === "checkout") {
+        void doCheckout(proximo.metodo);
+        return;
+      }
+      setPaymentDialogOpen(true);
+      return;
+    }
+
     try {
       const profile = await getMyProfile();
       if (!hasFiscalIdentity(profile)) {

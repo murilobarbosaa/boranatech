@@ -8269,6 +8269,7 @@ export default function Admin() {
                   estados que exigem acao humana nao aparecem em lugar nenhum
                   fora daqui. */}
               <div className="mt-10">
+                {/* TODO(Ana): titulo e paragrafo do bloco de notas fiscais. */}
                 <h2 className="font-display text-3xl font-black text-slate-950">
                   Notas fiscais
                 </h2>

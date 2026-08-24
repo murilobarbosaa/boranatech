@@ -2354,6 +2354,29 @@ function mascararDocumento(documento: string | null): string | null {
 
 router.get("/fiscal-invoices/summary", async (_req, res, next) => {
   try {
+    // Kill-switch antes da consulta, mesmo motivo da rota do assinante: com a
+    // emissao desligada nao ha o que resumir, e a leitura so serviria para
+    // descobrir do jeito ruim que a tabela pode nem existir.
+    //
+    // Zeros AQUI nao sao ausencia disfarcada de dado, porque o campo `nfse`
+    // declara o estado ao lado deles. Sem esse campo os mesmos zeros diriam
+    // "nenhuma nota emitida ainda", que e a leitura errada e a que faria o
+    // admin procurar defeito no pipeline em vez de olhar o kill-switch.
+    if (!env.nfseEnabled) {
+      const porStatusZerado: Record<string, number> = {};
+      for (const status of FISCAL_STATUSES) porStatusZerado[status] = 0;
+      res.json({
+        data: {
+          porStatus: porStatusZerado,
+          precisaRevisao: 0,
+          total: 0,
+          ultimaReconciliacao: null,
+        },
+        nfse: "disabled",
+      });
+      return;
+    }
+
     // Contagem por status em UMA leitura, agregada em memoria. A alternativa
     // (uma query `count` por status) seriam seis viagens ao banco para uma
     // tabela que cresce uma linha por cobranca.
@@ -2416,6 +2439,14 @@ router.get("/fiscal-invoices/summary", async (_req, res, next) => {
 
 router.get("/fiscal-invoices", async (req, res, next) => {
   try {
+    // Kill-switch antes da consulta. Lista vazia com o estado nomeado, pelo
+    // mesmo motivo do resumo acima: vazio sozinho seria lido como "nenhuma
+    // nota", e nao como "a emissao esta desligada".
+    if (!env.nfseEnabled) {
+      res.json({ data: [], nfse: "disabled" });
+      return;
+    }
+
     const status = String(req.query.status ?? "");
     const precisaRevisao = req.query.precisa_revisao === "true";
     const limit = Math.min(parseInt(String(req.query.limit ?? "50"), 10) || 50, 100);
@@ -2482,8 +2513,29 @@ router.get("/fiscal-invoices", async (req, res, next) => {
 
 router.post("/fiscal-invoices/:id/retry", async (req, res, next) => {
   try {
+    // Kill-switch ANTES de tudo, e aqui ele barra de verdade em vez de degradar
+    // para vazio: esta rota ESCREVE. Com a emissao desligada, o worker fiscal
+    // nao sobe (server/index.ts so o cria com `env.redisUrl && env.nfseEnabled`),
+    // entao um retry poria a linha em `pending` e enfileiraria para ninguem. O
+    // admin veria o status mudar e concluiria que a nota foi reprocessada,
+    // enquanto nada aconteceria. Estado que muda sem efeito e pior que erro.
+    //
+    // O slug reusa o `nfse_disabled` que o cron ja usa (server/routes/cron.ts),
+    // para os dois pulos por kill-switch terem UM nome so.
+    if (!env.nfseEnabled) {
+      return next(
+        createError(
+          409,
+          "nfse_disabled",
+          // TODO(Ana): copy do retry bloqueado por kill-switch de NFS-e.
+          "Emissão de NFS-e desligada. Nenhuma nota é reprocessada enquanto o kill-switch estiver desligado.",
+        ),
+      );
+    }
+
     const { id } = req.params;
     if (!UUID_RE.test(id)) {
+      // TODO(Ana): mensagem de id invalido no retry de nota fiscal.
       return next(createError(400, "invalid_id", "Id inválido."));
     }
 
@@ -2495,7 +2547,9 @@ router.post("/fiscal-invoices/:id/retry", async (req, res, next) => {
     if (error) {
       return next(dbError("fiscal retry", error, "Erro ao buscar a nota."));
     }
-    if (!data) return next(createError(404, "not_found", "Nota não encontrada."));
+    // TODO(Ana): mensagem de nota inexistente.
+    if (!data)
+      return next(createError(404, "not_found", "Nota não encontrada."));
 
     const nota = data as {
       id: string;
@@ -2510,6 +2564,7 @@ router.post("/fiscal-invoices/:id/retry", async (req, res, next) => {
         createError(
           409,
           "not_retryable",
+          // TODO(Ana): mensagem de nota em estado nao retentavel.
           `Nota em "${nota.status}" não é retentável. Só failed e blocked_missing_data.`,
         ),
       );
