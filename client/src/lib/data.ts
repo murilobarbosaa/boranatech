@@ -22066,9 +22066,8 @@ export const plataformas = plataformasBase.map((p) => ({
 // (dominio de eventos, carregado sob demanda); reexportados aqui.
 export { EVENTO_UF_NACIONAL, estadosBrasil } from "./eventosData";
 
-// O array eventos foi fatiado para eventosData.ts (carregado sob demanda
-// pela home); reexportado aqui para os consumidores existentes.
-export { eventos } from "./eventosData";
+// O array `eventos` saiu daqui e do estatico: a fonte agora e o banco, pela
+// rota /api/content/eventos (client/src/services/eventosService.ts).
 
 // O catalogo de projetos vive em shared/projects/catalog.ts (o server tambem
 // o consome); re-exportado aqui pra os consumidores existentes de @/lib/data.
