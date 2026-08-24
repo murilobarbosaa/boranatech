@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import SuperModal from "@/components/notifications/SuperModal";
 import { ctaTarget } from "@/components/notifications/NotificationsPanel";
 import { useNotifications } from "@/contexts/NotificationsContext";
+import { useOnboardingCoordinator } from "@/lib/onboarding/coordinator";
 
 // Ponto ÚNICO de montagem do SuperModal. Montado em App.tsx como irmão do Router,
 // DENTRO do ConsentGate — então só renderiza depois que consent/launch liberam os
@@ -41,10 +42,16 @@ export default function SuperInterstitial() {
     markAsRead,
   } = useNotifications();
   const [location, navigate] = useLocation();
+  const { superInterstitialAllowed } = useOnboardingCoordinator();
 
   if (!superModalOpen || !superModalItem) return null;
   // Pop automático (por carga) respeita a allowlist; abertura manual (sino) não.
   if (superModalSource === "auto" && isExcludedRoute(location)) return null;
+  // Coordenação com o onboarding por rota: o pop automático espera o
+  // OnboardingHost decidir, e desiste de vez se o onboarding tiver aberto nesta
+  // carga. A abertura MANUAL pelo sino ignora isto, igual à allowlist acima:
+  // quem clicou no sino pediu para ver.
+  if (superModalSource === "auto" && !superInterstitialAllowed) return null;
 
   const item = superModalItem;
 

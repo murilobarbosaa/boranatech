@@ -1404,9 +1404,26 @@ function textoParaColarSemInvento(
  * Teto de eventos de lastro no Sentry, por tipo e por processo.
  *
  * Mesmo cuidado do modo degradado da cota: um dia ruim do modelo geraria um
- * evento por analise e o alerta viraria ruido. O `console.warn` continua saindo
- * em TODA ocorrencia, entao a contagem exata fica no log; o Sentry recebe a
- * amostra que faz o problema aparecer no painel.
+ * evento por analise e o alerta viraria ruido.
+ *
+ * O TETO SUBCONTAVA, e essa era a divida. O `console.warn` sai em toda
+ * ocorrencia, mas `server/lib/sentry.ts` nao instala integracao de console
+ * (`docs/erro-engolido.md`), entao ele morre no log do Railway: a unica
+ * contagem visivel era a de eventos ENVIADOS, que e um por tipo por minuto e
+ * nao tem relacao com o volume real. Sem volume real, ajustar o prompt e depois
+ * dizer "melhorou" e afirmacao sem instrumento, que e exatamente o que a Etapa
+ * 2 desta frente vai precisar afirmar.
+ *
+ * A correcao NAO eleva o volume de eventos: o teto continua igual e o que muda
+ * e cada evento passar a carregar quantas ocorrencias ele representa. Duas
+ * formas de reconstituir o total na issue, e as duas concordam por construcao:
+ * somar `1 + ocorrencias_suprimidas_desde_ultimo` sobre os eventos do processo,
+ * ou ler o maior `total_no_processo`.
+ *
+ * O estado e POR PROCESSO e some no restart, igual ao teto que ja existia. Isso
+ * e limitacao conhecida e aceita: o alvo aqui e ordem de grandeza por tipo, nao
+ * contabilidade. Para contabilidade seria preciso um contador persistido, que e
+ * outra frente.
  */
 const INTERVALO_LASTRO_MS = 60 * 1000;
 
@@ -1415,9 +1432,27 @@ const TIPOS_DE_BLOCO: ReadonlySet<TipoViolacao> = new Set<TipoViolacao>([
   "bullet_sem_origem",
   "bloco_experiencia_invalida",
 ]);
-const ultimoLastroPorTipo = new Map<string, number>();
 
-function registrarViolacao(v: Violacao): void {
+type ContagemDeTipo = {
+  /** Instante do ultimo evento ENVIADO ao Sentry, 0 se nunca. */
+  ultimoEnvioMs: number;
+  /** Ocorrencias que o teto engoliu desde aquele envio. */
+  suprimidasDesdeUltimo: number;
+  /** Todas as ocorrencias do tipo desde que o processo subiu. */
+  totalNoProcesso: number;
+};
+
+const contagemPorTipo = new Map<string, ContagemDeTipo>();
+
+/**
+ * Zera o estado por processo. SO para teste: sem isto um caso vaza contagem
+ * para o proximo e a suite fica dependente de ordem.
+ */
+export function __resetContagemDeLastroParaTeste(): void {
+  contagemPorTipo.clear();
+}
+
+export function registrarViolacao(v: Violacao): void {
   // UMA conversao, usada nos DOIS destinos. Duas montagens separadas seriam
   // duas verdades sobre o que pode sair, e a primeira divergencia seria muda.
   const seguro = violacaoParaLog(v);
@@ -1431,9 +1466,17 @@ function registrarViolacao(v: Violacao): void {
   // nao declara `integrations`, e `captureConsoleIntegration` NAO e padrao no
   // @sentry/node, entao console.warn nunca chegava la.
   const agora = Date.now();
-  const ultimo = ultimoLastroPorTipo.get(v.tipo) ?? 0;
-  if (agora - ultimo >= INTERVALO_LASTRO_MS) {
-    ultimoLastroPorTipo.set(v.tipo, agora);
+  const contagem = contagemPorTipo.get(v.tipo) ?? {
+    ultimoEnvioMs: 0,
+    suprimidasDesdeUltimo: 0,
+    totalNoProcesso: 0,
+  };
+  // A ocorrencia e contada ANTES da decisao de enviar: o total nao depende de
+  // ela ter cabido na janela, que e o defeito que este bloco existe para
+  // corrigir.
+  contagem.totalNoProcesso += 1;
+
+  if (agora - contagem.ultimoEnvioMs >= INTERVALO_LASTRO_MS) {
     try {
       Sentry.captureMessage(`ai_lastro_violado: ${v.tipo}`, {
         level: "warning",
@@ -1443,12 +1486,34 @@ function registrarViolacao(v: Violacao): void {
         fingerprint: ["ai-lastro-violado", v.tipo],
         // Payload REDIGIDO, mesma fonte do log estruturado abaixo: o
         // `extra` do Sentry viaja para fora tanto quanto o stdout.
-        extra: { ...seguro },
+        extra: {
+          ...seguro,
+          // Quantas ocorrencias o teto engoliu entre o evento anterior e este.
+          // Este evento representa ele mesmo MAIS estas.
+          ocorrencias_suprimidas_desde_ultimo: contagem.suprimidasDesdeUltimo,
+          // Acumulado do tipo desde o boot do processo. Redundante com a soma
+          // acima de proposito: se as duas divergirem numa issue, o proprio
+          // instrumento esta errado, e isso e visivel sem precisar de um
+          // terceiro numero para arbitrar.
+          total_no_processo: contagem.totalNoProcesso,
+        },
       });
     } catch {
       // Sentry desligado (DSN ausente) e no-op por desenho.
     }
+    // Zerado FORA do `try`, e de proposito: mesmo que o SDK lance, a janela
+    // reabre. Tratar "lancou" como "nao enviou" removeria o teto exatamente
+    // quando o Sentry esta ruim, que e quando ele menos aguenta volume. Sem DSN
+    // o `captureMessage` e no-op e nao lanca, entao na pratica este caminho e o
+    // do envio normal. O que se perde no caso patologico e a contagem de uma
+    // janela, nao o `total_no_processo`, que ja foi incrementado la em cima.
+    contagem.ultimoEnvioMs = agora;
+    contagem.suprimidasDesdeUltimo = 0;
+  } else {
+    contagem.suprimidasDesdeUltimo += 1;
   }
+
+  contagemPorTipo.set(v.tipo, contagem);
   // Log estruturado, mesmo formato da Fase 1A-bis, agora com o tipo
   // distinguido. Sai em TODA ocorrencia: e ele que da a contagem exata.
   console.warn(

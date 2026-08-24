@@ -1,16 +1,29 @@
+import { importWithRetry } from "@/lib/lazyWithRetry";
 import type { RoadmapV2 } from "@/lib/roadmapV2/types";
 
 // Carregamento sob demanda do conteudo completo de cada trilha v2, um chunk
 // por trilha. Cada entrada importa DIRETO o arquivo da trilha, nunca o index
 // agregado (shared/roadmapV2/content/index.ts): import do agregado faria o
-// Vite fundir as 25 trilhas num chunk so.
+// Vite fundir todas as trilhas num chunk so.
 //
 // Trilha nova exige tres registros: o arquivo da trilha aqui, o import no
 // index agregado e regenerar o meta (pnpm gen:roadmap-meta). O pnpm check
 // valida a sincronia deste mapa com o agregado (checagem textual das chaves
 // em scripts/generateRoadmapMeta.mts). A Fase 3c vai atualizar o guia
 // build-next-trilha com esse passo.
-export const roadmapLoaders: Record<string, () => Promise<RoadmapV2>> = {
+//
+// MAPA CRU. Retry e telemetria NAO sao escritos aqui dentro: entram de uma vez
+// so no envelopamento logo abaixo. Repetir `importWithRetry` em cada uma das
+// entradas seria guarda no call site, e a proxima trilha nasceria sem ela no
+// primeiro dia em que alguem esquecesse. O formato de cada linha (`slug: () =>`)
+// e o que o parser textual de `scripts/generateRoadmapMeta.mts` le, entao ele
+// precisa continuar exatamente assim.
+//
+// SEM NUMERAL de proposito: a contagem de trilhas muda, e comentario que afirma
+// numero fica errado no primeiro registro novo sem nada acusar. Quem quer o
+// total confere no agregado, e o `pnpm check` ja valida a sincronia nos dois
+// sentidos. Este comentario ja carregou "25" quando as entradas eram 30.
+const loadersCrus: Record<string, () => Promise<RoadmapV2>> = {
   frontend: () =>
     import("@shared/roadmapV2/content/frontend").then((m) => m.frontend),
   backend: () =>
@@ -82,6 +95,27 @@ export const roadmapLoaders: Record<string, () => Promise<RoadmapV2>> = {
     import("@shared/roadmapV2/content/tech-writer").then((m) => m.techWriter),
   erp: () => import("@shared/roadmapV2/content/erp").then((m) => m.erp),
 };
+
+/**
+ * O mapa que o resto do app consome, com retry e telemetria por construcao.
+ *
+ * API PUBLICA INALTERADA: mesmo nome, mesmo tipo, mesma forma de chamar. Quem
+ * usa (`RoadmapsV2.tsx`) nao muda uma linha, e continua com o proprio estado de
+ * erro e o retry manual, porque `importWithRetry` reporta e RELANCA em vez de
+ * recarregar a pagina.
+ *
+ * O `chunk` que vai para o Sentry e o SLUG da trilha, nao o nome do arquivo:
+ * arquivo tem hash que muda a cada deploy e criaria uma tag nova por build,
+ * enquanto o slug responde a pergunta util, que e se a falha e sempre na mesma
+ * trilha (conteudo quebrado) ou em qualquer uma (skew de deploy).
+ */
+export const roadmapLoaders: Record<string, () => Promise<RoadmapV2>> =
+  Object.fromEntries(
+    Object.entries(loadersCrus).map(([slug, carregar]) => [
+      slug,
+      () => importWithRetry(carregar, slug),
+    ]),
+  );
 
 // Dispara o download do chunk da trilha sem esperar o resultado (hover/focus
 // na listagem). import() repetido e cacheado pelo runtime, entao chamar de

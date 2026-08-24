@@ -39,6 +39,10 @@ export const roadmapsMeta: RoadmapMeta[] = [
       {
         "id": "go",
         "label": "Go"
+      },
+      {
+        "id": "csharp",
+        "label": "C#"
       }
     ],
     "sectionCount": 8,

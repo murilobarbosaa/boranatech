@@ -11,18 +11,27 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { DESKTOP_BREAKPOINT_PX } from "@/lib/breakpoints";
+import { HEADER_ICON_BUTTON_CLASS } from "@/lib/headerIconButton";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import type { NotificationItem } from "@/services/notificationsService";
 
-// Sino de notificações do Header, sempre o mesmo botão redondo de 36px.
+// Sino de notificações do Header, sempre o mesmo botão redondo de 40px.
 // Desktop: Popover ancorado no botão. Mobile: o sino vive na barra ao lado do
 // hambúrguer e abre um Sheet quase em tela cheia; onOpen fecha o drawer de
 // navegação se estiver aberto (evita dois overlays empilhados).
-// Visual espelha os vizinhos do header (botão Sair / avatar): h-9 w-9 como o
-// UserAvatar sm, sombra dura 2px que cresce pra 3px no hover, press via
-// bnt-pressable.
+// Visual: vem de HEADER_ICON_BUTTON_CLASS, a familia dos botoes-icone
+// circulares do header, compartilhada com o "?" do guia. Era h-9 w-9 (36px),
+// escolhido para espelhar o UserAvatar sm; passou a 40px para igualar os pills
+// de texto ao lado ("Entrar", "Sair", "Admin") e o proprio "?". O avatar
+// continua em 36px: ele nao e botao, e o `size` dele e um token do UserAvatar,
+// usado em outras telas.
 
 function UnreadBadge({ count }: { count: number }) {
   if (count === 0) return null;
@@ -115,8 +124,8 @@ export default function NotificationBell({
     }
   }
 
-  const triggerClass =
-    "bnt-pressable relative inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-slate-900 bg-white text-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 data-[state=open]:translate-y-[1px] data-[state=open]:bg-amber-100 data-[state=open]:shadow-[1px_1px_0_#0f172a]";
+  // Base compartilhada com o "?" do guia; aqui so o que e do popover.
+  const triggerClass = `${HEADER_ICON_BUTTON_CLASS} data-[state=open]:translate-y-[1px] data-[state=open]:bg-amber-100 data-[state=open]:shadow-[1px_1px_0_#0f172a]`;
   const bellIconClass = `h-5 w-5 ${ringing ? "animate-bell-ring" : ""}`;
 
   if (variant === "mobile") {

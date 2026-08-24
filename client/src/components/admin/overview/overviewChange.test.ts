@@ -74,6 +74,23 @@ describe("rotuloDeVariacao", () => {
     )!;
     expect(r.texto).toContain("16/07/2026");
     expect(r.tom).toBe("neutro");
+    // A FRASE DIZ O QUE ACONTECEU, não o nome do estado: a série começa dentro
+    // do período escolhido, então não há período anterior com dado. Dito assim
+    // ela se explica sozinha, e a data vira contexto em vez de charada.
+    expect(r.texto).toBe(
+      "Dados começam no meio do período (16/07/2026), sem comparação",
+    );
+  });
+
+  it("sem a data, a frase continua completa e não vira reticência", () => {
+    const r = rotuloDeVariacao({
+      disponivel: false,
+      atual: 10,
+      motivo: "historico_insuficiente",
+    })!;
+    expect(r.texto).toBe("Dados começam no meio do período, sem comparação");
+    expect(r.texto).not.toContain("undefined");
+    expect(r.texto).not.toContain("null");
   });
 
   it("a data do histórico é o dia LOCAL do instante", () => {

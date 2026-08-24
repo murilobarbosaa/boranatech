@@ -15,6 +15,8 @@ export const backend: RoadmapV2 = {
     { id: "python", label: "Python" },
     { id: "java", label: "Java" },
     { id: "go", label: "Go" },
+    // TODO(Ana)
+    { id: "csharp", label: "C#" },
   ],
   sections: [
     {
@@ -161,24 +163,28 @@ export const backend: RoadmapV2 = {
       id: "linguagem",
       title: "Sua linguagem",
       description:
-        "Escolha uma das quatro linguagens e aprenda a base dela de verdade. O conceito é o mesmo em todas; o que muda é a escrita.",
+        // TODO(Ana)
+        "Escolha uma das cinco linguagens e aprenda a base dela de verdade. O conceito é o mesmo em todas; o que muda é a escrita.",
       level: "iniciante",
       children: [
         {
           id: "linguagem.escolha",
           title: "Como escolher sua linguagem",
           description:
-            "As quatro opções da trilha, onde cada uma brilha e por que a escolha importa menos do que parece.",
+            // TODO(Ana)
+            "As cinco opções da trilha, onde cada uma brilha e por que a escolha importa menos do que parece.",
+          // TODO(Ana)
           content:
-            "Esta trilha funciona com quatro linguagens, e você escolhe uma pra seguir. A boa notícia: os conceitos de back-end (HTTP, API, banco, autenticação) são os mesmos em todas. Quem aprende bem uma linguagem troca de linguagem depois sem recomeçar do zero.\n\nUm retrato rápido de cada uma:\n\n- **Node.js** roda JavaScript no servidor. Se você já viu JavaScript no front-end, é o caminho mais curto: uma língua só pros dois lados. Muito comum em startups e produtos web.\n- **Python** é famosa pela leitura fácil, ótima primeira linguagem. Além de back-end, abre portas pra dados e inteligência artificial.\n- **Java com Spring Boot** é o padrão do mundo corporativo: bancos, grandes empresas e sistemas que vivem décadas. Tem mais cerimônia no começo, mas é presença constante em vagas formais.\n- **Go** foi criada pelo Google pensando em servidores: simples, rápida e forte em infraestrutura e cloud. Menos material pra iniciante em português, mas a linguagem em si é enxuta.\n\nA regra de ouro: **escolha uma e fique nela até o fim da trilha**. Trocar de linguagem no meio é a forma mais comum de não sair do lugar. Em dúvida? Já mexeu com JavaScript, vá de Node. Nunca programou, vá de Python.",
+            "Esta trilha funciona com cinco linguagens, e você escolhe uma pra seguir. A boa notícia: os conceitos de back-end (HTTP, API, banco, autenticação) são os mesmos em todas. Quem aprende bem uma linguagem troca de linguagem depois sem recomeçar do zero.\n\nUm retrato rápido de cada uma:\n\n- **Node.js** roda JavaScript no servidor. Se você já viu JavaScript no front-end, é o caminho mais curto: uma língua só pros dois lados. Muito comum em startups e produtos web.\n- **Python** é famosa pela leitura fácil, ótima primeira linguagem. Além de back-end, abre portas pra dados e inteligência artificial.\n- **Java com Spring Boot** é o padrão do mundo corporativo: bancos, grandes empresas e sistemas que vivem décadas. Tem mais cerimônia no começo, mas é presença constante em vagas formais.\n- **Go** foi criada pelo Google pensando em servidores: simples, rápida e forte em infraestrutura e cloud. Menos material pra iniciante em português, mas a linguagem em si é enxuta.\n- **C# com ASP.NET Core** é a plataforma da Microsoft: linguagem tipada e madura, forte em empresas de grande porte, indústria e setor público. As ferramentas são gratuitas e rodam em Windows, Linux e Mac. É também a linguagem da Unity, se jogos estiverem no seu radar.\n\nA regra de ouro: **escolha uma e fique nela até o fim da trilha**. Trocar de linguagem no meio é a forma mais comum de não sair do lugar. Em dúvida? Já mexeu com JavaScript, vá de Node. Nunca programou, vá de Python.",
         },
         {
           id: "linguagem.setup",
           title: "Instalar e rodar",
           description:
             "Deixar a linguagem instalada na sua máquina e rodar o primeiro programa.",
+          // TODO(Ana)
           content:
-            "Antes de aprender qualquer sintaxe, você precisa do ambiente funcionando: a linguagem instalada, um editor de código e a capacidade de rodar um arquivo e ver o resultado no terminal.\n\nO editor recomendado pra qualquer uma das quatro linguagens é o **VS Code**, gratuito e padrão de mercado (pra Java, o IntelliJ IDEA Community também é uma ótima escolha). O ritual é o mesmo em todas: instalar, abrir o terminal, confirmar a versão com um comando e rodar um programa que imprime uma mensagem na tela.\n\nNão pule esta etapa nem deixe pela metade. Boa parte da frustração de iniciante não é com lógica, é com ambiente quebrado. Vale gastar uma hora aqui pra não travar depois. O critério de pronto é binário: editar um arquivo, rodar no terminal e ver a mensagem aparecer. Escolha sua linguagem acima pra ver o passo a passo dela.",
+            "Antes de aprender qualquer sintaxe, você precisa do ambiente funcionando: a linguagem instalada, um editor de código e a capacidade de rodar um arquivo e ver o resultado no terminal.\n\nO editor recomendado pra qualquer uma das cinco linguagens é o **VS Code**, gratuito e padrão de mercado (pra Java, o IntelliJ IDEA Community também é uma ótima escolha). O ritual é o mesmo em todas: instalar, abrir o terminal, confirmar a versão com um comando e rodar um programa que imprime uma mensagem na tela.\n\nNão pule esta etapa nem deixe pela metade. Boa parte da frustração de iniciante não é com lógica, é com ambiente quebrado. Vale gastar uma hora aqui pra não travar depois. O critério de pronto é binário: editar um arquivo, rodar no terminal e ver a mensagem aparecer. Escolha sua linguagem acima pra ver o passo a passo dela.",
           byLanguage: {
             node: {
               content:
@@ -230,6 +236,18 @@ export const backend: RoadmapV2 = {
                 {
                   label: "Go: instalação oficial",
                   url: "https://go.dev/doc/install",
+                  kind: "doc",
+                },
+              ],
+            },
+            // TODO(Ana)
+            csharp: {
+              content:
+                "Baixe o **SDK do .NET** no site oficial: ele traz a linguagem, o compilador e a CLI `dotnet` num pacote só. Confirme com `dotnet --version`. Pra rodar o primeiro programa, crie um projeto de console com `dotnet new console -o ola`, entre na pasta e rode `dotnet run`; o `Program.cs` gerado já imprime uma mensagem. O VS Code com a extensão de C# dá conta bem, e no Windows o Visual Studio Community é a alternativa completa.",
+              resources: [
+                {
+                  label: "Download do .NET (site oficial)",
+                  url: "https://dotnet.microsoft.com/pt-br/download",
                   kind: "doc",
                 },
               ],
@@ -288,6 +306,18 @@ export const backend: RoadmapV2 = {
                 },
               ],
             },
+            // TODO(Ana)
+            csharp: {
+              content:
+                'Em C#, você declara o tipo: `string nome = "Ana";`, `int idade = 20;`, `bool ativo = true;`. O `var` deduz o tipo na declaração (`var nome = "Ana"`), mas a variável continua com tipo fixo, igual ao Java. Toda instrução termina em ponto e vírgula. A convenção é camelCase pra variáveis locais e PascalCase pra classes, métodos e propriedades. Pra juntar texto e variável, use interpolação: `$"Olá, {nome}"`.',
+              resources: [
+                {
+                  label: "Tour do C# (documentação oficial)",
+                  url: "https://learn.microsoft.com/pt-br/dotnet/csharp/tour-of-csharp/",
+                  kind: "doc",
+                },
+              ],
+            },
           },
         },
         {
@@ -337,6 +367,18 @@ export const backend: RoadmapV2 = {
                 {
                   label: "A Tour of Go: controle de fluxo",
                   url: "https://go.dev/tour/flowcontrol/1",
+                  kind: "doc",
+                },
+              ],
+            },
+            // TODO(Ana)
+            csharp: {
+              content:
+                "C# tem `if/else`, `switch`, `while`, o `for` clássico com contador e o `foreach`, que percorre qualquer coleção: `foreach (var item in lista)`. Versões recentes trazem o switch em forma de expressão, que devolve um valor direto e enxuga bastante código de decisão, mas o básico acima cobre tudo que você precisa nesta fase.",
+              resources: [
+                {
+                  label: "Guia de C# (documentação oficial)",
+                  url: "https://learn.microsoft.com/pt-br/dotnet/csharp/",
                   kind: "doc",
                 },
               ],
@@ -395,6 +437,18 @@ export const backend: RoadmapV2 = {
                 },
               ],
             },
+            // TODO(Ana)
+            csharp: {
+              content:
+                "Em C#, funções se chamam **métodos** e declaram o tipo do retorno e de cada parâmetro: `int Somar(int a, int b) { return a + b; }`. Corpos de uma linha ficam mais curtos na forma de expressão: `int Somar(int a, int b) => a + b;`. O `void` indica que não há retorno, e parâmetros podem ter valor padrão. Nos projetos novos, o `Program.cs` aceita código no nível do arquivo, sem a cerimônia de declarar classe pra tudo.",
+              resources: [
+                {
+                  label: "Tutoriais interativos de C#",
+                  url: "https://learn.microsoft.com/pt-br/dotnet/csharp/tour-of-csharp/tutorials/",
+                  kind: "curso",
+                },
+              ],
+            },
           },
         },
         {
@@ -445,6 +499,18 @@ export const backend: RoadmapV2 = {
                 {
                   label: "A Tour of Go: structs, slices e maps",
                   url: "https://go.dev/tour/moretypes/1",
+                  kind: "doc",
+                },
+              ],
+            },
+            // TODO(Ana)
+            csharp: {
+              content:
+                'Em C#, a lista é a `List<T>` (`var frutas = new List<string> { "maçã", "uva" };`) e o mapa é o `Dictionary<TChave, TValor>` (`var idades = new Dictionary<string, int>();`). Os tipos vão entre colchetes angulares, como em Java. O que muda o jogo é o **LINQ**: `produtos.Where(p => p.Preco < 50).Select(p => p.Nome)` filtra e transforma coleções com a mesma cara em qualquer lugar do código.',
+              resources: [
+                {
+                  label: "Guia de C# (documentação oficial)",
+                  url: "https://learn.microsoft.com/pt-br/dotnet/csharp/",
                   kind: "doc",
                 },
               ],
@@ -508,6 +574,23 @@ export const backend: RoadmapV2 = {
                 },
               ],
             },
+            // TODO(Ana)
+            csharp: {
+              content:
+                "No .NET, o gerenciador de pacotes é o **NuGet**, e a CLI já vem com ele: `dotnet add package Nome.Do.Pacote` baixa e registra a dependência. O manifesto é o arquivo **`.csproj`** do projeto, onde cada pacote vira uma linha de `PackageReference`. O `dotnet restore` instala tudo numa máquina nova, e o `dotnet build` e o `dotnet run` já fazem isso sozinhos. O site do NuGet é onde você pesquisa pacote e confere o quanto ele é usado.",
+              resources: [
+                {
+                  label: "NuGet (galeria oficial de pacotes)",
+                  url: "https://www.nuget.org/",
+                  kind: "doc",
+                },
+                {
+                  label: "Documentação do .NET",
+                  url: "https://learn.microsoft.com/pt-br/dotnet/",
+                  kind: "doc",
+                },
+              ],
+            },
           },
         },
         {
@@ -561,6 +644,18 @@ export const backend: RoadmapV2 = {
                 },
               ],
             },
+            // TODO(Ana)
+            csharp: {
+              content:
+                "C# organiza código em **namespaces**, que normalmente espelham a estrutura de pastas: o arquivo declara `namespace Loja.Pedidos;` no topo e quem precisa dele escreve `using Loja.Pedidos;`. A visibilidade vem de `public` (enxergado de fora), `private` (só da própria classe) e `internal` (só dentro do mesmo projeto). Projetos novos ligam os **implicit usings**, que já trazem os namespaces mais comuns sem você escrever nada.",
+              resources: [
+                {
+                  label: "Guia de C# (documentação oficial)",
+                  url: "https://learn.microsoft.com/pt-br/dotnet/csharp/",
+                  kind: "doc",
+                },
+              ],
+            },
           },
         },
         {
@@ -568,8 +663,9 @@ export const backend: RoadmapV2 = {
           title: "Assíncrono e concorrência",
           description:
             "Como o servidor faz outras coisas enquanto espera o banco ou a rede responder.",
+          // TODO(Ana)
           content:
-            'Boa parte do tempo de um back-end é **espera**: espera o banco de dados responder, espera outra API responder, espera o disco. Se o programa parasse a cada espera, um servidor atenderia um usuário por vez e seria inutilizável. Código **assíncrono** e **concorrência** são as técnicas pra continuar trabalhando enquanto a espera acontece.\n\nA ideia central: quando uma operação demorada começa (uma consulta ao banco), o programa não fica parado olhando pra ela; ele registra "quando isso terminar, continue daqui" e vai atender outras requisições. É assim que um servidor modesto atende milhares de usuários ao mesmo tempo.\n\nCada linguagem resolve isso de um jeito bem diferente, e essa é uma das maiores diferenças práticas entre as quatro da trilha. Não precisa dominar tudo agora: entenda o modelo da sua linguagem e saiba escrever o padrão básico dela. A fluência vem quando você estiver consultando banco de dados de verdade, mais adiante.',
+            'Boa parte do tempo de um back-end é **espera**: espera o banco de dados responder, espera outra API responder, espera o disco. Se o programa parasse a cada espera, um servidor atenderia um usuário por vez e seria inutilizável. Código **assíncrono** e **concorrência** são as técnicas pra continuar trabalhando enquanto a espera acontece.\n\nA ideia central: quando uma operação demorada começa (uma consulta ao banco), o programa não fica parado olhando pra ela; ele registra "quando isso terminar, continue daqui" e vai atender outras requisições. É assim que um servidor modesto atende milhares de usuários ao mesmo tempo.\n\nCada linguagem resolve isso de um jeito bem diferente, e essa é uma das maiores diferenças práticas entre as cinco da trilha. Não precisa dominar tudo agora: entenda o modelo da sua linguagem e saiba escrever o padrão básico dela. A fluência vem quando você estiver consultando banco de dados de verdade, mais adiante.',
           byLanguage: {
             node: {
               content:
@@ -611,6 +707,18 @@ export const backend: RoadmapV2 = {
                 {
                   label: "A Tour of Go: concorrência",
                   url: "https://go.dev/tour/concurrency/1",
+                  kind: "doc",
+                },
+              ],
+            },
+            // TODO(Ana)
+            csharp: {
+              content:
+                "C# foi a linguagem que popularizou o par `async/await`, e no .NET ele é o caminho principal: métodos assíncronos devolvem `Task` (ou `Task<T>`) e você escreve `var produto = await BuscarProdutoAsync(id);`, código que lê de cima pra baixo mas libera a thread durante a espera. A convenção é sufixar o nome do método com `Async`. No ASP.NET Core, praticamente toda operação de banco e de rede tem versão assíncrona, e usá-la é o padrão esperado.",
+              resources: [
+                {
+                  label: "Guia de C# (documentação oficial)",
+                  url: "https://learn.microsoft.com/pt-br/dotnet/csharp/",
                   kind: "doc",
                 },
               ],
@@ -713,6 +821,18 @@ export const backend: RoadmapV2 = {
                 },
               ],
             },
+            // TODO(Ana)
+            csharp: {
+              content:
+                "No .NET, o framework é o **ASP.NET Core**, e ele oferece dois estilos pro mesmo trabalho. As **minimal APIs** são o caminho enxuto: poucas linhas no `Program.cs` e a rota já responde, com o HTTP bem à vista. Os **controllers** organizam as rotas em classes e seguem sendo o formato padrão em projeto grande e corporativo. O critério pra agora: comece pelas minimal APIs pra ver o protocolo de perto e migre pra controllers quando o número de rotas pedir estrutura. A plataforma é a mesma, muda só o formato.",
+              resources: [
+                {
+                  label: "ASP.NET Core (documentação oficial)",
+                  url: "https://learn.microsoft.com/pt-br/aspnet/core/",
+                  kind: "doc",
+                },
+              ],
+            },
           },
         },
         {
@@ -763,6 +883,18 @@ export const backend: RoadmapV2 = {
                 {
                   label: "Go: pacote net/http",
                   url: "https://pkg.go.dev/net/http",
+                  kind: "doc",
+                },
+              ],
+            },
+            // TODO(Ana)
+            csharp: {
+              content:
+                'No ASP.NET Core com minimal APIs, cada rota é um `Map` no `Program.cs`:\n\n```csharp\napp.MapGet("/produtos/{id}", (int id) =>\n{\n    return Results.Ok(new { id });\n});\n```\n\nA parte variável do caminho vira **parâmetro do método**, já convertido pro tipo declarado, e o objeto retornado vira JSON. Com controllers, a mesma rota é um método numa classe `[ApiController]` anotado com `[HttpGet("produtos/{id}")]`. Pra agrupar as rotas de um recurso, o `MapGroup("/produtos")` faz o papel do router.',
+              resources: [
+                {
+                  label: "ASP.NET Core (documentação oficial)",
+                  url: "https://learn.microsoft.com/pt-br/aspnet/core/",
                   kind: "doc",
                 },
               ],
@@ -826,6 +958,18 @@ export const backend: RoadmapV2 = {
                 },
               ],
             },
+            // TODO(Ana)
+            csharp: {
+              content:
+                "No ASP.NET Core, middleware é o conceito central da inicialização: o `Program.cs` monta um **pipeline**, e cada linha `app.Use...` acrescenta uma etapa que roda antes da rota. O seu você escreve com `app.Use(async (context, next) => { ... await next(); });`, fazendo o trabalho e chamando `next` pra seguir, ou respondendo ali e parando. A ordem das linhas é a ordem de execução, e isso importa de verdade: `UseAuthentication` precisa vir antes de `UseAuthorization`. Vários já vêm prontos, como os de arquivos estáticos, CORS e tratamento de erros.",
+              resources: [
+                {
+                  label: "ASP.NET Core (documentação oficial)",
+                  url: "https://learn.microsoft.com/pt-br/aspnet/core/",
+                  kind: "doc",
+                },
+              ],
+            },
           },
         },
         {
@@ -881,6 +1025,18 @@ export const backend: RoadmapV2 = {
                 {
                   label: "Go: pacote encoding/json",
                   url: "https://pkg.go.dev/encoding/json",
+                  kind: "doc",
+                },
+              ],
+            },
+            // TODO(Ana)
+            csharp: {
+              content:
+                'No ASP.NET Core, a ligação é por **parâmetro do handler**, e os atributos deixam a origem explícita quando há dúvida: o que casa com o caminho vira parâmetro de rota (`(int id)`), `[FromQuery] string categoria` lê a query string e `[FromBody] ProdutoRequest dados` lê o corpo JSON, já desserializado pro seu tipo. Pra responder nas minimal APIs, use os helpers do `Results`: `Results.Ok(produto)`, `Results.Created($"/produtos/{produto.Id}", produto)`, `Results.NotFound()`. Em controllers, os mesmos atalhos aparecem como `Ok()`, `CreatedAtAction()` e `NotFound()`.',
+              resources: [
+                {
+                  label: "ASP.NET Core (documentação oficial)",
+                  url: "https://learn.microsoft.com/pt-br/aspnet/core/",
                   kind: "doc",
                 },
               ],
@@ -988,6 +1144,18 @@ export const backend: RoadmapV2 = {
                 {
                   label: "go-playground/validator",
                   url: "https://pkg.go.dev/github.com/go-playground/validator/v10",
+                  kind: "doc",
+                },
+              ],
+            },
+            // TODO(Ana)
+            csharp: {
+              content:
+                "No ASP.NET Core, o caminho de fábrica são as **Data Annotations**: atributos direto nas propriedades da classe de requisição, como `[Required]`, `[EmailAddress]` e `[Range(0, 100)]`. Num controller marcado com `[ApiController]`, a checagem é automática: payload fora do formato nem chega no seu método, e o framework responde **400** com um corpo no padrão Problem Details listando cada campo que falhou. Quando as regras ficarem mais complexas do que atributos dão conta, a comunidade usa a biblioteca FluentValidation, que descreve as regras em código.",
+              resources: [
+                {
+                  label: "ASP.NET Core (documentação oficial)",
+                  url: "https://learn.microsoft.com/pt-br/aspnet/core/",
                   kind: "doc",
                 },
               ],
@@ -1180,6 +1348,18 @@ export const backend: RoadmapV2 = {
                 },
               ],
             },
+            // TODO(Ana)
+            csharp: {
+              content:
+                "No .NET, o ORM oficial é o **Entity Framework Core**. Você declara um `DbContext` com um `DbSet<Produto>` por tabela e consulta com LINQ: `await db.Produtos.FindAsync(42)` busca pelo id, `await db.Produtos.Where(p => p.Preco < 50).ToListAsync()` filtra. Ele gera o SQL parametrizado, monta os objetos e traz o sistema de migrations junto (`dotnet ef migrations add NomeDaMudanca`). Quando quiser ficar perto do SQL, o **Dapper** é o micro-ORM mais usado do ecossistema.",
+              resources: [
+                {
+                  label: "EF Core: seu primeiro app (tutorial oficial)",
+                  url: "https://learn.microsoft.com/pt-br/ef/core/get-started/overview/first-app",
+                  kind: "doc",
+                },
+              ],
+            },
           },
         },
         {
@@ -1288,6 +1468,18 @@ export const backend: RoadmapV2 = {
                 },
               ],
             },
+            // TODO(Ana)
+            csharp: {
+              content:
+                "No ASP.NET Core, o hashing vem pronto no Identity: o `PasswordHasher<TUser>` expõe `HashPassword(usuario, senha)` no cadastro e `VerifyHashedPassword(usuario, hashGuardado, senhaDigitada)` no login, que devolve um resultado dizendo se bateu. Ele cuida do salt e do algoritmo lento por baixo, então você não escolhe nada disso na mão. Quem prefere bcrypt encontra pacotes maduros no NuGet, mas o embutido resolve e é o caminho de menor atrito.",
+              resources: [
+                {
+                  label: "ASP.NET Core (documentação oficial)",
+                  url: "https://learn.microsoft.com/pt-br/aspnet/core/",
+                  kind: "doc",
+                },
+              ],
+            },
           },
         },
         {
@@ -1354,9 +1546,10 @@ export const backend: RoadmapV2 = {
                     },
                   ],
                 },
+                // TODO(Ana)
                 java: {
                   content:
-                    "No Spring Boot, quem faz esse papel é o **Spring Security**: você configura a `SecurityFilterChain` dizendo quais caminhos são públicos (`permitAll`) e quais exigem autenticação (`authenticated`), e adiciona um filtro que valida o JWT e popula o contexto de segurança. É o caminho com mais peças das quatro linguagens; siga um guia oficial com calma e monte uma vez, porque a estrutura se repete em todo projeto corporativo.",
+                    "No Spring Boot, quem faz esse papel é o **Spring Security**: você configura a `SecurityFilterChain` dizendo quais caminhos são públicos (`permitAll`) e quais exigem autenticação (`authenticated`), e adiciona um filtro que valida o JWT e popula o contexto de segurança. É o caminho com mais peças das cinco linguagens; siga um guia oficial com calma e monte uma vez, porque a estrutura se repete em todo projeto corporativo.",
                   resources: [
                     {
                       label: "Spring Security (documentação oficial)",
@@ -1376,6 +1569,18 @@ export const backend: RoadmapV2 = {
                     },
                   ],
                 },
+                // TODO(Ana)
+                csharp: {
+                  content:
+                    "No ASP.NET Core, a barreira é montada na configuração e aplicada por atributo. No `Program.cs` você registra a autenticação por JWT (`AddAuthentication().AddJwtBearer(...)`, com a chave e as validações de emissor e de validade) e liga o pipeline na ordem certa: `app.UseAuthentication()` antes de `app.UseAuthorization()`. Depois, `[Authorize]` no controller ou no método protege as rotas e `[AllowAnonymous]` abre as exceções; nas minimal APIs, o equivalente é `.RequireAuthorization()` na rota ou no grupo. Token ausente ou inválido vira **401** antes do seu código rodar, e o usuário autenticado fica em `HttpContext.User`.",
+                  resources: [
+                    {
+                      label: "ASP.NET Core (documentação oficial)",
+                      url: "https://learn.microsoft.com/pt-br/aspnet/core/",
+                      kind: "doc",
+                    },
+                  ],
+                },
               },
             },
           ],
@@ -1389,8 +1594,9 @@ export const backend: RoadmapV2 = {
               title: "Variáveis de ambiente e segredos",
               description:
                 "Manter senhas, chaves e tokens fora do código e fora do Git.",
+              // TODO(Ana)
               content:
-                "Seu projeto agora tem **segredos**: a senha do banco, a chave que assina os JWTs, tokens de serviços externos. A regra é uma só e não tem exceção: **segredo não entra no código-fonte**. Código vai pro Git, Git vai pro GitHub, e segredo commitado é segredo vazado, mesmo em repositório privado, mesmo que você apague depois (o histórico do Git lembra).\n\nO lugar dos segredos são as **variáveis de ambiente**: valores que o sistema operacional entrega ao programa quando ele inicia. O código lê `DATABASE_URL` e `JWT_SECRET` do ambiente, sem saber o valor; cada máquina (a sua, a do colega, o servidor de produção) define os seus.\n\nNo dia a dia, usa-se um arquivo **`.env`** na raiz do projeto com os pares `CHAVE=valor`, carregado na inicialização (as quatro linguagens têm suporte nativo ou biblioteca pra isso). Os dois hábitos que completam o sistema: o `.env` entra no **`.gitignore`** imediatamente, antes do primeiro commit; e o projeto mantém um **`.env.example`** versionado, com as chaves e valores falsos, pra documentar o que é preciso configurar.\n\nSe um segredo escapar pro Git, a resposta certa não é apagar o commit: é **trocar o segredo**. Considere queimado.",
+                "Seu projeto agora tem **segredos**: a senha do banco, a chave que assina os JWTs, tokens de serviços externos. A regra é uma só e não tem exceção: **segredo não entra no código-fonte**. Código vai pro Git, Git vai pro GitHub, e segredo commitado é segredo vazado, mesmo em repositório privado, mesmo que você apague depois (o histórico do Git lembra).\n\nO lugar dos segredos são as **variáveis de ambiente**: valores que o sistema operacional entrega ao programa quando ele inicia. O código lê `DATABASE_URL` e `JWT_SECRET` do ambiente, sem saber o valor; cada máquina (a sua, a do colega, o servidor de produção) define os seus.\n\nNo dia a dia, usa-se um arquivo **`.env`** na raiz do projeto com os pares `CHAVE=valor`, carregado na inicialização (as cinco linguagens têm suporte nativo ou biblioteca pra isso). Os dois hábitos que completam o sistema: o `.env` entra no **`.gitignore`** imediatamente, antes do primeiro commit; e o projeto mantém um **`.env.example`** versionado, com as chaves e valores falsos, pra documentar o que é preciso configurar.\n\nSe um segredo escapar pro Git, a resposta certa não é apagar o commit: é **trocar o segredo**. Considere queimado.",
               resources: [
                 {
                   label: "The Twelve-Factor App: configurações",
@@ -1477,8 +1683,9 @@ export const backend: RoadmapV2 = {
           title: "Tipagem",
           description:
             "Usar tipos pra transformar erros de execução em erros pegos antes de rodar.",
+          // TODO(Ana)
           content:
-            "Quanto mais o projeto cresce, mais caro fica o erro bobo: a função que esperava número e recebeu texto, o campo que veio undefined, o nome digitado errado. **Tipagem** é a prática de declarar o formato dos dados pro computador conferir por você, transformando erros que explodiriam em produção em avisos no editor, **antes de rodar**.\n\nOs benefícios compostos: o editor passa a autocompletar com precisão, refatorações ficam seguras (mudou o nome do campo, a ferramenta aponta todos os lugares afetados) e os tipos viram documentação que nunca desatualiza, porque é verificada.\n\nAqui as quatro linguagens da trilha se dividem. Java e Go já nasceram tipadas: seu trabalho é usar bem o que existe. JavaScript e Python nasceram dinâmicas e ganharam tipagem opcional por cima (TypeScript e type hints), que o mercado adotou em peso: projetos profissionais novos raramente abrem mão.\n\nA recomendação é a mesma nos quatro casos: **no projeto final da trilha, vá com tipagem ligada**. O custo de aprender é pago em dias; o hábito vale pra carreira inteira.",
+            "Quanto mais o projeto cresce, mais caro fica o erro bobo: a função que esperava número e recebeu texto, o campo que veio undefined, o nome digitado errado. **Tipagem** é a prática de declarar o formato dos dados pro computador conferir por você, transformando erros que explodiriam em produção em avisos no editor, **antes de rodar**.\n\nOs benefícios compostos: o editor passa a autocompletar com precisão, refatorações ficam seguras (mudou o nome do campo, a ferramenta aponta todos os lugares afetados) e os tipos viram documentação que nunca desatualiza, porque é verificada.\n\nAqui as cinco linguagens da trilha se dividem. Java, C# e Go já nasceram tipadas: seu trabalho é usar bem o que existe. JavaScript e Python nasceram dinâmicas e ganharam tipagem opcional por cima (TypeScript e type hints), que o mercado adotou em peso: projetos profissionais novos raramente abrem mão.\n\nA recomendação é a mesma nos cinco casos: **no projeto final da trilha, vá com tipagem ligada**. O custo de aprender é pago em dias; o hábito vale pra carreira inteira.",
           byLanguage: {
             node: {
               content:
@@ -1525,6 +1732,18 @@ export const backend: RoadmapV2 = {
                 {
                   label: "Effective Go",
                   url: "https://go.dev/doc/effective_go",
+                  kind: "doc",
+                },
+              ],
+            },
+            // TODO(Ana)
+            csharp: {
+              content:
+                "C# já nasceu tipada, então aqui o tema é aproveitar o sistema de tipos. Três hábitos que mudam o dia a dia: use **records** pros dados que entram e saem da API (`record ProdutoResponse(int Id, string Nome);` é uma linha e já vem com igualdade por valor); mantenha os **nullable reference types** ligados, que é o padrão em projeto novo e faz o compilador avisar quando um `string?` pode ser nulo e você não tratou; e prefira tipos específicos a `string` pra tudo, com `enum` pros conjuntos fechados como status. O compilador só protege o que você expressa em tipos.",
+              resources: [
+                {
+                  label: "Guia de C# (documentação oficial)",
+                  url: "https://learn.microsoft.com/pt-br/dotnet/csharp/",
                   kind: "doc",
                 },
               ],
@@ -1631,6 +1850,23 @@ export const backend: RoadmapV2 = {
                 {
                   label: "Go: escrevendo um teste (tutorial oficial)",
                   url: "https://go.dev/doc/tutorial/add-a-test",
+                  kind: "doc",
+                },
+              ],
+            },
+            // TODO(Ana)
+            csharp: {
+              content:
+                'No .NET, o runner mais comum é o **xUnit**: métodos anotados com `[Fact]` pros casos simples e `[Theory]` com `[InlineData]` pros casos de borda em tabela, tudo rodado com `dotnet test`. Pra testar a API de verdade sem abrir porta, o ASP.NET Core traz o `WebApplicationFactory<Program>`, que sobe a aplicação em memória e te devolve um `HttpClient`: `await client.PostAsJsonAsync("/produtos", dados)` e você confere status e corpo. Pra isolar os serviços dos repositórios, o **Moq** é a biblioteca de dublês mais usada.',
+              resources: [
+                {
+                  label: "xUnit (documentação oficial)",
+                  url: "https://xunit.net/",
+                  kind: "doc",
+                },
+                {
+                  label: "Documentação do .NET",
+                  url: "https://learn.microsoft.com/pt-br/dotnet/",
                   kind: "doc",
                 },
               ],
@@ -1746,8 +1982,9 @@ export const backend: RoadmapV2 = {
           description:
             "Checagens automáticas rodando a cada push, antes do código chegar em produção.",
           optional: true,
+          // TODO(Ana)
           content:
-            "Você já tem testes e checagem de tipos; o elo que falta é **garantir que eles rodam sempre**, não só quando alguém lembra. **CI** (integração contínua) é isso: um serviço que, a cada push ou pull request, baixa seu código num servidor limpo e roda as checagens. Se algo falha, o PR fica marcado em vermelho e ninguém faz merge de código quebrado por descuido.\n\nNo GitHub, a ferramenta é o **GitHub Actions**, gratuito pra repositórios públicos. A configuração é um arquivo YAML em `.github/workflows/` descrevendo o **workflow**: quando rodar (a cada push e PR) e os passos (instalar a linguagem, instalar dependências, rodar a checagem de tipos, rodar os testes). Pra um projeto da trilha, são poucas linhas, e os templates prontos do próprio Actions cobrem as quatro linguagens.\n\nO efeito combinado com o deploy automático da plataforma é o pipeline profissional em miniatura: push abre PR, o CI valida, o merge na principal dispara o deploy. Código quebrado para na barreira em vez de chegar em produção.\n\nÉ opcional, mas é barato e de impacto desproporcional no portfólio: o selo verde de checks passando no repositório comunica disciplina de engenharia que pouco iniciante demonstra.",
+            "Você já tem testes e checagem de tipos; o elo que falta é **garantir que eles rodam sempre**, não só quando alguém lembra. **CI** (integração contínua) é isso: um serviço que, a cada push ou pull request, baixa seu código num servidor limpo e roda as checagens. Se algo falha, o PR fica marcado em vermelho e ninguém faz merge de código quebrado por descuido.\n\nNo GitHub, a ferramenta é o **GitHub Actions**, gratuito pra repositórios públicos. A configuração é um arquivo YAML em `.github/workflows/` descrevendo o **workflow**: quando rodar (a cada push e PR) e os passos (instalar a linguagem, instalar dependências, rodar a checagem de tipos, rodar os testes). Pra um projeto da trilha, são poucas linhas, e os templates prontos do próprio Actions cobrem as cinco linguagens.\n\nO efeito combinado com o deploy automático da plataforma é o pipeline profissional em miniatura: push abre PR, o CI valida, o merge na principal dispara o deploy. Código quebrado para na barreira em vez de chegar em produção.\n\nÉ opcional, mas é barato e de impacto desproporcional no portfólio: o selo verde de checks passando no repositório comunica disciplina de engenharia que pouco iniciante demonstra.",
           resources: [
             {
               label: "GitHub Actions (documentação oficial)",

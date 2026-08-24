@@ -33,12 +33,32 @@ export type AuthFailureStage =
 
 export type AuthMethod = "oauth_redirect" | "email_password" | "email_signup";
 
+/**
+ * Categoria estrutural da falha. Uniao FECHADA, mesmo idioma do campo `tipo` do
+ * contador da home: e ela que separa desfechos que o `http_status` sozinho nao
+ * separa.
+ *
+ * `http` e `invalid_body` sao declarados na origem (`profileService`), porque
+ * quem lanca e quem sabe. `network` e a AUSENCIA de declaracao somada a um erro
+ * que o item BUG-38 classificou como rede: se nao passou pelo nosso
+ * `profileError`, nao houve resposta para inspecionar.
+ */
+export type AuthErrorKind = "http" | "invalid_body" | "network" | "unknown";
+
+const AUTH_ERROR_KINDS = new Set<string>([
+  "http",
+  "invalid_body",
+  "network",
+  "unknown",
+]);
+
 export interface AuthFailureInput {
   stage: AuthFailureStage;
   method: AuthMethod;
   provider?: "google" | "email" | null;
   errorCode?: string | null;
   errorMessage?: string | null;
+  errorKind?: string | null;
   httpStatus?: number | null;
   // Tempo entre o inicio do desfecho observado (deteccao do callback, inicio da
   // requisicao de perfil) e a falha. E o numero que diz se o limite de tempo esta
@@ -94,6 +114,7 @@ export interface AuthFailurePayload {
   provider: string | null;
   error_code: string | null;
   error_message: string | null;
+  error_kind: string | null;
   http_status: number | null;
   hostname: string | null;
   // Somente o pathname do callback. A query fica FORA: e onde vive o `code`.
@@ -133,6 +154,7 @@ export function buildAuthFailurePayload(
     provider: input.provider ?? null,
     error_code: safeText(input.errorCode),
     error_message: safeText(input.errorMessage),
+    error_kind: input.errorKind ?? null,
     http_status: input.httpStatus ?? null,
     hostname: env.hostname,
     callback_path: env.pathname,
@@ -236,10 +258,76 @@ export function reportAuthDiagnostic(
   return payload;
 }
 
+// ─── Codigo de fallback (BUG-38) ─────────────────────────────────────────────
+// Sem code, o evento saia como "auth <stage> failure: unknown", e "unknown" nao
+// e diagnostico: e um balde onde cabem rede, HTTP e defeito de codigo, todos
+// somados numa issue que nao se investiga porque nao afirma nada.
+//
+// As regras abaixo derivam um codigo de CAMPO (`status`, `name`), nunca da
+// mensagem. As tres engines escrevem a MESMA falha de rede com tres frases
+// distintas, e foi assim que um bug do contador da home virou tres issues
+// (BUG-29/39/57); `name` e o que nao muda entre elas.
+//
+// O LIMITE E CARDINALIDADE. Codigo vira nome de issue: um codigo derivado de
+// texto livre trocaria um balde cego por mil baldes de um evento cada, que e
+// pior. Dai a faixa fechada no status e o charset/comprimento fechados no nome.
+const HTTP_STATUS_MIN = 100;
+const HTTP_STATUS_MAX = 599;
+const MAX_CODE_LEN = 40;
+
+// `name` que nao acrescenta nada ao "unknown" que ja existia. `Error` e o
+// default de qualquer `new Error()`, entao classificar por ele seria trocar o
+// nome do balde, nao dividi-lo.
+const NOMES_SEM_INFORMACAO = new Set(["error", "object"]);
+
+function normalizarNomeDeErro(name: string): string | null {
+  const slug = name
+    // camelCase -> snake_case ANTES do lowercase, senao "AbortError" viraria
+    // "aborterror" e o codigo ficaria ilegivel no painel.
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .slice(0, MAX_CODE_LEN)
+    .replace(/^_+|_+$/g, "");
+
+  if (!slug || NOMES_SEM_INFORMACAO.has(slug)) return null;
+  return slug;
+}
+
+function codigoDeFallback(
+  status: number | null,
+  name: string | null,
+): string | null {
+  // Status primeiro: quando existe, e a informacao mais especifica que ha.
+  if (
+    status !== null &&
+    Number.isInteger(status) &&
+    status >= HTTP_STATUS_MIN &&
+    status <= HTTP_STATUS_MAX
+  ) {
+    return `http_${status}`;
+  }
+
+  // `fetch` rejeita com TypeError quando a requisicao nem sai (rede, CORS,
+  // ad-block) - e comportamento de especificacao, igual nas tres engines. A
+  // interpretacao "rede" carrega um falso positivo conhecido: um TypeError de
+  // defeito de codigo dentro do supabase-js cairia aqui com o mesmo rotulo.
+  // Quem abrir o evento separa os dois pelo `error_message` do extra; o que nao
+  // da para fazer e adivinhar isso pelo texto, que e o que muda por engine.
+  if (name === "TypeError") return "network_error";
+
+  return name === null ? null : normalizarNomeDeErro(name);
+}
+
 // Extrai code/message/status de um erro do supabase-js sem depender de instanceof
 // (o erro pode chegar embrulhado) e sem parsear a mensagem. `AuthError` traz `code`
-// e `status`; erro de rede traz nenhum dos dois, e nesse caso o code fica null em
-// vez de virar uma string inventada.
+// e `status`; erro de rede traz nenhum dos dois, e nesse caso o code e DERIVADO
+// por `codigoDeFallback`, que devolve null quando nada e classificavel (a
+// mensagem do evento segue renderizando "unknown" nesse caso).
+//
+// `code` explicito tem PRECEDENCIA sobre tudo, e isso e o que garante que nenhum
+// evento que ja tinha codigo mude de mensagem, logo de issue: as series de
+// `profile_fetch_exhausted` e `bad_oauth_state` em medicao nao podem se partir.
 export function authErrorFields(error: unknown): {
   code: string | null;
   message: string | null;
@@ -256,12 +344,49 @@ export function authErrorFields(error: unknown): {
     code?: unknown;
     message?: unknown;
     status?: unknown;
+    name?: unknown;
   };
+  const status = typeof candidate.status === "number" ? candidate.status : null;
+  const name = typeof candidate.name === "string" ? candidate.name : null;
+
   return {
-    code: typeof candidate.code === "string" ? candidate.code : null,
+    code:
+      typeof candidate.code === "string"
+        ? candidate.code
+        : codigoDeFallback(status, name),
     message: typeof candidate.message === "string" ? candidate.message : null,
-    status: typeof candidate.status === "number" ? candidate.status : null,
+    status,
   };
+}
+
+/**
+ * Categoria estrutural de um erro, para a tag `auth_error_kind`.
+ *
+ * A ordem das regras e a decisao. Primeiro o que a ORIGEM declarou, porque quem
+ * lanca e quem sabe o que aconteceu; depois o que da para derivar de campo. A
+ * mensagem nao entra em nenhuma delas: a copy do `profileService` pode ser
+ * editada por qualquer motivo, e um classificador que dependa dela passa a
+ * mentir sem quebrar nada.
+ *
+ * A ausencia de declaracao com codigo de rede e a regra que faz o item valer:
+ * um erro que nao passou pelo `profileError` nao teve resposta HTTP para
+ * inspecionar, entao "sem marcador" mais "TypeError" e rede, e nao um terceiro
+ * caso desconhecido.
+ */
+export function authErrorKindOf(error: unknown): AuthErrorKind {
+  const declarado = (error as { authErrorKind?: unknown } | null | undefined)
+    ?.authErrorKind;
+  // Uniao fechada tambem NA ENTRADA: o marcador vem de um objeto de erro, e
+  // objeto de erro aceita qualquer coisa. Valor de fora vira "unknown" em vez de
+  // virar uma tag nova.
+  if (typeof declarado === "string" && AUTH_ERROR_KINDS.has(declarado)) {
+    return declarado as AuthErrorKind;
+  }
+
+  const { code, status } = authErrorFields(error);
+  if (status !== null) return "http";
+  if (code === "network_error") return "network";
+  return "unknown";
 }
 
 /**
@@ -295,12 +420,21 @@ export function authErrorFields(error: unknown): {
  * arquivo, e é por isso que `authTelemetry.codigosEsperados.test.ts` compara os
  * dois conjuntos e trava a diferença: quem sobra precisa estar declarado lá,
  * com motivo, e um código novo com copy derruba o teste até alguém decidir.
+ *
+ * `flow_state_already_used` e o unico da lista SEM copy, e isso e consequencia,
+ * nao esquecimento: o codigo so existe depois de um flow state ter sido usado
+ * com SUCESSO. E o segundo exchange do mesmo `code` (voltar, recarregar, efeito
+ * duplo), entao o primeiro ja concluiu o login e ha sessao; e com sessao o
+ * `AuthContext` nao monta aviso nenhum (`AuthContext.tsx:478`). Nao ha tela para
+ * escrever copy. Por isso o teste que trava a lista contra a copy segue valendo
+ * sem mudanca: a relacao que ele afirma e copy -> esperado, nunca o inverso.
  */
 const CODIGOS_ESPERADOS_LISTA = [
   "invalid_credentials",
   "user_already_exists",
   "otp_expired",
   "access_denied",
+  "flow_state_already_used",
 ];
 const CODIGOS_ESPERADOS = new Set(CODIGOS_ESPERADOS_LISTA);
 
@@ -317,6 +451,55 @@ export const CODIGOS_ESPERADOS_PARA_TESTE: readonly string[] =
 /** Nível do evento no Sentry. Fora da allowlist, continua `error`. */
 export function nivelSentry(errorCode: string | null): "error" | "info" {
   return errorCode !== null && CODIGOS_ESPERADOS.has(errorCode) ? "info" : "error";
+}
+
+/**
+ * Tags do evento de auth. Exportada para ser testavel sem subir Sentry nem
+ * PostHog, mesmo padrao de `buildAuthFailurePayload` e de `amostrarPorOrigem`.
+ *
+ * `http_status` e `hostname` entraram porque `extra` NAO e agregavel: o painel
+ * do Sentry nao filtra nem quebra a contagem por ele. Com 200 eventos de
+ * `profile_fetch_exhausted` e 109 de `bad_oauth_state`, a pergunta que decide o
+ * conserto ("quantos sao 5xx, quantos 401, quantos rede?", "quantos vieram de
+ * www e quantos do apex?") nao se responde com `extra`. Ele FICA de qualquer
+ * jeito: tag serve para agregar, extra para ler o caso individual.
+ *
+ * O `?? "none"` e a parte que nao pode ser esquecida. Tag `undefined` some do
+ * evento e tag vazia agrupa como se fosse valor; nos dois casos o denominador
+ * some em silencio, e "150 dos 200 tem status" nao diz o que houve com os
+ * outros 50. "none" e explicito, contavel e visivel.
+ *
+ * NAO altera agrupamento. O fingerprint default do Sentry para `captureMessage`
+ * vem da MENSAGEM (e do stack), e a mensagem segue identica; tag nao entra no
+ * fingerprint default. As issues existentes continuam as mesmas, com dimensao
+ * nova para quebrar a contagem.
+ */
+export function sentryTagsDeAuth(
+  payload: AuthFailurePayload,
+): Record<string, string> {
+  return {
+    origem: SENTRY_ORIGEM_AUTH,
+    auth_stage: payload.stage,
+    auth_method: payload.method,
+    auth_provider: payload.provider ?? "none",
+    auth_is_webview: String(payload.is_webview),
+    http_status:
+      payload.http_status === null ? "none" : String(payload.http_status),
+    hostname: payload.hostname ?? "none",
+    // Refinamento do "none" acima. Com 200 eventos de `profile_fetch_exhausted`
+    // caindo quase todos em `http_status: "none"`, a tag anterior diz que nao
+    // houve status e para por ai; esta diz POR QUE nao houve, que e a pergunta
+    // seguinte: 200 com corpo invalido e problema nosso, rede e problema do
+    // caminho ate nos, e os dois estavam somados no mesmo balde.
+    //
+    // O fechamento da uniao mora AQUI DENTRO, e nao no chamador, pelo mesmo
+    // motivo do `?? "none"`: guarda no call site cobre so os call sites que
+    // alguem lembrou. Kind desconhecido vira "unknown", nunca tag nova.
+    auth_error_kind:
+      payload.error_kind !== null && AUTH_ERROR_KINDS.has(payload.error_kind)
+        ? payload.error_kind
+        : "unknown",
+  };
 }
 
 export function reportAuthFailure(input: AuthFailureInput): AuthFailurePayload {
@@ -336,13 +519,7 @@ export function reportAuthFailure(input: AuthFailureInput): AuthFailurePayload {
       `auth ${payload.stage} failure: ${payload.error_code ?? "unknown"}`,
       {
         level: nivelSentry(payload.error_code),
-        tags: {
-          origem: SENTRY_ORIGEM_AUTH,
-          auth_stage: payload.stage,
-          auth_method: payload.method,
-          auth_provider: payload.provider ?? "none",
-          auth_is_webview: String(payload.is_webview),
-        },
+        tags: sentryTagsDeAuth(payload),
         extra: { ...payload },
       },
     );

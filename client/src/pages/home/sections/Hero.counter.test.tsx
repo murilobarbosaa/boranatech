@@ -112,7 +112,8 @@ const sentrySpy = vi.hoisted(() => {
   const setTag = vi.fn();
   const setLevel = vi.fn();
   const setContext = vi.fn();
-  const scope = { setTag, setLevel, setContext };
+  const setFingerprint = vi.fn();
+  const scope = { setTag, setLevel, setContext, setFingerprint };
   const captureMessage = vi.fn();
   const captureException = vi.fn();
   const withScope = vi.fn((cb: (s: typeof scope) => void) => cb(scope));
@@ -120,6 +121,7 @@ const sentrySpy = vi.hoisted(() => {
     setTag,
     setLevel,
     setContext,
+    setFingerprint,
     captureMessage,
     captureException,
     withScope,
@@ -131,6 +133,11 @@ vi.mock("@sentry/react", () => ({
   captureMessage: sentrySpy.captureMessage,
   captureException: sentrySpy.captureException,
 }));
+
+// PostHog: destino do caso em que o cache serviu a tela. Ver o describe de
+// instrumentacao mais abaixo.
+const posthogSpy = vi.hoisted(() => ({ capture: vi.fn() }));
+vi.mock("posthog-js", () => ({ default: { capture: posthogSpy.capture } }));
 
 import Hero from "./Hero";
 
@@ -198,6 +205,8 @@ beforeEach(() => {
   sentrySpy.captureMessage.mockClear();
   sentrySpy.captureException.mockClear();
   sentrySpy.withScope.mockClear();
+  sentrySpy.setFingerprint.mockClear();
+  posthogSpy.capture.mockClear();
   try {
     window.localStorage.clear();
   } catch {
@@ -457,21 +466,20 @@ describe("Hero: instrumentação Sentry do contador (não muda a UI, só captura
     expectsPlaceholder();
   });
 
-  it("[html-captura-non-json] resposta HTML (Vercel sem VITE_API_URL): captura non-JSON em vez de deixar o parse lançar, mantém cache", async () => {
+  it("[html-com-cache-vai-pro-posthog] resposta HTML com cache servido: conta no PostHog e NAO gera evento de erro no Sentry", async () => {
     window.localStorage.setItem(LS_KEY, "32");
     fetchSpy.mockResolvedValue(htmlResponse());
 
     renderHero();
 
     await waitFor(() => {
-      expect(sentrySpy.captureMessage).toHaveBeenCalledWith(
-        "[stats] users-count non-JSON response",
+      expect(posthogSpy.capture).toHaveBeenCalledWith(
+        "stats_users_count_fetch_failed",
+        expect.objectContaining({ tipo: "non_json", contentType: "text/html" }),
       );
     });
-    expect(sentrySpy.setContext).toHaveBeenCalledWith(
-      "stats_users_count",
-      expect.objectContaining({ contentType: "text/html", hadCache: true }),
-    );
+    expect(sentrySpy.captureMessage).not.toHaveBeenCalled();
+    expect(sentrySpy.captureException).not.toHaveBeenCalled();
     // UI intocada: segue no last-known-good local.
     await expectsNumber("32");
   });
@@ -489,9 +497,36 @@ describe("Hero: instrumentação Sentry do contador (não muda a UI, só captura
     expectsPlaceholder();
   });
 
-  it("[network-error-captura-exception] fetch rejeita (CORS/ad-block/rede): captura a exceção, mantém cache", async () => {
+  /**
+   * BUG-29/39/57 sao UMA causa e TRES issues no Sentry, porque cada engine
+   * escreve o mesmo TypeError de rede com outra frase ("Load failed" no Safari,
+   * "Failed to fetch" no Chrome, "NetworkError when attempting to fetch
+   * resource." no Firefox). Todos os eventos vieram com `hadCache: true`, ou
+   * seja, a tela seguiu mostrando o numero em cache e ninguem viu nada.
+   *
+   * Quando o cache serviu, o evento vale em AGREGADO, e agregacao e o PostHog.
+   * Quando NAO ha cache, o contador some da tela: ai e o Sentry, com fingerprint
+   * fixo para as tres frases colapsarem numa issue so.
+   */
+  it("[network-com-cache-vai-pro-posthog] fetch rejeita com cache servido: PostHog conta, Sentry nao recebe erro", async () => {
     window.localStorage.setItem(LS_KEY, "32");
-    const err = new Error("network failure");
+    fetchSpy.mockRejectedValue(new Error("Load failed"));
+
+    renderHero();
+
+    await waitFor(() => {
+      expect(posthogSpy.capture).toHaveBeenCalledWith(
+        "stats_users_count_fetch_failed",
+        expect.objectContaining({ tipo: "network" }),
+      );
+    });
+    expect(sentrySpy.captureException).not.toHaveBeenCalled();
+    expect(sentrySpy.captureMessage).not.toHaveBeenCalled();
+    await expectsNumber("32");
+  });
+
+  it("[network-sem-cache-captura-com-fingerprint] fetch rejeita sem cache: Sentry recebe com fingerprint fixo", async () => {
+    const err = new Error("NetworkError when attempting to fetch resource.");
     fetchSpy.mockRejectedValue(err);
 
     renderHero();
@@ -499,8 +534,34 @@ describe("Hero: instrumentação Sentry do contador (não muda a UI, só captura
     await waitFor(() => {
       expect(sentrySpy.captureException).toHaveBeenCalledWith(err);
     });
+    expect(sentrySpy.setFingerprint).toHaveBeenCalledWith([
+      "stats-users-count-fetch",
+    ]);
     expect(sentrySpy.setTag).toHaveBeenCalledWith("route", "stats/users-count");
-    await expectsNumber("32");
+    expectsPlaceholder();
+  });
+
+  /**
+   * CONTROLE NEGATIVO do fingerprint: sem esta assercao, as tres frases de
+   * engine continuariam abrindo tres issues e o teste acima passaria igual.
+   * Duas mensagens DIFERENTES tem que produzir o MESMO fingerprint.
+   */
+  it("[fingerprint-colapsa-engines] 'Load failed' e 'Failed to fetch' sem cache produzem o mesmo fingerprint", async () => {
+    fetchSpy.mockRejectedValue(new Error("Load failed"));
+    renderHero();
+    await waitFor(() => expect(sentrySpy.captureException).toHaveBeenCalled());
+    const primeiro = sentrySpy.setFingerprint.mock.calls.at(-1)?.[0];
+
+    cleanup();
+    sentrySpy.captureException.mockClear();
+    sentrySpy.setFingerprint.mockClear();
+    fetchSpy.mockRejectedValue(new Error("Failed to fetch"));
+    renderHero();
+    await waitFor(() => expect(sentrySpy.captureException).toHaveBeenCalled());
+    const segundo = sentrySpy.setFingerprint.mock.calls.at(-1)?.[0];
+
+    expect(primeiro).toEqual(["stats-users-count-fetch"]);
+    expect(segundo).toEqual(primeiro);
   });
 
   it("[sucesso-nao-captura] resposta saudável {count: 45}: mostra +45 e não captura nada", async () => {

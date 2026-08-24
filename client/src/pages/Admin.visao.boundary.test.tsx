@@ -57,8 +57,11 @@ class ResizeObserverStub {
   ResizeObserverStub;
 
 // O funil lanca no render, como lancaria com um payload de shape inesperado.
-vi.mock("@/components/admin/overview/PaidFunnel", () => ({
-  PaidFunnel: () => {
+// O bloco sacrificado passou a ser o FunnelDigest: o `PaidFunnel` saiu da Visão
+// na Fase 4 (funil agora vem de tabelas locais). O que o teste prova continua
+// sendo o mesmo — um bloco que estoura não leva a aba junto.
+vi.mock("@/components/admin/overview/FunnelDigest", () => ({
+  FunnelDigest: () => {
     throw new Error("campo ausente no payload do funil");
   },
 }));
@@ -99,17 +102,15 @@ describe("um bloco quebrado não derruba a Visão", () => {
     render(<Admin />);
 
     const quebrado = await screen.findByTestId("bloco-quebrado");
-    expect(quebrado.getAttribute("data-bloco")).toBe(
-      "Funil até o assinante pago",
-    );
+    expect(quebrado.getAttribute("data-bloco")).toBe("Funil principal");
 
     // Os vizinhos do mesmo lado da página seguem vivos. Sem o boundary, o
     // ErrorBoundary da App teria trocado tudo isto pela tela cheia de falha.
     expect(await screen.findByTestId("grafico-assinaturas")).toBeTruthy();
     expect(screen.getByTestId("grafico-cadastros")).toBeTruthy();
     expect(screen.getByTestId("overview-periodo")).toBeTruthy();
-    expect(screen.getByText(/Aquisição de usuários/i)).toBeTruthy();
-    expect(screen.getByText(/Eventos recentes/i)).toBeTruthy();
+    expect(screen.getByText(/uso de IA por ferramenta/i)).toBeTruthy();
+    expect(screen.getByText(/Atenção necessária/i)).toBeTruthy();
   });
 
   it("a navegação entre abas continua funcionando com o bloco quebrado", async () => {
@@ -118,7 +119,9 @@ describe("um bloco quebrado não derruba a Visão", () => {
     render(<Admin />);
     await screen.findByTestId("bloco-quebrado");
 
-    (await screen.findByTestId("link-paginas")).click();
+    // Pelo NAV, agora que o botão duplicado da Visão saiu (D17). Dois navs
+    // (desktop e mobile) carregam o mesmo rótulo; o primeiro basta.
+    (await screen.findAllByRole("button", { name: /páginas/i }))[0].click();
 
     await waitFor(() =>
       expect(screen.getByText(/Qualidade real das páginas/i)).toBeTruthy(),

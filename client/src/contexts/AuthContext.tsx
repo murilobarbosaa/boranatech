@@ -11,6 +11,7 @@ import {
 } from "@/lib/authCallback";
 import {
   authErrorFields,
+  authErrorKindOf,
   reportAuthDiagnostic,
   reportAuthFailure,
 } from "@/lib/authTelemetry";
@@ -384,6 +385,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             provider: null,
             errorCode: "profile_fetch_exhausted",
             errorMessage: error.message,
+            // `httpStatus` sozinho nao distingue "200 com corpo invalido" de
+            // "nem falamos com a API": o `?? null` abaixo achata os dois em
+            // null. `errorKind` carrega a distincao, declarada por quem lancou.
+            errorKind: authErrorKindOf(err),
             httpStatus:
               (err as { status?: number | null } | null)?.status ?? null,
             elapsedMs: Date.now() - profileFetchStartedAt,

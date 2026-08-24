@@ -16,7 +16,24 @@ disputa de checkout, e trocou por um modo de errar mais silencioso.
 
 ## O procedimento
 
-### 1. Sinal primário: a release do Sentry com `dateFinished`
+### 1. Sinal primário DA VERCEL: a release do Sentry com `dateFinished`
+
+**ESTE PASSO NÃO ENXERGA O RAILWAY.** Corrigido em 2026-08-18, e a correção é o contrário
+do que este documento afirmava antes: o backend **nunca** registrou deploy neste endpoint.
+Medido no dia, sobre quatro releases de datas diferentes, todas trazem exatamente os mesmos
+dois ambientes e nenhum do Railway:
+
+```
+eb032d66  vercel-production 2026-08-18T18:11:19Z | vercel-preview 2026-08-18T18:07:51Z
+b8084fbf  vercel-production 2026-08-17T04:59:43Z | vercel-preview 2026-08-17T04:51:50Z
+2af86a8b  vercel-production 2026-08-14T12:02:04Z | vercel-preview 2026-08-14T11:59:04Z
+6a57d4d2  vercel-production 2026-08-14T04:13:39Z | vercel-preview 2026-08-14T04:10:28Z
+```
+
+Usar este passo para concluir alguma coisa sobre o Railway é ler um endpoint que responde
+por OUTRO SUJEITO, e a conclusão sai como "o backend não subiu" sobre um backend que subiu.
+É a mesma família dos três casos listados no fim deste documento. **O Railway se confirma
+pelo passo 2**, e só por ele.
 
 ```bash
 set -a && . ./.env && set +a
@@ -39,7 +56,7 @@ lastDeploy = vercel-preview      02:09:36Z     <- terminou primeiro
              vercel-production   02:12:29Z     <- o que interessa, 3 min depois
 ```
 
-Ler `lastDeploy` na primeira amostra devolve `vercel-preview` e conclui "produção não chegou" sobre um deploy que estava a caminho. É a mesma família da release amostrada às 20:07 com o Railway terminando às 20:10, com o sujeito trocado em vez do instante: o valor está certo e descreve outro objeto.
+Ler `lastDeploy` na primeira amostra devolve `vercel-preview` e conclui "produção não chegou" sobre um deploy que estava a caminho. O valor está certo e descreve outro objeto, que é a mesma forma de errar do bloco acima sobre o Railway, com o sujeito trocado dentro da própria Vercel em vez de entre plataformas.
 
 ```bash
 curl -s -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
@@ -61,11 +78,34 @@ antes de empurrar. Guardar "CI verde" sem o SHA é guardar um valor sem o sujeit
 
 ### 2. Backend: `uptime` do `/api/health`, amostra única
 
+**É O ÚNICO instrumento do Railway.** O passo 1 não o alcança (ver o bloco lá em cima).
+
 ```bash
 curl -s https://api.boranatech.com.br/api/health | python3 -c "import sys,json; print(json.load(sys.stdin)['uptime'])"
 ```
 
 Valor baixo (segundos, não horas) significa que o Railway reiniciou. **Nunca medir por frequência** (ver `CLAUDE.md`, o loop de 150 requisições que disparou a mitigação da Vercel).
+
+Subtraia o `uptime` do instante da amostra para ter o momento em que o processo subiu, e
+compare com o `dateFinished` da Vercel: 1 a 3 minutos depois é o normal desta base. Medido em
+2026-08-18 para `eb032d66`: amostra às 21:45:13Z com `uptime` de 12638s, ou seja, start às
+18:14:35Z, contra 18:11:19Z da Vercel.
+
+#### O LIMITE deste instrumento, que precisa ser dito junto
+
+**`uptime` prova REINÍCIO, não VERSÃO.** Não existe endpoint que declare qual SHA o backend
+carrega, então este passo nunca responde "o processo roda o commit X". Ele responde "o
+processo subiu no instante T", e o resto é inferência.
+
+A inferência só fecha com uma condição que precisa ser conferida à parte: **nenhum outro push
+à `main` na janela entre o deploy medido e a amostra**. Com dois pushes no intervalo, um
+`uptime` baixo é compatível com os dois, e escolher um é chutar. Confira com
+`git log --oneline <sha-anterior>..origin/main` antes de concluir.
+
+Um reinício também pode vir de coisa que não é deploy (OOM, restart da plataforma, crash),
+e o `uptime` não distingue nenhum desses de um deploy. Quando a diferença importar, o jeito
+honesto é confirmar por comportamento: exercitar um endpoint que só existe ou só mudou no
+commit novo, que é o análogo backend do passo 4.
 
 ### 3. Frontend: o hash do bundle é SECUNDÁRIO, e tem dois pontos cegos
 
@@ -105,9 +145,16 @@ Foi assim que se provou que o `eeda681` estava no ar: a copy do `312e759` (`"con
 
 ## Por que este documento existe
 
-Três medições desta série declararam ausência sobre algo que ainda não tinha acontecido:
+Medições desta série declararam ausência sobre algo que ainda não tinha acontecido:
 
-1. **"A release cobre um projeto só"** — amostrada às 20:07, com o Railway terminando às 20:10. A release passou a cobrir os dois. Não era anomalia, era pressa.
+1. **"A release cobre um projeto só"**, amostrada às 20:07 com o Railway terminando às 20:10.
+   Na época a leitura foi "não era anomalia, era pressa", e este documento chegou a afirmar
+   que a release tinha passado a cobrir os dois. **Isso era falso, e a correção veio em
+   2026-08-18**: a release nunca cobriu o Railway, em release nenhuma (as quatro conferidas
+   estão no passo 1). O erro original foi de INSTANTE, a correção que se escreveu para ele foi
+   de SUJEITO, e a segunda é pior que a primeira, porque uma afirmação errada dentro do
+   documento de verificação ensina o erro em vez de apenas omiti-lo. Ver `CLAUDE.md`, "regra
+   escrita errada em arquivo de regras".
 2. **"Zero artefatos, nenhum source map"** — endpoint legado (`/releases/{v}/files/`), que indexa por URL e devolve vazio porque o `sentry-cli` moderno sobe por debug ID. O correto é `/files/artifact-bundles/`, que mostrava 1066 arquivos o tempo todo.
 3. **"O bundle não mudou"** — amostrado antes de o Vercel terminar, num commit em que o entry também não mudaria. Dois defeitos ao mesmo tempo, e o segundo teria mascarado o primeiro.
 

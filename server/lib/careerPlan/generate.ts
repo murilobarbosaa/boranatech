@@ -88,12 +88,22 @@ const CertificationSchema = z.object({
   stepId: z.string().nullable(),
   whenLabel: z.string().min(1).max(80),
   optional: z.boolean(),
-  rationale: z.string().min(80).max(300),
+  // 20 pelo mesmo motivo do `focus` abaixo: `toOpenAIStrictSchema` remove
+  // `minLength` (openaiStrictSchema.ts:19), entao 80 nunca foi exigencia, so
+  // pedido em prosa no SYSTEM_PROMPT. Preventivo: este campo ainda nao abriu
+  // evento, mas o mecanismo que derrubou o `focus` esta inteiro aqui.
+  rationale: z.string().min(20).max(300),
 });
 
 const ScheduleSchema = z.object({
   monthsLabel: z.string().min(1).max(40),
-  focus: z.string().min(80).max(300),
+  // 20, e nao 80: o piso do Zod so pode exigir o que a camada de baixo sustenta.
+  // `toOpenAIStrictSchema` remove `minLength` (openaiStrictSchema.ts:19), entao o
+  // modelo nunca recebe o limite e o pedido de ~80 vive so no SYSTEM_PROMPT. Com
+  // 80 aqui, um focus curto derrubava as 3 tentativas (mesmo prompt, mesma falha)
+  // e virava 502 na cara do usuario. 20 barra vazio e degenerado sem prometer o
+  // que nao da para cobrar. O prompt segue pedindo 80 a 300 de proposito.
+  focus: z.string().min(20).max(300),
   // Ids dos degraus (steps[].id) cobertos pelo bloco; vazio e permitido
   // (bloco sem degrau especifico, como revisao geral).
   stepIds: z.array(z.string()).max(6),
@@ -101,7 +111,10 @@ const ScheduleSchema = z.object({
 
 const OutOfScopeSchema = z.object({
   label: z.string().min(1),
-  reason: z.string().min(60).max(250),
+  // 20, mesmo raciocinio do `focus` e do `certifications[].rationale`: o piso do
+  // Zod so pode exigir o que a camada de baixo sustenta, e `minLength` nao
+  // sobrevive ao strict mode da OpenAI. O prompt segue pedindo mais.
+  reason: z.string().min(20).max(250),
 });
 
 export const CareerPlanResultSchema = z.object({

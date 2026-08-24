@@ -34,6 +34,33 @@ type LinkedinLastroData = {
   truncado: boolean;
 };
 
+/**
+ * A resposta trouxe os campos que este painel LE como numero?
+ *
+ * O `if (!data)` do render cobre "nao veio nada" e NAO cobre "veio um objeto
+ * sem os campos": `{}` e truthy e passa direto por ele. Medido: com `{}` o
+ * acesso `data.porTipo[tipo]` lancava "Cannot read properties of undefined" e
+ * derrubava a arvore inteira do admin. Os outros campos eram piores por serem
+ * silenciosos, porque `{data.total}` renderiza `undefined` e `data.semResumo >
+ * 0` vira `false`, os dois indistinguiveis de medicao legitima.
+ *
+ * Predicado NOMEADO e dentro do modulo, nao um `&&` inline no call site: assim
+ * vale para todo lugar que montar o componente, inclusive os que ainda nao
+ * existem, e da para exercita-lo com objeto forjado no teste.
+ *
+ * `porTipo` VAZIO nao entra aqui de proposito. `{}` com os numeros presentes e
+ * o periodo legitimamente sem violacao, que o componente ja distingue mais
+ * abaixo. Tratar isso como falha fabricaria um erro, que e o espelho do defeito
+ * que esta guarda existe para impedir.
+ */
+function respostaCompleta(d: LinkedinLastroData): boolean {
+  const numeros = [d.analises, d.comResumo, d.semResumo, d.total, d.janelaDias];
+  if (!numeros.every((n) => typeof n === "number" && Number.isFinite(n))) {
+    return false;
+  }
+  return typeof d.porTipo === "object" && d.porTipo !== null;
+}
+
 // TODO(Ana): rotulos dos tipos de violacao de lastro.
 //
 // `Record<TipoViolacao, string>` e deliberado: tipo novo na uniao sem rotulo
@@ -125,6 +152,15 @@ export function LinkedinLastroDashboard() {
   if (!data) {
     return (
       <ErrorBlock message="Não foi possível carregar as violações de lastro." />
+    );
+  }
+  // FAIL-CLOSED de FORMA: resposta incompleta vira estado NOMEADO, nunca zero.
+  // Um painel que mostra "0 violações" sem saber e indistinguivel de um periodo
+  // limpo, e e essa confusao que decide calibragem de prompt errada.
+  // TODO(Ana): copy do estado de resposta incompleta das violacoes de lastro.
+  if (!respostaCompleta(data)) {
+    return (
+      <ErrorBlock message="A resposta das violações de lastro veio incompleta. Nenhuma contagem é exibida, para não confundir ausência de dado com ausência de violação." />
     );
   }
 

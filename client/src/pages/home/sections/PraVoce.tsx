@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import {
@@ -321,7 +322,32 @@ function EventoCard({
 // COMPONENTE EventoLogo (com fallback)
 // =========================================
 
-function EventoLogo({ logoUrl, nome }: { logoUrl?: string; nome: string }) {
+/**
+ * Fallback do favicon por ESTADO, nunca por mutação de DOM.
+ *
+ * A versão anterior fazia `target.parentElement.innerHTML = "<span>..."` dentro
+ * do `onError`, ou seja, destruía por fora um nó que o React controla (a `<div>`
+ * de moldura abaixo e o próprio `<img>` estão na árvore de fibers). Quando o
+ * React depois re-renderiza ou desmonta essa subárvore, ele chama `removeChild`
+ * num filho que não existe mais, e sai `Failed to execute 'removeChild' on
+ * 'Node'` no Chrome e `NotFoundError: The object can not be found here` no
+ * Safari e no Firefox. É a mesma falha nas duas frases, e ela cai na home
+ * pública, a rota de maior tráfego.
+ *
+ * O estado guarda a URL QUE FALHOU, não um booleano, e isso resolve o reset de
+ * graça: se o card passar a exibir outro evento, `logoUrl` muda, a comparação
+ * deixa de casar e a nova imagem é tentada, sem `useEffect` e sem `key` no call
+ * site. Um booleano prenderia o fallback para sempre no primeiro erro.
+ */
+export function EventoLogo({
+  logoUrl,
+  nome,
+}: {
+  logoUrl?: string;
+  nome: string;
+}) {
+  const [urlComFalha, setUrlComFalha] = useState<string | undefined>(undefined);
+
   const initials = nome
     .split(" ")
     .filter((w) => w.length > 2)
@@ -331,19 +357,14 @@ function EventoLogo({ logoUrl, nome }: { logoUrl?: string; nome: string }) {
 
   return (
     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-fuchsia-100 shadow-[2px_2px_0_#0f172a] overflow-hidden">
-      {logoUrl ? (
+      {logoUrl && urlComFalha !== logoUrl ? (
         <img
           src={logoUrl}
           alt={nome}
           width={32}
           height={32}
           className="h-8 w-8 object-contain"
-          onError={(e) => {
-            // Fallback pra iniciais se favicon externo falhar
-            const target = e.currentTarget;
-            target.style.display = "none";
-            target.parentElement!.innerHTML = `<span class="font-display text-sm font-black text-fuchsia-700">${initials}</span>`;
-          }}
+          onError={() => setUrlComFalha(logoUrl)}
         />
       ) : (
         <span className="font-display text-sm font-black text-fuchsia-700">

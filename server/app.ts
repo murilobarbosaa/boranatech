@@ -5,6 +5,7 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import { commitShaAtual } from "./lib/commitSha";
 import { env } from "./lib/env";
 import { falhaOpenAiNaCadeia } from "./lib/openaiFailure";
 import { isRateLimitExempt } from "./lib/rateLimitExempt";
@@ -17,7 +18,7 @@ import {
 import { cacheConnection } from "./lib/redis";
 import { supabaseAdmin } from "./lib/supabaseAdmin";
 import { validateSupabaseJwt } from "./middleware/auth";
-import { errorHandler } from "./middleware/error";
+import { bodyParseContext, errorHandler } from "./middleware/error";
 import adminRouter from "./routes/admin";
 import agentRouter from "./routes/agent";
 import agentHistoryRouter from "./routes/agentHistory";
@@ -574,6 +575,8 @@ app.get("/api/health", async (_req, res) => {
   res.status(status === "ok" ? 200 : 503).json({
     status,
     env: env.nodeEnv,
+    // QUAL BUILD E ESTE. Null fora do Railway; ver server/lib/commitSha.ts.
+    commit: commitShaAtual(),
     uptime: process.uptime(),
     responseTime: Date.now() - startTime,
     checks,
@@ -653,6 +656,11 @@ app.use(
           scope.setTag("openai_type", falhaOpenAi.openaiType ?? "ausente");
           scope.setTag("openai_status", String(falhaOpenAi.httpStatus));
         }
+        // Headers de transporte do 500 do body parser. So MEDE: nada no
+        // `express.json` nem na ordem dos middlewares muda. Ver o comentario de
+        // `bodyParseContext` em middleware/error.ts.
+        const bodyParse = bodyParseContext(err, req);
+        if (bodyParse) scope.setContext("body_parse", bodyParse);
         Sentry.captureException(err);
       });
     }

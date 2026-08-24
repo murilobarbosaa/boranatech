@@ -91,7 +91,24 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
  * primeira rodada com as rotas fiscais, e a conferência abaixo (que verifica
  * requireAuth + requireAdmin em CADA rota) é o que autoriza subir o número.
  */
-const EXPECTED_ROUTE_COUNT = 59;
+// 55 -> 56 em 2026-08-14, com a rota `GET /admin/attention` (painel "Atenção
+// necessária"). 56 -> 57 na mesma data, com `GET /admin/overview-series` (séries
+// diárias, funil e uso por ferramenta da Fase 4). Subir este número é ato
+// deliberado: quem acrescenta rota confere antes que ela está atrás de
+// `requireAuth` + `requireAdmin`, e as duas novas estão — o router monta as
+// guardas no topo e as rotas entram depois, o que os dois testes acima verificam
+// por posição. 57 -> 58 em 2026-08-17, com `GET /admin/online-now` (presença do
+// card "Atividade agora" da Visão); ela entra depois dos dois `router.use` do
+// topo, como as anteriores, e este arquivo é quem confere isso.
+// Merge da main em 2026-08-22 (Lote C). Os dois lados subiram este contador de
+// forma independente a partir de 55: a main ate 58 (`/attention`,
+// `/overview-series`, `/online-now`) e a pilha ate 59 (`/linkedin-lastro` e as
+// tres de `fiscal-invoices`). O valor final NAO foi resolvido por aritmetica de
+// conflito: foi MEDIDO no router mesclado pelo proprio mecanismo do teste,
+// `rotasDeclaradas().length`, que devolveu 62. A soma 55 + 3 + 4 bate com a
+// medicao, e as sete rotas novas passam pelo teste de posicao acima, que e a
+// verificacao que autoriza subir o numero.
+const EXPECTED_ROUTE_COUNT = 62;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {

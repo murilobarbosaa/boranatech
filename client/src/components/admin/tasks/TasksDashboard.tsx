@@ -73,7 +73,10 @@ import {
 } from "./taskViewState";
 import { DRAG_ACTIVATION_DISTANCE, TaskCardBody } from "./TaskCard";
 import { TaskModal } from "./TaskModal";
-import { TasksPanelSkeleton } from "./TasksPanelSkeleton";
+import {
+  BoardColumnsSkeleton,
+  TasksPanelSkeleton,
+} from "./TasksPanelSkeleton";
 import { emptyBlockClass, primaryButtonClass, secondaryButtonClass } from "./taskBoardStyles";
 import { parseShortId, readTaskParam, shortIdOf, withTaskParam } from "./taskDeepLink";
 import type { TaskBoardSnapshot, TaskCard as TaskCardData, TaskColumn } from "./types";
@@ -127,6 +130,7 @@ export function TasksDashboard() {
     boards,
     snapshot,
     loading,
+    trocandoDeBoard,
     error,
     refresh,
     reloadBoards,
@@ -1130,7 +1134,9 @@ export function TasksDashboard() {
   // Render
   // -------------------------------------------------------------------------
 
-  if (loading) {
+  // PRIMEIRO CARREGAMENTO: nao ha barra de quadros a preservar, porque nem a
+  // lista de quadros chegou. Painel inteiro de esqueleto, como sempre foi.
+  if (loading && !trocandoDeBoard) {
     return <TasksPanelSkeleton />;
   }
 
@@ -1145,6 +1151,43 @@ export function TasksDashboard() {
         >
           Tentar de novo
         </button>
+      </div>
+    );
+  }
+
+  // TROCA DE QUADRO: a barra FICA, porque o clique da pessoa acabou de
+  // acontecer nela e sumir com ela vira flash de recarga; a area das colunas
+  // vira esqueleto. O snapshot que existe aqui e o do quadro ANTIGO, e nada
+  // dele pode ser renderizado, nem por um frame: o dado velho e o bug, nao a
+  // decoracao. Por isso `admins`/`labels` vao VAZIOS (as opcoes de filtro sao
+  // por quadro) e as contagens vao `null`, que a barra desenha como esqueleto
+  // em vez de afirmar um numero que ainda nao se sabe.
+  if (trocandoDeBoard) {
+    return (
+      <div className="space-y-4">
+        <BoardToolbar
+          ref={searchInputRef}
+          boards={boards}
+          activeBoardId={boardId}
+          admins={[]}
+          labels={[]}
+          filters={filters}
+          groupBy={groupBy}
+          view={view}
+          includeArchived={includeArchived}
+          visibleCount={null}
+          totalCount={null}
+          onSelectBoard={setBoardId}
+          onFiltersChange={setFilters}
+          onGroupByChange={setGroupBy}
+          onViewChange={(next) => setViewState({ view: next })}
+          onIncludeArchivedChange={(next) =>
+            setViewState({ includeArchived: next })
+          }
+          onClearFilters={clearFilters}
+          onManageBoards={() => setBoardManagerOpen(true)}
+        />
+        <BoardColumnsSkeleton />
       </div>
     );
   }

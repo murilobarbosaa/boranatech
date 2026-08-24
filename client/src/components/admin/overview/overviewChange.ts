@@ -53,9 +53,14 @@ export function dataDeInstante(iso: string): string {
 
 function motivoLegivel(motivo: string, historicoDesde?: string | null): string {
   if (motivo === "historico_insuficiente") {
+    // A FRASE DIZ O QUE ACONTECEU, não o nome do estado. "Sem comparação:
+    // histórico desde 13/07/2026" fazia quem lê perguntar o que a data tem a ver
+    // com a ausência do Δ; a resposta é que a série começa DENTRO do período
+    // escolhido, então o período anterior não tem dado para comparar. Dito
+    // assim, a frase se explica sozinha e a data vira contexto, não charada.
     return historicoDesde
-      ? `Sem comparação: histórico desde ${dataDeInstante(historicoDesde)}`
-      : "Sem comparação: histórico insuficiente";
+      ? `Dados começam no meio do período (${dataDeInstante(historicoDesde)}), sem comparação`
+      : "Dados começam no meio do período, sem comparação";
   }
   if (motivo === "janela_sem_anterior")
     return "Sem período anterior para comparar";

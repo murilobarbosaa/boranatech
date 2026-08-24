@@ -547,6 +547,7 @@
       "pont": 1,
       "P": 0.5
     },
-    "limite": "n=1. O check de determinismo do juiz mediu variacao de ate 1 ponto entre rodadas da MESMA entrada, entao um delta de +1 nao e distinguivel do ruido do proprio instrumento com uma unica observacao. O delta so vira evidencia com repeticao."
+    "limite": "n=1. O check de determinismo do juiz mediu variacao de ate 1 ponto entre rodadas da MESMA entrada, entao um delta de +1 nao e distinguivel do ruido do proprio instrumento com uma unica observacao. O delta so vira evidencia com repeticao.",
+    "ressalva_do_braco_vago": "O par NAO e limpo. A primeira execucao do experimento, que geraria os dois bracos na mesma leva, morreu com HTTP 403 no gate Pro, com requisicao de 19,7s e timeouts de Redis no log da aplicacao: degradacao de rede da maquina local, nao codigo (nenhuma linha ficou em 'generating', nenhuma orfa). O braco VAGO reaproveitado (ia-b044b8dc) veio de uma leva anterior do mesmo dia. O PROMPT e o INTAKE eram identicos; a sessao de geracao, nao. O delta de +1 nao deve circular sem esta ressalva."
   }
 }

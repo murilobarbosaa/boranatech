@@ -87,6 +87,12 @@ vi.mock("@/lib/authTelemetry", () => ({
     message: (e as { message?: string })?.message ?? null,
     status: (e as { status?: number })?.status ?? null,
   }),
+  // Nao e exercitado aqui (neste arquivo o perfil sempre resolve), mas o
+  // AuthContext importa: mock incompleto so quebraria no dia em que alguem
+  // acrescentasse um caso de falha de perfil, com um erro que nao aponta para
+  // o mock.
+  authErrorKindOf: (e: unknown) =>
+    (e as { authErrorKind?: string })?.authErrorKind ?? "unknown",
 }));
 
 vi.mock("@/services/profileService", () => ({

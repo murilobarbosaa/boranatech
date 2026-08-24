@@ -8,6 +8,7 @@ import { NewTaskComposer } from "./NewTaskComposer";
 import { TaskCard } from "./TaskCard";
 import {
   COLUMN_COLOR_FALLBACK,
+  columnShellClass,
   emptyBlockClass,
   safeHexColor,
 } from "./taskBoardStyles";
@@ -112,9 +113,7 @@ function BoardColumnBase({
         borderTopColor: accent,
         borderTopWidth: 6,
       }}
-      className={`flex w-[85vw] shrink-0 snap-start flex-col rounded-3xl border-2 border-slate-900 p-3 shadow-[3px_3px_0_#0f172a] transition-colors sm:w-[19rem] ${
-        isDragging ? "opacity-40" : ""
-      } ${
+      className={`${columnShellClass} ${isDragging ? "opacity-40" : ""} ${
         isDropTarget
           ? overWip
             ? "bg-rose-100 ring-4 ring-rose-400"
@@ -192,7 +191,12 @@ function BoardColumnBase({
         </div>
       ) : null}
 
-      <div className="flex max-h-[calc(100vh-22rem)] min-h-[4rem] flex-1 flex-col gap-2.5 overflow-y-auto pr-0.5">
+      {/* `overflow-x-hidden` EXPLICITO ao lado do `overflow-y-auto`. Pela spec
+          de overflow, um eixo `visible` ao lado de um eixo que nao e `visible`
+          computa para `auto`: so o `overflow-y-auto` ja criava um
+          `overflow-x: auto` silencioso aqui, e era ele a barra horizontal que
+          aparecia na coluna quando um card estourava a largura. */}
+      <div className="flex max-h-[calc(100vh-22rem)] min-h-[4rem] flex-1 flex-col gap-2.5 overflow-y-auto overflow-x-hidden pr-0.5">
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           {group.tasks.length === 0 ? (
             // Coluna vazia e coluna FILTRADA a zero sao coisas diferentes, e

@@ -1,3 +1,4 @@
+import { diaBrasilia, inicioDoDiaBrasilia } from "../../shared/brasiliaDay";
 import { env } from "./env";
 
 // PostHog como maquina de estados explicita. O host NAO e hardcoded: vem de
@@ -564,6 +565,75 @@ export async function getPaidFunnelSignals(
         truncated:
           checkoutIds.length > FUNNEL_ID_LIMIT ||
           retornoIds.length > FUNNEL_ID_LIMIT,
+      },
+    };
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    const httpStatus =
+      err instanceof PosthogQueryError ? err.httpStatus : undefined;
+    return { state: "error", reason, httpStatus };
+  }
+}
+
+// PRESENCA AGORA, para o card "Atividade agora" da Visao.
+//
+// Duas contagens numa query so, porque sao a mesma leitura sobre a mesma tabela:
+// quantas pessoas tiveram evento nos ultimos 5 minutos, e quantas tiveram evento
+// desde o inicio do dia civil de BRASILIA. O corte do dia vem de
+// `inicioDoDiaBrasilia` (shared/brasiliaDay.ts), nunca de offset fixo de -3h: o
+// dia do painel e o dia de quem opera, e escrever o offset na mao transformaria
+// a ausencia atual de horario de verao em regra.
+//
+// `uniqIf` foi CONFERIDO contra o projeto real (2026-08-17): o HogQL aceita e
+// gera `uniqIf(events.distinct_id, ...)` no ClickHouse. O fuso do projeto e UTC,
+// entao `toDateTime('...')` le o literal em UTC, que e o que `hogTime` produz.
+//
+// A UNIDADE E `distinct_id`, nao pessoa, pelo mesmo motivo do restante do
+// modulo: e a unica chave que existe nos eventos anonimos. Quem navega deslogado
+// e depois entra conta duas vezes, e quem usa dois navegadores tambem. E um
+// numero de PRESENCA, com margem, e a tela precisa dizer isso.
+export type PosthogAtividadeAgora = {
+  /** distinct_ids com evento nos ultimos 5 minutos. */
+  online: number;
+  /** distinct_ids com evento desde o inicio do dia civil de Brasilia. */
+  hojePessoas: number;
+};
+
+export type PosthogAtividadeAgoraState =
+  | { state: "not_configured"; missing: string[] }
+  | { state: "error"; reason: string; httpStatus?: number }
+  | { state: "ok"; atividade: PosthogAtividadeAgora };
+
+export async function contarAtividadeAgora(): Promise<PosthogAtividadeAgoraState> {
+  const missing: string[] = [];
+  if (!env.posthogApiKey) missing.push("POSTHOG_API_KEY");
+  if (!env.posthogProjectId) missing.push("POSTHOG_PROJECT_ID");
+  if (missing.length > 0) return { state: "not_configured", missing };
+
+  const hoje = diaBrasilia(new Date().toISOString());
+  if (!hoje) {
+    // Inalcancavel na pratica (a entrada e o relogio do processo), e mesmo assim
+    // vira ERRO e nao uma janela chutada: uma janela errada em silencio devolve
+    // um numero plausivel, que e o pior resultado possivel aqui.
+    return { state: "error", reason: "nao foi possivel resolver o dia atual" };
+  }
+  const inicioDoDia = hogTime(new Date(inicioDoDiaBrasilia(hoje)));
+
+  try {
+    const res = await runPosthogQuery(
+      `select uniqIf(distinct_id, timestamp > now() - interval 5 minute) as online, uniq(distinct_id) as hoje from events where timestamp >= toDateTime('${inicioDoDia}')`,
+    );
+    const linha = res.results?.[0];
+    if (!linha) {
+      // Resposta 2xx SEM linha nao e "zero pessoas": e uma resposta que nao
+      // responde. Zero aqui seria indistinguivel de um site vazio.
+      return { state: "error", reason: "resposta do PostHog sem resultado" };
+    }
+    return {
+      state: "ok",
+      atividade: {
+        online: cellToNumber(linha[0]),
+        hojePessoas: cellToNumber(linha[1]),
       },
     };
   } catch (err) {

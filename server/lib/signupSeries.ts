@@ -1,4 +1,4 @@
-import { diaBrasilia } from "../../shared/brasiliaDay";
+import { diaBrasilia, somarDiaCivil } from "../../shared/brasiliaDay";
 
 // Série DIÁRIA de cadastros.
 //
@@ -52,7 +52,7 @@ export function montarSerieDeCadastros(input: {
   }
 
   const pontos: PontoDeCadastro[] = [];
-  for (let d = input.inicio; d <= input.fim; d = somarDia(d)) {
+  for (let d = input.inicio; d <= input.fim; d = somarDiaCivil(d)) {
     pontos.push({
       date: d,
       count: porDia.get(d) ?? 0,
@@ -62,9 +62,8 @@ export function montarSerieDeCadastros(input: {
   return pontos;
 }
 
-/** Próximo dia civil, sem passar por fuso: a string já é o dia. */
-export function somarDia(dia: string, passo = 1): string {
-  const d = new Date(`${dia}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + passo);
-  return d.toISOString().slice(0, 10);
-}
+// `somarDia` saiu daqui em 2026-08-14: `server/routes/admin.ts` tinha uma cópia
+// byte a byte chamada `somarDias`, e duas implementações da mesma aritmética são
+// as que divergem na primeira correção aplicada só numa delas. A função única é
+// `somarDiaCivil`, em `shared/brasiliaDay.ts`, ao lado de `diaBrasilia` e
+// `inicioDoDiaBrasilia` — que é onde a aritmética de dia civil pertence.

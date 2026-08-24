@@ -327,6 +327,28 @@ export const env = {
     );
     return 0;
   })(),
+  // Cotacao USD->BRL para a linha SECUNDARIA do card de custo de IA no admin.
+  //
+  // O numero principal e e continua sendo DOLAR, porque e nele que a tabela de
+  // precos da OpenAI e cotada (MODEL_PRICING em server/lib/aiTools.ts). Esta
+  // env existe so para quem quer a ordem de grandeza em real ao lado.
+  //
+  // OPCIONAL DE PROPOSITO, e ausente significa "nao exibir a linha", nunca
+  // "converter por 1". Buscar cotacao em API externa foi descartado: seria uma
+  // dependencia de rede num painel, para um numero que ninguem usa para decidir,
+  // e que envelheceria em silencio se a API caisse. Valor invalido (nao
+  // numerico, zero ou negativo) tambem desliga a linha, com warn no boot: uma
+  // taxa errada produz um valor plausivel e errado, que e pior que nao ter.
+  aiCostUsdBrlRate: (() => {
+    const raw = process.env.AI_COST_USD_BRL_RATE;
+    if (!raw) return null;
+    const parsed = Number.parseFloat(raw);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    console.warn(
+      `[env] AVISO: AI_COST_USD_BRL_RATE invalido ("${raw}"), linha em BRL desligada`,
+    );
+    return null;
+  })(),
   cronSecret: process.env.CRON_SECRET || "",
   githubToken: process.env.GITHUB_TOKEN || "",
   // Portao de lancamento. "gated" mantem o portao fechado; "open" libera geral.

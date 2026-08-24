@@ -28,7 +28,16 @@ const INTERVAL_MONTHS: Record<string, number> = {
   yearly: 12,
 };
 
-function monthlyEquivalentCents(priceCents: number, interval: string): number {
+/**
+ * EXPORTADA de proposito, e o motivo importa: o painel de atencao precisa da
+ * MESMA normalizacao para exibir a saida agendada em MRR mensal, e o comentario
+ * de `getMrrSnapshot` ja avisava que "a terceira implementacao e sempre a que
+ * diverge primeiro". Compartilhar a funcao e o que impede a terceira de nascer.
+ */
+export function monthlyEquivalentCents(
+  priceCents: number,
+  interval: string,
+): number {
   const months = INTERVAL_MONTHS[interval];
   if (!months) {
     throw new Error(
@@ -206,12 +215,28 @@ export type MrrSnapshot = {
   trialingCount: number;
   byPlan: PlanMrr[];
   /**
-   * RECEITA EM RISCO: o subconjunto de `mrrCents` que ja tem data de saida
-   * (`cancel_at_period_end = true`). Nao e um numero novo, e um recorte do
-   * mesmo: sai do MESMO laco, sobre as MESMAS linhas, com a MESMA normalizacao
-   * mensal. Medido em 2026-07-31: 10 assinaturas, R$ 267,80, 15,4% do MRR.
+   * RECEITA EM RISCO: as DUAS formas de perder receita que ja estao visiveis no
+   * banco, somadas, e cada uma tambem separada.
+   *
+   *   saindo    `cancel_at_period_end = true` sobre assinatura ativa. Recorte de
+   *             `mrrCents`: a receita ainda entra, mas tem data de fim.
+   *   emAtraso  `status = 'past_due'`. NAO e recorte de `mrrCents`, porque o MRR
+   *             conta so `active`. E receita que ja parou de entrar e que a
+   *             Stripe ainda esta tentando cobrar.
+   *
+   * As duas saem do MESMO laco, sobre as MESMAS linhas, com a MESMA
+   * `monthlyEquivalentCents`. Somar as duas no card e a decisao D21: quem olha
+   * "receita em risco" quer o total exposto, e ver so metade dele numa tela e a
+   * outra metade noutra foi exatamente a inconsistencia que a revisao apontou.
+   * Medido em 2026-07-31 (so `saindo`): 10 assinaturas, R$ 267,80, 15,4% do MRR.
    */
-  atRisk: { count: number; mrrCents: number };
+  atRisk: {
+    /** Soma de `saindo` e `emAtraso`. E este o headline do card. */
+    count: number;
+    mrrCents: number;
+    saindo: { count: number; mrrCents: number };
+    emAtraso: { count: number; mrrCents: number };
+  };
 };
 
 type RawMrrRow = {
@@ -243,7 +268,11 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
         .select(
           "status, cancel_at_period_end, plans!inner(code, name, price_cents, interval)",
         )
-        .in("status", ["active", "trialing"])
+        // `past_due` entra na LEITURA e fica fora do MRR (o `continue` abaixo).
+        // Ele nao e receita ativa, e receita em risco, e sem le-lo aqui o card
+        // teria de somar dois numeros vindos de duas consultas diferentes, que e
+        // como as duas telas passaram a divergir.
+        .in("status", ["active", "trialing", "past_due"])
         .or(`current_period_end.is.null,current_period_end.gt.${nowIso}`)
         .order("id", { ascending: true })
         .range(from, to),
@@ -253,8 +282,10 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
   let mrrCents = 0;
   let activeCount = 0;
   let trialingCount = 0;
-  let atRiskCents = 0;
-  let atRiskCount = 0;
+  let saindoCents = 0;
+  let saindoCount = 0;
+  let atrasoCents = 0;
+  let atrasoCount = 0;
   const byPlan = new Map<string, PlanMrr>();
 
   for (const row of rows) {
@@ -282,6 +313,16 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
     const interval = String(plan.interval ?? "");
     const perMonth = monthlyEquivalentCents(priceCents, interval);
 
+    // EM ATRASO NAO E MRR. A cobranca falhou: o dinheiro parou de entrar, e
+    // soma-lo ao MRR afirmaria uma receita recorrente que hoje nao existe. Ele
+    // sai do laco aqui, antes de `mrrCents`, `activeCount`, do ARPU e do
+    // `byPlan`, levando so o proprio equivalente mensal para o risco.
+    if (row.status === "past_due") {
+      atrasoCents += perMonth;
+      atrasoCount += 1;
+      continue;
+    }
+
     mrrCents += perMonth;
     activeCount += 1;
 
@@ -292,8 +333,8 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
     // primeiro, porque ninguem olha para ela. Aqui nao ha aritmetica nova: so um
     // acumulador a mais no laco que ja existe.
     if (row.cancel_at_period_end) {
-      atRiskCents += perMonth;
-      atRiskCount += 1;
+      saindoCents += perMonth;
+      saindoCount += 1;
     }
 
     const entry = byPlan.get(plan.code) ?? {
@@ -315,7 +356,12 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
     activeCount,
     trialingCount,
     byPlan: Array.from(byPlan.values()),
-    atRisk: { count: atRiskCount, mrrCents: atRiskCents },
+    atRisk: {
+      count: saindoCount + atrasoCount,
+      mrrCents: saindoCents + atrasoCents,
+      saindo: { count: saindoCount, mrrCents: saindoCents },
+      emAtraso: { count: atrasoCount, mrrCents: atrasoCents },
+    },
   };
 }
 

@@ -20,6 +20,24 @@ export const badgeClass =
 export const emptyBlockClass =
   "rounded-2xl border-2 border-dashed border-slate-300 bg-white p-4 text-center text-xs font-black text-slate-400";
 
+/**
+ * Moldura da coluna do board: largura, borda, cantos, sombra e eixo do flex.
+ *
+ * O esqueleto de carregamento e a coluna real usam esta MESMA string de
+ * proposito, para nunca divergirem: quando os dados chegam, a coluna de verdade
+ * ocupa o mesmo espaco e a tela nao salta.
+ *
+ * Mora aqui, e nao em BoardColumn.tsx, porque o Admin.tsx importa o esqueleto
+ * de forma estatica para o fallback do Suspense: puxar a constante do
+ * BoardColumn levaria o TaskCard e o dnd-kit inteiros para o chunk do Admin,
+ * desfazendo o lazy do modulo de tarefas.
+ *
+ * FUNDO fica de fora porque na coluna real ele e ESTADO (alvo de drop, acima do
+ * WIP); o repouso e `bg-slate-50`, e e esse que o esqueleto usa.
+ */
+export const columnShellClass =
+  "flex w-[85vw] shrink-0 snap-start flex-col rounded-3xl border-2 border-slate-900 p-3 shadow-[3px_3px_0_#0f172a] transition-colors sm:w-[19rem]";
+
 // ---------------------------------------------------------------------------
 // Resolvers de valor vindo do servidor
 // ---------------------------------------------------------------------------

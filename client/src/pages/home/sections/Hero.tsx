@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import * as Sentry from "@sentry/react";
+import posthog from "posthog-js";
 import { featuredAreas } from "@/lib/homeData.generated";
 import { apiUrl } from "@/lib/api";
 
@@ -556,22 +557,62 @@ function writeCachedUsersCount(n: number): void {
 // count degradado) passam por aqui, pra a gente enxergar a distribuição real por
 // dispositivo (429 de rate limit vs CORS/ad-block vs HTML por VITE_API_URL
 // ausente vs count nulo). NÃO muda nada visível: a UI segue no cache/placeholder.
+// Tipo do desfecho, CAMPO e nao texto. A alternativa seria derivar de `message`
+// com um casamento de padrao, que e a classe de instrumento que este projeto ja
+// viu falhar PASSANDO. Uniao fechada: um ramo novo sem tipo nao compila.
+type StatsCounterTipo = "http" | "non_json" | "degraded_payload" | "network";
+
 type StatsCounterContext = {
+  tipo: StatsCounterTipo;
   resolvedUrl: string;
   hadCache: boolean;
   status: number | null;
   contentType: string | null;
 };
 
+/**
+ * DOIS destinos, escolhidos por `hadCache`, e nao por gravidade do erro.
+ *
+ * BUG-29/39/57 sao a MESMA causa em tres issues: cada engine escreve o mesmo
+ * TypeError de rede com outra frase ("Load failed" no Safari, "Failed to fetch"
+ * no Chrome, "NetworkError when attempting to fetch resource." no Firefox). Os
+ * eventos vieram todos com `hadCache: true`, ou seja, o contador seguiu na tela
+ * com o valor em cache e o usuario nao viu absolutamente nada.
+ *
+ * Com cache, a falha vale em AGREGADO ("que fracao das cargas nao consegue
+ * falar com a API?"), e agregacao e o PostHog. Mandar isso para o Sentry e o
+ * que lib/sentry.ts manda NAO fazer: la e stream de erro, com cota. Sem cache o
+ * contador some da tela, e ai e evento de erro mesmo.
+ *
+ * `fingerprint` fixo no ramo do Sentry: e ele que faz as tres frases de engine
+ * colapsarem numa issue so. Sem ele, o default agrupa pela mensagem e cada
+ * navegador continua abrindo a sua.
+ */
 function captureStatsCounterIssue(
   message: string,
   ctx: StatsCounterContext,
   error?: unknown,
 ): void {
+  if (ctx.hadCache) {
+    try {
+      posthog.capture("stats_users_count_fetch_failed", {
+        tipo: ctx.tipo,
+        status: ctx.status,
+        contentType: ctx.contentType,
+        resolvedUrl: ctx.resolvedUrl,
+      });
+    } catch {
+      // Telemetria nunca quebra o render da home.
+    }
+    return;
+  }
+
   Sentry.withScope((scope) => {
     scope.setTag("route", "stats/users-count");
     scope.setLevel("warning");
+    scope.setFingerprint(["stats-users-count-fetch"]);
     scope.setContext("stats_users_count", {
+      tipo: ctx.tipo,
       resolvedUrl: ctx.resolvedUrl,
       hadCache: ctx.hadCache,
       status: ctx.status,
@@ -620,6 +661,7 @@ export default function Hero() {
           // Não-2xx (ex.: 429 do rate limit em IP compartilhado, 5xx): antes
           // virava null em silêncio.
           captureStatsCounterIssue(`[stats] users-count HTTP ${r.status}`, {
+            tipo: "http",
             resolvedUrl,
             hadCache,
             status: r.status,
@@ -633,6 +675,7 @@ export default function Hero() {
         // catch. Capturamos explícito ANTES do r.json().
         if (!contentType || !contentType.includes("application/json")) {
           captureStatsCounterIssue("[stats] users-count non-JSON response", {
+            tipo: "non_json",
             resolvedUrl,
             hadCache,
             status: r.status,
@@ -649,6 +692,7 @@ export default function Hero() {
           // exibe nem grava no cache (evitaria envenenar o localStorage
           // compartilhado). Mesmo guard do Checkout, agora instrumentado.
           captureStatsCounterIssue("[stats] users-count degraded payload", {
+            tipo: "degraded_payload",
             resolvedUrl,
             hadCache,
             status: r.status,
@@ -664,7 +708,13 @@ export default function Hero() {
         // Rede/CORS/ad-block/JSON malformado: antes engolido pelo catch vazio.
         captureStatsCounterIssue(
           "[stats] users-count fetch failed",
-          { resolvedUrl, hadCache, status: null, contentType: null },
+          {
+            tipo: "network",
+            resolvedUrl,
+            hadCache,
+            status: null,
+            contentType: null,
+          },
           err,
         );
       });

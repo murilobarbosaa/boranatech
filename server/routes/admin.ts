@@ -17,6 +17,7 @@ import {
 } from "../lib/financeMetrics";
 import { fetchUsdBrlRate } from "../lib/fx/ptax";
 import {
+  contarAtividadeAgora,
   getPosthogHealth,
   getPaidFunnelSignals,
   getPosthogStats,
@@ -54,8 +55,11 @@ import {
 } from "../lib/emailChange";
 import {
   agregarUsoDeIa,
+  chamadasSemCustoMedido,
   custoTotalDeIa,
 } from "../lib/aiUsageStats";
+import { montarPainelDeAtencao } from "../lib/atencaoNecessaria";
+import { calcularFrescor, montarSeriesDaVisao } from "../lib/overviewSeries";
 import { CHARGE_SEM_DONO_CORTE_DIAS } from "../lib/financeSyncWindow";
 import { calcularProblemas } from "../lib/healthBand";
 import {
@@ -71,18 +75,21 @@ import {
   maiorVazamento,
   montarFunil,
 } from "../lib/paidFunnel";
-import { montarSerieDeCadastros, somarDia } from "../lib/signupSeries";
-import { diaBrasilia } from "../../shared/brasiliaDay";
+import { contarPerfisTotal } from "../lib/profilesCount";
+import { montarSerieDeCadastros } from "../lib/signupSeries";
+import {
+  diaBrasilia,
+  inicioDoDiaBrasilia,
+  somarDiaCivil,
+} from "../../shared/brasiliaDay";
 import {
   calcularVariacao,
+  OVERVIEW_TZ_LABEL,
   parseOverviewWindow,
   resolverJanela,
+  rotuloDeIntervalo,
 } from "../lib/overviewWindow";
-import {
-  coletarTagueado,
-  coletarTudo,
-  paginateRange,
-} from "../lib/paginate";
+import { coletarTagueado, coletarTudo, paginateRange } from "../lib/paginate";
 import { buildProfilePatch } from "../lib/profileEdit";
 import {
   criarLimitadorDeReembolso,
@@ -524,36 +531,36 @@ function computarSaudeDeIntegracoes() {
     "admincache:integrations-health",
     INTEGRATIONS_HEALTH_CACHE_TTL_S,
     async () => {
-    // Sonda leve (1 query), nao o funil completo: o painel so le state/hasData.
-    const posthog = await getPosthogHealth();
+      // Sonda leve (1 query), nao o funil completo: o painel so le state/hasData.
+      const posthog = await getPosthogHealth();
 
-    let redis: { configured: boolean; ok: boolean } = {
-      configured: Boolean(env.redisUrl),
-      ok: false,
-    };
-    if (cacheConnection) {
-      try {
-        const pong = await cacheConnection.ping();
-        redis = { configured: true, ok: pong === "PONG" };
-      } catch {
-        redis = { configured: true, ok: false };
+      let redis: { configured: boolean; ok: boolean } = {
+        configured: Boolean(env.redisUrl),
+        ok: false,
+      };
+      if (cacheConnection) {
+        try {
+          const pong = await cacheConnection.ping();
+          redis = { configured: true, ok: pong === "PONG" };
+        } catch {
+          redis = { configured: true, ok: false };
+        }
       }
-    }
 
-    return {
-      billingEnabled: env.billingEnabled,
-      posthog,
-      stripe: {
-        secretKey: Boolean(env.stripeSecretKey),
-        webhookSecret: Boolean(env.stripeWebhookSecret),
-        priceIds: {
-          pro_monthly: Boolean(env.stripePriceIds.pro_monthly),
-          pro_semiannual: Boolean(env.stripePriceIds.pro_semiannual),
-          pro_annual: Boolean(env.stripePriceIds.pro_annual),
+      return {
+        billingEnabled: env.billingEnabled,
+        posthog,
+        stripe: {
+          secretKey: Boolean(env.stripeSecretKey),
+          webhookSecret: Boolean(env.stripeWebhookSecret),
+          priceIds: {
+            pro_monthly: Boolean(env.stripePriceIds.pro_monthly),
+            pro_semiannual: Boolean(env.stripePriceIds.pro_semiannual),
+            pro_annual: Boolean(env.stripePriceIds.pro_annual),
+          },
         },
-      },
-      redis,
-    resend: { apiKey: Boolean(env.resendApiKey) },
+        redis,
+        resend: { apiKey: Boolean(env.resendApiKey) },
       };
     },
   );
@@ -611,6 +618,34 @@ function agregarChargesSemDono(resposta: {
     grossCents: linhas.reduce((soma, l) => soma + (l.gross_cents ?? 0), 0),
   };
 }
+
+// PRESENCA AGORA, para o card "Atividade agora" da Visao.
+//
+// TTL CURTO (30s) e nao zero: o card se atualiza a cada 60s no cliente, e sem
+// cache cada admin com a aba aberta viraria uma query HogQL por minuto. Com 30s
+// o numero nunca esta mais de meio minuto atrasado, que e imperceptivel para uma
+// medida de presenca, e a carga fica limitada mesmo com varias abas abertas.
+//
+// FORA do /overview de proposito: presenca e ESTADO ATUAL, e o /overview e
+// governado pelo seletor de janela. Acoplar os dois faria "online agora" mudar
+// quando alguem trocasse para "ultimos 7 dias", o que nao quer dizer nada.
+const ONLINE_NOW_CACHE_TTL_S = 30;
+
+router.get("/online-now", async (_req, res, next) => {
+  try {
+    const { result, computedAt } = await getOrCompute(
+      "admincache:online-now",
+      ONLINE_NOW_CACHE_TTL_S,
+      async () => ({
+        result: await contarAtividadeAgora(),
+        computedAt: new Date().toISOString(),
+      }),
+    );
+    res.json({ data: result, computedAt });
+  } catch (err) {
+    next(err);
+  }
+});
 
 const HEALTH_BAND_CACHE_TTL_S = 60;
 
@@ -1003,120 +1038,245 @@ const CANCELLATION_REASON_CODES = [
 // desde 04/05, receita desde 13/07, snapshot desde 16/07), entao uma regra
 // global marcaria como indisponivel um Δ que existe e vice-versa. Cada card
 // declara a propria disponibilidade e, quando nao ha, o MOTIVO.
+// CACHE DE 60s, a MESMA duracao da rota irma /overview-series. Sao dez
+// consultas por requisicao (tres contagens em `profiles`, dois resumos de
+// financeiro, o snapshot de MRR e a agregacao de uso de IA), e o F5 do painel
+// as repetia inteiras: medido em 2026-08-22, entre 1,4s e 4,2s por chamada.
+// Sessenta segundos e o teto de atraso que estes numeros toleram, e e o mesmo
+// ja aceito para as series que aparecem na MESMA tela.
+//
+// A CHAVE INCLUI A JANELA. Sem isso `window=7` e `window=30` disputariam a
+// mesma entrada e um seletor envenenaria o outro: seis cards certos sobre o
+// periodo errado, indistinguiveis dos certos.
+//
+// SO OS CARDS ENTRAM NO CACHE. O rotulo e os limites da janela ficam FORA,
+// recalculados a cada requisicao, porque dependem do dia civil corrente e uma
+// virada de meia-noite dentro do TTL serviria um intervalo com o nome do dia
+// anterior. Mesmo recorte da /overview-series.
+const OVERVIEW_CACHE_TTL_S = 60;
+
 router.get("/overview", async (req, res, next) => {
   try {
     const janela = resolverJanela(parseOverviewWindow(req.query.window));
+    const { result: cards, computedAt } = await getOrCompute(
+      `admincache:overview:${janela.window}`,
+      OVERVIEW_CACHE_TTL_S,
+      async () => {
+        const contarPerfis = async (
+          desde: string | null,
+          ate: string,
+        ): Promise<number> => {
+          let q = supabaseAdmin
+            .from("profiles")
+            .select("user_id", { count: "exact", head: true })
+            .lte("created_at", ate);
+          if (desde) q = q.gte("created_at", desde);
+          const { count, error } = await q;
+          if (error) throw new Error(`overview profiles: ${error.message}`);
+          return count ?? 0;
+        };
 
-    const contarPerfis = async (
-      desde: string | null,
-      ate: string,
-    ): Promise<number> => {
-      let q = supabaseAdmin
-        .from("profiles")
-        .select("user_id", { count: "exact", head: true })
-        .lte("created_at", ate);
-      if (desde) q = q.gte("created_at", desde);
-      const { count, error } = await q;
-      if (error) throw new Error(`overview profiles: ${error.message}`);
-      return count ?? 0;
-    };
+        /** Data do registro mais antigo de uma tabela; null se estiver vazia. */
+        const inicioDaSerie = async (
+          tabela: "profiles" | "finance_transactions",
+          coluna: "created_at" | "occurred_at",
+        ): Promise<string | null> => {
+          const { data, error } = await supabaseAdmin
+            .from(tabela)
+            .select(coluna)
+            .order(coluna, { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          if (error) throw new Error(`overview ${tabela}: ${error.message}`);
+          return (data as Record<string, string> | null)?.[coluna] ?? null;
+        };
 
-    /** Data do registro mais antigo de uma tabela; null se estiver vazia. */
-    const inicioDaSerie = async (
-      tabela: "profiles" | "finance_transactions",
-      coluna: "created_at" | "occurred_at",
-    ): Promise<string | null> => {
-      const { data, error } = await supabaseAdmin
-        .from(tabela)
-        .select(coluna)
-        .order(coluna, { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw new Error(`overview ${tabela}: ${error.message}`);
-      return (data as Record<string, string> | null)?.[coluna] ?? null;
-    };
+        const [
+          novosAtual,
+          novosAnterior,
+          usuariosTotais,
+          perfisDesde,
+          proTally,
+          mrr,
+          receitaAtual,
+          receitaAnterior,
+          receitaDesde,
+          iaStats,
+        ] = await Promise.all([
+          contarPerfis(janela.startIso, janela.endIso),
+          janela.previousStartIso
+            ? contarPerfis(janela.previousStartIso, janela.previousEndIso!)
+            : Promise.resolve(null),
+          // TOTAL SEM RECORTE, pela MESMA funcao que serve o contador publico da
+          // home (server/lib/profilesCount.ts). Nao e `contarPerfis(null, endIso)`:
+          // aquilo tem `.lte(created_at, agora)` e ja nao contaria uma linha com
+          // `created_at` nulo. Sao dois numeros que precisam bater com a home, e a
+          // unica forma de garantir isso e nao existir uma segunda query.
+          contarPerfisTotal(),
+          inicioDaSerie("profiles", "created_at"),
+          contarProPorOrigem(),
+          getMrrSnapshot(),
+          getFinanceSummary({
+            from: new Date(janela.startIso ?? 0),
+            to: new Date(janela.endIso),
+          }),
+          janela.previousStartIso
+            ? getFinanceSummary({
+                from: new Date(janela.previousStartIso),
+                to: new Date(janela.previousEndIso!),
+              })
+            : Promise.resolve(null),
+          inicioDaSerie("finance_transactions", "occurred_at"),
+          agregarUsoDeIa(janela.startIso ?? new Date(0).toISOString()),
+        ]);
 
-    const [
-      novosAtual,
-      novosAnterior,
-      perfisDesde,
-      proTally,
-      mrr,
-      receitaAtual,
-      receitaAnterior,
-      receitaDesde,
-      iaStats,
-    ] = await Promise.all([
-      contarPerfis(janela.startIso, janela.endIso),
-      janela.previousStartIso
-        ? contarPerfis(janela.previousStartIso, janela.previousEndIso!)
-        : Promise.resolve(null),
-      inicioDaSerie("profiles", "created_at"),
-      contarProPorOrigem(),
-      getMrrSnapshot(),
-      getFinanceSummary({
-        from: new Date(janela.startIso ?? 0),
-        to: new Date(janela.endIso),
-      }),
-      janela.previousStartIso
-        ? getFinanceSummary({
-            from: new Date(janela.previousStartIso),
-            to: new Date(janela.previousEndIso!),
-          })
-        : Promise.resolve(null),
-      inicioDaSerie("finance_transactions", "occurred_at"),
-      agregarUsoDeIa(janela.startIso ?? new Date(0).toISOString()),
-    ]);
+        return {
+          result: {
+            // TOTAL, SEM JANELA. Existe porque a unica forma de o admin ver o
+            // total era escolher "Tudo" no seletor, o que muda os outros cinco
+            // cards junto; e porque a ausencia dele foi lida como divergencia
+            // contra a home (4.790 vs 5.456), quando os dois numeros estavam
+            // certos e respondiam perguntas diferentes.
+            //
+            // `value` pode ser NULL: e a degradacao silenciosa do Supabase que o
+            // contador da home ja tratava. Null e ausencia, nunca 0: um "0
+            // usuarios" no painel e indistinguivel de base vazia.
+            usuariosTotais: { value: usuariosTotais },
+            novosUsuarios: {
+              value: novosAtual,
+              historicoDesde: perfisDesde,
+              change: calcularVariacao({
+                janela,
+                atual: novosAtual,
+                anterior: novosAnterior,
+                historicoDesdeIso: perfisDesde,
+              }),
+            },
+            // ESTADO ATUAL, nao serie: quantas pessoas tem Pro AGORA. O Δ dele sai
+            // do historico de snapshots (rota /subscription-history), que a tela
+            // ja consulta para o grafico; duplicar aqui seria uma segunda fonte.
+            //
+            // `both` passa a ir junto. Ele SEMPRE foi calculado por
+            // `tallyProSources` e era descartado aqui, e o resultado e que a tela
+            // exibia 96 + 25 e o total era 124: as 3 pessoas com assinatura E
+            // concessao de influencer nao apareciam em lugar nenhum. Os tres ramos
+            // sao mutuamente exclusivos e `total` e a UNIAO, entao quem le nao
+            // deve somar nada.
+            acessoPro: {
+              bySubscription: proTally.bySubscription,
+              byInfluencer: proTally.byInfluencer,
+              both: proTally.both,
+              total: proTally.total,
+            },
+            // `trialingCount` e `arpuCents` tambem ja eram calculados por
+            // getMrrSnapshot e descartados. Trial NAO paga e por isso fica FORA do
+            // MRR, do ARPU e da distribuicao por plano; ele vem separado para a
+            // tela poder mostrar um chip em vez de somar no headline de pagantes.
+            // `arpuCents` e null quando nao ha assinante ativo (ausencia, nao 0).
+            mrr: {
+              value: mrr.mrrCents,
+              activeCount: mrr.activeCount,
+              trialingCount: mrr.trialingCount,
+              arpuCents: mrr.arpuCents,
+            },
+            // BRUTO segue sendo o principal (e a base do Simples). O liquido vem
+            // ao lado porque bruto sozinho afirma uma receita que nao entrou: na
+            // janela medida em 2026-08-14 eram R$ 4.213,15 brutos contra
+            // R$ 3.874,99 liquidos, com R$ 189,42 de taxa e R$ 148,74 devolvidos.
+            // Os tres numeros JA eram calculados por getFinanceSummary no mesmo
+            // laco; nenhum e aritmetica nova.
+            receita: {
+              value: receitaAtual.receitaBrutaCents,
+              reembolsosCents: receitaAtual.reembolsosCents,
+              taxasCents: receitaAtual.taxasStripeCents,
+              liquidaCents: receitaAtual.receitaLiquidaCents,
+              historicoDesde: receitaDesde,
+              change: calcularVariacao({
+                janela,
+                atual: receitaAtual.receitaBrutaCents,
+                anterior: receitaAnterior?.receitaBrutaCents ?? null,
+                historicoDesdeIso: receitaDesde,
+              }),
+            },
+            // RECEITA EM RISCO e estado atual, nao serie: as assinaturas que JA tem
+            // data de saida MAIS as que estao em atraso. Nao tem Δ nem janela, e por
+            // isso a tela precisa dizer que ela ignora o seletor.
+            receitaEmRisco: {
+              count: mrr.atRisk.count,
+              mrrCents: mrr.atRisk.mrrCents,
+              // BREAKDOWN ADITIVO (D21): o total sozinho nao diz o que fazer, e as
+              // duas metades pedem acoes opostas (saida agendada = reter; atraso =
+              // recuperar cobranca). Campos NOVOS ao lado dos antigos, nunca troca
+              // seca: aba aberta desde antes do deploy segue lendo `count` e
+              // `mrrCents`, que continuam existindo e continuam somando o total.
+              saindo: mrr.atRisk.saindo,
+              emAtraso: mrr.atRisk.emAtraso,
+              percentOfMrr:
+                mrr.mrrCents > 0
+                  ? (mrr.atRisk.mrrCents / mrr.mrrCents) * 100
+                  : null,
+            },
+            // CUSTO DE IA EM DOLAR, e o campo antigo continua junto por um ciclo.
+            //
+            // `valueBrl` era o nome, e o valor NUNCA foi em real: sai de
+            // `MODEL_PRICING`, cotada em US$/1M tokens. O client formatava com
+            // `currency: "BRL"` e exibia R$ onde era US$.
+            //
+            // EXPAND/CONTRACT, nao troca seca: aba de admin aberta desde antes do
+            // deploy segue lendo `valueBrl` ate recarregar, e nao existe prazo
+            // para isso (CLAUDE.md, "Renomear campo de resposta"). Os dois nomes
+            // carregam o MESMO numero.
+            // REMOVER `valueBrl` a partir de 2026-09-15, no mesmo commit que
+            // atualizar server/lib/janelaDeDeployInversa.test.ts.
+            custoIa: {
+              valueUsd: custoTotalDeIa(iaStats),
+              valueBrl: custoTotalDeIa(iaStats),
+              // Piso declarado: quantas chamadas rodaram e nao tem custo medido.
+              // Vai ao lado, nunca somado.
+              chamadasSemCustoMedido: chamadasSemCustoMedido(iaStats),
+              // Null quando AI_COST_USD_BRL_RATE nao esta definida. Ausencia, nao
+              // conversao por 1.
+              valorEmBrl:
+                env.aiCostUsdBrlRate !== null
+                  ? custoTotalDeIa(iaStats) * env.aiCostUsdBrlRate
+                  : null,
+              cotacaoUsdBrl: env.aiCostUsdBrlRate,
+            },
+          },
+          computedAt: new Date().toISOString(),
+        };
+      },
+    );
 
     res.json({
       data: {
         window: janela.window,
         windowStartIso: janela.startIso,
         windowEndIso: janela.endIso,
-        cards: {
-          novosUsuarios: {
-            value: novosAtual,
-            historicoDesde: perfisDesde,
-            change: calcularVariacao({
-              janela,
-              atual: novosAtual,
-              anterior: novosAnterior,
-              historicoDesdeIso: perfisDesde,
-            }),
-          },
-          // ESTADO ATUAL, nao serie: quantas pessoas tem Pro AGORA. O Δ dele sai
-          // do historico de snapshots (rota /subscription-history), que a tela
-          // ja consulta para o grafico; duplicar aqui seria uma segunda fonte.
-          acessoPro: {
-            bySubscription: proTally.bySubscription,
-            byInfluencer: proTally.byInfluencer,
-            total: proTally.total,
-          },
-          mrr: { value: mrr.mrrCents },
-          receita: {
-            value: receitaAtual.receitaBrutaCents,
-            historicoDesde: receitaDesde,
-            change: calcularVariacao({
-              janela,
-              atual: receitaAtual.receitaBrutaCents,
-              anterior: receitaAnterior?.receitaBrutaCents ?? null,
-              historicoDesdeIso: receitaDesde,
-            }),
-          },
-          // RECEITA EM RISCO e estado atual, nao serie: sao as assinaturas que
-          // JA tem data de saida. Nao tem Δ nem janela, e por isso a tela precisa
-          // dizer que ela ignora o seletor.
-          receitaEmRisco: {
-            count: mrr.atRisk.count,
-            mrrCents: mrr.atRisk.mrrCents,
-            percentOfMrr:
-              mrr.mrrCents > 0
-                ? (mrr.atRisk.mrrCents / mrr.mrrCents) * 100
-                : null,
-          },
-          custoIa: { valueBrl: custoTotalDeIa(iaStats) },
-        },
+        // INTERVALO EM DIAS CIVIS, e o ROTULO ja pronto.
+        //
+        // O rotulo vem do servidor para a tela nao reimplementar fuso: sao seis
+        // cards e dois graficos, e cada um formatando por conta propria seria
+        // uma chance nova de o MESMO intervalo aparecer com dois nomes. Com
+        // `tz` declarado ao lado, o badge pode dizer "16 jul a 14 ago
+        // (Brasilia)" sem que o client precise saber onde e Brasilia.
+        windowFirstDay: janela.primeiroDiaCivil,
+        windowLastDay: janela.ultimoDiaCivil,
+        windowLabel: rotuloDeIntervalo(
+          janela.primeiroDiaCivil,
+          janela.ultimoDiaCivil,
+        ),
+        previousLabel:
+          janela.previousPrimeiroDiaCivil && janela.previousUltimoDiaCivil
+            ? rotuloDeIntervalo(
+                janela.previousPrimeiroDiaCivil,
+                janela.previousUltimoDiaCivil,
+              )
+            : null,
+        tz: OVERVIEW_TZ_LABEL,
+        cards,
       },
+      computedAt,
     });
   } catch (err) {
     next(err);
@@ -1147,6 +1307,83 @@ router.get("/paid-funnel", async (_req, res, next) => {
       PAID_FUNNEL_CACHE_TTL_S,
       async () => ({
         result: await computarFunilPago(),
+        computedAt: new Date().toISOString(),
+      }),
+    );
+    res.json({ data: result, computedAt });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// SERIES, FUNIL E USO POR FERRAMENTA da Visao (Fase 4).
+//
+// ROTA IRMA do /overview, com a MESMA janela (`resolverJanela`) e o mesmo
+// mecanismo de cache, com o mesmo TTL de 60s e CHAVES DISTINTAS:
+// `admincache:overview-series:<janela>` aqui, `admincache:overview:<janela>` la.
+// Duas chaves de proposito, porque sao dois payloads; o que precisa coincidir e
+// a duracao, para os cards e as series na mesma tela nunca descreverem instantes
+// diferentes por mais de um minuto.
+//
+// Ate 2026-08-22 esta frase dizia que as duas dividiam "o MESMO cache de 60s" e
+// isso era FALSO: o /overview nao passava por `getOrCompute` nenhum. Ficou
+// falso porque descrevia a rota vizinha, que ninguem reabre ao mexer nesta.
+//
+// Separada em vez de embutida porque o payload e uma ordem de grandeza
+// maior (uma serie por metrica) e nem toda tela precisa dele: os cards carregam
+// sozinhos e as series chegam depois, sem segurar o primeiro render.
+//
+// SO TABELAS LOCAIS. Ver o cabecalho de server/lib/overviewSeries.ts.
+const OVERVIEW_SERIES_CACHE_TTL_S = 60;
+
+router.get("/overview-series", async (req, res, next) => {
+  try {
+    const janela = resolverJanela(parseOverviewWindow(req.query.window));
+    const { result, computedAt } = await getOrCompute(
+      `admincache:overview-series:${janela.window}`,
+      OVERVIEW_SERIES_CACHE_TTL_S,
+      async () => ({
+        result: await montarSeriesDaVisao(janela),
+        computedAt: new Date().toISOString(),
+      }),
+    );
+    res.json({
+      data: {
+        ...result,
+        window: janela.window,
+        windowLabel: rotuloDeIntervalo(
+          janela.primeiroDiaCivil,
+          janela.ultimoDiaCivil,
+        ),
+        tz: OVERVIEW_TZ_LABEL,
+      },
+      computedAt,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ATENCAO NECESSARIA: o que pede acao humana AGORA. Substitui "Eventos
+// recentes", que listava edicoes de conteudo — historico, nao decisao.
+//
+// SO LEITURA, e isso e uma propriedade que o codigo garante, nao uma intencao:
+// a rota le `billing_orphan_payments`, ela NAO chama `detectOrphanPayments`.
+// Quem varre a Stripe e persiste e o cron. Uma rota de painel que escrevesse
+// seria a repeticao do erro de 2026-08-14 documentado em
+// docs/postmortems-instrumentos.md ("somente leitura e propriedade da funcao").
+//
+// CACHE de 60s, mais curto que os 300s do funil: estes numeros existem para
+// alguem agir, e agir sobre estado de tres minutos atras e pior que esperar.
+const ATENCAO_CACHE_TTL_S = 60;
+
+router.get("/attention", async (_req, res, next) => {
+  try {
+    const { result, computedAt } = await getOrCompute(
+      "admincache:attention:v1",
+      ATENCAO_CACHE_TTL_S,
+      async () => ({
+        result: await montarPainelDeAtencao(),
         computedAt: new Date().toISOString(),
       }),
     );
@@ -1283,13 +1520,18 @@ const SIGNUP_HISTORY_CACHE_TTL_S = 300;
 
 router.get("/signup-history", async (req, res, next) => {
   try {
-    const janela = parseOverviewWindow(req.query.window);
+    const janelaId = parseOverviewWindow(req.query.window);
 
     const data = await getOrCompute(
-      `admincache:signup-history:${janela}`,
+      `admincache:signup-history:${janelaId}`,
       SIGNUP_HISTORY_CACHE_TTL_S,
       async () => {
-        const hoje = diaBrasilia(new Date().toISOString())!;
+        // MESMA `resolverJanela` DOS CARDS. Antes esta rota calculava o proprio
+        // `hoje` e o proprio `inicio`, e os cards calculavam instantes UTC
+        // deslizantes: duas definicoes de "ultimos 30 dias" na mesma tela, 182
+        // cadastros de diferenca medidos em 2026-08-14. Agora ha uma.
+        const janela = resolverJanela(janelaId);
+        const hoje = janela.ultimoDiaCivil;
 
         // Primeiro cadastro da base: e ele que define o inicio real de "tudo", e
         // e o que a tela mostra em vez de fingir uma janela que nao existe.
@@ -1306,10 +1548,7 @@ router.get("/signup-history", async (req, res, next) => {
             (primeiro as { created_at: string } | null)?.created_at ?? null,
           ) ?? hoje;
 
-        const inicioPedido =
-          janela === "all"
-            ? primeiroDia
-            : somarDia(hoje, -(Number(janela) - 1));
+        const inicioPedido = janela.primeiroDiaCivil ?? primeiroDia;
         // A janela nunca comeca antes do primeiro cadastro: inventar dias
         // anteriores a base seria desenhar zeros que nao sao medicao.
         const inicio = inicioPedido < primeiroDia ? primeiroDia : inicioPedido;
@@ -1322,17 +1561,17 @@ router.get("/signup-history", async (req, res, next) => {
             supabaseAdmin
               .from("profiles")
               .select("created_at")
-              // O CORTE INFERIOR JA E FOLGADO, e o sentido do fuso e o motivo:
-              // Brasilia esta ATRAS de UTC, entao o dia civil `inicio` comeca em
-              // `inicio T03:00Z`, que e depois deste limite. Nenhum instante do
-              // primeiro dia fica de fora. As tres horas a mais que entram
-              // pertencem ao dia anterior em Brasilia e o agrupamento as
-              // descarta, porque a chave e o dia de Brasilia, nao o de UTC.
+              // CORTE EXATO no instante em que o dia civil `inicio` comeca em
+              // Brasilia, pela MESMA funcao que os cards usam
+              // (`inicioDoDiaBrasilia`).
               //
-              // Se o fuso alvo algum dia ficar A FRENTE de UTC, este limite
-              // passa a cortar o comeco do primeiro dia e precisa de um dia de
-              // folga. Hoje seria custo sem efeito.
-              .gte("created_at", `${inicio}T00:00:00Z`)
+              // Antes era `${inicio}T00:00:00Z`, ou seja, meia-noite UTC, com um
+              // comentario explicando que a folga de 3h era inofensiva porque o
+              // agrupamento por dia de Brasilia descartava o excedente. Estava
+              // certo para o GRAFICO e errado como limite compartilhado: o card
+              // conta linhas, nao agrupa, entao a mesma folga que o grafico
+              // descarta o card somaria. Um limite, uma funcao.
+              .gte("created_at", inicioDoDiaBrasilia(inicio))
               .order("created_at", { ascending: true })
               .range(from, to),
           "signup history",
@@ -1346,10 +1585,16 @@ router.get("/signup-history", async (req, res, next) => {
         });
 
         return {
-          window: janela,
+          window: janelaId,
           points,
           firstSignupDate: primeiroDia,
           lastDate: hoje,
+          // MESMO rotulo e MESMO fuso dos cards, pela mesma funcao. E o que
+          // permite a tela afirmar, no badge, que os dois blocos falam do mesmo
+          // intervalo — em vez de os dois dizerem "ultimos 30 dias" e medirem
+          // coisas diferentes, que foi o defeito.
+          windowLabel: rotuloDeIntervalo(inicio, hoje),
+          tz: OVERVIEW_TZ_LABEL,
         };
       },
     );
@@ -1416,23 +1661,43 @@ type SnapshotRow = {
 function diasEntre(inicio: string, fim: string): number {
   const MS_DIA = 24 * 60 * 60 * 1000;
   return Math.round(
-    (Date.parse(`${fim}T00:00:00Z`) - Date.parse(`${inicio}T00:00:00Z`)) / MS_DIA,
+    (Date.parse(`${fim}T00:00:00Z`) - Date.parse(`${inicio}T00:00:00Z`)) /
+      MS_DIA,
   );
 }
 
-function somarDias(data: string, dias: number): string {
-  const d = new Date(`${data}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + dias);
-  return d.toISOString().slice(0, 10);
-}
+// `somarDias` local foi REMOVIDO em 2026-08-14: era uma segunda copia, byte a
+// byte, do `somarDia` de signupSeries.ts. As duas viraram `somarDiaCivil` em
+// shared/brasiliaDay.ts. Duas copias da mesma aritmetica e a que diverge na
+// primeira correcao aplicada so numa delas.
+
+// MAPEAMENTO SNAPSHOT -> DIA CIVIL DE BRASILIA.
+//
+// `subscription_snapshots.snapshot_date` e gravado por
+// `collectSubscriptionSnapshot` como `new Date().toISOString().slice(0,10)`, ou
+// seja, o dia UTC do instante da coleta. O cron roda as **05:10 UTC**
+// (`supabase/migrations/20260715150100_schedule_subscription_snapshot.sql`).
+//
+// 05:10 UTC e DEPOIS de 03:00 UTC, que e a meia-noite de Brasilia. Logo, para
+// esta cadencia, o dia UTC da coleta e o dia civil de Brasilia da coleta sao o
+// MESMO dia, e o mapeamento e a identidade. Nao ha conversao a fazer, e e por
+// isso que ela nao esta escrita aqui: escrever uma conversao que e identidade
+// daria a impressao de que a fonte tem granularidade sub-diaria, que ela nao tem.
+//
+// A CONDICAO, para quem mexer no cron: se o horario passar para antes de 03:00
+// UTC, um snapshot coletado, por exemplo, as 02:00 UTC do dia D pertence ao dia
+// civil D-1 em Brasilia, e a identidade quebra em silencio — a serie inteira
+// desliza um dia. Mudar o `cron.schedule` daquela migration exige revisitar este
+// bloco. E UMA linha por dia civil, por construcao (unique em snapshot_date).
+const SNAPSHOT_CRON_UTC_HOUR = 5;
 
 router.get("/subscription-history", async (req, res, next) => {
   try {
     const janelaRaw =
       typeof req.query.window === "string" ? req.query.window : "30";
-    const janela = (
-      SUBSCRIPTION_HISTORY_WINDOWS as readonly string[]
-    ).includes(janelaRaw)
+    const janela = (SUBSCRIPTION_HISTORY_WINDOWS as readonly string[]).includes(
+      janelaRaw,
+    )
       ? (janelaRaw as SubscriptionHistoryWindow)
       : "30";
 
@@ -1473,13 +1738,26 @@ router.get("/subscription-history", async (req, res, next) => {
     // e gravado as 05:10 UTC, entao entre 21h e 2h de Brasilia o mais recente e
     // o de ontem; ancorar em hoje criaria um "buraco" que e so o dia ainda nao
     // ter acontecido. Quem precisa saber se o cron parou le `staleDays`.
-    const hojeUtc = new Date().toISOString().slice(0, 10);
-    const staleDays = diasEntre(lastSnapshotDate, hojeUtc);
+    //
+    // FRESCOR POR DURACAO (D14), nao por subtracao de rotulos de dia.
+    //
+    // O que havia ate 2026-08-14: `diasEntre(ultimoSnapshot, hojeUTC)`, a
+    // diferenca entre duas ETIQUETAS de calendario. Como o cron roda as 05:10
+    // UTC (migration 20260715150100), entre 00:00Z e 05:10Z o rotulo de hoje ja
+    // virou e o snapshot ainda nao rodou: o campo acusava 1 dia de atraso sem
+    // nada estar atrasado, 5h10 por dia. Trocar para o dia civil de Brasilia
+    // reduziria para 2h10 e continuaria errado, porque o problema nunca foi o
+    // fuso: era comparar rotulos onde a pergunta e duracao.
+    //
+    // Agora a conta e "quantas horas desde a ultima execucao ESPERADA", e
+    // atrasado exige uma execucao inteira perdida. Ver `calcularFrescor` em
+    // server/lib/overviewSeries.ts.
+    const frescor = calcularFrescor(lastSnapshotDate, new Date());
 
     const inicioJanela =
       janela === "all"
         ? firstSnapshotDate
-        : somarDias(lastSnapshotDate, -(Number(janela) - 1));
+        : somarDiaCivil(lastSnapshotDate, -(Number(janela) - 1));
 
     const porData = new Map(linhas.map((l) => [l.snapshot_date, l]));
     // O primeiro dia da serie limita: janela maior que o historico nao inventa
@@ -1489,7 +1767,7 @@ router.get("/subscription-history", async (req, res, next) => {
       inicioJanela < firstSnapshotDate ? firstSnapshotDate : inicioJanela;
 
     const todosOsDias: string[] = [];
-    for (let d = inicioReal; d <= lastSnapshotDate; d = somarDias(d, 1)) {
+    for (let d = inicioReal; d <= lastSnapshotDate; d = somarDiaCivil(d, 1)) {
       todosOsDias.push(d);
     }
 
@@ -1566,10 +1844,24 @@ router.get("/subscription-history", async (req, res, next) => {
         points,
         firstSnapshotDate,
         lastSnapshotDate,
-        // Dias desde o ultimo snapshot. 0 = o de hoje ja existe; 1 = normal
-        // antes das 05:10 UTC; maior que isso significa cron parado, e e o
-        // unico sinal que a serie da de que parou de crescer.
-        staleDays,
+        // ROTULO DO INTERVALO pela MESMA funcao dos cards e do outro grafico.
+        // Aqui ele termina no ULTIMO SNAPSHOT, nao em hoje, e e justamente por
+        // isso que precisa ser explicito: este bloco tem janela propria e dizer
+        // "ultimos 30 dias" o faria parecer o mesmo recorte dos cards.
+        windowLabel: rotuloDeIntervalo(inicioReal, lastSnapshotDate),
+        tz: OVERVIEW_TZ_LABEL,
+        // FRESCOR: horas desde a ultima execucao esperada do cron, e o
+        // veredito. Ver `calcularFrescor`.
+        staleHours: frescor.horasDesdeOEsperado,
+        snapshotAtrasado: frescor.atrasado,
+        // ALIAS do campo antigo, por um ciclo de deploy: aba de admin aberta
+        // desde antes do deploy segue lendo `staleDays` ate recarregar
+        // (CLAUDE.md, "Renomear campo de resposta"). Derivado do novo, em dias
+        // inteiros. REMOVER a partir de 2026-09-15.
+        staleDays:
+          frescor.horasDesdeOEsperado === null
+            ? null
+            : Math.floor(frescor.horasDesdeOEsperado / 24),
         gaps,
         truncated,
         limit: SUBSCRIPTION_HISTORY_LIMIT,
@@ -1657,7 +1949,11 @@ router.get("/cancellation-reasons", async (_req, res, next) => {
       .limit(50);
     if (commentsError)
       return next(
-        dbError("cancellation-reasons comments", commentsError, "Erro ao buscar comentários."),
+        dbError(
+          "cancellation-reasons comments",
+          commentsError,
+          "Erro ao buscar comentários.",
+        ),
       );
 
     const comments = (
@@ -1682,7 +1978,11 @@ router.get("/cancellation-reasons", async (_req, res, next) => {
       .eq("status", "reverted");
     if (revertedError)
       return next(
-        dbError("cancellation-reasons reverted", revertedError, "Erro ao buscar revertidos."),
+        dbError(
+          "cancellation-reasons reverted",
+          revertedError,
+          "Erro ao buscar revertidos.",
+        ),
       );
 
     res.json({
@@ -1906,7 +2206,9 @@ router.delete("/content/:type/:id", async (req, res, next) => {
         .update({ is_published: false })
         .eq("id", id);
       if (error)
-        return next(dbError("content unpublish", error, "Erro ao despublicar item."));
+        return next(
+          dbError("content unpublish", error, "Erro ao despublicar item."),
+        );
     }
 
     await logAudit({
@@ -2300,7 +2602,11 @@ router.get("/users", async (req, res, next) => {
       );
       if (infError)
         return next(
-          dbError("users influencer filter", infError, "Erro ao buscar usuários."),
+          dbError(
+            "users influencer filter",
+            infError,
+            "Erro ao buscar usuários.",
+          ),
         );
       const influencerIds = Array.from(
         new Set((infRows || []).map((row) => row.user_id)),
@@ -2420,7 +2726,11 @@ router.get("/users/:id", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
 
@@ -2529,7 +2839,11 @@ router.get("/users/:id", async (req, res, next) => {
 
     if (subResult.error)
       return next(
-        dbError("user subscription", subResult.error, "Erro ao buscar usuário."),
+        dbError(
+          "user subscription",
+          subResult.error,
+          "Erro ao buscar usuário.",
+        ),
       );
     if (cancelResult.error)
       return next(
@@ -2541,7 +2855,11 @@ router.get("/users/:id", async (req, res, next) => {
       );
     if (financeResult.error)
       return next(
-        dbError("user paid total", financeResult.error, "Erro ao buscar usuário."),
+        dbError(
+          "user paid total",
+          financeResult.error,
+          "Erro ao buscar usuário.",
+        ),
       );
     if (influencerResult.error)
       return next(
@@ -2553,7 +2871,11 @@ router.get("/users/:id", async (req, res, next) => {
       );
     if (authResult.error)
       return next(
-        dbError("user auth lookup", authResult.error, "Erro ao buscar usuário."),
+        dbError(
+          "user auth lookup",
+          authResult.error,
+          "Erro ao buscar usuário.",
+        ),
       );
     if (!declaradasResult.ok)
       return next(
@@ -2624,7 +2946,9 @@ router.get("/users/:id", async (req, res, next) => {
       todasAsAssinaturas,
       new Date(),
     ) as LinhaAssinatura | null;
-    const subPlan = Array.isArray(subRow?.plans) ? subRow?.plans[0] : subRow?.plans;
+    const subPlan = Array.isArray(subRow?.plans)
+      ? subRow?.plans[0]
+      : subRow?.plans;
 
     // HISTORICO: as OUTRAS assinaturas do usuario, sem a escolhida acima.
     //
@@ -2750,7 +3074,11 @@ router.post("/users/:id/reveal-cpf", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
 
@@ -2810,7 +3138,11 @@ router.post("/users/:id/influencer", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
     const noteRaw = (req.body as { note?: unknown } | undefined)?.note;
@@ -2895,7 +3227,11 @@ router.post("/users/:id/influencer/revoke", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
 
@@ -4031,7 +4367,9 @@ router.post("/users/:id/subscription/cancel", async (req, res, next) => {
       .maybeSingle();
 
     if (subError)
-      return next(dbError("admin cancel lookup", subError, "Erro ao cancelar."));
+      return next(
+        dbError("admin cancel lookup", subError, "Erro ao cancelar."),
+      );
     if (!sub) {
       return next(
         createError(404, "not_found", "Nenhuma assinatura ativa encontrada."),
@@ -4118,7 +4456,11 @@ router.get("/users/:id/email-usage", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
 
@@ -4196,7 +4538,11 @@ router.post("/users/:id/email", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
 
@@ -4367,7 +4713,11 @@ router.patch("/users/:id", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
 
@@ -4452,7 +4802,8 @@ router.patch("/users/:id", async (req, res, next) => {
     if (typeof expectedUpdatedAt === "string") {
       update = update.eq("updated_at", expectedUpdatedAt);
     }
-    const { data: updated, error: updateError } = await update.select("user_id");
+    const { data: updated, error: updateError } =
+      await update.select("user_id");
 
     if (updateError)
       return next(dbError("PATCH /users/:id", updateError, "Erro ao salvar."));
@@ -4495,7 +4846,11 @@ router.get("/users/:id/transactions", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
 
@@ -4681,7 +5036,11 @@ router.get("/users/:id/activity", async (req, res, next) => {
     const uid = req.params.id;
     if (!UUID_RE.test(uid)) {
       return next(
-        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
       );
     }
     const result = await getPosthogUserActivity(uid);
@@ -4701,7 +5060,9 @@ router.get("/subscriptions", async (_req, res, next) => {
       .limit(100);
 
     if (error)
-      return next(dbError("subscriptions fetch", error, "Erro ao buscar assinaturas."));
+      return next(
+        dbError("subscriptions fetch", error, "Erro ao buscar assinaturas."),
+      );
 
     // Mantem a forma da resposta, mas o preco exibido vem do planPricing.ts (fonte
     // unica), nao de plans.price_cents. Fallback defensivo para o banco (helper
@@ -4852,7 +5213,11 @@ function parsePageParams(query: Record<string, unknown>): {
 async function resolveBrlAmount(
   amountCents: number,
   currency: string,
-): Promise<{ amountBrlCents: number; fxRate: number | null; fxDate: string | null }> {
+): Promise<{
+  amountBrlCents: number;
+  fxRate: number | null;
+  fxDate: string | null;
+}> {
   const cur = currency.toUpperCase();
   if (cur === "BRL") {
     return { amountBrlCents: amountCents, fxRate: null, fxDate: null };
@@ -4913,7 +5278,11 @@ function parseExpenseBody(body: Record<string, unknown>): ExpenseInput {
   const kind = typeof body.kind === "string" ? body.kind : "";
   if (!EXPENSE_KINDS.has(kind)) {
     // TODO(Ana)
-    throw createError(400, "invalid_kind", "Tipo inválido (recurring ou one_off).");
+    throw createError(
+      400,
+      "invalid_kind",
+      "Tipo inválido (recurring ou one_off).",
+    );
   }
 
   const amountCents = Number(body.amount_cents);
@@ -5073,13 +5442,14 @@ router.get("/finance/transactions", async (req, res, next) => {
       .order("occurred_at", { ascending: false })
       .range(rangeFrom, rangeTo);
 
-    const typeFilter =
-      typeof req.query.type === "string" ? req.query.type : "";
+    const typeFilter = typeof req.query.type === "string" ? req.query.type : "";
     if (typeFilter) query = query.eq("type", typeFilter);
 
     const { data, count, error } = await query;
     if (error)
-      return next(dbError("finance transactions", error, "Erro ao buscar transações."));
+      return next(
+        dbError("finance transactions", error, "Erro ao buscar transações."),
+      );
 
     res.json({
       data: { rows: data ?? [], total: count ?? 0, page, pageSize },
@@ -5149,7 +5519,9 @@ router.patch("/finance/expenses/:id", async (req, res, next) => {
       .select()
       .maybeSingle();
     if (error)
-      return next(dbError("expense update", error, "Erro ao atualizar despesa."));
+      return next(
+        dbError("expense update", error, "Erro ao atualizar despesa."),
+      );
     if (!data)
       return next(createError(404, "not_found", "Despesa não encontrada."));
     res.json({ data });
@@ -5197,7 +5569,11 @@ router.get("/finance/fx-preview", async (req, res, next) => {
     if (currency !== "USD") {
       // TODO(Ana)
       return next(
-        createError(400, "unsupported_currency", "Moeda não suportada. Use BRL ou USD."),
+        createError(
+          400,
+          "unsupported_currency",
+          "Moeda não suportada. Use BRL ou USD.",
+        ),
       );
     }
     const rate = await fetchUsdBrlRate();
@@ -5288,8 +5664,10 @@ router.get("/ai-stats", async (_req, res, next) => {
 
 router.get("/ai-usage-summary", async (req, res, next) => {
   try {
-    const sinceRaw = typeof req.query.since === "string" ? req.query.since : null;
-    const untilRaw = typeof req.query.until === "string" ? req.query.until : null;
+    const sinceRaw =
+      typeof req.query.since === "string" ? req.query.since : null;
+    const untilRaw =
+      typeof req.query.until === "string" ? req.query.until : null;
     const since =
       sinceRaw && !Number.isNaN(Date.parse(sinceRaw)) ? sinceRaw : null;
     const until =
@@ -5315,7 +5693,6 @@ router.get("/ai-usage-summary", async (req, res, next) => {
     next(err);
   }
 });
-
 
 router.get("/affiliates-stats", async (_req, res, next) => {
   try {
@@ -5374,7 +5751,9 @@ router.get("/avatar-reports", async (_req, res, next) => {
       .eq("status", "open");
 
     if (reportsError)
-      return next(dbError("reports fetch", reportsError, "Erro ao buscar denúncias."));
+      return next(
+        dbError("reports fetch", reportsError, "Erro ao buscar denúncias."),
+      );
 
     const agg = new Map<
       string,
@@ -5423,7 +5802,9 @@ router.post("/avatar-reports/:userId/restore", async (req, res, next) => {
       .eq("user_id", targetUserId);
 
     if (profileError)
-      return next(dbError("avatar restore", profileError, "Erro ao restaurar avatar."));
+      return next(
+        dbError("avatar restore", profileError, "Erro ao restaurar avatar."),
+      );
 
     const { error: reportsError } = await supabaseAdmin
       .from("avatar_reports")
@@ -5432,7 +5813,9 @@ router.post("/avatar-reports/:userId/restore", async (req, res, next) => {
       .eq("status", "open");
 
     if (reportsError)
-      return next(dbError("close reports", reportsError, "Erro ao fechar denúncias."));
+      return next(
+        dbError("close reports", reportsError, "Erro ao fechar denúncias."),
+      );
 
     res.json({ ok: true });
   } catch (err) {
@@ -5465,7 +5848,9 @@ router.post("/avatar-reports/:userId/confirm", async (req, res, next) => {
       .eq("user_id", targetUserId);
 
     if (profileError)
-      return next(dbError("avatar remove", profileError, "Erro ao remover avatar."));
+      return next(
+        dbError("avatar remove", profileError, "Erro ao remover avatar."),
+      );
 
     // Nao deixa a imagem de violacao confirmada no bucket (best-effort).
     await deleteAvatarObject(target?.avatar_storage_path ?? null);
@@ -5477,7 +5862,9 @@ router.post("/avatar-reports/:userId/confirm", async (req, res, next) => {
       .eq("status", "open");
 
     if (reportsError)
-      return next(dbError("close reports", reportsError, "Erro ao fechar denúncias."));
+      return next(
+        dbError("close reports", reportsError, "Erro ao fechar denúncias."),
+      );
 
     res.json({ ok: true });
   } catch (err) {
@@ -5530,7 +5917,13 @@ router.get("/newsletter/subscribers", async (req, res, next) => {
     );
     for (const result of countResults) {
       if (result.error)
-        return next(dbError("subscribers count", result.error, "Erro ao contar assinantes."));
+        return next(
+          dbError(
+            "subscribers count",
+            result.error,
+            "Erro ao contar assinantes.",
+          ),
+        );
     }
     const counts = {
       pending_confirmation: countResults[0].count ?? 0,
@@ -5555,7 +5948,9 @@ router.get("/newsletter/subscribers", async (req, res, next) => {
 
     const { data, count, error } = await listQuery;
     if (error)
-      return next(dbError("subscribers list", error, "Erro ao buscar assinantes."));
+      return next(
+        dbError("subscribers list", error, "Erro ao buscar assinantes."),
+      );
 
     res.json({
       data: {
@@ -5588,7 +5983,9 @@ router.get("/beta-codes", async (_req, res, next) => {
     ]);
 
     if (codesRes.error)
-      return next(dbError("beta codes", codesRes.error, "Erro ao buscar códigos."));
+      return next(
+        dbError("beta codes", codesRes.error, "Erro ao buscar códigos."),
+      );
 
     // Falha nos logs nao derruba a lista: agregado zera, os codigos aparecem.
     const usage = new Map<string, { count: number; last: string | null }>();
@@ -5619,7 +6016,10 @@ router.get("/beta-codes", async (_req, res, next) => {
 router.get("/beta-logs", async (req, res, next) => {
   try {
     const { limit = "100" } = req.query;
-    const parsedLimit = Math.min(Math.max(parseInt(String(limit), 10) || 100, 1), 500);
+    const parsedLimit = Math.min(
+      Math.max(parseInt(String(limit), 10) || 100, 1),
+      500,
+    );
 
     const { data, error } = await supabaseAdmin
       .from("beta_unlock_logs")
@@ -5629,7 +6029,8 @@ router.get("/beta-logs", async (req, res, next) => {
       .order("created_at", { ascending: false })
       .limit(parsedLimit);
 
-    if (error) return next(dbError("audit logs", error, "Erro ao buscar logs."));
+    if (error)
+      return next(dbError("audit logs", error, "Erro ao buscar logs."));
 
     res.json({ data: data || [] });
   } catch (err) {
@@ -5651,7 +6052,9 @@ router.post("/beta-codes/:id/revoke", async (req, res, next) => {
       .maybeSingle();
 
     if (error)
-      return next(dbError("beta code revoke", error, "Erro ao revogar código."));
+      return next(
+        dbError("beta code revoke", error, "Erro ao revogar código."),
+      );
     if (!data)
       return next(createError(404, "not_found", "Código não encontrado."));
 

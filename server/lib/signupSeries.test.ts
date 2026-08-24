@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { montarSerieDeCadastros, somarDia } from "./signupSeries";
+import { somarDiaCivil as somarDia } from "../../shared/brasiliaDay";
+import { montarSerieDeCadastros } from "./signupSeries";
 
 // O fuso importa aqui: `vitest.config.ts` fixa TZ=America/Sao_Paulo porque o CI
 // roda em UTC e o dev em -03. Sem a fixação, um teste de agrupamento por dia

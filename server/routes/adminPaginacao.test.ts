@@ -93,8 +93,11 @@ import {
   criarSupabaseDouble,
   type RespostaTabela,
 } from "./adminUsersHarness.test";
-import { diaBrasilia } from "../../shared/brasiliaDay";
-import { somarDia } from "../lib/signupSeries";
+import {
+  diaBrasilia,
+  inicioDoDiaBrasilia,
+  somarDiaCivil as somarDia,
+} from "../../shared/brasiliaDay";
 import adminRouter from "./admin";
 import { criarClienteAdmin } from "./adminTestClient";
 
@@ -243,10 +246,16 @@ describe("GET /ai-stats soma TODAS as linhas da janela", () => {
 
     const r = await chamarAdmin("GET", "/ai-stats");
 
+    // `toEqual` (não `toMatchObject`) de propósito: afirma a FORMA inteira do
+    // agregado, então um campo novo passa por aqui deliberadamente. Foi assim
+    // que `semCustoMedido` apareceu em 2026-08-14.
     expect(r.body.data["agent-chat"]).toEqual({
       calls: 2,
       success: 1,
       cost: 0.75,
+      // Nenhuma das duas linhas é "executou sem custo": a que teve sucesso tem
+      // custo, e a outra não teve sucesso.
+      semCustoMedido: 0,
     });
   });
 
@@ -668,13 +677,44 @@ describe("GET /subscription-history", () => {
   it("staleDays denuncia cron parado", async () => {
     // É o único sinal que a série dá de que parou de crescer: nada lê
     // cron_run_logs hoje.
-    const ontem = new Date(Date.now() - 24 * 3600_000)
+    //
+    // FIXTURE RELATIVA AO CRON, NÃO AO CALENDÁRIO. A versão anterior usava
+    // "ontem" e afirmava `staleDays === 1`, o que só é verdade DEPOIS das 05:10
+    // UTC, o horário do cron (`SNAPSHOT_HORA_UTC`): antes disso a última
+    // execução ESPERADA ainda é a de ontem, o snapshot de ontem a cobre, e o
+    // valor correto passa a ser 0. O teste ficava vermelho todas as madrugadas,
+    // por virada de dia, sem nada ter quebrado — e um teste que falha por
+    // relógio treina quem o vê a ignorar vermelho.
+    //
+    // A propriedade que importa não é "1 dia", é: cron parado há dias produz um
+    // sinal grande, e o alias em dias continua sendo o mesmo número do campo
+    // canônico em horas. As duas coisas valem a qualquer hora.
+    const cincoDiasAtras = new Date(Date.now() - 5 * 24 * 3600_000)
       .toISOString()
       .slice(0, 10);
-    montar({ subscription_snapshots: { rows: serie(5, ontem) } });
+    montar({ subscription_snapshots: { rows: serie(5, cincoDiasAtras) } });
 
     const r = await chamarAdmin("GET", "/subscription-history?window=all");
-    expect(r.body.data.staleDays).toBe(1);
+
+    expect(r.body.data.staleHours).toBeGreaterThanOrEqual(96);
+    expect(r.body.data.snapshotAtrasado).toBe(true);
+    expect(r.body.data.staleDays).toBe(
+      Math.floor(r.body.data.staleHours / 24),
+    );
+  });
+
+  it("CONTROLE NEGATIVO: snapshot de hoje NÃO é acusado de atraso", async () => {
+    // O outro lado da mesma pergunta, e ele também precisa ser independente de
+    // hora: o snapshot do dia corrente cobre a última execução esperada, seja
+    // ela a de hoje ou a de ontem.
+    const hoje = new Date().toISOString().slice(0, 10);
+    montar({ subscription_snapshots: { rows: serie(5, hoje) } });
+
+    const r = await chamarAdmin("GET", "/subscription-history?window=all");
+
+    expect(r.body.data.staleHours).toBe(0);
+    expect(r.body.data.snapshotAtrasado).toBe(false);
+    expect(r.body.data.staleDays).toBe(0);
   });
 
   it("a leitura é paginada e avisa quando trunca", async () => {
@@ -747,10 +787,13 @@ describe("GET /signup-history", () => {
     expect(pontos.find((p) => p.date === hoje)!.count).toBe(0);
   });
 
-  it("o corte inferior cobre o dia inteiro em Brasília", async () => {
-    // O limite é `inicio T00:00:00Z`, e ele é folgado porque Brasília está
-    // ATRÁS de UTC: o dia civil só começa às 03:00Z. Se este filtro virar uma
-    // data com hora, o começo do primeiro dia some do gráfico.
+  it("o corte inferior é o instante EXATO da meia-noite de Brasília", async () => {
+    // MUDOU NA FASE 2. Era `${inicio}T00:00:00Z` (meia-noite UTC), com uma folga
+    // de 3h considerada inofensiva porque o agrupamento por dia de Brasília
+    // descartava o excedente. Isso valia para o GRÁFICO e não vale para um
+    // limite compartilhado com os cards, que CONTAM linhas em vez de agrupar: a
+    // mesma folga que o gráfico descarta, o card somaria. Agora os dois usam
+    // `inicioDoDiaBrasilia`.
     montar({ profiles: { rows: [meioDia(somarDia(hoje, -10))] } });
     await chamarAdmin("GET", "/signup-history?window=7");
 
@@ -759,8 +802,11 @@ describe("GET /signup-history", () => {
       .flatMap((c) => c.filtros)
       .filter((f) => f.tipo === "gte" && f.coluna === "created_at");
     expect(varredura.length).toBeGreaterThan(0);
+    const esperado = inicioDoDiaBrasilia(somarDia(hoje, -6));
     for (const f of varredura) {
-      expect(f.valor).toBe(`${somarDia(hoje, -6)}T00:00:00Z`);
+      expect(f.valor).toBe(esperado);
+      // CONTROLE NEGATIVO: não é mais meia-noite UTC.
+      expect(f.valor).not.toBe(`${somarDia(hoje, -6)}T00:00:00Z`);
     }
   });
 
@@ -980,12 +1026,15 @@ describe("GET /overview", () => {
     });
   }
 
-  it("devolve os seis cards e a janela resolvida", async () => {
+  it("devolve os sete cards e a janela resolvida", async () => {
     base();
     const r = await chamarAdmin("GET", "/overview?window=30");
 
     expect(r.status).toBe(200);
     expect(r.body.data.window).toBe("30");
+    // AFIRMA O CONJUNTO INTEIRO, não a pertinência: acrescentar um card sem
+    // passar por aqui é impossível. Foi este teste que acusou a adição de
+    // `usuariosTotais` em 2026-08-14; mudar esta lista é ato deliberado.
     expect(Object.keys(r.body.data.cards).sort()).toEqual([
       "acessoPro",
       "custoIa",
@@ -993,6 +1042,7 @@ describe("GET /overview", () => {
       "novosUsuarios",
       "receita",
       "receitaEmRisco",
+      "usuariosTotais",
     ]);
   });
 
@@ -1049,6 +1099,51 @@ describe("GET /overview", () => {
       ((1850 + 2150) / (1850 + 2150 + 2990)) * 100,
       6,
     );
+  });
+
+  it("D21: o card soma SAÍDA AGENDADA e EM ATRASO, e manda o breakdown", async () => {
+    // A inconsistência que motivou o D21: o card mostrava só as saídas e o
+    // painel de atenção mostrava as duas famílias, então as duas telas diziam
+    // números diferentes sobre a mesma pergunta.
+    base({
+      subscriptions: {
+        rows: [
+          // anual, agendada: 22200/12 = 1850
+          assinatura({
+            id: "a",
+            cancel_at_period_end: true,
+            plans: {
+              code: "pro_annual",
+              name: "Anual",
+              price_cents: 22200,
+              interval: "year",
+            },
+          }),
+          // mensal em atraso: 2990, e a MESMA normalização (1 mês = ele mesmo)
+          assinatura({ id: "b", status: "past_due" }),
+          // mensal saudável: MRR, fora do risco
+          assinatura({ id: "c" }),
+        ],
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/overview");
+    const risco = r.body.data.cards.receitaEmRisco;
+
+    expect(risco.saindo).toEqual({ count: 1, mrrCents: 1850 });
+    expect(risco.emAtraso).toEqual({ count: 1, mrrCents: 2990 });
+    // O headline é a SOMA, e o breakdown tem de fechar com ele.
+    expect(risco.count).toBe(2);
+    expect(risco.mrrCents).toBe(1850 + 2990);
+    expect(risco.mrrCents).toBe(risco.saindo.mrrCents + risco.emAtraso.mrrCents);
+
+    // CONTROLE NEGATIVO: em atraso é receita que PAROU de entrar. Somá-la ao
+    // MRR afirmaria uma recorrência que hoje não existe. O MRR aqui é a anual
+    // ('a', 1850) mais a mensal saudável ('c', 2990); 'b' está fora. As duas
+    // somas dão 4840 por coincidência de preço, e é o `activeCount` que separa
+    // os dois cenários sem ambiguidade: 2 assinaturas ativas, não 3.
+    expect(r.body.data.cards.mrr.value).toBe(1850 + 2990);
+    expect(r.body.data.cards.mrr.activeCount).toBe(2);
   });
 
   it("sem MRR, o percentual em risco é NULO e não divide por zero", async () => {

@@ -75,13 +75,32 @@ const SAIRAM: Array<{ titulo: string | RegExp; substituto: string }> = [
   { titulo: /Assinaturas e planos/i, substituto: "aba Financeiro" },
   { titulo: /Páginas mais acessadas/i, substituto: "aba Páginas" },
   { titulo: /Fila de e-mails/i, substituto: "faixa de saúde" },
+  // Rodada 5 (2026-08-14): "Eventos recentes" listava as 10 últimas linhas de
+  // `content_audit_logs`, ou seja, histórico de edição de conteúdo. O espaço
+  // mais visível da Visão era o único sobre o qual não havia nada a fazer.
+  { titulo: /Eventos recentes/i, substituto: "painel Atenção necessária" },
+  // Rodada 6 (2026-08-14, D10): "Aquisição de usuários" rankeava
+  // `$referring_domain` do PostHog, que NÃO é atribuição — não há coluna de UTM,
+  // referrer ou canal em `profiles` nem em `subscriptions`, então o número não
+  // se liga a receita nem sobrevive a bloqueador de script. Instrumentação de
+  // canal virou frente futura.
+  { titulo: /Aquisição de usuários/i, substituto: "nenhum (sem fonte real)" },
+  // Rodada 7 (D17): o botão "Comportamento por página" saiu junto com o
+  // contêiner órfão que o hospedava. Ele só fazia `setActiveSection("paginas")`,
+  // que é exatamente o que a aba "Páginas" do nav superior faz — duplicava
+  // navegação, e o contêiner de 3 colunas esticava na altura do painel vizinho.
+  { titulo: /Comportamento por página/i, substituto: "aba Páginas do nav" },
 ];
 
 /** Blocos que FICARAM, na ordem em que aparecem na tela. */
 const FICARAM = [
-  /Do visitante ao assinante Pro/i,
-  /Aquisição de usuários/i,
-  /Eventos recentes/i,
+  // "Do visitante ao assinante Pro" virou "Onde as pessoas param?": o funil saiu
+  // do PostHog para tabelas locais e passou a mostrar TAXAS entre etapas.
+  /Onde as pessoas param\?/i,
+  /Conversões Pro por dia/i,
+  /Custo de IA e receita/i,
+  /uso de IA por ferramenta/i,
+  /Atenção necessária/i,
 ];
 
 beforeEach(() => {
@@ -174,7 +193,7 @@ describe("inventário de blocos da Visão", () => {
   it("todo bloco declarado como REMOVIDO sumiu da tela", async () => {
     render(<Admin />);
     await waitFor(() =>
-      expect(screen.getByText(/Do visitante ao assinante Pro/i)).toBeTruthy(),
+      expect(screen.getByText(/Onde as pessoas param\?/i)).toBeTruthy(),
     );
 
     for (const { titulo, substituto } of SAIRAM) {
@@ -193,12 +212,16 @@ describe("inventário de blocos da Visão", () => {
     }
   });
 
-  it("o link para a aba Páginas existe e leva ao destino", async () => {
-    // Nenhum card aponta para `paginas`, então sem este botão o destino do
-    // "Páginas mais acessadas" existiria e ninguém o encontraria.
+  it("a aba Páginas é alcançável pelo nav (o botão duplicado saiu)", async () => {
+    // O botão "Comportamento por página" saiu na rodada 7 (D17): ele só fazia
+    // `setActiveSection("paginas")`, o MESMO que o item do nav faz. O que
+    // precisa continuar verdadeiro é o destino ser alcançável — e é o nav que
+    // responde por isso agora.
     render(<Admin />);
-    const link = await screen.findByTestId("link-paginas");
-    link.click();
+    // Há dois navs (desktop e mobile) com o mesmo rótulo; o primeiro basta e a
+    // escolha é determinística.
+    const links = await screen.findAllByRole("button", { name: /páginas/i });
+    links[0].click();
 
     await waitFor(() =>
       expect(screen.getByText(/Qualidade real das páginas/i)).toBeTruthy(),
@@ -208,7 +231,7 @@ describe("inventário de blocos da Visão", () => {
   it("a faixa de saúde e o seletor de período seguem no topo", async () => {
     render(<Admin />);
     await waitFor(() =>
-      expect(screen.getByText(/Do visitante ao assinante Pro/i)).toBeTruthy(),
+      expect(screen.getByText(/Onde as pessoas param\?/i)).toBeTruthy(),
     );
     // A ordem é a hierarquia: saúde e seletor antes de tudo que decide.
     expect(await screen.findByTestId("health-band")).toBeTruthy();
@@ -232,13 +255,16 @@ describe("inventário de blocos da Visão", () => {
 
     render(<Admin />);
 
-    // A Visão continua de pé: o funil, o bloco de aquisição e a auditoria
-    // renderizam, e a faixa degrada para o estado silencioso.
+    // A Visão continua de pé: o funil, o bloco de aquisição e o painel de
+    // atenção renderizam, e a faixa degrada para o estado silencioso. O painel
+    // de atenção com `{}` é o caso que pegou um TypeError real na integração da
+    // rodada 5: `data.itens.length` sobre payload degradado derrubaria a ABA
+    // INTEIRA, não só o bloco.
     await waitFor(() =>
-      expect(screen.getByText(/Do visitante ao assinante Pro/i)).toBeTruthy(),
+      expect(screen.getByText(/Onde as pessoas param\?/i)).toBeTruthy(),
     );
-    expect(screen.getByText(/Aquisição de usuários/i)).toBeTruthy();
-    expect(screen.getByText(/Eventos recentes/i)).toBeTruthy();
+    expect(screen.getByText(/uso de IA por ferramenta/i)).toBeTruthy();
+    expect(screen.getByText(/Atenção necessária/i)).toBeTruthy();
     const faixa = await screen.findByTestId("health-band");
     expect(faixa.getAttribute("data-estado")).toBe("ok");
     // Os cards caem no estado nomeado, não em R$ 0,00 falso.
@@ -254,7 +280,7 @@ describe("inventário de blocos da Visão", () => {
     render(<Admin />);
 
     await waitFor(() =>
-      expect(screen.getByText(/Do visitante ao assinante Pro/i)).toBeTruthy(),
+      expect(screen.getByText(/Onde as pessoas param\?/i)).toBeTruthy(),
     );
   });
 
@@ -317,10 +343,10 @@ describe("inventário de blocos da Visão", () => {
     render(<Admin />);
 
     await waitFor(() =>
-      expect(screen.getByText(/Do visitante ao assinante Pro/i)).toBeTruthy(),
+      expect(screen.getByText(/Onde as pessoas param\?/i)).toBeTruthy(),
     );
     // O gráfico desenhou com o ponto que veio, sem estourar no campo ausente.
     expect(await screen.findByTestId("grafico-assinaturas")).toBeTruthy();
-    expect(await screen.findByTestId("funil-passo-visitantes")).toBeTruthy();
+    expect(await screen.findByTestId("funil-digerido")).toBeTruthy();
   });
 });

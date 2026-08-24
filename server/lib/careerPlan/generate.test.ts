@@ -179,3 +179,169 @@ describe("tipo de leitura retrocompativel", () => {
     expect(legacy.schedule[0].stepIds).toBeUndefined();
   });
 });
+
+/**
+ * Piso de `schedule[].focus`: o que o Zod pode EXIGIR de verdade.
+ *
+ * O piso era 80. Ele nunca chegou ao modelo: `toOpenAIStrictSchema` remove
+ * `minLength` antes de montar o response_format (openaiStrictSchema.ts:19, na
+ * lista UNSUPPORTED_KEYWORDS), porque o strict mode da OpenAI rejeita a
+ * keyword. Sobrava a instrucao em prosa no SYSTEM_PROMPT, que e pedido e nao
+ * garantia. Quando o modelo devolvia um `focus` mais curto, as 3 tentativas
+ * repetiam o MESMO prompt, falhavam igual, e o usuario levava 502
+ * ("Nao foi possivel gerar o plano agora"). Sentry NODE-EXPRESS-H, com a cadeia
+ * de excecao nomeando `path: ["schedule", 1, "focus"], minimum: 80`.
+ *
+ * 20 e um piso que continua barrando vazio e degenerado ("ok", "base") sem
+ * fingir uma garantia que a camada de baixo nao sustenta. A instrucao de ~80
+ * caracteres FICA no prompt de proposito: pedir mais do que se exige e legitimo;
+ * exigir o que nao se pode pedir e que nao era.
+ */
+const FOCO_CURTO = "Base de dados.";
+/** Entre o piso novo (20) e o antigo (80): e o caso que o bug derrubava. */
+const FOCO_ENTRE_OS_DOIS_PISOS = "Fundamentos de SQL e planilhas";
+const FOCO_LONGO =
+  "Fundamentos de SQL, modelagem dimensional e pratica diaria com planilhas reais ate virar automatico.";
+
+/** Plano valido contra o schema INTEIRO, com `schedule[0].focus` parametrizado. */
+function planoValidoComFoco(focus: string) {
+  const frase =
+    "A rota parte do que voce ja sabe e avanca em degraus curtos, cada um com entrega propria. ";
+  return {
+    objectiveLogic: frase.repeat(4),
+    steps: [1, 2, 3].map((n) => ({
+      id: `degrau-${n}`,
+      title: `Degrau ${n}`,
+      rationale: frase.repeat(2),
+      items: [{ label: "estudar o essencial", catalogId: null }],
+      estimatedWeeks: 4,
+    })),
+    certifications: [],
+    schedule: [
+      { monthsLabel: "Meses 1 a 3", focus, stepIds: ["degrau-1"] },
+      // Fixo e longo: mantem o segundo bloco valido nos dois pisos, para a
+      // falha do teste apontar so para o indice 0.
+      { monthsLabel: "Meses 4 a 6", focus: FOCO_LONGO, stepIds: ["degrau-2"] },
+    ],
+    outOfScope: [{ label: "kubernetes", reason: frase }],
+  };
+}
+
+describe("piso de schedule[].focus", () => {
+  it("aceita focus entre o piso novo e o antigo, que era o caso do 502", () => {
+    expect(FOCO_ENTRE_OS_DOIS_PISOS.length).toBeGreaterThanOrEqual(20);
+    expect(FOCO_ENTRE_OS_DOIS_PISOS.length).toBeLessThan(80);
+
+    const parsed = CareerPlanResultSchema.safeParse(
+      planoValidoComFoco(FOCO_ENTRE_OS_DOIS_PISOS),
+    );
+
+    expect(parsed.error?.issues).toBeUndefined();
+    expect(parsed.success).toBe(true);
+  });
+
+  // CONTROLE NEGATIVO: o piso continua existindo. Falha se alguem "resolver" o
+  // bug apagando o `.min()` em vez de baixa-lo, que era a alternativa tentadora.
+  it("CONTROLE NEGATIVO: recusa focus abaixo de 20 caracteres", () => {
+    expect(FOCO_CURTO.length).toBeLessThan(20);
+
+    const parsed = CareerPlanResultSchema.safeParse(
+      planoValidoComFoco(FOCO_CURTO),
+    );
+
+    expect(parsed.success).toBe(false);
+    // Caminho conferido para a recusa ser atribuivel a `focus`, e nao a algum
+    // outro campo da fixture ter quebrado junto.
+    expect(parsed.error?.issues.map((i) => i.path.join("."))).toContain(
+      "schedule.0.focus",
+    );
+  });
+});
+
+/**
+ * Os outros dois pisos inalcancaveis do MESMO schema.
+ *
+ * `certifications[].rationale` (era 80) e `outOfScope[].reason` (era 60) sao a
+ * mesma classe do `focus`: o `minLength` e removido por
+ * `toOpenAIStrictSchema` (openaiStrictSchema.ts:19) e nunca chega ao modelo, e a
+ * unica coisa que sobra e o pedido em prosa no SYSTEM_PROMPT. Nenhum dos dois
+ * abriu evento no Sentry ainda, mas o mecanismo que derrubou o `focus` esta
+ * inteiro nos dois: um dia ruim do modelo produz o mesmo 502.
+ *
+ * Preventivo, entao, e nao conserto de incidente. A varredura da rodada 1 mediu
+ * 32 constraints declaradas no Zod e ZERO chegando a OpenAI; estes dois eram os
+ * unicos com piso alto o bastante para o modelo errar.
+ */
+const TEXTO_ENTRE_20_E_60 = "Fecha a base antes de escalar";
+
+function planoValidoCom(over: {
+  certificationRationale?: string;
+  outOfScopeReason?: string;
+}) {
+  const base = planoValidoComFoco(FOCO_LONGO);
+  return {
+    ...base,
+    certifications: [
+      {
+        catalogId: "aws-cloud-practitioner",
+        stepId: "degrau-1",
+        whenLabel: "depois do degrau 1",
+        optional: false,
+        rationale: over.certificationRationale ?? FOCO_LONGO,
+      },
+    ],
+    outOfScope: [
+      {
+        label: "kubernetes",
+        reason: over.outOfScopeReason ?? FOCO_LONGO,
+      },
+    ],
+  };
+}
+
+describe("pisos preventivos do mesmo schema", () => {
+  it("certifications[].rationale aceita texto entre o piso novo e o antigo", () => {
+    expect(TEXTO_ENTRE_20_E_60.length).toBeGreaterThanOrEqual(20);
+    expect(TEXTO_ENTRE_20_E_60.length).toBeLessThan(80);
+
+    const parsed = CareerPlanResultSchema.safeParse(
+      planoValidoCom({ certificationRationale: TEXTO_ENTRE_20_E_60 }),
+    );
+
+    expect(parsed.error?.issues).toBeUndefined();
+    expect(parsed.success).toBe(true);
+  });
+
+  it("outOfScope[].reason aceita texto entre o piso novo e o antigo", () => {
+    expect(TEXTO_ENTRE_20_E_60.length).toBeLessThan(60);
+
+    const parsed = CareerPlanResultSchema.safeParse(
+      planoValidoCom({ outOfScopeReason: TEXTO_ENTRE_20_E_60 }),
+    );
+
+    expect(parsed.error?.issues).toBeUndefined();
+    expect(parsed.success).toBe(true);
+  });
+
+  it("CONTROLE NEGATIVO: certifications[].rationale abaixo de 20 e recusado", () => {
+    const parsed = CareerPlanResultSchema.safeParse(
+      planoValidoCom({ certificationRationale: "vale a pena" }),
+    );
+
+    expect(parsed.success).toBe(false);
+    expect(parsed.error?.issues.map((i) => i.path.join("."))).toContain(
+      "certifications.0.rationale",
+    );
+  });
+
+  it("CONTROLE NEGATIVO: outOfScope[].reason abaixo de 20 e recusado", () => {
+    const parsed = CareerPlanResultSchema.safeParse(
+      planoValidoCom({ outOfScopeReason: "cedo demais" }),
+    );
+
+    expect(parsed.success).toBe(false);
+    expect(parsed.error?.issues.map((i) => i.path.join("."))).toContain(
+      "outOfScope.0.reason",
+    );
+  });
+});

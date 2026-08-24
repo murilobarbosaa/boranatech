@@ -91,6 +91,39 @@ describe("os estados nao colapsam", () => {
     expect(screen.getByText(/Carregando violações de lastro/i)).toBeTruthy();
   });
 
+  it("resposta INCOMPLETA vira estado nomeado, nao contagem fabricada", async () => {
+    // O caso real que o merge da main expos: `{}` e truthy, passa pelo
+    // `if (!data)` e ate este lote quebrava a arvore inteira em
+    // `data.porTipo[tipo]` com "Cannot read properties of undefined". O mock de
+    // um teste vizinho devolvia exatamente `{ data: {} }` para toda rota que
+    // ele nao conhecia, e este componente e uma delas.
+    adminFetch.mockResolvedValue({ data: {} });
+    render(<LinkedinLastroDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/veio incompleta/i)).toBeTruthy();
+    });
+    // NADA de numero fabricado: nem linha por tipo, nem `undefined` na janela.
+    // Esta metade e a que importa. Um estado de erro que ainda assim pintasse
+    // "0" teria trocado o crash por uma mentira silenciosa.
+    expect(screen.queryAllByTestId("lastro-linha")).toHaveLength(0);
+    expect(screen.queryByText(/undefined/i)).toBeNull();
+  });
+
+  it("periodo sem violacao NAO cai na guarda de forma", async () => {
+    // Controle negativo, e ele e o que impede a guarda de virar larga demais:
+    // `porTipo` vazio COM os numeros presentes e periodo limpo, nao resposta
+    // quebrada, e tem de continuar sendo o estado vazio de sempre.
+    adminFetch.mockResolvedValue(resposta({ porTipo: {}, total: 0 }));
+    render(<LinkedinLastroDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("lastro-vazio")).toBeTruthy();
+    });
+    expect(screen.queryAllByTestId("lastro-linha")).toHaveLength(0);
+    expect(screen.queryByText(/veio incompleta/i)).toBeNull();
+  });
+
   it("erro tem texto proprio, e nao vira estado vazio", async () => {
     adminFetch.mockRejectedValue(new Error("backend fora"));
     render(<LinkedinLastroDashboard />);

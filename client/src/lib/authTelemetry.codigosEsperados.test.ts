@@ -47,16 +47,28 @@ describe("CODIGOS_ESPERADOS contra a copy de callback", () => {
     }
   });
 
+  /**
+   * `flow_state_already_used` entrou SEM copy, e isso não é esquecimento.
+   *
+   * O código só existe depois de um flow state ter sido usado com SUCESSO: é o
+   * segundo exchange do mesmo `code` (voltar, recarregar, efeito duplo). O
+   * primeiro concluiu o login, então há sessão, e `AuthContext.tsx:478` só
+   * monta o aviso visível quando NÃO há sessão. Não há tela para escrever.
+   *
+   * É por isso que o teste acima ("todo código com copy é esperado") continua
+   * valendo sem mudança: a relação é copy → esperado, nunca o inverso.
+   */
   it("afirma o CONJUNTO inteiro, não a pertinência", () => {
     expect(CODIGOS_ESPERADOS_PARA_TESTE.slice().sort()).toEqual([
       "access_denied",
+      "flow_state_already_used",
       "invalid_credentials",
       "otp_expired",
       "user_already_exists",
     ]);
   });
 
-  it("rebaixa para info os quatro esperados", () => {
+  it("rebaixa para info todos os esperados", () => {
     CODIGOS_ESPERADOS_PARA_TESTE.forEach((codigo) => {
       expect(nivelSentry(codigo)).toBe("info");
     });
