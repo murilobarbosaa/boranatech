@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   agruparItens,
   AttentionPanel,
+  destinoInternoValido,
   linkDaStripe,
   type PainelDeAtencao,
 } from "./AttentionPanel";
@@ -135,7 +136,7 @@ describe("agruparItens", () => {
   });
 });
 
-describe("AttentionPanel v2", () => {
+describe("AttentionPanel v3", () => {
   it("vinte saídas viram UM card com contagem e soma, não vinte cards", () => {
     // O defeito da v1, visto na revisão visual: a coluna não terminava.
     const itens = Array.from({ length: 20 }, (_, i) => saida(i));
@@ -154,7 +155,12 @@ describe("AttentionPanel v2", () => {
     expect(screen.queryByTestId("atencao-grupo-lista")).toBeNull();
   });
 
-  it("expandir mostra a lista, com teto de altura e scroll", () => {
+  it("expandir mostra os 20 itens, e a lista NAO tem scroll proprio", () => {
+    // INVERTIDO na v3, e o motivo é que a premissa da v2 expirou. O teto
+    // existia para o painel não esticar a linha do grid e deformar o VIZINHO;
+    // esse vizinho saiu na rodada 7 (D17) e o painel hoje está sozinho numa
+    // coluna. Sem vizinho, o teto só escondia item de alerta atrás de uma barra
+    // de rolagem, que é o oposto do propósito deste painel.
     const itens = Array.from({ length: 20 }, (_, i) => saida(i));
     render(<AttentionPanel data={painel({ itens })} />);
 
@@ -162,8 +168,8 @@ describe("AttentionPanel v2", () => {
 
     const lista = screen.getByTestId("atencao-grupo-lista");
     expect(screen.getAllByTestId("atencao-item")).toHaveLength(20);
-    expect(lista.className).toContain("max-h-64");
-    expect(lista.className).toContain("overflow-y-auto");
+    expect(lista.className).not.toContain("max-h-");
+    expect(lista.className).not.toContain("overflow-y-auto");
   });
 
   it("grupo CRÍTICO nasce aberto", () => {
@@ -174,12 +180,13 @@ describe("AttentionPanel v2", () => {
     expect(critico.getAttribute("data-aberto")).toBe("sim");
   });
 
-  it("o painel tem TETO de altura, para não esticar a linha do grid", () => {
-    // Foi a ausência disto que deformou o vizinho em produção.
+  it("o painel CRESCE na pagina: nenhum scroll interno no corpo", () => {
+    // Mesma inversão do teste acima, e pelo mesmo motivo. Painel de alerta com
+    // overflow interno esconde exatamente o item que ele existe para mostrar.
     render(<AttentionPanel data={painel({ itens: [past] })} />);
     const corpo = screen.getByTestId("atencao-corpo");
-    expect(corpo.className).toContain("max-h-");
-    expect(corpo.className).toContain("overflow-y-auto");
+    expect(corpo.className).not.toContain("max-h-");
+    expect(corpo.className).not.toContain("overflow-y-auto");
   });
 
   it("ABRIR aponta para a Stripe, em aba nova e com rel seguro", () => {
@@ -245,9 +252,9 @@ describe("AttentionPanel v2", () => {
       (t ?? "").replace(/ /g, " ");
 
     // 1850 + 2990 = 4840, e é ESTE o número que o card "Receita em risco" soma.
-    expect(semNbsp(screen.getByTestId("atencao-grupo-mensal").textContent)).toBe(
-      "R$ 48,40/mês",
-    );
+    expect(
+      semNbsp(screen.getByTestId("atencao-grupo-mensal").textContent),
+    ).toBe("R$ 48,40/mês");
     // O nominal não sumiu: desceu de posição.
     expect(
       semNbsp(screen.getByTestId("atencao-grupo-nominal").textContent),
@@ -269,10 +276,9 @@ describe("AttentionPanel v2", () => {
     render(<AttentionPanel data={painel({ itens: [saida(1), saida(2)] })} />);
     expect(screen.queryByTestId("atencao-grupo-mensal")).toBeNull();
     expect(
-      screen.getByTestId("atencao-grupo-nominal").textContent?.replace(
-        / /g,
-        " ",
-      ),
+      screen
+        .getByTestId("atencao-grupo-nominal")
+        .textContent?.replace(/ /g, " "),
     ).toBe("R$ 59,80");
   });
 
@@ -324,5 +330,139 @@ describe("AttentionPanel v2", () => {
       />,
     );
     expect(screen.getAllByTestId("atencao-grupo")).toHaveLength(1);
+  });
+});
+
+describe("destinoInternoValido", () => {
+  it("aceita só caminho relativo dentro de /admin", () => {
+    expect(destinoInternoValido("/admin?section=usuarios")).toBe(
+      "/admin?section=usuarios",
+    );
+    expect(destinoInternoValido("/admin?section=financeiro")).toBe(
+      "/admin?section=financeiro",
+    );
+  });
+
+  it("CONTROLE NEGATIVO: absoluto, protocol-relative, fora de /admin e vazio caem", () => {
+    // Um `https://` vindo do servidor viraria link de SAÍDA disfarçado de
+    // navegação interna, e `//host` é a mesma coisa sem o esquema escrito.
+    expect(destinoInternoValido("https://exemplo.com/admin")).toBeNull();
+    expect(destinoInternoValido("//exemplo.com")).toBeNull();
+    expect(destinoInternoValido("/perfil")).toBeNull();
+    expect(destinoInternoValido("")).toBeNull();
+    expect(destinoInternoValido(undefined)).toBeNull();
+  });
+});
+
+describe("v3: destinos internos, motivo e fontes novas", () => {
+  const comDestino = {
+    ...past,
+    destinoInterno: "/admin?section=usuarios",
+  };
+
+  it("destino interno vira a ação PRIMÁRIA, e a Stripe continua ao lado", () => {
+    render(<AttentionPanel data={painel({ itens: [comDestino] })} />);
+
+    const interno = screen.getByTestId("atencao-destino-interno");
+    expect(interno.getAttribute("href")).toBe("/admin?section=usuarios");
+    // A Stripe não sumiu: virou secundária.
+    expect(screen.getByText(/Abrir na Stripe/)).toBeTruthy();
+  });
+
+  it("JANELA DE DEPLOY: item SEM destinoInterno não ganha botão interno", () => {
+    // O backend antigo não manda o campo. Ausência degrada para "sem botão",
+    // nunca para link quebrado.
+    render(<AttentionPanel data={painel({ itens: [past] })} />);
+
+    expect(screen.queryByTestId("atencao-destino-interno")).toBeNull();
+    expect(screen.getByText(/Abrir na Stripe/)).toBeTruthy();
+  });
+
+  it("item sem url NENHUMA e só com destino interno mostra só o interno", () => {
+    const semDespesa = {
+      tipo: "mes_sem_despesa",
+      chave: "sem_despesa:07/2026",
+      severidade: "atencao" as const,
+      titulo: "Nenhuma despesa registrada em 07/2026",
+      detalhe: "O mês fechou sem nenhuma despesa lançada.",
+      url: "",
+      destinoInterno: "/admin?section=financeiro",
+    };
+    render(<AttentionPanel data={painel({ itens: [semDespesa] })} />);
+
+    expect(screen.getByTestId("atencao-destino-interno")).toBeTruthy();
+    expect(screen.queryByText(/Abrir na Stripe/)).toBeNull();
+  });
+
+  it("motivo declarado aparece traduzido, pelo resolver que já existe", () => {
+    const comMotivo = { ...saida(1), motivoCodigo: "expensive" };
+    render(<AttentionPanel data={painel({ itens: [comMotivo] })} />);
+
+    expect(screen.getByTestId("atencao-item-motivo").textContent).toContain(
+      "Está caro",
+    );
+  });
+
+  it("motivo DESCONHECIDO aparece cru, sem derrubar nada", () => {
+    // Mesmo contrato do resolver: código novo do servidor não pode quebrar a
+    // aba, e sumir com a linha esconderia informação real.
+    const comMotivo = { ...saida(1), motivoCodigo: "motivo_que_nao_existe" };
+    render(<AttentionPanel data={painel({ itens: [comMotivo] })} />);
+
+    expect(screen.getByTestId("atencao-item-motivo").textContent).toContain(
+      "motivo_que_nao_existe",
+    );
+  });
+
+  it("CONTROLE NEGATIVO: item sem motivo não renderiza a linha", () => {
+    render(<AttentionPanel data={painel({ itens: [saida(1)] })} />);
+    expect(screen.queryByTestId("atencao-item-motivo")).toBeNull();
+  });
+
+  it("os grupos dos tipos NOVOS têm rótulo próprio, não o slug cru", () => {
+    const novos = [
+      {
+        tipo: "payout_falho",
+        chave: "payout:po_1",
+        severidade: "critico" as const,
+        titulo: "Repasse para o banco falhou",
+        detalhe: "A Stripe não conseguiu transferir.",
+        valorCents: 500000,
+        url: "https://dashboard.stripe.com/payouts",
+        destinoInterno: "/admin?section=financeiro",
+      },
+      {
+        tipo: "influencer_com_assinatura",
+        chave: "influencer_pagante:u1",
+        severidade: "atencao" as const,
+        titulo: "Influencer que virou assinante",
+        detalhe: "rafa@exemplo.com tem concessão ativa E assinatura.",
+        url: "",
+        destinoInterno: "/admin?section=usuarios",
+      },
+    ];
+    render(<AttentionPanel data={painel({ itens: novos })} />);
+
+    expect(screen.getByText("Repasses que falharam")).toBeTruthy();
+    expect(screen.getByText("Influencers que viraram assinantes")).toBeTruthy();
+  });
+
+  it("fontes novas fora do ar aparecem NOMEADAS, nunca omitidas", () => {
+    render(
+      <AttentionPanel
+        data={painel({
+          fontesIndisponiveis: ["payouts", "despesas", "influencers"],
+        })}
+      />,
+    );
+
+    const aviso = screen.getByTestId(
+      "atencao-fontes-indisponiveis",
+    ).textContent;
+    expect(aviso).toContain("repasses bancários");
+    expect(aviso).toContain("despesas");
+    expect(aviso).toContain("influencers");
+    // E não diz "tudo em ordem" sobre uma sonda que não respondeu.
+    expect(screen.queryByTestId("atencao-vazio")).toBeNull();
   });
 });
