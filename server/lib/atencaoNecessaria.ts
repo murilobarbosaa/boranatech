@@ -685,7 +685,9 @@ export async function montarPainelDeAtencao(
         tipo: "payout_falho",
         chave: `payout:${payout.id}`,
         severidade: "critico",
+        // TODO(Ana)
         titulo: "Repasse para o banco falhou",
+        // TODO(Ana)
         detalhe: `A Stripe nao conseguiu transferir ${reais(payout.amountCents)} para a conta bancaria. O dinheiro esta retido no saldo da Stripe.`,
         valorCents: payout.amountCents,
         url: STRIPE_PAYOUTS_URL,
@@ -715,7 +717,9 @@ export async function montarPainelDeAtencao(
         tipo: "mes_sem_despesa",
         chave: `sem_despesa:${mes.rotulo}`,
         severidade: "atencao",
+        // TODO(Ana)
         titulo: `Nenhuma despesa registrada em ${mes.rotulo}`,
+        // TODO(Ana)
         detalhe:
           "O mes fechou sem nenhuma despesa lancada, entao o lucro exibido esta contando a receita inteira. Registrar as despesas do mes corrige o numero.",
         url: "",
@@ -796,12 +800,15 @@ export async function montarPainelDeAtencao(
           // E-mail AUSENTE e estado nomeado, nao string vazia: um item que diz
           // "e-mail nao encontrado" ainda e acionavel (da para achar pelo id),
           // e um que mostra vazio parece bug do painel.
+          // TODO(Ana)
           const email = emailPorId.get(userId) ?? "e-mail nao encontrado";
           itens.push({
             tipo: "influencer_com_assinatura",
             chave: `influencer_pagante:${userId}`,
             severidade: "atencao",
+            // TODO(Ana)
             titulo: "Influencer que virou assinante",
+            // TODO(Ana)
             detalhe: `${email} tem concessao de influencer ativa E assinatura paga vigente. Revogar a concessao nao tira o Pro, que fica de pe pela assinatura.`,
             url: "",
             destinoInterno: ADMIN_USUARIOS,
