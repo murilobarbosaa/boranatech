@@ -2,33 +2,40 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, CalendarDays, ExternalLink, MapPin } from "lucide-react";
 
-type Evento = (typeof import("@/lib/eventosData"))["eventos"][number];
+type Evento = import("@/services/eventosService").Evento;
 
 // Card na home com os proximos eventos, lendo a mesma fonte real da pagina de
-// Eventos (array `eventos` de @/lib/eventosData). So mostra eventos que ainda
+// Eventos (rota /api/content/eventos). So mostra eventos que ainda
 // nao passaram E que tem link/material publico. Nao inventa evento: se nao
 // houver nenhum, mostra estado vazio elegante.
 // O array e o filtro carregam sob demanda no mount (dynamic import) para nao
-// entrarem no grafo do boot; o eventFilters tambem e dinamico porque importa
-// de eventosData. Enquanto carrega, skeletons reservam o espaco (sem layout
-// shift).
+// entrarem no grafo do boot. Enquanto carrega, skeletons reservam o espaco
+// (sem layout shift).
 export default function ProximosEventos() {
   const [proximos, setProximos] = useState<Evento[] | null>(null);
 
   useEffect(() => {
     let ativo = true;
-    Promise.all([import("@/lib/eventosData"), import("@/lib/eventFilters")])
-      .then(([{ eventos }, { isEventoPassado, eventoSortKey }]) => {
+    // A rota ja devolve so exibiveis, ordenados por data com os sem data no
+    // fim. Aqui a home quer os proximos COM data, entao filtra os recorrentes.
+    import("@/services/eventosService")
+      .then(({ getEventos }) => getEventos())
+      .then(({ eventos }) => {
         if (!ativo) return;
         setProximos(
           eventos
-            .filter((evento) => !isEventoPassado(evento) && Boolean(evento.link))
-            .sort((a, b) => eventoSortKey(a).localeCompare(eventoSortKey(b)))
+            .filter((evento) => !evento.recorrente && Boolean(evento.link))
             .slice(0, 3),
         );
       })
-      .catch(() => {
-        if (ativo) setProximos([]);
+      .catch((erro: unknown) => {
+        if (!ativo) return;
+        // Na home, falha de carregamento ESCONDE a secao (o `[]` cai no
+        // `return null` abaixo) em vez de mostrar banner de erro. E o padrao
+        // das secoes vizinhas: a home nao e o lugar de pedir retry. A pagina
+        // /eventos, que existe para isso, nomeia o erro e oferece o retry.
+        console.warn("[home] falha ao carregar eventos:", erro);
+        setProximos([]);
       });
     return () => {
       ativo = false;
@@ -84,11 +91,12 @@ export default function ProximosEventos() {
                       className="h-4 w-4 shrink-0 text-violet-600"
                       aria-hidden
                     />
-                    {evento.data}
+                    {evento.dataLabel}
                   </p>
                   <p className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
                     <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    {evento.cidade}, {evento.estado} · {evento.formato}
+                    {evento.cidade}
+                    {evento.uf ? `, ${evento.uf}` : ""} · {evento.formato}
                   </p>
                   <span className="mt-4 inline-flex items-center gap-1 text-sm font-black text-violet-800">
                     Ver evento
