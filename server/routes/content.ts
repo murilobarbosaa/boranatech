@@ -152,7 +152,12 @@ router.get("/eventos", async (_req, res, next) => {
       cacheKey("content:eventos", {}),
       LIST_TTL_SECONDS,
       async () => {
-        const hoje = new Date().toISOString().slice(0, 10);
+        // `en-CA` produz YYYY-MM-DD, e o timeZone e o que importa: em UTC o dia
+        // vira as 21h de Brasilia, e o evento sumiria da pagina na noite do
+        // proprio dia em que ainda esta acontecendo.
+        const hoje = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Sao_Paulo",
+        }).format(new Date());
         const { data, error, count } = await supabaseAdmin
           .from("external_events")
           .select(
