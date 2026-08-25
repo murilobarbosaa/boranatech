@@ -203,14 +203,16 @@ function EventoCard({ ev }: { ev: Evento }) {
       <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
         <span className="text-xs text-slate-400">{ev.organizador}</span>
         <div className="flex flex-wrap gap-2">
-          <a
-            href={agenda ?? "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 px-3 py-1.5 bg-white text-slate-900 text-xs font-black rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
-          >
-            Google Calendar <CalendarPlus className="w-3 h-3 shrink-0" />
-          </a>
+          {agenda ? (
+            <a
+              href={agenda}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-white text-slate-900 text-xs font-black rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
+            >
+              Google Calendar <CalendarPlus className="w-3 h-3 shrink-0" />
+            </a>
+          ) : null}
           <a
             href={ev.link}
             target="_blank"
