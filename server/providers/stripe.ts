@@ -453,7 +453,20 @@ async function applySubscription(
 
   if (result.error) {
     console.error("[webhook/stripe] subscriptions write failed:", result.error);
-    throw createError(500, "db_error", "Erro ao gravar assinatura.");
+    // `cause` em TODO `db_error` deste arquivo que tenha o erro do Supabase em
+    // maos, e o motivo vale para os outros: sem ele o Sentry recebe a mensagem
+    // generica e um stack que aponta para a nossa propria linha, e a causa real
+    // (timeout de statement, permissao, coluna ausente) some. O `LinkedErrors`
+    // percorre `err.cause` e anexa o erro do Supabase. Nenhum texto exibido ao
+    // usuario muda: `cause` nunca sai na resposta.
+    //
+    // Foi por falta disto que o BUG-74 (`Erro ao gravar assinatura.`, evento de
+    // 22/08) chegou ao Sentry sem cadeia nenhuma: o `89bf03ba` cobriu
+    // `routes/billing.ts` e `routes/content.ts` e deixou o webhook de fora, que
+    // e justamente o caminho sem ninguem olhando a tela.
+    throw createError(500, "db_error", "Erro ao gravar assinatura.", {
+      cause: result.error,
+    });
   }
 
   // Perdedor da corrida: a linha ja foi criada por outro handler, que dispara os
@@ -617,7 +630,9 @@ async function applyBoletoPending(
   });
   if (error) {
     console.error("[webhook/stripe] boleto pending write failed:", error);
-    throw createError(500, "db_error", "Erro ao gravar assinatura.");
+    throw createError(500, "db_error", "Erro ao gravar assinatura.", {
+      cause: error,
+    });
   }
 }
 
@@ -724,7 +739,9 @@ async function onBoletoAsyncPaymentSucceeded(
 
   if (error) {
     console.error("[webhook/stripe] boleto activation write failed:", error);
-    throw createError(500, "db_error", "Erro ao ativar assinatura.");
+    throw createError(500, "db_error", "Erro ao ativar assinatura.", {
+      cause: error,
+    });
   }
   if (!activated || activated.length === 0) {
     // Corrida: alguem flipou entre a leitura e o UPDATE. Ja tratado por quem
@@ -800,7 +817,9 @@ async function onBoletoAsyncPaymentFailed(
 
   if (error) {
     console.error("[webhook/stripe] boleto failure write failed:", error);
-    throw createError(500, "db_error", "Erro ao cancelar assinatura.");
+    throw createError(500, "db_error", "Erro ao cancelar assinatura.", {
+      cause: error,
+    });
   }
 }
 
@@ -850,7 +869,9 @@ async function onInvoiceFailed(
     .eq("provider_subscription_id", subId);
   if (error) {
     console.error("[webhook/stripe] subscriptions write failed:", error);
-    throw createError(500, "db_error", "Erro ao marcar past_due.");
+    throw createError(500, "db_error", "Erro ao marcar past_due.", {
+      cause: error,
+    });
   }
 
   await handleTransition(existing.user_id, existing.status, "past_due", {});
@@ -977,6 +998,7 @@ async function createCheckout(
         500,
         "db_error",
         "Não foi possível verificar sua assinatura. Tente novamente.",
+        { cause: guardError },
       );
     }
     if (activeRows && activeRows.length > 0) {
@@ -1007,6 +1029,7 @@ async function createCheckout(
       500,
       "db_error",
       "Não foi possível verificar seu boleto pendente. Tente novamente.",
+      { cause: pendingError },
     );
   }
   if (pendingBoleto && pendingBoleto.length > 0) {
@@ -1212,7 +1235,10 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
     .limit(1)
     .maybeSingle();
 
-  if (error) throw createError(500, "db_error", "Erro ao buscar assinatura.");
+  if (error)
+    throw createError(500, "db_error", "Erro ao buscar assinatura.", {
+      cause: error,
+    });
   if (!sub) {
     throw createError(404, "not_found", "Nenhuma assinatura ativa encontrada.");
   }
@@ -1234,7 +1260,9 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
       .limit(1)
       .maybeSingle();
     if (intentError) {
-      throw createError(500, "db_error", "Erro ao verificar cancelamento.");
+      throw createError(500, "db_error", "Erro ao verificar cancelamento.", {
+        cause: intentError,
+      });
     }
 
     if (!existingIntent) {
@@ -1256,6 +1284,7 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
           500,
           "db_error",
           "Não foi possível registrar. Tente novamente.",
+          { cause: insertError },
         );
       }
     }
@@ -1312,6 +1341,7 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
       500,
       "db_error",
       "Cancelamento agendado no provedor, mas houve erro ao registrar. Tente novamente.",
+      { cause: updateError },
     );
   }
 
@@ -1352,7 +1382,10 @@ async function reactivate(input: ReactivateInput): Promise<ReactivateResult> {
     .limit(1)
     .maybeSingle();
 
-  if (error) throw createError(500, "db_error", "Erro ao buscar assinatura.");
+  if (error)
+    throw createError(500, "db_error", "Erro ao buscar assinatura.", {
+      cause: error,
+    });
 
   const nowIso = new Date().toISOString();
   const outOfWindow =
@@ -1384,6 +1417,7 @@ async function reactivate(input: ReactivateInput): Promise<ReactivateResult> {
         500,
         "db_error",
         "Não foi possível desfazer. Tente novamente.",
+        { cause: revertError },
       );
     }
     return {
@@ -1440,6 +1474,7 @@ async function reactivate(input: ReactivateInput): Promise<ReactivateResult> {
       500,
       "db_error",
       "Reativação confirmada no provedor, mas houve erro ao registrar. Tente novamente.",
+      { cause: updateError },
     );
   }
 
@@ -1603,7 +1638,9 @@ async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
       "[webhook/stripe] Erro ao registrar billing_event:",
       dedupeError,
     );
-    throw createError(500, "db_error", "Erro ao registrar evento.");
+    throw createError(500, "db_error", "Erro ao registrar evento.", {
+      cause: dedupeError,
+    });
   }
   if (!recorded || recorded.length === 0) {
     // Linha ja existia. Isso NAO e sinonimo de "ja processado": o DELETE de
