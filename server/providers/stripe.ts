@@ -374,6 +374,36 @@ async function applySubscription(
           "Assinatura paga sem plano resolvível.",
         );
       }
+      // Terceiro caminho de 200 mudo desta funcao, irmao do
+      // `stripe_pagamento_sem_dono`: `atendido` significa que a linha ja existe,
+      // ninguem ficou sem acesso e a Stripe nao deve reentregar, entao o 200
+      // esta certo. O que falta e rastro, porque o `console.error` acima morre
+      // no log do Railway (`server/lib/sentry.ts` nao declara `integrations` e o
+      // `captureConsoleIntegration` nao e padrao no @sentry/node, ver
+      // docs/erro-engolido.md), e com 200 o RETRY DA STRIPE NUNCA REENTREGA
+      // este evento: se ninguem olhar hoje, ninguem olha nunca.
+      //
+      // `warning` e nao `error` pelo mesmo motivo escrito acima: o fluxo TRATOU
+      // o caso, ninguem esta sem o que pagou neste instante, e o que se quer e
+      // um humano conferir de onde veio um price sem plano mapeado, nao
+      // urgencia de plantao. `error` igualaria isto ao ramo de cima, onde o
+      // dinheiro entrou e ninguem foi atendido.
+      Sentry.captureMessage("stripe_pagamento_sem_plano", {
+        level: "warning",
+        // Fingerprint fixo por TIPO, nao pelo id, pela razao de sempre: o
+        // interesse e a serie no tempo, e uma issue por ocorrencia carrega a
+        // mesma informacao que nenhuma. Issue separada das outras duas porque o
+        // defeito e outro: aqui o dono existe, o que nao existe e o mapeamento
+        // do price para um plano nosso.
+        fingerprint: ["stripe-pagamento-sem-plano"],
+        tags: { origem: "stripe-webhook", event_type: event.type },
+        extra: {
+          subscription_id: sub.id,
+          event_id: event.id,
+          user_id: userId,
+          price_id: sub.items?.data?.[0]?.price?.id ?? null,
+        },
+      });
       return;
     }
     console.warn(
