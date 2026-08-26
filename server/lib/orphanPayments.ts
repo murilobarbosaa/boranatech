@@ -46,6 +46,17 @@ const GRACE_MS = 15 * 60 * 1000;
 // string. 100 chaves por lote e o mesmo tamanho de pagina que usamos na Stripe.
 const LOOKUP_CHUNK = 100;
 
+// Teto de linhas ABERTAS reverificadas por execucao (ver `lerAbertasAcionaveis`).
+// Cada uma custa um `checkout.sessions.retrieve` e possivelmente um
+// `customers.retrieve`. Com o estoque real (2 linhas em 2026-08-26) o teto nunca
+// e alcancado; ele existe para o dia em que o estoque crescer.
+//
+// O que sobra do teto NAO some: vira `unresolvedNaoVerificadas`, que por si so
+// mantem a run em 'partial'. Sem isso, 25 linhas de ruido na frente da fila
+// esconderiam uma acionavel atras e o job sairia verde, que e exatamente a
+// classe de defeito que este modulo existe para nao repetir.
+const TETO_REVERIFICACAO_ABERTAS = 25;
+
 // Pagamento efetivo. 'no_payment_required' entra de proposito: e o que a Stripe
 // devolve num mode:subscription 100% descontado, onde nao houve cobranca mas a
 // assinatura DEVE existir. 'unpaid' fica de fora (boleto emitido e nao pago).
@@ -97,6 +108,19 @@ export interface OrphanPaymentFinding {
   contaExcluidaEm: string | null;
 }
 
+/**
+ * Linha ABERTA (sem `resolved_at`) de `billing_orphan_payments` que, reavaliada
+ * agora, continua pedindo acao humana. Resumo, nao o achado inteiro: o payload
+ * da run precisa dizer QUEM esta esperando, nao repetir a sessao da Stripe.
+ */
+export interface UnresolvedActionableRow {
+  sessionId: string;
+  customerEmail: string | null;
+  categoria: OrphanCategory;
+  /** `detected_at` da linha, ou seja, ha quanto tempo isto espera. */
+  detectedAt: string | null;
+}
+
 export interface OrphanPaymentScan {
   /** `null` no modo full: nao ha janela. */
   windowDays: number | null;
@@ -126,6 +150,64 @@ export interface OrphanPaymentScan {
   /** false quando a tabela de registro nao respondeu (ver migration). */
   persisted: boolean;
   findings: OrphanPaymentFinding[];
+  /**
+   * ESTOQUE NAO RESOLVIDO, independente da janela.
+   *
+   * A varredura responde "o que apareceu na janela". Isso deixou o orfao de
+   * 2026-07-19 invisivel por 26 dias e, mesmo depois de registrado, o job voltou
+   * a sair 'success' assim que a sessao saiu dos 7 dias: em 117 runs so UMA foi
+   * nao-sadia, e foi a varredura `full` manual. Ou seja, o registro existia, a
+   * pessoa continuava sem o que pagou, e o instrumento dizia verde.
+   *
+   * Estes campos respondem a outra pergunta, que nao tem janela: "ha linha
+   * ABERTA que ainda pede acao?". Enquanto houver, a run fica 'partial', ate
+   * alguem carimbar `resolved_at`.
+   */
+  unresolvedAcionaveis: number;
+  unresolvedItens: UnresolvedActionableRow[];
+  /**
+   * Linhas abertas que NAO foi possivel classificar (acima do teto, ou a sessao
+   * nao voltou da Stripe). Contam como motivo de 'partial' pelo mesmo criterio
+   * do `contarLinhas` devolvendo -1: nao saber nao e sinonimo de estar limpo.
+   */
+  unresolvedNaoVerificadas: number;
+  /** false quando a propria leitura da tabela falhou. Mesmo criterio acima. */
+  unresolvedLeituraOk: boolean;
+}
+
+/**
+ * Status da run a partir do resultado da varredura. Extraido da rota para ser
+ * testavel isolado, sem subir o app inteiro, no mesmo molde de
+ * `rateLimitExempt.ts` e `rateLimitKey.ts`.
+ *
+ * 'partial' pelos ACIONAVEIS, nao pelo bruto: `modo_teste` e `conta_excluida`
+ * sao ruido conhecido e nomeado, e deixar o job amarelo por causa deles e o
+ * caminho para ninguem mais olhar a lista de crons.
+ *
+ * O ESTOQUE ABERTO conta junto, e nao e detalhe. Sem ele o veredito tinha a
+ * mesma janela da varredura, entao um orfao acionavel saia do alcance dos 7 dias
+ * e o job voltava a 'success' com a pessoa ainda sem o que pagou. Medido em
+ * 2026-08-26 sobre as 117 runs do historico: UMA unica nao-sadia, e foi a
+ * varredura `full` manual. Com o estoque no criterio, linha aberta acionavel
+ * mantem a run amarela ate alguem carimbar `resolved_at`, e o alerta de cron
+ * (server/lib/cronAlert.ts) notifica UMA vez, na transicao, nao a cada run.
+ *
+ * `unresolvedNaoVerificadas` e `!unresolvedLeituraOk` entram pelo mesmo
+ * criterio do `contarLinhas` devolvendo -1: nao conseguir avaliar nao e sinonimo
+ * de estar limpo, e um instrumento que confunde as duas coisas falha PASSANDO.
+ *
+ * `persisted` so conta fora do dry-run, onde nao gravar e o comportamento pedido.
+ */
+export function statusDaRunDeOrfaos(
+  scan: OrphanPaymentScan,
+): "success" | "partial" {
+  const precisaAtencao =
+    scan.orphansAcionaveis > 0 ||
+    scan.unresolvedAcionaveis > 0 ||
+    scan.unresolvedNaoVerificadas > 0 ||
+    !scan.unresolvedLeituraOk ||
+    (!scan.persisted && !scan.dryRun);
+  return precisaAtencao ? "partial" : "success";
 }
 
 export function clampWindowDays(raw: unknown): number {
@@ -343,6 +425,124 @@ async function persistFindings(
   return { persisted: true, newOrphans: inserted?.length ?? 0 };
 }
 
+/** Forma minima da linha de `billing_orphan_payments` que interessa aqui. */
+type LinhaAberta = {
+  stripe_session_id: string | null;
+  customer_email: string | null;
+  detected_at: string | null;
+};
+
+/**
+ * Reavalia as linhas ABERTAS que a varredura desta run nao alcancou.
+ *
+ * POR QUE RECLASSIFICAR em vez de guardar a categoria numa coluna. A categoria
+ * NAO e propriedade estavel da linha: ela depende de `session.livemode` e do
+ * `metadata.account_deleted_at` do customer, e o segundo muda depois do fato.
+ * Uma linha gravada hoje como `sem_usuario_no_banco` vira `conta_excluida` no
+ * dia em que a pessoa apagar a conta, e uma categoria congelada no INSERT
+ * continuaria acusando para sempre um caso que ja virou ruido conhecido.
+ * Reclassificar tambem garante, por construcao, que este caminho e o da
+ * varredura respondem a mesma pergunta: os dois chamam `classificar`.
+ *
+ * O CUSTO, declarado: um `checkout.sessions.retrieve` por linha aberta, mais o
+ * `customers.retrieve` que a classificacao ja faz. Limitado pelo numero de
+ * linhas nao resolvidas, que e pequeno por definicao (se for grande, o alarme e
+ * o que se quer mesmo), e pelo `TETO_REVERIFICACAO_ABERTAS`.
+ *
+ * @param jaContadas sessoes que ESTA varredura ja achou. Ficam de fora para nao
+ * contar o mesmo orfao duas vezes: elas ja estao em `orphansAcionaveis`.
+ */
+async function lerAbertasAcionaveis(jaContadas: Set<string>): Promise<{
+  unresolvedAcionaveis: number;
+  unresolvedItens: UnresolvedActionableRow[];
+  unresolvedNaoVerificadas: number;
+  unresolvedLeituraOk: boolean;
+}> {
+  const vazio = {
+    unresolvedAcionaveis: 0,
+    unresolvedItens: [] as UnresolvedActionableRow[],
+    unresolvedNaoVerificadas: 0,
+    unresolvedLeituraOk: true,
+  };
+
+  const { data, error } = await supabaseAdmin
+    .from("billing_orphan_payments")
+    .select("stripe_session_id, customer_email, detected_at")
+    .is("resolved_at", null);
+
+  if (error) {
+    // Fail-soft na varredura, fail-loud no VEREDITO: a deteccao desta run vale,
+    // mas nao da para afirmar que o estoque esta limpo, entao a run nao sai
+    // verde. Ver `unresolvedLeituraOk` em OrphanPaymentScan.
+    console.error(
+      "[orphan-payments] falha ao ler as linhas abertas (o veredito desta run fica em aberto):",
+      error,
+    );
+    return { ...vazio, unresolvedLeituraOk: false };
+  }
+
+  const abertas = ((data ?? []) as LinhaAberta[]).filter(
+    (r): r is LinhaAberta & { stripe_session_id: string } =>
+      Boolean(r.stripe_session_id) &&
+      !jaContadas.has(r.stripe_session_id ?? ""),
+  );
+  if (abertas.length === 0) return vazio;
+
+  const lote = abertas.slice(0, TETO_REVERIFICACAO_ABERTAS);
+  let naoVerificadas = abertas.length - lote.length;
+
+  const findings: OrphanPaymentFinding[] = [];
+  const sessoes = new Map<string, Stripe.Checkout.Session>();
+  const linhaPorSessao = new Map<string, LinhaAberta>();
+
+  for (const row of lote) {
+    try {
+      const session = await getStripe().checkout.sessions.retrieve(
+        row.stripe_session_id,
+      );
+      sessoes.set(session.id, session);
+      linhaPorSessao.set(session.id, row);
+      findings.push(toFinding(session));
+    } catch (err) {
+      // Sessao que nao volta da Stripe e caso de "nao sei", nao de "esta ok".
+      console.warn(
+        `[orphan-payments] nao consegui reler a sessao ${row.stripe_session_id}:`,
+        err instanceof Error ? err.message : String(err),
+      );
+      naoVerificadas += 1;
+    }
+  }
+
+  await classificar(findings, sessoes);
+
+  const acionaveis = findings.filter(
+    (f) => !CATEGORIAS_IGNORADAS.has(f.categoria),
+  );
+  for (const f of acionaveis) {
+    const linha = linhaPorSessao.get(f.sessionId);
+    console.error(
+      `[orphan-payments] ABERTO SEM RESOLUCAO: session=${f.sessionId} ` +
+        `categoria=${f.categoria} email=${linha?.customer_email ?? f.customerEmail ?? "?"} ` +
+        `detectado_em=${linha?.detected_at ?? "?"}`,
+    );
+  }
+
+  return {
+    unresolvedAcionaveis: acionaveis.length,
+    unresolvedItens: acionaveis.map((f) => {
+      const linha = linhaPorSessao.get(f.sessionId);
+      return {
+        sessionId: f.sessionId,
+        customerEmail: linha?.customer_email ?? f.customerEmail,
+        categoria: f.categoria,
+        detectedAt: linha?.detected_at ?? null,
+      };
+    }),
+    unresolvedNaoVerificadas: naoVerificadas,
+    unresolvedLeituraOk: true,
+  };
+}
+
 /** Categorias que NAO pedem acao humana. Ruido conhecido, nomeado. */
 const CATEGORIAS_IGNORADAS: ReadonlySet<OrphanCategory> =
   new Set<OrphanCategory>(["modo_teste", "conta_excluida"]);
@@ -440,6 +640,12 @@ export async function detectOrphanPayments(
     ? { persisted: false, newOrphans: 0 }
     : await persistFindings(findings);
 
+  // DEPOIS de persistir: as achadas agora ja estao registradas, e passam em
+  // `jaContadas` para nao serem contadas de novo pelo caminho do estoque.
+  const estoque = await lerAbertasAcionaveis(
+    new Set(findings.map((f) => f.sessionId)),
+  );
+
   return {
     windowDays,
     full,
@@ -454,5 +660,6 @@ export async function detectOrphanPayments(
     newOrphans,
     persisted,
     findings,
+    ...estoque,
   };
 }

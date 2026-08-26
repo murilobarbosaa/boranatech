@@ -17,7 +17,11 @@ import { coletarTagueado, paginateRange } from "../lib/paginate";
 import { recordCronRun } from "../lib/cron-logs";
 import { reconcileEmailCampaignBatches } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
-import { clampWindowDays, detectOrphanPayments } from "../lib/orphanPayments";
+import {
+  clampWindowDays,
+  detectOrphanPayments,
+  statusDaRunDeOrfaos,
+} from "../lib/orphanPayments";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
@@ -1326,17 +1330,13 @@ router.post(
         full ? { full: true } : { windowDays: clampWindowDays(req.query.days) },
       );
 
-      // 'partial' pelos ACIONAVEIS, nao pelo bruto: `modo_teste` e
-      // `conta_excluida` sao ruido conhecido e nomeado, e deixar o job amarelo
-      // por causa deles e o caminho para ninguem mais olhar a lista de crons.
-      // Tambem 'partial' quando o registro nao gravou (migration pendente) —
-      // mas NAO quando foi dry-run, onde nao gravar e o comportamento pedido.
-      const needsAttention =
-        scan.orphansAcionaveis > 0 || (!scan.persisted && !scan.dryRun);
+      // Criterio inteiro (e o porque dele) em `statusDaRunDeOrfaos`, extraido
+      // para `server/lib/orphanPayments.ts` por ser testavel isolado.
+      const status = statusDaRunDeOrfaos(scan);
 
       await recordCronRun({
         jobName: "detect-orphan-payments",
-        status: needsAttention ? "partial" : "success",
+        status,
         startedAt,
         payload: {
           windowDays: scan.windowDays,
@@ -1352,6 +1352,15 @@ router.post(
           // sobrevive ao Railway, entao o achado fica consultavel mesmo se a
           // tabela dedicada ainda nao estiver aplicada.
           findings: scan.findings,
+          // Estoque nao resolvido, fora da janela da varredura. Resumo, nao o
+          // achado inteiro: quem le a run precisa de quem esta esperando e ha
+          // quanto tempo, e o resto ja esta em billing_orphan_payments.
+          unresolvedAcionaveis: {
+            total: scan.unresolvedAcionaveis,
+            naoVerificadas: scan.unresolvedNaoVerificadas,
+            leituraOk: scan.unresolvedLeituraOk,
+            itens: scan.unresolvedItens,
+          },
         },
       });
 
