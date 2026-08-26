@@ -1272,7 +1272,7 @@ async function createCheckout(
   const session = await getStripe().checkout.sessions.create({
     mode: "subscription",
     // Explicito (opt-out do dynamic payment methods): sem isso a Stripe ofereceria
-    // TODOS os metodos habilitados na conta, inclusive Boleto — e um boleto pago por
+    // TODOS os metodos habilitados na conta, inclusive Boleto, e um boleto pago por
     // aqui viraria uma sessao mode:subscription SEM metadata.payment_method='boleto'
     // nem access_days, tratado como cartao e fora da regua de renovacao manual.
     // 'card' ja exibe Apple Pay e Google Pay automaticamente (carteiras de cartao,
@@ -1777,7 +1777,7 @@ async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
         // adicionado depois (ja aconteceu: um async_payment_succeeded caiu aqui na
         // janela de um deploy e ficou preso). Remove o proprio billing_event para
         // que um resend futuro chegue ao (novo) handler. O dedup dos eventos
-        // TRATADOS fica intacto — eles nao passam por aqui. A Stripe nao reenvia
+        // TRATADOS fica intacto (eles nao passam por aqui). A Stripe nao reenvia
         // sozinho apos 200, entao isso nao vira ruido; so o resend manual (o que
         // queremos) reprocessa.
         try {
