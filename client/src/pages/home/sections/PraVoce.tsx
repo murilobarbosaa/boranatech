@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import {
@@ -9,11 +9,9 @@ import {
   Clock,
   Tag,
 } from "lucide-react";
-import {
-  praVoceCursos,
-  praVoceEventos,
-  praVoceNoticia,
-} from "@/lib/homeData.generated";
+import { praVoceCursos, praVoceNoticia } from "@/lib/homeData.generated";
+
+type Evento = import("@/services/eventosService").Evento;
 
 // =========================================
 // CONFIGURAÇÕES
@@ -97,13 +95,40 @@ const NUVENS = [
 // =========================================
 
 export default function PraVoce() {
-  // Selecao resolvida em build time (scripts/generateHomeData.mts) com a
-  // mesma logica de antes: noticia por id com fallback, indices 0 e 1.
+  // Noticia e cursos continuam resolvidos em build time
+  // (scripts/generateHomeData.mts). Os eventos nao: a fonte deles e a rota
+  // /api/content/eventos, igual as secoes vizinhas da home.
   const noticiaDestaque = praVoceNoticia;
-  const evento1 = praVoceEventos[0];
-  const evento2 = praVoceEventos[1];
   const curso1 = praVoceCursos[0];
   const curso2 = praVoceCursos[1];
+
+  const [eventos, setEventos] = useState<Evento[] | null>(null);
+
+  useEffect(() => {
+    let ativo = true;
+    // Mesmo filtro das irmas: so evento que ainda nao passou e tem link.
+    // O import e dinamico para o service nao entrar no grafo do boot.
+    import("@/services/eventosService")
+      .then(({ getEventos }) => getEventos())
+      .then((payload) => {
+        if (!ativo) return;
+        setEventos(
+          payload.eventos
+            .filter((evento) => !evento.recorrente && Boolean(evento.link))
+            .slice(0, 2),
+        );
+      })
+      .catch((erro: unknown) => {
+        if (!ativo) return;
+        // Na home, falha ESCONDE o bloco de eventos e deixa o resto da secao
+        // (noticia e cursos) de pe. Quem nomeia o erro e a pagina /eventos.
+        console.warn("[home] falha ao carregar eventos:", erro);
+        setEventos([]);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   return (
     <section id="pra-ler-e-aprender" className="bnt-ancora relative overflow-hidden py-20 md:py-28 bg-[#f0f9ff]">
@@ -158,11 +183,29 @@ export default function PraVoce() {
             <NoticiaDestaque noticia={noticiaDestaque} />
           </div>
 
-          {/* Coluna 3: 2 eventos empilhados */}
-          <div className="flex flex-col gap-6 md:gap-8">
-            <EventoCard evento={evento1} delay={0.3} />
-            <EventoCard evento={evento2} delay={0.4} />
-          </div>
+          {/* Coluna 3: ate 2 eventos empilhados, vindos da API. Enquanto
+              carrega, skeletons seguram o espaco; em falha ou vazio a coluna
+              inteira some e a noticia segue ocupando as outras duas. */}
+          {eventos === null ? (
+            <div className="flex flex-col gap-6 md:gap-8" aria-hidden="true">
+              {[0, 1].map((i) => (
+                <div
+                  key={i}
+                  className="flex-1 min-h-[13rem] animate-pulse rounded-2xl border-2 border-slate-200 bg-slate-100"
+                />
+              ))}
+            </div>
+          ) : eventos.length > 0 ? (
+            <div className="flex flex-col gap-6 md:gap-8">
+              {eventos.map((evento, i) => (
+                <EventoCard
+                  key={evento.id}
+                  evento={evento}
+                  delay={0.3 + i * 0.1}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
 
         {/* 2 cursos lado a lado abaixo */}
@@ -250,13 +293,7 @@ function NoticiaDestaque({ noticia }: { noticia: typeof praVoceNoticia }) {
 // COMPONENTE EventoCard (card lateral menor)
 // =========================================
 
-function EventoCard({
-  evento,
-  delay,
-}: {
-  evento: (typeof praVoceEventos)[number];
-  delay: number;
-}) {
+function EventoCard({ evento, delay }: { evento: Evento; delay: number }) {
   // Info evergreen substitui a data (alguns eventos podem ter passado).
   const evergreen = EVENTO_EVERGREEN[evento.id] ?? evento.formato;
 
@@ -289,7 +326,7 @@ function EventoCard({
               <span className="truncate">
                 {evento.formato === "Online"
                   ? "Online"
-                  : `${evento.cidade}, ${evento.estado}`}
+                  : `${evento.cidade}${evento.uf ? `, ${evento.uf}` : ""}`}
               </span>
             </p>
             <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
