@@ -321,6 +321,35 @@ async function applySubscription(
           "Assinatura paga sem usuário no metadata.",
         );
       }
+      // Daqui para baixo o fluxo devolve 200, e o 200 esta CERTO: `atendido`
+      // significa que a linha ja existe, entao ninguem ficou sem acesso e a
+      // Stripe nao deve reentregar. O problema nao e a resposta, e o rastro: o
+      // `console.error` acima morre no log do Railway, porque `server/lib/sentry.ts`
+      // nao declara `integrations` e o `captureConsoleIntegration` nao e padrao
+      // no @sentry/node (docs/erro-engolido.md). E este e justamente o caminho
+      // que o RETRY DA STRIPE NUNCA VAI REENTREGAR: com 200, se ninguem olhar
+      // hoje, ninguem olha nunca.
+      //
+      // `warning` e nao `error`, e a diferenca e deliberada: o fluxo TRATOU o
+      // caso, ninguem esta sem o que pagou neste instante, e o que se quer aqui
+      // e um humano conferir o metadata da subscription, nao urgencia de
+      // plantao. `error` igualaria isto ao ramo de cima, que e o caso em que o
+      // dinheiro entrou e ninguem foi atendido, e ai a distincao entre os dois
+      // se perderia justamente no painel que existe para separa-los.
+      Sentry.captureMessage("stripe_pagamento_sem_dono", {
+        level: "warning",
+        // Fingerprint fixo por TIPO, nao pelo id: o interesse e a serie no
+        // tempo. Sem ele o id da subscription entra no agrupamento, cada
+        // ocorrencia vira uma issue nova, e uma issue por ocorrencia carrega a
+        // mesma informacao que nenhuma.
+        fingerprint: ["stripe-pagamento-sem-dono"],
+        tags: { origem: "stripe-webhook", event_type: event.type },
+        extra: {
+          subscription_id: sub.id,
+          event_id: event.id,
+          customer_id: customerIdOf(sub),
+        },
+      });
       return;
     }
     console.warn(
@@ -524,6 +553,24 @@ async function onCheckoutCompleted(
         "Checkout pago sem assinatura para ativar.",
       );
     }
+    // Mesmo caso do `stripe_pagamento_sem_dono`, e o motivo de warning, de
+    // fingerprint fixo e de manter o 200 esta escrito la, em `applySubscription`.
+    // Issue separada de proposito: sao dois defeitos diferentes (metadata da
+    // subscription contra sessao paga sem subscription nenhuma) e esconder um
+    // atras do volume do outro e o que o fingerprint por tipo existe para
+    // evitar.
+    Sentry.captureMessage("stripe_pagamento_sem_assinatura", {
+      level: "warning",
+      fingerprint: ["stripe-pagamento-sem-assinatura"],
+      tags: { origem: "stripe-webhook", event_type: event.type },
+      extra: {
+        session_id: session.id,
+        event_id: event.id,
+        payment_status: session.payment_status,
+        mode: session.mode,
+        amount_total: session.amount_total,
+      },
+    });
     return;
   }
 
