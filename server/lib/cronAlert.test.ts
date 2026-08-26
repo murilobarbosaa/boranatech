@@ -79,9 +79,33 @@ describe("aviso de cron morto", () => {
     // Afirma o TOTAL, nao a pertinencia: um job novo entrando aqui e ato
     // deliberado, e um saindo sem querer derruba este teste.
     expect(Array.from(JOBS_COM_ALERTA).sort()).toEqual([
+      "detect-orphan-payments",
       "reconcile-sentry-bugs",
       "sync-sentry-tasks",
     ]);
+  });
+
+  it("detect-orphan-payments avisa na terceira partial seguida", async () => {
+    // `partial` deste job significa `orphansAcionaveis > 0` (server/routes/cron.ts):
+    // dinheiro pago sem assinatura correspondente, esperando alguem olhar. O
+    // status nao-sadio e `partial`, nunca `error`, entao se a regra so contasse
+    // `error` este job estaria na lista sem nunca avisar, que e falso-verde.
+    historico("partial", "partial", "partial", "success");
+    await avisarSeCronMorreu("detect-orphan-payments");
+    expect(notificar).toHaveBeenCalledTimes(1);
+    expect(String(notificar.mock.calls[0][0].title)).toContain(
+      "detect-orphan-payments",
+    );
+  });
+
+  it("detect-orphan-payments com duas partials ainda nao avisa", async () => {
+    // O limiar de 3 vale para ele igual aos outros. Medido em 2026-08-26: nas
+    // 117 runs do historico so existe UMA nao-sadia, entao na pratica quem
+    // dispara este aviso e orfao acionavel NOVO, que fica dentro da janela de 7
+    // dias e reprova tres varreduras seguidas em 18 horas.
+    historico("partial", "partial", "success", "success");
+    await avisarSeCronMorreu("detect-orphan-payments");
+    expect(notificar).not.toHaveBeenCalled();
   });
 
   it("falha na leitura nao lanca nem avisa", async () => {
