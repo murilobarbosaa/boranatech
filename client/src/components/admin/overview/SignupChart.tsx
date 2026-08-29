@@ -99,15 +99,15 @@ export function SignupChart({ window: janela }: { window: OverviewWindow }) {
         >
           <CartesianGrid
             strokeDasharray="3 3"
-            stroke="#e2e8f0"
+            stroke="var(--border)"
             vertical={false}
           />
           <XAxis
             dataKey="rotulo"
             interval={intervaloDeRotulos(barras.length, 6)}
-            tick={{ fontSize: 11, fontWeight: 700, fill: "#64748b" }}
+            tick={{ fontSize: 11, fontWeight: 700, fill: "var(--muted-foreground)" }}
             tickLine={false}
-            axisLine={{ stroke: "#cbd5e1" }}
+            axisLine={{ stroke: "var(--border)" }}
           />
           <YAxis
             // Contagem por dia SEMPRE começa em zero: a altura da barra é a
@@ -115,13 +115,13 @@ export function SignupChart({ window: janela }: { window: OverviewWindow }) {
             // visualmente uma diferença de dez cadastros.
             domain={[0, "auto"]}
             allowDecimals={false}
-            tick={{ fontSize: 11, fontWeight: 700, fill: "#64748b" }}
+            tick={{ fontSize: 11, fontWeight: 700, fill: "var(--muted-foreground)" }}
             tickLine={false}
             axisLine={false}
             width={44}
           />
           <Tooltip
-            cursor={{ fill: "#f1f5f9" }}
+            cursor={{ fill: "var(--muted)" }}
             formatter={(valor: unknown, _nome: unknown, item: unknown) => [
               `${valor}${
                 (item as { payload?: { partial?: boolean } })?.payload?.partial
@@ -133,7 +133,9 @@ export function SignupChart({ window: janela }: { window: OverviewWindow }) {
             labelFormatter={(rotulo: string) => `Dia ${rotulo}`}
             contentStyle={{
               borderRadius: 12,
-              border: "2px solid #0f172a",
+              border: "2px solid var(--bnt-ink)",
+              background: "var(--card)",
+              color: "var(--foreground)",
               fontSize: 12,
               fontWeight: 700,
             }}
@@ -146,7 +148,7 @@ export function SignupChart({ window: janela }: { window: OverviewWindow }) {
               // cor sozinha não é acessível.
               <Cell
                 key={b.rotulo}
-                fill={b.partial ? "#c4b5fd" : "var(--color-violet-600)"}
+                fill={b.partial ? "var(--color-violet-300)" : "var(--color-violet-600)"}
                 stroke={b.partial ? "var(--color-violet-600)" : undefined}
                 strokeWidth={b.partial ? 2 : 0}
                 strokeDasharray={b.partial ? "3 2" : undefined}

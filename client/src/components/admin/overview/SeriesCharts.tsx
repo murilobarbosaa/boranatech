@@ -268,7 +268,7 @@ export function CostVsRevenueChart({
               type="monotone"
               dataKey="receita"
               name="Receita (R$)"
-              stroke="#059669"
+              stroke="var(--chart-3)"
               strokeWidth={2}
               dot={false}
               isAnimationActive={false}
@@ -277,7 +277,7 @@ export function CostVsRevenueChart({
               type="monotone"
               dataKey="custo"
               name="Custo de IA (R$)"
-              stroke="#e11d48"
+              stroke="var(--chart-5)"
               strokeWidth={2}
               dot={false}
               isAnimationActive={false}
@@ -306,7 +306,7 @@ export function CostVsRevenueChart({
               <Line
                 type="monotone"
                 dataKey="count"
-                stroke="#059669"
+                stroke="var(--chart-3)"
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}
@@ -327,7 +327,7 @@ export function CostVsRevenueChart({
               <Line
                 type="monotone"
                 dataKey="count"
-                stroke="#e11d48"
+                stroke="var(--chart-5)"
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}

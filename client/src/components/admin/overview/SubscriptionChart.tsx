@@ -122,16 +122,16 @@ export function SubscriptionChart({
           data={linhas}
           margin={{ top: 8, right: 8, bottom: 0, left: -8 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
           <XAxis
             dataKey="rotulo"
             // RÓTULOS RAREIAM, os pontos não. Em 380px cabem ~5 datas; a curva
             // continua inteira. A alternativa (rolagem horizontal) esconderia
             // metade da série atrás de um gesto que ninguém faz num painel.
             interval={intervaloDeRotulos(linhas.length, 6)}
-            tick={{ fontSize: 11, fontWeight: 700, fill: "#64748b" }}
+            tick={{ fontSize: 11, fontWeight: 700, fill: "var(--muted-foreground)" }}
             tickLine={false}
-            axisLine={{ stroke: "#cbd5e1" }}
+            axisLine={{ stroke: "var(--border)" }}
           />
           <YAxis
             yAxisId="mrr"
@@ -147,7 +147,7 @@ export function SubscriptionChart({
             orientation="right"
             domain={[0, "auto"]}
             allowDecimals={false}
-            tick={{ fontSize: 11, fontWeight: 700, fill: "#0f766e" }}
+            tick={{ fontSize: 11, fontWeight: 700, fill: "var(--chart-3)" }}
             tickLine={false}
             axisLine={false}
             width={36}
@@ -161,7 +161,9 @@ export function SubscriptionChart({
             labelFormatter={(rotulo: string) => `Dia ${rotulo}`}
             contentStyle={{
               borderRadius: 12,
-              border: "2px solid #0f172a",
+              border: "2px solid var(--bnt-ink)",
+              background: "var(--card)",
+              color: "var(--foreground)",
               fontSize: 12,
               fontWeight: 700,
             }}
@@ -185,7 +187,7 @@ export function SubscriptionChart({
             type="monotone"
             dataKey="ativos"
             name="Assinantes ativos"
-            stroke="#0f766e"
+            stroke="var(--chart-3)"
             strokeWidth={2}
             strokeDasharray="5 3"
             dot={false}

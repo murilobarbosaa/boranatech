@@ -390,7 +390,7 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
               <div style={{ width: "100%", height: 320 }}>
                 <ResponsiveContainer>
                   <ComposedChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip formatter={(value) => brl.format(Number(value))} />
@@ -398,9 +398,9 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
                     <Bar
                       dataKey="receita"
                       name="Receita líquida"
-                      fill="#059669"
+                      fill="var(--chart-3)"
                     />
-                    <Bar dataKey="despesa" name="Despesas" fill="#e11d48" />
+                    <Bar dataKey="despesa" name="Despesas" fill="var(--chart-5)" />
                     <Line
                       type="monotone"
                       dataKey="lucro"
