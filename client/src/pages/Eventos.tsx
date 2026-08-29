@@ -135,6 +135,23 @@ const ALL = "";
 // state segue "". Campos isolados (categoria/formato), sem colisao entre eles.
 const FILTRO_TODOS = "__todos__";
 
+/**
+ * Recorte "Internacional" do filtro de UF, que NAO e uma UF.
+ *
+ * O select lista as 27 unidades da federacao mais "Brasil: nacional ou
+ * itinerante", e um evento fora do pais nao cabe em nenhuma delas: ele chega do
+ * banco com `uf` nulo. Sem esta opcao, os eventos internacionais so apareciam
+ * em "Todos os estados" e nao havia como pedi-los.
+ *
+ * O predicado e `uf` nulo E modalidade diferente de Online, os dois juntos.
+ * Sem a segunda metade o recorte pegaria tambem todo evento online brasileiro,
+ * que tambem tem `uf` nulo por nao ter lugar fisico, e ai "Internacional"
+ * devolveria uma lista majoritariamente nacional, que e pior que nao ter o
+ * filtro. Fica sentinela e nao valor de UF de proposito: gravar "INT" na coluna
+ * seria inventar uma UF que o banco nao tem.
+ */
+const FILTRO_INTERNACIONAL = "__internacional__";
+
 type Tab = "todos" | "webinars" | "hackathons";
 
 const TAB_DEFS: { id: Tab; label: string; Icon: LucideIcon }[] = [
@@ -231,7 +248,9 @@ export default function Eventos() {
   const [tab, setTab] = useState<Tab>("todos");
   const [categoria, setCategoria] = useState(ALL);
   const [formato, setFormato] = useState(ALL);
-  const [estadoUF, setEstadoUF] = useState<"" | EstadoUfSigla>(ALL);
+  const [estadoUF, setEstadoUF] = useState<
+    "" | EstadoUfSigla | typeof FILTRO_INTERNACIONAL
+  >(ALL);
   const [apenasGratuitos, setApenasGratuitos] = useState(false);
 
   const [eventos, setEventos] = useState<Evento[] | null>(null);
@@ -293,7 +312,11 @@ export default function Eventos() {
         const matchTipo = matchTab(e.categoria, tab);
         const matchCat = !categoria || e.categoria === categoria;
         const matchFmt = !formato || e.formato === formato;
-        const matchEst = !estadoUF || e.uf === estadoUF;
+        const matchEst =
+          !estadoUF ||
+          (estadoUF === FILTRO_INTERNACIONAL
+            ? e.uf === null && e.formato !== "Online"
+            : e.uf === estadoUF);
         // Enum exato no lugar do `includes("gratuito")` sobre texto livre. O
         // comportamento observavel e o mesmo de antes: "misto" era o que a
         // pagina antiga chamava de "Gratuito e pago" e ja contava como gratuito.
@@ -473,13 +496,21 @@ export default function Eventos() {
                 leadingIcon={<MapPin className="h-4 w-4 text-pink-600" />}
                 value={estadoUF === ALL ? FILTRO_TODOS : estadoUF}
                 onValueChange={(v) =>
-                  setEstadoUF(v === FILTRO_TODOS ? ALL : (v as EstadoUfSigla))
+                  setEstadoUF(
+                    v === FILTRO_TODOS
+                      ? ALL
+                      : v === FILTRO_INTERNACIONAL
+                        ? FILTRO_INTERNACIONAL
+                        : (v as EstadoUfSigla),
+                  )
                 }
                 options={[
                   ...ESTADO_UF_OPTS.map(({ sigla, nome }) => ({
                     value: sigla,
                     label: nome,
                   })),
+                  // TODO(Ana)
+                  { value: FILTRO_INTERNACIONAL, label: "Internacional" },
                   { value: FILTRO_TODOS, label: "Todos os estados" },
                 ]}
               />

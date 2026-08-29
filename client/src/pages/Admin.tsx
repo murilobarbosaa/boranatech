@@ -6361,6 +6361,23 @@ function ContentAdminSection() {
                     para chegar no que não aparece aqui.
                   </div>
                 ) : null}
+                {/*
+                  Total DESCONHECIDO e um terceiro estado, e precisa aparecer.
+                  Antes, `total === null` caia no mesmo silencio de "o total e
+                  igual ao que esta na tela": a faixa acima nao renderiza, e a
+                  lista de ate 100 linhas fica parecendo completa. A rota corta
+                  em 100 sem dizer, entao quem le concluiria que o cadastro tem
+                  exatamente o que esta ali. Nao inventamos um numero (era o que
+                  `total ?? 0` faria); dizemos que ele nao veio.
+                */}
+                {!loading && !loadError && total === null && items.length > 0 ? (
+                  <div className="border-b-2 border-slate-900 bg-slate-100 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-900">
+                    {/* TODO(Ana) */}
+                    Mostrando {items.length} registros. O total no banco não foi
+                    informado, então esta lista pode não ser tudo. Use a busca
+                    para confirmar.
+                  </div>
+                ) : null}
                 {loading ? (
                   <div className="p-5">
                     <LoadingBlock />

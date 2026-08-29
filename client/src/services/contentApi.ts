@@ -135,7 +135,27 @@ function newsFromApi(row: any): NewsItem {
   };
 }
 
-export async function getContentSourceStatus(): Promise<ContentSourceStatus[]> {
+/**
+ * Status das fontes de conteudo, ou `null` quando a chamada falha.
+ *
+ * Ate 2026-08-28 o `catch` devolvia QUATRO fontes inventadas aqui mesmo (cms
+ * "ready", rss, jobs-api e events-api "inactive", com rotulos de sincronizacao
+ * escritos a mao). Nenhuma delas vinha do servidor: eram dados fabricados no
+ * cliente com a forma exata dos verdadeiros, indistinguiveis de uma resposta
+ * real para quem lesse a tela. Uma fonte fora do ar aparecia como "ready", que
+ * e o inverso do que este endpoint existe para dizer.
+ *
+ * `null` e nao `[]` pelo mesmo criterio: lista vazia significa "o servidor
+ * respondeu e nao ha fonte nenhuma", que e uma afirmacao sobre o mundo. Aqui
+ * nao houve resposta, e o valor precisa dizer isso. Mesmo desfecho de `getNews`
+ * logo abaixo.
+ *
+ * Quem consumir precisa tratar o `null` como estado proprio (esconder o bloco,
+ * ou dizer que nao carregou), nunca cair para uma lista de exemplo.
+ */
+export async function getContentSourceStatus(): Promise<
+  ContentSourceStatus[] | null
+> {
   try {
     const json = await apiFetch("/sources/status");
     return json.data.map((source: any) => ({
@@ -146,28 +166,7 @@ export async function getContentSourceStatus(): Promise<ContentSourceStatus[]> {
         : "Ainda não sincronizado",
     }));
   } catch {
-    return [
-      {
-        source: "cms",
-        status: "ready",
-        lastSyncLabel: "API local indisponível",
-      },
-      {
-        source: "rss",
-        status: "inactive",
-        lastSyncLabel: "Usando curadoria local",
-      },
-      {
-        source: "jobs-api",
-        status: "inactive",
-        lastSyncLabel: "Aguardando sincronização externa",
-      },
-      {
-        source: "events-api",
-        status: "inactive",
-        lastSyncLabel: "Aguardando sincronização externa",
-      },
-    ];
+    return null;
   }
 }
 
