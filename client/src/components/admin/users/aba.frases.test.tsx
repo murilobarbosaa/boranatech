@@ -225,7 +225,10 @@ const COPY_ESTATICA = new Set<string>([
   // ele voltar a aparecer aqui, cai como frase não classificada.
   "Nenhuma compra registrada.",
   "Sem atividade registrada para este usuário.",
-  "Fechar",
+  // "Fechar" saiu: a saida virou um X no cabecalho, e o rotulo dela agora e o
+  // aria-label. frasesVisiveis() anda so por nos de TEXTO, entao nome
+  // acessivel nao entra aqui, e a trava do nome vive em mobileLayout. Se o
+  // texto voltar a aparecer, cai como frase nao classificada.
   "Editar",
   "Revelar CPF",
   "Revelar fica registrado: quem revelou, de quem e quando.",

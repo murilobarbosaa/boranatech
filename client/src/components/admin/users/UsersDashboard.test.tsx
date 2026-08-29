@@ -388,18 +388,16 @@ describe("UsersDashboard: modal de detalhe", () => {
     // requestClose. Continua desligado.
     expect(within(dialog).queryByRole("button", { name: /close/i })).toBeNull();
 
-    // A partir do polimento mobile sao DOIS gatilhos: o do cabecalho (so
-    // mobile) e o do rodape (so desktop), nunca os dois na mesma viewport. O
-    // que importa nao e a contagem, e que os dois chamem requestClose: o
-    // numero de portas pode crescer, o numero de FUNIS nao.
+    // Eram DOIS gatilhos complementares (cabecalho so no mobile, rodape so no
+    // desktop). Agora e UM, visivel em toda largura. O que importa segue nao
+    // sendo a contagem, e sim que todo gatilho passe por requestClose: o numero
+    // de portas pode variar, o numero de FUNIS nao.
     const fechares = within(dialog).getAllByRole("button", { name: "Fechar" });
-    expect(fechares.length).toBe(2);
-    expect(within(dialog).getByTestId("header-fechar").className).toContain(
+    expect(fechares.length).toBe(1);
+    expect(within(dialog).getByTestId("header-fechar").className).not.toContain(
       "sm:hidden",
     );
-    expect(within(dialog).getByTestId("footer-fechar").className).toContain(
-      "sm:inline-flex",
-    );
+    expect(within(dialog).queryByTestId("footer-fechar")).toBeNull();
   });
 
   // As duas assercoes que existiam aqui ate a Fatia 2 travavam o modal no

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 
 import { adminFetch } from "@/lib/adminApi";
 import { ErrorBlock } from "@/components/admin/StateBlocks";
@@ -112,11 +112,12 @@ const ACTION_BUTTON =
  * Acao DESTRUTIVA. Difere em cor, nao so em posicao, e ocupa a linha inteira no
  * mobile.
  *
- * O rodape tinha cinco botoes com peso visual identico: "Cancelar Pro" parecia
- * igual a "Fechar". Numa grade de 2 colunas no celular, dois alvos de toque
+ * O rodape tinha botoes de peso visual identico, e "Cancelar Pro" parecia igual
+ * a qualquer um deles. Numa grade de 2 colunas no celular, dois alvos de toque
  * lado a lado com o mesmo aspecto convidam ao erro, e este e o unico do rodape
  * cujo erro cobra caro. `col-span-2` tira ele do pareamento e o poe sozinho na
- * propria linha.
+ * propria linha. Vale contra os vizinhos que houver: o pareamento e que e o
+ * risco, nao um rotulo especifico.
  */
 const DESTRUCTIVE_BUTTON =
   "col-span-2 w-full rounded-full border-2 border-rose-600 bg-rose-50 px-4 py-2 text-xs font-black uppercase text-rose-700 transition hover:bg-rose-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60 sm:col-span-1 sm:w-auto sm:py-1.5";
@@ -545,7 +546,7 @@ export function UserDetailModal({
         {/* CABECALHO FIXO: identidade e acesso ficam visiveis durante todo o
             scroll, porque sao a resposta a "de quem e esta tela" e o admin
             perde isso de vista assim que rola ate as secoes de baixo. */}
-        <header className="flex shrink-0 items-start justify-between gap-3 border-b-2 border-slate-200 bg-[#f6f0df] px-4 py-3 sm:px-6">
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-900 bg-[#f6f0df] px-4 py-4 sm:px-6 sm:py-5">
           <div className="flex min-w-0 items-center gap-3">
             <span
               aria-hidden="true"
@@ -577,19 +578,21 @@ export function UserDetailModal({
                 {pro.label}
               </span>
             ) : null}
-            {/* Saida no cabecalho, SO no mobile, onde o modal e tela cheia e o
-                "Fechar" do rodape gastava uma linha inteira das cinco acoes.
-                Chama requestClose, o mesmo funil de Esc e do botao do rodape:
-                nao existe segunda porta de saida, so um segundo gatilho para a
-                mesma. */}
+            {/* Saida UNICA visivel, em todas as larguras: o gatilho que era so
+                do mobile subiu a titular e o "Fechar" do rodape saiu. O funil
+                nao mudou, e continua sendo requestClose, o mesmo do Esc: o
+                numero de GATILHOS variou, o de portas nao.
+
+                O rotulo agora e o aria-label, nao o texto. Icone nao fala, e
+                sem ele o botao seria um alvo sem nome acessivel. */}
             <button
               type="button"
               data-testid="header-fechar"
               aria-label="Fechar"
               onClick={() => void requestClose()}
-              className={`rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black uppercase transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 sm:hidden`}
+              className="grid h-9 w-9 place-items-center rounded-full border-2 border-slate-900 bg-white transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
             >
-              Fechar
+              <X aria-hidden="true" className="h-4 w-4" />
             </button>
           </div>
         </header>
@@ -1085,7 +1088,11 @@ export function UserDetailModal({
               a mesma altura, em vez de quebrarem em tres linhas desalinhadas.
               Escala sem redesenho: 6 acoes fecham 3 linhas, 7 fecham 3 e a
               destrutiva (col-span-2) sempre ocupa a sua sozinha. No desktop
-              volta a ser o flex de antes, sem mudanca. */}
+              volta a ser o flex de antes, sem mudanca.
+
+              Desde a subida do X para o cabecalho, todo slot daqui e acao SOBRE
+              o usuario. Sair nao e uma delas, e nao disputa mais espaco com as
+              que mudam dado. */}
           <div className="grid w-full grid-cols-2 items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
             {detail && !detailLoading && edit.editing ? (
               <>
@@ -1185,15 +1192,6 @@ export function UserDetailModal({
               </button>
             ) : null}
           </div>
-
-          <button
-            type="button"
-            data-testid="footer-fechar"
-            onClick={() => void requestClose()}
-            className={`hidden rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 sm:inline-flex`}
-          >
-            Fechar
-          </button>
 
           {/* Formulario da nota, aberto pelo botao acima. Ocupa a linha inteira
               do rodape para o textarea nao espremer as acoes. */}

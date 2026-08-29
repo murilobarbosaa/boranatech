@@ -242,17 +242,30 @@ describe("rodapé do modal: hierarquia explícita", () => {
     const onClose = vi.fn();
     render(<UserDetailModal userId="u1" onClose={onClose} />);
     await screen.findByText("Ana Ferreira Moura");
-    // Pelo testid do CABECALHO, nao por nome: existe um "Fechar" no rodape, e
-    // casar por nome faria este teste passar sem o X existir.
+    // Pelo testid do CABECALHO, nao por nome. O rodape ja teve um "Fechar", e
+    // casar por nome deixaria este teste passar de novo se alguem devolvesse
+    // uma segunda saida para la, sem o X do cabecalho existir.
     fireEvent.click(screen.getByTestId("header-fechar"));
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("o Fechar do rodapé sai no mobile e fica no desktop", async () => {
+  it("a saída é o X do cabeçalho em TODA largura, e o rodapé não tem mais uma", async () => {
+    // Substitui a trava anterior, que afirmava o par complementar (cabecalho so
+    // no mobile, rodape so no desktop). O par acabou: um gatilho so, visivel
+    // sempre. O rodape ficou para acoes SOBRE o usuario, e sair nao e uma.
     await abrir();
-    const rodape = screen.getByTestId("footer-fechar");
-    expect(rodape.className).toContain("hidden");
-    expect(rodape.className).toContain("sm:inline-flex");
+    const x = screen.getByTestId("header-fechar");
+    expect(x.className).not.toContain("sm:hidden");
+    expect(x.className).not.toContain("hidden");
+    expect(screen.queryByTestId("footer-fechar")).toBeNull();
+  });
+
+  it("o X do cabeçalho tem nome acessível, porque ícone não fala", async () => {
+    // O rotulo deixou de ser texto e virou aria-label. Sem esta trava, trocar o
+    // icone ou perder o atributo deixaria um botao sem nome, e o teste de foco
+    // abaixo nem chega perto disso.
+    await abrir();
+    expect(screen.getByRole("button", { name: "Fechar" })).toBeTruthy();
   });
 
   it("todo botão do rodapé tem indicador de foco do projeto", async () => {

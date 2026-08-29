@@ -165,14 +165,17 @@ describe("fechamento", () => {
     expect(screen.queryByRole("dialog")).not.toBeNull();
   });
 
-  it("o botao Fechar do rodape fecha", async () => {
+  it("o X do cabecalho fecha", async () => {
+    // Era o "Fechar" do rodape, casado por nome dentro do <footer>. A saida
+    // subiu para o cabecalho; o escopo acompanha, e segue sendo por REGIAO em
+    // vez de testid, para o teste falhar se o gatilho mudar de lugar de novo.
     rotear(detalhe());
     const onClose = vi.fn();
     render(<UserDetailModal userId="u1" onClose={onClose} />);
     await pronto();
 
-    const rodape = within(document.querySelector("footer") as HTMLElement);
-    fireEvent.click(rodape.getByRole("button", { name: "Fechar" }));
+    const cabecalho = within(document.querySelector("header") as HTMLElement);
+    fireEvent.click(cabecalho.getByRole("button", { name: "Fechar" }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
@@ -851,12 +854,12 @@ describe("guarda de alteracao nao salva no funil requestClose", () => {
       target: { value: "Ana Paula" },
     });
 
-    fireEvent.click(screen.getByTestId("footer-fechar"));
+    fireEvent.click(screen.getByTestId("header-fechar"));
     await screen.findByText("Descartar alterações?");
     fireEvent.click(screen.getByRole("button", { name: "Continuar editando" }));
     expect(onClose).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByTestId("footer-fechar"));
+    fireEvent.click(screen.getByTestId("header-fechar"));
     await screen.findByText("Descartar alterações?");
     fireEvent.click(screen.getByRole("button", { name: "Descartar" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
@@ -865,7 +868,7 @@ describe("guarda de alteracao nao salva no funil requestClose", () => {
   it("a guarda vale para TODOS os caminhos de saida, nao so para o Esc", async () => {
     // Se a checagem morasse nos call sites em vez de dentro do requestClose,
     // bastaria alguem esquecer um caminho. Aqui os dois caminhos existentes
-    // (Esc e botao Fechar) sao exercitados contra a MESMA guarda.
+    // (Esc e o X do cabecalho) sao exercitados contra a MESMA guarda.
     rotear(detalhe());
     const onClose = vi.fn();
     render(<UserDetailModal userId="u1" onClose={onClose} />);
@@ -875,7 +878,7 @@ describe("guarda de alteracao nao salva no funil requestClose", () => {
       target: { value: "Ana Paula" },
     });
 
-    fireEvent.click(screen.getByTestId("footer-fechar"));
+    fireEvent.click(screen.getByTestId("header-fechar"));
     expect(await screen.findByText("Descartar alterações?")).toBeTruthy();
     expect(onClose).not.toHaveBeenCalled();
   });
