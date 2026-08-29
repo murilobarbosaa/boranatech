@@ -92,7 +92,7 @@ function IconPill({ children }: { children: ReactNode }) {
 }
 
 const BUTTON_CLASS =
-  "mt-8 inline-flex items-center justify-center rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-6 py-3 font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_var(--bnt-shadow)]";
+  "mt-8 inline-flex items-center justify-center rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-6 py-3 font-black text-ink-on-accent shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_var(--bnt-shadow)]";
 
 export default function Renovar() {
   // ?t= lido via URLSearchParams (wouter nao captura query string). Uma vez: o

@@ -163,7 +163,7 @@ export default function RoadmapIAView() {
               </p>
               <Link
                 href="/roadmaps/ia"
-                className="mt-4 inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
+                className="mt-4 inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-4 py-2.5 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
               >
                 {COPY.failedCta}
               </Link>
@@ -208,7 +208,7 @@ export default function RoadmapIAView() {
                   <div className="mt-4 flex flex-wrap gap-3">
                     <Link
                       href="/portfolio/analisar"
-                      className="inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
+                      className="inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-4 py-2.5 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
                     >
                       {COPY.completedCtaGithub}
                     </Link>
@@ -244,7 +244,7 @@ export default function RoadmapIAView() {
                         onClick={() =>
                           void start((handlers) => streamResume(slug, handlers))
                         }
-                        className="mt-3 inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
+                        className="mt-3 inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-4 py-2.5 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
                       >
                         {COPY.resume}
                       </button>

@@ -548,7 +548,7 @@ export default function CurriculoChatPanel({
             </div>
             <button
               type="button"
-              className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
+              className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
               disabled={inputDisabled || !input.trim()}
               aria-label="Enviar"
               onClick={() => void handleSend()}

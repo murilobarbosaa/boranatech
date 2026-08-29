@@ -1901,7 +1901,7 @@ export default function Perfil() {
                               type="button"
                               onClick={handleReactivate}
                               disabled={reactivating}
-                              className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] px-4 py-2 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] px-4 py-2 font-display text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {/* TODO(Ana): rotulo do botao de desfazer do boleto. */}
                               {reactivating ? "Desfazendo..." : "Voltar atrás"}
@@ -1933,7 +1933,7 @@ export default function Perfil() {
                                 type="button"
                                 onClick={handleReactivate}
                                 disabled={reactivating}
-                                className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] px-4 py-2 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] px-4 py-2 font-display text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                               >
                                 {reactivating
                                   ? "Reativando..."
@@ -1975,7 +1975,7 @@ export default function Perfil() {
 
                     <Link
                       href="/planos"
-                      className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5"
+                      className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5"
                     >
                       <ProStarIcon className="h-4 w-4" />
                       Ver planos Pro

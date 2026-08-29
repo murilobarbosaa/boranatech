@@ -232,7 +232,7 @@ export default function CareerTrail({
                 />
               ) : null}
               {currentStationIndex === index ? (
-                <span className="absolute left-1/2 top-0 z-20 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-2.5 py-0.5 text-[0.65rem] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
+                <span className="absolute left-1/2 top-0 z-20 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-2.5 py-0.5 text-[0.65rem] font-black uppercase tracking-wide text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
                   <MapPin className="h-3 w-3" aria-hidden />
                   {/* TODO(Ana): marcador de posicao atual */}
                   Você está aqui

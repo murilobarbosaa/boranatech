@@ -477,7 +477,7 @@ function WaitlistCta({ defaultEmail }: { defaultEmail: string }) {
         <button
           type="submit"
           disabled={submitting}
-          className="pro-glare bnt-pressable inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-6 py-3 font-display font-black text-slate-950 shadow-[5px_5px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--bnt-shadow)] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
+          className="pro-glare bnt-pressable inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-6 py-3 font-display font-black text-ink-on-accent shadow-[5px_5px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--bnt-shadow)] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
         >
           <Sparkles className="h-5 w-5" />
           {/* TODO(Ana): rotulos do CTA da lista de espera (normal e carregando). */}
@@ -598,7 +598,7 @@ function CouponField({
         <button
           type="submit"
           disabled={validating || !code.trim()}
-          className="bnt-pressable inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 font-display text-sm font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-60 disabled:hover:translate-y-0"
+          className="bnt-pressable inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 font-display text-sm font-black text-ink-on-accent shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-60 disabled:hover:translate-y-0"
         >
           {validating ? (
             <Loader2 size={15} className="animate-spin" aria-hidden="true" />
@@ -981,7 +981,7 @@ export default function Checkout() {
                                     skipChipFocusRef.current = true;
                                     scrollToPlans();
                                   }}
-                                  className="pro-glare bnt-pressable mt-7 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border-2 border-slate-950 bg-[var(--brand-yellow)] px-8 py-3.5 font-display text-base font-black text-slate-950 shadow-[5px_5px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--bnt-shadow)]"
+                                  className="pro-glare bnt-pressable mt-7 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border-2 border-slate-950 bg-[var(--brand-yellow)] px-8 py-3.5 font-display text-base font-black text-ink-on-accent shadow-[5px_5px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--bnt-shadow)]"
                                 >
                                   <ProStarIcon />
                                   Quero o Pro
@@ -1006,7 +1006,7 @@ export default function Checkout() {
                 type="button"
                 onClick={scrollToPlans}
                 aria-label="Ir para escolha de plano"
-                className="pro-glare bnt-pressable group relative inline-flex items-center gap-2 overflow-hidden rounded-2xl border-2 border-slate-950 bg-[var(--brand-yellow)] px-8 py-4 font-display text-base md:text-lg font-black text-slate-950 shadow-[5px_5px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--bnt-shadow)]"
+                className="pro-glare bnt-pressable group relative inline-flex items-center gap-2 overflow-hidden rounded-2xl border-2 border-slate-950 bg-[var(--brand-yellow)] px-8 py-4 font-display text-base md:text-lg font-black text-ink-on-accent shadow-[5px_5px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--bnt-shadow)]"
               >
                 <ProStarIcon />
                 <span>Quero o Pro</span>
@@ -1287,7 +1287,7 @@ export default function Checkout() {
                   type="button"
                   onClick={handleSubscribe}
                   disabled={loading}
-                  className="pro-glare bnt-pressable inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-8 py-4 font-display font-black text-slate-950 shadow-[5px_5px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--bnt-shadow)] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
+                  className="pro-glare bnt-pressable inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-8 py-4 font-display font-black text-ink-on-accent shadow-[5px_5px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--bnt-shadow)] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
                 >
                   <Sparkles className="h-5 w-5" />
                   {loading

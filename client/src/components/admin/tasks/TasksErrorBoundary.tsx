@@ -53,7 +53,7 @@ function PainelIndisponivel({
         <button
           type="button"
           onClick={reset}
-          className="rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
+          className="rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]"
         >
           Tentar de novo
         </button>

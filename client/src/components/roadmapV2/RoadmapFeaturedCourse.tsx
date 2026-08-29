@@ -61,7 +61,7 @@ export default function RoadmapFeaturedCourse({
               href={curso.link}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-[10px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-3 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-[10px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-3 py-2 text-xs font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
             >
               Acessar
               <ExternalLink className="h-3.5 w-3.5" aria-hidden />

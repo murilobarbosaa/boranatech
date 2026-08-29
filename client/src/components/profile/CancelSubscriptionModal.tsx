@@ -137,7 +137,7 @@ export function CancelSubscriptionModal({
                   key={text}
                   className="flex items-center gap-3 rounded-2xl border-2 border-[var(--bnt-ink)] bg-[var(--brand-cream)] p-3"
                 >
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] text-slate-950">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] text-ink-on-accent">
                     <Icon className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
                   </span>
                   <span className="text-sm font-bold text-[var(--bnt-ink)]">
@@ -151,7 +151,7 @@ export function CancelSubscriptionModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="pro-glare bnt-pressable inline-flex flex-1 items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-5 py-3 font-display font-black text-slate-950 shadow-[5px_5px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--bnt-shadow)]"
+                className="pro-glare bnt-pressable inline-flex flex-1 items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-5 py-3 font-display font-black text-ink-on-accent shadow-[5px_5px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--bnt-shadow)]"
               >
                 Quero continuar Pro
               </button>

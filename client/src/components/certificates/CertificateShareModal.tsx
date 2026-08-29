@@ -153,7 +153,7 @@ export default function CertificateShareModal({
               <button
                 type="button"
                 onClick={() => copy(link, "link")}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border-[2.5px] border-slate-950 bg-[var(--brand-yellow)] px-3 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border-[2.5px] border-slate-950 bg-[var(--brand-yellow)] px-3 py-2 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px"
               >
                 {copied === "link" ? (
                   <Check className="h-4 w-4" />
@@ -182,7 +182,7 @@ export default function CertificateShareModal({
               <button
                 type="button"
                 onClick={() => copy(fullText, "text")}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border-[2.5px] border-slate-950 bg-[var(--brand-yellow)] px-3 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border-[2.5px] border-slate-950 bg-[var(--brand-yellow)] px-3 py-2 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px"
               >
                 {copied === "text" ? (
                   <Check className="h-4 w-4" />

@@ -203,7 +203,7 @@ export default function ProQuemE() {
           </p>
           <Link
             href="/cadastro"
-            className="font-display inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-8 py-4 font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)] active:translate-y-0 active:shadow-[2px_2px_0_var(--bnt-shadow)]"
+            className="font-display inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-8 py-4 font-black text-ink-on-accent shadow-[4px_4px_0_var(--bnt-shadow)] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)] active:translate-y-0 active:shadow-[2px_2px_0_var(--bnt-shadow)]"
           >
             Começar agora
             <ArrowRight size={18} aria-hidden="true" />

@@ -41,7 +41,7 @@ export default function AuthGateModal({
           <Button
             type="button"
             onClick={onEntrar}
-            className="w-full sm:w-auto sm:flex-1 sm:min-w-0 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] hover:bg-[var(--brand-yellow)]"
+            className="w-full sm:w-auto sm:flex-1 sm:min-w-0 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] hover:bg-[var(--brand-yellow)]"
           >
             {/* TODO(Ana): rotulo do botao de login */}
             Entrar

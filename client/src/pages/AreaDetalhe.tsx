@@ -559,7 +559,7 @@ export default function AreaDetalhe() {
                     href="https://ibm.com/products/z/resources/zxplore"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
+                    className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
                   >
                     Comece no IBM Z Xplore
                     <ExternalLink className="h-4 w-4" aria-hidden />
@@ -822,7 +822,7 @@ export default function AreaDetalhe() {
                       </p>
                       <Link
                         href="/planos"
-                        className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5"
+                        className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-xs font-black uppercase text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5"
                       >
                         Assine o Pro pra desbloquear{" "}
                         <ArrowRight className="h-3.5 w-3.5" aria-hidden />

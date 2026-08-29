@@ -194,7 +194,7 @@ export default function PerfilFavoritos() {
                       className={cn(
                         "inline-flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-sm font-black uppercase tracking-wide transition-all",
                         isActive
-                          ? "border-slate-900 bg-[var(--brand-yellow)] text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
+                          ? "border-slate-900 bg-[var(--brand-yellow)] text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]"
                           : "border-slate-300 bg-white text-slate-700 hover:border-slate-900",
                       )}
                     >
@@ -264,7 +264,7 @@ function EmptyState() {
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
         <Link
           href="/noticias"
-          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] hover:-translate-y-0.5"
+          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] hover:-translate-y-0.5"
         >
           Explorar notícias
         </Link>

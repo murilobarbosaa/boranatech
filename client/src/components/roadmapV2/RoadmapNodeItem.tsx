@@ -84,7 +84,7 @@ function ProjectCard({
   return (
     <div className="mb-3 rounded-[14px] border-[2.5px] border-slate-900 bg-amber-50 p-4 shadow-[4px_4px_0_var(--bnt-shadow)]">
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <span className="rounded-md border-2 border-slate-900 bg-[var(--brand-yellow)] px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-wide text-slate-950">
+        <span className="rounded-md border-2 border-slate-900 bg-[var(--brand-yellow)] px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-wide text-ink-on-accent">
           Projeto
         </span>
         <span className="rounded-md border-2 border-slate-900 bg-white px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-wide text-slate-700">

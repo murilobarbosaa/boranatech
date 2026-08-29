@@ -181,7 +181,7 @@ const TrailStation = forwardRef<HTMLButtonElement, TrailStationProps>(
               : complete
                 ? "border-slate-900 bg-emerald-100 text-slate-900"
                 : current
-                  ? "border-slate-900 bg-[var(--brand-yellow)] text-slate-900"
+                  ? "border-slate-900 bg-[var(--brand-yellow)] text-ink-on-accent"
                   : "border-slate-900 bg-white text-slate-900"
           }`}
         >

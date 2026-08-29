@@ -690,7 +690,7 @@ function CTAsSection({
         {result.resultAreaSlug && (
           <Link
             href={`/areas/${result.resultAreaSlug}`}
-            className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] px-6 py-3 font-display text-sm font-black uppercase tracking-wider text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
+            className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] px-6 py-3 font-display text-sm font-black uppercase tracking-wider text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
           >
             {exploreLabel}
             <ArrowRight className="h-4 w-4" strokeWidth={2.5} />

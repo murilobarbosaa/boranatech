@@ -96,7 +96,7 @@ class ErrorBoundary extends Component<Props, State> {
             onClick={() => window.location.reload()}
             className={cn(
               "bnt-pressable flex items-center gap-2 rounded-xl px-4 py-2",
-              "border-2 border-slate-950 bg-[var(--brand-yellow)] font-black text-slate-950",
+              "border-2 border-slate-950 bg-[var(--brand-yellow)] font-black text-ink-on-accent",
               "shadow-[3px_3px_0_var(--bnt-shadow)]",
             )}
           >

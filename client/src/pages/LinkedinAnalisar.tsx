@@ -547,7 +547,7 @@ function ResultadoIndisponivel({
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="bnt-pressable rounded-xl border-2 border-slate-950 bg-[var(--brand-yellow)] px-4 py-2 font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
+            className="bnt-pressable rounded-xl border-2 border-slate-950 bg-[var(--brand-yellow)] px-4 py-2 font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]"
           >
             Recarregar a página
           </button>
@@ -1255,7 +1255,7 @@ export default function LinkedinAnalisar() {
                       resultado o palco fica sem o convite. */}
                     {showEntry ? (
                       // TODO(Ana): revisar o selo do palco.
-                      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
+                      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
                         <Sparkles className="h-3 w-3" aria-hidden />
                         Comece aqui
                       </span>
@@ -1539,7 +1539,7 @@ export default function LinkedinAnalisar() {
                                     instrucao, e a antiga ainda mandava colar o
                                     texto de novo, que deixou de ser necessario. */}
                                 {headlineCortada ? (
-                                  <p className="mt-2 rounded-lg bg-[var(--brand-yellow)]/20 p-2 text-xs font-bold text-slate-900">
+                                  <p className="mt-2 rounded-lg bg-[var(--brand-yellow)]/20 p-2 text-xs font-bold text-ink-on-accent">
                                     A headline que lemos parece estar cortada.
                                   </p>
                                 ) : null}

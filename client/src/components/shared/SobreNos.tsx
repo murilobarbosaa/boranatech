@@ -324,7 +324,7 @@ export default function SobreNos() {
                   {person.chips.map((chip) => (
                     <li
                       key={chip}
-                      className="inline-flex rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
+                      className="inline-flex rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-3 py-1 text-xs font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]"
                     >
                       {chip}
                     </li>

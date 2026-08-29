@@ -87,7 +87,7 @@ function NewTaskComposerBase({
           onMouseDown={(event) => event.preventDefault()}
           onClick={submit}
           disabled={!draft.trim()}
-          className="rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-40 disabled:shadow-none"
+          className="rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-3 py-1 text-xs font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-40 disabled:shadow-none"
         >
           Adicionar
         </button>

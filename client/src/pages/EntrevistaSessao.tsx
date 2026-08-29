@@ -460,7 +460,7 @@ export default function EntrevistaSessao() {
           </p>
           <Link
             href="/entrevistas"
-            className="bnt-pressable mt-6 inline-flex rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
+            className="bnt-pressable mt-6 inline-flex rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]"
           >
             {/* TODO(Ana): label do link de volta */}
             Voltar pra Entrevistas
@@ -647,7 +647,7 @@ export default function EntrevistaSessao() {
                 <div className="mx-auto flex w-full max-w-3xl justify-center py-1">
                   <Link
                     href="/entrevistas"
-                    className="bnt-pressable inline-flex rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
+                    className="bnt-pressable inline-flex rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]"
                   >
                     {/* TODO(Ana): CTA de nova entrevista */}
                     Fazer outra entrevista
@@ -774,7 +774,7 @@ export default function EntrevistaSessao() {
                     ) : null}
                     <button
                       type="button"
-                      className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
+                      className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
                       disabled={
                         sending ||
                         hintLoading ||

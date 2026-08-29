@@ -319,7 +319,7 @@ export default function CurriculoAnalisar() {
                       className={cn(
                         "inline-flex items-center gap-2 rounded-full border-2 border-slate-950 px-4 py-2 text-sm font-black shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px",
                         tab === key
-                          ? "bg-[var(--brand-yellow)] text-slate-950"
+                          ? "bg-[var(--brand-yellow)] text-ink-on-accent"
                           : "bg-white text-slate-600",
                       )}
                     >
@@ -451,7 +451,7 @@ export default function CurriculoAnalisar() {
                   type="button"
                   disabled={analyzing}
                   onClick={() => void handleAnalyze()}
-                  className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-60"
+                  className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-60"
                 >
                   {analyzing ? (
                     <>
@@ -683,7 +683,7 @@ function ResultView({ result, onNewAnalysis, onToggleHistory }: ResultViewProps)
               ? `/curriculo/gerar?rewrite=${result.id}`
               : "/curriculo/gerar"
           }
-          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
+          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
         >
           <Wand2 className="h-4 w-4" aria-hidden />
           {COPY.rewriteCta}

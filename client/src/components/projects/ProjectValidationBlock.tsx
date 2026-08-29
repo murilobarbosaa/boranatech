@@ -249,7 +249,7 @@ function SubmitForm({
         type="button"
         onClick={onSubmit}
         disabled={submitting || !url.trim()}
-        className="inline-flex items-center justify-center gap-1.5 rounded-[10px] border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+        className="inline-flex items-center justify-center gap-1.5 rounded-[10px] border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
       >
         {/* TODO(Ana): labels do botao de submissao */}
         {retry ? "Tentar de novo" : "Enviar para validação"}

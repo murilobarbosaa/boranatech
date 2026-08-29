@@ -546,7 +546,7 @@ function CreatorsSection({
                     {creator.name}
                   </h3>
                   {creator.parceira ? (
-                    <span className="mt-1 inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-2 py-0.5 text-[10px] font-black uppercase text-slate-950">
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-2 py-0.5 text-[10px] font-black uppercase text-ink-on-accent">
                       <Sparkles className="h-3 w-3" aria-hidden />
                       Parceira BoraNaTech
                     </span>

@@ -69,7 +69,7 @@ const MISSING_LABEL: Record<MissingProfileField, string> = {
 const PRIMARY_BASE =
   "inline-flex w-full items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 px-5 py-3 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto";
 const violetPrimary = `${PRIMARY_BASE} bg-violet-800 text-white`;
-const goldPrimary = `${PRIMARY_BASE} bg-[var(--brand-yellow)] text-slate-950`;
+const goldPrimary = `${PRIMARY_BASE} bg-[var(--brand-yellow)] text-ink-on-accent`;
 const emeraldPrimary = `${PRIMARY_BASE} bg-emerald-600 text-white`;
 const inkPrimary = `${PRIMARY_BASE} bg-slate-900 text-white`;
 
@@ -658,7 +658,7 @@ export default function CertificateBlock({
           >
             <Link
               href={`/certificados/${eligibility.code}`}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-5 py-3 text-base font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-5 py-3 text-base font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] sm:w-auto"
             >
               <Award className="h-5 w-5" aria-hidden />
               {/* TODO(Ana): label ver meu certificado */}

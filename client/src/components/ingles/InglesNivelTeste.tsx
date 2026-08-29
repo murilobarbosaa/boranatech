@@ -168,7 +168,7 @@ export default function InglesNivelTeste() {
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/cadastro"
-            className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-6 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
+            className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-6 py-3 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]"
           >
             Criar conta grátis
             <ArrowRight className="h-4 w-4" aria-hidden />
@@ -333,7 +333,7 @@ export default function InglesNivelTeste() {
             }
           }}
           disabled={selecionada === null}
-          className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-6 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-40"
+          className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-6 py-2 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {ultima ? "Ver resultado" : "Próxima"}
           <ArrowRight className="h-4 w-4" aria-hidden />

@@ -216,7 +216,7 @@ export default function IntakeChatPanel({
                   </div>
                 ) : (
                   <div key={i} className="flex justify-end">
-                    <div className="max-w-[85%] rounded-2xl rounded-br-md border-2 border-slate-900 bg-[var(--brand-yellow)] px-3.5 py-2.5 text-[15px] leading-relaxed text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] sm:max-w-[70%]">
+                    <div className="max-w-[85%] rounded-2xl rounded-br-md border-2 border-slate-900 bg-[var(--brand-yellow)] px-3.5 py-2.5 text-[15px] leading-relaxed text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] sm:max-w-[70%]">
                       <p className="whitespace-pre-wrap break-words font-body">
                         {m.content}
                       </p>
