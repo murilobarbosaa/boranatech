@@ -656,9 +656,18 @@ function experienciaDoBloco(
  *
  * A correcao NAO eleva o volume de eventos: o teto continua igual e o que muda
  * e cada evento passar a carregar quantas ocorrencias ele representa. Duas
- * formas de reconstituir o total na issue, e as duas concordam por construcao:
- * somar `1 + ocorrencias_suprimidas_desde_ultimo` sobre os eventos do processo,
- * ou ler o maior `total_no_processo`.
+ * formas de reconstituir o total na issue, e as duas concordam **DENTRO DE UM
+ * PROCESSO**: somar `1 + ocorrencias_suprimidas_desde_ultimo` sobre os eventos
+ * do processo, ou ler o maior `total_no_processo`.
+ *
+ * ENTRE PROCESSOS AS DUAS DIVERGEM, e so uma continua valendo. `total_no_processo`
+ * zera a cada boot, entao numa issue que atravessa deploys ou restarts o "maior
+ * valor" nao e o total: e o total do processo mais movimentado, e ele pode ate
+ * DIMINUIR com o tempo. Medido em 2026-08-26: o maior `total_no_processo` de uma
+ * issue caiu de 11 para 2 no mesmo dia, sem nenhuma violacao ter deixado de
+ * acontecer. Quem lesse o campo como total concluiria que o problema regrediu
+ * quando o que mudou foi o processo. **A leitura valida entre processos e a
+ * SOMA dos extras**, que nao depende de nenhum estado sobreviver ao boot.
  *
  * O estado e POR PROCESSO e some no restart, igual ao teto que ja existia. Isso
  * e limitacao conhecida e aceita: o alvo aqui e ordem de grandeza por tipo, nao
