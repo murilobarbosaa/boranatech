@@ -293,7 +293,7 @@ function SalaryRangeCard({
       ? 100 - (pjHigh / maxSalary) * 100
       : 0;
   return (
-    <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a] transition-shadow duration-200 hover:shadow-[5px_5px_0_#6ee7b7]">
+    <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)] transition-shadow duration-200 hover:shadow-[5px_5px_0_#6ee7b7]">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="rounded-full border-2 border-slate-900 bg-emerald-100 px-2.5 py-0.5 text-xs font-black">
           {String(row.area)}
@@ -485,7 +485,7 @@ export default function Salarios() {
                 className={cn(
                   "rounded-full border-2 px-4 py-2 text-sm font-black transition-all",
                   aba === item
-                    ? "border-slate-900 bg-emerald-600 text-white shadow-[2px_2px_0_#0f172a]"
+                    ? "border-slate-900 bg-emerald-600 text-white shadow-[2px_2px_0_var(--bnt-shadow)]"
                     : "border-slate-300 bg-white text-slate-700 hover:border-emerald-400",
                 )}
               >
@@ -932,7 +932,7 @@ export default function Salarios() {
                           .map((item) => (
                             <div
                               key={String(item.regiao)}
-                              className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
+                              className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]"
                             >
                               <div className="flex items-center gap-1.5">
                                 <MapPin
@@ -966,7 +966,7 @@ export default function Salarios() {
                           .map((item) => (
                             <div
                               key={String(item.nivel)}
-                              className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
+                              className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]"
                             >
                               <p className="text-sm font-black text-slate-900">
                                 {String(item.nivel)}
@@ -989,7 +989,7 @@ export default function Salarios() {
                       .map((item) => (
                         <div
                           key={String(item.periodo)}
-                          className="rounded-2xl border-2 border-slate-900 bg-emerald-100 p-5 shadow-[4px_4px_0_#0f172a]"
+                          className="rounded-2xl border-2 border-slate-900 bg-emerald-100 p-5 shadow-[4px_4px_0_var(--bnt-shadow)]"
                         >
                           <div className="flex items-center gap-2">
                             <TrendingUp

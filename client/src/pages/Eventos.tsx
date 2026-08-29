@@ -111,7 +111,7 @@ function EventLogo({ name, logoUrl }: { name: string; logoUrl: string }) {
   const [loaded, setLoaded] = useState(false);
 
   return (
-    <span className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]">
+    <span className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_var(--bnt-shadow)]">
       <span
         className={`font-display text-sm font-black leading-none text-fuchsia-700 ${loaded ? "opacity-0" : "opacity-100"}`}
       >
@@ -208,7 +208,7 @@ function EventoCard({ ev }: { ev: Evento }) {
               href={agenda}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-white text-slate-900 text-xs font-black rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-white text-slate-900 text-xs font-black rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] hover:shadow-[3px_3px_0_var(--bnt-shadow)] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
             >
               Google Calendar <CalendarPlus className="w-3 h-3 shrink-0" />
             </a>
@@ -217,7 +217,7 @@ function EventoCard({ ev }: { ev: Evento }) {
             href={ev.link}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 px-3 py-1.5 bg-fuchsia-600 text-white text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
+            className="inline-flex items-center gap-1 px-3 py-1.5 bg-fuchsia-600 text-white text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] hover:shadow-[3px_3px_0_var(--bnt-shadow)] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
           >
             Inscrever <ExternalLink className="w-3 h-3 shrink-0" />
           </a>
@@ -361,7 +361,7 @@ export default function Eventos() {
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#c026d3_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
           <div className="max-w-2xl">
-            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-fuchsia-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-fuchsia-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
               networking e movimento
             </p>
             <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">
@@ -393,8 +393,8 @@ export default function Eventos() {
                   onClick={() => setTab(id)}
                   className={`inline-flex items-center gap-2 rounded-full border-2 border-slate-900 px-4 py-2 text-sm font-black transition-all focus:outline-none focus-visible:ring-4 focus-visible:ring-fuchsia-200 ${
                     active
-                      ? "bg-fuchsia-500 text-white shadow-[3px_3px_0_#0f172a]"
-                      : "bg-white text-slate-900 hover:-translate-y-0.5 hover:shadow-[2px_2px_0_#0f172a]"
+                      ? "bg-fuchsia-500 text-white shadow-[3px_3px_0_var(--bnt-shadow)]"
+                      : "bg-white text-slate-900 hover:-translate-y-0.5 hover:shadow-[2px_2px_0_var(--bnt-shadow)]"
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -537,7 +537,7 @@ export default function Eventos() {
 
           {grupos.meses.map(([chave, doMes]) => (
             <section key={chave} className="mb-10">
-              <h2 className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-fuchsia-200 px-4 py-1.5 font-display text-sm font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_#0f172a]">
+              <h2 className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-fuchsia-200 px-4 py-1.5 font-display text-sm font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
                 {rotuloMes(chave)}
               </h2>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -551,7 +551,7 @@ export default function Eventos() {
           {grupos.semData.length > 0 && (
             <section className="mb-10">
               {/* TODO(Ana) */}
-              <h2 className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-violet-200 px-4 py-1.5 font-display text-sm font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_#0f172a]">
+              <h2 className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-violet-200 px-4 py-1.5 font-display text-sm font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
                 Recorrentes e a confirmar
               </h2>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -567,7 +567,7 @@ export default function Eventos() {
               <button
                 type="button"
                 onClick={() => setVisiveis((n) => n + LOTE)}
-                className="rounded-full border-2 border-slate-900 bg-fuchsia-500 px-6 py-3 text-sm font-black text-white shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-y-0.5"
+                className="rounded-full border-2 border-slate-900 bg-fuchsia-500 px-6 py-3 text-sm font-black text-white shadow-[4px_4px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5"
               >
                 {/* TODO(Ana) */}
                 Mostrar mais eventos

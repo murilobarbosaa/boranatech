@@ -36,9 +36,9 @@ export default function ProUpsellModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-2xl border-2 border-slate-950 bg-white p-6 text-center shadow-[6px_6px_0_#0f172a] sm:max-w-md">
+      <DialogContent className="rounded-2xl border-2 border-slate-950 bg-white p-6 text-center shadow-[6px_6px_0_var(--bnt-shadow)] sm:max-w-md">
         <DialogHeader className="items-center gap-3 text-center">
-          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-900 bg-white shadow-[3px_3px_0_var(--bnt-shadow)]">
             <Lock className="h-7 w-7 text-violet-700" />
           </span>
           {/* TODO(Ana): titulo final */}

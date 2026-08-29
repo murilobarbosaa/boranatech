@@ -206,7 +206,7 @@ export default function Ingles() {
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="rounded-xl border-2 border-slate-900 bg-white p-2.5 shadow-[3px_3px_0_#0f172a]">
+                    <div className="rounded-xl border-2 border-slate-900 bg-white p-2.5 shadow-[3px_3px_0_var(--bnt-shadow)]">
                       <Icon className={cn("h-6 w-6", meta.icon)} aria-hidden />
                     </div>
                     <span
@@ -266,7 +266,7 @@ export default function Ingles() {
               type="button"
               onClick={() => setMostrarQuiz((v) => !v)}
               aria-expanded={mostrarQuiz}
-              className="bnt-pressable mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+              className="bnt-pressable mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
             >
               <Target className="h-4 w-4" aria-hidden />
               {mostrarQuiz ? "Ocultar montador de trilha" : "Montar minha trilha"}
@@ -304,7 +304,7 @@ export default function Ingles() {
                   ac.liftShadow,
                 )}
               >
-                <div className="shrink-0 rounded-xl border-2 border-slate-900 bg-sky-100 p-3 shadow-[3px_3px_0_#0f172a]">
+                <div className="shrink-0 rounded-xl border-2 border-slate-900 bg-sky-100 p-3 shadow-[3px_3px_0_var(--bnt-shadow)]">
                   <card.icon className="h-8 w-8 text-sky-700" aria-hidden />
                 </div>
                 <div className="flex-1">

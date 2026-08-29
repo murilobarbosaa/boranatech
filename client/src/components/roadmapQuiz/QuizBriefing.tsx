@@ -21,7 +21,7 @@ import type {
 // server (que retoma a ativa com o mesmo snapshot, se existir).
 
 const violetBtn =
-  "inline-flex w-full items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-violet-800 px-5 py-3 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] sm:w-auto";
+  "inline-flex w-full items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-violet-800 px-5 py-3 text-sm font-black text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] sm:w-auto";
 
 function formatRetryAt(retryAt: string | null | undefined): string {
   if (!retryAt) return "mais tarde";

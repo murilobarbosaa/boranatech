@@ -119,7 +119,7 @@ export default function SessionGallery({
           <button
             type="button"
             onClick={retry}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
           >
             <RotateCcw className="h-3.5 w-3.5" aria-hidden />
             {/* TODO(Ana): acao de tentar carregar de novo. */}
@@ -139,7 +139,7 @@ export default function SessionGallery({
               type="button"
               onClick={onEmptyCta}
               className={cn(
-                "mt-3 inline-flex rounded-full border-2 border-slate-950 bg-white px-4 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px",
+                "mt-3 inline-flex rounded-full border-2 border-slate-950 bg-white px-4 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px",
                 ac.cardHover,
               )}
             >
@@ -218,7 +218,7 @@ export default function SessionGallery({
                       onClick={() => void handleDelete(s.id)}
                       /* TODO(Ana): label de acessibilidade da confirmacao. */
                       aria-label={`Confirmar exclusão de ${title}`}
-                      className="rounded-full border-2 border-slate-950 bg-rose-600 px-4 py-1.5 text-xs font-black text-white shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-60 disabled:hover:translate-y-0"
+                      className="rounded-full border-2 border-slate-950 bg-rose-600 px-4 py-1.5 text-xs font-black text-white shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-60 disabled:hover:translate-y-0"
                     >
                       {/* TODO(Ana): rotulos da exclusao em dois passos. */}
                       {deletingId === s.id ? "Excluindo..." : "Confirmar exclusão"}
@@ -230,7 +230,7 @@ export default function SessionGallery({
                       /* TODO(Ana): label de acessibilidade do botao excluir. */
                       aria-label={`Excluir ${title}`}
                       title="Excluir entrevista"
-                      className="rounded-full border-2 border-slate-950 bg-white p-2 text-slate-600 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px hover:text-rose-700"
+                      className="rounded-full border-2 border-slate-950 bg-white p-2 text-slate-600 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px hover:text-rose-700"
                     >
                       <Trash2 className="h-4 w-4" aria-hidden />
                     </button>

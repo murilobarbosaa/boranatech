@@ -175,7 +175,7 @@ export default function RoadmapsV2() {
                 por isso o selo Pro; o gate em si vive na pagina /roadmaps/ia. */}
             <Link
               href="/roadmaps/ia"
-              className="inline-flex items-center gap-2 rounded-full border-[2.5px] border-slate-900 bg-violet-600 px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
+              className="inline-flex items-center gap-2 rounded-full border-[2.5px] border-slate-900 bg-violet-600 px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
             >
               <Sparkles className="h-4 w-4" />
               Monte seu roadmap com IA
@@ -184,7 +184,7 @@ export default function RoadmapsV2() {
           </div>
 
           {loadFailed ? (
-            <div className="mt-8 rounded-[14px] border-[2.5px] border-slate-900 bg-white p-6 text-center shadow-[4px_4px_0_#0f172a]">
+            <div className="mt-8 rounded-[14px] border-[2.5px] border-slate-900 bg-white p-6 text-center shadow-[4px_4px_0_var(--bnt-shadow)]">
               <p className="font-display text-lg font-black text-slate-950">
                 {/* TODO(Ana): titulo do erro de carregamento da trilha */}
                 Não deu pra carregar a trilha
@@ -196,7 +196,7 @@ export default function RoadmapsV2() {
               <button
                 type="button"
                 onClick={() => setLoadAttempt((attempt) => attempt + 1)}
-                className="mt-4 inline-flex items-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
+                className="mt-4 inline-flex items-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
               >
                 <RotateCcw className="h-4 w-4" />
                 {/* TODO(Ana): label do botao de tentar de novo */}
@@ -209,7 +209,7 @@ export default function RoadmapsV2() {
             <>
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <span className="mb-3.5 inline-block rounded-full border-[2.5px] border-slate-900 bg-sky-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-900 shadow-[3px_3px_0_#0f172a]">
+                  <span className="mb-3.5 inline-block rounded-full border-[2.5px] border-slate-900 bg-sky-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)]">
                     {areaLabel}
                   </span>
                   <h1 className="font-display text-[clamp(2rem,6vw,2.7rem)] font-black leading-[1.03] tracking-tight text-slate-950">
@@ -218,7 +218,7 @@ export default function RoadmapsV2() {
                   <p className="mt-2 text-base font-medium text-slate-600">
                     {roadmap.description}
                   </p>
-                  <span className="mt-4 inline-block rounded-[10px] border-[2.5px] border-slate-900 bg-emerald-100 px-3 py-1.5 text-sm font-extrabold text-emerald-800 shadow-[3px_3px_0_#0f172a]">
+                  <span className="mt-4 inline-block rounded-[10px] border-[2.5px] border-slate-900 bg-emerald-100 px-3 py-1.5 text-sm font-extrabold text-emerald-800 shadow-[3px_3px_0_var(--bnt-shadow)]">
                     {overall.done} de {overall.total} tópicos · {overallPct}%
                   </span>
                   {languages && languages.length > 0 && (
@@ -235,7 +235,7 @@ export default function RoadmapsV2() {
                               type="button"
                               aria-pressed={active}
                               onClick={() => setLanguageId(lang.id)}
-                              className={`min-w-[6rem] rounded-[11px] border-[2.5px] border-slate-900 px-4 py-2.5 text-center text-[0.9rem] font-extrabold shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] ${
+                              className={`min-w-[6rem] rounded-[11px] border-[2.5px] border-slate-900 px-4 py-2.5 text-center text-[0.9rem] font-extrabold shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] ${
                                 active
                                   ? "bg-[#FFB800] text-slate-950"
                                   : "bg-white text-slate-600"

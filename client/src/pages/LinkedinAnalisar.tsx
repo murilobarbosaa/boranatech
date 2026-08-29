@@ -530,7 +530,7 @@ function ResultadoIndisponivel({
   onNovaAnalise: () => void;
 }) {
   return (
-    <div className="rounded-2xl border-2 border-slate-950 bg-white p-8 shadow-[5px_5px_0_#0f172a]">
+    <div className="rounded-2xl border-2 border-slate-950 bg-white p-8 shadow-[5px_5px_0_var(--bnt-shadow)]">
       <div className="flex flex-col items-center text-center">
         <AlertTriangle size={36} className="mb-4 shrink-0 text-amber-500" />
         <h3 className="mb-2 font-display text-xl font-black text-slate-950">
@@ -547,14 +547,14 @@ function ResultadoIndisponivel({
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="bnt-pressable rounded-xl border-2 border-slate-950 bg-[#FFB800] px-4 py-2 font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+            className="bnt-pressable rounded-xl border-2 border-slate-950 bg-[#FFB800] px-4 py-2 font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
           >
             Recarregar a página
           </button>
           <button
             type="button"
             onClick={onNovaAnalise}
-            className="bnt-pressable rounded-xl border-2 border-slate-950 bg-white px-4 py-2 font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+            className="bnt-pressable rounded-xl border-2 border-slate-950 bg-white px-4 py-2 font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
           >
             Fazer nova análise
           </button>
@@ -1180,7 +1180,7 @@ export default function LinkedinAnalisar() {
             ) : null}
             <p className={cn(showResult ? "mt-5" : undefined)}>
               {/* TODO(Ana): validar o eyebrow do cabecalho. */}
-              <span className="inline-flex rounded-full border-2 border-slate-900 bg-sky-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+              <span className="inline-flex rounded-full border-2 border-slate-900 bg-sky-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                 Análise Pro
               </span>
             </p>
@@ -1255,7 +1255,7 @@ export default function LinkedinAnalisar() {
                       resultado o palco fica sem o convite. */}
                     {showEntry ? (
                       // TODO(Ana): revisar o selo do palco.
-                      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                         <Sparkles className="h-3 w-3" aria-hidden />
                         Comece aqui
                       </span>
@@ -1288,7 +1288,7 @@ export default function LinkedinAnalisar() {
                                 key={step}
                                 className="flex items-center gap-3 rounded-xl border-2 border-slate-200 bg-white p-3"
                               >
-                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-base font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-base font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                                   {i + 1}
                                 </span>
                                 <span className="text-sm font-medium text-slate-700">
@@ -2291,7 +2291,7 @@ export default function LinkedinAnalisar() {
               {showEntry && analyses.length > 0 ? (
                 <details
                   className={cn(
-                    "area-rise group rounded-2xl border-2 border-slate-950 bg-white shadow-[4px_4px_0_#0f172a] transition-shadow",
+                    "area-rise group rounded-2xl border-2 border-slate-950 bg-white shadow-[4px_4px_0_var(--bnt-shadow)] transition-shadow",
                     ac.liftShadow,
                   )}
                   style={{ animationDelay: "0.16s" }}
@@ -2300,7 +2300,7 @@ export default function LinkedinAnalisar() {
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5">
                     <span className="flex items-center gap-3 font-display text-lg font-black text-slate-950">
                       <span
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-sky-300 text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-sky-300 text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
                         aria-hidden
                       >
                         <History className="h-5 w-5" />

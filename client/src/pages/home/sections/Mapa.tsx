@@ -312,10 +312,10 @@ function Panel({
 
   const shadowClass =
     state === "open"
-      ? "shadow-[6px_6px_0_#0f172a]"
+      ? "shadow-[6px_6px_0_var(--bnt-shadow)]"
       : state === "preview"
-        ? "shadow-[4px_4px_0_#0f172a]"
-        : "shadow-[2px_2px_0_#0f172a]";
+        ? "shadow-[4px_4px_0_var(--bnt-shadow)]"
+        : "shadow-[2px_2px_0_var(--bnt-shadow)]";
 
   return (
     <motion.div
@@ -369,7 +369,7 @@ function PanelMobile({
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
       onClick={onClick}
-      className={`cursor-pointer overflow-hidden rounded-2xl border-2 border-slate-950 ${node.colors.bgOpen} shadow-[4px_4px_0_#0f172a]`}
+      className={`cursor-pointer overflow-hidden rounded-2xl border-2 border-slate-950 ${node.colors.bgOpen} shadow-[4px_4px_0_var(--bnt-shadow)]`}
     >
       <div className="flex items-center justify-between p-5">
         <div className="flex items-center gap-4">

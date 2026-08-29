@@ -91,7 +91,7 @@ export default function TrailDrawer({
                   type="button"
                   aria-label="Fechar"
                   onClick={onClose}
-                  className="ml-auto grid h-[40px] w-[40px] place-items-center rounded-[10px] border-[2.5px] border-slate-900 bg-white font-black shadow-[2px_2px_0_#0f172a]"
+                  className="ml-auto grid h-[40px] w-[40px] place-items-center rounded-[10px] border-[2.5px] border-slate-900 bg-white font-black shadow-[2px_2px_0_var(--bnt-shadow)]"
                 >
                   <X className="h-5 w-5" strokeWidth={3} />
                 </button>

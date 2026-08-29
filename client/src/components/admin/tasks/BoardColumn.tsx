@@ -168,7 +168,7 @@ function BoardColumnBase({
           <h3 className="truncate text-sm font-black uppercase tracking-wide text-slate-950">
             {group.label}
           </h3>
-          <span className="inline-flex items-center rounded-full border-2 border-slate-900 bg-white px-2 py-0.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+          <span className="inline-flex items-center rounded-full border-2 border-slate-900 bg-white px-2 py-0.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
             {filtered
               ? `${group.tasks.length} de ${group.totalBeforeFilter}`
               : group.tasks.length}

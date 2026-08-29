@@ -163,7 +163,7 @@ export default function RoadmapIAView() {
               </p>
               <Link
                 href="/roadmaps/ia"
-                className="mt-4 inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
+                className="mt-4 inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
               >
                 {COPY.failedCta}
               </Link>
@@ -181,7 +181,7 @@ export default function RoadmapIAView() {
           ) : roadmap ? (
             <>
               <div className="mt-5">
-                <span className="mb-3.5 inline-block rounded-full border-[2.5px] border-slate-900 bg-violet-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-900 shadow-[3px_3px_0_#0f172a]">
+                <span className="mb-3.5 inline-block rounded-full border-[2.5px] border-slate-900 bg-violet-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)]">
                   {COPY.areaBadge}
                 </span>
                 <h1 className="font-display text-[clamp(2rem,6vw,2.7rem)] font-black leading-[1.03] tracking-tight text-slate-950">
@@ -190,7 +190,7 @@ export default function RoadmapIAView() {
                 <p className="mt-2 text-base font-medium text-slate-600">
                   {roadmap.description}
                 </p>
-                <span className="mt-4 inline-block rounded-[10px] border-[2.5px] border-slate-900 bg-emerald-100 px-3 py-1.5 text-sm font-extrabold text-emerald-800 shadow-[3px_3px_0_#0f172a]">
+                <span className="mt-4 inline-block rounded-[10px] border-[2.5px] border-slate-900 bg-emerald-100 px-3 py-1.5 text-sm font-extrabold text-emerald-800 shadow-[3px_3px_0_var(--bnt-shadow)]">
                   {overall.done} de {overall.total} tópicos · {overallPct}%
                 </span>
               </div>
@@ -208,13 +208,13 @@ export default function RoadmapIAView() {
                   <div className="mt-4 flex flex-wrap gap-3">
                     <Link
                       href="/portfolio/analisar"
-                      className="inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
+                      className="inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
                     >
                       {COPY.completedCtaGithub}
                     </Link>
                     <Link
                       href="/roadmaps/ia"
-                      className="inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-white px-4 py-2.5 text-sm font-black text-slate-900 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
+                      className="inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-white px-4 py-2.5 text-sm font-black text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
                     >
                       {COPY.completedCtaNext}
                     </Link>
@@ -235,7 +235,7 @@ export default function RoadmapIAView() {
                       onReset={reset}
                     />
                   ) : (
-                    <div className="rounded-[14px] border-[2.5px] border-slate-900 bg-amber-50 p-5 shadow-[3px_3px_0_#0f172a]">
+                    <div className="rounded-[14px] border-[2.5px] border-slate-900 bg-amber-50 p-5 shadow-[3px_3px_0_var(--bnt-shadow)]">
                       <p className="text-sm font-bold text-slate-800">
                         {COPY.partialBanner}
                       </p>
@@ -244,7 +244,7 @@ export default function RoadmapIAView() {
                         onClick={() =>
                           void start((handlers) => streamResume(slug, handlers))
                         }
-                        className="mt-3 inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
+                        className="mt-3 inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
                       >
                         {COPY.resume}
                       </button>

@@ -962,7 +962,7 @@ export default function Comparador() {
       <section className="relative overflow-hidden border-b-2 border-slate-900 bg-violet-100 py-12">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#7c3aed_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
-          <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+          <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
             comparador
           </p>
           <h1 className="font-display text-4xl font-black text-slate-950">
@@ -999,7 +999,7 @@ export default function Comparador() {
               transition={{ duration: 0.4 }}
             >
               <div className="mb-4 flex items-center gap-3">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-slate-900 bg-amber-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-slate-900 bg-amber-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                   1
                 </span>
                 <div>
@@ -1034,7 +1034,7 @@ export default function Comparador() {
                         "flex h-full flex-col rounded-2xl border-2 border-slate-900 p-4 text-left transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2",
                         active
                           ? cn(ui.bg, ui.shadow)
-                          : "bg-white shadow-[3px_3px_0_#0f172a] hover:shadow-[5px_5px_0_#0f172a]",
+                          : "bg-white shadow-[3px_3px_0_var(--bnt-shadow)] hover:shadow-[5px_5px_0_var(--bnt-shadow)]",
                       )}
                     >
                       <span
@@ -1061,7 +1061,7 @@ export default function Comparador() {
             <div className="card-brutal rounded-2xl bg-white p-5">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-slate-900 bg-amber-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-slate-900 bg-amber-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                     2
                   </span>
                   <div>
@@ -1138,7 +1138,7 @@ export default function Comparador() {
 
             {/* PASSO 3: escolher A e B (mesmo grupo) */}
             <div className="flex items-center gap-3">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-slate-900 bg-amber-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-slate-900 bg-amber-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                 3
               </span>
               <div>

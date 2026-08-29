@@ -10,7 +10,7 @@ export default function NotFound() {
       <SEO title="Página não encontrada" noindex />
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center max-w-md px-4">
-          <div className="w-20 h-20 bg-violet-100 border-2 border-violet-300 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-[4px_4px_0_#0f172a]">
+          <div className="w-20 h-20 bg-violet-100 border-2 border-violet-300 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-[4px_4px_0_var(--bnt-shadow)]">
             <Rocket className="w-10 h-10 text-violet-600" />
           </div>
           <h1 className="font-display font-bold text-6xl text-slate-900 mb-2">
@@ -25,7 +25,7 @@ export default function NotFound() {
           </p>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-violet-700 text-white font-bold rounded-lg border-2 border-slate-900 shadow-[4px_4px_0_#0f172a] hover:shadow-[6px_6px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-violet-700 text-white font-bold rounded-lg border-2 border-slate-900 shadow-[4px_4px_0_var(--bnt-shadow)] hover:shadow-[6px_6px_0_var(--bnt-shadow)] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
           >
             <ArrowLeft className="w-4 h-4" />
             Voltar para o início

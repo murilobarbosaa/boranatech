@@ -280,7 +280,7 @@ export default function AvatarPhotoPanel({
               type="button"
               onClick={() => void onConfirmCrop()}
               disabled={processing}
-              className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 text-sm font-black shadow-[3px_3px_0_#0f172a] disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-60"
             >
               {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {processing ? "Preparando..." : "Usar esta foto"}
@@ -307,7 +307,7 @@ export default function AvatarPhotoPanel({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={blockChange}
-              className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 text-sm font-black shadow-[3px_3px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Upload className="h-4 w-4" />
               {hasPhoto ? "Trocar foto" : "Enviar foto"}
@@ -318,7 +318,7 @@ export default function AvatarPhotoPanel({
                 type="button"
                 onClick={() => onStage({ type: "google" })}
                 disabled={blockChange}
-                className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Usar foto do Google
               </button>

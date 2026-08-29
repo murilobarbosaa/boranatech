@@ -271,7 +271,7 @@ function NotificationCard({
                 if (unread) void markAsRead(item.id);
                 onClose?.();
               }}
-              className="inline-flex items-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+              className="inline-flex items-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
             >
               {ctaLabel}
             </Link>
@@ -283,7 +283,7 @@ function NotificationCard({
               onClick={() => {
                 if (unread) void markAsRead(item.id);
               }}
-              className="inline-flex items-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+              className="inline-flex items-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
             >
               {ctaLabel}
             </a>
@@ -345,7 +345,7 @@ export default function NotificationsPanel({
             type="button"
             onClick={() => void markAllAsRead()}
             disabled={unreadCount === 0}
-            className={`inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none ${
+            className={`inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none ${
               isSheet ? "py-2.5" : "py-1.5"
             }`}
           >
@@ -381,7 +381,7 @@ export default function NotificationsPanel({
             <button
               type="button"
               onClick={() => void refresh()}
-              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
             >
               <RefreshCw className="h-3.5 w-3.5" />
               Tentar novamente
@@ -414,7 +414,7 @@ export default function NotificationsPanel({
                   type="button"
                   onClick={() => void handleLoadMore()}
                   disabled={loadingMore}
-                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50"
                 >
                   {loadingMore ? "Carregando..." : "Carregar mais"}
                 </button>

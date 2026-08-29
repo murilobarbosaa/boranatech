@@ -40,7 +40,7 @@ function listar(campos: LinkedinCampo[]): string {
 }
 
 const IA_EYEBROW =
-  "inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-sky-300 px-3 py-1 text-xs font-black uppercase tracking-[0.15em] text-slate-950 shadow-[3px_3px_0_#0f172a]";
+  "inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-sky-300 px-3 py-1 text-xs font-black uppercase tracking-[0.15em] text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]";
 
 export default function RecruiterFinder({
   deterministic,

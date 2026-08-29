@@ -83,7 +83,7 @@ export default function Mulheres() {
           href="https://www.instagram.com/ana.natech/"
           target="_blank"
           rel="noopener noreferrer"
-          className="absolute right-4 top-4 z-10 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white/90 px-3 py-1.5 text-xs font-black text-pink-800 shadow-[3px_3px_0_#0f172a] backdrop-blur transition-transform hover:scale-105 hover:brightness-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2 sm:right-6 sm:top-6"
+          className="absolute right-4 top-4 z-10 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white/90 px-3 py-1.5 text-xs font-black text-pink-800 shadow-[3px_3px_0_var(--bnt-shadow)] backdrop-blur transition-transform hover:scale-105 hover:brightness-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2 sm:right-6 sm:top-6"
         >
           <Instagram className="h-3.5 w-3.5" />
           @ana.natech
@@ -110,7 +110,7 @@ export default function Mulheres() {
               className="animate-twinkle pointer-events-none absolute right-24 bottom-6 hidden h-4 w-4 text-pink-300 lg:block"
               style={{ animationDelay: "1.2s", animationDuration: "2.2s" }}
             />
-            <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-pink-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+            <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-pink-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
               <Flower2 className="h-3.5 w-3.5" />
               área de mulheres
             </p>
@@ -184,7 +184,7 @@ export default function Mulheres() {
                 href={womenArea.founder.instagramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border-2 border-slate-900 bg-pink-300 px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-0.5 hover:scale-105 hover:brightness-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
+                className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border-2 border-slate-900 bg-pink-300 px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 hover:scale-105 hover:brightness-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
               >
                 <Instagram className="h-4 w-4" />
                 Seguir no Instagram {womenArea.founder.handle}
@@ -258,14 +258,14 @@ export default function Mulheres() {
                 href={womenArea.reassurance.readingUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-pink-300 px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-0.5 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
+                className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-pink-300 px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
               >
                 {womenArea.reassurance.readingLabel}{" "}
                 <ExternalLink className="h-3 w-3" />
               </a>
               <a
                 href="#comunidades"
-                className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-0.5 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
+                className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
               >
                 Ver comunidades
               </a>
@@ -274,7 +274,7 @@ export default function Mulheres() {
 
           <motion.div
             {...reveal}
-            className="rounded-3xl border-2 border-slate-900 bg-pink-100 p-6 shadow-[8px_8px_0_#0f172a]"
+            className="rounded-3xl border-2 border-slate-900 bg-pink-100 p-6 shadow-[8px_8px_0_var(--bnt-shadow)]"
           >
             <div className="mb-5 flex items-center gap-2">
               <Sparkles
@@ -323,7 +323,7 @@ export default function Mulheres() {
 
           <motion.div
             {...reveal}
-            className="rounded-3xl border-2 border-slate-900 bg-pink-200 p-6 shadow-[8px_8px_0_#0f172a]"
+            className="rounded-3xl border-2 border-slate-900 bg-pink-200 p-6 shadow-[8px_8px_0_var(--bnt-shadow)]"
           >
             <div className="mb-5 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-pink-800" />
@@ -509,7 +509,7 @@ function CreatorsSection({
 
   return (
     <div>
-      <p className="mb-2 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_#0f172a]">
+      <p className="mb-2 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
         Quem acompanhar
       </p>
       <h2 className="font-display mb-5 text-2xl font-black text-slate-950 sm:text-3xl">
@@ -532,7 +532,7 @@ function CreatorsSection({
                 className={`-mx-5 -mt-5 mb-4 h-2 ${style.accent}`}
               />
               <div className="flex gap-4">
-                <Avatar className="size-14 shrink-0 border-2 border-slate-900 shadow-[3px_3px_0_#0f172a]">
+                <Avatar className="size-14 shrink-0 border-2 border-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)]">
                   <AvatarImage
                     src={creator.avatarUrl}
                     alt={`Foto de perfil de ${creator.name}`}
@@ -711,7 +711,7 @@ function StatsSection({
   ];
   return (
     <div>
-      <p className="mb-2 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_#0f172a]">
+      <p className="mb-2 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
         O cenário
       </p>
       {/* TODO(Ana): confirmar os dados; cada card exibe a fonte e o ano. */}

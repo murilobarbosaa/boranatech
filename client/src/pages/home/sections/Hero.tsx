@@ -739,7 +739,7 @@ export default function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.5 }}
-          className="relative inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-4 py-2 shadow-[3px_3px_0_#0f172a]"
+          className="relative inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-4 py-2 shadow-[3px_3px_0_var(--bnt-shadow)]"
         >
           <Compass size={18} className="text-violet-600" aria-hidden="true" />
           <span className="text-sm font-bold text-slate-950">
@@ -807,7 +807,7 @@ export default function Hero() {
           <span className="relative isolate inline-block px-3 py-1">
             <span
               aria-hidden="true"
-              className="absolute inset-0 -z-10 -rotate-1 rounded-md border-2 border-slate-950 bg-amber-300 shadow-[3px_3px_0_#0f172a]"
+              className="absolute inset-0 -z-10 -rotate-1 rounded-md border-2 border-slate-950 bg-amber-300 shadow-[3px_3px_0_var(--bnt-shadow)]"
             />
             <AnimatePresence mode="wait">
               <motion.span
@@ -845,7 +845,7 @@ export default function Hero() {
           <Link
             href="/areas"
             aria-label="Explorar a plataforma, ir para áreas da TI"
-            className="font-display inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-8 py-4 font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a] active:translate-y-0 active:shadow-[2px_2px_0_#0f172a]"
+            className="font-display inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-8 py-4 font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)] active:translate-y-0 active:shadow-[2px_2px_0_var(--bnt-shadow)]"
           >
             Explorar a plataforma
             <ArrowRight size={18} aria-hidden="true" />
@@ -853,7 +853,7 @@ export default function Hero() {
 
           <Link
             href="/areas"
-            className="font-display inline-flex items-center rounded-full border-2 border-slate-950 bg-white px-8 py-4 font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a] active:translate-y-0 active:shadow-[2px_2px_0_#0f172a]"
+            className="font-display inline-flex items-center rounded-full border-2 border-slate-950 bg-white px-8 py-4 font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)] active:translate-y-0 active:shadow-[2px_2px_0_var(--bnt-shadow)]"
           >
             Ver áreas da TI
           </Link>

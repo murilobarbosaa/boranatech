@@ -128,7 +128,7 @@ function NewsCard({ item }: { item: NewsItem }) {
           href={item.link}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 px-3 py-1.5 bg-sky-700 text-white text-xs font-semibold rounded-lg border-2 border-slate-950 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
+          className="inline-flex items-center gap-1 px-3 py-1.5 bg-sky-700 text-white text-xs font-semibold rounded-lg border-2 border-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] hover:shadow-[3px_3px_0_var(--bnt-shadow)] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
         >
           Ler <ExternalLink className="w-3 h-3" />
         </a>
@@ -187,7 +187,7 @@ function Pagination({
         type="button"
         onClick={() => onChange(page - 1)}
         disabled={page <= 1}
-        className="inline-flex items-center gap-1 rounded-lg border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-[2px_2px_0_#0f172a] disabled:hover:translate-x-0 disabled:hover:translate-y-0"
+        className="inline-flex items-center gap-1 rounded-lg border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-[2px_2px_0_var(--bnt-shadow)] disabled:hover:translate-x-0 disabled:hover:translate-y-0"
       >
         <ChevronLeft className="w-3.5 h-3.5" /> Anterior
       </button>
@@ -204,7 +204,7 @@ function Pagination({
             aria-current={n === page ? "page" : undefined}
             className={`min-w-[36px] rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition-all ${
               n === page
-                ? "bg-sky-700 text-white border-slate-950 shadow-[2px_2px_0_#0f172a]"
+                ? "bg-sky-700 text-white border-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
                 : "bg-white text-slate-700 border-slate-300 hover:border-slate-900"
             }`}
           >
@@ -216,7 +216,7 @@ function Pagination({
         type="button"
         onClick={() => onChange(page + 1)}
         disabled={page >= totalPages}
-        className="inline-flex items-center gap-1 rounded-lg border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-[2px_2px_0_#0f172a] disabled:hover:translate-x-0 disabled:hover:translate-y-0"
+        className="inline-flex items-center gap-1 rounded-lg border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-[2px_2px_0_var(--bnt-shadow)] disabled:hover:translate-x-0 disabled:hover:translate-y-0"
       >
         Próxima <ChevronRight className="w-3.5 h-3.5" />
       </button>
@@ -320,7 +320,7 @@ export default function Noticias() {
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#0284c7_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
           <div className="max-w-2xl">
-            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-sky-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-sky-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
               radar tech
             </p>
             <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">
@@ -356,7 +356,7 @@ export default function Noticias() {
                   onClick={() => setLevel(opt.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all ${
                     level === opt.value
-                      ? "bg-sky-700 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
+                      ? "bg-sky-700 text-white border-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
                       : "bg-white text-slate-700 border-sky-200 hover:border-sky-500"
                   }`}
                 >
@@ -373,7 +373,7 @@ export default function Noticias() {
                   onClick={() => setArea(opt.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all ${
                     area === opt.value
-                      ? "bg-violet-700 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
+                      ? "bg-violet-700 text-white border-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
                       : "bg-white text-slate-700 border-violet-200 hover:border-violet-500"
                   }`}
                 >

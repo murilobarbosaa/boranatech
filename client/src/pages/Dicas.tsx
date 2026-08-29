@@ -118,7 +118,7 @@ export default function Dicas() {
       <section className="relative overflow-hidden border-b-2 border-slate-900 bg-amber-100 py-12">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
-          <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+          <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
             <Lightbulb className="h-3.5 w-3.5" />
             dicas, recursos e curiosidades
           </p>
@@ -169,7 +169,7 @@ export default function Dicas() {
               onClick={() => setTab(item.key)}
               className={`rounded-full border-2 px-4 py-1.5 text-xs font-black uppercase ${
                 tab === item.key
-                  ? "border-slate-900 bg-amber-300 shadow-[2px_2px_0_#0f172a]"
+                  ? "border-slate-900 bg-amber-300 shadow-[2px_2px_0_var(--bnt-shadow)]"
                   : "border-amber-200 bg-white hover:bg-amber-100"
               }`}
             >
@@ -195,7 +195,7 @@ export default function Dicas() {
                   onClick={() => setAreaFiltro(item.key)}
                   className={`rounded-full border-2 px-3 py-1.5 text-xs font-bold ${
                     areaFiltro === item.key
-                      ? "border-slate-900 bg-amber-300 shadow-[2px_2px_0_#0f172a]"
+                      ? "border-slate-900 bg-amber-300 shadow-[2px_2px_0_var(--bnt-shadow)]"
                       : "border-amber-200 bg-white hover:bg-amber-100"
                   }`}
                 >
@@ -321,7 +321,7 @@ export default function Dicas() {
                     key={tier.faixa}
                     className="card-brutal flex flex-col rounded-2xl bg-white p-5"
                   >
-                    <span className="inline-flex w-fit rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                    <span className="inline-flex w-fit rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                       {tier.faixa}
                     </span>
                     <p className="mt-3 text-sm font-bold text-slate-800">
@@ -367,7 +367,7 @@ export default function Dicas() {
                     key={model.faixa}
                     className="card-brutal rounded-2xl bg-white p-5"
                   >
-                    <span className="inline-flex w-fit rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                    <span className="inline-flex w-fit rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                       {model.faixa}
                     </span>
                     <p className="mt-3 text-sm text-slate-600">
@@ -714,7 +714,7 @@ function DicasDestaque() {
           <button
             type="button"
             onClick={sortear}
-            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-5 py-2.5 text-sm font-black uppercase text-slate-950 shadow-[4px_4px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-5 py-2.5 text-sm font-black uppercase text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
           >
             <Star className="h-4 w-4" aria-hidden />
             Me dá uma dica de ouro
@@ -783,7 +783,7 @@ function DicasDestaque() {
                     onClick={() => setCategoria(f)}
                     className={`rounded-full border-2 px-3 py-1.5 text-xs font-black transition-transform hover:-translate-y-0.5 ${
                       categoria === f
-                        ? `border-slate-900 ${dicaFiltroBg(f)} shadow-[2px_2px_0_#0f172a]`
+                        ? `border-slate-900 ${dicaFiltroBg(f)} shadow-[2px_2px_0_var(--bnt-shadow)]`
                         : "border-slate-300 bg-white hover:bg-slate-100"
                     }`}
                   >
@@ -965,7 +965,7 @@ function CuriosidadesSection() {
           <button
             type="button"
             onClick={proxima}
-            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-6 py-3 text-sm font-black uppercase text-slate-950 shadow-[4px_4px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-6 py-3 text-sm font-black uppercase text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
           >
             <Sparkles className="h-4 w-4" aria-hidden />
             {atual ? "Outra curiosidade" : "Me dê uma curiosidade"}
@@ -1140,14 +1140,14 @@ function TelaRevealCard({
           target="_blank"
           rel="noopener noreferrer"
           aria-label={`Onde assistir ${f.titulo}`}
-          className="inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+          className="inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
         >
           Onde encontrar <ExternalLink className="h-3 w-3" aria-hidden />
         </a>
         <button
           type="button"
           onClick={onOutro}
-          className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-emerald-400 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
+          className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-emerald-400 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
         >
           <Shuffle className="h-3.5 w-3.5" aria-hidden />
           {rechamada}
@@ -1216,7 +1216,7 @@ function TelasTab({
               ? undefined
               : { duration: 4.5, repeat: Infinity, ease: "easeInOut" }
           }
-          className="relative z-10 mx-auto max-w-2xl rounded-[1.2rem] border-2 border-slate-900 bg-white p-5 shadow-[5px_5px_0_#0f172a]"
+          className="relative z-10 mx-auto max-w-2xl rounded-[1.2rem] border-2 border-slate-900 bg-white p-5 shadow-[5px_5px_0_var(--bnt-shadow)]"
         >
         {pick ? (
           <TelaRevealCard
@@ -1237,7 +1237,7 @@ function TelasTab({
             <button
               type="button"
               onClick={proxima}
-              className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-emerald-400 px-5 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
+              className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-emerald-400 px-5 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
             >
               <Shuffle className="h-4 w-4" aria-hidden />
               {chamada}
@@ -1457,7 +1457,7 @@ function AprenderSection() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar por título ou tema..."
-            className="w-full rounded-full border-2 border-slate-900 bg-white py-2 pl-9 pr-4 text-sm font-bold text-slate-900 shadow-[3px_3px_0_#0f172a] placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+            className="w-full rounded-full border-2 border-slate-900 bg-white py-2 pl-9 pr-4 text-sm font-bold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
           />
         </div>
 
@@ -1487,7 +1487,7 @@ function AprenderSection() {
                 {aprenderTab === sub.value ? (
                   <motion.span
                     layoutId="aprenderIndicator"
-                    className="absolute inset-0 rounded-full border-2 border-slate-900 bg-amber-300 shadow-[2px_2px_0_#0f172a]"
+                    className="absolute inset-0 rounded-full border-2 border-slate-900 bg-amber-300 shadow-[2px_2px_0_var(--bnt-shadow)]"
                     transition={{ duration: reduce ? 0 : 0.3 }}
                   />
                 ) : null}
@@ -1658,7 +1658,7 @@ function FilmesGrid({
                   duration: reduce ? 0 : 0.25,
                   delay: reduce ? 0 : Math.min(index * 0.03, 0.3),
                 }}
-                className="group relative flex flex-col overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a] transition-shadow duration-200 hover:shadow-[7px_7px_0_#0f172a]"
+                className="group relative flex flex-col overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_var(--bnt-shadow)] transition-shadow duration-200 hover:shadow-[7px_7px_0_var(--bnt-shadow)]"
               >
                 {poster ? (
                   <div className="relative aspect-[2/3] w-full overflow-hidden border-b-2 border-slate-900">
@@ -1717,7 +1717,7 @@ function FilmesGrid({
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label={`Onde assistir ${filme.titulo}`}
-                        className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                        className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
                       >
                         Onde encontrar <ExternalLink className="h-3 w-3" aria-hidden />
                       </a>
@@ -1808,7 +1808,7 @@ function LivrosGrid({
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`Onde encontrar ${livro.titulo}`}
-                    className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                    className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
                   >
                     {livro.url ? "Ler grátis" : "Onde encontrar"}{" "}
                     <ExternalLink className="h-3 w-3" aria-hidden />

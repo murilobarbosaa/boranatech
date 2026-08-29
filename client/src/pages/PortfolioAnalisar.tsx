@@ -217,7 +217,7 @@ function TargetAvatar({ owner }: { owner: string }) {
   if (failed) {
     return (
       <span
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-slate-950 text-white shadow-[3px_3px_0_#0f172a]"
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-slate-950 text-white shadow-[3px_3px_0_var(--bnt-shadow)]"
         aria-hidden
       >
         <Github className="h-6 w-6" />
@@ -230,7 +230,7 @@ function TargetAvatar({ owner }: { owner: string }) {
       alt=""
       aria-hidden
       onError={() => setFailed(true)}
-      className="h-12 w-12 shrink-0 rounded-xl border-2 border-slate-950 bg-white object-cover shadow-[3px_3px_0_#0f172a]"
+      className="h-12 w-12 shrink-0 rounded-xl border-2 border-slate-950 bg-white object-cover shadow-[3px_3px_0_var(--bnt-shadow)]"
     />
   );
 }
@@ -332,7 +332,7 @@ function ScanCard({
           <TargetAvatar key={owner} owner={owner} />
         ) : (
           <span
-            className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-slate-950 bg-slate-950 text-white shadow-[3px_3px_0_#0f172a]"
+            className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-slate-950 bg-slate-950 text-white shadow-[3px_3px_0_var(--bnt-shadow)]"
             aria-hidden
           >
             <Github className="h-6 w-6" />
@@ -496,7 +496,7 @@ function ScoreHero({
     // proposito no topo (o card interno mantem o overflow-hidden dos paineis).
     <div className="relative -rotate-[0.3deg]">
       {/* TODO(Ana): revisar o selo do resultado. */}
-      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
         <Sparkles className="h-3 w-3" aria-hidden />
         Seu raio-X
       </span>
@@ -563,7 +563,7 @@ function ScoreHero({
                 : { delay: 0.85, duration: 0.3, ease: "backOut" }
             }
             className={cn(
-              "inline-flex rounded-full border-2 border-slate-950 px-4 py-1 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]",
+              "inline-flex rounded-full border-2 border-slate-950 px-4 py-1 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]",
               band.chipBg,
             )}
           >
@@ -582,7 +582,7 @@ function ScoreHero({
               }
               transition={{ duration: 0.5, ease: "easeInOut" }}
               className={cn(
-                "inline-flex rounded-full border-2 border-slate-950 px-3 py-0.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]",
+                "inline-flex rounded-full border-2 border-slate-950 px-3 py-0.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]",
                 improvements.done === improvements.total
                   ? "bg-emerald-300"
                   : "bg-white",
@@ -628,7 +628,7 @@ function ScoreHero({
               href={target.htmlUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-colors hover:bg-yellow-100"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-colors hover:bg-yellow-100"
             >
               Abrir no GitHub
               <ExternalLink className="h-3.5 w-3.5" />
@@ -1009,7 +1009,7 @@ export default function PortfolioAnalisar() {
                 !loading && !error && result ? "mt-5" : undefined,
               )}
             >
-              <span className="inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+              <span className="inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                 Análise Pro
               </span>
             </p>
@@ -1068,7 +1068,7 @@ export default function PortfolioAnalisar() {
                 )}
               >
                 {/* TODO(Ana): revisar o selo e o titulo do palco. */}
-                <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                   <Sparkles className="h-3 w-3" aria-hidden />
                   Comece aqui
                 </span>
@@ -1138,7 +1138,7 @@ export default function PortfolioAnalisar() {
                       initial={reduce ? false : { opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.28, ease: "easeOut" }}
-                      className="mt-5 flex items-start gap-3 rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
+                      className="mt-5 flex items-start gap-3 rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]"
                     >
                       <TargetAvatar
                         key={
@@ -1233,7 +1233,7 @@ export default function PortfolioAnalisar() {
                   ) : null}
 
                   {result.deterministic.suficienciaRazao?.trim() ? (
-                    <div className="flex items-start gap-2 rounded-2xl border-2 border-slate-900 bg-sky-50 p-4 text-sm font-medium text-sky-900 shadow-[3px_3px_0_#0f172a]">
+                    <div className="flex items-start gap-2 rounded-2xl border-2 border-slate-900 bg-sky-50 p-4 text-sm font-medium text-sky-900 shadow-[3px_3px_0_var(--bnt-shadow)]">
                       <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
                       <span>{result.deterministic.suficienciaRazao}</span>
                     </div>
@@ -1358,7 +1358,7 @@ export default function PortfolioAnalisar() {
               {!loading && !error && !result && history && history.length > 0 ? (
                 <details
                   className={cn(
-                    "area-rise group rounded-2xl border-2 border-slate-950 bg-white shadow-[4px_4px_0_#0f172a] transition-shadow",
+                    "area-rise group rounded-2xl border-2 border-slate-950 bg-white shadow-[4px_4px_0_var(--bnt-shadow)] transition-shadow",
                     ac.liftShadow,
                   )}
                   style={{ animationDelay: "0.16s" }}
@@ -1367,7 +1367,7 @@ export default function PortfolioAnalisar() {
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5">
                     <span className="flex items-center gap-3 font-display text-lg font-black text-slate-950">
                       <span
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-300 text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-300 text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
                         aria-hidden
                       >
                         <History className="h-5 w-5" />

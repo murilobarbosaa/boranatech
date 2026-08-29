@@ -97,10 +97,10 @@ export default function DorSolucao() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={VIEWPORT_ENTRADA}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="flex items-start gap-3 rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[4px_4px_0_#0f172a]"
+              className="flex items-start gap-3 rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)]"
             >
               <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-100 shadow-[2px_2px_0_#0f172a]"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-100 shadow-[2px_2px_0_var(--bnt-shadow)]"
                 aria-hidden="true"
               >
                 <HelpCircle size={18} className="text-violet-700" strokeWidth={2.5} />
@@ -117,9 +117,9 @@ export default function DorSolucao() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={VIEWPORT_ENTRADA}
           transition={{ duration: 0.5, delay: 0.15 }}
-          className="mx-auto mt-10 max-w-2xl rounded-3xl border-2 border-slate-950 bg-amber-300 p-6 shadow-[5px_5px_0_#0f172a] md:p-8"
+          className="mx-auto mt-10 max-w-2xl rounded-3xl border-2 border-slate-950 bg-amber-300 p-6 shadow-[5px_5px_0_var(--bnt-shadow)] md:p-8"
         >
-          <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-slate-950 shadow-[3px_3px_0_#0f172a]">
+          <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
             <Compass size={16} className="text-violet-600" aria-hidden="true" />
             {/* TODO(Ana): rotulo da virada */}
             A virada

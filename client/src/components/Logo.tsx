@@ -56,7 +56,7 @@ export default function Logo({
   return (
     <span className={`inline-flex items-center ${sizes.gap}`}>
       <span
-        className={`flex items-center justify-center rounded-full border-2 border-slate-900 bg-yellow-400 shadow-[2px_2px_0_#0f172a] transition-all group-hover:shadow-[4px_4px_0_#0f172a] ${sizes.circle}`}
+        className={`flex items-center justify-center rounded-full border-2 border-slate-900 bg-yellow-400 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all group-hover:shadow-[4px_4px_0_var(--bnt-shadow)] ${sizes.circle}`}
       >
         <Compass className={`text-slate-950 ${sizes.icon}`} />
       </span>

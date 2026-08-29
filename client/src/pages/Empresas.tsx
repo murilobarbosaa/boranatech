@@ -97,7 +97,7 @@ function CompanyLogo({
   return (
     <div
       className={cn(
-        "flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-900 shadow-[3px_3px_0_#0f172a]",
+        "flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)]",
         accent.logoBg,
       )}
     >
@@ -123,7 +123,7 @@ function CompanyLogo({
 function TechTag({ slug }: { slug: string }) {
   const tech = TECH_BY_SLUG.get(slug);
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-2.5 py-1 text-xs font-bold text-slate-800 shadow-[2px_2px_0_#0f172a]">
+    <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-2.5 py-1 text-xs font-bold text-slate-800 shadow-[2px_2px_0_var(--bnt-shadow)]">
       {tech?.logoUrl ? (
         <img
           src={tech.logoUrl}
@@ -311,7 +311,7 @@ export default function Empresas() {
                       setCity("Todas");
                       setLevel("Todas");
                     }}
-                    className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-[2px_2px_0_#0f172a] transition-all motion-safe:hover:-translate-y-0.5"
+                    className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all motion-safe:hover:-translate-y-0.5"
                   >
                     <RotateCcw className="h-4 w-4" />
                     Limpar
@@ -319,7 +319,7 @@ export default function Empresas() {
                 )}
                 <Link
                   href="/empresas/ranking-junior"
-                  className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-blue-700 px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all motion-safe:hover:-translate-y-0.5"
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-blue-700 px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all motion-safe:hover:-translate-y-0.5"
                 >
                   <Trophy className="h-4 w-4" />
                   Ranking carreira inicial

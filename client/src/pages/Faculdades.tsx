@@ -547,7 +547,7 @@ export default function Faculdades() {
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#7c3aed_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
           <div className="max-w-2xl">
-            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
               faculdade sem confusão
             </p>
             <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">
@@ -587,7 +587,7 @@ export default function Faculdades() {
                   onKeyDown={(event) => onTabKeyDown(event, index)}
                   className={`inline-flex items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-black transition-all ${
                     active
-                      ? "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_#0f172a]"
+                      ? "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_var(--bnt-shadow)]"
                       : "border-slate-300 bg-white text-slate-700 hover:border-violet-400"
                   }`}
                 >
@@ -631,7 +631,7 @@ export default function Faculdades() {
                   className="h-full"
                 >
                   <div
-                    className={`flex h-full flex-col gap-2 rounded-2xl border-2 border-slate-900 p-5 shadow-[4px_4px_0_#0f172a] ${g.style}`}
+                    className={`flex h-full flex-col gap-2 rounded-2xl border-2 border-slate-900 p-5 shadow-[4px_4px_0_var(--bnt-shadow)] ${g.style}`}
                   >
                     <div className="flex items-center gap-2">
                       <motion.span
@@ -672,7 +672,7 @@ export default function Faculdades() {
               );
             })}
           </div>
-          <div className="rounded-2xl border-2 border-slate-900 bg-emerald-50 p-5 shadow-[4px_4px_0_#0f172a]">
+          <div className="rounded-2xl border-2 border-slate-900 bg-emerald-50 p-5 shadow-[4px_4px_0_var(--bnt-shadow)]">
             <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
               Criadoras de Ciência da Computação
             </p>
@@ -686,7 +686,7 @@ export default function Faculdades() {
                   href={creator.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-3 rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+                  className="flex items-center gap-3 rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
                 >
                   <img
                     src={creator.avatarUrl}
@@ -718,7 +718,7 @@ export default function Faculdades() {
                   onClick={() => setTipo(t)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${
                     tipo === t
-                      ? "bg-violet-700 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
+                      ? "bg-violet-700 text-white border-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
                       : "bg-white text-slate-700 border-slate-300 hover:border-violet-400"
                   }`}
                 >
@@ -922,7 +922,7 @@ export default function Faculdades() {
 
             <div className="rounded-2xl border-2 border-slate-900 bg-amber-50 p-5 shadow-[4px_4px_0_#fcd34d]">
               <div className="flex items-start gap-3">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-amber-300 text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-amber-300 text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                   <Award className="h-5 w-5" aria-hidden />
                 </span>
                 <div className="space-y-2">
@@ -944,7 +944,7 @@ export default function Faculdades() {
               {comparativosEscolha.map((cmp) => (
                 <div
                   key={cmp.titulo}
-                  className="flex h-full flex-col rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]"
+                  className="flex h-full flex-col rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)]"
                 >
                   <h3 className="font-display text-lg font-black text-slate-950">
                     {cmp.titulo}
@@ -979,9 +979,9 @@ export default function Faculdades() {
               ))}
             </div>
 
-            <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-5 shadow-[4px_4px_0_#0f172a]">
+            <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-5 shadow-[4px_4px_0_var(--bnt-shadow)]">
               <div className="flex items-start gap-3">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-violet-300 text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-violet-300 text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                   <BookOpen className="h-5 w-5" aria-hidden />
                 </span>
                 <div className="space-y-1">
@@ -1014,7 +1014,7 @@ export default function Faculdades() {
                 }
                 className={`rounded-full border-2 px-3 py-1.5 text-xs font-black transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 ${
                   openTips[chip.id]
-                    ? "border-slate-900 bg-violet-600 text-white shadow-[2px_2px_0_#0f172a]"
+                    ? "border-slate-900 bg-violet-600 text-white shadow-[2px_2px_0_var(--bnt-shadow)]"
                     : "border-slate-300 bg-white text-slate-700 hover:bg-violet-50"
                 }`}
               >
@@ -1050,7 +1050,7 @@ export default function Faculdades() {
                 href={EMEC_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
               >
                 Consultar notas no e-MEC
                 <ExternalLink className="h-4 w-4" aria-hidden />
@@ -1175,10 +1175,10 @@ export default function Faculdades() {
         >
       <section className="border-b-2 border-slate-900 bg-white py-6">
         <div className="container space-y-4">
-          <div className="rounded-2xl border-2 border-slate-900 bg-violet-100 p-5 shadow-[4px_4px_0_#0f172a] sm:p-6">
+          <div className="rounded-2xl border-2 border-slate-900 bg-violet-100 p-5 shadow-[4px_4px_0_var(--bnt-shadow)] sm:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-3">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-violet-300 text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-violet-300 text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                   <MapPin className="h-5 w-5" aria-hidden />
                 </span>
                 <div>
@@ -1245,7 +1245,7 @@ export default function Faculdades() {
                 aria-pressed={grauInst === g}
                 className={`rounded-full border-2 px-3 py-1.5 text-xs font-black transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 ${
                   grauInst === g
-                    ? "border-slate-900 bg-violet-600 text-white shadow-[2px_2px_0_#0f172a]"
+                    ? "border-slate-900 bg-violet-600 text-white shadow-[2px_2px_0_var(--bnt-shadow)]"
                     : "border-slate-300 bg-white text-slate-700 hover:bg-violet-50"
                 }`}
               >
@@ -1261,7 +1261,7 @@ export default function Faculdades() {
                 aria-pressed={redeInst === r}
                 className={`rounded-full border-2 px-3 py-1.5 text-xs font-black transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 ${
                   redeInst === r
-                    ? "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_#0f172a]"
+                    ? "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_var(--bnt-shadow)]"
                     : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                 }`}
               >
@@ -1276,7 +1276,7 @@ export default function Faculdades() {
         <FaculdadesDoodles />
         <div className="container relative">
           <div className="mb-6 flex items-start gap-3">
-            <span className="rounded-xl border-2 border-slate-900 bg-sky-300 p-3 text-slate-950 shadow-[3px_3px_0_#0f172a]">
+            <span className="rounded-xl border-2 border-slate-900 bg-sky-300 p-3 text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
               <Building2 className="h-6 w-6" aria-hidden />
             </span>
             <div>
@@ -1431,7 +1431,7 @@ export default function Faculdades() {
                         href={item.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2"
+                        className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2"
                       >
                         Ver curso
                         <ExternalLink className="h-3 w-3" aria-hidden />
@@ -1598,7 +1598,7 @@ export default function Faculdades() {
                 aria-controls="faculdades-quiz"
                 className="card-brutal flex w-full items-center gap-4 rounded-2xl border-2 border-slate-900 bg-violet-50 p-5 text-left shadow-[5px_5px_0_#a78bfa] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#a78bfa] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
               >
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-violet-600 text-white shadow-[2px_2px_0_#0f172a]">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-violet-600 text-white shadow-[2px_2px_0_var(--bnt-shadow)]">
                   <Sparkles className="h-5 w-5" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -1610,7 +1610,7 @@ export default function Faculdades() {
                     Responda 3 perguntas rápidas.
                   </span>
                 </span>
-                <span className="hidden shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-violet-600 px-4 py-2 text-sm font-black text-white shadow-[2px_2px_0_#0f172a] sm:inline-flex">
+                <span className="hidden shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-violet-600 px-4 py-2 text-sm font-black text-white shadow-[2px_2px_0_var(--bnt-shadow)] sm:inline-flex">
                   Fazer o quiz
                   <ArrowRight className="h-4 w-4" aria-hidden />
                 </span>
@@ -1620,7 +1620,7 @@ export default function Faculdades() {
                 <button
                   type="button"
                   onClick={() => setQuizAberto(false)}
-                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
+                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
                 >
                   <X className="h-4 w-4" aria-hidden />
                   Fechar quiz

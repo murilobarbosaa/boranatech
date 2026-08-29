@@ -42,7 +42,7 @@ import {
 function CertBadge({ status }: { status: CertificateStatus }) {
   if (status === "certificada") {
     return (
-      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border-[1.5px] border-slate-900 bg-amber-300 px-2.5 py-0.5 text-[11px] font-black text-slate-900 shadow-[2px_2px_0_#0f172a]">
+      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border-[1.5px] border-slate-900 bg-amber-300 px-2.5 py-0.5 text-[11px] font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]">
         <Award className="h-3.5 w-3.5" />
         {/* TODO(Ana): selo de trilha certificada na vitrine */}
         Certificada
@@ -51,7 +51,7 @@ function CertBadge({ status }: { status: CertificateStatus }) {
   }
   if (status === "concluida") {
     return (
-      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border-[1.5px] border-slate-900 bg-emerald-200 px-2.5 py-0.5 text-[11px] font-black text-emerald-900 shadow-[2px_2px_0_#0f172a]">
+      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border-[1.5px] border-slate-900 bg-emerald-200 px-2.5 py-0.5 text-[11px] font-black text-emerald-900 shadow-[2px_2px_0_var(--bnt-shadow)]">
         <BadgeCheck className="h-3.5 w-3.5" />
         {/* TODO(Ana): selo de trilha concluida na vitrine */}
         Concluída
@@ -364,7 +364,7 @@ export default function RoadmapsV2Index() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: "easeOut" }}
           >
-            <span className="inline-block rounded-full border-2 border-slate-900 bg-emerald-400 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-900 shadow-[2px_2px_0_#0f172a]">
+            <span className="inline-block rounded-full border-2 border-slate-900 bg-emerald-400 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]">
               100% grátis
             </span>
             {/* TODO(Ana): confirmar termo final (Básico vs Grátis vs outro) e revisar a frase do hero */}
@@ -391,7 +391,7 @@ export default function RoadmapsV2Index() {
             >
               <Link
                 href="/roadmaps/ia"
-                className="inline-flex items-center gap-2 rounded-full border-[2.5px] border-slate-900 bg-gradient-to-r from-violet-600 via-fuchsia-500 to-violet-600 px-5 py-2.5 text-sm font-black text-white shadow-[3px_3px_0_#0f172a,0_0_22px_rgba(168,85,247,0.65)] transition-shadow hover:shadow-[5px_5px_0_#0f172a,0_0_32px_rgba(168,85,247,0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2"
+                className="inline-flex items-center gap-2 rounded-full border-[2.5px] border-slate-900 bg-gradient-to-r from-violet-600 via-fuchsia-500 to-violet-600 px-5 py-2.5 text-sm font-black text-white shadow-[3px_3px_0_var(--bnt-shadow),0_0_22px_rgba(168,85,247,0.65)] transition-shadow hover:shadow-[5px_5px_0_var(--bnt-shadow),0_0_32px_rgba(168,85,247,0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2"
               >
                 <Sparkles
                   className="h-4 w-4 motion-safe:animate-pulse"

@@ -317,7 +317,7 @@ export default function CurriculoAnalisar() {
                       aria-pressed={tab === key}
                       onClick={() => setTab(key)}
                       className={cn(
-                        "inline-flex items-center gap-2 rounded-full border-2 border-slate-950 px-4 py-2 text-sm font-black shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px",
+                        "inline-flex items-center gap-2 rounded-full border-2 border-slate-950 px-4 py-2 text-sm font-black shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px",
                         tab === key
                           ? "bg-[#FFB800] text-slate-950"
                           : "bg-white text-slate-600",
@@ -334,7 +334,7 @@ export default function CurriculoAnalisar() {
                     <p className="text-sm font-medium text-slate-600">
                       {COPY.uploadHint}
                     </p>
-                    <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px">
+                    <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px">
                       <FileUp className="h-4 w-4" aria-hidden />
                       {extracting ? COPY.extracting : COPY.uploadCta}
                       <input
@@ -451,7 +451,7 @@ export default function CurriculoAnalisar() {
                   type="button"
                   disabled={analyzing}
                   onClick={() => void handleAnalyze()}
-                  className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-60"
+                  className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-60"
                 >
                   {analyzing ? (
                     <>
@@ -496,7 +496,7 @@ export default function CurriculoAnalisar() {
                   {history.map((item) => (
                     <div
                       key={item.id}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-slate-950 bg-white p-4 shadow-[2px_2px_0_#0f172a]"
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-slate-950 bg-white p-4 shadow-[2px_2px_0_var(--bnt-shadow)]"
                     >
                       <div className="min-w-0">
                         <p className="font-bold text-slate-900">
@@ -510,7 +510,7 @@ export default function CurriculoAnalisar() {
                       <button
                         type="button"
                         onClick={() => void openHistory(item.id)}
-                        className="rounded-full border-2 border-slate-950 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px"
+                        className="rounded-full border-2 border-slate-950 bg-white px-4 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
                       >
                         {COPY.historyOpen}
                       </button>
@@ -683,7 +683,7 @@ function ResultView({ result, onNewAnalysis, onToggleHistory }: ResultViewProps)
               ? `/curriculo/gerar?rewrite=${result.id}`
               : "/curriculo/gerar"
           }
-          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
+          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
         >
           <Wand2 className="h-4 w-4" aria-hidden />
           {COPY.rewriteCta}
@@ -694,14 +694,14 @@ function ResultView({ result, onNewAnalysis, onToggleHistory }: ResultViewProps)
         <button
           type="button"
           onClick={onNewAnalysis}
-          className="inline-flex items-center rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
+          className="inline-flex items-center rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
         >
           {COPY.newAnalysis}
         </button>
         <button
           type="button"
           onClick={onToggleHistory}
-          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
+          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
         >
           <History className="h-4 w-4" aria-hidden />
           {COPY.historyToggle}

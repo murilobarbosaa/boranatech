@@ -491,7 +491,7 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
           <button
             type="submit"
             disabled={saving || (form.currency === "USD" && fxRate === null)}
-            className="rounded-full border-2 border-slate-900 bg-yellow-300 px-5 py-2 text-sm font-black shadow-[3px_3px_0_#0f172a] disabled:opacity-50"
+            className="rounded-full border-2 border-slate-900 bg-yellow-300 px-5 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50"
           >
             {saving ? "Salvando..." : editingId ? "Salvar alterações" : "Lançar despesa"}
           </button>
@@ -549,7 +549,7 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
 
       {/* Tabela de despesas */}
       <div className="xl:col-span-2">
-        <div className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]">
+        <div className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_var(--bnt-shadow)]">
           {loading && !data ? (
             <div className="p-4">
               <LoadingBlock label="Carregando despesas..." />

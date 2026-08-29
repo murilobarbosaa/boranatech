@@ -28,7 +28,7 @@ type Dica = (typeof import("@/lib/dicasData"))["dicas"][number];
 // cerca de 150px de espaco vazio numa secao que e curta de proposito.
 const CARD_MIN_H = "sm:min-h-[274px]";
 
-const CARD_BASE = `flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[5px_5px_0_#0f172a] ${CARD_MIN_H}`;
+const CARD_BASE = `flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[5px_5px_0_var(--bnt-shadow)] ${CARD_MIN_H}`;
 
 const CARD_LABEL =
   "mb-3 inline-flex w-fit items-center gap-2 text-sm font-black uppercase tracking-[0.2em]";
@@ -357,7 +357,7 @@ function DicaCard() {
         <button
           type="button"
           onClick={outra}
-          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-1.5 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all motion-safe:hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
+          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-1.5 text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all motion-safe:hover:-translate-y-0.5 hover:shadow-[3px_3px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
         >
           <Shuffle className="h-4 w-4" aria-hidden />
           Outra dica

@@ -66,7 +66,7 @@ export default function TrailStationCard({
       >
         <span
           className={cn(
-            "grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-slate-950 font-display text-base font-black text-slate-950 shadow-[2px_2px_0_#0f172a]",
+            "grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-slate-950 font-display text-base font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]",
             complete ? "bg-emerald-400" : current ? "bg-[#FFB800]" : "bg-white",
           )}
         >

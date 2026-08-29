@@ -65,7 +65,7 @@ export default function Acesso() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#faf8f4] px-6">
-      <div className="w-full max-w-sm rounded-2xl border-2 border-slate-950 bg-white p-8 shadow-[5px_5px_0_#0f172a]">
+      <div className="w-full max-w-sm rounded-2xl border-2 border-slate-950 bg-white p-8 shadow-[5px_5px_0_var(--bnt-shadow)]">
         {/* TODO(Ana): copy da porta de acesso beta. */}
         <h1 className="font-display text-2xl font-black text-slate-950">
           Acesso beta
@@ -86,7 +86,7 @@ export default function Acesso() {
           <button
             type="submit"
             disabled={status === "submitting"}
-            className="rounded-lg border-2 border-slate-950 bg-yellow-400 px-4 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] disabled:opacity-60"
+            className="rounded-lg border-2 border-slate-950 bg-yellow-400 px-4 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-60"
           >
             {/* TODO(Ana) */}
             {status === "submitting" ? "Verificando..." : "Entrar"}

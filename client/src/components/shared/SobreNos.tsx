@@ -149,7 +149,7 @@ function SocialButton({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`${meta.label} de ${personName}`}
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border-2 border-slate-900 bg-white text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all duration-200 motion-safe:hover:-translate-y-0.5 ${meta.hover}`}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border-2 border-slate-900 bg-white text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all duration-200 motion-safe:hover:-translate-y-0.5 ${meta.hover}`}
     >
       <Icon icon={meta.icon} style={{ fontSize: "20px" }} aria-hidden="true" />
     </a>
@@ -261,7 +261,7 @@ export default function SobreNos() {
             {portas.map((porta) => (
               <div
                 key={porta.numero}
-                className={`flex flex-col rounded-2xl border-2 border-slate-900 ${porta.bg} p-6 text-white shadow-[6px_6px_0_#0f172a]`}
+                className={`flex flex-col rounded-2xl border-2 border-slate-900 ${porta.bg} p-6 text-white shadow-[6px_6px_0_var(--bnt-shadow)]`}
               >
                 <span
                   className="font-display text-5xl font-black leading-none text-white/85"
@@ -324,7 +324,7 @@ export default function SobreNos() {
                   {person.chips.map((chip) => (
                     <li
                       key={chip}
-                      className="inline-flex rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                      className="inline-flex rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
                     >
                       {chip}
                     </li>
@@ -352,7 +352,7 @@ export default function SobreNos() {
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className="rounded-2xl border-2 border-slate-900 bg-white p-6 text-slate-950 shadow-[5px_5px_0_#0f172a]"
+                className="rounded-2xl border-2 border-slate-900 bg-white p-6 text-slate-950 shadow-[5px_5px_0_var(--bnt-shadow)]"
               >
                 <p className="font-display text-4xl font-black leading-none text-violet-700 sm:text-5xl">
                   {stat.value}
@@ -395,7 +395,7 @@ export default function SobreNos() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`Instagram de @${creator.handle}`}
-                  className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white py-1 pl-1 pr-3 font-display text-sm font-bold shadow-[3px_3px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white py-1 pl-1 pr-3 font-display text-sm font-bold shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
                 >
                   <CreatorAvatar photo={creator.photo} handle={creator.handle} />
                   <span>@{creator.handle}</span>

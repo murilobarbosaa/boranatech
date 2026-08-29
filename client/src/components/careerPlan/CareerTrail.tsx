@@ -151,7 +151,7 @@ export default function CareerTrail({
         </p>
         <p
           aria-live="polite"
-          className="rounded-full border-2 border-slate-950 bg-white px-2.5 py-0.5 text-[0.65rem] font-black uppercase tracking-wide text-slate-700 shadow-[2px_2px_0_#0f172a]"
+          className="rounded-full border-2 border-slate-950 bg-white px-2.5 py-0.5 text-[0.65rem] font-black uppercase tracking-wide text-slate-700 shadow-[2px_2px_0_var(--bnt-shadow)]"
         >
           {/* TODO(Ana): indicador de posicao na trilha */}
           Estação {visibleIndex + 1} de {stations.length}
@@ -232,7 +232,7 @@ export default function CareerTrail({
                 />
               ) : null}
               {currentStationIndex === index ? (
-                <span className="absolute left-1/2 top-0 z-20 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full border-2 border-slate-950 bg-[#FFB800] px-2.5 py-0.5 text-[0.65rem] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                <span className="absolute left-1/2 top-0 z-20 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full border-2 border-slate-950 bg-[#FFB800] px-2.5 py-0.5 text-[0.65rem] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                   <MapPin className="h-3 w-3" aria-hidden />
                   {/* TODO(Ana): marcador de posicao atual */}
                   Você está aqui
@@ -267,7 +267,7 @@ export default function CareerTrail({
             // Chegada da trilha: bandeira alinhada ao caminho, depois da
             // ultima estacao. Puramente decorativa.
             <div aria-hidden className="flex shrink-0 items-start pr-1 pt-4">
-              <span className="mt-7 grid h-14 w-14 place-items-center rounded-full border-2 border-slate-950 bg-[#FFB800] shadow-[3px_3px_0_#0f172a]">
+              <span className="mt-7 grid h-14 w-14 place-items-center rounded-full border-2 border-slate-950 bg-[#FFB800] shadow-[3px_3px_0_var(--bnt-shadow)]">
                 <Flag className="h-6 w-6 text-slate-950" strokeWidth={2.5} />
               </span>
             </div>

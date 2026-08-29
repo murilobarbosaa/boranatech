@@ -67,7 +67,7 @@ const MISSING_LABEL: Record<MissingProfileField, string> = {
 // gold=certificado, emerald=passo pendente, ink=acao neutra "tentar de novo").
 // O #FFB800 fica reservado pro gesto que cria/leva ao certificado.
 const PRIMARY_BASE =
-  "inline-flex w-full items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 px-5 py-3 text-sm font-black shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto";
+  "inline-flex w-full items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 px-5 py-3 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto";
 const violetPrimary = `${PRIMARY_BASE} bg-violet-800 text-white`;
 const goldPrimary = `${PRIMARY_BASE} bg-[#FFB800] text-slate-950`;
 const emeraldPrimary = `${PRIMARY_BASE} bg-emerald-600 text-white`;
@@ -87,7 +87,7 @@ function formatList(items: number[]): string {
 // a partir de sm. Renderizados direto no card, sem o CompletionCtaLinks
 // compartilhado, pra achatar o aninhamento e alinhar a pilha no mobile.
 const celebrationSecondaryClass =
-  "inline-flex w-full items-center justify-center gap-1.5 rounded-[11px] border-2 border-slate-900 bg-white/60 px-4 py-2.5 text-sm font-black text-slate-800 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px hover:bg-white hover:shadow-[3px_3px_0_#0f172a] sm:w-auto";
+  "inline-flex w-full items-center justify-center gap-1.5 rounded-[11px] border-2 border-slate-900 bg-white/60 px-4 py-2.5 text-sm font-black text-slate-800 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:bg-white hover:shadow-[3px_3px_0_var(--bnt-shadow)] sm:w-auto";
 
 // Entrada (padrao do projeto: framer-motion + gate em useReducedMotion). Selo
 // entra com escala + leve rotacao; conteudo com fade/slide-up em stagger.
@@ -170,7 +170,7 @@ function StateShell({
     >
       <span
         aria-hidden
-        className={`mx-auto grid h-14 w-14 place-items-center rounded-full border-[2.5px] border-slate-900 shadow-[3px_3px_0_#0f172a] ${a.seal}`}
+        className={`mx-auto grid h-14 w-14 place-items-center rounded-full border-[2.5px] border-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] ${a.seal}`}
       >
         {icon}
       </span>
@@ -623,7 +623,7 @@ export default function CertificateBlock({
             ref={sealRef}
             aria-hidden
             {...(!animateIn ? {} : { variants: CELEBRATION_SEAL })}
-            className="mx-auto grid h-[68px] w-[68px] place-items-center rounded-full border-[2.5px] border-slate-900 bg-[#FFB800] shadow-[3px_3px_0_#0f172a]"
+            className="mx-auto grid h-[68px] w-[68px] place-items-center rounded-full border-[2.5px] border-slate-900 bg-[#FFB800] shadow-[3px_3px_0_var(--bnt-shadow)]"
           >
             <Award className="h-8 w-8 text-slate-950" strokeWidth={2.5} />
           </motion.div>
@@ -658,7 +658,7 @@ export default function CertificateBlock({
           >
             <Link
               href={`/certificados/${eligibility.code}`}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-5 py-3 text-base font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-5 py-3 text-base font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] sm:w-auto"
             >
               <Award className="h-5 w-5" aria-hidden />
               {/* TODO(Ana): label ver meu certificado */}

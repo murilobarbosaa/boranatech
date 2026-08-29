@@ -93,7 +93,7 @@ export function ConquistasPreview() {
 
         <Link
           href="/perfil/conquistas"
-          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-2 font-display text-xs font-black uppercase tracking-wider text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0f172a]"
+          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-2 font-display text-xs font-black uppercase tracking-wider text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
         >
           Ver todas
           <ChevronRight className="h-3.5 w-3.5" strokeWidth={3} />

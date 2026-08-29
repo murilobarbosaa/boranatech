@@ -85,7 +85,7 @@ export function HowItWorksTimeline() {
                   aria-hidden
                 />
               ) : null}
-              <span className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-lg font-black text-slate-950 shadow-[3px_3px_0_#0f172a]">
+              <span className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-lg font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
                 {i + 1}
               </span>
               <p className="min-w-0 pt-1.5 text-sm font-medium text-slate-700 md:pt-1">
@@ -132,7 +132,7 @@ function ShowcaseCard({
                 delay: index * 0.5,
               }
         }
-        className="rounded-xl border-2 border-slate-950 bg-white shadow-[3px_3px_0_#0f172a]"
+        className="rounded-xl border-2 border-slate-950 bg-white shadow-[3px_3px_0_var(--bnt-shadow)]"
       >
         {children}
       </motion.div>
@@ -144,7 +144,7 @@ export function ResultShowcase() {
   const reduce = useReducedMotion() ?? false;
   return (
     <div className="relative mx-auto w-full max-w-md" aria-hidden>
-      <span className="absolute -top-3 right-2 z-20 rotate-2 rounded-full border-2 border-slate-950 bg-white px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-600 shadow-[2px_2px_0_#0f172a]">
+      <span className="absolute -top-3 right-2 z-20 rotate-2 rounded-full border-2 border-slate-950 bg-white px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-600 shadow-[2px_2px_0_var(--bnt-shadow)]">
         {SHOWCASE_BADGE}
       </span>
 
@@ -165,7 +165,7 @@ export function ResultShowcase() {
             </p>
             <span
               className={cn(
-                "mt-1.5 inline-flex rounded-full border-2 border-slate-950 px-3 py-0.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]",
+                "mt-1.5 inline-flex rounded-full border-2 border-slate-950 px-3 py-0.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]",
                 EXAMPLE_FAIXA_UI.chipBg,
               )}
             >
@@ -238,7 +238,7 @@ export function BenefitPills() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.3, delay: Math.min(i * 0.06, 0.3) }}
-          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-sky-50 px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a]"
+          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-sky-50 px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
         >
           <pill.icon className="h-4 w-4 text-sky-700" aria-hidden />
           {pill.label}

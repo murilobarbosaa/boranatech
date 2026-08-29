@@ -33,7 +33,7 @@ export function SignOutConfirmModal({
       }}
     >
       <div
-        className="relative w-full max-w-md rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]"
+        className="relative w-full max-w-md rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)]"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -58,7 +58,7 @@ export function SignOutConfirmModal({
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="flex-1 rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-3 font-display font-black text-slate-700 shadow-[3px_3px_0_#0f172a] disabled:opacity-50"
+            className="flex-1 rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-3 font-display font-black text-slate-700 shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -66,7 +66,7 @@ export function SignOutConfirmModal({
             type="button"
             onClick={() => void onConfirm()}
             disabled={isLoading}
-            className="flex-1 rounded-full border-2 border-[#1a1a1a] bg-[#1a1a1a] px-5 py-3 font-display font-black text-white shadow-[3px_3px_0_#0f172a] disabled:opacity-50"
+            className="flex-1 rounded-full border-2 border-[#1a1a1a] bg-[#1a1a1a] px-5 py-3 font-display font-black text-white shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50"
           >
             {isLoading ? "Saindo..." : "Sim, sair"}
           </button>

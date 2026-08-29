@@ -250,7 +250,7 @@ export default function TecnologiaJogos() {
         topSlot={
           <Link
             href="/tecnologias"
-            className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5"
+            className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
             Voltar pra Tecnologias
@@ -285,7 +285,7 @@ export default function TecnologiaJogos() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Buscar jogo, engine ou linguagem..."
-              className="w-full rounded-2xl border-2 border-slate-900 bg-white py-3 pl-11 pr-4 text-sm shadow-[4px_4px_0_#0f172a] outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500"
+              className="w-full rounded-2xl border-2 border-slate-900 bg-white py-3 pl-11 pr-4 text-sm shadow-[4px_4px_0_var(--bnt-shadow)] outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500"
             />
           </div>
           <div
@@ -300,7 +300,7 @@ export default function TecnologiaJogos() {
                 aria-pressed={lang === item}
                 className={`rounded-full border-2 px-3 py-1.5 text-xs font-black ${
                   lang === item
-                    ? "border-slate-900 bg-fuchsia-300 text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                    ? "border-slate-900 bg-fuchsia-300 text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
                     : "border-slate-300 bg-white text-slate-700 hover:bg-fuchsia-100"
                 }`}
               >
@@ -333,7 +333,7 @@ export default function TecnologiaJogos() {
                   <motion.div
                     whileHover={{ y: -6, rotate: -1 }}
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    className="group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_#0f172a] transition-shadow duration-200 hover:shadow-[8px_8px_0_#0f172a]"
+                    className="group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_var(--bnt-shadow)] transition-shadow duration-200 hover:shadow-[8px_8px_0_var(--bnt-shadow)]"
                   >
                     <div
                       className={cn(

@@ -137,7 +137,7 @@ export default function ChecklistByCategory({
                         href={actionUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-1.5 inline-flex items-center gap-1 rounded-full border-2 border-slate-950 bg-white px-2.5 py-0.5 text-[11px] font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-colors hover:bg-yellow-100"
+                        className="mt-1.5 inline-flex items-center gap-1 rounded-full border-2 border-slate-950 bg-white px-2.5 py-0.5 text-[11px] font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-colors hover:bg-yellow-100"
                       >
                         {/* TODO(Ana): revisar o rotulo "Resolver agora". */}
                         Resolver agora

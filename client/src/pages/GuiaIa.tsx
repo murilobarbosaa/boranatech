@@ -129,7 +129,7 @@ function pillClass(active: boolean) {
   return cn(
     "inline-flex items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-black transition-all",
     active
-      ? "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_#0f172a]"
+      ? "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_var(--bnt-shadow)]"
       : "border-slate-300 bg-white text-slate-700 hover:border-violet-400",
   );
 }
@@ -138,7 +138,7 @@ function filterClass(active: boolean) {
   return cn(
     "rounded-full border-2 px-3 py-1.5 text-xs font-black transition-all",
     active
-      ? "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_#0f172a]"
+      ? "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_var(--bnt-shadow)]"
       : "border-slate-300 bg-white text-slate-700 hover:border-violet-400",
   );
 }
@@ -241,7 +241,7 @@ function ToolCard({ tool }: { tool: ToolWithCat }) {
             href={tool.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5"
+            className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5"
           >
             Experimente agora <ExternalLink className="h-3 w-3" />
           </a>
@@ -467,14 +467,14 @@ export default function GuiaIa() {
                   });
                 });
               }}
-              className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-slate-900 bg-white px-5 py-3 text-sm font-black text-slate-900 shadow-[3px_3px_0_#0f172a] transition-all hover:shadow-[4px_4px_0_#0f172a]"
+              className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-slate-900 bg-white px-5 py-3 text-sm font-black text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
             >
               <Wrench className="h-4 w-4" />
               Ver ferramentas
             </button>
             <Link
               href="/roadmaps?area=ia"
-              className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-slate-900 bg-violet-200 px-5 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:shadow-[4px_4px_0_#0f172a]"
+              className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-slate-900 bg-violet-200 px-5 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
             >
               <Map className="h-4 w-4" />
               Roadmap de IA grátis
@@ -621,7 +621,7 @@ export default function GuiaIa() {
                 <button
                   type="button"
                   onClick={sortear}
-                  className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-200 px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-200 px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                 >
                   <Shuffle className="h-4 w-4" />
                   Me surpreenda
@@ -641,7 +641,7 @@ export default function GuiaIa() {
                     <button
                       type="button"
                       onClick={sortear}
-                      className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+                      className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                     >
                       <Shuffle className="h-3 w-3" />
                       Outra
@@ -717,7 +717,7 @@ export default function GuiaIa() {
                   <button
                     type="button"
                     onClick={limparFiltros}
-                    className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+                    className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                   >
                     <RotateCcw className="h-4 w-4" />
                     Limpar filtros
@@ -833,7 +833,7 @@ export default function GuiaIa() {
                       <button
                         type="button"
                         onClick={() => setQuizPick(null)}
-                        className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+                        className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                       >
                         <RotateCcw className="h-4 w-4" />
                         Refazer
@@ -1227,7 +1227,7 @@ export default function GuiaIa() {
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           aria-label="Voltar ao topo"
-          className="fixed bottom-6 right-6 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-300 text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:shadow-[4px_4px_0_#0f172a]"
+          className="fixed bottom-6 right-6 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-300 text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
         >
           <ArrowUp className="h-5 w-5" />
         </button>

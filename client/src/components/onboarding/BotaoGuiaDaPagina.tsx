@@ -71,7 +71,7 @@ export default function BotaoGuiaDaPagina({
         onClick={pedir}
         disabled={overlayAberto}
         aria-label={rotulo}
-        className="bnt-guia-botao bnt-pressable mx-4 mt-3 flex w-[calc(100%-2rem)] items-center justify-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-3 text-center text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:opacity-50"
+        className="bnt-guia-botao bnt-pressable mx-4 mt-3 flex w-[calc(100%-2rem)] items-center justify-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-3 text-center text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:opacity-50"
       >
         {icone("h-4 w-4")}
         {rotulo}
@@ -86,7 +86,7 @@ export default function BotaoGuiaDaPagina({
       disabled={overlayAberto}
       aria-label={rotulo}
       title={rotulo}
-      className={`bnt-guia-botao ${HEADER_ICON_BUTTON_CLASS} disabled:opacity-50 disabled:hover:shadow-[2px_2px_0_#0f172a]`}
+      className={`bnt-guia-botao ${HEADER_ICON_BUTTON_CLASS} disabled:opacity-50 disabled:hover:shadow-[2px_2px_0_var(--bnt-shadow)]`}
     >
       {icone("h-5 w-5")}
     </button>

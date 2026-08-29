@@ -296,7 +296,7 @@ function getHeatmapCellColor(minutes: number) {
 
 function optionButtonClass(selected: boolean, accentClassName?: string) {
   if (selected) {
-    return `border-2 bg-white shadow-[2px_2px_0_#0f172a] ${accentClassName || "border-[#1a1a1a] text-[#1a1a1a]"}`;
+    return `border-2 bg-white shadow-[2px_2px_0_var(--bnt-shadow)] ${accentClassName || "border-[#1a1a1a] text-[#1a1a1a]"}`;
   }
 
   return "border border-slate-200 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50";
@@ -394,7 +394,7 @@ function AvatarSectionTabs({
             onClick={() => onChange(section.id)}
             className={`rounded-xl px-2 py-2 text-xs font-black transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-yellow-200 ${
               selected
-                ? "border-2 border-[#1a1a1a] bg-white text-[#1a1a1a] shadow-[2px_2px_0_#0f172a]"
+                ? "border-2 border-[#1a1a1a] bg-white text-[#1a1a1a] shadow-[2px_2px_0_var(--bnt-shadow)]"
                 : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
             }`}
           >
@@ -673,7 +673,7 @@ function ProToolCard({
   return (
     <Link
       href={href}
-      className="group flex flex-col items-start gap-3 rounded-2xl border-2 border-[#1a1a1a] bg-white p-4 shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+      className="group flex flex-col items-start gap-3 rounded-2xl border-2 border-[#1a1a1a] bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
     >
       <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700 transition-colors group-hover:bg-amber-200">
         {icon}
@@ -1114,7 +1114,7 @@ export default function Perfil() {
         <SEO title="Perfil · Bora na Tech?" url="/perfil" noindex />
         <section className="bg-[#faf8f4] py-16">
           <div className="container">
-            <div className="mx-auto max-w-lg rounded-3xl border-2 border-[#1a1a1a] bg-white p-8 text-center shadow-[4px_4px_0_#0f172a]">
+            <div className="mx-auto max-w-lg rounded-3xl border-2 border-[#1a1a1a] bg-white p-8 text-center shadow-[4px_4px_0_var(--bnt-shadow)]">
               <p className="font-display text-2xl font-black text-[#1a1a1a]">
                 Carregando seu perfil...
               </p>
@@ -1141,7 +1141,7 @@ export default function Perfil() {
           {/* Bloco 1: Hero pessoal */}
           <section
             style={sectionStyle(0)}
-            className="animate-fade-slide-up rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
+            className="animate-fade-slide-up rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8"
           >
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
@@ -1186,7 +1186,7 @@ export default function Perfil() {
                 type="button"
                 onClick={openEditProfile}
                 disabled={profileLoading}
-                className="inline-flex items-center justify-center gap-2 self-start rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-3 font-display font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none md:self-auto"
+                className="inline-flex items-center justify-center gap-2 self-start rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-3 font-display font-black text-[#1a1a1a] shadow-[4px_4px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none md:self-auto"
               >
                 <Edit3 className="h-4 w-4" />
                 Editar perfil
@@ -1194,7 +1194,7 @@ export default function Perfil() {
             </div>
 
             {editingProfile ? (
-              <div className="mt-6 rounded-3xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-5 shadow-[4px_4px_0_#0f172a]">
+              <div className="mt-6 rounded-3xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-5 shadow-[4px_4px_0_var(--bnt-shadow)]">
                 <h2 className="font-display text-2xl font-black text-[#1a1a1a]">
                   Editar perfil
                 </h2>
@@ -1354,7 +1354,7 @@ export default function Perfil() {
                     type="button"
                     onClick={() => void handleSaveProfile()}
                     disabled={savingProfile}
-                    className="rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-2 font-black shadow-[3px_3px_0_#0f172a] disabled:opacity-60"
+                    className="rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-2 font-black shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-60"
                   >
                     {savingProfile ? "Salvando..." : "Salvar"}
                   </button>
@@ -1365,7 +1365,7 @@ export default function Perfil() {
 
           <section
             style={sectionStyle(50)}
-            className="animate-fade-slide-up rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
+            className="animate-fade-slide-up rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8"
           >
             {quizStatus === "loading" ? (
               <p className="font-mono text-xs text-slate-500">
@@ -1393,7 +1393,7 @@ export default function Perfil() {
                         ? `/roadmaps?area=${quizAttempt.result_area_slug}`
                         : "/quiz-carreira/resultado"
                     }
-                    className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-[#1a1a1a] shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5"
+                    className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-[#1a1a1a] shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5"
                   >
                     {quizAttempt.result_area_slug
                       ? "Ver roadmap da área"
@@ -1425,7 +1425,7 @@ export default function Perfil() {
                 </p>
                 <Link
                   href="/quiz-carreira"
-                  className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-[#1a1a1a] shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5"
+                  className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-[#1a1a1a] shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5"
                 >
                   Fazer o quiz
                 </Link>
@@ -1436,7 +1436,7 @@ export default function Perfil() {
           {/* Bloco 2: Progresso */}
           <section
             style={sectionStyle(100)}
-            className="animate-fade-slide-up rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
+            className="animate-fade-slide-up rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8"
           >
             <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-display text-2xl font-black text-slate-950 md:text-3xl">
@@ -1498,7 +1498,7 @@ export default function Perfil() {
           {/* Bloco 2.5: Conquistas (preview real) */}
           <section
             style={sectionStyle(150)}
-            className="animate-fade-slide-up overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
+            className="animate-fade-slide-up overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8"
           >
             <ConquistasPreview />
           </section>
@@ -1507,7 +1507,7 @@ export default function Perfil() {
           {isPro ? (
             <section
               style={sectionStyle(200)}
-              className="animate-fade-slide-up rounded-3xl border-2 border-[#1a1a1a] bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
+              className="animate-fade-slide-up rounded-3xl border-2 border-[#1a1a1a] bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8"
             >
               <div className="mb-6 flex items-center gap-3">
                 <ProStarIcon className="h-5 w-5" />
@@ -1547,7 +1547,7 @@ export default function Perfil() {
             style={sectionStyle(300)}
             className="animate-fade-slide-up grid grid-cols-1 gap-6 lg:grid-cols-2"
           >
-            <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]">
+            <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)]">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="font-display text-xl font-black text-slate-950">
                   Diário de estudos
@@ -1571,7 +1571,7 @@ export default function Perfil() {
                   </p>
                   <Link
                     href="/estudos/diario"
-                    className="mt-3 inline-block rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 font-display text-sm font-black shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5"
+                    className="mt-3 inline-block rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 font-display text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5"
                   >
                     Criar primeira entrada
                   </Link>
@@ -1600,7 +1600,7 @@ export default function Perfil() {
               )}
             </div>
 
-            <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]">
+            <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)]">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="font-display text-xl font-black text-slate-950">
                   Minhas trilhas
@@ -1624,7 +1624,7 @@ export default function Perfil() {
                   </p>
                   <Link
                     href="/roadmaps"
-                    className="mt-3 inline-block rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 font-display text-sm font-black shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5"
+                    className="mt-3 inline-block rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 font-display text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5"
                   >
                     Ver roadmaps
                   </Link>
@@ -1667,7 +1667,7 @@ export default function Perfil() {
             {/* Bloco 5: Assinatura (pôster amber) */}
             <section
               style={sectionStyle(400)}
-              className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
+              className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8"
             >
               <div
                 className="absolute inset-0 z-0"
@@ -1838,7 +1838,7 @@ export default function Perfil() {
                         acesso e esta tudo certo. Calibrado pelo bloco de cancelamento
                         agendado abaixo (irmao condicional), mas em tom informativo. */}
                     {pendingBoleto ? (
-                      <div className="mt-5 flex items-center gap-3 rounded-2xl border-2 border-slate-950 bg-white p-3 shadow-[3px_3px_0_#0f172a]">
+                      <div className="mt-5 flex items-center gap-3 rounded-2xl border-2 border-slate-950 bg-white p-3 shadow-[3px_3px_0_var(--bnt-shadow)]">
                         <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800]">
                           <RefreshCw
                             className="h-4 w-4 text-slate-950"
@@ -1864,7 +1864,7 @@ export default function Perfil() {
                         onClick={() =>
                           captureWhatsappSupportClicked({ source: "perfil" })
                         }
-                        className="mt-6 flex items-center gap-3 rounded-2xl border-2 border-[#1a1a1a] bg-white/80 p-3 text-left shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+                        className="mt-6 flex items-center gap-3 rounded-2xl border-2 border-[#1a1a1a] bg-white/80 p-3 text-left shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
                       >
                         <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border-2 border-[#1a1a1a] bg-[#FFB800]">
                           <MessageCircle className="h-4 w-4 text-[#1a1a1a]" />
@@ -1901,7 +1901,7 @@ export default function Perfil() {
                               type="button"
                               onClick={handleReactivate}
                               disabled={reactivating}
-                              className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {/* TODO(Ana): rotulo do botao de desfazer do boleto. */}
                               {reactivating ? "Desfazendo..." : "Voltar atrás"}
@@ -1933,7 +1933,7 @@ export default function Perfil() {
                                 type="button"
                                 onClick={handleReactivate}
                                 disabled={reactivating}
-                                className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                               >
                                 {reactivating
                                   ? "Reativando..."
@@ -1975,7 +1975,7 @@ export default function Perfil() {
 
                     <Link
                       href="/planos"
-                      className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5"
+                      className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5"
                     >
                       <ProStarIcon className="h-4 w-4" />
                       Ver planos Pro
@@ -1988,7 +1988,7 @@ export default function Perfil() {
             {/* Bloco 6: Conta (pôster violet) */}
             <section
               style={sectionStyle(500)}
-              className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
+              className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8"
             >
               <div
                 className="absolute inset-0 z-0"

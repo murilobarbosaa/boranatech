@@ -221,7 +221,7 @@ function CursoQuiz({
           type="button"
           onClick={onClose}
           aria-label="Fechar quiz"
-          className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-2.5 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all motion-safe:hover:-translate-y-px focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
+          className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-2.5 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all motion-safe:hover:-translate-y-px focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
         >
           <X className="h-4 w-4" aria-hidden />
           Fechar
@@ -239,7 +239,7 @@ function CursoQuiz({
             key={op.value}
             type="button"
             onClick={() => atual.escolher(op.value)}
-            className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-bold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:bg-amber-50 motion-safe:hover:-translate-y-px focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
+            className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-bold text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:bg-amber-50 motion-safe:hover:-translate-y-px focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
           >
             {op.label}
           </button>
@@ -296,7 +296,7 @@ function ParceiroCard({ parceiro }: { parceiro: CursoParceiro }) {
           href={parceiro.link}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex shrink-0 items-center gap-1 rounded-lg border-2 border-slate-900 bg-amber-500 px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-amber-400 hover:shadow-[3px_3px_0_#0f172a]"
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg border-2 border-slate-900 bg-amber-500 px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-amber-400 hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
         >
           Acessar <ExternalLink className="h-3 w-3" />
         </a>
@@ -414,7 +414,7 @@ export default function Cursos() {
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
           <div className="max-w-2xl">
-            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
               curadoria para estudar
             </p>
             <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">
@@ -635,7 +635,7 @@ export default function Cursos() {
                 aria-controls="cursos-quiz"
                 className="card-brutal flex w-full items-center gap-4 rounded-2xl border-2 border-slate-900 bg-amber-100 p-5 text-left shadow-[5px_5px_0_#fbbf24] transition-all hover:shadow-[7px_7px_0_#fbbf24] motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
               >
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-amber-400 text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-amber-400 text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                   <Sparkles className="h-5 w-5" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -696,7 +696,7 @@ export default function Cursos() {
           {!isPro && !loading && lockedTotal > 0 ? (
             <Link
               href="/planos"
-              className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-slate-900 bg-violet-950 px-5 py-4 text-white shadow-[4px_4px_0_#0f172a] transition-transform hover:-translate-y-0.5"
+              className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-slate-900 bg-violet-950 px-5 py-4 text-white shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5"
             >
               <span className="flex items-center gap-2 text-sm font-black">
                 <Lock className="h-4 w-4 text-amber-300" aria-hidden />
@@ -862,7 +862,7 @@ export default function Cursos() {
                         >
                           <button
                             type="button"
-                            className="inline-flex shrink-0 items-center gap-1 rounded-lg border-2 border-slate-900 bg-amber-500 px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-amber-400 hover:shadow-[3px_3px_0_#0f172a]"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-lg border-2 border-slate-900 bg-amber-500 px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-amber-400 hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                           >
                             Assistir aqui <PlayCircle className="h-3 w-3" />
                           </button>
@@ -872,7 +872,7 @@ export default function Cursos() {
                           href={curso.link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex shrink-0 items-center gap-1 rounded-lg border-2 border-slate-900 bg-amber-500 px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-amber-400 hover:shadow-[3px_3px_0_#0f172a]"
+                          className="inline-flex shrink-0 items-center gap-1 rounded-lg border-2 border-slate-900 bg-amber-500 px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-amber-400 hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                         >
                           Acessar <ExternalLink className="h-3 w-3" />
                         </a>

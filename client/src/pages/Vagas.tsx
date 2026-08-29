@@ -96,7 +96,7 @@ export default function Vagas() {
           >
             <p>
               {/* TODO(Ana): validar o eyebrow do cabecalho. */}
-              <span className="inline-flex rounded-full border-2 border-slate-900 bg-cyan-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+              <span className="inline-flex rounded-full border-2 border-slate-900 bg-cyan-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                 Vagas Pro
               </span>
             </p>

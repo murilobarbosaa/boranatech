@@ -198,7 +198,7 @@ export function AiGenerationProgressCard({
 
   if (state.phase === "running" || state.phase === "done") {
     return (
-      <div className="rounded-[14px] border-[2.5px] border-slate-900 bg-white p-6 shadow-[4px_4px_0_#0f172a]">
+      <div className="rounded-[14px] border-[2.5px] border-slate-900 bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)]">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border-[2px] border-slate-900 bg-violet-600">
             <Sparkles className="h-5 w-5 text-white motion-safe:animate-pulse" />
@@ -250,7 +250,7 @@ export function AiGenerationProgressCard({
           <button
             type="button"
             onClick={() => onResume(state.slug as string)}
-            className="inline-flex items-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
+            className="inline-flex items-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
           >
             <RotateCcw className="h-4 w-4" />
             {MESSAGES.resume}
@@ -260,7 +260,7 @@ export function AiGenerationProgressCard({
           <button
             type="button"
             onClick={onReset}
-            className="inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-white px-4 py-2.5 text-sm font-black text-slate-900 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
+            className="inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-white px-4 py-2.5 text-sm font-black text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
           >
             {MESSAGES.retry}
           </button>

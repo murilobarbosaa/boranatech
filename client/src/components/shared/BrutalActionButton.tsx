@@ -46,7 +46,7 @@ export default function BrutalActionButton({
       disabled={disabled || loading}
       onClick={onClick}
       className={cn(
-        "bnt-pressable inline-flex items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 px-5 py-2.5 text-sm font-black shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[3px_3px_0_#0f172a]",
+        "bnt-pressable inline-flex items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 px-5 py-2.5 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[3px_3px_0_var(--bnt-shadow)]",
         accentClass ?? VARIANT_CLASSES[variant],
         className,
       )}

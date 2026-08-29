@@ -55,7 +55,7 @@ function NewTaskComposerBase({
   }
 
   return (
-    <div className="rounded-2xl border-2 border-slate-900 bg-white p-2 shadow-[3px_3px_0_#0f172a]">
+    <div className="rounded-2xl border-2 border-slate-900 bg-white p-2 shadow-[3px_3px_0_var(--bnt-shadow)]">
       <textarea
         ref={textareaRef}
         rows={2}
@@ -87,7 +87,7 @@ function NewTaskComposerBase({
           onMouseDown={(event) => event.preventDefault()}
           onClick={submit}
           disabled={!draft.trim()}
-          className="rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+          className="rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-40 disabled:shadow-none"
         >
           Adicionar
         </button>

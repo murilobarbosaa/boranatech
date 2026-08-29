@@ -77,7 +77,7 @@ function formatDueDate(iso: string | null): string {
 // arquivo, nao e componente reutilizavel novo (mesmo padrao do CertificadoPublico).
 function Card({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-[16px] border-[3px] border-slate-950 bg-white p-8 text-center shadow-[6px_6px_0_#0f172a]">
+    <div className="rounded-[16px] border-[3px] border-slate-950 bg-white p-8 text-center shadow-[6px_6px_0_var(--bnt-shadow)]">
       {children}
     </div>
   );
@@ -85,14 +85,14 @@ function Card({ children }: { children: ReactNode }) {
 
 function IconPill({ children }: { children: ReactNode }) {
   return (
-    <span className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800] shadow-[4px_4px_0_#0f172a]">
+    <span className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800] shadow-[4px_4px_0_var(--bnt-shadow)]">
       {children}
     </span>
   );
 }
 
 const BUTTON_CLASS =
-  "mt-8 inline-flex items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800] px-6 py-3 font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_#0f172a]";
+  "mt-8 inline-flex items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800] px-6 py-3 font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_var(--bnt-shadow)]";
 
 export default function Renovar() {
   // ?t= lido via URLSearchParams (wouter nao captura query string). Uma vez: o

@@ -136,7 +136,7 @@ function AssistantText({ text }: { text: string }) {
 function AgentAvatar() {
   return (
     <span
-      className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-slate-950 bg-violet-600 shadow-[2px_2px_0_#0f172a]"
+      className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-slate-950 bg-violet-600 shadow-[2px_2px_0_var(--bnt-shadow)]"
       aria-hidden
     >
       <MessageCircle className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
@@ -198,7 +198,7 @@ function HistoryDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg border-2 border-slate-950 bg-white text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border-2 border-slate-950 bg-white text-slate-700 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
             /* TODO(Ana): label de acessibilidade do botao fechar conversas. */
             aria-label="Fechar conversas"
             title="Fechar conversas"
@@ -245,7 +245,7 @@ function HistoryDrawer({
                       type="button"
                       disabled={deletingId === c.id}
                       onClick={() => void handleDeleteClick(c.id)}
-                      className="shrink-0 rounded-full border-2 border-slate-950 bg-rose-600 px-3 py-1 text-[11px] font-black text-white shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-60 disabled:hover:translate-y-0"
+                      className="shrink-0 rounded-full border-2 border-slate-950 bg-rose-600 px-3 py-1 text-[11px] font-black text-white shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-60 disabled:hover:translate-y-0"
                     >
                       {/* TODO(Ana): rotulos da exclusao em dois passos. */}
                       {deletingId === c.id ? "Excluindo..." : "Confirmar"}
@@ -257,7 +257,7 @@ function HistoryDrawer({
                       /* TODO(Ana): label de acessibilidade do botao apagar conversa. */
                       aria-label={`Apagar conversa: ${title}`}
                       title="Apagar conversa"
-                      className="shrink-0 rounded-lg border-2 border-slate-950 bg-white p-1.5 text-slate-500 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px hover:text-rose-600"
+                      className="shrink-0 rounded-lg border-2 border-slate-950 bg-white p-1.5 text-slate-500 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px hover:text-rose-600"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -588,13 +588,13 @@ export default function AgentWidget() {
   return (
     <>
       {open && user && (
-        <div className="fixed bottom-24 right-5 z-40 flex h-[min(70vh,560px)] w-[min(92vw,380px)] flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-[#faf8f4] shadow-[6px_6px_0_#0f172a]">
+        <div className="fixed bottom-24 right-5 z-40 flex h-[min(70vh,560px)] w-[min(92vw,380px)] flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-[#faf8f4] shadow-[6px_6px_0_var(--bnt-shadow)]">
           {/* Cabecalho no padrao da casa: fundo branco, borda inferior, mascote
               em caixinha brutal violeta e acoes compactas a direita. */}
           <div className="flex items-center justify-between gap-2 border-b-2 border-slate-950 bg-white px-3 py-2.5">
             <div className="flex min-w-0 items-center gap-2.5">
               <span
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-600 shadow-[2px_2px_0_#0f172a]"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-600 shadow-[2px_2px_0_var(--bnt-shadow)]"
                 aria-hidden
               >
                 <MessageCircle
@@ -618,7 +618,7 @@ export default function AgentWidget() {
                 <button
                   type="button"
                   onClick={() => setHistoryOpen((v) => !v)}
-                  className="relative flex h-8 w-8 items-center justify-center rounded-lg border-2 border-slate-950 bg-white text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px"
+                  className="relative flex h-8 w-8 items-center justify-center rounded-lg border-2 border-slate-950 bg-white text-slate-700 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
                   /* TODO(Ana): label de acessibilidade do botao de historico. */
                   aria-label={`Historico de conversas (${conversations.length})`}
                   title="Historico de conversas"
@@ -636,7 +636,7 @@ export default function AgentWidget() {
                 type="button"
                 onClick={startNewConversation}
                 disabled={streaming}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border-2 border-slate-950 bg-white text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-40 disabled:hover:translate-y-0"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border-2 border-slate-950 bg-white text-slate-700 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-40 disabled:hover:translate-y-0"
                 /* TODO(Ana): label de acessibilidade do botao nova conversa. */
                 aria-label="Nova conversa"
                 title="Nova conversa"
@@ -646,7 +646,7 @@ export default function AgentWidget() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border-2 border-slate-950 bg-white text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border-2 border-slate-950 bg-white text-slate-700 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
                 /* TODO(Ana): label de acessibilidade do botao fechar. */
                 aria-label="Fechar"
                 title="Fechar"
@@ -682,7 +682,7 @@ export default function AgentWidget() {
                           key={chip}
                           type="button"
                           onClick={() => setInput(chip)}
-                          className="rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-800 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px hover:bg-violet-50"
+                          className="rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-800 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px hover:bg-violet-50"
                         >
                           {chip}
                         </button>
@@ -709,7 +709,7 @@ export default function AgentWidget() {
                       ) : (
                         <span className="w-7 shrink-0" aria-hidden />
                       )}
-                      <div className="max-w-[80%] rounded-2xl rounded-tl-sm border-2 border-slate-950 bg-violet-50 px-3 py-2 text-sm text-slate-900 shadow-[2px_2px_0_#0f172a]">
+                      <div className="max-w-[80%] rounded-2xl rounded-tl-sm border-2 border-slate-950 bg-violet-50 px-3 py-2 text-sm text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]">
                         {m.content.length === 0 ? (
                           <>
                             {/* TODO(Ana): texto sr-only do indicador digitando. */}
@@ -733,7 +733,7 @@ export default function AgentWidget() {
                     transition={{ duration: 0.2, ease: "easeOut" }}
                     className="flex justify-end"
                   >
-                    <div className="max-w-[80%] rounded-2xl rounded-br-sm border-2 border-slate-950 bg-white px-3 py-2 text-sm text-slate-900 shadow-[2px_2px_0_#0f172a]">
+                    <div className="max-w-[80%] rounded-2xl rounded-br-sm border-2 border-slate-950 bg-white px-3 py-2 text-sm text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]">
                       <span className="whitespace-pre-wrap break-words">
                         {m.content}
                       </span>
@@ -759,7 +759,7 @@ export default function AgentWidget() {
                 enviar em circulo solido). */}
             <div className="border-t-2 border-slate-950 bg-white px-3 py-3">
               <div className="flex items-center gap-2">
-                <div className="flex min-h-0 flex-1 items-center rounded-xl border-2 border-violet-200 bg-white shadow-[2px_2px_0_#0f172a] focus-within:border-violet-600 focus-within:ring-2 focus-within:ring-violet-200">
+                <div className="flex min-h-0 flex-1 items-center rounded-xl border-2 border-violet-200 bg-white shadow-[2px_2px_0_var(--bnt-shadow)] focus-within:border-violet-600 focus-within:ring-2 focus-within:ring-violet-200">
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -806,7 +806,7 @@ export default function AgentWidget() {
       <button
         type="button"
         onClick={handleLauncherClick}
-        className="bnt-pressable fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-950 bg-violet-600 text-white shadow-[4px_4px_0_#0f172a]"
+        className="bnt-pressable fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-950 bg-violet-600 text-white shadow-[4px_4px_0_var(--bnt-shadow)]"
         /* TODO(Ana): label de acessibilidade do launcher. */
         aria-label="Abrir o Natechinho"
       >

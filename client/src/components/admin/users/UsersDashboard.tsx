@@ -81,7 +81,7 @@ export function UsersDashboard() {
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
           placeholder="Buscar por nome ou e-mail"
-          className="min-w-[220px] flex-1 rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_#0f172a] placeholder:text-slate-400 focus:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+          className="min-w-[220px] flex-1 rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] placeholder:text-slate-400 focus:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
         />
         {/* Pills, nao BntSelect: sao 5 opcoes mutuamente exclusivas e curtas.
             A pill mostra TODAS as opcoes e o estado atual sem abrir nada, e
@@ -100,7 +100,7 @@ export function UsersDashboard() {
             "Sem assinatura" foram escolhidos na Fatia 2 para a tela nao se
             contradizer com o selo da linha, e encurtar traria a contradicao de
             volta. Sobra tipografia menor no mobile, que nao custa informacao. */}
-        <div className="grid w-full grid-cols-3 overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a] sm:flex sm:w-auto sm:flex-wrap">
+        <div className="grid w-full grid-cols-3 overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_var(--bnt-shadow)] sm:flex sm:w-auto sm:flex-wrap">
           {(
             [
               { value: "all", label: "Todos" },
@@ -187,7 +187,7 @@ export function UsersDashboard() {
               type="button"
               onClick={() => setPage((current) => Math.max(1, current - 1))}
               disabled={page <= 1}
-              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
+              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
             >
               Anterior
             </button>
@@ -200,7 +200,7 @@ export function UsersDashboard() {
                 setPage((current) => Math.min(totalPages, current + 1))
               }
               disabled={page >= totalPages}
-              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
+              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-40 disabled:shadow-none"
             >
               Próxima
             </button>

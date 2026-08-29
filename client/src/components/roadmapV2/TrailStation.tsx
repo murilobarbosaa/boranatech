@@ -131,7 +131,7 @@ const TrailStation = forwardRef<HTMLButtonElement, TrailStationProps>(
                 ? "border-slate-900 bg-emerald-500 shadow-[3px_3px_0_#047857]"
                 : locked
                   ? "border-slate-400 bg-slate-100 shadow-[3px_3px_0_#94a3b8]"
-                  : "border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]"
+                  : "border-slate-900 bg-white shadow-[3px_3px_0_var(--bnt-shadow)]"
             }`}
           />
           <span className="absolute inset-0 grid place-items-center">
@@ -175,7 +175,7 @@ const TrailStation = forwardRef<HTMLButtonElement, TrailStationProps>(
           </span>
         </span>
         <span
-          className={`absolute left-1/2 top-full mt-2.5 -translate-x-1/2 whitespace-nowrap rounded-[9px] border-[2.5px] px-2.5 py-1 text-[0.76rem] font-extrabold shadow-[2px_2px_0_#0f172a] ${
+          className={`absolute left-1/2 top-full mt-2.5 -translate-x-1/2 whitespace-nowrap rounded-[9px] border-[2.5px] px-2.5 py-1 text-[0.76rem] font-extrabold shadow-[2px_2px_0_var(--bnt-shadow)] ${
             locked
               ? "border-slate-400 bg-slate-100 text-slate-400 shadow-[2px_2px_0_#94a3b8]"
               : complete

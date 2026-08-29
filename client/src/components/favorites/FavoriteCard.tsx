@@ -237,7 +237,7 @@ export function FavoriteCard({
           type="button"
           onClick={onRemove}
           aria-label={`Remover ${item.title} dos favoritos`}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-slate-900 bg-rose-100 text-rose-700 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-slate-900 bg-rose-100 text-rose-700 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isRemoving}
         >
           <Heart className="h-4 w-4 fill-current" aria-hidden />

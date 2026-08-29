@@ -231,7 +231,7 @@ export default function VagasDetailDialog({
                     key={href}
                     href={href}
                     onClick={onClose}
-                    className="bnt-pressable inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px"
+                    className="bnt-pressable inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px"
                   >
                     <Icon className={cn("h-3.5 w-3.5", ac.iconMuted)} aria-hidden />
                     {label}
@@ -247,7 +247,7 @@ export default function VagasDetailDialog({
                 href={vaga.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bnt-pressable inline-flex items-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-5 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
+                className="bnt-pressable inline-flex items-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-5 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
               >
                 Candidatar
                 <ExternalLink className="h-4 w-4" aria-hidden />

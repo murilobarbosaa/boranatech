@@ -266,7 +266,7 @@ export default function Projetos() {
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#fb923c_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
           <div className="max-w-2xl">
-            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-orange-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-orange-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
               portfólio por nível
             </p>
             <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">
@@ -404,7 +404,7 @@ export default function Projetos() {
               )}
           </p>
           {deepLinkMissing && (
-            <p className="mb-6 rounded-xl border-2 border-slate-900 bg-amber-50 px-4 py-3 text-sm font-bold text-slate-700 shadow-[3px_3px_0_#0f172a]">
+            <p className="mb-6 rounded-xl border-2 border-slate-900 bg-amber-50 px-4 py-3 text-sm font-bold text-slate-700 shadow-[3px_3px_0_var(--bnt-shadow)]">
               {/* TODO(Ana): copy do aviso de projeto nao encontrado no deep-link */}
               Não encontramos esse projeto. Ele pode ter mudado de nome; aqui
               está a lista completa.
@@ -413,7 +413,7 @@ export default function Projetos() {
           {!isPro && !loading && lockedCount > 0 ? (
             <Link
               href="/planos"
-              className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-slate-900 bg-violet-950 px-5 py-4 text-white shadow-[4px_4px_0_#0f172a] transition-transform hover:-translate-y-0.5"
+              className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-slate-900 bg-violet-950 px-5 py-4 text-white shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5"
             >
               <span className="flex items-center gap-2 text-sm font-black">
                 <Lock className="h-4 w-4 text-amber-300" aria-hidden />
@@ -699,7 +699,7 @@ export default function Projetos() {
                                     type="button"
                                     aria-pressed={projectsDone.has(projeto.id)}
                                     onClick={() => toggleCompletion(projeto.id)}
-                                    className={`inline-flex items-center gap-1.5 rounded-[9px] border-[2.5px] border-slate-900 px-3.5 py-2 text-sm font-extrabold shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] ${
+                                    className={`inline-flex items-center gap-1.5 rounded-[9px] border-[2.5px] border-slate-900 px-3.5 py-2 text-sm font-extrabold shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] ${
                                       projectsDone.has(projeto.id)
                                         ? "bg-emerald-500 text-white shadow-[2px_2px_0_#047857]"
                                         : "bg-white text-slate-900"

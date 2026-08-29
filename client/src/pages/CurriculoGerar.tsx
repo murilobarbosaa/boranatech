@@ -180,7 +180,7 @@ function BuilderTimeline({ reduce }: { reduce: boolean }) {
                   aria-hidden
                 />
               ) : null}
-              <span className="z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-lg font-black text-slate-950 shadow-[3px_3px_0_#0f172a]">
+              <span className="z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-lg font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
                 {i + 1}
               </span>
               <div className="min-w-0 pt-0.5">
@@ -232,7 +232,7 @@ function ShowcaseCard({
                 delay: index * 0.5,
               }
         }
-        className="rounded-xl border-2 border-slate-950 bg-white shadow-[3px_3px_0_#0f172a]"
+        className="rounded-xl border-2 border-slate-950 bg-white shadow-[3px_3px_0_var(--bnt-shadow)]"
       >
         {children}
       </motion.div>
@@ -259,7 +259,7 @@ const SHOWCASE_BADGE = "exemplo ilustrativo";
 function BuilderShowcase({ reduce }: { reduce: boolean }) {
   return (
     <div className="relative mx-auto w-full max-w-md" aria-hidden>
-      <span className="absolute -top-3 right-2 z-20 rotate-2 rounded-full border-2 border-slate-950 bg-white px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-600 shadow-[2px_2px_0_#0f172a]">
+      <span className="absolute -top-3 right-2 z-20 rotate-2 rounded-full border-2 border-slate-950 bg-white px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-600 shadow-[2px_2px_0_var(--bnt-shadow)]">
         {SHOWCASE_BADGE}
       </span>
 
@@ -287,7 +287,7 @@ function BuilderShowcase({ reduce }: { reduce: boolean }) {
         className="relative z-10 -mt-8 ml-auto w-[78%] rotate-[1.5deg]"
       >
         <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 p-4">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800] shadow-[2px_2px_0_#0f172a]">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800] shadow-[2px_2px_0_var(--bnt-shadow)]">
             <Wand2 className="h-4 w-4 text-slate-950" strokeWidth={2.5} />
           </span>
           <div>
@@ -315,7 +315,7 @@ function StartStage({ onStart }: { onStart: () => void }) {
       )}
     >
       {/* TODO(Ana): revisar o selo, o titulo e o botao do palco. */}
-      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
         <Sparkles className="h-3 w-3" aria-hidden />
         Comece aqui
       </span>
@@ -512,7 +512,7 @@ export default function CurriculoGerar() {
                 isPro && !authLoading && generated ? "mt-5" : undefined,
               )}
             >
-              <span className="inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+              <span className="inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                 Currículo Pro
               </span>
             </p>
@@ -602,7 +602,7 @@ export default function CurriculoGerar() {
 function PreparingChat() {
   return (
     <div className="card-brutal mx-auto max-w-md rounded-2xl border-slate-950 bg-white p-8 text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-950 bg-amber-100 shadow-[3px_3px_0_#0f172a]">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-950 bg-amber-100 shadow-[3px_3px_0_var(--bnt-shadow)]">
         <Loader2
           className="h-5 w-5 animate-spin text-slate-950"
           strokeWidth={2.5}
@@ -635,12 +635,12 @@ function DraftingBoard() {
   return (
     <div>
       <div className="relative mx-auto max-w-xs rotate-[0.8deg]">
-        <span className="absolute -top-3 left-5 z-10 inline-flex -rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+        <span className="absolute -top-3 left-5 z-10 inline-flex -rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
           <PenLine className="h-3 w-3" aria-hidden />
           {BOARD_BADGE}
         </span>
         <div
-          className="rounded-xl border-2 border-slate-950 bg-white p-5 shadow-[5px_5px_0_#0f172a]"
+          className="rounded-xl border-2 border-slate-950 bg-white p-5 shadow-[5px_5px_0_var(--bnt-shadow)]"
           aria-hidden
         >
           <SkeletonBar className="h-3 w-1/2 bg-slate-800" />
@@ -664,7 +664,7 @@ function DraftingBoard() {
         {FORMAT_CHIPS.map((label) => (
           <span
             key={label}
-            className="inline-flex items-center rounded-full border-2 border-slate-950 bg-white px-3 py-1 text-xs font-black text-slate-800 shadow-[2px_2px_0_#0f172a]"
+            className="inline-flex items-center rounded-full border-2 border-slate-950 bg-white px-3 py-1 text-xs font-black text-slate-800 shadow-[2px_2px_0_var(--bnt-shadow)]"
           >
             {label}
           </span>
@@ -846,7 +846,7 @@ function GeneratedView({
         <button
           type="button"
           onClick={onReset}
-          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
+          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
         >
           <RefreshCw className="h-4 w-4" strokeWidth={2.5} aria-hidden />
           Começar de novo
@@ -862,7 +862,7 @@ function GeneratedView({
           sobre o pontilhado da pagina. */}
       <div className="print-hide relative z-10 mx-auto -mb-3 flex w-fit">
         {/* TODO(Ana): revisar o selo do papel. */}
-        <span className="inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+        <span className="inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
           <Sparkles className="h-3 w-3" aria-hidden />
           Seu currículo
         </span>
@@ -984,7 +984,7 @@ function SavedResumesGallery({
               <button
                 type="button"
                 onClick={() => onOpen(item.id)}
-                className="rounded-full border-2 border-slate-950 bg-[#FFB800] px-4 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px"
+                className="rounded-full border-2 border-slate-950 bg-[#FFB800] px-4 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
               >
                 Abrir
               </button>
@@ -993,7 +993,7 @@ function SavedResumesGallery({
                   type="button"
                   disabled={deletingId === item.id}
                   onClick={() => void handleDelete(item.id)}
-                  className="rounded-full border-2 border-slate-950 bg-rose-600 px-4 py-1.5 text-xs font-black text-white shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-60"
+                  className="rounded-full border-2 border-slate-950 bg-rose-600 px-4 py-1.5 text-xs font-black text-white shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-60"
                 >
                   {deletingId === item.id ? "Excluindo..." : "Confirmar exclusão"}
                 </button>
@@ -1002,7 +1002,7 @@ function SavedResumesGallery({
                   type="button"
                   onClick={() => setConfirmingId(item.id)}
                   aria-label={`Excluir ${item.title}`}
-                  className="rounded-full border-2 border-slate-950 bg-white p-2 text-slate-600 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px hover:text-rose-700"
+                  className="rounded-full border-2 border-slate-950 bg-white p-2 text-slate-600 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px hover:text-rose-700"
                 >
                   <Trash2 className="h-4 w-4" aria-hidden />
                 </button>

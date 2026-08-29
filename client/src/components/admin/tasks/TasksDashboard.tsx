@@ -1340,7 +1340,7 @@ export function TasksDashboard() {
               sombra mais funda para ler como "fora do plano". */}
           <DragOverlay dropAnimation={null}>
             {activeDragTask ? (
-              <article className="w-[19rem] rotate-3 cursor-grabbing rounded-2xl border-2 border-slate-900 bg-white p-3 shadow-[8px_8px_0_#0f172a]">
+              <article className="w-[19rem] rotate-3 cursor-grabbing rounded-2xl border-2 border-slate-900 bg-white p-3 shadow-[8px_8px_0_var(--bnt-shadow)]">
                 <span className="font-mono text-[11px] font-bold text-slate-500">
                   {shortIdOf(snapshot.board.key, activeDragTask.number)}
                 </span>
@@ -1475,7 +1475,7 @@ export function TasksDashboard() {
           }
         }}
       >
-        <AlertDialogContent overlayClassName={LAYER_DIALOG} className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}>
+        <AlertDialogContent overlayClassName={LAYER_DIALOG} className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)]`}>
           <AlertDialogTitle className="font-display text-2xl font-black text-slate-950">
             Excluir etapa
           </AlertDialogTitle>
@@ -1521,7 +1521,7 @@ export function TasksDashboard() {
                 event.preventDefault();
                 void confirmDeleteColumn();
               }}
-              className="rounded-full border-2 border-slate-900 bg-rose-600 px-4 py-2 text-sm font-black text-white shadow-[2px_2px_0_#0f172a] disabled:opacity-50"
+              className="rounded-full border-2 border-slate-900 bg-rose-600 px-4 py-2 text-sm font-black text-white shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-50"
             >
               {deleteBlockedMessage ? "Mover e excluir" : "Excluir"}
             </AlertDialogAction>

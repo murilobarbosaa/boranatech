@@ -155,7 +155,7 @@ export function TaskChecklist({
           onClick={submit}
           disabled={!draft.trim()}
           aria-label="Adicionar item"
-          className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 shadow-[2px_2px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+          className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-40 disabled:shadow-none"
         >
           <Plus className="h-3.5 w-3.5" />
         </button>

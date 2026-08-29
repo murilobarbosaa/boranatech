@@ -9,7 +9,7 @@ export function NextStepCard({ proximoPasso }: { proximoPasso?: string }) {
   return (
     <div className="card-brutal rounded-2xl border-slate-950 bg-amber-100 p-6">
       {/* TODO(Ana): revisar a copy do card de proximo passo. */}
-      <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-1 text-xs font-black uppercase tracking-[0.15em] text-slate-950 shadow-[3px_3px_0_#0f172a]">
+      <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-1 text-xs font-black uppercase tracking-[0.15em] text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
         <Target className="h-3.5 w-3.5" />
         se você fizer UMA coisa hoje
       </span>

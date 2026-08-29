@@ -91,7 +91,7 @@ export default function PageHero({
             {topSlot ? <div className="mb-4">{topSlot}</div> : null}
             {eyebrow ? (
               <p
-                className={`mb-4 inline-flex rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a] ${a.pill}`}
+                className={`mb-4 inline-flex rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] ${a.pill}`}
               >
                 {eyebrow}
               </p>

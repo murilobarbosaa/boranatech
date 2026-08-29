@@ -62,7 +62,7 @@ export default function Entrevistas() {
           >
             <p>
               {/* TODO(Ana): revisar o selo da arena. */}
-              <span className="inline-flex rounded-full border-2 border-slate-900 bg-blue-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+              <span className="inline-flex rounded-full border-2 border-slate-900 bg-blue-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                 Treino Pro
               </span>
             </p>

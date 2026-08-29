@@ -218,9 +218,9 @@ export default function CheckoutSucesso() {
             initial={reduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: "easeOut" }}
-            className="mx-auto max-w-2xl rounded-[2rem] border-2 border-[#1a1a1a] bg-white p-8 text-center shadow-[6px_6px_0_#0f172a]"
+            className="mx-auto max-w-2xl rounded-[2rem] border-2 border-[#1a1a1a] bg-white p-8 text-center shadow-[6px_6px_0_var(--bnt-shadow)]"
           >
-            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] shadow-[4px_4px_0_#0f172a]">
+            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] shadow-[4px_4px_0_var(--bnt-shadow)]">
               {isLoadingScreen ? (
                 <Loader2
                   className={`h-12 w-12 text-[#1a1a1a] ${reduce ? "" : "animate-spin"}`}
@@ -297,7 +297,7 @@ export default function CheckoutSucesso() {
                 <div className="mt-8 flex flex-col items-center gap-3">
                   <Link
                     href="/perfil"
-                    className="inline-flex rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
+                    className="inline-flex rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
                   >
                     Começar agora
                   </Link>
@@ -311,7 +311,7 @@ export default function CheckoutSucesso() {
                           source: "checkout_success",
                         })
                       }
-                      className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-white px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
+                      className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-white px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
                     >
                       <MessageCircle className="h-5 w-5" />
                       Suporte no WhatsApp
@@ -336,7 +336,7 @@ export default function CheckoutSucesso() {
                 <div className="mt-8 flex flex-col items-center gap-3">
                   <Link
                     href="/perfil"
-                    className="inline-flex rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
+                    className="inline-flex rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
                   >
                     Ir para o perfil
                   </Link>
@@ -350,7 +350,7 @@ export default function CheckoutSucesso() {
                           source: "checkout_success",
                         })
                       }
-                      className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-white px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
+                      className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-white px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
                     >
                       <MessageCircle className="h-5 w-5" />
                       Falar no WhatsApp
@@ -369,7 +369,7 @@ export default function CheckoutSucesso() {
                 </p>
                 <Link
                   href="/perfil"
-                  className="mt-8 inline-flex rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
+                  className="mt-8 inline-flex rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
                 >
                   Ir para o perfil
                 </Link>

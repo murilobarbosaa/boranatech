@@ -144,7 +144,7 @@ export default function PerfilFavoritos() {
           <div className="mt-4 flex items-center gap-3">
             <span
               aria-hidden
-              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-slate-900 bg-rose-100 text-rose-700 shadow-[3px_3px_0_#0f172a]"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-slate-900 bg-rose-100 text-rose-700 shadow-[3px_3px_0_var(--bnt-shadow)]"
             >
               <Heart className="h-5 w-5 fill-current" />
             </span>
@@ -194,7 +194,7 @@ export default function PerfilFavoritos() {
                       className={cn(
                         "inline-flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-sm font-black uppercase tracking-wide transition-all",
                         isActive
-                          ? "border-slate-900 bg-[#FFB800] text-slate-950 shadow-[3px_3px_0_#0f172a]"
+                          ? "border-slate-900 bg-[#FFB800] text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
                           : "border-slate-300 bg-white text-slate-700 hover:border-slate-900",
                       )}
                     >
@@ -250,7 +250,7 @@ function EmptyState() {
     <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-10 text-center">
       <span
         aria-hidden
-        className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-slate-900 bg-rose-100 text-rose-700 shadow-[3px_3px_0_#0f172a]"
+        className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-slate-900 bg-rose-100 text-rose-700 shadow-[3px_3px_0_var(--bnt-shadow)]"
       >
         <Heart className="h-6 w-6" />
       </span>
@@ -264,19 +264,19 @@ function EmptyState() {
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
         <Link
           href="/noticias"
-          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] hover:-translate-y-0.5"
+          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] hover:-translate-y-0.5"
         >
           Explorar notícias
         </Link>
         <Link
           href="/roadmaps"
-          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] hover:-translate-y-0.5"
+          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] hover:-translate-y-0.5"
         >
           Ver roadmaps
         </Link>
         <Link
           href="/areas"
-          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] hover:-translate-y-0.5"
+          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] hover:-translate-y-0.5"
         >
           Áreas de TI
         </Link>

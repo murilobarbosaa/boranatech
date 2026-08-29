@@ -138,14 +138,14 @@ export default function TurbineComIA() {
         >
           <Link href="/planos">
             <article
-              className="group cursor-pointer rounded-3xl border-2 border-slate-950 p-8 md:p-10 shadow-[6px_6px_0_#0f172a] transition-all duration-300 hover:-translate-y-1 hover:shadow-[10px_10px_0_#0f172a]"
+              className="group cursor-pointer rounded-3xl border-2 border-slate-950 p-8 md:p-10 shadow-[6px_6px_0_var(--bnt-shadow)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[10px_10px_0_var(--bnt-shadow)]"
               style={{
                 background: "linear-gradient(135deg, #FFF8E7 0%, #FFE89A 100%)",
               }}
             >
               <div className="flex flex-col items-center gap-6 text-center md:flex-row md:gap-8 md:text-left">
                 <div className="shrink-0">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-slate-950 bg-amber-300 shadow-[4px_4px_0_#0f172a]">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-slate-950 bg-amber-300 shadow-[4px_4px_0_var(--bnt-shadow)]">
                     <Star
                       size={36}
                       className="text-slate-950"
@@ -164,7 +164,7 @@ export default function TurbineComIA() {
                   </p>
                 </div>
 
-                <div className="pro-glare relative overflow-hidden inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-slate-900 bg-[#FFB800] px-6 py-3 font-display font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all group-hover:shadow-[6px_6px_0_#0f172a]">
+                <div className="pro-glare relative overflow-hidden inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-slate-900 bg-[#FFB800] px-6 py-3 font-display font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all group-hover:shadow-[6px_6px_0_var(--bnt-shadow)]">
                   <span>Conhecer o Pro</span>
                   <ArrowRight
                     size={20}
@@ -244,8 +244,8 @@ function ConversationMockup() {
       transition={{ duration: 0.6, delay: 0.3 }}
       className="mt-16"
     >
-      <article className="relative rounded-3xl border-2 border-slate-950 bg-white p-6 md:p-8 shadow-[8px_8px_0_#0f172a]">
-        <div className="absolute -top-4 left-6 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-1 shadow-[2px_2px_0_#0f172a]">
+      <article className="relative rounded-3xl border-2 border-slate-950 bg-white p-6 md:p-8 shadow-[8px_8px_0_var(--bnt-shadow)]">
+        <div className="absolute -top-4 left-6 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-1 shadow-[2px_2px_0_var(--bnt-shadow)]">
           <ProStarIcon />
           <span className="font-display text-xs font-black uppercase tracking-wider text-slate-950">
             Exemplo real
@@ -296,7 +296,7 @@ function ConversationMockup() {
             quantas vezes quiser.
           </p>
           <Link href="/entrevistas">
-            <button className="pro-glare relative overflow-hidden group inline-flex items-center gap-2 rounded-xl border-2 border-slate-950 bg-amber-300 px-5 py-2.5 font-display font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:shadow-[5px_5px_0_#0f172a] hover:-translate-y-0.5">
+            <button className="pro-glare relative overflow-hidden group inline-flex items-center gap-2 rounded-xl border-2 border-slate-950 bg-amber-300 px-5 py-2.5 font-display font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:shadow-[5px_5px_0_var(--bnt-shadow)] hover:-translate-y-0.5">
               <ProStarIcon />
               <span>Simular minha entrevista (PRO)</span>
               <ArrowRight
@@ -334,7 +334,7 @@ function ChatMessage({ message }: { message: Message }) {
       </div>
 
       <div
-        className={`max-w-[80%] rounded-2xl border-2 border-slate-950 px-4 py-3 shadow-[2px_2px_0_#0f172a] ${
+        className={`max-w-[80%] rounded-2xl border-2 border-slate-950 px-4 py-3 shadow-[2px_2px_0_var(--bnt-shadow)] ${
           isAI ? "bg-violet-50" : "bg-amber-50"
         }`}
       >
@@ -358,7 +358,7 @@ function TypingIndicator() {
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-100">
         <Sparkles size={16} className="text-violet-700" strokeWidth={2.5} />
       </div>
-      <div className="inline-flex items-center gap-1.5 rounded-2xl border-2 border-slate-950 bg-violet-50 px-4 py-3 shadow-[2px_2px_0_#0f172a]">
+      <div className="inline-flex items-center gap-1.5 rounded-2xl border-2 border-slate-950 bg-violet-50 px-4 py-3 shadow-[2px_2px_0_var(--bnt-shadow)]">
         <motion.span
           className="h-2 w-2 rounded-full bg-violet-600"
           animate={{ opacity: [0.3, 1, 0.3] }}
@@ -401,8 +401,8 @@ function ToolListItem({
       transition={{ duration: 0.4, delay: 0.4 + index * 0.1 }}
     >
       <Link href={tool.href}>
-        <article className="group flex items-center gap-4 rounded-xl border-2 border-slate-950 bg-white p-4 md:p-5 shadow-[3px_3px_0_#0f172a] transition-all duration-300 hover:-translate-x-1 hover:shadow-[5px_5px_0_#0f172a]">
-          <div className="shrink-0 inline-flex items-center gap-1 rounded-lg border-2 border-slate-950 bg-amber-300 px-2 py-1 shadow-[2px_2px_0_#0f172a]">
+        <article className="group flex items-center gap-4 rounded-xl border-2 border-slate-950 bg-white p-4 md:p-5 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-300 hover:-translate-x-1 hover:shadow-[5px_5px_0_var(--bnt-shadow)]">
+          <div className="shrink-0 inline-flex items-center gap-1 rounded-lg border-2 border-slate-950 bg-amber-300 px-2 py-1 shadow-[2px_2px_0_var(--bnt-shadow)]">
             <ProStarIcon />
             <span className="font-display text-[10px] font-black uppercase tracking-wider text-slate-950">
               Pro

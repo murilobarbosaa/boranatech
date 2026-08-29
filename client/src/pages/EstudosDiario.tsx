@@ -291,7 +291,7 @@ export default function EstudosDiario() {
           ) : (
             <div className="grid gap-8 lg:grid-cols-3">
               <form
-                className="card-brutal rounded-2xl bg-white p-6 shadow-[5px_5px_0_#0f172a] lg:col-span-2"
+                className="card-brutal rounded-2xl bg-white p-6 shadow-[5px_5px_0_var(--bnt-shadow)] lg:col-span-2"
                 onSubmit={handleSubmit}
               >
                 <h2 className="font-display text-2xl font-black">
@@ -317,7 +317,7 @@ export default function EstudosDiario() {
                           "rounded-full border-2 px-3 py-1.5 text-sm font-black transition-all",
                           minutes === m
                             ? cn(
-                                "border-slate-900 text-white shadow-[3px_3px_0_#0f172a]",
+                                "border-slate-900 text-white shadow-[3px_3px_0_var(--bnt-shadow)]",
                                 ac.progressFill,
                               )
                             : "border-slate-200 bg-white text-slate-700 hover:border-slate-400",
@@ -378,7 +378,7 @@ export default function EstudosDiario() {
                           type="button"
                           onClick={() => setMode(item.id)}
                           className={cn(
-                            "flex gap-3 rounded-2xl border-2 p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0f172a]",
+                            "flex gap-3 rounded-2xl border-2 p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-[4px_4px_0_var(--bnt-shadow)]",
                             isOn
                               ? cn(
                                   item.activeRing,
@@ -390,7 +390,7 @@ export default function EstudosDiario() {
                         >
                           <span
                             className={cn(
-                              "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_#0f172a]",
+                              "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_var(--bnt-shadow)]",
                               isOn && "bg-amber-200",
                             )}
                           >
@@ -426,7 +426,7 @@ export default function EstudosDiario() {
               <aside className="space-y-5">
                 <div
                   className={cn(
-                    "card-brutal rounded-2xl p-6 text-white shadow-[5px_5px_0_#0f172a]",
+                    "card-brutal rounded-2xl p-6 text-white shadow-[5px_5px_0_var(--bnt-shadow)]",
                     ac.tableBanner,
                   )}
                 >
@@ -439,7 +439,7 @@ export default function EstudosDiario() {
                   </p>
                 </div>
 
-                <div className="card-brutal rounded-2xl bg-white p-5 shadow-[5px_5px_0_#0f172a]">
+                <div className="card-brutal rounded-2xl bg-white p-5 shadow-[5px_5px_0_var(--bnt-shadow)]">
                   <h3 className="font-display text-xl font-black">
                     Últimos 7 dias
                   </h3>
@@ -494,7 +494,7 @@ export default function EstudosDiario() {
                 ) : null}
               </aside>
 
-              <div className="card-brutal rounded-2xl bg-white p-6 shadow-[5px_5px_0_#0f172a] lg:col-span-3">
+              <div className="card-brutal rounded-2xl bg-white p-6 shadow-[5px_5px_0_var(--bnt-shadow)] lg:col-span-3">
                 <h2 className="font-display text-2xl font-black">Histórico</h2>
                 {loadingEntries ? (
                   <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">
@@ -517,7 +517,7 @@ export default function EstudosDiario() {
                           key={entry.id}
                           className="flex gap-3 rounded-xl border-2 border-slate-100 bg-slate-50/80 p-4 transition-colors hover:border-slate-300"
                         >
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border-2 border-slate-900 bg-white shadow-[2px_2px_0_#0f172a]">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border-2 border-slate-900 bg-white shadow-[2px_2px_0_var(--bnt-shadow)]">
                             <meta.Icon className="h-5 w-5" />
                           </span>
                           <div className="min-w-0 flex-1">

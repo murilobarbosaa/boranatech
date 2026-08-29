@@ -139,7 +139,7 @@ export default function ProjectValidationBlock({
       {phase.kind === "result" && (
         <div>
           {phase.status === "aprovado" ? (
-            <p className="mb-3 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-emerald-400 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a]">
+            <p className="mb-3 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-emerald-400 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
               <Check className="h-3.5 w-3.5" strokeWidth={3.5} />
               {/* TODO(Ana): label do selo de projeto validado */}
               Projeto validado
@@ -249,7 +249,7 @@ function SubmitForm({
         type="button"
         onClick={onSubmit}
         disabled={submitting || !url.trim()}
-        className="inline-flex items-center justify-center gap-1.5 rounded-[10px] border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+        className="inline-flex items-center justify-center gap-1.5 rounded-[10px] border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
       >
         {/* TODO(Ana): labels do botao de submissao */}
         {retry ? "Tentar de novo" : "Enviar para validação"}

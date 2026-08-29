@@ -22,19 +22,19 @@ const LEVEL_STYLE: Record<
     badge: "bg-emerald-200 text-emerald-900",
     section: "border-emerald-300 bg-emerald-100 text-emerald-900",
     shadow: "shadow-[4px_4px_0_#6ee7b7]",
-    button: "border-slate-900 bg-emerald-300 shadow-[2px_2px_0_#0f172a]",
+    button: "border-slate-900 bg-emerald-300 shadow-[2px_2px_0_var(--bnt-shadow)]",
   },
   Basico: {
     badge: "bg-sky-200 text-sky-900",
     section: "border-sky-300 bg-sky-100 text-sky-900",
     shadow: "shadow-[4px_4px_0_#7dd3fc]",
-    button: "border-slate-900 bg-sky-300 shadow-[2px_2px_0_#0f172a]",
+    button: "border-slate-900 bg-sky-300 shadow-[2px_2px_0_var(--bnt-shadow)]",
   },
   Avancado: {
     badge: "bg-violet-200 text-violet-900",
     section: "border-violet-300 bg-violet-100 text-violet-900",
     shadow: "shadow-[4px_4px_0_#c4b5fd]",
-    button: "border-slate-900 bg-violet-300 shadow-[2px_2px_0_#0f172a]",
+    button: "border-slate-900 bg-violet-300 shadow-[2px_2px_0_var(--bnt-shadow)]",
   },
 };
 
@@ -174,7 +174,7 @@ export default function Dicionario() {
       <section className="relative overflow-hidden border-b-2 border-slate-900 bg-cyan-100 py-12">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#0891b2_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
-          <p className="mb-4 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-cyan-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+          <p className="mb-4 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-cyan-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
             dicionário técnico
           </p>
@@ -197,7 +197,7 @@ export default function Dicionario() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Buscar API, deploy, Git..."
-                className="w-full rounded-2xl border-2 border-slate-900 bg-white py-3 pl-11 pr-4 text-sm shadow-[4px_4px_0_#0f172a] outline-none focus-visible:ring-2 focus-visible:ring-cyan-600"
+                className="w-full rounded-2xl border-2 border-slate-900 bg-white py-3 pl-11 pr-4 text-sm shadow-[4px_4px_0_var(--bnt-shadow)] outline-none focus-visible:ring-2 focus-visible:ring-cyan-600"
               />
             </div>
 
@@ -211,7 +211,7 @@ export default function Dicionario() {
                 aria-pressed={level === "Todos"}
                 className={`rounded-full border-2 px-3 py-1.5 text-xs font-black ${
                   level === "Todos"
-                    ? "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_#0f172a]"
+                    ? "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_var(--bnt-shadow)]"
                     : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                 }`}
               >
@@ -248,7 +248,7 @@ export default function Dicionario() {
                 aria-pressed={tag === "Todas"}
                 className={`rounded-full border-2 px-3 py-1.5 text-xs font-bold ${
                   tag === "Todas"
-                    ? "border-slate-900 bg-cyan-300 shadow-[2px_2px_0_#0f172a]"
+                    ? "border-slate-900 bg-cyan-300 shadow-[2px_2px_0_var(--bnt-shadow)]"
                     : "border-cyan-200 bg-white hover:bg-cyan-100"
                 }`}
               >
@@ -261,7 +261,7 @@ export default function Dicionario() {
                   aria-pressed={tag === group.label}
                   className={`rounded-full border-2 px-3 py-1.5 text-xs font-bold ${
                     tag === group.label
-                      ? "border-slate-900 bg-cyan-300 shadow-[2px_2px_0_#0f172a]"
+                      ? "border-slate-900 bg-cyan-300 shadow-[2px_2px_0_var(--bnt-shadow)]"
                       : "border-cyan-200 bg-white hover:bg-cyan-100"
                   }`}
                 >

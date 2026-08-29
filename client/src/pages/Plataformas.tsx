@@ -435,7 +435,7 @@ export default function Plataformas() {
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#059669_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
           <div className="max-w-2xl">
-            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-emerald-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-emerald-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
               onde estudar
             </p>
             <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">
@@ -490,7 +490,7 @@ export default function Plataformas() {
                       onClick={() => setCategoriaFilter(c)}
                       className={`px-3 py-1 rounded-full text-xs font-bold border-2 transition-all ${
                         categoriaFilter === c
-                          ? "bg-emerald-800 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
+                          ? "bg-emerald-800 text-white border-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
                           : "bg-white text-slate-700 border-slate-300 hover:border-emerald-400"
                       }`}
                     >
@@ -512,7 +512,7 @@ export default function Plataformas() {
                       onClick={() => setTipoFilter(t)}
                       className={`px-3 py-1 rounded-full text-xs font-medium border-2 transition-all ${
                         tipoFilter === t
-                          ? "bg-emerald-700 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
+                          ? "bg-emerald-700 text-white border-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
                           : "bg-white text-slate-700 border-slate-300 hover:border-emerald-400"
                       }`}
                     >
@@ -534,7 +534,7 @@ export default function Plataformas() {
                       onClick={() => setCertificadoFilter(option)}
                       className={`px-3 py-1 rounded-full text-xs font-medium border-2 transition-all ${
                         certificadoFilter === option
-                          ? "bg-emerald-600 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
+                          ? "bg-emerald-600 text-white border-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
                           : "bg-white text-slate-700 border-slate-300 hover:border-emerald-400"
                       }`}
                     >
@@ -608,7 +608,7 @@ export default function Plataformas() {
                 aria-controls="plataformas-quiz"
                 className="card-brutal flex w-full items-center gap-4 rounded-2xl border-2 border-slate-900 bg-violet-50 p-5 text-left shadow-[5px_5px_0_#a78bfa] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#a78bfa] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
               >
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-violet-600 text-white shadow-[2px_2px_0_#0f172a]">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-violet-600 text-white shadow-[2px_2px_0_var(--bnt-shadow)]">
                   <Sparkles className="h-5 w-5" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -620,7 +620,7 @@ export default function Plataformas() {
                     {QUIZ_SUBTITULO}
                   </span>
                 </span>
-                <span className="hidden shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-violet-600 px-4 py-2 text-sm font-black text-white shadow-[2px_2px_0_#0f172a] sm:inline-flex">
+                <span className="hidden shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-violet-600 px-4 py-2 text-sm font-black text-white shadow-[2px_2px_0_var(--bnt-shadow)] sm:inline-flex">
                   Fazer o quiz
                   <ArrowRight className="h-4 w-4" aria-hidden />
                 </span>
@@ -630,7 +630,7 @@ export default function Plataformas() {
                 <button
                   type="button"
                   onClick={() => setQuizAberto(false)}
-                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
+                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
                 >
                   <X className="h-4 w-4" aria-hidden />
                   Fechar quiz
@@ -671,7 +671,7 @@ export default function Plataformas() {
                 href="https://ibm.com/products/z/resources/zxplore"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-4 inline-flex w-fit items-center gap-1 rounded-lg border-2 border-slate-900 bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0f172a]"
+                className="mt-4 inline-flex w-fit items-center gap-1 rounded-lg border-2 border-slate-900 bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
               >
                 Visitar <ExternalLink className="w-3 h-3" />
               </a>
@@ -698,7 +698,7 @@ export default function Plataformas() {
                 href="https://builder.aws.com/start?trk=dbcfd07d-099b-4604-bd7a-118478998dc4&sc_channel=el"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-4 inline-flex w-fit items-center gap-1 rounded-lg border-2 border-slate-900 bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0f172a]"
+                className="mt-4 inline-flex w-fit items-center gap-1 rounded-lg border-2 border-slate-900 bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
               >
                 Visitar <ExternalLink className="w-3 h-3" />
               </a>
@@ -741,7 +741,7 @@ export default function Plataformas() {
           {!isPro && !loading && lockedTotal > 0 ? (
             <Link
               href="/planos"
-              className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-slate-900 bg-violet-950 px-5 py-4 text-white shadow-[4px_4px_0_#0f172a] transition-transform hover:-translate-y-0.5"
+              className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-slate-900 bg-violet-950 px-5 py-4 text-white shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5"
             >
               <span className="flex items-center gap-2 text-sm font-black">
                 <Lock className="h-4 w-4 text-amber-300" aria-hidden />
@@ -775,7 +775,7 @@ export default function Plataformas() {
                       <motion.div
                         variants={gameIconMotion}
                         transition={{ duration: 0.5 }}
-                        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 p-2 shadow-[3px_3px_0_#0f172a] ${
+                        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 p-2 shadow-[3px_3px_0_var(--bnt-shadow)] ${
                           plat.categoria === "Jogo"
                             ? "bg-gradient-to-br from-violet-200 to-emerald-200"
                             : "bg-white"
@@ -952,7 +952,7 @@ export default function Plataformas() {
                       href={plat.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-700 text-white text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-700 text-white text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] hover:shadow-[3px_3px_0_var(--bnt-shadow)] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
                     >
                       {plat.categoria === "Jogo" ? "Jogar agora" : "Visitar"}{" "}
                       <ExternalLink className="w-3 h-3" />

@@ -19,7 +19,7 @@ import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 
 const CARD_BASE =
-  "rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8";
+  "rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8";
 
 interface ZoneCardProps {
   title: string;
@@ -423,7 +423,7 @@ function FullSubArea({ area, subarea, parentSlug }: FullSubAreaProps) {
 
         <Link
           href={`/areas/${parentSlug}`}
-          className="bnt-pressable inline-flex items-center gap-2 rounded-2xl border-2 border-slate-950 bg-violet-600 px-5 py-3 text-sm font-black text-white shadow-[4px_4px_0_#0f172a] transition hover:bg-violet-700"
+          className="bnt-pressable inline-flex items-center gap-2 rounded-2xl border-2 border-slate-950 bg-violet-600 px-5 py-3 text-sm font-black text-white shadow-[4px_4px_0_var(--bnt-shadow)] transition hover:bg-violet-700"
         >
           Ver área completa: {area.nome}
           <ArrowRight className="h-4 w-4" strokeWidth={3} />
@@ -478,7 +478,7 @@ function PlaceholderSubArea({
 
           <Link
             href={`/areas/${parentSlug}`}
-            className="bnt-pressable inline-flex items-center gap-2 rounded-2xl border-2 border-slate-950 bg-violet-600 px-5 py-3 text-sm font-black text-white shadow-[4px_4px_0_#0f172a] transition hover:bg-violet-700"
+            className="bnt-pressable inline-flex items-center gap-2 rounded-2xl border-2 border-slate-950 bg-violet-600 px-5 py-3 text-sm font-black text-white shadow-[4px_4px_0_var(--bnt-shadow)] transition hover:bg-violet-700"
           >
             Ir para {area.nome}
             <ArrowRight className="h-4 w-4" strokeWidth={3} />

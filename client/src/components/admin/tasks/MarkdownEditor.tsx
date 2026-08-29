@@ -97,7 +97,7 @@ export function MarkdownEditor({
   }
 
   const toolbarButton =
-    "rounded-lg border-2 border-slate-900 bg-white p-1.5 text-slate-900 shadow-[1px_1px_0_#0f172a] transition-all hover:bg-slate-100 disabled:opacity-40";
+    "rounded-lg border-2 border-slate-900 bg-white p-1.5 text-slate-900 shadow-[1px_1px_0_var(--bnt-shadow)] transition-all hover:bg-slate-100 disabled:opacity-40";
 
   return (
     <div>
@@ -171,7 +171,7 @@ export function MarkdownEditor({
           </button>
         </div>
 
-        <div className="flex gap-1 rounded-full border-2 border-slate-900 bg-white p-0.5 shadow-[1px_1px_0_#0f172a]">
+        <div className="flex gap-1 rounded-full border-2 border-slate-900 bg-white p-0.5 shadow-[1px_1px_0_var(--bnt-shadow)]">
           {(["escrever", "visualizar"] as const).map((option) => (
             <button
               key={option}

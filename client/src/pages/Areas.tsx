@@ -273,7 +273,7 @@ export default function Areas() {
             />
             <Link
               href="/quiz-carreira"
-              className="pro-glare inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-slate-900 bg-amber-300 px-5 py-3 text-center font-display text-sm font-black leading-snug text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 md:w-auto"
+              className="pro-glare inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-slate-900 bg-amber-300 px-5 py-3 text-center font-display text-sm font-black leading-snug text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 md:w-auto"
             >
               <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
               Não sabe por onde começar? Faça o quiz
@@ -308,7 +308,7 @@ export default function Areas() {
                   event.preventDefault();
                   gateNavigate(`/areas/${area.slug}`);
                 }}
-                className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border-2 border-slate-900 bg-white px-3.5 py-1.5 font-display text-sm font-bold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5"
+                className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border-2 border-slate-900 bg-white px-3.5 py-1.5 font-display text-sm font-bold text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5"
               >
                 <span
                   className="h-2 w-2 shrink-0 rounded-full"
@@ -370,7 +370,7 @@ export default function Areas() {
                     onClick={() => setPerfil(f.id)}
                     className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-xs font-bold transition-all ${
                       perfil === f.id
-                        ? "border-slate-900 bg-violet-700 text-white shadow-[2px_2px_0_#0f172a]"
+                        ? "border-slate-900 bg-violet-700 text-white shadow-[2px_2px_0_var(--bnt-shadow)]"
                         : "border-slate-300 bg-white text-slate-700 hover:border-violet-400"
                     }`}
                   >
@@ -389,7 +389,7 @@ export default function Areas() {
                 onClick={() => setTipo(t.id)}
                 className={`rounded-full border-2 px-3 py-1.5 text-xs font-bold transition-all ${
                   tipo === t.id
-                    ? "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_#0f172a]"
+                    ? "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_var(--bnt-shadow)]"
                     : "border-slate-300 bg-white text-slate-600 hover:border-slate-900"
                 }`}
               >

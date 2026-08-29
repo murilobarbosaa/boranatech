@@ -78,7 +78,7 @@ const ACCENT: Record<
 
 function aiCtaClasses(accent: PageHeroAccent, extra = ""): string {
   const a = ACCENT[accent];
-  return `group relative inline-flex items-center gap-3 rounded-2xl border-2 border-slate-950 px-5 py-3 text-left text-slate-950 shadow-[5px_5px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#0f172a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${a.container} ${a.focusOutline} ${extra}`;
+  return `group relative inline-flex items-center gap-3 rounded-2xl border-2 border-slate-950 px-5 py-3 text-left text-slate-950 shadow-[5px_5px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--bnt-shadow)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${a.container} ${a.focusOutline} ${extra}`;
 }
 
 function AiCtaContent({
@@ -89,7 +89,7 @@ function AiCtaContent({
   const a = ACCENT[accent];
   return (
     <>
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 text-slate-950 shadow-[3px_3px_0_#0f172a]">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
         <Sparkles className="h-5 w-5" />
       </span>
       <span className="min-w-0">

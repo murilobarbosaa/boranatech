@@ -460,7 +460,7 @@ export default function EntrevistaSessao() {
           </p>
           <Link
             href="/entrevistas"
-            className="bnt-pressable mt-6 inline-flex rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+            className="bnt-pressable mt-6 inline-flex rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
           >
             {/* TODO(Ana): label do link de volta */}
             Voltar pra Entrevistas
@@ -614,7 +614,7 @@ export default function EntrevistaSessao() {
 
                   {sending || hintLoading ? (
                     <AssistantRow groupStart>
-                      <div className="flex max-w-[min(100%,86%)] items-center rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-white px-3 py-2.5 shadow-[2px_2px_0_#0f172a] sm:px-4">
+                      <div className="flex max-w-[min(100%,86%)] items-center rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-white px-3 py-2.5 shadow-[2px_2px_0_var(--bnt-shadow)] sm:px-4">
                         <span className="sr-only">
                           {sending ? "Avaliando sua resposta" : "Preparando a dica"}
                         </span>
@@ -647,7 +647,7 @@ export default function EntrevistaSessao() {
                 <div className="mx-auto flex w-full max-w-3xl justify-center py-1">
                   <Link
                     href="/entrevistas"
-                    className="bnt-pressable inline-flex rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+                    className="bnt-pressable inline-flex rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
                   >
                     {/* TODO(Ana): CTA de nova entrevista */}
                     Fazer outra entrevista
@@ -690,7 +690,7 @@ export default function EntrevistaSessao() {
                       <button
                         type="button"
                         onClick={handleRetryTranscribe}
-                        className="rounded-full border-2 border-slate-950 bg-white px-3 py-0.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px"
+                        className="rounded-full border-2 border-slate-950 bg-white px-3 py-0.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
                       >
                         {/* TODO(Ana): acao de tentar transcrever de novo. */}
                         Tentar de novo
@@ -698,7 +698,7 @@ export default function EntrevistaSessao() {
                       <button
                         type="button"
                         onClick={() => recorder.discard()}
-                        className="rounded-full border-2 border-slate-950 bg-white px-3 py-0.5 text-xs font-black text-slate-600 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px hover:text-rose-700"
+                        className="rounded-full border-2 border-slate-950 bg-white px-3 py-0.5 text-xs font-black text-slate-600 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px hover:text-rose-700"
                       >
                         {/* TODO(Ana): acao de descartar a gravacao. */}
                         Descartar
@@ -715,7 +715,7 @@ export default function EntrevistaSessao() {
                     {/* Mesmos tokens do ac.input blue, em versao focus-within
                         (o foco visivel sobe do textarea pro container, padrao
                         do molde reformado). */}
-                    <div className="flex min-h-[48px] min-w-[200px] flex-1 items-end rounded-2xl border-2 border-blue-200 bg-white shadow-[3px_3px_0_#0f172a] focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
+                    <div className="flex min-h-[48px] min-w-[200px] flex-1 items-end rounded-2xl border-2 border-blue-200 bg-white shadow-[3px_3px_0_var(--bnt-shadow)] focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
                       <textarea
                         id="entrevista-chat-input"
                         ref={inputRef}
@@ -736,7 +736,7 @@ export default function EntrevistaSessao() {
                             onClick={() => recorder.stop()}
                             /* TODO(Ana): label do botao de parar gravacao. */
                             aria-label="Parar gravacao e transcrever"
-                            className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-red-600 text-white shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px sm:h-[52px] sm:w-[52px]"
+                            className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-red-600 text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px sm:h-[52px] sm:w-[52px]"
                           >
                             <Square className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.5} />
                           </button>
@@ -745,7 +745,7 @@ export default function EntrevistaSessao() {
                             onClick={() => recorder.discard()}
                             /* TODO(Ana): label do botao de descartar gravacao. */
                             aria-label="Descartar gravacao"
-                            className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-white text-slate-600 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px hover:text-rose-700 sm:h-[52px] sm:w-[52px]"
+                            className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-white text-slate-600 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px hover:text-rose-700 sm:h-[52px] sm:w-[52px]"
                           >
                             <X className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.5} />
                           </button>
@@ -762,7 +762,7 @@ export default function EntrevistaSessao() {
                           }
                           /* TODO(Ana): label do botao de gravar resposta. */
                           aria-label="Gravar resposta por voz"
-                          className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-white text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
+                          className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-white text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
                         >
                           {recorder.status === "transcribing" ? (
                             <Spinner className="h-5 w-5 text-slate-950 sm:h-6 sm:w-6" />
@@ -774,7 +774,7 @@ export default function EntrevistaSessao() {
                     ) : null}
                     <button
                       type="button"
-                      className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800] text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
+                      className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800] text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
                       disabled={
                         sending ||
                         hintLoading ||
@@ -822,7 +822,7 @@ export default function EntrevistaSessao() {
                           onClick={() => void handleHint()}
                           disabled={hintLoading || sending || recorderBusy}
                           className={cn(
-                            "inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 px-3 py-1.5 text-xs font-bold text-blue-900 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-60 disabled:hover:translate-y-0",
+                            "inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 px-3 py-1.5 text-xs font-bold text-blue-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-60 disabled:hover:translate-y-0",
                             ac.panelSoft,
                           )}
                         >
@@ -869,7 +869,7 @@ export default function EntrevistaSessao() {
                         <button
                           type="button"
                           onClick={() => setConfirmingFinish(true)}
-                          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px"
+                          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
                         >
                           <Flag className="h-3.5 w-3.5" aria-hidden />
                           {/* TODO(Ana): label do botao de encerrar */}

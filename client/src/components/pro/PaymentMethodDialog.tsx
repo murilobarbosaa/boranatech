@@ -48,7 +48,7 @@ export default function PaymentMethodDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         aria-describedby={undefined}
-        className="rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a] sm:max-w-md"
+        className="rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)] sm:max-w-md"
       >
         <DialogHeader>
           <DialogTitle className="font-display text-2xl font-black text-slate-950">
@@ -63,7 +63,7 @@ export default function PaymentMethodDialog({
                 key={option.method}
                 type="button"
                 onClick={() => onSelect(option.method)}
-                className="bnt-pressable flex w-full items-center gap-3 rounded-2xl border-2 border-slate-950 bg-white p-4 text-left shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+                className="bnt-pressable flex w-full items-center gap-3 rounded-2xl border-2 border-slate-950 bg-white p-4 text-left shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
               >
                 <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800]">
                   <Icon className="h-5 w-5 text-slate-950" strokeWidth={2.5} />

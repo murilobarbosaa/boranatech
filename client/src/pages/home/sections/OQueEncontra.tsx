@@ -142,7 +142,7 @@ export default function OQueEncontra() {
             <li key={item.href}>
               <Link
                 href={item.href}
-                className="group flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-5 shadow-[4px_4px_0_#0f172a] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#0f172a]"
+                className="group flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <h3 className="font-display text-lg font-black text-slate-950">
