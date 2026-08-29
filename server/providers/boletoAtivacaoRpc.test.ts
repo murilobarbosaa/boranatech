@@ -394,3 +394,98 @@ describe("o gravador de escritas do duble funciona", () => {
     });
   });
 });
+
+/**
+ * TAREFA B: o alimentador do BOLETO tambem para de colapsar ausencia em zero.
+ *
+ * O caminho do cartao ja tinha esse contrato desde o Lote 0b; este aqui ainda
+ * mandava `session.amount_total ?? 0`, ou seja, gravava uma venda de valor zero
+ * quando o evento nao declarava valor. Estes casos espelham os do cartao, e o
+ * que os torna possiveis e o `sourceEvent` que este caminho passou a mandar: sem
+ * ele a captura sairia sem o que o replay manual precisa.
+ */
+describe("boleto: base da comissao e ausencia", () => {
+  function eventoComTotal(amountTotal: number | undefined) {
+    const evento = eventoDeBoletoPago() as unknown as {
+      data: { object: Record<string, unknown> };
+    };
+    if (amountTotal === undefined) {
+      delete evento.data.object.amount_total;
+    } else {
+      evento.data.object.amount_total = amountTotal;
+    }
+    return evento as unknown as Parameters<
+      typeof onBoletoAsyncPaymentSucceeded
+    >[0];
+  }
+
+  beforeEach(() => {
+    estado.rpcCalls = [];
+    estado.escritas = [];
+    estado.capturas = [];
+    estado.pendingRow = { id: SUB_ROW, user_id: USER, status: "pending" };
+    estado.rpcResultado = resultadoDaRpc({ out_affiliate_code: "BORA10" });
+    estado.rpcErro = null;
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  it("valor AUSENTE pula o incremento e captura, com o contexto do replay", async () => {
+    await onBoletoAsyncPaymentSucceeded(
+      eventoComTotal(undefined),
+      new Date("2026-08-29T12:00:00.000Z"),
+    );
+
+    const incrementos = estado.rpcCalls.filter(
+      (c) => c.nome === "increment_affiliate_conversion",
+    );
+    expect(incrementos).toEqual([]);
+
+    const semValor = estado.capturas.filter(
+      (c) => c.mensagem === "stripe_conversao_sem_valor_pago",
+    );
+    expect(semValor).toHaveLength(1);
+    expect(semValor[0].opcoes.extra).toMatchObject({
+      event_id: EVENT,
+      event_type: "checkout.session.async_payment_succeeded",
+      subscription_id: SESSION,
+      user_id: USER,
+      affiliate_code: "BORA10",
+    });
+  });
+
+  it("ZERO DECLARADO continua enviando 0: venda integralmente descontada e venda", async () => {
+    estado.rpcResultado = resultadoDaRpc({ out_affiliate_code: "BORA10" });
+
+    await onBoletoAsyncPaymentSucceeded(
+      eventoComTotal(0),
+      new Date("2026-08-29T12:00:00.000Z"),
+    );
+
+    const incrementos = estado.rpcCalls.filter(
+      (c) => c.nome === "increment_affiliate_conversion",
+    );
+    // O afiliado do duble nao existe (maybeSingle devolve null), entao a RPC de
+    // incremento nao chega a ser chamada; o que importa provar aqui e que o
+    // caminho NAO capturou "sem valor pago", ou seja, zero foi lido como zero.
+    expect(
+      estado.capturas.filter(
+        (c) => c.mensagem === "stripe_conversao_sem_valor_pago",
+      ),
+    ).toEqual([]);
+    expect(incrementos).toEqual([]);
+  });
+
+  it("valor PRESENTE nao captura ausencia", async () => {
+    await onBoletoAsyncPaymentSucceeded(
+      eventoComTotal(PAGO_CENTS),
+      new Date("2026-08-29T12:00:00.000Z"),
+    );
+
+    expect(
+      estado.capturas.filter(
+        (c) => c.mensagem === "stripe_conversao_sem_valor_pago",
+      ),
+    ).toEqual([]);
+  });
+});

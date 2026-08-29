@@ -1038,11 +1038,19 @@ export async function onBoletoAsyncPaymentSucceeded(
 
   // Reaproveita os efeitos do caminho de cartao. prev='pending' (nao-Pro) ->
   // 'active' (Pro): becameActive dispara email/cache/conversao, igual ao cartao.
+  // Mesmo contrato do caminho de cartao: ausencia de valor pago NAO vira zero.
+  // O que estava aqui era `session.amount_total ?? 0`, que colapsava "o evento
+  // nao declarou valor" em "a venda foi de zero" e gravava no ledger de comissao
+  // um numero indistinguivel de uma venda 100 por cento descontada. Passa a usar
+  // o mesmo resolvedor do cartao, que devolve `null` para ausencia, e a levar o
+  // `sourceEvent` que faltava neste caminho: sem ele a captura do Sentry sairia
+  // sem o que o replay manual precisa.
   await handleTransition(resultado.out_user_id, "pending", "active", {
     affiliateCode: resultado.out_affiliate_code,
     couponCode: resultado.out_coupon_code,
-    revenueCents: session.amount_total ?? 0,
+    revenueCents: paidAmountCentsFromEvent(event) ?? undefined,
     planName: plan?.name || plan?.code || "Pro",
+    sourceEvent: { id: event.id, type: event.type, subscriptionId: session.id },
   });
 }
 
