@@ -360,7 +360,7 @@ export default function CurriculoChatPanel({
         <div
           // Papel do atelie: fundo quente com o micro-pontilhado da casa em
           // ambar sutil (sai o lavanda herdado do accent antigo).
-          className="relative isolate flex min-h-0 flex-1 flex-col bg-[#fffdf7] [background-image:radial-gradient(rgba(180,120,0,0.06)_1.2px,transparent_1.2px)] [background-size:18px_18px]"
+          className="relative isolate flex min-h-0 flex-1 flex-col bg-[var(--bnt-surface)] [background-image:radial-gradient(rgba(180,120,0,0.06)_1.2px,transparent_1.2px)] [background-size:18px_18px]"
           role="log"
           aria-live="polite"
           aria-relevant="additions"

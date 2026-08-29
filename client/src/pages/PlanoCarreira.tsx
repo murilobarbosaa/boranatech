@@ -479,7 +479,7 @@ function PlanResult({ plan, readonly, checklist }: PlanResultProps) {
             Fundo papel um tom acima do #faf8f4 da pagina e rotacao sutil, na
             linguagem do palco do intake. Sem asset de imagem do mascote no
             repo: selo circular com o MapIcon da pagina no lugar. */}
-        <div className="relative mx-auto w-full max-w-2xl -rotate-[0.4deg] rounded-2xl border-2 border-slate-950 bg-[#fffaf0] p-6 shadow-[5px_5px_0_var(--bnt-shadow)]">
+        <div className="relative mx-auto w-full max-w-2xl -rotate-[0.4deg] rounded-2xl border-2 border-slate-950 bg-[var(--bnt-surface)] p-6 shadow-[5px_5px_0_var(--bnt-shadow)]">
           <span
             aria-hidden
             className="absolute -right-3 -top-4 flex h-11 w-11 rotate-6 items-center justify-center rounded-full border-2 border-slate-950 bg-amber-300 shadow-[2px_2px_0_var(--bnt-shadow)]"

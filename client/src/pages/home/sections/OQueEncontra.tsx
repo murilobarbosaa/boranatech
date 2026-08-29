@@ -104,7 +104,7 @@ export default function OQueEncontra() {
     // borda de separacao nenhuma.
     <SecaoDecorada
       id="o-que-voce-encontra"
-      base="bg-[#fafaf9]"
+      base="bg-[var(--bnt-surface)]"
       variante="pontos"
       acento="text-violet-300"
       // 56px contra os 32px padrao. O LogoLoop, vizinho de baixo, usa a mesma

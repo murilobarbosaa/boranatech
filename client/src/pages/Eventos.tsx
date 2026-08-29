@@ -497,7 +497,7 @@ export default function Eventos() {
         </div>
       </section>
 
-      <section className="bg-[#fdf4ff] py-12">
+      <section className="bg-[var(--bnt-surface)] py-12">
         <div className="container">
           {eventos === null ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">

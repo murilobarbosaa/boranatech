@@ -311,7 +311,7 @@ export default function TecnologiaJogos() {
         </div>
       </section>
 
-      <section className="bg-[#fdf4ff] py-12">
+      <section className="bg-[var(--bnt-surface)] py-12">
         <div className="container">
           <p className="mb-6 text-sm text-slate-500">
             {filtered.length} jogo{filtered.length !== 1 ? "s" : ""}

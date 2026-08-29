@@ -624,7 +624,7 @@ export default function Cursos() {
       </section>
 
       {/* Grid */}
-      <section className="bg-[#fff9e7] py-12">
+      <section className="bg-[var(--bnt-surface)] py-12">
         <div className="container">
           <div className="mb-6">
             {!quizAberto ? (

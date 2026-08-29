@@ -1174,7 +1174,7 @@ export function NotificationsManager() {
                     onChange={(e) =>
                       setForm({ ...form, is_super: e.target.checked })
                     }
-                    className="mt-0.5 h-5 w-5 shrink-0 rounded border-2 border-slate-900 accent-[#FFB800] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-0.5 h-5 w-5 shrink-0 rounded border-2 border-slate-900 accent-[var(--brand-yellow)] disabled:cursor-not-allowed disabled:opacity-50"
                   />
                   <span>
                     <span className="block text-sm font-black text-slate-950">

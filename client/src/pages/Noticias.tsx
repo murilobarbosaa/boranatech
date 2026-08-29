@@ -391,7 +391,7 @@ export default function Noticias() {
         </div>
       </section>
 
-      <section className="bg-[#f0f9ff] py-12">
+      <section className="bg-[var(--bnt-surface)] py-12">
         <div className="container">
           {error && (
             <div className="mb-5 rounded-xl border-2 border-rose-300 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">

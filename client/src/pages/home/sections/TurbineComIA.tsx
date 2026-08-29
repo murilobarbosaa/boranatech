@@ -69,7 +69,7 @@ const OTHER_TOOLS = [
 
 export default function TurbineComIA() {
   return (
-    <section id="turbine-com-ia" className="bnt-ancora relative overflow-hidden py-20 md:py-28 bg-[#fafaf9]">
+    <section id="turbine-com-ia" className="bnt-ancora relative overflow-hidden py-20 md:py-28 bg-[var(--bnt-surface)]">
       <BackgroundDecoration />
 
       <div className="relative z-10 mx-auto max-w-5xl px-4">

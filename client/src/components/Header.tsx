@@ -632,7 +632,7 @@ function DesktopMenuItem({
             ))}
           </div>
 
-          <div className="mt-4 border-t border-slate-200 pt-3 text-right text-[11px] font-bold text-[#BA7517]">
+          <div className="mt-4 border-t border-slate-200 pt-3 text-right text-[11px] font-bold text-[var(--color-amber-700)]">
             <span className="inline-flex items-center gap-1.5">
               <ProStarIcon />
               funcionalidade Pro

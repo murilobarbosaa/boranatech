@@ -95,7 +95,7 @@ export function TaskChecklist({
               checked={item.is_done}
               aria-label={item.content}
               onChange={(event) => onToggle(item.id, event.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-2 border-slate-900 accent-[#FFB800]"
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-2 border-slate-900 accent-[var(--brand-yellow)]"
             />
             <span
               className={`min-w-0 flex-1 break-words text-sm font-semibold ${

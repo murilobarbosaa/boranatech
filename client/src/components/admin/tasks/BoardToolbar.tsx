@@ -390,7 +390,7 @@ export const BoardToolbar = memo(
                   onChange={(event) =>
                     onFiltersChange({ ...filters, mine: event.target.checked })
                   }
-                  className="h-4 w-4 rounded border-2 border-slate-900 accent-[#FFB800]"
+                  className="h-4 w-4 rounded border-2 border-slate-900 accent-[var(--brand-yellow)]"
                 />
                 Criadas por mim
               </label>
@@ -400,7 +400,7 @@ export const BoardToolbar = memo(
                   type="checkbox"
                   checked={includeArchived}
                   onChange={(event) => onIncludeArchivedChange(event.target.checked)}
-                  className="h-4 w-4 rounded border-2 border-slate-900 accent-[#FFB800]"
+                  className="h-4 w-4 rounded border-2 border-slate-900 accent-[var(--brand-yellow)]"
                 />
                 Mostrar arquivadas
               </label>

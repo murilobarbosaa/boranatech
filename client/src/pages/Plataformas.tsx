@@ -597,7 +597,7 @@ export default function Plataformas() {
       </section>
 
       {/* Grid */}
-      <section className="bg-[#ecfdf5] py-12">
+      <section className="bg-[var(--bnt-surface)] py-12">
         <div className="container">
           <div className="mb-8">
             {!quizAberto ? (

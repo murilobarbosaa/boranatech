@@ -695,7 +695,7 @@ function DicasDestaque() {
   }, [gold]);
 
   return (
-    <section className="relative overflow-hidden border-b-2 border-slate-900 bg-[#f6f6fb] py-12">
+    <section className="relative overflow-hidden border-b-2 border-slate-900 bg-[var(--bnt-surface)] py-12">
       <DicasDoodles reduce={reduce} />
       <div className="container relative z-10 space-y-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -905,7 +905,7 @@ function CuriosidadesSection() {
   }, [atual]);
 
   return (
-    <section className="relative overflow-hidden border-b-2 border-slate-900 bg-[#f6f6fb] py-12">
+    <section className="relative overflow-hidden border-b-2 border-slate-900 bg-[var(--bnt-surface)] py-12">
       <DicasDoodles reduce={reduce} />
       <div className="container relative z-10 space-y-8">
         <div className="max-w-2xl">

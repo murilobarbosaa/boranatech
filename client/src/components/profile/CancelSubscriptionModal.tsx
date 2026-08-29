@@ -204,7 +204,7 @@ export function CancelSubscriptionModal({
                       onChange={(event) =>
                         setReasonCode(event.target.value as CancelReasonCode)
                       }
-                      className="h-4 w-4 accent-[#1a1a1a]"
+                      className="h-4 w-4 accent-[var(--bnt-ink)]"
                     />
                     <span className="text-sm font-bold text-[var(--bnt-ink)]">
                       {reason.label}

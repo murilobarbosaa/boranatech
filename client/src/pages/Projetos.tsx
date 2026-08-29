@@ -383,7 +383,7 @@ export default function Projetos() {
         </div>
       </section>
 
-      <section className="bg-[#fff7ed] py-12">
+      <section className="bg-[var(--bnt-surface)] py-12">
         <div className="container">
           <p
             className="mb-6 text-sm font-bold text-slate-600"

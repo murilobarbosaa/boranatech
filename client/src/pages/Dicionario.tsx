@@ -273,7 +273,7 @@ export default function Dicionario() {
         </div>
       </section>
 
-      <section className="bg-[#ecfeff] py-12">
+      <section className="bg-[var(--bnt-surface)] py-12">
         <div className="container">
           <p className="mb-6 text-sm text-slate-500">
             {totalVisible} termo{totalVisible !== 1 ? "s" : ""} encontrado

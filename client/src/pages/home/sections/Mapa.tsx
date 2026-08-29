@@ -573,7 +573,7 @@ export default function Mapa() {
   };
 
   return (
-    <section id="do-zero-ao-primeiro-emprego" className="bnt-ancora relative overflow-hidden bg-[#fafaf9] py-20 md:py-28">
+    <section id="do-zero-ao-primeiro-emprego" className="bnt-ancora relative overflow-hidden bg-[var(--bnt-surface)] py-20 md:py-28">
       <BackgroundDecoration />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4">

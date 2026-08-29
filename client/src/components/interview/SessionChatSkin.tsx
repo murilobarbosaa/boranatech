@@ -15,7 +15,7 @@ import type {
 // Papel da arena: pontilhado azul sutil inline (nada de index.css nem da
 // wa-chat-wallpaper, que pertence a outro contexto).
 export const CHAT_PAPER_CLASS =
-  "bg-[#f8fbff] [background-image:radial-gradient(rgba(37,99,235,0.06)_1.2px,transparent_1.2px)] [background-size:18px_18px]";
+  "bg-[var(--bnt-surface)] [background-image:radial-gradient(rgba(37,99,235,0.06)_1.2px,transparent_1.2px)] [background-size:18px_18px]";
 
 const RATING_UI: Record<
   InterviewRating,

@@ -211,7 +211,7 @@ export default function AvatarPhotoPanel({
       ) : null}
 
       {pendingLabel ? (
-        <div className="flex items-center justify-between gap-2 rounded-2xl border-2 border-[var(--bnt-ink)] bg-[#FFF7DB] px-3 py-2 text-xs font-bold text-[var(--bnt-ink)]">
+        <div className="flex items-center justify-between gap-2 rounded-2xl border-2 border-[var(--bnt-ink)] bg-[var(--bnt-surface)] px-3 py-2 text-xs font-bold text-[var(--bnt-ink)]">
           <span>{pendingLabel} Clique em Salvar para aplicar.</span>
           <button
             type="button"

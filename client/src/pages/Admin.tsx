@@ -3011,7 +3011,7 @@ const CampaignPreview = memo(function CampaignPreview({
       {/* overflow-auto + max-h: contem previews gigantes (ex. HTML colado como
           texto com base64 inquebravel) — rola dentro da caixa em vez de escapar e
           cobrir a coluna do formulario. So tem efeito quando algo transbordaria. */}
-      <div className="mt-4 max-h-[70vh] overflow-auto rounded-2xl border-2 border-slate-900 bg-[#F1F5F9] p-4">
+      <div className="mt-4 max-h-[70vh] overflow-auto rounded-2xl border-2 border-slate-900 bg-[var(--bnt-surface)] p-4">
         {bodyIsHtml ? (
           // Modo HTML: com imagem, a imagem centrada (max 600px) fica sobre uma
           // faixa escura (#05060E, fundo do HTML de referencia) e o HTML vem

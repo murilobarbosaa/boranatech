@@ -65,7 +65,7 @@ export default function CertificateDownloadModal({
               type="button"
               onClick={() => handle(format)}
               disabled={busy !== null}
-              className="flex flex-col items-center gap-2 rounded-[14px] border-[2.5px] border-slate-950 bg-white px-4 py-6 text-center shadow-[4px_4px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:bg-[#FFF9E9] hover:shadow-[5px_5px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex flex-col items-center gap-2 rounded-[14px] border-[2.5px] border-slate-950 bg-white px-4 py-6 text-center shadow-[4px_4px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:bg-[var(--bnt-surface)] hover:shadow-[5px_5px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <span className="flex h-12 w-12 items-center justify-center rounded-full border-[2.5px] border-slate-950 bg-[var(--brand-yellow)]">
                 {busy === format ? (

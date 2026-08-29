@@ -54,7 +54,7 @@ function Disclaimer() {
 }
 
 const actionButtonClass =
-  "inline-flex flex-1 items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-950 bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:bg-[#FFF9E9] hover:shadow-[4px_4px_0_var(--bnt-shadow)]";
+  "inline-flex flex-1 items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-950 bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:bg-[var(--bnt-surface)] hover:shadow-[4px_4px_0_var(--bnt-shadow)]";
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
