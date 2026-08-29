@@ -24,6 +24,7 @@
     "check": "tsc --noEmit && tsx scripts/generateRoadmapMeta.mts --check && tsx scripts/generateSitemap.mts --check && tsx scripts/checkCspHashes.mts",
     "check:scripts": "tsc --noEmit -p tsconfig.scripts.json",
     "check:generated": "tsx scripts/generateCounts.mts --check && tsx scripts/generateHomeData.mts --check",
+    "check:all": "pnpm check && pnpm check:generated && pnpm check:scripts && pnpm check:limiares",
     "check:limiares": "node scripts/mutateLinkedinThresholds.mjs --auditar",
     "check:migrations": "tsx scripts/checkMigrationsApplied.mts",
     "check:hero-counter": "node scripts/checkHeroCounter.mjs",
