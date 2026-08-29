@@ -838,11 +838,38 @@ async function applyBoletoPending(
   }
 }
 
+/**
+ * Retorno de `activate_subscription_exclusive` (migration 20260829110000).
+ *
+ * O prefixo `out_` nao e estilo: `RETURNS TABLE` cria variaveis plpgsql com o
+ * nome de cada coluna de saida, e `user_id`, `plan_id`, `affiliate_code` e
+ * `coupon_code` sao TAMBEM nomes de coluna de public.subscriptions. Sem o
+ * prefixo, a funcao quebraria com "column reference is ambiguous" em tempo de
+ * execucao. Os nomes aqui espelham a assinatura no banco e nao podem divergir
+ * dela.
+ *
+ * `supabaseAdmin` e criado sem generic de Database (server/lib/supabaseAdmin.ts),
+ * entao o retorno de `rpc` nao vem tipado; este tipo e a declaracao do contrato
+ * do lado do TypeScript.
+ */
+type AtivacaoExclusiva = {
+  out_activated: boolean;
+  out_superseded_count: number;
+  out_user_id: string;
+  out_plan_id: string | null;
+  out_affiliate_code: string | null;
+  out_coupon_code: string | null;
+};
+
 // Boleto compensou: ativa a assinatura. Boleto e mode:payment, entao NAO ha
 // invoice.paid; este e o unico caminho de ativacao. O periodo de acesso e
 // calculado aqui (now + access_days do metadata: 365 anual, 182 semestral),
 // porque nao existe subscription na Stripe de onde puxar o periodo.
-async function onBoletoAsyncPaymentSucceeded(
+// EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
+// server/routes/cron.ts e de `registrarConversaoDeAfiliado` acima: o que
+// importa provar aqui e que a ativacao passa por UMA chamada de RPC e por
+// nenhuma escrita direta de status, e isso so se prova rodando a funcao.
+export async function onBoletoAsyncPaymentSucceeded(
   event: Stripe.Event,
   eventCreatedAt: Date,
 ): Promise<void> {
@@ -924,71 +951,96 @@ async function onBoletoAsyncPaymentSucceeded(
     anchorMs + accessDays * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  // Flip atomico: so com status='pending'. Idempotente mesmo se a linha for
-  // ativada entre a leitura acima e este UPDATE (0 linhas -> nao soma de novo).
-  const { data: activated, error } = await supabaseAdmin
-    .from("subscriptions")
-    .update({
-      status: "active",
-      current_period_start: periodStart,
-      current_period_end: periodEnd,
-      last_event_at: paidAtIso,
-      raw_provider_payload: event,
-    })
-    .eq("provider_subscription_id", session.id)
-    .eq("status", "pending")
-    .select("user_id, affiliate_code, coupon_code, plan_id");
+  // ATIVACAO ATOMICA. O supersede das assinaturas antigas e o flip desta linha
+  // acontecem DENTRO de uma transacao so, na funcao
+  // `activate_subscription_exclusive` (migration 20260829110000), na ordem
+  // supersede-primeiro.
+  //
+  // O que estava aqui eram DUAS escritas separadas: flip para 'active' e, so
+  // depois, `UPDATE ... status='superseded'` best-effort (erro so logava). Duas
+  // coisas erradas nisso. A primeira: entre as duas escritas o usuario tinha
+  // duas linhas ativas por construcao, no caminho feliz, o que impedia o indice
+  // unico parcial de 20260829120000. A segunda, independente do indice: o
+  // supersede podia falhar em silencio e deixar linha ativa orfa, inflando MRR e
+  // disparando lembrete espurio.
+  //
+  // NAO HA RETRY PROPRIO AQUI, de proposito: a reentrega da Stripe e o retry, e
+  // a RPC e idempotente (segunda chamada com a linha ja 'active' devolve
+  // out_activated=false, sem reescrever periodo). Erro persistente converge para
+  // o mesmo estado em vez de duplicar efeito.
+  const { data: ativacao, error } = await supabaseAdmin.rpc(
+    "activate_subscription_exclusive",
+    {
+      p_subscription_id: pendingRow.id,
+      p_user_id: pendingRow.user_id,
+      p_period_start: periodStart,
+      p_period_end: periodEnd,
+      p_last_event_at: paidAtIso,
+      p_raw_payload: event,
+    },
+  );
 
   if (error) {
-    console.error("[webhook/stripe] boleto activation write failed:", error);
+    // O contrato de erro do handler nao muda: lanca, a compensacao apaga o
+    // billing_event e a Stripe reentrega. O que muda e a VISIBILIDADE: sem esta
+    // captura, um erro persistente da RPC (inclusive o serialization_failure da
+    // emenda 1) seria so mais um 500 no meio do log, com dinheiro ja recebido e
+    // acesso nao concedido.
+    Sentry.captureMessage("stripe_boleto_ativacao_falhou", {
+      level: "error",
+      fingerprint: ["stripe-boleto-ativacao-falhou"],
+      tags: { origem: "stripe-webhook", event_type: event.type },
+      extra: {
+        user_id: pendingRow.user_id,
+        subscription_row_id: pendingRow.id,
+        event_id: event.id,
+        session_id: session.id,
+        db_code: error.code ?? null,
+        db_message: error.message,
+      },
+    });
+    console.error("[webhook/stripe] boleto activation rpc failed:", error);
     throw createError(500, "db_error", "Erro ao ativar assinatura.", {
       cause: error,
     });
   }
-  if (!activated || activated.length === 0) {
-    // Corrida: alguem flipou entre a leitura e o UPDATE. Ja tratado por quem
-    // flipou; nao redispara efeitos nem re-aposenta.
+
+  // A funcao devolve exatamente uma linha; `rpc` de RETURNS TABLE chega como
+  // array. Vazio nao deveria acontecer, e por isso e tratado como falha em vez
+  // de virar um `return` mudo que perderia um pagamento.
+  const linhas = (ativacao ?? []) as AtivacaoExclusiva[];
+  const resultado = linhas[0];
+  if (!resultado) {
+    console.error(
+      `[webhook/stripe] activate_subscription_exclusive devolveu vazio (session ${session.id}, sub ${pendingRow.id}).`,
+    );
+    throw createError(500, "db_error", "Ativação de assinatura sem resultado.");
+  }
+
+  if (!resultado.out_activated) {
+    // A linha ja estava 'active' quando a funcao rodou: alguem flipou entre a
+    // leitura la em cima e esta chamada. Quem flipou disparou os efeitos; nao
+    // redispara. O supersede rodou de qualquer forma, e e ele que limpa residuo.
     return;
   }
 
-  const row = activated[0];
-
-  // Aposenta as assinaturas antigas do usuario (a que ancorou + qualquer residuo
-  // active/trialing), para nao ficarem duas linhas ativas inflando admin/MRR,
-  // quebrando o guard 409 e disparando lembrete espurio na regua. status
-  // 'superseded' (NAO 'canceled': foi renovacao, nao cancelamento; sem
-  // canceled_at, updated_at carimba via trigger). Best-effort: a ativacao ja
-  // ocorreu, entao erro aqui loga alto e segue (o reprocesso curto-circuita em
-  // 'active' e nao repetiria isto; a proxima renovacao tambem limpa residuo).
-  const { data: retired, error: retireError } = await supabaseAdmin
-    .from("subscriptions")
-    .update({ status: "superseded" })
-    .eq("user_id", row.user_id)
-    .in("status", ["active", "trialing"])
-    .neq("id", pendingRow.id)
-    .select("id");
-  if (retireError) {
-    console.error(
-      `[webhook/stripe] falha ao aposentar assinatura antiga (session ${session.id}, user ${row.user_id}); orfa pode persistir:`,
-      retireError,
-    );
-  } else if (retired && retired.length > 0) {
+  if (resultado.out_superseded_count > 0) {
     console.log(
-      `[webhook/stripe] ${retired.length} assinatura(s) superseded na renovacao (user ${row.user_id}).`,
+      `[webhook/stripe] ${resultado.out_superseded_count} assinatura(s) superseded na renovacao (user ${resultado.out_user_id}).`,
     );
   }
 
   const { data: plan } = await supabaseAdmin
     .from("plans")
     .select("code, name")
-    .eq("id", row.plan_id)
+    .eq("id", resultado.out_plan_id)
     .maybeSingle();
 
   // Reaproveita os efeitos do caminho de cartao. prev='pending' (nao-Pro) ->
   // 'active' (Pro): becameActive dispara email/cache/conversao, igual ao cartao.
-  await handleTransition(row.user_id, "pending", "active", {
-    affiliateCode: row.affiliate_code,
-    couponCode: row.coupon_code,
+  await handleTransition(resultado.out_user_id, "pending", "active", {
+    affiliateCode: resultado.out_affiliate_code,
+    couponCode: resultado.out_coupon_code,
     revenueCents: session.amount_total ?? 0,
     planName: plan?.name || plan?.code || "Pro",
   });
