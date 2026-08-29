@@ -423,7 +423,7 @@ export default function SobreNos() {
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
                 aria-label={`Enviar email para ${CONTACT_EMAIL}`}
-                className="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-6 py-3 font-black text-ink-on-accent shadow-[4px_4px_0_#1a1a1a] transition-transform motion-safe:hover:-translate-y-0.5"
+                className="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-6 py-3 font-black text-ink-on-accent shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5"
               >
                 <Icon
                   icon="ph:envelope-simple-bold"
@@ -436,7 +436,7 @@ export default function SobreNos() {
                 href={CONTACT_INSTAGRAM}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-6 py-3 font-black text-slate-950 shadow-[4px_4px_0_#1a1a1a] transition-transform motion-safe:hover:-translate-y-0.5"
+                className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-6 py-3 font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5"
               >
                 <Icon
                   icon="ph:instagram-logo-bold"
