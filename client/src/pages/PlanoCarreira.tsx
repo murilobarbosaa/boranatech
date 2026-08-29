@@ -234,7 +234,7 @@ function IntakeForm({
           type="button"
           onClick={handleSubmit}
           disabled={generating}
-          className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-60"
+          className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-60"
         >
           {generating ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -819,7 +819,7 @@ export default function PlanoCarreira() {
         <button
           type="button"
           onClick={() => setReloadKey((key) => key + 1)}
-          className="bnt-pressable mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+          className="bnt-pressable mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
         >
           <RefreshCw className="h-4 w-4" aria-hidden />
           {/* TODO(Ana): label do botao de tentar de novo */}
@@ -868,7 +868,7 @@ export default function PlanoCarreira() {
           PageHero, o cabecalho vive DENTRO do cenario, que nasce no topo. O
           backdrop vivo de entrada cobre vitrine, intake e ProGate; o de
           resultado acompanha o PlanResult. */}
-      <section className="relative overflow-hidden bg-[#faf8f4] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="relative overflow-hidden bg-[var(--brand-cream)] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         {!loading && !showingPlan ? (
           <CareerPlanEntryBackdrop reduce={reduce} />
         ) : null}

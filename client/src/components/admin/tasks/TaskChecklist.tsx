@@ -78,7 +78,7 @@ export function TaskChecklist({
           className="mb-3 h-2.5 w-full overflow-hidden rounded-full border-2 border-slate-900 bg-white"
         >
           <div
-            className="h-full bg-[#FFB800] transition-all"
+            className="h-full bg-[var(--brand-yellow)] transition-all"
             style={{ width: `${percent}%` }}
           />
         </div>

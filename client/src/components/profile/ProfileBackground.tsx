@@ -77,7 +77,7 @@ export function ProfileBackground() {
       className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
       aria-hidden="true"
     >
-      <div className="absolute inset-0 bg-[#faf8f4]" />
+      <div className="absolute inset-0 bg-[var(--brand-cream)]" />
 
       <motion.div
         style={{

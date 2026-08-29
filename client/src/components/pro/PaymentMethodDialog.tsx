@@ -65,7 +65,7 @@ export default function PaymentMethodDialog({
                 onClick={() => onSelect(option.method)}
                 className="bnt-pressable flex w-full items-center gap-3 rounded-2xl border-2 border-slate-950 bg-white p-4 text-left shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
               >
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800]">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)]">
                   <Icon className="h-5 w-5 text-slate-950" strokeWidth={2.5} />
                 </span>
                 <span className="min-w-0">

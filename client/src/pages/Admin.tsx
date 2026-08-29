@@ -753,7 +753,7 @@ export const metricCards: MetricCard[] = [
     value: "0",
     detail: "Quem tem assinatura paga",
     icon: <CreditCard className="h-6 w-6" />,
-    color: "bg-[#ffb800] text-slate-950",
+    color: "bg-[var(--brand-yellow)] text-slate-950",
   },
   {
     key: "mrr",
@@ -4310,7 +4310,7 @@ function EmailCampaignsAdminSection() {
                 type="button"
                 disabled={creating}
                 onClick={() => void (editingId ? saveEdit() : createCampaign())}
-                className="bnt-pressable rounded-full border-2 border-slate-900 bg-[#FFB800] px-5 py-2 text-sm font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-40"
+                className="bnt-pressable rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-5 py-2 text-sm font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-40"
               >
                 {/* TODO(Ana) */}
                 {creating
@@ -4431,7 +4431,7 @@ function EmailCampaignsAdminSection() {
                 <button
                   type="button"
                   onClick={openBatchModal}
-                  className="bnt-pressable rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
+                  className="bnt-pressable rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
                 >
                   {/* TODO(Ana) */}
                   {/* TODO(Ana): rotulo do botao de disparo (origem escolhida no modal). */}
@@ -5584,7 +5584,7 @@ function EmailCampaignsAdminSection() {
                   confirmText !== "ENVIAR" || batchBusy || blockImmediateEmpty
                 }
                 onClick={() => void submitBatch()}
-                className="rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 disabled:opacity-40"
+                className="rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-slate-950 disabled:opacity-40"
               >
                 {/* TODO(Ana) */}
                 {batchBusy
@@ -8631,7 +8631,7 @@ export default function Admin() {
                   id="afiliados"
                   className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white"
                 >
-                  <div className="border-b-2 border-slate-900 bg-[#ffb800] p-6">
+                  <div className="border-b-2 border-slate-900 bg-[var(--brand-yellow)] p-6">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
@@ -9163,7 +9163,7 @@ export default function Admin() {
                   id="cupons"
                   className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white"
                 >
-                  <div className="border-b-2 border-slate-900 bg-[#ffb800] p-6">
+                  <div className="border-b-2 border-slate-900 bg-[var(--brand-yellow)] p-6">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">

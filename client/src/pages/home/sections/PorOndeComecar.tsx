@@ -20,7 +20,7 @@ import {
 
 export default function PorOndeComecar() {
   return (
-    <section id="por-onde-comecar" className="bnt-ancora relative overflow-hidden py-20 md:py-28 bg-[#f5f3ff]">
+    <section id="por-onde-comecar" className="bnt-ancora relative overflow-hidden py-20 md:py-28 bg-[var(--color-violet-50)]">
       {/* Decoração leve do fundo */}
       <BackgroundDecoration />
 

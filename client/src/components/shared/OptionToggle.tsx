@@ -27,7 +27,7 @@ export default function OptionToggle({
       disabled={disabled}
       className={cn(
         "rounded-[11px] border-[2.5px] border-slate-900 px-4 py-2.5 text-sm font-extrabold shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-60",
-        active ? "bg-[#FFB800] text-slate-950" : "bg-white text-slate-600",
+        active ? "bg-[var(--brand-yellow)] text-slate-950" : "bg-white text-slate-600",
         className,
       )}
     >

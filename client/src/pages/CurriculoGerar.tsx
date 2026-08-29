@@ -287,7 +287,7 @@ function BuilderShowcase({ reduce }: { reduce: boolean }) {
         className="relative z-10 -mt-8 ml-auto w-[78%] rotate-[1.5deg]"
       >
         <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 p-4">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800] shadow-[2px_2px_0_var(--bnt-shadow)]">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] shadow-[2px_2px_0_var(--bnt-shadow)]">
             <Wand2 className="h-4 w-4 text-slate-950" strokeWidth={2.5} />
           </span>
           <div>
@@ -315,7 +315,7 @@ function StartStage({ onStart }: { onStart: () => void }) {
       )}
     >
       {/* TODO(Ana): revisar o selo, o titulo e o botao do palco. */}
-      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
+      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
         <Sparkles className="h-3 w-3" aria-hidden />
         Comece aqui
       </span>
@@ -479,7 +479,7 @@ export default function CurriculoGerar() {
           DENTRO do cenario (pontilhado da casa + gradiente de marca amber).
           O backdrop vivo completo so existe na ENTRADA; atelie e resultado
           ficam com a faixa curta. */}
-      <section className="curriculo-page-root relative overflow-hidden bg-[#faf8f4] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="curriculo-page-root relative overflow-hidden bg-[var(--brand-cream)] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <BuilderBackdrop reduce={reduce} full={isEntry} />
         <div className="container relative z-10">
           {/* Cabecalho integrado, presente nos 3 estados. TODO(Ana): validar
@@ -673,14 +673,14 @@ function DraftingBoard() {
       <ul className="mx-auto mt-5 max-w-xs space-y-2 text-sm font-bold text-slate-800">
         <li className="flex items-start gap-2">
           <span
-            className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-[#FFB800]"
+            className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-[var(--brand-yellow)]"
             aria-hidden
           />
           Conversa de uns 10 minutos
         </li>
         <li className="flex items-start gap-2">
           <span
-            className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-[#FFB800]"
+            className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-[var(--brand-yellow)]"
             aria-hidden
           />
           Adapta o conteúdo conforme tua persona
@@ -862,7 +862,7 @@ function GeneratedView({
           sobre o pontilhado da pagina. */}
       <div className="print-hide relative z-10 mx-auto -mb-3 flex w-fit">
         {/* TODO(Ana): revisar o selo do papel. */}
-        <span className="inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
+        <span className="inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
           <Sparkles className="h-3 w-3" aria-hidden />
           Seu currículo
         </span>
@@ -984,7 +984,7 @@ function SavedResumesGallery({
               <button
                 type="button"
                 onClick={() => onOpen(item.id)}
-                className="rounded-full border-2 border-slate-950 bg-[#FFB800] px-4 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
+                className="rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-4 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
               >
                 Abrir
               </button>

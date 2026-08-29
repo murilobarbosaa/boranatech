@@ -10,7 +10,7 @@ export const inputClass =
 export const labelClass =
   "mb-1 block text-xs font-black uppercase tracking-wide text-slate-600";
 export const primaryButtonClass =
-  "rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50 disabled:shadow-none";
+  "rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50 disabled:shadow-none";
 export const secondaryButtonClass =
   "rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50 disabled:shadow-none";
 export const rowActionClass =

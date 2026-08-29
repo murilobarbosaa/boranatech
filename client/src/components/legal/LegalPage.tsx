@@ -104,7 +104,7 @@ export default function LegalPage({
         </div>
       </section>
 
-      <section className="bg-[#faf8f4] py-10 md:py-14">
+      <section className="bg-[var(--brand-cream)] py-10 md:py-14">
         <div className="container">
           <div className="mb-8 grid gap-4 md:grid-cols-3">
             {highlights.map((highlight) => (

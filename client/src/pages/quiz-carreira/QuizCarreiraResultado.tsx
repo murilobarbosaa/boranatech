@@ -163,7 +163,7 @@ export default function QuizCarreiraResultado() {
   if (isLoading) {
     return (
       <Layout>
-        <div className="flex min-h-screen items-center justify-center bg-[#faf8f4]">
+        <div className="flex min-h-screen items-center justify-center bg-[var(--brand-cream)]">
           <p className="font-mono text-sm text-slate-500">
             Carregando resultado...
           </p>
@@ -175,7 +175,7 @@ export default function QuizCarreiraResultado() {
   if (error || !result) {
     return (
       <Layout>
-        <div className="flex min-h-screen items-center justify-center bg-[#faf8f4]">
+        <div className="flex min-h-screen items-center justify-center bg-[var(--brand-cream)]">
           <div className="max-w-md text-center">
             <p className="mb-4 font-bold text-rose-700">
               {error || "Resultado não encontrado"}
@@ -202,7 +202,7 @@ export default function QuizCarreiraResultado() {
         url="/quiz-carreira/resultado"
       />
 
-      <div className="min-h-screen bg-[#faf8f4]">
+      <div className="min-h-screen bg-[var(--brand-cream)]">
         <div className="container max-w-3xl py-10 md:py-12">
           <Link
             href="/quiz-carreira"
@@ -213,7 +213,7 @@ export default function QuizCarreiraResultado() {
           </Link>
 
           {unsavedLocally && !authLoading && !user && (
-            <div className="mb-6 rounded-2xl border-2 border-[#1a1a1a] bg-white px-5 py-4 shadow-[2px_2px_0_var(--bnt-shadow)]">
+            <div className="mb-6 rounded-2xl border-2 border-[var(--bnt-ink)] bg-white px-5 py-4 shadow-[2px_2px_0_var(--bnt-shadow)]">
               {/* TODO(Ana): copy do aviso de resultado nao salvo na conta. */}
               <p className="text-sm font-semibold text-slate-700">
                 Seu resultado ainda não está salvo na sua conta. Entre para não
@@ -305,7 +305,7 @@ function ResultHero({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="relative mb-8 overflow-hidden rounded-3xl border-2 border-[#1a1a1a] p-6 shadow-[6px_6px_0_var(--bnt-shadow)] md:p-8"
+      className="relative mb-8 overflow-hidden rounded-3xl border-2 border-[var(--bnt-ink)] p-6 shadow-[6px_6px_0_var(--bnt-shadow)] md:p-8"
       style={{ backgroundColor: `${accent}10` }}
     >
       <ConfettiBurst accent={accent} />
@@ -382,7 +382,7 @@ function ResultHero({
               {result.confidence}%
             </span>
           </div>
-          <div className="h-3.5 w-full overflow-hidden rounded-full border-2 border-[#1a1a1a] bg-white">
+          <div className="h-3.5 w-full overflow-hidden rounded-full border-2 border-[var(--bnt-ink)] bg-white">
             <motion.div
               className="h-full rounded-full"
               style={{
@@ -433,7 +433,7 @@ function TechStartHere({
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4, delay: 0.25 + idx * 0.1 }}
-            className="flex items-start gap-3 rounded-2xl border-2 border-[#1a1a1a] bg-white px-5 py-4 shadow-[2px_2px_0_var(--bnt-shadow)]"
+            className="flex items-start gap-3 rounded-2xl border-2 border-[var(--bnt-ink)] bg-white px-5 py-4 shadow-[2px_2px_0_var(--bnt-shadow)]"
           >
             <span
               className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg font-display text-sm font-black text-white"
@@ -475,7 +475,7 @@ function AboutArea({ areaName, accent }: { areaName: string; accent: string }) {
         </h2>
       </div>
 
-      <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)]">
+      <div className="rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)]">
         <p className="text-base font-semibold leading-relaxed text-slate-700">
           {meta.descricaoCompleta}
         </p>
@@ -626,7 +626,7 @@ function ReasonsSection({
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4, delay: 0.4 + idx * 0.1 }}
-            className="flex items-start gap-3 rounded-2xl border-2 border-[#1a1a1a] bg-white px-5 py-4 shadow-[2px_2px_0_var(--bnt-shadow)]"
+            className="flex items-start gap-3 rounded-2xl border-2 border-[var(--bnt-ink)] bg-white px-5 py-4 shadow-[2px_2px_0_var(--bnt-shadow)]"
           >
             <span
               className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg font-display text-sm font-black text-white"
@@ -664,7 +664,7 @@ function CTAsSection({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.45 }}
-      className="overflow-hidden rounded-3xl border-2 border-[#1a1a1a] p-6 shadow-[6px_6px_0_var(--bnt-shadow)] md:p-8"
+      className="overflow-hidden rounded-3xl border-2 border-[var(--bnt-ink)] p-6 shadow-[6px_6px_0_var(--bnt-shadow)] md:p-8"
       style={{ backgroundColor: `${accent}12` }}
     >
       <p
@@ -690,7 +690,7 @@ function CTAsSection({
         {result.resultAreaSlug && (
           <Link
             href={`/areas/${result.resultAreaSlug}`}
-            className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-6 py-3 font-display text-sm font-black uppercase tracking-wider text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
+            className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] px-6 py-3 font-display text-sm font-black uppercase tracking-wider text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
           >
             {exploreLabel}
             <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
@@ -699,7 +699,7 @@ function CTAsSection({
 
         <Link
           href="/roadmaps"
-          className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-white px-6 py-3 font-display text-sm font-black uppercase tracking-wider text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
+          className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-white px-6 py-3 font-display text-sm font-black uppercase tracking-wider text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
         >
           Ver todas as trilhas
         </Link>

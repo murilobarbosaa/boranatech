@@ -64,7 +64,7 @@ export default function Acesso() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#faf8f4] px-6">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--brand-cream)] px-6">
       <div className="w-full max-w-sm rounded-2xl border-2 border-slate-950 bg-white p-8 shadow-[5px_5px_0_var(--bnt-shadow)]">
         {/* TODO(Ana): copy da porta de acesso beta. */}
         <h1 className="font-display text-2xl font-black text-slate-950">

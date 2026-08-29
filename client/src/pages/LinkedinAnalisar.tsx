@@ -547,7 +547,7 @@ function ResultadoIndisponivel({
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="bnt-pressable rounded-xl border-2 border-slate-950 bg-[#FFB800] px-4 py-2 font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
+            className="bnt-pressable rounded-xl border-2 border-slate-950 bg-[var(--brand-yellow)] px-4 py-2 font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
           >
             Recarregar a página
           </button>
@@ -1141,7 +1141,7 @@ export default function LinkedinAnalisar() {
       {/* Cenario da pagina inteira no molde do Analisador de GitHub: sem
           PageHero, o cabecalho vive DENTRO do cenario, que nasce no topo. O
           backdrop vivo (gradiente + doodles) so existe no estado de entrada. */}
-      <section className="relative overflow-hidden bg-[#faf8f4] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="relative overflow-hidden bg-[var(--brand-cream)] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         {showEntry ? <LinkedinBackdrop reduce={reduce} /> : null}
         {/* Cenario do resultado tingido pela faixa da nota; o estado de erro
             fica sem backdrop (so o pontilhado cream). */}
@@ -1255,7 +1255,7 @@ export default function LinkedinAnalisar() {
                       resultado o palco fica sem o convite. */}
                     {showEntry ? (
                       // TODO(Ana): revisar o selo do palco.
-                      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
+                      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                         <Sparkles className="h-3 w-3" aria-hidden />
                         Comece aqui
                       </span>
@@ -1475,7 +1475,7 @@ export default function LinkedinAnalisar() {
                                 !parsed?.headline
                                   ? "bg-amber-100"
                                   : headlineCortada
-                                    ? "bg-[#FFB800]"
+                                    ? "bg-[var(--brand-yellow)]"
                                     : "bg-white",
                               )}
                             >
@@ -1539,7 +1539,7 @@ export default function LinkedinAnalisar() {
                                     instrucao, e a antiga ainda mandava colar o
                                     texto de novo, que deixou de ser necessario. */}
                                 {headlineCortada ? (
-                                  <p className="mt-2 rounded-lg bg-[#FFB800]/20 p-2 text-xs font-bold text-slate-900">
+                                  <p className="mt-2 rounded-lg bg-[var(--brand-yellow)]/20 p-2 text-xs font-bold text-slate-900">
                                     A headline que lemos parece estar cortada.
                                   </p>
                                 ) : null}
@@ -1551,7 +1551,7 @@ export default function LinkedinAnalisar() {
                                   maxLength={HEADLINE_MANUAL_MAX}
                                   rows={2}
                                   aria-label="Headline lida do seu PDF"
-                                  className="mt-2 w-full resize-y rounded-lg border-2 border-slate-900 bg-white p-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FFB800]"
+                                  className="mt-2 w-full resize-y rounded-lg border-2 border-slate-900 bg-white p-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--brand-yellow)]"
                                 />
                                 <p className="mt-1 text-right text-xs font-bold tabular-nums text-slate-500">
                                   {headlineExibida.length} / {HEADLINE_MANUAL_MAX}

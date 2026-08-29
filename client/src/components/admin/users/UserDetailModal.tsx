@@ -546,7 +546,7 @@ export function UserDetailModal({
         {/* CABECALHO FIXO: identidade e acesso ficam visiveis durante todo o
             scroll, porque sao a resposta a "de quem e esta tela" e o admin
             perde isso de vista assim que rola ate as secoes de baixo. */}
-        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-900 bg-[#f6f0df] px-4 py-4 sm:px-6 sm:py-5">
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-900 bg-[var(--brand-cream-deep)] px-4 py-4 sm:px-6 sm:py-5">
           <div className="flex min-w-0 items-center gap-3">
             <span
               aria-hidden="true"

@@ -60,7 +60,7 @@ export default function LockedCatalogTeaser({
         </p>
         <Link
           href="/planos"
-          className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5"
+          className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5"
         >
           Assine o Pro pra desbloquear{" "}
           <ArrowRight className="h-3.5 w-3.5" aria-hidden />

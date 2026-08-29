@@ -159,7 +159,7 @@ export default function AuthModal({
               className={cn(
                 "cursor-pointer rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide transition-all sm:px-4 sm:py-1.5",
                 !isSignup
-                  ? "bg-[#FFB800] text-[#1a1a1a] shadow-[2px_2px_0_var(--bnt-shadow)]"
+                  ? "bg-[var(--brand-yellow)] text-[var(--bnt-ink)] shadow-[2px_2px_0_var(--bnt-shadow)]"
                   : "text-slate-600 hover:text-slate-900",
               )}
             >
@@ -172,7 +172,7 @@ export default function AuthModal({
               className={cn(
                 "cursor-pointer rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide transition-all sm:px-4 sm:py-1.5",
                 isSignup
-                  ? "bg-[#FFB800] text-[#1a1a1a] shadow-[2px_2px_0_var(--bnt-shadow)]"
+                  ? "bg-[var(--brand-yellow)] text-[var(--bnt-ink)] shadow-[2px_2px_0_var(--bnt-shadow)]"
                   : "text-slate-600 hover:text-slate-900",
               )}
             >

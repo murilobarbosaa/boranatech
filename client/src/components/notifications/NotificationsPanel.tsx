@@ -217,7 +217,7 @@ function NotificationCard({
           ) : null}
           <div className="min-w-0 flex-1">
             {item.is_super ? (
-              <span className="mb-1 inline-flex items-center gap-1 rounded-full border border-slate-900 bg-[#ffb800] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950">
+              <span className="mb-1 inline-flex items-center gap-1 rounded-full border border-slate-900 bg-[var(--brand-yellow)] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950">
                 <Sparkles className="h-3 w-3" aria-hidden="true" />
                 Destaque
               </span>
@@ -271,7 +271,7 @@ function NotificationCard({
                 if (unread) void markAsRead(item.id);
                 onClose?.();
               }}
-              className="inline-flex items-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
+              className="inline-flex items-center rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
             >
               {ctaLabel}
             </Link>
@@ -283,7 +283,7 @@ function NotificationCard({
               onClick={() => {
                 if (unread) void markAsRead(item.id);
               }}
-              className="inline-flex items-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
+              className="inline-flex items-center rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
             >
               {ctaLabel}
             </a>
@@ -333,7 +333,7 @@ export default function NotificationsPanel({
           (marcar + X) desce junto pra segunda linha, mantendo os dois alinhados
           entre si; o X ganha área de toque de 44px. */}
       <div
-        className={`flex shrink-0 items-center justify-between gap-2 border-b-2 border-slate-900 bg-[#faf8f4] px-4 py-3 ${
+        className={`flex shrink-0 items-center justify-between gap-2 border-b-2 border-slate-900 bg-[var(--brand-cream)] px-4 py-3 ${
           isSheet ? "flex-wrap" : ""
         }`}
       >

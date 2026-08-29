@@ -432,7 +432,7 @@ export default function EntrevistaSessao() {
         {/* Mesmo fundo da arena tambem no loading: sem piscar branco antes
             do card montar. O backdrop e aria-hidden e pointer-events-none
             por construcao. */}
-        <section className="relative overflow-hidden bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+        <section className="relative overflow-hidden bg-[var(--brand-cream)] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
           <InterviewBackdrop reduce={reduce} />
           <div className="relative z-10 flex min-h-[50vh] items-center justify-center">
             <Spinner className="size-8" />
@@ -446,7 +446,7 @@ export default function EntrevistaSessao() {
     return (
       <Layout>
         <SEO title="Entrevista simulada" url="/entrevistas" />
-        <section className="relative overflow-hidden bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+        <section className="relative overflow-hidden bg-[var(--brand-cream)] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
           <InterviewBackdrop reduce={reduce} />
           <div className="container relative z-10 py-20 text-center">
           <h1 className="font-display text-2xl font-black text-slate-950">
@@ -460,7 +460,7 @@ export default function EntrevistaSessao() {
           </p>
           <Link
             href="/entrevistas"
-            className="bnt-pressable mt-6 inline-flex rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
+            className="bnt-pressable mt-6 inline-flex rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
           >
             {/* TODO(Ana): label do link de volta */}
             Voltar pra Entrevistas
@@ -486,7 +486,7 @@ export default function EntrevistaSessao() {
       {/* Fundo da ARENA (mesma familia da pagina principal da E3): cream +
           micro-pontilhado + cenario vivo atras do card, fechando a identidade
           entre as duas telas. */}
-      <section className="relative overflow-hidden bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="relative overflow-hidden bg-[var(--brand-cream)] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <InterviewBackdrop reduce={reduce} />
         <div className="container relative z-10 py-8">
         {/* Slot superior esquerdo de voltar, planta do slot do Portfolio
@@ -642,12 +642,12 @@ export default function EntrevistaSessao() {
               </div>
             ) : null}
 
-            <div className="shrink-0 bg-[#faf8f4] px-3 pb-2.5 pt-2.5 sm:px-4 sm:pb-3 sm:pt-3">
+            <div className="shrink-0 bg-[var(--brand-cream)] px-3 pb-2.5 pt-2.5 sm:px-4 sm:pb-3 sm:pt-3">
               {completed ? (
                 <div className="mx-auto flex w-full max-w-3xl justify-center py-1">
                   <Link
                     href="/entrevistas"
-                    className="bnt-pressable inline-flex rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
+                    className="bnt-pressable inline-flex rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
                   >
                     {/* TODO(Ana): CTA de nova entrevista */}
                     Fazer outra entrevista
@@ -774,7 +774,7 @@ export default function EntrevistaSessao() {
                     ) : null}
                     <button
                       type="button"
-                      className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800] text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
+                      className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
                       disabled={
                         sending ||
                         hintLoading ||

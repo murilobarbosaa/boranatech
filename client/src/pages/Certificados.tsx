@@ -73,7 +73,7 @@ export default function Certificados() {
         description="Verifique um certificado da Bora na Tech pelo código ou saiba como funciona a certificação das trilhas."
         url="/certificados"
       />
-      <section className="bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="bg-[var(--brand-cream)] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <div className="mx-auto max-w-[720px] px-5 pb-20 pt-10">
           <span className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]">
             <Award className="h-4 w-4" />
@@ -115,7 +115,7 @@ export default function Certificados() {
               <button
                 type="submit"
                 disabled={codeInput.trim() === ""}
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Search className="h-4 w-4" />
                 {/* TODO(Ana): label do botao de verificar codigo */}

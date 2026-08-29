@@ -887,7 +887,7 @@ export default function Header() {
                 {!isPro && !subscriptionLoading ? (
                   <Link
                     href="/planos"
-                    className="inline-flex items-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-2.5 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
+                    className="inline-flex items-center rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-2.5 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                   >
                     <ProInlineBadge label="Assinar Pro" />
                   </Link>
@@ -993,7 +993,7 @@ export default function Header() {
                   <Link
                     href="/planos"
                     onClick={closeMobileDrawer}
-                    className="inline-flex flex-1 items-center justify-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
+                    className="inline-flex flex-1 items-center justify-center rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
                   >
                     <ProInlineBadge label="Pro" />
                   </Link>

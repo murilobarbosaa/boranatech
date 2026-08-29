@@ -75,7 +75,7 @@ export default function ProQuemE() {
     // construcao, sem borda para disfarcar o corte.
     <SecaoDecorada
       id="o-que-e-bora-na-tech"
-      base="bg-[#f5f3ff]"
+      base="bg-[var(--color-violet-50)]"
       variante="glow"
       orbs={ORBS}
     >
@@ -132,7 +132,7 @@ export default function ProQuemE() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={VIEWPORT_ENTRADA}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="rounded-2xl border-2 border-slate-950 bg-[#faf8f4] p-6 shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-1"
+                className="rounded-2xl border-2 border-slate-950 bg-[var(--brand-cream)] p-6 shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-1"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-100 shadow-[2px_2px_0_var(--bnt-shadow)]">
                   <Icon
@@ -203,7 +203,7 @@ export default function ProQuemE() {
           </p>
           <Link
             href="/cadastro"
-            className="font-display inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-8 py-4 font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)] active:translate-y-0 active:shadow-[2px_2px_0_var(--bnt-shadow)]"
+            className="font-display inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-8 py-4 font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)] active:translate-y-0 active:shadow-[2px_2px_0_var(--bnt-shadow)]"
           >
             Começar agora
             <ArrowRight size={18} aria-hidden="true" />

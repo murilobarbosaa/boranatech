@@ -47,7 +47,7 @@ export default function Entrevistas() {
 
       {/* Arena: cenario do molde e a secao inteira (cream + micro-pontilhado),
           com o backdrop vivo por tras de tudo. */}
-      <section className="relative overflow-hidden bg-[#faf8f4] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="relative overflow-hidden bg-[var(--brand-cream)] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <InterviewBackdrop reduce={reduce} />
         <div className="container relative z-10">
           {/* Cabecalho integrado, sem PageHero. O slot universal superior

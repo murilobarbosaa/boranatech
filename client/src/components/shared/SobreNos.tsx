@@ -65,7 +65,7 @@ const SOCIAL_META: Record<
   github: {
     icon: "ph:github-logo-bold",
     label: "GitHub",
-    hover: "hover:bg-[#1a1a1a] hover:text-white",
+    hover: "hover:bg-[var(--bnt-ink)] hover:text-white",
   },
 };
 
@@ -215,7 +215,7 @@ export default function SobreNos() {
       </h2>
 
       {/* 1. GANCHO: numero gigante */}
-      <div className="border-t-2 border-slate-900 bg-[#faf8f4] py-20">
+      <div className="border-t-2 border-slate-900 bg-[var(--brand-cream)] py-20">
         <div className="container">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-700">
             Sobre nós
@@ -252,7 +252,7 @@ export default function SobreNos() {
       </div>
 
       {/* 3. AS 3 PORTAS */}
-      <div className="border-t-2 border-slate-900 bg-[#faf8f4] py-16">
+      <div className="border-t-2 border-slate-900 bg-[var(--brand-cream)] py-16">
         <div className="container">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-700">
             Pra quem é
@@ -324,7 +324,7 @@ export default function SobreNos() {
                   {person.chips.map((chip) => (
                     <li
                       key={chip}
-                      className="inline-flex rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
+                      className="inline-flex rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
                     >
                       {chip}
                     </li>
@@ -367,7 +367,7 @@ export default function SobreNos() {
       </div>
 
       {/* 6. QUEM APOIA (reuso do dado de creatorsData) */}
-      <div className="border-t-2 border-slate-900 bg-[#faf8f4] py-16">
+      <div className="border-t-2 border-slate-900 bg-[var(--brand-cream)] py-16">
         <div className="container">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>

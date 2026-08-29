@@ -173,7 +173,7 @@ export function LabelPicker({
                   onCreate(query.trim(), color);
                   setQuery("");
                 }}
-                className="w-full rounded-full border-2 border-slate-900 bg-[#FFB800] px-2 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
+                className="w-full rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-2 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
               >
                 Criar “{query.trim()}”
               </button>

@@ -189,7 +189,7 @@ export default function CheckoutSucesso() {
             }}
           >
             <div
-              className="animate-gentle-float h-[28rem] w-[28rem] rounded-full bg-[#FFB800] blur-[120px]"
+              className="animate-gentle-float h-[28rem] w-[28rem] rounded-full bg-[var(--brand-yellow)] blur-[120px]"
               style={{
                 opacity: showSuccess ? 0.26 : 0.18,
                 transition: "opacity 600ms ease",
@@ -203,11 +203,11 @@ export default function CheckoutSucesso() {
             style={{ animationDelay: "-1.5s", animationDuration: "5s" }}
           />
           <div
-            className="animate-gentle-float absolute -right-20 bottom-0 h-72 w-72 rounded-full bg-[#FFB800] opacity-[0.12] blur-[100px]"
+            className="animate-gentle-float absolute -right-20 bottom-0 h-72 w-72 rounded-full bg-[var(--brand-yellow)] opacity-[0.12] blur-[100px]"
             style={{ animationDelay: "-3s", animationDuration: "6s" }}
           />
           <div
-            className="animate-gentle-float absolute right-1/4 -top-10 h-40 w-40 rounded-full bg-[#0f172a] opacity-[0.06] blur-[80px]"
+            className="animate-gentle-float absolute right-1/4 -top-10 h-40 w-40 rounded-full bg-[var(--bnt-ink)] opacity-[0.06] blur-[80px]"
             style={{ animationDelay: "-0.8s", animationDuration: "5.5s" }}
           />
         </div>
@@ -218,12 +218,12 @@ export default function CheckoutSucesso() {
             initial={reduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: "easeOut" }}
-            className="mx-auto max-w-2xl rounded-[2rem] border-2 border-[#1a1a1a] bg-white p-8 text-center shadow-[6px_6px_0_var(--bnt-shadow)]"
+            className="mx-auto max-w-2xl rounded-[2rem] border-2 border-[var(--bnt-ink)] bg-white p-8 text-center shadow-[6px_6px_0_var(--bnt-shadow)]"
           >
-            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] shadow-[4px_4px_0_var(--bnt-shadow)]">
+            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] shadow-[4px_4px_0_var(--bnt-shadow)]">
               {isLoadingScreen ? (
                 <Loader2
-                  className={`h-12 w-12 text-[#1a1a1a] ${reduce ? "" : "animate-spin"}`}
+                  className={`h-12 w-12 text-[var(--bnt-ink)] ${reduce ? "" : "animate-spin"}`}
                 />
               ) : showProcessing ? (
                 <motion.span
@@ -235,10 +235,10 @@ export default function CheckoutSucesso() {
                   }}
                   className="inline-flex"
                 >
-                  <Clock className="h-12 w-12 text-[#1a1a1a]" />
+                  <Clock className="h-12 w-12 text-[var(--bnt-ink)]" />
                 </motion.span>
               ) : grantedAccess ? (
-                <ShieldCheck className="h-12 w-12 text-[#1a1a1a]" />
+                <ShieldCheck className="h-12 w-12 text-[var(--bnt-ink)]" />
               ) : (
                 <motion.span
                   initial={reduce ? false : { scale: 0 }}
@@ -251,30 +251,30 @@ export default function CheckoutSucesso() {
                   }}
                   className="inline-flex"
                 >
-                  <Check className="h-12 w-12 text-[#1a1a1a]" strokeWidth={3} />
+                  <Check className="h-12 w-12 text-[var(--bnt-ink)]" strokeWidth={3} />
                 </motion.span>
               )}
             </div>
 
             {isLoadingScreen ? (
               <motion.div key="loading" {...fadeSlideUp}>
-                <h1 className="font-display mt-8 text-4xl font-black text-[#1a1a1a]">
+                <h1 className="font-display mt-8 text-4xl font-black text-[var(--bnt-ink)]">
                   Quase lá...
                 </h1>
                 <p className="mx-auto mt-3 max-w-lg text-sm font-semibold leading-relaxed text-slate-600">
                   Estamos confirmando seu pagamento. Leva só alguns segundos.
                 </p>
-                <div className="mx-auto mt-6 h-3 max-w-sm overflow-hidden rounded-full border-2 border-[#1a1a1a] bg-[#faf8f4]">
+                <div className="mx-auto mt-6 h-3 max-w-sm overflow-hidden rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-cream)]">
                   {reduce ? (
-                    <div className="h-full w-2/3 rounded-full bg-[#FFB800]" />
+                    <div className="h-full w-2/3 rounded-full bg-[var(--brand-yellow)]" />
                   ) : (
-                    <div className="animate-progress-indeterminate h-full w-1/3 rounded-full bg-[#FFB800]" />
+                    <div className="animate-progress-indeterminate h-full w-1/3 rounded-full bg-[var(--brand-yellow)]" />
                   )}
                 </div>
               </motion.div>
             ) : showSuccess ? (
               <motion.div key="success" {...fadeSlideUp}>
-                <h1 className="font-display mt-8 inline-flex items-center justify-center gap-2 text-4xl font-black text-[#1a1a1a]">
+                <h1 className="font-display mt-8 inline-flex items-center justify-center gap-2 text-4xl font-black text-[var(--bnt-ink)]">
                   {greet(profile?.gender)}, Pro!
                   <motion.span
                     initial={reduce ? false : { scale: 0, rotate: -35 }}
@@ -297,7 +297,7 @@ export default function CheckoutSucesso() {
                 <div className="mt-8 flex flex-col items-center gap-3">
                   <Link
                     href="/perfil"
-                    className="inline-flex rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
+                    className="inline-flex rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] px-6 py-3 font-black text-[var(--bnt-ink)] shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
                   >
                     Começar agora
                   </Link>
@@ -311,7 +311,7 @@ export default function CheckoutSucesso() {
                           source: "checkout_success",
                         })
                       }
-                      className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-white px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
+                      className="inline-flex items-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-white px-6 py-3 font-black text-[var(--bnt-ink)] shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
                     >
                       <MessageCircle className="h-5 w-5" />
                       Suporte no WhatsApp
@@ -321,7 +321,7 @@ export default function CheckoutSucesso() {
               </motion.div>
             ) : grantedAccess ? (
               <motion.div key="granted" {...fadeSlideUp}>
-                <h1 className="font-display mt-8 text-4xl font-black text-[#1a1a1a]">
+                <h1 className="font-display mt-8 text-4xl font-black text-[var(--bnt-ink)]">
                   Nenhuma assinatura encontrada
                 </h1>
                 <p className="mx-auto mt-3 max-w-lg text-base font-semibold leading-relaxed text-slate-600">
@@ -336,7 +336,7 @@ export default function CheckoutSucesso() {
                 <div className="mt-8 flex flex-col items-center gap-3">
                   <Link
                     href="/perfil"
-                    className="inline-flex rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
+                    className="inline-flex rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] px-6 py-3 font-black text-[var(--bnt-ink)] shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
                   >
                     Ir para o perfil
                   </Link>
@@ -350,7 +350,7 @@ export default function CheckoutSucesso() {
                           source: "checkout_success",
                         })
                       }
-                      className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-white px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
+                      className="inline-flex items-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-white px-6 py-3 font-black text-[var(--bnt-ink)] shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
                     >
                       <MessageCircle className="h-5 w-5" />
                       Falar no WhatsApp
@@ -360,7 +360,7 @@ export default function CheckoutSucesso() {
               </motion.div>
             ) : (
               <motion.div key="processing" {...fadeSlideUp}>
-                <h1 className="font-display mt-8 text-4xl font-black text-[#1a1a1a]">
+                <h1 className="font-display mt-8 text-4xl font-black text-[var(--bnt-ink)]">
                   Tá quase!
                 </h1>
                 <p className="mx-auto mt-3 max-w-lg text-base font-semibold leading-relaxed text-slate-600">
@@ -369,7 +369,7 @@ export default function CheckoutSucesso() {
                 </p>
                 <Link
                   href="/perfil"
-                  className="mt-8 inline-flex rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
+                  className="mt-8 inline-flex rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] px-6 py-3 font-black text-[var(--bnt-ink)] shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
                 >
                   Ir para o perfil
                 </Link>

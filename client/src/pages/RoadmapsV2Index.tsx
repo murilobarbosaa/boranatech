@@ -340,7 +340,7 @@ export default function RoadmapsV2Index() {
         schemaType="CollectionPage"
       />
 
-      <section className="relative overflow-hidden bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="relative overflow-hidden bg-[var(--brand-cream)] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <div
           className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-br from-violet-300/45 via-fuchsia-200/35 to-amber-200/45"
           aria-hidden

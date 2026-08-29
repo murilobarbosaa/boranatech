@@ -91,7 +91,7 @@ export function TaskComments({
 
             return (
               <li key={comment.id} className="group flex items-start gap-2.5">
-                <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-slate-900 bg-[#FFB800] text-[10px] font-black text-slate-950">
+                <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] text-[10px] font-black text-slate-950">
                   {author.avatar ? (
                     <img src={author.avatar} alt="" className="h-full w-full object-cover" />
                   ) : (

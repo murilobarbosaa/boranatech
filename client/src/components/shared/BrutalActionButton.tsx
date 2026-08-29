@@ -25,7 +25,7 @@ interface BrutalActionButtonProps {
 }
 
 const VARIANT_CLASSES: Record<"primary" | "ai", string> = {
-  primary: "bg-[#FFB800] text-slate-950 focus-visible:ring-amber-300",
+  primary: "bg-[var(--brand-yellow)] text-slate-950 focus-visible:ring-amber-300",
   ai: "bg-violet-600 text-white focus-visible:ring-violet-300",
 };
 

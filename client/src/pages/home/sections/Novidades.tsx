@@ -387,7 +387,7 @@ export default function Novidades() {
     // CARDS, nao da secao. Inventar um eyebrow aqui seria escrever copy nova.
     <SecaoDecorada
       id="novidades"
-      base="bg-[#f5f3ff]"
+      base="bg-[var(--color-violet-50)]"
       variante="pontos"
       acento="text-violet-300"
       opacidade="opacity-25"

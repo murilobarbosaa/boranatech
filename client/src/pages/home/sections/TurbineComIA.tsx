@@ -164,7 +164,7 @@ export default function TurbineComIA() {
                   </p>
                 </div>
 
-                <div className="pro-glare relative overflow-hidden inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-slate-900 bg-[#FFB800] px-6 py-3 font-display font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all group-hover:shadow-[6px_6px_0_var(--bnt-shadow)]">
+                <div className="pro-glare relative overflow-hidden inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-slate-900 bg-[var(--brand-yellow)] px-6 py-3 font-display font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all group-hover:shadow-[6px_6px_0_var(--bnt-shadow)]">
                   <span>Conhecer o Pro</span>
                   <ArrowRight
                     size={20}

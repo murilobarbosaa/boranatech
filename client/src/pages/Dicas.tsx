@@ -186,7 +186,7 @@ export default function Dicas() {
       {tab === "curiosidades" && <CuriosidadesSection />}
 
       {tab === "livros" && (
-        <section className="bg-[#faf8f4] py-12">
+        <section className="bg-[var(--brand-cream)] py-12">
           <div className="container">
             <div className="mb-8 flex flex-wrap gap-2">
               {areaFiltros.map((item) => (
@@ -225,7 +225,7 @@ export default function Dicas() {
       )}
 
       {tab === "notebooks" && (
-        <section className="bg-[#faf8f4] py-12">
+        <section className="bg-[var(--brand-cream)] py-12">
           <div className="container space-y-10">
             <div className="card-brutal rounded-2xl border-amber-200 bg-amber-100 p-6">
               <div className="mb-3 flex items-center gap-2">
@@ -1320,7 +1320,7 @@ function livroMatches(livro: { titulo: string; autor: string }, q: string) {
 function Marquee() {
   return (
     <div
-      className="overflow-hidden border-b-2 border-slate-900 bg-[#FFB800] py-2"
+      className="overflow-hidden border-b-2 border-slate-900 bg-[var(--brand-yellow)] py-2"
       aria-hidden
     >
       <div className="flex w-max animate-marquee-left gap-8 whitespace-nowrap pr-8 hover:[animation-play-state:paused] motion-reduce:animate-none">
@@ -1441,7 +1441,7 @@ function AprenderSection() {
   ];
 
   return (
-    <section className="bg-[#faf8f4] py-12">
+    <section className="bg-[var(--brand-cream)] py-12">
       <div className="container space-y-6">
         <div className="relative w-full max-w-md">
           <label htmlFor="dicas-busca" className="sr-only">

@@ -503,7 +503,7 @@ function CreatorsSection({
 
   const cardStyles = [
     { accent: "bg-violet-500", shadow: "shadow-[5px_5px_0_#8b5cf6]" },
-    { accent: "bg-[#FFB800]", shadow: "shadow-[5px_5px_0_#FFB800]" },
+    { accent: "bg-[var(--brand-yellow)]", shadow: "shadow-[5px_5px_0_#FFB800]" },
     { accent: "bg-fuchsia-500", shadow: "shadow-[5px_5px_0_#e879f9]" },
   ];
 
@@ -546,7 +546,7 @@ function CreatorsSection({
                     {creator.name}
                   </h3>
                   {creator.parceira ? (
-                    <span className="mt-1 inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[#FFB800] px-2 py-0.5 text-[10px] font-black uppercase text-slate-950">
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-2 py-0.5 text-[10px] font-black uppercase text-slate-950">
                       <Sparkles className="h-3 w-3" aria-hidden />
                       Parceira BoraNaTech
                     </span>

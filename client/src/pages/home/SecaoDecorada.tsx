@@ -40,7 +40,7 @@ export const VIEWPORT_ENTRADA = {
 
 interface Comum {
   id: string;
-  /** Classe de fundo da seção. Ex.: "bg-[#faf8f4]". */
+  /** Classe de fundo da seção. Ex.: "bg-[var(--brand-cream)]". */
   base: string;
   /** Padding vertical. Padrão: o das seções de referência. */
   padding?: string;

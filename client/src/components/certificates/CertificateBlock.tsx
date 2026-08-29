@@ -69,7 +69,7 @@ const MISSING_LABEL: Record<MissingProfileField, string> = {
 const PRIMARY_BASE =
   "inline-flex w-full items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 px-5 py-3 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto";
 const violetPrimary = `${PRIMARY_BASE} bg-violet-800 text-white`;
-const goldPrimary = `${PRIMARY_BASE} bg-[#FFB800] text-slate-950`;
+const goldPrimary = `${PRIMARY_BASE} bg-[var(--brand-yellow)] text-slate-950`;
 const emeraldPrimary = `${PRIMARY_BASE} bg-emerald-600 text-white`;
 const inkPrimary = `${PRIMARY_BASE} bg-slate-900 text-white`;
 
@@ -138,7 +138,7 @@ const ACCENT: Record<Accent, { bg: string; shadow: string; seal: string }> = {
     seal: "bg-emerald-300 text-slate-950",
   },
   neutral: {
-    bg: "bg-[#faf8f4]",
+    bg: "bg-[var(--brand-cream)]",
     shadow: "shadow-[5px_5px_0_#cbd5e1]",
     seal: "bg-slate-200 text-slate-700",
   },
@@ -386,7 +386,7 @@ export default function CertificateBlock({
   // pra minimizar layout shift. Nao usa o StateShell compartilhado.
   if (loading || !eligibility) {
     return (
-      <div className="mt-6 rounded-[14px] border-[2.5px] border-slate-900 bg-[#faf8f4] p-6 text-center shadow-[5px_5px_0_#cbd5e1] sm:p-7">
+      <div className="mt-6 rounded-[14px] border-[2.5px] border-slate-900 bg-[var(--brand-cream)] p-6 text-center shadow-[5px_5px_0_#cbd5e1] sm:p-7">
         <div className="mx-auto h-[68px] w-[68px] animate-pulse rounded-full bg-slate-200" />
         <div className="mx-auto mt-4 h-6 w-2/3 animate-pulse rounded bg-slate-200" />
         <div className="mx-auto mt-2 h-4 w-1/2 animate-pulse rounded bg-slate-200" />
@@ -623,7 +623,7 @@ export default function CertificateBlock({
             ref={sealRef}
             aria-hidden
             {...(!animateIn ? {} : { variants: CELEBRATION_SEAL })}
-            className="mx-auto grid h-[68px] w-[68px] place-items-center rounded-full border-[2.5px] border-slate-900 bg-[#FFB800] shadow-[3px_3px_0_var(--bnt-shadow)]"
+            className="mx-auto grid h-[68px] w-[68px] place-items-center rounded-full border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] shadow-[3px_3px_0_var(--bnt-shadow)]"
           >
             <Award className="h-8 w-8 text-slate-950" strokeWidth={2.5} />
           </motion.div>
@@ -658,7 +658,7 @@ export default function CertificateBlock({
           >
             <Link
               href={`/certificados/${eligibility.code}`}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-5 py-3 text-base font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-5 py-3 text-base font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] sm:w-auto"
             >
               <Award className="h-5 w-5" aria-hidden />
               {/* TODO(Ana): label ver meu certificado */}

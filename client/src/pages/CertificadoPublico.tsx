@@ -155,7 +155,7 @@ function LangSelector({
             aria-pressed={lang === code}
             className={`flex items-center justify-center rounded-full p-1.5 transition-all ${
               lang === code
-                ? "bg-[#FFB800]"
+                ? "bg-[var(--brand-yellow)]"
                 : "opacity-40 grayscale hover:opacity-80"
             }`}
           >
@@ -266,7 +266,7 @@ export default function CertificadoPublico() {
         description="Verifique a autenticidade de um certificado da Bora na Tech."
         url={`/certificados/${code}`}
       />
-      <section className="bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="bg-[var(--brand-cream)] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <div
           className={`mx-auto px-5 pb-20 pt-6 ${wide ? "max-w-6xl" : "max-w-[680px]"}`}
         >

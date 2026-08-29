@@ -152,7 +152,7 @@ export default function Ingles() {
       />
       <InglesSubNav />
 
-      <section className="border-b-2 border-slate-900 bg-gradient-to-b from-sky-100 to-[#faf8f4] py-14">
+      <section className="border-b-2 border-slate-900 bg-gradient-to-b from-sky-100 to-[var(--brand-cream)] py-14">
         <div className="container">
           <div className="mx-auto max-w-2xl text-center">
             <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">

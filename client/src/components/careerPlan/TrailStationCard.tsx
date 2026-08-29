@@ -53,7 +53,7 @@ export default function TrailStationCard({
       className={cn(
         "card-brutal flex h-full flex-col rounded-2xl bg-white pb-4",
         current &&
-          "ring-2 ring-[#FFB800] ring-offset-2 ring-offset-transparent",
+          "ring-2 ring-[var(--brand-yellow)] ring-offset-2 ring-offset-transparent",
       )}
     >
       <button
@@ -67,7 +67,7 @@ export default function TrailStationCard({
         <span
           className={cn(
             "grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-slate-950 font-display text-base font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]",
-            complete ? "bg-emerald-400" : current ? "bg-[#FFB800]" : "bg-white",
+            complete ? "bg-emerald-400" : current ? "bg-[var(--brand-yellow)]" : "bg-white",
           )}
         >
           {complete ? (

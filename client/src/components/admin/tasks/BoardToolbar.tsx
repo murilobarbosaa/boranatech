@@ -222,7 +222,7 @@ export const BoardToolbar = memo(
               <Filter className="h-3.5 w-3.5" />
               Filtros
               {activeCount > 0 ? (
-                <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FFB800] px-1 text-[10px] font-black text-slate-950">
+                <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--brand-yellow)] px-1 text-[10px] font-black text-slate-950">
                   {activeCount}
                 </span>
               ) : null}

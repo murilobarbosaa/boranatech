@@ -589,7 +589,7 @@ export default function RoadmapIA() {
         description={COPY.seoDescription}
         url="/roadmaps/ia"
       />
-      <section className="bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="bg-[var(--brand-cream)] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <div className="mx-auto max-w-[760px] px-5 pb-20 pt-8">
           <Link
             href="/roadmaps"
@@ -810,7 +810,7 @@ export default function RoadmapIA() {
                                     }
                                     className={`rounded-[11px] border-[2.5px] border-slate-900 px-4 py-2.5 text-sm font-extrabold shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] ${
                                       active
-                                        ? "bg-[#FFB800] text-slate-950"
+                                        ? "bg-[var(--brand-yellow)] text-slate-950"
                                         : "bg-white text-slate-600"
                                     }`}
                                   >
@@ -871,7 +871,7 @@ export default function RoadmapIA() {
                       {item.status === "ready" ? (
                         <Link
                           href={`/roadmaps/ia/${item.slug}`}
-                          className="inline-flex items-center gap-1.5 rounded-[10px] border-[2px] border-slate-900 bg-[#FFB800] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px"
+                          className="inline-flex items-center gap-1.5 rounded-[10px] border-[2px] border-slate-900 bg-[var(--brand-yellow)] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px"
                         >
                           {COPY.open}
                           <ArrowRight className="h-3.5 w-3.5" />

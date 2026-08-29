@@ -101,7 +101,7 @@ export default function CreatorsBand() {
       aria-label="Creators de conteúdo em tech"
       className="sticky top-16 z-40 overflow-hidden border-b-2 border-slate-950 bg-[#6b1fc9] py-2"
     >
-      <p className="mb-1 hidden text-center font-mono text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[#FCC700] sm:block">
+      <p className="mb-1 hidden text-center font-mono text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[var(--brand-yellow)] sm:block">
         Creators de conteúdo em tech
       </p>
 

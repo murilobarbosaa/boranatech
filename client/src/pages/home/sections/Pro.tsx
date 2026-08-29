@@ -195,7 +195,7 @@ function ProPitchVariant() {
             <button
               type="button"
               aria-label="Ver planos do Bora na Tech? Pro"
-              className="pro-glare bnt-pressable group relative inline-flex items-center gap-2 overflow-hidden rounded-2xl border-2 border-slate-950 bg-[#FFB800] px-7 py-3.5 font-display text-base md:text-lg font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
+              className="pro-glare bnt-pressable group relative inline-flex items-center gap-2 overflow-hidden rounded-2xl border-2 border-slate-950 bg-[var(--brand-yellow)] px-7 py-3.5 font-display text-base md:text-lg font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
             >
               <ProStarIcon />
               <span>Ver planos</span>

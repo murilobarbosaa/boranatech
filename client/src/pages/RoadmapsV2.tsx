@@ -160,7 +160,7 @@ export default function RoadmapsV2() {
         />
       )}
 
-      <section className="bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="bg-[var(--brand-cream)] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <div className="mx-auto max-w-[760px] px-5 pb-20 pt-8">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <Link
@@ -196,7 +196,7 @@ export default function RoadmapsV2() {
               <button
                 type="button"
                 onClick={() => setLoadAttempt((attempt) => attempt + 1)}
-                className="mt-4 inline-flex items-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
+                className="mt-4 inline-flex items-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
               >
                 <RotateCcw className="h-4 w-4" />
                 {/* TODO(Ana): label do botao de tentar de novo */}
@@ -237,7 +237,7 @@ export default function RoadmapsV2() {
                               onClick={() => setLanguageId(lang.id)}
                               className={`min-w-[6rem] rounded-[11px] border-[2.5px] border-slate-900 px-4 py-2.5 text-center text-[0.9rem] font-extrabold shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] ${
                                 active
-                                  ? "bg-[#FFB800] text-slate-950"
+                                  ? "bg-[var(--brand-yellow)] text-slate-950"
                                   : "bg-white text-slate-600"
                               }`}
                             >

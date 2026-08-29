@@ -211,12 +211,12 @@ export default function AvatarPhotoPanel({
       ) : null}
 
       {pendingLabel ? (
-        <div className="flex items-center justify-between gap-2 rounded-2xl border-2 border-[#1a1a1a] bg-[#FFF7DB] px-3 py-2 text-xs font-bold text-[#1a1a1a]">
+        <div className="flex items-center justify-between gap-2 rounded-2xl border-2 border-[var(--bnt-ink)] bg-[#FFF7DB] px-3 py-2 text-xs font-bold text-[var(--bnt-ink)]">
           <span>{pendingLabel} Clique em Salvar para aplicar.</span>
           <button
             type="button"
             onClick={() => onStage(null)}
-            className="shrink-0 rounded-full border-2 border-[#1a1a1a] bg-white px-3 py-1 font-black"
+            className="shrink-0 rounded-full border-2 border-[var(--bnt-ink)] bg-white px-3 py-1 font-black"
           >
             Desfazer
           </button>
@@ -226,7 +226,7 @@ export default function AvatarPhotoPanel({
       {imageSrc ? (
         <div className="space-y-3">
           <div
-            className="mx-auto touch-none overflow-hidden rounded-full border-2 border-[#1a1a1a] bg-slate-100"
+            className="mx-auto touch-none overflow-hidden rounded-full border-2 border-[var(--bnt-ink)] bg-slate-100"
             style={{
               width: VIEW,
               height: VIEW,
@@ -253,7 +253,7 @@ export default function AvatarPhotoPanel({
             />
           </div>
 
-          <label className="block text-xs font-black text-[#1a1a1a]">
+          <label className="block text-xs font-black text-[var(--bnt-ink)]">
             Zoom
             <input
               type="range"
@@ -272,7 +272,7 @@ export default function AvatarPhotoPanel({
               type="button"
               onClick={resetCrop}
               disabled={processing}
-              className="rounded-full border-2 border-[#1a1a1a] bg-white px-4 py-2 text-sm font-black disabled:opacity-60"
+              className="rounded-full border-2 border-[var(--bnt-ink)] bg-white px-4 py-2 text-sm font-black disabled:opacity-60"
             >
               Cancelar
             </button>
@@ -280,7 +280,7 @@ export default function AvatarPhotoPanel({
               type="button"
               onClick={() => void onConfirmCrop()}
               disabled={processing}
-              className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-60"
             >
               {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {processing ? "Preparando..." : "Usar esta foto"}
@@ -307,7 +307,7 @@ export default function AvatarPhotoPanel({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={blockChange}
-              className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Upload className="h-4 w-4" />
               {hasPhoto ? "Trocar foto" : "Enviar foto"}
@@ -318,7 +318,7 @@ export default function AvatarPhotoPanel({
                 type="button"
                 onClick={() => onStage({ type: "google" })}
                 disabled={blockChange}
-                className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Usar foto do Google
               </button>
@@ -329,7 +329,7 @@ export default function AvatarPhotoPanel({
                 type="button"
                 onClick={() => onStage({ type: "remove" })}
                 disabled={processing}
-                className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-white px-4 py-2 text-sm font-black text-rose-700 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-white px-4 py-2 text-sm font-black text-rose-700 disabled:opacity-60"
               >
                 <Trash2 className="h-4 w-4" />
                 Remover foto

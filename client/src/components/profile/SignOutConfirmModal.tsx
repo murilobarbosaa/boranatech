@@ -33,13 +33,13 @@ export function SignOutConfirmModal({
       }}
     >
       <div
-        className="relative w-full max-w-md rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)]"
+        className="relative w-full max-w-md rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)]"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="signout-modal-title"
       >
-        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#1a1a1a] bg-slate-100">
+        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[var(--bnt-ink)] bg-slate-100">
           <LogOut className="h-5 w-5 text-slate-700" strokeWidth={2.5} />
         </div>
 
@@ -58,7 +58,7 @@ export function SignOutConfirmModal({
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="flex-1 rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-3 font-display font-black text-slate-700 shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50"
+            className="flex-1 rounded-full border-2 border-[var(--bnt-ink)] bg-white px-5 py-3 font-display font-black text-slate-700 shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -66,7 +66,7 @@ export function SignOutConfirmModal({
             type="button"
             onClick={() => void onConfirm()}
             disabled={isLoading}
-            className="flex-1 rounded-full border-2 border-[#1a1a1a] bg-[#1a1a1a] px-5 py-3 font-display font-black text-white shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50"
+            className="flex-1 rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--bnt-ink)] px-5 py-3 font-display font-black text-white shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50"
           >
             {isLoading ? "Saindo..." : "Sim, sair"}
           </button>

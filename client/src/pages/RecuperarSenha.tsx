@@ -89,7 +89,7 @@ export default function RecuperarSenha() {
                 link de recuperação em até 2 minutos. Confira também a pasta de
                 spam.
               </p>
-              <div className="mt-4 rounded-xl border-2 border-slate-300 bg-[#faf8f4] px-4 py-3">
+              <div className="mt-4 rounded-xl border-2 border-slate-300 bg-[var(--brand-cream)] px-4 py-3">
                 <span className="block text-xs font-black uppercase text-slate-600">
                   Enviado para
                 </span>

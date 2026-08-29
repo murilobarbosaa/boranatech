@@ -58,7 +58,7 @@ export default function DorSolucao() {
     // por traco. Nenhuma das secoes de referencia usa borda de separacao.
     <SecaoDecorada
       id="talvez-seja-voce"
-      base="bg-[#faf8f4]"
+      base="bg-[var(--brand-cream)]"
       variante="glow"
       orbs={ORBS}
       padding="py-20 md:py-28"

@@ -491,7 +491,7 @@ function NotificationPreviewCard({ form }: { form: FormState }) {
     : null;
   return (
     <div className="rounded-2xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_var(--bnt-shadow)]">
-      <p className="rounded-t-[14px] border-b-2 border-slate-900 bg-[#faf8f4] px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+      <p className="rounded-t-[14px] border-b-2 border-slate-900 bg-[var(--brand-cream)] px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
         Como o usuário verá
       </p>
       <div className="rounded-b-[14px] bg-sky-50 px-4 py-3">
@@ -527,7 +527,7 @@ function NotificationPreviewCard({ form }: { form: FormState }) {
               </div>
             ) : null}
             {form.cta_url.trim() ? (
-              <span className="mt-2 inline-flex items-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
+              <span className="mt-2 inline-flex items-center rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                 {form.cta_label.trim() || "Ver mais"}
               </span>
             ) : null}
@@ -578,7 +578,7 @@ function SuperPreviewCard({ form }: { form: FormState }) {
           {form.super_subtitle.trim()}
         </p>
       ) : null}
-      <span className="mt-3 inline-flex items-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
+      <span className="mt-3 inline-flex items-center rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
         {form.super_cta_label.trim() || "Texto do botão"}
       </span>
     </div>
@@ -594,7 +594,7 @@ const FILTRO_TODOS = "__todos__";
 const labelClass =
   "mb-1 block text-xs font-black uppercase tracking-wide text-slate-600";
 const primaryButtonClass =
-  "rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50 disabled:shadow-none";
+  "rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50 disabled:shadow-none";
 const secondaryButtonClass =
   "rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50 disabled:shadow-none";
 const rowActionClass =
@@ -1165,7 +1165,7 @@ export function NotificationsManager() {
                   />
                 </div>
               </div>
-              <div className="rounded-2xl border-2 border-slate-900 bg-[#faf8f4] p-4">
+              <div className="rounded-2xl border-2 border-slate-900 bg-[var(--brand-cream)] p-4">
                 <label className="flex cursor-pointer items-start gap-3">
                   <input
                     type="checkbox"
@@ -1439,7 +1439,7 @@ export function NotificationsManager() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b-2 border-slate-900 bg-[#faf8f4] text-xs font-black uppercase tracking-wide text-slate-600">
+                <tr className="border-b-2 border-slate-900 bg-[var(--brand-cream)] text-xs font-black uppercase tracking-wide text-slate-600">
                   <th className="px-4 py-3">Título</th>
                   <th className="px-4 py-3">Tipo</th>
                   <th className="px-4 py-3">Audience</th>
@@ -1620,7 +1620,7 @@ export function NotificationsManager() {
           </div>
         )}
         {!listLoading && !listError && total > PAGE_SIZE ? (
-          <div className="flex items-center justify-between border-t-2 border-slate-900 bg-[#faf8f4] px-4 py-3">
+          <div className="flex items-center justify-between border-t-2 border-slate-900 bg-[var(--brand-cream)] px-4 py-3">
             <p className="text-xs font-black uppercase tracking-wide text-slate-500">
               Página {page + 1} de {totalPages} ({total} no total)
             </p>

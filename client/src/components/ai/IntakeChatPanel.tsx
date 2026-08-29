@@ -191,13 +191,13 @@ export default function IntakeChatPanel({
         ) : null}
 
         {progress && progress.total > 0 ? (
-          <div className="shrink-0 border-b-2 border-slate-900 bg-[#faf8f4] px-4 py-2.5 sm:px-5">
+          <div className="shrink-0 border-b-2 border-slate-900 bg-[var(--brand-cream)] px-4 py-2.5 sm:px-5">
             <ProgressStrip done={progress.done} total={progress.total} />
           </div>
         ) : null}
 
         <div
-          className="flex min-h-0 flex-1 flex-col border-b-2 border-slate-900 bg-[#faf8f4]"
+          className="flex min-h-0 flex-1 flex-col border-b-2 border-slate-900 bg-[var(--brand-cream)]"
           role="log"
           aria-live="polite"
           aria-relevant="additions"
@@ -216,7 +216,7 @@ export default function IntakeChatPanel({
                   </div>
                 ) : (
                   <div key={i} className="flex justify-end">
-                    <div className="max-w-[85%] rounded-2xl rounded-br-md border-2 border-slate-900 bg-[#FFB800] px-3.5 py-2.5 text-[15px] leading-relaxed text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] sm:max-w-[70%]">
+                    <div className="max-w-[85%] rounded-2xl rounded-br-md border-2 border-slate-900 bg-[var(--brand-yellow)] px-3.5 py-2.5 text-[15px] leading-relaxed text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] sm:max-w-[70%]">
                       <p className="whitespace-pre-wrap break-words font-body">
                         {m.content}
                       </p>

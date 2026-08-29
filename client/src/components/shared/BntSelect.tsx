@@ -30,10 +30,10 @@ export type BntSelectAccent =
   | "gold";
 
 const accentItemClasses: Record<BntSelectAccent, string> = {
-  yellow: "focus:bg-[#FFB800]/20 data-[state=checked]:bg-[#FFB800]/30",
+  yellow: "focus:bg-[var(--brand-yellow)]/20 data-[state=checked]:bg-[var(--brand-yellow)]/30",
   blue: "focus:bg-[#3b82f6]/20 data-[state=checked]:bg-[#3b82f6]/30",
   green: "focus:bg-[#10b981]/20 data-[state=checked]:bg-[#10b981]/30",
-  violet: "focus:bg-[#8b5cf6]/20 data-[state=checked]:bg-[#8b5cf6]/30",
+  violet: "focus:bg-[var(--color-violet-500)]/20 data-[state=checked]:bg-[var(--color-violet-500)]/30",
   orange: "focus:bg-[#f97316]/20 data-[state=checked]:bg-[#f97316]/30",
   teal: "focus:bg-[#14b8a6]/20 data-[state=checked]:bg-[#14b8a6]/30",
   pink: "focus:bg-[#ec4899]/20 data-[state=checked]:bg-[#ec4899]/30",

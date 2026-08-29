@@ -978,7 +978,7 @@ export default function Comparador() {
       {/* Comparador e recurso Pro: free/deslogado ve o hero (landing) + gate,
           nunca o conteudo interativo. Mesmo mecanismo das ferramentas Pro. */}
       {!isPro ? (
-        <section className="bg-[#faf8f4] py-12">
+        <section className="bg-[var(--brand-cream)] py-12">
           <div className="container">
             {/* TODO(Ana): revisar copy do gate do comparador */}
             <ProGate
@@ -988,7 +988,7 @@ export default function Comparador() {
           </div>
         </section>
       ) : (
-        <section className="bg-[#faf8f4] py-12">
+        <section className="bg-[var(--brand-cream)] py-12">
           <div className="container space-y-6">
             {/* PASSO 1: escolher a subarea (controle unico) */}
             {/* TODO(Ana): revisar copy dos passos do comparador */}

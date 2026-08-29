@@ -496,7 +496,7 @@ function ScoreHero({
     // proposito no topo (o card interno mantem o overflow-hidden dos paineis).
     <div className="relative -rotate-[0.3deg]">
       {/* TODO(Ana): revisar o selo do resultado. */}
-      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
+      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
         <Sparkles className="h-3 w-3" aria-hidden />
         Seu raio-X
       </span>
@@ -971,7 +971,7 @@ export default function PortfolioAnalisar() {
       {/* Cenario do Dialeto 2 (padrao do RoadmapsV2Index) e a pagina inteira:
           sem PageHero, o cabecalho vive DENTRO do cenario, que nasce no topo.
           O backdrop vivo (gradiente + doodles) so existe no estado de entrada. */}
-      <section className="relative overflow-hidden bg-[#faf8f4] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="relative overflow-hidden bg-[var(--brand-cream)] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         {!loading && !error && !result ? (
           <AnalyzerBackdrop reduce={reduce} />
         ) : null}
@@ -1068,7 +1068,7 @@ export default function PortfolioAnalisar() {
                 )}
               >
                 {/* TODO(Ana): revisar o selo e o titulo do palco. */}
-                <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
+                <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                   <Sparkles className="h-3 w-3" aria-hidden />
                   Comece aqui
                 </span>

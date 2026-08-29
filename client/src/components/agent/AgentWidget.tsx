@@ -588,7 +588,7 @@ export default function AgentWidget() {
   return (
     <>
       {open && user && (
-        <div className="fixed bottom-24 right-5 z-40 flex h-[min(70vh,560px)] w-[min(92vw,380px)] flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-[#faf8f4] shadow-[6px_6px_0_var(--bnt-shadow)]">
+        <div className="fixed bottom-24 right-5 z-40 flex h-[min(70vh,560px)] w-[min(92vw,380px)] flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-[var(--brand-cream)] shadow-[6px_6px_0_var(--bnt-shadow)]">
           {/* Cabecalho no padrao da casa: fundo branco, borda inferior, mascote
               em caixinha brutal violeta e acoes compactas a direita. */}
           <div className="flex items-center justify-between gap-2 border-b-2 border-slate-950 bg-white px-3 py-2.5">

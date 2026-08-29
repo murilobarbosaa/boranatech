@@ -85,7 +85,7 @@ export default function Vagas() {
       />
       {/* Cenario da pagina inteira no molde das paginas Pro: sem PageHero, o
           cabecalho vive DENTRO do cenario, que nasce no topo. */}
-      <section className="relative overflow-hidden bg-[#faf8f4] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="relative overflow-hidden bg-[var(--brand-cream)] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <VagasBackdrop reduce={reduce} />
         <div className="container relative z-10">
           <motion.div

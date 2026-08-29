@@ -226,7 +226,7 @@ export function TaskCardBody({
           {assignee ? (
             <span
               title={assignee.name ?? assignee.email ?? ""}
-              className="ml-auto inline-flex h-6 w-6 items-center justify-center overflow-hidden rounded-full border-2 border-slate-900 bg-[#FFB800] text-[10px] font-black text-slate-950"
+              className="ml-auto inline-flex h-6 w-6 items-center justify-center overflow-hidden rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] text-[10px] font-black text-slate-950"
             >
               {assignee.avatar_url ? (
                 <img

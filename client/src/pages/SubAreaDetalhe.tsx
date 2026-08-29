@@ -19,7 +19,7 @@ import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 
 const CARD_BASE =
-  "rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8";
+  "rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8";
 
 interface ZoneCardProps {
   title: string;

@@ -594,7 +594,7 @@ export default function QuizCarreira() {
         schemaType="WebPage"
       />
 
-      <div className="bg-[#faf8f4]">
+      <div className="bg-[var(--brand-cream)]">
         {inQuestionPhase && (
           <ProgressBar
             current={(phase === "triage" ? triageIndex : currentIndex) + 1}
@@ -956,7 +956,7 @@ function ObjectiveScreen({
                 transition={{ duration: 0.35, delay: 0.05 + idx * 0.07 }}
                 whileHover={{ scale: 1.02, y: -4 }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative flex flex-col items-start overflow-hidden rounded-3xl border-2 border-[#1a1a1a] p-5 text-left shadow-[4px_4px_0_var(--bnt-shadow)] transition-shadow duration-200 hover:shadow-[8px_8px_0_var(--accent)]"
+                className="group relative flex flex-col items-start overflow-hidden rounded-3xl border-2 border-[var(--bnt-ink)] p-5 text-left shadow-[4px_4px_0_var(--bnt-shadow)] transition-shadow duration-200 hover:shadow-[8px_8px_0_var(--accent)]"
                 style={{
                   ["--accent" as string]: t.accent,
                   backgroundColor: `color-mix(in srgb, ${t.accent} 10%, white)`,
@@ -999,7 +999,7 @@ function ObjectiveScreen({
           <button
             type="button"
             onClick={onResume}
-            className="mt-6 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-amber-300 px-5 py-2.5 font-display text-sm font-black uppercase tracking-wider text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
+            className="mt-6 inline-flex items-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-amber-300 px-5 py-2.5 font-display text-sm font-black uppercase tracking-wider text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
           >
             <RotateCcw className="h-4 w-4" strokeWidth={2.5} />
             Continuar de onde parei
@@ -1013,7 +1013,7 @@ function ObjectiveScreen({
 function AreaPreview() {
   const names = Object.keys(AREA_ACCENT);
   return (
-    <div className="mt-6 rounded-3xl border-2 border-[#1a1a1a] bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)]">
+    <div className="mt-6 rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)]">
       <p className="mb-1 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-violet-700">
         O que são áreas de TI?
       </p>
@@ -1107,7 +1107,7 @@ function IntroScreen({
       {track.kind === "area" && <AreaPreview />}
 
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border-2 border-[#1a1a1a] bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]">
+        <div className="rounded-2xl border-2 border-[var(--bnt-ink)] bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]">
           <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-violet-700">
             Duração
           </p>
@@ -1115,7 +1115,7 @@ function IntroScreen({
             ~{track.kind === "tech" ? 3 : QUIZ_ESTIMATED_MINUTES} min
           </p>
         </div>
-        <div className="rounded-2xl border-2 border-[#1a1a1a] bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]">
+        <div className="rounded-2xl border-2 border-[var(--bnt-ink)] bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]">
           <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
             Perguntas
           </p>
@@ -1123,7 +1123,7 @@ function IntroScreen({
             {questionCount}
           </p>
         </div>
-        <div className="col-span-2 rounded-2xl border-2 border-[#1a1a1a] bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)] md:col-span-1">
+        <div className="col-span-2 rounded-2xl border-2 border-[var(--bnt-ink)] bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)] md:col-span-1">
           <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-700">
             Resultado
           </p>
@@ -1137,7 +1137,7 @@ function IntroScreen({
         <button
           type="button"
           onClick={onStart}
-          className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] px-7 py-3 font-display text-sm font-black uppercase tracking-wider text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
+          className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] px-7 py-3 font-display text-sm font-black uppercase tracking-wider text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
           style={{ backgroundColor: track.accent }}
         >
           Começar agora
@@ -1183,7 +1183,7 @@ function LevelRevealScreen({
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-        className="relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-7 shadow-[6px_6px_0_var(--bnt-shadow)] md:p-9"
+        className="relative overflow-hidden rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-7 shadow-[6px_6px_0_var(--bnt-shadow)] md:p-9"
       >
         <div
           className="absolute inset-0 -z-0 opacity-[0.07]"
@@ -1254,7 +1254,7 @@ function LevelRevealScreen({
         <button
           type="button"
           onClick={onContinue}
-          className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] px-7 py-3 font-display text-sm font-black uppercase tracking-wider text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
+          className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] px-7 py-3 font-display text-sm font-black uppercase tracking-wider text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
           style={{ backgroundColor: accent }}
         >
           Começar as {LEVEL_QUESTION_COUNT} perguntas
@@ -1440,7 +1440,7 @@ function ProgressBar({
       aria-valuemin={0}
       aria-valuemax={total}
       aria-valuenow={answeredCount}
-      className="sticky top-16 z-30 border-b border-slate-200 bg-[#faf8f4]/80 backdrop-blur-sm"
+      className="sticky top-16 z-30 border-b border-slate-200 bg-[var(--brand-cream)]/80 backdrop-blur-sm"
     >
       <div className="container max-w-2xl py-3">
         {phaseLabel && (

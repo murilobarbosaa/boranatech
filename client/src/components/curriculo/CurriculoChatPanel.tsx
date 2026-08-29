@@ -112,7 +112,7 @@ function TypingDots({ reduce }: { reduce: boolean }) {
 function NatechinhoAvatar() {
   return (
     <span
-      className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-slate-950 bg-[#FFB800] shadow-[2px_2px_0_var(--bnt-shadow)]"
+      className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-slate-950 bg-[var(--brand-yellow)] shadow-[2px_2px_0_var(--bnt-shadow)]"
       aria-hidden
     >
       <Wand2 className="h-3.5 w-3.5 text-slate-950" strokeWidth={2.5} />
@@ -339,7 +339,7 @@ export default function CurriculoChatPanel({
       <div className="flex h-[min(88vh,720px)] min-h-[420px] flex-col">
         <header className="flex shrink-0 items-center gap-3 border-b-2 border-slate-950 bg-white px-4 py-3.5 text-slate-950 sm:px-5 sm:py-4">
           <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-[#FFB800] shadow-[2px_2px_0_var(--bnt-shadow)] sm:h-12 sm:w-12"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-[var(--brand-yellow)] shadow-[2px_2px_0_var(--bnt-shadow)] sm:h-12 sm:w-12"
             aria-hidden
           >
             <Wand2
@@ -516,7 +516,7 @@ export default function CurriculoChatPanel({
           </div>
         ) : null}
 
-        <div className="shrink-0 border-t-2 border-slate-950 bg-[#faf8f4] px-3 pt-2.5 pb-2.5 sm:px-4 sm:pt-3 sm:pb-3">
+        <div className="shrink-0 border-t-2 border-slate-950 bg-[var(--brand-cream)] px-3 pt-2.5 pb-2.5 sm:px-4 sm:pt-3 sm:pb-3">
           {showFallbackGenerate ? (
             <div className="mx-auto mb-2 flex w-full max-w-3xl justify-center">
               <BrutalActionButton
@@ -548,7 +548,7 @@ export default function CurriculoChatPanel({
             </div>
             <button
               type="button"
-              className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800] text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
+              className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
               disabled={inputDisabled || !input.trim()}
               aria-label="Enviar"
               onClick={() => void handleSend()}

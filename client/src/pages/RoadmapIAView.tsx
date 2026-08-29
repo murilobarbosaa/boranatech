@@ -139,7 +139,7 @@ export default function RoadmapIAView() {
         />
       ) : null}
 
-      <section className="bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="bg-[var(--brand-cream)] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <div className="mx-auto max-w-[760px] px-5 pb-20 pt-8">
           <Link
             href="/roadmaps/ia"
@@ -163,7 +163,7 @@ export default function RoadmapIAView() {
               </p>
               <Link
                 href="/roadmaps/ia"
-                className="mt-4 inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
+                className="mt-4 inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
               >
                 {COPY.failedCta}
               </Link>
@@ -208,7 +208,7 @@ export default function RoadmapIAView() {
                   <div className="mt-4 flex flex-wrap gap-3">
                     <Link
                       href="/portfolio/analisar"
-                      className="inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
+                      className="inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
                     >
                       {COPY.completedCtaGithub}
                     </Link>
@@ -244,7 +244,7 @@ export default function RoadmapIAView() {
                         onClick={() =>
                           void start((handlers) => streamResume(slug, handlers))
                         }
-                        className="mt-3 inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
+                        className="mt-3 inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
                       >
                         {COPY.resume}
                       </button>

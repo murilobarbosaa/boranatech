@@ -42,7 +42,7 @@ export default function DicaDoDia() {
 
   if (dicas === null) {
     return (
-      <section className="bg-[#faf8f4] py-16 sm:py-20">
+      <section className="bg-[var(--brand-cream)] py-16 sm:py-20">
         <div className="container">
           <div
             className="mx-auto h-64 max-w-2xl animate-pulse rounded-2xl border-2 border-slate-200 bg-white sm:h-56"
@@ -56,7 +56,7 @@ export default function DicaDoDia() {
   if (!dica) return null;
 
   return (
-    <section className="bg-[#faf8f4] py-16 sm:py-20">
+    <section className="bg-[var(--brand-cream)] py-16 sm:py-20">
       <div className="container">
         <div className="mx-auto max-w-2xl rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[5px_5px_0_#fbbf24] sm:p-8">
           <div className="mb-4 flex items-center justify-between gap-3">

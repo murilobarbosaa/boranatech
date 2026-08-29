@@ -99,7 +99,7 @@ export default function CompleteProfileModal({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="border-[2.5px] border-slate-900 bg-[#faf8f4] shadow-[6px_6px_0_#7c3aed]">
+      <DialogContent className="border-[2.5px] border-slate-900 bg-[var(--brand-cream)] shadow-[6px_6px_0_#7c3aed]">
         <DialogHeader>
           <DialogTitle className="font-display text-2xl font-black text-slate-950">
             {/* TODO(Ana): titulo do modal de completar perfil */}
@@ -167,7 +167,7 @@ export default function CompleteProfileModal({
             type="button"
             onClick={handleSave}
             disabled={!canSave}
-            className="inline-flex items-center justify-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
+            className="inline-flex items-center justify-center rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
           >
             {/* TODO(Ana): label do botao salvar identidade */}
             {saving ? "Salvando..." : "Salvar e continuar"}

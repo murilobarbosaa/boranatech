@@ -162,7 +162,7 @@ export default function Tecnologias() {
         />
       </motion.div>
 
-      <section className="relative overflow-hidden bg-[#faf8f4] py-8">
+      <section className="relative overflow-hidden bg-[var(--brand-cream)] py-8">
         <BackgroundDoodles />
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -170,8 +170,8 @@ export default function Tecnologias() {
           transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
           className="bnt-marquee relative z-10"
         >
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#faf8f4] to-transparent sm:w-24" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#faf8f4] to-transparent sm:w-24" />
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[var(--brand-cream)] to-transparent sm:w-24" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[var(--brand-cream)] to-transparent sm:w-24" />
           <div className="bnt-marquee-track flex w-max items-center gap-10 motion-reduce:animate-none">
             {[...marqueeItems, ...marqueeItems].map((technology, index) => (
               <Link

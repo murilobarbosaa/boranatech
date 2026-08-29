@@ -35,7 +35,7 @@ export function BadgeCard({ badge, onClick }: BadgeCardProps) {
       <button
         type="button"
         onClick={onClick}
-        className="group relative w-full rounded-3xl border-2 border-[#1a1a1a] bg-white p-5 text-left shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)] md:p-6"
+        className="group relative w-full rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-5 text-left shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)] md:p-6"
       >
         <div
           className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl"
