@@ -15,6 +15,7 @@ import {
   FATOR_TETO_IP,
   identidadeDeCota,
 } from "./lib/rateLimitKey";
+import { avisarRateLimitSemRedis } from "./lib/rateLimitSemRedis";
 import { cacheConnection } from "./lib/redis";
 import { supabaseAdmin } from "./lib/supabaseAdmin";
 import { validateSupabaseJwt } from "./middleware/auth";
@@ -353,11 +354,23 @@ app.use(async (req, res, next) => {
     return next();
   }
 
-  if (cacheConnection && !rateLimitUsingFallback) {
-    rateLimitUsingFallback = true;
-    console.warn(
-      "[ratelimit] Redis indisponível. Contagem local por instância (fail-open).",
-    );
+  // DOIS ESTADOS DIFERENTES, e antes os dois eram o mesmo silêncio. A guarda
+  // aqui era `cacheConnection && !rateLimitUsingFallback`, e o `cacheConnection
+  // &&` fazia o aviso nunca sair quando o Redis nem estava configurado: em
+  // produção, "esqueceram a REDIS_URL" ficava indistinguível de "está tudo
+  // bem". O comportamento NÃO muda (segue contando local e deixando passar),
+  // só o rastro. Detalhe em server/lib/rateLimitSemRedis.ts.
+  if (cacheConnection) {
+    // Configurado e caiu: transição, avisada uma vez, e desfeita quando volta.
+    if (!rateLimitUsingFallback) {
+      rateLimitUsingFallback = true;
+      console.warn(
+        "[ratelimit] Redis indisponível. Contagem local por instância (fail-open).",
+      );
+    }
+  } else {
+    // Nunca configurado: não há transição para observar, porque não vai voltar.
+    avisarRateLimitSemRedis(env.isProd);
   }
 
   // Fallback local: mesma decisao em duas chaves, entao vira funcao para os dois
