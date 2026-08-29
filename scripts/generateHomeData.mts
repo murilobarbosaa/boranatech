@@ -3,7 +3,11 @@
 // para as secoes nao arrastarem o catalogo inteiro pro grafo do boot.
 // A logica de selecao replica exatamente a das secoes; nada inventado.
 // Rodar com: pnpm generate:home-data (encadeado no prebuild).
-import { writeFileSync } from "node:fs";
+// Modo --check: regenera em memoria e compara byte a byte com o disco, falha se
+// estiver desatualizado (roda no pnpm check:generated). O gerador e
+// deterministico: le arrays estaticos, sem relogio nem ordem instavel, entao a
+// comparacao byte a byte so acusa quando a fonte mudou sem o gerado ser refeito.
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { areasTI, cursosGratuitos, noticias } from "../client/src/lib/data";
@@ -79,7 +83,22 @@ export const praVoceNoticia = ${emit(praVoceNoticia)};
 export const praVoceCursos = ${emit(praVoceCursos)};
 `;
 
-writeFileSync(OUT, content);
-console.log(
-  `[generateHomeData] featuredAreas=${featuredAreas.length} skillsAreaNames=${skillsAreaNames.length} noticia=${praVoceNoticia.id} cursos=${praVoceCursos.map((c) => c.id).join(",")} -> ${path.relative(process.cwd(), OUT)}`,
-);
+const checkMode = process.argv.includes("--check");
+
+if (checkMode) {
+  const onDisk = existsSync(OUT) ? readFileSync(OUT, "utf8") : "";
+  if (onDisk !== content) {
+    console.error(
+      "[generateHomeData] client/src/lib/homeData.generated.ts esta desatualizado. Rode: pnpm generate:home-data",
+    );
+    process.exit(1);
+  }
+  console.log(
+    `[generateHomeData] homeData.generated.ts em sincronia (featuredAreas=${featuredAreas.length} skillsAreaNames=${skillsAreaNames.length} noticia=${praVoceNoticia.id}).`,
+  );
+} else {
+  writeFileSync(OUT, content);
+  console.log(
+    `[generateHomeData] featuredAreas=${featuredAreas.length} skillsAreaNames=${skillsAreaNames.length} noticia=${praVoceNoticia.id} cursos=${praVoceCursos.map((c) => c.id).join(",")} -> ${path.relative(process.cwd(), OUT)}`,
+  );
+}

@@ -48,6 +48,14 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      # Geradores em modo --check: o arquivo gerado no disco tem que ser byte a
+      # byte o que a fonte produz hoje. Passo PROPRIO, e nao dentro do `pnpm
+      # check`, porque o hook de pre-commit chama `pnpm check` e nao chama este:
+      # quem pega um gerado desatualizado e o CI (e o `pnpm check:all` local),
+      # nao o hook. Os dois geradores sao deterministicos (leem arrays
+      # estaticos, sem relogio nem ordem instavel), entao a comparacao byte a
+      # byte nunca acusa por conta propria.
+      - run: pnpm check:generated
       # Typecheck dos scripts (guards e utilitarios). Roda AQUI e nao no hook
       # de pre-commit por escolha deliberada: e um `tsc` separado, com o
       # `target` proprio dos `.mts`, e o hook ja e o gate mais caro do fluxo.
