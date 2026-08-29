@@ -26,6 +26,10 @@ import {
   classificarRls,
   type LeituraContagem,
 } from "./lib/rlsVeredito";
+import {
+  DRIFT_PERMITIDO,
+  nomesPermitidos,
+} from "./lib/schemaDriftAllowlist";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -754,26 +758,77 @@ const recursosNaoDeclarados = [...(recursosExpostos ?? [])].filter(
   (r) => !declared.has(r),
 );
 
+// ---------------------------------------------------------------------------
+// DRIFT DE SCHEMA: objeto que EXISTE no banco e nenhuma migration declara.
+//
+// Ate 2026-08-28 as duas listas abaixo saiam por `console.warn` e o script
+// terminava VERDE. Warn dentro de um gate de CI nao obriga ninguem a nada, e o
+// conjunto so cresce; a allowlist inverte o custo, porque drift novo quebra o
+// CI e permitir um exige escrever nome, origem e data em
+// scripts/lib/schemaDriftAllowlist.ts, no commit que o introduz.
+//
+// Verificado NOS DOIS SENTIDOS: drift fora da allowlist falha, e entrada da
+// allowlist que sumiu do banco tambem falha. O segundo caso e o que impede a
+// lista de apodrecer: quando a migration finalmente sobe, o objeto passa a ser
+// declarado, sai do conjunto de drift, e a entrada aqui vira mentira.
+// ---------------------------------------------------------------------------
+const driftPermitidoObjetos = nomesPermitidos(["tabela", "view"]);
+const driftPermitidoFuncoes = nomesPermitidos(["funcao"]);
+
 if (expostas !== null) {
   const funcoesNaoDeclaradas = [...expostas].filter(
     (f) => !funcoesDeclaradas.has(f) && !DE_EXTENSAO.has(f),
   );
-  if (funcoesNaoDeclaradas.length > 0) {
-    console.warn(
-      `[checkMigrationsApplied] ${funcoesNaoDeclaradas.length} funcao(oes) existem no banco e NAO sao declaradas por migration nenhuma: ${funcoesNaoDeclaradas.join(", ")}. Reconstrucao a partir das migrations nasceria sem elas.`,
+  const funcoesDriftNovo = funcoesNaoDeclaradas.filter(
+    (f) => !driftPermitidoFuncoes.has(f),
+  );
+  if (funcoesDriftNovo.length > 0) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] DRIFT: ${funcoesDriftNovo.length} funcao(oes) existem no banco e NAO sao declaradas por migration nenhuma: ${funcoesDriftNovo.join(", ")}. Reconstrucao a partir das migrations nasceria sem elas. Declare a migration, ou registre em scripts/lib/schemaDriftAllowlist.ts com justificativa.`,
+    );
+  } else if (funcoesNaoDeclaradas.length > 0) {
+    console.log(
+      `[checkMigrationsApplied] direcao inversa: ${funcoesNaoDeclaradas.length} funcao(oes) nao declaradas, todas na allowlist de drift.`,
     );
   } else {
     console.log(
       "[checkMigrationsApplied] direcao inversa: nenhuma funcao existe no banco sem estar declarada.",
     );
   }
-  if (recursosNaoDeclarados.length > 0) {
-    console.warn(
-      `[checkMigrationsApplied] ${recursosNaoDeclarados.length} tabela(s)/view(s) expostas pelo PostgREST e NAO declaradas: ${recursosNaoDeclarados.join(", ")}.`,
+
+  const objetosDriftNovo = recursosNaoDeclarados.filter(
+    (r) => !driftPermitidoObjetos.has(r),
+  );
+  if (objetosDriftNovo.length > 0) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] DRIFT: ${objetosDriftNovo.length} tabela(s)/view(s) expostas pelo PostgREST e NAO declaradas: ${objetosDriftNovo.join(", ")}. Declare a migration, ou registre em scripts/lib/schemaDriftAllowlist.ts com justificativa.`,
+    );
+  } else if (recursosNaoDeclarados.length > 0) {
+    console.log(
+      `[checkMigrationsApplied] direcao inversa: ${recursosNaoDeclarados.length} tabela(s)/view(s) nao declaradas, todas na allowlist de drift.`,
     );
   } else {
     console.log(
       "[checkMigrationsApplied] direcao inversa: nenhuma tabela ou view exposta sem estar declarada.",
+    );
+  }
+
+  // SENTIDO INVERSO DA ALLOWLIST: entrada que nao corresponde mais a drift
+  // nenhum. Sem isto a lista vira arquivo morto, e um `nome` digitado errado
+  // ficaria la para sempre parecendo que cobre alguma coisa.
+  const aindaEmDrift = new Set([
+    ...recursosNaoDeclarados,
+    ...funcoesNaoDeclaradas,
+  ]);
+  const obsoletas = DRIFT_PERMITIDO.filter(
+    (d) => !aindaEmDrift.has(d.nome.toLowerCase()),
+  );
+  if (obsoletas.length > 0) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] ${obsoletas.length} entrada(s) da allowlist de drift NAO correspondem a drift nenhum no banco: ${obsoletas.map((d) => d.nome).join(", ")}. Se a migration subiu, remova a entrada; se o nome esta errado, corrija.`,
     );
   }
 }
