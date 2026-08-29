@@ -29,6 +29,7 @@ import {
 import UserAvatar, { effectiveOwnAvatar } from "@/components/UserAvatar";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import BotaoGuiaDaPagina from "@/components/onboarding/BotaoGuiaDaPagina";
+import ThemeToggle from "@/components/ThemeToggle";
 import { SignOutConfirmModal } from "./profile/SignOutConfirmModal";
 type MenuItem = {
   label: string;
@@ -820,7 +821,7 @@ export default function Header() {
     <>
       <header
         data-app-header
-        className="fixed left-0 right-0 top-0 z-[1000] border-b-2 border-slate-900 bg-[#f6f0df]/95 backdrop-blur"
+        className="fixed left-0 right-0 top-0 z-[1000] border-b-2 border-slate-900 bg-[var(--bnt-header-bg)] backdrop-blur"
       >
         <div className="mx-auto flex h-16 w-full items-center justify-between gap-4 px-4 sm:px-6 lg:max-w-[1280px] lg:px-8 2xl:max-w-[1440px]">
           <Link href="/" className="group shrink-0">
@@ -834,6 +835,7 @@ export default function Header() {
                 item do DesktopNav) e antes do avatar. Fica fora do ramo
                 logado/anonimo de proposito: rever o guia da pagina nao depende
                 de sessao. */}
+            <ThemeToggle variant="desktop" />
             <BotaoGuiaDaPagina variant="desktop" />
             {!user ? (
               <>
@@ -903,6 +905,7 @@ export default function Header() {
           </div>
 
           <div className="flex items-center gap-2 2xl:hidden">
+            <ThemeToggle variant="mobile" />
             {user ? (
               <NotificationBell variant="mobile" onOpen={closeMobileDrawer} />
             ) : null}

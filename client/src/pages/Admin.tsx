@@ -69,6 +69,7 @@ const TasksDashboard = lazyWithRetry(
 import { NotificationsManager } from "@/components/admin/NotificationsManager";
 import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { BntSelect } from "@/components/shared/BntSelect";
+import ThemeToggle from "@/components/ThemeToggle";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Popover,
@@ -1507,8 +1508,8 @@ function AdminShell({
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f4]">
-      <header className="sticky top-0 z-[1000] border-b-2 border-slate-900 bg-[#f6f0df]/95 backdrop-blur">
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-[1000] border-b-2 border-slate-900 bg-[var(--bnt-header-bg)] backdrop-blur">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex min-h-16 items-center justify-between gap-4">
             <Link href="/" className="group flex min-w-fit items-center gap-2">
@@ -1547,6 +1548,7 @@ function AdminShell({
 
             {session ? (
               <div className="flex min-w-fit items-center gap-2">
+                <ThemeToggle variant="desktop" />
                 <div className="hidden items-center gap-2 rounded-full border-2 border-slate-900 bg-white py-1 pl-1 pr-3 shadow-[2px_2px_0_#0f172a] sm:flex">
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-700 text-xs font-black text-white">
                     {session.displayName.slice(0, 2).toUpperCase()}
