@@ -180,6 +180,27 @@ este relatorio, pelo mesmo motivo de auto-referencia da linha `HEAD_FINAL`.
    equivalente, que usa exatamente as mesmas; o que resta sem prova e a sintaxe
    do envelope plpgsql.
 
+## Estado da integracao (conferido no fim da sessao)
+
+`origin/main` avancou DE NOVO durante a sessao, de `2902cdf8` para `383ec3bc`,
+seis commits (o lote de `fix/billing-observability`: alertas de cron, pagamentos
+orfaos e Sentry no provider da Stripe). Eles tocam `server/lib/cronAlert*`,
+`server/lib/orphanPayments*`, `server/providers/stripe.ts` e
+`server/routes/cron.ts`: **zero colisao** com os 13 arquivos desta branch
+(`comm -12` entre as duas listas devolveu vazio).
+
+Consequencia pratica: a branch NAO e mais fast-forward puro
+(`git rev-list --count HEAD..origin/main` = 6). A integracao e decisao da Ana e
+nao foi feita aqui.
+
+Conferido tambem o que isso faz com a allowlist de drift, porque um dos seis
+commits podia ter trazido as migrations de billing: **nao trouxe**. As tres
+(`create_billing_failed_payments`, `create_stripe_customers`,
+`create_payment_recovery_emails`) continuam ausentes de `origin/main`, entao as
+tres entradas seguem descrevendo drift real. Se a branch `fix/billing-customer-reuse`
+subir depois, o guard vai acusar as tres como entradas obsoletas, e a acao certa
+sera remove-las da allowlist, nao silenciar o guard.
+
 ## Achados fora de escopo (reportados, nao corrigidos)
 
 1. **Os numeros medidos em 26/08 ja estao desatualizados**, e isso e um achado,
