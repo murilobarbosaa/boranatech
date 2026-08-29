@@ -196,12 +196,33 @@ select t.tgname,
    and t.tgname = 'external_events_normaliza_travessao'
    and not t.tgisinternal;
 
--- 4. Total que a pagina passa a exibir (mesmo predicado da rota
---    /api/content/eventos). Esperado: o `linhas_vivas` anotado na SECAO 0 menos
---    2 (as duas duplicatas soft-deletadas), descontados os que ja estavam fora
---    do predicado de data.
+-- 4. Total que a pagina passa a exibir. E o MESMO predicado da rota
+--    GET /api/content/eventos (server/routes/content.ts), reproduzido campo a
+--    campo: `is_published`, `deleted_at` nulo, e o par
+--    `starts_on.gte.<hoje>` OU `starts_on` nulo. A rota nao filtra por
+--    `ends_on`: essa coluna aparece so na projecao do select.
+--
+--    A DATA DE CORTE E EM America/Sao_Paulo, NAO `current_date`. A rota calcula
+--    `hoje` com `Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" })`,
+--    e o equivalente exato em SQL e `(now() at time zone 'America/Sao_Paulo')::date`.
+--    A versao anterior desta verificacao usava `current_date`, que no Postgres e
+--    a data em UTC: entre 21h e a meia-noite de Brasilia o UTC ja virou o dia
+--    seguinte, e o corte descartava os eventos do proprio dia em que eles ainda
+--    estao acontecendo. A janela de execucao (05h as 09h de Brasilia) cai num
+--    horario em que as duas datas coincidem, entao ali o numero seria o mesmo
+--    por acidente; e justamente por ser acidente que a expressao foi corrigida,
+--    em vez de deixada certa por sorte de horario.
+--
+--    COMO CONFERIR AO VIVO: este numero tem que ser igual ao campo `total` que
+--    GET /api/content/eventos devolve no momento da janela (a rota pede
+--    `count: "exact"` com os mesmos filtros, entao o `total` nao sofre do teto
+--    de 500 do `limit`). A comparacao so vale depois de o cache da rota expirar.
+--    Em relacao ao numero de ANTES da execucao, espere no maximo 2 a menos: as
+--    duas duplicatas soft-deletadas, e so as que ja estivessem dentro do
+--    predicado de data.
 select count(*) as exibiveis_total
   from public.external_events
  where is_published = true
    and deleted_at is null
-   and (starts_on >= current_date or starts_on is null);
+   and (starts_on >= (now() at time zone 'America/Sao_Paulo')::date
+        or starts_on is null);
