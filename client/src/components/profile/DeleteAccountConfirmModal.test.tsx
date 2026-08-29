@@ -170,6 +170,33 @@ describe("CONTROLE NEGATIVO: com o campo correto, a exclusao acontece", () => {
   });
 });
 
+describe("aviso de assinatura", () => {
+  const AVISO = "excluir-conta-aviso-assinatura";
+
+  it("sem assinatura, nao aparece", () => {
+    montar({ hasRealSubscription: false });
+    expect(screen.queryByTestId(AVISO)).toBeNull();
+  });
+
+  it("cartao: fala em cancelar a assinatura e manda falar com o suporte", () => {
+    montar({ hasRealSubscription: true, isBoletoSubscription: false });
+    const texto = screen.getByTestId(AVISO).textContent ?? "";
+    expect(texto).toMatch(/cancela sua assinatura/i);
+    expect(texto).toContain("oi@boranatech.com.br");
+    // A copy NAO decide reembolso: afirma o que o sistema faz, e manda conversar.
+    expect(texto).not.toMatch(/sem reembolso/i);
+  });
+
+  it("boleto: NAO fala em cancelar assinatura (nao ha o que cancelar)", () => {
+    montar({ hasRealSubscription: true, isBoletoSubscription: true });
+    const texto = screen.getByTestId(AVISO).textContent ?? "";
+    expect(texto).not.toMatch(/cancela sua assinatura/i);
+    expect(texto).toMatch(/encerra seu acesso Pro/i);
+    expect(texto).toContain("oi@boranatech.com.br");
+    expect(texto).not.toMatch(/sem reembolso/i);
+  });
+});
+
 describe("modal fechado", () => {
   it("nao renderiza nada", () => {
     montar({ isOpen: false });

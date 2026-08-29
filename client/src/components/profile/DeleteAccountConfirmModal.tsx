@@ -105,15 +105,25 @@ export function DeleteAccountConfirmModal({
             Boleto tem copy própria: não há assinatura recorrente para cancelar
             (a chave é uma sessão `cs_...`), o que morre é o período já pago.
             Dizer "cancelará a assinatura" ali seria descrever uma ação que não
-            acontece. */}
+            acontece.
+
+            SOBRE REEMBOLSO, a copy NÃO decide nada. A versão anterior afirmava
+            "sem reembolso do período restante", categórico, e isso é uma
+            promessa ao contrário: a empresa avalia caso a caso, e uma negativa
+            fechada na tela fica frágil diante do direito de arrependimento do
+            CDC numa compra online recente. O que estas frases afirmam é só o que
+            o sistema de fato faz (o acesso termina na hora e o período pago não
+            volta sozinho) e para onde ir com o resto, que é uma conversa
+            humana. */}
         {hasRealSubscription ? (
           <p
             data-testid="excluir-conta-aviso-assinatura"
             className="mt-3 rounded-2xl border-2 border-rose-300 bg-rose-50 p-3 text-sm font-bold text-rose-900"
           >
+            {/* TODO(Ana): revisar a copy. */}
             {isBoletoSubscription
-              ? "Você tem uma assinatura ativa. Excluir sua conta encerra o acesso Pro imediatamente, sem reembolso do período restante que você já pagou. Esta ação é permanente."
-              : "Você tem uma assinatura ativa. Excluir sua conta cancelará a assinatura imediatamente, sem reembolso do período restante. Esta ação é permanente."}
+              ? "Excluir a conta encerra seu acesso Pro imediatamente. O período que você já pagou não é devolvido automaticamente. Se a compra foi recente, fale com a gente antes pelo oi@boranatech.com.br."
+              : "Excluir a conta cancela sua assinatura na hora e o acesso Pro termina imediatamente. O período que você já pagou não é devolvido automaticamente. Se você assinou há pouco tempo, fale com a gente antes pelo oi@boranatech.com.br."}
           </p>
         ) : null}
 
