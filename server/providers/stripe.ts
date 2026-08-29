@@ -176,6 +176,16 @@ async function handleTransition(
   }
 
   if (becameActive && opts.affiliateCode) {
+    if (opts.revenueCents === undefined) {
+      // Conversao contada sem valor declarado pelo evento: a venda entra com
+      // comissao ZERO. Nao inventamos um numero (preco de tabela foi exatamente
+      // o defeito que a base corrigida eliminou), mas ficar mudo esconderia
+      // comissao a menos, que e a mesma classe de falha em silencio.
+      console.error(
+        `[webhook/stripe] conversao do afiliado ${opts.affiliateCode} (user ${userId}) ` +
+          `sem valor pago declarado no evento; comissao contada como zero.`,
+      );
+    }
     try {
       const { data: affiliate } = await supabaseAdmin
         .from("affiliates")
@@ -279,6 +289,46 @@ function eventConfirmsPayment(event: Stripe.Event): boolean {
     // precisa continuar sendo ignorada em silencio.
     default:
       return false;
+  }
+}
+
+/**
+ * Valor EFETIVAMENTE PAGO declarado pelo evento, em centavos, ou null quando o
+ * evento nao declara cobranca.
+ *
+ * Existe porque a comissao de afiliado precisa da MESMA base nos dois meios de
+ * pagamento. O boleto sempre usou `session.amount_total` (valor pago); o cartao
+ * usava `price.unit_amount`, que e PRECO DE TABELA e ignora cupom e desconto de
+ * afiliado. A mesma venda com 30 por cento de desconto gerava comissao sobre
+ * 2990 pelo cartao e sobre 2093 pelo boleto: duas bases alimentando uma conta so.
+ *
+ * A classificacao e a mesma de `eventConfirmsPayment`, de proposito: os eventos
+ * que confirmam cobranca sao exatamente os que carregam valor.
+ *
+ * null NAO e zero. Zero e uma cobranca de valor zero (mode:subscription 100 por
+ * cento descontado, que a Stripe reporta como 'no_payment_required'); null e
+ * ausencia de cobranca no evento, e `customer.subscription.*` e evento de ESTADO,
+ * nao de cobranca. Colapsar os dois faria uma venda sem valor declarado parecer
+ * uma venda gratuita.
+ *
+ * EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
+ * server/routes/cron.ts: o que importa provar aqui e QUAL numero sai daqui para a
+ * comissao, e isso so se prova rodando a funcao contra eventos reais.
+ */
+export function paidAmountCentsFromEvent(event: Stripe.Event): number | null {
+  switch (event.type) {
+    case "invoice.paid": {
+      const invoice = event.data.object as Stripe.Invoice;
+      return invoice.amount_paid ?? null;
+    }
+    case "checkout.session.completed":
+    case "checkout.session.async_payment_succeeded": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (!isPaidSessionStatus(session.payment_status)) return null;
+      return session.amount_total ?? null;
+    }
+    default:
+      return null;
   }
 }
 
@@ -532,7 +582,12 @@ async function applySubscription(
   // efeitos. Nao redisparar email nem conversao de afiliado.
   if (raceLost) return;
 
-  const revenueCents = sub.items?.data?.[0]?.price?.unit_amount ?? 0;
+  // Comissao de afiliado SEMPRE sobre VALOR PAGO, nunca sobre preco de tabela.
+  // O que estava aqui era `price.unit_amount`, que ignora cupom e desconto de
+  // afiliado: a venda descontada pagava comissao cheia, e a MESMA venda por
+  // boleto pagava sobre o valor real. `undefined` quando o evento nao declara
+  // cobranca; ver paidAmountCentsFromEvent.
+  const revenueCents = paidAmountCentsFromEvent(event) ?? undefined;
   await handleTransition(userId, existing?.status ?? null, status, {
     affiliateCode,
     couponCode,
