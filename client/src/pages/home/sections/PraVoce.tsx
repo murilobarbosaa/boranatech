@@ -17,14 +17,6 @@ type Evento = import("@/services/eventosService").Evento;
 // CONFIGURAÇÕES
 // =========================================
 
-// Info evergreen por evento, alguns eventos podem ter ocorrido, então não exibimos
-// data e usamos uma descrição atemporal no lugar.
-// TODO: mover esses textos pra data.ts como campo `evergreenInfo` em cada evento.
-const EVENTO_EVERGREEN: Record<string, string> = {
-  "campus-party": "Anual · Maior evento de tech do Brasil",
-  "python-brasil": "Comunidade Python · Edições anuais",
-};
-
 // 7 nuvens espalhadas pelo background. Mix de tamanhos, opacidades, durações e
 // delays pra desincronizar a animação e criar profundidade.
 const NUVENS = [
@@ -294,9 +286,6 @@ function NoticiaDestaque({ noticia }: { noticia: typeof praVoceNoticia }) {
 // =========================================
 
 function EventoCard({ evento, delay }: { evento: Evento; delay: number }) {
-  // Info evergreen substitui a data (alguns eventos podem ter passado).
-  const evergreen = EVENTO_EVERGREEN[evento.id] ?? evento.formato;
-
   return (
     <motion.article
       initial={{ opacity: 0, x: 30 }}
@@ -315,7 +304,9 @@ function EventoCard({ evento, delay }: { evento: Evento; delay: number }) {
             {evento.nome}
           </h3>
 
-          {/* Local + Info evergreen (substitui o formato cru) */}
+          {/* Local + data. A linha de data some quando o banco nao tem rotulo,
+              em vez de repetir o formato: o icone de calendario prometendo
+              "Online" era a duplicata exata da linha de cima. */}
           <div className="mt-3 space-y-1.5">
             <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
               <MapPin
@@ -329,14 +320,16 @@ function EventoCard({ evento, delay }: { evento: Evento; delay: number }) {
                   : `${evento.cidade}${evento.uf ? `, ${evento.uf}` : ""}`}
               </span>
             </p>
-            <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
-              <Calendar
-                size={14}
-                className="text-fuchsia-700 shrink-0"
-                strokeWidth={2.5}
-              />
-              <span className="truncate">{evergreen}</span>
-            </p>
+            {evento.dataLabel ? (
+              <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
+                <Calendar
+                  size={14}
+                  className="text-fuchsia-700 shrink-0"
+                  strokeWidth={2.5}
+                />
+                <span className="truncate">{evento.dataLabel}</span>
+              </p>
+            ) : null}
           </div>
 
           {/* CTA */}
