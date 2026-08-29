@@ -89,7 +89,7 @@ function AiCtaContent({
   const a = ACCENT[accent];
   return (
     <>
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]">
         <Sparkles className="h-5 w-5" />
       </span>
       <span className="min-w-0">

@@ -176,7 +176,7 @@ export default function ProGate({
         </p>
         <Link
           href="/planos"
-          className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-400 px-6 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 hover:bg-amber-300 hover:shadow-[4px_4px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
+          className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-400 px-6 py-3 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 hover:bg-amber-300 hover:shadow-[4px_4px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
         >
           <Sparkles className="h-4 w-4" />
           Ver planos Pro

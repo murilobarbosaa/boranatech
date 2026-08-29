@@ -149,7 +149,7 @@ export default function OQueEncontra() {
                     {item.nome}
                   </h3>
                   {item.pro ? (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-slate-950 bg-amber-300 px-2 py-0.5 text-[11px] font-black text-slate-950">
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-slate-950 bg-amber-300 px-2 py-0.5 text-[11px] font-black text-ink-on-accent">
                       Pro
                       <ProStarIcon />
                     </span>

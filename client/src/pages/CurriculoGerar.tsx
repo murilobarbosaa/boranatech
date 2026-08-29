@@ -180,7 +180,7 @@ function BuilderTimeline({ reduce }: { reduce: boolean }) {
                   aria-hidden
                 />
               ) : null}
-              <span className="z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-lg font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
+              <span className="z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-lg font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]">
                 {i + 1}
               </span>
               <div className="min-w-0 pt-0.5">
@@ -512,7 +512,7 @@ export default function CurriculoGerar() {
                 isPro && !authLoading && generated ? "mt-5" : undefined,
               )}
             >
-              <span className="inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
+              <span className="inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
                 Currículo Pro
               </span>
             </p>
@@ -635,7 +635,7 @@ function DraftingBoard() {
   return (
     <div>
       <div className="relative mx-auto max-w-xs rotate-[0.8deg]">
-        <span className="absolute -top-3 left-5 z-10 inline-flex -rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
+        <span className="absolute -top-3 left-5 z-10 inline-flex -rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
           <PenLine className="h-3 w-3" aria-hidden />
           {BOARD_BADGE}
         </span>

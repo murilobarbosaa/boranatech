@@ -87,7 +87,7 @@ function CreatorCard({ creator }: { creator: Creator }) {
           ) : null}
         </div>
         {creator.founder ? (
-          <span className="ml-auto shrink-0 rounded-full border-2 border-slate-950 bg-amber-300 px-2.5 py-0.5 text-[11px] font-black uppercase text-slate-950">
+          <span className="ml-auto shrink-0 rounded-full border-2 border-slate-950 bg-amber-300 px-2.5 py-0.5 text-[11px] font-black uppercase text-ink-on-accent">
             Fundador
           </span>
         ) : null}

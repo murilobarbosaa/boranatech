@@ -421,7 +421,7 @@ export default function Projetos() {
                 Todos os projetos das trilhas são gratuitos. Os com selo Pro são
                 desafios premium pra quem quer ir além.
               </span>
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-400 px-4 py-2 text-xs font-black uppercase text-slate-950">
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-400 px-4 py-2 text-xs font-black uppercase text-ink-on-accent">
                 Assinar o Pro <ArrowRight className="h-3.5 w-3.5" aria-hidden />
               </span>
             </Link>
@@ -511,7 +511,7 @@ export default function Projetos() {
                                   {projeto.nivel}
                                 </span>
                                 {projeto.pro === true && (
-                                  <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-2 py-0.5 text-xs font-black text-slate-950">
+                                  <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-2 py-0.5 text-xs font-black text-ink-on-accent">
                                     <ProStarIcon className="h-3 w-3" />
                                     Pro
                                   </span>

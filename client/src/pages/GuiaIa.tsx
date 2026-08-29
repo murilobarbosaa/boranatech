@@ -241,7 +241,7 @@ function ToolCard({ tool }: { tool: ToolWithCat }) {
             href={tool.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5"
+            className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5"
           >
             Experimente agora <ExternalLink className="h-3 w-3" />
           </a>

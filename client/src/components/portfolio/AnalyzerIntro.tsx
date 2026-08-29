@@ -83,7 +83,7 @@ export function HowItWorksTimeline() {
                   aria-hidden
                 />
               ) : null}
-              <span className="z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-lg font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
+              <span className="z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-lg font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]">
                 {i + 1}
               </span>
               <div className="min-w-0 pt-0.5">

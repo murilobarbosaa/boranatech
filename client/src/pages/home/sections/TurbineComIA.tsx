@@ -296,7 +296,7 @@ function ConversationMockup() {
             quantas vezes quiser.
           </p>
           <Link href="/entrevistas">
-            <button className="pro-glare relative overflow-hidden group inline-flex items-center gap-2 rounded-xl border-2 border-slate-950 bg-amber-300 px-5 py-2.5 font-display font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:shadow-[5px_5px_0_var(--bnt-shadow)] hover:-translate-y-0.5">
+            <button className="pro-glare relative overflow-hidden group inline-flex items-center gap-2 rounded-xl border-2 border-slate-950 bg-amber-300 px-5 py-2.5 font-display font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:shadow-[5px_5px_0_var(--bnt-shadow)] hover:-translate-y-0.5">
               <ProStarIcon />
               <span>Simular minha entrevista (PRO)</span>
               <ArrowRight

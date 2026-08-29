@@ -675,7 +675,7 @@ function DesktopNav({ location }: { location: string }) {
         aria-current={
           isPathActive("/comparador", location) ? "page" : undefined
         }
-        className="inline-flex items-center gap-1 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-1.5 text-sm font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow),0_0_16px_rgba(245,158,11,0.55)] transition-transform hover:-translate-y-0.5 hover:bg-amber-200"
+        className="inline-flex items-center gap-1 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-1.5 text-sm font-black text-ink-on-accent shadow-[4px_4px_0_var(--bnt-shadow),0_0_16px_rgba(245,158,11,0.55)] transition-transform hover:-translate-y-0.5 hover:bg-amber-200"
       >
         Comparador
         <ProStarBadge />
@@ -1029,7 +1029,7 @@ export default function Header() {
             aria-current={
               isPathActive("/comparador", location) ? "page" : undefined
             }
-            className="mx-4 mt-3 flex items-center justify-center gap-1 rounded-full border-2 border-slate-950 bg-amber-300 px-4 py-3 text-center text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow),0_0_16px_rgba(245,158,11,0.55)] transition-transform hover:-translate-y-0.5 hover:bg-amber-200"
+            className="mx-4 mt-3 flex items-center justify-center gap-1 rounded-full border-2 border-slate-950 bg-amber-300 px-4 py-3 text-center text-sm font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow),0_0_16px_rgba(245,158,11,0.55)] transition-transform hover:-translate-y-0.5 hover:bg-amber-200"
           >
             Comparador
             <ProStarBadge />

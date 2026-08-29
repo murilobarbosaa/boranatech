@@ -897,7 +897,7 @@ export default function PlanoCarreira() {
               </button>
             ) : null}
             <p className={cn(backAction ? "mt-5" : undefined)}>
-              <span className="inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
+              <span className="inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
                 a rota da carreira
               </span>
             </p>

@@ -225,7 +225,7 @@ function NewsletterCapture() {
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-lg border-2 border-slate-800 bg-amber-400 px-4 py-2 font-display text-xs font-black text-slate-950 transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-lg border-2 border-slate-800 bg-amber-400 px-4 py-2 font-display text-xs font-black text-ink-on-accent transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {/* TODO(Ana): rotulos do botao (normal e carregando). */}
             {submitting ? "Enviando..." : "Inscrever"}

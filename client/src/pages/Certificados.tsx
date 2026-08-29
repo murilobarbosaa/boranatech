@@ -75,7 +75,7 @@ export default function Certificados() {
       />
       <section className="bg-[var(--brand-cream)] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <div className="mx-auto max-w-[720px] px-5 pb-20 pt-10">
-          <span className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]">
+          <span className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
             <Award className="h-4 w-4" />
             {/* TODO(Ana): rotulo do cabecalho da pagina de certificados */}
             Certificados

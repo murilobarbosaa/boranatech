@@ -749,7 +749,7 @@ export default function Plataformas() {
                 Você está vendo uma amostra grátis. Mais {lockedTotal}{" "}
                 plataformas liberam no Pro.
               </span>
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-400 px-4 py-2 text-xs font-black uppercase text-slate-950">
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-400 px-4 py-2 text-xs font-black uppercase text-ink-on-accent">
                 Assinar o Pro <ArrowRight className="h-3.5 w-3.5" aria-hidden />
               </span>
             </Link>

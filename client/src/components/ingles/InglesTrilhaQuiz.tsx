@@ -64,7 +64,7 @@ export default function InglesTrilhaQuiz() {
   return (
     <div className="card-brutal rounded-2xl bg-white p-6">
       <div className="mb-5 flex items-start gap-3">
-        <span className="rounded-xl border-2 border-slate-900 bg-amber-300 p-3 text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
+        <span className="rounded-xl border-2 border-slate-900 bg-amber-300 p-3 text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]">
           <Wand2 className="h-6 w-6" aria-hidden />
         </span>
         <div>

@@ -123,7 +123,7 @@ export default function ProjectValidationBlock({
           {/* TODO(Ana): titulo do bloco de validacao */}
           Validação do projeto
         </p>
-        <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-2 py-0.5 text-[10px] font-black uppercase text-slate-950">
+        <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-2 py-0.5 text-[10px] font-black uppercase text-ink-on-accent">
           <ProStarIcon className="h-3 w-3" /> Pro
         </span>
       </div>

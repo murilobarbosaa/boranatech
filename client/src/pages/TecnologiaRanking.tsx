@@ -218,7 +218,7 @@ export default function TecnologiaRanking() {
             </Link>
             <Link
               href="/quiz-carreira"
-              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5"
+              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1.5 text-xs font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5"
             >
               Fazer o quiz
               <ArrowRight className="h-3.5 w-3.5" aria-hidden />

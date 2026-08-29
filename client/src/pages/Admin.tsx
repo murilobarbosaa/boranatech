@@ -1513,7 +1513,7 @@ function AdminShell({
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex min-h-16 items-center justify-between gap-4">
             <Link href="/" className="group flex min-w-fit items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-slate-900 bg-yellow-400 text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all group-hover:shadow-[4px_4px_0_var(--bnt-shadow)]">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-slate-900 bg-yellow-400 text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-all group-hover:shadow-[4px_4px_0_var(--bnt-shadow)]">
                 <Compass className="h-5 w-5" />
               </span>
               <div>
@@ -8697,7 +8697,7 @@ export default function Admin() {
                         key={item.label}
                         className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]"
                       >
-                        <span className="inline-flex rounded-xl border-2 border-slate-900 bg-yellow-300 p-2 text-slate-950">
+                        <span className="inline-flex rounded-xl border-2 border-slate-900 bg-yellow-300 p-2 text-ink-on-accent">
                           {item.icon}
                         </span>
                         <p className="mt-3 text-xs font-black uppercase text-violet-700">

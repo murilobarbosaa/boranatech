@@ -816,7 +816,7 @@ export default function Hero() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -20, scale: 1 }}
                 transition={{ duration: 0.4, ease: "easeInOut" }}
-                className="relative inline-block"
+                className="relative inline-block text-ink-on-accent"
               >
                 {HIGHLIGHTS[currentHighlight]}
               </motion.span>

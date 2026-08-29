@@ -86,7 +86,7 @@ export default function Acesso() {
           <button
             type="submit"
             disabled={status === "submitting"}
-            className="rounded-lg border-2 border-slate-950 bg-yellow-400 px-4 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-60"
+            className="rounded-lg border-2 border-slate-950 bg-yellow-400 px-4 py-3 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-60"
           >
             {/* TODO(Ana) */}
             {status === "submitting" ? "Verificando..." : "Entrar"}

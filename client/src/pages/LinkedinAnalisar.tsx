@@ -1288,7 +1288,7 @@ export default function LinkedinAnalisar() {
                                 key={step}
                                 className="flex items-center gap-3 rounded-xl border-2 border-slate-200 bg-white p-3"
                               >
-                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-base font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-base font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
                                   {i + 1}
                                 </span>
                                 <span className="text-sm font-medium text-slate-700">

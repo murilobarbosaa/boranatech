@@ -75,7 +75,7 @@ export default function DicaDoDia() {
             <button
               type="button"
               onClick={outra}
-              className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-amber-300 px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all motion-safe:hover:-translate-y-0.5 hover:shadow-[3px_3px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
+              className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-amber-300 px-4 py-2 text-sm font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-all motion-safe:hover:-translate-y-0.5 hover:shadow-[3px_3px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
             >
               <Shuffle className="h-4 w-4" aria-hidden />
               Outra dica

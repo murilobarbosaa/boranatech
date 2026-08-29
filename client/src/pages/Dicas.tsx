@@ -118,7 +118,7 @@ export default function Dicas() {
       <section className="relative overflow-hidden border-b-2 border-slate-900 bg-amber-100 py-12">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
-          <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
+          <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]">
             <Lightbulb className="h-3.5 w-3.5" />
             dicas, recursos e curiosidades
           </p>
@@ -321,7 +321,7 @@ export default function Dicas() {
                     key={tier.faixa}
                     className="card-brutal flex flex-col rounded-2xl bg-white p-5"
                   >
-                    <span className="inline-flex w-fit rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
+                    <span className="inline-flex w-fit rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
                       {tier.faixa}
                     </span>
                     <p className="mt-3 text-sm font-bold text-slate-800">
@@ -367,7 +367,7 @@ export default function Dicas() {
                     key={model.faixa}
                     className="card-brutal rounded-2xl bg-white p-5"
                   >
-                    <span className="inline-flex w-fit rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
+                    <span className="inline-flex w-fit rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
                       {model.faixa}
                     </span>
                     <p className="mt-3 text-sm text-slate-600">
@@ -528,7 +528,7 @@ function CarreiraSection() {
 
 const dicaCores: Record<string, { chip: string; shadow: string }> = {
   "Como estudar": {
-    chip: "bg-amber-300 text-slate-950",
+    chip: "bg-amber-300 text-ink-on-accent",
     shadow: "shadow-[5px_5px_0_#FFB800]",
   },
   "Primeiro emprego": {
@@ -548,7 +548,7 @@ const dicaCores: Record<string, { chip: string; shadow: string }> = {
 function dicaCor(categoria: string) {
   return (
     dicaCores[categoria] ?? {
-      chip: "bg-amber-300 text-slate-950",
+      chip: "bg-amber-300 text-ink-on-accent",
       shadow: "shadow-[5px_5px_0_#FFB800]",
     }
   );
@@ -714,7 +714,7 @@ function DicasDestaque() {
           <button
             type="button"
             onClick={sortear}
-            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-5 py-2.5 text-sm font-black uppercase text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-5 py-2.5 text-sm font-black uppercase text-ink-on-accent shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
           >
             <Star className="h-4 w-4" aria-hidden />
             Me dá uma dica de ouro
@@ -965,7 +965,7 @@ function CuriosidadesSection() {
           <button
             type="button"
             onClick={proxima}
-            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-6 py-3 text-sm font-black uppercase text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-6 py-3 text-sm font-black uppercase text-ink-on-accent shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
           >
             <Sparkles className="h-4 w-4" aria-hidden />
             {atual ? "Outra curiosidade" : "Me dê uma curiosidade"}
@@ -1140,7 +1140,7 @@ function TelaRevealCard({
           target="_blank"
           rel="noopener noreferrer"
           aria-label={`Onde assistir ${f.titulo}`}
-          className="inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+          className="inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
         >
           Onde encontrar <ExternalLink className="h-3 w-3" aria-hidden />
         </a>
@@ -1717,7 +1717,7 @@ function FilmesGrid({
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label={`Onde assistir ${filme.titulo}`}
-                        className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                        className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
                       >
                         Onde encontrar <ExternalLink className="h-3 w-3" aria-hidden />
                       </a>
@@ -1808,7 +1808,7 @@ function LivrosGrid({
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`Onde encontrar ${livro.titulo}`}
-                    className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                    className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
                   >
                     {livro.url ? "Ler grátis" : "Onde encontrar"}{" "}
                     <ExternalLink className="h-3 w-3" aria-hidden />

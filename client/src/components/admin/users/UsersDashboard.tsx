@@ -125,7 +125,7 @@ export function UsersDashboard() {
                 option.value === "influencers" ? "col-span-2 sm:col-span-1" : ""
               } ${
                 filter === option.value
-                  ? "bg-yellow-300 text-slate-950"
+                  ? "bg-yellow-300 text-ink-on-accent"
                   : "bg-white text-slate-500 hover:bg-yellow-50"
               }`}
             >

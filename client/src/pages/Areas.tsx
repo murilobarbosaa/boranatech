@@ -273,7 +273,7 @@ export default function Areas() {
             />
             <Link
               href="/quiz-carreira"
-              className="pro-glare inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-slate-900 bg-amber-300 px-5 py-3 text-center font-display text-sm font-black leading-snug text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 md:w-auto"
+              className="pro-glare inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-slate-900 bg-amber-300 px-5 py-3 text-center font-display text-sm font-black leading-snug text-ink-on-accent shadow-[4px_4px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 md:w-auto"
             >
               <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
               Não sabe por onde começar? Faça o quiz

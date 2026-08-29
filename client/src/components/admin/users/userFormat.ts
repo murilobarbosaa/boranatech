@@ -90,7 +90,7 @@ export function activityStatusLabelOf(
 const PRO_BADGES: Record<string, { label: string; className: string }> = {
   subscription: {
     label: "Pro",
-    className: "border-slate-900 bg-yellow-300 text-slate-950",
+    className: "border-slate-900 bg-yellow-300 text-ink-on-accent",
   },
   influencer: {
     label: "Influencer",

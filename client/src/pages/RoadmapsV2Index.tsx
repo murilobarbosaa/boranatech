@@ -42,7 +42,7 @@ import {
 function CertBadge({ status }: { status: CertificateStatus }) {
   if (status === "certificada") {
     return (
-      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border-[1.5px] border-slate-900 bg-amber-300 px-2.5 py-0.5 text-[11px] font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]">
+      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border-[1.5px] border-slate-900 bg-amber-300 px-2.5 py-0.5 text-[11px] font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
         <Award className="h-3.5 w-3.5" />
         {/* TODO(Ana): selo de trilha certificada na vitrine */}
         Certificada

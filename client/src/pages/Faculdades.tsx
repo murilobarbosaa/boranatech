@@ -922,7 +922,7 @@ export default function Faculdades() {
 
             <div className="rounded-2xl border-2 border-slate-900 bg-amber-50 p-5 shadow-[4px_4px_0_#fcd34d]">
               <div className="flex items-start gap-3">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-amber-300 text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-amber-300 text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
                   <Award className="h-5 w-5" aria-hidden />
                 </span>
                 <div className="space-y-2">
@@ -1050,7 +1050,7 @@ export default function Faculdades() {
                 href={EMEC_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-4 py-2 text-sm font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
               >
                 Consultar notas no e-MEC
                 <ExternalLink className="h-4 w-4" aria-hidden />

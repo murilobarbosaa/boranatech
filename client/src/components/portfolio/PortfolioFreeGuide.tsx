@@ -211,7 +211,7 @@ export default function PortfolioFreeGuide() {
                 <span
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-slate-900 transition-all ${
                     isChecked
-                      ? "bg-amber-300 text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
+                      ? "bg-amber-300 text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]"
                       : "bg-white text-transparent"
                   }`}
                   aria-hidden="true"
@@ -236,7 +236,7 @@ export default function PortfolioFreeGuide() {
         <div className="flex items-start gap-3">
           <span
             className={cn(
-              "rounded-xl border-2 border-slate-950 bg-amber-300 p-3 text-slate-950",
+              "rounded-xl border-2 border-slate-950 bg-amber-300 p-3 text-ink-on-accent",
               ac.brutalShadow,
             )}
           >
