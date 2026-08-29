@@ -90,6 +90,58 @@ describe("render com dados", () => {
     expect(screen.getByText(/7 itens concluídos/)).toBeTruthy();
   });
 
+  it("roadmap SEM total conta só os passos feitos, sem interrogação", () => {
+    // O "?" que morava aqui era ausência sem estado nomeado vazando para a
+    // tela. Os DOIS lados do ramo têm trava: o de cima (com total) está no
+    // teste anterior, com "3 de 10 passos".
+    render(
+      <UserSiteLife
+        vida={vida({
+          roadmaps: {
+            itens: [
+              {
+                roadmapId: "r-sem-total",
+                titulo: "Redes",
+                passosConcluidos: 3,
+                passosTotais: null,
+                ultimaAtividadeEm: null,
+              },
+            ],
+            mais: 0,
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("3 passos")).toBeTruthy();
+    expect(screen.getByTestId("vida-roadmap").textContent).not.toContain("?");
+  });
+
+  it("total ZERO é um total conhecido, não cai no ramo do desconhecido", () => {
+    // Trava do critério de comparação. Com truthiness em vez de null, zero
+    // cairia no ramo de "sem total" e a tela diria "0 passos" sobre um roadmap
+    // que declara ter zero passos, apagando a diferença entre as duas coisas.
+    render(
+      <UserSiteLife
+        vida={vida({
+          roadmaps: {
+            itens: [
+              {
+                roadmapId: "r-zero",
+                titulo: "Vazio",
+                passosConcluidos: 0,
+                passosTotais: 0,
+                ultimaAtividadeEm: null,
+              },
+            ],
+            mais: 0,
+          },
+        })}
+      />,
+    );
+    expect(screen.getByText("0 de 0 passos")).toBeTruthy();
+  });
+
   it("trilha SEM título cai no slug, que é feio e verdadeiro", () => {
     render(
       <UserSiteLife

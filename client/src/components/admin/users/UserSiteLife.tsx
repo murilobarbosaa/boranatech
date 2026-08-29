@@ -214,7 +214,15 @@ export function UserSiteLife({
                 <span className={NOME}>{r.titulo ?? "Roadmap sem título"}</span>
                 <span className={CHIP}>
                   {/* TODO(Ana) */}
-                  {r.passosConcluidos} de {r.passosTotais ?? "?"} passos
+                  {/* Sem total conhecido, o chip conta só o que foi feito. O
+                      "?" que morava aqui era ausência SEM estado nomeado
+                      vazando para a tela: o admin lia uma interrogação e não
+                      sabia se o roadmap não tem total ou se a consulta falhou.
+                      Comparação com null (e não truthiness) porque total ZERO é
+                      um total conhecido, e cairia no ramo errado. */}
+                  {r.passosTotais == null
+                    ? `${r.passosConcluidos} passos`
+                    : `${r.passosConcluidos} de ${r.passosTotais} passos`}
                 </span>
               </li>
             ))}
