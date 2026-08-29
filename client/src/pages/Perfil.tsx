@@ -31,6 +31,7 @@ import UserAvatar, { effectiveOwnAvatar } from "@/components/UserAvatar";
 import AvatarPhotoPanel from "@/components/profile/AvatarPhotoPanel";
 import { CancelSubscriptionModal } from "@/components/profile/CancelSubscriptionModal";
 import { ConquistasPreview } from "@/components/profile/ConquistasPreview";
+import { DeleteAccountConfirmModal } from "@/components/profile/DeleteAccountConfirmModal";
 import { ProfileBackground } from "@/components/profile/ProfileBackground";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
 import ProGate from "@/components/pro/ProGate";
@@ -2108,74 +2109,14 @@ export default function Perfil() {
             description="As bordas animadas fazem parte do Plano Pro. Assine pra desbloquear."
           />
 
-          {deleteModalOpen ? (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
-              onClick={() => {
-                if (!deletingAccount) setDeleteModalOpen(false);
-              }}
-            >
-              <div
-                className="relative w-full max-w-md rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]"
-                onClick={(event) => event.stopPropagation()}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="delete-modal-title"
-              >
-                <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-rose-700 bg-rose-100">
-                  <Trash2 className="h-5 w-5 text-rose-700" strokeWidth={2.5} />
-                </div>
-                <h2
-                  id="delete-modal-title"
-                  className="font-display text-2xl font-black text-rose-800"
-                >
-                  Excluir conta
-                </h2>
-                <p className="mt-2 text-sm font-semibold text-slate-600">
-                  Esta ação é permanente e irreversível. Todos os seus dados,
-                  favoritos e histórico de estudos serão apagados.
-                </p>
-                {/* AVISO DE ASSINATURA, e ele só existe porque o comportamento
-                    mudou. Até 2026-08-14 excluir a conta NÃO cancelava nada na
-                    Stripe: a cobrança continuava viva contra alguém que não
-                    existia mais no produto. Agora cancela, e a pessoa precisa
-                    saber disso ANTES, porque não há como desfazer.
-
-                    Boleto tem copy própria: não há assinatura recorrente para
-                    cancelar (a chave é uma sessão `cs_...`), o que morre é o
-                    período já pago. Dizer "cancelará a assinatura" ali seria
-                    descrever uma ação que não acontece. */}
-                {hasRealSubscription ? (
-                  <p
-                    data-testid="excluir-conta-aviso-assinatura"
-                    className="mt-3 rounded-2xl border-2 border-rose-300 bg-rose-50 p-3 text-sm font-bold text-rose-900"
-                  >
-                    {isBoletoSubscription
-                      ? "Você tem uma assinatura ativa. Excluir sua conta encerra o acesso Pro imediatamente, sem reembolso do período restante que você já pagou. Esta ação é permanente."
-                      : "Você tem uma assinatura ativa. Excluir sua conta cancelará a assinatura imediatamente, sem reembolso do período restante. Esta ação é permanente."}
-                  </p>
-                ) : null}
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteModalOpen(false)}
-                    disabled={deletingAccount}
-                    className="flex-1 rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-3 font-display font-black text-slate-700 shadow-[3px_3px_0_#0f172a] disabled:opacity-60"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleDeleteAccount()}
-                    disabled={deletingAccount}
-                    className="flex-1 rounded-full border-2 border-rose-900 bg-rose-100 px-5 py-3 font-display font-black text-rose-800 shadow-[3px_3px_0_#7f1d1d] disabled:opacity-60"
-                  >
-                    {deletingAccount ? "Excluindo..." : "Confirmar exclusão"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : null}
+          <DeleteAccountConfirmModal
+            isOpen={deleteModalOpen}
+            onClose={() => setDeleteModalOpen(false)}
+            onConfirm={handleDeleteAccount}
+            isLoading={deletingAccount}
+            hasRealSubscription={hasRealSubscription}
+            isBoletoSubscription={isBoletoSubscription}
+          />
         </div>
       </div>
     </Layout>
