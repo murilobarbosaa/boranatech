@@ -1,7 +1,9 @@
-HEAD_FINAL: 86fe1cfd331ab19049b2e102a5fe57ecbfc0675d
-(ultimo commit de trabalho. O commit que acrescenta ESTE documento vem depois
-dele por construcao, e por isso nao pode se citar: um arquivo nao contem o SHA
-do commit que o cria. `git log --oneline origin/main..HEAD` da a lista fechada.)
+HEAD_FINAL: 5dd0a3cc
+
+(ultimo commit de trabalho, o corretivo pos-revisao. Os commits que acrescentam
+ou atualizam ESTE documento vem depois dele por construcao, e por isso nao podem
+se citar: um arquivo nao contem o SHA do commit que o cria.
+`git log --oneline origin/main..HEAD` da a lista fechada.)
 
 # Pormenores de agosto: hardening de checks, eventos e dicionario
 
@@ -179,6 +181,56 @@ este relatorio, pelo mesmo motivo de auto-referencia da linha `HEAD_FINAL`.
    chr(8212), chr(45) || chr(45))` foram validadas por `EXPLAIN` no UPDATE
    equivalente, que usa exatamente as mesmas; o que resta sem prova e a sintaxe
    do envelope plpgsql.
+
+## Corretivo pos-revisao (2026-08-29)
+
+A revisao verbatim do diff aprovou os nove commits com um corretivo: a
+**verificacao 4** do SQL de janela afirmava em comentario usar "o mesmo
+predicado da rota /api/content/eventos" e nao usava. Corrigido em `5dd0a3cc`.
+
+**O que estava errado, de fato:** a verificacao cortava por `current_date`, que
+no Postgres e a data em **UTC**. A rota calcula a data de corte em
+America/Sao_Paulo (`Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" })`,
+corrigido nela por `f961587a fix(content): compute eventos cutoff date in
+Brasilia timezone`). Entre 21h e a meia-noite de Brasilia o UTC ja virou o dia
+seguinte, e o corte descartava eventos do proprio dia em que ainda estao
+acontecendo. A expressao agora e `(now() at time zone 'America/Sao_Paulo')::date`.
+
+**Detalhe que vale registrar:** a janela de execucao (05h as 09h de Brasilia)
+cai num horario em que UTC e Sao Paulo sao o mesmo dia, entao ali o numero antigo
+daria o mesmo resultado. A correcao foi feita assim mesmo, porque "certo por
+sorte de horario" e o tipo de acerto que deixa de valer sem aviso.
+
+**Uma parte da revisao NAO se confirmou, e o corretivo foi feito conforme o
+codigo, como a propria revisao mandou.** A revisao descrevia a rota como tendo
+TRES casos, sendo o terceiro "evento em andamento via `ends_on`", atribuido a uma
+decisao DEV-41. **Esse ramo nao existe.** Conferido de tres formas: `ends_on`
+aparece em `server/routes/content.ts` apenas na lista de colunas do `select`,
+nunca no filtro; `git log --all -S "ends_on" -- server/routes/content.ts`
+devolve so `e47ec6c9`, o commit que criou o endpoint; e "DEV-41" nao aparece em
+lugar nenhum do repositorio. O predicado real tem DOIS ramos de data:
+`starts_on >= hoje` OU `starts_on is null`.
+
+**De onde vinham os 13 de diferenca.** Medido em producao em 2026-08-29:
+
+| Predicado | Contagem |
+|---|---|
+| rota real (2 ramos, fuso Sao Paulo) | 280 |
+| com o terceiro ramo `ends_on >= hoje` | 293 |
+| diferenca (eventos ja iniciados que ainda nao terminaram) | 13 |
+
+Os 13 sao exatamente os eventos EM ANDAMENTO. Ou seja, o numero 293 da revisao
+veio do predicado de tres ramos, e nao da rota. Escrever tres ramos na
+verificacao 4 a faria divergir do site em 13, que e o defeito que o corretivo
+existe para eliminar. Por isso a verificacao reproduz os dois ramos.
+
+**Achado que sai daqui (fora do escopo deste corretivo, nao corrigido):** se a
+intencao de produto e mesmo mostrar evento em andamento, entao **13 eventos que
+estao acontecendo hoje nao aparecem na pagina**, e o lugar de consertar isso e a
+rota, nao a verificacao. O comentario da propria rota ja enumera "tres casos"
+(data futura, sem data, a confirmar), mas os dois ultimos colapsam em
+`starts_on is null` no SQL, e evento em andamento nao e nenhum dos tres. Fica
+como decisao de produto.
 
 ## Estado da integracao (conferido no fim da sessao)
 
