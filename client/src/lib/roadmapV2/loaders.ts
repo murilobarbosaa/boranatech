@@ -117,12 +117,69 @@ export const roadmapLoaders: Record<string, () => Promise<RoadmapV2>> =
     ]),
   );
 
-// Dispara o download do chunk da trilha sem esperar o resultado (hover/focus
-// na listagem). import() repetido e cacheado pelo runtime, entao chamar de
-// novo e barato; erro aqui e ignorado porque a pagina de detalhe tem o
-// proprio estado de erro com retry.
+/**
+ * Janela de silencio do PREFETCH depois de uma falha, por slug.
+ *
+ * O comentario antigo daqui dizia que "import() repetido e cacheado pelo
+ * runtime, entao chamar de novo e barato". Isso vale para o import RESOLVIDO, e
+ * so para ele: o modulo entra no registro e a segunda chamada devolve a mesma
+ * promessa. Import REJEITADO nao e memoizado, entao cada hover no mesmo card
+ * refazia a tentativa inteira, com o retry de `importWithRetry` por dentro, e
+ * emitia mais um `chunk_import_failed`. Com `onMouseEnter` e `onFocus` nos dois
+ * sitios da listagem, passar o mouse por um card quebrado inflava a faceta por
+ * slug no Sentry e fazia uma trilha parecer muito pior que a vizinha por conta
+ * do movimento do mouse, nao do defeito.
+ *
+ * 30 segundos: a rajada que se quer colapsar acontece em SEGUNDOS (ida e volta
+ * do ponteiro sobre o mesmo card, tab entrando e saindo do foco), e meio minuto
+ * cobre isso com folga. Nao mais que isso porque quem volta depois de um tempo
+ * merece uma tentativa especulativa nova, e o custo de errar para menos e
+ * pequeno: o CLIQUE nao passa por esta janela.
+ */
+const PREFETCH_SILENCIO_APOS_FALHA_MS = 30_000;
+
+/** Prefetches em voo, para nao disparar dois downloads do mesmo chunk. */
+const prefetchEmVoo = new Set<string>();
+
+/** Instante da ultima falha de prefetch por slug. Sucesso nao entra aqui. */
+const prefetchFalhouEm = new Map<string, number>();
+
+/**
+ * Dispara o download do chunk da trilha sem esperar o resultado (hover/focus na
+ * listagem). Erro e ignorado porque a pagina de detalhe tem o proprio estado de
+ * erro com retry.
+ *
+ * O DEDUP MORA AQUI, e nao em `roadmapLoaders`, de proposito. `RoadmapsV2.tsx`
+ * chama `roadmapLoaders[slug]()` direto no CLIQUE, que e a carga de verdade: ali
+ * a pessoa pediu, e uma segunda tentativa imediata e exatamente o comportamento
+ * certo. Uma janela dentro do mapa seria herdada pelo clique e transformaria
+ * "tentar de novo" em "esperar meio minuto sem explicacao". Especulacao se
+ * segura; pedido explicito, nao.
+ */
 export function prefetchRoadmap(slug: string): void {
   const loader = roadmapLoaders[slug];
   if (!loader) return;
-  void loader().catch(() => {});
+  if (prefetchEmVoo.has(slug)) return;
+
+  const ultimaFalha = prefetchFalhouEm.get(slug);
+  if (
+    ultimaFalha !== undefined &&
+    Date.now() - ultimaFalha < PREFETCH_SILENCIO_APOS_FALHA_MS
+  ) {
+    return;
+  }
+
+  prefetchEmVoo.add(slug);
+  void loader().then(
+    () => {
+      prefetchEmVoo.delete(slug);
+      // Resolveu: o runtime memoiza daqui para a frente, entao nao ha o que
+      // silenciar. Limpa a marca para nao carregar falha velha.
+      prefetchFalhouEm.delete(slug);
+    },
+    () => {
+      prefetchEmVoo.delete(slug);
+      prefetchFalhouEm.set(slug, Date.now());
+    },
+  );
 }
