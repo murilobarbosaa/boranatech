@@ -1,6 +1,6 @@
 # Como confirmar que um deploy chegou
 
-**Escrito em 2026-07-31**, depois de o instrumento que vinha sendo usado há dez deploys falhar pela primeira vez — e falhar dizendo "não mudou" sobre um deploy que tinha acontecido.
+**Escrito em 2026-07-31**, depois de o instrumento que vinha sendo usado há dez deploys falhar pela primeira vez, e falhar dizendo "não mudou" sobre um deploy que tinha acontecido.
 
 ## Passo 0: o worktree de deploy tem de estar atual
 
@@ -45,7 +45,7 @@ curl -s -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
 
 Saída esperada: `vercel-production 2026-07-31T07:18:22Z`.
 
-**É o único que declara o instante em que terminou.** Só ele responde "já acabou?" — todos os outros respondem "como está agora", e "agora" pode ser antes.
+**É o único que declara o instante em que terminou.** Só ele responde "já acabou?"; todos os outros respondem "como está agora", e "agora" pode ser antes.
 
 #### Mas NÃO leia `lastDeploy`: leia a lista e procure o ambiente
 
@@ -76,36 +76,93 @@ branches autorizadas no mesmo lote: a primeira subiu, a segunda ficou 1 atrás, 
 **Meça o CI DEPOIS da última operação que altera SHA**, e compare o `head_sha` do run com o `HEAD` da branch
 antes de empurrar. Guardar "CI verde" sem o SHA é guardar um valor sem o sujeito dele.
 
-### 2. Backend: `uptime` do `/api/health`, amostra única
+### 2. Backend: o campo `commit` do `/api/health`, amostra única
 
-**É O ÚNICO instrumento do Railway.** O passo 1 não o alcança (ver o bloco lá em cima).
+**É O INSTRUMENTO DO RAILWAY.** O passo 1 não o alcança (ver o bloco lá em cima).
 
 ```bash
-curl -s https://api.boranatech.com.br/api/health | python3 -c "import sys,json; print(json.load(sys.stdin)['uptime'])"
+curl -s https://api.boranatech.com.br/api/health \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['commit'])"
 ```
 
-Valor baixo (segundos, não horas) significa que o Railway reiniciou. **Nunca medir por frequência** (ver `CLAUDE.md`, o loop de 150 requisições que disparou a mitigação da Vercel).
+Compare com o SHA esperado (`git rev-parse origin/main`). Igual, o deploy chegou; diferente,
+não chegou. Resposta categórica, sem janela de inferência e sem aritmética.
 
-Subtraia o `uptime` do instante da amostra para ter o momento em que o processo subiu, e
-compare com o `dateFinished` da Vercel: 1 a 3 minutos depois é o normal desta base. Medido em
-2026-08-18 para `eb032d66`: amostra às 21:45:13Z com `uptime` de 12638s, ou seja, start às
-18:14:35Z, contra 18:11:19Z da Vercel.
+O valor vem de `RAILWAY_GIT_COMMIT_SHA`, que o Railway injeta no container, e passa por
+`server/lib/commitSha.ts`. Fora do Railway (dev local, CI, teste) o campo é `null`, nunca
+string vazia, e a normalização mora dentro da função, não no call site. Isso importa na
+leitura: `null` em produção seria defeito da injeção, não deploy pendente, e os dois estados
+ficam distinguíveis em vez de virarem o mesmo valor mudo.
 
-#### O LIMITE deste instrumento, que precisa ser dito junto
+**Nunca medir por frequência** (ver `CLAUDE.md`, o loop de 150 requisições que disparou a
+mitigação da Vercel). Uma amostra responde. Se o deploy ainda não chegou, espere e amostre de
+novo, espaçado.
 
-**`uptime` prova REINÍCIO, não VERSÃO.** Não existe endpoint que declare qual SHA o backend
-carrega, então este passo nunca responde "o processo roda o commit X". Ele responde "o
-processo subiu no instante T", e o resto é inferência.
+#### `uptime` é SECUNDÁRIO, e o que sobrou para ele
 
-A inferência só fecha com uma condição que precisa ser conferida à parte: **nenhum outro push
-à `main` na janela entre o deploy medido e a amostra**. Com dois pushes no intervalo, um
-`uptime` baixo é compatível com os dois, e escolher um é chutar. Confira com
-`git log --oneline <sha-anterior>..origin/main` antes de concluir.
+O mesmo endpoint devolve `uptime`, e ele responde outra pergunta: "há quanto tempo ESTE
+processo está de pé", não "qual versão ele carrega". Continua útil para um uso, e não é
+confirmar deploy:
 
-Um reinício também pode vir de coisa que não é deploy (OOM, restart da plataforma, crash),
-e o `uptime` não distingue nenhum desses de um deploy. Quando a diferença importar, o jeito
-honesto é confirmar por comportamento: exercitar um endpoint que só existe ou só mudou no
-commit novo, que é o análogo backend do passo 4.
+**Investigar reinício que NÃO é deploy.** OOM, crash, restart da plataforma. Com o `commit`
+igual ao esperado e um `uptime` baixo que ninguém pediu, houve reinício sem troca de versão,
+que é exatamente o sintoma procurado. Subtraia o `uptime` do instante da amostra para ter o
+instante do boot.
+
+Para confirmar DEPLOY ele é ruim, por dois motivos que se somam: um restart sem deploy zera o
+`uptime` e parece deploy, e um deploy que demora zera o `uptime` tarde e parece que não subiu.
+Além disso a inferência exigia uma condição conferida à parte, **nenhum outro push à `main` na
+janela entre o deploy medido e a amostra** (`git log --oneline <sha-anterior>..origin/main`),
+porque com dois pushes no intervalo um `uptime` baixo é compatível com os dois, e escolher um
+é chutar. O campo `commit` dispensa a condição inteira: ele nomeia o SHA.
+
+#### A afirmação que este passo trazia, e que ficou falsa
+
+Até 2026-08-22 este documento dizia, com razão:
+
+> `uptime` prova REINÍCIO, não VERSÃO. Não existe endpoint que declare qual SHA o backend
+> carrega, então este passo nunca responde "o processo roda o commit X".
+
+**Deixou de ser verdade no commit `4c565547`**, de 2026-08-22, que acrescentou
+`commitShaAtual()` em `server/lib/commitSha.ts` e o campo `commit` no `/api/health`. O
+docstring da função diz para que ela existe: "Existe para 'o deploy subiu?' ser uma linha de
+curl contra `/api/health` em vez de aritmética sobre `uptime`". O documento não acompanhou, e
+seguiu por seis dias mandando usar o instrumento pior enquanto negava a existência do melhor.
+
+**O custo, medido: 34 minutos, em 2026-08-28.** Na publicação do `383ec3bc` a verificação do
+Railway seguiu este passo como estava escrito: três rodadas de amostras de `uptime`,
+aritmética para achar o instante do boot, e a conclusão "não chegou" tirada por inferência. Só
+depois disso alguém leu a resposta INTEIRA do `/api/health` e viu o campo `commit` declarando
+o SHA anterior. A conclusão estava certa e o caminho era desnecessário, que é o pior formato:
+nada falhou, então nada acusou.
+
+Fica registrado em vez de apagado, no mesmo padrão da correção de 2026-08-18 (o bloco do passo
+1 sobre o Railway). O erro registrado é o que impede a reincidência, e um documento que mostra
+só a versão corrigida ensina a confiar nele sem conferir a data.
+
+#### Quando a Vercel sobe e o Railway não
+
+Descoberto em 2026-08-28, no mesmo deploy. A Vercel terminou 53 segundos depois do push
+(`vercel-production = 2026-08-29T00:54:59Z`) e o Railway ainda servia o SHA anterior 34
+minutos depois. **Vercel pronta não é evidência sobre o Railway**, e a assimetria pode ser de
+dezenas de minutos, não dos 1 a 3 que o passo 1 cita para o caso normal.
+
+Com o `commit` do health dizendo que o backend não trocou, sobram três causas, e **elas se
+distinguem no painel do Railway, não daqui**:
+
+1. **Build em fila ou em andamento.** A espera é real e termina sozinha.
+2. **Build quebrado.** O deploy foi disparado e falhou. O serviço segue no anterior, saudável,
+   e nada no health acusa: a leitura é idêntica à da causa 1.
+3. **Auto-deploy ou webhook desconectado.** Nenhum deploy foi disparado, e a espera é infinita.
+
+**Não há credencial de API do Railway no ambiente** (nenhuma variável `RAILWAY_*` no `.env`),
+então nada aqui separa as três: de fora, as três produzem exatamente a mesma leitura, "o
+`commit` continua o anterior". Confundir a primeira com a terceira é esperar por um deploy que
+nunca foi disparado. Abra o painel.
+
+Naquele caso o deploy acabou chegando sozinho, com boot em `2026-08-29T02:22:46Z`, cerca de 88
+minutos depois do push. Qual das três demoras foi, o painel diria; daqui só se viu o resultado,
+e é só isso que fica afirmado.
 
 ### 3. Frontend: o hash do bundle é SECUNDÁRIO, e tem dois pontos cegos
 
@@ -155,8 +212,8 @@ Medições desta série declararam ausência sobre algo que ainda não tinha aco
    de SUJEITO, e a segunda é pior que a primeira, porque uma afirmação errada dentro do
    documento de verificação ensina o erro em vez de apenas omiti-lo. Ver `CLAUDE.md`, "regra
    escrita errada em arquivo de regras".
-2. **"Zero artefatos, nenhum source map"** — endpoint legado (`/releases/{v}/files/`), que indexa por URL e devolve vazio porque o `sentry-cli` moderno sobe por debug ID. O correto é `/files/artifact-bundles/`, que mostrava 1066 arquivos o tempo todo.
-3. **"O bundle não mudou"** — amostrado antes de o Vercel terminar, num commit em que o entry também não mudaria. Dois defeitos ao mesmo tempo, e o segundo teria mascarado o primeiro.
+2. **"Zero artefatos, nenhum source map"**, endpoint legado (`/releases/{v}/files/`), que indexa por URL e devolve vazio porque o `sentry-cli` moderno sobe por debug ID. O correto é `/files/artifact-bundles/`, que mostrava 1066 arquivos o tempo todo.
+3. **"O bundle não mudou"**, amostrado antes de o Vercel terminar, num commit em que o entry também não mudaria. Dois defeitos ao mesmo tempo, e o segundo teria mascarado o primeiro.
 
 O padrão comum: **a superfície respondeu, e a resposta foi lida como veredito.** Status 200 com corpo errado, endpoint certo com dado de outra época, hash certo de um artefato que não é o que mudou.
 
