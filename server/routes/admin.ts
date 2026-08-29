@@ -359,9 +359,29 @@ function filterPayload(body: Record<string, unknown>, allowedFields: string[]) {
 // exatamente isso que custou uma investigacao inteira: 42703 undefined_column
 // escondido atras de "Erro ao buscar usuario"). O cliente continua recebendo so a
 // mensagem generica; detalhe de schema nunca vaza para o browser.
+//
+// O `console.error` acima NAO chega ao Sentry: `server/lib/sentry.ts` nao declara
+// `integrations` e o `captureConsoleIntegration` nao e padrao no @sentry/node
+// (docs/erro-engolido.md). Por isso o `cause`: o LinkedErrors percorre
+// `err.cause` e anexa o erro do Supabase a issue, em vez de so a mensagem
+// generica com um stack que aponta para esta linha. Foi a falta disto que fez o
+// BUG-76 ("Erro ao buscar usuarios.") chegar sem cadeia nenhuma, repetindo o
+// BUG-67 e o BUG-74; a correcao mora AQUI, no funil, e nao nos 60 call sites,
+// porque guarda escrita no chamador some no primeiro que alguem esquecer.
+//
+// `pgCode` no context de proposito: e o campo que separa "coluna que nao existe"
+// (42703) de "permissao" (42501) de "timeout" (57014) na primeira olhada, sem
+// abrir o breadcrumb. Nada disso sai na resposta: `cause` e `context` ficam no
+// Error, e o handler so serializa `message` e `code`.
 function dbError(scope: string, error: unknown, clientMessage: string) {
   console.error(`[admin] db error (${scope}):`, error);
-  return createError(500, "db_error", clientMessage);
+  return createError(500, "db_error", clientMessage, {
+    cause: error,
+    context: {
+      scope,
+      pgCode: (error as { code?: string } | null | undefined)?.code,
+    },
+  });
 }
 
 type AuthUserLite = {
