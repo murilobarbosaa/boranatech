@@ -405,7 +405,7 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
                       type="monotone"
                       dataKey="lucro"
                       name="Lucro"
-                      stroke="#7c3aed"
+                      stroke="var(--color-violet-600)"
                       strokeWidth={3}
                     />
                   </ComposedChart>

@@ -713,7 +713,7 @@ export default function Plataformas() {
                     key={doodle.pos}
                     aria-hidden
                     className={`pointer-events-none absolute ${doodle.pos}`}
-                    style={{ color: "#7c3aed", opacity: 0.1 }}
+                    style={{ color: "var(--color-violet-600)", opacity: 0.1 }}
                     animate={{ y: [0, -8, 0], rotate: [0, doodle.rot, 0] }}
                     transition={{
                       duration: doodle.dur,

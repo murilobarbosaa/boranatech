@@ -18,7 +18,7 @@ const ACCENT: Record<
   PageHeroAccent,
   { hero: string; pill: string; color: string }
 > = {
-  violet: { hero: "bg-violet-100", pill: "bg-violet-300", color: "#7c3aed" },
+  violet: { hero: "bg-violet-100", pill: "bg-violet-300", color: "var(--color-violet-600)" },
   sky: { hero: "bg-sky-100", pill: "bg-sky-300", color: "#0284c7" },
   amber: { hero: "bg-amber-100", pill: "bg-amber-300", color: "#f59e0b" },
   emerald: { hero: "bg-emerald-100", pill: "bg-emerald-300", color: "#10b981" },

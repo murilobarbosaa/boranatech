@@ -116,7 +116,7 @@ export function ProConversionsChart({
               "",
             ]}
           />
-          <Bar dataKey="count" fill="#7c3aed" isAnimationActive={false} />
+          <Bar dataKey="count" fill="var(--color-violet-600)" isAnimationActive={false} />
           {/* NAVEGACAO so quando ha o que navegar. O `Brush` ja vem no recharts
               que o projeto usa (nenhuma dependencia nova); abaixo de 31 dias ele
               seria um controle a mais sem funcao, ocupando altura do grafico. */}
@@ -125,7 +125,7 @@ export function ProConversionsChart({
               dataKey="date"
               height={18}
               travellerWidth={8}
-              stroke="#7c3aed"
+              stroke="var(--color-violet-600)"
               tickFormatter={rotuloDeDia}
               startIndex={Math.max(0, pontos.length - DIAS_PARA_NAVEGACAO)}
             />

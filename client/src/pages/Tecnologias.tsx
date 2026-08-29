@@ -73,14 +73,14 @@ function roadmapTarget(areas: string[]): { href: string; gated: boolean } {
 }
 
 const DOODLES = [
-  { Icon: Code, pos: "left-[4%] top-[18%]", size: "h-10 w-10", color: "#7c3aed", rot: 6, dur: 7 },
-  { Icon: Terminal, pos: "left-[14%] top-[68%]", size: "h-8 w-8", color: "#6d28d9", rot: -5, dur: 8 },
-  { Icon: Braces, pos: "left-[30%] top-[30%]", size: "h-9 w-9", color: "#8b5cf6", rot: 4, dur: 9 },
-  { Icon: Hash, pos: "left-[48%] top-[74%]", size: "h-8 w-8", color: "#7c3aed", rot: -6, dur: 7.5 },
-  { Icon: Code, pos: "left-[64%] top-[22%]", size: "h-9 w-9", color: "#6d28d9", rot: 5, dur: 8.5 },
-  { Icon: Terminal, pos: "left-[80%] top-[60%]", size: "h-10 w-10", color: "#8b5cf6", rot: -4, dur: 9.5 },
-  { Icon: Braces, pos: "left-[90%] top-[28%]", size: "h-8 w-8", color: "#7c3aed", rot: 6, dur: 7 },
-  { Icon: Hash, pos: "left-[22%] top-[88%]", size: "h-8 w-8", color: "#6d28d9", rot: -5, dur: 8 },
+  { Icon: Code, pos: "left-[4%] top-[18%]", size: "h-10 w-10", color: "var(--color-violet-600)", rot: 6, dur: 7 },
+  { Icon: Terminal, pos: "left-[14%] top-[68%]", size: "h-8 w-8", color: "var(--color-violet-700)", rot: -5, dur: 8 },
+  { Icon: Braces, pos: "left-[30%] top-[30%]", size: "h-9 w-9", color: "var(--color-violet-500)", rot: 4, dur: 9 },
+  { Icon: Hash, pos: "left-[48%] top-[74%]", size: "h-8 w-8", color: "var(--color-violet-600)", rot: -6, dur: 7.5 },
+  { Icon: Code, pos: "left-[64%] top-[22%]", size: "h-9 w-9", color: "var(--color-violet-700)", rot: 5, dur: 8.5 },
+  { Icon: Terminal, pos: "left-[80%] top-[60%]", size: "h-10 w-10", color: "var(--color-violet-500)", rot: -4, dur: 9.5 },
+  { Icon: Braces, pos: "left-[90%] top-[28%]", size: "h-8 w-8", color: "var(--color-violet-600)", rot: 6, dur: 7 },
+  { Icon: Hash, pos: "left-[22%] top-[88%]", size: "h-8 w-8", color: "var(--color-violet-700)", rot: -5, dur: 8 },
 ];
 
 function BackgroundDoodles() {

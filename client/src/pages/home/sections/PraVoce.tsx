@@ -544,7 +544,7 @@ function NuvemSvg({
       <svg
         viewBox="0 0 100 60"
         fill="white"
-        stroke="#0f172a"
+        stroke="var(--bnt-ink)"
         strokeWidth="2.5"
         strokeLinejoin="round"
         className="w-full h-auto"

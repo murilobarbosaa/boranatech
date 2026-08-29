@@ -146,8 +146,8 @@ export function SignupChart({ window: janela }: { window: OverviewWindow }) {
               // cor sozinha não é acessível.
               <Cell
                 key={b.rotulo}
-                fill={b.partial ? "#c4b5fd" : "#7c3aed"}
-                stroke={b.partial ? "#7c3aed" : undefined}
+                fill={b.partial ? "#c4b5fd" : "var(--color-violet-600)"}
+                stroke={b.partial ? "var(--color-violet-600)" : undefined}
                 strokeWidth={b.partial ? 2 : 0}
                 strokeDasharray={b.partial ? "3 2" : undefined}
               />

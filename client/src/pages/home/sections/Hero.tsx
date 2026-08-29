@@ -46,7 +46,7 @@ const FEATURED_OVERRIDES: Record<
   (typeof FEATURED_SLUGS)[number],
   { bg: string; color: string; exemplos: string }
 > = {
-  frontend: { bg: "bg-violet-50", color: "#8b5cf6", exemplos: "React, Vue" },
+  frontend: { bg: "bg-violet-50", color: "var(--color-violet-500)", exemplos: "React, Vue" },
   backend: { bg: "bg-emerald-50", color: "#10b981", exemplos: "Node, Python" },
   mobile: { bg: "bg-orange-50", color: "#f97316", exemplos: "iOS, Android" },
   dados: { bg: "bg-sky-50", color: "#0ea5e9", exemplos: "SQL, Python" },
@@ -103,7 +103,7 @@ type CardinalNode = {
 const SIDE_OFFSET = "max(16px, calc((100vw - 1024px) / 2 - 175px))";
 
 const CARDINAL_NODES: CardinalNode[] = [
-  { label: "N · Descobrir", color: "#7c3aed", top: "8%", left: SIDE_OFFSET },
+  { label: "N · Descobrir", color: "var(--color-violet-600)", top: "8%", left: SIDE_OFFSET },
   { label: "L · Estudar", color: "#059669", top: "35%", right: SIDE_OFFSET },
   { label: "S · Praticar", color: "#ea580c", bottom: "8%", right: SIDE_OFFSET },
   {
@@ -388,7 +388,7 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
                 x2={nodePositions.L.x}
                 y2={nodePositions.L.y}
               >
-                <stop offset="0%" stopColor="#7c3aed" />
+                <stop offset="0%" stopColor="var(--color-violet-600)" />
                 <stop offset="100%" stopColor="#059669" />
               </linearGradient>
 

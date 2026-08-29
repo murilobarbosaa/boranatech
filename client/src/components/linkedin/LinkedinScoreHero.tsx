@@ -174,7 +174,7 @@ export default function LinkedinScoreHero({
                   cy="60"
                   r={RING_RADIUS}
                   fill="none"
-                  stroke="#0f172a"
+                  stroke="var(--bnt-ink)"
                   strokeOpacity="0.15"
                   strokeWidth="8"
                 />
@@ -183,7 +183,7 @@ export default function LinkedinScoreHero({
                   cy="60"
                   r={RING_RADIUS}
                   fill="none"
-                  stroke="#0f172a"
+                  stroke="var(--bnt-ink)"
                   strokeWidth="8"
                   strokeLinecap="round"
                   strokeDasharray={RING_CIRCUMFERENCE}

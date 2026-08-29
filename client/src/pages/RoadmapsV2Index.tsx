@@ -225,11 +225,11 @@ function TrailMascot({
         <path
           d="M32 4 L40 15 L32 17 Z"
           fill="#ef4444"
-          stroke="#0f172a"
+          stroke="var(--bnt-ink)"
           strokeWidth="3"
           strokeLinejoin="round"
         />
-        <line x1="32" y1="6" x2="32" y2="24" stroke="#0f172a" strokeWidth="3" />
+        <line x1="32" y1="6" x2="32" y2="24" stroke="var(--bnt-ink)" strokeWidth="3" />
         <rect
           x="9"
           y="22"
@@ -237,7 +237,7 @@ function TrailMascot({
           height="40"
           rx="15"
           fill={body}
-          stroke="#0f172a"
+          stroke="var(--bnt-ink)"
           strokeWidth="3.5"
         />
         <circle
@@ -245,7 +245,7 @@ function TrailMascot({
           cy="39"
           r="5.5"
           fill="#ffffff"
-          stroke="#0f172a"
+          stroke="var(--bnt-ink)"
           strokeWidth="2.5"
         />
         <circle
@@ -253,15 +253,15 @@ function TrailMascot({
           cy="39"
           r="5.5"
           fill="#ffffff"
-          stroke="#0f172a"
+          stroke="var(--bnt-ink)"
           strokeWidth="2.5"
         />
-        <circle cx="25" cy="40" r="2.2" fill="#0f172a" />
-        <circle cx="41" cy="40" r="2.2" fill="#0f172a" />
+        <circle cx="25" cy="40" r="2.2" fill="var(--bnt-ink)" />
+        <circle cx="41" cy="40" r="2.2" fill="var(--bnt-ink)" />
         <path
           d="M23 49 Q32 56 41 49"
           fill="none"
-          stroke="#0f172a"
+          stroke="var(--bnt-ink)"
           strokeWidth="3"
           strokeLinecap="round"
         />
@@ -272,7 +272,7 @@ function TrailMascot({
           height="7"
           rx="2.5"
           fill={body}
-          stroke="#0f172a"
+          stroke="var(--bnt-ink)"
           strokeWidth="3"
         />
         <rect
@@ -282,7 +282,7 @@ function TrailMascot({
           height="7"
           rx="2.5"
           fill={body}
-          stroke="#0f172a"
+          stroke="var(--bnt-ink)"
           strokeWidth="3"
         />
         <circle cx="15" cy="34" r="3" fill="#fda4af" opacity="0.85" />

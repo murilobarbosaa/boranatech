@@ -137,7 +137,7 @@ export function SubscriptionChart({
             yAxisId="mrr"
             domain={[dominio.min, "auto"]}
             tickFormatter={(v: number) => brl.format(v)}
-            tick={{ fontSize: 11, fontWeight: 700, fill: "#7c3aed" }}
+            tick={{ fontSize: 11, fontWeight: 700, fill: "var(--color-violet-600)" }}
             tickLine={false}
             axisLine={false}
             width={72}
@@ -171,7 +171,7 @@ export function SubscriptionChart({
             type="monotone"
             dataKey="mrr"
             name="MRR"
-            stroke="#7c3aed"
+            stroke="var(--color-violet-600)"
             strokeWidth={3}
             dot={false}
             // O ponto isolado (medição cercada de buracos dos dois lados) só é

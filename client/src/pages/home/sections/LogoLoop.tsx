@@ -115,7 +115,7 @@ export default function LogoLoop() {
         <path
           d="M -5 18 Q 25 12, 50 18 T 105 16"
           fill="none"
-          stroke="#a78bfa"
+          stroke="var(--color-violet-400)"
           strokeWidth="0.3"
           strokeDasharray="1.5 2"
           strokeLinecap="round"
@@ -125,7 +125,7 @@ export default function LogoLoop() {
         <path
           d="M -5 82 Q 25 88, 50 82 T 105 84"
           fill="none"
-          stroke="#a78bfa"
+          stroke="var(--color-violet-400)"
           strokeWidth="0.3"
           strokeDasharray="1.5 2"
           strokeLinecap="round"

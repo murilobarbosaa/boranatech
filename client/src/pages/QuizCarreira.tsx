@@ -1357,14 +1357,14 @@ function QuestionScreen({
                   : "border-slate-300 bg-white hover:bg-slate-50"
               } disabled:cursor-not-allowed`}
               style={{
-                borderColor: isSelected ? "#1a1a1a" : undefined,
+                borderColor: isSelected ? "var(--bnt-ink)" : undefined,
                 boxShadow: isSelected ? "4px 4px 0 #0f172a" : undefined,
               }}
             >
               <span
                 className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-display text-base font-black text-white transition-transform duration-200 group-hover:scale-105"
                 style={{
-                  backgroundColor: isSelected ? "#0f172a" : optionAccent,
+                  backgroundColor: isSelected ? "var(--bnt-ink)" : optionAccent,
                   color: isSelected ? "#fde047" : "#ffffff",
                 }}
               >

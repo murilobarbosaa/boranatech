@@ -1890,8 +1890,8 @@ export function NotificationsManager() {
                       <Bar
                         dataKey="count"
                         name="Leituras"
-                        fill="#FFB800"
-                        stroke="#0f172a"
+                        fill="var(--brand-yellow)"
+                        stroke="var(--bnt-ink)"
                         strokeWidth={1}
                       />
                     </BarChart>
