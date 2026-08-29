@@ -1,0 +1,88 @@
+-- Uma assinatura ATIVA por usuario, garantida pelo banco.
+--
+-- RASCUNHO, NAO APLICAR AINDA. Ver "BLOQUEIO CONHECIDO" abaixo: existe um
+-- caminho de codigo em producao que esta migration QUEBRA, e ele precisa mudar
+-- antes. O arquivo entra no repositorio agora porque a analise que o produziu
+-- vale mais escrita do que lembrada.
+--
+-- PROBLEMA. Nao existe hoje NENHUMA trava de banco contra duas linhas ativas do
+-- mesmo usuario. A unica unicidade em public.subscriptions e sobre
+-- provider_subscription_id (20260517231011_remote_schema.sql), que impede
+-- duplicar a MESMA assinatura do provedor, nao duas assinaturas diferentes da
+-- mesma pessoa. A protecao e toda de aplicacao, em tres lugares:
+--
+--   1. guard 409 no checkout            server/providers/stripe.ts:1067
+--   2. aposentadoria 'superseded'       server/providers/stripe.ts (renovacao de boleto)
+--   3. guard 409 de boleto pendente     server/providers/stripe.ts:1098
+--
+-- O item 1 e uma checagem ler-depois-escrever: ele consulta antes de criar a
+-- sessao de checkout, e entre a consulta e a linha que o webhook grava cabe um
+-- fluxo de pagamento inteiro. O proprio comentario dele ja admite que multiplas
+-- linhas ativas sao um estado possivel ("nada de .maybeSingle() aqui, ele ERRA
+-- com multiplas linhas ativas"). Com um SEGUNDO provedor de pagamento criando
+-- assinatura por um caminho proprio, os tres guards passam a ser tres copias da
+-- mesma regra, e a primeira que alguem esquecer de replicar abre o buraco.
+--
+-- SOLUCAO. Indice unico PARCIAL sobre (user_id) onde o status concede acesso.
+-- E a mesma forma da 20260730180000 (uma geracao ativa por usuario) e da
+-- 20260716130000 (influencers_active_user_uidx): a regra passa a existir num
+-- lugar que nenhum caminho de escrita novo pode contornar por esquecimento.
+--
+-- POR QUE ('active', 'trialing') E NAO OUTRO CONJUNTO. Esses sao exatamente os
+-- status que concedem acesso Pro, e os quatro sitios independentes que decidem
+-- isso concordam:
+--
+--   is_user_pro, `s.status in ('active','trialing')`
+--     supabase/migrations/20260716130100_add_influencer_to_is_user_pro.sql:28
+--   isProStatus()
+--     server/providers/stripe.ts:121
+--   guard de checkout duplicado
+--     server/providers/stripe.ts:1067
+--   ancora de periodo e aposentadoria na renovacao de boleto
+--     server/providers/stripe.ts:784 e :842
+--
+-- 'past_due' fica DE FORA de proposito. Ele aparece em varios `in('active',
+-- 'trialing','past_due')` (server/providers/stripe.ts:1310,
+-- server/routes/admin.ts:3205 e :4155), mas ali a pergunta e "existe assinatura
+-- para operar sobre", nao "esta pessoa tem acesso": is_user_pro nega past_due.
+-- Incluir past_due no indice travaria uma cobranca em recuperacao junto de uma
+-- assinatura nova legitima, que e um estado real e nao um defeito.
+--
+-- BLOQUEIO CONHECIDO, E ELE E O MOTIVO DE ISTO NAO SER APLICAVEL HOJE.
+--
+-- A ativacao de boleto pago faz DUAS escritas separadas, sem transacao:
+-- primeiro o flip da linha nova para 'active' (o UPDATE condicional em
+-- status='pending'), e SO DEPOIS o UPDATE que marca as linhas antigas do
+-- usuario como 'superseded'. Entre as duas, uma renovacao tem DUAS linhas
+-- 'active' do mesmo usuario, por construcao.
+--
+-- Com este indice no lugar, o primeiro UPDATE levanta 23505, o handler lanca, a
+-- compensacao apaga o billing_event e a Stripe reentrega. A reentrega encontra
+-- exatamente o mesmo estado e falha de novo: laco permanente, e uma renovacao de
+-- boleto JA PAGA nunca concede acesso. Isso e estritamente pior do que a
+-- ausencia de trava que a migration existe para corrigir.
+--
+-- A ordem precisa ser invertida (aposentar as antigas ANTES de ativar a nova),
+-- ou as duas escritas precisam virar uma so. Enquanto isso nao for feito e
+-- coberto por teste, esta migration nao pode ser aplicada.
+--
+-- PRE-CONDICAO NAO VERIFICADA. Ao contrario da 20260730180000, esta migration
+-- sobe SEM a contagem do banco conferida: a verificacao exige rede e service
+-- role, e ficou para a etapa de aplicacao. A query esta na secao
+-- "Pre-checagem da migration" do relatorio lote0-pagamentos-2026-08-29.md e
+-- precisa devolver ZERO linhas antes do CREATE INDEX. Se devolver qualquer
+-- linha, o indice falha na criacao e as duplicatas precisam ser resolvidas
+-- primeiro (decisao de negocio, nao de migration).
+--
+-- Sem CONCURRENTLY, seguindo a 20260730180000: public.subscriptions e pequena e
+-- o lock breve de um CREATE INDEX nao justifica abrir mao de poder rodar dentro
+-- de uma transacao.
+--
+-- ADITIVA: cria indice, nao altera nem remove dado. Isenta da janela de
+-- migration destrutiva (CLAUDE.md). Rollback e DROP INDEX.
+--
+-- Idempotente: pode rodar mais de uma vez sem efeito colateral.
+
+CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_one_active_per_user
+  ON public.subscriptions (user_id)
+  WHERE status IN ('active', 'trialing');
