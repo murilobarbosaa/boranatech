@@ -959,7 +959,7 @@ function ObjectiveScreen({
                 className="group relative flex flex-col items-start overflow-hidden rounded-3xl border-2 border-[var(--bnt-ink)] p-5 text-left shadow-[4px_4px_0_var(--bnt-shadow)] transition-shadow duration-200 hover:shadow-[8px_8px_0_var(--accent)]"
                 style={{
                   ["--accent" as string]: t.accent,
-                  backgroundColor: `color-mix(in srgb, ${t.accent} 10%, white)`,
+                  backgroundColor: `color-mix(in srgb, ${t.accent} 10%, var(--bnt-surface))`,
                 }}
               >
                 <span
