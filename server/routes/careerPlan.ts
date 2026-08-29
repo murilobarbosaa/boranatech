@@ -3,6 +3,7 @@ import { NextFunction, Request, Response, Router } from "express";
 import { z } from "zod";
 
 import { estimateCost } from "../lib/aiTools";
+import { classificarFalhaDeTurno } from "../lib/falhaDeTurno";
 import { DEFAULT_MODEL } from "../lib/openai";
 import {
   CAREER_PLAN_CHAT_TOOL,
@@ -464,12 +465,17 @@ router.post(
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro desconhecido";
+      // PRIVACIDADE: o detalhe cru fica SO no log do servidor. Ele pode conter o
+      // corpo de erro da OpenAI, e o prompt que gerou esse erro carrega a fala da
+      // pessoa; gravar isso em ai_usage_logs seria persistir conversa em uma
+      // tabela de telemetria. No banco vai apenas o codigo classificado.
+      console.error(`[career-plan-intake-chat] turno falhou: ${message}`);
       await logAiUsage({
         userId,
         tool: CAREER_PLAN_CHAT_TOOL,
         requestId,
         status: "error",
-        errorMessage: message,
+        errorMessage: classificarFalhaDeTurno(message),
         inputChars: aiIo.inputChars,
       });
       // TODO(Ana): mensagem de erro ao processar o turno do chat (502).
