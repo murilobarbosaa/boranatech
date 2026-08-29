@@ -234,7 +234,10 @@ const EXPECTED_TABLE_COUNT = 83;
 // de trigger de uma vez (external_events_bloqueia_delete e
 // external_events_touch). As duas sobem tambem o contador de trigger abaixo,
 // nunca so um dos dois.
-const EXPECTED_FUNCTION_COUNT = 30;
+// 31 desde 20260828120000_normalize_dashes_on_external_events.sql (cria
+// external_events_normaliza_travessao). Ela devolve trigger, entao o contador
+// de trigger abaixo sobe junto, como o paragrafo daquele contador exige.
+const EXPECTED_FUNCTION_COUNT = 31;
 // 5 desde a MESMA migration: set_admin_task_archive_source devolve trigger,
 // entao nao e exposta pelo PostgREST e sai do conjunto verificavel por REST. Os
 // dois numeros sobem juntos quando a funcao nova e de trigger, e so o primeiro
@@ -244,7 +247,10 @@ const EXPECTED_FUNCTION_COUNT = 30;
 // 7 desde 20260811171556_create_external_events.sql: as duas funcoes novas
 // devolvem trigger, entao saem do conjunto verificavel por REST e os dois
 // numeros sobem juntos, como o paragrafo acima exige.
-const EXPECTED_TRIGGER_FUNCTION_COUNT = 7;
+// 8 desde 20260828120000_normalize_dashes_on_external_events.sql: a funcao nova
+// devolve trigger, sai do conjunto verificavel por REST, e os dois numeros
+// sobem juntos.
+const EXPECTED_TRIGGER_FUNCTION_COUNT = 8;
 
 /** Remove comentarios de linha e de bloco antes de qualquer parse. */
 /**
