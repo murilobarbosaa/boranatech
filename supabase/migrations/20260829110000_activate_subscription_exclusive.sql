@@ -1,85 +1,59 @@
 -- Ativacao de assinatura com exclusividade, numa transacao so.
 --
--- RASCUNHO, NAO APLICAR AINDA. Nenhum codigo chama esta funcao neste commit; a
--- troca das duas escritas pela chamada dela e um lote separado. A ordem de
--- aplicacao pretendida e: esta funcao, depois o codigo que a usa, depois o
--- indice unico de 20260829120000. O nome deste arquivo ordena antes do indice
+-- Ordem de aplicacao: esta funcao, depois o codigo que a usa (Lote 1a), depois
+-- o indice unico de 20260829120000. O nome deste arquivo ordena antes do indice
 -- de proposito, para que a ordem no diretorio seja a ordem de aplicacao.
 --
--- PROBLEMA. `onBoletoAsyncPaymentSucceeded` (server/providers/stripe.ts) ativa
--- uma renovacao de boleto em DUAS escritas separadas, sem transacao:
+-- REVISAO DO ARQUITETO EM 29/08/2026, duas emendas sobre o rascunho original:
+--   1. v_activated deixa de ser setado por intencao: GET DIAGNOSTICS no UPDATE
+--      de ativacao, e zero linhas lanca serialization_failure (40001). O
+--      rollback desfaz o supersede junto e a reentrega da Stripe converge
+--      sobre o estado novo. Sucesso reportado sem escrita e a classe de defeito
+--      que este projeto nao aceita.
+--   2. Periodo nulo no ramo de ativacao lanca antes de qualquer escrita. Funcao
+--      SECURITY DEFINER de acesso pago nao confia no chamador.
 --
---   1. server/providers/stripe.ts:931  UPDATE ... SET status='active'
---                                      WHERE provider_subscription_id = <sessao>
---                                        AND status='pending'
---   2. server/providers/stripe.ts:965  UPDATE ... SET status='superseded'
---                                      WHERE user_id = <dono>
---                                        AND status IN ('active','trialing')
---                                        AND id <> <linha nova>
+-- PROBLEMA. onBoletoAsyncPaymentSucceeded (server/providers/stripe.ts) ativa
+-- uma renovacao de boleto em DUAS escritas separadas, sem transacao: primeiro
+-- flip da linha nova para 'active', depois supersede das antigas. Entre as
+-- duas, o usuario tem duas linhas ativas por construcao, o que impede o indice
+-- unico parcial de 20260829120000 e, com ele aplicado, viraria laco permanente
+-- de reentrega com renovacao JA PAGA sem conceder acesso. Alem disso o
+-- supersede atual e best-effort (erro so loga): linha ativa orfa sobrevive,
+-- infla MRR e dispara lembrete espurio.
 --
--- Entre (1) e (2) o usuario tem DUAS linhas ativas, por construcao, no caminho
--- feliz. Isso e o que hoje impede a criacao do indice unico parcial de
--- 20260829120000: com o indice no lugar, a escrita (1) levantaria 23505, o
--- handler lancaria, a compensacao apagaria o billing_event, a Stripe
--- reentregaria, encontraria o mesmo estado e falharia de novo. Laco permanente,
--- com uma renovacao JA PAGA sem conceder acesso.
+-- SOLUCAO. Uma funcao: o corpo roda numa unica transacao, supersede e ativacao
+-- sao atomicos, e a ordem interna e SUPERSEDE PRIMEIRO, ATIVACAO DEPOIS, a
+-- unica que convive com o indice.
 --
--- Alem disso a escrita (2) e best-effort no codigo atual: se ela falhar, so
--- loga. Uma linha ativa orfa sobrevive, infla o MRR e dispara lembrete espurio.
+-- CONJUNTO ATIVO = ('active', 'trialing'). E o conjunto que concede acesso Pro;
+-- sitios que concordam: is_user_pro
+-- (20260716130100_add_influencer_to_is_user_pro.sql:28), isProStatus()
+-- (server/providers/stripe.ts:121), guard de checkout, ancora do boleto,
+-- aposentadoria. 'past_due' fica de fora: is_user_pro nega past_due, e cobranca
+-- em recuperacao ao lado de assinatura nova e estado real, nao defeito. O
+-- predicado aqui e o MESMO do indice de 20260829120000; se um mudar, o outro
+-- muda no mesmo commit.
 --
--- SOLUCAO. Uma funcao. O corpo de uma funcao Postgres roda numa unica
--- transacao, entao supersede e ativacao passam a ser atomicos: ou os dois
--- acontecem, ou nenhum. E a ordem interna e SUPERSEDE PRIMEIRO, ATIVACAO
--- DEPOIS, que e a unica ordem que convive com o indice unico parcial: quando a
--- linha nova vira 'active', nenhuma outra do usuario ainda esta.
+-- IDEMPOTENTE, requisito e nao cortesia: a Stripe reentrega. Chamada de novo
+-- com a linha ja 'active', devolve activated=false, nao reescreve periodo, nao
+-- dispara efeito no chamador. O supersede roda nos dois ramos de proposito
+-- (auto-cura de residuo do best-effort antigo).
 --
--- CONJUNTO ATIVO = ('active', 'trialing'). Nao e suposicao: e o conjunto que
--- concede acesso Pro, e cinco sitios independentes concordam com ele.
+-- TRAVA POR USUARIO via pg_advisory_xact_lock no user_id, padrao de
+-- reserve_ai_usage_slot (20260727150000). FOR UPDATE na linha alvo nao
+-- serviria: o supersede toca OUTRAS linhas. A trava cai no fim da transacao.
 --
---   is_user_pro           20260716130100_add_influencer_to_is_user_pro.sql:28
---   isProStatus()         server/providers/stripe.ts:121
---   guard de checkout     server/providers/stripe.ts (guard 409 de duplicada)
---   ancora do boleto      server/providers/stripe.ts (renovacao)
---   aposentadoria         server/providers/stripe.ts (superseded)
+-- PREFIXO out_ NOS NOMES DE SAIDA: RETURNS TABLE cria variaveis homonimas de
+-- colunas de public.subscriptions (user_id, plan_id, affiliate_code,
+-- coupon_code); sem o prefixo, "column reference is ambiguous" em runtime.
 --
--- 'past_due' fica de fora: is_user_pro nega past_due, e uma cobranca em
--- recuperacao ao lado de uma assinatura nova e estado real, nao defeito. O
--- predicado aqui e o MESMO do indice de 20260829120000, e os dois precisam
--- continuar iguais: se um mudar, o outro muda no mesmo commit.
+-- STATUS INESPERADO LANCA, paridade com o codigo atual ("Boleto pago nao
+-- ativou a assinatura"): ativar linha 'canceled' seria conceder acesso a
+-- partir de estado que alguem encerrou.
 --
--- IDEMPOTENTE, e isto e requisito e nao cortesia: a Stripe reentrega. Chamada
--- de novo com a linha ja 'active', a funcao devolve activated=false, nao
--- reescreve periodo e nao dispara efeito nenhum no chamador. A reentrega
--- CONVERGE em vez de entrar em laco, que e exatamente o que o indice sozinho
--- nao daria.
---
--- O supersede roda nos DOIS ramos de proposito (linha 'pending' e linha ja
--- 'active'). Isso da auto-cura: uma linha antiga que sobreviveu ao best-effort
--- do codigo atual e limpa na primeira reentrega, sem passo manual.
---
--- TRAVA POR USUARIO, nao por linha: `pg_advisory_xact_lock` no user_id, mesmo
--- padrao de `reserve_ai_usage_slot` (20260727150000). Um `FOR UPDATE` na linha
--- alvo nao serviria: o supersede toca OUTRAS linhas, e sao elas que precisam
--- estar estaveis durante a operacao. Duas pessoas diferentes nunca se bloqueiam;
--- a trava cai sozinha no fim da transacao.
---
--- PREFIXO out_ NOS NOMES DE SAIDA. `RETURNS TABLE` cria variaveis plpgsql com o
--- nome de cada coluna de saida, e `user_id`, `plan_id`, `affiliate_code` e
--- `coupon_code` sao TAMBEM nomes de coluna de public.subscriptions. Sem o
--- prefixo, cada referencia a essas colunas viraria "column reference is
--- ambiguous" em TEMPO DE EXECUCAO, que e o pior momento possivel para descobrir
--- isso numa funcao que mexe em acesso pago.
---
--- STATUS INESPERADO LANCA, e e paridade deliberada com o codigo atual, que ja
--- faz `throw` quando a linha do boleto nao esta nem 'pending' nem 'active'
--- (server/providers/stripe.ts, "Boleto pago nao ativou a assinatura"). Ativar
--- uma linha 'canceled' seria conceder acesso a partir de um estado que alguem
--- encerrou.
---
--- ADITIVA e ISENTA da janela destrutiva: cria funcao nova, nao altera nem
--- remove dado. Rollback e DROP FUNCTION.
---
--- Idempotente como migration (CREATE OR REPLACE): pode rodar mais de uma vez.
+-- ADITIVA: cria funcao, nao altera nem remove dado. Rollback e DROP FUNCTION.
+-- Idempotente como migration (CREATE OR REPLACE).
 
 BEGIN;
 
@@ -106,6 +80,7 @@ DECLARE
   v_status text;
   v_superseded integer := 0;
   v_activated boolean := false;
+  v_rows integer := 0;
 BEGIN
   -- Serializa as ativacoes concorrentes DO MESMO usuario.
   PERFORM pg_advisory_xact_lock(hashtextextended(p_user_id::text, 0));
@@ -131,6 +106,15 @@ BEGIN
       USING ERRCODE = 'invalid_parameter_value';
   END IF;
 
+  -- Emenda 2: periodo nulo nao ativa. Antes de qualquer escrita.
+  IF v_status = 'pending'
+     AND (p_period_start IS NULL OR p_period_end IS NULL) THEN
+    RAISE EXCEPTION
+      'ativacao da assinatura % exige periodo completo',
+      p_subscription_id
+      USING ERRCODE = 'null_value_not_allowed';
+  END IF;
+
   -- (1) SUPERSEDE PRIMEIRO. Roda tambem quando a linha alvo ja esta ativa: e o
   -- que limpa residuo deixado pelo best-effort do codigo antigo.
   UPDATE public.subscriptions
@@ -153,6 +137,17 @@ BEGIN
           COALESCE(p_raw_payload, subscriptions.raw_provider_payload)
     WHERE subscriptions.id = p_subscription_id
       AND subscriptions.status = 'pending';
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+    -- Emenda 1: sucesso so com escrita. Zero linhas significa mutacao
+    -- concorrente fora da trava; lancar desfaz o supersede no rollback e deixa
+    -- a reentrega convergir sobre o estado novo.
+    IF v_rows = 0 THEN
+      RAISE EXCEPTION
+        'assinatura % mudou de estado durante a ativacao',
+        p_subscription_id
+        USING ERRCODE = 'serialization_failure';
+    END IF;
 
     v_activated := true;
   END IF;
