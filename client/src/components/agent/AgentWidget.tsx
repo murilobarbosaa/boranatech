@@ -180,7 +180,7 @@ function HistoryDrawer({
   return (
     <div className="absolute inset-0 z-20">
       <div
-        className="absolute inset-0 bg-slate-950/25"
+        className="absolute inset-0 bg-black/25"
         onClick={onClose}
         aria-hidden
       />
@@ -660,7 +660,7 @@ export default function AgentWidget() {
             {/* Miolo: papel do agente (micro-pontilhado violeta sutil). */}
             <div
               ref={scrollRef}
-              className="flex-1 space-y-3 overflow-y-auto bg-[#fdfcff] px-4 py-4 [background-image:radial-gradient(rgba(109,40,217,0.06)_1.2px,transparent_1.2px)] [background-size:18px_18px]"
+              className="flex-1 space-y-3 overflow-y-auto bg-[var(--bnt-surface)] px-4 py-4 [background-image:radial-gradient(rgba(109,40,217,0.06)_1.2px,transparent_1.2px)] [background-size:18px_18px]"
             >
               {messages.length === 0 && (
                 <div className="relative flex h-full flex-col items-center justify-center gap-4 px-2 text-center">
