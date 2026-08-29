@@ -13,6 +13,11 @@ import { BADGE_CATALOG } from "@shared/badges";
  *    respondeu, que é afirmar o que não se sabe.
  * 2. Resto NOMEADO. A lista tem teto no servidor, e o "e mais N" é o que
  *    impede a tela de parecer completa quando não é.
+ *
+ * VOCABULÁRIO VISUAL: emprestado inteiro do ActivityBlock, duas dobras acima no
+ * mesmo modal. Título de bloco, pill de item, chip de contagem e caixa de vazio
+ * saem de lá sem variação própria: duas seções vizinhas com duas gramáticas
+ * seria a inconsistência que esta rodada veio corrigir.
  */
 
 const ROTULO_DE_BADGE: Record<string, string> = Object.fromEntries(
@@ -73,6 +78,17 @@ function data(iso: string | null): string {
     : d.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
 }
 
+// Citação literal das classes do ActivityBlock. Ficam nomeadas para que uma
+// mudança lá tenha um lugar só para acompanhar aqui.
+const PILL =
+  "flex items-center justify-between gap-3 rounded-2xl border-2 border-slate-900 bg-white px-3 py-2";
+const NOME = "break-words font-semibold text-slate-800";
+const CHIP =
+  "whitespace-nowrap rounded-full border-2 border-slate-900 bg-yellow-300 px-2 py-0.5 text-xs font-black";
+const CARIMBO = "whitespace-nowrap text-xs font-black text-slate-500";
+const VAZIO =
+  "rounded-2xl border-2 border-slate-300 bg-slate-50 p-3 text-sm font-semibold text-slate-500";
+
 function Bloco({
   titulo,
   testid,
@@ -86,13 +102,13 @@ function Bloco({
 }) {
   return (
     <div data-testid={testid}>
-      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
+      <p className="mb-2 font-display text-lg font-black text-slate-950">
         {titulo}
       </p>
       {indisponivel(bloco) ? (
         <p
           data-testid={`${testid}-indisponivel`}
-          className="mt-1 rounded-xl border-2 border-amber-400 bg-amber-50 p-2 text-xs font-bold text-amber-900"
+          className="rounded-xl border-2 border-amber-400 bg-amber-50 p-2 text-xs font-bold text-amber-900"
         >
           {/* TODO(Ana) */}
           Não foi possível consultar agora.
@@ -109,7 +125,7 @@ function Resto({ mais }: { mais: number }) {
   return (
     <p
       data-testid="vida-resto"
-      className="mt-1 text-xs font-black uppercase tracking-wide text-slate-500"
+      className="mt-2 text-xs font-bold text-slate-500"
     >
       {/* TODO(Ana) */}e mais {mais}
     </p>
@@ -170,87 +186,33 @@ export function UserSiteLife({
 
   if (vazio) {
     return (
-      <p
+      <div
         data-testid="vida-vazio"
-        className="text-sm font-medium text-slate-400"
+        className="rounded-2xl border-2 border-slate-300 bg-slate-50 p-4 text-sm font-semibold text-slate-500"
       >
         {/* TODO(Ana) */}
         Ainda não há atividade registrada no site.
-      </p>
+      </div>
     );
   }
 
+  // Roadmaps e Trilhas em cima: é a vida de estudo, o miolo da seção. O que a
+  // pessoa emitiu e ganhou é consequência, e desce.
   return (
-    <div className="space-y-4">
-      <Bloco
-        titulo="Certificados"
-        testid="vida-certificados"
-        bloco={vida.certificados}
-      >
-        {certificados.itens.length === 0 ? (
-          <p className="mt-1 text-sm font-medium text-slate-400">
-            {/* TODO(Ana) */}
-            Nenhum certificado emitido.
-          </p>
-        ) : (
-          <ul className="mt-1 space-y-1">
-            {certificados.itens.map((c) => (
-              <li
-                key={c.codigo}
-                data-testid="vida-certificado"
-                className="flex flex-wrap items-baseline justify-between gap-2 text-sm font-semibold text-slate-800"
-              >
-                <span>{c.titulo}</span>
-                <span className="text-xs font-bold text-slate-500">
-                  {c.codigo}
-                  {data(c.emitidoEm) ? ` · ${data(c.emitidoEm)}` : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <Resto mais={certificados.mais} />
-      </Bloco>
-
-      <Bloco titulo="Conquistas" testid="vida-badges" bloco={vida.badges}>
-        {badges.itens.length === 0 ? (
-          <p className="mt-1 text-sm font-medium text-slate-400">
-            {/* TODO(Ana) */}
-            Nenhuma conquista desbloqueada.
-          </p>
-        ) : (
-          <ul className="mt-1 flex flex-wrap gap-1">
-            {badges.itens.map((b) => (
-              <li
-                key={b.badgeId}
-                data-testid="vida-badge"
-                className="rounded-full border-2 border-violet-700 bg-violet-50 px-2 py-0.5 text-xs font-black text-violet-900"
-              >
-                {rotuloDeBadge(b.badgeId)}
-              </li>
-            ))}
-          </ul>
-        )}
-        <Resto mais={badges.mais} />
-      </Bloco>
-
+    <div className="grid gap-5 lg:grid-cols-2">
       <Bloco titulo="Roadmaps" testid="vida-roadmaps" bloco={vida.roadmaps}>
         {roadmaps.itens.length === 0 ? (
-          <p className="mt-1 text-sm font-medium text-slate-400">
+          <div className={VAZIO}>
             {/* TODO(Ana) */}
             Nenhum roadmap iniciado.
-          </p>
+          </div>
         ) : (
-          <ul className="mt-1 space-y-1">
+          <ul className="space-y-2">
             {roadmaps.itens.map((r) => (
-              <li
-                key={r.roadmapId}
-                data-testid="vida-roadmap"
-                className="flex flex-wrap items-baseline justify-between gap-2 text-sm font-semibold text-slate-800"
-              >
+              <li key={r.roadmapId} data-testid="vida-roadmap" className={PILL}>
                 {/* TODO(Ana) */}
-                <span>{r.titulo ?? "Roadmap sem título"}</span>
-                <span className="text-xs font-bold text-slate-500">
+                <span className={NOME}>{r.titulo ?? "Roadmap sem título"}</span>
+                <span className={CHIP}>
                   {/* TODO(Ana) */}
                   {r.passosConcluidos} de {r.passosTotais ?? "?"} passos
                 </span>
@@ -263,22 +225,18 @@ export function UserSiteLife({
 
       <Bloco titulo="Trilhas" testid="vida-trilhas" bloco={vida.trilhas}>
         {trilhas.itens.length === 0 ? (
-          <p className="mt-1 text-sm font-medium text-slate-400">
+          <div className={VAZIO}>
             {/* TODO(Ana) */}
             Nenhuma trilha iniciada.
-          </p>
+          </div>
         ) : (
-          <ul className="mt-1 space-y-1">
+          <ul className="space-y-2">
             {trilhas.itens.map((t) => (
-              <li
-                key={t.slug}
-                data-testid="vida-trilha"
-                className="flex flex-wrap items-baseline justify-between gap-2 text-sm font-semibold text-slate-800"
-              >
+              <li key={t.slug} data-testid="vida-trilha" className={PILL}>
                 {/* O slug cru quando não há título: trilha estática guarda o
                     nome no conteúdo estático, então ausência aqui é normal. */}
-                <span>{t.titulo ?? t.slug}</span>
-                <span className="text-xs font-bold text-slate-500">
+                <span className={NOME}>{t.titulo ?? t.slug}</span>
+                <span className={CHIP}>
                   {/* TODO(Ana) */}
                   {t.itensConcluidos} itens concluídos
                 </span>
@@ -287,6 +245,60 @@ export function UserSiteLife({
           </ul>
         )}
         <Resto mais={trilhas.mais} />
+      </Bloco>
+
+      <Bloco
+        titulo="Certificados"
+        testid="vida-certificados"
+        bloco={vida.certificados}
+      >
+        {certificados.itens.length === 0 ? (
+          <div className={VAZIO}>
+            {/* TODO(Ana) */}
+            Nenhum certificado emitido.
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {certificados.itens.map((c) => (
+              <li
+                key={c.codigo}
+                data-testid="vida-certificado"
+                className={PILL}
+              >
+                <span className={NOME}>{c.titulo}</span>
+                <span className={CARIMBO}>
+                  {c.codigo}
+                  {data(c.emitidoEm) ? ` · ${data(c.emitidoEm)}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Resto mais={certificados.mais} />
+      </Bloco>
+
+      <Bloco titulo="Conquistas" testid="vida-badges" bloco={vida.badges}>
+        {badges.itens.length === 0 ? (
+          <div className={VAZIO}>
+            {/* TODO(Ana) */}
+            Nenhuma conquista desbloqueada.
+          </div>
+        ) : (
+          // Mesma anatomia do chip de contagem, fundo violeta: a diferença de
+          // cor é o que separa "isto é um rótulo" de "isto é um número".
+          <ul className="flex flex-wrap gap-1.5">
+            {badges.itens.map((b) => (
+              <li
+                key={b.badgeId}
+                data-testid="vida-badge"
+                className="rounded-full border-2 border-slate-900 bg-violet-200 px-2 py-0.5 text-xs font-black"
+              >
+                {rotuloDeBadge(b.badgeId)}
+              </li>
+            ))}
+          </ul>
+        )}
+        <Resto mais={badges.mais} />
       </Bloco>
     </div>
   );
