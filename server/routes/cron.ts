@@ -940,7 +940,10 @@ function isProLikeStatus(status: string | null | undefined): boolean {
 // (subscription retrieve) E a fonte de verdade, entao refletimos status/periodo
 // no banco sem calcular ciclo. Sem STRIPE_SECRET_KEY ou sem id do provedor:
 // skipped (nunca assume um estado). So escreve quando ha mudanca real.
-async function reconcileStripeRow(sub: SubRow): Promise<RowOutcome> {
+// EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` abaixo: o
+// que importa provar e o que acontece com a violacao de unicidade na ativacao, e
+// isso so se prova rodando a funcao contra um erro real do banco.
+export async function reconcileStripeRow(sub: SubRow): Promise<RowOutcome> {
   if (!env.stripeSecretKey) {
     return {
       provider: "stripe",
@@ -980,7 +983,43 @@ async function reconcileStripeRow(sub: SubRow): Promise<RowOutcome> {
       last_event_at: new Date().toISOString(),
     })
     .eq("id", sub.id);
-  if (updateError) throw updateError;
+  if (updateError) {
+    // 23505 = unique_violation. So passa a existir com o indice parcial
+    // `subscriptions_one_active_per_user` (migration 20260829120000) aplicado, e
+    // so alcanca a FASE 1: ela seleciona linhas 'incomplete' e pode escrever
+    // 'active', entao bate no indice quando o dono JA tem assinatura ativa.
+    //
+    // Por que isto merece Sentry e nao so `failed + 1`: duas assinaturas do
+    // mesmo dono chegando a 'active' significa POSSIVEL PAGAMENTO DUPLO. Um
+    // contador subindo no payload do cron nao faz ninguem agir; a linha some no
+    // meio do relatorio da rodada e volta identica na rodada seguinte, para
+    // sempre. Alem disso a escrita e uma so (diferente do par do boleto), entao
+    // o 23505 aqui e o veredito correto do banco, nao um defeito a corrigir: o
+    // que falta e alguem olhar.
+    //
+    // Demais falhas seguem exatamente como antes: propagam e o chamador conta
+    // `failed`.
+    if ((updateError as { code?: string }).code === "23505") {
+      Sentry.captureMessage("stripe_reconcile_assinatura_duplicada", {
+        level: "error",
+        fingerprint: ["stripe-reconcile-assinatura-duplicada"],
+        tags: { origem: "cron-reconcile-subscriptions" },
+        extra: {
+          user_id: sub.user_id,
+          subscription_id: sub.id,
+          provider_subscription_id: sub.provider_subscription_id,
+          status_anterior: prevStatus,
+          status_pretendido: state.status,
+          db_message: updateError.message,
+        },
+      });
+      console.error(
+        `[cron/reconcile-subscriptions] VIOLACAO DE UNICIDADE ao ativar ${sub.id} ` +
+          `(user ${sub.user_id}): o dono ja tem assinatura ativa. Possivel pagamento duplo, investigar.`,
+      );
+    }
+    throw updateError;
+  }
 
   // So o boolean Pro muda com o status; invalida o cache do dono nesse caso.
   if (statusChanged && sub.user_id) void invalidateProStatusCache(sub.user_id);
