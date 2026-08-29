@@ -135,7 +135,7 @@ function ProPitchVariant() {
     <section
       id="bora-na-tech-pro"
       aria-labelledby="pro-pitch-title"
-      className="bnt-ancora relative overflow-hidden bg-gradient-to-br from-violet-950 via-purple-900 to-fuchsia-900 py-20 md:py-24"
+      className="bnt-keep-colors bnt-ancora relative overflow-hidden bg-gradient-to-br from-violet-950 via-purple-900 to-fuchsia-900 py-20 md:py-24"
     >
       <BackgroundDecoration />
 
@@ -225,7 +225,7 @@ function ProThankYouVariant() {
     <section
       id="bora-na-tech-pro"
       aria-labelledby="pro-thanks-title"
-      className="bnt-ancora relative overflow-hidden bg-gradient-to-br from-violet-950 via-purple-900 to-fuchsia-900 py-16 md:py-20"
+      className="bnt-keep-colors bnt-ancora relative overflow-hidden bg-gradient-to-br from-violet-950 via-purple-900 to-fuchsia-900 py-16 md:py-20"
     >
       <BackgroundDecoration />
 

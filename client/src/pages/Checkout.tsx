@@ -873,7 +873,7 @@ export default function Checkout() {
 
       <section
         aria-labelledby="pro-hero-title"
-        className="relative flex min-h-[55vh] items-center overflow-hidden bg-slate-950 py-14 md:min-h-[78vh] md:py-16"
+        className="bnt-keep-colors relative flex min-h-[55vh] items-center overflow-hidden bg-slate-950 py-14 md:min-h-[78vh] md:py-16"
       >
         <CeuEstrelado />
         <div className="container relative z-10 w-full">
@@ -1026,7 +1026,7 @@ export default function Checkout() {
       <section
         id="planos-section"
         aria-labelledby="planos-title"
-        className="relative overflow-hidden bg-slate-950 py-14 md:py-20"
+        className="bnt-keep-colors relative overflow-hidden bg-slate-950 py-14 md:py-20"
       >
         <CeuEstrelado />
         {/* Continuacao sutil do glow do hero (mesma cor, opacidade menor)

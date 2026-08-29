@@ -104,7 +104,7 @@ export default function BemVindo() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4 py-10">
+    <main className="bnt-keep-colors relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4 py-10">
       <SEO
         title="Boas vindas · Bora na Tech?"
         description="Sua conta foi criada. Comece sua jornada em tecnologia."

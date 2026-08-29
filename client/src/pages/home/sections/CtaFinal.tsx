@@ -487,7 +487,7 @@ function CommandSidebar({
   return (
     <aside
       aria-label="Lista de comandos disponíveis"
-      className="self-start overflow-hidden rounded-2xl border-2 border-slate-950 bg-slate-900 shadow-[5px_5px_0_#0f172a] md:shadow-[8px_8px_0_#0f172a]"
+      className="bnt-keep-colors self-start overflow-hidden rounded-2xl border-2 border-slate-950 bg-slate-900 shadow-[5px_5px_0_#0f172a] md:shadow-[8px_8px_0_#0f172a]"
     >
       <div className="flex items-center border-b-2 border-slate-950 bg-slate-800 px-4 py-2.5">
         <span className="font-mono text-xs font-bold tracking-wider text-slate-400">
@@ -578,7 +578,7 @@ function CommandChipsMobile({
   return (
     <aside
       aria-label="Comandos disponíveis"
-      className="rounded-2xl border-2 border-slate-950 bg-slate-900 p-3 shadow-[5px_5px_0_#0f172a]"
+      className="bnt-keep-colors rounded-2xl border-2 border-slate-950 bg-slate-900 p-3 shadow-[5px_5px_0_#0f172a]"
     >
       <div className="mb-2 px-1">
         <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
@@ -782,7 +782,7 @@ const TerminalCard = forwardRef<TerminalCardHandle, TerminalCardProps>(
     const welcomeCtx: CommandContext = { user, profile, subscription, isPro };
 
     return (
-      <div className="flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-slate-950 shadow-[5px_5px_0_#0f172a] md:shadow-[8px_8px_0_#0f172a]">
+      <div className="bnt-keep-colors flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-slate-950 shadow-[5px_5px_0_#0f172a] md:shadow-[8px_8px_0_#0f172a]">
         <div className="relative flex items-center border-b-2 border-slate-950 bg-slate-800 px-4 py-2.5">
           <div className="flex items-center gap-2">
             <span

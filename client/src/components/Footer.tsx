@@ -248,7 +248,7 @@ export default function Footer() {
 
   return (
     <footer
-      className="relative overflow-hidden bg-slate-950 text-slate-300"
+      className="bnt-keep-colors relative overflow-hidden bg-slate-950 text-slate-300"
       role="contentinfo"
     >
       <div
