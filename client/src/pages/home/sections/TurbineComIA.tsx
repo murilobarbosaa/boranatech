@@ -138,10 +138,7 @@ export default function TurbineComIA() {
         >
           <Link href="/planos">
             <article
-              className="group cursor-pointer rounded-3xl border-2 border-slate-950 p-8 md:p-10 shadow-[6px_6px_0_var(--bnt-shadow)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[10px_10px_0_var(--bnt-shadow)]"
-              style={{
-                background: "linear-gradient(135deg, #FFF8E7 0%, #FFE89A 100%)",
-              }}
+              className="group cursor-pointer rounded-3xl border-2 border-slate-950 bg-gradient-to-br from-[var(--brand-yellow-soft)] to-[var(--brand-yellow-soft-deep)] p-8 md:p-10 shadow-[6px_6px_0_var(--bnt-shadow)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[10px_10px_0_var(--bnt-shadow)]"
             >
               <div className="flex flex-col items-center gap-6 text-center md:flex-row md:gap-8 md:text-left">
                 <div className="shrink-0">
