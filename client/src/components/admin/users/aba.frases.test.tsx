@@ -189,11 +189,12 @@ const COPY_ESTATICA = new Set<string>([
   "A presença no site está crescendo ou secando?",
   "Ainda não há medições neste período.",
   // Rotulos do seletor de janela do grafico, reusado da Visao (OverviewPeriod).
-  // "Tudo" NAO entra: esta serie oferece so 7 e 30, e se ele aparecer aqui e
-  // porque alguem passou a lista inteira de janelas para um grafico que o
-  // servidor recusa com 400. Cai como frase nao classificada, que e o aviso.
+  // "Tudo" entra desde que a serie aberta existe (agregada por semana). A frase
+  // "Desde DD/MM" que aparece ao lado dele NAO esta aqui: so e renderizada com
+  // a janela `all` escolhida, e o inventario roda sobre o estado inicial.
   "7 dias",
   "30 dias",
+  "Tudo",
   // Seção "Vida no site" (certificados, conquistas, roadmaps e trilhas). Os
   // rótulos dos blocos internos não entram aqui porque só aparecem quando a
   // seção tem dado, e o inventário roda sobre o modal com o payload padrão.

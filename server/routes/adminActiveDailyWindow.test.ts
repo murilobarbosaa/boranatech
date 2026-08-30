@@ -116,15 +116,27 @@ vi.mock("../lib/posthog", async (importActual) => {
     // SO o colaborador e dublado. `isAtivosDiariosJanela` e as constantes de
     // janela continuam sendo as REAIS: e a whitelist de producao que este
     // arquivo testa, e reescreve-la aqui faria o teste concordar consigo mesmo.
-    getAtivosDiarios: vi.fn(async (janela: "7" | "30" = "30") => ({
+    getPrimeiroDiaComEvento: vi.fn(async () => ({
       state: "ok" as const,
-      window: janela,
-      dias: janela === "7" ? 7 : 30,
-      pontos: Array.from({ length: janela === "7" ? 7 : 30 }, (_, i) => ({
-        date: `2026-08-${String(i + 1).padStart(2, "0")}`,
-        ativos: i,
-      })),
+      dia: "2026-05-06",
     })),
+    getAtivosDiarios: vi.fn(
+      async (janela: "7" | "30" | "all" = "30", primeiroDia?: string) => {
+        const n = janela === "7" ? 7 : janela === "all" ? 17 : 30;
+        return {
+          state: "ok" as const,
+          window: janela,
+          granularidade:
+            janela === "all" ? ("semana" as const) : ("dia" as const),
+          dias: n,
+          ...(janela === "all" ? { inicio: primeiroDia } : {}),
+          pontos: Array.from({ length: n }, (_, i) => ({
+            date: `2026-08-${String(i + 1).padStart(2, "0")}`,
+            ativos: i,
+          })),
+        };
+      },
+    ),
   };
 });
 
@@ -167,7 +179,13 @@ describe("GET /users-active-daily: whitelist de janela", () => {
     // certo e chamasse getAtivosDiarios() sem argumento passaria: o eco viria
     // do default e pareceria correto.
     const { getAtivosDiarios } = await import("../lib/posthog");
-    expect(getAtivosDiarios).toHaveBeenCalledWith("7");
+    // Dois argumentos: o segundo e o primeiro dia com evento, e fora do `all`
+    // ele e `undefined` DE PROPOSITO. Afirmar isso trava as duas pontas: a
+    // janela chega, e a rota nao gasta a descoberta do inicio numa janela
+    // fechada que nao precisa dela.
+    expect(getAtivosDiarios).toHaveBeenCalledWith("7", undefined);
+    const { getPrimeiroDiaComEvento } = await import("../lib/posthog");
+    expect(getPrimeiroDiaComEvento).not.toHaveBeenCalled();
   });
 
   it("janela FORA da whitelist recusa com 400 nomeado, sem fallback calado", async () => {
@@ -179,8 +197,30 @@ describe("GET /users-active-daily: whitelist de janela", () => {
     expect(r.body.data).toBeUndefined();
   });
 
+  it("janela `all` e aceita e vem agregada por SEMANA", async () => {
+    const r = await chamarAdmin("GET", "/users-active-daily?window=all");
+
+    expect(r.status).toBe(200);
+    expect(r.body.data.window).toBe("all");
+    expect(r.body.data.granularidade).toBe("semana");
+    // O inicio descoberto CHEGA na serie: sem esta asercao a rota poderia
+    // buscar o primeiro dia, joga-lo fora e deixar a serie chutar a janela.
+    expect(r.body.data.inicio).toBe("2026-05-06");
+    const { getAtivosDiarios } = await import("../lib/posthog");
+    expect(getAtivosDiarios).toHaveBeenCalledWith("all", "2026-05-06");
+  });
+
+  it("o inicio da serie aberta tem CACHE PROPRIO, separado do da serie", async () => {
+    await chamarAdmin("GET", "/users-active-daily?window=all");
+
+    expect(redis.sets).toEqual([
+      "admincache:posthog-first-event-day",
+      "admincache:users-active-daily:all",
+    ]);
+  });
+
   it("lixo e valor vazio tambem recusam, nao caem no padrao", async () => {
-    for (const bruto of ["all", "", "0", "-7", "30d", "abc"]) {
+    for (const bruto of ["", "0", "-7", "30d", "abc", "todos"]) {
       const r = await chamarAdmin(
         "GET",
         `/users-active-daily?window=${encodeURIComponent(bruto)}`,

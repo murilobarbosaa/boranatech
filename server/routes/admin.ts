@@ -22,6 +22,7 @@ import {
   ATIVOS_DIARIOS_JANELA_PADRAO,
   ATIVOS_DIARIOS_JANELAS_VALIDAS,
   getAtivosDiarios,
+  getPrimeiroDiaComEvento,
   isAtivosDiariosJanela,
   getPosthogHealth,
   getPaidFunnelSignals,
@@ -709,6 +710,11 @@ router.get("/online-now", async (_req, res, next) => {
 // invisivel numa serie de trinta dias.
 const ACTIVE_DAILY_CACHE_TTL_S = 300;
 
+// Uma hora para o primeiro evento do projeto. Nao e sobre carga: e que o valor
+// e imutavel na pratica, e um TTL curto so criaria uma query recorrente para
+// reconfirmar uma data de maio.
+const FIRST_EVENT_CACHE_TTL_S = 3600;
+
 router.get("/users-active-daily", async (req, res, next) => {
   try {
     // AUSENCIA e VALOR INVALIDO sao coisas diferentes, e aqui recebem respostas
@@ -739,10 +745,31 @@ router.get("/users-active-daily", async (req, res, next) => {
     const { result, computedAt } = await getOrCompute(
       `admincache:users-active-daily:${janela}`,
       ACTIVE_DAILY_CACHE_TTL_S,
-      async () => ({
-        result: await getAtivosDiarios(janela),
-        computedAt: new Date().toISOString(),
-      }),
+      async () => {
+        // O inicio da serie aberta tem CACHE PROPRIO e TTL longo: o primeiro
+        // evento do projeto nao anda, e redescobri-lo junto com a serie gastaria
+        // uma query por recomputo para um valor que muda uma vez na vida. Fica
+        // fora da chave da serie de proposito, para os dois TTLs serem
+        // independentes.
+        let primeiroDia: string | undefined;
+        if (janela === "all") {
+          const inicio = await getOrCompute(
+            "admincache:posthog-first-event-day",
+            FIRST_EVENT_CACHE_TTL_S,
+            async () => await getPrimeiroDiaComEvento(),
+          );
+          // Falha ao descobrir o inicio PROPAGA como o estado dela: sem inicio
+          // nao existe janela, e uma janela chutada e o defeito que a serie
+          // inteira evita.
+          if (inicio.state !== "ok")
+            return { result: inicio, computedAt: null };
+          primeiroDia = inicio.dia;
+        }
+        return {
+          result: await getAtivosDiarios(janela, primeiroDia),
+          computedAt: new Date().toISOString(),
+        };
+      },
     );
     res.json({ data: result, computedAt });
   } catch (err) {

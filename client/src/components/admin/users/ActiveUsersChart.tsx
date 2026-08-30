@@ -40,13 +40,12 @@ import {
 
 type Ponto = { date: string; ativos: number };
 
-// As janelas que ESTA serie oferece. Subconjunto das OVERVIEW_WINDOWS, mesmos
-// valores, sem o "Tudo": serie diaria sem corte nao tem teto de baldes, e o
-// servidor recusa a janela com 400 em vez de aceitar calado. Se alguem
-// acrescentar um valor aqui sem acrescentar no server, a rota responde 400 e a
-// tela mostra o estado de erro, que e ruim mas HONESTO. O contrario (server
-// aceitando o que a tela nao oferece) nao tem sintoma.
-const JANELAS: readonly OverviewWindow[] = ["7", "30"];
+// As MESMAS janelas da Visao. O "Tudo" nao e uma janela maior: o servidor troca
+// o balde para SEMANA, e quem diz isso e o payload (`granularidade`), nunca a
+// contagem de pontos. Se alguem acrescentar um valor aqui sem acrescentar no
+// server, a rota responde 400 e a tela mostra o erro, que e ruim mas HONESTO; o
+// contrario (server aceitando o que a tela nao oferece) nao tem sintoma.
+const JANELAS: readonly OverviewWindow[] = ["7", "30", "all"];
 const JANELA_PADRAO: OverviewWindow = "30";
 
 // Espelha PosthogAtivosDiariosState. Os tres estados sao nomeados no tipo de
@@ -55,7 +54,14 @@ const JANELA_PADRAO: OverviewWindow = "30";
 type Serie =
   | { state: "not_configured"; missing?: string[] }
   | { state: "error"; reason?: string; httpStatus?: number }
-  | { state: "ok"; window?: string; dias?: number; pontos?: Ponto[] };
+  | {
+      state: "ok";
+      window?: string;
+      granularidade?: "dia" | "semana";
+      dias?: number;
+      inicio?: string;
+      pontos?: Ponto[];
+    };
 
 export function ActiveUsersChart() {
   const [janela, setJanela] = useState<OverviewWindow>(JANELA_PADRAO);
@@ -108,6 +114,14 @@ export function ActiveUsersChart() {
       ? data.pontos
       : [];
 
+  // A GRANULARIDADE VEM DA FONTE. Derivar do tamanho da lista ("mais de 60
+  // pontos, deve ser semana") seria um parser adivinhando o que o servidor ja
+  // declarou, e erraria no dia em que alguem pedisse 7 semanas.
+  const semanal =
+    data !== null && data.state === "ok" && data.granularidade === "semana";
+  const inicioDaSerie =
+    data !== null && data.state === "ok" ? (data.inicio ?? null) : null;
+
   const barras = pontos.map((p) => ({
     rotulo: rotuloDeDia(p.date),
     ativos: p.ativos,
@@ -123,7 +137,7 @@ export function ActiveUsersChart() {
       erro={erro ?? erroDeFonte}
       vazio={data !== null && erroDeFonte === null && pontos.length === 0}
       carregando={data === null && erro === null}
-      rodape={rodapeDeAtivos(pontos.length)}
+      rodape={rodapeDeAtivos(pontos.length, semanal)}
       controles={
         <div className="mt-3">
           <OverviewPeriod
@@ -131,6 +145,7 @@ export function ActiveUsersChart() {
             onChange={setJanela}
             windows={JANELAS}
             testId="ativos-periodo"
+            seriesStart={inicioDaSerie}
           />
         </div>
       }
@@ -146,6 +161,12 @@ export function ActiveUsersChart() {
           nenhum: "Ninguém ativo no período",
           comecou: "O site voltou a ter gente no período",
         },
+        // A aritmetica da tendencia (media da metade recente contra a anterior)
+        // vale para qualquer balde de tamanho constante, entao ela NAO e
+        // omitida no modo semanal: o que muda e a palavra. Deixar "por dia"
+        // sobre uma serie semanal seria um resumo diario sobre dado que nao e
+        // diario, que e pior que nao ter resumo.
+        semanal ? "semana" : "dia",
       )}
     >
       <ResponsiveContainer width="100%" height="100%">
@@ -179,7 +200,9 @@ export function ActiveUsersChart() {
             cursor={{ fill: "#f1f5f9" }}
             /* TODO(Ana) */
             formatter={(valor: unknown) => [`${valor}`, "Ativos"]}
-            labelFormatter={(rotulo: string) => `Dia ${rotulo}`}
+            labelFormatter={(rotulo: string) =>
+              semanal ? `Semana de ${rotulo}` : `Dia ${rotulo}`
+            }
             contentStyle={{
               borderRadius: 12,
               border: "2px solid #0f172a",
@@ -199,10 +222,22 @@ export function ActiveUsersChart() {
   );
 }
 
-function rodapeDeAtivos(total: number): string[] {
+function rodapeDeAtivos(total: number, semanal: boolean): string[] {
   if (total === 0) return [];
+  if (!semanal) {
+    return [
+      /* TODO(Ana) */
+      `Últimos ${total} dias (America/Sao_Paulo). Conta presença por navegador, não por pessoa: quem entra deslogado e depois faz login conta duas vezes no dia.`,
+    ];
+  }
   return [
     /* TODO(Ana) */
-    `Últimos ${total} dias (America/Sao_Paulo). Conta presença por navegador, não por pessoa: quem entra deslogado e depois faz login conta duas vezes no dia.`,
+    `${total} semanas (America/Sao_Paulo), começando no domingo. Conta presença por navegador, não por pessoa: quem entra deslogado e depois faz login conta duas vezes.`,
+    // A RESSALVA QUE NAO PODE FALTAR. Sem ela alguem soma as barras semanais,
+    // compara com a serie diaria e acha que uma das duas esta errada.
+    /* TODO(Ana) */
+    "Cada barra conta as pessoas distintas DA SEMANA: quem apareceu em três dias conta uma vez, então a soma das semanas é menor que a soma dos dias.",
+    /* TODO(Ana) */
+    "A primeira e a última barra são semanas incompletas: a série começa no primeiro evento registrado e termina hoje.",
   ];
 }

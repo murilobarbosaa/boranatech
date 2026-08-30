@@ -194,6 +194,86 @@ describe("getAtivosDiarios", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("`all` SEM o primeiro dia recusa, em vez de chutar uma janela", async () => {
+    // Contrato interno. Chutar um inicio devolveria uma serie bem formada de um
+    // periodo que ninguem escolheu, que e a familia de erro que este modulo
+    // inteiro evita.
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const r = await getAtivosDiarios("all");
+    expect(r.state).toBe("error");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("`all` agrega por SEMANA e declara a granularidade", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      respostaHogql([
+        ["2026-08-02", 2810],
+        ["2026-08-09", 7359],
+      ]),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const r = await getAtivosDiarios("all", "2026-08-05");
+    if (r.state !== "ok") throw new Error(`esperado ok, veio ${r.state}`);
+
+    expect(r.granularidade).toBe("semana");
+    expect(r.window).toBe("all");
+    expect(r.inicio).toBe("2026-08-05");
+    // Do domingo da semana do primeiro evento (05/08 e quarta, domingo 02/08)
+    // ate o domingo da semana de HOJE, que o relogio congelado fixa em
+    // 2026-08-20 (domingo 16/08). Sao tres baldes, nao quatro: a serie termina
+    // na semana corrente e nao inventa a seguinte.
+    expect(r.pontos.map((p) => p.date)).toEqual([
+      "2026-08-02",
+      "2026-08-09",
+      "2026-08-16",
+    ]);
+    expect(r.dias).toBe(3);
+  });
+
+  it("semana SEM evento vira zero afirmado, como no modo diario", async () => {
+    // A mesma propriedade do preenchimento diario, no balde novo: a query so
+    // devolve semana com evento, e quem sabe que a janela foi consultada
+    // inteira e a fonte.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(respostaHogql([["2026-08-09", 7359]]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const r = await getAtivosDiarios("all", "2026-08-05");
+    if (r.state !== "ok") throw new Error(`esperado ok, veio ${r.state}`);
+
+    const porSemana = new Map(r.pontos.map((p) => [p.date, p.ativos]));
+    expect(porSemana.get("2026-08-09")).toBe(7359);
+    expect(porSemana.get("2026-08-02")).toBe(0);
+    expect(porSemana.get("2026-08-16")).toBe(0);
+    expect(r.pontos).toHaveLength(3);
+  });
+
+  it("o modo diario continua declarando granularidade `dia`", async () => {
+    // CONTROLE: sem ele, "declara semana" seria compativel com "declara semana
+    // sempre", e a tela rotularia serie diaria como semanal.
+    const fetchMock = vi.fn().mockResolvedValue(respostaHogql([]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const r = await getAtivosDiarios("30");
+    if (r.state !== "ok") throw new Error(`esperado ok, veio ${r.state}`);
+    expect(r.granularidade).toBe("dia");
+    expect(r.inicio).toBeUndefined();
+  });
+
+  it("a query de `all` usa toStartOfWeek, nao toDate", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(respostaHogql([]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getAtivosDiarios("all", "2026-08-05");
+    const corpo = String((fetchMock.mock.calls[0][1] as { body: string }).body);
+    expect(corpo).toContain("toStartOfWeek(toTimeZone(timestamp");
+    expect(corpo).toContain("uniq(distinct_id)");
+  });
+
   it("agrupa pelo dia de BRASILIA, nao pelo dia UTC", async () => {
     // A query carrega o nome do fuso. Sem ele, `toDate(timestamp)` agruparia em
     // UTC e tudo depois das 21h cairia no balde do dia seguinte, deslocando a

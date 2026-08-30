@@ -104,6 +104,12 @@ export function tendenciaDeFluxo(
     nenhum: "Nenhum cadastro no período",
     comecou: "Começou a entrar cadastro no período",
   },
+  /**
+   * Unidade do BALDE, para a frase não dizer "por dia" sobre uma série semanal.
+   * A aritmética (média da metade recente contra a anterior) vale para qualquer
+   * balde de tamanho constante; só a palavra muda.
+   */
+  unidade: string = "dia",
 ): Tendencia {
   const completos = pontos.filter((p) => !p.partial);
   if (completos.length < 4) {
@@ -126,15 +132,15 @@ export function tendenciaDeFluxo(
   // queda treinaria a pessoa a ignorar a frase.
   if (Math.abs(variacao) < 10) {
     return {
-      texto: `Estável: ~${Math.round(recente)} por dia`,
+      texto: `Estável: ~${Math.round(recente)} por ${unidade}`,
       tom: "neutro",
     };
   }
   return {
     texto:
       variacao > 0
-        ? `Acelerando: ${Math.round(anterior)} → ${Math.round(recente)} por dia`
-        : `Desacelerando: ${Math.round(anterior)} → ${Math.round(recente)} por dia`,
+        ? `Acelerando: ${Math.round(anterior)} → ${Math.round(recente)} por ${unidade}`
+        : `Desacelerando: ${Math.round(anterior)} → ${Math.round(recente)} por ${unidade}`,
     tom: variacao > 0 ? "alta" : "baixa",
   };
 }

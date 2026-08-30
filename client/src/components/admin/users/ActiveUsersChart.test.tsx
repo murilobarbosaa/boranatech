@@ -181,20 +181,107 @@ describe("ActiveUsersChart", () => {
     expect(screen.getByRole("button", { name: "7 dias" })).toBeTruthy();
   });
 
-  it('NAO oferece a janela "Tudo" da Visao', async () => {
-    // Serie diaria sem corte nao tem teto de baldes. O server recusa "all" com
-    // 400, e a tela nao pode oferecer o que a rota nega.
+  it("oferece as TRES janelas da Visao", async () => {
     fetchMock.mockResolvedValue(serieOk(30));
     render(<ActiveUsersChart />);
     await waitFor(() =>
       expect(screen.getByTestId("ativos-periodo")).toBeTruthy(),
     );
 
-    expect(screen.queryByRole("button", { name: "Tudo" })).toBeNull();
     const pilulas = within(screen.getByTestId("ativos-periodo")).getAllByRole(
       "button",
     );
-    expect(pilulas.map((b) => b.textContent)).toEqual(["7 dias", "30 dias"]);
+    expect(pilulas.map((b) => b.textContent)).toEqual([
+      "7 dias",
+      "30 dias",
+      "Tudo",
+    ]);
+  });
+
+  it("SEMANAL: rotula pela GRANULARIDADE do payload, nao pela contagem", async () => {
+    // O teste que decide o desenho. A tela recebe 30 pontos declarados como
+    // SEMANA: se ela derivasse o modo do tamanho da lista ("30 pontos, deve ser
+    // dia"), rotularia semanas como dias e ninguem veria. A fonte declara, a
+    // tela obedece.
+    fetchMock.mockResolvedValue({
+      data: {
+        state: "ok",
+        window: "all",
+        granularidade: "semana",
+        dias: 30,
+        inicio: "2026-05-06",
+        pontos: Array.from({ length: 30 }, (_, i) => ({
+          date: `2026-05-${String(i + 1).padStart(2, "0")}`,
+          ativos: i,
+        })),
+      },
+    });
+    render(<ActiveUsersChart />);
+
+    await waitFor(() => expect(screen.getByText(/30 semanas/)).toBeTruthy());
+    expect(
+      screen.getByText(/soma das semanas é menor que a soma dos dias/),
+    ).toBeTruthy();
+    expect(screen.getByText(/semanas incompletas/)).toBeTruthy();
+    expect(screen.queryByText(/Últimos 30 dias/)).toBeNull();
+  });
+
+  it("SEMANAL: a tendencia fala em semana, nao em dia", async () => {
+    fetchMock.mockResolvedValue({
+      data: {
+        state: "ok",
+        window: "all",
+        granularidade: "semana",
+        dias: 8,
+        inicio: "2026-05-06",
+        pontos: Array.from({ length: 8 }, (_, i) => ({
+          date: `2026-05-${String(i + 1).padStart(2, "0")}`,
+          ativos: 100 + i * 30,
+        })),
+      },
+    });
+    render(<ActiveUsersChart />);
+
+    const tendencia = await screen.findByTestId(
+      "grafico-ativos-diarios-tendencia",
+    );
+    expect(tendencia.textContent).toContain("por semana");
+    expect(tendencia.textContent).not.toContain("por dia");
+  });
+
+  it("SEMANAL: mostra desde quando a serie comeca", async () => {
+    // O "Desde DD/MM" e do SELETOR, e ele o mostra quando a janela ESCOLHIDA e
+    // `all`. Por isso o teste clica em vez de so entregar um payload de `all`:
+    // entregar a serie aberta sem a pessoa ter pedido nao e um estado que
+    // exista na tela, e afirmar sobre ele seria afirmar sobre nada.
+    fetchMock.mockResolvedValue(serieOk(30));
+    render(<ActiveUsersChart />);
+    await waitFor(() =>
+      expect(screen.getByTestId("ativos-periodo")).toBeTruthy(),
+    );
+
+    fetchMock.mockResolvedValue({
+      data: {
+        state: "ok",
+        window: "all",
+        granularidade: "semana",
+        dias: 3,
+        inicio: "2026-05-06",
+        pontos: [
+          { date: "2026-05-03", ativos: 60 },
+          { date: "2026-05-10", ativos: 66 },
+          { date: "2026-05-17", ativos: 54 },
+        ],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Tudo" }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("ativos-periodo-inicio")).toBeTruthy(),
+    );
+    expect(screen.getByTestId("ativos-periodo-inicio").textContent).toContain(
+      "Desde",
+    );
   });
 
   it("ERRO DE REDE na propria chamada vira mensagem, nao grafico vazio", async () => {

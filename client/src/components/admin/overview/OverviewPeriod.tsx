@@ -80,7 +80,7 @@ export function OverviewPeriod({
       </div>
       {janela === "all" && seriesStart ? (
         <p
-          data-testid="overview-periodo-inicio"
+          data-testid={`${testId}-inicio`}
           className="text-xs font-bold text-slate-500"
         >
           Desde {dataDeInstante(seriesStart)}
