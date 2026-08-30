@@ -153,6 +153,91 @@ async function getUserContact(userId: string): Promise<{
   return { email, name, gender };
 }
 
+/**
+ * Conversao de afiliado: a UNICA escrita no ledger de comissao em todo o
+ * sistema. `increment_affiliate_conversion` e uma escrita COMPOSTA e sem
+ * desfazer pela aplicacao (soma 1 em `sales`, soma a receita e soma a comissao
+ * no mesmo UPDATE), entao o que entra aqui e definitivo.
+ *
+ * REGRA: ausencia de valor pago NAO escreve.
+ *
+ * Chamar com zero quando o evento simplesmente nao declarou valor gravaria uma
+ * venda de valor zero, indistinguivel de uma venda 100 por cento descontada
+ * legitima. A partir dai o extrato do afiliado mente e ninguem consegue saber
+ * quais linhas conferir, que e a classe de falha em silencio que este projeto ja
+ * pagou caro. Zero DECLARADO e outra coisa e continua entrando.
+ *
+ * EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
+ * server/routes/cron.ts: o que importa provar e SE a escrita acontece e com qual
+ * numero, e isso so se prova rodando a funcao.
+ */
+export async function recordAffiliateConversion(params: {
+  userId: string;
+  affiliateCode: string;
+  /** `undefined` = o evento nao declarou cobranca. Ver paidAmountCentsFromEvent. */
+  revenueCents: number | undefined;
+  prevStatus: string | null;
+  nextStatus: string;
+  sourceEvent?: { id: string; type: string; subscriptionId: string | null };
+}): Promise<void> {
+  const { userId, affiliateCode, revenueCents, sourceEvent } = params;
+
+  if (revenueCents === undefined) {
+    // Nao escreve nada e manda o caso para o Sentry com o que o replay manual
+    // precisa. Lacuna VISIVEL vale mais que numero errado invisivel: e a mesma
+    // escolha que o `contarLinhas` devolvendo -1 documentou pelo avesso.
+    //
+    // `warning` e nao `error`, e fingerprint fixo por tipo, pelos mesmos motivos
+    // escritos em `stripe_pagamento_sem_dono`: interessa a serie no tempo, e
+    // ninguem esta sem o que pagou neste instante (o comprador tem acesso; quem
+    // fica sem numero e o afiliado).
+    Sentry.captureMessage("stripe_conversao_sem_valor_pago", {
+      level: "warning",
+      fingerprint: ["stripe-conversao-sem-valor-pago"],
+      tags: {
+        origem: "stripe-webhook",
+        event_type: sourceEvent?.type ?? "desconhecido",
+      },
+      extra: {
+        event_id: sourceEvent?.id ?? null,
+        event_type: sourceEvent?.type ?? null,
+        subscription_id: sourceEvent?.subscriptionId ?? null,
+        user_id: userId,
+        affiliate_code: affiliateCode,
+        prev_status: params.prevStatus,
+        next_status: params.nextStatus,
+      },
+    });
+    console.error(
+      `[webhook/stripe] conversao do afiliado ${affiliateCode} (user ${userId}) ` +
+        `sem valor pago declarado no evento ${sourceEvent?.type ?? "?"} ` +
+        `(${sourceEvent?.id ?? "?"}); NAO incrementada, replay manual necessario.`,
+    );
+    return;
+  }
+
+  try {
+    const { data: affiliate } = await supabaseAdmin
+      .from("affiliates")
+      .select("id")
+      .eq("code", affiliateCode)
+      .maybeSingle();
+    if (affiliate) {
+      await supabaseAdmin.rpc("increment_affiliate_conversion", {
+        p_affiliate_id: affiliate.id,
+        // Zero DECLARADO entra: venda integralmente descontada e uma venda, e
+        // conta em `sales` com comissao zero.
+        p_revenue_cents: revenueCents,
+      });
+    }
+  } catch (affiliateError) {
+    console.error(
+      "[webhook/stripe] Falha ao contar conversao de afiliado:",
+      affiliateError,
+    );
+  }
+}
+
 // Efeitos colaterais de uma transicao de status (paridade com o webhook Asaas):
 // invalida o cache Pro do dono, dispara e-mail transacional e conta a conversao
 // do afiliado na PRIMEIRA ativacao (nao em renovacoes).
@@ -165,6 +250,10 @@ async function handleTransition(
     couponCode?: string | null;
     revenueCents?: number;
     planName?: string;
+    // Procedencia do evento que originou a transicao. NAO participa de nenhuma
+    // decisao: existe so para o Sentry conseguir identificar a conversao que
+    // ficou sem valor pago e permitir o replay manual dela.
+    sourceEvent?: { id: string; type: string; subscriptionId: string | null };
   },
 ): Promise<void> {
   const becameActive = !isProStatus(prevStatus) && isProStatus(nextStatus);
@@ -176,24 +265,14 @@ async function handleTransition(
   }
 
   if (becameActive && opts.affiliateCode) {
-    try {
-      const { data: affiliate } = await supabaseAdmin
-        .from("affiliates")
-        .select("id")
-        .eq("code", opts.affiliateCode)
-        .maybeSingle();
-      if (affiliate) {
-        await supabaseAdmin.rpc("increment_affiliate_conversion", {
-          p_affiliate_id: affiliate.id,
-          p_revenue_cents: opts.revenueCents ?? 0,
-        });
-      }
-    } catch (affiliateError) {
-      console.error(
-        "[webhook/stripe] Falha ao contar conversao de afiliado:",
-        affiliateError,
-      );
-    }
+    await recordAffiliateConversion({
+      userId,
+      affiliateCode: opts.affiliateCode,
+      revenueCents: opts.revenueCents,
+      prevStatus,
+      nextStatus,
+      sourceEvent: opts.sourceEvent,
+    });
   }
 
   // Resgate do cupom de marketing: conta SO na ativacao (nunca na criacao da
@@ -279,6 +358,46 @@ function eventConfirmsPayment(event: Stripe.Event): boolean {
     // precisa continuar sendo ignorada em silencio.
     default:
       return false;
+  }
+}
+
+/**
+ * Valor EFETIVAMENTE PAGO declarado pelo evento, em centavos, ou null quando o
+ * evento nao declara cobranca.
+ *
+ * Existe porque a comissao de afiliado precisa da MESMA base nos dois meios de
+ * pagamento. O boleto sempre usou `session.amount_total` (valor pago); o cartao
+ * usava `price.unit_amount`, que e PRECO DE TABELA e ignora cupom e desconto de
+ * afiliado. A mesma venda com 30 por cento de desconto gerava comissao sobre
+ * 2990 pelo cartao e sobre 2093 pelo boleto: duas bases alimentando uma conta so.
+ *
+ * A classificacao e a mesma de `eventConfirmsPayment`, de proposito: os eventos
+ * que confirmam cobranca sao exatamente os que carregam valor.
+ *
+ * null NAO e zero. Zero e uma cobranca de valor zero (mode:subscription 100 por
+ * cento descontado, que a Stripe reporta como 'no_payment_required'); null e
+ * ausencia de cobranca no evento, e `customer.subscription.*` e evento de ESTADO,
+ * nao de cobranca. Colapsar os dois faria uma venda sem valor declarado parecer
+ * uma venda gratuita.
+ *
+ * EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
+ * server/routes/cron.ts: o que importa provar aqui e QUAL numero sai daqui para a
+ * comissao, e isso so se prova rodando a funcao contra eventos reais.
+ */
+export function paidAmountCentsFromEvent(event: Stripe.Event): number | null {
+  switch (event.type) {
+    case "invoice.paid": {
+      const invoice = event.data.object as Stripe.Invoice;
+      return invoice.amount_paid ?? null;
+    }
+    case "checkout.session.completed":
+    case "checkout.session.async_payment_succeeded": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (!isPaidSessionStatus(session.payment_status)) return null;
+      return session.amount_total ?? null;
+    }
+    default:
+      return null;
   }
 }
 
@@ -532,12 +651,18 @@ async function applySubscription(
   // efeitos. Nao redisparar email nem conversao de afiliado.
   if (raceLost) return;
 
-  const revenueCents = sub.items?.data?.[0]?.price?.unit_amount ?? 0;
+  // Comissao de afiliado SEMPRE sobre VALOR PAGO, nunca sobre preco de tabela.
+  // O que estava aqui era `price.unit_amount`, que ignora cupom e desconto de
+  // afiliado: a venda descontada pagava comissao cheia, e a MESMA venda por
+  // boleto pagava sobre o valor real. `undefined` quando o evento nao declara
+  // cobranca; ver paidAmountCentsFromEvent.
+  const revenueCents = paidAmountCentsFromEvent(event) ?? undefined;
   await handleTransition(userId, existing?.status ?? null, status, {
     affiliateCode,
     couponCode,
     revenueCents,
     planName: proPlan.name || planCode,
+    sourceEvent: { id: event.id, type: event.type, subscriptionId: sub.id },
   });
 }
 
@@ -713,11 +838,38 @@ async function applyBoletoPending(
   }
 }
 
+/**
+ * Retorno de `activate_subscription_exclusive` (migration 20260829110000).
+ *
+ * O prefixo `out_` nao e estilo: `RETURNS TABLE` cria variaveis plpgsql com o
+ * nome de cada coluna de saida, e `user_id`, `plan_id`, `affiliate_code` e
+ * `coupon_code` sao TAMBEM nomes de coluna de public.subscriptions. Sem o
+ * prefixo, a funcao quebraria com "column reference is ambiguous" em tempo de
+ * execucao. Os nomes aqui espelham a assinatura no banco e nao podem divergir
+ * dela.
+ *
+ * `supabaseAdmin` e criado sem generic de Database (server/lib/supabaseAdmin.ts),
+ * entao o retorno de `rpc` nao vem tipado; este tipo e a declaracao do contrato
+ * do lado do TypeScript.
+ */
+type ExclusiveActivationRow = {
+  out_activated: boolean;
+  out_superseded_count: number;
+  out_user_id: string;
+  out_plan_id: string | null;
+  out_affiliate_code: string | null;
+  out_coupon_code: string | null;
+};
+
 // Boleto compensou: ativa a assinatura. Boleto e mode:payment, entao NAO ha
 // invoice.paid; este e o unico caminho de ativacao. O periodo de acesso e
 // calculado aqui (now + access_days do metadata: 365 anual, 182 semestral),
 // porque nao existe subscription na Stripe de onde puxar o periodo.
-async function onBoletoAsyncPaymentSucceeded(
+// EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
+// server/routes/cron.ts e de `recordAffiliateConversion` acima: o que
+// importa provar aqui e que a ativacao passa por UMA chamada de RPC e por
+// nenhuma escrita direta de status, e isso so se prova rodando a funcao.
+export async function onBoletoAsyncPaymentSucceeded(
   event: Stripe.Event,
   eventCreatedAt: Date,
 ): Promise<void> {
@@ -799,73 +951,106 @@ async function onBoletoAsyncPaymentSucceeded(
     anchorMs + accessDays * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  // Flip atomico: so com status='pending'. Idempotente mesmo se a linha for
-  // ativada entre a leitura acima e este UPDATE (0 linhas -> nao soma de novo).
-  const { data: activated, error } = await supabaseAdmin
-    .from("subscriptions")
-    .update({
-      status: "active",
-      current_period_start: periodStart,
-      current_period_end: periodEnd,
-      last_event_at: paidAtIso,
-      raw_provider_payload: event,
-    })
-    .eq("provider_subscription_id", session.id)
-    .eq("status", "pending")
-    .select("user_id, affiliate_code, coupon_code, plan_id");
+  // ATIVACAO ATOMICA. O supersede das assinaturas antigas e o flip desta linha
+  // acontecem DENTRO de uma transacao so, na funcao
+  // `activate_subscription_exclusive` (migration 20260829110000), na ordem
+  // supersede-primeiro.
+  //
+  // O que estava aqui eram DUAS escritas separadas: flip para 'active' e, so
+  // depois, `UPDATE ... status='superseded'` best-effort (erro so logava). Duas
+  // coisas erradas nisso. A primeira: entre as duas escritas o usuario tinha
+  // duas linhas ativas por construcao, no caminho feliz, o que impedia o indice
+  // unico parcial de 20260829120000. A segunda, independente do indice: o
+  // supersede podia falhar em silencio e deixar linha ativa orfa, inflando MRR e
+  // disparando lembrete espurio.
+  //
+  // NAO HA RETRY PROPRIO AQUI, de proposito: a reentrega da Stripe e o retry, e
+  // a RPC e idempotente (segunda chamada com a linha ja 'active' devolve
+  // out_activated=false, sem reescrever periodo). Erro persistente converge para
+  // o mesmo estado em vez de duplicar efeito.
+  const { data: ativacao, error } = await supabaseAdmin.rpc(
+    "activate_subscription_exclusive",
+    {
+      p_subscription_id: pendingRow.id,
+      p_user_id: pendingRow.user_id,
+      p_period_start: periodStart,
+      p_period_end: periodEnd,
+      p_last_event_at: paidAtIso,
+      p_raw_payload: event,
+    },
+  );
 
   if (error) {
-    console.error("[webhook/stripe] boleto activation write failed:", error);
+    // O contrato de erro do handler nao muda: lanca, a compensacao apaga o
+    // billing_event e a Stripe reentrega. O que muda e a VISIBILIDADE: sem esta
+    // captura, um erro persistente da RPC (inclusive o serialization_failure da
+    // emenda 1) seria so mais um 500 no meio do log, com dinheiro ja recebido e
+    // acesso nao concedido.
+    Sentry.captureMessage("stripe_boleto_ativacao_falhou", {
+      level: "error",
+      fingerprint: ["stripe-boleto-ativacao-falhou"],
+      tags: { origem: "stripe-webhook", event_type: event.type },
+      extra: {
+        user_id: pendingRow.user_id,
+        subscription_row_id: pendingRow.id,
+        event_id: event.id,
+        session_id: session.id,
+        db_code: error.code ?? null,
+        db_message: error.message,
+      },
+    });
+    console.error("[webhook/stripe] boleto activation rpc failed:", error);
     throw createError(500, "db_error", "Erro ao ativar assinatura.", {
       cause: error,
     });
   }
-  if (!activated || activated.length === 0) {
-    // Corrida: alguem flipou entre a leitura e o UPDATE. Ja tratado por quem
-    // flipou; nao redispara efeitos nem re-aposenta.
+
+  // A funcao devolve exatamente uma linha; `rpc` de RETURNS TABLE chega como
+  // array. Vazio nao deveria acontecer, e por isso e tratado como falha em vez
+  // de virar um `return` mudo que perderia um pagamento.
+  const linhas = (ativacao ?? []) as ExclusiveActivationRow[];
+  const resultado = linhas[0];
+  if (!resultado) {
+    console.error(
+      `[webhook/stripe] activate_subscription_exclusive devolveu vazio (session ${session.id}, sub ${pendingRow.id}).`,
+    );
+    throw createError(500, "db_error", "Ativação de assinatura sem resultado.");
+  }
+
+  if (!resultado.out_activated) {
+    // A linha ja estava 'active' quando a funcao rodou: alguem flipou entre a
+    // leitura la em cima e esta chamada. Quem flipou disparou os efeitos; nao
+    // redispara. O supersede rodou de qualquer forma, e e ele que limpa residuo.
     return;
   }
 
-  const row = activated[0];
-
-  // Aposenta as assinaturas antigas do usuario (a que ancorou + qualquer residuo
-  // active/trialing), para nao ficarem duas linhas ativas inflando admin/MRR,
-  // quebrando o guard 409 e disparando lembrete espurio na regua. status
-  // 'superseded' (NAO 'canceled': foi renovacao, nao cancelamento; sem
-  // canceled_at, updated_at carimba via trigger). Best-effort: a ativacao ja
-  // ocorreu, entao erro aqui loga alto e segue (o reprocesso curto-circuita em
-  // 'active' e nao repetiria isto; a proxima renovacao tambem limpa residuo).
-  const { data: retired, error: retireError } = await supabaseAdmin
-    .from("subscriptions")
-    .update({ status: "superseded" })
-    .eq("user_id", row.user_id)
-    .in("status", ["active", "trialing"])
-    .neq("id", pendingRow.id)
-    .select("id");
-  if (retireError) {
-    console.error(
-      `[webhook/stripe] falha ao aposentar assinatura antiga (session ${session.id}, user ${row.user_id}); orfa pode persistir:`,
-      retireError,
-    );
-  } else if (retired && retired.length > 0) {
+  if (resultado.out_superseded_count > 0) {
     console.log(
-      `[webhook/stripe] ${retired.length} assinatura(s) superseded na renovacao (user ${row.user_id}).`,
+      `[webhook/stripe] ${resultado.out_superseded_count} assinatura(s) superseded na renovacao (user ${resultado.out_user_id}).`,
     );
   }
 
   const { data: plan } = await supabaseAdmin
     .from("plans")
     .select("code, name")
-    .eq("id", row.plan_id)
+    .eq("id", resultado.out_plan_id)
     .maybeSingle();
 
   // Reaproveita os efeitos do caminho de cartao. prev='pending' (nao-Pro) ->
   // 'active' (Pro): becameActive dispara email/cache/conversao, igual ao cartao.
-  await handleTransition(row.user_id, "pending", "active", {
-    affiliateCode: row.affiliate_code,
-    couponCode: row.coupon_code,
-    revenueCents: session.amount_total ?? 0,
+  // Mesmo contrato do caminho de cartao: ausencia de valor pago NAO vira zero.
+  // O que estava aqui era `session.amount_total ?? 0`, que colapsava "o evento
+  // nao declarou valor" em "a venda foi de zero" e gravava no ledger de comissao
+  // um numero indistinguivel de uma venda 100 por cento descontada. Passa a usar
+  // o mesmo resolvedor do cartao, que devolve `null` para ausencia, e a levar o
+  // `sourceEvent` que faltava neste caminho: sem ele a captura do Sentry sairia
+  // sem o que o replay manual precisa.
+  await handleTransition(resultado.out_user_id, "pending", "active", {
+    affiliateCode: resultado.out_affiliate_code,
+    couponCode: resultado.out_coupon_code,
+    revenueCents: paidAmountCentsFromEvent(event) ?? undefined,
     planName: plan?.name || plan?.code || "Pro",
+    sourceEvent: { id: event.id, type: event.type, subscriptionId: session.id },
   });
 }
 
