@@ -255,7 +255,7 @@ describe("UsersDashboard: colunas e selos", () => {
     );
   });
 
-  it("a grade DISTRIBUI as cinco colunas, e o cabecalho usa a MESMA regua", async () => {
+  it("a grade DISTRIBUI as seis colunas, e o cabecalho usa a MESMA regua", async () => {
     // O defeito que isto trava: com quatro trilhas em `fr`, cada coluna estica
     // junto com a tela e o conteudo compacto boia no proprio vazio. Com
     // `max-content` nas tres da direita, o vazio vira um so, entre o e-mail e o
@@ -273,9 +273,10 @@ describe("UsersDashboard: colunas e selos", () => {
     render(<UsersDashboard />);
     await screen.findByText("Ana Moura");
 
-    // CINCO trilhas: Usuario, Acesso, Assinatura, Total pago, Cadastro.
+    // SEIS trilhas: Usuario, Acesso, Assinatura, Total pago, Cadastro, Ultimo
+    // acesso.
     const TEMPLATE =
-      "md:grid-cols-[minmax(0,2.6fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,0.9fr)]";
+      "md:grid-cols-[minmax(0,2.4fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.85fr)_minmax(0,0.85fr)_minmax(0,0.9fr)]";
     const linha = screen.getByText("Ana Moura").closest("button");
     const cabecalho = screen.getByTestId("users-header");
 
@@ -287,10 +288,10 @@ describe("UsersDashboard: colunas e selos", () => {
     expect((linha as HTMLElement).className).not.toContain("max-content");
     // O cabecalho tem SEIS rotulos, um por trilha: template e rotulos que
     // discordam em numero e como a coluna sai torta sem nada quebrar.
-    expect(cabecalho.querySelectorAll("span")).toHaveLength(5);
+    expect(cabecalho.querySelectorAll("span")).toHaveLength(6);
   });
 
-  it("os QUATRO pares rotulo+celula ancoram do mesmo lado", async () => {
+  it("os CINCO pares rotulo+celula ancoram do mesmo lado", async () => {
     // A regra que a captura da Ana cobrou: rotulo e celula sao duas pontas da
     // MESMA decisao. Com o CSS inteiro correto, um cabecalho centrado sobre uma
     // badge encostada a esquerda deixa a coluna torta, e nada acusa.
@@ -312,6 +313,11 @@ describe("UsersDashboard: colunas e selos", () => {
         classe: "md:items-end",
       },
       { rotulo: "Cadastro", testid: "linha-cadastro", classe: "md:items-end" },
+      {
+        rotulo: "Último acesso",
+        testid: "linha-ultimo-acesso",
+        classe: "md:items-end",
+      },
     ] as const;
     const ANCORA_DO_ROTULO: Record<string, string> = {
       "md:items-center": "md:text-center",
@@ -344,6 +350,61 @@ describe("UsersDashboard: colunas e selos", () => {
         `celula "${par.rotulo}"`,
       ).toContain(par.classe);
     }
+  });
+
+  it("ULTIMO ACESSO: mostra a data e o instante completo no hover", async () => {
+    // A coluna mostra o DIA; "hoje" e "hoje as 3h" sao coisas diferentes para
+    // quem investiga um acesso, e o hover e onde a hora cabe sem alargar a
+    // trilha.
+    rotearFetch({
+      "/users?": listPayload([
+        {
+          user_id: "u1",
+          name: "Ana Moura",
+          email: "ana@exemplo.com",
+          last_sign_in_at: "2026-08-29T18:30:00.000Z",
+        },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+    await screen.findByText("Ana Moura");
+
+    const celula = screen.getByTestId("linha-ultimo-acesso");
+    // 18:30Z e 15:30 em Brasilia do MESMO dia: a data e 29/08/2026 nos dois
+    // fusos, entao a asercao nao depende de onde o teste roda.
+    expect(celula.textContent).toContain("29/08/2026");
+    const alvo = celula.querySelector("[title]");
+    expect(alvo?.getAttribute("title")).toContain("America/Sao_Paulo");
+    expect(alvo?.getAttribute("title")).toContain("29/08/2026");
+  });
+
+  it("NUNCA LOGOU usa o marcador de vazio, sem title de erro", async () => {
+    // `null` aqui tem UM significado: nunca logou. Nao existe "nao consegui
+    // olhar", porque o dado vem na mesma linha do resto e uma falha do RPC
+    // derruba a rota inteira. Por isso o marcador nao carrega explicacao, ao
+    // contrario do total pago.
+    rotearFetch({
+      "/users?": listPayload([
+        {
+          user_id: "u1",
+          name: "Ana Moura",
+          email: "ana@exemplo.com",
+          last_sign_in_at: null,
+        },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+    await screen.findByText("Ana Moura");
+
+    const celula = screen.getByTestId("linha-ultimo-acesso");
+    // Afirma o COMPONENTE de vazio, nao o glifo. Duas razoes: a celula passa a
+    // herdar o `hidden md:inline` dele (marcador solto no mobile nao diz de que
+    // campo e), e o teste nao repete o caractere que a fonte ja define numa
+    // constante unica.
+    expect(celula.querySelector('[data-testid="linha-vazio"]')).toBeTruthy();
+    expect(celula.querySelector("[title]")).toBeNull();
   });
 
   it("a densidade aperta o DESKTOP e deixa o mobile respirando", async () => {

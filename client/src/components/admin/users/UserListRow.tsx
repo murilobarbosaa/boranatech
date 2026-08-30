@@ -1,7 +1,9 @@
 import {
   displayName,
   fmtBrl,
+  fmtDataBrasilia,
   fmtDate,
+  fmtInstanteBrasilia,
   initialsOf,
   proBadgeOf,
   subscriptionStatusBadgeOf,
@@ -41,7 +43,7 @@ import type { UserRow } from "./types";
 // e-mail e da area para de funcionar, porque item de grade tem `min-width:auto`
 // e se recusa a encolher abaixo do conteudo.
 const GRID =
-  "flex flex-wrap items-center gap-x-3 gap-y-1.5 md:grid md:grid-cols-[minmax(0,2.6fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,0.9fr)] md:items-center md:gap-x-5 md:gap-y-1.5";
+  "flex flex-wrap items-center gap-x-3 gap-y-1.5 md:grid md:grid-cols-[minmax(0,2.4fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.85fr)_minmax(0,0.85fr)_minmax(0,0.9fr)] md:items-center md:gap-x-5 md:gap-y-1.5";
 
 // MARCADOR DE VAZIO da linha, num lugar so. Ele ja existia solto na celula de
 // Assinatura; com tres celulas podendo ficar vazias, repetir o glifo seria a
@@ -101,6 +103,10 @@ const COLUNAS = [
   /* TODO(Ana) */
   { rotulo: "Total pago", alinhamento: "md:text-right" },
   { rotulo: "Cadastro", alinhamento: "md:text-right" },
+  // DATA a direita, como os outros dois numeros: alinhar pelo inicio deixa a
+  // barra da data em posicoes diferentes a cada linha.
+  /* TODO(Ana) */
+  { rotulo: "Último acesso", alinhamento: "md:text-right" },
 ] as const;
 
 const BADGE_BASE =
@@ -144,6 +150,7 @@ export function UserListRow({
   onOpen: (userId: string) => void;
 }) {
   const pro = proBadgeOf(row.pro_source);
+  const ultimoAcesso = row.last_sign_in_at ?? null;
   const status = subscriptionStatusBadgeOf(row.subscription_status);
 
   return (
@@ -228,6 +235,29 @@ export function UserListRow({
           <span className="md:hidden">desde </span>
           {fmtDate(row.created_at)}
         </span>
+      </span>
+
+      {/* ULTIMO ACESSO. `null` aqui tem UM significado: nunca logou. Nao existe
+          "nao consegui olhar", porque o dado vem na mesma linha do resto e uma
+          falha do RPC derruba a rota inteira. Por isso o marcador de vazio
+          padrao serve, sem `title` de erro como o do total pago. */}
+      <span
+        data-testid="linha-ultimo-acesso"
+        className="flex flex-col gap-1 md:items-end"
+      >
+        {ultimoAcesso ? (
+          <span
+            // O instante COMPLETO no hover: a coluna mostra o dia, e "hoje" e
+            // "hoje as 3h" sao coisas diferentes para quem investiga um acesso.
+            title={fmtInstanteBrasilia(ultimoAcesso)}
+            className="text-xs font-bold text-slate-500 md:text-sm md:text-slate-600"
+          >
+            <span className="md:hidden">acesso </span>
+            {fmtDataBrasilia(ultimoAcesso)}
+          </span>
+        ) : (
+          <Vazio />
+        )}
       </span>
     </button>
   );

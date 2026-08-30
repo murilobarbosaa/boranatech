@@ -184,6 +184,7 @@ const COPY_ESTATICA = new Set<string>([
   // estava vazia na base real. O CAMPO continua no payload; o rótulo não existe
   // mais, então some daqui também.
   "Total pago",
+  "Último acesso",
   // Grafico "Ativos por dia", no topo da aba. Com o fixture padrao o
   // /users-active-daily nao responde serie nenhuma, entao a moldura cai no
   // estado VAZIO e e a copy dele que aparece; a frase de erro do PostHog nao

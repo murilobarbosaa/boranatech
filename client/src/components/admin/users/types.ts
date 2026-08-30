@@ -28,6 +28,14 @@ export type UserRow = {
    * virarem a mesma celula.
    */
   total_pago_cents?: number | null;
+  /**
+   * `last_sign_in_at` de `auth.users`, via o RPC de listagem.
+   *
+   * `null` tem UM significado so aqui: a pessoa nunca logou. Nao existe o caso
+   * "nao consegui olhar", porque o dado vem na MESMA linha do resto: se o RPC
+   * falha, a rota inteira responde erro e nenhuma linha chega.
+   */
+  last_sign_in_at?: string | null;
 };
 
 // Espelha o payload paginado de GET /users.
