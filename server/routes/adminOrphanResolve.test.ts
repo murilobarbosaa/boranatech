@@ -114,16 +114,33 @@ function linhaAberta(over: Record<string, unknown> = {}) {
   };
 }
 
-/** Monta o duble com a linha pedida e a auditoria opcionalmente quebrada. */
+/**
+ * Monta o duble.
+ *
+ * `corrida: true` usa o recurso de RESPOSTA POR CHAMADA do dublê (ele aceita uma
+ * funcao em vez de um objeto, e a reavalia a cada consulta). A primeira consulta
+ * a `billing_orphan_payments`, que e a leitura, devolve a linha ABERTA; a
+ * segunda, que e o `update ... .select("id")`, devolve VAZIO. E exatamente o que
+ * o Postgres faz quando outro admin resolveu a linha no meio: o
+ * `.is("resolved_at", null)` nao casa mais nada. Nao foi preciso estender o
+ * dublê.
+ */
 function montar(opts: {
   linha?: Record<string, unknown> | null;
   auditoriaFalha?: boolean;
+  corrida?: boolean;
 }) {
-  const respostas: Record<string, RespostaTabela | (() => RespostaTabela)> = {
-    billing_orphan_payments: {
+  let consultas = 0;
+  const orfaos = (): RespostaTabela => {
+    consultas += 1;
+    if (opts.corrida && consultas > 1) return { rows: [] };
+    return {
       rows: opts.linha === null ? [] : [opts.linha ?? linhaAberta()],
       error: null,
-    },
+    };
+  };
+  const respostas: Record<string, RespostaTabela | (() => RespostaTabela)> = {
+    billing_orphan_payments: orfaos,
     content_audit_logs: opts.auditoriaFalha
       ? { error: { message: "audit indisponivel" } }
       : { rows: [] },
@@ -278,6 +295,71 @@ describe("POST resolve: auditoria fail-closed (o caso central)", () => {
     expect(iUpdate).toBeGreaterThanOrEqual(0);
     // Sem isto, inverter a ordem passaria: os dois aconteceriam no caminho feliz.
     expect(iAudit).toBeLessThan(iUpdate);
+  });
+});
+
+describe("A CORRIDA entre dois admins (o caso central desta rota)", () => {
+  it("update que nao casa nenhuma linha vira 409, e NAO 200", async () => {
+    // Cenario: dois admins abrem a mesma linha. O primeiro resolve. O segundo
+    // passa pela leitura (a linha ainda estava aberta quando ELE leu), grava a
+    // auditoria, e so entao o `.is("resolved_at", null)` recusa a escrita.
+    //
+    // Sem a verificacao do retorno, a rota respondia 200 com `resolved_at`
+    // preenchido: o segundo admin via a linha sumir da tela e concluia que a
+    // NOTA DELE valeu. A nota que ficou gravada e a do primeiro.
+    montar({ corrida: true });
+
+    const r = await chamarAdmin(
+      "POST",
+      `/billing/orphan-payments/${ORFAO_ID}/resolve`,
+      { confirmed: true, note: NOTA_VALIDA },
+    );
+
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("already_resolved");
+  });
+
+  it("o update foi TENTADO, com a trava atomica, antes de recusar", async () => {
+    // O 409 desta rota tem dois caminhos, e eles nao sao a mesma coisa: o de
+    // cima recusa ANTES de escrever (a leitura ja viu resolvido), este recusa
+    // DEPOIS de tentar. Se o teste acima passasse por engano pelo caminho de
+    // cima, ele nao estaria cobrindo a corrida.
+    montar({ corrida: true });
+    await chamarAdmin("POST", `/billing/orphan-payments/${ORFAO_ID}/resolve`, {
+      confirmed: true,
+      note: NOTA_VALIDA,
+    });
+
+    const update = estado.double.chamadas.find(
+      (c) => c.table === "billing_orphan_payments" && c.op === "update",
+    );
+    expect(update).toBeTruthy();
+    expect(
+      update!.filtros.some(
+        (f) => f.tipo === "is" && f.coluna === "resolved_at",
+      ),
+    ).toBe(true);
+    // E o `.select()` foi pedido: e ele que torna "zero linhas" observavel.
+    expect(update!.colunas).toContain("id");
+  });
+
+  it("a auditoria da tentativa FICA, e se declara intencao", async () => {
+    // Ela e gravada antes da escrita por desenho, entao existe mesmo quando o
+    // efeito nao aconteceu. Apagar seria reescrever o passado numa tabela
+    // append-only; o que se faz e deixar o registro dizer o que ele e.
+    montar({ corrida: true });
+    await chamarAdmin("POST", `/billing/orphan-payments/${ORFAO_ID}/resolve`, {
+      confirmed: true,
+      note: NOTA_VALIDA,
+    });
+
+    const audit = estado.double.chamadas.find(
+      (c) => c.table === "content_audit_logs" && c.op === "insert",
+    );
+    expect(audit).toBeTruthy();
+    const after = (audit!.payload as Record<string, unknown>)
+      .after_json as Record<string, unknown>;
+    expect(after.registro).toBe("intencao");
   });
 });
 

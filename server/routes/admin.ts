@@ -1664,6 +1664,18 @@ router.post("/billing/orphan-payments/:id/resolve", async (req, res, next) => {
           resolution_note: notaGravada,
           declaration: true,
           verified_by_system: false,
+          // ESTA LINHA E INTENCAO, NAO EFEITO. A auditoria e gravada antes da
+          // escrita (fail-closed: sem rastro, nao grava), entao ela existe
+          // mesmo quando o update seguinte nao casa nenhuma linha porque outro
+          // admin chegou primeiro. Fica registrada de proposito: tentativa e
+          // informacao legitima, e apagar seria transformar
+          // `content_audit_logs` numa tabela que reescreve o passado, que e o
+          // contrario do que ela e (append-only, ver a migration do
+          // admin_refunds). Para saber se ESTA tentativa virou efeito, compare
+          // este `resolution_note` com o da linha em `billing_orphan_payments`:
+          // a marca de proveniencia carrega o ator e o instante, entao ou bate,
+          // e foi esta, ou nao bate, e foi a de outra pessoa.
+          registro: "intencao",
         },
       });
     if (auditError) {
@@ -1682,7 +1694,7 @@ router.post("/billing/orphan-payments/:id/resolve", async (req, res, next) => {
     // notas existentes foram escritas), e nesse caminho ninguem faz join com
     // `content_audit_logs`. Uma nota que nao diz quem a escreveu obriga quem le
     // a procurar o autor em outro lugar, e na pratica ninguem procura.
-    const { error: escritaError } = await supabaseAdmin
+    const { data: atualizadas, error: escritaError } = await supabaseAdmin
       .from("billing_orphan_payments")
       .update({ resolved_at: agoraIso, resolution_note: notaGravada })
       .eq("id", id)
@@ -1690,7 +1702,11 @@ router.post("/billing/orphan-payments/:id/resolve", async (req, res, next) => {
       // checagem foi feita ANTES da auditoria, e entre as duas cabe outro admin.
       // Este `.is()` e o ponto atomico, no molde da trava otimista de
       // `PATCH /users/:id`.
-      .is("resolved_at", null);
+      .is("resolved_at", null)
+      // O `.select()` existe para o `.is()` acima virar RESULTADO OBSERVAVEL.
+      // Sem ele o update devolve so `error`, e "nenhuma linha casou" e
+      // indistinguivel de "gravou": os dois dao `error: null`.
+      .select("id");
 
     if (escritaError)
       return next(
@@ -1700,6 +1716,30 @@ router.post("/billing/orphan-payments/:id/resolve", async (req, res, next) => {
           "Erro ao registrar a resolução.",
         ),
       );
+
+    // ZERO LINHAS AFETADAS: outro admin resolveu esta mesma linha entre a nossa
+    // leitura e a nossa escrita. O `.is("resolved_at", null)` fez o que devia e
+    // recusou a sobrescrita; o que faltava era ALGUEM OLHAR o resultado.
+    //
+    // Antes desta verificacao a rota respondia 200 com `resolved_at` preenchido,
+    // e a tela recarregava mostrando a linha resolvida, o que por acaso parece
+    // certo: ela FOI resolvida, so que pela outra pessoa, com a nota da outra
+    // pessoa. Quem clicou some da tela achando que a sua nota valeu, e ela nao
+    // existe em lugar nenhum.
+    //
+    // E pior num caminho AUDITADO. A auditoria e gravada ANTES da escrita, por
+    // desenho fail-closed, entao neste ponto `content_audit_logs` ja tem uma
+    // linha afirmando esta resolucao. Sem o 409, o log afirma um fato que nao
+    // aconteceu, e a tabela que existe para nao mentir passa a mentir.
+    if (!atualizadas || atualizadas.length === 0) {
+      return next(
+        createError(
+          409,
+          "already_resolved",
+          "Este pagamento já foi resolvido por alguém.",
+        ),
+      );
+    }
 
     // O painel de Atencao serve de cache por ate 60s, entao sem isto o item
     // resolvido continua aparecendo la e a primeira leitura de quem acabou de
