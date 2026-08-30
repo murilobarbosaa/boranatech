@@ -1535,6 +1535,202 @@ router.get("/billing/orphan-payments", async (_req, res, next) => {
   }
 });
 
+/**
+ * Minimo de caracteres da nota de resolucao.
+ *
+ * CALIBRADO sobre as duas notas que existem em producao (lidas em 2026-08-30):
+ * 518 e 600 caracteres, ambas descrevendo o que foi feito, quando, com qual
+ * `charge` da Stripe e sobre qual plano. O minimo NAO tenta reproduzir esse
+ * tamanho, e seria ruim se tentasse: piso alto vira preenchimento de linguica
+ * para o botao liberar. Ele existe para barrar o caso degenerado, o "ok" e o
+ * "resolvido", que nao respondem nada em janeiro do ano que vem. 20 caracteres e
+ * o tamanho de "reembolsado na stripe", a menor frase que ainda diz alguma
+ * coisa, e fica 25 vezes abaixo da pratica observada, ou seja, nao aperta quem
+ * escreve de verdade.
+ */
+const ORFAO_NOTA_MIN_CHARS = 20;
+
+/** Marca de proveniencia anexada a nota. Ver o comentario na rota abaixo. */
+function marcaDeProveniencia(actorUserId: string, quando: string): string {
+  return `\n\n[resolvido por ${actorUserId} em ${quando}]`;
+}
+
+/**
+ * Carimba um pagamento orfao como resolvido, com nota obrigatoria.
+ *
+ * Copia a ordem de `POST /users/:id/external-refunds`, e nao por simetria
+ * estetica: aquela rota resolveu o mesmo problema, que e registrar a PALAVRA do
+ * admin sobre uma coisa que a plataforma nao executou nem consegue verificar.
+ * Aqui o sistema tambem nao sabe se o dinheiro voltou, se a assinatura foi
+ * criada na mao ou se era falso positivo. O que ele guarda e o que a pessoa
+ * disse ter feito.
+ *
+ * A NOTA E OBRIGATORIA porque ela e a UNICA memoria do motivo. `resolved_at`
+ * sozinho responde "alguem tratou", que e a pergunta facil; a que importa seis
+ * meses depois, quando a mesma pessoa reclamar, e "tratou como?". Sem a nota, a
+ * resposta exige abrir o dashboard da Stripe e adivinhar qual movimento era
+ * este.
+ */
+router.post("/billing/orphan-payments/:id/resolve", async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    if (!UUID_RE.test(id)) {
+      return next(createError(400, "invalid_id", "Identificador inválido."));
+    }
+
+    const corpo = (req.body ?? {}) as { confirmed?: unknown; note?: unknown };
+
+    // `=== true` de proposito, e nao um if simples: "false", "0" e string vazia
+    // passariam por coercao e transformariam um corpo malformado em uma
+    // confirmacao que ninguem deu. Exigida NA ROTA e nao so na tela, porque a
+    // tela nao e a fronteira de confianca. Mesmo criterio de
+    // `POST /users/:id/external-refunds`.
+    if (corpo.confirmed !== true) {
+      return next(
+        createError(
+          400,
+          "confirmation_required",
+          "É preciso confirmar a resolução.",
+        ),
+      );
+    }
+
+    const nota = typeof corpo.note === "string" ? corpo.note.trim() : "";
+    if (nota.length < ORFAO_NOTA_MIN_CHARS) {
+      return next(
+        createError(
+          400,
+          "note_required",
+          `A nota precisa ter pelo menos ${ORFAO_NOTA_MIN_CHARS} caracteres explicando o que foi feito.`,
+        ),
+      );
+    }
+
+    // O ESTADO E RELIDO AQUI. O cliente manda o id e nada mais entra na decisao:
+    // se a linha existe, e se ela ainda esta aberta, sao perguntas para o banco.
+    const { data: linha, error: leituraError } = await supabaseAdmin
+      .from("billing_orphan_payments")
+      .select(
+        "id, stripe_session_id, customer_email, plan_id, amount_total_cents, currency, detected_at, resolved_at, resolution_note",
+      )
+      .eq("id", id)
+      .maybeSingle();
+
+    if (leituraError)
+      return next(
+        dbError(
+          "orphan payment read",
+          leituraError,
+          "Erro ao ler o pagamento.",
+        ),
+      );
+    if (!linha)
+      return next(
+        createError(404, "not_found", "Pagamento órfão não encontrado."),
+      );
+    if (linha.resolved_at)
+      return next(
+        createError(
+          409,
+          "already_resolved",
+          "Este pagamento já foi resolvido por alguém.",
+        ),
+      );
+
+    const agoraIso = new Date().toISOString();
+    const notaGravada = nota + marcaDeProveniencia(req.user!.id, agoraIso);
+
+    // AUDITORIA PRIMEIRO, fail-closed. NAO usa `logAudit`: aquele helper engole
+    // a falha num `console.warn` (server/lib/audit.ts:22-24), e aqui a ausencia
+    // de rastro tem que IMPEDIR a escrita, nao passar batida. Mesmo motivo
+    // declarado em `PATCH /users/:id` e nas duas rotas de devolucao.
+    const { error: auditError } = await supabaseAdmin
+      .from("content_audit_logs")
+      .insert({
+        actor_user_id: req.user!.id,
+        action: "billing_orphan_resolve",
+        resource_type: "billing_orphan_payment",
+        resource_id: linha.id,
+        resource_slug: linha.stripe_session_id,
+        before_json: {
+          resolved_at: linha.resolved_at,
+          resolution_note: linha.resolution_note,
+          customer_email: linha.customer_email,
+          amount_total_cents: linha.amount_total_cents,
+          detected_at: linha.detected_at,
+        },
+        after_json: {
+          resolved_at: agoraIso,
+          resolution_note: notaGravada,
+          declaration: true,
+          verified_by_system: false,
+        },
+      });
+    if (auditError) {
+      console.error("[admin] orphan resolve audit failed:", auditError);
+      return next(
+        createError(
+          500,
+          "audit_failed",
+          "Não foi possível registrar a auditoria. Nada foi alterado.",
+        ),
+      );
+    }
+
+    // A MARCA DE PROVENIENCIA vai DENTRO do texto, e nao so na auditoria. A
+    // tabela e lida direto no SQL Editor com frequencia (foi assim que as duas
+    // notas existentes foram escritas), e nesse caminho ninguem faz join com
+    // `content_audit_logs`. Uma nota que nao diz quem a escreveu obriga quem le
+    // a procurar o autor em outro lugar, e na pratica ninguem procura.
+    const { error: escritaError } = await supabaseAdmin
+      .from("billing_orphan_payments")
+      .update({ resolved_at: agoraIso, resolution_note: notaGravada })
+      .eq("id", id)
+      // Redundante com a checagem de `already_resolved` acima, e de proposito: a
+      // checagem foi feita ANTES da auditoria, e entre as duas cabe outro admin.
+      // Este `.is()` e o ponto atomico, no molde da trava otimista de
+      // `PATCH /users/:id`.
+      .is("resolved_at", null);
+
+    if (escritaError)
+      return next(
+        dbError(
+          "orphan payment resolve",
+          escritaError,
+          "Erro ao registrar a resolução.",
+        ),
+      );
+
+    // O painel de Atencao serve de cache por ate 60s, entao sem isto o item
+    // resolvido continua aparecendo la e a primeira leitura de quem acabou de
+    // resolver e "o botao nao funcionou".
+    await invalidarCacheDeAtencao();
+
+    res.json({ data: { id: linha.id, resolved_at: agoraIso } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Apaga a chave do painel de Atencao.
+ *
+ * `server/lib/cache.ts` exporta `cacheKey` e `getOrCompute`, e mais nada: nao ha
+ * invalidacao generica para reusar. O molde seguido aqui e o de
+ * `invalidateProStatusCache` (server/lib/proStatusCache.ts:85-94), que e o unico
+ * precedente de invalidacao da base: guarda de conexao ausente, `del` da chave, e
+ * falha ignorada porque na pior hipotese o valor antigo expira pelo TTL. Fica
+ * local porque tem um chamador so; se aparecer um segundo, vira funcao de lib.
+ */
+async function invalidarCacheDeAtencao(): Promise<void> {
+  if (!cacheConnection) return;
+  try {
+    await cacheConnection.del(ATENCAO_CACHE_KEY);
+  } catch {
+    // Ignora: sem o del, o item resolvido some do painel no fim do TTL de 60s.
+  }
+}
+
 async function computarFunilPago() {
   const to = new Date();
   const from = new Date(
