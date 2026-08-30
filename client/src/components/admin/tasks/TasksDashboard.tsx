@@ -77,7 +77,13 @@ import {
   BoardColumnsSkeleton,
   TasksPanelSkeleton,
 } from "./TasksPanelSkeleton";
-import { emptyBlockClass, primaryButtonClass, secondaryButtonClass } from "./taskBoardStyles";
+import {
+  boardRowClass,
+  boardScrollClass,
+  emptyBlockClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from "./taskBoardStyles";
 import { parseShortId, readTaskParam, shortIdOf, withTaskParam } from "./taskDeepLink";
 import type { TaskBoardSnapshot, TaskCard as TaskCardData, TaskColumn } from "./types";
 import { useBoardSnapshot } from "./useBoardSnapshot";
@@ -1290,49 +1296,61 @@ export function TasksDashboard() {
           onDragCancel={finishDrag}
         >
           <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
-            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 sm:snap-none">
-              {groups.map((group, index) => (
-                <BoardColumn
-                  key={group.id}
-                  group={group}
-                  column={columnById.get(group.id) ?? null}
-                  boardKey={snapshot.board.key}
-                  labelsById={labelsById}
-                  assigneesById={assigneesById}
-                  canMoveLeft={index > 0}
-                  canMoveRight={index < groups.length - 1}
-                  selectedTaskId={selectedTaskId}
-                  pendingTaskIds={pendingTaskIds}
-                  isDropTarget={
-                    activeDrag?.type === "task" && overColumnId === group.id
-                  }
-                  canReorder={canReorder}
-                  filtersActive={filtersActive}
-                  onOpenTask={openTask}
-                  onQuickMove={handleQuickMove}
-                  onUnarchive={handleUnarchive}
-                  onCreateTask={handleCreateTask}
-                  onRenameColumn={handleRenameColumn}
-                  onRecolorColumn={handleRecolorColumn}
-                  onRequestWipLimit={handleRequestWipLimit}
-                  onMoveColumn={handleMoveColumn}
-                  onRequestDeleteColumn={handleRequestDeleteColumn}
-                  onClearFilters={clearFilters}
-                />
-              ))}
+            <div data-testid="board-scroll" className={boardScrollClass}>
+              <div data-testid="board-row" className={boardRowClass}>
+                {groups.map((group, index) => (
+                  <BoardColumn
+                    key={group.id}
+                    group={group}
+                    column={columnById.get(group.id) ?? null}
+                    boardKey={snapshot.board.key}
+                    labelsById={labelsById}
+                    assigneesById={assigneesById}
+                    canMoveLeft={index > 0}
+                    canMoveRight={index < groups.length - 1}
+                    selectedTaskId={selectedTaskId}
+                    pendingTaskIds={pendingTaskIds}
+                    isDropTarget={
+                      activeDrag?.type === "task" && overColumnId === group.id
+                    }
+                    canReorder={canReorder}
+                    filtersActive={filtersActive}
+                    onOpenTask={openTask}
+                    onQuickMove={handleQuickMove}
+                    onUnarchive={handleUnarchive}
+                    onCreateTask={handleCreateTask}
+                    onRenameColumn={handleRenameColumn}
+                    onRecolorColumn={handleRecolorColumn}
+                    onRequestWipLimit={handleRequestWipLimit}
+                    onMoveColumn={handleMoveColumn}
+                    onRequestDeleteColumn={handleRequestDeleteColumn}
+                    onClearFilters={clearFilters}
+                  />
+                ))}
 
-              {groupBy === "column" ? (
-                <div className="flex w-[85vw] shrink-0 snap-start items-start sm:w-[13rem]">
-                  <button
-                    type="button"
-                    onClick={() => setNewColumnOpen(true)}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-3xl border-2 border-dashed border-slate-400 bg-white/60 px-4 py-6 text-sm font-black text-slate-600 transition-colors hover:border-slate-900 hover:bg-white hover:text-slate-900"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Nova etapa
-                  </button>
-                </div>
-              ) : null}
+                {groupBy === "column" ? (
+                  // COMPACTO. O botao ocupava uma coluna inteira de 13rem para
+                  // dizer duas palavras, e numa fileira centrada esse bloco
+                  // desloca o centro visual do quadro. Vira o disco de "+" na
+                  // anatomia dos compactos da casa (o X do modal de usuario),
+                  // tracejado por ser acao de CRIAR.
+                  //
+                  // O texto que saiu vira `aria-label` e `title`: icone nao
+                  // fala, e sem os dois o botao fica sem nome acessivel. Mesmo
+                  // cuidado do avatar do header do admin.
+                  <div className="flex shrink-0 items-start self-stretch pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setNewColumnOpen(true)}
+                      aria-label="Nova etapa"
+                      title="Nova etapa"
+                      className="grid h-9 w-9 place-items-center rounded-full border-2 border-dashed border-slate-400 bg-white/60 text-slate-600 transition-colors hover:border-slate-900 hover:bg-white hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </SortableContext>
 

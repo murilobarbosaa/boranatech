@@ -4,7 +4,11 @@ import { DndContext } from "@dnd-kit/core";
 
 import { BoardColumn } from "./BoardColumn";
 import { BoardColumnsSkeleton } from "./TasksPanelSkeleton";
-import { columnShellClass } from "./taskBoardStyles";
+import {
+  boardRowClass,
+  boardScrollClass,
+  columnShellClass,
+} from "./taskBoardStyles";
 import type { TaskGroup } from "./taskFilters";
 
 /**
@@ -90,6 +94,46 @@ describe("esqueleto e coluna real compartilham a moldura", () => {
     const secao = screen.getByLabelText("Etapa Backlog");
 
     expect(secao.className).toContain(columnShellClass);
+  });
+
+  it("o esqueleto usa a MOLDURA DA FILEIRA, nao uma propria", () => {
+    // O terceiro lado do trato, e o que a Ana pegou na captura: com moldura
+    // propria o esqueleto ancorava a esquerda e deixava deserto a direita no
+    // modo largo, e ao chegar os dados a fileira PULAVA para o centro.
+    //
+    // As duas pecas afirmadas juntas: o contêiner que rola e o miolo que centra.
+    // So a primeira aceitaria um esqueleto que rolasse sem centrar.
+    const { container } = render(<BoardColumnsSkeleton />);
+    const scroll = container.querySelector<HTMLElement>(
+      '[data-testid="board-scroll"]',
+    );
+    const row = container.querySelector<HTMLElement>(
+      '[data-testid="board-row"]',
+    );
+
+    expect(scroll, "o esqueleto perdeu o contêiner de rolagem").toBeTruthy();
+    expect(row, "o esqueleto perdeu o miolo").toBeTruthy();
+    expect(scroll!.className).toBe(boardScrollClass);
+    expect(row!.className).toBe(boardRowClass);
+    // E o miolo mora DENTRO do contêiner de rolagem, nao ao lado.
+    expect(scroll!.contains(row!)).toBe(true);
+  });
+
+  it("a CENTRAGEM vive no miolo, nunca no contêiner que rola", () => {
+    // A ARMADILHA deste desenho, e ela so aparece com o quadro cheio.
+    // `justify-center` num elemento com `overflow-x-auto` empurra o excedente
+    // para os DOIS lados: o inicio da fileira sai antes do scrollLeft = 0 e a
+    // primeira coluna fica INALCANCAVEL. `w-max mx-auto` no miolo centra quando
+    // cabe e colapsa para zero quando nao cabe.
+    //
+    // Afirmado nos dois sentidos porque so o positivo aceitaria as duas
+    // centragens convivendo, que e o bug de volta com um teste verde ao lado.
+    render(<BoardColumnsSkeleton />);
+    expect(boardRowClass).toContain("mx-auto");
+    expect(boardRowClass).toContain("w-max");
+    expect(boardScrollClass).toContain("overflow-x-auto");
+    expect(boardScrollClass).not.toContain("justify-center");
+    expect(boardScrollClass).not.toContain("mx-auto");
   });
 
   it("a faixa do topo do esqueleto e NEUTRA, nao uma cor de etapa", () => {
