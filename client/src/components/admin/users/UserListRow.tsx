@@ -41,7 +41,7 @@ import type { UserRow } from "./types";
 // e-mail e da area para de funcionar, porque item de grade tem `min-width:auto`
 // e se recusa a encolher abaixo do conteudo.
 const GRID =
-  "flex flex-wrap items-center gap-x-3 gap-y-1.5 md:grid md:grid-cols-[minmax(0,2.4fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)] md:items-center md:gap-x-5 md:gap-y-1.5";
+  "flex flex-wrap items-center gap-x-3 gap-y-1.5 md:grid md:grid-cols-[minmax(0,2.6fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,0.9fr)] md:items-center md:gap-x-5 md:gap-y-1.5";
 
 // MARCADOR DE VAZIO da linha, num lugar so. Ele ja existia solto na celula de
 // Assinatura; com tres celulas podendo ficar vazias, repetir o glifo seria a
@@ -79,15 +79,25 @@ function Vazio({ title }: { title?: string }) {
 // desalinhar cabecalho e celula e o defeito classico de grade sem <table>: o
 // titulo fica num canto da trilha e o dado no outro, e a coluna parece torta
 // sem que nada esteja errado no CSS.
+// ANCORA POR PAR. Cada entrada aqui carrega o alinhamento do ROTULO, e a celula
+// correspondente na linha usa o par dele (`md:items-*` mais `md:text-*`). Sao
+// duas pontas da mesma decisao, e desalinhar uma delas e o defeito que a Ana
+// pegou na captura: badge encostada num canto da trilha e cabecalho no outro,
+// com o CSS inteiro correto.
+//
+// POR QUE CENTRO em Acesso e Assinatura, e nao esquerda: o conteudo das duas e
+// um CHIP de largura variavel ("PRO" contra "GRATIS", "ATIVA" contra "AGUARDANDO
+// PAGAMENTO"). Encostado a esquerda, cada linha comeca o chip no mesmo x mas
+// termina em outro, e a coluna vira uma serra. Centrado, a massa visual fica no
+// eixo da trilha e o cabecalho pousa em cima dela.
+//
+// Numero continua a DIREITA: alinhar dinheiro e data pelo inicio deixa a virgula
+// em posicoes diferentes a cada linha, e comparar valores de relance passaria a
+// exigir leitura.
 const COLUNAS = [
   { rotulo: "Usuário", alinhamento: "" },
-  /* TODO(Ana) */
-  { rotulo: "Área", alinhamento: "" },
-  { rotulo: "Acesso", alinhamento: "" },
-  { rotulo: "Assinatura", alinhamento: "" },
-  // NUMERO alinhado a direita, como em borda de tabela: alinhar dinheiro pelo
-  // inicio deixa a virgula em posicoes diferentes a cada linha, e comparar
-  // valores de relance passa a exigir leitura.
+  { rotulo: "Acesso", alinhamento: "md:text-center" },
+  { rotulo: "Assinatura", alinhamento: "md:text-center" },
   /* TODO(Ana) */
   { rotulo: "Total pago", alinhamento: "md:text-right" },
   { rotulo: "Cadastro", alinhamento: "md:text-right" },
@@ -160,30 +170,22 @@ export function UserListRow({
         </span>
       </span>
 
-      <span className="flex min-w-0 flex-col gap-1">
-        {/* `title` no proprio texto: a area truncada continua legivel no hover,
-            e sem ele "Desenvolvimento de Software" e "Desenvolvimento de
-            Jogos" viram a mesma celula cortada. */}
-        {row.area_interesse?.trim() ? (
-          <span
-            data-testid="linha-area"
-            title={row.area_interesse}
-            className="truncate text-sm font-semibold text-slate-700"
-          >
-            {row.area_interesse}
-          </span>
-        ) : (
-          <span data-testid="linha-area">
-            <Vazio />
-          </span>
-        )}
-      </span>
-
-      <span className="flex flex-col gap-1">
+      {/* A coluna de AREA saiu por decisao da Ana em 2026-08-30: esta vazia na
+          base real e nao e informacao de decisao hoje. O CAMPO continua no
+          payload e no tipo de proposito (custo zero, ja testado, e o modal usa
+          a informacao), e o espaco da trilha fica reservado para o que vier no
+          lugar. */}
+      <span
+        data-testid="linha-acesso"
+        className="flex flex-col gap-1 md:items-center"
+      >
         <span className={`${BADGE_BASE} ${pro.className}`}>{pro.label}</span>
       </span>
 
-      <span className="flex flex-wrap items-center gap-x-2 gap-y-1 md:flex-col md:items-start md:gap-1">
+      <span
+        data-testid="linha-assinatura"
+        className="flex flex-wrap items-center gap-x-2 gap-y-1 md:flex-col md:items-center md:gap-1 md:text-center"
+      >
         {status ? (
           <>
             <span className={`${BADGE_BASE} ${status.className}`}>
@@ -218,7 +220,10 @@ export function UserListRow({
         )}
       </span>
 
-      <span className="flex flex-col gap-1 md:items-end">
+      <span
+        data-testid="linha-cadastro"
+        className="flex flex-col gap-1 md:items-end"
+      >
         <span className="text-xs font-bold text-slate-500 md:text-sm md:text-slate-600">
           <span className="md:hidden">desde </span>
           {fmtDate(row.created_at)}

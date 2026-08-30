@@ -195,9 +195,13 @@ describe("UsersDashboard: colunas e selos", () => {
     }
   });
 
-  it("mostra area e total pago, com zero de verdade como R$ 0,00", async () => {
+  it("mostra o total pago, com zero de verdade como R$ 0,00", async () => {
     // ZERO E AFIRMACAO: quem nunca comprou tem um total, e ele e zero. Desenhar
     // travessao aqui diria "nao sei" sobre um fato conhecido.
+    //
+    // A AREA saiu da lista em 2026-08-30 (decisao da Ana). O campo continua no
+    // payload e tem trava propria no server (adminUsersRead.test.ts); o que
+    // morreu foi a COLUNA, e por isso as asercoes de render dela sairam daqui.
     rotearFetch({
       "/users?": listPayload([
         {
@@ -220,7 +224,7 @@ describe("UsersDashboard: colunas e selos", () => {
     render(<UsersDashboard />);
     await screen.findByText("Ana Moura");
 
-    expect(screen.getByText("Dados")).toBeTruthy();
+    expect(screen.queryByText("Dados")).toBeNull();
     expect(screen.getByText("R$ 249,00")).toBeTruthy();
     expect(screen.getByText("R$ 0,00")).toBeTruthy();
   });
@@ -249,35 +253,9 @@ describe("UsersDashboard: colunas e selos", () => {
     expect(celula.querySelector("[title]")?.getAttribute("title")).toContain(
       "Não foi possível somar",
     );
-    // A area vazia usa o MESMO marcador, sem title de erro: ausencia de
-    // preenchimento nao e falha de consulta.
-    const area = screen.getByTestId("linha-area");
-    expect(area.textContent?.trim()).toBe("—");
-    expect(area.querySelector("[title]")).toBeNull();
   });
 
-  it("a area truncada mantem o texto inteiro no title", async () => {
-    rotearFetch({
-      "/users?": listPayload([
-        {
-          user_id: "u1",
-          name: "Ana Moura",
-          email: "ana@exemplo.com",
-          area_interesse: "Desenvolvimento de Software",
-          total_pago_cents: 0,
-        },
-      ]),
-    });
-
-    render(<UsersDashboard />);
-    await screen.findByText("Ana Moura");
-
-    const alvo = screen.getByText("Desenvolvimento de Software");
-    expect(alvo.className).toContain("truncate");
-    expect(alvo.getAttribute("title")).toBe("Desenvolvimento de Software");
-  });
-
-  it("a grade DISTRIBUI as seis colunas, e o cabecalho usa a MESMA regua", async () => {
+  it("a grade DISTRIBUI as cinco colunas, e o cabecalho usa a MESMA regua", async () => {
     // O defeito que isto trava: com quatro trilhas em `fr`, cada coluna estica
     // junto com a tela e o conteudo compacto boia no proprio vazio. Com
     // `max-content` nas tres da direita, o vazio vira um so, entre o e-mail e o
@@ -295,9 +273,9 @@ describe("UsersDashboard: colunas e selos", () => {
     render(<UsersDashboard />);
     await screen.findByText("Ana Moura");
 
-    // SEIS trilhas: Usuario, Area, Acesso, Assinatura, Total pago, Cadastro.
+    // CINCO trilhas: Usuario, Acesso, Assinatura, Total pago, Cadastro.
     const TEMPLATE =
-      "md:grid-cols-[minmax(0,2.4fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]";
+      "md:grid-cols-[minmax(0,2.6fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,0.9fr)]";
     const linha = screen.getByText("Ana Moura").closest("button");
     const cabecalho = screen.getByTestId("users-header");
 
@@ -309,10 +287,37 @@ describe("UsersDashboard: colunas e selos", () => {
     expect((linha as HTMLElement).className).not.toContain("max-content");
     // O cabecalho tem SEIS rotulos, um por trilha: template e rotulos que
     // discordam em numero e como a coluna sai torta sem nada quebrar.
-    expect(cabecalho.querySelectorAll("span")).toHaveLength(6);
+    expect(cabecalho.querySelectorAll("span")).toHaveLength(5);
   });
 
-  it("o rotulo Total pago e o valor dele alinham do MESMO lado", async () => {
+  it("os QUATRO pares rotulo+celula ancoram do mesmo lado", async () => {
+    // A regra que a captura da Ana cobrou: rotulo e celula sao duas pontas da
+    // MESMA decisao. Com o CSS inteiro correto, um cabecalho centrado sobre uma
+    // badge encostada a esquerda deixa a coluna torta, e nada acusa.
+    //
+    // A tabela abaixo e a fonte: se alguem mudar a ancora de uma coluna e
+    // esquecer a outra ponta, o par correspondente cai nomeando qual. Percorrer
+    // os quatro de uma vez, em vez de um teste por coluna, e o que impede uma
+    // coluna nova de nascer sem trava: o teste de par vira uma linha na tabela.
+    const PARES = [
+      { rotulo: "Acesso", testid: "linha-acesso", classe: "md:items-center" },
+      {
+        rotulo: "Assinatura",
+        testid: "linha-assinatura",
+        classe: "md:items-center",
+      },
+      {
+        rotulo: "Total pago",
+        testid: "linha-total-pago",
+        classe: "md:items-end",
+      },
+      { rotulo: "Cadastro", testid: "linha-cadastro", classe: "md:items-end" },
+    ] as const;
+    const ANCORA_DO_ROTULO: Record<string, string> = {
+      "md:items-center": "md:text-center",
+      "md:items-end": "md:text-right",
+    };
+
     rotearFetch({
       "/users?": listPayload([
         {
@@ -320,32 +325,6 @@ describe("UsersDashboard: colunas e selos", () => {
           name: "Ana Moura",
           email: "ana@exemplo.com",
           total_pago_cents: 24900,
-        },
-      ]),
-    });
-
-    render(<UsersDashboard />);
-    await screen.findByText("Ana Moura");
-
-    const cabecalho = within(screen.getByTestId("users-header"));
-    expect(cabecalho.getByText("Total pago").className).toContain(
-      "md:text-right",
-    );
-    expect(screen.getByTestId("linha-total-pago").className).toContain(
-      "md:items-end",
-    );
-  });
-
-  it("o rotulo Cadastro e a data dele alinham do MESMO lado", async () => {
-    // Alinhar o dado a direita e esquecer o rotulo (ou o contrario) deixa a
-    // coluna visualmente torta sem nada estar quebrado no CSS. Por isso a
-    // asercao e sobre o PAR, nao sobre um dos dois.
-    rotearFetch({
-      "/users?": listPayload([
-        {
-          user_id: "u1",
-          name: "Ana Moura",
-          email: "ana@exemplo.com",
           created_at: "2026-05-04T12:00:00Z",
         },
       ]),
@@ -353,17 +332,18 @@ describe("UsersDashboard: colunas e selos", () => {
 
     render(<UsersDashboard />);
     await screen.findByText("Ana Moura");
-
     const cabecalho = within(screen.getByTestId("users-header"));
-    expect(cabecalho.getByText("Cadastro").className).toContain(
-      "md:text-right",
-    );
 
-    const celula = screen
-      .getByText("Ana Moura")
-      .closest("button")!
-      .querySelector(".md\\:items-end");
-    expect(celula, "a celula de Cadastro perdeu o alinhamento").toBeTruthy();
+    for (const par of PARES) {
+      expect(
+        cabecalho.getByText(par.rotulo).className,
+        `rotulo "${par.rotulo}"`,
+      ).toContain(ANCORA_DO_ROTULO[par.classe]);
+      expect(
+        screen.getByTestId(par.testid).className,
+        `celula "${par.rotulo}"`,
+      ).toContain(par.classe);
+    }
   });
 
   it("a densidade aperta o DESKTOP e deixa o mobile respirando", async () => {

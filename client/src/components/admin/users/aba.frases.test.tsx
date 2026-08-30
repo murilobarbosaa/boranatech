@@ -179,8 +179,10 @@ const COPY_ESTATICA = new Set<string>([
   "Marketing",
   "Sistema",
   "Atividade",
-  // Colunas da lista de usuários (cabeçalho da grade).
-  "Área",
+  // Colunas da lista de usuários (cabeçalho da grade). "Área" viveu um commit:
+  // entrou com as colunas novas e saiu na decisão da Ana de 2026-08-30, porque
+  // estava vazia na base real. O CAMPO continua no payload; o rótulo não existe
+  // mais, então some daqui também.
   "Total pago",
   // Grafico "Ativos por dia", no topo da aba. Com o fixture padrao o
   // /users-active-daily nao responde serie nenhuma, entao a moldura cai no
