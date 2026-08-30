@@ -41,6 +41,10 @@ const estado = vi.hoisted(() => ({
   novaLinhaId: "row-1",
   /** Chaves ja gravadas em billing_events (dedupe). */
   eventosVistos: new Set<string>(),
+  /** Intencao de nao renovar ja existente, para o caso idempotente. */
+  intencaoExistente: null as Record<string, unknown> | null,
+  /** E-mails enfileirados, na ordem. */
+  emails: [] as Array<Record<string, unknown>>,
   /** Linha de affiliates devolvida na busca por codigo. */
   afiliado: { id: "aff-1" } as Record<string, unknown> | null,
   /** Resultado da RPC de ativacao. */
@@ -69,6 +73,12 @@ vi.mock("@sentry/node", () => ({
 
 vi.mock("../lib/proStatusCache", () => ({
   invalidateProStatusCache: async () => {},
+}));
+
+vi.mock("../lib/queue", () => ({
+  enqueueEmail: async (job: Record<string, unknown>) => {
+    estado.emails.push(job);
+  },
 }));
 
 vi.mock("../lib/asaasClient", () => ({
@@ -112,6 +122,9 @@ vi.mock("../lib/supabaseAdmin", () => {
       if (tabela === "plans") return { data: estado.plano, error: null };
       if (tabela === "affiliates")
         return { data: estado.afiliado, error: null };
+      if (tabela === "profiles") return { data: { gender: null }, error: null };
+      if (tabela === "subscription_cancellations")
+        return { data: estado.intencaoExistente, error: null };
       if (tabela === "subscriptions")
         return { data: estado.linhaSubscription, error: null };
       return { data: null, error: null };
@@ -154,6 +167,19 @@ vi.mock("../lib/supabaseAdmin", () => {
   return {
     supabaseAdmin: {
       from: (tabela: string) => consulta(tabela),
+      auth: {
+        admin: {
+          getUserById: async () => ({
+            data: {
+              user: {
+                email: "pessoa@exemplo.com",
+                user_metadata: { name: "Pessoa" },
+              },
+            },
+            error: null,
+          }),
+        },
+      },
       rpc: async (nome: string, args: Record<string, unknown>) => {
         estado.rpcCalls.push({ nome, args });
         if (nome === "activate_subscription_exclusive") {
@@ -195,6 +221,8 @@ function limpar() {
   estado.plano = { id: "plan-anual", code: "pro_annual", name: "Pro Anual" };
   estado.novaLinhaId = "row-1";
   estado.afiliado = { id: "aff-1" };
+  estado.emails = [];
+  estado.intencaoExistente = null;
   estado.eventosVistos = new Set();
   estado.ativacao = [
     {
@@ -600,5 +628,227 @@ describe("o gravador de escritas do duble funciona", () => {
       tabela: "subscriptions",
       operacao: "update",
     });
+  });
+});
+
+/**
+ * LOTE 2b: efeitos de ativacao pelo caminho compartilhado.
+ *
+ * O Lote 2a reimplementava cache e cupom aqui por fora e NAO tinha o e-mail. O
+ * primeiro caso abaixo e o que teria acusado isso: ele afirma o conjunto
+ * COMPLETO de efeitos, e o e-mail e o membro que faltava.
+ *
+ * O segundo grupo e a regra que impede o oposto: reentrega nao pode reenviar
+ * e-mail nem recontar comissao.
+ */
+describe("ativacao Pix dispara o conjunto COMPLETO de efeitos", () => {
+  beforeEach(() => {
+    limpar();
+    estado.linhaSubscription = {
+      id: "row-1",
+      user_id: USER,
+      status: "pending",
+      plan_id: "plan-anual",
+      affiliate_code: "BORA10",
+      coupon_code: "PROMO20",
+    };
+    estado.ativacao = [
+      {
+        out_activated: true,
+        out_superseded_count: 0,
+        out_user_id: USER,
+        out_plan_id: "plan-anual",
+        out_affiliate_code: "BORA10",
+        out_coupon_code: "PROMO20",
+      },
+    ];
+  });
+
+  it("e-mail de confirmacao sai UMA vez, com o plano", async () => {
+    await processarEventoAsaas(eventoDePagamento());
+
+    expect(estado.emails).toHaveLength(1);
+    expect(estado.emails[0]).toMatchObject({
+      type: "pro_upgrade",
+      to: "pessoa@exemplo.com",
+      planName: "Pro Anual",
+    });
+  });
+
+  it("comissao de afiliado conta UMA vez, com o valor pago", async () => {
+    await processarEventoAsaas(eventoDePagamento());
+
+    const conversoes = estado.rpcCalls.filter(
+      (c) => c.nome === "increment_affiliate_conversion",
+    );
+    expect(conversoes).toHaveLength(1);
+    expect(conversoes[0].args.p_revenue_cents).toBe(22200);
+  });
+
+  it("resgate de cupom conta UMA vez", async () => {
+    await processarEventoAsaas(eventoDePagamento());
+
+    const resgates = estado.rpcCalls.filter(
+      (c) => c.nome === "increment_coupon_redemption",
+    );
+    expect(resgates).toHaveLength(1);
+    expect(resgates[0].args.p_code).toBe("PROMO20");
+  });
+
+  it("os TRES efeitos saem na mesma ativacao, nao um subconjunto", async () => {
+    await processarEventoAsaas(eventoDePagamento());
+
+    expect(estado.emails).toHaveLength(1);
+    expect(
+      estado.rpcCalls.filter(
+        (c) => c.nome === "increment_affiliate_conversion",
+      ),
+    ).toHaveLength(1);
+    expect(
+      estado.rpcCalls.filter((c) => c.nome === "increment_coupon_redemption"),
+    ).toHaveLength(1);
+  });
+});
+
+describe("reentrega NAO redispara efeito nenhum", () => {
+  beforeEach(() => {
+    limpar();
+    estado.linhaSubscription = {
+      id: "row-1",
+      user_id: USER,
+      status: "pending",
+      plan_id: "plan-anual",
+      affiliate_code: "BORA10",
+      coupon_code: "PROMO20",
+    };
+    estado.ativacao = [
+      {
+        out_activated: false,
+        out_superseded_count: 0,
+        out_user_id: USER,
+        out_plan_id: "plan-anual",
+        out_affiliate_code: "BORA10",
+        out_coupon_code: "PROMO20",
+      },
+    ];
+  });
+
+  it("out_activated=false: zero e-mail, zero comissao, zero cupom", async () => {
+    await processarEventoAsaas(eventoDePagamento());
+
+    expect(estado.emails).toEqual([]);
+    expect(
+      estado.rpcCalls.filter(
+        (c) => c.nome !== "activate_subscription_exclusive",
+      ),
+    ).toEqual([]);
+  });
+
+  it("o MESMO evento duas vezes envia UM e-mail so", async () => {
+    estado.ativacao = [
+      {
+        out_activated: true,
+        out_superseded_count: 0,
+        out_user_id: USER,
+        out_plan_id: "plan-anual",
+        out_affiliate_code: null,
+        out_coupon_code: null,
+      },
+    ];
+
+    await processarEventoAsaas(eventoDePagamento());
+    await processarEventoAsaas(eventoDePagamento());
+
+    expect(estado.emails).toHaveLength(1);
+  });
+});
+
+describe("cancel e reactivate do Pix: contrato do boleto", () => {
+  beforeEach(() => {
+    limpar();
+    estado.linhaSubscription = {
+      id: "row-1",
+      provider_subscription_id: COBRANCA,
+      current_period_end: "2027-08-29T00:00:00.000Z",
+      status: "active",
+    };
+  });
+
+  const entradaDeCancel = {
+    userId: USER,
+    actorUserId: USER,
+    reasonCode: "expensive",
+    reasonText: "",
+  };
+
+  it("cancel registra a intencao e NAO chama o Asaas", async () => {
+    const r = await asaasProvider.cancel(entradaDeCancel);
+
+    const insercoes = estado.escritas.filter(
+      (e) =>
+        e.tabela === "subscription_cancellations" && e.operacao === "insert",
+    );
+    expect(insercoes).toHaveLength(1);
+    expect(insercoes[0].carga).toMatchObject({
+      user_id: USER,
+      status: "scheduled",
+      effective_at: "2027-08-29T00:00:00.000Z",
+    });
+    expect(estado.asaas).toEqual([]);
+    expect(r.non_renewal).toBe(true);
+    // NAO seta cancel_at_period_end: isso acordaria o bug latente do cron.
+    expect(r.cancel_at_period_end).toBe(false);
+  });
+
+  it("cancel NAO escreve em subscriptions: o acesso acaba pelo periodo", async () => {
+    await asaasProvider.cancel(entradaDeCancel);
+
+    expect(estado.escritas.filter((e) => e.tabela === "subscriptions")).toEqual(
+      [],
+    );
+  });
+
+  it("cancel e idempotente: intencao ja existente nao insere de novo", async () => {
+    // A pre-checagem encontra uma intencao viva pelo mesmo maybeSingle.
+    estado.intencaoExistente = { id: "intent-1" };
+
+    const r = await asaasProvider.cancel(entradaDeCancel);
+
+    expect(
+      estado.escritas.filter((e) => e.tabela === "subscription_cancellations"),
+    ).toEqual([]);
+    expect(r.non_renewal).toBe(true);
+  });
+
+  it("cancel sem assinatura ativa: 404, e nada e escrito", async () => {
+    estado.linhaSubscription = null;
+
+    await expect(asaasProvider.cancel(entradaDeCancel)).rejects.toMatchObject({
+      code: "not_found",
+    });
+    expect(estado.escritas).toEqual([]);
+  });
+
+  it("reactivate marca a intencao como reverted, sem tocar o Asaas", async () => {
+    const r = await asaasProvider.reactivate({ userId: USER });
+
+    const updates = estado.escritas.filter(
+      (e) =>
+        e.tabela === "subscription_cancellations" && e.operacao === "update",
+    );
+    expect(updates).toHaveLength(1);
+    expect(updates[0].carga).toMatchObject({ status: "reverted" });
+    expect(estado.asaas).toEqual([]);
+    expect(r.cancel_at_period_end).toBe(false);
+  });
+
+  it("reactivate sem assinatura manda para o checkout, nao erro", async () => {
+    estado.linhaSubscription = null;
+
+    const r = await asaasProvider.reactivate({ userId: USER });
+
+    expect(r.redirect_to_checkout).toBe(true);
+    expect(r.checkout_path).toBe("/planos");
+    expect(estado.escritas).toEqual([]);
   });
 });

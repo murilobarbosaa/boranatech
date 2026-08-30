@@ -2,10 +2,13 @@ import * as Sentry from "@sentry/node";
 
 import { asaasFetch } from "../lib/asaasClient";
 import { env } from "../lib/env";
-import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
-import { recordAffiliateConversion } from "./shared";
+import {
+  applyActivationEffects,
+  recordNonRenewalIntent,
+  revertNonRenewalIntent,
+} from "./shared";
 import { getPlanChargeValue, PLAN_PRICING } from "../../shared/planPricing";
 import type { PlanId } from "../../shared/planPricing";
 import type {
@@ -328,34 +331,102 @@ async function createCheckout(
 }
 
 /**
- * Pix avulso nao tem recorrencia a cancelar.
+ * Assinatura Pix do usuario sobre a qual `cancel` e `reactivate` operam.
  *
- * NO-OP EXPLICITO, e nao um `throw`: o contrato de `PaymentProvider` exige o
- * metodo, e o caminho do boleto ja resolveu a mesma pergunta do mesmo jeito
- * (server/providers/stripe.ts, ramo `renewal_type === "manual"`): "cancelar" uma
- * compra avulsa e registrar a intencao de nao renovar, o acesso termina sozinho
- * no fim do periodo pago, e NADA e chamado no provedor remoto.
- *
- * Este lote nao expoe cancelamento de Pix pela UI, entao o registro da intencao
- * (a linha em `subscription_cancellations`) fica para o lote que expuser. O que
- * este metodo garante hoje e que ninguem chame o Asaas achando que existe
- * assinatura la.
+ * Filtra por `provider = 'asaas'` pelo mesmo motivo que o caminho da Stripe
+ * filtra por `'stripe'`: quem tem as duas coisas na vida da conta nao pode ter
+ * uma acao de um provedor atingindo a linha do outro.
  */
-async function cancel(_input: CancelInput): Promise<CancelResult> {
-  throw createError(
-    400,
-    "pix_sem_recorrencia",
-    "Compra por Pix não tem renovação automática para cancelar.",
-  );
+async function acharAssinaturaPix(userId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("subscriptions")
+    .select("id, provider_subscription_id, current_period_end, status")
+    .eq("user_id", userId)
+    .eq("provider", PROVIDER)
+    .in("status", ["active", "trialing", "past_due"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    throw createError(500, "db_error", "Erro ao buscar assinatura.", {
+      cause: error,
+    });
+  }
+  return data;
 }
 
-/** Mesma razao do `cancel`: nao ha assinatura remota para reativar. */
-async function reactivate(_input: ReactivateInput): Promise<ReactivateResult> {
-  throw createError(
-    400,
-    "pix_sem_recorrencia",
-    "Compra por Pix não tem assinatura para reativar.",
-  );
+/** Data por extenso, no formato que as mensagens de billing ja usam. */
+function formatarData(iso: string | null): string {
+  return iso
+    ? new Date(iso).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })
+    : "o fim do período pago";
+}
+
+/**
+ * "Cancelar" uma compra por Pix e registrar a intencao de nao renovar.
+ *
+ * MESMO CONTRATO DO BOLETO, pelo caminho compartilhado: nao ha assinatura remota
+ * no Asaas (a compra e avulsa), entao NADA e chamado la; o acesso termina
+ * sozinho em `current_period_end`, que e o que `is_user_pro` ja avalia; e
+ * `cancel_at_period_end` NAO e setado, porque isso acordaria o bug latente do
+ * cron `process-cancellations`.
+ *
+ * O Lote 2a devolvia `400 pix_sem_recorrencia` aqui. Aquilo era verdade sobre a
+ * Asaas e mentira sobre o produto: a pessoa PODE dizer que nao quer renovar, e a
+ * intencao dela tem onde ser guardada.
+ */
+async function cancel(input: CancelInput): Promise<CancelResult> {
+  const sub = await acharAssinaturaPix(input.userId);
+  if (!sub) {
+    throw createError(404, "not_found", "Nenhuma assinatura ativa encontrada.");
+  }
+
+  await recordNonRenewalIntent({
+    userId: input.userId,
+    actorUserId: input.actorUserId,
+    providerSubscriptionId: sub.provider_subscription_id,
+    reasonCode: input.reasonCode,
+    reasonText: input.reasonText,
+    effectiveAt: sub.current_period_end,
+  });
+
+  return {
+    cancel_at_period_end: false,
+    effective_at: sub.current_period_end,
+    non_renewal: true,
+    // TODO(Ana): mensagem de sucesso do "nao renovar" do Pix.
+    message: `Anotado: sua assinatura não vai renovar. Você mantém o acesso Pro até ${formatarData(sub.current_period_end)}.`,
+  };
+}
+
+/**
+ * Desfaz o "nao renovar", espelhando o boleto: marca a intencao como 'reverted'
+ * e nao toca provedor nenhum. Idempotente (segundo clique nao acha 'scheduled').
+ */
+async function reactivate(input: ReactivateInput): Promise<ReactivateResult> {
+  const sub = await acharAssinaturaPix(input.userId);
+  if (!sub) {
+    // Mesma saida do caminho de cartao quando nao ha o que reativar: manda para
+    // o checkout em vez de erro, porque a acao que resolve e comprar de novo.
+    return {
+      redirect_to_checkout: true,
+      checkout_path: "/planos",
+      message:
+        "Reativação não disponível para este plano. Vamos para um novo plano.",
+    };
+  }
+
+  await revertNonRenewalIntent(sub.provider_subscription_id);
+
+  return {
+    cancel_at_period_end: false,
+    // TODO(Ana): mensagem de sucesso do "voltar atras" do Pix.
+    message: `Pronto: o aviso de não renovação foi removido. Seu acesso Pro segue até ${formatarData(sub.current_period_end)} e você pode renovar quando quiser.`,
+  };
 }
 
 /**
@@ -364,13 +435,12 @@ async function reactivate(_input: ReactivateInput): Promise<ReactivateResult> {
  * O contrato foi desenhado para a Stripe, onde a autenticacao e uma assinatura
  * HMAC sobre os BYTES CRUS do corpo, e por isso `WebhookInput` carrega
  * `rawBody`. O Asaas autentica por um token estatico no header
- * `asaas-access-token`, que nao toca o corpo: exigir `rawBody` aqui seria pedir
- * uma coisa que este provedor nao usa, e a rota teria de fingir que usa.
+ * `asaas-access-token`, que nao toca o corpo.
  *
- * A rota do Asaas (server/routes/webhooksAsaas.ts) chama
- * `processarEventoAsaas` diretamente, que e exportada logo abaixo. Este metodo
- * existe para satisfazer o tipo e lanca se alguem o chamar por engano, em vez de
- * devolver um sucesso vazio que esconderia a chamada errada.
+ * A rota do Asaas (server/routes/webhooksAsaas.ts) chama `processarEventoAsaas`
+ * diretamente. Este metodo existe para satisfazer o tipo e lanca se alguem o
+ * chamar por engano, em vez de devolver um sucesso vazio que esconderia a
+ * chamada errada.
  */
 async function handleWebhook(_input: WebhookInput): Promise<WebhookResult> {
   throw createError(
@@ -745,41 +815,23 @@ async function ativarPorPagamento(args: {
     );
   }
 
-  // O acesso mudou: derruba o cache de Pro do dono. Sem isto a pessoa que acabou
-  // de pagar continua nao-Pro ate o TTL expirar.
-  void invalidateProStatusCache(resultado.out_user_id);
-
-  // Comissao de afiliado pelo CAMINHO UNICO (server/providers/shared.ts).
-  // Ausencia de valor NAO vira zero: pula e captura, mesmo contrato do cartao e
-  // do boleto.
-  if (resultado.out_affiliate_code) {
-    await recordAffiliateConversion({
-      userId: resultado.out_user_id,
-      affiliateCode: resultado.out_affiliate_code,
-      revenueCents: paidAmountCentsFromAsaas(evento) ?? undefined,
-      prevStatus: "pending",
-      nextStatus: "active",
-      sourceEvent: {
-        id: idDoEvento,
-        type: tipo,
-        subscriptionId: cobrancaId,
-      },
-    });
-  }
-
-  // Resgate do cupom, no mesmo ponto em que o caminho da Stripe conta.
-  if (resultado.out_coupon_code) {
-    try {
-      await supabaseAdmin.rpc("increment_coupon_redemption", {
-        p_code: resultado.out_coupon_code,
-      });
-    } catch (couponError) {
-      console.error(
-        "[webhook/asaas] falha ao contar resgate de cupom:",
-        couponError,
-      );
-    }
-  }
+  // EFEITOS DA ATIVACAO pelo caminho compartilhado, o MESMO que o cartao e o
+  // boleto usam (server/providers/shared.ts). O Lote 2a reimplementava cache e
+  // cupom aqui por fora, e nao tinha o e-mail: quem pagava por Pix ganhava
+  // acesso e nao recebia confirmacao nenhuma.
+  //
+  // Chamado SOMENTE com `out_activated === true`: uma reentrega que nao ativou
+  // nada nao pode reenviar e-mail nem recontar comissao.
+  await applyActivationEffects({
+    userId: resultado.out_user_id,
+    logPrefix: "webhook/asaas",
+    planName: plano?.name || plano?.code || "Pro",
+    affiliateCode: resultado.out_affiliate_code,
+    couponCode: resultado.out_coupon_code,
+    revenueCents: paidAmountCentsFromAsaas(evento) ?? undefined,
+    sourceEvent: { id: idDoEvento, type: tipo, subscriptionId: cobrancaId },
+    prevStatus: "pending",
+  });
 
   return true;
 }
