@@ -92,6 +92,18 @@ export function tendenciaDeNivel(
  */
 export function tendenciaDeFluxo(
   pontos: Array<{ count: number; partial: boolean }>,
+  /**
+   * Copy do ramo "metade anterior zerada", a UNICA parte desta funcao que fala
+   * do dominio: o resto ("Acelerando: 12 -> 20 por dia") serve qualquer
+   * contagem diaria. O default mantem o grafico de cadastros exatamente como
+   * era; o de ativos passa as frases dele. Sem este parametro, um mes sem
+   * ninguem no site imprimiria "Nenhum cadastro no periodo" num grafico que
+   * nao mede cadastro.
+   */
+  zeroCopy: { nenhum: string; comecou: string } = {
+    nenhum: "Nenhum cadastro no período",
+    comecou: "Começou a entrar cadastro no período",
+  },
 ): Tendencia {
   const completos = pontos.filter((p) => !p.partial);
   if (completos.length < 4) {
@@ -105,8 +117,8 @@ export function tendenciaDeFluxo(
 
   if (anterior === 0) {
     return recente > 0
-      ? { texto: "Começou a entrar cadastro no período", tom: "alta" }
-      : { texto: "Nenhum cadastro no período", tom: "neutro" };
+      ? { texto: zeroCopy.comecou, tom: "alta" }
+      : { texto: zeroCopy.nenhum, tom: "neutro" };
   }
 
   const variacao = ((recente - anterior) / anterior) * 100;

@@ -179,6 +179,15 @@ const COPY_ESTATICA = new Set<string>([
   "Marketing",
   "Sistema",
   "Atividade",
+  // Grafico "Ativos por dia", no topo da aba. Com o fixture padrao o
+  // /users-active-daily nao responde serie nenhuma, entao a moldura cai no
+  // estado VAZIO e e a copy dele que aparece; a frase de erro do PostHog nao
+  // entra aqui porque este cenario nao a exercita (trava propria em
+  // ActiveUsersChart.test.tsx). Se ela aparecer, cai como frase nao
+  // classificada, que e o comportamento desejado.
+  "Ativos por dia",
+  "A presença no site está crescendo ou secando?",
+  "Ainda não há medições neste período.",
   // Seção "Vida no site" (certificados, conquistas, roadmaps e trilhas). Os
   // rótulos dos blocos internos não entram aqui porque só aparecem quando a
   // seção tem dado, e o inventário roda sobre o modal com o payload padrão.

@@ -1,4 +1,8 @@
-import { diaBrasilia, inicioDoDiaBrasilia } from "../../shared/brasiliaDay";
+import {
+  diaBrasilia,
+  inicioDoDiaBrasilia,
+  somarDiaCivil,
+} from "../../shared/brasiliaDay";
 import { env } from "./env";
 
 // PostHog como maquina de estados explicita. O host NAO e hardcoded: vem de
@@ -636,6 +640,95 @@ export async function contarAtividadeAgora(): Promise<PosthogAtividadeAgoraState
         hojePessoas: cellToNumber(linha[1]),
       },
     };
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    const httpStatus =
+      err instanceof PosthogQueryError ? err.httpStatus : undefined;
+    return { state: "error", reason, httpStatus };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ATIVOS POR DIA (serie de 30 dias)
+//
+// A PERGUNTA: a presenca no site esta crescendo ou secando ao longo do mes?
+//
+// UNIDADE: `distinct_id`, a mesma de contarAtividadeAgora, e pelo mesmo motivo
+// (e a unica chave que existe no evento anonimo). Quem navega deslogado e
+// depois entra conta duas vezes no dia. E um numero de PRESENCA, com margem, e
+// a tela precisa dizer isso. Nao trocar por person_id sem trocar tambem no card
+// de "pessoas ativas hoje": duas unidades diferentes na mesma aba, uma ao lado
+// da outra, e a divergencia que o cabecalho de brasiliaDay.ts documenta.
+//
+// AGRUPAMENTO POR DIA DE BRASILIA, nao por dia UTC. `toDate(timestamp)` do
+// ClickHouse agruparia em UTC e jogaria tudo depois das 21h no balde do dia
+// seguinte, deslocando a serie inteira sem ninguem perceber. A conversao entra
+// na propria query, com o nome do fuso, nunca com offset fixo de -3h.
+const ATIVOS_DIARIOS_DIAS = 30;
+
+/** Um dia da serie. `ativos` e contagem fechada: zero e medicao, nao buraco. */
+export type PontoAtivosDiarios = { date: string; ativos: number };
+
+export type PosthogAtivosDiariosState =
+  | { state: "not_configured"; missing: string[] }
+  | { state: "error"; reason: string; httpStatus?: number }
+  | { state: "ok"; dias: number; pontos: PontoAtivosDiarios[] };
+
+/**
+ * Usuarios unicos ativos por dia nos ultimos 30 dias (Brasilia), incluindo hoje.
+ *
+ * PREENCHIMENTO NO SERVIDOR, e e a decisao que carrega o resto. O HogQL com
+ * `group by` so devolve linha para dia que teve evento, entao uma semana morta
+ * volta com menos pontos que dias. Se o grafico recebesse a lista crua, ele
+ * teria que decidir sozinho o que um dia ausente significa, e a unica leitura
+ * disponivel no cliente ("nao veio, logo nao sei") e indistinguivel de zero.
+ * Aqui a fonte sabe: a janela foi consultada inteira, o dia existe e nao teve
+ * ninguem. Sai SEMPRE com 30 pontos, e o zero e afirmacao.
+ */
+export async function getAtivosDiarios(): Promise<PosthogAtivosDiariosState> {
+  const missing: string[] = [];
+  if (!env.posthogApiKey) missing.push("POSTHOG_API_KEY");
+  if (!env.posthogProjectId) missing.push("POSTHOG_PROJECT_ID");
+  if (missing.length > 0) return { state: "not_configured", missing };
+
+  const hoje = diaBrasilia(new Date().toISOString());
+  if (!hoje) {
+    // Mesmo tratamento de contarAtividadeAgora: janela que nao se sabe calcular
+    // vira ERRO, nunca uma janela chutada. Chute devolve numero plausivel, que e
+    // o pior resultado possivel.
+    return { state: "error", reason: "nao foi possivel resolver o dia atual" };
+  }
+
+  // Janela FECHADA de 30 dias terminando hoje: o primeiro dia e hoje menos 29.
+  const primeiroDia = somarDiaCivil(hoje, -(ATIVOS_DIARIOS_DIAS - 1));
+  const inicio = hogTime(new Date(inicioDoDiaBrasilia(primeiroDia)));
+
+  try {
+    const res = await runPosthogQuery(
+      `select toString(toDate(timestamp, 'America/Sao_Paulo')) as dia, count(distinct distinct_id) as ativos from events where timestamp >= toDateTime('${inicio}') and distinct_id is not null group by dia order by dia`,
+    );
+    const linhas = res.results;
+    if (!Array.isArray(linhas)) {
+      // 2xx sem `results` nao e "nenhum dia teve gente": e uma resposta que nao
+      // responde. Disciplina herdada de contarAtividadeAgora, e aqui ela pesa
+      // mais, porque uma serie vazia desenha 30 zeros que parecem medicao.
+      return { state: "error", reason: "resposta do PostHog sem resultado" };
+    }
+
+    const porDia = new Map<string, number>();
+    for (const linha of linhas) {
+      const dia = typeof linha?.[0] === "string" ? linha[0] : null;
+      if (dia) porDia.set(dia, cellToNumber(linha[1]));
+    }
+
+    const pontos: PontoAtivosDiarios[] = [];
+    let dia = primeiroDia;
+    for (let i = 0; i < ATIVOS_DIARIOS_DIAS; i += 1) {
+      pontos.push({ date: dia, ativos: porDia.get(dia) ?? 0 });
+      dia = somarDiaCivil(dia, 1);
+    }
+
+    return { state: "ok", dias: ATIVOS_DIARIOS_DIAS, pontos };
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     const httpStatus =

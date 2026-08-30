@@ -161,7 +161,18 @@ describe("UsersDashboard: lista", () => {
 
     render(<UsersDashboard />);
 
-    expect(await screen.findByText("Erro ao buscar usuários.")).toBeTruthy();
+    // FORA do grafico de ativos, de proposito. Este mock rejeita TODA chamada,
+    // entao o grafico da aba tambem exibe esta mesma frase, e um getByText solto
+    // passou a achar dois nos. O que este teste afirma e o erro DA LISTA, entao
+    // a busca exclui a moldura do grafico em vez de aceitar qualquer um dos dois:
+    // sem isso, ele passaria mesmo se a lista parasse de reportar o erro.
+    const grafico = screen.getByTestId("grafico-ativos-diarios");
+    await waitFor(() => {
+      const daLista = screen
+        .getAllByText("Erro ao buscar usuários.")
+        .filter((no) => !grafico.contains(no));
+      expect(daLista.length).toBe(1);
+    });
   });
 });
 

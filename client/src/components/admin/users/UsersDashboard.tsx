@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { adminFetch } from "@/lib/adminApi";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 
+import { ActiveUsersChart } from "./ActiveUsersChart";
 import { UserDetailModal } from "./UserDetailModal";
 import { UserListHeader, UserListRow } from "./UserListRow";
 import type { UserListFilter, UserRow, UsersListPayload } from "./types";
@@ -75,6 +76,12 @@ export function UsersDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* ACIMA da busca: a serie responde "como anda a presenca" e e leitura de
+          contexto, enquanto busca e filtro sao ferramentas de procurar UMA
+          pessoa. Enterrar o grafico embaixo da lista o deixaria fora da dobra em
+          qualquer tela, e ele existe justamente para ser visto sem procurar. */}
+      <ActiveUsersChart />
+
       <div className="flex flex-wrap items-center gap-3">
         <input
           type="search"

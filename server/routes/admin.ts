@@ -19,6 +19,7 @@ import {
 import { fetchUsdBrlRate } from "../lib/fx/ptax";
 import {
   contarAtividadeAgora,
+  getAtivosDiarios,
   getPosthogHealth,
   getPaidFunnelSignals,
   getPosthogStats,
@@ -688,6 +689,30 @@ router.get("/online-now", async (_req, res, next) => {
       ONLINE_NOW_CACHE_TTL_S,
       async () => ({
         result: await contarAtividadeAgora(),
+        computedAt: new Date().toISOString(),
+      }),
+    );
+    res.json({ data: result, computedAt });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Serie diaria de ativos: TTL de 300s, cinco vezes o padrao dos outros blocos.
+// Nao e economia de query, e a natureza do dado: 29 dos 30 pontos sao dias
+// FECHADOS e nunca mais mudam, e o unico que se move e o de hoje. Recalcular de
+// minuto em minuto uma serie que muda uma vez por dia gastaria HogQL para
+// redesenhar o mesmo grafico. Cinco minutos de atraso no ponto de hoje e
+// invisivel numa serie de trinta dias.
+const ACTIVE_DAILY_CACHE_TTL_S = 300;
+
+router.get("/users-active-daily", async (_req, res, next) => {
+  try {
+    const { result, computedAt } = await getOrCompute(
+      "admincache:users-active-daily:30d",
+      ACTIVE_DAILY_CACHE_TTL_S,
+      async () => ({
+        result: await getAtivosDiarios(),
         computedAt: new Date().toISOString(),
       }),
     );
