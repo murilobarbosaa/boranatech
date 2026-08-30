@@ -284,7 +284,7 @@ export default function Areas() {
       />
 
       <div
-        className="bnt-marquee overflow-hidden border-b-2 border-slate-900 bg-violet-700 py-3"
+        className="bnt-keep-colors bnt-marquee overflow-hidden border-b-2 border-slate-900 bg-violet-700 py-3"
         aria-label="Áreas da TI passando"
       >
         <div
