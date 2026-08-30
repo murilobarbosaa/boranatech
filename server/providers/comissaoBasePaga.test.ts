@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  paidAmountCentsFromEvent,
-  registrarConversaoDeAfiliado,
-} from "./stripe";
+import { paidAmountCentsFromEvent, recordAffiliateConversion } from "./stripe";
 
 /**
  * BASE DA COMISSAO DE AFILIADO: valor pago, nunca preco de tabela.
@@ -243,7 +240,7 @@ describe("conversao de afiliado: ausencia nao vira zero", () => {
   });
 
   it("valor AUSENTE nao chama increment_affiliate_conversion", async () => {
-    await registrarConversaoDeAfiliado({
+    await recordAffiliateConversion({
       userId: "user-1",
       affiliateCode: "BORA10",
       revenueCents: undefined,
@@ -256,7 +253,7 @@ describe("conversao de afiliado: ausencia nao vira zero", () => {
   });
 
   it("valor AUSENTE captura no Sentry com o contexto do replay manual", async () => {
-    await registrarConversaoDeAfiliado({
+    await recordAffiliateConversion({
       userId: "user-1",
       affiliateCode: "BORA10",
       revenueCents: undefined,
@@ -279,7 +276,7 @@ describe("conversao de afiliado: ausencia nao vira zero", () => {
   });
 
   it("a captura usa fingerprint fixo, para virar serie no tempo e nao uma issue por venda", async () => {
-    await registrarConversaoDeAfiliado({
+    await recordAffiliateConversion({
       userId: "user-1",
       affiliateCode: "BORA10",
       revenueCents: undefined,
@@ -295,7 +292,7 @@ describe("conversao de afiliado: ausencia nao vira zero", () => {
   });
 
   it("ZERO DECLARADO escreve, com 0: venda 100 por cento descontada e uma venda", async () => {
-    await registrarConversaoDeAfiliado({
+    await recordAffiliateConversion({
       userId: "user-1",
       affiliateCode: "BORA10",
       revenueCents: 0,
@@ -314,7 +311,7 @@ describe("conversao de afiliado: ausencia nao vira zero", () => {
   });
 
   it("ZERO DECLARADO nao captura no Sentry: nao ha nada a investigar", async () => {
-    await registrarConversaoDeAfiliado({
+    await recordAffiliateConversion({
       userId: "user-1",
       affiliateCode: "BORA10",
       revenueCents: 0,
@@ -326,7 +323,7 @@ describe("conversao de afiliado: ausencia nao vira zero", () => {
   });
 
   it("venda com cupom escreve o valor PAGO, nao o de tabela", async () => {
-    await registrarConversaoDeAfiliado({
+    await recordAffiliateConversion({
       userId: "user-1",
       affiliateCode: "BORA10",
       revenueCents: MENSAL_COM_CUPOM_CENTS,
@@ -348,7 +345,7 @@ describe("conversao de afiliado: ausencia nao vira zero", () => {
   });
 
   it("afiliado inexistente nao escreve nem captura", async () => {
-    await registrarConversaoDeAfiliado({
+    await recordAffiliateConversion({
       userId: "user-1",
       affiliateCode: "NAOEXISTE",
       revenueCents: MENSAL_COM_CUPOM_CENTS,
@@ -364,7 +361,7 @@ describe("conversao de afiliado: ausencia nao vira zero", () => {
     // A captura vem ANTES da consulta ao afiliado, de proposito: o que precisa
     // de replay e a venda sem valor, e descobrir se o codigo existe e parte da
     // investigacao, nao pre-requisito dela.
-    await registrarConversaoDeAfiliado({
+    await recordAffiliateConversion({
       userId: "user-1",
       affiliateCode: "NAOEXISTE",
       revenueCents: undefined,

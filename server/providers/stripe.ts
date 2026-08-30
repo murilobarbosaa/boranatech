@@ -171,7 +171,7 @@ async function getUserContact(userId: string): Promise<{
  * server/routes/cron.ts: o que importa provar e SE a escrita acontece e com qual
  * numero, e isso so se prova rodando a funcao.
  */
-export async function registrarConversaoDeAfiliado(params: {
+export async function recordAffiliateConversion(params: {
   userId: string;
   affiliateCode: string;
   /** `undefined` = o evento nao declarou cobranca. Ver paidAmountCentsFromEvent. */
@@ -265,7 +265,7 @@ async function handleTransition(
   }
 
   if (becameActive && opts.affiliateCode) {
-    await registrarConversaoDeAfiliado({
+    await recordAffiliateConversion({
       userId,
       affiliateCode: opts.affiliateCode,
       revenueCents: opts.revenueCents,
@@ -852,7 +852,7 @@ async function applyBoletoPending(
  * entao o retorno de `rpc` nao vem tipado; este tipo e a declaracao do contrato
  * do lado do TypeScript.
  */
-type AtivacaoExclusiva = {
+type ExclusiveActivationRow = {
   out_activated: boolean;
   out_superseded_count: number;
   out_user_id: string;
@@ -866,7 +866,7 @@ type AtivacaoExclusiva = {
 // calculado aqui (now + access_days do metadata: 365 anual, 182 semestral),
 // porque nao existe subscription na Stripe de onde puxar o periodo.
 // EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
-// server/routes/cron.ts e de `registrarConversaoDeAfiliado` acima: o que
+// server/routes/cron.ts e de `recordAffiliateConversion` acima: o que
 // importa provar aqui e que a ativacao passa por UMA chamada de RPC e por
 // nenhuma escrita direta de status, e isso so se prova rodando a funcao.
 export async function onBoletoAsyncPaymentSucceeded(
@@ -1008,7 +1008,7 @@ export async function onBoletoAsyncPaymentSucceeded(
   // A funcao devolve exatamente uma linha; `rpc` de RETURNS TABLE chega como
   // array. Vazio nao deveria acontecer, e por isso e tratado como falha em vez
   // de virar um `return` mudo que perderia um pagamento.
-  const linhas = (ativacao ?? []) as AtivacaoExclusiva[];
+  const linhas = (ativacao ?? []) as ExclusiveActivationRow[];
   const resultado = linhas[0];
   if (!resultado) {
     console.error(
