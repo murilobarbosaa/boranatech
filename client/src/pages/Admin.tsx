@@ -63,6 +63,8 @@ import { TasksPanelSkeleton } from "@/components/admin/tasks/TasksPanelSkeleton"
 // import estatico coloca os dois no chunk do Admin, que TODA aba do painel baixa.
 // Medido: o chunk saiu de 700,98 kB para 860,43 kB (gzip 170,18 -> 216,50).
 // Ninguem fora deste modulo importa dnd-kit, entao a fronteira e limpa.
+import { readViewState } from "@/components/admin/tasks/taskViewState";
+
 const TasksDashboard = lazyWithRetry(
   () => import("@/components/admin/tasks/TasksDashboard"),
 );
@@ -6697,6 +6699,22 @@ export default function Admin() {
   const [, setLocation] = useLocation();
   const activeSection = sectionFromSearch(search);
 
+  // LARGURA CHEIA SO NO QUADRO DE TAREFAS.
+  //
+  // O kanban e a unica secao do admin que GANHA com mais largura: cada coluna
+  // tem 13rem fixos, entao o teto de 1280px do `.container` decide quantas
+  // cabem, e num monitor largo sobrava margem morta dos dois lados enquanto a
+  // fileira rolava na horizontal. Texto e tabela nao querem isso: linha de 2000px
+  // e pior de ler, e por isso a excecao e por SECAO e por MODO, nao geral.
+  //
+  // O modo vem de `readViewState`, a MESMA funcao que o TasksDashboard usa. Ler
+  // o `?view=` com um `URLSearchParams` proprio aqui seria uma segunda leitura
+  // do mesmo parametro, e as duas divergiriam na primeira mudanca de contrato
+  // (foi assim que "qual assinatura representa a pessoa" divergiu entre a lista
+  // e o modal, ver o comentario em admin.ts).
+  const quadroEmLarguraCheia =
+    activeSection === "tarefas" && readViewState(search).view === "board";
+
   // Reescreve a URL das secoes aposentadas. `replace` e nao `push`: o link do
   // e-mail nao deve virar uma entrada no historico que leve de volta a uma aba
   // que nao existe mais. A tela ja renderiza o destino (sectionFromSearch
@@ -7993,7 +8011,23 @@ export default function Admin() {
       </section>
 
       <section className="section-alt py-10">
-        <div className="container space-y-10">
+        {/* `lg:max-w-none` neutraliza SO o teto de largura do `.container`,
+            preservando o `mx-auto` (que vira no-op sem teto) e o padding
+            lateral, que continua sendo o respiro padrao da pagina.
+
+            NAO e `w-screen` nem `100vw`: os dois medem o viewport COM a barra de
+            rolagem vertical, entao numa pagina que rola (esta) sobra largura
+            demais e nasce uma rolagem horizontal na pagina inteira, que e pior
+            que a margem morta que a mudanca veio remover. Um bloco em largura
+            100% do pai nao tem esse problema porque o pai ja exclui a barra.
+
+            Este contêiner hospeda UMA secao por vez (todas as irmas sao
+            condicionais), entao afrouxar o teto aqui afrouxa exatamente a de
+            Tarefas. */}
+        <div
+          data-testid="admin-secoes"
+          className={`container space-y-10 ${quadroEmLarguraCheia ? "lg:max-w-none" : ""}`}
+        >
           {activeSection === "visao-geral" ? (
             <>
               {/* Substitui os dois cartões de saúde que ocupavam o topo (o de
