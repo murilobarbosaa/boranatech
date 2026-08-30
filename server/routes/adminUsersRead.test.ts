@@ -105,7 +105,15 @@ function montar(
   authAdmin: Record<string, unknown> = {},
 ) {
   estado.double = criarSupabaseDouble(
-    { admin_refunds: { rows: [] }, ...respostas },
+    // As duas fontes do TOTAL PAGO entram vazias por padrao, como o
+    // admin_refunds ja entrava: desde que a lista carrega o total, `GET /users`
+    // consulta as duas em toda chamada, e um teste que nao se importa com
+    // dinheiro nao deveria precisar declarar isso. Quem se importa sobrescreve.
+    {
+      admin_refunds: { rows: [] },
+      finance_transactions: { rows: [] },
+      ...respostas,
+    },
     authAdmin,
   );
 }
@@ -273,6 +281,150 @@ describe("GET /users: enriquecimento chega na resposta", () => {
 // ---------------------------------------------------------------------------
 // GET /users/:id
 // ---------------------------------------------------------------------------
+
+describe("GET /users: area e total pago", () => {
+  function comDuasPessoas(over: Record<string, unknown> = {}) {
+    montar({
+      profiles: {
+        rows: [
+          {
+            id: "p1",
+            user_id: "pagante",
+            name: "A",
+            email: "a@x",
+            created_at: null,
+            area_interesse: "Dados",
+          },
+          {
+            id: "p2",
+            user_id: "visitante",
+            name: "B",
+            email: "b@x",
+            created_at: null,
+            area_interesse: null,
+          },
+        ],
+        count: 2,
+      },
+      // O enriquecimento de Pro roda em toda chamada e nao e o objeto destes
+      // testes: entra vazio para nao virar ruido, e quem precisar sobrescreve.
+      subscriptions: { rows: [] },
+      influencers: { rows: [] },
+      ...over,
+    });
+  }
+
+  it("area vem da MESMA linha de profiles, e ausencia e null explicito", async () => {
+    comDuasPessoas();
+    const r = await chamarAdmin("GET", "/users");
+
+    expect(r.body.data.items[0].area_interesse).toBe("Dados");
+    // `null` e nao string vazia: quem nunca preencheu nao tem area, e a tela
+    // precisa distinguir isso de uma area chamada "".
+    expect(r.body.data.items[1].area_interesse).toBeNull();
+    // E NAO custou consulta nova: a area saiu do mesmo select da pagina.
+    expect(
+      estado.double.chamadas.filter((c) => c.table === "profiles"),
+    ).toHaveLength(1);
+  });
+
+  it("total pago desconta devolucao DECLARADA, pela conta canonica", async () => {
+    // O caso que motiva usar totalPagoCents em vez de somar aqui: sem descontar
+    // a declaracao externa, o total sairia bruto (10000) e seria um numero
+    // plausivel e errado.
+    comDuasPessoas({
+      finance_transactions: {
+        rows: [
+          { user_id: "pagante", type: "charge", gross_cents: 10000 },
+          { user_id: "visitante", type: "payout", gross_cents: 99999 },
+        ],
+      },
+      admin_refunds: {
+        rows: [
+          {
+            user_id: "pagante",
+            stripe_charge_id: "ch_1",
+            amount_cents: 3000,
+            settlement: "external",
+          },
+        ],
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/users");
+    expect(r.body.data.items[0].total_pago_cents).toBe(7000);
+    // `payout` e movimento da conta Stripe, nao pagamento do usuario: fica de
+    // fora pela propria totalPagoCents, e o visitante continua em zero.
+    expect(r.body.data.items[1].total_pago_cents).toBe(0);
+  });
+
+  it("ZERO de verdade e diferente de NULL de falha", async () => {
+    // Sem esta distincao a tela nao teria como separar "nunca pagou" de "nao
+    // consegui olhar", e as duas desenhariam a mesma coisa.
+    comDuasPessoas({ finance_transactions: { rows: [] } });
+    const semCompra = await chamarAdmin("GET", "/users");
+    expect(semCompra.body.data.items[0].total_pago_cents).toBe(0);
+
+    comDuasPessoas({
+      finance_transactions: { error: { message: "boom" } },
+    });
+    const comFalha = await chamarAdmin("GET", "/users");
+    // A LISTA NAO CAI: 200, com a coluna nomeadamente desconhecida.
+    expect(comFalha.status).toBe(200);
+    expect(comFalha.body.data.items[0].total_pago_cents).toBeNull();
+    // E o resto da linha continua correto: a falha de uma fonte de
+    // enriquecimento nao contamina as outras.
+    expect(comFalha.body.data.items[0].area_interesse).toBe("Dados");
+  });
+
+  it("uma fonte SO tambem vira null: meia conta e pior que nenhuma", async () => {
+    // Com finance ok e admin_refunds quebrado, somar so a primeira daria um
+    // total BRUTO, maior que o real, indistinguivel do certo na tela.
+    comDuasPessoas({
+      finance_transactions: {
+        rows: [{ user_id: "pagante", type: "charge", gross_cents: 10000 }],
+      },
+      admin_refunds: { error: { message: "boom" } },
+    });
+
+    const r = await chamarAdmin("GET", "/users");
+    expect(r.status).toBe(200);
+    expect(r.body.data.items[0].total_pago_cents).toBeNull();
+  });
+
+  it("TETO FIXO de consultas: nao cresce com o tamanho da pagina", async () => {
+    // A trava que impede o N+1. O teto e por FONTE, nao por linha: duas
+    // consultas para o total (finance + admin_refunds), qualquer que seja o
+    // numero de usuarios na pagina. Uma soma movida para dentro do laco
+    // estouraria isto.
+    const linhas = Array.from({ length: 40 }, (_, i) => ({
+      id: `p${i}`,
+      user_id: `u${i}`,
+      name: `N${i}`,
+      email: `e${i}@x`,
+      created_at: null,
+      area_interesse: null,
+    }));
+    montar({
+      profiles: { rows: linhas, count: linhas.length },
+      subscriptions: { rows: [] },
+      influencers: { rows: [] },
+      finance_transactions: { rows: [] },
+      admin_refunds: { rows: [] },
+    });
+
+    await chamarAdmin("GET", "/users");
+
+    expect(
+      estado.double.chamadas.filter((c) => c.table === "finance_transactions"),
+      "total pago deve custar UMA consulta a finance_transactions por pagina",
+    ).toHaveLength(1);
+    expect(
+      estado.double.chamadas.filter((c) => c.table === "admin_refunds"),
+      "total pago deve custar UMA consulta a admin_refunds por pagina",
+    ).toHaveLength(1);
+  });
+});
 
 describe("GET /users/:id", () => {
   const PERFIL = {
@@ -929,7 +1081,10 @@ describe("histórico de assinaturas no detalhe (Parte 5)", () => {
           rows: [
             VIGENTE,
             linha({ created_at: "2025-01-01T00:00:00Z" }),
-            linha({ created_at: "2024-01-01T00:00:00Z", plans: { code: "pro_monthly" } }),
+            linha({
+              created_at: "2024-01-01T00:00:00Z",
+              plans: { code: "pro_monthly" },
+            }),
           ],
         },
         influencers: { rows: [] },

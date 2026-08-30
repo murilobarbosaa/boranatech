@@ -51,6 +51,11 @@ import {
   type SubscriptionRow,
 } from "../lib/userListEnrichment";
 import {
+  totaisPagosPorUsuario,
+  type DeclaracaoDeDevolucao,
+  type LinhaFinanceira,
+} from "../lib/userListPaidTotals";
+import {
   emailAlreadyTakenError,
   mergedUserMetadata,
   normalizeEmail,
@@ -2417,7 +2422,11 @@ router.get("/users", async (req, res, next) => {
     const rangeFrom = (page - 1) * pageSize;
     let query = supabaseAdmin
       .from("profiles")
-      .select("id, user_id, name, email, created_at", {
+      // `area_interesse` entra aqui e nao numa consulta a parte: e coluna da
+      // MESMA linha de profiles que a lista ja carrega, entao o custo e zero.
+      // O comentario acima sobre lista ENXUTA continua valendo: o criterio e
+      // "so o que a linha renderiza", e agora ela renderiza a area.
+      .select("id, user_id, name, email, created_at, area_interesse", {
         count: "exact",
       })
       .order("created_at", { ascending: false })
@@ -2584,6 +2593,38 @@ router.get("/users", async (req, res, next) => {
       );
     }
 
+    // TOTAL PAGO: DUAS consultas de custo fixo para a pagina inteira, uma por
+    // fonte. Nunca por linha: com 50 linhas isso seriam 100 idas ao banco.
+    //
+    // FALHA AQUI NAO DERRUBA A LISTA, ao contrario do enriquecimento de Pro
+    // acima, e a diferenca e o que cada erro produziria na tela. Sem o Pro,
+    // TODO MUNDO apareceria como nao-Pro, um erro silencioso e plausivel sobre
+    // o qual o admin agiria. Sem o total, a coluna vira `null` e a tela mostra
+    // que nao conseguiu olhar, que e verdade e nao atrapalha o resto da linha.
+    let totais: Map<string, number> | null = null;
+    if (pageUserIds.length > 0) {
+      const [financeiro, declaracoes] = await Promise.all([
+        supabaseAdmin
+          .from("finance_transactions")
+          .select("user_id, type, gross_cents")
+          .in("user_id", pageUserIds),
+        supabaseAdmin
+          .from("admin_refunds")
+          .select("user_id, stripe_charge_id, amount_cents, settlement")
+          .in("user_id", pageUserIds),
+      ]);
+      if (!financeiro.error && !declaracoes.error) {
+        totais = totaisPagosPorUsuario(
+          pageUserIds,
+          (financeiro.data || []) as LinhaFinanceira[],
+          (declaracoes.data || []) as DeclaracaoDeDevolucao[],
+        );
+      }
+      // As duas juntas ou nenhuma: com so uma delas a soma sairia BRUTA (sem
+      // descontar as devolucoes declaradas) e seria um numero plausivel e
+      // errado, indistinguivel do certo. `null` diz que nao se sabe.
+    }
+
     const items = rows.map((row) => {
       const extra = row.user_id ? enrichment.get(row.user_id) : undefined;
       return {
@@ -2592,6 +2633,9 @@ router.get("/users", async (req, res, next) => {
         pro_source: extra?.pro_source ?? null,
         plan_code: extra?.plan_code ?? null,
         subscription_status: extra?.subscription_status ?? null,
+        // ZERO e afirmacao ("nunca pagou"); `null` e ausencia de medicao ("a
+        // consulta falhou"). Os dois desenham coisas diferentes na tela.
+        total_pago_cents: totais ? (totais.get(row.user_id ?? "") ?? 0) : null,
       };
     });
 
