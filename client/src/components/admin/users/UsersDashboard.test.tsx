@@ -161,7 +161,18 @@ describe("UsersDashboard: lista", () => {
 
     render(<UsersDashboard />);
 
-    expect(await screen.findByText("Erro ao buscar usuários.")).toBeTruthy();
+    // FORA do grafico de ativos, de proposito. Este mock rejeita TODA chamada,
+    // entao o grafico da aba tambem exibe esta mesma frase, e um getByText solto
+    // passou a achar dois nos. O que este teste afirma e o erro DA LISTA, entao
+    // a busca exclui a moldura do grafico em vez de aceitar qualquer um dos dois:
+    // sem isso, ele passaria mesmo se a lista parasse de reportar o erro.
+    const grafico = screen.getByTestId("grafico-ativos-diarios");
+    await waitFor(() => {
+      const daLista = screen
+        .getAllByText("Erro ao buscar usuários.")
+        .filter((no) => !grafico.contains(no));
+      expect(daLista.length).toBe(1);
+    });
   });
 });
 
@@ -182,6 +193,240 @@ describe("UsersDashboard: colunas e selos", () => {
     for (const coluna of ["Usuário", "Acesso", "Assinatura", "Cadastro"]) {
       expect(cabecalho.getByText(coluna)).toBeTruthy();
     }
+  });
+
+  it("mostra o total pago, com zero de verdade como R$ 0,00", async () => {
+    // ZERO E AFIRMACAO: quem nunca comprou tem um total, e ele e zero. Desenhar
+    // travessao aqui diria "nao sei" sobre um fato conhecido.
+    //
+    // A AREA saiu da lista em 2026-08-30 (decisao da Ana). O campo continua no
+    // payload e tem trava propria no server (adminUsersRead.test.ts); o que
+    // morreu foi a COLUNA, e por isso as asercoes de render dela sairam daqui.
+    rotearFetch({
+      "/users?": listPayload([
+        {
+          user_id: "u1",
+          name: "Ana Moura",
+          email: "ana@exemplo.com",
+          area_interesse: "Dados",
+          total_pago_cents: 24900,
+        },
+        {
+          user_id: "u2",
+          name: "Bruno Lima",
+          email: "bruno@exemplo.com",
+          area_interesse: null,
+          total_pago_cents: 0,
+        },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+    await screen.findByText("Ana Moura");
+
+    expect(screen.queryByText("Dados")).toBeNull();
+    expect(screen.getByText("R$ 249,00")).toBeTruthy();
+    expect(screen.getByText("R$ 0,00")).toBeTruthy();
+  });
+
+  it("NULL de falha e diferente de zero: marcador com explicacao no title", async () => {
+    // O controle que separa "nunca pagou" de "nao consegui somar". Sem ele os
+    // dois virariam a mesma celula e o admin leria uma afirmacao sobre algo que
+    // ninguem verificou.
+    rotearFetch({
+      "/users?": listPayload([
+        {
+          user_id: "u1",
+          name: "Ana Moura",
+          email: "ana@exemplo.com",
+          area_interesse: null,
+          total_pago_cents: null,
+        },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+    await screen.findByText("Ana Moura");
+
+    const celula = screen.getByTestId("linha-total-pago");
+    expect(celula.textContent).not.toContain("R$");
+    expect(celula.querySelector("[title]")?.getAttribute("title")).toContain(
+      "Não foi possível somar",
+    );
+  });
+
+  it("a grade DISTRIBUI as seis colunas, e o cabecalho usa a MESMA regua", async () => {
+    // O defeito que isto trava: com quatro trilhas em `fr`, cada coluna estica
+    // junto com a tela e o conteudo compacto boia no proprio vazio. Com
+    // `max-content` nas tres da direita, o vazio vira um so, entre o e-mail e o
+    // bloco.
+    //
+    // As DUAS pontas na mesma asercao de proposito. Cabecalho e linha
+    // compartilham a constante GRID hoje; se alguem duplicar a template para
+    // "ajustar so o cabecalho", este teste cai antes de a coluna sair torta.
+    rotearFetch({
+      "/users?": listPayload([
+        { user_id: "u1", name: "Ana Moura", email: "ana@exemplo.com" },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+    await screen.findByText("Ana Moura");
+
+    // SEIS trilhas: Usuario, Acesso, Assinatura, Total pago, Cadastro, Ultimo
+    // acesso.
+    const TEMPLATE =
+      "md:grid-cols-[minmax(0,2.4fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.85fr)_minmax(0,0.85fr)_minmax(0,0.9fr)]";
+    const linha = screen.getByText("Ana Moura").closest("button");
+    const cabecalho = screen.getByTestId("users-header");
+
+    expect((linha as HTMLElement).className).toContain(TEMPLATE);
+    expect(cabecalho.className).toContain(TEMPLATE);
+    // CONTROLE NEGATIVO: nenhuma das duas reguas anteriores pode voltar por
+    // descuido, nem a de quatro frs nem a que abracava o conteudo.
+    expect((linha as HTMLElement).className).not.toContain("2.2fr");
+    expect((linha as HTMLElement).className).not.toContain("max-content");
+    // O cabecalho tem SEIS rotulos, um por trilha: template e rotulos que
+    // discordam em numero e como a coluna sai torta sem nada quebrar.
+    expect(cabecalho.querySelectorAll("span")).toHaveLength(6);
+  });
+
+  it("os CINCO pares rotulo+celula ancoram do mesmo lado", async () => {
+    // A regra que a captura da Ana cobrou: rotulo e celula sao duas pontas da
+    // MESMA decisao. Com o CSS inteiro correto, um cabecalho centrado sobre uma
+    // badge encostada a esquerda deixa a coluna torta, e nada acusa.
+    //
+    // A tabela abaixo e a fonte: se alguem mudar a ancora de uma coluna e
+    // esquecer a outra ponta, o par correspondente cai nomeando qual. Percorrer
+    // os quatro de uma vez, em vez de um teste por coluna, e o que impede uma
+    // coluna nova de nascer sem trava: o teste de par vira uma linha na tabela.
+    const PARES = [
+      { rotulo: "Acesso", testid: "linha-acesso", classe: "md:items-center" },
+      {
+        rotulo: "Assinatura",
+        testid: "linha-assinatura",
+        classe: "md:items-center",
+      },
+      {
+        rotulo: "Total pago",
+        testid: "linha-total-pago",
+        classe: "md:items-end",
+      },
+      { rotulo: "Cadastro", testid: "linha-cadastro", classe: "md:items-end" },
+      {
+        rotulo: "Último acesso",
+        testid: "linha-ultimo-acesso",
+        classe: "md:items-end",
+      },
+    ] as const;
+    const ANCORA_DO_ROTULO: Record<string, string> = {
+      "md:items-center": "md:text-center",
+      "md:items-end": "md:text-right",
+    };
+
+    rotearFetch({
+      "/users?": listPayload([
+        {
+          user_id: "u1",
+          name: "Ana Moura",
+          email: "ana@exemplo.com",
+          total_pago_cents: 24900,
+          created_at: "2026-05-04T12:00:00Z",
+        },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+    await screen.findByText("Ana Moura");
+    const cabecalho = within(screen.getByTestId("users-header"));
+
+    for (const par of PARES) {
+      expect(
+        cabecalho.getByText(par.rotulo).className,
+        `rotulo "${par.rotulo}"`,
+      ).toContain(ANCORA_DO_ROTULO[par.classe]);
+      expect(
+        screen.getByTestId(par.testid).className,
+        `celula "${par.rotulo}"`,
+      ).toContain(par.classe);
+    }
+  });
+
+  it("ULTIMO ACESSO: mostra a data e o instante completo no hover", async () => {
+    // A coluna mostra o DIA; "hoje" e "hoje as 3h" sao coisas diferentes para
+    // quem investiga um acesso, e o hover e onde a hora cabe sem alargar a
+    // trilha.
+    rotearFetch({
+      "/users?": listPayload([
+        {
+          user_id: "u1",
+          name: "Ana Moura",
+          email: "ana@exemplo.com",
+          last_sign_in_at: "2026-08-29T18:30:00.000Z",
+        },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+    await screen.findByText("Ana Moura");
+
+    const celula = screen.getByTestId("linha-ultimo-acesso");
+    // 18:30Z e 15:30 em Brasilia do MESMO dia: a data e 29/08/2026 nos dois
+    // fusos, entao a asercao nao depende de onde o teste roda.
+    expect(celula.textContent).toContain("29/08/2026");
+    const alvo = celula.querySelector("[title]");
+    expect(alvo?.getAttribute("title")).toContain("America/Sao_Paulo");
+    expect(alvo?.getAttribute("title")).toContain("29/08/2026");
+  });
+
+  it("NUNCA LOGOU usa o marcador de vazio, sem title de erro", async () => {
+    // `null` aqui tem UM significado: nunca logou. Nao existe "nao consegui
+    // olhar", porque o dado vem na mesma linha do resto e uma falha do RPC
+    // derruba a rota inteira. Por isso o marcador nao carrega explicacao, ao
+    // contrario do total pago.
+    rotearFetch({
+      "/users?": listPayload([
+        {
+          user_id: "u1",
+          name: "Ana Moura",
+          email: "ana@exemplo.com",
+          last_sign_in_at: null,
+        },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+    await screen.findByText("Ana Moura");
+
+    const celula = screen.getByTestId("linha-ultimo-acesso");
+    // Afirma o COMPONENTE de vazio, nao o glifo. Duas razoes: a celula passa a
+    // herdar o `hidden md:inline` dele (marcador solto no mobile nao diz de que
+    // campo e), e o teste nao repete o caractere que a fonte ja define numa
+    // constante unica.
+    expect(celula.querySelector('[data-testid="linha-vazio"]')).toBeTruthy();
+    expect(celula.querySelector("[title]")).toBeNull();
+  });
+
+  it("a densidade aperta o DESKTOP e deixa o mobile respirando", async () => {
+    // A linha empilha no mobile e vira faixa unica a partir de md. Apertar o
+    // vertical da PILHA produziria um bloco de texto sem ar, que e o problema
+    // oposto ao que esta rodada veio resolver, entao o `py-3` base fica e o
+    // aperto entra prefixado. Sem esta trava, trocar `md:py-2` por `py-2` numa
+    // limpeza futura pareceria simplificacao e degradaria o celular em silencio.
+    rotearFetch({
+      "/users?": listPayload([
+        { user_id: "u1", name: "Ana Moura", email: "ana@exemplo.com" },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+    await screen.findByText("Ana Moura");
+
+    const linha = screen.getByText("Ana Moura").closest("button");
+    expect(linha).toBeTruthy();
+    const classes = (linha as HTMLElement).className.split(/\s+/);
+    expect(classes).toContain("py-3");
+    expect(classes).toContain("md:py-2");
   });
 
   it("distingue Pro por assinatura, por influencer, pelos dois, e gratis", async () => {

@@ -92,6 +92,24 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // de IA, depois dos dois `router.use` do topo, e os dois testes acima conferem
 // isso por posição. A rota expõe e-mail de pessoa: estar atrás de
 // `requireAuth` + `requireAdmin` não é detalhe aqui, é o requisito.
+// 61 -> 58 em 2026-08-30, com `d4ef73c1` (remoção das rotas beta órfãs). É a
+// primeira vez que este número DESCE, e a entrada fica registrada aqui porque o
+// commit não a escreveu: sem ela a cadeia pula de 59 para 58 sem explicação, e
+// quem ler daqui a seis meses vai procurar a rota que sumiu.
+//
+// 58 -> 59 em 2026-08-30, com `GET /admin/billing/orphan-payments` (a lista de
+// pagamentos sem assinatura ainda em aberto). Ela é declarada logo depois de
+// `GET /admin/attention`, portanto abaixo dos dois `router.use` do topo, e os
+// dois testes acima conferem isso por posição. A rota expõe e-mail de cliente e
+// valor pago: estar atrás de `requireAuth` mais `requireAdmin` é o requisito,
+// não um detalhe.
+//
+// 59 -> 60 em 2026-08-30, com `POST /admin/billing/orphan-payments/:id/resolve`
+// (carimba o pagamento como tratado, com nota obrigatória). Declarada logo
+// abaixo da rota de listagem, portanto também depois dos dois `router.use`. Ela
+// ESCREVE em `billing_orphan_payments` e em `content_audit_logs`, então as
+// guardas aqui não são só sobre leitura de dado: sem elas, qualquer sessão
+// autenticada carimbaria pagamento de outra pessoa como resolvido.
 const EXPECTED_ROUTE_COUNT = 60;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
@@ -160,6 +178,11 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
 
     expect(deUsuario).toEqual([
       "GET /users",
+      // Serie de ativos por dia. Casa com o prefixo /users e por isso entra
+      // nesta lista, embora nao seja sobre UM usuario: o filtro e por caminho,
+      // e afrouxa-lo para excluir esta rota tiraria da trava justamente as
+      // rotas novas, que sao as que precisam ser conferidas.
+      "GET /users-active-daily",
       "GET /users/:id",
       "GET /users/:id/activity",
       "GET /users/:id/audit",

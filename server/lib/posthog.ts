@@ -1,4 +1,8 @@
-import { diaBrasilia, inicioDoDiaBrasilia } from "../../shared/brasiliaDay";
+import {
+  diaBrasilia,
+  inicioDoDiaBrasilia,
+  somarDiaCivil,
+} from "../../shared/brasiliaDay";
 import { env } from "./env";
 
 // PostHog como maquina de estados explicita. O host NAO e hardcoded: vem de
@@ -61,12 +65,44 @@ type PosthogQueryResponse = {
   columns?: ReadonlyArray<string>;
 };
 
-class PosthogQueryError extends Error {
+/**
+ * Teto do recorte do corpo guardado no erro. 300 caracteres pegam o `detail` de
+ * um erro de validacao do HogQL inteiro (o de 2026-08-29, "Function 'toDate'
+ * expects 1 argument, found 2", cabe com folga) sem carregar um HTML de proxy
+ * de 40 KB para dentro de um log.
+ */
+const POSTHOG_ERROR_BODY_LIMIT = 300;
+
+/** Recorte do corpo, com o corte DECLARADO quando ele acontece. */
+export function recorteDeCorpo(body: string): string {
+  return body.length <= POSTHOG_ERROR_BODY_LIMIT
+    ? body
+    : `${body.slice(0, POSTHOG_ERROR_BODY_LIMIT)}... (truncado, ${body.length} caracteres no total)`;
+}
+
+export class PosthogQueryError extends Error {
   readonly httpStatus?: number;
-  constructor(message: string, httpStatus?: number) {
+  /**
+   * Recorte do corpo da resposta, como CAMPO e nao so colado na mensagem.
+   *
+   * O corpo ja ia para a `message` antes desta mudanca, e a diferenca importa
+   * por dois motivos. Primeiro, quem quiser logar ou inspecionar precisava
+   * fatiar uma string formatada para humano, que e um parser sobre texto livre.
+   * Segundo, o corte de 200 nao dizia que tinha cortado: um corpo grande virava
+   * um trecho que TERMINAVA no meio de uma palavra e parecia a resposta inteira.
+   *
+   * O QUE ISTO NAO RESOLVE, e vale saber: o `reason` que carrega esta mensagem
+   * chega ao estado nomeado do server, mas a TELA monta a frase so com o
+   * httpStatus (ver ActiveUsersChart). Foi por isso que o 400 de 2026-08-29
+   * precisou de um curl manual, e nao por falta do corpo aqui. Mostrar o motivo
+   * na tela do admin e outra decisao, de produto, e nao foi tomada.
+   */
+  readonly responseBody?: string;
+  constructor(message: string, httpStatus?: number, responseBody?: string) {
     super(message);
     this.name = "PosthogQueryError";
     this.httpStatus = httpStatus;
+    this.responseBody = responseBody;
   }
 }
 
@@ -102,10 +138,15 @@ async function runPosthogQuery(hogql: string): Promise<PosthogQueryResponse> {
       response.status === 401 || response.status === 403
         ? "personal api key sem escopo para /query/ (ou invalida)"
         : "resposta nao-2xx do PostHog";
-    const detail = body ? `: ${body.slice(0, 200)}` : "";
+    // O recorte e UM so, usado na mensagem e no campo: dois cortes com tamanhos
+    // diferentes fariam o log e a mensagem discordarem sobre o que o PostHog
+    // respondeu, que e a divergencia mais irritante possivel num diagnostico.
+    const recorte = body ? recorteDeCorpo(body) : "";
+    const detail = recorte ? `: ${recorte}` : "";
     throw new PosthogQueryError(
       `${hint} (status ${response.status})${detail}`,
       response.status,
+      recorte || undefined,
     );
   }
 
@@ -635,6 +676,277 @@ export async function contarAtividadeAgora(): Promise<PosthogAtividadeAgoraState
         online: cellToNumber(linha[0]),
         hojePessoas: cellToNumber(linha[1]),
       },
+    };
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    const httpStatus =
+      err instanceof PosthogQueryError ? err.httpStatus : undefined;
+    return { state: "error", reason, httpStatus };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ATIVOS POR DIA (serie de 30 dias)
+//
+// A PERGUNTA: a presenca no site esta crescendo ou secando ao longo do mes?
+//
+// UNIDADE: `distinct_id`, a mesma de contarAtividadeAgora, e pelo mesmo motivo
+// (e a unica chave que existe no evento anonimo). Quem navega deslogado e
+// depois entra conta duas vezes no dia. E um numero de PRESENCA, com margem, e
+// a tela precisa dizer isso. Nao trocar por person_id sem trocar tambem no card
+// de "pessoas ativas hoje": duas unidades diferentes na mesma aba, uma ao lado
+// da outra, e a divergencia que o cabecalho de brasiliaDay.ts documenta.
+//
+// AGRUPAMENTO POR DIA DE BRASILIA, nao por dia UTC. `toDate(timestamp)` cru
+// agruparia em UTC e jogaria tudo depois das 21h no balde do dia seguinte,
+// deslocando a serie inteira sem ninguem perceber. Medido em 2026-08-29 as
+// 22h51: agrupada em UTC a mesma janela inventava um balde "2026-08-30" com 62
+// pessoas e reduzia o dia 29 de 359 para 374 (parte do dia 29 vazando para o
+// 30 e parte do 28 entrando no 29). A conversao entra na propria query, com o
+// NOME do fuso, nunca com offset fixo de -3h.
+//
+// DIALETO. `toDate(timestamp, 'America/Sao_Paulo')` e ClickHouse puro e o
+// HogQL RECUSA com 400 ("Function 'toDate' expects 1 argument, found 2"), que
+// foi como esta serie nasceu quebrada em producao. A forma aceita e converter
+// primeiro (`toTimeZone`, um argumento) e so entao extrair o dia. `uniq` em vez
+// de `count(distinct ...)` pelo mesmo motivo de sempre: e o que a irma
+// contarAtividadeAgora usa, e contagem que diverge da irma em unidade seria
+// pior que contagem que falta. (`count(distinct ...)` TAMBEM e aceito pelo
+// HogQL, conferido no mesmo diagnostico; a escolha aqui e por igualdade com a
+// irma, nao por necessidade.)
+//
+// CONFERIDO VIVO em 2026-08-29: o ponto de 29/08 desta serie deu 359, o mesmo
+// numero que contarAtividadeAgora devolveu para o dia civil de Brasilia.
+// JANELAS OFERECIDAS: as MESMAS OVERVIEW_WINDOWS da Visao, para a aba do lado
+// nao inventar um segundo vocabulario de periodo.
+//
+// O "all" NAO e uma janela maior: e outra GRANULARIDADE. Serie diaria sem corte
+// cresce sem teto de baldes, entao "tudo" agrega POR SEMANA.
+//
+// ISSO MUDA A UNIDADE DO PONTO, e nao e detalhe de apresentacao: ativos na
+// semana NAO e a soma dos ativos diarios. Quem entrou terca e quinta conta 2 na
+// soma dos dias e 1 na semana, porque `uniq` deduplica dentro do balde. Somar as
+// barras semanais e comparar com a serie diaria da numeros diferentes, os dois
+// certos. Por isso o payload DECLARA a granularidade em vez de deixar a tela
+// adivinhar pelo tamanho da lista: adivinhacao por contagem erraria no dia em
+// que alguem pedisse 7 semanas.
+//
+// PRECEDENTE, e ele DIVERGE: o /signup-history no modo `all` continua DIARIO
+// (montarSerieDeCadastros emite um ponto por dia e o eixo rareia rotulos com
+// intervaloDeRotulos). A diferenca e deliberada e o motivo e a unidade: contar
+// cadastros e aditivo entre baldes, contar pessoas unicas nao e, entao ali um
+// balde maior seria so um resumo e aqui e uma medida diferente. Se um dia os
+// dois precisarem falar a mesma lingua, e este comentario que diz o que esta em
+// jogo.
+// `null` = sem corte, e o balde deixa de ser o dia. Ver getAtivosDiarios.
+const ATIVOS_DIARIOS_JANELAS = { "7": 7, "30": 30, all: null } as const;
+
+export type AtivosDiariosJanela = keyof typeof ATIVOS_DIARIOS_JANELAS;
+
+/** Janela padrao quando o parametro nao vem. Nao e fallback de valor invalido. */
+export const ATIVOS_DIARIOS_JANELA_PADRAO: AtivosDiariosJanela = "30";
+
+export const ATIVOS_DIARIOS_JANELAS_VALIDAS = Object.keys(
+  ATIVOS_DIARIOS_JANELAS,
+) as AtivosDiariosJanela[];
+
+export function isAtivosDiariosJanela(
+  valor: unknown,
+): valor is AtivosDiariosJanela {
+  return (
+    typeof valor === "string" &&
+    Object.prototype.hasOwnProperty.call(ATIVOS_DIARIOS_JANELAS, valor)
+  );
+}
+
+/** Um dia da serie. `ativos` e contagem fechada: zero e medicao, nao buraco. */
+export type PontoAtivosDiarios = { date: string; ativos: number };
+
+/**
+ * Balde da serie. `dia` para janelas fechadas, `semana` para `all`.
+ *
+ * Vem do SERVIDOR porque e ele que escolheu o balde. A tela derivar isso do
+ * tamanho da lista seria a mesma classe de erro que o resto deste modulo evita:
+ * um parser adivinhando o que a fonte ja sabe.
+ */
+export type GranularidadeAtivos = "dia" | "semana";
+
+export type PosthogAtivosDiariosState =
+  | { state: "not_configured"; missing: string[] }
+  | { state: "error"; reason: string; httpStatus?: number }
+  | {
+      state: "ok";
+      /** Janela pedida, ecoada para a tela nao ter que adivinhar o que chegou. */
+      window: AtivosDiariosJanela;
+      granularidade: GranularidadeAtivos;
+      /** Quantos baldes a serie tem. Dias em `dia`, semanas em `semana`. */
+      dias: number;
+      /** Primeiro dia com evento, so em `all`: e o "desde quando" da tela. */
+      inicio?: string;
+      pontos: PontoAtivosDiarios[];
+    };
+
+/**
+ * Usuarios unicos ativos por dia na janela pedida (Brasilia), incluindo hoje.
+ *
+ * PREENCHIMENTO NO SERVIDOR, e e a decisao que carrega o resto. O HogQL com
+ * `group by` so devolve linha para dia que teve evento, entao uma semana morta
+ * volta com menos pontos que dias. Se o grafico recebesse a lista crua, ele
+ * teria que decidir sozinho o que um dia ausente significa, e a unica leitura
+ * disponivel no cliente ("nao veio, logo nao sei") e indistinguivel de zero.
+ * Aqui a fonte sabe: a janela foi consultada inteira, o dia existe e nao teve
+ * ninguem. Sai SEMPRE com um ponto por dia da janela, e o zero e afirmacao.
+ */
+export type PosthogPrimeiroDiaState =
+  | { state: "not_configured"; missing: string[] }
+  | { state: "error"; reason: string; httpStatus?: number }
+  | { state: "ok"; dia: string };
+
+/**
+ * Dia do PRIMEIRO evento do projeto (Brasilia). E o "desde quando" do modo
+ * `all`.
+ *
+ * Vem do PostHog, e NAO do `min(profiles.created_at)` que o /signup-history
+ * usa. Nao e divergencia por descuido: sao duas bases diferentes, e a de
+ * eventos comecou depois. Medido em 2026-08-29, o primeiro evento e de
+ * 2026-05-06; comecar a serie no primeiro CADASTRO desenharia semanas de zeros
+ * anteriores a existencia do PostHog, que e exatamente o que o comentario da
+ * rota de cadastros proibe ("inventar dias anteriores a base seria desenhar
+ * zeros que nao sao medicao"). O principio do precedente e que se copia; a
+ * fonte, nao.
+ */
+export async function getPrimeiroDiaComEvento(): Promise<PosthogPrimeiroDiaState> {
+  const missing: string[] = [];
+  if (!env.posthogApiKey) missing.push("POSTHOG_API_KEY");
+  if (!env.posthogProjectId) missing.push("POSTHOG_PROJECT_ID");
+  if (missing.length > 0) return { state: "not_configured", missing };
+
+  try {
+    const res = await runPosthogQuery(
+      `select toString(toDate(toTimeZone(min(timestamp), 'America/Sao_Paulo'))) as primeiro from events`,
+    );
+    const dia = res.results?.[0]?.[0];
+    if (typeof dia !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dia)) {
+      // Projeto sem evento nenhum devolve null aqui, e null NAO pode virar
+      // "hoje" nem uma data qualquer: uma janela chutada produz um grafico
+      // plausivel sobre um periodo que ninguem escolheu.
+      return {
+        state: "error",
+        reason: "PostHog nao devolveu o primeiro evento",
+      };
+    }
+    return { state: "ok", dia };
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    const httpStatus =
+      err instanceof PosthogQueryError ? err.httpStatus : undefined;
+    return { state: "error", reason, httpStatus };
+  }
+}
+
+// `toStartOfWeek` do ClickHouse comeca a semana no DOMINGO (modo 0, o default),
+// conferido contra o projeto real em 2026-08-29: os baldes voltaram 2026-07-26,
+// 08-02, 08-09 e 08-23, todos domingos. O preenchimento abaixo precisa andar de
+// domingo em domingo para casar com as chaves que a query devolve; se alguem
+// passar um modo diferente na query, esta funcao tem que mudar junto.
+function domingoDaSemana(dia: string): string {
+  const d = new Date(`${dia}T00:00:00Z`);
+  return somarDiaCivil(dia, -d.getUTCDay());
+}
+
+export async function getAtivosDiarios(
+  janela: AtivosDiariosJanela = ATIVOS_DIARIOS_JANELA_PADRAO,
+  /**
+   * Primeiro dia com evento, obrigatorio em `all`. Injetado pela rota, que o
+   * cacheia por uma hora: o passado nao anda, e redescobri-lo a cada leitura
+   * seria uma query a mais para um valor que so muda uma vez na vida.
+   */
+  primeiroDiaComEvento?: string,
+): Promise<PosthogAtivosDiariosState> {
+  const dias = ATIVOS_DIARIOS_JANELAS[janela];
+  const missing: string[] = [];
+  if (!env.posthogApiKey) missing.push("POSTHOG_API_KEY");
+  if (!env.posthogProjectId) missing.push("POSTHOG_PROJECT_ID");
+  if (missing.length > 0) return { state: "not_configured", missing };
+
+  const hoje = diaBrasilia(new Date().toISOString());
+  if (!hoje) {
+    // Mesmo tratamento de contarAtividadeAgora: janela que nao se sabe calcular
+    // vira ERRO, nunca uma janela chutada. Chute devolve numero plausivel, que e
+    // o pior resultado possivel.
+    return { state: "error", reason: "nao foi possivel resolver o dia atual" };
+  }
+
+  const semanal = dias === null;
+
+  if (semanal && !primeiroDiaComEvento) {
+    // Contrato interno, e ele LANCA em vez de assumir. Chutar um inicio aqui
+    // devolveria uma serie bem formada de um periodo que ninguem escolheu, que
+    // e a familia de erro que este modulo inteiro evita.
+    return {
+      state: "error",
+      reason: "janela `all` exige o primeiro dia com evento",
+    };
+  }
+
+  // Janela FECHADA terminando hoje; em `all`, comeca no primeiro evento.
+  const primeiroDia = semanal
+    ? (primeiroDiaComEvento as string)
+    : somarDiaCivil(hoje, -((dias as number) - 1));
+  const inicio = hogTime(new Date(inicioDoDiaBrasilia(primeiroDia)));
+
+  const hogql = semanal
+    ? `select toString(toStartOfWeek(toTimeZone(timestamp, 'America/Sao_Paulo'))) as balde, uniq(distinct_id) as ativos from events where timestamp >= toDateTime('${inicio}') group by balde order by balde`
+    : `select toString(toDate(toTimeZone(timestamp, 'America/Sao_Paulo'))) as balde, uniq(distinct_id) as ativos from events where timestamp >= toDateTime('${inicio}') group by balde order by balde`;
+
+  try {
+    const res = await runPosthogQuery(hogql);
+    const linhas = res.results;
+    if (!Array.isArray(linhas)) {
+      // 2xx sem `results` nao e "nenhum balde teve gente": e uma resposta que
+      // nao responde. Disciplina herdada de contarAtividadeAgora, e aqui ela
+      // pesa mais, porque uma serie vazia desenha zeros que parecem medicao.
+      return { state: "error", reason: "resposta do PostHog sem resultado" };
+    }
+
+    const porBalde = new Map<string, number>();
+    for (const linha of linhas) {
+      const chave = typeof linha?.[0] === "string" ? linha[0] : null;
+      if (chave) porBalde.set(chave, cellToNumber(linha[1]));
+    }
+
+    // PREENCHIMENTO NO SERVIDOR nos DOIS modos. A query so devolve balde com
+    // evento; quem sabe que a janela foi consultada inteira e a fonte, e e ela
+    // que afirma o zero.
+    const pontos: PontoAtivosDiarios[] = [];
+    if (semanal) {
+      // Anda de domingo em domingo, a mesma chave que toStartOfWeek devolve. O
+      // primeiro balde e o domingo da semana do primeiro evento, entao ele
+      // comeca ANTES do dado existir: e um balde legitimamente parcial, e o
+      // rodape da tela diz isso. O ultimo, idem, pela outra ponta.
+      const ultimo = domingoDaSemana(hoje);
+      for (
+        let d = domingoDaSemana(primeiroDia);
+        d <= ultimo;
+        d = somarDiaCivil(d, 7)
+      ) {
+        pontos.push({ date: d, ativos: porBalde.get(d) ?? 0 });
+      }
+    } else {
+      let dia = primeiroDia;
+      for (let i = 0; i < (dias as number); i += 1) {
+        pontos.push({ date: dia, ativos: porBalde.get(dia) ?? 0 });
+        dia = somarDiaCivil(dia, 1);
+      }
+    }
+
+    return {
+      state: "ok",
+      window: janela,
+      granularidade: semanal ? "semana" : "dia",
+      dias: pontos.length,
+      ...(semanal ? { inicio: primeiroDia } : {}),
+      pontos,
     };
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);

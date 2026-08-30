@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { redirecionamentoDeSecao, sectionFromSearch } from "./Admin";
+import {
+  adminNavItems,
+  redirecionamentoDeSecao,
+  sectionFromSearch,
+} from "./Admin";
 
 /**
  * O redirect de `?section=bugs` nao e cortesia.
@@ -61,6 +65,30 @@ describe("secoes aposentadas", () => {
     // destino de bugs carrega parametro (`tarefas&board=bugs`), entao este caso
     // tambem prova que a secao e o trecho ANTES do `&`, e nao a string toda.
     expect(sectionFromSearch("?section=bugs")).toBe("tarefas");
+  });
+
+  it("?section=beta vai para a visao geral: nao ha sucessora", () => {
+    // A terceira aposentada, e a primeira SEM destino natural. `bugs` virou um
+    // quadro de Tarefas e `seo` tinha conteudo vizinho em Paginas; o acesso beta
+    // simplesmente acabou, e os codigos nao migraram para lugar nenhum. Mandar
+    // para a Visao e o mesmo destino do lixo, e aqui isso e honesto.
+    expect(redirecionamentoDeSecao("?section=beta")).toBe(
+      "/admin?section=visao-geral",
+    );
+  });
+
+  it("PRIMEIRO PAINT: beta ja renderiza a visao geral", () => {
+    // Sem isto, o redirect existiria mas a tela abriria a aba antiga por um
+    // frame antes de o efeito reescrever a URL. Foi o defeito que a entrada de
+    // `seo` expos no mecanismo, e ele vale para toda aposentada nova.
+    expect(sectionFromSearch("?section=beta")).toBe("visao-geral");
+  });
+
+  it("beta NAO e mais uma secao viva: a aba sumiu da navegacao", () => {
+    // CONTROLE do par. O redirect sozinho conviveria com uma aba ainda listada,
+    // e a pessoa clicaria nela para ser jogada fora dela.
+    expect(adminNavItems.map((item) => item.href)).not.toContain("#beta");
+    expect(adminNavItems.map((item) => item.label)).not.toContain("Beta");
   });
 
   it("PRIMEIRO PAINT: secao viva, lixo e ausencia seguem como antes", () => {

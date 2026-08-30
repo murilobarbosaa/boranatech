@@ -40,9 +40,16 @@ barulhento, suba para 50 e recolha.
 ## As duas linhas
 
 ```
-[ratelimit] amostra escopo=ip alvo=3029bc94 contagem=18 limite=18
-[ratelimit] 429     escopo=ip alvo=…        contagem=19 limite=18
+[ratelimit] amostra escopo=ip alvo=227a139b contagem=18 limite=18
+[ratelimit] 429     escopo=ip alvo=227a139b contagem=19 limite=18
 ```
+
+**O `alvo` na linha de 429 existe desde 2026-08-29.** Antes disso ela saía sem o campo, e este
+documento mostrava um `alvo=…` que o código nunca emitiu. A consequência não era cosmética: a última
+linha da tabela de decisão manda "investigar o `alvo`" no caso de abuso, e a ação prescrita não era
+executável, porque o campo não existia justamente na linha em que ele importava. Se você estiver lendo
+log anterior a essa data, a linha de 429 não terá `alvo` e a correlação com a amostra precisa ser feita
+por `escopo` e horário.
 
 | campo | o que é |
 |---|---|
@@ -54,14 +61,28 @@ barulhento, suba para 50 e recolha.
 `alvo` é hash porque a pergunta é de agrupamento ("quantas req/min um mesmo IP faz"), não de identificação. O
 log do Railway fica retido sem política nossa, e o mesmo argumento do `textoHash` vale aqui.
 
-**Saída real** (servidor local, `RATE_LIMIT_MAX_REQUESTS=3`, portanto teto de IP 18, `SAMPLE_N=2`):
+**Saída real**, recapturada em 2026-08-29 depois de o campo `alvo` entrar na linha de 429. Servidor
+local com `RATE_LIMIT_MAX_REQUESTS=3` (portanto teto de IP `3 * 6 = 18`) e `RATE_LIMIT_SAMPLE_N=2`, 25
+requisições disparadas numa única janela com um `sub` diferente cada, para o balde por usuário não
+estourar antes do balde do IP:
 
 ```
-[ratelimit] amostra escopo=ip alvo=3029bc94 contagem=12 limite=18
-[ratelimit] amostra escopo=ip alvo=3029bc94 contagem=14 limite=18
-[ratelimit] amostra escopo=ip alvo=3029bc94 contagem=16 limite=18
-[ratelimit] amostra escopo=ip alvo=3029bc94 contagem=18 limite=18
-[ratelimit] 429 escopo=ip contagem=19 limite=18
+[ratelimit] amostra escopo=ip alvo=227a139b contagem=14 limite=18
+[ratelimit] amostra escopo=ip alvo=227a139b contagem=16 limite=18
+[ratelimit] amostra escopo=ip alvo=227a139b contagem=18 limite=18
+[ratelimit] 429 escopo=ip alvo=227a139b contagem=19 limite=18
+[ratelimit] 429 escopo=ip alvo=227a139b contagem=20 limite=18
+```
+
+O `alvo` é o mesmo nas duas famílias de linha porque as duas passam pelo mesmo `alvoDoEscopo` em
+`server/app.ts`, e é isso que permite ligar "este IP vinha em 18" a "este IP estourou". Antes eram duas
+expressões separadas, e a de 429 simplesmente não existia.
+
+Para o escopo `usuario` a captura da mesma sessão foi:
+
+```
+[ratelimit] amostra escopo=usuario alvo=e7a71f9f contagem=2 limite=3
+[ratelimit] 429 escopo=usuario alvo=e7a71f9f contagem=4 limite=3
 ```
 
 ---
@@ -103,6 +124,44 @@ grep -c 'ratelimit] 429 escopo=usuario' ratelimit.log  # uma pessoa estourou a p
 
 ---
 
+## Réplicas, e quando o teto vira múltiplo
+
+Isto muda a leitura de todos os números acima, então precisa vir antes do critério.
+
+O backend roda com **2 réplicas** no Railway (registrado em 2026-08-29). Se a contagem fosse por
+processo, cada réplica teria o próprio balde e o teto efetivo seria o dobro do configurado: 360 por
+usuário e 2160 por IP, em vez de 180 e 1080. A conta de percentis continuaria certa e o veredito sairia
+errado, porque o `limite` impresso na linha de log não seria o teto que a pessoa de fato encontra.
+
+**Hoje a contagem é GLOBAL, e o teto efetivo é o configurado.** O caminho primário é `INCR` mais
+`EXPIRE` num `multi` do Redis (`server/app.ts`, `redisRateLimitCount`), com a chave carregando o início
+da janela no nome, o que é exatamente o que permite duas réplicas incrementarem o mesmo balde. A prova
+de que o Redis está configurado em produção vem do próprio `/api/health`: ele usa a **mesma**
+`cacheConnection` do limiter (`server/lib/redis.ts`) e distingue três estados, `ok` (respondeu PONG),
+`degraded` (não respondeu) e `not_configured` (sem `REDIS_URL`). Medido em produção em 2026-08-29, o
+campo veio `ok`, o que exclui o terceiro estado.
+
+**Quando o múltiplo volta a valer:** se o Redis cair ou a `REDIS_URL` sumir, o limiter passa a contar
+num `Map` do processo (fail-open deliberado, ver o comentário em `server/app.ts`), e aí o teto efetivo
+passa a ser `teto configurado * número de réplicas`. Os dois casos avisam, e avisam diferente:
+
+```
+[ratelimit] Redis indisponível. Contagem local por instância (fail-open).
+[ratelimit] REDIS_URL ausente em producao: a contagem e por processo, nao compartilhada. ...
+```
+
+A primeira é transição e volta a aparecer quando o Redis retorna. A segunda sai uma vez por processo e
+também vai para o Sentry (`ratelimit_sem_redis`, fingerprint `ratelimit-sem-redis`), porque é defeito de
+configuração permanente e log de Railway não é lido por ninguém. Até 2026-08-29 esse segundo caso era
+**silencioso**: a guarda exigia uma conexão existente para avisar, então "esqueceram a variável" e "está
+tudo bem" produziam o mesmo nada.
+
+Se você for interpretar amostras colhidas durante um desses períodos, **divida o veredito pelo número de
+réplicas antes de concluir qualquer coisa sobre o `FATOR_TETO_IP`**: o `limite` da linha é o configurado,
+não o efetivo.
+
+---
+
 ## O critério de decisão
 
 Com `limite = 1080` e os percentis acima:
@@ -111,16 +170,22 @@ Com `limite = 1080` e os percentis acima:
 |---|---|---|
 | `p99` abaixo de ~300 e **zero** `429 escopo=ip` | **folgado** | não mexer. O fator não é o gargalo. |
 | `p99` entre ~500 e 1080, poucos `429 escopo=ip` | **no ponto** | não mexer, manter a amostragem mais uma semana |
-| `p99` colado em 1080 **ou** `429 escopo=ip` recorrente com `contagem` perto de 1081 | **apertado** | subir `FATOR_TETO_IP` para `ceil(p99 * 2 / 180)` |
+| `p99` colado em 1080 **ou** `429 escopo=ip` recorrente com `contagem` perto de 1081 | **apertado** | subir `FATOR_TETO_IP` para `ceil(p99 * 2 / RATE_LIMIT_MAX_REQUESTS)` |
 | `429 escopo=ip` com `contagem` muito acima do limite (ex.: 9000) | **abuso, não NAT** | não subir o fator. Investigar o `alvo`. |
 
 A última linha é a que impede a leitura ingênua: **estouro alto não é sinal de teto apertado, é sinal de
-ataque.** Foi para distinguir esses dois casos que a `contagem` entrou na linha de 429 — sem ela, "1081 contra
+ataque.** Foi para distinguir esses dois casos que a `contagem` entrou na linha de 429, e sem ela, "1081 contra
 1080" e "9000 contra 1080" saíam como a mesma mensagem, e a conclusão "suba o fator" seria certa num caso e
 exatamente errada no outro.
 
 **Margem de 2x** na fórmula: o p99 medido é o comportamento observado, e o teto precisa caber o pico não
 observado. Sem folga, a próxima semana atípica vira incidente.
+
+**O divisor é `RATE_LIMIT_MAX_REQUESTS`, não a constante 180.** Em produção dá no mesmo, porque a env
+não é setada lá e o default de `server/lib/env.ts` é 180. Mas ela existe justamente para staging e teste
+de carga com k6, que é onde alguém tem chance de rodar esta conta, e ali o valor pode ser outro: com a
+env em 3, por exemplo, dividir por 180 daria um fator perto de zero. Confira o valor vigente antes de
+aplicar a fórmula.
 
 ---
 

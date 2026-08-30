@@ -179,6 +179,28 @@ const COPY_ESTATICA = new Set<string>([
   "Marketing",
   "Sistema",
   "Atividade",
+  // Colunas da lista de usuários (cabeçalho da grade). "Área" viveu um commit:
+  // entrou com as colunas novas e saiu na decisão da Ana de 2026-08-30, porque
+  // estava vazia na base real. O CAMPO continua no payload; o rótulo não existe
+  // mais, então some daqui também.
+  "Total pago",
+  "Último acesso",
+  // Grafico "Ativos por dia", no topo da aba. Com o fixture padrao o
+  // /users-active-daily nao responde serie nenhuma, entao a moldura cai no
+  // estado VAZIO e e a copy dele que aparece; a frase de erro do PostHog nao
+  // entra aqui porque este cenario nao a exercita (trava propria em
+  // ActiveUsersChart.test.tsx). Se ela aparecer, cai como frase nao
+  // classificada, que e o comportamento desejado.
+  "Ativos por dia",
+  "A presença no site está crescendo ou secando?",
+  "Ainda não há medições neste período.",
+  // Rotulos do seletor de janela do grafico, reusado da Visao (OverviewPeriod).
+  // "Tudo" entra desde que a serie aberta existe (agregada por semana). A frase
+  // "Desde DD/MM" que aparece ao lado dele NAO esta aqui: so e renderizada com
+  // a janela `all` escolhida, e o inventario roda sobre o estado inicial.
+  "7 dias",
+  "30 dias",
+  "Tudo",
   // Seção "Vida no site" (certificados, conquistas, roadmaps e trilhas). Os
   // rótulos dos blocos internos não entram aqui porque só aparecem quando a
   // seção tem dado, e o inventário roda sobre o modal com o payload padrão.
@@ -219,10 +241,11 @@ const COPY_ESTATICA = new Set<string>([
   "Sem foto enviada.",
   "Não informado",
   "Sem assinatura",
-  // "—" (marcador de campo vazio) saiu: com o fixture desta trava nenhum campo
-  // cai nele. Não é copy morta, é copy que este cenário não exercita, e o
-  // rendering de vazio tem trava própria em UserDetailModal.campos.test.tsx. Se
-  // ele voltar a aparecer aqui, cai como frase não classificada.
+  // "—" VOLTOU: a lista ganhou as colunas de Área e Total pago, e o fixture
+  // desta trava não preenche a área, então a célula cai no marcador. Ele saiu
+  // daqui uma vez, quando nenhum campo do cenário caía nele; a ida e a volta
+  // são o guard funcionando nos dois sentidos, não indecisão.
+  "—",
   "Nenhuma compra registrada.",
   "Sem atividade registrada para este usuário.",
   // "Fechar" saiu: a saida virou um X no cabecalho, e o rotulo dela agora e o

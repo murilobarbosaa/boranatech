@@ -144,9 +144,16 @@ describe("card da lista: o andaime saiu, a informação ficou", () => {
         onOpen={() => {}}
       />,
     );
-    const traco = screen.getByText("—");
-    expect(traco.className).toContain("hidden");
-    expect(traco.className).toContain("md:inline");
+    // TODOS os marcadores, nao um. A linha ganhou Area e Total pago, que tambem
+    // podem esvaziar, e a regra e a mesma para os tres: com `getByText` isto
+    // afirmaria sobre um deles e deixaria os outros dois livres para aparecer
+    // soltos no celular.
+    const tracos = screen.getAllByText("—");
+    expect(tracos.length).toBeGreaterThan(0);
+    for (const traco of tracos) {
+      expect(traco.className).toContain("hidden");
+      expect(traco.className).toContain("md:inline");
+    }
     expect(container.textContent).toContain("Ana Moura");
   });
 

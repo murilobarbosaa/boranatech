@@ -8,6 +8,7 @@ import {
   PRIVACY_VERSION,
   TERMS_VERSION,
 } from "../../shared/consent";
+import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -86,7 +87,7 @@ export async function hasCurrentConsent(userId: string): Promise<boolean> {
       "consent_read_failed",
       "Erro ao verificar consentimento.",
       {
-        cause: error,
+        cause: erroEncadeavel(error),
         context: { op: "status", userId, pgCode: error.code },
       },
     );

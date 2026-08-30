@@ -243,7 +243,13 @@ const EXPECTED_TABLE_COUNT = 83;
 // 31 esperadas. Ela e CHAMAVEL (devolve TABLE, e o PostgREST a expoe em
 // /rpc/activate_subscription_exclusive), entao entra nas verificaveis por REST e
 // o contador de trigger abaixo NAO sobe: 24 verificaveis + 8 de trigger = 32.
-const EXPECTED_FUNCTION_COUNT = 32;
+// 33 desde 20260830140000_admin_list_users_page.sql (cria
+// admin_list_users_page). Valor MEDIDO em 30/08/2026 pelo proprio script, nao
+// digitado: ele reportou "o conjunto de funcoes declaradas mudou: 33, esperado
+// 32". Ela devolve TABLE e o PostgREST a expoe em /rpc/admin_list_users_page,
+// entao entra nas verificaveis por REST e o contador de trigger abaixo NAO
+// sobe: 25 verificaveis + 8 de trigger = 33.
+const EXPECTED_FUNCTION_COUNT = 33;
 // 5 desde a MESMA migration: set_admin_task_archive_source devolve trigger,
 // entao nao e exposta pelo PostgREST e sai do conjunto verificavel por REST. Os
 // dois numeros sobem juntos quando a funcao nova e de trigger, e so o primeiro

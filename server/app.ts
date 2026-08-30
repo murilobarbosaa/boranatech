@@ -15,6 +15,7 @@ import {
   FATOR_TETO_IP,
   identidadeDeCota,
 } from "./lib/rateLimitKey";
+import { avisarRateLimitSemRedis } from "./lib/rateLimitSemRedis";
 import { cacheConnection } from "./lib/redis";
 import { supabaseAdmin } from "./lib/supabaseAdmin";
 import { validateSupabaseJwt } from "./middleware/auth";
@@ -303,6 +304,15 @@ app.use(async (req, res, next) => {
   // transforma "estourou" em "estourou por quanto": 1081 contra 1080 e um NAT
   // grande demais para o fator; 9000 contra 1080 e abuso. Sem o numero, as duas
   // saem como a mesma linha.
+  // O rotulo do balde, calculado UMA vez e usado pelas duas linhas. Antes o
+  // calculo vivia inline na amostra e a linha de 429 nao tinha `alvo` nenhum,
+  // e docs/denominador-rate-limit.md mandava "investigar o alvo" no caso de
+  // abuso: a acao prescrita nao era executavel, porque o campo nao existia.
+  // Como funcao unica, as duas linhas ficam correlacionaveis por construcao, e
+  // nao por alguem lembrar de repetir a mesma expressao nos dois lugares.
+  const alvoDoEscopo = (escopo: "usuario" | "ip") =>
+    alvoAnonimo(escopo === "ip" ? chaveDeIp(req.ip) : key);
+
   const recusar = (
     escopo: "usuario" | "ip",
     resetAt: number,
@@ -311,7 +321,7 @@ app.use(async (req, res, next) => {
   ) => {
     res.setHeader("Retry-After", String(Math.ceil((resetAt - now) / 1000)));
     console.warn(
-      `[ratelimit] 429 escopo=${escopo} contagem=${contagem} limite=${limite}`,
+      `[ratelimit] 429 escopo=${escopo} alvo=${alvoDoEscopo(escopo)} contagem=${contagem} limite=${limite}`,
     );
     return res.status(429).json({
       error: {
@@ -327,7 +337,7 @@ app.use(async (req, res, next) => {
     const n = env.rateLimitSampleN;
     if (n <= 0 || contagem % n !== 0) return;
     console.log(
-      `[ratelimit] amostra escopo=${escopo} alvo=${alvoAnonimo(escopo === "ip" ? chaveDeIp(req.ip) : key)} contagem=${contagem} limite=${limite}`,
+      `[ratelimit] amostra escopo=${escopo} alvo=${alvoDoEscopo(escopo)} contagem=${contagem} limite=${limite}`,
     );
   };
 
@@ -353,11 +363,23 @@ app.use(async (req, res, next) => {
     return next();
   }
 
-  if (cacheConnection && !rateLimitUsingFallback) {
-    rateLimitUsingFallback = true;
-    console.warn(
-      "[ratelimit] Redis indisponível. Contagem local por instância (fail-open).",
-    );
+  // DOIS ESTADOS DIFERENTES, e antes os dois eram o mesmo silêncio. A guarda
+  // aqui era `cacheConnection && !rateLimitUsingFallback`, e o `cacheConnection
+  // &&` fazia o aviso nunca sair quando o Redis nem estava configurado: em
+  // produção, "esqueceram a REDIS_URL" ficava indistinguível de "está tudo
+  // bem". O comportamento NÃO muda (segue contando local e deixando passar),
+  // só o rastro. Detalhe em server/lib/rateLimitSemRedis.ts.
+  if (cacheConnection) {
+    // Configurado e caiu: transição, avisada uma vez, e desfeita quando volta.
+    if (!rateLimitUsingFallback) {
+      rateLimitUsingFallback = true;
+      console.warn(
+        "[ratelimit] Redis indisponível. Contagem local por instância (fail-open).",
+      );
+    }
+  } else {
+    // Nunca configurado: não há transição para observar, porque não vai voltar.
+    avisarRateLimitSemRedis(env.isProd);
   }
 
   // Fallback local: mesma decisao em duas chaves, entao vira funcao para os dois
