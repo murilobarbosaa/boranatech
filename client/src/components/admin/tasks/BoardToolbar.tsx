@@ -135,8 +135,58 @@ export const BoardToolbar = memo(
     const activeCount = activeFilterCount(filters);
 
     return (
-      <div className="space-y-2.5">
-        <div className="flex flex-wrap items-end gap-3">
+      // WRAPPER CENTRAL. `max-w-3xl` (48rem, 768px) e nao `2xl`: a linha de
+      // controles soma cerca de 678px de larguras minimas (quadro 13rem +
+      // engrenagem + agrupar 9.5rem + filtros + board/lista + quatro gaps), e em
+      // `2xl` (672px) ela quebraria ja no desktop, que e o oposto do pedido.
+      // 768px deixa a linha inteira em uma so com folga curta.
+      //
+      // A BUSCA NAO TEM LARGURA PROPRIA: ela e `w-full` e herda a do wrapper,
+      // entao busca e controles abrem exatamente na mesma medida. Amarrar as
+      // duas por um numero escrito duas vezes e o que faria elas divergirem na
+      // primeira mudanca.
+      <div
+        data-testid="tasks-toolbar"
+        className="mx-auto w-full max-w-3xl space-y-2.5"
+      >
+        <div data-testid="tasks-toolbar-busca" className="w-full">
+          <label htmlFor="tasks-search" className={labelClass}>
+            Busca
+          </label>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <input
+              id="tasks-search"
+              ref={searchRef}
+              value={filters.query}
+              placeholder="Título ou descrição.  /  para focar"
+              aria-label="Buscar tarefas"
+              onChange={(event) =>
+                onFiltersChange({ ...filters, query: event.target.value })
+              }
+              className="h-9 w-full rounded-xl border-2 border-slate-900 bg-white pl-8 pr-8 text-sm font-semibold text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+            />
+            {filters.query ? (
+              <button
+                type="button"
+                aria-label="Limpar busca"
+                onClick={() => onFiltersChange({ ...filters, query: "" })}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        {/* LINHA 2, os controles. `justify-between` abre o conjunto na largura
+            exata da busca; abaixo de sm ele quebra CENTRADO, porque um
+            `justify-between` com duas linhas desiguais deixa o ultimo item
+            sozinho num canto. Nada de rolagem horizontal aqui. */}
+        <div
+          data-testid="tasks-toolbar-controles"
+          className="flex w-full flex-wrap items-end justify-center gap-3 sm:justify-between"
+        >
           <div className="min-w-[13rem]">
             <label htmlFor="tasks-board-select" className={labelClass}>
               Quadro
@@ -163,36 +213,6 @@ export const BoardToolbar = memo(
               >
                 <Settings2 className="h-4 w-4" />
               </button>
-            </div>
-          </div>
-
-          <div className="min-w-[13rem] flex-1">
-            <label htmlFor="tasks-search" className={labelClass}>
-              Busca
-            </label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              <input
-                id="tasks-search"
-                ref={searchRef}
-                value={filters.query}
-                placeholder="Título ou descrição.  /  para focar"
-                aria-label="Buscar tarefas"
-                onChange={(event) =>
-                  onFiltersChange({ ...filters, query: event.target.value })
-                }
-                className="h-9 w-full rounded-xl border-2 border-slate-900 bg-white pl-8 pr-8 text-sm font-semibold text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
-              />
-              {filters.query ? (
-                <button
-                  type="button"
-                  aria-label="Limpar busca"
-                  onClick={() => onFiltersChange({ ...filters, query: "" })}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
             </div>
           </div>
 
@@ -435,7 +455,10 @@ export const BoardToolbar = memo(
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs font-black uppercase tracking-wide text-slate-500">
+        {/* A contagem fecha a pilha, centrada como as duas linhas de cima: ela
+            resume o que esta ABAIXO dela (o quadro), entao vir por ultimo no
+            conjunto e a leitura natural. */}
+        <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-black uppercase tracking-wide text-slate-500">
           {totalCount === null ? (
             // Contagem desconhecida durante a troca de quadro: forma no lugar do
             // numero, sem texto novo para traduzir ou revisar.
