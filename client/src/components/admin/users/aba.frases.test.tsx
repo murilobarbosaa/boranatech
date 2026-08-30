@@ -179,6 +179,9 @@ const COPY_ESTATICA = new Set<string>([
   "Marketing",
   "Sistema",
   "Atividade",
+  // Colunas da lista de usuários (cabeçalho da grade).
+  "Área",
+  "Total pago",
   // Grafico "Ativos por dia", no topo da aba. Com o fixture padrao o
   // /users-active-daily nao responde serie nenhuma, entao a moldura cai no
   // estado VAZIO e e a copy dele que aparece; a frase de erro do PostHog nao
@@ -235,10 +238,11 @@ const COPY_ESTATICA = new Set<string>([
   "Sem foto enviada.",
   "Não informado",
   "Sem assinatura",
-  // "—" (marcador de campo vazio) saiu: com o fixture desta trava nenhum campo
-  // cai nele. Não é copy morta, é copy que este cenário não exercita, e o
-  // rendering de vazio tem trava própria em UserDetailModal.campos.test.tsx. Se
-  // ele voltar a aparecer aqui, cai como frase não classificada.
+  // "—" VOLTOU: a lista ganhou as colunas de Área e Total pago, e o fixture
+  // desta trava não preenche a área, então a célula cai no marcador. Ele saiu
+  // daqui uma vez, quando nenhum campo do cenário caía nele; a ida e a volta
+  // são o guard funcionando nos dois sentidos, não indecisão.
+  "—",
   "Nenhuma compra registrada.",
   "Sem atividade registrada para este usuário.",
   // "Fechar" saiu: a saida virou um X no cabecalho, e o rotulo dela agora e o

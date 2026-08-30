@@ -17,6 +17,17 @@ export type UserRow = {
   pro_source?: string | null;
   plan_code?: string | null;
   subscription_status?: string | null;
+  /** `area_interesse` de profiles. `null` = a pessoa nunca preencheu. */
+  area_interesse?: string | null;
+  /**
+   * Total pago em centavos, pela conta canonica do extrato.
+   *
+   * TRES valores com tres significados: um numero positivo, ZERO (afirmacao de
+   * que nunca pagou) e `null` (o servidor nao conseguiu somar). A tela desenha
+   * os tres diferente; colapsar zero e null faria "nunca comprou" e "nao sei"
+   * virarem a mesma celula.
+   */
+  total_pago_cents?: number | null;
 };
 
 // Espelha o payload paginado de GET /users.

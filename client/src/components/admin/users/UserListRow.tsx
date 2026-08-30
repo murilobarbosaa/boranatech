@@ -1,5 +1,6 @@
 import {
   displayName,
+  fmtBrl,
   fmtDate,
   initialsOf,
   proBadgeOf,
@@ -22,26 +23,57 @@ import type { UserRow } from "./types";
 // a grade poe a linha inteira numa faixa so e o py-3 sobrava. No MOBILE nada
 // muda: la a linha EMPILHA, e apertar o vertical de uma pilha e o que produz
 // aquele bloco de texto sem ar que ninguem consegue varrer com o olho.
-// REGUA (2026-08-30): as tres colunas da direita ABRACAM o conteudo
-// (`max-content`) em vez de dividirem a largura em frs. Com quatro trilhas
-// elasticas, cada uma esticava junto com a tela e o conteudo compacto (um chip,
-// um travessao, uma data) boiava no meio do proprio vazio; quanto mais larga a
-// janela, mais longe o Acesso ficava do e-mail e a Assinatura do Cadastro.
+// REGUA (2026-08-30, segunda versao): SEIS colunas distribuindo a largura em
+// fracoes.
 //
-// Agora sobra UM vazio so, entre o e-mail e o bloco da direita, absorvido pelo
-// `minmax(0,1fr)` da coluna do usuario. Vazio ali nao incomoda: e a separacao
-// entre quem a pessoa e e o que ela tem.
+// A primeira versao encolheu as trilhas com `max-content` para fechar o vazio
+// horizontal, e a Ana vetou: "feio e desalinhado". O experimento respondeu a
+// pergunta certa pelo caminho errado. O problema nunca foi a REGUA: com quatro
+// colunas e uma tela larga, encolher as trilhas so muda o vazio de lugar, de
+// dentro das colunas para depois delas. O que faltava era DADO.
 //
-// `minmax(0,1fr)` e nao `1fr` na primeira: sem o minimo zero o `truncate` do
-// nome e do e-mail para de funcionar, porque item de grade tem `min-width:auto`
+// Com area de interesse e total pago, ha o que distribuir, e distribuir volta a
+// ser o certo: cada trilha recebe uma fracao proporcional ao que costuma
+// carregar (o bloco de usuario e o maior; data e dinheiro sao os menores) e a
+// linha ocupa a largura sem oceano em trilha nenhuma.
+//
+// `minmax(0,Nfr)` e nao `Nfr`: sem o minimo zero o `truncate` do nome, do
+// e-mail e da area para de funcionar, porque item de grade tem `min-width:auto`
 // e se recusa a encolher abaixo do conteudo.
-//
-// `max-content` deixa o CONTEUDO ditar a largura, entao "ATIVA + Pro Mensal"
-// alarga a trilha em vez de quebrar o chip em duas linhas. Quando o rotulo do
-// cabecalho e maior que o dado (o caso de "Assinatura" sobre uma celula vazia),
-// e ele que manda, porque as duas pontas compartilham esta mesma constante.
 const GRID =
-  "flex flex-wrap items-center gap-x-3 gap-y-1.5 md:grid md:grid-cols-[minmax(0,1fr)_repeat(3,max-content)] md:items-center md:gap-x-8 md:gap-y-1.5";
+  "flex flex-wrap items-center gap-x-3 gap-y-1.5 md:grid md:grid-cols-[minmax(0,2.4fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)] md:items-center md:gap-x-5 md:gap-y-1.5";
+
+// MARCADOR DE VAZIO da linha, num lugar so. Ele ja existia solto na celula de
+// Assinatura; com tres celulas podendo ficar vazias, repetir o glifo seria a
+// forma de duas delas divergirem na primeira mudanca de estilo.
+//
+// Nao e `NAO_INFORMADO` ("Nao informado") de proposito: aquele texto e para
+// campo de FORMULARIO, onde ha espaco para uma frase. Numa celula de tabela
+// densa ele empurraria a coluna inteira para caber uma explicacao que o
+// cabecalho ja da.
+const VAZIO = "—";
+
+/**
+ * Marcador de celula vazia, SO no desktop.
+ *
+ * No desktop ele fica porque a coluna precisa de conteudo para a grade nao
+ * desalinhar, e o cabecalho da o significado. No MOBILE nao ha cabecalho: um
+ * "—" solto no meio dos metadados nao diz de que campo ele e, e vira andaime
+ * sem informacao. A regra ja valia para a celula de Assinatura desde o
+ * polimento mobile; com tres celulas podendo esvaziar, ela vira componente
+ * para nao depender de alguem lembrar de repetir as classes.
+ */
+function Vazio({ title }: { title?: string }) {
+  return (
+    <span
+      data-testid="linha-vazio"
+      title={title}
+      className="hidden text-sm font-medium text-slate-400 md:inline"
+    >
+      {VAZIO}
+    </span>
+  );
+}
 
 // O cabecalho carrega o ALINHAMENTO de cada trilha junto com o rotulo, porque
 // desalinhar cabecalho e celula e o defeito classico de grade sem <table>: o
@@ -49,10 +81,15 @@ const GRID =
 // sem que nada esteja errado no CSS.
 const COLUNAS = [
   { rotulo: "Usuário", alinhamento: "" },
+  /* TODO(Ana) */
+  { rotulo: "Área", alinhamento: "" },
   { rotulo: "Acesso", alinhamento: "" },
   { rotulo: "Assinatura", alinhamento: "" },
-  // Data alinhada a direita, como numero em borda de tabela: e a ultima trilha,
-  // e alinhar pelo inicio deixaria uma serra de datas de larguras diferentes.
+  // NUMERO alinhado a direita, como em borda de tabela: alinhar dinheiro pelo
+  // inicio deixa a virgula em posicoes diferentes a cada linha, e comparar
+  // valores de relance passa a exigir leitura.
+  /* TODO(Ana) */
+  { rotulo: "Total pago", alinhamento: "md:text-right" },
   { rotulo: "Cadastro", alinhamento: "md:text-right" },
 ] as const;
 
@@ -123,6 +160,25 @@ export function UserListRow({
         </span>
       </span>
 
+      <span className="flex min-w-0 flex-col gap-1">
+        {/* `title` no proprio texto: a area truncada continua legivel no hover,
+            e sem ele "Desenvolvimento de Software" e "Desenvolvimento de
+            Jogos" viram a mesma celula cortada. */}
+        {row.area_interesse?.trim() ? (
+          <span
+            data-testid="linha-area"
+            title={row.area_interesse}
+            className="truncate text-sm font-semibold text-slate-700"
+          >
+            {row.area_interesse}
+          </span>
+        ) : (
+          <span data-testid="linha-area">
+            <Vazio />
+          </span>
+        )}
+      </span>
+
       <span className="flex flex-col gap-1">
         <span className={`${BADGE_BASE} ${pro.className}`}>{pro.label}</span>
       </span>
@@ -140,9 +196,25 @@ export function UserListRow({
             ) : null}
           </>
         ) : (
-          <span className="hidden text-sm font-medium text-slate-400 md:inline">
-            —
+          <Vazio />
+        )}
+      </span>
+
+      {/* TRES estados, tres desenhos. Um numero (inclusive R$ 0,00, que e
+          afirmacao: nunca pagou) sai como numero; `null` sai como marcador de
+          vazio COM title, porque a diferenca entre "nao pagou" e "nao consegui
+          somar" e a unica coisa que essa celula nao pode borrar. */}
+      <span
+        data-testid="linha-total-pago"
+        className="flex flex-col gap-1 md:items-end"
+      >
+        {typeof row.total_pago_cents === "number" ? (
+          <span className="text-xs font-bold text-slate-700 md:text-sm">
+            {fmtBrl(row.total_pago_cents)}
           </span>
+        ) : (
+          /* TODO(Ana) */
+          <Vazio title="Não foi possível somar as compras deste usuário agora." />
         )}
       </span>
 

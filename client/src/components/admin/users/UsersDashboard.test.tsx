@@ -195,7 +195,89 @@ describe("UsersDashboard: colunas e selos", () => {
     }
   });
 
-  it("a grade ABRACA o conteudo a direita, e o cabecalho usa a MESMA regua", async () => {
+  it("mostra area e total pago, com zero de verdade como R$ 0,00", async () => {
+    // ZERO E AFIRMACAO: quem nunca comprou tem um total, e ele e zero. Desenhar
+    // travessao aqui diria "nao sei" sobre um fato conhecido.
+    rotearFetch({
+      "/users?": listPayload([
+        {
+          user_id: "u1",
+          name: "Ana Moura",
+          email: "ana@exemplo.com",
+          area_interesse: "Dados",
+          total_pago_cents: 24900,
+        },
+        {
+          user_id: "u2",
+          name: "Bruno Lima",
+          email: "bruno@exemplo.com",
+          area_interesse: null,
+          total_pago_cents: 0,
+        },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+    await screen.findByText("Ana Moura");
+
+    expect(screen.getByText("Dados")).toBeTruthy();
+    expect(screen.getByText("R$ 249,00")).toBeTruthy();
+    expect(screen.getByText("R$ 0,00")).toBeTruthy();
+  });
+
+  it("NULL de falha e diferente de zero: marcador com explicacao no title", async () => {
+    // O controle que separa "nunca pagou" de "nao consegui somar". Sem ele os
+    // dois virariam a mesma celula e o admin leria uma afirmacao sobre algo que
+    // ninguem verificou.
+    rotearFetch({
+      "/users?": listPayload([
+        {
+          user_id: "u1",
+          name: "Ana Moura",
+          email: "ana@exemplo.com",
+          area_interesse: null,
+          total_pago_cents: null,
+        },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+    await screen.findByText("Ana Moura");
+
+    const celula = screen.getByTestId("linha-total-pago");
+    expect(celula.textContent).not.toContain("R$");
+    expect(celula.querySelector("[title]")?.getAttribute("title")).toContain(
+      "Não foi possível somar",
+    );
+    // A area vazia usa o MESMO marcador, sem title de erro: ausencia de
+    // preenchimento nao e falha de consulta.
+    const area = screen.getByTestId("linha-area");
+    expect(area.textContent?.trim()).toBe("—");
+    expect(area.querySelector("[title]")).toBeNull();
+  });
+
+  it("a area truncada mantem o texto inteiro no title", async () => {
+    rotearFetch({
+      "/users?": listPayload([
+        {
+          user_id: "u1",
+          name: "Ana Moura",
+          email: "ana@exemplo.com",
+          area_interesse: "Desenvolvimento de Software",
+          total_pago_cents: 0,
+        },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+    await screen.findByText("Ana Moura");
+
+    const alvo = screen.getByText("Desenvolvimento de Software");
+    expect(alvo.className).toContain("truncate");
+    expect(alvo.getAttribute("title")).toBe("Desenvolvimento de Software");
+  });
+
+  it("a grade DISTRIBUI as seis colunas, e o cabecalho usa a MESMA regua", async () => {
     // O defeito que isto trava: com quatro trilhas em `fr`, cada coluna estica
     // junto com a tela e o conteudo compacto boia no proprio vazio. Com
     // `max-content` nas tres da direita, o vazio vira um so, entre o e-mail e o
@@ -213,14 +295,45 @@ describe("UsersDashboard: colunas e selos", () => {
     render(<UsersDashboard />);
     await screen.findByText("Ana Moura");
 
-    const TEMPLATE = "md:grid-cols-[minmax(0,1fr)_repeat(3,max-content)]";
+    // SEIS trilhas: Usuario, Area, Acesso, Assinatura, Total pago, Cadastro.
+    const TEMPLATE =
+      "md:grid-cols-[minmax(0,2.4fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]";
     const linha = screen.getByText("Ana Moura").closest("button");
     const cabecalho = screen.getByTestId("users-header");
 
     expect((linha as HTMLElement).className).toContain(TEMPLATE);
     expect(cabecalho.className).toContain(TEMPLATE);
-    // CONTROLE NEGATIVO: a regua antiga nao pode voltar por descuido.
+    // CONTROLE NEGATIVO: nenhuma das duas reguas anteriores pode voltar por
+    // descuido, nem a de quatro frs nem a que abracava o conteudo.
     expect((linha as HTMLElement).className).not.toContain("2.2fr");
+    expect((linha as HTMLElement).className).not.toContain("max-content");
+    // O cabecalho tem SEIS rotulos, um por trilha: template e rotulos que
+    // discordam em numero e como a coluna sai torta sem nada quebrar.
+    expect(cabecalho.querySelectorAll("span")).toHaveLength(6);
+  });
+
+  it("o rotulo Total pago e o valor dele alinham do MESMO lado", async () => {
+    rotearFetch({
+      "/users?": listPayload([
+        {
+          user_id: "u1",
+          name: "Ana Moura",
+          email: "ana@exemplo.com",
+          total_pago_cents: 24900,
+        },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+    await screen.findByText("Ana Moura");
+
+    const cabecalho = within(screen.getByTestId("users-header"));
+    expect(cabecalho.getByText("Total pago").className).toContain(
+      "md:text-right",
+    );
+    expect(screen.getByTestId("linha-total-pago").className).toContain(
+      "md:items-end",
+    );
   });
 
   it("o rotulo Cadastro e a data dele alinham do MESMO lado", async () => {
