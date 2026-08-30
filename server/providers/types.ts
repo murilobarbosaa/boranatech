@@ -81,8 +81,16 @@ export interface WebhookInput {
 
 export type WebhookResult = Record<string, unknown>;
 
+/**
+ * Nome do provedor, como gravado em `subscriptions.provider` e em
+ * `billing_events.provider`. Uniao fechada de proposito: um provedor novo entra
+ * aqui e o `tsc` aponta todo lugar que precisa saber dele, em vez de a string
+ * circular solta.
+ */
+export type PaymentProviderName = "stripe" | "asaas";
+
 export interface PaymentProvider {
-  readonly name: "stripe";
+  readonly name: PaymentProviderName;
   createCheckout(input: CreateCheckoutInput): Promise<CreateCheckoutResult>;
   cancel(input: CancelInput): Promise<CancelResult>;
   reactivate(input: ReactivateInput): Promise<ReactivateResult>;

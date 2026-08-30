@@ -96,6 +96,26 @@ export const env = {
     );
     return false;
   })(),
+  // Asaas (Pix avulso). Segredos SO no backend, nunca com prefixo VITE_.
+  // A URL vem de env e nao e derivada de um flag de ambiente: sandbox e producao
+  // sao hosts diferentes, e um booleano "isProd" decidindo host de cobranca e
+  // exatamente o tipo de inferencia que manda dinheiro para o lugar errado sem
+  // ninguem declarar nada.
+  asaasApiUrl: process.env.ASAAS_API_URL || "",
+  asaasApiKey: process.env.ASAAS_API_KEY || "",
+  asaasWebhookToken: process.env.ASAAS_WEBHOOK_TOKEN || "",
+  // FAIL-CLOSED, e por inteiro: o Asaas so liga com as TRES variaveis presentes.
+  // Meio-ligado e o estado perigoso aqui. Com a chave e sem o token de webhook, o
+  // checkout criaria cobranca real que nenhum webhook autenticado poderia
+  // confirmar: dinheiro entra e acesso nunca sai. Com o token e sem a chave, a
+  // rota de webhook aceitaria evento de uma cobranca que este ambiente nunca
+  // criou. Entao a checagem e conjuntiva, e a ausencia de qualquer uma desliga as
+  // duas pontas (checkout Pix indisponivel, webhook responde 503 sem processar).
+  asaasEnabled: Boolean(
+    process.env.ASAAS_API_URL &&
+      process.env.ASAAS_API_KEY &&
+      process.env.ASAAS_WEBHOOK_TOKEN,
+  ),
   aiDailyLimitFree: parseInt(process.env.AI_DAILY_LIMIT_FREE || "5", 10),
   aiDailyLimitPro: parseInt(process.env.AI_DAILY_LIMIT_PRO || "50", 10),
   // Teto diario do agente conversacional, separado das ferramentas de IA para o
@@ -326,4 +346,30 @@ if (env.billingEnabled) {
     process.exit(1);
   }
   console.log("[env] Stripe: credenciais completas, billing pronto.");
+}
+
+// Asaas: mesmo desenho fail-closed do bloco acima, com uma diferenca deliberada.
+// A Stripe ABORTA O BOOT quando falta credencial, porque BILLING_ENABLED=true
+// declara a intencao de vender e um site que aparenta vender sem conseguir e pior
+// que um site fora do ar. O Asaas ainda nao e a via principal de pagamento: a
+// ausencia dele nao e um site quebrado, e um meio de pagamento a menos. Entao
+// aqui o processo SOBE e o provider fica desligado por inteiro, com o motivo dito
+// alto uma vez no boot em vez de descoberto no primeiro checkout.
+//
+// O que NAO existe e o meio-termo: parcialmente configurado e reportado como
+// erro, nao como "quase pronto".
+if (env.asaasEnabled) {
+  console.log("[env] Asaas: credenciais completas, Pix pronto.");
+} else {
+  const faltandoAsaas: string[] = [];
+  if (!env.asaasApiUrl) faltandoAsaas.push("ASAAS_API_URL");
+  if (!env.asaasApiKey) faltandoAsaas.push("ASAAS_API_KEY");
+  if (!env.asaasWebhookToken) faltandoAsaas.push("ASAAS_WEBHOOK_TOKEN");
+  if (faltandoAsaas.length === 3) {
+    console.log("[env] Asaas: nao configurado, Pix DESLIGADO.");
+  } else {
+    console.error(
+      `[env] Asaas PARCIALMENTE configurado, e por isso DESLIGADO por inteiro. Faltam: ${faltandoAsaas.join(", ")}. Configure todas ou nenhuma.`,
+    );
+  }
 }
