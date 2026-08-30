@@ -142,7 +142,7 @@ export function CouponBlock({
         {item.coupon_code}
       </span>
       {item.discount_percent ? (
-        <span className="text-xs font-black text-slate-900">
+        <span className="text-xs font-black text-foreground">
           {item.discount_percent}% de desconto
         </span>
       ) : null}
@@ -193,14 +193,14 @@ function NotificationCard({
 
   return (
     <article
-      className={`border-b border-slate-200 px-4 py-3 transition-colors last:border-b-0 ${
+      className={`border-b border-border px-4 py-3 transition-colors last:border-b-0 ${
         expired ? "opacity-60" : ""
       } ${
         item.is_super
-          ? "border-l-4 border-l-[#ffb800] bg-gradient-to-r from-amber-50 to-white"
+          ? "border-l-4 border-l-[var(--brand-yellow)] bg-muted"
           : unread
-            ? "bg-sky-50"
-            : "bg-white"
+            ? "bg-muted"
+            : "bg-popover"
       }`}
     >
       <button
@@ -232,14 +232,14 @@ function NotificationCard({
               >
                 {item.title}
               </h3>
-              <span className="shrink-0 whitespace-nowrap pt-0.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <span className="shrink-0 whitespace-nowrap pt-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {relativeTime(item.published_at)}
               </span>
             </div>
             {expired || hasActiveCountdown ? (
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 {expired ? (
-                  <span className="inline-flex rounded-full border border-slate-400 bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-500">
+                  <span className="inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-muted-foreground">
                     Expirado
                   </span>
                 ) : null}
@@ -251,7 +251,7 @@ function NotificationCard({
                 ) : null}
               </div>
             ) : null}
-            <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
               {item.body}
             </p>
           </div>
@@ -337,7 +337,7 @@ export default function NotificationsPanel({
           isSheet ? "flex-wrap" : ""
         }`}
       >
-        <h2 className="font-display text-base font-black text-slate-950">
+        <h2 className="font-display text-base font-black text-foreground">
           Notificações
         </h2>
         <div className={`flex items-center gap-2 ${isSheet ? "ml-auto" : ""}`}>
@@ -355,7 +355,7 @@ export default function NotificationsPanel({
           {isSheet ? (
             <SheetClose
               aria-label="Fechar notificações"
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-900 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
             >
               <X className="h-5 w-5" strokeWidth={2.5} />
             </SheetClose>
@@ -369,7 +369,7 @@ export default function NotificationsPanel({
             {[0, 1, 2].map((row) => (
               <div
                 key={row}
-                className="h-16 animate-pulse rounded-xl bg-slate-100"
+                className="h-16 animate-pulse rounded-xl bg-muted"
               />
             ))}
           </div>
@@ -409,7 +409,7 @@ export default function NotificationsPanel({
               />
             ))}
             {hasMore ? (
-              <div className="border-t border-slate-200 p-3 text-center">
+              <div className="border-t border-border p-3 text-center">
                 <button
                   type="button"
                   onClick={() => void handleLoadMore()}

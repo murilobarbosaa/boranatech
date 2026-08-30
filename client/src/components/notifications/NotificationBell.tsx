@@ -142,7 +142,7 @@ export default function NotificationBell({
         <SheetContent
           side="right"
           aria-describedby={undefined}
-          className="z-[1005] w-full gap-0 border-l-2 border-slate-900 bg-white p-0 sm:max-w-md [&>button]:hidden"
+          className="z-[1005] w-full gap-0 border-l-2 border-slate-900 bg-popover p-0 sm:max-w-md [&>button]:hidden"
         >
           <SheetTitle className="sr-only">Notificações</SheetTitle>
           {/* Detalhe é camada absolute sobre a lista, que fica montada por baixo
@@ -154,7 +154,7 @@ export default function NotificationBell({
               onSelect={setSelected}
             />
             {selected ? (
-              <div className="absolute inset-0 z-10 bg-white">
+              <div className="absolute inset-0 z-10 bg-popover">
                 <NotificationDetailSheet
                   item={selected}
                   onBack={() => setSelected(null)}
@@ -178,7 +178,7 @@ export default function NotificationBell({
         <PopoverContent
           align="end"
           sideOffset={10}
-          className="max-h-[70vh] w-[400px] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border-2 border-slate-900 bg-white p-0 shadow-[5px_5px_0_var(--bnt-shadow)]"
+          className="max-h-[70vh] w-[400px] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border-2 border-slate-900 bg-popover p-0 shadow-[5px_5px_0_var(--bnt-shadow)]"
         >
           <NotificationsPanel
             onClose={() => setOpen(false)}
