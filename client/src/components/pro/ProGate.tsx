@@ -145,7 +145,7 @@ export default function ProGate({
   if (loading) {
     return (
       <div
-        className={`relative isolate overflow-hidden rounded-2xl border-2 border-slate-900 bg-gradient-to-b from-violet-950 via-indigo-950 to-slate-950 p-6 text-center shadow-[4px_4px_0_var(--bnt-shadow)] ${className}`}
+        className={`bnt-keep-colors relative isolate overflow-hidden rounded-2xl border-2 border-slate-900 bg-gradient-to-b from-violet-950 via-indigo-950 to-slate-950 p-6 text-center shadow-[4px_4px_0_var(--bnt-shadow)] ${className}`}
       >
         <p className="font-display text-2xl font-black text-white">
           Verificando acesso...
@@ -159,7 +159,7 @@ export default function ProGate({
 
   return (
     <div
-      className={`relative isolate overflow-hidden rounded-2xl border-2 border-slate-900 bg-gradient-to-b from-violet-950 via-indigo-950 to-slate-950 p-6 text-center shadow-[4px_4px_0_var(--bnt-shadow)] ${className}`}
+      className={`bnt-keep-colors relative isolate overflow-hidden rounded-2xl border-2 border-slate-900 bg-gradient-to-b from-violet-950 via-indigo-950 to-slate-950 p-6 text-center shadow-[4px_4px_0_var(--bnt-shadow)] ${className}`}
     >
       <StarField reduce={reduce} />
 
