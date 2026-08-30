@@ -1456,14 +1456,21 @@ router.get("/overview-series", async (req, res, next) => {
 // alguem agir, e agir sobre estado de tres minutos atras e pior que esperar.
 const ATENCAO_CACHE_TTL_S = 60;
 
+// A chave, NOMEADA em vez de literal no call site. Ela agora tem DOIS usos (a
+// leitura do painel e a invalidacao depois de resolver um orfao), e chave de
+// cache repetida a mao e o desenho em que uma das pontas erra uma letra e a
+// invalidacao passa a apagar coisa nenhuma, em silencio.
+//
+// v2: o payload ganhou `destinoInterno`, `motivoCodigo` e tres tipos novos. Sem
+// o bump, o admin continuaria lendo do Redis, ate o TTL, um payload da forma
+// antiga, e o painel novo renderizaria sem os destinos internos sem nada
+// acusar. Chave nova invalida por construcao.
+const ATENCAO_CACHE_KEY = "admincache:attention:v2";
+
 router.get("/attention", async (_req, res, next) => {
   try {
     const { result, computedAt } = await getOrCompute(
-      // v2: o payload ganhou `destinoInterno`, `motivoCodigo` e tres tipos
-      // novos. Sem o bump, o admin continuaria lendo do Redis, ate o TTL, um
-      // payload da forma antiga, e o painel novo renderizaria sem os destinos
-      // internos sem nada acusar. Chave nova invalida por construcao.
-      "admincache:attention:v2",
+      ATENCAO_CACHE_KEY,
       ATENCAO_CACHE_TTL_S,
       async () => ({
         result: await montarPainelDeAtencao(),
@@ -1471,6 +1478,58 @@ router.get("/attention", async (_req, res, next) => {
       }),
     );
     res.json({ data: result, computedAt });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Pagamentos orfaos ainda em aberto, TODOS eles.
+ *
+ * POR QUE ESTA ROTA EXISTE, se o painel de Atencao ja mostra orfaos. Porque o
+ * painel mostra MENOS do que existe, e o corte e deliberado la: em
+ * `server/lib/atencaoNecessaria.ts:634` ele pula quem nao tem
+ * `expected_provider_subscription_id`, e em `:635` pula quem nao passa em
+ * `orfaoAindaPedeAcao`. Os dois filtros fazem sentido para uma lista de
+ * "aja agora": sem a chave esperada nao ha deep link para a Stripe, e o segundo
+ * evita repetir um caso que ja se resolveu por outro caminho. O efeito colateral
+ * e que as linhas descartadas ficavam SEM NENHUMA superficie: existiam na
+ * tabela, ninguem as via, e nao havia como carimba-las como tratadas. Esta rota
+ * e o lugar dessas, e por isso ela nao herda filtro nenhum: o unico criterio e
+ * `resolved_at is null`.
+ *
+ * SEM CACHE, ao contrario da `/attention`. Aquela responde "o que precisa de
+ * atencao agora" e tolera 60s de atraso; esta e a lista sobre a qual se age, e
+ * logo depois de resolver uma linha a tela recarrega. Servir estado de um minuto
+ * atras aqui mostraria de volta o item que a pessoa acabou de tratar, e a
+ * primeira conclusao seria que o botao nao funcionou.
+ *
+ * ORDEM ASCENDENTE por `detected_at`: o mais antigo primeiro, porque a fila e de
+ * gente esperando, e quem espera ha mais tempo vem antes. Casa com o indice
+ * parcial `billing_orphan_payments_unresolved_idx`, que e `(detected_at DESC)
+ * WHERE resolved_at IS NULL`: o Postgres percorre um indice nos dois sentidos, e
+ * o que o indice parcial resolve aqui e nao varrer as linhas ja resolvidas.
+ */
+router.get("/billing/orphan-payments", async (_req, res, next) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("billing_orphan_payments")
+      .select(
+        "id, stripe_session_id, customer_email, plan_id, amount_total_cents, currency, detected_at, last_seen_at, expected_provider_subscription_id",
+      )
+      .is("resolved_at", null)
+      .order("detected_at", { ascending: true });
+
+    if (error)
+      return next(
+        dbError(
+          "orphan payments list",
+          error,
+          "Erro ao buscar os pagamentos sem assinatura.",
+        ),
+      );
+
+    res.json({ data: data ?? [] });
   } catch (err) {
     next(err);
   }

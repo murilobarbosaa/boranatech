@@ -92,7 +92,18 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // de IA, depois dos dois `router.use` do topo, e os dois testes acima conferem
 // isso por posição. A rota expõe e-mail de pessoa: estar atrás de
 // `requireAuth` + `requireAdmin` não é detalhe aqui, é o requisito.
-const EXPECTED_ROUTE_COUNT = 58;
+// 61 -> 58 em 2026-08-30, com `d4ef73c1` (remocao das rotas beta orfas). E a
+// primeira vez que este numero DESCE, e a entrada fica registrada aqui porque o
+// commit nao a escreveu: sem ela a cadeia pula de 59 para 58 sem explicacao, e
+// quem ler daqui a seis meses vai procurar a rota que sumiu.
+//
+// 58 -> 59 em 2026-08-30, com `GET /admin/billing/orphan-payments` (a lista de
+// pagamentos sem assinatura ainda em aberto). Ela e declarada logo depois de
+// `GET /admin/attention`, portanto abaixo dos dois `router.use` do topo, e os
+// dois testes acima conferem isso por posicao. A rota expoe e-mail de cliente e
+// valor pago: estar atras de `requireAuth` mais `requireAdmin` e o requisito,
+// nao um detalhe.
+const EXPECTED_ROUTE_COUNT = 59;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {
