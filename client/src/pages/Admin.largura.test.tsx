@@ -58,6 +58,12 @@ import Admin from "./Admin";
 /** A classe que neutraliza o teto. Uma constante para os quatro testes. */
 const ESCAPE = "lg:max-w-none";
 
+/**
+ * O teto que o cabecalho de Tarefas re-ancora, espelhando o `.container`.
+ * Escrito uma vez aqui para o teste e a fonte nao divergirem por digitacao.
+ */
+const TETO_ESPELHADO = "lg:max-w-[80rem]";
+
 beforeEach(() => {
   fetchMock.mockReset();
   fetchMock.mockRejectedValue(new Error("sem dados no teste"));
@@ -104,6 +110,43 @@ describe("largura cheia: so o quadro de tarefas", () => {
   it("Visao geral (sem ?section) NAO escapa", async () => {
     const secoes = await abrirEm("/admin");
     expect(secoes.className).not.toContain(ESCAPE);
+  });
+
+  it("no modo escapado, o TEXTO do cabecalho re-ancora e o QUADRO nao", async () => {
+    // A separacao que este commit existe para criar. O escape do commit 13
+    // levou junto o selo, o titulo e a descricao, que passaram a colar na borda
+    // do monitor. Texto quer teto; quadro nao.
+    //
+    // As duas asercoes juntas de proposito: so a primeira aceitaria um teto
+    // aplicado na secao INTEIRA, que desfaria o commit 13 em silencio, e so a
+    // segunda aceitaria o texto continuar solto.
+    await abrirEm("/admin?section=tarefas");
+    const secao = document.getElementById("tarefas");
+    expect(secao, "a secao de tarefas nao renderizou").toBeTruthy();
+
+    const cabecalho = (secao as HTMLElement).firstElementChild as HTMLElement;
+    expect(cabecalho.className).toContain(TETO_ESPELHADO);
+    // O CORPO da secao (onde o quadro vive) NAO carrega o teto.
+    const corpo = (secao as HTMLElement).lastElementChild as HTMLElement;
+    expect(corpo).not.toBe(cabecalho);
+    expect(corpo.className).not.toContain(TETO_ESPELHADO);
+    // NEM A SECAO. Esta terceira asercao entrou depois de uma mutacao passar
+    // por aqui: aplicar o teto na propria <section> nao toca nem o cabecalho
+    // nem o corpo, entao as duas de cima aprovavam um quadro apertado de volta.
+    // Quem pegou foi o teste do modo normal, por sorte de vizinhanca, e guard
+    // que depende do vizinho e guard que some quando o vizinho muda.
+    expect((secao as HTMLElement).className).not.toContain(TETO_ESPELHADO);
+  });
+
+  it("no modo normal o wrapper do cabecalho e inocuo, nao aperta a secao", async () => {
+    // O teto espelhado e IGUAL ao do contêiner, entao dentro dele nao ha o que
+    // apertar. Este teste trava isso pelo lado observavel: a secao continua sem
+    // teto proprio, e quem limita e o contêiner de cima, como nas outras abas.
+    const secoes = await abrirEm("/admin?section=tarefas&view=lista");
+    expect(secoes.className).not.toContain(ESCAPE);
+
+    const secao = document.getElementById("tarefas") as HTMLElement;
+    expect(secao.className).not.toContain(TETO_ESPELHADO);
   });
 
   it("o teto continua sendo o do `.container` em todos os casos", async () => {

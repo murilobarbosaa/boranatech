@@ -1649,6 +1649,7 @@ function AdminSection({
   id,
   subtitle,
   title,
+  headerClassName = "",
 }: {
   children: ReactNode;
   eyebrow: string;
@@ -1656,10 +1657,24 @@ function AdminSection({
   id: string;
   subtitle: string;
   title: string;
+  /**
+   * Classes extras SO no bloco de cabecalho (selo, titulo e descricao).
+   *
+   * Existe para a secao de Tarefas, a unica que roda fora do teto de largura:
+   * la o quadro quer a tela inteira e o TEXTO nao, entao o cabecalho re-ancora
+   * sozinho. A DECISAO fica no ponto de uso, nao aqui: este componente e
+   * compartilhado por onze secoes, e embutir a excecao dentro dele faria as
+   * outras dez carregarem uma regra que nao e delas.
+   *
+   * Vazio por padrao, entao quem nao passa nada nao muda em nada.
+   */
+  headerClassName?: string;
 }) {
   return (
     <section id={id} className="scroll-mt-28">
-      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div
+        className={`mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between ${headerClassName}`}
+      >
         <div>
           <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-violet-800 shadow-[2px_2px_0_#0f172a]">
             {icon}
@@ -8676,6 +8691,17 @@ export default function Admin() {
               icon={<SquareKanban className="h-4 w-4" />}
               title="Tarefas"
               subtitle="Board interno de backlog, features, melhorias e débito técnico. As etapas são editáveis: renomeie no duplo clique e reordene pelo menu da coluna."
+              // TEXTO volta para a largura de antes; o QUADRO fica solto.
+              //
+              // `80rem` espelha o teto do `.container` (index.css:174,
+              // max-width: 1280px). Se um mudar, o outro acompanha: sao o mesmo
+              // numero escrito em dois lugares porque o Tailwind nao le o CSS
+              // custom, e este comentario e o que amarra os dois.
+              //
+              // Fora do modo escapado isto e INOCUO: a secao inteira ja esta
+              // dentro do contêiner, entao um teto igual ao dele nao aperta
+              // nada. Por isso a classe nao precisa ser condicional.
+              headerClassName="w-full lg:mx-auto lg:max-w-[80rem]"
             >
               {/* Boundary SO em volta desta secao: sem ele, um erro de render
                   aqui sobe ate o ErrorBoundary do App.tsx e derruba a pagina
