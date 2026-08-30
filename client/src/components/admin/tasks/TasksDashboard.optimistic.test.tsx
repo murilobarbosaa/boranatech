@@ -226,6 +226,20 @@ describe("board: a fileira centrada e o botao de nova etapa", () => {
     });
   });
 
+  it("o '+' centra na VERTICAL com as colunas, nao encosta no topo", async () => {
+    // Numa fileira de colunas altas, um alvo de 48px grudado na borda de cima
+    // le como sobra de layout e nao como acao. `self-center` e o que resolve, e
+    // ele mora no contêiner do botao, nao no botao: trocar por `self-start`
+    // numa limpeza futura pareceria inocuo.
+    render(<TasksDashboard />);
+    await screen.findByLabelText("DEV-1: tarefa 1");
+
+    const caixa = screen.getByTestId("board-nova-etapa");
+    expect(caixa.className).toContain("self-center");
+    expect(caixa.className).not.toContain("self-start");
+    expect(caixa.className).not.toContain("items-start");
+  });
+
   it("o '+' de nova etapa tem nome acessivel, porque icone nao fala", async () => {
     // O texto "Nova etapa" saiu do botao; sem `aria-label` ele viraria um alvo
     // anonimo na fileira. Mesmo cuidado do avatar do header do admin.
@@ -236,9 +250,9 @@ describe("board: a fileira centrada e o botao de nova etapa", () => {
     expect(botao.getAttribute("title")).toBe("Nova etapa");
     // COMPACTO: ele nao ocupa mais uma coluna inteira. Sem esta asercao, um
     // botao largo com aria-label passaria e o centro do quadro seguiria
-    // deslocado.
-    expect(botao.className).toContain("h-9");
-    expect(botao.className).toContain("w-9");
+    // deslocado. `h-12` e a familia grande, escolhida pela Ana em 30/08.
+    expect(botao.className).toContain("h-12");
+    expect(botao.className).toContain("w-12");
     expect(botao.className).not.toContain("w-full");
     // E o texto morreu de verdade: se voltar, o botao volta a ser largo.
     expect(botao.textContent?.trim()).toBe("");

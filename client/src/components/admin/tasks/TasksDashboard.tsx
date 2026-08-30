@@ -1338,15 +1338,27 @@ export function TasksDashboard() {
                   // O texto que saiu vira `aria-label` e `title`: icone nao
                   // fala, e sem os dois o botao fica sem nome acessivel. Mesmo
                   // cuidado do avatar do header do admin.
-                  <div className="flex shrink-0 items-start self-stretch pt-1">
+                  // MAIOR e CENTRADO NA VERTICAL (decisao da Ana, 30/08). O
+                  // `self-center` alinha o disco ao meio da altura das colunas
+                  // em vez de encostar no topo: numa fileira de colunas altas,
+                  // um alvo de 48px grudado na borda de cima le como sobra de
+                  // layout, e nao como acao.
+                  //
+                  // `h-12 w-12` com icone `h-5 w-5`: a familia grande dos
+                  // compactos da casa. O nome acessivel continua no
+                  // `aria-label` mais `title`, porque icone nao fala.
+                  <div
+                    data-testid="board-nova-etapa"
+                    className="flex shrink-0 items-center self-center"
+                  >
                     <button
                       type="button"
                       onClick={() => setNewColumnOpen(true)}
                       aria-label="Nova etapa"
                       title="Nova etapa"
-                      className="grid h-9 w-9 place-items-center rounded-full border-2 border-dashed border-slate-400 bg-white/60 text-slate-600 transition-colors hover:border-slate-900 hover:bg-white hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                      className="grid h-12 w-12 place-items-center rounded-full border-2 border-dashed border-slate-400 bg-white/60 text-slate-600 transition-colors hover:border-slate-900 hover:bg-white hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
                     >
-                      <Plus className="h-4 w-4" />
+                      <Plus className="h-5 w-5" />
                     </button>
                   </div>
                 ) : null}

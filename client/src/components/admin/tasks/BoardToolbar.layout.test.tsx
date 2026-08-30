@@ -7,16 +7,22 @@ import { BoardToolbar } from "./BoardToolbar";
 import { EMPTY_FILTERS } from "./taskFilters";
 
 /**
- * A TOOLBAR EM DUAS LINHAS CENTRADAS.
+ * A TOOLBAR: disposicao historica, busca com teto.
  *
- * O que este arquivo trava e a RELACAO entre busca e controles, nao a aparencia
- * de cada um: os dois moram no MESMO wrapper central, entao a largura da busca e
- * a largura em que a linha de controles abre, sem numero repetido em dois
- * lugares. Foi assim que a Ana descreveu o desenho, e e a parte que uma mexida
- * futura desfaz sem perceber (basta alguem dar largura propria a um dos dois).
+ * HISTORICO, porque a forma deste arquivo e a lição. Ele nasceu travando uma
+ * toolbar EMPILHADA (busca em cima, controles centrados embaixo), que a Ana
+ * vetou dois dias depois: a disposicao lateral de antes voltou, e so a LARGURA
+ * da busca ficou. Os testes vieram junto, e e por isso que eles afirmam a
+ * disposicao ATUAL em vez de guardarem a anterior "por garantia": teste que
+ * descreve uma tela que nao existe mais nao protege nada e atrapalha a leitura.
  *
- * As asercoes sao de ESTRUTURA (quem contem quem) e nao de pixel: jsdom nao
- * calcula layout, entao afirmar largura renderizada aqui seria afirmar zero.
+ * O que sobrou de verdadeiro nos dois desenhos, e o que este arquivo trava: a
+ * busca tem UM teto e ele mora nela, nao num wrapper em volta. Foi a parte que
+ * a Ana aprovou, e e a que uma mexida futura desfaz sem perceber.
+ *
+ * As asercoes sao de ESTRUTURA (quem contem quem, que classe carrega o teto) e
+ * nao de pixel: jsdom nao calcula layout, entao afirmar largura renderizada
+ * aqui seria afirmar zero.
  */
 
 function montar(over: Record<string, unknown> = {}) {
@@ -46,84 +52,62 @@ function montar(over: Record<string, unknown> = {}) {
 
 afterEach(cleanup);
 
-describe("toolbar: busca em cima, controles embaixo, tudo no mesmo centro", () => {
-  it("busca e controles sao FILHOS do mesmo wrapper central", () => {
-    // O PAR. Uma asercao so ("a busca esta centrada") aceitaria uma toolbar em
-    // que os controles morassem em outro contêiner de outra largura, que e
-    // exatamente o desalinhamento que o desenho veio corrigir.
+describe("toolbar: disposicao lateral, com teto na busca", () => {
+  it("a busca divide a MESMA linha com os demais controles", () => {
+    // A disposicao restaurada. Se alguem empilhar a busca de novo (o desenho
+    // vetado), ela deixa de ser irma dos controles e este teste cai.
     montar();
-    const wrapper = screen.getByTestId("tasks-toolbar");
     const busca = screen.getByTestId("tasks-toolbar-busca");
-    const controles = screen.getByTestId("tasks-toolbar-controles");
+    const linha = busca.parentElement as HTMLElement;
 
-    expect(wrapper.contains(busca)).toBe(true);
-    expect(wrapper.contains(controles)).toBe(true);
-    expect(busca.parentElement).toBe(wrapper);
-    expect(controles.parentElement).toBe(wrapper);
+    expect(linha.className).toContain("flex");
+    // Os vizinhos na MESMA linha, nao numa de baixo.
+    expect(linha.textContent).toContain("Quadro");
+    expect(linha.textContent).toContain("Agrupar por");
+    expect(linha.textContent).toContain("Filtros");
+    expect(linha.textContent).toContain("Board");
+    expect(linha.textContent).toContain("Lista");
   });
 
-  it("o wrapper e que centra e limita; a busca so ocupa a largura dele", () => {
+  it("a busca cresce ATE um teto, em vez de esticar com a fileira", () => {
+    // A largura aprovada. `flex-1` sozinho faria ela absorver toda a sobra do
+    // monitor largo, que era o estado antes da rodada; o `max-w` e o que a Ana
+    // gostou, e ele vive NA BUSCA, nao num wrapper em volta dela.
     montar();
-    const wrapper = screen.getByTestId("tasks-toolbar");
     const busca = screen.getByTestId("tasks-toolbar-busca");
 
-    expect(wrapper.className).toContain("mx-auto");
-    expect(wrapper.className).toContain("max-w-3xl");
-    // A busca NAO tem teto proprio: se ganhar um, ela e os controles deixam de
-    // abrir na mesma medida e o numero passa a existir em dois lugares.
-    expect(busca.className).toContain("w-full");
-    expect(busca.className).not.toContain("max-w-");
+    expect(busca.className).toContain("flex-1");
+    expect(busca.className).toContain("max-w-3xl");
+    // E o piso continua: sem ele a busca some numa fileira apertada.
+    expect(busca.className).toContain("min-w-[13rem]");
   });
 
-  it("a busca vem ANTES dos controles na ordem do documento", () => {
-    // "Uma linha abaixo dela" e ordem, nao so posicionamento visual: quem navega
-    // por teclado percorre nesta sequencia.
+  it("o campo ocupa a largura do bloco, e o teto e do bloco", () => {
+    // O par. Um teto no bloco com um input de largura fixa dentro daria duas
+    // larguras concorrentes, e a menor venceria em silencio.
     montar();
-    const wrapper = screen.getByTestId("tasks-toolbar");
-    const filhos = Array.from(wrapper.children);
-    const iBusca = filhos.indexOf(screen.getByTestId("tasks-toolbar-busca"));
-    const iControles = filhos.indexOf(
-      screen.getByTestId("tasks-toolbar-controles"),
-    );
+    const busca = screen.getByTestId("tasks-toolbar-busca");
+    const input = busca.querySelector("#tasks-search") as HTMLElement;
 
-    expect(iBusca).toBeGreaterThanOrEqual(0);
-    expect(iControles).toBeGreaterThan(iBusca);
+    expect(input).toBeTruthy();
+    expect(input.className).toContain("w-full");
+    expect(input.className).not.toContain("max-w-");
   });
 
-  it("os controles abrem na largura da busca e quebram CENTRADOS no estreito", () => {
+  it("NAO existe wrapper central empilhando a barra", () => {
+    // CONTROLE NEGATIVO do desenho vetado. Sem ele, alguem poderia reintroduzir
+    // a pilha centrada mantendo o teto da busca, e as asercoes acima passariam.
     montar();
-    const controles = screen.getByTestId("tasks-toolbar-controles");
-
-    expect(controles.className).toContain("w-full");
-    expect(controles.className).toContain("sm:justify-between");
-    // Abaixo de sm o centro manda: `justify-between` com duas linhas desiguais
-    // deixaria o ultimo controle sozinho num canto.
-    expect(controles.className).toContain("justify-center");
-    // E nada de rolagem horizontal na barra: ela QUEBRA.
-    expect(controles.className).toContain("flex-wrap");
-    expect(controles.className).not.toContain("overflow-x");
+    expect(screen.queryByTestId("tasks-toolbar-controles")).toBeNull();
   });
 
-  it("os quatro controles continuam na linha de baixo", () => {
-    // CONTROLE do controle: sem isto, uma toolbar que perdesse um dos controles
-    // no rearranjo passaria em todas as asercoes de classe acima.
+  it("a contagem continua fora da linha de controles", () => {
     montar();
-    const controles = screen.getByTestId("tasks-toolbar-controles");
-
-    expect(controles.textContent).toContain("Quadro");
-    expect(controles.textContent).toContain("Agrupar por");
-    expect(controles.textContent).toContain("Filtros");
-    expect(controles.textContent).toContain("Board");
-    expect(controles.textContent).toContain("Lista");
-    // E a busca NAO ficou para tras na linha de controles.
-    expect(controles.querySelector("#tasks-search")).toBeNull();
-  });
-
-  it("a contagem fecha a pilha, dentro do mesmo wrapper", () => {
-    montar();
-    const wrapper = screen.getByTestId("tasks-toolbar");
     const contagem = screen.getByText("44 tarefas");
+    const busca = screen.getByTestId("tasks-toolbar-busca");
 
-    expect(wrapper.contains(contagem)).toBe(true);
+    expect(contagem).toBeTruthy();
+    // Ela vive na propria faixa, abaixo da linha, como sempre viveu.
+    expect((busca.parentElement as HTMLElement).contains(contagem)).toBe(false);
   });
 });
