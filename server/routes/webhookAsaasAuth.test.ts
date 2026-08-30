@@ -15,7 +15,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const estado = vi.hoisted(() => ({
   habilitado: true,
   token: "token-de-teste",
-  /** O que processarEventoAsaas devolve, ou lanca. */
+  /** O que processAsaasEvent devolve, ou lanca. */
   resultado: { received: true } as unknown,
   erro: null as Error | null,
   /** Eventos que chegaram ao processamento. */
@@ -34,7 +34,7 @@ vi.mock("../lib/env", () => ({
 }));
 
 vi.mock("../providers/asaas", () => ({
-  processarEventoAsaas: async (evento: unknown) => {
+  processAsaasEvent: async (evento: unknown) => {
     estado.processados.push(evento);
     if (estado.erro) throw estado.erro;
     return estado.resultado;

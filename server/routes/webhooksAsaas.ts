@@ -7,7 +7,7 @@ import {
 } from "express";
 
 import { env } from "../lib/env";
-import { processarEventoAsaas, type AsaasEvent } from "../providers/asaas";
+import { processAsaasEvent, type AsaasEvent } from "../providers/asaas";
 
 const router = Router();
 
@@ -76,7 +76,7 @@ export async function handleAsaasWebhook(
   }
 
   try {
-    const resultado = await processarEventoAsaas(req.body as AsaasEvent);
+    const resultado = await processAsaasEvent(req.body as AsaasEvent);
     return res.json(resultado);
   } catch (err) {
     return next(err);

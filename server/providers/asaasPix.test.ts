@@ -197,7 +197,7 @@ import {
   eventKey,
   paidAmountCentsFromAsaas,
   PIX_ACCESS_DAYS,
-  processarEventoAsaas,
+  processAsaasEvent,
   asaasProvider,
 } from "./asaas";
 
@@ -386,7 +386,7 @@ function eventoDePagamento(over: Record<string, unknown> = {}) {
       externalReference: "row-1",
       ...(pagamentoParcial as Record<string, unknown> | undefined),
     },
-  } as Parameters<typeof processarEventoAsaas>[0];
+  } as Parameters<typeof processAsaasEvent>[0];
 }
 
 describe("webhook: idempotencia", () => {
@@ -410,10 +410,10 @@ describe("webhook: idempotencia", () => {
   });
 
   it("o MESMO evento duas vezes ativa UMA vez so", async () => {
-    const primeira = await processarEventoAsaas(eventoDePagamento());
+    const primeira = await processAsaasEvent(eventoDePagamento());
     expect(primeira).toMatchObject({ received: true, activated: true });
 
-    const segunda = await processarEventoAsaas(eventoDePagamento());
+    const segunda = await processAsaasEvent(eventoDePagamento());
     expect(segunda).toMatchObject({ received: true, deduped: true });
 
     const ativacoes = estado.rpcCalls.filter(
@@ -437,7 +437,7 @@ describe("webhook: ativacao pela RPC", () => {
   });
 
   it("chama a RPC uma vez, com os parametros da assinatura real", async () => {
-    await processarEventoAsaas(eventoDePagamento());
+    await processAsaasEvent(eventoDePagamento());
 
     const ativacoes = estado.rpcCalls.filter(
       (c) => c.nome === "activate_subscription_exclusive",
@@ -456,7 +456,7 @@ describe("webhook: ativacao pela RPC", () => {
   });
 
   it("o periodo concedido e o do plano, nao um valor qualquer", async () => {
-    await processarEventoAsaas(eventoDePagamento());
+    await processAsaasEvent(eventoDePagamento());
 
     const args = estado.rpcCalls[0].args;
     const inicio = new Date(String(args.p_period_start)).getTime();
@@ -465,7 +465,7 @@ describe("webhook: ativacao pela RPC", () => {
   });
 
   it("NENHUMA escrita direta de status em subscriptions no caminho de ativacao", async () => {
-    await processarEventoAsaas(eventoDePagamento());
+    await processAsaasEvent(eventoDePagamento());
 
     const escritasEmSubs = estado.escritas.filter(
       (e) => e.tabela === "subscriptions",
@@ -476,7 +476,7 @@ describe("webhook: ativacao pela RPC", () => {
   it("erro da RPC captura no Sentry e propaga", async () => {
     estado.ativacaoErro = { code: "40001", message: "serialization failure" };
 
-    await expect(processarEventoAsaas(eventoDePagamento())).rejects.toThrow();
+    await expect(processAsaasEvent(eventoDePagamento())).rejects.toThrow();
 
     const ativacao = estado.capturas.filter(
       (c) => c.mensagem === "asaas_ativacao_falhou",
@@ -490,7 +490,7 @@ describe("webhook: ativacao pela RPC", () => {
   });
 
   it("PAYMENT_CONFIRMED ativa igual a PAYMENT_RECEIVED", async () => {
-    const r = await processarEventoAsaas(
+    const r = await processAsaasEvent(
       eventoDePagamento({ event: "PAYMENT_CONFIRMED" }),
     );
     expect(r).toMatchObject({ activated: true });
@@ -530,7 +530,7 @@ describe("webhook: comissao de afiliado", () => {
   });
 
   it("ausencia de valor NAO vira zero: pula o incremento e captura", async () => {
-    await processarEventoAsaas(
+    await processAsaasEvent(
       eventoDePagamento({ payment: { value: undefined } }),
     );
 
@@ -551,7 +551,7 @@ describe("webhook: comissao de afiliado", () => {
   });
 
   it("valor presente alimenta o incremento com o valor PAGO", async () => {
-    await processarEventoAsaas(eventoDePagamento());
+    await processAsaasEvent(eventoDePagamento());
 
     const incrementos = estado.rpcCalls.filter(
       (c) => c.nome === "increment_affiliate_conversion",
@@ -575,7 +575,7 @@ describe("webhook: encerramento e eventos desconhecidos", () => {
   });
 
   it("PAYMENT_OVERDUE encerra a linha pendente, condicional em pending", async () => {
-    await processarEventoAsaas(eventoDePagamento({ event: "PAYMENT_OVERDUE" }));
+    await processAsaasEvent(eventoDePagamento({ event: "PAYMENT_OVERDUE" }));
 
     const update = estado.escritas.find(
       (e) => e.tabela === "subscriptions" && e.operacao === "update",
@@ -585,7 +585,7 @@ describe("webhook: encerramento e eventos desconhecidos", () => {
   });
 
   it("PAYMENT_DELETED encerra do mesmo jeito", async () => {
-    await processarEventoAsaas(eventoDePagamento({ event: "PAYMENT_DELETED" }));
+    await processAsaasEvent(eventoDePagamento({ event: "PAYMENT_DELETED" }));
     const update = estado.escritas.find(
       (e) => e.tabela === "subscriptions" && e.operacao === "update",
     );
@@ -593,7 +593,7 @@ describe("webhook: encerramento e eventos desconhecidos", () => {
   });
 
   it("evento DESCONHECIDO devolve unhandled sem escrever nada", async () => {
-    const r = await processarEventoAsaas(
+    const r = await processAsaasEvent(
       eventoDePagamento({ event: "PAYMENT_AWAITING_RISK_ANALYSIS" }),
     );
 
@@ -604,13 +604,13 @@ describe("webhook: encerramento e eventos desconhecidos", () => {
   });
 
   it("evento sem id ou sem tipo nao explode: unhandled", async () => {
-    const r = await processarEventoAsaas({ event: "PAYMENT_RECEIVED" });
+    const r = await processAsaasEvent({ event: "PAYMENT_RECEIVED" });
     expect(r).toMatchObject({ unhandled: true });
   });
 
   it("pagamento SEM linha correspondente grita e propaga", async () => {
     estado.linhaSubscription = null;
-    await expect(processarEventoAsaas(eventoDePagamento())).rejects.toThrow();
+    await expect(processAsaasEvent(eventoDePagamento())).rejects.toThrow();
     expect(
       estado.capturas.filter((c) => c.mensagem === "asaas_webhook_falhou"),
     ).toHaveLength(1);
@@ -665,7 +665,7 @@ describe("ativacao Pix dispara o conjunto COMPLETO de efeitos", () => {
   });
 
   it("e-mail de confirmacao sai UMA vez, com o plano", async () => {
-    await processarEventoAsaas(eventoDePagamento());
+    await processAsaasEvent(eventoDePagamento());
 
     expect(estado.emails).toHaveLength(1);
     expect(estado.emails[0]).toMatchObject({
@@ -676,7 +676,7 @@ describe("ativacao Pix dispara o conjunto COMPLETO de efeitos", () => {
   });
 
   it("comissao de afiliado conta UMA vez, com o valor pago", async () => {
-    await processarEventoAsaas(eventoDePagamento());
+    await processAsaasEvent(eventoDePagamento());
 
     const conversoes = estado.rpcCalls.filter(
       (c) => c.nome === "increment_affiliate_conversion",
@@ -686,7 +686,7 @@ describe("ativacao Pix dispara o conjunto COMPLETO de efeitos", () => {
   });
 
   it("resgate de cupom conta UMA vez", async () => {
-    await processarEventoAsaas(eventoDePagamento());
+    await processAsaasEvent(eventoDePagamento());
 
     const resgates = estado.rpcCalls.filter(
       (c) => c.nome === "increment_coupon_redemption",
@@ -696,7 +696,7 @@ describe("ativacao Pix dispara o conjunto COMPLETO de efeitos", () => {
   });
 
   it("os TRES efeitos saem na mesma ativacao, nao um subconjunto", async () => {
-    await processarEventoAsaas(eventoDePagamento());
+    await processAsaasEvent(eventoDePagamento());
 
     expect(estado.emails).toHaveLength(1);
     expect(
@@ -734,7 +734,7 @@ describe("reentrega NAO redispara efeito nenhum", () => {
   });
 
   it("out_activated=false: zero e-mail, zero comissao, zero cupom", async () => {
-    await processarEventoAsaas(eventoDePagamento());
+    await processAsaasEvent(eventoDePagamento());
 
     expect(estado.emails).toEqual([]);
     expect(
@@ -756,8 +756,8 @@ describe("reentrega NAO redispara efeito nenhum", () => {
       },
     ];
 
-    await processarEventoAsaas(eventoDePagamento());
-    await processarEventoAsaas(eventoDePagamento());
+    await processAsaasEvent(eventoDePagamento());
+    await processAsaasEvent(eventoDePagamento());
 
     expect(estado.emails).toHaveLength(1);
   });
