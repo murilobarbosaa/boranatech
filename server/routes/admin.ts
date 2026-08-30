@@ -29,7 +29,6 @@ import {
   getPosthogStats,
   getPosthogUserActivity,
 } from "../lib/posthog";
-import { fetchAuthTimes } from "../lib/authUsers";
 import { getUsageRetention } from "../lib/usageRetention";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { emailQueue } from "../lib/queue";
@@ -2408,21 +2407,37 @@ function formatCpf(raw: string | null | undefined): string {
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 }
 
-// Escapa a busca para o ilike do PostgREST: % e _ sao curingas do LIKE (usuario
-// digitando % nao pode virar wildcard acidental) e \ e o proprio escape. O
-// padrao final vai entre aspas duplas no filtro or=, entao aspas duplas tambem
-// sao escapadas (virgula e parenteses, estruturais do or=, ficam inofensivos
-// dentro das aspas).
-function ilikePattern(term: string): string {
+/**
+ * Escapa e embrulha o termo de busca para o `ilike` do RPC de listagem.
+ *
+ * `%` e `_` sao curingas do LIKE: quem digita `%` na busca nao pode virar
+ * wildcard acidental, e a barra invertida e o proprio escape.
+ *
+ * SEM ASPAS, e o detalhe merece registro porque a versao anterior as tinha. O
+ * `ilikePattern` que morava aqui envolvia o padrao em ASPAS DUPLAS, porque ia
+ * dentro do filtro `or=` do PostgREST, onde as aspas sao estruturais. Passadas
+ * como ARGUMENTO DE FUNCAO, essas mesmas aspas virariam caractere literal do
+ * padrao, e a busca passaria a procurar nomes que comecam com aspas: zero
+ * resultado, sem erro. Copiar a funcao antiga teria produzido exatamente isso.
+ *
+ * OS CURINGAS SAO DAQUI, nao do SQL. A funcao usa `p_search` direto no `ilike`,
+ * sem concatenar `%`: quem embrulha e o chamador. Sem o embrulho, `ilike` sem
+ * curinga e igualdade (case-insensitive), e a busca parcial morre sem uma linha
+ * de erro. Tem teste proprio por isso.
+ */
+// Janela do filtro ATIVO: login (auth.users.last_sign_in_at) nos ultimos 30
+// dias. A LISTAGEM nao usa mais esta constante (a janela virou
+// `interval '30 days'` dentro do RPC), mas a rota de DETALHE continua usando
+// para computar o status de atividade de um usuario. Os dois numeros precisam
+// dizer a mesma coisa; se um mudar, o outro tem de acompanhar.
+const ACTIVE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+function rpcIlikePattern(term: string): string {
   const escaped = term
     .replace(/\\/g, "\\\\")
-    .replace(/[%_]/g, (ch) => `\\${ch}`)
-    .replace(/"/g, '\\"');
-  return `"%${escaped}%"`;
+    .replace(/[%_]/g, (ch) => `\\${ch}`);
+  return `%${escaped}%`;
 }
-
-// Janela do filtro ATIVO: login (auth.users.last_sign_in_at) nos ultimos 30 dias.
-const ACTIVE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 router.get("/users", async (req, res, next) => {
   try {
@@ -2451,28 +2466,19 @@ router.get("/users", async (req, res, next) => {
     // onboarding_completed saiu do select: trafegava em 50 linhas por pagina e
     // nao era renderizado em lugar nenhum (o detalhe le o dele, de outra rota).
     const rangeFrom = (page - 1) * pageSize;
-    let query = supabaseAdmin
-      .from("profiles")
-      // `area_interesse` entra aqui e nao numa consulta a parte: e coluna da
-      // MESMA linha de profiles que a lista ja carrega, entao o custo e zero.
-      // O comentario acima sobre lista ENXUTA continua valendo: o criterio e
-      // "so o que a linha renderiza", e agora ela renderiza a area.
-      .select("id, user_id, name, email, created_at, area_interesse", {
-        count: "exact",
-      })
-      .order("created_at", { ascending: false })
-      // Desempate por chave unica. created_at nao tem unique, entao a ordem
-      // entre linhas de mesmo instante nao e garantida, e sem garantia a
-      // paginacao por range pula e repete em silencio. Medido em 2026-07-29:
-      // 3182 perfis, zero empates, ou seja, nenhuma linha e afetada HOJE. Isto
-      // troca uma propriedade dos dados por uma garantia da consulta.
-      .order("id", { ascending: false })
-      .range(rangeFrom, rangeFrom + pageSize - 1);
 
-    if (search) {
-      const pattern = ilikePattern(search);
-      query = query.or(`name.ilike.${pattern},email.ilike.${pattern}`);
-    }
+    // A PAGINA VEM DE UM RPC, nao mais de uma query do PostgREST. Ordenacao
+    // (created_at desc, desempate por id desc), busca e recorte moram dentro da
+    // funcao; ver o cabecalho da migration
+    // 20260830140000_admin_list_users_page.sql. O que se ganha e
+    // `last_sign_in_at`, que vive em `auth.users` e antes exigia varrer a
+    // listagem do Auth em paginas de 1000.
+    //
+    // FILTROS entram como CONJUNTO DE IDS, resolvido aqui como sempre foi: a
+    // regra de quem e Pro continua em userListEnrichment/is_user_pro, e o SQL
+    // recebe a lista pronta. `idsFiltro` null = sem restricao.
+    let idsFiltro: string[] | null = null;
+    let excluirIds = false;
 
     // Cada filtro vira uma LISTA de user_id aplicada com .in()/.not in() no nivel
     // do banco: filtro + range + count acontecem juntos com a busca, entao a
@@ -2500,16 +2506,21 @@ router.get("/users", async (req, res, next) => {
         return next(
           dbError("users pro filter", subError, "Erro ao buscar usuários."),
         );
+      // `user_id` e nullable no tipo da tabela de origem; a lista que vai para o
+      // RPC e de uuid nao-nulo, entao o descarte acontece AQUI. Linha sem
+      // user_id nao identifica ninguem.
       const proUserIds = Array.from(
-        new Set((subRows || []).map((row) => row.user_id)),
+        new Set(
+          (subRows || [])
+            .map((row) => row.user_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
       );
-      if (filter === "pro") {
-        // Sem nenhum assinante ativo, o resultado correto e vazio: in() com lista
-        // vazia devolve zero linhas, exatamente o esperado.
-        query = query.in("user_id", proUserIds);
-      } else if (proUserIds.length > 0) {
-        query = query.not("user_id", "in", `(${proUserIds.join(",")})`);
-      }
+      idsFiltro = proUserIds;
+      // not_pro e EXCLUSAO, nao inclusao. Lista vazia em `pro` da zero linhas
+      // (`= any('{}')` e falso); lista vazia em `not_pro` nao filtra nada
+      // (`not false`). Os dois espelham o comportamento anterior.
+      excluirIds = filter === "not_pro";
     } else if (filter === "influencers") {
       // Influencer = concessao ATIVA (revoked_at null; o indice unico parcial
       // garante no maximo uma por usuario). Mesma mecanica de lista do Pro.
@@ -2535,39 +2546,53 @@ router.get("/users", async (req, res, next) => {
           ),
         );
       const influencerIds = Array.from(
-        new Set((infRows || []).map((row) => row.user_id)),
+        new Set(
+          (infRows || [])
+            .map((row) => row.user_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
       );
-      // Lista vazia -> in() devolve zero linhas, exatamente o esperado.
-      query = query.in("user_id", influencerIds);
-    } else if (filter === "ativo") {
-      // ATIVO = login nos ultimos 30 dias. last_sign_in_at so existe em
-      // auth.users (nao em profiles), entao varre o Auth (listUsers), filtra pelo
-      // cutoff e aplica a lista de ids. Quem nunca logou (last_sign_in_at null)
-      // fica fora, por definicao.
-      //
-      // RISCO DE ESCALA: diferente do Pro (lista minuscula de pagantes), "ativos
-      // em 30d" pode ser fracao grande da base -> lista grande no .in(), que pode
-      // estourar o tamanho da query no PostgREST, e a varredura roda a cada
-      // request com filter=ativo. Barato na base atual. Caminho futuro: um RPC
-      // dedicado (profiles JOIN auth.users com limit/offset/count no banco),
-      // mesma nota ja registrada em server/lib/usageRetention.ts.
-      const authTimes = await fetchAuthTimes();
-      const cutoffMs = Date.now() - ACTIVE_WINDOW_MS;
-      const activeIds: string[] = [];
-      authTimes.forEach((times, userId) => {
-        const ms = times.lastSignInAt
-          ? new Date(times.lastSignInAt).getTime()
-          : NaN;
-        if (!Number.isNaN(ms) && ms >= cutoffMs) activeIds.push(userId);
-      });
-      query = query.in("user_id", activeIds);
+      // Lista vazia -> zero linhas, exatamente o esperado.
+      idsFiltro = influencerIds;
     }
 
-    const { data, count, error } = await query;
+    // UMA ida ao banco para a pagina inteira, contagem inclusa.
+    const { data: rpcRows, error } = await supabaseAdmin.rpc(
+      "admin_list_users_page",
+      {
+        p_limit: pageSize,
+        p_offset: rangeFrom,
+        // OS CURINGAS SAO DAQUI: a funcao usa `p_search` direto no `ilike`.
+        // Sem este embrulho a busca vira igualdade exata em silencio.
+        p_search: search ? rpcIlikePattern(search) : null,
+        p_only_active: filter === "ativo",
+        p_user_ids: idsFiltro,
+        p_exclude_ids: excluirIds,
+      },
+    );
+    // FAIL-CLOSED. Erro do RPC vira resposta de erro, NUNCA lista vazia: vazio
+    // com 200 e indistinguivel de "nao ha usuarios", e o admin agiria sobre
+    // isso. O caso mais provavel e concreto: enquanto a migration nao for
+    // aplicada, a funcao nao existe e o PostgREST devolve erro aqui.
     if (error)
       return next(dbError("users list", error, "Erro ao buscar usuários."));
 
-    const rows = data || [];
+    const rpcData = (rpcRows ?? []) as Array<
+      Record<string, unknown> & { total_count?: number | string | null }
+    >;
+    // `count(*) over ()` repete o total em toda linha; pagina vazia = zero.
+    const count = rpcData.length ? Number(rpcData[0].total_count ?? 0) : 0;
+    const rows = rpcData.map(
+      ({ total_count: _total, ...row }) => row,
+    ) as Array<{
+      id?: string;
+      user_id?: string;
+      name?: string | null;
+      email?: string | null;
+      created_at?: string | null;
+      area_interesse?: string | null;
+      last_sign_in_at?: string | null;
+    }>;
 
     // Enriquecimento em LOTE sobre os ids DESTA pagina: duas consultas de custo
     // fixo, nunca uma por linha. Mesmo padrao de .in() usado pelos filtros
