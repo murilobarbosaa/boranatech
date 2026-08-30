@@ -87,6 +87,9 @@ import {
 import {
   calcularVariacao,
   OVERVIEW_TZ_LABEL,
+  OVERVIEW_WINDOWS,
+  OVERVIEW_WINDOW_PADRAO,
+  isOverviewWindow,
   parseOverviewWindow,
   resolverJanela,
   rotuloDeIntervalo,
@@ -1593,7 +1596,27 @@ const SIGNUP_HISTORY_CACHE_TTL_S = 300;
 
 router.get("/signup-history", async (req, res, next) => {
   try {
-    const janelaId = parseOverviewWindow(req.query.window);
+    // AUSENCIA e VALOR INVALIDO recebem respostas diferentes, o mesmo contrato
+    // de /users-active-daily. Sem `window` a rota assume "30", que e o padrao
+    // documentado; com `window=90` ela RECUSA em vez de devolver 30 calado.
+    //
+    // O QUE ISTO CONSERTA: o `parseOverviewWindow` faz fallback silencioso, e um
+    // seletor quebrado pedindo uma janela inexistente desenhava um grafico
+    // correto do PERIODO ERRADO, sem sintoma para ninguem. A divergencia entre
+    // as duas rotas irmas foi registrada quando a de ativos nasceu com 400; esta
+    // e a metade que faltava para o admin ter uma reacao so ao lixo.
+    const bruto = req.query.window;
+    const janelaId =
+      bruto === undefined ? OVERVIEW_WINDOW_PADRAO : parseOverviewWindow(bruto);
+    if (bruto !== undefined && !isOverviewWindow(bruto)) {
+      return next(
+        createError(
+          400,
+          "invalid_window",
+          `Janela inválida. Use uma de: ${OVERVIEW_WINDOWS.join(", ")}.`,
+        ),
+      );
+    }
 
     const data = await getOrCompute(
       `admincache:signup-history:${janelaId}`,

@@ -39,6 +39,25 @@ import {
 export const OVERVIEW_WINDOWS = ["7", "30", "all"] as const;
 export type OverviewWindow = (typeof OVERVIEW_WINDOWS)[number];
 
+/** Janela assumida quando o parametro NAO vem. Nao e fallback de lixo. */
+export const OVERVIEW_WINDOW_PADRAO: OverviewWindow = "30";
+
+/**
+ * O valor esta na whitelist?
+ *
+ * Existe ao lado do `parseOverviewWindow` porque as duas perguntas sao
+ * diferentes e estavam colapsadas numa so: "qual janela usar" (que precisa de um
+ * padrao) e "este valor e valido" (que precisa de sim ou nao). Com so a
+ * primeira, quem quisesse RECUSAR lixo tinha de comparar a saida com a entrada e
+ * inferir, que e adivinhar o que a funcao ja sabia.
+ */
+export function isOverviewWindow(valor: unknown): valor is OverviewWindow {
+  return (
+    typeof valor === "string" &&
+    (OVERVIEW_WINDOWS as readonly string[]).includes(valor)
+  );
+}
+
 export function parseOverviewWindow(valor: unknown): OverviewWindow {
   return typeof valor === "string" &&
     (OVERVIEW_WINDOWS as readonly string[]).includes(valor)
