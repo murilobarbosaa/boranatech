@@ -378,10 +378,17 @@ function filterPayload(body: Record<string, unknown>, allowedFields: string[]) {
 // `integrations` e o `captureConsoleIntegration` nao e padrao no @sentry/node
 // (docs/erro-engolido.md). Por isso o `cause`: o LinkedErrors percorre
 // `err.cause` e anexa o erro do Supabase a issue, em vez de so a mensagem
-// generica com um stack que aponta para esta linha. Foi a falta disto que fez o
-// BUG-76 ("Erro ao buscar usuarios.") chegar sem cadeia nenhuma, repetindo o
-// BUG-67 e o BUG-74; a correcao mora AQUI, no funil, e nao nos 60 call sites,
-// porque guarda escrita no chamador some no primeiro que alguem esquecer.
+// generica com um stack que aponta para esta linha. O `erroEncadeavel` nao e
+// enfeite: sem ele a frase anterior e FALSA, e foi falsa aqui de 2026-08-28 ate
+// 2026-08-30. O erro do Supabase chega como objeto plano (o postgrest-js devolve
+// `JSON.parse(body)` no modo `{ data, error }`) e o `aggregate-errors.js:28` do
+// @sentry/core so encadeia instancia de `Error`. Ou seja: este funil ja anexava
+// `cause` e mesmo assim nenhum evento tinha cadeia.
+//
+// Foi a falta do `cause` que fez o BUG-76 ("Erro ao buscar usuarios.") chegar
+// sem cadeia nenhuma, repetindo o BUG-67 e o BUG-74. A correcao mora AQUI, no
+// funil, e nao nos 60 call sites, porque guarda escrita no chamador some no
+// primeiro que alguem esquecer.
 //
 // `pgCode` no context de proposito: e o campo que separa "coluna que nao existe"
 // (42703) de "permissao" (42501) de "timeout" (57014) na primeira olhada, sem

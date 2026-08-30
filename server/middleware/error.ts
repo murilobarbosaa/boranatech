@@ -100,9 +100,18 @@ export function createError(
   statusCode: number,
   code: string,
   message: string,
-  // options.cause preserva o erro original (ex.: erro cru do Supabase): o
-  // integration LinkedErrors do Sentry percorre err.cause e anexa o stack real,
-  // em vez de so a mensagem generica. options.context vira scope.setContext.
+  // options.cause preserva o erro original: o integration LinkedErrors do Sentry
+  // percorre err.cause e anexa o stack real, em vez de so a mensagem generica.
+  // options.context vira scope.setContext.
+  //
+  // O CAUSE PRECISA SER UM `Error`. Ate 2026-08-30 este comentario dizia "ex.:
+  // erro cru do Supabase" e omitia a condicao, e a omissao custou caro: o erro
+  // cru do Supabase NAO e um `Error` (o postgrest-js devolve `JSON.parse(body)`
+  // puro no modo `{ data, error }`), e o `aggregate-errors.js:28` do
+  // @sentry/core so encadeia o que passa em `isInstanceOf(..., Error)`. Todo
+  // sitio que passava erro do Supabase direto aqui gerava evento sem cadeia,
+  // em silencio, desde o `89bf03ba`. Quem tem erro do Supabase em maos passa por
+  // `erroEncadeavel` (server/lib/supabaseError.ts) antes.
   options?: { cause?: unknown; context?: Record<string, unknown> },
 ): AppError {
   const err: AppError = new Error(message);

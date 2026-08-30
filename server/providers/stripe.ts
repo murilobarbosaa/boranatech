@@ -636,13 +636,25 @@ async function applySubscription(
     // maos, e o motivo vale para os outros: sem ele o Sentry recebe a mensagem
     // generica e um stack que aponta para a nossa propria linha, e a causa real
     // (timeout de statement, permissao, coluna ausente) some. O `LinkedErrors`
-    // percorre `err.cause` e anexa o erro do Supabase. Nenhum texto exibido ao
-    // usuario muda: `cause` nunca sai na resposta.
+    // percorre `err.cause` e anexa o erro do Supabase, DESDE QUE ele seja um
+    // `Error`, e e para isso que o `erroEncadeavel` existe. Nenhum texto exibido
+    // ao usuario muda: `cause` nunca sai na resposta.
     //
-    // Foi por falta disto que o BUG-74 (`Erro ao gravar assinatura.`, evento de
-    // 22/08) chegou ao Sentry sem cadeia nenhuma: o `89bf03ba` cobriu
-    // `routes/billing.ts` e `routes/content.ts` e deixou o webhook de fora, que
-    // e justamente o caminho sem ninguem olhando a tela.
+    // O QUE ESTE COMENTARIO AFIRMAVA E ERA FALSO, ate 2026-08-30. Ele dizia que
+    // o `LinkedErrors` percorria o `cause` e pronto, sem a condicao. A cadeia
+    // NUNCA se formou: o `postgrest-js`, no modo `{ data, error }`, devolve
+    // `JSON.parse(body)` puro, um objeto plano sem prototipo de `Error`, e o
+    // `aggregate-errors.js:28` do @sentry/core so segue o `cause` quando ele
+    // passa em `isInstanceOf(..., Error)`. Ficou assim do `89bf03ba` ate esta
+    // correcao, com o comentario ensinando um mecanismo que nao operava.
+    //
+    // Foi por falta do `cause` que o BUG-74 (`Erro ao gravar assinatura.`,
+    // evento de 22/08) chegou ao Sentry sem cadeia: o `89bf03ba` cobriu
+    // `routes/billing.ts` e `routes/content.ts` e deixou o webhook de fora. Mas
+    // o BUG-77, de 30/08, chegou sem cadeia TAMBEM COM o `cause` no lugar, e foi
+    // ele que expos o defeito acima. O que salvou aquele diagnostico (o `23505`
+    // em `subscriptions_one_active_per_user`) foi o breadcrumb do `console.error`
+    // logo acima, por acidente de desenho, nao pelo mecanismo prometido aqui.
     throw createError(500, "db_error", "Erro ao gravar assinatura.", {
       cause: erroEncadeavel(result.error),
     });
