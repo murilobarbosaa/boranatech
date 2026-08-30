@@ -111,6 +111,12 @@ import VagasDestaqueAdmin from "@/components/admin/VagasDestaqueAdmin";
 import SEO from "@/components/SEO";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
 import { useAuth } from "@/contexts/AuthContext";
+import UserAvatar, { effectiveOwnAvatar } from "@/components/UserAvatar";
+import {
+  normalizeAvatarBg,
+  normalizeAvatarIcon,
+  resolveEffectiveBorder,
+} from "@/constants/avatarOptions";
 import { adminFetch, AdminApiError } from "@/lib/adminApi";
 import { PLAN_ORDER, PLAN_PRICING, type PlanId } from "@shared/planPricing";
 import {
@@ -1497,6 +1503,24 @@ function AdminShell({
   session?: AdminSession | null;
   setActiveSection?: (section: AdminSectionId) => void;
 }) {
+  // O MESMO perfil que o header do site le, do MESMO contexto. O admin nao
+  // busca nada novo: `useAuth` ja esta montado nesta arvore e o `profile` traz
+  // avatar_url, avatar_mode e a moderacao.
+  const { profile } = useAuth();
+
+  // A ESCOLHA DE AVATAR E DO SITE, e quem a resolve e `effectiveOwnAvatar`, a
+  // mesma funcao do Header. Antes o admin desenhava as duas primeiras letras do
+  // nome por conta propria e ignorava foto, icone, cor e borda: duas
+  // implementacoes de "qual avatar mostrar", e a do admin sempre errada para
+  // quem escolheu foto.
+  //
+  // `isPro` entra como `true` pela regra da casa (CLAUDE.md): admin enxerga
+  // como Pro por design, e quem esta nesta tela e admin por construcao. Sem
+  // isso a foto de um admin sem assinatura seria rebaixada para icone aqui e
+  // nao no site, que e justamente a divergencia que este commit remove.
+  const ownAvatar = effectiveOwnAvatar(profile, true);
+  const avatarBorder = resolveEffectiveBorder(profile?.avatar_border, true);
+
   function handleSectionClick(
     event: React.MouseEvent<HTMLButtonElement>,
     href: string,
@@ -1547,19 +1571,32 @@ function AdminShell({
 
             {session ? (
               <div className="flex min-w-fit items-center gap-2">
-                <div className="hidden items-center gap-2 rounded-full border-2 border-slate-900 bg-white py-1 pl-1 pr-3 shadow-[2px_2px_0_#0f172a] sm:flex">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-700 text-xs font-black text-white">
-                    {session.displayName.slice(0, 2).toUpperCase()}
-                  </span>
-                  <div>
-                    <p className="text-[10px] font-black uppercase leading-none text-violet-700">
-                      Admin
-                    </p>
-                    <p className="text-xs font-black leading-tight text-slate-950">
-                      {session.displayName}
-                    </p>
-                  </div>
-                </div>
+                {/* SO o avatar. O pill com "Admin" e o e-mail saiu por decisao
+                    da Ana em 2026-08-30: quem esta no painel ja sabe que e
+                    admin, e o e-mail repetia o que o proprio avatar identifica.
+
+                    O NOME ACESSIVEL vem para ca junto. `UserAvatar` e
+                    `aria-hidden` por construcao (e decoracao, com `alt=""`), e
+                    no site quem nomeia e o `<Link aria-label="Abrir perfil">`
+                    em volta. Sem este wrapper, tirar os textos deixaria o canto
+                    do header MUDO para leitor de tela. */}
+                <span
+                  data-testid="admin-header-avatar"
+                  role="img"
+                  aria-label={`Perfil de ${session.displayName}`}
+                  title={session.displayName}
+                  className="hidden sm:inline-flex"
+                >
+                  <UserAvatar
+                    name={session.displayName}
+                    border={avatarBorder}
+                    icon={normalizeAvatarIcon(profile?.avatar_icon)}
+                    bg={normalizeAvatarBg(profile?.avatar_bg)}
+                    mode={ownAvatar.mode}
+                    avatarUrl={ownAvatar.avatarUrl}
+                    size="header"
+                  />
+                </span>
                 <button
                   onClick={onLogout}
                   type="button"
