@@ -125,7 +125,7 @@ function ResolverModal({
       }}
     >
       <div
-        className="relative w-full max-w-lg rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]"
+        className="relative w-full max-w-lg rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)]"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -188,7 +188,7 @@ function ResolverModal({
             type="button"
             onClick={onFechar}
             disabled={enviando}
-            className="flex-1 rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-3 font-display font-black text-slate-700 shadow-[3px_3px_0_#0f172a] disabled:opacity-60"
+            className="flex-1 rounded-full border-2 border-[var(--bnt-ink)] bg-white px-5 py-3 font-display font-black text-slate-700 shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-60"
           >
             Cancelar
           </button>

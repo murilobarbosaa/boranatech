@@ -180,28 +180,28 @@ export function ActiveUsersChart() {
         >
           <CartesianGrid
             strokeDasharray="3 3"
-            stroke="#e2e8f0"
+            stroke="var(--border)"
             vertical={false}
           />
           <XAxis
             dataKey="rotulo"
             interval={intervaloDeRotulos(barras.length, 6)}
-            tick={{ fontSize: 11, fontWeight: 700, fill: "#64748b" }}
+            tick={{ fontSize: 11, fontWeight: 700, fill: "var(--muted-foreground)" }}
             tickLine={false}
-            axisLine={{ stroke: "#cbd5e1" }}
+            axisLine={{ stroke: "var(--border)" }}
           />
           <YAxis
             // Contagem por dia sempre comeca em zero: a altura da barra e a
             // unica coisa que ela comunica.
             domain={[0, "auto"]}
             allowDecimals={false}
-            tick={{ fontSize: 11, fontWeight: 700, fill: "#64748b" }}
+            tick={{ fontSize: 11, fontWeight: 700, fill: "var(--muted-foreground)" }}
             tickLine={false}
             axisLine={false}
             width={44}
           />
           <Tooltip
-            cursor={{ fill: "#f1f5f9" }}
+            cursor={{ fill: "var(--muted)" }}
             /* TODO(Ana) */
             formatter={(valor: unknown) => [`${valor}`, "Ativos"]}
             labelFormatter={(rotulo: string) =>
@@ -209,7 +209,9 @@ export function ActiveUsersChart() {
             }
             contentStyle={{
               borderRadius: 12,
-              border: "2px solid #0f172a",
+              border: "2px solid var(--bnt-ink)",
+              background: "var(--card)",
+              color: "var(--foreground)",
               fontSize: 12,
               fontWeight: 700,
             }}
@@ -217,7 +219,7 @@ export function ActiveUsersChart() {
           <Bar
             dataKey="ativos"
             name="Ativos"
-            fill="#0d9488"
+            fill="var(--chart-3)"
             radius={[4, 4, 0, 0]}
           />
         </BarChart>
