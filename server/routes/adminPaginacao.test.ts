@@ -267,66 +267,6 @@ describe("GET /ai-stats soma TODAS as linhas da janela", () => {
 });
 
 // ---------------------------------------------------------------------------
-// GET /beta-codes
-// ---------------------------------------------------------------------------
-
-describe("GET /beta-codes conta TODOS os desbloqueios", () => {
-  it("success_count não para no teto", async () => {
-    // 615 linhas hoje em produção; o teste usa 1500 para cruzar o teto.
-    montar({
-      beta_access_codes: {
-        rows: [
-          {
-            id: "c1",
-            code: "BETA",
-            label: "Lote 1",
-            active: true,
-            created_at: "2026-07-01T00:00:00Z",
-            revoked_at: null,
-          },
-        ],
-      },
-      beta_unlock_logs: {
-        rows: Array.from({ length: 1500 }, (_, i) => ({
-          id: String(i).padStart(5, "0"),
-          code_id: "c1",
-          created_at: `2026-07-${String((i % 28) + 1).padStart(2, "0")}T00:00:00Z`,
-        })),
-      },
-    });
-
-    const r = await chamarAdmin("GET", "/beta-codes");
-
-    expect(r.status).toBe(200);
-    expect(r.body.data[0].success_count).toBe(1500);
-  });
-
-  it("falha nos logs NÃO derruba a lista de códigos", async () => {
-    // Postura preservada: o agregado zera, os códigos aparecem.
-    montar({
-      beta_access_codes: {
-        rows: [
-          {
-            id: "c1",
-            code: "BETA",
-            label: null,
-            active: true,
-            created_at: "2026-07-01T00:00:00Z",
-            revoked_at: null,
-          },
-        ],
-      },
-      beta_unlock_logs: { error: { message: "timeout" } },
-    });
-
-    const r = await chamarAdmin("GET", "/beta-codes");
-
-    expect(r.status).toBe(200);
-    expect(r.body.data[0].success_count).toBe(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // GET /dashboard — os dois ramos de acesso Pro
 // ---------------------------------------------------------------------------
 
