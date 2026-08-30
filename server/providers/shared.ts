@@ -216,6 +216,24 @@ export async function applyActivationEffects(params: {
       planName: params.planName || "Pro",
     });
   } catch (emailError) {
+    // O e-mail segue BEST-EFFORT: a ativacao ja aconteceu e o acesso ja foi
+    // concedido, entao derrubar o webhook aqui trocaria uma confirmacao
+    // atrasada por um retry do evento inteiro. Mas deixa de ser INVISIVEL: um
+    // `console.error` no meio do log nao faz ninguem agir, e este catch ja
+    // engoliu em silencio um TypeError que impedia TODO e-mail de ativacao do
+    // Pix de sair (achado na revisao do Lote 2b).
+    Sentry.captureMessage("ativacao_email_falhou", {
+      level: "warning",
+      fingerprint: ["ativacao-email-falhou"],
+      tags: { origem: logPrefix },
+      extra: {
+        user_id: userId,
+        template: "pro_upgrade",
+        provedor: logPrefix,
+        erro:
+          emailError instanceof Error ? emailError.message : String(emailError),
+      },
+    });
     console.error(
       `[${logPrefix}] Erro ao processar e-mail transacional`,
       emailError,
