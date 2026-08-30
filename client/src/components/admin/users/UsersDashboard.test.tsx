@@ -195,6 +195,64 @@ describe("UsersDashboard: colunas e selos", () => {
     }
   });
 
+  it("a grade ABRACA o conteudo a direita, e o cabecalho usa a MESMA regua", async () => {
+    // O defeito que isto trava: com quatro trilhas em `fr`, cada coluna estica
+    // junto com a tela e o conteudo compacto boia no proprio vazio. Com
+    // `max-content` nas tres da direita, o vazio vira um so, entre o e-mail e o
+    // bloco.
+    //
+    // As DUAS pontas na mesma asercao de proposito. Cabecalho e linha
+    // compartilham a constante GRID hoje; se alguem duplicar a template para
+    // "ajustar so o cabecalho", este teste cai antes de a coluna sair torta.
+    rotearFetch({
+      "/users?": listPayload([
+        { user_id: "u1", name: "Ana Moura", email: "ana@exemplo.com" },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+    await screen.findByText("Ana Moura");
+
+    const TEMPLATE = "md:grid-cols-[minmax(0,1fr)_repeat(3,max-content)]";
+    const linha = screen.getByText("Ana Moura").closest("button");
+    const cabecalho = screen.getByTestId("users-header");
+
+    expect((linha as HTMLElement).className).toContain(TEMPLATE);
+    expect(cabecalho.className).toContain(TEMPLATE);
+    // CONTROLE NEGATIVO: a regua antiga nao pode voltar por descuido.
+    expect((linha as HTMLElement).className).not.toContain("2.2fr");
+  });
+
+  it("o rotulo Cadastro e a data dele alinham do MESMO lado", async () => {
+    // Alinhar o dado a direita e esquecer o rotulo (ou o contrario) deixa a
+    // coluna visualmente torta sem nada estar quebrado no CSS. Por isso a
+    // asercao e sobre o PAR, nao sobre um dos dois.
+    rotearFetch({
+      "/users?": listPayload([
+        {
+          user_id: "u1",
+          name: "Ana Moura",
+          email: "ana@exemplo.com",
+          created_at: "2026-05-04T12:00:00Z",
+        },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+    await screen.findByText("Ana Moura");
+
+    const cabecalho = within(screen.getByTestId("users-header"));
+    expect(cabecalho.getByText("Cadastro").className).toContain(
+      "md:text-right",
+    );
+
+    const celula = screen
+      .getByText("Ana Moura")
+      .closest("button")!
+      .querySelector(".md\\:items-end");
+    expect(celula, "a celula de Cadastro perdeu o alinhamento").toBeTruthy();
+  });
+
   it("a densidade aperta o DESKTOP e deixa o mobile respirando", async () => {
     // A linha empilha no mobile e vira faixa unica a partir de md. Apertar o
     // vertical da PILHA produziria um bloco de texto sem ar, que e o problema

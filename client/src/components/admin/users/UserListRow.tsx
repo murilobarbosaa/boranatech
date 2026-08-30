@@ -22,8 +22,39 @@ import type { UserRow } from "./types";
 // a grade poe a linha inteira numa faixa so e o py-3 sobrava. No MOBILE nada
 // muda: la a linha EMPILHA, e apertar o vertical de uma pilha e o que produz
 // aquele bloco de texto sem ar que ninguem consegue varrer com o olho.
+// REGUA (2026-08-30): as tres colunas da direita ABRACAM o conteudo
+// (`max-content`) em vez de dividirem a largura em frs. Com quatro trilhas
+// elasticas, cada uma esticava junto com a tela e o conteudo compacto (um chip,
+// um travessao, uma data) boiava no meio do proprio vazio; quanto mais larga a
+// janela, mais longe o Acesso ficava do e-mail e a Assinatura do Cadastro.
+//
+// Agora sobra UM vazio so, entre o e-mail e o bloco da direita, absorvido pelo
+// `minmax(0,1fr)` da coluna do usuario. Vazio ali nao incomoda: e a separacao
+// entre quem a pessoa e e o que ela tem.
+//
+// `minmax(0,1fr)` e nao `1fr` na primeira: sem o minimo zero o `truncate` do
+// nome e do e-mail para de funcionar, porque item de grade tem `min-width:auto`
+// e se recusa a encolher abaixo do conteudo.
+//
+// `max-content` deixa o CONTEUDO ditar a largura, entao "ATIVA + Pro Mensal"
+// alarga a trilha em vez de quebrar o chip em duas linhas. Quando o rotulo do
+// cabecalho e maior que o dado (o caso de "Assinatura" sobre uma celula vazia),
+// e ele que manda, porque as duas pontas compartilham esta mesma constante.
 const GRID =
-  "flex flex-wrap items-center gap-x-3 gap-y-1.5 md:grid md:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)] md:items-center md:gap-x-4 md:gap-y-1.5";
+  "flex flex-wrap items-center gap-x-3 gap-y-1.5 md:grid md:grid-cols-[minmax(0,1fr)_repeat(3,max-content)] md:items-center md:gap-x-8 md:gap-y-1.5";
+
+// O cabecalho carrega o ALINHAMENTO de cada trilha junto com o rotulo, porque
+// desalinhar cabecalho e celula e o defeito classico de grade sem <table>: o
+// titulo fica num canto da trilha e o dado no outro, e a coluna parece torta
+// sem que nada esteja errado no CSS.
+const COLUNAS = [
+  { rotulo: "Usuário", alinhamento: "" },
+  { rotulo: "Acesso", alinhamento: "" },
+  { rotulo: "Assinatura", alinhamento: "" },
+  // Data alinhada a direita, como numero em borda de tabela: e a ultima trilha,
+  // e alinhar pelo inicio deixaria uma serra de datas de larguras diferentes.
+  { rotulo: "Cadastro", alinhamento: "md:text-right" },
+] as const;
 
 const BADGE_BASE =
   "inline-flex w-fit items-center rounded-full border-2 px-2.5 py-0.5 text-xs font-black uppercase";
@@ -34,12 +65,12 @@ export function UserListHeader() {
       data-testid="users-header"
       className={`${GRID} hidden border-b-2 border-slate-900 bg-[#f6f0df] px-4 py-2 md:grid`}
     >
-      {["Usuário", "Acesso", "Assinatura", "Cadastro"].map((coluna) => (
+      {COLUNAS.map((coluna) => (
         <span
-          key={coluna}
-          className="text-xs font-black uppercase tracking-[0.14em] text-slate-600"
+          key={coluna.rotulo}
+          className={`text-xs font-black uppercase tracking-[0.14em] text-slate-600 ${coluna.alinhamento}`}
         >
-          {coluna}
+          {coluna.rotulo}
         </span>
       ))}
     </div>
@@ -115,7 +146,7 @@ export function UserListRow({
         )}
       </span>
 
-      <span className="flex flex-col gap-1">
+      <span className="flex flex-col gap-1 md:items-end">
         <span className="text-xs font-bold text-slate-500 md:text-sm md:text-slate-600">
           <span className="md:hidden">desde </span>
           {fmtDate(row.created_at)}
