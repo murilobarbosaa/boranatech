@@ -34,19 +34,35 @@ export function OverviewPeriod({
   window: janela,
   onChange,
   seriesStart,
+  windows = OVERVIEW_WINDOWS,
+  testId = "overview-periodo",
 }: {
   window: OverviewWindow;
   onChange: (proxima: OverviewWindow) => void;
   /** Data do dado mais antigo, para "Tudo" dizer desde quando. */
   seriesStart?: string | null;
+  /**
+   * SUBCONJUNTO das janelas, para quem nao pode oferecer todas. O grafico de
+   * ativos por dia usa isto para omitir "Tudo": serie diaria sem corte nao tem
+   * teto de baldes. O default e a lista inteira, entao a Visao nao muda.
+   *
+   * Reusar este componente em vez de copiar as pilulas e deliberado: sao duas
+   * abas vizinhas escolhendo periodo, e dois seletores parecidos-mas-nao-iguais
+   * e como o vocabulario visual se perde.
+   */
+  windows?: readonly OverviewWindow[];
+  /** Distingue os dois seletores quando os dois estao montados na mesma tela. */
+  testId?: string;
 }) {
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <div
-        data-testid="overview-periodo"
-        className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap"
+        data-testid={testId}
+        className={`grid gap-2 sm:flex sm:flex-wrap ${
+          windows.length === 2 ? "grid-cols-2" : "grid-cols-3"
+        }`}
       >
-        {OVERVIEW_WINDOWS.map((id) => (
+        {windows.map((id) => (
           <button
             key={id}
             type="button"

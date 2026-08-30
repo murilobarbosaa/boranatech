@@ -680,7 +680,31 @@ export async function contarAtividadeAgora(): Promise<PosthogAtividadeAgoraState
 //
 // CONFERIDO VIVO em 2026-08-29: o ponto de 29/08 desta serie deu 359, o mesmo
 // numero que contarAtividadeAgora devolveu para o dia civil de Brasilia.
-const ATIVOS_DIARIOS_DIAS = 30;
+// JANELAS OFERECIDAS. Subconjunto deliberado das OVERVIEW_WINDOWS da Visao: os
+// valores sao os MESMOS ("7", "30"), para a aba do lado nao inventar um segundo
+// vocabulario de periodo, mas o "all" de la NAO entra. Uma serie DIARIA desde o
+// inicio dos tempos e outra conversa: o numero de baldes cresce sem teto, o eixo
+// vira sopa e a query deixa de ter janela para o PostHog podar. Fica registrado
+// como candidata a frente propria, com agregacao semanal ou mensal.
+const ATIVOS_DIARIOS_JANELAS = { "7": 7, "30": 30 } as const;
+
+export type AtivosDiariosJanela = keyof typeof ATIVOS_DIARIOS_JANELAS;
+
+/** Janela padrao quando o parametro nao vem. Nao e fallback de valor invalido. */
+export const ATIVOS_DIARIOS_JANELA_PADRAO: AtivosDiariosJanela = "30";
+
+export const ATIVOS_DIARIOS_JANELAS_VALIDAS = Object.keys(
+  ATIVOS_DIARIOS_JANELAS,
+) as AtivosDiariosJanela[];
+
+export function isAtivosDiariosJanela(
+  valor: unknown,
+): valor is AtivosDiariosJanela {
+  return (
+    typeof valor === "string" &&
+    Object.prototype.hasOwnProperty.call(ATIVOS_DIARIOS_JANELAS, valor)
+  );
+}
 
 /** Um dia da serie. `ativos` e contagem fechada: zero e medicao, nao buraco. */
 export type PontoAtivosDiarios = { date: string; ativos: number };
@@ -688,10 +712,16 @@ export type PontoAtivosDiarios = { date: string; ativos: number };
 export type PosthogAtivosDiariosState =
   | { state: "not_configured"; missing: string[] }
   | { state: "error"; reason: string; httpStatus?: number }
-  | { state: "ok"; dias: number; pontos: PontoAtivosDiarios[] };
+  | {
+      state: "ok";
+      /** Janela pedida, ecoada para a tela nao ter que adivinhar o que chegou. */
+      window: AtivosDiariosJanela;
+      dias: number;
+      pontos: PontoAtivosDiarios[];
+    };
 
 /**
- * Usuarios unicos ativos por dia nos ultimos 30 dias (Brasilia), incluindo hoje.
+ * Usuarios unicos ativos por dia na janela pedida (Brasilia), incluindo hoje.
  *
  * PREENCHIMENTO NO SERVIDOR, e e a decisao que carrega o resto. O HogQL com
  * `group by` so devolve linha para dia que teve evento, entao uma semana morta
@@ -699,9 +729,12 @@ export type PosthogAtivosDiariosState =
  * teria que decidir sozinho o que um dia ausente significa, e a unica leitura
  * disponivel no cliente ("nao veio, logo nao sei") e indistinguivel de zero.
  * Aqui a fonte sabe: a janela foi consultada inteira, o dia existe e nao teve
- * ninguem. Sai SEMPRE com 30 pontos, e o zero e afirmacao.
+ * ninguem. Sai SEMPRE com um ponto por dia da janela, e o zero e afirmacao.
  */
-export async function getAtivosDiarios(): Promise<PosthogAtivosDiariosState> {
+export async function getAtivosDiarios(
+  janela: AtivosDiariosJanela = ATIVOS_DIARIOS_JANELA_PADRAO,
+): Promise<PosthogAtivosDiariosState> {
+  const dias = ATIVOS_DIARIOS_JANELAS[janela];
   const missing: string[] = [];
   if (!env.posthogApiKey) missing.push("POSTHOG_API_KEY");
   if (!env.posthogProjectId) missing.push("POSTHOG_PROJECT_ID");
@@ -715,8 +748,8 @@ export async function getAtivosDiarios(): Promise<PosthogAtivosDiariosState> {
     return { state: "error", reason: "nao foi possivel resolver o dia atual" };
   }
 
-  // Janela FECHADA de 30 dias terminando hoje: o primeiro dia e hoje menos 29.
-  const primeiroDia = somarDiaCivil(hoje, -(ATIVOS_DIARIOS_DIAS - 1));
+  // Janela FECHADA terminando hoje: o primeiro dia e hoje menos (dias - 1).
+  const primeiroDia = somarDiaCivil(hoje, -(dias - 1));
   const inicio = hogTime(new Date(inicioDoDiaBrasilia(primeiroDia)));
 
   try {
@@ -739,12 +772,12 @@ export async function getAtivosDiarios(): Promise<PosthogAtivosDiariosState> {
 
     const pontos: PontoAtivosDiarios[] = [];
     let dia = primeiroDia;
-    for (let i = 0; i < ATIVOS_DIARIOS_DIAS; i += 1) {
+    for (let i = 0; i < dias; i += 1) {
       pontos.push({ date: dia, ativos: porDia.get(dia) ?? 0 });
       dia = somarDiaCivil(dia, 1);
     }
 
-    return { state: "ok", dias: ATIVOS_DIARIOS_DIAS, pontos };
+    return { state: "ok", window: janela, dias, pontos };
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     const httpStatus =

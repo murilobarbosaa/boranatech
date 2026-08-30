@@ -1,4 +1,11 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -125,6 +132,69 @@ describe("ActiveUsersChart", () => {
       expect(screen.getByText("Ativos por dia")).toBeTruthy(),
     );
     expect(screen.queryByText(/Falha ao consultar/)).toBeNull();
+  });
+
+  it("a busca inicial pede a janela padrao de 30 dias", async () => {
+    fetchMock.mockResolvedValue(serieOk(30));
+    render(<ActiveUsersChart />);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(fetchMock).toHaveBeenCalledWith("/users-active-daily?window=30");
+  });
+
+  it("trocar a janela refaz a busca com o parametro novo", async () => {
+    fetchMock.mockResolvedValue(serieOk(30));
+    render(<ActiveUsersChart />);
+    await waitFor(() =>
+      expect(screen.getByText(/Últimos 30 dias/)).toBeTruthy(),
+    );
+
+    fetchMock.mockClear();
+    fetchMock.mockResolvedValue(serieOk(7));
+    fireEvent.click(screen.getByRole("button", { name: "7 dias" }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith("/users-active-daily?window=7"),
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/Últimos 7 dias/)).toBeTruthy(),
+    );
+    // O rodape recalcula sobre a janela EXIBIDA: sem isto, trocar o periodo
+    // mudaria as barras e deixaria a ressalva falando do periodo anterior.
+    expect(screen.queryByText(/Últimos 30 dias/)).toBeNull();
+  });
+
+  it("o seletor sobrevive ao ERRO, senao a pessoa fica presa na janela quebrada", async () => {
+    // O motivo de o seletor morar no slot `controles` e nao no `extra`: o
+    // `extra` so renderiza no ramo do grafico, entao um 400 numa janela
+    // esconderia justamente o controle que permite sair dela. Sem recarregar a
+    // pagina nao haveria caminho de volta.
+    fetchMock.mockResolvedValue({
+      data: { state: "error", reason: "boom", httpStatus: 400 },
+    });
+    render(<ActiveUsersChart />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Falha ao consultar/)).toBeTruthy(),
+    );
+    expect(screen.getByTestId("ativos-periodo")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "7 dias" })).toBeTruthy();
+  });
+
+  it('NAO oferece a janela "Tudo" da Visao', async () => {
+    // Serie diaria sem corte nao tem teto de baldes. O server recusa "all" com
+    // 400, e a tela nao pode oferecer o que a rota nega.
+    fetchMock.mockResolvedValue(serieOk(30));
+    render(<ActiveUsersChart />);
+    await waitFor(() =>
+      expect(screen.getByTestId("ativos-periodo")).toBeTruthy(),
+    );
+
+    expect(screen.queryByRole("button", { name: "Tudo" })).toBeNull();
+    const pilulas = within(screen.getByTestId("ativos-periodo")).getAllByRole(
+      "button",
+    );
+    expect(pilulas.map((b) => b.textContent)).toEqual(["7 dias", "30 dias"]);
   });
 
   it("ERRO DE REDE na propria chamada vira mensagem, nao grafico vazio", async () => {

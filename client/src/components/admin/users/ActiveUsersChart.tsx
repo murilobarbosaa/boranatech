@@ -12,6 +12,10 @@ import {
 import { adminFetch } from "@/lib/adminApi";
 import { ChartFrame } from "@/components/admin/overview/ChartFrame";
 import {
+  OverviewPeriod,
+  type OverviewWindow,
+} from "@/components/admin/overview/OverviewPeriod";
+import {
   intervaloDeRotulos,
   rotuloDeDia,
   tendenciaDeFluxo,
@@ -36,21 +40,37 @@ import {
 
 type Ponto = { date: string; ativos: number };
 
+// As janelas que ESTA serie oferece. Subconjunto das OVERVIEW_WINDOWS, mesmos
+// valores, sem o "Tudo": serie diaria sem corte nao tem teto de baldes, e o
+// servidor recusa a janela com 400 em vez de aceitar calado. Se alguem
+// acrescentar um valor aqui sem acrescentar no server, a rota responde 400 e a
+// tela mostra o estado de erro, que e ruim mas HONESTO. O contrario (server
+// aceitando o que a tela nao oferece) nao tem sintoma.
+const JANELAS: readonly OverviewWindow[] = ["7", "30"];
+const JANELA_PADRAO: OverviewWindow = "30";
+
 // Espelha PosthogAtivosDiariosState. Os tres estados sao nomeados no tipo de
 // proposito: com um `pontos?: Ponto[]` solto, "nao configurado" e "mes vazio"
 // teriam a mesma forma, e a tela escolheria a leitura errada sem nada acusar.
 type Serie =
   | { state: "not_configured"; missing?: string[] }
   | { state: "error"; reason?: string; httpStatus?: number }
-  | { state: "ok"; dias?: number; pontos?: Ponto[] };
+  | { state: "ok"; window?: string; dias?: number; pontos?: Ponto[] };
 
 export function ActiveUsersChart() {
+  const [janela, setJanela] = useState<OverviewWindow>(JANELA_PADRAO);
   const [data, setData] = useState<Serie | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelado = false;
-    adminFetch("/users-active-daily")
+    // ZERA OS DOIS ao trocar de janela. Sem isto, a serie anterior fica na tela
+    // sob o rotulo novo enquanto a busca corre: o grafico diria "7 dias"
+    // mostrando trinta, que e pior que um instante de esqueleto. Mesmo motivo
+    // para o erro: um 400 de uma janela nao pode sobreviver a troca para outra.
+    setData(null);
+    setErro(null);
+    adminFetch(`/users-active-daily?window=${janela}`)
       .then((json) => {
         if (!cancelado) setData(json.data as Serie);
       })
@@ -63,7 +83,7 @@ export function ActiveUsersChart() {
     return () => {
       cancelado = true;
     };
-  }, []);
+  }, [janela]);
 
   // PostHog fora do ar NAO desenha grafico vazio. Trinta barras zeradas sao um
   // desenho plausivel de "site deserto" e indistinguivel do certo, entao a fonte
@@ -104,6 +124,16 @@ export function ActiveUsersChart() {
       vazio={data !== null && erroDeFonte === null && pontos.length === 0}
       carregando={data === null && erro === null}
       rodape={rodapeDeAtivos(pontos.length)}
+      controles={
+        <div className="mt-3">
+          <OverviewPeriod
+            window={janela}
+            onChange={setJanela}
+            windows={JANELAS}
+            testId="ativos-periodo"
+          />
+        </div>
+      }
       tendencia={tendenciaDeFluxo(
         // `partial: false` em todos: ao contrario do grafico de cadastros, a
         // serie de ativos nao marca o dia em andamento. Ela ja e uma contagem

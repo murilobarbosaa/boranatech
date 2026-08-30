@@ -19,7 +19,10 @@ import {
 import { fetchUsdBrlRate } from "../lib/fx/ptax";
 import {
   contarAtividadeAgora,
+  ATIVOS_DIARIOS_JANELA_PADRAO,
+  ATIVOS_DIARIOS_JANELAS_VALIDAS,
   getAtivosDiarios,
+  isAtivosDiariosJanela,
   getPosthogHealth,
   getPaidFunnelSignals,
   getPosthogStats,
@@ -706,13 +709,38 @@ router.get("/online-now", async (_req, res, next) => {
 // invisivel numa serie de trinta dias.
 const ACTIVE_DAILY_CACHE_TTL_S = 300;
 
-router.get("/users-active-daily", async (_req, res, next) => {
+router.get("/users-active-daily", async (req, res, next) => {
   try {
+    // AUSENCIA e VALOR INVALIDO sao coisas diferentes, e aqui recebem respostas
+    // diferentes de proposito. Sem `window` a rota assume 30 dias, que e o
+    // contrato documentado; com `window=90` ela RECUSA em vez de devolver 30
+    // calados, porque um seletor quebrado que pede uma janela inexistente
+    // desenharia um grafico correto do periodo errado, e ninguem tem como
+    // perceber olhando.
+    //
+    // DIVERGE do /signup-history de proposito: la o parseOverviewWindow faz
+    // fallback silencioso para "30". Os VALORES sao os mesmos ("7", "30"); o
+    // que muda e a reacao ao lixo.
+    const bruto = req.query.window;
+    const janela = bruto === undefined ? ATIVOS_DIARIOS_JANELA_PADRAO : bruto;
+    if (!isAtivosDiariosJanela(janela)) {
+      return next(
+        createError(
+          400,
+          "invalid_window",
+          `Janela inválida. Use uma de: ${ATIVOS_DIARIOS_JANELAS_VALIDAS.join(", ")}.`,
+        ),
+      );
+    }
+
+    // Chave POR JANELA. Com uma chave so, trocar de periodo devolveria o
+    // cacheado do periodo anterior por ate 5 minutos, e o grafico mudaria de
+    // rotulo sem mudar de dado.
     const { result, computedAt } = await getOrCompute(
-      "admincache:users-active-daily:30d",
+      `admincache:users-active-daily:${janela}`,
       ACTIVE_DAILY_CACHE_TTL_S,
       async () => ({
-        result: await getAtivosDiarios(),
+        result: await getAtivosDiarios(janela),
         computedAt: new Date().toISOString(),
       }),
     );
