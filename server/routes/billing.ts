@@ -3,6 +3,7 @@ import { Router } from "express";
 
 import { env } from "../lib/env";
 import { verifyRenewalToken } from "../lib/renewalToken";
+import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -136,7 +137,7 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
       // fora do relatorio. O texto exibido ao usuario nao muda.
       return next(
         createError(500, "db_error", "Erro ao buscar assinatura.", {
-          cause: error,
+          cause: erroEncadeavel(error),
         }),
       );
     }

@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { projetos } from "../../shared/projects/catalog";
+import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import {
   isDevProUser,
@@ -131,7 +132,7 @@ router.put("/:context/:itemKey", async (req, res, next) => {
       );
       return next(
         createError(500, "db_error", "Erro ao salvar progresso.", {
-          cause: error,
+          cause: erroEncadeavel(error),
           context: {
             type: context,
             slug: itemKey,

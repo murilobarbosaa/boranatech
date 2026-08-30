@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { roadmapsV2 } from "../../shared/roadmapV2/content";
 import { requiredLeaves } from "../../shared/roadmapV2/progress";
+import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -21,7 +22,7 @@ function dbError(
     error,
   );
   return createError(500, "db_error", message, {
-    cause: error,
+    cause: erroEncadeavel(error),
     context: {
       op,
       userId,

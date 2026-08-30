@@ -38,6 +38,7 @@ import { withRedisOpTimeout } from "../lib/redisOpTimeout";
 import { stripeProvider } from "../providers/stripe";
 import { getStripe } from "../lib/stripeClient";
 import { syncBalanceTransactions } from "../lib/stripeSync";
+import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { lerSessaoDeBoleto } from "../lib/boletoSession";
 import {
@@ -389,7 +390,7 @@ function filterPayload(body: Record<string, unknown>, allowedFields: string[]) {
 function dbError(scope: string, error: unknown, clientMessage: string) {
   console.error(`[admin] db error (${scope}):`, error);
   return createError(500, "db_error", clientMessage, {
-    cause: error,
+    cause: erroEncadeavel(error),
     context: {
       scope,
       pgCode: (error as { code?: string } | null | undefined)?.code,

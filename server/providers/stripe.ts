@@ -7,6 +7,7 @@ import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { getStripe } from "../lib/stripeClient";
 import { syncBalanceTransactions } from "../lib/stripeSync";
+import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
 import { patchDeMeioDePagamento } from "../lib/paymentMethod";
@@ -643,7 +644,7 @@ async function applySubscription(
     // `routes/billing.ts` e `routes/content.ts` e deixou o webhook de fora, que
     // e justamente o caminho sem ninguem olhando a tela.
     throw createError(500, "db_error", "Erro ao gravar assinatura.", {
-      cause: result.error,
+      cause: erroEncadeavel(result.error),
     });
   }
 
@@ -833,7 +834,7 @@ async function applyBoletoPending(
   if (error) {
     console.error("[webhook/stripe] boleto pending write failed:", error);
     throw createError(500, "db_error", "Erro ao gravar assinatura.", {
-      cause: error,
+      cause: erroEncadeavel(error),
     });
   }
 }
@@ -1001,7 +1002,7 @@ export async function onBoletoAsyncPaymentSucceeded(
     });
     console.error("[webhook/stripe] boleto activation rpc failed:", error);
     throw createError(500, "db_error", "Erro ao ativar assinatura.", {
-      cause: error,
+      cause: erroEncadeavel(error),
     });
   }
 
@@ -1080,7 +1081,7 @@ async function onBoletoAsyncPaymentFailed(
   if (error) {
     console.error("[webhook/stripe] boleto failure write failed:", error);
     throw createError(500, "db_error", "Erro ao cancelar assinatura.", {
-      cause: error,
+      cause: erroEncadeavel(error),
     });
   }
 }
@@ -1132,7 +1133,7 @@ async function onInvoiceFailed(
   if (error) {
     console.error("[webhook/stripe] subscriptions write failed:", error);
     throw createError(500, "db_error", "Erro ao marcar past_due.", {
-      cause: error,
+      cause: erroEncadeavel(error),
     });
   }
 
@@ -1260,7 +1261,7 @@ async function createCheckout(
         500,
         "db_error",
         "Não foi possível verificar sua assinatura. Tente novamente.",
-        { cause: guardError },
+        { cause: erroEncadeavel(guardError) },
       );
     }
     if (activeRows && activeRows.length > 0) {
@@ -1291,7 +1292,7 @@ async function createCheckout(
       500,
       "db_error",
       "Não foi possível verificar seu boleto pendente. Tente novamente.",
-      { cause: pendingError },
+      { cause: erroEncadeavel(pendingError) },
     );
   }
   if (pendingBoleto && pendingBoleto.length > 0) {
@@ -1499,7 +1500,7 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
 
   if (error)
     throw createError(500, "db_error", "Erro ao buscar assinatura.", {
-      cause: error,
+      cause: erroEncadeavel(error),
     });
   if (!sub) {
     throw createError(404, "not_found", "Nenhuma assinatura ativa encontrada.");
@@ -1523,7 +1524,7 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
       .maybeSingle();
     if (intentError) {
       throw createError(500, "db_error", "Erro ao verificar cancelamento.", {
-        cause: intentError,
+        cause: erroEncadeavel(intentError),
       });
     }
 
@@ -1546,7 +1547,7 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
           500,
           "db_error",
           "Não foi possível registrar. Tente novamente.",
-          { cause: insertError },
+          { cause: erroEncadeavel(insertError) },
         );
       }
     }
@@ -1603,7 +1604,7 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
       500,
       "db_error",
       "Cancelamento agendado no provedor, mas houve erro ao registrar. Tente novamente.",
-      { cause: updateError },
+      { cause: erroEncadeavel(updateError) },
     );
   }
 
@@ -1646,7 +1647,7 @@ async function reactivate(input: ReactivateInput): Promise<ReactivateResult> {
 
   if (error)
     throw createError(500, "db_error", "Erro ao buscar assinatura.", {
-      cause: error,
+      cause: erroEncadeavel(error),
     });
 
   const nowIso = new Date().toISOString();
@@ -1679,7 +1680,7 @@ async function reactivate(input: ReactivateInput): Promise<ReactivateResult> {
         500,
         "db_error",
         "Não foi possível desfazer. Tente novamente.",
-        { cause: revertError },
+        { cause: erroEncadeavel(revertError) },
       );
     }
     return {
@@ -1736,7 +1737,7 @@ async function reactivate(input: ReactivateInput): Promise<ReactivateResult> {
       500,
       "db_error",
       "Reativação confirmada no provedor, mas houve erro ao registrar. Tente novamente.",
-      { cause: updateError },
+      { cause: erroEncadeavel(updateError) },
     );
   }
 
@@ -1901,7 +1902,7 @@ async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
       dedupeError,
     );
     throw createError(500, "db_error", "Erro ao registrar evento.", {
-      cause: dedupeError,
+      cause: erroEncadeavel(dedupeError),
     });
   }
   if (!recorded || recorded.length === 0) {
