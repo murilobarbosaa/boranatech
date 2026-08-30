@@ -194,7 +194,7 @@ vi.mock("../lib/supabaseAdmin", () => {
 });
 
 import {
-  chaveDeEvento,
+  eventKey,
   paidAmountCentsFromAsaas,
   PIX_ACCESS_DAYS,
   processarEventoAsaas,
@@ -403,10 +403,10 @@ describe("webhook: idempotencia", () => {
   });
 
   it("a chave gravada tem o namespace do provedor", () => {
-    expect(chaveDeEvento("evt_x")).toBe("asaas:evt_x");
+    expect(eventKey("evt_x")).toBe("asaas:evt_x");
     // Um id da Stripe nunca contem ':', entao colisao e impossivel por
     // construcao, que e o ponto do prefixo.
-    expect(chaveDeEvento("evt_x")).not.toBe("evt_x");
+    expect(eventKey("evt_x")).not.toBe("evt_x");
   });
 
   it("o MESMO evento duas vezes ativa UMA vez so", async () => {

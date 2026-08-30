@@ -542,7 +542,7 @@ export function paidAmountCentsFromAsaas(evento: AsaasEvent): number | null {
  * contem `:`) e nao toca as linhas existentes. A funcao abaixo e o unico lugar
  * que o escreve.
  */
-export function chaveDeEvento(idDoAsaas: string): string {
+export function eventKey(idDoAsaas: string): string {
   return `${EVENT_ID_PREFIX}${idDoAsaas}`;
 }
 
@@ -590,7 +590,7 @@ export async function processarEventoAsaas(
     .from("billing_events")
     .upsert(
       {
-        id: chaveDeEvento(idDoEvento),
+        id: eventKey(idDoEvento),
         provider: PROVIDER,
         event_type: tipo,
         provider_subscription_id: cobrancaId,
@@ -634,7 +634,7 @@ export async function processarEventoAsaas(
     const { error: limpezaError } = await supabaseAdmin
       .from("billing_events")
       .delete()
-      .eq("id", chaveDeEvento(idDoEvento));
+      .eq("id", eventKey(idDoEvento));
     if (limpezaError) {
       console.error(
         `[webhook/asaas] compensacao falhou para ${idDoEvento}:`,
