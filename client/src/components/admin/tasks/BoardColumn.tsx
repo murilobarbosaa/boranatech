@@ -1,5 +1,9 @@
 import { memo, useMemo } from "react";
-import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  useSortable,
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Zap } from "lucide-react";
 
@@ -96,7 +100,10 @@ function BoardColumnBase({
     attributes: { roleDescription: "etapa arrastável" },
   });
 
-  const taskIds = useMemo(() => group.tasks.map((task) => task.id), [group.tasks]);
+  const taskIds = useMemo(
+    () => group.tasks.map((task) => task.id),
+    [group.tasks],
+  );
 
   const overWip =
     column?.is_pinned !== true &&
@@ -195,8 +202,20 @@ function BoardColumnBase({
           de overflow, um eixo `visible` ao lado de um eixo que nao e `visible`
           computa para `auto`: so o `overflow-y-auto` ja criava um
           `overflow-x: auto` silencioso aqui, e era ele a barra horizontal que
-          aparecia na coluna quando um card estourava a largura. */}
-      <div className="flex max-h-[calc(100vh-22rem)] min-h-[4rem] flex-1 flex-col gap-2.5 overflow-y-auto overflow-x-hidden pr-0.5">
+          aparecia na coluna quando um card estourava a largura.
+
+          `pr-1 pb-1` sao ARITMETICA, nao gosto: o card carrega
+          `shadow-[3px_3px_0_#0f172a]`, e sombra fica FORA da caixa de borda,
+          entao ela e desenhada dentro do padding deste container ou nao e
+          desenhada. Com os 2px de `pr-0.5` que havia aqui, o ultimo pixel da
+          sombra direita caia no clip do `overflow-x-hidden`, e a de baixo
+          sumia no fim da rolagem porque nao havia padding-bottom nenhum. 4px
+          cobrem os 3px com folga de um.
+
+          O clip NAO SAI. Ele existe por dois motivos ainda validos (a barra
+          horizontal e o `max-h` da coluna), e trocar respiro por remocao de
+          clip devolveria os dois problemas para consertar um terceiro. */}
+      <div className="flex max-h-[calc(100vh-22rem)] min-h-[4rem] flex-1 flex-col gap-2.5 overflow-y-auto overflow-x-hidden pb-1 pr-1">
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           {group.tasks.length === 0 ? (
             // Coluna vazia e coluna FILTRADA a zero sao coisas diferentes, e
