@@ -1650,6 +1650,7 @@ function AdminSection({
   subtitle,
   title,
   headerClassName = "",
+  subtitleClassName = "",
 }: {
   children: ReactNode;
   eyebrow: string;
@@ -1669,6 +1670,18 @@ function AdminSection({
    * Vazio por padrao, entao quem nao passa nada nao muda em nada.
    */
   headerClassName?: string;
+  /**
+   * Classes extras SO no paragrafo de descricao.
+   *
+   * Existe pelo mesmo motivo do `headerClassName`: o teto de `max-w-3xl` (48rem)
+   * e bom para a maioria das seccoes, e curto demais para a descricao de
+   * Tarefas, que quebrava em duas linhas. Soltar o teto NO COMPONENTE afetaria
+   * as outras dez, onde ele existe para nao esticar texto corrido num monitor
+   * largo. A excecao fica no ponto de uso.
+   *
+   * Vazio por padrao: quem nao passa nada nao muda em nada.
+   */
+  subtitleClassName?: string;
 }) {
   return (
     <section id={id} className="scroll-mt-28">
@@ -1683,7 +1696,9 @@ function AdminSection({
           <h2 className="font-display mt-3 text-3xl font-black text-slate-950">
             {title}
           </h2>
-          <p className="mt-2 max-w-3xl text-sm font-semibold text-slate-600">
+          <p
+            className={`mt-2 max-w-3xl text-sm font-semibold text-slate-600 ${subtitleClassName}`}
+          >
             {subtitle}
           </p>
         </div>
@@ -8702,6 +8717,17 @@ export default function Admin() {
               // dentro do contêiner, entao um teto igual ao dele nao aperta
               // nada. Por isso a classe nao precisa ser condicional.
               headerClassName="w-full lg:mx-auto lg:max-w-[80rem]"
+              // A descricao de Tarefas tem ~180 caracteres e nao cabe em 48rem:
+              // ela quebrava em duas linhas. `lg:max-w-none` solta o teto a
+              // partir de lg, onde ha largura para uma linha so; abaixo disso o
+              // teto some por irrelevante e a quebra volta a ser natural, que e
+              // o comportamento certo em tela estreita.
+              //
+              // RESPIRO (30/08): `mb-2` afasta a descricao da toolbar. O `mb-5`
+              // do bloco de cabecalho ja separava os dois; este degrau extra e o
+              // pedido da Ana, e fica AQUI e nao no componente comum para nao
+              // empurrar as outras dez seccoes junto.
+              subtitleClassName="mb-2 lg:max-w-none"
             >
               {/* Boundary SO em volta desta secao: sem ele, um erro de render
                   aqui sobe ate o ErrorBoundary do App.tsx e derruba a pagina

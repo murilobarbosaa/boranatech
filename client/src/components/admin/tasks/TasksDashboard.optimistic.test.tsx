@@ -226,6 +226,19 @@ describe("board: a fileira centrada e o botao de nova etapa", () => {
     });
   });
 
+  it("a pilha do quadro respira na escala da pagina", async () => {
+    // O que se via: a contagem ("44 TAREFAS") colada no quadro. O intervalo e
+    // de UMA constante (`space-y-*` na raiz), entao subir o degrau ali resolve
+    // sem criar uma margem avulsa que o vizinho seguinte vai contradizer.
+    render(<TasksDashboard />);
+    await screen.findByLabelText("DEV-1: tarefa 1");
+
+    const pilha = screen.getByTestId("tasks-toolbar")
+      .parentElement as HTMLElement;
+    expect(pilha.className).toContain("space-y-6");
+    expect(pilha.className).not.toContain("space-y-4");
+  });
+
   it("o QUADRO fica solto: o espelho da pagina para na toolbar", async () => {
     // A LACUNA que este teste fecha. O teste da secao (Admin.largura) afirma que
     // o CORPO da secao nao carrega o teto, e o corpo e o wrapper de fora: um

@@ -1214,7 +1214,13 @@ export function TasksDashboard() {
     : undefined;
 
   return (
-    <div className="space-y-4">
+    // RESPIRO (30/08, pedido da Ana): `space-y-6` no lugar de `space-y-4`. Ele
+    // governa TODOS os intervalos desta pilha, e o que se via na tela era o de
+    // baixo da contagem ("44 TAREFAS") colado no quadro. Subir o degrau aqui, e
+    // nao acrescentar uma margem so naquele ponto, mantem os espacos da pagina
+    // numa escala unica em vez de criar uma excecao para o vizinho seguinte
+    // reclamar depois.
+    <div className="space-y-6">
       <BoardToolbar
         ref={searchInputRef}
         boards={boards}

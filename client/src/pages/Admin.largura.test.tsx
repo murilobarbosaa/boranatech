@@ -149,6 +149,31 @@ describe("largura cheia: so o quadro de tarefas", () => {
     expect(secao.className).not.toContain(TETO_ESPELHADO);
   });
 
+  it("a descricao de Tarefas SOLTA o teto, e as outras seccoes NAO", async () => {
+    // A quebra em duas linhas vinha do `max-w-3xl` (48rem) do AdminSection, que
+    // e compartilhado por onze seccoes. Soltar no componente esticaria texto
+    // corrido nas outras dez num monitor largo, entao a excecao fica no ponto
+    // de uso.
+    //
+    // O par (Tarefas solta E Usuarios nao) na mesma asercao: so a primeira
+    // metade aceitaria alguem soltando o teto la dentro para todo mundo.
+    await abrirEm("/admin?section=tarefas");
+    const pTarefas = document
+      .getElementById("tarefas")!
+      .querySelector("p.text-slate-600") as HTMLElement;
+    expect(pTarefas.className).toContain("lg:max-w-none");
+    // E o respiro extra abaixo dela, entre o cabecalho e a toolbar.
+    expect(pTarefas.className).toContain("mb-2");
+
+    cleanup();
+    await abrirEm("/admin?section=usuarios");
+    const pUsuarios = document
+      .getElementById("usuarios")!
+      .querySelector("p.text-slate-600") as HTMLElement;
+    expect(pUsuarios.className).toContain("max-w-3xl");
+    expect(pUsuarios.className).not.toContain("lg:max-w-none");
+  });
+
   it("o teto continua sendo o do `.container` em todos os casos", async () => {
     // CONTROLE do controle: o escape NEUTRALIZA o teto, nao troca o contêiner.
     // Se alguem substituir `container` por outra coisa, o padding lateral e o
