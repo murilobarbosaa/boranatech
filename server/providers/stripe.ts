@@ -10,9 +10,14 @@ import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
 import { patchDeMeioDePagamento } from "../lib/paymentMethod";
-import { isFirstPurchase, recordAffiliateConversion } from "./shared";
+import {
+  applyActivationEffects,
+  getUserContact,
+  isFirstPurchase,
+  recordNonRenewalIntent,
+  revertNonRenewalIntent,
+} from "./shared";
 import { getPlanChargeValue, PLAN_PRICING } from "../../shared/planPricing";
-import type { Gender } from "../../shared/gender";
 import type { PlanId } from "../../shared/planPricing";
 import type {
   CancelInput,
@@ -132,27 +137,6 @@ function formatEffectiveDate(effectiveAt: string | null): string {
     : "o fim do período pago";
 }
 
-async function getUserContact(userId: string): Promise<{
-  email: string;
-  name: string;
-  gender: Gender | null;
-}> {
-  const { data: authData } = await supabaseAdmin.auth.admin.getUserById(userId);
-  const email = authData?.user?.email || "";
-  const name = String(
-    authData?.user?.user_metadata?.name ||
-      authData?.user?.email?.split("@")[0] ||
-      "usuário",
-  );
-  const { data: profileData } = await supabaseAdmin
-    .from("profiles")
-    .select("gender")
-    .eq("user_id", userId)
-    .maybeSingle();
-  const gender = (profileData?.gender as Gender | null | undefined) ?? null;
-  return { email, name, gender };
-}
-
 // Efeitos colaterais de uma transicao de status (paridade com o webhook Asaas):
 // invalida o cache Pro do dono, dispara e-mail transacional e conta a conversao
 // do afiliado na PRIMEIRA ativacao (nao em renovacoes).
@@ -175,52 +159,31 @@ async function handleTransition(
   const becameCanceled = prevStatus !== "canceled" && nextStatus === "canceled";
   const becamePastDue = prevStatus !== "past_due" && nextStatus === "past_due";
 
-  if (prevStatus !== nextStatus) {
+  // Ativacao: TODOS os efeitos vao pelo caminho compartilhado
+  // (server/providers/shared.ts), o mesmo que o Pix usa. Cache, afiliado, cupom
+  // e e-mail viviam aqui dentro e eram invisiveis para qualquer outro provedor.
+  // A ordem interna e a mesma de antes; a invalidacao de cache mudou de lugar,
+  // nao de momento, porque `becameActive` implica `prevStatus !== nextStatus`.
+  if (becameActive) {
+    await applyActivationEffects({
+      userId,
+      logPrefix: "webhook/stripe",
+      planName: opts.planName,
+      affiliateCode: opts.affiliateCode,
+      couponCode: opts.couponCode,
+      revenueCents: opts.revenueCents,
+      sourceEvent: opts.sourceEvent,
+      prevStatus,
+    });
+  } else if (prevStatus !== nextStatus) {
     void invalidateProStatusCache(userId);
   }
 
-  if (becameActive && opts.affiliateCode) {
-    await recordAffiliateConversion({
-      userId,
-      affiliateCode: opts.affiliateCode,
-      revenueCents: opts.revenueCents,
-      prevStatus,
-      nextStatus,
-      sourceEvent: opts.sourceEvent,
-    });
-  }
-
-  // Resgate do cupom de marketing: conta SO na ativacao (nunca na criacao da
-  // sessao), no mesmo ponto da conversao de afiliado. coupon_code no metadata
-  // ja significa "desconto aplicado na sessao" (createCheckout so grava quando
-  // aplica). Best-effort: falha loga e nao derruba o webhook.
-  if (becameActive && opts.couponCode) {
-    try {
-      await supabaseAdmin.rpc("increment_coupon_redemption", {
-        p_code: opts.couponCode,
-      });
-    } catch (couponError) {
-      console.error(
-        "[webhook/stripe] Falha ao contar resgate de cupom:",
-        couponError,
-      );
-    }
-  }
-
-  if (!becameActive && !becameCanceled && !becamePastDue) return;
+  if (!becameCanceled && !becamePastDue) return;
 
   try {
     const { email, name, gender } = await getUserContact(userId);
     if (!email) return;
-    if (becameActive) {
-      await enqueueEmail({
-        type: "pro_upgrade",
-        to: email,
-        name,
-        gender,
-        planName: opts.planName || "Pro",
-      });
-    }
     if (becameCanceled) {
       await enqueueEmail({ type: "cancellation", to: email, name, gender });
     }
@@ -781,7 +744,7 @@ type ExclusiveActivationRow = {
 // calculado aqui (now + access_days do metadata: 365 anual, 182 semestral),
 // porque nao existe subscription na Stripe de onde puxar o periodo.
 // EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
-// server/routes/cron.ts e de `recordAffiliateConversion` acima: o que
+// server/routes/cron.ts e de `recordAffiliateConversion` (shared.ts): o que
 // importa provar aqui e que a ativacao passa por UMA chamada de RPC e por
 // nenhuma escrita direta de status, e isso so se prova rodando a funcao.
 export async function onBoletoAsyncPaymentSucceeded(
