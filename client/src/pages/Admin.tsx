@@ -78,6 +78,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
+import { OrphanPaymentsPanel } from "@/components/admin/OrphanPaymentsPanel";
 import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
 import { HealthBand } from "@/components/admin/overview/HealthBand";
 import { PaidFunnel } from "@/components/admin/overview/PaidFunnel";
@@ -8072,6 +8073,13 @@ export default function Admin() {
                   onChanged={() => setFinanceRefreshKey((k) => k + 1)}
                 />
               </div>
+
+              {/* PAGAMENTOS SEM ASSINATURA. Fica no Financeiro, e nao na Visao,
+                  porque a acao aqui e sobre dinheiro de uma pessoa especifica, e
+                  quem abre esta secao ja esta no contexto de conferir caixa. O
+                  painel de Atencao continua apontando os casos criticos; a
+                  diferenca e que la e um aviso e aqui e onde se resolve. */}
+              <OrphanPaymentsPanel />
 
               {/* METRICAS DE RECORRENCIA, claramente separadas do caixa acima */}
               <div className="mt-12 border-t-4 border-slate-900 pt-8">
