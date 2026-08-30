@@ -65,12 +65,44 @@ type PosthogQueryResponse = {
   columns?: ReadonlyArray<string>;
 };
 
-class PosthogQueryError extends Error {
+/**
+ * Teto do recorte do corpo guardado no erro. 300 caracteres pegam o `detail` de
+ * um erro de validacao do HogQL inteiro (o de 2026-08-29, "Function 'toDate'
+ * expects 1 argument, found 2", cabe com folga) sem carregar um HTML de proxy
+ * de 40 KB para dentro de um log.
+ */
+const POSTHOG_ERROR_BODY_LIMIT = 300;
+
+/** Recorte do corpo, com o corte DECLARADO quando ele acontece. */
+export function recorteDeCorpo(body: string): string {
+  return body.length <= POSTHOG_ERROR_BODY_LIMIT
+    ? body
+    : `${body.slice(0, POSTHOG_ERROR_BODY_LIMIT)}... (truncado, ${body.length} caracteres no total)`;
+}
+
+export class PosthogQueryError extends Error {
   readonly httpStatus?: number;
-  constructor(message: string, httpStatus?: number) {
+  /**
+   * Recorte do corpo da resposta, como CAMPO e nao so colado na mensagem.
+   *
+   * O corpo ja ia para a `message` antes desta mudanca, e a diferenca importa
+   * por dois motivos. Primeiro, quem quiser logar ou inspecionar precisava
+   * fatiar uma string formatada para humano, que e um parser sobre texto livre.
+   * Segundo, o corte de 200 nao dizia que tinha cortado: um corpo grande virava
+   * um trecho que TERMINAVA no meio de uma palavra e parecia a resposta inteira.
+   *
+   * O QUE ISTO NAO RESOLVE, e vale saber: o `reason` que carrega esta mensagem
+   * chega ao estado nomeado do server, mas a TELA monta a frase so com o
+   * httpStatus (ver ActiveUsersChart). Foi por isso que o 400 de 2026-08-29
+   * precisou de um curl manual, e nao por falta do corpo aqui. Mostrar o motivo
+   * na tela do admin e outra decisao, de produto, e nao foi tomada.
+   */
+  readonly responseBody?: string;
+  constructor(message: string, httpStatus?: number, responseBody?: string) {
     super(message);
     this.name = "PosthogQueryError";
     this.httpStatus = httpStatus;
+    this.responseBody = responseBody;
   }
 }
 
@@ -106,10 +138,15 @@ async function runPosthogQuery(hogql: string): Promise<PosthogQueryResponse> {
       response.status === 401 || response.status === 403
         ? "personal api key sem escopo para /query/ (ou invalida)"
         : "resposta nao-2xx do PostHog";
-    const detail = body ? `: ${body.slice(0, 200)}` : "";
+    // O recorte e UM so, usado na mensagem e no campo: dois cortes com tamanhos
+    // diferentes fariam o log e a mensagem discordarem sobre o que o PostHog
+    // respondeu, que e a divergencia mais irritante possivel num diagnostico.
+    const recorte = body ? recorteDeCorpo(body) : "";
+    const detail = recorte ? `: ${recorte}` : "";
     throw new PosthogQueryError(
       `${hint} (status ${response.status})${detail}`,
       response.status,
+      recorte || undefined,
     );
   }
 
