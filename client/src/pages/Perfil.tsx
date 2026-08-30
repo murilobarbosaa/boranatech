@@ -96,6 +96,19 @@ type PendingBoleto = {
   createdAt?: string | null;
 };
 
+/**
+ * Cobranca avulsa aguardando pagamento, de QUALQUER meio (boleto ou Pix).
+ *
+ * Campo novo do GET /subscription. `pendingBoleto` continua existindo ao lado
+ * dele por expand/contract: bundle antigo em execucao le o nome velho e nao
+ * recarrega sozinho. Este e o que a tela usa daqui em diante.
+ */
+type PendingCharge = {
+  planCode?: string | null;
+  createdAt?: string | null;
+  paymentMethod?: string | null;
+};
+
 type SubscriptionData = {
   status?: string;
   plans?: SubscriptionPlan | null;
@@ -108,6 +121,7 @@ type SubscriptionData = {
   // boleto usa ISTO, nao cancel_at_period_end (que para boleto e sempre false).
   nonRenewal?: { effectiveAt?: string | null } | null;
   pendingBoleto?: PendingBoleto | null;
+  pendingCharge?: PendingCharge | null;
   // Origem do acesso Pro (aditivo, do GET /subscription): 'influencer' e Pro
   // de parceria sem assinatura; a UI rotula honesto e nao oferece cancelar.
   accessSource?: "subscription" | "influencer" | "admin" | null;
@@ -905,7 +919,17 @@ export default function Perfil() {
   // Boleto aguardando pagamento (do endpoint). Plano/valor vem do planPricing.ts
   // (fonte unica). Cenario A: !isPro + pendingBoleto -> card proprio. Cenario B:
   // isPro + pendingBoleto -> card ativo normal + aviso de renovacao.
-  const pendingBoleto = subscriptionData?.pendingBoleto ?? null;
+  // Le o campo novo e cai no antigo enquanto o backend velho estiver no ar (a
+  // janela de deploy nao e atomica: Vercel sobe antes do Railway). Sem este
+  // fallback, o card de "aguardando pagamento" some por alguns minutos a cada
+  // deploy, justamente para quem acabou de pagar.
+  const pendingCharge =
+    subscriptionData?.pendingCharge ??
+    (subscriptionData?.pendingBoleto
+      ? { ...subscriptionData.pendingBoleto, paymentMethod: "boleto" }
+      : null);
+  const pendingBoleto = pendingCharge;
+  const isPendingPix = pendingCharge?.paymentMethod === "pix";
   // Boleto: renewal_type='manual' (nao renova sozinho). O botao vira "nao
   // renovar" e o estado vem de nonRenewal (subscription_cancellations), nao de
   // cancel_at_period_end. Cartao (renewal_type 'auto') segue o caminho de sempre.
@@ -1709,7 +1733,8 @@ export default function Perfil() {
                     Carregando assinatura...
                   </p>
                 ) : !isPro && pendingBoleto ? (
-                  // Cenario A: boleto de primeira compra aguardando pagamento.
+                  // Cenario A: cobranca avulsa de primeira compra aguardando
+                  // pagamento (boleto ou Pix).
                   // Sem acesso Pro ainda; sem botao de cancelar e sem CTA.
                   <>
                     <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-amber-700">
@@ -1754,8 +1779,14 @@ export default function Perfil() {
                         </span>
                       </div>
 
+                      {/* TODO(Ana): copy do aguardando pagamento por meio. A
+                          diferenca que importa: o boleto promete 1 a 2 dias
+                          uteis de compensacao, e o Pix confirma em segundos. O
+                          texto do Pix NAO pode herdar o prazo do boleto. */}
                       <p className="pt-1 text-sm font-semibold text-slate-600">
-                        Boleto enviado para seu e-mail. Vence em 3 dias.
+                        {isPendingPix
+                          ? "Pix gerado. A confirmação costuma levar alguns segundos; o código vence em 2 dias."
+                          : "Boleto enviado para seu e-mail. Vence em 3 dias."}
                       </p>
                     </div>
                   </>
@@ -1845,9 +1876,14 @@ export default function Perfil() {
                             strokeWidth={2.5}
                           />
                         </span>
+                        {/* TODO(Ana): copy da renovacao em processamento por meio
+                            de pagamento. Pix NAO herda o prazo do boleto: cai em
+                            segundos, entao "aguardando" aqui e questao de
+                            minutos, nao de dias uteis. */}
                         <p className="text-sm font-bold text-slate-800">
-                          Renovação em processamento. Seu boleto está aguardando
-                          pagamento.
+                          {isPendingPix
+                            ? "Renovação em processamento. Seu Pix está sendo confirmado, costuma levar alguns segundos."
+                            : "Renovação em processamento. Seu boleto está aguardando pagamento."}
                         </p>
                       </div>
                     ) : null}
