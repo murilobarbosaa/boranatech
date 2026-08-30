@@ -1667,7 +1667,7 @@ export default function Perfil() {
             {/* Bloco 5: Assinatura (pôster amber) */}
             <section
               style={sectionStyle(400)}
-              className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[var(--bnt-ink)] p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8"
+              className="bnt-keep-colors animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[var(--bnt-ink)] p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8"
             >
               <div
                 className="absolute inset-0 z-0"
@@ -1988,7 +1988,7 @@ export default function Perfil() {
             {/* Bloco 6: Conta (pôster violet) */}
             <section
               style={sectionStyle(500)}
-              className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[var(--bnt-ink)] p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8"
+              className="bnt-keep-colors animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[var(--bnt-ink)] p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8"
             >
               <div
                 className="absolute inset-0 z-0"
