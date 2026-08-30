@@ -9,6 +9,7 @@ import {
   recordNonRenewalIntent,
   revertNonRenewalIntent,
 } from "./shared";
+import { oneOffAccessDays } from "../../shared/paymentMethods";
 import { getPlanChargeValue, PLAN_PRICING } from "../../shared/planPricing";
 import type { PlanId } from "../../shared/planPricing";
 import type {
@@ -33,20 +34,6 @@ import type {
  * pessoa compra de novo. Ler o fluxo do boleto em server/providers/stripe.ts
  * responde quase toda pergunta sobre este arquivo.
  */
-
-/**
- * Planos que aceitam Pix, e quantos dias de acesso cada um concede.
- *
- * ESCRITO POR INCLUSAO, e isso e a defesa: o mapa lista quem PODE. Um `PlanId`
- * novo nasce fora dele e e recusado por omissao, em vez de liberado por omissao.
- * E o mesmo desenho de `BOLETO_ACCESS_DAYS` (server/providers/stripe.ts), e os
- * dias sao os MESMOS numeros de proposito: o acesso que a pessoa compra nao pode
- * depender do meio de pagamento que ela escolheu.
- */
-const PIX_ACCESS_DAYS: Partial<Record<PlanId, number>> = {
-  pro_semiannual: 182,
-  pro_annual: 365,
-};
 
 /**
  * Prazo do Pix, em dias. Curto de proposito: um Pix e instantaneo, o prazo aqui
@@ -145,7 +132,7 @@ async function createCheckout(
     );
   }
 
-  const accessDays = PIX_ACCESS_DAYS[input.planId];
+  const accessDays = oneOffAccessDays(input.planId);
   if (!accessDays) {
     // Mesmo contrato de err do boleto: 400 com slug proprio, para a UI
     // distinguir "plan nao aceita este meio" de qualquer outra recusa.
@@ -458,7 +445,7 @@ export const asaasProvider: PaymentProvider = {
   handleWebhook,
 };
 
-export { PIX_ACCESS_DAYS, PIX_DUE_DAYS, EVENT_ID_PREFIX, PROVIDER };
+export { PIX_DUE_DAYS, EVENT_ID_PREFIX, PROVIDER };
 
 // ---------------------------------------------------------------------------
 // WEBHOOK
@@ -733,7 +720,9 @@ async function activateOnPayment(args: {
     .maybeSingle();
   const planCode = plan?.code;
   const accessDays =
-    planCode && isKnownPlanId(planCode) ? PIX_ACCESS_DAYS[planCode] : undefined;
+    planCode && isKnownPlanId(planCode)
+      ? oneOffAccessDays(planCode)
+      : undefined;
   if (!accessDays) {
     // Sem dias de acesso nao da para calcular o periodo, e ativar com periodo
     // chutado seria conceder acesso por um prazo que ninguem vendeu.

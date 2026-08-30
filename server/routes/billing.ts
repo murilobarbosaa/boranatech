@@ -6,8 +6,13 @@ import { verifyRenewalToken } from "../lib/renewalToken";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
-import { stripeProvider } from "../providers";
+import { asaasProvider, stripeProvider } from "../providers";
 import { isPlanId, PLAN_PRICING, type PlanId } from "../../shared/planPricing";
+import {
+  isPaymentMethodAllowed,
+  isPaymentMethodId,
+  type PaymentMethodId,
+} from "../../shared/paymentMethods";
 
 const router = Router();
 
@@ -164,18 +169,32 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
     // ativa). ADITIVO: nao altera a query primaria nem is_user_pro. Cartao nunca
     // tem pending, entao para cartao isto sempre volta null. { planCode, createdAt },
     // sem PII; o card resolve plano/valor via planPricing.ts.
+    // Enxerga os DOIS meios avulsos. Antes filtrava `payment_method = 'boleto'`
+    // e um Pix aguardando pagamento era invisivel na pagina de cobranca: a
+    // pessoa pagava e a tela dizia que ela era do plano free.
     const { data: pending } = await supabaseAdmin
       .from("subscriptions")
-      .select("created_at, plan_id")
+      .select("created_at, plan_id, payment_method")
       .eq("user_id", userId)
-      .eq("payment_method", "boleto")
+      .in("payment_method", ["boleto", "pix"])
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
+    // EXPAND/CONTRACT (CLAUDE.md), nao troca seca. `pendingBoleto` continua
+    // sendo emitido com a MESMA semantica de antes (so boleto), porque todo
+    // bundle ja em execucao le esse nome e nao recarrega sozinho. O campo novo
+    // `pendingCharge` carrega o meio, e e o que o frontend novo consome.
+    // Remover `pendingBoleto`: depois de o Pix estar no ar e o tempo de vida de
+    // uma sessao ter passado.
     let pendingBoleto: { planCode: string; createdAt: string | null } | null =
       null;
+    let pendingCharge: {
+      planCode: string;
+      createdAt: string | null;
+      paymentMethod: string;
+    } | null = null;
     if (pending?.plan_id) {
       const { data: pendingPlan } = await supabaseAdmin
         .from("plans")
@@ -183,10 +202,21 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
         .eq("id", pending.plan_id)
         .maybeSingle();
       if (pendingPlan?.code) {
-        pendingBoleto = {
+        const metodo = String(pending.payment_method ?? "boleto");
+        pendingCharge = {
           planCode: pendingPlan.code,
           createdAt: pending.created_at,
+          paymentMethod: metodo,
         };
+        // Um Pix pendente NAO vira `pendingBoleto`: o bundle antigo mostraria
+        // copy de boleto ("vence em 3 dias", "confira seu e-mail") sobre um Pix.
+        // Mentir sobre o meio e pior que nao mostrar.
+        if (metodo === "boleto") {
+          pendingBoleto = {
+            planCode: pendingPlan.code,
+            createdAt: pending.created_at,
+          };
+        }
       }
     }
 
@@ -200,10 +230,7 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
       current_period_end?: string | null;
     } | null;
     let nonRenewal: { effectiveAt: string | null } | null = null;
-    if (
-      subRow?.renewal_type === "manual" &&
-      subRow.provider_subscription_id
-    ) {
+    if (subRow?.renewal_type === "manual" && subRow.provider_subscription_id) {
       const { data: intent } = await supabaseAdmin
         .from("subscription_cancellations")
         .select("effective_at")
@@ -271,6 +298,7 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
           status: "free",
           isPro,
           pendingBoleto,
+          pendingCharge,
           nonRenewal: null,
           accessSource,
         },
@@ -282,6 +310,7 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
         ...subscription,
         isPro,
         pendingBoleto,
+        pendingCharge,
         nonRenewal,
         accessSource,
       },
@@ -382,8 +411,7 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
     const rawPaymentMethod = req.body?.payment_method;
     if (
       rawPaymentMethod !== undefined &&
-      rawPaymentMethod !== "card" &&
-      rawPaymentMethod !== "boleto"
+      !isPaymentMethodId(rawPaymentMethod)
     ) {
       return next(
         createError(
@@ -393,18 +421,42 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
         ),
       );
     }
-    const paymentMethod: "card" | "boleto" =
-      rawPaymentMethod === "boleto" ? "boleto" : "card";
+    const paymentMethod: PaymentMethodId = rawPaymentMethod ?? "card";
 
-    // Boleto so nos planos semestral/anual (pagamento unico). Mensal e cartao-only.
-    if (paymentMethod === "boleto" && planId === "pro_monthly") {
+    // GATING POR INCLUSAO, do ponto unico (shared/paymentMethods.ts). O que
+    // estava aqui negava `pro_monthly` PELO NOME, entao um plano novo passaria
+    // por omissao. Agora o que nao esta declarado como permitido e recusado.
+    if (!isPaymentMethodAllowed(planId, paymentMethod)) {
       return next(
         createError(
           400,
-          "boleto_not_allowed_on_monthly",
-          "Boleto não está disponível no plano mensal.",
+          "payment_method_not_allowed",
+          "Esta forma de pagamento não está disponível neste plano.",
         ),
       );
+    }
+
+    // Seletor de provedor: NOMEADO pelo meio de pagamento, nao por env nem por
+    // mapa indexado por valor de fora. `pix` e Asaas; cartao e boleto sao Stripe.
+    // A uniao fechada faz o `tsc` cobrar o ramo quando um meio novo entrar.
+    if (paymentMethod === "pix") {
+      if (!env.asaasEnabled) {
+        return next(
+          createError(
+            503,
+            "asaas_disabled",
+            "Pagamento por Pix indisponível no momento.",
+          ),
+        );
+      }
+      const data = await asaasProvider.createCheckout({
+        user: { id: userId, email: req.user!.email },
+        planId,
+        affiliateCode,
+        couponCode,
+        paymentMethod,
+      });
+      return res.json({ data });
     }
 
     const data = await stripeProvider.createCheckout({

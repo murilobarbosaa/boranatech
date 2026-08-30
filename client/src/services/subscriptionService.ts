@@ -1,3 +1,4 @@
+import type { PaymentMethodId } from "@shared/paymentMethods";
 import { apiUrl } from "@/lib/api";
 import { AFFILIATE_STORAGE_KEY } from "@/hooks/useAffiliate";
 import { COUPON_STORAGE_KEY } from "@/hooks/useCoupon";
@@ -22,7 +23,10 @@ export async function getMySubscription() {
   return json.data;
 }
 
-export type CheckoutPaymentMethod = "card" | "boleto";
+// ALIAS do ponto unico (shared/paymentMethods.ts), nao uma terceira uniao. Ela
+// existia aqui em duro e ficou desatualizada no instante em que o Pix entrou:
+// duas unioes do mesmo conceito divergem no primeiro meio novo.
+export type CheckoutPaymentMethod = PaymentMethodId;
 
 // Preserva o error.code que o server manda (createError -> { error: { code } }),
 // para a UI mostrar mensagem por slug (conflict, boleto_pending, ...). Antes o

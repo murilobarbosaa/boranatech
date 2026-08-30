@@ -47,6 +47,7 @@ import {
   type CheckoutPaymentMethod,
 } from "@/services/subscriptionService";
 import PaymentMethodDialog from "@/components/pro/PaymentMethodDialog";
+import { allowedPaymentMethods } from "@shared/paymentMethods";
 import { apiUrl } from "@/lib/api";
 import {
   discountedPriceCents,
@@ -626,7 +627,9 @@ export default function Checkout() {
     applyCoupon,
     removeCoupon,
   } = useCoupon();
-  const [selectedPlan, setSelectedPlan] = useState("pro_semiannual");
+  // Tipado como PlanId (nao string inferida): `allowedPaymentMethods` e o
+  // dialog indexam por plano, e um string solto passaria plano invalido adiante.
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>("pro_semiannual");
   const [loading, setLoading] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const reduce = useReducedMotion();
@@ -731,8 +734,13 @@ export default function Checkout() {
       return;
     }
 
-    if (selectedPlan === "pro_monthly") {
-      void doCheckout("card");
+    // GATING POR INCLUSAO: se o plano so aceita um meio, vai direto; se aceita
+    // mais de um, abre o dialog. O que estava aqui era
+    // `if (selectedPlan === "pro_monthly")`, que negava UM plano pelo nome e
+    // liberaria qualquer plano novo por omissao.
+    const metodos = allowedPaymentMethods(selectedPlan);
+    if (metodos.length === 1) {
+      void doCheckout(metodos[0]);
       return;
     }
     setPaymentDialogOpen(true);
@@ -763,6 +771,17 @@ export default function Checkout() {
         toast.error(
           "Você tem um boleto aguardando pagamento. Confira seu e-mail.",
         );
+      } else if (code === "pix_pending") {
+        // TODO(Ana): copy do erro de Pix ja aguardando pagamento.
+        toast.error(
+          "Você tem um Pix aguardando pagamento. Confira seu e-mail.",
+        );
+      } else if (code === "payment_method_not_allowed") {
+        // TODO(Ana): copy do erro de meio de pagamento indisponivel no plano.
+        toast.error("Essa forma de pagamento não está disponível neste plano.");
+      } else if (code === "asaas_disabled") {
+        // TODO(Ana): copy da indisponibilidade temporaria do Pix.
+        toast.error("Pix indisponível no momento. Tente cartão ou boleto.");
       } else {
         toast.error("Não foi possível iniciar o checkout. Tente novamente.");
       }
@@ -1309,6 +1328,7 @@ export default function Checkout() {
       </section>
 
       <PaymentMethodDialog
+        planId={selectedPlan}
         open={paymentDialogOpen}
         onOpenChange={setPaymentDialogOpen}
         onSelect={(method) => void doCheckout(method)}

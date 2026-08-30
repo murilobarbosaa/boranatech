@@ -193,10 +193,10 @@ vi.mock("../lib/supabaseAdmin", () => {
   };
 });
 
+import { oneOffAccessDays } from "../../shared/paymentMethods";
 import {
   eventKey,
   paidAmountCentsFromAsaas,
-  PIX_ACCESS_DAYS,
   processAsaasEvent,
   asaasProvider,
 } from "./asaas";
@@ -262,10 +262,10 @@ describe("restricao de plano: o mapa lista quem PODE", () => {
     expect(estado.escritas).toEqual([]);
   });
 
-  it("semestral e anual estao no mapa, com os MESMOS dias do boleto", () => {
-    expect(PIX_ACCESS_DAYS.pro_semiannual).toBe(182);
-    expect(PIX_ACCESS_DAYS.pro_annual).toBe(365);
-    expect(PIX_ACCESS_DAYS.pro_monthly).toBeUndefined();
+  it("semestral e anual vem do ponto unico, com os MESMOS dias do boleto", () => {
+    expect(oneOffAccessDays("pro_semiannual")).toBe(182);
+    expect(oneOffAccessDays("pro_annual")).toBe(365);
+    expect(oneOffAccessDays("pro_monthly")).toBeUndefined();
   });
 });
 

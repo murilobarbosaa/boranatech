@@ -2,15 +2,25 @@
 // (checkout, cancel, reactivate) e o webhook atras de um contrato unico.
 
 import type { PlanId } from "../../shared/planPricing";
+import type { PaymentMethodId } from "../../shared/paymentMethods";
 
 export interface CheckoutUser {
   id: string;
   email: string;
 }
 
-// Boleto: pagamento unico (mode: payment), renovacao manual, so nos planos
-// semestral/anual. 'card' (default) mantem o fluxo recorrente (mode: subscription).
-export type CheckoutPaymentMethod = "card" | "boleto";
+/**
+ * Meio de pagamento pedido no checkout.
+ *
+ * ALIAS do ponto unico em shared/paymentMethods.ts, e nao uma segunda uniao: as
+ * duas divergiriam no primeiro meio novo, e a que ficasse para tras liberaria ou
+ * proibiria por conta propria. O nome fica porque as rotas e o frontend ja o
+ * importam daqui.
+ *
+ * 'card' e recorrente (mode: subscription na Stripe). 'boleto' e 'pix' sao
+ * avulsos, com renovacao manual, so nos planos que declaram dias de acesso.
+ */
+export type CheckoutPaymentMethod = PaymentMethodId;
 
 export interface CreateCheckoutInput {
   user: CheckoutUser;

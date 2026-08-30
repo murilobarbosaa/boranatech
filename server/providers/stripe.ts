@@ -17,6 +17,7 @@ import {
   recordNonRenewalIntent,
   revertNonRenewalIntent,
 } from "./shared";
+import { oneOffAccessDays } from "../../shared/paymentMethods";
 import { getPlanChargeValue, PLAN_PRICING } from "../../shared/planPricing";
 import type { PlanId } from "../../shared/planPricing";
 import type {
@@ -1099,10 +1100,6 @@ async function ensureMarketingCoupon(
 
 // Boleto: dias de acesso Pro concedidos quando o pagamento compensa (proxima
 // task). So os planos semestral/anual aceitam boleto; o mensal fica de fora.
-const BOLETO_ACCESS_DAYS: Partial<Record<PlanId, number>> = {
-  pro_semiannual: 182,
-  pro_annual: 365,
-};
 
 async function createCheckout(
   input: CreateCheckoutInput,
@@ -1291,7 +1288,7 @@ async function createCheckout(
     // que a Stripe cobra). O acesso Pro so e concedido quando o boleto compensa
     // (async_payment_succeeded, proxima task); por isso metadata carrega
     // payment_method/renewal_type/access_days para a linha ser reidratada la.
-    const accessDays = BOLETO_ACCESS_DAYS[input.planId];
+    const accessDays = oneOffAccessDays(input.planId);
     if (!accessDays) {
       throw createError(
         400,
