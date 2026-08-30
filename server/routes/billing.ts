@@ -1,10 +1,14 @@
-import * as Sentry from "@sentry/node";
-import { Router } from "express";
+import {
+  Router,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 
 import { env } from "../lib/env";
 import { verifyRenewalToken } from "../lib/renewalToken";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
-import { requireAuth } from "../middleware/auth";
+import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 import { asaasProvider, stripeProvider } from "../providers";
 import { isPlanId, PLAN_PRICING, type PlanId } from "../../shared/planPricing";
@@ -117,22 +121,50 @@ async function resolveRenewal(
   };
 }
 
-router.get("/subscription", requireAuth, async (req, res, next) => {
+/**
+ * `checkProStatus` NO LUGAR de um calculo proprio de Pro.
+ *
+ * Esta rota recalculava `isPro` por conta propria (`rpc('is_user_pro')` direto,
+ * e `isPro = !rpcError && data === true`), e divergia do caminho canonico
+ * (`resolveProStatus`, server/middleware/auth.ts) em TRES pontos:
+ *
+ *   1. nao consultava o cache Redis, entao pagava duas RPCs em toda carga da
+ *      pagina de cobranca enquanto o resto do sistema respondia do cache;
+ *   2. nao passava por `isDevProUser`, entao em desenvolvimento a pagina
+ *      contradizia todas as demais telas do mesmo app;
+ *   3. **nao combinava o ramo de admin**, e esta era a divergencia com efeito
+ *      em producao: `resolveProStatus` devolve `is_user_pro OR is_user_admin`
+ *      (CLAUDE.md: "isPro || isAdmin e intencional em toda a plataforma"), e
+ *      esta rota devolvia so o primeiro. Um admin sem assinatura via `isPro:
+ *      false` AQUI e `true` em qualquer outro lugar.
+ *
+ * O middleware E o caminho canonico, entao delegar e monta-lo. Ele nunca lanca:
+ * qualquer falha vira `req.isPro = false`, que preserva o fail-closed que a
+ * rota ja tinha, e sem 500 novo.
+ */
+/**
+ * EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos`
+ * (server/routes/cron.ts) e `handleAsaasWebhook`: o que importa provar aqui e
+ * que a rota DELEGA a decisao de Pro em vez de recalcular, e isso so se prova
+ * rodando o handler contra um `req.isPro` controlado.
+ */
+export async function handleGetSubscription(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     const userId = req.user!.id;
+    const isPro = req.isPro === true;
 
-    const [{ data: subscription, error }, { data: isProRpc, error: rpcError }] =
-      await Promise.all([
-        supabaseAdmin
-          .from("subscriptions")
-          .select("*, plans(*)")
-          .eq("user_id", userId)
-          .in("status", ["active", "trialing", "past_due"])
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        supabaseAdmin.rpc("is_user_pro", { p_user_id: userId }),
-      ]);
+    const { data: subscription, error } = await supabaseAdmin
+      .from("subscriptions")
+      .select("*, plans(*)")
+      .eq("user_id", userId)
+      .in("status", ["active", "trialing", "past_due"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (error) {
       // `cause` para o LinkedErrors do Sentry anexar o erro real do Supabase.
@@ -145,24 +177,6 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
         }),
       );
     }
-
-    if (rpcError) {
-      console.error("[billing/subscription] is_user_pro RPC failed:", rpcError);
-      // DEGRADACAO SILENCIOSA, capturada de proposito. A rota responde 200 e o
-      // fluxo nao muda: o `isPro` abaixo ja e fail-closed e devolve FREE quando
-      // a RPC falha. Justamente por isso o unico rastro era o console do
-      // Railway, que ninguem abre, e `server/lib/sentry.ts` nao instala
-      // integracao de console (docs/erro-engolido.md). Um usuario Pro vendo
-      // paywall por falha de RPC e exatamente o caso que precisa aparecer.
-      // Mesma forma do `captureConsentMethodColumnMissing` em routes/consent.ts.
-      Sentry.withScope((scope) => {
-        scope.setTag("route", "billing/subscription");
-        scope.setTag("rpc", "is_user_pro");
-        Sentry.captureException(rpcError);
-      });
-    }
-
-    const isPro = !rpcError && isProRpc === true;
 
     // Boleto pendente (aguardando pagamento). Existe no cenario A (primeira compra
     // por boleto, sem sub ativa -> plano free) e no B (renovacao, junto de uma sub
@@ -318,7 +332,9 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+}
+
+router.get("/subscription", requireAuth, checkProStatus, handleGetSubscription);
 
 const VALID_CANCEL_REASONS = new Set([
   "expensive",
