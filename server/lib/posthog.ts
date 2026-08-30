@@ -660,10 +660,26 @@ export async function contarAtividadeAgora(): Promise<PosthogAtividadeAgoraState
 // de "pessoas ativas hoje": duas unidades diferentes na mesma aba, uma ao lado
 // da outra, e a divergencia que o cabecalho de brasiliaDay.ts documenta.
 //
-// AGRUPAMENTO POR DIA DE BRASILIA, nao por dia UTC. `toDate(timestamp)` do
-// ClickHouse agruparia em UTC e jogaria tudo depois das 21h no balde do dia
-// seguinte, deslocando a serie inteira sem ninguem perceber. A conversao entra
-// na propria query, com o nome do fuso, nunca com offset fixo de -3h.
+// AGRUPAMENTO POR DIA DE BRASILIA, nao por dia UTC. `toDate(timestamp)` cru
+// agruparia em UTC e jogaria tudo depois das 21h no balde do dia seguinte,
+// deslocando a serie inteira sem ninguem perceber. Medido em 2026-08-29 as
+// 22h51: agrupada em UTC a mesma janela inventava um balde "2026-08-30" com 62
+// pessoas e reduzia o dia 29 de 359 para 374 (parte do dia 29 vazando para o
+// 30 e parte do 28 entrando no 29). A conversao entra na propria query, com o
+// NOME do fuso, nunca com offset fixo de -3h.
+//
+// DIALETO. `toDate(timestamp, 'America/Sao_Paulo')` e ClickHouse puro e o
+// HogQL RECUSA com 400 ("Function 'toDate' expects 1 argument, found 2"), que
+// foi como esta serie nasceu quebrada em producao. A forma aceita e converter
+// primeiro (`toTimeZone`, um argumento) e so entao extrair o dia. `uniq` em vez
+// de `count(distinct ...)` pelo mesmo motivo de sempre: e o que a irma
+// contarAtividadeAgora usa, e contagem que diverge da irma em unidade seria
+// pior que contagem que falta. (`count(distinct ...)` TAMBEM e aceito pelo
+// HogQL, conferido no mesmo diagnostico; a escolha aqui e por igualdade com a
+// irma, nao por necessidade.)
+//
+// CONFERIDO VIVO em 2026-08-29: o ponto de 29/08 desta serie deu 359, o mesmo
+// numero que contarAtividadeAgora devolveu para o dia civil de Brasilia.
 const ATIVOS_DIARIOS_DIAS = 30;
 
 /** Um dia da serie. `ativos` e contagem fechada: zero e medicao, nao buraco. */
@@ -705,7 +721,7 @@ export async function getAtivosDiarios(): Promise<PosthogAtivosDiariosState> {
 
   try {
     const res = await runPosthogQuery(
-      `select toString(toDate(timestamp, 'America/Sao_Paulo')) as dia, count(distinct distinct_id) as ativos from events where timestamp >= toDateTime('${inicio}') and distinct_id is not null group by dia order by dia`,
+      `select toString(toDate(toTimeZone(timestamp, 'America/Sao_Paulo'))) as dia, uniq(distinct_id) as ativos from events where timestamp >= toDateTime('${inicio}') group by dia order by dia`,
     );
     const linhas = res.results;
     if (!Array.isArray(linhas)) {

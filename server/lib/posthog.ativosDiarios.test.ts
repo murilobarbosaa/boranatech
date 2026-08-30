@@ -204,6 +204,33 @@ describe("getAtivosDiarios", () => {
     await getAtivosDiarios();
     const corpo = String((fetchMock.mock.calls[0][1] as { body: string }).body);
     expect(corpo).toContain("America/Sao_Paulo");
-    expect(corpo).toContain("count(distinct distinct_id)");
+  });
+
+  it("fala o DIALETO do HogQL, nao ClickHouse puro", async () => {
+    // Esta serie subiu quebrada em producao com HTTP 400 e o corpo do erro
+    // dizendo "Function 'toDate' expects 1 argument, found 2": o fuso como
+    // SEGUNDO argumento de toDate e ClickHouse puro, e o parser do HogQL
+    // recusa. A forma aceita converte primeiro e extrai o dia depois.
+    //
+    // O teste anterior nao pegava isso: ele afirmava que o nome do fuso estava
+    // na string, e ele estava, no lugar errado. String continha o token certo e
+    // a query nao rodava, que e a assinatura de um teste que confere presenca
+    // quando a pergunta era de FORMA.
+    //
+    // `uniq` e a mesma funcao da irma contarAtividadeAgora. Nao e a unica que
+    // o HogQL aceita (count(distinct ...) tambem passa, conferido em
+    // 2026-08-29), mas divergir de unidade entre dois numeros exibidos na mesma
+    // aba e pior que qualquer economia.
+    const fetchMock = vi.fn().mockResolvedValue(respostaHogql([]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getAtivosDiarios();
+    const corpo = String((fetchMock.mock.calls[0][1] as { body: string }).body);
+    expect(corpo).toContain(
+      "toDate(toTimeZone(timestamp, 'America/Sao_Paulo'))",
+    );
+    expect(corpo).toContain("uniq(distinct_id)");
+    // CONTROLE NEGATIVO: a forma que o PostHog recusou nao pode voltar.
+    expect(corpo).not.toContain("toDate(timestamp,");
   });
 });
