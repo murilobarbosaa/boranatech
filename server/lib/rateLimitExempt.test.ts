@@ -20,6 +20,22 @@ describe("isRateLimitExempt", () => {
     expect(isRateLimitExempt("/api/resend/webhook")).toBe(true);
   });
 
+  it("[asaas-webhook-exempt] isenta o webhook do Asaas", () => {
+    // A fila do Asaas PAUSA a conta depois de uma sequencia de falhas, e o
+    // balde dele seria por IP (ele nao manda Authorization), entao a frota
+    // inteira dividiria um unico balde. Um 429 aqui nao perde uma entrega:
+    // para de confirmar pagamento de todo mundo.
+    expect(isRateLimitExempt("/api/webhooks/asaas")).toBe(true);
+  });
+
+  it("[asaas-exempt-is-specific] a isencao e do prefixo do provedor, nao de /api/webhooks/", () => {
+    // Isencao e privilegio: uma rota de webhook NOVA nasce sujeita ao limiter
+    // ate alguem decidir o contrario, em vez de herdar a isencao por morar sob
+    // o mesmo prefixo.
+    expect(isRateLimitExempt("/api/webhooks/outro-provedor")).toBe(false);
+    expect(isRateLimitExempt("/api/webhooks")).toBe(false);
+  });
+
   it("[non-exempt-stays-limited] rotas normais seguem sujeitas ao rate limit", () => {
     expect(isRateLimitExempt("/api/me")).toBe(false);
     expect(isRateLimitExempt("/api/ai/stream")).toBe(false);
