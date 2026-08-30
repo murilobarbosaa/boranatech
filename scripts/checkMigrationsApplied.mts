@@ -237,7 +237,13 @@ const EXPECTED_TABLE_COUNT = 83;
 // 31 desde 20260828120000_normalize_dashes_on_external_events.sql (cria
 // external_events_normaliza_travessao). Ela devolve trigger, entao o contador
 // de trigger abaixo sobe junto, como o paragrafo daquele contador exige.
-const EXPECTED_FUNCTION_COUNT = 31;
+// 32 desde 20260829110000_activate_subscription_exclusive.sql (cria
+// activate_subscription_exclusive). Valor MEDIDO em 29/08/2026 pelo proprio
+// script, nao digitado: o CI e a execucao local reportaram 32 declaradas contra
+// 31 esperadas. Ela e CHAMAVEL (devolve TABLE, e o PostgREST a expoe em
+// /rpc/activate_subscription_exclusive), entao entra nas verificaveis por REST e
+// o contador de trigger abaixo NAO sobe: 24 verificaveis + 8 de trigger = 32.
+const EXPECTED_FUNCTION_COUNT = 32;
 // 5 desde a MESMA migration: set_admin_task_archive_source devolve trigger,
 // entao nao e exposta pelo PostgREST e sai do conjunto verificavel por REST. Os
 // dois numeros sobem juntos quando a funcao nova e de trigger, e so o primeiro
