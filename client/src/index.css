@@ -133,6 +133,11 @@
      cuida do texto dentro dele e o bloco de contexto amarelo. */
   --brand-yellow-soft: #fff8e7;
   --brand-yellow-soft-deep: #ffe89a;
+  /* Tickets do /perfil (posteres de Assinatura e Conta). Eram gradiente hex
+     inline; acompanham o tema por decisao da Ana. Os angulos sao os do codigo
+     original: 135deg no de Assinatura, 225deg no de Conta. */
+  --bnt-ticket-pro: linear-gradient(135deg, #fffbeb 0%, #ffffff 50%, #fff7ed 100%);
+  --bnt-ticket-account: linear-gradient(225deg, #faf5ff 0%, #ffffff 50%, #fdf4ff 100%);
 }
 
 .dark {
@@ -191,6 +196,8 @@
   --brand-cream-deep: oklch(0.19 0.025 290);
   --brand-yellow-soft: #fff8e7;
   --brand-yellow-soft-deep: #ffe89a;
+  --bnt-ticket-pro: linear-gradient(135deg, oklch(0.26 0.045 85) 0%, oklch(0.2 0.03 60) 100%);
+  --bnt-ticket-account: linear-gradient(225deg, oklch(0.24 0.035 300) 0%, oklch(0.2 0.025 290) 100%);
 }
 
 /* ==== GERADO por scripts/gen-dark-palette.py (Lote 7) ====
@@ -1241,6 +1248,16 @@
 }
 
 /* ==== FIM GERADO ==== */
+
+/* Tickets do perfil dentro de escapes ficam claros. Fica FORA do trecho
+   gerado de proposito: uma regeneracao do bloco acima nao pode apaga-lo.
+   Hoje e defensivo (nenhum ancestral dos tickets tem bnt-keep-colors), e
+   existe para a regra 'escape restaura tudo' continuar valendo se algum dia
+   um deles cair dentro de uma secao escapada. */
+.dark .bnt-keep-colors {
+  --bnt-ticket-pro: linear-gradient(135deg, #fffbeb 0%, #ffffff 50%, #fff7ed 100%);
+  --bnt-ticket-account: linear-gradient(225deg, #faf5ff 0%, #ffffff 50%, #fdf4ff 100%);
+}
 
 @layer base {
   * {
