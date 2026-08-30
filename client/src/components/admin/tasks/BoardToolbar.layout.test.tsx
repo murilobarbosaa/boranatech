@@ -77,7 +77,7 @@ describe("toolbar: disposicao lateral, com teto na busca", () => {
     const busca = screen.getByTestId("tasks-toolbar-busca");
 
     expect(busca.className).toContain("flex-1");
-    expect(busca.className).toContain("max-w-3xl");
+    expect(busca.className).toContain("max-w-2xl");
     // E o piso continua: sem ele a busca some numa fileira apertada.
     expect(busca.className).toContain("min-w-[13rem]");
   });
@@ -99,6 +99,20 @@ describe("toolbar: disposicao lateral, com teto na busca", () => {
     // a pilha centrada mantendo o teto da busca, e as asercoes acima passariam.
     montar();
     expect(screen.queryByTestId("tasks-toolbar-controles")).toBeNull();
+  });
+
+  it("a toolbar centra na REGUA DA PAGINA, o mesmo espelho do cabecalho", () => {
+    // Cabecalho e toolbar na mesma regua; so o quadro fica solto. O numero e o
+    // do `.container` (1280px = 80rem), repetido aqui de proposito: se a fonte
+    // mudar e este teste nao, a divergencia aparece em vez de passar batida.
+    montar();
+    const toolbar = screen.getByTestId("tasks-toolbar");
+
+    expect(toolbar.className).toContain("lg:mx-auto");
+    expect(toolbar.className).toContain("lg:max-w-[80rem]");
+    // `w-full` para que, dentro do contêiner (modo normal), ela ocupe a largura
+    // disponivel em vez de encolher para o conteudo.
+    expect(toolbar.className).toContain("w-full");
   });
 
   it("a contagem continua fora da linha de controles", () => {

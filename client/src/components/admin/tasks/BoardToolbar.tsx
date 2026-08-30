@@ -135,7 +135,23 @@ export const BoardToolbar = memo(
     const activeCount = activeFilterCount(filters);
 
     return (
-      <div className="space-y-2.5">
+      // MESMO ESPELHO DO CABECALHO da secao (Admin.tsx, commit 14): `80rem`
+      // espelha o teto do `.container` (index.css:174, max-width: 1280px). Se um
+      // mudar, o outro acompanha. Sao o mesmo numero em dois lugares porque o
+      // Tailwind nao le o CSS custom, e este comentario e o que amarra os dois.
+      //
+      // Cabecalho e toolbar ficam na REGUA DA PAGINA; so o quadro fica solto. No
+      // modo largo a linha esparramava na tela inteira ancorada a esquerda,
+      // enquanto o titulo logo acima ja estava centrado, e as duas reguas
+      // brigavam na mesma tela.
+      //
+      // Incondicional, como no cabecalho: fora do modo escapado a secao ja esta
+      // dentro do contêiner, entao um teto igual ao dele nao aperta nada. Menos
+      // uma ramificacao para manter em sincronia.
+      <div
+        data-testid="tasks-toolbar"
+        className="w-full space-y-2.5 lg:mx-auto lg:max-w-[80rem]"
+      >
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[13rem]">
             <label htmlFor="tasks-board-select" className={labelClass}>
@@ -166,14 +182,14 @@ export const BoardToolbar = memo(
             </div>
           </div>
 
-          {/* TETO na busca, a UNICA diferenca deliberada em relacao a disposicao
-              historica: largura aprovada pela Ana em 30/08, disposicao
-              restaurada idem. `max-w-3xl` (48rem) e a mesma medida da rodada
-              anterior; o `flex-1` continua, entao ela cresce ate esse ponto e
+          {/* TETO na busca, a UNICA diferenca em relacao a disposicao historica.
+              `max-w-2xl` (42rem) desde 30/08: um degrau abaixo do 3xl que a
+              rodada anterior trouxe, pedido da Ana depois de ver o conjunto
+              centrado. O `flex-1` continua, entao ela cresce ate esse ponto e
               para, em vez de esticar com a fileira inteira no monitor largo. */}
           <div
             data-testid="tasks-toolbar-busca"
-            className="min-w-[13rem] max-w-3xl flex-1"
+            className="min-w-[13rem] max-w-2xl flex-1"
           >
             <label htmlFor="tasks-search" className={labelClass}>
               Busca

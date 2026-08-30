@@ -226,6 +226,25 @@ describe("board: a fileira centrada e o botao de nova etapa", () => {
     });
   });
 
+  it("o QUADRO fica solto: o espelho da pagina para na toolbar", async () => {
+    // A LACUNA que este teste fecha. O teste da secao (Admin.largura) afirma que
+    // o CORPO da secao nao carrega o teto, e o corpo e o wrapper de fora: um
+    // teto aplicado a fileira de colunas, la dentro, passa por ele sem tocar em
+    // nada que ele observe.
+    //
+    // Aqui a asercao e sobre a fileira em si. Cabecalho e toolbar centram na
+    // regua da pagina; o quadro usa a tela toda, que e a razao inteira do
+    // commit 13. Sem isto, alguem "uniformizando" o espelho apertaria o quadro
+    // de volta e os dois testes de largura continuariam verdes.
+    render(<TasksDashboard />);
+    await screen.findByLabelText("DEV-1: tarefa 1");
+
+    const ESPELHO = "max-w-[80rem]";
+    expect(screen.getByTestId("tasks-toolbar").className).toContain(ESPELHO);
+    expect(screen.getByTestId("board-scroll").className).not.toContain(ESPELHO);
+    expect(screen.getByTestId("board-row").className).not.toContain(ESPELHO);
+  });
+
   it("o '+' centra na VERTICAL com as colunas, nao encosta no topo", async () => {
     // Numa fileira de colunas altas, um alvo de 48px grudado na borda de cima
     // le como sobra de layout e nao como acao. `self-center` e o que resolve, e
