@@ -617,7 +617,7 @@ export default function CertificateBlock({
                 initial: "hidden",
                 animate: "show",
               })}
-          className="mt-6 rounded-[14px] border-[2.5px] border-slate-900 bg-[linear-gradient(135deg,#fffdf5_0%,#fff3cf_55%,#ffe6a3_100%)] p-6 text-center shadow-[5px_5px_0_#FFB800] sm:p-7"
+          className="bnt-keep-colors mt-6 rounded-[14px] border-[2.5px] border-slate-900 bg-[linear-gradient(135deg,#fffdf5_0%,#fff3cf_55%,#ffe6a3_100%)] p-6 text-center shadow-[5px_5px_0_#FFB800] sm:p-7"
         >
           <motion.div
             ref={sealRef}

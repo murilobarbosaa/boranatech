@@ -21,7 +21,7 @@ export default function RoadmapFeaturedCourse({
   const autorLabel = handle ? `BY @${handle.toUpperCase()}` : curso.autor;
 
   return (
-    <div className="relative mt-6 overflow-hidden rounded-[14px] border-[2.5px] border-slate-900 bg-[linear-gradient(135deg,#020617_0%,#07171b_55%,#0b1f24_100%)] p-4 shadow-[4px_4px_0_var(--bnt-shadow)] sm:p-5">
+    <div className="bnt-keep-colors relative mt-6 overflow-hidden rounded-[14px] border-[2.5px] border-slate-900 bg-[linear-gradient(135deg,#020617_0%,#07171b_55%,#0b1f24_100%)] p-4 shadow-[4px_4px_0_var(--bnt-shadow)] sm:p-5">
       <div
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-28 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.14),transparent_70%)] blur-2xl sm:left-8"
