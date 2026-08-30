@@ -304,6 +304,15 @@ app.use(async (req, res, next) => {
   // transforma "estourou" em "estourou por quanto": 1081 contra 1080 e um NAT
   // grande demais para o fator; 9000 contra 1080 e abuso. Sem o numero, as duas
   // saem como a mesma linha.
+  // O rotulo do balde, calculado UMA vez e usado pelas duas linhas. Antes o
+  // calculo vivia inline na amostra e a linha de 429 nao tinha `alvo` nenhum,
+  // e docs/denominador-rate-limit.md mandava "investigar o alvo" no caso de
+  // abuso: a acao prescrita nao era executavel, porque o campo nao existia.
+  // Como funcao unica, as duas linhas ficam correlacionaveis por construcao, e
+  // nao por alguem lembrar de repetir a mesma expressao nos dois lugares.
+  const alvoDoEscopo = (escopo: "usuario" | "ip") =>
+    alvoAnonimo(escopo === "ip" ? chaveDeIp(req.ip) : key);
+
   const recusar = (
     escopo: "usuario" | "ip",
     resetAt: number,
@@ -312,7 +321,7 @@ app.use(async (req, res, next) => {
   ) => {
     res.setHeader("Retry-After", String(Math.ceil((resetAt - now) / 1000)));
     console.warn(
-      `[ratelimit] 429 escopo=${escopo} contagem=${contagem} limite=${limite}`,
+      `[ratelimit] 429 escopo=${escopo} alvo=${alvoDoEscopo(escopo)} contagem=${contagem} limite=${limite}`,
     );
     return res.status(429).json({
       error: {
@@ -328,7 +337,7 @@ app.use(async (req, res, next) => {
     const n = env.rateLimitSampleN;
     if (n <= 0 || contagem % n !== 0) return;
     console.log(
-      `[ratelimit] amostra escopo=${escopo} alvo=${alvoAnonimo(escopo === "ip" ? chaveDeIp(req.ip) : key)} contagem=${contagem} limite=${limite}`,
+      `[ratelimit] amostra escopo=${escopo} alvo=${alvoDoEscopo(escopo)} contagem=${contagem} limite=${limite}`,
     );
   };
 
