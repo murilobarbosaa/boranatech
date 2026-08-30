@@ -355,10 +355,10 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
         className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: `
-            linear-gradient(to right, rgba(196, 184, 150, 0.8) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(196, 184, 150, 0.8) 1px, transparent 1px),
-            linear-gradient(to right, rgba(214, 205, 184, 0.6) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(214, 205, 184, 0.6) 1px, transparent 1px)
+            linear-gradient(to right, var(--bnt-grid-major) 1px, transparent 1px),
+            linear-gradient(to bottom, var(--bnt-grid-major) 1px, transparent 1px),
+            linear-gradient(to right, var(--bnt-grid-minor) 1px, transparent 1px),
+            linear-gradient(to bottom, var(--bnt-grid-minor) 1px, transparent 1px)
           `,
           backgroundSize: "320px 320px, 320px 320px, 80px 80px, 80px 80px",
         }}
