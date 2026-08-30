@@ -195,6 +195,28 @@ describe("UsersDashboard: colunas e selos", () => {
     }
   });
 
+  it("a densidade aperta o DESKTOP e deixa o mobile respirando", async () => {
+    // A linha empilha no mobile e vira faixa unica a partir de md. Apertar o
+    // vertical da PILHA produziria um bloco de texto sem ar, que e o problema
+    // oposto ao que esta rodada veio resolver, entao o `py-3` base fica e o
+    // aperto entra prefixado. Sem esta trava, trocar `md:py-2` por `py-2` numa
+    // limpeza futura pareceria simplificacao e degradaria o celular em silencio.
+    rotearFetch({
+      "/users?": listPayload([
+        { user_id: "u1", name: "Ana Moura", email: "ana@exemplo.com" },
+      ]),
+    });
+
+    render(<UsersDashboard />);
+    await screen.findByText("Ana Moura");
+
+    const linha = screen.getByText("Ana Moura").closest("button");
+    expect(linha).toBeTruthy();
+    const classes = (linha as HTMLElement).className.split(/\s+/);
+    expect(classes).toContain("py-3");
+    expect(classes).toContain("md:py-2");
+  });
+
   it("distingue Pro por assinatura, por influencer, pelos dois, e gratis", async () => {
     rotearFetch({
       "/users?": listPayload([

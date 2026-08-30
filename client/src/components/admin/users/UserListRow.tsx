@@ -18,8 +18,12 @@ import type { UserRow } from "./types";
 // Continua sendo UMA arvore. Duas (tabela + cards escondidos por media query)
 // duplicariam cada texto no DOM, que e o que o comentario de UserListRow
 // sempre disse e continua valendo.
+// DENSIDADE (2026-08-29): o respiro vertical foi cortado a partir de md, onde
+// a grade poe a linha inteira numa faixa so e o py-3 sobrava. No MOBILE nada
+// muda: la a linha EMPILHA, e apertar o vertical de uma pilha e o que produz
+// aquele bloco de texto sem ar que ninguem consegue varrer com o olho.
 const GRID =
-  "flex flex-wrap items-center gap-x-3 gap-y-1.5 md:grid md:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)] md:items-center md:gap-x-4 md:gap-y-2";
+  "flex flex-wrap items-center gap-x-3 gap-y-1.5 md:grid md:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)] md:items-center md:gap-x-4 md:gap-y-1.5";
 
 const BADGE_BASE =
   "inline-flex w-fit items-center rounded-full border-2 px-2.5 py-0.5 text-xs font-black uppercase";
@@ -28,7 +32,7 @@ export function UserListHeader() {
   return (
     <div
       data-testid="users-header"
-      className={`${GRID} hidden border-b-2 border-slate-900 bg-[#f6f0df] px-4 py-3 md:grid`}
+      className={`${GRID} hidden border-b-2 border-slate-900 bg-[#f6f0df] px-4 py-2 md:grid`}
     >
       {["Usuário", "Acesso", "Assinatura", "Cadastro"].map((coluna) => (
         <span
@@ -69,17 +73,17 @@ export function UserListRow({
       type="button"
       onClick={() => row.user_id && onOpen(row.user_id)}
       disabled={!row.user_id}
-      className={`${GRID} w-full border-b-2 border-slate-100 px-4 py-3 text-left transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-60`}
+      className={`${GRID} w-full border-b-2 border-slate-100 px-4 py-3 text-left transition hover:bg-yellow-50 md:py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-60`}
     >
       <span className="flex w-full min-w-0 items-center gap-3 md:w-auto">
         <span
           aria-hidden="true"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-700 text-xs font-black text-white"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-700 text-xs font-black text-white"
         >
           {initialsOf(row.name || row.email)}
         </span>
         <span className="min-w-0">
-          <span className="font-display block truncate text-base font-black text-slate-950">
+          <span className="font-display block truncate text-base font-black text-slate-950 md:text-sm">
             {displayName(row)}
           </span>
           <span className="block truncate text-sm font-semibold text-slate-500">
