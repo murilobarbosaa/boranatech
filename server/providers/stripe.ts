@@ -419,9 +419,43 @@ async function subscriptionRowExists(
   return (data?.length ?? 0) > 0;
 }
 
+/**
+ * Nome do indice unico PARCIAL criado pela migration 20260829120000:
+ * `UNIQUE (user_id) WHERE status IN ('active','trialing')`.
+ *
+ * Literal, e nao ha alternativa melhor: o `details` do Postgres nomeia so a
+ * CHAVE violada (`Key (user_id)=(...) already exists.`) e nunca o indice, entao
+ * a unica coisa que separa este 23505 de qualquer outro conflito de unicidade
+ * da tabela e o nome dentro da `message`. Se a migration renomear o indice,
+ * este literal muda junto, e `webhookCorridaAssinatura.test.ts` quebra.
+ */
+const INDICE_ATIVO_POR_USUARIO = "subscriptions_one_active_per_user";
+
+/**
+ * Status que o indice parcial cobre. Espelha o `WHERE` da migration, e precisa
+ * continuar espelhando: lista maior traria linha que o indice ignora, lista
+ * menor deixaria de achar o ocupante e transformaria corrida benigna em "nao
+ * achei ocupante", que lanca. `past_due` esta fora dos dois, de proposito.
+ */
+const STATUS_DO_INDICE_ATIVO = ["active", "trialing"];
+
+/** Conflito de unicidade NO indice parcial de ativo por usuario, e nao em outro. */
+function ehConflitoDeAtivoPorUsuario(erro: unknown): boolean {
+  const e = erro as { code?: unknown; message?: unknown } | null | undefined;
+  if (!e || e.code !== "23505") return false;
+  return (
+    typeof e.message === "string" &&
+    e.message.includes(INDICE_ATIVO_POR_USUARIO)
+  );
+}
+
 // Upsert de uma assinatura Stripe na tabela subscriptions, com guard de
 // out-of-order por last_event_at (mesma protecao do Asaas).
-async function applySubscription(
+//
+// EXPORTADA para teste, no mesmo criterio de `onBoletoAsyncPaymentSucceeded`
+// abaixo: o que importa provar e o ramo de classificacao do 23505, e ele so se
+// prova rodando a funcao com o erro no formato real do postgrest.
+export async function applySubscription(
   sub: Stripe.Subscription,
   event: Stripe.Event,
   eventCreatedAt: Date,
@@ -632,6 +666,111 @@ async function applySubscription(
 
   if (result.error) {
     console.error("[webhook/stripe] subscriptions write failed:", result.error);
+
+    if (ehConflitoDeAtivoPorUsuario(result.error)) {
+      // CORRIDA PERDIDA NUM INDICE QUE O `ON CONFLICT` NAO ARBITRA.
+      //
+      // O `upsert` acima arbitra `provider_subscription_id` com
+      // `ignoreDuplicates`, e `ON CONFLICT` so absorve conflito no indice
+      // ARBITRADO: conflito em qualquer OUTRO indice unico da mesma tabela
+      // levanta erro. A migration 20260829120000 acrescentou um SEGUNDO indice
+      // unico (`subscriptions_one_active_per_user`, parcial por status) a um
+      // caminho de escrita desenhado quando havia um indice so, e foi isso que
+      // abriu o buraco. A protecao contra concorrencia que existia aqui nunca
+      // foi generica: ela cobre exatamente um indice, o que ela nomeia.
+      //
+      // O CASO MEDIDO, 30/08 13:50:27. Evento `checkout.session.completed`
+      // (evt_1UA97tQ6lxIhx7VyI5ypzLNe), assinatura
+      // `sub_1UA97sQ6lxIhx7VyF77F9STc`, usuario 81129623-79a8-415c-be5c-30ae9f86d3af:
+      // a leitura de `existing` voltou vazia as 13:50:26.997 e o `upsert` bateu
+      // 409 as 13:50:27.183, porque outro handler da MESMA assinatura commitou a
+      // linha 374ms antes. Consulta ao banco confirmou UMA linha ativa para o
+      // usuario, com o `provider_subscription_id` do proprio evento: estado
+      // final correto, ninguem perdeu o Pro, e o 500 so gerou retry e alarme.
+      //
+      // POR QUE PRECISA DE CONSULTA. O erro nao dispensa a leitura: o `details`
+      // diz `Key (user_id)=(...) already exists.` e NAO nomeia qual assinatura
+      // ocupa o slot ativo. Sem ler o ocupante, "corrida benigna" e "usuario com
+      // duas assinaturas ativas" sao indistinguiveis, e sao opostos em gravidade.
+      const { data: ocupante, error: erroDeClassificacao } = await supabaseAdmin
+        .from("subscriptions")
+        .select("id, provider_subscription_id, status")
+        .eq("user_id", userId)
+        .in("status", STATUS_DO_INDICE_ATIVO)
+        .maybeSingle();
+
+      if (erroDeClassificacao) {
+        // A consulta de classificacao falhou: nao da para classificar nada,
+        // entao vale o criterio do ramo de baixo. Cai para o `throw` original,
+        // com o erro ORIGINAL da escrita e nao o da classificacao: o 23505 e o
+        // fato do incidente, e trocar um pelo outro apagaria a unica pista.
+        console.error(
+          `[webhook/stripe] classificacao da corrida falhou (user ${userId}, ${sub.id}); ` +
+            `lancando o erro ORIGINAL da escrita:`,
+          erroDeClassificacao,
+        );
+      } else if (!ocupante) {
+        // NAO ACHOU OCUPANTE: lanca. Este ramo NAO pode virar sucesso. A
+        // consulta de classificacao corre a MESMA corrida do upsert e pode rodar
+        // antes do commit do vencedor, voltando vazia. O que temos aqui e "nao
+        // sei", e colapsar "nao sei" em "esta tudo bem" e exatamente o defeito
+        // que este projeto persegue: instrumento que falha PASSANDO. Lancar
+        // custa um retry da Stripe, que reprocessa e ai encontra a linha; calar
+        // custaria uma assinatura que ninguem sabe se ficou gravada.
+        console.error(
+          `[webhook/stripe] 23505 em ${INDICE_ATIVO_POR_USUARIO} (user ${userId}, ${sub.id}) ` +
+            `sem linha ativa correspondente na leitura seguinte; corrida NAO confirmada.`,
+        );
+      } else if (ocupante.provider_subscription_id === sub.id) {
+        // Corrida benigna: o ocupante do slot E a assinatura deste evento. O
+        // estado final ja esta correto, entao o desfecho e o mesmo do `raceLost`
+        // do outro indice: retorna sem lancar e sem disparar `handleTransition`,
+        // porque a transicao (email e conversao de afiliado) e do handler que de
+        // fato criou a linha, nao deste.
+        //
+        // `info`, nao `warning`: isto nao pede acao. O evento existe para MEDIR
+        // a frequencia, que hoje e de uma ocorrencia desde 29/08. Fingerprint
+        // fixo para a serie nao se espalhar por usuario.
+        Sentry.captureMessage("stripe_corrida_assinatura_ativa", {
+          level: "info",
+          fingerprint: ["stripe-corrida-assinatura-ativa"],
+          tags: { origem: "stripe-webhook", event_type: event.type },
+          extra: {
+            user_id: userId,
+            subscription_id: sub.id,
+            event_id: event.id,
+          },
+        });
+        return;
+      } else {
+        // Problema real: o usuario tem uma assinatura ativa que NAO e a deste
+        // evento, ou seja, duas assinaturas ativas ao mesmo tempo. O indice
+        // bloqueou certo, e isto precisa de gente.
+        //
+        // Os DOIS ids entram no TEXTO da mensagem, nao em propriedade solta: o
+        // `exceptionFromError` do Sentry monta a exceção de `name`, `message` e
+        // `stack`, e nada mais (o motivo esta escrito por extenso em
+        // server/lib/supabaseError.ts). Sem os dois ids aqui, a investigacao
+        // recomeca do zero, que foi o custo do BUG-77.
+        const duplicada = new Error(
+          `Usuario ${userId} ja tem a assinatura ativa ${ocupante.provider_subscription_id} ` +
+            `(status ${ocupante.status}); o evento ${event.type} ${event.id} tentou ativar ${sub.id}.`,
+          { cause: erroEncadeavel(result.error) },
+        );
+        duplicada.name = "AssinaturaAtivaDuplicada";
+        throw createError(500, "db_error", "Erro ao gravar assinatura.", {
+          cause: duplicada,
+          context: {
+            userId,
+            subscriptionDoEvento: sub.id,
+            subscriptionAtiva: ocupante.provider_subscription_id,
+            statusDoOcupante: ocupante.status,
+            eventType: event.type,
+          },
+        });
+      }
+    }
+
     // `cause` em TODO `db_error` deste arquivo que tenha o erro do Supabase em
     // maos, e o motivo vale para os outros: sem ele o Sentry recebe a mensagem
     // generica e um stack que aponta para a nossa propria linha, e a causa real
