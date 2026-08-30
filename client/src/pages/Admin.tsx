@@ -195,25 +195,25 @@ type MetricCard = {
  * isso, tambem, que o fallback e o contrato.
  */
 const ROTULO_DA_FERRAMENTA: Record<string, string> = {
-  /* TODO(Ana) */ "resume-analyzer": "Analisador de Currículo",
-  /* TODO(Ana) */ "resume-builder": "Criador de Currículo",
-  /* TODO(Ana) */ "resume-render": "Renderização de Currículo (PDF)",
-  /* TODO(Ana) */ "linkedin-analyzer": "Analisador de LinkedIn",
-  /* TODO(Ana) */ "github-perfil": "Analisador de GitHub (perfil)",
-  /* TODO(Ana) */ "github-repo": "Analisador de GitHub (repositório)",
-  /* TODO(Ana) */ "roadmap-generator": "Gerador de Roadmap",
-  /* TODO(Ana) */ "roadmap-intake-chat": "Chat inicial do Roadmap",
-  /* TODO(Ana) */ "career-plan": "Plano de Carreira",
-  /* TODO(Ana) */ "agent-chat": "Chat do Agente",
-  /* TODO(Ana) */ "interview-session": "Sessão de Entrevista",
-  /* TODO(Ana) */ "interview-turn": "Turno de Entrevista",
-  /* TODO(Ana) */ "career-plan-chat": "Chat do Plano de Carreira",
-  /* TODO(Ana) */ "interview-tts": "Voz da Entrevista",
-  /* TODO(Ana) */ "project-validation": "Validação de Projeto",
+  "resume-analyzer": "Analisador de Currículo",
+  "resume-builder": "Criador de Currículo",
+  "resume-render": "Renderização de Currículo (PDF)",
+  "linkedin-analyzer": "Analisador de LinkedIn",
+  "github-perfil": "Analisador de GitHub (perfil)",
+  "github-repo": "Analisador de GitHub (repositório)",
+  "roadmap-generator": "Gerador de Roadmap",
+  "roadmap-intake-chat": "Chat inicial do Roadmap",
+  "career-plan": "Plano de Carreira",
+  "agent-chat": "Chat do Agente",
+  "interview-session": "Sessão de Entrevista",
+  "interview-turn": "Turno de Entrevista",
+  "career-plan-chat": "Chat do Plano de Carreira",
+  "interview-tts": "Voz da Entrevista",
+  "project-validation": "Validação de Projeto",
   // HISTORICOS: nao aparecem mais na fonte, mas ha linhas de 14/08 em
   // `ai_usage_logs` que ainda caem na janela de 30 dias da aba.
-  /* TODO(Ana) */ "study-plan-build": "Plano de Estudos (construção)",
-  /* TODO(Ana) */ interview: "Entrevista (formato antigo)",
+  "study-plan-build": "Plano de Estudos (construção)",
+  interview: "Entrevista (formato antigo)",
 };
 
 // Slug sem traducao aparece CRU, visivel e feio de proposito: feio a mostra

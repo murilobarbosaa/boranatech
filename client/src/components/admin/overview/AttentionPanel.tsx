@@ -89,9 +89,9 @@ const ROTULO_DE_FONTE: Record<string, string> = {
   cobrancas_falhadas: "cobranças falhadas",
   pagamentos_orfaos: "pagamentos órfãos",
   custo_ia: "custo de IA",
-  /* TODO(Ana) */ payouts: "repasses bancários",
-  /* TODO(Ana) */ despesas: "despesas",
-  /* TODO(Ana) */ influencers: "influencers",
+  payouts: "repasses bancários",
+  despesas: "despesas",
+  influencers: "influencers",
 };
 
 /** Resolver com fallback neutro: tipo novo do servidor não pode derrubar a aba. */
@@ -105,10 +105,9 @@ const TITULO_DE_GRUPO: Record<string, string> = {
   cobrancas_falhadas: "Cobranças falhadas",
   pagamento_orfao: "Pagamentos sem assinatura",
   custo_ia_spike: "Custo de IA acima do normal",
-  /* TODO(Ana) */ payout_falho: "Repasses que falharam",
-  /* TODO(Ana) */ mes_sem_despesa: "Mês sem despesa registrada",
-  /* TODO(Ana) */ influencer_com_assinatura:
-    "Influencers que viraram assinantes",
+  payout_falho: "Repasses que falharam",
+  mes_sem_despesa: "Mês sem despesa registrada",
+  influencer_com_assinatura: "Influencers que viraram assinantes",
 };
 
 function tituloDeGrupo(tipo: string, exemplo: ItemAtencao): string {
@@ -173,7 +172,6 @@ function AcoesDoItem({ item }: { item: ItemAtencao }) {
           data-testid="atencao-destino-interno"
           className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-900 hover:bg-yellow-50"
         >
-          {/* TODO(Ana) */}
           Resolver no admin <ArrowRight className="h-3 w-3" />
         </a>
       ) : null}
@@ -201,7 +199,6 @@ function MotivoDaSaida({ item }: { item: ItemAtencao }) {
       data-testid="atencao-item-motivo"
       className="mt-1 text-xs font-black uppercase tracking-wide text-slate-600"
     >
-      {/* TODO(Ana) */}
       Motivo declarado: {cancellationReasonLabelOf(item.motivoCodigo)}
     </p>
   );
