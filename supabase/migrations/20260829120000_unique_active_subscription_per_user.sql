@@ -1,9 +1,9 @@
 -- Uma assinatura ATIVA por usuario, garantida pelo banco.
 --
--- RASCUNHO, NAO APLICAR AINDA. Ver "BLOQUEIO CONHECIDO" abaixo: existe um
--- caminho de codigo em producao que esta migration QUEBRA, e ele precisa mudar
--- antes. O arquivo entra no repositorio agora porque a analise que o produziu
--- vale mais escrita do que lembrada.
+-- NAO APLICAR ANTES DO DEPLOY DO CODIGO. Ver "BLOQUEIO RESOLVIDO" abaixo: o
+-- caminho de codigo que esta migration quebrava ja foi corrigido (passou a usar
+-- a RPC de 20260829110000), mas a correcao precisa estar SERVINDO em producao
+-- antes do CREATE INDEX.
 --
 -- PROBLEMA. Nao existe hoje NENHUMA trava de banco contra duas linhas ativas do
 -- mesmo usuario. A unica unicidade em public.subscriptions e sobre
@@ -11,9 +11,11 @@
 -- duplicar a MESMA assinatura do provedor, nao duas assinaturas diferentes da
 -- mesma pessoa. A protecao e toda de aplicacao, em tres lugares:
 --
---   1. guard 409 no checkout            server/providers/stripe.ts:1067
---   2. aposentadoria 'superseded'       server/providers/stripe.ts (renovacao de boleto)
---   3. guard 409 de boleto pendente     server/providers/stripe.ts:1098
+--   1. guard 409 no checkout            server/providers/stripe.ts
+--   2. supersede na renovacao de boleto activate_subscription_exclusive
+--                                       (era um UPDATE best-effort no
+--                                        TypeScript ate 29/08/2026)
+--   3. guard 409 de boleto pendente     server/providers/stripe.ts
 --
 -- O item 1 e uma checagem ler-depois-escrever: ele consulta antes de criar a
 -- sessao de checkout, e entre a consulta e a linha que o webhook grava cabe um
@@ -38,8 +40,10 @@
 --     server/providers/stripe.ts:121
 --   guard de checkout duplicado
 --     server/providers/stripe.ts:1067
---   ancora de periodo e aposentadoria na renovacao de boleto
---     server/providers/stripe.ts:784 e :842
+--   ancora de periodo na renovacao de boleto
+--     server/providers/stripe.ts, em onBoletoAsyncPaymentSucceeded
+--   supersede na renovacao de boleto
+--     supabase/migrations/20260829110000_activate_subscription_exclusive.sql
 --
 -- 'past_due' fica DE FORA de proposito. Ele aparece em varios `in('active',
 -- 'trialing','past_due')` (server/providers/stripe.ts:1310,
@@ -48,31 +52,40 @@
 -- Incluir past_due no indice travaria uma cobranca em recuperacao junto de uma
 -- assinatura nova legitima, que e um estado real e nao um defeito.
 --
--- BLOQUEIO CONHECIDO, E ELE E O MOTIVO DE ISTO NAO SER APLICAVEL HOJE.
+-- BLOQUEIO RESOLVIDO. FALTA O DEPLOY DO CODIGO.
 --
--- A ativacao de boleto pago faz DUAS escritas separadas, sem transacao:
--- primeiro o flip da linha nova para 'active' (o UPDATE condicional em
--- status='pending'), e SO DEPOIS o UPDATE que marca as linhas antigas do
--- usuario como 'superseded'. Entre as duas, uma renovacao tem DUAS linhas
--- 'active' do mesmo usuario, por construcao.
+-- O bloqueio era este: a ativacao de boleto pago fazia DUAS escritas separadas,
+-- sem transacao (flip da linha nova para 'active' e, SO DEPOIS, o UPDATE que
+-- marcava as antigas como 'superseded'). Entre as duas, uma renovacao tinha
+-- DUAS linhas 'active' do mesmo usuario, por construcao. Com este indice no
+-- lugar, o primeiro UPDATE levantaria 23505, o handler lancaria, a compensacao
+-- apagaria o billing_event, a Stripe reentregaria, encontraria o mesmo estado e
+-- falharia de novo: laco permanente, com uma renovacao JA PAGA sem conceder
+-- acesso.
 --
--- Com este indice no lugar, o primeiro UPDATE levanta 23505, o handler lanca, a
--- compensacao apaga o billing_event e a Stripe reentrega. A reentrega encontra
--- exatamente o mesmo estado e falha de novo: laco permanente, e uma renovacao de
--- boleto JA PAGA nunca concede acesso. Isso e estritamente pior do que a
--- ausencia de trava que a migration existe para corrigir.
+-- As duas escritas viraram UMA chamada de `activate_subscription_exclusive`
+-- (migration 20260829110000, ja aplicada no banco), que faz supersede e
+-- ativacao na mesma transacao, na ordem supersede-primeiro, e e idempotente na
+-- reentrega. A ordem que este indice exige passou a ser a ordem que o codigo
+-- executa.
 --
--- A ordem precisa ser invertida (aposentar as antigas ANTES de ativar a nova),
--- ou as duas escritas precisam virar uma so. Enquanto isso nao for feito e
--- coberto por teste, esta migration nao pode ser aplicada.
+-- CONDICAO QUE FALTA: o codigo que chama a RPC precisa estar EM PRODUCAO antes
+-- deste indice. Aplicar o indice com o backend antigo ainda servindo reabre
+-- exatamente o laco descrito acima, porque e o backend antigo que faz as duas
+-- escritas. A sequencia e: deploy do codigo verificado no Railway, e so entao
+-- este CREATE INDEX.
 --
--- PRE-CONDICAO NAO VERIFICADA. Ao contrario da 20260730180000, esta migration
--- sobe SEM a contagem do banco conferida: a verificacao exige rede e service
--- role, e ficou para a etapa de aplicacao. A query esta na secao
--- "Pre-checagem da migration" do relatorio lote0-pagamentos-2026-08-29.md e
--- precisa devolver ZERO linhas antes do CREATE INDEX. Se devolver qualquer
--- linha, o indice falha na criacao e as duplicatas precisam ser resolvidas
--- primeiro (decisao de negocio, nao de migration).
+-- PRE-CONDICAO VERIFICADA EM 29/08/2026, por consulta direta ao banco de
+-- producao: ZERO usuarios com mais de uma linha em status ativo. Nenhuma
+-- duplicata existente faz o CREATE INDEX falhar.
+--
+-- RE-VERIFICAR SE A APLICACAO ATRASAR. A medida vale para o instante em que foi
+-- feita, e a condicao que ela afirma pode ser desfeita por qualquer ativacao
+-- entre a medicao e o CREATE INDEX. A query esta na secao "Pre-checagem da
+-- migration" do relatorio lote0-pagamentos-2026-08-29.md e precisa devolver
+-- ZERO linhas. Se devolver qualquer linha, o indice falha na criacao e as
+-- duplicatas precisam ser resolvidas primeiro (decisao de negocio, nao de
+-- migration).
 --
 -- Sem CONCURRENTLY, seguindo a 20260730180000: public.subscriptions e pequena e
 -- o lock breve de um CREATE INDEX nao justifica abrir mao de poder rodar dentro
