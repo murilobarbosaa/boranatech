@@ -369,6 +369,95 @@ describe("GET /users: area e total pago", () => {
     ).toHaveLength(0);
   });
 
+  it("filter=ativo delega ao SQL, sem varrer o Auth", async () => {
+    // A DIVIDA QUE ISTO PAGA. O filtro sempre significou "login nos ultimos 30
+    // dias", e o significado NAO muda aqui; o que muda e quem responde. Antes a
+    // rota varria `auth.admin.listUsers` em paginas de 1000 para montar uma
+    // lista de ids e mandava a lista inteira num `.in()`; agora manda um
+    // booleano e o `where` acontece no banco.
+    //
+    // As duas asercoes juntas: o argumento vai, e a varredura NAO acontece. So
+    // a primeira aceitaria uma rota que mandasse o booleano E continuasse
+    // varrendo por habito.
+    const recente = new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString();
+    const antigo = new Date(Date.now() - 200 * 24 * 3600 * 1000).toISOString();
+    montar({
+      profiles: {
+        rows: [
+          {
+            id: "p1",
+            user_id: "u1",
+            name: "Recente",
+            email: "r@x",
+            created_at: null,
+            area_interesse: null,
+            last_sign_in_at: recente,
+          },
+          {
+            id: "p2",
+            user_id: "u2",
+            name: "Antigo",
+            email: "a@x",
+            created_at: null,
+            area_interesse: null,
+            last_sign_in_at: antigo,
+          },
+          {
+            id: "p3",
+            user_id: "u3",
+            name: "Nunca logou",
+            email: "n@x",
+            created_at: null,
+            area_interesse: null,
+            last_sign_in_at: null,
+          },
+        ],
+        count: 3,
+      },
+      subscriptions: { rows: [] },
+      influencers: { rows: [] },
+    });
+
+    const r = await chamarAdmin("GET", "/users?filter=ativo");
+    expect(r.status).toBe(200);
+    expect(r.body.data.items.map((i: { name: string }) => i.name)).toEqual([
+      "Recente",
+    ]);
+    // Quem NUNCA logou fica fora por construcao (comparacao com nulo e nula),
+    // e nao por um `if` que alguem possa esquecer.
+    expect(r.body.data.total).toBe(1);
+    expect(estado.double.rpcCalls.at(-1)?.args.p_only_active).toBe(true);
+  });
+
+  it("SEM filtro, p_only_active e false e todo mundo aparece", async () => {
+    // O PAR. Sem ele, "o filtro funciona" seria compativel com "o filtro esta
+    // sempre ligado", e a lista completa mostraria so os ativos sem ninguem
+    // notar: uma lista menor parece uma base menor.
+    const antigo = new Date(Date.now() - 200 * 24 * 3600 * 1000).toISOString();
+    montar({
+      profiles: {
+        rows: [
+          {
+            id: "p1",
+            user_id: "u1",
+            name: "Antigo",
+            email: "a@x",
+            created_at: null,
+            area_interesse: null,
+            last_sign_in_at: antigo,
+          },
+        ],
+        count: 1,
+      },
+      subscriptions: { rows: [] },
+      influencers: { rows: [] },
+    });
+
+    const r = await chamarAdmin("GET", "/users");
+    expect(r.body.data.items).toHaveLength(1);
+    expect(estado.double.rpcCalls.at(-1)?.args.p_only_active).toBe(false);
+  });
+
   it("FUNCAO INEXISTENTE vira erro nomeado, nunca lista vazia", async () => {
     // Este nao e um caso hipotetico: ate a migration ser aplicada, a funcao NAO
     // existe e o PostgREST responde erro aqui. Todo ambiente sem a migration
