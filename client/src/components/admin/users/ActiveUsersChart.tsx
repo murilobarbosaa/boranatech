@@ -146,6 +146,10 @@ export function ActiveUsersChart() {
             windows={JANELAS}
             testId="ativos-periodo"
             seriesStart={inicioDaSerie}
+            // O `inicio` do payload ja E o dia civil, calculado em Brasilia
+            // dentro da HogQL. Sem esta declaracao ele passaria pelo
+            // renderizador de INSTANTES e a tela diria um dia a menos.
+            seriesStartKind="diaCivil"
           />
         </div>
       }

@@ -67,6 +67,58 @@ describe("OverviewPeriod", () => {
     );
   });
 
+  it("DIA CIVIL: '2026-05-06' rende 06/05/2026, nunca 05/05/2026", () => {
+    // O defeito que isto trava: a serie de ativos calcula o inicio como dia
+    // civil de Brasilia dentro da HogQL, e a tela dizia um dia A MENOS porque o
+    // valor passava pelo renderizador de INSTANTES. `new Date("2026-05-06")` e
+    // meia-noite UTC, que em Brasilia e 21h de 05/05.
+    //
+    // POR QUE ELE DISCRIMINA. `formatarDiaCivil` recorta `AAAA-MM-DD` sem passar
+    // por `Date`, entao a SAIDA CERTA nao depende do relogio de ninguem. O que
+    // depende de fuso e a saida ERRADA: em UTC, `new Date("2026-05-06")` tambem
+    // da 06/05, e os dois renderizadores ficam indistinguiveis. Nenhum valor de
+    // entrada separa os dois la, entao nao adianta escolher outra data.
+    //
+    // Quem faz este teste morder e o `env: { TZ: "America/Sao_Paulo" }` do
+    // vitest.config.ts, fixado justamente para que defeito de dia deslocado nao
+    // some no CI (que roda em UTC). Se alguem remover aquele pino, este teste
+    // passa a aprovar o bug em silencio, e e por isso que a dependencia esta
+    // escrita aqui em vez de subentendida.
+    render(
+      <OverviewPeriod
+        window="all"
+        onChange={() => {}}
+        seriesStart="2026-05-06"
+        seriesStartKind="diaCivil"
+      />,
+    );
+    const texto = screen.getByTestId("overview-periodo-inicio").textContent;
+    expect(texto).toContain("06/05/2026");
+    expect(texto).not.toContain("05/05/2026");
+  });
+
+  it("INSTANTE: o default continua sendo o dia LOCAL do timestamptz", () => {
+    // CONTROLE do controle, e a razao de o tipo ser declarado em vez de
+    // adivinhado. A Visao passa `profiles.created_at`, um instante de verdade, e
+    // para instante o dia local e o certo. Se alguem "simplificar" trocando os
+    // dois formatadores por um so, um dos dois chamadores passa a mentir, e este
+    // par de testes diz qual.
+    //
+    // 01:30Z de 05/05 e 22:30 de 04/05 em Brasilia: e o instante que separa os
+    // dois renderizadores. O fixture antigo (19:04:20Z) cai no mesmo dia nos
+    // dois fusos e por isso NAO distinguia nada.
+    render(
+      <OverviewPeriod
+        window="all"
+        onChange={() => {}}
+        seriesStart="2026-05-05T01:30:00Z"
+      />,
+    );
+    const texto = screen.getByTestId("overview-periodo-inicio").textContent;
+    expect(texto).toContain("04/05/2026");
+    expect(texto).not.toContain("05/05/2026");
+  });
+
   it("sem data de início, 'Tudo' não inventa uma", () => {
     render(
       <OverviewPeriod window="all" onChange={() => {}} seriesStart={null} />,
