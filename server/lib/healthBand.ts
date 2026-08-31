@@ -224,10 +224,19 @@ export function calcularProblemas(
       label: "Cobrança sem dono",
       // VALOR EM REAIS, não só contagem: "1 cobrança sem dono" não move
       // ninguém, "R$ 90,30 sem dono" move.
+      // APONTA PARA ONDE AGIR, e essa metade faltava. Até 2026-08-31 este item
+      // dizia o valor e parava aí: quem lia sabia que havia dinheiro sem dono e
+      // não tinha para onde ir. Foi assim que a cobrança do Walisson ficou
+      // visível aqui desde 29/08 e mesmo assim ninguém agiu. As linhas agora vão
+      // para `billing_orphan_payments` pelo `detect-orphan-payments`, e a tela
+      // de Pagamentos órfãos já tem e-mail, valor e botão de resolver. O texto
+      // manda para lá em vez de duplicar a lista aqui, que só criaria uma
+      // segunda fonte da mesma fila.
       detalhe:
         `${formatarBrl(sinais.chargesSemDono.grossCents)} em ${quantas} ` +
         `${quantas === 1 ? "cobrança" : "cobranças"} sem usuário atribuído há mais de ` +
-        `${CHARGE_SEM_DONO_CORTE_DIAS} dias. O dinheiro entrou; o extrato da pessoa não mostra.`,
+        `${CHARGE_SEM_DONO_CORTE_DIAS} dias. O dinheiro entrou; o extrato da pessoa não mostra. ` +
+        `Resolva em Pagamentos órfãos.`,
       severidade: "atencao",
     });
   }

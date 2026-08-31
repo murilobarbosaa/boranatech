@@ -15,6 +15,7 @@ import {
 } from "../lib/sentryTaskIntake";
 import { coletarTagueado, paginateRange } from "../lib/paginate";
 import { recordCronRun } from "../lib/cron-logs";
+import { detectarChargesSemDono, LOOKUPS_REAIS } from "../lib/chargeSemDono";
 import { reconcileEmailCampaignBatches } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
 import {
@@ -1369,9 +1370,21 @@ router.post(
         full ? { full: true } : { windowDays: clampWindowDays(req.query.days) },
       );
 
+      // SEGUNDO ACHADO, de fonte diferente: `finance_transactions` em vez da
+      // Stripe. Roda no mesmo job de proposito (a pergunta e a mesma, "quem
+      // pagou e nao foi atendido") mas em funcao propria, porque a chave, a
+      // fonte e o shape sao outros e forcar os dois no mesmo tipo exigiria uma
+      // sessao falsa. Custa ZERO requisicoes a Stripe no caminho comum.
+      const semDono = await detectarChargesSemDono(LOOKUPS_REAIS);
+
       // Criterio inteiro (e o porque dele) em `statusDaRunDeOrfaos`, extraido
       // para `server/lib/orphanPayments.ts` por ser testavel isolado.
-      const status = statusDaRunDeOrfaos(scan);
+      const status = statusDaRunDeOrfaos(scan, {
+        acionaveis: semDono.acionaveis,
+        naoVerificadas: semDono.naoVerificadas,
+        leituraOk: semDono.leituraOk,
+        persisted: semDono.persisted,
+      });
 
       await recordCronRun({
         jobName: "detect-orphan-payments",
@@ -1400,10 +1413,14 @@ router.post(
             leituraOk: scan.unresolvedLeituraOk,
             itens: scan.unresolvedItens,
           },
+          // Bloco proprio no payload, e nao misturado com `findings`: sao duas
+          // fontes com chaves diferentes, e quem le a run precisa saber de qual
+          // delas veio cada achado.
+          chargesSemDono: semDono,
         },
       });
 
-      res.json({ data: scan });
+      res.json({ data: { ...scan, chargesSemDono: semDono } });
     } catch (err) {
       await recordCronRun({
         jobName: "detect-orphan-payments",

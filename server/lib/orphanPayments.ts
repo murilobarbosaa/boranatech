@@ -200,13 +200,33 @@ export interface OrphanPaymentScan {
  */
 export function statusDaRunDeOrfaos(
   scan: OrphanPaymentScan,
+  /**
+   * Achados de `detectarChargesSemDono`, quando a run tambem varreu
+   * `finance_transactions`. Opcional para nao quebrar chamador nenhum, e conta
+   * pelo MESMO criterio do estoque aberto: cobranca sem dono acima do corte e
+   * alguem que pagou e nao foi atendido, entao mantem a run amarela ate alguem
+   * carimbar `resolved_at`. Deixar de fora seria repetir exatamente o defeito
+   * que o estoque aberto veio corrigir, com outra fonte.
+   */
+  semDono?: {
+    acionaveis: number;
+    naoVerificadas: number;
+    leituraOk: boolean;
+    persisted: boolean;
+  },
 ): "success" | "partial" {
   const precisaAtencao =
     scan.orphansAcionaveis > 0 ||
     scan.unresolvedAcionaveis > 0 ||
     scan.unresolvedNaoVerificadas > 0 ||
     !scan.unresolvedLeituraOk ||
-    (!scan.persisted && !scan.dryRun);
+    (!scan.persisted && !scan.dryRun) ||
+    (semDono
+      ? semDono.acionaveis > 0 ||
+        semDono.naoVerificadas > 0 ||
+        !semDono.leituraOk ||
+        (!semDono.persisted && !scan.dryRun)
+      : false);
   return precisaAtencao ? "partial" : "success";
 }
 
