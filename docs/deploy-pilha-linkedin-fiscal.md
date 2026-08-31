@@ -2,8 +2,8 @@
 
 **Fonte operacional vigente desta janela de deploy.** Substitui a secao 5 de
 `docs/linkedin-fase4-fechamento.md`, que descrevia uma pilha de 56 commits sem
-merge nenhum e cinco migrations pendentes. A pilha mudou: hoje sao tres merges,
-dez migrations e a frente fiscal embarcada.
+merge nenhum e cinco migrations pendentes. A pilha mudou: hoje sao quatro
+merges, dez migrations e a frente fiscal embarcada.
 
 Todo numero abaixo foi medido no worktree, e nao herdado de memoria. Onde o fato
 vem de um lote anterior, o lote esta nomeado.
@@ -12,21 +12,28 @@ vem de um lote anterior, o lote esta nomeado.
 
 | Item                              | Valor                                                                    |
 | --------------------------------- | ------------------------------------------------------------------------ |
-| HEAD                              | `6cf78a65088f558c3195ab34758c0854d5f38ba0`                               |
+| HEAD                              | `3e37c4dcb28f6afe36b38fd25baf21cc80f934f5`                               |
 | Branch                            | `feat/linkedin-fase-4`                                                   |
-| Commits a publicar (`main..HEAD`) | **70**                                                                   |
-| Merges na pilha                   | **3**                                                                    |
-| `main` (producao)                 | `71d28f77`, e **e ancestral do HEAD** (`merge-base --is-ancestor` passa) |
-| Suite                             | **3894 verdes, 10 pulados, zero vermelho** (309 arquivos de 312)         |
+| Commits a publicar (`main..HEAD`) | **72** (68 comuns mais 4 merges)                                         |
+| Merges na pilha                   | **4**                                                                    |
+| `main` (producao)                 | `1ced0103`, e **e ancestral do HEAD** (`merge-base --is-ancestor` passa) |
+| Suite                             | **4208 verdes, 10 pulados, zero vermelho** (331 arquivos de 334)         |
 | `pnpm check` e `check:limiares`   | exit 0, com **0 orfaos** na auditoria de limiares                        |
 
-Os tres merges, do topo para baixo:
+Os quatro merges, do topo para baixo:
 
 ```
+3e37c4dc merge(main): integrate latest main into linkedin stack            (main 1ced0103)
 6cf78a65 merge(fiscal): integrate fiscal marco 1 into linkedin stack
 1933d02b merge(main): integrate latest main into linkedin fase 4 stack     (main 71d28f77)
 c3fa06b5 merge(main): integrate main into linkedin fase 4 stack            (main f490c622)
 ```
+
+O quarto merge (Lote M4, 2026-08-31) existe porque a `main` andou 135 commits
+depois do terceiro, com a frente de dark mode inteira entre eles, e o
+fast-forward tinha deixado de ser viavel. Depois dele
+`git merge-base --is-ancestor main HEAD` volta a imprimir **FF_VIAVEL**, com
+**zero** commits da `main` fora do HEAD.
 
 ### 1.1 Estado de push: a premissa antiga de "nada pushado" esta ERRADA
 
@@ -34,21 +41,28 @@ Medido com `git ls-remote --heads origin`:
 
 | Ref                          | Em `origin` | Situacao                                                                                  |
 | ---------------------------- | ----------- | ----------------------------------------------------------------------------------------- |
-| `main`                       | `71d28f77`  | producao                                                                                  |
-| `feat/linkedin-fase-4`       | `b47c78a4`  | **parcialmente pushada**; `b47c78a4` e ancestral do HEAD, e faltam **144** commits locais |
+| `main`                       | `1ced0103`  | producao                                                                                  |
+| `feat/linkedin-fase-4`       | `b47c78a4`  | **parcialmente pushada**; `b47c78a4` e ancestral do HEAD, e faltam **281** commits locais |
 | `fix/openai-cota-credencial` | `a3e37d2a`  | **inteira em origin**                                                                     |
 | `feat/fiscal-fechamento`     | ausente     | **nunca pushada**                                                                         |
 
 Consequencia pratica: o `git push` desta janela nao e o primeiro da branch. Ele
-avanca `feat/linkedin-fase-4` de `b47c78a4` para `6cf78a65`, e como
+avanca `feat/linkedin-fase-4` de `b47c78a4` para `3e37c4dc`, e como
 `b47c78a4` e ancestral, e fast-forward tambem no remoto.
 
 ## 2. Checklist de migrations
 
 **Dez pendentes**, derivadas por medicao e nao por lista escrita a mao: sao as
-que existem em `supabase/migrations/` no HEAD (153 arquivos) e **nao** existem na
-`main` (143 arquivos). O conjunto inverso e vazio, ou seja, a pilha ja contem
+que existem em `supabase/migrations/` no HEAD (160 arquivos) e **nao** existem na
+`main` (150 arquivos). O conjunto inverso e vazio, ou seja, a pilha ja contem
 todas as migrations que a producao tem.
+
+A lista continua sendo a mesma de antes do quarto merge, e isso foi DERIVADO e
+nao presumido: as sete migrations que a `main` trouxe no intervalo ja estao
+aplicadas em producao pelos deploys dela, entao entraram no HEAD pelo merge e
+sairam do conjunto pendente pela propria regra (pendente = esta no HEAD e nao
+esta na `main`). O total subiu de 153 para 160 dos dois lados do calculo, e a
+diferenca seguiu dez.
 
 Em ordem cronologica de timestamp, que e a ordem de aplicacao:
 
@@ -261,6 +275,41 @@ Um acoplamento registrado la que vale repetir aqui: **regenerar os types e subir
 o `EXPECTED_TABLE_COUNT` de `adminUsersHarness.test.ts` de 85 para 86 sao um
 unico commit**. Fazer um sem o outro quebra o harness, que aborta o arquivo
 inteiro e derruba um pedaco grande da suite. Isso e do Marco 2, nao desta janela.
+
+### 4.4 Conformidade de tema: 22 sitios que sobem sem seguir o dark mode
+
+O quarto merge trouxe a frente de dark mode, que converteu hex de marca em
+variaveis de tema no cliente inteiro. A pilha bifurcou antes disso, e o que ela
+adicionou de interface nao passou por aquela conversao.
+
+**O merge resolveu a maior parte sozinho.** Antes dele a medicao dava 164
+ocorrencias em 13 arquivos; depois dele sao **22 em 9**, porque nas regioes que
+os dois lados tocaram a versao convertida da `main` venceu o auto-merge. O que
+sobrou esta concentrado nos componentes fiscais, que a `main` nunca viu:
+
+| Arquivo                                                   | Sitios |
+| --------------------------------------------------------- | ------ |
+| `client/src/components/fiscal/FiscalDataModal.tsx`        | 8      |
+| `client/src/components/admin/FiscalInvoicesDashboard.tsx` | 3      |
+| `client/src/pages/Perfil.tsx`                             | 3      |
+| `client/src/components/fiscal/FiscalDataBanner.tsx`       | 2      |
+| `client/src/components/fiscal/FiscalInvoicesSection.tsx`  | 2      |
+| `client/src/components/admin/LinkedinLastroDashboard.tsx` | 1      |
+| `client/src/components/linkedin/LinkedinHistory.tsx`      | 1      |
+| `client/src/components/linkedin/LinkedinScoreHero.tsx`    | 1      |
+| `client/src/pages/LinkedinAnalisar.tsx`                   | 1      |
+
+Consequencia de deploy, e ela e visual e nao funcional: **em tema escuro, esses
+pontos continuam claros**. Nada quebra, nada fica ilegivel por erro de logica, e
+nenhuma rota deixa de responder; o que acontece e uma ilha de cor clara.
+
+O unico sitio em que o hex e **dado e nao apresentacao** e
+`LinkedinScoreHero.tsx:57`, `CONFETTI_COLORS`, um array de strings entregue a
+biblioteca de confete. Ele nao vira variavel de tema pelo mesmo motivo que
+qualquer valor consumido fora do CSS: quem le nao resolve `var()`.
+
+Fechar isso e o **Lote T**, com escopo fechado e criterio afirmavel, de 22 para
+zero nos oito arquivos de apresentacao. Nao faz parte desta janela de deploy.
 
 ## 5. Backlog registrado nesta janela
 
