@@ -41,6 +41,8 @@ const estado = vi.hoisted(() => ({
   novaLinhaId: "row-1",
   /** Chaves ja gravadas em billing_events (dedupe). */
   eventosVistos: new Set<string>(),
+  /** CPF gravado em profiles. CPF valido de teste (digitos verificadores ok). */
+  cpfDoPerfil: "52998224725" as string | null,
   /** Intencao de nao renovar ja existente, para o caso idempotente. */
   intencaoExistente: null as Record<string, unknown> | null,
   /** E-mails enfileirados, na ordem. */
@@ -122,7 +124,8 @@ vi.mock("../lib/supabaseAdmin", () => {
       if (tabela === "plans") return { data: estado.plano, error: null };
       if (tabela === "affiliates")
         return { data: estado.afiliado, error: null };
-      if (tabela === "profiles") return { data: { gender: null }, error: null };
+      if (tabela === "profiles")
+        return { data: { gender: null, cpf: estado.cpfDoPerfil }, error: null };
       if (tabela === "subscription_cancellations")
         return { data: estado.intencaoExistente, error: null };
       if (tabela === "subscriptions")
@@ -194,6 +197,7 @@ vi.mock("../lib/supabaseAdmin", () => {
 });
 
 import { oneOffAccessDays } from "../../shared/paymentMethods";
+import { maskCpf } from "./asaas";
 import {
   eventKey,
   paidAmountCentsFromAsaas,
@@ -223,6 +227,7 @@ function limpar() {
   estado.afiliado = { id: "aff-1" };
   estado.emails = [];
   estado.intencaoExistente = null;
+  estado.cpfDoPerfil = "52998224725";
   estado.eventosVistos = new Set();
   estado.ativacao = [
     {
@@ -850,5 +855,141 @@ describe("cancel e reactivate do Pix: contrato do boleto", () => {
     expect(r.redirect_to_checkout).toBe(true);
     expect(r.checkout_path).toBe("/planos");
     expect(estado.escritas).toEqual([]);
+  });
+});
+
+/**
+ * CPF NO FLUXO PIX (defeito achado no 2d-prod, com dinheiro real).
+ *
+ * O Asaas RECUSA criar a cobranca sem documento do cliente (`invalid_object`),
+ * e o fluxo do Lote 2a nao coletava nem enviava. O sintoma chegava como 502
+ * generico depois de ja existir uma row `pending` para compensar: a pessoa via
+ * "falha no provedor" quando o que faltava era um dado dela.
+ *
+ * A Stripe nunca exibiu isso porque o checkout HOSPEDADO dela coleta o
+ * documento quando o boleto exige. Aqui a cobranca nasce por API, entao a
+ * coleta e nossa.
+ */
+describe("CPF e pre-requisito, e a checagem vem ANTES de tudo", () => {
+  beforeEach(limpar);
+
+  it("sem CPF: 422 NOMEADO, e o slug e o que a UI usa para abrir a coleta", async () => {
+    estado.cpfDoPerfil = null;
+
+    await expect(
+      asaasProvider.createCheckout(checkoutInput("pro_annual")),
+    ).rejects.toMatchObject({ statusCode: 422, code: "cpf_obrigatorio" });
+  });
+
+  it("sem CPF: ZERO chamada remota e ZERO row local", async () => {
+    // E o ponto da ordem. Se a guarda viesse depois, sobraria row `pending`
+    // para o cron limpar e o guard 409 travaria a proxima tentativa.
+    estado.cpfDoPerfil = null;
+
+    await expect(
+      asaasProvider.createCheckout(checkoutInput("pro_annual")),
+    ).rejects.toThrow();
+
+    expect(estado.asaas).toEqual([]);
+    expect(estado.escritas).toEqual([]);
+  });
+
+  it("CPF invalido conta como ausente: digito verificador errado nao passa", async () => {
+    // MESMO validador do PATCH /api/me. Um CPF com 11 digitos mas invalido
+    // seria aceito por uma checagem de comprimento e recusado pelo Asaas
+    // adiante, que e o defeito com outro disfarce.
+    estado.cpfDoPerfil = "11111111111";
+
+    await expect(
+      asaasProvider.createCheckout(checkoutInput("pro_annual")),
+    ).rejects.toMatchObject({ code: "cpf_obrigatorio" });
+    expect(estado.asaas).toEqual([]);
+  });
+
+  it("CPF com mascara no banco e aceito: comparamos digitos", async () => {
+    estado.cpfDoPerfil = "529.982.247-25";
+
+    await asaasProvider.createCheckout(checkoutInput("pro_annual"));
+
+    expect(estado.asaas.length).toBeGreaterThan(0);
+  });
+});
+
+describe("o documento viaja para o Asaas", () => {
+  beforeEach(limpar);
+
+  it("cliente NOVO nasce com cpfCnpj, so digitos", async () => {
+    estado.asaasResposta = {
+      "/customers?": { data: [] },
+      "/customers": { id: "cus_novo" },
+      "/payments": { id: COBRANCA, invoiceUrl: "https://asaas.test/i/1" },
+    };
+
+    await asaasProvider.createCheckout(checkoutInput("pro_annual"));
+
+    const criacao = estado.asaas.find(
+      (c) => c.caminho === "/customers" && c.method === "POST",
+    );
+    expect((criacao!.body as Record<string, unknown>).cpfCnpj).toBe(
+      "52998224725",
+    );
+  });
+
+  it("cliente EXISTENTE com documento divergente e atualizado ANTES da cobranca", async () => {
+    // O cliente pode ter sido criado antes de o documento ser exigido, ou a
+    // pessoa pode ter corrigido o CPF no perfil depois. Nos dois casos a
+    // cobranca seria recusada e o sintoma pareceria falha de pagamento.
+    estado.asaasResposta = {
+      "/customers?": { data: [{ id: "cus_1", cpfCnpj: "00000000000" }] },
+      "/customers/cus_1": { id: "cus_1" },
+      "/payments": { id: COBRANCA, invoiceUrl: "https://asaas.test/i/1" },
+    };
+
+    await asaasProvider.createCheckout(checkoutInput("pro_annual"));
+
+    const indiceUpdate = estado.asaas.findIndex(
+      (c) => c.caminho === "/customers/cus_1",
+    );
+    const indiceCobranca = estado.asaas.findIndex(
+      (c) => c.caminho === "/payments",
+    );
+    expect(indiceUpdate).toBeGreaterThanOrEqual(0);
+    expect(indiceUpdate).toBeLessThan(indiceCobranca);
+    expect(
+      (estado.asaas[indiceUpdate].body as Record<string, unknown>).cpfCnpj,
+    ).toBe("52998224725");
+  });
+
+  it("cliente EXISTENTE com o MESMO documento nao e atualizado a toa", async () => {
+    estado.asaasResposta = {
+      "/customers?": { data: [{ id: "cus_1", cpfCnpj: "529.982.247-25" }] },
+      "/payments": { id: COBRANCA, invoiceUrl: "https://asaas.test/i/1" },
+    };
+
+    await asaasProvider.createCheckout(checkoutInput("pro_annual"));
+
+    expect(
+      estado.asaas.filter((c) => c.caminho === "/customers/cus_1"),
+    ).toEqual([]);
+  });
+});
+
+describe("o CPF nao vaza", () => {
+  it("maskCpf mostra o bastante para casar, e nada para reconstruir", () => {
+    expect(maskCpf("52998224725")).toBe("529.***.**25");
+    expect(maskCpf("52998224725")).not.toContain("982");
+    expect(maskCpf("123")).toBe("invalido");
+  });
+
+  it("nenhuma captura de Sentry do fluxo carrega o documento", async () => {
+    limpar();
+    estado.asaasErro = new Error("asaas fora do ar");
+
+    await expect(
+      asaasProvider.createCheckout(checkoutInput("pro_annual")),
+    ).rejects.toThrow();
+
+    const serializado = JSON.stringify(estado.capturas);
+    expect(serializado).not.toContain("52998224725");
   });
 });

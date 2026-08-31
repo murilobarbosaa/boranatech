@@ -9,6 +9,7 @@ import {
   recordNonRenewalIntent,
   revertNonRenewalIntent,
 } from "./shared";
+import { isValidCpf } from "../../shared/certificates/types";
 import { oneOffAccessDays } from "../../shared/paymentMethods";
 import { getPlanChargeValue, PLAN_PRICING } from "../../shared/planPricing";
 import type { PlanId } from "../../shared/planPricing";
@@ -52,7 +53,20 @@ const PROVIDER = "asaas" as const;
  */
 const EVENT_ID_PREFIX = "asaas:";
 
-type AsaasCustomer = { id: string };
+type AsaasCustomer = { id: string; cpfCnpj?: string | null };
+
+/**
+ * CPF mascarado, para log e contexto de Sentry.
+ *
+ * Tres primeiros e dois ultimos digitos, que e o bastante para casar com uma
+ * linha do banco numa investigacao e insuficiente para reconstruir o documento.
+ * O CPF NAO entra em mensagem de erro nem em log cru em lugar nenhum deste
+ * arquivo; esta funcao e o unico caminho pelo qual ele aparece.
+ */
+export function maskCpf(digits: string): string {
+  if (digits.length !== 11) return "invalido";
+  return `${digits.slice(0, 3)}.***.**${digits.slice(9)}`;
+}
 type AsaasCustomerSearch = { data?: AsaasCustomer[] };
 type AsaasCharge = {
   id: string;
@@ -77,18 +91,42 @@ function dueDateInDays(dias: number, agora: Date): string {
 async function resolveCustomer(input: {
   userId: string;
   email: string;
+  /** Somente digitos, ja validado pelo chamador. */
+  cpf: string;
 }): Promise<string> {
   const search = await asaasFetch<AsaasCustomerSearch>(
     `/customers?externalReference=${encodeURIComponent(input.userId)}&limit=1`,
   );
-  const existing = search?.data?.[0]?.id;
-  if (existing) return existing;
+  const existing = search?.data?.[0];
+  if (existing?.id) {
+    // O cliente ja existe, mas pode ter sido criado ANTES de o documento passar
+    // a ser exigido, ou a pessoa pode ter corrigido o CPF no perfil depois. Nos
+    // dois casos a cobranca seria recusada com o mesmo `invalid_object`, e o
+    // sintoma apareceria como falha do pagamento em vez de dado desatualizado.
+    // Comparar por digitos: o Asaas devolve o documento formatado as vezes.
+    const atual = String(existing.cpfCnpj ?? "").replace(/\D/g, "");
+    if (atual !== input.cpf) {
+      await asaasFetch<AsaasCustomer>(`/customers/${existing.id}`, {
+        method: "POST",
+        body: { cpfCnpj: input.cpf },
+      });
+      // Registra a MUTACAO de um objeto remoto, que e o tipo de efeito que nao
+      // pode acontecer em silencio. MASCARADO: o suficiente para casar com a
+      // linha do banco numa investigacao, insuficiente para reconstruir o
+      // documento.
+      console.log(
+        `[asaas/checkout] documento do cliente ${existing.id} atualizado para ${maskCpf(input.cpf)}.`,
+      );
+    }
+    return existing.id;
+  }
 
   const createdCustomer = await asaasFetch<AsaasCustomer>("/customers", {
     method: "POST",
     body: {
       name: input.email || input.userId,
       email: input.email || undefined,
+      cpfCnpj: input.cpf,
       externalReference: input.userId,
     },
   });
@@ -140,6 +178,50 @@ async function createCheckout(
       400,
       "pix_not_allowed_on_monthly",
       "Pix não está disponível neste plan.",
+    );
+  }
+
+  // CPF OBRIGATORIO, e a checagem vem ANTES de tudo: antes dos guards de
+  // duplicidade, antes da row local e antes de qualquer chamada remota.
+  //
+  // O Asaas RECUSA a criacao da cobranca sem documento do cliente
+  // (`invalid_object`, "Para criar esta cobranca e necessario preencher o CPF ou
+  // CNPJ do cliente"). Sem esta guarda o sintoma chega como 502 generico, depois
+  // de ja existir uma row `pending` para compensar, e a pessoa ve "falha no
+  // provedor" quando o que falta e um dado dela.
+  //
+  // A Stripe nunca exibiu isso porque o checkout HOSPEDADO dela coleta o
+  // documento quando o boleto exige. Aqui a cobranca e criada por API, entao a
+  // coleta e nossa.
+  //
+  // 422 e nao 400: o corpo da requisicao esta correto, o que falta e um
+  // pre-requisito do usuario. O slug e o que a UI usa para abrir a coleta.
+  const { data: perfil, error: perfilError } = await supabaseAdmin
+    .from("profiles")
+    .select("cpf")
+    .eq("user_id", input.user.id)
+    .maybeSingle();
+  if (perfilError) {
+    console.error(
+      "[asaas/checkout] leitura de perfil falhou; bloqueando:",
+      perfilError,
+    );
+    throw createError(
+      500,
+      "db_error",
+      "Não foi possível verificar seu cadastro. Tente novamente.",
+      { cause: perfilError },
+    );
+  }
+  const cpf = String(perfil?.cpf ?? "").replace(/\D/g, "");
+  if (!isValidCpf(cpf)) {
+    // MESMO validador do PATCH /api/me (shared/certificates/types.ts), nao uma
+    // segunda regra: duas validacoes do mesmo documento divergem, e a que ficar
+    // para tras aceita o que a outra recusa.
+    throw createError(
+      422,
+      "cpf_obrigatorio",
+      "Informe seu CPF para pagar com Pix.",
     );
   }
 
@@ -243,6 +325,7 @@ async function createCheckout(
     const customerId = await resolveCustomer({
       userId: input.user.id,
       email: input.user.email,
+      cpf,
     });
 
     charge = await asaasFetch<AsaasCharge>("/payments", {
