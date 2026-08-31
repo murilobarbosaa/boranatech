@@ -8,7 +8,11 @@ import {
 } from "../lib/adminTaskPosition";
 import { paginateRange } from "../lib/paginate";
 import { detalheIncompleto } from "../lib/sentryTaskDecisions";
-import { alvoDaTransicao, empurrarResolucao } from "../lib/sentryTaskPush";
+import {
+  alvoDaTransicao,
+  empurrarResolucao,
+  limpaSeloDeReabertura,
+} from "../lib/sentryTaskPush";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
 
@@ -1292,6 +1296,17 @@ router.patch("/tasks/:id", async (req, res, next) => {
   if (archived !== undefined) {
     update.archived_at = archived ? new Date().toISOString() : null;
   }
+  // Arquivar tambem e transicao para terminal. `current.archived_at` e o estado
+  // de origem, entao arquivar o que ja estava arquivado nao limpa nada.
+  if (
+    limpaSeloDeReabertura({
+      temSelo: Boolean(current.sentry_reopen_event_at),
+      origemEraTerminal: Boolean(current.archived_at),
+      destinoEhTerminal: archived === true,
+    })
+  ) {
+    update.sentry_reopen_event_at = null;
+  }
 
   const { data, error } = await supabaseAdmin
     .from("admin_tasks")
@@ -1426,6 +1441,19 @@ router.patch("/tasks/:id/move", async (req, res, next) => {
     update.completed_at = new Date().toISOString();
   } else if (!destination.is_done && wasDone) {
     update.completed_at = null;
+  }
+  // Selo "Voltou" sai quando o card volta a ser concluido. Motivo por extenso em
+  // limpaSeloDeReabertura; aqui interessa que a condicao e a MESMA que carimba
+  // `completed_at` logo acima, derivada dos mesmos booleanos, para as duas nao
+  // poderem discordar.
+  if (
+    limpaSeloDeReabertura({
+      temSelo: Boolean(current.sentry_reopen_event_at),
+      origemEraTerminal: wasDone,
+      destinoEhTerminal: destination.is_done,
+    })
+  ) {
+    update.sentry_reopen_event_at = null;
   }
 
   const { data, error } = await supabaseAdmin
