@@ -6277,7 +6277,7 @@ function AdminInput({
         required={required}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+        className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold text-slate-950 [color-scheme:light] outline-none placeholder:text-slate-600 focus:bg-violet-100 focus:ring-4 focus:ring-violet-200"
       />
     </label>
   );
@@ -6298,7 +6298,7 @@ function AdminTextarea({
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-2 min-h-28 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+        className="mt-2 min-h-28 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold text-slate-950 outline-none placeholder:text-slate-600 focus:bg-violet-100 focus:ring-4 focus:ring-violet-200"
       />
     </label>
   );
@@ -8549,7 +8549,7 @@ export default function Admin() {
                               setAffiliateName(event.target.value);
                               setCopiedAffiliateLink(false);
                             }}
-                            className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                            className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold text-slate-950 outline-none placeholder:text-slate-600 focus:bg-violet-100 focus:ring-4 focus:ring-violet-200"
                             placeholder="Ex: Parceiro Tech"
                           />
                         </label>
@@ -8565,7 +8565,7 @@ export default function Admin() {
                                 );
                                 setCopiedAffiliateLink(false);
                               }}
-                              className="w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold uppercase outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                              className="w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold uppercase text-slate-950 outline-none placeholder:text-slate-600 focus:bg-violet-100 focus:ring-4 focus:ring-violet-200"
                               placeholder="PARCEIRA20"
                             />
                             <button
@@ -8668,7 +8668,7 @@ export default function Admin() {
                           setAffiliateSearch(event.target.value)
                         }
                         placeholder="Buscar por nome, código ou e-mail..."
-                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
+                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] outline-none placeholder:text-slate-400 focus:bg-yellow-50 dark:focus:bg-secondary"
                       />
                       <div className="mt-5">
                         {affiliatesStatsLoading || affiliatesLoading ? (
@@ -9037,7 +9037,7 @@ export default function Admin() {
                                 );
                                 setCopiedCouponLink(false);
                               }}
-                              className="w-full min-w-0 rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold uppercase outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                              className="w-full min-w-0 rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold uppercase text-slate-950 outline-none placeholder:text-slate-600 focus:bg-violet-100 focus:ring-4 focus:ring-violet-200"
                               placeholder="PROMO20"
                             />
                             <button
@@ -9057,7 +9057,7 @@ export default function Admin() {
                             onChange={(event) =>
                               setCouponFormDescription(event.target.value)
                             }
-                            className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                            className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold text-slate-950 outline-none placeholder:text-slate-600 focus:bg-violet-100 focus:ring-4 focus:ring-violet-200"
                             placeholder="Ex: Black Friday 2026"
                           />
                         </label>
@@ -9091,7 +9091,7 @@ export default function Admin() {
                                 onChange={(event) =>
                                   setCouponFormValidUntil(event.target.value)
                                 }
-                                className="min-w-0 flex-1 rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                                className="min-w-0 flex-1 rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold text-slate-950 [color-scheme:light] outline-none placeholder:text-slate-600 focus:bg-violet-100 focus:ring-4 focus:ring-violet-200"
                               />
                               {couponFormValidUntil ? (
                                 <button
@@ -9117,7 +9117,7 @@ export default function Admin() {
                                     event.target.value,
                                   )
                                 }
-                                className="min-w-0 flex-1 rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                                className="min-w-0 flex-1 rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold text-slate-950 [color-scheme:light] outline-none placeholder:text-slate-600 focus:bg-violet-100 focus:ring-4 focus:ring-violet-200"
                                 placeholder="Ilimitado"
                               />
                               {couponFormMaxRedemptions ? (
@@ -9212,7 +9212,7 @@ export default function Admin() {
                           setCouponSearch(event.target.value)
                         }
                         placeholder="Buscar por código ou descrição..."
-                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
+                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] outline-none placeholder:text-slate-400 focus:bg-yellow-50 dark:focus:bg-secondary"
                       />
                       <div className="mt-5">
                         {couponsLoading ? (
