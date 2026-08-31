@@ -61,7 +61,7 @@ export function formatarDiaCivil(valor: string | null | undefined): string {
 // Estas duas funções são a fonte ÚNICA de "que instante começa o dia X em
 // Brasília" e "qual é o dia seguinte a X". Antes desta consolidação havia duas
 // implementações de somar dia (`somarDia` em `server/lib/signupSeries.ts` e
-// `somarDias` em `server/routes/admin.ts`) e NENHUMA de início de dia — a janela
+// `somarDias` em `server/routes/admin.ts`) e NENHUMA de início de dia, a janela
 // dos cards da Visão era em instantes UTC deslizantes, e a do gráfico logo
 // abaixo em dias civis de Brasília. Medido em 2026-08-14 às 04:53 UTC: 4.788
 // contra 4.606, 182 cadastros de diferença entre dois blocos rotulados
@@ -99,7 +99,7 @@ function paredeEm(instanteMs: number): string {
  * offset atual (UTC-3).
  *
  * COMO FUNCIONA, e por que duas passadas. O problema é inverter um fuso: sei a
- * hora de parede que quero e preciso do instante. A conta é um ponto fixo —
+ * hora de parede que quero e preciso do instante. A conta é um ponto fixo:
  * chuto um instante, leio a parede que ele produz, corrijo pela diferença. Uma
  * passada resolve o caso normal; a segunda existe para a transição de horário de
  * verão, em que a primeira correção pode cair do outro lado do salto. Duas

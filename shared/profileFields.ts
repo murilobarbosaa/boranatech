@@ -51,7 +51,7 @@ export const PROFILE_URL_MAX = 300;
  * Mora aqui, e nao em server/routes/me.ts, para que o teste que compara as duas
  * allowlists nao precise importar uma ROTA. Importar a rota arrastava env,
  * supabaseAdmin e o JWKS, e o teste passava com `.env` e quebrava sem ele com
- * "TypeError: Invalid URL" — a condicao exata do CI, pega pelo pre-commit.
+ * "TypeError: Invalid URL", a condicao exata do CI, pega pelo pre-commit.
  * Modulo compartilhado nao depende de servidor; o servidor e que consome.
  */
 export const EDITABLE_FIELDS = [
