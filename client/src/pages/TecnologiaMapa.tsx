@@ -114,7 +114,7 @@ export default function TecnologiaMapa() {
         <div className="container space-y-8">
           <div
             className={cn(
-              "rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]",
+              "rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)]",
               ac.panelSoft,
             )}
           >
@@ -177,7 +177,7 @@ export default function TecnologiaMapa() {
                     animationDelay: `${Math.min(areaIndex * 65, 520)}ms`,
                   }}
                   className={cn(
-                    "tech-map-card card-brutal group flex min-h-0 flex-col overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]",
+                    "tech-map-card card-brutal group flex min-h-0 flex-col overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_var(--bnt-shadow)]",
                     cardAc.liftShadow,
                   )}
                 >
@@ -236,7 +236,7 @@ export default function TecnologiaMapa() {
                         })
                       }
                       className={cn(
-                        "flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-[transform,box-shadow] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]",
+                        "flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-[transform,box-shadow] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]",
                         cardAc.cardHover,
                       )}
                     >
@@ -261,7 +261,7 @@ export default function TecnologiaMapa() {
                         if (status === "loading") return;
                         requireAuth({ destination: roadmap.href });
                       }}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-violet-600 px-4 py-2.5 text-xs font-black text-white shadow-[2px_2px_0_#0f172a] transition-[transform,box-shadow] hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-violet-600 px-4 py-2.5 text-xs font-black text-white shadow-[2px_2px_0_var(--bnt-shadow)] transition-[transform,box-shadow] hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
                     >
                       <Map className="h-4 w-4 shrink-0" aria-hidden />
                       Ver roadmap de {area.nome.replace(/-/g, "")}
@@ -300,7 +300,7 @@ export default function TecnologiaMapa() {
                                     [slug]: true,
                                   }))
                                 }
-                                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-teal-50 px-4 py-2.5 text-xs font-black text-teal-950 shadow-[2px_2px_0_#0f172a] transition-[transform,box-shadow] hover:-translate-y-0.5 hover:bg-teal-100 hover:shadow-[3px_3px_0_#0f172a]"
+                                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-teal-50 px-4 py-2.5 text-xs font-black text-teal-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-[transform,box-shadow] hover:-translate-y-0.5 hover:bg-teal-100 hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                               >
                                 Ver mais ({items.length - PREVIEW_LOGO_COUNT})
                                 <ChevronDown

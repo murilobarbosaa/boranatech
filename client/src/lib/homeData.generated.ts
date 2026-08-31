@@ -52,6 +52,7 @@ export const skillsAreaNames = [
   "QA / Testes de Software",
   "Desenvolvimento Mobile",
   "DevOps",
+  "DevSecOps",
   "Game Dev",
   "Análise de Dados / BI",
   "Engenharia de Dados",
@@ -77,47 +78,6 @@ export const praVoceNoticia = {
   "porQueImporta": "Há muitas oportunidades no mercado. Mesmo iniciantes têm chances reais de conseguir emprego com dedicação.",
   "categoria": "Mercado de Trabalho"
 };
-
-export const praVoceEventos = [
-  {
-    "id": "campus-party",
-    "nome": "Campus Party Brasil",
-    "data": "Julho (anual)",
-    "horario": "Vários horários",
-    "cidade": "São Paulo",
-    "estado": "SP",
-    "formato": "Presencial",
-    "area": "Tecnologia Geral",
-    "valor": "Gratuito e pago",
-    "link": "https://brasil.campus-party.org",
-    "logoUrl": "https://www.google.com/s2/favicons?domain=brasil.campus-party.org&sz=128",
-    "calendarStart": "20260701",
-    "calendarEnd": "20260705",
-    "descricao": "Um dos maiores eventos de tecnologia e inovação do mundo. Palestras, workshops, hackathons e networking.",
-    "organizador": "Campus Party",
-    "certificado": false,
-    "categoria": "Feira de Tecnologia"
-  },
-  {
-    "id": "python-brasil",
-    "nome": "Python Brasil",
-    "data": "14 a 19 de outubro de 2026",
-    "horario": "Vários horários",
-    "cidade": "Florianópolis",
-    "estado": "SC",
-    "formato": "Híbrido",
-    "area": "Python / Dados / IA",
-    "valor": "Pago",
-    "link": "https://pythonbrasil.org.br",
-    "logoUrl": "https://www.google.com/s2/favicons?domain=python.org.br&sz=128",
-    "calendarStart": "20261014",
-    "calendarEnd": "20261019",
-    "descricao": "Maior conferência de Python da América Latina. Palestras, tutoriais e sprints de código.",
-    "organizador": "Associação Python Brasil",
-    "certificado": false,
-    "categoria": "Conferência"
-  }
-];
 
 export const praVoceCursos = [
   {

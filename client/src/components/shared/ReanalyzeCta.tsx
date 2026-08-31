@@ -83,7 +83,7 @@ export default function ReanalyzeCta({
             <button
               type="button"
               onClick={onStart}
-              className="inline-flex items-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-white px-5 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
+              className="inline-flex items-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-white px-5 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
             >
               <Sparkles className="h-4 w-4" aria-hidden />
               {startLabel}

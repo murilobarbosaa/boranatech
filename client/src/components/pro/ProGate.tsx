@@ -145,7 +145,7 @@ export default function ProGate({
   if (loading) {
     return (
       <div
-        className={`relative isolate overflow-hidden rounded-2xl border-2 border-slate-900 bg-gradient-to-b from-violet-950 via-indigo-950 to-slate-950 p-6 text-center shadow-[4px_4px_0_#0f172a] ${className}`}
+        className={`bnt-keep-colors relative isolate overflow-hidden rounded-2xl border-2 border-slate-900 bg-gradient-to-b from-violet-950 via-indigo-950 to-slate-950 p-6 text-center shadow-[4px_4px_0_var(--bnt-shadow)] ${className}`}
       >
         <p className="font-display text-2xl font-black text-white">
           Verificando acesso...
@@ -159,7 +159,7 @@ export default function ProGate({
 
   return (
     <div
-      className={`relative isolate overflow-hidden rounded-2xl border-2 border-slate-900 bg-gradient-to-b from-violet-950 via-indigo-950 to-slate-950 p-6 text-center shadow-[4px_4px_0_#0f172a] ${className}`}
+      className={`bnt-keep-colors relative isolate overflow-hidden rounded-2xl border-2 border-slate-900 bg-gradient-to-b from-violet-950 via-indigo-950 to-slate-950 p-6 text-center shadow-[4px_4px_0_var(--bnt-shadow)] ${className}`}
     >
       <StarField reduce={reduce} />
 
@@ -176,7 +176,7 @@ export default function ProGate({
         </p>
         <Link
           href="/planos"
-          className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-400 px-6 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:bg-amber-300 hover:shadow-[4px_4px_0_#0f172a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
+          className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-400 px-6 py-3 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 hover:bg-amber-300 hover:shadow-[4px_4px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
         >
           <Sparkles className="h-4 w-4" />
           Ver planos Pro

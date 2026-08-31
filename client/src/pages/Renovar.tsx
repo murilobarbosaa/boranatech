@@ -77,7 +77,7 @@ function formatDueDate(iso: string | null): string {
 // arquivo, nao e componente reutilizavel novo (mesmo padrao do CertificadoPublico).
 function Card({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-[16px] border-[3px] border-slate-950 bg-white p-8 text-center shadow-[6px_6px_0_#0f172a]">
+    <div className="rounded-[16px] border-[3px] border-slate-950 bg-white p-8 text-center shadow-[6px_6px_0_var(--bnt-shadow)]">
       {children}
     </div>
   );
@@ -85,14 +85,14 @@ function Card({ children }: { children: ReactNode }) {
 
 function IconPill({ children }: { children: ReactNode }) {
   return (
-    <span className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800] shadow-[4px_4px_0_#0f172a]">
+    <span className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] shadow-[4px_4px_0_var(--bnt-shadow)]">
       {children}
     </span>
   );
 }
 
 const BUTTON_CLASS =
-  "mt-8 inline-flex items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800] px-6 py-3 font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_#0f172a]";
+  "mt-8 inline-flex items-center justify-center rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-6 py-3 font-black text-ink-on-accent shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_var(--bnt-shadow)]";
 
 export default function Renovar() {
   // ?t= lido via URLSearchParams (wouter nao captura query string). Uma vez: o
@@ -140,7 +140,7 @@ export default function Renovar() {
   return (
     <Layout>
       <SEO title="Renovar assinatura · Bora na Tech? Pro" url="/renovar" noindex />
-      <section className="bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="bg-[var(--brand-cream)] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <div className="mx-auto max-w-[560px] px-5 pb-20 pt-12">
           {view.kind === "loading" ? (
             <Card>

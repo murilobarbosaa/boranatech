@@ -73,14 +73,14 @@ function roadmapTarget(areas: string[]): { href: string; gated: boolean } {
 }
 
 const DOODLES = [
-  { Icon: Code, pos: "left-[4%] top-[18%]", size: "h-10 w-10", color: "#7c3aed", rot: 6, dur: 7 },
-  { Icon: Terminal, pos: "left-[14%] top-[68%]", size: "h-8 w-8", color: "#6d28d9", rot: -5, dur: 8 },
-  { Icon: Braces, pos: "left-[30%] top-[30%]", size: "h-9 w-9", color: "#8b5cf6", rot: 4, dur: 9 },
-  { Icon: Hash, pos: "left-[48%] top-[74%]", size: "h-8 w-8", color: "#7c3aed", rot: -6, dur: 7.5 },
-  { Icon: Code, pos: "left-[64%] top-[22%]", size: "h-9 w-9", color: "#6d28d9", rot: 5, dur: 8.5 },
-  { Icon: Terminal, pos: "left-[80%] top-[60%]", size: "h-10 w-10", color: "#8b5cf6", rot: -4, dur: 9.5 },
-  { Icon: Braces, pos: "left-[90%] top-[28%]", size: "h-8 w-8", color: "#7c3aed", rot: 6, dur: 7 },
-  { Icon: Hash, pos: "left-[22%] top-[88%]", size: "h-8 w-8", color: "#6d28d9", rot: -5, dur: 8 },
+  { Icon: Code, pos: "left-[4%] top-[18%]", size: "h-10 w-10", color: "var(--color-violet-600)", rot: 6, dur: 7 },
+  { Icon: Terminal, pos: "left-[14%] top-[68%]", size: "h-8 w-8", color: "var(--color-violet-700)", rot: -5, dur: 8 },
+  { Icon: Braces, pos: "left-[30%] top-[30%]", size: "h-9 w-9", color: "var(--color-violet-500)", rot: 4, dur: 9 },
+  { Icon: Hash, pos: "left-[48%] top-[74%]", size: "h-8 w-8", color: "var(--color-violet-600)", rot: -6, dur: 7.5 },
+  { Icon: Code, pos: "left-[64%] top-[22%]", size: "h-9 w-9", color: "var(--color-violet-700)", rot: 5, dur: 8.5 },
+  { Icon: Terminal, pos: "left-[80%] top-[60%]", size: "h-10 w-10", color: "var(--color-violet-500)", rot: -4, dur: 9.5 },
+  { Icon: Braces, pos: "left-[90%] top-[28%]", size: "h-8 w-8", color: "var(--color-violet-600)", rot: 6, dur: 7 },
+  { Icon: Hash, pos: "left-[22%] top-[88%]", size: "h-8 w-8", color: "var(--color-violet-700)", rot: -5, dur: 8 },
 ];
 
 function BackgroundDoodles() {
@@ -162,7 +162,7 @@ export default function Tecnologias() {
         />
       </motion.div>
 
-      <section className="relative overflow-hidden bg-[#faf8f4] py-8">
+      <section className="relative overflow-hidden bg-[var(--brand-cream)] py-8">
         <BackgroundDoodles />
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -170,8 +170,8 @@ export default function Tecnologias() {
           transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
           className="bnt-marquee relative z-10"
         >
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#faf8f4] to-transparent sm:w-24" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#faf8f4] to-transparent sm:w-24" />
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[var(--brand-cream)] to-transparent sm:w-24" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[var(--brand-cream)] to-transparent sm:w-24" />
           <div className="bnt-marquee-track flex w-max items-center gap-10 motion-reduce:animate-none">
             {[...marqueeItems, ...marqueeItems].map((technology, index) => (
               <Link
@@ -350,7 +350,7 @@ export default function Tecnologias() {
                           ))}
                         </div>
                       </div>
-                      <span className="mt-5 inline-flex items-center gap-2 rounded-full border-[2.5px] border-slate-900 bg-violet-600 px-5 py-2.5 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all group-hover:-translate-y-0.5 group-hover:shadow-[5px_5px_0_#0f172a]">
+                      <span className="mt-5 inline-flex items-center gap-2 rounded-full border-[2.5px] border-slate-900 bg-violet-600 px-5 py-2.5 text-sm font-black text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all group-hover:-translate-y-0.5 group-hover:shadow-[5px_5px_0_var(--bnt-shadow)]">
                         Ver detalhes{" "}
                         <ArrowRight
                           className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
@@ -378,7 +378,7 @@ export default function Tecnologias() {
 
                     <Link
                       href={roadmap.href}
-                      className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-full border-2 border-slate-900 bg-violet-600 px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-0.5"
+                      className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-full border-2 border-slate-900 bg-violet-600 px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-0.5"
                       onClick={(event) => {
                         if (roadmap.gated) {
                           event.preventDefault();

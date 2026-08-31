@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
-import { Toaster } from "@/components/ui/sonner";
+import AppToaster from "@/components/AppToaster";
 import { Spinner } from "@/components/ui/spinner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
@@ -376,13 +376,13 @@ function AffiliateTracker() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider>
         <AuthProvider>
           <FavoritesProvider>
             <SubscriptionProvider>
               <NotificationsProvider>
                 <TooltipProvider>
-                  <Toaster />
+                  <AppToaster />
                   <AffiliateTracker />
                   <ScrollToTop />
                   <LaunchGate>

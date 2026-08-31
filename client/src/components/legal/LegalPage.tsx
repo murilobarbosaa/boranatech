@@ -68,7 +68,7 @@ export default function LegalPage({
           <div className="grid gap-8 lg:grid-cols-[1fr_360px] lg:items-end">
             <header>
               <p
-                className={`mb-5 inline-flex rounded-full border-2 border-slate-900 px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a] ${tone.badge}`}
+                className={`mb-5 inline-flex rounded-full border-2 border-slate-900 px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] ${tone.badge}`}
               >
                 {eyebrow}
               </p>
@@ -81,7 +81,7 @@ export default function LegalPage({
             </header>
 
             <aside
-              className={`rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[7px_7px_0_#0f172a] ${tone.shadow}`}
+              className={`rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[7px_7px_0_var(--bnt-shadow)] ${tone.shadow}`}
             >
               <div
                 className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-slate-900 ${tone.badge}`}
@@ -104,13 +104,13 @@ export default function LegalPage({
         </div>
       </section>
 
-      <section className="bg-[#faf8f4] py-10 md:py-14">
+      <section className="bg-[var(--brand-cream)] py-10 md:py-14">
         <div className="container">
           <div className="mb-8 grid gap-4 md:grid-cols-3">
             {highlights.map((highlight) => (
               <article
                 key={highlight.label}
-                className={`rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a] ${tone.shadow}`}
+                className={`rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)] ${tone.shadow}`}
               >
                 <p
                   className={`text-xs font-black uppercase ${tone.accentText}`}
@@ -126,7 +126,7 @@ export default function LegalPage({
 
           <div className="grid gap-8 lg:grid-cols-[280px_1fr] lg:items-start">
             <nav
-              className="top-24 rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[5px_5px_0_#0f172a] lg:sticky"
+              className="top-24 rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[5px_5px_0_var(--bnt-shadow)] lg:sticky"
               aria-label="Seções do documento"
             >
               <p className="mb-4 font-display text-lg font-black text-slate-950">
@@ -155,7 +155,7 @@ export default function LegalPage({
                 <section
                   key={section.id}
                   id={section.id}
-                  className="scroll-mt-28 rounded-3xl border-2 border-slate-900 bg-white p-6 shadow-[5px_5px_0_#0f172a] md:p-7"
+                  className="scroll-mt-28 rounded-3xl border-2 border-slate-900 bg-white p-6 shadow-[5px_5px_0_var(--bnt-shadow)] md:p-7"
                 >
                   <div className="flex items-start gap-4">
                     <span
@@ -190,7 +190,7 @@ export default function LegalPage({
 
               {relatedLinks.length > 0 ? (
                 <aside
-                  className={`rounded-3xl border-2 border-slate-900 p-6 shadow-[5px_5px_0_#0f172a] ${tone.soft}`}
+                  className={`rounded-3xl border-2 border-slate-900 p-6 shadow-[5px_5px_0_var(--bnt-shadow)] ${tone.soft}`}
                 >
                   <p className="font-display text-2xl font-black text-slate-950">
                     Documentos relacionados

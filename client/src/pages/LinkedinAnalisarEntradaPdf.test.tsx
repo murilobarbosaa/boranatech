@@ -136,17 +136,36 @@ const RECEITA: Record<PdfErrorCode, () => File> = {
     });
     return pdf();
   },
+  // Sem `Promise.try` o pdfjs 6 estoura DENTRO da propria maquinaria, fora do
+  // `try` de `extractPdfText`. A guarda corre ANTES de encostar no pdfjs, entao
+  // aqui nao se dubla `getDocument`: o desfecho certo e ele nunca ser chamado.
+  browser_unsupported: () => {
+    delete promiseCtor.try;
+    return pdf();
+  },
 };
 
 let fetchSpy: ReturnType<typeof vi.fn>;
 
+// `browser_unsupported` so e reproduzivel mexendo em `Promise.try`, que e
+// global. Guardado aqui e devolvido no afterEach para a mutacao nao vazar para
+// os outros casos: uma receita que apaga o metodo e nao o repoe faria os testes
+// seguintes rodarem num navegador falso, e o vazamento apareceria como falha em
+// outro arquivo.
+type PromiseComTry = { try?: unknown };
+const promiseCtor = Promise as unknown as PromiseComTry;
+let tryOriginal: unknown;
+
 beforeEach(() => {
+  tryOriginal = promiseCtor.try;
   getDocument.mockReset();
   fetchSpy = vi.fn(async () => new Response("{}", { status: 200 }));
   vi.stubGlobal("fetch", fetchSpy);
 });
 
 afterEach(() => {
+  if (tryOriginal === undefined) delete promiseCtor.try;
+  else promiseCtor.try = tryOriginal;
   cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();

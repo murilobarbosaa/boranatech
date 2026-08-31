@@ -66,7 +66,7 @@ export function InterviewTimeline() {
                   aria-hidden
                 />
               ) : null}
-              <span className="z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-blue-300 font-display text-lg font-black text-slate-950 shadow-[3px_3px_0_#0f172a]">
+              <span className="z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-blue-300 font-display text-lg font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
                 {i + 1}
               </span>
               <div className="min-w-0 pt-0.5">
@@ -118,7 +118,7 @@ function ShowcaseCard({
                 delay: index * 0.5,
               }
         }
-        className="rounded-xl border-2 border-slate-950 bg-white shadow-[3px_3px_0_#0f172a]"
+        className="rounded-xl border-2 border-slate-950 bg-white shadow-[3px_3px_0_var(--bnt-shadow)]"
       >
         {children}
       </motion.div>
@@ -130,7 +130,7 @@ export function InterviewShowcase() {
   const reduce = useReducedMotion() ?? false;
   return (
     <div className="relative">
-      <span className="absolute -top-3 left-4 z-10 inline-flex -rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+      <span className="absolute -top-3 left-4 z-10 inline-flex -rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
         <Sparkles className="h-3 w-3" aria-hidden />
         {SHOWCASE_BADGE}
       </span>

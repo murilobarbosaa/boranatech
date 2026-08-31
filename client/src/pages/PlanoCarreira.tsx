@@ -234,7 +234,7 @@ function IntakeForm({
           type="button"
           onClick={handleSubmit}
           disabled={generating}
-          className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] disabled:opacity-60"
+          className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-60"
         >
           {generating ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -247,7 +247,7 @@ function IntakeForm({
             type="button"
             onClick={onCancel}
             disabled={generating}
-            className="rounded-full border-2 border-slate-950 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-[2px_2px_0_#0f172a]"
+            className="rounded-full border-2 border-slate-950 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-[2px_2px_0_var(--bnt-shadow)]"
           >
             Voltar pro plano atual
           </button>
@@ -479,10 +479,10 @@ function PlanResult({ plan, readonly, checklist }: PlanResultProps) {
             Fundo papel um tom acima do #faf8f4 da pagina e rotacao sutil, na
             linguagem do palco do intake. Sem asset de imagem do mascote no
             repo: selo circular com o MapIcon da pagina no lugar. */}
-        <div className="relative mx-auto w-full max-w-2xl -rotate-[0.4deg] rounded-2xl border-2 border-slate-950 bg-[#fffaf0] p-6 shadow-[5px_5px_0_#0f172a]">
+        <div className="relative mx-auto w-full max-w-2xl -rotate-[0.4deg] rounded-2xl border-2 border-slate-950 bg-[var(--bnt-surface)] p-6 shadow-[5px_5px_0_var(--bnt-shadow)]">
           <span
             aria-hidden
-            className="absolute -right-3 -top-4 flex h-11 w-11 rotate-6 items-center justify-center rounded-full border-2 border-slate-950 bg-amber-300 shadow-[2px_2px_0_#0f172a]"
+            className="absolute -right-3 -top-4 flex h-11 w-11 rotate-6 items-center justify-center rounded-full border-2 border-slate-950 bg-amber-300 shadow-[2px_2px_0_var(--bnt-shadow)]"
           >
             <MapIcon className="h-5 w-5 text-slate-950" />
           </span>
@@ -819,7 +819,7 @@ export default function PlanoCarreira() {
         <button
           type="button"
           onClick={() => setReloadKey((key) => key + 1)}
-          className="bnt-pressable mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+          className="bnt-pressable mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
         >
           <RefreshCw className="h-4 w-4" aria-hidden />
           {/* TODO(Ana): label do botao de tentar de novo */}
@@ -868,7 +868,7 @@ export default function PlanoCarreira() {
           PageHero, o cabecalho vive DENTRO do cenario, que nasce no topo. O
           backdrop vivo de entrada cobre vitrine, intake e ProGate; o de
           resultado acompanha o PlanResult. */}
-      <section className="relative overflow-hidden bg-[#faf8f4] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="relative overflow-hidden bg-[var(--brand-cream)] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         {!loading && !showingPlan ? (
           <CareerPlanEntryBackdrop reduce={reduce} />
         ) : null}
@@ -897,7 +897,7 @@ export default function PlanoCarreira() {
               </button>
             ) : null}
             <p className={cn(backAction ? "mt-5" : undefined)}>
-              <span className="inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+              <span className="inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
                 a rota da carreira
               </span>
             </p>
@@ -971,7 +971,7 @@ export default function PlanoCarreira() {
                   <button
                     type="button"
                     onClick={() => setWantNew(true)}
-                    className="ml-auto inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 motion-reduce:transition-none"
+                    className="ml-auto inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 motion-reduce:transition-none"
                   >
                     <RefreshCw className="h-3.5 w-3.5" aria-hidden />
                     Gerar novo plano

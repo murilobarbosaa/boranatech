@@ -56,7 +56,7 @@ function RecursoCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.35, delay: Math.min(index * 0.05, 0.3) }}
-      className="group flex h-full flex-col rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-1 hover:shadow-[6px_6px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+      className="group flex h-full flex-col rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[6px_6px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
     >
       <div className="flex items-start justify-between gap-3">
         <h3 className="font-display text-lg font-black leading-tight text-slate-950">
@@ -128,7 +128,7 @@ function ComingSoon({ reduce }: { reduce: boolean }) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.35, delay: index * 0.05 }}
-            className="flex h-full flex-col rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[4px_4px_0_#0f172a]"
+            className="flex h-full flex-col rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)]"
           >
             <div className="flex items-start justify-between gap-3">
               <h2 className="flex items-center gap-2 font-display text-2xl font-black text-slate-950">

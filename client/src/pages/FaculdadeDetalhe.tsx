@@ -76,7 +76,7 @@ export default function FaculdadeDetalhe() {
             </Link>
           }
           titlePrefix={
-            <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white text-slate-900 shadow-[4px_4px_0_#0f172a]">
+            <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white text-slate-900 shadow-[4px_4px_0_var(--bnt-shadow)]">
               <GraduationCap className="h-9 w-9" aria-hidden />
             </span>
           }
@@ -264,7 +264,7 @@ export default function FaculdadeDetalhe() {
                   <div className="mb-3 flex items-center gap-3">
                     <span
                       className={cn(
-                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 text-white shadow-[2px_2px_0_#0f172a]",
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 text-white shadow-[2px_2px_0_var(--bnt-shadow)]",
                         ac.tableBanner,
                       )}
                     >
@@ -322,7 +322,7 @@ export default function FaculdadeDetalhe() {
           </Link>
         }
         titlePrefix={
-          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white text-slate-900 shadow-[4px_4px_0_#0f172a]">
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white text-slate-900 shadow-[4px_4px_0_var(--bnt-shadow)]">
             <GraduationCap className="h-9 w-9" aria-hidden />
           </span>
         }
@@ -707,7 +707,7 @@ export default function FaculdadeDetalhe() {
                 <div className="mb-3 flex items-center gap-3">
                   <span
                     className={cn(
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 text-white shadow-[2px_2px_0_#0f172a]",
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 text-white shadow-[2px_2px_0_var(--bnt-shadow)]",
                       ac.tableBanner,
                     )}
                   >

@@ -98,7 +98,7 @@ export default function NextStepsByArea({
         </p>
         <Link
           href="/quiz-carreira"
-          className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
+          className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px"
         >
           Fazer o quiz de carreira
           <ArrowRight className="h-4 w-4" />

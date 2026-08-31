@@ -86,9 +86,13 @@ vi.mock("./supabaseAdmin", () => {
   };
 });
 
-vi.mock("@sentry/node", () => ({
+const sentrySpy = vi.hoisted(() => ({
   captureMessage: vi.fn(),
   captureException: vi.fn(),
+}));
+vi.mock("@sentry/node", () => ({
+  captureMessage: sentrySpy.captureMessage,
+  captureException: sentrySpy.captureException,
 }));
 
 import { prepararExclusaoDeConta } from "./accountDeletion";
@@ -131,6 +135,10 @@ beforeEach(() => {
   supaSpy.erroSelect = null;
   supaSpy.deleteChamado = [];
   supaSpy.deleteErro = null;
+  // Sem isto a contagem de captureMessage vaza de um caso para o proximo, e o
+  // teste fica dependente de ordem (mesmo motivo do reset dos outros spies).
+  sentrySpy.captureMessage.mockReset();
+  sentrySpy.captureException.mockReset();
 });
 
 describe("com assinatura ativa", () => {
@@ -172,8 +180,16 @@ describe("com assinatura ativa", () => {
     // ninguém para usar o que ainda foi pago, e a decisão (D8) é encerrar já.
     supaSpy.linhas = [
       linha({ id: "r1", provider_subscription_id: "sub_a" }),
-      linha({ id: "r2", provider_subscription_id: "sub_b", status: "past_due" }),
-      linha({ id: "r3", provider_subscription_id: "sub_c", status: "trialing" }),
+      linha({
+        id: "r2",
+        provider_subscription_id: "sub_b",
+        status: "past_due",
+      }),
+      linha({
+        id: "r3",
+        provider_subscription_id: "sub_c",
+        status: "trialing",
+      }),
     ];
 
     await excluirConta("user-1");
@@ -308,5 +324,88 @@ describe("resultado devolvido", () => {
     expect(r.semContraparteNaStripe).toEqual(["cs_live_b"]);
     expect(r.customersMarcados).toEqual([]);
     expect(r.marcadorIncompleto).toBe(true);
+  });
+});
+
+/**
+ * O QUE VAI PARA O SENTRY, e o que nao vai.
+ *
+ * BUG-69: a funcao capturava um evento em toda exclusao, inclusive nas bem
+ * sucedidas, e sucesso virava issue. O filtro `!level:info` do intake (78ec95a0)
+ * tirava isso do CRM, mas tapando na saida um evento que nao devia existir; a
+ * correcao na origem e nao emitir.
+ */
+describe("rastro no Sentry", () => {
+  function mensagensCapturadas(): string[] {
+    return sentrySpy.captureMessage.mock.calls.map((c) => String(c[0]));
+  }
+
+  it("exclusao bem sucedida NAO captura nada", async () => {
+    supaSpy.linhas = [linha()];
+
+    const r = await excluirConta("user-1");
+
+    expect(r).toBe("ok");
+    // O caminho feliz inteiro: cancelou, marcou o customer, apagou a conta.
+    expect(stripeSpy.customersAtualizados.map((c) => c.id)).toEqual(["cus_1"]);
+    expect(sentrySpy.captureMessage).not.toHaveBeenCalled();
+  });
+
+  it("sem assinatura nenhuma tambem nao captura", async () => {
+    supaSpy.linhas = [];
+
+    await excluirConta("user-1");
+
+    expect(sentrySpy.captureMessage).not.toHaveBeenCalled();
+  });
+
+  it("marcador incompleto captura o resumo da EXCLUSAO, em warning", async () => {
+    supaSpy.linhas = [linha()];
+    stripeSpy.customerUpdateErro = new Error("customer update falhou");
+
+    await excluirConta("user-1");
+
+    const resumo = sentrySpy.captureMessage.mock.calls.find((c) =>
+      String(c[0]).includes("exclusao incompleta"),
+    );
+    expect(resumo).toBeTruthy();
+    const opcoes = resumo![1] as {
+      level: string;
+      fingerprint: string[];
+      tags: Record<string, string>;
+      extra: Record<string, unknown>;
+    };
+    // `warning`: precisa de limpeza manual, nao de plantao.
+    expect(opcoes.level).toBe("warning");
+    expect(opcoes.fingerprint).toEqual(["account-deletion-incompleto"]);
+    expect(opcoes.tags).toMatchObject({
+      area: "account-deletion",
+      marcador: "incompleto",
+    });
+    expect(opcoes.extra.deleted_user_id).toBe("user-1");
+    // So ids: nada que identifique a pessoa fora do que a Stripe ja carrega.
+    expect(Object.keys(opcoes.extra).sort()).toEqual([
+      "canceladas",
+      "customers_marcados",
+      "deleted_user_id",
+      "sem_contraparte",
+    ]);
+  });
+
+  it("a CAUSA por customer continua sendo reportada, separada da consequencia", async () => {
+    // Os dois eventos coexistem de proposito, com fingerprints diferentes:
+    // `marcarCustomer` diz qual customer falhou e por que; o resumo diz que a
+    // exclusao terminou incompleta. Um nao substitui o outro.
+    supaSpy.linhas = [linha()];
+    stripeSpy.customerUpdateErro = new Error("customer update falhou");
+
+    await excluirConta("user-1");
+
+    const mensagens = mensagensCapturadas();
+    expect(
+      mensagens.some((m) => m.includes("marcador account_deleted_at")),
+    ).toBe(true);
+    expect(mensagens.some((m) => m.includes("exclusao incompleta"))).toBe(true);
+    expect(sentrySpy.captureMessage).toHaveBeenCalledTimes(2);
   });
 });

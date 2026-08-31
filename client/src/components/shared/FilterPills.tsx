@@ -32,7 +32,7 @@ export default function FilterPills({
             "rounded-full border-2 px-3 py-1.5 text-xs font-medium transition-all",
             value === option
               ? (ui?.filterActive ??
-                  "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_#0f172a]")
+                  "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_var(--bnt-shadow)]")
               : (ui?.filterInactive ??
                   "border-slate-300 bg-white text-slate-700 hover:border-slate-500"),
           )}

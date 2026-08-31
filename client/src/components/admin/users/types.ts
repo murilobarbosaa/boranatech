@@ -17,6 +17,25 @@ export type UserRow = {
   pro_source?: string | null;
   plan_code?: string | null;
   subscription_status?: string | null;
+  /** `area_interesse` de profiles. `null` = a pessoa nunca preencheu. */
+  area_interesse?: string | null;
+  /**
+   * Total pago em centavos, pela conta canonica do extrato.
+   *
+   * TRES valores com tres significados: um numero positivo, ZERO (afirmacao de
+   * que nunca pagou) e `null` (o servidor nao conseguiu somar). A tela desenha
+   * os tres diferente; colapsar zero e null faria "nunca comprou" e "nao sei"
+   * virarem a mesma celula.
+   */
+  total_pago_cents?: number | null;
+  /**
+   * `last_sign_in_at` de `auth.users`, via o RPC de listagem.
+   *
+   * `null` tem UM significado so aqui: a pessoa nunca logou. Nao existe o caso
+   * "nao consegui olhar", porque o dado vem na MESMA linha do resto: se o RPC
+   * falha, a rota inteira responde erro e nenhuma linha chega.
+   */
+  last_sign_in_at?: string | null;
 };
 
 // Espelha o payload paginado de GET /users.

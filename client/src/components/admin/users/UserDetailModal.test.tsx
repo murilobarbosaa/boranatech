@@ -165,14 +165,17 @@ describe("fechamento", () => {
     expect(screen.queryByRole("dialog")).not.toBeNull();
   });
 
-  it("o botao Fechar do rodape fecha", async () => {
+  it("o X do cabecalho fecha", async () => {
+    // Era o "Fechar" do rodape, casado por nome dentro do <footer>. A saida
+    // subiu para o cabecalho; o escopo acompanha, e segue sendo por REGIAO em
+    // vez de testid, para o teste falhar se o gatilho mudar de lugar de novo.
     rotear(detalhe());
     const onClose = vi.fn();
     render(<UserDetailModal userId="u1" onClose={onClose} />);
     await pronto();
 
-    const rodape = within(document.querySelector("footer") as HTMLElement);
-    fireEvent.click(rodape.getByRole("button", { name: "Fechar" }));
+    const cabecalho = within(document.querySelector("header") as HTMLElement);
+    fireEvent.click(cabecalho.getByRole("button", { name: "Fechar" }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
@@ -851,12 +854,12 @@ describe("guarda de alteracao nao salva no funil requestClose", () => {
       target: { value: "Ana Paula" },
     });
 
-    fireEvent.click(screen.getByTestId("footer-fechar"));
+    fireEvent.click(screen.getByTestId("header-fechar"));
     await screen.findByText("Descartar alterações?");
     fireEvent.click(screen.getByRole("button", { name: "Continuar editando" }));
     expect(onClose).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByTestId("footer-fechar"));
+    fireEvent.click(screen.getByTestId("header-fechar"));
     await screen.findByText("Descartar alterações?");
     fireEvent.click(screen.getByRole("button", { name: "Descartar" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
@@ -865,7 +868,7 @@ describe("guarda de alteracao nao salva no funil requestClose", () => {
   it("a guarda vale para TODOS os caminhos de saida, nao so para o Esc", async () => {
     // Se a checagem morasse nos call sites em vez de dentro do requestClose,
     // bastaria alguem esquecer um caminho. Aqui os dois caminhos existentes
-    // (Esc e botao Fechar) sao exercitados contra a MESMA guarda.
+    // (Esc e o X do cabecalho) sao exercitados contra a MESMA guarda.
     rotear(detalhe());
     const onClose = vi.fn();
     render(<UserDetailModal userId="u1" onClose={onClose} />);
@@ -875,7 +878,7 @@ describe("guarda de alteracao nao salva no funil requestClose", () => {
       target: { value: "Ana Paula" },
     });
 
-    fireEvent.click(screen.getByTestId("footer-fechar"));
+    fireEvent.click(screen.getByTestId("header-fechar"));
     expect(await screen.findByText("Descartar alterações?")).toBeTruthy();
     expect(onClose).not.toHaveBeenCalled();
   });
@@ -2336,5 +2339,43 @@ describe("revogação avulsa de acesso Pro", () => {
     expect(
       screen.queryByRole("button", { name: "Encerrar Pro agora" }),
     ).toBeNull();
+  });
+});
+
+describe("vida no site: busca sob demanda", () => {
+  it("NAO busca antes de abrir o dropdown, e busca ao abrir", async () => {
+    // Mesmo contrato da atividade do PostHog: quatro fontes que so interessam a
+    // quem abre a secao nao podem entrar na carga do detalhe.
+    rotear(detalhe());
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+
+    const chamou = () =>
+      fetchMock.mock.calls.some(
+        (c) => typeof c[0] === "string" && c[0].includes("/site-life"),
+      );
+    expect(chamou()).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+
+    await waitFor(() => expect(chamou()).toBe(true));
+    expect(fetchMock).toHaveBeenCalledWith("/users/u1/site-life");
+  });
+
+  it("erro da vida no site fica inline, sem derrubar a secao vizinha", async () => {
+    rotear(detalhe(), {
+      "/site-life": new Error("Erro ao buscar a atividade no site."),
+    });
+
+    render(<UserDetailModal userId="u1" onClose={() => {}} />);
+    await pronto();
+    fireEvent.click(screen.getByRole("button", { name: /Mais informações/i }));
+
+    expect(
+      await screen.findByText("Erro ao buscar a atividade no site."),
+    ).toBeTruthy();
+    // A secao Atividade, vizinha, continua montada.
+    expect(screen.getAllByText("Atividade").length).toBeGreaterThan(0);
   });
 });

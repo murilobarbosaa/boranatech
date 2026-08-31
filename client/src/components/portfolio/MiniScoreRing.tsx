@@ -12,7 +12,7 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 export default function MiniScoreRing({
   score,
   className,
-  stroke = "#0f172a",
+  stroke = "var(--bnt-ink)",
 }: {
   score: number;
   className?: string;

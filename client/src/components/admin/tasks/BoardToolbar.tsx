@@ -135,7 +135,23 @@ export const BoardToolbar = memo(
     const activeCount = activeFilterCount(filters);
 
     return (
-      <div className="space-y-2.5">
+      // MESMO ESPELHO DO CABECALHO da secao (Admin.tsx, commit 14): `80rem`
+      // espelha o teto do `.container` (index.css:174, max-width: 1280px). Se um
+      // mudar, o outro acompanha. Sao o mesmo numero em dois lugares porque o
+      // Tailwind nao le o CSS custom, e este comentario e o que amarra os dois.
+      //
+      // Cabecalho e toolbar ficam na REGUA DA PAGINA; so o quadro fica solto. No
+      // modo largo a linha esparramava na tela inteira ancorada a esquerda,
+      // enquanto o titulo logo acima ja estava centrado, e as duas reguas
+      // brigavam na mesma tela.
+      //
+      // Incondicional, como no cabecalho: fora do modo escapado a secao ja esta
+      // dentro do contêiner, entao um teto igual ao dele nao aperta nada. Menos
+      // uma ramificacao para manter em sincronia.
+      <div
+        data-testid="tasks-toolbar"
+        className="w-full space-y-2.5 lg:mx-auto lg:max-w-[80rem]"
+      >
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[13rem]">
             <label htmlFor="tasks-board-select" className={labelClass}>
@@ -159,14 +175,22 @@ export const BoardToolbar = memo(
                 onClick={onManageBoards}
                 aria-label="Gerenciar quadros"
                 title="Criar, renomear, arquivar ou excluir quadros"
-                className="inline-flex h-9 shrink-0 items-center rounded-xl border-2 border-slate-900 bg-white px-2.5 text-slate-900 shadow-[2px_2px_0_#0f172a]"
+                className="inline-flex h-9 shrink-0 items-center rounded-xl border-2 border-slate-900 bg-white px-2.5 text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
               >
                 <Settings2 className="h-4 w-4" />
               </button>
             </div>
           </div>
 
-          <div className="min-w-[13rem] flex-1">
+          {/* TETO na busca, a UNICA diferenca em relacao a disposicao historica.
+              `max-w-2xl` (42rem) desde 30/08: um degrau abaixo do 3xl que a
+              rodada anterior trouxe, pedido da Ana depois de ver o conjunto
+              centrado. O `flex-1` continua, entao ela cresce ate esse ponto e
+              para, em vez de esticar com a fileira inteira no monitor largo. */}
+          <div
+            data-testid="tasks-toolbar-busca"
+            className="min-w-[13rem] max-w-2xl flex-1"
+          >
             <label htmlFor="tasks-search" className={labelClass}>
               Busca
             </label>
@@ -217,19 +241,19 @@ export const BoardToolbar = memo(
           <Popover>
             <PopoverTrigger
               aria-label="Filtros"
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border-2 border-slate-900 bg-white px-3 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a]"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border-2 border-slate-900 bg-white px-3 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
             >
               <Filter className="h-3.5 w-3.5" />
               Filtros
               {activeCount > 0 ? (
-                <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FFB800] px-1 text-[10px] font-black text-slate-950">
+                <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--brand-yellow)] px-1 text-[10px] font-black text-ink-on-accent">
                   {activeCount}
                 </span>
               ) : null}
             </PopoverTrigger>
             <PopoverContent
               align="end"
-              className={`${LAYER_ON_PAGE} w-72 space-y-3 rounded-xl border-2 border-slate-900 bg-white p-3 shadow-[4px_4px_0_#0f172a]`}
+              className={`${LAYER_ON_PAGE} w-72 space-y-3 rounded-xl border-2 border-slate-900 bg-white p-3 shadow-[4px_4px_0_var(--bnt-shadow)]`}
             >
               <div>
                 <p className={labelClass}>Responsável</p>
@@ -390,7 +414,7 @@ export const BoardToolbar = memo(
                   onChange={(event) =>
                     onFiltersChange({ ...filters, mine: event.target.checked })
                   }
-                  className="h-4 w-4 rounded border-2 border-slate-900 accent-[#FFB800]"
+                  className="h-4 w-4 rounded border-2 border-slate-900 accent-[var(--brand-yellow)]"
                 />
                 Criadas por mim
               </label>
@@ -400,7 +424,7 @@ export const BoardToolbar = memo(
                   type="checkbox"
                   checked={includeArchived}
                   onChange={(event) => onIncludeArchivedChange(event.target.checked)}
-                  className="h-4 w-4 rounded border-2 border-slate-900 accent-[#FFB800]"
+                  className="h-4 w-4 rounded border-2 border-slate-900 accent-[var(--brand-yellow)]"
                 />
                 Mostrar arquivadas
               </label>
@@ -409,7 +433,7 @@ export const BoardToolbar = memo(
                 <button
                   type="button"
                   onClick={onClearFilters}
-                  className="w-full rounded-full border-2 border-slate-900 bg-white px-2 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a]"
+                  className="w-full rounded-full border-2 border-slate-900 bg-white px-2 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
                 >
                   Limpar filtros
                 </button>
@@ -417,7 +441,7 @@ export const BoardToolbar = memo(
             </PopoverContent>
           </Popover>
 
-          <div className="flex gap-1 rounded-full border-2 border-slate-900 bg-white p-0.5 shadow-[2px_2px_0_#0f172a]">
+          <div className="flex gap-1 rounded-full border-2 border-slate-900 bg-white p-0.5 shadow-[2px_2px_0_var(--bnt-shadow)]">
             {(["board", "lista"] as const).map((option) => (
               <button
                 key={option}

@@ -257,17 +257,45 @@ export async function resolveOwnerFromParentCharge(
   // lacuna que estamos fechando, entao segue para a Stripe.
   if (doBanco?.userId) return doBanco;
 
+  // O `planCode` da linha de charge SOBREVIVE a essa recusa, e ate 2026-08-31
+  // ele era jogado fora junto.
+  //
+  // O comentario acima justifica descartar o `userId`, e para o `userId` ele
+  // esta certo. So que o `return` descartava o OBJETO INTEIRO, e o `planCode`
+  // nao tem a mesma lacuna: ele vem da coluna `plan_code` da linha de charge,
+  // que nenhum `ON DELETE SET NULL` toca (a migration 20260714130000 aplica o
+  // SET NULL so ao `user_id`) e que nenhuma corrida de ingestao deixa pela
+  // metade. Um dado bom estava sendo apagado por uma guarda escrita para outro
+  // campo.
+  //
+  // O CASO MEDIDO: a cobranca de 19/07 tem `plan_code = 'pro_monthly'`; a conta
+  // foi excluida e o `user_id` da linha virou NULL; o refund de 29/08 passou por
+  // aqui, foi recusado pelo `userId`, caiu para a Stripe, nao achou linha em
+  // `subscriptions` (o CASCADE ja a tinha levado) e gravou `plan_code` NULL. O
+  // plano estava em maos o tempo todo.
+  //
+  // PRECEDENCIA: o que a Stripe resolver ganha, porque vem junto com um
+  // `userId` de verdade e portanto e mais especifico; o do banco entra so onde
+  // ficaria nulo. Nunca sobrescreve valor resolvido.
+  const planCodeDaCobranca = doBanco?.planCode ?? null;
+  const comPlanoPreservado = (dono: FinanceOwner): FinanceOwner => ({
+    userId: dono.userId,
+    planCode: dono.planCode ?? planCodeDaCobranca,
+  });
+
   try {
     const customerId = await lookups.customerOfCharge(parentChargeId);
-    if (!customerId) return { userId: null, planCode: null };
-    return await lookups.byCustomer(customerId);
+    if (!customerId) {
+      return comPlanoPreservado({ userId: null, planCode: null });
+    }
+    return comPlanoPreservado(await lookups.byCustomer(customerId));
   } catch (err) {
     console.warn(
       `[stripeSync] nao foi possivel resolver o dono da cobranca ${parentChargeId} na Stripe; ` +
         `a linha entra sem user_id e o proximo sync tenta de novo:`,
       err,
     );
-    return { userId: null, planCode: null };
+    return comPlanoPreservado({ userId: null, planCode: null });
   }
 }
 

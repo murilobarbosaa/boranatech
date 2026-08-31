@@ -183,7 +183,7 @@ export function UsageRetentionDashboard() {
       </div>
 
       {/* Bloco 1: dias desde o ultimo acesso. */}
-      <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
+      <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)]">
         <p className="font-display text-lg font-black text-slate-950">
           {/* TODO(Ana): titulo do bloco de ultimo acesso. */}
           Dias desde o último acesso
@@ -218,7 +218,7 @@ export function UsageRetentionDashboard() {
       </div>
 
       {/* Bloco 2: frequencia de uso. */}
-      <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
+      <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)]">
         <p className="font-display text-lg font-black text-slate-950">
           {/* TODO(Ana): titulo do bloco de frequencia. */}
           Frequência de uso

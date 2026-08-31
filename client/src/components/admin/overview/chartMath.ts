@@ -92,6 +92,24 @@ export function tendenciaDeNivel(
  */
 export function tendenciaDeFluxo(
   pontos: Array<{ count: number; partial: boolean }>,
+  /**
+   * Copy do ramo "metade anterior zerada", a UNICA parte desta funcao que fala
+   * do dominio: o resto ("Acelerando: 12 -> 20 por dia") serve qualquer
+   * contagem diaria. O default mantem o grafico de cadastros exatamente como
+   * era; o de ativos passa as frases dele. Sem este parametro, um mes sem
+   * ninguem no site imprimiria "Nenhum cadastro no periodo" num grafico que
+   * nao mede cadastro.
+   */
+  zeroCopy: { nenhum: string; comecou: string } = {
+    nenhum: "Nenhum cadastro no período",
+    comecou: "Começou a entrar cadastro no período",
+  },
+  /**
+   * Unidade do BALDE, para a frase não dizer "por dia" sobre uma série semanal.
+   * A aritmética (média da metade recente contra a anterior) vale para qualquer
+   * balde de tamanho constante; só a palavra muda.
+   */
+  unidade: string = "dia",
 ): Tendencia {
   const completos = pontos.filter((p) => !p.partial);
   if (completos.length < 4) {
@@ -105,8 +123,8 @@ export function tendenciaDeFluxo(
 
   if (anterior === 0) {
     return recente > 0
-      ? { texto: "Começou a entrar cadastro no período", tom: "alta" }
-      : { texto: "Nenhum cadastro no período", tom: "neutro" };
+      ? { texto: zeroCopy.comecou, tom: "alta" }
+      : { texto: zeroCopy.nenhum, tom: "neutro" };
   }
 
   const variacao = ((recente - anterior) / anterior) * 100;
@@ -114,15 +132,15 @@ export function tendenciaDeFluxo(
   // queda treinaria a pessoa a ignorar a frase.
   if (Math.abs(variacao) < 10) {
     return {
-      texto: `Estável: ~${Math.round(recente)} por dia`,
+      texto: `Estável: ~${Math.round(recente)} por ${unidade}`,
       tom: "neutro",
     };
   }
   return {
     texto:
       variacao > 0
-        ? `Acelerando: ${Math.round(anterior)} → ${Math.round(recente)} por dia`
-        : `Desacelerando: ${Math.round(anterior)} → ${Math.round(recente)} por dia`,
+        ? `Acelerando: ${Math.round(anterior)} → ${Math.round(recente)} por ${unidade}`
+        : `Desacelerando: ${Math.round(anterior)} → ${Math.round(recente)} por ${unidade}`,
     tom: variacao > 0 ? "alta" : "baixa",
   };
 }

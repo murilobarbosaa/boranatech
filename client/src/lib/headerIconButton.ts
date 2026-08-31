@@ -17,7 +17,7 @@
 //
 // Tokens, todos ja usados pelo header:
 //   - 40px (h-10 w-10), a altura dos pills "Entrar", "Sair" e "Admin";
-//   - `bg-white`, `border-2 border-slate-900`, `shadow-[2px_2px_0_#0f172a]`
+//   - `bg-white`, `border-2 border-slate-900`, `shadow-[2px_2px_0_var(--bnt-shadow)]`
 //     crescendo para 3px no hover, iguais aos pills;
 //   - press por `bnt-pressable` (a classe global do projeto, que ja traz a
 //     transicao de transform e box-shadow, entao nao precisa de transition-all);
@@ -26,4 +26,4 @@
 //
 // `relative` fica na base porque o sino ancora o badge de contagem nele.
 export const HEADER_ICON_BUTTON_CLASS =
-  "bnt-pressable relative inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-900 bg-white text-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900";
+  "bnt-pressable relative inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-900 bg-white text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] hover:shadow-[3px_3px_0_var(--bnt-shadow)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900";

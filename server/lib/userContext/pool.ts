@@ -803,6 +803,36 @@ function settled<T>(
   return warnSource(source, result.reason);
 }
 
+/**
+ * Subconjunto do pool: SO as fontes da vida de uso (roadmaps, trilhas v2 e
+ * badges).
+ *
+ * Existe porque `fetchUserContextPool` nao aceita selecao: ele dispara os quinze
+ * fetchers, e a rota do admin precisa de tres. Chamar o pool inteiro custaria
+ * doze idas ao banco que ninguem le, por usuario, a cada expiracao de cache.
+ *
+ * REUSA os mesmos fetchers privados, e essa e a parte que importa: escrever
+ * queries novas para o que o pool ja colhe criaria uma segunda definicao de
+ * "progresso do usuario", e as duas divergiriam na primeira mudanca de schema,
+ * em silencio. Aqui, se o pool muda, isto muda junto por construcao.
+ */
+export async function fetchUserLearningSources(userId: string): Promise<{
+  roadmaps: SourceResult<RoadmapProgressContext[]>;
+  courses: SourceResult<CourseProgressContext[]>;
+  badges: SourceResult<BadgeContext[]>;
+}> {
+  const [roadmaps, courses, badges] = await Promise.allSettled([
+    fetchRoadmaps(userId),
+    fetchCourses(userId),
+    fetchBadges(userId),
+  ]);
+  return {
+    roadmaps: settled(roadmaps, "roadmaps"),
+    courses: settled(courses, "courses"),
+    badges: settled(badges, "badges"),
+  };
+}
+
 export async function fetchUserContextPool(
   userId: string,
 ): Promise<UserContextPool> {

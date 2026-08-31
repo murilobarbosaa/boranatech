@@ -94,18 +94,18 @@ export const avatarBorderOptions: AvatarBorderOption[] = [
   {
     id: "purple",
     label: "Roxa",
-    borderClassName: "border-[#6d28d9]",
-    offsetClassName: "bg-[#6d28d9]",
-    accentClassName: "border-[#6d28d9] text-[#6d28d9]",
-    swatchClassName: "bg-[#6d28d9]",
+    borderClassName: "border-[var(--color-violet-700)]",
+    offsetClassName: "bg-[var(--color-violet-700)]",
+    accentClassName: "border-[var(--color-violet-700)] text-[var(--color-violet-700)]",
+    swatchClassName: "bg-[var(--color-violet-700)]",
   },
   {
     id: "gold",
     label: "Dourada",
-    borderClassName: "border-[#FFB800]",
-    offsetClassName: "bg-[#FFB800]",
-    accentClassName: "border-[#FFB800] text-[#8a5a00]",
-    swatchClassName: "bg-[#FFB800]",
+    borderClassName: "border-[var(--brand-yellow)]",
+    offsetClassName: "bg-[var(--brand-yellow)]",
+    accentClassName: "border-[var(--brand-yellow)] text-[#8a5a00]",
+    swatchClassName: "bg-[var(--brand-yellow)]",
   },
   {
     id: "pink",
@@ -180,10 +180,10 @@ export const avatarBorderOptions: AvatarBorderOption[] = [
     label: "Roxo", // TODO(Ana): nome final, ideia "roxo godzilla"
     pro: true,
     effect: "godzilla",
-    borderClassName: "border-[#7c3aed]",
+    borderClassName: "border-[var(--color-violet-600)]",
     offsetClassName: "bg-slate-950",
-    accentClassName: "border-[#7c3aed] text-[#7c3aed]",
-    swatchClassName: "bg-[#7c3aed]",
+    accentClassName: "border-[var(--color-violet-600)] text-[var(--color-violet-600)]",
+    swatchClassName: "bg-[var(--color-violet-600)]",
   },
   {
     id: "pro-storm",
@@ -253,12 +253,12 @@ export const avatarBgOptions: AvatarBgOption[] = [
   {
     id: "yellow",
     label: "Amarelo",
-    className: "bg-[#FFB800] text-[#1a1a1a]",
+    className: "bg-[var(--brand-yellow)] text-[var(--bnt-ink)]",
   },
   {
     id: "purple",
     label: "Roxo",
-    className: "bg-[#6d28d9] text-white",
+    className: "bg-[var(--color-violet-700)] text-white",
   },
   {
     id: "pink",
@@ -283,12 +283,12 @@ export const avatarBgOptions: AvatarBgOption[] = [
   {
     id: "cream",
     label: "Creme",
-    className: "bg-[#faf8f4] text-[#1a1a1a]",
+    className: "bg-[var(--brand-cream)] text-[var(--bnt-ink)]",
   },
   {
     id: "white",
     label: "Branco",
-    className: "bg-white text-[#1a1a1a]",
+    className: "bg-white text-[var(--bnt-ink)]",
   },
 ];
 

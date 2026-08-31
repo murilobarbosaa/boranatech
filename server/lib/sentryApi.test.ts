@@ -54,6 +54,40 @@ describe("listSentryIssues", () => {
     expect(url.searchParams.get("project")).toBe("-1");
   });
 
+  /**
+   * O filtro de level (BUG-69).
+   *
+   * `info` e rastro deliberado de SUCESSO. O caso que motivou: o
+   * `[account-deletion] assinaturas encerradas`, um `captureMessage` que
+   * registra o cancelamento bem-sucedido antes da exclusao da conta, virou card
+   * na fila de bugs porque a query default nao olhava level nenhum.
+   *
+   * O SEGUNDO ASSERT E O QUE IMPORTA: `warning` NAO pode ser excluido junto. As
+   * series de telemetria (`chunk_import_failed`, `vite_preload_error`,
+   * `ai_lastro_violado`) sao warning e devem virar card se o volume explodir.
+   * Um filtro largo demais aqui apagaria a fila inteira e o sintoma seria a
+   * AUSENCIA de cards, que nao se nota.
+   */
+  it("exclui level info da ingestao, e NAO exclui warning", async () => {
+    await listSentryIssues();
+
+    const query = new URL(urlsChamadas[0]).searchParams.get("query") ?? "";
+    expect(query).toContain("is:unresolved");
+    expect(query).toContain("!level:info");
+    expect(query).not.toContain("!level:warning");
+    expect(query).not.toContain("!level:error");
+  });
+
+  it("query explicita do chamador vence o default", async () => {
+    // O default so vale quando ninguem passa nada: o dry-run e as consultas
+    // pontuais precisam poder pedir outra coisa.
+    await listSentryIssues({ query: "is:resolved" });
+
+    expect(
+      new URL(urlsChamadas[urlsChamadas.length - 1]).searchParams.get("query"),
+    ).toBe("is:resolved");
+  });
+
   it("NENHUM slug de projeto aparece na URL", async () => {
     await listSentryIssues();
 

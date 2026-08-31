@@ -82,9 +82,9 @@ function ProjectCard({
 }) {
   const href = `/projetos/${project.id}`;
   return (
-    <div className="mb-3 rounded-[14px] border-[2.5px] border-slate-900 bg-amber-50 p-4 shadow-[4px_4px_0_#0f172a]">
+    <div className="mb-3 rounded-[14px] border-[2.5px] border-slate-900 bg-amber-50 p-4 shadow-[4px_4px_0_var(--bnt-shadow)]">
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <span className="rounded-md border-2 border-slate-900 bg-[#FFB800] px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-wide text-slate-950">
+        <span className="rounded-md border-2 border-slate-900 bg-[var(--brand-yellow)] px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-wide text-ink-on-accent">
           Projeto
         </span>
         <span className="rounded-md border-2 border-slate-900 bg-white px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-wide text-slate-700">
@@ -102,7 +102,7 @@ function ProjectCard({
           type="button"
           aria-pressed={checked}
           onClick={onToggleDone}
-          className={`inline-flex items-center gap-1.5 rounded-[9px] border-[2.5px] border-slate-900 px-3 py-1.5 text-[0.8rem] font-extrabold shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] ${
+          className={`inline-flex items-center gap-1.5 rounded-[9px] border-[2.5px] border-slate-900 px-3 py-1.5 text-[0.8rem] font-extrabold shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] ${
             checked
               ? "bg-emerald-500 text-white shadow-[2px_2px_0_#047857]"
               : "bg-white text-slate-900"
@@ -113,7 +113,7 @@ function ProjectCard({
         </button>
         <Link
           href={href}
-          className="rounded-[9px] border-[2.5px] border-slate-900 bg-violet-100 px-3 py-1.5 text-[0.8rem] font-extrabold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a]"
+          className="rounded-[9px] border-[2.5px] border-slate-900 bg-violet-100 px-3 py-1.5 text-[0.8rem] font-extrabold text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
         >
           Ver projeto
         </Link>
@@ -123,7 +123,7 @@ function ProjectCard({
 }
 
 const RESOURCE_CHIP_CLASS =
-  "rounded-[7px] border-2 border-slate-900 bg-violet-100 px-3 py-1.5 text-[0.78rem] font-extrabold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a]";
+  "rounded-[7px] border-2 border-slate-900 bg-violet-100 px-3 py-1.5 text-[0.78rem] font-extrabold text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)]";
 
 function ResourceChips({ resources }: { resources: RoadmapResource[] }) {
   return (
@@ -179,11 +179,11 @@ function GroupItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
           className={`h-4 w-4 shrink-0 text-slate-500 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
         />
         <span
-          className={`grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[7px] border-[2.5px] border-slate-900 shadow-[2px_2px_0_#0f172a] ${
+          className={`grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[7px] border-[2.5px] border-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] ${
             complete
               ? "bg-emerald-500 shadow-[2px_2px_0_#047857]"
               : partial
-                ? "bg-[#FFB800]"
+                ? "bg-[var(--brand-yellow)]"
                 : "bg-white"
           }`}
         >
@@ -285,7 +285,7 @@ function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
           checked ? `Desmarcar ${node.title}` : `Marcar ${node.title}`
         }
         onClick={() => onToggle(node.id)}
-        className={`mt-[9px] grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[7px] border-[2.5px] border-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] active:scale-90 ${
+        className={`mt-[9px] grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[7px] border-[2.5px] border-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] active:scale-90 ${
           checked ? "bg-emerald-500 shadow-[2px_2px_0_#047857]" : "bg-white"
         }`}
       >
@@ -361,7 +361,7 @@ function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
                   </p>
                   <Link
                     href="/projetos"
-                    className="mt-3 inline-flex rounded-[9px] border-[2.5px] border-slate-900 bg-white px-3 py-1.5 text-[0.8rem] font-extrabold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a]"
+                    className="mt-3 inline-flex rounded-[9px] border-[2.5px] border-slate-900 bg-white px-3 py-1.5 text-[0.8rem] font-extrabold text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                   >
                     Ver projetos
                   </Link>

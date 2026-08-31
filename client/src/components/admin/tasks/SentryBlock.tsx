@@ -44,7 +44,7 @@ export function SentryBlock({ bloco }: { bloco: SentryDataBloco }) {
             href={issue.permalink}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-2 py-1 text-[11px] font-black text-slate-900 shadow-[2px_2px_0_#0f172a]"
+            className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-2 py-1 text-[11px] font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
           >
             Abrir no Sentry <ExternalLink className="h-3 w-3" />
           </a>

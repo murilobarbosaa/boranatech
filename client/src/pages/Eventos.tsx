@@ -3,7 +3,7 @@
   Style: Neo-Brutalism Suavizado
 */
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Calendar,
   CalendarPlus,
@@ -22,24 +22,79 @@ import { BntSelect } from "@/components/shared/BntSelect";
 import {
   ESTADO_UF_OPTS,
   LABEL_FILTROS,
-  eventoSortKey,
-  formatEventoData,
-  isEventoPassado,
   rotuloEstadoEvento,
 } from "@/lib/eventFilters";
 import type { EstadoUfSigla } from "@/lib/eventFilters";
-import { eventos } from "@/lib/data";
+import { getEventos, type Evento } from "@/services/eventosService";
 
-function googleCalendarUrl(evento: (typeof eventos)[number]) {
+const MESES_PT = [
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+];
+
+/** Quantos cards entram por vez no "Mostrar mais". */
+const LOTE = 30;
+
+function rotuloEstado(evento: Evento): string {
+  if (evento.estadoLabel) return evento.estadoLabel;
+  return evento.uf ? rotuloEstadoEvento(evento.uf) : "";
+}
+
+/**
+ * Data final EXCLUSIVA, mais um dia.
+ *
+ * O Google trata a data final de evento de dia inteiro como exclusiva: sem o +1
+ * o ultimo dia some da agenda de quem se inscreve. A versao anterior desta
+ * pagina passava `calendarEnd` cru e tinha esse defeito; a rotina que alimenta o
+ * banco ja grava `calendar_url` corretamente, entao este fallback so roda quando
+ * a coluna esta vazia.
+ */
+function maisUmDia(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10).replace(/-/g, "");
+}
+
+function googleCalendarUrl(evento: Evento): string | null {
+  if (evento.calendarUrl) return evento.calendarUrl;
+  if (!evento.inicio) return null;
+  const fim = evento.fim || evento.inicio;
   const params = new URLSearchParams({
     action: "TEMPLATE",
     text: evento.nome,
-    dates: `${evento.calendarStart}/${evento.calendarEnd}`,
+    dates: `${evento.inicio.replace(/-/g, "")}/${maisUmDia(fim)}`,
     details: `${evento.descricao}\n\nOrganizador: ${evento.organizador}\nValor: ${evento.valor}\nLink: ${evento.link}`,
-    location: `${evento.cidade}, ${rotuloEstadoEvento(evento.estado)} (${evento.formato})`,
+    location: `${evento.cidade}, ${rotuloEstado(evento)} (${evento.formato})`,
   });
-
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+/** Rotulo de data a exibir: o do banco quando existe, senao a data formatada. */
+function textoData(evento: Evento): string {
+  if (evento.dataLabel) return evento.dataLabel;
+  if (!evento.inicio) return "";
+  const [a, m, d] = evento.inicio.split("-");
+  return `${Number(d)} de ${MESES_PT[Number(m) - 1].toLowerCase()} de ${a}`;
+}
+
+/** Chave "AAAA-MM" para agrupar por mes. Null e recorrente ou a confirmar. */
+function chaveMes(evento: Evento): string | null {
+  return evento.inicio ? evento.inicio.slice(0, 7) : null;
+}
+
+function rotuloMes(chave: string): string {
+  const [ano, mes] = chave.split("-");
+  return `${MESES_PT[Number(mes) - 1]} de ${ano}`;
 }
 
 function eventInitials(name: string) {
@@ -56,7 +111,7 @@ function EventLogo({ name, logoUrl }: { name: string; logoUrl: string }) {
   const [loaded, setLoaded] = useState(false);
 
   return (
-    <span className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]">
+    <span className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_var(--bnt-shadow)]">
       <span
         className={`font-display text-sm font-black leading-none text-fuchsia-700 ${loaded ? "opacity-0" : "opacity-100"}`}
       >
@@ -80,6 +135,23 @@ const ALL = "";
 // state segue "". Campos isolados (categoria/formato), sem colisao entre eles.
 const FILTRO_TODOS = "__todos__";
 
+/**
+ * Recorte "Internacional" do filtro de UF, que NAO e uma UF.
+ *
+ * O select lista as 27 unidades da federacao mais "Brasil: nacional ou
+ * itinerante", e um evento fora do pais nao cabe em nenhuma delas: ele chega do
+ * banco com `uf` nulo. Sem esta opcao, os eventos internacionais so apareciam
+ * em "Todos os estados" e nao havia como pedi-los.
+ *
+ * O predicado e `uf` nulo E modalidade diferente de Online, os dois juntos.
+ * Sem a segunda metade o recorte pegaria tambem todo evento online brasileiro,
+ * que tambem tem `uf` nulo por nao ter lugar fisico, e ai "Internacional"
+ * devolveria uma lista majoritariamente nacional, que e pior que nao ter o
+ * filtro. Fica sentinela e nao valor de UF de proposito: gravar "INT" na coluna
+ * seria inventar uma UF que o banco nao tem.
+ */
+const FILTRO_INTERNACIONAL = "__internacional__";
+
 type Tab = "todos" | "webinars" | "hackathons";
 
 const TAB_DEFS: { id: Tab; label: string; Icon: LucideIcon }[] = [
@@ -89,55 +161,210 @@ const TAB_DEFS: { id: Tab; label: string; Icon: LucideIcon }[] = [
 ];
 
 function matchTab(categoria: string, tab: Tab): boolean {
-  if (tab === "hackathons") return categoria.toLowerCase().includes("hackathon");
+  if (tab === "hackathons")
+    return categoria.toLowerCase().includes("hackathon");
   if (tab === "webinars") return categoria.toLowerCase().includes("webinar");
   return true;
+}
+
+function EventoCard({ ev }: { ev: Evento }) {
+  const agenda = googleCalendarUrl(ev);
+  return (
+    <div className="card-brutal bg-white rounded-xl p-6 flex flex-col shadow-[5px_5px_0_#f0abfc]">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <EventLogo name={ev.nome} logoUrl={ev.logoUrl} />
+          <span className="text-xs bg-fuchsia-100 text-fuchsia-700 px-2 py-0.5 rounded-full font-medium border border-fuchsia-200">
+            {ev.categoria}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span
+            className={`max-w-[220px] rounded-full border-2 px-2 py-0.5 text-xs font-black ${ev.valor.toLowerCase() === "gratuito" ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-amber-100 text-amber-700 border-amber-200"}`}
+          >
+            {ev.valor}
+          </span>
+          <FavoriteButton
+            compact
+            item={{
+              id: ev.id,
+              type: "evento",
+              title: ev.nome,
+              subtitle: ev.categoria,
+              url: ev.link,
+            }}
+          />
+        </div>
+      </div>
+      <h3 className="font-display font-bold text-lg text-slate-900 mb-2">
+        {ev.nome}
+      </h3>
+      <p className="text-sm text-slate-600 mb-4 flex-1">{ev.descricao}</p>
+      <div className="space-y-1.5 mb-4">
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <Calendar className="w-3.5 h-3.5 shrink-0" /> {textoData(ev)}{" "}
+          {ev.horario !== "Vários horários" && `· ${ev.horario}`}
+        </div>
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <MapPin className="w-3.5 h-3.5 shrink-0" />
+          <span className="line-clamp-2">
+            {ev.cidade} · {rotuloEstado(ev)} · {ev.formato}
+          </span>
+        </div>
+        {ev.local ? (
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <Users className="w-3.5 h-3.5 shrink-0" /> {ev.local}
+          </div>
+        ) : null}
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+        <span className="text-xs text-slate-400">{ev.organizador}</span>
+        <div className="flex flex-wrap gap-2">
+          {agenda ? (
+            <a
+              href={agenda}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-white text-slate-900 text-xs font-black rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] hover:shadow-[3px_3px_0_var(--bnt-shadow)] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
+            >
+              Google Calendar <CalendarPlus className="w-3 h-3 shrink-0" />
+            </a>
+          ) : null}
+          <a
+            href={ev.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 px-3 py-1.5 bg-fuchsia-600 text-white text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] hover:shadow-[3px_3px_0_var(--bnt-shadow)] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
+          >
+            Inscrever <ExternalLink className="w-3 h-3 shrink-0" />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function Eventos() {
   const [tab, setTab] = useState<Tab>("todos");
   const [categoria, setCategoria] = useState(ALL);
   const [formato, setFormato] = useState(ALL);
-  const [estadoUF, setEstadoUF] = useState<"" | EstadoUfSigla>(ALL);
+  const [estadoUF, setEstadoUF] = useState<
+    "" | EstadoUfSigla | typeof FILTRO_INTERNACIONAL
+  >(ALL);
   const [apenasGratuitos, setApenasGratuitos] = useState(false);
 
-  const tabCounts = useMemo(() => {
-    const upcoming = eventos.filter((e) => !isEventoPassado(e));
-    return {
-      todos: upcoming.length,
-      webinars: upcoming.filter((e) => matchTab(e.categoria, "webinars")).length,
-      hackathons: upcoming.filter((e) => matchTab(e.categoria, "hackathons"))
-        .length,
+  const [eventos, setEventos] = useState<Evento[] | null>(null);
+  // Estado de erro NOMEADO, distinto de lista vazia. Eventos nao tem estatico
+  // para cair, entao "nao consegui carregar" e "nao ha eventos" seriam a mesma
+  // tela se este estado nao existisse.
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [visiveis, setVisiveis] = useState(LOTE);
+
+  const carregar = useCallback(() => {
+    let ativo = true;
+    setEventos(null);
+    setLoadError(null);
+    getEventos()
+      .then((payload) => {
+        if (ativo) setEventos(payload.eventos);
+      })
+      .catch((error: unknown) => {
+        if (!ativo) return;
+        setEventos([]);
+        // TODO(Ana)
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : "Erro ao carregar os eventos.",
+        );
+      });
+    return () => {
+      ativo = false;
     };
   }, []);
 
+  useEffect(() => carregar(), [carregar]);
+
+  const carregados = useMemo(() => eventos ?? [], [eventos]);
+
+  const tabCounts = useMemo(
+    () => ({
+      todos: carregados.length,
+      webinars: carregados.filter((e) => matchTab(e.categoria, "webinars"))
+        .length,
+      hackathons: carregados.filter((e) => matchTab(e.categoria, "hackathons"))
+        .length,
+    }),
+    [carregados],
+  );
+
   const categoriasUnicas = useMemo(
     () =>
-      Array.from(new Set(eventos.map((e) => e.categoria))).sort((a, b) =>
-        a.localeCompare(b, "pt-BR"),
-      ),
-    [],
+      Array.from(new Set(carregados.map((e) => e.categoria)))
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [carregados],
   );
 
   const filtered = useMemo(
     () =>
-      eventos.filter((e) => {
-        if (isEventoPassado(e)) return false;
-
+      carregados.filter((e) => {
         const matchTipo = matchTab(e.categoria, tab);
-
         const matchCat = !categoria || e.categoria === categoria;
-
         const matchFmt = !formato || e.formato === formato;
-
-        const matchEst = !estadoUF || e.estado === estadoUF;
-
+        const matchEst =
+          !estadoUF ||
+          (estadoUF === FILTRO_INTERNACIONAL
+            ? e.uf === null && e.formato !== "Online"
+            : e.uf === estadoUF);
+        // Enum exato no lugar do `includes("gratuito")` sobre texto livre. O
+        // comportamento observavel e o mesmo de antes: "misto" era o que a
+        // pagina antiga chamava de "Gratuito e pago" e ja contava como gratuito.
         const matchGratuito =
-          !apenasGratuitos || e.valor.toLowerCase().includes("gratuito");
+          !apenasGratuitos ||
+          e.precoTipo === "gratuito" ||
+          e.precoTipo === "misto";
         return matchTipo && matchCat && matchFmt && matchEst && matchGratuito;
-      }).sort((a, b) => eventoSortKey(a).localeCompare(eventoSortKey(b))),
-    [tab, categoria, formato, estadoUF, apenasGratuitos],
+      }),
+    [carregados, tab, categoria, formato, estadoUF, apenasGratuitos],
   );
+
+  // Reinicia o lote a cada mudanca de recorte: manter 300 cards abertos depois
+  // de trocar o filtro entregaria a lista inteira sem o usuario pedir.
+  useEffect(() => {
+    setVisiveis(LOTE);
+  }, [tab, categoria, formato, estadoUF, apenasGratuitos]);
+
+  const exibidos = useMemo(
+    () => filtered.slice(0, visiveis),
+    [filtered, visiveis],
+  );
+
+  /**
+   * Agrupamento por mes sobre a FATIA visivel, nao sobre `filtered`: os
+   * cabecalhos aparecem junto com os cards que eles encabecam, e nunca sobra
+   * cabecalho de mes vazio esperando o proximo lote.
+   */
+  const grupos = useMemo(() => {
+    const porMes = new Map<string, Evento[]>();
+    const semData: Evento[] = [];
+    for (const e of exibidos) {
+      const chave = chaveMes(e);
+      if (!chave || e.recorrente) {
+        semData.push(e);
+        continue;
+      }
+      const atual = porMes.get(chave);
+      if (atual) atual.push(e);
+      else porMes.set(chave, [e]);
+    }
+    return {
+      meses: Array.from(porMes.entries()).sort((a, b) =>
+        a[0].localeCompare(b[0]),
+      ),
+      semData,
+    };
+  }, [exibidos]);
 
   return (
     <Layout>
@@ -157,7 +384,7 @@ export default function Eventos() {
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#c026d3_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
           <div className="max-w-2xl">
-            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-fuchsia-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-fuchsia-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
               networking e movimento
             </p>
             <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">
@@ -189,8 +416,8 @@ export default function Eventos() {
                   onClick={() => setTab(id)}
                   className={`inline-flex items-center gap-2 rounded-full border-2 border-slate-900 px-4 py-2 text-sm font-black transition-all focus:outline-none focus-visible:ring-4 focus-visible:ring-fuchsia-200 ${
                     active
-                      ? "bg-fuchsia-500 text-white shadow-[3px_3px_0_#0f172a]"
-                      : "bg-white text-slate-900 hover:-translate-y-0.5 hover:shadow-[2px_2px_0_#0f172a]"
+                      ? "bg-fuchsia-500 text-white shadow-[3px_3px_0_var(--bnt-shadow)]"
+                      : "bg-white text-slate-900 hover:-translate-y-0.5 hover:shadow-[2px_2px_0_var(--bnt-shadow)]"
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -269,13 +496,21 @@ export default function Eventos() {
                 leadingIcon={<MapPin className="h-4 w-4 text-pink-600" />}
                 value={estadoUF === ALL ? FILTRO_TODOS : estadoUF}
                 onValueChange={(v) =>
-                  setEstadoUF(v === FILTRO_TODOS ? ALL : (v as EstadoUfSigla))
+                  setEstadoUF(
+                    v === FILTRO_TODOS
+                      ? ALL
+                      : v === FILTRO_INTERNACIONAL
+                        ? FILTRO_INTERNACIONAL
+                        : (v as EstadoUfSigla),
+                  )
                 }
                 options={[
                   ...ESTADO_UF_OPTS.map(({ sigla, nome }) => ({
                     value: sigla,
                     label: nome,
                   })),
+                  // TODO(Ana)
+                  { value: FILTRO_INTERNACIONAL, label: "Internacional" },
                   { value: FILTRO_TODOS, label: "Todos os estados" },
                 ]}
               />
@@ -293,91 +528,91 @@ export default function Eventos() {
         </div>
       </section>
 
-      <section className="bg-[#fdf4ff] py-12">
+      <section className="bg-[var(--bnt-surface)] py-12">
         <div className="container">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filtered.map((ev) => (
-              <div
-                key={ev.id}
-                className="card-brutal bg-white rounded-xl p-6 flex flex-col shadow-[5px_5px_0_#f0abfc]"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <EventLogo name={ev.nome} logoUrl={ev.logoUrl} />
-                    <span className="text-xs bg-fuchsia-100 text-fuchsia-700 px-2 py-0.5 rounded-full font-medium border border-fuchsia-200">
-                      {ev.categoria}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`max-w-[220px] rounded-full border-2 px-2 py-0.5 text-xs font-black ${ev.valor.toLowerCase() === "gratuito" ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-amber-100 text-amber-700 border-amber-200"}`}
-                    >
-                      {ev.valor}
-                    </span>
-                    <FavoriteButton
-                      compact
-                      item={{
-                        id: ev.id,
-                        type: "evento",
-                        title: ev.nome,
-                        subtitle: ev.categoria,
-                        url: ev.link,
-                      }}
-                    />
-                  </div>
-                </div>
-                <h3 className="font-display font-bold text-lg text-slate-900 mb-2">
-                  {ev.nome}
-                </h3>
-                <p className="text-sm text-slate-600 mb-4 flex-1">
-                  {ev.descricao}
-                </p>
-                <div className="space-y-1.5 mb-4">
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Calendar className="w-3.5 h-3.5 shrink-0" />{" "}
-                    {formatEventoData(ev)}{" "}
-                    {ev.horario !== "Vários horários" && `· ${ev.horario}`}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <MapPin className="w-3.5 h-3.5 shrink-0" />
-                    <span className="line-clamp-2">
-                      {ev.cidade} · {rotuloEstadoEvento(ev.estado)} ·{" "}
-                      {ev.formato}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Users className="w-3.5 h-3.5 shrink-0" /> {ev.area}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
-                  <span className="text-xs text-slate-400">
-                    {ev.organizador}
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    <a
-                      href={googleCalendarUrl(ev)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-white text-slate-900 text-xs font-black rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
-                    >
-                      Google Calendar{" "}
-                      <CalendarPlus className="w-3 h-3 shrink-0" />
-                    </a>
-                    <a
-                      href={ev.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-fuchsia-600 text-white text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
-                    >
-                      Inscrever <ExternalLink className="w-3 h-3 shrink-0" />
-                    </a>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          {eventos === null ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-56 animate-pulse rounded-xl border-2 border-slate-200 bg-white"
+                />
+              ))}
+            </div>
+          ) : null}
 
-          {filtered.length === 0 &&
+          {loadError ? (
+            <div className="card-brutal rounded-xl bg-white p-6 text-center">
+              {/* TODO(Ana) */}
+              <p className="font-display text-xl font-black text-rose-800">
+                Não foi possível carregar a agenda
+              </p>
+              {/* TODO(Ana) */}
+              <p className="mx-auto mt-2 max-w-lg text-sm font-semibold text-slate-600">
+                Isto não é uma agenda vazia: ela não chegou. Os eventos
+                continuam lá, é a busca que falhou.
+              </p>
+              <p className="mx-auto mt-3 max-w-lg rounded-2xl border-2 border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-900">
+                {loadError}
+              </p>
+              {/* TODO(Ana) */}
+              <button
+                type="button"
+                onClick={() => carregar()}
+                className="mt-4 rounded-full border-2 border-slate-900 bg-yellow-300 px-5 py-2.5 text-sm font-black"
+              >
+                Tentar de novo
+              </button>
+            </div>
+          ) : null}
+
+          {grupos.meses.map(([chave, doMes]) => (
+            <section key={chave} className="mb-10">
+              <h2 className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-fuchsia-200 px-4 py-1.5 font-display text-sm font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
+                {rotuloMes(chave)}
+              </h2>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {doMes.map((ev) => (
+                  <EventoCard key={ev.id} ev={ev} />
+                ))}
+              </div>
+            </section>
+          ))}
+
+          {grupos.semData.length > 0 && (
+            <section className="mb-10">
+              {/* TODO(Ana) */}
+              <h2 className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-violet-200 px-4 py-1.5 font-display text-sm font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
+                Recorrentes e a confirmar
+              </h2>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {grupos.semData.map((ev) => (
+                  <EventoCard key={ev.id} ev={ev} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {filtered.length > exibidos.length && (
+            <div className="mb-10 flex flex-col items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setVisiveis((n) => n + LOTE)}
+                className="rounded-full border-2 border-slate-900 bg-fuchsia-500 px-6 py-3 text-sm font-black text-white shadow-[4px_4px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5"
+              >
+                {/* TODO(Ana) */}
+                Mostrar mais eventos
+              </button>
+              {/* TODO(Ana) */}
+              <p className="text-xs font-bold text-slate-500">
+                Mostrando {exibidos.length} de {filtered.length}
+              </p>
+            </div>
+          )}
+
+          {eventos !== null &&
+            !loadError &&
+            filtered.length === 0 &&
             (tabCounts[tab] === 0 ? (
               <div className="text-center py-16">
                 <p className="text-3xl mb-3">🗓️</p>

@@ -613,7 +613,7 @@ function Card({
         </div>
         <span className="steppill">
           <i>
-            <OnbIcon name="check" size={10} color="#FCC700" width={3} />
+            <OnbIcon name="check" size={10} color="var(--brand-yellow)" width={3} />
           </i>
           {index + 1} DE {total}
         </span>
@@ -736,7 +736,7 @@ function Card({
             <OnbIcon
               name={step.punch[0]}
               size={19}
-              color="#FCC700"
+              color="var(--brand-yellow)"
               width={2.1}
             />
             <span>{step.punch[1]}</span>
@@ -747,7 +747,7 @@ function Card({
       <div className="cardfoot">
         <div className="dash" aria-hidden="true">
           <i />
-          <OnbStar size={13} color="#FCC700" />
+          <OnbStar size={13} color="var(--brand-yellow)" />
           <i />
         </div>
         <div className="sig">
@@ -780,13 +780,13 @@ function ProCta({
   return (
     <div className="proglow">
       <i className="s1">
-        <OnbStar size={13} color="#FCC700" />
+        <OnbStar size={13} color="var(--brand-yellow)" />
       </i>
       <i className="s2">
         <OnbStar size={10} color="#fff" />
       </i>
       <i className="s3">
-        <OnbStar size={12} color="#FCC700" />
+        <OnbStar size={12} color="var(--brand-yellow)" />
       </i>
       <i className="s4">
         <OnbStar size={9} color="#fff" />

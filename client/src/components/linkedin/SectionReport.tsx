@@ -120,7 +120,7 @@ export default function SectionReport({
             {verdictUi ? (
               <span
                 className={cn(
-                  "inline-flex rounded-full border-2 border-slate-950 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]",
+                  "inline-flex rounded-full border-2 border-slate-950 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]",
                   verdictUi.chip,
                 )}
               >
@@ -234,7 +234,7 @@ export default function SectionReport({
                     ) : null}
                     {passos ? (
                       <details className="mt-1.5">
-                        <summary className="inline-flex cursor-pointer items-center gap-1 rounded-full border-2 border-slate-950 bg-white px-2.5 py-0.5 text-[11px] font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-colors hover:bg-yellow-100">
+                        <summary className="inline-flex cursor-pointer items-center gap-1 rounded-full border-2 border-slate-950 bg-white px-2.5 py-0.5 text-[11px] font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-colors hover:bg-yellow-100">
                           Onde resolver isso
                         </summary>
                         <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs font-medium text-slate-600">

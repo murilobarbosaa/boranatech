@@ -197,14 +197,14 @@ export function SubscribersTable() {
           </label>
           <button
             type="submit"
-            className="rounded-xl border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black shadow-[3px_3px_0_#0f172a]"
+            className="rounded-xl border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)]"
           >
             Buscar
           </button>
         </form>
       </div>
 
-      <div className="mt-5 overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]">
+      <div className="mt-5 overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_var(--bnt-shadow)]">
         {loading && !data ? (
           <p className="p-6 text-sm font-semibold text-slate-600">
             Carregando assinantes...

@@ -16,7 +16,7 @@ import SecaoDecorada from "../SecaoDecorada";
 // mostra skeleton enquanto busca e se esconde se a fonte falhar ou vier vazia,
 // sem derrubar a secao. Nao inventa dado.
 
-type Evento = (typeof import("@/lib/eventosData"))["eventos"][number];
+type Evento = import("@/services/eventosService").Evento;
 type Dica = (typeof import("@/lib/dicasData"))["dicas"][number];
 
 // Altura minima do card, a partir de `sm`.
@@ -28,8 +28,7 @@ type Dica = (typeof import("@/lib/dicasData"))["dicas"][number];
 // cerca de 150px de espaco vazio numa secao que e curta de proposito.
 const CARD_MIN_H = "sm:min-h-[274px]";
 
-const CARD_BASE =
-  `flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[5px_5px_0_#0f172a] ${CARD_MIN_H}`;
+const CARD_BASE = `flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[5px_5px_0_var(--bnt-shadow)] ${CARD_MIN_H}`;
 
 const CARD_LABEL =
   "mb-3 inline-flex w-fit items-center gap-2 text-sm font-black uppercase tracking-[0.2em]";
@@ -81,7 +80,13 @@ function SkeletonCaixa({ children }: { children: ReactNode }) {
  * Era isso que faltava na versao anterior, que usava `h-6`, `h-5`, `h-[22px]` e
  * ficava sistematicamente 14 a 20px curta por card.
  */
-function SkeletonLinha({ w, tom = "bg-slate-200" }: { w: string; tom?: string }) {
+function SkeletonLinha({
+  w,
+  tom = "bg-slate-200",
+}: {
+  w: string;
+  tom?: string;
+}) {
   return (
     <div className={`${w} ${tom} rounded`} aria-hidden>
       &nbsp;
@@ -238,18 +243,26 @@ function EventosCard() {
 
   useEffect(() => {
     let ativo = true;
-    Promise.all([import("@/lib/eventosData"), import("@/lib/eventFilters")])
-      .then(([{ eventos }, { isEventoPassado, eventoSortKey }]) => {
+    // A rota ja devolve so exibiveis, ordenados por data com os sem data no
+    // fim. Aqui a home quer os proximos COM data, entao filtra os recorrentes.
+    import("@/services/eventosService")
+      .then(({ getEventos }) => getEventos())
+      .then(({ eventos }) => {
         if (!ativo) return;
         setProximos(
           eventos
-            .filter((evento) => !isEventoPassado(evento) && Boolean(evento.link))
-            .sort((a, b) => eventoSortKey(a).localeCompare(eventoSortKey(b)))
+            .filter((evento) => !evento.recorrente && Boolean(evento.link))
             .slice(0, 3),
         );
       })
-      .catch(() => {
-        if (ativo) setProximos([]);
+      .catch((erro: unknown) => {
+        if (!ativo) return;
+        // Na home, falha de carregamento ESCONDE a secao (o `[]` cai no
+        // `return null` abaixo) em vez de mostrar banner de erro. E o padrao
+        // das secoes vizinhas: a home nao e o lugar de pedir retry. A pagina
+        // /eventos, que existe para isso, nomeia o erro e oferece o retry.
+        console.warn("[home] falha ao carregar eventos:", erro);
+        setProximos([]);
       });
     return () => {
       ativo = false;
@@ -282,7 +295,7 @@ function EventosCard() {
                   className="h-3.5 w-3.5 shrink-0 text-violet-600"
                   aria-hidden
                 />
-                {evento.data}
+                {evento.dataLabel}
               </span>
             </a>
           </li>
@@ -344,7 +357,7 @@ function DicaCard() {
         <button
           type="button"
           onClick={outra}
-          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-1.5 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all motion-safe:hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
+          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-1.5 text-sm font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-all motion-safe:hover:-translate-y-0.5 hover:shadow-[3px_3px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
         >
           <Shuffle className="h-4 w-4" aria-hidden />
           Outra dica
@@ -374,7 +387,7 @@ export default function Novidades() {
     // CARDS, nao da secao. Inventar um eyebrow aqui seria escrever copy nova.
     <SecaoDecorada
       id="novidades"
-      base="bg-[#f5f3ff]"
+      base="bg-[var(--color-violet-50)]"
       variante="pontos"
       acento="text-violet-300"
       opacidade="opacity-25"

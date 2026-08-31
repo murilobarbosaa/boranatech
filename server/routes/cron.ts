@@ -18,7 +18,11 @@ import { recordCronRun } from "../lib/cron-logs";
 import { reconcileEmailCampaignBatches } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
 import { reconcileFiscalInvoices } from "../lib/fiscalReconcile";
-import { clampWindowDays, detectOrphanPayments } from "../lib/orphanPayments";
+import {
+  clampWindowDays,
+  detectOrphanPayments,
+  statusDaRunDeOrfaos,
+} from "../lib/orphanPayments";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
@@ -937,7 +941,10 @@ function isProLikeStatus(status: string | null | undefined): boolean {
 // (subscription retrieve) E a fonte de verdade, entao refletimos status/periodo
 // no banco sem calcular ciclo. Sem STRIPE_SECRET_KEY ou sem id do provedor:
 // skipped (nunca assume um estado). So escreve quando ha mudanca real.
-async function reconcileStripeRow(sub: SubRow): Promise<RowOutcome> {
+// EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` abaixo: o
+// que importa provar e o que acontece com a violacao de unicidade na ativacao, e
+// isso so se prova rodando a funcao contra um erro real do banco.
+export async function reconcileStripeRow(sub: SubRow): Promise<RowOutcome> {
   if (!env.stripeSecretKey) {
     return {
       provider: "stripe",
@@ -977,7 +984,43 @@ async function reconcileStripeRow(sub: SubRow): Promise<RowOutcome> {
       last_event_at: new Date().toISOString(),
     })
     .eq("id", sub.id);
-  if (updateError) throw updateError;
+  if (updateError) {
+    // 23505 = unique_violation. So passa a existir com o indice parcial
+    // `subscriptions_one_active_per_user` (migration 20260829120000) aplicado, e
+    // so alcanca a FASE 1: ela seleciona linhas 'incomplete' e pode escrever
+    // 'active', entao bate no indice quando o dono JA tem assinatura ativa.
+    //
+    // Por que isto merece Sentry e nao so `failed + 1`: duas assinaturas do
+    // mesmo dono chegando a 'active' significa POSSIVEL PAGAMENTO DUPLO. Um
+    // contador subindo no payload do cron nao faz ninguem agir; a linha some no
+    // meio do relatorio da rodada e volta identica na rodada seguinte, para
+    // sempre. Alem disso a escrita e uma so (diferente do par do boleto), entao
+    // o 23505 aqui e o veredito correto do banco, nao um defeito a corrigir: o
+    // que falta e alguem olhar.
+    //
+    // Demais falhas seguem exatamente como antes: propagam e o chamador conta
+    // `failed`.
+    if ((updateError as { code?: string }).code === "23505") {
+      Sentry.captureMessage("stripe_reconcile_assinatura_duplicada", {
+        level: "error",
+        fingerprint: ["stripe-reconcile-assinatura-duplicada"],
+        tags: { origem: "cron-reconcile-subscriptions" },
+        extra: {
+          user_id: sub.user_id,
+          subscription_id: sub.id,
+          provider_subscription_id: sub.provider_subscription_id,
+          status_anterior: prevStatus,
+          status_pretendido: state.status,
+          db_message: updateError.message,
+        },
+      });
+      console.error(
+        `[cron/reconcile-subscriptions] VIOLACAO DE UNICIDADE ao ativar ${sub.id} ` +
+          `(user ${sub.user_id}): o dono ja tem assinatura ativa. Possivel pagamento duplo, investigar.`,
+      );
+    }
+    throw updateError;
+  }
 
   // So o boolean Pro muda com o status; invalida o cache do dono nesse caso.
   if (statusChanged && sub.user_id) void invalidateProStatusCache(sub.user_id);
@@ -1395,17 +1438,13 @@ router.post(
         full ? { full: true } : { windowDays: clampWindowDays(req.query.days) },
       );
 
-      // 'partial' pelos ACIONAVEIS, nao pelo bruto: `modo_teste` e
-      // `conta_excluida` sao ruido conhecido e nomeado, e deixar o job amarelo
-      // por causa deles e o caminho para ninguem mais olhar a lista de crons.
-      // Tambem 'partial' quando o registro nao gravou (migration pendente) —
-      // mas NAO quando foi dry-run, onde nao gravar e o comportamento pedido.
-      const needsAttention =
-        scan.orphansAcionaveis > 0 || (!scan.persisted && !scan.dryRun);
+      // Criterio inteiro (e o porque dele) em `statusDaRunDeOrfaos`, extraido
+      // para `server/lib/orphanPayments.ts` por ser testavel isolado.
+      const status = statusDaRunDeOrfaos(scan);
 
       await recordCronRun({
         jobName: "detect-orphan-payments",
-        status: needsAttention ? "partial" : "success",
+        status,
         startedAt,
         payload: {
           windowDays: scan.windowDays,
@@ -1421,6 +1460,15 @@ router.post(
           // sobrevive ao Railway, entao o achado fica consultavel mesmo se a
           // tabela dedicada ainda nao estiver aplicada.
           findings: scan.findings,
+          // Estoque nao resolvido, fora da janela da varredura. Resumo, nao o
+          // achado inteiro: quem le a run precisa de quem esta esperando e ha
+          // quanto tempo, e o resto ja esta em billing_orphan_payments.
+          unresolvedAcionaveis: {
+            total: scan.unresolvedAcionaveis,
+            naoVerificadas: scan.unresolvedNaoVerificadas,
+            leituraOk: scan.unresolvedLeituraOk,
+            itens: scan.unresolvedItens,
+          },
         },
       });
 

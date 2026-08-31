@@ -64,12 +64,15 @@ import { TasksPanelSkeleton } from "@/components/admin/tasks/TasksPanelSkeleton"
 // import estatico coloca os dois no chunk do Admin, que TODA aba do painel baixa.
 // Medido: o chunk saiu de 700,98 kB para 860,43 kB (gzip 170,18 -> 216,50).
 // Ninguem fora deste modulo importa dnd-kit, entao a fronteira e limpa.
+import { readViewState } from "@/components/admin/tasks/taskViewState";
+
 const TasksDashboard = lazyWithRetry(
   () => import("@/components/admin/tasks/TasksDashboard"),
 );
 import { NotificationsManager } from "@/components/admin/NotificationsManager";
 import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { BntSelect } from "@/components/shared/BntSelect";
+import ThemeToggle from "@/components/ThemeToggle";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Popover,
@@ -78,6 +81,7 @@ import {
 } from "@/components/ui/popover";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { FiscalInvoicesDashboard } from "@/components/admin/FiscalInvoicesDashboard";
+import { OrphanPaymentsPanel } from "@/components/admin/OrphanPaymentsPanel";
 import { BlocoBoundary } from "@/components/admin/BlocoBoundary";
 import { HealthBand } from "@/components/admin/overview/HealthBand";
 import { PaidFunnel } from "@/components/admin/overview/PaidFunnel";
@@ -113,6 +117,12 @@ import VagasDestaqueAdmin from "@/components/admin/VagasDestaqueAdmin";
 import SEO from "@/components/SEO";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
 import { useAuth } from "@/contexts/AuthContext";
+import UserAvatar, { effectiveOwnAvatar } from "@/components/UserAvatar";
+import {
+  normalizeAvatarBg,
+  normalizeAvatarIcon,
+  resolveEffectiveBorder,
+} from "@/constants/avatarOptions";
 import { adminFetch, AdminApiError } from "@/lib/adminApi";
 import { PLAN_ORDER, PLAN_PRICING, type PlanId } from "@shared/planPricing";
 import {
@@ -189,25 +199,25 @@ type MetricCard = {
  * isso, tambem, que o fallback e o contrato.
  */
 const ROTULO_DA_FERRAMENTA: Record<string, string> = {
-  /* TODO(Ana) */ "resume-analyzer": "Analisador de Currículo",
-  /* TODO(Ana) */ "resume-builder": "Criador de Currículo",
-  /* TODO(Ana) */ "resume-render": "Renderização de Currículo (PDF)",
-  /* TODO(Ana) */ "linkedin-analyzer": "Analisador de LinkedIn",
-  /* TODO(Ana) */ "github-perfil": "Analisador de GitHub (perfil)",
-  /* TODO(Ana) */ "github-repo": "Analisador de GitHub (repositório)",
-  /* TODO(Ana) */ "roadmap-generator": "Gerador de Roadmap",
-  /* TODO(Ana) */ "roadmap-intake-chat": "Chat inicial do Roadmap",
-  /* TODO(Ana) */ "career-plan": "Plano de Carreira",
-  /* TODO(Ana) */ "agent-chat": "Chat do Agente",
-  /* TODO(Ana) */ "interview-session": "Sessão de Entrevista",
-  /* TODO(Ana) */ "interview-turn": "Turno de Entrevista",
-  /* TODO(Ana) */ "career-plan-chat": "Chat do Plano de Carreira",
-  /* TODO(Ana) */ "interview-tts": "Voz da Entrevista",
-  /* TODO(Ana) */ "project-validation": "Validação de Projeto",
+  "resume-analyzer": "Analisador de Currículo",
+  "resume-builder": "Criador de Currículo",
+  "resume-render": "Renderização de Currículo (PDF)",
+  "linkedin-analyzer": "Analisador de LinkedIn",
+  "github-perfil": "Analisador de GitHub (perfil)",
+  "github-repo": "Analisador de GitHub (repositório)",
+  "roadmap-generator": "Gerador de Roadmap",
+  "roadmap-intake-chat": "Chat inicial do Roadmap",
+  "career-plan": "Plano de Carreira",
+  "agent-chat": "Chat do Agente",
+  "interview-session": "Sessão de Entrevista",
+  "interview-turn": "Turno de Entrevista",
+  "career-plan-chat": "Chat do Plano de Carreira",
+  "interview-tts": "Voz da Entrevista",
+  "project-validation": "Validação de Projeto",
   // HISTORICOS: nao aparecem mais na fonte, mas ha linhas de 14/08 em
   // `ai_usage_logs` que ainda caem na janela de 30 dias da aba.
-  /* TODO(Ana) */ "study-plan-build": "Plano de Estudos (construção)",
-  /* TODO(Ana) */ interview: "Entrevista (formato antigo)",
+  "study-plan-build": "Plano de Estudos (construção)",
+  interview: "Entrevista (formato antigo)",
 };
 
 // Slug sem traducao aparece CRU, visivel e feio de proposito: feio a mostra
@@ -299,7 +309,6 @@ type AdminSectionId =
   | "afiliados"
   | "emails"
   | "notificacoes"
-  | "beta"
   | "vagas"
   | "tarefas";
 
@@ -754,7 +763,7 @@ export const metricCards: MetricCard[] = [
     value: "0",
     detail: "Quem tem assinatura paga",
     icon: <CreditCard className="h-6 w-6" />,
-    color: "bg-[#ffb800] text-slate-950",
+    color: "bg-[var(--brand-yellow)] text-ink-on-accent",
   },
   {
     key: "mrr",
@@ -816,7 +825,12 @@ export const PRINCIPAIS = [
   "receita_periodo",
 ];
 
-const adminNavItems: AdminNavItem[] = [
+/**
+ * Abas da navegacao do admin. Exportado para o teste de secoes aposentadas
+ * afirmar o PAR: quem some do mapa de redirect tem de sumir daqui tambem, senao
+ * a pessoa clica numa aba para ser jogada fora dela.
+ */
+export const adminNavItems: AdminNavItem[] = [
   {
     href: "#visao-geral",
     label: "Visão",
@@ -875,12 +889,6 @@ const adminNavItems: AdminNavItem[] = [
     label: "Tarefas",
     icon: <SquareKanban className="h-4 w-4" />,
   },
-  {
-    href: "#beta",
-    // TODO(Ana): rótulo da aba de códigos de beta.
-    label: "Beta",
-    icon: <LockKeyhole className="h-4 w-4" />,
-  },
 ];
 
 // Slugs canonicos das abas, derivados da propria nav (fonte unica: se uma aba
@@ -919,6 +927,12 @@ const ADMIN_SECTION_IDS = new Set<string>(
 const SECOES_APOSENTADAS: Record<string, string> = {
   bugs: "tarefas&board=bugs",
   seo: "paginas",
+  // Aposentada em 2026-08-30: o acesso beta acabou e a aba nao sera mais usada.
+  // Destino "visao-geral" e nao uma aba proxima porque NAO EXISTE sucessora: o
+  // conteudo dela (codigos e log de desbloqueio) nao migrou para lugar nenhum,
+  // ao contrario da `bugs`, que virou um quadro de Tarefas. Mandar para a Visao
+  // e o mesmo destino do lixo, e aqui isso e honesto: nao ha para onde levar.
+  beta: "visao-geral",
 };
 
 /** A secao aposentada, ou null. Exportado para teste. */
@@ -1275,7 +1289,7 @@ function MetricCardView({
     <>
       <div className="flex items-start justify-between gap-4">
         <span
-          className={`flex h-13 w-13 items-center justify-center rounded-2xl border-2 border-slate-900 shadow-[3px_3px_0_#0f172a] ${metric.color}`}
+          className={`flex h-13 w-13 items-center justify-center rounded-2xl border-2 border-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] ${metric.color}`}
         >
           {metric.icon}
         </span>
@@ -1499,6 +1513,24 @@ function AdminShell({
   session?: AdminSession | null;
   setActiveSection?: (section: AdminSectionId) => void;
 }) {
+  // O MESMO perfil que o header do site le, do MESMO contexto. O admin nao
+  // busca nada novo: `useAuth` ja esta montado nesta arvore e o `profile` traz
+  // avatar_url, avatar_mode e a moderacao.
+  const { profile } = useAuth();
+
+  // A ESCOLHA DE AVATAR E DO SITE, e quem a resolve e `effectiveOwnAvatar`, a
+  // mesma funcao do Header. Antes o admin desenhava as duas primeiras letras do
+  // nome por conta propria e ignorava foto, icone, cor e borda: duas
+  // implementacoes de "qual avatar mostrar", e a do admin sempre errada para
+  // quem escolheu foto.
+  //
+  // `isPro` entra como `true` pela regra da casa (CLAUDE.md): admin enxerga
+  // como Pro por design, e quem esta nesta tela e admin por construcao. Sem
+  // isso a foto de um admin sem assinatura seria rebaixada para icone aqui e
+  // nao no site, que e justamente a divergencia que este commit remove.
+  const ownAvatar = effectiveOwnAvatar(profile, true);
+  const avatarBorder = resolveEffectiveBorder(profile?.avatar_border, true);
+
   function handleSectionClick(
     event: React.MouseEvent<HTMLButtonElement>,
     href: string,
@@ -1509,12 +1541,12 @@ function AdminShell({
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f4]">
-      <header className="sticky top-0 z-[1000] border-b-2 border-slate-900 bg-[#f6f0df]/95 backdrop-blur">
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-[1000] border-b-2 border-slate-900 bg-[var(--bnt-header-bg)] backdrop-blur">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex min-h-16 items-center justify-between gap-4">
             <Link href="/" className="group flex min-w-fit items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-slate-900 bg-yellow-400 text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all group-hover:shadow-[4px_4px_0_#0f172a]">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-slate-900 bg-yellow-400 text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-all group-hover:shadow-[4px_4px_0_var(--bnt-shadow)]">
                 <Compass className="h-5 w-5" />
               </span>
               <div>
@@ -1549,19 +1581,33 @@ function AdminShell({
 
             {session ? (
               <div className="flex min-w-fit items-center gap-2">
-                <div className="hidden items-center gap-2 rounded-full border-2 border-slate-900 bg-white py-1 pl-1 pr-3 shadow-[2px_2px_0_#0f172a] sm:flex">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-700 text-xs font-black text-white">
-                    {session.displayName.slice(0, 2).toUpperCase()}
-                  </span>
-                  <div>
-                    <p className="text-[10px] font-black uppercase leading-none text-violet-700">
-                      Admin
-                    </p>
-                    <p className="text-xs font-black leading-tight text-slate-950">
-                      {session.displayName}
-                    </p>
-                  </div>
-                </div>
+                <ThemeToggle variant="desktop" />
+                {/* SO o avatar. O pill com "Admin" e o e-mail saiu por decisao
+                    da Ana em 2026-08-30: quem esta no painel ja sabe que e
+                    admin, e o e-mail repetia o que o proprio avatar identifica.
+
+                    O NOME ACESSIVEL vem para ca junto. `UserAvatar` e
+                    `aria-hidden` por construcao (e decoracao, com `alt=""`), e
+                    no site quem nomeia e o `<Link aria-label="Abrir perfil">`
+                    em volta. Sem este wrapper, tirar os textos deixaria o canto
+                    do header MUDO para leitor de tela. */}
+                <span
+                  data-testid="admin-header-avatar"
+                  role="img"
+                  aria-label={`Perfil de ${session.displayName}`}
+                  title={session.displayName}
+                  className="hidden sm:inline-flex"
+                >
+                  <UserAvatar
+                    name={session.displayName}
+                    border={avatarBorder}
+                    icon={normalizeAvatarIcon(profile?.avatar_icon)}
+                    bg={normalizeAvatarBg(profile?.avatar_bg)}
+                    mode={ownAvatar.mode}
+                    avatarUrl={ownAvatar.avatarUrl}
+                    size="header"
+                  />
+                </span>
                 <button
                   onClick={onLogout}
                   type="button"
@@ -1612,6 +1658,8 @@ function AdminSection({
   id,
   subtitle,
   title,
+  headerClassName = "",
+  subtitleClassName = "",
 }: {
   children: ReactNode;
   eyebrow: string;
@@ -1619,19 +1667,47 @@ function AdminSection({
   id: string;
   subtitle: string;
   title: string;
+  /**
+   * Classes extras SO no bloco de cabecalho (selo, titulo e descricao).
+   *
+   * Existe para a secao de Tarefas, a unica que roda fora do teto de largura:
+   * la o quadro quer a tela inteira e o TEXTO nao, entao o cabecalho re-ancora
+   * sozinho. A DECISAO fica no ponto de uso, nao aqui: este componente e
+   * compartilhado por onze secoes, e embutir a excecao dentro dele faria as
+   * outras dez carregarem uma regra que nao e delas.
+   *
+   * Vazio por padrao, entao quem nao passa nada nao muda em nada.
+   */
+  headerClassName?: string;
+  /**
+   * Classes extras SO no paragrafo de descricao.
+   *
+   * Existe pelo mesmo motivo do `headerClassName`: o teto de `max-w-3xl` (48rem)
+   * e bom para a maioria das seccoes, e curto demais para a descricao de
+   * Tarefas, que quebrava em duas linhas. Soltar o teto NO COMPONENTE afetaria
+   * as outras dez, onde ele existe para nao esticar texto corrido num monitor
+   * largo. A excecao fica no ponto de uso.
+   *
+   * Vazio por padrao: quem nao passa nada nao muda em nada.
+   */
+  subtitleClassName?: string;
 }) {
   return (
     <section id={id} className="scroll-mt-28">
-      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div
+        className={`mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between ${headerClassName}`}
+      >
         <div>
-          <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-violet-800 shadow-[2px_2px_0_#0f172a]">
+          <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-violet-800 shadow-[2px_2px_0_var(--bnt-shadow)]">
             {icon}
             {eyebrow}
           </p>
           <h2 className="font-display mt-3 text-3xl font-black text-slate-950">
             {title}
           </h2>
-          <p className="mt-2 max-w-3xl text-sm font-semibold text-slate-600">
+          <p
+            className={`mt-2 max-w-3xl text-sm font-semibold text-slate-600 ${subtitleClassName}`}
+          >
             {subtitle}
           </p>
         </div>
@@ -1685,7 +1761,7 @@ function AdminAccessGate({
 
           <div className="card-brutal rounded-[2rem] bg-white p-6 sm:p-8">
             <div className="mb-6 flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-slate-900 bg-violet-700 text-white shadow-[3px_3px_0_#0f172a]">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-slate-900 bg-violet-700 text-white shadow-[3px_3px_0_var(--bnt-shadow)]">
                 <LockKeyhole className="h-6 w-6" />
               </span>
               <div>
@@ -2094,7 +2170,7 @@ function NewsletterAdminSection() {
         {countCards.map((card) => (
           <div
             key={card.label}
-            className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]"
+            className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)]"
           >
             <p className="text-xs font-black uppercase text-slate-500">
               {card.label}
@@ -2216,332 +2292,6 @@ function NewsletterAdminSection() {
         </div>
       ) : null}
     </section>
-  );
-}
-
-type BetaCode = {
-  id: string;
-  code: string;
-  label: string;
-  active: boolean;
-  created_at: string;
-  revoked_at: string | null;
-  success_count: number;
-  last_access: string | null;
-};
-
-type BetaLog = {
-  id: string;
-  code_id: string | null;
-  label: string | null;
-  success: boolean;
-  attempted_code: string | null;
-  ip: string | null;
-  user_agent: string | null;
-  created_at: string;
-};
-
-// Parse simples de user agent por substring, so pra exibir dispositivo e
-// navegador no admin. Sem dependencia nova; nao pretende ser exaustivo. Edge e
-// Chrome antes de Safari porque suas UAs tambem contem "Safari"/"Chrome".
-function parseUserAgent(ua: string | null): string {
-  if (!ua) return "-";
-  const device = /iPhone|iPad/.test(ua)
-    ? "iPhone/iPad"
-    : /Android/.test(ua)
-      ? "Android"
-      : /Windows/.test(ua)
-        ? "Windows"
-        : /Macintosh|Mac OS/.test(ua)
-          ? "Mac"
-          : /Linux/.test(ua)
-            ? "Linux"
-            : "Outro";
-  const browser = /Edg\//.test(ua)
-    ? "Edge"
-    : /Chrome\//.test(ua)
-      ? "Chrome"
-      : /Firefox\//.test(ua)
-        ? "Firefox"
-        : /Safari\//.test(ua)
-          ? "Safari"
-          : "Outro";
-  return `${device} / ${browser}`;
-}
-
-function BetaCodesAdminSection() {
-  const [codes, setCodes] = useState<BetaCode[]>([]);
-  const [logs, setLogs] = useState<BetaLog[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [revokeTarget, setRevokeTarget] = useState<BetaCode | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
-
-  async function load() {
-    setLoading(true);
-    setError(null);
-    try {
-      const [codesJson, logsJson] = await Promise.all([
-        adminFetch("/beta-codes"),
-        adminFetch("/beta-logs?limit=100"),
-      ]);
-      setCodes(Array.isArray(codesJson.data) ? codesJson.data : []);
-      setLogs(Array.isArray(logsJson.data) ? logsJson.data : []);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Erro ao carregar códigos.",
-      );
-      setCodes([]);
-      setLogs([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void load();
-  }, []);
-
-  async function confirmRevoke() {
-    if (!revokeTarget) return;
-    setBusyId(revokeTarget.id);
-    try {
-      await adminFetch(`/beta-codes/${revokeTarget.id}/revoke`, {
-        method: "POST",
-      });
-      // TODO(Ana): toast de código revogado.
-      toast.success("Código revogado.");
-      setRevokeTarget(null);
-      await load();
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Erro ao revogar. Tente de novo.",
-      );
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  return (
-    <AdminSection
-      id="beta"
-      eyebrow="acesso beta"
-      icon={<LockKeyhole className="h-4 w-4" />}
-      // TODO(Ana): título e subtítulo da seção de códigos de beta.
-      title="Códigos de acesso beta"
-      subtitle="Códigos de convite por pessoa e o log de uso do portão de lançamento. O label é só rótulo de log e não concede admin."
-    >
-      {error ? (
-        <p className="rounded-2xl border-2 border-slate-900 bg-white p-6 text-sm font-semibold text-rose-600">
-          {error}
-        </p>
-      ) : null}
-
-      <div className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-white">
-        {loading && codes.length === 0 ? (
-          <p className="p-6 text-sm font-semibold text-slate-600">
-            {/* TODO(Ana) */}
-            Carregando códigos...
-          </p>
-        ) : codes.length === 0 ? (
-          <p className="p-6 text-sm font-semibold text-slate-600">
-            {/* TODO(Ana) */}
-            Nenhum código cadastrado ainda.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead>
-                {/* TODO(Ana): cabeçalhos da tabela de códigos. */}
-                <tr className="border-b-2 border-slate-900 bg-slate-50">
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">
-                    Label
-                  </th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">
-                    Código
-                  </th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">
-                    Usos
-                  </th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">
-                    Último acesso
-                  </th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">
-                    Ação
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {codes.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="border-b border-slate-200 last:border-0"
-                  >
-                    <td className="px-4 py-3 font-semibold text-slate-900">
-                      {row.label}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-slate-700">
-                      {row.code}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-black ${
-                          row.active
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                            : "border-rose-300 bg-rose-50 text-rose-700"
-                        }`}
-                      >
-                        {/* TODO(Ana): rótulos de status. */}
-                        {row.active ? "Ativo" : "Revogado"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-700">
-                      {row.success_count}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {formatNewsletterDate(row.last_access)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {row.active ? (
-                        <button
-                          type="button"
-                          disabled={busyId === row.id}
-                          onClick={() => setRevokeTarget(row)}
-                          className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-1.5 text-xs font-black text-rose-800 disabled:opacity-40"
-                        >
-                          {/* TODO(Ana) */}
-                          Revogar
-                        </button>
-                      ) : (
-                        <span className="text-xs font-bold text-slate-400">
-                          -
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <h3 className="mt-8 font-display text-lg font-black text-slate-950">
-        {/* TODO(Ana): título da tabela de logs. */}
-        Log de tentativas
-      </h3>
-      <div className="mt-3 overflow-hidden rounded-2xl border-2 border-slate-900 bg-white">
-        {logs.length === 0 ? (
-          <p className="p-6 text-sm font-semibold text-slate-600">
-            {/* TODO(Ana) */}
-            Nenhuma tentativa registrada ainda.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead>
-                {/* TODO(Ana): cabeçalhos da tabela de logs. */}
-                <tr className="border-b-2 border-slate-900 bg-slate-50">
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">
-                    Data
-                  </th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">
-                    Label
-                  </th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">
-                    IP
-                  </th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">
-                    Dispositivo/navegador
-                  </th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">
-                    Resultado
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="border-b border-slate-200 last:border-0"
-                  >
-                    <td className="px-4 py-3 text-slate-600">
-                      {formatNewsletterDate(row.created_at)}
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-slate-900">
-                      {row.success ? row.label || "-" : "-"}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-slate-700">
-                      {row.ip || "-"}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {parseUserAgent(row.user_agent)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {row.success ? (
-                        <span className="inline-flex rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-0.5 text-xs font-black text-emerald-700">
-                          {/* TODO(Ana) */}
-                          Sucesso
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-2">
-                          <span className="inline-flex rounded-full border border-rose-300 bg-rose-50 px-2.5 py-0.5 text-xs font-black text-rose-700">
-                            {/* TODO(Ana) */}
-                            Falha
-                          </span>
-                          {row.attempted_code ? (
-                            <span className="font-mono text-xs text-slate-500">
-                              {row.attempted_code}
-                            </span>
-                          ) : null}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {revokeTarget ? (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4">
-          <div className="card-brutal max-w-md rounded-3xl bg-white p-6">
-            {/* TODO(Ana): copy do modal de confirmação de revogação. */}
-            <h3 className="font-display text-2xl font-black text-slate-950">
-              Revogar o código de {revokeTarget.label}?
-            </h3>
-            <p className="mt-3 text-sm font-semibold text-slate-600">
-              O código para de funcionar na hora e novas tentativas com ele
-              voltam a ser negadas. O histórico de uso é mantido.
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setRevokeTarget(null)}
-                className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black"
-              >
-                {/* TODO(Ana) */}
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={busyId === revokeTarget.id}
-                onClick={() => void confirmRevoke()}
-                className="rounded-full border-2 border-slate-900 bg-rose-100 px-4 py-2 text-sm font-black text-rose-800 disabled:opacity-40"
-              >
-                {/* TODO(Ana) */}
-                Confirmar revogação
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </AdminSection>
   );
 }
 
@@ -3011,7 +2761,7 @@ const CampaignPreview = memo(function CampaignPreview({
       {/* overflow-auto + max-h: contem previews gigantes (ex. HTML colado como
           texto com base64 inquebravel) — rola dentro da caixa em vez de escapar e
           cobrir a coluna do formulario. So tem efeito quando algo transbordaria. */}
-      <div className="mt-4 max-h-[70vh] overflow-auto rounded-2xl border-2 border-slate-900 bg-[#F1F5F9] p-4">
+      <div className="mt-4 max-h-[70vh] overflow-auto rounded-2xl border-2 border-slate-900 bg-[var(--bnt-surface)] p-4">
         {bodyIsHtml ? (
           // Modo HTML: com imagem, a imagem centrada (max 600px) fica sobre uma
           // faixa escura (#05060E, fundo do HTML de referencia) e o HTML vem
@@ -4310,7 +4060,7 @@ function EmailCampaignsAdminSection() {
                 type="button"
                 disabled={creating}
                 onClick={() => void (editingId ? saveEdit() : createCampaign())}
-                className="bnt-pressable rounded-full border-2 border-slate-900 bg-[#FFB800] px-5 py-2 text-sm font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a] disabled:opacity-40"
+                className="bnt-pressable rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-5 py-2 text-sm font-black uppercase text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-40"
               >
                 {/* TODO(Ana) */}
                 {creating
@@ -4431,7 +4181,7 @@ function EmailCampaignsAdminSection() {
                 <button
                   type="button"
                   onClick={openBatchModal}
-                  className="bnt-pressable rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]"
+                  className="bnt-pressable rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-xs font-black uppercase text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]"
                 >
                   {/* TODO(Ana) */}
                   {/* TODO(Ana): rotulo do botao de disparo (origem escolhida no modal). */}
@@ -4463,7 +4213,7 @@ function EmailCampaignsAdminSection() {
                   ].map((card) => (
                     <div
                       key={card.label}
-                      className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]"
+                      className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)]"
                     >
                       <p className="text-xs font-black uppercase text-slate-500">
                         {card.label}
@@ -4482,7 +4232,7 @@ function EmailCampaignsAdminSection() {
                   Entrega
                 </p>
                 <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
+                  <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)]">
                     <p className="text-xs font-black uppercase text-slate-500">
                       Entregues
                     </p>
@@ -4504,7 +4254,7 @@ function EmailCampaignsAdminSection() {
                         ? "border-rose-500 bg-rose-50 shadow-[4px_4px_0_#e11d48]"
                         : detailBounceTier === "watch"
                           ? "border-amber-500 bg-amber-50 shadow-[4px_4px_0_#f59e0b]"
-                          : "border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]"
+                          : "border-slate-900 bg-white shadow-[4px_4px_0_var(--bnt-shadow)]"
                     }`}
                   >
                     <p className="text-xs font-black uppercase text-slate-500">
@@ -4527,7 +4277,7 @@ function EmailCampaignsAdminSection() {
                       </p>
                     ) : null}
                   </div>
-                  <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
+                  <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)]">
                     <p className="text-xs font-black uppercase text-slate-500">
                       Reclamações
                     </p>
@@ -5584,7 +5334,7 @@ function EmailCampaignsAdminSection() {
                   confirmText !== "ENVIAR" || batchBusy || blockImmediateEmpty
                 }
                 onClick={() => void submitBatch()}
-                className="rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 disabled:opacity-40"
+                className="rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-ink-on-accent disabled:opacity-40"
               >
                 {/* TODO(Ana) */}
                 {batchBusy
@@ -5889,7 +5639,7 @@ function ContentAdminSection() {
                         setEditing(null);
                         setForm(emptyContentForm(activeType));
                       }}
-                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a]"
+                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black shadow-[2px_2px_0_var(--bnt-shadow)]"
                     >
                       Cancelar edição
                     </button>
@@ -6361,6 +6111,23 @@ function ContentAdminSection() {
                     para chegar no que não aparece aqui.
                   </div>
                 ) : null}
+                {/*
+                  Total DESCONHECIDO e um terceiro estado, e precisa aparecer.
+                  Antes, `total === null` caia no mesmo silencio de "o total e
+                  igual ao que esta na tela": a faixa acima nao renderiza, e a
+                  lista de ate 100 linhas fica parecendo completa. A rota corta
+                  em 100 sem dizer, entao quem le concluiria que o cadastro tem
+                  exatamente o que esta ali. Nao inventamos um numero (era o que
+                  `total ?? 0` faria); dizemos que ele nao veio.
+                */}
+                {!loading && !loadError && total === null && items.length > 0 ? (
+                  <div className="border-b-2 border-slate-900 bg-slate-100 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-900">
+                    {/* TODO(Ana) */}
+                    Mostrando {items.length} registros. O total no banco não foi
+                    informado, então esta lista pode não ser tudo. Use a busca
+                    para confirmar.
+                  </div>
+                ) : null}
                 {loading ? (
                   <div className="p-5">
                     <LoadingBlock />
@@ -6644,6 +6411,22 @@ export default function Admin() {
   const search = useSearch();
   const [, setLocation] = useLocation();
   const activeSection = sectionFromSearch(search);
+
+  // LARGURA CHEIA SO NO QUADRO DE TAREFAS.
+  //
+  // O kanban e a unica secao do admin que GANHA com mais largura: cada coluna
+  // tem 13rem fixos, entao o teto de 1280px do `.container` decide quantas
+  // cabem, e num monitor largo sobrava margem morta dos dois lados enquanto a
+  // fileira rolava na horizontal. Texto e tabela nao querem isso: linha de 2000px
+  // e pior de ler, e por isso a excecao e por SECAO e por MODO, nao geral.
+  //
+  // O modo vem de `readViewState`, a MESMA funcao que o TasksDashboard usa. Ler
+  // o `?view=` com um `URLSearchParams` proprio aqui seria uma segunda leitura
+  // do mesmo parametro, e as duas divergiriam na primeira mudanca de contrato
+  // (foi assim que "qual assinatura representa a pessoa" divergiu entre a lista
+  // e o modal, ver o comentario em admin.ts).
+  const quadroEmLarguraCheia =
+    activeSection === "tarefas" && readViewState(search).view === "board";
 
   // Reescreve a URL das secoes aposentadas. `replace` e nao `push`: o link do
   // e-mail nao deve virar uma entrada no historico que leve de volta a uma aba
@@ -7941,7 +7724,23 @@ export default function Admin() {
       </section>
 
       <section className="section-alt py-10">
-        <div className="container space-y-10">
+        {/* `lg:max-w-none` neutraliza SO o teto de largura do `.container`,
+            preservando o `mx-auto` (que vira no-op sem teto) e o padding
+            lateral, que continua sendo o respiro padrao da pagina.
+
+            NAO e `w-screen` nem `100vw`: os dois medem o viewport COM a barra de
+            rolagem vertical, entao numa pagina que rola (esta) sobra largura
+            demais e nasce uma rolagem horizontal na pagina inteira, que e pior
+            que a margem morta que a mudanca veio remover. Um bloco em largura
+            100% do pai nao tem esse problema porque o pai ja exclui a barra.
+
+            Este contêiner hospeda UMA secao por vez (todas as irmas sao
+            condicionais), entao afrouxar o teto aqui afrouxa exatamente a de
+            Tarefas. */}
+        <div
+          data-testid="admin-secoes"
+          className={`container space-y-10 ${quadroEmLarguraCheia ? "lg:max-w-none" : ""}`}
+        >
           {activeSection === "visao-geral" ? (
             <>
               {/* Substitui os dois cartões de saúde que ocupavam o topo (o de
@@ -8297,6 +8096,13 @@ export default function Admin() {
                 />
               </div>
 
+              {/* PAGAMENTOS SEM ASSINATURA. Fica no Financeiro, e nao na Visao,
+                  porque a acao aqui e sobre dinheiro de uma pessoa especifica, e
+                  quem abre esta secao ja esta no contexto de conferir caixa. O
+                  painel de Atencao continua apontando os casos criticos; a
+                  diferenca e que la e um aviso e aqui e onde se resolve. */}
+              <OrphanPaymentsPanel />
+
               {/* METRICAS DE RECORRENCIA, claramente separadas do caixa acima */}
               <div className="mt-12 border-t-4 border-slate-900 pt-8">
                 {/* TODO(Ana): titulo e subtitulo do bloco de recorrencia. */}
@@ -8609,6 +8415,28 @@ export default function Admin() {
               icon={<SquareKanban className="h-4 w-4" />}
               title="Tarefas"
               subtitle="Board interno de backlog, features, melhorias e débito técnico. As etapas são editáveis: renomeie no duplo clique e reordene pelo menu da coluna."
+              // TEXTO volta para a largura de antes; o QUADRO fica solto.
+              //
+              // `80rem` espelha o teto do `.container` (index.css:174,
+              // max-width: 1280px). Se um mudar, o outro acompanha: sao o mesmo
+              // numero escrito em dois lugares porque o Tailwind nao le o CSS
+              // custom, e este comentario e o que amarra os dois.
+              //
+              // Fora do modo escapado isto e INOCUO: a secao inteira ja esta
+              // dentro do contêiner, entao um teto igual ao dele nao aperta
+              // nada. Por isso a classe nao precisa ser condicional.
+              headerClassName="w-full lg:mx-auto lg:max-w-[80rem]"
+              // A descricao de Tarefas tem ~180 caracteres e nao cabe em 48rem:
+              // ela quebrava em duas linhas. `lg:max-w-none` solta o teto a
+              // partir de lg, onde ha largura para uma linha so; abaixo disso o
+              // teto some por irrelevante e a quebra volta a ser natural, que e
+              // o comportamento certo em tela estreita.
+              //
+              // RESPIRO (30/08): `mb-2` afasta a descricao da toolbar. O `mb-5`
+              // do bloco de cabecalho ja separava os dois; este degrau extra e o
+              // pedido da Ana, e fica AQUI e nao no componente comum para nao
+              // empurrar as outras dez seccoes junto.
+              subtitleClassName="mb-2 lg:max-w-none"
             >
               {/* Boundary SO em volta desta secao: sem ele, um erro de render
                   aqui sobe ate o ErrorBoundary do App.tsx e derruba a pagina
@@ -8621,8 +8449,6 @@ export default function Admin() {
             </AdminSection>
           ) : null}
 
-          {activeSection === "beta" ? <BetaCodesAdminSection /> : null}
-
           {activeSection === "afiliados" ? (
             <Tabs
               value={affiliatesTab}
@@ -8630,7 +8456,7 @@ export default function Admin() {
                 setAffiliatesTab(value as "afiliados" | "cupons")
               }
             >
-              <TabsList className="h-auto gap-1 rounded-full border-2 border-slate-900 bg-white p-1 shadow-[2px_2px_0_#0f172a]">
+              <TabsList className="h-auto gap-1 rounded-full border-2 border-slate-900 bg-white p-1 shadow-[2px_2px_0_var(--bnt-shadow)]">
                 <TabsTrigger
                   value="afiliados"
                   className="rounded-full px-4 py-1.5 text-xs font-black uppercase data-[state=active]:bg-slate-950 data-[state=active]:text-white"
@@ -8650,10 +8476,10 @@ export default function Admin() {
                   id="afiliados"
                   className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white"
                 >
-                  <div className="border-b-2 border-slate-900 bg-[#ffb800] p-6">
+                  <div className="border-b-2 border-slate-900 bg-[var(--brand-yellow)] p-6">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                       <div>
-                        <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                        <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                           <Handshake className="h-4 w-4" />
                           afiliados
                         </p>
@@ -8667,7 +8493,7 @@ export default function Admin() {
                           afiliado.
                         </p>
                       </div>
-                      <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
+                      <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)]">
                         <p className="text-xs font-black uppercase text-slate-500">
                           status
                         </p>
@@ -8714,9 +8540,9 @@ export default function Admin() {
                     ].map((item) => (
                       <div
                         key={item.label}
-                        className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
+                        className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]"
                       >
-                        <span className="inline-flex rounded-xl border-2 border-slate-900 bg-yellow-300 p-2 text-slate-950">
+                        <span className="inline-flex rounded-xl border-2 border-slate-900 bg-yellow-300 p-2 text-ink-on-accent">
                           {item.icon}
                         </span>
                         <p className="mt-3 text-xs font-black uppercase text-violet-700">
@@ -8730,7 +8556,7 @@ export default function Admin() {
                   </div>
 
                   <div className="grid gap-6 p-6 xl:grid-cols-[0.9fr_1.1fr]">
-                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)]">
                       <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
                         <PlusCircle className="h-6 w-6" />
                         Gerar link de afiliado
@@ -8766,7 +8592,7 @@ export default function Admin() {
                             <button
                               type="button"
                               onClick={handleGenerateAffiliateCode}
-                              className="rounded-2xl border-2 border-slate-900 bg-yellow-300 px-4 text-sm font-black shadow-[3px_3px_0_#0f172a]"
+                              className="rounded-2xl border-2 border-slate-900 bg-yellow-300 px-4 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)]"
                             >
                               Gerar
                             </button>
@@ -8851,7 +8677,7 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)]">
                       <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
                         <Tag className="h-6 w-6" />
                         Afiliados cadastrados
@@ -8863,7 +8689,7 @@ export default function Admin() {
                           setAffiliateSearch(event.target.value)
                         }
                         placeholder="Buscar por nome, código ou e-mail..."
-                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_#0f172a] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
+                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
                       />
                       <div className="mt-5">
                         {affiliatesStatsLoading || affiliatesLoading ? (
@@ -8897,7 +8723,7 @@ export default function Admin() {
                                           onClick={() =>
                                             startAffiliateEdit(affiliate)
                                           }
-                                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a]"
+                                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_var(--bnt-shadow)]"
                                         >
                                           Editar
                                         </button>
@@ -8908,7 +8734,7 @@ export default function Admin() {
                                               affiliate,
                                             )
                                           }
-                                          className="rounded-full border-2 border-slate-900 bg-yellow-100 px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                                          className="rounded-full border-2 border-slate-900 bg-yellow-100 px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
                                         >
                                           {copiedAffiliateCardId ===
                                           affiliate.id
@@ -8927,7 +8753,7 @@ export default function Admin() {
                                               0 ||
                                             payingAffiliateId === affiliate.id
                                           }
-                                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-50"
+                                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-50"
                                         >
                                           {payingAffiliateId === affiliate.id
                                             ? "Pagando..."
@@ -8938,7 +8764,7 @@ export default function Admin() {
                                           onClick={() =>
                                             setDeleteAffiliateTarget(affiliate)
                                           }
-                                          className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-2 text-xs font-black text-rose-800 shadow-[2px_2px_0_#0f172a]"
+                                          className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-2 text-xs font-black text-rose-800 shadow-[2px_2px_0_var(--bnt-shadow)]"
                                         >
                                           Excluir
                                         </button>
@@ -9096,7 +8922,7 @@ export default function Admin() {
                                               savingAffiliateEditId ===
                                               affiliate.id
                                             }
-                                            className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-60"
+                                            className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-60"
                                           >
                                             {savingAffiliateEditId ===
                                             affiliate.id
@@ -9124,7 +8950,7 @@ export default function Admin() {
                                         )
                                       }
                                       disabled={affiliateCurrentPage <= 1}
-                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-40 disabled:shadow-none"
                                     >
                                       Anterior
                                     </button>
@@ -9142,7 +8968,7 @@ export default function Admin() {
                                         affiliateCurrentPage >=
                                         affiliateTotalPages
                                       }
-                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-40 disabled:shadow-none"
                                     >
                                       Próxima
                                     </button>
@@ -9182,10 +9008,10 @@ export default function Admin() {
                   id="cupons"
                   className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white"
                 >
-                  <div className="border-b-2 border-slate-900 bg-[#ffb800] p-6">
+                  <div className="border-b-2 border-slate-900 bg-[var(--brand-yellow)] p-6">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                       <div>
-                        <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                        <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                           <TicketPercent className="h-4 w-4" />
                           cupons
                         </p>
@@ -9198,7 +9024,7 @@ export default function Admin() {
                           de usos.
                         </p>
                       </div>
-                      <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
+                      <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)]">
                         <p className="text-xs font-black uppercase text-slate-500">
                           status
                         </p>
@@ -9215,7 +9041,7 @@ export default function Admin() {
                   </div>
 
                   <div className="grid gap-6 p-6 xl:grid-cols-[0.9fr_1.1fr]">
-                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)]">
                       <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
                         <PlusCircle className="h-6 w-6" />
                         Criar cupom
@@ -9238,7 +9064,7 @@ export default function Admin() {
                             <button
                               type="button"
                               onClick={handleGenerateCouponCode}
-                              className="rounded-2xl border-2 border-slate-900 bg-yellow-300 px-4 text-sm font-black shadow-[3px_3px_0_#0f172a]"
+                              className="rounded-2xl border-2 border-slate-900 bg-yellow-300 px-4 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)]"
                             >
                               Gerar
                             </button>
@@ -9293,7 +9119,7 @@ export default function Admin() {
                                   type="button"
                                   onClick={() => setCouponFormValidUntil("")}
                                   aria-label="Limpar validade"
-                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_#0f172a]"
+                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_var(--bnt-shadow)]"
                                 >
                                   <X className="h-4 w-4" />
                                 </button>
@@ -9322,7 +9148,7 @@ export default function Admin() {
                                     setCouponFormMaxRedemptions("")
                                   }
                                   aria-label="Limpar limite de usos"
-                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_#0f172a]"
+                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_var(--bnt-shadow)]"
                                 >
                                   <X className="h-4 w-4" />
                                 </button>
@@ -9395,7 +9221,7 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)]">
                       <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
                         <Tag className="h-6 w-6" />
                         Cupons cadastrados
@@ -9407,7 +9233,7 @@ export default function Admin() {
                           setCouponSearch(event.target.value)
                         }
                         placeholder="Buscar por código ou descrição..."
-                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_#0f172a] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
+                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
                       />
                       <div className="mt-5">
                         {couponsLoading ? (
@@ -9442,7 +9268,7 @@ export default function Admin() {
                                           onClick={() =>
                                             startCouponEdit(coupon)
                                           }
-                                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a]"
+                                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_var(--bnt-shadow)]"
                                         >
                                           Editar
                                         </button>
@@ -9453,7 +9279,7 @@ export default function Admin() {
                                               coupon,
                                             )
                                           }
-                                          className="rounded-full border-2 border-slate-900 bg-yellow-100 px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                                          className="rounded-full border-2 border-slate-900 bg-yellow-100 px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
                                         >
                                           {copiedCouponCardId === coupon.id
                                             ? "Link copiado!"
@@ -9464,7 +9290,7 @@ export default function Admin() {
                                           onClick={() =>
                                             setDeleteCouponTarget(coupon)
                                           }
-                                          className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-2 text-xs font-black text-rose-800 shadow-[2px_2px_0_#0f172a]"
+                                          className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-2 text-xs font-black text-rose-800 shadow-[2px_2px_0_var(--bnt-shadow)]"
                                         >
                                           Excluir
                                         </button>
@@ -9594,7 +9420,7 @@ export default function Admin() {
                                                     })
                                                   }
                                                   aria-label="Limpar validade"
-                                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_#0f172a]"
+                                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_var(--bnt-shadow)]"
                                                 >
                                                   <X className="h-4 w-4" />
                                                 </button>
@@ -9629,7 +9455,7 @@ export default function Admin() {
                                                     })
                                                   }
                                                   aria-label="Limpar limite de usos"
-                                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_#0f172a]"
+                                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_var(--bnt-shadow)]"
                                                 >
                                                   <X className="h-4 w-4" />
                                                 </button>
@@ -9700,7 +9526,7 @@ export default function Admin() {
                                             disabled={
                                               savingCouponEditId === coupon.id
                                             }
-                                            className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-60"
+                                            className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-60"
                                           >
                                             {savingCouponEditId === coupon.id
                                               ? "Salvando..."
@@ -9727,7 +9553,7 @@ export default function Admin() {
                                         )
                                       }
                                       disabled={couponCurrentPage <= 1}
-                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-40 disabled:shadow-none"
                                     >
                                       Anterior
                                     </button>
@@ -9744,7 +9570,7 @@ export default function Admin() {
                                       disabled={
                                         couponCurrentPage >= couponTotalPages
                                       }
-                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-40 disabled:shadow-none"
                                     >
                                       Próxima
                                     </button>

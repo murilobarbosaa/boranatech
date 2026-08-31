@@ -297,7 +297,7 @@ export default function VagasDestaqueAdmin() {
 
       <form
         onSubmit={handleSubmit}
-        className="rounded-3xl border-2 border-slate-900 bg-white p-6 shadow-[5px_5px_0_#0f172a]"
+        className="rounded-3xl border-2 border-slate-900 bg-white p-6 shadow-[5px_5px_0_var(--bnt-shadow)]"
       >
         <h3 className="font-display text-lg font-black text-slate-950">
           {editing ? "Editar vaga destaque" : "Nova vaga destaque"}
@@ -500,7 +500,7 @@ export default function VagasDestaqueAdmin() {
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-900 bg-violet-600 px-5 py-2.5 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-900 bg-violet-600 px-5 py-2.5 text-sm font-black text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <PlusCircle className="h-4 w-4" aria-hidden />
             {saving
@@ -513,7 +513,7 @@ export default function VagasDestaqueAdmin() {
             <button
               type="button"
               onClick={cancelEdit}
-              className="rounded-2xl border-2 border-slate-900 bg-white px-5 py-2.5 text-sm font-black text-slate-900 shadow-[3px_3px_0_#0f172a]"
+              className="rounded-2xl border-2 border-slate-900 bg-white px-5 py-2.5 text-sm font-black text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)]"
             >
               Cancelar edição
             </button>
@@ -521,7 +521,7 @@ export default function VagasDestaqueAdmin() {
         </div>
       </form>
 
-      <div className="rounded-3xl border-2 border-slate-900 bg-white p-6 shadow-[5px_5px_0_#0f172a]">
+      <div className="rounded-3xl border-2 border-slate-900 bg-white p-6 shadow-[5px_5px_0_var(--bnt-shadow)]">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h3 className="font-display text-lg font-black text-slate-950">
             Vagas manuais cadastradas

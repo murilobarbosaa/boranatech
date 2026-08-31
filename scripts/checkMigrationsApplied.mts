@@ -26,6 +26,10 @@ import {
   classificarRls,
   type LeituraContagem,
 } from "./lib/rlsVeredito";
+import {
+  DRIFT_PERMITIDO,
+  nomesPermitidos,
+} from "./lib/schemaDriftAllowlist";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -250,7 +254,27 @@ const EXPECTED_TABLE_COUNT = 84;
 // MERGE de 2026-08-24: mesma colisao do contador de tabelas. A pilha chegou a
 // 30 pelas duas funcoes do LinkedIn e a main chegou a 30 pelas duas de trigger
 // de `external_events`. A uniao nao e 30, e o valor abaixo foi medido.
-const EXPECTED_FUNCTION_COUNT = 32;
+// 31 desde 20260828120000_normalize_dashes_on_external_events.sql (cria
+// external_events_normaliza_travessao). Ela devolve trigger, entao o contador
+// de trigger abaixo sobe junto, como o paragrafo daquele contador exige.
+// 32 desde 20260829110000_activate_subscription_exclusive.sql (cria
+// activate_subscription_exclusive). Valor MEDIDO em 29/08/2026 pelo proprio
+// script, nao digitado: o CI e a execucao local reportaram 32 declaradas contra
+// 31 esperadas. Ela e CHAMAVEL (devolve TABLE, e o PostgREST a expoe em
+// /rpc/activate_subscription_exclusive), entao entra nas verificaveis por REST e
+// o contador de trigger abaixo NAO sobe: 24 verificaveis + 8 de trigger = 32.
+// 33 desde 20260830140000_admin_list_users_page.sql (cria
+// admin_list_users_page). Valor MEDIDO em 30/08/2026 pelo proprio script, nao
+// digitado: ele reportou "o conjunto de funcoes declaradas mudou: 33, esperado
+// 32". Ela devolve TABLE e o PostgREST a expoe em /rpc/admin_list_users_page,
+// entao entra nas verificaveis por REST e o contador de trigger abaixo NAO
+// sobe: 25 verificaveis + 8 de trigger = 33.
+// MERGE de 2026-08-31 (Lote M4, quarto merge da main): as duas linhagens acima
+// sao reais e independentes, a pilha em 32 e a main em 33 por funcoes
+// DIFERENTES. A uniao nao e nenhum dos dois, e nao e a soma menos a intersecao
+// feita de cabeca: o valor abaixo foi MEDIDO no estado mesclado por uma copia
+// truncada do proprio script, que reportou 35 declaradas contra 32 esperadas.
+const EXPECTED_FUNCTION_COUNT = 35;
 // 5 desde a MESMA migration: set_admin_task_archive_source devolve trigger,
 // entao nao e exposta pelo PostgREST e sai do conjunto verificavel por REST. Os
 // dois numeros sobem juntos quando a funcao nova e de trigger, e so o primeiro
@@ -260,7 +284,10 @@ const EXPECTED_FUNCTION_COUNT = 32;
 // 7 desde 20260811171556_create_external_events.sql: as duas funcoes novas
 // devolvem trigger, entao saem do conjunto verificavel por REST e os dois
 // numeros sobem juntos, como o paragrafo acima exige.
-const EXPECTED_TRIGGER_FUNCTION_COUNT = 7;
+// 8 desde 20260828120000_normalize_dashes_on_external_events.sql: a funcao nova
+// devolve trigger, sai do conjunto verificavel por REST, e os dois numeros
+// sobem juntos.
+const EXPECTED_TRIGGER_FUNCTION_COUNT = 8;
 
 /** Remove comentarios de linha e de bloco antes de qualquer parse. */
 /**
@@ -948,26 +975,77 @@ const recursosNaoDeclarados = [...(recursosExpostos ?? [])].filter(
   (r) => !declared.has(r),
 );
 
+// ---------------------------------------------------------------------------
+// DRIFT DE SCHEMA: objeto que EXISTE no banco e nenhuma migration declara.
+//
+// Ate 2026-08-28 as duas listas abaixo saiam por `console.warn` e o script
+// terminava VERDE. Warn dentro de um gate de CI nao obriga ninguem a nada, e o
+// conjunto so cresce; a allowlist inverte o custo, porque drift novo quebra o
+// CI e permitir um exige escrever nome, origem e data em
+// scripts/lib/schemaDriftAllowlist.ts, no commit que o introduz.
+//
+// Verificado NOS DOIS SENTIDOS: drift fora da allowlist falha, e entrada da
+// allowlist que sumiu do banco tambem falha. O segundo caso e o que impede a
+// lista de apodrecer: quando a migration finalmente sobe, o objeto passa a ser
+// declarado, sai do conjunto de drift, e a entrada aqui vira mentira.
+// ---------------------------------------------------------------------------
+const driftPermitidoObjetos = nomesPermitidos(["tabela", "view"]);
+const driftPermitidoFuncoes = nomesPermitidos(["funcao"]);
+
 if (expostas !== null) {
   const funcoesNaoDeclaradas = [...expostas].filter(
     (f) => !funcoesDeclaradas.has(f) && !DE_EXTENSAO.has(f),
   );
-  if (funcoesNaoDeclaradas.length > 0) {
-    console.warn(
-      `[checkMigrationsApplied] ${funcoesNaoDeclaradas.length} funcao(oes) existem no banco e NAO sao declaradas por migration nenhuma: ${funcoesNaoDeclaradas.join(", ")}. Reconstrucao a partir das migrations nasceria sem elas.`,
+  const funcoesDriftNovo = funcoesNaoDeclaradas.filter(
+    (f) => !driftPermitidoFuncoes.has(f),
+  );
+  if (funcoesDriftNovo.length > 0) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] DRIFT: ${funcoesDriftNovo.length} funcao(oes) existem no banco e NAO sao declaradas por migration nenhuma: ${funcoesDriftNovo.join(", ")}. Reconstrucao a partir das migrations nasceria sem elas. Declare a migration, ou registre em scripts/lib/schemaDriftAllowlist.ts com justificativa.`,
+    );
+  } else if (funcoesNaoDeclaradas.length > 0) {
+    console.log(
+      `[checkMigrationsApplied] direcao inversa: ${funcoesNaoDeclaradas.length} funcao(oes) nao declaradas, todas na allowlist de drift.`,
     );
   } else {
     console.log(
       "[checkMigrationsApplied] direcao inversa: nenhuma funcao existe no banco sem estar declarada.",
     );
   }
-  if (recursosNaoDeclarados.length > 0) {
-    console.warn(
-      `[checkMigrationsApplied] ${recursosNaoDeclarados.length} tabela(s)/view(s) expostas pelo PostgREST e NAO declaradas: ${recursosNaoDeclarados.join(", ")}.`,
+
+  const objetosDriftNovo = recursosNaoDeclarados.filter(
+    (r) => !driftPermitidoObjetos.has(r),
+  );
+  if (objetosDriftNovo.length > 0) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] DRIFT: ${objetosDriftNovo.length} tabela(s)/view(s) expostas pelo PostgREST e NAO declaradas: ${objetosDriftNovo.join(", ")}. Declare a migration, ou registre em scripts/lib/schemaDriftAllowlist.ts com justificativa.`,
+    );
+  } else if (recursosNaoDeclarados.length > 0) {
+    console.log(
+      `[checkMigrationsApplied] direcao inversa: ${recursosNaoDeclarados.length} tabela(s)/view(s) nao declaradas, todas na allowlist de drift.`,
     );
   } else {
     console.log(
       "[checkMigrationsApplied] direcao inversa: nenhuma tabela ou view exposta sem estar declarada.",
+    );
+  }
+
+  // SENTIDO INVERSO DA ALLOWLIST: entrada que nao corresponde mais a drift
+  // nenhum. Sem isto a lista vira arquivo morto, e um `nome` digitado errado
+  // ficaria la para sempre parecendo que cobre alguma coisa.
+  const aindaEmDrift = new Set([
+    ...recursosNaoDeclarados,
+    ...funcoesNaoDeclaradas,
+  ]);
+  const obsoletas = DRIFT_PERMITIDO.filter(
+    (d) => !aindaEmDrift.has(d.nome.toLowerCase()),
+  );
+  if (obsoletas.length > 0) {
+    houveFalha = true;
+    console.error(
+      `[checkMigrationsApplied] ${obsoletas.length} entrada(s) da allowlist de drift NAO correspondem a drift nenhum no banco: ${obsoletas.map((d) => d.nome).join(", ")}. Se a migration subiu, remova a entrada; se o nome esta errado, corrija.`,
     );
   }
 }

@@ -27,10 +27,24 @@ import { createTargetedNotification } from "./targetedNotifications";
  * inclui-lo aqui. Isso e uma falha de OMISSAO, nao um falso-verde: nada afirma
  * cobertura que nao tem. O teste cronAlert.test.ts trava o conteudo do conjunto,
  * entao mexer nele e ato deliberado.
+ *
+ * O QUE O detect-orphan-payments AVISA, E O QUE NAO AVISA. Medido em 2026-08-26
+ * sobre as 117 runs do historico: existe UMA unica run nao-sadia (20/08 04:53,
+ * `full=true`), entao a maior sequencia consecutiva e 1 e a regra de 3 NUNCA
+ * teria disparado. O motivo nao e o limiar, e a janela: o agendado varre
+ * `windowDays: 7` e o orfao de 20/08 tinha sessao de 19/07, visivel so na
+ * varredura full, que e manual. Ou seja, ESTA entrada NAO fecha o buraco de
+ * 20/08. O que ela cobre e o caso daqui para a frente: orfao acionavel NOVO fica
+ * dentro da janela de 7 dias, o agendado roda de 6 em 6 horas, e a terceira run
+ * consecutiva em `partial` chega em 18 horas. Escrito aqui porque a alternativa
+ * era alguem ler a lista e supor cobertura retroativa que ela nao tem.
  */
 export const JOBS_COM_ALERTA = new Set([
   "sync-sentry-tasks",
   "reconcile-sentry-bugs",
+  // Entrou em 2026-08-26: a varredura full de 20/08 achou 2 orfaos, 1 acionavel
+  // (sem_usuario_no_banco, R$ 29,90, detectado 5 dias antes) e ninguem soube.
+  "detect-orphan-payments",
 ]);
 
 /**

@@ -175,11 +175,19 @@ describe("extractPdfText propaga o estado classificado, sempre lancando", () => 
 });
 
 describe("a lista de estados nao encolhe nem cresce em silencio", () => {
-  it("PDF_ERROR_CODES tem exatamente os seis estados, sem repetido", () => {
+  it("PDF_ERROR_CODES tem exatamente os sete estados, sem repetido", () => {
     // Assercao de TAMANHO do conjunto, no espirito de EXPECTED_TABLE_COUNT:
     // mexer nela e ato deliberado, no mesmo commit que cria ou remove o estado.
+    //
+    // 6 -> 7 no quarto merge da main: `browser_unsupported` chegou pela frente
+    // de compatibilidade do pdfjs (BUG-75), que degrada em navegador sem
+    // `Promise.try` em vez de deixar o erro escapar como uncaught. O estado
+    // nasceu la como uniao de tipo a parte e foi trazido para ESTA lista, que e
+    // a fonte unica; os casos dele vivem em `pdfExtract.navegador.test.ts`,
+    // separados porque os dois arquivos dublam `pdfjs-dist` de formas
+    // diferentes e um `vi.mock` sobrescreveria o outro.
     expect(new Set(PDF_ERROR_CODES).size).toBe(PDF_ERROR_CODES.length);
-    expect(PDF_ERROR_CODES.length).toBe(6);
+    expect(PDF_ERROR_CODES.length).toBe(7);
   });
 
   it("`read_failed` nao voltou", () => {

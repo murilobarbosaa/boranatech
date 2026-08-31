@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 
 import { cacheKey, getOrCompute } from "../lib/cache";
+import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -92,7 +93,7 @@ router.get("/areas", async (req, res, next) => {
         // usuario muda: `cause` nunca sai na resposta.
         if (error)
           throw createError(500, "db_error", "Erro ao buscar áreas.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
         return { data: data || [] };
       },
@@ -135,6 +136,65 @@ router.get("/areas/:slug", async (req, res, next) => {
   }
 });
 
+// Eventos da pagina publica /eventos, servidos de external_events.
+//
+// A tabela e alimentada diariamente por uma rotina externa (ver
+// claude/produto/04-prompt-rotina-eventos.md) e NAO tem fallback estatico: o
+// array `eventos` de eventosData.ts foi removido quando esta rota entrou. Por
+// isso o client propaga o erro em vez de cair numa lista, ao contrario das
+// outras fontes deste arquivo.
+//
+// O predicado de exibiveis tem TRES casos, nao um: evento com data futura,
+// evento sem data (recorrente) e evento a confirmar. Filtrar so por
+// `starts_on >= current_date` sumiria com os dois ultimos em silencio.
+router.get("/eventos", async (_req, res, next) => {
+  try {
+    const payload = await getOrCompute(
+      cacheKey("content:eventos", {}),
+      LIST_TTL_SECONDS,
+      async () => {
+        // `en-CA` produz YYYY-MM-DD, e o timeZone e o que importa: em UTC o dia
+        // vira as 21h de Brasilia, e o evento sumiria da pagina na noite do
+        // proprio dia em que ainda esta acontecendo.
+        const hoje = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Sao_Paulo",
+        }).format(new Date());
+        const { data, error, count } = await supabaseAdmin
+          .from("external_events")
+          .select(
+            "id, external_id, title, description, organizer, event_type, url, calendar_url, price_type, price_label, starts_on, ends_on, date_label, time_label, date_status, recurrence, modality, city, uf, state, location_label",
+            { count: "exact" },
+          )
+          .eq("is_published", true)
+          .is("deleted_at", null)
+          .or(`starts_on.gte.${hoje},starts_on.is.null`)
+          .order("starts_on", { ascending: true, nullsFirst: false })
+          .order("title", { ascending: true })
+          .limit(500);
+
+        if (error)
+          throw createError(500, "db_error", "Erro ao buscar eventos.", {
+            cause: erroEncadeavel(error),
+          });
+
+        // `total: null` quando o count nao veio, NUNCA data.length: cair para o
+        // tamanho da pagina faria "nao sei quantos sao" parecer "sao exatamente
+        // estes", e o teto de 500 existe justamente porque a tabela cresce todo
+        // dia.
+        return {
+          data: data || [],
+          total: typeof count === "number" ? count : null,
+        };
+      },
+    );
+
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
+    res.json(payload);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/technologies", async (req, res, next) => {
   try {
     const { category, search } = req.query;
@@ -154,7 +214,7 @@ router.get("/technologies", async (req, res, next) => {
         const { data, error } = await query;
         if (error)
           throw createError(500, "db_error", "Erro ao buscar tecnologias.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
         return { data: data || [] };
       },
@@ -182,7 +242,7 @@ router.get("/technologies/ranking", async (_req, res, next) => {
 
         if (error)
           throw createError(500, "db_error", "Erro ao buscar ranking.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
         return { data: data || [] };
       },
@@ -220,7 +280,7 @@ router.get("/technologies/compare", async (req, res, next) => {
 
         if (error)
           throw createError(500, "db_error", "Erro ao comparar tecnologias.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
         if (!data || data.length < 2) return null;
         return { data };
@@ -293,7 +353,7 @@ router.get("/courses", checkProStatus, async (req, res, next) => {
         const { data, error } = await query;
         if (error)
           throw createError(500, "db_error", "Erro ao buscar cursos.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
         return { data: data || [] };
       },
@@ -329,7 +389,7 @@ router.get("/platforms", checkProStatus, async (req, res, next) => {
 
         if (error)
           throw createError(500, "db_error", "Erro ao buscar plataformas.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
         return { data: data || [] };
       },
@@ -366,7 +426,7 @@ router.get("/projects", checkProStatus, async (req, res, next) => {
         const { data, error } = await query;
         if (error)
           throw createError(500, "db_error", "Erro ao buscar projetos.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
         return { data: data || [] };
       },
@@ -440,7 +500,7 @@ router.get("/roadmaps", async (req, res, next) => {
         const { data, error } = await query;
         if (error)
           throw createError(500, "db_error", "Erro ao buscar roadmaps.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
         return { data: data || [] };
       },
@@ -473,7 +533,7 @@ router.get("/roadmaps/:slug/progress", requireAuth, async (req, res, next) => {
     if (error)
       return next(
         createError(500, "db_error", "Erro ao buscar progresso.", {
-          cause: error,
+          cause: erroEncadeavel(error),
         }),
       );
 
@@ -543,7 +603,7 @@ router.post("/roadmaps/:slug/progress", requireAuth, async (req, res, next) => {
       );
       return next(
         createError(500, "db_error", "Erro ao salvar progresso do roadmap.", {
-          cause: error,
+          cause: erroEncadeavel(error),
           context: {
             slug: req.params.slug,
             roadmapId: roadmap.id,
@@ -609,7 +669,7 @@ router.get("/sources/status", async (_req, res, next) => {
             500,
             "db_error",
             "Erro ao buscar status das fontes.",
-            { cause: error },
+            { cause: erroEncadeavel(error) },
           );
         return { data: data || [] };
       },
@@ -678,7 +738,7 @@ router.get("/news", async (req, res, next) => {
         const { data, count, error } = await query;
         if (error)
           throw createError(500, "db_error", "Erro ao buscar notícias.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
 
         const total = count ?? 0;

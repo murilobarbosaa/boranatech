@@ -267,66 +267,6 @@ describe("GET /ai-stats soma TODAS as linhas da janela", () => {
 });
 
 // ---------------------------------------------------------------------------
-// GET /beta-codes
-// ---------------------------------------------------------------------------
-
-describe("GET /beta-codes conta TODOS os desbloqueios", () => {
-  it("success_count não para no teto", async () => {
-    // 615 linhas hoje em produção; o teste usa 1500 para cruzar o teto.
-    montar({
-      beta_access_codes: {
-        rows: [
-          {
-            id: "c1",
-            code: "BETA",
-            label: "Lote 1",
-            active: true,
-            created_at: "2026-07-01T00:00:00Z",
-            revoked_at: null,
-          },
-        ],
-      },
-      beta_unlock_logs: {
-        rows: Array.from({ length: 1500 }, (_, i) => ({
-          id: String(i).padStart(5, "0"),
-          code_id: "c1",
-          created_at: `2026-07-${String((i % 28) + 1).padStart(2, "0")}T00:00:00Z`,
-        })),
-      },
-    });
-
-    const r = await chamarAdmin("GET", "/beta-codes");
-
-    expect(r.status).toBe(200);
-    expect(r.body.data[0].success_count).toBe(1500);
-  });
-
-  it("falha nos logs NÃO derruba a lista de códigos", async () => {
-    // Postura preservada: o agregado zera, os códigos aparecem.
-    montar({
-      beta_access_codes: {
-        rows: [
-          {
-            id: "c1",
-            code: "BETA",
-            label: null,
-            active: true,
-            created_at: "2026-07-01T00:00:00Z",
-            revoked_at: null,
-          },
-        ],
-      },
-      beta_unlock_logs: { error: { message: "timeout" } },
-    });
-
-    const r = await chamarAdmin("GET", "/beta-codes");
-
-    expect(r.status).toBe(200);
-    expect(r.body.data[0].success_count).toBe(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // GET /dashboard — os dois ramos de acesso Pro
 // ---------------------------------------------------------------------------
 
@@ -698,9 +638,7 @@ describe("GET /subscription-history", () => {
 
     expect(r.body.data.staleHours).toBeGreaterThanOrEqual(96);
     expect(r.body.data.snapshotAtrasado).toBe(true);
-    expect(r.body.data.staleDays).toBe(
-      Math.floor(r.body.data.staleHours / 24),
-    );
+    expect(r.body.data.staleDays).toBe(Math.floor(r.body.data.staleHours / 24));
   });
 
   it("CONTROLE NEGATIVO: snapshot de hoje NÃO é acusado de atraso", async () => {
@@ -866,11 +804,23 @@ describe("GET /signup-history", () => {
     expect(r.body.data.points[0].date).toBe(primeiro);
   });
 
-  it("janela desconhecida cai em 30, não em erro", async () => {
+  it("janela desconhecida RECUSA, e nao cai em 30", async () => {
+    // MUDANCA DE CONTRATO DELIBERADA (2026-08-30). Este teste afirmava o
+    // oposto: `window=90` devolvia 200 com a serie de 30 dias.
+    //
+    // O motivo da troca: cair no padrao calado desenha um grafico CORRETO do
+    // periodo ERRADO, e nao ha sintoma para quem olha a tela. A rota irma
+    // (/users-active-daily) ja recusava com 400 nomeado desde que nasceu, e as
+    // duas responderem coisas diferentes ao mesmo lixo, com o mesmo nome de
+    // parametro no mesmo admin, era a divergencia registrada como divida.
+    //
+    // AUSENCIA continua caindo no padrao: ela nao e lixo, e o chamador real
+    // depende disso. A trava dos dois casos vive em
+    // `adminSignupHistoryWindow.test.ts`.
     montar({ profiles: { rows: [meioDia(hoje)] } });
     const r = await chamarAdmin("GET", "/signup-history?window=90");
-    expect(r.status).toBe(200);
-    expect(r.body.data.window).toBe("30");
+    expect(r.status).toBe(400);
+    expect(r.body.error?.code ?? r.body.code).toBe("invalid_window");
   });
 
   it("base VAZIA devolve o dia de hoje, não uma série falsa", async () => {
@@ -1135,7 +1085,9 @@ describe("GET /overview", () => {
     // O headline é a SOMA, e o breakdown tem de fechar com ele.
     expect(risco.count).toBe(2);
     expect(risco.mrrCents).toBe(1850 + 2990);
-    expect(risco.mrrCents).toBe(risco.saindo.mrrCents + risco.emAtraso.mrrCents);
+    expect(risco.mrrCents).toBe(
+      risco.saindo.mrrCents + risco.emAtraso.mrrCents,
+    );
 
     // CONTROLE NEGATIVO: em atraso é receita que PAROU de entrar. Somá-la ao
     // MRR afirmaria uma recorrência que hoje não existe. O MRR aqui é a anual

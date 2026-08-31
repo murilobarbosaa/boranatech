@@ -116,7 +116,7 @@ export function ProConversionsChart({
               "",
             ]}
           />
-          <Bar dataKey="count" fill="#7c3aed" isAnimationActive={false} />
+          <Bar dataKey="count" fill="var(--color-violet-600)" isAnimationActive={false} />
           {/* NAVEGACAO so quando ha o que navegar. O `Brush` ja vem no recharts
               que o projeto usa (nenhuma dependencia nova); abaixo de 31 dias ele
               seria um controle a mais sem funcao, ocupando altura do grafico. */}
@@ -125,7 +125,7 @@ export function ProConversionsChart({
               dataKey="date"
               height={18}
               travellerWidth={8}
-              stroke="#7c3aed"
+              stroke="var(--color-violet-600)"
               tickFormatter={rotuloDeDia}
               startIndex={Math.max(0, pontos.length - DIAS_PARA_NAVEGACAO)}
             />
@@ -268,7 +268,7 @@ export function CostVsRevenueChart({
               type="monotone"
               dataKey="receita"
               name="Receita (R$)"
-              stroke="#059669"
+              stroke="var(--chart-3)"
               strokeWidth={2}
               dot={false}
               isAnimationActive={false}
@@ -277,7 +277,7 @@ export function CostVsRevenueChart({
               type="monotone"
               dataKey="custo"
               name="Custo de IA (R$)"
-              stroke="#e11d48"
+              stroke="var(--chart-5)"
               strokeWidth={2}
               dot={false}
               isAnimationActive={false}
@@ -306,7 +306,7 @@ export function CostVsRevenueChart({
               <Line
                 type="monotone"
                 dataKey="count"
-                stroke="#059669"
+                stroke="var(--chart-3)"
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}
@@ -327,7 +327,7 @@ export function CostVsRevenueChart({
               <Line
                 type="monotone"
                 dataKey="count"
-                stroke="#e11d48"
+                stroke="var(--chart-5)"
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}

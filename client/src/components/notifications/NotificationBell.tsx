@@ -39,7 +39,7 @@ function UnreadBadge({ count }: { count: number }) {
     <>
       <span
         aria-hidden="true"
-        className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-slate-900 bg-red-600 px-1 text-[10px] font-black leading-none text-white shadow-[1px_1px_0_#0f172a]"
+        className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-slate-900 bg-red-600 px-1 text-[10px] font-black leading-none text-white shadow-[1px_1px_0_var(--bnt-shadow)]"
       >
         {count >= 99 ? "99+" : count}
       </span>
@@ -125,7 +125,7 @@ export default function NotificationBell({
   }
 
   // Base compartilhada com o "?" do guia; aqui so o que e do popover.
-  const triggerClass = `${HEADER_ICON_BUTTON_CLASS} data-[state=open]:translate-y-[1px] data-[state=open]:bg-amber-100 data-[state=open]:shadow-[1px_1px_0_#0f172a]`;
+  const triggerClass = `${HEADER_ICON_BUTTON_CLASS} data-[state=open]:translate-y-[1px] data-[state=open]:bg-amber-100 data-[state=open]:shadow-[1px_1px_0_var(--bnt-shadow)]`;
   const bellIconClass = `h-5 w-5 ${ringing ? "animate-bell-ring" : ""}`;
 
   if (variant === "mobile") {
@@ -142,7 +142,7 @@ export default function NotificationBell({
         <SheetContent
           side="right"
           aria-describedby={undefined}
-          className="z-[1005] w-full gap-0 border-l-2 border-slate-900 bg-white p-0 sm:max-w-md [&>button]:hidden"
+          className="z-[1005] w-full gap-0 border-l-2 border-slate-900 bg-popover p-0 sm:max-w-md [&>button]:hidden"
         >
           <SheetTitle className="sr-only">Notificações</SheetTitle>
           {/* Detalhe é camada absolute sobre a lista, que fica montada por baixo
@@ -154,7 +154,7 @@ export default function NotificationBell({
               onSelect={setSelected}
             />
             {selected ? (
-              <div className="absolute inset-0 z-10 bg-white">
+              <div className="absolute inset-0 z-10 bg-popover">
                 <NotificationDetailSheet
                   item={selected}
                   onBack={() => setSelected(null)}
@@ -178,7 +178,7 @@ export default function NotificationBell({
         <PopoverContent
           align="end"
           sideOffset={10}
-          className="max-h-[70vh] w-[400px] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border-2 border-slate-900 bg-white p-0 shadow-[5px_5px_0_#0f172a]"
+          className="max-h-[70vh] w-[400px] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border-2 border-slate-900 bg-popover p-0 shadow-[5px_5px_0_var(--bnt-shadow)]"
         >
           <NotificationsPanel
             onClose={() => setOpen(false)}

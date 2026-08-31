@@ -27,7 +27,7 @@ export default function EmpresaRankingJunior() {
                   <td className="p-4 font-black">#{row.position}</td>
                   <td className="p-4 font-bold">
                     <span className="flex items-center gap-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_#0f172a]">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_var(--bnt-shadow)]">
                         <img
                           src={row.logoUrl}
                           alt={`Logo ${row.company}`}

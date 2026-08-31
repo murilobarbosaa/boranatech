@@ -66,7 +66,7 @@ const MARKDOWN_COMPONENTS: Components = {
         checked={Boolean(props.checked)}
         readOnly
         disabled
-        className="mr-2 h-3.5 w-3.5 rounded border-2 border-slate-900 align-middle accent-[#FFB800]"
+        className="mr-2 h-3.5 w-3.5 rounded border-2 border-slate-900 align-middle accent-[var(--brand-yellow)]"
       />
     ) : null,
   blockquote: ({ children }) => (

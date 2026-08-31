@@ -131,7 +131,7 @@ function ColumnHeaderBase({
                 ? `${totalBeforeFilter} tarefa(s)`
                 : `${totalBeforeFilter} de no máximo ${column.wip_limit}`
           }
-          className={`inline-flex items-center rounded-full border-2 border-slate-900 px-2 py-0.5 text-xs font-black shadow-[2px_2px_0_#0f172a] ${
+          className={`inline-flex items-center rounded-full border-2 border-slate-900 px-2 py-0.5 text-xs font-black shadow-[2px_2px_0_var(--bnt-shadow)] ${
             overWip ? "bg-rose-600 text-white" : "bg-white text-slate-950"
           }`}
         >
@@ -145,13 +145,13 @@ function ColumnHeaderBase({
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label={`Ações da etapa ${column.name}`}
-            className="rounded-full border-2 border-slate-900 bg-white p-1 text-slate-900 shadow-[2px_2px_0_#0f172a]"
+            className="rounded-full border-2 border-slate-900 bg-white p-1 text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
           >
             <MoreHorizontal className="h-4 w-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className={`${LAYER_ON_PAGE} rounded-xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]`}
+            className={`${LAYER_ON_PAGE} rounded-xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_var(--bnt-shadow)]`}
           >
             <DropdownMenuItem
               onSelect={() => setEditing(true)}

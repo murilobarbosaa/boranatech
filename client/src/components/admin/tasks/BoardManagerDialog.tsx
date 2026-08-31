@@ -211,7 +211,7 @@ export function BoardManagerDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
           overlayClassName={LAYER_DIALOG}
-        className={`${LAYER_DIALOG} max-h-[85vh] overflow-y-auto rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a] sm:max-w-lg`}
+        className={`${LAYER_DIALOG} max-h-[85vh] overflow-y-auto rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)] sm:max-w-lg`}
       >
         <DialogTitle className="font-display text-2xl font-black text-slate-950">
           Quadros
@@ -430,7 +430,7 @@ export function BoardManagerDialog({
                           type="button"
                           onClick={confirmDelete}
                           disabled={deleteConfirm.trim().toUpperCase() !== board.key}
-                          className="rounded-full border-2 border-slate-900 bg-rose-600 px-3 py-1 text-xs font-black text-white shadow-[2px_2px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+                          className="rounded-full border-2 border-slate-900 bg-rose-600 px-3 py-1 text-xs font-black text-white shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-40 disabled:shadow-none"
                         >
                           Excluir para sempre
                         </button>

@@ -141,7 +141,7 @@ export function LinkedinError({
   if (error === "UNREADABLE") {
     return (
       <div className="card-brutal rounded-2xl border-slate-300 bg-amber-50 p-6 text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-900 bg-white shadow-[3px_3px_0_var(--bnt-shadow)]">
           <FileText className="h-7 w-7 text-amber-600" />
         </div>
         <p className="mx-auto max-w-2xl text-base font-bold text-slate-800">
@@ -165,7 +165,7 @@ export function LinkedinError({
 
   return (
     <div className="card-brutal rounded-2xl border-slate-300 bg-red-50 p-6 text-center">
-      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-900 bg-white shadow-[3px_3px_0_var(--bnt-shadow)]">
         <AlertCircle className="h-7 w-7 text-red-600" />
       </div>
       <p className="mx-auto max-w-2xl text-base font-bold text-slate-800">

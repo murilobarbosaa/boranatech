@@ -47,7 +47,7 @@ function Chip({
   children: React.ReactNode;
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3 py-1 text-xs font-bold text-slate-800 shadow-[2px_2px_0_#0f172a]">
+    <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3 py-1 text-xs font-bold text-slate-800 shadow-[2px_2px_0_var(--bnt-shadow)]">
       <Icon className={cn("h-3.5 w-3.5", iconClass ?? "text-slate-600")} />
       {children}
     </span>

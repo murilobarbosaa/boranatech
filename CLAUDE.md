@@ -8,7 +8,7 @@
 - Não remover código nem comentário que não entende. Perguntar antes.
 - Solução mais simples primeiro. Não introduzir abstração, dependência ou camada que a tarefa não pediu.
 - Leitura direcionada: abrir arquivo e trecho específicos, não "ler o projeto inteiro".
-- Antes de considerar pronto: rodar `pnpm check`. Mudança em auth, controle de acesso ou deploy exige validação manual antes de subir.
+- Antes de considerar pronto: rodar `pnpm check:all`. Mudança em auth, controle de acesso ou deploy exige validação manual antes de subir. `check:all` agrega os guards OFFLINE numa invocação só: `check` (tsc, roadmap-meta, sitemap, hashes de CSP), `check:generated` (os dois geradores de `client/src/lib`, `countsGenerated.ts` e `homeData.generated.ts`, em modo `--check`), `check:scripts` (tsc de `scripts/`) e `check:limiares` (auditoria de escopo dos limiares do LinkedIn). Ele NÃO inclui `check:migrations`, que precisa de rede e do service role, nem a suíte de testes. **Ele não é o hook**: o `.githooks/pre-commit` continua chamando `pnpm check` e `pnpm check:limiares`, e portanto NÃO roda `check:generated` nem `check:scripts`. Quem pega um arquivo gerado desatualizado é o CI ou este comando rodado à mão, nunca o hook, e essa lacuna está escrita aqui de propósito em vez de ficar implícita.
 - O hook de pre-commit está em `.githooks/pre-commit` e roda a suíte inteira, a suíte de novo sem `.env`, o `pnpm check` e o `pnpm check:limiares` (só a auditoria; as mutações passam de dez minutos e nunca entram em gate). `--no-verify` só em emergência; se o hook não estiver rodando, `git config core.hooksPath .githooks` (por quê: `docs/decisoes.md#hook-de-pre-commit`).
 - Instrumento de verificação cujo escopo é derivado por um parser que pode sub-casar em silêncio sempre falha PASSANDO (detalhe: `docs/postmortems-instrumentos.md#escopo-derivado-por-parser`).
 - Guard afirma o TOTAL, não só a pertinência: "existem exatamente N, e são estes", nunca "os N que eu conheço estão lá" (detalhe: `docs/postmortems-instrumentos.md#afirmar-o-total`).
@@ -20,6 +20,29 @@
 - Classificar por ORIGEM da chave, nunca pela forma do acesso. Enumeração por forma acha candidatos; o veredito exige seguir a origem (por quê: `docs/decisoes.md#origem-da-chave`).
 - Verificar nos dois sentidos: "o que declarei existe?" não é a mesma pergunta que "o que existe está declarado?" (detalhe: `docs/postmortems-instrumentos.md#verificar-nos-dois-sentidos`).
 - Conteúdo e copy: nunca inventar dado (números de mercado, salários, instituições). Sem fonte, suavizar pra qualitativo ou remover.
+
+## Licoes de verificacao (frente dark mode, ago/2026)
+
+1. Diff entre pontas divergentes: antes do merge, comparar contra o
+   merge-base; depois do merge, contra origin/main. `A..B` entre pontas
+   mede o proprio trabalho invertido.
+2. Verificacao em CSS minificado e por valor computado e posicao de
+   origem, nunca por texto: o minificador funde blocos de mesmo seletor.
+3. Realinhamento de branch sem commits: `git merge --ff-only origin/main`
+   apos `git rev-list --count origin/main..HEAD` retornar 0. `--no-rebase`
+   e opcao de git pull, nao de git merge.
+4. Auditoria de sombra e por luminancia (tinta vs acento), nao por lista
+   de hex.
+5. Toda var(--color-*) referenciada precisa existir no :root do bundle:
+   o Tailwind v4 so emite variaveis usadas por utilitaria, e var()
+   pendurado renderiza transparente sem erro.
+6. Fumaca de producao no dominio canonico e com curl -L: o www devolve
+   308 e sem -L mede-se o redirect, nao o site.
+7. Servidor local de revisao: confirmar o cwd do processo dono da porta
+   (/proc/<pid>/cwd) antes de capturar; outra sessao pode estar servindo
+   outro worktree na mesma porta.
+8. checkCspHashes.mts so varre lancamento.html: script inline novo em
+   client/index.html passa no CI e quebra so no navegador (divida aberta).
 
 ## Stack
 
@@ -47,7 +70,9 @@ pnpm dev:client     # só Vite
 pnpm dev:server     # só Express
 pnpm build          # vite build + esbuild server bundle → dist/
 pnpm start          # NODE_ENV=production node dist/index.js
-pnpm check          # tsc --noEmit
+pnpm check          # tsc --noEmit + geradores roadmap-meta/sitemap + hashes de CSP
+pnpm check:generated # countsGenerated.ts e homeData.generated.ts em sincronia com a fonte
+pnpm check:all      # check + check:generated + check:scripts + check:limiares (offline)
 pnpm test           # vitest run (suite inteira)
 pnpm format         # prettier --write .
 ```
@@ -169,6 +194,33 @@ Usar `-m` direto evita o editor abrir e tentar gerar descrição estendida autom
 | Emerald (grátis) | `emerald-*`                                   |
 
 Tipografia de seção: `font-display font-black` para headings; labels de seção `text-sm font-black uppercase tracking-[0.2em]`.
+
+## Tema (dark mode)
+
+O tema escuro e aplicado pela classe `dark` no `<html>` (ThemeProvider em
+contexts/ThemeContext.tsx; anti-flash em client/public/theme-init.js). A
+paleta escura vive em client/src/index.css em blocos GERADOS por script
+(cabecalho "GERADO por scripts/gen-dark-palette.py"): nao editar a mao;
+o script esta registrado integralmente em darkmode-09/10/11 dos registros
+da frente e deve ser recriado a partir de la para regenerar.
+
+Regras para codigo novo:
+
+1. Cor de estilo usa variavel ou escala Tailwind, nunca hex cravado.
+   Hex em valor arbitrario, style inline ou rgba() NAO recebe tema.
+2. Hex que vira dado (estado, payload, coluna) fica hex. Nunca trocar
+   por var() o que passa por validacao ou persistencia.
+3. Secao de largura total escura por design recebe a classe
+   bnt-keep-colors no wrapper (mantem as cores do claro nos dois temas).
+   Cards e chips pequenos nao recebem.
+4. Cards com tinta de escala (bg-violet-100 etc.) ficam pastel no escuro
+   por contexto automatico; texto sobre fundo amarelo idem. Nao usar
+   utilitarias dark: (o projeto nao usa em lugar nenhum).
+5. Sombra deslocada usa var(--bnt-shadow); tinta usa var(--bnt-ink);
+   texto sobre amarelo usa text-ink-on-accent.
+6. Graficos recharts usam var(--chart-1..5), var(--border),
+   var(--muted-foreground); var() e valido em fill/stroke de SVG.
+7. Impressao e sempre clara (beforeprint remove a classe dark).
 
 ## Deploy
 

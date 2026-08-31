@@ -68,7 +68,7 @@ export default function TrophyCard({
             aria-hidden
             className={cn(
               "grid h-8 w-8 shrink-0 place-items-center rounded-lg border-2 border-slate-950",
-              done ? "bg-[#FFB800]" : "bg-amber-50",
+              done ? "bg-[var(--brand-yellow)]" : "bg-amber-50",
             )}
           >
             <Trophy

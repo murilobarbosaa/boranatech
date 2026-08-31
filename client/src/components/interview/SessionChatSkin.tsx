@@ -15,7 +15,7 @@ import type {
 // Papel da arena: pontilhado azul sutil inline (nada de index.css nem da
 // wa-chat-wallpaper, que pertence a outro contexto).
 export const CHAT_PAPER_CLASS =
-  "bg-[#f8fbff] [background-image:radial-gradient(rgba(37,99,235,0.06)_1.2px,transparent_1.2px)] [background-size:18px_18px]";
+  "bg-[var(--bnt-surface)] [background-image:radial-gradient(rgba(37,99,235,0.06)_1.2px,transparent_1.2px)] [background-size:18px_18px]";
 
 const RATING_UI: Record<
   InterviewRating,
@@ -47,7 +47,7 @@ const RATING_UI: Record<
 function AssistantAvatar() {
   return (
     <span
-      className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-slate-950 bg-blue-600 shadow-[2px_2px_0_#0f172a]"
+      className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-slate-950 bg-blue-600 shadow-[2px_2px_0_var(--bnt-shadow)]"
       aria-hidden
     >
       <Mic className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
@@ -58,7 +58,7 @@ function AssistantAvatar() {
 function UserAvatar() {
   return (
     <span
-      className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-slate-950 bg-white shadow-[2px_2px_0_#0f172a]"
+      className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-slate-950 bg-white shadow-[2px_2px_0_var(--bnt-shadow)]"
       aria-hidden
     >
       <User className="h-3.5 w-3.5 text-slate-950" strokeWidth={2.5} />
@@ -108,7 +108,7 @@ export function UserRow({
 
 export function QuestionBubble({ content }: { content: string }) {
   return (
-    <div className="max-w-[min(100%,86%)] rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-blue-50 px-3.5 py-3 font-body text-[15px] leading-relaxed text-slate-900 shadow-[2px_2px_0_#0f172a] sm:max-w-[min(100%,82%)] sm:px-4 sm:py-3.5 sm:text-base">
+    <div className="max-w-[min(100%,86%)] rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-blue-50 px-3.5 py-3 font-body text-[15px] leading-relaxed text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] sm:max-w-[min(100%,82%)] sm:px-4 sm:py-3.5 sm:text-base">
       <p className="whitespace-pre-wrap break-words">{content}</p>
     </div>
   );
@@ -116,7 +116,7 @@ export function QuestionBubble({ content }: { content: string }) {
 
 export function AnswerBubble({ content }: { content: string }) {
   return (
-    <div className="max-w-[min(100%,86%)] rounded-[14px] rounded-tr-sm border-2 border-slate-950 bg-white px-3.5 py-3 font-body text-[15px] leading-relaxed text-slate-900 shadow-[2px_2px_0_#0f172a] sm:max-w-[min(100%,82%)] sm:px-4 sm:py-3.5 sm:text-base">
+    <div className="max-w-[min(100%,86%)] rounded-[14px] rounded-tr-sm border-2 border-slate-950 bg-white px-3.5 py-3 font-body text-[15px] leading-relaxed text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] sm:max-w-[min(100%,82%)] sm:px-4 sm:py-3.5 sm:text-base">
       <p className="whitespace-pre-wrap break-words">{content}</p>
     </div>
   );
@@ -134,7 +134,7 @@ export function FeedbackCard({
   return (
     <div
       className={cn(
-        "max-w-[min(100%,86%)] rounded-[14px] border-2 px-3.5 py-3 shadow-[2px_2px_0_#0f172a] sm:max-w-[min(100%,82%)] sm:px-4",
+        "max-w-[min(100%,86%)] rounded-[14px] border-2 px-3.5 py-3 shadow-[2px_2px_0_var(--bnt-shadow)] sm:max-w-[min(100%,82%)] sm:px-4",
         ui.box,
       )}
     >

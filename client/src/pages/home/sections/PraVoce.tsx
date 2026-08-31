@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import {
@@ -9,23 +9,13 @@ import {
   Clock,
   Tag,
 } from "lucide-react";
-import {
-  praVoceCursos,
-  praVoceEventos,
-  praVoceNoticia,
-} from "@/lib/homeData.generated";
+import { praVoceCursos, praVoceNoticia } from "@/lib/homeData.generated";
+
+type Evento = import("@/services/eventosService").Evento;
 
 // =========================================
 // CONFIGURAÇÕES
 // =========================================
-
-// Info evergreen por evento, alguns eventos podem ter ocorrido, então não exibimos
-// data e usamos uma descrição atemporal no lugar.
-// TODO: mover esses textos pra data.ts como campo `evergreenInfo` em cada evento.
-const EVENTO_EVERGREEN: Record<string, string> = {
-  "campus-party": "Anual · Maior evento de tech do Brasil",
-  "python-brasil": "Comunidade Python · Edições anuais",
-};
 
 // 7 nuvens espalhadas pelo background. Mix de tamanhos, opacidades, durações e
 // delays pra desincronizar a animação e criar profundidade.
@@ -97,16 +87,43 @@ const NUVENS = [
 // =========================================
 
 export default function PraVoce() {
-  // Selecao resolvida em build time (scripts/generateHomeData.mts) com a
-  // mesma logica de antes: noticia por id com fallback, indices 0 e 1.
+  // Noticia e cursos continuam resolvidos em build time
+  // (scripts/generateHomeData.mts). Os eventos nao: a fonte deles e a rota
+  // /api/content/eventos, igual as secoes vizinhas da home.
   const noticiaDestaque = praVoceNoticia;
-  const evento1 = praVoceEventos[0];
-  const evento2 = praVoceEventos[1];
   const curso1 = praVoceCursos[0];
   const curso2 = praVoceCursos[1];
 
+  const [eventos, setEventos] = useState<Evento[] | null>(null);
+
+  useEffect(() => {
+    let ativo = true;
+    // Mesmo filtro das irmas: so evento que ainda nao passou e tem link.
+    // O import e dinamico para o service nao entrar no grafo do boot.
+    import("@/services/eventosService")
+      .then(({ getEventos }) => getEventos())
+      .then((payload) => {
+        if (!ativo) return;
+        setEventos(
+          payload.eventos
+            .filter((evento) => !evento.recorrente && Boolean(evento.link))
+            .slice(0, 2),
+        );
+      })
+      .catch((erro: unknown) => {
+        if (!ativo) return;
+        // Na home, falha ESCONDE o bloco de eventos e deixa o resto da secao
+        // (noticia e cursos) de pe. Quem nomeia o erro e a pagina /eventos.
+        console.warn("[home] falha ao carregar eventos:", erro);
+        setEventos([]);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
   return (
-    <section id="pra-ler-e-aprender" className="bnt-ancora relative overflow-hidden py-20 md:py-28 bg-[#f0f9ff]">
+    <section id="pra-ler-e-aprender" className="bnt-ancora relative overflow-hidden py-20 md:py-28 bg-[var(--bnt-surface)]">
       <BackgroundDecoration />
 
       <div className="relative z-10 mx-auto max-w-6xl px-4">
@@ -158,11 +175,29 @@ export default function PraVoce() {
             <NoticiaDestaque noticia={noticiaDestaque} />
           </div>
 
-          {/* Coluna 3: 2 eventos empilhados */}
-          <div className="flex flex-col gap-6 md:gap-8">
-            <EventoCard evento={evento1} delay={0.3} />
-            <EventoCard evento={evento2} delay={0.4} />
-          </div>
+          {/* Coluna 3: ate 2 eventos empilhados, vindos da API. Enquanto
+              carrega, skeletons seguram o espaco; em falha ou vazio a coluna
+              inteira some e a noticia segue ocupando as outras duas. */}
+          {eventos === null ? (
+            <div className="flex flex-col gap-6 md:gap-8" aria-hidden="true">
+              {[0, 1].map((i) => (
+                <div
+                  key={i}
+                  className="flex-1 min-h-[13rem] animate-pulse rounded-2xl border-2 border-slate-200 bg-slate-100"
+                />
+              ))}
+            </div>
+          ) : eventos.length > 0 ? (
+            <div className="flex flex-col gap-6 md:gap-8">
+              {eventos.map((evento, i) => (
+                <EventoCard
+                  key={evento.id}
+                  evento={evento}
+                  delay={0.3 + i * 0.1}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
 
         {/* 2 cursos lado a lado abaixo */}
@@ -193,9 +228,9 @@ function NoticiaDestaque({ noticia }: { noticia: typeof praVoceNoticia }) {
       className="h-full"
     >
       <Link href="/noticias">
-        <div className="group h-full cursor-pointer rounded-3xl border-2 border-slate-950 bg-white p-6 md:p-8 lg:p-10 shadow-[4px_4px_0_#0f172a] md:shadow-[6px_6px_0_#0f172a] transition-all duration-300 hover:-translate-y-1 hover:shadow-[10px_10px_0_#0f172a] flex flex-col">
+        <div className="group h-full cursor-pointer rounded-3xl border-2 border-slate-950 bg-white p-6 md:p-8 lg:p-10 shadow-[4px_4px_0_var(--bnt-shadow)] md:shadow-[6px_6px_0_var(--bnt-shadow)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[10px_10px_0_var(--bnt-shadow)] flex flex-col">
           {/* Badge da categoria (no topo agora, label "Notícia em destaque" removida) */}
-          <div className="inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-950 bg-amber-100 px-3 py-1 shadow-[2px_2px_0_#0f172a]">
+          <div className="inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-950 bg-amber-100 px-3 py-1 shadow-[2px_2px_0_var(--bnt-shadow)]">
             <Tag size={12} className="text-amber-700" strokeWidth={2.5} />
             <span className="font-display text-xs font-black uppercase tracking-wider text-amber-700">
               {noticia.categoria}
@@ -250,16 +285,7 @@ function NoticiaDestaque({ noticia }: { noticia: typeof praVoceNoticia }) {
 // COMPONENTE EventoCard (card lateral menor)
 // =========================================
 
-function EventoCard({
-  evento,
-  delay,
-}: {
-  evento: (typeof praVoceEventos)[number];
-  delay: number;
-}) {
-  // Info evergreen substitui a data (alguns eventos podem ter passado).
-  const evergreen = EVENTO_EVERGREEN[evento.id] ?? evento.formato;
-
+function EventoCard({ evento, delay }: { evento: Evento; delay: number }) {
   return (
     <motion.article
       initial={{ opacity: 0, x: 30 }}
@@ -269,7 +295,7 @@ function EventoCard({
       className="flex-1"
     >
       <Link href="/eventos">
-        <div className="group h-full cursor-pointer rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[4px_4px_0_#0f172a] transition-all duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0_#0f172a] flex flex-col">
+        <div className="group h-full cursor-pointer rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0_var(--bnt-shadow)] flex flex-col">
           {/* Topo: logo do evento (label "EVENTO" removida, ícone já sugere) */}
           <EventoLogo logoUrl={evento.logoUrl} nome={evento.nome} />
 
@@ -278,7 +304,9 @@ function EventoCard({
             {evento.nome}
           </h3>
 
-          {/* Local + Info evergreen (substitui o formato cru) */}
+          {/* Local + data. A linha de data some quando o banco nao tem rotulo,
+              em vez de repetir o formato: o icone de calendario prometendo
+              "Online" era a duplicata exata da linha de cima. */}
           <div className="mt-3 space-y-1.5">
             <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
               <MapPin
@@ -289,17 +317,19 @@ function EventoCard({
               <span className="truncate">
                 {evento.formato === "Online"
                   ? "Online"
-                  : `${evento.cidade}, ${evento.estado}`}
+                  : `${evento.cidade}${evento.uf ? `, ${evento.uf}` : ""}`}
               </span>
             </p>
-            <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
-              <Calendar
-                size={14}
-                className="text-fuchsia-700 shrink-0"
-                strokeWidth={2.5}
-              />
-              <span className="truncate">{evergreen}</span>
-            </p>
+            {evento.dataLabel ? (
+              <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
+                <Calendar
+                  size={14}
+                  className="text-fuchsia-700 shrink-0"
+                  strokeWidth={2.5}
+                />
+                <span className="truncate">{evento.dataLabel}</span>
+              </p>
+            ) : null}
           </div>
 
           {/* CTA */}
@@ -356,7 +386,7 @@ export function EventoLogo({
     .join("");
 
   return (
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-fuchsia-100 shadow-[2px_2px_0_#0f172a] overflow-hidden">
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-fuchsia-100 shadow-[2px_2px_0_var(--bnt-shadow)] overflow-hidden">
       {logoUrl && urlComFalha !== logoUrl ? (
         <img
           src={logoUrl}
@@ -409,9 +439,9 @@ function CursoCard({
       transition={{ duration: 0.5, delay }}
     >
       <Link href="/cursos">
-        <div className="group h-full cursor-pointer rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[4px_4px_0_#0f172a] transition-all duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0_#0f172a] flex flex-col">
+        <div className="group h-full cursor-pointer rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0_var(--bnt-shadow)] flex flex-col">
           {/* Ícone capelo (label "Curso recomendado" removida) */}
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-950 bg-emerald-100 shadow-[2px_2px_0_#0f172a]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-950 bg-emerald-100 shadow-[2px_2px_0_var(--bnt-shadow)]">
             <GraduationCap
               size={20}
               className="text-emerald-700"
@@ -421,7 +451,7 @@ function CursoCard({
 
           {/* Badge da área */}
           <div
-            className={`mt-4 inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-950 ${colors.bg} px-3 py-1 shadow-[2px_2px_0_#0f172a]`}
+            className={`mt-4 inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-950 ${colors.bg} px-3 py-1 shadow-[2px_2px_0_var(--bnt-shadow)]`}
           >
             <Tag size={12} className={`${colors.text}`} strokeWidth={2.5} />
             <span
@@ -507,7 +537,7 @@ function NuvemSvg({
       <svg
         viewBox="0 0 100 60"
         fill="white"
-        stroke="#0f172a"
+        stroke="var(--bnt-ink)"
         strokeWidth="2.5"
         strokeLinejoin="round"
         className="w-full h-auto"

@@ -9,6 +9,7 @@ import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { getStripe } from "../lib/stripeClient";
 import { syncBalanceTransactions } from "../lib/stripeSync";
+import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
 import { patchDeMeioDePagamento } from "../lib/paymentMethod";
@@ -155,6 +156,91 @@ async function getUserContact(userId: string): Promise<{
   return { email, name, gender };
 }
 
+/**
+ * Conversao de afiliado: a UNICA escrita no ledger de comissao em todo o
+ * sistema. `increment_affiliate_conversion` e uma escrita COMPOSTA e sem
+ * desfazer pela aplicacao (soma 1 em `sales`, soma a receita e soma a comissao
+ * no mesmo UPDATE), entao o que entra aqui e definitivo.
+ *
+ * REGRA: ausencia de valor pago NAO escreve.
+ *
+ * Chamar com zero quando o evento simplesmente nao declarou valor gravaria uma
+ * venda de valor zero, indistinguivel de uma venda 100 por cento descontada
+ * legitima. A partir dai o extrato do afiliado mente e ninguem consegue saber
+ * quais linhas conferir, que e a classe de falha em silencio que este projeto ja
+ * pagou caro. Zero DECLARADO e outra coisa e continua entrando.
+ *
+ * EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
+ * server/routes/cron.ts: o que importa provar e SE a escrita acontece e com qual
+ * numero, e isso so se prova rodando a funcao.
+ */
+export async function recordAffiliateConversion(params: {
+  userId: string;
+  affiliateCode: string;
+  /** `undefined` = o evento nao declarou cobranca. Ver paidAmountCentsFromEvent. */
+  revenueCents: number | undefined;
+  prevStatus: string | null;
+  nextStatus: string;
+  sourceEvent?: { id: string; type: string; subscriptionId: string | null };
+}): Promise<void> {
+  const { userId, affiliateCode, revenueCents, sourceEvent } = params;
+
+  if (revenueCents === undefined) {
+    // Nao escreve nada e manda o caso para o Sentry com o que o replay manual
+    // precisa. Lacuna VISIVEL vale mais que numero errado invisivel: e a mesma
+    // escolha que o `contarLinhas` devolvendo -1 documentou pelo avesso.
+    //
+    // `warning` e nao `error`, e fingerprint fixo por tipo, pelos mesmos motivos
+    // escritos em `stripe_pagamento_sem_dono`: interessa a serie no tempo, e
+    // ninguem esta sem o que pagou neste instante (o comprador tem acesso; quem
+    // fica sem numero e o afiliado).
+    Sentry.captureMessage("stripe_conversao_sem_valor_pago", {
+      level: "warning",
+      fingerprint: ["stripe-conversao-sem-valor-pago"],
+      tags: {
+        origem: "stripe-webhook",
+        event_type: sourceEvent?.type ?? "desconhecido",
+      },
+      extra: {
+        event_id: sourceEvent?.id ?? null,
+        event_type: sourceEvent?.type ?? null,
+        subscription_id: sourceEvent?.subscriptionId ?? null,
+        user_id: userId,
+        affiliate_code: affiliateCode,
+        prev_status: params.prevStatus,
+        next_status: params.nextStatus,
+      },
+    });
+    console.error(
+      `[webhook/stripe] conversao do afiliado ${affiliateCode} (user ${userId}) ` +
+        `sem valor pago declarado no evento ${sourceEvent?.type ?? "?"} ` +
+        `(${sourceEvent?.id ?? "?"}); NAO incrementada, replay manual necessario.`,
+    );
+    return;
+  }
+
+  try {
+    const { data: affiliate } = await supabaseAdmin
+      .from("affiliates")
+      .select("id")
+      .eq("code", affiliateCode)
+      .maybeSingle();
+    if (affiliate) {
+      await supabaseAdmin.rpc("increment_affiliate_conversion", {
+        p_affiliate_id: affiliate.id,
+        // Zero DECLARADO entra: venda integralmente descontada e uma venda, e
+        // conta em `sales` com comissao zero.
+        p_revenue_cents: revenueCents,
+      });
+    }
+  } catch (affiliateError) {
+    console.error(
+      "[webhook/stripe] Falha ao contar conversao de afiliado:",
+      affiliateError,
+    );
+  }
+}
+
 // Efeitos colaterais de uma transicao de status (paridade com o webhook Asaas):
 // invalida o cache Pro do dono, dispara e-mail transacional e conta a conversao
 // do afiliado na PRIMEIRA ativacao (nao em renovacoes).
@@ -167,6 +253,10 @@ async function handleTransition(
     couponCode?: string | null;
     revenueCents?: number;
     planName?: string;
+    // Procedencia do evento que originou a transicao. NAO participa de nenhuma
+    // decisao: existe so para o Sentry conseguir identificar a conversao que
+    // ficou sem valor pago e permitir o replay manual dela.
+    sourceEvent?: { id: string; type: string; subscriptionId: string | null };
   },
 ): Promise<void> {
   const becameActive = !isProStatus(prevStatus) && isProStatus(nextStatus);
@@ -178,24 +268,14 @@ async function handleTransition(
   }
 
   if (becameActive && opts.affiliateCode) {
-    try {
-      const { data: affiliate } = await supabaseAdmin
-        .from("affiliates")
-        .select("id")
-        .eq("code", opts.affiliateCode)
-        .maybeSingle();
-      if (affiliate) {
-        await supabaseAdmin.rpc("increment_affiliate_conversion", {
-          p_affiliate_id: affiliate.id,
-          p_revenue_cents: opts.revenueCents ?? 0,
-        });
-      }
-    } catch (affiliateError) {
-      console.error(
-        "[webhook/stripe] Falha ao contar conversao de afiliado:",
-        affiliateError,
-      );
-    }
+    await recordAffiliateConversion({
+      userId,
+      affiliateCode: opts.affiliateCode,
+      revenueCents: opts.revenueCents,
+      prevStatus,
+      nextStatus,
+      sourceEvent: opts.sourceEvent,
+    });
   }
 
   // Resgate do cupom de marketing: conta SO na ativacao (nunca na criacao da
@@ -284,6 +364,46 @@ function eventConfirmsPayment(event: Stripe.Event): boolean {
   }
 }
 
+/**
+ * Valor EFETIVAMENTE PAGO declarado pelo evento, em centavos, ou null quando o
+ * evento nao declara cobranca.
+ *
+ * Existe porque a comissao de afiliado precisa da MESMA base nos dois meios de
+ * pagamento. O boleto sempre usou `session.amount_total` (valor pago); o cartao
+ * usava `price.unit_amount`, que e PRECO DE TABELA e ignora cupom e desconto de
+ * afiliado. A mesma venda com 30 por cento de desconto gerava comissao sobre
+ * 2990 pelo cartao e sobre 2093 pelo boleto: duas bases alimentando uma conta so.
+ *
+ * A classificacao e a mesma de `eventConfirmsPayment`, de proposito: os eventos
+ * que confirmam cobranca sao exatamente os que carregam valor.
+ *
+ * null NAO e zero. Zero e uma cobranca de valor zero (mode:subscription 100 por
+ * cento descontado, que a Stripe reporta como 'no_payment_required'); null e
+ * ausencia de cobranca no evento, e `customer.subscription.*` e evento de ESTADO,
+ * nao de cobranca. Colapsar os dois faria uma venda sem valor declarado parecer
+ * uma venda gratuita.
+ *
+ * EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
+ * server/routes/cron.ts: o que importa provar aqui e QUAL numero sai daqui para a
+ * comissao, e isso so se prova rodando a funcao contra eventos reais.
+ */
+export function paidAmountCentsFromEvent(event: Stripe.Event): number | null {
+  switch (event.type) {
+    case "invoice.paid": {
+      const invoice = event.data.object as Stripe.Invoice;
+      return invoice.amount_paid ?? null;
+    }
+    case "checkout.session.completed":
+    case "checkout.session.async_payment_succeeded": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (!isPaidSessionStatus(session.payment_status)) return null;
+      return session.amount_total ?? null;
+    }
+    default:
+      return null;
+  }
+}
+
 async function subscriptionRowExists(
   providerSubscriptionId: string,
 ): Promise<boolean> {
@@ -301,9 +421,43 @@ async function subscriptionRowExists(
   return (data?.length ?? 0) > 0;
 }
 
+/**
+ * Nome do indice unico PARCIAL criado pela migration 20260829120000:
+ * `UNIQUE (user_id) WHERE status IN ('active','trialing')`.
+ *
+ * Literal, e nao ha alternativa melhor: o `details` do Postgres nomeia so a
+ * CHAVE violada (`Key (user_id)=(...) already exists.`) e nunca o indice, entao
+ * a unica coisa que separa este 23505 de qualquer outro conflito de unicidade
+ * da tabela e o nome dentro da `message`. Se a migration renomear o indice,
+ * este literal muda junto, e `webhookCorridaAssinatura.test.ts` quebra.
+ */
+const INDICE_ATIVO_POR_USUARIO = "subscriptions_one_active_per_user";
+
+/**
+ * Status que o indice parcial cobre. Espelha o `WHERE` da migration, e precisa
+ * continuar espelhando: lista maior traria linha que o indice ignora, lista
+ * menor deixaria de achar o ocupante e transformaria corrida benigna em "nao
+ * achei ocupante", que lanca. `past_due` esta fora dos dois, de proposito.
+ */
+const STATUS_DO_INDICE_ATIVO = ["active", "trialing"];
+
+/** Conflito de unicidade NO indice parcial de ativo por usuario, e nao em outro. */
+function ehConflitoDeAtivoPorUsuario(erro: unknown): boolean {
+  const e = erro as { code?: unknown; message?: unknown } | null | undefined;
+  if (!e || e.code !== "23505") return false;
+  return (
+    typeof e.message === "string" &&
+    e.message.includes(INDICE_ATIVO_POR_USUARIO)
+  );
+}
+
 // Upsert de uma assinatura Stripe na tabela subscriptions, com guard de
 // out-of-order por last_event_at (mesma protecao do Asaas).
-async function applySubscription(
+//
+// EXPORTADA para teste, no mesmo criterio de `onBoletoAsyncPaymentSucceeded`
+// abaixo: o que importa provar e o ramo de classificacao do 23505, e ele so se
+// prova rodando a funcao com o erro no formato real do postgrest.
+export async function applySubscription(
   sub: Stripe.Subscription,
   event: Stripe.Event,
   eventCreatedAt: Date,
@@ -323,6 +477,35 @@ async function applySubscription(
           "Assinatura paga sem usuário no metadata.",
         );
       }
+      // Daqui para baixo o fluxo devolve 200, e o 200 esta CERTO: `atendido`
+      // significa que a linha ja existe, entao ninguem ficou sem acesso e a
+      // Stripe nao deve reentregar. O problema nao e a resposta, e o rastro: o
+      // `console.error` acima morre no log do Railway, porque `server/lib/sentry.ts`
+      // nao declara `integrations` e o `captureConsoleIntegration` nao e padrao
+      // no @sentry/node (docs/erro-engolido.md). E este e justamente o caminho
+      // que o RETRY DA STRIPE NUNCA VAI REENTREGAR: com 200, se ninguem olhar
+      // hoje, ninguem olha nunca.
+      //
+      // `warning` e nao `error`, e a diferenca e deliberada: o fluxo TRATOU o
+      // caso, ninguem esta sem o que pagou neste instante, e o que se quer aqui
+      // e um humano conferir o metadata da subscription, nao urgencia de
+      // plantao. `error` igualaria isto ao ramo de cima, que e o caso em que o
+      // dinheiro entrou e ninguem foi atendido, e ai a distincao entre os dois
+      // se perderia justamente no painel que existe para separa-los.
+      Sentry.captureMessage("stripe_pagamento_sem_dono", {
+        level: "warning",
+        // Fingerprint fixo por TIPO, nao pelo id: o interesse e a serie no
+        // tempo. Sem ele o id da subscription entra no agrupamento, cada
+        // ocorrencia vira uma issue nova, e uma issue por ocorrencia carrega a
+        // mesma informacao que nenhuma.
+        fingerprint: ["stripe-pagamento-sem-dono"],
+        tags: { origem: "stripe-webhook", event_type: event.type },
+        extra: {
+          subscription_id: sub.id,
+          event_id: event.id,
+          customer_id: customerIdOf(sub),
+        },
+      });
       return;
     }
     console.warn(
@@ -347,6 +530,36 @@ async function applySubscription(
           "Assinatura paga sem plano resolvível.",
         );
       }
+      // Terceiro caminho de 200 mudo desta funcao, irmao do
+      // `stripe_pagamento_sem_dono`: `atendido` significa que a linha ja existe,
+      // ninguem ficou sem acesso e a Stripe nao deve reentregar, entao o 200
+      // esta certo. O que falta e rastro, porque o `console.error` acima morre
+      // no log do Railway (`server/lib/sentry.ts` nao declara `integrations` e o
+      // `captureConsoleIntegration` nao e padrao no @sentry/node, ver
+      // docs/erro-engolido.md), e com 200 o RETRY DA STRIPE NUNCA REENTREGA
+      // este evento: se ninguem olhar hoje, ninguem olha nunca.
+      //
+      // `warning` e nao `error` pelo mesmo motivo escrito acima: o fluxo TRATOU
+      // o caso, ninguem esta sem o que pagou neste instante, e o que se quer e
+      // um humano conferir de onde veio um price sem plano mapeado, nao
+      // urgencia de plantao. `error` igualaria isto ao ramo de cima, onde o
+      // dinheiro entrou e ninguem foi atendido.
+      Sentry.captureMessage("stripe_pagamento_sem_plano", {
+        level: "warning",
+        // Fingerprint fixo por TIPO, nao pelo id, pela razao de sempre: o
+        // interesse e a serie no tempo, e uma issue por ocorrencia carrega a
+        // mesma informacao que nenhuma. Issue separada das outras duas porque o
+        // defeito e outro: aqui o dono existe, o que nao existe e o mapeamento
+        // do price para um plano nosso.
+        fingerprint: ["stripe-pagamento-sem-plano"],
+        tags: { origem: "stripe-webhook", event_type: event.type },
+        extra: {
+          subscription_id: sub.id,
+          event_id: event.id,
+          user_id: userId,
+          price_id: sub.items?.data?.[0]?.price?.id ?? null,
+        },
+      });
       return;
     }
     console.warn(
@@ -455,19 +668,155 @@ async function applySubscription(
 
   if (result.error) {
     console.error("[webhook/stripe] subscriptions write failed:", result.error);
-    throw createError(500, "db_error", "Erro ao gravar assinatura.");
+
+    if (ehConflitoDeAtivoPorUsuario(result.error)) {
+      // CORRIDA PERDIDA NUM INDICE QUE O `ON CONFLICT` NAO ARBITRA.
+      //
+      // O `upsert` acima arbitra `provider_subscription_id` com
+      // `ignoreDuplicates`, e `ON CONFLICT` so absorve conflito no indice
+      // ARBITRADO: conflito em qualquer OUTRO indice unico da mesma tabela
+      // levanta erro. A migration 20260829120000 acrescentou um SEGUNDO indice
+      // unico (`subscriptions_one_active_per_user`, parcial por status) a um
+      // caminho de escrita desenhado quando havia um indice so, e foi isso que
+      // abriu o buraco. A protecao contra concorrencia que existia aqui nunca
+      // foi generica: ela cobre exatamente um indice, o que ela nomeia.
+      //
+      // O CASO MEDIDO, 30/08 13:50:27. Evento `checkout.session.completed`
+      // (evt_1UA97tQ6lxIhx7VyI5ypzLNe), assinatura
+      // `sub_1UA97sQ6lxIhx7VyF77F9STc`, usuario 81129623-79a8-415c-be5c-30ae9f86d3af:
+      // a leitura de `existing` voltou vazia as 13:50:26.997 e o `upsert` bateu
+      // 409 as 13:50:27.183, porque outro handler da MESMA assinatura commitou a
+      // linha 374ms antes. Consulta ao banco confirmou UMA linha ativa para o
+      // usuario, com o `provider_subscription_id` do proprio evento: estado
+      // final correto, ninguem perdeu o Pro, e o 500 so gerou retry e alarme.
+      //
+      // POR QUE PRECISA DE CONSULTA. O erro nao dispensa a leitura: o `details`
+      // diz `Key (user_id)=(...) already exists.` e NAO nomeia qual assinatura
+      // ocupa o slot ativo. Sem ler o ocupante, "corrida benigna" e "usuario com
+      // duas assinaturas ativas" sao indistinguiveis, e sao opostos em gravidade.
+      const { data: ocupante, error: erroDeClassificacao } = await supabaseAdmin
+        .from("subscriptions")
+        .select("id, provider_subscription_id, status")
+        .eq("user_id", userId)
+        .in("status", STATUS_DO_INDICE_ATIVO)
+        .maybeSingle();
+
+      if (erroDeClassificacao) {
+        // A consulta de classificacao falhou: nao da para classificar nada,
+        // entao vale o criterio do ramo de baixo. Cai para o `throw` original,
+        // com o erro ORIGINAL da escrita e nao o da classificacao: o 23505 e o
+        // fato do incidente, e trocar um pelo outro apagaria a unica pista.
+        console.error(
+          `[webhook/stripe] classificacao da corrida falhou (user ${userId}, ${sub.id}); ` +
+            `lancando o erro ORIGINAL da escrita:`,
+          erroDeClassificacao,
+        );
+      } else if (!ocupante) {
+        // NAO ACHOU OCUPANTE: lanca. Este ramo NAO pode virar sucesso. A
+        // consulta de classificacao corre a MESMA corrida do upsert e pode rodar
+        // antes do commit do vencedor, voltando vazia. O que temos aqui e "nao
+        // sei", e colapsar "nao sei" em "esta tudo bem" e exatamente o defeito
+        // que este projeto persegue: instrumento que falha PASSANDO. Lancar
+        // custa um retry da Stripe, que reprocessa e ai encontra a linha; calar
+        // custaria uma assinatura que ninguem sabe se ficou gravada.
+        console.error(
+          `[webhook/stripe] 23505 em ${INDICE_ATIVO_POR_USUARIO} (user ${userId}, ${sub.id}) ` +
+            `sem linha ativa correspondente na leitura seguinte; corrida NAO confirmada.`,
+        );
+      } else if (ocupante.provider_subscription_id === sub.id) {
+        // Corrida benigna: o ocupante do slot E a assinatura deste evento. O
+        // estado final ja esta correto, entao o desfecho e o mesmo do `raceLost`
+        // do outro indice: retorna sem lancar e sem disparar `handleTransition`,
+        // porque a transicao (email e conversao de afiliado) e do handler que de
+        // fato criou a linha, nao deste.
+        //
+        // `info`, nao `warning`: isto nao pede acao. O evento existe para MEDIR
+        // a frequencia, que hoje e de uma ocorrencia desde 29/08. Fingerprint
+        // fixo para a serie nao se espalhar por usuario.
+        Sentry.captureMessage("stripe_corrida_assinatura_ativa", {
+          level: "info",
+          fingerprint: ["stripe-corrida-assinatura-ativa"],
+          tags: { origem: "stripe-webhook", event_type: event.type },
+          extra: {
+            user_id: userId,
+            subscription_id: sub.id,
+            event_id: event.id,
+          },
+        });
+        return;
+      } else {
+        // Problema real: o usuario tem uma assinatura ativa que NAO e a deste
+        // evento, ou seja, duas assinaturas ativas ao mesmo tempo. O indice
+        // bloqueou certo, e isto precisa de gente.
+        //
+        // Os DOIS ids entram no TEXTO da mensagem, nao em propriedade solta: o
+        // `exceptionFromError` do Sentry monta a exceção de `name`, `message` e
+        // `stack`, e nada mais (o motivo esta escrito por extenso em
+        // server/lib/supabaseError.ts). Sem os dois ids aqui, a investigacao
+        // recomeca do zero, que foi o custo do BUG-77.
+        const duplicada = new Error(
+          `Usuario ${userId} ja tem a assinatura ativa ${ocupante.provider_subscription_id} ` +
+            `(status ${ocupante.status}); o evento ${event.type} ${event.id} tentou ativar ${sub.id}.`,
+          { cause: erroEncadeavel(result.error) },
+        );
+        duplicada.name = "AssinaturaAtivaDuplicada";
+        throw createError(500, "db_error", "Erro ao gravar assinatura.", {
+          cause: duplicada,
+          context: {
+            userId,
+            subscriptionDoEvento: sub.id,
+            subscriptionAtiva: ocupante.provider_subscription_id,
+            statusDoOcupante: ocupante.status,
+            eventType: event.type,
+          },
+        });
+      }
+    }
+
+    // `cause` em TODO `db_error` deste arquivo que tenha o erro do Supabase em
+    // maos, e o motivo vale para os outros: sem ele o Sentry recebe a mensagem
+    // generica e um stack que aponta para a nossa propria linha, e a causa real
+    // (timeout de statement, permissao, coluna ausente) some. O `LinkedErrors`
+    // percorre `err.cause` e anexa o erro do Supabase, DESDE QUE ele seja um
+    // `Error`, e e para isso que o `erroEncadeavel` existe. Nenhum texto exibido
+    // ao usuario muda: `cause` nunca sai na resposta.
+    //
+    // O QUE ESTE COMENTARIO AFIRMAVA E ERA FALSO, ate 2026-08-30. Ele dizia que
+    // o `LinkedErrors` percorria o `cause` e pronto, sem a condicao. A cadeia
+    // NUNCA se formou: o `postgrest-js`, no modo `{ data, error }`, devolve
+    // `JSON.parse(body)` puro, um objeto plano sem prototipo de `Error`, e o
+    // `aggregate-errors.js:28` do @sentry/core so segue o `cause` quando ele
+    // passa em `isInstanceOf(..., Error)`. Ficou assim do `89bf03ba` ate esta
+    // correcao, com o comentario ensinando um mecanismo que nao operava.
+    //
+    // Foi por falta do `cause` que o BUG-74 (`Erro ao gravar assinatura.`,
+    // evento de 22/08) chegou ao Sentry sem cadeia: o `89bf03ba` cobriu
+    // `routes/billing.ts` e `routes/content.ts` e deixou o webhook de fora. Mas
+    // o BUG-77, de 30/08, chegou sem cadeia TAMBEM COM o `cause` no lugar, e foi
+    // ele que expos o defeito acima. O que salvou aquele diagnostico (o `23505`
+    // em `subscriptions_one_active_per_user`) foi o breadcrumb do `console.error`
+    // logo acima, por acidente de desenho, nao pelo mecanismo prometido aqui.
+    throw createError(500, "db_error", "Erro ao gravar assinatura.", {
+      cause: erroEncadeavel(result.error),
+    });
   }
 
   // Perdedor da corrida: a linha ja foi criada por outro handler, que dispara os
   // efeitos. Nao redisparar email nem conversao de afiliado.
   if (raceLost) return;
 
-  const revenueCents = sub.items?.data?.[0]?.price?.unit_amount ?? 0;
+  // Comissao de afiliado SEMPRE sobre VALOR PAGO, nunca sobre preco de tabela.
+  // O que estava aqui era `price.unit_amount`, que ignora cupom e desconto de
+  // afiliado: a venda descontada pagava comissao cheia, e a MESMA venda por
+  // boleto pagava sobre o valor real. `undefined` quando o evento nao declara
+  // cobranca; ver paidAmountCentsFromEvent.
+  const revenueCents = paidAmountCentsFromEvent(event) ?? undefined;
   await handleTransition(userId, existing?.status ?? null, status, {
     affiliateCode,
     couponCode,
     revenueCents,
     planName: proPlan.name || planCode,
+    sourceEvent: { id: event.id, type: event.type, subscriptionId: sub.id },
   });
 }
 
@@ -513,6 +862,24 @@ async function onCheckoutCompleted(
         "Checkout pago sem assinatura para ativar.",
       );
     }
+    // Mesmo caso do `stripe_pagamento_sem_dono`, e o motivo de warning, de
+    // fingerprint fixo e de manter o 200 esta escrito la, em `applySubscription`.
+    // Issue separada de proposito: sao dois defeitos diferentes (metadata da
+    // subscription contra sessao paga sem subscription nenhuma) e esconder um
+    // atras do volume do outro e o que o fingerprint por tipo existe para
+    // evitar.
+    Sentry.captureMessage("stripe_pagamento_sem_assinatura", {
+      level: "warning",
+      fingerprint: ["stripe-pagamento-sem-assinatura"],
+      tags: { origem: "stripe-webhook", event_type: event.type },
+      extra: {
+        session_id: session.id,
+        event_id: event.id,
+        payment_status: session.payment_status,
+        mode: session.mode,
+        amount_total: session.amount_total,
+      },
+    });
     return;
   }
 
@@ -619,15 +986,44 @@ async function applyBoletoPending(
   });
   if (error) {
     console.error("[webhook/stripe] boleto pending write failed:", error);
-    throw createError(500, "db_error", "Erro ao gravar assinatura.");
+    throw createError(500, "db_error", "Erro ao gravar assinatura.", {
+      cause: erroEncadeavel(error),
+    });
   }
 }
+
+/**
+ * Retorno de `activate_subscription_exclusive` (migration 20260829110000).
+ *
+ * O prefixo `out_` nao e estilo: `RETURNS TABLE` cria variaveis plpgsql com o
+ * nome de cada coluna de saida, e `user_id`, `plan_id`, `affiliate_code` e
+ * `coupon_code` sao TAMBEM nomes de coluna de public.subscriptions. Sem o
+ * prefixo, a funcao quebraria com "column reference is ambiguous" em tempo de
+ * execucao. Os nomes aqui espelham a assinatura no banco e nao podem divergir
+ * dela.
+ *
+ * `supabaseAdmin` e criado sem generic de Database (server/lib/supabaseAdmin.ts),
+ * entao o retorno de `rpc` nao vem tipado; este tipo e a declaracao do contrato
+ * do lado do TypeScript.
+ */
+type ExclusiveActivationRow = {
+  out_activated: boolean;
+  out_superseded_count: number;
+  out_user_id: string;
+  out_plan_id: string | null;
+  out_affiliate_code: string | null;
+  out_coupon_code: string | null;
+};
 
 // Boleto compensou: ativa a assinatura. Boleto e mode:payment, entao NAO ha
 // invoice.paid; este e o unico caminho de ativacao. O periodo de acesso e
 // calculado aqui (now + access_days do metadata: 365 anual, 182 semestral),
 // porque nao existe subscription na Stripe de onde puxar o periodo.
-async function onBoletoAsyncPaymentSucceeded(
+// EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
+// server/routes/cron.ts e de `recordAffiliateConversion` acima: o que
+// importa provar aqui e que a ativacao passa por UMA chamada de RPC e por
+// nenhuma escrita direta de status, e isso so se prova rodando a funcao.
+export async function onBoletoAsyncPaymentSucceeded(
   event: Stripe.Event,
   eventCreatedAt: Date,
 ): Promise<void> {
@@ -709,77 +1105,112 @@ async function onBoletoAsyncPaymentSucceeded(
     anchorMs + accessDays * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  // Flip atomico: so com status='pending'. Idempotente mesmo se a linha for
-  // ativada entre a leitura acima e este UPDATE (0 linhas -> nao soma de novo).
-  const { data: activated, error } = await supabaseAdmin
-    .from("subscriptions")
-    .update({
-      status: "active",
-      current_period_start: periodStart,
-      current_period_end: periodEnd,
-      last_event_at: paidAtIso,
-      raw_provider_payload: event,
-    })
-    .eq("provider_subscription_id", session.id)
-    .eq("status", "pending")
-    .select("user_id, affiliate_code, coupon_code, plan_id");
+  // ATIVACAO ATOMICA. O supersede das assinaturas antigas e o flip desta linha
+  // acontecem DENTRO de uma transacao so, na funcao
+  // `activate_subscription_exclusive` (migration 20260829110000), na ordem
+  // supersede-primeiro.
+  //
+  // O que estava aqui eram DUAS escritas separadas: flip para 'active' e, so
+  // depois, `UPDATE ... status='superseded'` best-effort (erro so logava). Duas
+  // coisas erradas nisso. A primeira: entre as duas escritas o usuario tinha
+  // duas linhas ativas por construcao, no caminho feliz, o que impedia o indice
+  // unico parcial de 20260829120000. A segunda, independente do indice: o
+  // supersede podia falhar em silencio e deixar linha ativa orfa, inflando MRR e
+  // disparando lembrete espurio.
+  //
+  // NAO HA RETRY PROPRIO AQUI, de proposito: a reentrega da Stripe e o retry, e
+  // a RPC e idempotente (segunda chamada com a linha ja 'active' devolve
+  // out_activated=false, sem reescrever periodo). Erro persistente converge para
+  // o mesmo estado em vez de duplicar efeito.
+  const { data: ativacao, error } = await supabaseAdmin.rpc(
+    "activate_subscription_exclusive",
+    {
+      p_subscription_id: pendingRow.id,
+      p_user_id: pendingRow.user_id,
+      p_period_start: periodStart,
+      p_period_end: periodEnd,
+      p_last_event_at: paidAtIso,
+      p_raw_payload: event,
+    },
+  );
 
   if (error) {
-    console.error("[webhook/stripe] boleto activation write failed:", error);
-    throw createError(500, "db_error", "Erro ao ativar assinatura.");
+    // O contrato de erro do handler nao muda: lanca, a compensacao apaga o
+    // billing_event e a Stripe reentrega. O que muda e a VISIBILIDADE: sem esta
+    // captura, um erro persistente da RPC (inclusive o serialization_failure da
+    // emenda 1) seria so mais um 500 no meio do log, com dinheiro ja recebido e
+    // acesso nao concedido.
+    Sentry.captureMessage("stripe_boleto_ativacao_falhou", {
+      level: "error",
+      fingerprint: ["stripe-boleto-ativacao-falhou"],
+      tags: { origem: "stripe-webhook", event_type: event.type },
+      extra: {
+        user_id: pendingRow.user_id,
+        subscription_row_id: pendingRow.id,
+        event_id: event.id,
+        session_id: session.id,
+        db_code: error.code ?? null,
+        db_message: error.message,
+      },
+    });
+    console.error("[webhook/stripe] boleto activation rpc failed:", error);
+    throw createError(500, "db_error", "Erro ao ativar assinatura.", {
+      cause: erroEncadeavel(error),
+    });
   }
-  if (!activated || activated.length === 0) {
-    // Corrida: alguem flipou entre a leitura e o UPDATE. Ja tratado por quem
-    // flipou; nao redispara efeitos nem re-aposenta.
+
+  // A funcao devolve exatamente uma linha; `rpc` de RETURNS TABLE chega como
+  // array. Vazio nao deveria acontecer, e por isso e tratado como falha em vez
+  // de virar um `return` mudo que perderia um pagamento.
+  const linhas = (ativacao ?? []) as ExclusiveActivationRow[];
+  const resultado = linhas[0];
+  if (!resultado) {
+    console.error(
+      `[webhook/stripe] activate_subscription_exclusive devolveu vazio (session ${session.id}, sub ${pendingRow.id}).`,
+    );
+    throw createError(500, "db_error", "Ativação de assinatura sem resultado.");
+  }
+
+  if (!resultado.out_activated) {
+    // A linha ja estava 'active' quando a funcao rodou: alguem flipou entre a
+    // leitura la em cima e esta chamada. Quem flipou disparou os efeitos; nao
+    // redispara. O supersede rodou de qualquer forma, e e ele que limpa residuo.
     return;
   }
 
-  const row = activated[0];
-
-  // Aposenta as assinaturas antigas do usuario (a que ancorou + qualquer residuo
-  // active/trialing), para nao ficarem duas linhas ativas inflando admin/MRR,
-  // quebrando o guard 409 e disparando lembrete espurio na regua. status
-  // 'superseded' (NAO 'canceled': foi renovacao, nao cancelamento; sem
-  // canceled_at, updated_at carimba via trigger). Best-effort: a ativacao ja
-  // ocorreu, entao erro aqui loga alto e segue (o reprocesso curto-circuita em
-  // 'active' e nao repetiria isto; a proxima renovacao tambem limpa residuo).
-  const { data: retired, error: retireError } = await supabaseAdmin
-    .from("subscriptions")
-    .update({ status: "superseded" })
-    .eq("user_id", row.user_id)
-    .in("status", ["active", "trialing"])
-    .neq("id", pendingRow.id)
-    .select("id");
-  if (retireError) {
-    console.error(
-      `[webhook/stripe] falha ao aposentar assinatura antiga (session ${session.id}, user ${row.user_id}); orfa pode persistir:`,
-      retireError,
-    );
-  } else if (retired && retired.length > 0) {
+  if (resultado.out_superseded_count > 0) {
     console.log(
-      `[webhook/stripe] ${retired.length} assinatura(s) superseded na renovacao (user ${row.user_id}).`,
+      `[webhook/stripe] ${resultado.out_superseded_count} assinatura(s) superseded na renovacao (user ${resultado.out_user_id}).`,
     );
   }
 
   const { data: plan } = await supabaseAdmin
     .from("plans")
     .select("code, name")
-    .eq("id", row.plan_id)
+    .eq("id", resultado.out_plan_id)
     .maybeSingle();
 
   // Reaproveita os efeitos do caminho de cartao. prev='pending' (nao-Pro) ->
   // 'active' (Pro): becameActive dispara email/cache/conversao, igual ao cartao.
-  await handleTransition(row.user_id, "pending", "active", {
-    affiliateCode: row.affiliate_code,
-    couponCode: row.coupon_code,
-    revenueCents: session.amount_total ?? 0,
+  // Mesmo contrato do caminho de cartao: ausencia de valor pago NAO vira zero.
+  // O que estava aqui era `session.amount_total ?? 0`, que colapsava "o evento
+  // nao declarou valor" em "a venda foi de zero" e gravava no ledger de comissao
+  // um numero indistinguivel de uma venda 100 por cento descontada. Passa a usar
+  // o mesmo resolvedor do cartao, que devolve `null` para ausencia, e a levar o
+  // `sourceEvent` que faltava neste caminho: sem ele a captura do Sentry sairia
+  // sem o que o replay manual precisa.
+  await handleTransition(resultado.out_user_id, "pending", "active", {
+    affiliateCode: resultado.out_affiliate_code,
+    couponCode: resultado.out_coupon_code,
+    revenueCents: paidAmountCentsFromEvent(event) ?? undefined,
     planName: plan?.name || plan?.code || "Pro",
+    sourceEvent: { id: event.id, type: event.type, subscriptionId: session.id },
   });
 
   // Gancho fiscal por ULTIMO: o acesso ja foi concedido e os efeitos ja
   // dispararam, entao nada do que acontecer aqui pode desfazer o que importa.
   await registrarNotaFiscalDeBoleto(session, {
-    userId: row.user_id,
+    userId: resultado.out_user_id,
     subscriptionRowId: pendingRow.id,
     planCode: plan?.code ?? null,
     periodStart,
@@ -812,7 +1243,9 @@ async function onBoletoAsyncPaymentFailed(
 
   if (error) {
     console.error("[webhook/stripe] boleto failure write failed:", error);
-    throw createError(500, "db_error", "Erro ao cancelar assinatura.");
+    throw createError(500, "db_error", "Erro ao cancelar assinatura.", {
+      cause: erroEncadeavel(error),
+    });
   }
 }
 
@@ -1011,13 +1444,77 @@ async function aplicarReembolsoNaNota(charge: Stripe.Charge): Promise<void> {
   });
 }
 
+/** Customer da invoice, sem assumir que o campo veio expandido. */
+function customerIdOfInvoice(invoice: Stripe.Invoice): string | null {
+  const c = invoice.customer;
+  if (typeof c === "string") return c;
+  if (c && typeof c === "object" && "id" in c) return String(c.id);
+  return null;
+}
+
 async function onInvoicePaid(
   event: Stripe.Event,
   eventCreatedAt: Date,
 ): Promise<void> {
   const invoice = event.data.object as Stripe.Invoice;
   const subId = subscriptionIdFromInvoice(invoice);
-  if (!subId) return;
+  if (!subId) {
+    // QUARTO SILENCIO DO CAMINHO DE DINHEIRO, irmao dos tres de
+    // `applySubscription`. `invoice.paid` significa que a Stripe RECEBEU o
+    // dinheiro; sem assinatura vinculada nao ha o que ativar, e o `return` mudo
+    // que estava aqui respondia 200 e apagava o pagamento do mapa.
+    //
+    // O CASO MEDIDO, 21/08 06:14:43Z. Invoice avulsa
+    // `in_1U6fTVQ6lxIhx7VyyFnPu9ut` (352RB0DR-0001), criada no painel da Stripe,
+    // R$ 29,90 em boleto, cliente `wssantosdfn24@gmail.com`. O evento chegou, foi
+    // gravado em `billing_events`, passou por aqui e foi descartado. A pessoa
+    // ficou DEZ DIAS sem o Pro que pagou e nenhum instrumento acusou: o
+    // `console.error` nao existia, o detector de orfaos so enxerga Checkout
+    // Session paga (`server/lib/orphanPayments.ts:586-589`) e uma invoice avulsa
+    // nao tem sessao, e o `reconcile` so itera linhas que ja existem.
+    //
+    // O NIVEL E `warning`, E ISSO FOI MEDIDO, nao arbitrado. A duvida legitima
+    // era se `invoice.paid` de assinatura normal tambem cai aqui, o que
+    // transformaria o aviso em ruido. Nao cai: das 173 invoices do historico
+    // inteiro da conta, as 172 de assinatura (142 `subscription_create`, 30
+    // `subscription_cycle`) tem `parent.subscription_details.subscription`
+    // preenchido, e a UNICA sem e a avulsa deste incidente. Este ramo teria
+    // disparado exatamente uma vez em toda a vida da conta.
+    //
+    // `warning` e nao `error` pelo mesmo criterio ja escrito em
+    // `stripe_pagamento_sem_dono`: o dinheiro entrou e alguem precisa agir, mas
+    // nao e plantao. E o 200 continua CERTO: nao ha erro a retentar, porque a
+    // proxima entrega leria a mesma invoice sem assinatura. O que muda aqui e
+    // so o rastro.
+    console.error(
+      `[webhook/stripe] PAGAMENTO SEM ASSINATURA VINCULADA: invoice ${invoice.id} paga ` +
+        `(${invoice.amount_paid} ${invoice.currency}, billing_reason ${invoice.billing_reason}) ` +
+        `sem subscription no parent (evento ${event.type} ${event.id}, customer ` +
+        `${customerIdOfInvoice(invoice) ?? "DESCONHECIDO"}).`,
+    );
+    // Fingerprint fixo por TIPO, nao pelo id da invoice, pela razao de sempre: o
+    // interesse e a serie no tempo, e uma issue por ocorrencia carrega a mesma
+    // informacao que nenhuma. Issue propria e nao reaproveitada de
+    // `stripe_pagamento_sem_assinatura`: aquele e sobre Checkout Session paga sem
+    // subscription, este e sobre INVOICE paga sem subscription, e sao origens
+    // diferentes que pedem conserto diferente.
+    Sentry.captureMessage("stripe_invoice_paga_sem_assinatura", {
+      level: "warning",
+      fingerprint: ["stripe-invoice-paga-sem-assinatura"],
+      tags: { origem: "stripe-webhook", event_type: event.type },
+      extra: {
+        invoice_id: invoice.id,
+        invoice_number: invoice.number,
+        event_id: event.id,
+        customer_id: customerIdOfInvoice(invoice),
+        amount_paid: invoice.amount_paid,
+        currency: invoice.currency,
+        billing_reason: invoice.billing_reason,
+        collection_method: invoice.collection_method,
+      },
+    });
+    return;
+  }
   const sub = await getStripe().subscriptions.retrieve(subId);
   await applySubscription(sub, event, eventCreatedAt);
   // DEPOIS da logica existente, de proposito: a assinatura precisa estar
@@ -1060,7 +1557,9 @@ async function onInvoiceFailed(
     .eq("provider_subscription_id", subId);
   if (error) {
     console.error("[webhook/stripe] subscriptions write failed:", error);
-    throw createError(500, "db_error", "Erro ao marcar past_due.");
+    throw createError(500, "db_error", "Erro ao marcar past_due.", {
+      cause: erroEncadeavel(error),
+    });
   }
 
   await handleTransition(existing.user_id, existing.status, "past_due", {});
@@ -1195,6 +1694,7 @@ async function createCheckout(
         500,
         "db_error",
         "Não foi possível verificar sua assinatura. Tente novamente.",
+        { cause: erroEncadeavel(guardError) },
       );
     }
     if (activeRows && activeRows.length > 0) {
@@ -1225,6 +1725,7 @@ async function createCheckout(
       500,
       "db_error",
       "Não foi possível verificar seu boleto pendente. Tente novamente.",
+      { cause: erroEncadeavel(pendingError) },
     );
   }
   if (pendingBoleto && pendingBoleto.length > 0) {
@@ -1390,7 +1891,7 @@ async function createCheckout(
   const session = await getStripe().checkout.sessions.create({
     mode: "subscription",
     // Explicito (opt-out do dynamic payment methods): sem isso a Stripe ofereceria
-    // TODOS os metodos habilitados na conta, inclusive Boleto — e um boleto pago por
+    // TODOS os metodos habilitados na conta, inclusive Boleto, e um boleto pago por
     // aqui viraria uma sessao mode:subscription SEM metadata.payment_method='boleto'
     // nem access_days, tratado como cartao e fora da regua de renovacao manual.
     // 'card' ja exibe Apple Pay e Google Pay automaticamente (carteiras de cartao,
@@ -1430,7 +1931,10 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
     .limit(1)
     .maybeSingle();
 
-  if (error) throw createError(500, "db_error", "Erro ao buscar assinatura.");
+  if (error)
+    throw createError(500, "db_error", "Erro ao buscar assinatura.", {
+      cause: erroEncadeavel(error),
+    });
   if (!sub) {
     throw createError(404, "not_found", "Nenhuma assinatura ativa encontrada.");
   }
@@ -1452,7 +1956,9 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
       .limit(1)
       .maybeSingle();
     if (intentError) {
-      throw createError(500, "db_error", "Erro ao verificar cancelamento.");
+      throw createError(500, "db_error", "Erro ao verificar cancelamento.", {
+        cause: erroEncadeavel(intentError),
+      });
     }
 
     if (!existingIntent) {
@@ -1474,6 +1980,7 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
           500,
           "db_error",
           "Não foi possível registrar. Tente novamente.",
+          { cause: erroEncadeavel(insertError) },
         );
       }
     }
@@ -1530,6 +2037,7 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
       500,
       "db_error",
       "Cancelamento agendado no provedor, mas houve erro ao registrar. Tente novamente.",
+      { cause: erroEncadeavel(updateError) },
     );
   }
 
@@ -1570,7 +2078,10 @@ async function reactivate(input: ReactivateInput): Promise<ReactivateResult> {
     .limit(1)
     .maybeSingle();
 
-  if (error) throw createError(500, "db_error", "Erro ao buscar assinatura.");
+  if (error)
+    throw createError(500, "db_error", "Erro ao buscar assinatura.", {
+      cause: erroEncadeavel(error),
+    });
 
   const nowIso = new Date().toISOString();
   const outOfWindow =
@@ -1602,6 +2113,7 @@ async function reactivate(input: ReactivateInput): Promise<ReactivateResult> {
         500,
         "db_error",
         "Não foi possível desfazer. Tente novamente.",
+        { cause: erroEncadeavel(revertError) },
       );
     }
     return {
@@ -1658,6 +2170,7 @@ async function reactivate(input: ReactivateInput): Promise<ReactivateResult> {
       500,
       "db_error",
       "Reativação confirmada no provedor, mas houve erro ao registrar. Tente novamente.",
+      { cause: erroEncadeavel(updateError) },
     );
   }
 
@@ -1821,7 +2334,9 @@ async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
       "[webhook/stripe] Erro ao registrar billing_event:",
       dedupeError,
     );
-    throw createError(500, "db_error", "Erro ao registrar evento.");
+    throw createError(500, "db_error", "Erro ao registrar evento.", {
+      cause: erroEncadeavel(dedupeError),
+    });
   }
   if (!recorded || recorded.length === 0) {
     // Linha ja existia. Isso NAO e sinonimo de "ja processado": o DELETE de
@@ -1887,7 +2402,7 @@ async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
         // adicionado depois (ja aconteceu: um async_payment_succeeded caiu aqui na
         // janela de um deploy e ficou preso). Remove o proprio billing_event para
         // que um resend futuro chegue ao (novo) handler. O dedup dos eventos
-        // TRATADOS fica intacto — eles nao passam por aqui. A Stripe nao reenvia
+        // TRATADOS fica intacto (eles nao passam por aqui). A Stripe nao reenvia
         // sozinho apos 200, entao isso nao vira ruido; so o resend manual (o que
         // queremos) reprocessa.
         try {

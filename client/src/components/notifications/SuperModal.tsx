@@ -279,7 +279,7 @@ export default function SuperModal({
             <button
               type="button"
               onClick={onCta}
-              className="inline-flex items-center gap-2 rounded-full px-6 py-3 font-display text-sm font-black text-[#0f172a] shadow-[4px_4px_0_rgba(11,16,32,0.45)] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_rgba(11,16,32,0.45)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="inline-flex items-center gap-2 rounded-full px-6 py-3 font-display text-sm font-black text-[var(--bnt-ink)] shadow-[4px_4px_0_rgba(11,16,32,0.45)] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_rgba(11,16,32,0.45)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               style={{ backgroundColor: "var(--brand-yellow)" }}
             >
               {ctaLabel}

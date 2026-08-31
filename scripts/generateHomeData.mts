@@ -3,10 +3,14 @@
 // para as secoes nao arrastarem o catalogo inteiro pro grafo do boot.
 // A logica de selecao replica exatamente a das secoes; nada inventado.
 // Rodar com: pnpm generate:home-data (encadeado no prebuild).
-import { writeFileSync } from "node:fs";
+// Modo --check: regenera em memoria e compara byte a byte com o disco, falha se
+// estiver desatualizado (roda no pnpm check:generated). O gerador e
+// deterministico: le arrays estaticos, sem relogio nem ordem instavel, entao a
+// comparacao byte a byte so acusa quando a fonte mudou sem o gerado ser refeito.
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { areasTI, cursosGratuitos, eventos, noticias } from "../client/src/lib/data";
+import { areasTI, cursosGratuitos, noticias } from "../client/src/lib/data";
 
 const OUT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -38,10 +42,11 @@ const featuredAreas = FEATURED_SLUGS.flatMap((slug) => {
 // CtaFinal: os nomes das areas para o comando skills do terminal.
 const skillsAreaNames = areasTI.map((area) => area.nome);
 
-// PraVoce: mesma selecao da secao (find por id com fallback + indices 0 e 1).
+// PraVoce: mesma selecao da secao (find por id com fallback).
+// Os 2 eventos NAO saem daqui: a secao os busca da rota /api/content/eventos,
+// porque o array estatico `eventos` deixou de existir.
 const praVoceNoticia =
   noticias.find((n) => n.id === "vagas-ti-brasil") ?? noticias[0];
-const praVoceEventos = [eventos[0], eventos[1]];
 
 // Mesma logica do labelForCursoArea da PraVoce, resolvida em build time.
 const CURSO_AREA_SPECIAL_LABELS: Record<string, string> = {
@@ -75,12 +80,25 @@ export const skillsAreaNames = ${emit(skillsAreaNames)};
 
 export const praVoceNoticia = ${emit(praVoceNoticia)};
 
-export const praVoceEventos = ${emit(praVoceEventos)};
-
 export const praVoceCursos = ${emit(praVoceCursos)};
 `;
 
-writeFileSync(OUT, content);
-console.log(
-  `[generateHomeData] featuredAreas=${featuredAreas.length} skillsAreaNames=${skillsAreaNames.length} noticia=${praVoceNoticia.id} eventos=${praVoceEventos.map((e) => e.id).join(",")} cursos=${praVoceCursos.map((c) => c.id).join(",")} -> ${path.relative(process.cwd(), OUT)}`,
-);
+const checkMode = process.argv.includes("--check");
+
+if (checkMode) {
+  const onDisk = existsSync(OUT) ? readFileSync(OUT, "utf8") : "";
+  if (onDisk !== content) {
+    console.error(
+      "[generateHomeData] client/src/lib/homeData.generated.ts esta desatualizado. Rode: pnpm generate:home-data",
+    );
+    process.exit(1);
+  }
+  console.log(
+    `[generateHomeData] homeData.generated.ts em sincronia (featuredAreas=${featuredAreas.length} skillsAreaNames=${skillsAreaNames.length} noticia=${praVoceNoticia.id}).`,
+  );
+} else {
+  writeFileSync(OUT, content);
+  console.log(
+    `[generateHomeData] featuredAreas=${featuredAreas.length} skillsAreaNames=${skillsAreaNames.length} noticia=${praVoceNoticia.id} cursos=${praVoceCursos.map((c) => c.id).join(",")} -> ${path.relative(process.cwd(), OUT)}`,
+  );
+}

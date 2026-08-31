@@ -9,6 +9,7 @@ import {
   getSubscriberList,
 } from "../lib/billingMetrics";
 import { getOrCompute } from "../lib/cache";
+import { montarVidaNoSite } from "../lib/userSiteLife";
 import { env } from "../lib/env";
 import {
   getDeferredRevenue,
@@ -18,12 +19,16 @@ import {
 import { fetchUsdBrlRate } from "../lib/fx/ptax";
 import {
   contarAtividadeAgora,
+  ATIVOS_DIARIOS_JANELA_PADRAO,
+  ATIVOS_DIARIOS_JANELAS_VALIDAS,
+  getAtivosDiarios,
+  getPrimeiroDiaComEvento,
+  isAtivosDiariosJanela,
   getPosthogHealth,
   getPaidFunnelSignals,
   getPosthogStats,
   getPosthogUserActivity,
 } from "../lib/posthog";
-import { fetchAuthTimes } from "../lib/authUsers";
 import { isRetryableFiscalStatus } from "../lib/fiscalInvoice";
 import { enqueueFiscalInvoice } from "../lib/fiscalQueue";
 import { applyRefundToFiscalInvoice } from "../lib/fiscalRefund";
@@ -35,6 +40,7 @@ import { withRedisOpTimeout } from "../lib/redisOpTimeout";
 import { stripeProvider } from "../providers/stripe";
 import { getStripe } from "../lib/stripeClient";
 import { syncBalanceTransactions } from "../lib/stripeSync";
+import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { lerSessaoDeBoleto } from "../lib/boletoSession";
 import {
@@ -47,6 +53,11 @@ import {
   type ProSourceTally,
   type SubscriptionRow,
 } from "../lib/userListEnrichment";
+import {
+  totaisPagosPorUsuario,
+  type DeclaracaoDeDevolucao,
+  type LinhaFinanceira,
+} from "../lib/userListPaidTotals";
 import {
   emailAlreadyTakenError,
   mergedUserMetadata,
@@ -87,6 +98,9 @@ import {
 import {
   calcularVariacao,
   OVERVIEW_TZ_LABEL,
+  OVERVIEW_WINDOWS,
+  OVERVIEW_WINDOW_PADRAO,
+  isOverviewWindow,
   parseOverviewWindow,
   resolverJanela,
   rotuloDeIntervalo,
@@ -369,9 +383,36 @@ function filterPayload(body: Record<string, unknown>, allowedFields: string[]) {
 // exatamente isso que custou uma investigacao inteira: 42703 undefined_column
 // escondido atras de "Erro ao buscar usuario"). O cliente continua recebendo so a
 // mensagem generica; detalhe de schema nunca vaza para o browser.
+//
+// O `console.error` acima NAO chega ao Sentry: `server/lib/sentry.ts` nao declara
+// `integrations` e o `captureConsoleIntegration` nao e padrao no @sentry/node
+// (docs/erro-engolido.md). Por isso o `cause`: o LinkedErrors percorre
+// `err.cause` e anexa o erro do Supabase a issue, em vez de so a mensagem
+// generica com um stack que aponta para esta linha. O `erroEncadeavel` nao e
+// enfeite: sem ele a frase anterior e FALSA, e foi falsa aqui de 2026-08-28 ate
+// 2026-08-30. O erro do Supabase chega como objeto plano (o postgrest-js devolve
+// `JSON.parse(body)` no modo `{ data, error }`) e o `aggregate-errors.js:28` do
+// @sentry/core so encadeia instancia de `Error`. Ou seja: este funil ja anexava
+// `cause` e mesmo assim nenhum evento tinha cadeia.
+//
+// Foi a falta do `cause` que fez o BUG-76 ("Erro ao buscar usuarios.") chegar
+// sem cadeia nenhuma, repetindo o BUG-67 e o BUG-74. A correcao mora AQUI, no
+// funil, e nao nos 60 call sites, porque guarda escrita no chamador some no
+// primeiro que alguem esquecer.
+//
+// `pgCode` no context de proposito: e o campo que separa "coluna que nao existe"
+// (42703) de "permissao" (42501) de "timeout" (57014) na primeira olhada, sem
+// abrir o breadcrumb. Nada disso sai na resposta: `cause` e `context` ficam no
+// Error, e o handler so serializa `message` e `code`.
 function dbError(scope: string, error: unknown, clientMessage: string) {
   console.error(`[admin] db error (${scope}):`, error);
-  return createError(500, "db_error", clientMessage);
+  return createError(500, "db_error", clientMessage, {
+    cause: erroEncadeavel(error),
+    context: {
+      scope,
+      pgCode: (error as { code?: string } | null | undefined)?.code,
+    },
+  });
 }
 
 type AuthUserLite = {
@@ -680,6 +721,81 @@ router.get("/online-now", async (_req, res, next) => {
         result: await contarAtividadeAgora(),
         computedAt: new Date().toISOString(),
       }),
+    );
+    res.json({ data: result, computedAt });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Serie diaria de ativos: TTL de 300s, cinco vezes o padrao dos outros blocos.
+// Nao e economia de query, e a natureza do dado: 29 dos 30 pontos sao dias
+// FECHADOS e nunca mais mudam, e o unico que se move e o de hoje. Recalcular de
+// minuto em minuto uma serie que muda uma vez por dia gastaria HogQL para
+// redesenhar o mesmo grafico. Cinco minutos de atraso no ponto de hoje e
+// invisivel numa serie de trinta dias.
+const ACTIVE_DAILY_CACHE_TTL_S = 300;
+
+// Uma hora para o primeiro evento do projeto. Nao e sobre carga: e que o valor
+// e imutavel na pratica, e um TTL curto so criaria uma query recorrente para
+// reconfirmar uma data de maio.
+const FIRST_EVENT_CACHE_TTL_S = 3600;
+
+router.get("/users-active-daily", async (req, res, next) => {
+  try {
+    // AUSENCIA e VALOR INVALIDO sao coisas diferentes, e aqui recebem respostas
+    // diferentes de proposito. Sem `window` a rota assume 30 dias, que e o
+    // contrato documentado; com `window=90` ela RECUSA em vez de devolver 30
+    // calados, porque um seletor quebrado que pede uma janela inexistente
+    // desenharia um grafico correto do periodo errado, e ninguem tem como
+    // perceber olhando.
+    //
+    // DIVERGE do /signup-history de proposito: la o parseOverviewWindow faz
+    // fallback silencioso para "30". Os VALORES sao os mesmos ("7", "30"); o
+    // que muda e a reacao ao lixo.
+    const bruto = req.query.window;
+    const janela = bruto === undefined ? ATIVOS_DIARIOS_JANELA_PADRAO : bruto;
+    if (!isAtivosDiariosJanela(janela)) {
+      return next(
+        createError(
+          400,
+          "invalid_window",
+          `Janela inválida. Use uma de: ${ATIVOS_DIARIOS_JANELAS_VALIDAS.join(", ")}.`,
+        ),
+      );
+    }
+
+    // Chave POR JANELA. Com uma chave so, trocar de periodo devolveria o
+    // cacheado do periodo anterior por ate 5 minutos, e o grafico mudaria de
+    // rotulo sem mudar de dado.
+    const { result, computedAt } = await getOrCompute(
+      `admincache:users-active-daily:${janela}`,
+      ACTIVE_DAILY_CACHE_TTL_S,
+      async () => {
+        // O inicio da serie aberta tem CACHE PROPRIO e TTL longo: o primeiro
+        // evento do projeto nao anda, e redescobri-lo junto com a serie gastaria
+        // uma query por recomputo para um valor que muda uma vez na vida. Fica
+        // fora da chave da serie de proposito, para os dois TTLs serem
+        // independentes.
+        let primeiroDia: string | undefined;
+        if (janela === "all") {
+          const inicio = await getOrCompute(
+            "admincache:posthog-first-event-day",
+            FIRST_EVENT_CACHE_TTL_S,
+            async () => await getPrimeiroDiaComEvento(),
+          );
+          // Falha ao descobrir o inicio PROPAGA como o estado dela: sem inicio
+          // nao existe janela, e uma janela chutada e o defeito que a serie
+          // inteira evita.
+          if (inicio.state !== "ok")
+            return { result: inicio, computedAt: null };
+          primeiroDia = inicio.dia;
+        }
+        return {
+          result: await getAtivosDiarios(janela, primeiroDia),
+          computedAt: new Date().toISOString(),
+        };
+      },
     );
     res.json({ data: result, computedAt });
   } catch (err) {
@@ -1417,14 +1533,21 @@ router.get("/overview-series", async (req, res, next) => {
 // alguem agir, e agir sobre estado de tres minutos atras e pior que esperar.
 const ATENCAO_CACHE_TTL_S = 60;
 
+// A chave, NOMEADA em vez de literal no call site. Ela agora tem DOIS usos (a
+// leitura do painel e a invalidacao depois de resolver um orfao), e chave de
+// cache repetida a mao e o desenho em que uma das pontas erra uma letra e a
+// invalidacao passa a apagar coisa nenhuma, em silencio.
+//
+// v2: o payload ganhou `destinoInterno`, `motivoCodigo` e tres tipos novos. Sem
+// o bump, o admin continuaria lendo do Redis, ate o TTL, um payload da forma
+// antiga, e o painel novo renderizaria sem os destinos internos sem nada
+// acusar. Chave nova invalida por construcao.
+const ATENCAO_CACHE_KEY = "admincache:attention:v2";
+
 router.get("/attention", async (_req, res, next) => {
   try {
     const { result, computedAt } = await getOrCompute(
-      // v2: o payload ganhou `destinoInterno`, `motivoCodigo` e tres tipos
-      // novos. Sem o bump, o admin continuaria lendo do Redis, ate o TTL, um
-      // payload da forma antiga, e o painel novo renderizaria sem os destinos
-      // internos sem nada acusar. Chave nova invalida por construcao.
-      "admincache:attention:v2",
+      ATENCAO_CACHE_KEY,
       ATENCAO_CACHE_TTL_S,
       async () => ({
         result: await montarPainelDeAtencao(),
@@ -1436,6 +1559,294 @@ router.get("/attention", async (_req, res, next) => {
     next(err);
   }
 });
+
+/**
+ * Pagamentos orfaos ainda em aberto, TODOS eles.
+ *
+ * POR QUE ESTA ROTA EXISTE, se o painel de Atencao ja mostra orfaos. Porque o
+ * painel mostra MENOS do que existe, e o corte e deliberado la: em
+ * `server/lib/atencaoNecessaria.ts:634` ele pula quem nao tem
+ * `expected_provider_subscription_id`, e em `:635` pula quem nao passa em
+ * `orfaoAindaPedeAcao`. Os dois filtros fazem sentido para uma lista de
+ * "aja agora": sem a chave esperada nao ha deep link para a Stripe, e o segundo
+ * evita repetir um caso que ja se resolveu por outro caminho. O efeito colateral
+ * e que as linhas descartadas ficavam SEM NENHUMA superficie: existiam na
+ * tabela, ninguem as via, e nao havia como carimba-las como tratadas. Esta rota
+ * e o lugar dessas, e por isso ela nao herda filtro nenhum: o unico criterio e
+ * `resolved_at is null`.
+ *
+ * SEM CACHE, ao contrario da `/attention`. Aquela responde "o que precisa de
+ * atencao agora" e tolera 60s de atraso; esta e a lista sobre a qual se age, e
+ * logo depois de resolver uma linha a tela recarrega. Servir estado de um minuto
+ * atras aqui mostraria de volta o item que a pessoa acabou de tratar, e a
+ * primeira conclusao seria que o botao nao funcionou.
+ *
+ * ORDEM ASCENDENTE por `detected_at`: o mais antigo primeiro, porque a fila e de
+ * gente esperando, e quem espera ha mais tempo vem antes. Casa com o indice
+ * parcial `billing_orphan_payments_unresolved_idx`, que e `(detected_at DESC)
+ * WHERE resolved_at IS NULL`: o Postgres percorre um indice nos dois sentidos, e
+ * o que o indice parcial resolve aqui e nao varrer as linhas ja resolvidas.
+ */
+router.get("/billing/orphan-payments", async (_req, res, next) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("billing_orphan_payments")
+      .select(
+        "id, stripe_session_id, customer_email, plan_id, amount_total_cents, currency, detected_at, last_seen_at, expected_provider_subscription_id",
+      )
+      .is("resolved_at", null)
+      .order("detected_at", { ascending: true });
+
+    if (error)
+      return next(
+        dbError(
+          "orphan payments list",
+          error,
+          "Erro ao buscar os pagamentos sem assinatura.",
+        ),
+      );
+
+    res.json({ data: data ?? [] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Minimo de caracteres da nota de resolucao.
+ *
+ * CALIBRADO sobre as duas notas que existem em producao (lidas em 2026-08-30):
+ * 518 e 600 caracteres, ambas descrevendo o que foi feito, quando, com qual
+ * `charge` da Stripe e sobre qual plano. O minimo NAO tenta reproduzir esse
+ * tamanho, e seria ruim se tentasse: piso alto vira preenchimento de linguica
+ * para o botao liberar. Ele existe para barrar o caso degenerado, o "ok" e o
+ * "resolvido", que nao respondem nada em janeiro do ano que vem. 20 caracteres e
+ * o tamanho de "reembolsado na stripe", a menor frase que ainda diz alguma
+ * coisa, e fica 25 vezes abaixo da pratica observada, ou seja, nao aperta quem
+ * escreve de verdade.
+ */
+const ORFAO_NOTA_MIN_CHARS = 20;
+
+/** Marca de proveniencia anexada a nota. Ver o comentario na rota abaixo. */
+function marcaDeProveniencia(actorUserId: string, quando: string): string {
+  return `\n\n[resolvido por ${actorUserId} em ${quando}]`;
+}
+
+/**
+ * Carimba um pagamento orfao como resolvido, com nota obrigatoria.
+ *
+ * Copia a ordem de `POST /users/:id/external-refunds`, e nao por simetria
+ * estetica: aquela rota resolveu o mesmo problema, que e registrar a PALAVRA do
+ * admin sobre uma coisa que a plataforma nao executou nem consegue verificar.
+ * Aqui o sistema tambem nao sabe se o dinheiro voltou, se a assinatura foi
+ * criada na mao ou se era falso positivo. O que ele guarda e o que a pessoa
+ * disse ter feito.
+ *
+ * A NOTA E OBRIGATORIA porque ela e a UNICA memoria do motivo. `resolved_at`
+ * sozinho responde "alguem tratou", que e a pergunta facil; a que importa seis
+ * meses depois, quando a mesma pessoa reclamar, e "tratou como?". Sem a nota, a
+ * resposta exige abrir o dashboard da Stripe e adivinhar qual movimento era
+ * este.
+ */
+router.post("/billing/orphan-payments/:id/resolve", async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    if (!UUID_RE.test(id)) {
+      return next(createError(400, "invalid_id", "Identificador inválido."));
+    }
+
+    const corpo = (req.body ?? {}) as { confirmed?: unknown; note?: unknown };
+
+    // `=== true` de proposito, e nao um if simples: "false", "0" e string vazia
+    // passariam por coercao e transformariam um corpo malformado em uma
+    // confirmacao que ninguem deu. Exigida NA ROTA e nao so na tela, porque a
+    // tela nao e a fronteira de confianca. Mesmo criterio de
+    // `POST /users/:id/external-refunds`.
+    if (corpo.confirmed !== true) {
+      return next(
+        createError(
+          400,
+          "confirmation_required",
+          "É preciso confirmar a resolução.",
+        ),
+      );
+    }
+
+    const nota = typeof corpo.note === "string" ? corpo.note.trim() : "";
+    if (nota.length < ORFAO_NOTA_MIN_CHARS) {
+      return next(
+        createError(
+          400,
+          "note_required",
+          `A nota precisa ter pelo menos ${ORFAO_NOTA_MIN_CHARS} caracteres explicando o que foi feito.`,
+        ),
+      );
+    }
+
+    // O ESTADO E RELIDO AQUI. O cliente manda o id e nada mais entra na decisao:
+    // se a linha existe, e se ela ainda esta aberta, sao perguntas para o banco.
+    const { data: linha, error: leituraError } = await supabaseAdmin
+      .from("billing_orphan_payments")
+      .select(
+        "id, stripe_session_id, customer_email, plan_id, amount_total_cents, currency, detected_at, resolved_at, resolution_note",
+      )
+      .eq("id", id)
+      .maybeSingle();
+
+    if (leituraError)
+      return next(
+        dbError(
+          "orphan payment read",
+          leituraError,
+          "Erro ao ler o pagamento.",
+        ),
+      );
+    if (!linha)
+      return next(
+        createError(404, "not_found", "Pagamento órfão não encontrado."),
+      );
+    if (linha.resolved_at)
+      return next(
+        createError(
+          409,
+          "already_resolved",
+          "Este pagamento já foi resolvido por alguém.",
+        ),
+      );
+
+    const agoraIso = new Date().toISOString();
+    const notaGravada = nota + marcaDeProveniencia(req.user!.id, agoraIso);
+
+    // AUDITORIA PRIMEIRO, fail-closed. NAO usa `logAudit`: aquele helper engole
+    // a falha num `console.warn` (server/lib/audit.ts:22-24), e aqui a ausencia
+    // de rastro tem que IMPEDIR a escrita, nao passar batida. Mesmo motivo
+    // declarado em `PATCH /users/:id` e nas duas rotas de devolucao.
+    const { error: auditError } = await supabaseAdmin
+      .from("content_audit_logs")
+      .insert({
+        actor_user_id: req.user!.id,
+        action: "billing_orphan_resolve",
+        resource_type: "billing_orphan_payment",
+        resource_id: linha.id,
+        resource_slug: linha.stripe_session_id,
+        before_json: {
+          resolved_at: linha.resolved_at,
+          resolution_note: linha.resolution_note,
+          customer_email: linha.customer_email,
+          amount_total_cents: linha.amount_total_cents,
+          detected_at: linha.detected_at,
+        },
+        after_json: {
+          resolved_at: agoraIso,
+          resolution_note: notaGravada,
+          declaration: true,
+          verified_by_system: false,
+          // ESTA LINHA E INTENCAO, NAO EFEITO. A auditoria e gravada antes da
+          // escrita (fail-closed: sem rastro, nao grava), entao ela existe
+          // mesmo quando o update seguinte nao casa nenhuma linha porque outro
+          // admin chegou primeiro. Fica registrada de proposito: tentativa e
+          // informacao legitima, e apagar seria transformar
+          // `content_audit_logs` numa tabela que reescreve o passado, que e o
+          // contrario do que ela e (append-only, ver a migration do
+          // admin_refunds). Para saber se ESTA tentativa virou efeito, compare
+          // este `resolution_note` com o da linha em `billing_orphan_payments`:
+          // a marca de proveniencia carrega o ator e o instante, entao ou bate,
+          // e foi esta, ou nao bate, e foi a de outra pessoa.
+          registro: "intencao",
+        },
+      });
+    if (auditError) {
+      console.error("[admin] orphan resolve audit failed:", auditError);
+      return next(
+        createError(
+          500,
+          "audit_failed",
+          "Não foi possível registrar a auditoria. Nada foi alterado.",
+        ),
+      );
+    }
+
+    // A MARCA DE PROVENIENCIA vai DENTRO do texto, e nao so na auditoria. A
+    // tabela e lida direto no SQL Editor com frequencia (foi assim que as duas
+    // notas existentes foram escritas), e nesse caminho ninguem faz join com
+    // `content_audit_logs`. Uma nota que nao diz quem a escreveu obriga quem le
+    // a procurar o autor em outro lugar, e na pratica ninguem procura.
+    const { data: atualizadas, error: escritaError } = await supabaseAdmin
+      .from("billing_orphan_payments")
+      .update({ resolved_at: agoraIso, resolution_note: notaGravada })
+      .eq("id", id)
+      // Redundante com a checagem de `already_resolved` acima, e de proposito: a
+      // checagem foi feita ANTES da auditoria, e entre as duas cabe outro admin.
+      // Este `.is()` e o ponto atomico, no molde da trava otimista de
+      // `PATCH /users/:id`.
+      .is("resolved_at", null)
+      // O `.select()` existe para o `.is()` acima virar RESULTADO OBSERVAVEL.
+      // Sem ele o update devolve so `error`, e "nenhuma linha casou" e
+      // indistinguivel de "gravou": os dois dao `error: null`.
+      .select("id");
+
+    if (escritaError)
+      return next(
+        dbError(
+          "orphan payment resolve",
+          escritaError,
+          "Erro ao registrar a resolução.",
+        ),
+      );
+
+    // ZERO LINHAS AFETADAS: outro admin resolveu esta mesma linha entre a nossa
+    // leitura e a nossa escrita. O `.is("resolved_at", null)` fez o que devia e
+    // recusou a sobrescrita; o que faltava era ALGUEM OLHAR o resultado.
+    //
+    // Antes desta verificacao a rota respondia 200 com `resolved_at` preenchido,
+    // e a tela recarregava mostrando a linha resolvida, o que por acaso parece
+    // certo: ela FOI resolvida, so que pela outra pessoa, com a nota da outra
+    // pessoa. Quem clicou some da tela achando que a sua nota valeu, e ela nao
+    // existe em lugar nenhum.
+    //
+    // E pior num caminho AUDITADO. A auditoria e gravada ANTES da escrita, por
+    // desenho fail-closed, entao neste ponto `content_audit_logs` ja tem uma
+    // linha afirmando esta resolucao. Sem o 409, o log afirma um fato que nao
+    // aconteceu, e a tabela que existe para nao mentir passa a mentir.
+    if (!atualizadas || atualizadas.length === 0) {
+      return next(
+        createError(
+          409,
+          "already_resolved",
+          "Este pagamento já foi resolvido por alguém.",
+        ),
+      );
+    }
+
+    // O painel de Atencao serve de cache por ate 60s, entao sem isto o item
+    // resolvido continua aparecendo la e a primeira leitura de quem acabou de
+    // resolver e "o botao nao funcionou".
+    await invalidarCacheDeAtencao();
+
+    res.json({ data: { id: linha.id, resolved_at: agoraIso } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Apaga a chave do painel de Atencao.
+ *
+ * `server/lib/cache.ts` exporta `cacheKey` e `getOrCompute`, e mais nada: nao ha
+ * invalidacao generica para reusar. O molde seguido aqui e o de
+ * `invalidateProStatusCache` (server/lib/proStatusCache.ts:85-94), que e o unico
+ * precedente de invalidacao da base: guarda de conexao ausente, `del` da chave, e
+ * falha ignorada porque na pior hipotese o valor antigo expira pelo TTL. Fica
+ * local porque tem um chamador so; se aparecer um segundo, vira funcao de lib.
+ */
+async function invalidarCacheDeAtencao(): Promise<void> {
+  if (!cacheConnection) return;
+  try {
+    await cacheConnection.del(ATENCAO_CACHE_KEY);
+  } catch {
+    // Ignora: sem o del, o item resolvido some do painel no fim do TTL de 60s.
+  }
+}
 
 async function computarFunilPago() {
   const to = new Date();
@@ -1564,7 +1975,27 @@ const SIGNUP_HISTORY_CACHE_TTL_S = 300;
 
 router.get("/signup-history", async (req, res, next) => {
   try {
-    const janelaId = parseOverviewWindow(req.query.window);
+    // AUSENCIA e VALOR INVALIDO recebem respostas diferentes, o mesmo contrato
+    // de /users-active-daily. Sem `window` a rota assume "30", que e o padrao
+    // documentado; com `window=90` ela RECUSA em vez de devolver 30 calado.
+    //
+    // O QUE ISTO CONSERTA: o `parseOverviewWindow` faz fallback silencioso, e um
+    // seletor quebrado pedindo uma janela inexistente desenhava um grafico
+    // correto do PERIODO ERRADO, sem sintoma para ninguem. A divergencia entre
+    // as duas rotas irmas foi registrada quando a de ativos nasceu com 400; esta
+    // e a metade que faltava para o admin ter uma reacao so ao lixo.
+    const bruto = req.query.window;
+    const janelaId =
+      bruto === undefined ? OVERVIEW_WINDOW_PADRAO : parseOverviewWindow(bruto);
+    if (bruto !== undefined && !isOverviewWindow(bruto)) {
+      return next(
+        createError(
+          400,
+          "invalid_window",
+          `Janela inválida. Use uma de: ${OVERVIEW_WINDOWS.join(", ")}.`,
+        ),
+      );
+    }
 
     const data = await getOrCompute(
       `admincache:signup-history:${janelaId}`,
@@ -2617,21 +3048,37 @@ function formatCpf(raw: string | null | undefined): string {
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 }
 
-// Escapa a busca para o ilike do PostgREST: % e _ sao curingas do LIKE (usuario
-// digitando % nao pode virar wildcard acidental) e \ e o proprio escape. O
-// padrao final vai entre aspas duplas no filtro or=, entao aspas duplas tambem
-// sao escapadas (virgula e parenteses, estruturais do or=, ficam inofensivos
-// dentro das aspas).
-function ilikePattern(term: string): string {
+/**
+ * Escapa e embrulha o termo de busca para o `ilike` do RPC de listagem.
+ *
+ * `%` e `_` sao curingas do LIKE: quem digita `%` na busca nao pode virar
+ * wildcard acidental, e a barra invertida e o proprio escape.
+ *
+ * SEM ASPAS, e o detalhe merece registro porque a versao anterior as tinha. O
+ * `ilikePattern` que morava aqui envolvia o padrao em ASPAS DUPLAS, porque ia
+ * dentro do filtro `or=` do PostgREST, onde as aspas sao estruturais. Passadas
+ * como ARGUMENTO DE FUNCAO, essas mesmas aspas virariam caractere literal do
+ * padrao, e a busca passaria a procurar nomes que comecam com aspas: zero
+ * resultado, sem erro. Copiar a funcao antiga teria produzido exatamente isso.
+ *
+ * OS CURINGAS SAO DAQUI, nao do SQL. A funcao usa `p_search` direto no `ilike`,
+ * sem concatenar `%`: quem embrulha e o chamador. Sem o embrulho, `ilike` sem
+ * curinga e igualdade (case-insensitive), e a busca parcial morre sem uma linha
+ * de erro. Tem teste proprio por isso.
+ */
+// Janela do filtro ATIVO: login (auth.users.last_sign_in_at) nos ultimos 30
+// dias. A LISTAGEM nao usa mais esta constante (a janela virou
+// `interval '30 days'` dentro do RPC), mas a rota de DETALHE continua usando
+// para computar o status de atividade de um usuario. Os dois numeros precisam
+// dizer a mesma coisa; se um mudar, o outro tem de acompanhar.
+const ACTIVE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+function rpcIlikePattern(term: string): string {
   const escaped = term
     .replace(/\\/g, "\\\\")
-    .replace(/[%_]/g, (ch) => `\\${ch}`)
-    .replace(/"/g, '\\"');
-  return `"%${escaped}%"`;
+    .replace(/[%_]/g, (ch) => `\\${ch}`);
+  return `%${escaped}%`;
 }
-
-// Janela do filtro ATIVO: login (auth.users.last_sign_in_at) nos ultimos 30 dias.
-const ACTIVE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 router.get("/users", async (req, res, next) => {
   try {
@@ -2660,24 +3107,19 @@ router.get("/users", async (req, res, next) => {
     // onboarding_completed saiu do select: trafegava em 50 linhas por pagina e
     // nao era renderizado em lugar nenhum (o detalhe le o dele, de outra rota).
     const rangeFrom = (page - 1) * pageSize;
-    let query = supabaseAdmin
-      .from("profiles")
-      .select("id, user_id, name, email, created_at", {
-        count: "exact",
-      })
-      .order("created_at", { ascending: false })
-      // Desempate por chave unica. created_at nao tem unique, entao a ordem
-      // entre linhas de mesmo instante nao e garantida, e sem garantia a
-      // paginacao por range pula e repete em silencio. Medido em 2026-07-29:
-      // 3182 perfis, zero empates, ou seja, nenhuma linha e afetada HOJE. Isto
-      // troca uma propriedade dos dados por uma garantia da consulta.
-      .order("id", { ascending: false })
-      .range(rangeFrom, rangeFrom + pageSize - 1);
 
-    if (search) {
-      const pattern = ilikePattern(search);
-      query = query.or(`name.ilike.${pattern},email.ilike.${pattern}`);
-    }
+    // A PAGINA VEM DE UM RPC, nao mais de uma query do PostgREST. Ordenacao
+    // (created_at desc, desempate por id desc), busca e recorte moram dentro da
+    // funcao; ver o cabecalho da migration
+    // 20260830140000_admin_list_users_page.sql. O que se ganha e
+    // `last_sign_in_at`, que vive em `auth.users` e antes exigia varrer a
+    // listagem do Auth em paginas de 1000.
+    //
+    // FILTROS entram como CONJUNTO DE IDS, resolvido aqui como sempre foi: a
+    // regra de quem e Pro continua em userListEnrichment/is_user_pro, e o SQL
+    // recebe a lista pronta. `idsFiltro` null = sem restricao.
+    let idsFiltro: string[] | null = null;
+    let excluirIds = false;
 
     // Cada filtro vira uma LISTA de user_id aplicada com .in()/.not in() no nivel
     // do banco: filtro + range + count acontecem juntos com a busca, entao a
@@ -2705,16 +3147,21 @@ router.get("/users", async (req, res, next) => {
         return next(
           dbError("users pro filter", subError, "Erro ao buscar usuários."),
         );
+      // `user_id` e nullable no tipo da tabela de origem; a lista que vai para o
+      // RPC e de uuid nao-nulo, entao o descarte acontece AQUI. Linha sem
+      // user_id nao identifica ninguem.
       const proUserIds = Array.from(
-        new Set((subRows || []).map((row) => row.user_id)),
+        new Set(
+          (subRows || [])
+            .map((row) => row.user_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
       );
-      if (filter === "pro") {
-        // Sem nenhum assinante ativo, o resultado correto e vazio: in() com lista
-        // vazia devolve zero linhas, exatamente o esperado.
-        query = query.in("user_id", proUserIds);
-      } else if (proUserIds.length > 0) {
-        query = query.not("user_id", "in", `(${proUserIds.join(",")})`);
-      }
+      idsFiltro = proUserIds;
+      // not_pro e EXCLUSAO, nao inclusao. Lista vazia em `pro` da zero linhas
+      // (`= any('{}')` e falso); lista vazia em `not_pro` nao filtra nada
+      // (`not false`). Os dois espelham o comportamento anterior.
+      excluirIds = filter === "not_pro";
     } else if (filter === "influencers") {
       // Influencer = concessao ATIVA (revoked_at null; o indice unico parcial
       // garante no maximo uma por usuario). Mesma mecanica de lista do Pro.
@@ -2740,39 +3187,53 @@ router.get("/users", async (req, res, next) => {
           ),
         );
       const influencerIds = Array.from(
-        new Set((infRows || []).map((row) => row.user_id)),
+        new Set(
+          (infRows || [])
+            .map((row) => row.user_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
       );
-      // Lista vazia -> in() devolve zero linhas, exatamente o esperado.
-      query = query.in("user_id", influencerIds);
-    } else if (filter === "ativo") {
-      // ATIVO = login nos ultimos 30 dias. last_sign_in_at so existe em
-      // auth.users (nao em profiles), entao varre o Auth (listUsers), filtra pelo
-      // cutoff e aplica a lista de ids. Quem nunca logou (last_sign_in_at null)
-      // fica fora, por definicao.
-      //
-      // RISCO DE ESCALA: diferente do Pro (lista minuscula de pagantes), "ativos
-      // em 30d" pode ser fracao grande da base -> lista grande no .in(), que pode
-      // estourar o tamanho da query no PostgREST, e a varredura roda a cada
-      // request com filter=ativo. Barato na base atual. Caminho futuro: um RPC
-      // dedicado (profiles JOIN auth.users com limit/offset/count no banco),
-      // mesma nota ja registrada em server/lib/usageRetention.ts.
-      const authTimes = await fetchAuthTimes();
-      const cutoffMs = Date.now() - ACTIVE_WINDOW_MS;
-      const activeIds: string[] = [];
-      authTimes.forEach((times, userId) => {
-        const ms = times.lastSignInAt
-          ? new Date(times.lastSignInAt).getTime()
-          : NaN;
-        if (!Number.isNaN(ms) && ms >= cutoffMs) activeIds.push(userId);
-      });
-      query = query.in("user_id", activeIds);
+      // Lista vazia -> zero linhas, exatamente o esperado.
+      idsFiltro = influencerIds;
     }
 
-    const { data, count, error } = await query;
+    // UMA ida ao banco para a pagina inteira, contagem inclusa.
+    const { data: rpcRows, error } = await supabaseAdmin.rpc(
+      "admin_list_users_page",
+      {
+        p_limit: pageSize,
+        p_offset: rangeFrom,
+        // OS CURINGAS SAO DAQUI: a funcao usa `p_search` direto no `ilike`.
+        // Sem este embrulho a busca vira igualdade exata em silencio.
+        p_search: search ? rpcIlikePattern(search) : null,
+        p_only_active: filter === "ativo",
+        p_user_ids: idsFiltro,
+        p_exclude_ids: excluirIds,
+      },
+    );
+    // FAIL-CLOSED. Erro do RPC vira resposta de erro, NUNCA lista vazia: vazio
+    // com 200 e indistinguivel de "nao ha usuarios", e o admin agiria sobre
+    // isso. O caso mais provavel e concreto: enquanto a migration nao for
+    // aplicada, a funcao nao existe e o PostgREST devolve erro aqui.
     if (error)
       return next(dbError("users list", error, "Erro ao buscar usuários."));
 
-    const rows = data || [];
+    const rpcData = (rpcRows ?? []) as Array<
+      Record<string, unknown> & { total_count?: number | string | null }
+    >;
+    // `count(*) over ()` repete o total em toda linha; pagina vazia = zero.
+    const count = rpcData.length ? Number(rpcData[0].total_count ?? 0) : 0;
+    const rows = rpcData.map(
+      ({ total_count: _total, ...row }) => row,
+    ) as Array<{
+      id?: string;
+      user_id?: string;
+      name?: string | null;
+      email?: string | null;
+      created_at?: string | null;
+      area_interesse?: string | null;
+      last_sign_in_at?: string | null;
+    }>;
 
     // Enriquecimento em LOTE sobre os ids DESTA pagina: duas consultas de custo
     // fixo, nunca uma por linha. Mesmo padrao de .in() usado pelos filtros
@@ -2829,6 +3290,38 @@ router.get("/users", async (req, res, next) => {
       );
     }
 
+    // TOTAL PAGO: DUAS consultas de custo fixo para a pagina inteira, uma por
+    // fonte. Nunca por linha: com 50 linhas isso seriam 100 idas ao banco.
+    //
+    // FALHA AQUI NAO DERRUBA A LISTA, ao contrario do enriquecimento de Pro
+    // acima, e a diferenca e o que cada erro produziria na tela. Sem o Pro,
+    // TODO MUNDO apareceria como nao-Pro, um erro silencioso e plausivel sobre
+    // o qual o admin agiria. Sem o total, a coluna vira `null` e a tela mostra
+    // que nao conseguiu olhar, que e verdade e nao atrapalha o resto da linha.
+    let totais: Map<string, number> | null = null;
+    if (pageUserIds.length > 0) {
+      const [financeiro, declaracoes] = await Promise.all([
+        supabaseAdmin
+          .from("finance_transactions")
+          .select("user_id, type, gross_cents")
+          .in("user_id", pageUserIds),
+        supabaseAdmin
+          .from("admin_refunds")
+          .select("user_id, stripe_charge_id, amount_cents, settlement")
+          .in("user_id", pageUserIds),
+      ]);
+      if (!financeiro.error && !declaracoes.error) {
+        totais = totaisPagosPorUsuario(
+          pageUserIds,
+          (financeiro.data || []) as LinhaFinanceira[],
+          (declaracoes.data || []) as DeclaracaoDeDevolucao[],
+        );
+      }
+      // As duas juntas ou nenhuma: com so uma delas a soma sairia BRUTA (sem
+      // descontar as devolucoes declaradas) e seria um numero plausivel e
+      // errado, indistinguivel do certo. `null` diz que nao se sabe.
+    }
+
     const items = rows.map((row) => {
       const extra = row.user_id ? enrichment.get(row.user_id) : undefined;
       return {
@@ -2837,6 +3330,9 @@ router.get("/users", async (req, res, next) => {
         pro_source: extra?.pro_source ?? null,
         plan_code: extra?.plan_code ?? null,
         subscription_status: extra?.subscription_status ?? null,
+        // ZERO e afirmacao ("nunca pagou"); `null` e ausencia de medicao ("a
+        // consulta falhou"). Os dois desenham coisas diferentes na tela.
+        total_pago_cents: totais ? (totais.get(row.user_id ?? "") ?? 0) : null,
       };
     });
 
@@ -5181,6 +5677,45 @@ router.get("/users/:id/activity", async (req, res, next) => {
   }
 });
 
+/**
+ * VIDA NO SITE do usuario: certificados, badges, roadmaps e trilhas.
+ *
+ * SEPARADA de `/users/:id` de proposito. O detalhe do usuario ja e a chamada
+ * mais pesada do admin, e esta aqui soma quatro fontes que so interessam a quem
+ * abre a secao. O client busca sob demanda, com o mesmo latch preguicoso que a
+ * atividade do PostHog usa.
+ *
+ * Nao se chama `/activity` porque esse caminho ja e do PostHog, logo acima.
+ */
+router.get("/users/:id/site-life", async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(
+          400,
+          "invalid_user_id",
+          "Identificador de usuário inválido.",
+        ),
+      );
+    }
+    // CACHE POR USUARIO. A chave carrega o uid: sem ele, o primeiro usuario
+    // aberto responderia pelos sessenta segundos seguintes por todos os outros,
+    // que e um vazamento de dado entre pessoas disfarcado de cache.
+    const { result, computedAt } = await getOrCompute(
+      `admincache:user-site-life:${uid}`,
+      60,
+      async () => ({
+        result: await montarVidaNoSite(uid),
+        computedAt: new Date().toISOString(),
+      }),
+    );
+    res.json({ data: result, computedAt });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // DEPRECATED: use GET /subscribers (paginado). Mantido enquanto o client ainda o consome no lookup por usuario; sera removido apos a migracao do client.
 router.get("/subscriptions", async (_req, res, next) => {
   try {
@@ -6198,114 +6733,6 @@ router.get("/newsletter/subscribers", async (req, res, next) => {
         pagination: { limit, offset, total: count ?? 0 },
       },
     });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Codigos de beta: lista com agregado de usos com sucesso e ultimo acesso. Os
-// logs sao agregados no servidor (duas queries) porque o supabase-js nao faz
-// group-by sem RPC; volume e pequeno (beta fechado).
-router.get("/beta-codes", async (_req, res, next) => {
-  try {
-    const [codesRes, logsRes] = await Promise.all([
-      supabaseAdmin
-        .from("beta_access_codes")
-        .select("id, code, label, active, created_at, revoked_at")
-        .order("created_at", { ascending: false }),
-      // PAGINADO pelo mesmo motivo do /ai-stats: este agregado conta TODOS os
-      // desbloqueios bem-sucedidos, e a tabela ja tem 615 linhas (medido em
-      // 2026-07-31). Sem paginar, o `success_count` de cada codigo passa a
-      // mentir para MENOS assim que a tabela cruzar o max-rows, e contador que
-      // mente para menos nao tem como ser percebido.
-      coletarLogsDeBeta(),
-    ]);
-
-    if (codesRes.error)
-      return next(
-        dbError("beta codes", codesRes.error, "Erro ao buscar códigos."),
-      );
-
-    // Falha nos logs nao derruba a lista: agregado zera, os codigos aparecem.
-    const usage = new Map<string, { count: number; last: string | null }>();
-    for (const log of logsRes.data || []) {
-      if (!log.code_id) continue;
-      const cur = usage.get(log.code_id) || { count: 0, last: null };
-      cur.count += 1;
-      if (!cur.last || log.created_at > cur.last) cur.last = log.created_at;
-      usage.set(log.code_id, cur);
-    }
-
-    const data = (codesRes.data || []).map((c) => {
-      const u = usage.get(c.id);
-      return {
-        ...c,
-        success_count: u?.count ?? 0,
-        last_access: u?.last ?? null,
-      };
-    });
-
-    res.json({ data });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Ultimos logs de tentativa de unlock. Teto de 500 por request.
-router.get("/beta-logs", async (req, res, next) => {
-  try {
-    const { limit = "100" } = req.query;
-    const parsedLimit = Math.min(
-      Math.max(parseInt(String(limit), 10) || 100, 1),
-      500,
-    );
-
-    const { data, error } = await supabaseAdmin
-      .from("beta_unlock_logs")
-      .select(
-        "id, code_id, label, success, attempted_code, ip, user_agent, created_at",
-      )
-      .order("created_at", { ascending: false })
-      .limit(parsedLimit);
-
-    if (error)
-      return next(dbError("audit logs", error, "Erro ao buscar logs."));
-
-    res.json({ data: data || [] });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Revoga um codigo: active false e revoked_at now(). Tentativas futuras com ele
-// voltam a 401. Nao apaga o historico de uso.
-router.post("/beta-codes/:id/revoke", async (req, res, next) => {
-  try {
-    const { id } = req.params;
-
-    const { data, error } = await supabaseAdmin
-      .from("beta_access_codes")
-      .update({ active: false, revoked_at: new Date().toISOString() })
-      .eq("id", id)
-      .select("id, code, label, active, created_at, revoked_at")
-      .maybeSingle();
-
-    if (error)
-      return next(
-        dbError("beta code revoke", error, "Erro ao revogar código."),
-      );
-    if (!data)
-      return next(createError(404, "not_found", "Código não encontrado."));
-
-    await logAudit({
-      actorUserId: req.user!.id,
-      action: "update",
-      resourceType: "beta_code",
-      resourceId: data.id,
-      after: data,
-    });
-
-    res.json({ data });
   } catch (err) {
     next(err);
   }

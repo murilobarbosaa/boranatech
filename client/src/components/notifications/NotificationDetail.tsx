@@ -72,7 +72,7 @@ function DetailCta({
   const target = ctaTarget(item.cta_url ?? "");
   const label = item.cta_label || "Ver mais";
   const className =
-    "bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-[#FFB800] px-5 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]";
+    "bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-5 py-2.5 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]";
 
   if (target.internal) {
     return (
@@ -181,7 +181,7 @@ export function NotificationDetailDialog({
     <Dialog open={item !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="flex max-h-[80vh] w-full max-w-[560px] flex-col gap-0 overflow-hidden rounded-2xl border-2 border-slate-950 bg-white p-0 shadow-[6px_6px_0_#0f172a] sm:max-w-[560px]"
+        className="flex max-h-[80vh] w-full max-w-[560px] flex-col gap-0 overflow-hidden rounded-2xl border-2 border-slate-950 bg-white p-0 shadow-[6px_6px_0_var(--bnt-shadow)] sm:max-w-[560px]"
       >
         {item ? (
           <>

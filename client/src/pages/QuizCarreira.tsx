@@ -594,7 +594,7 @@ export default function QuizCarreira() {
         schemaType="WebPage"
       />
 
-      <div className="bg-[#faf8f4]">
+      <div className="bg-[var(--brand-cream)]">
         {inQuestionPhase && (
           <ProgressBar
             current={(phase === "triage" ? triageIndex : currentIndex) + 1}
@@ -809,7 +809,7 @@ function ObjectiveScreen({
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="mb-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]"
+              className="mb-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
             >
               <BrainCircuit className="h-4 w-4" />
               Quiz de carreira
@@ -893,7 +893,7 @@ function ObjectiveScreen({
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.25 }}
-          className="mt-10 rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a] md:p-6"
+          className="mt-10 rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-6"
         >
           <p className="mb-4 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-violet-700">
             Como funciona
@@ -921,7 +921,7 @@ function ObjectiveScreen({
                   key={passo.texto}
                   className="flex items-start gap-3 rounded-2xl border-2 border-slate-200 bg-violet-50/60 p-4"
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-violet-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-violet-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                     {idx + 1}
                   </span>
                   <div>
@@ -956,10 +956,10 @@ function ObjectiveScreen({
                 transition={{ duration: 0.35, delay: 0.05 + idx * 0.07 }}
                 whileHover={{ scale: 1.02, y: -4 }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative flex flex-col items-start overflow-hidden rounded-3xl border-2 border-[#1a1a1a] p-5 text-left shadow-[4px_4px_0_#0f172a] transition-shadow duration-200 hover:shadow-[8px_8px_0_var(--accent)]"
+                className="group relative flex flex-col items-start overflow-hidden rounded-3xl border-2 border-[var(--bnt-ink)] p-5 text-left shadow-[4px_4px_0_var(--bnt-shadow)] transition-shadow duration-200 hover:shadow-[8px_8px_0_var(--accent)]"
                 style={{
                   ["--accent" as string]: t.accent,
-                  backgroundColor: `color-mix(in srgb, ${t.accent} 10%, white)`,
+                  backgroundColor: `color-mix(in srgb, ${t.accent} 10%, var(--bnt-surface))`,
                 }}
               >
                 <span
@@ -969,7 +969,7 @@ function ObjectiveScreen({
                   {t.emoji}
                 </span>
                 <span
-                  className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-slate-900 text-white shadow-[2px_2px_0_#0f172a] transition-transform duration-200 group-hover:-rotate-6 group-hover:scale-110"
+                  className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-slate-900 text-white shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform duration-200 group-hover:-rotate-6 group-hover:scale-110"
                   style={{ backgroundColor: t.accent }}
                 >
                   <Icon className="h-6 w-6" strokeWidth={2.4} />
@@ -981,7 +981,7 @@ function ObjectiveScreen({
                   {t.description}
                 </p>
                 <span
-                  className="mt-4 inline-flex items-center gap-2 rounded-xl border-2 border-slate-900 px-4 py-2 font-display text-xs font-black uppercase tracking-wider text-white shadow-[2px_2px_0_#0f172a] transition-all duration-200 group-hover:shadow-[3px_3px_0_#0f172a]"
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl border-2 border-slate-900 px-4 py-2 font-display text-xs font-black uppercase tracking-wider text-white shadow-[2px_2px_0_var(--bnt-shadow)] transition-all duration-200 group-hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                   style={{ backgroundColor: t.accent }}
                 >
                   Começar
@@ -999,7 +999,7 @@ function ObjectiveScreen({
           <button
             type="button"
             onClick={onResume}
-            className="mt-6 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-amber-300 px-5 py-2.5 font-display text-sm font-black uppercase tracking-wider text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+            className="mt-6 inline-flex items-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-amber-300 px-5 py-2.5 font-display text-sm font-black uppercase tracking-wider text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
           >
             <RotateCcw className="h-4 w-4" strokeWidth={2.5} />
             Continuar de onde parei
@@ -1013,7 +1013,7 @@ function ObjectiveScreen({
 function AreaPreview() {
   const names = Object.keys(AREA_ACCENT);
   return (
-    <div className="mt-6 rounded-3xl border-2 border-[#1a1a1a] bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+    <div className="mt-6 rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)]">
       <p className="mb-1 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-violet-700">
         O que são áreas de TI?
       </p>
@@ -1086,7 +1086,7 @@ function IntroScreen({
       </button>
 
       <p
-        className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black uppercase text-white shadow-[3px_3px_0_#0f172a]"
+        className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black uppercase text-white shadow-[3px_3px_0_var(--bnt-shadow)]"
         style={{ backgroundColor: track.accent }}
       >
         <Icon className="h-4 w-4" strokeWidth={2.5} />
@@ -1107,7 +1107,7 @@ function IntroScreen({
       {track.kind === "area" && <AreaPreview />}
 
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border-2 border-[#1a1a1a] bg-white p-4 shadow-[3px_3px_0_#0f172a]">
+        <div className="rounded-2xl border-2 border-[var(--bnt-ink)] bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]">
           <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-violet-700">
             Duração
           </p>
@@ -1115,7 +1115,7 @@ function IntroScreen({
             ~{track.kind === "tech" ? 3 : QUIZ_ESTIMATED_MINUTES} min
           </p>
         </div>
-        <div className="rounded-2xl border-2 border-[#1a1a1a] bg-white p-4 shadow-[3px_3px_0_#0f172a]">
+        <div className="rounded-2xl border-2 border-[var(--bnt-ink)] bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]">
           <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
             Perguntas
           </p>
@@ -1123,7 +1123,7 @@ function IntroScreen({
             {questionCount}
           </p>
         </div>
-        <div className="col-span-2 rounded-2xl border-2 border-[#1a1a1a] bg-white p-4 shadow-[3px_3px_0_#0f172a] md:col-span-1">
+        <div className="col-span-2 rounded-2xl border-2 border-[var(--bnt-ink)] bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)] md:col-span-1">
           <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-700">
             Resultado
           </p>
@@ -1137,7 +1137,7 @@ function IntroScreen({
         <button
           type="button"
           onClick={onStart}
-          className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] px-7 py-3 font-display text-sm font-black uppercase tracking-wider text-white shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+          className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] px-7 py-3 font-display text-sm font-black uppercase tracking-wider text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
           style={{ backgroundColor: track.accent }}
         >
           Começar agora
@@ -1174,7 +1174,7 @@ function LevelRevealScreen({
       transition={{ duration: 0.4 }}
       className="container max-w-2xl py-10 md:py-14"
     >
-      <p className="mb-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-emerald-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+      <p className="mb-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-emerald-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
         <Check className="h-4 w-4" strokeWidth={3} />
         Nivelamento concluído
       </p>
@@ -1183,7 +1183,7 @@ function LevelRevealScreen({
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-        className="relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-7 shadow-[6px_6px_0_#0f172a] md:p-9"
+        className="relative overflow-hidden rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-7 shadow-[6px_6px_0_var(--bnt-shadow)] md:p-9"
       >
         <div
           className="absolute inset-0 -z-0 opacity-[0.07]"
@@ -1192,7 +1192,7 @@ function LevelRevealScreen({
         />
         <div className="relative">
           <span
-            className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-slate-900 bg-amber-300 shadow-[3px_3px_0_#0f172a]"
+            className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-slate-900 bg-amber-300 shadow-[3px_3px_0_var(--bnt-shadow)]"
             style={{ fontSize: "1.875rem" }}
             aria-hidden
           >
@@ -1254,7 +1254,7 @@ function LevelRevealScreen({
         <button
           type="button"
           onClick={onContinue}
-          className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] px-7 py-3 font-display text-sm font-black uppercase tracking-wider text-white shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+          className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] px-7 py-3 font-display text-sm font-black uppercase tracking-wider text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
           style={{ backgroundColor: accent }}
         >
           Começar as {LEVEL_QUESTION_COUNT} perguntas
@@ -1308,7 +1308,7 @@ function QuestionScreen({
     >
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <span
-          className="inline-flex items-center rounded-full border-2 border-slate-900 px-3 py-1 font-mono text-[11px] font-black uppercase tracking-[0.18em] text-white shadow-[2px_2px_0_#0f172a]"
+          className="inline-flex items-center rounded-full border-2 border-slate-900 px-3 py-1 font-mono text-[11px] font-black uppercase tracking-[0.18em] text-white shadow-[2px_2px_0_var(--bnt-shadow)]"
           style={{ backgroundColor: accent }}
         >
           {question.category}
@@ -1357,14 +1357,14 @@ function QuestionScreen({
                   : "border-slate-300 bg-white hover:bg-slate-50"
               } disabled:cursor-not-allowed`}
               style={{
-                borderColor: isSelected ? "#1a1a1a" : undefined,
+                borderColor: isSelected ? "var(--bnt-ink)" : undefined,
                 boxShadow: isSelected ? "4px 4px 0 #0f172a" : undefined,
               }}
             >
               <span
                 className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-display text-base font-black text-white transition-transform duration-200 group-hover:scale-105"
                 style={{
-                  backgroundColor: isSelected ? "#0f172a" : optionAccent,
+                  backgroundColor: isSelected ? "var(--bnt-ink)" : optionAccent,
                   color: isSelected ? "#fde047" : "#ffffff",
                 }}
               >
@@ -1440,7 +1440,7 @@ function ProgressBar({
       aria-valuemin={0}
       aria-valuemax={total}
       aria-valuenow={answeredCount}
-      className="sticky top-16 z-30 border-b border-slate-200 bg-[#faf8f4]/80 backdrop-blur-sm"
+      className="sticky top-16 z-30 border-b border-slate-200 bg-[var(--brand-cream)]/80 backdrop-blur-sm"
     >
       <div className="container max-w-2xl py-3">
         {phaseLabel && (
@@ -1487,7 +1487,7 @@ function CompletingScreen({ accent }: { accent: string }) {
       className="container max-w-2xl py-20 text-center"
     >
       <motion.div
-        className="mx-auto mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full border-2 border-slate-900 shadow-[3px_3px_0_#0f172a]"
+        className="mx-auto mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full border-2 border-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)]"
         style={{ backgroundColor: `${accent}1f` }}
         animate={{ scale: [1, 1.06, 1] }}
         transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}

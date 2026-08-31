@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/react";
 import * as pdfjsLib from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
@@ -27,6 +28,10 @@ export const MIN_TEXT_CHARS = 200;
  * totalidade em teste olham para a MESMA fonte, e nao para duas listas que
  * podem divergir.
  *
+ * `browser_unsupported` entrou pela main (frente de compatibilidade de pdfjs) e
+ * esta AQUI, na lista runtime, e nao numa uniao de tipo a parte: duas fontes de
+ * codigo de erro voltariam a permitir que uma divergisse da outra em silencio.
+ *
  * `read_failed` foi removido: ele era o balde unico onde senha, PDF corrompido
  * e arquivo que nem PDF e caiam juntos, porque o `catch` descartava a
  * identidade do erro antes que alguem pudesse classifica-la.
@@ -38,9 +43,61 @@ export const PDF_ERROR_CODES = [
   "senha_protegido",
   "pdf_invalido",
   "erro_desconhecido",
+  "browser_unsupported",
 ] as const;
 
 export type PdfErrorCode = (typeof PDF_ERROR_CODES)[number];
+
+/**
+ * O navegador aguenta o pdfjs 6?
+ *
+ * O `pdfjs-dist@6` chama `Promise.try` (ES2025) no despacho de mensagens do
+ * `MessageHandler`, e `Promise.try` so existe a partir do Chrome 134. Em
+ * navegador mais velho a chamada estoura com `TypeError` DENTRO da maquinaria do
+ * pdfjs, fora do `try` do `extractPdfText`: o erro escapa como uncaught
+ * (mechanism `onerror`) e o usuario ve a pagina quebrar em vez de uma mensagem.
+ *
+ * MEDIDO nesta versao (6.0.227), e o detalhe muda a escolha da correcao: a
+ * chamada esta nos DOIS bundles, `build/pdf.min.mjs` (thread principal) e
+ * `build/pdf.worker.min.mjs` (worker), no mesmo trecho do `MessageHandler`. Um
+ * polyfill de `Promise.try` no thread principal cobriria metade do problema, e a
+ * outra metade vive em outro contexto de execucao: o worker nasce de
+ * `GlobalWorkerOptions.workerSrc`, uma URL servida por `?url`, e injetar codigo
+ * ali exigiria embrulhar o worker num `blob:`. O CSP deste projeto NAO permite:
+ * nao ha diretiva `worker-src`, entao worker cai em `script-src`, que e
+ * `'self' https://us-assets.i.posthog.com 'sha256-...'`, sem `blob:` (o unico
+ * `blob:` do CSP esta em `media-src`, para o audio das entrevistas). Alargar
+ * `script-src` para aceitar `blob:` por causa de um polyfill seria pagar em
+ * superficie de XSS por um navegador de cauda. Por isso a correcao e detectar e
+ * degradar, e nao remendar.
+ *
+ * `typeof Promise.try === "function"` e proxy DIRETO, nao heuristica: e
+ * exatamente a chamada que falha. Nao se le versao de navegador aqui de
+ * proposito, porque versao e a causa e o metodo e o efeito, e sniffing de UA
+ * erraria em qualquer navegador que ganhasse o metodo depois.
+ */
+export function navegadorSuportaPdf(): boolean {
+  return typeof (Promise as unknown as { try?: unknown }).try === "function";
+}
+
+// TODO(Ana): revisar a copy.
+const COPY_BROWSER_UNSUPPORTED =
+  "Seu navegador é antigo demais para ler PDF por aqui. Atualize o Chrome " +
+  "(versão 134 ou mais nova) e tente de novo, ou siga sem o PDF: dá para " +
+  "colar o texto na mão nesta mesma página.";
+
+/**
+ * Versao do Chrome, ou o estado NOMEADO `desconhecido`.
+ *
+ * Serve so para dimensionar a cauda no Sentry (tag agrega, o UA cru nao). Nao
+ * casou, devolve `desconhecido` em vez de um numero chutado: numero errado aqui
+ * e indistinguivel de numero certo, e o UA inteiro vai no `extra`, entao a tag
+ * nunca e o unico registro.
+ */
+function versaoDoChrome(userAgent: string): string {
+  const casou = /Chrome\/(\d+)/.exec(userAgent);
+  return casou ? casou[1] : "desconhecido";
+}
 
 export class PdfExtractError extends Error {
   code: PdfErrorCode;
@@ -102,6 +159,8 @@ const MENSAGEM_POR_CODIGO: Record<PdfErrorCode, string> = {
   // TODO(Ana): mensagem de falha não identificada na leitura do PDF.
   erro_desconhecido:
     "Não consegui ler esse PDF e não identifiquei o motivo. Tente baixar o arquivo de novo, ou cole o texto manualmente.",
+  // Copy da main, reaproveitada aqui para o mapa ter a mesma fonte que o `throw`.
+  browser_unsupported: COPY_BROWSER_UNSUPPORTED,
 };
 
 export async function extractPdfText(file: File): Promise<string> {
@@ -110,6 +169,31 @@ export async function extractPdfText(file: File): Promise<string> {
   }
   if (file.size > MAX_PDF_BYTES) {
     throw new PdfExtractError("too_large", MENSAGEM_POR_CODIGO.too_large);
+  }
+
+  // DEPOIS de tipo e tamanho, e ANTES de encostar no pdfjs. A ordem importa: um
+  // .docx em navegador velho merece "precisa ser um PDF", que e o defeito que o
+  // usuario consegue corrigir, e nao "atualize o navegador", que nao resolveria
+  // o caso dele.
+  if (!navegadorSuportaPdf()) {
+    const userAgent =
+      typeof navigator === "undefined" ? "" : navigator.userAgent;
+    try {
+      // `info`, nao `warning`: nada quebrou e o usuario recebeu uma saida clara.
+      // Isto existe para MEDIR o tamanho da cauda de navegador velho e decidir
+      // se vale suportar, nao para alguem acordar. Fingerprint fixo pela razao
+      // de sempre: o interesse e a serie no tempo, e uma issue por ocorrencia
+      // carrega a mesma informacao que nenhuma.
+      Sentry.captureMessage("pdf_browser_unsupported", {
+        level: "info",
+        tags: { origem: "pdf-extract", chrome: versaoDoChrome(userAgent) },
+        fingerprint: ["pdf-browser-unsupported"],
+        extra: { userAgent },
+      });
+    } catch {
+      // Sentry sem DSN e no-op, e telemetria nunca decide o desfecho daqui.
+    }
+    throw new PdfExtractError("browser_unsupported", COPY_BROWSER_UNSUPPORTED);
   }
 
   let text = "";

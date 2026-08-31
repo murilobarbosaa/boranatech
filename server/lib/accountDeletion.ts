@@ -204,26 +204,59 @@ export async function prepararExclusaoDeConta(
 
   // 3) RASTRO. Só ids: nem e-mail, nem nome, nem nada que identifique a pessoa
   // por fora dos identificadores que a Stripe ja carrega.
-  try {
-    Sentry.captureMessage("[account-deletion] assinaturas encerradas", {
-      level: "info",
-      tags: { area: "account-deletion" },
-      extra: {
-        deleted_user_id: userId,
-        canceladas: resultado.canceladas,
-        sem_contraparte: resultado.semContraparteNaStripe,
-        customers_marcados: resultado.customersMarcados,
-        marcador_incompleto: resultado.marcadorIncompleto,
-      },
-    });
-  } catch {
-    // Sentry desligado: no-op, como no resto da base.
-  }
+  //
+  // SUCESSO PLENO NAO VAI PARA O SENTRY. Ate 2026-08-29 esta funcao capturava um
+  // evento em TODA exclusao, inclusive nas que deram certo, e exclusao bem
+  // sucedida e o comportamento esperado, nao um achado: o que se ganhava era uma
+  // issue que crescia com o uso normal do produto e ensinava a ignorar a area
+  // `account-deletion` inteira. O `!level:info` do intake (78ec95a0) ja mantinha
+  // isso fora do CRM, mas mantinha por FILTRO, tapando na saida um evento que
+  // nao devia ter sido emitido. Sucesso agora e log estruturado, e nada mais.
   console.log(
-    `[account-deletion] user=${userId} canceladas=${resultado.canceladas.length} ` +
+    `[account-deletion] user=${userId} ` +
+      `canceladas=${resultado.canceladas.length} ` +
       `sem_contraparte=${resultado.semContraparteNaStripe.length} ` +
-      `customers_marcados=${resultado.customersMarcados.length}`,
+      `customers_marcados=${resultado.customersMarcados.length} ` +
+      `marcador_incompleto=${resultado.marcadorIncompleto}`,
   );
+
+  // O CAMINHO DEGRADADO, esse sim, e para humano ver. `marcadorIncompleto`
+  // significa que o customer ficou na Stripe SEM `account_deleted_at`, e a
+  // consequencia e concreta: o pagamento dessa pessoa vai aparecer como orfao
+  // ACIONAVEL no `detect-orphan-payments`, porque e exatamente esse marcador que
+  // classifica a linha como `conta_excluida` (ruido conhecido) em vez de
+  // `sem_usuario_no_banco` (alguem pagou e nao recebeu). Sem este aviso, a
+  // primeira noticia do defeito e uma varredura amarela dias depois.
+  //
+  // POR QUE NAO E O MESMO EVENTO de `marcarCustomer`, que ja captura em `error`
+  // com fingerprint `account-deletion-marcador`: aquele responde "este customer
+  // falhou, e por que", uma linha por customer; este responde "esta EXCLUSAO
+  // terminou incompleta", uma vez por pessoa, com a lista do que ficou marcado e
+  // do que nao ficou. Sao a causa e a consequencia, e junta-los no mesmo
+  // fingerprint faria a segunda sumir dentro do volume da primeira.
+  if (resultado.marcadorIncompleto) {
+    try {
+      Sentry.captureMessage("[account-deletion] exclusao incompleta", {
+        // `warning` e nao `error`: a conta foi apagada e a assinatura foi
+        // cancelada, entao ninguem esta pagando por nada. O que sobrou e uma
+        // limpeza manual na Stripe, que alguem precisa ver, sem plantao.
+        level: "warning",
+        tags: { area: "account-deletion", marcador: "incompleto" },
+        // Fingerprint fixo por TIPO: o interesse e a serie no tempo, e o id do
+        // usuario no agrupamento daria uma issue por exclusao, que carrega a
+        // mesma informacao que nenhuma.
+        fingerprint: ["account-deletion-incompleto"],
+        extra: {
+          deleted_user_id: userId,
+          canceladas: resultado.canceladas,
+          sem_contraparte: resultado.semContraparteNaStripe,
+          customers_marcados: resultado.customersMarcados,
+        },
+      });
+    } catch {
+      // Sentry desligado: no-op, como no resto da base.
+    }
+  }
 
   return resultado;
 }

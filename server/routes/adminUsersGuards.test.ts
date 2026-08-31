@@ -118,7 +118,32 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // enquanto a pilha estava em 62. O valor abaixo NAO foi somado: foi MEDIDO de
 // novo no router mesclado por `rotasDeclaradas().length`, e o teste de posicao
 // acima, que e o que autoriza subir o numero, continua verde para a rota nova.
-const EXPECTED_ROUTE_COUNT = 63;
+//
+// 61 -> 58 em 2026-08-30, com `d4ef73c1` (remoção das rotas beta órfãs). É a
+// primeira vez que este número DESCE, e a entrada fica registrada aqui porque o
+// commit não a escreveu: sem ela a cadeia pula de 59 para 58 sem explicação, e
+// quem ler daqui a seis meses vai procurar a rota que sumiu.
+//
+// 58 -> 59 em 2026-08-30, com `GET /admin/billing/orphan-payments` (a lista de
+// pagamentos sem assinatura ainda em aberto). Ela é declarada logo depois de
+// `GET /admin/attention`, portanto abaixo dos dois `router.use` do topo, e os
+// dois testes acima conferem isso por posição. A rota expõe e-mail de cliente e
+// valor pago: estar atrás de `requireAuth` mais `requireAdmin` é o requisito,
+// não um detalhe.
+//
+// 59 -> 60 em 2026-08-30, com `POST /admin/billing/orphan-payments/:id/resolve`
+// (carimba o pagamento como tratado, com nota obrigatória). Declarada logo
+// abaixo da rota de listagem, portanto também depois dos dois `router.use`. Ela
+// ESCREVE em `billing_orphan_payments` e em `content_audit_logs`, então as
+// guardas aqui não são só sobre leitura de dado: sem elas, qualquer sessão
+// autenticada carimbaria pagamento de outra pessoa como resolvido.
+// MERGE de 2026-08-31 (Lote M4, quarto merge da main): as duas linhagens acima
+// sao reais e independentes. A pilha chegou a 63 e a main a 60 por rotas
+// DIFERENTES, entao nem 63 nem 60 valem depois da uniao, e a soma tambem nao:
+// as duas partem de bases distintas. O valor abaixo foi MEDIDO no router
+// mesclado por `rotasDeclaradas().length`, que devolveu 64, e o teste de
+// posicao acima, que e o que autoriza subir o numero, esta verde para todas.
+const EXPECTED_ROUTE_COUNT = 64;
 
 /** Middlewares montados no router ANTES de qualquer rota (router.use no topo). */
 function guardasDoRouter(): unknown[] {
@@ -186,10 +211,16 @@ describe("todas as rotas do admin estão atrás das duas guardas", () => {
 
     expect(deUsuario).toEqual([
       "GET /users",
+      // Serie de ativos por dia. Casa com o prefixo /users e por isso entra
+      // nesta lista, embora nao seja sobre UM usuario: o filtro e por caminho,
+      // e afrouxa-lo para excluir esta rota tiraria da trava justamente as
+      // rotas novas, que sao as que precisam ser conferidas.
+      "GET /users-active-daily",
       "GET /users/:id",
       "GET /users/:id/activity",
       "GET /users/:id/audit",
       "GET /users/:id/email-usage",
+      "GET /users/:id/site-life",
       "GET /users/:id/transactions",
       "PATCH /users/:id",
       "POST /users/:id/email",

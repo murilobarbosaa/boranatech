@@ -83,12 +83,12 @@ export default function SessionVerdict({
     <div
       ref={cardRef}
       className={cn(
-        "mt-2 rounded-[14px] border-2 border-slate-950 px-4 py-4 shadow-[3px_3px_0_#0f172a]",
+        "mt-2 rounded-[14px] border-2 border-slate-950 px-4 py-4 shadow-[3px_3px_0_var(--bnt-shadow)]",
         prepared ? "bg-emerald-50" : "bg-blue-50",
       )}
     >
       {prepared ? (
-        <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-emerald-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+        <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-emerald-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
           <Award className="h-4 w-4" aria-hidden />
           {/* TODO(Ana): selo da conquista de preparo. */}
           Preparado!

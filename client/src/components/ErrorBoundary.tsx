@@ -77,8 +77,8 @@ class ErrorBoundary extends Component<Props, State> {
     // Tela cheia padrão. NUNCA mostra stack: o stack vai para o Sentry, e para
     // quem está do outro lado ele é ruído assustador que não ajuda em nada.
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#faf8f4] p-8">
-        <div className="flex w-full max-w-lg flex-col items-center rounded-2xl border-2 border-slate-950 bg-white p-8 shadow-[5px_5px_0_#0f172a]">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--brand-cream)] p-8">
+        <div className="flex w-full max-w-lg flex-col items-center rounded-2xl border-2 border-slate-950 bg-white p-8 shadow-[5px_5px_0_var(--bnt-shadow)]">
           <AlertTriangle size={40} className="mb-5 shrink-0 text-amber-500" />
 
           <h2 className="mb-2 text-center font-display text-xl font-black text-slate-950">
@@ -96,8 +96,8 @@ class ErrorBoundary extends Component<Props, State> {
             onClick={() => window.location.reload()}
             className={cn(
               "bnt-pressable flex items-center gap-2 rounded-xl px-4 py-2",
-              "border-2 border-slate-950 bg-[#FFB800] font-black text-slate-950",
-              "shadow-[3px_3px_0_#0f172a]",
+              "border-2 border-slate-950 bg-[var(--brand-yellow)] font-black text-ink-on-accent",
+              "shadow-[3px_3px_0_var(--bnt-shadow)]",
             )}
           >
             <RotateCcw size={16} />
