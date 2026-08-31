@@ -20,7 +20,7 @@ import { intervaloDeRotulos, rotuloDeDia, tendenciaDeFluxo } from "./chartMath";
  * ressalvas, e os quatro estados (carregando / erro / vazio / ok) declarados.
  *
  * TODOS toleram payload degradado. Série ausente, não-array ou com pontos sem
- * `value` vira estado "vazio", nunca TypeError — no render da Visão um throw
+ * `value` vira estado "vazio", nunca TypeError, no render da Visão um throw
  * troca a ABA INTEIRA pela tela de falha, não só o bloco.
  */
 

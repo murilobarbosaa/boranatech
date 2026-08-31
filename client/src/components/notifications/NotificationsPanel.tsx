@@ -175,7 +175,7 @@ function NotificationCard({
     new Date(item.expires_at).getTime() > Date.now();
 
   // Super: clicar REABRE o SuperModal grande (não o detalhe genérico) e fecha o
-  // painel. NÃO marca como lida — reabrir é só visualizar; ler acontece no CTA
+  // painel. NÃO marca como lida, reabrir é só visualizar; ler acontece no CTA
   // do modal (engajamento) ou o dismiss ao fechar. Item comum: comportamento
   // atual (marca na interação e abre o NotificationDetailDialog).
   function handleSelect() {

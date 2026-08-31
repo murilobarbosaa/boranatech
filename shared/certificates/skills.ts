@@ -139,7 +139,7 @@ const SKILL_DICTIONARY: SkillEntry[] = [
   { tag: "Documentação técnica", patterns: ["escrita técnica", "documentação de api", "docs-as-code", "tutoriais e guias"] },
   { tag: "Markdown", patterns: ["markdown"] },
   // Carreira / soft (poucas, so quando explicitas). Padroes ESPECIFICOS das
-  // trilhas soft (linkedin, comecar-do-zero, tech-writer) — verificado que nao
+  // trilhas soft (linkedin, comecar-do-zero, tech-writer), verificado que nao
   // aparecem nas trilhas tecnicas, entao nao vazam tag pra elas.
   { tag: "LinkedIn", patterns: ["monte seu linkedin", "fundação do perfil", "networking ativo"] },
   { tag: "Marca pessoal", patterns: ["foto profissional", "título profissional", "seção sobre"] },

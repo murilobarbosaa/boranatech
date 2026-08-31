@@ -1,5 +1,5 @@
 /**
- * Fase 1C — teste de diagnóstico da tool resume-builder.
+ * Fase 1C, teste de diagnóstico da tool resume-builder.
  * Roda 8 conversas simuladas contra a OpenAI direto, reusando o systemPrompt
  * canônico de server/lib/aiTools.ts. NÃO modifica o prompt.
  *
@@ -350,7 +350,7 @@ function buildReport(results: ScenarioResult[]): string {
   const lines: string[] = [];
   const now = new Date().toISOString();
 
-  lines.push(`# Fase 1C — Relatório de Diagnóstico: resume-builder`);
+  lines.push(`# Fase 1C, Relatório de Diagnóstico: resume-builder`);
   lines.push("");
   lines.push(
     `> **Modelo:** \`${MODEL}\` · **Temperature:** ${TEMPERATURE} · **Gerado em:** ${now}`,

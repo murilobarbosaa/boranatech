@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * Por isso a asserção central não é "cancelou", é **ORDEM**: cancelar tem de
  * acontecer ANTES do delete, e a falha do cancelamento tem de IMPEDIR o delete.
  *
- * Stripe é dublê. Nenhuma chamada de rede, nenhuma escrita — nem em modo teste.
+ * Stripe é dublê. Nenhuma chamada de rede, nenhuma escrita, nem em modo teste.
  */
 
 const stripeSpy = vi.hoisted(() => ({
@@ -212,7 +212,7 @@ describe("com assinatura ativa", () => {
 describe("falha na Stripe é fail-closed", () => {
   it("erro no cancelamento IMPEDE o deleteUser", async () => {
     // O controle negativo mais importante do arquivo: se este teste cair, o
-    // defeito original voltou — conta apagada e cobrança viva.
+    // defeito original voltou, conta apagada e cobrança viva.
     supaSpy.linhas = [linha()];
     stripeSpy.cancelErro = new Error("stripe fora do ar");
     stripeSpy.retrieveErro = new Error("stripe fora do ar");

@@ -14,7 +14,7 @@ import { cancellationReasonLabelOf } from "@/components/admin/users/userFormat";
  * O QUE QUEBROU NA v1, visto na revisão visual e invisível para os guards
  * estruturais: com ~26 itens, o painel virava uma coluna sem fim de cards
  * idênticos (uns 20 "Saída agendada" empilhados), e como ele não tinha teto de
- * altura, esticava a linha inteira do grid — o vizinho ao lado virava um pill
+ * altura, esticava a linha inteira do grid, o vizinho ao lado virava um pill
  * gigante. Nenhum teste de posição ou de payload pega isso: eles verificam que o
  * bloco está lá e não quebra, não que ele é legível.
  *
@@ -120,7 +120,7 @@ function tituloDeGrupo(tipo: string, exemplo: ItemAtencao): string {
  * O servidor já manda `url` pronta, montada a partir do
  * `provider_subscription_id`. Aqui ela é VALIDADA antes de virar botão: só
  * `https://dashboard.stripe.com/...` passa. Um href vazio, relativo ou de outro
- * host vira ausência de botão, e não um "Abrir" que não abre nada — que é pior,
+ * host vira ausência de botão, e não um "Abrir" que não abre nada, que é pior,
  * porque promete uma ação.
  *
  * A `chave` do item NÃO serve como fonte do link: ela carrega o id da linha
@@ -339,7 +339,7 @@ function GrupoView({ grupo }: { grupo: Grupo }) {
 
       {unico ? (
         // GRUPO DE UM: o resumo JA e o item. Renderizar a lista embaixo
-        // repetiria o mesmo texto duas vezes na tela — foi o que o teste pegou.
+        // repetiria o mesmo texto duas vezes na tela, foi o que o teste pegou.
         <>
           <p className="mt-1 text-sm font-semibold text-slate-600">
             {grupo.itens[0].detalhe}
@@ -431,7 +431,7 @@ export function AttentionPanel({
         </p>
       ) : !data ? null : (
         // TETO DE ALTURA. Sem ele o painel estica a linha do grid e deforma o
-        // vizinho — foi exatamente o que aconteceu na v1.
+        // vizinho, foi exatamente o que aconteceu na v1.
         // O PAINEL CRESCE. Ver a decisão 5 na docstring: o teto de altura da v2
         // existia para não deformar um vizinho de grid que não existe mais, e
         // esconder item de alerta atrás de scroll é o oposto do propósito daqui.

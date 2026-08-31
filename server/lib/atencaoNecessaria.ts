@@ -12,7 +12,7 @@ import { supabaseAdmin } from "./supabaseAdmin";
 // PAINEL "ATENCAO NECESSARIA".
 //
 // Substitui "Eventos recentes", que mostrava as 10 ultimas linhas de
-// `content_audit_logs` — historico de edicao de conteudo, nao decisao. O bloco
+// `content_audit_logs`, historico de edicao de conteudo, nao decisao. O bloco
 // mais visivel da Visao era o unico sobre o qual nao havia nada a fazer.
 //
 // PRINCIPIO, e ele governa o que pode ou nao virar item aqui:
@@ -265,7 +265,7 @@ function mensalDoPlano(
  *
  * Hoje le a Stripe direto. Quando `fix/billing-customer-reuse` mergear, a tabela
  * `billing_failed_payments` passa a existir com escritor, e trocar a fonte vira
- * uma linha — sem tocar no painel nem nos testes dele. A interface existe por
+ * uma linha, sem tocar no painel nem nos testes dele. A interface existe por
  * isso, e nao por generalidade: e a unica fonte deste arquivo que se sabe que
  * vai mudar.
  */

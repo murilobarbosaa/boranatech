@@ -90,7 +90,7 @@ describe("inicioDoDiaBrasilia", () => {
   it("o instante devolvido pertence ao dia pedido, e o anterior NÃO", () => {
     // Propriedade que fecha o intervalo pelos dois lados, em vez de afirmar um
     // offset. Se o Brasil voltar a ter horário de verão, o offset muda e este
-    // teste continua válido — um teste que só afirmasse "-03:00" viraria a
+    // teste continua válido, um teste que só afirmasse "-03:00" viraria a
     // documentação de uma circunstância.
     for (const dia of ["2026-01-15", "2026-07-16", "2026-12-31"]) {
       const inicio = inicioDoDiaBrasilia(dia);

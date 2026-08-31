@@ -249,7 +249,7 @@ describe("ancoragem das fixtures relativas", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 1.1 — Usuários totais e a ORIGEM ÚNICA
+// 1.1, Usuários totais e a ORIGEM ÚNICA
 // ---------------------------------------------------------------------------
 
 describe("card Usuários totais (D1)", () => {
@@ -364,7 +364,7 @@ async function chamarStats(): Promise<{ count: number | null }> {
 }
 
 // ---------------------------------------------------------------------------
-// 1.2 — Acesso Pro: `both`, trialing, past_due
+// 1.2, Acesso Pro: `both`, trialing, past_due
 // ---------------------------------------------------------------------------
 
 describe("card Assinantes Pro (D3)", () => {
@@ -381,7 +381,7 @@ describe("card Assinantes Pro (D3)", () => {
     //
     // Era este o defeito, e a primeira versão da investigação o descreveu ao
     // contrário ("as 3 pessoas somem da tela"). Elas não somem: aparecem duas
-    // vezes. A correção é a mesma — headline = `total` — mas o teste precisa
+    // vezes. A correção é a mesma, headline = `total`, mas o teste precisa
     // travar a semântica REAL, senão trava a errada.
     base({
       subscriptions: {
@@ -432,7 +432,7 @@ describe("card Assinantes Pro (D3)", () => {
   it("past_due NÃO concede Pro", async () => {
     // ALCANCE DECLARADO: o dublê REGISTRA `.in()` e `.or()` mas não os aplica
     // às linhas, então o recorte de status que `getMrrSnapshot` faz na QUERY é
-    // insimulável aqui — uma asserção sobre `mrr.value` neste cenário estaria
+    // insimulável aqui, uma asserção sobre `mrr.value` neste cenário estaria
     // medindo o dublê, não o código. O que este teste prova é o ramo que roda
     // em TypeScript: `subscriptionGrantsPro` (fail-closed em status fora de
     // {active, trialing}). Ver `server/lib/userListEnrichment.test.ts` para a
@@ -449,7 +449,7 @@ describe("card Assinantes Pro (D3)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 1.6 — Avulsos de boleto (cs_...): só o período pago vigente conta
+// 1.6, Avulsos de boleto (cs_...): só o período pago vigente conta
 // ---------------------------------------------------------------------------
 
 describe("avulsos de boleto no acesso Pro", () => {
@@ -498,7 +498,7 @@ describe("avulsos de boleto no acesso Pro", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 1.3 — Receita: bruto principal, líquido ao lado
+// 1.3, Receita: bruto principal, líquido ao lado
 // ---------------------------------------------------------------------------
 
 describe("card Receita no período (D4)", () => {
@@ -554,7 +554,7 @@ describe("card Receita no período (D4)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 1.4 — Custo de IA: unidade e piso declarado
+// 1.4, Custo de IA: unidade e piso declarado
 // ---------------------------------------------------------------------------
 
 describe("card Custo de IA (D6)", () => {
@@ -617,7 +617,7 @@ describe("card Custo de IA (D6)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// FASE 2 — card e gráfico sobre a MESMA janela
+// FASE 2, card e gráfico sobre a MESMA janela
 // ---------------------------------------------------------------------------
 
 describe("card e gráfico concordam sobre o intervalo (regressão dos 182)", () => {
@@ -625,11 +625,11 @@ describe("card e gráfico concordam sobre o intervalo (regressão dos 182)", () 
    * O defeito medido em 2026-08-14 às 04:53 UTC: o card "Novos usuários" dizia
    * 4.788 e o gráfico "Cadastros por dia" logo abaixo dizia 4.606, os dois
    * rotulados "últimos 30 dias". Nenhum estava errado por dentro; eles usavam
-   * definições diferentes de "30 dias" — instante deslizante em UTC contra dia
+   * definições diferentes de "30 dias", instante deslizante em UTC contra dia
    * civil de Brasília.
    *
    * ALCANCE DECLARADO deste teste. O dublê devolve o `count` configurado sem
-   * aplicar filtro, então ele NÃO pode provar "os dois somam o mesmo número" —
+   * aplicar filtro, então ele NÃO pode provar "os dois somam o mesmo número":
    * uma asserção assim aqui mediria o dublê. O que ele prova, e é a causa raiz,
    * é que **as duas rotas pedem ao banco o MESMO instante de corte** e que o
    * gráfico cobre exatamente os dias civis que o card declara. Divergência de
@@ -722,7 +722,7 @@ describe("card e gráfico concordam sobre o intervalo (regressão dos 182)", () 
 });
 
 // ---------------------------------------------------------------------------
-// 2.4 — staleDays: comportamento ATUAL fixado, pendência declarada
+// 2.4, staleDays: comportamento ATUAL fixado, pendência declarada
 // ---------------------------------------------------------------------------
 
 describe("frescor do snapshot no /subscription-history (D14)", () => {
@@ -733,7 +733,7 @@ describe("frescor do snapshot no /subscription-history (D14)", () => {
    *
    * `staleDays` subtrai dois RÓTULOS de dia: o dia UTC gravado em
    * `snapshot_date` e o dia UTC de agora. O cron roda às 05:10 UTC, então entre
-   * 00:00Z e 05:10Z o rótulo de hoje já virou e o snapshot ainda não rodou —
+   * 00:00Z e 05:10Z o rótulo de hoje já virou e o snapshot ainda não rodou:
    * `staleDays = 1` sem nada estar atrasado. São 5h10 por dia.
    *
    * O dia civil de Brasília seria melhor (2h10), e mesmo assim não é o conserto:
@@ -811,7 +811,7 @@ describe("frescor do snapshot no /subscription-history (D14)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// FASE 4 — séries diárias, funil e uso por ferramenta
+// FASE 4, séries diárias, funil e uso por ferramenta
 // ---------------------------------------------------------------------------
 
 describe("GET /overview-series", () => {
@@ -901,7 +901,7 @@ describe("GET /overview-series", () => {
   it("REGRESSÃO DOS 182, estendida: card e série somam o MESMO número", async () => {
     // A mesma fixture alimenta o card (contagem com janela) e a série diária. Se
     // o bucketing da série divergir da janela do card, os dois números se
-    // separam — que é exatamente o defeito que a Fase 2 fechou entre card e
+    // separam, que é exatamente o defeito que a Fase 2 fechou entre card e
     // gráfico de cadastros.
     // DIAS RELATIVOS: os três precisam cair dentro da janela de 7 dias em
     // qualquer data de execução. Com datas fixas, `2026-08-10` saiu da janela na

@@ -145,7 +145,7 @@ const EMBEDS_CONHECIDOS = new Set(["plans"]);
  * A exceção NÃO é uma lista de confiança: cada entrada é conferida contra os
  * arquivos de `supabase/migrations/`, e só vale se alguma migration do
  * repositório declarar `ADD COLUMN ... <coluna>`. Um erro de digitação não é
- * absorvido — ele simplesmente não acha migration e continua sendo recusado.
+ * absorvido, ele simplesmente não acha migration e continua sendo recusado.
  *
  * Esvaziar esta lista é o comportamento normal depois de aplicar a migration e
  * rodar `pnpm db:types`.
@@ -195,7 +195,7 @@ const COLUNAS_PENDENTES_VALIDAS = (() => {
  * funciona para `plans(code)` e quebra para `plans(code, name, price_cents)`:
  * a vírgula de dentro do embed vira separador, e `name` e `price_cents` passam
  * a ser validados como colunas da tabela EXTERNA. O efeito é recusar uma query
- * legítima — erra para o lado seguro, mas erra, e o teste que a exercitasse
+ * legítima, erra para o lado seguro, mas erra, e o teste que a exercitasse
  * ficaria impossível de escrever.
  *
  * Aqui a varredura conta parênteses: o que está dentro de um embed não é

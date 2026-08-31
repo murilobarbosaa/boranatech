@@ -17,7 +17,7 @@ import { fmtBrl, fmtDate, fmtText, planLabelOf } from "./userFormat";
 // AlertDialog que o TaskModal usa para exclusão.
 //
 // O cancelamento NÃO é imediato (é cancel_at_period_end), então o diálogo tem
-// de mostrar até quando o acesso continua valendo — senão o admin acha que
+// de mostrar até quando o acesso continua valendo, senão o admin acha que
 // cortou na hora e responde errado a quem perguntar.
 
 const BOTAO =

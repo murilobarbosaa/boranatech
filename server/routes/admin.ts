@@ -475,7 +475,7 @@ async function fetchAuthUsersByIds(
  *
  * Custo: duas leituras completas, das duas tabelas menores do dominio
  * (63 e 26 linhas hoje). Se qualquer uma passar do teto do PostgREST, o tally
- * encolhe em silencio — por isso as duas sao PAGINADAS.
+ * encolhe em silencio, por isso as duas sao PAGINADAS.
  */
 async function contarProPorOrigem(): Promise<ProSourceTally> {
   const assinaturas: SubscriptionRow[] = [];
@@ -665,7 +665,7 @@ function computarSaudeDeIntegracoes() {
 //       cartoes que a faixa substitui, o que a fatia proibe;
 //   (b) FURO, e este e o pior: como a lista de jobs seria DERIVADA da janela, um
 //       job parado ha mais de 23h simplesmente SOME dela, e a faixa nao
-//       reportaria nada. Seria um instrumento que falha PASSANDO — exatamente a
+//       reportaria nada. Seria um instrumento que falha PASSANDO, exatamente a
 //       classe que o CLAUDE.md documenta.
 //
 // Uma checagem geral honesta exige um REGISTRO ESTAVEL de jobs esperados (com a
@@ -1521,7 +1521,7 @@ router.get("/overview-series", async (req, res, next) => {
 });
 
 // ATENCAO NECESSARIA: o que pede acao humana AGORA. Substitui "Eventos
-// recentes", que listava edicoes de conteudo — historico, nao decisao.
+// recentes", que listava edicoes de conteudo, historico, nao decisao.
 //
 // SO LEITURA, e isso e uma propriedade que o codigo garante, nao uma intencao:
 // a rota le `billing_orphan_payments`, ela NAO chama `detectOrphanPayments`.
@@ -2066,7 +2066,7 @@ router.get("/signup-history", async (req, res, next) => {
           lastDate: hoje,
           // MESMO rotulo e MESMO fuso dos cards, pela mesma funcao. E o que
           // permite a tela afirmar, no badge, que os dois blocos falam do mesmo
-          // intervalo — em vez de os dois dizerem "ultimos 30 dias" e medirem
+          // intervalo, em vez de os dois dizerem "ultimos 30 dias" e medirem
           // coisas diferentes, que foi o defeito.
           windowLabel: rotuloDeIntervalo(inicio, hoje),
           tz: OVERVIEW_TZ_LABEL,
@@ -2091,7 +2091,7 @@ router.get("/signup-history", async (req, res, next) => {
 //   activeCount, trialingCount, mrrCents   LIDOS da linha do snapshot, sem
 //                                          recalculo. Quem os produziu foi
 //                                          `collectSubscriptionSnapshot`, que
-//                                          chama `getMrrSnapshot` — a MESMA
+//                                          chama `getMrrSnapshot`, a MESMA
 //                                          funcao do MRR ao vivo. Ou seja: uma
 //                                          regra, duas materializacoes (ao vivo
 //                                          e historica), zero copias.
@@ -2161,7 +2161,7 @@ function diasEntre(inicio: string, fim: string): number {
 //
 // A CONDICAO, para quem mexer no cron: se o horario passar para antes de 03:00
 // UTC, um snapshot coletado, por exemplo, as 02:00 UTC do dia D pertence ao dia
-// civil D-1 em Brasilia, e a identidade quebra em silencio — a serie inteira
+// civil D-1 em Brasilia, e a identidade quebra em silencio, a serie inteira
 // desliza um dia. Mudar o `cron.schedule` daquela migration exige revisitar este
 // bloco. E UMA linha por dia civil, por construcao (unique em snapshot_date).
 const SNAPSHOT_CRON_UTC_HOUR = 5;
@@ -4473,7 +4473,7 @@ router.post("/users/:id/refunds", async (req, res, next) => {
     }
 
     // 200 SEMPRE que a Stripe aceitou. Devolver erro aqui faria o admin
-    // acreditar que o reembolso não aconteceu e tentar de novo — e a segunda
+    // acreditar que o reembolso não aconteceu e tentar de novo, e a segunda
     // tentativa cairia numa Idempotency-Key diferente (o refunded_cents teria
     // mudado) e devolveria DE NOVO. Isso vale IGUALMENTE para a revogação ter
     // falhado: o dinheiro já saiu quando ela é tentada, então transformá-la em

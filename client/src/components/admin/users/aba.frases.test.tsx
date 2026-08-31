@@ -241,11 +241,11 @@ const COPY_ESTATICA = new Set<string>([
   "Sem foto enviada.",
   "Não informado",
   "Sem assinatura",
-  // "—" VOLTOU: a lista ganhou as colunas de Área e Total pago, e o fixture
+  // "-" VOLTOU: a lista ganhou as colunas de Área e Total pago, e o fixture
   // desta trava não preenche a área, então a célula cai no marcador. Ele saiu
   // daqui uma vez, quando nenhum campo do cenário caía nele; a ida e a volta
   // são o guard funcionando nos dois sentidos, não indecisão.
-  "—",
+  "-",
   "Nenhuma compra registrada.",
   "Sem atividade registrada para este usuário.",
   // "Fechar" saiu: a saida virou um X no cabecalho, e o rotulo dela agora e o

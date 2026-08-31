@@ -23,7 +23,7 @@ const ALLOWLISTED_PATHS = new Set(["/termos-de-uso", "/privacidade"]);
 
 // Backoff curto antes de exibir a tela de falha: absorve indisponibilidades
 // transitorias (cold start do Railway, blip de rede) sem mostrar o bloqueio a
-// todo usuario autenticado. Esgotado, cai em checkFailed — que ainda tem retry
+// todo usuario autenticado. Esgotado, cai em checkFailed, que ainda tem retry
 // manual e recuperacao automatica pos-refresh de token. Cada tentativa falha ja
 // emite consent_request_failed no consentService, entao os retries sao
 // observaveis sem telemetria extra aqui.
@@ -134,7 +134,7 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
     if (!gateActive) return;
     // Item 3.4. Escrita de consentimento em voo: NAO consultar o status agora.
     // Consultar aqui e ler antes da escrita, e a resposta seria um `false` que
-    // significa "ainda nao chegou", nao "nao consentiu" — foi assim que 50 pessoas
+    // significa "ainda nao chegou", nao "nao consentiu", foi assim que 50 pessoas
     // que tinham acabado de aceitar viram o modal pedindo o aceite de novo.
     // Segurar em "checking" e correto: nao ha nada a decidir ainda, e o efeito
     // roda de novo sozinho quando a flag cair (ela esta nas deps), qualquer que
@@ -171,7 +171,7 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
           if (cancelled) return;
           // Falha na verificacao (throw, 401 apos retry, rede/5xx): NAO tratar
           // como "nao consentiu". Tenta de novo com backoff curto e, esgotado,
-          // cai em checkFailed — bloqueia o app sem pedir novo aceite a quem ja
+          // cai em checkFailed, bloqueia o app sem pedir novo aceite a quem ja
           // consentiu (fail-closed sem falso pedido de consentimento).
           const delay = CHECK_RETRY_DELAYS_MS[attempt];
           if (delay === undefined) {

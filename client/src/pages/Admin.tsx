@@ -727,7 +727,7 @@ export const metricCards: MetricCard[] = [
     key: "usuarios_totais",
     // TOTAL, SEM JANELA, e a MESMA fonte do contador público da home
     // (server/lib/profilesCount.ts). Existe porque a única forma de ver o total
-    // era mudar o seletor para "Tudo", o que muda os outros cinco cards junto —
+    // era mudar o seletor para "Tudo", o que muda os outros cinco cards junto:
     // e a ausência dele foi lida como divergência contra a home (4.790 vs 5.456)
     // quando os dois números estavam certos e respondiam perguntas diferentes.
     label: "Usuários totais",
@@ -2689,7 +2689,7 @@ function campaignPendingCount(campaign: EmailCampaign): number | null {
 const PREVIEW_EXAMPLE_NAME = "Maria";
 
 // Preview de documento HTML completo (modo HTML) num <iframe srcDoc>: isola o
-// documento colado — os <style> do e-mail ficam presos ao iframe (nao vazam pra
+// documento colado, os <style> do e-mail ficam presos ao iframe (nao vazam pra
 // pagina do admin) e elementos posicionados nao criam overlay sobre o formulario.
 // Auto-resize: no onLoad (dispara no mount e a cada srcDoc novo) le o scrollHeight
 // do documento e ajusta a altura, com min de seguranca (300px). sandbox=
@@ -2759,7 +2759,7 @@ const CampaignPreview = memo(function CampaignPreview({
       {/* TODO(Ana): título do preview. */}
       <h3 className="font-display text-2xl font-black">Preview do e-mail</h3>
       {/* overflow-auto + max-h: contem previews gigantes (ex. HTML colado como
-          texto com base64 inquebravel) — rola dentro da caixa em vez de escapar e
+          texto com base64 inquebravel), rola dentro da caixa em vez de escapar e
           cobrir a coluna do formulario. So tem efeito quando algo transbordaria. */}
       <div className="mt-4 max-h-[70vh] overflow-auto rounded-2xl border-2 border-slate-900 bg-[var(--bnt-surface)] p-4">
         {bodyIsHtml ? (
@@ -2774,7 +2774,7 @@ const CampaignPreview = memo(function CampaignPreview({
                 // "faixa fake #05060E" saiu do preview: o iframe ja pinta o fundo
                 // real do <body> e, no painel, a imagem ocupa a largura toda (sem
                 // gutters), entao a faixa virou redundante aqui. O envio real
-                // (htmlModeWithHeroImage no server) MANTEM a faixa — cliente de
+                // (htmlModeWithHeroImage no server) MANTEM a faixa, cliente de
                 // e-mail nao usa iframe; nao mexer no server.
                 <div>
                   <img
@@ -4051,7 +4051,7 @@ function EmailCampaignsAdminSection() {
               // List-Unsubscribe continua setado), mas o link visual pode faltar.
               <p className="rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-xs font-bold text-amber-800">
                 ⚠️ Seu HTML não tem{" "}
-                <code className="font-black">{"{unsubscribe_url}"}</code> — o
+                <code className="font-black">{"{unsubscribe_url}"}</code>, o
                 link de descadastro pode não funcionar.
               </p>
             ) : null}
@@ -7157,7 +7157,7 @@ export default function Admin() {
 
     // SPARKLINE POR CARD, a partir da MESMA série que o gráfico grande usa. Se
     // as duas viessem de lugares diferentes, o mini e o grande poderiam contar
-    // histórias distintas na mesma tela — a divergência de 182 cadastros em
+    // histórias distintas na mesma tela, a divergência de 182 cadastros em
     // miniatura.
     const spark = (chave: string, direcao: "up_bom" | "up_ruim") => (
       <MetricSparkline
@@ -7238,7 +7238,7 @@ export default function Admin() {
         value: formatCents(c.mrr.value),
         detail: `MRR de ${formatCount(c.mrr.activeCount)} assinaturas ativas (estado atual, ignora o seletor)`,
         // ARPU como LINHA SECUNDÁRIA (D9), não card novo: é uma divisão do que
-        // já está no card. `arpuCents` é null sem assinante ativo — ausência.
+        // já está no card. `arpuCents` é null sem assinante ativo, ausência.
         secundaria:
           c.mrr.arpuCents !== null
             ? `ARPU ${formatCents(c.mrr.arpuCents)} por assinante`
@@ -7764,7 +7764,7 @@ export default function Admin() {
                     seis repetições do mesmo texto: o seletor governa os seis, e é
                     aqui que a informação pertence. O gráfico "Cadastros por dia"
                     traz o seu próprio badge, com o rótulo que o MESMO servidor
-                    calculou — é o par que provava divergir em 182 cadastros. */}
+                    calculou, é o par que provava divergir em 182 cadastros. */}
                 <WindowBadge
                   label={overview?.windowLabel}
                   tz={overview?.tz}

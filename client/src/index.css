@@ -1,5 +1,5 @@
 /* 
-  BORA NA TECH? — Design System
+  BORA NA TECH?, Design System
   Style: Neo-Brutalism Suavizado / "Mapa de Exploração"
   Fonts: Space Grotesk (display) + Plus Jakarta Sans (body)
   Primary: Violet-Indigo #5B21B6
@@ -60,7 +60,7 @@
 }
 
 :root {
-  /* Brand Colors — sólidos (menos pastel) */
+  /* Brand Colors, sólidos (menos pastel) */
   --brand-violet: oklch(0.42 0.22 290);
   --brand-yellow: #ffb800;
   --brand-yellow-deep: #f2a900;
@@ -1507,7 +1507,7 @@
       14px 14px;
   }
 
-  /* Area Tag Colors — fundos sólidos, texto claro */
+  /* Area Tag Colors, fundos sólidos, texto claro */
   .tag-frontend {
     background-color: #7c3aed;
     color: #faf5ff;
@@ -2098,7 +2098,7 @@ body[data-scroll-locked] [data-app-header] {
   }
 }
 
-/* LogoLoop — loop infinito horizontal em dois sentidos */
+/* LogoLoop, loop infinito horizontal em dois sentidos */
 @keyframes loop-left {
   from {
     transform: translateX(0);
@@ -2162,7 +2162,7 @@ body[data-scroll-locked] [data-app-header] {
   }
 }
 
-/* PraVoce — nuvens flutuantes neobrutalist */
+/* PraVoce, nuvens flutuantes neobrutalist */
 @keyframes float-cloud {
   0%,
   100% {
@@ -2184,7 +2184,7 @@ body[data-scroll-locked] [data-app-header] {
   }
 }
 
-/* Checkout — estrelinhas douradas com pulse */
+/* Checkout, estrelinhas douradas com pulse */
 @keyframes twinkle {
   0%,
   100% {
@@ -2208,7 +2208,7 @@ body[data-scroll-locked] [data-app-header] {
   }
 }
 
-/* CtaFinal — cursor piscando do terminal */
+/* CtaFinal, cursor piscando do terminal */
 @keyframes cursor-blink {
   0%,
   49% {
@@ -2231,7 +2231,7 @@ body[data-scroll-locked] [data-app-header] {
   }
 }
 
-/* CtaFinal — chuva de 0s e 1s no fundo do terminal interativo */
+/* CtaFinal, chuva de 0s e 1s no fundo do terminal interativo */
 @keyframes matrix-fall {
   0% {
     transform: translateY(-30px);

@@ -8,7 +8,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
  * lanca no render nao pode levar os vizinhos junto. Antes desta fatia o admin
  * nao tinha nenhum boundary entre o `App.tsx` e os blocos, entao as onze
  * leituras soltas encontradas na varredura de 2026-08-01 derrubavam a PAGINA
- * INTEIRA — nenhuma derrubava so o bloco.
+ * INTEIRA, nenhuma derrubava so o bloco.
  *
  * O reporter e dublado no `@sentry/react`, e nao verificado por console: o
  * `ErrorBoundary` do projeto ja teve uma versao que trocava a tela SEM reportar

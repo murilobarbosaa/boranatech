@@ -135,6 +135,51 @@ export function alvoDaTransicao(params: {
   return null;
 }
 
+/**
+ * A transicao APAGA o selo de reabertura?
+ *
+ * O DEFEITO, medido em 2026-08-31. O selo "Voltou" da tela
+ * (client/src/components/admin/tasks/TaskCard.tsx:163) aparece quando
+ * `sentry_reopen_event_at` nao e nulo, e as duas unicas escritas desse campo
+ * (server/lib/sentryTaskIntake.ts:525 e :538) so o PREENCHEM. Nenhum ponto do
+ * servidor o zerava, entao concluir o card de novo gravava `completed_at` e
+ * deixava o selo. Resultado: o selo passou a significar "voltou alguma vez", que
+ * e uma frase quase sempre verdadeira e portanto sem sinal. Doze cards do quadro
+ * o exibiam ao mesmo tempo.
+ *
+ * SO NA TRANSICAO PARA TERMINAL, nunca em update qualquer. Zerar em toda escrita
+ * apagaria o selo de um card genuinamente reaberto no primeiro gesto que
+ * tocasse nele (renomear, trocar responsavel), que e o defeito oposto e igual de
+ * ruim. Terminal -> terminal tambem nao limpa: o card nao voltou a lugar nenhum.
+ *
+ * ARQUIVAR TAMBEM LIMPA, e a decisao merece o registro porque parece contradizer
+ * outra desta base. `alvoDaTransicao` acima NAO empurra `resolved` ao Sentry
+ * quando alguem arquiva, e isso continua valendo: sao perguntas diferentes.
+ * Aquela e "o que dizemos ao Sentry"; esta e "o que o card mostra a quem olha o
+ * quadro". Arquivado e estado terminal do nosso lado, entao a frase "o erro
+ * voltou depois de resolvido ou arquivado" (o title do selo) deixa de ser
+ * verdade ali. E se o erro voltar depois do arquivamento, `decidirManutencao`
+ * ressuscita o card e reescreve o campo (sentryTaskIntake.ts:538), entao limpar
+ * nao perde nada que possa voltar a acontecer.
+ *
+ * O HISTORICO NAO DEPENDE DESTE CAMPO. `admin_task_activity` guarda `reopened` e
+ * `unarchived` (escritos em sentryTaskIntake.ts:531 e :541) e `completed` e
+ * `archived` (adminTasks.ts:1481 e :1367), com o CHECK da migration
+ * 20260727160000 linha 258 aceitando os quatro. A memoria de que houve
+ * reabertura sobrevive em linha propria, com data e ator; por isso nao ha coluna
+ * nova aqui, e por isso limpar o selo nao apaga informacao nenhuma.
+ */
+export function limpaSeloDeReabertura(params: {
+  /** `sentry_reopen_event_at` nao nulo hoje. Sem selo, nao ha o que limpar. */
+  temSelo: boolean;
+  origemEraTerminal: boolean;
+  destinoEhTerminal: boolean;
+}): boolean {
+  const { temSelo, origemEraTerminal, destinoEhTerminal } = params;
+  if (!temSelo) return false;
+  return destinoEhTerminal && !origemEraTerminal;
+}
+
 export type ResumoRetry = {
   tentados: number;
   entregues: number;

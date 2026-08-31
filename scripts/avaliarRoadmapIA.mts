@@ -414,7 +414,7 @@ async function calibrar() {
     },
     // ADVERSARIO contra intake AVANCADO, nao contra o iniciante. Na primeira
     // iteracao este caso usava o intake de `ia-b9ec1b72` ("startingPoint:
-    // iniciante") e o juiz deu ponto_de_partida=4 — corretamente, porque um
+    // iniciante") e o juiz deu ponto_de_partida=4, corretamente, porque um
     // roadmap que comeca em tipos e variaveis DE FATO serve para um iniciante.
     // O caso nao testava nada: generico e "bom para iniciante" coincidem. Contra
     // alguem que ja estuda Angular e React, comecar em "tipos primitivos" e

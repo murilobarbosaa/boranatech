@@ -12,7 +12,7 @@ import {
 // server que o front ainda não conhecia (deploy defasado do backend/db:push que
 // já produzia 'scheduled'/'custom') fazia STATUS_META[valor] === undefined e o
 // .label estourava. Os resolvers precisam sempre devolver { label, badge/description },
-// nunca undefined — valor conhecido usa o meta real, desconhecido cai no fallback
+// nunca undefined, valor conhecido usa o meta real, desconhecido cai no fallback
 // com o valor cru (sem throw).
 
 describe("resolvers de meta (fallback anti-crash)", () => {

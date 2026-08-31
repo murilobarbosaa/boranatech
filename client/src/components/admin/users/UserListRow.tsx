@@ -53,14 +53,14 @@ const GRID =
 // campo de FORMULARIO, onde ha espaco para uma frase. Numa celula de tabela
 // densa ele empurraria a coluna inteira para caber uma explicacao que o
 // cabecalho ja da.
-const VAZIO = "—";
+const VAZIO = "-";
 
 /**
  * Marcador de celula vazia, SO no desktop.
  *
  * No desktop ele fica porque a coluna precisa de conteudo para a grade nao
  * desalinhar, e o cabecalho da o significado. No MOBILE nao ha cabecalho: um
- * "—" solto no meio dos metadados nao diz de que campo ele e, e vira andaime
+ * "-" solto no meio dos metadados nao diz de que campo ele e, e vira andaime
  * sem informacao. A regra ja valia para a celula de Assinatura desde o
  * polimento mobile; com tres celulas podendo esvaziar, ela vira componente
  * para nao depender de alguem lembrar de repetir as classes.

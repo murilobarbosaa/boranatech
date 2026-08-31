@@ -1915,7 +1915,7 @@ export default function Perfil() {
                     ) : null}
 
                     {/* Cancelar / nao-renovar so faz sentido com assinatura REAL.
-                        Admin/cortesia (sem linha) nao veem esse botao — o cancel hoje
+                        Admin/cortesia (sem linha) nao veem esse botao, o cancel hoje
                         daria 404. Pagante: hasRealSubscription -> renderiza igual. */}
                     {hasRealSubscription &&
                       (isBoletoSubscription ? (

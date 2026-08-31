@@ -176,7 +176,7 @@ export type Funil = {
   /**
    * Por que nao ha delta de taxa entre janelas. `null` quando o delta EXISTE.
    * Nao e ausencia de dado, e recusa de exibir um numero enviesado por
-   * construcao — ver o comentario de `montarFunilDeCoorte`.
+   * construcao, ver o comentario de `montarFunilDeCoorte`.
    */
   motivoSemDelta:
     | "coortes_de_maturidade_diferente"
@@ -490,7 +490,7 @@ export async function montarSeriesDaVisao(
   //
   // BUG MEDIDO em 2026-08-14: a varredura ordena por `user_id` (exigencia da
   // paginacao por OFFSET, que sem ORDER BY pode repetir ou pular linhas), entao
-  // `perfis[0]` era o perfil de menor UUID — uma linha arbitraria. Em `window=
+  // `perfis[0]` era o perfil de menor UUID, uma linha arbitraria. Em `window=
   // all` isso definia o inicio da serie: o menor `user_id` era de 2026-08-10 e o
   // menor `created_at` de 2026-05-04, entao o grafico de "tudo" desenhava
   // CINCO dias e somava 19 conversoes onde existiam 104. Nada acusava: cinco
@@ -532,7 +532,7 @@ export async function montarSeriesDaVisao(
   // civil de `created_at`. A linha so nasce em pagamento confirmado (cartao via
   // checkout.session.completed, boleto via async_payment_succeeded), e medido em
   // 2026-08-14 NENHUM usuario tem mais de uma linha, entao "primeira" e
-  // "unica" hoje — o `Set` existe para o dia em que deixar de ser.
+  // "unica" hoje, o `Set` existe para o dia em que deixar de ser.
   const jaContado = new Set<string>();
   const conversoes = agrupar(
     assinaturas

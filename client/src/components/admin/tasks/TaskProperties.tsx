@@ -49,10 +49,10 @@ function ReadOnlyRow({ label, value }: { label: string; value: string }) {
 }
 
 function formatDateTime(iso: string | null) {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const date = new Date(iso);
   return Number.isNaN(date.getTime())
-    ? "—"
+    ? "-"
     : date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
@@ -205,7 +205,7 @@ export function TaskProperties({
             min="0"
             step="0.5"
             value={estimateDraft}
-            placeholder="—"
+            placeholder="-"
             aria-label="Estimativa em horas"
             onChange={(event) => onChangeEstimate(event.target.value)}
             onBlur={onCommitEstimate}
@@ -223,7 +223,7 @@ export function TaskProperties({
 
       <ReadOnlyRow
         label="Criado por"
-        value={author?.name ?? author?.email ?? "—"}
+        value={author?.name ?? author?.email ?? "-"}
       />
       <ReadOnlyRow label="Criado em" value={formatDateTime(task.created_at)} />
       <ReadOnlyRow

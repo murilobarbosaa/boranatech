@@ -15,14 +15,14 @@ export type DominioY = {
  *
  * COMEÇAR EM ZERO É O PADRÃO, porque eixo truncado exagera tendência: uma
  * variação de 2% vira uma subida de 45 graus. Mas zero também mente na direção
- * oposta quando a variação é pequena perto do valor absoluto — a linha vira uma
+ * oposta quando a variação é pequena perto do valor absoluto, a linha vira uma
  * reta e o gráfico não responde nada.
  *
  * A regra: trunca só quando a variação for MENOR que 25% do máximo, e nesse caso
  * `truncado` obriga a tela a avisar. Eixo truncado sem aviso é a forma clássica
  * de exagerar tendência, e é a única coisa que este arquivo existe para impedir.
  *
- * Medido na série de hoje: MRR vai de R$ 467,40 a R$ 1.706,80 — variação de 73%
+ * Medido na série de hoje: MRR vai de R$ 467,40 a R$ 1.706,80, variação de 73%
  * do máximo, então o eixo começa em ZERO e não há nada a avisar. A regra só
  * entra em ação quando a base amadurecer e o crescimento relativo diminuir.
  */
@@ -55,7 +55,7 @@ export type Tendencia = {
 };
 
 /**
- * "Está subindo ou parou de subir?" — para uma série de NÍVEL (MRR, ativos).
+ * "Está subindo ou parou de subir?", para uma série de NÍVEL (MRR, ativos).
  *
  * Compara o primeiro ponto medido com o último. Pontos sem medição ficam de
  * fora: comparar contra um buraco daria uma variação contra nada.
@@ -79,7 +79,7 @@ export function tendenciaDeNivel(
 }
 
 /**
- * "O topo do funil está enchendo ou secando?" — para uma série de FLUXO
+ * "O topo do funil está enchendo ou secando?", para uma série de FLUXO
  * (cadastros por dia).
  *
  * Nível se compara ponta a ponta; fluxo, não: um dia forte no fim faria "subiu"
