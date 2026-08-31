@@ -2,7 +2,7 @@
 
 **Fonte operacional vigente desta janela de deploy.** Substitui a secao 5 de
 `docs/linkedin-fase4-fechamento.md`, que descrevia uma pilha de 56 commits sem
-merge nenhum e cinco migrations pendentes. A pilha mudou: hoje sao quatro
+merge nenhum e cinco migrations pendentes. A pilha mudou: hoje sao cinco
 merges, dez migrations e a frente fiscal embarcada.
 
 Todo numero abaixo foi medido no worktree, e nao herdado de memoria. Onde o fato
@@ -12,17 +12,26 @@ vem de um lote anterior, o lote esta nomeado.
 
 | Item                              | Valor                                                                    |
 | --------------------------------- | ------------------------------------------------------------------------ |
-| HEAD                              | `3e37c4dcb28f6afe36b38fd25baf21cc80f934f5`                               |
+| Merge de fechamento               | `9dc840495747470c50db46def70eca617fbf0221`                               |
 | Branch                            | `feat/linkedin-fase-4`                                                   |
-| Commits a publicar (`main..HEAD`) | **72** (68 comuns mais 4 merges)                                         |
-| Merges na pilha                   | **4**                                                                    |
-| `main` (producao)                 | `1ced0103`, e **e ancestral do HEAD** (`merge-base --is-ancestor` passa) |
-| Suite                             | **4208 verdes, 10 pulados, zero vermelho** (331 arquivos de 334)         |
+| Commits a publicar (`main..HEAD`) | **75** (70 comuns mais 5 merges), **76** com o commit deste refresh      |
+| Merges na pilha                   | **5**                                                                    |
+| `main` (producao)                 | `832e5208`, e **e ancestral do HEAD** (`merge-base --is-ancestor` passa) |
+| Suite                             | **4237 verdes, 10 pulados, zero vermelho** (335 arquivos de 338)         |
 | `pnpm check` e `check:limiares`   | exit 0, com **0 orfaos** na auditoria de limiares                        |
 
-Os quatro merges, do topo para baixo:
+**Por que a tabela nomeia o merge de fechamento e nao o HEAD.** Um documento nao
+consegue citar o proprio sucessor: o commit que o atualiza fica ACIMA do hash que
+ele cita, e a linha nasce vencida. Ja aconteceu duas vezes aqui, e o passo 3 da
+secao 3 ficou preso em `6cf78a65` por duas etapas por causa disso. Entao o que
+esta fixado acima e `9dc84049`, o merge que fechou a integracao com a `main`, e o
+topo no momento do push e o commit deste proprio refresh, imediatamente acima
+dele. Quem for publicar le o topo real com `git rev-parse HEAD`, nao daqui.
+
+Os cinco merges, do topo para baixo:
 
 ```
+9dc84049 merge(main): integrate dash cleanup and close main integration    (main 832e5208)
 3e37c4dc merge(main): integrate latest main into linkedin stack            (main 1ced0103)
 6cf78a65 merge(fiscal): integrate fiscal marco 1 into linkedin stack
 1933d02b merge(main): integrate latest main into linkedin fase 4 stack     (main 71d28f77)
@@ -30,9 +39,12 @@ c3fa06b5 merge(main): integrate main into linkedin fase 4 stack            (main
 ```
 
 O quarto merge (Lote M4, 2026-08-31) existe porque a `main` andou 135 commits
-depois do terceiro, com a frente de dark mode inteira entre eles, e o
-fast-forward tinha deixado de ser viavel. Depois dele
-`git merge-base --is-ancestor main HEAD` volta a imprimir **FF_VIAVEL**, com
+depois do terceiro, com a frente de dark mode inteira entre eles. O quinto (Lote
+M5, mesmo dia) existe porque ela andou mais 7, quatro deles removendo travessoes
+de `client`, `server`, `shared` e `scripts`. Esse quinto merge nao teve conflito
+nenhum, e o auto-merge adotou a versao limpa da `main` nos nove arquivos que os
+dois lados tinham tocado: as 24 ocorrencias de travessao neles foram a zero.
+Depois dele `git merge-base --is-ancestor main HEAD` imprime **FF_VIAVEL**, com
 **zero** commits da `main` fora do HEAD.
 
 ### 1.1 Estado de push: a premissa antiga de "nada pushado" esta ERRADA
@@ -41,13 +53,13 @@ Medido com `git ls-remote --heads origin`:
 
 | Ref                          | Em `origin` | Situacao                                                                                  |
 | ---------------------------- | ----------- | ----------------------------------------------------------------------------------------- |
-| `main`                       | `1ced0103`  | producao                                                                                  |
-| `feat/linkedin-fase-4`       | `b47c78a4`  | **parcialmente pushada**; `b47c78a4` e ancestral do HEAD, e faltam **281** commits locais |
+| `main`                       | `832e5208`  | producao                                                                                  |
+| `feat/linkedin-fase-4`       | `b47c78a4`  | **parcialmente pushada**; `b47c78a4` e ancestral do HEAD, e faltam **291** commits locais |
 | `fix/openai-cota-credencial` | `a3e37d2a`  | **inteira em origin**                                                                     |
 | `feat/fiscal-fechamento`     | ausente     | **nunca pushada**                                                                         |
 
 Consequencia pratica: o `git push` desta janela nao e o primeiro da branch. Ele
-avanca `feat/linkedin-fase-4` de `b47c78a4` para `3e37c4dc`, e como
+avanca `feat/linkedin-fase-4` de `b47c78a4` para o topo desta janela, e como
 `b47c78a4` e ancestral, e fast-forward tambem no remoto.
 
 ## 2. Checklist de migrations
@@ -156,7 +168,10 @@ A segunda e a pior das duas, porque nao quebra: degrada.
    `FF_VIAVEL` e obriga a um merge a mais.
 2. **CI verde no SHA exato** que sera publicado.
 3. **Push da branch** apos o "pode publicar". `feat/linkedin-fase-4` avanca de
-   `b47c78a4` para `6cf78a65`, em fast-forward.
+   `b47c78a4` para o topo desta janela (o merge de fechamento `9dc84049` mais o
+   commit deste refresh), em fast-forward. **Ler o topo real com
+   `git rev-parse HEAD`**, e nao de um hash escrito aqui: foi assim que esta
+   linha ficou vencida duas vezes.
 4. **Fast-forward da `main`, pelo worktree de deploy**, que nao aceita edicao:
 
    ```bash
@@ -182,16 +197,19 @@ A segunda e a pior das duas, porque nao quebra: degrada.
 backend.** O Marco 1 sobe com a emissao desligada; ativar e o Marco 2.
 
 Com a flag desligada, estas seis superficies devem permanecer invisiveis ou
-declarar o estado. Arquivo e linha no HEAD desta janela, conferidos no Lote F:
+declarar o estado. Arquivo e linha **re-conferidos um por um no Lote M5**,
+contra o estado final: cinco continuavam exatos e tres tinham derivado uma linha
+depois das edicoes de tema do Lote T (`Perfil.tsx`, `Checkout.tsx` e
+`billing.ts`). Os valores abaixo sao os corrigidos.
 
 | #   | Superficie                  | Onde o gate decide                                                                         |
 | --- | --------------------------- | ------------------------------------------------------------------------------------------ |
 | 1   | Banner do Layout            | `client/src/components/fiscal/FiscalDataBanner.tsx:73` (montado por `Layout.tsx:22`)       |
-| 2   | Secao de notas do `/perfil` | `client/src/pages/Perfil.tsx:2130`                                                         |
+| 2   | Secao de notas do `/perfil` | `client/src/pages/Perfil.tsx:2131`                                                         |
 | 3   | Bloco de notas fiscais      | `client/src/components/fiscal/FiscalInvoicesSection.tsx:76` (e `:53` guardando o fetch)    |
 | 4   | Painel fiscal do admin      | `client/src/components/admin/FiscalInvoicesDashboard.tsx:177` (e `:131` guardando o fetch) |
-| 5   | Checkout                    | `client/src/pages/Checkout.tsx:772`                                                        |
-| 6   | `GET /api/billing/invoices` | `server/routes/billing.ts:345`, respondendo **200 com `{ data: [], nfse: "disabled" }`**   |
+| 5   | Checkout                    | `client/src/pages/Checkout.tsx:773`                                                        |
+| 6   | `GET /api/billing/invoices` | `server/routes/billing.ts:346`, respondendo **200 com `{ data: [], nfse: "disabled" }`**   |
 
 O gate do frontend e **fail-closed em todos os caminhos de duvida**: ausencia do
 campo, valor desconhecido, resposta malformada, erro de rede e o estado de
