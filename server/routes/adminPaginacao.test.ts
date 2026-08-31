@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * O teste AFIRMA O TOTAL, não a pertinência: registra mais linhas do que o teto
  * e exige que a soma seja a do CONJUNTO INTEIRO. Um teste que só verificasse
  * "as tools conhecidas apareceram" passaria alegremente sobre as 1000
- * primeiras — seria o mesmo instrumento que falha passando.
+ * primeiras, seria o mesmo instrumento que falha passando.
  *
  * O dublê aplica `maxRows` DEPOIS do range, exatamente como o `db-max-rows` faz:
  * é o que torna a condição simulável. Enquanto `range` era no-op no dublê, uma
@@ -267,7 +267,7 @@ describe("GET /ai-stats soma TODAS as linhas da janela", () => {
 });
 
 // ---------------------------------------------------------------------------
-// GET /dashboard — os dois ramos de acesso Pro
+// GET /dashboard, os dois ramos de acesso Pro
 // ---------------------------------------------------------------------------
 
 describe("GET /dashboard depois da poda", () => {
@@ -623,7 +623,7 @@ describe("GET /subscription-history", () => {
     // UTC, o horário do cron (`SNAPSHOT_HORA_UTC`): antes disso a última
     // execução ESPERADA ainda é a de ontem, o snapshot de ontem a cobre, e o
     // valor correto passa a ser 0. O teste ficava vermelho todas as madrugadas,
-    // por virada de dia, sem nada ter quebrado — e um teste que falha por
+    // por virada de dia, sem nada ter quebrado, e um teste que falha por
     // relógio treina quem o vê a ignorar vermelho.
     //
     // A propriedade que importa não é "1 dia", é: cron parado há dias produz um
@@ -941,7 +941,7 @@ describe("variação da série", () => {
 });
 
 // ---------------------------------------------------------------------------
-// GET /overview — os seis cards
+// GET /overview, os seis cards
 // ---------------------------------------------------------------------------
 
 describe("GET /overview", () => {

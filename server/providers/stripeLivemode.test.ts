@@ -13,7 +13,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  *   - em produção, `livemode:false` NÃO é persistido nem processado;
  *   - a resposta é 2xx, para a Stripe não entrar em loop de retry;
  *   - **fora** de produção nada muda (é lá que evento de teste é o fluxo normal);
- *   - **`livemode:true` continua sendo persistido** — o controle negativo sem o
+ *   - **`livemode:true` continua sendo persistido**, o controle negativo sem o
  *     qual um filtro que barrasse tudo passaria neste arquivo.
  */
 
@@ -122,7 +122,7 @@ describe("em produção", () => {
   it("responde 2xx (não lança), para a Stripe não reenviar em loop", async () => {
     // 4xx/5xx significa "tente de novo" para a Stripe. O evento chegou e foi
     // entendido; a decisão de não guardá-lo é nossa, e um retry não mudaria
-    // nada — só multiplicaria o mesmo evento pelo prazo inteiro de retry.
+    // nada, só multiplicaria o mesmo evento pelo prazo inteiro de retry.
     estado.evento = evento({ livemode: false });
 
     const r = (await chamar()) as Record<string, unknown>;

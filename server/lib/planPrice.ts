@@ -9,7 +9,7 @@ const EXPECTED_UNPRICED_CODES = new Set(["free"]);
 // Resolve o preco em centavos de um plano pela FONTE UNICA (planPricing.ts). Se o
 // code nao estiver la, cai para o valor do banco (comportamento INALTERADO) mas
 // GRITA (Sentry warning): um code real fora do planPricing significa que alguem
-// adicionou um plano no banco e esqueceu no modulo — exatamente a falha silenciosa
+// adicionou um plano no banco e esqueceu no modulo, exatamente a falha silenciosa
 // de preco que este projeto ja pagou caro. `free` e code ausente nao logam.
 export function resolvePlanPriceCents(
   code: string | null | undefined,

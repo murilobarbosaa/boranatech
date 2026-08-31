@@ -10,7 +10,7 @@ import { CHARGE_SEM_DONO_CORTE_DIAS } from "./financeSyncWindow";
 //   "Supabase Auth"   derivava de `checks.database === "ok"`, o MESMO bit de
 //                     "Banco de dados". Dois cartões para um sinal.
 //   "Servidor web"    dizia "Online" SEMPRE. Se a resposta do health chegou, o
-//                     servidor está de pé — é tautologia, não checagem. O uptime
+//                     servidor está de pé, é tautologia, não checagem. O uptime
 //                     continua útil como informação, não como sinal de saúde.
 //   Redis             era sondado nos DOIS endpoints (`/api/health` e
 //                     `/integrations/health`), com dois pings por carga.
@@ -233,7 +233,7 @@ export function calcularProblemas(
   }
 
   // BOLETO EM LIMBO: emitido e não pago. Não é métrica de negócio, é anomalia
-  // operacional COM PRAZO — passado o prazo o boleto vira órfão e a linha é
+  // operacional COM PRAZO, passado o prazo o boleto vira órfão e a linha é
   // cancelada pelo cron. Por isso mora aqui e não num card.
   if (sinais.boletosPendentes.length > 0) {
     const total = sinais.boletosPendentes.reduce(

@@ -12,7 +12,7 @@ import {
 /**
  * As partes PURAS da Fase 4: a aritmética do funil e o frescor do snapshot.
  *
- * São as duas que não podem errar em silêncio — uma taxa inventada e um "está em
+ * São as duas que não podem errar em silêncio, uma taxa inventada e um "está em
  * dia" falso são números plausíveis, e é isso que os torna perigosos.
  */
 

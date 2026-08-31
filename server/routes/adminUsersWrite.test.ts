@@ -928,7 +928,7 @@ describe("POST /users/:id/subscription/cancel", () => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /users/:id/refunds  (Fatia 7) — a única ação sem desfazer
+// POST /users/:id/refunds  (Fatia 7), a única ação sem desfazer
 // ---------------------------------------------------------------------------
 
 describe("POST /users/:id/refunds", () => {
@@ -1766,7 +1766,7 @@ describe("revogação falhando DEPOIS do reembolso bem-sucedido", () => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /users/:id/external-refunds — registro de devolução feita FORA daqui.
+// POST /users/:id/external-refunds, registro de devolução feita FORA daqui.
 //
 // Duas coisas distintas moram nesta rota e os testes separam as duas:
 //   (a) a devolução foi processada pela Stripe (existe objeto Refund) -> o sync
@@ -2133,7 +2133,7 @@ describe("POST /users/:id/external-refunds", () => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /users/:id/subscription/revoke — revogação AVULSA, sem devolver dinheiro.
+// POST /users/:id/subscription/revoke, revogação AVULSA, sem devolver dinheiro.
 //
 // Existe para o estado meio-feito: reembolso emitido e acesso mantido. Antes
 // dela a única saída na interface era "Cancelar Pro", que agenda para o fim do

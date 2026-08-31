@@ -10,7 +10,7 @@ import {
 /**
  * A parte do card que decide se EXISTE Δ.
  *
- * É a decisão que não pode errar: card sem Δ é honesto, card com Δ falso não —
+ * É a decisão que não pode errar: card sem Δ é honesto, card com Δ falso não:
  * quem lê não tem como desconfiar de um número que parece calculado.
  */
 
@@ -38,7 +38,7 @@ describe("parseOverviewWindow", () => {
 describe("resolverJanela: dias civis de Brasília", () => {
   it("30 dias são 30 dias CIVIS terminando hoje, e começam à meia-noite de Brasília", () => {
     // Semântica nova (Fase 2). A antiga era `agora - 30*24h`, que devolvia
-    // 2026-07-01T12:00:00Z — um instante no MEIO do dia, incomparável com
+    // 2026-07-01T12:00:00Z, um instante no MEIO do dia, incomparável com
     // qualquer gráfico agrupado por dia.
     const j = resolverJanela("30", AGORA);
 
@@ -102,7 +102,7 @@ describe("a fronteira do dia é a de BRASÍLIA, não a de UTC", () => {
   });
 
   it("23:50 de Brasília do dia ANTERIOR ao limite NÃO entra (controle negativo)", () => {
-    // 23:50 BRT de 24/07 = 02:50Z de 25/07 — ainda dia 24 em Brasília, fora da
+    // 23:50 BRT de 24/07 = 02:50Z de 25/07, ainda dia 24 em Brasília, fora da
     // janela. Repare que em UTC este instante é "25/07", e um corte por dia UTC
     // o incluiria: é exatamente o erro que existia.
     const j = resolverJanela("7", AGORA);

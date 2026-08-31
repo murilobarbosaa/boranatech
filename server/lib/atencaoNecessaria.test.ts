@@ -73,7 +73,7 @@ vi.mock("./supabaseAdmin", () => {
     // `range` RECORTA de verdade, e isso não é capricho: `paginateRange` só
     // encerra na PÁGINA VAZIA (de propósito, para uma página curta por
     // max-rows não terminar a varredura antes da hora). Um dublê que devolve o
-    // array inteiro a cada chamada trava o teste em laço infinito — foi o que
+    // array inteiro a cada chamada trava o teste em laço infinito, foi o que
     // aconteceu na primeira versão deste arquivo.
     q.range = (from: number, to: number) => {
       if (tabela === "subscriptions" && supaSpy.erroSubscriptions) {
@@ -217,7 +217,7 @@ describe("assinaturas", () => {
     // 2026-09-14T00:00:00Z é 13/09 às 21:00 em Brasília, e é ASSIM que tem de
     // aparecer: `current_period_end` é um instante (timestamptz), e para
     // instante o fuso local é o correto a exibir (ver shared/brasiliaDay.ts).
-    // A primeira versão deste teste esperava 14/09 — o mesmo erro de fuso que
+    // A primeira versão deste teste esperava 14/09, o mesmo erro de fuso que
     // esta fase inteira existe para fechar, cometido no próprio teste dela.
     expect(p.itens[0].detalhe).toContain("13/09/2026");
   });
@@ -380,7 +380,7 @@ describe("pagamentos órfãos: só LEITURA, e só os acionáveis", () => {
 
   it("CONTROLE NEGATIVO: órfão com assinatura já CANCELADA sai do painel", async () => {
     // É o caso do dossiê depois de 2026-08-19: a assinatura termina, não há
-    // cobrança futura, e o item some sozinho — sem ack, sem clique, sem tabela
+    // cobrança futura, e o item some sozinho, sem ack, sem clique, sem tabela
     // de estado. É essa a condição natural de resolução que o painel exige.
     supaSpy.orfaos = [orfao()];
     stripeSpy.subs.sub_orfa = { id: "sub_orfa", status: "canceled" };

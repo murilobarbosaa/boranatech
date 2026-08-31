@@ -81,7 +81,7 @@ const stack = (adminRouter as unknown as { stack: Camada[] }).stack;
 // necessária"). 56 -> 57 na mesma data, com `GET /admin/overview-series` (séries
 // diárias, funil e uso por ferramenta da Fase 4). Subir este número é ato
 // deliberado: quem acrescenta rota confere antes que ela está atrás de
-// `requireAuth` + `requireAdmin`, e as duas novas estão — o router monta as
+// `requireAuth` + `requireAdmin`, e as duas novas estão, o router monta as
 // guardas no topo e as rotas entram depois, o que os dois testes acima verificam
 // por posição. 57 -> 58 em 2026-08-17, com `GET /admin/online-now` (presença do
 // card "Atividade agora" da Visão); ela entra depois dos dois `router.use` do

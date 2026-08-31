@@ -589,10 +589,10 @@ async function coletarContextoDeChurn(
  *
  * DE ONDE VEM O EFEITO, nas duas fontes que existem, deduplicado por assinatura:
  *
- *   (a) `subscriptions.canceled_at` — escrito quando a assinatura termina de
+ *   (a) `subscriptions.canceled_at`, escrito quando a assinatura termina de
  *       verdade, pelo webhook `customer.subscription.deleted`, pelo cron
  *       `process-cancellations` ou pela revogacao administrativa;
- *   (b) `subscription_cancellations` com `status='completed'` — o registro
+ *   (b) `subscription_cancellations` com `status='completed'`, o registro
  *       proprio, que sobrevive mesmo se a linha de assinatura for alterada.
  *
  * POR QUE AS DUAS. Ate 2026-07-31 so (a) era consultada, e (a) tem um buraco
@@ -605,7 +605,7 @@ async function coletarContextoDeChurn(
  * unica protecao era a idade da base, e ela expira sozinha. Medido em
  * 2026-07-31: a assinatura mais antiga e de 13/07 e o periodo mais curto termina
  * em 13/08, entao por volta de 12/08 a guarda de idade deixaria de valer e a
- * funcao passaria a devolver `0 / N = 0%` — um zero CONFIANTE sobre uma base em
+ * funcao passaria a devolver `0 / N = 0%`, um zero CONFIANTE sobre uma base em
  * que nenhuma assinatura teve a chance de terminar. Zero medido e zero por
  * impossibilidade de medir sao coisas diferentes, e so a segunda e mentira.
  * A guarda nova pergunta o que de fato importa: ja houve algum periodo

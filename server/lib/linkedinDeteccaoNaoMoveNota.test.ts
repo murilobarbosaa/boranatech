@@ -25,7 +25,7 @@ import { describe, expect, it } from "vitest";
  *
  * Enumera DA FONTE, no molde de `aiUsageTool.test.ts`: lê o arquivo, recorta o
  * bloco dos avaliadores e afirma sobre o que está lá dentro. E afirma o TOTAL
- * de usos no arquivo inteiro, não só a pertinência — um guard que responde "os
+ * de usos no arquivo inteiro, não só a pertinência, um guard que responde "os
  * que eu conheço estão fora" é inútil; este responde "existe exatamente 1, e é
  * este".
  */

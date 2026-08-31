@@ -1158,7 +1158,7 @@ async function reconcileExpiredSubscriptions() {
  * Teto do lote de expiracao de boleto. Paginado por dentro, mas limitado: uma
  * rodada que tentasse expirar milhares de linhas de uma vez seguraria o lock do
  * cron e competiria com o resto do job. O que sobra e pego na proxima rodada
- * (a cada 6 horas), e `capAtingido` na resposta diz quando sobrou — corte
+ * (a cada 6 horas), e `capAtingido` na resposta diz quando sobrou, corte
  * silencioso e a classe de defeito que este projeto ja documentou.
  */
 const BOLETO_EXPIRY_BATCH = 200;
@@ -1362,7 +1362,7 @@ router.post(
     try {
       // `?full=1` varre o HISTORICO INTEIRO, ignorando `days`. Sob demanda, nao
       // no agendamento: o diario continua barato e pega o caso novo em horas, e
-      // o full e a rede para o que ja escapou dele — foi assim que o orfao de
+      // o full e a rede para o que ja escapou dele, foi assim que o orfao de
       // 2026-07-19 ficou 26 dias invisivel para um job que reportava sucesso.
       const full = req.query.full === "1" || req.query.full === "true";
       const scan = await detectOrphanPayments(

@@ -16,7 +16,7 @@ import { supabaseAdmin } from "./supabaseAdmin";
 // A UNIDADE DO `cost` E DOLAR, e o nome do campo nao diz isso porque ele veio de
 // antes de a unidade importar. `cost_estimate` e gravado por `logAiUsage` com o
 // retorno de `estimateCostFromTokens`, que multiplica tokens pela tabela
-// `MODEL_PRICING` de `server/lib/aiTools.ts` — declarada, no proprio arquivo,
+// `MODEL_PRICING` de `server/lib/aiTools.ts`, declarada, no proprio arquivo,
 // como "US$ por 1 milhao de tokens". Ate 2026-08-14 este modulo dizia na
 // docstring "custo total em reais" e o admin formatava com `currency: "BRL"`:
 // o painel exibia R$ 2,41 onde o valor era US$ 2,41.

@@ -140,7 +140,7 @@ export interface OrphanPaymentScan {
   orphans: number;
   /**
    * Orfas que pedem ACAO: exclui `modo_teste` e `conta_excluida`. E este numero
-   * que decide se o cron sai como 'partial', nao o bruto — senao um ruido
+   * que decide se o cron sai como 'partial', nao o bruto, senao um ruido
    * conhecido deixa o job amarelo para sempre e ninguem olha mais.
    */
   orphansAcionaveis: number;
@@ -552,7 +552,7 @@ const CATEGORIAS_IGNORADAS: ReadonlySet<OrphanCategory> =
  *
  * Existe por um erro cometido em 2026-08-14: a primeira execucao de verificacao
  * do modo `full` foi feita sob a regra "somente leitura", e ela gravou uma linha
- * em producao — porque `detectOrphanPayments` sempre persistiu, e quem rodou
+ * em producao, porque `detectOrphanPayments` sempre persistiu, e quem rodou
  * (eu) so olhou para as chamadas a Stripe ao julgar se a operacao era de
  * leitura. "Somente leitura" nao e propriedade da intencao de quem chama, e sim
  * da funcao; sem esta opcao, a regra era inverificavel na pratica.

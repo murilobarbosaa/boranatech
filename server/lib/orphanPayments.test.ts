@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * O defeito medido: o órfão real desta base (`sub_1Tv4SX…`, pago em
  * 2026-07-19) só apareceu numa varredura manual em 2026-08-14, **26 dias
  * depois**. O job diário rodava com janela de 7 dias e reportava "0 órfãos"
- * todo dia — certo sobre a janela que enxergava, e inútil. É a mesma classe que
+ * todo dia, certo sobre a janela que enxergava, e inútil. É a mesma classe que
  * o CLAUDE.md persegue: instrumento que falha PASSANDO, sobre uma superfície
  * menor que a do problema.
  *
@@ -167,7 +167,7 @@ beforeEach(() => {
 describe("alcance da varredura", () => {
   it("modo full NÃO manda corte inferior para a Stripe", async () => {
     // CONTROLE NEGATIVO da correção inteira: se `created` voltar a aparecer,
-    // o modo full vira uma janela grande — que continua sendo uma janela, e o
+    // o modo full vira uma janela grande, que continua sendo uma janela, e o
     // órfão de 26 dias volta a ser invisível assim que passar do limite.
     stripeSpy.sessions = [sessao()];
     supaSpy.chavesExistentes = ["sub_1"];
