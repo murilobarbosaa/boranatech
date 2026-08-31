@@ -12,6 +12,7 @@ import {
 import {
   decidirManutencao,
   detalheIncompleto,
+  metadadoTemMudanca,
   etiquetaParaProjeto,
   montarSentryData,
   type CardParaManutencao,
@@ -555,6 +556,7 @@ async function manter(
       rel.podados.push(item);
     } else {
       rel.inalterados += 1;
+      let recoletouDetalhe = false;
       // Recoleta do detalhe que ficou incompleto, com teto proprio: 1 requisicao
       // por card, mesmo custo da ingestao.
       if (
@@ -571,10 +573,25 @@ async function manter(
             falha: null,
             agoraIso,
           });
+          recoletouDetalhe = true;
           rel.recoletados.push(item);
         }
       }
-      await escritor.atualizarTarefa(card.id, metadado);
+      // SEM MUDANCA, SEM UPDATE. Motivo por extenso em `metadadoTemMudanca`: o
+      // trigger `admin_tasks_set_updated_at` carimba `updated_at` em qualquer
+      // update, entao gravar so o `sentry_last_checked_at` fazia os 57 cards
+      // vinculados subirem juntos ao topo de toda ordenacao por atualizacao, a
+      // cada passada. Os outros tres ramos (reabrir, ressuscitar, podar) seguem
+      // gravando sempre, porque neles houve mudanca de estado de verdade.
+      if (
+        metadadoTemMudanca({
+          lastSeenNovo: issue?.lastSeen,
+          lastSeenPersistido: card.sentry_last_seen ?? null,
+          recoletouDetalhe,
+        })
+      ) {
+        await escritor.atualizarTarefa(card.id, metadado);
+      }
     }
   }
 }

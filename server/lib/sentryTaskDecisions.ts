@@ -180,6 +180,51 @@ const MS_POR_DIA = 24 * 60 * 60 * 1000;
  * reabre e `archived_at` nulo nao ressuscita, porque sem a base nao ha
  * comparacao possivel e agir sobre base incerta e pior que nao agir.
  */
+/**
+ * A varredura tem algo REAL para gravar neste card?
+ *
+ * O DEFEITO, medido em 2026-08-31. O ramo "inalterado" de `manter()` chamava
+ * `atualizarTarefa` sempre, com um payload que muitas vezes so tinha
+ * `sentry_last_checked_at`. Como `admin_tasks` tem o trigger
+ * `admin_tasks_set_updated_at` (migration 20260727160000 linha 289), que roda
+ * `set_updated_at()` incondicionalmente (`new.updated_at = now()`), TODO card
+ * vinculado ganhava `updated_at` novo a cada passada. Sao 57 cards vinculados
+ * hoje, e em 30/08 os 57 subiram ao topo de qualquer ordenacao por atualizacao
+ * ao mesmo tempo, o que pareceu reabertura em massa e custou uma investigacao
+ * inteira antes de virar "foi a varredura".
+ *
+ * O CONSERTO E NAO EMITIR O UPDATE, nunca mexer no trigger: `set_updated_at()` e
+ * compartilhado por varias tabelas e um `WHEN` ali mudaria o significado de
+ * `updated_at` em todas elas para resolver o problema de uma.
+ *
+ * O QUE ISSO CUSTA, e por que hoje custa zero. `sentry_last_checked_at` ordena a
+ * fila de manutencao (`sentryTaskIntake.ts:460`, ascendente com `nullsFirst`) sob
+ * um teto de 200 por run. Se ele parar de avancar, os cards quietos ficam
+ * eternamente na frente e os que passarem do teto nunca seriam examinados.
+ * MEDIDO em 2026-08-31: existem 57 cards com `sentry_numeric_id`, contra teto de
+ * 200. O `.limit` nao trunca, entao todo card e examinado em toda run e a
+ * ordenacao nao esta fazendo rotacao nenhuma. Quando o numero de vinculados se
+ * aproximar de 200 essa conta muda, e ai a fila precisa de um criterio de
+ * rotacao que nao dependa de uma coluna guardada pelo trigger de `updated_at`.
+ *
+ * `sentry_last_seen` E mudanca real: ele so muda quando a issue teve evento
+ * novo, e e ele que `decidirManutencao` usa para medir silencio. Escrever o
+ * valor identico ao que ja esta la nao e.
+ */
+export function metadadoTemMudanca(params: {
+  /** lastSeen fresco do lote; undefined quando a issue nao veio. */
+  lastSeenNovo: string | undefined;
+  /** `sentry_last_seen` ja persistido no card. */
+  lastSeenPersistido: string | null;
+  /** O detalhe do Sentry foi recoletado nesta run. */
+  recoletouDetalhe: boolean;
+}): boolean {
+  const { lastSeenNovo, lastSeenPersistido, recoletouDetalhe } = params;
+  if (recoletouDetalhe) return true;
+  if (!lastSeenNovo) return false;
+  return lastSeenNovo !== lastSeenPersistido;
+}
+
 export function decidirManutencao(params: {
   card: CardParaManutencao;
   /** lastSeen FRESCO, do lote. undefined se a issue nao veio. */
