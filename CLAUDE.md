@@ -21,6 +21,29 @@
 - Verificar nos dois sentidos: "o que declarei existe?" não é a mesma pergunta que "o que existe está declarado?" (detalhe: `docs/postmortems-instrumentos.md#verificar-nos-dois-sentidos`).
 - Conteúdo e copy: nunca inventar dado (números de mercado, salários, instituições). Sem fonte, suavizar pra qualitativo ou remover.
 
+## Licoes de verificacao (frente dark mode, ago/2026)
+
+1. Diff entre pontas divergentes: antes do merge, comparar contra o
+   merge-base; depois do merge, contra origin/main. `A..B` entre pontas
+   mede o proprio trabalho invertido.
+2. Verificacao em CSS minificado e por valor computado e posicao de
+   origem, nunca por texto: o minificador funde blocos de mesmo seletor.
+3. Realinhamento de branch sem commits: `git merge --ff-only origin/main`
+   apos `git rev-list --count origin/main..HEAD` retornar 0. `--no-rebase`
+   e opcao de git pull, nao de git merge.
+4. Auditoria de sombra e por luminancia (tinta vs acento), nao por lista
+   de hex.
+5. Toda var(--color-*) referenciada precisa existir no :root do bundle:
+   o Tailwind v4 so emite variaveis usadas por utilitaria, e var()
+   pendurado renderiza transparente sem erro.
+6. Fumaca de producao no dominio canonico e com curl -L: o www devolve
+   308 e sem -L mede-se o redirect, nao o site.
+7. Servidor local de revisao: confirmar o cwd do processo dono da porta
+   (/proc/<pid>/cwd) antes de capturar; outra sessao pode estar servindo
+   outro worktree na mesma porta.
+8. checkCspHashes.mts so varre lancamento.html: script inline novo em
+   client/index.html passa no CI e quebra so no navegador (divida aberta).
+
 ## Stack
 
 - **Frontend**: React 19 SPA, Vite 7, TypeScript 5.6 (`strict: true`)
@@ -171,6 +194,33 @@ Usar `-m` direto evita o editor abrir e tentar gerar descrição estendida autom
 | Emerald (grátis) | `emerald-*`                                   |
 
 Tipografia de seção: `font-display font-black` para headings; labels de seção `text-sm font-black uppercase tracking-[0.2em]`.
+
+## Tema (dark mode)
+
+O tema escuro e aplicado pela classe `dark` no `<html>` (ThemeProvider em
+contexts/ThemeContext.tsx; anti-flash em client/public/theme-init.js). A
+paleta escura vive em client/src/index.css em blocos GERADOS por script
+(cabecalho "GERADO por scripts/gen-dark-palette.py"): nao editar a mao;
+o script esta registrado integralmente em darkmode-09/10/11 dos registros
+da frente e deve ser recriado a partir de la para regenerar.
+
+Regras para codigo novo:
+
+1. Cor de estilo usa variavel ou escala Tailwind, nunca hex cravado.
+   Hex em valor arbitrario, style inline ou rgba() NAO recebe tema.
+2. Hex que vira dado (estado, payload, coluna) fica hex. Nunca trocar
+   por var() o que passa por validacao ou persistencia.
+3. Secao de largura total escura por design recebe a classe
+   bnt-keep-colors no wrapper (mantem as cores do claro nos dois temas).
+   Cards e chips pequenos nao recebem.
+4. Cards com tinta de escala (bg-violet-100 etc.) ficam pastel no escuro
+   por contexto automatico; texto sobre fundo amarelo idem. Nao usar
+   utilitarias dark: (o projeto nao usa em lugar nenhum).
+5. Sombra deslocada usa var(--bnt-shadow); tinta usa var(--bnt-ink);
+   texto sobre amarelo usa text-ink-on-accent.
+6. Graficos recharts usam var(--chart-1..5), var(--border),
+   var(--muted-foreground); var() e valido em fill/stroke de SVG.
+7. Impressao e sempre clara (beforeprint remove a classe dark).
 
 ## Deploy
 
