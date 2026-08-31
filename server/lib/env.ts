@@ -181,6 +181,20 @@ export const env = {
   redisUrl: process.env.REDIS_URL || "",
   // DSN do Sentry (server). Ausente: Sentry desativado, no-op total.
   sentryDsn: process.env.SENTRY_DSN || "",
+  // ESCAPE para exercitar o Sentry FORA de producao, deliberado e explicito.
+  //
+  // Por padrao o SDK do servidor nao inicializa quando `isProd` e falso (ver
+  // server/lib/sentry.ts). Isso fecha o buraco medido em 2026-08-31, em que
+  // `pnpm dev` com o `.env` de producao mandava erro da maquina local para o
+  // projeto de producao e virava card no CRM. Mas fechar sem valvula tornaria
+  // impossivel testar o pipeline, e instrumento que ninguem consegue exercitar
+  // apodrece: quem quiser conferir que um `captureMessage` novo chega ao Sentry
+  // liga esta variavel de proposito, numa sessao, e desliga.
+  //
+  // O nome diz o que faz e nao esconde o risco. Ligada, os eventos vao para o
+  // MESMO projeto de producao, com `environment` do `NODE_ENV`, entao quem liga
+  // esta escolhendo poluir e sabe disso.
+  sentryEnableNonProd: process.env.SENTRY_ENABLE_NON_PROD === "true",
   // API REST do Sentry (leitura de issues na aba Bugs & Erros do admin).
   // Qualquer uma das tres ausente desativa a integracao: o endpoint responde
   // 503 sentry_not_configured, nada mais quebra.
