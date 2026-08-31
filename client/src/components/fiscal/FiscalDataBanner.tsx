@@ -84,19 +84,19 @@ export default function FiscalDataBanner() {
     <>
       <div
         role="status"
-        className="border-b-2 border-slate-900 bg-[#FFB800] px-4 py-3"
+        className="border-b-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-3"
       >
         {/* TODO(Ana): copy do aviso de dados fiscais pendentes (frase, rotulo
             do botao de acao, rotulo e aria-label do botao de dispensa). */}
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
-          <p className="flex-1 text-sm font-bold text-slate-950">
+          <p className="flex-1 text-sm font-bold text-ink-on-accent">
             Falta pouco para suas notas fiscais: complete seus dados fiscais
             para receber a nota da sua assinatura.
           </p>
           <button
             type="button"
             onClick={() => setModalAberto(true)}
-            className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px"
+            className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px"
           >
             Completar dados
           </button>
@@ -111,7 +111,7 @@ export default function FiscalDataBanner() {
               }
             }}
             aria-label="Dispensar aviso"
-            className="rounded-full border-2 border-slate-900 px-3 py-1.5 text-sm font-black text-slate-950"
+            className="rounded-full border-2 border-slate-900 px-3 py-1.5 text-sm font-black text-ink-on-accent"
           >
             Agora não
           </button>

@@ -57,7 +57,7 @@ export default function LinkedinHistory({
     return (
       <div
         role="alert"
-        className="rounded-2xl border-2 border-amber-500 bg-amber-50 p-5 text-slate-900 shadow-[3px_3px_0_#0f172a]"
+        className="rounded-2xl border-2 border-amber-500 bg-amber-50 p-5 text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)]"
       >
         <p className="font-black">
           Não conseguimos carregar seu histórico agora.

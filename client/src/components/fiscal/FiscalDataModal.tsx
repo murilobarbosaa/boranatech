@@ -61,7 +61,7 @@ function maskCep(raw: string): string {
 }
 
 const inputClass =
-  "w-full rounded-[11px] border-[2.5px] border-slate-900 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-950 shadow-[3px_3px_0_#0f172a] outline-none focus:-translate-y-px focus:shadow-[4px_4px_0_#0f172a]";
+  "w-full rounded-[11px] border-[2.5px] border-slate-900 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] outline-none focus:-translate-y-px focus:shadow-[4px_4px_0_var(--bnt-shadow)]";
 
 const labelClass =
   "mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-700";
@@ -195,7 +195,7 @@ export default function FiscalDataModal({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto border-[2.5px] border-slate-900 bg-[#faf8f4] shadow-[6px_6px_0_#7c3aed]">
+      <DialogContent className="max-h-[85vh] overflow-y-auto border-[2.5px] border-slate-900 bg-[var(--brand-cream)] shadow-[6px_6px_0_#7c3aed]">
         {/* TODO(Ana): titulo nos dois contextos (checkout e perfil) e o
             paragrafo de finalidade logo abaixo. */}
         <DialogHeader>
@@ -229,9 +229,9 @@ export default function FiscalDataModal({
                     set("documento", "");
                   }}
                   aria-pressed={values.tipoDocumento === tipo}
-                  className={`flex-1 rounded-[11px] border-[2.5px] border-slate-900 px-3 py-2 text-sm font-black uppercase shadow-[3px_3px_0_#0f172a] transition-all ${
+                  className={`flex-1 rounded-[11px] border-[2.5px] border-slate-900 px-3 py-2 text-sm font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] transition-all ${
                     values.tipoDocumento === tipo
-                      ? "bg-[#FFB800] text-slate-950"
+                      ? "bg-[var(--brand-yellow)] text-ink-on-accent"
                       : "bg-white text-slate-600"
                   }`}
                 >
@@ -420,7 +420,7 @@ export default function FiscalDataModal({
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center justify-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-4 py-2.5 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {/* TODO(Ana): os tres rotulos do botao de salvar (salvando, e os
                 dois textos por contexto). */}

@@ -36,7 +36,7 @@ function formatData(iso: string | null): string {
 }
 
 const downloadClass =
-  "rounded-full border-2 border-[#1a1a1a] bg-white px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px";
+  "rounded-full border-2 border-[var(--bnt-ink)] bg-white px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px";
 
 export default function FiscalInvoicesSection() {
   const nfseEnabled = useNfseEnabled();
@@ -76,7 +76,7 @@ export default function FiscalInvoicesSection() {
   if (!nfseEnabled) return null;
 
   return (
-    <section className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">
+    <section className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8">
       {/* TODO(Ana): eyebrow e titulo da secao de notas do perfil. */}
       <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">
         Notas fiscais

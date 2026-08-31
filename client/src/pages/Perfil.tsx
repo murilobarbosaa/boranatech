@@ -2129,7 +2129,7 @@ export default function Perfil() {
               finalidade, que e o oposto do que a propria copy do bloco promete
               ("dados usados na emissao"). */}
           {nfseEnabled ? (
-            <section className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">
+            <section className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] md:p-8">
               {/* TODO(Ana): eyebrow, titulo e subtitulo do bloco de dados
                   fiscais, e o rotulo do botao (nos dois estados). */}
               <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">
@@ -2181,7 +2181,7 @@ export default function Perfil() {
               <button
                 type="button"
                 onClick={() => setFiscalModalOpen(true)}
-                className="mt-6 inline-flex items-center justify-center rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-3 font-display font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-y-0.5"
+                className="mt-6 inline-flex items-center justify-center rounded-full border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] px-5 py-3 font-display font-black text-ink-on-accent shadow-[4px_4px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5"
               >
                 {fiscalCompleto ? "Editar dados fiscais" : "Completar dados"}
               </button>

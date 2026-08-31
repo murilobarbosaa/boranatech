@@ -169,7 +169,7 @@ export function LinkedinLastroDashboard() {
   );
 
   return (
-    <div className="rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[5px_5px_0_#0f172a]">
+    <div className="rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[5px_5px_0_var(--bnt-shadow)]">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-display text-lg font-black text-slate-950">
           {/* TODO(Ana): titulo do bloco de violacoes de lastro. */}

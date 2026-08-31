@@ -106,7 +106,7 @@ function Contador({
         : "border-slate-900 bg-white text-slate-950";
   return (
     <div
-      className={`rounded-2xl border-2 p-4 shadow-[3px_3px_0_#0f172a] ${cor}`}
+      className={`rounded-2xl border-2 p-4 shadow-[3px_3px_0_var(--bnt-shadow)] ${cor}`}
     >
       <p className="text-xs font-black uppercase tracking-wider opacity-70">
         {label}
@@ -234,7 +234,7 @@ export function FiscalInvoicesDashboard() {
             onClick={() => setFiltro(opcao.valor)}
             className={`rounded-full border-2 border-slate-900 px-3 py-1.5 text-xs font-black uppercase transition-all ${
               filtro === opcao.valor
-                ? "bg-[#FFB800] text-slate-950"
+                ? "bg-[var(--brand-yellow)] text-ink-on-accent"
                 : "bg-white text-slate-600"
             }`}
           >
@@ -315,7 +315,7 @@ export function FiscalInvoicesDashboard() {
                           type="button"
                           onClick={() => void handleRetry(nota.id)}
                           disabled={retrying === nota.id}
-                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-50"
+                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-50"
                         >
                           {retrying === nota.id ? "..." : "Reprocessar"}
                         </button>

@@ -1723,7 +1723,7 @@ export default function LinkedinAnalisar() {
                               {headlineCortada ? (
                                 <p
                                   role="status"
-                                  className="mt-2 rounded-lg bg-[#FFB800]/20 p-2 text-xs font-bold text-slate-900"
+                                  className="mt-2 rounded-lg bg-[var(--brand-yellow)]/20 p-2 text-xs font-bold text-ink-on-accent"
                                 >
                                   A headline que lemos pode estar cortada.
                                   Corrija o campo abaixo antes de analisar.
