@@ -161,7 +161,7 @@ export default function Renovar() {
               </p>
               <p className="mx-auto mt-4 max-w-md text-sm font-semibold leading-relaxed text-slate-600">
                 Sua assinatura vence em {formatDueDate(view.preview.periodEnd)}.
-                Ao renovar, o novo período começa quando o atual termina — você
+                Ao renovar, o novo período começa quando o atual termina, você
                 não perde nenhum dia.
               </p>
               <button

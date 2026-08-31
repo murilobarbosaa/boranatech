@@ -6,7 +6,7 @@ import { useState } from "react";
  * A terceira coluna é a que mais importa hoje, e não é enfeite: 7 ferramentas
  * gravam custo 0 porque o call site não passa `costEstimate` para `logAiUsage`.
  * Enquanto isso não fecha (Fase 5), o custo total é um PISO, e esta coluna diz
- * de onde vem a diferença — ou seja, ela prioriza o trabalho da Fase 5 em vez de
+ * de onde vem a diferença, ou seja, ela prioriza o trabalho da Fase 5 em vez de
  * deixar "conserte os 7 call sites" como uma lista sem ordem.
  */
 

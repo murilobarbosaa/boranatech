@@ -7,7 +7,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
  * `BlocoBoundary.test.tsx` prova a contencao no componente isolado. Este prova
  * na PAGINA: com um bloco real lancando no render, os vizinhos continuam de pe e
  * a navegacao entre abas sobrevive. E a diferenca entre "o boundary funciona" e
- * "o boundary esta no lugar certo" — um wrapper esquecido em volta do bloco
+ * "o boundary esta no lugar certo", um wrapper esquecido em volta do bloco
  * errado passaria no primeiro teste e falharia aqui.
  */
 
@@ -59,7 +59,7 @@ class ResizeObserverStub {
 // O funil lanca no render, como lancaria com um payload de shape inesperado.
 // O bloco sacrificado passou a ser o FunnelDigest: o `PaidFunnel` saiu da Visão
 // na Fase 4 (funil agora vem de tabelas locais). O que o teste prova continua
-// sendo o mesmo — um bloco que estoura não leva a aba junto.
+// sendo o mesmo, um bloco que estoura não leva a aba junto.
 vi.mock("@/components/admin/overview/FunnelDigest", () => ({
   FunnelDigest: () => {
     throw new Error("campo ausente no payload do funil");

@@ -4,7 +4,7 @@ import { Line, LineChart, ResponsiveContainer } from "recharts";
  * Sparkline de card: a FORMA da série, sem eixos, sem grade, sem tooltip.
  *
  * Existe para responder "isto vinha subindo?" no mesmo olhar que lê o número.
- * Quem quiser valor por dia abre o gráfico grande logo abaixo — duplicar eixos e
+ * Quem quiser valor por dia abre o gráfico grande logo abaixo, duplicar eixos e
  * rótulos aqui competiria com ele e roubaria a altura do card.
  *
  * MESMA LIB dos gráficos existentes (recharts), sem dependência nova.

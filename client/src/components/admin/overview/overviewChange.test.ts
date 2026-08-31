@@ -67,7 +67,7 @@ describe("rotuloDeVariacao", () => {
     // "Sem comparação" sozinho não explica; a data explica. O instante é
     // realista de propósito: meia-noite UTC é um valor que o campo (timestamptz
     // de created_at) praticamente nunca tem, e testar com ele levou, na fatia 5,
-    // a "consertar" a exibição para UTC — corrigindo o sintoma pelo lado errado.
+    // a "consertar" a exibição para UTC, corrigindo o sintoma pelo lado errado.
     const r = rotuloDeVariacao(
       { disponivel: false, atual: 10, motivo: "historico_insuficiente" },
       "2026-07-16T08:10:01Z",

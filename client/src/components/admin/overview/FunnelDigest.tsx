@@ -157,7 +157,7 @@ export function FunnelDigest({
                     </p>
                     <p className="font-display text-xl font-black text-slate-950">
                       {p.taxaSobreAnterior === null ? (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-slate-400">-</span>
                       ) : (
                         pct(p.taxaSobreAnterior)
                       )}

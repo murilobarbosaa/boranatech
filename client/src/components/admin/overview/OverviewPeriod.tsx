@@ -1,7 +1,7 @@
 // Seletor de período da aba Visão.
 //
 // TRÊS janelas: 7 / 30 / tudo. 90 dias NÃO é oferecida porque a série de
-// snapshots começou em 16/07 e a de receita em 13/07 — um seletor que oferece
+// snapshots começou em 16/07 e a de receita em 13/07, um seletor que oferece
 // uma janela que não existe preenche o gráfico com nada e chama isso de dado.
 //
 // "Tudo" declara a data de início real ao lado, para "tudo" não parecer "desde

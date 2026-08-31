@@ -37,13 +37,13 @@ function pct(valor: number): string {
  * `historicoDesde` e `seriesStart` vêm de `timestamptz` (`profiles.created_at`,
  * `finance_transactions.occurred_at`): são instantes, e para um instante o dia
  * LOCAL é o correto a exibir. Na fatia 5 eu tinha forçado `timeZone: "UTC"`
- * aqui, corrigindo o sintoma pelo lado errado — um teste com meia-noite UTC
+ * aqui, corrigindo o sintoma pelo lado errado, um teste com meia-noite UTC
  * falhava, e a resposta foi mudar o fuso da exibição em vez de reconhecer que o
  * valor de teste é que não representava o campo. Para instante, UTC mostra o dia
  * errado na direção oposta (um evento das 22h em Brasília apareceria como do dia
  * seguinte).
  *
- * Quem precisa do outro caso — coluna `date`, onde o dia é o próprio dado — usa
+ * Quem precisa do outro caso, coluna `date`, onde o dia é o próprio dado, usa
  * `formatarDiaCivil` de `@shared/brasiliaDay`, que recorta a string sem passar
  * por `new Date`.
  */

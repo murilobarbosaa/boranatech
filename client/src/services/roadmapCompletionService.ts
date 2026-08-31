@@ -106,7 +106,7 @@ export async function registerCompletion(
 // cache em memoria PRIMEIRO (a proxima leitura ja ve celebrada, mesmo antes ou
 // apesar da resposta do server) e so entao dispara o POST. Fire-and-forget:
 // falha nao e visivel e, no pior caso, rende um disparo extra numa sessao
-// futura (cache perdido, marcacao nao persistida) — nunca erro pro usuario.
+// futura (cache perdido, marcacao nao persistida), nunca erro pro usuario.
 export async function markCelebrated(
   userId: string,
   slug: string,

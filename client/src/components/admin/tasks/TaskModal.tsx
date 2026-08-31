@@ -638,7 +638,7 @@ export function TaskModal({
           <header className="flex shrink-0 items-center justify-between gap-3 border-b-2 border-slate-200 py-3 pl-4 pr-14 sm:pl-6">
             <div className="flex min-w-0 items-center gap-2">
               <span className="font-mono text-xs font-bold text-slate-500">
-                {task ? shortIdOf(boardKey, task.number) : "—"}
+                {task ? shortIdOf(boardKey, task.number) : "-"}
               </span>
               {savingLabel ? (
                 <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wide text-slate-400">

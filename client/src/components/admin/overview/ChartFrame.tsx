@@ -45,7 +45,7 @@ export function ChartFrame({
   /**
    * Slot opcional logo abaixo da tendência, para badges POR SÉRIE. Existe porque
    * um gráfico com duas séries em unidades diferentes (receita em centavos,
-   * custo em dólar) não cabe numa frase de tendência só — a v1 tentou e imprimiu
+   * custo em dólar) não cabe numa frase de tendência só, a v1 tentou e imprimiu
    * centavos crus na tela.
    */
   extra?: ReactNode;
