@@ -223,6 +223,104 @@ seguidas:
 
 Cada quebra e cada restauração (conferida por md5) estão nos relatórios de fase.
 
+## Quando ARQUIVAR uma issue no Sentry em vez de resolver
+
+Procedimento operacional, escrito em 2026-08-31 depois de medir o ciclo abaixo.
+
+### O ciclo que este procedimento evita
+
+Mover um card para Concluído empurra `resolved` à issue no Sentry
+(`server/routes/adminTasks.ts:1457`, via `alvoDaTransicao`). A documentação do
+Sentry é explícita: *"A plain **Resolve** treats any later event as a
+regression"*. Então, quando um evento novo chega:
+
+1. o Sentry marca a issue como regressão e volta o status para `unresolved`;
+2. o Sentry manda e-mail de regressão;
+3. a varredura do CRM vê um evento posterior ao `completed_at` e reabre o card.
+
+Para erro que **nunca vai parar de acontecer**, esse ciclo não tem fim. Medido:
+`chunk_reload` (`BORANATECH-FRONT-R`) e `vite_preload_error`
+(`BORANATECH-FRONT-T`) foram marcados como regressão em três releases seguidas
+(`832e5208`, `6a57d4d2`, `8f2f2d39`), porque eles medem **deploy**, não falha:
+todo deploy troca o bundle, uma aba antiga tenta carregar um chunk que não existe
+mais, e o evento chega.
+
+### Quando arquivar em vez de resolver
+
+Arquive quando o card não descreve um defeito a corrigir, e sim um fato que o
+produto vai continuar produzindo. Duas famílias, ambas já mapeadas:
+
+- **Telemetria que mede recuperação, não falha.** O sinal existe para medir, e
+  disparar é o comportamento correto do mecanismo.
+- **Ambiente do usuário.** Senha errada, e-mail já cadastrado, link de e-mail
+  expirado, consentimento negado. Não há correção de produto possível.
+
+Resolva (Concluído normal) quando houve **conserto**: o erro deve parar de
+acontecer, e se voltar você QUER saber. A regressão do Sentry é exatamente o
+alarme certo nesse caso, e continua funcionando.
+
+### Os candidatos de hoje
+
+Medição de 2026-08-31 sobre `admin_task_activity`, contando reaberturas feitas
+pelo job (`action = 'reopened'` com `payload->>'origem' = 'sentry'`). Cinco
+cards, de 57 vinculados, com duas reaberturas cada, e os cinco são das duas
+famílias acima:
+
+| Card | Título | Issue | Família |
+| --- | --- | --- | --- |
+| 61 | `chunk_reload` | `BORANATECH-FRONT-R` | telemetria de deploy |
+| 64 | `vite_preload_error` | `BORANATECH-FRONT-T` | telemetria de deploy |
+| 33 | `auth provider failure: access_denied` | `BORANATECH-FRONT-8` | ambiente do usuário |
+| 35 | `auth provider failure: invalid_credentials` | `BORANATECH-FRONT-6` | ambiente do usuário |
+| 40 | `auth provider failure: otp_expired` | `BORANATECH-FRONT-B` | ambiente do usuário |
+
+Nenhum card tinha três ou mais reaberturas, mas o log de atividade só existe
+desde 29/07 (289 linhas). A janela de 33 dias sustenta *quais* cards concentram
+o problema, não uma frequência.
+
+### Como fazer, e o que acontece depois
+
+**No painel do Sentry**, na issue: use Archive. Não há gesto no CRM que faça
+isso, e a ausência é deliberada (ver abaixo).
+
+**Do lado do CRM**, a partir de `a8d398f5`: `decidirManutencao`
+(`server/lib/sentryTaskDecisions.ts`) passa a NÃO reabrir card concluído cuja
+issue esteja arquivada. O card fica em Concluído, o selo "Voltou" não aparece, e
+o motivo registrado no log é `"concluido, evento novo em <data> mas issue
+arquivada no Sentry (ignored)"`, que se distingue de `"concluido, sem evento
+novo"`.
+
+**Estado ausente não é decisão.** Se a issue não vier no lote da varredura, ou
+vier com status desconhecido, o comportamento é o de sempre: reabrir por data.
+Não saber não pode virar "está silenciada".
+
+### ARQUIVAR É PERMANENTE até alguém desarquivar
+
+Este é o ponto que mais importa saber antes de clicar, e ele foi **medido**, não
+suposto, em 2026-08-31 contra a issue `NODE-EXPRESS-6` (com desfazer conferido):
+
+- `PUT {"status":"ignored"}` grava `substatus: "archived_forever"`, e **não**
+  "arquivado até escalar";
+- as duas formas de pedir o modo "até escalar" (`substatus` no corpo e
+  `statusDetails.ignoreUntilEscalating`) foram **aceitas com HTTP 200 e
+  silenciosamente ignoradas**, o que é pior que um 400: quem confiasse na
+  resposta acharia que configurou;
+- `muted` é apelido: a API persiste `ignored`.
+
+Consequência prática: **se o erro voltar a ser um problema de verdade, ninguém
+avisa.** O Sentry não vai desarquivar por volume, e o CRM não vai reabrir o card.
+Arquivar é dizer "eu decido não olhar mais isto", e a revisão dessa decisão é
+humana.
+
+### Por que o CRM não arquiva sozinho
+
+Foi considerado e descartado no mesmo dia, pelo motivo acima. Empurrar o
+silenciamento automaticamente transformaria uma decisão permanente e sem revisor
+num efeito colateral de arrastar um card. `AlvoDoPush`
+(`server/lib/sentryTaskPush.ts:34`) segue com `resolved` e `unresolved` só. O
+gesto de silenciar fica com quem olha o Sentry; o CRM apenas parou de discordar
+dele.
+
 ## O que ficou de fora, e por quê
 
 | Item | Motivo |
