@@ -46,6 +46,7 @@ import {
   createCheckout,
   type CheckoutPaymentMethod,
 } from "@/services/subscriptionService";
+import CompleteProfileModal from "@/components/certificates/CompleteProfileModal";
 import PaymentMethodDialog from "@/components/pro/PaymentMethodDialog";
 import { allowedPaymentMethods } from "@shared/paymentMethods";
 import { apiUrl } from "@/lib/api";
@@ -630,6 +631,13 @@ export default function Checkout() {
   // Tipado como PlanId (nao string inferida): `allowedPaymentMethods` e o
   // dialog indexam por plano, e um string solto passaria plano invalido adiante.
   const [selectedPlan, setSelectedPlan] = useState<PlanId>("pro_semiannual");
+  // Passo de CPF do fluxo Pix. Aberto pelo 422 `cpf_obrigatorio` do backend,
+  // NUNCA por uma checagem propria: o cliente nao le o CPF (o GET /me nao o
+  // devolve, de proposito), e inventar uma checagem aqui criaria uma segunda
+  // fonte de verdade sobre a validade do documento, que divergiria da do
+  // servidor na primeira correcao de regra. O round-trip custa uma requisicao e
+  // deixa o servidor como unica autoridade.
+  const [cpfStepOpen, setCpfStepOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const reduce = useReducedMotion();
@@ -779,6 +787,10 @@ export default function Checkout() {
       } else if (code === "payment_method_not_allowed") {
         // TODO(Ana): copy do erro de meio de pagamento indisponivel no plano.
         toast.error("Essa forma de pagamento não está disponível neste plano.");
+      } else if (code === "cpf_obrigatorio") {
+        // Nao e erro para a pessoa ler: e um passo que falta. Abre a coleta em
+        // vez de um toast, e o `onSaved` retoma o checkout na MESMA interacao.
+        setCpfStepOpen(true);
       } else if (code === "asaas_disabled") {
         // TODO(Ana): copy da indisponibilidade temporaria do Pix.
         toast.error("Pix indisponível no momento. Tente cartão ou boleto.");
@@ -1326,6 +1338,22 @@ export default function Checkout() {
           </div>
         </div>
       </section>
+
+      <CompleteProfileModal
+        open={cpfStepOpen}
+        missing={["cpf"]}
+        onClose={() => setCpfStepOpen(false)}
+        onSaved={() => {
+          setCpfStepOpen(false);
+          // Retoma exatamente o que a pessoa pediu, sem obriga-la a escolher o
+          // metodo de novo.
+          void doCheckout("pix");
+        }}
+        // TODO(Ana): titulo do passo de CPF no fluxo Pix.
+        titulo="Falta o seu CPF"
+        // TODO(Ana): razao visivel de por que pedimos CPF no Pix.
+        motivo="O Pix exige o CPF do pagador para gerar a cobrança. Ele fica só no seu cadastro."
+      />
 
       <PaymentMethodDialog
         planId={selectedPlan}
