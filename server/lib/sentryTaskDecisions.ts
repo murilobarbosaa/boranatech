@@ -225,6 +225,36 @@ export function metadadoTemMudanca(params: {
   return lastSeenNovo !== lastSeenPersistido;
 }
 
+/**
+ * Status que significam ARQUIVADA no Sentry.
+ *
+ * `ignored` e o unico que a API persiste, e isso foi MEDIDO em 2026-08-31
+ * contra a issue real `NODE-EXPRESS-6`, com desfazer verificado: um
+ * `PUT {"status":"muted"}` responde 200 e o `GET` seguinte devolve
+ * `status: "ignored"`. Ou seja, `muted` e apelido, nao um segundo
+ * comportamento. Fica na lista por robustez de leitura (se a API um dia
+ * passar a persistir o apelido, nao ha nada a mudar aqui), e o comentario
+ * existe para ninguem procurar o caso `muted` em producao e nao achar.
+ */
+const STATUS_ARQUIVADA = new Set(["ignored", "muted"]);
+
+/**
+ * A issue esta arquivada no Sentry?
+ *
+ * `undefined` (a issue nao veio no lote) e qualquer valor DESCONHECIDO devolvem
+ * `false`, e essa escolha e a regra inteira: nao saber o status nao pode virar
+ * "esta silenciada". Colapsar ausencia de informacao em decisao e o defeito que
+ * este projeto documenta como o que falha PASSANDO, e aqui ele custaria o pior
+ * dos dois erros: um card que devia reabrir ficaria concluido para sempre, em
+ * silencio, porque o Sentry teve um soluco no dia da varredura.
+ */
+export function issueArquivadaNoSentry(
+  statusNoSentry: string | undefined,
+): boolean {
+  if (!statusNoSentry) return false;
+  return STATUS_ARQUIVADA.has(statusNoSentry);
+}
+
 export function decidirManutencao(params: {
   card: CardParaManutencao;
   /** lastSeen FRESCO, do lote. undefined se a issue nao veio. */
@@ -298,6 +328,41 @@ export function decidirManutencao(params: {
   if (card.completed_at) {
     if (evento === null) {
       return { tipo: "nada", motivo: "concluido, sem evento novo" };
+    }
+    // ISSUE ARQUIVADA NO SENTRY VENCE A DATA.
+    //
+    // O CICLO QUE ISTO QUEBRA, medido em 2026-08-31. Mover o card para
+    // Concluido empurra `resolved` ao Sentry (server/routes/adminTasks.ts:1457,
+    // via alvoDaTransicao). Da documentacao do Sentry: "A plain Resolve treats
+    // any later event as a regression". Entao a issue volta a `unresolved`, o
+    // Sentry manda email de regressao, e esta funcao, que ate aqui olhava SO a
+    // data, reabria o card. Para erro que nunca para de acontecer, esse ciclo
+    // nao tem fim: `chunk_reload` (BORANATECH-FRONT-R) e `vite_preload_error`
+    // (-T) foram marcados como regressao em tres releases seguidas, e a razao e
+    // que eles MEDEM DEPLOY, nao falha: todo deploy troca o bundle, aba velha
+    // quebra, evento novo chega. Os cinco cards com duas reaberturas pelo job
+    // (61, 64, 33, 35, 40) sao dessas duas familias, telemetria e ambiente do
+    // usuario.
+    //
+    // POR QUE O CRM NAO EMPURRA O SILENCIAMENTO, e este comentario existe para
+    // esta condicao nao parecer codigo morto. `AlvoDoPush`
+    // (server/lib/sentryTaskPush.ts:34) so tem `resolved` e `unresolved`, entao
+    // esta condicao SO dispara se alguem arquivar a issue A MAO no painel do
+    // Sentry. E deliberado, e a alternativa foi medida e descartada no mesmo
+    // dia: um `PUT {"status":"ignored"}` grava `substatus: "archived_forever"`,
+    // e NAO "arquivado ate escalar". As duas formas de pedir o modo "ate
+    // escalar" (`substatus` no corpo e `statusDetails.ignoreUntilEscalating`)
+    // foram aceitas com HTTP 200 e silenciosamente IGNORADAS, o que e pior que
+    // um 400: uma implementacao que confiasse na resposta acharia que
+    // configurou. Sem o desarquivamento automatico por volume, empurrar o
+    // silenciamento viraria decisao permanente sem revisor, e `ignoreDuration`
+    // (que funciona) so devolveria o mesmo ruido a cada prazo. O gesto de
+    // silenciar fica com quem olha o Sentry; o CRM apenas para de discordar.
+    if (issueArquivadaNoSentry(statusNoSentry)) {
+      return {
+        tipo: "nada",
+        motivo: `concluido, evento novo em ${lastSeen} mas issue arquivada no Sentry (${statusNoSentry})`,
+      };
     }
     if (evento > Date.parse(card.completed_at)) {
       return {
