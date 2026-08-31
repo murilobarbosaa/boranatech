@@ -1237,13 +1237,77 @@ async function onBoletoAsyncPaymentFailed(
   }
 }
 
+/** Customer da invoice, sem assumir que o campo veio expandido. */
+function customerIdOfInvoice(invoice: Stripe.Invoice): string | null {
+  const c = invoice.customer;
+  if (typeof c === "string") return c;
+  if (c && typeof c === "object" && "id" in c) return String(c.id);
+  return null;
+}
+
 async function onInvoicePaid(
   event: Stripe.Event,
   eventCreatedAt: Date,
 ): Promise<void> {
   const invoice = event.data.object as Stripe.Invoice;
   const subId = subscriptionIdFromInvoice(invoice);
-  if (!subId) return;
+  if (!subId) {
+    // QUARTO SILENCIO DO CAMINHO DE DINHEIRO, irmao dos tres de
+    // `applySubscription`. `invoice.paid` significa que a Stripe RECEBEU o
+    // dinheiro; sem assinatura vinculada nao ha o que ativar, e o `return` mudo
+    // que estava aqui respondia 200 e apagava o pagamento do mapa.
+    //
+    // O CASO MEDIDO, 21/08 06:14:43Z. Invoice avulsa
+    // `in_1U6fTVQ6lxIhx7VyyFnPu9ut` (352RB0DR-0001), criada no painel da Stripe,
+    // R$ 29,90 em boleto, cliente `wssantosdfn24@gmail.com`. O evento chegou, foi
+    // gravado em `billing_events`, passou por aqui e foi descartado. A pessoa
+    // ficou DEZ DIAS sem o Pro que pagou e nenhum instrumento acusou: o
+    // `console.error` nao existia, o detector de orfaos so enxerga Checkout
+    // Session paga (`server/lib/orphanPayments.ts:586-589`) e uma invoice avulsa
+    // nao tem sessao, e o `reconcile` so itera linhas que ja existem.
+    //
+    // O NIVEL E `warning`, E ISSO FOI MEDIDO, nao arbitrado. A duvida legitima
+    // era se `invoice.paid` de assinatura normal tambem cai aqui, o que
+    // transformaria o aviso em ruido. Nao cai: das 173 invoices do historico
+    // inteiro da conta, as 172 de assinatura (142 `subscription_create`, 30
+    // `subscription_cycle`) tem `parent.subscription_details.subscription`
+    // preenchido, e a UNICA sem e a avulsa deste incidente. Este ramo teria
+    // disparado exatamente uma vez em toda a vida da conta.
+    //
+    // `warning` e nao `error` pelo mesmo criterio ja escrito em
+    // `stripe_pagamento_sem_dono`: o dinheiro entrou e alguem precisa agir, mas
+    // nao e plantao. E o 200 continua CERTO: nao ha erro a retentar, porque a
+    // proxima entrega leria a mesma invoice sem assinatura. O que muda aqui e
+    // so o rastro.
+    console.error(
+      `[webhook/stripe] PAGAMENTO SEM ASSINATURA VINCULADA: invoice ${invoice.id} paga ` +
+        `(${invoice.amount_paid} ${invoice.currency}, billing_reason ${invoice.billing_reason}) ` +
+        `sem subscription no parent (evento ${event.type} ${event.id}, customer ` +
+        `${customerIdOfInvoice(invoice) ?? "DESCONHECIDO"}).`,
+    );
+    // Fingerprint fixo por TIPO, nao pelo id da invoice, pela razao de sempre: o
+    // interesse e a serie no tempo, e uma issue por ocorrencia carrega a mesma
+    // informacao que nenhuma. Issue propria e nao reaproveitada de
+    // `stripe_pagamento_sem_assinatura`: aquele e sobre Checkout Session paga sem
+    // subscription, este e sobre INVOICE paga sem subscription, e sao origens
+    // diferentes que pedem conserto diferente.
+    Sentry.captureMessage("stripe_invoice_paga_sem_assinatura", {
+      level: "warning",
+      fingerprint: ["stripe-invoice-paga-sem-assinatura"],
+      tags: { origem: "stripe-webhook", event_type: event.type },
+      extra: {
+        invoice_id: invoice.id,
+        invoice_number: invoice.number,
+        event_id: event.id,
+        customer_id: customerIdOfInvoice(invoice),
+        amount_paid: invoice.amount_paid,
+        currency: invoice.currency,
+        billing_reason: invoice.billing_reason,
+        collection_method: invoice.collection_method,
+      },
+    });
+    return;
+  }
   const sub = await getStripe().subscriptions.retrieve(subId);
   await applySubscription(sub, event, eventCreatedAt);
 }
