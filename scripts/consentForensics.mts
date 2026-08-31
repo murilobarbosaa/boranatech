@@ -316,7 +316,7 @@ async function main() {
     );
   }
 
-  console.log("\n══════ 2.1 — Os 64 quebrados em duas populacoes ══════");
+  console.log("\n══════ 2.1, Os 64 quebrados em duas populacoes ══════");
   console.log(`total de usuarios ......................... ${usuarios.length}`);
   console.log(`com consentimento na versao ATUAL ......... ${comAtual.length}`);
   console.log(`GRUPO A (versao anterior, nao a atual) .... ${grupoA.length}`);
@@ -347,7 +347,7 @@ async function main() {
   );
   console.log("       nao ha explicacao benigna. E o tamanho real do problema (2).)");
 
-  console.log("\n══════ 2.2 — Grupo B por provider de origem ══════");
+  console.log("\n══════ 2.2, Grupo B por provider de origem ══════");
   imprimirDistribuicao(
     "providers do Grupo B",
     grupoB.map((u) => (u.providers.length ? u.providers.join("+") : "(nenhum)")),
@@ -361,7 +361,7 @@ async function main() {
     );
   }
 
-  console.log("\n══════ 2.3 — Quem gravou o consentimento: o signup ou o gate? ══════");
+  console.log("\n══════ 2.3, Quem gravou o consentimento: o signup ou o gate? ══════");
   // Distancia entre o primeiro aceite e a criacao da conta, so para contas criadas
   // sob a versao atual (antes disso o aceite veio de outro fluxo/versao).
   const criadosAposBumpComAtual = comAtual.filter(

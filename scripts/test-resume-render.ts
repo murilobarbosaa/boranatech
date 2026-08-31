@@ -1,5 +1,5 @@
 /**
- * Fase 2A — teste da tool resume-render.
+ * Fase 2A, teste da tool resume-render.
  * Reusa o systemPrompt + responseFormat canônicos de aiTools.ts e chama
  * a OpenAI direto (bypassa Express). Valida com o schema Zod.
  *
@@ -832,7 +832,7 @@ function buildReport(
   const lines: string[] = [];
   const now = new Date().toISOString();
 
-  lines.push(`# Fase 2A — Relatório de Teste: resume-render`);
+  lines.push(`# Fase 2A, Relatório de Teste: resume-render`);
   lines.push("");
   lines.push(
     `> **Modelo:** \`${tool.model}\` · **Temperature:** ${tool.temperature} · **Rodadas por cenário:** ${RUNS} · **Gerado em:** ${now}`,
