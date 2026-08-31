@@ -73,7 +73,7 @@ export const COLOR_FAMILIES: Record<ColorFamily, ColorFamilyConfig> = {
     label: "Criativo",
   },
   institutional: {
-    bg: "bg-[#faf8f4]",
+    bg: "bg-[var(--brand-cream)]",
     fg: "text-slate-900",
     eyebrow: "bg-slate-200",
     label: "Institucional",

@@ -54,7 +54,7 @@ function Disclaimer() {
 }
 
 const actionButtonClass =
-  "inline-flex flex-1 items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-950 bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:bg-[#FFF9E9] hover:shadow-[4px_4px_0_#0f172a]";
+  "inline-flex flex-1 items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-950 bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:bg-[var(--bnt-surface)] hover:shadow-[4px_4px_0_var(--bnt-shadow)]";
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
@@ -135,13 +135,13 @@ function LangSelector({
           dismissed ? "pointer-events-none opacity-0" : "opacity-100"
         }`}
       >
-        <div className="relative w-max max-w-[230px] rounded-[10px] border-[2.5px] border-slate-950 bg-white px-3 py-1.5 text-xs font-black leading-snug text-slate-800 shadow-[2px_2px_0_#0f172a]">
+        <div className="relative w-max max-w-[230px] rounded-[10px] border-[2.5px] border-slate-950 bg-white px-3 py-1.5 text-xs font-black leading-snug text-slate-800 shadow-[2px_2px_0_var(--bnt-shadow)]">
           {/* TODO(Ana): copy do balao */}
           Em qual língua você quer o seu certificado?
           <span className="absolute -bottom-[7px] right-6 h-3 w-3 rotate-45 border-b-[2.5px] border-r-[2.5px] border-slate-950 bg-white" />
         </div>
       </div>
-      <div className="inline-flex items-center gap-1 rounded-full border-[2.5px] border-slate-950 bg-white p-1 shadow-[2px_2px_0_#0f172a]">
+      <div className="inline-flex items-center gap-1 rounded-full border-[2.5px] border-slate-950 bg-white p-1 shadow-[2px_2px_0_var(--bnt-shadow)]">
         {LANGS.map(({ code, label, Flag }) => (
           <button
             key={code}
@@ -155,7 +155,7 @@ function LangSelector({
             aria-pressed={lang === code}
             className={`flex items-center justify-center rounded-full p-1.5 transition-all ${
               lang === code
-                ? "bg-[#FFB800]"
+                ? "bg-[var(--brand-yellow)]"
                 : "opacity-40 grayscale hover:opacity-80"
             }`}
           >
@@ -266,15 +266,15 @@ export default function CertificadoPublico() {
         description="Verifique a autenticidade de um certificado da Bora na Tech."
         url={`/certificados/${code}`}
       />
-      <section className="bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="bg-[var(--brand-cream)] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <div
           className={`mx-auto px-5 pb-20 pt-6 ${wide ? "max-w-6xl" : "max-w-[680px]"}`}
         >
           {loading ? (
             <CenteredSpinner />
           ) : !cert ? (
-            <div className="mt-4 rounded-[16px] border-[3px] border-slate-950 bg-white p-8 text-center shadow-[6px_6px_0_#0f172a]">
-              <span className="inline-flex h-12 w-12 items-center justify-center rounded-full border-[2.5px] border-slate-900 bg-slate-100 shadow-[3px_3px_0_#0f172a]">
+            <div className="mt-4 rounded-[16px] border-[3px] border-slate-950 bg-white p-8 text-center shadow-[6px_6px_0_var(--bnt-shadow)]">
+              <span className="inline-flex h-12 w-12 items-center justify-center rounded-full border-[2.5px] border-slate-900 bg-slate-100 shadow-[3px_3px_0_var(--bnt-shadow)]">
                 <ShieldAlert className="h-6 w-6 text-slate-700" />
               </span>
               <h1 className="mt-4 font-display text-2xl font-black text-slate-950">
@@ -419,7 +419,7 @@ export default function CertificadoPublico() {
                     </p>
                   </div>
 
-                  <div className="flex flex-col gap-5 rounded-[16px] border-[3px] border-slate-950 bg-white p-6 shadow-[5px_5px_0_#0f172a]">
+                  <div className="flex flex-col gap-5 rounded-[16px] border-[3px] border-slate-950 bg-white p-6 shadow-[5px_5px_0_var(--bnt-shadow)]">
                     <InfoRow label={t.recipient} value={cert.holderName} />
                     <div className="grid grid-cols-2 gap-4">
                       <InfoRow
@@ -454,7 +454,7 @@ export default function CertificadoPublico() {
                     {trilhaSkills.tags.map((skill) => (
                       <li
                         key={skill}
-                        className="rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-sm font-bold text-slate-800 shadow-[2px_2px_0_#0f172a]"
+                        className="rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-sm font-bold text-slate-800 shadow-[2px_2px_0_var(--bnt-shadow)]"
                       >
                         {skill}
                       </li>

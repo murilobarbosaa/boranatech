@@ -64,7 +64,7 @@ export default function InglesTrilhaQuiz() {
   return (
     <div className="card-brutal rounded-2xl bg-white p-6">
       <div className="mb-5 flex items-start gap-3">
-        <span className="rounded-xl border-2 border-slate-900 bg-amber-300 p-3 text-slate-950 shadow-[3px_3px_0_#0f172a]">
+        <span className="rounded-xl border-2 border-slate-900 bg-amber-300 p-3 text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]">
           <Wand2 className="h-6 w-6" aria-hidden />
         </span>
         <div>
@@ -95,7 +95,7 @@ export default function InglesTrilhaQuiz() {
                 onClick={() => setNivel(item)}
                 className={`rounded-xl border-2 px-4 py-2 text-left transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                   active
-                    ? "border-slate-900 bg-sky-300 shadow-[3px_3px_0_#0f172a]"
+                    ? "border-slate-900 bg-sky-300 shadow-[3px_3px_0_var(--bnt-shadow)]"
                     : "border-slate-300 bg-white hover:bg-sky-50"
                 }`}
               >
@@ -126,7 +126,7 @@ export default function InglesTrilhaQuiz() {
                 onClick={() => setObjetivo(item)}
                 className={`rounded-full border-2 px-3 py-1.5 text-xs font-black transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                   active
-                    ? "border-slate-900 bg-violet-300 text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                    ? "border-slate-900 bg-violet-300 text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
                     : "border-slate-300 bg-white text-slate-700 hover:bg-violet-50"
                 }`}
               >
@@ -172,7 +172,7 @@ export default function InglesTrilhaQuiz() {
                     href={item.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex h-full items-start gap-3 rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[4px_4px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+                    className="group flex h-full items-start gap-3 rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
                   >
                     <span
                       className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-display text-sm font-black text-white ${
@@ -225,7 +225,7 @@ export default function InglesTrilhaQuiz() {
               <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                 <a
                   href={`#roadmap-nivel-${NIVEL_TO_ROADMAP[nivel].slug}`}
-                  className="group flex flex-1 flex-col rounded-2xl border-2 border-slate-950 bg-emerald-50 p-4 shadow-[4px_4px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+                  className="group flex flex-1 flex-col rounded-2xl border-2 border-slate-950 bg-emerald-50 p-4 shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
                 >
                   <span className="inline-flex w-fit rounded-full border-2 border-slate-900 bg-emerald-200 px-2 py-0.5 text-[0.6rem] font-black uppercase text-emerald-900">
                     grátis

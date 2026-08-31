@@ -106,7 +106,7 @@ export default function RedefinirSenha() {
             <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">
               <span
                 aria-hidden
-                className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-slate-900 bg-red-100 text-red-700 shadow-[3px_3px_0_#0f172a]"
+                className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-slate-900 bg-red-100 text-red-700 shadow-[3px_3px_0_var(--bnt-shadow)]"
               >
                 <AlertCircle className="h-5 w-5" strokeWidth={2.5} />
               </span>
@@ -120,7 +120,7 @@ export default function RedefinirSenha() {
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href="/recuperar-senha"
-                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]"
                 >
                   Solicitar novo link
                 </Link>
@@ -162,13 +162,13 @@ export default function RedefinirSenha() {
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href="/recuperar-senha"
-                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]"
                 >
                   Pedir novo link
                 </Link>
                 <Link
                   href="/login"
-                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
                 >
                   Ir para login
                 </Link>

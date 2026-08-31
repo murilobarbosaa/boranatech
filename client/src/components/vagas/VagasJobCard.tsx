@@ -115,7 +115,7 @@ export default function VagasJobCard({
     >
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {highlight ? (
-          <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-950 bg-[#FFB800] px-2 py-0.5 text-xs font-black text-slate-950">
+          <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-2 py-0.5 text-xs font-black text-ink-on-accent">
             <Star className="h-3 w-3 fill-slate-950" aria-hidden />
             Destaque
           </span>

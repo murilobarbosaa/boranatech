@@ -50,7 +50,7 @@ export default function LinkedinScanCard({
     >
       <div className="flex flex-col items-center gap-3">
         <span
-          className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-slate-950 bg-sky-600 text-white shadow-[3px_3px_0_#0f172a]"
+          className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-slate-950 bg-sky-600 text-white shadow-[3px_3px_0_var(--bnt-shadow)]"
           aria-hidden
         >
           <Linkedin className="h-6 w-6" />

@@ -58,7 +58,7 @@ export default function EmpresaDetalhe() {
           </Link>
         }
         titlePrefix={
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white p-3 shadow-[4px_4px_0_#0f172a]">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white p-3 shadow-[4px_4px_0_var(--bnt-shadow)]">
             <img
               src={company.logoUrl}
               alt=""

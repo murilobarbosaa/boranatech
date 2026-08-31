@@ -196,7 +196,7 @@ function ChestMark() {
         strokeWidth="2"
       />
       <rect x="14" y="14" width="6" height="9" rx="1" fill="#7a5a2e" />
-      <circle cx="17" cy="18" r="1.6" fill="#FFB800" />
+      <circle cx="17" cy="18" r="1.6" fill="var(--brand-yellow)" />
     </svg>
   );
 }

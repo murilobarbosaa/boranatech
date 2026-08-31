@@ -630,7 +630,7 @@ export function TaskModal({
         <DialogContent
           overlayClassName={LAYER_DIALOG}
           // Acima do header do admin: sem isto o topo do modal fica inalcancavel.
-          className={`${LAYER_DIALOG} flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 bg-white p-0 sm:h-[88vh] sm:w-[min(72rem,94vw)] sm:max-w-none sm:rounded-2xl sm:border-2 sm:border-slate-950 sm:shadow-[6px_6px_0_#0f172a]`}
+          className={`${LAYER_DIALOG} flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 bg-white p-0 sm:h-[88vh] sm:w-[min(72rem,94vw)] sm:max-w-none sm:rounded-2xl sm:border-2 sm:border-slate-950 sm:shadow-[6px_6px_0_var(--bnt-shadow)]`}
         >
           {/* `pr-14` reserva a faixa do X do proprio Dialog (`absolute top-4
               right-4`): sem isso a ultima acao passa por baixo dele. Reservar o
@@ -688,13 +688,13 @@ export function TaskModal({
             <DropdownMenu>
               <DropdownMenuTrigger
                 aria-label="Ações da tarefa"
-                className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 shadow-[2px_2px_0_#0f172a] md:hidden"
+                className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] md:hidden"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className={`${LAYER_IN_DIALOG} rounded-xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]`}
+                className={`${LAYER_IN_DIALOG} rounded-xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_var(--bnt-shadow)]`}
               >
                 <DropdownMenuItem onSelect={copyLink} className="text-xs font-black">
                   <LinkIcon className="mr-2 h-3.5 w-3.5" /> Copiar link
@@ -811,7 +811,7 @@ export function TaskModal({
                       linha por campo alterado e afogaria a conversa em poucos
                       dias de uso. */}
                   <section>
-                    <div className="mb-2.5 flex gap-1 rounded-full border-2 border-slate-900 bg-white p-0.5 shadow-[1px_1px_0_#0f172a] sm:w-fit">
+                    <div className="mb-2.5 flex gap-1 rounded-full border-2 border-slate-900 bg-white p-0.5 shadow-[1px_1px_0_var(--bnt-shadow)] sm:w-fit">
                       <button
                         type="button"
                         onClick={() => setSideTab("comentarios")}
@@ -938,7 +938,7 @@ export function TaskModal({
       </Dialog>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogContent overlayClassName={LAYER_DIALOG} className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}>
+        <AlertDialogContent overlayClassName={LAYER_DIALOG} className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)]`}>
           <AlertDialogTitle className="font-display text-2xl font-black text-slate-950">
             Excluir tarefa
           </AlertDialogTitle>
@@ -955,7 +955,7 @@ export function TaskModal({
                 event.preventDefault();
                 remove();
               }}
-              className="rounded-full border-2 border-slate-900 bg-rose-600 px-4 py-2 text-sm font-black text-white shadow-[2px_2px_0_#0f172a]"
+              className="rounded-full border-2 border-slate-900 bg-rose-600 px-4 py-2 text-sm font-black text-white shadow-[2px_2px_0_var(--bnt-shadow)]"
             >
               Excluir
             </AlertDialogAction>

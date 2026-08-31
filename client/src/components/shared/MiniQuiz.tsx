@@ -43,7 +43,7 @@ function ResultadoLogo({
 }) {
   const [errored, setErrored] = useState(false);
   return (
-    <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_#0f172a]">
+    <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_var(--bnt-shadow)]">
       {!logoUrl || errored ? (
         <span className="font-display text-sm font-black text-violet-700">
           {nome.charAt(0).toUpperCase()}
@@ -158,7 +158,7 @@ export default function MiniQuiz({
                     key={opcao.rotulo}
                     type="button"
                     onClick={() => escolher(opcao)}
-                    className="rounded-full border-2 border-slate-900 bg-white px-4 py-2.5 text-left text-sm font-bold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px hover:bg-violet-50 hover:shadow-[3px_3px_0_#0f172a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
+                    className="rounded-full border-2 border-slate-900 bg-white px-4 py-2.5 text-left text-sm font-bold text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:bg-violet-50 hover:shadow-[3px_3px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
                   >
                     {opcao.rotulo}
                   </button>
@@ -254,7 +254,7 @@ export default function MiniQuiz({
                       href={alt.acaoHref}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-3 rounded-xl border-2 border-slate-900 bg-white p-3 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
+                      className="flex items-center gap-3 rounded-xl border-2 border-slate-900 bg-white p-3 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
                     >
                       {conteudo}
                     </a>
@@ -262,14 +262,14 @@ export default function MiniQuiz({
                     <Link
                       key={alt.titulo}
                       href={alt.acaoHref}
-                      className="flex items-center gap-3 rounded-xl border-2 border-slate-900 bg-white p-3 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
+                      className="flex items-center gap-3 rounded-xl border-2 border-slate-900 bg-white p-3 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
                     >
                       {conteudo}
                     </Link>
                   ) : (
                     <div
                       key={alt.titulo}
-                      className="flex items-center gap-3 rounded-xl border-2 border-slate-900 bg-white p-3 shadow-[2px_2px_0_#0f172a]"
+                      className="flex items-center gap-3 rounded-xl border-2 border-slate-900 bg-white p-3 shadow-[2px_2px_0_var(--bnt-shadow)]"
                     >
                       {conteudo}
                     </div>
@@ -282,7 +282,7 @@ export default function MiniQuiz({
           <button
             type="button"
             onClick={refazer}
-            className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
+            className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
           >
             <RotateCcw className="h-4 w-4" />
             Refazer
@@ -315,7 +315,7 @@ export default function MiniQuiz({
           <button
             type="button"
             onClick={refazer}
-            className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
+            className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
           >
             <RotateCcw className="h-4 w-4" />
             Refazer

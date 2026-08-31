@@ -12,7 +12,7 @@ export default function EmbaixadoraBadge({
 }) {
   const label = `Ana é Embaixadora ${program}`;
   const base =
-    "inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]";
+    "inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]";
 
   if (href) {
     return (

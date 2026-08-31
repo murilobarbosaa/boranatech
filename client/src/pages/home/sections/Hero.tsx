@@ -46,7 +46,7 @@ const FEATURED_OVERRIDES: Record<
   (typeof FEATURED_SLUGS)[number],
   { bg: string; color: string; exemplos: string }
 > = {
-  frontend: { bg: "bg-violet-50", color: "#8b5cf6", exemplos: "React, Vue" },
+  frontend: { bg: "bg-violet-50", color: "var(--color-violet-500)", exemplos: "React, Vue" },
   backend: { bg: "bg-emerald-50", color: "#10b981", exemplos: "Node, Python" },
   mobile: { bg: "bg-orange-50", color: "#f97316", exemplos: "iOS, Android" },
   dados: { bg: "bg-sky-50", color: "#0ea5e9", exemplos: "SQL, Python" },
@@ -103,7 +103,7 @@ type CardinalNode = {
 const SIDE_OFFSET = "max(16px, calc((100vw - 1024px) / 2 - 175px))";
 
 const CARDINAL_NODES: CardinalNode[] = [
-  { label: "N · Descobrir", color: "#7c3aed", top: "8%", left: SIDE_OFFSET },
+  { label: "N · Descobrir", color: "var(--color-violet-600)", top: "8%", left: SIDE_OFFSET },
   { label: "L · Estudar", color: "#059669", top: "35%", right: SIDE_OFFSET },
   { label: "S · Praticar", color: "#ea580c", bottom: "8%", right: SIDE_OFFSET },
   {
@@ -355,10 +355,10 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
         className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: `
-            linear-gradient(to right, rgba(196, 184, 150, 0.8) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(196, 184, 150, 0.8) 1px, transparent 1px),
-            linear-gradient(to right, rgba(214, 205, 184, 0.6) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(214, 205, 184, 0.6) 1px, transparent 1px)
+            linear-gradient(to right, var(--bnt-grid-major) 1px, transparent 1px),
+            linear-gradient(to bottom, var(--bnt-grid-major) 1px, transparent 1px),
+            linear-gradient(to right, var(--bnt-grid-minor) 1px, transparent 1px),
+            linear-gradient(to bottom, var(--bnt-grid-minor) 1px, transparent 1px)
           `,
           backgroundSize: "320px 320px, 320px 320px, 80px 80px, 80px 80px",
         }}
@@ -388,7 +388,7 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
                 x2={nodePositions.L.x}
                 y2={nodePositions.L.y}
               >
-                <stop offset="0%" stopColor="#7c3aed" />
+                <stop offset="0%" stopColor="var(--color-violet-600)" />
                 <stop offset="100%" stopColor="#059669" />
               </linearGradient>
 
@@ -727,7 +727,7 @@ export default function Hero() {
     <section
       id="inicio"
       ref={sectionRef}
-      className="bnt-ancora relative min-h-screen overflow-hidden bg-[#faf8f4] py-16 md:py-24"
+      className="bnt-ancora relative min-h-screen overflow-hidden bg-[var(--brand-cream)] py-16 md:py-24"
       aria-labelledby="hero-headline"
     >
       <MapBackground sectionRef={sectionRef} />
@@ -739,7 +739,7 @@ export default function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.5 }}
-          className="relative inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-4 py-2 shadow-[3px_3px_0_#0f172a]"
+          className="relative inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-4 py-2 shadow-[3px_3px_0_var(--bnt-shadow)]"
         >
           <Compass size={18} className="text-violet-600" aria-hidden="true" />
           <span className="text-sm font-bold text-slate-950">
@@ -807,7 +807,7 @@ export default function Hero() {
           <span className="relative isolate inline-block px-3 py-1">
             <span
               aria-hidden="true"
-              className="absolute inset-0 -z-10 -rotate-1 rounded-md border-2 border-slate-950 bg-amber-300 shadow-[3px_3px_0_#0f172a]"
+              className="absolute inset-0 -z-10 -rotate-1 rounded-md border-2 border-slate-950 bg-amber-300 shadow-[3px_3px_0_var(--bnt-shadow)]"
             />
             <AnimatePresence mode="wait">
               <motion.span
@@ -816,7 +816,7 @@ export default function Hero() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -20, scale: 1 }}
                 transition={{ duration: 0.4, ease: "easeInOut" }}
-                className="relative inline-block"
+                className="relative inline-block text-ink-on-accent"
               >
                 {HIGHLIGHTS[currentHighlight]}
               </motion.span>
@@ -845,7 +845,7 @@ export default function Hero() {
           <Link
             href="/areas"
             aria-label="Explorar a plataforma, ir para áreas da TI"
-            className="font-display inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-8 py-4 font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a] active:translate-y-0 active:shadow-[2px_2px_0_#0f172a]"
+            className="font-display inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-8 py-4 font-black text-ink-on-accent shadow-[4px_4px_0_var(--bnt-shadow)] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)] active:translate-y-0 active:shadow-[2px_2px_0_var(--bnt-shadow)]"
           >
             Explorar a plataforma
             <ArrowRight size={18} aria-hidden="true" />
@@ -853,7 +853,7 @@ export default function Hero() {
 
           <Link
             href="/areas"
-            className="font-display inline-flex items-center rounded-full border-2 border-slate-950 bg-white px-8 py-4 font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a] active:translate-y-0 active:shadow-[2px_2px_0_#0f172a]"
+            className="font-display inline-flex items-center rounded-full border-2 border-slate-950 bg-white px-8 py-4 font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)] active:translate-y-0 active:shadow-[2px_2px_0_var(--bnt-shadow)]"
           >
             Ver áreas da TI
           </Link>

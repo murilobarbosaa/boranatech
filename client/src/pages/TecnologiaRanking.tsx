@@ -188,7 +188,7 @@ export default function TecnologiaRanking() {
 
       <section className="border-b-2 border-slate-900 bg-amber-100 py-4">
         <div className="container flex flex-wrap items-center justify-between gap-3">
-          <span className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+          <span className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
             <RefreshCw className="h-3.5 w-3.5 text-amber-600" aria-hidden />
             Dados 2025 a 2026, sempre atualizado
           </span>
@@ -199,26 +199,26 @@ export default function TecnologiaRanking() {
                 event.preventDefault();
                 gateNavigate("/tecnologias/comparar?from=tecnologias");
               }}
-              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5"
+              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5"
             >
               Comparar
             </Link>
             <Link
               href="/tecnologias/por-area?from=tecnologias"
-              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5"
+              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5"
             >
               Por área
             </Link>
             <Link
               href="/roadmaps"
-              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-violet-600 px-3 py-1.5 text-xs font-black text-white shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5"
+              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-violet-600 px-3 py-1.5 text-xs font-black text-white shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5"
             >
               <Map className="h-3.5 w-3.5" aria-hidden />
               Ver roadmaps
             </Link>
             <Link
               href="/quiz-carreira"
-              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5"
+              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1.5 text-xs font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5"
             >
               Fazer o quiz
               <ArrowRight className="h-3.5 w-3.5" aria-hidden />
@@ -231,7 +231,7 @@ export default function TecnologiaRanking() {
         <div className="container">
           <div
             className={cn(
-              "mb-8 rounded-2xl border-2 border-slate-900 p-5 shadow-[4px_4px_0_#0f172a]",
+              "mb-8 rounded-2xl border-2 border-slate-900 p-5 shadow-[4px_4px_0_var(--bnt-shadow)]",
               ac.panelSoft,
             )}
           >
@@ -324,7 +324,7 @@ export default function TecnologiaRanking() {
                             : undefined
                         }
                         className={cn(
-                          "group flex h-full flex-col items-center gap-2 rounded-2xl border-2 border-slate-900 bg-white p-5 text-center shadow-[4px_4px_0_#0f172a] transition-transform duration-200 ease-out motion-safe:hover:-translate-y-1",
+                          "group flex h-full flex-col items-center gap-2 rounded-2xl border-2 border-slate-900 bg-white p-5 text-center shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform duration-200 ease-out motion-safe:hover:-translate-y-1",
                           isFirst && "ring-4 ring-amber-300",
                         )}
                       >
@@ -373,7 +373,7 @@ export default function TecnologiaRanking() {
                 })}
               </div>
 
-              <div className="hidden overflow-hidden rounded-2xl border-2 border-slate-900 bg-white md:block md:shadow-[4px_4px_0_#0f172a]">
+              <div className="hidden overflow-hidden rounded-2xl border-2 border-slate-900 bg-white md:block md:shadow-[4px_4px_0_var(--bnt-shadow)]">
                 <table className="w-full min-w-[720px] border-collapse text-sm">
                   <thead className={cn(ac.tableBanner)}>
                     <tr>
@@ -516,7 +516,7 @@ export default function TecnologiaRanking() {
                       style={{
                         animationDelay: `${Math.min(index * 42, 600)}ms`,
                       }}
-                      className="tech-ranking-card tech-ranking-card--mobile group rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a] transition-transform duration-200 ease-out motion-safe:hover:-translate-y-1"
+                      className="tech-ranking-card tech-ranking-card--mobile group rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform duration-200 ease-out motion-safe:hover:-translate-y-1"
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex flex-col items-center gap-1">

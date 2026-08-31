@@ -36,7 +36,7 @@ export default function AuthCallbackGate({
   // ordem de atualização de estado deixe a flag para trás.
   if (!callbackIssue && callbackSlow && loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#faf8f4] p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--brand-cream)] p-4">
         <span
           aria-hidden
           className="h-8 w-8 animate-spin rounded-full border-[3px] border-slate-300 border-t-slate-900"
@@ -66,10 +66,10 @@ export default function AuthCallbackGate({
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#faf8f4] p-4">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--brand-cream)] p-4">
       <div
         role="alert"
-        className="w-full max-w-md rounded-2xl border-2 border-slate-950 bg-white p-6 text-center shadow-[6px_6px_0_#0f172a]"
+        className="w-full max-w-md rounded-2xl border-2 border-slate-950 bg-white p-6 text-center shadow-[6px_6px_0_var(--bnt-shadow)]"
       >
         <h2 className="font-display text-xl font-black text-slate-950">
           {mensagem.titulo}

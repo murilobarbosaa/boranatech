@@ -30,10 +30,10 @@ export type BntSelectAccent =
   | "gold";
 
 const accentItemClasses: Record<BntSelectAccent, string> = {
-  yellow: "focus:bg-[#FFB800]/20 data-[state=checked]:bg-[#FFB800]/30",
+  yellow: "focus:bg-[var(--brand-yellow)]/20 data-[state=checked]:bg-[var(--brand-yellow)]/30",
   blue: "focus:bg-[#3b82f6]/20 data-[state=checked]:bg-[#3b82f6]/30",
   green: "focus:bg-[#10b981]/20 data-[state=checked]:bg-[#10b981]/30",
-  violet: "focus:bg-[#8b5cf6]/20 data-[state=checked]:bg-[#8b5cf6]/30",
+  violet: "focus:bg-[var(--color-violet-500)]/20 data-[state=checked]:bg-[var(--color-violet-500)]/30",
   orange: "focus:bg-[#f97316]/20 data-[state=checked]:bg-[#f97316]/30",
   teal: "focus:bg-[#14b8a6]/20 data-[state=checked]:bg-[#14b8a6]/30",
   pink: "focus:bg-[#ec4899]/20 data-[state=checked]:bg-[#ec4899]/30",
@@ -152,9 +152,9 @@ export function BntSelect({
         id={id}
         aria-label={label}
         className={cn(
-          "rounded-xl border-2 border-slate-900 bg-white font-medium text-slate-900 shadow-[2px_2px_0_#0f172a] transition-shadow",
+          "rounded-xl border-2 border-slate-900 bg-white font-medium text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-shadow",
           "data-[placeholder]:text-slate-400",
-          "data-[state=open]:shadow-[3px_3px_0_#0f172a]",
+          "data-[state=open]:shadow-[3px_3px_0_var(--bnt-shadow)]",
           "focus-visible:border-slate-950 focus-visible:ring-slate-950/30 focus-visible:ring-[3px]",
           "disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
           sizeClasses[size],
@@ -186,9 +186,9 @@ export function BntSelect({
         collisionPadding={{ top: HEADER_OFFSET, right: 8, bottom: 8, left: 8 }}
         className={cn(
           // Popup como card proprio: borda unica e sombra offset solida na mesma
-          // linguagem do trigger (shadow-[2px_2px_0_#0f172a]), so que discreta.
+          // linguagem do trigger (shadow-[2px_2px_0_var(--bnt-shadow)]), so que discreta.
           // Le como "mesma familia do trigger", nao como card generico.
-          "rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_#0f172a]",
+          "rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_var(--bnt-shadow)]",
           // z acima do header fixo (z-[1000]): o Radix propaga o z-index computado
           // do content para o wrapper do popper, entao isso sobe o popup inteiro.
           "z-[1100]",

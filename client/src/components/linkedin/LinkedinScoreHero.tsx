@@ -146,7 +146,7 @@ export default function LinkedinScoreHero({
     // proposito no topo (o card interno mantem o overflow-hidden dos paineis).
     <div className="relative -rotate-[0.3deg]">
       {/* TODO(Ana): revisar o selo do resultado. */}
-      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
         <Sparkles className="h-3 w-3" aria-hidden />
         Seu raio-X
       </span>
@@ -174,7 +174,7 @@ export default function LinkedinScoreHero({
                   cy="60"
                   r={RING_RADIUS}
                   fill="none"
-                  stroke="#0f172a"
+                  stroke="var(--bnt-ink)"
                   strokeOpacity="0.15"
                   strokeWidth="8"
                 />
@@ -183,7 +183,7 @@ export default function LinkedinScoreHero({
                   cy="60"
                   r={RING_RADIUS}
                   fill="none"
-                  stroke="#0f172a"
+                  stroke="var(--bnt-ink)"
                   strokeWidth="8"
                   strokeLinecap="round"
                   strokeDasharray={RING_CIRCUMFERENCE}
@@ -213,7 +213,7 @@ export default function LinkedinScoreHero({
                   : { delay: 0.85, duration: 0.3, ease: "backOut" }
               }
               className={cn(
-                "inline-flex rounded-full border-2 border-slate-950 px-4 py-1 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]",
+                "inline-flex rounded-full border-2 border-slate-950 px-4 py-1 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]",
                 faixaUi.chipBg,
               )}
             >
@@ -266,7 +266,7 @@ export default function LinkedinScoreHero({
                 }
                 transition={{ duration: 0.5, ease: "easeInOut" }}
                 className={cn(
-                  "inline-flex rounded-full border-2 border-slate-950 px-3 py-0.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]",
+                  "inline-flex rounded-full border-2 border-slate-950 px-3 py-0.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]",
                   improvements.done === improvements.total
                     ? "bg-emerald-300"
                     : "bg-white",
@@ -284,7 +284,7 @@ export default function LinkedinScoreHero({
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-5 p-6">
             <div className="flex min-w-0 items-start gap-3">
               <span
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-sky-600 text-white shadow-[3px_3px_0_#0f172a]"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-sky-600 text-white shadow-[3px_3px_0_var(--bnt-shadow)]"
                 aria-hidden
               >
                 <Linkedin className="h-6 w-6" />

@@ -104,7 +104,7 @@ export default function BemVindo() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4 py-10">
+    <main className="bnt-keep-colors relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4 py-10">
       <SEO
         title="Boas vindas · Bora na Tech?"
         description="Sua conta foi criada. Comece sua jornada em tecnologia."
@@ -162,7 +162,7 @@ export default function BemVindo() {
           <button
             type="button"
             onClick={irParaPrimeirosPassos}
-            className="bnt-pressable group inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-8 py-4 font-display font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+            className="bnt-pressable group inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] px-8 py-4 font-display font-black text-ink-on-accent shadow-[4px_4px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
           >
             {/* TODO(Ana): rotulo do botao primario. */}
             Primeiros passos

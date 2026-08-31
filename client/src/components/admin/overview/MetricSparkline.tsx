@@ -47,7 +47,12 @@ export function MetricSparkline({
   const bom = direcao === "up_bom" ? subiu : !subiu;
   // Empate é neutro: pintar de verde ou vermelho uma série que não se moveu
   // seria inventar direção.
-  const cor = ultimo === primeiro ? "#64748b" : bom ? "#059669" : "#e11d48";
+  const cor =
+    ultimo === primeiro
+      ? "var(--muted-foreground)"
+      : bom
+        ? "var(--chart-3)"
+        : "var(--chart-5)";
 
   return (
     <div

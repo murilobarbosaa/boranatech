@@ -104,7 +104,7 @@ export default function OQueEncontra() {
     // borda de separacao nenhuma.
     <SecaoDecorada
       id="o-que-voce-encontra"
-      base="bg-[#fafaf9]"
+      base="bg-[var(--bnt-surface)]"
       variante="pontos"
       acento="text-violet-300"
       // 56px contra os 32px padrao. O LogoLoop, vizinho de baixo, usa a mesma
@@ -142,14 +142,14 @@ export default function OQueEncontra() {
             <li key={item.href}>
               <Link
                 href={item.href}
-                className="group flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-5 shadow-[4px_4px_0_#0f172a] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#0f172a]"
+                className="group flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <h3 className="font-display text-lg font-black text-slate-950">
                     {item.nome}
                   </h3>
                   {item.pro ? (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-slate-950 bg-amber-300 px-2 py-0.5 text-[11px] font-black text-slate-950">
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-slate-950 bg-amber-300 px-2 py-0.5 text-[11px] font-black text-ink-on-accent">
                       Pro
                       <ProStarIcon />
                     </span>

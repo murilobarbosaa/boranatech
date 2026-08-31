@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <meta http-equiv="content-language" content="pt-BR" />
     <meta name="theme-color" content="#FCC700" />
     <meta name="author" content="Bora na Tech?" />
@@ -11,6 +12,10 @@
       content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
     />
     <meta name="googlebot" content="index, follow" />
+    <!-- Anti-flash do tema. Precisa vir ANTES de qualquer <link> de estilo e do
+         bundle, e e arquivo externo (nao inline) porque o script-src do CSP nao
+         tem 'unsafe-inline'. Ver client/public/theme-init.js. -->
+    <script src="/theme-init.js"></script>
     <title>Bora na Tech? · Sua bússola para começar na tecnologia</title>
     <meta
       name="description"

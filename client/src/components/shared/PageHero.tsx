@@ -18,7 +18,7 @@ const ACCENT: Record<
   PageHeroAccent,
   { hero: string; pill: string; color: string }
 > = {
-  violet: { hero: "bg-violet-100", pill: "bg-violet-300", color: "#7c3aed" },
+  violet: { hero: "bg-violet-100", pill: "bg-violet-300", color: "var(--color-violet-600)" },
   sky: { hero: "bg-sky-100", pill: "bg-sky-300", color: "#0284c7" },
   amber: { hero: "bg-amber-100", pill: "bg-amber-300", color: "#f59e0b" },
   emerald: { hero: "bg-emerald-100", pill: "bg-emerald-300", color: "#10b981" },
@@ -91,7 +91,7 @@ export default function PageHero({
             {topSlot ? <div className="mb-4">{topSlot}</div> : null}
             {eyebrow ? (
               <p
-                className={`mb-4 inline-flex rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a] ${a.pill}`}
+                className={`mb-4 inline-flex rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] ${a.pill}`}
               >
                 {eyebrow}
               </p>

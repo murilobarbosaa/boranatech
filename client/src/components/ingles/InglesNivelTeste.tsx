@@ -155,7 +155,7 @@ export default function InglesNivelTeste() {
   if (!user) {
     return (
       <div className="card-brutal rounded-2xl bg-white p-8 text-center">
-        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-900 bg-amber-300 shadow-[3px_3px_0_#0f172a]">
+        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-900 bg-amber-300 shadow-[3px_3px_0_var(--bnt-shadow)]">
           <Lock className="h-6 w-6 text-slate-950" aria-hidden />
         </span>
         <h3 className="font-display mt-5 text-2xl font-black text-slate-950">
@@ -168,7 +168,7 @@ export default function InglesNivelTeste() {
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/cadastro"
-            className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-[#FFB800] px-6 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+            className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-6 py-3 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]"
           >
             Criar conta grátis
             <ArrowRight className="h-4 w-4" aria-hidden />
@@ -204,7 +204,7 @@ export default function InglesNivelTeste() {
           Seu nível de inglês é
         </h3>
         <p
-          className={`font-display mx-auto mt-3 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 px-6 py-2 text-3xl font-black shadow-[3px_3px_0_#0f172a] ${resultado.chipClass}`}
+          className={`font-display mx-auto mt-3 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 px-6 py-2 text-3xl font-black shadow-[3px_3px_0_var(--bnt-shadow)] ${resultado.chipClass}`}
         >
           <BadgeCheck className="h-7 w-7" aria-hidden />
           {resultado.level}
@@ -223,14 +223,14 @@ export default function InglesNivelTeste() {
               setAtual(0);
               setFinalizado(false);
             }}
-            className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-6 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+            className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-6 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
           >
             <RotateCcw className="h-4 w-4" aria-hidden />
             Refazer o teste
           </button>
           <a
             href="#montar-trilha"
-            className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-600 px-6 py-3 text-sm font-black text-white shadow-[3px_3px_0_#0f172a]"
+            className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-600 px-6 py-3 text-sm font-black text-white shadow-[3px_3px_0_var(--bnt-shadow)]"
           >
             Montar minha trilha
             <ArrowRight className="h-4 w-4" aria-hidden />
@@ -292,8 +292,8 @@ export default function InglesNivelTeste() {
               aria-pressed={ativa}
               className={`flex items-center gap-3 rounded-xl border-2 border-slate-900 px-4 py-3 text-left text-sm font-bold text-slate-950 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 ${
                 ativa
-                  ? "bg-sky-100 shadow-[3px_3px_0_#0f172a]"
-                  : "bg-white hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0f172a]"
+                  ? "bg-sky-100 shadow-[3px_3px_0_var(--bnt-shadow)]"
+                  : "bg-white hover:-translate-y-0.5 hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
               }`}
             >
               <span
@@ -318,7 +318,7 @@ export default function InglesNivelTeste() {
           type="button"
           onClick={() => setAtual((v) => Math.max(0, v - 1))}
           disabled={atual === 0}
-          className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
+          className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden />
           Voltar
@@ -333,7 +333,7 @@ export default function InglesNivelTeste() {
             }
           }}
           disabled={selecionada === null}
-          className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-[#FFB800] px-6 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-40"
+          className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-6 py-2 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {ultima ? "Ver resultado" : "Próxima"}
           <ArrowRight className="h-4 w-4" aria-hidden />

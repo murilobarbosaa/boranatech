@@ -453,7 +453,7 @@ function AudienceReach({
   return (
     <div
       className={`rounded-2xl border-2 border-slate-900 bg-violet-50 p-3${
-        elevated ? " shadow-[3px_3px_0_#0f172a]" : ""
+        elevated ? " shadow-[3px_3px_0_var(--bnt-shadow)]" : ""
       }`}
     >
       <p className="text-xs font-black uppercase text-violet-700">
@@ -490,8 +490,8 @@ function NotificationPreviewCard({ form }: { form: FormState }) {
     ? formatCountdownPreview(new Date(form.expires_at_local).toISOString())
     : null;
   return (
-    <div className="rounded-2xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]">
-      <p className="rounded-t-[14px] border-b-2 border-slate-900 bg-[#faf8f4] px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+    <div className="rounded-2xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_var(--bnt-shadow)]">
+      <p className="rounded-t-[14px] border-b-2 border-slate-900 bg-[var(--brand-cream)] px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
         Como o usuário verá
       </p>
       <div className="rounded-b-[14px] bg-sky-50 px-4 py-3">
@@ -527,7 +527,7 @@ function NotificationPreviewCard({ form }: { form: FormState }) {
               </div>
             ) : null}
             {form.cta_url.trim() ? (
-              <span className="mt-2 inline-flex items-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+              <span className="mt-2 inline-flex items-center rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-3 py-1.5 text-xs font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
                 {form.cta_label.trim() || "Ver mais"}
               </span>
             ) : null}
@@ -557,7 +557,7 @@ function highlightSuperTitle(text: string) {
 // que a notificação também sai como modal e prevê o título com o destaque âmbar.
 function SuperPreviewCard({ form }: { form: FormState }) {
   return (
-    <div className="rounded-2xl border-2 border-slate-900 bg-slate-950 p-4 text-white shadow-[3px_3px_0_#0f172a]">
+    <div className="rounded-2xl border-2 border-slate-900 bg-slate-950 p-4 text-white shadow-[3px_3px_0_var(--bnt-shadow)]">
       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">
         Também aparece como modal em destaque
       </p>
@@ -578,7 +578,7 @@ function SuperPreviewCard({ form }: { form: FormState }) {
           {form.super_subtitle.trim()}
         </p>
       ) : null}
-      <span className="mt-3 inline-flex items-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+      <span className="mt-3 inline-flex items-center rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-3 py-1.5 text-xs font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
         {form.super_cta_label.trim() || "Texto do botão"}
       </span>
     </div>
@@ -594,11 +594,11 @@ const FILTRO_TODOS = "__todos__";
 const labelClass =
   "mb-1 block text-xs font-black uppercase tracking-wide text-slate-600";
 const primaryButtonClass =
-  "rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] disabled:opacity-50 disabled:shadow-none";
+  "rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50 disabled:shadow-none";
 const secondaryButtonClass =
-  "rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] disabled:opacity-50 disabled:shadow-none";
+  "rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50 disabled:shadow-none";
 const rowActionClass =
-  "rounded-full border-2 border-slate-900 bg-white px-2.5 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] disabled:opacity-50";
+  "rounded-full border-2 border-slate-900 bg-white px-2.5 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50";
 
 type FormMode =
   | { mode: "create" }
@@ -1165,7 +1165,7 @@ export function NotificationsManager() {
                   />
                 </div>
               </div>
-              <div className="rounded-2xl border-2 border-slate-900 bg-[#faf8f4] p-4">
+              <div className="rounded-2xl border-2 border-slate-900 bg-[var(--brand-cream)] p-4">
                 <label className="flex cursor-pointer items-start gap-3">
                   <input
                     type="checkbox"
@@ -1174,7 +1174,7 @@ export function NotificationsManager() {
                     onChange={(e) =>
                       setForm({ ...form, is_super: e.target.checked })
                     }
-                    className="mt-0.5 h-5 w-5 shrink-0 rounded border-2 border-slate-900 accent-[#FFB800] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-0.5 h-5 w-5 shrink-0 rounded border-2 border-slate-900 accent-[var(--brand-yellow)] disabled:cursor-not-allowed disabled:opacity-50"
                   />
                   <span>
                     <span className="block text-sm font-black text-slate-950">
@@ -1350,7 +1350,7 @@ export function NotificationsManager() {
                 />
               ) : null}
               {!editingPublished && form.audience === "custom" ? (
-                <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-3 shadow-[3px_3px_0_#0f172a]">
+                <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-3 shadow-[3px_3px_0_var(--bnt-shadow)]">
                   <p className="text-xs font-black uppercase text-violet-700">
                     Destinatários
                   </p>
@@ -1439,7 +1439,7 @@ export function NotificationsManager() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b-2 border-slate-900 bg-[#faf8f4] text-xs font-black uppercase tracking-wide text-slate-600">
+                <tr className="border-b-2 border-slate-900 bg-[var(--brand-cream)] text-xs font-black uppercase tracking-wide text-slate-600">
                   <th className="px-4 py-3">Título</th>
                   <th className="px-4 py-3">Tipo</th>
                   <th className="px-4 py-3">Audience</th>
@@ -1620,7 +1620,7 @@ export function NotificationsManager() {
           </div>
         )}
         {!listLoading && !listError && total > PAGE_SIZE ? (
-          <div className="flex items-center justify-between border-t-2 border-slate-900 bg-[#faf8f4] px-4 py-3">
+          <div className="flex items-center justify-between border-t-2 border-slate-900 bg-[var(--brand-cream)] px-4 py-3">
             <p className="text-xs font-black uppercase tracking-wide text-slate-500">
               Página {page + 1} de {totalPages} ({total} no total)
             </p>
@@ -1652,7 +1652,7 @@ export function NotificationsManager() {
           if (!open) setPublishTarget(null);
         }}
       >
-        <DialogContent className="rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a] sm:max-w-md">
+        <DialogContent className="rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)] sm:max-w-md">
           <DialogTitle className="font-display text-2xl font-black text-slate-950">
             {whenMode === "schedule"
               ? "Agendar notificação?"
@@ -1801,7 +1801,7 @@ export function NotificationsManager() {
           if (!open) setArchiveTarget(null);
         }}
       >
-        <DialogContent className="rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a] sm:max-w-md">
+        <DialogContent className="rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)] sm:max-w-md">
           <DialogTitle className="font-display text-2xl font-black text-slate-950">
             Arquivar notificação?
           </DialogTitle>
@@ -1835,7 +1835,7 @@ export function NotificationsManager() {
           if (!open) setStatsTarget(null);
         }}
       >
-        <DialogContent className="rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a] sm:max-w-lg">
+        <DialogContent className="rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)] sm:max-w-lg">
           <DialogTitle className="font-display text-2xl font-black text-slate-950">
             Leituras
           </DialogTitle>
@@ -1879,7 +1879,7 @@ export function NotificationsManager() {
                 <div className="h-52 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={stats.reads_by_day}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis
                         dataKey="day"
                         tick={{ fontSize: 11 }}
@@ -1890,8 +1890,8 @@ export function NotificationsManager() {
                       <Bar
                         dataKey="count"
                         name="Leituras"
-                        fill="#FFB800"
-                        stroke="#0f172a"
+                        fill="var(--brand-yellow)"
+                        stroke="var(--bnt-ink)"
                         strokeWidth={1}
                       />
                     </BarChart>

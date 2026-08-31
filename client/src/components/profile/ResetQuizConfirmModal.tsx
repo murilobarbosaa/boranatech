@@ -47,7 +47,7 @@ export function ResetQuizConfirmModal({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="relative w-full max-w-md rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 md:p-8 shadow-[4px_4px_0_#0f172a]"
+            className="relative w-full max-w-md rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-6 md:p-8 shadow-[4px_4px_0_var(--bnt-shadow)]"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -84,7 +84,7 @@ export function ResetQuizConfirmModal({
                   onConfirm();
                   onClose();
                 }}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-rose-500 px-5 py-3 font-display font-black uppercase tracking-wider text-sm text-white shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-[var(--bnt-ink)] bg-rose-500 px-5 py-3 font-display font-black uppercase tracking-wider text-sm text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
               >
                 Sim, reiniciar
               </button>

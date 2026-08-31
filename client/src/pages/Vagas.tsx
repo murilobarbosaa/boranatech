@@ -85,7 +85,7 @@ export default function Vagas() {
       />
       {/* Cenario da pagina inteira no molde das paginas Pro: sem PageHero, o
           cabecalho vive DENTRO do cenario, que nasce no topo. */}
-      <section className="relative overflow-hidden bg-[#faf8f4] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="relative overflow-hidden bg-[var(--brand-cream)] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <VagasBackdrop reduce={reduce} />
         <div className="container relative z-10">
           <motion.div
@@ -96,7 +96,7 @@ export default function Vagas() {
           >
             <p>
               {/* TODO(Ana): validar o eyebrow do cabecalho. */}
-              <span className="inline-flex rounded-full border-2 border-slate-900 bg-cyan-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+              <span className="inline-flex rounded-full border-2 border-slate-900 bg-cyan-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                 Vagas Pro
               </span>
             </p>

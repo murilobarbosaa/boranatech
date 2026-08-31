@@ -116,7 +116,7 @@ export function UserListHeader() {
   return (
     <div
       data-testid="users-header"
-      className={`${GRID} hidden border-b-2 border-slate-900 bg-[#f6f0df] px-4 py-2 md:grid`}
+      className={`${GRID} hidden border-b-2 border-slate-900 bg-[var(--brand-cream-deep)] px-4 py-2 md:grid`}
     >
       {COLUNAS.map((coluna) => (
         <span

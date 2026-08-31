@@ -26,7 +26,7 @@ export default function AuthGateModal({
 }: AuthGateModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-4 rounded-xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a] sm:max-w-md">
+      <DialogContent className="gap-4 rounded-xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)] sm:max-w-md">
         <DialogHeader className="gap-3">
           <DialogTitle className="font-display text-xl font-black text-slate-950">
             {/* TODO(Ana): titulo do modal de gate de login */}
@@ -41,7 +41,7 @@ export default function AuthGateModal({
           <Button
             type="button"
             onClick={onEntrar}
-            className="w-full sm:w-auto sm:flex-1 sm:min-w-0 rounded-full border-2 border-slate-950 bg-[#FFB800] font-black text-slate-950 shadow-[3px_3px_0_#0f172a] hover:bg-[#FFB800]"
+            className="w-full sm:w-auto sm:flex-1 sm:min-w-0 rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] hover:bg-[var(--brand-yellow)]"
           >
             {/* TODO(Ana): rotulo do botao de login */}
             Entrar
@@ -50,7 +50,7 @@ export default function AuthGateModal({
             type="button"
             variant="outline"
             onClick={onCriarConta}
-            className="w-full sm:w-auto sm:flex-1 sm:min-w-0 rounded-full border-2 border-slate-950 bg-white font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+            className="w-full sm:w-auto sm:flex-1 sm:min-w-0 rounded-full border-2 border-slate-950 bg-white font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
           >
             {/* TODO(Ana): rotulo do botao de cadastro */}
             Criar conta

@@ -269,7 +269,7 @@ function KeySequence({ value, mac }: { value: string; mac: boolean }) {
       {normalized.split("+").map((key) => (
         <kbd
           key={key}
-          className="rounded-lg border-2 border-slate-900 bg-slate-50 px-2 py-1 font-mono text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
+          className="rounded-lg border-2 border-slate-900 bg-slate-50 px-2 py-1 font-mono text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
         >
           {key}
         </kbd>
@@ -476,7 +476,7 @@ export default function Ferramentas() {
                     value={searchInput}
                     onChange={(event) => setSearchInput(event.target.value)}
                     placeholder="Nome ou descrição (ex: editor, banco, deploy)"
-                    className="w-full rounded-xl border-2 border-slate-900 bg-white py-3 pl-10 pr-4 text-sm font-bold shadow-[3px_3px_0_#0f172a] outline-none"
+                    className="w-full rounded-xl border-2 border-slate-900 bg-white py-3 pl-10 pr-4 text-sm font-bold shadow-[3px_3px_0_var(--bnt-shadow)] outline-none"
                   />
                 </div>
               </div>
@@ -845,7 +845,7 @@ export default function Ferramentas() {
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0f172a] print:hidden"
+                className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 hover:shadow-[3px_3px_0_var(--bnt-shadow)] print:hidden"
               >
                 <Printer className="h-4 w-4" />
                 Imprimir cheatsheet
@@ -931,7 +931,7 @@ export default function Ferramentas() {
                 {cheatItems.map((shortcut) => (
                   <div
                     key={shortcut.label}
-                    className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
+                    className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">

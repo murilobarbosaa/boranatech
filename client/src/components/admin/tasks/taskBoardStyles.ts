@@ -10,11 +10,11 @@ export const inputClass =
 export const labelClass =
   "mb-1 block text-xs font-black uppercase tracking-wide text-slate-600";
 export const primaryButtonClass =
-  "rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] disabled:opacity-50 disabled:shadow-none";
+  "rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50 disabled:shadow-none";
 export const secondaryButtonClass =
-  "rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] disabled:opacity-50 disabled:shadow-none";
+  "rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50 disabled:shadow-none";
 export const rowActionClass =
-  "rounded-full border-2 border-slate-900 bg-white px-2.5 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] disabled:opacity-50";
+  "rounded-full border-2 border-slate-900 bg-white px-2.5 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50";
 export const badgeClass =
   "inline-flex items-center rounded-full border-2 border-slate-900 px-2 py-0.5 text-[11px] font-black uppercase";
 export const emptyBlockClass =
@@ -36,7 +36,7 @@ export const emptyBlockClass =
  * WIP); o repouso e `bg-slate-50`, e e esse que o esqueleto usa.
  */
 export const columnShellClass =
-  "flex w-[85vw] shrink-0 snap-start flex-col rounded-3xl border-2 border-slate-900 p-3 shadow-[3px_3px_0_#0f172a] transition-colors sm:w-[19rem]";
+  "flex w-[85vw] shrink-0 snap-start flex-col rounded-3xl border-2 border-slate-900 p-3 shadow-[3px_3px_0_var(--bnt-shadow)] transition-colors sm:w-[19rem]";
 
 /**
  * MOLDURA DA FILEIRA DE COLUNAS, em DUAS pecas, e a separacao e o ponto.

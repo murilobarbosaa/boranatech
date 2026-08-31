@@ -84,7 +84,7 @@ function TypingDots() {
 function AssistantAvatar() {
   return (
     <div
-      className="flex h-7 w-7 shrink-0 items-center justify-center self-end rounded-full border-2 border-slate-900 bg-violet-600 shadow-[1px_1px_0_#0f172a] sm:h-8 sm:w-8"
+      className="flex h-7 w-7 shrink-0 items-center justify-center self-end rounded-full border-2 border-slate-900 bg-violet-600 shadow-[1px_1px_0_var(--bnt-shadow)] sm:h-8 sm:w-8"
       aria-hidden
     >
       <Sparkles className="h-3.5 w-3.5 text-amber-200 sm:h-4 sm:w-4" />
@@ -167,12 +167,12 @@ export default function IntakeChatPanel({
   }
 
   return (
-    <div className="overflow-hidden rounded-[14px] border-[2.5px] border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]">
+    <div className="overflow-hidden rounded-[14px] border-[2.5px] border-slate-900 bg-white shadow-[4px_4px_0_var(--bnt-shadow)]">
       <div className="flex h-[min(70vh,620px)] min-h-[360px] flex-col">
         {title ? (
           <header className="flex shrink-0 items-center gap-3 border-b-[2.5px] border-slate-900 bg-violet-700 px-4 py-3 text-white sm:px-5">
             <div
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-600 shadow-[2px_2px_0_#0f172a]"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-600 shadow-[2px_2px_0_var(--bnt-shadow)]"
               aria-hidden
             >
               <Sparkles className="h-5 w-5 text-amber-200" />
@@ -191,13 +191,13 @@ export default function IntakeChatPanel({
         ) : null}
 
         {progress && progress.total > 0 ? (
-          <div className="shrink-0 border-b-2 border-slate-900 bg-[#faf8f4] px-4 py-2.5 sm:px-5">
+          <div className="shrink-0 border-b-2 border-slate-900 bg-[var(--brand-cream)] px-4 py-2.5 sm:px-5">
             <ProgressStrip done={progress.done} total={progress.total} />
           </div>
         ) : null}
 
         <div
-          className="flex min-h-0 flex-1 flex-col border-b-2 border-slate-900 bg-[#faf8f4]"
+          className="flex min-h-0 flex-1 flex-col border-b-2 border-slate-900 bg-[var(--brand-cream)]"
           role="log"
           aria-live="polite"
           aria-relevant="additions"
@@ -208,7 +208,7 @@ export default function IntakeChatPanel({
                 m.role === "assistant" ? (
                   <div key={i} className="flex items-end justify-start gap-2">
                     <AssistantAvatar />
-                    <div className="max-w-[85%] rounded-2xl rounded-bl-md border-2 border-slate-900 bg-white px-3.5 py-2.5 text-[15px] leading-relaxed text-slate-900 shadow-[2px_2px_0_#0f172a] sm:max-w-[70%]">
+                    <div className="max-w-[85%] rounded-2xl rounded-bl-md border-2 border-slate-900 bg-white px-3.5 py-2.5 text-[15px] leading-relaxed text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] sm:max-w-[70%]">
                       <p className="whitespace-pre-wrap break-words font-body">
                         {m.content}
                       </p>
@@ -216,7 +216,7 @@ export default function IntakeChatPanel({
                   </div>
                 ) : (
                   <div key={i} className="flex justify-end">
-                    <div className="max-w-[85%] rounded-2xl rounded-br-md border-2 border-slate-900 bg-[#FFB800] px-3.5 py-2.5 text-[15px] leading-relaxed text-slate-950 shadow-[2px_2px_0_#0f172a] sm:max-w-[70%]">
+                    <div className="max-w-[85%] rounded-2xl rounded-br-md border-2 border-slate-900 bg-[var(--brand-yellow)] px-3.5 py-2.5 text-[15px] leading-relaxed text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] sm:max-w-[70%]">
                       <p className="whitespace-pre-wrap break-words font-body">
                         {m.content}
                       </p>
@@ -228,7 +228,7 @@ export default function IntakeChatPanel({
               {sending ? (
                 <div className="flex items-end justify-start gap-2">
                   <AssistantAvatar />
-                  <div className="flex max-w-[85%] items-center rounded-2xl rounded-bl-md border-2 border-slate-900 bg-white px-3.5 py-2.5 shadow-[2px_2px_0_#0f172a]">
+                  <div className="flex max-w-[85%] items-center rounded-2xl rounded-bl-md border-2 border-slate-900 bg-white px-3.5 py-2.5 shadow-[2px_2px_0_var(--bnt-shadow)]">
                     <span className="sr-only">{COPY.typing}</span>
                     <TypingDots />
                   </div>
@@ -247,7 +247,7 @@ export default function IntakeChatPanel({
               <button
                 type="button"
                 onClick={onRetry}
-                className="mt-2 inline-flex items-center gap-1.5 rounded-[10px] border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px"
+                className="mt-2 inline-flex items-center gap-1.5 rounded-[10px] border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 {COPY.retry}
@@ -266,7 +266,7 @@ export default function IntakeChatPanel({
                 <button
                   type="button"
                   onClick={onRestart}
-                  className="inline-flex items-center gap-1.5 rounded-[10px] border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px"
+                  className="inline-flex items-center gap-1.5 rounded-[10px] border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   {restartLabel ?? COPY.restart}
@@ -280,7 +280,7 @@ export default function IntakeChatPanel({
               <label className="sr-only" htmlFor="intake-chat-input">
                 {placeholder}
               </label>
-              <div className="flex min-h-[46px] flex-1 items-end rounded-3xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_#0f172a]">
+              <div className="flex min-h-[46px] flex-1 items-end rounded-3xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_var(--bnt-shadow)]">
                 <textarea
                   id="intake-chat-input"
                   ref={textareaRef}
@@ -295,7 +295,7 @@ export default function IntakeChatPanel({
               </div>
               <button
                 type="button"
-                className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-700 text-white shadow-[3px_3px_0_#0f172a] transition-transform hover:bg-violet-800 enabled:hover:-translate-y-px disabled:opacity-45"
+                className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-700 text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:bg-violet-800 enabled:hover:-translate-y-px disabled:opacity-45"
                 disabled={locked || !input.trim()}
                 aria-label="Enviar"
                 onClick={handleSend}

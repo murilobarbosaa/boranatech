@@ -88,7 +88,7 @@ export function CancelSubscriptionModal({
       <DialogContent
         showCloseButton={false}
         aria-describedby={undefined}
-        className="max-h-[85vh] gap-0 overflow-y-auto rounded-3xl border-2 border-[#1a1a1a] bg-white p-0 shadow-[4px_4px_0_#0f172a]"
+        className="max-h-[85vh] gap-0 overflow-y-auto rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-0 shadow-[4px_4px_0_var(--bnt-shadow)]"
       >
         <DialogTitle className="sr-only">
           {isNonRenewal ? "Não renovar assinatura" : "Cancelar assinatura"}
@@ -98,7 +98,7 @@ export function CancelSubscriptionModal({
           onClick={onClose}
           disabled={isLoading}
           aria-label="Fechar"
-          className="absolute right-4 top-4 rounded-full border-2 border-[#1a1a1a] bg-white p-1.5 text-[#1a1a1a] shadow-[2px_2px_0_#0f172a] transition-colors duration-200 hover:border-rose-600 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+          className="absolute right-4 top-4 rounded-full border-2 border-[var(--bnt-ink)] bg-white p-1.5 text-[var(--bnt-ink)] shadow-[2px_2px_0_var(--bnt-shadow)] transition-colors duration-200 hover:border-rose-600 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
         >
           <X className="h-4 w-4" strokeWidth={3} />
         </button>
@@ -109,7 +109,7 @@ export function CancelSubscriptionModal({
             <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
               {isNonRenewal ? "Não renovar" : "Cancelamento"}
             </p>
-            <h2 className="font-display mt-2 text-3xl font-black text-[#1a1a1a] md:text-4xl">
+            <h2 className="font-display mt-2 text-3xl font-black text-[var(--bnt-ink)] md:text-4xl">
               {isNonRenewal
                 ? "Espera, antes de decidir..."
                 : "Espera, antes de cancelar..."}
@@ -135,12 +135,12 @@ export function CancelSubscriptionModal({
               {BENEFITS.map(({ Icon, text }) => (
                 <li
                   key={text}
-                  className="flex items-center gap-3 rounded-2xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-3"
+                  className="flex items-center gap-3 rounded-2xl border-2 border-[var(--bnt-ink)] bg-[var(--brand-cream)] p-3"
                 >
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border-2 border-[#1a1a1a] bg-[#FFB800] text-slate-950">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border-2 border-[var(--bnt-ink)] bg-[var(--brand-yellow)] text-ink-on-accent">
                     <Icon className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
                   </span>
-                  <span className="text-sm font-bold text-[#1a1a1a]">
+                  <span className="text-sm font-bold text-[var(--bnt-ink)]">
                     {text}
                   </span>
                 </li>
@@ -151,14 +151,14 @@ export function CancelSubscriptionModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="pro-glare bnt-pressable inline-flex flex-1 items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-full border-2 border-slate-900 bg-[#FFB800] px-5 py-3 font-display font-black text-slate-950 shadow-[5px_5px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#0f172a]"
+                className="pro-glare bnt-pressable inline-flex flex-1 items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-5 py-3 font-display font-black text-ink-on-accent shadow-[5px_5px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--bnt-shadow)]"
               >
                 Quero continuar Pro
               </button>
               <button
                 type="button"
                 onClick={() => setStep("reason")}
-                className="bnt-pressable inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-3 font-display font-black text-slate-600 shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:text-[#1a1a1a] hover:shadow-[5px_5px_0_#0f172a]"
+                className="bnt-pressable inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-full border-2 border-[var(--bnt-ink)] bg-white px-5 py-3 font-display font-black text-slate-600 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:text-[var(--bnt-ink)] hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
               >
                 {/* TODO(Ana): rotulo do botao de avancar (cartao vs boleto). */}
                 {isNonRenewal ? "Não vou renovar" : "Cancelar mesmo assim"}
@@ -168,11 +168,11 @@ export function CancelSubscriptionModal({
         ) : (
           <div className="p-6 md:p-8">
             <div className="flex items-start gap-3">
-              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border-2 border-[#1a1a1a] bg-amber-100 text-amber-700">
+              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border-2 border-[var(--bnt-ink)] bg-amber-100 text-amber-700">
                 <AlertTriangle className="h-5 w-5" strokeWidth={2.5} />
               </span>
               <div>
-                <h2 className="font-display text-2xl font-black text-[#1a1a1a] md:text-3xl">
+                <h2 className="font-display text-2xl font-black text-[var(--bnt-ink)] md:text-3xl">
                   {/* TODO(Ana): titulo do passo de motivo (cartao vs boleto). */}
                   {isNonRenewal
                     ? "Por que você não vai renovar?"
@@ -192,7 +192,7 @@ export function CancelSubscriptionModal({
                     key={reason.code}
                     className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 p-3 transition-colors ${
                       selected
-                        ? "border-[#1a1a1a] bg-[#faf8f4] shadow-[2px_2px_0_#0f172a]"
+                        ? "border-[var(--bnt-ink)] bg-[var(--brand-cream)] shadow-[2px_2px_0_var(--bnt-shadow)]"
                         : "border-slate-200 bg-white hover:border-slate-400"
                     }`}
                   >
@@ -204,9 +204,9 @@ export function CancelSubscriptionModal({
                       onChange={(event) =>
                         setReasonCode(event.target.value as CancelReasonCode)
                       }
-                      className="h-4 w-4 accent-[#1a1a1a]"
+                      className="h-4 w-4 accent-[var(--bnt-ink)]"
                     />
-                    <span className="text-sm font-bold text-[#1a1a1a]">
+                    <span className="text-sm font-bold text-[var(--bnt-ink)]">
                       {reason.label}
                     </span>
                   </label>
@@ -220,7 +220,7 @@ export function CancelSubscriptionModal({
               onChange={(event) => setReasonText(event.target.value)}
               rows={3}
               maxLength={500}
-              className="mt-4 w-full resize-none rounded-2xl border-2 border-[#1a1a1a] bg-white px-3 py-2 text-sm font-semibold text-[#1a1a1a] outline-none focus:ring-4 focus:ring-yellow-200"
+              className="mt-4 w-full resize-none rounded-2xl border-2 border-[var(--bnt-ink)] bg-white px-3 py-2 text-sm font-semibold text-[var(--bnt-ink)] outline-none focus:ring-4 focus:ring-yellow-200"
             />
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -228,7 +228,7 @@ export function CancelSubscriptionModal({
                 type="button"
                 onClick={() => setStep("retain")}
                 disabled={isLoading}
-                className="bnt-pressable inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-3 font-display font-black text-slate-600 shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:text-[#1a1a1a] hover:shadow-[5px_5px_0_#0f172a] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[3px_3px_0_#0f172a]"
+                className="bnt-pressable inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-full border-2 border-[var(--bnt-ink)] bg-white px-5 py-3 font-display font-black text-slate-600 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:text-[var(--bnt-ink)] hover:shadow-[5px_5px_0_var(--bnt-shadow)] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
               >
                 Voltar
               </button>
@@ -236,7 +236,7 @@ export function CancelSubscriptionModal({
                 type="button"
                 onClick={() => void handleSubmit()}
                 disabled={isLoading}
-                className="bnt-pressable inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-full border-2 border-slate-950 bg-red-600 px-5 py-3 font-display font-black text-white shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-[5px_5px_0_#0f172a] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[3px_3px_0_#0f172a]"
+                className="bnt-pressable inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-full border-2 border-slate-950 bg-red-600 px-5 py-3 font-display font-black text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-[5px_5px_0_var(--bnt-shadow)] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
               >
                 {/* TODO(Ana): rotulo do botao de confirmar (cartao vs boleto). */}
                 {isLoading

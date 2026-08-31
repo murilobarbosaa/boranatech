@@ -20,7 +20,7 @@ import {
 
 export default function PorOndeComecar() {
   return (
-    <section id="por-onde-comecar" className="bnt-ancora relative overflow-hidden py-20 md:py-28 bg-[#f5f3ff]">
+    <section id="por-onde-comecar" className="bnt-ancora relative overflow-hidden py-20 md:py-28 bg-[var(--color-violet-50)]">
       {/* Decoração leve do fundo */}
       <BackgroundDecoration />
 
@@ -69,11 +69,11 @@ export default function PorOndeComecar() {
           className="mt-16"
         >
           <Link href="/quiz-carreira">
-            <article className="group cursor-pointer rounded-3xl border-2 border-slate-950 bg-white p-8 md:p-12 shadow-[6px_6px_0_#0f172a] transition-all duration-300 hover:-translate-y-1 hover:shadow-[10px_10px_0_#0f172a]">
+            <article className="group cursor-pointer rounded-3xl border-2 border-slate-950 bg-white p-8 md:p-12 shadow-[6px_6px_0_var(--bnt-shadow)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[10px_10px_0_var(--bnt-shadow)]">
               <div className="flex flex-col gap-8 md:flex-row md:items-center md:gap-10">
                 {/* Ícone gigante */}
                 <div className="shrink-0">
-                  <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-2 border-slate-950 bg-violet-100 shadow-[4px_4px_0_#0f172a]">
+                  <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-2 border-slate-950 bg-violet-100 shadow-[4px_4px_0_var(--bnt-shadow)]">
                     <Sparkles
                       size={40}
                       className="text-violet-700"
@@ -97,7 +97,7 @@ export default function PorOndeComecar() {
 
                   {/* CTA + Microinfos */}
                   <div className="mt-6 flex flex-col gap-4 md:flex-row md:items-center">
-                    <div className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-950 bg-violet-700 px-6 py-3 font-display font-black text-white shadow-[4px_4px_0_#0f172a] transition-all group-hover:bg-violet-800 group-hover:shadow-[6px_6px_0_#0f172a]">
+                    <div className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-950 bg-violet-700 px-6 py-3 font-display font-black text-white shadow-[4px_4px_0_var(--bnt-shadow)] transition-all group-hover:bg-violet-800 group-hover:shadow-[6px_6px_0_var(--bnt-shadow)]">
                       <span>Descobrir meu perfil</span>
                       <ArrowRight
                         size={20}
@@ -198,9 +198,9 @@ function SecondaryCard({
       transition={{ duration: 0.5, delay }}
     >
       <Link href={href}>
-        <article className="group h-full cursor-pointer rounded-2xl border-2 border-slate-950 bg-white p-6 md:p-8 shadow-[4px_4px_0_#0f172a] transition-all duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0_#0f172a]">
+        <article className="group h-full cursor-pointer rounded-2xl border-2 border-slate-950 bg-white p-6 md:p-8 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0_var(--bnt-shadow)]">
           {/* Ícone */}
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-100 shadow-[2px_2px_0_#0f172a]">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-100 shadow-[2px_2px_0_var(--bnt-shadow)]">
             {icon}
           </div>
 

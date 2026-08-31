@@ -71,6 +71,7 @@ const TasksDashboard = lazyWithRetry(
 import { NotificationsManager } from "@/components/admin/NotificationsManager";
 import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { BntSelect } from "@/components/shared/BntSelect";
+import ThemeToggle from "@/components/ThemeToggle";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Popover,
@@ -760,7 +761,7 @@ export const metricCards: MetricCard[] = [
     value: "0",
     detail: "Quem tem assinatura paga",
     icon: <CreditCard className="h-6 w-6" />,
-    color: "bg-[#ffb800] text-slate-950",
+    color: "bg-[var(--brand-yellow)] text-ink-on-accent",
   },
   {
     key: "mrr",
@@ -1286,7 +1287,7 @@ function MetricCardView({
     <>
       <div className="flex items-start justify-between gap-4">
         <span
-          className={`flex h-13 w-13 items-center justify-center rounded-2xl border-2 border-slate-900 shadow-[3px_3px_0_#0f172a] ${metric.color}`}
+          className={`flex h-13 w-13 items-center justify-center rounded-2xl border-2 border-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] ${metric.color}`}
         >
           {metric.icon}
         </span>
@@ -1538,12 +1539,12 @@ function AdminShell({
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f4]">
-      <header className="sticky top-0 z-[1000] border-b-2 border-slate-900 bg-[#f6f0df]/95 backdrop-blur">
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-[1000] border-b-2 border-slate-900 bg-[var(--bnt-header-bg)] backdrop-blur">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex min-h-16 items-center justify-between gap-4">
             <Link href="/" className="group flex min-w-fit items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-slate-900 bg-yellow-400 text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all group-hover:shadow-[4px_4px_0_#0f172a]">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-slate-900 bg-yellow-400 text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-all group-hover:shadow-[4px_4px_0_var(--bnt-shadow)]">
                 <Compass className="h-5 w-5" />
               </span>
               <div>
@@ -1578,6 +1579,7 @@ function AdminShell({
 
             {session ? (
               <div className="flex min-w-fit items-center gap-2">
+                <ThemeToggle variant="desktop" />
                 {/* SO o avatar. O pill com "Admin" e o e-mail saiu por decisao
                     da Ana em 2026-08-30: quem esta no painel ja sabe que e
                     admin, e o e-mail repetia o que o proprio avatar identifica.
@@ -1694,7 +1696,7 @@ function AdminSection({
         className={`mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between ${headerClassName}`}
       >
         <div>
-          <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-violet-800 shadow-[2px_2px_0_#0f172a]">
+          <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-violet-800 shadow-[2px_2px_0_var(--bnt-shadow)]">
             {icon}
             {eyebrow}
           </p>
@@ -1757,7 +1759,7 @@ function AdminAccessGate({
 
           <div className="card-brutal rounded-[2rem] bg-white p-6 sm:p-8">
             <div className="mb-6 flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-slate-900 bg-violet-700 text-white shadow-[3px_3px_0_#0f172a]">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-slate-900 bg-violet-700 text-white shadow-[3px_3px_0_var(--bnt-shadow)]">
                 <LockKeyhole className="h-6 w-6" />
               </span>
               <div>
@@ -2166,7 +2168,7 @@ function NewsletterAdminSection() {
         {countCards.map((card) => (
           <div
             key={card.label}
-            className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]"
+            className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)]"
           >
             <p className="text-xs font-black uppercase text-slate-500">
               {card.label}
@@ -2757,7 +2759,7 @@ const CampaignPreview = memo(function CampaignPreview({
       {/* overflow-auto + max-h: contem previews gigantes (ex. HTML colado como
           texto com base64 inquebravel) — rola dentro da caixa em vez de escapar e
           cobrir a coluna do formulario. So tem efeito quando algo transbordaria. */}
-      <div className="mt-4 max-h-[70vh] overflow-auto rounded-2xl border-2 border-slate-900 bg-[#F1F5F9] p-4">
+      <div className="mt-4 max-h-[70vh] overflow-auto rounded-2xl border-2 border-slate-900 bg-[var(--bnt-surface)] p-4">
         {bodyIsHtml ? (
           // Modo HTML: com imagem, a imagem centrada (max 600px) fica sobre uma
           // faixa escura (#05060E, fundo do HTML de referencia) e o HTML vem
@@ -4056,7 +4058,7 @@ function EmailCampaignsAdminSection() {
                 type="button"
                 disabled={creating}
                 onClick={() => void (editingId ? saveEdit() : createCampaign())}
-                className="bnt-pressable rounded-full border-2 border-slate-900 bg-[#FFB800] px-5 py-2 text-sm font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a] disabled:opacity-40"
+                className="bnt-pressable rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-5 py-2 text-sm font-black uppercase text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-40"
               >
                 {/* TODO(Ana) */}
                 {creating
@@ -4177,7 +4179,7 @@ function EmailCampaignsAdminSection() {
                 <button
                   type="button"
                   onClick={openBatchModal}
-                  className="bnt-pressable rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]"
+                  className="bnt-pressable rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-xs font-black uppercase text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]"
                 >
                   {/* TODO(Ana) */}
                   {/* TODO(Ana): rotulo do botao de disparo (origem escolhida no modal). */}
@@ -4209,7 +4211,7 @@ function EmailCampaignsAdminSection() {
                   ].map((card) => (
                     <div
                       key={card.label}
-                      className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]"
+                      className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)]"
                     >
                       <p className="text-xs font-black uppercase text-slate-500">
                         {card.label}
@@ -4228,7 +4230,7 @@ function EmailCampaignsAdminSection() {
                   Entrega
                 </p>
                 <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
+                  <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)]">
                     <p className="text-xs font-black uppercase text-slate-500">
                       Entregues
                     </p>
@@ -4250,7 +4252,7 @@ function EmailCampaignsAdminSection() {
                         ? "border-rose-500 bg-rose-50 shadow-[4px_4px_0_#e11d48]"
                         : detailBounceTier === "watch"
                           ? "border-amber-500 bg-amber-50 shadow-[4px_4px_0_#f59e0b]"
-                          : "border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]"
+                          : "border-slate-900 bg-white shadow-[4px_4px_0_var(--bnt-shadow)]"
                     }`}
                   >
                     <p className="text-xs font-black uppercase text-slate-500">
@@ -4273,7 +4275,7 @@ function EmailCampaignsAdminSection() {
                       </p>
                     ) : null}
                   </div>
-                  <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
+                  <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)]">
                     <p className="text-xs font-black uppercase text-slate-500">
                       Reclamações
                     </p>
@@ -5330,7 +5332,7 @@ function EmailCampaignsAdminSection() {
                   confirmText !== "ENVIAR" || batchBusy || blockImmediateEmpty
                 }
                 onClick={() => void submitBatch()}
-                className="rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 disabled:opacity-40"
+                className="rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-ink-on-accent disabled:opacity-40"
               >
                 {/* TODO(Ana) */}
                 {batchBusy
@@ -5635,7 +5637,7 @@ function ContentAdminSection() {
                         setEditing(null);
                         setForm(emptyContentForm(activeType));
                       }}
-                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a]"
+                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black shadow-[2px_2px_0_var(--bnt-shadow)]"
                     >
                       Cancelar edição
                     </button>
@@ -8433,7 +8435,7 @@ export default function Admin() {
                 setAffiliatesTab(value as "afiliados" | "cupons")
               }
             >
-              <TabsList className="h-auto gap-1 rounded-full border-2 border-slate-900 bg-white p-1 shadow-[2px_2px_0_#0f172a]">
+              <TabsList className="h-auto gap-1 rounded-full border-2 border-slate-900 bg-white p-1 shadow-[2px_2px_0_var(--bnt-shadow)]">
                 <TabsTrigger
                   value="afiliados"
                   className="rounded-full px-4 py-1.5 text-xs font-black uppercase data-[state=active]:bg-slate-950 data-[state=active]:text-white"
@@ -8453,10 +8455,10 @@ export default function Admin() {
                   id="afiliados"
                   className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white"
                 >
-                  <div className="border-b-2 border-slate-900 bg-[#ffb800] p-6">
+                  <div className="border-b-2 border-slate-900 bg-[var(--brand-yellow)] p-6">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                       <div>
-                        <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                        <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                           <Handshake className="h-4 w-4" />
                           afiliados
                         </p>
@@ -8470,7 +8472,7 @@ export default function Admin() {
                           afiliado.
                         </p>
                       </div>
-                      <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
+                      <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)]">
                         <p className="text-xs font-black uppercase text-slate-500">
                           status
                         </p>
@@ -8517,9 +8519,9 @@ export default function Admin() {
                     ].map((item) => (
                       <div
                         key={item.label}
-                        className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
+                        className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]"
                       >
-                        <span className="inline-flex rounded-xl border-2 border-slate-900 bg-yellow-300 p-2 text-slate-950">
+                        <span className="inline-flex rounded-xl border-2 border-slate-900 bg-yellow-300 p-2 text-ink-on-accent">
                           {item.icon}
                         </span>
                         <p className="mt-3 text-xs font-black uppercase text-violet-700">
@@ -8533,7 +8535,7 @@ export default function Admin() {
                   </div>
 
                   <div className="grid gap-6 p-6 xl:grid-cols-[0.9fr_1.1fr]">
-                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)]">
                       <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
                         <PlusCircle className="h-6 w-6" />
                         Gerar link de afiliado
@@ -8569,7 +8571,7 @@ export default function Admin() {
                             <button
                               type="button"
                               onClick={handleGenerateAffiliateCode}
-                              className="rounded-2xl border-2 border-slate-900 bg-yellow-300 px-4 text-sm font-black shadow-[3px_3px_0_#0f172a]"
+                              className="rounded-2xl border-2 border-slate-900 bg-yellow-300 px-4 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)]"
                             >
                               Gerar
                             </button>
@@ -8654,7 +8656,7 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)]">
                       <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
                         <Tag className="h-6 w-6" />
                         Afiliados cadastrados
@@ -8666,7 +8668,7 @@ export default function Admin() {
                           setAffiliateSearch(event.target.value)
                         }
                         placeholder="Buscar por nome, código ou e-mail..."
-                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_#0f172a] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
+                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
                       />
                       <div className="mt-5">
                         {affiliatesStatsLoading || affiliatesLoading ? (
@@ -8700,7 +8702,7 @@ export default function Admin() {
                                           onClick={() =>
                                             startAffiliateEdit(affiliate)
                                           }
-                                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a]"
+                                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_var(--bnt-shadow)]"
                                         >
                                           Editar
                                         </button>
@@ -8711,7 +8713,7 @@ export default function Admin() {
                                               affiliate,
                                             )
                                           }
-                                          className="rounded-full border-2 border-slate-900 bg-yellow-100 px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                                          className="rounded-full border-2 border-slate-900 bg-yellow-100 px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
                                         >
                                           {copiedAffiliateCardId ===
                                           affiliate.id
@@ -8730,7 +8732,7 @@ export default function Admin() {
                                               0 ||
                                             payingAffiliateId === affiliate.id
                                           }
-                                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-50"
+                                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-50"
                                         >
                                           {payingAffiliateId === affiliate.id
                                             ? "Pagando..."
@@ -8741,7 +8743,7 @@ export default function Admin() {
                                           onClick={() =>
                                             setDeleteAffiliateTarget(affiliate)
                                           }
-                                          className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-2 text-xs font-black text-rose-800 shadow-[2px_2px_0_#0f172a]"
+                                          className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-2 text-xs font-black text-rose-800 shadow-[2px_2px_0_var(--bnt-shadow)]"
                                         >
                                           Excluir
                                         </button>
@@ -8899,7 +8901,7 @@ export default function Admin() {
                                               savingAffiliateEditId ===
                                               affiliate.id
                                             }
-                                            className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-60"
+                                            className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-60"
                                           >
                                             {savingAffiliateEditId ===
                                             affiliate.id
@@ -8927,7 +8929,7 @@ export default function Admin() {
                                         )
                                       }
                                       disabled={affiliateCurrentPage <= 1}
-                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-40 disabled:shadow-none"
                                     >
                                       Anterior
                                     </button>
@@ -8945,7 +8947,7 @@ export default function Admin() {
                                         affiliateCurrentPage >=
                                         affiliateTotalPages
                                       }
-                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-40 disabled:shadow-none"
                                     >
                                       Próxima
                                     </button>
@@ -8985,10 +8987,10 @@ export default function Admin() {
                   id="cupons"
                   className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white"
                 >
-                  <div className="border-b-2 border-slate-900 bg-[#ffb800] p-6">
+                  <div className="border-b-2 border-slate-900 bg-[var(--brand-yellow)] p-6">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                       <div>
-                        <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                        <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                           <TicketPercent className="h-4 w-4" />
                           cupons
                         </p>
@@ -9001,7 +9003,7 @@ export default function Admin() {
                           de usos.
                         </p>
                       </div>
-                      <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
+                      <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)]">
                         <p className="text-xs font-black uppercase text-slate-500">
                           status
                         </p>
@@ -9018,7 +9020,7 @@ export default function Admin() {
                   </div>
 
                   <div className="grid gap-6 p-6 xl:grid-cols-[0.9fr_1.1fr]">
-                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)]">
                       <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
                         <PlusCircle className="h-6 w-6" />
                         Criar cupom
@@ -9041,7 +9043,7 @@ export default function Admin() {
                             <button
                               type="button"
                               onClick={handleGenerateCouponCode}
-                              className="rounded-2xl border-2 border-slate-900 bg-yellow-300 px-4 text-sm font-black shadow-[3px_3px_0_#0f172a]"
+                              className="rounded-2xl border-2 border-slate-900 bg-yellow-300 px-4 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)]"
                             >
                               Gerar
                             </button>
@@ -9096,7 +9098,7 @@ export default function Admin() {
                                   type="button"
                                   onClick={() => setCouponFormValidUntil("")}
                                   aria-label="Limpar validade"
-                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_#0f172a]"
+                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_var(--bnt-shadow)]"
                                 >
                                   <X className="h-4 w-4" />
                                 </button>
@@ -9125,7 +9127,7 @@ export default function Admin() {
                                     setCouponFormMaxRedemptions("")
                                   }
                                   aria-label="Limpar limite de usos"
-                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_#0f172a]"
+                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_var(--bnt-shadow)]"
                                 >
                                   <X className="h-4 w-4" />
                                 </button>
@@ -9198,7 +9200,7 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                    <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)]">
                       <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
                         <Tag className="h-6 w-6" />
                         Cupons cadastrados
@@ -9210,7 +9212,7 @@ export default function Admin() {
                           setCouponSearch(event.target.value)
                         }
                         placeholder="Buscar por código ou descrição..."
-                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_#0f172a] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
+                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
                       />
                       <div className="mt-5">
                         {couponsLoading ? (
@@ -9245,7 +9247,7 @@ export default function Admin() {
                                           onClick={() =>
                                             startCouponEdit(coupon)
                                           }
-                                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a]"
+                                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_var(--bnt-shadow)]"
                                         >
                                           Editar
                                         </button>
@@ -9256,7 +9258,7 @@ export default function Admin() {
                                               coupon,
                                             )
                                           }
-                                          className="rounded-full border-2 border-slate-900 bg-yellow-100 px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                                          className="rounded-full border-2 border-slate-900 bg-yellow-100 px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
                                         >
                                           {copiedCouponCardId === coupon.id
                                             ? "Link copiado!"
@@ -9267,7 +9269,7 @@ export default function Admin() {
                                           onClick={() =>
                                             setDeleteCouponTarget(coupon)
                                           }
-                                          className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-2 text-xs font-black text-rose-800 shadow-[2px_2px_0_#0f172a]"
+                                          className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-2 text-xs font-black text-rose-800 shadow-[2px_2px_0_var(--bnt-shadow)]"
                                         >
                                           Excluir
                                         </button>
@@ -9397,7 +9399,7 @@ export default function Admin() {
                                                     })
                                                   }
                                                   aria-label="Limpar validade"
-                                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_#0f172a]"
+                                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_var(--bnt-shadow)]"
                                                 >
                                                   <X className="h-4 w-4" />
                                                 </button>
@@ -9432,7 +9434,7 @@ export default function Admin() {
                                                     })
                                                   }
                                                   aria-label="Limpar limite de usos"
-                                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_#0f172a]"
+                                                  className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_var(--bnt-shadow)]"
                                                 >
                                                   <X className="h-4 w-4" />
                                                 </button>
@@ -9503,7 +9505,7 @@ export default function Admin() {
                                             disabled={
                                               savingCouponEditId === coupon.id
                                             }
-                                            className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-60"
+                                            className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-60"
                                           >
                                             {savingCouponEditId === coupon.id
                                               ? "Salvando..."
@@ -9530,7 +9532,7 @@ export default function Admin() {
                                         )
                                       }
                                       disabled={couponCurrentPage <= 1}
-                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-40 disabled:shadow-none"
                                     >
                                       Anterior
                                     </button>
@@ -9547,7 +9549,7 @@ export default function Admin() {
                                       disabled={
                                         couponCurrentPage >= couponTotalPages
                                       }
-                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+                                      className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-40 disabled:shadow-none"
                                     >
                                       Próxima
                                     </button>

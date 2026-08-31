@@ -78,7 +78,7 @@ export function TaskChecklist({
           className="mb-3 h-2.5 w-full overflow-hidden rounded-full border-2 border-slate-900 bg-white"
         >
           <div
-            className="h-full bg-[#FFB800] transition-all"
+            className="h-full bg-[var(--brand-yellow)] transition-all"
             style={{ width: `${percent}%` }}
           />
         </div>
@@ -95,7 +95,7 @@ export function TaskChecklist({
               checked={item.is_done}
               aria-label={item.content}
               onChange={(event) => onToggle(item.id, event.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-2 border-slate-900 accent-[#FFB800]"
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-2 border-slate-900 accent-[var(--brand-yellow)]"
             />
             <span
               className={`min-w-0 flex-1 break-words text-sm font-semibold ${
@@ -155,7 +155,7 @@ export function TaskChecklist({
           onClick={submit}
           disabled={!draft.trim()}
           aria-label="Adicionar item"
-          className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 shadow-[2px_2px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+          className="shrink-0 rounded-full border-2 border-slate-900 bg-white p-1.5 text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-40 disabled:shadow-none"
         >
           <Plus className="h-3.5 w-3.5" />
         </button>

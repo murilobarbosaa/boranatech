@@ -477,7 +477,7 @@ function WaitlistCta({ defaultEmail }: { defaultEmail: string }) {
         <button
           type="submit"
           disabled={submitting}
-          className="pro-glare bnt-pressable inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-900 bg-[#FFB800] px-6 py-3 font-display font-black text-slate-950 shadow-[5px_5px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#0f172a] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_#0f172a]"
+          className="pro-glare bnt-pressable inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-6 py-3 font-display font-black text-ink-on-accent shadow-[5px_5px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--bnt-shadow)] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
         >
           <Sparkles className="h-5 w-5" />
           {/* TODO(Ana): rotulos do CTA da lista de espera (normal e carregando). */}
@@ -598,7 +598,7 @@ function CouponField({
         <button
           type="submit"
           disabled={validating || !code.trim()}
-          className="bnt-pressable inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border-2 border-slate-900 bg-[#FFB800] px-4 font-display text-sm font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-60 disabled:hover:translate-y-0"
+          className="bnt-pressable inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 font-display text-sm font-black text-ink-on-accent shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-60 disabled:hover:translate-y-0"
         >
           {validating ? (
             <Loader2 size={15} className="animate-spin" aria-hidden="true" />
@@ -856,7 +856,7 @@ export default function Checkout() {
       />
 
       {hasAffiliateBanner ? (
-        <div className="border-b-2 border-slate-950 bg-[#FFB800]">
+        <div className="border-b-2 border-slate-950 bg-[var(--brand-yellow)]">
           <div className="container py-3 text-center">
             <p className="font-display text-sm font-black uppercase tracking-wider text-slate-950">
               {/* TODO(Ana): confirmar copy final */}
@@ -873,7 +873,7 @@ export default function Checkout() {
 
       <section
         aria-labelledby="pro-hero-title"
-        className="relative flex min-h-[55vh] items-center overflow-hidden bg-slate-950 py-14 md:min-h-[78vh] md:py-16"
+        className="bnt-keep-colors relative flex min-h-[55vh] items-center overflow-hidden bg-slate-950 py-14 md:min-h-[78vh] md:py-16"
       >
         <CeuEstrelado />
         <div className="container relative z-10 w-full">
@@ -981,7 +981,7 @@ export default function Checkout() {
                                     skipChipFocusRef.current = true;
                                     scrollToPlans();
                                   }}
-                                  className="pro-glare bnt-pressable mt-7 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border-2 border-slate-950 bg-[#FFB800] px-8 py-3.5 font-display text-base font-black text-slate-950 shadow-[5px_5px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#0f172a]"
+                                  className="pro-glare bnt-pressable mt-7 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border-2 border-slate-950 bg-[var(--brand-yellow)] px-8 py-3.5 font-display text-base font-black text-ink-on-accent shadow-[5px_5px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--bnt-shadow)]"
                                 >
                                   <ProStarIcon />
                                   Quero o Pro
@@ -1006,7 +1006,7 @@ export default function Checkout() {
                 type="button"
                 onClick={scrollToPlans}
                 aria-label="Ir para escolha de plano"
-                className="pro-glare bnt-pressable group relative inline-flex items-center gap-2 overflow-hidden rounded-2xl border-2 border-slate-950 bg-[#FFB800] px-8 py-4 font-display text-base md:text-lg font-black text-slate-950 shadow-[5px_5px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#0f172a]"
+                className="pro-glare bnt-pressable group relative inline-flex items-center gap-2 overflow-hidden rounded-2xl border-2 border-slate-950 bg-[var(--brand-yellow)] px-8 py-4 font-display text-base md:text-lg font-black text-ink-on-accent shadow-[5px_5px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--bnt-shadow)]"
               >
                 <ProStarIcon />
                 <span>Quero o Pro</span>
@@ -1026,7 +1026,7 @@ export default function Checkout() {
       <section
         id="planos-section"
         aria-labelledby="planos-title"
-        className="relative overflow-hidden bg-slate-950 py-14 md:py-20"
+        className="bnt-keep-colors relative overflow-hidden bg-slate-950 py-14 md:py-20"
       >
         <CeuEstrelado />
         {/* Continuacao sutil do glow do hero (mesma cor, opacidade menor)
@@ -1159,7 +1159,7 @@ export default function Checkout() {
                       ? "border-[3px] border-violet-700 shadow-[6px_6px_0_#7c3aed] hover:shadow-[8px_8px_0_#7c3aed]"
                       : "border-2 border-slate-900 shadow-[6px_6px_0_#FCC700] hover:shadow-[8px_8px_0_#FCC700]"
                   } ${
-                    selected ? "bg-[#FFB800]" : "bg-white hover:bg-amber-50"
+                    selected ? "bg-[var(--brand-yellow)]" : "bg-white hover:bg-amber-50"
                   }`}
                 >
                   {plan.badge ? (
@@ -1167,7 +1167,7 @@ export default function Checkout() {
                       className={`mb-4 w-fit rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black ${
                         plan.highlight
                           ? "bg-violet-700 text-white"
-                          : "bg-slate-950 text-[#FFB800]"
+                          : "bg-slate-950 text-[var(--brand-yellow)]"
                       }`}
                     >
                       {plan.badge}
@@ -1185,7 +1185,7 @@ export default function Checkout() {
                   >
                     {selected ? (
                       <Check
-                        className="h-4 w-4 text-[#FFB800]"
+                        className="h-4 w-4 text-[var(--brand-yellow)]"
                         strokeWidth={3}
                       />
                     ) : null}
@@ -1287,7 +1287,7 @@ export default function Checkout() {
                   type="button"
                   onClick={handleSubscribe}
                   disabled={loading}
-                  className="pro-glare bnt-pressable inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-900 bg-[#FFB800] px-8 py-4 font-display font-black text-slate-950 shadow-[5px_5px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#0f172a] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_#0f172a]"
+                  className="pro-glare bnt-pressable inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-8 py-4 font-display font-black text-ink-on-accent shadow-[5px_5px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--bnt-shadow)] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
                 >
                   <Sparkles className="h-5 w-5" />
                   {loading

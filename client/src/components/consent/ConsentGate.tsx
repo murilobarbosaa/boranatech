@@ -255,7 +255,7 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
         : null;
 
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#faf8f4]">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[var(--brand-cream)]">
         <Spinner className="size-8" />
         {/* Sem role="status" aqui: o proprio Spinner acima ja e a regiao viva
             (role="status" + aria-label). Duas regioes vivas irmas fazem o leitor
@@ -272,8 +272,8 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
   // apenas retry e a saida da conta.
   if (phase === "checkFailed") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#faf8f4] p-4">
-        <div className="w-full max-w-md rounded-2xl border-2 border-slate-950 bg-white p-6 text-center shadow-[6px_6px_0_#0f172a]">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--brand-cream)] p-4">
+        <div className="w-full max-w-md rounded-2xl border-2 border-slate-950 bg-white p-6 text-center shadow-[6px_6px_0_var(--bnt-shadow)]">
           {/* TODO(Ana): titulo do estado de falha de verificacao do gate. */}
           <h2 className="font-display text-xl font-black text-slate-950">
             Não foi possível verificar sua conta
@@ -312,7 +312,7 @@ export default function ConsentGate({ children }: { children: ReactNode }) {
       aria-modal="true"
       className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4"
     >
-      <div className="w-full max-w-md rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a]">
+      <div className="w-full max-w-md rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)]">
         {/* TODO(Ana): titulo do modal de consentimento obrigatorio. */}
         <h2 className="font-display text-xl font-black text-slate-950">
           Antes de continuar

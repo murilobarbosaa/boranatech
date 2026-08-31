@@ -120,7 +120,7 @@ export default function PerfilFavoritos() {
           url="/perfil/favoritos"
           noindex
         />
-        <section className="bg-[#faf8f4] py-12">
+        <section className="bg-[var(--brand-cream)] py-12">
           <div className="container">
             <p className="text-sm text-slate-500">Carregando…</p>
           </div>
@@ -133,7 +133,7 @@ export default function PerfilFavoritos() {
     <Layout>
       <SEO title="Favoritos · Bora na Tech?" url="/perfil/favoritos" noindex />
 
-      <section className="border-b-2 border-slate-900 bg-[#faf8f4] py-10">
+      <section className="border-b-2 border-slate-900 bg-[var(--brand-cream)] py-10">
         <div className="container">
           <Link
             href="/perfil"
@@ -144,7 +144,7 @@ export default function PerfilFavoritos() {
           <div className="mt-4 flex items-center gap-3">
             <span
               aria-hidden
-              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-slate-900 bg-rose-100 text-rose-700 shadow-[3px_3px_0_#0f172a]"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-slate-900 bg-rose-100 text-rose-700 shadow-[3px_3px_0_var(--bnt-shadow)]"
             >
               <Heart className="h-5 w-5 fill-current" />
             </span>
@@ -164,7 +164,7 @@ export default function PerfilFavoritos() {
         </div>
       </section>
 
-      <section className="bg-[#faf8f4] pb-16 pt-6">
+      <section className="bg-[var(--brand-cream)] pb-16 pt-6">
         <div className="container">
           {loading ? (
             <p className="text-sm text-slate-500">Carregando seus favoritos…</p>
@@ -194,7 +194,7 @@ export default function PerfilFavoritos() {
                       className={cn(
                         "inline-flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-sm font-black uppercase tracking-wide transition-all",
                         isActive
-                          ? "border-slate-900 bg-[#FFB800] text-slate-950 shadow-[3px_3px_0_#0f172a]"
+                          ? "border-slate-900 bg-[var(--brand-yellow)] text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]"
                           : "border-slate-300 bg-white text-slate-700 hover:border-slate-900",
                       )}
                     >
@@ -208,7 +208,7 @@ export default function PerfilFavoritos() {
                         className={cn(
                           "rounded-full px-1.5 text-[10px] font-black",
                           isActive
-                            ? "bg-slate-950 text-[#FFB800]"
+                            ? "bg-slate-950 text-[var(--brand-yellow)]"
                             : "bg-slate-100 text-slate-600",
                         )}
                       >
@@ -250,7 +250,7 @@ function EmptyState() {
     <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-10 text-center">
       <span
         aria-hidden
-        className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-slate-900 bg-rose-100 text-rose-700 shadow-[3px_3px_0_#0f172a]"
+        className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-slate-900 bg-rose-100 text-rose-700 shadow-[3px_3px_0_var(--bnt-shadow)]"
       >
         <Heart className="h-6 w-6" />
       </span>
@@ -264,19 +264,19 @@ function EmptyState() {
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
         <Link
           href="/noticias"
-          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] hover:-translate-y-0.5"
+          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] hover:-translate-y-0.5"
         >
           Explorar notícias
         </Link>
         <Link
           href="/roadmaps"
-          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] hover:-translate-y-0.5"
+          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] hover:-translate-y-0.5"
         >
           Ver roadmaps
         </Link>
         <Link
           href="/areas"
-          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] hover:-translate-y-0.5"
+          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] hover:-translate-y-0.5"
         >
           Áreas de TI
         </Link>

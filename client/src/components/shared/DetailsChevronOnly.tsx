@@ -46,7 +46,7 @@ export function DetailsChevronOnly({
             type="button"
             aria-expanded={open}
             aria-label={open ? "Recolher seção" : "Expandir seção"}
-            className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-2 border-slate-900 bg-white text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:bg-violet-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+            className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-2 border-slate-900 bg-white text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:bg-violet-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

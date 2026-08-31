@@ -56,7 +56,7 @@ export const pageAccentUi: Record<PageHeroAccent, PageAccentUi> = {
     panelBorderInner: "border-violet-200",
     iconMuted: "text-violet-700",
     filterActive:
-      "border-slate-900 bg-violet-600 text-white shadow-[2px_2px_0_#0f172a]",
+      "border-slate-900 bg-violet-600 text-white shadow-[2px_2px_0_var(--bnt-shadow)]",
     filterInactive:
       "border-slate-300 bg-white text-slate-700 hover:border-violet-400 hover:bg-violet-50",
     progressFill: "bg-violet-600",
@@ -85,7 +85,7 @@ export const pageAccentUi: Record<PageHeroAccent, PageAccentUi> = {
     panelBorderInner: "border-sky-200",
     iconMuted: "text-sky-700",
     filterActive:
-      "border-slate-900 bg-sky-600 text-white shadow-[2px_2px_0_#0f172a]",
+      "border-slate-900 bg-sky-600 text-white shadow-[2px_2px_0_var(--bnt-shadow)]",
     filterInactive:
       "border-slate-300 bg-white text-slate-700 hover:border-sky-400 hover:bg-sky-50",
     progressFill: "bg-sky-600",
@@ -114,7 +114,7 @@ export const pageAccentUi: Record<PageHeroAccent, PageAccentUi> = {
     panelBorderInner: "border-amber-200",
     iconMuted: "text-amber-700",
     filterActive:
-      "border-slate-900 bg-amber-600 text-white shadow-[2px_2px_0_#0f172a]",
+      "border-slate-900 bg-amber-600 text-white shadow-[2px_2px_0_var(--bnt-shadow)]",
     filterInactive:
       "border-slate-300 bg-white text-slate-700 hover:border-amber-400 hover:bg-amber-50",
     progressFill: "bg-amber-600",
@@ -143,7 +143,7 @@ export const pageAccentUi: Record<PageHeroAccent, PageAccentUi> = {
     panelBorderInner: "border-emerald-200",
     iconMuted: "text-emerald-700",
     filterActive:
-      "border-slate-900 bg-emerald-600 text-white shadow-[2px_2px_0_#0f172a]",
+      "border-slate-900 bg-emerald-600 text-white shadow-[2px_2px_0_var(--bnt-shadow)]",
     filterInactive:
       "border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:bg-emerald-50",
     progressFill: "bg-emerald-600",
@@ -172,7 +172,7 @@ export const pageAccentUi: Record<PageHeroAccent, PageAccentUi> = {
     panelBorderInner: "border-blue-200",
     iconMuted: "text-blue-700",
     filterActive:
-      "border-slate-900 bg-blue-600 text-white shadow-[2px_2px_0_#0f172a]",
+      "border-slate-900 bg-blue-600 text-white shadow-[2px_2px_0_var(--bnt-shadow)]",
     filterInactive:
       "border-slate-300 bg-white text-slate-700 hover:border-blue-400 hover:bg-blue-50",
     progressFill: "bg-blue-600",
@@ -201,7 +201,7 @@ export const pageAccentUi: Record<PageHeroAccent, PageAccentUi> = {
     panelBorderInner: "border-fuchsia-200",
     iconMuted: "text-fuchsia-700",
     filterActive:
-      "border-slate-900 bg-fuchsia-600 text-white shadow-[2px_2px_0_#0f172a]",
+      "border-slate-900 bg-fuchsia-600 text-white shadow-[2px_2px_0_var(--bnt-shadow)]",
     filterInactive:
       "border-slate-300 bg-white text-slate-700 hover:border-fuchsia-400 hover:bg-fuchsia-50",
     progressFill: "bg-fuchsia-600",
@@ -230,7 +230,7 @@ export const pageAccentUi: Record<PageHeroAccent, PageAccentUi> = {
     panelBorderInner: "border-orange-200",
     iconMuted: "text-orange-700",
     filterActive:
-      "border-slate-900 bg-orange-600 text-white shadow-[2px_2px_0_#0f172a]",
+      "border-slate-900 bg-orange-600 text-white shadow-[2px_2px_0_var(--bnt-shadow)]",
     filterInactive:
       "border-slate-300 bg-white text-slate-700 hover:border-orange-400 hover:bg-orange-50",
     progressFill: "bg-orange-600",
@@ -259,7 +259,7 @@ export const pageAccentUi: Record<PageHeroAccent, PageAccentUi> = {
     panelBorderInner: "border-rose-200",
     iconMuted: "text-rose-700",
     filterActive:
-      "border-slate-900 bg-rose-600 text-white shadow-[2px_2px_0_#0f172a]",
+      "border-slate-900 bg-rose-600 text-white shadow-[2px_2px_0_var(--bnt-shadow)]",
     filterInactive:
       "border-slate-300 bg-white text-slate-700 hover:border-rose-400 hover:bg-rose-50",
     progressFill: "bg-rose-600",
@@ -288,7 +288,7 @@ export const pageAccentUi: Record<PageHeroAccent, PageAccentUi> = {
     panelBorderInner: "border-cyan-200",
     iconMuted: "text-cyan-700",
     filterActive:
-      "border-slate-900 bg-cyan-600 text-white shadow-[2px_2px_0_#0f172a]",
+      "border-slate-900 bg-cyan-600 text-white shadow-[2px_2px_0_var(--bnt-shadow)]",
     filterInactive:
       "border-slate-300 bg-white text-slate-700 hover:border-cyan-400 hover:bg-cyan-50",
     progressFill: "bg-cyan-600",
@@ -317,7 +317,7 @@ export const pageAccentUi: Record<PageHeroAccent, PageAccentUi> = {
     panelBorderInner: "border-teal-200",
     iconMuted: "text-teal-700",
     filterActive:
-      "border-slate-900 bg-teal-600 text-white shadow-[2px_2px_0_#0f172a]",
+      "border-slate-900 bg-teal-600 text-white shadow-[2px_2px_0_var(--bnt-shadow)]",
     filterInactive:
       "border-slate-300 bg-white text-slate-700 hover:border-teal-400 hover:bg-teal-50",
     progressFill: "bg-teal-600",
