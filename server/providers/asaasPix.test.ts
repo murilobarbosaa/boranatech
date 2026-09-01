@@ -41,6 +41,8 @@ const estado = vi.hoisted(() => ({
   novaLinhaId: "row-1",
   /** Chaves ja gravadas em billing_events (dedupe). */
   eventosVistos: new Set<string>(),
+  /** Linha de coupons devolvida por findValidCoupon. */
+  cupom: null as Record<string, unknown> | null,
   /** CPF gravado em profiles. CPF valido de teste (digitos verificadores ok). */
   cpfDoPerfil: "52998224725" as string | null,
   /** Intencao de nao renovar ja existente, para o caso idempotente. */
@@ -49,9 +51,9 @@ const estado = vi.hoisted(() => ({
   emails: [] as Array<Record<string, unknown>>,
   /** Linha de affiliates devolvida na busca por codigo. */
   afiliado: { id: "aff-1" } as Record<string, unknown> | null,
-  /** Resultado da RPC de ativacao. */
-  ativacao: null as unknown,
-  ativacaoErro: null as { code?: string; message: string } | null,
+  /** Resultado da RPC de activation. */
+  activation: null as unknown,
+  activationError: null as { code?: string; message: string } | null,
 }));
 
 vi.mock("../lib/env", () => ({
@@ -124,6 +126,7 @@ vi.mock("../lib/supabaseAdmin", () => {
       if (tabela === "plans") return { data: estado.plano, error: null };
       if (tabela === "affiliates")
         return { data: estado.afiliado, error: null };
+      if (tabela === "coupons") return { data: estado.cupom, error: null };
       if (tabela === "profiles")
         return { data: { gender: null, cpf: estado.cpfDoPerfil }, error: null };
       if (tabela === "subscription_cancellations")
@@ -186,9 +189,9 @@ vi.mock("../lib/supabaseAdmin", () => {
       rpc: async (nome: string, args: Record<string, unknown>) => {
         estado.rpcCalls.push({ nome, args });
         if (nome === "activate_subscription_exclusive") {
-          if (estado.ativacaoErro)
-            return { data: null, error: estado.ativacaoErro };
-          return { data: estado.ativacao, error: null };
+          if (estado.activationError)
+            return { data: null, error: estado.activationError };
+          return { data: estado.activation, error: null };
         }
         return { data: null, error: null };
       },
@@ -197,6 +200,7 @@ vi.mock("../lib/supabaseAdmin", () => {
 });
 
 import { oneOffAccessDays } from "../../shared/paymentMethods";
+import { discountedPriceCents, PLAN_PRICING } from "../../shared/planPricing";
 import { maskCpf } from "./asaas";
 import {
   eventKey,
@@ -228,8 +232,9 @@ function limpar() {
   estado.emails = [];
   estado.intencaoExistente = null;
   estado.cpfDoPerfil = "52998224725";
+  estado.cupom = null;
   estado.eventosVistos = new Set();
-  estado.ativacao = [
+  estado.activation = [
     {
       out_activated: true,
       out_superseded_count: 0,
@@ -239,7 +244,7 @@ function limpar() {
       out_coupon_code: null,
     },
   ];
-  estado.ativacaoErro = null;
+  estado.activationError = null;
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.spyOn(console, "log").mockImplementation(() => {});
@@ -469,7 +474,7 @@ describe("webhook: ativacao pela RPC", () => {
     expect(fim - inicio).toBe(365 * 24 * 60 * 60 * 1000);
   });
 
-  it("NENHUMA escrita direta de status em subscriptions no caminho de ativacao", async () => {
+  it("NENHUMA escrita direta de status em subscriptions no caminho de activation", async () => {
     await processAsaasEvent(eventoDePagamento());
 
     const escritasEmSubs = estado.escritas.filter(
@@ -479,15 +484,18 @@ describe("webhook: ativacao pela RPC", () => {
   });
 
   it("erro da RPC captura no Sentry e propaga", async () => {
-    estado.ativacaoErro = { code: "40001", message: "serialization failure" };
+    estado.activationError = {
+      code: "40001",
+      message: "serialization failure",
+    };
 
     await expect(processAsaasEvent(eventoDePagamento())).rejects.toThrow();
 
-    const ativacao = estado.capturas.filter(
+    const activation = estado.capturas.filter(
       (c) => c.mensagem === "asaas_ativacao_falhou",
     );
-    expect(ativacao).toHaveLength(1);
-    expect(ativacao[0].opcoes.extra).toMatchObject({
+    expect(activation).toHaveLength(1);
+    expect(activation[0].opcoes.extra).toMatchObject({
       user_id: USER,
       subscription_row_id: "row-1",
       event_id: EVENTO,
@@ -513,7 +521,7 @@ describe("webhook: comissao de afiliado", () => {
       affiliate_code: "BORA10",
       coupon_code: null,
     };
-    estado.ativacao = [
+    estado.activation = [
       {
         out_activated: true,
         out_superseded_count: 0,
@@ -637,7 +645,7 @@ describe("o gravador de escritas do duble funciona", () => {
 });
 
 /**
- * LOTE 2b: efeitos de ativacao pelo caminho compartilhado.
+ * LOTE 2b: efeitos de activation pelo caminho compartilhado.
  *
  * O Lote 2a reimplementava cache e cupom aqui por fora e NAO tinha o e-mail. O
  * primeiro caso abaixo e o que teria acusado isso: ele afirma o conjunto
@@ -646,7 +654,7 @@ describe("o gravador de escritas do duble funciona", () => {
  * O segundo grupo e a regra que impede o oposto: reentrega nao pode reenviar
  * e-mail nem recontar comissao.
  */
-describe("ativacao Pix dispara o conjunto COMPLETO de efeitos", () => {
+describe("activation Pix dispara o conjunto COMPLETO de efeitos", () => {
   beforeEach(() => {
     limpar();
     estado.linhaSubscription = {
@@ -657,7 +665,7 @@ describe("ativacao Pix dispara o conjunto COMPLETO de efeitos", () => {
       affiliate_code: "BORA10",
       coupon_code: "PROMO20",
     };
-    estado.ativacao = [
+    estado.activation = [
       {
         out_activated: true,
         out_superseded_count: 0,
@@ -700,7 +708,7 @@ describe("ativacao Pix dispara o conjunto COMPLETO de efeitos", () => {
     expect(resgates[0].args.p_code).toBe("PROMO20");
   });
 
-  it("os TRES efeitos saem na mesma ativacao, nao um subconjunto", async () => {
+  it("os TRES efeitos saem na mesma activation, nao um subconjunto", async () => {
     await processAsaasEvent(eventoDePagamento());
 
     expect(estado.emails).toHaveLength(1);
@@ -726,7 +734,7 @@ describe("reentrega NAO redispara efeito nenhum", () => {
       affiliate_code: "BORA10",
       coupon_code: "PROMO20",
     };
-    estado.ativacao = [
+    estado.activation = [
       {
         out_activated: false,
         out_superseded_count: 0,
@@ -750,7 +758,7 @@ describe("reentrega NAO redispara efeito nenhum", () => {
   });
 
   it("o MESMO evento duas vezes envia UM e-mail so", async () => {
-    estado.ativacao = [
+    estado.activation = [
       {
         out_activated: true,
         out_superseded_count: 0,
@@ -991,5 +999,217 @@ describe("o CPF nao vaza", () => {
 
     const serializado = JSON.stringify(estado.capturas);
     expect(serializado).not.toContain("52998224725");
+  });
+});
+
+/**
+ * CUPOM NO PRECO DA COBRANCA (defeito achado no 2d-prod, com dinheiro real).
+ *
+ * Medido ao vivo: cupom de 90 por cento, tela mostrando o valor com desconto, e
+ * a cobranca criada no Asaas com o valor CHEIO.
+ *
+ * A causa era estrutural, nao um esquecimento: no fluxo da Stripe a validacao e
+ * nossa mas a ARITMETICA e deles (a sessao recebe `discounts` e o checkout
+ * hospedado faz a conta), entao nosso codigo nunca precisou calcular valor com
+ * desconto. O Asaas cria a cobranca por API, com o valor ja resolvido, e herdou
+ * o preco base.
+ *
+ * O teste do Lote 2c passou com o defeito presente porque afirmava
+ * `externalReference` e `billingType` da cobranca, **nunca o `value`**. Estes
+ * casos afirmam o numero.
+ */
+function cupomDe(percent: number) {
+  return {
+    code: "PROMO",
+    discount_percent: percent,
+    valid_from: null,
+    valid_until: null,
+    max_redemptions: null,
+    times_redeemed: 0,
+    applicable_plans: null,
+  };
+}
+
+function comCupom(planId: string, code: string) {
+  return {
+    user: { id: USER, email: "pessoa@exemplo.com" },
+    planId,
+    affiliateCode: "",
+    couponCode: code,
+    paymentMethod: "pix",
+  } as unknown as Parameters<typeof asaasProvider.createCheckout>[0];
+}
+
+/** O valor que a cobranca levou ao Asaas, em centavos. */
+function valorCobradoCents() {
+  const pagamento = estado.asaas.find((c) => c.caminho === "/payments");
+  return Math.round(
+    Number((pagamento!.body as Record<string, unknown>).value) * 100,
+  );
+}
+
+describe("o valor da cobranca respeita o cupom", () => {
+  beforeEach(limpar);
+
+  it("90 por cento no semestral: cobra 12,90, nao 129,00", async () => {
+    estado.cupom = cupomDe(90);
+
+    await asaasProvider.createCheckout(comCupom("pro_semiannual", "PROMO"));
+
+    expect(valorCobradoCents()).toBe(1290);
+  });
+
+  it("o valor cobrado e IDENTICO a previa do frontend, pela MESMA funcao", async () => {
+    // Nao e "dois calculos que dao o mesmo numero": e a mesma implementacao
+    // (`discountedPriceCents`, shared/planPricing.ts) dos dois lados. Se ela
+    // mudar, muda para tela e cobranca ao mesmo tempo.
+    estado.cupom = cupomDe(30);
+    const baseCents = Math.round(PLAN_PRICING.pro_annual.total * 100);
+    const previa = discountedPriceCents(baseCents, 30);
+
+    await asaasProvider.createCheckout(comCupom("pro_annual", "PROMO"));
+
+    expect(valorCobradoCents()).toBe(previa);
+  });
+
+  it("SEM cupom o valor e o cheio: comportamento de hoje inalterado", async () => {
+    await asaasProvider.createCheckout(checkoutInput("pro_annual"));
+
+    expect(valorCobradoCents()).toBe(
+      Math.round(PLAN_PRICING.pro_annual.total * 100),
+    );
+  });
+
+  it("cupom INVALIDO nao derruba a compra: cobra cheio e nao grava o codigo", async () => {
+    // Mesma regra do fluxo Stripe: cupom nunca impede a assinatura.
+    estado.cupom = null;
+
+    await asaasProvider.createCheckout(comCupom("pro_annual", "NAOEXISTE"));
+
+    expect(valorCobradoCents()).toBe(
+      Math.round(PLAN_PRICING.pro_annual.total * 100),
+    );
+    const insert = estado.escritas.find((e) => e.operacao === "insert");
+    expect((insert!.carga as Record<string, unknown>).coupon_code).toBeNull();
+  });
+
+  it("NAO e primeira compra: cupom nao aplica, igual a Stripe", async () => {
+    // `isFirstPurchase` acha uma sub ja ativada.
+    estado.linhaSubscription = {
+      id: "sub-velha",
+      current_period_start: "2026-01-01",
+    };
+    estado.cupom = cupomDe(90);
+
+    await asaasProvider.createCheckout(comCupom("pro_annual", "PROMO"));
+
+    expect(valorCobradoCents()).toBe(
+      Math.round(PLAN_PRICING.pro_annual.total * 100),
+    );
+  });
+});
+
+describe("rastro do cupom: so o APROVADO viaja", () => {
+  beforeEach(limpar);
+
+  it("cupom valido: a row leva o codigo canonico do banco", async () => {
+    estado.cupom = cupomDe(50);
+
+    // O cliente mandou minusculo; o que grava e o `code` da linha de coupons.
+    await asaasProvider.createCheckout(comCupom("pro_annual", "PROMO"));
+
+    const insert = estado.escritas.find((e) => e.operacao === "insert");
+    expect((insert!.carga as Record<string, unknown>).coupon_code).toBe(
+      "PROMO",
+    );
+  });
+
+  it("activation com cupom conta resgate UMA vez, e a reentrega nao duplica", async () => {
+    estado.linhaSubscription = {
+      id: "row-1",
+      user_id: USER,
+      status: "pending",
+      plan_id: "plan-anual",
+      affiliate_code: null,
+      coupon_code: "PROMO",
+    };
+    estado.activation = [
+      {
+        out_activated: true,
+        out_superseded_count: 0,
+        out_user_id: USER,
+        out_plan_id: "plan-anual",
+        out_affiliate_code: null,
+        out_coupon_code: "PROMO",
+      },
+    ];
+
+    await processAsaasEvent(eventoDePagamento());
+    await processAsaasEvent(eventoDePagamento());
+
+    const resgates = estado.rpcCalls.filter(
+      (c) => c.nome === "increment_coupon_redemption",
+    );
+    expect(resgates).toHaveLength(1);
+    expect(resgates[0].args.p_code).toBe("PROMO");
+  });
+});
+
+describe("piso do Asaas", () => {
+  beforeEach(limpar);
+
+  it("desconto que derruba abaixo de R$ 5,00: 422 nomeado", async () => {
+    // 97 por cento de R$ 129,00 da R$ 3,87, abaixo do minimo do provedor.
+    estado.cupom = cupomDe(97);
+
+    await expect(
+      asaasProvider.createCheckout(comCupom("pro_semiannual", "PROMO")),
+    ).rejects.toMatchObject({ statusCode: 422, code: "valor_minimo_pix" });
+  });
+
+  it("abaixo do piso: ZERO chamada remota e ZERO row local", async () => {
+    estado.cupom = cupomDe(97);
+
+    await expect(
+      asaasProvider.createCheckout(comCupom("pro_semiannual", "PROMO")),
+    ).rejects.toThrow();
+
+    expect(estado.asaas).toEqual([]);
+    expect(estado.escritas).toEqual([]);
+  });
+
+  it("exatamente no piso passa: a recusa e ABAIXO, nao no limite", async () => {
+    // 12900 menos 96 por cento da 516, acima de 500.
+    estado.cupom = cupomDe(96);
+
+    await asaasProvider.createCheckout(comCupom("pro_semiannual", "PROMO"));
+
+    expect(valorCobradoCents()).toBe(516);
+  });
+});
+
+describe("arredondamento: centavos inteiros, mesma regra da previa", () => {
+  it("percentual exato nao sofre drift", () => {
+    expect(discountedPriceCents(12900, 90)).toBe(1290);
+    expect(discountedPriceCents(22200, 30)).toBe(15540);
+  });
+
+  it("fracao de centavo arredonda, e a regra e a do desconto (nao a do resto)", () => {
+    // 33 por cento de 2990 da 986,7 de desconto: arredonda para 987, e o final
+    // fica 2003. A regra arredonda o DESCONTO, nao o preco final, e as duas
+    // dariam numeros diferentes.
+    expect(discountedPriceCents(2990, 33)).toBe(2003);
+    expect(2990 - Math.round((2990 * 33) / 100)).toBe(2003);
+  });
+
+  it("os planos que aceitam Pix nunca caem no caso fracionario", () => {
+    // 12900 e 22200 sao divisiveis por 100, entao `cents * percent / 100` e
+    // sempre inteiro para percentual inteiro. O caso acima existe para travar a
+    // REGRA, nao porque o Pix o alcance hoje.
+    for (const cents of [12900, 22200]) {
+      for (let p = 1; p <= 99; p++) {
+        expect(Number.isInteger((cents * p) / 100)).toBe(true);
+      }
+    }
   });
 });

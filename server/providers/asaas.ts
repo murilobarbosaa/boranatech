@@ -6,12 +6,14 @@ import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
 import {
   applyActivationEffects,
+  isFirstPurchase,
   recordNonRenewalIntent,
   revertNonRenewalIntent,
 } from "./shared";
+import { resolveCheckoutPriceCents } from "../lib/coupons";
 import { isValidCpf } from "../../shared/certificates/types";
 import { oneOffAccessDays } from "../../shared/paymentMethods";
-import { getPlanChargeValue, PLAN_PRICING } from "../../shared/planPricing";
+import { PLAN_PRICING } from "../../shared/planPricing";
 import type { PlanId } from "../../shared/planPricing";
 import type {
   CancelInput,
@@ -42,6 +44,14 @@ import type {
  * bloqueando o guard 409 por muito mais tempo do que a pessoa leva para pagar.
  */
 const PIX_DUE_DAYS = 2;
+
+/**
+ * Valor minimo que o Asaas aceita numa cobranca, em centavos.
+ *
+ * Nao e regra nossa: e limite da plataforma. Fica aqui porque e o provedor que o
+ * impoe, e um cupom agressivo o bastante derruba o semestral abaixo dele.
+ */
+const ASAAS_MIN_CHARGE_CENTS = 500;
 
 /** `provider` como gravado em subscriptions e billing_events. */
 const PROVIDER = "asaas" as const;
@@ -287,6 +297,28 @@ async function createCheckout(
     .maybeSingle();
   if (!plan) throw createError(500, "db_error", "Plano Pro não encontrado.");
 
+  // PRECO FINAL pela funcao unica (server/lib/coupons.ts), a mesma aritmetica
+  // que o frontend usa na previa. Antes daqui a cobranca herdava o preco CHEIO
+  // e a tela mostrava o descontado.
+  const { finalCents, appliedCouponCode } = await resolveCheckoutPriceCents({
+    userId: input.user.id,
+    planId: input.planId,
+    couponCode: input.couponCode,
+    isFirstPurchase,
+  });
+
+  // PISO DO ASAAS. Cobranca abaixo de R$ 5,00 e recusada por eles, e um cupom
+  // agressivo o bastante derruba o semestral abaixo disso. Recusar aqui, ANTES
+  // da row local e da chamada remota, evita a row orfa e o 502 generico.
+  if (finalCents < ASAAS_MIN_CHARGE_CENTS) {
+    throw createError(
+      422,
+      "valor_minimo_pix",
+      // TODO(Ana): copy do valor abaixo do minimo do Pix.
+      "O valor com desconto ficou abaixo do mínimo do Pix. Tente cartão.",
+    );
+  }
+
   // (1) LINHA LOCAL. `provider_subscription_id` fica NULL ate a charge
   // existir: a coluna e UNIQUE, e no Postgres UNIQUE admite varios NULL, entao
   // rows em voo nao colidem entre si.
@@ -299,7 +331,10 @@ async function createCheckout(
       provider_subscription_id: null,
       provider_customer_id: null,
       affiliate_code: input.affiliateCode || null,
-      coupon_code: input.couponCode || null,
+      // O cupom APROVADO, nao o bruto do cliente: a ativacao conta resgate a
+      // partir deste campo, e contar resgate de cupom que nao descontou nada
+      // corromperia `times_redeemed`.
+      coupon_code: appliedCouponCode || null,
       status: "pending",
       payment_method: "pix",
       renewal_type: "manual",
@@ -333,7 +368,8 @@ async function createCheckout(
       body: {
         customer: customerId,
         billingType: "PIX",
-        value: getPlanChargeValue(input.planId),
+        // Centavos inteiros dos dois lados; o Asaas recebe reais.
+        value: finalCents / 100,
         dueDate: dueDateInDays(PIX_DUE_DAYS, new Date()),
         description: `Bora na Tech Pro ${PLAN_PRICING[input.planId].label}`,
         externalReference: created.id,

@@ -1,4 +1,9 @@
 import { supabaseAdmin } from "./supabaseAdmin";
+import {
+  discountedPriceCents,
+  getPlanChargeValue,
+  type PlanId,
+} from "../../shared/planPricing";
 
 // Validacao de cupom de marketing, compartilhada entre a rota publica
 // (GET /api/coupons/:code) e o checkout (providers/stripe.ts), para o client e
@@ -82,5 +87,63 @@ export async function findValidCoupon(
     code: coupon.code,
     discount_percent: coupon.discount_percent,
     applicable_plans: coupon.applicable_plans,
+  };
+}
+
+/**
+ * PRECO FINAL DO CHECKOUT, em centavos: base do plano mais cupom validado.
+ *
+ * POR QUE ESTA FUNCAO PRECISOU EXISTIR. No fluxo da Stripe a validacao e nossa
+ * (`findValidCoupon` acima) mas a ARITMETICA e deles: a sessao recebe
+ * `discounts: [{ coupon }]` e o checkout hospedado faz a conta. Nosso codigo
+ * nunca precisou calcular valor com desconto, entao nunca soube calcular.
+ *
+ * O Asaas cria a cobranca por API, com o valor JA RESOLVIDO. Sem esta funcao ele
+ * herdava `getPlanChargeValue(planId)`, o preco cheio, enquanto a tela mostrava
+ * o preco com desconto que o frontend calculava por conta propria. Medido ao
+ * vivo em 2026-08-31: cupom de 90 por cento, tela com o valor certo, cobranca no
+ * Asaas com o valor cheio.
+ *
+ * A conta usa `discountedPriceCents` (shared/planPricing.ts), **a mesma funcao
+ * que o frontend usa na previa**. Nao e uma segunda implementacao com o mesmo
+ * resultado: e a mesma implementacao, entao tela e cobranca nao podem divergir
+ * por arredondamento.
+ *
+ * REGRAS DE ELEGIBILIDADE IDENTICAS as do fluxo Stripe, e pela mesma razao de
+ * sempre: duas regras do mesmo desconto divergem na primeira correcao. Cupom so
+ * na PRIMEIRA compra, e so se `findValidCoupon` aprovar (ativo, dentro da janela,
+ * com resgates disponiveis e aplicavel ao plano).
+ *
+ * CUPOM NUNCA IMPEDE A COMPRA: qualquer recusa segue com o preco cheio e
+ * `appliedCouponCode` vazio, exatamente como a Stripe faz. Isso importa para o
+ * rastro: quem nao descontou nada nao pode contar resgate na ativacao.
+ */
+export async function resolveCheckoutPriceCents(input: {
+  userId: string;
+  planId: PlanId;
+  /** Ja normalizado (uppercase/trim); "" quando ausente. */
+  couponCode: string;
+  /** Injetado para nao acoplar este modulo a providers/shared.ts. */
+  isFirstPurchase: (userId: string) => Promise<boolean>;
+}): Promise<{ finalCents: number; appliedCouponCode: string }> {
+  const baseCents = Math.round(getPlanChargeValue(input.planId) * 100);
+  if (!input.couponCode) {
+    return { finalCents: baseCents, appliedCouponCode: "" };
+  }
+
+  const primeira = await input.isFirstPurchase(input.userId);
+  if (!primeira) return { finalCents: baseCents, appliedCouponCode: "" };
+
+  const coupon = await findValidCoupon(input.couponCode, {
+    planId: input.planId,
+  });
+  if (!coupon) return { finalCents: baseCents, appliedCouponCode: "" };
+
+  return {
+    finalCents: discountedPriceCents(baseCents, coupon.discount_percent),
+    // So o codigo APROVADO viaja adiante. O bruto do cliente nunca vira
+    // `coupon_code` na linha, senao a ativacao contaria resgate de um cupom que
+    // nao descontou nada.
+    appliedCouponCode: coupon.code,
   };
 }
