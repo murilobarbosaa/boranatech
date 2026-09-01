@@ -31,6 +31,11 @@ import {
   areasTI,
   type AreaTI,
 } from "@/lib/data";
+import { AreaIconBox } from "@/components/areas/AreaIconBox";
+import { areaGridPaletteOf } from "@/lib/areaGridPalette";
+// Segue vivo por UM sitio, a bolinha de 8px do chip de navegacao (fora da
+// grade): cor solida, sem texto por cima, entao nao tem o defeito de contraste
+// que motivou a migracao da grade.
 import { getAreaAccent } from "@/lib/platformData";
 import { getAreas } from "@/services/contentService";
 
@@ -439,21 +444,16 @@ export default function Areas() {
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filtered.map((area, index) => {
                 const Icon = area.icon;
-                const accent = getAreaAccent(area.nome);
-                const accentTint = `${accent}1a`;
+                // Classe, nao hex inline. O hex de AREA_ACCENT nao passava por
+                // variavel de tema, entao o quadrado e os badges ficavam com a
+                // cor do modo claro sobre o card escuro: 43 dos 44 cards abaixo
+                // de 4,5:1. O par bg-200/text-900 acompanha os dois temas pelo
+                // contexto pastel do index.css, sem variante dark:.
+                const palette = areaGridPaletteOf(area.nome);
                 const inner = (
                   <>
                     <div className="flex items-start justify-between gap-2 pr-9">
-                      <span
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2"
-                        style={{
-                          backgroundColor: accentTint,
-                          borderColor: accent,
-                          color: accent,
-                        }}
-                      >
-                        <Icon className="h-5 w-5" strokeWidth={2.5} aria-hidden />
-                      </span>
+                      <AreaIconBox icon={Icon} palette={palette} size="sm" />
                       <span
                         className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${TIPO_SELO[area.tipo]}`}
                       >
@@ -478,8 +478,7 @@ export default function Areas() {
                         {area.habilidades.map((h) => (
                           <span
                             key={h}
-                            className="rounded-full px-2 py-0.5 text-xs font-bold"
-                            style={{ backgroundColor: accentTint, color: accent }}
+                            className={`rounded-full px-2 py-0.5 text-xs font-bold ${palette.bg} ${palette.text}`}
                           >
                             {h}
                           </span>
@@ -488,9 +487,14 @@ export default function Areas() {
                     ) : null}
                     <div className="mt-4 flex items-center pt-3 text-sm font-black">
                       {area.href ? (
+                        // Mesma classe do badge, resultado diferente de
+                        // proposito: aqui ela fica DIRETO no card (bg-white),
+                        // fora do contexto pastel, entao no escuro o -900 sai
+                        // claro sobre o card escuro. Dentro do badge o contexto
+                        // pastel devolve o -900 ao tom escuro sobre o fundo
+                        // claro. Um par de classes, os dois casos certos.
                         <span
-                          className="inline-flex items-center gap-1"
-                          style={{ color: accent }}
+                          className={`inline-flex items-center gap-1 ${palette.text}`}
                         >
                           Explorar
                           <ArrowRight
