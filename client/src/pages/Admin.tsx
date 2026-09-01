@@ -761,8 +761,7 @@ export const metricCards: MetricCard[] = [
     value: "0",
     detail: "Quem tem assinatura paga",
     icon: <CreditCard className="h-6 w-6" />,
-    color:
-      "bg-[var(--brand-yellow)] text-ink-on-accent dark:border-foreground",
+    color: "bg-[var(--brand-yellow)] text-ink-on-accent dark:border-foreground",
   },
   {
     key: "mrr",
@@ -8456,7 +8455,7 @@ export default function Admin() {
                   id="afiliados"
                   className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white"
                 >
-                  <div className="border-b-2 border-slate-900 bg-[var(--brand-yellow)] p-6">
+                  <div className="border-b-2 border-slate-900 bg-[var(--bnt-admin-banner)] p-6">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
@@ -8495,7 +8494,7 @@ export default function Admin() {
                     </div>
                   ) : null}
 
-                  <div className="grid gap-5 border-b-2 border-slate-900 bg-violet-50 p-6 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-5 border-b-2 border-slate-900 bg-[var(--bnt-admin-strip)] p-6 md:grid-cols-2 xl:grid-cols-4">
                     {[
                       {
                         label: "Receita atribuída",
@@ -8522,7 +8521,7 @@ export default function Admin() {
                         key={item.label}
                         className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]"
                       >
-                        <span className="inline-flex rounded-xl border-2 border-slate-900 bg-yellow-300 p-2 text-ink-on-accent">
+                        <span className="inline-flex rounded-xl border-2 border-slate-900 bg-yellow-300 p-2 text-ink-on-accent dark:border-foreground">
                           {item.icon}
                         </span>
                         <p className="mt-3 text-xs font-black uppercase text-violet-700">
@@ -8988,7 +8987,7 @@ export default function Admin() {
                   id="cupons"
                   className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white"
                 >
-                  <div className="border-b-2 border-slate-900 bg-[var(--brand-yellow)] p-6">
+                  <div className="border-b-2 border-slate-900 bg-[var(--bnt-admin-banner)] p-6">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
