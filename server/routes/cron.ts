@@ -561,6 +561,43 @@ function activeRenewalMilestone(
   return eligible.length > 0 ? Math.min(...eligible) : null;
 }
 
+/**
+ * Quem recebe lembrete de renovacao.
+ *
+ * EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos`: o que
+ * importa provar aqui e QUAIS LINHAS a condicao pega, e isso so se prova
+ * rodando a consulta contra um duble que APLICA os filtros. Um teste que
+ * conferisse o formato da query provaria a intencao, nao o efeito.
+ *
+ * EXCLUSAO POR PROVEDOR, nao por metodo de pagamento: a pergunta e quem RENOVA,
+ * nao como a pessoa pagou. O link deste e-mail leva a POST /api/billing/renew,
+ * que tem provider e metodo FIXOS EM DURO (`stripeProvider`, `paymentMethod:
+ * "boleto"`), entao um assinante Pix receberia lembrete de boleto e o clique
+ * geraria cobranca na Stripe, no provedor errado.
+ *
+ * PENDENCIA DATADA: renovacao Pix propria (e-mail proprio e `/renew` do provedor
+ * do assinante) ate JANEIRO DE 2027. O primeiro vencimento semestral de Pix cai
+ * em marco de 2027, entao ate la ninguem fica sem lembrete por causa desta
+ * exclusao. Depois disso, fica.
+ */
+export function selecionarAssinaturasAVencer(
+  fromRow: number,
+  toRow: number,
+  nowIso: string,
+  windowIso: string,
+) {
+  return supabaseAdmin
+    .from("subscriptions")
+    .select("id, user_id, current_period_end, renewal_reminders_sent, plan_id")
+    .eq("renewal_type", "manual")
+    .eq("status", "active")
+    .neq("provider", "asaas")
+    .gt("current_period_end", nowIso)
+    .lte("current_period_end", windowIso)
+    .order("id", { ascending: true })
+    .range(fromRow, toRow);
+}
+
 // Lembrete de renovacao de boleto manual. Filtro fail-closed: SO renewal_type=
 // 'manual' (cartao renova sozinho e nunca pode receber este e-mail) e status=
 // 'active', com vencimento na janela do maior marco. Um marco por assinatura por
@@ -590,17 +627,7 @@ router.post(
         plan_id: string | null;
       }>(
         (fromRow, toRow) =>
-          supabaseAdmin
-            .from("subscriptions")
-            .select(
-              "id, user_id, current_period_end, renewal_reminders_sent, plan_id",
-            )
-            .eq("renewal_type", "manual")
-            .eq("status", "active")
-            .gt("current_period_end", nowIso)
-            .lte("current_period_end", windowIso)
-            .order("id", { ascending: true })
-            .range(fromRow, toRow),
+          selecionarAssinaturasAVencer(fromRow, toRow, nowIso, windowIso),
         "expiring-subscriptions due",
       );
 
