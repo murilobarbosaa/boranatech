@@ -11,6 +11,7 @@
 const OFFSET_ASAAS = "-03:00";
 
 const SEM_OFFSET = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/;
+const SO_DATA = /^(\d{4})-(\d{2})-(\d{2})$/;
 const TEM_OFFSET = /(?:Z|[+-]\d{2}:?\d{2})$/;
 
 /**
@@ -32,6 +33,8 @@ const TEM_OFFSET = /(?:Z|[+-]\d{2}:?\d{2})$/;
  * ano inteiro e nao precisa de tabela de fuso.
  *
  * String COM offset (`Z`, `+00:00`, `-0300`) e sem ambiguidade e passa direto.
+ * String SO COM A DATA (`YYYY-MM-DD`, a forma do `dueDate`) vira o fim daquele
+ * dia em Brasilia; o porque esta no corpo.
  */
 export function parseAsaasDate(bruto: string | null | undefined): Date | null {
   if (!bruto) return null;
@@ -44,13 +47,47 @@ export function parseAsaasDate(bruto: string | null | undefined): Date | null {
   }
 
   const m = SEM_OFFSET.exec(texto);
-  if (!m) return null;
+  if (m) {
+    const [, ano, mes, dia, hora, min, seg] = m;
+    const d = new Date(
+      `${ano}-${mes}-${dia}T${hora}:${min}:${seg}${OFFSET_ASAAS}`,
+    );
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
 
-  const [, ano, mes, dia, hora, min, seg] = m;
-  const d = new Date(
-    `${ano}-${mes}-${dia}T${hora}:${min}:${seg}${OFFSET_ASAAS}`,
-  );
-  return Number.isNaN(d.getTime()) ? null : d;
+  // SO A DATA, sem hora: e a forma do `dueDate` das cobrancas (`YYYY-MM-DD`).
+  // Vira o FIM daquele dia em Brasilia, e a escolha e conservadora de proposito:
+  // o Asaas so vira a cobranca para OVERDUE na madrugada seguinte, entao tratar
+  // o dia como valido ate 23:59:59 nunca declara vencido algo que ainda pode ser
+  // pago. O oposto (assumir 00:00) tiraria um dia inteiro de prazo de quem pagou
+  // no dia certo, que e o erro caro.
+  const d0 = SO_DATA.exec(texto);
+  if (d0) {
+    const [, ano, mes, dia] = d0;
+    const d = new Date(`${ano}-${mes}-${dia}T23:59:59${OFFSET_ASAAS}`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  return null;
+}
+
+/**
+ * O prazo que vale, entre varios candidatos: o MENOR dos que existem.
+ *
+ * A cobranca Pix tem dois prazos e eles nao coincidem. Medido em 2026-09-01:
+ * `dueDate` 2026-09-03 e `expirationDate` do QR 2027-09-03, um ano de diferenca.
+ * Quem governa e o vencimento da cobranca, porque passado ele o Asaas emite
+ * PAYMENT_OVERDUE e a linha pendente fecha; o QR continuar tecnicamente valido
+ * nao ajuda ninguem, porque o pagamento ja nao ativa nada.
+ *
+ * Pegar o menor em vez de escolher um resolve os dois lados: se algum dia o
+ * prazo do QR for o mais curto, ele passa a mandar sem precisar de mudanca. Nulo
+ * e ignorado, nao tratado como zero, senao um campo ausente venceria tudo.
+ */
+export function earliestDeadline(candidatos: Array<Date | null>): Date | null {
+  const validos = candidatos.filter((d): d is Date => d !== null);
+  if (validos.length === 0) return null;
+  return validos.reduce((menor, d) => (d < menor ? d : menor));
 }
 
 export type PixRemaining =
