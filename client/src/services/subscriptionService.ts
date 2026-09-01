@@ -95,6 +95,8 @@ export async function createCheckout(
      * tela entao omite o valor em vez de recalcular o desconto por conta propria.
      */
     amountCents?: number;
+    /** Vencimento da cobranca (`YYYY-MM-DD`). Governa o prazo mostrado na tela. */
+    dueDate?: string | null;
   };
 }
 

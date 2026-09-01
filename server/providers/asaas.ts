@@ -84,6 +84,8 @@ type AsaasCharge = {
   status?: string | null;
   /** Valor em REAIS, como o Asaas trafega. Convertido a centavos na fronteira. */
   value?: number | null;
+  /** Vencimento da COBRANCA, `YYYY-MM-DD`. Nao confundir com o prazo do QR. */
+  dueDate?: string | null;
 };
 
 /** Data de vencimento no formato que o Asaas espera (YYYY-MM-DD). */
@@ -447,6 +449,12 @@ async function createCheckout(
       typeof charge.value === "number"
         ? Math.round(charge.value * 100)
         : finalCents,
+    // VENCIMENTO DA COBRANCA, e nao o prazo do QR. Os dois existem e sao
+    // diferentes: medido em 2026-09-01, uma cobranca com `dueDate` 2026-09-03
+    // trazia `expirationDate` 2027-09-03, um ano a mais. Quem manda e este:
+    // passado ele o Asaas emite PAYMENT_OVERDUE, que esta em `CLOSING_EVENTS` e
+    // fecha a linha pendente, e a partir dai o pagamento nao ativa mais nada.
+    dueDate: charge.dueDate ?? null,
   };
 }
 

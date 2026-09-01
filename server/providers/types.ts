@@ -70,6 +70,12 @@ export interface CreateCheckoutResult {
    * Ausente para provedor que nao informa; a tela cai no comportamento antigo.
    */
   amountCents?: number;
+  /**
+   * Vencimento da cobranca (`YYYY-MM-DD`), aditivo. E o prazo que GOVERNA: o
+   * provedor tambem expoe um prazo do QR, muito mais longo, que nao decide nada
+   * do nosso lado. Ausente para provedor que nao informa.
+   */
+  dueDate?: string | null;
 }
 
 export interface CancelInput {
