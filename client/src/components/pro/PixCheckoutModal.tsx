@@ -8,7 +8,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useSubscription } from "@/contexts/SubscriptionContext";
-import { formatPixRemaining, parseAsaasDate } from "@/lib/pixExpiration";
+import {
+  earliestDeadline,
+  formatPixRemaining,
+  parseAsaasDate,
+} from "@/lib/pixExpiration";
 import { nextPixPollStep } from "@/lib/pixPolling";
 import { getPixQrCode, type PixQrCode } from "@/services/subscriptionService";
 
@@ -51,6 +55,7 @@ type Fase =
 export default function PixCheckoutModal({
   open,
   amountCents,
+  dueDate,
   invoiceUrl,
   onDismiss,
   onConfirmedContinue,
@@ -59,6 +64,11 @@ export default function PixCheckoutModal({
   open: boolean;
   /** Valor que o provedor registrou, em centavos. Ver `amountCents` do checkout. */
   amountCents?: number | null;
+  /**
+   * Vencimento da COBRANCA (`YYYY-MM-DD`), vindo da criacao. E o prazo que
+   * governa; ver `earliestDeadline`.
+   */
+  dueDate?: string | null;
   /** Fatura hospedada, so como saida de emergencia quando o QR nao carrega. */
   invoiceUrl?: string | null;
   /** Fechou sem pagar: o chamador atualiza a assinatura e leva para a pagina dela. */
@@ -148,8 +158,14 @@ export default function PixCheckoutModal({
   }
 
   const qr = fase.nome === "pronto" ? fase.qr : null;
+  // OS DOIS PRAZOS, e o menor manda. O vencimento da cobranca e quem decide (o
+  // PAYMENT_OVERDUE fecha a linha pendente); o prazo do QR entra como defesa,
+  // para o caso de algum dia ser o mais curto. Ausente e ignorado, nunca zero.
   const restante = formatPixRemaining(
-    parseAsaasDate(qr?.expirationDate),
+    earliestDeadline([
+      parseAsaasDate(dueDate),
+      parseAsaasDate(qr?.expirationDate),
+    ]),
     agora,
   );
   const expirou = restante.kind === "expired";

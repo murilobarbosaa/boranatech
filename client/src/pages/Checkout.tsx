@@ -645,6 +645,7 @@ export default function Checkout() {
   // registrou; nada e recalculado aqui.
   const [pixCharge, setPixCharge] = useState<{
     amountCents?: number | null;
+    dueDate?: string | null;
     invoiceUrl?: string | null;
   } | null>(null);
   const { refreshSubscription } = useSubscription();
@@ -778,7 +779,7 @@ export default function Checkout() {
       });
       // Marca o checkout como pendente para detectar abandono no cancel_url (/planos).
       sessionStorage.setItem("bnt_checkout_pending", selectedPlan);
-      const { checkoutUrl, flow, amountCents } = await createCheckout(
+      const { checkoutUrl, flow, amountCents, dueDate } = await createCheckout(
         selectedPlan,
         paymentMethod,
       );
@@ -794,7 +795,11 @@ export default function Checkout() {
         // entao nao existe estado novo para buscar, e navegar desmontaria o
         // proprio modal que acabou de abrir. As duas coisas acontecem quando ele
         // fecha, em `onDismiss` e `onConfirmedContinue`.
-        setPixCharge({ amountCents, invoiceUrl: checkoutUrl ?? null });
+        setPixCharge({
+          amountCents,
+          dueDate,
+          invoiceUrl: checkoutUrl ?? null,
+        });
         return;
       }
       if (checkoutUrl) window.location.href = checkoutUrl;
@@ -1405,6 +1410,7 @@ export default function Checkout() {
       <PixCheckoutModal
         open={pixCharge !== null}
         amountCents={pixCharge?.amountCents}
+        dueDate={pixCharge?.dueDate}
         invoiceUrl={pixCharge?.invoiceUrl}
         onDismiss={() => {
           setPixCharge(null);
