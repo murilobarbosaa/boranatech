@@ -131,7 +131,7 @@ export default function SocialAuthButtons({
               type="button"
               onClick={() => handleProviderClick(provider.id)}
               disabled={loadingProvider !== null}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-60"
               aria-label={`${mode === "cadastro" ? "Cadastrar" : "Entrar"} com ${provider.label}`}
             >
               {provider.icon}

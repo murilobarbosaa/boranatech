@@ -78,7 +78,7 @@ export default function ProximosEventos() {
                   href={evento.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-5 shadow-[4px_4px_0_#0f172a] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#0f172a]"
+                  className="group flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
                 >
                   <span className="mb-2 inline-flex w-fit rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-[11px] font-black uppercase text-violet-800">
                     {evento.categoria}

@@ -45,7 +45,7 @@ export default function Conquistas() {
         noindex
       />
 
-      <div className="min-h-screen bg-[#faf8f4]">
+      <div className="min-h-screen bg-[var(--brand-cream)]">
         <div className="container max-w-5xl py-8 md:py-12">
           <Link
             href="/perfil"
@@ -81,7 +81,7 @@ export default function Conquistas() {
                   {percentage}%
                 </span>
               </div>
-              <div className="h-3 w-full overflow-hidden rounded-full border-2 border-[#1a1a1a] bg-white">
+              <div className="h-3 w-full overflow-hidden rounded-full border-2 border-[var(--bnt-ink)] bg-white">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all"
                   style={{ width: `${percentage}%` }}

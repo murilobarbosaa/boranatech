@@ -64,7 +64,7 @@ function TaskListViewBase({
           <button
             type="button"
             onClick={onClearFilters}
-            className="mt-3 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a]"
+            className="mt-3 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
           >
             Limpar filtros
           </button>
@@ -173,7 +173,7 @@ function TaskListViewBase({
                           type="button"
                           aria-label={`Desarquivar ${shortIdOf(boardKey, task.number)}`}
                           onClick={() => onUnarchive(task.id)}
-                          className="rounded-full border-2 border-slate-900 bg-white p-1 text-slate-900 shadow-[1px_1px_0_#0f172a]"
+                          className="rounded-full border-2 border-slate-900 bg-white p-1 text-slate-900 shadow-[1px_1px_0_var(--bnt-shadow)]"
                         >
                           <ArchiveRestore className="h-3 w-3" />
                         </button>
@@ -184,7 +184,7 @@ function TaskListViewBase({
                             aria-label="Mover para a etapa anterior"
                             disabled={index <= 0}
                             onClick={() => onQuickMove(task.id, -1)}
-                            className="rounded-full border-2 border-slate-900 bg-white p-1 text-slate-900 shadow-[1px_1px_0_#0f172a] disabled:opacity-30 disabled:shadow-none"
+                            className="rounded-full border-2 border-slate-900 bg-white p-1 text-slate-900 shadow-[1px_1px_0_var(--bnt-shadow)] disabled:opacity-30 disabled:shadow-none"
                           >
                             <ChevronLeft className="h-3 w-3" />
                           </button>
@@ -193,7 +193,7 @@ function TaskListViewBase({
                             aria-label="Mover para a próxima etapa"
                             disabled={index < 0 || index >= columnCount - 1}
                             onClick={() => onQuickMove(task.id, 1)}
-                            className="rounded-full border-2 border-slate-900 bg-white p-1 text-slate-900 shadow-[1px_1px_0_#0f172a] disabled:opacity-30 disabled:shadow-none"
+                            className="rounded-full border-2 border-slate-900 bg-white p-1 text-slate-900 shadow-[1px_1px_0_var(--bnt-shadow)] disabled:opacity-30 disabled:shadow-none"
                           >
                             <ChevronRight className="h-3 w-3" />
                           </button>

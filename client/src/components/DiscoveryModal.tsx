@@ -43,7 +43,7 @@ export default function DiscoveryModal({ open, onClose }: DiscoveryModalProps) {
           </div>
           <button
             onClick={onClose}
-            className="rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_#0f172a]"
+            className="rounded-full border-2 border-slate-900 bg-white p-2 shadow-[2px_2px_0_var(--bnt-shadow)]"
             aria-label="Fechar modal"
           >
             <X className="h-4 w-4" />

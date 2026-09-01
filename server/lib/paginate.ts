@@ -62,7 +62,7 @@ export async function* paginateRange<T>(
  * sobe e ninguém recebe um agregado parcial achando que é o total.
  *
  * Sempre ORDENE dentro do `fetchPage`. Paginação por OFFSET sem ORDER BY tem
- * ordem indefinida no Postgres, e duas páginas podem repetir ou pular linhas —
+ * ordem indefinida no Postgres, e duas páginas podem repetir ou pular linhas:
  * o que produziria exatamente o erro silencioso que a paginação existe para
  * evitar, só que mais difícil de perceber.
  */

@@ -12,7 +12,7 @@ import { supabaseAdmin } from "./supabaseAdmin";
 // PAINEL "ATENCAO NECESSARIA".
 //
 // Substitui "Eventos recentes", que mostrava as 10 ultimas linhas de
-// `content_audit_logs` — historico de edicao de conteudo, nao decisao. O bloco
+// `content_audit_logs`, historico de edicao de conteudo, nao decisao. O bloco
 // mais visivel da Visao era o unico sobre o qual nao havia nada a fazer.
 //
 // PRINCIPIO, e ele governa o que pode ou nao virar item aqui:
@@ -265,7 +265,7 @@ function mensalDoPlano(
  *
  * Hoje le a Stripe direto. Quando `fix/billing-customer-reuse` mergear, a tabela
  * `billing_failed_payments` passa a existir com escritor, e trocar a fonte vira
- * uma linha — sem tocar no painel nem nos testes dele. A interface existe por
+ * uma linha, sem tocar no painel nem nos testes dele. A interface existe por
  * isso, e nao por generalidade: e a unica fonte deste arquivo que se sabe que
  * vai mudar.
  */
@@ -708,9 +708,7 @@ export async function montarPainelDeAtencao(
         tipo: "payout_falho",
         chave: `payout:${payout.id}`,
         severidade: "critico",
-        // TODO(Ana)
         titulo: "Repasse para o banco falhou",
-        // TODO(Ana)
         detalhe: `A Stripe não conseguiu transferir ${reais(payout.amountCents)} para a conta bancária. O dinheiro está retido no saldo da Stripe.`,
         valorCents: payout.amountCents,
         url: STRIPE_PAYOUTS_URL,
@@ -740,9 +738,7 @@ export async function montarPainelDeAtencao(
         tipo: "mes_sem_despesa",
         chave: `sem_despesa:${mes.rotulo}`,
         severidade: "atencao",
-        // TODO(Ana)
         titulo: `Nenhuma despesa registrada em ${mes.rotulo}`,
-        // TODO(Ana)
         detalhe:
           "O mês fechou sem nenhuma despesa lançada, então o lucro exibido está contando a receita inteira. Registrar as despesas do mês corrige o número.",
         url: "",
@@ -859,7 +855,6 @@ export async function montarPainelDeAtencao(
   // acionavel (da para achar pelo id) e nao parece bug do painel. Vale tanto
   // para perfil sem e-mail quanto para a consulta que nao respondeu.
   const emailDe = (userId: string | null): string =>
-    // TODO(Ana)
     (userId ? emailPorId.get(userId) : undefined) ?? "e-mail não encontrado";
 
   for (const p of pendentesDeAssinatura) {
@@ -869,9 +864,7 @@ export async function montarPainelDeAtencao(
         tipo: "assinatura_past_due",
         chave: p.chave,
         severidade: p.severidade,
-        // TODO(Ana)
         titulo: "Pagamento em atraso",
-        // TODO(Ana)
         detalhe: `${email}: a cobrança falhou e a Stripe está tentando de novo. Sem ação, a assinatura cancela sozinha.`,
         valorCents: p.valorCents,
         ...(p.mrrMensalCents !== null
@@ -886,9 +879,7 @@ export async function montarPainelDeAtencao(
       tipo: "saida_agendada",
       chave: p.chave,
       severidade: p.severidade,
-      // TODO(Ana)
       titulo: "Saída agendada",
-      // TODO(Ana)
       detalhe: `${email}: cancelamento marcado, o acesso termina em ${p.fim}.`,
       ...(p.motivoCodigo ? { motivoCodigo: p.motivoCodigo } : {}),
       valorCents: p.valorCents,
@@ -905,9 +896,7 @@ export async function montarPainelDeAtencao(
       tipo: "influencer_com_assinatura",
       chave: `influencer_pagante:${userId}`,
       severidade: "atencao",
-      // TODO(Ana)
       titulo: "Influencer que virou assinante",
-      // TODO(Ana)
       detalhe: `${emailDe(userId)} tem concessão de influencer ativa E assinatura paga vigente. Revogar a concessão não tira o Pro, que fica de pé pela assinatura.`,
       url: "",
       destinoInterno: ADMIN_USUARIOS,

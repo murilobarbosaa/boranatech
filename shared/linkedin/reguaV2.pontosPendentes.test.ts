@@ -20,17 +20,17 @@ import {
  * veredito calculado, e a nota não muda. Só a faixa exibida e o asterisco
  * mudam. Este arquivo prova as três coisas que sustentam isso:
  *
- *   (a) INÉRCIA  — a flag não move nenhuma parcela. Provado por deep-equals
+ *   (a) INÉRCIA, a flag não move nenhuma parcela. Provado por deep-equals
  *       contra a mesma entrada sem a flag, e por um teste de MUTAÇÃO que
  *       reproduz a implementação errada (filtrar do reduce) e afirma que ela
  *       daria outro resultado. Deep-equals que passa sem nunca ter sido
  *       exercitado contra a mudança que previne é asserção não verificada.
  *
- *   (b) FECHAMENTO — a soma das parcelas é o total, e a nota derivada bate.
+ *   (b) FECHAMENTO, a soma das parcelas é o total, e a nota derivada bate.
  *       Validado empiricamente fora do teste: o mesmo cálculo reproduziu o
  *       `score` de 162 análises persistidas, 162 de 162, zero divergência.
  *
- *   (c) FONTE ÚNICA — o número do asterisco sai de `pontosPendentes()`, e não
+ *   (c) FONTE ÚNICA, o número do asterisco sai de `pontosPendentes()`, e não
  *       de um `35` escrito à mão. O teste troca o tier de um check de headline
  *       e afirma que o número acompanha; um literal em qualquer lugar quebra.
  *

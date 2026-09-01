@@ -56,9 +56,62 @@ function tracesSampler(samplingContext: {
   return 0.05;
 }
 
+/**
+ * O SDK deve reportar deste processo?
+ *
+ * O DEFEITO, medido em 2026-08-31. Ate aqui a unica guarda era a presenca do
+ * DSN, e `environment: env.nodeEnv` apenas ROTULA o evento, nao filtra nada.
+ * Resultado: rodar `pnpm dev` com o `.env` de producao mandava erro da maquina
+ * local para o projeto de producao, e de la para o CRM como card. Evidencia:
+ * `NODE-EXPRESS-6` (EADDRINUSE :::3100) tem 3 eventos, TODOS com
+ * `environment=development` e `server_name=s0ft-750QFG`, e `NODE-EXPRESS-J`
+ * ("Erro ao buscar notas fiscais") tem outros 2. Dois cards do quadro descrevem
+ * porta ocupada na maquina de quem programa, nao falha de produto.
+ *
+ * NAO INICIALIZAR, em vez de descartar no `beforeSend`, e a escolha tem motivo.
+ * Descartar depois funcionaria para o evento, mas o init faz mais que abrir um
+ * transporte: o `@sentry/node` v10 auto-instrumenta http e express via OTel (ver
+ * o cabecalho deste arquivo), e isso passaria a rodar em toda sessao de
+ * desenvolvimento para nada. Nao inicializar e mais barato e, principalmente,
+ * mais TOTAL: nao existe caminho de captura que escape da guarda, nem os que
+ * alguem acrescentar depois sem lembrar do filtro. E a regra da casa de por a
+ * protecao DENTRO em vez de em cada call site, aplicada ao SDK inteiro.
+ *
+ * O custo dessa escolha e nao dar para testar o pipeline localmente, e por isso
+ * existe `SENTRY_ENABLE_NON_PROD`. Sem a valvula a decisao seria pior que o
+ * problema: instrumento que ninguem consegue exercitar e instrumento em que
+ * ninguem confia.
+ *
+ * Chamar `Sentry.captureMessage` com o SDK nao inicializado e no-op, nao erro.
+ * Nenhum call site precisa de guarda propria, e nenhum precisou mudar.
+ */
+export function deveReportarAoSentry(params: {
+  temDsn: boolean;
+  isProd: boolean;
+  escapeLigado: boolean;
+}): boolean {
+  const { temDsn, isProd, escapeLigado } = params;
+  if (!temDsn) return false;
+  return isProd || escapeLigado;
+}
+
 function initSentry() {
   if (!env.sentryDsn) {
     console.log("[sentry] SENTRY_DSN ausente. Sentry desativado (no-op).");
+    return;
+  }
+
+  if (
+    !deveReportarAoSentry({
+      temDsn: Boolean(env.sentryDsn),
+      isProd: env.isProd,
+      escapeLigado: env.sentryEnableNonProd,
+    })
+  ) {
+    console.log(
+      `[sentry] ambiente '${env.nodeEnv}' nao e producao. Sentry desativado (no-op). ` +
+        `Para exercitar o pipeline daqui, use SENTRY_ENABLE_NON_PROD=true.`,
+    );
     return;
   }
 

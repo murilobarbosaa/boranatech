@@ -83,6 +83,7 @@ vi.mock("../middleware/auth", () => ({
 
 import {
   criarSupabaseDouble,
+  simularListagemDeUsuarios,
   type RespostaTabela,
 } from "./adminUsersHarness.test";
 import adminRouter from "./admin";
@@ -104,9 +105,39 @@ function montar(
   respostas: Record<string, RespostaTabela | (() => RespostaTabela)>,
   authAdmin: Record<string, unknown> = {},
 ) {
+  const tabelas = {
+    admin_refunds: { rows: [] },
+    finance_transactions: { rows: [] },
+    ...respostas,
+  } as Record<string, RespostaTabela | (() => RespostaTabela)>;
+
   estado.double = criarSupabaseDouble(
-    { admin_refunds: { rows: [] }, ...respostas },
+    // As duas fontes do TOTAL PAGO entram vazias por padrao, como o
+    // admin_refunds ja entrava: desde que a lista carrega o total, `GET /users`
+    // consulta as duas em toda chamada, e um teste que nao se importa com
+    // dinheiro nao deveria precisar declarar isso. Quem se importa sobrescreve.
+    tabelas,
     authAdmin,
+    // A listagem passou a vir de um RPC. A simulacao le as MESMAS linhas de
+    // `profiles` que o teste declarou, entao um teste que so configura a tabela
+    // continua funcionando sem saber que existe um RPC no meio. O que ela prova
+    // e o contrato rota<->funcao; ver a docstring dela no harness.
+    async (nome, args) => {
+      if (nome !== "admin_list_users_page") return { data: null, error: null };
+      const decl = tabelas.profiles;
+      const resp = typeof decl === "function" ? decl() : decl;
+      if (resp && "error" in resp && resp.error) {
+        return { data: null, error: resp.error };
+      }
+      const linhas = (resp?.rows ?? []) as Array<Record<string, unknown>>;
+      return {
+        data: simularListagemDeUsuarios(
+          linhas,
+          args as Record<string, unknown>,
+        ),
+        error: null,
+      };
+    },
   );
 }
 
@@ -256,23 +287,366 @@ describe("GET /users: enriquecimento chega na resposta", () => {
     }
   });
 
-  it("ordenação tem desempate por chave única", async () => {
+  it("a ordenacao com desempate mudou de LUGAR, nao de existencia", async () => {
+    // A propriedade e a mesma desde sempre: `created_at` sozinho nao e
+    // deterministico, e sem desempate a paginacao por range pula e repete linhas
+    // entre paginas. O que mudou e onde ela vive: era `.order()` no PostgREST,
+    // agora e o `order by` dentro da funcao.
+    //
+    // Por isso a asercao le a FONTE. E fraca comparada a exercitar o SQL de
+    // verdade, e nao esconde isso: exercitar so acontece com a migration
+    // aplicada, e ate la `check:migrations` fica vermelho dizendo que a funcao
+    // nao existe. Este teste cobre o que da para cobrir daqui, que e a
+    // declaracao nao sumir numa edicao futura do arquivo.
+    const { readFileSync } = await import("node:fs");
+    const sql = readFileSync(
+      "supabase/migrations/20260830140000_admin_list_users_page.sql",
+      "utf-8",
+    );
+    expect(sql).toContain("order by p.created_at desc, p.id desc");
+
+    // E a rota NAO ordena mais por conta propria: se alguem reintroduzir um
+    // `.order()` em profiles, sao duas ordenacoes concorrentes.
     montar({
       profiles: { rows: [], count: 0 },
       subscriptions: { rows: [] },
       influencers: { rows: [] },
     });
     await chamarAdmin("GET", "/users");
-    // O dublê valida a coluna do order contra o schema; aqui garantimos que as
-    // DUAS ordenações existem (created_at sozinho não é determinístico).
-    const q = estado.double.de("profiles")[0];
-    expect(q).toBeTruthy();
+    expect(estado.double.de("profiles")).toHaveLength(0);
   });
 });
 
 // ---------------------------------------------------------------------------
 // GET /users/:id
 // ---------------------------------------------------------------------------
+
+describe("GET /users: area e total pago", () => {
+  function comDuasPessoas(over: Record<string, unknown> = {}) {
+    montar({
+      profiles: {
+        rows: [
+          {
+            id: "p1",
+            user_id: "pagante",
+            name: "A",
+            email: "a@x",
+            created_at: null,
+            area_interesse: "Dados",
+          },
+          {
+            id: "p2",
+            user_id: "visitante",
+            name: "B",
+            email: "b@x",
+            created_at: null,
+            area_interesse: null,
+          },
+        ],
+        count: 2,
+      },
+      // O enriquecimento de Pro roda em toda chamada e nao e o objeto destes
+      // testes: entra vazio para nao virar ruido, e quem precisar sobrescreve.
+      subscriptions: { rows: [] },
+      influencers: { rows: [] },
+      ...over,
+    });
+  }
+
+  it("area vem da MESMA linha de profiles, e ausencia e null explicito", async () => {
+    comDuasPessoas();
+    const r = await chamarAdmin("GET", "/users");
+
+    expect(r.body.data.items[0].area_interesse).toBe("Dados");
+    // `null` e nao string vazia: quem nunca preencheu nao tem area, e a tela
+    // precisa distinguir isso de uma area chamada "".
+    expect(r.body.data.items[1].area_interesse).toBeNull();
+    // E NAO custou consulta nova. A propriedade e a mesma de antes, mais forte
+    // agora: a area vem na MESMA linha que o RPC devolve, entao a rota nao
+    // consulta `profiles` nem uma vez.
+    expect(
+      estado.double.chamadas.filter((c) => c.table === "profiles"),
+    ).toHaveLength(0);
+  });
+
+  it("filter=ativo delega ao SQL, sem varrer o Auth", async () => {
+    // A DIVIDA QUE ISTO PAGA. O filtro sempre significou "login nos ultimos 30
+    // dias", e o significado NAO muda aqui; o que muda e quem responde. Antes a
+    // rota varria `auth.admin.listUsers` em paginas de 1000 para montar uma
+    // lista de ids e mandava a lista inteira num `.in()`; agora manda um
+    // booleano e o `where` acontece no banco.
+    //
+    // As duas asercoes juntas: o argumento vai, e a varredura NAO acontece. So
+    // a primeira aceitaria uma rota que mandasse o booleano E continuasse
+    // varrendo por habito.
+    const recente = new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString();
+    const antigo = new Date(Date.now() - 200 * 24 * 3600 * 1000).toISOString();
+    montar({
+      profiles: {
+        rows: [
+          {
+            id: "p1",
+            user_id: "u1",
+            name: "Recente",
+            email: "r@x",
+            created_at: null,
+            area_interesse: null,
+            last_sign_in_at: recente,
+          },
+          {
+            id: "p2",
+            user_id: "u2",
+            name: "Antigo",
+            email: "a@x",
+            created_at: null,
+            area_interesse: null,
+            last_sign_in_at: antigo,
+          },
+          {
+            id: "p3",
+            user_id: "u3",
+            name: "Nunca logou",
+            email: "n@x",
+            created_at: null,
+            area_interesse: null,
+            last_sign_in_at: null,
+          },
+        ],
+        count: 3,
+      },
+      subscriptions: { rows: [] },
+      influencers: { rows: [] },
+    });
+
+    const r = await chamarAdmin("GET", "/users?filter=ativo");
+    expect(r.status).toBe(200);
+    expect(r.body.data.items.map((i: { name: string }) => i.name)).toEqual([
+      "Recente",
+    ]);
+    // Quem NUNCA logou fica fora por construcao (comparacao com nulo e nula),
+    // e nao por um `if` que alguem possa esquecer.
+    expect(r.body.data.total).toBe(1);
+    expect(estado.double.rpcCalls.at(-1)?.args.p_only_active).toBe(true);
+  });
+
+  it("SEM filtro, p_only_active e false e todo mundo aparece", async () => {
+    // O PAR. Sem ele, "o filtro funciona" seria compativel com "o filtro esta
+    // sempre ligado", e a lista completa mostraria so os ativos sem ninguem
+    // notar: uma lista menor parece uma base menor.
+    const antigo = new Date(Date.now() - 200 * 24 * 3600 * 1000).toISOString();
+    montar({
+      profiles: {
+        rows: [
+          {
+            id: "p1",
+            user_id: "u1",
+            name: "Antigo",
+            email: "a@x",
+            created_at: null,
+            area_interesse: null,
+            last_sign_in_at: antigo,
+          },
+        ],
+        count: 1,
+      },
+      subscriptions: { rows: [] },
+      influencers: { rows: [] },
+    });
+
+    const r = await chamarAdmin("GET", "/users");
+    expect(r.body.data.items).toHaveLength(1);
+    expect(estado.double.rpcCalls.at(-1)?.args.p_only_active).toBe(false);
+  });
+
+  it("FUNCAO INEXISTENTE vira erro nomeado, nunca lista vazia", async () => {
+    // Este nao e um caso hipotetico: ate a migration ser aplicada, a funcao NAO
+    // existe e o PostgREST responde erro aqui. Todo ambiente sem a migration
+    // passa por este caminho, inclusive producao entre o deploy e o SQL.
+    //
+    // O que ele impede: 200 com lista vazia. Vazio e indistinguivel de "nao ha
+    // usuarios", e o admin agiria sobre isso. Fail-closed.
+    estado.double = criarSupabaseDouble(
+      {
+        profiles: { rows: [], count: 0 },
+        subscriptions: { rows: [] },
+        influencers: { rows: [] },
+        admin_refunds: { rows: [] },
+        finance_transactions: { rows: [] },
+      },
+      {},
+      async () => ({
+        data: null,
+        error: {
+          message:
+            "Could not find the function public.admin_list_users_page(...) in the schema cache",
+          code: "PGRST202",
+        },
+      }),
+    );
+
+    const r = await chamarAdmin("GET", "/users");
+    expect(r.status).toBeGreaterThanOrEqual(500);
+    expect(r.body.data).toBeUndefined();
+  });
+
+  it("BUSCA PARCIAL: termo do MEIO do nome encontra a linha", async () => {
+    // A clausula de contrato que o SQL delegou ao caller: a funcao usa
+    // `p_search` direto no `ilike`, SEM concatenar curingas. Quem embrulha em
+    // `%...%` e a rota, espelhando o que o PostgREST fazia.
+    //
+    // Sem o embrulho, `ilike` sem curinga e igualdade (case-insensitive) e a
+    // busca parcial morre EM SILENCIO: nenhuma excecao, so zero resultado. Por
+    // isso o termo aqui e do miolo do nome, e nao um prefixo: prefixo passaria
+    // ate com `like 'termo%'`, e nao distinguiria os dois mundos.
+    montar({
+      profiles: {
+        rows: [
+          {
+            id: "p1",
+            user_id: "u1",
+            name: "Ana Ferreira Moura",
+            email: "ana@exemplo.com",
+            created_at: null,
+            area_interesse: null,
+          },
+          {
+            id: "p2",
+            user_id: "u2",
+            name: "Bruno Lima",
+            email: "bruno@exemplo.com",
+            created_at: null,
+            area_interesse: null,
+          },
+        ],
+        count: 2,
+      },
+      subscriptions: { rows: [] },
+      influencers: { rows: [] },
+    });
+
+    const r = await chamarAdmin("GET", "/users?search=ferreira");
+    expect(r.status).toBe(200);
+    expect(r.body.data.items).toHaveLength(1);
+    expect(r.body.data.items[0].name).toBe("Ana Ferreira Moura");
+    expect(r.body.data.total).toBe(1);
+
+    // E o embrulho e da ROTA: o argumento que chega ao RPC tem os curingas.
+    const chamada = estado.double.rpcCalls.at(-1);
+    expect(chamada?.nome).toBe("admin_list_users_page");
+    expect(chamada?.args.p_search).toBe("%ferreira%");
+  });
+
+  it("BUSCA sem termo manda null, e nao string vazia", async () => {
+    // CONTROLE: `%%` casaria com tudo e pareceria funcionar, mas `p_search`
+    // nulo e o que desliga o filtro na funcao. String vazia embrulhada seria um
+    // filtro que sempre passa, e a diferenca so apareceria num `ilike` sobre
+    // coluna nula.
+    montar({
+      profiles: { rows: [], count: 0 },
+      subscriptions: { rows: [] },
+      influencers: { rows: [] },
+    });
+    await chamarAdmin("GET", "/users");
+    expect(estado.double.rpcCalls.at(-1)?.args.p_search).toBeNull();
+  });
+
+  it("total pago desconta devolucao DECLARADA, pela conta canonica", async () => {
+    // O caso que motiva usar totalPagoCents em vez de somar aqui: sem descontar
+    // a declaracao externa, o total sairia bruto (10000) e seria um numero
+    // plausivel e errado.
+    comDuasPessoas({
+      finance_transactions: {
+        rows: [
+          { user_id: "pagante", type: "charge", gross_cents: 10000 },
+          { user_id: "visitante", type: "payout", gross_cents: 99999 },
+        ],
+      },
+      admin_refunds: {
+        rows: [
+          {
+            user_id: "pagante",
+            stripe_charge_id: "ch_1",
+            amount_cents: 3000,
+            settlement: "external",
+          },
+        ],
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/users");
+    expect(r.body.data.items[0].total_pago_cents).toBe(7000);
+    // `payout` e movimento da conta Stripe, nao pagamento do usuario: fica de
+    // fora pela propria totalPagoCents, e o visitante continua em zero.
+    expect(r.body.data.items[1].total_pago_cents).toBe(0);
+  });
+
+  it("ZERO de verdade e diferente de NULL de falha", async () => {
+    // Sem esta distincao a tela nao teria como separar "nunca pagou" de "nao
+    // consegui olhar", e as duas desenhariam a mesma coisa.
+    comDuasPessoas({ finance_transactions: { rows: [] } });
+    const semCompra = await chamarAdmin("GET", "/users");
+    expect(semCompra.body.data.items[0].total_pago_cents).toBe(0);
+
+    comDuasPessoas({
+      finance_transactions: { error: { message: "boom" } },
+    });
+    const comFalha = await chamarAdmin("GET", "/users");
+    // A LISTA NAO CAI: 200, com a coluna nomeadamente desconhecida.
+    expect(comFalha.status).toBe(200);
+    expect(comFalha.body.data.items[0].total_pago_cents).toBeNull();
+    // E o resto da linha continua correto: a falha de uma fonte de
+    // enriquecimento nao contamina as outras.
+    expect(comFalha.body.data.items[0].area_interesse).toBe("Dados");
+  });
+
+  it("uma fonte SO tambem vira null: meia conta e pior que nenhuma", async () => {
+    // Com finance ok e admin_refunds quebrado, somar so a primeira daria um
+    // total BRUTO, maior que o real, indistinguivel do certo na tela.
+    comDuasPessoas({
+      finance_transactions: {
+        rows: [{ user_id: "pagante", type: "charge", gross_cents: 10000 }],
+      },
+      admin_refunds: { error: { message: "boom" } },
+    });
+
+    const r = await chamarAdmin("GET", "/users");
+    expect(r.status).toBe(200);
+    expect(r.body.data.items[0].total_pago_cents).toBeNull();
+  });
+
+  it("TETO FIXO de consultas: nao cresce com o tamanho da pagina", async () => {
+    // A trava que impede o N+1. O teto e por FONTE, nao por linha: duas
+    // consultas para o total (finance + admin_refunds), qualquer que seja o
+    // numero de usuarios na pagina. Uma soma movida para dentro do laco
+    // estouraria isto.
+    const linhas = Array.from({ length: 40 }, (_, i) => ({
+      id: `p${i}`,
+      user_id: `u${i}`,
+      name: `N${i}`,
+      email: `e${i}@x`,
+      created_at: null,
+      area_interesse: null,
+    }));
+    montar({
+      profiles: { rows: linhas, count: linhas.length },
+      subscriptions: { rows: [] },
+      influencers: { rows: [] },
+      finance_transactions: { rows: [] },
+      admin_refunds: { rows: [] },
+    });
+
+    await chamarAdmin("GET", "/users");
+
+    expect(
+      estado.double.chamadas.filter((c) => c.table === "finance_transactions"),
+      "total pago deve custar UMA consulta a finance_transactions por pagina",
+    ).toHaveLength(1);
+    expect(
+      estado.double.chamadas.filter((c) => c.table === "admin_refunds"),
+      "total pago deve custar UMA consulta a admin_refunds por pagina",
+    ).toHaveLength(1);
+  });
+});
 
 describe("GET /users/:id", () => {
   const PERFIL = {
@@ -710,35 +1084,19 @@ describe("toda consulta por usuário carrega o filtro de escopo", () => {
     }
   });
 
-  it("GET /users ordena por created_at E por chave única (paginação estável)", async () => {
-    // created_at sozinho não é determinístico: sem desempate, a paginação por
-    // range pula e repete linhas entre páginas quando há empate.
-    const ordens: string[] = [];
+  it("GET /users nao ordena por conta propria: a ordem vive no RPC", async () => {
+    // Este teste espionava o `.order()` da query de profiles. A query nao existe
+    // mais, e a ordem (created_at desc, id desc) e do `order by` da funcao. O
+    // que sobra para afirmar daqui, e vale afirmar, e a AUSENCIA: nenhuma
+    // ordenacao concorrente reintroduzida na rota.
     const double = criarSupabaseDouble({
       profiles: { rows: [], count: 0 },
       subscriptions: { rows: [] },
       influencers: { rows: [] },
     });
-    const fromOriginal = double.client.from.bind(double.client);
-    double.client.from = (tabela: string) => {
-      const q = fromOriginal(tabela) as Record<string, Function>;
-      const selectOriginal = q.select;
-      q.select = (...a: unknown[]) => {
-        const inner = selectOriginal(...a) as Record<string, Function>;
-        const orderOriginal = inner.order;
-        inner.order = (coluna: string, opts?: unknown) => {
-          if (tabela === "profiles") ordens.push(coluna);
-          return orderOriginal(coluna, opts);
-        };
-        return inner;
-      };
-      return q;
-    };
     estado.double = double;
-
     await chamarAdmin("GET", "/users");
-
-    expect(ordens).toEqual(["created_at", "id"]);
+    expect(double.de("profiles")).toHaveLength(0);
   });
 });
 
@@ -929,7 +1287,10 @@ describe("histórico de assinaturas no detalhe (Parte 5)", () => {
           rows: [
             VIGENTE,
             linha({ created_at: "2025-01-01T00:00:00Z" }),
-            linha({ created_at: "2024-01-01T00:00:00Z", plans: { code: "pro_monthly" } }),
+            linha({
+              created_at: "2024-01-01T00:00:00Z",
+              plans: { code: "pro_monthly" },
+            }),
           ],
         },
         influencers: { rows: [] },

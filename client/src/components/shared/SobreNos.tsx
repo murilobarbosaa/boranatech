@@ -65,7 +65,7 @@ const SOCIAL_META: Record<
   github: {
     icon: "ph:github-logo-bold",
     label: "GitHub",
-    hover: "hover:bg-[#1a1a1a] hover:text-white",
+    hover: "hover:bg-[var(--bnt-ink)] hover:text-white",
   },
 };
 
@@ -149,7 +149,7 @@ function SocialButton({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`${meta.label} de ${personName}`}
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border-2 border-slate-900 bg-white text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all duration-200 motion-safe:hover:-translate-y-0.5 ${meta.hover}`}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border-2 border-slate-900 bg-white text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all duration-200 motion-safe:hover:-translate-y-0.5 ${meta.hover}`}
     >
       <Icon icon={meta.icon} style={{ fontSize: "20px" }} aria-hidden="true" />
     </a>
@@ -215,7 +215,7 @@ export default function SobreNos() {
       </h2>
 
       {/* 1. GANCHO: numero gigante */}
-      <div className="border-t-2 border-slate-900 bg-[#faf8f4] py-20">
+      <div className="border-t-2 border-slate-900 bg-[var(--brand-cream)] py-20">
         <div className="container">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-700">
             Sobre nós
@@ -252,7 +252,7 @@ export default function SobreNos() {
       </div>
 
       {/* 3. AS 3 PORTAS */}
-      <div className="border-t-2 border-slate-900 bg-[#faf8f4] py-16">
+      <div className="border-t-2 border-slate-900 bg-[var(--brand-cream)] py-16">
         <div className="container">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-700">
             Pra quem é
@@ -261,7 +261,7 @@ export default function SobreNos() {
             {portas.map((porta) => (
               <div
                 key={porta.numero}
-                className={`flex flex-col rounded-2xl border-2 border-slate-900 ${porta.bg} p-6 text-white shadow-[6px_6px_0_#0f172a]`}
+                className={`flex flex-col rounded-2xl border-2 border-slate-900 ${porta.bg} p-6 text-white shadow-[6px_6px_0_var(--bnt-shadow)]`}
               >
                 <span
                   className="font-display text-5xl font-black leading-none text-white/85"
@@ -324,7 +324,7 @@ export default function SobreNos() {
                   {person.chips.map((chip) => (
                     <li
                       key={chip}
-                      className="inline-flex rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                      className="inline-flex rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-3 py-1 text-xs font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]"
                     >
                       {chip}
                     </li>
@@ -352,7 +352,7 @@ export default function SobreNos() {
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className="rounded-2xl border-2 border-slate-900 bg-white p-6 text-slate-950 shadow-[5px_5px_0_#0f172a]"
+                className="rounded-2xl border-2 border-slate-900 bg-white p-6 text-slate-950 shadow-[5px_5px_0_var(--bnt-shadow)]"
               >
                 <p className="font-display text-4xl font-black leading-none text-violet-700 sm:text-5xl">
                   {stat.value}
@@ -367,7 +367,7 @@ export default function SobreNos() {
       </div>
 
       {/* 6. QUEM APOIA (reuso do dado de creatorsData) */}
-      <div className="border-t-2 border-slate-900 bg-[#faf8f4] py-16">
+      <div className="border-t-2 border-slate-900 bg-[var(--brand-cream)] py-16">
         <div className="container">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
@@ -395,7 +395,7 @@ export default function SobreNos() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`Instagram de @${creator.handle}`}
-                  className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white py-1 pl-1 pr-3 font-display text-sm font-bold shadow-[3px_3px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white py-1 pl-1 pr-3 font-display text-sm font-bold shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
                 >
                   <CreatorAvatar photo={creator.photo} handle={creator.handle} />
                   <span>@{creator.handle}</span>
@@ -410,7 +410,7 @@ export default function SobreNos() {
       <div className="border-t-2 border-slate-900 bg-white py-16">
         <div className="container">
           <div className="mx-auto max-w-3xl rounded-2xl border-2 border-slate-900 bg-[image:linear-gradient(160deg,#6b1fc9,#3f1185)] p-8 text-center text-white shadow-[8px_8px_0_#FFB800] sm:p-10">
-            <p className="mb-3 inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950">
+            <p className="mb-3 inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-ink-on-accent">
               {/* TODO(Ana): titulo da secao */}
               Fale conosco
             </p>
@@ -423,7 +423,7 @@ export default function SobreNos() {
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
                 aria-label={`Enviar email para ${CONTACT_EMAIL}`}
-                className="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-6 py-3 font-black text-slate-950 shadow-[4px_4px_0_#1a1a1a] transition-transform motion-safe:hover:-translate-y-0.5"
+                className="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-6 py-3 font-black text-ink-on-accent shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5"
               >
                 <Icon
                   icon="ph:envelope-simple-bold"
@@ -436,7 +436,7 @@ export default function SobreNos() {
                 href={CONTACT_INSTAGRAM}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-6 py-3 font-black text-slate-950 shadow-[4px_4px_0_#1a1a1a] transition-transform motion-safe:hover:-translate-y-0.5"
+                className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-6 py-3 font-black text-slate-950 shadow-[4px_4px_0_var(--bnt-shadow)] transition-transform motion-safe:hover:-translate-y-0.5"
               >
                 <Icon
                   icon="ph:instagram-logo-bold"

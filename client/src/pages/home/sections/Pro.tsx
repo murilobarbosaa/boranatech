@@ -135,7 +135,7 @@ function ProPitchVariant() {
     <section
       id="bora-na-tech-pro"
       aria-labelledby="pro-pitch-title"
-      className="bnt-ancora relative overflow-hidden bg-gradient-to-br from-violet-950 via-purple-900 to-fuchsia-900 py-20 md:py-24"
+      className="bnt-keep-colors bnt-ancora relative overflow-hidden bg-gradient-to-br from-violet-950 via-purple-900 to-fuchsia-900 py-20 md:py-24"
     >
       <BackgroundDecoration />
 
@@ -195,7 +195,7 @@ function ProPitchVariant() {
             <button
               type="button"
               aria-label="Ver planos do Bora na Tech? Pro"
-              className="pro-glare bnt-pressable group relative inline-flex items-center gap-2 overflow-hidden rounded-2xl border-2 border-slate-950 bg-[#FFB800] px-7 py-3.5 font-display text-base md:text-lg font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
+              className="pro-glare bnt-pressable group relative inline-flex items-center gap-2 overflow-hidden rounded-2xl border-2 border-slate-950 bg-[var(--brand-yellow)] px-7 py-3.5 font-display text-base md:text-lg font-black text-ink-on-accent shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--bnt-shadow)]"
             >
               <ProStarIcon />
               <span>Ver planos</span>
@@ -225,7 +225,7 @@ function ProThankYouVariant() {
     <section
       id="bora-na-tech-pro"
       aria-labelledby="pro-thanks-title"
-      className="bnt-ancora relative overflow-hidden bg-gradient-to-br from-violet-950 via-purple-900 to-fuchsia-900 py-16 md:py-20"
+      className="bnt-keep-colors bnt-ancora relative overflow-hidden bg-gradient-to-br from-violet-950 via-purple-900 to-fuchsia-900 py-16 md:py-20"
     >
       <BackgroundDecoration />
 

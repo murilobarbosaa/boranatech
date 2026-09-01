@@ -20,7 +20,7 @@ vi.mock("./env", () => ({
  *
  * E a POSIÇÃO importa: a instrução vem ANTES do bloco de checagens. O modelo
  * forma a leitura enquanto lê os checks, então instrução no meio da lista chega
- * tarde. Ordem de apresentação como parte do contrato, não como formatação — e
+ * tarde. Ordem de apresentação como parte do contrato, não como formatação, e
  * é por isso que há uma asserção sobre índice, e não só sobre presença.
  */
 

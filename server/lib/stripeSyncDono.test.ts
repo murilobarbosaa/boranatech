@@ -106,6 +106,95 @@ describe("resolveOwnerFromParentCharge", () => {
     expect(customerOfCharge).not.toHaveBeenCalled();
   });
 
+  it("charge-mae ORFA mas com plano: preserva o plan_code, mesmo sem dono", async () => {
+    // O caso da conta excluida. A linha de charge existe, o `user_id` dela virou
+    // NULL pelo ON DELETE SET NULL, e o `plan_code` continua correto. Ate
+    // 2026-08-31 o `return` descartava os dois juntos e o refund entrava com
+    // plano nulo, perdendo um dado que estava em maos.
+    const owner = await resolveOwnerFromParentCharge(
+      "ch_orfa",
+      lookups({
+        byCharge: async () => ({ userId: null, planCode: "pro_monthly" }),
+        // A subscription foi levada pelo CASCADE junto com a conta.
+        customerOfCharge: async () => "cus_da_conta_excluida",
+        byCustomer: async () => ({ userId: null, planCode: null }),
+      }),
+    );
+
+    expect(owner).toEqual({ userId: null, planCode: "pro_monthly" });
+  });
+
+  it("charge-mae orfa e sem customer na Stripe: ainda preserva o plan_code", async () => {
+    const owner = await resolveOwnerFromParentCharge(
+      "ch_orfa",
+      lookups({
+        byCharge: async () => ({ userId: null, planCode: "pro_annual" }),
+        customerOfCharge: async () => null,
+      }),
+    );
+
+    expect(owner).toEqual({ userId: null, planCode: "pro_annual" });
+  });
+
+  it("charge-mae orfa e a Stripe FALHA: ainda preserva o plan_code", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const owner = await resolveOwnerFromParentCharge(
+      "ch_orfa",
+      lookups({
+        byCharge: async () => ({ userId: null, planCode: "pro_semiannual" }),
+        customerOfCharge: async () => {
+          throw new Error("stripe fora do ar");
+        },
+      }),
+    );
+
+    expect(owner).toEqual({ userId: null, planCode: "pro_semiannual" });
+  });
+
+  it("o plano resolvido pela Stripe GANHA do plano da charge-mae orfa", async () => {
+    // Precedencia: o da Stripe vem junto com um userId de verdade, entao e mais
+    // especifico. O do banco so entra onde ficaria nulo.
+    const owner = await resolveOwnerFromParentCharge(
+      "ch_orfa",
+      lookups({
+        byCharge: async () => ({ userId: null, planCode: "pro_monthly" }),
+        customerOfCharge: async () => "cus_1",
+        byCustomer: async () => ({ userId: "user-9", planCode: "pro_annual" }),
+      }),
+    );
+
+    expect(owner).toEqual({ userId: "user-9", planCode: "pro_annual" });
+  });
+
+  it("CONTROLE NEGATIVO: charge-mae COM dono nao muda nada e nao toca a Stripe", async () => {
+    const customerOfCharge = vi.fn(async () => "cus_nao_deveria_ser_usado");
+    const owner = await resolveOwnerFromParentCharge(
+      "ch_1",
+      lookups({
+        byCharge: async () => ({ userId: "user-1", planCode: "pro_annual" }),
+        customerOfCharge,
+      }),
+    );
+
+    expect(owner).toEqual({ userId: "user-1", planCode: "pro_annual" });
+    expect(customerOfCharge).not.toHaveBeenCalled();
+  });
+
+  it("CONTROLE NEGATIVO: charge-mae AUSENTE nao inventa plano", async () => {
+    // `byCharge` devolvendo null e diferente de devolver linha orfa: nao ha
+    // plan_code nenhum para preservar, e fabricar um seria pior que o nulo.
+    const owner = await resolveOwnerFromParentCharge(
+      "ch_nova",
+      lookups({
+        byCharge: async () => null,
+        customerOfCharge: async () => "cus_1",
+        byCustomer: async () => ({ userId: null, planCode: null }),
+      }),
+    );
+
+    expect(owner).toEqual({ userId: null, planCode: null });
+  });
+
   it("cobranca AINDA NAO ingerida: cai para a Stripe e resolve pelo customer", async () => {
     // A lista de balance transactions vem da mais nova para a mais antiga,
     // entao o refund e processado ANTES da sua propria cobranca. Sem este

@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 
 import { cacheKey, getOrCompute } from "../lib/cache";
+import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -92,7 +93,7 @@ router.get("/areas", async (req, res, next) => {
         // usuario muda: `cause` nunca sai na resposta.
         if (error)
           throw createError(500, "db_error", "Erro ao buscar áreas.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
         return { data: data || [] };
       },
@@ -173,7 +174,7 @@ router.get("/eventos", async (_req, res, next) => {
 
         if (error)
           throw createError(500, "db_error", "Erro ao buscar eventos.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
 
         // `total: null` quando o count nao veio, NUNCA data.length: cair para o
@@ -213,7 +214,7 @@ router.get("/technologies", async (req, res, next) => {
         const { data, error } = await query;
         if (error)
           throw createError(500, "db_error", "Erro ao buscar tecnologias.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
         return { data: data || [] };
       },
@@ -241,7 +242,7 @@ router.get("/technologies/ranking", async (_req, res, next) => {
 
         if (error)
           throw createError(500, "db_error", "Erro ao buscar ranking.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
         return { data: data || [] };
       },
@@ -279,7 +280,7 @@ router.get("/technologies/compare", async (req, res, next) => {
 
         if (error)
           throw createError(500, "db_error", "Erro ao comparar tecnologias.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
         if (!data || data.length < 2) return null;
         return { data };
@@ -352,7 +353,7 @@ router.get("/courses", checkProStatus, async (req, res, next) => {
         const { data, error } = await query;
         if (error)
           throw createError(500, "db_error", "Erro ao buscar cursos.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
         return { data: data || [] };
       },
@@ -388,7 +389,7 @@ router.get("/platforms", checkProStatus, async (req, res, next) => {
 
         if (error)
           throw createError(500, "db_error", "Erro ao buscar plataformas.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
         return { data: data || [] };
       },
@@ -425,7 +426,7 @@ router.get("/projects", checkProStatus, async (req, res, next) => {
         const { data, error } = await query;
         if (error)
           throw createError(500, "db_error", "Erro ao buscar projetos.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
         return { data: data || [] };
       },
@@ -499,7 +500,7 @@ router.get("/roadmaps", async (req, res, next) => {
         const { data, error } = await query;
         if (error)
           throw createError(500, "db_error", "Erro ao buscar roadmaps.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
         return { data: data || [] };
       },
@@ -532,7 +533,7 @@ router.get("/roadmaps/:slug/progress", requireAuth, async (req, res, next) => {
     if (error)
       return next(
         createError(500, "db_error", "Erro ao buscar progresso.", {
-          cause: error,
+          cause: erroEncadeavel(error),
         }),
       );
 
@@ -602,7 +603,7 @@ router.post("/roadmaps/:slug/progress", requireAuth, async (req, res, next) => {
       );
       return next(
         createError(500, "db_error", "Erro ao salvar progresso do roadmap.", {
-          cause: error,
+          cause: erroEncadeavel(error),
           context: {
             slug: req.params.slug,
             roadmapId: roadmap.id,
@@ -668,7 +669,7 @@ router.get("/sources/status", async (_req, res, next) => {
             500,
             "db_error",
             "Erro ao buscar status das fontes.",
-            { cause: error },
+            { cause: erroEncadeavel(error) },
           );
         return { data: data || [] };
       },
@@ -737,7 +738,7 @@ router.get("/news", async (req, res, next) => {
         const { data, count, error } = await query;
         if (error)
           throw createError(500, "db_error", "Erro ao buscar notícias.", {
-            cause: error,
+            cause: erroEncadeavel(error),
           });
 
         const total = count ?? 0;

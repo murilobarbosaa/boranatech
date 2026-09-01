@@ -41,7 +41,10 @@ const svc = vi.hoisted(() => ({
 }));
 
 const toastSpy = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn() }));
-const locationSpy = vi.hoisted(() => ({ set: vi.fn(), search: "?section=tarefas" }));
+const locationSpy = vi.hoisted(() => ({
+  set: vi.fn(),
+  search: "?section=tarefas",
+}));
 
 vi.mock("@/services/adminTasksService", () => ({
   listBoards: (...a: unknown[]) => svc.listBoards(...a),
@@ -201,6 +204,92 @@ beforeEach(() => {
 });
 
 afterEach(cleanup);
+
+describe("board: a fileira centrada e o botao de nova etapa", () => {
+  it("o miolo carrega a centragem, e o contêiner que rola NAO", () => {
+    // A armadilha do desenho: `justify-center` no elemento que rola torna a
+    // primeira coluna inalcancavel quando o quadro enche. A centragem vive no
+    // miolo, que colapsa as margens quando nao cabe.
+    //
+    // O par (miolo E contêiner) na mesma asercao: so a primeira metade
+    // aceitaria as duas centragens convivendo.
+    render(<TasksDashboard />);
+    return screen.findByLabelText("DEV-1: tarefa 1").then(() => {
+      const scroll = screen.getByTestId("board-scroll");
+      const row = screen.getByTestId("board-row");
+
+      expect(row.className).toContain("mx-auto");
+      expect(row.className).toContain("w-max");
+      expect(scroll.className).toContain("overflow-x-auto");
+      expect(scroll.className).not.toContain("justify-center");
+      expect(scroll.contains(row)).toBe(true);
+    });
+  });
+
+  it("a pilha do quadro respira na escala da pagina", async () => {
+    // O que se via: a contagem ("44 TAREFAS") colada no quadro. O intervalo e
+    // de UMA constante (`space-y-*` na raiz), entao subir o degrau ali resolve
+    // sem criar uma margem avulsa que o vizinho seguinte vai contradizer.
+    render(<TasksDashboard />);
+    await screen.findByLabelText("DEV-1: tarefa 1");
+
+    const pilha = screen.getByTestId("tasks-toolbar")
+      .parentElement as HTMLElement;
+    expect(pilha.className).toContain("space-y-6");
+    expect(pilha.className).not.toContain("space-y-4");
+  });
+
+  it("o QUADRO fica solto: o espelho da pagina para na toolbar", async () => {
+    // A LACUNA que este teste fecha. O teste da secao (Admin.largura) afirma que
+    // o CORPO da secao nao carrega o teto, e o corpo e o wrapper de fora: um
+    // teto aplicado a fileira de colunas, la dentro, passa por ele sem tocar em
+    // nada que ele observe.
+    //
+    // Aqui a asercao e sobre a fileira em si. Cabecalho e toolbar centram na
+    // regua da pagina; o quadro usa a tela toda, que e a razao inteira do
+    // commit 13. Sem isto, alguem "uniformizando" o espelho apertaria o quadro
+    // de volta e os dois testes de largura continuariam verdes.
+    render(<TasksDashboard />);
+    await screen.findByLabelText("DEV-1: tarefa 1");
+
+    const ESPELHO = "max-w-[80rem]";
+    expect(screen.getByTestId("tasks-toolbar").className).toContain(ESPELHO);
+    expect(screen.getByTestId("board-scroll").className).not.toContain(ESPELHO);
+    expect(screen.getByTestId("board-row").className).not.toContain(ESPELHO);
+  });
+
+  it("o '+' centra na VERTICAL com as colunas, nao encosta no topo", async () => {
+    // Numa fileira de colunas altas, um alvo de 48px grudado na borda de cima
+    // le como sobra de layout e nao como acao. `self-center` e o que resolve, e
+    // ele mora no contêiner do botao, nao no botao: trocar por `self-start`
+    // numa limpeza futura pareceria inocuo.
+    render(<TasksDashboard />);
+    await screen.findByLabelText("DEV-1: tarefa 1");
+
+    const caixa = screen.getByTestId("board-nova-etapa");
+    expect(caixa.className).toContain("self-center");
+    expect(caixa.className).not.toContain("self-start");
+    expect(caixa.className).not.toContain("items-start");
+  });
+
+  it("o '+' de nova etapa tem nome acessivel, porque icone nao fala", async () => {
+    // O texto "Nova etapa" saiu do botao; sem `aria-label` ele viraria um alvo
+    // anonimo na fileira. Mesmo cuidado do avatar do header do admin.
+    render(<TasksDashboard />);
+    await screen.findByLabelText("DEV-1: tarefa 1");
+
+    const botao = screen.getByRole("button", { name: "Nova etapa" });
+    expect(botao.getAttribute("title")).toBe("Nova etapa");
+    // COMPACTO: ele nao ocupa mais uma coluna inteira. Sem esta asercao, um
+    // botao largo com aria-label passaria e o centro do quadro seguiria
+    // deslocado. `h-12` e a familia grande, escolhida pela Ana em 30/08.
+    expect(botao.className).toContain("h-12");
+    expect(botao.className).toContain("w-12");
+    expect(botao.className).not.toContain("w-full");
+    // E o texto morreu de verdade: se voltar, o botao volta a ser largo.
+    expect(botao.textContent?.trim()).toBe("");
+  });
+});
 
 describe("TasksDashboard: update otimista", () => {
   it("move o card na hora, antes da resposta da rede", async () => {
@@ -395,7 +484,9 @@ describe("TasksDashboard: criacao inline", () => {
       );
     });
 
-    await waitFor(() => expect(toastSpy.error).toHaveBeenCalledWith("sem rede"));
+    await waitFor(() =>
+      expect(toastSpy.error).toHaveBeenCalledWith("sem rede"),
+    );
     // So o card original permanece.
     expect(screen.getAllByLabelText(/^DEV-/)).toHaveLength(1);
     expect(screen.queryByLabelText(/^DEV-0:/)).toBeNull();

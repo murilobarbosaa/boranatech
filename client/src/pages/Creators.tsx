@@ -63,7 +63,7 @@ function SocialLink({ label, url }: { label: string; url: string }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3 py-1.5 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all duration-150 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[3px_3px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
+      className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3 py-1.5 text-sm font-black text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all duration-150 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[3px_3px_0_var(--bnt-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
     >
       <Icon className="h-4 w-4" aria-hidden />
       {label}
@@ -73,7 +73,7 @@ function SocialLink({ label, url }: { label: string; url: string }) {
 
 function CreatorCard({ creator }: { creator: Creator }) {
   return (
-    <article className="flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[4px_4px_0_#0f172a] transition-all duration-200 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#c4b5fd]">
+    <article className="flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-200 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#c4b5fd]">
       <div className="flex items-center gap-4">
         <CreatorAvatar creator={creator} />
         <div className="min-w-0">
@@ -87,7 +87,7 @@ function CreatorCard({ creator }: { creator: Creator }) {
           ) : null}
         </div>
         {creator.founder ? (
-          <span className="ml-auto shrink-0 rounded-full border-2 border-slate-950 bg-amber-300 px-2.5 py-0.5 text-[11px] font-black uppercase text-slate-950">
+          <span className="ml-auto shrink-0 rounded-full border-2 border-slate-950 bg-amber-300 px-2.5 py-0.5 text-[11px] font-black uppercase text-ink-on-accent">
             Fundador
           </span>
         ) : null}

@@ -112,7 +112,7 @@ function TypingDots({ reduce }: { reduce: boolean }) {
 function NatechinhoAvatar() {
   return (
     <span
-      className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-slate-950 bg-[#FFB800] shadow-[2px_2px_0_#0f172a]"
+      className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-slate-950 bg-[var(--brand-yellow)] shadow-[2px_2px_0_var(--bnt-shadow)]"
       aria-hidden
     >
       <Wand2 className="h-3.5 w-3.5 text-slate-950" strokeWidth={2.5} />
@@ -339,7 +339,7 @@ export default function CurriculoChatPanel({
       <div className="flex h-[min(88vh,720px)] min-h-[420px] flex-col">
         <header className="flex shrink-0 items-center gap-3 border-b-2 border-slate-950 bg-white px-4 py-3.5 text-slate-950 sm:px-5 sm:py-4">
           <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-[#FFB800] shadow-[2px_2px_0_#0f172a] sm:h-12 sm:w-12"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-[var(--brand-yellow)] shadow-[2px_2px_0_var(--bnt-shadow)] sm:h-12 sm:w-12"
             aria-hidden
           >
             <Wand2
@@ -360,7 +360,7 @@ export default function CurriculoChatPanel({
         <div
           // Papel do atelie: fundo quente com o micro-pontilhado da casa em
           // ambar sutil (sai o lavanda herdado do accent antigo).
-          className="relative isolate flex min-h-0 flex-1 flex-col bg-[#fffdf7] [background-image:radial-gradient(rgba(180,120,0,0.06)_1.2px,transparent_1.2px)] [background-size:18px_18px]"
+          className="relative isolate flex min-h-0 flex-1 flex-col bg-[var(--bnt-surface)] [background-image:radial-gradient(rgba(180,120,0,0.06)_1.2px,transparent_1.2px)] [background-size:18px_18px]"
           role="log"
           aria-live="polite"
           aria-relevant="additions"
@@ -409,7 +409,7 @@ export default function CurriculoChatPanel({
                       )}
                       <div
                         className={cn(
-                          "max-w-[min(100%,86%)] rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-amber-50 px-3.5 py-3 shadow-[2px_2px_0_#0f172a] sm:max-w-[min(100%,72%)] sm:px-4 sm:py-3.5",
+                          "max-w-[min(100%,86%)] rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-amber-50 px-3.5 py-3 shadow-[2px_2px_0_var(--bnt-shadow)] sm:max-w-[min(100%,72%)] sm:px-4 sm:py-3.5",
                           "font-body text-[15px] leading-relaxed text-slate-900 sm:text-base",
                         )}
                       >
@@ -442,7 +442,7 @@ export default function CurriculoChatPanel({
                   >
                     <div
                       className={cn(
-                        "max-w-[min(100%,86%)] rounded-[14px] rounded-tr-sm border-2 border-slate-950 bg-white px-3.5 py-3 shadow-[2px_2px_0_#0f172a] sm:max-w-[min(100%,72%)] sm:px-4 sm:py-3.5",
+                        "max-w-[min(100%,86%)] rounded-[14px] rounded-tr-sm border-2 border-slate-950 bg-white px-3.5 py-3 shadow-[2px_2px_0_var(--bnt-shadow)] sm:max-w-[min(100%,72%)] sm:px-4 sm:py-3.5",
                         "font-body text-[15px] leading-relaxed text-slate-900 sm:text-base",
                       )}
                     >
@@ -461,7 +461,7 @@ export default function CurriculoChatPanel({
                       key={reply}
                       type="button"
                       onClick={() => setInput(reply)}
-                      className="rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-800 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px hover:bg-amber-50"
+                      className="rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-800 shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px hover:bg-amber-50"
                     >
                       {reply}
                     </button>
@@ -472,7 +472,7 @@ export default function CurriculoChatPanel({
               {showTypingDots ? (
                 <div className="flex items-start justify-start gap-2">
                   <NatechinhoAvatar />
-                  <div className="flex max-w-[min(100%,86%)] items-center rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-amber-50 px-3 py-2.5 shadow-[2px_2px_0_#0f172a] sm:px-4">
+                  <div className="flex max-w-[min(100%,86%)] items-center rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-amber-50 px-3 py-2.5 shadow-[2px_2px_0_var(--bnt-shadow)] sm:px-4">
                     <span className="sr-only">Natechinho digitando</span>
                     <TypingDots reduce={reduce} />
                   </div>
@@ -482,7 +482,7 @@ export default function CurriculoChatPanel({
               {generating ? (
                 <div className="flex justify-start">
                   <div
-                    className="flex items-center gap-3 rounded-[14px] border-2 border-slate-950 bg-emerald-100 px-4 py-3 shadow-[3px_3px_0_#0f172a]"
+                    className="flex items-center gap-3 rounded-[14px] border-2 border-slate-950 bg-emerald-100 px-4 py-3 shadow-[3px_3px_0_var(--bnt-shadow)]"
                     role="status"
                     aria-live="polite"
                   >
@@ -516,7 +516,7 @@ export default function CurriculoChatPanel({
           </div>
         ) : null}
 
-        <div className="shrink-0 border-t-2 border-slate-950 bg-[#faf8f4] px-3 pt-2.5 pb-2.5 sm:px-4 sm:pt-3 sm:pb-3">
+        <div className="shrink-0 border-t-2 border-slate-950 bg-[var(--brand-cream)] px-3 pt-2.5 pb-2.5 sm:px-4 sm:pt-3 sm:pb-3">
           {showFallbackGenerate ? (
             <div className="mx-auto mb-2 flex w-full max-w-3xl justify-center">
               <BrutalActionButton
@@ -534,7 +534,7 @@ export default function CurriculoChatPanel({
             </label>
             {/* Mesmos tokens do ac.input amber, em versao focus-within (o
                 foco visivel precisa subir do textarea pro container). */}
-            <div className="flex min-h-[48px] flex-1 items-end rounded-2xl border-2 border-amber-200 bg-white shadow-[3px_3px_0_#0f172a] focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-200">
+            <div className="flex min-h-[48px] flex-1 items-end rounded-2xl border-2 border-amber-200 bg-white shadow-[3px_3px_0_var(--bnt-shadow)] focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-200">
               <textarea
                 id="curriculo-chat-input"
                 rows={1}
@@ -548,7 +548,7 @@ export default function CurriculoChatPanel({
             </div>
             <button
               type="button"
-              className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800] text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
+              className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[var(--brand-yellow)] text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
               disabled={inputDisabled || !input.trim()}
               aria-label="Enviar"
               onClick={() => void handleSend()}

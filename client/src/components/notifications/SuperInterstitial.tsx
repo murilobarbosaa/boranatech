@@ -6,7 +6,7 @@ import { useNotifications } from "@/contexts/NotificationsContext";
 import { useOnboardingCoordinator } from "@/lib/onboarding/coordinator";
 
 // Ponto ÚNICO de montagem do SuperModal. Montado em App.tsx como irmão do Router,
-// DENTRO do ConsentGate — então só renderiza depois que consent/launch liberam os
+// DENTRO do ConsentGate, então só renderiza depois que consent/launch liberam os
 // children, nunca por cima do modal de consentimento (z-90 do SuperModal < z-100
 // do ConsentGate, mas a garantia real é estrutural: aqui só existe pós-gates).
 // Lê o estado do contexto (durável, sobrevive à remontagem do sino por navegação).

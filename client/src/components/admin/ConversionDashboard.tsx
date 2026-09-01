@@ -301,7 +301,7 @@ export function ConversionDashboard() {
           </div>
 
           {/* Abandono de checkout */}
-          <div className="rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+          <div className="rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase text-violet-700">

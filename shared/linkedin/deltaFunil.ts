@@ -31,7 +31,7 @@ export interface EntradaDelta {
   /**
    * Alguma das duas notas está INCOMPLETA (leitura em dúvida)?
    *
-   * Ausente nas linhas anteriores à v7, e ausência vale `false` — a mesma
+   * Ausente nas linhas anteriores à v7, e ausência vale `false`, a mesma
    * normalização de `readDeterministic`, pelo mesmo motivo: uma análise antiga
    * era completa dentro da régua dela.
    */

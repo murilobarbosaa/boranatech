@@ -166,7 +166,7 @@ export function NotificationsProvider({
   // Otimista: read_at local + badge decrementado na hora; reverte se falhar. O
   // update otimista só roda se o item estiver na página carregada; mesmo fora
   // dela (ex.: super antiga não paginada, disparada pelo CTA) o server é chamado
-  // — read é idempotente lá — pra a leitura valer cross-device.
+  //, read é idempotente lá, pra a leitura valer cross-device.
   const markAsRead = useCallback(
     async (id: string) => {
       const target = notifications.find((item) => item.id === id);
@@ -216,7 +216,7 @@ export function NotificationsProvider({
     setSuperModalSource(null);
   }, []);
 
-  // Dispensa (fechar no X/overlay/Esc): otimista — fecha o modal e zera a super
+  // Dispensa (fechar no X/overlay/Esc): otimista, fecha o modal e zera a super
   // ativa local (não repipoca nesta carga; autoSuperTriggeredRef já trava), e
   // grava o dismiss no server. NÃO marca como lida: a super continua no sino.
   const dismissSuper = useCallback(async (id: string) => {

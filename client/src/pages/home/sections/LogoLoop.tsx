@@ -59,7 +59,7 @@ function LogoLink({ item }: { item: LogoItem }) {
       aria-label={label}
       className="group flex shrink-0 cursor-pointer items-center justify-center rounded-xl outline-none focus-visible:ring-4 focus-visible:ring-violet-300"
     >
-      <div className="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_#0f172a] transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[4px_4px_0_#8b5cf6]">
+      <div className="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_var(--bnt-shadow)] transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[4px_4px_0_#8b5cf6]">
         <Icon
           icon={item.icon}
           width={44}
@@ -115,7 +115,7 @@ export default function LogoLoop() {
         <path
           d="M -5 18 Q 25 12, 50 18 T 105 16"
           fill="none"
-          stroke="#a78bfa"
+          stroke="var(--color-violet-400)"
           strokeWidth="0.3"
           strokeDasharray="1.5 2"
           strokeLinecap="round"
@@ -125,7 +125,7 @@ export default function LogoLoop() {
         <path
           d="M -5 82 Q 25 88, 50 82 T 105 84"
           fill="none"
-          stroke="#a78bfa"
+          stroke="var(--color-violet-400)"
           strokeWidth="0.3"
           strokeDasharray="1.5 2"
           strokeLinecap="round"

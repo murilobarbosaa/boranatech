@@ -16,13 +16,13 @@ import { describe, expect, it } from "vitest";
  * Comentário não quebra build. Este teste transforma a condição em guarda: se
  * alguém mover o `cron.schedule` para antes das 03:00 UTC, um snapshot coletado
  * (por exemplo) às 02:00 UTC do dia D pertence ao dia civil D-1 em Brasília, a
- * série inteira desliza um dia, e NADA acusaria — o gráfico continuaria
+ * série inteira desliza um dia, e NADA acusaria, o gráfico continuaria
  * desenhando barras plausíveis nas datas erradas.
  *
  * O ESCOPO DESTE TESTE É DERIVADO DE UM PARSER, que é a classe de instrumento que
  * este projeto documenta como a que falha PASSANDO. A contramedida é a de sempre:
  * afirmar o TOTAL, não a pertinência. O teste conta as ocorrências de
- * `cron.schedule` no arquivo e exige que TODAS tenham sido lidas — um agendamento
+ * `cron.schedule` no arquivo e exige que TODAS tenham sido lidas, um agendamento
  * novo que o regex não casasse derrubaria a contagem em vez de passar batido.
  */
 
@@ -43,7 +43,7 @@ function agendamentos(): Agendamento[] {
   // `exec` em laço, e NÃO `for (const m of SQL.matchAll(...))`: o `tsconfig.json`
   // da aplicação não declara `target`, então cai em ES5, e iterar o
   // `RegExpStringIterator` do `matchAll` ali é erro de compilação (TS2802). A
-  // suíte passava (o vitest transpila com esbuild) e o `pnpm check` acusou —
+  // suíte passava (o vitest transpila com esbuild) e o `pnpm check` acusou:
   // mesma família dos contornos que o CLAUDE.md registra para iterar `Set`.
   const re = /cron\.schedule\(\s*'([^']+)'\s*,\s*'([^']+)'/g;
   let m = re.exec(SQL);

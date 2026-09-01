@@ -152,7 +152,7 @@ export default function PortfolioFreeGuide() {
           </div>
           <div
             className={cn(
-              "rounded-2xl border-2 border-slate-900 px-5 py-3 text-white shadow-[4px_4px_0_#0f172a]",
+              "rounded-2xl border-2 border-slate-900 px-5 py-3 text-white shadow-[4px_4px_0_var(--bnt-shadow)]",
               ac.tableBanner,
             )}
           >
@@ -164,7 +164,7 @@ export default function PortfolioFreeGuide() {
         </div>
         <div
           className={cn(
-            "mt-5 h-5 overflow-hidden rounded-full border-2 border-slate-900 shadow-[3px_3px_0_#0f172a]",
+            "mt-5 h-5 overflow-hidden rounded-full border-2 border-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)]",
             ac.panelSoft,
           )}
         >
@@ -194,7 +194,7 @@ export default function PortfolioFreeGuide() {
                   "flex cursor-pointer items-center gap-3 rounded-2xl border-2 p-3 text-sm font-bold transition-all",
                   isChecked
                     ? cn(
-                        "border-slate-900 shadow-[3px_3px_0_#0f172a]",
+                        "border-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)]",
                         ac.panelSoft,
                       )
                     : "border-emerald-200 bg-slate-50 hover:border-emerald-500 hover:bg-emerald-50",
@@ -211,7 +211,7 @@ export default function PortfolioFreeGuide() {
                 <span
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-slate-900 transition-all ${
                     isChecked
-                      ? "bg-amber-300 text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                      ? "bg-amber-300 text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]"
                       : "bg-white text-transparent"
                   }`}
                   aria-hidden="true"
@@ -236,7 +236,7 @@ export default function PortfolioFreeGuide() {
         <div className="flex items-start gap-3">
           <span
             className={cn(
-              "rounded-xl border-2 border-slate-950 bg-amber-300 p-3 text-slate-950",
+              "rounded-xl border-2 border-slate-950 bg-amber-300 p-3 text-ink-on-accent",
               ac.brutalShadow,
             )}
           >

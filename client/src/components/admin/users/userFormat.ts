@@ -28,6 +28,47 @@ export function fmtDateTime(value: string | null | undefined): string {
   }).format(date);
 }
 
+/**
+ * Data de um INSTANTE com o fuso PINADO em Brasilia, para a lista do admin.
+ *
+ * DIFERENTE de `fmtDate`, que usa o fuso da maquina. A diferenca e deliberada e
+ * so aparece fora do Brasil: `last_sign_in_at` e um instante, e o dia dele muda
+ * conforme o fuso de quem olha. Pinar Brasilia faz dois admins em fusos
+ * diferentes lerem a MESMA data para o mesmo acesso, que e o que uma tabela
+ * operacional precisa.
+ *
+ * NAO e offset fixo de -3h: o nome do fuso e quem sabe o offset, e escrever -3
+ * transformaria a ausencia atual de horario de verao em regra (ver o cabecalho
+ * de shared/brasiliaDay.ts).
+ */
+const diaBrasiliaFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+
+const instanteBrasiliaFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  dateStyle: "short",
+  timeStyle: "medium",
+});
+
+export function fmtDataBrasilia(value: string | null | undefined): string {
+  if (!value) return NAO_INFORMADO;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return NAO_INFORMADO;
+  return diaBrasiliaFmt.format(date);
+}
+
+/** O instante COMPLETO, para o `title` do hover: a data sozinha perde a hora. */
+export function fmtInstanteBrasilia(value: string | null | undefined): string {
+  if (!value) return NAO_INFORMADO;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return NAO_INFORMADO;
+  return `${instanteBrasiliaFmt.format(date)} (America/Sao_Paulo)`;
+}
+
 export function fmtBool(value: boolean | null | undefined): string {
   if (value === null || value === undefined) return NAO_INFORMADO;
   return value ? "Sim" : "Não";
@@ -90,7 +131,7 @@ export function activityStatusLabelOf(
 const PRO_BADGES: Record<string, { label: string; className: string }> = {
   subscription: {
     label: "Pro",
-    className: "border-slate-900 bg-yellow-300 text-slate-950",
+    className: "border-slate-900 bg-yellow-300 text-ink-on-accent",
   },
   influencer: {
     label: "Influencer",

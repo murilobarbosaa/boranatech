@@ -48,7 +48,7 @@ function addToProfileUrl(
 }
 
 const networkButtonClass =
-  "inline-flex flex-1 items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-950 px-3 py-2.5 text-sm font-black shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]";
+  "inline-flex flex-1 items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-950 px-3 py-2.5 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]";
 
 type CopyKey = "link" | "text" | null;
 
@@ -130,7 +130,7 @@ export default function CertificateShareModal({
               href={addUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-950 bg-[#0a66c2] px-4 py-2.5 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-950 bg-[#0a66c2] px-4 py-2.5 text-sm font-black text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)]"
             >
               <Icon icon="ph:linkedin-logo-bold" className="text-lg" />
               {/* TODO(Ana): label do botao add to profile */}
@@ -153,7 +153,7 @@ export default function CertificateShareModal({
               <button
                 type="button"
                 onClick={() => copy(link, "link")}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border-[2.5px] border-slate-950 bg-[#FFB800] px-3 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border-[2.5px] border-slate-950 bg-[var(--brand-yellow)] px-3 py-2 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px"
               >
                 {copied === "link" ? (
                   <Check className="h-4 w-4" />
@@ -182,7 +182,7 @@ export default function CertificateShareModal({
               <button
                 type="button"
                 onClick={() => copy(fullText, "text")}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border-[2.5px] border-slate-950 bg-[#FFB800] px-3 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border-[2.5px] border-slate-950 bg-[var(--brand-yellow)] px-3 py-2 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px"
               >
                 {copied === "text" ? (
                   <Check className="h-4 w-4" />

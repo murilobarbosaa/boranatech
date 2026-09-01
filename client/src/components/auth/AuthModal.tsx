@@ -140,7 +140,7 @@ export default function AuthModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] gap-2 overflow-y-auto rounded-xl border-2 border-slate-950 bg-white p-4 shadow-[6px_6px_0_#0f172a] sm:max-w-md sm:gap-4 sm:p-6">
+      <DialogContent className="max-h-[90vh] gap-2 overflow-y-auto rounded-xl border-2 border-slate-950 bg-white p-4 shadow-[6px_6px_0_var(--bnt-shadow)] sm:max-w-md sm:gap-4 sm:p-6">
         <DialogHeader className="mt-2 mb-3 gap-3">
           <DialogTitle className="px-8 text-center font-display text-lg font-black leading-tight text-slate-950 sm:text-2xl">
             {title}
@@ -159,7 +159,7 @@ export default function AuthModal({
               className={cn(
                 "cursor-pointer rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide transition-all sm:px-4 sm:py-1.5",
                 !isSignup
-                  ? "bg-[#FFB800] text-[#1a1a1a] shadow-[2px_2px_0_#0f172a]"
+                  ? "bg-[var(--brand-yellow)] text-[var(--bnt-ink)] shadow-[2px_2px_0_var(--bnt-shadow)]"
                   : "text-slate-600 hover:text-slate-900",
               )}
             >
@@ -172,7 +172,7 @@ export default function AuthModal({
               className={cn(
                 "cursor-pointer rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide transition-all sm:px-4 sm:py-1.5",
                 isSignup
-                  ? "bg-[#FFB800] text-[#1a1a1a] shadow-[2px_2px_0_#0f172a]"
+                  ? "bg-[var(--brand-yellow)] text-[var(--bnt-ink)] shadow-[2px_2px_0_var(--bnt-shadow)]"
                   : "text-slate-600 hover:text-slate-900",
               )}
             >

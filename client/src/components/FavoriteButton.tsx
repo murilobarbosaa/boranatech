@@ -114,7 +114,7 @@ export default function FavoriteButton({
         }
         onClick={handleClick}
         className={cn(
-          "inline-flex items-center justify-center gap-1.5 rounded-full border-2 border-slate-900 bg-white font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0f172a]",
+          "inline-flex items-center justify-center gap-1.5 rounded-full border-2 border-slate-900 bg-white font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_var(--bnt-shadow)]",
           compact ? "h-9 w-9" : "px-3 py-1.5 text-xs",
           active && "bg-rose-100 text-rose-700",
           className,

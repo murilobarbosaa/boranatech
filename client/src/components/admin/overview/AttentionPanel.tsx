@@ -14,7 +14,7 @@ import { cancellationReasonLabelOf } from "@/components/admin/users/userFormat";
  * O QUE QUEBROU NA v1, visto na revisão visual e invisível para os guards
  * estruturais: com ~26 itens, o painel virava uma coluna sem fim de cards
  * idênticos (uns 20 "Saída agendada" empilhados), e como ele não tinha teto de
- * altura, esticava a linha inteira do grid — o vizinho ao lado virava um pill
+ * altura, esticava a linha inteira do grid, o vizinho ao lado virava um pill
  * gigante. Nenhum teste de posição ou de payload pega isso: eles verificam que o
  * bloco está lá e não quebra, não que ele é legível.
  *
@@ -89,9 +89,9 @@ const ROTULO_DE_FONTE: Record<string, string> = {
   cobrancas_falhadas: "cobranças falhadas",
   pagamentos_orfaos: "pagamentos órfãos",
   custo_ia: "custo de IA",
-  /* TODO(Ana) */ payouts: "repasses bancários",
-  /* TODO(Ana) */ despesas: "despesas",
-  /* TODO(Ana) */ influencers: "influencers",
+  payouts: "repasses bancários",
+  despesas: "despesas",
+  influencers: "influencers",
 };
 
 /** Resolver com fallback neutro: tipo novo do servidor não pode derrubar a aba. */
@@ -105,10 +105,9 @@ const TITULO_DE_GRUPO: Record<string, string> = {
   cobrancas_falhadas: "Cobranças falhadas",
   pagamento_orfao: "Pagamentos sem assinatura",
   custo_ia_spike: "Custo de IA acima do normal",
-  /* TODO(Ana) */ payout_falho: "Repasses que falharam",
-  /* TODO(Ana) */ mes_sem_despesa: "Mês sem despesa registrada",
-  /* TODO(Ana) */ influencer_com_assinatura:
-    "Influencers que viraram assinantes",
+  payout_falho: "Repasses que falharam",
+  mes_sem_despesa: "Mês sem despesa registrada",
+  influencer_com_assinatura: "Influencers que viraram assinantes",
 };
 
 function tituloDeGrupo(tipo: string, exemplo: ItemAtencao): string {
@@ -121,7 +120,7 @@ function tituloDeGrupo(tipo: string, exemplo: ItemAtencao): string {
  * O servidor já manda `url` pronta, montada a partir do
  * `provider_subscription_id`. Aqui ela é VALIDADA antes de virar botão: só
  * `https://dashboard.stripe.com/...` passa. Um href vazio, relativo ou de outro
- * host vira ausência de botão, e não um "Abrir" que não abre nada — que é pior,
+ * host vira ausência de botão, e não um "Abrir" que não abre nada, que é pior,
  * porque promete uma ação.
  *
  * A `chave` do item NÃO serve como fonte do link: ela carrega o id da linha
@@ -173,7 +172,6 @@ function AcoesDoItem({ item }: { item: ItemAtencao }) {
           data-testid="atencao-destino-interno"
           className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-900 hover:bg-yellow-50"
         >
-          {/* TODO(Ana) */}
           Resolver no admin <ArrowRight className="h-3 w-3" />
         </a>
       ) : null}
@@ -201,7 +199,6 @@ function MotivoDaSaida({ item }: { item: ItemAtencao }) {
       data-testid="atencao-item-motivo"
       className="mt-1 text-xs font-black uppercase tracking-wide text-slate-600"
     >
-      {/* TODO(Ana) */}
       Motivo declarado: {cancellationReasonLabelOf(item.motivoCodigo)}
     </p>
   );
@@ -342,7 +339,7 @@ function GrupoView({ grupo }: { grupo: Grupo }) {
 
       {unico ? (
         // GRUPO DE UM: o resumo JA e o item. Renderizar a lista embaixo
-        // repetiria o mesmo texto duas vezes na tela — foi o que o teste pegou.
+        // repetiria o mesmo texto duas vezes na tela, foi o que o teste pegou.
         <>
           <p className="mt-1 text-sm font-semibold text-slate-600">
             {grupo.itens[0].detalhe}
@@ -434,7 +431,7 @@ export function AttentionPanel({
         </p>
       ) : !data ? null : (
         // TETO DE ALTURA. Sem ele o painel estica a linha do grid e deforma o
-        // vizinho — foi exatamente o que aconteceu na v1.
+        // vizinho, foi exatamente o que aconteceu na v1.
         // O PAINEL CRESCE. Ver a decisão 5 na docstring: o teto de altura da v2
         // existia para não deformar um vizinho de grid que não existe mais, e
         // esconder item de alerta atrás de scroll é o oposto do propósito daqui.

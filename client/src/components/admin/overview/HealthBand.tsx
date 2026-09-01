@@ -6,7 +6,7 @@ import { adminFetch } from "@/lib/adminApi";
 // FAIXA DE SAÚDE: substitui os dois cartões que ocupavam o topo da Visão.
 //
 // VERDE É AUSÊNCIA, não selo. Quando está tudo bem a faixa é uma linha fina de
-// uma frase, sem cor forte, sem ícone grande e sem número — some do caminho e
+// uma frase, sem cor forte, sem ícone grande e sem número, some do caminho e
 // devolve o topo da página para o que decide. Badge verde decorativo é ruído que
 // treina a pessoa a não olhar, e aí o vermelho também não é visto.
 //
@@ -15,7 +15,7 @@ import { adminFetch } from "@/lib/adminApi";
 //
 // NÃO TRAVA A PÁGINA: busca própria, independente das outras chamadas da Visão.
 // A sonda do PostHog e o ping de Redis vivem atrás de um cache de 180s no
-// servidor, mas mesmo num cache miss lento o resto da página já renderizou —
+// servidor, mas mesmo num cache miss lento o resto da página já renderizou:
 // esta faixa é a única coisa que espera por ela.
 
 type Problema = {

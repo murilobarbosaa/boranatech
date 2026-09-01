@@ -77,7 +77,7 @@ export default function RecuperarSenha() {
             <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">
               <span
                 aria-hidden
-                className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-slate-900 bg-emerald-100 text-emerald-700 shadow-[3px_3px_0_#0f172a]"
+                className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-slate-900 bg-emerald-100 text-emerald-700 shadow-[3px_3px_0_var(--bnt-shadow)]"
               >
                 <MailCheck className="h-5 w-5" strokeWidth={2.5} />
               </span>
@@ -89,7 +89,7 @@ export default function RecuperarSenha() {
                 link de recuperação em até 2 minutos. Confira também a pasta de
                 spam.
               </p>
-              <div className="mt-4 rounded-xl border-2 border-slate-300 bg-[#faf8f4] px-4 py-3">
+              <div className="mt-4 rounded-xl border-2 border-slate-300 bg-[var(--brand-cream)] px-4 py-3">
                 <span className="block text-xs font-black uppercase text-slate-600">
                   Enviado para
                 </span>
@@ -109,7 +109,7 @@ export default function RecuperarSenha() {
                 <button
                   type="button"
                   onClick={() => setSentTo(null)}
-                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-5 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-5 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]"
                 >
                   <ArrowLeft className="h-4 w-4" strokeWidth={2.5} />
                   Usar outro email

@@ -8,10 +8,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * `process-cancellations` filtra uma flag que o boleto não seta, e o reconcile
  * exclui boleto de propósito). O `expire-pending-boletos` cobre o NÃO pago; o
  * pago que venceu ficava `active` com período expirado para sempre, contaminando
- * toda contagem que filtra `status='active'` — MRR incluído.
+ * toda contagem que filtra `status='active'`, MRR incluído.
  *
  * O dublê aqui APLICA `eq` e `lt`. Um que só registrasse os filtros provaria a
- * intenção da query, não quais linhas ela pega — e "quais linhas" é exatamente a
+ * intenção da query, não quais linhas ela pega, e "quais linhas" é exatamente a
  * pergunta perigosa, porque uma condição larga demais derrubaria assinatura viva.
  */
 
@@ -41,7 +41,7 @@ vi.mock("../lib/supabaseAdmin", () => ({
         Object.entries(filtros).every(([c, v]) => row[c] === v) &&
         menores.every(({ coluna, valor }) => {
           const atual = row[coluna];
-          // NULL nunca casa `lt` — é o que o Postgres faz, e é o que protege
+          // NULL nunca casa `lt`, é o que o Postgres faz, e é o que protege
           // assinatura sem data de fim.
           return typeof atual === "string" && atual < valor;
         });

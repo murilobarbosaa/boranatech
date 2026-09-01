@@ -38,7 +38,7 @@ export function WindowBadge({
   partial?: boolean;
   className?: string;
 }) {
-  // Ausência é ausência: um badge vazio ou com "—" pareceria defeito de layout,
+  // Ausência é ausência: um badge vazio ou com "-" pareceria defeito de layout,
   // e um badge com data inventada seria pior. Some.
   if (!label) return null;
 

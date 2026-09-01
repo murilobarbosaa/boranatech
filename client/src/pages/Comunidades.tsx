@@ -132,7 +132,7 @@ export default function Comunidades() {
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#8b5cf6_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
           <div className="max-w-2xl">
-            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
               aprendizado em rede
             </p>
             <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">
@@ -164,8 +164,8 @@ export default function Comunidades() {
                   onClick={() => setModalidade(id)}
                   className={`inline-flex items-center gap-2 rounded-full border-2 border-slate-900 px-4 py-2 text-sm font-black transition-all focus:outline-none focus-visible:ring-4 focus-visible:ring-violet-200 ${
                     active
-                      ? `${TAB_ATIVA[id]} shadow-[3px_3px_0_#0f172a]`
-                      : "bg-white text-slate-900 hover:-translate-y-0.5 hover:shadow-[2px_2px_0_#0f172a]"
+                      ? `${TAB_ATIVA[id]} shadow-[3px_3px_0_var(--bnt-shadow)]`
+                      : "bg-white text-slate-900 hover:-translate-y-0.5 hover:shadow-[2px_2px_0_var(--bnt-shadow)]"
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -235,7 +235,7 @@ export default function Comunidades() {
                   onClick={() => setIdioma(id)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${
                     idioma === id
-                      ? "bg-violet-700 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
+                      ? "bg-violet-700 text-white border-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
                       : "bg-white text-slate-700 border-slate-300 hover:border-violet-400"
                   }`}
                 >
@@ -247,7 +247,7 @@ export default function Comunidades() {
         </div>
       </section>
 
-      <section className="bg-[#f5f3ff] py-12">
+      <section className="bg-[var(--color-violet-50)] py-12">
         <div className="container">
           {filtered.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -266,7 +266,7 @@ export default function Comunidades() {
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
                       {com.destaque ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[#FFB800] px-2 py-0.5 text-[11px] font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                        <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-2 py-0.5 text-[11px] font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
                           Destaque
                         </span>
                       ) : null}
@@ -329,7 +329,7 @@ export default function Comunidades() {
                     href={com.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-1 rounded-lg border-2 border-slate-900 bg-violet-700 px-4 py-2 text-sm font-semibold text-white shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0f172a]"
+                    className="inline-flex items-center justify-center gap-1 rounded-lg border-2 border-slate-900 bg-violet-700 px-4 py-2 text-sm font-semibold text-white shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                   >
                     Participar <ArrowUpRight className="h-3.5 w-3.5" />
                   </a>
@@ -394,7 +394,7 @@ export default function Comunidades() {
 
           <div className="mt-12">
             <div className="mb-2 max-w-2xl">
-              <p className="mb-3 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+              <p className="mb-3 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
                 além do código
               </p>
               <h2 className="font-display text-3xl font-black text-slate-950">

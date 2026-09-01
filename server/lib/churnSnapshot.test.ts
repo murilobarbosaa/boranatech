@@ -25,7 +25,7 @@ const estado = vi.hoisted(() => ({
  * `subscriptions`, e um dublê que ignora filtros devolve a mesma coisa para as
  * quatro. Na primeira versão deste arquivo ele fazia isso, e a consulta de
  * "quem saiu na janela" recebia linhas SEM `canceled_at` como se tivessem
- * saído — o teste media o dublê, não a função. Linha que não tem a coluna fica
+ * saído, o teste media o dublê, não a função. Linha que não tem a coluna fica
  * de fora do intervalo, que é o que o Postgres faz com NULL.
  */
 vi.mock("./supabaseAdmin", () => ({
@@ -166,7 +166,7 @@ describe("guardas de ausência: estado nomeado, nunca um número inventado", () 
   it("NENHUM período encerrado NÃO vira 0%: é o zero falso de 12/08", async () => {
     // É o teste central desta correção. A base é velha o bastante (a guarda
     // antiga já teria liberado), há assinantes no início da janela, e ninguém
-    // saiu — porque ninguém PODIA sair ainda.
+    // saiu, porque ninguém PODIA sair ainda.
     montar({
       subscriptions: {
         rows: [{ created_at: HA_60_DIAS, provider_subscription_id: "sub_1" }],
@@ -348,7 +348,7 @@ describe("as varreduras de churn não param no teto do PostgREST", () => {
   /**
    * Reproduz o `db-max-rows`: o dublê devolve no MÁXIMO `TETO` linhas por
    * página, e é o `range` que faz a varredura avançar. Sem paginar, o numerador
-   * pararia na milésima saída — e churn que erra para menos não levanta suspeita
+   * pararia na milésima saída, e churn que erra para menos não levanta suspeita
    * de ninguém.
    */
   const TETO = 1000;
@@ -376,7 +376,7 @@ describe("as varreduras de churn não param no teto do PostgREST", () => {
 
   it("o conjunto de assinaturas existentes não encolhe (senão vira órfã falsa)", async () => {
     // `idsExistentes` decide o que é órfão. Truncado, assinatura viva viraria
-    // órfã e a saída dela sairia do numerador — erro para menos, de novo.
+    // órfã e a saída dela sairia do numerador, erro para menos, de novo.
     const vivas = Array.from({ length: 1500 }, (_, i) => ({
       id: `row_${String(i).padStart(5, "0")}`,
       provider_subscription_id: `sub_${i}`,

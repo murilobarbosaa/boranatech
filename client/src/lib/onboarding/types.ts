@@ -29,7 +29,7 @@ export type OnboardingChoice = readonly [
   description: string,
 ];
 
-/** `tools:[['case','Vagas',true], ...]` — o 3o item liga a etiqueta PRO. */
+/** `tools:[['case','Vagas',true], ...]`, o 3o item liga a etiqueta PRO. */
 export type OnboardingTool = readonly [
   icon: OnboardingIconName,
   label: string,

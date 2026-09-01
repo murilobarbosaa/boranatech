@@ -171,9 +171,43 @@ export function mensagemIgnorada(mensagem: string): boolean {
   return IGNORAR_MENSAGENS.some((padrao) => mensagem.includes(padrao));
 }
 
+/**
+ * O SDK do browser deve reportar deste build?
+ *
+ * Espelha `deveReportarAoSentry` de server/lib/sentry.ts, e a simetria e o
+ * ponto: os dois tinham a MESMA guarda unica (so a presenca do DSN) e o mesmo
+ * buraco em potencial.
+ *
+ * O QUE FOI MEDIDO em 2026-08-31, e por que o remedio aqui e diferente. O
+ * projeto `boranatech-front` nunca viu `environment=development`, enquanto o
+ * `node-express` viu (3 eventos de EADDRINUSE mais 2 de outra issue). A razao
+ * nao e o codigo: e que `VITE_SENTRY_DSN` nao esta no `.env` local, entao o
+ * `return` por DSN ausente ja barrava tudo. Ou seja, o buraco do cliente esta
+ * fechado por AUSENCIA DE VARIAVEL, nao por decisao, e basta alguem copiar o
+ * `.env` de producao inteiro para abri-lo sem ninguem perceber. Esta guarda
+ * troca essa sorte por uma regra.
+ *
+ * `import.meta.env.PROD` e nao `MODE`: ele e falso APENAS no servidor de
+ * desenvolvimento do Vite, que e exatamente o caso a barrar. Build de preview da
+ * Vercel tem `PROD` verdadeiro e continua reportando, de proposito: o projeto do
+ * front ja recebe `vercel-preview` hoje, e decidir se preview deve ou nao mandar
+ * evento e outra pergunta, de produto, que esta correcao nao responde.
+ */
+export function deveReportarAoSentryNoCliente(params: {
+  temDsn: boolean;
+  isProd: boolean;
+}): boolean {
+  return params.temDsn && params.isProd;
+}
+
 export function initClientSentry(): void {
   const dsn = import.meta.env.VITE_SENTRY_DSN;
-  if (!dsn) {
+  if (
+    !deveReportarAoSentryNoCliente({
+      temDsn: Boolean(dsn),
+      isProd: import.meta.env.PROD,
+    })
+  ) {
     return;
   }
 

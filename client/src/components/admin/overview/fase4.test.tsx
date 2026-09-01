@@ -381,7 +381,7 @@ describe("ToolUsagePanel", () => {
 });
 
 // ---------------------------------------------------------------------------
-// RODADA 7 — legibilidade
+// RODADA 7, legibilidade
 // ---------------------------------------------------------------------------
 
 describe("ToolUsagePanel compacto (v2)", () => {
@@ -400,7 +400,7 @@ describe("ToolUsagePanel compacto (v2)", () => {
   });
 
   it("a linha TOTAL é sobre TUDO, não sobre o top 8", () => {
-    // Total sobre o recorte seria um número menor com cara de total — a classe
+    // Total sobre o recorte seria um número menor com cara de total, a classe
     // de erro que este projeto persegue.
     render(<ToolUsagePanel ferramentas={muitas} />);
     const total = screen.getByTestId("ferramentas-total");

@@ -29,7 +29,7 @@ export default function UltimaNoticia() {
   }, []);
 
   return (
-    <section className="bg-[#faf8f4] py-16 sm:py-20">
+    <section className="bg-[var(--brand-cream)] py-16 sm:py-20">
       <div className="container">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <span className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-violet-800">

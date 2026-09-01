@@ -31,7 +31,7 @@ const PARAMS = {
   firstName: "Ana",
 };
 
-describe("sendCampaignEmail — timeout do envio", () => {
+describe("sendCampaignEmail, timeout do envio", () => {
   beforeEach(() => {
     // Default: envio bem-sucedido. Testes que precisam de outro comportamento
     // sobrescrevem resendState.send.

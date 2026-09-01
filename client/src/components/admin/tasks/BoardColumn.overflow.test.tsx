@@ -183,6 +183,32 @@ describe("token longo nao gera scroll lateral na coluna", () => {
     expect(classes).toContain("overflow-x-hidden");
   });
 
+  it("o container de rolagem tem respiro para a sombra do card caber", () => {
+    // ARITMETICA, nao gosto. O card tem `shadow-[3px_3px_0_#0f172a]`, e sombra
+    // e desenhada FORA da caixa de borda: dentro de um container com clip, ela
+    // vive no padding ou nao vive. Com os 2px de `pr-0.5` que havia aqui, a
+    // coluna comia o ultimo pixel da sombra direita, e sem `pb` nenhum a de
+    // baixo sumia no fim da rolagem. Este teste amarra as duas pontas: se
+    // alguem aumentar a sombra do card ou reduzir o padding, uma das duas
+    // asercoes cai antes de a captura de tela cobrar.
+    const { container } = renderColuna();
+    const lista = container.querySelector(".overflow-y-auto");
+    expect(lista, "container rolavel da coluna sumiu").toBeTruthy();
+    const classes = (lista as HTMLElement).className.split(/\s+/);
+
+    expect(classes).toContain("pr-1");
+    expect(classes).toContain("pb-1");
+    // A PONTA DE LA: a sombra que o padding precisa cobrir. Casada da fonte, e
+    // nao escrita a mao, para as duas nao poderem divergir em silencio.
+    const sombra = cardDaTarefa().className.match(
+      /shadow-\[(\d+)px_(\d+)px_0_/,
+    );
+    expect(sombra, "o card perdeu a sombra neubrutalista").toBeTruthy();
+    const PADDING_PX = 4; // pr-1 / pb-1
+    expect(Number(sombra![1])).toBeLessThanOrEqual(PADDING_PX);
+    expect(Number(sombra![2])).toBeLessThanOrEqual(PADDING_PX);
+  });
+
   it("TODO card de uma coluna lotada recusa encolher na vertical", () => {
     // O ESMAGAMENTO VERTICAL, que foi regressao real do commit anterior desta
     // frente: a lista e `flex-col` com `max-h-[calc(100vh-22rem)]`, e os cards

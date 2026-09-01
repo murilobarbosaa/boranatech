@@ -29,6 +29,7 @@ import {
 import UserAvatar, { effectiveOwnAvatar } from "@/components/UserAvatar";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import BotaoGuiaDaPagina from "@/components/onboarding/BotaoGuiaDaPagina";
+import ThemeToggle from "@/components/ThemeToggle";
 import { SignOutConfirmModal } from "./profile/SignOutConfirmModal";
 type MenuItem = {
   label: string;
@@ -414,7 +415,7 @@ function dropdownItemClass({
 function ActiveRouteDot() {
   return (
     <span
-      className="ml-1.5 mt-[5px] inline-flex h-2 w-2 shrink-0 rounded-full border border-slate-900 bg-violet-700 shadow-[1px_1px_0_#0f172a]"
+      className="ml-1.5 mt-[5px] inline-flex h-2 w-2 shrink-0 rounded-full border border-slate-900 bg-violet-700 shadow-[1px_1px_0_var(--bnt-shadow)]"
       aria-hidden="true"
     />
   );
@@ -559,7 +560,7 @@ function DesktopMenuItem({
         }`}
       >
         <div
-          className={`overflow-hidden rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}
+          className={`overflow-hidden rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)]`}
         >
           <div className="mb-4">
             <p className="text-[13px] font-black text-slate-900">
@@ -631,7 +632,7 @@ function DesktopMenuItem({
             ))}
           </div>
 
-          <div className="mt-4 border-t border-slate-200 pt-3 text-right text-[11px] font-bold text-[#BA7517]">
+          <div className="mt-4 border-t border-slate-200 pt-3 text-right text-[11px] font-bold text-[var(--color-amber-700)]">
             <span className="inline-flex items-center gap-1.5">
               <ProStarIcon />
               funcionalidade Pro
@@ -674,7 +675,7 @@ function DesktopNav({ location }: { location: string }) {
         aria-current={
           isPathActive("/comparador", location) ? "page" : undefined
         }
-        className="inline-flex items-center gap-1 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-1.5 text-sm font-black text-slate-950 shadow-[4px_4px_0_#0f172a,0_0_16px_rgba(245,158,11,0.55)] transition-transform hover:-translate-y-0.5 hover:bg-amber-200"
+        className="inline-flex items-center gap-1 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-1.5 text-sm font-black text-ink-on-accent shadow-[4px_4px_0_var(--bnt-shadow),0_0_16px_rgba(245,158,11,0.55)] transition-transform hover:-translate-y-0.5 hover:bg-amber-200"
       >
         Comparador
         <ProStarBadge />
@@ -820,7 +821,7 @@ export default function Header() {
     <>
       <header
         data-app-header
-        className="fixed left-0 right-0 top-0 z-[1000] border-b-2 border-slate-900 bg-[#f6f0df]/95 backdrop-blur"
+        className="fixed left-0 right-0 top-0 z-[1000] border-b-2 border-slate-900 bg-[var(--bnt-header-bg)] backdrop-blur"
       >
         <div className="mx-auto flex h-16 w-full items-center justify-between gap-4 px-4 sm:px-6 lg:max-w-[1280px] lg:px-8 2xl:max-w-[1440px]">
           <Link href="/" className="group shrink-0">
@@ -834,12 +835,13 @@ export default function Header() {
                 item do DesktopNav) e antes do avatar. Fica fora do ramo
                 logado/anonimo de proposito: rever o guia da pagina nao depende
                 de sessao. */}
+            <ThemeToggle variant="desktop" />
             <BotaoGuiaDaPagina variant="desktop" />
             {!user ? (
               <>
                 <Link
                   href="/login"
-                  className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+                  className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                 >
                   Entrar
                 </Link>
@@ -876,7 +878,7 @@ export default function Header() {
                 {isAdmin ? (
                   <Link
                     href="/admin"
-                    className="inline-flex items-center gap-1.5 rounded-full border-2 border-violet-800 bg-violet-50 px-3 py-2 text-sm font-black text-violet-900 shadow-[2px_2px_0_#0f172a] transition-all hover:bg-violet-100 hover:shadow-[3px_3px_0_#0f172a]"
+                    className="inline-flex items-center gap-1.5 rounded-full border-2 border-violet-800 bg-violet-50 px-3 py-2 text-sm font-black text-violet-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:bg-violet-100 hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                   >
                     <ShieldCheck className="h-4 w-4" />
                     Admin
@@ -885,7 +887,7 @@ export default function Header() {
                 {!isPro && !subscriptionLoading ? (
                   <Link
                     href="/planos"
-                    className="inline-flex items-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-2.5 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+                    className="inline-flex items-center rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-2.5 py-2 text-xs font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                   >
                     <ProInlineBadge label="Assinar Pro" />
                   </Link>
@@ -893,7 +895,7 @@ export default function Header() {
                 <button
                   type="button"
                   onClick={() => setSignOutModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
                 >
                   <LogOut className="h-4 w-4" />
                   Sair
@@ -903,11 +905,12 @@ export default function Header() {
           </div>
 
           <div className="flex items-center gap-2 2xl:hidden">
+            <ThemeToggle variant="mobile" />
             {user ? (
               <NotificationBell variant="mobile" onOpen={closeMobileDrawer} />
             ) : null}
             <button
-              className="rounded-md border-2 border-slate-900 p-2 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+              className="rounded-md border-2 border-slate-900 p-2 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:shadow-[3px_3px_0_var(--bnt-shadow)]"
               onClick={() => setMobileOpen(true)}
               aria-label="Abrir menu"
               type="button"
@@ -936,7 +939,7 @@ export default function Header() {
           </span>
           <button
             onClick={closeMobileDrawer}
-            className="rounded-md border-2 border-slate-900 p-2 shadow-[2px_2px_0_#0f172a]"
+            className="rounded-md border-2 border-slate-900 p-2 shadow-[2px_2px_0_var(--bnt-shadow)]"
             aria-label="Fechar menu"
             type="button"
           >
@@ -952,7 +955,7 @@ export default function Header() {
             <Link
               href="/login"
               onClick={closeMobileDrawer}
-              className="mx-4 my-3 block rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-center text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a]"
+              className="mx-4 my-3 block rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-center text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
             >
               Entrar
             </Link>
@@ -980,7 +983,7 @@ export default function Header() {
                   <Link
                     href="/admin"
                     onClick={closeMobileDrawer}
-                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border-2 border-violet-800 bg-violet-50 px-3 py-2 text-xs font-black text-violet-900 shadow-[2px_2px_0_#0f172a]"
+                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border-2 border-violet-800 bg-violet-50 px-3 py-2 text-xs font-black text-violet-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
                   >
                     <ShieldCheck className="h-4 w-4" />
                     Admin
@@ -990,7 +993,7 @@ export default function Header() {
                   <Link
                     href="/planos"
                     onClick={closeMobileDrawer}
-                    className="inline-flex flex-1 items-center justify-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                    className="inline-flex flex-1 items-center justify-center rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-3 py-2 text-xs font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]"
                   >
                     <ProInlineBadge label="Pro" />
                   </Link>
@@ -1001,7 +1004,7 @@ export default function Header() {
                     closeMobileDrawer();
                     setSignOutModalOpen(true);
                   }}
-                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a]"
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
                 >
                   <LogOut className="h-4 w-4" />
                   Sair
@@ -1026,7 +1029,7 @@ export default function Header() {
             aria-current={
               isPathActive("/comparador", location) ? "page" : undefined
             }
-            className="mx-4 mt-3 flex items-center justify-center gap-1 rounded-full border-2 border-slate-950 bg-amber-300 px-4 py-3 text-center text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a,0_0_16px_rgba(245,158,11,0.55)] transition-transform hover:-translate-y-0.5 hover:bg-amber-200"
+            className="mx-4 mt-3 flex items-center justify-center gap-1 rounded-full border-2 border-slate-950 bg-amber-300 px-4 py-3 text-center text-sm font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow),0_0_16px_rgba(245,158,11,0.55)] transition-transform hover:-translate-y-0.5 hover:bg-amber-200"
           >
             Comparador
             <ProStarBadge />

@@ -110,7 +110,6 @@ function Bloco({
           data-testid={`${testid}-indisponivel`}
           className="rounded-xl border-2 border-amber-400 bg-amber-50 p-2 text-xs font-bold text-amber-900"
         >
-          {/* TODO(Ana) */}
           Não foi possível consultar agora.
         </p>
       ) : (
@@ -127,7 +126,7 @@ function Resto({ mais }: { mais: number }) {
       data-testid="vida-resto"
       className="mt-2 text-xs font-bold text-slate-500"
     >
-      {/* TODO(Ana) */}e mais {mais}
+      e mais {mais}
     </p>
   );
 }
@@ -147,7 +146,6 @@ export function UserSiteLife({
         data-testid="vida-loading"
         className="text-sm font-bold text-slate-500"
       >
-        {/* TODO(Ana) */}
         Carregando dados...
       </p>
     );
@@ -190,7 +188,6 @@ export function UserSiteLife({
         data-testid="vida-vazio"
         className="rounded-2xl border-2 border-slate-300 bg-slate-50 p-4 text-sm font-semibold text-slate-500"
       >
-        {/* TODO(Ana) */}
         Ainda não há atividade registrada no site.
       </div>
     );
@@ -202,18 +199,13 @@ export function UserSiteLife({
     <div className="grid gap-5 lg:grid-cols-2">
       <Bloco titulo="Roadmaps" testid="vida-roadmaps" bloco={vida.roadmaps}>
         {roadmaps.itens.length === 0 ? (
-          <div className={VAZIO}>
-            {/* TODO(Ana) */}
-            Nenhum roadmap iniciado.
-          </div>
+          <div className={VAZIO}>Nenhum roadmap iniciado.</div>
         ) : (
           <ul className="space-y-2">
             {roadmaps.itens.map((r) => (
               <li key={r.roadmapId} data-testid="vida-roadmap" className={PILL}>
-                {/* TODO(Ana) */}
                 <span className={NOME}>{r.titulo ?? "Roadmap sem título"}</span>
                 <span className={CHIP}>
-                  {/* TODO(Ana) */}
                   {/* Sem total conhecido, o chip conta só o que foi feito. O
                       "?" que morava aqui era ausência SEM estado nomeado
                       vazando para a tela: o admin lia uma interrogação e não
@@ -233,10 +225,7 @@ export function UserSiteLife({
 
       <Bloco titulo="Trilhas" testid="vida-trilhas" bloco={vida.trilhas}>
         {trilhas.itens.length === 0 ? (
-          <div className={VAZIO}>
-            {/* TODO(Ana) */}
-            Nenhuma trilha iniciada.
-          </div>
+          <div className={VAZIO}>Nenhuma trilha iniciada.</div>
         ) : (
           <ul className="space-y-2">
             {trilhas.itens.map((t) => (
@@ -245,7 +234,6 @@ export function UserSiteLife({
                     nome no conteúdo estático, então ausência aqui é normal. */}
                 <span className={NOME}>{t.titulo ?? t.slug}</span>
                 <span className={CHIP}>
-                  {/* TODO(Ana) */}
                   {t.itensConcluidos} itens concluídos
                 </span>
               </li>
@@ -261,10 +249,7 @@ export function UserSiteLife({
         bloco={vida.certificados}
       >
         {certificados.itens.length === 0 ? (
-          <div className={VAZIO}>
-            {/* TODO(Ana) */}
-            Nenhum certificado emitido.
-          </div>
+          <div className={VAZIO}>Nenhum certificado emitido.</div>
         ) : (
           <ul className="space-y-2">
             {certificados.itens.map((c) => (
@@ -287,10 +272,7 @@ export function UserSiteLife({
 
       <Bloco titulo="Conquistas" testid="vida-badges" bloco={vida.badges}>
         {badges.itens.length === 0 ? (
-          <div className={VAZIO}>
-            {/* TODO(Ana) */}
-            Nenhuma conquista desbloqueada.
-          </div>
+          <div className={VAZIO}>Nenhuma conquista desbloqueada.</div>
         ) : (
           // Mesma anatomia do chip de contagem, fundo violeta: a diferença de
           // cor é o que separa "isto é um rótulo" de "isto é um número".

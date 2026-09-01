@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 
 import { cacheKey, getOrCompute } from "../lib/cache";
+import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import {
   checkProStatus,
@@ -158,7 +159,7 @@ router.get("/", async (req, res, next) => {
             error,
           );
           throw createError(500, "db_error", "Erro ao buscar vagas.", {
-            cause: error,
+            cause: erroEncadeavel(error),
             context: {
               region: region ?? null,
               country: country ?? null,
@@ -217,7 +218,7 @@ router.get("/destaques", async (req, res, next) => {
           // anexa contexto: sem isso o Sentry so via a mensagem generica.
           console.error(`[vagas] destaques falhou user=${req.user!.id}`, error);
           throw createError(500, "db_error", "Erro ao buscar destaques.", {
-            cause: error,
+            cause: erroEncadeavel(error),
             context: { userId: req.user!.id },
           });
         }
@@ -248,7 +249,7 @@ router.get("/admin", requireAdmin, async (_req, res, next) => {
       console.error(`[vagas] admin list falhou`, error);
       return next(
         createError(500, "db_error", "Erro ao listar vagas.", {
-          cause: error,
+          cause: erroEncadeavel(error),
           context: { scope: "admin_manual_list" },
         }),
       );
@@ -298,7 +299,7 @@ router.get("/:id", async (req, res, next) => {
       );
       return next(
         createError(500, "db_error", "Erro ao buscar a vaga.", {
-          cause: error,
+          cause: erroEncadeavel(error),
           context: { jobId: id.data, userId: req.user!.id },
         }),
       );
@@ -470,7 +471,7 @@ router.post("/admin", requireAdmin, async (req, res, next) => {
       );
       return next(
         createError(500, "db_error", "Erro ao criar a vaga.", {
-          cause: error,
+          cause: erroEncadeavel(error),
           context: { url: parsed.data.url, userId: req.user!.id },
         }),
       );
@@ -518,7 +519,7 @@ router.patch("/admin/:id", requireAdmin, async (req, res, next) => {
       );
       return next(
         createError(500, "db_error", "Erro ao carregar a vaga para edição.", {
-          cause: findError,
+          cause: erroEncadeavel(findError),
           context: { jobId: id.data, userId: req.user!.id, step: "find" },
         }),
       );
@@ -578,7 +579,7 @@ router.patch("/admin/:id", requireAdmin, async (req, res, next) => {
       );
       return next(
         createError(500, "db_error", "Erro ao atualizar a vaga.", {
-          cause: error,
+          cause: erroEncadeavel(error),
           context: {
             jobId: id.data,
             userId: req.user!.id,

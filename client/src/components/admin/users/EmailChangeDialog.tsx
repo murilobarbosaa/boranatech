@@ -130,7 +130,7 @@ export function EmailChangeDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent
         overlayClassName={LAYER_IN_DIALOG}
-        className={`${LAYER_IN_DIALOG} max-h-[85dvh] w-[min(34rem,94vw)] max-w-none overflow-y-auto rounded-2xl border-2 border-slate-950 bg-white p-5 shadow-[6px_6px_0_#0f172a] sm:p-6`}
+        className={`${LAYER_IN_DIALOG} max-h-[85dvh] w-[min(34rem,94vw)] max-w-none overflow-y-auto rounded-2xl border-2 border-slate-950 bg-white p-5 shadow-[6px_6px_0_var(--bnt-shadow)] sm:p-6`}
       >
         <AlertDialogTitle className="font-display text-2xl font-black text-slate-950">
           Trocar e-mail

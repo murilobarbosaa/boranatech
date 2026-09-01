@@ -76,7 +76,7 @@ function Chip({
       aria-label={`Ver ${creator.name} na página de creators`}
       aria-hidden={duplicated}
       tabIndex={duplicated ? -1 : undefined}
-      className="mr-3 inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border-2 border-slate-950 py-1 pl-1 pr-3 font-display text-[0.8rem] font-bold shadow-[3px_3px_0_#0f172a] transition-all duration-150 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[5px_5px_0_#0f172a]"
+      className="mr-3 inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border-2 border-slate-950 py-1 pl-1 pr-3 font-display text-[0.8rem] font-bold shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-150 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[5px_5px_0_var(--bnt-shadow)]"
       style={{ backgroundColor: color.bg, color: color.text }}
     >
       <Avatar creator={creator} borderColor={color.avatarBorder} />
@@ -101,7 +101,7 @@ export default function CreatorsBand() {
       aria-label="Creators de conteúdo em tech"
       className="sticky top-16 z-40 overflow-hidden border-b-2 border-slate-950 bg-[#6b1fc9] py-2"
     >
-      <p className="mb-1 hidden text-center font-mono text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[#FCC700] sm:block">
+      <p className="mb-1 hidden text-center font-mono text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[var(--brand-yellow)] sm:block">
         Creators de conteúdo em tech
       </p>
 

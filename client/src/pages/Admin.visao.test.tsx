@@ -80,14 +80,14 @@ const SAIRAM: Array<{ titulo: string | RegExp; substituto: string }> = [
   // mais visível da Visão era o único sobre o qual não havia nada a fazer.
   { titulo: /Eventos recentes/i, substituto: "painel Atenção necessária" },
   // Rodada 6 (2026-08-14, D10): "Aquisição de usuários" rankeava
-  // `$referring_domain` do PostHog, que NÃO é atribuição — não há coluna de UTM,
+  // `$referring_domain` do PostHog, que NÃO é atribuição, não há coluna de UTM,
   // referrer ou canal em `profiles` nem em `subscriptions`, então o número não
   // se liga a receita nem sobrevive a bloqueador de script. Instrumentação de
   // canal virou frente futura.
   { titulo: /Aquisição de usuários/i, substituto: "nenhum (sem fonte real)" },
   // Rodada 7 (D17): o botão "Comportamento por página" saiu junto com o
   // contêiner órfão que o hospedava. Ele só fazia `setActiveSection("paginas")`,
-  // que é exatamente o que a aba "Páginas" do nav superior faz — duplicava
+  // que é exatamente o que a aba "Páginas" do nav superior faz, duplicava
   // navegação, e o contêiner de 3 colunas esticava na altura do painel vizinho.
   { titulo: /Comportamento por página/i, substituto: "aba Páginas do nav" },
 ];
@@ -215,7 +215,7 @@ describe("inventário de blocos da Visão", () => {
   it("a aba Páginas é alcançável pelo nav (o botão duplicado saiu)", async () => {
     // O botão "Comportamento por página" saiu na rodada 7 (D17): ele só fazia
     // `setActiveSection("paginas")`, o MESMO que o item do nav faz. O que
-    // precisa continuar verdadeiro é o destino ser alcançável — e é o nav que
+    // precisa continuar verdadeiro é o destino ser alcançável, e é o nav que
     // responde por isso agora.
     render(<Admin />);
     // Há dois navs (desktop e mobile) com o mesmo rótulo; o primeiro basta e a
@@ -287,7 +287,7 @@ describe("inventário de blocos da Visão", () => {
   it("payload PARCIAL (com os campos antigos, sem os novos) não derruba", async () => {
     // O caso que o payload vazio NÃO exercita, e o mais realista de todos: a
     // resposta traz o que sempre trouxe e falta só o campo acrescentado depois.
-    // As guardas de primeiro nível passam e o estouro acontece adiante — foi
+    // As guardas de primeiro nível passam e o estouro acontece adiante, foi
     // exatamente assim que `gaps` sobreviveu à primeira rodada desta varredura.
     fetchMock.mockImplementation((rota: unknown) => {
       const r = String(rota);

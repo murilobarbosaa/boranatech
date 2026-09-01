@@ -20,7 +20,7 @@ import { describe, expect, it } from "vitest";
  *
  * É a anatomia do `env -i` e do endpoint legado que devolvia 200 com lista
  * vazia: AUSÊNCIA DE RESPOSTA LIDA COMO RESPOSTA. Conhecer a classe não
- * imuniza — quem caiu nela estava escrevendo sobre ela.
+ * imuniza, quem caiu nela estava escrevendo sobre ela.
  *
  * O teste roda o script DE VERDADE (spawn), e não confere o texto da fonte:
  * asserção sobre o código-fonte provaria que a string existe, não que o

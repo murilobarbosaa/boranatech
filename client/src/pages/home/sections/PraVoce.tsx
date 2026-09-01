@@ -123,7 +123,7 @@ export default function PraVoce() {
   }, []);
 
   return (
-    <section id="pra-ler-e-aprender" className="bnt-ancora relative overflow-hidden py-20 md:py-28 bg-[#f0f9ff]">
+    <section id="pra-ler-e-aprender" className="bnt-ancora relative overflow-hidden py-20 md:py-28 bg-[var(--bnt-surface)]">
       <BackgroundDecoration />
 
       <div className="relative z-10 mx-auto max-w-6xl px-4">
@@ -228,9 +228,9 @@ function NoticiaDestaque({ noticia }: { noticia: typeof praVoceNoticia }) {
       className="h-full"
     >
       <Link href="/noticias">
-        <div className="group h-full cursor-pointer rounded-3xl border-2 border-slate-950 bg-white p-6 md:p-8 lg:p-10 shadow-[4px_4px_0_#0f172a] md:shadow-[6px_6px_0_#0f172a] transition-all duration-300 hover:-translate-y-1 hover:shadow-[10px_10px_0_#0f172a] flex flex-col">
+        <div className="group h-full cursor-pointer rounded-3xl border-2 border-slate-950 bg-white p-6 md:p-8 lg:p-10 shadow-[4px_4px_0_var(--bnt-shadow)] md:shadow-[6px_6px_0_var(--bnt-shadow)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[10px_10px_0_var(--bnt-shadow)] flex flex-col">
           {/* Badge da categoria (no topo agora, label "Notícia em destaque" removida) */}
-          <div className="inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-950 bg-amber-100 px-3 py-1 shadow-[2px_2px_0_#0f172a]">
+          <div className="inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-950 bg-amber-100 px-3 py-1 shadow-[2px_2px_0_var(--bnt-shadow)]">
             <Tag size={12} className="text-amber-700" strokeWidth={2.5} />
             <span className="font-display text-xs font-black uppercase tracking-wider text-amber-700">
               {noticia.categoria}
@@ -295,7 +295,7 @@ function EventoCard({ evento, delay }: { evento: Evento; delay: number }) {
       className="flex-1"
     >
       <Link href="/eventos">
-        <div className="group h-full cursor-pointer rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[4px_4px_0_#0f172a] transition-all duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0_#0f172a] flex flex-col">
+        <div className="group h-full cursor-pointer rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0_var(--bnt-shadow)] flex flex-col">
           {/* Topo: logo do evento (label "EVENTO" removida, ícone já sugere) */}
           <EventoLogo logoUrl={evento.logoUrl} nome={evento.nome} />
 
@@ -386,7 +386,7 @@ export function EventoLogo({
     .join("");
 
   return (
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-fuchsia-100 shadow-[2px_2px_0_#0f172a] overflow-hidden">
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-fuchsia-100 shadow-[2px_2px_0_var(--bnt-shadow)] overflow-hidden">
       {logoUrl && urlComFalha !== logoUrl ? (
         <img
           src={logoUrl}
@@ -439,9 +439,9 @@ function CursoCard({
       transition={{ duration: 0.5, delay }}
     >
       <Link href="/cursos">
-        <div className="group h-full cursor-pointer rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[4px_4px_0_#0f172a] transition-all duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0_#0f172a] flex flex-col">
+        <div className="group h-full cursor-pointer rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[4px_4px_0_var(--bnt-shadow)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0_var(--bnt-shadow)] flex flex-col">
           {/* Ícone capelo (label "Curso recomendado" removida) */}
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-950 bg-emerald-100 shadow-[2px_2px_0_#0f172a]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-950 bg-emerald-100 shadow-[2px_2px_0_var(--bnt-shadow)]">
             <GraduationCap
               size={20}
               className="text-emerald-700"
@@ -451,7 +451,7 @@ function CursoCard({
 
           {/* Badge da área */}
           <div
-            className={`mt-4 inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-950 ${colors.bg} px-3 py-1 shadow-[2px_2px_0_#0f172a]`}
+            className={`mt-4 inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-950 ${colors.bg} px-3 py-1 shadow-[2px_2px_0_var(--bnt-shadow)]`}
           >
             <Tag size={12} className={`${colors.text}`} strokeWidth={2.5} />
             <span
@@ -537,7 +537,7 @@ function NuvemSvg({
       <svg
         viewBox="0 0 100 60"
         fill="white"
-        stroke="#0f172a"
+        stroke="var(--bnt-ink)"
         strokeWidth="2.5"
         strokeLinejoin="round"
         className="w-full h-auto"

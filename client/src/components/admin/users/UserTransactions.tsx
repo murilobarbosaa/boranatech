@@ -207,7 +207,7 @@ export function UserTransactions({
   return (
     <div>
       <div
-        className={`${GRID} hidden border-b-2 border-slate-900 bg-[#f6f0df] px-4 py-2 sm:grid`}
+        className={`${GRID} hidden border-b-2 border-slate-900 bg-[var(--brand-cream-deep)] px-4 py-2 sm:grid`}
       >
         {["Tipo", "Detalhe", "Valor"].map((coluna, i) => (
           <span

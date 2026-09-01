@@ -40,7 +40,7 @@ function TypingDots() {
 function AssistantAvatar() {
   return (
     <div
-      className="flex h-7 w-7 shrink-0 items-center justify-center self-end rounded-full border-2 border-slate-900 bg-violet-600 shadow-[1px_1px_0_#0f172a] sm:h-8 sm:w-8"
+      className="flex h-7 w-7 shrink-0 items-center justify-center self-end rounded-full border-2 border-slate-900 bg-violet-600 shadow-[1px_1px_0_var(--bnt-shadow)] sm:h-8 sm:w-8"
       aria-hidden
     >
       <Sparkles className="h-3.5 w-3.5 text-amber-200 sm:h-4 sm:w-4" />
@@ -102,7 +102,7 @@ export default function AiChatPanel({
       <div className="flex h-[min(70vh,560px)] min-h-[320px] flex-col">
         <header className="flex shrink-0 items-center gap-3 border-b-2 border-slate-900 bg-violet-700 px-4 py-3 text-white sm:px-5 sm:py-3.5">
           <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-600 shadow-[2px_2px_0_#0f172a] sm:h-12 sm:w-12"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-600 shadow-[2px_2px_0_var(--bnt-shadow)] sm:h-12 sm:w-12"
             aria-hidden
           >
             <Sparkles className="h-5 w-5 text-amber-200 sm:h-6 sm:w-6" />
@@ -188,7 +188,7 @@ export default function AiChatPanel({
             <label className="sr-only" htmlFor="ai-chat-input">
               Mensagem
             </label>
-            <div className="flex min-h-[46px] flex-1 items-end rounded-3xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_#0f172a]">
+            <div className="flex min-h-[46px] flex-1 items-end rounded-3xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_var(--bnt-shadow)]">
               <textarea
                 id="ai-chat-input"
                 rows={1}
@@ -202,7 +202,7 @@ export default function AiChatPanel({
             </div>
             <button
               type="button"
-              className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-700 text-white shadow-[3px_3px_0_#0f172a] transition-transform hover:bg-violet-800 enabled:hover:-translate-y-px disabled:opacity-45 sm:h-[52px] sm:w-[52px]"
+              className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-700 text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-transform hover:bg-violet-800 enabled:hover:-translate-y-px disabled:opacity-45 sm:h-[52px] sm:w-[52px]"
               disabled={loading || !input.trim()}
               aria-label="Enviar"
               onClick={() => void handleSend()}

@@ -34,8 +34,8 @@ const VARIANT_TEXT: Record<
   { brand: string; bang: string; tagline: string }
 > = {
   light: {
-    brand: "text-slate-900",
-    bang: "text-slate-900",
+    brand: "text-ink",
+    bang: "text-ink",
     tagline: "text-slate-500",
   },
   dark: {
@@ -56,9 +56,9 @@ export default function Logo({
   return (
     <span className={`inline-flex items-center ${sizes.gap}`}>
       <span
-        className={`flex items-center justify-center rounded-full border-2 border-slate-900 bg-yellow-400 shadow-[2px_2px_0_#0f172a] transition-all group-hover:shadow-[4px_4px_0_#0f172a] ${sizes.circle}`}
+        className={`flex items-center justify-center rounded-full border-2 border-slate-900 bg-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-all group-hover:shadow-[4px_4px_0_var(--bnt-shadow)] ${sizes.circle}`}
       >
-        <Compass className={`text-slate-950 ${sizes.icon}`} />
+        <Compass className={`text-ink-on-accent ${sizes.icon}`} />
       </span>
       <span
         className={`font-display font-black uppercase ${sizes.text} ${colors.brand}`}

@@ -140,7 +140,7 @@ export interface OrphanPaymentScan {
   orphans: number;
   /**
    * Orfas que pedem ACAO: exclui `modo_teste` e `conta_excluida`. E este numero
-   * que decide se o cron sai como 'partial', nao o bruto — senao um ruido
+   * que decide se o cron sai como 'partial', nao o bruto, senao um ruido
    * conhecido deixa o job amarelo para sempre e ninguem olha mais.
    */
   orphansAcionaveis: number;
@@ -200,13 +200,33 @@ export interface OrphanPaymentScan {
  */
 export function statusDaRunDeOrfaos(
   scan: OrphanPaymentScan,
+  /**
+   * Achados de `detectarChargesSemDono`, quando a run tambem varreu
+   * `finance_transactions`. Opcional para nao quebrar chamador nenhum, e conta
+   * pelo MESMO criterio do estoque aberto: cobranca sem dono acima do corte e
+   * alguem que pagou e nao foi atendido, entao mantem a run amarela ate alguem
+   * carimbar `resolved_at`. Deixar de fora seria repetir exatamente o defeito
+   * que o estoque aberto veio corrigir, com outra fonte.
+   */
+  semDono?: {
+    acionaveis: number;
+    naoVerificadas: number;
+    leituraOk: boolean;
+    persisted: boolean;
+  },
 ): "success" | "partial" {
   const precisaAtencao =
     scan.orphansAcionaveis > 0 ||
     scan.unresolvedAcionaveis > 0 ||
     scan.unresolvedNaoVerificadas > 0 ||
     !scan.unresolvedLeituraOk ||
-    (!scan.persisted && !scan.dryRun);
+    (!scan.persisted && !scan.dryRun) ||
+    (semDono
+      ? semDono.acionaveis > 0 ||
+        semDono.naoVerificadas > 0 ||
+        !semDono.leituraOk ||
+        (!semDono.persisted && !scan.dryRun)
+      : false);
   return precisaAtencao ? "partial" : "success";
 }
 
@@ -552,7 +572,7 @@ const CATEGORIAS_IGNORADAS: ReadonlySet<OrphanCategory> =
  *
  * Existe por um erro cometido em 2026-08-14: a primeira execucao de verificacao
  * do modo `full` foi feita sob a regra "somente leitura", e ela gravou uma linha
- * em producao — porque `detectOrphanPayments` sempre persistiu, e quem rodou
+ * em producao, porque `detectOrphanPayments` sempre persistiu, e quem rodou
  * (eu) so olhou para as chamadas a Stripe ao julgar se a operacao era de
  * leitura. "Somente leitura" nao e propriedade da intencao de quem chama, e sim
  * da funcao; sem esta opcao, a regra era inverificavel na pratica.

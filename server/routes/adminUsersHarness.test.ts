@@ -145,7 +145,7 @@ const EMBEDS_CONHECIDOS = new Set(["plans"]);
  * A exceção NÃO é uma lista de confiança: cada entrada é conferida contra os
  * arquivos de `supabase/migrations/`, e só vale se alguma migration do
  * repositório declarar `ADD COLUMN ... <coluna>`. Um erro de digitação não é
- * absorvido — ele simplesmente não acha migration e continua sendo recusado.
+ * absorvido, ele simplesmente não acha migration e continua sendo recusado.
  *
  * Esvaziar esta lista é o comportamento normal depois de aplicar a migration e
  * rodar `pnpm db:types`.
@@ -195,7 +195,7 @@ const COLUNAS_PENDENTES_VALIDAS = (() => {
  * funciona para `plans(code)` e quebra para `plans(code, name, price_cents)`:
  * a vírgula de dentro do embed vira separador, e `name` e `price_cents` passam
  * a ser validados como colunas da tabela EXTERNA. O efeito é recusar uma query
- * legítima — erra para o lado seguro, mas erra, e o teste que a exercitasse
+ * legítima, erra para o lado seguro, mas erra, e o teste que a exercitasse
  * ficaria impossível de escrever.
  *
  * Aqui a varredura conta parênteses: o que está dentro de um embed não é
@@ -260,6 +260,16 @@ export type SupabaseDouble = {
   };
   /** Tudo que a rota consultou, na ordem. */
   chamadas: Chamada[];
+  /**
+   * Chamadas de RPC, com o nome e os ARGUMENTOS.
+   *
+   * Existe porque parte do contrato migrou para dentro de uma funcao do banco:
+   * quando a rota deixa de montar a query e passa a montar ARGUMENTOS, e o
+   * argumento que precisa ser afirmado. Sem este registro, "a rota embrulha a
+   * busca em curingas" so daria para inferir do resultado, e inferir do
+   * resultado nao distingue "embrulhou" de "o dado casou por outro motivo".
+   */
+  rpcCalls: Array<{ nome: string; args: Record<string, unknown> }>;
   de: (table: string) => Chamada[];
 };
 
@@ -267,6 +277,74 @@ export type SupabaseDouble = {
  * Cria o dublê. `respostas` mapeia tabela -> resposta; tabela ausente do mapa
  * faz a consulta LANÇAR, nunca devolver vazio.
  */
+/**
+ * Simulacao do RPC `admin_list_users_page` sobre as linhas de `profiles` que o
+ * double ja carrega.
+ *
+ * O QUE ELA PROVA E O QUE NAO PROVA, e a distincao importa. Ela prova o
+ * CONTRATO ENTRE A ROTA E A FUNCAO: que a rota manda os argumentos certos, que
+ * o embrulho de curingas da busca sai daqui, que `total_count` vira `total`, que
+ * o filtro de ids restringe ou exclui conforme a flag. Ela NAO prova que o SQL
+ * escrito na migration faz isso, porque e uma reimplementacao em JS do que
+ * aquele SQL deveria fazer, e reimplementacao pode divergir da fonte.
+ *
+ * A prova do SQL em si so existe quando a funcao esta aplicada no banco, e e por
+ * isso que `check:migrations` fica VERMELHO ate la, dizendo `ausente:
+ * public.admin_list_users_page()`. Este dublê nao substitui aquele guard; ele
+ * cobre a metade que o guard nao cobre.
+ */
+export function simularListagemDeUsuarios(
+  linhas: Array<Record<string, unknown>>,
+  args: Record<string, unknown>,
+): Array<Record<string, unknown>> {
+  const busca = args.p_search as string | null;
+  const soAtivos = Boolean(args.p_only_active);
+  const ids = (args.p_user_ids as string[] | null) ?? null;
+  const excluir = Boolean(args.p_exclude_ids);
+  const limite = Number(args.p_limit ?? 50);
+  const offset = Number(args.p_offset ?? 0);
+
+  // `%termo%` do lado do chamador vira substring aqui. Sem os curingas o `ilike`
+  // do Postgres e igualdade (case-insensitive), e e exatamente esse o
+  // comportamento simulado quando eles nao vem.
+  const casa = (valor: unknown): boolean => {
+    if (busca === null) return true;
+    const texto = typeof valor === "string" ? valor.toLowerCase() : "";
+    const alvo = busca.toLowerCase();
+    const parcial = alvo.startsWith("%") && alvo.endsWith("%");
+    const miolo = parcial ? alvo.slice(1, -1) : alvo;
+    return parcial ? texto.includes(miolo) : texto === miolo;
+  };
+
+  const corte = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const filtradas = linhas.filter((linha) => {
+    if (busca !== null && !casa(linha.name) && !casa(linha.email)) return false;
+    if (soAtivos) {
+      const ts = linha.last_sign_in_at
+        ? new Date(String(linha.last_sign_in_at)).getTime()
+        : NaN;
+      if (Number.isNaN(ts) || ts < corte) return false;
+    }
+    if (ids !== null) {
+      const dentro = ids.includes(String(linha.user_id));
+      if (excluir ? dentro : !dentro) return false;
+    }
+    return true;
+  });
+
+  const total = filtradas.length;
+  return filtradas.slice(offset, offset + limite).map((linha) => ({
+    id: linha.id ?? null,
+    user_id: linha.user_id ?? null,
+    name: linha.name ?? null,
+    email: linha.email ?? null,
+    created_at: linha.created_at ?? null,
+    area_interesse: linha.area_interesse ?? null,
+    last_sign_in_at: linha.last_sign_in_at ?? null,
+    total_count: total,
+  }));
+}
+
 export function criarSupabaseDouble(
   respostas: Record<string, RespostaTabela | (() => RespostaTabela)>,
   authAdmin: Record<string, unknown> = {},
@@ -284,6 +362,7 @@ export function criarSupabaseDouble(
   maxRows: number | null = null,
 ): SupabaseDouble {
   const chamadas: Chamada[] = [];
+  const rpcCalls: Array<{ nome: string; args: Record<string, unknown> }> = [];
 
   function validarColunas(table: string, colunas: string[]) {
     const validas = COLUNAS_POR_TABELA.get(table);
@@ -448,9 +527,16 @@ export function criarSupabaseDouble(
         delete: () => makeQuery(table, "delete"),
       }),
       auth: { admin: authAdmin },
-      rpc: (...args: unknown[]) => rpcImpl(args[0] as string, args[1]),
+      rpc: (...args: unknown[]) => {
+        rpcCalls.push({
+          nome: args[0] as string,
+          args: (args[1] ?? {}) as Record<string, unknown>,
+        });
+        return rpcImpl(args[0] as string, args[1]);
+      },
     },
     chamadas,
+    rpcCalls,
     de: (table: string) => chamadas.filter((c) => c.table === table),
   };
 }

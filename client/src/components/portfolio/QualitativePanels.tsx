@@ -19,7 +19,7 @@ import type { GithubMelhoria, Prioridade } from "@shared/github/schema";
 const ac = getPageAccentUi("violet");
 
 const IA_EYEBROW =
-  "inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 px-3 py-1 text-xs font-black uppercase tracking-[0.15em] text-slate-950 shadow-[3px_3px_0_#0f172a]";
+  "inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 px-3 py-1 text-xs font-black uppercase tracking-[0.15em] text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]";
 
 // O chip -300 do eyebrow de IA nao existe como token do PageAccentUi, entao e
 // resolvido a partir do panelSoft do accent neste mapa minimo (so os accents
@@ -70,7 +70,7 @@ export function AiSummary({
         <button
           type="button"
           onClick={onAskAgent}
-          className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-4 py-2 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-colors hover:bg-violet-100"
+          className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-4 py-2 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-colors hover:bg-violet-100"
         >
           <MessageCircle className="h-3.5 w-3.5" aria-hidden />
           {/* TODO(Ana): revisar o rotulo da ponte com o agente. */}
@@ -197,7 +197,7 @@ export function Improvements({
               <div className="flex flex-wrap items-center gap-3">
                 <span
                   className={cn(
-                    "inline-flex rounded-full border-2 border-slate-950 px-3 py-0.5 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a]",
+                    "inline-flex rounded-full border-2 border-slate-950 px-3 py-0.5 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]",
                     p.chipBg,
                   )}
                 >
@@ -220,7 +220,7 @@ export function Improvements({
                         ? { duration: 0 }
                         : { duration: 0.25, ease: "backOut" }
                     }
-                    className="inline-flex items-center gap-1 rounded-full border-2 border-slate-950 bg-emerald-300 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                    className="inline-flex items-center gap-1 rounded-full border-2 border-slate-950 bg-emerald-300 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]"
                   >
                     <Check className="h-3 w-3" aria-hidden />
                     {/* TODO(Ana): revisar o carimbo de melhoria aplicada. */}

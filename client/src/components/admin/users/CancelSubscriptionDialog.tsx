@@ -17,7 +17,7 @@ import { fmtBrl, fmtDate, fmtText, planLabelOf } from "./userFormat";
 // AlertDialog que o TaskModal usa para exclusão.
 //
 // O cancelamento NÃO é imediato (é cancel_at_period_end), então o diálogo tem
-// de mostrar até quando o acesso continua valendo — senão o admin acha que
+// de mostrar até quando o acesso continua valendo, senão o admin acha que
 // cortou na hora e responde errado a quem perguntar.
 
 const BOTAO =
@@ -81,7 +81,7 @@ export function CancelSubscriptionDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent
         overlayClassName={LAYER_IN_DIALOG}
-        className={`${LAYER_IN_DIALOG} max-h-[85dvh] w-[min(34rem,94vw)] max-w-none overflow-y-auto rounded-2xl border-2 border-slate-950 bg-white p-5 shadow-[6px_6px_0_#0f172a] sm:p-6`}
+        className={`${LAYER_IN_DIALOG} max-h-[85dvh] w-[min(34rem,94vw)] max-w-none overflow-y-auto rounded-2xl border-2 border-slate-950 bg-white p-5 shadow-[6px_6px_0_var(--bnt-shadow)] sm:p-6`}
       >
         <AlertDialogTitle className="font-display text-2xl font-black text-slate-950">
           Cancelar assinatura?

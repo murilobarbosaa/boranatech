@@ -132,7 +132,7 @@ function ResultCard({
         ? "text-emerald-700"
         : "text-slate-950";
   return (
-    <div className="rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+    <div className="rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)]">
       <p className="text-xs font-black uppercase tracking-wide text-slate-500">
         {label}
       </p>
@@ -378,7 +378,7 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
           ) : null}
 
           {/* Grafico entrada x saida + linha de lucro */}
-          <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
+          <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_var(--bnt-shadow)]">
             <p className="mb-3 text-xs font-black uppercase text-slate-600">
               Entrada x saída por mês
             </p>
@@ -390,7 +390,7 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
               <div style={{ width: "100%", height: 320 }}>
                 <ResponsiveContainer>
                   <ComposedChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip formatter={(value) => brl.format(Number(value))} />
@@ -398,14 +398,14 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
                     <Bar
                       dataKey="receita"
                       name="Receita líquida"
-                      fill="#059669"
+                      fill="var(--chart-3)"
                     />
-                    <Bar dataKey="despesa" name="Despesas" fill="#e11d48" />
+                    <Bar dataKey="despesa" name="Despesas" fill="var(--chart-5)" />
                     <Line
                       type="monotone"
                       dataKey="lucro"
                       name="Lucro"
-                      stroke="#7c3aed"
+                      stroke="var(--color-violet-600)"
                       strokeWidth={3}
                     />
                   </ComposedChart>
@@ -417,7 +417,7 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
       )}
 
       {/* Bloco EXTRATO (transacoes da Stripe) */}
-      <div className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]">
+      <div className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_var(--bnt-shadow)]">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-slate-900 bg-slate-50 px-4 py-3">
           <p className="text-xs font-black uppercase text-slate-600">
             Extrato da Stripe
@@ -426,7 +426,7 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
             type="button"
             onClick={() => void handleSync()}
             disabled={syncing}
-            className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-1.5 text-xs font-black uppercase shadow-[2px_2px_0_#0f172a] disabled:opacity-50"
+            className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-1.5 text-xs font-black uppercase shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-50"
           >
             {syncing ? "Sincronizando..." : "Sincronizar agora"}
           </button>

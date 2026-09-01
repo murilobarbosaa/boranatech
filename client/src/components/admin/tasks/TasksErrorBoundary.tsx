@@ -53,14 +53,14 @@ function PainelIndisponivel({
         <button
           type="button"
           onClick={reset}
-          className="rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
+          className="rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-sm font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]"
         >
           Tentar de novo
         </button>
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a]"
+          className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)]"
         >
           Recarregar a página
         </button>

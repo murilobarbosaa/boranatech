@@ -77,7 +77,13 @@ import {
   BoardColumnsSkeleton,
   TasksPanelSkeleton,
 } from "./TasksPanelSkeleton";
-import { emptyBlockClass, primaryButtonClass, secondaryButtonClass } from "./taskBoardStyles";
+import {
+  boardRowClass,
+  boardScrollClass,
+  emptyBlockClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from "./taskBoardStyles";
 import { parseShortId, readTaskParam, shortIdOf, withTaskParam } from "./taskDeepLink";
 import type { TaskBoardSnapshot, TaskCard as TaskCardData, TaskColumn } from "./types";
 import { useBoardSnapshot } from "./useBoardSnapshot";
@@ -1208,7 +1214,13 @@ export function TasksDashboard() {
     : undefined;
 
   return (
-    <div className="space-y-4">
+    // RESPIRO (30/08, pedido da Ana): `space-y-6` no lugar de `space-y-4`. Ele
+    // governa TODOS os intervalos desta pilha, e o que se via na tela era o de
+    // baixo da contagem ("44 TAREFAS") colado no quadro. Subir o degrau aqui, e
+    // nao acrescentar uma margem so naquele ponto, mantem os espacos da pagina
+    // numa escala unica em vez de criar uma excecao para o vizinho seguinte
+    // reclamar depois.
+    <div className="space-y-6">
       <BoardToolbar
         ref={searchInputRef}
         boards={boards}
@@ -1290,49 +1302,73 @@ export function TasksDashboard() {
           onDragCancel={finishDrag}
         >
           <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
-            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 sm:snap-none">
-              {groups.map((group, index) => (
-                <BoardColumn
-                  key={group.id}
-                  group={group}
-                  column={columnById.get(group.id) ?? null}
-                  boardKey={snapshot.board.key}
-                  labelsById={labelsById}
-                  assigneesById={assigneesById}
-                  canMoveLeft={index > 0}
-                  canMoveRight={index < groups.length - 1}
-                  selectedTaskId={selectedTaskId}
-                  pendingTaskIds={pendingTaskIds}
-                  isDropTarget={
-                    activeDrag?.type === "task" && overColumnId === group.id
-                  }
-                  canReorder={canReorder}
-                  filtersActive={filtersActive}
-                  onOpenTask={openTask}
-                  onQuickMove={handleQuickMove}
-                  onUnarchive={handleUnarchive}
-                  onCreateTask={handleCreateTask}
-                  onRenameColumn={handleRenameColumn}
-                  onRecolorColumn={handleRecolorColumn}
-                  onRequestWipLimit={handleRequestWipLimit}
-                  onMoveColumn={handleMoveColumn}
-                  onRequestDeleteColumn={handleRequestDeleteColumn}
-                  onClearFilters={clearFilters}
-                />
-              ))}
+            <div data-testid="board-scroll" className={boardScrollClass}>
+              <div data-testid="board-row" className={boardRowClass}>
+                {groups.map((group, index) => (
+                  <BoardColumn
+                    key={group.id}
+                    group={group}
+                    column={columnById.get(group.id) ?? null}
+                    boardKey={snapshot.board.key}
+                    labelsById={labelsById}
+                    assigneesById={assigneesById}
+                    canMoveLeft={index > 0}
+                    canMoveRight={index < groups.length - 1}
+                    selectedTaskId={selectedTaskId}
+                    pendingTaskIds={pendingTaskIds}
+                    isDropTarget={
+                      activeDrag?.type === "task" && overColumnId === group.id
+                    }
+                    canReorder={canReorder}
+                    filtersActive={filtersActive}
+                    onOpenTask={openTask}
+                    onQuickMove={handleQuickMove}
+                    onUnarchive={handleUnarchive}
+                    onCreateTask={handleCreateTask}
+                    onRenameColumn={handleRenameColumn}
+                    onRecolorColumn={handleRecolorColumn}
+                    onRequestWipLimit={handleRequestWipLimit}
+                    onMoveColumn={handleMoveColumn}
+                    onRequestDeleteColumn={handleRequestDeleteColumn}
+                    onClearFilters={clearFilters}
+                  />
+                ))}
 
-              {groupBy === "column" ? (
-                <div className="flex w-[85vw] shrink-0 snap-start items-start sm:w-[13rem]">
-                  <button
-                    type="button"
-                    onClick={() => setNewColumnOpen(true)}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-3xl border-2 border-dashed border-slate-400 bg-white/60 px-4 py-6 text-sm font-black text-slate-600 transition-colors hover:border-slate-900 hover:bg-white hover:text-slate-900"
+                {groupBy === "column" ? (
+                  // COMPACTO. O botao ocupava uma coluna inteira de 13rem para
+                  // dizer duas palavras, e numa fileira centrada esse bloco
+                  // desloca o centro visual do quadro. Vira o disco de "+" na
+                  // anatomia dos compactos da casa (o X do modal de usuario),
+                  // tracejado por ser acao de CRIAR.
+                  //
+                  // O texto que saiu vira `aria-label` e `title`: icone nao
+                  // fala, e sem os dois o botao fica sem nome acessivel. Mesmo
+                  // cuidado do avatar do header do admin.
+                  // MAIOR e CENTRADO NA VERTICAL (decisao da Ana, 30/08). O
+                  // `self-center` alinha o disco ao meio da altura das colunas
+                  // em vez de encostar no topo: numa fileira de colunas altas,
+                  // um alvo de 48px grudado na borda de cima le como sobra de
+                  // layout, e nao como acao.
+                  //
+                  // `h-12 w-12` com icone `h-5 w-5`: a familia grande dos
+                  // compactos da casa. O nome acessivel continua no
+                  // `aria-label` mais `title`, porque icone nao fala.
+                  <div
+                    data-testid="board-nova-etapa"
+                    className="flex shrink-0 items-center self-center"
                   >
-                    <Plus className="h-4 w-4" />
-                    Nova etapa
-                  </button>
-                </div>
-              ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setNewColumnOpen(true)}
+                      aria-label="Nova etapa"
+                      title="Nova etapa"
+                      className="grid h-12 w-12 place-items-center rounded-full border-2 border-dashed border-slate-400 bg-white/60 text-slate-600 transition-colors hover:border-slate-900 hover:bg-white hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                    >
+                      <Plus className="h-5 w-5" />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </SortableContext>
 
@@ -1340,7 +1376,7 @@ export function TasksDashboard() {
               sombra mais funda para ler como "fora do plano". */}
           <DragOverlay dropAnimation={null}>
             {activeDragTask ? (
-              <article className="w-[19rem] rotate-3 cursor-grabbing rounded-2xl border-2 border-slate-900 bg-white p-3 shadow-[8px_8px_0_#0f172a]">
+              <article className="w-[19rem] rotate-3 cursor-grabbing rounded-2xl border-2 border-slate-900 bg-white p-3 shadow-[8px_8px_0_var(--bnt-shadow)]">
                 <span className="font-mono text-[11px] font-bold text-slate-500">
                   {shortIdOf(snapshot.board.key, activeDragTask.number)}
                 </span>
@@ -1475,7 +1511,7 @@ export function TasksDashboard() {
           }
         }}
       >
-        <AlertDialogContent overlayClassName={LAYER_DIALOG} className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}>
+        <AlertDialogContent overlayClassName={LAYER_DIALOG} className={`${LAYER_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)]`}>
           <AlertDialogTitle className="font-display text-2xl font-black text-slate-950">
             Excluir etapa
           </AlertDialogTitle>
@@ -1521,7 +1557,7 @@ export function TasksDashboard() {
                 event.preventDefault();
                 void confirmDeleteColumn();
               }}
-              className="rounded-full border-2 border-slate-900 bg-rose-600 px-4 py-2 text-sm font-black text-white shadow-[2px_2px_0_#0f172a] disabled:opacity-50"
+              className="rounded-full border-2 border-slate-900 bg-rose-600 px-4 py-2 text-sm font-black text-white shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-50"
             >
               {deleteBlockedMessage ? "Mover e excluir" : "Excluir"}
             </AlertDialogAction>

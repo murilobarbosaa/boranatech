@@ -309,7 +309,7 @@ function ImportWizard({
                 type="button"
                 onClick={() => void runPreview()}
                 disabled={loading}
-                className="rounded-full border-2 border-slate-900 bg-yellow-300 px-5 py-2 text-sm font-black shadow-[3px_3px_0_#0f172a] disabled:opacity-50"
+                className="rounded-full border-2 border-slate-900 bg-yellow-300 px-5 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50"
               >
                 {loading ? "Processando..." : "Gerar preview"}
               </button>
@@ -388,7 +388,7 @@ function ImportWizard({
               <button
                 type="button"
                 onClick={() => setStep("declare")}
-                className="rounded-full border-2 border-slate-900 bg-yellow-300 px-5 py-2 text-sm font-black shadow-[3px_3px_0_#0f172a]"
+                className="rounded-full border-2 border-slate-900 bg-yellow-300 px-5 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)]"
               >
                 Continuar
               </button>
@@ -474,7 +474,7 @@ function ImportWizard({
                 type="button"
                 onClick={() => void confirmSave()}
                 disabled={saving}
-                className="rounded-full border-2 border-slate-900 bg-emerald-300 px-5 py-2 text-sm font-black shadow-[3px_3px_0_#0f172a] disabled:opacity-50"
+                className="rounded-full border-2 border-slate-900 bg-emerald-300 px-5 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)] disabled:opacity-50"
               >
                 {saving ? "Salvando..." : "Confirmar e salvar lista"}
               </button>
@@ -731,13 +731,13 @@ export function ContactListsManager() {
         <button
           type="button"
           onClick={() => setWizardOpen(true)}
-          className="rounded-full border-2 border-slate-900 bg-yellow-300 px-5 py-2 text-sm font-black shadow-[3px_3px_0_#0f172a]"
+          className="rounded-full border-2 border-slate-900 bg-yellow-300 px-5 py-2 text-sm font-black shadow-[3px_3px_0_var(--bnt-shadow)]"
         >
           Importar lista
         </button>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]">
+      <div className="mt-4 overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_var(--bnt-shadow)]">
         {loading && !data ? (
           <div className="p-4"><LoadingBlock label="Carregando listas..." /></div>
         ) : error ? (

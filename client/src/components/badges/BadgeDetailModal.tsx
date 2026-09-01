@@ -24,7 +24,7 @@ export function BadgeDetailModal({ badge, onClose }: BadgeDetailModalProps) {
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[6px_6px_0_#0f172a] md:p-8"
+        className="relative w-full max-w-md rounded-3xl border-2 border-[var(--bnt-ink)] bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)] md:p-8"
         onClick={(e) => e.stopPropagation()}
       >
         <button

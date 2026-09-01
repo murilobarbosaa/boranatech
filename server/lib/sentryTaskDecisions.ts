@@ -180,6 +180,81 @@ const MS_POR_DIA = 24 * 60 * 60 * 1000;
  * reabre e `archived_at` nulo nao ressuscita, porque sem a base nao ha
  * comparacao possivel e agir sobre base incerta e pior que nao agir.
  */
+/**
+ * A varredura tem algo REAL para gravar neste card?
+ *
+ * O DEFEITO, medido em 2026-08-31. O ramo "inalterado" de `manter()` chamava
+ * `atualizarTarefa` sempre, com um payload que muitas vezes so tinha
+ * `sentry_last_checked_at`. Como `admin_tasks` tem o trigger
+ * `admin_tasks_set_updated_at` (migration 20260727160000 linha 289), que roda
+ * `set_updated_at()` incondicionalmente (`new.updated_at = now()`), TODO card
+ * vinculado ganhava `updated_at` novo a cada passada. Sao 57 cards vinculados
+ * hoje, e em 30/08 os 57 subiram ao topo de qualquer ordenacao por atualizacao
+ * ao mesmo tempo, o que pareceu reabertura em massa e custou uma investigacao
+ * inteira antes de virar "foi a varredura".
+ *
+ * O CONSERTO E NAO EMITIR O UPDATE, nunca mexer no trigger: `set_updated_at()` e
+ * compartilhado por varias tabelas e um `WHEN` ali mudaria o significado de
+ * `updated_at` em todas elas para resolver o problema de uma.
+ *
+ * O QUE ISSO CUSTA, e por que hoje custa zero. `sentry_last_checked_at` ordena a
+ * fila de manutencao (`sentryTaskIntake.ts:460`, ascendente com `nullsFirst`) sob
+ * um teto de 200 por run. Se ele parar de avancar, os cards quietos ficam
+ * eternamente na frente e os que passarem do teto nunca seriam examinados.
+ * MEDIDO em 2026-08-31: existem 57 cards com `sentry_numeric_id`, contra teto de
+ * 200. O `.limit` nao trunca, entao todo card e examinado em toda run e a
+ * ordenacao nao esta fazendo rotacao nenhuma. Quando o numero de vinculados se
+ * aproximar de 200 essa conta muda, e ai a fila precisa de um criterio de
+ * rotacao que nao dependa de uma coluna guardada pelo trigger de `updated_at`.
+ *
+ * `sentry_last_seen` E mudanca real: ele so muda quando a issue teve evento
+ * novo, e e ele que `decidirManutencao` usa para medir silencio. Escrever o
+ * valor identico ao que ja esta la nao e.
+ */
+export function metadadoTemMudanca(params: {
+  /** lastSeen fresco do lote; undefined quando a issue nao veio. */
+  lastSeenNovo: string | undefined;
+  /** `sentry_last_seen` ja persistido no card. */
+  lastSeenPersistido: string | null;
+  /** O detalhe do Sentry foi recoletado nesta run. */
+  recoletouDetalhe: boolean;
+}): boolean {
+  const { lastSeenNovo, lastSeenPersistido, recoletouDetalhe } = params;
+  if (recoletouDetalhe) return true;
+  if (!lastSeenNovo) return false;
+  return lastSeenNovo !== lastSeenPersistido;
+}
+
+/**
+ * Status que significam ARQUIVADA no Sentry.
+ *
+ * `ignored` e o unico que a API persiste, e isso foi MEDIDO em 2026-08-31
+ * contra a issue real `NODE-EXPRESS-6`, com desfazer verificado: um
+ * `PUT {"status":"muted"}` responde 200 e o `GET` seguinte devolve
+ * `status: "ignored"`. Ou seja, `muted` e apelido, nao um segundo
+ * comportamento. Fica na lista por robustez de leitura (se a API um dia
+ * passar a persistir o apelido, nao ha nada a mudar aqui), e o comentario
+ * existe para ninguem procurar o caso `muted` em producao e nao achar.
+ */
+const STATUS_ARQUIVADA = new Set(["ignored", "muted"]);
+
+/**
+ * A issue esta arquivada no Sentry?
+ *
+ * `undefined` (a issue nao veio no lote) e qualquer valor DESCONHECIDO devolvem
+ * `false`, e essa escolha e a regra inteira: nao saber o status nao pode virar
+ * "esta silenciada". Colapsar ausencia de informacao em decisao e o defeito que
+ * este projeto documenta como o que falha PASSANDO, e aqui ele custaria o pior
+ * dos dois erros: um card que devia reabrir ficaria concluido para sempre, em
+ * silencio, porque o Sentry teve um soluco no dia da varredura.
+ */
+export function issueArquivadaNoSentry(
+  statusNoSentry: string | undefined,
+): boolean {
+  if (!statusNoSentry) return false;
+  return STATUS_ARQUIVADA.has(statusNoSentry);
+}
+
 export function decidirManutencao(params: {
   card: CardParaManutencao;
   /** lastSeen FRESCO, do lote. undefined se a issue nao veio. */
@@ -253,6 +328,41 @@ export function decidirManutencao(params: {
   if (card.completed_at) {
     if (evento === null) {
       return { tipo: "nada", motivo: "concluido, sem evento novo" };
+    }
+    // ISSUE ARQUIVADA NO SENTRY VENCE A DATA.
+    //
+    // O CICLO QUE ISTO QUEBRA, medido em 2026-08-31. Mover o card para
+    // Concluido empurra `resolved` ao Sentry (server/routes/adminTasks.ts:1457,
+    // via alvoDaTransicao). Da documentacao do Sentry: "A plain Resolve treats
+    // any later event as a regression". Entao a issue volta a `unresolved`, o
+    // Sentry manda email de regressao, e esta funcao, que ate aqui olhava SO a
+    // data, reabria o card. Para erro que nunca para de acontecer, esse ciclo
+    // nao tem fim: `chunk_reload` (BORANATECH-FRONT-R) e `vite_preload_error`
+    // (-T) foram marcados como regressao em tres releases seguidas, e a razao e
+    // que eles MEDEM DEPLOY, nao falha: todo deploy troca o bundle, aba velha
+    // quebra, evento novo chega. Os cinco cards com duas reaberturas pelo job
+    // (61, 64, 33, 35, 40) sao dessas duas familias, telemetria e ambiente do
+    // usuario.
+    //
+    // POR QUE O CRM NAO EMPURRA O SILENCIAMENTO, e este comentario existe para
+    // esta condicao nao parecer codigo morto. `AlvoDoPush`
+    // (server/lib/sentryTaskPush.ts:34) so tem `resolved` e `unresolved`, entao
+    // esta condicao SO dispara se alguem arquivar a issue A MAO no painel do
+    // Sentry. E deliberado, e a alternativa foi medida e descartada no mesmo
+    // dia: um `PUT {"status":"ignored"}` grava `substatus: "archived_forever"`,
+    // e NAO "arquivado ate escalar". As duas formas de pedir o modo "ate
+    // escalar" (`substatus` no corpo e `statusDetails.ignoreUntilEscalating`)
+    // foram aceitas com HTTP 200 e silenciosamente IGNORADAS, o que e pior que
+    // um 400: uma implementacao que confiasse na resposta acharia que
+    // configurou. Sem o desarquivamento automatico por volume, empurrar o
+    // silenciamento viraria decisao permanente sem revisor, e `ignoreDuration`
+    // (que funciona) so devolveria o mesmo ruido a cada prazo. O gesto de
+    // silenciar fica com quem olha o Sentry; o CRM apenas para de discordar.
+    if (issueArquivadaNoSentry(statusNoSentry)) {
+      return {
+        tipo: "nada",
+        motivo: `concluido, evento novo em ${lastSeen} mas issue arquivada no Sentry (${statusNoSentry})`,
+      };
     }
     if (evento > Date.parse(card.completed_at)) {
       return {

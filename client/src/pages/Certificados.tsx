@@ -73,9 +73,9 @@ export default function Certificados() {
         description="Verifique um certificado da Bora na Tech pelo código ou saiba como funciona a certificação das trilhas."
         url="/certificados"
       />
-      <section className="bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="bg-[var(--brand-cream)] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <div className="mx-auto max-w-[720px] px-5 pb-20 pt-10">
-          <span className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-900 shadow-[2px_2px_0_#0f172a]">
+          <span className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)]">
             <Award className="h-4 w-4" />
             {/* TODO(Ana): rotulo do cabecalho da pagina de certificados */}
             Certificados
@@ -94,7 +94,7 @@ export default function Certificados() {
 
           <form
             onSubmit={handleSearch}
-            className="mt-8 rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]"
+            className="mt-8 rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_var(--bnt-shadow)]"
           >
             <label
               htmlFor="cert-code"
@@ -110,12 +110,12 @@ export default function Certificados() {
                 value={codeInput}
                 onChange={(event) => setCodeInput(event.target.value)}
                 placeholder="BNT-XXXX-XXXX"
-                className="w-full rounded-[11px] border-[2.5px] border-slate-900 bg-white px-3.5 py-2.5 text-sm font-semibold uppercase text-slate-950 shadow-[3px_3px_0_#0f172a] outline-none focus:-translate-y-px focus:shadow-[4px_4px_0_#0f172a]"
+                className="w-full rounded-[11px] border-[2.5px] border-slate-900 bg-white px-3.5 py-2.5 text-sm font-semibold uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] outline-none focus:-translate-y-px focus:shadow-[4px_4px_0_var(--bnt-shadow)]"
               />
               <button
                 type="submit"
                 disabled={codeInput.trim() === ""}
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[var(--brand-yellow)] px-4 py-2.5 text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Search className="h-4 w-4" />
                 {/* TODO(Ana): label do botao de verificar codigo */}

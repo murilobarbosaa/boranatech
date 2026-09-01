@@ -589,7 +589,7 @@ export default function RoadmapIA() {
         description={COPY.seoDescription}
         url="/roadmaps/ia"
       />
-      <section className="bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="bg-[var(--brand-cream)] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <div className="mx-auto max-w-[760px] px-5 pb-20 pt-8">
           <Link
             href="/roadmaps"
@@ -600,7 +600,7 @@ export default function RoadmapIA() {
           </Link>
 
           <div className="mt-5">
-            <span className="inline-block rounded-full border-2 border-slate-900 bg-violet-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-violet-900 shadow-[2px_2px_0_#0f172a]">
+            <span className="inline-block rounded-full border-2 border-slate-900 bg-violet-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-violet-900 shadow-[2px_2px_0_var(--bnt-shadow)]">
               {COPY.eyebrow}
             </span>
             <h1 className="mt-3.5 font-display text-3xl font-black leading-tight tracking-tight text-slate-950">
@@ -710,7 +710,7 @@ export default function RoadmapIA() {
                     canGenerate. */}
                 {canGenerate && payloadToGenerate ? (
                   <div
-                    className={`rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 ${ready ? "shadow-[4px_4px_0_#FCC700]" : "shadow-[3px_3px_0_#0f172a]"}`}
+                    className={`rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 ${ready ? "shadow-[4px_4px_0_#FCC700]" : "shadow-[3px_3px_0_var(--bnt-shadow)]"}`}
                   >
                     <p className="font-display text-lg font-black text-slate-950">
                       {COPY.summaryTitle}
@@ -765,7 +765,7 @@ export default function RoadmapIA() {
                       type="button"
                       onClick={() => void generate()}
                       disabled={generating}
-                      className="bnt-pressable mt-4 inline-flex items-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-violet-600 px-5 py-3 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] disabled:translate-y-0 disabled:opacity-50 disabled:shadow-[3px_3px_0_#0f172a]"
+                      className="bnt-pressable mt-4 inline-flex items-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-violet-600 px-5 py-3 text-sm font-black text-white shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] disabled:translate-y-0 disabled:opacity-50 disabled:shadow-[3px_3px_0_var(--bnt-shadow)]"
                     >
                       <Sparkles className="h-4 w-4" />
                       {generating ? COPY.generating : COPY.generate}
@@ -777,7 +777,7 @@ export default function RoadmapIA() {
                      chat ainda pode continuar, a lista basta (responder no chat
                      e o caminho); se o chat travou, o formulario abaixo e a
                      saida, porque senao nao sobraria nenhuma. */
-                  <div className="rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[3px_3px_0_#0f172a]">
+                  <div className="rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[3px_3px_0_var(--bnt-shadow)]">
                     <p className="font-display text-lg font-black text-slate-950">
                       {COPY.missingTitle}
                     </p>
@@ -808,9 +808,9 @@ export default function RoadmapIA() {
                                         [q.key]: option.value,
                                       }))
                                     }
-                                    className={`rounded-[11px] border-[2.5px] border-slate-900 px-4 py-2.5 text-sm font-extrabold shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] ${
+                                    className={`rounded-[11px] border-[2.5px] border-slate-900 px-4 py-2.5 text-sm font-extrabold shadow-[3px_3px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_var(--bnt-shadow)] ${
                                       active
-                                        ? "bg-[#FFB800] text-slate-950"
+                                        ? "bg-[var(--brand-yellow)] text-ink-on-accent"
                                         : "bg-white text-slate-600"
                                     }`}
                                   >
@@ -856,7 +856,7 @@ export default function RoadmapIA() {
                 {list.map((item) => (
                   <div
                     key={item.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border-[2.5px] border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border-[2.5px] border-slate-900 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]"
                   >
                     <div className="min-w-0">
                       <p className="truncate font-bold text-slate-900">
@@ -871,7 +871,7 @@ export default function RoadmapIA() {
                       {item.status === "ready" ? (
                         <Link
                           href={`/roadmaps/ia/${item.slug}`}
-                          className="inline-flex items-center gap-1.5 rounded-[10px] border-[2px] border-slate-900 bg-[#FFB800] px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px"
+                          className="inline-flex items-center gap-1.5 rounded-[10px] border-[2px] border-slate-900 bg-[var(--brand-yellow)] px-3 py-1.5 text-xs font-black text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px"
                         >
                           {COPY.open}
                           <ArrowRight className="h-3.5 w-3.5" />
@@ -880,7 +880,7 @@ export default function RoadmapIA() {
                         <button
                           type="button"
                           onClick={() => void resume(item.slug)}
-                          className="inline-flex items-center rounded-[10px] border-[2px] border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px"
+                          className="inline-flex items-center rounded-[10px] border-[2px] border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-y-px"
                         >
                           {COPY.continueGeneration}
                         </button>

@@ -29,6 +29,7 @@ export function ChartFrame({
   tendencia,
   rodape,
   extra,
+  controles,
   children,
 }: {
   titulo: string;
@@ -44,10 +45,18 @@ export function ChartFrame({
   /**
    * Slot opcional logo abaixo da tendência, para badges POR SÉRIE. Existe porque
    * um gráfico com duas séries em unidades diferentes (receita em centavos,
-   * custo em dólar) não cabe numa frase de tendência só — a v1 tentou e imprimiu
+   * custo em dólar) não cabe numa frase de tendência só, a v1 tentou e imprimiu
    * centavos crus na tela.
    */
   extra?: ReactNode;
+  /**
+   * Slot de CONTROLE, renderizado em TODOS os estados, inclusive erro e
+   * carregando. E a diferenca que importa em relacao ao `extra`: aquele fala
+   * SOBRE o dado (badges por serie) e some junto com ele, faz sentido; um
+   * seletor de periodo que some no erro tranca a pessoa na janela que falhou,
+   * sem caminho de volta a nao ser recarregar a pagina.
+   */
+  controles?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -64,6 +73,8 @@ export function ChartFrame({
       <h3 className="font-display text-lg font-black text-slate-950 sm:text-xl">
         {pergunta}
       </h3>
+
+      {controles}
 
       {erro ? (
         <p

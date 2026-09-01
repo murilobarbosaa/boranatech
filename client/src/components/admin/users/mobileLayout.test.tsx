@@ -137,16 +137,23 @@ describe("card da lista: o andaime saiu, a informação ficou", () => {
   it("sem assinatura, o traço órfão não aparece no mobile", () => {
     // No desktop ele continua, porque a coluna precisa de conteudo para a grade
     // nao desalinhar e o cabecalho da o significado. No mobile nao ha cabecalho,
-    // entao um "—" solto nao significa nada.
+    // entao um "-" solto nao significa nada.
     const { container } = render(
       <UserListRow
         row={{ ...LINHA, subscription_status: null, plan_code: null }}
         onOpen={() => {}}
       />,
     );
-    const traco = screen.getByText("—");
-    expect(traco.className).toContain("hidden");
-    expect(traco.className).toContain("md:inline");
+    // TODOS os marcadores, nao um. A linha ganhou Area e Total pago, que tambem
+    // podem esvaziar, e a regra e a mesma para os tres: com `getByText` isto
+    // afirmaria sobre um deles e deixaria os outros dois livres para aparecer
+    // soltos no celular.
+    const tracos = screen.getAllByText("-");
+    expect(tracos.length).toBeGreaterThan(0);
+    for (const traco of tracos) {
+      expect(traco.className).toContain("hidden");
+      expect(traco.className).toContain("md:inline");
+    }
     expect(container.textContent).toContain("Ana Moura");
   });
 

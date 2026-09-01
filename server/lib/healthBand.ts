@@ -10,7 +10,7 @@ import { CHARGE_SEM_DONO_CORTE_DIAS } from "./financeSyncWindow";
 //   "Supabase Auth"   derivava de `checks.database === "ok"`, o MESMO bit de
 //                     "Banco de dados". Dois cartões para um sinal.
 //   "Servidor web"    dizia "Online" SEMPRE. Se a resposta do health chegou, o
-//                     servidor está de pé — é tautologia, não checagem. O uptime
+//                     servidor está de pé, é tautologia, não checagem. O uptime
 //                     continua útil como informação, não como sinal de saúde.
 //   Redis             era sondado nos DOIS endpoints (`/api/health` e
 //                     `/integrations/health`), com dois pings por carga.
@@ -224,16 +224,25 @@ export function calcularProblemas(
       label: "Cobrança sem dono",
       // VALOR EM REAIS, não só contagem: "1 cobrança sem dono" não move
       // ninguém, "R$ 90,30 sem dono" move.
+      // APONTA PARA ONDE AGIR, e essa metade faltava. Até 2026-08-31 este item
+      // dizia o valor e parava aí: quem lia sabia que havia dinheiro sem dono e
+      // não tinha para onde ir. Foi assim que a cobrança do Walisson ficou
+      // visível aqui desde 29/08 e mesmo assim ninguém agiu. As linhas agora vão
+      // para `billing_orphan_payments` pelo `detect-orphan-payments`, e a tela
+      // de Pagamentos órfãos já tem e-mail, valor e botão de resolver. O texto
+      // manda para lá em vez de duplicar a lista aqui, que só criaria uma
+      // segunda fonte da mesma fila.
       detalhe:
         `${formatarBrl(sinais.chargesSemDono.grossCents)} em ${quantas} ` +
         `${quantas === 1 ? "cobrança" : "cobranças"} sem usuário atribuído há mais de ` +
-        `${CHARGE_SEM_DONO_CORTE_DIAS} dias. O dinheiro entrou; o extrato da pessoa não mostra.`,
+        `${CHARGE_SEM_DONO_CORTE_DIAS} dias. O dinheiro entrou; o extrato da pessoa não mostra. ` +
+        `Resolva em Pagamentos órfãos.`,
       severidade: "atencao",
     });
   }
 
   // BOLETO EM LIMBO: emitido e não pago. Não é métrica de negócio, é anomalia
-  // operacional COM PRAZO — passado o prazo o boleto vira órfão e a linha é
+  // operacional COM PRAZO, passado o prazo o boleto vira órfão e a linha é
   // cancelada pelo cron. Por isso mora aqui e não num card.
   if (sinais.boletosPendentes.length > 0) {
     const total = sinais.boletosPendentes.reduce(

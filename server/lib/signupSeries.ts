@@ -11,7 +11,7 @@ import { diaBrasilia, somarDiaCivil } from "../../shared/brasiliaDay";
 // esconderia o formato do dado.
 //
 // ZERO É MEDIÇÃO, ausência não é. Nesta série um dia sem linha significa que
-// ninguém se cadastrou — isso é um zero de verdade e a barra é desenhada. É o
+// ninguém se cadastrou, isso é um zero de verdade e a barra é desenhada. É o
 // oposto do histórico de assinaturas, onde dia sem snapshot significa que
 // NINGUÉM MEDIU, e ali a linha precisa quebrar. Tratar os dois igual faria uma
 // das duas mentir.
@@ -66,4 +66,4 @@ export function montarSerieDeCadastros(input: {
 // byte a byte chamada `somarDias`, e duas implementações da mesma aritmética são
 // as que divergem na primeira correção aplicada só numa delas. A função única é
 // `somarDiaCivil`, em `shared/brasiliaDay.ts`, ao lado de `diaBrasilia` e
-// `inicioDoDiaBrasilia` — que é onde a aritmética de dia civil pertence.
+// `inicioDoDiaBrasilia`, que é onde a aritmética de dia civil pertence.

@@ -95,7 +95,7 @@ const CONTENT_CLASSES = [
   // pedida.
   "rounded-none border-0 bg-white p-0 shadow-none",
   "sm:h-[88vh] sm:w-[min(56rem,94vw)] sm:max-w-none sm:rounded-3xl",
-  "sm:border-2 sm:border-slate-950 sm:shadow-[6px_6px_0_#0f172a]",
+  "sm:border-2 sm:border-slate-950 sm:shadow-[6px_6px_0_var(--bnt-shadow)]",
   LAYER_DIALOG,
 ].join(" ");
 
@@ -546,7 +546,7 @@ export function UserDetailModal({
         {/* CABECALHO FIXO: identidade e acesso ficam visiveis durante todo o
             scroll, porque sao a resposta a "de quem e esta tela" e o admin
             perde isso de vista assim que rola ate as secoes de baixo. */}
-        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-900 bg-[#f6f0df] px-4 py-4 sm:px-6 sm:py-5">
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-900 bg-[var(--brand-cream-deep)] px-4 py-4 sm:px-6 sm:py-5">
           <div className="flex min-w-0 items-center gap-3">
             <span
               aria-hidden="true"
@@ -889,7 +889,7 @@ export function UserDetailModal({
                 type="button"
                 onClick={() => setMoreOpen((open) => !open)}
                 aria-expanded={moreOpen}
-                className="flex w-full items-center justify-between rounded-2xl border-2 border-slate-900 bg-white px-4 py-3 text-sm font-black uppercase tracking-[0.2em] text-slate-950 shadow-[3px_3px_0_#0f172a] transition hover:bg-yellow-50"
+                className="flex w-full items-center justify-between rounded-2xl border-2 border-slate-900 bg-white px-4 py-3 text-sm font-black uppercase tracking-[0.2em] text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition hover:bg-yellow-50"
               >
                 Mais informações
                 <ChevronDown
@@ -1291,7 +1291,7 @@ export function UserDetailModal({
         <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
           <AlertDialogContent
             overlayClassName={LAYER_IN_DIALOG}
-            className={`${LAYER_IN_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}
+            className={`${LAYER_IN_DIALOG} rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[6px_6px_0_var(--bnt-shadow)]`}
           >
             <AlertDialogTitle className="font-display text-2xl font-black text-slate-950">
               Descartar alterações?

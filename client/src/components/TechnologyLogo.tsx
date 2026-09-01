@@ -22,7 +22,7 @@ export default function TechnologyLogo({
   return (
     <div
       className={cn(
-        "flex items-center justify-center overflow-hidden rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_#0f172a]",
+        "flex items-center justify-center overflow-hidden rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_var(--bnt-shadow)]",
         className,
       )}
     >

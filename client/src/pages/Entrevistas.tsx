@@ -47,7 +47,7 @@ export default function Entrevistas() {
 
       {/* Arena: cenario do molde e a secao inteira (cream + micro-pontilhado),
           com o backdrop vivo por tras de tudo. */}
-      <section className="relative overflow-hidden bg-[#faf8f4] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      <section className="relative overflow-hidden bg-[var(--brand-cream)] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <InterviewBackdrop reduce={reduce} />
         <div className="container relative z-10">
           {/* Cabecalho integrado, sem PageHero. O slot universal superior
@@ -62,7 +62,7 @@ export default function Entrevistas() {
           >
             <p>
               {/* TODO(Ana): revisar o selo da arena. */}
-              <span className="inline-flex rounded-full border-2 border-slate-900 bg-blue-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+              <span className="inline-flex rounded-full border-2 border-slate-900 bg-blue-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
                 Treino Pro
               </span>
             </p>

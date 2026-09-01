@@ -259,7 +259,7 @@ function BackgroundDecoration() {
 
 export default function Numeros() {
   return (
-    <section id="a-plataforma-em-numeros" className="bnt-ancora relative overflow-hidden py-20 md:py-32 bg-slate-950">
+    <section id="a-plataforma-em-numeros" className="bnt-keep-colors bnt-ancora relative overflow-hidden py-20 md:py-32 bg-slate-950">
       <BackgroundDecoration />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4">

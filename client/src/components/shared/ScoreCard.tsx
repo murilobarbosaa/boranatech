@@ -40,7 +40,7 @@ function ScoreContent({
       </p>
       <span
         className={cn(
-          "mt-4 inline-flex rounded-full border-2 border-slate-950 px-4 py-1 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]",
+          "mt-4 inline-flex rounded-full border-2 border-slate-950 px-4 py-1 text-sm font-black text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]",
           band.chipBg,
         )}
       >

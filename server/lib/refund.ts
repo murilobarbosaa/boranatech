@@ -37,7 +37,7 @@ export type RefundValidation =
  * O problema real: dois reembolsos parciais LEGÍTIMOS do mesmo valor no mesmo
  * charge são operação válida (R$50 duas vezes numa cobrança de R$200). Uma
  * chave `charge+valor` bloquearia o segundo, e a Stripe devolveria o PRIMEIRO
- * reembolso como resposta — o admin veria sucesso e o dinheiro não teria saído.
+ * reembolso como resposta, o admin veria sucesso e o dinheiro não teria saído.
  * Idempotência que mente sobre sucesso é pior que não ter idempotência.
  *
  * A saída é incluir o QUANTO JÁ FOI REEMBOLSADO no momento da operação: ele é
@@ -46,7 +46,7 @@ export type RefundValidation =
  *
  * TRADEOFF ACEITO, na direção segura: se o primeiro reembolso já tiver saído
  * mas o nosso `refunded_cents` ainda não tiver atualizado, um segundo parcial
- * genuíno computaria a mesma chave e a Stripe o deduplicaria — bloqueando uma
+ * genuíno computaria a mesma chave e a Stripe o deduplicaria, bloqueando uma
  * operação válida em vez de permitir uma duplicada. Errar bloqueando é o lado
  * certo quando se trata de devolver dinheiro. Na prática a rota chama
  * syncBalanceTransactions logo após emitir, então a janela é curta.
@@ -194,7 +194,7 @@ export function validateRefundRequest(
  * para fora e sem desfazer, então tem teto próprio e bem menor.
  *
  * LIMITE CONHECIDO: memória do processo. Reinicia no deploy e não é
- * compartilhado entre instâncias. NÃO é a defesa principal — essa é a
+ * compartilhado entre instâncias. NÃO é a defesa principal, essa é a
  * Idempotency-Key mais o teto recomputado no servidor. É a que impede um
  * script de emitir dezenas de reembolsos legítimos-mas-errados em segundos.
  */
