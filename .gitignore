@@ -17,9 +17,18 @@ yarn-error.log*
 # untracked, entao um `git add -A` distraido publicaria segredo de producao no
 # repositorio. O `.env` proprio ja e ignorado desde a primeira linha; os backups
 # dele nao eram.
+#
+# DUAS FORMAS, e a segunda foi acrescentada depois de o buraco aparecer. O
+# `.env*-bak` exige o nome TERMINAR em `-bak`, entao um backup chamado
+# `.env.bak-2i` (sufixo ANTES do nome, nao depois) passava direto e ficava
+# untracked. Foi o que aconteceu em 2026-09-01. Um padrao que cobre so um dos
+# dois jeitos obvios de nomear a mesma coisa e a mesma familia de defeito que o
+# CLAUDE.md documenta: escopo derivado por casamento que sub-casa em silencio, e
+# que falha PASSANDO.
 .env.pre-commit-bak
 .env.probe-bak
 .env*-bak
+.env.bak*
 
 # Claude Code
 # Ignorar `.claude/` inteiro deixava o `git status` cego para o diretorio: arquivo
