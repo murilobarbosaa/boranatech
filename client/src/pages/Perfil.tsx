@@ -109,6 +109,12 @@ type PendingCharge = {
   planCode?: string | null;
   createdAt?: string | null;
   paymentMethod?: string | null;
+  /**
+   * Valor da COBRANCA em centavos, aditivo. Ausente no backend antigo e nulo
+   * quando o provedor nao respondeu; nos dois casos a tela usa o preco do plano,
+   * que e o comportamento de sempre.
+   */
+  amountCents?: number | null;
 };
 
 type SubscriptionData = {
@@ -887,8 +893,6 @@ export default function Perfil() {
   const planCents = subscriptionData?.plans?.code
     ? getPlanPriceCents(subscriptionData.plans.code)
     : null;
-  const planPrice =
-    planCents != null ? formatCurrencyFromCents(planCents) : "-";
   const subscriptionStatus =
     subscriptionData?.status ?? (isPro ? "active" : "free");
   const statusInfo = getStatusLabel(subscriptionStatus);
@@ -932,6 +936,25 @@ export default function Perfil() {
       : null);
   const pendingBoleto = pendingCharge;
   const isPendingPix = pendingCharge?.paymentMethod === "pix";
+
+  // COBRANCA PENDENTE MANDA NO CAMPO "Valor" do card. Ele anunciava R$ 129,00
+  // sobre uma cobranca de R$ 12,90 criada com cupom de 90%: o cupom entrou certo
+  // na cobranca (o Asaas confirmou o valor) e quem precificava pelo plano era a
+  // tela. Enquanto ha cobranca aguardando pagamento, o numero que interessa e o
+  // que sera pago.
+  //
+  // O valor NAO e recalculado aqui: vem do provedor pelo `amountCents` do
+  // endpoint. Recalcular o desconto no cliente traria a mesma divergencia por
+  // outro caminho, porque a validade do cupom pode ter mudado desde a criacao.
+  //
+  // `?? planCents` cobre backend antigo (campo ausente) e provedor mudo (campo
+  // nulo). Nos dois o card volta ao preco do plano, que e impreciso com cupom
+  // mas e o que ja acontecia. Zero seria plausivel e falso.
+  const valorExibidoCents = pendingCharge?.amountCents ?? planCents;
+  const planPrice =
+    valorExibidoCents != null
+      ? formatCurrencyFromCents(valorExibidoCents)
+      : "-";
 
   // CONFIRMACAO AUTOMATICA. Enquanto ha Pix pendente e a pessoa ainda nao e Pro,
   // reconsulta a assinatura ate o webhook ativar. A regra de parada vive em
@@ -1732,8 +1755,7 @@ export default function Perfil() {
               <div
                 className="absolute inset-0 z-0"
                 style={{
-                  background:
-                    "var(--bnt-ticket-pro)",
+                  background: "var(--bnt-ticket-pro)",
                 }}
                 aria-hidden="true"
               />
@@ -2067,8 +2089,7 @@ export default function Perfil() {
               <div
                 className="absolute inset-0 z-0"
                 style={{
-                  background:
-                    "var(--bnt-ticket-account)",
+                  background: "var(--bnt-ticket-account)",
                 }}
                 aria-hidden="true"
               />
