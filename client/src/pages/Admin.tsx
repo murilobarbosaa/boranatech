@@ -761,7 +761,8 @@ export const metricCards: MetricCard[] = [
     value: "0",
     detail: "Quem tem assinatura paga",
     icon: <CreditCard className="h-6 w-6" />,
-    color: "bg-[var(--brand-yellow)] text-ink-on-accent",
+    color:
+      "bg-[var(--brand-yellow)] text-ink-on-accent dark:border-foreground",
   },
   {
     key: "mrr",
@@ -1330,7 +1331,7 @@ function MetricCardView({
     <button
       type="button"
       onClick={() => onNavigate(destino)}
-      className="card-brutal flex h-full flex-col rounded-3xl bg-white p-5 text-left transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+      className="card-brutal flex h-full flex-col rounded-3xl bg-white p-5 text-left transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 dark:hover:bg-secondary"
     >
       {corpo}
     </button>
