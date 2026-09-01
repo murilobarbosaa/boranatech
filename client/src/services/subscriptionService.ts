@@ -85,9 +85,38 @@ export async function createCheckout(
 
   if (!res.ok) throw new CheckoutError(await checkoutErrorCode(res));
   const json = await res.json();
-  return json.data;
+  return json.data as {
+    checkoutUrl?: string;
+    subscriptionId?: string;
+    /** Ausente = redirecionar, que e o comportamento de sempre. */
+    flow?: "redirect" | "native_pix";
+  };
 }
 
 export async function startCheckout() {
   return createCheckout("pro_monthly");
+}
+
+/** Retorno de GET /api/billing/pix-qrcode. */
+export type PixQrCode = {
+  /** PNG em base64, SEM o prefixo `data:`. */
+  encodedImage: string;
+  /** Copia e cola. */
+  payload: string;
+  /** Validade do CODIGO, nao do acesso. */
+  expirationDate: string | null;
+};
+
+/**
+ * QR da cobranca pendente do proprio usuario.
+ *
+ * Sem parametro de proposito: o servidor resolve a cobranca pelo dono. Um id de
+ * pagamento numa URL do cliente seria enumeravel e precisaria ser defendido.
+ */
+export async function getPixQrCode(): Promise<PixQrCode> {
+  const headers = await getAuthHeader();
+  const res = await fetch(`${API_BASE}/billing/pix-qrcode`, { headers });
+  if (!res.ok) throw new CheckoutError(await checkoutErrorCode(res));
+  const json = await res.json();
+  return json.data as PixQrCode;
 }

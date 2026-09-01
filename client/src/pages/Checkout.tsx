@@ -768,7 +768,16 @@ export default function Checkout() {
       });
       // Marca o checkout como pendente para detectar abandono no cancel_url (/planos).
       sessionStorage.setItem("bnt_checkout_pending", selectedPlan);
-      const { checkoutUrl } = await createCheckout(selectedPlan, paymentMethod);
+      const { checkoutUrl, flow } = await createCheckout(
+        selectedPlan,
+        paymentMethod,
+      );
+      if (flow === "native_pix") {
+        // O QR vive na NOSSA tela de cobranca. `flow` ausente cai no
+        // redirecionamento de sempre, que e o que o bundle antigo faz.
+        setLocation("/perfil");
+        return;
+      }
       if (checkoutUrl) window.location.href = checkoutUrl;
     } catch (error) {
       console.error("[Checkout] createCheckout failed", error);
@@ -791,6 +800,11 @@ export default function Checkout() {
         // Nao e erro para a pessoa ler: e um passo que falta. Abre a coleta em
         // vez de um toast, e o `onSaved` retoma o checkout na MESMA interacao.
         setCpfStepOpen(true);
+      } else if (code === "valor_minimo_pix") {
+        // TODO(Ana): copy do valor abaixo do minimo do Pix.
+        toast.error(
+          "Com esse desconto o valor fica abaixo do mínimo do Pix. Escolha cartão.",
+        );
       } else if (code === "asaas_disabled") {
         // TODO(Ana): copy da indisponibilidade temporaria do Pix.
         toast.error("Pix indisponível no momento. Tente cartão ou boleto.");

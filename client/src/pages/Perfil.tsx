@@ -39,6 +39,8 @@ import { ProInlineBadge, ProStarIcon } from "@/components/pro/ProStarIcon";
 import ProUpsellModal from "@/components/pro/ProUpsellModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import PixQrCodeBlock from "@/components/pro/PixQrCodeBlock";
+import { nextPixPollStep } from "@/lib/pixPolling";
 import { useFavorites } from "@/hooks/useFavorites";
 import {
   avatarBgOptions,
@@ -930,6 +932,40 @@ export default function Perfil() {
       : null);
   const pendingBoleto = pendingCharge;
   const isPendingPix = pendingCharge?.paymentMethod === "pix";
+
+  // CONFIRMACAO AUTOMATICA. Enquanto ha Pix pendente e a pessoa ainda nao e Pro,
+  // reconsulta a assinatura ate o webhook ativar. A regra de parada vive em
+  // `nextPixPollStep` (client/src/lib/pixPolling.ts), testada isolada: um
+  // polling que nunca para vira requisicao infinita numa aba esquecida, e um que
+  // para cedo deixa a tela mentindo que o pagamento nao chegou. Nenhuma das duas
+  // falhas aparece na tela.
+  //
+  // `silent: true` para nao piscar o card de "carregando" a cada 4s.
+  useEffect(() => {
+    if (!isPendingPix || isPro) return;
+    const inicio = Date.now();
+    let vivo = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const tick = async () => {
+      if (!vivo) return;
+      await refreshSubscription({ silent: true });
+      if (!vivo) return;
+      const passo = nextPixPollStep({
+        isPro,
+        elapsedMs: Date.now() - inicio,
+      });
+      if (passo.action === "wait") {
+        timer = setTimeout(() => void tick(), passo.delayMs);
+      }
+    };
+
+    timer = setTimeout(() => void tick(), 4000);
+    return () => {
+      vivo = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [isPendingPix, isPro, refreshSubscription]);
   // Boleto: renewal_type='manual' (nao renova sozinho). O botao vira "nao
   // renovar" e o estado vem de nonRenewal (subscription_cancellations), nao de
   // cancel_at_period_end. Cartao (renewal_type 'auto') segue o caminho de sempre.
@@ -1788,6 +1824,8 @@ export default function Perfil() {
                           ? "Pix gerado. A confirmação costuma levar alguns segundos; o código vence em 2 dias."
                           : "Boleto enviado para seu e-mail. Vence em 3 dias."}
                       </p>
+
+                      {isPendingPix ? <PixQrCodeBlock /> : null}
                     </div>
                   </>
                 ) : isPro ? (
