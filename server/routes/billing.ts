@@ -11,6 +11,7 @@ import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 import { asaasProvider, stripeProvider } from "../providers";
+import { fetchPixQrCode } from "../providers/asaas";
 import { isPlanId, PLAN_PRICING, type PlanId } from "../../shared/planPricing";
 import {
   isPaymentMethodAllowed,
@@ -335,6 +336,57 @@ export async function handleGetSubscription(
 }
 
 router.get("/subscription", requireAuth, checkProStatus, handleGetSubscription);
+
+/**
+ * QR Code Pix da cobranca pendente DO PROPRIO USUARIO.
+ *
+ * AUTORIZACAO POR CONSTRUCAO, nao por checagem: a rota nao aceita id nenhum. Ela
+ * resolve a cobranca a partir de `req.user.id`, entao nao existe o caso "id de
+ * outra pessoa", e portanto nao existe checagem de dono para alguem esquecer de
+ * escrever. Um id de pagamento numa URL publica seria enumeravel e teria de ser
+ * defendido; este desenho nao tem o que defender.
+ *
+ * 404 nomeado quando nao ha Pix pendente: e o estado normal de quem nao esta
+ * comprando, nao um erro.
+ */
+router.get("/pix-qrcode", requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.user!.id;
+
+    const { data: pending, error } = await supabaseAdmin
+      .from("subscriptions")
+      .select("provider_subscription_id")
+      .eq("user_id", userId)
+      .eq("provider", "asaas")
+      .eq("payment_method", "pix")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      return next(
+        createError(500, "db_error", "Erro ao buscar a cobrança.", {
+          cause: error,
+        }),
+      );
+    }
+    if (!pending?.provider_subscription_id) {
+      return next(
+        createError(
+          404,
+          "pix_pendente_ausente",
+          "Nenhum Pix aguardando pagamento.",
+        ),
+      );
+    }
+
+    const qr = await fetchPixQrCode(pending.provider_subscription_id);
+    return res.json({ data: qr });
+  } catch (err) {
+    return next(err);
+  }
+});
 
 const VALID_CANCEL_REASONS = new Set([
   "expensive",

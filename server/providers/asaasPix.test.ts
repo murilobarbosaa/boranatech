@@ -201,7 +201,7 @@ vi.mock("../lib/supabaseAdmin", () => {
 
 import { oneOffAccessDays } from "../../shared/paymentMethods";
 import { discountedPriceCents, PLAN_PRICING } from "../../shared/planPricing";
-import { maskCpf } from "./asaas";
+import { fetchPixQrCode, maskCpf } from "./asaas";
 import {
   eventKey,
   paidAmountCentsFromAsaas,
@@ -1211,5 +1211,78 @@ describe("arredondamento: centavos inteiros, mesma regra da previa", () => {
         expect(Number.isInteger((cents * p) / 100)).toBe(true);
       }
     }
+  });
+});
+
+/**
+ * QR CODE PIX NATIVO.
+ *
+ * O QR passou a viver na nossa tela em vez da fatura hospedada do Asaas. O que
+ * estes casos travam e a parte que nao aparece na tela: o `flow` aditivo (bundle
+ * antigo continua redirecionando) e a traducao de uma resposta 200 INCOMPLETA do
+ * provedor, que sem nome viraria "erro de rede" na investigacao.
+ */
+describe("QR Code Pix", () => {
+  beforeEach(limpar);
+
+  it("checkout de Pix marca flow=native_pix E mantem invoiceUrl", async () => {
+    // EXPAND: o campo novo entra ao lado do antigo. Bundle ja em execucao le
+    // `checkoutUrl` e nao recarrega sozinho; remover seria quebra seca.
+    const r = await asaasProvider.createCheckout(checkoutInput("pro_annual"));
+
+    expect(r.flow).toBe("native_pix");
+    expect(r.checkoutUrl).toBe("https://asaas.test/i/123");
+  });
+
+  it("devolve encodedImage, payload e expirationDate da cobranca", async () => {
+    estado.asaasResposta = {
+      "/payments/pay_1/pixQrCode": {
+        encodedImage: "iVBORw0KGgo=",
+        payload: "00020126...5204",
+        expirationDate: "2026-09-02 23:59:59",
+      },
+    };
+
+    const qr = await fetchPixQrCode("pay_1");
+
+    expect(qr).toEqual({
+      encodedImage: "iVBORw0KGgo=",
+      payload: "00020126...5204",
+      expirationDate: "2026-09-02 23:59:59",
+    });
+  });
+
+  it("expirationDate ausente vira null, nao some do contrato", async () => {
+    estado.asaasResposta = {
+      "/payments/pay_1/pixQrCode": {
+        encodedImage: "iVBORw0KGgo=",
+        payload: "00020126",
+      },
+    };
+
+    const qr = await fetchPixQrCode("pay_1");
+    expect(qr.expirationDate).toBeNull();
+  });
+
+  it("resposta 200 INCOMPLETA vira erro NOMEADO, nao 502 de rede", async () => {
+    // Distinguir "a cobranca existe mas nao tem QR" de "o Asaas caiu" e a
+    // diferenca entre investigar o pagamento e investigar a infraestrutura.
+    estado.asaasResposta = { "/payments/pay_1/pixQrCode": { payload: "x" } };
+
+    await expect(fetchPixQrCode("pay_1")).rejects.toMatchObject({
+      code: "pix_qrcode_indisponivel",
+    });
+  });
+
+  it("o id da cobranca vai ESCAPADO na URL", async () => {
+    estado.asaasResposta = {
+      "/payments/": { encodedImage: "a", payload: "b" },
+    };
+
+    await fetchPixQrCode("pay/../outro");
+
+    expect(estado.asaas[0].caminho).toBe(
+      "/payments/pay%2F..%2Foutro/pixQrCode",
+    );
   });
 });

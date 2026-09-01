@@ -42,8 +42,23 @@ export interface CreateCheckoutInput {
 export interface CreateCheckoutResult {
   // URL para onde o frontend redireciona o usuario. Pode ser undefined se o
   // provedor nao retornar link (tratado como erro pela rota).
+  //
+  // No Pix ela deixou de ser o caminho PRINCIPAL (o QR passou a viver na nossa
+  // tela), mas continua sendo emitida como fallback e NAO foi removida: e o
+  // campo que todo bundle ja em execucao le, e bundle antigo nao recarrega
+  // sozinho. Ver `flow` abaixo.
   checkoutUrl: string | undefined;
   subscriptionId: string;
+  /**
+   * Como o frontend deve prosseguir. ADITIVO (expand/contract, CLAUDE.md):
+   * ausente significa "redirecione", que e exatamente o que o bundle antigo ja
+   * faz com `checkoutUrl`.
+   *
+   *   "redirect" (ou ausente): mandar o usuario para `checkoutUrl`.
+   *   "native_pix":            renderizar o QR na nossa tela; `checkoutUrl` vira
+   *                            fallback discreto.
+   */
+  flow?: "redirect" | "native_pix";
 }
 
 export interface CancelInput {

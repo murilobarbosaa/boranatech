@@ -433,6 +433,9 @@ async function createCheckout(
   return {
     checkoutUrl: charge.invoiceUrl ?? undefined,
     subscriptionId: charge.id,
+    // O QR vem por `GET /api/billing/pix-qrcode`, nao aqui: o id da cobranca
+    // NAO viaja para o cliente, e a tela pede o QR pelo dono da linha.
+    flow: "native_pix",
   };
 }
 
@@ -995,4 +998,44 @@ async function closePendingCharge(args: {
 /** `plans.code` vem do banco; so entra no mapa se for um PlanId conhecido. */
 function isKnownPlanId(code: string): code is PlanId {
   return code in PLAN_PRICING;
+}
+
+/**
+ * QR Code Pix de uma cobranca, vindo do Asaas.
+ *
+ * `encodedImage` e PNG em base64 (sem o prefixo `data:`), `payload` e o
+ * copia-e-cola, e `expirationDate` e a validade do CODIGO, nao do acesso.
+ */
+export type PixQrCode = {
+  encodedImage: string;
+  payload: string;
+  expirationDate: string | null;
+};
+
+/**
+ * Busca o QR de uma cobranca. O id vem SEMPRE do banco, resolvido a partir do
+ * dono; nunca de parametro de rota.
+ *
+ * O corpo bruto do Asaas nao escapa daqui: `asaasFetch` ja traduz falha em
+ * `asaas_error` / `asaas_unreachable`, e o que falta e distinguir "a cobranca
+ * existe mas nao tem QR" (resposta ok e incompleta) de erro de transporte.
+ */
+export async function fetchPixQrCode(chargeId: string): Promise<PixQrCode> {
+  const qr = await asaasFetch<Partial<PixQrCode>>(
+    `/payments/${encodeURIComponent(chargeId)}/pixQrCode`,
+  );
+  if (!qr?.encodedImage || !qr?.payload) {
+    // Resposta 200 sem o que interessa. Nomear e o que separa isto de um 502 de
+    // rede na hora de investigar.
+    throw createError(
+      502,
+      "pix_qrcode_indisponivel",
+      "Não foi possível gerar o código Pix agora.",
+    );
+  }
+  return {
+    encodedImage: qr.encodedImage,
+    payload: qr.payload,
+    expirationDate: qr.expirationDate ?? null,
+  };
 }
