@@ -105,3 +105,49 @@ real, ou para a Ana se ela encontrar um caminho de forcar o estado.
 
 Registro honesto porque o mesmo limite ja apareceu no 2m e vale a mesma regra:
 inspecao de markup e de bundle nao e verificacao de comportamento.
+
+## Fechamento: no ar
+
+Deploy em 2026-09-01, `main` em `afeaeed3`.
+
+```
+CI        run 33517163658   qualidade: success   migrations: success
+Railway   /api/health commit=afeaeed3, uptime 101s, os cinco checks ok
+```
+
+**Vercel**, medida na superficie certa e com controle:
+
+```
+index servido      : assets/index-mjTfMGs2.js
+chunk do Checkout  : assets/Checkout-BbHiz_i1.js  (41.013 bytes)
+  referencia        proConfetti-CaI30AJp.js
+  referencia        confetti.module-DoTkzoll.js
+  native_pix        1   <- CONTROLE, existe desde o 2h
+  Pagamento confirmado  1
+  Expira em             1
+modulo servido     : /assets/proConfetti-CaI30AJp.js -> HTTP 200
+```
+
+O chunk do Checkout passou a referenciar o modulo do confetti, que era o objetivo
+inteiro do lote: a partir daqui os tres caminhos de compra (cartao, boleto e Pix)
+usam a mesma celebracao. O controle em 1 e o que da valor as outras linhas.
+
+Sem smoke: o caminho do dinheiro tem diff vazio, provado arquivo por arquivo na
+secao acima.
+
+### Rota do gate: EQUIVALENCIA
+
+A Ana aprovou por **equivalencia**: pelo diff e pela simetria com o
+`CheckoutSucesso`, que ela ja conhece em producao. **Sem prova visual.**
+
+Portanto a pendencia registrada acima segue valendo por inteiro: ninguem viu o
+efeito rodando na tela do Pix, e a verificacao cai no proximo pagamento Pix real.
+O que esta provado e que o codigo certo esta no lugar certo (o chunk do Checkout
+referencia o modulo do confetti, servido em HTTP 200) e que a decisao de disparo
+tem sete testes. O comportamento visual, nao.
+
+A distincao importa porque as duas coisas costumam ser confundidas num relatorio
+de release: aprovar por equivalencia e uma decisao legitima sobre RISCO (o efeito
+ja roda em cinco lugares, o diff nao toca no caminho do dinheiro), e nao uma
+observacao do efeito. Registrar como se fosse observacao criaria uma verificacao
+que nunca aconteceu.
