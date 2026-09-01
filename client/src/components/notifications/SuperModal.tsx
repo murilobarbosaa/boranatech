@@ -180,8 +180,17 @@ export default function SuperModal({
     // modal de consentimento, que sempre precisa vencer. A ordem de exibicao
     // (nunca sobre o consent) e garantida na Fase 3 pela montagem; aqui o z so
     // reforca a hierarquia.
+    //
+    // bnt-keep-colors no OVERLAY, nao no card: a inversao de paleta do .dark
+    // atinge as duas camadas. O card e escuro por design (gradiente fixo) e o
+    // texto por cima e text-white, que dentro do .dark resolve para
+    // --bnt-surface (roxo escuro) e some; o proprio overlay usa bg-slate-950/70,
+    // que dentro do .dark e quase branco e clareia o fundo em vez de escurecer.
+    // Aplicada aqui, a classe cobre as duas de uma vez, porque o bloco
+    // `.dark .bnt-keep-colors` do index.css redefine as variaveis NO ELEMENTO e
+    // os descendentes herdam. Mesmo padrao do Footer, ProGate e BemVindo.
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+      className="bnt-keep-colors fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
