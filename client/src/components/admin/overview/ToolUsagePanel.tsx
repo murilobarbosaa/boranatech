@@ -81,7 +81,7 @@ export function ToolUsagePanel({
       ) : error ? (
         <p
           data-testid="ferramentas-erro"
-          className="mt-5 rounded-2xl border-2 border-rose-300 bg-rose-50 p-4 text-sm font-black text-rose-800"
+          className="mt-5 rounded-2xl border-2 border-rose-300 bg-[var(--bnt-alert-rose)] p-4 text-sm font-black text-rose-800"
         >
           {error}
         </p>
@@ -193,7 +193,7 @@ export function ToolUsagePanel({
           {totalSemCusto > 0 ? (
             <p
               data-testid="ferramentas-piso"
-              className="mt-4 rounded-2xl border-2 border-amber-400 bg-amber-50 p-3 text-xs font-bold text-amber-900"
+              className="mt-4 rounded-2xl border-2 border-amber-400 bg-[var(--bnt-alert-amber)] p-3 text-xs font-bold text-amber-900"
             >
               {totalSemCusto.toLocaleString("pt-BR")} de{" "}
               {totalChamadas.toLocaleString("pt-BR")} chamadas rodaram sem custo

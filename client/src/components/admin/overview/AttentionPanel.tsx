@@ -276,7 +276,9 @@ function GrupoView({ grupo }: { grupo: Grupo }) {
       data-severidade={grupo.severidade}
       data-aberto={aberto ? "sim" : "nao"}
       className={`rounded-2xl border-2 p-4 ${
-        critico ? "border-rose-500 bg-rose-50" : "border-amber-400 bg-amber-50"
+        critico
+          ? "border-rose-500 bg-[var(--bnt-alert-rose)]"
+          : "border-amber-400 bg-[var(--bnt-alert-amber)]"
       }`}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -425,7 +427,7 @@ export function AttentionPanel({
       ) : error ? (
         <p
           data-testid="atencao-erro"
-          className="mt-5 rounded-2xl border-2 border-rose-300 bg-rose-50 p-4 text-sm font-black text-rose-800"
+          className="mt-5 rounded-2xl border-2 border-rose-300 bg-[var(--bnt-alert-rose)] p-4 text-sm font-black text-rose-800"
         >
           {error}
         </p>
@@ -439,7 +441,7 @@ export function AttentionPanel({
           {fontes.length > 0 ? (
             <p
               data-testid="atencao-fontes-indisponiveis"
-              className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-3 text-xs font-bold text-amber-900"
+              className="rounded-2xl border-2 border-amber-400 bg-[var(--bnt-alert-amber)] p-3 text-xs font-bold text-amber-900"
             >
               Sem resposta de: {fontes.map(rotuloDeFonte).join(", ")}. O que
               aparece abaixo pode estar incompleto.
@@ -450,7 +452,7 @@ export function AttentionPanel({
             fontes.length === 0 ? (
               <p
                 data-testid="atencao-vazio"
-                className="flex items-center gap-2 rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-4 text-sm font-black text-emerald-800"
+                className="flex items-center gap-2 rounded-2xl border-2 border-emerald-300 bg-[var(--bnt-alert-emerald)] p-4 text-sm font-black text-emerald-800"
               >
                 <CheckCircle2 className="h-5 w-5" />
                 Tudo em ordem.

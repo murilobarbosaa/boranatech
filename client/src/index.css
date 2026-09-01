@@ -152,6 +152,26 @@
      violet-50), entao o modo claro nao muda um pixel. Os escuros sao novos. */
   --bnt-admin-banner: #ffb800;
   --bnt-admin-strip: oklch(0.969 0.016 293.756);
+  /* Caixas de ALERTA da Visao do admin (AttentionPanel, HealthBand e
+     ToolUsagePanel). Mesmo motivo dos dois tokens acima, e o mesmo remedio:
+     `bg-amber-50`, `bg-rose-50` e `bg-emerald-50` casam o CONTEXTO PASTEL, que
+     restaura a paleta clara NO ELEMENTO, e todo descendente herda. O resultado
+     era um alerta claro, com os chips brancos e a tinta escura de dentro,
+     recortado numa pagina escura. Um `dark:bg-*` nao resolveria: trocaria o
+     fundo e deixaria o conteudo claro do mesmo jeito, porque a classe de escape
+     continuaria casando. Trocar a classe pelo token e o que tira o elemento do
+     escape.
+     NENHUM VALOR AQUI E COR NOVA. O claro e identico ao `--color-*-50` do
+     `:root` (o modo claro nao muda um pixel) e o escuro e identico ao que o
+     `gen-dark-palette.py` ja gerou no `.dark` para essas mesmas classes. O que
+     muda e o alerta passar a LER a paleta escura em vez da restaurada pelo
+     escape. Borda, tinta e os chips brancos de dentro acompanham sozinhos,
+     pelas classes que ja tem: `border-amber-400` e igual nos dois temas,
+     `text-amber-900` e `text-slate-950` viram claros no `.dark`, e `bg-white`
+     vira `--bnt-surface`. */
+  --bnt-alert-amber: oklch(0.987 0.022 95.277);
+  --bnt-alert-rose: oklch(0.969 0.015 12.422);
+  --bnt-alert-emerald: oklch(0.979 0.021 166.113);
   /* MESMO valor de --brand-yellow, e sem par no .dark de proposito: o amarelo
      de acento e igual nos dois temas. Existe para o elemento NAO casar o bloco
      de contexto amarelo, que lista `.bg-[var(--brand-yellow)]`.
@@ -236,6 +256,9 @@
      mini-cards brancos por cima dela. */
   --bnt-admin-banner: oklch(0.27 0.045 75);
   --bnt-admin-strip: oklch(0.19 0.03 290);
+  --bnt-alert-amber: oklch(0.25 0.022 95.277);
+  --bnt-alert-rose: oklch(0.25 0.05 12.422);
+  --bnt-alert-emerald: oklch(0.25 0.05 166.113);
 }
 
 /* ==== GERADO por scripts/gen-dark-palette.py (Lote 7) ====

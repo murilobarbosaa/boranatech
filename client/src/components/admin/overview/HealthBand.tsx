@@ -56,7 +56,7 @@ export function HealthBand() {
       <div
         data-testid="health-band"
         data-estado="indisponivel"
-        className="flex items-center gap-2 rounded-full border-2 border-amber-400 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-900"
+        className="flex items-center gap-2 rounded-full border-2 border-amber-400 bg-[var(--bnt-alert-amber)] px-4 py-2 text-xs font-bold text-amber-900"
       >
         <AlertTriangle className="h-4 w-4 shrink-0" />
         Não foi possível checar a saúde do sistema.
@@ -104,8 +104,8 @@ export function HealthBand() {
       data-estado={erros > 0 ? "erro" : "atencao"}
       className={`rounded-2xl border-2 ${
         erros > 0
-          ? "border-rose-600 bg-rose-50"
-          : "border-amber-500 bg-amber-50"
+          ? "border-rose-600 bg-[var(--bnt-alert-rose)]"
+          : "border-amber-500 bg-[var(--bnt-alert-amber)]"
       }`}
     >
       <button
