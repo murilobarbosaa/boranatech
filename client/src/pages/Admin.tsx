@@ -761,7 +761,11 @@ export const metricCards: MetricCard[] = [
     value: "0",
     detail: "Quem tem assinatura paga",
     icon: <CreditCard className="h-6 w-6" />,
-    color: "bg-[var(--brand-yellow)] text-ink-on-accent dark:border-foreground",
+    // Sem override de borda: com --bnt-accent-solid o elemento sai do contexto
+    // amarelo, e borda e sombra passam a inverter sozinhas, iguais as dos seis
+    // cards vizinhos. O dark:border-foreground que existia aqui corrigia a
+    // borda e deixava a sombra escura, que era justamente o que se via.
+    color: "bg-[var(--bnt-accent-solid)] text-ink-on-accent",
   },
   {
     key: "mrr",

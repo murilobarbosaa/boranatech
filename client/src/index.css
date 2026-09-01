@@ -152,6 +152,22 @@
      violet-50), entao o modo claro nao muda um pixel. Os escuros sao novos. */
   --bnt-admin-banner: #ffb800;
   --bnt-admin-strip: oklch(0.969 0.016 293.756);
+  /* MESMO valor de --brand-yellow, e sem par no .dark de proposito: o amarelo
+     de acento e igual nos dois temas. Existe para o elemento NAO casar o bloco
+     de contexto amarelo, que lista `.bg-[var(--brand-yellow)]`.
+     Serve a um caso especifico: chip de acento cujo CONTEUDO ja e
+     independente de tema (a tinta vem de --bnt-ink-on-accent, escura nos dois
+     modos) mas cujo CROMO (borda e sombra) deve acompanhar o tema, como o dos
+     elementos vizinhos. Para esse elemento o contexto amarelo so faz estrago:
+     ele restaura --color-slate-900 E --bnt-shadow, e o icone do card
+     "Assinantes Pro" da Visao ficava com borda e sombra escuras enquanto os
+     seis cards ao lado clareavam. A sombra era o que mais aparecia: ela e
+     solida e deslocada (3px 3px 0, sem blur), entao lida como um contorno
+     preto, nao como sombra.
+     Se algum dia alguem acrescentar esta classe a lista do contexto amarelo, o
+     defeito volta, e volta VISIVEL (a sombra escura reaparece), nao em
+     silencio. */
+  --bnt-accent-solid: var(--brand-yellow);
 }
 
 .dark {
