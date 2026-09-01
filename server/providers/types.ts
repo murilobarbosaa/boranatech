@@ -59,6 +59,17 @@ export interface CreateCheckoutResult {
    *                            fallback discreto.
    */
   flow?: "redirect" | "native_pix";
+  /**
+   * Valor REAL da cobranca em centavos, ADITIVO como `flow`.
+   *
+   * Vem do corpo da resposta de criacao do provedor, nao de recalculo nosso: e o
+   * numero que o provedor acabou de registrar, entao a tela nao pode divergir do
+   * que sera cobrado. Foi por precificar pelo plano que o card da assinatura
+   * anunciava R$ 129,00 sobre uma cobranca de R$ 12,90 com cupom.
+   *
+   * Ausente para provedor que nao informa; a tela cai no comportamento antigo.
+   */
+  amountCents?: number;
 }
 
 export interface CancelInput {

@@ -82,6 +82,8 @@ type AsaasCharge = {
   id: string;
   invoiceUrl?: string | null;
   status?: string | null;
+  /** Valor em REAIS, como o Asaas trafega. Convertido a centavos na fronteira. */
+  value?: number | null;
 };
 
 /** Data de vencimento no formato que o Asaas espera (YYYY-MM-DD). */
@@ -436,6 +438,15 @@ async function createCheckout(
     // O QR vem por `GET /api/billing/pix-qrcode`, nao aqui: o id da cobranca
     // NAO viaja para o cliente, e a tela pede o QR pelo dono da linha.
     flow: "native_pix",
+    // VALOR QUE O ASAAS REGISTROU, nao o que pedimos. Os dois coincidem hoje
+    // (mandamos `finalCents / 100` logo acima) e mesmo assim a fonte e a
+    // resposta: se o provedor arredondar ou ajustar, a tela mostra o que sera
+    // cobrado, nao o que tentamos cobrar. `finalCents` so entra se o corpo vier
+    // sem o campo, para o contrato nao ficar com buraco.
+    amountCents:
+      typeof charge.value === "number"
+        ? Math.round(charge.value * 100)
+        : finalCents,
   };
 }
 
@@ -1038,4 +1049,41 @@ export async function fetchPixQrCode(chargeId: string): Promise<PixQrCode> {
     payload: qr.payload,
     expirationDate: qr.expirationDate ?? null,
   };
+}
+
+/**
+ * Valor em centavos de uma cobranca existente, para o CAMINHO FRIO.
+ *
+ * A criacao ja devolve o valor no proprio corpo (`amountCents` de
+ * `CreateCheckoutResult`), e e de la que o modal do checkout tira o numero. Esta
+ * funcao existe para a outra ponta: a pagina de assinatura, aberta horas depois,
+ * numa sessao que nao viu a criacao. Nao ha onde ler isso localmente porque a
+ * linha pendente de `subscriptions` guarda `plan_id` e `coupon_code` e NAO o
+ * valor cobrado (por isso o card anunciava o preco do plano).
+ *
+ * DEVOLVE `null` EM VEZ DE LANCAR, e a escolha e deliberada: quem chama e um
+ * endpoint que responde a assinatura inteira, e derrubar a pagina de perfil
+ * porque um provedor externo esta lento seria trocar um rotulo errado por uma
+ * tela em branco. `null` faz o card cair no comportamento de hoje.
+ *
+ * O caso oposto (valor ausente virando zero) NAO acontece aqui: sem numero o
+ * retorno e `null`, nunca `0`, porque "R$ 0,00" e um preco plausivel e errado.
+ */
+export async function fetchChargeAmountCents(
+  chargeId: string,
+): Promise<number | null> {
+  try {
+    const charge = await asaasFetch<AsaasCharge>(
+      `/payments/${encodeURIComponent(chargeId)}`,
+    );
+    return typeof charge?.value === "number"
+      ? Math.round(charge.value * 100)
+      : null;
+  } catch (err) {
+    console.error(
+      `[asaas] falha ao ler o valor da cobranca ${chargeId}; o card cai no preco do plano:`,
+      err,
+    );
+    return null;
+  }
 }

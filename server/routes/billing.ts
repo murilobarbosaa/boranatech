@@ -12,7 +12,7 @@ import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 import { asaasProvider, stripeProvider } from "../providers";
-import { fetchPixQrCode } from "../providers/asaas";
+import { fetchChargeAmountCents, fetchPixQrCode } from "../providers/asaas";
 import { isPlanId, PLAN_PRICING, type PlanId } from "../../shared/planPricing";
 import {
   isPaymentMethodAllowed,
@@ -190,7 +190,9 @@ export async function handleGetSubscription(
     // pessoa pagava e a tela dizia que ela era do plano free.
     const { data: pending } = await supabaseAdmin
       .from("subscriptions")
-      .select("created_at, plan_id, payment_method")
+      .select(
+        "created_at, plan_id, payment_method, provider, provider_subscription_id",
+      )
       .eq("user_id", userId)
       .in("payment_method", ["boleto", "pix"])
       .eq("status", "pending")
@@ -210,6 +212,11 @@ export async function handleGetSubscription(
       planCode: string;
       createdAt: string | null;
       paymentMethod: string;
+      /**
+       * Valor da COBRANCA, nao do plano. `null` quando nao deu para saber, e a
+       * tela cai no preco do plano, que e o comportamento de sempre.
+       */
+      amountCents: number | null;
     } | null = null;
     if (pending?.plan_id) {
       const { data: pendingPlan } = await supabaseAdmin
@@ -219,10 +226,30 @@ export async function handleGetSubscription(
         .maybeSingle();
       if (pendingPlan?.code) {
         const metodo = String(pending.payment_method ?? "boleto");
+        // VALOR DA COBRANCA, lido no provedor. Nao existe copia local: a linha
+        // pendente guarda `plan_id` e `coupon_code`, e nenhum dos dois e o valor
+        // cobrado. Sem isto o card anuncia o preco cheio do plano sobre uma
+        // cobranca com cupom, que foi o defeito achado na inspecao ao vivo.
+        //
+        // A chamada remota so acontece quando ha cobranca Asaas pendente, que e
+        // raro, e `fetchChargeAmountCents` devolve `null` em vez de lancar: este
+        // endpoint responde a assinatura inteira, e o preco e um rotulo dentro
+        // dela, nunca motivo para derrubar a pagina.
+        //
+        // Boleto (Stripe) fica de fora de proposito: o valor dele nao esta neste
+        // caminho e o comportamento atual dele nao muda neste lote.
+        const chargeId =
+          pending.provider === "asaas"
+            ? String(pending.provider_subscription_id ?? "")
+            : "";
+        const amountCents = chargeId
+          ? await fetchChargeAmountCents(chargeId)
+          : null;
         pendingCharge = {
           planCode: pendingPlan.code,
           createdAt: pending.created_at,
           paymentMethod: metodo,
+          amountCents,
         };
         // Um Pix pendente NAO vira `pendingBoleto`: o bundle antigo mostraria
         // copy de boleto ("vence em 3 dias", "confira seu e-mail") sobre um Pix.
