@@ -90,6 +90,11 @@ export async function createCheckout(
     subscriptionId?: string;
     /** Ausente = redirecionar, que e o comportamento de sempre. */
     flow?: "redirect" | "native_pix";
+    /**
+     * Valor que o provedor registrou, em centavos. Ausente no backend antigo; a
+     * tela entao omite o valor em vez de recalcular o desconto por conta propria.
+     */
+    amountCents?: number;
   };
 }
 

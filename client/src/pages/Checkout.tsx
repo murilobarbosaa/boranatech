@@ -49,6 +49,7 @@ import {
 import CompleteProfileModal from "@/components/certificates/CompleteProfileModal";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import PaymentMethodDialog from "@/components/pro/PaymentMethodDialog";
+import PixCheckoutModal from "@/components/pro/PixCheckoutModal";
 import { allowedPaymentMethods } from "@shared/paymentMethods";
 import { apiUrl } from "@/lib/api";
 import {
@@ -639,6 +640,13 @@ export default function Checkout() {
   // servidor na primeira correcao de regra. O round-trip custa uma requisicao e
   // deixa o servidor como unica autoridade.
   const [cpfStepOpen, setCpfStepOpen] = useState(false);
+  // Cobranca Pix recem-criada, exibida SEM sair da pagina. `null` = modal
+  // fechado. O valor vem do retorno da criacao, que e o que o provedor
+  // registrou; nada e recalculado aqui.
+  const [pixCharge, setPixCharge] = useState<{
+    amountCents?: number | null;
+    invoiceUrl?: string | null;
+  } | null>(null);
   const { refreshSubscription } = useSubscription();
   const [loading, setLoading] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -770,29 +778,23 @@ export default function Checkout() {
       });
       // Marca o checkout como pendente para detectar abandono no cancel_url (/planos).
       sessionStorage.setItem("bnt_checkout_pending", selectedPlan);
-      const { checkoutUrl, flow } = await createCheckout(
+      const { checkoutUrl, flow, amountCents } = await createCheckout(
         selectedPlan,
         paymentMethod,
       );
       if (flow === "native_pix") {
-        // O QR vive na NOSSA tela de cobranca. `flow` ausente cai no
-        // redirecionamento de sempre, que e o que o bundle antigo faz.
+        // A COBRANCA E PAGA AQUI MESMO. Antes este ramo navegava para a pagina
+        // de assinatura e o QR aparecia no rodape de um card, fora da vista:
+        // consertava o DESTINO e nao a VIAGEM, que era a queixa original. O
+        // bloco daquela pagina continua existindo como superficie de retorno
+        // frio (aba fechada, outro aparelho, horas depois).
         //
-        // O REFRESH E OBRIGATORIO ANTES DE NAVEGAR, e foi o que faltou na
-        // primeira versao. O SubscriptionContext busca a assinatura UMA vez, na
-        // montagem do provider (que vive acima do <Switch>), e o intervalo de
-        // fundo dele so roda a cada 3 minutos. `setLocation` e navegacao de
-        // cliente: nao remonta o provider e nao dispara busca nenhuma.
-        //
-        // Sem isto a tela de cobranca abre com o estado ANTERIOR ao checkout,
-        // onde `pendingCharge` ainda e null, cai no card de plano gratuito e a
-        // pessoa ve a pagina de perfil comum em vez do QR. A cobranca existia,
-        // a navegacao funcionou, e o que estava velho era o dado.
-        //
-        // `silent` NAO: aqui o card de carregamento e desejavel, porque a tela
-        // de destino depende deste dado para escolher o que renderizar.
-        await refreshSubscription();
-        setLocation("/perfil");
+        // NAO ha `refreshSubscription` nem `setLocation` aqui, e os dois motivos
+        // sao concretos: enquanto o modal esta aberto a pessoa ainda nao pagou,
+        // entao nao existe estado novo para buscar, e navegar desmontaria o
+        // proprio modal que acabou de abrir. As duas coisas acontecem quando ele
+        // fecha, em `onDismiss` e `onConfirmedContinue`.
+        setPixCharge({ amountCents, invoiceUrl: checkoutUrl ?? null });
         return;
       }
       if (checkoutUrl) window.location.href = checkoutUrl;
@@ -1221,7 +1223,9 @@ export default function Checkout() {
                       ? "border-[3px] border-violet-700 shadow-[6px_6px_0_#7c3aed] hover:shadow-[8px_8px_0_#7c3aed]"
                       : "border-2 border-slate-900 shadow-[6px_6px_0_#FCC700] hover:shadow-[8px_8px_0_#FCC700]"
                   } ${
-                    selected ? "bg-[var(--brand-yellow)]" : "bg-white hover:bg-amber-50"
+                    selected
+                      ? "bg-[var(--brand-yellow)]"
+                      : "bg-white hover:bg-amber-50"
                   }`}
                 >
                   {plan.badge ? (
@@ -1391,6 +1395,31 @@ export default function Checkout() {
         open={paymentDialogOpen}
         onOpenChange={setPaymentDialogOpen}
         onSelect={(method) => void doCheckout(method)}
+      />
+
+      {/* Cobranca Pix na propria pagina. `refreshSubscription` roda nas DUAS
+          saidas do modal, e nao ao abrir: e no fechamento que existe estado novo
+          para buscar, e sem ele a pagina de destino renderiza com o dado
+          anterior ao checkout (o SubscriptionContext busca uma vez, na montagem
+          do provider, e `setLocation` nao remonta nada). */}
+      <PixCheckoutModal
+        open={pixCharge !== null}
+        amountCents={pixCharge?.amountCents}
+        invoiceUrl={pixCharge?.invoiceUrl}
+        onDismiss={() => {
+          setPixCharge(null);
+          void refreshSubscription().then(() => setLocation("/perfil"));
+        }}
+        onConfirmedContinue={() => {
+          setPixCharge(null);
+          void refreshSubscription().then(() => setLocation("/perfil"));
+        }}
+        onExpiredRestart={() => {
+          // Fica no checkout: a proxima acao e escolher o plano de novo, e ela
+          // esta nesta mesma tela. Nao ha chamada ao backend, a expiracao da
+          // cobranca do lado do provedor segue seu curso.
+          setPixCharge(null);
+        }}
       />
     </Layout>
   );
