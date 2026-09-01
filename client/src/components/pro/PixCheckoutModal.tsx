@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useReducedMotion } from "framer-motion";
 import { Check, Copy, ExternalLink, QrCode } from "lucide-react";
 
 import {
@@ -8,6 +9,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { shouldFireCelebration } from "@/lib/celebration";
+import { fireProCelebration } from "@/lib/proConfetti";
 import {
   earliestDeadline,
   formatPixRemaining,
@@ -79,7 +82,10 @@ export default function PixCheckoutModal({
   onExpiredRestart: () => void;
 }) {
   const { isPro, refreshSubscription } = useSubscription();
+  const reduce = useReducedMotion();
   const [fase, setFase] = useState<Fase>({ nome: "carregando" });
+  const confettiFiredRef = useRef(false);
+  const sucessoRef = useRef<HTMLDivElement | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [agora, setAgora] = useState(() => new Date());
   const inicioRef = useRef<number>(Date.now());
@@ -146,6 +152,37 @@ export default function PixCheckoutModal({
     return () => clearTimeout(t);
   }, [copiado]);
 
+  // CONFETE NA CONFIRMACAO. Mesmo efeito e mesma configuracao do resto da
+  // plataforma (`proConfetti.ts`), incluindo a tela de sucesso de cartao e
+  // boleto: quem pagava por Pix era o unico comprador sem celebracao, e isso era
+  // assimetria acidental do Pix nativo, nao decisao de produto.
+  //
+  // As guardas sao as mesmas de `CheckoutSucesso.tsx`, e a decisao vive em
+  // `shouldFireCelebration`, testada isolada: dispara UMA vez por montagem
+  // (senao qualquer re-render do modal solta confete de novo) e respeita
+  // `prefers-reduced-motion`. O `stop()` devolvido pelo efeito limpa o intervalo
+  // de ~2s se o modal desmontar antes de ele terminar.
+  useEffect(() => {
+    if (
+      !shouldFireCelebration({
+        isSuccess: fase.nome === "confirmado",
+        reducedMotion: Boolean(reduce),
+        alreadyFired: confettiFiredRef.current,
+      })
+    ) {
+      return;
+    }
+    confettiFiredRef.current = true;
+
+    // Origem no bloco de confirmacao. Sem ele medido (primeiro render), o centro
+    // da tela e um palpite razoavel e nao muda nada de comportamento.
+    const rect = sucessoRef.current?.getBoundingClientRect();
+    const x = rect ? (rect.left + rect.width / 2) / window.innerWidth : 0.5;
+    const y = rect ? (rect.top + rect.height / 2) / window.innerHeight : 0.4;
+
+    return fireProCelebration({ x, y });
+  }, [fase.nome, reduce]);
+
   async function copiar(payload: string) {
     try {
       await navigator.clipboard.writeText(payload);
@@ -197,7 +234,10 @@ export default function PixCheckoutModal({
         </DialogHeader>
 
         {fase.nome === "confirmado" ? (
-          <div className="mt-4 flex flex-col items-center gap-4 text-center">
+          <div
+            ref={sucessoRef}
+            className="mt-4 flex flex-col items-center gap-4 text-center"
+          >
             <span className="inline-flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-950 bg-emerald-300">
               <Check className="h-7 w-7 text-slate-950" strokeWidth={3} />
             </span>
