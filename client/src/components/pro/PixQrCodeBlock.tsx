@@ -13,8 +13,9 @@ import { getPixQrCode, type PixQrCode } from "@/services/subscriptionService";
  * (`flex-col-reverse` no mobile, `sm:flex-col`), sem duplicar markup: dois
  * blocos condicionais por breakpoint acabariam divergindo na primeira correcao.
  *
- * Tokens e formas da plataforma: borda `slate-950`, sombra flat, acento
- * `#FFB800`. Nenhuma dependencia nova, nada de `components/ui`.
+ * Tokens e formas da plataforma: borda `slate-950`, sombra `var(--bnt-shadow)`,
+ * acento `var(--brand-yellow)`. Nenhuma dependencia nova, nada de
+ * `components/ui`.
  */
 
 type Estado =
@@ -74,7 +75,7 @@ export default function PixQrCodeBlock({
 
   if (estado.fase === "erro") {
     return (
-      <div className="mt-5 rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[3px_3px_0_#0f172a]">
+      <div className="mt-5 rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]">
         {/* TODO(Ana): copy da falha ao gerar o codigo Pix. */}
         <p className="text-sm font-bold text-slate-800">
           Não foi possível gerar o código agora.
@@ -101,7 +102,7 @@ export default function PixQrCodeBlock({
     <div className="mt-5 flex flex-col-reverse gap-4 sm:flex-col">
       {/* COPIA-E-COLA. Primeiro no DOM em telas pequenas por causa do
           flex-col-reverse; no desktop desce para baixo do QR. */}
-      <div className="rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[3px_3px_0_#0f172a]">
+      <div className="rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]">
         <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
           {/* TODO(Ana): rotulo do copia-e-cola. */}
           Pix copia e cola
@@ -112,7 +113,7 @@ export default function PixQrCodeBlock({
         <button
           type="button"
           onClick={() => void copiar(qr.payload)}
-          className="bnt-pressable mt-3 inline-flex items-center gap-2 rounded-xl border-2 border-slate-950 bg-[#FFB800] px-4 py-2 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5"
+          className="bnt-pressable mt-3 inline-flex items-center gap-2 rounded-xl border-2 border-slate-950 bg-[var(--brand-yellow)] px-4 py-2 font-display text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5"
         >
           {copiado ? (
             <Check className="h-4 w-4" strokeWidth={3} />
@@ -125,16 +126,17 @@ export default function PixQrCodeBlock({
       </div>
 
       {/* QR CODE. Lidera no desktop. */}
-      <div className="flex flex-col items-center rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[3px_3px_0_#0f172a]">
+      <div className="flex flex-col items-center rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]">
         <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
           <QrCode className="h-3.5 w-3.5" strokeWidth={2.5} />
           {/* TODO(Ana): rotulo do QR Code. */}
           Escaneie no app do banco
         </span>
+        {/* `bnt-keep-colors`: o fundo imediato do QR fica claro nos dois temas, porque a leitura optica depende do contraste do proprio codigo, nao do tema. */}
         <img
           src={`data:image/png;base64,${qr.encodedImage}`}
           alt="QR Code do Pix"
-          className="mt-3 h-44 w-44 rounded-xl border-2 border-slate-950"
+          className="bnt-keep-colors mt-3 h-44 w-44 rounded-xl border-2 border-slate-950 bg-white p-1"
         />
       </div>
 
