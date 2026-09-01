@@ -238,3 +238,106 @@ Todas em `PixCheckoutModal.tsx`:
    de codigo adjacente, fora do escopo deste lote.
 4. **Cobranca `pay_97mhq09np4utjmfx`** criada para a medicao do formato: precisa
    ser cancelada pelo Murilo no painel.
+
+---
+
+# Delta: o timer passa a ser governado pelo `dueDate`
+
+HEAD_FINAL desta parte: ver o ultimo commit da lista abaixo. O corpo acima
+descreve o lote como entregue antes desta decisao; o que segue substitui a
+secao "achado nao previsto".
+
+## O que mudou
+
+**1. A resposta de criacao expande de novo, com `dueDate`.** O
+`POST /v3/payments` ja devolve o campo; `asaas.ts` passou a repassa-lo, do mesmo
+jeito aditivo do `amountCents`, sem nenhuma chamada extra. `CreateCheckoutResult`
+e o tipo do servico do cliente acompanham.
+
+**2. `parseAsaasDate` ganhou a forma so-data.** `"YYYY-MM-DD"` vira
+**23:59:59 em -03:00**, o fim daquele dia em Brasilia. A escolha e conservadora
+de proposito: o Asaas so vira a cobranca para OVERDUE na madrugada seguinte,
+entao tratar o dia inteiro como valido nunca declara vencido algo que ainda pode
+ser pago, enquanto assumir 00:00 tiraria um dia de prazo de quem pagou no dia
+certo.
+
+**3. O prazo exibido e o MENOR dos dois**, por `earliestDeadline`, funcao pura
+nova. Nulo e ignorado e nao tratado como zero, senao um campo ausente venceria
+todos os prazos reais e a tela diria "expirado" sobre cobranca viva. Sem nenhum
+prazo valido o timer simplesmente nao renderiza, e o resto do modal funciona: o
+timer nunca e condicao de renderizacao de nada.
+
+Pegar o menor em vez de trocar uma fonte pela outra tambem resolve o futuro: se
+algum dia o prazo do QR for o mais curto, ele passa a mandar sem mudanca de
+codigo.
+
+## O `dueDate` que o NOSSO checkout grava
+
+`asaas.ts:375` envia `dueDateInDays(PIX_DUE_DAYS, new Date())` com
+`PIX_DUE_DAYS = 2`, e a funcao faz `toISOString().slice(0, 10)`, ou seja, a data
+em **UTC**. Isso nao bate sempre com "2 dias" em Brasilia, e o desvio foi medido:
+
+```
+hora Brasilia   dueDate gravado   dias reais em Brasilia
+    03:30         2026-09-03               2
+    12:30         2026-09-03               2
+    20:30         2026-09-03               2
+    21:30         2026-09-04               3
+    22:30         2026-09-04               3
+    23:30         2026-09-04               3
+```
+
+Entre 21h e meia-noite de Brasilia (00h a 03h UTC), a cobranca nasce com TRES
+dias em vez de dois. O erro e sempre para MAIS, nunca para menos, entao ninguem
+recebe menos prazo do que a copy promete ("O código vence em 2 dias", em
+`PaymentMethodDialog.tsx:57`). Nao corrigi: e mudanca no calculo do vencimento,
+ou seja, caminho do dinheiro, que este lote nao toca. Fica registrado.
+
+## Expectativa de teste ALTERADA (uma)
+
+Em `pixExpiration.test.ts`, a string `"2026-09-03"` estava na lista de entradas
+que deviam virar `null`, sob o rotulo "data incompleta". Com a decisao acima ela
+passou a ser uma entrada VALIDA, entao saiu da lista e ganhou tres casos
+proprios. E a unica expectativa alterada, e ela mudou porque o comportamento
+mudou de proposito.
+
+## Evidencias do delta
+
+```
+pnpm check                  EXIT 0
+suite completa              3524 passaram, 10 pulados, 265 arquivos
+  (3517 antes do delta: +7, sendo 3 do caso so-data, 5 do earliestDeadline,
+   menos 1 que saiu da lista de entradas invalidas)
+pixExpiration.test.ts       31 testes
+travessao (Python)          0
+```
+
+## Diff do delta
+
+```
+server/providers/asaas.ts                       +10
+server/providers/types.ts                       +5
+client/src/services/subscriptionService.ts      +2
+client/src/lib/pixExpiration.ts                 +45 -8
+client/src/lib/pixExpiration.test.ts            +59
+client/src/components/pro/PixCheckoutModal.tsx  +18 -3
+client/src/pages/Checkout.tsx                   +8 -1
+```
+
+`server/routes/webhooksAsaas.ts` e `server/providers/shared.ts` seguem com diff
+vazio. Em `asaas.ts` o delta tambem e puramente aditivo.
+
+## Commits do delta
+
+```
+d67b72e4 feat(billing): expose charge due date in checkout response
+4a6ec0a8 feat(pix): resolve deadline from earliest of due date and qr expiry
+0b19922b fix(checkout): drive pix timer by charge due date
+```
+
+## Pendencia nova
+
+`dueDateInDays` calcula em UTC e por isso concede tres dias nos checkouts feitos
+depois das 21h de Brasilia (medicao acima). Sempre a mais, nunca a menos, entao
+nao ha prejuizo para quem compra; corrigir exige mexer no calculo do vencimento
+e precisa de lote proprio.
