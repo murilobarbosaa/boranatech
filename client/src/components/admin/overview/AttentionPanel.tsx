@@ -170,7 +170,7 @@ function AcoesDoItem({ item }: { item: ItemAtencao }) {
         <a
           href={interno}
           data-testid="atencao-destino-interno"
-          className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-900 hover:bg-yellow-50"
+          className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-900 hover:bg-yellow-50 dark:hover:bg-secondary"
         >
           Resolver no admin <ArrowRight className="h-3 w-3" />
         </a>

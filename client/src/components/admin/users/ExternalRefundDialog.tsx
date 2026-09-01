@@ -25,10 +25,10 @@ import { fmtBrl, fmtDate } from "./userFormat";
 // porque a auditoria vai guardar essa declaração como declaração.
 
 const BOTAO =
-  "rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase transition hover:bg-yellow-50 disabled:opacity-60";
+  "rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase transition hover:bg-yellow-50 disabled:opacity-60 dark:hover:bg-secondary";
 
 const INPUT =
-  "w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:bg-yellow-50 disabled:opacity-60";
+  "w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:bg-yellow-50 disabled:opacity-60 dark:focus:bg-secondary";
 
 export function ExternalRefundDialog({
   charge,

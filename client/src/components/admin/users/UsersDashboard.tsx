@@ -88,7 +88,7 @@ export function UsersDashboard() {
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
           placeholder="Buscar por nome ou e-mail"
-          className="min-w-[220px] flex-1 rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] placeholder:text-slate-400 focus:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+          className="min-w-[220px] flex-1 rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] placeholder:text-slate-400 focus:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 dark:focus:bg-secondary"
         />
         {/* Pills, nao BntSelect: sao 5 opcoes mutuamente exclusivas e curtas.
             A pill mostra TODAS as opcoes e o estado atual sem abrir nada, e
@@ -133,7 +133,7 @@ export function UsersDashboard() {
               } ${
                 filter === option.value
                   ? "bg-yellow-300 text-ink-on-accent"
-                  : "bg-white text-slate-500 hover:bg-yellow-50"
+                  : "bg-white text-slate-500 hover:bg-yellow-50 dark:hover:bg-secondary"
               }`}
             >
               {option.label}

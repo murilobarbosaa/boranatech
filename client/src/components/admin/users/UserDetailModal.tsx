@@ -106,7 +106,7 @@ const CARD_SECTION =
   "space-y-3 rounded-2xl border-2 border-slate-200 bg-white p-4";
 
 const ACTION_BUTTON =
-  "w-full rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60 sm:w-auto sm:py-1.5";
+  "w-full rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-60 sm:w-auto sm:py-1.5 dark:hover:bg-secondary";
 
 /**
  * Acao DESTRUTIVA. Difere em cor, nao so em posicao, e ocupa a linha inteira no
@@ -590,7 +590,7 @@ export function UserDetailModal({
               data-testid="header-fechar"
               aria-label="Fechar"
               onClick={() => void requestClose()}
-              className="grid h-9 w-9 place-items-center rounded-full border-2 border-slate-900 bg-white transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+              className="grid h-9 w-9 place-items-center rounded-full border-2 border-slate-900 bg-white transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 dark:hover:bg-secondary"
             >
               <X aria-hidden="true" className="h-4 w-4" />
             </button>
@@ -889,7 +889,7 @@ export function UserDetailModal({
                 type="button"
                 onClick={() => setMoreOpen((open) => !open)}
                 aria-expanded={moreOpen}
-                className="flex w-full items-center justify-between rounded-2xl border-2 border-slate-900 bg-white px-4 py-3 text-sm font-black uppercase tracking-[0.2em] text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition hover:bg-yellow-50"
+                className="flex w-full items-center justify-between rounded-2xl border-2 border-slate-900 bg-white px-4 py-3 text-sm font-black uppercase tracking-[0.2em] text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)] transition hover:bg-yellow-50 dark:hover:bg-secondary"
               >
                 Mais informações
                 <ChevronDown

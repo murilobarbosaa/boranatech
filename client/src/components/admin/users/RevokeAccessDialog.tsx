@@ -27,7 +27,7 @@ import { fmtBrl, fmtDate, planLabelOf } from "./userFormat";
 // avisar como se fosse anomalia treinaria o admin a ignorar o aviso.
 
 const BOTAO =
-  "rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase transition hover:bg-yellow-50 disabled:opacity-60";
+  "rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase transition hover:bg-yellow-50 disabled:opacity-60 dark:hover:bg-secondary";
 
 export function RevokeAccessDialog({
   userId,

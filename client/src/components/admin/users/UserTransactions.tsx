@@ -134,7 +134,7 @@ function Linha({
             <button
               type="button"
               onClick={() => acao(item)}
-              className="mt-1 block rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-[11px] font-black uppercase transition hover:bg-yellow-50 sm:ml-auto"
+              className="mt-1 block rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-[11px] font-black uppercase transition hover:bg-yellow-50 sm:ml-auto dark:hover:bg-secondary"
             >
               {/* Verbos diferentes porque as acoes sao diferentes: uma devolve
                   dinheiro, a outra anota que alguem ja devolveu. */}
