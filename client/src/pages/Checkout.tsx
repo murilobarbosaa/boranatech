@@ -47,6 +47,7 @@ import {
   type CheckoutPaymentMethod,
 } from "@/services/subscriptionService";
 import CompleteProfileModal from "@/components/certificates/CompleteProfileModal";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import PaymentMethodDialog from "@/components/pro/PaymentMethodDialog";
 import { allowedPaymentMethods } from "@shared/paymentMethods";
 import { apiUrl } from "@/lib/api";
@@ -638,6 +639,7 @@ export default function Checkout() {
   // servidor na primeira correcao de regra. O round-trip custa uma requisicao e
   // deixa o servidor como unica autoridade.
   const [cpfStepOpen, setCpfStepOpen] = useState(false);
+  const { refreshSubscription } = useSubscription();
   const [loading, setLoading] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const reduce = useReducedMotion();
@@ -775,6 +777,21 @@ export default function Checkout() {
       if (flow === "native_pix") {
         // O QR vive na NOSSA tela de cobranca. `flow` ausente cai no
         // redirecionamento de sempre, que e o que o bundle antigo faz.
+        //
+        // O REFRESH E OBRIGATORIO ANTES DE NAVEGAR, e foi o que faltou na
+        // primeira versao. O SubscriptionContext busca a assinatura UMA vez, na
+        // montagem do provider (que vive acima do <Switch>), e o intervalo de
+        // fundo dele so roda a cada 3 minutos. `setLocation` e navegacao de
+        // cliente: nao remonta o provider e nao dispara busca nenhuma.
+        //
+        // Sem isto a tela de cobranca abre com o estado ANTERIOR ao checkout,
+        // onde `pendingCharge` ainda e null, cai no card de plano gratuito e a
+        // pessoa ve a pagina de perfil comum em vez do QR. A cobranca existia,
+        // a navegacao funcionou, e o que estava velho era o dado.
+        //
+        // `silent` NAO: aqui o card de carregamento e desejavel, porque a tela
+        // de destino depende deste dado para escolher o que renderizar.
+        await refreshSubscription();
         setLocation("/perfil");
         return;
       }
