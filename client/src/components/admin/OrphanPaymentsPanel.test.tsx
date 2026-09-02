@@ -328,7 +328,11 @@ describe("cobranças que NÃO cabem nesta fila", () => {
     await montar();
     expect(await screen.findByTestId("orfaos-nao-enfileiraveis")).toBeTruthy();
 
-    abrirModal();
+    // `await`: `abrirModal` virou async em f214d21b, que trocou `getByTestId`
+    // por `findByTestId` para curar uma corrida que reprovou o CI. Este caso
+    // nasceu na branch, depois daquele commit e antes do merge, entao era o
+    // unico dos nove call sites sem a espera.
+    await abrirModal();
     digitarNota(NOTA_OK);
     // O POST passa; a recarga logo depois é que cai.
     adminSpy.adminFetch.mockResolvedValueOnce({ data: {} });
