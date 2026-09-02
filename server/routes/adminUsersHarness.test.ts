@@ -151,7 +151,20 @@ const EMBEDS_CONHECIDOS = new Set(["plans"]);
  * rodar `pnpm db:types`.
  */
 const COLUNAS_PENDENTES: Array<{ tabela: string; coluna: string }> = [
-  // Vazia: `admin_refunds.settlement` saiu daqui em 2026-08-01, depois de o
+  // Declaradas em `20260902120000_finance_transactions_provider.sql`, que faz
+  // `finance_transactions` virar o ledger de todos os provedores. Estao aqui
+  // porque a migration ainda NAO foi aplicada em produção (ela e de aplicacao
+  // manual pela Ana, na janela posterior ao backup, por causa do `update` de
+  // backfill em `billing_events`), entao `shared/database.types.ts` ainda nao
+  // as conhece.
+  //
+  // SAIR DAQUI E O ESTADO NORMAL depois de aplicar a migration e rodar
+  // `pnpm db:types`. Se a lista continuar com estas duas entradas semanas
+  // depois do deploy, o que isso indica e que a migration nunca chegou, que e
+  // exatamente a falha que `pnpm check:migrations` existe para acusar.
+  { tabela: "finance_transactions", coluna: "provider" },
+  { tabela: "finance_transactions", coluna: "provider_transaction_id" },
+  // Vazia ate 2026-09-02: `admin_refunds.settlement` saiu daqui em 2026-08-01, depois de o
   // `pnpm db:types` ser rodado sobre o banco onde a migration 20260730190000 já
   // estava aplicada. É o estado normal.
   //

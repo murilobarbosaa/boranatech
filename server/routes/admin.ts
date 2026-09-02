@@ -3672,11 +3672,22 @@ async function revogarAcessoPro(input: {
   const prefixo = prefixoDeFalhaDeRevogacao(gatilho, uid);
   const chargeId = gatilho.tipo === "refund" ? gatilho.chargeId : null;
 
+  // SEM FILTRO DE PROVEDOR desde 2026-09-02, e a remocao e o conserto.
+  //
+  // Com `.eq("provider","stripe")` aqui, um reembolso que zerasse o saldo de um
+  // assinante Pix NAO revogava o acesso: a consulta nao encontrava a linha e a
+  // funcao devolvia `no_active_subscription`, que a tela le como "nao havia o
+  // que revogar". Ou seja, o mecanismo que existe para impedir "dinheiro
+  // devolvido e acesso mantido" estava desligado justamente para o provedor
+  // novo.
+  //
+  // Quem decide se ha chamada externa e `precisaCancelarNaStripe`, que agora
+  // pergunta pelo provedor. A guarda mora LA, dentro da funcao, e nao aqui no
+  // call site.
   const { data: sub, error: subError } = await supabaseAdmin
     .from("subscriptions")
-    .select("id, status, renewal_type, provider_subscription_id")
+    .select("id, status, renewal_type, provider_subscription_id, provider")
     .eq("user_id", uid)
-    .eq("provider", "stripe")
     .in("status", ["active", "trialing", "past_due"])
     .order("created_at", { ascending: false })
     .limit(1)
@@ -3914,7 +3925,7 @@ router.post("/users/:id/refunds", async (req, res, next) => {
     const { data: linhas, error: linhasError } = await supabaseAdmin
       .from("finance_transactions")
       .select(
-        "id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
+        "id, provider, provider_transaction_id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
       )
       .eq("user_id", uid);
 
@@ -3943,6 +3954,35 @@ router.post("/users/:id/refunds", async (req, res, next) => {
     const alvo = extrato.items.find(
       (item) => item.stripe_charge_id === chargeId && item.type === "charge",
     );
+
+    // PROVEDOR ANTES DA BUSCA POR ID, e a ordem e o ponto.
+    //
+    // Uma cobranca do Asaas nunca casa em `stripe_charge_id`, entao sem esta
+    // guarda ela cairia no 404 "Cobranca nao encontrada para este usuario", uma
+    // mensagem falsa: a cobranca existe, esta no extrato, e so nao e
+    // reembolsavel POR AQUI. Responder 409 com codigo proprio diz o que fazer
+    // em vez de fazer o admin procurar uma cobranca que ele esta vendo.
+    //
+    // A comparacao e por PROVEDOR e nao pelo formato do id. O `is_boleto` abaixo
+    // decide por `chargeId.startsWith("py_")`, uma heuristica de prefixo da
+    // Stripe, e prefixo e exatamente o tipo de criterio que casa errado no dia
+    // em que outro gateway usar as mesmas letras.
+    const alvoAsaas = extrato.items.find(
+      (item) =>
+        item.type === "charge" &&
+        (item.provider ?? "stripe") === "asaas" &&
+        item.provider_transaction_id === chargeId,
+    );
+    if (alvoAsaas) {
+      return next(
+        createError(
+          409,
+          "refund_provider_not_stripe",
+          // TODO(Ana)
+          "Reembolso de Pix é feito no Asaas e registrado aqui como devolução externa.",
+        ),
+      );
+    }
 
     // A cobrança precisa ser DESTE usuário. Sem isto, o id de uma cobrança de
     // outra pessoa seria aceito.
@@ -4225,7 +4265,7 @@ router.post("/users/:id/external-refunds", async (req, res, next) => {
     const { data: linhas, error: linhasError } = await supabaseAdmin
       .from("finance_transactions")
       .select(
-        "id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
+        "id, provider, provider_transaction_id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
       )
       .eq("user_id", uid);
 
@@ -4255,6 +4295,38 @@ router.post("/users/:id/external-refunds", async (req, res, next) => {
     const alvo = extrato.items.find(
       (item) => item.stripe_charge_id === chargeId && item.type === "charge",
     );
+
+    // PIX AINDA NAO CABE AQUI, e o 409 diz isso em vez de mentir.
+    //
+    // Esta rota chaveia tudo por `stripe_charge_id`: a busca do alvo acima, a
+    // pre-checagem de idempotencia abaixo e a coluna de `admin_refunds` em que
+    // a declaracao e gravada. Uma cobranca do Asaas nao tem esse id, entao ela
+    // cairia primeiro no 404 "Cobranca nao encontrada" (falso, ela esta no
+    // extrato) e, se passasse, no 409 "Esta e uma cobranca de cartao" (tambem
+    // falso).
+    //
+    // O QUE FALTA para Pix entrar: `provider` e `provider_transaction_id` em
+    // `admin_refunds`, e a agregacao de `userTransactions` passando a ligar
+    // declaracao a cobranca por esse par. E migration propria e nao cabe neste
+    // lote. Ate la, a devolucao de Pix e feita no Asaas e conciliada a mao, e
+    // esta mensagem e o unico lugar que declara isso.
+    const alvoAsaasExterno = extrato.items.find(
+      (item) =>
+        item.type === "charge" &&
+        (item.provider ?? "stripe") === "asaas" &&
+        item.provider_transaction_id === chargeId,
+    );
+    if (!alvo && alvoAsaasExterno) {
+      return next(
+        createError(
+          409,
+          "external_refund_provider_not_supported",
+          // TODO(Ana)
+          "Devolução de Pix ainda não é registrável por aqui. Faça o estorno no Asaas: o webhook grava a linha de devolução sozinho.",
+        ),
+      );
+    }
+
     if (!alvo) {
       return next(
         createError(
@@ -4620,13 +4692,17 @@ router.post("/users/:id/subscription/cancel", async (req, res, next) => {
       );
     }
 
+    // SEM FILTRO DE PROVEDOR desde 2026-09-02. Com ele, um assinante Pix caia
+    // no 404 "Nenhuma assinatura ativa encontrada", uma mensagem FALSA: a
+    // assinatura existe e esta ativa. O ramo honesto para ela ja estava escrito
+    // logo abaixo (`renewal_type === "manual"`, o 409 que explica que o acesso
+    // termina no fim do periodo pago), e o filtro impedia a linha de chegar la.
     const { data: sub, error: subError } = await supabaseAdmin
       .from("subscriptions")
       .select(
-        "id, status, renewal_type, current_period_end, cancel_at_period_end",
+        "id, status, renewal_type, current_period_end, cancel_at_period_end, provider",
       )
       .eq("user_id", uid)
-      .eq("provider", "stripe")
       .in("status", ["active", "trialing", "past_due"])
       .order("created_at", { ascending: false })
       .limit(1)
@@ -4642,12 +4718,19 @@ router.post("/users/:id/subscription/cancel", async (req, res, next) => {
       );
     }
 
+    // NAO RENOVA SOZINHA: nao ha o que cancelar, nem aqui nem no gateway.
+    // Vale para boleto (Stripe) e para Pix (Asaas), pelo mesmo motivo: sao
+    // cobrancas avulsas que concedem um periodo, nao assinaturas recorrentes.
+    // O texto deixou de dizer so "boleto" quando o Pix passou a alcancar este
+    // ramo; o `code` NAO mudou, porque a tela e os testes o usam como chave.
     if (sub.renewal_type === "manual") {
+      const meio = (sub.provider ?? "stripe") === "asaas" ? "Pix" : "boleto";
       return next(
         createError(
           409,
           "boleto_not_supported",
-          "Assinatura de boleto não renova sozinha e não se cancela por aqui. O acesso termina no fim do período já pago.",
+          // TODO(Ana)
+          `Assinatura de ${meio} não renova sozinha e não se cancela por aqui. O acesso termina no fim do período já pago.`,
         ),
       );
     }
@@ -5125,7 +5208,7 @@ router.get("/users/:id/transactions", async (req, res, next) => {
     const { data, error } = await supabaseAdmin
       .from("finance_transactions")
       .select(
-        "id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
+        "id, provider, provider_transaction_id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
       )
       .eq("user_id", uid)
       .order("occurred_at", { ascending: false })
@@ -5741,7 +5824,7 @@ router.get("/finance/transactions", async (req, res, next) => {
     let query = supabaseAdmin
       .from("finance_transactions")
       .select(
-        "id, stripe_charge_id, stripe_invoice_id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, user_id, plan_code",
+        "id, provider, provider_transaction_id, stripe_charge_id, stripe_invoice_id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, user_id, plan_code",
         { count: "exact" },
       )
       .order("occurred_at", { ascending: false })

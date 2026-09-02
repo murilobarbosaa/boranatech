@@ -4,6 +4,7 @@ import {
   buildTransactionList,
   declaracaoContaNoExtrato,
   refundStateOf,
+  saldoAsaasCents,
   totalPagoCents,
   type DeclaredRefund,
   type FinanceRow,
@@ -529,5 +530,138 @@ describe("declaracoes de devolucao entram na agregacao", () => {
     expect(charge.refunded_cents).toBe(14874);
     expect(charge.refunded_external_cents).toBe(10000);
     expect(charge.refundable_cents).toBe(0);
+  });
+});
+
+describe("ledger multi-provedor: Pix no extrato", () => {
+  /** Cobranca Pix de R$ 12,90, como o ledger do Asaas a grava. */
+  const cobrancaPix = {
+    id: "ft-pix-1",
+    provider: "asaas",
+    type: "charge",
+    gross_cents: 1290,
+    fee_cents: 199,
+    net_cents: 1091,
+    currency: "BRL",
+    occurred_at: "2026-09-01T13:11:33.000Z",
+    stripe_charge_id: null,
+    stripe_invoice_id: null,
+    plan_code: "pro_monthly",
+  };
+
+  /** Estorno do MESMO pagamento. Identidade e o id do event, nao o da cobranca. */
+  const estornoPix = {
+    id: "ft-pix-2",
+    provider: "asaas",
+    type: "refund",
+    gross_cents: -1290,
+    fee_cents: 0,
+    net_cents: -1290,
+    currency: "BRL",
+    occurred_at: "2026-09-05T13:00:00.000Z",
+    stripe_charge_id: null,
+    stripe_invoice_id: null,
+    plan_code: "pro_monthly",
+  };
+
+  it("a cobranca Pix APARECE no extrato e entra no total pago", () => {
+    const lista = buildTransactionList([cobrancaPix], []);
+
+    expect(lista.items).toHaveLength(1);
+    expect(lista.total_paid_cents).toBe(1290);
+  });
+
+  it("refundable_cents da cobranca Pix e ZERO, nao o valor cheio", () => {
+    // O DEFEITO QUE ISTO FECHA: sem a condicao por provedor, a linha cairia no
+    // AGREGADO_ZERO por nao ter stripe_charge_id e sairia com o teto CHEIO,
+    // autorizando a rota de reembolso a devolver pela Stripe uma cobranca que
+    // nunca esteve la. Teto que nao desce e o lado inseguro.
+    const lista = buildTransactionList([cobrancaPix], []);
+
+    expect(lista.items[0].refundable_cents).toBe(0);
+  });
+
+  it("o estorno Pix desconta do total pago", () => {
+    const lista = buildTransactionList([cobrancaPix, estornoPix], []);
+
+    expect(lista.total_paid_cents).toBe(0);
+  });
+
+  it("pix_sem_reembolso_na_stripe_cents mostra o que ainda esta conosco", () => {
+    expect(
+      buildTransactionList([cobrancaPix], []).pix_sem_reembolso_na_stripe_cents,
+    ).toBe(1290);
+
+    expect(
+      buildTransactionList([cobrancaPix, estornoPix], [])
+        .pix_sem_reembolso_na_stripe_cents,
+    ).toBe(0);
+  });
+
+  it("saldo Asaas nunca fica negativo", () => {
+    // Estorno maior que a cobranca e erro de dado; negativo na tela seria lido
+    // como credito ao cliente.
+    expect(saldoAsaasCents([cobrancaPix, estornoPix, estornoPix])).toBe(0);
+  });
+
+  it("CONTROLE NEGATIVO: linha da Stripe nao entra no saldo do Pix", () => {
+    const cobrancaStripe = {
+      ...cobrancaPix,
+      id: "ft-stripe-1",
+      provider: "stripe",
+      stripe_charge_id: "ch_1",
+    };
+
+    expect(saldoAsaasCents([cobrancaStripe])).toBe(0);
+    expect(
+      buildTransactionList([cobrancaStripe], [])
+        .pix_sem_reembolso_na_stripe_cents,
+    ).toBe(0);
+  });
+
+  it("linha SEM provider cai em stripe e mantem o teto de reembolso", () => {
+    // Linha gravada na janela entre a migration e o deploy. Trata-la como
+    // provedor desconhecido recusaria devolver dinheiro de uma cobranca
+    // perfeitamente reembolsavel.
+    const semProvider = {
+      id: "ft-janela",
+      type: "charge",
+      gross_cents: 2990,
+      fee_cents: 100,
+      net_cents: 2890,
+      currency: "BRL",
+      occurred_at: "2026-09-01T00:00:00.000Z",
+      stripe_charge_id: "ch_janela",
+      stripe_invoice_id: null,
+      plan_code: "pro_monthly",
+    };
+
+    const lista = buildTransactionList([semProvider], []);
+    expect(lista.items[0].refundable_cents).toBe(2990);
+    expect(lista.pix_sem_reembolso_na_stripe_cents).toBe(0);
+  });
+
+  it("estorno do Asaas NAO e agregado por cobranca da Stripe", () => {
+    // Os dois provedores no mesmo extrato: o estorno Pix nao pode descontar do
+    // teto de uma cobranca da Stripe so por os dois estarem sem chave comum.
+    const cobrancaStripe = {
+      id: "ft-stripe-1",
+      provider: "stripe",
+      type: "charge",
+      gross_cents: 2990,
+      fee_cents: 100,
+      net_cents: 2890,
+      currency: "BRL",
+      occurred_at: "2026-08-01T00:00:00.000Z",
+      stripe_charge_id: "ch_1",
+      stripe_invoice_id: null,
+      plan_code: "pro_monthly",
+    };
+
+    const lista = buildTransactionList([cobrancaStripe, estornoPix], []);
+    const daStripe = lista.items.find((i) => i.id === "ft-stripe-1")!;
+
+    expect(daStripe.refundable_cents).toBe(2990);
+    expect(daStripe.refunded_cents).toBe(0);
   });
 });
