@@ -35,21 +35,63 @@ const estado = vi.hoisted(() => ({
   chamadas: [] as Array<{ nome: string; args: Record<string, unknown> }>,
   resposta: null as unknown,
   erro: null as unknown,
+  // Caminho PAGINADO (`admin_auth_times`): `paginas` sao as respostas em ordem,
+  // e `count` e o total que o `{ count: "exact" }` devolveria. Separado do
+  // `resposta` de proposito: os dois wrappers usam formas diferentes do cliente
+  // (um chama `rpc` direto, o outro encadeia `.order().range()`), e um dublê so
+  // para os dois esconderia essa diferenca.
+  paginas: [] as Array<Array<Record<string, unknown>>>,
+  count: null as number | null,
+  ranges: [] as Array<[number, number]>,
 }));
 
 vi.mock("../lib/supabaseAdmin", () => ({
   supabaseAdmin: {
-    rpc: async (nome: string, args: Record<string, unknown>) => {
+    rpc: (
+      nome: string,
+      args: Record<string, unknown>,
+      opts?: { count?: string },
+    ) => {
       estado.chamadas.push({ nome, args });
-      if (estado.erro) return { data: null, error: estado.erro };
-      const resp = estado.resposta;
-      return {
-        data:
-          typeof resp === "function"
-            ? (resp as (a: unknown) => unknown)(args)
-            : resp,
-        error: null,
+
+      // Caminho DIRETO (`await rpc(...)`), usado por fetchAuthUsersByIds.
+      const direto = () => {
+        if (estado.erro) return { data: null, error: estado.erro, count: null };
+        const resp = estado.resposta;
+        return {
+          data:
+            typeof resp === "function"
+              ? (resp as (a: unknown) => unknown)(args)
+              : resp,
+          error: null,
+          count: null,
+        };
       };
+
+      // Caminho ENCADEADO (`rpc(...).order(...).range(...)`), usado por
+      // fetchAuthTimes. Serve a pagina correspondente ao `from` pedido.
+      const builder = {
+        order: () => builder,
+        range: async (from: number, to: number) => {
+          estado.ranges.push([from, to]);
+          if (estado.erro) {
+            return { data: null, error: estado.erro, count: null };
+          }
+          const indice = estado.ranges.length - 1;
+          const pagina = estado.paginas[indice] ?? [];
+          return {
+            data: pagina,
+            error: null,
+            count: opts?.count === "exact" ? estado.count : null,
+          };
+        },
+        // Aguardavel direto, para o wrapper que nao encadeia.
+        then: (
+          resolve: (v: unknown) => unknown,
+          reject?: (e: unknown) => unknown,
+        ) => Promise.resolve(direto()).then(resolve, reject),
+      };
+      return builder;
     },
   },
 }));
@@ -192,71 +234,106 @@ describe("fetchAuthUsersByIds: lotes, agregacao e falha fechada", () => {
   });
 });
 
-describe("fetchAuthTimes: uma query, sem varredura", () => {
+describe("fetchAuthTimes: pagina e PROVA o total", () => {
   beforeEach(() => {
     estado.chamadas.length = 0;
+    estado.ranges.length = 0;
+    estado.paginas.length = 0;
     estado.resposta = null;
     estado.erro = null;
+    estado.count = null;
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
-  it("chama admin_auth_times UMA vez e monta o mapa", async () => {
-    estado.resposta = [
-      {
-        user_id: "a",
-        last_sign_in_at: "2026-08-30T10:00:00Z",
-        created_at: "2026-01-02T00:00:00Z",
-      },
-      {
-        user_id: "b",
-        last_sign_in_at: null,
-        created_at: "2026-02-03T00:00:00Z",
-      },
+  function linhaTimes(n: number) {
+    return {
+      user_id: `p${String(n).padStart(5, "0")}`,
+      last_sign_in_at: "2026-08-30T10:00:00Z",
+      created_at: "2026-01-02T00:00:00Z",
+    };
+  }
+
+  it("paginas de 1000, 1000 e 370 com count 2370 dao um mapa de 2370", async () => {
+    // 2370 escrito a mao, nao `paginas.flat().length`: derivar a expectativa do
+    // mesmo arranjo que alimenta o mecanismo faria os dois errarem juntos.
+    estado.count = 2370;
+    estado.paginas = [
+      Array.from({ length: 1000 }, (_, i) => linhaTimes(i)),
+      Array.from({ length: 1000 }, (_, i) => linhaTimes(1000 + i)),
+      Array.from({ length: 370 }, (_, i) => linhaTimes(2000 + i)),
+      [],
     ];
 
     const mapa = await fetchAuthTimes();
 
-    expect(estado.chamadas).toHaveLength(1);
-    expect(estado.chamadas[0].nome).toBe("admin_auth_times");
-    expect(mapa.size).toBe(2);
-    expect(mapa.get("a")).toEqual({
+    expect(mapa.size).toBe(2370);
+    expect(mapa.get("p00000")).toEqual({
       lastSignInAt: "2026-08-30T10:00:00Z",
       createdAt: "2026-01-02T00:00:00Z",
     });
-    expect(mapa.get("b")).toEqual({
-      lastSignInAt: null,
-      createdAt: "2026-02-03T00:00:00Z",
+    expect(mapa.get("p02369")).toBeTruthy();
+    // Avanca pelo tamanho REAL da pagina: 0, 1000, 2000, 2370.
+    expect(estado.ranges).toEqual([
+      [0, 999],
+      [1000, 1999],
+      [2000, 2999],
+      [2370, 3369],
+    ]);
+  });
+
+  it("count 2370 com paginas somando 2000 REJEITA", async () => {
+    // O caso que motivou o lote: em producao a resposta vinha 200 com 1000 de
+    // 8.370, e nada acusava. Aqui a prova de total e o que acusa.
+    estado.count = 2370;
+    estado.paginas = [
+      Array.from({ length: 1000 }, (_, i) => linhaTimes(i)),
+      Array.from({ length: 1000 }, (_, i) => linhaTimes(1000 + i)),
+      [],
+    ];
+
+    // UMA chamada so: `estado.ranges` avanca o indice das paginas, entao chamar
+    // de novo no mesmo teste leria outras paginas e mediria outra coisa.
+    const err = await fetchAuthTimes().catch((e) => e);
+
+    expect(err).toBeInstanceOf(Error);
+    expect((err as { statusCode?: number }).statusCode).toBe(500);
+    expect((err as { code?: string }).code).toBe("db_error");
+    expect((err as { context?: Record<string, unknown> }).context).toEqual({
+      op: "admin_auth_times",
+      esperado: 2370,
+      obtido: 2000,
     });
   });
 
-  it("erro REJEITA, e nunca devolve mapa vazio", async () => {
-    // Mapa vazio faria a retencao publicar zeros como se fossem medicao.
+  it("resposta SEM count REJEITA: sem o total nao da para provar completude", async () => {
+    estado.count = null;
+    estado.paginas = [[linhaTimes(1)], []];
+
+    const err = await fetchAuthTimes().catch((e) => e);
+
+    expect(err).toBeInstanceOf(Error);
+    expect((err as { context?: Record<string, unknown> }).context).toEqual({
+      op: "admin_auth_times",
+      obtido: 1,
+      esperado: null,
+    });
+  });
+
+  it("erro na pagina REJEITA, e nunca devolve mapa parcial", async () => {
     estado.erro = { message: "permission denied for function", code: "42501" };
 
-    await expect(fetchAuthTimes()).rejects.toThrow();
     const err = await fetchAuthTimes().catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
     expect((err as { statusCode?: number }).statusCode).toBe(500);
     expect((err as { cause?: unknown }).cause).toBeInstanceOf(Error);
-    expect((err as { context?: { pgCode?: string } }).context?.pgCode).toBe(
-      "42501",
+    expect((err as { context?: { op?: string } }).context?.op).toBe(
+      "admin_auth_times",
     );
   });
 
-  it("data que NAO e array rejeita, em vez de mapa vazio", async () => {
-    estado.resposta = null;
-
-    await expect(fetchAuthTimes()).rejects.toThrow();
-
-    const err = await fetchAuthTimes().catch((e) => e);
-    expect((err as { statusCode?: number }).statusCode).toBe(500);
-    expect((err as { context?: Record<string, unknown> }).context).toEqual({
-      op: "admin_auth_times",
-      recebido: "object",
-    });
-  });
-
-  it("resposta vazia e um mapa vazio legitimo, sem erro", async () => {
-    estado.resposta = [];
+  it("base vazia: count 0, mapa vazio, sem erro", async () => {
+    estado.count = 0;
+    estado.paginas = [[]];
     const mapa = await fetchAuthTimes();
     expect(mapa.size).toBe(0);
   });

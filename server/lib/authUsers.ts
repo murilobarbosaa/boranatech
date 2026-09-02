@@ -1,5 +1,4 @@
-import { createError } from "../middleware/error";
-import { erroEncadeavel } from "./supabaseError";
+import { coletarTudoProvandoTotal } from "./paginate";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 export type AuthTimes = {
@@ -26,35 +25,40 @@ type AuthTimesRow = {
  * mesmos, e o consumidor (metricas de retencao) roda sobre a base toda.
  *
  * Agora e a RPC `admin_auth_times`, que le `auth.users` dentro do banco e
- * devolve so as duas colunas que a retencao usa. Sem paginacao: o corte de
- * linhas do PostgREST nao se aplica a retorno de funcao, e a resposta e uma
- * linha estreita por usuario.
+ * devolve so as duas colunas que a retencao usa.
+ *
+ * ISTO AQUI AFIRMAVA, ATE 02/09/2026, QUE NAO PRECISAVA PAGINAR: "o corte de
+ * linhas do PostgREST nao se aplica a retorno de funcao". E FALSO, e o custo foi
+ * imediato. Medido em producao no mesmo dia, logo depois do deploy:
+ * `POST /rpc/admin_auth_times` respondia 200 com `content-range: 0-999/8370`.
+ * A funcao devolve 8.370 linhas e o Supabase entrega 1000, sem erro e sem
+ * aviso. A retencao passou a ler 1000 de 8.370 e a jogar o resto em `d30plus`,
+ * ou seja, gente que acessou ontem contada como fria.
+ *
+ * Comentario errado em codigo e pior que comentario ausente, porque ensina o
+ * engano; por isso o texto falso nao foi apagado, foi trocado por esta nota com
+ * a medicao. Agora a leitura pagina e PROVA o total contra
+ * `{ count: "exact" }`, em `coletarTudoProvandoTotal`.
  *
  * ERRO PROPAGA (o chamador transforma em estado/erro). Mapa vazio seria
  * indistinguivel de "base sem ninguem", e a retencao publicaria zeros como se
  * fossem medicao.
  */
 export async function fetchAuthTimes(): Promise<Map<string, AuthTimes>> {
+  const linhas = await coletarTudoProvandoTotal<AuthTimesRow>(
+    (from, to) =>
+      supabaseAdmin
+        .rpc("admin_auth_times", {}, { count: "exact" })
+        // `order` obrigatorio: OFFSET sem ordem definida repete e pula linhas ao
+        // mesmo tempo, o que mantem a CONTAGEM certa e o conjunto errado, e
+        // passaria pela prova de total sem ser pego.
+        .order("user_id")
+        .range(from, to),
+    { op: "admin_auth_times" },
+  );
+
   const map = new Map<string, AuthTimes>();
-  const { data, error } = await supabaseAdmin.rpc("admin_auth_times");
-  if (error) {
-    console.error("[authUsers] admin_auth_times falhou:", error);
-    throw createError(500, "db_error", "Erro ao buscar dados de acesso.", {
-      cause: erroEncadeavel(error),
-      context: {
-        op: "admin_auth_times",
-        pgCode: (error as { code?: string } | null | undefined)?.code,
-      },
-    });
-  }
-  // Mesma guarda do wrapper irmao: `data` fora do formato faria a retencao
-  // publicar zeros como se fossem medicao.
-  if (!Array.isArray(data)) {
-    throw createError(500, "db_error", "Erro ao buscar dados de acesso.", {
-      context: { op: "admin_auth_times", recebido: typeof data },
-    });
-  }
-  for (const row of data as AuthTimesRow[]) {
+  for (const row of linhas) {
     map.set(row.user_id, {
       lastSignInAt: row.last_sign_in_at ?? null,
       createdAt: row.created_at ?? null,
