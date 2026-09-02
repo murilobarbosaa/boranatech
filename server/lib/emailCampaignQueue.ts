@@ -1,3 +1,5 @@
+import os from "os";
+
 import * as Sentry from "@sentry/node";
 import { Queue, Worker, type Job } from "bullmq";
 
@@ -124,8 +126,17 @@ export const emailCampaignQueue = queueConnection
           type: "exponential",
           delay: 5000,
         },
-        removeOnComplete: 1000,
-        removeOnFail: 5000,
+        // MESMA SEMANTICA da fila transacional (server/lib/queue.ts), com os
+        // numeros de contagem que ja estavam aqui: o que muda e ganhar o corte
+        // por IDADE tambem, para as duas filas responderem "o que aconteceu nos
+        // ultimos N dias" e nao "os ultimos N jobs". Duas filas com politicas de
+        // retencao diferentes obrigam a lembrar de qual e qual na hora de
+        // investigar, que e exatamente a hora em que ninguem lembra.
+        //
+        // Os numeros de contagem sao maiores que os da transacional porque um
+        // disparo de campanha enfileira um job por destinatario de uma vez.
+        removeOnComplete: { age: 30 * 24 * 3600, count: 1000 },
+        removeOnFail: { age: 30 * 24 * 3600, count: 5000 },
       },
     })
   : null;
@@ -1079,6 +1090,10 @@ export function createEmailCampaignWorker() {
     processCampaignJob,
     {
       connection: queueConnection,
+      // Ver o comentario gemeo em server/lib/queue.ts: sem `name` o BullMQ nao
+      // grava `pb` (`processedBy`) no job, e nao ha como saber qual processo
+      // pegou qual envio.
+      name: os.hostname(),
       // Um envio por vez, no maximo 1 job a cada EMAIL_CAMPAIGN_RATE_MS
       // (default 1000ms): o Resend limita a 2 req/s e a fila de transacionais
       // ja consome parte desse orcamento.
