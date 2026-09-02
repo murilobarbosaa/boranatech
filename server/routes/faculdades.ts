@@ -1,10 +1,39 @@
-import { Router, type NextFunction, type Request, type Response } from "express";
+import {
+  Router,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import { z } from "zod";
 
 import { cacheKey, getOrCompute } from "../lib/cache";
 import { cacheConnection } from "../lib/redis";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
+import { montarDbError } from "../lib/dbError";
+
+/**
+ * `db_error` COM a causa real encadeada.
+ *
+ * Sem isto o 500 chega ao Sentry so com a mensagem generica: sem codigo do
+ * Postgres, sem operacao, sem nada que diga o que quebrou. Foi assim que
+ * "Erro ao atualizar perfil" e "Erro ao buscar notas fiscais" viraram cards
+ * indiagnosticaveis. `erroEncadeavel` existe porque o postgrest-js, no modo
+ * `{ data, error }`, devolve um objeto PLANO, e o `linkedErrorsIntegration`
+ * do Sentry so percorre `cause` que passe em `instanceof Error`.
+ *
+ * `pgCode` entra SO quando existe: num `catch` o que chega e um `Error`, que
+ * nao tem `code`, e um campo vazio no contexto seria ruido para alguem
+ * interpretar depois.
+ */
+function dbError(
+  op: string,
+  error: unknown,
+  message: string,
+  extra?: Record<string, unknown>,
+) {
+  return montarDbError("faculdades", op, error, message, extra);
+}
 
 // Rota PUBLICA e gratuita das faculdades de tecnologia (Censo INEP 2024).
 // Sem gate de Pro, sem auth. Registrada antes do validateSupabaseJwt em
@@ -26,9 +55,33 @@ const RATE_MAX_REQUESTS = 120;
 
 // 26 estados + DF. Validacao fechada: UF fora disso = 400.
 const UFS = [
-  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS",
-  "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC",
-  "SP", "SE", "TO",
+  "AC",
+  "AL",
+  "AP",
+  "AM",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MT",
+  "MS",
+  "MG",
+  "PA",
+  "PB",
+  "PR",
+  "PE",
+  "PI",
+  "RJ",
+  "RN",
+  "RS",
+  "RO",
+  "RR",
+  "SC",
+  "SP",
+  "SE",
+  "TO",
 ] as const;
 
 // Taxonomia espelhada do CHECK da migration e de faculdadesSubareas.ts.
@@ -47,12 +100,14 @@ const MODALIDADE_CODE: Record<"presencial" | "ead", number> = {
   presencial: 1,
   ead: 2,
 };
-const GRAU_CODE: Record<"bacharelado" | "licenciatura" | "tecnologico", number> =
-  {
-    bacharelado: 1,
-    licenciatura: 2,
-    tecnologico: 3,
-  };
+const GRAU_CODE: Record<
+  "bacharelado" | "licenciatura" | "tecnologico",
+  number
+> = {
+  bacharelado: 1,
+  licenciatura: 2,
+  tecnologico: 3,
+};
 const REDE_CODE: Record<"publica" | "privada", number> = {
   publica: 1,
   privada: 2,
@@ -319,7 +374,11 @@ router.get("/cursos", async (req, res, next) => {
             },
           );
           if (error) {
-            throw createError(500, "db_error", "Erro ao buscar faculdades.");
+            throw dbError(
+              "faculdades list courses",
+              error,
+              "Erro ao buscar faculdades.",
+            );
           }
           const rows = (data ?? []) as RpcCursoRow[];
           const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
@@ -366,7 +425,11 @@ router.get("/cursos", async (req, res, next) => {
 
         const { data, error, count } = await query;
         if (error) {
-          throw createError(500, "db_error", "Erro ao buscar faculdades.");
+          throw dbError(
+            "faculdades count courses",
+            error,
+            "Erro ao buscar faculdades.",
+          );
         }
         const total = count ?? 0;
         return {
@@ -409,7 +472,11 @@ async function fetchAllFacetRows(): Promise<FacetRow[]> {
       .order("co_curso", { ascending: true })
       .range(from, from + PAGE - 1);
     if (error) {
-      throw createError(500, "db_error", "Erro ao montar filtros.");
+      throw dbError(
+        "faculdades build filters",
+        error,
+        "Erro ao montar filtros.",
+      );
     }
     const page = (data ?? []) as unknown as FacetRow[];
     rows.push(...page);
@@ -512,7 +579,9 @@ router.get("/ies/:co_ies", async (req, res, next) => {
       .eq("co_ies", coIes)
       .maybeSingle();
     if (iesErr) {
-      return next(createError(500, "db_error", "Erro ao buscar faculdade."));
+      return next(
+        dbError("faculdades load ies", iesErr, "Erro ao buscar faculdade."),
+      );
     }
     if (!ies) {
       return next(createError(404, "not_found", "Faculdade nao encontrada."));
@@ -525,7 +594,13 @@ router.get("/ies/:co_ies", async (req, res, next) => {
       .order("qt_vg_total", { ascending: false })
       .order("no_curso", { ascending: true });
     if (cursosErr) {
-      return next(createError(500, "db_error", "Erro ao buscar cursos."));
+      return next(
+        dbError(
+          "faculdades load ies courses",
+          cursosErr,
+          "Erro ao buscar cursos.",
+        ),
+      );
     }
 
     const row = ies as unknown as IesRow;

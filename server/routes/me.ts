@@ -10,6 +10,31 @@ import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 import { GENDER_VALUES, type Gender } from "../../shared/gender";
+import { montarDbError } from "../lib/dbError";
+
+/**
+ * `db_error` COM a causa real encadeada.
+ *
+ * Sem isto o 500 chega ao Sentry so com a mensagem generica: sem codigo do
+ * Postgres, sem operacao, sem nada que diga o que quebrou. Foi assim que
+ * "Erro ao atualizar perfil" e "Erro ao buscar notas fiscais" viraram cards
+ * indiagnosticaveis. `erroEncadeavel` existe porque o postgrest-js, no modo
+ * `{ data, error }`, devolve um objeto PLANO, e o `linkedErrorsIntegration`
+ * do Sentry so percorre `cause` que passe em `instanceof Error`.
+ *
+ * `pgCode` entra SO quando existe: num `catch` o que chega e um `Error`, que
+ * nao tem `code`, e um campo vazio no contexto seria ruido para alguem
+ * interpretar depois.
+ */
+function dbError(
+  op: string,
+  error: unknown,
+  message: string,
+  extra?: Record<string, unknown>,
+) {
+  return montarDbError("me", op, error, message, extra);
+}
+
 import {
   MAX_PROFILE_SKILLS,
   SKILL_KINDS,
@@ -174,13 +199,25 @@ router.get("/", async (req, res, next) => {
             .single();
 
           if (refetchError || !existing) {
-            return next(createError(500, "db_error", "Erro ao criar perfil."));
+            return next(
+              dbError(
+                "me create profile refetch",
+                refetchError,
+                "Erro ao criar perfil.",
+              ),
+            );
           }
 
           return res.json({ data: existing });
         }
 
-        return next(createError(500, "db_error", "Erro ao criar perfil."));
+        return next(
+          dbError(
+            "me create profile insert",
+            insertError,
+            "Erro ao criar perfil.",
+          ),
+        );
       }
 
       void enqueueWelcomeEmailIfNeeded(newProfile, userId, req.user!.email);
@@ -189,7 +226,7 @@ router.get("/", async (req, res, next) => {
     }
 
     if (error) {
-      return next(createError(500, "db_error", "Erro ao buscar perfil."));
+      return next(dbError("me load profile", error, "Erro ao buscar perfil."));
     }
 
     void enqueueWelcomeEmailIfNeeded(profile, userId, req.user!.email);
@@ -355,7 +392,9 @@ router.patch("/", checkProStatus, async (req, res, next) => {
       .single();
 
     if (error) {
-      return next(createError(500, "db_error", "Erro ao atualizar perfil."));
+      return next(
+        dbError("me update profile", error, "Erro ao atualizar perfil."),
+      );
     }
 
     res.json({ data: profile });
@@ -375,7 +414,11 @@ router.get("/roadmaps", async (req, res, next) => {
 
     if (progressError) {
       return next(
-        createError(500, "db_error", "Erro ao buscar progresso de roadmaps."),
+        dbError(
+          "me load roadmap progress",
+          progressError,
+          "Erro ao buscar progresso de roadmaps.",
+        ),
       );
     }
 
@@ -400,7 +443,9 @@ router.get("/roadmaps", async (req, res, next) => {
       .in("id", roadmapIds);
 
     if (roadmapsError) {
-      return next(createError(500, "db_error", "Erro ao buscar trilhas."));
+      return next(
+        dbError("me load roadmaps", roadmapsError, "Erro ao buscar trilhas."),
+      );
     }
 
     const result = (roadmaps || [])
@@ -537,7 +582,7 @@ router.get("/skills", async (req, res, next) => {
       .order("created_at", { ascending: true });
 
     if (error) {
-      return next(createError(500, "db_error", "Erro ao buscar skills."));
+      return next(dbError("me load skills", error, "Erro ao buscar skills."));
     }
 
     res.json({ data: data || [] });
@@ -623,7 +668,13 @@ router.put("/skills", async (req, res, next) => {
       .eq("user_id", userId);
 
     if (deleteError) {
-      return next(createError(500, "db_error", "Erro ao atualizar skills."));
+      return next(
+        dbError(
+          "me replace skills delete",
+          deleteError,
+          "Erro ao atualizar skills.",
+        ),
+      );
     }
 
     if (rows.length > 0) {
@@ -632,7 +683,13 @@ router.put("/skills", async (req, res, next) => {
         .insert(rows);
 
       if (insertError) {
-        return next(createError(500, "db_error", "Erro ao salvar skills."));
+        return next(
+          dbError(
+            "me replace skills insert",
+            insertError,
+            "Erro ao salvar skills.",
+          ),
+        );
       }
     }
 
@@ -643,7 +700,7 @@ router.put("/skills", async (req, res, next) => {
       .order("created_at", { ascending: true });
 
     if (error) {
-      return next(createError(500, "db_error", "Erro ao buscar skills."));
+      return next(dbError("me reload skills", error, "Erro ao buscar skills."));
     }
 
     res.json({ data: data || [] });

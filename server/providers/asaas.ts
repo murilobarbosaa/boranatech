@@ -23,6 +23,7 @@ import { isValidCpf } from "../../shared/certificates/types";
 import { oneOffAccessDays } from "../../shared/paymentMethods";
 import { PLAN_PRICING } from "../../shared/planPricing";
 import type { PlanId } from "../../shared/planPricing";
+import { montarDbError } from "../lib/dbError";
 import type {
   CancelInput,
   CancelResult,
@@ -307,7 +308,13 @@ async function createCheckout(
     .select("id")
     .eq("code", input.planId)
     .maybeSingle();
-  if (!plan) throw createError(500, "db_error", "Plano Pro não encontrado.");
+  if (!plan)
+    throw montarDbError(
+      "webhook/asaas",
+      "asaas load pending plan",
+      pendenteError,
+      "Plano Pro não encontrado.",
+    );
 
   // PRECO FINAL pela funcao unica (server/lib/coupons.ts), a mesma aritmetica
   // que o frontend usa na previa. Antes daqui a cobranca herdava o preco CHEIO
@@ -1042,10 +1049,15 @@ async function activateOnPayment(args: {
   const rows = (activation ?? []) as ExclusiveActivationRow[];
   const result = rows[0];
   if (!result) {
-    console.error(
-      `[webhook/asaas] activate_subscription_exclusive devolveu vazio (row ${row.id}).`,
+    throw montarDbError(
+      "webhook/asaas",
+      "asaas activate subscription",
+      error,
+      "Ativação de assinatura sem result.",
+      // O `console.error` que este helper substituiu carregava o `row.id`, e
+      // sem ele nao da para achar QUAL linha ficou sem ativar.
+      { rowId: row.id },
     );
-    throw createError(500, "db_error", "Ativação de assinatura sem result.");
   }
   if (!result.out_activated) return false;
 

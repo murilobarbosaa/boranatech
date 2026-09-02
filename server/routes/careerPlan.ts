@@ -29,6 +29,30 @@ import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { fetchUserContextPool } from "../lib/userContext/pool";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
+import { montarDbError } from "../lib/dbError";
+
+/**
+ * `db_error` COM a causa real encadeada.
+ *
+ * Sem isto o 500 chega ao Sentry so com a mensagem generica: sem codigo do
+ * Postgres, sem operacao, sem nada que diga o que quebrou. Foi assim que
+ * "Erro ao atualizar perfil" e "Erro ao buscar notas fiscais" viraram cards
+ * indiagnosticaveis. `erroEncadeavel` existe porque o postgrest-js, no modo
+ * `{ data, error }`, devolve um objeto PLANO, e o `linkedErrorsIntegration`
+ * do Sentry so percorre `cause` que passe em `instanceof Error`.
+ *
+ * `pgCode` entra SO quando existe: num `catch` o que chega e um `Error`, que
+ * nao tem `code`, e um campo vazio no contexto seria ruido para alguem
+ * interpretar depois.
+ */
+function dbError(
+  op: string,
+  error: unknown,
+  message: string,
+  extra?: Record<string, unknown>,
+) {
+  return montarDbError("career-plan", op, error, message, extra);
+}
 
 /**
  * Plano de carreira (Pro). Mesmas regras de seguranca do molde
@@ -159,7 +183,12 @@ router.post(
     const requestId =
       (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
 
-    const usage = await checkAiDailyLimit(userId, !!req.isPro, "[career-plan]", TOOL);
+    const usage = await checkAiDailyLimit(
+      userId,
+      !!req.isPro,
+      "[career-plan]",
+      TOOL,
+    );
     if (!usage.allowed) {
       if (usage.verificationFailed) {
         await logAiUsage({
@@ -238,19 +267,22 @@ router.post(
         .single();
 
       if (error || !data) {
-        console.error(
-          "[career-plan] insert do plano falhou:",
-          error?.message ?? "sem dados",
-        );
         return next(
-          createError(500, "db_error", "Erro ao salvar o plano de carreira."),
+          dbError(
+            "career-plan save plan",
+            error,
+            "Erro ao salvar o plano de carreira.",
+          ),
         );
       }
       planId = (data as { id: string }).id;
     } catch (err) {
-      console.error("[career-plan] insert do plano lancou:", err);
       return next(
-        createError(500, "db_error", "Erro ao salvar o plano de carreira."),
+        dbError(
+          "career-plan save plan threw",
+          err,
+          "Erro ao salvar o plano de carreira.",
+        ),
       );
     }
 
@@ -300,7 +332,11 @@ router.get(
 
       if (error) {
         return next(
-          createError(500, "db_error", "Erro ao buscar seus planos."),
+          dbError(
+            "career-plan list plans",
+            error,
+            "Erro ao buscar seus planos.",
+          ),
         );
       }
 
@@ -345,7 +381,9 @@ router.get(
         .maybeSingle();
 
       if (error) {
-        return next(createError(500, "db_error", "Erro ao buscar o plano."));
+        return next(
+          dbError("career-plan load plan", error, "Erro ao buscar o plano."),
+        );
       }
       if (!data) {
         return next(createError(404, "not_found", "Plano nao encontrado."));
@@ -402,7 +440,11 @@ router.post(
       }
       // TODO(Ana): mensagem de requisicao invalida.
       return next(
-        createError(400, "invalid_request", "Envie pelo menos uma mensagem valida."),
+        createError(
+          400,
+          "invalid_request",
+          "Envie pelo menos uma mensagem valida.",
+        ),
       );
     }
 
@@ -455,7 +497,11 @@ router.post(
         status: "success",
         inputChars: aiIo.inputChars,
         outputChars: aiIo.outputChars,
-        costEstimate: estimateCost(aiIo.inputChars, aiIo.outputChars, DEFAULT_MODEL),
+        costEstimate: estimateCost(
+          aiIo.inputChars,
+          aiIo.outputChars,
+          DEFAULT_MODEL,
+        ),
       });
       res.json({
         reply: turn.reply,

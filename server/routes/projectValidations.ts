@@ -20,6 +20,7 @@ import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 import { persistGithubAnalysis } from "./github";
+import { montarDbError } from "../lib/dbError";
 
 // Validacao de projeto Pro via leitor de GitHub (fase 5c.1). A camada
 // VALIDADA e separada da autodeclarada por design: aprovacao NAO escreve
@@ -79,7 +80,12 @@ router.post(
       .maybeSingle();
     if (approvedError) {
       return next(
-        createError(500, "db_error", "Erro ao verificar validações."),
+        montarDbError(
+          "project-validation",
+          "project-validations check approved",
+          approvedError,
+          "Erro ao verificar validações.",
+        ),
       );
     }
     if (approved) {
@@ -107,7 +113,12 @@ router.post(
     const requestId =
       (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
 
-    const usage = await checkAiDailyLimit(userId, true, "[project-validation]", TOOL);
+    const usage = await checkAiDailyLimit(
+      userId,
+      true,
+      "[project-validation]",
+      TOOL,
+    );
     if (!usage.allowed) {
       if (usage.verificationFailed) {
         await logAiUsage({
@@ -252,7 +263,14 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
       .eq("user_id", req.user!.id)
       .order("created_at", { ascending: false });
     if (error) {
-      return next(createError(500, "db_error", "Erro ao listar validações."));
+      return next(
+        montarDbError(
+          "project-validation",
+          "project-validations list",
+          error,
+          "Erro ao listar validações.",
+        ),
+      );
     }
     res.json({
       data: (data ?? []).map((row) => ({
@@ -281,7 +299,14 @@ router.get(
         .eq("project_id", projectId)
         .order("created_at", { ascending: false });
       if (error) {
-        return next(createError(500, "db_error", "Erro ao buscar validações."));
+        return next(
+          montarDbError(
+            "project-validation",
+            "project-validations load",
+            error,
+            "Erro ao buscar validações.",
+          ),
+        );
       }
       const rows = data ?? [];
       if (rows.length === 0) {

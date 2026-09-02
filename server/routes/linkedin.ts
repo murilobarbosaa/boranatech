@@ -24,6 +24,7 @@ import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 
+import { montarDbError } from "../lib/dbError";
 const router = Router();
 
 router.use(requireAuth);
@@ -171,7 +172,12 @@ router.post(
     const requestId =
       (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
 
-    const usage = await checkAiDailyLimit(userId, !!req.isPro, "[linkedin]", TOOL);
+    const usage = await checkAiDailyLimit(
+      userId,
+      !!req.isPro,
+      "[linkedin]",
+      TOOL,
+    );
     if (!usage.allowed) {
       // Falha de verificacao (RPC fora) e distinta de cota estourada: 503, nao
       // 429, e loga como "error" pra nao poluir a metrica de rate_limited.
@@ -209,7 +215,12 @@ router.post(
     }
 
     let aiUsed = false;
-    let aiIo = { inputChars: 0, outputChars: 0, inputTokens: 0, outputTokens: 0 };
+    let aiIo = {
+      inputChars: 0,
+      outputChars: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+    };
     try {
       const { response, parsed } = await analyzeLinkedin(request, (io) => {
         aiUsed = true;
@@ -330,12 +341,13 @@ router.get(
         .limit(20);
 
       if (error) {
-        console.error(
-          "[linkedin] Falha ao listar analises:",
-          error.message,
-        );
         return next(
-          createError(500, "db_error", "Erro ao buscar suas análises."),
+          montarDbError(
+            "linkedin",
+            "linkedin list analyses",
+            error,
+            "Erro ao buscar suas análises.",
+          ),
         );
       }
       res.json({ data: data ?? [] });
@@ -361,11 +373,14 @@ router.get(
         .maybeSingle();
 
       if (error) {
-        console.error(
-          "[linkedin] Falha ao buscar a analise:",
-          error.message,
+        return next(
+          montarDbError(
+            "linkedin",
+            "linkedin load analysis",
+            error,
+            "Erro ao buscar a análise.",
+          ),
         );
-        return next(createError(500, "db_error", "Erro ao buscar a análise."));
       }
       if (!data) {
         return next(createError(404, "not_found", "Análise não encontrada."));

@@ -9,6 +9,7 @@ import {
   resolveProStatus,
 } from "../middleware/auth";
 import { createError } from "../middleware/error";
+import { montarDbError } from "../lib/dbError";
 
 const router = Router();
 
@@ -43,7 +44,14 @@ router.get("/:context", async (req, res, next) => {
       .eq("context", context);
 
     if (error) {
-      return next(createError(500, "db_error", "Erro ao buscar progresso."));
+      return next(
+        montarDbError(
+          "progress",
+          "progress load",
+          error,
+          "Erro ao buscar progresso.",
+        ),
+      );
     }
 
     res.json({

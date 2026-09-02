@@ -22,6 +22,7 @@ import {
 import { oneOffAccessDays } from "../../shared/paymentMethods";
 import { getPlanChargeValue, PLAN_PRICING } from "../../shared/planPricing";
 import type { PlanId } from "../../shared/planPricing";
+import { montarDbError } from "../lib/dbError";
 import type {
   CancelInput,
   CancelResult,
@@ -1088,10 +1089,15 @@ export async function onBoletoAsyncPaymentSucceeded(
   const linhas = (ativacao ?? []) as ExclusiveActivationRow[];
   const resultado = linhas[0];
   if (!resultado) {
-    console.error(
-      `[webhook/stripe] activate_subscription_exclusive devolveu vazio (session ${session.id}, sub ${pendingRow.id}).`,
+    throw montarDbError(
+      "webhook/stripe",
+      "stripe activate subscription",
+      error,
+      "Ativação de assinatura sem resultado.",
+      // Mesmo motivo do asaas: o log removido trazia os dois identificadores,
+      // e sao eles que dizem qual pagamento ficou sem ativar.
+      { sessionId: session.id, subscriptionRowId: pendingRow.id },
     );
-    throw createError(500, "db_error", "Ativação de assinatura sem resultado.");
   }
 
   if (!resultado.out_activated) {

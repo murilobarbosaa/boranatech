@@ -3,6 +3,30 @@ import { Router } from "express";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
+import { montarDbError } from "../lib/dbError";
+
+/**
+ * `db_error` COM a causa real encadeada.
+ *
+ * Sem isto o 500 chega ao Sentry so com a mensagem generica: sem codigo do
+ * Postgres, sem operacao, sem nada que diga o que quebrou. Foi assim que
+ * "Erro ao atualizar perfil" e "Erro ao buscar notas fiscais" viraram cards
+ * indiagnosticaveis. `erroEncadeavel` existe porque o postgrest-js, no modo
+ * `{ data, error }`, devolve um objeto PLANO, e o `linkedErrorsIntegration`
+ * do Sentry so percorre `cause` que passe em `instanceof Error`.
+ *
+ * `pgCode` entra SO quando existe: num `catch` o que chega e um `Error`, que
+ * nao tem `code`, e um campo vazio no contexto seria ruido para alguem
+ * interpretar depois.
+ */
+function dbError(
+  op: string,
+  error: unknown,
+  message: string,
+  extra?: Record<string, unknown>,
+) {
+  return montarDbError("bookmarks", op, error, message, extra);
+}
 
 const router = Router();
 
@@ -64,7 +88,9 @@ router.get("/", async (req, res, next) => {
         .range(from, to);
 
       if (error) {
-        return next(createError(500, "db_error", "Erro ao buscar favoritos."));
+        return next(
+          dbError("bookmarks list", error, "Erro ao buscar favoritos."),
+        );
       }
 
       const total = count ?? 0;
@@ -98,7 +124,9 @@ router.get("/", async (req, res, next) => {
         .range(from, to);
 
       if (error) {
-        return next(createError(500, "db_error", "Erro ao buscar favoritos."));
+        return next(
+          dbError("bookmarks list details", error, "Erro ao buscar favoritos."),
+        );
       }
 
       const rows = data || [];
@@ -175,7 +203,9 @@ router.post("/", async (req, res, next) => {
         return res.json({ data: existing });
       }
 
-      return next(createError(500, "db_error", "Erro ao salvar favorito."));
+      return next(
+        dbError("bookmarks create", error, "Erro ao salvar favorito."),
+      );
     }
 
     res.status(201).json({ data });
@@ -196,7 +226,9 @@ router.delete("/:resourceType/:resourceId", async (req, res, next) => {
       .eq("resource_id", resourceId);
 
     if (error) {
-      return next(createError(500, "db_error", "Erro ao remover favorito."));
+      return next(
+        dbError("bookmarks delete", error, "Erro ao remover favorito."),
+      );
     }
 
     res.json({ data: { removed: true } });
@@ -251,7 +283,9 @@ router.post("/migrate", async (req, res, next) => {
     });
 
     if (error) {
-      return next(createError(500, "db_error", "Erro ao migrar favoritos."));
+      return next(
+        dbError("bookmarks migrate", error, "Erro ao migrar favoritos."),
+      );
     }
 
     res.json({ data: { migrated: rows.length } });
