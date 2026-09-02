@@ -110,8 +110,13 @@ function montar(
   respostas: Record<string, RespostaTabela | (() => RespostaTabela)>,
   maxRows: number | null = MAX_ROWS,
   authAdmin: Record<string, unknown> = {},
+  // Dublê do `rpc`. Passou a existir em 02/09/2026, quando o churn-risk trocou
+  // a varredura de `auth.admin.listUsers` pela RPC `admin_auth_users_lite`:
+  // sem ele o dublê devolve `{data: null}` e a rota enxerga zero usuarios do
+  // Auth, o que faz o teste passar sem exercitar nada do caminho.
+  rpcImpl?: (nome: string, args: unknown) => Promise<unknown>,
 ) {
-  estado.double = criarSupabaseDouble(respostas, authAdmin, undefined, maxRows);
+  estado.double = criarSupabaseDouble(respostas, authAdmin, rpcImpl, maxRows);
 }
 
 afterEach(() => {
@@ -335,6 +340,13 @@ describe("as varreduras globais do admin não param no teto", () => {
   }
 
   it("GET /churn-risk enxerga assinatura acima do teto", async () => {
+    // REESCRITO EM 02/09/2026. Antes o quarto argumento era
+    // `{ listUsers: async () => ({ data: { users: [] }, error: null }) }`, um
+    // dublê do Auth por HTTP. A rota nao varre mais o Auth: chama a RPC
+    // `admin_auth_users_lite`. Com o dublê antigo o teste continuaria VERDE, e
+    // e por isso que ele foi trocado em vez de removido: dublê de um caminho
+    // que nao existe mais nao falha, so para de medir.
+    const rpcs: string[] = [];
     montar(
       {
         subscriptions: {
@@ -343,9 +355,11 @@ describe("as varreduras globais do admin não param no teto", () => {
         profiles: { rows: [] },
       },
       MAX_ROWS,
-      // A rota cruza com o Auth para achar quem nunca logou; aqui só precisa
-      // responder, o alvo do teste é a varredura de assinaturas.
-      { listUsers: async () => ({ data: { users: [] }, error: null }) },
+      {},
+      async (nome) => {
+        rpcs.push(nome);
+        return { data: [], error: null };
+      },
     );
 
     const r = await chamarAdmin("GET", "/churn-risk");
@@ -353,6 +367,8 @@ describe("as varreduras globais do admin não param no teto", () => {
     expect(r.status).toBe(200);
     // Sem paginar, a lista de risco pararia em 1000 e ninguém veria a diferença.
     expect(estado.double.de("subscriptions").length).toBeGreaterThan(1);
+    // E o Auth foi resolvido pela RPC, nao por varredura.
+    expect(rpcs).toContain("admin_auth_users_lite");
   });
 
   it("GET /affiliates-stats devolve TODOS os afiliados", async () => {

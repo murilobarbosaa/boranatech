@@ -134,6 +134,18 @@ const SKIPS_DECLARADOS = [
       "defeitos que mock nenhum pegaria (on conflict com índice parcial, e o " +
       "400 do statsPeriod vazio). Pula sem BNT_SYNC_HARNESS=1.",
   },
+  {
+    arquivo: "server/lib/adminAuthUsersRpc.pg.test.ts",
+    marcador: "skipIf",
+    testesPulados: 7,
+    porque:
+      "Migration 20260902020000 (admin_auth_users_lite e admin_auth_times) " +
+      "contra Postgres real em Docker. As duas sao `language sql` com " +
+      "`returns table`, e divergencia de tipo entre o SELECT e o RETURNS nao " +
+      "aparece ao criar a funcao, so na primeira chamada; e os privilegios " +
+      "(anon e authenticated SEM execute sobre auth.users) nao existem em " +
+      "duplo. Pula sem BNT_AUTHRPC_PG=1; instrucoes no cabecalho do arquivo.",
+  },
 ] as const;
 
 /** Total de testes que a suíte tem permissão de pular. */
@@ -188,7 +200,12 @@ describe("skips da suite: afirmar o TOTAL, nao a pertinencia", () => {
     // deduplicacao concorrente, 2 do sync de ponta a ponta). Era 5 ate a Fase 3
     // do projeto de unificacao de bugs; alterar este numero e ato deliberado, no
     // mesmo commit do harness que entra ou sai.
-    expect(EXPECTED_SKIPPED_COUNT).toBe(10);
+    //
+    // 17 desde 02/09/2026: +7 do harness da migration admin_auth_users_rpc
+    // (server/lib/adminAuthUsersRpc.pg.test.ts), que prova contra Postgres real
+    // os tipos do `returns table` e os privilegios das duas funcoes definer.
+    // MEDIDO pelo proprio guard, que reprovou com "expected 17 to be 10".
+    expect(EXPECTED_SKIPPED_COUNT).toBe(17);
   });
 
   it("cada skip declarado desliga o numero de testes que diz desligar", () => {
