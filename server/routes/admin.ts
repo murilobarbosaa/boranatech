@@ -412,43 +412,74 @@ type AuthUserLite = {
   name: string | null;
 };
 
-// Resolve dados de Auth (email, last_sign_in_at, created_at, nome do metadata)
-// de varios usuarios em UMA varredura paginada de listUsers, no lugar do
-// anti-padrao de um getUserById por linha. last_sign_in_at so existe em
-// auth.users (nao em profiles), por isso a varredura do Auth e necessaria aqui.
-// Para o alvo de hoje (poucos assinantes ativos) a varredura e barata; se a base
-// crescer muito, avaliar um RPC dedicado. Erro propaga, nunca vira mapa vazio.
-async function fetchAuthUsersByIds(
+/** Lote de ids por chamada. Ver o comentario de `fetchAuthUsersByIds`. */
+export const AUTH_LITE_BATCH = 500;
+
+/** Uma linha de `public.admin_auth_users_lite`, como o PostgREST a devolve. */
+type AuthUserLiteRow = {
+  user_id: string;
+  email: string | null;
+  last_sign_in_at: string | null;
+  created_at: string | null;
+  name: string | null;
+};
+
+/**
+ * Dados do Auth para um conjunto de ids, em UMA query por lote.
+ *
+ * ATE 2026-09-02 ISTO ERA FALSO: a funcao dizia resolver "em UMA varredura
+ * paginada de listUsers", e o comentario tratava isso como barato porque o alvo
+ * eram poucos assinantes. O custo nunca foi proporcional ao alvo, e sim a BASE:
+ * `auth.admin.listUsers` pagina de 1000 em 1000 sobre todos os usuarios, entao
+ * com 8.317 perfis eram ate 9 requisicoes HTTP carregando metadata de mil
+ * pessoas cada, a cada abertura da tela, para achar ~60 linhas.
+ *
+ * Em 31/08 isso estourou: `AuthRetryableFetchError: The operation was aborted
+ * due to timeout` em `GET /api/admin/churn-risk` (issue NODE-EXPRESS-T), com o
+ * stack apontando para `GoTrueAdminApi.listUsers` daqui. O proprio comentario
+ * antigo previa a saida ("se a base crescer muito, avaliar um RPC dedicado").
+ *
+ * Agora e a RPC `admin_auth_users_lite`, que filtra no banco por `= any(...)`.
+ * Em lotes porque a lista de ids viaja na URL do PostgREST e um array gigante
+ * esbarra no limite de tamanho da requisicao; 500 e folgado para os alvos de
+ * hoje e mantem a chamada curta.
+ *
+ * ERRO PROPAGA, SEMPRE. Mapa vazio aqui nao e "ninguem encontrado": e o estado
+ * em que o churn-risk descarta todo mundo em silencio, e a mesma classe de falha
+ * que esta base ja documentou (contador devolvendo -1 virando "protegido").
+ */
+export async function fetchAuthUsersByIds(
   ids: string[],
 ): Promise<Map<string, AuthUserLite>> {
   const result = new Map<string, AuthUserLite>();
   if (ids.length === 0) return result;
 
-  const wanted = new Set(ids);
-  const perPage = 1000;
-  let page = 1;
-  for (;;) {
-    const { data, error } = await supabaseAdmin.auth.admin.listUsers({
-      page,
-      perPage,
+  for (let i = 0; i < ids.length; i += AUTH_LITE_BATCH) {
+    const lote = ids.slice(i, i + AUTH_LITE_BATCH);
+    const { data, error } = await supabaseAdmin.rpc("admin_auth_users_lite", {
+      p_user_ids: lote,
     });
-    if (error) throw error;
-
-    const users = data.users;
-    for (const user of users) {
-      if (!wanted.has(user.id)) continue;
-      const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
-      const metaName = typeof meta.name === "string" ? meta.name : null;
-      result.set(user.id, {
-        email: user.email ?? null,
-        lastSignInAt: user.last_sign_in_at ?? null,
-        createdAt: user.created_at ?? null,
-        name: metaName,
+    if (error) {
+      throw dbError("churn-risk auth users", error, "Erro ao buscar usuários.");
+    }
+    // `data` fora do formato NAO vira lista vazia. Sem isto, uma resposta
+    // inesperada (null, objeto, string) escorreria pelo `?? []` e o churn-risk
+    // simplesmente nao veria ninguem: uma tela vazia afirmando "ninguem em
+    // risco" sobre uma leitura que nao aconteceu. Lancar aqui e a mesma escolha
+    // do erro acima, pelo mesmo motivo.
+    if (!Array.isArray(data)) {
+      throw createError(500, "db_error", "Erro ao buscar usuários.", {
+        context: { op: "admin_auth_users_lite", recebido: typeof data },
       });
     }
-
-    if (users.length < perPage || result.size === wanted.size) break;
-    page += 1;
+    for (const row of data as AuthUserLiteRow[]) {
+      result.set(row.user_id, {
+        email: row.email ?? null,
+        lastSignInAt: row.last_sign_in_at ?? null,
+        createdAt: row.created_at ?? null,
+        name: row.name ?? null,
+      });
+    }
   }
   return result;
 }

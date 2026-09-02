@@ -63,8 +63,22 @@ async function montar() {
   return utils;
 }
 
-function abrirModal() {
-  fireEvent.click(screen.getByTestId("orfao-resolver"));
+/**
+ * ESPERA A LINHA, e so entao clica.
+ *
+ * `montar()` acima espera o `adminFetch` SER CHAMADO, nao a lista renderizar:
+ * entre uma coisa e outra falta a resolucao da promise e o flush do estado do
+ * React. Enquanto isto era `getByTestId` sincrono, o teste dependia de esse
+ * flush ja ter acontecido, o que e verdade numa maquina ociosa e falso sob
+ * carga. Custou uma reprovacao do job `qualidade` no CI (run 33595037198), num
+ * commit que nao tocava `client/`: o que mudou foi so o escalonamento dos
+ * arquivos de teste, o suficiente para perder a corrida.
+ *
+ * `findByTestId` espera a linha aparecer. Nenhuma assercao deste arquivo muda;
+ * muda so o modo de esperar.
+ */
+async function abrirModal() {
+  fireEvent.click(await screen.findByTestId("orfao-resolver"));
 }
 
 function digitarNota(texto: string) {
@@ -127,14 +141,14 @@ describe("gate do botao de confirmar", () => {
 
   it("nota vazia deixa o botao bloqueado", async () => {
     await montar();
-    abrirModal();
+    await abrirModal();
     expect(botaoConfirmar().disabled).toBe(true);
     expect(botaoConfirmar().getAttribute("aria-disabled")).toBe("true");
   });
 
   it("nota curta continua bloqueando, e o apoio diz quanto falta", async () => {
     await montar();
-    abrirModal();
+    await abrirModal();
     digitarNota("ok");
     expect(botaoConfirmar().disabled).toBe(true);
     const apoio = document.getElementById(
@@ -145,7 +159,7 @@ describe("gate do botao de confirmar", () => {
 
   it("nota no minimo libera", async () => {
     await montar();
-    abrirModal();
+    await abrirModal();
     digitarNota(NOTA_OK);
     expect(botaoConfirmar().disabled).toBe(false);
     expect(botaoConfirmar().getAttribute("aria-disabled")).toBe("false");
@@ -153,7 +167,7 @@ describe("gate do botao de confirmar", () => {
 
   it("clicar bloqueado nao chama a rota de resolucao", async () => {
     await montar();
-    abrirModal();
+    await abrirModal();
     fireEvent.click(botaoConfirmar());
     expect(
       adminSpy.adminFetch.mock.calls.filter((c) =>
@@ -166,12 +180,12 @@ describe("gate do botao de confirmar", () => {
     // O modal nao desmonta ao fechar (devolve null), entao sem o reset a
     // segunda abertura nasceria liberada, sobre outra linha.
     await montar();
-    abrirModal();
+    await abrirModal();
     digitarNota(NOTA_OK);
     expect(botaoConfirmar().disabled).toBe(false);
 
     fireEvent.click(screen.getByRole("button", { name: /cancelar/i }));
-    abrirModal();
+    await abrirModal();
 
     expect(
       (screen.getByTestId("orfao-nota") as HTMLTextAreaElement).value,
@@ -208,7 +222,7 @@ describe("CONTROLE NEGATIVO: o caminho feliz resolve e recarrega", () => {
   it("envia confirmed e a nota, e busca a lista de novo", async () => {
     comLista();
     await montar();
-    abrirModal();
+    await abrirModal();
     digitarNota(NOTA_OK);
     fireEvent.click(botaoConfirmar());
 
@@ -238,7 +252,7 @@ describe("CONTROLE NEGATIVO: o caminho feliz resolve e recarrega", () => {
   it("erro na resolucao aparece NO MODAL, e a linha continua la", async () => {
     comLista();
     await montar();
-    abrirModal();
+    await abrirModal();
     digitarNota(NOTA_OK);
     adminSpy.adminFetch.mockRejectedValueOnce(
       new Error("Este pagamento já foi resolvido por alguém."),

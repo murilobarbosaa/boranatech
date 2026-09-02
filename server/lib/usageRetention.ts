@@ -1,4 +1,5 @@
 import { fetchAuthTimes } from "./authUsers";
+import { coletarTudoProvandoTotal } from "./paginate";
 import { getPosthogPersonActivity } from "./posthog";
 import { supabaseAdmin } from "./supabaseAdmin";
 
@@ -90,14 +91,30 @@ export async function getUsageRetention(): Promise<UsageRetentionState> {
   }
 
   try {
-    // Base canonica: todos os profiles (a base inteira). last_sign_in_at vem do
-    // auth scan; profiles nao tem esse campo.
-    const { data: profiles, error } = await supabaseAdmin
-      .from("profiles")
-      .select("user_id");
-    if (error) throw error;
+    // Base canonica: todos os profiles (a base inteira). last_sign_in_at vem da
+    // RPC de auth; profiles nao tem esse campo.
+    //
+    // ISTO VINHA CAPADO EM 1000. O `select("user_id")` sem `range` recebe no
+    // maximo o `max_rows` do Supabase, que e 1000, e a base tem 8.370: medido em
+    // 02/09/2026 com `content-range: 0-0/8370`. NAO medimos desde quando estava
+    // assim; so sabemos que ja estava antes de 02/09/2026, porque este lote nao
+    // tocou nesta linha ate aqui. O efeito era a "base inteira" do comentario
+    // acima ser 12% dela, e a retencao publicar essa fatia como se fosse o todo.
+    //
+    // Agora pagina e PROVA o total contra `{ count: "exact" }`. Uma varredura
+    // que so para na pagina vazia nao bastaria: ela afirma "as paginas
+    // acabaram", nao "tenho todas as linhas".
+    const profiles = await coletarTudoProvandoTotal<{ user_id: string | null }>(
+      (from, to) =>
+        supabaseAdmin
+          .from("profiles")
+          .select("user_id", { count: "exact" })
+          .order("user_id")
+          .range(from, to),
+      { op: "usage-retention profiles" },
+    );
 
-    const userIds = (profiles || [])
+    const userIds = profiles
       .map((profile) => profile.user_id)
       .filter((id): id is string => Boolean(id));
 

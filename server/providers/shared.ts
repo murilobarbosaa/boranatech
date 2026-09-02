@@ -156,11 +156,41 @@ export async function getUserContact(userId: string): Promise<{
  * ORDEM PRESERVADA da versao anterior: cache, afiliado, cupom, e-mail. O cache
  * primeiro e de proposito, e `void` de proposito: e o unico efeito que muda o
  * que a pessoa VE agora, e nao vale a pena esperar por ele.
+ *
+ * NEM TODA ATIVACAO E UMA VENDA, e ate 2026-09-02 esta funcao supunha que sim.
+ * Ver `MotivoDaAtivacao` abaixo e o comentario de `handleTransition` em
+ * server/providers/stripe.ts.
  */
+
+/**
+ * Por que esta assinatura passou a valer agora.
+ *
+ * `primeira_ativacao`: alguem comprou. Vale comissao de afiliado e resgate de
+ * cupom, porque houve uma venda nova.
+ *
+ * `recuperacao`: a assinatura JA era paga, caiu em `past_due` porque a
+ * renovacao falhou, e a cobranca finalmente passou. Nao ha venda nova: contar
+ * comissao aqui pagaria o afiliado de novo pelo mesmo cliente, e o cupom seria
+ * resgatado uma segunda vez.
+ *
+ * NAO existe um terceiro valor de proposito. Qualquer outro `prevStatus` que
+ * produza ativacao (hoje `null`, `pending`, ou um status que ainda nao existe)
+ * e tratado como `primeira_ativacao`, que e o comportamento que ja havia: a
+ * mudanca deste lote SUBTRAI efeitos de um caso especifico e nao altera nenhum
+ * outro.
+ */
+export type MotivoDaAtivacao = "primeira_ativacao" | "recuperacao";
+
 export async function applyActivationEffects(params: {
   userId: string;
   /** Rotulo do log, para distinguir a origem sem ramificar comportamento. */
   logPrefix: string;
+  /**
+   * Obrigatorio e sem default: um default silencioso aqui faria um call site
+   * novo herdar `primeira_ativacao` sem ninguem decidir, que e exatamente como
+   * o defeito de 01/09 passou despercebido.
+   */
+  motivo: MotivoDaAtivacao;
   planName?: string;
   affiliateCode?: string | null;
   couponCode?: string | null;
@@ -169,11 +199,24 @@ export async function applyActivationEffects(params: {
   sourceEvent?: { id: string; type: string; subscriptionId: string | null };
   prevStatus?: string | null;
 }): Promise<void> {
-  const { userId, logPrefix } = params;
+  const { userId, logPrefix, motivo } = params;
+  const ehRecuperacao = motivo === "recuperacao";
 
+  // O CACHE VALE NOS DOIS MOTIVOS: em recuperacao a pessoa estava sem acesso e
+  // volta a ter, entao o cache Pro precisa cair igual.
   void invalidateProStatusCache(userId);
 
-  if (params.affiliateCode) {
+  if (ehRecuperacao) {
+    console.log(
+      `[${logPrefix}] recuperacao de pagamento (user ${userId}, sub ${params.sourceEvent?.subscriptionId ?? "?"}): afiliado e cupom nao contabilizados`,
+    );
+  }
+
+  // Afiliado e cupom SO na primeira ativacao. Em recuperacao nao se chama
+  // `recordAffiliateConversion`, o que tambem significa que o warning
+  // `stripe_conversao_sem_valor_pago` deixa de disparar aqui: nao houve
+  // tentativa de contar conversao, entao nao existe conversao sem valor.
+  if (params.affiliateCode && !ehRecuperacao) {
     await recordAffiliateConversion({
       userId,
       affiliateCode: params.affiliateCode,
@@ -188,7 +231,7 @@ export async function applyActivationEffects(params: {
   // mesmo ponto da conversao de afiliado. Best-effort: falha loga e nao derruba
   // o webhook, porque o acesso ja foi concedido e o contador nao vale um retry
   // do evento inteiro.
-  if (params.couponCode) {
+  if (params.couponCode && !ehRecuperacao) {
     try {
       await supabaseAdmin.rpc("increment_coupon_redemption", {
         p_code: params.couponCode,
@@ -201,7 +244,11 @@ export async function applyActivationEffects(params: {
     }
   }
 
-  // E-mail de confirmacao. O template `pro_upgrade` e AGNOSTICO do meio de
+  // E-mail de confirmacao. NAO MUDA neste lote: sai igual nos dois motivos, e a
+  // recuperacao reenvia o `pro_upgrade` como se fosse compra nova.
+  // TODO(Ana): e-mail na recuperacao de pagamento (hoje reenvia pro_upgrade)
+  //
+  // O template `pro_upgrade` e AGNOSTICO do meio de
   // pagamento (server/lib/email.ts, sendProUpgradeEmail: fala de plano e
   // beneficios, nunca de cartao, boleto ou Pix), entao serve aos tres sem
   // variante nova e sem texto novo.
