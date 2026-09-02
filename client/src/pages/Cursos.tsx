@@ -27,6 +27,7 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AiCtaLink } from "@/components/shared/AiCta";
 import { BntSelect } from "@/components/shared/BntSelect";
+import { tagChipClasses } from "@/lib/tagPalette";
 import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
 import LockedCatalogTeaser from "@/components/pro/LockedCatalogTeaser";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -84,6 +85,10 @@ function labelForAreaSlug(slug: string | null | undefined): string {
   );
 }
 
+// So 6 areas ganham cor aqui, de proposito: o resto cai no cinza do fallback
+// logo abaixo, e esse fallback NAO mudou nesta migracao (continua
+// bg-slate-100/text-slate-600). O que mudou e que as 6 passam pelo
+// tagChipClasses em vez de virarem classe .tag-* de hex cravado.
 const areaTagClass: Record<string, string> = {
   frontend: "tag-frontend",
   backend: "tag-backend",
@@ -737,7 +742,12 @@ export default function Cursos() {
                     <div className="mb-4 flex items-start justify-between gap-3">
                       <div className="flex flex-wrap gap-2">
                         <span
-                          className={`rounded-md px-2.5 py-1 text-[11px] font-bold ${(curso.areaSlug && areaTagClass[curso.areaSlug]) || "bg-slate-100 text-slate-600"}`}
+                          className={`rounded-md px-2.5 py-1 text-[11px] font-bold ${
+                            (curso.areaSlug &&
+                              areaTagClass[curso.areaSlug] &&
+                              tagChipClasses(areaTagClass[curso.areaSlug])) ||
+                            "bg-slate-100 text-slate-600"
+                          }`}
                         >
                           {labelForAreaSlug(curso.areaSlug)}
                         </span>

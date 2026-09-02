@@ -16,6 +16,7 @@ import { DifficultyDots } from "@/components/areas/DifficultyDots";
 import { areasTI, type SubArea, type AreaTI } from "@/lib/data";
 import { accentForAreaSlug } from "@/lib/detailPageAccents";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
+import { tagChipClasses } from "@/lib/tagPalette";
 import { cn } from "@/lib/utils";
 
 const CARD_BASE =
@@ -121,10 +122,16 @@ function SubAreaHeader({ area, subarea, parentSlug }: SubAreaHeaderProps) {
 
       <div className="mb-4 flex items-center gap-3">
         <AreaIconBox icon={area.icon} areaSlug={area.slug} size="sm" />
+        {/* Par de classes, nao a classe .tag-* de hex cravado: aquela era
+            identica nos dois temas, reprovava 4,5:1 em 7 dos 17 casos no claro
+            e quase sumia contra esta pagina no escuro. tagChipClasses tambem
+            resolve o que o acesso direto nao resolvia: tag_class vem do banco e
+            e gravavel pela API, e valor desconhecido renderizava um chip sem
+            estilo nenhum, em silencio. */}
         <span
           className={cn(
             "inline-flex items-center rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.18em]",
-            area.tagClass,
+            tagChipClasses(area.tagClass),
           )}
         >
           {area.nome} · Subárea
