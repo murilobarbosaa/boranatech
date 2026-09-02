@@ -257,6 +257,15 @@ function ResolverModal({
 
 export function OrphanPaymentsPanel() {
   const [linhas, setLinhas] = useState<OrphanPaymentRow[] | null>(null);
+  /**
+   * Cobrancas sem dono que a fila NAO consegue guardar (hoje, as do Asaas).
+   *
+   * `null` significa "nao sei", e cobre DOIS casos que nao podem virar zero: o
+   * backend antigo da janela de deploy, que nao manda o campo, e a contagem que
+   * falhou no servidor. Zero afirmaria que nao ha nenhuma, e o aviso sumiria
+   * por causa de uma leitura que nao aconteceu.
+   */
+  const [naoEnfileiraveis, setNaoEnfileiraveis] = useState<number | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [alvo, setAlvo] = useState<OrphanPaymentRow | null>(null);
@@ -269,11 +278,14 @@ export function OrphanPaymentsPanel() {
     try {
       const json = await adminFetch("/billing/orphan-payments");
       setLinhas((json.data ?? []) as OrphanPaymentRow[]);
+      const fora = (json as { naoEnfileiraveis?: unknown }).naoEnfileiraveis;
+      setNaoEnfileiraveis(typeof fora === "number" ? fora : null);
     } catch (err) {
       // ESTADO DE ERRO PROPRIO, e `linhas` volta a null. Lista vazia depois de
       // uma falha diria "nao ha pagamento orfao" sobre uma leitura que nao
       // aconteceu, que e a pior mentira que esta tela poderia contar.
       setLinhas(null);
+      setNaoEnfileiraveis(null);
       setErro(err instanceof Error ? err.message : "Erro ao carregar.");
     } finally {
       setCarregando(false);
@@ -317,6 +329,29 @@ export function OrphanPaymentsPanel() {
         assinaturas. Resolva depois de tratar o caso (reembolso, liberação
         manual, ou falso positivo) e escreva o que foi feito.
       </p>
+
+      {/*
+        COBRANCA QUE NAO CABE NA FILA. Fica FORA do ramo de lista vazia de
+        proposito: o caso que motivou este aviso e justamente a fila vazia com a
+        faixa de saude acusando dinheiro sem dono, e um aviso escondido dentro
+        do ramo "tem linha" nunca apareceria nele.
+
+        So aparece com contagem MAIOR QUE ZERO: `null` e "nao sei" (backend
+        antigo ou contagem que falhou) e nao vira aviso, porque um alarme sobre
+        um numero que ninguem leu e pior que nenhum.
+        TODO(Ana)
+      */}
+      {(naoEnfileiraveis ?? 0) > 0 ? (
+        <p
+          data-testid="orfaos-nao-enfileiraveis"
+          className="mb-4 rounded-2xl border-2 border-teal-500 bg-teal-50 p-4 text-sm font-bold text-teal-900"
+        >
+          {naoEnfileiraveis}{" "}
+          {naoEnfileiraveis === 1 ? "cobrança" : "cobranças"} Pix sem dono ainda
+          não entram nesta fila. Elas aparecem na faixa de saúde e precisam ser
+          tratadas no painel do Asaas.
+        </p>
+      ) : null}
 
       {carregando ? (
         <p className="text-sm font-semibold text-slate-500">Carregando...</p>

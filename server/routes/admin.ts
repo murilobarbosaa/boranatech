@@ -1523,24 +1523,68 @@ router.get("/attention", async (_req, res, next) => {
  */
 router.get("/billing/orphan-payments", async (_req, res, next) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("billing_orphan_payments")
-      .select(
-        "id, stripe_session_id, stripe_charge_id, customer_email, plan_id, amount_total_cents, currency, detected_at, last_seen_at, expected_provider_subscription_id",
-      )
-      .is("resolved_at", null)
-      .order("detected_at", { ascending: true });
+    const [fila, foraDaFila] = await Promise.all([
+      supabaseAdmin
+        .from("billing_orphan_payments")
+        .select(
+          "id, stripe_session_id, stripe_charge_id, customer_email, plan_id, amount_total_cents, currency, detected_at, last_seen_at, expected_provider_subscription_id",
+        )
+        .is("resolved_at", null)
+        .order("detected_at", { ascending: true }),
+      // COBRANCA SEM DONO QUE A FILA NAO CONSEGUE GUARDAR.
+      //
+      // O CHECK `billing_orphan_payments_uma_chave` exige exatamente uma de
+      // `stripe_session_id` ou `stripe_charge_id`, e uma cobranca do Asaas nao
+      // tem nenhuma das duas, entao ela NUNCA entra nesta tabela. Ate aqui o
+      // numero existia so no payload do cron (`naoEnfileiraveis`, em
+      // server/lib/chargeSemDono.ts), onde ninguem que opera olha: a faixa de
+      // saude somava a cobranca e mandava "resolva em Pagamentos orfaos", e a
+      // tela chegava vazia.
+      //
+      // A CONTAGEM E FEITA AQUI, e nao lida do cron, porque a fonte tem de ser a
+      // mesma da faixa de saude: as duas leem `finance_transactions` com os
+      // mesmos tres filtros, e ler o resultado do ultimo cron traria um numero
+      // de ate 6 horas atras que divergiria da faixa na mesma tela.
+      //
+      // `neq("provider", "stripe")` e o criterio, e nao `stripe_charge_id is
+      // null`: linha da Stripe gravada na janela de deploy pode estar sem o id
+      // ainda, e ela nao e Pix. PostgREST exclui NULL num `neq`, o que aqui e o
+      // lado certo (provider nulo e o default `stripe`).
+      supabaseAdmin
+        .from("finance_transactions")
+        .select("id", { count: "exact", head: true })
+        .eq("type", "charge")
+        .is("user_id", null)
+        .neq("provider", "stripe")
+        .lt(
+          "occurred_at",
+          new Date(
+            Date.now() - CHARGE_SEM_DONO_CORTE_DIAS * 24 * 60 * 60 * 1000,
+          ).toISOString(),
+        ),
+    ]);
 
-    if (error)
+    if (fila.error)
       return next(
         dbError(
           "orphan payments list",
-          error,
+          fila.error,
           "Erro ao buscar os pagamentos sem assinatura.",
         ),
       );
 
-    res.json({ data: data ?? [] });
+    res.json({
+      data: fila.data ?? [],
+      // CAMPO IRMAO DE `data`, e nao dentro dele: `data` e um array e o bundle
+      // em execucao faz `json.data ?? []`. Transformar `data` em objeto para
+      // caber o contador quebraria toda aba aberta desde antes do deploy, que e
+      // exatamente o que a regra de expand/contract do CLAUDE.md proibe.
+      //
+      // `null` quando a contagem FALHOU, nunca zero: zero afirmaria que nao ha
+      // cobranca fora da fila, e a tela esconderia o aviso por causa de um erro
+      // de leitura. Falha aqui NAO derruba a fila, que e o conteudo principal.
+      naoEnfileiraveis: foraDaFila.error ? null : (foraDaFila.count ?? 0),
+    });
   } catch (err) {
     next(err);
   }

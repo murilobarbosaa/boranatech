@@ -249,3 +249,79 @@ describe("CONTROLE NEGATIVO: o caminho feliz resolve e recarrega", () => {
     expect(screen.getByTestId("orfao-nota")).toBeTruthy();
   });
 });
+
+describe("cobranças que NÃO cabem nesta fila", () => {
+  function comContagem(naoEnfileiraveis: unknown, linhas: unknown[] = []) {
+    adminSpy.adminFetch.mockResolvedValue({ data: linhas, naoEnfileiraveis });
+  }
+
+  it("aparece com a fila VAZIA, que é o caso que motivou o aviso", async () => {
+    // A faixa de saúde soma a cobrança Pix sem dono e manda "resolva em
+    // Pagamentos órfãos"; a tela chegava vazia. Um aviso escondido dentro do
+    // ramo "tem linha" nunca apareceria justamente aqui.
+    comContagem(2);
+    await montar();
+
+    const aviso = await screen.findByTestId("orfaos-nao-enfileiraveis");
+    expect(aviso.textContent).toContain("2");
+    expect(aviso.textContent).toContain("cobranças");
+    // A lista vazia continua sendo dita: são dois fatos diferentes.
+    expect(screen.getByTestId("orfaos-vazio")).toBeTruthy();
+  });
+
+  it("singular e plural", async () => {
+    comContagem(1);
+    await montar();
+    expect(
+      (await screen.findByTestId("orfaos-nao-enfileiraveis")).textContent,
+    ).toContain("cobrança Pix");
+  });
+
+  it("ZERO não vira aviso", async () => {
+    comContagem(0);
+    await montar();
+    expect(screen.queryByTestId("orfaos-nao-enfileiraveis")).toBeNull();
+  });
+
+  it("BACKEND ANTIGO (campo ausente) não vira aviso, e não quebra", async () => {
+    // Janela de deploy: a Vercel sobe antes do Railway.
+    adminSpy.adminFetch.mockResolvedValue({ data: [] });
+    await montar();
+    expect(screen.queryByTestId("orfaos-nao-enfileiraveis")).toBeNull();
+    expect(screen.getByTestId("orfaos-vazio")).toBeTruthy();
+  });
+
+  it("contagem NULA (não sei) não vira aviso", async () => {
+    // `null` é o que o servidor manda quando a contagem falhou. Alarme sobre um
+    // número que ninguém leu é pior que nenhum.
+    comContagem(null);
+    await montar();
+    expect(screen.queryByTestId("orfaos-nao-enfileiraveis")).toBeNull();
+  });
+
+  it("valor NÃO numérico é tratado como ausência", async () => {
+    comContagem("2");
+    await montar();
+    expect(screen.queryByTestId("orfaos-nao-enfileiraveis")).toBeNull();
+  });
+
+  it("RECARGA que falha não deixa contagem velha na tela", async () => {
+    // O caminho real de recarga é o de resolver uma linha. Se a listagem
+    // seguinte falhar, a tela cai no estado de erro, e um contador de antes
+    // continuar visível afirmaria um número sobre uma leitura que não
+    // aconteceu, ao lado de uma mensagem dizendo que a leitura falhou.
+    comContagem(3, [LINHA]);
+    await montar();
+    expect(await screen.findByTestId("orfaos-nao-enfileiraveis")).toBeTruthy();
+
+    abrirModal();
+    digitarNota(NOTA_OK);
+    // O POST passa; a recarga logo depois é que cai.
+    adminSpy.adminFetch.mockResolvedValueOnce({ data: {} });
+    adminSpy.adminFetch.mockRejectedValueOnce(new Error("caiu"));
+    fireEvent.click(botaoConfirmar());
+
+    await waitFor(() => expect(screen.getByTestId("orfaos-erro")).toBeTruthy());
+    expect(screen.queryByTestId("orfaos-nao-enfileiraveis")).toBeNull();
+  });
+});
