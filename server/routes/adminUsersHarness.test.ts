@@ -175,6 +175,14 @@ const COLUNAS_PENDENTES: Array<{ tabela: string; coluna: string }> = [
   // registra como indistinguivel do estado normal da fila. Conferir contra o
   // banco e o passo que resolve; `pnpm check:migrations` nao pega, porque ele
   // verifica TABELA, nao coluna.
+  // Declaradas em `20260903100000_admin_refunds_provider.sql`, que faz
+  // `admin_refunds` registrar devolucao de qualquer provedor. Mesma situacao das
+  // de `finance_transactions` acima: a migration e de aplicacao manual pela Ana
+  // e ainda nao chegou ao banco de onde os tipos foram gerados.
+  { tabela: "admin_refunds", coluna: "provider" },
+  { tabela: "admin_refunds", coluna: "provider_transaction_id" },
+  { tabela: "admin_refunds", coluna: "provider_refund_id" },
+  { tabela: "admin_refunds", coluna: "provider_status" },
   { tabela: "billing_orphan_payments", coluna: "stripe_charge_id" },
   { tabela: "billing_orphan_payments", coluna: "candidate_user_id" },
   { tabela: "billing_orphan_payments", coluna: "candidate_checked_at" },
