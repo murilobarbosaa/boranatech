@@ -1,3 +1,5 @@
+import os from "os";
+
 import * as Sentry from "@sentry/node";
 import { Queue, Worker, type Job } from "bullmq";
 
@@ -74,8 +76,23 @@ export const emailQueue = queueConnection
           type: "exponential",
           delay: 5000,
         },
-        removeOnComplete: 100,
-        removeOnFail: 500,
+        // RETENCAO POR IDADE, nao por contagem, e o motivo foi medido em
+        // 02/09/2026. Com `removeOnComplete: 100` e ~85 `welcome` por dia, o
+        // historico da fila durava cerca de SETE HORAS: quando se foi
+        // investigar o que um worker de dev consumiu entre 29/08 e 02/09, os
+        // jobs do periodo ja tinham sido descartados pelo proprio BullMQ, e a
+        // pergunta ficou sem resposta possivel. Reter por tempo responde a
+        // pergunta que se faz de verdade ("o que aconteceu nos ultimos dias"),
+        // que contagem nao responde: o mesmo 100 vale meses numa fila parada e
+        // horas numa movimentada.
+        //
+        // `count` continua como TETO de memoria, e o que vier primeiro corta.
+        // Custo medido em 10 jobs reais desta fila: `data` 84 a 110 B, `opts`
+        // 102 B, `returnvalue` 4 B, ou seja ~198 B de campos variaveis; com os
+        // campos fixos do hash e o overhead do Redis, ~448 B por job. 5000 jobs
+        // dao ~2,1 MB, folgado.
+        removeOnComplete: { age: 7 * 24 * 3600, count: 5000 },
+        removeOnFail: { age: 30 * 24 * 3600, count: 5000 },
       },
     })
   : null;
@@ -138,6 +155,17 @@ export function createEmailWorker() {
     },
     {
       connection: queueConnection,
+      // NOME DO WORKER: e ele que o BullMQ grava no campo `pb` do job
+      // (`processedBy`). Sem `name`, o campo simplesmente nao existe, e foi
+      // por isso que a investigacao de 02/09 nao conseguiu dizer QUEM
+      // processou os jobs: o Lua de `moveToActive` so escreve `pb` dentro de
+      // `if opts['name']`, e nenhum dos 100 jobs medidos tinha o campo.
+      //
+      // `os.hostname()` e nao um literal: no Railway da o hostname do
+      // container (e distingue replicas), na maquina de quem programa da o
+      // nome dela. Um nome fixo no codigo diria "e um worker", que e o que ja
+      // se sabe, em vez de QUAL.
+      name: os.hostname(),
       concurrency: 5,
       // Rate limiter GLOBAL por fila (BullMQ v5, coordenado via Redis): mesmo com o
       // worker rodando em varias replicas, o teto e compartilhado, nao multiplicado.
