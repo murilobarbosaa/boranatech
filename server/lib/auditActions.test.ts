@@ -32,8 +32,16 @@ import { describe, expect, it } from "vitest";
 
 /** Valores aceitos pela CHECK, na migration mais recente que a define. */
 const EXPECTED_ACOES_NO_CHECK = 15;
-/** Sitios que escrevem em `content_audit_logs` sem passar pelo helper. */
-const EXPECTED_SITIOS_INSERT_DIRETO = 10;
+/**
+ * Sitios que escrevem em `content_audit_logs` sem passar pelo helper.
+ *
+ * 11 desde o lote 2a (reembolso de Pix pela API do Asaas): `reembolsarNoAsaas`
+ * em server/routes/admin.ts audita a INTENCAO antes de chamar o provedor, com a
+ * mesma acao `refund` do caminho da Stripe. O numero sobe porque o CONJUNTO de
+ * sitios cresceu, nao porque o parser mudou; a acao gravada continua sendo uma
+ * das que a CHECK ja aceita, entao nao houve migration.
+ */
+const EXPECTED_SITIOS_INSERT_DIRETO = 11;
 /** Chamadas de `logAudit(...)`. */
 const EXPECTED_SITIOS_LOGAUDIT = 3;
 
