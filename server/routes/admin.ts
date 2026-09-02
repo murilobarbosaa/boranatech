@@ -37,6 +37,7 @@ import { withRedisOpTimeout } from "../lib/redisOpTimeout";
 import { stripeProvider } from "../providers/stripe";
 import { getStripe } from "../lib/stripeClient";
 import { syncBalanceTransactions } from "../lib/stripeSync";
+import { PIX_REFUND_COPY } from "../../shared/pixRefundCopy";
 import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { lerSessaoDeBoleto } from "../lib/boletoSession";
@@ -3988,8 +3989,8 @@ router.post("/users/:id/refunds", async (req, res, next) => {
         createError(
           409,
           "refund_provider_not_stripe",
-          // TODO(Ana)
-          "Reembolso de Pix é feito no Asaas e registrado aqui como devolução externa.",
+          // UMA instrucao, tres lugares: ver shared/pixRefundCopy.ts.
+          PIX_REFUND_COPY,
         ),
       );
     }
@@ -4331,8 +4332,7 @@ router.post("/users/:id/external-refunds", async (req, res, next) => {
         createError(
           409,
           "external_refund_provider_not_supported",
-          // TODO(Ana)
-          "Devolução de Pix ainda não é registrável por aqui. Faça o estorno no Asaas: o webhook grava a linha de devolução sozinho.",
+          PIX_REFUND_COPY,
         ),
       );
     }

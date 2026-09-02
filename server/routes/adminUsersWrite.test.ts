@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { PIX_REFUND_COPY } from "../../shared/pixRefundCopy";
+
 /**
  * FIACAO das rotas de ESCRITA de usuário do admin.
  *
@@ -1042,6 +1044,12 @@ describe("POST /users/:id/refunds", () => {
 
     expect(r.status).toBe(409);
     expect(r.body.error.code).toBe("refund_provider_not_stripe");
+    // A MENSAGEM E A CANONICA, e nao uma frase escrita aqui: as tres
+    // orientacoes sobre reembolso de Pix (este 409, o de /external-refunds e a
+    // dica no extrato) divergiram uma vez, e duas delas mandavam o admin para a
+    // devolucao externa, que nao aceita Pix. Afirmar a constante e o que impede
+    // a divergencia de voltar.
+    expect(r.body.error.message).toBe(PIX_REFUND_COPY);
     // NADA foi enviado à Stripe: a cobrança nunca esteve lá.
     expect(estado.stripeRefundCreate).not.toHaveBeenCalled();
   });

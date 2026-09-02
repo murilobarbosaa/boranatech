@@ -26,6 +26,18 @@
 // atribuido a pessoa errada com aparencia de conferido. O que este script tem de
 // proprio e so a LEITURA (por REST, ver abaixo), nunca a decisao.
 //
+// HANDLER NOVO NO WEBHOOK EXIGE MEXER AQUI, e a obrigacao nao e de estilo.
+//
+// Desde 2026-09-02 `processAsaasEvent` grava o event em `billing_events` ANTES
+// de decidir se o trata, e o dedupe e por `id`. Um resend do Asaas para um event
+// ja gravado volta deduplicado e NAO chega ao handler. Consequencia direta: um
+// `event_type` que passe a ser tratado em server/providers/asaas.ts NAO se
+// recupera por reenvio; a unica recuperacao e este script.
+//
+// Entao, ao acrescentar um handler la, acrescente o tipo em COBRANCA ou ESTORNO
+// aqui, no MESMO commit. Sem isso o evento fica registrado e nunca processado, e
+// nada acusa: o webhook devolveu 200, a linha existe, e a receita nao.
+//
 // Uso:
 //   pnpm tsx scripts/asaasLedgerBackfill.mts
 // Saida: SQL em stdout, diagnostico em stderr. exit 1 so em falha de leitura.

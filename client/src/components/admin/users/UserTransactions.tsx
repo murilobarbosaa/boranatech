@@ -1,6 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorBlock } from "@/components/admin/StateBlocks";
 
+import { PIX_REFUND_COPY } from "@shared/pixRefundCopy";
 import { providerMetaOf, PROVIDER_ASAAS } from "@/lib/providerMeta";
 
 import { fmtBrl, fmtDate, planLabelOf } from "./userFormat";
@@ -268,9 +269,8 @@ export function UserTransactions({
           data-testid="pix-sem-reembolso"
           className="border-t-2 border-teal-500 bg-teal-50 px-4 py-2 text-xs font-bold text-teal-900"
         >
-          {fmtBrl(payload.pix_sem_reembolso_na_stripe_cents ?? 0)} recebidos por
-          Pix. A devolução é feita no Asaas e aparece aqui sozinha quando o
-          estorno é confirmado.
+          {fmtBrl(payload.pix_sem_reembolso_na_stripe_cents ?? 0)} em aberto.{" "}
+          {PIX_REFUND_COPY}
         </p>
       ) : null}
 
