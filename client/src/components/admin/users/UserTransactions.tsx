@@ -1,6 +1,9 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorBlock } from "@/components/admin/StateBlocks";
 
+import { PIX_REFUND_COPY } from "@shared/pixRefundCopy";
+import { providerMetaOf, PROVIDER_ASAAS } from "@/lib/providerMeta";
+
 import { fmtBrl, fmtDate, planLabelOf } from "./userFormat";
 import type { TransactionItem, TransactionsPayload } from "./types";
 
@@ -64,7 +67,16 @@ function Linha({
   const tipo = tipoDeTransacaoOf(item.type);
   const negativo = item.gross_cents < 0;
   const boleto = ehBoleto(item.stripe_charge_id);
-  const acao = boleto ? onExternalRefund : onRefund;
+  // COBRANCA QUE NAO E DA STRIPE nao oferece acao nenhuma nesta tela, e o
+  // motivo e que nenhuma das duas rotas a aceita: `/refunds` responde 409
+  // `refund_provider_not_stripe` e `/external-refunds` responde 409
+  // `external_refund_provider_not_supported`, porque as duas chaveiam por
+  // `stripe_charge_id`. Desenhar um botao que so pode devolver erro seria
+  // prometer uma acao que nao existe; a frase no rodape do bloco diz o que
+  // fazer no lugar.
+  const daStripe = providerMetaOf(item.provider);
+  const ehAsaas = (item.provider ?? "stripe") === PROVIDER_ASAAS;
+  const acao = ehAsaas ? undefined : boleto ? onExternalRefund : onRefund;
   // Backend antigo na janela de deploy nao manda o campo: sem o `?? 0` a
   // comparacao viraria `undefined > 0`, que e false, e a linha simplesmente nao
   // mostra o aviso. Degrada, nao quebra.
@@ -83,6 +95,18 @@ function Linha({
         <span className="text-xs font-bold text-slate-500">
           {fmtDate(item.occurred_at)}
         </span>
+        {/* BADGE DE PROVEDOR so quando NAO e a Stripe. Marcar toda linha com
+            "Stripe" acrescentaria uma palavra em cada uma das centenas de
+            linhas antigas para informar o que ja era o unico caso possivel; o
+            que a tela precisa destacar e a excecao. */}
+        {ehAsaas ? (
+          <span
+            data-testid="provedor-badge"
+            className="inline-flex w-fit items-center rounded-full border-2 border-teal-600 bg-teal-50 px-2 py-0.5 text-[11px] font-black uppercase text-teal-800"
+          >
+            {daStripe.label}
+          </span>
+        ) : null}
       </span>
 
       <span className="flex flex-col">
@@ -112,9 +136,13 @@ function Linha({
             {fmtBrl(item.disputed_cents)} em chargeback
           </span>
         ) : null}
-        {item.stripe_charge_id ? (
+        {/* O id que a linha TEM. Para a Stripe e o charge id, como sempre; para
+            o Asaas e o id do pagamento, que e o unico que existe e o unico que
+            serve para achar a cobranca no painel deles. Sem isto, toda linha de
+            Pix aparecia sem identificacao nenhuma. */}
+        {item.stripe_charge_id ?? item.provider_transaction_id ? (
           <span className="font-mono text-[11px] text-slate-400">
-            {item.stripe_charge_id}
+            {item.stripe_charge_id ?? item.provider_transaction_id}
           </span>
         ) : null}
       </span>
@@ -134,7 +162,7 @@ function Linha({
             <button
               type="button"
               onClick={() => acao(item)}
-              className="mt-1 block rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-[11px] font-black uppercase transition hover:bg-yellow-50 sm:ml-auto"
+              className="mt-1 block rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-[11px] font-black uppercase transition hover:bg-yellow-50 sm:ml-auto dark:hover:bg-secondary"
             >
               {/* Verbos diferentes porque as acoes sao diferentes: uma devolve
                   dinheiro, a outra anota que alguem ja devolveu. */}
@@ -229,6 +257,22 @@ export function UserTransactions({
           onExternalRefund={onExternalRefund}
         />
       ))}
+
+      {/* PIX EM ABERTO: por que o botao de reembolso nao cobre este valor.
+          A frase so aparece quando ha saldo Pix, e ela existe porque a linha de
+          Pix e a UNICA do extrato sem botao nenhum: sem explicacao, a ausencia
+          e lida como bug da tela em vez de limitacao do caminho.
+          O `?? 0` cobre o backend antigo da janela de deploy.
+          TODO(Ana) */}
+      {(payload.pix_sem_reembolso_na_stripe_cents ?? 0) > 0 ? (
+        <p
+          data-testid="pix-sem-reembolso"
+          className="border-t-2 border-teal-500 bg-teal-50 px-4 py-2 text-xs font-bold text-teal-900"
+        >
+          {fmtBrl(payload.pix_sem_reembolso_na_stripe_cents ?? 0)} em aberto.{" "}
+          {PIX_REFUND_COPY}
+        </p>
+      ) : null}
 
       {/* Truncamento AVISADO: corte silencioso faria o total parecer completo
           sendo parcial. */}

@@ -18,6 +18,15 @@ import { adminFetch } from "@/lib/adminApi";
 export interface OrphanPaymentRow {
   id: string;
   stripe_session_id: string | null;
+  /**
+   * Chave do achado que vem de `finance_transactions` em vez de sessao de
+   * checkout (migration 20260831140000). O CHECK da tabela garante EXATAMENTE
+   * uma das duas preenchidas.
+   *
+   * OPCIONAL: o campo passou a ser selecionado pela rota em 2026-09-02, e na
+   * janela de deploy a resposta antiga nao o traz.
+   */
+  stripe_charge_id?: string | null;
   customer_email: string | null;
   plan_id: string | null;
   amount_total_cents: number | null;
@@ -78,6 +87,43 @@ export function esperaDesde(detectedAt: string, agora: Date): string {
 export function linkDaSessao(sessionId: string | null): string | null {
   if (!sessionId || !/^cs_[A-Za-z0-9_]+$/.test(sessionId)) return null;
   return `https://dashboard.stripe.com/payments?query=${encodeURIComponent(sessionId)}`;
+}
+
+/**
+ * A chave do achado, seja ela qual for, e o link quando ela abre algo.
+ *
+ * O ACHADO POR COBRANCA NAO MOSTRAVA NADA. Desde a migration 20260831140000 a
+ * fila aceita linha vinda de `finance_transactions`, cuja chave e
+ * `stripe_charge_id` e cujo `stripe_session_id` e NULO. Para ela o painel
+ * imprimia valor, e-mail e espera, e nenhuma identificacao: nao dava para achar
+ * a cobranca no painel da Stripe nem para citar o id numa conversa.
+ *
+ * O MESMO CRITERIO DE VALIDACAO do link de sessao, por prefixo conhecido e nao
+ * por "tem alguma coisa": id que nao case vira ausencia de botao, nunca um
+ * "Abrir" que nao abre. `ch_` e cobranca de cartao, `py_` e boleto, e os dois
+ * abrem na mesma busca do dashboard.
+ *
+ * ESTE PAINEL E STRIPE-ONLY POR CONSTRUCAO, e vale dizer por que: uma cobranca
+ * do Asaas nao tem nenhuma das duas chaves, e o CHECK
+ * `billing_orphan_payments_uma_chave` exige exatamente uma, entao ela nao entra
+ * na fila. O detector CONTA essa cobranca (`naoEnfileiraveis` em
+ * server/lib/chargeSemDono.ts) e a faixa de saude a mostra; so a fila com botao
+ * de resolver nao a alcanca. Fechar isso exige `provider` e
+ * `provider_transaction_id` na tabela, que e migration propria.
+ */
+export function chaveDoAchado(linha: {
+  stripe_session_id: string | null;
+  stripe_charge_id?: string | null;
+}): { id: string; href: string | null } | null {
+  const sessao = linha.stripe_session_id;
+  if (sessao) return { id: sessao, href: linkDaSessao(sessao) };
+
+  const cobranca = linha.stripe_charge_id ?? null;
+  if (!cobranca) return null;
+  const href = /^(ch|py)_[A-Za-z0-9_]+$/.test(cobranca)
+    ? `https://dashboard.stripe.com/payments?query=${encodeURIComponent(cobranca)}`
+    : null;
+  return { id: cobranca, href };
 }
 
 interface ModalProps {
@@ -211,6 +257,15 @@ function ResolverModal({
 
 export function OrphanPaymentsPanel() {
   const [linhas, setLinhas] = useState<OrphanPaymentRow[] | null>(null);
+  /**
+   * Cobrancas sem dono que a fila NAO consegue guardar (hoje, as do Asaas).
+   *
+   * `null` significa "nao sei", e cobre DOIS casos que nao podem virar zero: o
+   * backend antigo da janela de deploy, que nao manda o campo, e a contagem que
+   * falhou no servidor. Zero afirmaria que nao ha nenhuma, e o aviso sumiria
+   * por causa de uma leitura que nao aconteceu.
+   */
+  const [naoEnfileiraveis, setNaoEnfileiraveis] = useState<number | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [alvo, setAlvo] = useState<OrphanPaymentRow | null>(null);
@@ -223,11 +278,14 @@ export function OrphanPaymentsPanel() {
     try {
       const json = await adminFetch("/billing/orphan-payments");
       setLinhas((json.data ?? []) as OrphanPaymentRow[]);
+      const fora = (json as { naoEnfileiraveis?: unknown }).naoEnfileiraveis;
+      setNaoEnfileiraveis(typeof fora === "number" ? fora : null);
     } catch (err) {
       // ESTADO DE ERRO PROPRIO, e `linhas` volta a null. Lista vazia depois de
       // uma falha diria "nao ha pagamento orfao" sobre uma leitura que nao
       // aconteceu, que e a pior mentira que esta tela poderia contar.
       setLinhas(null);
+      setNaoEnfileiraveis(null);
       setErro(err instanceof Error ? err.message : "Erro ao carregar.");
     } finally {
       setCarregando(false);
@@ -272,6 +330,29 @@ export function OrphanPaymentsPanel() {
         manual, ou falso positivo) e escreva o que foi feito.
       </p>
 
+      {/*
+        COBRANCA QUE NAO CABE NA FILA. Fica FORA do ramo de lista vazia de
+        proposito: o caso que motivou este aviso e justamente a fila vazia com a
+        faixa de saude acusando dinheiro sem dono, e um aviso escondido dentro
+        do ramo "tem linha" nunca apareceria nele.
+
+        So aparece com contagem MAIOR QUE ZERO: `null` e "nao sei" (backend
+        antigo ou contagem que falhou) e nao vira aviso, porque um alarme sobre
+        um numero que ninguem leu e pior que nenhum.
+        TODO(Ana)
+      */}
+      {(naoEnfileiraveis ?? 0) > 0 ? (
+        <p
+          data-testid="orfaos-nao-enfileiraveis"
+          className="mb-4 rounded-2xl border-2 border-teal-500 bg-teal-50 p-4 text-sm font-bold text-teal-900"
+        >
+          {naoEnfileiraveis}{" "}
+          {naoEnfileiraveis === 1 ? "cobrança" : "cobranças"} Pix sem dono ainda
+          não entram nesta fila. Elas aparecem na faixa de saúde e precisam ser
+          tratadas no painel do Asaas.
+        </p>
+      ) : null}
+
       {carregando ? (
         <p className="text-sm font-semibold text-slate-500">Carregando...</p>
       ) : erro ? (
@@ -300,7 +381,8 @@ export function OrphanPaymentsPanel() {
       ) : (
         <ul className="flex flex-col gap-3">
           {(linhas ?? []).map((linha) => {
-            const href = linkDaSessao(linha.stripe_session_id);
+            const chave = chaveDoAchado(linha);
+            const href = chave?.href ?? null;
             return (
               <li
                 key={linha.id}
@@ -319,6 +401,11 @@ export function OrphanPaymentsPanel() {
                   <p className="truncate text-sm font-semibold text-slate-600">
                     {linha.customer_email ?? "e-mail não registrado"}
                   </p>
+                  {chave ? (
+                    <p className="truncate font-mono text-xs text-slate-500">
+                      {chave.id}
+                    </p>
+                  ) : null}
                   <p className="text-xs font-bold uppercase tracking-wide text-amber-700">
                     esperando há {esperaDesde(linha.detected_at, agora)}
                   </p>

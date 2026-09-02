@@ -2,15 +2,25 @@
 // (checkout, cancel, reactivate) e o webhook atras de um contrato unico.
 
 import type { PlanId } from "../../shared/planPricing";
+import type { PaymentMethodId } from "../../shared/paymentMethods";
 
 export interface CheckoutUser {
   id: string;
   email: string;
 }
 
-// Boleto: pagamento unico (mode: payment), renovacao manual, so nos planos
-// semestral/anual. 'card' (default) mantem o fluxo recorrente (mode: subscription).
-export type CheckoutPaymentMethod = "card" | "boleto";
+/**
+ * Meio de pagamento pedido no checkout.
+ *
+ * ALIAS do ponto unico em shared/paymentMethods.ts, e nao uma segunda uniao: as
+ * duas divergiriam no primeiro meio novo, e a que ficasse para tras liberaria ou
+ * proibiria por conta propria. O nome fica porque as rotas e o frontend ja o
+ * importam daqui.
+ *
+ * 'card' e recorrente (mode: subscription na Stripe). 'boleto' e 'pix' sao
+ * avulsos, com renovacao manual, so nos planos que declaram dias de acesso.
+ */
+export type CheckoutPaymentMethod = PaymentMethodId;
 
 export interface CreateCheckoutInput {
   user: CheckoutUser;
@@ -32,8 +42,40 @@ export interface CreateCheckoutInput {
 export interface CreateCheckoutResult {
   // URL para onde o frontend redireciona o usuario. Pode ser undefined se o
   // provedor nao retornar link (tratado como erro pela rota).
+  //
+  // No Pix ela deixou de ser o caminho PRINCIPAL (o QR passou a viver na nossa
+  // tela), mas continua sendo emitida como fallback e NAO foi removida: e o
+  // campo que todo bundle ja em execucao le, e bundle antigo nao recarrega
+  // sozinho. Ver `flow` abaixo.
   checkoutUrl: string | undefined;
   subscriptionId: string;
+  /**
+   * Como o frontend deve prosseguir. ADITIVO (expand/contract, CLAUDE.md):
+   * ausente significa "redirecione", que e exatamente o que o bundle antigo ja
+   * faz com `checkoutUrl`.
+   *
+   *   "redirect" (ou ausente): mandar o usuario para `checkoutUrl`.
+   *   "native_pix":            renderizar o QR na nossa tela; `checkoutUrl` vira
+   *                            fallback discreto.
+   */
+  flow?: "redirect" | "native_pix";
+  /**
+   * Valor REAL da cobranca em centavos, ADITIVO como `flow`.
+   *
+   * Vem do corpo da resposta de criacao do provedor, nao de recalculo nosso: e o
+   * numero que o provedor acabou de registrar, entao a tela nao pode divergir do
+   * que sera cobrado. Foi por precificar pelo plano que o card da assinatura
+   * anunciava R$ 129,00 sobre uma cobranca de R$ 12,90 com cupom.
+   *
+   * Ausente para provedor que nao informa; a tela cai no comportamento antigo.
+   */
+  amountCents?: number;
+  /**
+   * Vencimento da cobranca (`YYYY-MM-DD`), aditivo. E o prazo que GOVERNA: o
+   * provedor tambem expoe um prazo do QR, muito mais longo, que nao decide nada
+   * do nosso lado. Ausente para provedor que nao informa.
+   */
+  dueDate?: string | null;
 }
 
 export interface CancelInput {
@@ -81,8 +123,16 @@ export interface WebhookInput {
 
 export type WebhookResult = Record<string, unknown>;
 
+/**
+ * Nome do provedor, como gravado em `subscriptions.provider` e em
+ * `billing_events.provider`. Uniao fechada de proposito: um provedor novo entra
+ * aqui e o `tsc` aponta todo lugar que precisa saber dele, em vez de a string
+ * circular solta.
+ */
+export type PaymentProviderName = "stripe" | "asaas";
+
 export interface PaymentProvider {
-  readonly name: "stripe";
+  readonly name: PaymentProviderName;
   createCheckout(input: CreateCheckoutInput): Promise<CreateCheckoutResult>;
   cancel(input: CancelInput): Promise<CancelResult>;
   reactivate(input: ReactivateInput): Promise<ReactivateResult>;

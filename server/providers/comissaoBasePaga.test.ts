@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { paidAmountCentsFromEvent, recordAffiliateConversion } from "./stripe";
+import { paidAmountCentsFromEvent } from "./stripe";
+import { recordAffiliateConversion } from "./shared";
 
 /**
  * BASE DA COMISSAO DE AFILIADO: valor pago, nunca preco de tabela.

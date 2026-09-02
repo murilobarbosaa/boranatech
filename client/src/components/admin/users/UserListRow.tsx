@@ -158,7 +158,7 @@ export function UserListRow({
       type="button"
       onClick={() => row.user_id && onOpen(row.user_id)}
       disabled={!row.user_id}
-      className={`${GRID} w-full border-b-2 border-slate-100 px-4 py-3 text-left transition hover:bg-yellow-50 md:py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-60`}
+      className={`${GRID} w-full border-b-2 border-slate-100 px-4 py-3 text-left transition hover:bg-yellow-50 md:py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-secondary`}
     >
       <span className="flex w-full min-w-0 items-center gap-3 md:w-auto">
         <span

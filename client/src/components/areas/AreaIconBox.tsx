@@ -2,13 +2,29 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { accentForAreaSlug } from "@/lib/detailPageAccents";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
+import type { AreaGridPalette } from "@/lib/areaGridPalette";
 
-interface AreaIconBoxProps {
+// Duas formas de dizer a cor, e exatamente uma por chamada:
+//
+//   `areaSlug`  caminho original, intacto. A cor sai de accentForAreaSlug e das
+//               10 familias de pageAccentUi. E o que AreaDetalhe, SubAreaDetalhe
+//               e TecnologiaMapa usam.
+//   `palette`   trio de classes explicito. Existe porque a grade de /areas
+//               precisa de uma cor POR CARD, em 17 familias, e 18 dos 44 cards
+//               (areasComplementares e areasPoucoConhecidas) nao tem slug
+//               nenhum para chavear.
+//
+// A uniao e o que faz o `tsc` recusar as duas juntas e recusar nenhuma das
+// duas. Deixar os dois campos opcionais no mesmo objeto compilaria uma chamada
+// sem cor, que cairia em silencio no violeta do fallback de accentForAreaSlug.
+type AreaIconBoxProps = {
   icon: LucideIcon;
-  areaSlug: string;
   size?: "xs" | "sm" | "md" | "lg";
   className?: string;
-}
+} & (
+  | { areaSlug: string; palette?: undefined }
+  | { areaSlug?: undefined; palette: AreaGridPalette }
+);
 
 const SIZES = {
   xs: {
@@ -33,14 +49,14 @@ const SIZES = {
   },
 };
 
-export function AreaIconBox({
-  icon: Icon,
-  areaSlug,
-  size = "lg",
-  className,
-}: AreaIconBoxProps) {
-  const accent = accentForAreaSlug(areaSlug);
-  const ac = getPageAccentUi(accent);
+function coresDoSlug(areaSlug: string): AreaGridPalette {
+  const ac = getPageAccentUi(accentForAreaSlug(areaSlug));
+  return { bg: ac.panelSoft, text: ac.iconMuted, border: ac.panelBorder };
+}
+
+export function AreaIconBox(props: AreaIconBoxProps) {
+  const { icon: Icon, size = "lg", className } = props;
+  const cores = props.palette ?? coresDoSlug(props.areaSlug);
   const s = SIZES[size];
 
   return (
@@ -49,9 +65,9 @@ export function AreaIconBox({
         "inline-flex shrink-0 items-center justify-center border-2",
         s.box,
         s.shadow,
-        ac.panelBorder,
-        ac.panelSoft,
-        ac.iconMuted,
+        cores.border,
+        cores.bg,
+        cores.text,
         className,
       )}
       aria-hidden

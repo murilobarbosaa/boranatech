@@ -1,3 +1,4 @@
+import type { PaymentMethodId } from "@shared/paymentMethods";
 import { apiUrl } from "@/lib/api";
 import { AFFILIATE_STORAGE_KEY } from "@/hooks/useAffiliate";
 import { COUPON_STORAGE_KEY } from "@/hooks/useCoupon";
@@ -52,7 +53,10 @@ export async function getMyFiscalInvoices(): Promise<FiscalInvoiceListItem[]> {
   return json.data ?? [];
 }
 
-export type CheckoutPaymentMethod = "card" | "boleto";
+// ALIAS do ponto unico (shared/paymentMethods.ts), nao uma terceira uniao. Ela
+// existia aqui em duro e ficou desatualizada no instante em que o Pix entrou:
+// duas unioes do mesmo conceito divergem no primeiro meio novo.
+export type CheckoutPaymentMethod = PaymentMethodId;
 
 // Preserva o error.code que o server manda (createError -> { error: { code } }),
 // para a UI mostrar mensagem por slug (conflict, boleto_pending, ...). Antes o
@@ -111,9 +115,45 @@ export async function createCheckout(
 
   if (!res.ok) throw new CheckoutError(await checkoutErrorCode(res));
   const json = await res.json();
-  return json.data;
+  return json.data as {
+    checkoutUrl?: string;
+    subscriptionId?: string;
+    /** Ausente = redirecionar, que e o comportamento de sempre. */
+    flow?: "redirect" | "native_pix";
+    /**
+     * Valor que o provedor registrou, em centavos. Ausente no backend antigo; a
+     * tela entao omite o valor em vez de recalcular o desconto por conta propria.
+     */
+    amountCents?: number;
+    /** Vencimento da cobranca (`YYYY-MM-DD`). Governa o prazo mostrado na tela. */
+    dueDate?: string | null;
+  };
 }
 
 export async function startCheckout() {
   return createCheckout("pro_monthly");
+}
+
+/** Retorno de GET /api/billing/pix-qrcode. */
+export type PixQrCode = {
+  /** PNG em base64, SEM o prefixo `data:`. */
+  encodedImage: string;
+  /** Copia e cola. */
+  payload: string;
+  /** Validade do CODIGO, nao do acesso. */
+  expirationDate: string | null;
+};
+
+/**
+ * QR da cobranca pendente do proprio usuario.
+ *
+ * Sem parametro de proposito: o servidor resolve a cobranca pelo dono. Um id de
+ * pagamento numa URL do cliente seria enumeravel e precisaria ser defendido.
+ */
+export async function getPixQrCode(): Promise<PixQrCode> {
+  const headers = await getAuthHeader();
+  const res = await fetch(`${API_BASE}/billing/pix-qrcode`, { headers });
+  if (!res.ok) throw new CheckoutError(await checkoutErrorCode(res));
+  const json = await res.json();
+  return json.data as PixQrCode;
 }

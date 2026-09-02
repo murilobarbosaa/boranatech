@@ -40,6 +40,7 @@ import { withRedisOpTimeout } from "../lib/redisOpTimeout";
 import { stripeProvider } from "../providers/stripe";
 import { getStripe } from "../lib/stripeClient";
 import { syncBalanceTransactions } from "../lib/stripeSync";
+import { PIX_REFUND_COPY } from "../../shared/pixRefundCopy";
 import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { lerSessaoDeBoleto } from "../lib/boletoSession";
@@ -422,43 +423,74 @@ type AuthUserLite = {
   name: string | null;
 };
 
-// Resolve dados de Auth (email, last_sign_in_at, created_at, nome do metadata)
-// de varios usuarios em UMA varredura paginada de listUsers, no lugar do
-// anti-padrao de um getUserById por linha. last_sign_in_at so existe em
-// auth.users (nao em profiles), por isso a varredura do Auth e necessaria aqui.
-// Para o alvo de hoje (poucos assinantes ativos) a varredura e barata; se a base
-// crescer muito, avaliar um RPC dedicado. Erro propaga, nunca vira mapa vazio.
-async function fetchAuthUsersByIds(
+/** Lote de ids por chamada. Ver o comentario de `fetchAuthUsersByIds`. */
+export const AUTH_LITE_BATCH = 500;
+
+/** Uma linha de `public.admin_auth_users_lite`, como o PostgREST a devolve. */
+type AuthUserLiteRow = {
+  user_id: string;
+  email: string | null;
+  last_sign_in_at: string | null;
+  created_at: string | null;
+  name: string | null;
+};
+
+/**
+ * Dados do Auth para um conjunto de ids, em UMA query por lote.
+ *
+ * ATE 2026-09-02 ISTO ERA FALSO: a funcao dizia resolver "em UMA varredura
+ * paginada de listUsers", e o comentario tratava isso como barato porque o alvo
+ * eram poucos assinantes. O custo nunca foi proporcional ao alvo, e sim a BASE:
+ * `auth.admin.listUsers` pagina de 1000 em 1000 sobre todos os usuarios, entao
+ * com 8.317 perfis eram ate 9 requisicoes HTTP carregando metadata de mil
+ * pessoas cada, a cada abertura da tela, para achar ~60 linhas.
+ *
+ * Em 31/08 isso estourou: `AuthRetryableFetchError: The operation was aborted
+ * due to timeout` em `GET /api/admin/churn-risk` (issue NODE-EXPRESS-T), com o
+ * stack apontando para `GoTrueAdminApi.listUsers` daqui. O proprio comentario
+ * antigo previa a saida ("se a base crescer muito, avaliar um RPC dedicado").
+ *
+ * Agora e a RPC `admin_auth_users_lite`, que filtra no banco por `= any(...)`.
+ * Em lotes porque a lista de ids viaja na URL do PostgREST e um array gigante
+ * esbarra no limite de tamanho da requisicao; 500 e folgado para os alvos de
+ * hoje e mantem a chamada curta.
+ *
+ * ERRO PROPAGA, SEMPRE. Mapa vazio aqui nao e "ninguem encontrado": e o estado
+ * em que o churn-risk descarta todo mundo em silencio, e a mesma classe de falha
+ * que esta base ja documentou (contador devolvendo -1 virando "protegido").
+ */
+export async function fetchAuthUsersByIds(
   ids: string[],
 ): Promise<Map<string, AuthUserLite>> {
   const result = new Map<string, AuthUserLite>();
   if (ids.length === 0) return result;
 
-  const wanted = new Set(ids);
-  const perPage = 1000;
-  let page = 1;
-  for (;;) {
-    const { data, error } = await supabaseAdmin.auth.admin.listUsers({
-      page,
-      perPage,
+  for (let i = 0; i < ids.length; i += AUTH_LITE_BATCH) {
+    const lote = ids.slice(i, i + AUTH_LITE_BATCH);
+    const { data, error } = await supabaseAdmin.rpc("admin_auth_users_lite", {
+      p_user_ids: lote,
     });
-    if (error) throw error;
-
-    const users = data.users;
-    for (const user of users) {
-      if (!wanted.has(user.id)) continue;
-      const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
-      const metaName = typeof meta.name === "string" ? meta.name : null;
-      result.set(user.id, {
-        email: user.email ?? null,
-        lastSignInAt: user.last_sign_in_at ?? null,
-        createdAt: user.created_at ?? null,
-        name: metaName,
+    if (error) {
+      throw dbError("churn-risk auth users", error, "Erro ao buscar usuários.");
+    }
+    // `data` fora do formato NAO vira lista vazia. Sem isto, uma resposta
+    // inesperada (null, objeto, string) escorreria pelo `?? []` e o churn-risk
+    // simplesmente nao veria ninguem: uma tela vazia afirmando "ninguem em
+    // risco" sobre uma leitura que nao aconteceu. Lancar aqui e a mesma escolha
+    // do erro acima, pelo mesmo motivo.
+    if (!Array.isArray(data)) {
+      throw createError(500, "db_error", "Erro ao buscar usuários.", {
+        context: { op: "admin_auth_users_lite", recebido: typeof data },
       });
     }
-
-    if (users.length < perPage || result.size === wanted.size) break;
-    page += 1;
+    for (const row of data as AuthUserLiteRow[]) {
+      result.set(row.user_id, {
+        email: row.email ?? null,
+        lastSignInAt: row.last_sign_in_at ?? null,
+        createdAt: row.created_at ?? null,
+        name: row.name ?? null,
+      });
+    }
   }
   return result;
 }
@@ -1344,8 +1376,18 @@ router.get("/overview", async (req, res, next) => {
             receita: {
               value: receitaAtual.receitaBrutaCents,
               reembolsosCents: receitaAtual.reembolsosCents,
-              taxasCents: receitaAtual.taxasStripeCents,
+              // TODAS as taxas, nao so as da Stripe. Este campo sempre se
+              // chamou `taxasCents` no payload e sempre foi lido como "as taxas
+              // do periodo"; ate a tabela virar ledger multi-provedor ele era
+              // alimentado por `taxasStripeCents`, e os dois eram o mesmo numero
+              // porque tudo era Stripe. Com Pix dentro, continuar lendo o campo
+              // da Stripe faria o card subestimar a taxa em silencio.
+              taxasCents: receitaAtual.taxasCents,
               liquidaCents: receitaAtual.receitaLiquidaCents,
+              // ADITIVO: a quebra por provedor, para a linha secundaria do card
+              // poder dizer quanto veio de cada um. A soma dos itens reproduz
+              // `value`, entao a tela nunca precisa escolher entre os dois.
+              porProvider: receitaAtual.receitaPorProvider,
               historicoDesde: receitaDesde,
               change: calcularVariacao({
                 janela,
@@ -1589,24 +1631,68 @@ router.get("/attention", async (_req, res, next) => {
  */
 router.get("/billing/orphan-payments", async (_req, res, next) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("billing_orphan_payments")
-      .select(
-        "id, stripe_session_id, customer_email, plan_id, amount_total_cents, currency, detected_at, last_seen_at, expected_provider_subscription_id",
-      )
-      .is("resolved_at", null)
-      .order("detected_at", { ascending: true });
+    const [fila, foraDaFila] = await Promise.all([
+      supabaseAdmin
+        .from("billing_orphan_payments")
+        .select(
+          "id, stripe_session_id, stripe_charge_id, customer_email, plan_id, amount_total_cents, currency, detected_at, last_seen_at, expected_provider_subscription_id",
+        )
+        .is("resolved_at", null)
+        .order("detected_at", { ascending: true }),
+      // COBRANCA SEM DONO QUE A FILA NAO CONSEGUE GUARDAR.
+      //
+      // O CHECK `billing_orphan_payments_uma_chave` exige exatamente uma de
+      // `stripe_session_id` ou `stripe_charge_id`, e uma cobranca do Asaas nao
+      // tem nenhuma das duas, entao ela NUNCA entra nesta tabela. Ate aqui o
+      // numero existia so no payload do cron (`naoEnfileiraveis`, em
+      // server/lib/chargeSemDono.ts), onde ninguem que opera olha: a faixa de
+      // saude somava a cobranca e mandava "resolva em Pagamentos orfaos", e a
+      // tela chegava vazia.
+      //
+      // A CONTAGEM E FEITA AQUI, e nao lida do cron, porque a fonte tem de ser a
+      // mesma da faixa de saude: as duas leem `finance_transactions` com os
+      // mesmos tres filtros, e ler o resultado do ultimo cron traria um numero
+      // de ate 6 horas atras que divergiria da faixa na mesma tela.
+      //
+      // `neq("provider", "stripe")` e o criterio, e nao `stripe_charge_id is
+      // null`: linha da Stripe gravada na janela de deploy pode estar sem o id
+      // ainda, e ela nao e Pix. PostgREST exclui NULL num `neq`, o que aqui e o
+      // lado certo (provider nulo e o default `stripe`).
+      supabaseAdmin
+        .from("finance_transactions")
+        .select("id", { count: "exact", head: true })
+        .eq("type", "charge")
+        .is("user_id", null)
+        .neq("provider", "stripe")
+        .lt(
+          "occurred_at",
+          new Date(
+            Date.now() - CHARGE_SEM_DONO_CORTE_DIAS * 24 * 60 * 60 * 1000,
+          ).toISOString(),
+        ),
+    ]);
 
-    if (error)
+    if (fila.error)
       return next(
         dbError(
           "orphan payments list",
-          error,
+          fila.error,
           "Erro ao buscar os pagamentos sem assinatura.",
         ),
       );
 
-    res.json({ data: data ?? [] });
+    res.json({
+      data: fila.data ?? [],
+      // CAMPO IRMAO DE `data`, e nao dentro dele: `data` e um array e o bundle
+      // em execucao faz `json.data ?? []`. Transformar `data` em objeto para
+      // caber o contador quebraria toda aba aberta desde antes do deploy, que e
+      // exatamente o que a regra de expand/contract do CLAUDE.md proibe.
+      //
+      // `null` quando a contagem FALHOU, nunca zero: zero afirmaria que nao ha
+      // cobranca fora da fila, e a tela esconderia o aviso por causa de um erro
+      // de leitura. Falha aqui NAO derruba a fila, que e o conteudo principal.
+      naoEnfileiraveis: foraDaFila.error ? null : (foraDaFila.count ?? 0),
+    });
   } catch (err) {
     next(err);
   }
@@ -4018,11 +4104,22 @@ async function revogarAcessoPro(input: {
   const prefixo = prefixoDeFalhaDeRevogacao(gatilho, uid);
   const chargeId = gatilho.tipo === "refund" ? gatilho.chargeId : null;
 
+  // SEM FILTRO DE PROVEDOR desde 2026-09-02, e a remocao e o conserto.
+  //
+  // Com `.eq("provider","stripe")` aqui, um reembolso que zerasse o saldo de um
+  // assinante Pix NAO revogava o acesso: a consulta nao encontrava a linha e a
+  // funcao devolvia `no_active_subscription`, que a tela le como "nao havia o
+  // que revogar". Ou seja, o mecanismo que existe para impedir "dinheiro
+  // devolvido e acesso mantido" estava desligado justamente para o provedor
+  // novo.
+  //
+  // Quem decide se ha chamada externa e `precisaCancelarNaStripe`, que agora
+  // pergunta pelo provedor. A guarda mora LA, dentro da funcao, e nao aqui no
+  // call site.
   const { data: sub, error: subError } = await supabaseAdmin
     .from("subscriptions")
-    .select("id, status, renewal_type, provider_subscription_id")
+    .select("id, status, renewal_type, provider_subscription_id, provider")
     .eq("user_id", uid)
-    .eq("provider", "stripe")
     .in("status", ["active", "trialing", "past_due"])
     .order("created_at", { ascending: false })
     .limit(1)
@@ -4260,7 +4357,7 @@ router.post("/users/:id/refunds", async (req, res, next) => {
     const { data: linhas, error: linhasError } = await supabaseAdmin
       .from("finance_transactions")
       .select(
-        "id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
+        "id, provider, provider_transaction_id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
       )
       .eq("user_id", uid);
 
@@ -4289,6 +4386,35 @@ router.post("/users/:id/refunds", async (req, res, next) => {
     const alvo = extrato.items.find(
       (item) => item.stripe_charge_id === chargeId && item.type === "charge",
     );
+
+    // PROVEDOR ANTES DA BUSCA POR ID, e a ordem e o ponto.
+    //
+    // Uma cobranca do Asaas nunca casa em `stripe_charge_id`, entao sem esta
+    // guarda ela cairia no 404 "Cobranca nao encontrada para este usuario", uma
+    // mensagem falsa: a cobranca existe, esta no extrato, e so nao e
+    // reembolsavel POR AQUI. Responder 409 com codigo proprio diz o que fazer
+    // em vez de fazer o admin procurar uma cobranca que ele esta vendo.
+    //
+    // A comparacao e por PROVEDOR e nao pelo formato do id. O `is_boleto` abaixo
+    // decide por `chargeId.startsWith("py_")`, uma heuristica de prefixo da
+    // Stripe, e prefixo e exatamente o tipo de criterio que casa errado no dia
+    // em que outro gateway usar as mesmas letras.
+    const alvoAsaas = extrato.items.find(
+      (item) =>
+        item.type === "charge" &&
+        (item.provider ?? "stripe") === "asaas" &&
+        item.provider_transaction_id === chargeId,
+    );
+    if (alvoAsaas) {
+      return next(
+        createError(
+          409,
+          "refund_provider_not_stripe",
+          // UMA instrucao, tres lugares: ver shared/pixRefundCopy.ts.
+          PIX_REFUND_COPY,
+        ),
+      );
+    }
 
     // A cobrança precisa ser DESTE usuário. Sem isto, o id de uma cobrança de
     // outra pessoa seria aceito.
@@ -4586,7 +4712,7 @@ router.post("/users/:id/external-refunds", async (req, res, next) => {
     const { data: linhas, error: linhasError } = await supabaseAdmin
       .from("finance_transactions")
       .select(
-        "id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
+        "id, provider, provider_transaction_id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
       )
       .eq("user_id", uid);
 
@@ -4616,6 +4742,37 @@ router.post("/users/:id/external-refunds", async (req, res, next) => {
     const alvo = extrato.items.find(
       (item) => item.stripe_charge_id === chargeId && item.type === "charge",
     );
+
+    // PIX AINDA NAO CABE AQUI, e o 409 diz isso em vez de mentir.
+    //
+    // Esta rota chaveia tudo por `stripe_charge_id`: a busca do alvo acima, a
+    // pre-checagem de idempotencia abaixo e a coluna de `admin_refunds` em que
+    // a declaracao e gravada. Uma cobranca do Asaas nao tem esse id, entao ela
+    // cairia primeiro no 404 "Cobranca nao encontrada" (falso, ela esta no
+    // extrato) e, se passasse, no 409 "Esta e uma cobranca de cartao" (tambem
+    // falso).
+    //
+    // O QUE FALTA para Pix entrar: `provider` e `provider_transaction_id` em
+    // `admin_refunds`, e a agregacao de `userTransactions` passando a ligar
+    // declaracao a cobranca por esse par. E migration propria e nao cabe neste
+    // lote. Ate la, a devolucao de Pix e feita no Asaas e conciliada a mao, e
+    // esta mensagem e o unico lugar que declara isso.
+    const alvoAsaasExterno = extrato.items.find(
+      (item) =>
+        item.type === "charge" &&
+        (item.provider ?? "stripe") === "asaas" &&
+        item.provider_transaction_id === chargeId,
+    );
+    if (!alvo && alvoAsaasExterno) {
+      return next(
+        createError(
+          409,
+          "external_refund_provider_not_supported",
+          PIX_REFUND_COPY,
+        ),
+      );
+    }
+
     if (!alvo) {
       return next(
         createError(
@@ -4981,13 +5138,17 @@ router.post("/users/:id/subscription/cancel", async (req, res, next) => {
       );
     }
 
+    // SEM FILTRO DE PROVEDOR desde 2026-09-02. Com ele, um assinante Pix caia
+    // no 404 "Nenhuma assinatura ativa encontrada", uma mensagem FALSA: a
+    // assinatura existe e esta ativa. O ramo honesto para ela ja estava escrito
+    // logo abaixo (`renewal_type === "manual"`, o 409 que explica que o acesso
+    // termina no fim do periodo pago), e o filtro impedia a linha de chegar la.
     const { data: sub, error: subError } = await supabaseAdmin
       .from("subscriptions")
       .select(
-        "id, status, renewal_type, current_period_end, cancel_at_period_end",
+        "id, status, renewal_type, current_period_end, cancel_at_period_end, provider",
       )
       .eq("user_id", uid)
-      .eq("provider", "stripe")
       .in("status", ["active", "trialing", "past_due"])
       .order("created_at", { ascending: false })
       .limit(1)
@@ -5003,12 +5164,19 @@ router.post("/users/:id/subscription/cancel", async (req, res, next) => {
       );
     }
 
+    // NAO RENOVA SOZINHA: nao ha o que cancelar, nem aqui nem no gateway.
+    // Vale para boleto (Stripe) e para Pix (Asaas), pelo mesmo motivo: sao
+    // cobrancas avulsas que concedem um periodo, nao assinaturas recorrentes.
+    // O texto deixou de dizer so "boleto" quando o Pix passou a alcancar este
+    // ramo; o `code` NAO mudou, porque a tela e os testes o usam como chave.
     if (sub.renewal_type === "manual") {
+      const meio = (sub.provider ?? "stripe") === "asaas" ? "Pix" : "boleto";
       return next(
         createError(
           409,
           "boleto_not_supported",
-          "Assinatura de boleto não renova sozinha e não se cancela por aqui. O acesso termina no fim do período já pago.",
+          // TODO(Ana)
+          `Assinatura de ${meio} não renova sozinha e não se cancela por aqui. O acesso termina no fim do período já pago.`,
         ),
       );
     }
@@ -5486,7 +5654,7 @@ router.get("/users/:id/transactions", async (req, res, next) => {
     const { data, error } = await supabaseAdmin
       .from("finance_transactions")
       .select(
-        "id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
+        "id, provider, provider_transaction_id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
       )
       .eq("user_id", uid)
       .order("occurred_at", { ascending: false })
@@ -6102,7 +6270,7 @@ router.get("/finance/transactions", async (req, res, next) => {
     let query = supabaseAdmin
       .from("finance_transactions")
       .select(
-        "id, stripe_charge_id, stripe_invoice_id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, user_id, plan_code",
+        "id, provider, provider_transaction_id, stripe_charge_id, stripe_invoice_id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, user_id, plan_code",
         { count: "exact" },
       )
       .order("occurred_at", { ascending: false })

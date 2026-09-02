@@ -274,7 +274,22 @@ const EXPECTED_TABLE_COUNT = 84;
 // DIFERENTES. A uniao nao e nenhum dos dois, e nao e a soma menos a intersecao
 // feita de cabeca: o valor abaixo foi MEDIDO no estado mesclado por uma copia
 // truncada do proprio script, que reportou 35 declaradas contra 32 esperadas.
-const EXPECTED_FUNCTION_COUNT = 35;
+// 35 desde 20260902020000_admin_auth_users_rpc.sql (cria admin_auth_users_lite
+// e admin_auth_times). Valor MEDIDO em 02/09/2026 pelo proprio script, nao
+// digitado: ele reportou "o conjunto de funcoes declaradas mudou: 35, esperado
+// 33", e listou as duas como ausentes no banco. As duas devolvem TABLE e o
+// PostgREST as expoe em /rpc/, entao entram nas verificaveis por REST e o
+// contador de trigger abaixo NAO sobe: 27 verificaveis + 8 de trigger = 35.
+// MERGE de 2026-09-02 (Lote M6, sexto merge da main): as duas linhagens acima
+// chegaram ao MESMO 35 por caminhos diferentes, a pilha somando as funcoes de
+// sessao do LinkedIn e a main somando as duas de auth do admin. Coincidencia de
+// valor nao e prova de que a uniao vale 35, entao o numero abaixo foi MEDIDO de
+// novo no estado mesclado, e nao herdado por os dois lados concordarem. E a
+// medicao deu 37: a copia truncada reportou "o conjunto de funcoes declaradas
+// mudou: 37, esperado 35". Os dois 35 eram sobre conjuntos DIFERENTES, e a
+// uniao deles tem duas funcoes a mais. Aceitar o 35 por concordancia teria
+// deixado o guard verde sobre um conjunto que nao e o que ele conta.
+const EXPECTED_FUNCTION_COUNT = 37;
 // 5 desde a MESMA migration: set_admin_task_archive_source devolve trigger,
 // entao nao e exposta pelo PostgREST e sai do conjunto verificavel por REST. Os
 // dois numeros sobem juntos quando a funcao nova e de trigger, e so o primeiro

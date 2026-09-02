@@ -129,6 +129,10 @@ function montar(opts: {
   linha?: Record<string, unknown> | null;
   auditoriaFalha?: boolean;
   corrida?: boolean;
+  /** Quantas cobrancas sem dono estao FORA da fila (Asaas). */
+  foraDaFila?: number;
+  /** A contagem acima falha, para o teste do "nao sei". */
+  foraDaFilaFalha?: boolean;
 }) {
   let consultas = 0;
   const orfaos = (): RespostaTabela => {
@@ -144,12 +148,102 @@ function montar(opts: {
     content_audit_logs: opts.auditoriaFalha
       ? { error: { message: "audit indisponivel" } }
       : { rows: [] },
+    // Contagem das cobrancas que NAO cabem na fila (as que nao sao da Stripe).
+    finance_transactions: opts.foraDaFilaFalha
+      ? { error: { message: "contagem indisponivel" } }
+      : { rows: [], count: opts.foraDaFila ?? 0 },
   };
   estado.double = criarSupabaseDouble(respostas);
 }
 
 beforeEach(() => {
   montar({});
+});
+
+describe("GET /billing/orphan-payments: o que NAO cabe na fila", () => {
+  it("devolve a contagem das cobrancas fora da fila", async () => {
+    // O CASO QUE MOTIVOU O CAMPO: a fila vazia com a faixa de saude acusando
+    // dinheiro sem dono. Uma cobranca do Asaas nao tem `stripe_session_id` nem
+    // `stripe_charge_id`, e o CHECK `billing_orphan_payments_uma_chave` exige
+    // exatamente uma das duas, entao ela nunca entra na tabela.
+    montar({ linha: null, foraDaFila: 2 });
+
+    const r = await chamarAdmin("GET", "/billing/orphan-payments");
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toHaveLength(0);
+    expect(r.body.naoEnfileiraveis).toBe(2);
+  });
+
+  it("o campo e IRMAO de `data`, que continua sendo o array", async () => {
+    // Transformar `data` em objeto para caber o contador quebraria toda aba
+    // aberta desde antes do deploy, que faz `json.data ?? []`.
+    montar({ foraDaFila: 1 });
+
+    const r = await chamarAdmin("GET", "/billing/orphan-payments");
+
+    expect(Array.isArray(r.body.data)).toBe(true);
+  });
+
+  it("a contagem usa os MESMOS filtros da faixa de saude, mais o provedor", async () => {
+    montar({ foraDaFila: 0 });
+    await chamarAdmin("GET", "/billing/orphan-payments");
+
+    const filtros = estado.double
+      .de("finance_transactions")
+      .flatMap((c) => c.filtros);
+
+    expect(filtros).toContainEqual({
+      tipo: "eq",
+      coluna: "type",
+      valor: "charge",
+    });
+    expect(filtros).toContainEqual({
+      tipo: "is",
+      coluna: "user_id",
+      valor: null,
+    });
+    // O criterio e o PROVEDOR, e nao `stripe_charge_id is null`: linha da
+    // Stripe gravada na janela de deploy pode estar sem o id e nao e Pix.
+    expect(filtros).toContainEqual({
+      tipo: "neq",
+      coluna: "provider",
+      valor: "stripe",
+    });
+    // AFIRMA O TOTAL: tirar qualquer filtro quebra aqui.
+    expect(filtros.map((f) => `${f.tipo}:${f.coluna}`).sort()).toEqual([
+      "eq:type",
+      "is:user_id",
+      "lt:occurred_at",
+      "neq:provider",
+    ]);
+  });
+
+  it("contagem ZERO nao vira aviso, e ZERO nao e null", async () => {
+    montar({ foraDaFila: 0 });
+    const r = await chamarAdmin("GET", "/billing/orphan-payments");
+    expect(r.body.naoEnfileiraveis).toBe(0);
+  });
+
+  it("contagem que FALHA vira null, nunca zero", async () => {
+    // Zero afirmaria que nao ha cobranca fora da fila, e o aviso sumiria por
+    // causa de um erro de leitura. `null` e "nao sei".
+    montar({ foraDaFilaFalha: true });
+
+    const r = await chamarAdmin("GET", "/billing/orphan-payments");
+
+    expect(r.status).toBe(200);
+    expect(r.body.naoEnfileiraveis).toBeNull();
+  });
+
+  it("a falha da contagem NAO derruba a fila, que e o conteudo principal", async () => {
+    montar({ foraDaFilaFalha: true });
+
+    const r = await chamarAdmin("GET", "/billing/orphan-payments");
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toHaveLength(1);
+  });
 });
 
 describe("GET /billing/orphan-payments", () => {

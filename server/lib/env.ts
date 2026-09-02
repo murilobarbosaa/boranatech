@@ -200,6 +200,26 @@ export const env = {
   // RETENTAVEL, para exercitar o backoff da fila sem depender de prefeitura.
   // Fail-closed no mesmo formato dos demais: so o literal "true" liga.
   nfseMockFail: process.env.NFSE_MOCK_FAIL === "true",
+  // Asaas (Pix avulso). Segredos SO no backend, nunca com prefixo VITE_.
+  // A URL vem de env e nao e derivada de um flag de ambiente: sandbox e producao
+  // sao hosts diferentes, e um booleano "isProd" decidindo host de cobranca e
+  // exatamente o tipo de inferencia que manda dinheiro para o lugar errado sem
+  // ninguem declarar nada.
+  asaasApiUrl: process.env.ASAAS_API_URL || "",
+  asaasApiKey: process.env.ASAAS_API_KEY || "",
+  asaasWebhookToken: process.env.ASAAS_WEBHOOK_TOKEN || "",
+  // FAIL-CLOSED, e por inteiro: o Asaas so liga com as TRES variaveis presentes.
+  // Meio-ligado e o estado perigoso aqui. Com a chave e sem o token de webhook, o
+  // checkout criaria cobranca real que nenhum webhook autenticado poderia
+  // confirmar: dinheiro entra e acesso nunca sai. Com o token e sem a chave, a
+  // rota de webhook aceitaria evento de uma cobranca que este ambiente nunca
+  // criou. Entao a checagem e conjuntiva, e a ausencia de qualquer uma desliga as
+  // duas pontas (checkout Pix indisponivel, webhook responde 503 sem processar).
+  asaasEnabled: Boolean(
+    process.env.ASAAS_API_URL &&
+      process.env.ASAAS_API_KEY &&
+      process.env.ASAAS_WEBHOOK_TOKEN,
+  ),
   aiDailyLimitFree: parseInt(process.env.AI_DAILY_LIMIT_FREE || "5", 10),
   aiDailyLimitPro: parseInt(process.env.AI_DAILY_LIMIT_PRO || "50", 10),
   // Teto diario do agente conversacional, separado das ferramentas de IA para o
@@ -283,6 +303,15 @@ export const env = {
   // /api/resend/webhook responde 503 e nada mais quebra (padrao resendApiKey).
   resendWebhookSecret: process.env.RESEND_WEBHOOK_SECRET || "",
   redisUrl: process.env.REDIS_URL || "",
+  // ESCAPE para subir os workers BullMQ FORA de producao, deliberado e
+  // explicito. Mesmo desenho do SENTRY_ENABLE_NON_PROD acima, e pelo mesmo
+  // motivo: fail-closed com valvula, porque guarda sem valvula vira instrumento
+  // que ninguem consegue exercitar.
+  //
+  // Ligada, este processo passa a CONSUMIR a fila de e-mail apontada pelo
+  // REDIS_URL. Se esse REDIS_URL for o de producao, os e-mails de gente de
+  // verdade saem daqui. Quem liga esta escolhendo isso.
+  queueWorkersNonProd: process.env.QUEUE_WORKERS_NON_PROD === "true",
   // DSN do Sentry (server). Ausente: Sentry desativado, no-op total.
   sentryDsn: process.env.SENTRY_DSN || "",
   // ESCAPE para exercitar o Sentry FORA de producao, deliberado e explicito.
@@ -541,4 +570,65 @@ if (env.nfseEnabled) {
   console.log(
     `[env] NFS-e: configuracao completa, provedor "${env.nfseProvider}".`,
   );
+}
+
+// Asaas: mesmo desenho fail-closed do bloco acima, com uma diferenca deliberada.
+// A Stripe ABORTA O BOOT quando falta credencial, porque BILLING_ENABLED=true
+// declara a intencao de vender e um site que aparenta vender sem conseguir e pior
+// que um site fora do ar. O Asaas ainda nao e a via principal de pagamento: a
+// ausencia dele nao e um site quebrado, e um meio de pagamento a menos. Entao
+// aqui o processo SOBE e o provider fica desligado por inteiro, com o motivo dito
+// alto uma vez no boot em vez de descoberto no primeiro checkout.
+//
+// O que NAO existe e o meio-termo: parcialmente configurado e reportado como
+// erro, nao como "quase pronto".
+if (env.asaasEnabled) {
+  console.log("[env] Asaas: credenciais completas, Pix pronto.");
+} else {
+  const faltandoAsaas: string[] = [];
+  if (!env.asaasApiUrl) faltandoAsaas.push("ASAAS_API_URL");
+  if (!env.asaasApiKey) faltandoAsaas.push("ASAAS_API_KEY");
+  if (!env.asaasWebhookToken) faltandoAsaas.push("ASAAS_WEBHOOK_TOKEN");
+  if (faltandoAsaas.length === 3) {
+    console.log("[env] Asaas: nao configurado, Pix DESLIGADO.");
+  } else {
+    console.error(
+      `[env] Asaas PARCIALMENTE configurado, e por isso DESLIGADO por inteiro. Faltam: ${faltandoAsaas.join(", ")}. Configure todas ou nenhuma.`,
+    );
+  }
+}
+
+/**
+ * Este processo deve SUBIR os workers do BullMQ?
+ *
+ * O DEFEITO, medido em 2026-09-02. `server/index.ts` subia
+ * `createEmailWorker` e `createEmailCampaignWorker` sempre que `REDIS_URL`
+ * estivesse preenchido, e 32 das 34 worktrees da maquina de desenvolvimento tem
+ * o `REDIS_URL` de PRODUCAO no `.env`. Ou seja: qualquer `pnpm dev` na maquina
+ * virava, sem avisar, um consumidor da fila de e-mail de producao, disputando
+ * job com o worker do Railway. Um desses processos ficou de pe de 29/08 21:07 a
+ * 02/09, sem sequer escutar HTTP, com quatro conexoes abertas para o Redis do
+ * Railway.
+ *
+ * Enfileirar CONTINUA funcionando fora de producao, e isso e deliberado: um
+ * teste ponta a ponta local enfileira no Redis compartilhado e o worker do
+ * Railway consome, que e o comportamento que se quer. O que esta guarda corta e
+ * o CONSUMO, nao a producao de jobs.
+ *
+ * NAO da para atribuir o estrago em retrospecto, e vale registrar por que: a
+ * fila transacional usa `removeOnComplete: 100`, entao o historico dos dias em
+ * questao ja tinha sido descartado quando se foi olhar, e o BullMQ 5.76.6 desta
+ * base nao grava o campo `pb` (`processedBy`) nos jobs, entao nem os jobs
+ * retidos dizem quem os processou.
+ *
+ * Parametros explicitos em vez de ler `env` aqui dentro, pelo mesmo motivo de
+ * `deveReportarAoSentry` em server/lib/sentry.ts: deixa a decisao testavel sem
+ * mockar o modulo de ambiente.
+ */
+export function deveSubirWorkers(params: {
+  nodeEnv: string;
+  escapeLigado: boolean;
+}): boolean {
+  const { nodeEnv, escapeLigado } = params;
+  return nodeEnv === "production" || escapeLigado;
 }

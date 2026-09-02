@@ -281,16 +281,30 @@ describe("caminhosDoSchema: diagnostico sem vazamento", () => {
   // Fala da pessoa, do tipo que o Zod embute em `received` num erro de enum.
   const FALA = "quero sair do meu emprego porque meu chefe me humilha";
 
-  it("devolve os caminhos dos campos que falharam", () => {
+  // As cinco expectativas abaixo foram REESCRITAS A MAO no lote do BUG-73, que
+  // acrescentou o `code` do Zod ao lado do caminho. O formato antigo era
+  // `intake.goal,reply`; o novo e `intake.goal:invalid_value,reply:too_big`. As
+  // asserções de nao-vazamento continuam identicas, que e o que este describe
+  // existe para travar.
+
+  it("devolve os caminhos dos campos que falharam, com o code", () => {
     const issues = [
       {
+        code: "invalid_value",
         path: ["intake", "goal"],
         message: "Invalid enum value",
         received: FALA,
       },
-      { path: ["reply"], message: "Expected string", received: 42 },
+      {
+        code: "invalid_type",
+        path: ["reply"],
+        message: "Expected string",
+        received: 42,
+      },
     ];
-    expect(caminhosDoSchema(issues)).toBe("intake.goal,reply");
+    expect(caminhosDoSchema(issues)).toBe(
+      "intake.goal:invalid_value,reply:invalid_type",
+    );
   });
 
   it("NAO vaza o valor recebido, nem a mensagem do Zod", () => {
@@ -305,7 +319,7 @@ describe("caminhosDoSchema: diagnostico sem vazamento", () => {
       },
     ];
     const saida = caminhosDoSchema(issues);
-    expect(saida).toBe("intake.goal");
+    expect(saida).toBe("intake.goal:invalid_enum_value");
     expect(saida).not.toContain(FALA);
     expect(saida).not.toContain("humilha");
     expect(saida).not.toContain("Invalid enum");
@@ -313,25 +327,68 @@ describe("caminhosDoSchema: diagnostico sem vazamento", () => {
   });
 
   it("indice de array e posicao, nao conteudo", () => {
-    const issues = [{ path: ["messages", 3, "content"], received: FALA }];
-    expect(caminhosDoSchema(issues)).toBe("messages.3.content");
+    const issues = [
+      {
+        code: "invalid_type",
+        path: ["messages", 3, "content"],
+        received: FALA,
+      },
+    ];
+    expect(caminhosDoSchema(issues)).toBe("messages.3.content:invalid_type");
   });
 
   it("deduplica, ordena e limita a 10", () => {
     const issues = [
-      { path: ["b"] },
-      { path: ["a"] },
-      { path: ["b"] },
-      ...Array.from({ length: 15 }, (_, i) => ({ path: [`z${i}`] })),
+      { code: "too_big", path: ["b"] },
+      { code: "too_big", path: ["a"] },
+      { code: "too_big", path: ["b"] },
+      ...Array.from({ length: 15 }, (_, i) => ({
+        code: "too_big",
+        path: [`z${i}`],
+      })),
     ];
     const saida = caminhosDoSchema(issues);
     expect(saida.split(",")).toHaveLength(10);
-    expect(saida.startsWith("a,b,")).toBe(true);
+    expect(saida.startsWith("a:too_big,b:too_big,")).toBe(true);
+  });
+
+  it("mesmo caminho com codes diferentes nao deduplica", () => {
+    // O balde unico `schema_mismatch:reply` do BUG-73 e exatamente o que este
+    // caso impede de voltar: dois modos de falha do mesmo campo, dois registros.
+    const issues = [
+      { code: "too_big", path: ["reply"] },
+      { code: "too_small", path: ["reply"] },
+    ];
+    expect(caminhosDoSchema(issues)).toBe("reply:too_big,reply:too_small");
   });
 
   it("issue sem path nao explode nem vaza", () => {
-    expect(caminhosDoSchema([{ received: FALA }])).toBe("(desconhecido)");
-    expect(caminhosDoSchema([{ path: [] }])).toBe("(raiz)");
-    expect(caminhosDoSchema([null, undefined])).toBe("(desconhecido)");
+    expect(caminhosDoSchema([{ code: "custom", received: FALA }])).toBe(
+      "(desconhecido):custom",
+    );
+    expect(caminhosDoSchema([{ code: "custom", path: [] }])).toBe(
+      "(raiz):custom",
+    );
+    expect(caminhosDoSchema([null, undefined])).toBe(
+      "(desconhecido):(sem-codigo)",
+    );
+  });
+
+  it("code fora da forma de um code do Zod vira (sem-codigo)", () => {
+    // A cerca existe porque este valor chega ate `ai_usage_logs`: sem ela,
+    // texto livre num `code` viraria texto livre no banco. E `(sem-codigo)` em
+    // vez do caminho pelado de proposito, porque o caminho pelado e
+    // indistinguivel do formato antigo, e diagnostico degradado que parece certo
+    // e pior que um ruidoso.
+    expect(caminhosDoSchema([{ code: FALA, path: ["reply"] }])).toBe(
+      "reply:(sem-codigo)",
+    );
+    expect(caminhosDoSchema([{ code: 42, path: ["reply"] }])).toBe(
+      "reply:(sem-codigo)",
+    );
+    expect(caminhosDoSchema([{ path: ["reply"] }])).toBe("reply:(sem-codigo)");
+    expect(caminhosDoSchema([{ code: FALA, path: ["reply"] }])).not.toContain(
+      "humilha",
+    );
   });
 });

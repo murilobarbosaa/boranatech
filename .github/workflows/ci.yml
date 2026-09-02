@@ -63,6 +63,18 @@ jobs:
       # tsconfig.json, e em 2026-08-01 o checkMigrationsApplied.mts subiu com
       # um ReferenceError com o `pnpm check` verde.
       - run: pnpm check:scripts
+      # Mesma ideia do check:generated, para o bloco `.dark` da paleta escura
+      # de index.css: o gerador roda em modo --check e o bloco no disco tem que
+      # ser byte a byte o que ele produz a partir do theme.css do tailwindcss.
+      # Motivo de existir: o bloco carregava ha meses o comentario "GERADO por
+      # scripts/gen-dark-palette.py ... Nao editar a mao" e o script NUNCA foi
+      # versionado, entao o comentario mandava nao editar a mao a unica coisa
+      # que so podia ser editada a mao. Com o gerador de volta, este passo e o
+      # que faz a promessa dele ("regenerar se a versao do tailwindcss mudar")
+      # ter quem cobre: um upgrade de tailwindcss que mexa na paleta padrao
+      # quebra aqui, no lugar de passar despercebido.
+      # Usa o python3 pre-instalado no runner; nao instala nada.
+      - run: pnpm check:palette
       # Auditoria de escopo dos limiares numericos do Analisador de LinkedIn:
       # todo sitio numerico classificado, e toda ancora de mutante casando com
       # a fonte. NAO roda as mutacoes (aquilo leva 10+ min, uma suite por

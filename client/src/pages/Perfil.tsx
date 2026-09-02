@@ -42,6 +42,8 @@ import { ProInlineBadge, ProStarIcon } from "@/components/pro/ProStarIcon";
 import ProUpsellModal from "@/components/pro/ProUpsellModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import PixQrCodeBlock from "@/components/pro/PixQrCodeBlock";
+import { nextPixPollStep } from "@/lib/pixPolling";
 import { useFavorites } from "@/hooks/useFavorites";
 import {
   avatarBgOptions,
@@ -100,6 +102,25 @@ type PendingBoleto = {
   createdAt?: string | null;
 };
 
+/**
+ * Cobranca avulsa aguardando pagamento, de QUALQUER meio (boleto ou Pix).
+ *
+ * Campo novo do GET /subscription. `pendingBoleto` continua existindo ao lado
+ * dele por expand/contract: bundle antigo em execucao le o nome velho e nao
+ * recarrega sozinho. Este e o que a tela usa daqui em diante.
+ */
+type PendingCharge = {
+  planCode?: string | null;
+  createdAt?: string | null;
+  paymentMethod?: string | null;
+  /**
+   * Valor da COBRANCA em centavos, aditivo. Ausente no backend antigo e nulo
+   * quando o provedor nao respondeu; nos dois casos a tela usa o preco do plano,
+   * que e o comportamento de sempre.
+   */
+  amountCents?: number | null;
+};
+
 type SubscriptionData = {
   status?: string;
   plans?: SubscriptionPlan | null;
@@ -112,6 +133,7 @@ type SubscriptionData = {
   // boleto usa ISTO, nao cancel_at_period_end (que para boleto e sempre false).
   nonRenewal?: { effectiveAt?: string | null } | null;
   pendingBoleto?: PendingBoleto | null;
+  pendingCharge?: PendingCharge | null;
   // Origem do acesso Pro (aditivo, do GET /subscription): 'influencer' e Pro
   // de parceria sem assinatura; a UI rotula honesto e nao oferece cancelar.
   accessSource?: "subscription" | "influencer" | "admin" | null;
@@ -905,8 +927,6 @@ export default function Perfil() {
   const planCents = subscriptionData?.plans?.code
     ? getPlanPriceCents(subscriptionData.plans.code)
     : null;
-  const planPrice =
-    planCents != null ? formatCurrencyFromCents(planCents) : "-";
   const subscriptionStatus =
     subscriptionData?.status ?? (isPro ? "active" : "free");
   const statusInfo = getStatusLabel(subscriptionStatus);
@@ -939,7 +959,70 @@ export default function Perfil() {
   // Boleto aguardando pagamento (do endpoint). Plano/valor vem do planPricing.ts
   // (fonte unica). Cenario A: !isPro + pendingBoleto -> card proprio. Cenario B:
   // isPro + pendingBoleto -> card ativo normal + aviso de renovacao.
-  const pendingBoleto = subscriptionData?.pendingBoleto ?? null;
+  // Le o campo novo e cai no antigo enquanto o backend velho estiver no ar (a
+  // janela de deploy nao e atomica: Vercel sobe antes do Railway). Sem este
+  // fallback, o card de "aguardando pagamento" some por alguns minutos a cada
+  // deploy, justamente para quem acabou de pagar.
+  const pendingCharge =
+    subscriptionData?.pendingCharge ??
+    (subscriptionData?.pendingBoleto
+      ? { ...subscriptionData.pendingBoleto, paymentMethod: "boleto" }
+      : null);
+  const pendingBoleto = pendingCharge;
+  const isPendingPix = pendingCharge?.paymentMethod === "pix";
+
+  // COBRANCA PENDENTE MANDA NO CAMPO "Valor" do card. Ele anunciava R$ 129,00
+  // sobre uma cobranca de R$ 12,90 criada com cupom de 90%: o cupom entrou certo
+  // na cobranca (o Asaas confirmou o valor) e quem precificava pelo plano era a
+  // tela. Enquanto ha cobranca aguardando pagamento, o numero que interessa e o
+  // que sera pago.
+  //
+  // O valor NAO e recalculado aqui: vem do provedor pelo `amountCents` do
+  // endpoint. Recalcular o desconto no cliente traria a mesma divergencia por
+  // outro caminho, porque a validade do cupom pode ter mudado desde a criacao.
+  //
+  // `?? planCents` cobre backend antigo (campo ausente) e provedor mudo (campo
+  // nulo). Nos dois o card volta ao preco do plano, que e impreciso com cupom
+  // mas e o que ja acontecia. Zero seria plausivel e falso.
+  const valorExibidoCents = pendingCharge?.amountCents ?? planCents;
+  const planPrice =
+    valorExibidoCents != null
+      ? formatCurrencyFromCents(valorExibidoCents)
+      : "-";
+
+  // CONFIRMACAO AUTOMATICA. Enquanto ha Pix pendente e a pessoa ainda nao e Pro,
+  // reconsulta a assinatura ate o webhook ativar. A regra de parada vive em
+  // `nextPixPollStep` (client/src/lib/pixPolling.ts), testada isolada: um
+  // polling que nunca para vira requisicao infinita numa aba esquecida, e um que
+  // para cedo deixa a tela mentindo que o pagamento nao chegou. Nenhuma das duas
+  // falhas aparece na tela.
+  //
+  // `silent: true` para nao piscar o card de "carregando" a cada 4s.
+  useEffect(() => {
+    if (!isPendingPix || isPro) return;
+    const inicio = Date.now();
+    let vivo = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const tick = async () => {
+      if (!vivo) return;
+      await refreshSubscription({ silent: true });
+      if (!vivo) return;
+      const passo = nextPixPollStep({
+        isPro,
+        elapsedMs: Date.now() - inicio,
+      });
+      if (passo.action === "wait") {
+        timer = setTimeout(() => void tick(), passo.delayMs);
+      }
+    };
+
+    timer = setTimeout(() => void tick(), 4000);
+    return () => {
+      vivo = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [isPendingPix, isPro, refreshSubscription]);
   // Boleto: renewal_type='manual' (nao renova sozinho). O botao vira "nao
   // renovar" e o estado vem de nonRenewal (subscription_cancellations), nao de
   // cancel_at_period_end. Cartao (renewal_type 'auto') segue o caminho de sempre.
@@ -1706,8 +1789,7 @@ export default function Perfil() {
               <div
                 className="absolute inset-0 z-0"
                 style={{
-                  background:
-                    "var(--bnt-ticket-pro)",
+                  background: "var(--bnt-ticket-pro)",
                 }}
                 aria-hidden="true"
               />
@@ -1743,7 +1825,8 @@ export default function Perfil() {
                     Carregando assinatura...
                   </p>
                 ) : !isPro && pendingBoleto ? (
-                  // Cenario A: boleto de primeira compra aguardando pagamento.
+                  // Cenario A: cobranca avulsa de primeira compra aguardando
+                  // pagamento (boleto ou Pix).
                   // Sem acesso Pro ainda; sem botao de cancelar e sem CTA.
                   <>
                     <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-amber-700">
@@ -1788,9 +1871,17 @@ export default function Perfil() {
                         </span>
                       </div>
 
+                      {/* TODO(Ana): copy do aguardando pagamento por meio. A
+                          diferenca que importa: o boleto promete 1 a 2 dias
+                          uteis de compensacao, e o Pix confirma em segundos. O
+                          texto do Pix NAO pode herdar o prazo do boleto. */}
                       <p className="pt-1 text-sm font-semibold text-slate-600">
-                        Boleto enviado para seu e-mail. Vence em 3 dias.
+                        {isPendingPix
+                          ? "Pix gerado. A confirmação costuma levar alguns segundos; o código vence em 2 dias."
+                          : "Boleto enviado para seu e-mail. Vence em 3 dias."}
                       </p>
+
+                      {isPendingPix ? <PixQrCodeBlock /> : null}
                     </div>
                   </>
                 ) : isPro ? (
@@ -1879,9 +1970,14 @@ export default function Perfil() {
                             strokeWidth={2.5}
                           />
                         </span>
+                        {/* TODO(Ana): copy da renovacao em processamento por meio
+                            de pagamento. Pix NAO herda o prazo do boleto: cai em
+                            segundos, entao "aguardando" aqui e questao de
+                            minutos, nao de dias uteis. */}
                         <p className="text-sm font-bold text-slate-800">
-                          Renovação em processamento. Seu boleto está aguardando
-                          pagamento.
+                          {isPendingPix
+                            ? "Renovação em processamento. Seu Pix está sendo confirmado, costuma levar alguns segundos."
+                            : "Renovação em processamento. Seu boleto está aguardando pagamento."}
                         </p>
                       </div>
                     ) : null}
@@ -2027,8 +2123,7 @@ export default function Perfil() {
               <div
                 className="absolute inset-0 z-0"
                 style={{
-                  background:
-                    "var(--bnt-ticket-account)",
+                  background: "var(--bnt-ticket-account)",
                 }}
                 aria-hidden="true"
               />

@@ -22,6 +22,17 @@ type CompleteProfileModalProps = {
   onClose: () => void;
   // Salvou com sucesso: quem chama reavalia a elegibilidade e fecha o modal.
   onSaved: () => void;
+  /**
+   * Titulo e motivo, para o modal servir a mais de um fluxo.
+   *
+   * OPCIONAIS COM DEFAULT do certificado, de proposito: o chamador que ja
+   * existia (CertificateBlock) nao muda uma linha. O fluxo de Pix precisa dos
+   * MESMOS campos pelo MESMO PATCH, e a unica coisa que difere e a razao dita a
+   * pessoa. Duplicar o modal para trocar duas frases criaria duas mascaras de
+   * CPF e duas validacoes de nome que divergiriam na primeira correcao.
+   */
+  titulo?: string;
+  motivo?: string;
 };
 
 function maskCpf(raw: string): string {
@@ -49,6 +60,10 @@ export default function CompleteProfileModal({
   missing,
   onClose,
   onSaved,
+  // TODO(Ana): titulo do modal de completar perfil
+  titulo = "Falta um passo para o seu certificado",
+  // TODO(Ana): explica por que pedimos CPF
+  motivo = "O CPF consta no certificado e é o que permite a validação por faculdades e empresas.",
 }: CompleteProfileModalProps) {
   const needsName = missing.includes("full_name");
   const needsCpf = missing.includes("cpf");
@@ -102,13 +117,10 @@ export default function CompleteProfileModal({
       <DialogContent className="border-[2.5px] border-slate-900 bg-[var(--brand-cream)] shadow-[6px_6px_0_#7c3aed]">
         <DialogHeader>
           <DialogTitle className="font-display text-2xl font-black text-slate-950">
-            {/* TODO(Ana): titulo do modal de completar perfil */}
-            Falta um passo para o seu certificado
+            {titulo}
           </DialogTitle>
           <DialogDescription className="text-sm font-medium text-slate-600">
-            {/* TODO(Ana): explica por que pedimos CPF */}
-            O CPF consta no certificado e é o que permite a validação por
-            faculdades e empresas.
+            {motivo}
           </DialogDescription>
         </DialogHeader>
 

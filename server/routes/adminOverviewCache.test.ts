@@ -170,8 +170,17 @@ describe("cache do GET /overview", () => {
       "admincache:overview:7",
       "admincache:overview:all",
     ]);
-    expect(sete.body.computedAt).not.toBe(trinta.body.computedAt);
-    expect(tudo.body.computedAt).not.toBe(trinta.body.computedAt);
+    // `computedAt` NAO participa da prova de que computou separado, pelo mesmo
+    // motivo registrado em adminActiveDailyWindow.test.ts: as computacoes cabem
+    // no mesmo milissegundo, e ai o `not.toBe` reprovava comportamento correto.
+    // Quem prova sao os `redis.sets` acima, que so tem tres escritas se as tres
+    // rodaram; do timestamp se exige apenas nao andar para tras.
+    expect(new Date(sete.body.computedAt).getTime()).toBeGreaterThanOrEqual(
+      new Date(trinta.body.computedAt).getTime(),
+    );
+    expect(new Date(tudo.body.computedAt).getTime()).toBeGreaterThanOrEqual(
+      new Date(trinta.body.computedAt).getTime(),
+    );
     // Cada uma responde sobre a SUA janela, e o rótulo prova isso.
     expect(sete.body.data.window).toBe("7");
     expect(tudo.body.data.window).toBe("all");

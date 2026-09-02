@@ -64,12 +64,31 @@ const REVENUE_TYPES: readonly string[] = [
 ];
 
 type FinanceTxRow = {
+  /**
+   * `stripe` | `asaas`. Opcional: linha gravada entre a migration e o deploy do
+   * codigo que escreve a coluna chega sem ela, e o default dela e `stripe`.
+   */
+  provider?: string | null;
   type: string;
   gross_cents: number;
   fee_cents: number;
   net_cents: number;
   plan_code: string | null;
   occurred_at: string;
+};
+
+/** Mesmo default da coluna. Ausencia e Stripe, nunca provedor desconhecido. */
+function providerDaLinha(t: Pick<FinanceTxRow, "provider">): string {
+  return t.provider ?? "stripe";
+}
+
+/** Receita de UM provedor, para o painel poder separar sem somar duas vezes. */
+export type ReceitaPorProvider = {
+  provider: string;
+  brutaCents: number;
+  liquidaCents: number;
+  taxasCents: number;
+  reembolsosCents: number;
 };
 
 type ExpenseOccurrenceInput = {
@@ -90,7 +109,28 @@ export type FinanceSummary = {
   to: string;
   receitaBrutaCents: number;
   reembolsosCents: number;
+  /**
+   * TAXAS DE TODOS OS PROVEDORES. Campo novo, e e ele que a tela deve ler.
+   *
+   * `taxasStripeCents` continua existindo ao lado, agora somando SO a Stripe,
+   * que e o que o nome sempre prometeu. Ate a tabela virar ledger
+   * multi-provedor os dois numeros eram o mesmo, porque tudo era Stripe.
+   */
+  taxasCents: number;
+  /**
+   * SO a Stripe. MANTIDO POR EXPAND/CONTRACT, nao por gosto: o bundle antigo em
+   * execucao continua lendo este nome ate a pessoa recarregar, e nao existe
+   * prazo para isso.
+   *
+   * REMOVER EM 2026-09-30, junto com o leitor em
+   * client/src/components/admin/FinanceDashboard.tsx.
+   */
   taxasStripeCents: number;
+  /**
+   * Receita QUEBRADA POR PROVEDOR. Aditivo: a soma dos itens reproduz os totais
+   * acima, entao nenhuma tela precisa escolher entre um e outro.
+   */
+  receitaPorProvider: ReceitaPorProvider[];
   receitaLiquidaCents: number;
   despesasCents: number;
   lucroCents: number;
@@ -167,7 +207,7 @@ async function loadTransactions(from: Date, to: Date): Promise<FinanceTxRow[]> {
       supabaseAdmin
         .from("finance_transactions")
         .select(
-          "type, gross_cents, fee_cents, net_cents, plan_code, occurred_at",
+          "provider, type, gross_cents, fee_cents, net_cents, plan_code, occurred_at",
         )
         .gte("occurred_at", from.toISOString())
         .lte("occurred_at", to.toISOString())
@@ -200,22 +240,49 @@ export async function getFinanceSummary(params: {
 
   let receitaBrutaCents = 0;
   let reembolsosCents = 0;
+  let taxasCents = 0;
   let taxasStripeCents = 0;
   let receitaLiquidaCents = 0;
   const porPlano = new Map<string, number>();
+  // Quebra por provedor acumulada NO MESMO LACO, sobre as MESMAS linhas e com
+  // os MESMOS criterios. Um segundo laco (ou uma segunda consulta) seria uma
+  // segunda definicao de receita, e duas definicoes divergem na primeira
+  // correcao aplicada so numa delas.
+  const porProvider = new Map<string, ReceitaPorProvider>();
 
   for (const t of txs) {
     if (!REVENUE_TYPES.includes(t.type)) continue; // exclui payout
-    taxasStripeCents += t.fee_cents;
+    const provider = providerDaLinha(t);
+    const acc = porProvider.get(provider) ?? {
+      provider,
+      brutaCents: 0,
+      liquidaCents: 0,
+      taxasCents: 0,
+      reembolsosCents: 0,
+    };
+
+    taxasCents += t.fee_cents;
+    // O NOME PASSOU A VALER: ate a tabela virar ledger multi-provedor, "taxas
+    // da Stripe" somava tudo porque tudo era da Stripe. Com Pix dentro, somar
+    // tudo aqui faria o rotulo mentir sobre de quem e a taxa.
+    if (provider === "stripe") taxasStripeCents += t.fee_cents;
+    acc.taxasCents += t.fee_cents;
+
     receitaLiquidaCents += t.net_cents;
+    acc.liquidaCents += t.net_cents;
+
     if (t.type === "charge") {
       receitaBrutaCents += t.gross_cents;
+      acc.brutaCents += t.gross_cents;
       const key = t.plan_code ?? "nao_atribuido";
       porPlano.set(key, (porPlano.get(key) ?? 0) + t.net_cents);
     }
     if (t.type === "refund") {
       reembolsosCents += Math.abs(t.gross_cents);
+      acc.reembolsosCents += Math.abs(t.gross_cents);
     }
+
+    porProvider.set(provider, acc);
   }
 
   const expenses = await loadExpenses();
@@ -238,7 +305,11 @@ export async function getFinanceSummary(params: {
     to: to.toISOString(),
     receitaBrutaCents,
     reembolsosCents,
+    taxasCents,
     taxasStripeCents,
+    receitaPorProvider: Array.from(porProvider.values()).sort((a, b) =>
+      a.provider < b.provider ? -1 : a.provider > b.provider ? 1 : 0,
+    ),
     receitaLiquidaCents,
     despesasCents,
     lucroCents,

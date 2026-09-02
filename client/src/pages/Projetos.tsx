@@ -30,6 +30,7 @@ import ProjectValidationBlock from "@/components/projects/ProjectValidationBlock
 import { listProjectValidations } from "@/services/projectValidationService";
 import { areasTI, projetos } from "@/lib/data";
 import { getAreaAccent, projectHelpVideos } from "@/lib/platformData";
+import { areaGridPaletteOf } from "@/lib/areaGridPalette";
 
 type Projeto = (typeof projetos)[number];
 
@@ -449,6 +450,9 @@ export default function Projetos() {
                 </h2>
                 <div className="space-y-4">
                   {grupo.itens.map((projeto) => {
+                    const areaBadge = areaGridPaletteOf(
+                      labelForAreaSlug(projeto.areaSlug),
+                    );
                     return (
                       <div
                         key={projeto.id}
@@ -484,23 +488,23 @@ export default function Projetos() {
                           >
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
+                                {/* Classes, nao hex inline, pelo mesmo motivo
+                                    da grade de /areas: o hex de AREA_ACCENT nao
+                                    passa por variavel de tema, entao o texto do
+                                    chip ficava com a cor do modo claro sobre o
+                                    card escuro (1,55:1 no pior caso, e 2,86:1
+                                    ja no claro). O par bg-200/text-900 atravessa
+                                    os dois temas pelo contexto pastel do
+                                    index.css, sem variante dark:. */}
                                 <span
-                                  className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold"
-                                  style={{
-                                    backgroundColor: `${getAreaAccent(labelForAreaSlug(projeto.areaSlug))}1a`,
-                                    color: getAreaAccent(
-                                      labelForAreaSlug(projeto.areaSlug),
-                                    ),
-                                    borderColor: `${getAreaAccent(labelForAreaSlug(projeto.areaSlug))}55`,
-                                  }}
+                                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold ${areaBadge.bg} ${areaBadge.text} ${areaBadge.border}`}
                                 >
+                                  {/* bg-current: a bolinha herda o currentColor
+                                      que areaBadge.text acabou de fixar, entao
+                                      ela acompanha a familia sem repetir a
+                                      classe nem reintroduzir um valor cravado. */}
                                   <span
-                                    className="h-1.5 w-1.5 rounded-full"
-                                    style={{
-                                      backgroundColor: getAreaAccent(
-                                        labelForAreaSlug(projeto.areaSlug),
-                                      ),
-                                    }}
+                                    className="h-1.5 w-1.5 rounded-full bg-current"
                                     aria-hidden
                                   />
                                   {labelForAreaSlug(projeto.areaSlug)}

@@ -29,6 +29,7 @@ import affiliatesRouter from "./routes/affiliates";
 import avatarsRouter from "./routes/avatars";
 import badgesRouter from "./routes/badges";
 import billingRouter from "./routes/billing";
+import webhooksAsaasRouter from "./routes/webhooksAsaas";
 import bookmarksRouter from "./routes/bookmarks";
 import careerPlanRouter from "./routes/careerPlan";
 import certificatesRouter, {
@@ -344,7 +345,11 @@ app.use(async (req, res, next) => {
 
   // Amostra do DENOMINADOR: emite a contagem da JANELA (nao a requisicao) a cada
   // N chamadas da mesma chave. Desligada por padrao. Ver docs/denominador-rate-limit.md.
-  const amostrar = (escopo: "usuario" | "ip", contagem: number, limite: number) => {
+  const amostrar = (
+    escopo: "usuario" | "ip",
+    contagem: number,
+    limite: number,
+  ) => {
     const n = env.rateLimitSampleN;
     if (n <= 0 || contagem % n !== 0) return;
     console.log(
@@ -361,13 +366,23 @@ app.use(async (req, res, next) => {
       );
     }
     if (redisCount > RATE_LIMIT_MAX_REQUESTS) {
-      return recusar("usuario", windowStart + RATE_LIMIT_WINDOW_MS, redisCount, RATE_LIMIT_MAX_REQUESTS);
+      return recusar(
+        "usuario",
+        windowStart + RATE_LIMIT_WINDOW_MS,
+        redisCount,
+        RATE_LIMIT_MAX_REQUESTS,
+      );
     }
     amostrar("usuario", redisCount, RATE_LIMIT_MAX_REQUESTS);
     if (tetoIp) {
       const contagemIp = await redisRateLimitCount(tetoIp.chave, windowStart);
       if (contagemIp !== null && contagemIp > tetoIp.limite) {
-        return recusar("ip", windowStart + RATE_LIMIT_WINDOW_MS, contagemIp, tetoIp.limite);
+        return recusar(
+          "ip",
+          windowStart + RATE_LIMIT_WINDOW_MS,
+          contagemIp,
+          tetoIp.limite,
+        );
       }
       if (contagemIp !== null) amostrar("ip", contagemIp, tetoIp.limite);
     }
@@ -413,7 +428,12 @@ app.use(async (req, res, next) => {
 
   const doUsuario = contarLocal(key);
   if (doUsuario.count > RATE_LIMIT_MAX_REQUESTS) {
-    return recusar("usuario", doUsuario.resetAt, doUsuario.count, RATE_LIMIT_MAX_REQUESTS);
+    return recusar(
+      "usuario",
+      doUsuario.resetAt,
+      doUsuario.count,
+      RATE_LIMIT_MAX_REQUESTS,
+    );
   }
   amostrar("usuario", doUsuario.count, RATE_LIMIT_MAX_REQUESTS);
   if (tetoIp) {
@@ -465,10 +485,7 @@ app.use(
 // Import de lista de contatos: preview recebe arquivo em base64 (teto de 5mb no
 // arquivo, ~6.7mb em base64). Parser dedicado ANTES do json global (mesmo padrao
 // do avatar). So o /preview precisa do limite maior; o confirm (POST /) e leve.
-app.use(
-  "/api/admin/contact-lists/preview",
-  express.json({ limit: "10mb" }),
-);
+app.use("/api/admin/contact-lists/preview", express.json({ limit: "10mb" }));
 
 // Analisador de LinkedIn: tetos MENORES que o global, por rota. Mesmo padrao
 // dos tres acima (parser dedicado ANTES do json global, e o global ignora o que
@@ -524,6 +541,9 @@ app.use("/api/avatars", avatarsRouter);
 app.use("/api/profiles", profilesRouter);
 app.use("/api/badges", badgesRouter);
 app.use("/api/billing", billingRouter);
+// Webhook do Asaas: rota fixa e propria. Nao passa por /api/billing porque
+// aquele prefixo tem o express.raw da Stripe, que este provedor nao usa.
+app.use("/api/webhooks", webhooksAsaasRouter);
 app.use("/api/bookmarks", bookmarksRouter);
 app.use("/api/consent", consentRouter);
 app.use("/api/career-plan", careerPlanRouter);

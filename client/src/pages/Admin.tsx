@@ -93,6 +93,7 @@ import {
   type OverviewWindow,
 } from "@/components/admin/overview/OverviewPeriod";
 import { rotuloDeVariacao } from "@/components/admin/overview/overviewChange";
+import { detalheDeReceitaPorProvider } from "@/components/admin/overview/receitaPorProviderCopy";
 import { detalheDeRisco } from "@/components/admin/overview/riskCopy";
 import { AttentionPanel } from "@/components/admin/overview/AttentionPanel";
 import { WindowBadge } from "@/components/admin/overview/WindowBadge";
@@ -361,6 +362,20 @@ type OverviewData = {
       reembolsosCents: number;
       taxasCents: number;
       liquidaCents: number;
+      /**
+       * Quebra por provedor. OPCIONAL de propósito, pela mesma regra do
+       * breakdown de risco: o campo nasceu nesta rodada, e a Vercel sobe antes
+       * do Railway, então por 1 a 3 minutos o bundle NOVO conversa com o
+       * backend ANTIGO e recebe a resposta sem ele. Sem `?`, a linha
+       * secundária imprimiria "undefined".
+       */
+      porProvider?: Array<{
+        provider: string;
+        brutaCents: number;
+        liquidaCents: number;
+        taxasCents: number;
+        reembolsosCents: number;
+      }>;
       historicoDesde: string | null;
       change: OverviewChange;
     };
@@ -763,7 +778,11 @@ export const metricCards: MetricCard[] = [
     value: "0",
     detail: "Quem tem assinatura paga",
     icon: <CreditCard className="h-6 w-6" />,
-    color: "bg-[var(--brand-yellow)] text-ink-on-accent",
+    // Sem override de borda: com --bnt-accent-solid o elemento sai do contexto
+    // amarelo, e borda e sombra passam a inverter sozinhas, iguais as dos seis
+    // cards vizinhos. O dark:border-foreground que existia aqui corrigia a
+    // borda e deixava a sombra escura, que era justamente o que se via.
+    color: "bg-[var(--bnt-accent-solid)] text-ink-on-accent",
   },
   {
     key: "mrr",
@@ -1332,7 +1351,7 @@ function MetricCardView({
     <button
       type="button"
       onClick={() => onNavigate(destino)}
-      className="card-brutal flex h-full flex-col rounded-3xl bg-white p-5 text-left transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+      className="card-brutal flex h-full flex-col rounded-3xl bg-white p-5 text-left transition hover:bg-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 dark:hover:bg-secondary"
     >
       {corpo}
     </button>
@@ -6279,7 +6298,7 @@ function AdminInput({
         required={required}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+        className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold text-slate-950 [color-scheme:light] outline-none placeholder:text-slate-600 focus:bg-violet-100 focus:ring-4 focus:ring-violet-200"
       />
     </label>
   );
@@ -6300,7 +6319,7 @@ function AdminTextarea({
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-2 min-h-28 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+        className="mt-2 min-h-28 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold text-slate-950 outline-none placeholder:text-slate-600 focus:bg-violet-100 focus:ring-4 focus:ring-violet-200"
       />
     </label>
   );
@@ -7254,6 +7273,15 @@ export default function Admin() {
         // sozinho afirma uma receita que não entrou. Os três números já eram
         // calculados no mesmo laço e dois eram descartados.
         detail: `Bruto ${janelaLabel}. Líquido ${formatCents(c.receita.liquidaCents)} (taxas ${formatCents(c.receita.taxasCents)}, reembolsos ${formatCents(c.receita.reembolsosCents)}).`,
+        // QUEBRA POR PROVEDOR como linha secundária, não como card novo: é uma
+        // divisão do número que já está no card, mesma decisão do ARPU no MRR.
+        // Ela some sozinha quando não há dois provedores com receita, e some na
+        // janela de deploy contra o backend antigo. Ver o cabeçalho do helper.
+        // TODO(Ana)
+        secundaria: detalheDeReceitaPorProvider(
+          c.receita.porProvider,
+          formatCents,
+        ),
         sparkline: spark("receitaBrutaCents", "up_bom"),
         change: rotuloDeVariacao(c.receita.change, c.receita.historicoDesde),
         destino: "financeiro",
@@ -8476,7 +8504,7 @@ export default function Admin() {
                   id="afiliados"
                   className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white"
                 >
-                  <div className="border-b-2 border-slate-900 bg-[var(--brand-yellow)] p-6">
+                  <div className="border-b-2 border-slate-900 bg-[var(--bnt-admin-banner)] p-6">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
@@ -8515,7 +8543,7 @@ export default function Admin() {
                     </div>
                   ) : null}
 
-                  <div className="grid gap-5 border-b-2 border-slate-900 bg-violet-50 p-6 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-5 border-b-2 border-slate-900 bg-[var(--bnt-admin-strip)] p-6 md:grid-cols-2 xl:grid-cols-4">
                     {[
                       {
                         label: "Receita atribuída",
@@ -8542,7 +8570,7 @@ export default function Admin() {
                         key={item.label}
                         className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]"
                       >
-                        <span className="inline-flex rounded-xl border-2 border-slate-900 bg-yellow-300 p-2 text-ink-on-accent">
+                        <span className="inline-flex rounded-xl border-2 border-slate-900 bg-yellow-300 p-2 text-ink-on-accent dark:border-foreground">
                           {item.icon}
                         </span>
                         <p className="mt-3 text-xs font-black uppercase text-violet-700">
@@ -8570,7 +8598,7 @@ export default function Admin() {
                               setAffiliateName(event.target.value);
                               setCopiedAffiliateLink(false);
                             }}
-                            className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                            className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold text-slate-950 outline-none placeholder:text-slate-600 focus:bg-violet-100 focus:ring-4 focus:ring-violet-200"
                             placeholder="Ex: Parceiro Tech"
                           />
                         </label>
@@ -8586,7 +8614,7 @@ export default function Admin() {
                                 );
                                 setCopiedAffiliateLink(false);
                               }}
-                              className="w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold uppercase outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                              className="w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold uppercase text-slate-950 outline-none placeholder:text-slate-600 focus:bg-violet-100 focus:ring-4 focus:ring-violet-200"
                               placeholder="PARCEIRA20"
                             />
                             <button
@@ -8689,7 +8717,7 @@ export default function Admin() {
                           setAffiliateSearch(event.target.value)
                         }
                         placeholder="Buscar por nome, código ou e-mail..."
-                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
+                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] outline-none placeholder:text-slate-400 focus:bg-yellow-50 dark:focus:bg-secondary"
                       />
                       <div className="mt-5">
                         {affiliatesStatsLoading || affiliatesLoading ? (
@@ -9008,7 +9036,7 @@ export default function Admin() {
                   id="cupons"
                   className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white"
                 >
-                  <div className="border-b-2 border-slate-900 bg-[var(--brand-yellow)] p-6">
+                  <div className="border-b-2 border-slate-900 bg-[var(--bnt-admin-banner)] p-6">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_var(--bnt-shadow)]">
@@ -9058,7 +9086,7 @@ export default function Admin() {
                                 );
                                 setCopiedCouponLink(false);
                               }}
-                              className="w-full min-w-0 rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold uppercase outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                              className="w-full min-w-0 rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold uppercase text-slate-950 outline-none placeholder:text-slate-600 focus:bg-violet-100 focus:ring-4 focus:ring-violet-200"
                               placeholder="PROMO20"
                             />
                             <button
@@ -9078,7 +9106,7 @@ export default function Admin() {
                             onChange={(event) =>
                               setCouponFormDescription(event.target.value)
                             }
-                            className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                            className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold text-slate-950 outline-none placeholder:text-slate-600 focus:bg-violet-100 focus:ring-4 focus:ring-violet-200"
                             placeholder="Ex: Black Friday 2026"
                           />
                         </label>
@@ -9112,7 +9140,7 @@ export default function Admin() {
                                 onChange={(event) =>
                                   setCouponFormValidUntil(event.target.value)
                                 }
-                                className="min-w-0 flex-1 rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                                className="min-w-0 flex-1 rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold text-slate-950 [color-scheme:light] outline-none placeholder:text-slate-600 focus:bg-violet-100 focus:ring-4 focus:ring-violet-200"
                               />
                               {couponFormValidUntil ? (
                                 <button
@@ -9138,7 +9166,7 @@ export default function Admin() {
                                     event.target.value,
                                   )
                                 }
-                                className="min-w-0 flex-1 rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                                className="min-w-0 flex-1 rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold text-slate-950 [color-scheme:light] outline-none placeholder:text-slate-600 focus:bg-violet-100 focus:ring-4 focus:ring-violet-200"
                                 placeholder="Ilimitado"
                               />
                               {couponFormMaxRedemptions ? (
@@ -9233,7 +9261,7 @@ export default function Admin() {
                           setCouponSearch(event.target.value)
                         }
                         placeholder="Buscar por código ou descrição..."
-                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
+                        className="mt-4 w-full rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_var(--bnt-shadow)] outline-none placeholder:text-slate-400 focus:bg-yellow-50 dark:focus:bg-secondary"
                       />
                       <div className="mt-5">
                         {couponsLoading ? (

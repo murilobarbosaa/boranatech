@@ -1,15 +1,25 @@
-import * as Sentry from "@sentry/node";
-import { Router } from "express";
+import {
+  Router,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 
 import { env } from "../lib/env";
 import { signedFiscalUrl } from "../lib/fiscalStorage";
 import { verifyRenewalToken } from "../lib/renewalToken";
 import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
-import { requireAuth } from "../middleware/auth";
+import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
-import { stripeProvider } from "../providers";
+import { asaasProvider, stripeProvider } from "../providers";
+import { fetchChargeAmountCents, fetchPixQrCode } from "../providers/asaas";
 import { isPlanId, PLAN_PRICING, type PlanId } from "../../shared/planPricing";
+import {
+  isPaymentMethodAllowed,
+  isPaymentMethodId,
+  type PaymentMethodId,
+} from "../../shared/paymentMethods";
 
 const router = Router();
 
@@ -114,22 +124,50 @@ async function resolveRenewal(
   };
 }
 
-router.get("/subscription", requireAuth, async (req, res, next) => {
+/**
+ * `checkProStatus` NO LUGAR de um calculo proprio de Pro.
+ *
+ * Esta rota recalculava `isPro` por conta propria (`rpc('is_user_pro')` direto,
+ * e `isPro = !rpcError && data === true`), e divergia do caminho canonico
+ * (`resolveProStatus`, server/middleware/auth.ts) em TRES pontos:
+ *
+ *   1. nao consultava o cache Redis, entao pagava duas RPCs em toda carga da
+ *      pagina de cobranca enquanto o resto do sistema respondia do cache;
+ *   2. nao passava por `isDevProUser`, entao em desenvolvimento a pagina
+ *      contradizia todas as demais telas do mesmo app;
+ *   3. **nao combinava o ramo de admin**, e esta era a divergencia com efeito
+ *      em producao: `resolveProStatus` devolve `is_user_pro OR is_user_admin`
+ *      (CLAUDE.md: "isPro || isAdmin e intencional em toda a plataforma"), e
+ *      esta rota devolvia so o primeiro. Um admin sem assinatura via `isPro:
+ *      false` AQUI e `true` em qualquer outro lugar.
+ *
+ * O middleware E o caminho canonico, entao delegar e monta-lo. Ele nunca lanca:
+ * qualquer falha vira `req.isPro = false`, que preserva o fail-closed que a
+ * rota ja tinha, e sem 500 novo.
+ */
+/**
+ * EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos`
+ * (server/routes/cron.ts) e `handleAsaasWebhook`: o que importa provar aqui e
+ * que a rota DELEGA a decisao de Pro em vez de recalcular, e isso so se prova
+ * rodando o handler contra um `req.isPro` controlado.
+ */
+export async function handleGetSubscription(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     const userId = req.user!.id;
+    const isPro = req.isPro === true;
 
-    const [{ data: subscription, error }, { data: isProRpc, error: rpcError }] =
-      await Promise.all([
-        supabaseAdmin
-          .from("subscriptions")
-          .select("*, plans(*)")
-          .eq("user_id", userId)
-          .in("status", ["active", "trialing", "past_due"])
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        supabaseAdmin.rpc("is_user_pro", { p_user_id: userId }),
-      ]);
+    const { data: subscription, error } = await supabaseAdmin
+      .from("subscriptions")
+      .select("*, plans(*)")
+      .eq("user_id", userId)
+      .in("status", ["active", "trialing", "past_due"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (error) {
       // `cause` para o LinkedErrors do Sentry anexar o erro real do Supabase.
@@ -143,41 +181,44 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
       );
     }
 
-    if (rpcError) {
-      console.error("[billing/subscription] is_user_pro RPC failed:", rpcError);
-      // DEGRADACAO SILENCIOSA, capturada de proposito. A rota responde 200 e o
-      // fluxo nao muda: o `isPro` abaixo ja e fail-closed e devolve FREE quando
-      // a RPC falha. Justamente por isso o unico rastro era o console do
-      // Railway, que ninguem abre, e `server/lib/sentry.ts` nao instala
-      // integracao de console (docs/erro-engolido.md). Um usuario Pro vendo
-      // paywall por falha de RPC e exatamente o caso que precisa aparecer.
-      // Mesma forma do `captureConsentMethodColumnMissing` em routes/consent.ts.
-      Sentry.withScope((scope) => {
-        scope.setTag("route", "billing/subscription");
-        scope.setTag("rpc", "is_user_pro");
-        Sentry.captureException(rpcError);
-      });
-    }
-
-    const isPro = !rpcError && isProRpc === true;
-
     // Boleto pendente (aguardando pagamento). Existe no cenario A (primeira compra
     // por boleto, sem sub ativa -> plano free) e no B (renovacao, junto de uma sub
     // ativa). ADITIVO: nao altera a query primaria nem is_user_pro. Cartao nunca
     // tem pending, entao para cartao isto sempre volta null. { planCode, createdAt },
     // sem PII; o card resolve plano/valor via planPricing.ts.
+    // Enxerga os DOIS meios avulsos. Antes filtrava `payment_method = 'boleto'`
+    // e um Pix aguardando pagamento era invisivel na pagina de cobranca: a
+    // pessoa pagava e a tela dizia que ela era do plano free.
     const { data: pending } = await supabaseAdmin
       .from("subscriptions")
-      .select("created_at, plan_id")
+      .select(
+        "created_at, plan_id, payment_method, provider, provider_subscription_id",
+      )
       .eq("user_id", userId)
-      .eq("payment_method", "boleto")
+      .in("payment_method", ["boleto", "pix"])
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
+    // EXPAND/CONTRACT (CLAUDE.md), nao troca seca. `pendingBoleto` continua
+    // sendo emitido com a MESMA semantica de antes (so boleto), porque todo
+    // bundle ja em execucao le esse nome e nao recarrega sozinho. O campo novo
+    // `pendingCharge` carrega o meio, e e o que o frontend novo consome.
+    // Remover `pendingBoleto`: depois de o Pix estar no ar e o tempo de vida de
+    // uma sessao ter passado.
     let pendingBoleto: { planCode: string; createdAt: string | null } | null =
       null;
+    let pendingCharge: {
+      planCode: string;
+      createdAt: string | null;
+      paymentMethod: string;
+      /**
+       * Valor da COBRANCA, nao do plano. `null` quando nao deu para saber, e a
+       * tela cai no preco do plano, que e o comportamento de sempre.
+       */
+      amountCents: number | null;
+    } | null = null;
     if (pending?.plan_id) {
       const { data: pendingPlan } = await supabaseAdmin
         .from("plans")
@@ -185,10 +226,41 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
         .eq("id", pending.plan_id)
         .maybeSingle();
       if (pendingPlan?.code) {
-        pendingBoleto = {
+        const metodo = String(pending.payment_method ?? "boleto");
+        // VALOR DA COBRANCA, lido no provedor. Nao existe copia local: a linha
+        // pendente guarda `plan_id` e `coupon_code`, e nenhum dos dois e o valor
+        // cobrado. Sem isto o card anuncia o preco cheio do plano sobre uma
+        // cobranca com cupom, que foi o defeito achado na inspecao ao vivo.
+        //
+        // A chamada remota so acontece quando ha cobranca Asaas pendente, que e
+        // raro, e `fetchChargeAmountCents` devolve `null` em vez de lancar: este
+        // endpoint responde a assinatura inteira, e o preco e um rotulo dentro
+        // dela, nunca motivo para derrubar a pagina.
+        //
+        // Boleto (Stripe) fica de fora de proposito: o valor dele nao esta neste
+        // caminho e o comportamento atual dele nao muda neste lote.
+        const chargeId =
+          pending.provider === "asaas"
+            ? String(pending.provider_subscription_id ?? "")
+            : "";
+        const amountCents = chargeId
+          ? await fetchChargeAmountCents(chargeId)
+          : null;
+        pendingCharge = {
           planCode: pendingPlan.code,
           createdAt: pending.created_at,
+          paymentMethod: metodo,
+          amountCents,
         };
+        // Um Pix pendente NAO vira `pendingBoleto`: o bundle antigo mostraria
+        // copy de boleto ("vence em 3 dias", "confira seu e-mail") sobre um Pix.
+        // Mentir sobre o meio e pior que nao mostrar.
+        if (metodo === "boleto") {
+          pendingBoleto = {
+            planCode: pendingPlan.code,
+            createdAt: pending.created_at,
+          };
+        }
       }
     }
 
@@ -202,10 +274,7 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
       current_period_end?: string | null;
     } | null;
     let nonRenewal: { effectiveAt: string | null } | null = null;
-    if (
-      subRow?.renewal_type === "manual" &&
-      subRow.provider_subscription_id
-    ) {
+    if (subRow?.renewal_type === "manual" && subRow.provider_subscription_id) {
       const { data: intent } = await supabaseAdmin
         .from("subscription_cancellations")
         .select("effective_at")
@@ -273,6 +342,7 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
           status: "free",
           isPro,
           pendingBoleto,
+          pendingCharge,
           nonRenewal: null,
           accessSource,
         },
@@ -284,12 +354,66 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
         ...subscription,
         isPro,
         pendingBoleto,
+        pendingCharge,
         nonRenewal,
         accessSource,
       },
     });
   } catch (err) {
     next(err);
+  }
+}
+
+router.get("/subscription", requireAuth, checkProStatus, handleGetSubscription);
+
+/**
+ * QR Code Pix da cobranca pendente DO PROPRIO USUARIO.
+ *
+ * AUTORIZACAO POR CONSTRUCAO, nao por checagem: a rota nao aceita id nenhum. Ela
+ * resolve a cobranca a partir de `req.user.id`, entao nao existe o caso "id de
+ * outra pessoa", e portanto nao existe checagem de dono para alguem esquecer de
+ * escrever. Um id de pagamento numa URL publica seria enumeravel e teria de ser
+ * defendido; este desenho nao tem o que defender.
+ *
+ * 404 nomeado quando nao ha Pix pendente: e o estado normal de quem nao esta
+ * comprando, nao um erro.
+ */
+router.get("/pix-qrcode", requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.user!.id;
+
+    const { data: pending, error } = await supabaseAdmin
+      .from("subscriptions")
+      .select("provider_subscription_id")
+      .eq("user_id", userId)
+      .eq("provider", "asaas")
+      .eq("payment_method", "pix")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      return next(
+        createError(500, "db_error", "Erro ao buscar a cobrança.", {
+          cause: error,
+        }),
+      );
+    }
+    if (!pending?.provider_subscription_id) {
+      return next(
+        createError(
+          404,
+          "pix_pendente_ausente",
+          "Nenhum Pix aguardando pagamento.",
+        ),
+      );
+    }
+
+    const qr = await fetchPixQrCode(pending.provider_subscription_id);
+    return res.json({ data: qr });
+  } catch (err) {
+    return next(err);
   }
 });
 
@@ -496,8 +620,7 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
     const rawPaymentMethod = req.body?.payment_method;
     if (
       rawPaymentMethod !== undefined &&
-      rawPaymentMethod !== "card" &&
-      rawPaymentMethod !== "boleto"
+      !isPaymentMethodId(rawPaymentMethod)
     ) {
       return next(
         createError(
@@ -507,18 +630,42 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
         ),
       );
     }
-    const paymentMethod: "card" | "boleto" =
-      rawPaymentMethod === "boleto" ? "boleto" : "card";
+    const paymentMethod: PaymentMethodId = rawPaymentMethod ?? "card";
 
-    // Boleto so nos planos semestral/anual (pagamento unico). Mensal e cartao-only.
-    if (paymentMethod === "boleto" && planId === "pro_monthly") {
+    // GATING POR INCLUSAO, do ponto unico (shared/paymentMethods.ts). O que
+    // estava aqui negava `pro_monthly` PELO NOME, entao um plano novo passaria
+    // por omissao. Agora o que nao esta declarado como permitido e recusado.
+    if (!isPaymentMethodAllowed(planId, paymentMethod)) {
       return next(
         createError(
           400,
-          "boleto_not_allowed_on_monthly",
-          "Boleto não está disponível no plano mensal.",
+          "payment_method_not_allowed",
+          "Esta forma de pagamento não está disponível neste plano.",
         ),
       );
+    }
+
+    // Seletor de provedor: NOMEADO pelo meio de pagamento, nao por env nem por
+    // mapa indexado por valor de fora. `pix` e Asaas; cartao e boleto sao Stripe.
+    // A uniao fechada faz o `tsc` cobrar o ramo quando um meio novo entrar.
+    if (paymentMethod === "pix") {
+      if (!env.asaasEnabled) {
+        return next(
+          createError(
+            503,
+            "asaas_disabled",
+            "Pagamento por Pix indisponível no momento.",
+          ),
+        );
+      }
+      const data = await asaasProvider.createCheckout({
+        user: { id: userId, email: req.user!.email },
+        planId,
+        affiliateCode,
+        couponCode,
+        paymentMethod,
+      });
+      return res.json({ data });
     }
 
     const data = await stripeProvider.createCheckout({

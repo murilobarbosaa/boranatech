@@ -95,6 +95,8 @@ export type AssinaturaParaRevogar = {
   status: string;
   renewal_type: string | null;
   provider_subscription_id: string | null;
+  /** `stripe` | `asaas`. Ausencia cai em `stripe`, o default da coluna. */
+  provider?: string | null;
 };
 
 /**
@@ -107,10 +109,20 @@ export type AssinaturaParaRevogar = {
  * `current_period_end` no futuro, e mudar o status no nosso banco basta. Nenhum
  * webhook vai chegar depois para desfazer, justamente porque nao existe
  * subscription do lado da Stripe.
+ *
+ * ASAAS SAI POR UMA CONDICAO PROPRIA, e nao pela de cima, apesar de a de cima ja
+ * bastar hoje (toda linha do Asaas e `renewal_type='manual'`). A razao e que ela
+ * basta por CORRELACAO, nao por definicao: quem revogasse a exigencia de Pix ser
+ * sempre manual (Pix Automatico, por exemplo) faria esta funcao mandar um
+ * `pay_...` do Asaas para `stripe.subscriptions.cancel`, que responderia erro e
+ * abortaria a revogacao inteira, deixando o acesso de pe. Perguntar pelo
+ * provedor responde a pergunta que a funcao faz; perguntar pelo tipo de
+ * renovacao responde outra que hoje da o mesmo resultado.
  */
 export function precisaCancelarNaStripe(
   sub: AssinaturaParaRevogar,
 ): sub is AssinaturaParaRevogar & { provider_subscription_id: string } {
+  if ((sub.provider ?? "stripe") !== "stripe") return false;
   return sub.renewal_type !== "manual" && Boolean(sub.provider_subscription_id);
 }
 

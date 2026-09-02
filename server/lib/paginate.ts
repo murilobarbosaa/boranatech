@@ -15,6 +15,9 @@
 // chamada; mantido OFFSET por ser drop-in nas queries atuais (a ordenacao de
 // cada chamada e preservada exatamente como esta).
 
+import { createError } from "../middleware/error";
+import { erroEncadeavel } from "./supabaseError";
+
 const DEFAULT_PAGE_SIZE = 1000;
 
 // Shape minimo de uma resposta do supabase-js suficiente pra paginar: data e o
@@ -97,4 +100,77 @@ export async function coletarTagueado<T>(
       error: { message: err instanceof Error ? err.message : String(err) },
     };
   }
+}
+
+/** Pagina que tambem carrega o total exato (`{ count: "exact" }`). */
+export type PaginatedPageComContagem<T> = PaginatedPage<T> & {
+  count: number | null;
+};
+
+/**
+ * Varre TUDO e PROVA que varreu tudo, comparando com o total exato.
+ *
+ * POR QUE `coletarTudo` NAO BASTA AQUI. Ele para na primeira pagina vazia, o
+ * que e robusto ao max-rows, mas o que ele afirma no fim e "as paginas
+ * acabaram", nao "eu tenho todas as linhas". Sao coisas diferentes quando algo
+ * corta a varredura no meio: o resultado sai curto e com cara de completo. Esta
+ * funcao afirma o TOTAL, que e a contramedida que o CLAUDE.md registra como a
+ * unica que funcionou nas vezes em que foi aplicada.
+ *
+ * O CASO QUE MOTIVOU, medido em 02/09/2026 contra producao. `admin_auth_times`
+ * devolve 8.370 linhas, e `POST /rpc/admin_auth_times` respondia 200 com
+ * `content-range: 0-999/8370`: o Supabase capa a resposta em 1000 linhas, e
+ * isso VALE para retorno de funcao. Sem paginar, `fetchAuthTimes` entregava
+ * 1000 de 8.370 sem erro nenhum, e as metricas de retencao classificavam o
+ * resto como inativo.
+ *
+ * SEM `count` NA RESPOSTA, LANCA. Nao da para provar completude sem o total, e
+ * seguir em frente devolvendo o que veio seria exatamente o comportamento que
+ * esta funcao existe para impedir. Por isso todo `fetchPage` daqui precisa
+ * pedir `{ count: "exact" }`.
+ *
+ * ORDENE SEMPRE dentro do `fetchPage`, pelo mesmo motivo do `coletarTudo`:
+ * OFFSET sem ORDER BY tem ordem indefinida no Postgres, e duas paginas podem
+ * repetir e pular linhas ao mesmo tempo, o que mantem a contagem certa e o
+ * conjunto errado.
+ */
+export async function coletarTudoProvandoTotal<T>(
+  fetchPage: (
+    from: number,
+    to: number,
+  ) => PromiseLike<PaginatedPageComContagem<T>>,
+  options: { op: string; pageSize?: number },
+): Promise<T[]> {
+  const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
+  const linhas: T[] = [];
+  let total: number | null = null;
+
+  for (let from = 0; ; ) {
+    const { data, error, count } = await fetchPage(from, from + pageSize - 1);
+    if (error) {
+      throw createError(500, "db_error", "Erro ao ler a base.", {
+        cause: erroEncadeavel(error),
+        context: { op: options.op, from, pageSize },
+      });
+    }
+    if (total === null) total = count;
+    const rows = data ?? [];
+    for (const row of rows) linhas.push(row);
+    if (rows.length === 0) break;
+    // Avanca pelo tamanho REAL da pagina, como o coletarTudo: se o servidor
+    // capar abaixo do pageSize, a proxima comeca onde esta parou.
+    from += rows.length;
+  }
+
+  if (typeof total !== "number") {
+    throw createError(500, "db_error", "Erro ao ler a base.", {
+      context: { op: options.op, obtido: linhas.length, esperado: null },
+    });
+  }
+  if (linhas.length !== total) {
+    throw createError(500, "db_error", "Erro ao ler a base.", {
+      context: { op: options.op, esperado: total, obtido: linhas.length },
+    });
+  }
+  return linhas;
 }

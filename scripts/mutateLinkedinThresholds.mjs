@@ -871,6 +871,19 @@ const NAO_LIMIAR = [
     /^(?:ultimoEnvioMs|suprimidasDesdeUltimo|totalNoProcesso): 0,?$/,
     "estado inicial do contador de violacoes de lastro, nao e fronteira",
   ],
+  // `tamanho: ehTexto ? valor.length : 0` em server/lib/aiTools.ts, trazido
+  // pela main no sexto merge (Lote M6). O zero e SENTINELA de "nao e string",
+  // nao fronteira: o proprio arquivo declara, no comentario de
+  // `FormaDoEmailRejeitado`, que os campos so dizem algo quando
+  // `tipo === "string"` e sao "falsos/zero no resto por construcao, nao por
+  // medicao". Mutar esse zero nao muda quem reprova check nenhum.
+  //
+  // Regex pelo NOME do campo, no mesmo desenho da entrada acima e pelo mesmo
+  // motivo: um campo numerico novo neste objeto continua caindo como orfao.
+  [
+    /^tamanho: ehTexto \? valor\.length : 0,?$/,
+    "sentinela de nao-string na forma do email rejeitado, nao e fronteira",
+  ],
 ];
 
 function descobrirSitios() {

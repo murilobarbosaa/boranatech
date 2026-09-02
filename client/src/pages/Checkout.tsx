@@ -46,11 +46,15 @@ import {
   createCheckout,
   type CheckoutPaymentMethod,
 } from "@/services/subscriptionService";
+import CompleteProfileModal from "@/components/certificates/CompleteProfileModal";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import PaymentMethodDialog from "@/components/pro/PaymentMethodDialog";
 import FiscalDataModal from "@/components/fiscal/FiscalDataModal";
 import { useNfseEnabled } from "@/services/nfseStatus";
 import { getMyProfile } from "@/services/profileService";
 import { hasFiscalIdentity } from "@shared/fiscalIdentity";
+import PixCheckoutModal from "@/components/pro/PixCheckoutModal";
+import { allowedPaymentMethods } from "@shared/paymentMethods";
 import { apiUrl } from "@/lib/api";
 import {
   discountedPriceCents,
@@ -630,7 +634,25 @@ export default function Checkout() {
     applyCoupon,
     removeCoupon,
   } = useCoupon();
-  const [selectedPlan, setSelectedPlan] = useState("pro_semiannual");
+  // Tipado como PlanId (nao string inferida): `allowedPaymentMethods` e o
+  // dialog indexam por plano, e um string solto passaria plano invalido adiante.
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>("pro_semiannual");
+  // Passo de CPF do fluxo Pix. Aberto pelo 422 `cpf_obrigatorio` do backend,
+  // NUNCA por uma checagem propria: o cliente nao le o CPF (o GET /me nao o
+  // devolve, de proposito), e inventar uma checagem aqui criaria uma segunda
+  // fonte de verdade sobre a validade do documento, que divergiria da do
+  // servidor na primeira correcao de regra. O round-trip custa uma requisicao e
+  // deixa o servidor como unica autoridade.
+  const [cpfStepOpen, setCpfStepOpen] = useState(false);
+  // Cobranca Pix recem-criada, exibida SEM sair da pagina. `null` = modal
+  // fechado. O valor vem do retorno da criacao, que e o que o provedor
+  // registrou; nada e recalculado aqui.
+  const [pixCharge, setPixCharge] = useState<{
+    amountCents?: number | null;
+    dueDate?: string | null;
+    invoiceUrl?: string | null;
+  } | null>(null);
+  const { refreshSubscription } = useSubscription();
   const [loading, setLoading] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   // Gate fiscal: quando falta nome/documento, a modal entra ANTES do checkout e,
@@ -745,9 +767,16 @@ export default function Checkout() {
       return;
     }
 
+    // GATING POR INCLUSAO (main) DENTRO do gate fiscal (pilha). Os dois sao
+    // ortogonais: o gate fiscal decide SE segue, o mapa de meios decide PARA
+    // ONDE. O `selectedPlan === "pro_monthly"` que estava deste lado saiu porque
+    // negava um plano POR NOME, e e literalmente o sitio 3 que
+    // `shared/paymentMethods.ts` foi criado para eliminar; mantê-lo aqui
+    // reabriria o defeito no mesmo commit que o fecha.
+    const metodos = allowedPaymentMethods(selectedPlan);
     void seguirComGateFiscal(
-      selectedPlan === "pro_monthly"
-        ? { tipo: "checkout", metodo: "card" }
+      metodos.length === 1
+        ? { tipo: "checkout", metodo: metodos[0] }
         : { tipo: "dialog" },
     );
   }
@@ -813,7 +842,29 @@ export default function Checkout() {
       });
       // Marca o checkout como pendente para detectar abandono no cancel_url (/planos).
       sessionStorage.setItem("bnt_checkout_pending", selectedPlan);
-      const { checkoutUrl } = await createCheckout(selectedPlan, paymentMethod);
+      const { checkoutUrl, flow, amountCents, dueDate } = await createCheckout(
+        selectedPlan,
+        paymentMethod,
+      );
+      if (flow === "native_pix") {
+        // A COBRANCA E PAGA AQUI MESMO. Antes este ramo navegava para a pagina
+        // de assinatura e o QR aparecia no rodape de um card, fora da vista:
+        // consertava o DESTINO e nao a VIAGEM, que era a queixa original. O
+        // bloco daquela pagina continua existindo como superficie de retorno
+        // frio (aba fechada, outro aparelho, horas depois).
+        //
+        // NAO ha `refreshSubscription` nem `setLocation` aqui, e os dois motivos
+        // sao concretos: enquanto o modal esta aberto a pessoa ainda nao pagou,
+        // entao nao existe estado novo para buscar, e navegar desmontaria o
+        // proprio modal que acabou de abrir. As duas coisas acontecem quando ele
+        // fecha, em `onDismiss` e `onConfirmedContinue`.
+        setPixCharge({
+          amountCents,
+          dueDate,
+          invoiceUrl: checkoutUrl ?? null,
+        });
+        return;
+      }
       if (checkoutUrl) window.location.href = checkoutUrl;
     } catch (error) {
       console.error("[Checkout] createCheckout failed", error);
@@ -824,6 +875,26 @@ export default function Checkout() {
         toast.error(
           "Você tem um boleto aguardando pagamento. Confira seu e-mail.",
         );
+      } else if (code === "pix_pending") {
+        // TODO(Ana): copy do erro de Pix ja aguardando pagamento.
+        toast.error(
+          "Você tem um Pix aguardando pagamento. Confira seu e-mail.",
+        );
+      } else if (code === "payment_method_not_allowed") {
+        // TODO(Ana): copy do erro de meio de pagamento indisponivel no plano.
+        toast.error("Essa forma de pagamento não está disponível neste plano.");
+      } else if (code === "cpf_obrigatorio") {
+        // Nao e erro para a pessoa ler: e um passo que falta. Abre a coleta em
+        // vez de um toast, e o `onSaved` retoma o checkout na MESMA interacao.
+        setCpfStepOpen(true);
+      } else if (code === "valor_minimo_pix") {
+        // TODO(Ana): copy do valor abaixo do minimo do Pix.
+        toast.error(
+          "Com esse desconto o valor fica abaixo do mínimo do Pix. Escolha cartão.",
+        );
+      } else if (code === "asaas_disabled") {
+        // TODO(Ana): copy da indisponibilidade temporaria do Pix.
+        toast.error("Pix indisponível no momento. Tente cartão ou boleto.");
       } else {
         toast.error("Não foi possível iniciar o checkout. Tente novamente.");
       }
@@ -1220,7 +1291,9 @@ export default function Checkout() {
                       ? "border-[3px] border-violet-700 shadow-[6px_6px_0_#7c3aed] hover:shadow-[8px_8px_0_#7c3aed]"
                       : "border-2 border-slate-900 shadow-[6px_6px_0_#FCC700] hover:shadow-[8px_8px_0_#FCC700]"
                   } ${
-                    selected ? "bg-[var(--brand-yellow)]" : "bg-white hover:bg-amber-50"
+                    selected
+                      ? "bg-[var(--brand-yellow)]"
+                      : "bg-white hover:bg-amber-50"
                   }`}
                 >
                   {plan.badge ? (
@@ -1369,7 +1442,24 @@ export default function Checkout() {
         </div>
       </section>
 
+      <CompleteProfileModal
+        open={cpfStepOpen}
+        missing={["cpf"]}
+        onClose={() => setCpfStepOpen(false)}
+        onSaved={() => {
+          setCpfStepOpen(false);
+          // Retoma exatamente o que a pessoa pediu, sem obriga-la a escolher o
+          // metodo de novo.
+          void doCheckout("pix");
+        }}
+        // TODO(Ana): titulo do passo de CPF no fluxo Pix.
+        titulo="Falta o seu CPF"
+        // TODO(Ana): razao visivel de por que pedimos CPF no Pix.
+        motivo="O Pix exige o CPF do pagador para gerar a cobrança. Ele fica só no seu cadastro."
+      />
+
       <PaymentMethodDialog
+        planId={selectedPlan}
         open={paymentDialogOpen}
         onOpenChange={setPaymentDialogOpen}
         onSelect={(method) => void doCheckout(method)}
@@ -1397,6 +1487,32 @@ export default function Checkout() {
             return;
           }
           setPaymentDialogOpen(true);
+        }}
+      />
+
+      {/* Cobranca Pix na propria pagina. `refreshSubscription` roda nas DUAS
+          saidas do modal, e nao ao abrir: e no fechamento que existe estado novo
+          para buscar, e sem ele a pagina de destino renderiza com o dado
+          anterior ao checkout (o SubscriptionContext busca uma vez, na montagem
+          do provider, e `setLocation` nao remonta nada). */}
+      <PixCheckoutModal
+        open={pixCharge !== null}
+        amountCents={pixCharge?.amountCents}
+        dueDate={pixCharge?.dueDate}
+        invoiceUrl={pixCharge?.invoiceUrl}
+        onDismiss={() => {
+          setPixCharge(null);
+          void refreshSubscription().then(() => setLocation("/perfil"));
+        }}
+        onConfirmedContinue={() => {
+          setPixCharge(null);
+          void refreshSubscription().then(() => setLocation("/perfil"));
+        }}
+        onExpiredRestart={() => {
+          // Fica no checkout: a proxima acao e escolher o plano de novo, e ela
+          // esta nesta mesma tela. Nao ha chamada ao backend, a expiracao da
+          // cobranca do lado do provedor segue seu curso.
+          setPixCharge(null);
         }}
       />
     </Layout>

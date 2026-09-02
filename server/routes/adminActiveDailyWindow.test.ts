@@ -249,7 +249,16 @@ describe("GET /users-active-daily: cache por janela", () => {
       "admincache:users-active-daily:30",
       "admincache:users-active-daily:7",
     ]);
-    expect(sete.body.computedAt).not.toBe(trinta.body.computedAt);
+    // `computedAt` NAO participa da prova de que computou separado, e o motivo e
+    // que ele PODE EMPATAR: as duas computacoes cabem no mesmo milissegundo, e
+    // ai o `not.toBe` reprovava um comportamento correto. Quem prova e o
+    // `redis.sets` acima, que so tem duas escritas se as duas rodaram; do
+    // timestamp se exige apenas o que e deterministico, que e nao andar para
+    // tras. (O `toBe` do caso anterior continua valido pelo motivo inverso:
+    // la os dois SAO o mesmo instante, porque a segunda chamada nao computou.)
+    expect(new Date(sete.body.computedAt).getTime()).toBeGreaterThanOrEqual(
+      new Date(trinta.body.computedAt).getTime(),
+    );
     expect(sete.body.data.pontos).toHaveLength(7);
     expect(trinta.body.data.pontos).toHaveLength(30);
   });

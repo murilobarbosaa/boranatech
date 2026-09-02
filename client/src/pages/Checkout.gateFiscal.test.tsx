@@ -52,6 +52,19 @@ vi.mock("@/contexts/AuthContext", () => ({
   }),
 }));
 
+// O Checkout passou a ler `refreshSubscription` quando a main trouxe o modal de
+// Pix, e sem este duble o componente nem monta: o teste do gate fiscal quebraria
+// por uma dependencia que nao tem nada a ver com o gate. `refreshSubscription`
+// nao e exercitado aqui de proposito; quem cobre o fluxo do Pix e o teste dele.
+vi.mock("@/contexts/SubscriptionContext", () => ({
+  useSubscription: () => ({
+    isPro: false,
+    isAdmin: false,
+    loading: false,
+    refreshSubscription: vi.fn(async () => {}),
+  }),
+}));
+
 import Checkout from "./Checkout";
 
 beforeEach(() => {

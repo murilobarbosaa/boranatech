@@ -228,8 +228,19 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
         return next(createError(502, "upstream_error", "Resposta da IA não veio em JSON válido."));
       }
 
-      const validation = toolConfig.responseFormat.zodSchema.safeParse(parsedJson);
+      // Normalizacao ANTES da validacao: a tool que declara `normalizarSaida`
+      // impoe aqui o campo de que o servidor e dono (hoje so o e-mail do
+      // cadastro, no resume-render). Depois do `safeParse` seria tarde, porque
+      // a resposta ja teria virado 502 na cara da pessoa.
+      const paraValidar = toolConfig.responseFormat.normalizarSaida
+        ? toolConfig.responseFormat.normalizarSaida(parsedJson, {
+            userEmail: req.user!.email,
+          })
+        : parsedJson;
+
+      const validation = toolConfig.responseFormat.zodSchema.safeParse(paraValidar);
       if (!validation.success) {
+        const caminhos = zodIssuesForLog(validation.error.issues);
         console.error(
           "[ai] Zod validation falhou pra tool",
           toolKey,
@@ -241,13 +252,29 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
           requestId,
           reservationId: usage.reservationId,
           status: "error",
-          errorMessage: `Zod validation failed: ${zodIssuesForLog(validation.error.issues)}`,
+          errorMessage: `Zod validation failed: ${caminhos}`,
           inputChars,
           outputChars,
           model: toolConfig.model,
           custo: fonteDoCusto(data.usage),
         });
-        return next(createError(502, "upstream_error", "Resposta da IA não bateu com o schema esperado."));
+        // `cause` e `context` porque o 502 chega ao Sentry pelo errorHandler
+        // (statusCode >= 500) SEM nada alem da mensagem generica: ate aqui,
+        // descobrir qual campo o modelo errou exigia achar a linha
+        // correspondente em ai_usage_logs. `caminhos` ja passou pelo
+        // zodIssuesForLog, entao carrega code, path e message do Zod, nunca o
+        // valor recebido.
+        return next(
+          createError(
+            502,
+            "upstream_error",
+            "Resposta da IA não bateu com o schema esperado.",
+            {
+              cause: new Error("zod: " + caminhos),
+              context: { tool: toolKey, caminhos },
+            },
+          ),
+        );
       }
 
       await logAiUsage({

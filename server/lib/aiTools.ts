@@ -1,13 +1,48 @@
+import * as Sentry from "@sentry/node";
 import { z } from "zod";
 
-import { CurriculoSchema } from "../../shared/curriculo/schema";
-import { DEFAULT_MODEL, MODERATION_MODEL, TRANSCRIPTION_MODEL } from "./openai";
+import {
+  CurriculoSchema,
+  DadosPessoaisSchema,
+} from "../../shared/curriculo/schema";
+import {
+  DEFAULT_MODEL,
+  MODERATION_MODEL,
+  TRANSCRIPTION_MODEL,
+} from "./openai";
 import { toOpenAIStrictSchema } from "./openaiStrictSchema";
+
+/**
+ * Contexto AUTORITATIVO do servidor entregue ao normalizador de saida.
+ *
+ * Existe para o normalizador nao ter que adivinhar nada a partir do que o
+ * modelo devolveu: o que esta aqui o servidor sabe, e o modelo nao tem como
+ * contradizer.
+ */
+export interface NormalizacaoCtx {
+  /**
+   * E-mail de cadastro, vindo de `req.user.email`.
+   *
+   * PODE VIR VAZIO: `server/middleware/auth.ts` cai em `""` quando o JWT nao
+   * traz a claim `email`. Quem consome precisa validar antes de usar.
+   */
+  userEmail: string;
+}
 
 export interface ResponseFormatConfig {
   name: string;
   zodSchema: z.ZodTypeAny;
   jsonSchema: Record<string, unknown>;
+  /**
+   * Ajuste da saida do modelo ANTES da validacao, com o que o servidor sabe.
+   *
+   * Roda entre o `JSON.parse` e o `safeParse` em `server/routes/ai.ts`. Nao e
+   * um lugar para "consertar" a saida em geral: existe para o caso em que o
+   * servidor tem o valor autoritativo e o modelo escreveu outra coisa. Quem
+   * implementa devolve `parsed` INTACTO quando nao tem o que fazer, para o Zod
+   * reprovar exatamente como reprovaria sem o hook.
+   */
+  normalizarSaida?: (parsed: unknown, ctx: NormalizacaoCtx) => unknown;
 }
 
 export interface AiToolConfig {
@@ -30,6 +65,104 @@ export interface AiToolConfig {
 }
 
 const curriculoJsonSchema = toOpenAIStrictSchema(CurriculoSchema);
+
+/** Schema do e-mail do curriculo. Fonte unica: o proprio DadosPessoaisSchema. */
+const EMAIL_DO_CURRICULO = DadosPessoaisSchema.shape.email;
+
+/**
+ * Forma do valor rejeitado, SEM o valor.
+ *
+ * O que se quer saber e "o modelo escreveu o que no lugar do e-mail?", e a
+ * resposta util cabe em cinco predicados. O valor em si NUNCA entra: ele veio da
+ * conversa da pessoa montando o curriculo e nao tem por que viajar para o
+ * Sentry. Sem isso a alternativa seria capturar o valor cru, que e exatamente a
+ * classe de vazamento que `caminhosDoSchema` existe para evitar do outro lado.
+ *
+ * `tipo` e o unico campo que vale para qualquer entrada; os quatro booleanos e o
+ * `tamanho` so dizem algo quando `tipo === "string"`, e sao falsos/zero no resto
+ * por construcao, nao por medicao.
+ */
+export interface FormaDoEmailRejeitado {
+  tipo: string;
+  tamanho: number;
+  temArroba: boolean;
+  temEspaco: boolean;
+  vazio: boolean;
+}
+
+export function formaDoEmailRejeitado(valor: unknown): FormaDoEmailRejeitado {
+  const ehTexto = typeof valor === "string";
+  return {
+    tipo: valor === null ? "null" : typeof valor,
+    tamanho: ehTexto ? valor.length : 0,
+    temArroba: ehTexto && valor.includes("@"),
+    temEspaco: ehTexto && /\s/.test(valor),
+    vazio: ehTexto && valor.trim() === "",
+  };
+}
+
+/** Objeto de verdade (nao array, nao null), que e o unico caso navegavel. */
+function ehObjeto(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/**
+ * Troca o `dadosPessoais.email` do curriculo pelo e-mail do CADASTRO quando o
+ * modelo escreveu algo que nao e e-mail.
+ *
+ * O DEFEITO QUE ISTO CONSERTA: em 30 dias, 15 chamadas de `resume-render`
+ * morreram com `invalid_format@dadosPessoais.email`, em 7 usuarios, e tres deles
+ * nunca conseguiram gerar um curriculo. Os 7 e-mails de cadastro sao validos e o
+ * prompt (secao "5. Dados do cadastro") ja manda copiar o e-mail do cadastro:
+ * quando falha, o modelo desobedeceu. O servidor tem o valor certo em
+ * `req.user.email` e ate agora nao o usava, entao uma desobediencia do modelo
+ * virava 502 na cara da pessoa.
+ *
+ * POR QUE SO QUANDO O VALOR DO MODELO E INVALIDO: um e-mail VALIDO diferente do
+ * cadastro e um caso legitimo, previsto no mesmo trecho do prompt ("a menos que
+ * a pessoa tenha pedido explicitamente pra usar outro"). Substituir ali apagaria
+ * um pedido da pessoa, entao o valido passa intacto.
+ *
+ * POR QUE DEVOLVER INTACTO QUANDO O CADASTRO TAMBEM NAO E E-MAIL: `userEmail`
+ * cai em `""` quando o JWT nao traz a claim (`server/middleware/auth.ts`).
+ * Trocar um invalido por outro invalido nao entrega curriculo nenhum e ainda
+ * esconderia o caso atras de uma captura de "substitui", que seria falsa. O Zod
+ * reprova como reprovava antes, e o log continua dizendo a verdade.
+ *
+ * NENHUM outro campo e tocado. O hook nao existe para melhorar a saida do
+ * modelo, so para impor o unico campo de que o servidor e dono.
+ */
+function normalizarSaidaResumeRender(
+  parsed: unknown,
+  ctx: NormalizacaoCtx,
+): unknown {
+  if (!ehObjeto(parsed)) return parsed;
+  const dadosPessoais = parsed.dadosPessoais;
+  if (!ehObjeto(dadosPessoais)) return parsed;
+
+  const emailDoModelo = dadosPessoais.email;
+  if (EMAIL_DO_CURRICULO.safeParse(emailDoModelo).success) return parsed;
+  if (!EMAIL_DO_CURRICULO.safeParse(ctx.userEmail).success) return parsed;
+
+  const forma = formaDoEmailRejeitado(emailDoModelo);
+  console.warn(
+    "[ai] resume-render: email invalido do modelo trocado pelo cadastro",
+    forma,
+  );
+  // `fingerprint` fixo de proposito: o interesse e a SERIE no tempo (isto sobe
+  // ou cai depois de mexer no prompt?), nao um evento novo por ocorrencia.
+  Sentry.captureMessage("resume_render_email_substituido", {
+    level: "warning",
+    fingerprint: ["resume-render-email-substituido"],
+    tags: { tool: "resume-render" },
+    extra: { forma },
+  });
+
+  return {
+    ...parsed,
+    dadosPessoais: { ...dadosPessoais, email: ctx.userEmail },
+  };
+}
 
 /**
  * Preco por MODELO, em dolar por 1 milhao de tokens.
@@ -537,6 +670,7 @@ Não envolva o marcador em código, citação ou markdown. Linha solta, no fim.`
       name: "curriculo",
       zodSchema: CurriculoSchema,
       jsonSchema: curriculoJsonSchema,
+      normalizarSaida: normalizarSaidaResumeRender,
     },
     systemPrompt: `# Identidade
 Você é um extrator de dados estruturados. Recebe o histórico completo de uma conversa entre o Natechinho (assistente do BoraNaTech) e uma pessoa que está montando o currículo dela, junto com os dados de cadastro da pessoa (nome, email, gênero) numa mensagem de sistema. Sua saída é UM ÚNICO objeto JSON estritamente conforme o schema fornecido. Nada além do JSON.

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   decidirManutencao,
   detalheIncompleto,
+  issueArquivadaNoSentry,
   etiquetaParaProjeto,
   montarSentryData,
   type CardParaManutencao,
@@ -415,5 +416,127 @@ describe("bloco sentry_data: ausencia nao pode parecer falha", () => {
     const chaves = JSON.stringify(b);
     expect(chaves).not.toContain("description");
     expect(chaves).not.toContain("notes");
+  });
+});
+
+describe("issue arquivada no Sentry nao reabre o card", () => {
+  // O CICLO: concluir empurra `resolved`, evento novo vira REGRESSAO no Sentry,
+  // e a decisao por data reabria o card. Para erro que nunca para de acontecer
+  // (telemetria de deploy, ambiente do usuario) o ciclo nao tem fim. Medido em
+  // 2026-08-31: 5 cards com duas reaberturas pelo job (61, 64, 33, 35, 40),
+  // todos dessas duas familias.
+  //
+  // Os controles negativos aqui sao a regra inteira do outro lado: uma condicao
+  // larga demais faria card que devia reabrir ficar concluido para sempre, em
+  // silencio, que e o erro mais caro dos dois.
+  const CONCLUIDO_EM = "2026-07-20T00:00:00.000Z";
+  const EVENTO_DEPOIS = "2026-07-30T00:00:00.000Z";
+
+  function concluido() {
+    return card({ column_id: ETAPA_QUALQUER, completed_at: CONCLUIDO_EM });
+  }
+
+  it("arquivada com evento novo: NAO reabre", () => {
+    const d = decidirManutencao({
+      ...base,
+      card: concluido(),
+      lastSeen: EVENTO_DEPOIS,
+      statusNoSentry: "ignored",
+    });
+    expect(d.tipo).toBe("nada");
+    // O motivo distingue do "sem evento novo": o log de atividade precisa
+    // registrar que HOUVE evento e que a decisao foi respeitar o silenciamento.
+    expect(d.motivo).toContain("issue arquivada no Sentry");
+    expect(d.motivo).toContain(EVENTO_DEPOIS);
+  });
+
+  it("`muted` tambem conta como arquivada", () => {
+    // A API persiste `ignored` mesmo quando se manda `muted` (medido em
+    // 2026-08-31 contra NODE-EXPRESS-6), entao este valor nunca chega na
+    // pratica. O teste trava a leitura tolerante, nao um caso observado.
+    const d = decidirManutencao({
+      ...base,
+      card: concluido(),
+      lastSeen: EVENTO_DEPOIS,
+      statusNoSentry: "muted",
+    });
+    expect(d.tipo).toBe("nada");
+    expect(d.motivo).toContain("issue arquivada no Sentry");
+  });
+
+  it("CONTROLE NEGATIVO: NAO arquivada com evento novo REABRE", () => {
+    const d = decidirManutencao({
+      ...base,
+      card: concluido(),
+      lastSeen: EVENTO_DEPOIS,
+      statusNoSentry: "unresolved",
+    });
+    expect(d.tipo).toBe("reabrir");
+  });
+
+  it("CONTROLE NEGATIVO: status AUSENTE com evento novo REABRE", () => {
+    // A issue nao veio no lote. Nao saber o status nao pode virar "esta
+    // silenciada": seria colapsar ausencia de informacao em decisao, e o card
+    // ficaria concluido para sempre por causa de um soluco do Sentry no dia da
+    // varredura.
+    const d = decidirManutencao({
+      ...base,
+      card: concluido(),
+      lastSeen: EVENTO_DEPOIS,
+      statusNoSentry: undefined,
+    });
+    expect(d.tipo).toBe("reabrir");
+  });
+
+  it("CONTROLE NEGATIVO: status DESCONHECIDO com evento novo REABRE", () => {
+    // Valor novo que a API passe a devolver um dia. O default e o comportamento
+    // de hoje, nunca o silenciamento.
+    for (const desconhecido of ["resolved", "escalating", "", "arquivada"]) {
+      const d = decidirManutencao({
+        ...base,
+        card: concluido(),
+        lastSeen: EVENTO_DEPOIS,
+        statusNoSentry: desconhecido,
+      });
+      expect(d.tipo, `status=${desconhecido}`).toBe("reabrir");
+    }
+  });
+
+  it("CONTROLE NEGATIVO: arquivada SEM evento novo continua sem acao", () => {
+    // A issue nao veio no lote, entao nao ha evento fresco. O ramo de "sem
+    // evento novo" vem ANTES e continua respondendo, com o motivo dele.
+    const d = decidirManutencao({
+      ...base,
+      card: concluido(),
+      lastSeen: undefined,
+      statusNoSentry: "ignored",
+    });
+    expect(d.tipo).toBe("nada");
+    expect(d.motivo).toBe("concluido, sem evento novo");
+  });
+
+  it("CONTROLE NEGATIVO: arquivada com evento ANTERIOR a conclusao", () => {
+    const d = decidirManutencao({
+      ...base,
+      card: concluido(),
+      lastSeen: "2026-07-10T00:00:00.000Z",
+      statusNoSentry: "ignored",
+    });
+    expect(d.tipo).toBe("nada");
+  });
+});
+
+describe("issueArquivadaNoSentry", () => {
+  it("reconhece os dois valores de arquivamento", () => {
+    expect(issueArquivadaNoSentry("ignored")).toBe(true);
+    expect(issueArquivadaNoSentry("muted")).toBe(true);
+  });
+
+  it("CONTROLE NEGATIVO: ausencia e desconhecido nao sao arquivamento", () => {
+    for (const v of [undefined, "", "unresolved", "resolved", "escalating"]) {
+      expect(issueArquivadaNoSentry(v), `valor=${JSON.stringify(v)}`).toBe(
+        false,
+      );
+    }
   });
 });

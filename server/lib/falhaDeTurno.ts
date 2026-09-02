@@ -22,7 +22,14 @@ export function classificarFalhaDeTurno(message: string): string {
   // O codigo sozinho nao diz QUAL campo o modelo errou, e sem isso o
   // `schema_mismatch` nao e diagnosticavel (foi o que aconteceu com os 7 de
   // 2026-08-03). `runIntakeChatTurn` ja monta a mensagem com `campos [...]`
-  // contendo APENAS caminhos de campo, nunca valores; aqui so extraimos.
+  // contendo APENAS caminhos de campo e o `code` do Zod, nunca valores; aqui so
+  // extraimos. O resultado tem a forma `schema_mismatch:reply:too_big`.
+  //
+  // O `code` entrou depois (BUG-73): os 7 turnos de 30 dias caiam todos em
+  // `schema_mismatch:reply`, um balde so, e "estourou o teto", "veio vazio" e
+  // "nao era string" pedem correcoes diferentes. Comprimento de string NAO entra
+  // aqui de proposito: e alta cardinalidade e quebraria a agregacao que esta
+  // funcao existe para preservar. Ele sai no console.error de `callModelOnce`.
   if (message.includes("nao bateu com o schema")) {
     const campos = /campos \[([^\]]*)\]/.exec(message);
     return campos && campos[1]

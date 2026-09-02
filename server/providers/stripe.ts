@@ -13,9 +13,16 @@ import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
 import { patchDeMeioDePagamento } from "../lib/paymentMethod";
-import { isFirstPurchase } from "./shared";
+import {
+  applyActivationEffects,
+  type MotivoDaAtivacao,
+  getUserContact,
+  isFirstPurchase,
+  recordNonRenewalIntent,
+  revertNonRenewalIntent,
+} from "./shared";
+import { oneOffAccessDays } from "../../shared/paymentMethods";
 import { getPlanChargeValue, PLAN_PRICING } from "../../shared/planPricing";
-import type { Gender } from "../../shared/gender";
 import type { PlanId } from "../../shared/planPricing";
 import type {
   CancelInput,
@@ -121,8 +128,30 @@ function extractSubscriptionId(event: Stripe.Event): string | null {
   }
 }
 
-function isProStatus(status: string | null): boolean {
+/** Exportada so para o teste conseguir compor `becameActive` com a funcao real. */
+export function isProStatus(status: string | null): boolean {
   return status === "active" || status === "trialing";
+}
+
+/**
+ * Por que esta ativacao esta acontecendo.
+ *
+ * Funcao propria, e nao duas linhas soltas dentro de `handleTransition`, pelo
+ * mesmo motivo de `deveReportarAoSentry` (sentry.ts) e `deveSubirWorkers`
+ * (env.ts): a decisao fica testavel diretamente, com uma linha por caso, em vez
+ * de exigir que o teste monte um evento inteiro da Stripe e todo o banco em
+ * volta so para observar um booleano.
+ *
+ * `past_due -> Pro` e o unico caso de `recuperacao`. Ver o comentario de
+ * `handleTransition` para o evento de 01/09 que motivou a distincao.
+ */
+export function motivoDaAtivacao(
+  prevStatus: string | null,
+  nextStatus: string,
+): MotivoDaAtivacao {
+  return prevStatus === "past_due" && isProStatus(nextStatus)
+    ? "recuperacao"
+    : "primeira_ativacao";
 }
 
 function formatEffectiveDate(effectiveAt: string | null): string {
@@ -133,112 +162,6 @@ function formatEffectiveDate(effectiveAt: string | null): string {
         year: "numeric",
       })
     : "o fim do período pago";
-}
-
-async function getUserContact(userId: string): Promise<{
-  email: string;
-  name: string;
-  gender: Gender | null;
-}> {
-  const { data: authData } = await supabaseAdmin.auth.admin.getUserById(userId);
-  const email = authData?.user?.email || "";
-  const name = String(
-    authData?.user?.user_metadata?.name ||
-      authData?.user?.email?.split("@")[0] ||
-      "usuário",
-  );
-  const { data: profileData } = await supabaseAdmin
-    .from("profiles")
-    .select("gender")
-    .eq("user_id", userId)
-    .maybeSingle();
-  const gender = (profileData?.gender as Gender | null | undefined) ?? null;
-  return { email, name, gender };
-}
-
-/**
- * Conversao de afiliado: a UNICA escrita no ledger de comissao em todo o
- * sistema. `increment_affiliate_conversion` e uma escrita COMPOSTA e sem
- * desfazer pela aplicacao (soma 1 em `sales`, soma a receita e soma a comissao
- * no mesmo UPDATE), entao o que entra aqui e definitivo.
- *
- * REGRA: ausencia de valor pago NAO escreve.
- *
- * Chamar com zero quando o evento simplesmente nao declarou valor gravaria uma
- * venda de valor zero, indistinguivel de uma venda 100 por cento descontada
- * legitima. A partir dai o extrato do afiliado mente e ninguem consegue saber
- * quais linhas conferir, que e a classe de falha em silencio que este projeto ja
- * pagou caro. Zero DECLARADO e outra coisa e continua entrando.
- *
- * EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
- * server/routes/cron.ts: o que importa provar e SE a escrita acontece e com qual
- * numero, e isso so se prova rodando a funcao.
- */
-export async function recordAffiliateConversion(params: {
-  userId: string;
-  affiliateCode: string;
-  /** `undefined` = o evento nao declarou cobranca. Ver paidAmountCentsFromEvent. */
-  revenueCents: number | undefined;
-  prevStatus: string | null;
-  nextStatus: string;
-  sourceEvent?: { id: string; type: string; subscriptionId: string | null };
-}): Promise<void> {
-  const { userId, affiliateCode, revenueCents, sourceEvent } = params;
-
-  if (revenueCents === undefined) {
-    // Nao escreve nada e manda o caso para o Sentry com o que o replay manual
-    // precisa. Lacuna VISIVEL vale mais que numero errado invisivel: e a mesma
-    // escolha que o `contarLinhas` devolvendo -1 documentou pelo avesso.
-    //
-    // `warning` e nao `error`, e fingerprint fixo por tipo, pelos mesmos motivos
-    // escritos em `stripe_pagamento_sem_dono`: interessa a serie no tempo, e
-    // ninguem esta sem o que pagou neste instante (o comprador tem acesso; quem
-    // fica sem numero e o afiliado).
-    Sentry.captureMessage("stripe_conversao_sem_valor_pago", {
-      level: "warning",
-      fingerprint: ["stripe-conversao-sem-valor-pago"],
-      tags: {
-        origem: "stripe-webhook",
-        event_type: sourceEvent?.type ?? "desconhecido",
-      },
-      extra: {
-        event_id: sourceEvent?.id ?? null,
-        event_type: sourceEvent?.type ?? null,
-        subscription_id: sourceEvent?.subscriptionId ?? null,
-        user_id: userId,
-        affiliate_code: affiliateCode,
-        prev_status: params.prevStatus,
-        next_status: params.nextStatus,
-      },
-    });
-    console.error(
-      `[webhook/stripe] conversao do afiliado ${affiliateCode} (user ${userId}) ` +
-        `sem valor pago declarado no evento ${sourceEvent?.type ?? "?"} ` +
-        `(${sourceEvent?.id ?? "?"}); NAO incrementada, replay manual necessario.`,
-    );
-    return;
-  }
-
-  try {
-    const { data: affiliate } = await supabaseAdmin
-      .from("affiliates")
-      .select("id")
-      .eq("code", affiliateCode)
-      .maybeSingle();
-    if (affiliate) {
-      await supabaseAdmin.rpc("increment_affiliate_conversion", {
-        p_affiliate_id: affiliate.id,
-        // Zero DECLARADO entra: venda integralmente descontada e uma venda, e
-        // conta em `sales` com comissao zero.
-        p_revenue_cents: revenueCents,
-      });
-    }
-  } catch (affiliateError) {
-    console.error(
-      "[webhook/stripe] Falha ao contar conversao de afiliado:",
-      affiliateError,
-    );
-  }
 }
 
 // Efeitos colaterais de uma transicao de status (paridade com o webhook Asaas):
@@ -263,52 +186,54 @@ async function handleTransition(
   const becameCanceled = prevStatus !== "canceled" && nextStatus === "canceled";
   const becamePastDue = prevStatus !== "past_due" && nextStatus === "past_due";
 
-  if (prevStatus !== nextStatus) {
+  // ATE 2026-09-02 ISTO ERA FALSO: `becameActive` era tratado como sinonimo de
+  // "venda nova". Nao e. `isProStatus` so aceita `active` e `trialing`, entao
+  // `past_due` nao e Pro, e uma renovacao que falhou e depois foi paga entra
+  // aqui como se fosse a primeira compra.
+  //
+  // O caso medido: assinatura `sub_1TwMUgQ6lxIhx7Vyha0Ffmgx` (pro_monthly,
+  // afiliado BORANATECHOFF), renovacao falha em 23, 25, 28 e 30/08 e paga em
+  // 01/09. A Stripe mandou `customer.subscription.updated` (past_due -> active)
+  // e `invoice.paid` no MESMO segundo; o primeiro chegou 125ms antes e disparou
+  // conversao de afiliado, resgate de cupom e e-mail de boas-vindas ao Pro.
+  //
+  // O defeito nao e o warning `stripe_conversao_sem_valor_pago` que apareceu no
+  // Sentry, e sim a incoerencia que ele revelou: uma renovacao que passa de
+  // primeira NUNCA contava comissao (prev=active, logo nao e `becameActive`), e
+  // uma que falhou quatro vezes contava, ou nao, conforme qual dos dois eventos
+  // simultaneos ganhasse a corrida. O mesmo fato do mundo produzia efeitos
+  // diferentes dependendo de latencia de rede.
+  //
+  // `past_due -> Pro` e o UNICO caso reclassificado. Qualquer outro prev que
+  // ative (hoje `null` e `pending`) segue como primeira ativacao.
+  const motivo = motivoDaAtivacao(prevStatus, nextStatus);
+
+  // Ativacao: TODOS os efeitos vao pelo caminho compartilhado
+  // (server/providers/shared.ts), o mesmo que o Pix usa. Cache, afiliado, cupom
+  // e e-mail viviam aqui dentro e eram invisiveis para qualquer outro provedor.
+  // A ordem interna e a mesma de antes; a invalidacao de cache mudou de lugar,
+  // nao de momento, porque `becameActive` implica `prevStatus !== nextStatus`.
+  if (becameActive) {
+    await applyActivationEffects({
+      userId,
+      logPrefix: "webhook/stripe",
+      motivo,
+      planName: opts.planName,
+      affiliateCode: opts.affiliateCode,
+      couponCode: opts.couponCode,
+      revenueCents: opts.revenueCents,
+      sourceEvent: opts.sourceEvent,
+      prevStatus,
+    });
+  } else if (prevStatus !== nextStatus) {
     void invalidateProStatusCache(userId);
   }
 
-  if (becameActive && opts.affiliateCode) {
-    await recordAffiliateConversion({
-      userId,
-      affiliateCode: opts.affiliateCode,
-      revenueCents: opts.revenueCents,
-      prevStatus,
-      nextStatus,
-      sourceEvent: opts.sourceEvent,
-    });
-  }
-
-  // Resgate do cupom de marketing: conta SO na ativacao (nunca na criacao da
-  // sessao), no mesmo ponto da conversao de afiliado. coupon_code no metadata
-  // ja significa "desconto aplicado na sessao" (createCheckout so grava quando
-  // aplica). Best-effort: falha loga e nao derruba o webhook.
-  if (becameActive && opts.couponCode) {
-    try {
-      await supabaseAdmin.rpc("increment_coupon_redemption", {
-        p_code: opts.couponCode,
-      });
-    } catch (couponError) {
-      console.error(
-        "[webhook/stripe] Falha ao contar resgate de cupom:",
-        couponError,
-      );
-    }
-  }
-
-  if (!becameActive && !becameCanceled && !becamePastDue) return;
+  if (!becameCanceled && !becamePastDue) return;
 
   try {
     const { email, name, gender } = await getUserContact(userId);
     if (!email) return;
-    if (becameActive) {
-      await enqueueEmail({
-        type: "pro_upgrade",
-        to: email,
-        name,
-        gender,
-        planName: opts.planName || "Pro",
-      });
-    }
     if (becameCanceled) {
       await enqueueEmail({ type: "cancellation", to: email, name, gender });
     }
@@ -1020,7 +945,7 @@ type ExclusiveActivationRow = {
 // calculado aqui (now + access_days do metadata: 365 anual, 182 semestral),
 // porque nao existe subscription na Stripe de onde puxar o periodo.
 // EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
-// server/routes/cron.ts e de `recordAffiliateConversion` acima: o que
+// server/routes/cron.ts e de `recordAffiliateConversion` (shared.ts): o que
 // importa provar aqui e que a ativacao passa por UMA chamada de RPC e por
 // nenhuma escrita direta de status, e isso so se prova rodando a funcao.
 export async function onBoletoAsyncPaymentSucceeded(
@@ -1647,10 +1572,6 @@ async function ensureMarketingCoupon(
 
 // Boleto: dias de acesso Pro concedidos quando o pagamento compensa (proxima
 // task). So os planos semestral/anual aceitam boleto; o mensal fica de fora.
-const BOLETO_ACCESS_DAYS: Partial<Record<PlanId, number>> = {
-  pro_semiannual: 182,
-  pro_annual: 365,
-};
 
 // DECISAO (Fase 2 da NFS-e): a sessao de Checkout NAO usa
 // `billing_address_collection` nem `tax_id_collection`.
@@ -1847,7 +1768,7 @@ async function createCheckout(
     // que a Stripe cobra). O acesso Pro so e concedido quando o boleto compensa
     // (async_payment_succeeded, proxima task); por isso metadata carrega
     // payment_method/renewal_type/access_days para a linha ser reidratada la.
-    const accessDays = BOLETO_ACCESS_DAYS[input.planId];
+    const accessDays = oneOffAccessDays(input.planId);
     if (!accessDays) {
       throw createError(
         400,

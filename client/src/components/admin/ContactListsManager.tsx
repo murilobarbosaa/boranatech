@@ -763,7 +763,7 @@ export function ContactListsManager() {
                   <tr
                     key={list.id}
                     onClick={() => setDetailId(list.id)}
-                    className="cursor-pointer border-b border-slate-200 last:border-0 hover:bg-yellow-50"
+                    className="cursor-pointer border-b border-slate-200 last:border-0 hover:bg-yellow-50 dark:hover:bg-secondary"
                   >
                     <td className="px-4 py-3 font-black text-slate-900">{list.name}</td>
                     <td className="px-4 py-3 uppercase text-slate-600">{list.source}</td>
