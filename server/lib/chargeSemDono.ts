@@ -33,6 +33,11 @@ import { supabaseAdmin } from "./supabaseAdmin";
 
 /** Linha de `finance_transactions` que interessa aqui. */
 export type LinhaSemDono = {
+  /** `stripe` | `asaas`. Quem cobrou. */
+  provider: string;
+  /** Identidade da transacao no provedor. E ela que torna a linha rastreavel. */
+  providerTransactionId: string | null;
+  /** So existe em linha da Stripe. `null` em Asaas, e isso NAO e ausencia de dado. */
   stripeChargeId: string | null;
   grossCents: number | null;
   currency: string | null;
@@ -44,7 +49,17 @@ export type LinhaSemDono = {
 };
 
 export type AchadoSemDono = {
-  stripeChargeId: string;
+  /** `stripe` | `asaas`. */
+  provider: string;
+  /** Identidade no provedor. NUNCA nula: e o filtro de entrada da deteccao. */
+  providerTransactionId: string;
+  /**
+   * Id da cobranca na Stripe, quando a linha for da Stripe.
+   *
+   * `null` em Asaas, e a distincao importa: ele e a chave de
+   * `billing_orphan_payments` e o que monta o link para o painel da Stripe.
+   */
+  stripeChargeId: string | null;
   grossCents: number | null;
   currency: string | null;
   occurredAt: string;
@@ -85,6 +100,27 @@ export type ChargeSemDonoScan = {
   acionaveis: number;
   /** Achados cujo candidato NAO foi verificado. Mantem a run em 'partial'. */
   naoVerificadas: number;
+  /**
+   * Achados que a FILA nao consegue guardar, hoje so os que nao sao da Stripe.
+   *
+   * `billing_orphan_payments` exige EXATAMENTE UMA de `stripe_session_id` ou
+   * `stripe_charge_id` (CHECK `billing_orphan_payments_uma_chave`, migration
+   * 20260831140000). Uma cobranca do Asaas nao tem nenhuma das duas, entao o
+   * insert violaria o CHECK.
+   *
+   * O CONTADOR EXISTE PARA O NUMERO NAO SUMIR. As duas saidas obvias eram
+   * piores: tentar inserir devolveria `persisted: false`, e o cabecalho daquela
+   * migration ja registra que esse estado e indistinguivel do normal da fila,
+   * entao a falha seria silenciosa; e inventar uma chave falsa mentiria sobre a
+   * origem e envenenaria toda leitura futura, que e exatamente o que aquele
+   * cabecalho recusou fazer com a sessao.
+   *
+   * A cobranca APARECE em `encontradas`, `acionaveis` e `itens`, e na faixa de
+   * saude. So nao entra na fila com botao de resolver. Fechar isso exige
+   * `provider` e `provider_transaction_id` em `billing_orphan_payments`, que e
+   * migration propria e nao cabe neste lote.
+   */
+  naoEnfileiraveis: number;
   /** false quando a leitura da tabela falhou. Nao saber nao e estar limpo. */
   leituraOk: boolean;
   /** false quando o registro na fila falhou. */
@@ -149,6 +185,7 @@ export async function detectarChargesSemDono(
     encontradas: 0,
     acionaveis: 0,
     naoVerificadas: 0,
+    naoEnfileiraveis: 0,
     leituraOk: true,
     persisted: true,
     novas: 0,
@@ -163,8 +200,18 @@ export async function detectarChargesSemDono(
     return { ...vazio, leituraOk: false };
   }
 
+  // O FILTRO E A IDENTIDADE NO PROVEDOR, e nao mais o id da Stripe.
+  //
+  // Ate 2026-09-02 a condicao era `l.stripeChargeId &&`, e com a tabela virando
+  // ledger multi-provedor ela teria descartado TODA cobranca Pix sem dono, em
+  // silencio: o scan sairia `encontradas: 0` com a run `success`, enquanto a
+  // faixa de saude (server/routes/admin.ts, que nunca filtrou por essa coluna)
+  // contaria a mesma linha. Duas telas discordando, e a calada sendo a que tem
+  // o botao de agir.
   const candidatas = linhas.filter(
-    (l) => l.stripeChargeId && passouDoCorte(l.occurredAt, agoraMs, corteDias),
+    (l) =>
+      l.providerTransactionId &&
+      passouDoCorte(l.occurredAt, agoraMs, corteDias),
   );
   if (candidatas.length === 0) return vazio;
 
@@ -191,7 +238,9 @@ export async function detectarChargesSemDono(
       verificado = false;
     }
     itens.push({
-      stripeChargeId: linha.stripeChargeId as string,
+      provider: linha.provider,
+      providerTransactionId: linha.providerTransactionId as string,
+      stripeChargeId: linha.stripeChargeId,
       grossCents: linha.grossCents,
       currency: linha.currency,
       occurredAt: linha.occurredAt,
@@ -223,6 +272,10 @@ export async function detectarChargesSemDono(
   }
 
   const naoVerificadas = itens.filter((i) => !i.candidatoVerificado).length;
+  // Ver o comentario de `naoEnfileiraveis` em ChargeSemDonoScan: a fila exige
+  // uma chave da Stripe, e a linha que nao tem uma e CONTADA aqui em vez de
+  // tentar um insert que o CHECK recusaria em silencio.
+  const naoEnfileiraveis = itens.filter((i) => !i.stripeChargeId).length;
   const registro = opcoes.dryRun
     ? { persisted: true, novas: 0 }
     : await lookups.persistir(itens);
@@ -232,6 +285,7 @@ export async function detectarChargesSemDono(
     encontradas: itens.length,
     acionaveis: itens.length,
     naoVerificadas,
+    naoEnfileiraveis,
     leituraOk: true,
     persisted: registro.persisted,
     novas: registro.novas,
@@ -250,6 +304,8 @@ export async function detectarChargesSemDono(
  * sem custar requisicao nenhuma.
  */
 type LinhaBruta = {
+  provider: string | null;
+  provider_transaction_id: string | null;
   stripe_charge_id: string | null;
   gross_cents: number | null;
   currency: string | null;
@@ -268,17 +324,39 @@ function textoEm(objeto: unknown, caminho: string[]): string | null {
 }
 
 export function linhaDoBanco(bruta: LinhaBruta): LinhaSemDono {
+  // `provider` tem default 'stripe' na coluna, e o fallback aqui repete esse
+  // default em vez de aceitar `null`: linha gravada na janela entre a migration
+  // e o deploy do codigo novo e da Stripe, e tratar a ausencia como um provedor
+  // desconhecido a tiraria da deteccao.
+  const provider = bruta.provider ?? "stripe";
+
+  // EMAIL E CUSTOMER SO EXISTEM NO SHAPE DA STRIPE. `raw_payload` de uma linha
+  // da Stripe e a balance transaction inteira, com `source` expandido; o de uma
+  // linha do Asaas e o objeto `payment`, que nao tem `source` nenhum. Ler os
+  // mesmos caminhos nos dois devolveria `null` para Asaas, o que ate seria
+  // correto por acidente, mas o acidente some no dia em que alguem "consertar"
+  // o caminho. A condicao fica explicita.
+  //
+  // Consequencia declarada: cobranca Pix sem dono entra SEM candidato e com
+  // `candidatoVerificado: false`, ou seja, "nao procurei", nao "nao existe". O
+  // email do pagador existe no Asaas, atras de `raw_payload.customer` (um id),
+  // e resolve-lo exige uma chamada a API deles, equivalente ao `emailDoCustomer`
+  // que hoje so fala com a Stripe. Fica para o lote que fechar a fila.
+  const daStripe = provider === "stripe";
+
   return {
+    provider,
+    providerTransactionId: bruta.provider_transaction_id,
     stripeChargeId: bruta.stripe_charge_id,
     grossCents: bruta.gross_cents,
     currency: bruta.currency,
     occurredAt: bruta.occurred_at,
-    emailDaCobranca: textoEm(bruta.raw_payload, [
-      "source",
-      "billing_details",
-      "email",
-    ]),
-    customerId: textoEm(bruta.raw_payload, ["source", "customer"]),
+    emailDaCobranca: daStripe
+      ? textoEm(bruta.raw_payload, ["source", "billing_details", "email"])
+      : null,
+    customerId: daStripe
+      ? textoEm(bruta.raw_payload, ["source", "customer"])
+      : null,
   };
 }
 
@@ -288,7 +366,7 @@ export const LOOKUPS_REAIS: SemDonoLookups = {
     const { data, error } = await supabaseAdmin
       .from("finance_transactions")
       .select(
-        "stripe_charge_id, gross_cents, currency, occurred_at, raw_payload",
+        "provider, provider_transaction_id, stripe_charge_id, gross_cents, currency, occurred_at, raw_payload",
       )
       .eq("type", "charge")
       .is("user_id", null)
@@ -340,9 +418,21 @@ export const LOOKUPS_REAIS: SemDonoLookups = {
   },
 
   async persistir(itens) {
-    if (itens.length === 0) return { persisted: true, novas: 0 };
+    // SO O QUE A FILA CONSEGUE GUARDAR. O CHECK
+    // `billing_orphan_payments_uma_chave` exige exatamente uma de
+    // `stripe_session_id` ou `stripe_charge_id`, e uma cobranca do Asaas nao tem
+    // nenhuma das duas: o insert seria recusado pelo banco e o job devolveria
+    // `persisted: false`, um estado que o cabecalho da migration 20260831140000
+    // ja registra como indistinguivel do normal.
+    //
+    // Filtrar AQUI, e nao no chamador: o `detectarChargesSemDono` passa TODOS os
+    // achados de proposito (eles contam em `encontradas` e aparecem na faixa de
+    // saude), e a regra de o que cabe na fila e desta funcao. Guarda no chamador
+    // precisaria ser repetida em cada chamador e some no primeiro esquecido.
+    const enfileiraveis = itens.filter((i) => i.stripeChargeId);
+    if (enfileiraveis.length === 0) return { persisted: true, novas: 0 };
     const agoraIso = new Date().toISOString();
-    const linhas = itens.map((i) => ({
+    const linhas = enfileiraveis.map((i) => ({
       stripe_charge_id: i.stripeChargeId,
       // `stripe_session_id` fica NULO de proposito: nao ha sessao, e inventar
       // uma mentiria sobre a origem. O CHECK da migration 20260831140000 exige
@@ -399,7 +489,7 @@ export const LOOKUPS_REAIS: SemDonoLookups = {
       .update({ last_seen_at: agoraIso })
       .in(
         "stripe_charge_id",
-        itens.map((i) => i.stripeChargeId),
+        enfileiraveis.map((i) => i.stripeChargeId),
       )
       .is("resolved_at", null);
     if (erroTouch) {

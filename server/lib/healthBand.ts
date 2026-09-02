@@ -241,9 +241,31 @@ export function calcularProblemas(
     });
   }
 
-  // BOLETO EM LIMBO: emitido e não pago. Não é métrica de negócio, é anomalia
-  // operacional COM PRAZO, passado o prazo o boleto vira órfão e a linha é
-  // cancelada pelo cron. Por isso mora aqui e não num card.
+  // COBRANÇA PENDENTE EM LIMBO: emitida e não paga. Não é métrica de negócio, é
+  // anomalia operacional COM PRAZO. Por isso mora aqui e não num card.
+  //
+  // O TEXTO DEIXOU DE DIZER "boleto" em 2026-09-02, e a correção é de rótulo,
+  // não de fonte: a consulta que alimenta este item
+  // (`subscriptions` com `status='pending'`, em server/routes/admin.ts) NUNCA
+  // filtrou por provedor nem por método, então desde que o Pix entrou em
+  // produção uma cobrança Pix aguardando pagamento já era contada aqui e
+  // chamada de boleto.
+  //
+  // DUAS COISAS AINDA ASSUMEM BOLETO neste caminho, e ficam declaradas porque
+  // trocar a palavra sem dizer isso seria pior que não trocar:
+  //
+  //   1. `BOLETO_LIMBO_DIAS = 5` é o prazo do boleto da Stripe. O `dueDate` de
+  //      uma cobrança Pix medido em 2026-09-01 dá cerca de 3 dias, então para
+  //      Pix este prazo é otimista: o item avisa "expira em N dias" com N maior
+  //      que o real.
+  //   2. Quem cancela a linha vencida é `expire-pending-boletos`
+  //      (server/routes/cron.ts), que opera sobre sessões da Stripe (`cs_...`) e
+  //      NÃO alcança linha do Asaas. Para Pix, quem fecha é o próprio webhook,
+  //      por PAYMENT_OVERDUE / PAYMENT_DELETED. A frase antiga prometia um cron
+  //      que não agiria.
+  //
+  // O `id` do item continua `boleto-limbo`: ele é chave para teste e deep link,
+  // e copy não é identidade.
   if (sinais.boletosPendentes.length > 0) {
     const total = sinais.boletosPendentes.reduce(
       (soma, b) => soma + b.valorCents,
@@ -259,13 +281,15 @@ export function calcularProblemas(
 
     problemas.push({
       id: "boleto-limbo",
-      label: "Boleto emitido e não pago",
+      // TODO(Ana)
+      label: "Cobrança emitida e não paga",
+      // TODO(Ana)
       detalhe:
         menorPrazo === null
-          ? `${sinais.boletosPendentes.length} boleto(s), ${formatarBrl(total)} parados.`
+          ? `${sinais.boletosPendentes.length} cobrança(s) pendente(s), ${formatarBrl(total)} parados.`
           : menorPrazo <= 0
-            ? `${sinais.boletosPendentes.length} boleto(s), ${formatarBrl(total)} parados. O prazo já venceu.`
-            : `${sinais.boletosPendentes.length} boleto(s), ${formatarBrl(total)} parados. O primeiro expira em ${menorPrazo} dia(s).`,
+            ? `${sinais.boletosPendentes.length} cobrança(s) pendente(s), ${formatarBrl(total)} parados. O prazo já venceu.`
+            : `${sinais.boletosPendentes.length} cobrança(s) pendente(s), ${formatarBrl(total)} parados. O primeiro expira em ${menorPrazo} dia(s).`,
       severidade: "atencao",
     });
   }

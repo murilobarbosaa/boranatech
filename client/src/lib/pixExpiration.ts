@@ -7,10 +7,11 @@
  * zera deixa a pessoa esperando por uma cobranca que ja morreu.
  */
 
+import { instanteAsaas } from "@shared/asaasDatetime";
+
 /** Fuso do Asaas, fixo. Ver `parseAsaasDate`. */
 const OFFSET_ASAAS = "-03:00";
 
-const SEM_OFFSET = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/;
 const SO_DATA = /^(\d{4})-(\d{2})-(\d{2})$/;
 const TEM_OFFSET = /(?:Z|[+-]\d{2}:?\d{2})$/;
 
@@ -35,6 +36,14 @@ const TEM_OFFSET = /(?:Z|[+-]\d{2}:?\d{2})$/;
  * String COM offset (`Z`, `+00:00`, `-0300`) e sem ambiguidade e passa direto.
  * String SO COM A DATA (`YYYY-MM-DD`, a forma do `dueDate`) vira o fim daquele
  * dia em Brasilia; o porque esta no corpo.
+ *
+ * O CASO SEM OFFSET DELEGA para `instanteAsaas` (shared/asaasDatetime.ts), que
+ * e a mesma leitura usada pelo servidor para gravar `occurred_at` das cobrancas
+ * Asaas. Duas montagens da mesma conversao de fuso divergiriam na primeira
+ * correcao aplicada so numa delas, e o erro nao apareceria em nenhuma tela. A
+ * regra de dia-sem-hora fica AQUI, e nao la, porque ela responde a outra
+ * pergunta: "ate quando isto vale" admite o fim do dia, "que instante foi este"
+ * nao admite chute nenhum.
  */
 export function parseAsaasDate(bruto: string | null | undefined): Date | null {
   if (!bruto) return null;
@@ -46,14 +55,8 @@ export function parseAsaasDate(bruto: string | null | undefined): Date | null {
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
-  const m = SEM_OFFSET.exec(texto);
-  if (m) {
-    const [, ano, mes, dia, hora, min, seg] = m;
-    const d = new Date(
-      `${ano}-${mes}-${dia}T${hora}:${min}:${seg}${OFFSET_ASAAS}`,
-    );
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
+  const instante = instanteAsaas(texto);
+  if (instante) return new Date(instante);
 
   // SO A DATA, sem hora: e a forma do `dueDate` das cobrancas (`YYYY-MM-DD`).
   // Vira o FIM daquele dia em Brasilia, e a escolha e conservadora de proposito:

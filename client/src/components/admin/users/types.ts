@@ -167,6 +167,14 @@ export type PosthogUserActivityState =
 // destes campos para nao reembolsar duas vezes e para saber o teto do valor.
 export type TransactionItem = {
   id: string;
+  /**
+   * `stripe` | `asaas`. OPCIONAL pelo mesmo motivo de
+   * `refunded_external_cents`: campo novo, e na janela de deploy o bundle novo
+   * recebe a resposta antiga sem ele. `providerMetaOf` resolve a ausencia.
+   */
+  provider?: string | null;
+  /** Identidade no provedor. Para Asaas e o unico id que a linha tem. */
+  provider_transaction_id?: string | null;
   type: string;
   gross_cents: number;
   fee_cents: number | null;
@@ -194,6 +202,11 @@ export type TransactionItem = {
 export type TransactionsPayload = {
   items: TransactionItem[];
   total_paid_cents: number;
+  /**
+   * Dinheiro de Pix que ainda esta conosco. OPCIONAL: campo novo, ausente na
+   * resposta do backend antigo durante a janela de deploy.
+   */
+  pix_sem_reembolso_na_stripe_cents?: number;
   truncated: boolean;
   limit: number;
 };

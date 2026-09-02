@@ -33,6 +33,8 @@ const DIA = 24 * 60 * 60 * 1000;
 
 function linha(over: Partial<LinhaSemDono> = {}): LinhaSemDono {
   return {
+    provider: "stripe",
+    providerTransactionId: "txn_1",
     stripeChargeId: "ch_1",
     grossCents: 2990,
     currency: "BRL",
@@ -97,15 +99,77 @@ describe("detectarChargesSemDono", () => {
     expect(scan.acionaveis).toBe(0);
   });
 
-  it("CONTROLE NEGATIVO: linha sem charge id nao entra", async () => {
+  it("CONTROLE NEGATIVO: linha sem identidade no provedor nao entra", async () => {
     // Sem chave nao ha upsert idempotente possivel; a linha duplicaria a cada
     // execucao. `payout` e `refund` nunca chegam aqui porque a consulta filtra
     // `type='charge'`, e este e o guarda para o que escapar disso.
+    //
+    // O CAMPO MUDOU EM 2026-09-02: era `stripeChargeId`. Com a tabela virando
+    // ledger multi-provedor, aquele filtro passaria a descartar TODA cobranca
+    // Pix sem dono em silencio, porque linha do Asaas nao tem id da Stripe.
     const scan = await detectarChargesSemDono(
-      lookups({ listarSemDono: async () => [linha({ stripeChargeId: null })] }),
+      lookups({
+        listarSemDono: async () => [linha({ providerTransactionId: null })],
+      }),
       { agoraMs: AGORA },
     );
     expect(scan.encontradas).toBe(0);
+  });
+
+  it("cobranca do ASAAS sem dono E detectada, mesmo sem id da Stripe", async () => {
+    // O caso que o filtro antigo apagava. A linha entra em `encontradas` e em
+    // `itens`, com o id do Asaas como identidade.
+    const scan = await detectarChargesSemDono(
+      lookups({
+        listarSemDono: async () => [
+          linha({
+            provider: "asaas",
+            providerTransactionId: "pay_abc",
+            stripeChargeId: null,
+            emailDaCobranca: null,
+            customerId: null,
+          }),
+        ],
+      }),
+      { agoraMs: AGORA },
+    );
+
+    expect(scan.encontradas).toBe(1);
+    expect(scan.acionaveis).toBe(1);
+    expect(scan.itens[0].provider).toBe("asaas");
+    expect(scan.itens[0].providerTransactionId).toBe("pay_abc");
+    expect(scan.itens[0].stripeChargeId).toBeNull();
+  });
+
+  it("cobranca do Asaas conta em naoEnfileiraveis e mantem a run 'partial'", async () => {
+    // A fila exige uma chave da Stripe (CHECK billing_orphan_payments_uma_chave).
+    // O numero NAO some: aparece aqui, com nome proprio, em vez de virar um
+    // `persisted: false` indistinguivel do estado normal.
+    const scan = await detectarChargesSemDono(
+      lookups({
+        listarSemDono: async () => [
+          linha({
+            provider: "asaas",
+            providerTransactionId: "pay_abc",
+            stripeChargeId: null,
+            emailDaCobranca: null,
+            customerId: null,
+          }),
+        ],
+      }),
+      { agoraMs: AGORA },
+    );
+
+    expect(scan.naoEnfileiraveis).toBe(1);
+    // Sem email e sem customer nao ha por onde procurar: "nao procurei", nunca
+    // "nao existe".
+    expect(scan.naoVerificadas).toBe(1);
+    expect(scan.itens[0].candidatoVerificado).toBe(false);
+  });
+
+  it("CONTROLE NEGATIVO: linha da Stripe NAO conta em naoEnfileiraveis", async () => {
+    const scan = await detectarChargesSemDono(lookups(), { agoraMs: AGORA });
+    expect(scan.naoEnfileiraveis).toBe(0);
   });
 
   it("leitura que FALHA nao vira 'sem achados'", async () => {
@@ -234,8 +298,10 @@ describe("detectarChargesSemDono", () => {
     // lista em vez do retorno do banco, o job reportaria orfaos novos todo dia.
     const jaRegistradas = new Set<string>();
     const persistir = async (itens: AchadoSemDono[]) => {
-      const novas = itens.filter((i) => !jaRegistradas.has(i.stripeChargeId));
-      for (const n of novas) jaRegistradas.add(n.stripeChargeId);
+      const novas = itens.filter(
+        (i) => !jaRegistradas.has(i.providerTransactionId),
+      );
+      for (const n of novas) jaRegistradas.add(n.providerTransactionId);
       return { persisted: true, novas: novas.length };
     };
     const primeira = await detectarChargesSemDono(lookups({ persistir }), {
@@ -281,6 +347,8 @@ describe("detectarChargesSemDono", () => {
 describe("linhaDoBanco", () => {
   it("le email e customer de raw_payload sem chamar a Stripe", () => {
     const l = linhaDoBanco({
+      provider: "stripe",
+      provider_transaction_id: "txn_py_1",
       stripe_charge_id: "py_1",
       gross_cents: 2990,
       currency: "BRL",
@@ -298,6 +366,8 @@ describe("linhaDoBanco", () => {
 
   it("CONTROLE NEGATIVO: raw_payload sem os campos devolve null, nao quebra", () => {
     const l = linhaDoBanco({
+      provider: "stripe",
+      provider_transaction_id: "txn_ch_x",
       stripe_charge_id: "ch_x",
       gross_cents: null,
       currency: null,
@@ -308,8 +378,49 @@ describe("linhaDoBanco", () => {
     expect(l.customerId).toBeNull();
   });
 
+  it("linha do ASAAS: nao tenta ler o shape da Stripe do raw_payload", () => {
+    // `raw_payload` de uma linha do Asaas e o objeto `payment`, que nao tem
+    // `source`. Devolver null aqui e o certo, e a condicao e explicita para nao
+    // depender de o caminho falhar por acidente.
+    const l = linhaDoBanco({
+      provider: "asaas",
+      provider_transaction_id: "pay_abc",
+      stripe_charge_id: null,
+      gross_cents: 1290,
+      currency: "BRL",
+      occurred_at: "2026-09-01T13:11:33.000Z",
+      raw_payload: { id: "pay_abc", value: "12.9", netValue: "10.91" },
+    });
+
+    expect(l.provider).toBe("asaas");
+    expect(l.providerTransactionId).toBe("pay_abc");
+    expect(l.stripeChargeId).toBeNull();
+    expect(l.emailDaCobranca).toBeNull();
+    expect(l.customerId).toBeNull();
+  });
+
+  it("provider nulo cai em stripe: e a linha da janela de deploy", () => {
+    // Entre a migration e o deploy do codigo novo, o codigo antigo grava sem a
+    // coluna. Tratar a ausencia como provedor desconhecido a tiraria da
+    // deteccao, que e o oposto do que este detector existe para fazer.
+    const l = linhaDoBanco({
+      provider: null,
+      provider_transaction_id: "txn_1",
+      stripe_charge_id: "ch_1",
+      gross_cents: 2990,
+      currency: "BRL",
+      occurred_at: "2026-08-21T06:14:40.000Z",
+      raw_payload: { source: { billing_details: { email: "a@b.com" } } },
+    });
+
+    expect(l.provider).toBe("stripe");
+    expect(l.emailDaCobranca).toBe("a@b.com");
+  });
+
   it("CONTROLE NEGATIVO: email vazio nao vira email", () => {
     const l = linhaDoBanco({
+      provider: "stripe",
+      provider_transaction_id: "txn_ch_y",
       stripe_charge_id: "ch_y",
       gross_cents: null,
       currency: null,

@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { PIX_REFUND_COPY } from "../../shared/pixRefundCopy";
+
 /**
  * FIACAO das rotas de ESCRITA de usuário do admin.
  *
@@ -1012,6 +1014,61 @@ describe("POST /users/:id/refunds", () => {
     expect(r.status).toBe(404);
     expect(r.body.error.code).toBe("charge_not_found");
     expect(estado.stripeRefundCreate).not.toHaveBeenCalled();
+  });
+
+  it("cobrança do ASAAS: 409 com código próprio, nunca 404 nem 500", async () => {
+    // O 404 seria uma mensagem FALSA: a cobrança existe e está no extrato, ela
+    // só não é reembolsável POR AQUI. E a guarda é por PROVEDOR, não pelo
+    // formato do id: prefixo é o critério que casa errado no dia em que outro
+    // gateway usar as mesmas letras.
+    montar({
+      finance_transactions: {
+        rows: [
+          linha({
+            id: "ft-pix",
+            provider: "asaas",
+            provider_transaction_id: "pay_abc",
+            stripe_charge_id: null,
+            gross_cents: 1290,
+            net_cents: 1091,
+            fee_cents: 199,
+          }),
+        ],
+      },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "pay_abc",
+      reason: "cliente pediu",
+    });
+
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("refund_provider_not_stripe");
+    // A MENSAGEM E A CANONICA, e nao uma frase escrita aqui: as tres
+    // orientacoes sobre reembolso de Pix (este 409, o de /external-refunds e a
+    // dica no extrato) divergiram uma vez, e duas delas mandavam o admin para a
+    // devolucao externa, que nao aceita Pix. Afirmar a constante e o que impede
+    // a divergencia de voltar.
+    expect(r.body.error.message).toBe(PIX_REFUND_COPY);
+    // NADA foi enviado à Stripe: a cobrança nunca esteve lá.
+    expect(estado.stripeRefundCreate).not.toHaveBeenCalled();
+  });
+
+  it("CONTROLE NEGATIVO: cobrança da Stripe segue reembolsável", async () => {
+    montar({
+      finance_transactions: { rows: [linha({ provider: "stripe" })] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [] },
+      subscriptions: { rows: [] },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "ch_1",
+      reason: "cliente pediu",
+    });
+
+    expect(r.status).toBe(200);
+    expect(estado.stripeRefundCreate).toHaveBeenCalledTimes(1);
   });
 
   it("valor acima do teto é recusado", async () => {

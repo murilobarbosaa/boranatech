@@ -1,9 +1,17 @@
 import * as Sentry from "@sentry/node";
 
 import { asaasFetch } from "../lib/asaasClient";
+import { montarCobrancaAsaas, montarEstornoAsaas } from "../lib/asaasLedger";
+import { registrarNoLedger } from "../lib/asaasLedgerWriter";
+import {
+  resolverAssinaturaDoAsaas,
+  type AssinaturaDoAsaas,
+  type LeituraDeAssinatura,
+} from "../lib/asaasSubscriptionLookup";
 import { env } from "../lib/env";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
+import { instanteAsaas } from "../../shared/asaasDatetime";
 import {
   applyActivationEffects,
   isFirstPurchase,
@@ -610,6 +618,8 @@ export type AsaasEvent = {
   payment?: {
     id?: unknown;
     value?: unknown;
+    /** Liquido do Asaas. A taxa e `value - netValue`; ver server/lib/asaasLedger.ts. */
+    netValue?: unknown;
     externalReference?: unknown;
     status?: unknown;
   } | null;
@@ -626,6 +636,30 @@ export type WebhookOutcome = {
 const PAYMENT_EVENTS = new Set(["PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"]);
 /** Eventos que encerram a charge sem pagamento. */
 const CLOSING_EVENTS = new Set(["PAYMENT_OVERDUE", "PAYMENT_DELETED"]);
+/**
+ * Eventos de dinheiro que VOLTOU, integralmente.
+ *
+ * O que este ramo faz e SO REGISTRAR no ledger, e isso espelha o webhook da
+ * Stripe: la, `charge.refunded` cai no mesmo `case` de `charge.succeeded` e
+ * chama apenas `syncBalanceTransactions` (server/providers/stripe.ts:2039-2049).
+ * O webhook nao revoga acesso, nao mexe em `subscriptions` e nao invalida cache
+ * de Pro. Quem revoga e o caminho ADMINISTRATIVO (`decidirERevogar`, chamado por
+ * POST /users/:id/refunds), e so quando a devolucao zera o saldo.
+ *
+ * Fazer diferente aqui daria ao Pix uma regra de revogacao que o cartao nao tem,
+ * e a assimetria apareceria como "estornei os dois e um perdeu o acesso".
+ */
+const REFUND_EVENTS = new Set(["PAYMENT_REFUNDED"]);
+/**
+ * Estorno PARCIAL: reconhecido para virar alarme, NUNCA tratado.
+ *
+ * Fica fora de `REFUND_EVENTS` de proposito. `montarEstornoAsaas` nega o `value`
+ * inteiro do pagamento, e o payload do parcial traz o valor original no mesmo
+ * campo em que o total traz o devolvido: tratar os dois pelo mesmo caminho
+ * gravaria um estorno integral sobre uma devolucao de parte, e o "Valor pago" do
+ * cliente iria a zero com dinheiro nosso ainda em caixa.
+ */
+const PARTIAL_REFUND_EVENTS = new Set(["PAYMENT_PARTIALLY_REFUNDED"]);
 
 function asText(v: unknown): string | null {
   return typeof v === "string" && v.length > 0 ? v : null;
@@ -691,6 +725,11 @@ export function eventKey(idDoAsaas: string): string {
 export async function processAsaasEvent(
   event: AsaasEvent,
 ): Promise<WebhookOutcome> {
+  // Instante em que o request CHEGOU, capturado antes de qualquer await. E o
+  // fallback do `occurred_at` do ledger quando o `dateCreated` do event nao for
+  // legivel, e precisa ser o instante da entrega, nao o do fim do
+  // processamento.
+  const receivedAtIso = new Date().toISOString();
   const eventType = asText(event.event);
   const eventId = asText(event.id);
 
@@ -701,21 +740,33 @@ export async function processAsaasEvent(
     return { received: true, unhandled: true };
   }
 
-  const handled =
-    PAYMENT_EVENTS.has(eventType) || CLOSING_EVENTS.has(eventType);
-  if (!handled) {
-    console.log(
-      `[webhook/asaas] event nao handled: ${eventType} (${eventId}).`,
-    );
-    return { received: true, unhandled: true };
-  }
-
   const chargeId = asText(event.payment?.id);
   const rowId = asText(event.payment?.externalReference);
-  const receivedAt = asText(event.dateCreated);
+  // `dateCreated` do event vem "2026-09-01 10:11:33", horario de Brasilia SEM
+  // offset. Ate 2026-09-02 ele era gravado CRU nesta coluna e o Postgres o lia
+  // como UTC: tres horas de erro, numa linha de aparencia normal. `null` quando
+  // ilegivel, nunca o texto cru.
+  const eventCreatedAtIso = instanteAsaas(event.dateCreated);
 
   // DEDUPE. `ignoreDuplicates` faz o conflito virar DO NOTHING: so a primeira
   // gravacao volta row.
+  //
+  // O REGISTRO ACONTECE ANTES DO TESTE DE `handled`, e isso e uma INVERSAO
+  // deliberada em relacao ao webhook da Stripe, que no ramo `default` APAGA o
+  // proprio billing_event para que um resend futuro alcance um handler novo.
+  //
+  // Os dois desenhos trocam a mesma coisa por outra. La, o preco de poder
+  // reprocessar por resend e nao guardar rastro nenhum. Aqui, o preco de
+  // guardar rastro e que um resend do Asaas chega deduplicado, entao a
+  // recuperacao de um tipo que passa a ser tratado NAO e resend: e backfill a
+  // partir destas linhas (scripts/asaasLedgerBackfill.mts), que le `raw` e
+  // reconstroi o efeito.
+  //
+  // A inversao paga porque foi ela que faltou: um `PAYMENT_REFUNDED` chegou ao
+  // `if (!handled) return` e nao deixou linha, nem em billing_events nem em
+  // lugar nenhum. Sem o raw guardado nao existe backfill possivel, e o resend
+  // do Asaas nao e infinito. Guardar preserva as duas saidas; apagar so
+  // preserva uma.
   const { data: recorded, error: dedupeError } = await supabaseAdmin
     .from("billing_events")
     .upsert(
@@ -725,7 +776,7 @@ export async function processAsaasEvent(
         event_type: eventType,
         provider_subscription_id: chargeId,
         payment_id: chargeId,
-        event_created_at: receivedAt,
+        event_created_at: eventCreatedAtIso,
         raw: event,
       },
       { onConflict: "id", ignoreDuplicates: true },
@@ -745,6 +796,33 @@ export async function processAsaasEvent(
     return { received: true, deduped: true };
   }
 
+  const handled =
+    PAYMENT_EVENTS.has(eventType) ||
+    CLOSING_EVENTS.has(eventType) ||
+    REFUND_EVENTS.has(eventType);
+  if (!handled) {
+    if (PARTIAL_REFUND_EVENTS.has(eventType)) {
+      // ESTORNO PARCIAL NAO E TRATADO, e o silencio seria pior que o alarme: o
+      // dinheiro voltou em parte e nem o ledger nem a assinatura sabem. Sobe
+      // como warning para alguem conciliar a mao, com o id do event, que e por
+      // onde o backfill futuro acha a linha.
+      Sentry.captureMessage("asaas_partial_refund_nao_tratado", {
+        level: "warning",
+        fingerprint: ["asaas-partial-refund-nao-tratado"],
+        tags: { origem: "asaas-webhook", event_type: eventType },
+        extra: {
+          event_id: eventId,
+          event_type: eventType,
+          asaas_payment_id: chargeId,
+        },
+      });
+    }
+    console.log(
+      `[webhook/asaas] event nao handled: ${eventType} (${eventId}); raw guardado em billing_events.`,
+    );
+    return { received: true, unhandled: true };
+  }
+
   try {
     if (PAYMENT_EVENTS.has(eventType)) {
       const ativou = await activateOnPayment({
@@ -753,8 +831,20 @@ export async function processAsaasEvent(
         eventId,
         chargeId,
         rowId,
+        receivedAtIso,
       });
       return { received: true, activated: ativou };
+    }
+    if (REFUND_EVENTS.has(eventType)) {
+      await registrarEstornoNoLedger({
+        event,
+        eventType,
+        eventId,
+        chargeId,
+        rowId,
+        receivedAtIso,
+      });
+      return { received: true, activated: false };
     }
     await closePendingCharge({ eventType, eventId, chargeId, rowId, event });
     return { received: true, activated: false };
@@ -787,33 +877,40 @@ export async function processAsaasEvent(
   }
 }
 
-/** Localiza a row pendente pelo id da charge, com o id local como reserva. */
-async function findSubscriptionRow(
-  chargeId: string | null,
-  rowId: string | null,
-) {
-  if (chargeId) {
+/**
+ * Localiza a row pendente pelo id da charge, com o id local como reserva.
+ *
+ * A DECISAO (qual chave tentar, em que ordem) mora em
+ * `server/lib/asaasSubscriptionLookup.ts`; aqui ficam so as leituras reais. O
+ * backfill reusa a mesma decisao com leituras por REST, porque ele nao pode
+ * carregar o SDK do Supabase. Ver o cabecalho daquele arquivo.
+ */
+const LEITURA_REAL: LeituraDeAssinatura = {
+  async porCobranca(chargeId) {
     const { data, error } = await supabaseAdmin
       .from("subscriptions")
       .select("id, user_id, status, plan_id, affiliate_code, coupon_code")
       .eq("provider_subscription_id", chargeId)
       .maybeSingle();
     if (error) throw error;
-    if (data) return data;
-  }
-  // Reserva: a row existe desde ANTES da charge, e o `externalReference` a
-  // nomeia. Isto cobre a janela em que a charge foi created e o UPDATE que
-  // grava `provider_subscription_id` nao concluiu.
-  if (rowId) {
+    return (data as AssinaturaDoAsaas | null) ?? null;
+  },
+  async porId(rowId) {
     const { data, error } = await supabaseAdmin
       .from("subscriptions")
       .select("id, user_id, status, plan_id, affiliate_code, coupon_code")
       .eq("id", rowId)
       .maybeSingle();
     if (error) throw error;
-    if (data) return data;
-  }
-  return null;
+    return (data as AssinaturaDoAsaas | null) ?? null;
+  },
+};
+
+export async function findSubscriptionRow(
+  chargeId: string | null,
+  rowId: string | null,
+): Promise<AssinaturaDoAsaas | null> {
+  return resolverAssinaturaDoAsaas(chargeId, rowId, LEITURA_REAL);
 }
 
 /**
@@ -832,8 +929,9 @@ async function activateOnPayment(args: {
   eventId: string;
   chargeId: string | null;
   rowId: string | null;
+  receivedAtIso: string;
 }): Promise<boolean> {
-  const { event, eventType, eventId, chargeId, rowId } = args;
+  const { event, eventType, eventId, chargeId, rowId, receivedAtIso } = args;
 
   const row = await findSubscriptionRow(chargeId, rowId);
   if (!row) {
@@ -873,7 +971,16 @@ async function activateOnPayment(args: {
     throw createError(500, "config_error", "Plano sem prazo de acesso Pix.");
   }
 
-  const paidAt = new Date();
+  // QUANDO O DINHEIRO ENTROU, pelo carimbo do PROVEDOR e nao pelo relogio
+  // deste processo. `new Date()` aqui datava a ativacao pelo instante em que o
+  // nosso servidor processou o webhook, o que erra sempre que a entrega atrasa
+  // ou que o event e reprocessado, e o erro entra em `current_period_start` e no
+  // `p_last_event_at`, ou seja, no prazo que a pessoa comprou.
+  //
+  // `dateCreated` do event vem em Brasilia sem offset; `instanteAsaas` poe o
+  // offset explicito. Fallback e a chegada do request, nunca o relogio do fim do
+  // processamento.
+  const paidAt = new Date(instanteAsaas(event.dateCreated) ?? receivedAtIso);
   const paidAtIso = paidAt.toISOString();
 
   // Ancora: maior fim de periodo ainda current entre as activeRows do usuario,
@@ -970,7 +1077,107 @@ async function activateOnPayment(args: {
     prevStatus: "pending",
   });
 
+  // LEDGER POR ULTIMO, e NAO LANCA. A ordem e a postura de erro sao deliberadas:
+  //
+  // Depois porque o efeito que importa para a pessoa e o acesso, e ele ja esta
+  // persistido pela RPC. Um ledger lento ou fora do ar nao pode atrasar nem
+  // impedir a ativacao de quem pagou. Mesma logica de `decidirERevogar` acontecer
+  // antes do sync na rota de reembolso.
+  //
+  // Sem lancar porque lancar aqui seria PIOR que o buraco que ele fecha: a
+  // excecao subiria para o `catch` de `processAsaasEvent`, que APAGA o
+  // billing_event como compensacao e devolve 500 para a fila reentregar. So que
+  // a ativacao ja aconteceu e nao e desfeita, entao a reentrega encontraria a row
+  // `active`, sairia por `return false` no reprocesso idempotente, e o e-mail de
+  // confirmacao nao seria reenviado. Trocariamos uma linha de receita ausente por
+  // um dedupe apagado e um efeito meio desfeito.
+  //
+  // O buraco que sobra e recuperavel e tem dono: o backfill
+  // (scripts/asaasLedgerBackfill.mts) le `billing_events.raw`, que ja foi
+  // gravado, e o indice unico `(provider, provider_transaction_id)` torna a
+  // reexecucao um no-op.
+  try {
+    await registrarNoLedger(
+      montarCobrancaAsaas({
+        event,
+        eventId,
+        receivedAtIso,
+        userId: result.out_user_id,
+        planCode: plan?.code ?? null,
+      }),
+    );
+  } catch (err) {
+    Sentry.captureMessage("asaas_ledger_falhou", {
+      level: "error",
+      fingerprint: ["asaas-ledger-falhou"],
+      tags: { origem: "asaas-webhook", event_type: eventType },
+      extra: {
+        event_id: eventId,
+        asaas_payment_id: chargeId,
+        err: err instanceof Error ? err.message : String(err),
+      },
+    });
+    console.error(
+      `[webhook/asaas] ativacao OK mas o ledger falhou (event ${eventId}); rode o backfill:`,
+      err,
+    );
+  }
+
   return true;
+}
+
+/**
+ * Estorno confirmado: grava a linha negativa e para por ai.
+ *
+ * NAO revoga acesso e NAO mexe em `subscriptions`, porque e exatamente isso que
+ * o webhook da Stripe faz em `charge.refunded` (ver o comentario de
+ * `REFUND_EVENTS`). A revogacao continua sendo decisao administrativa.
+ *
+ * O DONO vem da row de `subscriptions`, pelo mesmo resolver do pagamento. Sem
+ * row, a linha entra SEM dono em vez de nao entrar: dinheiro que saiu precisa
+ * aparecer no caixa mesmo quando nao se sabe de quem era, e o detector de
+ * cobranca sem dono existe para essa fila. Perder a linha seria pior.
+ *
+ * AQUI LANCA, ao contrario do ledger da ativacao, e a assimetria e o ponto: este
+ * ramo NAO tem outro efeito ja persistido para proteger. Falhar, apagar o dedupe
+ * e deixar a fila reentregar e a recuperacao certa, sem nada meio feito atras.
+ */
+async function registrarEstornoNoLedger(args: {
+  event: AsaasEvent;
+  eventType: string;
+  eventId: string;
+  chargeId: string | null;
+  rowId: string | null;
+  receivedAtIso: string;
+}): Promise<void> {
+  const { event, eventId, chargeId, rowId, receivedAtIso } = args;
+
+  const row = await findSubscriptionRow(chargeId, rowId);
+  if (!row) {
+    console.warn(
+      `[webhook/asaas] ESTORNO SEM LINHA: charge ${chargeId ?? "?"} (event ${eventId}); a linha entra sem dono.`,
+    );
+  }
+
+  let planCode: string | null = null;
+  if (row?.plan_id) {
+    const { data: plan } = await supabaseAdmin
+      .from("plans")
+      .select("code")
+      .eq("id", row.plan_id)
+      .maybeSingle();
+    planCode = plan?.code ?? null;
+  }
+
+  await registrarNoLedger(
+    montarEstornoAsaas({
+      event,
+      eventId,
+      receivedAtIso,
+      userId: row?.user_id ?? null,
+      planCode,
+    }),
+  );
 }
 
 /**

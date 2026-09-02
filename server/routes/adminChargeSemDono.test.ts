@@ -232,6 +232,32 @@ describe("guard de cobrança sem dono", () => {
     expect(p!.severidade).toBe("atencao");
   });
 
+  it("cobrança do ASAAS conta igual: a faixa nunca filtrou por coluna da Stripe", async () => {
+    // A consulta tem EXATAMENTE três filtros (teste acima), nenhum deles de
+    // provedor, então uma linha Pix sem `stripe_charge_id` entra aqui do mesmo
+    // jeito. É a contrapartida do detector do cron, que até 2026-09-02
+    // descartava essa mesma linha pelo `l.stripeChargeId &&`: os dois números
+    // divergiriam, e o calado seria o que tem o botão de resolver.
+    faixaSaudavel([
+      {
+        id: "ft-asaas-1",
+        type: "charge",
+        gross_cents: 1290,
+        user_id: null,
+        stripe_charge_id: null,
+        provider: "asaas",
+        provider_transaction_id: "pay_abc",
+        occurred_at: new Date(Date.now() - 30 * DIA_MS).toISOString(),
+      },
+    ]);
+
+    const p = (await problemas()).find((x) => x.id === "charge-sem-dono");
+
+    expect(p).toBeDefined();
+    expect(p!.detalhe).toContain("12,90");
+    expect(p!.detalhe).toContain("1 cobrança");
+  });
+
   it("consulta vazia NÃO produz o aviso", async () => {
     faixaSaudavel([]);
 

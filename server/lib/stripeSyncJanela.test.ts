@@ -147,6 +147,27 @@ describe("alcance da janela", () => {
     });
   });
 
+  it("a linha da Stripe se DECLARA da Stripe, e leva a chave multi-provedor", async () => {
+    // Desde a migration 20260902120000 a tabela e ledger de mais de um
+    // provedor. Sem `provider` escrito aqui, a origem da linha passaria a
+    // depender do default da coluna, que mora noutro arquivo; sem
+    // `provider_transaction_id`, a linha nasceria fora do indice unico novo e o
+    // contract (NOT NULL) nao teria como subir.
+    estado.bts = [cobranca("txn_velha", 5, "cus_1")];
+    estado.donosPorCustomer["cus_1"] = {
+      user_id: "user-1",
+      plans: { code: "pro_semiannual" },
+    };
+
+    await syncBalanceTransactions({ since: new Date(AGORA - 7 * DIA_MS) });
+
+    expect(estado.upserts[0].provider).toBe("stripe");
+    // Para a Stripe as duas colunas guardam o MESMO valor: uma e o campo do
+    // provedor, a outra e a chave comum aos dois.
+    expect(estado.upserts[0].provider_transaction_id).toBe("txn_velha");
+    expect(estado.upserts[0].stripe_balance_transaction_id).toBe("txn_velha");
+  });
+
   it("linha FORA da janela não é tocada", async () => {
     estado.bts = [cobranca("txn_antiga", 10, "cus_1")];
     estado.donosPorCustomer["cus_1"] = {

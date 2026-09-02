@@ -55,6 +55,18 @@ export function declaracaoContaNoExtrato(settlement: string): boolean {
 
 export type FinanceRow = {
   id: string;
+  /**
+   * `stripe` | `asaas`. Opcional porque a coluna nasceu com default e uma linha
+   * gravada na janela de deploy pode chegar sem ela; `providerDaLinha` resolve
+   * a ausencia num lugar so.
+   */
+  provider?: string | null;
+  /**
+   * Identidade da transacao no provedor. Para a Stripe repete o id da balance
+   * transaction; para o Asaas e o id do pagamento (ou do event, num estorno).
+   * Opcional pelo mesmo motivo de `provider`.
+   */
+  provider_transaction_id?: string | null;
   type: string;
   gross_cents: number;
   fee_cents: number | null;
@@ -67,6 +79,19 @@ export type FinanceRow = {
 };
 
 export type RefundState = "none" | "partial" | "full";
+
+/**
+ * Provedor da linha, com o MESMO default da coluna.
+ *
+ * Ausencia vira `stripe` e nao "desconhecido": a coluna tem `default 'stripe'`,
+ * e a unica linha que chega sem o campo e a gravada entre a migration e o deploy
+ * do codigo que o escreve, que e da Stripe por construcao. Tratar como
+ * desconhecido a tiraria do teto de reembolso, ou seja, recusaria devolver
+ * dinheiro de uma cobranca perfeitamente reembolsavel.
+ */
+export function providerDaLinha(row: Pick<FinanceRow, "provider">): string {
+  return row.provider ?? "stripe";
+}
 
 export type TransactionItem = FinanceRow & {
   /**
@@ -109,6 +134,24 @@ export type TransactionItem = FinanceRow & {
 
 export type TransactionList = {
   items: TransactionItem[];
+  /**
+   * Dinheiro de Pix (Asaas) que AINDA ESTA CONOSCO, em centavos.
+   *
+   * Existe para a tela poder explicar por que o botao de reembolso da Stripe nao
+   * cobre aquele valor: ele nao cobre porque a cobranca nao esta na Stripe. A
+   * devolucao de Pix sai pelo Asaas e volta aqui como devolucao externa.
+   *
+   * E UM AGREGADO, e nao uma soma por cobranca, e a limitacao e estrutural: a
+   * linha de estorno do Asaas tem como identidade o id do EVENT (ver
+   * `montarEstornoAsaas`), nao o do pagamento, entao NAO existe hoje chave que
+   * ligue um estorno a sua cobranca. Somar `charge` e `refund` do provedor da o
+   * saldo certo no total, que e o numero que a frase da tela precisa; dizer qual
+   * cobranca especifica ainda esta em aberto exigiria uma coluna de vinculo.
+   *
+   * Nunca negativo: devolver mais do que entrou nao e um saldo, e um erro de
+   * dado, e um numero negativo na tela seria lido como credito.
+   */
+  pix_sem_reembolso_na_stripe_cents: number;
   /**
    * Soma de gross_cents das linhas charge/refund/dispute, com sinal, MENOS as
    * devolucoes declaradas que contam. E exatamente a mesma conta do "Valor pago
@@ -179,6 +222,11 @@ function agregarPorCobranca(
 
   for (const row of rows) {
     if (row.type !== "refund" && row.type !== "dispute") continue;
+    // SO A STRIPE agrega por cobranca. Este mapa alimenta `refundable_cents`,
+    // que e o teto do que a rota de reembolso pode mandar a Stripe devolver, e
+    // uma linha do Asaas nao tem `stripe_charge_id` a que se ligar. A condicao
+    // fica explicita em vez de depender de o campo ser nulo por acaso.
+    if (providerDaLinha(row) !== "stripe") continue;
     if (!row.stripe_charge_id) continue;
     const atual = mapa.get(row.stripe_charge_id) ?? { ...AGREGADO_ZERO };
     const magnitude = Math.abs(row.gross_cents ?? 0);
@@ -215,8 +263,18 @@ export function buildTransactionList(
 
   const items = rows.map<TransactionItem>((row) => {
     const ehCharge = row.type === "charge";
+    // `refundable_cents` e o TETO que autoriza a rota de reembolso a mandar a
+    // Stripe devolver dinheiro. Cobranca que nao esta na Stripe nao tem teto
+    // nenhum ali, e o zero e a resposta certa.
+    //
+    // Sem esta condicao, uma cobranca Pix cairia no `AGREGADO_ZERO` por nao ter
+    // `stripe_charge_id` e sairia com `refundable_cents === gross_cents`, ou
+    // seja, um teto CHEIO que nunca desce, nem depois de um estorno. Teto que
+    // nao desce e o lado inseguro: ele autoriza devolver o que ja voltou.
+    const reembolsavelPelaStripe =
+      ehCharge && providerDaLinha(row) === "stripe";
     const agregado =
-      ehCharge && row.stripe_charge_id
+      reembolsavelPelaStripe && row.stripe_charge_id
         ? (porCobranca.get(row.stripe_charge_id) ?? AGREGADO_ZERO)
         : AGREGADO_ZERO;
 
@@ -229,7 +287,7 @@ export function buildTransactionList(
       refund_state: ehCharge
         ? refundStateOf(row.gross_cents ?? 0, agregado.refunded)
         : "none",
-      refundable_cents: ehCharge
+      refundable_cents: reembolsavelPelaStripe
         ? Math.max(
             0,
             (row.gross_cents ?? 0) - agregado.refunded - agregado.disputed,
@@ -247,5 +305,32 @@ export function buildTransactionList(
     return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
   });
 
-  return { items, total_paid_cents: totalPagoCents(rows, declaradas) };
+  return {
+    items,
+    total_paid_cents: totalPagoCents(rows, declaradas),
+    pix_sem_reembolso_na_stripe_cents: saldoAsaasCents(rows),
+  };
+}
+
+/**
+ * Saldo do que entrou por Asaas e ainda nao voltou, em centavos.
+ *
+ * Soma `charge` e `refund` do provedor COM SINAL: a linha de estorno ja nasce
+ * negativa (`montarEstornoAsaas`), entao a soma e o saldo, sem subtracao
+ * separada. `dispute` fica de fora porque o Asaas nao tem chargeback de Pix.
+ *
+ * Piso em zero: estorno maior que a cobranca e erro de dado, e um negativo na
+ * tela seria lido como credito ao cliente.
+ */
+export function saldoAsaasCents(
+  rows: Array<Pick<FinanceRow, "provider" | "type" | "gross_cents">>,
+): number {
+  const soma = rows
+    .filter(
+      (r) =>
+        providerDaLinha(r) === "asaas" &&
+        (r.type === "charge" || r.type === "refund"),
+    )
+    .reduce((acc, r) => acc + (r.gross_cents ?? 0), 0);
+  return Math.max(0, soma);
 }

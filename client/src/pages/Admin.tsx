@@ -91,6 +91,7 @@ import {
   type OverviewWindow,
 } from "@/components/admin/overview/OverviewPeriod";
 import { rotuloDeVariacao } from "@/components/admin/overview/overviewChange";
+import { detalheDeReceitaPorProvider } from "@/components/admin/overview/receitaPorProviderCopy";
 import { detalheDeRisco } from "@/components/admin/overview/riskCopy";
 import { AttentionPanel } from "@/components/admin/overview/AttentionPanel";
 import { WindowBadge } from "@/components/admin/overview/WindowBadge";
@@ -359,6 +360,20 @@ type OverviewData = {
       reembolsosCents: number;
       taxasCents: number;
       liquidaCents: number;
+      /**
+       * Quebra por provedor. OPCIONAL de propósito, pela mesma regra do
+       * breakdown de risco: o campo nasceu nesta rodada, e a Vercel sobe antes
+       * do Railway, então por 1 a 3 minutos o bundle NOVO conversa com o
+       * backend ANTIGO e recebe a resposta sem ele. Sem `?`, a linha
+       * secundária imprimiria "undefined".
+       */
+      porProvider?: Array<{
+        provider: string;
+        brutaCents: number;
+        liquidaCents: number;
+        taxasCents: number;
+        reembolsosCents: number;
+      }>;
       historicoDesde: string | null;
       change: OverviewChange;
     };
@@ -7256,6 +7271,15 @@ export default function Admin() {
         // sozinho afirma uma receita que não entrou. Os três números já eram
         // calculados no mesmo laço e dois eram descartados.
         detail: `Bruto ${janelaLabel}. Líquido ${formatCents(c.receita.liquidaCents)} (taxas ${formatCents(c.receita.taxasCents)}, reembolsos ${formatCents(c.receita.reembolsosCents)}).`,
+        // QUEBRA POR PROVEDOR como linha secundária, não como card novo: é uma
+        // divisão do número que já está no card, mesma decisão do ARPU no MRR.
+        // Ela some sozinha quando não há dois provedores com receita, e some na
+        // janela de deploy contra o backend antigo. Ver o cabeçalho do helper.
+        // TODO(Ana)
+        secundaria: detalheDeReceitaPorProvider(
+          c.receita.porProvider,
+          formatCents,
+        ),
         sparkline: spark("receitaBrutaCents", "up_bom"),
         change: rotuloDeVariacao(c.receita.change, c.receita.historicoDesde),
         destino: "financeiro",

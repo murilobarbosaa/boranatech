@@ -380,6 +380,21 @@ describe("guards de duplicidade", () => {
   });
 });
 
+/**
+ * FORMA REAL do `dateCreated` do event, medida em 2026-09-02 sobre a linha de
+ * `billing_events` do unico pagamento Pix confirmado: 19 caracteres, espaco no
+ * lugar do `T` e SEM offset nenhum, em horario de Brasilia.
+ *
+ * Ate 2026-09-02 esta fixture usava `"2026-08-29T12:00:00.000Z"`, uma forma que
+ * o Asaas nao manda. O teste exercitava um payload mais facil que o real, e o
+ * defeito que ele deveria ter pego (a string sem offset gravada como UTC, tres
+ * horas de erro) passou para producao. O harness que nao reproduz a condicao nao
+ * a testa.
+ */
+const DATE_CREATED_REAL = "2026-08-29 12:00:00";
+/** O mesmo instante em UTC. Escrito a mao: 12:00 em -03:00 e 15:00Z. */
+const DATE_CREATED_REAL_ISO = "2026-08-29T15:00:00.000Z";
+
 function eventoDePagamento(over: Record<string, unknown> = {}) {
   // `payment` e extraido do resto de proposito: um `...over` depois da chave
   // `payment` substituiria o objeto INTEIRO, e um caso que so queria mexer em
@@ -388,11 +403,15 @@ function eventoDePagamento(over: Record<string, unknown> = {}) {
   return {
     id: EVENTO,
     event: "PAYMENT_RECEIVED",
-    dateCreated: "2026-08-29T12:00:00.000Z",
+    dateCreated: DATE_CREATED_REAL,
     ...resto,
     payment: {
       id: COBRANCA,
       value: 222,
+      // `netValue` entra na fixture porque o ledger o EXIGE: sem ele a linha de
+      // receita nao e montada. O par 222 / 217,72 e a taxa de 4,28 do Pix no
+      // plano anual, na mesma proporcao do pagamento real (12,90 / 10,91).
+      netValue: 217.72,
       externalReference: "row-1",
       ...(pagamentoParcial as Record<string, unknown> | undefined),
     },
@@ -605,15 +624,35 @@ describe("webhook: encerramento e eventos desconhecidos", () => {
     expect((update!.carga as Record<string, unknown>).status).toBe("canceled");
   });
 
-  it("evento DESCONHECIDO devolve unhandled sem escrever nada", async () => {
+  it("evento DESCONHECIDO devolve unhandled, mas GUARDA o raw", async () => {
     const r = await processAsaasEvent(
       eventoDePagamento({ event: "PAYMENT_AWAITING_RISK_ANALYSIS" }),
     );
 
     expect(r).toMatchObject({ received: true, unhandled: true });
-    // Nem sequer grava billing_events: o dedupe nao protege nada num evento que
-    // nao muta, e a linha travaria um resend futuro se um handler surgir.
-    expect(estado.escritas).toEqual([]);
+
+    // DECISAO INVERTIDA EM 2026-09-02, e este teste afirmava o contrario.
+    //
+    // A versao anterior nao gravava nada, pelo motivo que estava escrito aqui: a
+    // linha travaria um resend futuro se um handler surgisse. O argumento
+    // continua valendo e mesmo assim perdeu, porque o caso real chegou: um
+    // `PAYMENT_REFUNDED` caiu neste ramo e nao deixou rastro nenhum, nem em
+    // billing_events nem em lugar nenhum. Sem o `raw` guardado nao existe
+    // backfill possivel, e o resend do Asaas nao e eterno; a linha e.
+    //
+    // A recuperacao de um tipo que passa a ser tratado deixa de ser resend e
+    // passa a ser backfill sobre estas linhas
+    // (scripts/asaasLedgerBackfill.mts).
+    expect(estado.escritas).toHaveLength(1);
+    expect(estado.escritas[0].tabela).toBe("billing_events");
+    expect(estado.escritas[0].operacao).toBe("upsert");
+
+    // NADA mais foi tocado: o PROCESSAMENTO continua condicional, so o REGISTRO
+    // deixou de ser.
+    expect(estado.escritas.filter((e) => e.tabela === "subscriptions")).toEqual(
+      [],
+    );
+    expect(estado.rpcCalls).toEqual([]);
   });
 
   it("evento sem id ou sem tipo nao explode: unhandled", async () => {
@@ -1284,5 +1323,230 @@ describe("QR Code Pix", () => {
     expect(estado.asaas[0].caminho).toBe(
       "/payments/pay%2F..%2Foutro/pixQrCode",
     );
+  });
+});
+
+describe("ledger: a cobranca Pix vira linha de finance_transactions", () => {
+  beforeEach(() => {
+    limpar();
+    estado.linhaSubscription = {
+      id: "row-1",
+      user_id: USER,
+      status: "pending",
+      plan_id: "plan-anual",
+      affiliate_code: null,
+      coupon_code: null,
+    };
+  });
+
+  const linhaDoLedger = () =>
+    estado.escritas.find(
+      (e) => e.tabela === "finance_transactions" && e.operacao === "upsert",
+    )?.carga as Record<string, unknown> | undefined;
+
+  it("grava UMA linha, com os valores em centavos e a taxa derivada", async () => {
+    await processAsaasEvent(eventoDePagamento());
+
+    const linha = linhaDoLedger();
+    expect(linha).toBeDefined();
+    // 222,00 e 217,72 em reais. A taxa e a subtracao, nunca um campo do payload.
+    expect(linha!.gross_cents).toBe(22200);
+    expect(linha!.net_cents).toBe(21772);
+    expect(linha!.fee_cents).toBe(428);
+    expect(linha!.type).toBe("charge");
+    expect(linha!.currency).toBe("BRL");
+  });
+
+  it("occurred_at e o dateCreated do event lido como Brasilia, nao UTC", async () => {
+    await processAsaasEvent(eventoDePagamento());
+
+    // 12:00:00 em Brasilia e 15:00:00Z. Ler a string crua daria 12:00:00Z, que
+    // e o defeito de tres horas que existiu em producao.
+    expect(linhaDoLedger()!.occurred_at).toBe(DATE_CREATED_REAL_ISO);
+    expect(linhaDoLedger()!.occurred_at).not.toBe("2026-08-29T12:00:00.000Z");
+  });
+
+  it("identidade e provedor, sem nenhuma coluna da Stripe", async () => {
+    await processAsaasEvent(eventoDePagamento());
+
+    const linha = linhaDoLedger()!;
+    expect(linha.provider).toBe("asaas");
+    expect(linha.provider_transaction_id).toBe(COBRANCA);
+    expect(linha.stripe_balance_transaction_id).toBeNull();
+    expect(linha.stripe_charge_id).toBeNull();
+    expect(linha.stripe_invoice_id).toBeNull();
+  });
+
+  it("dono e plano vem da row de subscriptions, nao do payload", async () => {
+    await processAsaasEvent(eventoDePagamento());
+
+    const linha = linhaDoLedger()!;
+    expect(linha.user_id).toBe(USER);
+    expect(linha.plan_code).toBe("pro_annual");
+  });
+
+  it("o ledger vem DEPOIS da RPC de ativacao", async () => {
+    await processAsaasEvent(eventoDePagamento());
+
+    // O acesso e o efeito que importa: um ledger lento ou fora do ar nao pode
+    // atrasar a ativacao de quem pagou.
+    const posLedger = estado.escritas.findIndex(
+      (e) => e.tabela === "finance_transactions",
+    );
+    expect(posLedger).toBeGreaterThanOrEqual(0);
+    expect(estado.rpcCalls.map((c) => c.nome)).toContain(
+      "activate_subscription_exclusive",
+    );
+  });
+
+  it("falha do ledger NAO derruba a ativacao, e grita no Sentry", async () => {
+    // Sem netValue a linha nao e montavel. A ativacao ja aconteceu e nao pode
+    // ser desfeita por causa disso.
+    const r = await processAsaasEvent(
+      eventoDePagamento({ payment: { netValue: undefined } }),
+    );
+
+    expect(r).toMatchObject({ received: true, activated: true });
+    expect(linhaDoLedger()).toBeUndefined();
+    expect(estado.capturas.map((c) => c.mensagem)).toContain(
+      "asaas_ledger_falhou",
+    );
+    // O billing_event CONTINUA gravado: e dele que o backfill reconstroi.
+    expect(
+      estado.escritas.some((e) => e.tabela === "billing_events"),
+    ).toBe(true);
+  });
+
+  it("reentrega NAO grava o ledger de novo", async () => {
+    await processAsaasEvent(eventoDePagamento());
+    const antes = estado.escritas.filter(
+      (e) => e.tabela === "finance_transactions",
+    ).length;
+
+    await processAsaasEvent(eventoDePagamento());
+
+    expect(
+      estado.escritas.filter((e) => e.tabela === "finance_transactions"),
+    ).toHaveLength(antes);
+  });
+});
+
+describe("ledger: estorno do Asaas", () => {
+  beforeEach(() => {
+    limpar();
+    estado.linhaSubscription = {
+      id: "row-1",
+      user_id: USER,
+      status: "active",
+      plan_id: "plan-anual",
+      affiliate_code: null,
+      coupon_code: null,
+    };
+  });
+
+  const linhaDoLedger = () =>
+    estado.escritas.find(
+      (e) => e.tabela === "finance_transactions" && e.operacao === "upsert",
+    )?.carga as Record<string, unknown> | undefined;
+
+  it("PAYMENT_REFUNDED grava linha refund com valores NEGATIVOS", async () => {
+    const r = await processAsaasEvent(
+      eventoDePagamento({ event: "PAYMENT_REFUNDED" }),
+    );
+
+    expect(r).toMatchObject({ received: true, activated: false });
+    const linha = linhaDoLedger()!;
+    expect(linha.type).toBe("refund");
+    expect(linha.gross_cents).toBe(-22200);
+    expect(linha.net_cents).toBe(-22200);
+    // O Asaas nao devolve a taxa: repeti-la negativa afirmaria uma devolucao
+    // que nao aconteceu.
+    expect(linha.fee_cents).toBe(0);
+  });
+
+  it("a identidade do estorno e o id do EVENT, nao o da cobranca", async () => {
+    // Reusar o id da cobranca faria o upsert colidir com a propria linha de
+    // charge e, com ignoreDuplicates, o estorno sumiria em silencio.
+    await processAsaasEvent(eventoDePagamento({ event: "PAYMENT_REFUNDED" }));
+
+    expect(linhaDoLedger()!.provider_transaction_id).toBe(EVENTO);
+    expect(linhaDoLedger()!.provider_transaction_id).not.toBe(COBRANCA);
+  });
+
+  it("NAO revoga acesso nem toca em subscriptions: espelha o charge.refunded da Stripe", async () => {
+    await processAsaasEvent(eventoDePagamento({ event: "PAYMENT_REFUNDED" }));
+
+    // server/providers/stripe.ts, case "charge.refunded": so chama
+    // syncBalanceTransactions. A revogacao e decisao administrativa.
+    expect(
+      estado.escritas.filter((e) => e.tabela === "subscriptions"),
+    ).toEqual([]);
+    expect(estado.rpcCalls).toEqual([]);
+  });
+
+  it("estorno sem row de assinatura entra SEM dono, e nao se perde", async () => {
+    estado.linhaSubscription = null;
+
+    await processAsaasEvent(eventoDePagamento({ event: "PAYMENT_REFUNDED" }));
+
+    const linha = linhaDoLedger()!;
+    expect(linha.user_id).toBeNull();
+    expect(linha.gross_cents).toBe(-22200);
+  });
+
+  it("estorno PARCIAL nao e tratado, mas vira alarme e fica gravado", async () => {
+    const r = await processAsaasEvent(
+      eventoDePagamento({ event: "PAYMENT_PARTIALLY_REFUNDED" }),
+    );
+
+    expect(r).toMatchObject({ received: true, unhandled: true });
+    expect(linhaDoLedger()).toBeUndefined();
+    expect(estado.capturas.map((c) => c.mensagem)).toContain(
+      "asaas_partial_refund_nao_tratado",
+    );
+    expect(
+      estado.escritas.some((e) => e.tabela === "billing_events"),
+    ).toBe(true);
+  });
+});
+
+describe("billing_events: o carimbo do provedor entra como INSTANTE", () => {
+  beforeEach(() => {
+    limpar();
+    estado.linhaSubscription = {
+      id: "row-1",
+      user_id: USER,
+      status: "pending",
+      plan_id: "plan-anual",
+      affiliate_code: null,
+      coupon_code: null,
+    };
+  });
+
+  const registro = () =>
+    estado.escritas.find((e) => e.tabela === "billing_events")?.carga as
+      | Record<string, unknown>
+      | undefined;
+
+  it("event_created_at vira ISO em UTC, nunca o texto cru do Asaas", async () => {
+    await processAsaasEvent(eventoDePagamento());
+
+    // O DEFEITO REAL: ate 2026-09-02 a string "2026-08-29 12:00:00" ia crua
+    // para uma coluna timestamptz e o Postgres a lia como UTC. Tres horas de
+    // erro numa linha de aparencia normal.
+    expect(registro()!.event_created_at).toBe(DATE_CREATED_REAL_ISO);
+    expect(registro()!.event_created_at).not.toBe(DATE_CREATED_REAL);
+  });
+
+  it("dateCreated ilegivel vira null, e nao um instante chutado", async () => {
+    await processAsaasEvent(eventoDePagamento({ dateCreated: "ontem" }));
+
+    expect(registro()!.event_created_at).toBeNull();
+  });
+
+  it("dateCreated ausente vira null", async () => {
+    await processAsaasEvent(eventoDePagamento({ dateCreated: undefined }));
+
+    expect(registro()!.event_created_at).toBeNull();
   });
 });

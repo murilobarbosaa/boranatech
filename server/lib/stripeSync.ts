@@ -503,6 +503,16 @@ export async function syncBalanceTransactions(
 
     const { error } = await supabaseAdmin.from("finance_transactions").upsert(
       {
+        // PROVEDOR EXPLICITO desde que a tabela virou ledger multi-provedor
+        // (migration 20260902120000). A coluna tem default 'stripe', e mesmo
+        // assim ele e escrito: default cobre a linha que ja existia, nao a que
+        // este codigo cria, e depender do default aqui faria a origem da linha
+        // depender de um valor que mora noutro arquivo.
+        provider: "stripe",
+        // A identidade multi-provedor. Para a Stripe ela e o proprio id da
+        // balance transaction, entao as duas colunas guardam o mesmo valor: uma
+        // e o campo especifico do provedor, a outra e a chave comum.
+        provider_transaction_id: bt.id,
         stripe_balance_transaction_id: bt.id,
         stripe_charge_id: refs.chargeId,
         stripe_invoice_id: refs.invoiceId,
@@ -516,6 +526,19 @@ export async function syncBalanceTransactions(
         plan_code: planCode,
         raw_payload: bt,
       },
+      // CONFLITO PELO ID DA STRIPE, e nao pelo par novo, DURANTE O EXPAND.
+      //
+      // A migration faz backfill de `provider_transaction_id` nas linhas que ja
+      // existiam, entao nao e delas que se trata. O buraco e a JANELA DE
+      // DEPLOY: entre aplicar a migration e este codigo subir, o codigo antigo
+      // continua gravando linhas SEM `provider_transaction_id`. NULL nao colide
+      // com NULL num indice unico, entao um `onConflict` pelo par novo trataria
+      // cada uma dessas como inedita e INSERIRIA uma duplicata em vez de
+      // atualizar, duplicando receita em silencio.
+      //
+      // Pelo id da Stripe elas sao reencontradas e ganham o campo novo na
+      // proxima passada do sync, sozinhas. O par vira a chave no contract,
+      // depois de medir zero nulos.
       { onConflict: "stripe_balance_transaction_id" },
     );
     if (error) {
