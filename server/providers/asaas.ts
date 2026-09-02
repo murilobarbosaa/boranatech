@@ -1,11 +1,13 @@
 import * as Sentry from "@sentry/node";
 
 import { asaasFetch } from "../lib/asaasClient";
+import { montarCobrancaAsaas, montarEstornoAsaas } from "../lib/asaasLedger";
+import { registrarNoLedger } from "../lib/asaasLedgerWriter";
 import {
-  montarCobrancaAsaas,
-  montarEstornoAsaas,
-  registrarNoLedger,
-} from "../lib/asaasLedger";
+  resolverAssinaturaDoAsaas,
+  type AssinaturaDoAsaas,
+  type LeituraDeAssinatura,
+} from "../lib/asaasSubscriptionLookup";
 import { env } from "../lib/env";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
@@ -875,33 +877,40 @@ export async function processAsaasEvent(
   }
 }
 
-/** Localiza a row pendente pelo id da charge, com o id local como reserva. */
-async function findSubscriptionRow(
-  chargeId: string | null,
-  rowId: string | null,
-) {
-  if (chargeId) {
+/**
+ * Localiza a row pendente pelo id da charge, com o id local como reserva.
+ *
+ * A DECISAO (qual chave tentar, em que ordem) mora em
+ * `server/lib/asaasSubscriptionLookup.ts`; aqui ficam so as leituras reais. O
+ * backfill reusa a mesma decisao com leituras por REST, porque ele nao pode
+ * carregar o SDK do Supabase. Ver o cabecalho daquele arquivo.
+ */
+const LEITURA_REAL: LeituraDeAssinatura = {
+  async porCobranca(chargeId) {
     const { data, error } = await supabaseAdmin
       .from("subscriptions")
       .select("id, user_id, status, plan_id, affiliate_code, coupon_code")
       .eq("provider_subscription_id", chargeId)
       .maybeSingle();
     if (error) throw error;
-    if (data) return data;
-  }
-  // Reserva: a row existe desde ANTES da charge, e o `externalReference` a
-  // nomeia. Isto cobre a janela em que a charge foi created e o UPDATE que
-  // grava `provider_subscription_id` nao concluiu.
-  if (rowId) {
+    return (data as AssinaturaDoAsaas | null) ?? null;
+  },
+  async porId(rowId) {
     const { data, error } = await supabaseAdmin
       .from("subscriptions")
       .select("id, user_id, status, plan_id, affiliate_code, coupon_code")
       .eq("id", rowId)
       .maybeSingle();
     if (error) throw error;
-    if (data) return data;
-  }
-  return null;
+    return (data as AssinaturaDoAsaas | null) ?? null;
+  },
+};
+
+export async function findSubscriptionRow(
+  chargeId: string | null,
+  rowId: string | null,
+): Promise<AssinaturaDoAsaas | null> {
+  return resolverAssinaturaDoAsaas(chargeId, rowId, LEITURA_REAL);
 }
 
 /**

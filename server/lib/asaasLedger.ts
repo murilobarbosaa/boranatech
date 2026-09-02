@@ -1,7 +1,5 @@
 import { instanteAsaas } from "../../shared/asaasDatetime";
 import { createError } from "../middleware/error";
-import { erroEncadeavel } from "./supabaseError";
-import { supabaseAdmin } from "./supabaseAdmin";
 
 /**
  * LEDGER DO ASAAS: a cobranca Pix e o estorno viram linha de
@@ -17,9 +15,16 @@ import { supabaseAdmin } from "./supabaseAdmin";
  * de teste da Stripe bloquearia receita real de Pix, e ninguem entenderia por
  * que.
  *
- * FUNCOES PURAS SEPARADAS DA ESCRITA, de proposito: a conversao de valor e de
- * fuso e onde mora o erro invisivel (tres horas ou um centavo a mais parecem um
- * dado normal), e o teste precisa exercita-la sem Postgres nem rede.
+ * FUNCOES PURAS SEPARADAS DA ESCRITA, de proposito, e a separacao virou de
+ * ARQUIVO por uma razao concreta alem do teste. A escrita (`registrarNoLedger`,
+ * em ./asaasLedgerWriter.ts) importa `supabaseAdmin`, que importa
+ * `@supabase/supabase-js`, que NAO expoe `createClient` como named export em
+ * ESM. Um script `.mts` que importasse este modulo so para montar a linha
+ * carregaria o SDK junto e morreria no import, mesmo sem nunca escrever. O
+ * backfill (scripts/asaasLedgerBackfill.mts) e exatamente esse script.
+ *
+ * Este arquivo NAO importa nada com efeito colateral: so o parser de data e o
+ * `createError`, que so depende de tipos do express.
  */
 
 /** Provedor desta linha, no CHECK de `finance_transactions_provider_check`. */
@@ -211,32 +216,4 @@ export function montarEstornoAsaas(entrada: EntradaDeLedger): LinhaLedger {
     plan_code: entrada.planCode,
     raw_payload: entrada.event.payment ?? null,
   };
-}
-
-/**
- * Grava a linha, uma vez.
- *
- * `ignoreDuplicates` sobre o indice `(provider, provider_transaction_id)`: a
- * fila do Asaas entrega at least once e o backfill roda sobre os mesmos events,
- * entao a segunda passada precisa ser no-op e nao sobrescrita. Sobrescrever
- * seria pior aqui do que no sync da Stripe: la o upsert reescrever `user_id` e o
- * mecanismo que conserta cobranca orfa sozinha, e aqui a linha ja nasce com o
- * dono resolvido pela row de `subscriptions`.
- */
-export async function registrarNoLedger(linha: LinhaLedger): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from("finance_transactions")
-    .upsert(linha, {
-      onConflict: "provider,provider_transaction_id",
-      ignoreDuplicates: true,
-    });
-
-  if (error) {
-    throw createError(
-      500,
-      "db_error",
-      "Erro ao gravar a transacao do Asaas no ledger.",
-      { cause: erroEncadeavel(error) },
-    );
-  }
 }
