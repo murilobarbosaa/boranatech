@@ -262,10 +262,29 @@
 }
 
 /* ==== GERADO por scripts/gen-dark-palette.py (Lote 7) ====
-   Paleta escura curada. Neutros: escala propria. Cromaticas: tintas
-   50/100/200 viram escuros dessaturados; 600/700 viram 500/400;
-   texto escuro (800/900/950) vira claro. Amber/yellow: acento vivo.
-   Nao editar a mao; regenerar se a versao do tailwindcss mudar. */
+   Paleta escura curada. Neutros: escala propria de L, croma limitado a 0.020.
+   Cromaticas: tintas 50/100/200 viram escuros dessaturados; o resto espelha a
+   escala clara em torno do 500 (600 usa 500, 700 usa 400, 800 usa 300, 900 usa
+   200, 950 usa 100). Amber/yellow: acento vivo, escala andada um degrau.
+
+   NAO EDITAR A MAO. Para mexer, mude a REGRA no script e rode:
+
+       python3 scripts/gen-dark-palette.py --write
+
+   `pnpm check:palette` (no CI) confere que este bloco e byte a byte o que o
+   script produz a partir de node_modules/tailwindcss/theme.css.
+
+   HISTORICO QUE VALE SABER: de Lote 7 ate 2026-09-01 este comentario apontou
+   para um script que NUNCA existiu no repositorio, em commit nenhum. Ou seja,
+   mandava nao editar a mao a unica coisa que so podia ser editada a mao. O
+   script foi reconstruido a partir deste bloco (nao o contrario) e reproduz os
+   242 valores byte a byte; o `--check` no CI e o que impede a promessa de
+   voltar a ser falsa.
+
+   LIMITE CONHECIDO: o bloco cobre 22 familias. O tailwindcss 4.2.4 ja traz
+   `mauve`, `olive`, `mist` e `taupe`, que NAO estao aqui. Nenhuma e usada no
+   projeto hoje, entao a ausencia e inofensiva; usar uma delas sem antes
+   acrescenta-la a lista `ORDEM` do script deixa a familia sem paleta escura. */
 .dark {
   --color-white: var(--bnt-surface);
   --color-slate-50: oklch(0.210 0.003 247.858);
