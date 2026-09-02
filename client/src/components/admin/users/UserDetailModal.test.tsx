@@ -1337,7 +1337,7 @@ describe("cancelamento de assinatura (Fatia 6)", () => {
     liberar();
   });
 
-  it("BOLETO não oferece o botão: mostra a explicação no lugar", async () => {
+  it("assinatura MANUAL não oferece o botão: mostra a explicação no lugar", async () => {
     rotearCancel({
       detalhe: detalhe({
         subscription: { ...ASSINATURA, renewal_type: "manual" },
@@ -1349,8 +1349,37 @@ describe("cancelamento de assinatura (Fatia 6)", () => {
     expect(
       screen.queryByRole("button", { name: "Cancelar no fim do período" }),
     ).toBeNull();
-    expect(screen.getByTestId("boleto-sem-cancelamento")).toBeTruthy();
+    expect(screen.getByTestId("manual-sem-cancelamento")).toBeTruthy();
   });
+
+  it.each([
+    ["pix", "Pix não renova sozinho"],
+    ["boleto", "Boleto não renova sozinho"],
+    [null, "Pagamento avulso não renova sozinho"],
+  ])(
+    "payment_method %s nomeia o meio certo na explicação",
+    async (metodo, esperado) => {
+      // O texto dizia "Boleto" para TODA linha manual, e desde 2026-09-01 isso
+      // inclui Pix: o assinante de Pix lia uma frase sobre um meio que ele nao
+      // usou. `renewal_type` responde "renova sozinho?"; `payment_method`
+      // responde "por onde ela pagou?", que e o nome certo na frase.
+      rotearCancel({
+        detalhe: detalhe({
+          subscription: {
+            ...ASSINATURA,
+            renewal_type: "manual",
+            payment_method: metodo,
+          },
+        }),
+      });
+      render(<UserDetailModal userId="u1" onClose={() => {}} />);
+      await pronto();
+
+      expect(screen.getByTestId("manual-sem-cancelamento").textContent).toContain(
+        esperado,
+      );
+    },
+  );
 
   it("assinatura já cancelada não oferece o botão de novo", async () => {
     rotearCancel({
