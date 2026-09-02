@@ -32,23 +32,55 @@ const AI_TIMEOUT_MS = 90_000;
 const MAX_TOKENS = 1_500;
 
 /**
- * Caminhos dos campos que falharam a validacao, e SO os caminhos.
+ * Formato de um `code` do Zod: minusculas e underscore, nada mais.
  *
- * Recebe `error.issues` do Zod e devolve algo como `intake.goal,reply`. Nunca
- * toca em `message`, `received`, `expected` ou qualquer outro campo do issue:
- * esses podem carregar o valor que veio do modelo, que por sua vez pode conter a
- * fala da pessoa.
+ * Este casamento NAO e uma tentativa de adivinhar o code; e uma cerca. O
+ * argumento da funcao e `unknown[]`, entao nada garante em tipo que o `code` de
+ * um item seja um dos literais do Zod (`too_big`, `invalid_format`, ...). Como o
+ * valor sai daqui direto para `ai_usage_logs` via `classificarFalhaDeTurno`,
+ * qualquer coisa fora dessa forma vira `(sem-codigo)` em vez de virar texto
+ * livre no banco. Os codes do Zod 4 cabem todos aqui.
+ */
+const FORMA_DE_CODE_DO_ZOD = /^[a-z_]{1,40}$/;
+
+/**
+ * Caminhos dos campos que falharam a validacao, com o `code` do Zod, e so isso.
+ *
+ * Recebe `error.issues` do Zod e devolve algo como
+ * `intake.goal:invalid_value,reply:too_big`. Nunca toca em `message`,
+ * `received`, `expected` ou qualquer outro campo do issue: esses podem carregar
+ * o valor que veio do modelo, que por sua vez pode conter a fala da pessoa. O
+ * `code` e seguro por natureza, porque e um literal de um conjunto fechado, e a
+ * cerca acima garante isso mesmo com entrada malformada.
+ *
+ * POR QUE O CODE ENTROU (BUG-73): o caminho sozinho diz que `reply` falhou, e
+ * nao se falhou por estourar o teto, por vir vazio ou por nao ser string. Os 7
+ * turnos medidos em 30 dias apareciam todos como `schema_mismatch:reply`, um
+ * balde so, e a correcao depende de qual dos tres e.
+ *
+ * O COMPRIMENTO DE `reply` NAO ENTRA AQUI, e nem no valor gravado no banco: ver
+ * `diagnosticoDeTurnoReprovado`.
+ *
+ * Um issue sem `code` reconhecivel vira `caminho:(sem-codigo)`, e nao `caminho`
+ * pelado, de proposito: a forma pelada e indistinguivel do formato antigo, e um
+ * diagnostico degradado que se parece com um diagnostico certo e pior que um
+ * ruidoso.
  *
  * Deduplicado e ordenado para o registro ser estavel entre ocorrencias iguais, e
- * limitado a 10 caminhos porque a lista existe para diagnosticar, nao para
+ * limitado a 10 entradas porque a lista existe para diagnosticar, nao para
  * reproduzir a resposta.
  */
 export function caminhosDoSchema(issues: readonly unknown[]): string {
   const caminhos = new Set<string>();
   for (const issue of issues) {
     const p = (issue as { path?: unknown })?.path;
+    const codeBruto = (issue as { code?: unknown })?.code;
+    const code =
+      typeof codeBruto === "string" && FORMA_DE_CODE_DO_ZOD.test(codeBruto)
+        ? codeBruto
+        : "(sem-codigo)";
     if (!Array.isArray(p)) {
-      caminhos.add("(desconhecido)");
+      caminhos.add(`(desconhecido):${code}`);
       continue;
     }
     // Cada segmento vira string por conta propria; indices numericos de array
@@ -56,11 +88,55 @@ export function caminhosDoSchema(issues: readonly unknown[]): string {
     const caminho = p
       .map((seg) => (typeof seg === "number" ? String(seg) : String(seg)))
       .join(".");
-    caminhos.add(caminho || "(raiz)");
+    caminhos.add(`${caminho || "(raiz)"}:${code}`);
   }
   // Array.from em vez de spread: o `target` deste tsconfig nao permite iterar
   // Set com spread (TS2802).
   return Array.from(caminhos).sort().slice(0, 10).join(",");
+}
+
+/** Diagnostico de um turno reprovado, separado por ONDE cada parte pode ir. */
+export interface DiagnosticoDeTurno {
+  /** Caminhos com code. Baixa cardinalidade: pode ir para `ai_usage_logs`. */
+  campos: string;
+  /**
+   * Comprimento de `reply`, ou `null` quando `reply` nao veio como string.
+   *
+   * FICA SO NO LOG DO SERVIDOR. Nao vai para o codigo gravado no banco porque
+   * comprimento e alta cardinalidade: 601, 612, 634 virariam tres codigos
+   * distintos, e a agregacao por tipo de falha (que e o que revelou os 7 turnos
+   * do BUG-73) deixaria de existir justamente na coluna feita para ela. O
+   * `classificarFalhaDeTurno` diz no cabecalho que reduz a falha a um codigo de
+   * BAIXA cardinalidade, e isto respeita esse contrato.
+   *
+   * O Zod nao ajuda aqui: o issue `too_big` traz `origin`, `code`, `maximum`,
+   * `inclusive`, `path` e `message`, e nenhum campo com o valor recebido nem com
+   * o tamanho dele (medido no zod 4.4.3). Por isso o comprimento sai do `parsed`
+   * e nao dos issues.
+   */
+  replyChars: number | null;
+}
+
+/**
+ * Monta o diagnostico de um turno que o schema reprovou.
+ *
+ * SO O COMPRIMENTO de `reply`, nunca o texto: a regra de nao persistir nem logar
+ * a fala da pessoa vale igual aqui, e um numero responde a pergunta que
+ * `reply:too_big` deixa em aberto ("estourou os 600 por quanto?") sem carregar
+ * nada do conteudo.
+ */
+export function diagnosticoDeTurnoReprovado(
+  parsed: unknown,
+  issues: readonly unknown[],
+): DiagnosticoDeTurno {
+  const reply =
+    typeof parsed === "object" && parsed !== null
+      ? (parsed as { reply?: unknown }).reply
+      : undefined;
+  return {
+    campos: caminhosDoSchema(issues),
+    replyChars: typeof reply === "string" ? reply.length : null,
+  };
 }
 
 // Semente de abertura da conversa. Ela existe so para dar um primeiro turno
@@ -533,8 +609,19 @@ async function callModelOnce(
     // `schema_mismatch` e o unico rastro era o codigo, sem dizer QUAL campo. Um
     // caminho sem rastro e um caminho que ninguem conserta, que e a licao da
     // fase 2 inteira. Ver docs/divida-fase2-roadmap-ia.md, item 10.
+    const { campos, replyChars } = diagnosticoDeTurnoReprovado(
+      parsed,
+      validation.error.issues,
+    );
+    // `replyChars` fica AQUI e nao na mensagem: a mensagem vira codigo no banco
+    // via classificarFalhaDeTurno, e comprimento la mataria a agregacao. No log
+    // do servidor cardinalidade nao custa nada.
+    console.error("[roadmap-ia] turno reprovado no schema", {
+      campos,
+      replyChars,
+    });
     throw new Error(
-      `Resposta da IA nao bateu com o schema: campos [${caminhosDoSchema(validation.error.issues)}]`,
+      `Resposta da IA nao bateu com o schema: campos [${campos}]`,
     );
   }
 
