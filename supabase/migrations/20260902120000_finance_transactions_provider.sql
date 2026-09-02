@@ -12,25 +12,22 @@
 -- derrubaria o cron de sync da Stripe das 04:20 e o botao manual. O NOT NULL
 -- vem numa migration de contract depois do deploy, quando nao houver nulo.
 --
+-- ADITIVA E ISENTA DA JANELA de migration destrutiva: cria colunas, AFROUXA uma
+-- restricao (NOT NULL sai), acrescenta CHECK e cria indice. Nao apaga e nao
+-- altera dado existente, entao o rollback e o `drop` do que acabou de nascer.
+--
+-- O `update` da linha 40 NAO e excecao a isso: ele preenche uma coluna criada
+-- NESTA MESMA TRANSACAO, ou seja, escreve onde so havia NULL. Se algum dia
+-- alguem acrescentar aqui um `update` sobre coluna PREEXISTENTE, a isencao cai
+-- junto, e o arquivo passa a exigir janela.
+--
+-- O reparo do desvio de 3h em billing_events, que morava aqui, saiu para
+-- `20260902120100_billing_events_asaas_offset_fix.sql` justamente por isso: ele
+-- e UPDATE sobre dado antigo, exige janela, e prende-lo a este arquivo
+-- prenderia o deploy inteiro a uma janela de madrugada. Este e pre-requisito do
+-- deploy; aquele nao e.
+--
 -- Aplicada manualmente no SQL Editor pela Ana. Idempotente.
---
--- ATENCAO, JANELA DE MIGRATION DESTRUTIVA. Esta migration NAO e puramente
--- aditiva: o ultimo statement e um `update` de backfill em billing_events, e o
--- CLAUDE.md poe `update` de backfill na mesma classe de `drop column` e
--- `rename`. Entao ela roda entre 05h e 09h de Brasilia, na janela imediatamente
--- posterior ao backup diario, com o backup da noite anterior confirmado
--- COMPLETED, e o commit ou o PR registra `janela: <hora>, backup de <data>
--- confirmado COMPLETED`.
---
--- O reparo E reversivel por aritmetica (subtrair as mesmas 3 horas do mesmo
--- conjunto), e mesmo assim a janela vale: a reversao depende de a guarda de
--- intervalo ainda casar depois do UPDATE, e ela nao casa (a diferenca vira
--- zero). Ou seja, ler a linha errada duas vezes nao se desfaz sozinho.
---
--- SE A JANELA FOR UM PROBLEMA PARA A ORDEM DO DEPLOY, o corte natural e separar
--- o UPDATE final num arquivo proprio: tudo acima dele e aditivo e isento, e so
--- o reparo das 6 linhas espera pela janela. Nao foi feito aqui porque a
--- sequencia de deploy do lote trata os dois como um passo so.
 
 begin;
 
@@ -74,16 +71,5 @@ comment on column public.finance_transactions.provider is
   'stripe | asaas. Quem cobrou. Ver finance_transactions_provider_check.';
 comment on column public.finance_transactions.provider_transaction_id is
   'Id da transacao no provedor: balance transaction (Stripe) ou payment id (Asaas charge) ou event id (Asaas refund).';
-
--- Corrige o desvio de 3h das linhas Asaas ja gravadas em billing_events:
--- raw.dateCreated vem em horario de Brasilia sem offset e foi persistido como
--- UTC. A guarda pela diferenca contra received_at protege linhas entregues com
--- atraso real. Esperado em 2026-09-02: 6 linhas.
-update public.billing_events
-  set event_created_at = event_created_at + interval '3 hours'
-  where provider = 'asaas'
-    and event_created_at is not null
-    and received_at - event_created_at
-        between interval '2 hours 55 minutes' and interval '3 hours 5 minutes';
 
 commit;
