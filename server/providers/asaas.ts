@@ -958,6 +958,10 @@ async function activateOnPayment(args: {
   await applyActivationEffects({
     userId: result.out_user_id,
     logPrefix: "webhook/asaas",
+    // Pix avulso e sempre compra nova: a RPC so ativa a partir de `pending`, e
+    // nao existe caminho de `past_due` para ca (nao ha renovacao automatica em
+    // cobranca avulsa). Explicito porque o parametro nao tem default.
+    motivo: "primeira_ativacao",
     planName: plan?.name || plan?.code || "Pro",
     affiliateCode: result.out_affiliate_code,
     couponCode: result.out_coupon_code,
