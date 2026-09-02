@@ -12,6 +12,7 @@ import {
 } from "recharts";
 
 import { adminFetch } from "@/lib/adminApi";
+import { providerLabelOf } from "@/lib/providerMeta";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 
 // TODO(Ana): revisar TODA a copy visivel deste bloco (titulos, labels dos cards,
@@ -28,7 +29,24 @@ type FinanceSummary = {
   to: string;
   receitaBrutaCents: number;
   reembolsosCents: number;
+  /**
+   * TODAS as taxas. OPCIONAL: campo novo, e na janela de deploy (Vercel antes do
+   * Railway) o bundle novo recebe a resposta antiga sem ele.
+   */
+  taxasCents?: number;
+  /**
+   * SO a Stripe. Mantido enquanto durar o expand/contract; some em 2026-09-30
+   * junto com o campo do servidor.
+   */
   taxasStripeCents: number;
+  /** Quebra por provedor. OPCIONAL pelo mesmo motivo de `taxasCents`. */
+  receitaPorProvider?: Array<{
+    provider: string;
+    brutaCents: number;
+    liquidaCents: number;
+    taxasCents: number;
+    reembolsosCents: number;
+  }>;
   receitaLiquidaCents: number;
   despesasCents: number;
   lucroCents: number;
@@ -47,6 +65,9 @@ type TimeseriesPoint = {
 
 type FinanceTx = {
   id: string;
+  /** `stripe` | `asaas`. Ausente na resposta antiga: `providerLabelOf` resolve. */
+  provider?: string | null;
+  provider_transaction_id?: string | null;
   stripe_charge_id: string | null;
   type: string;
   gross_cents: number;
@@ -356,9 +377,41 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
           {/* Detalhe menor: bruto, taxas, reembolsos */}
           <div className="flex flex-wrap gap-4 text-sm font-semibold text-slate-600">
             <span>Receita bruta: {fmtCents(summary.receitaBrutaCents)}</span>
-            <span>Taxas Stripe: {fmtCents(summary.taxasStripeCents)}</span>
+            {/*
+              "Taxas do período" e não mais "Taxas Stripe": desde que o ledger
+              passou a guardar Pix, a soma inclui a taxa do Asaas, e o rótulo
+              antigo atribuiria à Stripe uma taxa que não é dela.
+
+              O `??` cobre a janela de deploy: sem `taxasCents`, cai no campo
+              antigo, que naquele momento ainda somava tudo mesmo.
+              TODO(Ana)
+            */}
+            <span>
+              Taxas do período:{" "}
+              {fmtCents(summary.taxasCents ?? summary.taxasStripeCents)}
+            </span>
             <span>Reembolsos: {fmtCents(summary.reembolsosCents)}</span>
           </div>
+
+          {/*
+            RESUMO POR PROVEDOR. Só aparece quando há mais de um com receita:
+            uma linha "Stripe R$ X" ao lado de um total idêntico é ruído.
+          */}
+          {(summary.receitaPorProvider ?? []).filter((p) => p.brutaCents > 0)
+            .length > 1 ? (
+            <div className="flex flex-wrap gap-4 text-sm font-semibold text-slate-600">
+              {(summary.receitaPorProvider ?? [])
+                .filter((p) => p.brutaCents > 0)
+                .map((p) => (
+                  <span key={p.provider}>
+                    {providerLabelOf(p.provider)}: {fmtCents(p.brutaCents)}{" "}
+                    <span className="font-normal text-slate-500">
+                      (taxas {fmtCents(p.taxasCents)})
+                    </span>
+                  </span>
+                ))}
+            </div>
+          ) : null}
 
           {/* Nota de receita adiantada */}
           {summary.deferred.deferredCents > 0 ? (
@@ -416,11 +469,18 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
         </>
       )}
 
-      {/* Bloco EXTRATO (transacoes da Stripe) */}
+      {/* Bloco EXTRATO: transacoes de TODOS os provedores desde 2026-09-02. */}
       <div className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_var(--bnt-shadow)]">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-slate-900 bg-slate-50 px-4 py-3">
+          {/*
+            "Extrato de pagamentos" e nao "Extrato da Stripe": a tabela passou a
+            listar Pix junto. O botao ao lado continua sincronizando SO a Stripe
+            (e o unico provedor com sync sob demanda; o Asaas entra por webhook),
+            e por isso ele diz isso no proprio texto.
+            TODO(Ana)
+          */}
           <p className="text-xs font-black uppercase text-slate-600">
-            Extrato da Stripe
+            Extrato de pagamentos
           </p>
           <button
             type="button"
@@ -428,7 +488,7 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
             disabled={syncing}
             className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-1.5 text-xs font-black uppercase shadow-[2px_2px_0_var(--bnt-shadow)] disabled:opacity-50"
           >
-            {syncing ? "Sincronizando..." : "Sincronizar agora"}
+            {syncing ? "Sincronizando..." : "Sincronizar Stripe"}
           </button>
         </div>
         {syncError ? (
@@ -454,6 +514,7 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
               <thead>
                 <tr className="border-b-2 border-slate-900 bg-slate-50">
                   <th className="px-4 py-3 font-black uppercase text-slate-600">Data</th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">Provedor</th>
                   <th className="px-4 py-3 font-black uppercase text-slate-600">Tipo</th>
                   <th className="px-4 py-3 font-black uppercase text-slate-600">Bruto</th>
                   <th className="px-4 py-3 font-black uppercase text-slate-600">Taxa</th>
@@ -469,6 +530,9 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
                   >
                     <td className="px-4 py-3 text-slate-600">
                       {new Date(row.occurred_at).toLocaleDateString("pt-BR")}
+                    </td>
+                    <td className="px-4 py-3 text-slate-700">
+                      {providerLabelOf(row.provider)}
                     </td>
                     <td className="px-4 py-3 font-semibold text-slate-900">
                       {TX_TYPE_LABEL[row.type] ?? row.type}

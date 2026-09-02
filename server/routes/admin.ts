@@ -1267,8 +1267,18 @@ router.get("/overview", async (req, res, next) => {
             receita: {
               value: receitaAtual.receitaBrutaCents,
               reembolsosCents: receitaAtual.reembolsosCents,
-              taxasCents: receitaAtual.taxasStripeCents,
+              // TODAS as taxas, nao so as da Stripe. Este campo sempre se
+              // chamou `taxasCents` no payload e sempre foi lido como "as taxas
+              // do periodo"; ate a tabela virar ledger multi-provedor ele era
+              // alimentado por `taxasStripeCents`, e os dois eram o mesmo numero
+              // porque tudo era Stripe. Com Pix dentro, continuar lendo o campo
+              // da Stripe faria o card subestimar a taxa em silencio.
+              taxasCents: receitaAtual.taxasCents,
               liquidaCents: receitaAtual.receitaLiquidaCents,
+              // ADITIVO: a quebra por provedor, para a linha secundaria do card
+              // poder dizer quanto veio de cada um. A soma dos itens reproduz
+              // `value`, entao a tela nunca precisa escolher entre os dois.
+              porProvider: receitaAtual.receitaPorProvider,
               historicoDesde: receitaDesde,
               change: calcularVariacao({
                 janela,
@@ -1515,7 +1525,7 @@ router.get("/billing/orphan-payments", async (_req, res, next) => {
     const { data, error } = await supabaseAdmin
       .from("billing_orphan_payments")
       .select(
-        "id, stripe_session_id, customer_email, plan_id, amount_total_cents, currency, detected_at, last_seen_at, expected_provider_subscription_id",
+        "id, stripe_session_id, stripe_charge_id, customer_email, plan_id, amount_total_cents, currency, detected_at, last_seen_at, expected_provider_subscription_id",
       )
       .is("resolved_at", null)
       .order("detected_at", { ascending: true });

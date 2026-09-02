@@ -164,6 +164,20 @@ const COLUNAS_PENDENTES: Array<{ tabela: string; coluna: string }> = [
   // exatamente a falha que `pnpm check:migrations` existe para acusar.
   { tabela: "finance_transactions", coluna: "provider" },
   { tabela: "finance_transactions", coluna: "provider_transaction_id" },
+  // Declaradas em `20260831140000_orphan_payments_charge_sem_dono.sql`, de
+  // 31/08. Os tipos ainda nao as conhecem, e daqui os dois estados possiveis
+  // (migration nao aplicada, ou aplicada sem `pnpm db:types` depois) sao
+  // INDISTINGUIVEIS, entao esta entrada NAO afirma qual e.
+  //
+  // A diferenca importa: se a migration nao chegou ao banco, o `persistir` de
+  // server/lib/chargeSemDono.ts esta falhando em producao ao gravar estas
+  // colunas, e o efeito e `persisted: false`, que o cabecalho daquela migration
+  // registra como indistinguivel do estado normal da fila. Conferir contra o
+  // banco e o passo que resolve; `pnpm check:migrations` nao pega, porque ele
+  // verifica TABELA, nao coluna.
+  { tabela: "billing_orphan_payments", coluna: "stripe_charge_id" },
+  { tabela: "billing_orphan_payments", coluna: "candidate_user_id" },
+  { tabela: "billing_orphan_payments", coluna: "candidate_checked_at" },
   // Vazia ate 2026-09-02: `admin_refunds.settlement` saiu daqui em 2026-08-01, depois de o
   // `pnpm db:types` ser rodado sobre o banco onde a migration 20260730190000 já
   // estava aplicada. É o estado normal.
