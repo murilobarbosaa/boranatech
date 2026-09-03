@@ -12,6 +12,11 @@ import type {
   GithubQualitativeWithRequirements,
   ProjectValidationContext,
 } from "../../shared/github/schema";
+import {
+  aliasesOf,
+  dedupeByCanonicalId,
+  resolveProjectId,
+} from "../../shared/projects/aliases";
 import { projetos } from "../../shared/projects/catalog";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import { analyzeGithub } from "../lib/githubAnalyze";
@@ -50,7 +55,9 @@ router.post(
       );
     }
 
-    const { projectId } = req.params;
+    // Alias antes de tudo: link ou bundle antigo com id fundido valida o
+    // projeto certo, em vez de 404.
+    const projectId = resolveProjectId(req.params.projectId);
     const project = projetos.find((p) => p.id === projectId);
     if (!project) {
       return next(createError(404, "not_found", "Projeto não encontrado."));
@@ -276,13 +283,20 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
         ),
       );
     }
+    const linhas = (data ?? []).map((row) => ({
+      projectId: row.project_id as string,
+      status: row.status as string,
+      createdAt: row.created_at as string,
+      analysisId: row.analysis_id as string,
+    }));
+    // A consulta ja vem ordenada por created_at desc, entao o colapso mantem
+    // a validacao mais recente de cada projeto canonico.
     res.json({
-      data: (data ?? []).map((row) => ({
-        projectId: row.project_id,
-        status: row.status,
-        createdAt: row.created_at,
-        analysisId: row.analysis_id,
-      })),
+      data: dedupeByCanonicalId(
+        linhas,
+        (r) => r.projectId,
+        (r, projectId) => ({ ...r, projectId }),
+      ),
     });
   } catch (err) {
     next(err);
@@ -293,14 +307,16 @@ router.get(
   "/:projectId",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { projectId } = req.params;
+      const projectId = resolveProjectId(req.params.projectId);
+      // Busca pelo canonico E pelos aliases: a validacao pode ter sido
+      // gravada antes da fusao, com o id que hoje nao existe mais.
       const { data, error } = await supabaseAdmin
         .from("project_validations")
         .select(
           "project_id, status, created_at, analysis_id, requisitos_result",
         )
         .eq("user_id", req.user!.id)
-        .eq("project_id", projectId)
+        .in("project_id", [projectId, ...aliasesOf(projectId)])
         .order("created_at", { ascending: false });
       if (error) {
         return next(

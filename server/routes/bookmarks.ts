@@ -1,5 +1,9 @@
 import { Router } from "express";
 
+import {
+  aliasesOf,
+  resolveProjectId,
+} from "../../shared/projects/aliases";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -26,6 +30,36 @@ function dbError(
   extra?: Record<string, unknown>,
 ) {
   return montarDbError("bookmarks", op, error, message, extra);
+}
+
+type LinhaBookmark = { resource_type?: string; resource_id?: string };
+
+/**
+ * Colapsa favoritos de projeto cujo id virou alias, preservando a ORDEM e as
+ * linhas dos demais tipos.
+ *
+ * Medido em producao: `landing-page-pessoal` tem 10 favoritos e
+ * `portfolio-pessoal-html-css` 1, e ha quem tenha favoritado os dois. Depois
+ * da fusao os dois viram o mesmo projeto, e sem o colapso a pessoa ve o card
+ * duplicado, um deles com titulo congelado de um projeto que nao existe mais.
+ *
+ * Só as linhas de tipo `projeto` passam pelo dedupe; as outras atravessam
+ * intactas e na mesma posicao relativa.
+ */
+function colapsarProjetos<T extends LinhaBookmark>(linhas: T[]): T[] {
+  // Uma passada so, preservando a ordem: dedupeByCanonicalId sozinho nao
+  // serve aqui porque ele devolve uma lista MENOR, e casar o resultado com a
+  // lista original por indice desalinha assim que uma linha e descartada.
+  const vistos = new Set<string>();
+  return linhas.flatMap((row) => {
+    if (row.resource_type !== "projeto") return [row];
+    const canonico = resolveProjectId(row.resource_id ?? "");
+    if (vistos.has(canonico)) return [];
+    vistos.add(canonico);
+    return [
+      canonico === row.resource_id ? row : { ...row, resource_id: canonico },
+    ];
+  });
 }
 
 const router = Router();
@@ -96,8 +130,12 @@ router.get("/", async (req, res, next) => {
       const total = count ?? 0;
       const total_pages = Math.max(1, Math.ceil(total / limit));
 
+      // O `count` continua sendo o do banco, de proposito: contar depois do
+      // colapso exigiria ler a tabela inteira a cada pagina. A imprecisao
+      // aceita e uma pagina vir com uma linha a menos que `limit` quando ela
+      // contem os dois lados de uma duplicata.
       return res.json({
-        data: data || [],
+        data: colapsarProjetos(data || []),
         pagination: {
           page,
           limit,
@@ -109,7 +147,7 @@ router.get("/", async (req, res, next) => {
       });
     }
 
-    const bookmarks: unknown[] = [];
+    const bookmarks: LinhaBookmark[] = [];
 
     while (bookmarks.length < BOOKMARKS_MAX_ROWS) {
       const from = bookmarks.length;
@@ -131,7 +169,7 @@ router.get("/", async (req, res, next) => {
 
       const rows = data || [];
       if (rows.length === 0) {
-        return res.json({ data: bookmarks });
+        return res.json({ data: colapsarProjetos(bookmarks) });
       }
 
       bookmarks.push(...rows);
@@ -140,7 +178,7 @@ router.get("/", async (req, res, next) => {
     console.warn(
       `[bookmarks] user ${req.user!.id} hit BOOKMARKS_MAX_ROWS (${BOOKMARKS_MAX_ROWS}); results may be truncated.`,
     );
-    res.json({ data: bookmarks });
+    res.json({ data: colapsarProjetos(bookmarks) });
   } catch (err) {
     next(err);
   }
@@ -175,12 +213,20 @@ router.post("/", async (req, res, next) => {
       );
     }
 
+    // Favorito de projeto SEMPRE grava o id canonico. Um bundle antigo que
+    // ainda conheca o id fundido continua favoritando o projeto certo, em vez
+    // de criar uma linha orfa que so ele sabe ler.
+    const idCanonico =
+      resource_type === "projeto"
+        ? resolveProjectId(String(resource_id))
+        : String(resource_id);
+
     const { data, error } = await supabaseAdmin
       .from("user_bookmarks")
       .insert({
         user_id: req.user!.id,
         resource_type,
-        resource_id: String(resource_id),
+        resource_id: idCanonico,
         title_snapshot:
           typeof title_snapshot === "string" ? title_snapshot : null,
         subtitle_snapshot:
@@ -197,7 +243,7 @@ router.post("/", async (req, res, next) => {
           .select("*")
           .eq("user_id", req.user!.id)
           .eq("resource_type", resource_type)
-          .eq("resource_id", String(resource_id))
+          .eq("resource_id", idCanonico)
           .single();
 
         return res.json({ data: existing });
@@ -218,12 +264,22 @@ router.delete("/:resourceType/:resourceId", async (req, res, next) => {
   try {
     const { resourceType, resourceId } = req.params;
 
+    // Desfavoritar apaga o canonico E os aliases, senao a linha do id antigo
+    // sobrevive e o proximo GET a traz de volta pelo colapso.
+    const chaves =
+      resourceType === "projeto"
+        ? [
+            resolveProjectId(resourceId),
+            ...aliasesOf(resolveProjectId(resourceId)),
+          ]
+        : [resourceId];
+
     const { error } = await supabaseAdmin
       .from("user_bookmarks")
       .delete()
       .eq("user_id", req.user!.id)
       .eq("resource_type", resourceType)
-      .eq("resource_id", resourceId);
+      .in("resource_id", chaves);
 
     if (error) {
       return next(
@@ -258,7 +314,10 @@ router.post("/migrate", async (req, res, next) => {
       .map((bookmark) => ({
         user_id: req.user!.id,
         resource_type: String(bookmark.resource_type),
-        resource_id: String(bookmark.resource_id),
+        resource_id:
+          String(bookmark.resource_type) === "projeto"
+            ? resolveProjectId(String(bookmark.resource_id))
+            : String(bookmark.resource_id),
         title_snapshot:
           typeof bookmark.title_snapshot === "string"
             ? bookmark.title_snapshot

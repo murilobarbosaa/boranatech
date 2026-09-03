@@ -1,5 +1,10 @@
 import { Router } from "express";
 
+import {
+  aliasesOf,
+  dedupeByCanonicalId,
+  resolveProjectId,
+} from "../../shared/projects/aliases";
 import { projetos } from "../../shared/projects/catalog";
 import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -37,11 +42,16 @@ router.get("/:context", async (req, res, next) => {
       );
     }
 
+    // Ordem por updated_at desc so importa em project_progress, mas custa
+    // nada nos demais contextos e evita um segundo caminho de consulta: e o
+    // que faz o dedupe abaixo descartar a marcacao ANTIGA (a do id fundido)
+    // e ficar com a mais recente.
     const { data, error } = await supabaseAdmin
       .from("user_progress")
       .select("item_key, state, updated_at")
       .eq("user_id", req.user!.id)
-      .eq("context", context);
+      .eq("context", context)
+      .order("updated_at", { ascending: false });
 
     if (error) {
       return next(
@@ -54,12 +64,26 @@ router.get("/:context", async (req, res, next) => {
       );
     }
 
+    const linhas = (data ?? []).map((row) => ({
+      itemKey: row.item_key as string,
+      state: (row.state ?? {}) as Record<string, unknown>,
+      updatedAt: row.updated_at as string,
+    }));
+
+    // Quem marcou os dois lados de uma duplicata (medido em producao:
+    // landing-page-pessoal e portfolio-pessoal-html-css marcados pela mesma
+    // pessoa) tem duas linhas que hoje viram o MESMO projeto. Sem o colapso o
+    // client recebe um id que nao existe mais e o contador de concluidos
+    // diverge da lista. A guarda fica AQUI, na rota, nao em cada chamador.
     res.json({
-      data: (data ?? []).map((row) => ({
-        itemKey: row.item_key,
-        state: row.state ?? {},
-        updatedAt: row.updated_at,
-      })),
+      data:
+        context === "project_progress"
+          ? dedupeByCanonicalId(
+              linhas,
+              (r) => r.itemKey,
+              (r, itemKey) => ({ ...r, itemKey }),
+            )
+          : linhas,
     });
   } catch (err) {
     next(err);
@@ -68,17 +92,26 @@ router.get("/:context", async (req, res, next) => {
 
 router.put("/:context/:itemKey", async (req, res, next) => {
   try {
-    const { context, itemKey } = req.params;
+    const { context } = req.params;
     if (!isValidContext(context)) {
       return next(
         createError(400, "invalid_request", `Contexto inválido: ${context}`),
       );
     }
-    if (!itemKey) {
+    if (!req.params.itemKey) {
       return next(
         createError(400, "invalid_request", "itemKey é obrigatório."),
       );
     }
+    // Alias resolvido ANTES do find e do upsert, entao o banco so recebe id
+    // canonico. Sem isto, a migracao do localStorage anonimo no primeiro
+    // login trava para sempre: useProjectCompletion manda os ids locais num
+    // Promise.all, um id fundido daria 404, o lote inteiro rejeita, o catch
+    // preserva o localStorage e a tentativa se repete em toda sessao futura.
+    const itemKey =
+      context === "project_progress"
+        ? resolveProjectId(req.params.itemKey)
+        : req.params.itemKey;
 
     // project_progress: conclusao AUTODECLARADA de projeto (mesmo nivel de
     // confianca dos checkboxes de trilha). A conclusao VALIDADA pelo leitor
@@ -172,12 +205,20 @@ router.delete("/:context/:itemKey", async (req, res, next) => {
       );
     }
 
+    // Desmarcar apaga o canonico E os aliases: apagar so o canonico deixaria
+    // a linha do id fundido no banco, e o proximo GET a traria de volta pelo
+    // dedupe. A marcacao ressuscitaria sozinha depois de desmarcada.
+    const chaves =
+      context === "project_progress"
+        ? [resolveProjectId(itemKey), ...aliasesOf(resolveProjectId(itemKey))]
+        : [itemKey];
+
     const { error } = await supabaseAdmin
       .from("user_progress")
       .delete()
       .eq("user_id", req.user!.id)
       .eq("context", context)
-      .eq("item_key", itemKey);
+      .in("item_key", chaves);
 
     if (error) {
       return next(createError(500, "db_error", "Erro ao remover progresso."));

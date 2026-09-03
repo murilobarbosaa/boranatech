@@ -36,6 +36,7 @@ import {
   labelForProjectSubarea,
   normalizeProjectAreaParam,
 } from "@/lib/projectAreaGroup";
+import { resolveProjectId } from "@shared/projects/aliases";
 
 type Projeto = (typeof projetos)[number];
 
@@ -116,7 +117,9 @@ export default function Projetos() {
   const lockedCount = isPro ? 0 : projetos.filter((p) => p.pro === true).length;
   // Deep-link /projetos/:id: abre o card expandido e rola ate ele. Id que nao
   // existe no catalogo mostra um banner discreto e a listagem normal.
-  const deepLinkId = params.id ?? null;
+  // Alias no deep link: /projetos/portfolio-pessoal-html-css abre
+  // landing-page-pessoal em vez do banner de "nao encontramos esse projeto".
+  const deepLinkId = params.id ? resolveProjectId(params.id) : null;
   const deepLinkProject = deepLinkId
     ? projectItems.find((p) => p.id === deepLinkId)
     : undefined;

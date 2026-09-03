@@ -1,4 +1,5 @@
 import { deleteProgress, upsertProgress } from "@/services/userProgressService";
+import { resolveProjectId } from "@shared/projects/aliases";
 
 // Conclusao AUTODECLARADA de projeto (Fase 5b), mesmo nivel de confianca dos
 // checkboxes de trilha; a conclusao validada por leitor de GitHub e da fase
@@ -14,9 +15,14 @@ export function loadProjectProgress(): Set<string> {
     const raw = localStorage.getItem(KEY);
     if (!raw) return new Set();
     const parsed: unknown = JSON.parse(raw);
+    // Alias resolvido na LEITURA: o localStorage anonimo pode ter ids
+    // fundidos gravados por um bundle antigo, e o Set ja dedupe o resultado.
+    // Sem isto a migracao no primeiro login mandaria id morto pro server.
     return new Set(
       Array.isArray(parsed)
-        ? parsed.filter((x): x is string => typeof x === "string")
+        ? parsed
+            .filter((x): x is string => typeof x === "string")
+            .map(resolveProjectId)
         : [],
     );
   } catch {
