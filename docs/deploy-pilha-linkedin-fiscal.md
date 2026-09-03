@@ -2,7 +2,7 @@
 
 **Fonte operacional vigente desta janela de deploy.** Substitui a secao 5 de
 `docs/linkedin-fase4-fechamento.md`, que descrevia uma pilha de 56 commits sem
-merge nenhum e cinco migrations pendentes. A pilha mudou: hoje sao seis
+merge nenhum e cinco migrations pendentes. A pilha mudou: hoje sao sete
 merges, dez migrations e a frente fiscal embarcada.
 
 Todo numero abaixo foi medido no worktree, e nao herdado de memoria. Onde o fato
@@ -12,25 +12,26 @@ vem de um lote anterior, o lote esta nomeado.
 
 | Item                              | Valor                                                                    |
 | --------------------------------- | ------------------------------------------------------------------------ |
-| Merge de fechamento               | `37ac99081b372569409fda4301d620a889ebef96`                               |
+| Merge de fechamento               | `0850db6b1f53e017e3cd887c224818e989e1e33a`                               |
 | Branch                            | `feat/linkedin-fase-4`                                                   |
-| Commits a publicar (`main..HEAD`) | **77** (71 comuns mais 6 merges), **78** com o commit deste refresh      |
-| Merges na pilha                   | **6**                                                                    |
-| `main` (producao)                 | `dc84adc2`, e **e ancestral do HEAD** (`merge-base --is-ancestor` passa) |
-| Suite                             | **4629 verdes, 17 pulados, zero vermelho** (359 arquivos de 363)         |
+| Commits a publicar (`main..HEAD`) | **79** (72 comuns mais 7 merges), **80** com o commit deste refresh      |
+| Merges na pilha                   | **7**                                                                    |
+| `main` (producao)                 | `e9b05ab3`, e **e ancestral do HEAD** (`merge-base --is-ancestor` passa) |
+| Suite                             | **4672 verdes, 17 pulados, zero vermelho** (361 arquivos de 365)         |
 | `pnpm check` e `check:limiares`   | exit 0, com **0 orfaos** na auditoria de limiares                        |
 
 **Por que a tabela nomeia o merge de fechamento e nao o HEAD.** Um documento nao
 consegue citar o proprio sucessor: o commit que o atualiza fica ACIMA do hash que
 ele cita, e a linha nasce vencida. Ja aconteceu duas vezes aqui, e o passo 3 da
 secao 3 ficou preso em `6cf78a65` por duas etapas por causa disso. Entao o que
-esta fixado acima e `37ac9908`, o merge que fechou a integracao com a `main`, e o
+esta fixado acima e `0850db6b`, o merge que fechou a integracao com a `main`, e o
 topo no momento do push e o commit deste proprio refresh, imediatamente acima
 dele. Quem for publicar le o topo real com `git rev-parse HEAD`, nao daqui.
 
-Os seis merges, do topo para baixo:
+Os sete merges, do topo para baixo:
 
 ```
+0850db6b merge(main): integrate published fronts into linkedin stack       (main e9b05ab3)
 37ac9908 merge(main): integrate pix and asaas main into linkedin stack     (main dc84adc2)
 9dc84049 merge(main): integrate dash cleanup and close main integration    (main 832e5208)
 3e37c4dc merge(main): integrate latest main into linkedin stack            (main 1ced0103)
@@ -55,6 +56,12 @@ superficie de gate (`server/lib/env.ts` e `client/src/pages/Checkout.tsx`), e a
 regra do lote era que nenhum gate regride: as contagens de `nfseEnabled` em cada
 arquivo de gate sao identicas antes e depois do merge.
 
+O SETIMO (Lote M7, 2026-09-03) existe porque a `main` andou mais 8 commits em
+tres frentes (reembolso de Pix pela API do Asaas, encadeamento de causa nos erros
+de Supabase, e uma allowlist de migrations), **de novo depois de uma aprovacao**.
+Quatro conflitos, nenhum em arquivo de gate, e as nove contagens de gate
+seguem identicas.
+
 Depois dele `git merge-base --is-ancestor main HEAD` imprime **FF_VIAVEL**, com
 **zero** commits da `main` fora do HEAD.
 
@@ -64,8 +71,8 @@ Medido com `git ls-remote --heads origin`:
 
 | Ref                          | Em `origin` | Situacao                                                                                  |
 | ---------------------------- | ----------- | ----------------------------------------------------------------------------------------- |
-| `main`                       | `dc84adc2`  | producao                                                                                  |
-| `feat/linkedin-fase-4`       | `b47c78a4`  | **parcialmente pushada**; `b47c78a4` e ancestral do HEAD, e faltam **368** commits locais |
+| `main`                       | `e9b05ab3`  | producao                                                                                  |
+| `feat/linkedin-fase-4`       | `b47c78a4`  | **parcialmente pushada**; `b47c78a4` e ancestral do HEAD, e faltam **378** commits locais |
 | `fix/openai-cota-credencial` | `a3e37d2a`  | **inteira em origin**                                                                     |
 | `feat/fiscal-fechamento`     | ausente     | **nunca pushada**                                                                         |
 
@@ -83,7 +90,7 @@ secao 3 pelo mesmo motivo.
 O que mudou entre a versao anterior deste doc e esta: as dez foram aplicadas
 manualmente no SQL Editor (runbook em `runbook-migrations-deploy.md`), e depois
 disso a `main` publicou a frente de PIX e Asaas, que trouxe migrations proprias.
-Hoje ha 164 arquivos no HEAD contra 154 na `main`, e a diferenca de dez e
+Hoje ha 165 arquivos no HEAD contra 155 na `main`, e a diferenca de dez e
 exatamente este conjunto, ja aplicado.
 
 **QUATRO MIGRATIONS DO HEAD NAO CONSTAM DA LISTA DE CARIMBOS, e nenhuma delas e
@@ -103,12 +110,9 @@ registradas porque migration publicada e nao aplicada e a falha que o
 `check:migrations` existe para pegar, e ela nao aparece na direcao que ele
 verifica.
 
-**E ha o inverso, que merece ser dito alto: `20260903100000` esta CARIMBADA em
-producao e o arquivo dela nao existe nem na `main` nem nesta pilha.** Ele vive no
-commit `16124a72` (`feat(db): add provider columns to admin refunds`), de uma
-branch ainda nao publicada. Producao tem uma migration aplicada cujo codigo nao
-foi publicado. Tambem nao e desta janela, e tambem nao bloqueia; e da frente que
-a criou.
+**RESOLVIDO desde a versao anterior deste doc:** a `20260903100000` estava
+carimbada em producao com o arquivo em branch nao publicada. O commit `16124a72`
+subiu na `main` em 2026-09-02, e hoje **nao ha nenhum carimbo sem arquivo**.
 
 Em ordem cronologica de timestamp, que foi a ordem de aplicacao:
 
@@ -202,7 +206,7 @@ A segunda e a pior das duas, porque nao quebra: degrada.
    `FF_VIAVEL` e obriga a um merge a mais.
 2. **CI verde no SHA exato** que sera publicado.
 3. **Push da branch** apos o "pode publicar". `feat/linkedin-fase-4` avanca de
-   `b47c78a4` para o topo desta janela (o merge de fechamento `37ac9908` mais o
+   `b47c78a4` para o topo desta janela (o merge de fechamento `0850db6b` mais o
    commit deste refresh), em fast-forward. **Ler o topo real com
    `git rev-parse HEAD`**, e nao de um hash escrito aqui: foi assim que esta
    linha ficou vencida duas vezes.
