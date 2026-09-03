@@ -3,6 +3,30 @@ import { Router } from "express";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
+import { montarDbError } from "../lib/dbError";
+
+/**
+ * `db_error` COM a causa real encadeada.
+ *
+ * Sem isto o 500 chega ao Sentry so com a mensagem generica: sem codigo do
+ * Postgres, sem operacao, sem nada que diga o que quebrou. Foi assim que
+ * "Erro ao atualizar perfil" e "Erro ao buscar notas fiscais" viraram cards
+ * indiagnosticaveis. `erroEncadeavel` existe porque o postgrest-js, no modo
+ * `{ data, error }`, devolve um objeto PLANO, e o `linkedErrorsIntegration`
+ * do Sentry so percorre `cause` que passe em `instanceof Error`.
+ *
+ * `pgCode` entra SO quando existe: num `catch` o que chega e um `Error`, que
+ * nao tem `code`, e um campo vazio no contexto seria ruido para alguem
+ * interpretar depois.
+ */
+function dbError(
+  op: string,
+  error: unknown,
+  message: string,
+  extra?: Record<string, unknown>,
+) {
+  return montarDbError("quiz", op, error, message, extra);
+}
 
 const router = Router();
 
@@ -76,7 +100,13 @@ router.post("/attempts/batch", requireAuth, async (req, res, next) => {
       .single();
 
     if (attemptError || !attempt) {
-      return next(createError(500, "db_error", "Erro ao criar tentativa."));
+      return next(
+        dbError(
+          "quiz create attempt batch",
+          attemptError,
+          "Erro ao criar tentativa.",
+        ),
+      );
     }
 
     const answerRows = answers.map((a, idx) => ({
@@ -97,7 +127,13 @@ router.post("/attempts/batch", requireAuth, async (req, res, next) => {
         .from("career_quiz_attempts")
         .delete()
         .eq("id", attempt.id);
-      return next(createError(500, "db_error", "Erro ao salvar respostas."));
+      return next(
+        dbError(
+          "quiz save answers batch",
+          answersError,
+          "Erro ao salvar respostas.",
+        ),
+      );
     }
 
     res.json({
@@ -120,7 +156,9 @@ router.post("/attempts", requireAuth, async (req, res, next) => {
       .single();
 
     if (error)
-      return next(createError(500, "db_error", "Erro ao criar tentativa."));
+      return next(
+        dbError("quiz create attempt", error, "Erro ao criar tentativa."),
+      );
 
     res.status(201).json({ data });
   } catch (err) {
@@ -171,7 +209,9 @@ router.post("/attempts/:id/answers", requireAuth, async (req, res, next) => {
       .insert(rows);
 
     if (error)
-      return next(createError(500, "db_error", "Erro ao salvar respostas."));
+      return next(
+        dbError("quiz save answers", error, "Erro ao salvar respostas."),
+      );
 
     res.json({ data: { saved: rows.length } });
   } catch (err) {
@@ -228,7 +268,9 @@ router.get("/history", requireAuth, async (req, res, next) => {
       .limit(10);
 
     if (error)
-      return next(createError(500, "db_error", "Erro ao buscar histórico."));
+      return next(
+        dbError("quiz list history", error, "Erro ao buscar histórico."),
+      );
 
     res.json({ data: data || [] });
   } catch (err) {

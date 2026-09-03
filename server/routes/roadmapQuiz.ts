@@ -28,6 +28,30 @@ import {
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
+import { montarDbError } from "../lib/dbError";
+
+/**
+ * `db_error` COM a causa real encadeada.
+ *
+ * Sem isto o 500 chega ao Sentry so com a mensagem generica: sem codigo do
+ * Postgres, sem operacao, sem nada que diga o que quebrou. Foi assim que
+ * "Erro ao atualizar perfil" e "Erro ao buscar notas fiscais" viraram cards
+ * indiagnosticaveis. `erroEncadeavel` existe porque o postgrest-js, no modo
+ * `{ data, error }`, devolve um objeto PLANO, e o `linkedErrorsIntegration`
+ * do Sentry so percorre `cause` que passe em `instanceof Error`.
+ *
+ * `pgCode` entra SO quando existe: num `catch` o que chega e um `Error`, que
+ * nao tem `code`, e um campo vazio no contexto seria ruido para alguem
+ * interpretar depois.
+ */
+function erroDeBanco(
+  op: string,
+  error: unknown,
+  message: string,
+  extra?: Record<string, unknown>,
+) {
+  return montarDbError("roadmap-quiz", op, error, message, extra);
+}
 
 const router = Router();
 
@@ -148,7 +172,11 @@ router.post("/:slug/attempts", async (req, res, next) => {
     if (!pool) {
       // TODO(Ana): revisar copy das mensagens de erro deste arquivo.
       return next(
-        createError(404, "quiz_unavailable", "Esta trilha ainda não tem prova."),
+        createError(
+          404,
+          "quiz_unavailable",
+          "Esta trilha ainda não tem prova.",
+        ),
       );
     }
 
@@ -159,7 +187,13 @@ router.post("/:slug/attempts", async (req, res, next) => {
       .eq("roadmap_slug", slug)
       .maybeSingle();
     if (completionError) {
-      return next(createError(500, "db_error", "Erro ao verificar conclusão."));
+      return next(
+        erroDeBanco(
+          "roadmap-quiz check completion",
+          completionError,
+          "Erro ao verificar conclusão.",
+        ),
+      );
     }
     if (!completion) {
       return next(
@@ -178,7 +212,13 @@ router.post("/:slug/attempts", async (req, res, next) => {
       .eq("roadmap_slug", slug)
       .order("created_at", { ascending: false });
     if (attemptsError) {
-      return next(createError(500, "db_error", "Erro ao buscar tentativas."));
+      return next(
+        erroDeBanco(
+          "roadmap-quiz list attempts",
+          attemptsError,
+          "Erro ao buscar tentativas.",
+        ),
+      );
     }
     const attempts = (rows ?? []) as AttemptRow[];
 
@@ -252,7 +292,13 @@ router.post("/:slug/attempts", async (req, res, next) => {
           .eq("status", "ativa")
           .single();
         if (racedError || !raced) {
-          return next(createError(500, "db_error", "Erro ao iniciar a prova."));
+          return next(
+            erroDeBanco(
+              "roadmap-quiz start attempt",
+              racedError,
+              "Erro ao iniciar a prova.",
+            ),
+          );
         }
         const row = raced as AttemptRow;
         return res.json({
@@ -285,7 +331,13 @@ router.put("/:slug/attempts/:id/answers", async (req, res, next) => {
     const { slug, id } = req.params;
     const { attempt, dbError } = await loadAttempt(req.user!.id, slug, id);
     if (dbError) {
-      return next(createError(500, "db_error", "Erro ao buscar tentativa."));
+      return next(
+        erroDeBanco(
+          "roadmap-quiz load attempt",
+          dbError,
+          "Erro ao buscar tentativa.",
+        ),
+      );
     }
     if (!attempt) {
       return next(createError(404, "not_found", "Tentativa não encontrada."));
@@ -309,7 +361,13 @@ router.put("/:slug/attempts/:id/answers", async (req, res, next) => {
       .eq("user_id", req.user!.id)
       .eq("status", "ativa");
     if (updateError) {
-      return next(createError(500, "db_error", "Erro ao salvar respostas."));
+      return next(
+        erroDeBanco(
+          "roadmap-quiz save answers",
+          updateError,
+          "Erro ao salvar respostas.",
+        ),
+      );
     }
 
     res.json({ data: { saved: Object.keys(merged).length } });
@@ -327,13 +385,23 @@ router.post("/:slug/attempts/:id/submit", async (req, res, next) => {
     const pool = roadmapQuizPools[slug];
     if (!pool) {
       return next(
-        createError(404, "quiz_unavailable", "Esta trilha ainda não tem prova."),
+        createError(
+          404,
+          "quiz_unavailable",
+          "Esta trilha ainda não tem prova.",
+        ),
       );
     }
 
     const { attempt, dbError } = await loadAttempt(req.user!.id, slug, id);
     if (dbError) {
-      return next(createError(500, "db_error", "Erro ao buscar tentativa."));
+      return next(
+        erroDeBanco(
+          "roadmap-quiz load attempt for submit",
+          dbError,
+          "Erro ao buscar tentativa.",
+        ),
+      );
     }
     if (!attempt) {
       return next(createError(404, "not_found", "Tentativa não encontrada."));
@@ -380,7 +448,9 @@ router.post("/:slug/attempts/:id/submit", async (req, res, next) => {
           .eq("status", "aprovada")
           .maybeSingle();
         if (approvedError || !approved) {
-          return next(createError(500, "db_error", "Erro ao corrigir a prova."));
+          return next(
+            createError(500, "db_error", "Erro ao corrigir a prova."),
+          );
         }
         const row = approved as AttemptRow;
         return res.json({
@@ -420,7 +490,13 @@ router.get("/:slug/attempts", async (req, res, next) => {
       .eq("roadmap_slug", slug)
       .order("created_at", { ascending: false });
     if (error) {
-      return next(createError(500, "db_error", "Erro ao buscar tentativas."));
+      return next(
+        erroDeBanco(
+          "roadmap-quiz list attempts history",
+          error,
+          "Erro ao buscar tentativas.",
+        ),
+      );
     }
     const attempts = (rows ?? []) as AttemptRow[];
     const approved = attempts.find((row) => row.status === "aprovada");

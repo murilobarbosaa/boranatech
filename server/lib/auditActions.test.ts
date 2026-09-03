@@ -32,8 +32,16 @@ import { describe, expect, it } from "vitest";
 
 /** Valores aceitos pela CHECK, na migration mais recente que a define. */
 const EXPECTED_ACOES_NO_CHECK = 15;
-/** Sitios que escrevem em `content_audit_logs` sem passar pelo helper. */
-const EXPECTED_SITIOS_INSERT_DIRETO = 10;
+/**
+ * Sitios que escrevem em `content_audit_logs` sem passar pelo helper.
+ *
+ * 11 desde o lote 2a (reembolso de Pix pela API do Asaas): `reembolsarNoAsaas`
+ * em server/routes/admin.ts audita a INTENCAO antes de chamar o provedor, com a
+ * mesma acao `refund` do caminho da Stripe. O numero sobe porque o CONJUNTO de
+ * sitios cresceu, nao porque o parser mudou; a acao gravada continua sendo uma
+ * das que a CHECK ja aceita, entao nao houve migration.
+ */
+const EXPECTED_SITIOS_INSERT_DIRETO = 11;
 /**
  * Chamadas de `logAudit(...)`.
  *
@@ -42,6 +50,11 @@ const EXPECTED_SITIOS_INSERT_DIRETO = 10;
  * existia na main quando este contador foi escrito. Valor MEDIDO pelo proprio
  * parser do teste, que reportou 4 contra 3 esperados, e nao incrementado de
  * cabeca.
+ *
+ * MERGE de 2026-09-03 (Lote M7): a main tinha 3 aqui porque o sitio fiscal e
+ * desta pilha, e a pilha tinha 10 no contador acima porque o sitio do reembolso
+ * Pix e da main. Os dois numeros sao reais e sobre conjuntos DIFERENTES; a uniao
+ * foi MEDIDA pelo parser no estado mesclado, nao somada de cabeca.
  */
 const EXPECTED_SITIOS_LOGAUDIT = 4;
 

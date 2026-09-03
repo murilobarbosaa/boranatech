@@ -1,4 +1,9 @@
-import { Router, type NextFunction, type Request, type Response } from "express";
+import {
+  Router,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import { Webhook } from "svix";
 
 import type { Json } from "../../shared/database.types";
@@ -6,6 +11,7 @@ import { env } from "../lib/env";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
 
+import { montarDbError } from "../lib/dbError";
 // Webhook do Resend (eventos de entrega: email.bounced, email.complained). A
 // assinatura e Svix (headers svix-*). O apply real (supressao, delivery_status,
 // contadores) vive na RPC resend_apply_event (Etapa 2); aqui so verificamos,
@@ -109,23 +115,29 @@ export async function handleResendWebhook(
   }
 
   // Idempotencia: insert com pk = svix-id; conflito = no-op (ignoreDuplicates).
-  const { error: insertError } = await supabaseAdmin.from("resend_events").upsert(
-    {
-      id: svixId,
-      event_type: eventType,
-      message_id: messageId,
-      email,
-      bounce_type: bounceType,
-      payload: payload as Json,
-    },
-    { onConflict: "id", ignoreDuplicates: true },
-  );
+  const { error: insertError } = await supabaseAdmin
+    .from("resend_events")
+    .upsert(
+      {
+        id: svixId,
+        event_type: eventType,
+        message_id: messageId,
+        email,
+        bounce_type: bounceType,
+        payload: payload as Json,
+      },
+      { onConflict: "id", ignoreDuplicates: true },
+    );
   if (insertError) {
     // Falha de banco NAO e "evento ignorado": propaga 500 pro Svix re-tentar (a
     // idempotencia por svix-id evita dupla contagem no retry).
-    console.error("[webhook/resend] Falha ao gravar evento:", insertError);
     return next(
-      createError(500, "db_error", "Falha ao registrar o evento do webhook."),
+      montarDbError(
+        "webhook/resend",
+        "resend-webhook record event",
+        insertError,
+        "Falha ao registrar o evento do webhook.",
+      ),
     );
   }
 

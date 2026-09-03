@@ -3,6 +3,30 @@ import { Router } from "express";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
+import { montarDbError } from "../lib/dbError";
+
+/**
+ * `db_error` COM a causa real encadeada.
+ *
+ * Sem isto o 500 chega ao Sentry so com a mensagem generica: sem codigo do
+ * Postgres, sem operacao, sem nada que diga o que quebrou. Foi assim que
+ * "Erro ao atualizar perfil" e "Erro ao buscar notas fiscais" viraram cards
+ * indiagnosticaveis. `erroEncadeavel` existe porque o postgrest-js, no modo
+ * `{ data, error }`, devolve um objeto PLANO, e o `linkedErrorsIntegration`
+ * do Sentry so percorre `cause` que passe em `instanceof Error`.
+ *
+ * `pgCode` entra SO quando existe: num `catch` o que chega e um `Error`, que
+ * nao tem `code`, e um campo vazio no contexto seria ruido para alguem
+ * interpretar depois.
+ */
+function dbError(
+  op: string,
+  error: unknown,
+  message: string,
+  extra?: Record<string, unknown>,
+) {
+  return montarDbError("study", op, error, message, extra);
+}
 
 const router = Router();
 
@@ -48,7 +72,9 @@ router.get("/entries", async (req, res, next) => {
     const { data, error } = await query;
 
     if (error) {
-      return next(createError(500, "db_error", "Erro ao buscar entradas."));
+      return next(
+        dbError("study list entries", error, "Erro ao buscar entradas."),
+      );
     }
 
     res.json({ data: data || [] });
@@ -100,7 +126,9 @@ router.post("/entries", async (req, res, next) => {
       .single();
 
     if (error) {
-      return next(createError(500, "db_error", "Erro ao salvar entrada."));
+      return next(
+        dbError("study create entry", error, "Erro ao salvar entrada."),
+      );
     }
 
     res.status(201).json({ data });
@@ -182,7 +210,9 @@ router.delete("/entries/:id", async (req, res, next) => {
       .eq("user_id", userId);
 
     if (error) {
-      return next(createError(500, "db_error", "Erro ao remover entrada."));
+      return next(
+        dbError("study delete entry", error, "Erro ao remover entrada."),
+      );
     }
 
     res.json({ data: { removed: true } });
@@ -214,7 +244,7 @@ router.get("/stats", async (req, res, next) => {
 
     if (error) {
       return next(
-        createError(500, "db_error", "Erro ao calcular estatísticas."),
+        dbError("study compute stats", error, "Erro ao calcular estatísticas."),
       );
     }
 

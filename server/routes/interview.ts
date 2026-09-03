@@ -13,20 +13,14 @@ import {
   logAiUsage,
 } from "../lib/aiUsage";
 import { env } from "../lib/env";
-import {
-  fetchExternalPageText,
-  JobFetchError,
-} from "../lib/fetchExternalPage";
+import { fetchExternalPageText, JobFetchError } from "../lib/fetchExternalPage";
 import {
   AudioTranscribeError,
   decodeAudioInput,
   detectAudioMime,
   transcribeAudio,
 } from "../lib/audioTranscribe";
-import {
-  ElevenLabsTtsError,
-  synthesizeSpeech,
-} from "../lib/elevenLabsTts";
+import { ElevenLabsTtsError, synthesizeSpeech } from "../lib/elevenLabsTts";
 import { fetchWithTimeout } from "../lib/http";
 import {
   buildOpenAIHeaders,
@@ -47,6 +41,31 @@ import {
   type UsoAcumulado,
   type UsoMedido,
 } from "../lib/aiUsoMedido";
+
+import { montarDbError } from "../lib/dbError";
+
+/**
+ * `db_error` COM a causa real encadeada.
+ *
+ * Sem isto o 500 chega ao Sentry so com a mensagem generica: sem codigo do
+ * Postgres, sem operacao, sem nada que diga o que quebrou. Foi assim que
+ * "Erro ao atualizar perfil" e "Erro ao buscar notas fiscais" viraram cards
+ * indiagnosticaveis. `erroEncadeavel` existe porque o postgrest-js, no modo
+ * `{ data, error }`, devolve um objeto PLANO, e o `linkedErrorsIntegration`
+ * do Sentry so percorre `cause` que passe em `instanceof Error`.
+ *
+ * `pgCode` entra SO quando existe: num `catch` o que chega e um `Error`, que
+ * nao tem `code`, e um campo vazio no contexto seria ruido para alguem
+ * interpretar depois.
+ */
+function dbError(
+  op: string,
+  error: unknown,
+  message: string,
+  extra?: Record<string, unknown>,
+) {
+  return montarDbError("interview", op, error, message, extra);
+}
 
 /**
  * Entrevista simulada multi-turn (Pro). Regras de seguranca (molde
@@ -544,7 +563,11 @@ const HINT_INSTRUCTION: ModelMessage = {
     "Estado do turno: o candidato pediu uma DICA para a pergunta em aberto (a ultima pergunta que voce fez). Escreva em hint uma dica CURTA de abordagem, com no maximo 300 caracteres: um caminho de raciocinio, uma estrutura de resposta ou o que vale considerar. NUNCA entregue a resposta pronta, nem exemplos completos, nem a solucao. A pergunta continua em aberto aguardando a resposta real do candidato.",
 };
 
-function closingInstruction(goodCount: number, questionCount: number, reason: "prepared" | "question_cap"): ModelMessage {
+function closingInstruction(
+  goodCount: number,
+  questionCount: number,
+  reason: "prepared" | "question_cap",
+): ModelMessage {
   const reasonLine =
     reason === "prepared"
       ? "O candidato atingiu o criterio de preparo."
@@ -718,7 +741,12 @@ router.post(
       (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
 
     // Quota global ANTES de qualquer chamada cara (fetch da vaga incluso).
-    const usage = await checkAiDailyLimit(userId, !!req.isPro, "[interview]", INTERVIEW_SESSION_TOOL);
+    const usage = await checkAiDailyLimit(
+      userId,
+      !!req.isPro,
+      "[interview]",
+      INTERVIEW_SESSION_TOOL,
+    );
     if (!usage.allowed) {
       if (usage.verificationFailed) {
         await logAiUsage({
@@ -848,19 +876,22 @@ router.post(
         .single();
 
       if (error || !data) {
-        console.error(
-          "[interview] insert de sessao falhou:",
-          error?.message ?? "sem dados",
-        );
         return next(
-          createError(500, "db_error", "Erro ao criar a sessao de entrevista."),
+          dbError(
+            "interview create session",
+            error,
+            "Erro ao criar a sessao de entrevista.",
+          ),
         );
       }
       sessionId = (data as { id: string }).id;
     } catch (err) {
-      console.error("[interview] insert de sessao lancou:", err);
       return next(
-        createError(500, "db_error", "Erro ao criar a sessao de entrevista."),
+        dbError(
+          "interview create session insert",
+          err,
+          "Erro ao criar a sessao de entrevista.",
+        ),
       );
     }
 
@@ -1238,7 +1269,11 @@ router.post(
     const closeReason: "prepared" | "question_cap" = prepared
       ? "prepared"
       : "question_cap";
-    const instruction = closingInstruction(goodCount, questionCount, closeReason);
+    const instruction = closingInstruction(
+      goodCount,
+      questionCount,
+      closeReason,
+    );
     const closingFixedChars =
       systemMessages[0].content.length +
       systemMessages[1].content.length +
@@ -1796,8 +1831,9 @@ router.post(
         .eq("id", parsedBody.data.turnId)
         .maybeSingle();
       if (error) {
-        console.warn("[interview] busca de turno para fala falhou:", error.message);
-        return next(createError(500, "db_error", "Erro ao buscar o turno."));
+        return next(
+          dbError("interview load turn", error, "Erro ao buscar o turno."),
+        );
       }
       turn = (data as SpeechTurnRow | null) ?? null;
     } catch (err) {
@@ -2013,7 +2049,11 @@ router.get(
 
       if (error) {
         return next(
-          createError(500, "db_error", "Erro ao buscar suas entrevistas."),
+          dbError(
+            "interview list sessions",
+            error,
+            "Erro ao buscar suas entrevistas.",
+          ),
         );
       }
       res.json({ data: data ?? [] });
@@ -2073,8 +2113,13 @@ router.delete(
         .select("id");
 
       if (error) {
-        console.warn("[interview] delete de sessao falhou:", error.message);
-        return next(createError(500, "db_error", "Erro ao excluir a sessao."));
+        return next(
+          dbError(
+            "interview delete session",
+            error,
+            "Erro ao excluir a sessao.",
+          ),
+        );
       }
       if (!data || data.length === 0) {
         return next(createError(404, "not_found", "Sessao nao encontrada."));

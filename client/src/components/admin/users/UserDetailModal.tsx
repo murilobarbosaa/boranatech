@@ -1135,19 +1135,30 @@ export function UserDetailModal({
                 >
                   Trocar e-mail
                 </button>
-                {/* Boleto NAO aparece como botao desabilitado: um botao morto
-                    convida a clicar e nao explica nada. Vira uma linha de
-                    texto, que diz o porque no lugar de esconder. A rota recusa
-                    de qualquer forma (boleto_not_supported). */}
+                {/* Assinatura MANUAL nao aparece como botao desabilitado: um
+                    botao morto convida a clicar e nao explica nada. Vira uma
+                    linha de texto, que diz o porque no lugar de esconder. A rota
+                    recusa de qualquer forma (boleto_not_supported).
+
+                    O TEXTO DEPENDE DO MEIO DE PAGAMENTO desde o lote 2a. Ele
+                    dizia "Boleto" para toda linha `renewal_type === "manual"`,
+                    e desde 2026-09-01 isso inclui Pix: o assinante de Pix lia
+                    uma frase sobre um meio que ele nao usou. `renewal_type`
+                    responde "renova sozinho?", que e o motivo; `payment_method`
+                    responde "por onde ela pagou?", que e o nome certo na frase.
+                    TODO(Ana) */}
                 {detail.subscription &&
                 !detail.subscription.cancel_at_period_end ? (
                   detail.subscription.renewal_type === "manual" ? (
                     <span
-                      data-testid="boleto-sem-cancelamento"
+                      data-testid="manual-sem-cancelamento"
                       className="col-span-2 text-xs font-bold text-slate-500 sm:col-span-1"
                     >
-                      Boleto não renova sozinho: o acesso termina no fim do
-                      período pago.
+                      {detail.subscription.payment_method === "pix"
+                        ? "Pix não renova sozinho: o acesso termina no fim do período pago."
+                        : detail.subscription.payment_method === "boleto"
+                          ? "Boleto não renova sozinho: o acesso termina no fim do período pago."
+                          : "Pagamento avulso não renova sozinho: o acesso termina no fim do período pago."}
                     </span>
                   ) : (
                     <button

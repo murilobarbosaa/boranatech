@@ -85,8 +85,20 @@ function RefundDialogInterno({
     setEmitindo(false);
   }, [open]);
 
+  /**
+   * COBRANCA DO ASAAS: estorno INTEGRAL, sem escolha.
+   *
+   * Nao e limitacao de tela, e do caminho: o webhook trata `PAYMENT_REFUNDED` e
+   * nao `PAYMENT_PARTIALLY_REFUNDED`, entao um parcial sairia do provedor e
+   * nunca viraria linha de ledger. O dinheiro voltaria e o painel diria que nao.
+   * A rota recusa com `asaas_partial_refund_not_supported`; aqui a opcao nem
+   * aparece, para nao oferecer o que sera negado.
+   */
+  const ehAsaas = (charge.provider ?? "stripe") === "asaas";
+
   const teto = charge.refundable_cents;
-  const valorEscolhido = total ? teto : centavosDeTexto(valorTexto);
+  // Asaas ignora `total`: e sempre o teto inteiro.
+  const valorEscolhido = total || ehAsaas ? teto : centavosDeTexto(valorTexto);
   const tetoMenorQueBruto = teto < charge.gross_cents;
   // PREVISÃO, só para o texto. Quem decide é o servidor, sobre o estado real.
   const revogaraAcesso = vaiRevogar(valorEscolhido, teto);
@@ -122,7 +134,11 @@ function RefundDialogInterno({
       const json = await adminFetch(`/users/${userId}/refunds`, {
         method: "POST",
         body: JSON.stringify({
-          charge_id: charge.stripe_charge_id,
+          // A cobranca do Asaas nao tem `stripe_charge_id`: o id que a rota
+          // procura e o do provedor.
+          charge_id: ehAsaas
+            ? charge.provider_transaction_id
+            : charge.stripe_charge_id,
           amount_cents: valorEscolhido,
           reason: motivo.trim(),
         }),
@@ -133,6 +149,24 @@ function RefundDialogInterno({
       // extrato desatualizado nem a revogação falhando podem sugerir o
       // contrário: o admin tentaria de novo e a segunda tentativa cairia numa
       // Idempotency-Key diferente, devolvendo o dinheiro DE NOVO.
+      // ASAAS: a devolucao NAO esta no extrato ainda, e o texto diz isso. A
+      // linha negativa do ledger chega pelo webhook `PAYMENT_REFUNDED`, segundos
+      // ou minutos depois. `toastDeDevolucao` trataria `statement_synced: false`
+      // como falha do sync, que aqui e o estado normal e nao um problema.
+      // TODO(Ana)
+      if (ehAsaas) {
+        showActionToast({
+          message:
+            "Estorno enviado ao Asaas. A devolução aparece no extrato quando o webhook confirmar.",
+        });
+        // REFETCH ATRASADO, uma vez: o `onDone()` acima ja recarregou, e naquele
+        // instante o webhook quase certamente nao chegou. Cinco segundos e uma
+        // aposta, nao uma garantia, e por isso o texto acima nao promete que o
+        // extrato ja mudou.
+        setTimeout(() => onDone(), 5000);
+        return;
+      }
+
       const { mensagem, erro } = toastDeDevolucao({
         acaoFeita: "Reembolso emitido.",
         acesso: json.data?.access,
@@ -194,24 +228,34 @@ function RefundDialogInterno({
                   ) : null}
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setTotal(true)}
-                    className={`${BOTAO} ${total ? "bg-yellow-300" : ""}`}
+                {ehAsaas ? (
+                  <p
+                    data-testid="asaas-integral"
+                    className="text-xs font-bold text-slate-600"
                   >
-                    Total
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTotal(false)}
-                    className={`${BOTAO} ${!total ? "bg-yellow-300" : ""}`}
-                  >
-                    Parcial
-                  </button>
-                </div>
+                    {/* TODO(Ana) */}
+                    Estorno integral. Pix não aceita parcial.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTotal(true)}
+                      className={`${BOTAO} ${total ? "bg-yellow-300" : ""}`}
+                    >
+                      Total
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTotal(false)}
+                      className={`${BOTAO} ${!total ? "bg-yellow-300" : ""}`}
+                    >
+                      Parcial
+                    </button>
+                  </div>
+                )}
 
-                {!total ? (
+                {!total && !ehAsaas ? (
                   <div>
                     <label
                       htmlFor="valor-reembolso"
@@ -351,7 +395,14 @@ function RefundDialogInterno({
                 disabled={emitindo || !confirmacaoOk}
                 className="rounded-full border-2 border-slate-900 bg-rose-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
               >
-                {emitindo ? "Reembolsando..." : "Reembolsar agora"}
+                {/* TODO(Ana) */}
+                {emitindo
+                  ? ehAsaas
+                    ? "Estornando..."
+                    : "Reembolsando..."
+                  : ehAsaas
+                    ? "Estornar Pix"
+                    : "Reembolsar agora"}
               </button>
             </div>
           </>

@@ -23,6 +23,7 @@ import { isValidCpf } from "../../shared/certificates/types";
 import { oneOffAccessDays } from "../../shared/paymentMethods";
 import { PLAN_PRICING } from "../../shared/planPricing";
 import type { PlanId } from "../../shared/planPricing";
+import { montarDbError } from "../lib/dbError";
 import type {
   CancelInput,
   CancelResult,
@@ -307,7 +308,13 @@ async function createCheckout(
     .select("id")
     .eq("code", input.planId)
     .maybeSingle();
-  if (!plan) throw createError(500, "db_error", "Plano Pro não encontrado.");
+  if (!plan)
+    throw montarDbError(
+      "webhook/asaas",
+      "asaas load pending plan",
+      pendenteError,
+      "Plano Pro não encontrado.",
+    );
 
   // PRECO FINAL pela funcao unica (server/lib/coupons.ts), a mesma aritmetica
   // que o frontend usa na previa. Antes daqui a cobranca herdava o preco CHEIO
@@ -1042,10 +1049,15 @@ async function activateOnPayment(args: {
   const rows = (activation ?? []) as ExclusiveActivationRow[];
   const result = rows[0];
   if (!result) {
-    console.error(
-      `[webhook/asaas] activate_subscription_exclusive devolveu vazio (row ${row.id}).`,
+    throw montarDbError(
+      "webhook/asaas",
+      "asaas activate subscription",
+      error,
+      "Ativação de assinatura sem result.",
+      // O `console.error` que este helper substituiu carregava o `row.id`, e
+      // sem ele nao da para achar QUAL linha ficou sem ativar.
+      { rowId: row.id },
     );
-    throw createError(500, "db_error", "Ativação de assinatura sem result.");
   }
   if (!result.out_activated) return false;
 
@@ -1305,4 +1317,71 @@ export async function fetchChargeAmountCents(
     );
     return null;
   }
+}
+
+/**
+ * Status que o Asaas devolve depois de aceitar um pedido de estorno.
+ *
+ * OS TRES SAO SUCESSO, e reduzir a lista a `REFUNDED` seria o erro caro. A
+ * documentacao do provedor lista `REFUND_REQUESTED` e `REFUND_IN_PROGRESS` ao
+ * lado de `REFUNDED` no enum de status da cobranca, e o segundo e descrito como
+ * "estorno em processamento, a liquidacao ja esta agendada". Tratar isso como
+ * falha faria o admin ver "nao devolveu" sobre um estorno que o Asaas ja
+ * aceitou, e a acao obvia dele seria pedir de novo.
+ *
+ * O ESTADO TERMINAL VEM PELO WEBHOOK, nao daqui: `PAYMENT_REFUNDED` e quem grava
+ * a linha negativa no ledger. Esta resposta so diz "o pedido foi aceito".
+ */
+const STATUS_DE_ESTORNO_ACEITO = new Set([
+  "REFUNDED",
+  "REFUND_REQUESTED",
+  "REFUND_IN_PROGRESS",
+]);
+
+export type EstornoAsaas = {
+  /** Status da cobranca na resposta do estorno. Um dos aceitos acima. */
+  status: string;
+  /** Corpo inteiro, para auditoria e diagnostico. */
+  raw: unknown;
+};
+
+/**
+ * Estorna uma cobranca do Asaas, SEMPRE integralmente.
+ *
+ * `value` NAO e enviado, e a ausencia e o que faz o estorno ser integral (a
+ * documentacao do provedor: omitido, "o estorno sera integral"). Mandar o valor
+ * calculado por nos seria pior de duas formas: um centavo de divergencia entre o
+ * nosso `gross_cents` e o valor do lado deles viraria um estorno PARCIAL sem
+ * ninguem pedir, e o parcial e justamente o que este lote nao trata (o webhook
+ * so trata `PAYMENT_REFUNDED`, nao `PAYMENT_PARTIALLY_REFUNDED`). Omitir delega
+ * o valor a quem tem a verdade sobre ele.
+ *
+ * O CAMINHO NAO LEVA `/v3`: ele ja esta em `ASAAS_API_URL`, como em todos os
+ * outros call sites deste arquivo.
+ *
+ * `status` inesperado num 200 LANCA em vez de passar. Um `CONFIRMED` de volta
+ * significa que a cobranca segue paga e o estorno nao aconteceu; gravar
+ * `admin_refunds` sobre isso registraria uma devolucao que nao existe, e o
+ * "Valor pago" do cliente iria a zero com o dinheiro ainda em caixa.
+ */
+export async function estornarPagamento(
+  paymentId: string,
+  args: { descricao: string },
+): Promise<EstornoAsaas> {
+  const resposta = await asaasFetch<{ status?: unknown }>(
+    `/payments/${encodeURIComponent(paymentId)}/refund`,
+    { method: "POST", body: { description: args.descricao } },
+  );
+
+  const status = typeof resposta?.status === "string" ? resposta.status : null;
+  if (!status || !STATUS_DE_ESTORNO_ACEITO.has(status)) {
+    throw createError(
+      502,
+      "asaas_refund_rejected",
+      "O Asaas nao confirmou o estorno. Nada foi devolvido.",
+      { context: { asaas_status: status ?? "ausente", payment_id: paymentId } },
+    );
+  }
+
+  return { status, raw: resposta };
 }

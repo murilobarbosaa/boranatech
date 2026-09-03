@@ -1,4 +1,9 @@
-import { Router } from "express";
+import {
+  Router,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 
 import { logAudit } from "../lib/audit";
 import { deleteAvatarObject } from "../lib/avatarUpload";
@@ -40,7 +45,10 @@ import { withRedisOpTimeout } from "../lib/redisOpTimeout";
 import { stripeProvider } from "../providers/stripe";
 import { getStripe } from "../lib/stripeClient";
 import { syncBalanceTransactions } from "../lib/stripeSync";
-import { PIX_REFUND_COPY } from "../../shared/pixRefundCopy";
+import {
+  estornarPagamento,
+  type EstornoAsaas,
+} from "../providers/asaas";
 import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { lerSessaoDeBoleto } from "../lib/boletoSession";
@@ -120,6 +128,7 @@ import {
   totalPagoCents,
   type DeclaredRefund,
   type FinanceRow,
+  type TransactionItem,
 } from "../lib/userTransactions";
 import {
   devolucaoZeraOSaldo,
@@ -4039,7 +4048,9 @@ async function lerDeclaracoesDeDevolucao(
 > {
   const { data, error } = await supabaseAdmin
     .from("admin_refunds")
-    .select("stripe_charge_id, amount_cents, settlement")
+    .select(
+      "stripe_charge_id, amount_cents, settlement, provider, provider_transaction_id",
+    )
     .eq("user_id", uid);
   if (error) return { ok: false, message: error.message };
   return { ok: true, linhas: (data || []) as DeclaredRefund[] };
@@ -4313,6 +4324,197 @@ async function decidirERevogar(input: {
 // pelo payment intent. Enquanto houver charge sem dono, ela não é listada e
 // portanto não é reembolsável pela interface. Devolver boleto continua sendo
 // operação manual, fora da plataforma. Ver docs/aba-usuarios-admin.md.
+/**
+ * REEMBOLSO DE COBRANCA DO ASAAS, pela API do provedor.
+ *
+ * A ORDEM DOS EFEITOS E A MESMA DA STRIPE, e isso nao e simetria decorativa:
+ * cada passo esta onde esta por um motivo que vale igual nos dois provedores.
+ * Auditoria ANTES da chamada (sem rastro gravado, dinheiro nenhum sai);
+ * `admin_refunds` DEPOIS (falha ali nao pode virar erro, porque o dinheiro ja
+ * saiu); revogacao antes de qualquer leitura de extrato (ela e o efeito que
+ * importa e nao depende de sincronia).
+ *
+ * O QUE NAO TEM ANALOGO: nao ha `syncBalanceTransactions` aqui. A linha negativa
+ * do ledger chega pelo webhook `PAYMENT_REFUNDED`, e escrever tambem daqui faria
+ * a devolucao contar DUAS vezes no "Valor pago" e na receita. Ver o cabecalho de
+ * `montarEstornoAsaas`.
+ *
+ * SO ESTORNO INTEGRAL. O webhook trata `PAYMENT_REFUNDED` e nao
+ * `PAYMENT_PARTIALLY_REFUNDED`, entao um parcial sairia do provedor e nunca
+ * viraria linha de ledger: o dinheiro voltaria e o painel diria que nao. A
+ * recusa e explicita, com codigo proprio.
+ */
+async function reembolsarNoAsaas(input: {
+  req: Request;
+  res: Response;
+  next: NextFunction;
+  uid: string;
+  paymentId: string;
+  alvo: TransactionItem;
+  corpo: { amount_cents?: unknown; reason?: unknown };
+  declaradas: DeclaredRefund[];
+}) {
+  const { req, res, next, uid, paymentId, alvo, corpo, declaradas } = input;
+
+  // DUPLICIDADE PRIMEIRO, ANTES ATE DA VALIDACAO, e a ordem foi medida.
+  //
+  // Um pedido ja registrado FECHA o teto (`refundable_cents` cai a zero, ver
+  // `solicitadoPorCobrancaAsaas`), entao validar antes faria o segundo clique
+  // sair como `nothing_refundable`, um 400 que diz "nao ha saldo" e esconde a
+  // causa. `refund_already_requested` diz que o estorno ja foi pedido, que e a
+  // informacao que o admin precisa para nao insistir.
+  //
+  // A corrida SIMULTANEA nao e coberta aqui: duas requisicoes paralelas leem
+  // "nao existe" as duas. Quem cobre e o indice unico
+  // `admin_refunds_provider_refund_key`, no banco.
+  const jaPedido = declaradas.some(
+    (d) =>
+      (d.provider ?? "stripe") === "asaas" &&
+      d.provider_transaction_id === paymentId,
+  );
+  if (jaPedido) {
+    return next(
+      createError(
+        409,
+        "refund_already_requested",
+        // TODO(Ana)
+        "Já existe um estorno pedido para esta cobrança.",
+      ),
+    );
+  }
+
+  // VALIDACAO COMPARTILHADA, e nao uma segunda. `permitirBoleto` fica de fora
+  // porque `is_boleto` nao e passado: a heuristica do `py_` e da Stripe, e uma
+  // cobranca do Asaas nunca deve ser julgada por ela.
+  const validacao = validateRefundRequest(alvo, {
+    amountCents:
+      typeof corpo.amount_cents === "number" ? corpo.amount_cents : undefined,
+    reason: typeof corpo.reason === "string" ? corpo.reason : "",
+  });
+  if (!validacao.ok) {
+    return next(
+      createError(400, validacao.error.code, validacao.error.message),
+    );
+  }
+
+  // INTEGRAL OU NADA. O teto ja foi conferido por `validateRefundRequest`; o que
+  // falta e recusar o MENOR que o teto, que para a Stripe e um parcial legitimo
+  // e aqui e um estorno que o webhook nao saberia registrar.
+  if (validacao.amountCents !== alvo.refundable_cents) {
+    return next(
+      createError(
+        409,
+        "asaas_partial_refund_not_supported",
+        // TODO(Ana)
+        "Estorno parcial de Pix não é suportado. Estorne o valor integral.",
+      ),
+    );
+  }
+
+  // AUDITORIA DA INTENCAO, fail-closed, ANTES do provedor.
+  const { error: auditError } = await supabaseAdmin
+    .from("content_audit_logs")
+    .insert({
+      actor_user_id: req.user!.id,
+      action: "refund",
+      resource_type: "charge",
+      resource_id: uid,
+      resource_slug: paymentId,
+      before_json: {
+        gross_cents: alvo.gross_cents,
+        refunded_cents: alvo.refunded_cents,
+        refundable_cents: alvo.refundable_cents,
+      },
+      after_json: {
+        amount_cents: validacao.amountCents,
+        reason: validacao.reason,
+        provider: "asaas",
+      },
+    });
+  if (auditError) {
+    console.error("[admin] asaas refund audit failed:", auditError);
+    return next(
+      createError(
+        500,
+        "audit_failed",
+        "Não foi possível registrar a auditoria do reembolso.",
+      ),
+    );
+  }
+
+  let estorno: EstornoAsaas;
+  try {
+    estorno = await estornarPagamento(paymentId, {
+      descricao: validacao.reason.slice(0, 500),
+    });
+  } catch (asaasErr) {
+    console.error(
+      `[admin/refund] Asaas recusou o estorno de ${paymentId}:`,
+      asaasErr,
+    );
+    // O erro do provider JA vem nomeado (`asaas_refund_rejected`,
+    // `asaas_error`, `asaas_unreachable`) e com status 502. Reembrulhar
+    // apagaria a distincao entre "recusou" e "nao consegui falar".
+    return next(asaasErr);
+  }
+
+  // DAQUI PARA BAIXO O ESTORNO JA FOI ACEITO. Nenhuma falha pode virar mensagem
+  // que sugira o contrario.
+  const { error: registroError } = await supabaseAdmin
+    .from("admin_refunds")
+    .insert({
+      user_id: uid,
+      actor_user_id: req.user!.id,
+      provider: "asaas",
+      provider_transaction_id: paymentId,
+      // O Asaas nao devolve id de estorno: o estorno integral e um por cobranca,
+      // entao o proprio payment id E a identidade da devolucao. E o que torna o
+      // indice unico util contra a corrida.
+      provider_refund_id: paymentId,
+      provider_status: estorno.status,
+      stripe_charge_id: null,
+      stripe_refund_id: null,
+      amount_cents: validacao.amountCents,
+      currency: alvo.currency ?? "BRL",
+      reason: validacao.reason,
+      settlement: "asaas_api",
+    });
+  if (registroError) {
+    console.error(
+      `[admin/refund] INCONSISTENCIA: estorno de ${validacao.amountCents} ACEITO no Asaas para ${paymentId}, mas admin_refunds nao gravou. A auditoria da intencao existe; o resultado nao.`,
+      registroError,
+    );
+  }
+
+  // MESMA decisao da Stripe, com os MESMOS dois numeros. `decidirERevogar` faz
+  // aritmetica pura sobre eles (ver `devolucaoZeraOSaldo`), entao nao ha nada a
+  // adaptar: o estorno integral zera o saldo e o acesso cai.
+  const acesso = await decidirERevogar({
+    uid,
+    actorUserId: req.user!.id,
+    motivo: validacao.reason,
+    chargeId: paymentId,
+    refundableAntes: alvo.refundable_cents,
+    valorReembolsado: validacao.amountCents,
+  });
+
+  await invalidateProStatusCache(uid);
+
+  res.json({
+    data: {
+      refunded: true,
+      refund_id: paymentId,
+      amount_cents: validacao.amountCents,
+      status: estorno.status,
+      // NAO ha sync a fazer: o ledger vem do webhook. O campo fica FALSO de
+      // proposito, para a tela nao afirmar que o extrato ja reflete a devolucao.
+      statement_synced: false,
+      record_saved: !registroError,
+      access: acesso,
+    },
+  });
+}
+
 router.post("/users/:id/refunds", async (req, res, next) => {
   try {
     const uid = req.params.id;
@@ -4357,7 +4559,7 @@ router.post("/users/:id/refunds", async (req, res, next) => {
     const { data: linhas, error: linhasError } = await supabaseAdmin
       .from("finance_transactions")
       .select(
-        "id, provider, provider_transaction_id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
+        "id, provider, provider_transaction_id, raw_payload, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
       )
       .eq("user_id", uid);
 
@@ -4387,18 +4589,12 @@ router.post("/users/:id/refunds", async (req, res, next) => {
       (item) => item.stripe_charge_id === chargeId && item.type === "charge",
     );
 
-    // PROVEDOR ANTES DA BUSCA POR ID, e a ordem e o ponto.
+    // COBRANCA DO ASAAS: ramo proprio, e ele TERMINA a requisicao.
     //
-    // Uma cobranca do Asaas nunca casa em `stripe_charge_id`, entao sem esta
-    // guarda ela cairia no 404 "Cobranca nao encontrada para este usuario", uma
-    // mensagem falsa: a cobranca existe, esta no extrato, e so nao e
-    // reembolsavel POR AQUI. Responder 409 com codigo proprio diz o que fazer
-    // em vez de fazer o admin procurar uma cobranca que ele esta vendo.
-    //
-    // A comparacao e por PROVEDOR e nao pelo formato do id. O `is_boleto` abaixo
-    // decide por `chargeId.startsWith("py_")`, uma heuristica de prefixo da
-    // Stripe, e prefixo e exatamente o tipo de criterio que casa errado no dia
-    // em que outro gateway usar as mesmas letras.
+    // A busca e por PROVEDOR e por `provider_transaction_id`, nunca pelo formato
+    // do id: prefixo e o criterio que casa errado no dia em que outro gateway
+    // usar as mesmas letras, e este arquivo ja carrega um caso desses
+    // (`is_boleto`, que so vale para a Stripe justamente por isso).
     const alvoAsaas = extrato.items.find(
       (item) =>
         item.type === "charge" &&
@@ -4406,14 +4602,16 @@ router.post("/users/:id/refunds", async (req, res, next) => {
         item.provider_transaction_id === chargeId,
     );
     if (alvoAsaas) {
-      return next(
-        createError(
-          409,
-          "refund_provider_not_stripe",
-          // UMA instrucao, tres lugares: ver shared/pixRefundCopy.ts.
-          PIX_REFUND_COPY,
-        ),
-      );
+      return reembolsarNoAsaas({
+        req,
+        res,
+        next,
+        uid,
+        paymentId: chargeId,
+        alvo: alvoAsaas,
+        corpo,
+        declaradas: declaradas.linhas,
+      });
     }
 
     // A cobrança precisa ser DESTE usuário. Sem isto, o id de uma cobrança de
@@ -4712,7 +4910,7 @@ router.post("/users/:id/external-refunds", async (req, res, next) => {
     const { data: linhas, error: linhasError } = await supabaseAdmin
       .from("finance_transactions")
       .select(
-        "id, provider, provider_transaction_id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
+        "id, provider, provider_transaction_id, raw_payload, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
       )
       .eq("user_id", uid);
 
@@ -4752,11 +4950,11 @@ router.post("/users/:id/external-refunds", async (req, res, next) => {
     // extrato) e, se passasse, no 409 "Esta e uma cobranca de cartao" (tambem
     // falso).
     //
-    // O QUE FALTA para Pix entrar: `provider` e `provider_transaction_id` em
-    // `admin_refunds`, e a agregacao de `userTransactions` passando a ligar
-    // declaracao a cobranca por esse par. E migration propria e nao cabe neste
-    // lote. Ate la, a devolucao de Pix e feita no Asaas e conciliada a mao, e
-    // esta mensagem e o unico lugar que declara isso.
+    // E CONTINUA NAO CABENDO, agora por outro motivo: desde o lote 2a o Pix TEM
+    // caminho proprio, o botao Reembolsar, que chama a API do Asaas. Registrar
+    // aqui uma devolucao externa de Pix criaria uma segunda forma de dizer a
+    // mesma coisa, e as duas divergiriam no primeiro caso em que uma fosse usada
+    // sem a outra.
     const alvoAsaasExterno = extrato.items.find(
       (item) =>
         item.type === "charge" &&
@@ -4768,7 +4966,8 @@ router.post("/users/:id/external-refunds", async (req, res, next) => {
         createError(
           409,
           "external_refund_provider_not_supported",
-          PIX_REFUND_COPY,
+          // TODO(Ana)
+          "Cobrança Pix: use o botão Reembolsar; o estorno é feito pela API do Asaas.",
         ),
       );
     }
@@ -5654,7 +5853,7 @@ router.get("/users/:id/transactions", async (req, res, next) => {
     const { data, error } = await supabaseAdmin
       .from("finance_transactions")
       .select(
-        "id, provider, provider_transaction_id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
+        "id, provider, provider_transaction_id, raw_payload, type, gross_cents, fee_cents, net_cents, currency, occurred_at, stripe_charge_id, stripe_invoice_id, plan_code",
       )
       .eq("user_id", uid)
       .order("occurred_at", { ascending: false })

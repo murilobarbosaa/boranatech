@@ -34,6 +34,10 @@ export type DeclaredRefund = {
   stripe_charge_id: string | null;
   amount_cents: number;
   settlement: string;
+  /** `stripe` | `asaas`. Ausente na linha antiga: `providerDaLinha` resolve. */
+  provider?: string | null;
+  /** Id da cobranca no provedor. Para Asaas e o unico vinculo que existe. */
+  provider_transaction_id?: string | null;
 };
 
 /**
@@ -67,6 +71,12 @@ export type FinanceRow = {
    * Opcional pelo mesmo motivo de `provider`.
    */
   provider_transaction_id?: string | null;
+  /**
+   * Payload cru do provedor. Lido SO para ligar um estorno do Asaas a sua
+   * cobranca (ver `pagamentoDoEstornoAsaas`); nenhuma outra leitura depende
+   * dele. Opcional porque o backend antigo nao o seleciona nesta rota.
+   */
+  raw_payload?: unknown;
   type: string;
   gross_cents: number;
   fee_cents: number | null;
@@ -89,8 +99,30 @@ export type RefundState = "none" | "partial" | "full";
  * desconhecido a tiraria do teto de reembolso, ou seja, recusaria devolver
  * dinheiro de uma cobranca perfeitamente reembolsavel.
  */
-export function providerDaLinha(row: Pick<FinanceRow, "provider">): string {
+export function providerDaLinha(row: { provider?: string | null }): string {
   return row.provider ?? "stripe";
+}
+
+/**
+ * Quanto foi PEDIDO de estorno por cobranca do Asaas, em magnitude positiva.
+ *
+ * Fonte: `admin_refunds` com `provider='asaas'`. Existe porque o estorno do
+ * Asaas nao e sincrono: a rota pede, o provedor aceita, e a linha negativa do
+ * ledger so chega quando o webhook `PAYMENT_REFUNDED` confirmar, segundos ou
+ * minutos depois. Entre as duas coisas o teto precisa ja estar fechado, senao
+ * um segundo clique manda estornar de novo o que ja esta a caminho.
+ */
+function solicitadoPorCobrancaAsaas(
+  declaradas: DeclaredRefund[],
+): Map<string, number> {
+  const mapa = new Map<string, number>();
+  for (const d of declaradas) {
+    if (providerDaLinha(d) !== "asaas") continue;
+    const chave = d.provider_transaction_id;
+    if (!chave) continue;
+    mapa.set(chave, (mapa.get(chave) ?? 0) + Math.abs(d.amount_cents ?? 0));
+  }
+  return mapa;
 }
 
 export type TransactionItem = FinanceRow & {
@@ -130,28 +162,19 @@ export type TransactionItem = FinanceRow & {
    * que ela recusa. Nunca negativo.
    */
   refundable_cents: number;
+  /**
+   * Estorno de Pix PEDIDO e ainda nao confirmado pelo webhook, em centavos.
+   *
+   * Sempre 0 fora de cobranca do Asaas. Existe porque a linha do extrato tem
+   * tres estados, nao dois: com saldo, sem saldo, e "pedi e estou esperando". O
+   * terceiro dura de segundos a minutos e, sem ele, a tela diria "Sem saldo a
+   * reembolsar" sobre um estorno que ninguem confirmou ainda.
+   */
+  estorno_pendente_cents: number;
 };
 
 export type TransactionList = {
   items: TransactionItem[];
-  /**
-   * Dinheiro de Pix (Asaas) que AINDA ESTA CONOSCO, em centavos.
-   *
-   * Existe para a tela poder explicar por que o botao de reembolso da Stripe nao
-   * cobre aquele valor: ele nao cobre porque a cobranca nao esta na Stripe. A
-   * devolucao de Pix sai pelo Asaas e volta aqui como devolucao externa.
-   *
-   * E UM AGREGADO, e nao uma soma por cobranca, e a limitacao e estrutural: a
-   * linha de estorno do Asaas tem como identidade o id do EVENT (ver
-   * `montarEstornoAsaas`), nao o do pagamento, entao NAO existe hoje chave que
-   * ligue um estorno a sua cobranca. Somar `charge` e `refund` do provedor da o
-   * saldo certo no total, que e o numero que a frase da tela precisa; dizer qual
-   * cobranca especifica ainda esta em aberto exigiria uma coluna de vinculo.
-   *
-   * Nunca negativo: devolver mais do que entrou nao e um saldo, e um erro de
-   * dado, e um numero negativo na tela seria lido como credito.
-   */
-  pix_sem_reembolso_na_stripe_cents: number;
   /**
    * Soma de gross_cents das linhas charge/refund/dispute, com sinal, MENOS as
    * devolucoes declaradas que contam. E exatamente a mesma conta do "Valor pago
@@ -222,10 +245,10 @@ function agregarPorCobranca(
 
   for (const row of rows) {
     if (row.type !== "refund" && row.type !== "dispute") continue;
-    // SO A STRIPE agrega por cobranca. Este mapa alimenta `refundable_cents`,
-    // que e o teto do que a rota de reembolso pode mandar a Stripe devolver, e
-    // uma linha do Asaas nao tem `stripe_charge_id` a que se ligar. A condicao
-    // fica explicita em vez de depender de o campo ser nulo por acaso.
+    // SO A STRIPE agrega por este mapa, e a razao e a CHAVE, nao o provedor: ele
+    // e indexado por `stripe_charge_id`, que uma linha do Asaas nao tem. O
+    // agregado do Asaas e por `provider_transaction_id` e vive em
+    // `devolvidoPorCobrancaAsaas`, logo abaixo.
     if (providerDaLinha(row) !== "stripe") continue;
     if (!row.stripe_charge_id) continue;
     const atual = mapa.get(row.stripe_charge_id) ?? { ...AGREGADO_ZERO };
@@ -249,6 +272,65 @@ function agregarPorCobranca(
 }
 
 /**
+ * Id do PAGAMENTO a que uma linha de estorno do Asaas se refere.
+ *
+ * O `provider_transaction_id` de um estorno do Asaas e o id do EVENT, nao o do
+ * pagamento, e isso e deliberado: o id do pagamento ja identifica a linha de
+ * `charge`, e reusa-lo faria o upsert do estorno colidir com a propria cobranca
+ * no indice unico `(provider, provider_transaction_id)` e sumir em silencio (ver
+ * `montarEstornoAsaas`, server/lib/asaasLedger.ts).
+ *
+ * A CONSEQUENCIA e que NAO existe coluna ligando estorno a cobranca, e o vinculo
+ * tem de sair do payload: `raw_payload` de uma linha do Asaas e o objeto
+ * `payment` do event, e o `id` dele e o pagamento estornado. Le-se o payload do
+ * proprio provedor, nao um campo derivado por nos.
+ *
+ * `null` quando o payload nao tem a forma esperada, e o chamador trata isso como
+ * "nao sei ligar", nunca como "nao houve estorno": a diferenca decide se o teto
+ * de reembolso desce ou nao, e errar para o lado de nao descer autorizaria
+ * devolver o que ja voltou. A funcao devolve `null` e quem chama fecha o teto.
+ */
+export function pagamentoDoEstornoAsaas(row: FinanceRow): string | null {
+  const p = row.raw_payload;
+  if (!p || typeof p !== "object") return null;
+  const id = (p as { id?: unknown }).id;
+  return typeof id === "string" && id !== "" ? id : null;
+}
+
+/**
+ * Quanto JA VOLTOU por cobranca do Asaas, em magnitude positiva.
+ *
+ * SEPARADO de `agregarPorCobranca` porque a chave e outra e a origem dela
+ * tambem: la e a coluna `stripe_charge_id`, aqui e o payload (ver acima).
+ *
+ * `dispute` NAO entra: o Asaas nao tem chargeback de Pix, e reservar o conceito
+ * evita que uma linha de outro tipo entre aqui por descuido.
+ */
+function devolvidoPorCobrancaAsaas(rows: FinanceRow[]): {
+  porPagamento: Map<string, number>;
+  /** Estornos que existem e nao foi possivel ligar a cobranca nenhuma. */
+  semVinculoCents: number;
+} {
+  const porPagamento = new Map<string, number>();
+  let semVinculoCents = 0;
+  for (const row of rows) {
+    if (row.type !== "refund") continue;
+    if (providerDaLinha(row) !== "asaas") continue;
+    const magnitude = Math.abs(row.gross_cents ?? 0);
+    const pagamento = pagamentoDoEstornoAsaas(row);
+    if (!pagamento) {
+      semVinculoCents += magnitude;
+      continue;
+    }
+    porPagamento.set(
+      pagamento,
+      (porPagamento.get(pagamento) ?? 0) + magnitude,
+    );
+  }
+  return { porPagamento, semVinculoCents };
+}
+
+/**
  * `declaradas` e OBRIGATORIO, sem default, de proposito: um parametro opcional
  * faria um chamador esquecido somar a menos e devolver um teto de reembolso
  * MAIOR que o real, em silencio. Sem default, o compilador cobra a decisao de
@@ -260,6 +342,9 @@ export function buildTransactionList(
   declaradas: DeclaredRefund[],
 ): TransactionList {
   const porCobranca = agregarPorCobranca(rows, declaradas);
+
+  const asaasDevolvido = devolvidoPorCobrancaAsaas(rows);
+  const asaasSolicitado = solicitadoPorCobrancaAsaas(declaradas);
 
   const items = rows.map<TransactionItem>((row) => {
     const ehCharge = row.type === "charge";
@@ -273,6 +358,36 @@ export function buildTransactionList(
     // nao desce e o lado inseguro: ele autoriza devolver o que ja voltou.
     const reembolsavelPelaStripe =
       ehCharge && providerDaLinha(row) === "stripe";
+
+    // TETO DA COBRANCA DO ASAAS, e ele olha DUAS fontes.
+    //
+    // `devolvido` e o que ja voltou (linha de refund no ledger, posta pelo
+    // webhook). `solicitado` e o que ja foi PEDIDO por esta base (linha em
+    // `admin_refunds`). O estorno do Asaas nao e sincrono, entao existe uma
+    // janela em que o segundo e maior que o primeiro, e e nela que um duplo
+    // clique estornaria de novo.
+    //
+    // `Math.max` E NAO SOMA, e a diferenca e o ponto: quando o webhook chega, as
+    // duas fontes descrevem O MESMO estorno. Somar subtrairia duas vezes e o
+    // teto ficaria negativo, o que o `Math.max(0, ...)` esconderia, mas o
+    // `estorno_pendente_cents` viraria zero cedo demais e a tela diria
+    // "confirmado" antes da hora.
+    const ehAsaasCharge = ehCharge && providerDaLinha(row) === "asaas";
+    const asaas = { refundable: 0, pendente: 0 };
+    if (ehAsaasCharge) {
+      const id = row.provider_transaction_id ?? "";
+      const devolvido = id ? (asaasDevolvido.porPagamento.get(id) ?? 0) : 0;
+      const solicitado = id ? (asaasSolicitado.get(id) ?? 0) : 0;
+      const jaSaiu = Math.max(devolvido, solicitado);
+      // Estorno que existe e nao foi possivel ligar a cobranca nenhuma FECHA o
+      // teto de todas as cobrancas Asaas deste usuario. Fail-closed: recusar um
+      // reembolso legitimo custa uma conversa; autorizar um segundo estorno do
+      // mesmo dinheiro custa o dinheiro.
+      asaas.refundable = asaasDevolvido.semVinculoCents
+        ? 0
+        : Math.max(0, (row.gross_cents ?? 0) - jaSaiu);
+      asaas.pendente = Math.max(0, solicitado - devolvido);
+    }
     const agregado =
       reembolsavelPelaStripe && row.stripe_charge_id
         ? (porCobranca.get(row.stripe_charge_id) ?? AGREGADO_ZERO)
@@ -292,7 +407,10 @@ export function buildTransactionList(
             0,
             (row.gross_cents ?? 0) - agregado.refunded - agregado.disputed,
           )
-        : 0,
+        : ehAsaasCharge
+          ? asaas.refundable
+          : 0,
+      estorno_pendente_cents: ehAsaasCharge ? asaas.pendente : 0,
     };
   });
 
@@ -308,29 +426,6 @@ export function buildTransactionList(
   return {
     items,
     total_paid_cents: totalPagoCents(rows, declaradas),
-    pix_sem_reembolso_na_stripe_cents: saldoAsaasCents(rows),
   };
 }
 
-/**
- * Saldo do que entrou por Asaas e ainda nao voltou, em centavos.
- *
- * Soma `charge` e `refund` do provedor COM SINAL: a linha de estorno ja nasce
- * negativa (`montarEstornoAsaas`), entao a soma e o saldo, sem subtracao
- * separada. `dispute` fica de fora porque o Asaas nao tem chargeback de Pix.
- *
- * Piso em zero: estorno maior que a cobranca e erro de dado, e um negativo na
- * tela seria lido como credito ao cliente.
- */
-export function saldoAsaasCents(
-  rows: Array<Pick<FinanceRow, "provider" | "type" | "gross_cents">>,
-): number {
-  const soma = rows
-    .filter(
-      (r) =>
-        providerDaLinha(r) === "asaas" &&
-        (r.type === "charge" || r.type === "refund"),
-    )
-    .reduce((acc, r) => acc + (r.gross_cents ?? 0), 0);
-  return Math.max(0, soma);
-}

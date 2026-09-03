@@ -4,7 +4,6 @@ import {
   buildTransactionList,
   declaracaoContaNoExtrato,
   refundStateOf,
-  saldoAsaasCents,
   totalPagoCents,
   type DeclaredRefund,
   type FinanceRow,
@@ -571,37 +570,32 @@ describe("ledger multi-provedor: Pix no extrato", () => {
     expect(lista.total_paid_cents).toBe(1290);
   });
 
-  it("refundable_cents da cobranca Pix e ZERO, nao o valor cheio", () => {
-    // O DEFEITO QUE ISTO FECHA: sem a condicao por provedor, a linha cairia no
-    // AGREGADO_ZERO por nao ter stripe_charge_id e sairia com o teto CHEIO,
-    // autorizando a rota de reembolso a devolver pela Stripe uma cobranca que
-    // nunca esteve la. Teto que nao desce e o lado inseguro.
+  it("refundable_cents da cobranca Pix e o valor cheio quando nada voltou", () => {
+    // MUDOU NO LOTE 2a. Ate aqui era ZERO, e estava certo: nao havia como
+    // estornar Pix, entao um teto maior que zero autorizaria a rota da Stripe a
+    // devolver uma cobranca que nunca esteve la. Com o botao chamando a API do
+    // Asaas, o teto passa a ser o saldo de verdade.
     const lista = buildTransactionList([cobrancaPix], []);
 
-    expect(lista.items[0].refundable_cents).toBe(0);
+    expect(lista.items[0].refundable_cents).toBe(1290);
+    expect(lista.items[0].estorno_pendente_cents).toBe(0);
+  });
+
+  it("CONTROLE NEGATIVO: cobranca da Stripe nao ganha estorno pendente", () => {
+    const cobrancaStripe = {
+      ...cobrancaPix,
+      id: "ft-stripe-1",
+      provider: "stripe",
+      stripe_charge_id: "ch_1",
+    };
+    const lista = buildTransactionList([cobrancaStripe], []);
+    expect(lista.items[0].estorno_pendente_cents).toBe(0);
   });
 
   it("o estorno Pix desconta do total pago", () => {
     const lista = buildTransactionList([cobrancaPix, estornoPix], []);
 
     expect(lista.total_paid_cents).toBe(0);
-  });
-
-  it("pix_sem_reembolso_na_stripe_cents mostra o que ainda esta conosco", () => {
-    expect(
-      buildTransactionList([cobrancaPix], []).pix_sem_reembolso_na_stripe_cents,
-    ).toBe(1290);
-
-    expect(
-      buildTransactionList([cobrancaPix, estornoPix], [])
-        .pix_sem_reembolso_na_stripe_cents,
-    ).toBe(0);
-  });
-
-  it("saldo Asaas nunca fica negativo", () => {
-    // Estorno maior que a cobranca e erro de dado; negativo na tela seria lido
-    // como credito ao cliente.
-    expect(saldoAsaasCents([cobrancaPix, estornoPix, estornoPix])).toBe(0);
   });
 
   it("CONTROLE NEGATIVO: linha da Stripe nao entra no saldo do Pix", () => {
@@ -612,11 +606,10 @@ describe("ledger multi-provedor: Pix no extrato", () => {
       stripe_charge_id: "ch_1",
     };
 
-    expect(saldoAsaasCents([cobrancaStripe])).toBe(0);
-    expect(
-      buildTransactionList([cobrancaStripe], [])
-        .pix_sem_reembolso_na_stripe_cents,
-    ).toBe(0);
+    // A cobranca da Stripe segue com o teto dela, e sem estorno pendente.
+    const lista = buildTransactionList([cobrancaStripe], []);
+    expect(lista.items[0].refundable_cents).toBe(1290);
+    expect(lista.items[0].estorno_pendente_cents).toBe(0);
   });
 
   it("linha SEM provider cai em stripe e mantem o teto de reembolso", () => {
@@ -638,7 +631,7 @@ describe("ledger multi-provedor: Pix no extrato", () => {
 
     const lista = buildTransactionList([semProvider], []);
     expect(lista.items[0].refundable_cents).toBe(2990);
-    expect(lista.pix_sem_reembolso_na_stripe_cents).toBe(0);
+    expect(lista.items[0].estorno_pendente_cents).toBe(0);
   });
 
   it("estorno do Asaas NAO e agregado por cobranca da Stripe", () => {
@@ -663,5 +656,102 @@ describe("ledger multi-provedor: Pix no extrato", () => {
 
     expect(daStripe.refundable_cents).toBe(2990);
     expect(daStripe.refunded_cents).toBe(0);
+  });
+});
+
+describe("estorno de Pix: os quatro estados do saldo", () => {
+  /**
+   * A COBRANCA e o pagamento `pay_abc`. Note que a linha de ESTORNO tem
+   * `provider_transaction_id` do EVENT, nao do pagamento: o vinculo com a
+   * cobranca sai de `raw_payload.id`, e e esse desenho que estes casos travam.
+   */
+  const cobranca = {
+    id: "ft-pix-1",
+    provider: "asaas",
+    provider_transaction_id: "pay_abc",
+    type: "charge",
+    gross_cents: 1290,
+    fee_cents: 199,
+    net_cents: 1091,
+    currency: "BRL",
+    occurred_at: "2026-09-01T13:11:33.000Z",
+    stripe_charge_id: null,
+    stripe_invoice_id: null,
+    plan_code: "pro_monthly",
+  };
+
+  const estornoNoLedger = {
+    id: "ft-pix-2",
+    provider: "asaas",
+    // O id do EVENT, nao o do pagamento.
+    provider_transaction_id: "evt_zzz",
+    raw_payload: { id: "pay_abc", value: 12.9 },
+    type: "refund",
+    gross_cents: -1290,
+    fee_cents: 0,
+    net_cents: -1290,
+    currency: "BRL",
+    occurred_at: "2026-09-05T13:00:00.000Z",
+    stripe_charge_id: null,
+    stripe_invoice_id: null,
+    plan_code: "pro_monthly",
+  };
+
+  const pedido: DeclaredRefund = {
+    stripe_charge_id: null,
+    amount_cents: 1290,
+    settlement: "asaas_api",
+    provider: "asaas",
+    provider_transaction_id: "pay_abc",
+  };
+
+  function estado(rows: unknown[], declaradas: DeclaredRefund[]) {
+    const lista = buildTransactionList(rows as never, declaradas);
+    const c = lista.items.find((i) => i.id === "ft-pix-1")!;
+    return [c.refundable_cents, c.estorno_pendente_cents];
+  }
+
+  it("1. sem estorno: pode estornar tudo, nada pendente", () => {
+    expect(estado([cobranca], [])).toEqual([1290, 0]);
+  });
+
+  it("2. pedido feito, webhook ainda nao chegou: teto fecha, pendente aparece", () => {
+    // A JANELA QUE IMPORTA. Sem o `solicitado` fechando o teto aqui, um segundo
+    // clique mandaria estornar de novo o que ja esta a caminho.
+    expect(estado([cobranca], [pedido])).toEqual([0, 1290]);
+  });
+
+  it("3. pedido e webhook: teto fechado, nada pendente", () => {
+    // As duas fontes descrevem O MESMO estorno. `Math.max` e nao soma: somar
+    // faria o pendente virar zero cedo e o teto ficar negativo.
+    expect(estado([cobranca, estornoNoLedger], [pedido])).toEqual([0, 0]);
+  });
+
+  it("4. so webhook, estorno feito no painel do Asaas: teto fechado", () => {
+    // Nao passou por esta base, entao nao ha linha em `admin_refunds`. O ledger
+    // sozinho tem de fechar o teto, senao o admin estornaria de novo.
+    expect(estado([cobranca, estornoNoLedger], [])).toEqual([0, 0]);
+  });
+
+  it("estorno sem vinculo legivel FECHA o teto, em vez de ignora-lo", () => {
+    // `raw_payload` sem `id`: nao da para saber a que cobranca o estorno se
+    // refere. Fail-closed: recusar um reembolso legitimo custa uma conversa;
+    // autorizar o segundo estorno do mesmo dinheiro custa o dinheiro.
+    const semVinculo = { ...estornoNoLedger, raw_payload: { value: 12.9 } };
+    expect(estado([cobranca, semVinculo], [])).toEqual([0, 0]);
+  });
+
+  it("estorno de OUTRA cobranca nao fecha o teto desta", () => {
+    const deOutra = { ...estornoNoLedger, raw_payload: { id: "pay_outra" } };
+    expect(estado([cobranca, deOutra], [])).toEqual([1290, 0]);
+  });
+
+  it("declaracao EXTERNA da Stripe nao vaza para o saldo do Pix", () => {
+    const externa: DeclaredRefund = {
+      stripe_charge_id: "py_1",
+      amount_cents: 1290,
+      settlement: "external",
+    };
+    expect(estado([cobranca], [externa])).toEqual([1290, 0]);
   });
 });

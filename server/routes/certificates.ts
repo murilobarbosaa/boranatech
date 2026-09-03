@@ -8,7 +8,10 @@ import { Router } from "express";
 
 import type { Request, Response, NextFunction } from "express";
 
-import { renderCertificatePdf, renderCertificatePng } from "../lib/certificatePdf";
+import {
+  renderCertificatePdf,
+  renderCertificatePng,
+} from "../lib/certificatePdf";
 import {
   renderCertificateScreenSvg,
   renderCertificateSvg,
@@ -25,6 +28,7 @@ import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 
+import { montarDbError } from "../lib/dbError";
 const router = Router();
 
 router.use(requireAuth);
@@ -100,12 +104,19 @@ async function handleDownload(
   // Revogado: bloqueia o download (nao gera arquivo de um certificado invalido).
   if (record.revoked) {
     return next(
-      createError(409, "revoked", "Certificado revogado. Download indisponível."),
+      createError(
+        409,
+        "revoked",
+        "Certificado revogado. Download indisponível.",
+      ),
     );
   }
 
   try {
-    const svg = await renderCertificateSvg(record.data, parseLang(req.query.lang));
+    const svg = await renderCertificateSvg(
+      record.data,
+      parseLang(req.query.lang),
+    );
     const safeCode = safeCodeForFilename(record.data.code);
     if (format === "pdf") {
       const pdf = await renderCertificatePdf(svg);
@@ -199,7 +210,14 @@ router.get("/", async (req, res, next) => {
       .eq("user_id", req.user!.id)
       .order("issued_at", { ascending: false });
     if (error) {
-      return next(createError(500, "db_error", "Erro ao listar certificados."));
+      return next(
+        montarDbError(
+          "certificates",
+          "certificates list",
+          error,
+          "Erro ao listar certificados.",
+        ),
+      );
     }
     res.json({
       data: (data ?? []).map((row) => ({
@@ -224,9 +242,7 @@ publicCertificatesRouter.get("/:code", async (req, res, next) => {
   try {
     const certificate = await getCertificateByCode(req.params.code);
     if (!certificate) {
-      return next(
-        createError(404, "not_found", "Certificado não encontrado."),
-      );
+      return next(createError(404, "not_found", "Certificado não encontrado."));
     }
     // Revogado retorna 200 com revoked: true (a pagina diz "revogado", nao
     // "nao existe").
@@ -246,9 +262,7 @@ publicCertificatesRouter.get("/:code/svg", async (req, res, next) => {
   try {
     const certificate = await getCertificateByCode(req.params.code);
     if (!certificate) {
-      return next(
-        createError(404, "not_found", "Certificado não encontrado."),
-      );
+      return next(createError(404, "not_found", "Certificado não encontrado."));
     }
     const svg = await renderCertificateScreenSvg(
       {

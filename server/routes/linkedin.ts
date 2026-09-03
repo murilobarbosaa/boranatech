@@ -41,6 +41,7 @@ import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 
+import { montarDbError } from "../lib/dbError";
 const router = Router();
 
 router.use(requireAuth);
@@ -434,9 +435,13 @@ router.get(
         .limit(20);
 
       if (error) {
-        console.error("[linkedin] Falha ao listar analises:", error.message);
         return next(
-          createError(500, "db_error", "Erro ao buscar suas análises."),
+          montarDbError(
+            "linkedin",
+            "linkedin list analyses",
+            error,
+            "Erro ao buscar suas análises.",
+          ),
         );
       }
       res.json({ data: data ?? [] });
@@ -466,8 +471,14 @@ router.get(
         .maybeSingle();
 
       if (error) {
-        console.error("[linkedin] Falha ao buscar a analise:", error.message);
-        return next(createError(500, "db_error", "Erro ao buscar a análise."));
+        return next(
+          montarDbError(
+            "linkedin",
+            "linkedin load analysis",
+            error,
+            "Erro ao buscar a análise.",
+          ),
+        );
       }
       if (!data) {
         return next(createError(404, "not_found", "Análise não encontrada."));

@@ -204,6 +204,7 @@ import { discountedPriceCents, PLAN_PRICING } from "../../shared/planPricing";
 import { fetchPixQrCode, maskCpf } from "./asaas";
 import {
   eventKey,
+  estornarPagamento,
   paidAmountCentsFromAsaas,
   processAsaasEvent,
   asaasProvider,
@@ -1548,5 +1549,91 @@ describe("billing_events: o carimbo do provedor entra como INSTANTE", () => {
     await processAsaasEvent(eventoDePagamento({ dateCreated: undefined }));
 
     expect(registro()!.event_created_at).toBeNull();
+  });
+});
+
+describe("estornarPagamento", () => {
+  beforeEach(() => {
+    limpar();
+  });
+
+  /** Resposta do Asaas ao POST de estorno, com o status pedido. */
+  function respondeCom(status: unknown) {
+    estado.asaasResposta = {
+      "/payments/pay_x/refund": { id: "pay_x", status, value: 12.9 },
+    };
+  }
+
+  it("chama o caminho e o corpo EXATOS", async () => {
+    respondeCom("REFUNDED");
+
+    await estornarPagamento("pay_x", { descricao: "cliente pediu" });
+
+    const chamada = estado.asaas[0];
+    // Sem `/v3`: ele ja esta em ASAAS_API_URL, como em todo call site deste
+    // arquivo. Duplicar daria 404 no provedor.
+    expect(chamada.caminho).toBe("/payments/pay_x/refund");
+    expect(chamada.method).toBe("POST");
+    expect(chamada.body).toEqual({ description: "cliente pediu" });
+  });
+
+  it("NAO manda `value`: a ausencia e o que faz o estorno ser integral", async () => {
+    respondeCom("REFUNDED");
+
+    await estornarPagamento("pay_x", { descricao: "x" });
+
+    expect(estado.asaas[0].body).not.toHaveProperty("value");
+  });
+
+  it("o id vai ESCAPADO na URL", async () => {
+    estado.asaasResposta = { "/payments/": { status: "REFUNDED" } };
+
+    await estornarPagamento("pay/../outro", { descricao: "x" });
+
+    expect(estado.asaas[0].caminho).toBe("/payments/pay%2F..%2Foutro/refund");
+  });
+
+  it.each([["REFUNDED"], ["REFUND_REQUESTED"], ["REFUND_IN_PROGRESS"]])(
+    "%s e SUCESSO: o pedido foi aceito",
+    async (status) => {
+      // Reduzir a lista a REFUNDED faria o admin ver "nao devolveu" sobre um
+      // estorno que o Asaas aceitou, e pedir de novo.
+      respondeCom(status);
+
+      const r = await estornarPagamento("pay_x", { descricao: "x" });
+
+      expect(r.status).toBe(status);
+      expect(r.raw).toMatchObject({ id: "pay_x" });
+    },
+  );
+
+  it("CONFIRMED e recusa: a cobranca segue paga, o estorno nao aconteceu", async () => {
+    respondeCom("CONFIRMED");
+
+    await expect(
+      estornarPagamento("pay_x", { descricao: "x" }),
+    ).rejects.toMatchObject({ code: "asaas_refund_rejected" });
+  });
+
+  it.each([
+    ["status ausente", undefined],
+    ["status nao string", 200],
+    ["status vazio", ""],
+  ])("%s tambem e recusa, nunca sucesso mudo", async (_rotulo, status) => {
+    respondeCom(status);
+
+    await expect(
+      estornarPagamento("pay_x", { descricao: "x" }),
+    ).rejects.toMatchObject({ code: "asaas_refund_rejected" });
+  });
+
+  it("erro de TRANSPORTE mantem o codigo do cliente, nao vira asaas_refund_rejected", async () => {
+    // A distincao importa na investigacao: "o Asaas recusou o estorno" e "nao
+    // consegui falar com o Asaas" pedem acoes diferentes.
+    estado.asaasErro = new Error("timeout");
+
+    await expect(
+      estornarPagamento("pay_x", { descricao: "x" }),
+    ).rejects.toThrow("timeout");
   });
 });

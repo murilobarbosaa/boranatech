@@ -1,7 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorBlock } from "@/components/admin/StateBlocks";
 
-import { PIX_REFUND_COPY } from "@shared/pixRefundCopy";
 import { providerMetaOf, PROVIDER_ASAAS } from "@/lib/providerMeta";
 
 import { fmtBrl, fmtDate, planLabelOf } from "./userFormat";
@@ -257,22 +256,6 @@ export function UserTransactions({
           onExternalRefund={onExternalRefund}
         />
       ))}
-
-      {/* PIX EM ABERTO: por que o botao de reembolso nao cobre este valor.
-          A frase so aparece quando ha saldo Pix, e ela existe porque a linha de
-          Pix e a UNICA do extrato sem botao nenhum: sem explicacao, a ausencia
-          e lida como bug da tela em vez de limitacao do caminho.
-          O `?? 0` cobre o backend antigo da janela de deploy.
-          TODO(Ana) */}
-      {(payload.pix_sem_reembolso_na_stripe_cents ?? 0) > 0 ? (
-        <p
-          data-testid="pix-sem-reembolso"
-          className="border-t-2 border-teal-500 bg-teal-50 px-4 py-2 text-xs font-bold text-teal-900"
-        >
-          {fmtBrl(payload.pix_sem_reembolso_na_stripe_cents ?? 0)} em aberto.{" "}
-          {PIX_REFUND_COPY}
-        </p>
-      ) : null}
 
       {/* Truncamento AVISADO: corte silencioso faria o total parecer completo
           sendo parcial. */}
