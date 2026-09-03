@@ -224,6 +224,70 @@ async function seedProjects() {
       );
     else console.log(`[seed] Projeto inserido: ${project.id}`);
   }
+
+  await despublicarProjetosForaDoCatalogo();
+}
+
+/**
+ * Despublica as linhas de `projects` cujo slug nao existe mais no catalogo.
+ *
+ * O upsert acima NUNCA remove nada, e a tabela nao e so um espelho morto: ela
+ * alimenta `search_documents` pela reindexacao diaria (server/routes/cron.ts),
+ * e o `search_documents` e o que a ferramenta searchPlatformContent do agente
+ * de IA consulta. Sem esta passada, o agente continuaria recomendando os 54
+ * projetos fundidos no lote 01b, com link pra uma pagina que nao os tem.
+ *
+ * NAO apaga linha: `is_published = false` tira do indice e das rotas de
+ * conteudo (as duas filtram por `is_published`) e mantem o historico. Apagar
+ * seria irreversivel e nao traz beneficio nenhum aqui.
+ */
+async function despublicarProjetosForaDoCatalogo() {
+  const vivos = new Set(projetos.map((p) => p.id));
+
+  const { data, error } = await supabase
+    .from("projects")
+    .select("slug")
+    .eq("is_published", true);
+
+  if (error) {
+    logSeedError("[seed] Erro ao listar projetos publicados:", error.message);
+    return;
+  }
+
+  // O filtro e em JS, nao um `not.in` na query: a lista de vivos tem 266
+  // slugs e cabe na memoria, enquanto mandar 266 valores num filtro de URL
+  // esbarra no limite de tamanho da querystring do PostgREST.
+  const orfas = (data ?? [])
+    .map((row) => String(row.slug))
+    .filter((slug) => !vivos.has(slug));
+
+  if (orfas.length === 0) {
+    console.log("[seed] Nenhum projeto publicado fora do catalogo.");
+    return;
+  }
+
+  const LOTE = 50;
+  let despublicados = 0;
+  for (let i = 0; i < orfas.length; i += LOTE) {
+    const lote = orfas.slice(i, i + LOTE);
+    const { error: updateError } = await supabase
+      .from("projects")
+      .update({ is_published: false })
+      .in("slug", lote);
+
+    if (updateError) {
+      logSeedError(
+        `[seed] Erro ao despublicar lote de ${lote.length} projeto(s):`,
+        updateError.message,
+      );
+      continue;
+    }
+    for (const slug of lote) console.log(`[seed] Projeto despublicado: ${slug}`);
+    despublicados += lote.length;
+  }
+  console.log(
+    `[seed] ${despublicados} de ${orfas.length} projeto(s) fora do catalogo despublicados.`,
+  );
 }
 
 async function seedRoadmaps() {
