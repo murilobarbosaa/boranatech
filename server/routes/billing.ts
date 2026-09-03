@@ -6,6 +6,7 @@ import {
 } from "express";
 
 import { env } from "../lib/env";
+import { montarDbError } from "../lib/dbError";
 import { signedFiscalUrl } from "../lib/fiscalStorage";
 import { verifyRenewalToken } from "../lib/renewalToken";
 import { erroEncadeavel } from "../lib/supabaseError";
@@ -487,7 +488,12 @@ router.get("/invoices", requireAuth, async (req, res, next) => {
     if (error) {
       return next(
         // TODO(Ana): mensagem de falha ao listar as notas do assinante.
-        createError(500, "db_error", "Erro ao buscar notas fiscais."),
+        montarDbError(
+          "billing",
+          "billing list invoices",
+          error,
+          "Erro ao buscar notas fiscais.",
+        ),
       );
     }
 

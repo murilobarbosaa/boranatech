@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { montarDbError } from "../lib/dbError";
 import { z } from "zod";
 
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -121,11 +122,14 @@ router.get("/", async (req, res, next) => {
   ]);
 
   if (bugs.error || statusCounts.some((r) => r.error)) {
-    console.error(
-      "[admin-bugs] Falha ao listar bugs:",
-      bugs.error ?? statusCounts.find((r) => r.error)?.error,
+    return next(
+      montarDbError(
+        "admin-bugs",
+        "admin-bugs list bugs",
+        bugs.error ?? statusCounts.find((r) => r.error)?.error,
+        "Erro ao listar bugs.",
+      ),
     );
-    return next(createError(500, "db_error", "Erro ao listar bugs."));
   }
 
   res.json({

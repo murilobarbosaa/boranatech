@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { montarDbError } from "../lib/dbError";
 import { diaBrasilia } from "../../shared/brasiliaDay";
 import { z } from "zod";
 
@@ -467,7 +468,12 @@ router.get("/", async (req, res, next) => {
   } catch (err) {
     console.error("[admin/notifications] list failed", err);
     return next(
-      createError(500, "db_error", "Erro ao listar notificações."),
+      montarDbError(
+        "admin/notifications",
+        "admin/notifications list notifications",
+        err,
+        "Erro ao listar notificações.",
+      ),
     );
   }
 });
@@ -553,8 +559,14 @@ router.post("/", async (req, res, next) => {
         : {}),
     });
   } catch (err) {
-    console.error("[admin/notifications] create failed", err);
-    return next(createError(500, "db_error", "Erro ao criar notificação."));
+    return next(
+      montarDbError(
+        "admin/notifications",
+        "admin/notifications create notification",
+        err,
+        "Erro ao criar notificação.",
+      ),
+    );
   }
 });
 
@@ -785,8 +797,14 @@ router.patch("/:id", async (req, res, next) => {
         : {}),
     });
   } catch (err) {
-    console.error("[admin/notifications] patch failed", err);
-    return next(createError(500, "db_error", "Erro ao editar notificação."));
+    return next(
+      montarDbError(
+        "admin/notifications",
+        "admin/notifications update notification",
+        err,
+        "Erro ao editar notificação.",
+      ),
+    );
   }
 });
 
@@ -850,7 +868,12 @@ router.get("/audience-preview", async (req, res, next) => {
   } catch (err) {
     console.error("[admin/notifications] audience-preview failed", err);
     return next(
-      createError(500, "db_error", "Erro ao estimar o alcance da audiência."),
+      montarDbError(
+        "admin/notifications",
+        "admin/notifications preview audience",
+        err,
+        "Erro ao estimar o alcance da audiência.",
+      ),
     );
   }
 });
@@ -1048,7 +1071,12 @@ router.post("/:id/publish", async (req, res, next) => {
   } catch (err) {
     console.error("[admin/notifications] publish failed", err);
     return next(
-      createError(500, "db_error", "Erro ao publicar notificação."),
+      montarDbError(
+        "admin/notifications",
+        "admin/notifications publish notification",
+        err,
+        "Erro ao publicar notificação.",
+      ),
     );
   }
 });
@@ -1151,7 +1179,12 @@ router.post("/:id/schedule", async (req, res, next) => {
   } catch (err) {
     console.error("[admin/notifications] schedule failed", err);
     return next(
-      createError(500, "db_error", "Erro ao agendar notificação."),
+      montarDbError(
+        "admin/notifications",
+        "admin/notifications schedule notification",
+        err,
+        "Erro ao agendar notificação.",
+      ),
     );
   }
 });
@@ -1200,7 +1233,12 @@ router.post("/:id/unschedule", async (req, res, next) => {
   } catch (err) {
     console.error("[admin/notifications] unschedule failed", err);
     return next(
-      createError(500, "db_error", "Erro ao cancelar o agendamento."),
+      montarDbError(
+        "admin/notifications",
+        "admin/notifications unschedule notification",
+        err,
+        "Erro ao cancelar o agendamento.",
+      ),
     );
   }
 });
@@ -1245,7 +1283,12 @@ router.post("/:id/archive", async (req, res, next) => {
   } catch (err) {
     console.error("[admin/notifications] archive failed", err);
     return next(
-      createError(500, "db_error", "Erro ao arquivar notificação."),
+      montarDbError(
+        "admin/notifications",
+        "admin/notifications archive notification",
+        err,
+        "Erro ao arquivar notificação.",
+      ),
     );
   }
 });
@@ -1335,7 +1378,12 @@ router.get("/:id/stats", async (req, res, next) => {
   } catch (err) {
     console.error("[admin/notifications] stats failed", err);
     return next(
-      createError(500, "db_error", "Erro ao buscar estatísticas."),
+      montarDbError(
+        "admin/notifications",
+        "admin/notifications load stats",
+        err,
+        "Erro ao buscar estatísticas.",
+      ),
     );
   }
 });
@@ -1409,7 +1457,12 @@ router.get("/:id/recipients", async (req, res, next) => {
   } catch (err) {
     console.error("[admin/notifications] recipients failed", err);
     return next(
-      createError(500, "db_error", "Erro ao carregar destinatários."),
+      montarDbError(
+        "admin/notifications",
+        "admin/notifications load recipients",
+        err,
+        "Erro ao carregar destinatários.",
+      ),
     );
   }
 });

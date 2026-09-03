@@ -1167,9 +1167,12 @@ router.get("/linkedin-lastro", async (_req, res, next) => {
       .limit(LASTRO_ANALISES_MAX);
 
     if (error) {
-      console.error("[admin] Falha ao ler lastro do linkedin:", error.message);
       return next(
-        createError(500, "db_error", "Erro ao buscar violacoes de lastro."),
+        dbError(
+          "linkedin lastro",
+          error,
+          "Erro ao buscar violacoes de lastro.",
+        ),
       );
     }
 

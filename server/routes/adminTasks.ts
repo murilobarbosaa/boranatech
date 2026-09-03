@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { montarDbError } from "../lib/dbError";
 import { z } from "zod";
 
 import {
@@ -617,8 +618,14 @@ router.get("/boards", async (req, res, next) => {
 
   const { data, error } = await query;
   if (error) {
-    console.error("[admin-tasks] Falha ao listar boards:", error);
-    return next(createError(500, "db_error", "Erro ao listar quadros."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks list boards",
+        error,
+        "Erro ao listar quadros.",
+      ),
+    );
   }
   res.json({ boards: (data ?? []) as BoardRow[] });
 });
@@ -653,8 +660,14 @@ router.post("/boards", async (req, res, next) => {
     );
   }
   if (error || !data) {
-    console.error("[admin-tasks] Falha ao criar board:", error);
-    return next(createError(500, "db_error", "Erro ao criar quadro."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks create board",
+        error,
+        "Erro ao criar quadro.",
+      ),
+    );
   }
 
   res.status(201).json(data as BoardRow);
@@ -684,8 +697,14 @@ router.patch("/boards/:id", async (req, res, next) => {
     .maybeSingle();
 
   if (error) {
-    console.error("[admin-tasks] Falha ao atualizar board:", error);
-    return next(createError(500, "db_error", "Erro ao atualizar quadro."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks update board",
+        error,
+        "Erro ao atualizar quadro.",
+      ),
+    );
   }
   if (!data)
     return next(createError(404, "not_found", "Quadro não encontrado."));
@@ -708,8 +727,14 @@ router.delete("/boards/:id", async (req, res, next) => {
     .select("id");
 
   if (error) {
-    console.error("[admin-tasks] Falha ao excluir board:", error);
-    return next(createError(500, "db_error", "Erro ao excluir quadro."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks delete board",
+        error,
+        "Erro ao excluir quadro.",
+      ),
+    );
   }
   if (!data || data.length === 0) {
     return next(createError(404, "not_found", "Quadro não encontrado."));
@@ -734,8 +759,14 @@ router.get("/boards/:id/snapshot", async (req, res, next) => {
     .eq("id", id.data)
     .maybeSingle();
   if (boardError) {
-    console.error("[admin-tasks] Falha ao ler board:", boardError);
-    return next(createError(500, "db_error", "Erro ao carregar o quadro."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks load board",
+        boardError,
+        "Erro ao carregar o quadro.",
+      ),
+    );
   }
   if (!board)
     return next(createError(404, "not_found", "Quadro não encontrado."));
@@ -867,8 +898,14 @@ router.get("/boards/:id/snapshot", async (req, res, next) => {
       }),
     });
   } catch (error) {
-    console.error("[admin-tasks] Falha ao montar snapshot:", error);
-    return next(createError(500, "db_error", "Erro ao carregar o quadro."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks load snapshot",
+        error,
+        "Erro ao carregar o quadro.",
+      ),
+    );
   }
 });
 
@@ -905,8 +942,14 @@ router.post("/columns", async (req, res, next) => {
     return next(createError(404, "not_found", "Quadro não encontrado."));
   }
   if (error || !data) {
-    console.error("[admin-tasks] Falha ao criar coluna:", error);
-    return next(createError(500, "db_error", "Erro ao criar etapa."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks create column",
+        error,
+        "Erro ao criar etapa.",
+      ),
+    );
   }
   res.status(201).json(data as ColumnRow);
 });
@@ -928,8 +971,14 @@ router.patch("/columns/reorder", async (req, res, next) => {
     .select("id, is_pinned, position")
     .eq("board_id", parsed.data.board_id);
   if (error) {
-    console.error("[admin-tasks] Falha ao ler colunas para reordenar:", error);
-    return next(createError(500, "db_error", "Erro ao reordenar etapas."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks load columns for reorder",
+        error,
+        "Erro ao reordenar etapas.",
+      ),
+    );
   }
   const colunas = (existing ?? []) as Array<{
     id: string;
@@ -970,8 +1019,14 @@ router.patch("/columns/reorder", async (req, res, next) => {
 
   const written = await writePositions("admin_task_columns", parsed.data.ids);
   if (written.error) {
-    console.error("[admin-tasks] Falha ao reordenar colunas:", written.error);
-    return next(createError(500, "db_error", "Erro ao reordenar etapas."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks reorder columns",
+        error,
+        "Erro ao reordenar etapas.",
+      ),
+    );
   }
 
   const { data } = await supabaseAdmin
@@ -1000,8 +1055,14 @@ router.patch("/columns/:id", async (req, res, next) => {
     .maybeSingle();
 
   if (error) {
-    console.error("[admin-tasks] Falha ao atualizar coluna:", error);
-    return next(createError(500, "db_error", "Erro ao atualizar etapa."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks update column",
+        error,
+        "Erro ao atualizar etapa.",
+      ),
+    );
   }
   if (!data)
     return next(createError(404, "not_found", "Etapa não encontrada."));
@@ -1032,11 +1093,14 @@ router.delete("/columns/:id", async (req, res, next) => {
     .select("id", { count: "exact", head: true })
     .eq("column_id", id.data);
   if (countError) {
-    console.error(
-      "[admin-tasks] Falha ao contar tarefas da coluna:",
-      countError,
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks load column for delete",
+        countError,
+        "Erro ao excluir etapa.",
+      ),
     );
-    return next(createError(500, "db_error", "Erro ao excluir etapa."));
   }
 
   if ((count ?? 0) > 0) {
@@ -1073,11 +1137,14 @@ router.delete("/columns/:id", async (req, res, next) => {
       .update({ column_id: destination.id })
       .eq("column_id", column.id);
     if (moveError) {
-      console.error(
-        "[admin-tasks] Falha ao mover tarefas da coluna:",
-        moveError,
+      return next(
+        montarDbError(
+          "admin-tasks",
+          "admin-tasks move tasks on column delete",
+          moveError,
+          "Erro ao mover as tarefas.",
+        ),
       );
-      return next(createError(500, "db_error", "Erro ao mover as tarefas."));
     }
     // Posicoes dos dois grupos podem colidir depois da fusao; reescreve a coluna
     // de destino inteira para restaurar uma ordem total bem definida.
@@ -1098,8 +1165,14 @@ router.delete("/columns/:id", async (req, res, next) => {
     .delete()
     .eq("id", id.data);
   if (error) {
-    console.error("[admin-tasks] Falha ao excluir coluna:", error);
-    return next(createError(500, "db_error", "Erro ao excluir etapa."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks delete column",
+        error,
+        "Erro ao excluir etapa.",
+      ),
+    );
   }
   res.json({ ok: true });
 });
@@ -1131,11 +1204,14 @@ router.post("/tasks", async (req, res, next) => {
     parsed.data.after_task_id ?? null,
   );
   if ("failure" in placement) {
-    console.error(
-      "[admin-tasks] Falha ao posicionar tarefa:",
-      placement.failure,
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks position task",
+        placement.failure,
+        "Erro ao posicionar a tarefa.",
+      ),
     );
-    return next(createError(500, "db_error", "Erro ao posicionar a tarefa."));
   }
 
   const { data, error } = await supabaseAdmin
@@ -1162,8 +1238,14 @@ router.post("/tasks", async (req, res, next) => {
     .single();
 
   if (error || !data) {
-    console.error("[admin-tasks] Falha ao criar tarefa:", error);
-    return next(createError(500, "db_error", "Erro ao criar tarefa."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks create task",
+        error,
+        "Erro ao criar tarefa.",
+      ),
+    );
   }
 
   const task = data as TaskRow;
@@ -1212,11 +1294,14 @@ router.get("/tasks/:id", async (req, res, next) => {
   ]);
 
   if (links.error || comments.error || checklist.error || activity.error) {
-    console.error(
-      "[admin-tasks] Falha ao carregar detalhe da tarefa:",
-      links.error ?? comments.error ?? checklist.error ?? activity.error,
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks load task",
+        links.error ?? comments.error ?? checklist.error ?? activity.error,
+        "Erro ao carregar a tarefa.",
+      ),
     );
-    return next(createError(500, "db_error", "Erro ao carregar a tarefa."));
   }
 
   const activityRows = (activity.data ?? []) as ActivityRow[];
@@ -1259,8 +1344,14 @@ router.get("/tasks/:id/activity", async (req, res, next) => {
 
   const { data, error } = await query;
   if (error) {
-    console.error("[admin-tasks] Falha ao paginar atividade:", error);
-    return next(createError(500, "db_error", "Erro ao carregar o histórico."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks page task activity",
+        error,
+        "Erro ao carregar o histórico.",
+      ),
+    );
   }
 
   const rows = (data ?? []) as ActivityRow[];
@@ -1316,8 +1407,14 @@ router.patch("/tasks/:id", async (req, res, next) => {
     .maybeSingle();
 
   if (error) {
-    console.error("[admin-tasks] Falha ao atualizar tarefa:", error);
-    return next(createError(500, "db_error", "Erro ao atualizar tarefa."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks update task",
+        error,
+        "Erro ao atualizar tarefa.",
+      ),
+    );
   }
   if (!data)
     return next(createError(404, "not_found", "Tarefa não encontrada."));
@@ -1421,11 +1518,14 @@ router.patch("/tasks/:id/move", async (req, res, next) => {
     parsed.data.after_task_id ?? null,
   );
   if ("failure" in placement) {
-    console.error(
-      "[admin-tasks] Falha ao posicionar tarefa:",
-      placement.failure,
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks load task for move",
+        placement.failure,
+        "Erro ao mover a tarefa.",
+      ),
     );
-    return next(createError(500, "db_error", "Erro ao mover a tarefa."));
   }
 
   // completed_at derivado, nunca aceito do client: entrar em coluna terminal
@@ -1464,8 +1564,14 @@ router.patch("/tasks/:id/move", async (req, res, next) => {
     .maybeSingle();
 
   if (error) {
-    console.error("[admin-tasks] Falha ao mover tarefa:", error);
-    return next(createError(500, "db_error", "Erro ao mover a tarefa."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks move task",
+        error,
+        "Erro ao mover a tarefa.",
+      ),
+    );
   }
   if (!data)
     return next(createError(404, "not_found", "Tarefa não encontrada."));
@@ -1528,8 +1634,14 @@ router.delete("/tasks/:id", async (req, res, next) => {
     .select("id");
 
   if (error) {
-    console.error("[admin-tasks] Falha ao excluir tarefa:", error);
-    return next(createError(500, "db_error", "Erro ao excluir tarefa."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks delete task",
+        error,
+        "Erro ao excluir tarefa.",
+      ),
+    );
   }
   if (!data || data.length === 0) {
     return next(createError(404, "not_found", "Tarefa não encontrada."));
@@ -1581,8 +1693,14 @@ router.post("/labels", async (req, res, next) => {
     return next(createError(404, "not_found", "Quadro não encontrado."));
   }
   if (error || !data) {
-    console.error("[admin-tasks] Falha ao criar etiqueta:", error);
-    return next(createError(500, "db_error", "Erro ao criar etiqueta."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks create label",
+        error,
+        "Erro ao criar etiqueta.",
+      ),
+    );
   }
   res.status(201).json(data as LabelRow);
 });
@@ -1614,8 +1732,14 @@ router.patch("/labels/:id", async (req, res, next) => {
     );
   }
   if (error) {
-    console.error("[admin-tasks] Falha ao atualizar etiqueta:", error);
-    return next(createError(500, "db_error", "Erro ao atualizar etiqueta."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks update label",
+        error,
+        "Erro ao atualizar etiqueta.",
+      ),
+    );
   }
   if (!data)
     return next(createError(404, "not_found", "Etiqueta não encontrada."));
@@ -1635,8 +1759,14 @@ router.delete("/labels/:id", async (req, res, next) => {
     .select("id");
 
   if (error) {
-    console.error("[admin-tasks] Falha ao excluir etiqueta:", error);
-    return next(createError(500, "db_error", "Erro ao excluir etiqueta."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks delete label",
+        error,
+        "Erro ao excluir etiqueta.",
+      ),
+    );
   }
   if (!data || data.length === 0) {
     return next(createError(404, "not_found", "Etiqueta não encontrada."));
@@ -1676,8 +1806,14 @@ router.post("/tasks/:id/labels", async (req, res, next) => {
   // 23505 = ja estava vinculada. Idempotente de proposito: o resultado que o
   // cliente pediu (a etiqueta esta na task) e verdadeiro nos dois casos.
   if (error && error.code !== "23505") {
-    console.error("[admin-tasks] Falha ao vincular etiqueta:", error);
-    return next(createError(500, "db_error", "Erro ao aplicar etiqueta."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks attach label",
+        error,
+        "Erro ao aplicar etiqueta.",
+      ),
+    );
   }
   if (!error) {
     await logActivity(task.id, req.user!.id, "label_added", {
@@ -1712,8 +1848,14 @@ router.delete("/tasks/:id/labels/:labelId", async (req, res, next) => {
     .select("label_id");
 
   if (error) {
-    console.error("[admin-tasks] Falha ao remover etiqueta:", error);
-    return next(createError(500, "db_error", "Erro ao remover etiqueta."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks detach label",
+        error,
+        "Erro ao remover etiqueta.",
+      ),
+    );
   }
   if (data && data.length > 0) {
     await logActivity(id.data, req.user!.id, "label_removed", {
@@ -1752,8 +1894,14 @@ router.post("/tasks/:id/comments", async (req, res, next) => {
     return next(createError(404, "not_found", "Tarefa não encontrada."));
   }
   if (error || !data) {
-    console.error("[admin-tasks] Falha ao criar comentário:", error);
-    return next(createError(500, "db_error", "Erro ao comentar."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks create comment",
+        error,
+        "Erro ao comentar.",
+      ),
+    );
   }
   res.status(201).json(data as CommentRow);
 });
@@ -1780,8 +1928,14 @@ router.patch("/comments/:id", async (req, res, next) => {
     .maybeSingle();
 
   if (error) {
-    console.error("[admin-tasks] Falha ao editar comentário:", error);
-    return next(createError(500, "db_error", "Erro ao editar comentário."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks update comment",
+        error,
+        "Erro ao editar comentário.",
+      ),
+    );
   }
   if (!data) {
     return next(
@@ -1809,8 +1963,14 @@ router.delete("/comments/:id", async (req, res, next) => {
     .select("id");
 
   if (error) {
-    console.error("[admin-tasks] Falha ao excluir comentário:", error);
-    return next(createError(500, "db_error", "Erro ao excluir comentário."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks delete comment",
+        error,
+        "Erro ao excluir comentário.",
+      ),
+    );
   }
   if (!data || data.length === 0) {
     return next(
@@ -1853,8 +2013,14 @@ router.post("/tasks/:id/checklist", async (req, res, next) => {
     return next(createError(404, "not_found", "Tarefa não encontrada."));
   }
   if (error || !data) {
-    console.error("[admin-tasks] Falha ao criar item de checklist:", error);
-    return next(createError(500, "db_error", "Erro ao criar item."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks create checklist item",
+        error,
+        "Erro ao criar item.",
+      ),
+    );
   }
   res.status(201).json(data as ChecklistRow);
 });
@@ -1877,8 +2043,14 @@ router.patch("/checklist/:id", async (req, res, next) => {
     .maybeSingle();
 
   if (error) {
-    console.error("[admin-tasks] Falha ao atualizar item de checklist:", error);
-    return next(createError(500, "db_error", "Erro ao atualizar item."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks update checklist item",
+        error,
+        "Erro ao atualizar item.",
+      ),
+    );
   }
   if (!data) return next(createError(404, "not_found", "Item não encontrado."));
   res.json(data as ChecklistRow);
@@ -1897,8 +2069,14 @@ router.delete("/checklist/:id", async (req, res, next) => {
     .select("id");
 
   if (error) {
-    console.error("[admin-tasks] Falha ao excluir item de checklist:", error);
-    return next(createError(500, "db_error", "Erro ao excluir item."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks delete checklist item",
+        error,
+        "Erro ao excluir item.",
+      ),
+    );
   }
   if (!data || data.length === 0) {
     return next(createError(404, "not_found", "Item não encontrado."));
@@ -1929,7 +2107,14 @@ router.patch("/tasks/:id/checklist/reorder", async (req, res, next) => {
       "[admin-tasks] Falha ao ler checklist para reordenar:",
       error,
     );
-    return next(createError(500, "db_error", "Erro ao reordenar itens."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks load checklist for reorder",
+        error,
+        "Erro ao reordenar itens.",
+      ),
+    );
   }
   const knownIds = (existing ?? []).map((row) => row.id as string);
   const sent = new Set(parsed.data.ids);
@@ -1951,8 +2136,14 @@ router.patch("/tasks/:id/checklist/reorder", async (req, res, next) => {
     parsed.data.ids,
   );
   if (written.error) {
-    console.error("[admin-tasks] Falha ao reordenar checklist:", written.error);
-    return next(createError(500, "db_error", "Erro ao reordenar itens."));
+    return next(
+      montarDbError(
+        "admin-tasks",
+        "admin-tasks reorder checklist",
+        error,
+        "Erro ao reordenar itens.",
+      ),
+    );
   }
 
   const { data } = await supabaseAdmin

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { montarDbError } from "../lib/dbError";
 
 import {
   ContactImportError,
@@ -152,7 +153,14 @@ router.post("/", async (req, res, next) => {
       .select("id")
       .single();
     if (listError || !list) {
-      return next(createError(500, "db_error", "Erro ao criar a lista."));
+      return next(
+        montarDbError(
+          "admin-contact-lists",
+          "admin-contact-lists create list",
+          listError,
+          "Erro ao criar a lista.",
+        ),
+      );
     }
 
     // Dedup por email dentro do proprio insert (a tabela tem unique(list_id,email)):
@@ -181,7 +189,14 @@ router.post("/", async (req, res, next) => {
     if (membersError) {
       // Best-effort de limpeza: sem os membros a lista fica inconsistente.
       await supabaseAdmin.from("contact_lists").delete().eq("id", list.id);
-      return next(createError(500, "db_error", "Erro ao gravar os contatos."));
+      return next(
+        montarDbError(
+          "admin-contact-lists",
+          "admin-contact-lists insert members",
+          membersError,
+          "Erro ao gravar os contatos.",
+        ),
+      );
     }
 
     res.status(201).json({ data: { id: list.id } });
@@ -207,7 +222,14 @@ router.get("/", async (req, res, next) => {
       .order("created_at", { ascending: false })
       .range(from, from + pageSize - 1);
     if (error)
-      return next(createError(500, "db_error", "Erro ao buscar as listas."));
+      return next(
+        montarDbError(
+          "admin-contact-lists",
+          "admin-contact-lists list lists",
+          error,
+          "Erro ao buscar as listas.",
+        ),
+      );
 
     // Cobertura de nome por lista: membros validos com name preenchido. Usado no
     // modal de disparo pra mostrar quantos receberiam {nome} personalizado.
@@ -222,9 +244,10 @@ router.get("/", async (req, res, next) => {
           .not("name", "is", null)
           .neq("name", "");
         if (namedError) {
-          throw createError(
-            500,
-            "db_error",
+          throw montarDbError(
+            "admin-contact-lists",
+            "admin-contact-lists count named members",
+            namedError,
             "Erro ao contar contatos com nome.",
           );
         }
@@ -248,7 +271,14 @@ router.get("/:id", async (req, res, next) => {
       .eq("id", req.params.id)
       .maybeSingle();
     if (listError)
-      return next(createError(500, "db_error", "Erro ao buscar a lista."));
+      return next(
+        montarDbError(
+          "admin-contact-lists",
+          "admin-contact-lists load list",
+          listError,
+          "Erro ao buscar a lista.",
+        ),
+      );
     if (!list) return next(createError(404, "not_found", "Lista não encontrada."));
 
     const pageRaw = parseInt(String(req.query.page ?? "1"), 10);
@@ -272,7 +302,14 @@ router.get("/:id", async (req, res, next) => {
 
     const { data: members, count, error: membersError } = await query;
     if (membersError)
-      return next(createError(500, "db_error", "Erro ao buscar os contatos."));
+      return next(
+        montarDbError(
+          "admin-contact-lists",
+          "admin-contact-lists load members",
+          membersError,
+          "Erro ao buscar os contatos.",
+        ),
+      );
 
     res.json({
       data: {
@@ -294,7 +331,14 @@ router.delete("/:id", async (req, res, next) => {
       .delete()
       .eq("id", req.params.id);
     if (error)
-      return next(createError(500, "db_error", "Erro ao remover a lista."));
+      return next(
+        montarDbError(
+          "admin-contact-lists",
+          "admin-contact-lists delete list",
+          error,
+          "Erro ao remover a lista.",
+        ),
+      );
     res.json({ data: { deleted: true, id: req.params.id } });
   } catch (err) {
     next(err);
@@ -315,7 +359,14 @@ router.get("/:id/export", async (req, res, next) => {
       .eq("list_id", req.params.id)
       .order("created_at", { ascending: true });
     if (error)
-      return next(createError(500, "db_error", "Erro ao exportar a lista."));
+      return next(
+        montarDbError(
+          "admin-contact-lists",
+          "admin-contact-lists export list",
+          error,
+          "Erro ao exportar a lista.",
+        ),
+      );
 
     const header = "email,name,status,invalid_reason,is_existing_user";
     const lines = (members ?? []).map((m) =>

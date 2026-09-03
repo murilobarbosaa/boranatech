@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { montarDbError } from "../lib/dbError";
 import * as Sentry from "@sentry/node";
 import { NextFunction, Request, Response, Router } from "express";
 
@@ -481,9 +482,10 @@ router.post(
           errorMessage: dueError.message,
         });
         return next(
-          createError(
-            500,
-            "db_error",
+          montarDbError(
+            "cron",
+            "cron/process-cancellations load due",
+            dueError,
             "Erro ao buscar cancelamentos pendentes.",
           ),
         );
@@ -641,7 +643,12 @@ router.post(
           errorMessage: dueError.message,
         });
         return next(
-          createError(500, "db_error", "Erro ao buscar assinaturas a vencer."),
+          montarDbError(
+            "cron",
+            "cron/expiring-subscriptions load due",
+            dueError,
+            "Erro ao buscar assinaturas a vencer.",
+          ),
         );
       }
 
@@ -826,7 +833,12 @@ router.post(
           errorMessage: orphansError.message,
         });
         return next(
-          createError(500, "db_error", "Erro ao buscar boletos pendentes."),
+          montarDbError(
+            "cron",
+            "cron/expire-pending-boletos load orphans",
+            orphansError,
+            "Erro ao buscar boletos pendentes.",
+          ),
         );
       }
 
@@ -1942,7 +1954,14 @@ router.get("/status", async (_req, res, next) => {
       .order("code");
 
     if (sourcesError)
-      return next(createError(500, "db_error", "Erro ao buscar fontes."));
+      return next(
+        montarDbError(
+          "cron",
+          "cron/status load sources",
+          sourcesError,
+          "Erro ao buscar fontes.",
+        ),
+      );
 
     const { data: recentLogs, error: logsError } = await supabaseAdmin
       .from("content_sync_logs")
@@ -1954,7 +1973,12 @@ router.get("/status", async (_req, res, next) => {
 
     if (logsError)
       return next(
-        createError(500, "db_error", "Erro ao buscar logs de sincronização."),
+        montarDbError(
+          "cron",
+          "cron/status load sync logs",
+          logsError,
+          "Erro ao buscar logs de sincronização.",
+        ),
       );
 
     res.json({

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { montarDbError } from "../lib/dbError";
 
 import { UNSUBSCRIBE_URL_PLACEHOLDER } from "../../shared/emailCampaignBody";
 import { sendCampaignEmail } from "../lib/email";
@@ -1237,7 +1238,12 @@ router.post("/:id/batches", async (req, res, next) => {
           .range(from, from + 999);
         if (membersError) {
           return next(
-            createError(500, "db_error", "Erro ao ler a lista de contatos."),
+            montarDbError(
+              "email-campaign",
+              "email-campaign load contact list",
+              membersError,
+              "Erro ao ler a lista de contatos.",
+            ),
           );
         }
         const rows = memberRows ?? [];
