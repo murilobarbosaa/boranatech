@@ -452,6 +452,10 @@ export default function Projetos() {
                     const areaBadge = areaGridPaletteOf(
                       labelForProjectArea(projeto.areaSlug),
                     );
+                    // Chip de subarea: mesmo desenho do chip de area, com a
+                    // bolinha suprimida pra ler como refinamento do chip
+                    // anterior, nao como um par. O texto vem de areasTI, entao
+                    // nao ha copy nova. null quando o projeto nao tem subarea.
                     const subareaLabel = labelForProjectSubarea(
                       projeto.areaSlug,
                       projeto.subareaSlug,
@@ -512,10 +516,6 @@ export default function Projetos() {
                                   />
                                   {labelForProjectArea(projeto.areaSlug)}
                                 </span>
-                                {/* Subarea: mesmo desenho do chip de area, com
-                                    a bolinha suprimida pra ler como refinamento
-                                    do chip anterior, nao como um par. O texto
-                                    vem de areasTI, entao nao ha copy nova. */}
                                 {subareaLabel !== null && (
                                   <span
                                     className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${areaBadge.bg} ${areaBadge.text} ${areaBadge.border}`}
