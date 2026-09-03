@@ -87,6 +87,38 @@ function textoData(evento: Evento): string {
   return `${Number(d)} de ${MESES_PT[Number(m) - 1].toLowerCase()} de ${a}`;
 }
 
+/**
+ * Data de hoje como "AAAA-MM-DD", no fuso DO NAVEGADOR.
+ *
+ * A rota /api/content/eventos ja fez o recorte grosso em America/Sao_Paulo:
+ * evento que terminou antes de hoje nem chega aqui. Este calculo so decide, no
+ * conjunto que sobrou, quais entram na secao "acontecendo agora", e para isso o
+ * relogio de quem le e o certo: o publico e brasileiro, entao na pratica os
+ * dois fusos coincidem, e nos raros casos em que nao (alguem viajando) a pagina
+ * segue coerente com o calendario que a pessoa ve no proprio aparelho.
+ *
+ * `en-CA` produz o formato ISO, que compara como string na ordem certa. Mesmo
+ * truque da rota, de proposito: duas formas diferentes de achar "hoje" no mesmo
+ * fluxo e como as duas datas divergentes que o corretivo de fuso ja corrigiu
+ * uma vez.
+ */
+function hojeLocalISO(): string {
+  return new Intl.DateTimeFormat("en-CA").format(new Date());
+}
+
+/**
+ * Evento ja comecou e ainda nao terminou.
+ *
+ * `inicio < hoje` e nao `<=`: evento que COMECA hoje nao e "acontecendo agora",
+ * e sim estreia de hoje, e segue no grupo do mes junto com os proximos. Quem
+ * abre a pagina no dia da estreia acha o evento no lugar em que ele sempre
+ * esteve.
+ */
+function estaAcontecendo(evento: Evento, hoje: string): boolean {
+  if (!evento.inicio || !evento.fim) return false;
+  return evento.inicio < hoje && evento.fim >= hoje;
+}
+
 /** Chave "AAAA-MM" para agrupar por mes. Null e recorrente ou a confirmar. */
 function chaveMes(evento: Evento): string | null {
   return evento.inicio ? evento.inicio.slice(0, 7) : null;
@@ -346,9 +378,18 @@ export default function Eventos() {
    * cabecalho de mes vazio esperando o proximo lote.
    */
   const grupos = useMemo(() => {
+    const hoje = hojeLocalISO();
     const porMes = new Map<string, Evento[]>();
     const semData: Evento[] = [];
+    const acontecendo: Evento[] = [];
     for (const e of exibidos) {
+      // Os em andamento saem ANTES do agrupamento: eles ganham secao propria no
+      // topo e nao podem aparecer tambem no grupo do mes em que comecaram, que
+      // seria a mesma pessoa vendo o mesmo card duas vezes na mesma tela.
+      if (estaAcontecendo(e, hoje)) {
+        acontecendo.push(e);
+        continue;
+      }
       const chave = chaveMes(e);
       if (!chave || e.recorrente) {
         semData.push(e);
@@ -359,6 +400,12 @@ export default function Eventos() {
       else porMes.set(chave, [e]);
     }
     return {
+      // Ordenado por quem TERMINA primeiro, nao por quem comecou: e o que a
+      // pessoa esta prestes a perder. Um congresso que acaba amanha vem antes
+      // de um hackathon cuja inscricao fica aberta ate o ano que vem.
+      acontecendo: acontecendo.sort((a, b) =>
+        (a.fim ?? "").localeCompare(b.fim ?? ""),
+      ),
       meses: Array.from(porMes.entries()).sort((a, b) =>
         a[0].localeCompare(b[0]),
       ),
@@ -565,6 +612,20 @@ export default function Eventos() {
               </button>
             </div>
           ) : null}
+
+          {grupos.acontecendo.length > 0 && (
+            <section className="mb-10">
+              {/* TODO(Ana) */}
+              <h2 className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-emerald-200 px-4 py-1.5 font-display text-sm font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
+                Acontecendo agora
+              </h2>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {grupos.acontecendo.map((ev) => (
+                  <EventoCard key={ev.id} ev={ev} />
+                ))}
+              </div>
+            </section>
+          )}
 
           {grupos.meses.map(([chave, doMes]) => (
             <section key={chave} className="mb-10">
