@@ -28,9 +28,14 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useProjectCompletion } from "@/hooks/useProjectCompletion";
 import ProjectValidationBlock from "@/components/projects/ProjectValidationBlock";
 import { listProjectValidations } from "@/services/projectValidationService";
-import { areasTI, projetos } from "@/lib/data";
+import { projetos } from "@/lib/data";
 import { getAreaAccent, projectHelpVideos } from "@/lib/platformData";
 import { areaGridPaletteOf } from "@/lib/areaGridPalette";
+import {
+  labelForProjectArea,
+  labelForProjectSubarea,
+  normalizeProjectAreaParam,
+} from "@/lib/projectAreaGroup";
 
 type Projeto = (typeof projetos)[number];
 
@@ -60,17 +65,6 @@ const TECH_ALL = "Todas";
 // sentinela SO na borda; o state `area` continua "" internamente. Mesmo padrao do
 // Cursos; quirk de null preservado.
 const AREA_EMPTY_SENTINEL = "__empty__";
-const SPECIAL_LABELS: Record<string, string> = {
-  carreira: "Carreira",
-  fullstack: "Full Stack",
-};
-
-function labelForAreaSlug(slug: string | null | undefined): string {
-  if (!slug) return "Geral";
-  return (
-    areasTI.find((a) => a.slug === slug)?.nome ?? SPECIAL_LABELS[slug] ?? slug
-  );
-}
 
 // Material de video do projeto: usa o curado se existir; senao monta uma busca
 // do YouTube ESPECIFICA do projeto (titulo + tecnologia principal). Nao inventa
@@ -103,7 +97,12 @@ export default function Projetos() {
   } = useProjectCompletion();
   const search = useSearch();
   const params = useParams<{ id?: string }>();
-  const initialAreaFromUrl = new URLSearchParams(search).get("area");
+  // ?area= normalizado: link antigo apontando pra slug de subarea (que era um
+  // areaSlug valido ate este lote) vira a area-mae, em vez de filtrar por um
+  // valor que nenhum projeto tem mais e devolver lista vazia.
+  const areaParam = new URLSearchParams(search).get("area");
+  const initialAreaFromUrl =
+    areaParam === null ? null : normalizeProjectAreaParam(areaParam);
   // Fonte canonica: o catalogo estatico versionado (client/src/lib/data.ts).
   // A tabela projects do Supabase segue existindo pra outras superficies, mas
   // esta pagina nao a consome mais.
@@ -216,7 +215,7 @@ export default function Projetos() {
   if (area !== AREA_ALL)
     activeFilters.push({
       key: "area",
-      label: `Área: ${labelForAreaSlug(area)}`,
+      label: `Área: ${labelForProjectArea(area)}`,
       clear: () => setArea(AREA_ALL),
     });
   if (nivel !== "Todos")
@@ -333,7 +332,7 @@ export default function Projetos() {
                   label:
                     slug === AREA_ALL
                       ? "Todas as áreas"
-                      : labelForAreaSlug(slug),
+                      : labelForProjectArea(slug),
                 }))}
               />
               <BntSelect
@@ -431,19 +430,19 @@ export default function Projetos() {
             {grupos.map((grupo) => (
               <section
                 key={grupo.slug ?? "geral"}
-                aria-label={`Projetos de ${labelForAreaSlug(grupo.slug)}`}
+                aria-label={`Projetos de ${labelForProjectArea(grupo.slug)}`}
               >
                 <h2 className="mb-4 flex items-center gap-3 font-display text-2xl font-black text-slate-950">
                   <span
                     className="h-6 w-1.5 shrink-0 rounded-full"
                     style={{
                       backgroundColor: getAreaAccent(
-                        labelForAreaSlug(grupo.slug),
+                        labelForProjectArea(grupo.slug),
                       ),
                     }}
                     aria-hidden
                   />
-                  {labelForAreaSlug(grupo.slug)}
+                  {labelForProjectArea(grupo.slug)}
                   <span className="text-sm font-bold text-slate-400">
                     ({grupo.itens.length})
                   </span>
@@ -451,7 +450,11 @@ export default function Projetos() {
                 <div className="space-y-4">
                   {grupo.itens.map((projeto) => {
                     const areaBadge = areaGridPaletteOf(
-                      labelForAreaSlug(projeto.areaSlug),
+                      labelForProjectArea(projeto.areaSlug),
+                    );
+                    const subareaLabel = labelForProjectSubarea(
+                      projeto.areaSlug,
+                      projeto.subareaSlug,
                     );
                     return (
                       <div
@@ -461,7 +464,7 @@ export default function Projetos() {
                       >
                         <div
                           style={{
-                            boxShadow: `5px 5px 0 ${getAreaAccent(labelForAreaSlug(projeto.areaSlug))}`,
+                            boxShadow: `5px 5px 0 ${getAreaAccent(labelForProjectArea(projeto.areaSlug))}`,
                           }}
                           className="card-brutal overflow-hidden rounded-xl border-2 border-slate-950 bg-white transition-transform duration-200 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5"
                         >
@@ -507,8 +510,19 @@ export default function Projetos() {
                                     className="h-1.5 w-1.5 rounded-full bg-current"
                                     aria-hidden
                                   />
-                                  {labelForAreaSlug(projeto.areaSlug)}
+                                  {labelForProjectArea(projeto.areaSlug)}
                                 </span>
+                                {/* Subarea: mesmo desenho do chip de area, com
+                                    a bolinha suprimida pra ler como refinamento
+                                    do chip anterior, nao como um par. O texto
+                                    vem de areasTI, entao nao ha copy nova. */}
+                                {subareaLabel !== null && (
+                                  <span
+                                    className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${areaBadge.bg} ${areaBadge.text} ${areaBadge.border}`}
+                                  >
+                                    {subareaLabel}
+                                  </span>
+                                )}
                                 <span
                                   className={`text-xs px-2 py-0.5 rounded-full font-bold ${nivelColors[projeto.nivel] || "bg-slate-100 text-slate-600"}`}
                                 >
@@ -564,7 +578,7 @@ export default function Projetos() {
                                     id: projeto.id,
                                     type: "projeto",
                                     title: projeto.nome,
-                                    subtitle: labelForAreaSlug(
+                                    subtitle: labelForProjectArea(
                                       projeto.areaSlug,
                                     ),
                                   }}
