@@ -16,7 +16,7 @@ por IA é o plano Pro.
 
 ## Pré-requisitos
 
-- Node.js 22 (ver `.nvmrc`).
+- Node.js 24 (ver `.nvmrc`).
 - pnpm 10.
 - Um projeto Supabase e as chaves das integrações que for usar.
 

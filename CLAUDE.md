@@ -155,7 +155,7 @@ Commits são **uma única linha** no formato `tipo(escopo): descrição curta`.
 - **NUNCA** adicionar parágrafos de contexto, bullet points, ou descrição estendida
 - **NUNCA** adicionar `Co-Authored-By:` ou qualquer trailer
 - **NUNCA** reescrever histórico já publicado em `origin/main`.
-- **NUNCA** alterar `.nvmrc` nem o campo `engines` do `package.json`.
+- **Alterar `.nvmrc` ou o campo `engines` do `package.json` é decisão de arquitetura**: exige diagnóstico completo e autorização explícita registrada na conversa, e nunca acontece como efeito colateral de outra tarefa. Precedente: baseline 22 para 24 em 2026-09-03.
 - O subject é a única coisa que vai no commit, sem body, sem footer
 
 **Tipos permitidos**: `feat`, `fix`, `refactor`, `style`, `docs`, `chore`, `test`, `perf`
