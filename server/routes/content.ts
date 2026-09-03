@@ -144,9 +144,22 @@ router.get("/areas/:slug", async (req, res, next) => {
 // isso o client propaga o erro em vez de cair numa lista, ao contrario das
 // outras fontes deste arquivo.
 //
-// O predicado de exibiveis tem TRES casos, nao um: evento com data futura,
-// evento sem data (recorrente) e evento a confirmar. Filtrar so por
-// `starts_on >= current_date` sumiria com os dois ultimos em silencio.
+// O predicado de exibiveis tem TRES RAMOS de data, nao um:
+//   1. `starts_on >= hoje`  -> comeca hoje ou depois;
+//   2. `starts_on is null`  -> sem data (recorrente ou a confirmar);
+//   3. `ends_on >= hoje`    -> EM ANDAMENTO: ja comecou e ainda nao terminou.
+// Filtrar so por `starts_on >= hoje` sumiria com os outros dois em silencio.
+//
+// O ramo 3 entrou em 2026-09-02. Sem ele, um evento de varios dias desaparecia
+// da pagina no seu segundo dia, que e justamente quando ainda da para ir: na
+// medicao daquele dia eram 18 eventos nessa situacao, entre eles um congresso
+// de 01 a 04/09 acontecendo naquele momento e hackathons de janela longa com
+// inscricao aberta.
+//
+// UM SO CALCULO DE `hoje` para os tres ramos. Datas diferentes entre ramos
+// criariam uma faixa de eventos que nenhum ramo pega, no pior horario possivel
+// (a virada do dia), que e exatamente a classe de bug que o corretivo de fuso
+// desta rota resolveu.
 router.get("/eventos", async (_req, res, next) => {
   try {
     const payload = await getOrCompute(
@@ -167,7 +180,9 @@ router.get("/eventos", async (_req, res, next) => {
           )
           .eq("is_published", true)
           .is("deleted_at", null)
-          .or(`starts_on.gte.${hoje},starts_on.is.null`)
+          .or(
+            `starts_on.gte.${hoje},starts_on.is.null,ends_on.gte.${hoje}`,
+          )
           .order("starts_on", { ascending: true, nullsFirst: false })
           .order("title", { ascending: true })
           .limit(500);
