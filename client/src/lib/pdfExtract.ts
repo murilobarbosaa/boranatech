@@ -75,6 +75,19 @@ export type PdfErrorCode = (typeof PDF_ERROR_CODES)[number];
  * exatamente a chamada que falha. Nao se le versao de navegador aqui de
  * proposito, porque versao e a causa e o metodo e o efeito, e sniffing de UA
  * erraria em qualquer navegador que ganhasse o metodo depois.
+ *
+ * EM TESTE, QUEM RESPONDE ISTO E O NODE DO RUNNER, e isso ja custou caro. Em
+ * 03/09/2026 o `.nvmrc` estava em 22, e o Node 22 nao tem `Promise.try`: os 33
+ * testes que passam pela extracao cairam todos em `browser_unsupported` e a
+ * `main` ficou vermelha ate `9123e30f` subir a baseline para 24. O sintoma
+ * parecia defeito de PDF; a causa era a versao do Node do CI.
+ *
+ * Por isso os testes de EXTRACAO fixam o suporte de proposito, com
+ * `fixarSuportePdf` de `__fixtures__/promiseTry.ts`, em vez de herda-lo do
+ * ambiente. Quem herda o runtime aqui e so quem testa esta funcao
+ * (`pdfExtract.navegador.test.ts`), e mesmo la o metodo e instalado ou apagado
+ * explicitamente. Uma pergunta sobre o navegador do USUARIO nao pode ser
+ * respondida pelo interpretador que roda a suite.
  */
 export function navegadorSuportaPdf(): boolean {
   return typeof (Promise as unknown as { try?: unknown }).try === "function";

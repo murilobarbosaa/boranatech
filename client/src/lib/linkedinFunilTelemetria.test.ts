@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * O FUNIL DO ANALISADOR COBRE TODOS OS DESFECHOS, nos dois eixos?
@@ -23,6 +23,10 @@ vi.mock("pdfjs-dist", () => ({
 }));
 vi.mock("pdfjs-dist/build/pdf.worker.min.mjs?url", () => ({ default: "" }));
 
+import {
+  fixarSuportePdf,
+  restaurarSuportePdf,
+} from "./__fixtures__/promiseTry";
 import { PDF_ERROR_CODES } from "./pdfExtract";
 import {
   DESFECHOS_EXTRACAO_EXTRAS,
@@ -47,6 +51,15 @@ const EXTRACAO_ESPERADOS: DesfechoExtracao[] = [
   ...PDF_ERROR_CODES,
   ...DESFECHOS_EXTRACAO_EXTRAS,
 ];
+
+// SUPORTE DECLARADO, nao herdado do runner (ver __fixtures__/promiseTry.ts).
+beforeEach(() => {
+  fixarSuportePdf();
+});
+
+afterEach(() => {
+  restaurarSuportePdf();
+});
 
 describe("EIXO 1: todo estado de entrada tem desfecho de extracao", () => {
   it("a uniao de extracao e exatamente PDF_ERROR_CODES mais os dois extras", () => {

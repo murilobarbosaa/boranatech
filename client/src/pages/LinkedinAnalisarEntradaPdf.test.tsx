@@ -82,6 +82,11 @@ class IOStub {
   globalThis as unknown as { IntersectionObserver: unknown }
 ).IntersectionObserver = IOStub;
 
+import {
+  fixarSemSuportePdf,
+  fixarSuportePdf,
+  restaurarSuportePdf,
+} from "@/lib/__fixtures__/promiseTry";
 import { PDF_ERROR_CODES, type PdfErrorCode } from "@/lib/pdfExtract";
 import Page, { PDF_ERROR_COPY } from "./LinkedinAnalisar";
 
@@ -140,7 +145,7 @@ const RECEITA: Record<PdfErrorCode, () => File> = {
   // `try` de `extractPdfText`. A guarda corre ANTES de encostar no pdfjs, entao
   // aqui nao se dubla `getDocument`: o desfecho certo e ele nunca ser chamado.
   browser_unsupported: () => {
-    delete promiseCtor.try;
+    fixarSemSuportePdf();
     return pdf();
   },
 };
@@ -148,24 +153,26 @@ const RECEITA: Record<PdfErrorCode, () => File> = {
 let fetchSpy: ReturnType<typeof vi.fn>;
 
 // `browser_unsupported` so e reproduzivel mexendo em `Promise.try`, que e
-// global. Guardado aqui e devolvido no afterEach para a mutacao nao vazar para
-// os outros casos: uma receita que apaga o metodo e nao o repoe faria os testes
-// seguintes rodarem num navegador falso, e o vazamento apareceria como falha em
-// outro arquivo.
-type PromiseComTry = { try?: unknown };
-const promiseCtor = Promise as unknown as PromiseComTry;
-let tryOriginal: unknown;
+// global. A mutacao e a devolucao vivem em `@/lib/__fixtures__/promiseTry`, e o
+// `restaurarSuportePdf` do afterEach impede que ela vaze para os outros casos:
+// uma receita que apaga o metodo e nao o repoe faria os testes seguintes
+// rodarem num navegador falso, e o vazamento apareceria como falha em outro
+// arquivo.
+//
+// O `fixarSuportePdf` do beforeEach e o que MUDOU em 03/09/2026. Antes, os
+// casos que NAO sao `browser_unsupported` herdavam o `Promise.try` do runner,
+// entao a pagina era exercitada contra o navegador do CI em vez de contra um
+// declarado aqui. Com o `.nvmrc` em 22 isso derrubou 33 testes de uma vez.
 
 beforeEach(() => {
-  tryOriginal = promiseCtor.try;
+  fixarSuportePdf();
   getDocument.mockReset();
   fetchSpy = vi.fn(async () => new Response("{}", { status: 200 }));
   vi.stubGlobal("fetch", fetchSpy);
 });
 
 afterEach(() => {
-  if (tryOriginal === undefined) delete promiseCtor.try;
-  else promiseCtor.try = tryOriginal;
+  restaurarSuportePdf();
   cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();

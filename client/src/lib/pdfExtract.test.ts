@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  fixarSemSuportePdf,
+  fixarSuportePdf,
+  restaurarSuportePdf,
+} from "./__fixtures__/promiseTry";
+
 /**
  * A IDENTIDADE DO ERRO DE PDF SOBREVIVE ATE A UI?
  *
@@ -50,10 +56,16 @@ function pdfFalso(bytes = 2048): File {
 }
 
 beforeEach(() => {
+  // SUPORTE DECLARADO, nao herdado do runner. Ver o cabecalho de
+  // __fixtures__/promiseTry.ts: sem isto estes casos passam a depender de o
+  // Node do CI ter `Promise.try`, e foi assim que 33 testes ficaram vermelhos
+  // em 03/09 por uma mudanca de `.nvmrc`.
+  fixarSuportePdf();
   getDocument.mockReset();
 });
 
 afterEach(() => {
+  restaurarSuportePdf();
   vi.restoreAllMocks();
 });
 
