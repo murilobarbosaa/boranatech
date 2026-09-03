@@ -1,0 +1,57 @@
+-- Remove a view vw_eventos_agenda, criada manualmente fora de migration
+-- (entrada historica da allowlist de drift, desde 2026-08-28).
+--
+-- O Passo 0 de 2026-09-03 confirmou, dos dois lados, que ela nao tem leitor:
+--   BANCO      zero objetos dependentes, zero grants para anon e authenticated.
+--   REPOSITORIO tres ocorrencias do nome, TODAS metalinguagem (dois relatorios
+--               de sessao falando sobre ela e a propria entrada da allowlist);
+--               nenhuma consulta, nenhuma migration que a declare.
+--   PESSOAS    a Ana confirmou que nao a usa no SQL Editor.
+--
+-- View nao guarda dado: o DROP nao destroi nada e nao exige a janela de
+-- migration destrutiva do CLAUDE.md. Reverter e recriar com a definicao abaixo.
+--
+-- ALEM DE ORFA, ESTAVA DEFASADA, e por duas razoes independentes. O predicado
+-- de data tem so os dois ramos antigos (`starts_on is null or starts_on >=`),
+-- sem o terceiro que a rota /api/content/eventos ganhou em 2026-09-02
+-- (`ends_on >= hoje`, para evento em andamento nao sumir no proprio dia). E o
+-- corte usa `CURRENT_DATE`, que no Postgres e a data em UTC, enquanto a rota
+-- calcula a data em America/Sao_Paulo. Quem lesse a view veria menos eventos
+-- que o site, e a diferenca mudaria de tamanho conforme a hora do dia.
+--
+-- DEFINICAO ORIGINAL, lida de producao com pg_get_viewdef em 2026-09-03 e
+-- preservada aqui para a posteridade:
+--
+-- SELECT id,
+--     external_id,
+--     title,
+--     description,
+--     organizer,
+--     event_type,
+--     tags,
+--     url,
+--     calendar_url,
+--     price_type,
+--     price_label,
+--     starts_on,
+--     ends_on,
+--     date_label,
+--     time_label,
+--     date_status,
+--     recurrence,
+--     modality,
+--     city,
+--     state,
+--     uf,
+--     country,
+--     location_label,
+--     language,
+--     verified_source_url,
+--     verified_at,
+--     featured,
+--     source
+--    FROM external_events
+--   WHERE is_published = true AND deleted_at IS NULL AND (starts_on IS NULL OR starts_on >= CURRENT_DATE)
+--   ORDER BY (starts_on IS NULL), starts_on, title;
+
+DROP VIEW IF EXISTS public.vw_eventos_agenda;
