@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { PROJECT_ID_ALIASES } from "./aliases";
 import { projetos } from "./catalog";
 
 // Guard de acentuacao do catalogo. Existe por causa da leva de 204 entradas
@@ -135,6 +136,28 @@ describe("catalogo de projetos: acentuacao", () => {
     expect(
       achados,
       `formas sem acento encontradas (${achados.length}):\n${achados.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  it("todo proximoProjetoId aponta pra id vivo, nao alias, e nao pra si mesmo", () => {
+    // O campo e opcional: nem todo projeto tem sucessor mapeado ainda, e a UI
+    // cai no texto livre de proximoProjeto quando ele falta. O que NAO pode e
+    // apontar pra id que nao existe: o link levaria ao banner de projeto nao
+    // encontrado, que e pior que nao ter link.
+    const VIVOS = new Set(projetos.map((p) => p.id));
+    const ruins: string[] = [];
+    for (const p of projetos) {
+      const alvo = p.proximoProjetoId;
+      if (alvo === undefined) continue;
+      if (alvo in PROJECT_ID_ALIASES)
+        ruins.push(`${p.id}: aponta pro alias ${alvo}`);
+      else if (!VIVOS.has(alvo))
+        ruins.push(`${p.id}: aponta pro id inexistente ${alvo}`);
+      else if (alvo === p.id) ruins.push(`${p.id}: aponta pra si mesmo`);
+    }
+    expect(
+      ruins,
+      `proximoProjetoId invalidos (${ruins.length}):\n${ruins.join("\n")}`,
     ).toEqual([]);
   });
 

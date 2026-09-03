@@ -463,6 +463,15 @@ export default function Projetos() {
                       projeto.areaSlug,
                       projeto.subareaSlug,
                     );
+                    // Sugestao "pra praticar depois": vira link quando o
+                    // catalogo sabe o id do alvo. Sem id (ou com id que nao
+                    // resolve), continua o texto livre de proximoProjeto,
+                    // que e o comportamento de sempre.
+                    const proximo = projeto.proximoProjetoId
+                      ? projectItems.find(
+                          (p) => p.id === projeto.proximoProjetoId,
+                        )
+                      : undefined;
                     return (
                       <div
                         key={projeto.id}
@@ -695,12 +704,21 @@ export default function Projetos() {
                                     </p>
                                   </div>
 
-                                  {/* Sugestão editorial pra praticar depois (não-clicável) */}
                                   <div className="mt-4 text-sm text-slate-700">
                                     <span className="font-medium">
                                       Sugestão pra praticar depois:
                                     </span>{" "}
-                                    <span>{projeto.proximoProjeto}</span>
+                                    {proximo ? (
+                                      <Link
+                                        href={`/projetos/${proximo.id}`}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="rounded font-medium text-orange-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                                      >
+                                        {proximo.nome}
+                                      </Link>
+                                    ) : (
+                                      <span>{projeto.proximoProjeto}</span>
+                                    )}
                                   </div>
                                 </div>
                               </div>
