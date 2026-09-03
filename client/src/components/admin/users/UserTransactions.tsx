@@ -66,16 +66,26 @@ function Linha({
   const tipo = tipoDeTransacaoOf(item.type);
   const negativo = item.gross_cents < 0;
   const boleto = ehBoleto(item.stripe_charge_id);
-  // COBRANCA QUE NAO E DA STRIPE nao oferece acao nenhuma nesta tela, e o
-  // motivo e que nenhuma das duas rotas a aceita: `/refunds` responde 409
-  // `refund_provider_not_stripe` e `/external-refunds` responde 409
-  // `external_refund_provider_not_supported`, porque as duas chaveiam por
-  // `stripe_charge_id`. Desenhar um botao que so pode devolver erro seria
-  // prometer uma acao que nao existe; a frase no rodape do bloco diz o que
-  // fazer no lugar.
+  // A ACAO E ESCOLHIDA PELO MEIO DE PAGAMENTO, nao pelo provedor.
+  //
+  // ATE 03/09/2026 ISTO ERA FALSO: `acao` era `undefined` para toda cobranca
+  // Asaas, com o comentario citando um 409 `refund_provider_not_stripe` que o
+  // Lote 2a removeu. O servidor passou a aceitar estorno de Pix pela API do
+  // Asaas, o dialogo ja mandava o `provider_transaction_id`, e mesmo assim a
+  // linha nao oferecia nada: nem o botao, nem sequer a frase de estado, porque
+  // o `acao &&` la embaixo derruba o bloco inteiro. Achado no smoke em
+  // producao, numa cobranca com `refundable_cents = 1290`.
+  //
+  // `ehBoleto` olha o `stripe_charge_id` (prefixo `py_`), que na cobranca Asaas
+  // e nulo, entao Pix cai em `onRefund`, que e o caminho certo: estorno pela
+  // API. `onExternalRefund` continua sendo so do boleto, onde a devolucao
+  // acontece fora e o admin apenas registra.
   const daStripe = providerMetaOf(item.provider);
   const ehAsaas = (item.provider ?? "stripe") === PROVIDER_ASAAS;
-  const acao = ehAsaas ? undefined : boleto ? onExternalRefund : onRefund;
+  const acao = boleto ? onExternalRefund : onRefund;
+  // Sem o `?? 0`, backend antigo na janela de deploy faria `undefined > 0`
+  // (false) e o estorno em voo sumiria da tela.
+  const estornoPendente = item.estorno_pendente_cents ?? 0;
   // Backend antigo na janela de deploy nao manda o campo: sem o `?? 0` a
   // comparacao viraria `undefined > 0`, que e false, e a linha simplesmente nao
   // mostra o aviso. Degrada, nao quebra.
@@ -139,7 +149,7 @@ function Linha({
             o Asaas e o id do pagamento, que e o unico que existe e o unico que
             serve para achar a cobranca no painel deles. Sem isto, toda linha de
             Pix aparecia sem identificacao nenhuma. */}
-        {item.stripe_charge_id ?? item.provider_transaction_id ? (
+        {(item.stripe_charge_id ?? item.provider_transaction_id) ? (
           <span className="font-mono text-[11px] text-slate-400">
             {item.stripe_charge_id ?? item.provider_transaction_id}
           </span>
@@ -169,12 +179,22 @@ function Linha({
             </button>
           ) : (
             <span
-              data-testid="sem-reembolso"
-              className="mt-1 block text-[11px] font-bold uppercase text-slate-400"
+              data-testid={
+                estornoPendente > 0 ? "estorno-pendente" : "sem-reembolso"
+              }
+              className={`mt-1 block text-[11px] font-bold uppercase ${
+                estornoPendente > 0 ? "text-amber-700" : "text-slate-400"
+              }`}
             >
-              {item.refund_state === "full"
-                ? "Reembolsada"
-                : "Sem saldo a reembolsar"}
+              {/* Estorno pedido e nao liquidado tem prioridade sobre as outras
+                  duas frases: dizer "Sem saldo a reembolsar" enquanto o dinheiro
+                  esta a caminho de volta e verdade sobre o saldo e mentira sobre
+                  o estado, e foi por isso que este ramo passou a existir. */}
+              {estornoPendente > 0
+                ? "Estorno solicitado. Aguardando confirmação do Asaas."
+                : item.refund_state === "full"
+                  ? "Reembolsada"
+                  : "Sem saldo a reembolsar"}
             </span>
           )
         ) : null}
