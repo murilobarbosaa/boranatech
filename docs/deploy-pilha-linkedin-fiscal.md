@@ -2,7 +2,7 @@
 
 **Fonte operacional vigente desta janela de deploy.** Substitui a secao 5 de
 `docs/linkedin-fase4-fechamento.md`, que descrevia uma pilha de 56 commits sem
-merge nenhum e cinco migrations pendentes. A pilha mudou: hoje sao cinco
+merge nenhum e cinco migrations pendentes. A pilha mudou: hoje sao seis
 merges, dez migrations e a frente fiscal embarcada.
 
 Todo numero abaixo foi medido no worktree, e nao herdado de memoria. Onde o fato
@@ -12,25 +12,26 @@ vem de um lote anterior, o lote esta nomeado.
 
 | Item                              | Valor                                                                    |
 | --------------------------------- | ------------------------------------------------------------------------ |
-| Merge de fechamento               | `9dc840495747470c50db46def70eca617fbf0221`                               |
+| Merge de fechamento               | `37ac99081b372569409fda4301d620a889ebef96`                               |
 | Branch                            | `feat/linkedin-fase-4`                                                   |
-| Commits a publicar (`main..HEAD`) | **75** (70 comuns mais 5 merges), **76** com o commit deste refresh      |
-| Merges na pilha                   | **5**                                                                    |
-| `main` (producao)                 | `832e5208`, e **e ancestral do HEAD** (`merge-base --is-ancestor` passa) |
-| Suite                             | **4237 verdes, 10 pulados, zero vermelho** (335 arquivos de 338)         |
+| Commits a publicar (`main..HEAD`) | **77** (71 comuns mais 6 merges), **78** com o commit deste refresh      |
+| Merges na pilha                   | **6**                                                                    |
+| `main` (producao)                 | `dc84adc2`, e **e ancestral do HEAD** (`merge-base --is-ancestor` passa) |
+| Suite                             | **4629 verdes, 17 pulados, zero vermelho** (359 arquivos de 363)         |
 | `pnpm check` e `check:limiares`   | exit 0, com **0 orfaos** na auditoria de limiares                        |
 
 **Por que a tabela nomeia o merge de fechamento e nao o HEAD.** Um documento nao
 consegue citar o proprio sucessor: o commit que o atualiza fica ACIMA do hash que
 ele cita, e a linha nasce vencida. Ja aconteceu duas vezes aqui, e o passo 3 da
 secao 3 ficou preso em `6cf78a65` por duas etapas por causa disso. Entao o que
-esta fixado acima e `9dc84049`, o merge que fechou a integracao com a `main`, e o
+esta fixado acima e `37ac9908`, o merge que fechou a integracao com a `main`, e o
 topo no momento do push e o commit deste proprio refresh, imediatamente acima
 dele. Quem for publicar le o topo real com `git rev-parse HEAD`, nao daqui.
 
-Os cinco merges, do topo para baixo:
+Os seis merges, do topo para baixo:
 
 ```
+37ac9908 merge(main): integrate pix and asaas main into linkedin stack     (main dc84adc2)
 9dc84049 merge(main): integrate dash cleanup and close main integration    (main 832e5208)
 3e37c4dc merge(main): integrate latest main into linkedin stack            (main 1ced0103)
 6cf78a65 merge(fiscal): integrate fiscal marco 1 into linkedin stack
@@ -44,6 +45,16 @@ M5, mesmo dia) existe porque ela andou mais 7, quatro deles removendo travessoes
 de `client`, `server`, `shared` e `scripts`. Esse quinto merge nao teve conflito
 nenhum, e o auto-merge adotou a versao limpa da `main` nos nove arquivos que os
 dois lados tinham tocado: as 24 ocorrencias de travessao neles foram a zero.
+
+O SEXTO (Lote M6, 2026-09-02) existe porque a `main` andou mais **75 commits**
+com a frente de PIX e Asaas inteira, **depois** de o "pode publicar" ja ter sido
+dado contra `45fccdb3`. Foi a primeira vez que a `main` se moveu entre a
+aprovacao e a execucao, e por isso aquele hash expirou: **a reaprovacao e contra
+o HEAD desta janela, nao contra `45fccdb3`.** Seis conflitos, dois deles em
+superficie de gate (`server/lib/env.ts` e `client/src/pages/Checkout.tsx`), e a
+regra do lote era que nenhum gate regride: as contagens de `nfseEnabled` em cada
+arquivo de gate sao identicas antes e depois do merge.
+
 Depois dele `git merge-base --is-ancestor main HEAD` imprime **FF_VIAVEL**, com
 **zero** commits da `main` fora do HEAD.
 
@@ -53,8 +64,8 @@ Medido com `git ls-remote --heads origin`:
 
 | Ref                          | Em `origin` | Situacao                                                                                  |
 | ---------------------------- | ----------- | ----------------------------------------------------------------------------------------- |
-| `main`                       | `832e5208`  | producao                                                                                  |
-| `feat/linkedin-fase-4`       | `b47c78a4`  | **parcialmente pushada**; `b47c78a4` e ancestral do HEAD, e faltam **291** commits locais |
+| `main`                       | `dc84adc2`  | producao                                                                                  |
+| `feat/linkedin-fase-4`       | `b47c78a4`  | **parcialmente pushada**; `b47c78a4` e ancestral do HEAD, e faltam **368** commits locais |
 | `fix/openai-cota-credencial` | `a3e37d2a`  | **inteira em origin**                                                                     |
 | `feat/fiscal-fechamento`     | ausente     | **nunca pushada**                                                                         |
 
@@ -64,19 +75,42 @@ avanca `feat/linkedin-fase-4` de `b47c78a4` para o topo desta janela, e como
 
 ## 2. Checklist de migrations
 
-**Dez pendentes**, derivadas por medicao e nao por lista escrita a mao: sao as
-que existem em `supabase/migrations/` no HEAD (160 arquivos) e **nao** existem na
-`main` (150 arquivos). O conjunto inverso e vazio, ou seja, a pilha ja contem
-todas as migrations que a producao tem.
+**AS DEZ JA FORAM APLICADAS E CARIMBADAS EM PRODUCAO, em 2026-09-02, e nao ha
+nada a aplicar delas neste push.** A tabela abaixo deixa de ser um checklist de
+execucao e passa a ser o registro do que ja entrou. O passo de aplicacao saiu da
+secao 3 pelo mesmo motivo.
 
-A lista continua sendo a mesma de antes do quarto merge, e isso foi DERIVADO e
-nao presumido: as sete migrations que a `main` trouxe no intervalo ja estao
-aplicadas em producao pelos deploys dela, entao entraram no HEAD pelo merge e
-sairam do conjunto pendente pela propria regra (pendente = esta no HEAD e nao
-esta na `main`). O total subiu de 153 para 160 dos dois lados do calculo, e a
-diferenca seguiu dez.
+O que mudou entre a versao anterior deste doc e esta: as dez foram aplicadas
+manualmente no SQL Editor (runbook em `runbook-migrations-deploy.md`), e depois
+disso a `main` publicou a frente de PIX e Asaas, que trouxe migrations proprias.
+Hoje ha 164 arquivos no HEAD contra 154 na `main`, e a diferenca de dez e
+exatamente este conjunto, ja aplicado.
 
-Em ordem cronologica de timestamp, que e a ordem de aplicacao:
+**QUATRO MIGRATIONS DO HEAD NAO CONSTAM DA LISTA DE CARIMBOS, e nenhuma delas e
+desta pilha.** Derivado por nome contra a leitura de `schema_migrations` feita em
+2026-09-02, e classificado uma a uma:
+
+| Versao                                            | Situacao                                                                                                                                                                                                                         |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `20260811171556_create_external_events`           | **nao e pendencia.** O proprio arquivo declara que a tabela foi criada direto em producao por rotina agendada, que a versao **ja consta como aplicada** e que o DDL nunca executa: ele existe para reproducibilidade de ambiente |
+| `20260819050000_unschedule_reconcile_sentry_bugs` | da `main`, restritiva no agendamento e nao destrutiva nos dados. **Sem carimbo declarado; nao foi possivel verificar aplicacao daqui**                                                                                           |
+| `20260819050100_schedule_sync_sentry_tasks`       | da `main`, aditiva e idempotente. **Sem carimbo declarado; nao foi possivel verificar aplicacao daqui**                                                                                                                          |
+| `20260902120100_billing_events_asaas_offset_fix`  | **corretamente sem carimbo.** O arquivo declara "Nao e pre-requisito de deploy" e e um UPDATE de dados que pede a janela de 05h as 09h com backup COMPLETED                                                                      |
+
+As duas do meio sao da frente que publicou a `main`, nao desta janela. **Elas nao
+bloqueiam este push** (o backend desta pilha nao as consome), mas ficam
+registradas porque migration publicada e nao aplicada e a falha que o
+`check:migrations` existe para pegar, e ela nao aparece na direcao que ele
+verifica.
+
+**E ha o inverso, que merece ser dito alto: `20260903100000` esta CARIMBADA em
+producao e o arquivo dela nao existe nem na `main` nem nesta pilha.** Ele vive no
+commit `16124a72` (`feat(db): add provider columns to admin refunds`), de uma
+branch ainda nao publicada. Producao tem uma migration aplicada cujo codigo nao
+foi publicado. Tambem nao e desta janela, e tambem nao bloqueia; e da frente que
+a criou.
+
+Em ordem cronologica de timestamp, que foi a ordem de aplicacao:
 
 | #   | Arquivo                                                     | O que faz                                                                               | Classe  |
 | --- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------- |
@@ -133,7 +167,7 @@ fiscais tambem so nascem com a flag ligada (`server/index.ts:75` e `:94`).
 O agendamento entrar antes da ativacao e o comportamento desejado: o cron existe,
 roda a cada 6 horas, e nao faz nada ate o Marco 2.
 
-### 2.3 Procedimento de aplicacao
+### 2.3 Procedimento de aplicacao (JA EXECUTADO em 2026-09-02, fica como registro)
 
 1. **Conferir o que ja consta** na tabela de historico de migrations
    (`schema_migrations`) do banco alvo, antes de aplicar qualquer coisa. A lista
@@ -168,7 +202,7 @@ A segunda e a pior das duas, porque nao quebra: degrada.
    `FF_VIAVEL` e obriga a um merge a mais.
 2. **CI verde no SHA exato** que sera publicado.
 3. **Push da branch** apos o "pode publicar". `feat/linkedin-fase-4` avanca de
-   `b47c78a4` para o topo desta janela (o merge de fechamento `9dc84049` mais o
+   `b47c78a4` para o topo desta janela (o merge de fechamento `37ac9908` mais o
    commit deste refresh), em fast-forward. **Ler o topo real com
    `git rev-parse HEAD`**, e nao de um hash escrito aqui: foi assim que esta
    linha ficou vencida duas vezes.
@@ -182,7 +216,10 @@ A segunda e a pior das duas, porque nao quebra: degrada.
    git push origin main
    ```
 
-5. **Aplicar as dez migrations** (secao 2.3), ANTES do backend.
+5. **Nada a aplicar.** As dez migrations desta pilha ja foram aplicadas e
+   carimbadas em 2026-09-02, antes deste push. A regra
+   migrations-antes-do-backend continua valendo e foi cumprida na ordem certa;
+   este passo fica no lugar para que a numeracao dos demais nao mude.
 6. **Deploy do backend (Railway).**
 7. **Deploy do frontend (Vercel).**
 8. **Verificacao**: `/api/health` (o campo `commit` diz qual build esta servindo,
