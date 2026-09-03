@@ -206,7 +206,11 @@ function RefundDialogInterno({
                     {fmtBrl(charge.gross_cents)}
                   </p>
                   <p className="text-xs font-bold text-slate-500">
-                    {fmtDate(charge.occurred_at)} · {charge.stripe_charge_id}
+                    {/* Cobranca Asaas nao tem `stripe_charge_id`; o id que ela
+                        tem e o do pagamento. Sem o fallback o cabecalho do
+                        dialogo de reembolso do Pix aparecia sem identificacao. */}
+                    {fmtDate(charge.occurred_at)} ·{" "}
+                    {charge.stripe_charge_id ?? charge.provider_transaction_id}
                   </p>
                   <p
                     data-testid="teto-reembolso"

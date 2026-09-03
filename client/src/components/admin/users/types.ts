@@ -197,6 +197,17 @@ export type TransactionItem = {
   disputed: boolean;
   refund_state: string;
   refundable_cents: number;
+  /**
+   * Estorno JA PEDIDO ao provedor e ainda nao liquidado (so Asaas; a Stripe
+   * liquida na hora). O servidor calcula desde o Lote 2a
+   * (server/lib/userTransactions.ts), mas nenhuma tela lia: uma cobranca com
+   * estorno em voo tem `refundable_cents` zero, e a linha dizia "Sem saldo a
+   * reembolsar", que e verdade sobre o saldo e mentira sobre o que aconteceu.
+   *
+   * OPCIONAL pelo mesmo motivo de `refunded_external_cents`: na janela de
+   * deploy o bundle novo recebe a resposta antiga sem o campo.
+   */
+  estorno_pendente_cents?: number;
 };
 
 export type TransactionsPayload = {
