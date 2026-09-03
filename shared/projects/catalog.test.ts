@@ -6,6 +6,15 @@ import { projetos } from "./catalog";
 // adicionadas em bloco sem diacritico ("Analise", "Relatorio", "Automacao"),
 // que so foi notada meses depois porque nada media isso.
 //
+// COBRE TODOS OS CAMPOS DE TEXTO da entrada, nao so nome e objetivo. O motivo
+// e medido: das 845 correcoes do lote que criou este guard, a maior parte caiu
+// FORA de nome e objetivo (passosSimplificados, entregavel, sugestaoLinkedIn e
+// requisitos[].verificacao), porque a leva errada entrou em todos os campos de
+// uma vez. Um guard restrito ao titulo ficaria verde com uma leva nova entrando
+// so pelos passos, que e exatamente a forma que o defeito ja teve uma vez. O
+// texto de requisitos[] pesa ainda mais: ele vai dentro do prompt enviado a
+// OpenAI na validacao de projeto.
+//
 // A lista abaixo e de formas que, EM PORTUGUES, so existem com acento. Cada
 // palavra e uma afirmacao: "esta sequencia de letras nunca e uma palavra
 // valida". Palavra cuja forma nua tambem e portugues correto NAO entra aqui,
@@ -76,19 +85,52 @@ const PADRAO = new RegExp(
   "gi",
 );
 
+// Todo campo de texto da entrada, com o rotulo que vai na mensagem de falha.
+// Enumerado a partir do tipo ProjetoCatalogo: campo de texto novo precisa ser
+// acrescentado aqui no mesmo commit, senao o guard mede uma superficie menor
+// sem avisar. Os campos que NAO entram sao os que nao sao texto de leitura:
+// id, areaSlug, subareaSlug, nivel, pro e requisitos[].id.
+function camposDeTexto(
+  p: (typeof projetos)[number],
+): Array<{ rotulo: string; texto: string }> {
+  const campos = [
+    { rotulo: "nome", texto: p.nome },
+    { rotulo: "objetivo", texto: p.objetivo },
+    { rotulo: "entregavel", texto: p.entregavel },
+    { rotulo: "comoPublicar", texto: p.comoPublicar },
+    { rotulo: "sugestaoLinkedIn", texto: p.sugestaoLinkedIn },
+    { rotulo: "proximoProjeto", texto: p.proximoProjeto },
+  ];
+  p.ferramentas.forEach((f, i) =>
+    campos.push({ rotulo: `ferramentas[${i}]`, texto: f }),
+  );
+  p.passosSimplificados.forEach((s, i) =>
+    campos.push({ rotulo: `passosSimplificados[${i}]`, texto: s }),
+  );
+  (p.requisitos ?? []).forEach((r, i) => {
+    campos.push({ rotulo: `requisitos[${i}].descricao`, texto: r.descricao });
+    campos.push({
+      rotulo: `requisitos[${i}].verificacao`,
+      texto: r.verificacao,
+    });
+  });
+  return campos;
+}
+
 describe("catalogo de projetos: acentuacao", () => {
-  it("nenhum nome ou objetivo usa forma sem acento que so existe com acento", () => {
+  it("nenhum campo de texto usa forma sem acento que so existe com acento", () => {
     const achados: string[] = [];
     for (const p of projetos)
-      for (const campo of ["nome", "objetivo"] as const) {
-        const texto = p[campo];
+      for (const { rotulo, texto } of camposDeTexto(p)) {
         // exec em laco, nao matchAll: o tsconfig da aplicacao nao declara
         // `target`, entao cai em ES5 e iterar o RegExpStringIterator nao
         // compila (TS2802). Mesmo motivo do Array.from em projectAreaGroup.
         PADRAO.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = PADRAO.exec(texto)) !== null)
-          achados.push(`${p.id}.${campo}: "${m[1]}" em ${JSON.stringify(texto)}`);
+          achados.push(
+            `${p.id}.${rotulo}: "${m[1]}" em ${JSON.stringify(texto)}`,
+          );
       }
     expect(
       achados,
@@ -105,7 +147,7 @@ describe("catalogo de projetos: acentuacao", () => {
     expect(SO_EXISTEM_COM_ACENTO.length).toBe(46);
     for (const w of SO_EXISTEM_COM_ACENTO)
       expect(w, `${w} deveria estar sem acento na lista`).toBe(
-        w.normalize("NFD").replace(/[̀-ͯ]/g, ""),
+        w.normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
       );
   });
 });
