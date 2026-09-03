@@ -26,7 +26,8 @@ const projetosOnboarding: OnboardingDef = {
       heroSize: 88,
       eyebrow: "PROJETOS",
       title: "Portfólio é o que te contrata",
-      lead: "Sem experiência na carteira, o portfólio é a única prova de que você sabe fazer. São 312 projetos pra você construir a sua.",
+      // TODO(Ana): numero de projetos na copy do onboarding
+      lead: "Sem experiência na carteira, o portfólio é a única prova de que você sabe fazer. São mais de 250 projetos pra você construir a sua.",
       chips: [
         ["Front-end"],
         ["Back-end"],

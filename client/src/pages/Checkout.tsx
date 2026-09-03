@@ -283,7 +283,8 @@ export const COMPARE_GROUPS: Array<{
         pro: true,
       },
       { feature: "Roadmaps de estudo por área", free: true, pro: true },
-      { feature: "+48 projetos pra praticar", free: true, pro: true },
+      // TODO(Ana): numero de projetos na tabela de planos
+      { feature: "+250 projetos pra praticar", free: true, pro: true },
     ],
   },
   {
