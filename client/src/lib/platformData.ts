@@ -2180,28 +2180,16 @@ export const quizByLevel: Record<QuizLevel, QuizQuestion[]> = {
 export const projectHelpVideos: Record<string, { title: string; url: string }> =
   {
     "landing-page-pessoal": {
-      title: "Como criar uma landing page do zero",
-      url: "https://www.youtube.com/results?search_query=criar+landing+page+html+css+iniciante",
+      title: "Como Criar um Portfolio do Zero com HTML e CSS para Iniciantes",
+      url: "https://www.youtube.com/watch?v=SV7TL0hxmIQ",
     },
     "todo-list": {
-      title: "To-do list com JavaScript para iniciantes",
-      url: "https://www.youtube.com/results?search_query=todo+list+javascript+iniciante",
+      title: "Projeto de JavaScript para iniciantes - To Do List com JavaScript puro",
+      url: "https://www.youtube.com/watch?v=HSssE1PRQcA",
     },
     "mapeamento-fluxo-valor": {
       title: "Como fazer mapeamento de fluxo de valor (VSM)",
       url: "https://www.youtube.com/results?search_query=mapeamento+fluxo+valor+vsm+agile",
-    },
-    "dashboard-vendas-executivo": {
-      title: "Como criar dashboard de vendas no Power BI do zero",
-      url: "https://www.youtube.com/results?search_query=dashboard+vendas+power+bi+iniciante",
-    },
-    "analise-exploratoria-ecommerce": {
-      title: "Análise exploratória de dados com Python e Pandas",
-      url: "https://www.youtube.com/results?search_query=analise+exploratoria+dados+python+pandas",
-    },
-    "modelagem-dbt-vendas": {
-      title: "Tutorial de dbt e analytics engineering",
-      url: "https://www.youtube.com/results?search_query=tutorial+dbt+core+modelagem+dados",
     },
     "app-financas-kotlin": {
       title: "App Android com Kotlin e Jetpack Compose do zero",
@@ -2211,17 +2199,9 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "Como configurar análise estática SAST com Semgrep",
       url: "https://www.youtube.com/results?search_query=configurar+sast+semgrep+github+actions",
     },
-    "arquitetura-multi-region-aws": {
-      title: "Arquitetura multi-região na AWS com Terraform",
-      url: "https://www.youtube.com/results?search_query=arquitetura+multi+region+aws+terraform",
-    },
-    "centralizacao-logs-siem": {
-      title: "Instalação e monitoramento com SIEM Wazuh",
-      url: "https://www.youtube.com/results?search_query=siem+wazuh+instalacao+tutorial",
-    },
     "modelo-previsao-churn": {
-      title: "Como criar modelo preditivo de churn em Python",
-      url: "https://www.youtube.com/results?search_query=previsao+churn+machine+learning+python",
+      title: "Analise de Churn com Python e scikit-learn",
+      url: "https://www.youtube.com/watch?v=N9KNPSwI9aU",
     },
     "auditoria-iam-least-privilege": {
       title: "Segurança de identidades AWS IAM e menor privilégio",
@@ -2252,8 +2232,8 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       url: "https://www.youtube.com/results?search_query=mapeamento+dados+lgpd+ripd",
     },
     "experimento-teste-ab-conversao": {
-      title: "Como estruturar e analisar testes A/B",
-      url: "https://www.youtube.com/results?search_query=teste+ab+estatistica+python",
+      title: "Como Fazer Testes AB de Produto",
+      url: "https://www.youtube.com/watch?v=zFMgpxG-chM",
     },
     "lista-tarefas-swiftui": {
       title: "App nativo iOS com SwiftUI e SwiftData",
@@ -2267,10 +2247,6 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "Ciclo de vida de modelos com MLflow",
       url: "https://www.youtube.com/results?search_query=mlflow+mlops+tutorial+introducao",
     },
-    "analise-sentimento-avaliacoes": {
-      title: "Análise de sentimento com NLP em Python",
-      url: "https://www.youtube.com/results?search_query=analise+sentimento+python+nlp",
-    },
     "portal-desenvolvedor-internal": {
       title: "Como configurar o Backstage (platform engineering)",
       url: "https://www.youtube.com/results?search_query=backstage+platform+engineering+tutorial",
@@ -2278,14 +2254,6 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
     "relatorio-status-portfolio-projetos": {
       title: "Como fazer relatório de status de portfólio (PMO)",
       url: "https://www.youtube.com/results?search_query=relatorio+status+portfolio+projetos+pmo",
-    },
-    "redesenho-fluxo-checkout": {
-      title: "Design de fluxo de checkout mobile no Figma",
-      url: "https://www.youtube.com/results?search_query=checkout+design+mobile+figma",
-    },
-    "roadmap-estrategico-produto": {
-      title: "Como criar um roadmap de produto orientado a resultado",
-      url: "https://www.youtube.com/results?search_query=roadmap+produto+product+manager",
     },
     "plano-go-to-market-funcionalidade": {
       title: "Como estruturar uma estratégia de Go-to-Market",
@@ -2303,17 +2271,9 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "Guia de prompt engineering e few-shot prompting",
       url: "https://www.youtube.com/results?search_query=prompt+engineering+few+shot+tutorial",
     },
-    "testes-e2e-cypress": {
-      title: "Automação de testes do zero com Cypress",
-      url: "https://www.youtube.com/results?search_query=automacao+testes+cypress+iniciante",
-    },
-    "plano-testes-e-cenarios": {
-      title: "Como elaborar um plano de testes manual",
-      url: "https://www.youtube.com/results?search_query=plano+testes+software+manual",
-    },
     "teste-carga-k6-api": {
-      title: "Testes de carga e performance de API com k6",
-      url: "https://www.youtube.com/results?search_query=testes+carga+k6+api+performance",
+      title: "Testes de Performance com JMeter",
+      url: "https://www.youtube.com/watch?v=5M-V78Nla3c",
     },
     "app-delivery-comida": {
       title: "App mobile com React Native e Expo",
@@ -2331,17 +2291,9 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "Design de landing page responsiva com Auto Layout",
       url: "https://www.youtube.com/results?search_query=landing+page+auto+layout+figma",
     },
-    "mapeamento-jornada-usuario": {
-      title: "Como desenhar um mapa de jornada do usuário",
-      url: "https://www.youtube.com/results?search_query=jornada+do+usuario+ux+design",
-    },
     "plano-pesquisa-e-entrevistas": {
       title: "Métodos de UX Research: guias e entrevistas",
       url: "https://www.youtube.com/results?search_query=ux+research+pesquisa+entrevistas",
-    },
-    "reconhecimento-objetos-yolo": {
-      title: "Detecção de objetos em tempo real com YOLO",
-      url: "https://www.youtube.com/results?search_query=deteccao+objetos+yolo+python",
     },
     "diagrama-casos-uso-e-requisitos": {
       title: "Análise de sistemas: requisitos e diagramas UML",
@@ -2443,10 +2395,6 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "Como fazer auditoria de acessibilidade WCAG",
       url: "https://www.youtube.com/results?search_query=auditoria+acessibilidade+wcag+tutorial",
     },
-    "design-system-tokens-multiplos-temas": {
-      title: "Variables do Figma e design system multi-tema",
-      url: "https://www.youtube.com/results?search_query=figma+variables+multi+theme",
-    },
     "arquitetura-informacao-portal-complexo": {
       title: "Arquitetura de informação e card sorting",
       url: "https://www.youtube.com/results?search_query=arquitetura+informacao+card+sorting",
@@ -2463,65 +2411,20 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "Precificação e monetização de produtos SaaS",
       url: "https://www.youtube.com/results?search_query=precificacao+monetizacao+produto+saas",
     },
-    "framework-priorizacao-escala-global": {
-      title: "Como priorizar backlogs complexos",
-      url: "https://www.youtube.com/results?search_query=priorizacao+backlog+matriz+rice",
-    },
-    "portfolio-pessoal-html-css": {
-      title:
-        "Como Criar um Portfolio do Zero com HTML e CSS para Iniciantes",
-      url: "https://www.youtube.com/watch?v=SV7TL0hxmIQ",
-    },
-    "calculadora-javascript": {
-      title: "Como Criar uma Calculadora com HTML, CSS e JavaScript",
-      url: "https://www.youtube.com/watch?v=42TShjXR0m0",
-    },
-    "todo-list-javascript": {
-      title:
-        "Projeto de JavaScript para iniciantes - To Do List com JavaScript puro",
-      url: "https://www.youtube.com/watch?v=HSssE1PRQcA",
-    },
-    "buscador-cep-javascript": {
-      title:
-        "AUTOCOMPLETAR ENDERECO PELO CEP - PROJETO HTML CSS E JAVASCRIPT",
-      url: "https://www.youtube.com/watch?v=FMaEIVdaAFo",
-    },
     "dark-mode-toggle-javascript": {
       title: "COMO APLICAR DARK MODE COM HTML, CSS E JAVASCRIPT",
       url: "https://www.youtube.com/watch?v=i1dNnS6pXAo",
-    },
-    "timer-pomodoro-javascript": {
-      title: "Cronometro com JavaScript",
-      url: "https://www.youtube.com/watch?v=8-2kYsa2xog",
     },
     "quiz-interativo-javascript": {
       title: "Develop Quiz Application using Html CSS and JavaScript",
       url: "https://www.youtube.com/watch?v=gNHkqla-Yvw",
     },
-    "jogo-da-memoria-javascript": {
-      title: "Jogo da memoria javascript, html e css",
-      url: "https://www.youtube.com/watch?v=0SeqdHCBYVo",
-    },
-    "app-de-clima-javascript": {
-      title: "Aplicacao de Clima com OpenWeather API",
-      url: "https://www.youtube.com/watch?v=VS8EBgPwsSU",
-    },
     "clone-landing-page-iphone": {
       title: "Clone pagina iPhone 13 Pro - Projeto de HTML e CSS",
       url: "https://www.youtube.com/watch?v=E3sKnfq4myo",
     },
-    "api-tarefas-nodejs": {
-      title:
-        "Crie uma API RESTful com Node.js e MongoDB | CRUD com Node, Express e Mongoose",
-      url: "https://www.youtube.com/watch?v=K5QaTfE5ylk",
-    },
-    "api-autenticacao-jwt": {
-      title: "Como usar JWT para autenticar seu app Node.js",
-      url: "https://www.youtube.com/watch?v=50CoyU79O2Y",
-    },
     "crud-banco-dados-java": {
-      title:
-        "Live Coding Java: CRUD com Java Spring | Construa uma API Rest na pratica",
+      title: "Live Coding Java: CRUD com Java Spring | Construa uma API Rest na pratica",
       url: "https://www.youtube.com/watch?v=tP6wtEaCnSI",
     },
     "web-scraper-python": {
@@ -2544,18 +2447,9 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "Cron - Agendando tarefas no NodeJS",
       url: "https://www.youtube.com/watch?v=UcCVBYxVI58",
     },
-    "encurtador-url-php": {
-      title:
-        "Como fazer um ENCURTADOR DE LINKS com HTML, CSS, JAVASCRIPT e PHP",
-      url: "https://www.youtube.com/watch?v=yikIQmhuHAI",
-    },
     "notificador-emails-nodemailer": {
       title: "Enviando E-mail de um Formulario HTML",
       url: "https://www.youtube.com/watch?v=Io_9g_1rr9M",
-    },
-    "chat-realtime-socketio": {
-      title: "Aplicacao de Chat em React JS",
-      url: "https://www.youtube.com/watch?v=IH15jW8X-Ng",
     },
     "gerenciador-agendamentos-reservas": {
       title: "Sistema de Agendamento com Pagamento Integrado",
@@ -2565,10 +2459,6 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "React Kanban Board Drag and Drop",
       url: "https://www.youtube.com/watch?v=CkjhqUbgvHo",
     },
-    "analise-exploratoria-pandas": {
-      title: "Analise Exploratoria de Dados com Python e Pandas",
-      url: "https://www.youtube.com/watch?v=dUpyC40so4Y",
-    },
     "dashboard-power-bi": {
       title: "Criando Dashboard no Power BI do Zero",
       url: "https://www.youtube.com/watch?v=Ve4IWvKM_Dk",
@@ -2576,10 +2466,6 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
     "limpeza-dados-python": {
       title: "Limpeza de Dados com Pandas",
       url: "https://www.youtube.com/watch?v=GfSFqYY5GgI",
-    },
-    "analise-sentimento-tweets": {
-      title: "Analise de Sentimento com Python e NLP",
-      url: "https://www.youtube.com/watch?v=7Z-h1dHDMao",
     },
     "analise-covid-python": {
       title: "Analise de Dados COVID-19 com Python",
@@ -2592,10 +2478,6 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
     "previsao-serie-temporal": {
       title: "Previsao de Serie Temporal com Python",
       url: "https://www.youtube.com/watch?v=e8Yw4alG16Q",
-    },
-    "analise-churn-python": {
-      title: "Analise de Churn com Python e scikit-learn",
-      url: "https://www.youtube.com/watch?v=N9KNPSwI9aU",
     },
     "segmentacao-clientes-kmeans": {
       title: "Segmentacao de Clientes com K-Means",
@@ -2617,10 +2499,6 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "Analise de Sentimento com Hugging Face",
       url: "https://www.youtube.com/watch?v=QpzMWQihe00",
     },
-    "chatbot-langchain": {
-      title: "Chatbot com LangChain e OpenAI",
-      url: "https://www.youtube.com/watch?v=lG7Uxts9SXs",
-    },
     "reconhecimento-digitos-mnist": {
       title: "Reconhecimento de Digitos com TensorFlow",
       url: "https://www.youtube.com/watch?v=bte-DHomn9Q",
@@ -2640,10 +2518,6 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
     "classificador-imagens-keras": {
       title: "Classificacao de Imagens com Keras e CNN",
       url: "https://www.youtube.com/watch?v=aircAruvnKk",
-    },
-    "assistente-pdf-rag": {
-      title: "Chatbot com RAG e LangChain",
-      url: "https://www.youtube.com/watch?v=8F2DvoQr3sU",
     },
     "detector-objetos-yolo": {
       title: "Deteccao de Objetos com YOLOv8",
@@ -2673,10 +2547,6 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "Como Fazer Redesign de App no Figma",
       url: "https://www.youtube.com/watch?v=Hx-E3chNe8Y",
     },
-    "design-system-basico": {
-      title: "Design System do Zero no Figma",
-      url: "https://www.youtube.com/watch?v=KQd7-IVDAXI",
-    },
     "teste-usabilidade-maze": {
       title: "Como Fazer Teste de Usabilidade com Maze",
       url: "https://www.youtube.com/watch?v=yL4Vki0XaFI",
@@ -2689,10 +2559,6 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "Prototipo de Onboarding no Figma",
       url: "https://www.youtube.com/watch?v=3iXlMHkxfx8",
     },
-    "mapa-jornada-cliente": {
-      title: "Como Criar Mapa de Jornada do Cliente",
-      url: "https://www.youtube.com/watch?v=X7iXPfKHEak",
-    },
     "automacao-login-cypress": {
       title: "Cypress do Zero ao Avancado",
       url: "https://www.youtube.com/watch?v=1EzH1HsW_00",
@@ -2701,21 +2567,9 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "Teste de API com Postman Completo",
       url: "https://www.youtube.com/watch?v=WFHD47hzd0Q",
     },
-    "testes-e2e-playwright": {
-      title: "Playwright para Automacao de Testes",
-      url: "https://www.youtube.com/watch?v=wGr5rz8WGCE",
-    },
     "bdd-cucumber-javascript": {
       title: "BDD com Cucumber e Cypress",
       url: "https://www.youtube.com/watch?v=a-oMEVE94cE",
-    },
-    "performance-jmeter": {
-      title: "Testes de Performance com JMeter",
-      url: "https://www.youtube.com/watch?v=5M-V78Nla3c",
-    },
-    "pipeline-testes-github-actions": {
-      title: "CI com GitHub Actions para Testes",
-      url: "https://www.youtube.com/watch?v=IM-MHFtNMHk",
     },
     "prd-feature-nova": {
       title: "Como Escrever um PRD de Produto",
@@ -2737,13 +2591,77 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "Analise de Funil de Conversao",
       url: "https://www.youtube.com/watch?v=_3rDYlBM37I",
     },
-    "hipoteses-teste-ab": {
-      title: "Como Fazer Testes AB de Produto",
-      url: "https://www.youtube.com/watch?v=zFMgpxG-chM",
-    },
     default: {
       title: "Como planejar projeto iniciante para portfólio",
       url: "https://www.youtube.com/results?search_query=projeto+iniciante+portfolio+programacao",
+    },
+    "calculadora-js": {
+      title: "Como Criar uma Calculadora com HTML, CSS e JavaScript",
+      url: "https://www.youtube.com/watch?v=42TShjXR0m0",
+    },
+    "cronometro-pomodoro": {
+      title: "Cronometro com JavaScript",
+      url: "https://www.youtube.com/watch?v=8-2kYsa2xog",
+    },
+    "jogo-memoria-cartas": {
+      title: "Jogo da memoria javascript, html e css",
+      url: "https://www.youtube.com/watch?v=0SeqdHCBYVo",
+    },
+    "buscador-cep": {
+      title: "AUTOCOMPLETAR ENDERECO PELO CEP - PROJETO HTML CSS E JAVASCRIPT",
+      url: "https://www.youtube.com/watch?v=FMaEIVdaAFo",
+    },
+    "app-clima-open-meteo": {
+      title: "Aplicacao de Clima com OpenWeather API",
+      url: "https://www.youtube.com/watch?v=VS8EBgPwsSU",
+    },
+    "api-rest-tarefas": {
+      title: "Crie uma API RESTful com Node.js e MongoDB | CRUD com Node, Express e Mongoose",
+      url: "https://www.youtube.com/watch?v=K5QaTfE5ylk",
+    },
+    "autenticacao-jwt": {
+      title: "Como usar JWT para autenticar seu app Node.js",
+      url: "https://www.youtube.com/watch?v=50CoyU79O2Y",
+    },
+    "url-shortener-api": {
+      title: "Como fazer um ENCURTADOR DE LINKS com HTML, CSS, JAVASCRIPT e PHP",
+      url: "https://www.youtube.com/watch?v=yikIQmhuHAI",
+    },
+    "chat-sala-websocket": {
+      title: "Aplicacao de Chat em React JS",
+      url: "https://www.youtube.com/watch?v=IH15jW8X-Ng",
+    },
+    "analise-dados-publicos": {
+      title: "Analise Exploratoria de Dados com Python e Pandas",
+      url: "https://www.youtube.com/watch?v=dUpyC40so4Y",
+    },
+    "modelo-ml-sentimentos": {
+      title: "Analise de Sentimento com Python e NLP",
+      url: "https://www.youtube.com/watch?v=7Z-h1dHDMao",
+    },
+    "assistente-estudos-rag": {
+      title: "Chatbot com RAG e LangChain",
+      url: "https://www.youtube.com/watch?v=8F2DvoQr3sU",
+    },
+    "chatbot-com-ia": {
+      title: "Chatbot com LangChain e OpenAI",
+      url: "https://www.youtube.com/watch?v=lG7Uxts9SXs",
+    },
+    "design-system-mini": {
+      title: "Design System do Zero no Figma",
+      url: "https://www.youtube.com/watch?v=KQd7-IVDAXI",
+    },
+    "persona-journey-mapa": {
+      title: "Como Criar Mapa de Jornada do Cliente",
+      url: "https://www.youtube.com/watch?v=X7iXPfKHEak",
+    },
+    "playwright-e2e-criticos": {
+      title: "Playwright para Automacao de Testes",
+      url: "https://www.youtube.com/watch?v=wGr5rz8WGCE",
+    },
+    "pipeline-ci-cd": {
+      title: "CI com GitHub Actions para Testes",
+      url: "https://www.youtube.com/watch?v=IM-MHFtNMHk",
     },
   };
 
