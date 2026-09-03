@@ -1,6 +1,19 @@
 -- Normalizacao dos travessoes ja gravados em public.external_events, mais o
 -- soft delete de duas duplicatas.
 --
+-- JA EXECUTADO, EM 02/09/2026. Este arquivo e registro do que foi rodado, nao
+-- tarefa pendente. Confirmado no banco na mesma data: o trigger
+-- external_events_normaliza_travessao existe e esta habilitado, e a contagem de
+-- linhas vivas com travessao e zero.
+--
+-- A VERIFICACAO 4 E RETRATO DAQUELE DIA, NAO FORMULA PERMANENTE. Ela reproduz o
+-- predicado que a rota GET /api/content/eventos tinha em 02/09 (dois ramos de
+-- data: comeca hoje ou depois, ou sem data). Na frente seguinte a rota ganhou um
+-- TERCEIRO ramo, `ends_on >= hoje`, para os eventos em andamento nao sumirem da
+-- pagina no proprio dia em que estao acontecendo. Quem reaproveitar a consulta
+-- daqui para comparar com o total da API vai encontrar um numero MENOR que o da
+-- rota, pela diferenca dos eventos em andamento (18 na medicao de 02/09).
+--
 -- COMO USAR (NAO rodar fora destas condicoes):
 --   1. Janela 05h-09h de Brasilia, logo depois do backup diario. Este arquivo
 --      ALTERA DADO EXISTENTE (UPDATE de texto e soft delete), entao a janela de
