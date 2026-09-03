@@ -556,7 +556,6 @@ export default function Eventos() {
                     value: sigla,
                     label: nome,
                   })),
-                  // TODO(Ana)
                   { value: FILTRO_INTERNACIONAL, label: "Internacional" },
                   { value: FILTRO_TODOS, label: "Todos os estados" },
                 ]}
