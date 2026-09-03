@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PIX_REFUND_COPY } from "../../shared/pixRefundCopy";
+import { createError } from "../middleware/error";
+
 
 /**
  * FIACAO das rotas de ESCRITA de usuário do admin.
@@ -28,6 +29,7 @@ const estado = vi.hoisted(() => ({
   stripeRefundList: null as unknown as ReturnType<typeof vi.fn>,
   stripeSubscriptionCancel: null as unknown as ReturnType<typeof vi.fn>,
   syncBalance: null as unknown as ReturnType<typeof vi.fn>,
+  asaasRefund: null as unknown as ReturnType<typeof vi.fn>,
 }));
 
 vi.mock("../lib/queue", () => ({
@@ -84,6 +86,13 @@ vi.mock("../lib/stripeClient", () => ({
 vi.mock("../lib/stripeSync", () => ({
   syncBalanceTransactions: (...a: unknown[]) => estado.syncBalance(...a),
 }));
+// SO `estornarPagamento` e dublado; o resto do provider fica real. O modulo
+// inteiro precisa ser mockado porque importar `providers/asaas` puxa o cliente
+// HTTP e o `env`, e o `.env` local nao tem `ASAAS_API_URL`.
+vi.mock("../providers/asaas", () => ({
+  estornarPagamento: (...a: unknown[]) => estado.asaasRefund(...a),
+}));
+
 vi.mock("../lib/proStatusCache", () => ({
   invalidateProStatusCache: (...a: unknown[]) =>
     estado.invalidateProCache(...a),
@@ -177,6 +186,10 @@ beforeEach(() => {
     processed: 0,
     upserted: 0,
     skipped: 0,
+  }));
+  estado.asaasRefund = vi.fn(async () => ({
+    status: "REFUNDED",
+    raw: { id: "pay_abc", status: "REFUNDED" },
   }));
 });
 
@@ -1016,43 +1029,243 @@ describe("POST /users/:id/refunds", () => {
     expect(estado.stripeRefundCreate).not.toHaveBeenCalled();
   });
 
-  it("cobrança do ASAAS: 409 com código próprio, nunca 404 nem 500", async () => {
-    // O 404 seria uma mensagem FALSA: a cobrança existe e está no extrato, ela
-    // só não é reembolsável POR AQUI. E a guarda é por PROVEDOR, não pelo
-    // formato do id: prefixo é o critério que casa errado no dia em que outro
-    // gateway usar as mesmas letras.
+  /** Cobranca Pix de R$ 12,90 no extrato, sem estorno nenhum ainda. */
+  function pix(over: Record<string, unknown> = {}) {
+    return linha({
+      id: "ft-pix",
+      provider: "asaas",
+      provider_transaction_id: "pay_abc",
+      stripe_charge_id: null,
+      gross_cents: 1290,
+      net_cents: 1091,
+      fee_cents: 199,
+      ...over,
+    });
+  }
+
+  it("cobrança do ASAAS é estornada pela API do provedor", async () => {
     montar({
-      finance_transactions: {
+      finance_transactions: { rows: [pix()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [] },
+      subscriptions: { rows: [] },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "pay_abc",
+      amount_cents: 1290,
+      reason: "cliente pediu",
+    });
+
+    expect(r.status).toBe(200);
+    expect(r.body.data).toMatchObject({
+      refunded: true,
+      refund_id: "pay_abc",
+      amount_cents: 1290,
+      status: "REFUNDED",
+      // NAO ha sync a fazer: o ledger vem do webhook. Dizer `true` faria a tela
+      // afirmar que o extrato ja reflete a devolucao.
+      statement_synced: false,
+      record_saved: true,
+    });
+
+    expect(estado.asaasRefund).toHaveBeenCalledTimes(1);
+    const args = estado.asaasRefund.mock.calls[0] as unknown[];
+    expect(args[0]).toBe("pay_abc");
+    expect(args[1]).toMatchObject({ descricao: "cliente pediu" });
+    // NADA foi enviado à Stripe: a cobrança nunca esteve lá.
+    expect(estado.stripeRefundCreate).not.toHaveBeenCalled();
+    // E nenhum sync da Stripe foi disparado.
+    expect(estado.syncBalance).not.toHaveBeenCalled();
+  });
+
+  it("audita a INTENÇÃO antes de chamar o Asaas", async () => {
+    montar({
+      finance_transactions: { rows: [pix()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [] },
+      subscriptions: { rows: [] },
+    });
+
+    await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "pay_abc",
+      amount_cents: 1290,
+      reason: "cliente pediu",
+    });
+
+    const audit = estado.double.de("content_audit_logs")[0];
+    expect(audit.payload!.action).toBe("refund");
+    expect(audit.payload!.resource_slug).toBe("pay_abc");
+    expect(audit.payload!.after_json).toMatchObject({ provider: "asaas" });
+  });
+
+  it("auditoria que FALHA impede o estorno: fail-closed", async () => {
+    // Sem rastro gravado, dinheiro nenhum sai. Mesmo contrato da Stripe.
+    montar({
+      finance_transactions: { rows: [pix()] },
+      content_audit_logs: { error: { message: "audit fora" } },
+      admin_refunds: { rows: [] },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "pay_abc",
+      amount_cents: 1290,
+      reason: "x",
+    });
+
+    expect(r.status).toBe(500);
+    expect(r.body.error.code).toBe("audit_failed");
+    expect(estado.asaasRefund).not.toHaveBeenCalled();
+  });
+
+  it("grava admin_refunds com as colunas do provedor", async () => {
+    montar({
+      finance_transactions: { rows: [pix()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [] },
+      subscriptions: { rows: [] },
+    });
+
+    await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "pay_abc",
+      amount_cents: 1290,
+      reason: "cliente pediu",
+    });
+
+    const insert = estado.double
+      .de("admin_refunds")
+      .find((c) => c.op === "insert")!;
+    expect(insert.payload).toMatchObject({
+      provider: "asaas",
+      provider_transaction_id: "pay_abc",
+      // O Asaas nao devolve id de estorno: o payment id E a identidade.
+      provider_refund_id: "pay_abc",
+      provider_status: "REFUNDED",
+      settlement: "asaas_api",
+      amount_cents: 1290,
+      stripe_charge_id: null,
+      stripe_refund_id: null,
+    });
+  });
+
+  it("estorno PARCIAL é recusado com código próprio", async () => {
+    // O webhook so trata `PAYMENT_REFUNDED`, nao o parcial: um parcial sairia do
+    // provedor e nunca viraria linha de ledger.
+    montar({
+      finance_transactions: { rows: [pix()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [] },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "pay_abc",
+      amount_cents: 500,
+      reason: "parcial",
+    });
+
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("asaas_partial_refund_not_supported");
+    expect(estado.asaasRefund).not.toHaveBeenCalled();
+  });
+
+  it("valor ACIMA do teto cai na recusa que já existia", async () => {
+    montar({
+      finance_transactions: { rows: [pix()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [] },
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "pay_abc",
+      amount_cents: 9999,
+      reason: "x",
+    });
+
+    expect(r.status).toBe(400);
+    expect(estado.asaasRefund).not.toHaveBeenCalled();
+  });
+
+  it("segundo pedido para a MESMA cobrança é recusado ANTES de tocar no Asaas", async () => {
+    // Duplo clique sequencial. A corrida simultanea e coberta pelo indice unico
+    // no banco, porque as duas requisicoes leem "nao existe".
+    montar({
+      finance_transactions: { rows: [pix()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: {
         rows: [
-          linha({
-            id: "ft-pix",
+          {
             provider: "asaas",
             provider_transaction_id: "pay_abc",
+            amount_cents: 1290,
+            settlement: "asaas_api",
             stripe_charge_id: null,
-            gross_cents: 1290,
-            net_cents: 1091,
-            fee_cents: 199,
-          }),
+          },
         ],
       },
     });
 
     const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
       charge_id: "pay_abc",
-      reason: "cliente pediu",
+      amount_cents: 1290,
+      reason: "x",
     });
 
     expect(r.status).toBe(409);
-    expect(r.body.error.code).toBe("refund_provider_not_stripe");
-    // A MENSAGEM E A CANONICA, e nao uma frase escrita aqui: as tres
-    // orientacoes sobre reembolso de Pix (este 409, o de /external-refunds e a
-    // dica no extrato) divergiram uma vez, e duas delas mandavam o admin para a
-    // devolucao externa, que nao aceita Pix. Afirmar a constante e o que impede
-    // a divergencia de voltar.
-    expect(r.body.error.message).toBe(PIX_REFUND_COPY);
-    // NADA foi enviado à Stripe: a cobrança nunca esteve lá.
-    expect(estado.stripeRefundCreate).not.toHaveBeenCalled();
+    expect(r.body.error.code).toBe("refund_already_requested");
+    expect(estado.asaasRefund).not.toHaveBeenCalled();
   });
+
+  it("Asaas recusando NÃO grava admin_refunds, e propaga o código nomeado", async () => {
+    montar({
+      finance_transactions: { rows: [pix()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [] },
+    });
+    estado.asaasRefund = vi.fn(async () => {
+      throw createError(
+        502,
+        "asaas_refund_rejected",
+        "O Asaas nao confirmou o estorno. Nada foi devolvido.",
+      );
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "pay_abc",
+      amount_cents: 1290,
+      reason: "x",
+    });
+
+    expect(r.status).toBe(502);
+    expect(r.body.error.code).toBe("asaas_refund_rejected");
+    expect(
+      estado.double.de("admin_refunds").filter((c) => c.op === "insert"),
+    ).toEqual([]);
+  });
+
+  it.each([["REFUND_REQUESTED"], ["REFUND_IN_PROGRESS"]])(
+    "status %s do provedor é sucesso, e vai para provider_status",
+    async (status) => {
+      montar({
+        finance_transactions: { rows: [pix()] },
+        content_audit_logs: { rows: [{}] },
+        admin_refunds: { rows: [] },
+        subscriptions: { rows: [] },
+      });
+      estado.asaasRefund = vi.fn(async () => ({ status, raw: {} }));
+
+      const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+        charge_id: "pay_abc",
+        amount_cents: 1290,
+        reason: "x",
+      });
+
+      expect(r.status).toBe(200);
+      const insert = estado.double
+        .de("admin_refunds")
+        .find((c) => c.op === "insert")!;
+      expect(insert.payload).toMatchObject({ provider_status: status });
+    },
+  );
 
   it("CONTROLE NEGATIVO: cobrança da Stripe segue reembolsável", async () => {
     montar({
