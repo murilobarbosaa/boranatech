@@ -62,22 +62,6 @@ export const DRIFT_PERMITIDO: DriftPermitido[] = [
       "Mesma origem e mesma branch das duas acima; a migration e " +
       "20260728210000_create_payment_recovery_emails.sql.",
   },
-  {
-    nome: "vw_eventos_agenda",
-    tipo: "view",
-    desde: "2026-08-28",
-    justificativa:
-      "View exposta pelo PostgREST sem rastro NENHUM no repositorio: nao " +
-      "aparece em migration nem em codigo (conferido por grep em " +
-      "supabase/migrations, server, client, shared e scripts). O nome sugere " +
-      "projecao sobre eventos, e public.external_events tem precedente da " +
-      "mesma forma, criada direto em producao pela rotina agendada de coleta " +
-      "diaria (ver o cabecalho de 20260811171556_create_external_events.sql). " +
-      "A origem NAO foi confirmada, e a entrada fica com essa ressalva " +
-      "explicita em vez de uma causa plausivel escrita como se fosse achado. " +
-      "Sai daqui quando o DDL real for lido de producao e declarado, como foi " +
-      "feito com external_events.",
-  },
 ];
 
 /** Nomes permitidos por tipo, para o guard consultar sem repetir o filtro. */
