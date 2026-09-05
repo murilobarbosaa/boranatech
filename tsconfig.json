@@ -15,12 +15,14 @@
     "moduleResolution": "bundler",
     "baseUrl": ".",
     "types": [],
+    // paths e lido pelo tsc E pelo tsx (em runtime). Nunca mapear um pacote
+    // de node_modules para um arquivo .d.* aqui: o tsx carrega o arquivo de
+    // declaracao como modulo e ele nao exporta nada. Foi o que quebrou
+    // pnpm seed:content desde o scaffold (entrada @supabase/supabase-js ->
+    // dist/index.d.cts, removida em 2026-09-05; tsc nao precisava dela).
     "paths": {
       "@/*": ["./client/src/*"],
-      "@shared/*": ["./shared/*"],
-      "@supabase/supabase-js": [
-        "./node_modules/@supabase/supabase-js/dist/index.d.cts"
-      ]
+      "@shared/*": ["./shared/*"]
     }
   }
 }
