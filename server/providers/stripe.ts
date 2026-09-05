@@ -1792,6 +1792,27 @@ async function createCheckout(
       mode: "payment",
       payment_method_types: ["boleto"],
       payment_method_options: { boleto: { expires_after_days: 3 } },
+      // CUSTOMER SEMPRE, e o padrao NAO servia. Em `mode: "payment"` o default
+      // da Stripe e `customer_creation: "if_required"`, e para boleto ela
+      // decide que nao e requerido: a sessao termina sem Customer nenhum.
+      //
+      // MEDIDO EM 31/08/2026: `provider_customer_id` nulo em 16 de 16 boletos.
+      // O campo nao e enfeite, e a chave por onde tres coisas encontram o dono:
+      // `resolveByCustomer` no sync financeiro (server/lib/stripeSync.ts), o
+      // marcador de conta excluida e a propagacao de e-mail. Sem ele, uma
+      // cobranca de boleto entra no ledger sem dono, e foi assim que a Marcela,
+      // com Pro ativo ate 22/01/2027, apareceu na fila de pagamentos orfaos sem
+      // ter problema nenhum: o dinheiro estava certo, o vinculo e que faltava.
+      //
+      // O handler ja grava (`applyBoletoPending`, `provider_customer_id:
+      // customerId`): ele so recebia `null`. A correcao e aqui, na origem.
+      //
+      // OS 16 BOLETOS ANTIGOS FICAM COMO ESTAO. Nao ha backfill possivel: a
+      // Stripe nunca criou Customer para aquelas sessoes, entao nao existe id
+      // para preencher. Inventar um, ou casar por e-mail, seria atribuir
+      // dinheiro por inferencia, que e o que `resolveOwnerFromPaymentIntent` ja
+      // recusa fazer. Eles continuam resolvendo o dono pelo payment intent.
+      customer_creation: "always",
       line_items: [
         {
           price_data: {

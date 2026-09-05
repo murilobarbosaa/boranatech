@@ -1646,8 +1646,16 @@ router.get("/billing/orphan-payments", async (_req, res, next) => {
     const [fila, foraDaFila] = await Promise.all([
       supabaseAdmin
         .from("billing_orphan_payments")
+        // `session_created_at` entrou aqui para a tela poder contar a espera do
+        // INSTANTE DO PAGAMENTO, e nao da deteccao. Os dois divergem por muito:
+        // o cron `detect-orphan-payments` roda de 6 em 6 horas e so olha uma
+        // janela recente, entao uma linha achada hoje pode ser de um pagamento
+        // de semanas atras, e a fila dizia "esperando ha 1 hora" para quem
+        // esperava ha 10 dias. A coluna ja existe na tabela e ja e preenchida
+        // por `server/lib/orphanPayments.ts:405`; ela so nunca tinha sido
+        // selecionada por esta rota.
         .select(
-          "id, stripe_session_id, stripe_charge_id, customer_email, plan_id, amount_total_cents, currency, detected_at, last_seen_at, expected_provider_subscription_id",
+          "id, stripe_session_id, stripe_charge_id, customer_email, plan_id, amount_total_cents, currency, detected_at, last_seen_at, session_created_at, expected_provider_subscription_id",
         )
         .is("resolved_at", null)
         .order("detected_at", { ascending: true }),

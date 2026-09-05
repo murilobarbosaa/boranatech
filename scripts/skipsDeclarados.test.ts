@@ -146,6 +146,18 @@ const SKIPS_DECLARADOS = [
       "(anon e authenticated SEM execute sobre auth.users) nao existem em " +
       "duplo. Pula sem BNT_AUTHRPC_PG=1; instrucoes no cabecalho do arquivo.",
   },
+  {
+    arquivo: "server/providers/subscriptionsUpsert.pg.test.ts",
+    marcador: "skipIf",
+    testesPulados: 6,
+    porque:
+      "O upsert de assinatura mira `provider_subscription_id` num ON CONFLICT, " +
+      "e o Postgres so aceita isso com indice unico COMPLETO: com indice " +
+      "parcial ele levanta 42P10 e a gravacao de TODA assinatura falha. A " +
+      "tabela tem os dois tipos hoje, e duble nenhum acusa a diferenca, " +
+      "porque quem recusa e o planejador. Pula sem BNT_PG_CONTAINER; " +
+      "instrucoes no cabecalho do arquivo.",
+  },
 ] as const;
 
 /** Total de testes que a suíte tem permissão de pular. */
@@ -205,7 +217,14 @@ describe("skips da suite: afirmar o TOTAL, nao a pertinencia", () => {
     // (server/lib/adminAuthUsersRpc.pg.test.ts), que prova contra Postgres real
     // os tipos do `returns table` e os privilegios das duas funcoes definer.
     // MEDIDO pelo proprio guard, que reprovou com "expected 17 to be 10".
-    expect(EXPECTED_SKIPPED_COUNT).toBe(17);
+    //
+    // 23 desde 03/09/2026: +6 do harness do upsert de assinatura
+    // (server/providers/subscriptionsUpsert.pg.test.ts), que prova contra
+    // Postgres real que o alvo do ON CONFLICT e um indice unico COMPLETO. Duble
+    // aceita qualquer `onConflict`; quem levanta 42P10 e o planejador, entao a
+    // diferenca so existe contra um banco. MEDIDO pelo proprio guard, que
+    // reprovou com "expected 17 to be 23".
+    expect(EXPECTED_SKIPPED_COUNT).toBe(23);
   });
 
   it("cada skip declarado desliga o numero de testes que diz desligar", () => {
