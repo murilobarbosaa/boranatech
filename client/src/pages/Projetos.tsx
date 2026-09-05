@@ -23,7 +23,6 @@ import SEO from "@/components/SEO";
 import { AiCtaLink } from "@/components/shared/AiCta";
 import { BntSelect } from "@/components/shared/BntSelect";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
-import LockedCatalogTeaser from "@/components/pro/LockedCatalogTeaser";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useProjectCompletion } from "@/hooks/useProjectCompletion";
 import ProjectValidationBlock from "@/components/projects/ProjectValidationBlock";
@@ -40,6 +39,8 @@ import { resolveProjectId } from "@shared/projects/aliases";
 import { isProjetoV2, loadProjetoV2 } from "@shared/projects/v2";
 import type { ProjetoV2Detalhe } from "@shared/projects/v2/types";
 import ProjectV2Detail from "@/components/projects/ProjectV2Detail";
+import { filtrarPorEstado } from "@/lib/projectState";
+import type { ProjectStateFilter } from "@/lib/projectState";
 
 type Projeto = (typeof projetos)[number];
 
@@ -69,6 +70,17 @@ const TECH_ALL = "Todas";
 // sentinela SO na borda; o state `area` continua "" internamente. Mesmo padrao do
 // Cursos; quirk de null preservado.
 const AREA_EMPTY_SENTINEL = "__empty__";
+
+// Ordem da caixa de selecao, e tambem a chave dos chips de filtro ativo. Sao
+// os quatro valores de ProjectStateFilter, um por um: o Record fechado faz o
+// tsc reprovar se um valor novo for acrescentado ao tipo sem rotulo aqui.
+// TODO(Ana): rotulos do filtro de estado do projeto
+const ESTADO_LABELS: Record<ProjectStateFilter, string> = {
+  todos: "Todos os estados",
+  em_andamento: "Em andamento",
+  concluidos: "Concluídos",
+  pro: "Pro",
+};
 
 // Material de video do projeto: usa o curado se existir; senao monta uma busca
 // do YouTube ESPECIFICA do projeto (titulo + tecnologia principal). Nao inventa
@@ -112,14 +124,20 @@ export default function Projetos() {
   // Fonte canonica: o catalogo estatico versionado (client/src/lib/data.ts).
   // A tabela projects do Supabase segue existindo pra outras superficies, mas
   // esta pagina nao a consome mais.
-  // Free (inclui anonimo) nao recebe os projetos premium: filtramos pelo flag
-  // `pro` ANTES de qualquer derivacao/render, entao o card travado nunca entra
-  // no DOM. Pro ve tudo.
-  const projectItems = useMemo(
-    () => (isPro ? projetos : projetos.filter((p) => p.pro !== true)),
-    [isPro],
-  );
+  // DESCOBERTA (lote 03): o catalogo inteiro entra na lista para todo mundo.
+  // Antes o projeto `pro` era filtrado ANTES do render, entao quem nao assina
+  // nao sabia que ele existia: nem pelo filtro, nem pela busca, nem pelo deep
+  // link, que caia no banner de "nao encontramos esse projeto". Agora o card
+  // aparece BLOQUEADO, com o cabecalho completo e sem expandir. O conteudo do
+  // painel continua fora do DOM para quem nao assina.
+  const projectItems = projetos;
   const lockedCount = isPro ? 0 : projetos.filter((p) => p.pro === true).length;
+  // Um projeto esta TRAVADO quando e premium e quem olha nao assina. Enquanto
+  // o status Pro nao resolveu (`loading`), trava: fecha por padrao. Isso nao
+  // esconde nada de quem assina, porque ate este lote o projeto pro nem
+  // aparecia na lista antes do status carregar, e garante que o conteudo pago
+  // nunca chegue ao DOM de quem nao assina, nem por um frame.
+  const travado = (projeto: Projeto) => projeto.pro === true && !isPro;
   // Deep-link /projetos/:id: abre o card expandido e rola ate ele. Id que nao
   // existe no catalogo mostra um banner discreto e a listagem normal.
   // Alias no deep link: /projetos/portfolio-pessoal-html-css abre
@@ -154,6 +172,11 @@ export default function Projetos() {
   >(new Map());
   useEffect(() => {
     if (!expanded || !isProjetoV2(expanded) || detalhes.has(expanded)) return;
+    // Projeto travado nao carrega detalhe: o modulo v2 E o conteudo pago, e
+    // baixa-lo colocaria no navegador de quem nao assina exatamente o que a
+    // trava existe pra reter.
+    const alvo = projetos.find((p) => p.id === expanded);
+    if (!alvo || travado(alvo)) return;
     let cancelado = false;
     const id = expanded;
     void loadProjetoV2(id)
@@ -167,9 +190,10 @@ export default function Projetos() {
     return () => {
       cancelado = true;
     };
-  }, [expanded, detalhes]);
+  }, [expanded, detalhes, isPro]);
   const [query, setQuery] = useState("");
   const [tech, setTech] = useState(TECH_ALL);
+  const [estado, setEstado] = useState<ProjectStateFilter>("todos");
   const areaSlugOptions = useMemo<(string | null)[]>(
     () => [
       AREA_ALL,
@@ -211,18 +235,30 @@ export default function Projetos() {
   }, [isPro]);
 
   const q = query.trim().toLowerCase();
-  const baseFiltered = projectItems.filter((p) => {
-    const matchArea =
-      area === AREA_ALL ||
-      (area === "" ? p.areaSlug === null : p.areaSlug === area);
-    const matchTech = tech === TECH_ALL || p.ferramentas.includes(tech);
-    const matchQuery =
-      !q ||
-      p.nome.toLowerCase().includes(q) ||
-      p.objetivo.toLowerCase().includes(q) ||
-      p.ferramentas.some((f) => f.toLowerCase().includes(q));
-    return matchArea && matchTech && matchQuery;
-  });
+  // O estado entra no MESMO estagio que area, tecnologia e busca, antes da
+  // contagem por nivel: senao "3 Iniciante" contaria projeto que o filtro de
+  // estado ja tirou da lista.
+  const estadoCtx = {
+    done: (id: string) => projectsDone.has(id),
+    etapas: (id: string) => projectStages.get(id) ?? {},
+    validado: (id: string) => validatedIds.has(id),
+  };
+  const baseFiltered = filtrarPorEstado(
+    projectItems.filter((p) => {
+      const matchArea =
+        area === AREA_ALL ||
+        (area === "" ? p.areaSlug === null : p.areaSlug === area);
+      const matchTech = tech === TECH_ALL || p.ferramentas.includes(tech);
+      const matchQuery =
+        !q ||
+        p.nome.toLowerCase().includes(q) ||
+        p.objetivo.toLowerCase().includes(q) ||
+        p.ferramentas.some((f) => f.toLowerCase().includes(q));
+      return matchArea && matchTech && matchQuery;
+    }),
+    estado,
+    estadoCtx,
+  );
   const filtered = baseFiltered.filter(
     (p) => nivel === "Todos" || p.nivel === nivel,
   );
@@ -239,6 +275,7 @@ export default function Projetos() {
     setNivel("Todos");
     setTech(TECH_ALL);
     setQuery("");
+    setEstado("todos");
   }
 
   const activeFilters: { key: string; label: string; clear: () => void }[] = [];
@@ -260,12 +297,28 @@ export default function Projetos() {
       label: `Tecnologia: ${tech}`,
       clear: () => setTech(TECH_ALL),
     });
+  if (estado !== "todos")
+    activeFilters.push({
+      key: "estado",
+      label: `Estado: ${ESTADO_LABELS[estado]}`,
+      clear: () => setEstado("todos"),
+    });
   if (q)
     activeFilters.push({
       key: "query",
       label: `Busca: "${query.trim()}"`,
       clear: () => setQuery(""),
     });
+
+  // Contadores do cabecalho. "Em andamento" sai do MESMO filtrarPorEstado que
+  // a caixa de selecao usa, em vez de uma segunda regra escrita aqui, senao o
+  // contador e o filtro poderiam discordar sobre quem esta em andamento.
+  const concluidosNaLista = completionReady
+    ? filtered.filter((p) => projectsDone.has(p.id)).length
+    : 0;
+  const emAndamentoNaLista = completionReady
+    ? filtrarPorEstado(filtered, "em_andamento", estadoCtx).length
+    : 0;
 
   const grupos = filtered.reduce<{ slug: string | null; itens: Projeto[] }[]>(
     (acc, p) => {
@@ -330,7 +383,7 @@ export default function Projetos() {
       <section className="bg-orange-50 border-b-2 border-orange-200 py-4">
         <div className="container">
           <div className="flex flex-col gap-3">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <div className="relative w-full">
                 <Search
                   className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
@@ -377,6 +430,15 @@ export default function Projetos() {
               />
               <BntSelect
                 accent="orange"
+                label="Filtrar por estado"
+                value={estado}
+                onValueChange={(v) => setEstado(v as ProjectStateFilter)}
+                options={(
+                  Object.keys(ESTADO_LABELS) as ProjectStateFilter[]
+                ).map((v) => ({ value: v, label: ESTADO_LABELS[v] }))}
+              />
+              <BntSelect
+                accent="orange"
                 label="Filtrar por tecnologia"
                 value={tech}
                 onValueChange={setTech}
@@ -420,18 +482,21 @@ export default function Projetos() {
             aria-live="polite"
           >
             {filtered.length} projeto{filtered.length !== 1 ? "s" : ""}
-            {completionReady &&
-              filtered.some((p) => projectsDone.has(p.id)) && (
-                <span className="text-emerald-700">
-                  {" "}
-                  · {filtered.filter((p) => projectsDone.has(p.id)).length}{" "}
-                  {/* TODO(Ana): label do contador de concluidos */}
-                  concluído
-                  {filtered.filter((p) => projectsDone.has(p.id)).length !== 1
-                    ? "s"
-                    : ""}
-                </span>
-              )}
+            {concluidosNaLista > 0 && (
+              <span className="text-emerald-700">
+                {" "}
+                · {concluidosNaLista}{" "}
+                {/* TODO(Ana): label do contador de concluidos */}
+                concluído{concluidosNaLista !== 1 ? "s" : ""}
+              </span>
+            )}
+            {emAndamentoNaLista > 0 && (
+              <span className="text-orange-700">
+                {" "}
+                {/* TODO(Ana): label do contador de projetos em andamento */}·{" "}
+                {emAndamentoNaLista} em andamento
+              </span>
+            )}
           </p>
           {deepLinkMissing && (
             <p className="mb-6 rounded-xl border-2 border-slate-900 bg-amber-50 px-4 py-3 text-sm font-bold text-slate-700 shadow-[3px_3px_0_var(--bnt-shadow)]">
@@ -499,6 +564,7 @@ export default function Projetos() {
                           (p) => p.id === projeto.proximoProjetoId,
                         )
                       : undefined;
+                    const cardTravado = travado(projeto);
                     const detalheV2 = detalhes.get(projeto.id);
                     // Chip de progresso no card FECHADO. So aparece quando ha
                     // etapa marcada e o projeto nao foi concluido: concluido ja
@@ -567,25 +633,47 @@ export default function Projetos() {
                           className="card-brutal overflow-hidden rounded-xl border-2 border-slate-950 bg-white transition-transform duration-200 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5"
                         >
                           <div
-                            className="flex w-full cursor-pointer items-start justify-between rounded-xl p-6 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-500"
-                            role="button"
-                            tabIndex={0}
-                            aria-expanded={expanded === projeto.id}
-                            aria-controls={`projeto-detalhe-${projeto.id}`}
-                            onClick={() => {
-                              setExpanded(
-                                expanded === projeto.id ? null : projeto.id,
-                              );
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.target !== e.currentTarget) return;
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                setExpanded(
-                                  expanded === projeto.id ? null : projeto.id,
-                                );
-                              }
-                            }}
+                            className={`flex w-full items-start justify-between rounded-xl p-6 text-left ${
+                              cardTravado
+                                ? ""
+                                : "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-500"
+                            }`}
+                            role={cardTravado ? undefined : "button"}
+                            tabIndex={cardTravado ? undefined : 0}
+                            aria-expanded={
+                              cardTravado ? undefined : expanded === projeto.id
+                            }
+                            aria-controls={
+                              cardTravado
+                                ? undefined
+                                : `projeto-detalhe-${projeto.id}`
+                            }
+                            onClick={
+                              cardTravado
+                                ? undefined
+                                : () => {
+                                    setExpanded(
+                                      expanded === projeto.id
+                                        ? null
+                                        : projeto.id,
+                                    );
+                                  }
+                            }
+                            onKeyDown={
+                              cardTravado
+                                ? undefined
+                                : (e) => {
+                                    if (e.target !== e.currentTarget) return;
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      setExpanded(
+                                        expanded === projeto.id
+                                          ? null
+                                          : projeto.id,
+                                      );
+                                    }
+                                  }
+                            }
                           >
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
@@ -686,7 +774,9 @@ export default function Projetos() {
                                 />
                               </span>
                               <span className="text-slate-400" aria-hidden>
-                                {expanded === projeto.id ? (
+                                {cardTravado ? (
+                                  <Lock className="h-5 w-5 text-amber-500" />
+                                ) : expanded === projeto.id ? (
                                   <ChevronUp className="w-5 h-5" />
                                 ) : (
                                   <ChevronDown className="w-5 h-5" />
@@ -695,9 +785,39 @@ export default function Projetos() {
                             </div>
                           </div>
 
-                          {/* Projeto pro so entra na lista renderizada pra
-                              assinante: o card travado nunca chega ao DOM. */}
-                          {expanded === projeto.id && (
+                          {/* Card travado: o cabecalho e o mesmo (nome, area,
+                              subarea, nivel, selo Pro), e no lugar do painel
+                              vai o que a assinatura abre. Nenhum campo do
+                              detalhe entra no DOM. */}
+                          {cardTravado && (
+                            <div className="border-t border-slate-100 px-6 pb-6 pt-4">
+                              <p className="flex items-start gap-2 text-sm font-semibold text-slate-600">
+                                <Lock
+                                  className="mt-0.5 h-4 w-4 shrink-0 text-amber-500"
+                                  aria-hidden
+                                />
+                                {/* TODO(Ana): copy do card de projeto Pro travado */}
+                                <span>
+                                  Este é um desafio Pro. A assinatura abre o
+                                  briefing completo, os requisitos de aceite, as
+                                  etapas com checkpoint e a validação da
+                                  entrega.
+                                </span>
+                              </p>
+                              <Link
+                                href="/planos"
+                                className="mt-4 inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-xs font-black uppercase text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5"
+                              >
+                                {/* TODO(Ana): copy do botao de assinatura no card travado */}
+                                Assinar o Pro{" "}
+                                <ArrowRight
+                                  className="h-3.5 w-3.5"
+                                  aria-hidden
+                                />
+                              </Link>
+                            </div>
+                          )}
+                          {!cardTravado && expanded === projeto.id && (
                             <div
                               id={`projeto-detalhe-${projeto.id}`}
                               role="region"
@@ -844,45 +964,7 @@ export default function Projetos() {
                                       </div>
                                     </div>
                                   </div>
-                                  {projeto.pro === true && (
-                                    <ProjectValidationBlock
-                                      projeto={projeto}
-                                      onApproved={(id) =>
-                                        setValidatedIds((prev) =>
-                                          new Set(prev).add(id),
-                                        )
-                                      }
-                                    />
-                                  )}
-                                  {completionReady && (
-                                    <div className="mt-5 border-t border-slate-100 pt-4">
-                                      <button
-                                        type="button"
-                                        aria-pressed={projectsDone.has(
-                                          projeto.id,
-                                        )}
-                                        onClick={() =>
-                                          toggleCompletion(projeto.id)
-                                        }
-                                        className={`inline-flex items-center gap-1.5 rounded-[9px] border-[2.5px] border-slate-900 px-3.5 py-2 text-sm font-extrabold shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] ${
-                                          projectsDone.has(projeto.id)
-                                            ? "bg-emerald-500 text-white shadow-[2px_2px_0_#047857]"
-                                            : "bg-white text-slate-900"
-                                        }`}
-                                      >
-                                        {projectsDone.has(projeto.id) && (
-                                          <Check
-                                            className="h-4 w-4"
-                                            strokeWidth={4}
-                                          />
-                                        )}
-                                        {/* TODO(Ana): labels do toggle de conclusao de projeto */}
-                                        {projectsDone.has(projeto.id)
-                                          ? "Projeto concluído"
-                                          : "Marcar como concluído"}
-                                      </button>
-                                    </div>
-                                  )}
+                                  {entrega}
                                 </>
                               )}
                             </div>
@@ -895,14 +977,6 @@ export default function Projetos() {
               </section>
             ))}
           </div>
-          {!isPro && !loading && lockedCount > 0 ? (
-            <LockedCatalogTeaser
-              count={lockedCount}
-              noun="projetos"
-              accentShadow={getAreaAccent("Carreira")}
-              className="mt-10"
-            />
-          ) : null}
 
           {filtered.length === 0 && (
             <div className="text-center py-16">
