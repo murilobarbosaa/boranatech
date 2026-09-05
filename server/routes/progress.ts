@@ -6,6 +6,8 @@ import {
   resolveProjectId,
 } from "../../shared/projects/aliases";
 import { projetos } from "../../shared/projects/catalog";
+import { parseProjectProgressState } from "../../shared/projects/progressState";
+import { loadProjetoV2 } from "../../shared/projects/v2";
 import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import {
@@ -141,7 +143,26 @@ router.put("/:context/:itemKey", async (req, res, next) => {
     }
 
     const { state } = req.body as { state?: unknown };
-    if (
+
+    // project_progress tem shape: { done, etapas }. A validacao mora em
+    // shared/projects/progressState.ts porque o client escreve o mesmo objeto
+    // e precisa concordar; regra duplicada nos dois lados divergiria no
+    // primeiro campo novo. `etapaIds` null quando o projeto nao e v2, e ai
+    // qualquer etapa e recusada (fail closed): aceitar em silencio deixaria o
+    // banco guardar checkpoint de etapa que nao existe.
+    let stateParaGravar: Record<string, unknown> =
+      (state as Record<string, unknown> | undefined) ?? {};
+    if (context === "project_progress") {
+      const detalhe = await loadProjetoV2(itemKey);
+      const parsed = parseProjectProgressState(
+        state,
+        detalhe ? detalhe.etapas.map((e) => e.id) : null,
+      );
+      if (!parsed.ok) {
+        return next(createError(400, "invalid_request", parsed.reason));
+      }
+      stateParaGravar = { ...parsed.value };
+    } else if (
       state !== undefined &&
       (typeof state !== "object" || state === null || Array.isArray(state))
     ) {
@@ -157,7 +178,7 @@ router.put("/:context/:itemKey", async (req, res, next) => {
           user_id: req.user!.id,
           context,
           item_key: itemKey,
-          state: (state as Record<string, unknown> | undefined) ?? {},
+          state: stateParaGravar,
         },
         { onConflict: "user_id,context,item_key" },
       )
@@ -178,7 +199,7 @@ router.put("/:context/:itemKey", async (req, res, next) => {
             type: context,
             slug: itemKey,
             userId: req.user!.id,
-            state: (state as Record<string, unknown> | undefined) ?? {},
+            state: stateParaGravar,
           },
         }),
       );

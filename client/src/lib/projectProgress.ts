@@ -39,6 +39,54 @@ export function saveProjectProgress(ids: Set<string>): void {
   }
 }
 
+// Checkpoints de etapa do anonimo. Chave separada do array de concluidos
+// para nao mudar o formato daquele, que ja esta em navegador de gente.
+const STAGES_KEY = "bora-na-tech:project-stages";
+
+export type ProjectStagesLocal = Record<string, Record<string, string>>;
+
+export function loadProjectStages(): ProjectStagesLocal {
+  try {
+    const raw = localStorage.getItem(STAGES_KEY);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+      return {};
+    // Alias resolvido na LEITURA, como no array de concluidos: o bundle antigo
+    // pode ter gravado id fundido. Quando os dois lados existem, vence o que
+    // tem mais etapas marcadas, que e o mais adiantado.
+    const saida: ProjectStagesLocal = {};
+    for (const [id, etapas] of Object.entries(parsed)) {
+      if (!etapas || typeof etapas !== "object" || Array.isArray(etapas))
+        continue;
+      const canonico = resolveProjectId(id);
+      const atual = saida[canonico];
+      const novo = etapas as Record<string, string>;
+      if (!atual || Object.keys(novo).length > Object.keys(atual).length)
+        saida[canonico] = novo;
+    }
+    return saida;
+  } catch {
+    return {};
+  }
+}
+
+export function saveProjectStages(stages: ProjectStagesLocal): void {
+  try {
+    localStorage.setItem(STAGES_KEY, JSON.stringify(stages));
+  } catch {
+    // Storage indisponivel: mesmo comportamento do array de concluidos.
+  }
+}
+
+export function clearProjectStages(): void {
+  try {
+    localStorage.removeItem(STAGES_KEY);
+  } catch {
+    // best-effort
+  }
+}
+
 export function clearProjectProgress(): void {
   try {
     localStorage.removeItem(KEY);
