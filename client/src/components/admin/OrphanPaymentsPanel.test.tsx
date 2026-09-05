@@ -343,3 +343,78 @@ describe("cobranças que NÃO cabem nesta fila", () => {
     expect(screen.queryByTestId("orfaos-nao-enfileiraveis")).toBeNull();
   });
 });
+
+/**
+ * DE ONDE A ESPERA E CONTADA.
+ *
+ * A fila contava de `detected_at`, que e quando o cron VIU o problema, e nao
+ * quando a pessoa pagou. `detect-orphan-payments` roda de 6 em 6 horas sobre
+ * uma janela recente, entao um pagamento de dez dias atras podia aparecer como
+ * "esperando ha 1 hora": um numero plausivel, com a mesma cara de certo, sobre
+ * a unica pergunta que a fila existe para responder (quem espera ha mais
+ * tempo).
+ *
+ * Os dois casos abaixo sao um par, de proposito. O primeiro prova que a origem
+ * certa e usada quando existe; o segundo, que a ausencia dela nao vira um
+ * numero inventado, e sim o rotulo que diz que aquilo e a fila.
+ */
+describe("a espera vem do pagamento, nao da deteccao", () => {
+  const HORA = 60 * 60 * 1000;
+  const DIA = 24 * HORA;
+
+  function linhaComDatas(
+    over: Record<string, unknown>,
+  ): Record<string, unknown> {
+    return { ...LINHA, ...over };
+  }
+
+  it("com session_created_at, conta do PAGAMENTO (10 dias, nao 1 hora)", async () => {
+    const agora = Date.now();
+    comLista([
+      linhaComDatas({
+        session_created_at: new Date(agora - 10 * DIA).toISOString(),
+        detected_at: new Date(agora - 1 * HORA).toISOString(),
+      }),
+    ]);
+
+    await montar();
+
+    // As duas datas estao na mesma linha: se a implementacao voltar a ler
+    // `detected_at`, sai "1 hora" e este caso quebra.
+    expect(await screen.findByText(/pagou há 10 dias/)).toBeTruthy();
+    expect(screen.queryByText(/1 hora/)).toBeNull();
+  });
+
+  it("sem session_created_at, cai para a deteccao COM outro rotulo", async () => {
+    const agora = Date.now();
+    comLista([
+      linhaComDatas({
+        session_created_at: null,
+        detected_at: new Date(agora - 3 * HORA).toISOString(),
+      }),
+    ]);
+
+    await montar();
+
+    expect(await screen.findByText(/na fila há 3 horas/)).toBeTruthy();
+    // O rotulo do pagamento NAO aparece: dizer "pagou ha 3 horas" sobre a
+    // deteccao seria afirmar um instante que ninguem mediu.
+    expect(screen.queryByText(/pagou há/)).toBeNull();
+  });
+
+  it("resposta ANTIGA do backend (campo ausente) se comporta como nulo", async () => {
+    // Janela de deploy: o front novo sobe antes do backend, e por 1 a 3 minutos
+    // a resposta nao traz `session_created_at`. Ausente e nulo caem no mesmo
+    // ramo; o que nao pode e a linha sumir ou o texto virar "undefined".
+    const agora = Date.now();
+    const { session_created_at: _ignorado, ...semCampo } = linhaComDatas({
+      session_created_at: null,
+      detected_at: new Date(agora - 2 * DIA).toISOString(),
+    });
+    comLista([semCampo]);
+
+    await montar();
+
+    expect(await screen.findByText(/na fila há 2 dias/)).toBeTruthy();
+  });
+});

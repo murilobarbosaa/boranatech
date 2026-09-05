@@ -33,6 +33,23 @@ export interface OrphanPaymentRow {
   currency: string | null;
   detected_at: string;
   last_seen_at: string | null;
+  /**
+   * Instante do PAGAMENTO, que e o que a fila precisa contar.
+   *
+   * `detected_at` e o instante em que o cron viu o problema, e ele nao serve
+   * como origem da espera: `detect-orphan-payments` roda de 6 em 6 horas sobre
+   * uma janela recente, entao uma linha achada hoje pode ser de um pagamento
+   * de semanas atras. Com a espera contada da deteccao, a tela dizia
+   * "esperando ha 1 hora" para quem esperava ha 10 dias, e a fila (ordenada
+   * pelo mais antigo) mentia sobre quem vem antes.
+   *
+   * OPCIONAL, e nulo e um valor legitimo. A rota passou a seleciona-lo neste
+   * mesmo commit, entao na janela de deploy a resposta antiga nao o traz; e as
+   * linhas gravadas antes da coluna existir tem NULL no banco. Os dois casos
+   * caem no mesmo lugar: espera contada de `detected_at`, com o rotulo dizendo
+   * que aquilo e a fila, e nao o pagamento.
+   */
+  session_created_at?: string | null;
   expected_provider_subscription_id: string | null;
 }
 
@@ -406,8 +423,25 @@ export function OrphanPaymentsPanel() {
                       {chave.id}
                     </p>
                   ) : null}
+                  {/*
+                    DOIS ROTULOS, e nao um texto so com a data trocada por baixo.
+                    "esperando ha X" nao diz de onde X vem, e as duas origens
+                    respondem perguntas diferentes: o pagamento e quanto tempo a
+                    PESSOA espera, a deteccao e quanto tempo o caso esta na fila.
+                    Com um rotulo unico, a linha sem `session_created_at` diria
+                    um numero menor com a mesma cara de certo, que e o defeito
+                    original.
+
+                    TODO(Ana): as linhas gravadas antes da coluna existir ficam
+                    com NULL e caem no rotulo de fila. Da para preencher a partir
+                    da Stripe, mas e UPDATE em dado preexistente, ou seja, exige
+                    a janela de 05h-09h com backup COMPLETED, e a decisao de
+                    fazer ou nao e sua.
+                  */}
                   <p className="text-xs font-bold uppercase tracking-wide text-amber-700">
-                    esperando há {esperaDesde(linha.detected_at, agora)}
+                    {linha.session_created_at
+                      ? `pagou há ${esperaDesde(linha.session_created_at, agora)}`
+                      : `na fila há ${esperaDesde(linha.detected_at, agora)}`}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
