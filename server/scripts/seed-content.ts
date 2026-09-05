@@ -28,6 +28,78 @@ function loadEnvFile() {
 
 loadEnvFile();
 
+/**
+ * Seletor de seeder: `--only=projects` ou `--only projects`, aceitando lista
+ * separada por virgula (`--only=projects,platforms`). Sem o flag, roda os
+ * seis, na ordem de sempre.
+ *
+ * Existe porque os seeders NAO sao independentes em risco. `seedRoadmaps`
+ * apaga e reinsere `roadmap_steps`, e essa tabela e lida em runtime pelo
+ * verificador de badges (server/lib/badgeChecker.ts conta as etapas pra
+ * decidir "trilha concluida"), por server/routes/me.ts e pelo pool de
+ * contexto do usuario. Atualizar a tabela `projects` depois de uma mudanca de
+ * catalogo nao tem motivo nenhum pra reescrever as etapas das trilhas e
+ * arriscar o progresso de quem esta no meio de uma.
+ *
+ * A validacao acontece AQUI, antes da guarda de ambiente e antes de qualquer
+ * cliente do Supabase existir: nome errado sai com 1 sem chance de encostar
+ * no banco.
+ */
+const SEEDERS = [
+  "areas",
+  "technologies",
+  "courses",
+  "platforms",
+  "projects",
+  "roadmaps",
+] as const;
+type SeederName = (typeof SEEDERS)[number];
+
+function parseOnly(argv: string[]): SeederName[] {
+  const bruto: string[] = [];
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg.startsWith("--only=")) bruto.push(arg.slice("--only=".length));
+    else if (arg === "--only") {
+      const proximo = argv[i + 1];
+      if (proximo === undefined || proximo.startsWith("--")) {
+        console.error(
+          "[seed] --only exige um nome. Validos:",
+          SEEDERS.join(", "),
+        );
+        process.exit(1);
+      }
+      bruto.push(proximo);
+      i += 1;
+    }
+  }
+  if (bruto.length === 0) return [...SEEDERS];
+
+  const pedidos = bruto
+    .flatMap((valor) => valor.split(","))
+    .map((nome) => nome.trim())
+    .filter((nome) => nome.length > 0);
+
+  const invalidos = pedidos.filter(
+    (nome) => !(SEEDERS as readonly string[]).includes(nome),
+  );
+  if (invalidos.length > 0) {
+    console.error(
+      `[seed] Seeder desconhecido: ${invalidos.join(", ")}. Validos: ${SEEDERS.join(", ")}`,
+    );
+    process.exit(1);
+  }
+  if (pedidos.length === 0) {
+    console.error("[seed] --only exige um nome. Validos:", SEEDERS.join(", "));
+    process.exit(1);
+  }
+  // Ordem ORIGINAL, nao a que o usuario digitou: os seeders assumem a ordem
+  // de main() (areas antes de roadmaps, por exemplo).
+  return SEEDERS.filter((nome) => pedidos.includes(nome));
+}
+
+const SELECIONADOS = parseOnly(process.argv.slice(2));
+
 const supabaseUrl = process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -282,7 +354,8 @@ async function despublicarProjetosForaDoCatalogo() {
       );
       continue;
     }
-    for (const slug of lote) console.log(`[seed] Projeto despublicado: ${slug}`);
+    for (const slug of lote)
+      console.log(`[seed] Projeto despublicado: ${slug}`);
     despublicados += lote.length;
   }
   console.log(
@@ -355,13 +428,21 @@ async function seedRoadmaps() {
 }
 
 async function main() {
-  console.log("[seed] Iniciando seed completo...");
-  await seedAreas();
-  await seedTechnologies();
-  await seedCourses();
-  await seedPlatforms();
-  await seedProjects();
-  await seedRoadmaps();
+  const porNome: Record<SeederName, () => Promise<void>> = {
+    areas: seedAreas,
+    technologies: seedTechnologies,
+    courses: seedCourses,
+    platforms: seedPlatforms,
+    projects: seedProjects,
+    roadmaps: seedRoadmaps,
+  };
+  const completo = SELECIONADOS.length === SEEDERS.length;
+  console.log(
+    completo
+      ? "[seed] Iniciando seed completo..."
+      : `[seed] executando: ${SELECIONADOS.join(", ")}`,
+  );
+  for (const nome of SELECIONADOS) await porNome[nome]();
   if (seedErrors > 0) {
     console.error(
       `[seed] Seed finalizado com ${seedErrors} erro(s). Verifique se as tabelas foram criadas no Supabase.`,
