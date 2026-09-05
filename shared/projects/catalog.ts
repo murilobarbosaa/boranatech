@@ -11,6 +11,12 @@
 // a area-mae. A garantia esta em client/src/lib/projectAreaGroup.test.ts, que
 // afirma o conjunto nos DOIS sentidos (todo areaSlug e area-mae, e nenhum
 // areaSlug e slug de subarea de ninguem).
+//
+// REGRA DO VIDEO: `ajuda.video` e SEMPRE um video real (youtube.com/watch ou
+// youtu.be). Busca do YouTube (results?search_query) NUNCA entra no catalogo:
+// a pagina ja gera uma busca sozinha quando nao ha video curado, e um link de
+// busca gravado aqui e indistinguivel de curadoria de verdade. O guard de
+// catalog.test.ts recusa.
 
 // Tier do catalogo de projetos: sem `pro` = gratuito (todos os projetos
 // vinculados a trilhas sao gratuitos por design); `pro: true` = desafio
@@ -31,6 +37,66 @@ export type ProjetoRequisito = {
   descricao: string;
   verificacao: string;
 };
+
+// ===== Schema v2 do projeto (lote 02) =====
+// O projeto deixa de ser cinco frases e vira uma missao com blocos. Os campos
+// abaixo sao todos OPCIONAIS no tipo e obrigatorios EM CONJUNTO no guard: ver
+// o comentario de `briefing` em ProjetoCatalogo.
+
+// Entrega esperada do projeto. Decide o formulario de entrega e quais
+// verificacoes automaticas fazem sentido (lote 04).
+export type ProjetoTipoEntrega =
+  | "repo_deploy"
+  | "repo"
+  | "figma"
+  | "notebook"
+  | "documento"
+  | "dashboard";
+
+export type ProjetoBriefing = {
+  contexto: string;
+  aprende: string[];
+  preRequisitos: Array<{ rotulo: string; href: string }>;
+  tempoEstimado: { horas: [number, number]; semanas?: [number, number] };
+};
+
+export type ProjetoEtapa = {
+  id: string;
+  titulo: string;
+  tempo: string;
+  oQueFazer: string[];
+  prontoQuando: string;
+};
+
+export type ProjetoKitItem = {
+  tipo:
+    | "figma"
+    | "dataset"
+    | "api"
+    | "repo_base"
+    | "modelo"
+    | "checklist"
+    | "link";
+  titulo: string;
+  url?: string;
+  nota?: string;
+};
+
+export type ProjetoAjuda = {
+  video?: { titulo: string; url: string };
+  trilha?: { slug: string; nodeIds: string[] };
+  termos?: string[];
+};
+
+export type ProjetoVerificacaoAuto =
+  | "deploy_responde"
+  | "repo_publico"
+  | "readme_existe"
+  | "readme_tem_link_deploy"
+  | "min_commits_5"
+  | `arquivo:${string}`
+  | `pasta:${string}`
+  | "artefato_responde";
 
 export type ProjetoCatalogo = {
   id: string;
@@ -54,6 +120,25 @@ export type ProjetoCatalogo = {
   proximoProjetoId?: string;
   pro?: true;
   requisitos?: ProjetoRequisito[];
+  // ===== v2 =====
+  // Uma entrada e v2 quando tem `briefing`. Presente ele, o guard de
+  // catalog.test.ts EXIGE os demais blocos (tipoEntrega, requisitos, etapas),
+  // porque meia missao na tela e pior que a versao antiga inteira.
+  //
+  // `requisitos` passa a valer para TODO projeto v2, nao so para os `pro`: era
+  // o contrato da validacao por leitor de GitHub e vira tambem o criterio de
+  // aceite que a pessoa le antes de comecar.
+  //
+  // Os campos v1 (objetivo, passosSimplificados, entregavel, comoPublicar,
+  // sugestaoLinkedIn, proximoProjeto) seguem OBRIGATORIOS enquanto a pagina os
+  // renderiza. A remocao deles e a fase de contract, depois de todas as
+  // entradas serem v2 e da interface nova estar no ar.
+  tipoEntrega?: ProjetoTipoEntrega;
+  briefing?: ProjetoBriefing;
+  etapas?: ProjetoEtapa[];
+  kit?: ProjetoKitItem[];
+  ajuda?: ProjetoAjuda;
+  verificacaoAutomatica?: ProjetoVerificacaoAuto[];
 };
 
 export const projetos: ProjetoCatalogo[] = [
