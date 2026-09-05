@@ -15,7 +15,11 @@ import { describe, expect, it } from "vitest";
 // unica coisa que separa as duas situacoes.
 //
 // O client pode importar `@shared/projects/v2` (o indice, que so tem os ids e
-// os loaders) e `@shared/projects/v2/types`. Nada mais.
+// os loaders) e `@shared/projects/v2/types`. Nada mais: nem `all`, nem
+// `all.generated`, nem `registry.generated`, nem um modulo de projeto direto.
+// O `registry.generated` chega ao client de qualquer jeito, pelo indice, mas
+// importa-lo direto seria pular a fachada e deixar de pegar a proxima coisa
+// que o indice acrescentar.
 
 const CLIENT_SRC = path.resolve(import.meta.dirname, "..");
 const PERMITIDOS = new Set([

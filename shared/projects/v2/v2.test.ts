@@ -1,3 +1,5 @@
+import { readdirSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { dictionaryTerms } from "../../glossaryData";
@@ -262,6 +264,38 @@ describe("projetos v2", () => {
       expect(d?.id, `o modulo de ${id} declara outro id`).toBe(id);
     }
     expect(await loadProjetoV2("nao-existe")).toBeNull();
+  });
+
+  it("12b. o nome do arquivo de cada modulo e igual ao id que ele declara", () => {
+    // O gerador deriva PROJETOS_V2_IDS do NOME DO ARQUIVO. Se o `id` dentro do
+    // modulo divergir, o registro aponta para um id que o catalogo nao tem e o
+    // loader devolve um detalhe com outro id, sem erro de tipo.
+    const dir = path.resolve(import.meta.dirname);
+    const arquivos = readdirSync(dir)
+      .filter((n) => n.endsWith(".ts"))
+      .filter(
+        (n) =>
+          ![
+            "types.ts",
+            "index.ts",
+            "all.ts",
+            "registry.generated.ts",
+            "all.generated.ts",
+          ].includes(n) && !n.endsWith(".test.ts"),
+      )
+      .map((n) => n.slice(0, -3))
+      .sort();
+    expect(arquivos, "arquivos de modulo divergem de PROJETOS_V2_IDS").toEqual(
+      Array.from(PROJETOS_V2_IDS).sort(),
+    );
+
+    const ruins = PROJETOS_V2.filter((d) => !arquivos.includes(d.id)).map(
+      (d) => d.id,
+    );
+    expect(
+      ruins,
+      `modulos cujo id nao bate com o nome do arquivo (${ruins.length}): ${ruins.join(", ")}`,
+    ).toEqual([]);
   });
 
   it("13. isProjetoV2 acerta nos tres casos", () => {
