@@ -100,12 +100,16 @@ function parseOnly(argv: string[]): SeederName[] {
 
 const SELECIONADOS = parseOnly(process.argv.slice(2));
 
-const supabaseUrl = process.env.SUPABASE_URL;
+// Mesmo par de nomes que server/lib/env.ts (requireEnv("SUPABASE_URL",
+// ["VITE_SUPABASE_URL"])) e os cinco scripts de scripts/ ja aceitam. Esta
+// seed era o UNICO ponto do repositorio que exigia so o primeiro nome, e o
+// .env usa o segundo: por isso ela parava na guarda mesmo com tudo no lugar.
+const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !serviceRoleKey) {
   console.error(
-    "[seed] SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são obrigatórios.",
+    "[seed] SUPABASE_URL (ou VITE_SUPABASE_URL) e SUPABASE_SERVICE_ROLE_KEY são obrigatórios.",
   );
   process.exit(1);
 }
