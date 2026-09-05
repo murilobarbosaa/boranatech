@@ -37,6 +37,9 @@ import {
   normalizeProjectAreaParam,
 } from "@/lib/projectAreaGroup";
 import { resolveProjectId } from "@shared/projects/aliases";
+import { isProjetoV2, loadProjetoV2 } from "@shared/projects/v2";
+import type { ProjetoV2Detalhe } from "@shared/projects/v2/types";
+import ProjectV2Detail from "@/components/projects/ProjectV2Detail";
 
 type Projeto = (typeof projetos)[number];
 
@@ -93,8 +96,10 @@ export default function Projetos() {
   const { isPro, loading } = useSubscription();
   const {
     done: projectsDone,
+    stages: projectStages,
     ready: completionReady,
     toggle: toggleCompletion,
+    toggleStage,
   } = useProjectCompletion();
   const search = useSearch();
   const params = useParams<{ id?: string }>();
@@ -141,6 +146,28 @@ export default function Projetos() {
     });
     return () => cancelAnimationFrame(raf);
   }, [deepLinkProject]);
+  // Detalhe v2 carregado SOB DEMANDA, so quando o card daquele projeto abre.
+  // Nao no topo do modulo, nao num efeito sem condicao: e isso que mantem o
+  // detalhe fora do chunk compartilhado (medido no lote 02b).
+  const [detalhes, setDetalhes] = useState<
+    Map<string, ProjetoV2Detalhe | "erro">
+  >(new Map());
+  useEffect(() => {
+    if (!expanded || !isProjetoV2(expanded) || detalhes.has(expanded)) return;
+    let cancelado = false;
+    const id = expanded;
+    void loadProjetoV2(id)
+      .then((d) => {
+        if (cancelado) return;
+        setDetalhes((prev) => new Map(prev).set(id, d ?? "erro"));
+      })
+      .catch(() => {
+        if (!cancelado) setDetalhes((prev) => new Map(prev).set(id, "erro"));
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [expanded, detalhes]);
   const [query, setQuery] = useState("");
   const [tech, setTech] = useState(TECH_ALL);
   const areaSlugOptions = useMemo<(string | null)[]>(
@@ -472,6 +499,61 @@ export default function Projetos() {
                           (p) => p.id === projeto.proximoProjetoId,
                         )
                       : undefined;
+                    const detalheV2 = detalhes.get(projeto.id);
+                    // Chip de progresso no card FECHADO. So aparece quando ha
+                    // etapa marcada e o projeto nao foi concluido: concluido ja
+                    // tem o proprio selo, e zero de N nao informa nada.
+                    const marcadasDoCard = projectStages.get(projeto.id);
+                    const etapasDoCard =
+                      marcadasDoCard &&
+                      Object.keys(marcadasDoCard).length > 0 &&
+                      !projectsDone.has(projeto.id) &&
+                      detalheV2 !== undefined &&
+                      detalheV2 !== "erro"
+                        ? {
+                            feitas: detalheV2.etapas.filter(
+                              (e) => e.id in marcadasDoCard,
+                            ).length,
+                            total: detalheV2.etapas.length,
+                          }
+                        : null;
+                    // O bloco de entrega e o mesmo nas duas versoes: na v2 ele
+                    // entra como children do componente; na v1 fica no fim do
+                    // painel, onde sempre esteve.
+                    const entrega = (
+                      <>
+                        {projeto.pro === true && (
+                          <ProjectValidationBlock
+                            projeto={projeto}
+                            onApproved={(id) =>
+                              setValidatedIds((prev) => new Set(prev).add(id))
+                            }
+                          />
+                        )}
+                        {completionReady && (
+                          <div className="mt-5 border-t border-slate-100 pt-4">
+                            <button
+                              type="button"
+                              aria-pressed={projectsDone.has(projeto.id)}
+                              onClick={() => toggleCompletion(projeto.id)}
+                              className={`inline-flex items-center gap-1.5 rounded-[9px] border-[2.5px] border-slate-900 px-3.5 py-2 text-sm font-extrabold shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] ${
+                                projectsDone.has(projeto.id)
+                                  ? "bg-emerald-500 text-white shadow-[2px_2px_0_#047857]"
+                                  : "bg-white text-slate-900"
+                              }`}
+                            >
+                              {projectsDone.has(projeto.id) && (
+                                <Check className="h-4 w-4" strokeWidth={4} />
+                              )}
+                              {/* TODO(Ana): labels do toggle de conclusao de projeto */}
+                              {projectsDone.has(projeto.id)
+                                ? "Projeto concluído"
+                                : "Marcar como concluído"}
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    );
                     return (
                       <div
                         key={projeto.id}
@@ -540,6 +622,13 @@ export default function Projetos() {
                                 >
                                   {projeto.nivel}
                                 </span>
+                                {etapasDoCard !== null && (
+                                  <span className="inline-flex items-center rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xs font-bold text-slate-600">
+                                    {/* TODO(Ana): chip de progresso por etapas no card */}
+                                    {etapasDoCard.feitas} de{" "}
+                                    {etapasDoCard.total} etapas
+                                  </span>
+                                )}
                                 {projeto.pro === true && (
                                   <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-2 py-0.5 text-xs font-black text-ink-on-accent">
                                     <ProStarIcon className="h-3 w-3" />
@@ -615,147 +704,186 @@ export default function Projetos() {
                               aria-label={`Detalhes de ${projeto.nome}`}
                               className="px-6 pb-6 border-t border-slate-100 pt-4"
                             >
-                              <div className="grid md:grid-cols-2 gap-6">
-                                <div>
-                                  {/* Ferramentas */}
-                                  <div className="mb-4">
-                                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-                                      Ferramentas
-                                    </p>
-                                    <div className="flex flex-wrap gap-1">
-                                      {projeto.ferramentas.map((f) => (
-                                        <span
-                                          key={f}
-                                          className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-mono"
-                                        >
-                                          {f}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-
-                                  {/* Passo a passo */}
-                                  <div>
-                                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-                                      Passo a passo
-                                    </p>
-                                    <ol className="space-y-2">
-                                      {projeto.passosSimplificados.map(
-                                        (passo, i) => (
-                                          <li
-                                            key={i}
-                                            className="flex items-start gap-2 text-sm text-slate-700"
-                                          >
-                                            <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                                              {i + 1}
-                                            </span>
-                                            {passo}
-                                          </li>
-                                        ),
-                                      )}
-                                    </ol>
-                                  </div>
-                                </div>
-
-                                <div>
-                                  <a
-                                    href={projectHelpVideo(projeto).url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="card-brutal mb-4 flex items-start gap-3 rounded-lg border-amber-300 bg-amber-50 p-4"
-                                  >
-                                    <PlayCircle className="mt-0.5 h-5 w-5 shrink-0 text-slate-900" />
-                                    <div>
-                                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                        Vídeo de ajuda
-                                      </p>
-                                      <p className="text-sm font-bold text-slate-900">
-                                        {projectHelpVideo(projeto).title}
-                                      </p>
-                                      <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-slate-950">
-                                        Assistir referência{" "}
-                                        <ExternalLink className="h-3 w-3" />
-                                      </span>
-                                    </div>
-                                  </a>
-                                  {/* Entregável */}
-                                  <div className="card-brutal bg-orange-50 rounded-lg p-4 mb-4 border-orange-200">
-                                    <p className="text-xs font-medium text-orange-700 uppercase tracking-wide mb-1">
-                                      Entregável final
-                                    </p>
-                                    <p className="text-sm text-slate-700">
-                                      {projeto.entregavel}
-                                    </p>
-                                    <p className="text-xs text-slate-500 mt-1">
-                                      📤 Publicar em: {projeto.comoPublicar}
-                                    </p>
-                                  </div>
-
-                                  {/* LinkedIn */}
-                                  <div className="card-brutal bg-orange-50 rounded-lg p-4 border-orange-200">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <Lightbulb className="w-4 h-4 text-orange-700" />
-                                      <p className="text-xs font-medium text-orange-700 uppercase tracking-wide">
-                                        Sugestão de post no LinkedIn
-                                      </p>
-                                    </div>
-                                    <p className="text-xs text-slate-700 italic">
-                                      "{projeto.sugestaoLinkedIn}"
-                                    </p>
-                                  </div>
-
-                                  <div className="mt-4 text-sm text-slate-700">
-                                    <span className="font-medium">
-                                      Sugestão pra praticar depois:
-                                    </span>{" "}
-                                    {proximo ? (
-                                      <Link
-                                        href={`/projetos/${proximo.id}`}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="rounded font-medium text-orange-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
-                                      >
-                                        {proximo.nome}
-                                      </Link>
-                                    ) : (
-                                      <span>{projeto.proximoProjeto}</span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              {projeto.pro === true && (
-                                <ProjectValidationBlock
+                              {isProjetoV2(projeto.id) &&
+                              detalheV2 !== undefined &&
+                              detalheV2 !== "erro" ? (
+                                <ProjectV2Detail
                                   projeto={projeto}
-                                  onApproved={(id) =>
-                                    setValidatedIds((prev) =>
-                                      new Set(prev).add(id),
-                                    )
+                                  detalhe={detalheV2}
+                                  etapasMarcadas={
+                                    projectStages.get(projeto.id) ?? {}
                                   }
-                                />
-                              )}
-                              {completionReady && (
-                                <div className="mt-5 border-t border-slate-100 pt-4">
-                                  <button
-                                    type="button"
-                                    aria-pressed={projectsDone.has(projeto.id)}
-                                    onClick={() => toggleCompletion(projeto.id)}
-                                    className={`inline-flex items-center gap-1.5 rounded-[9px] border-[2.5px] border-slate-900 px-3.5 py-2 text-sm font-extrabold shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] ${
-                                      projectsDone.has(projeto.id)
-                                        ? "bg-emerald-500 text-white shadow-[2px_2px_0_#047857]"
-                                        : "bg-white text-slate-900"
-                                    }`}
-                                  >
-                                    {projectsDone.has(projeto.id) && (
-                                      <Check
-                                        className="h-4 w-4"
-                                        strokeWidth={4}
-                                      />
-                                    )}
-                                    {/* TODO(Ana): labels do toggle de conclusao de projeto */}
-                                    {projectsDone.has(projeto.id)
-                                      ? "Projeto concluído"
-                                      : "Marcar como concluído"}
-                                  </button>
+                                  onToggleEtapa={(etapaId) =>
+                                    toggleStage(projeto.id, etapaId)
+                                  }
+                                  proximo={
+                                    proximo
+                                      ? { id: proximo.id, nome: proximo.nome }
+                                      : undefined
+                                  }
+                                >
+                                  {entrega}
+                                </ProjectV2Detail>
+                              ) : isProjetoV2(projeto.id) &&
+                                detalheV2 === undefined ? (
+                                <div
+                                  className="space-y-3"
+                                  aria-busy="true"
+                                  aria-live="polite"
+                                >
+                                  <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100" />
+                                  <div className="h-4 w-full animate-pulse rounded bg-slate-100" />
+                                  <div className="h-24 w-full animate-pulse rounded bg-slate-100" />
                                 </div>
+                              ) : (
+                                <>
+                                  <div className="grid md:grid-cols-2 gap-6">
+                                    <div>
+                                      {/* Ferramentas */}
+                                      <div className="mb-4">
+                                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
+                                          Ferramentas
+                                        </p>
+                                        <div className="flex flex-wrap gap-1">
+                                          {projeto.ferramentas.map((f) => (
+                                            <span
+                                              key={f}
+                                              className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-mono"
+                                            >
+                                              {f}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+
+                                      {/* Passo a passo */}
+                                      <div>
+                                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
+                                          Passo a passo
+                                        </p>
+                                        <ol className="space-y-2">
+                                          {projeto.passosSimplificados.map(
+                                            (passo, i) => (
+                                              <li
+                                                key={i}
+                                                className="flex items-start gap-2 text-sm text-slate-700"
+                                              >
+                                                <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                                                  {i + 1}
+                                                </span>
+                                                {passo}
+                                              </li>
+                                            ),
+                                          )}
+                                        </ol>
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <a
+                                        href={projectHelpVideo(projeto).url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="card-brutal mb-4 flex items-start gap-3 rounded-lg border-amber-300 bg-amber-50 p-4"
+                                      >
+                                        <PlayCircle className="mt-0.5 h-5 w-5 shrink-0 text-slate-900" />
+                                        <div>
+                                          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                            Vídeo de ajuda
+                                          </p>
+                                          <p className="text-sm font-bold text-slate-900">
+                                            {projectHelpVideo(projeto).title}
+                                          </p>
+                                          <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-slate-950">
+                                            Assistir referência{" "}
+                                            <ExternalLink className="h-3 w-3" />
+                                          </span>
+                                        </div>
+                                      </a>
+                                      {/* Entregável */}
+                                      <div className="card-brutal bg-orange-50 rounded-lg p-4 mb-4 border-orange-200">
+                                        <p className="text-xs font-medium text-orange-700 uppercase tracking-wide mb-1">
+                                          Entregável final
+                                        </p>
+                                        <p className="text-sm text-slate-700">
+                                          {projeto.entregavel}
+                                        </p>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                          📤 Publicar em: {projeto.comoPublicar}
+                                        </p>
+                                      </div>
+
+                                      {/* LinkedIn */}
+                                      <div className="card-brutal bg-orange-50 rounded-lg p-4 border-orange-200">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <Lightbulb className="w-4 h-4 text-orange-700" />
+                                          <p className="text-xs font-medium text-orange-700 uppercase tracking-wide">
+                                            Sugestão de post no LinkedIn
+                                          </p>
+                                        </div>
+                                        <p className="text-xs text-slate-700 italic">
+                                          "{projeto.sugestaoLinkedIn}"
+                                        </p>
+                                      </div>
+
+                                      <div className="mt-4 text-sm text-slate-700">
+                                        <span className="font-medium">
+                                          Sugestão pra praticar depois:
+                                        </span>{" "}
+                                        {proximo ? (
+                                          <Link
+                                            href={`/projetos/${proximo.id}`}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="rounded font-medium text-orange-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                                          >
+                                            {proximo.nome}
+                                          </Link>
+                                        ) : (
+                                          <span>{projeto.proximoProjeto}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {projeto.pro === true && (
+                                    <ProjectValidationBlock
+                                      projeto={projeto}
+                                      onApproved={(id) =>
+                                        setValidatedIds((prev) =>
+                                          new Set(prev).add(id),
+                                        )
+                                      }
+                                    />
+                                  )}
+                                  {completionReady && (
+                                    <div className="mt-5 border-t border-slate-100 pt-4">
+                                      <button
+                                        type="button"
+                                        aria-pressed={projectsDone.has(
+                                          projeto.id,
+                                        )}
+                                        onClick={() =>
+                                          toggleCompletion(projeto.id)
+                                        }
+                                        className={`inline-flex items-center gap-1.5 rounded-[9px] border-[2.5px] border-slate-900 px-3.5 py-2 text-sm font-extrabold shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] ${
+                                          projectsDone.has(projeto.id)
+                                            ? "bg-emerald-500 text-white shadow-[2px_2px_0_#047857]"
+                                            : "bg-white text-slate-900"
+                                        }`}
+                                      >
+                                        {projectsDone.has(projeto.id) && (
+                                          <Check
+                                            className="h-4 w-4"
+                                            strokeWidth={4}
+                                          />
+                                        )}
+                                        {/* TODO(Ana): labels do toggle de conclusao de projeto */}
+                                        {projectsDone.has(projeto.id)
+                                          ? "Projeto concluído"
+                                          : "Marcar como concluído"}
+                                      </button>
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </div>
                           )}
