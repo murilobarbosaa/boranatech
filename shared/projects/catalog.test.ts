@@ -188,7 +188,7 @@ describe("catalogo de projetos: acentuacao", () => {
 // Atualizado no mesmo commit que adiciona ou remove entradas v2, mesmo
 // contrato dos EXPECTED_* das migrations: alterar este numero e ato
 // deliberado, nao efeito colateral.
-const EXPECTED_V2_COUNT = 0;
+const EXPECTED_V2_COUNT = 1;
 
 const V2 = projetos.filter((p) => p.briefing !== undefined);
 
