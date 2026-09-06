@@ -6,7 +6,10 @@ import {
   resolveProjectId,
 } from "../../shared/projects/aliases";
 import { projetos } from "../../shared/projects/catalog";
-import { parseProjectProgressState } from "../../shared/projects/progressState";
+import {
+  mergeProjectProgressState,
+  parseProjectProgressState,
+} from "../../shared/projects/progressState";
 import { loadProjetoV2 } from "../../shared/projects/v2";
 import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -153,9 +156,43 @@ router.put("/:context/:itemKey", async (req, res, next) => {
     let stateParaGravar: Record<string, unknown> =
       (state as Record<string, unknown> | undefined) ?? {};
     if (context === "project_progress") {
+      // Request que NAO traz a chave `etapas` preserva as que ja estao
+      // gravadas, em vez de substituir o state inteiro. E a janela de deploy:
+      // uma aba com o bundle antigo so envia `{ done: true }`, e sem isto
+      // clicar "concluir" nela apagaria os checkpoints marcados numa aba
+      // nova. A leitura extra so acontece nesse caso; o bundle novo sempre
+      // manda `etapas`, entao nao paga a consulta.
+      let recebido: unknown = state;
+      if (
+        typeof state === "object" &&
+        state !== null &&
+        !Array.isArray(state) &&
+        !("etapas" in state)
+      ) {
+        const { data: linha, error: erroLeitura } = await supabaseAdmin
+          .from("user_progress")
+          .select("state")
+          .eq("user_id", req.user!.id)
+          .eq("context", context)
+          .eq("item_key", itemKey)
+          .maybeSingle();
+        if (erroLeitura) {
+          console.error(
+            `[progress] leitura para fusao falhou context=${context} item_key=${itemKey} user=${req.user!.id}`,
+            erroLeitura,
+          );
+          return next(
+            createError(500, "db_error", "Erro ao salvar progresso.", {
+              cause: erroEncadeavel(erroLeitura),
+              context: { type: context, slug: itemKey, userId: req.user!.id },
+            }),
+          );
+        }
+        recebido = mergeProjectProgressState(state, linha?.state);
+      }
       const detalhe = await loadProjetoV2(itemKey);
       const parsed = parseProjectProgressState(
-        state,
+        recebido,
         detalhe ? detalhe.etapas.map((e) => e.id) : null,
       );
       if (!parsed.ok) {

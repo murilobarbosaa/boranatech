@@ -80,3 +80,32 @@ export function parseProjectProgressState(
   }
   return { ok: true, value: { done, etapas } };
 }
+
+// Funde um state recebido com o que ja esta gravado. Regra unica: se o
+// request NAO traz a chave `etapas`, as etapas gravadas ficam. Se traz
+// (mesmo vazia), o request manda. Existe por causa da janela de deploy:
+// um bundle antigo so envia `{ done: true }`, e substituir o state inteiro
+// apagaria os checkpoints marcados numa aba mais nova.
+//
+// Nao valida NADA: quem decide se o resultado presta e o
+// parseProjectProgressState, que roda depois. Aqui so a fusao, pra cada uma
+// das duas responsabilidades ter um teste que fala de uma coisa so.
+export function mergeProjectProgressState(
+  recebido: unknown,
+  existente: unknown,
+): unknown {
+  if (!ehObjeto(recebido)) return recebido;
+  if ("etapas" in recebido) return recebido;
+  if (!ehObjeto(existente)) return recebido;
+  // `etapas` gravado que nao e objeto nao volta para o request: copiar lixo
+  // do banco so trocaria o apagamento silencioso por um 400 sobre um valor
+  // que quem esta chamando nem mandou.
+  if (!ehObjeto(existente.etapas)) return recebido;
+  return { ...recebido, etapas: existente.etapas };
+}
+
+// Predicado com narrowing: sem o `is`, o `in` e o spread abaixo precisariam
+// de cast, e cast e onde o tipo para de ajudar.
+function ehObjeto(valor: unknown): valor is Record<string, unknown> {
+  return typeof valor === "object" && valor !== null && !Array.isArray(valor);
+}

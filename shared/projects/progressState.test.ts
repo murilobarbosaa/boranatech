@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { parseProjectProgressState } from "./progressState";
+import {
+  mergeProjectProgressState,
+  parseProjectProgressState,
+} from "./progressState";
 
 const ETAPAS = ["planejar", "html", "css"] as const;
 const ISO = "2026-09-05T07:00:00.000Z";
@@ -81,5 +84,45 @@ describe("parseProjectProgressState", () => {
     const r = parseProjectProgressState(undefined, ETAPAS);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value).toEqual({ done: false, etapas: {} });
+  });
+});
+
+const EXISTENTE = { done: false, etapas: { e1: ISO } };
+
+describe("mergeProjectProgressState", () => {
+  it("request sem a chave etapas preserva as etapas gravadas", () => {
+    // O caso que motivou a funcao: bundle antigo mandando so `{ done: true }`
+    // apagava os checkpoints marcados numa aba mais nova.
+    expect(mergeProjectProgressState({ done: true }, EXISTENTE)).toEqual({
+      done: true,
+      etapas: { e1: ISO },
+    });
+  });
+
+  it("chave etapas presente manda, mesmo vazia", () => {
+    expect(
+      mergeProjectProgressState({ done: false, etapas: {} }, EXISTENTE),
+    ).toEqual({ done: false, etapas: {} });
+  });
+
+  it("sem linha existente devolve o recebido inalterado", () => {
+    expect(mergeProjectProgressState({ done: true }, undefined)).toEqual({
+      done: true,
+    });
+    expect(mergeProjectProgressState({ done: true }, null)).toEqual({
+      done: true,
+    });
+  });
+
+  it("undefined continua undefined", () => {
+    expect(mergeProjectProgressState(undefined, EXISTENTE)).toBeUndefined();
+  });
+
+  it("etapas gravado invalido nao e copiado", () => {
+    for (const invalido of [[], "x", 1, null]) {
+      expect(
+        mergeProjectProgressState({ done: true }, { etapas: invalido }),
+      ).toEqual({ done: true });
+    }
   });
 });
