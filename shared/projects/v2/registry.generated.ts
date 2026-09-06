@@ -6,6 +6,7 @@ import type { ProjetoV2Detalhe } from "./types";
 
 export const PROJETOS_V2_IDS = [
   "landing-page-pessoal",
+  "todo-list",
 ] as const;
 
 export const loaders: Record<
@@ -13,4 +14,5 @@ export const loaders: Record<
   () => Promise<{ default: ProjetoV2Detalhe }>
 > = {
   "landing-page-pessoal": () => import("./landing-page-pessoal"),
+  "todo-list": () => import("./todo-list"),
 };
