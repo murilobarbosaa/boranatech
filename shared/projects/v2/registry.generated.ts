@@ -5,6 +5,7 @@
 import type { ProjetoV2Detalhe } from "./types";
 
 export const PROJETOS_V2_IDS = [
+  "api-rest-tarefas",
   "landing-page-pessoal",
   "todo-list",
 ] as const;
@@ -13,6 +14,7 @@ export const loaders: Record<
   string,
   () => Promise<{ default: ProjetoV2Detalhe }>
 > = {
+  "api-rest-tarefas": () => import("./api-rest-tarefas"),
   "landing-page-pessoal": () => import("./landing-page-pessoal"),
   "todo-list": () => import("./todo-list"),
 };
