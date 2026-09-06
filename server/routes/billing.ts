@@ -185,7 +185,7 @@ async function resolveRenewal(
  * rota ja tinha, e sem 500 novo.
  */
 /**
- * EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos`
+ * EXPORTADA para teste, no mesmo criterio de `expirarAssinaturasManuais`
  * (server/routes/cron.ts) e `handleAsaasWebhook`: o que importa provar aqui e
  * que a rota DELEGA a decisao de Pro em vez de recalcular, e isso so se prova
  * rodando o handler contra um `req.isPro` controlado.
@@ -308,6 +308,7 @@ export async function handleGetSubscription(
     // (que para boleto e sempre false). Cartao nao passa por aqui (renewal_type
     // 'auto'), entao a query nem roda: comportamento de cartao inalterado.
     const subRow = subscription as {
+      status?: string | null;
       renewal_type?: string | null;
       provider_subscription_id?: string | null;
       current_period_end?: string | null;
@@ -388,9 +389,24 @@ export async function handleGetSubscription(
       });
     }
 
+    // STATUS DERIVADO para a assinatura manual vencida. Entre o vencimento e a
+    // rodada do cron de expiracao (ate 6 horas) a linha continua `active` no
+    // banco enquanto `isPro` ja e false: devolver "active" faria a tela dizer
+    // "Ativa" sobre um acesso que caiu. So `renewal_type='manual'`: cartao
+    // vencido e a Stripe quem resolve (past_due, retry), nao o relogio.
+    const fimMs = subRow?.current_period_end
+      ? new Date(subRow.current_period_end).getTime()
+      : Number.NaN;
+    const vencidaManual =
+      subRow?.status === "active" &&
+      subRow.renewal_type === "manual" &&
+      Number.isFinite(fimMs) &&
+      fimMs < Date.now();
+
     res.json({
       data: {
         ...subscription,
+        ...(vencidaManual ? { status: "expired" } : {}),
         isPro,
         pendingBoleto,
         pendingCharge,

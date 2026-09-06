@@ -310,7 +310,7 @@ function eventConfirmsPayment(event: Stripe.Event): boolean {
  * nao de cobranca. Colapsar os dois faria uma venda sem valor declarado parecer
  * uma venda gratuita.
  *
- * EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
+ * EXPORTADA para teste, no mesmo criterio de `expirarAssinaturasManuais` em
  * server/routes/cron.ts: o que importa provar aqui e QUAL numero sai daqui para a
  * comissao, e isso so se prova rodando a funcao contra eventos reais.
  */
@@ -946,7 +946,7 @@ type ExclusiveActivationRow = {
 // invoice.paid; este e o unico caminho de ativacao. O periodo de acesso e
 // calculado aqui (now + access_days do metadata: 365 anual, 182 semestral),
 // porque nao existe subscription na Stripe de onde puxar o periodo.
-// EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
+// EXPORTADA para teste, no mesmo criterio de `expirarAssinaturasManuais` em
 // server/routes/cron.ts e de `recordAffiliateConversion` (shared.ts): o que
 // importa provar aqui e que a ativacao passa por UMA chamada de RPC e por
 // nenhuma escrita direta de status, e isso so se prova rodando a funcao.

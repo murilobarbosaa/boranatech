@@ -1141,7 +1141,7 @@ function isProLikeStatus(status: string | null | undefined): boolean {
 // (subscription retrieve) E a fonte de verdade, entao refletimos status/periodo
 // no banco sem calcular ciclo. Sem STRIPE_SECRET_KEY ou sem id do provedor:
 // skipped (nunca assume um estado). So escreve quando ha mudanca real.
-// EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` abaixo: o
+// EXPORTADA para teste, no mesmo criterio de `expirarAssinaturasManuais` abaixo: o
 // que importa provar e o que acontece com a violacao de unicidade na ativacao, e
 // isso so se prova rodando a funcao contra um erro real do banco.
 export async function reconcileStripeRow(sub: SubRow): Promise<RowOutcome> {
@@ -1365,7 +1365,10 @@ async function reconcileExpiredSubscriptions() {
 const BOLETO_EXPIRY_BATCH = 200;
 
 /**
- * BOLETO PAGO E VENCIDO: fecha o unico fim de vida que nao tinha dono.
+ * ASSINATURA MANUAL (boleto ou Pix) PAGA E VENCIDA: fecha o unico fim de vida
+ * que nao tinha dono. Nasceu como `expirarBoletosVencidos`; o nome mudou em
+ * 2026-09-06 porque o filtro nunca olhou provedor nem metodo, e o Pix manual
+ * sempre entrou aqui.
  *
  * O buraco: para `renewal_type='manual'` NENHUM dos quatro caminhos que escrevem
  * `canceled_at` funciona. Nao ha subscription na Stripe (o
@@ -1389,8 +1392,8 @@ const BOLETO_EXPIRY_BATCH = 200;
  *
  *   - `current_period_end < now()` e exatamente o complemento do que is_user_pro
  *     aceita, entao toda linha que este job toca JA nao dava Pro. O acesso e
- *     inalterado pela mudanca de status, e por isso tambem nao ha cache de Pro a
- *     invalidar: ele ja respondia `false` antes da escrita;
+ *     inalterado pela mudanca de status. O cache de Pro e invalidado mesmo
+ *     assim, pela COERENCIA da tela (ver o comentario junto da escrita);
  *   - `lt` nao casa NULL, entao assinatura sem data de fim (que da Pro
  *     indefinidamente por is_user_pro) nunca entra;
  *   - RENOVACAO EM CURSO nao e afetada: a renovacao de boleto cria uma LINHA
@@ -1415,7 +1418,7 @@ const BOLETO_EXPIRY_BATCH = 200;
 // isso so se prova rodando a funcao contra um dublê que APLICA os filtros. Um
 // teste que apenas conferisse o formato da query estaria conferindo a intencao,
 // nao o efeito.
-export async function expirarBoletosVencidos() {
+export async function expirarAssinaturasManuais() {
   const nowIso = new Date().toISOString();
 
   const alvos: Array<{ id: string; user_id: string | null }> = [];
@@ -1467,12 +1470,18 @@ export async function expirarBoletosVencidos() {
       failed += 1;
       failures.push({ subscription_id: alvo.id, reason: error.message });
       console.error(
-        `[cron/reconcile-subscriptions] falha ao expirar boleto ${alvo.id}:`,
+        `[cron/reconcile-subscriptions] falha ao expirar assinatura manual ${alvo.id}:`,
         error,
       );
       continue;
     }
     expired += 1;
+    // O CACHE DE PRO CAI JUNTO. Nao pelo acesso (is_user_pro ja negava pelo
+    // periodo, e o TTL e de 60 s), e sim pela coerencia da tela: a partir
+    // daqui /api/billing/subscription devolve `expired`, e um "1" sobrevivente
+    // no cache faria o middleware responder Pro sobre a mesma linha por ate um
+    // minuto. Fire-and-forget como nos outros call sites do arquivo.
+    if (alvo.user_id) void invalidateProStatusCache(alvo.user_id);
   }
 
   return { processed: alvos.length, expired, failed, capAtingido, failures };
@@ -1493,7 +1502,7 @@ router.post(
       // lock, para um caminho que hoje nao pega nenhuma linha. E nao entrou no
       // expire-pending-boletos porque o nome daquele job diz `pending`, e este
       // trata o PAGO: reaproveitar la faria o nome mentir.
-      const boletos = await expirarBoletosVencidos();
+      const boletos = await expirarAssinaturasManuais();
 
       const totalFailed = incomplete.failed + expired.failed + boletos.failed;
       // Contagens separadas por provider (byProvider) + skipped/failed por fase.

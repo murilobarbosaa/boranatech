@@ -29,7 +29,7 @@ describe("assinaturaChegouAValer", () => {
 
   it("boleto que expirou SEM pagar não vira conversão ao virar 'canceled'", () => {
     // Os dois caminhos que produzem `canceled` existem: `expire-pending-boletos`
-    // cancela o que nunca foi pago e `expirarBoletosVencidos` cancela o que foi
+    // cancela o que nunca foi pago e `expirarAssinaturasManuais` cancela o que foi
     // pago e acabou. Uma lista de status contaria o primeiro; o período não.
     expect(assinaturaChegouAValer({ current_period_start: null })).toBe(false);
   });

@@ -1,4 +1,5 @@
 import { getMySubscription } from "@/services/subscriptionService";
+import { deveReconsultarAssinatura } from "@/lib/subscriptionPolling";
 import {
   createContext,
   useCallback,
@@ -151,7 +152,15 @@ export function SubscriptionProvider({
   }, [refreshSubscription, user]);
 
   useEffect(() => {
-    if (!user || isPro) return;
+    // Nao-Pro reconsulta (Pix pendente pode confirmar). Pro reconsulta SO quando
+    // a assinatura e manual e esta a menos de 24h do fim, para a tela cair
+    // junto com o acesso no dia do vencimento (client/src/lib/subscriptionPolling.ts).
+    if (
+      !user ||
+      !deveReconsultarAssinatura({ isPro, subscription, nowMs: Date.now() })
+    ) {
+      return;
+    }
 
     const interval = setInterval(
       () => {
@@ -163,7 +172,7 @@ export function SubscriptionProvider({
     );
 
     return () => clearInterval(interval);
-  }, [user, isPro, refreshSubscription]);
+  }, [user, isPro, subscription, refreshSubscription]);
 
   const value = useMemo<SubscriptionContextValue>(
     () => ({

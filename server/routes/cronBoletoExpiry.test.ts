@@ -16,6 +16,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  */
 
 const estado = vi.hoisted(() => ({
+  invalidacoes: [] as string[],
   rows: [] as Array<Record<string, unknown>>,
   updates: [] as Array<{
     patch: Record<string, unknown>;
@@ -92,6 +93,13 @@ vi.mock("../lib/supabaseAdmin", () => ({
     },
   },
 }));
+vi.mock("../lib/proStatusCache", () => ({
+  invalidateProStatusCache: async (userId: string) => {
+    estado.invalidacoes.push(userId);
+  },
+  getCachedProStatus: async () => null,
+  setCachedProStatus: async () => {},
+}));
 vi.mock("../lib/queue", () => ({
   emailQueue: null,
   enqueueEmail: vi.fn(),
@@ -131,7 +139,7 @@ vi.mock("../lib/stripeClient", () => ({
   STRIPE_API_VERSION: "2026-06-24.dahlia",
 }));
 
-import { expirarBoletosVencidos } from "./cron";
+import { expirarAssinaturasManuais } from "./cron";
 
 const ONTEM = new Date(Date.now() - 24 * 3600_000).toISOString();
 const DAQUI_A_UM_ANO = new Date(Date.now() + 365 * 24 * 3600_000).toISOString();
@@ -148,6 +156,7 @@ function linha(over: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
+  estado.invalidacoes = [];
   estado.rows = [];
   estado.updates = [];
   estado.updateError = null;
@@ -158,7 +167,7 @@ describe("quais linhas a condição pega", () => {
   it("boleto PAGO e VENCIDO expira", async () => {
     estado.rows = [linha()];
 
-    const r = await expirarBoletosVencidos();
+    const r = await expirarAssinaturasManuais();
 
     expect(r.processed).toBe(1);
     expect(r.expired).toBe(1);
@@ -170,7 +179,7 @@ describe("quais linhas a condição pega", () => {
     // A trava da condição: período no futuro é cliente ativo de verdade.
     estado.rows = [linha({ current_period_end: DAQUI_A_UM_ANO })];
 
-    const r = await expirarBoletosVencidos();
+    const r = await expirarAssinaturasManuais();
 
     expect(r.processed).toBe(0);
     expect(estado.rows[0].status).toBe("active");
@@ -181,7 +190,7 @@ describe("quais linhas a condição pega", () => {
     // duplicaria a decisão em dois jobs.
     estado.rows = [linha({ status: "pending", current_period_end: ONTEM })];
 
-    const r = await expirarBoletosVencidos();
+    const r = await expirarAssinaturasManuais();
 
     expect(r.processed).toBe(0);
     expect(estado.rows[0].status).toBe("pending");
@@ -190,7 +199,7 @@ describe("quais linhas a condição pega", () => {
   it("CARTÃO vencido não é tocado: quem cuida dele é o reconcile", async () => {
     estado.rows = [linha({ renewal_type: "auto" })];
 
-    const r = await expirarBoletosVencidos();
+    const r = await expirarAssinaturasManuais();
 
     expect(r.processed).toBe(0);
     expect(estado.rows[0].status).toBe("active");
@@ -201,7 +210,7 @@ describe("quais linhas a condição pega", () => {
     // não casa NULL. Se casasse, este job cortaria acesso legítimo.
     estado.rows = [linha({ current_period_end: null })];
 
-    const r = await expirarBoletosVencidos();
+    const r = await expirarAssinaturasManuais();
 
     expect(r.processed).toBe(0);
     expect(estado.rows[0].status).toBe("active");
@@ -216,7 +225,7 @@ describe("quais linhas a condição pega", () => {
       linha({ id: "sem-fim", current_period_end: null }),
     ];
 
-    const r = await expirarBoletosVencidos();
+    const r = await expirarAssinaturasManuais();
 
     expect(r.expired).toBe(1);
     const porId = Object.fromEntries(estado.rows.map((x) => [x.id, x.status]));
@@ -238,7 +247,7 @@ describe("o que ela escreve", () => {
     // escrita em subscription_cancellations derrubaria este teste.
     estado.rows = [linha()];
 
-    await expirarBoletosVencidos();
+    await expirarAssinaturasManuais();
 
     expect(estado.rows[0].canceled_at).toBeTruthy();
     expect(estado.rows[0].status).toBe("canceled");
@@ -247,7 +256,7 @@ describe("o que ela escreve", () => {
   it("o UPDATE é condicional em status='active' (idempotência)", async () => {
     estado.rows = [linha()];
 
-    await expirarBoletosVencidos();
+    await expirarAssinaturasManuais();
 
     expect(estado.updates).toHaveLength(1);
     expect(estado.updates[0].filtros).toMatchObject({ status: "active" });
@@ -256,7 +265,7 @@ describe("o que ela escreve", () => {
   it("NÃO chama a Stripe", async () => {
     // O mock de getStripe lança; se algum caminho a chamasse, o teste quebraria.
     estado.rows = [linha()];
-    await expect(expirarBoletosVencidos()).resolves.toBeTruthy();
+    await expect(expirarAssinaturasManuais()).resolves.toBeTruthy();
   });
 
   it("falha de UPDATE conta como failed, sem derrubar a rodada", async () => {
@@ -264,7 +273,7 @@ describe("o que ela escreve", () => {
     estado.updateError = { message: "timeout" };
     vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const r = await expirarBoletosVencidos();
+    const r = await expirarAssinaturasManuais();
 
     expect(r.failed).toBe(1);
     expect(r.expired).toBe(0);
@@ -280,7 +289,7 @@ describe("o lote tem teto e AVISA quando cortou", () => {
       linha({ id: `s${String(i).padStart(4, "0")}` }),
     );
 
-    const r = await expirarBoletosVencidos();
+    const r = await expirarAssinaturasManuais();
 
     expect(r.processed).toBe(200);
     expect(r.expired).toBe(200);
@@ -290,7 +299,7 @@ describe("o lote tem teto e AVISA quando cortou", () => {
   it("abaixo do teto não sinaliza corte", async () => {
     estado.rows = Array.from({ length: 5 }, (_, i) => linha({ id: `s${i}` }));
 
-    const r = await expirarBoletosVencidos();
+    const r = await expirarAssinaturasManuais();
 
     expect(r.processed).toBe(5);
     expect(r.capAtingido).toBe(false);
@@ -304,9 +313,55 @@ describe("o lote tem teto e AVISA quando cortou", () => {
     );
     estado.maxRows = 100;
 
-    const r = await expirarBoletosVencidos();
+    const r = await expirarAssinaturasManuais();
 
     expect(r.processed).toBe(150);
     expect(r.capAtingido).toBe(false);
+  });
+});
+
+describe("o cache de Pro cai junto com a expiracao", () => {
+  // O TTL do cache e 60 s (server/lib/proStatusCache.ts), entao o motivo NAO e
+  // acesso: `is_user_pro` ja nega pelo periodo. O motivo e a tela: a resposta
+  // de /api/billing/subscription passa a dizer `expired`, e um cache com "1"
+  // faria o middleware responder Pro por ate um minuto sobre uma linha que a
+  // mesma resposta chama de vencida.
+  it("invalida UMA vez por linha expirada, com o user_id dela", async () => {
+    estado.rows = [
+      linha({ id: "a", user_id: "u1" }),
+      linha({ id: "b", user_id: "u2" }),
+    ];
+
+    await expirarAssinaturasManuais();
+
+    expect(estado.invalidacoes).toEqual(["u1", "u2"]);
+  });
+
+  it("linha que NAO expirou nao invalida nada", async () => {
+    estado.rows = [linha({ current_period_end: DAQUI_A_UM_ANO })];
+
+    await expirarAssinaturasManuais();
+
+    expect(estado.invalidacoes).toEqual([]);
+  });
+
+  it("UPDATE que falhou nao invalida: nada mudou no banco", async () => {
+    estado.rows = [linha()];
+    estado.updateError = { message: "boom" };
+
+    await expirarAssinaturasManuais();
+
+    expect(estado.invalidacoes).toEqual([]);
+  });
+
+  it("Pix manual vencido expira igual ao boleto: a funcao nao filtra provedor", async () => {
+    estado.rows = [
+      linha({ id: "pix", provider: "asaas", payment_method: "pix" }),
+    ];
+
+    const r = await expirarAssinaturasManuais();
+
+    expect(r.expired).toBe(1);
+    expect(estado.updates[0].patch).toMatchObject({ status: "canceled" });
   });
 });
