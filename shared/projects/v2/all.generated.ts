@@ -6,6 +6,7 @@
 import apiRestTarefas from "./api-rest-tarefas";
 import landingPagePessoal from "./landing-page-pessoal";
 import listaTarefasFullstack from "./lista-tarefas-fullstack";
+import pipelineEtlPython from "./pipeline-etl-python";
 import todoList from "./todo-list";
 import type { ProjetoV2Detalhe } from "./types";
 
@@ -13,5 +14,6 @@ export const PROJETOS_V2: ProjetoV2Detalhe[] = [
   apiRestTarefas,
   landingPagePessoal,
   listaTarefasFullstack,
+  pipelineEtlPython,
   todoList,
 ];

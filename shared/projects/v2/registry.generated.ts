@@ -8,6 +8,7 @@ export const PROJETOS_V2_IDS = [
   "api-rest-tarefas",
   "landing-page-pessoal",
   "lista-tarefas-fullstack",
+  "pipeline-etl-python",
   "todo-list",
 ] as const;
 
@@ -18,5 +19,6 @@ export const loaders: Record<
   "api-rest-tarefas": () => import("./api-rest-tarefas"),
   "landing-page-pessoal": () => import("./landing-page-pessoal"),
   "lista-tarefas-fullstack": () => import("./lista-tarefas-fullstack"),
+  "pipeline-etl-python": () => import("./pipeline-etl-python"),
   "todo-list": () => import("./todo-list"),
 };
