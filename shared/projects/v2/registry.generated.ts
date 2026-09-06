@@ -7,6 +7,7 @@ import type { ProjetoV2Detalhe } from "./types";
 export const PROJETOS_V2_IDS = [
   "api-rest-tarefas",
   "landing-page-pessoal",
+  "lista-tarefas-fullstack",
   "todo-list",
 ] as const;
 
@@ -16,5 +17,6 @@ export const loaders: Record<
 > = {
   "api-rest-tarefas": () => import("./api-rest-tarefas"),
   "landing-page-pessoal": () => import("./landing-page-pessoal"),
+  "lista-tarefas-fullstack": () => import("./lista-tarefas-fullstack"),
   "todo-list": () => import("./todo-list"),
 };
