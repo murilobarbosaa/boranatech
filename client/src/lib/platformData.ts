@@ -2199,10 +2199,6 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "Como configurar análise estática SAST com Semgrep",
       url: "https://www.youtube.com/results?search_query=configurar+sast+semgrep+github+actions",
     },
-    "modelo-previsao-churn": {
-      title: "Analise de Churn com Python e scikit-learn",
-      url: "https://www.youtube.com/watch?v=N9KNPSwI9aU",
-    },
     "auditoria-iam-least-privilege": {
       title: "Segurança de identidades AWS IAM e menor privilégio",
       url: "https://www.youtube.com/results?search_query=aws+iam+seguranca+least+privilege",
@@ -2270,10 +2266,6 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
     "otimizacao-prompts-suporte": {
       title: "Guia de prompt engineering e few-shot prompting",
       url: "https://www.youtube.com/results?search_query=prompt+engineering+few+shot+tutorial",
-    },
-    "teste-carga-k6-api": {
-      title: "Testes de Performance com JMeter",
-      url: "https://www.youtube.com/watch?v=5M-V78Nla3c",
     },
     "app-delivery-comida": {
       title: "App mobile com React Native e Expo",
@@ -2459,73 +2451,13 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "React Kanban Board Drag and Drop",
       url: "https://www.youtube.com/watch?v=CkjhqUbgvHo",
     },
-    "dashboard-power-bi": {
-      title: "Criando Dashboard no Power BI do Zero",
-      url: "https://www.youtube.com/watch?v=Ve4IWvKM_Dk",
-    },
-    "limpeza-dados-python": {
-      title: "Limpeza de Dados com Pandas",
-      url: "https://www.youtube.com/watch?v=GfSFqYY5GgI",
-    },
-    "analise-covid-python": {
-      title: "Analise de Dados COVID-19 com Python",
-      url: "https://www.youtube.com/watch?v=NZx-c5J6sO8",
-    },
-    "correlacao-heatmap-seaborn": {
-      title: "Heatmap de Correlacao com Seaborn",
-      url: "https://www.youtube.com/watch?v=0ucjYFoTMbE",
-    },
     "previsao-serie-temporal": {
       title: "Previsao de Serie Temporal com Python",
       url: "https://www.youtube.com/watch?v=e8Yw4alG16Q",
     },
-    "segmentacao-clientes-kmeans": {
-      title: "Segmentacao de Clientes com K-Means",
-      url: "https://www.youtube.com/watch?v=5M5HXMQkbuo",
-    },
-    "analise-redes-sociais": {
-      title: "Analise de Redes Sociais com NetworkX",
-      url: "https://www.youtube.com/watch?v=g8LZBxoHHCo",
-    },
-    "relatorio-automatizado-python": {
-      title: "Geracao de Relatorios com Python",
-      url: "https://www.youtube.com/watch?v=T_T0KCDhUso",
-    },
-    "classificador-spam-sklearn": {
-      title: "Classificador de Spam com Machine Learning",
-      url: "https://www.youtube.com/watch?v=3y-DMzFAR28",
-    },
-    "detector-sentimento-nlp": {
-      title: "Analise de Sentimento com Hugging Face",
-      url: "https://www.youtube.com/watch?v=QpzMWQihe00",
-    },
-    "reconhecimento-digitos-mnist": {
-      title: "Reconhecimento de Digitos com TensorFlow",
-      url: "https://www.youtube.com/watch?v=bte-DHomn9Q",
-    },
-    "sistema-recomendacao-filmes": {
-      title: "Sistema de Recomendacao com Python",
-      url: "https://www.youtube.com/watch?v=UJATnXFiegc",
-    },
-    "detector-fake-news": {
-      title: "Detector de Fake News com Machine Learning",
-      url: "https://www.youtube.com/watch?v=O_EklvU9KSk",
-    },
-    "gerador-texto-gpt": {
-      title: "Gerando Texto com GPT e Python",
-      url: "https://www.youtube.com/watch?v=zGz9NIaYGWg",
-    },
     "classificador-imagens-keras": {
       title: "Classificacao de Imagens com Keras e CNN",
       url: "https://www.youtube.com/watch?v=aircAruvnKk",
-    },
-    "detector-objetos-yolo": {
-      title: "Deteccao de Objetos com YOLOv8",
-      url: "https://www.youtube.com/watch?v=zOVkUCFHCuE",
-    },
-    "pipeline-etl-python": {
-      title: "Pipeline ETL com Python do Zero",
-      url: "https://www.youtube.com/watch?v=mW_ItJgB5jg",
     },
     "orquestracao-airflow": {
       title: "Apache Airflow para Iniciantes",
@@ -2535,61 +2467,9 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "dbt para Engenharia de Dados",
       url: "https://www.youtube.com/watch?v=5rNquRnNb4E",
     },
-    "data-lake-s3-python": {
-      title: "Data Lake com AWS S3 e Python",
-      url: "https://www.youtube.com/watch?v=C1nLQM-mS4Q",
-    },
-    "streaming-kafka-python": {
-      title: "Apache Kafka com Python",
-      url: "https://www.youtube.com/watch?v=ebeRP_pZCPM",
-    },
-    "redesign-app-bancario": {
-      title: "Como Fazer Redesign de App no Figma",
-      url: "https://www.youtube.com/watch?v=Hx-E3chNe8Y",
-    },
-    "teste-usabilidade-maze": {
-      title: "Como Fazer Teste de Usabilidade com Maze",
-      url: "https://www.youtube.com/watch?v=yL4Vki0XaFI",
-    },
-    "wireframes-ecommerce": {
-      title: "Criando Wireframes de E-commerce no Figma",
-      url: "https://www.youtube.com/watch?v=SKqZAGQ8W6Y",
-    },
-    "prototipo-onboarding": {
-      title: "Prototipo de Onboarding no Figma",
-      url: "https://www.youtube.com/watch?v=3iXlMHkxfx8",
-    },
-    "automacao-login-cypress": {
-      title: "Cypress do Zero ao Avancado",
-      url: "https://www.youtube.com/watch?v=1EzH1HsW_00",
-    },
-    "testes-api-postman": {
-      title: "Teste de API com Postman Completo",
-      url: "https://www.youtube.com/watch?v=WFHD47hzd0Q",
-    },
-    "bdd-cucumber-javascript": {
-      title: "BDD com Cucumber e Cypress",
-      url: "https://www.youtube.com/watch?v=a-oMEVE94cE",
-    },
-    "prd-feature-nova": {
-      title: "Como Escrever um PRD de Produto",
-      url: "https://www.youtube.com/watch?v=bniWbNGDYHo",
-    },
-    "roadmap-produto-trimestral": {
-      title: "Como Criar Roadmap de Produto",
-      url: "https://www.youtube.com/watch?v=cJJF5bOLhk0",
-    },
     "okrs-produto": {
       title: "OKRs na Pratica para Times de Produto",
       url: "https://www.youtube.com/watch?v=EIcpFZ5rbHc",
-    },
-    "priorizacao-rice": {
-      title: "Como Priorizar com Framework RICE",
-      url: "https://www.youtube.com/watch?v=pVTLuPbIBU0",
-    },
-    "analise-funil-conversao": {
-      title: "Analise de Funil de Conversao",
-      url: "https://www.youtube.com/watch?v=_3rDYlBM37I",
     },
     default: {
       title: "Como planejar projeto iniciante para portfólio",
@@ -2631,37 +2511,13 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "Aplicacao de Chat em React JS",
       url: "https://www.youtube.com/watch?v=IH15jW8X-Ng",
     },
-    "analise-dados-publicos": {
-      title: "Analise Exploratoria de Dados com Python e Pandas",
-      url: "https://www.youtube.com/watch?v=dUpyC40so4Y",
-    },
-    "modelo-ml-sentimentos": {
-      title: "Analise de Sentimento com Python e NLP",
-      url: "https://www.youtube.com/watch?v=7Z-h1dHDMao",
-    },
-    "assistente-estudos-rag": {
-      title: "Chatbot com RAG e LangChain",
-      url: "https://www.youtube.com/watch?v=8F2DvoQr3sU",
-    },
     "chatbot-com-ia": {
       title: "Chatbot com LangChain e OpenAI",
       url: "https://www.youtube.com/watch?v=lG7Uxts9SXs",
     },
-    "design-system-mini": {
-      title: "Design System do Zero no Figma",
-      url: "https://www.youtube.com/watch?v=KQd7-IVDAXI",
-    },
-    "persona-journey-mapa": {
-      title: "Como Criar Mapa de Jornada do Cliente",
-      url: "https://www.youtube.com/watch?v=X7iXPfKHEak",
-    },
     "playwright-e2e-criticos": {
       title: "Playwright para Automacao de Testes",
       url: "https://www.youtube.com/watch?v=wGr5rz8WGCE",
-    },
-    "pipeline-ci-cd": {
-      title: "CI com GitHub Actions para Testes",
-      url: "https://www.youtube.com/watch?v=IM-MHFtNMHk",
     },
   };
 
