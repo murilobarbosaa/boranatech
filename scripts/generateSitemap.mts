@@ -9,6 +9,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { areasTI } from "../client/src/lib/data";
+import { PROJETOS_V2_IDS } from "../shared/projects/v2";
 
 const ORIGIN = "https://boranatech.com.br";
 
@@ -83,7 +84,13 @@ const areaRoutes = areasTI.flatMap((area) => [
   ...(area.subareas ?? []).map((sub) => `/areas/${area.slug}/${sub.slug}`),
 ]);
 
-const routes = [...STATIC_ROUTES, ...areaRoutes];
+// Paginas de projeto: SO as que tem detalhe v2. A pagina de um projeto v1 e
+// rasa (objetivo, ferramentas, passos), e indexar 254 delas competiria com o
+// proprio catalogo. O gerador le o registro, entao cada projeto migrado entra
+// sozinho no sitemap, no commit que cria o modulo.
+const projetoRoutes = PROJETOS_V2_IDS.map((id) => `/projetos/${id}`);
+
+const routes = [...STATIC_ROUTES, ...areaRoutes, ...projetoRoutes];
 
 const body = routes
   .map((route) => `  <url><loc>${ORIGIN}${route}</loc></url>`)
@@ -111,6 +118,6 @@ if (checkMode) {
 } else {
   writeFileSync(OUT, content);
   console.log(
-    `[generateSitemap] ${routes.length} rotas (${STATIC_ROUTES.length} estaticas + ${areaRoutes.length} de areas/subareas) -> ${path.relative(process.cwd(), OUT)}`,
+    `[generateSitemap] ${routes.length} rotas (${STATIC_ROUTES.length} estaticas + ${areaRoutes.length} de areas/subareas + ${projetoRoutes.length} de projetos v2) -> ${path.relative(process.cwd(), OUT)}`,
   );
 }

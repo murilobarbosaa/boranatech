@@ -60,6 +60,7 @@ vi.mock("@shared/projects/v2", () => ({
   // projeto pago seria o caso que vaza.
   isProjetoV2: () => true,
   loadProjetoV2: v2.loadProjetoV2,
+  PROJETOS_V2_IDS: ["projeto-pro", "projeto-gratis"],
 }));
 
 vi.mock("@/contexts/SubscriptionContext", () => ({
@@ -110,17 +111,54 @@ beforeEach(() => {
   v2.loadProjetoV2.mockResolvedValue(null);
 });
 
-function cabecalhoDe(nome: string): HTMLElement {
-  const h = screen.getByText(nome).closest("div[class*='flex w-full']");
-  if (!h) throw new Error(`cabecalho nao encontrado: ${nome}`);
-  return h as HTMLElement;
+function cardDe(nome: string): HTMLAnchorElement {
+  const a = screen.getByText(nome).closest("a");
+  if (!a) throw new Error(`card nao encontrado: ${nome}`);
+  return a as HTMLAnchorElement;
 }
 
-describe("Projetos, projeto Pro para quem nao assina", () => {
-  it("mostra o card do projeto pro na lista", () => {
+describe("Projetos, o catalogo em grade", () => {
+  it("cada card e um link para a pagina do projeto", () => {
     render(<Projetos />);
-    expect(screen.getByText("Desafio Pago")).toBeTruthy();
-    expect(screen.getByText("Objetivo do desafio pago")).toBeTruthy();
+    expect(cardDe("Desafio Aberto").getAttribute("href")).toBe(
+      "/projetos/projeto-gratis",
+    );
+    expect(cardDe("Desafio Pago").getAttribute("href")).toBe(
+      "/projetos/projeto-pro",
+    );
+  });
+
+  it("NENHUM detalhe v2 e carregado ao renderizar o catalogo", () => {
+    render(<Projetos />);
+    expect(v2.loadProjetoV2).not.toHaveBeenCalled();
+  });
+
+  it("com assinatura tambem nao carrega detalhe nenhum", () => {
+    assinatura.isPro = true;
+    render(<Projetos />);
+    expect(v2.loadProjetoV2).not.toHaveBeenCalled();
+  });
+
+  it("clicar no card nao dispara carga de detalhe", () => {
+    render(<Projetos />);
+    fireEvent.click(cardDe("Desafio Pago"));
+    expect(v2.loadProjetoV2).not.toHaveBeenCalled();
+  });
+});
+
+describe("Projetos, projeto Pro para quem nao assina", () => {
+  it("o card aparece na lista, com o objetivo desfocado", () => {
+    render(<Projetos />);
+    const objetivo = screen.getByText("Objetivo do desafio pago");
+    expect(objetivo.className).toContain("blur-sm");
+    expect(
+      screen.getByText("Objetivo do desafio aberto").className,
+    ).not.toContain("blur-sm");
+  });
+
+  it("o chip de estado diz que a assinatura abre", () => {
+    render(<Projetos />);
+    expect(screen.getByText("Assinar para abrir")).toBeTruthy();
   });
 
   it("nao coloca nenhum campo do detalhe pago no DOM", () => {
@@ -129,54 +167,20 @@ describe("Projetos, projeto Pro para quem nao assina", () => {
     expect(container.innerHTML).not.toContain("ENTREGAVEL-SECRETO-DO-PRO");
   });
 
-  it("o cabecalho travado nao e clicavel e clicar nele nao abre nada", () => {
-    const { container } = render(<Projetos />);
-    const header = cabecalhoDe("Desafio Pago");
-    expect(header.getAttribute("role")).toBeNull();
-    expect(header.getAttribute("aria-expanded")).toBeNull();
-    fireEvent.click(header);
-    expect(container.innerHTML).not.toContain("PASSO-SECRETO-DO-PRO");
-  });
-
-  it("nunca chama loadProjetoV2 para projeto travado", () => {
-    render(<Projetos />);
-    fireEvent.click(cabecalhoDe("Desafio Pago"));
-    expect(v2.loadProjetoV2).not.toHaveBeenCalled();
-  });
-
   it("trava enquanto o status Pro nao resolveu", () => {
     assinatura.loading = true;
-    const { container } = render(<Projetos />);
-    expect(cabecalhoDe("Desafio Pago").getAttribute("role")).toBeNull();
-    expect(container.innerHTML).not.toContain("PASSO-SECRETO-DO-PRO");
-  });
-
-  it("o projeto gratuito continua abrindo normalmente", () => {
     render(<Projetos />);
-    const header = cabecalhoDe("Desafio Aberto");
-    expect(header.getAttribute("role")).toBe("button");
-    fireEvent.click(header);
-    expect(v2.loadProjetoV2).toHaveBeenCalledWith("projeto-gratis");
-  });
-});
-
-describe("Projetos, deep link para projeto Pro", () => {
-  it("abre o card travado em vez do aviso de projeto nao encontrado", () => {
-    rota.id = "projeto-pro";
-    const { container } = render(<Projetos />);
-    expect(screen.getByText("Desafio Pago")).toBeTruthy();
-    expect(container.innerHTML).not.toContain("Não encontramos esse projeto");
-    expect(container.innerHTML).not.toContain("PASSO-SECRETO-DO-PRO");
+    expect(screen.getByText("Assinar para abrir")).toBeTruthy();
   });
 });
 
 describe("Projetos, projeto Pro para quem assina", () => {
-  it("abre o card pro e carrega o detalhe", () => {
+  it("o card deixa de estar travado", () => {
     assinatura.isPro = true;
     render(<Projetos />);
-    const header = cabecalhoDe("Desafio Pago");
-    expect(header.getAttribute("role")).toBe("button");
-    fireEvent.click(header);
-    expect(v2.loadProjetoV2).toHaveBeenCalledWith("projeto-pro");
+    expect(screen.queryByText("Assinar para abrir")).toBeNull();
+    expect(
+      screen.getByText("Objetivo do desafio pago").className,
+    ).not.toContain("blur-sm");
   });
 });
