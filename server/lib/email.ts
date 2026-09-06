@@ -32,7 +32,11 @@ const SOCIAL = [
     slug: "linkedin",
     url: "https://www.linkedin.com/in/bora-na-tech-b17107412/",
   },
-  { name: "TikTok", slug: "tiktok", url: "https://www.tiktok.com/@boranatech_" },
+  {
+    name: "TikTok",
+    slug: "tiktok",
+    url: "https://www.tiktok.com/@boranatech_",
+  },
   { name: "X", slug: "x", url: "https://x.com/boranatech" },
 ];
 
@@ -261,7 +265,10 @@ export async function sendWelcomeEmail(
   });
 }
 
-export async function sendWaitlistConfirmationEmail(to: string, _name?: string) {
+export async function sendWaitlistConfirmationEmail(
+  to: string,
+  _name?: string,
+) {
   const heroImageUrl = `${EMAIL_ASSETS}/waitlist-hero.jpeg`;
   // TODO(Ana): copy final do e-mail de boas-vindas a lista de espera.
   const title = "Boas-vindas ao Bora na Tech";
@@ -424,7 +431,9 @@ export async function sendFiscalInvoiceEmail(
   // TODO(Ana): rotulos das linhas da nota (numero, codigo de verificacao e valor).
   const linhas: string[] = [];
   if (params.numero) {
-    linhas.push(`Número da nota: <strong>${escapeHtml(params.numero)}</strong>`);
+    linhas.push(
+      `Número da nota: <strong>${escapeHtml(params.numero)}</strong>`,
+    );
   }
   if (params.codigoVerificacao) {
     linhas.push(
@@ -526,6 +535,11 @@ export async function sendRenewalReminderEmail(
     dueDateIso: string;
     renewUrl: string;
     daysRemaining: number;
+    /**
+     * Meio pelo qual a RENOVACAO vai ser cobrada (shared/renewalMethod.ts).
+     * Ausente vale boleto: e o job antigo, ainda na fila, de antes do campo.
+     */
+    paymentMethod?: "boleto" | "pix";
   },
 ) {
   const safeName = escapeHtml(name);
@@ -549,11 +563,52 @@ export async function sendRenewalReminderEmail(
         : `em ${data.daysRemaining} dias`;
   // TODO(Ana): copy final do lembrete de renovacao.
   const title = "Hora de renovar seu Pro";
+  const porPix = data.paymentMethod === "pix";
   const body = `
     ${paragraph(`Olá, ${safeName}. Sua assinatura ${safePlan} vence ${whenLine} (${safeDate}).`)}
-    ${paragraph(`Como o pagamento é por boleto, a renovação não é automática. Para manter o acesso, gere um novo boleto de ${safePrice}.`)}
+    ${paragraph(
+      porPix
+        ? `A renovação é manual. Para manter o acesso, pague um novo Pix de ${safePrice}: o código aparece na hora e o acesso continua assim que o pagamento cair.`
+        : `Como o pagamento é por boleto, a renovação não é automática. Para manter o acesso, gere um novo boleto de ${safePrice}.`,
+    )}
     ${button("Renovar assinatura", data.renewUrl, theme)}
-    ${paragraph("O botão acima gera o boleto na hora. Qualquer dúvida, é só responder este e-mail.")}
+    ${paragraph(
+      porPix
+        ? "O botão acima mostra o código Pix na hora. Qualquer dúvida, é só responder este e-mail."
+        : "O botão acima gera o boleto na hora. Qualquer dúvida, é só responder este e-mail.",
+    )}
+  `;
+  await sendEmail({
+    to,
+    from: FROM_TRANSACTIONAL,
+    subject: title,
+    html: layout(theme, title, body),
+  });
+}
+
+// DIA ZERO: o periodo venceu e o acesso ja caiu. Um e-mail, uma vez, dizendo
+// isso e oferecendo o mesmo link de renovacao dos lembretes. Curto de
+// proposito: quem chegou aqui ja recebeu os avisos de "vence em N dias".
+export async function sendAccessEndedEmail(
+  to: string,
+  name: string,
+  data: {
+    planName: string;
+    priceLabel: string;
+    renewUrl: string;
+  },
+) {
+  const safeName = escapeHtml(name);
+  const safePlan = escapeHtml(data.planName);
+  const safePrice = escapeHtml(data.priceLabel);
+  const theme = NEUTRAL_THEME;
+  // TODO(Ana)
+  const title = "Seu Pro terminou. Renove quando quiser";
+  const body = `
+    ${paragraph(`Olá, ${safeName}. O período da sua assinatura ${safePlan} chegou ao fim e o acesso Pro foi pausado.`)}
+    ${paragraph(`Nada se perde: seu progresso e suas análises continuam guardados. Para voltar, é só renovar por ${safePrice}.`)}
+    ${button("Renovar agora", data.renewUrl, theme)}
+    ${paragraph("Se preferir não renovar, não precisa fazer nada. Qualquer dúvida, é só responder este e-mail.")}
   `;
   await sendEmail({
     to,
@@ -747,7 +802,10 @@ export async function sendCampaignEmail(params: {
     // imageUrl, um wrapper minimo cola a imagem full-width no topo e o HTML logo
     // abaixo; sem imageUrl, o HTML e o e-mail inteiro puro. O header SMTP
     // List-Unsubscribe abaixo segue setado. footerReason nao se aplica aqui.
-    const injected = applyUnsubscribeUrl(personalizedBody, params.unsubscribeUrl);
+    const injected = applyUnsubscribeUrl(
+      personalizedBody,
+      params.unsubscribeUrl,
+    );
     html = params.imageUrl
       ? htmlModeWithHeroImage(params.imageUrl, injected)
       : injected;

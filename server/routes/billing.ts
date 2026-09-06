@@ -16,6 +16,7 @@ import { createError } from "../middleware/error";
 import { asaasProvider, stripeProvider } from "../providers";
 import { fetchChargeAmountCents, fetchPixQrCode } from "../providers/asaas";
 import { isPlanId, PLAN_PRICING, type PlanId } from "../../shared/planPricing";
+import { metodoDaRenovacao } from "../../shared/renewalMethod";
 import {
   type OneOffMethodId,
   isPaymentMethodAllowed,
@@ -37,29 +38,9 @@ type RenewalResolved = {
   paymentMethod: OneOffMethodId;
 };
 
-/**
- * Meio da RENOVACAO: o meio atual da assinatura quando o plano ainda o aceita,
- * senao Pix.
- *
- * O "senao Pix" cobre o caso legado medido em 2026-09-06: uma assinatura
- * mensal paga por boleto, criada antes de o mapa proibir boleto no mensal.
- * Renova-la por boleto seria recusado pela Stripe (`boleto_not_allowed_on_monthly`);
- * Pix e o unico avulso que o mensal aceita. Cartao nao e avulso e nunca chega
- * aqui por uma assinatura manual, mas se chegar cai em Pix pelo mesmo motivo.
- * Exportada para o teste afirmar a tabela.
- */
-export function metodoDaRenovacao(
-  metodoAtual: string | null | undefined,
-  planId: PlanId,
-): OneOffMethodId {
-  if (
-    (metodoAtual === "boleto" || metodoAtual === "pix") &&
-    isPaymentMethodAllowed(planId, metodoAtual)
-  ) {
-    return metodoAtual;
-  }
-  return "pix";
-}
+// `metodoDaRenovacao` mora em shared/renewalMethod.ts, compartilhada com o cron
+// de lembrete. Reexportada aqui porque e parte do contrato desta rota.
+export { metodoDaRenovacao };
 
 async function resolveRenewal(
   token: string,
