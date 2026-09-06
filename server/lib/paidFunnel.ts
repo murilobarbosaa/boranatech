@@ -71,7 +71,7 @@ export type Vazamento = {
  *
  * POR QUE NÃO O STATUS. `canceled` é ambíguo e os dois caminhos existem:
  * `expire-pending-boletos` leva `pending -> canceled` um boleto que NUNCA foi
- * pago, e `expirarBoletosVencidos` leva `active -> canceled` um boleto que foi
+ * pago, e `expirarAssinaturasManuais` leva `active -> canceled` um boleto que foi
  * pago e cujo acesso terminou. Uma lista de status contaria o primeiro como
  * conversão. O período de acesso separa os dois sem depender de status nenhum.
  *

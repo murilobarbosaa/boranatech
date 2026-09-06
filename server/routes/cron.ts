@@ -37,7 +37,9 @@ import { collectSubscriptionSnapshot } from "../lib/subscriptionSnapshots";
 import { createError } from "../middleware/error";
 import { lerSessaoDeBoleto } from "../lib/boletoSession";
 import { getStripeSubscriptionState } from "../providers/stripe";
-import { isPlanId, PLAN_PRICING } from "../../shared/planPricing";
+import { isPlanId, PLAN_PRICING, type PlanId } from "../../shared/planPricing";
+import { metodoDaRenovacao } from "../../shared/renewalMethod";
+import { createTargetedNotification } from "../lib/targetedNotifications";
 
 const router = Router();
 
@@ -547,11 +549,22 @@ router.post(
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Regua por plano: dias antes do vencimento em que cada lembrete dispara.
-const RENEWAL_MILESTONES: Record<string, number[]> = {
-  pro_annual: [30, 7, 1],
+/**
+ * Regua por plano: dias antes do vencimento em que cada lembrete dispara.
+ *
+ * Fechada sobre `PlanId`: um plano novo obriga uma entrada aqui e o `tsc`
+ * cobra. Ate 2026-09-06 o mapa era aberto (`Record<string, ...>`) e o mensal
+ * nao estava nele; a linha caia em `skipped` e o job reportava sucesso. Foi o
+ * caso vivo do boleto mensal de 21/09: zero lembretes, sem nada acusar.
+ */
+export const RENEWAL_MILESTONES: Record<PlanId, number[]> = {
+  pro_monthly: [7, 3, 1],
   pro_semiannual: [15, 7, 1],
+  pro_annual: [30, 7, 1],
 };
+
+/** Codigo do marco do DIA ZERO em `renewal_reminders_sent`. */
+const DIA_ZERO = "d0";
 
 // Marco "ativo" = o MENOR N cuja janela ainda contem daysUntil. Anual: 30d cobre
 // (7,30], 7d cobre (1,7], 1d cobre <=1 (contiguo, sem overlap). Um marco por
@@ -565,24 +578,79 @@ function activeRenewalMilestone(
   return eligible.length > 0 ? Math.min(...eligible) : null;
 }
 
+export type DecisaoDeLembrete =
+  | { tipo: "lembrete"; codigo: string; daysRemaining: number }
+  | { tipo: "termino"; codigo: typeof DIA_ZERO }
+  | { tipo: "pular"; motivo: "sem_marcos" | "ja_enviado" | "fora_da_janela" };
+
 /**
- * Quem recebe lembrete de renovacao.
+ * O que esta assinatura recebe HOJE: um lembrete de "vence em N dias", o
+ * e-mail de termino, ou nada. Pura, para o teste afirmar a tabela.
  *
- * EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos`: o que
+ * DIA ZERO: `current_period_end` nas ultimas 24 horas. O job roda uma vez por
+ * dia (12:00 UTC), entao "venceu hoje" e "venceu desde a rodada anterior", e a
+ * janela de 24h e o que garante que ninguem fica sem o aviso nem o recebe duas
+ * vezes (o codigo `d0` no array de marcos fecha a segunda parte). Vencida ha
+ * mais de 24h nao recebe: o dia zero nao e retroativo, como os outros marcos.
+ *
+ * `sem_marcos` e NOMEADO em vez de virar `fora_da_janela`, porque a rodada
+ * transforma isso em aviso no Sentry: plano sem regua e configuracao faltando,
+ * nao ausencia de trabalho.
+ */
+export function decidirLembrete(args: {
+  planCode: string;
+  currentPeriodEnd: string | null;
+  alreadySent: string[];
+  nowMs: number;
+}): DecisaoDeLembrete {
+  const { planCode, currentPeriodEnd, alreadySent, nowMs } = args;
+  if (!isPlanId(planCode)) return { tipo: "pular", motivo: "sem_marcos" };
+  if (!currentPeriodEnd) return { tipo: "pular", motivo: "fora_da_janela" };
+  const periodEndMs = new Date(currentPeriodEnd).getTime();
+  if (!Number.isFinite(periodEndMs)) {
+    return { tipo: "pular", motivo: "fora_da_janela" };
+  }
+
+  if (periodEndMs <= nowMs) {
+    if (nowMs - periodEndMs > DAY_MS) {
+      return { tipo: "pular", motivo: "fora_da_janela" };
+    }
+    if (alreadySent.includes(DIA_ZERO)) {
+      return { tipo: "pular", motivo: "ja_enviado" };
+    }
+    return { tipo: "termino", codigo: DIA_ZERO };
+  }
+
+  const daysUntil = (periodEndMs - nowMs) / DAY_MS;
+  const n = activeRenewalMilestone(RENEWAL_MILESTONES[planCode], daysUntil);
+  if (n === null) return { tipo: "pular", motivo: "fora_da_janela" };
+  const codigo = `d${n}`;
+  if (alreadySent.includes(codigo)) {
+    return { tipo: "pular", motivo: "ja_enviado" };
+  }
+  return {
+    tipo: "lembrete",
+    codigo,
+    daysRemaining: Math.max(0, Math.round(daysUntil)),
+  };
+}
+
+const COLUNAS_DE_LEMBRETE =
+  "id, user_id, current_period_end, renewal_reminders_sent, plan_id, payment_method";
+
+/**
+ * Quem recebe lembrete de renovacao: manual, ativa, vencendo dentro da janela.
+ *
+ * EXPORTADA para teste, no mesmo criterio de `expirarAssinaturasManuais`: o que
  * importa provar aqui e QUAIS LINHAS a condicao pega, e isso so se prova
  * rodando a consulta contra um duble que APLICA os filtros. Um teste que
  * conferisse o formato da query provaria a intencao, nao o efeito.
  *
- * EXCLUSAO POR PROVEDOR, nao por metodo de pagamento: a pergunta e quem RENOVA,
- * nao como a pessoa pagou. O link deste e-mail leva a POST /api/billing/renew,
- * que tem provider e metodo FIXOS EM DURO (`stripeProvider`, `paymentMethod:
- * "boleto"`), entao um assinante Pix receberia lembrete de boleto e o clique
- * geraria cobranca na Stripe, no provedor errado.
- *
- * PENDENCIA DATADA: renovacao Pix propria (e-mail proprio e `/renew` do provedor
- * do assinante) ate JANEIRO DE 2027. O primeiro vencimento semestral de Pix cai
- * em marco de 2027, entao ate la ninguem fica sem lembrete por causa desta
- * exclusao. Depois disso, fica.
+ * SEM FILTRO DE PROVEDOR desde 2026-09-06. Ate entao `.neq("provider",
+ * "asaas")` ficava aqui porque `POST /api/billing/renew` tinha Stripe e boleto
+ * fixos em duro, e um assinante Pix receberia lembrete de boleto. A rota passou
+ * a despachar por provedor e metodo (shared/renewalMethod.ts), entao a pergunta
+ * "quem renova" voltou a ser so `renewal_type='manual'`.
  */
 export function selecionarAssinaturasAVencer(
   fromRow: number,
@@ -592,190 +660,282 @@ export function selecionarAssinaturasAVencer(
 ) {
   return supabaseAdmin
     .from("subscriptions")
-    .select("id, user_id, current_period_end, renewal_reminders_sent, plan_id")
+    .select(COLUNAS_DE_LEMBRETE)
     .eq("renewal_type", "manual")
     .eq("status", "active")
-    .neq("provider", "asaas")
     .gt("current_period_end", nowIso)
     .lte("current_period_end", windowIso)
     .order("id", { ascending: true })
     .range(fromRow, toRow);
 }
 
-// Lembrete de renovacao de boleto manual. Filtro fail-closed: SO renewal_type=
-// 'manual' (cartao renova sozinho e nunca pode receber este e-mail) e status=
-// 'active', com vencimento na janela do maior marco. Um marco por assinatura por
-// run; marca o marco so apos o enqueue ser aceito (at-least-once).
+/**
+ * Quem venceu desde a rodada anterior: manual, com fim em (desde, agora].
+ *
+ * ACEITA `canceled` ALEM DE `active`, e isso e o ponto: o cron de expiracao
+ * (`expirarAssinaturasManuais`, a cada 6 horas) escreve `canceled` na manual
+ * vencida antes de este job rodar, e filtrar so `active` deixaria quase todo
+ * mundo sem o e-mail de termino. `superseded` fica fora: a pessoa ja renovou
+ * por linha nova. Cartao (`auto`) nunca entra.
+ */
+export function selecionarAssinaturasRecemVencidas(
+  fromRow: number,
+  toRow: number,
+  desdeIso: string,
+  nowIso: string,
+) {
+  return supabaseAdmin
+    .from("subscriptions")
+    .select(COLUNAS_DE_LEMBRETE)
+    .eq("renewal_type", "manual")
+    .in("status", ["active", "canceled"])
+    .gt("current_period_end", desdeIso)
+    .lte("current_period_end", nowIso)
+    .order("id", { ascending: true })
+    .range(fromRow, toRow);
+}
+
+type LinhaDeLembrete = {
+  id: string;
+  // Nao-nulo no schema e usado direto no getUserById logo abaixo.
+  user_id: string;
+  current_period_end: string | null;
+  // Array de codigos de marco (`d7`, `d3`, `d0`...), nao contador.
+  renewal_reminders_sent: string[] | null;
+  plan_id: string | null;
+  payment_method: string | null;
+};
+
+export type ResultadoDosLembretes = {
+  candidates: number;
+  sent: number;
+  skipped: number;
+  failed: number;
+  /** Notificacao no site que falhou DEPOIS de o e-mail sair. Nao e `failed`. */
+  notificationFailures: number;
+};
+
+/**
+ * A rodada de lembretes, separada da rota para ser exercitada com dubles.
+ *
+ * Por linha: decide o marco (`decidirLembrete`), enfileira o e-mail certo
+ * (lembrete ou termino), marca o marco SO depois de o enqueue ser aceito
+ * (at-least-once no enfileiramento), e por fim cria a notificacao no site. A
+ * notificacao vem por ultimo e nao conta como falha: o e-mail ja saiu e o
+ * marco ja esta gravado; um aviso a menos no sino nao justifica reenviar o
+ * e-mail na proxima rodada.
+ */
+export async function rodarLembretesDeRenovacao(
+  now: Date,
+): Promise<ResultadoDosLembretes> {
+  const nowIso = now.toISOString();
+  // Janela do maior marco (30d anual) + folga; os demais caem dentro.
+  const windowIso = new Date(now.getTime() + 31 * DAY_MS).toISOString();
+  const desdeIso = new Date(now.getTime() - DAY_MS).toISOString();
+
+  // PAGINADO: caminho de ENVIO. Truncar aqui nao erra um numero, deixa de
+  // mandar o lembrete de renovacao para quem esta no fim da lista, e o cron
+  // termina reportando sucesso. Falha silenciosa que so o cliente percebe.
+  const aVencer = await coletarTagueado<LinhaDeLembrete>(
+    (fromRow, toRow) =>
+      selecionarAssinaturasAVencer(fromRow, toRow, nowIso, windowIso),
+    "expiring-subscriptions due",
+  );
+  if (aVencer.error) throw aVencer.error;
+  const recemVencidas = await coletarTagueado<LinhaDeLembrete>(
+    (fromRow, toRow) =>
+      selecionarAssinaturasRecemVencidas(fromRow, toRow, desdeIso, nowIso),
+    "expiring-subscriptions ended",
+  );
+  if (recemVencidas.error) throw recemVencidas.error;
+
+  const rows = [...(aVencer.data ?? []), ...(recemVencidas.data ?? [])];
+
+  // plan_id (uuid) -> code, numa consulta so (poucos planos).
+  const planCodeById = new Map<string, string>();
+  if (rows.length > 0) {
+    const { data: plans } = await supabaseAdmin
+      .from("plans")
+      .select("id, code");
+    for (const p of plans || []) planCodeById.set(p.id, p.code);
+  }
+
+  let sent = 0;
+  let skipped = 0;
+  let failed = 0;
+  let notificationFailures = 0;
+  const semMarcos = new Set<string>();
+
+  for (const row of rows) {
+    try {
+      const code = row.plan_id ? planCodeById.get(row.plan_id) : undefined;
+      const already = row.renewal_reminders_sent ?? [];
+      const decisao = decidirLembrete({
+        planCode: code ?? "",
+        currentPeriodEnd: row.current_period_end,
+        alreadySent: already,
+        nowMs: now.getTime(),
+      });
+      if (decisao.tipo === "pular") {
+        if (decisao.motivo === "sem_marcos") semMarcos.add(code ?? "?");
+        skipped++;
+        continue;
+      }
+      // `decidirLembrete` so devolve lembrete/termino para `PlanId` conhecido
+      // e com `current_period_end` legivel; os dois `!` abaixo dependem disso.
+      const planId = code as PlanId;
+      const currentPeriodEnd = row.current_period_end!;
+
+      const token = issueRenewalToken({
+        subscriptionId: row.id,
+        currentPeriodEnd,
+      });
+      if (!token) {
+        console.error(
+          `[cron/expiring-subscriptions] token nulo para sub ${row.id} (RENEWAL_TOKEN_SECRET ausente?); pulando.`,
+        );
+        failed++;
+        continue;
+      }
+
+      const { data: authData } = await supabaseAdmin.auth.admin.getUserById(
+        row.user_id,
+      );
+      const emailTo = authData?.user?.email;
+      if (!emailTo) {
+        console.warn(
+          `[cron/expiring-subscriptions] sub ${row.id} sem e-mail; pulando.`,
+        );
+        skipped++;
+        continue;
+      }
+      const name = String(
+        authData?.user?.user_metadata?.name ||
+          emailTo.split("@")[0] ||
+          "assinante",
+      );
+
+      const pricing = PLAN_PRICING[planId];
+      const renewUrl = `${env.appPublicUrl}/renovar?t=${token}`;
+
+      // Enfileira PRIMEIRO; so marca o marco se o enqueue for ACEITO. Se o
+      // enqueue lancar (Redis fora/timeout), NAO marca -> a proxima run tenta
+      // de novo (at-least-once no enfileiramento). Uma falha posterior do
+      // worker (attempts:3) nao desmarca: aquele marco se perde, mas os outros
+      // cobrem o assinante.
+      if (decisao.tipo === "termino") {
+        await enqueueEmail({
+          type: "access_ended",
+          to: emailTo,
+          name,
+          gender: null,
+          planName: pricing.label,
+          priceLabel: pricing.totalLabel,
+          renewUrl,
+        });
+      } else {
+        await enqueueEmail({
+          type: "renewal_reminder",
+          to: emailTo,
+          name,
+          gender: null,
+          planName: pricing.label,
+          priceLabel: pricing.totalLabel,
+          dueDateIso: currentPeriodEnd,
+          renewUrl,
+          daysRemaining: decisao.daysRemaining,
+          // O e-mail diz por qual meio a renovacao vai ser cobrada, com a
+          // MESMA regra que a rota de renovacao aplica no clique.
+          paymentMethod: metodoDaRenovacao(row.payment_method, planId),
+        });
+      }
+
+      const { error: markError } = await supabaseAdmin
+        .from("subscriptions")
+        .update({ renewal_reminders_sent: [...already, decisao.codigo] })
+        .eq("id", row.id);
+      if (markError) {
+        // Enfileirado mas nao marcado: risco de reenvio na proxima run. Grita.
+        console.error(
+          `[cron/expiring-subscriptions] marco ${decisao.codigo} enfileirado mas NAO marcado (sub ${row.id}):`,
+          markError,
+        );
+        failed++;
+        continue;
+      }
+      sent++;
+
+      // NOTIFICACAO NO SITE, por ultimo. Tipo `system`: o enum do banco nao
+      // tem tipo de cobranca, e criar um e migration (fora deste lote).
+      // TODO(Ana)
+      try {
+        await createTargetedNotification({
+          email: emailTo,
+          type: "system",
+          title:
+            decisao.tipo === "termino"
+              ? "Seu Pro terminou"
+              : `Seu Pro vence em ${decisao.daysRemaining} ${decisao.daysRemaining === 1 ? "dia" : "dias"}`,
+          body:
+            decisao.tipo === "termino"
+              ? "O período da sua assinatura chegou ao fim e o acesso Pro foi pausado. Renove quando quiser."
+              : "A renovação é manual. Renove antes do vencimento para não perder o acesso.",
+          ctaUrl: renewUrl,
+          ctaLabel: "Renovar",
+        });
+      } catch (err) {
+        notificationFailures++;
+        console.error(
+          `[cron/expiring-subscriptions] notificacao no site falhou para sub ${row.id} (o e-mail ja saiu):`,
+          err,
+        );
+      }
+    } catch (err) {
+      failed++;
+      console.error(
+        `[cron/expiring-subscriptions] falha na sub ${row.id}:`,
+        err,
+      );
+    }
+  }
+
+  if (semMarcos.size > 0) {
+    // Plano sem regua e configuracao faltando: ate 2026-09-06 isto era
+    // `skipped` mudo, e o mensal ficou meses sem lembrete por causa disso.
+    Sentry.captureMessage("renewal_milestones_ausentes", {
+      level: "warning",
+      fingerprint: ["renewal-milestones-ausentes"],
+      tags: { origem: "cron-expiring-subscriptions" },
+      extra: { plan_codes: Array.from(semMarcos).sort() },
+    });
+  }
+
+  return {
+    candidates: rows.length,
+    sent,
+    skipped,
+    failed,
+    notificationFailures,
+  };
+}
+
+// Lembrete de renovacao manual (boleto e Pix). Filtro fail-closed: SO
+// renewal_type='manual' (cartao renova sozinho e nunca pode receber este
+// e-mail). Um marco por assinatura por run; marca o marco so apos o enqueue
+// ser aceito (at-least-once). A rodada vive em `rodarLembretesDeRenovacao`.
 router.post(
   "/expiring-subscriptions",
   withCronLock("expiring-subscriptions", 600, async (_req, res, next) => {
     const startedAt = new Date();
     try {
-      const now = new Date();
-      const nowIso = now.toISOString();
-      // Janela do maior marco (30d anual) + folga; semestral (<=15d) cai dentro.
-      const windowIso = new Date(now.getTime() + 31 * DAY_MS).toISOString();
-
-      // Usa o indice parcial subscriptions_manual_renewal_expiry_idx
-      // (renewal_type='manual' AND status='active', em current_period_end).
-      // PAGINADO: caminho de ENVIO. Truncar aqui nao erra um numero, deixa de
-      // mandar o lembrete de renovacao para quem esta no fim da lista, e o cron
-      // termina reportando sucesso. Falha silenciosa que so o cliente percebe.
-      const { data: due, error: dueError } = await coletarTagueado<{
-        id: string;
-        // Nao-nulo no schema e usado direto no getUserById logo abaixo.
-        user_id: string;
-        current_period_end: string | null;
-        // Array de codigos de marco (`d7`, `d3`...), nao contador.
-        renewal_reminders_sent: string[] | null;
-        plan_id: string | null;
-      }>(
-        (fromRow, toRow) =>
-          selecionarAssinaturasAVencer(fromRow, toRow, nowIso, windowIso),
-        "expiring-subscriptions due",
-      );
-
-      if (dueError) {
-        await recordCronRun({
-          jobName: "expiring-subscriptions",
-          status: "error",
-          startedAt,
-          errorMessage: dueError.message,
-        });
-        return next(
-          montarDbError(
-            "cron",
-            "cron/expiring-subscriptions load due",
-            dueError,
-            "Erro ao buscar assinaturas a vencer.",
-          ),
-        );
-      }
-
-      const rows = due || [];
-
-      // plan_id (uuid) -> code, numa consulta so (poucos planos).
-      const planCodeById = new Map<string, string>();
-      if (rows.length > 0) {
-        const { data: plans } = await supabaseAdmin
-          .from("plans")
-          .select("id, code");
-        for (const p of plans || []) planCodeById.set(p.id, p.code);
-      }
-
-      let sent = 0;
-      let skipped = 0;
-      let failed = 0;
-
-      for (const row of rows) {
-        try {
-          const code = row.plan_id ? planCodeById.get(row.plan_id) : undefined;
-          const milestones = code ? RENEWAL_MILESTONES[code] : undefined;
-          if (
-            !code ||
-            !isPlanId(code) ||
-            !milestones ||
-            !row.current_period_end
-          ) {
-            skipped++;
-            continue;
-          }
-
-          const periodEndMs = new Date(row.current_period_end).getTime();
-          const daysUntil = (periodEndMs - now.getTime()) / DAY_MS;
-          const n = activeRenewalMilestone(milestones, daysUntil);
-          if (n === null) {
-            skipped++;
-            continue;
-          }
-
-          const milestoneCode = `d${n}`;
-          const already = row.renewal_reminders_sent ?? [];
-          if (already.includes(milestoneCode)) {
-            skipped++;
-            continue;
-          }
-
-          const token = issueRenewalToken({
-            subscriptionId: row.id,
-            currentPeriodEnd: row.current_period_end,
-          });
-          if (!token) {
-            console.error(
-              `[cron/expiring-subscriptions] token nulo para sub ${row.id} (RENEWAL_TOKEN_SECRET ausente?); pulando.`,
-            );
-            failed++;
-            continue;
-          }
-
-          const { data: authData } = await supabaseAdmin.auth.admin.getUserById(
-            row.user_id,
-          );
-          const emailTo = authData?.user?.email;
-          if (!emailTo) {
-            console.warn(
-              `[cron/expiring-subscriptions] sub ${row.id} sem e-mail; pulando.`,
-            );
-            skipped++;
-            continue;
-          }
-          const name = String(
-            authData?.user?.user_metadata?.name ||
-              emailTo.split("@")[0] ||
-              "assinante",
-          );
-
-          const pricing = PLAN_PRICING[code];
-          const renewUrl = `${env.appPublicUrl}/renovar?t=${token}`;
-          const daysRemaining = Math.max(0, Math.round(daysUntil));
-
-          // Enfileira PRIMEIRO; so marca o marco se o enqueue for ACEITO. Se o
-          // enqueue lancar (Redis fora/timeout), NAO marca -> a proxima run tenta
-          // de novo (at-least-once no enfileiramento). Uma falha posterior do
-          // worker (attempts:3) nao desmarca: aquele marco se perde, mas os outros
-          // dois cobrem o assinante.
-          await enqueueEmail({
-            type: "renewal_reminder",
-            to: emailTo,
-            name,
-            gender: null,
-            planName: pricing.label,
-            priceLabel: pricing.totalLabel,
-            dueDateIso: row.current_period_end,
-            renewUrl,
-            daysRemaining,
-          });
-
-          const { error: markError } = await supabaseAdmin
-            .from("subscriptions")
-            .update({ renewal_reminders_sent: [...already, milestoneCode] })
-            .eq("id", row.id);
-          if (markError) {
-            // Enfileirado mas nao marcado: risco de reenvio na proxima run. Grita.
-            console.error(
-              `[cron/expiring-subscriptions] marco ${milestoneCode} enfileirado mas NAO marcado (sub ${row.id}):`,
-              markError,
-            );
-            failed++;
-          } else {
-            sent++;
-          }
-        } catch (err) {
-          failed++;
-          console.error(
-            `[cron/expiring-subscriptions] falha na sub ${row.id}:`,
-            err,
-          );
-        }
-      }
-
+      const r = await rodarLembretesDeRenovacao(new Date());
       await recordCronRun({
         jobName: "expiring-subscriptions",
-        status: failed > 0 ? "partial" : "success",
+        status: r.failed > 0 ? "partial" : "success",
         startedAt,
-        payload: { candidates: rows.length, sent, skipped, failed },
+        payload: r,
       });
-      res.json({ data: { candidates: rows.length, sent, skipped, failed } });
+      res.json({ data: r });
     } catch (err) {
       await recordCronRun({
         jobName: "expiring-subscriptions",
@@ -981,7 +1141,7 @@ function isProLikeStatus(status: string | null | undefined): boolean {
 // (subscription retrieve) E a fonte de verdade, entao refletimos status/periodo
 // no banco sem calcular ciclo. Sem STRIPE_SECRET_KEY ou sem id do provedor:
 // skipped (nunca assume um estado). So escreve quando ha mudanca real.
-// EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` abaixo: o
+// EXPORTADA para teste, no mesmo criterio de `expirarAssinaturasManuais` abaixo: o
 // que importa provar e o que acontece com a violacao de unicidade na ativacao, e
 // isso so se prova rodando a funcao contra um erro real do banco.
 export async function reconcileStripeRow(sub: SubRow): Promise<RowOutcome> {
@@ -1205,7 +1365,10 @@ async function reconcileExpiredSubscriptions() {
 const BOLETO_EXPIRY_BATCH = 200;
 
 /**
- * BOLETO PAGO E VENCIDO: fecha o unico fim de vida que nao tinha dono.
+ * ASSINATURA MANUAL (boleto ou Pix) PAGA E VENCIDA: fecha o unico fim de vida
+ * que nao tinha dono. Nasceu como `expirarBoletosVencidos`; o nome mudou em
+ * 2026-09-06 porque o filtro nunca olhou provedor nem metodo, e o Pix manual
+ * sempre entrou aqui.
  *
  * O buraco: para `renewal_type='manual'` NENHUM dos quatro caminhos que escrevem
  * `canceled_at` funciona. Nao ha subscription na Stripe (o
@@ -1229,8 +1392,8 @@ const BOLETO_EXPIRY_BATCH = 200;
  *
  *   - `current_period_end < now()` e exatamente o complemento do que is_user_pro
  *     aceita, entao toda linha que este job toca JA nao dava Pro. O acesso e
- *     inalterado pela mudanca de status, e por isso tambem nao ha cache de Pro a
- *     invalidar: ele ja respondia `false` antes da escrita;
+ *     inalterado pela mudanca de status. O cache de Pro e invalidado mesmo
+ *     assim, pela COERENCIA da tela (ver o comentario junto da escrita);
  *   - `lt` nao casa NULL, entao assinatura sem data de fim (que da Pro
  *     indefinidamente por is_user_pro) nunca entra;
  *   - RENOVACAO EM CURSO nao e afetada: a renovacao de boleto cria uma LINHA
@@ -1255,7 +1418,7 @@ const BOLETO_EXPIRY_BATCH = 200;
 // isso so se prova rodando a funcao contra um dublê que APLICA os filtros. Um
 // teste que apenas conferisse o formato da query estaria conferindo a intencao,
 // nao o efeito.
-export async function expirarBoletosVencidos() {
+export async function expirarAssinaturasManuais() {
   const nowIso = new Date().toISOString();
 
   const alvos: Array<{ id: string; user_id: string | null }> = [];
@@ -1307,12 +1470,18 @@ export async function expirarBoletosVencidos() {
       failed += 1;
       failures.push({ subscription_id: alvo.id, reason: error.message });
       console.error(
-        `[cron/reconcile-subscriptions] falha ao expirar boleto ${alvo.id}:`,
+        `[cron/reconcile-subscriptions] falha ao expirar assinatura manual ${alvo.id}:`,
         error,
       );
       continue;
     }
     expired += 1;
+    // O CACHE DE PRO CAI JUNTO. Nao pelo acesso (is_user_pro ja negava pelo
+    // periodo, e o TTL e de 60 s), e sim pela coerencia da tela: a partir
+    // daqui /api/billing/subscription devolve `expired`, e um "1" sobrevivente
+    // no cache faria o middleware responder Pro sobre a mesma linha por ate um
+    // minuto. Fire-and-forget como nos outros call sites do arquivo.
+    if (alvo.user_id) void invalidateProStatusCache(alvo.user_id);
   }
 
   return { processed: alvos.length, expired, failed, capAtingido, failures };
@@ -1333,7 +1502,7 @@ router.post(
       // lock, para um caminho que hoje nao pega nenhuma linha. E nao entrou no
       // expire-pending-boletos porque o nome daquele job diz `pending`, e este
       // trata o PAGO: reaproveitar la faria o nome mentir.
-      const boletos = await expirarBoletosVencidos();
+      const boletos = await expirarAssinaturasManuais();
 
       const totalFailed = incomplete.failed + expired.failed + boletos.failed;
       // Contagens separadas por provider (byProvider) + skipped/failed por fase.

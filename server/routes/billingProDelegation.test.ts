@@ -228,6 +228,58 @@ describe("o contrato da resposta nao mudou", () => {
     expect(data.status).toBe("free");
   });
 
+  it("manual ACTIVE com periodo vencido responde status expired, nao active", async () => {
+    // A janela entre o vencimento e a rodada do cron de expiracao (ate 6h): a
+    // linha ainda esta `active` no banco e `isPro` ja e false. Devolver
+    // "active" com isPro false e a tela dizer "Ativa" sobre um acesso que caiu.
+    estado.subscription = {
+      id: "sub-1",
+      status: "active",
+      renewal_type: "manual",
+      provider_subscription_id: "pay_1",
+      current_period_end: "2026-01-01T00:00:00.000Z",
+    };
+
+    const r = res();
+    await handleGetSubscription(req(false), r.objeto, next);
+
+    const data = r.gravado.json?.data as Record<string, unknown>;
+    expect(data.status).toBe("expired");
+    expect(data.isPro).toBe(false);
+  });
+
+  it("manual ACTIVE com periodo vigente continua active", async () => {
+    estado.subscription = {
+      id: "sub-1",
+      status: "active",
+      renewal_type: "manual",
+      provider_subscription_id: "pay_1",
+      current_period_end: "2099-01-01T00:00:00.000Z",
+    };
+
+    const r = res();
+    await handleGetSubscription(req(true), r.objeto, next);
+
+    const data = r.gravado.json?.data as Record<string, unknown>;
+    expect(data.status).toBe("active");
+  });
+
+  it("cartao (auto) com periodo vencido NAO vira expired: a Stripe e quem decide", async () => {
+    estado.subscription = {
+      id: "sub-1",
+      status: "active",
+      renewal_type: "auto",
+      provider_subscription_id: "sub_1",
+      current_period_end: "2026-01-01T00:00:00.000Z",
+    };
+
+    const r = res();
+    await handleGetSubscription(req(true), r.objeto, next);
+
+    const data = r.gravado.json?.data as Record<string, unknown>;
+    expect(data.status).toBe("active");
+  });
+
   it("com assinatura: o shape espalha a linha e acrescenta os aditivos", async () => {
     estado.subscription = {
       id: "sub-1",

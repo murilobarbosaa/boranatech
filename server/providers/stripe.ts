@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/node";
 import Stripe from "stripe";
 
 import { findValidCoupon } from "../lib/coupons";
+import { periodoDaRenovacao } from "../lib/renewalAnchor";
 import { env } from "../lib/env";
 import { registerFiscalInvoice } from "../lib/fiscalQueue";
 import { applyRefundToFiscalInvoice } from "../lib/fiscalRefund";
@@ -309,7 +310,7 @@ function eventConfirmsPayment(event: Stripe.Event): boolean {
  * nao de cobranca. Colapsar os dois faria uma venda sem valor declarado parecer
  * uma venda gratuita.
  *
- * EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
+ * EXPORTADA para teste, no mesmo criterio de `expirarAssinaturasManuais` em
  * server/routes/cron.ts: o que importa provar aqui e QUAL numero sai daqui para a
  * comissao, e isso so se prova rodando a funcao contra eventos reais.
  */
@@ -945,7 +946,7 @@ type ExclusiveActivationRow = {
 // invoice.paid; este e o unico caminho de ativacao. O periodo de acesso e
 // calculado aqui (now + access_days do metadata: 365 anual, 182 semestral),
 // porque nao existe subscription na Stripe de onde puxar o periodo.
-// EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
+// EXPORTADA para teste, no mesmo criterio de `expirarAssinaturasManuais` em
 // server/routes/cron.ts e de `recordAffiliateConversion` (shared.ts): o que
 // importa provar aqui e que a ativacao passa por UMA chamada de RPC e por
 // nenhuma escrita direta de status, e isso so se prova rodando a funcao.
@@ -1020,16 +1021,17 @@ export async function onBoletoAsyncPaymentSucceeded(
     .limit(1)
     .maybeSingle();
 
-  const anchorMs = vigente?.current_period_end
-    ? new Date(vigente.current_period_end).getTime()
-    : eventCreatedAt.getTime();
   // current_period_start = ancora: na renovacao vigente o novo periodo comeca
   // exatamente onde o anterior termina (contiguo, sem overlap de receita); na 1a
-  // compra e na renovacao atrasada a ancora e o proprio pagamento.
-  const periodStart = new Date(anchorMs).toISOString();
-  const periodEnd = new Date(
-    anchorMs + accessDays * 24 * 60 * 60 * 1000,
-  ).toISOString();
+  // compra e na renovacao atrasada a ancora e o proprio pagamento. A REGRA e
+  // compartilhada com o Pix (server/lib/renewalAnchor.ts).
+  const { periodStart, periodEnd } = periodoDaRenovacao({
+    paidAtMs: eventCreatedAt.getTime(),
+    fimVigenteMs: vigente?.current_period_end
+      ? new Date(vigente.current_period_end).getTime()
+      : null,
+    accessDays,
+  });
 
   // ATIVACAO ATOMICA. O supersede das assinaturas antigas e o flip desta linha
   // acontecem DENTRO de uma transacao so, na funcao
@@ -1774,7 +1776,8 @@ async function createCheckout(
     // que a Stripe cobra). O acesso Pro so e concedido quando o boleto compensa
     // (async_payment_succeeded, proxima task); por isso metadata carrega
     // payment_method/renewal_type/access_days para a linha ser reidratada la.
-    const accessDays = oneOffAccessDays(input.planId);
+    // Do mapa por metodo (shared/paymentMethods.ts): o mensal nao lista boleto.
+    const accessDays = oneOffAccessDays(input.planId, "boleto");
     if (!accessDays) {
       throw createError(
         400,

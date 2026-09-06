@@ -43,29 +43,49 @@ describe("negacao por OMISSAO, que e o ponto da inversao", () => {
     }
   });
 
-  it("plano fora do mapa de avulsos so aceita cartao, sem precisar ser citado", () => {
-    // `pro_monthly` nao aparece em ONE_OFF_ACCESS_DAYS. A recusa de boleto e Pix
-    // nele NAO vem de uma linha que o nomeia: vem da ausencia dele no mapa.
-    expect(allowedPaymentMethods("pro_monthly")).toEqual(["card"]);
+  it("meio fora do mapa de um plano e recusado sem precisar ser citado", () => {
+    // `boleto` nao aparece em ONE_OFF_ACCESS_DAYS.boleto para `pro_monthly`. A
+    // recusa NAO vem de uma linha que o nomeia: vem da ausencia dele no mapa.
     expect(isPaymentMethodAllowed("pro_monthly", "boleto")).toBe(false);
-    expect(isPaymentMethodAllowed("pro_monthly", "pix")).toBe(false);
+    expect(oneOffAccessDays("pro_monthly", "boleto")).toBeUndefined();
   });
 });
 
-describe("permissao e duracao saem do MESMO mapa", () => {
-  it("plano com dias de acesso aceita os avulsos", () => {
-    for (const planId of ["pro_semiannual", "pro_annual"] as PlanId[]) {
-      expect(oneOffAccessDays(planId)).toBeGreaterThan(0);
-      expect(isPaymentMethodAllowed(planId, "boleto")).toBe(true);
-      expect(isPaymentMethodAllowed(planId, "pix")).toBe(true);
-    }
+describe("permissao e duracao saem do MESMO mapa, POR METODO", () => {
+  // DECISAO DO LOTE 2b (2026-09-06): Pix e permitido no mensal, boleto nao. O
+  // Pix cai na hora e renova por QR; um boleto por mes seria pior para quem
+  // compra e para quem opera. Por isso o mapa deixou de ser so por plano.
+  it("mensal aceita cartao e Pix, e NAO boleto", () => {
+    expect(allowedPaymentMethods("pro_monthly")).toEqual(["card", "pix"]);
   });
 
-  it("plano SEM dias de acesso nao aceita avulso: a implicacao vale nos dois sentidos", () => {
+  it("semestral e anual aceitam cartao, boleto e Pix", () => {
+    expect(allowedPaymentMethods("pro_semiannual")).toEqual([
+      "card",
+      "boleto",
+      "pix",
+    ]);
+    expect(allowedPaymentMethods("pro_annual")).toEqual([
+      "card",
+      "boleto",
+      "pix",
+    ]);
+  });
+
+  it("dias de acesso por metodo e plano: a tabela literal", () => {
+    expect(oneOffAccessDays("pro_monthly", "pix")).toBe(30);
+    expect(oneOffAccessDays("pro_semiannual", "pix")).toBe(182);
+    expect(oneOffAccessDays("pro_annual", "pix")).toBe(365);
+    expect(oneOffAccessDays("pro_semiannual", "boleto")).toBe(182);
+    expect(oneOffAccessDays("pro_annual", "boleto")).toBe(365);
+  });
+
+  it("a implicacao vale nos dois sentidos, para cada metodo avulso", () => {
     for (const planId of PLAN_ORDER) {
-      const temPrazo = oneOffAccessDays(planId) !== undefined;
-      expect(isPaymentMethodAllowed(planId, "boleto")).toBe(temPrazo);
-      expect(isPaymentMethodAllowed(planId, "pix")).toBe(temPrazo);
+      for (const metodo of ["boleto", "pix"] as const) {
+        const temPrazo = oneOffAccessDays(planId, metodo) !== undefined;
+        expect(isPaymentMethodAllowed(planId, metodo)).toBe(temPrazo);
+      }
     }
   });
 
@@ -75,11 +95,12 @@ describe("permissao e duracao saem do MESMO mapa", () => {
     }
   });
 
-  it("boleto e Pix concedem o MESMO acesso: o prazo nao depende do meio", () => {
-    // Se um dia divergirem, foi decisao de alguem e este caso quebra. Hoje os
-    // dois leem o mesmo `oneOffAccessDays`, entao a igualdade e estrutural.
-    expect(oneOffAccessDays("pro_semiannual")).toBe(182);
-    expect(oneOffAccessDays("pro_annual")).toBe(365);
+  it("onde os dois meios existem, concedem o MESMO acesso", () => {
+    for (const planId of ["pro_semiannual", "pro_annual"] as PlanId[]) {
+      expect(oneOffAccessDays(planId, "boleto")).toBe(
+        oneOffAccessDays(planId, "pix"),
+      );
+    }
   });
 });
 

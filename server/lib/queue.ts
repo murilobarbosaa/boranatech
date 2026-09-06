@@ -8,6 +8,7 @@ import { env } from "./env";
 import { queueConnection } from "./redis";
 import { withRedisOpTimeout } from "./redisOpTimeout";
 import {
+  sendAccessEndedEmail,
   sendCancellationEmail,
   sendCancellationScheduledEmail,
   sendFiscalInvoiceEmail,
@@ -35,6 +36,14 @@ export type EmailJobData =
       dueDateIso: string;
       renewUrl: string;
       daysRemaining: number;
+      /** Meio da renovacao; ausente = boleto (job de antes do campo). */
+      paymentMethod?: "boleto" | "pix";
+    } & Recipient)
+  | ({
+      type: "access_ended";
+      planName: string;
+      priceLabel: string;
+      renewUrl: string;
     } & Recipient)
   | ({ type: "waitlist_confirmation" } & Recipient)
   | { type: "newsletter_confirm"; to: string; confirmUrl: string }
@@ -61,26 +70,27 @@ export type EmailJobData =
 // newsletter). So os criticos mantem o envio direto quando NAO ha fila (Redis
 // ausente); os demais falham limpo. O Record forca exaustividade: um tipo novo
 // sem entrada aqui nao compila.
-const EMAIL_CRITICALITY: Record<
-  EmailJobData["type"],
-  "critical" | "standard"
-> = {
-  welcome: "standard",
-  pro_upgrade: "critical",
-  cancellation: "critical",
-  cancellation_scheduled: "critical",
-  payment_failed: "critical",
-  // Critico: se o lembrete nao sai, o boleto vence e o assinante perde o acesso
-  // que renovaria. Com Redis fora, o envio direto (fallback critico) mantem o
-  // lembrete saindo em vez de sumir calado.
-  renewal_reminder: "critical",
-  waitlist_confirmation: "standard",
-  newsletter_confirm: "standard",
-  newsletter_welcome: "standard",
-  // Critico: e o recibo fiscal de algo que a pessoa pagou, e o unico envio que
-  // carrega o documento. Com o Redis fora, sai direto, como os demais criticos.
-  fiscal_invoice_issued: "critical",
-};
+const EMAIL_CRITICALITY: Record<EmailJobData["type"], "critical" | "standard"> =
+  {
+    welcome: "standard",
+    pro_upgrade: "critical",
+    cancellation: "critical",
+    cancellation_scheduled: "critical",
+    payment_failed: "critical",
+    // Critico: se o lembrete nao sai, o boleto vence e o assinante perde o acesso
+    // que renovaria. Com Redis fora, o envio direto (fallback critico) mantem o
+    // lembrete saindo em vez de sumir calado.
+    renewal_reminder: "critical",
+    // Critico pelo mesmo motivo: e o unico aviso de que o acesso caiu, com o
+    // link para voltar.
+    access_ended: "critical",
+    waitlist_confirmation: "standard",
+    newsletter_confirm: "standard",
+    newsletter_welcome: "standard",
+    // Critico: e o recibo fiscal de algo que a pessoa pagou, e o unico envio que
+    // carrega o documento. Com o Redis fora, sai direto, como os demais criticos.
+    fiscal_invoice_issued: "critical",
+  };
 
 function isCriticalEmail(type: EmailJobData["type"]): boolean {
   return EMAIL_CRITICALITY[type] === "critical";
@@ -145,6 +155,14 @@ async function sendDirect(data: EmailJobData) {
         dueDateIso: data.dueDateIso,
         renewUrl: data.renewUrl,
         daysRemaining: data.daysRemaining,
+        paymentMethod: data.paymentMethod,
+      });
+      break;
+    case "access_ended":
+      await sendAccessEndedEmail(data.to, data.name, {
+        planName: data.planName,
+        priceLabel: data.priceLabel,
+        renewUrl: data.renewUrl,
       });
       break;
     case "waitlist_confirmation":
@@ -259,5 +277,8 @@ export async function enqueueEmail(data: EmailJobData) {
   // Fila existe: o e-mail vai pela fila OU falha. Nunca envio direto aqui.
   // Timeout do add (Redis lento) ou rejeicao propagam pro chamador; enviar
   // direto duplicaria (o add preso completa depois) e furaria o limiter.
-  await withRedisOpTimeout(emailQueue.add(data.type, data), `email:${data.type}`);
+  await withRedisOpTimeout(
+    emailQueue.add(data.type, data),
+    `email:${data.type}`,
+  );
 }

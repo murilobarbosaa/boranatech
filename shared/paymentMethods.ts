@@ -23,37 +23,54 @@ import type { PlanId } from "./planPricing";
 export const PAYMENT_METHODS = ["card", "boleto", "pix"] as const;
 export type PaymentMethodId = (typeof PAYMENT_METHODS)[number];
 
+/** Meios avulsos: uma cobranca, um periodo de acesso, renovacao manual. */
+const ONE_OFF_METHODS = ["boleto", "pix"] as const;
+export type OneOffMethodId = (typeof ONE_OFF_METHODS)[number];
+
 /**
- * Dias de acesso que uma compra AVULSA concede, por plano.
+ * Dias de acesso que uma compra AVULSA concede, por METODO e por plano.
  *
  * Este mapa e a fonte das duas coisas ao mesmo tempo, e nao por acaso: um plano
- * so pode ser vendido de forma avulsa se existir uma resposta para "acesso por
- * quanto tempo?". Estar aqui E a permissao; o numero E a duracao.
+ * so pode ser vendido de forma avulsa num meio se existir uma resposta para
+ * "acesso por quanto tempo?". Estar aqui E a permissao; o numero E a duracao.
  *
- * O mensal fica de fora de proposito: vender um mes avulso significaria uma
- * cobranca manual por mes, que e pior para quem compra e para quem opera.
+ * POR METODO desde o lote 2b (2026-09-06), e a assimetria e decisao de produto:
+ * o mensal aceita Pix (cai na hora, renova por QR, com lembrete por e-mail) e
+ * NAO aceita boleto (um boleto por mes e pior para quem compra e para quem
+ * opera). Ate entao o mapa era so por plano, e liberar o mensal num meio o
+ * liberaria nos dois.
  */
-export const ONE_OFF_ACCESS_DAYS: Partial<Record<PlanId, number>> = {
-  pro_semiannual: 182,
-  pro_annual: 365,
+export const ONE_OFF_ACCESS_DAYS: Record<
+  OneOffMethodId,
+  Partial<Record<PlanId, number>>
+> = {
+  pix: {
+    pro_monthly: 30,
+    pro_semiannual: 182,
+    pro_annual: 365,
+  },
+  boleto: {
+    pro_semiannual: 182,
+    pro_annual: 365,
+  },
 };
-
-/** Meios avulsos: uma cobranca, um periodo de acesso, renovacao manual. */
-const ONE_OFF_METHODS: readonly PaymentMethodId[] = ["boleto", "pix"];
 
 /**
  * Meios aceitos por um plano.
  *
  * `card` vale para todo plano porque e o unico recorrente: a Stripe renova
- * sozinha e nao ha prazo de acesso a conceder. Os avulsos dependem de o plano
- * ter uma duracao declarada em `ONE_OFF_ACCESS_DAYS`.
+ * sozinha e nao ha prazo de acesso a conceder. Cada avulso depende de o plano
+ * ter uma duracao declarada para AQUELE meio em `ONE_OFF_ACCESS_DAYS`.
  */
 export function allowedPaymentMethods(
   planId: PlanId,
 ): readonly PaymentMethodId[] {
-  return ONE_OFF_ACCESS_DAYS[planId]
-    ? (["card", ...ONE_OFF_METHODS] as const)
-    : (["card"] as const);
+  return [
+    "card",
+    ...ONE_OFF_METHODS.filter(
+      (method) => ONE_OFF_ACCESS_DAYS[method][planId] !== undefined,
+    ),
+  ];
 }
 
 /** O plano aceita este meio? Unica pergunta que as camadas devem fazer. */
@@ -79,9 +96,13 @@ export function isPaymentMethodId(value: unknown): value is PaymentMethodId {
 }
 
 /**
- * Dias de acesso de uma compra avulsa, ou `undefined` quando o plano nao aceita
- * a modalidade. Os providers usam isto no lugar dos mapas locais que mantinham.
+ * Dias de acesso de uma compra avulsa neste meio, ou `undefined` quando o plano
+ * nao aceita a modalidade. Os providers usam isto no lugar dos mapas locais que
+ * mantinham; cada um passa o SEU meio, nunca o do outro.
  */
-export function oneOffAccessDays(planId: PlanId): number | undefined {
-  return ONE_OFF_ACCESS_DAYS[planId];
+export function oneOffAccessDays(
+  planId: PlanId,
+  method: OneOffMethodId,
+): number | undefined {
+  return ONE_OFF_ACCESS_DAYS[method][planId];
 }

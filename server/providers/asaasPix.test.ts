@@ -291,19 +291,58 @@ function checkoutInput(planId: string) {
 describe("restricao de plano: o mapa lista quem PODE", () => {
   beforeEach(limpar);
 
-  it("mensal e recusado, e NAO chega a tocar o Asaas", async () => {
+  it("mensal e ACEITO no Pix (lote 2b) e cobra o preco do mensal", async () => {
+    const r = await asaasProvider.createCheckout(checkoutInput("pro_monthly"));
+
+    expect(r.subscriptionId).toBe(COBRANCA);
+    const post = estado.asaas.find(
+      (c) => c.method === "POST" && c.caminho === "/payments",
+    )!;
+    expect((post.body as Record<string, unknown>).value).toBe(
+      PLAN_PRICING.pro_monthly.total,
+    );
+  });
+
+  it("ativacao do mensal por Pix concede 30 dias", async () => {
+    estado.plano = {
+      id: "plan-mensal",
+      code: "pro_monthly",
+      name: "Pro Mensal",
+    };
+    estado.linhaSubscription = {
+      id: "row-1",
+      user_id: USER,
+      status: "pending",
+      plan_id: "plan-mensal",
+      affiliate_code: null,
+      coupon_code: null,
+    };
+
+    await processAsaasEvent(
+      eventoDePagamento({ dateCreated: "2026-09-06 12:00:00" }),
+    );
+
+    const rpc = estado.rpcCalls.find(
+      (c) => c.nome === "activate_subscription_exclusive",
+    )!;
+    expect(rpc.args.p_period_start).toBe("2026-09-06T15:00:00.000Z");
+    expect(rpc.args.p_period_end).toBe("2026-10-06T15:00:00.000Z");
+  });
+
+  it("plano que o mapa NAO lista para Pix e recusado sem tocar o Asaas", async () => {
     await expect(
-      asaasProvider.createCheckout(checkoutInput("pro_monthly")),
-    ).rejects.toMatchObject({ code: "pix_not_allowed_on_monthly" });
+      asaasProvider.createCheckout(checkoutInput("free")),
+    ).rejects.toMatchObject({ code: "pix_not_allowed_on_plan" });
 
     expect(estado.asaas).toEqual([]);
     expect(estado.escritas).toEqual([]);
   });
 
   it("semestral e anual vem do ponto unico, com os MESMOS dias do boleto", () => {
-    expect(oneOffAccessDays("pro_semiannual")).toBe(182);
-    expect(oneOffAccessDays("pro_annual")).toBe(365);
-    expect(oneOffAccessDays("pro_monthly")).toBeUndefined();
+    expect(oneOffAccessDays("pro_semiannual", "pix")).toBe(182);
+    expect(oneOffAccessDays("pro_annual", "pix")).toBe(365);
+    expect(oneOffAccessDays("pro_monthly", "pix")).toBe(30);
+    expect(oneOffAccessDays("pro_monthly", "boleto")).toBeUndefined();
   });
 });
 
@@ -2124,5 +2163,292 @@ describe("fila de webhooks do Asaas: leitura e classificacao", () => {
     expect(
       estadoDaFilaDeWebhooks([{ enabled: true, interrupted: false }]),
     ).toBe("ok");
+  });
+});
+
+describe("webhook: pagamento em linha ACTIVE ou ENCERRADA nunca some nem da 500", () => {
+  // Com a renovacao por linha nova (lote 2b), um PAYMENT_RECEIVED apontando
+  // para uma linha ja `active` ou ja `canceled`/`superseded` so acontece por
+  // fluxo estranho. Antes: `active` engolia em silencio sem ledger; `canceled`
+  // lancava 500 deterministico e reabria o laco de reentrega do incidente de
+  // 2026-09-03. Agora os dois deixam rastro e dinheiro contado.
+  const COBRANCA_ANTIGA = "pay_old_111";
+
+  function linha(status: string) {
+    return {
+      id: "row-1",
+      user_id: USER,
+      status,
+      plan_id: "plan-anual",
+      affiliate_code: null,
+      coupon_code: null,
+      provider_subscription_id: COBRANCA_ANTIGA,
+    };
+  }
+
+  const linhasDoLedger = () =>
+    estado.escritas
+      .filter(
+        (e) => e.tabela === "finance_transactions" && e.operacao === "upsert",
+      )
+      .map((e) => e.carga as Record<string, unknown>);
+  const carimbo = () =>
+    estado.escritas.find(
+      (e) => e.tabela === "billing_events" && e.operacao === "update",
+    );
+
+  beforeEach(() => {
+    limpar();
+  });
+
+  it("linha ACTIVE com cobranca DIFERENTE: 200, ledger com dono e plano, sem tocar periodo", async () => {
+    estado.linhaSubscription = linha("active");
+
+    const r = await processAsaasEvent(eventoDePagamento());
+
+    expect(r).toEqual({ received: true, activated: false, ledgered: true });
+    expect(linhasDoLedger()).toHaveLength(1);
+    expect(linhasDoLedger()[0]).toMatchObject({
+      provider_transaction_id: COBRANCA,
+      type: "charge",
+      gross_cents: 22200,
+      user_id: USER,
+      plan_code: "pro_annual",
+    });
+    expect(carimbo()).toBeDefined();
+    expect(estado.rpcCalls).toEqual([]);
+    expect(estado.escritas.filter((e) => e.tabela === "subscriptions")).toEqual(
+      [],
+    );
+    const avisos = estado.capturas.filter(
+      (c) => c.mensagem === "asaas_pagamento_em_assinatura_ativa",
+    );
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0].opcoes).toMatchObject({
+      level: "warning",
+      fingerprint: ["asaas-pagamento-em-assinatura-ativa"],
+      extra: {
+        event_id: EVENTO,
+        asaas_payment_id: COBRANCA,
+        subscription_id: "row-1",
+      },
+    });
+  });
+
+  it("linha ACTIVE com a MESMA cobranca e reentrega: nada de ledger nem aviso", async () => {
+    estado.linhaSubscription = {
+      ...linha("active"),
+      provider_subscription_id: COBRANCA,
+    };
+
+    const r = await processAsaasEvent(eventoDePagamento());
+
+    expect(r).toEqual({ received: true, activated: false });
+    expect(linhasDoLedger()).toEqual([]);
+    expect(estado.capturas).toEqual([]);
+  });
+
+  it.each([["canceled"], ["superseded"]])(
+    "linha %s: 200 com ledger e aviso, nunca 500",
+    async (status) => {
+      estado.linhaSubscription = linha(status);
+
+      const r = await processAsaasEvent(eventoDePagamento());
+
+      expect(r).toEqual({ received: true, activated: false, ledgered: true });
+      expect(linhasDoLedger()).toHaveLength(1);
+      expect(linhasDoLedger()[0]).toMatchObject({
+        user_id: USER,
+        plan_code: "pro_annual",
+      });
+      expect(carimbo()).toBeDefined();
+      // O billing_events NAO e apagado: nao ha reentrega a provocar.
+      expect(
+        estado.escritas.filter(
+          (e) => e.tabela === "billing_events" && e.operacao === "delete",
+        ),
+      ).toEqual([]);
+      const avisos = estado.capturas.filter(
+        (c) => c.mensagem === "asaas_pagamento_em_assinatura_encerrada",
+      );
+      expect(avisos).toHaveLength(1);
+      expect(avisos[0].opcoes).toMatchObject({
+        level: "warning",
+        fingerprint: ["asaas-pagamento-em-assinatura-encerrada"],
+        extra: { subscription_id: "row-1", subscription_status: status },
+      });
+      expect(
+        estado.capturas.filter((c) => c.mensagem === "asaas_webhook_falhou"),
+      ).toEqual([]);
+    },
+  );
+
+  it("o MESMO evento entregue duas vezes nao grava segunda linha", async () => {
+    estado.linhaSubscription = linha("canceled");
+
+    await processAsaasEvent(eventoDePagamento());
+    const segunda = await processAsaasEvent(eventoDePagamento());
+
+    expect(segunda).toMatchObject({ received: true, deduped: true });
+    expect(linhasDoLedger()).toHaveLength(1);
+  });
+
+  it("linha encerrada e payload SEM valor: 200, sem ledger, ledgered false", async () => {
+    estado.linhaSubscription = linha("canceled");
+
+    const r = await processAsaasEvent(
+      eventoDePagamento({ payment: { value: undefined, netValue: undefined } }),
+    );
+
+    expect(r).toEqual({ received: true, activated: false, ledgered: false });
+    expect(linhasDoLedger()).toEqual([]);
+  });
+});
+
+describe("checkout Pix de RENOVACAO (internalRenewal)", () => {
+  beforeEach(() => {
+    limpar();
+    // Assinante ativo: e exatamente quem renova.
+    estado.ativas = [{ id: "sub-viva" }];
+    estado.linhaSubscription = {
+      id: "sub-viva",
+      user_id: USER,
+      status: "active",
+      plan_id: "plan-anual",
+      affiliate_code: null,
+      coupon_code: null,
+      current_period_start: "2026-03-01T00:00:00.000Z",
+    };
+  });
+
+  function renovacao(over: Record<string, unknown> = {}) {
+    return {
+      ...checkoutInput("pro_annual"),
+      internalRenewal: true,
+      ...over,
+    } as Parameters<typeof asaasProvider.createCheckout>[0];
+  }
+
+  it("pula o 409 de assinatura ativa e cria a cobranca", async () => {
+    const r = await asaasProvider.createCheckout(renovacao());
+
+    expect(r.subscriptionId).toBe(COBRANCA);
+    expect(
+      estado.asaas.filter(
+        (c) => c.method === "POST" && c.caminho === "/payments",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("CONTROLE: sem internalRenewal o mesmo assinante continua recebendo 409", async () => {
+    await expect(
+      asaasProvider.createCheckout(checkoutInput("pro_annual")),
+    ).rejects.toMatchObject({ code: "conflict" });
+  });
+
+  it("MANTEM o 409 de Pix pendente: nao gera dois QR de renovacao", async () => {
+    estado.pixPendentes = [{ id: "pix-em-aberto" }];
+
+    await expect(
+      asaasProvider.createCheckout(renovacao()),
+    ).rejects.toMatchObject({ code: "pix_pending" });
+    expect(estado.asaas).toEqual([]);
+  });
+
+  it("a linha nova nasce pending, manual, pix, com externalReference = id dela", async () => {
+    await asaasProvider.createCheckout(renovacao());
+
+    const insert = estado.escritas.find(
+      (e) => e.tabela === "subscriptions" && e.operacao === "insert",
+    )!;
+    expect(insert.carga).toMatchObject({
+      status: "pending",
+      renewal_type: "manual",
+      payment_method: "pix",
+      provider_subscription_id: null,
+    });
+    const post = estado.asaas.find(
+      (c) => c.method === "POST" && c.caminho === "/payments",
+    )!;
+    expect((post.body as Record<string, unknown>).externalReference).toBe(
+      estado.novaLinhaId,
+    );
+  });
+
+  it("a descricao da cobranca diz que e renovacao", async () => {
+    await asaasProvider.createCheckout(renovacao());
+
+    const post = estado.asaas.find(
+      (c) => c.method === "POST" && c.caminho === "/payments",
+    )!;
+    expect((post.body as Record<string, unknown>).description).toBe(
+      "Renovação Bora na Tech Pro Anual",
+    );
+  });
+
+  it("CONTROLE: a primeira compra continua sem a palavra Renovação", async () => {
+    estado.ativas = [];
+    estado.linhaSubscription = null;
+
+    await asaasProvider.createCheckout(checkoutInput("pro_annual"));
+
+    const post = estado.asaas.find(
+      (c) => c.method === "POST" && c.caminho === "/payments",
+    )!;
+    expect((post.body as Record<string, unknown>).description).toBe(
+      "Bora na Tech Pro Anual",
+    );
+  });
+
+  it("renovacao NAO aplica cupom, mesmo com codigo no input: cobra o preco cheio", async () => {
+    estado.cupom = { code: "DESC90", discount_percent: 90, active: true };
+
+    await asaasProvider.createCheckout(renovacao({ couponCode: "DESC90" }));
+
+    const post = estado.asaas.find(
+      (c) => c.method === "POST" && c.caminho === "/payments",
+    )!;
+    expect((post.body as Record<string, unknown>).value).toBe(
+      PLAN_PRICING.pro_annual.total,
+    );
+    const insert = estado.escritas.find(
+      (e) => e.tabela === "subscriptions" && e.operacao === "insert",
+    )!;
+    expect((insert.carga as Record<string, unknown>).coupon_code).toBeNull();
+  });
+});
+
+describe("ativacao Pix: a ancora do periodo e a regra compartilhada", () => {
+  beforeEach(() => {
+    limpar();
+    // O duble devolve `linhaSubscription` para toda leitura `maybeSingle` de
+    // subscriptions, inclusive a consulta da ancora: um fim vigente aqui e
+    // lido como "a maior assinatura ainda vigente do usuario".
+    estado.linhaSubscription = {
+      id: "row-1",
+      user_id: USER,
+      status: "pending",
+      plan_id: "plan-anual",
+      affiliate_code: null,
+      coupon_code: null,
+      current_period_end: "2026-09-21T00:00:00.000Z",
+    };
+  });
+
+  it("pagamento ANTES do fim vigente: o periodo novo comeca no fim vigente", async () => {
+    await processAsaasEvent(
+      eventoDePagamento({ dateCreated: "2026-09-18 12:00:00" }),
+    );
+
+    const rpc = estado.rpcCalls.find(
+      (c) => c.nome === "activate_subscription_exclusive",
+    )!;
+    expect(rpc.args.p_period_start).toBe("2026-09-21T00:00:00.000Z");
+    expect(rpc.args.p_period_end).toBe(
+      new Date(
+        Date.parse("2026-09-21T00:00:00.000Z") +
+          oneOffAccessDays("pro_annual", "pix")! * 24 * 60 * 60 * 1000,
+      ).toISOString(),
+    );
   });
 });

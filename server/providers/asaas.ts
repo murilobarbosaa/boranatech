@@ -28,6 +28,7 @@ import { oneOffAccessDays } from "../../shared/paymentMethods";
 import { PLAN_PRICING } from "../../shared/planPricing";
 import type { PlanId } from "../../shared/planPricing";
 import { montarDbError } from "../lib/dbError";
+import { periodoDaRenovacao } from "../lib/renewalAnchor";
 import type {
   CancelInput,
   CancelResult,
@@ -197,14 +198,16 @@ async function createCheckout(
     );
   }
 
-  const accessDays = oneOffAccessDays(input.planId);
+  const accessDays = oneOffAccessDays(input.planId, "pix");
   if (!accessDays) {
     // Mesmo contrato de err do boleto: 400 com slug proprio, para a UI
-    // distinguir "plan nao aceita este meio" de qualquer outra recusa.
+    // distinguir "plan nao aceita este meio" de qualquer outra recusa. O slug
+    // deixou de nomear o mensal em 2026-09-06, quando o mensal passou a aceitar
+    // Pix: a recusa vem do mapa, para o plano que ele nao listar.
     throw createError(
       400,
-      "pix_not_allowed_on_monthly",
-      "Pix não está disponível neste plan.",
+      "pix_not_allowed_on_plan",
+      "Pix não está disponível neste plano.",
     );
   }
 
@@ -256,26 +259,34 @@ async function createCheckout(
   // `subscriptions_one_active_per_user` e a rede de seguranca, nao a primeira
   // row: sem este guard o usuario pagaria e SO ENTAO descobriria, por um 23505
   // no webhook, que ja era assinante. Fail-closed: err de query BLOQUEIA.
-  const { data: activeRows, error: guardError } = await supabaseAdmin
-    .from("subscriptions")
-    .select("id")
-    .eq("user_id", input.user.id)
-    .in("status", ["active", "trialing"])
-    .limit(1);
-  if (guardError) {
-    console.error(
-      "[asaas/checkout] guard de assinatura ativa falhou; bloqueando:",
-      guardError,
-    );
-    throw createError(
-      500,
-      "db_error",
-      "Não foi possível verificar sua assinatura. Tente novamente.",
-      { cause: guardError },
-    );
-  }
-  if (activeRows && activeRows.length > 0) {
-    throw createError(409, "conflict", "Usuário já possui assinatura ativa.");
+  //
+  // PULADO NA RENOVACAO, e so nela: quem renova esta `active` de proposito.
+  // `internalRenewal` e setado pelo servidor (rota de renovacao, a partir do
+  // token), nunca lido do corpo HTTP; mesmo contrato do boleto na Stripe. A
+  // linha nova nasce `pending` e a RPC de ativacao marca a antiga como
+  // `superseded`, entao o indice unico nunca ve duas ativas.
+  if (!input.internalRenewal) {
+    const { data: activeRows, error: guardError } = await supabaseAdmin
+      .from("subscriptions")
+      .select("id")
+      .eq("user_id", input.user.id)
+      .in("status", ["active", "trialing"])
+      .limit(1);
+    if (guardError) {
+      console.error(
+        "[asaas/checkout] guard de assinatura ativa falhou; bloqueando:",
+        guardError,
+      );
+      throw createError(
+        500,
+        "db_error",
+        "Não foi possível verificar sua assinatura. Tente novamente.",
+        { cause: guardError },
+      );
+    }
+    if (activeRows && activeRows.length > 0) {
+      throw createError(409, "conflict", "Usuário já possui assinatura ativa.");
+    }
   }
 
   // Guard de Pix pendente, espelhando o de boleto pendente: enquanto uma
@@ -394,7 +405,9 @@ async function createCheckout(
         // Centavos inteiros dos dois lados; o Asaas recebe reais.
         value: finalCents / 100,
         dueDate: dueDateInDays(PIX_DUE_DAYS, new Date()),
-        description: `Bora na Tech Pro ${PLAN_PRICING[input.planId].label}`,
+        // "Renovacao" no extrato do Asaas, para a pessoa e para quem concilia
+        // distinguirem a segunda cobranca da primeira.
+        description: `${input.internalRenewal ? "Renovação " : ""}Bora na Tech Pro ${PLAN_PRICING[input.planId].label}`,
         externalReference: created.id,
       },
     });
@@ -646,6 +659,13 @@ export type WebhookOutcome = {
    * respondido com 200. Ver `registrarPagamentoSemAssinatura`.
    */
   orphan?: true;
+  /**
+   * Pagamento que caiu numa linha ja `active` (cobranca diferente da que a
+   * ativou) ou ja encerrada: nao ativa nada, mas o dinheiro foi contado no
+   * ledger (`true`) ou nao pode ser, por payload sem valor (`false`). Ver
+   * `registrarPagamentoForaDoFluxo`.
+   */
+  ledgered?: boolean;
 };
 
 /** Eventos que confirmam dinheiro recebido. */
@@ -928,7 +948,9 @@ const LEITURA_REAL: LeituraDeAssinatura = {
   async porCobranca(chargeId) {
     const { data, error } = await supabaseAdmin
       .from("subscriptions")
-      .select("id, user_id, status, plan_id, affiliate_code, coupon_code")
+      .select(
+        "id, user_id, status, plan_id, affiliate_code, coupon_code, provider_subscription_id",
+      )
       .eq("provider_subscription_id", chargeId)
       .maybeSingle();
     if (error) throw error;
@@ -937,7 +959,9 @@ const LEITURA_REAL: LeituraDeAssinatura = {
   async porId(rowId) {
     const { data, error } = await supabaseAdmin
       .from("subscriptions")
-      .select("id, user_id, status, plan_id, affiliate_code, coupon_code")
+      .select(
+        "id, user_id, status, plan_id, affiliate_code, coupon_code, provider_subscription_id",
+      )
       .eq("id", rowId)
       .maybeSingle();
     if (error) throw error;
@@ -961,7 +985,9 @@ export async function findSubscriptionRow(
  * faltavam.
  *
  * Devolve `activated: true` quando esta chamada foi a que ativou, `activated:
- * false` na reentrega, e `orphan: true` quando nao ha row nossa para ativar.
+ * false` na reentrega, `orphan: true` quando nao ha row nossa para ativar, e
+ * `ledgered` quando o pagamento caiu numa linha ja ativa ou ja encerrada
+ * (contado no ledger, nada ativado).
  */
 async function activateOnPayment(args: {
   event: AsaasEvent;
@@ -979,13 +1005,40 @@ async function activateOnPayment(args: {
     return { received: true, orphan: true };
   }
 
-  if (row.status === "active") return { received: true, activated: false }; // reprocesso idempotente
+  if (row.status === "active") {
+    // REENTREGA do pagamento que ativou: a cobranca e a mesma. Idempotente.
+    if (chargeId && chargeId === row.provider_subscription_id) {
+      return { received: true, activated: false };
+    }
+    // PAGAMENTO NOVO NUMA LINHA JA ATIVA. Com a renovacao por linha nova
+    // (lote 2b) isto so acontece por fluxo estranho, e ate 2026-09-06 era
+    // engolido em silencio: 200, sem ledger, dinheiro sem rastro. Agora conta
+    // o dinheiro e grita; NAO toca periodo, porque estender a partir daqui
+    // seria conceder acesso por um pagamento que ninguem amarrou a um plano.
+    const ledgered = await registrarPagamentoForaDoFluxo({
+      ...args,
+      row,
+      mensagem: "asaas_pagamento_em_assinatura_ativa",
+      fingerprint: "asaas-pagamento-em-assinatura-ativa",
+      log: `[webhook/asaas] PAGAMENTO EM LINHA ATIVA: charge ${chargeId ?? "?"} numa linha ativada por ${row.provider_subscription_id ?? "?"} (row ${row.id}); entra no ledger, periodo intocado.`,
+    });
+    return { received: true, activated: false, ledgered };
+  }
 
   if (row.status !== "pending") {
-    console.error(
-      `[webhook/asaas] pagamento nao ativou (row ${row.id}, status ${row.status}).`,
-    );
-    throw createError(500, "db_error", "Pagamento não ativou a assinatura.");
+    // LINHA ENCERRADA (`canceled`, `superseded`). Ate 2026-09-06 lancava 500,
+    // e 500 aqui e deterministico: a linha nao volta a `pending` sozinha, o
+    // Asaas reentrega ate desistir e INTERROMPE a fila da conta, como no
+    // incidente de 2026-09-03. A compensacao e a reentrega sao para excecao
+    // inesperada; isto e um fato do payload. Conta o dinheiro, grita, 200.
+    const ledgered = await registrarPagamentoForaDoFluxo({
+      ...args,
+      row,
+      mensagem: "asaas_pagamento_em_assinatura_encerrada",
+      fingerprint: "asaas-pagamento-em-assinatura-encerrada",
+      log: `[webhook/asaas] PAGAMENTO EM LINHA ENCERRADA: charge ${chargeId ?? "?"} (row ${row.id}, status ${row.status}); entra no ledger, nada ativado.`,
+    });
+    return { received: true, activated: false, ledgered };
   }
 
   const { data: plan } = await supabaseAdmin
@@ -996,7 +1049,7 @@ async function activateOnPayment(args: {
   const planCode = plan?.code;
   const accessDays =
     planCode && isKnownPlanId(planCode)
-      ? oneOffAccessDays(planCode)
+      ? oneOffAccessDays(planCode, "pix")
       : undefined;
   if (!accessDays) {
     // Sem dias de acesso nao da para calcular o periodo, e ativar com periodo
@@ -1032,13 +1085,14 @@ async function activateOnPayment(args: {
     .limit(1)
     .maybeSingle();
 
-  const anchorMs = current?.current_period_end
-    ? new Date(current.current_period_end).getTime()
-    : paidAt.getTime();
-  const periodStart = new Date(anchorMs).toISOString();
-  const periodEnd = new Date(
-    anchorMs + accessDays * 24 * 60 * 60 * 1000,
-  ).toISOString();
+  // A REGRA e compartilhada com o boleto (server/lib/renewalAnchor.ts).
+  const { periodStart, periodEnd } = periodoDaRenovacao({
+    paidAtMs: paidAt.getTime(),
+    fimVigenteMs: current?.current_period_end
+      ? new Date(current.current_period_end).getTime()
+      : null,
+    accessDays,
+  });
 
   const { data: activation, error } = await supabaseAdmin.rpc(
     "activate_subscription_exclusive",
@@ -1199,12 +1253,65 @@ async function registrarPagamentoSemAssinatura(args: {
   chargeId: string | null;
   receivedAtIso: string;
 }): Promise<void> {
-  const { event, eventType, eventId, chargeId, receivedAtIso } = args;
+  await registrarPagamentoForaDoFluxo({
+    ...args,
+    row: null,
+    mensagem: "asaas_pagamento_sem_assinatura",
+    fingerprint: "asaas-pagamento-sem-assinatura",
+    log: `[webhook/asaas] PAGAMENTO SEM LINHA: charge ${args.chargeId ?? "?"} (event ${args.eventId}); entra no ledger sem dono.`,
+  });
+}
+
+/**
+ * Pagamento confirmado que NAO ativa nada: sem linha, em linha ja ativa, ou
+ * em linha encerrada. O tratamento e um so, e a diferenca entre os tres casos
+ * e quem e o dono (a linha, quando existe) e qual aviso sobe.
+ *
+ * O que sempre acontece: (1) a cobranca entra no ledger, com o `user_id` e o
+ * `plan_code` da linha quando ha linha, sem dono quando nao ha; (2) a linha de
+ * `billing_events` fica, carimbada como processada; (3) o Sentry recebe um
+ * warning nomeado com os ids. Responder 200 e obrigacao do chamador.
+ *
+ * VALOR AUSENTE NO PAYLOAD tambem segue: e condicao deterministica, e
+ * reentregar nao faz o valor aparecer. A linha do ledger nao e montada (o
+ * ledger recusa inventar zero), o aviso carrega `gross_cents: null`, e o
+ * retorno `false` diz ao chamador que o dinheiro NAO foi contado.
+ */
+async function registrarPagamentoForaDoFluxo(args: {
+  event: AsaasEvent;
+  eventType: string;
+  eventId: string;
+  chargeId: string | null;
+  receivedAtIso: string;
+  row: AssinaturaDoAsaas | null;
+  mensagem: string;
+  fingerprint: string;
+  log: string;
+}): Promise<boolean> {
+  const {
+    event,
+    eventType,
+    eventId,
+    chargeId,
+    receivedAtIso,
+    row,
+    mensagem,
+    fingerprint,
+    log,
+  } = args;
   const grossCents = centavosAsaas(event.payment?.value);
 
-  console.warn(
-    `[webhook/asaas] PAGAMENTO SEM LINHA: charge ${chargeId ?? "?"} (event ${eventId}); entra no ledger sem dono.`,
-  );
+  console.warn(log);
+
+  let planCode: string | null = null;
+  if (row?.plan_id) {
+    const { data: plan } = await supabaseAdmin
+      .from("plans")
+      .select("code")
+      .eq("id", row.plan_id)
+      .maybeSingle();
+    planCode = plan?.code ?? null;
+  }
 
   let linha: ReturnType<typeof montarCobrancaAsaas> | null = null;
   try {
@@ -1212,14 +1319,14 @@ async function registrarPagamentoSemAssinatura(args: {
       event,
       eventId,
       receivedAtIso,
-      userId: null,
-      planCode: null,
+      userId: row?.user_id ?? null,
+      planCode,
     });
   } catch (err) {
     // Sem id ou sem valor: a linha nao tem identidade ou nao tem numero. Os
     // dois sao do payload, nao do ambiente; seguem sem ledger e com aviso.
     console.warn(
-      `[webhook/asaas] cobranca sem dono nao montavel (event ${eventId}):`,
+      `[webhook/asaas] cobranca fora do fluxo nao montavel (event ${eventId}):`,
       err instanceof Error ? err.message : String(err),
     );
   }
@@ -1236,16 +1343,20 @@ async function registrarPagamentoSemAssinatura(args: {
     );
   }
 
-  Sentry.captureMessage("asaas_pagamento_sem_assinatura", {
+  Sentry.captureMessage(mensagem, {
     level: "warning",
-    fingerprint: ["asaas-pagamento-sem-assinatura"],
+    fingerprint: [fingerprint],
     tags: { origem: "asaas-webhook", event_type: eventType },
     extra: {
       event_id: eventId,
       asaas_payment_id: chargeId,
       gross_cents: grossCents,
+      subscription_id: row?.id ?? null,
+      subscription_status: row?.status ?? null,
     },
   });
+
+  return linha !== null;
 }
 
 /**

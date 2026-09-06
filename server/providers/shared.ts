@@ -35,7 +35,7 @@ export async function isFirstPurchase(userId: string): Promise<boolean> {
  * quais linhas conferir, que e a classe de falha em silencio que este projeto ja
  * pagou caro. Zero DECLARADO e outra coisa e continua entrando.
  *
- * EXPORTADA para teste, no mesmo criterio de `expirarBoletosVencidos` em
+ * EXPORTADA para teste, no mesmo criterio de `expirarAssinaturasManuais` em
  * server/routes/cron.ts: o que importa provar e SE a escrita acontece e com qual
  * numero, e isso so se prova rodando a funcao.
  */

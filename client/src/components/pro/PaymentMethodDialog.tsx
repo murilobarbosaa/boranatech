@@ -48,14 +48,25 @@ const METHOD_UI: Record<
     title: "Boleto",
     note: "Vence em 3 dias. Você renova manualmente quando chegar perto do vencimento.",
   },
-  // TODO(Ana): copy da opcao Pix no dialog de pagamento.
   // O prazo NAO pode herdar a promessa do boleto: Pix cai em segundos, e o
   // "vence em 2 dias" aqui e a validade do QR Code, nao o tempo de compensacao.
+  // A nota do Pix varia por plano: ver `PIX_NOTE_BY_PLAN`.
   pix: {
     icon: QrCode,
     title: "Pix",
     note: "Cai na hora. O código vence em 2 dias e você renova manualmente.",
   },
+};
+
+// Copy do Pix por plano. Mapa FECHADO sobre `PlanId`: um plano novo obriga uma
+// entrada aqui e o `tsc` cobra. No mensal a renovacao e todo mes, e a frase
+// diz isso antes de a pessoa escolher; nos outros vale a nota geral acima.
+// TODO(Ana)
+const PIX_NOTE_BY_PLAN: Record<PlanId, string> = {
+  pro_monthly:
+    "Cai na hora. Renovação manual todo mês; avisamos por e-mail antes de vencer.",
+  pro_semiannual: METHOD_UI.pix.note,
+  pro_annual: METHOD_UI.pix.note,
 };
 
 export default function PaymentMethodDialog({
@@ -80,6 +91,8 @@ export default function PaymentMethodDialog({
           {options.map((method) => {
             const option = METHOD_UI[method];
             const Icon = option.icon;
+            const note =
+              method === "pix" ? PIX_NOTE_BY_PLAN[planId] : option.note;
             return (
               <button
                 key={method}
@@ -95,7 +108,7 @@ export default function PaymentMethodDialog({
                     {option.title}
                   </span>
                   <span className="block text-sm font-medium text-slate-600">
-                    {option.note}
+                    {note}
                   </span>
                 </span>
               </button>

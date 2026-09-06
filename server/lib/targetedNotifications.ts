@@ -17,6 +17,9 @@ type TargetedNotificationParams = {
   type?: "announcement" | "coupon" | "optin" | "system";
   category?: "product" | "promotional";
   createdBy?: string | null;
+  /** Botao da notificacao (colunas cta_url/cta_label). Opcional, aditivo. */
+  ctaUrl?: string | null;
+  ctaLabel?: string | null;
 };
 
 export async function createTargetedNotification(
@@ -61,6 +64,8 @@ export async function createTargetedNotification(
       type: params.type ?? "system",
       category: params.category ?? "product",
       audience: "custom",
+      cta_url: params.ctaUrl ?? null,
+      cta_label: params.ctaLabel ?? null,
       status: "published",
       published_at: new Date().toISOString(),
       created_by: params.createdBy ?? null,
