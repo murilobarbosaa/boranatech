@@ -20,11 +20,8 @@
 // server. Bloco v2 dentro deste arquivo custaria mais de 2 MB no bundle de
 // todo mundo quando as 266 entradas migrarem.
 //
-// REGRA DO VIDEO: `ajuda.video` (em shared/projects/v2) e SEMPRE um video real
-// (youtube.com/watch ou youtu.be). Busca do YouTube (results?search_query)
-// NUNCA entra: a pagina ja gera uma busca sozinha quando nao ha video curado,
-// e um link de busca gravado aqui e indistinguivel de curadoria de verdade. O
-// guard de shared/projects/v2/v2.test.ts recusa.
+// SEM VIDEO: a aba Projetos nao tem video, por decisao de produto de
+// 06/09/2026. `ProjetoAjuda` (shared/projects/v2/types.ts) nao tem esse campo.
 
 // Tier do catalogo de projetos: sem `pro` = gratuito (todos os projetos
 // vinculados a trilhas sao gratuitos por design); `pro: true` = desafio

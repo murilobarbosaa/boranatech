@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { Check, ExternalLink, Lightbulb, PlayCircle } from "lucide-react";
+import { Check, ExternalLink, Lightbulb } from "lucide-react";
 import { roadmapLoaders } from "@/lib/roadmapV2/loaders";
 import type { ProjetoCatalogo } from "@shared/projects/catalog";
 import type { ProjetoV2Detalhe } from "@shared/projects/v2/types";
@@ -255,25 +255,6 @@ export default function ProjectV2Detail({
           {/* TODO(Ana): titulo do bloco de ajuda */}
           <p className={ROTULO}>Se travar</p>
           <div className="mt-2 space-y-2">
-            {ajuda.video && (
-              <a
-                href={ajuda.video.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="card-brutal flex items-start gap-3 rounded-lg border-amber-300 bg-amber-50 p-4"
-              >
-                <PlayCircle className="mt-0.5 h-5 w-5 shrink-0 text-slate-900" />
-                <div>
-                  {/* TODO(Ana): rotulo do video de ajuda */}
-                  <p className={ROTULO}>Vídeo de ajuda</p>
-                  <p className="text-sm font-bold text-slate-900">
-                    {ajuda.video.titulo}
-                  </p>
-                </div>
-              </a>
-            )}
-
             {ajuda.trilha && (
               <div className={BLOCO}>
                 <Link

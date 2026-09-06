@@ -156,11 +156,6 @@ const detalhe: ProjetoV2Detalhe = {
     },
   ],
   ajuda: {
-    video: {
-      titulo:
-        "Projeto de JavaScript para iniciantes - To Do List com JavaScript puro",
-      url: "https://www.youtube.com/watch?v=HSssE1PRQcA",
-    },
     trilha: {
       slug: "frontend",
       nodeIds: [

@@ -10,8 +10,6 @@ import type { ProjetoV2Detalhe } from "@shared/projects/v2/types";
 // copy quebrar um teste de render. O conteudo real tem os proprios guards em
 // shared/projects/v2/v2.test.ts.
 
-const VIDEO = "https://www.youtube.com/watch?v=SV7TL0hxmIQ";
-
 const projeto = {
   id: "proj-teste",
   nome: "Projeto de Teste",
@@ -62,7 +60,6 @@ const detalhe: ProjetoV2Detalhe = {
     { tipo: "link", titulo: "Google Fonts", url: "https://fonts.google.com" },
   ],
   ajuda: {
-    video: { titulo: "Video de teste", url: VIDEO },
     trilha: { slug: "frontend", nodeIds: ["html.semantica"] },
     termos: ["HTML", "CSS"],
   },
@@ -138,20 +135,6 @@ describe("ProjectV2Detail", () => {
         .getAttribute("aria-checked"),
     ).toBe("false");
     expect(screen.getByText("1 de 5 etapas")).toBeTruthy();
-  });
-
-  it("o video aponta pra URL real e nunca para busca do YouTube", () => {
-    const { container } = render(
-      <ProjectV2Detail
-        projeto={projeto}
-        detalhe={detalhe}
-        etapasMarcadas={{}}
-        onToggleEtapa={vi.fn()}
-      />,
-    );
-    const link = screen.getByText("Video de teste").closest("a");
-    expect(link?.getAttribute("href")).toBe(VIDEO);
-    expect(container.innerHTML).not.toContain("results?search_query");
   });
 
   it("kit sem url mostra a nota; com url vira link externo", () => {

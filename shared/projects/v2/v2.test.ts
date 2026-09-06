@@ -17,6 +17,11 @@ import {
 
 // ===== Guards do schema v2 =====
 //
+// O guard 3, que exigia URL de video real em `ajuda.video`, saiu junto com o
+// campo: a aba Projetos nao tem video (decisao de produto de 06/09/2026). A
+// numeracao dos demais nao foi mexida de proposito, para nao renomear guards
+// ja citados por numero em commit e relatorio.
+//
 // Um detalhe v2 e o conjunto completo: meia missao na tela e pior que a v1
 // inteira. Todo guard aqui lista os OFENSORES POR ID, nunca so um total,
 // porque "esperava 1, recebeu 2" obriga quem quebrou a refazer a medicao a
@@ -95,25 +100,6 @@ describe("projetos v2", () => {
     expect(
       ruins,
       `detalhes v2 incompletos (${ruins.length}):\n${ruins.join("\n")}`,
-    ).toEqual([]);
-  });
-
-  it("3. ajuda.video e sempre video real, nunca busca do YouTube", () => {
-    const ruins: string[] = [];
-    for (const d of PROJETOS_V2) {
-      const url = d.ajuda?.video?.url;
-      if (url === undefined) continue;
-      if (url.includes("results?search_query"))
-        ruins.push(`${d.id}: e busca do YouTube, nao video`);
-      else if (
-        !url.includes("youtube.com/watch?v=") &&
-        !url.includes("youtu.be/")
-      )
-        ruins.push(`${d.id}: url nao e de video do YouTube (${url})`);
-    }
-    expect(
-      ruins,
-      `videos invalidos (${ruins.length}):\n${ruins.join("\n")}`,
     ).toEqual([]);
   });
 

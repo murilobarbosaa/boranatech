@@ -160,11 +160,6 @@ const detalhe: ProjetoV2Detalhe = {
     },
   ],
   ajuda: {
-    video: {
-      titulo:
-        "Crie uma API RESTful com Node.js e MongoDB | CRUD com Node, Express e Mongoose",
-      url: "https://www.youtube.com/watch?v=K5QaTfE5ylk",
-    },
     trilha: {
       slug: "backend",
       nodeIds: [

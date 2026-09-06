@@ -43,8 +43,11 @@ export type ProjetoKitItem = {
   nota?: string;
 };
 
+// Sem campo de video por decisao de produto (06/09/2026): a aba Projetos nao
+// tem video, o projeto se explica pelo briefing, requisitos, etapas e kit.
+// Campo opcional "para depois" foi descartado de proposito: superficie que
+// ninguem usa apodrece sem ninguem ver.
 export type ProjetoAjuda = {
-  video?: { titulo: string; url: string };
   trilha?: { slug: string; nodeIds: string[] };
   termos?: string[];
 };

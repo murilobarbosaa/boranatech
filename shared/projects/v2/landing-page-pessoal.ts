@@ -165,10 +165,6 @@ const detalhe: ProjetoV2Detalhe = {
     },
   ],
   ajuda: {
-    video: {
-      titulo: "Como Criar um Portfolio do Zero com HTML e CSS para Iniciantes",
-      url: "https://www.youtube.com/watch?v=SV7TL0hxmIQ",
-    },
     trilha: {
       slug: "frontend",
       nodeIds: [
