@@ -18,7 +18,7 @@ const detalhe: ProjetoV2Detalhe = {
     ],
     preRequisitos: [
       { rotulo: "Saber o que são HTML e CSS", href: "/dicionario?termo=HTML" },
-      { rotulo: "Ter o VS Code instalado", href: "/ferramentas" },
+      { rotulo: "Ter o VS Code instalado", href: "/ferramentas?q=VS%20Code" },
       { rotulo: "Ter uma conta no GitHub", href: "/dicionario?termo=GitHub" },
     ],
     tempoEstimado: { horas: [6, 10], semanas: [1, 2] },

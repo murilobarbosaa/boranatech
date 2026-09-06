@@ -8,6 +8,7 @@ import SEO from "@/components/SEO";
 import CopyButton from "@/components/shared/CopyButton";
 import ProjectValidationBlock from "@/components/projects/ProjectValidationBlock";
 import ProjetoAnel from "@/components/projects/ProjetoAnel";
+import ProjetoConcluidoModal from "@/components/projects/ProjetoConcluidoModal";
 import ProjetoDepois from "@/components/projects/ProjetoDepois";
 import ProjetoEtapas from "@/components/projects/ProjetoEtapas";
 import ProjetoPorQue from "@/components/projects/ProjetoPorQue";
@@ -29,6 +30,8 @@ import { isProjetoV2, loadProjetoV2 } from "@shared/projects/v2";
 import type { ProjetoV2Detalhe } from "@shared/projects/v2/types";
 
 const H2 = "font-display text-xl font-bold text-foreground";
+const ACAO_PRINCIPAL =
+  "inline-flex items-center gap-2 rounded-xl border-2 border-ink bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-bold text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]";
 const BLOCO = "border-b border-border pb-8 mb-8 last:mb-0 last:border-b-0";
 
 function urlDaPagina(id: string): string {
@@ -47,6 +50,7 @@ export default function ProjetoDetalhe() {
   const {
     done: projectsDone,
     stages: projectStages,
+    updatedAt: projectUpdatedAt,
     ready: completionReady,
     toggle: toggleCompletion,
     toggleStage,
@@ -56,6 +60,10 @@ export default function ProjetoDetalhe() {
   // ProjectValidationBlock, por projeto. A pagina so precisa saber que passou
   // a valer, para o chip de estado.
   const [validado, setValidado] = useState(false);
+  // A comemoracao e disparada pelo CLIQUE, nao pelo valor de `done`: abrir por
+  // efeito faria o modal aparecer toda vez que alguem abrisse um projeto ja
+  // concluido.
+  const [celebrando, setCelebrando] = useState(false);
   const [detalhe, setDetalhe] = useState<ProjetoV2Detalhe | "erro" | null>(
     null,
   );
@@ -194,11 +202,25 @@ export default function ProjetoDetalhe() {
           }
     : { rotulo: "Começar", ancora: "passos" };
 
+  // "Concluido em" so existe para quem esta logado: o localStorage do anonimo
+  // guarda ids, nao datas, e inventar uma seria pior que omitir.
+  const concluidoEm = concluido ? projectUpdatedAt.get(projeto.id) : undefined;
+  const concluidoEmCurto = concluidoEm
+    ? new Date(concluidoEm).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+      })
+    : undefined;
+
+  // Pagina de projeto v1 fica FORA do indice: e objetivo, ferramentas e passos,
+  // conteudo raso que competiria com o proprio catalogo. A v2 tem os sete
+  // blocos e ja entrou no sitemap.
   const seo = (
     <SEO
       title={`${projeto.nome} · Projetos · Bora na Tech`}
       description={projeto.objetivo}
       url={`/projetos/${projeto.id}`}
+      noindex={!isProjetoV2(projeto.id)}
     />
   );
 
@@ -206,9 +228,13 @@ export default function ProjetoDetalhe() {
     return (
       <Layout>
         {seo}
+        <section className="hero-pattern border-b-2 border-ink">
+          <div className="container max-w-[1180px]">
+            <ProjetoHero projeto={projeto} estado={estado} fatos={[]} />
+          </div>
+        </section>
         <section className="container max-w-[1180px] pb-16">
-          <ProjetoHero projeto={projeto} estado={estado} fatos={[]} />
-          <div className="card-brutal mt-8 rounded-xl border-amber-400 bg-amber-50 p-6 dark:bg-amber-950/30">
+          <div className="card-brutal mt-8 rounded-xl bg-accent/10 p-6">
             <p className="flex items-start gap-3 text-sm font-semibold text-foreground">
               <Lock
                 className="mt-0.5 h-5 w-5 shrink-0 text-amber-600"
@@ -235,56 +261,83 @@ export default function ProjetoDetalhe() {
   return (
     <Layout>
       {seo}
-      <section className="container max-w-[1180px] pb-16">
-        <ProjetoHero
-          projeto={projeto}
-          estado={estado}
-          fatos={fatos}
-          acoes={
-            <>
-              <button
-                type="button"
-                onClick={() => rolarPara(acaoPrincipal.ancora)}
-                className="inline-flex items-center gap-2 rounded-xl border-2 border-ink bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-bold text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]"
-              >
-                {acaoPrincipal.rotulo}
-              </button>
-              <FavoriteButton
-                item={{
-                  id: projeto.id,
-                  type: "projeto",
-                  title: projeto.nome,
-                  subtitle: labelForProjectArea(projeto.areaSlug),
-                }}
-                className="px-4 py-2.5 text-sm"
-              />
-              <CopyButton
-                text={urlDaPagina(projeto.id)}
-                className="border-border shadow-none"
-              />
-            </>
-          }
-          faixaMobile={
-            v2 ? (
-              <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border-2 border-ink bg-card p-3 text-sm lg:hidden">
-                <span className="text-muted-foreground">
-                  <span className="font-display font-bold text-foreground">
-                    {feitas} de {v2.etapas.length} etapas
+      <section className="hero-pattern border-b-2 border-ink">
+        <div className="container max-w-[1180px]">
+          <ProjetoHero
+            projeto={projeto}
+            estado={estado}
+            concluidoEm={concluidoEmCurto}
+            fatos={fatos}
+            acoes={
+              <>
+                {concluido ? (
+                  proximo ? (
+                    <Link
+                      href={`/projetos/${proximo.id}`}
+                      className={ACAO_PRINCIPAL}
+                    >
+                      Próximo projeto
+                    </Link>
+                  ) : (
+                    <CopyButton
+                      text={urlDaPagina(projeto.id)}
+                      label="Compartilhar"
+                      copiedLabel="Link copiado!"
+                      className={ACAO_PRINCIPAL}
+                    />
+                  )
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => rolarPara(acaoPrincipal.ancora)}
+                    className={ACAO_PRINCIPAL}
+                  >
+                    {acaoPrincipal.rotulo}
+                  </button>
+                )}
+                <FavoriteButton
+                  item={{
+                    id: projeto.id,
+                    type: "projeto",
+                    title: projeto.nome,
+                    subtitle: labelForProjectArea(projeto.areaSlug),
+                  }}
+                  className="px-4 py-2.5 text-sm"
+                />
+                {!concluido && (
+                  <CopyButton
+                    text={urlDaPagina(projeto.id)}
+                    label="Compartilhar"
+                    copiedLabel="Link copiado!"
+                    className="border-border shadow-none"
+                  />
+                )}
+              </>
+            }
+            faixaMobile={
+              v2 ? (
+                <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border-2 border-ink bg-card p-3 text-sm lg:hidden">
+                  <span className="text-muted-foreground">
+                    <span className="font-display font-bold text-foreground">
+                      {feitas} de {v2.etapas.length} etapas
+                    </span>
+                    {feitas > 0 && " · em andamento"}
                   </span>
-                  {feitas > 0 && " · em andamento"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => rolarPara("etapas")}
-                  className="shrink-0 rounded font-bold text-orange-700 underline-offset-2 hover:underline dark:text-orange-400"
-                >
-                  Ir para as etapas
-                </button>
-              </div>
-            ) : undefined
-          }
-        />
+                  <button
+                    type="button"
+                    onClick={() => rolarPara("etapas")}
+                    className="shrink-0 rounded font-bold text-orange-700 underline-offset-2 hover:underline dark:text-orange-400"
+                  >
+                    Ir para as etapas
+                  </button>
+                </div>
+              ) : undefined
+            }
+          />
+        </div>
+      </section>
 
+      <section className="container max-w-[1180px] pb-16">
         <div className="grid grid-cols-1 gap-10 pt-8 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 max-w-[72ch]">
             {v2 ? (
@@ -314,8 +367,9 @@ export default function ProjetoDetalhe() {
                 <section className={BLOCO} id="entrega">
                   <h2 className={H2}>Entrega</h2>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Terminou? Marque a conclusão e o projeto vira parte do seu
-                    perfil.
+                    {indiceAtual === -1 && !concluido
+                      ? "Todas as etapas feitas. Falta só marcar como concluído."
+                      : "Terminou? Marque a conclusão e o projeto vira parte do seu perfil."}
                   </p>
                   <div className="card-brutal mt-3 rounded-xl bg-card p-5">
                     {projeto.pro === true && (
@@ -328,7 +382,11 @@ export default function ProjetoDetalhe() {
                       <button
                         type="button"
                         aria-pressed={concluido}
-                        onClick={() => toggleCompletion(projeto.id)}
+                        onClick={() => {
+                          const vaiConcluir = !concluido;
+                          toggleCompletion(projeto.id);
+                          if (vaiConcluir) setCelebrando(true);
+                        }}
                         className={`inline-flex items-center gap-2 rounded-xl border-2 border-ink px-4 py-2.5 font-display text-sm font-bold shadow-[3px_3px_0_var(--bnt-shadow)] ${
                           concluido
                             ? "bg-emerald-500 text-white"
@@ -418,7 +476,11 @@ export default function ProjetoDetalhe() {
                       <button
                         type="button"
                         aria-pressed={concluido}
-                        onClick={() => toggleCompletion(projeto.id)}
+                        onClick={() => {
+                          const vaiConcluir = !concluido;
+                          toggleCompletion(projeto.id);
+                          if (vaiConcluir) setCelebrando(true);
+                        }}
                         className={`inline-flex items-center gap-2 rounded-xl border-2 border-ink px-4 py-2.5 font-display text-sm font-bold shadow-[3px_3px_0_var(--bnt-shadow)] ${
                           concluido
                             ? "bg-emerald-500 text-white"
@@ -438,7 +500,7 @@ export default function ProjetoDetalhe() {
 
                 <section className={BLOCO}>
                   <h2 className={H2}>Depois</h2>
-                  <div className="mt-3 rounded-xl border-2 border-amber-300 bg-amber-50 p-4 dark:bg-amber-950/30">
+                  <div className="mt-3 rounded-xl border-2 border-accent/60 bg-accent/10 p-4">
                     <div className="mb-2 flex items-center justify-between gap-3">
                       <span className="font-display text-sm font-bold text-foreground">
                         Post pronto para o LinkedIn
@@ -448,7 +510,7 @@ export default function ProjetoDetalhe() {
                         className="border-border shadow-none"
                       />
                     </div>
-                    <p className="text-sm italic text-foreground">
+                    <p className="whitespace-pre-line text-sm italic text-foreground">
                       {projeto.sugestaoLinkedIn}
                     </p>
                   </div>
@@ -464,7 +526,6 @@ export default function ProjetoDetalhe() {
 
           <ProjetoLateral
             estado={estado}
-            proximo={proximo}
             topo={
               v2 ? (
                 <ProjetoAnel
@@ -485,6 +546,19 @@ export default function ProjetoDetalhe() {
           </ProjetoLateral>
         </div>
       </section>
+
+      <ProjetoConcluidoModal
+        aberto={celebrando}
+        onOpenChange={setCelebrando}
+        nome={projeto.nome}
+        totalEtapas={v2 ? v2.etapas.length : null}
+        post={projeto.sugestaoLinkedIn}
+        url={urlDaPagina(projeto.id)}
+        proximo={proximo}
+        onValidar={
+          projeto.pro === true && isPro ? () => rolarPara("entrega") : undefined
+        }
+      />
     </Layout>
   );
 }

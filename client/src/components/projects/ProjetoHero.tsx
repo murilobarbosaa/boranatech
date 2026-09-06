@@ -23,12 +23,14 @@ const nivelColors: Record<string, string> = {
 export default function ProjetoHero({
   projeto,
   estado,
+  concluidoEm,
   fatos,
   acoes,
   faixaMobile,
 }: {
   projeto: ProjetoCatalogo;
   estado: EstadoChip;
+  concluidoEm?: string;
   fatos: Fato[];
   acoes?: ReactNode;
   faixaMobile?: ReactNode;
@@ -41,7 +43,7 @@ export default function ProjetoHero({
   );
 
   return (
-    <header className="border-b border-border pb-7">
+    <header className="pb-7">
       <nav
         className="flex items-center gap-2 pt-6 text-sm text-muted-foreground"
         aria-label="Trilha de navegação"
@@ -82,6 +84,11 @@ export default function ProjetoHero({
           {projeto.nivel}
         </span>
         <ProjetoEstadoChip estado={estado} />
+        {concluidoEm && (
+          <span className="text-xs font-semibold text-muted-foreground">
+            Concluído em {concluidoEm}
+          </span>
+        )}
       </div>
 
       <h1 className="mt-3 font-display text-3xl font-bold leading-tight text-foreground md:text-4xl">

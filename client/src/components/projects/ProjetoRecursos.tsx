@@ -83,7 +83,7 @@ export default function ProjetoRecursos({
             {kit.map((item) => (
               <li
                 key={item.titulo}
-                className="rounded-[10px] bg-card p-3 text-sm"
+                className="rounded-[10px] border border-border bg-card p-3 text-sm"
               >
                 {item.url ? (
                   <a

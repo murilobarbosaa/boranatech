@@ -2,6 +2,7 @@ import { readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { devTools } from "@/lib/careerToolsData";
 import { dictionaryTerms } from "../../glossaryData";
 import { roadmapsV2 } from "../../roadmapV2/content";
 import type { RoadmapNode } from "../../roadmapV2/types";
@@ -51,6 +52,9 @@ const NOS_POR_TRILHA = new Map<string, Set<string>>(
   ]),
 );
 const TERMOS_DO_DICIONARIO = new Set(dictionaryTerms.map((t) => t.term));
+// Nomes dos cards de /ferramentas. O filtro `?q=` da pagina casa contra eles,
+// entao um `q` que nao existe aqui leva a pessoa a uma lista vazia.
+const FERRAMENTAS = new Set(devTools.map((t) => t.name));
 const CATALOGO_POR_ID = new Map(projetos.map((p) => [p.id, p]));
 
 const VERIF_SO_DEPLOY = ["deploy_responde", "readme_tem_link_deploy"];
@@ -120,6 +124,23 @@ describe("projetos v2", () => {
     expect(
       ruins,
       `itens de kit invalidos (${ruins.length}):\n${ruins.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  it("4b. href de /ferramentas?q= aponta para um card que existe", () => {
+    // Link quebrado aqui nao da 404: da uma pagina de ferramentas vazia, que e
+    // pior, porque parece que o site nao tem a ferramenta.
+    const ruins: string[] = [];
+    for (const d of PROJETOS_V2)
+      for (const pr of d.briefing.preRequisitos) {
+        if (!pr.href.startsWith("/ferramentas?q=")) continue;
+        const q = decodeURIComponent(pr.href.slice("/ferramentas?q=".length));
+        if (!FERRAMENTAS.has(q))
+          ruins.push(`${d.id}: "${pr.href}" (nenhum card chamado "${q}")`);
+      }
+    expect(
+      ruins,
+      `hrefs de ferramenta invalidos (${ruins.length}):\n${ruins.join("\n")}`,
     ).toEqual([]);
   });
 

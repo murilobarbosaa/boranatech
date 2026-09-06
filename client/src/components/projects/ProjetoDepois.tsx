@@ -17,17 +17,20 @@ export default function ProjetoDepois({
 }) {
   return (
     <div className="mt-3 grid gap-4">
-      <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 dark:bg-amber-950/30">
+      <div className="rounded-xl border-2 border-accent/60 bg-accent/10 p-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
           <span className="font-display text-sm font-bold text-foreground">
             Post pronto para o LinkedIn
           </span>
           <CopyButton
             text={`${sugestaoLinkedIn}\n\n${url}`}
+            label="Copiar post"
             className="border-border shadow-none"
           />
         </div>
-        <p className="text-sm italic text-foreground">{sugestaoLinkedIn}</p>
+        <p className="whitespace-pre-line text-sm italic text-foreground">
+          {sugestaoLinkedIn}
+        </p>
       </div>
 
       {proximo ? (

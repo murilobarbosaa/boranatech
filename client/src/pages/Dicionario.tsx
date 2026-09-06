@@ -1,12 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearch } from "wouter";
 import { Search, Quote, Sparkles } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { dictionaryTerms } from "@/lib/platformData";
-import { getGlossaryTerm } from "@/lib/glossary";
+import { getGlossaryTerm, normalizeTermKey } from "@/lib/glossary";
 import {
   dictionaryEnrichment,
   dictionaryLevelMeta,
@@ -22,7 +23,8 @@ const LEVEL_STYLE: Record<
     badge: "bg-emerald-200 text-emerald-900",
     section: "border-emerald-300 bg-emerald-100 text-emerald-900",
     shadow: "shadow-[4px_4px_0_#6ee7b7]",
-    button: "border-slate-900 bg-emerald-300 shadow-[2px_2px_0_var(--bnt-shadow)]",
+    button:
+      "border-slate-900 bg-emerald-300 shadow-[2px_2px_0_var(--bnt-shadow)]",
   },
   Basico: {
     badge: "bg-sky-200 text-sky-900",
@@ -34,7 +36,8 @@ const LEVEL_STYLE: Record<
     badge: "bg-violet-200 text-violet-900",
     section: "border-violet-300 bg-violet-100 text-violet-900",
     shadow: "shadow-[4px_4px_0_#c4b5fd]",
-    button: "border-slate-900 bg-violet-300 shadow-[2px_2px_0_var(--bnt-shadow)]",
+    button:
+      "border-slate-900 bg-violet-300 shadow-[2px_2px_0_var(--bnt-shadow)]",
   },
 };
 
@@ -72,7 +75,10 @@ const TAG_GROUPS: { label: string; tags: string[] }[] = [
     ],
   },
   { label: "Back-end", tags: ["Back-end", "SQL"] },
-  { label: "Dados e IA", tags: ["Dados", "IA", "Estatística", "BI", "Finanças"] },
+  {
+    label: "Dados e IA",
+    tags: ["Dados", "IA", "Estatística", "BI", "Finanças"],
+  },
   {
     label: "DevOps, Cloud e Infra",
     tags: ["DevOps", "Cloud", "Infra", "Performance", "Redes", "Hardware"],
@@ -100,6 +106,26 @@ export default function Dicionario() {
     ? (getGlossaryTerm(termoParam)?.term ?? "")
     : "";
   const [query, setQuery] = useState(initialQuery);
+  const [destacado, setDestacado] = useState<string | null>(null);
+  const reduzirMovimento = usePrefersReducedMotion();
+
+  useEffect(() => {
+    if (!termoParam) return;
+    const entrada = getGlossaryTerm(termoParam);
+    if (!entrada) return;
+    setDestacado(entrada.slug);
+    const raf = requestAnimationFrame(() => {
+      document.getElementById(`termo-${entrada.slug}`)?.scrollIntoView({
+        behavior: reduzirMovimento ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+    const timer = window.setTimeout(() => setDestacado(null), 2000);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(timer);
+    };
+  }, [termoParam, reduzirMovimento]);
   const [tag, setTag] = useState("Todas");
   const [level, setLevel] = useState<DictionaryLevel | "Todos">("Todos");
 
@@ -152,8 +178,7 @@ export default function Dicionario() {
     return counts;
   }, [matchesFilters]);
 
-  const visibleLevels =
-    level === "Todos" ? dictionaryLevelOrder : [level];
+  const visibleLevels = level === "Todos" ? dictionaryLevelOrder : [level];
   const totalVisible =
     level === "Todos" ? matchesFilters.length : levelCounts[level];
 
@@ -281,95 +306,102 @@ export default function Dicionario() {
           </p>
 
           <div key={`niveis-${level}`}>
-          {visibleLevels.map((lvl) => {
-            const items = matchesFilters.filter((item) => item.level === lvl);
-            if (items.length === 0) return null;
-            const meta = dictionaryLevelMeta[lvl];
-            const style = LEVEL_STYLE[lvl];
-            return (
-              <div key={lvl} className="mb-12">
-                <div
-                  className={`mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border-2 px-4 py-3 ${style.section}`}
-                >
-                  <span className="text-2xl" aria-hidden>
-                    {meta.emoji}
-                  </span>
-                  <h2 className="font-display text-2xl font-black">
-                    {meta.label}
-                  </h2>
-                  <span className="text-sm font-bold opacity-80">
-                    {meta.blurb}
-                  </span>
-                </div>
+            {visibleLevels.map((lvl) => {
+              const items = matchesFilters.filter((item) => item.level === lvl);
+              if (items.length === 0) return null;
+              const meta = dictionaryLevelMeta[lvl];
+              const style = LEVEL_STYLE[lvl];
+              return (
+                <div key={lvl} className="mb-12">
+                  <div
+                    className={`mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border-2 px-4 py-3 ${style.section}`}
+                  >
+                    <span className="text-2xl" aria-hidden>
+                      {meta.emoji}
+                    </span>
+                    <h2 className="font-display text-2xl font-black">
+                      {meta.label}
+                    </h2>
+                    <span className="text-sm font-bold opacity-80">
+                      {meta.blurb}
+                    </span>
+                  </div>
 
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {items.map((item, index) => (
-                    <AnimatedContent
-                      key={item.term}
-                      distance={14}
-                      duration={0.4}
-                      delay={Math.min(index * 0.03, 0.3)}
-                      className="h-full"
-                    >
-                      <div
-                        className={`group flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-5 transition-all duration-200 ease-out ${style.shadow} motion-safe:hover:-translate-y-1`}
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {items.map((item, index) => (
+                      <AnimatedContent
+                        key={item.term}
+                        distance={14}
+                        duration={0.4}
+                        delay={Math.min(index * 0.03, 0.3)}
+                        className="h-full"
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-amber-200 px-3 py-1 text-xs font-bold text-slate-900">
-                              {item.category}
-                            </span>
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[0.65rem] font-black uppercase tracking-wide ${style.badge}`}
-                            >
-                              <span aria-hidden>{meta.emoji}</span>
-                              {meta.label}
-                            </span>
-                          </div>
-                          <FavoriteButton
-                            compact
-                            item={{
-                              id: item.term.toLowerCase().replace(/\s+/g, "-"),
-                              type: "conceito",
-                              title: item.term,
-                              subtitle: item.category,
-                            }}
-                          />
-                        </div>
-                        <h3 className="font-display mt-4 text-2xl font-black text-slate-950">
-                          {item.term}
-                        </h3>
-                        <p className="mt-2 text-sm text-slate-600">
-                          {item.meaning}
-                        </p>
-                        {item.example ? (
-                          <div className="mt-4 flex gap-2 rounded-xl border-2 border-slate-200 bg-slate-50 p-3">
-                            <Quote
-                              className="h-4 w-4 shrink-0 text-slate-400"
-                              aria-hidden
+                        <div
+                          id={`termo-${normalizeTermKey(item.term)}`}
+                          className={`group flex h-full flex-col scroll-mt-24 rounded-2xl border-2 border-slate-950 bg-white p-5 transition-all duration-200 ease-out ${style.shadow} motion-safe:hover:-translate-y-1 ${
+                            destacado === normalizeTermKey(item.term)
+                              ? "ring-2 ring-accent ring-offset-2"
+                              : ""
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-full bg-amber-200 px-3 py-1 text-xs font-bold text-slate-900">
+                                {item.category}
+                              </span>
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[0.65rem] font-black uppercase tracking-wide ${style.badge}`}
+                              >
+                                <span aria-hidden>{meta.emoji}</span>
+                                {meta.label}
+                              </span>
+                            </div>
+                            <FavoriteButton
+                              compact
+                              item={{
+                                id: item.term
+                                  .toLowerCase()
+                                  .replace(/\s+/g, "-"),
+                                type: "conceito",
+                                title: item.term,
+                                subtitle: item.category,
+                              }}
                             />
-                            <p className="text-sm italic text-slate-700">
-                              {item.example}
-                            </p>
                           </div>
-                        ) : null}
-                        <div className="mt-4 flex flex-wrap gap-1">
-                          {item.tags.map((itemTag) => (
-                            <span
-                              key={itemTag}
-                              className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600"
-                            >
-                              {itemTag}
-                            </span>
-                          ))}
+                          <h3 className="font-display mt-4 text-2xl font-black text-slate-950">
+                            {item.term}
+                          </h3>
+                          <p className="mt-2 text-sm text-slate-600">
+                            {item.meaning}
+                          </p>
+                          {item.example ? (
+                            <div className="mt-4 flex gap-2 rounded-xl border-2 border-slate-200 bg-slate-50 p-3">
+                              <Quote
+                                className="h-4 w-4 shrink-0 text-slate-400"
+                                aria-hidden
+                              />
+                              <p className="text-sm italic text-slate-700">
+                                {item.example}
+                              </p>
+                            </div>
+                          ) : null}
+                          <div className="mt-4 flex flex-wrap gap-1">
+                            {item.tags.map((itemTag) => (
+                              <span
+                                key={itemTag}
+                                className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600"
+                              >
+                                {itemTag}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    </AnimatedContent>
-                  ))}
+                      </AnimatedContent>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
           </div>
 
           {totalVisible === 0 && (

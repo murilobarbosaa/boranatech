@@ -49,13 +49,19 @@ const { PRO, GRATIS, ALIASADO, seo, v2 } = vi.hoisted(() => ({
   },
   ALIASADO: "portfolio-pessoal-html-css",
   seo: { props: [] as Record<string, unknown>[] },
-  v2: { loadProjetoV2: vi.fn() },
+  v2: {
+    loadProjetoV2: vi.fn(),
+    ids: new Set(["landing-page-pessoal", "projeto-pro"]),
+  },
 }));
 
 const rota = vi.hoisted(() => ({ id: "landing-page-pessoal" }));
 const progresso = vi.hoisted(() => ({
   stages: new Map<string, Record<string, string>>(),
+  done: new Set<string>(),
+  updatedAt: new Map<string, string>(),
   toggleStage: vi.fn(),
+  toggle: vi.fn(),
 }));
 
 // Fixture propria, nao o conteudo editorial real: amarrar o teste de render a
@@ -97,7 +103,7 @@ const DETALHE = vi.hoisted(() => ({
 
 vi.mock("@/lib/data", () => ({ projetos: [PRO, GRATIS], areasTI: [] }));
 vi.mock("@shared/projects/v2", () => ({
-  isProjetoV2: () => true,
+  isProjetoV2: (id: string) => v2.ids.has(id),
   loadProjetoV2: v2.loadProjetoV2,
   PROJETOS_V2_IDS: ["landing-page-pessoal"],
 }));
@@ -106,10 +112,11 @@ vi.mock("@/contexts/SubscriptionContext", () => ({
 }));
 vi.mock("@/hooks/useProjectCompletion", () => ({
   useProjectCompletion: () => ({
-    done: new Set<string>(),
+    done: progresso.done,
     stages: progresso.stages,
+    updatedAt: progresso.updatedAt,
     ready: true,
-    toggle: vi.fn(),
+    toggle: progresso.toggle,
     toggleStage: progresso.toggleStage,
   }),
 }));
@@ -125,6 +132,7 @@ vi.mock("@/components/SEO", () => ({
   },
 }));
 vi.mock("@/components/FavoriteButton", () => ({ default: () => null }));
+vi.mock("@/lib/proConfetti", () => ({ fireProCelebration: () => () => {} }));
 vi.mock("@/components/projects/ProjectValidationBlock", () => ({
   default: () => null,
 }));
@@ -141,9 +149,13 @@ afterEach(cleanup);
 beforeEach(() => {
   USUARIO_PRO.valor = false;
   rota.id = "landing-page-pessoal";
+  v2.ids = new Set(["landing-page-pessoal", "projeto-pro"]);
   seo.props.length = 0;
   progresso.stages = new Map();
+  progresso.done = new Set();
+  progresso.updatedAt = new Map();
   progresso.toggleStage.mockReset();
+  progresso.toggle.mockReset();
   v2.loadProjetoV2.mockReset();
   v2.loadProjetoV2.mockResolvedValue(null);
 });
@@ -305,5 +317,82 @@ describe("corpo v2", () => {
     expect(screen.getByText("Nota do modelo")).toBeTruthy();
     expect(screen.getByText("Kit")).toBeTruthy();
     expect(screen.getByText("Antes de começar")).toBeTruthy();
+  });
+});
+
+describe("comemoracao ao concluir", () => {
+  it("nao abre o modal ao montar com o projeto ja concluido", async () => {
+    progresso.done = new Set(["landing-page-pessoal"]);
+    render(<ProjetoDetalhe />);
+    await waitFor(() => expect(screen.getByText("Passo a passo")).toBeTruthy());
+    expect(screen.queryByText("Projeto concluído!")).toBeNull();
+  });
+
+  it("abre o modal quando a pessoa marca como concluido", async () => {
+    render(<ProjetoDetalhe />);
+    await waitFor(() => expect(screen.getByText("Passo a passo")).toBeTruthy());
+    fireEvent.click(screen.getByText("Marcar como concluído"));
+    expect(progresso.toggle).toHaveBeenCalledWith("landing-page-pessoal");
+    expect(screen.getByText("Projeto concluído!")).toBeTruthy();
+  });
+
+  it("desmarcar um projeto concluido nao comemora", async () => {
+    progresso.done = new Set(["landing-page-pessoal"]);
+    render(<ProjetoDetalhe />);
+    await waitFor(() => expect(screen.getByText("Passo a passo")).toBeTruthy());
+    fireEvent.click(screen.getByText("Projeto concluído"));
+    expect(screen.queryByText("Projeto concluído!")).toBeNull();
+  });
+});
+
+describe("estado final do botao principal", () => {
+  it("concluido com proximo: o botao principal e o link do proximo", async () => {
+    progresso.done = new Set(["landing-page-pessoal"]);
+    v2.loadProjetoV2.mockResolvedValue({
+      ...DETALHE.valor,
+      id: "landing-page-pessoal",
+    });
+    render(<ProjetoDetalhe />);
+    await waitFor(() => expect(screen.getByText("Etapas")).toBeTruthy());
+    // O catalogo de teste nao tem proximoProjetoId, entao cai no compartilhar.
+    expect(screen.getByText("Compartilhar")).toBeTruthy();
+    expect(screen.queryByText("Ir para a entrega")).toBeNull();
+    expect(screen.queryByText("Começar")).toBeNull();
+  });
+
+  it("mostra a data de conclusao quando o servidor a devolveu", async () => {
+    progresso.done = new Set(["landing-page-pessoal"]);
+    progresso.updatedAt = new Map([
+      ["landing-page-pessoal", "2026-09-06T10:00:00.000Z"],
+    ]);
+    render(<ProjetoDetalhe />);
+    await waitFor(() => expect(screen.getByText("Passo a passo")).toBeTruthy());
+    expect(screen.getByText("Concluído em 06/09")).toBeTruthy();
+  });
+
+  it("anonimo sem data nao inventa uma", async () => {
+    progresso.done = new Set(["landing-page-pessoal"]);
+    render(<ProjetoDetalhe />);
+    await waitFor(() => expect(screen.getByText("Passo a passo")).toBeTruthy());
+    expect(screen.queryByText(/Concluído em/)).toBeNull();
+  });
+});
+
+describe("indexacao", () => {
+  it("pagina v1 pede noindex", async () => {
+    v2.ids = new Set<string>();
+    render(<ProjetoDetalhe />);
+    await waitFor(() => expect(screen.getByText("Passo a passo")).toBeTruthy());
+    expect(seo.props[0].noindex).toBe(true);
+  });
+
+  it("pagina v2 continua indexavel", async () => {
+    v2.loadProjetoV2.mockResolvedValue({
+      ...DETALHE.valor,
+      id: "landing-page-pessoal",
+    });
+    render(<ProjetoDetalhe />);
+    await waitFor(() => expect(screen.getByText("Etapas")).toBeTruthy());
+    expect(seo.props[0].noindex).toBe(false);
   });
 });

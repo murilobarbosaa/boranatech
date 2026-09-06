@@ -65,10 +65,8 @@ export default function ProjetoEtapas({
                   <li key={o}>{o}</li>
                 ))}
               </ul>
-              <p className="mt-3 border-t border-dashed border-border pt-2 text-sm text-muted-foreground">
-                <span className="font-bold text-foreground">
-                  Pronto quando:
-                </span>{" "}
+              <p className="mt-3 border-t border-dashed border-border pt-2 text-sm text-foreground">
+                <span className="font-semibold">Pronto quando:</span>{" "}
                 {etapa.prontoQuando}
               </p>
               <button
