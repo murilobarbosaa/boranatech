@@ -5,6 +5,7 @@
 import type { ProjetoV2Detalhe } from "./types";
 
 export const PROJETOS_V2_IDS = [
+  "analise-dados-publicos",
   "api-rest-tarefas",
   "automacao-login-cypress",
   "landing-page-pessoal",
@@ -17,6 +18,7 @@ export const loaders: Record<
   string,
   () => Promise<{ default: ProjetoV2Detalhe }>
 > = {
+  "analise-dados-publicos": () => import("./analise-dados-publicos"),
   "api-rest-tarefas": () => import("./api-rest-tarefas"),
   "automacao-login-cypress": () => import("./automacao-login-cypress"),
   "landing-page-pessoal": () => import("./landing-page-pessoal"),
