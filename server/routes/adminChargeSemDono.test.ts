@@ -83,6 +83,17 @@ vi.mock("../middleware/auth", () => ({
 const posthogMock = vi.hoisted(() => ({
   sinais: null as unknown,
 }));
+const asaasSonda = vi.hoisted(() => ({
+  listarWebhooks: vi.fn(async () => [{ enabled: true, interrupted: false }]),
+}));
+vi.mock("../providers/asaas", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../providers/asaas")>();
+  return {
+    ...real,
+    listarWebhooks: () => asaasSonda.listarWebhooks(),
+  };
+});
+
 vi.mock("../lib/posthog", () => ({
   getPaidFunnelSignals: async () => posthogMock.sinais,
   getPosthogStats: async () => ({ state: "error", reason: "nao usado" }),
@@ -99,6 +110,7 @@ import {
   CHARGE_SEM_DONO_CORTE_DIAS,
   SYNC_FINANCE_WINDOW_DAYS,
 } from "../lib/financeSyncWindow";
+import { env } from "../lib/env";
 import adminRouter from "./admin";
 import { criarClienteAdmin } from "./adminTestClient";
 
@@ -293,5 +305,59 @@ describe("guard de cobrança sem dono", () => {
 
     const r = await chamarAdmin("GET", "/health-band");
     expect(r.status).toBe(500);
+  });
+});
+
+describe("faixa de saúde: fila de webhooks do Asaas", () => {
+  // A faixa só sonda o Asaas quando ele está ligado; o env deste arquivo nasce
+  // sem `asaasEnabled`, e cada caso liga e desliga explicitamente.
+  const envMutavel = env as unknown as { asaasEnabled?: boolean };
+
+  afterEach(() => {
+    envMutavel.asaasEnabled = false;
+    asaasSonda.listarWebhooks = vi.fn(async () => [
+      { enabled: true, interrupted: false },
+    ]);
+  });
+
+  function montarSaudavel() {
+    faixaSaudavel([]);
+  }
+
+  it("Asaas ligado e fila interrompida: item de ERRO na faixa", async () => {
+    envMutavel.asaasEnabled = true;
+    asaasSonda.listarWebhooks = vi.fn(async () => [
+      { enabled: true, interrupted: true },
+    ]);
+    montarSaudavel();
+
+    const p = await problemas();
+    const item = p.find((x) => x.id === "asaas-webhook-interrompido");
+    expect(item).toBeDefined();
+    expect(item!.severidade).toBe("erro");
+    expect(asaasSonda.listarWebhooks).toHaveBeenCalledTimes(1);
+  });
+
+  it("Asaas ligado e sonda com erro de rede: aviso, não silêncio", async () => {
+    envMutavel.asaasEnabled = true;
+    asaasSonda.listarWebhooks = vi.fn(async () => {
+      throw new Error("timeout");
+    });
+    montarSaudavel();
+
+    const p = await problemas();
+    expect(p.find((x) => x.id === "asaas-sonda")?.severidade).toBe("atencao");
+    expect(
+      p.find((x) => x.id === "asaas-webhook-interrompido"),
+    ).toBeUndefined();
+  });
+
+  it("Asaas DESLIGADO por configuração: nem sonda, nem item", async () => {
+    envMutavel.asaasEnabled = false;
+    montarSaudavel();
+
+    const p = await problemas();
+    expect(p.find((x) => x.id.startsWith("asaas"))).toBeUndefined();
+    expect(asaasSonda.listarWebhooks).not.toHaveBeenCalled();
   });
 });

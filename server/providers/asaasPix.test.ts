@@ -228,8 +228,10 @@ import { discountedPriceCents, PLAN_PRICING } from "../../shared/planPricing";
 import { fetchPixQrCode, maskCpf } from "./asaas";
 import {
   eventKey,
+  estadoDaFilaDeWebhooks,
   estornarPagamento,
   lerPagamento,
+  listarWebhooks,
   paidAmountCentsFromAsaas,
   processAsaasEvent,
   asaasProvider,
@@ -2041,5 +2043,86 @@ describe("webhook: estorno em andamento e confirmado atualizam admin_refunds", (
       eventoDePagamento({ event: "PAYMENT_REFUND_IN_PROGRESS" }),
     );
     expect(r).toMatchObject({ received: true, activated: false });
+  });
+});
+
+describe("fila de webhooks do Asaas: leitura e classificacao", () => {
+  beforeEach(() => {
+    limpar();
+  });
+
+  // A RESPOSTA REAL de GET /webhooks em 2026-09-06, com a fila parada desde
+  // 03/09. Os campos que decidem sao `enabled` e `interrupted`.
+  const WEBHOOK_REAL = {
+    id: "695e2fba-f05a-45ae-a568-b4bf6b061eb5",
+    url: "https://api.boranatech.com.br/api/webhooks/asaas",
+    enabled: true,
+    interrupted: true,
+    apiVersion: 3,
+    sendType: "SEQUENTIALLY",
+    events: [
+      "PAYMENT_DELETED",
+      "PAYMENT_OVERDUE",
+      "PAYMENT_CONFIRMED",
+      "PAYMENT_RECEIVED",
+    ],
+  };
+
+  it("listarWebhooks le GET /webhooks e devolve so enabled e interrupted", async () => {
+    estado.asaasResposta = {
+      "/webhooks": { object: "list", totalCount: 1, data: [WEBHOOK_REAL] },
+    };
+
+    const lista = await listarWebhooks();
+
+    expect(estado.asaas[0]).toMatchObject({
+      caminho: "/webhooks",
+      method: "GET",
+    });
+    expect(lista).toEqual([{ enabled: true, interrupted: true }]);
+  });
+
+  it("listarWebhooks: data nulo vira lista vazia", async () => {
+    estado.asaasResposta = { "/webhooks": { object: "list", data: null } };
+    expect(await listarWebhooks()).toEqual([]);
+  });
+
+  it("listarWebhooks: erro do cliente propaga", async () => {
+    estado.asaasErro = new Error("timeout");
+    await expect(listarWebhooks()).rejects.toThrow("timeout");
+  });
+
+  it("interrupted em qualquer webhook classifica como interrompido", () => {
+    expect(
+      estadoDaFilaDeWebhooks([
+        { enabled: true, interrupted: false },
+        { enabled: true, interrupted: true },
+      ]),
+    ).toBe("interrompido");
+  });
+
+  it("enabled false, sem interrupcao, classifica como desligado", () => {
+    expect(
+      estadoDaFilaDeWebhooks([{ enabled: false, interrupted: false }]),
+    ).toBe("desligado");
+  });
+
+  it("interrompido prevalece sobre desligado: e o estado que trava a fila", () => {
+    expect(
+      estadoDaFilaDeWebhooks([
+        { enabled: false, interrupted: false },
+        { enabled: true, interrupted: true },
+      ]),
+    ).toBe("interrompido");
+  });
+
+  it("nenhum webhook cadastrado e desligado: evento nenhum chega", () => {
+    expect(estadoDaFilaDeWebhooks([])).toBe("desligado");
+  });
+
+  it("todos ativos e sem interrupcao e ok", () => {
+    expect(
+      estadoDaFilaDeWebhooks([{ enabled: true, interrupted: false }]),
+    ).toBe("ok");
   });
 });

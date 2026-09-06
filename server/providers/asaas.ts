@@ -1455,6 +1455,53 @@ export async function fetchChargeAmountCents(
   }
 }
 
+/** O que a faixa de saude le de um webhook cadastrado no Asaas. */
+export type WebhookDoAsaas = { enabled: boolean; interrupted: boolean };
+
+/** Estado da fila de webhooks, como a faixa de saude o consome. */
+export type EstadoDaFila = "ok" | "interrompido" | "desligado";
+
+/**
+ * Le os webhooks cadastrados na conta (GET /webhooks), so os dois bits que
+ * decidem se evento chega.
+ *
+ * `interrupted` e o que o Asaas liga depois de uma sequencia de entregas com
+ * falha: a fila da conta INTEIRA para, e nada nosso acusa, porque o sintoma e
+ * silencio (medido em 2026-09-03: tres dias parada, um pagamento real preso).
+ * PROPAGA o erro do cliente; quem chama decide o que "nao sei" vira.
+ */
+export async function listarWebhooks(): Promise<WebhookDoAsaas[]> {
+  const corpo = await asaasFetch<{ data?: unknown }>("/webhooks");
+  const lista = Array.isArray(corpo?.data) ? corpo.data : [];
+  const saida: WebhookDoAsaas[] = [];
+  for (const item of lista) {
+    if (!item || typeof item !== "object") continue;
+    const w = item as { enabled?: unknown; interrupted?: unknown };
+    saida.push({
+      enabled: w.enabled === true,
+      interrupted: w.interrupted === true,
+    });
+  }
+  return saida;
+}
+
+/**
+ * Classifica a lista de webhooks num unico estado.
+ *
+ * `interrompido` prevalece: e o estado que segura evento ja enfileirado, e o
+ * unico que exige alguem clicar em "reativar" no painel. `desligado` cobre o
+ * webhook desativado E a conta sem webhook nenhum, porque os dois significam a
+ * mesma coisa para nos, evento nenhum chega.
+ */
+export function estadoDaFilaDeWebhooks(
+  webhooks: WebhookDoAsaas[],
+): EstadoDaFila {
+  if (webhooks.some((w) => w.interrupted)) return "interrompido";
+  if (webhooks.length === 0 || webhooks.some((w) => !w.enabled))
+    return "desligado";
+  return "ok";
+}
+
 /** Um item de `refunds[]` do objeto de pagamento do Asaas, ja normalizado. */
 export type EstornoDoAsaas = {
   /** `PENDING` | `AWAITING_CRITICAL_ACTION_AUTHORIZATION` | `DONE` | `CANCELLED`. */

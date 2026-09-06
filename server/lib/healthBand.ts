@@ -57,6 +57,13 @@ export type SinaisDeSaude = {
    * outra é informação de ausência.
    */
   filaDeEmail: { failed: number; waiting: number } | null;
+  /**
+   * Fila de webhooks do Asaas, lida de `GET /webhooks` do provedor. `null`
+   * quando o Asaas está desligado por configuração (não há fila para olhar);
+   * `falhou` quando a sonda não respondeu, que NÃO é `ok`: ausência de dado
+   * nunca vira verde.
+   */
+  asaasWebhooks: "ok" | "interrompido" | "desligado" | "falhou" | null;
 };
 
 /** Um boleto emitido expira após este prazo; depois vira órfão. */
@@ -193,6 +200,41 @@ export function calcularProblemas(
       id: "fila-email",
       label: "Fila de e-mails",
       detalhe: `${n} ${n === 1 ? "envio falhou" : "envios falharam"} e ${n === 1 ? "está" : "estão"} parados na fila.`,
+      severidade: "atencao",
+    });
+  }
+
+  // FILA DE WEBHOOKS DO ASAAS: o estado que o provedor DECLARA, em uma
+  // requisição, e não inferido de "faz tempo que não chega evento".
+  //
+  // O incidente de 2026-09-03: o webhook respondeu 500 a um evento, o Asaas
+  // reentregou 15 vezes e INTERROMPEU a fila da conta inteira. O sintoma era
+  // silêncio (zero linhas novas em billing_events), e silêncio não dispara
+  // nada. Ficou três dias assim com um pagamento real pago no Asaas e
+  // `pending` aqui. O Asaas expõe `interrupted` em `GET /webhooks`; esta é a
+  // sonda que faltava.
+  //
+  // ERRO, não aviso: fila parada é pagamento Pix não processado, e a ação é
+  // uma só (reativar no painel), então o texto a nomeia.
+  if (
+    sinais.asaasWebhooks === "interrompido" ||
+    sinais.asaasWebhooks === "desligado"
+  ) {
+    problemas.push({
+      id: "asaas-webhook-interrompido",
+      label: "Webhooks do Asaas",
+      // TODO(Ana)
+      detalhe:
+        "Fila de webhooks do Asaas interrompida: pagamentos Pix não estão sendo processados. Reative em Integrações no painel do Asaas.",
+      severidade: "erro",
+    });
+  } else if (sinais.asaasWebhooks === "falhou") {
+    // Não saber NÃO é estar bem. Aviso, e não erro, porque a fila pode estar
+    // perfeitamente ativa; o que falhou foi a pergunta.
+    problemas.push({
+      id: "asaas-sonda",
+      label: "Webhooks do Asaas",
+      detalhe: "Asaas não respondeu à sonda de webhooks.",
       severidade: "atencao",
     });
   }

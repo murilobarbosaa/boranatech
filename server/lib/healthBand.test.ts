@@ -31,6 +31,7 @@ function sinais(over: Partial<SinaisDeSaude> = {}): SinaisDeSaude {
     boletosPendentes: [],
     chargesSemDono: { count: 0, grossCents: 0 },
     filaDeEmail: { failed: 0, waiting: 0 },
+    asaasWebhooks: null,
     ...over,
   };
 }
@@ -278,5 +279,57 @@ describe("fila de e-mails", () => {
       AGORA,
     );
     expect(problemas.map((p) => p.id)).toEqual(["redis"]);
+  });
+});
+
+describe("fila de webhooks do Asaas", () => {
+  // O INCIDENTE QUE ISTO EXISTE PARA ENCURTAR: em 2026-09-03 o Asaas
+  // interrompeu a fila depois de 15 reentregas com 500, e ficou assim por tres
+  // dias com um pagamento real preso, porque nada olhava para a fila. O Asaas
+  // declara o estado em `GET /webhooks` (`interrupted`, `enabled`), e e isso
+  // que a faixa passa a ler.
+  it("fila INTERROMPIDA é ERRO, e o texto diz onde reativar", () => {
+    const p = calcularProblemas(
+      sinais({ asaasWebhooks: "interrompido" }),
+      AGORA,
+    );
+    expect(p).toHaveLength(1);
+    expect(p[0]).toMatchObject({
+      id: "asaas-webhook-interrompido",
+      severidade: "erro",
+      detalhe:
+        "Fila de webhooks do Asaas interrompida: pagamentos Pix não estão sendo processados. Reative em Integrações no painel do Asaas.",
+    });
+  });
+
+  it("webhook DESLIGADO é o mesmo erro: evento nenhum chega", () => {
+    const p = calcularProblemas(sinais({ asaasWebhooks: "desligado" }), AGORA);
+    expect(p).toHaveLength(1);
+    expect(p[0]).toMatchObject({
+      id: "asaas-webhook-interrompido",
+      severidade: "erro",
+    });
+  });
+
+  it("sonda que FALHOU é aviso, nunca verde por ausência de dado", () => {
+    const p = calcularProblemas(sinais({ asaasWebhooks: "falhou" }), AGORA);
+    expect(p).toHaveLength(1);
+    expect(p[0]).toMatchObject({
+      id: "asaas-sonda",
+      severidade: "atencao",
+      detalhe: "Asaas não respondeu à sonda de webhooks.",
+    });
+  });
+
+  it("fila OK é silêncio", () => {
+    expect(calcularProblemas(sinais({ asaasWebhooks: "ok" }), AGORA)).toEqual(
+      [],
+    );
+  });
+
+  it("Asaas desligado por configuração (null) não é problema: não há fila", () => {
+    expect(calcularProblemas(sinais({ asaasWebhooks: null }), AGORA)).toEqual(
+      [],
+    );
   });
 });

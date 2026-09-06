@@ -46,8 +46,11 @@ import { stripeProvider } from "../providers/stripe";
 import { getStripe } from "../lib/stripeClient";
 import { syncBalanceTransactions } from "../lib/stripeSync";
 import {
+  estadoDaFilaDeWebhooks,
   estornarPagamento,
   lerPagamento,
+  listarWebhooks,
+  type EstadoDaFila,
   type EstornoAsaas,
 } from "../providers/asaas";
 import { erroEncadeavel } from "../lib/supabaseError";
@@ -670,9 +673,28 @@ function computarSaudeDeIntegracoes() {
         }
       }
 
+      // FILA DE WEBHOOKS DO ASAAS, so com o Asaas ligado: sem configuracao nao
+      // ha fila para perguntar, e `null` e o que a faixa le como "nao se
+      // aplica". Falha da sonda vira `falhou`, nunca `ok`: nao saber nao e
+      // estar bem. Entra neste cache (TTL 180s) de proposito, para a faixa nao
+      // acrescentar uma chamada ao provedor a cada carga.
+      let asaas: { webhooks: EstadoDaFila | "falhou" } | null = null;
+      if (env.asaasEnabled) {
+        try {
+          asaas = { webhooks: estadoDaFilaDeWebhooks(await listarWebhooks()) };
+        } catch (err) {
+          console.error(
+            "[admin/health] sonda de webhooks do Asaas falhou:",
+            err,
+          );
+          asaas = { webhooks: "falhou" };
+        }
+      }
+
       return {
         billingEnabled: env.billingEnabled,
         posthog,
+        asaas,
         stripe: {
           secretKey: Boolean(env.stripeSecretKey),
           webhookSecret: Boolean(env.stripeWebhookSecret),
@@ -978,6 +1000,7 @@ router.get("/health-band", async (_req, res, next) => {
           snapshotStaleDays,
           boletosPendentes,
           filaDeEmail: fila,
+          asaasWebhooks: integracoes.asaas?.webhooks ?? null,
           chargesSemDono: agregarChargesSemDono(
             semDono as {
               data: Array<{ gross_cents: number | null }> | null;
