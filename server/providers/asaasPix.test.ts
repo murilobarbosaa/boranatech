@@ -291,19 +291,58 @@ function checkoutInput(planId: string) {
 describe("restricao de plano: o mapa lista quem PODE", () => {
   beforeEach(limpar);
 
-  it("mensal e recusado, e NAO chega a tocar o Asaas", async () => {
+  it("mensal e ACEITO no Pix (lote 2b) e cobra o preco do mensal", async () => {
+    const r = await asaasProvider.createCheckout(checkoutInput("pro_monthly"));
+
+    expect(r.subscriptionId).toBe(COBRANCA);
+    const post = estado.asaas.find(
+      (c) => c.method === "POST" && c.caminho === "/payments",
+    )!;
+    expect((post.body as Record<string, unknown>).value).toBe(
+      PLAN_PRICING.pro_monthly.total,
+    );
+  });
+
+  it("ativacao do mensal por Pix concede 30 dias", async () => {
+    estado.plano = {
+      id: "plan-mensal",
+      code: "pro_monthly",
+      name: "Pro Mensal",
+    };
+    estado.linhaSubscription = {
+      id: "row-1",
+      user_id: USER,
+      status: "pending",
+      plan_id: "plan-mensal",
+      affiliate_code: null,
+      coupon_code: null,
+    };
+
+    await processAsaasEvent(
+      eventoDePagamento({ dateCreated: "2026-09-06 12:00:00" }),
+    );
+
+    const rpc = estado.rpcCalls.find(
+      (c) => c.nome === "activate_subscription_exclusive",
+    )!;
+    expect(rpc.args.p_period_start).toBe("2026-09-06T15:00:00.000Z");
+    expect(rpc.args.p_period_end).toBe("2026-10-06T15:00:00.000Z");
+  });
+
+  it("plano que o mapa NAO lista para Pix e recusado sem tocar o Asaas", async () => {
     await expect(
-      asaasProvider.createCheckout(checkoutInput("pro_monthly")),
-    ).rejects.toMatchObject({ code: "pix_not_allowed_on_monthly" });
+      asaasProvider.createCheckout(checkoutInput("free")),
+    ).rejects.toMatchObject({ code: "pix_not_allowed_on_plan" });
 
     expect(estado.asaas).toEqual([]);
     expect(estado.escritas).toEqual([]);
   });
 
   it("semestral e anual vem do ponto unico, com os MESMOS dias do boleto", () => {
-    expect(oneOffAccessDays("pro_semiannual")).toBe(182);
-    expect(oneOffAccessDays("pro_annual")).toBe(365);
-    expect(oneOffAccessDays("pro_monthly")).toBeUndefined();
+    expect(oneOffAccessDays("pro_semiannual", "pix")).toBe(182);
+    expect(oneOffAccessDays("pro_annual", "pix")).toBe(365);
+    expect(oneOffAccessDays("pro_monthly", "pix")).toBe(30);
+    expect(oneOffAccessDays("pro_monthly", "boleto")).toBeUndefined();
   });
 });
 
@@ -2408,7 +2447,7 @@ describe("ativacao Pix: a ancora do periodo e a regra compartilhada", () => {
     expect(rpc.args.p_period_end).toBe(
       new Date(
         Date.parse("2026-09-21T00:00:00.000Z") +
-          oneOffAccessDays("pro_annual")! * 24 * 60 * 60 * 1000,
+          oneOffAccessDays("pro_annual", "pix")! * 24 * 60 * 60 * 1000,
       ).toISOString(),
     );
   });

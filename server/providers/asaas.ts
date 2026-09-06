@@ -198,14 +198,16 @@ async function createCheckout(
     );
   }
 
-  const accessDays = oneOffAccessDays(input.planId);
+  const accessDays = oneOffAccessDays(input.planId, "pix");
   if (!accessDays) {
     // Mesmo contrato de err do boleto: 400 com slug proprio, para a UI
-    // distinguir "plan nao aceita este meio" de qualquer outra recusa.
+    // distinguir "plan nao aceita este meio" de qualquer outra recusa. O slug
+    // deixou de nomear o mensal em 2026-09-06, quando o mensal passou a aceitar
+    // Pix: a recusa vem do mapa, para o plano que ele nao listar.
     throw createError(
       400,
-      "pix_not_allowed_on_monthly",
-      "Pix não está disponível neste plan.",
+      "pix_not_allowed_on_plan",
+      "Pix não está disponível neste plano.",
     );
   }
 
@@ -1047,7 +1049,7 @@ async function activateOnPayment(args: {
   const planCode = plan?.code;
   const accessDays =
     planCode && isKnownPlanId(planCode)
-      ? oneOffAccessDays(planCode)
+      ? oneOffAccessDays(planCode, "pix")
       : undefined;
   if (!accessDays) {
     // Sem dias de acesso nao da para calcular o periodo, e ativar com periodo

@@ -1776,7 +1776,8 @@ async function createCheckout(
     // que a Stripe cobra). O acesso Pro so e concedido quando o boleto compensa
     // (async_payment_succeeded, proxima task); por isso metadata carrega
     // payment_method/renewal_type/access_days para a linha ser reidratada la.
-    const accessDays = oneOffAccessDays(input.planId);
+    // Do mapa por metodo (shared/paymentMethods.ts): o mensal nao lista boleto.
+    const accessDays = oneOffAccessDays(input.planId, "boleto");
     if (!accessDays) {
       throw createError(
         400,
