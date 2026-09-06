@@ -17,6 +17,7 @@ import { asaasProvider, stripeProvider } from "../providers";
 import { fetchChargeAmountCents, fetchPixQrCode } from "../providers/asaas";
 import { isPlanId, PLAN_PRICING, type PlanId } from "../../shared/planPricing";
 import {
+  type OneOffMethodId,
   isPaymentMethodAllowed,
   isPaymentMethodId,
   type PaymentMethodId,
@@ -32,7 +33,33 @@ type RenewalResolved = {
   userId: string;
   planId: PlanId;
   currentPeriodEnd: string | null;
+  /** Meio pelo qual a renovacao vai ser cobrada. Ver `metodoDaRenovacao`. */
+  paymentMethod: OneOffMethodId;
 };
+
+/**
+ * Meio da RENOVACAO: o meio atual da assinatura quando o plano ainda o aceita,
+ * senao Pix.
+ *
+ * O "senao Pix" cobre o caso legado medido em 2026-09-06: uma assinatura
+ * mensal paga por boleto, criada antes de o mapa proibir boleto no mensal.
+ * Renova-la por boleto seria recusado pela Stripe (`boleto_not_allowed_on_monthly`);
+ * Pix e o unico avulso que o mensal aceita. Cartao nao e avulso e nunca chega
+ * aqui por uma assinatura manual, mas se chegar cai em Pix pelo mesmo motivo.
+ * Exportada para o teste afirmar a tabela.
+ */
+export function metodoDaRenovacao(
+  metodoAtual: string | null | undefined,
+  planId: PlanId,
+): OneOffMethodId {
+  if (
+    (metodoAtual === "boleto" || metodoAtual === "pix") &&
+    isPaymentMethodAllowed(planId, metodoAtual)
+  ) {
+    return metodoAtual;
+  }
+  return "pix";
+}
 
 async function resolveRenewal(
   token: string,
@@ -60,17 +87,46 @@ async function resolveRenewal(
 
   const { data: sub } = await supabaseAdmin
     .from("subscriptions")
-    .select("id, user_id, status, current_period_end, plan_id, renewal_type")
+    .select(
+      "id, user_id, status, current_period_end, plan_id, renewal_type, payment_method",
+    )
     .eq("id", verified.subscriptionId)
     .maybeSingle();
 
   // Cancelada ou inexistente compartilham o slug (a task agrupa os dois casos).
-  if (!sub || sub.status === "canceled") {
+  //
+  // EXCECAO DESDE O LOTE 2b: a linha RECEM-VENCIDA. O cron de expiracao
+  // (`expirarAssinaturasManuais`, server/routes/cron.ts) escreve `canceled` na
+  // assinatura manual assim que o periodo passa, e o lembrete D0 chega depois
+  // disso. Uma `canceled` cujo `current_period_end` ja passou e uma assinatura
+  // que VENCEU, nao uma que alguem encerrou, e renovar e exatamente o que se
+  // espera dela. `canceled` com periodo ainda vigente e cancelamento de
+  // verdade (admin, estorno) e continua indisponivel. O TTL do token (7 dias
+  // apos o fim) limita ate quando o link recem-vencido vale.
+  const agoraMs = Date.now();
+  const fimMs = sub?.current_period_end
+    ? new Date(sub.current_period_end).getTime()
+    : Number.NaN;
+  const recemVencida =
+    sub?.status === "canceled" && Number.isFinite(fimMs) && fimMs < agoraMs;
+  if (!sub || (sub.status === "canceled" && !recemVencida)) {
     return {
       ok: false,
       status: 404,
       code: "subscription_unavailable",
       message: "Assinatura não encontrada ou cancelada.",
+    };
+  }
+
+  // Ja renovada por LINHA NOVA: a RPC de ativacao marca a linha antiga como
+  // `superseded`, e e a antiga que o token do e-mail aponta. Sem isto, o
+  // segundo clique no mesmo link geraria uma segunda cobranca.
+  if (sub.status === "superseded") {
+    return {
+      ok: false,
+      status: 409,
+      code: "already_renewed",
+      message: "Esta assinatura já foi renovada.",
     };
   }
 
@@ -121,6 +177,7 @@ async function resolveRenewal(
       userId: sub.user_id,
       planId: plan.code,
       currentPeriodEnd: sub.current_period_end,
+      paymentMethod: metodoDaRenovacao(sub.payment_method, plan.code),
     },
   };
 }
@@ -688,11 +745,22 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
   }
 });
 
-// Renovacao de boleto por token assinado (link one-click do e-mail). SEM
-// requireAuth: o token e a autenticacao. GET so mostra plano/valor/vencimento para
-// a pagina /renovar; POST gera o boleto de fato (intencao explicita, nao page load).
+// Renovacao manual por token assinado (link one-click do e-mail). SEM
+// requireAuth: o token e a autenticacao. GET so mostra plano/valor/vencimento
+// para a pagina /renovar; POST gera a cobranca de fato (intencao explicita,
+// nao page load).
+//
+// DESPACHO POR PROVEDOR E METODO desde o lote 2b (2026-09-06). Ate entao
+// Stripe e boleto estavam fixos em duro: um assinante Pix receberia boleto, e
+// o mensal (que so aceita Pix) morreria em `boleto_not_allowed_on_monthly`. O
+// metodo vem de `metodoDaRenovacao`; o provedor vem do metodo, NOMEADO, como
+// em POST /checkout.
 
-router.get("/renew", async (req, res, next) => {
+export async function handleRenewPreview(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     const token = typeof req.query.token === "string" ? req.query.token : "";
     if (!token) {
@@ -703,7 +771,8 @@ router.get("/renew", async (req, res, next) => {
     const r = await resolveRenewal(token);
     if (!r.ok) return next(createError(r.status, r.code, r.message));
 
-    // Preview sem PII: so plano, valor e vencimento.
+    // Preview sem PII: so plano, valor, vencimento e o meio (aditivo) pelo
+    // qual a renovacao vai ser cobrada, para a pagina dizer "por Pix".
     const pricing = PLAN_PRICING[r.data.planId];
     res.json({
       data: {
@@ -711,16 +780,21 @@ router.get("/renew", async (req, res, next) => {
         planLabel: pricing.label,
         priceLabel: pricing.totalLabel,
         periodEnd: r.data.currentPeriodEnd,
+        paymentMethod: r.data.paymentMethod,
       },
     });
   } catch (err) {
     next(err);
   }
-});
+}
 
-router.post("/renew", async (req, res, next) => {
+export async function handleRenew(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
-    // Kill-switch fail-closed: gerar boleto chama o provider; corta antes.
+    // Kill-switch fail-closed: gerar cobranca chama o provider; corta antes.
     if (!env.billingEnabled) {
       return next(
         createError(
@@ -746,23 +820,54 @@ router.post("/renew", async (req, res, next) => {
     );
     const email = authData?.user?.email || "";
 
-    // internalRenewal: seta AQUI, no server, apos validar o token. Pula so o guard
-    // de assinatura ativa; o guard de boleto pendente segue valendo e pode lancar
-    // 409 boleto_pending. Nunca vem do corpo HTTP.
-    const data = await stripeProvider.createCheckout({
+    // internalRenewal: seta AQUI, no server, apos validar o token. Pula so o
+    // guard de assinatura ativa; o guard de cobranca pendente segue valendo e
+    // pode lancar 409 (boleto_pending / pix_pending). Nunca vem do corpo HTTP.
+    // Sem cupom: renovacao nao e primeira compra.
+    const input = {
       user: { id: r.data.userId, email },
       planId: r.data.planId,
       affiliateCode: "",
       couponCode: "",
-      paymentMethod: "boleto",
+      paymentMethod: r.data.paymentMethod,
       internalRenewal: true,
-    });
+    };
 
+    if (r.data.paymentMethod === "pix") {
+      if (!env.asaasEnabled) {
+        return next(
+          createError(
+            503,
+            "asaas_disabled",
+            "Pagamento por Pix indisponível no momento.",
+          ),
+        );
+      }
+      const data = await asaasProvider.createCheckout(input);
+      // O QR vai JUNTO, porque a pagina /renovar nao tem sessao para chamar
+      // GET /pix-qrcode (que exige requireAuth). Falha ao ler o QR NAO derruba
+      // a renovacao: a cobranca ja existe e `checkoutUrl` e o fallback.
+      let pixQrCode: Awaited<ReturnType<typeof fetchPixQrCode>> | null = null;
+      try {
+        pixQrCode = await fetchPixQrCode(data.subscriptionId);
+      } catch (err) {
+        console.error(
+          `[billing/renew] QR indisponivel para ${data.subscriptionId}; a pagina cai no checkoutUrl:`,
+          err,
+        );
+      }
+      return res.json({ data: { ...data, pixQrCode } });
+    }
+
+    const data = await stripeProvider.createCheckout(input);
     res.json({ data });
   } catch (err) {
     next(err);
   }
-});
+}
+
+router.get("/renew", handleRenewPreview);
+router.post("/renew", handleRenew);
 
 // Webhook da Stripe: rota FIXA. Cai no express.raw de app.ts (match por prefixo
 // /api/billing/webhook), entao req.rawBody chega intacto para
