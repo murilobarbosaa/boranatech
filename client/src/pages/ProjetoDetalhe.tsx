@@ -8,6 +8,7 @@ import SEO from "@/components/SEO";
 import CopyButton from "@/components/shared/CopyButton";
 import ProjectValidationBlock from "@/components/projects/ProjectValidationBlock";
 import ProjetoAnel from "@/components/projects/ProjetoAnel";
+import ProjetoConcluidoModal from "@/components/projects/ProjetoConcluidoModal";
 import ProjetoDepois from "@/components/projects/ProjetoDepois";
 import ProjetoEtapas from "@/components/projects/ProjetoEtapas";
 import ProjetoPorQue from "@/components/projects/ProjetoPorQue";
@@ -56,6 +57,10 @@ export default function ProjetoDetalhe() {
   // ProjectValidationBlock, por projeto. A pagina so precisa saber que passou
   // a valer, para o chip de estado.
   const [validado, setValidado] = useState(false);
+  // A comemoracao e disparada pelo CLIQUE, nao pelo valor de `done`: abrir por
+  // efeito faria o modal aparecer toda vez que alguem abrisse um projeto ja
+  // concluido.
+  const [celebrando, setCelebrando] = useState(false);
   const [detalhe, setDetalhe] = useState<ProjetoV2Detalhe | "erro" | null>(
     null,
   );
@@ -322,8 +327,9 @@ export default function ProjetoDetalhe() {
                 <section className={BLOCO} id="entrega">
                   <h2 className={H2}>Entrega</h2>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Terminou? Marque a conclusão e o projeto vira parte do seu
-                    perfil.
+                    {indiceAtual === -1 && !concluido
+                      ? "Todas as etapas feitas. Falta só marcar como concluído."
+                      : "Terminou? Marque a conclusão e o projeto vira parte do seu perfil."}
                   </p>
                   <div className="card-brutal mt-3 rounded-xl bg-card p-5">
                     {projeto.pro === true && (
@@ -336,7 +342,11 @@ export default function ProjetoDetalhe() {
                       <button
                         type="button"
                         aria-pressed={concluido}
-                        onClick={() => toggleCompletion(projeto.id)}
+                        onClick={() => {
+                          const vaiConcluir = !concluido;
+                          toggleCompletion(projeto.id);
+                          if (vaiConcluir) setCelebrando(true);
+                        }}
                         className={`inline-flex items-center gap-2 rounded-xl border-2 border-ink px-4 py-2.5 font-display text-sm font-bold shadow-[3px_3px_0_var(--bnt-shadow)] ${
                           concluido
                             ? "bg-emerald-500 text-white"
@@ -426,7 +436,11 @@ export default function ProjetoDetalhe() {
                       <button
                         type="button"
                         aria-pressed={concluido}
-                        onClick={() => toggleCompletion(projeto.id)}
+                        onClick={() => {
+                          const vaiConcluir = !concluido;
+                          toggleCompletion(projeto.id);
+                          if (vaiConcluir) setCelebrando(true);
+                        }}
                         className={`inline-flex items-center gap-2 rounded-xl border-2 border-ink px-4 py-2.5 font-display text-sm font-bold shadow-[3px_3px_0_var(--bnt-shadow)] ${
                           concluido
                             ? "bg-emerald-500 text-white"
@@ -493,6 +507,19 @@ export default function ProjetoDetalhe() {
           </ProjetoLateral>
         </div>
       </section>
+
+      <ProjetoConcluidoModal
+        aberto={celebrando}
+        onOpenChange={setCelebrando}
+        nome={projeto.nome}
+        totalEtapas={v2 ? v2.etapas.length : null}
+        post={projeto.sugestaoLinkedIn}
+        url={urlDaPagina(projeto.id)}
+        proximo={proximo}
+        onValidar={
+          projeto.pro === true && isPro ? () => rolarPara("entrega") : undefined
+        }
+      />
     </Layout>
   );
 }

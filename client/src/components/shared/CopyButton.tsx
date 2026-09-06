@@ -4,9 +4,18 @@ import { Copy } from "lucide-react";
 interface CopyButtonProps {
   text: string;
   className?: string;
+  /** Rotulo antes do clique. Padrao "Copiar", como sempre foi. */
+  label?: string;
+  /** Rotulo depois do clique, por 2 s. */
+  copiedLabel?: string;
 }
 
-export default function CopyButton({ text, className = "" }: CopyButtonProps) {
+export default function CopyButton({
+  text,
+  className = "",
+  label = "Copiar",
+  copiedLabel = "Copiado!",
+}: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -22,7 +31,7 @@ export default function CopyButton({ text, className = "" }: CopyButtonProps) {
       className={`inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black text-slate-900 shadow-[2px_2px_0_var(--bnt-shadow)] transition-colors hover:bg-yellow-100 ${className}`}
     >
       <Copy className="h-3.5 w-3.5" />
-      {copied ? "Copiado!" : "Copiar"}
+      {copied ? copiedLabel : label}
     </button>
   );
 }
