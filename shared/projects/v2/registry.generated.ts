@@ -11,6 +11,7 @@ export const PROJETOS_V2_IDS = [
   "dashboard-power-bi",
   "landing-page-pessoal",
   "lista-tarefas-fullstack",
+  "persona-journey-mapa",
   "pipeline-etl-python",
   "todo-list",
 ] as const;
@@ -25,6 +26,7 @@ export const loaders: Record<
   "dashboard-power-bi": () => import("./dashboard-power-bi"),
   "landing-page-pessoal": () => import("./landing-page-pessoal"),
   "lista-tarefas-fullstack": () => import("./lista-tarefas-fullstack"),
+  "persona-journey-mapa": () => import("./persona-journey-mapa"),
   "pipeline-etl-python": () => import("./pipeline-etl-python"),
   "todo-list": () => import("./todo-list"),
 };
