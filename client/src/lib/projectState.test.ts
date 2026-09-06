@@ -71,3 +71,68 @@ describe("filtrarPorEstado", () => {
     expect(filtrarPorEstado(ITEMS, "pro", ctx).map((p) => p.id)).toEqual(["c"]);
   });
 });
+
+describe("deriveProjectState com entrega", () => {
+  it("entregue vence concluido", () => {
+    expect(
+      deriveProjectState({
+        done: true,
+        etapas: vazio,
+        validado: false,
+        entrega: "entregue",
+      }),
+    ).toBe("entregue");
+  });
+
+  it("verificado vence entregue", () => {
+    expect(
+      deriveProjectState({
+        done: false,
+        etapas: vazio,
+        validado: false,
+        entrega: "verificado",
+      }),
+    ).toBe("verificado");
+  });
+
+  it("validado por IA tambem da verificado, sem entrega", () => {
+    expect(
+      deriveProjectState({
+        done: false,
+        etapas: vazio,
+        validado: true,
+        entrega: null,
+      }),
+    ).toBe("verificado");
+  });
+
+  it("sem entrega o comportamento anterior nao muda", () => {
+    expect(
+      deriveProjectState({ done: true, etapas: vazio, validado: false }),
+    ).toBe("concluido");
+  });
+});
+
+describe("filtro Concluidos com entrega", () => {
+  it("inclui entregue e verificado", () => {
+    const items = [
+      { id: "a", pro: undefined },
+      { id: "b", pro: undefined },
+      { id: "c", pro: undefined },
+    ];
+    const ctx = {
+      done: () => false,
+      etapas: () => vazio,
+      validado: () => false,
+      entrega: (id: string) =>
+        id === "a"
+          ? ("entregue" as const)
+          : id === "b"
+            ? ("verificado" as const)
+            : null,
+    };
+    expect(filtrarPorEstado(items, "concluidos", ctx).map((p) => p.id)).toEqual(
+      ["a", "b"],
+    );
+  });
+});

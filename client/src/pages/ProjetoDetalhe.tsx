@@ -10,6 +10,7 @@ import ProjectValidationBlock from "@/components/projects/ProjectValidationBlock
 import ProjetoAnel from "@/components/projects/ProjetoAnel";
 import ProjetoConcluidoModal from "@/components/projects/ProjetoConcluidoModal";
 import ProjetoDepois from "@/components/projects/ProjetoDepois";
+import ProjetoEntrega from "@/components/projects/ProjetoEntrega";
 import ProjetoEtapas from "@/components/projects/ProjetoEtapas";
 import ProjetoPorQue from "@/components/projects/ProjetoPorQue";
 import ProjetoRecursos from "@/components/projects/ProjetoRecursos";
@@ -21,6 +22,7 @@ import ProjetoLateral, {
 import { type EstadoChip } from "@/components/projects/ProjetoEstadoChip";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useProjectCompletion } from "@/hooks/useProjectCompletion";
+import { useProjectSubmission } from "@/hooks/useProjectSubmission";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { projetos } from "@/lib/data";
 import { labelForProjectArea } from "@/lib/projectAreaGroup";
@@ -64,9 +66,19 @@ export default function ProjetoDetalhe() {
   // efeito faria o modal aparecer toda vez que alguem abrisse um projeto ja
   // concluido.
   const [celebrando, setCelebrando] = useState(false);
+  // Muda a copy do modal: "entregou" quando veio do formulario, "fechou"
+  // quando veio do botao de autodeclaracao.
+  const [entregou, setEntregou] = useState(false);
   const [detalhe, setDetalhe] = useState<ProjetoV2Detalhe | "erro" | null>(
     null,
   );
+  const entregaAtiva = Boolean(projeto) && !(projeto?.pro === true && !isPro);
+  const {
+    submission,
+    status: statusEntrega,
+    entregar,
+    verificar,
+  } = useProjectSubmission(projeto?.id ?? "", entregaAtiva);
 
   const proTravado = projeto?.pro === true && !isPro;
   // O modulo v2 E o conteudo pago: projeto travado nao baixa nada. O efeito
@@ -137,13 +149,17 @@ export default function ProjetoDetalhe() {
 
   const estado: EstadoChip = travado
     ? { tipo: "pro_travado" }
-    : concluido || validado
-      ? { tipo: "concluido" }
-      : feitas > 0
-        ? v2
-          ? { tipo: "em_andamento", feitas, total: v2.etapas.length }
-          : { tipo: "em_andamento" }
-        : { tipo: "nao_iniciado" };
+    : validado || submission?.status === "verificado"
+      ? { tipo: "verificado" }
+      : submission?.status === "entregue"
+        ? { tipo: "entregue" }
+        : concluido
+          ? { tipo: "concluido" }
+          : feitas > 0
+            ? v2
+              ? { tipo: "em_andamento", feitas, total: v2.etapas.length }
+              : { tipo: "em_andamento" }
+            : { tipo: "nao_iniciado" };
 
   const proximoNoCatalogo = projeto.proximoProjetoId
     ? projetos.find((p) => p.id === projeto.proximoProjetoId)
@@ -191,16 +207,18 @@ export default function ProjetoDetalhe() {
         { valor: projeto.entregavel, legenda: "o que você entrega" },
       ];
 
-  const acaoPrincipal = v2
-    ? indiceAtual === -1
-      ? { rotulo: "Ir para a entrega", ancora: "entrega" }
-      : feitas === 0
-        ? { rotulo: "Começar", ancora: `etapa-${v2.etapas[0].id}` }
-        : {
-            rotulo: `Continuar da etapa ${indiceAtual + 1}`,
-            ancora: `etapa-${v2.etapas[indiceAtual].id}`,
-          }
-    : { rotulo: "Começar", ancora: "passos" };
+  const acaoPrincipal = submission
+    ? { rotulo: "Ver entrega", ancora: "entrega" }
+    : v2
+      ? indiceAtual === -1
+        ? { rotulo: "Ir para a entrega", ancora: "entrega" }
+        : feitas === 0
+          ? { rotulo: "Começar", ancora: `etapa-${v2.etapas[0].id}` }
+          : {
+              rotulo: `Continuar da etapa ${indiceAtual + 1}`,
+              ancora: `etapa-${v2.etapas[indiceAtual].id}`,
+            }
+      : { rotulo: "Começar", ancora: "passos" };
 
   // "Concluido em" so existe para quem esta logado: o localStorage do anonimo
   // guarda ids, nao datas, e inventar uma seria pior que omitir.
@@ -367,41 +385,42 @@ export default function ProjetoDetalhe() {
                 <section className={BLOCO} id="entrega">
                   <h2 className={H2}>Entrega</h2>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    {indiceAtual === -1 && !concluido
-                      ? "Todas as etapas feitas. Falta só marcar como concluído."
-                      : "Terminou? Marque a conclusão e o projeto vira parte do seu perfil."}
+                    Terminou? Cole os links. A gente confere o que dá para
+                    conferir sozinho e o seu projeto vira parte do seu perfil.
                   </p>
-                  <div className="card-brutal mt-3 rounded-xl bg-card p-5">
-                    {projeto.pro === true && (
+                  <div className="mt-3">
+                    <ProjetoEntrega
+                      tipoEntrega={v2.tipoEntrega}
+                      checks={v2.verificacaoAutomatica ?? []}
+                      submission={submission}
+                      status={statusEntrega}
+                      onEntregar={async (input) => {
+                        await entregar(input);
+                        if (!concluido) toggleCompletion(projeto.id);
+                        setEntregou(true);
+                        setCelebrando(true);
+                        // A verificacao vem DEPOIS de abrir a comemoracao: ela
+                        // leva segundos e nao pode segurar o feedback.
+                        try {
+                          await verificar();
+                        } catch {
+                          // Falha aqui nao desfaz a entrega; o botao
+                          // "Verificar de novo" continua disponivel.
+                        }
+                      }}
+                      onVerificar={async () => {
+                        await verificar();
+                      }}
+                    />
+                  </div>
+                  {projeto.pro === true && (
+                    <div className="mt-4">
                       <ProjectValidationBlock
                         projeto={projeto}
                         onApproved={() => setValidado(true)}
                       />
-                    )}
-                    {completionReady && (
-                      <button
-                        type="button"
-                        aria-pressed={concluido}
-                        onClick={() => {
-                          const vaiConcluir = !concluido;
-                          toggleCompletion(projeto.id);
-                          if (vaiConcluir) setCelebrando(true);
-                        }}
-                        className={`inline-flex items-center gap-2 rounded-xl border-2 border-ink px-4 py-2.5 font-display text-sm font-bold shadow-[3px_3px_0_var(--bnt-shadow)] ${
-                          concluido
-                            ? "bg-emerald-500 text-white"
-                            : "bg-card text-foreground"
-                        }`}
-                      >
-                        {concluido && (
-                          <Check className="h-4 w-4" strokeWidth={4} />
-                        )}
-                        {concluido
-                          ? "Projeto concluído"
-                          : "Marcar como concluído"}
-                      </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </section>
 
                 <section className={BLOCO}>
@@ -549,8 +568,12 @@ export default function ProjetoDetalhe() {
 
       <ProjetoConcluidoModal
         aberto={celebrando}
-        onOpenChange={setCelebrando}
+        onOpenChange={(aberto) => {
+          setCelebrando(aberto);
+          if (!aberto) setEntregou(false);
+        }}
         nome={projeto.nome}
+        entregue={entregou}
         totalEtapas={v2 ? v2.etapas.length : null}
         post={projeto.sugestaoLinkedIn}
         url={urlDaPagina(projeto.id)}

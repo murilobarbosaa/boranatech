@@ -12,9 +12,11 @@ import SEO from "@/components/SEO";
 import { AiCtaLink } from "@/components/shared/AiCta";
 import { BntSelect } from "@/components/shared/BntSelect";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useProjectCompletion } from "@/hooks/useProjectCompletion";
 import { listProjectValidations } from "@/services/projectValidationService";
+import { listSubmissions } from "@/services/projectSubmissionService";
 import { projetos } from "@/lib/data";
 import { getAreaAccent } from "@/lib/platformData";
 import { areaGridPaletteOf } from "@/lib/areaGridPalette";
@@ -78,6 +80,7 @@ const nivelColors: Record<string, string> = {
 
 export default function Projetos() {
   const { isPro, loading } = useSubscription();
+  const { user } = useAuth();
   const {
     done: projectsDone,
     stages: projectStages,
@@ -152,6 +155,34 @@ export default function Projetos() {
     };
   }, [isPro]);
 
+  // UMA chamada por carga de pagina, so para quem esta logado: o anonimo nao
+  // tem entrega, e pedir a lista para ele seria uma requisicao garantidamente
+  // vazia. Erro degrada para "sem entrega": o chip perde informacao, a pagina
+  // nao cai.
+  const [entregas, setEntregas] = useState<
+    Map<string, "entregue" | "verificado">
+  >(new Map());
+  useEffect(() => {
+    if (!user) {
+      setEntregas(new Map());
+      return;
+    }
+    let cancelado = false;
+    void listSubmissions()
+      .then((linhas) => {
+        if (cancelado) return;
+        setEntregas(
+          new Map(linhas.map((l) => [l.projectId, l.status] as const)),
+        );
+      })
+      .catch(() => {
+        if (!cancelado) setEntregas(new Map());
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [user]);
+
   const q = query.trim().toLowerCase();
   // O estado entra no MESMO estagio que area, tecnologia e busca, antes da
   // contagem por nivel: senao "3 Iniciante" contaria projeto que o filtro de
@@ -160,6 +191,7 @@ export default function Projetos() {
     done: (id: string) => projectsDone.has(id),
     etapas: (id: string) => projectStages.get(id) ?? {},
     validado: (id: string) => validatedIds.has(id),
+    entrega: (id: string) => entregas.get(id) ?? null,
   };
   const baseFiltered = filtrarPorEstado(
     projectItems.filter((p) => {
@@ -464,14 +496,19 @@ export default function Projetos() {
                     );
                     const cardTravado = travado(projeto);
                     const marcadasDoCard = projectStages.get(projeto.id) ?? {};
+                    const entregaDoCard = entregas.get(projeto.id) ?? null;
                     const estado: EstadoChip = cardTravado
                       ? { tipo: "pro_travado" }
                       : validatedIds.has(projeto.id) ||
-                          projectsDone.has(projeto.id)
-                        ? { tipo: "concluido" }
-                        : Object.keys(marcadasDoCard).length > 0
-                          ? { tipo: "em_andamento" }
-                          : { tipo: "nao_iniciado" };
+                          entregaDoCard === "verificado"
+                        ? { tipo: "verificado" }
+                        : entregaDoCard === "entregue"
+                          ? { tipo: "entregue" }
+                          : projectsDone.has(projeto.id)
+                            ? { tipo: "concluido" }
+                            : Object.keys(marcadasDoCard).length > 0
+                              ? { tipo: "em_andamento" }
+                              : { tipo: "nao_iniciado" };
                     // Fatos do card saem SO do catalogo: tempo estimado e
                     // tipo de entrega moram no modulo v2, e carrega-lo aqui
                     // colocaria 12 chunks no catalogo (e o conteudo pago no
