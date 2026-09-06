@@ -40,6 +40,10 @@ export function useProjectCompletion() {
   const [stages, setStages] = useState<Map<string, Record<string, string>>>(
     new Map(),
   );
+  // Quando cada linha foi gravada, para a pagina do projeto mostrar
+  // "Concluido em dd/mm". So existe para quem esta logado: o localStorage do
+  // anonimo guarda ids, nao datas, e inventar uma seria pior que omitir.
+  const [updatedAt, setUpdatedAt] = useState<Map<string, string>>(new Map());
   const [ready, setReady] = useState(false);
   const prevUserRef = useRef<string | null>(null);
 
@@ -91,6 +95,7 @@ export function useProjectCompletion() {
       if (cancelled) return;
       const doneSet = new Set<string>();
       const stageMap = new Map<string, Record<string, string>>();
+      const dataMap = new Map<string, string>();
       for (const entry of entries) {
         // O server valida na escrita; aqui normaliza a leitura, inclusive das
         // linhas antigas `{ done: true }`. `null` em etapaIds nao serve na
@@ -103,11 +108,13 @@ export function useProjectCompletion() {
         );
         const value = parsed.ok ? parsed.value : { done: false, etapas: {} };
         if (value.done) doneSet.add(entry.itemKey);
+        if (entry.updatedAt) dataMap.set(entry.itemKey, entry.updatedAt);
         if (Object.keys(value.etapas).length > 0)
           stageMap.set(entry.itemKey, value.etapas);
       }
       setDone(doneSet);
       setStages(stageMap);
+      setUpdatedAt(dataMap);
       setReady(true);
     };
 
@@ -222,7 +229,7 @@ export function useProjectCompletion() {
     });
   };
 
-  return { done, stages, ready, toggle, toggleStage };
+  return { done, stages, updatedAt, ready, toggle, toggleStage };
 }
 
 export type { ProjectStagesLocal };

@@ -24,6 +24,7 @@ export default function ProjetoDepois({
           </span>
           <CopyButton
             text={`${sugestaoLinkedIn}\n\n${url}`}
+            label="Copiar post"
             className="border-border shadow-none"
           />
         </div>

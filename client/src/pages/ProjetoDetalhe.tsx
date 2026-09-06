@@ -30,6 +30,8 @@ import { isProjetoV2, loadProjetoV2 } from "@shared/projects/v2";
 import type { ProjetoV2Detalhe } from "@shared/projects/v2/types";
 
 const H2 = "font-display text-xl font-bold text-foreground";
+const ACAO_PRINCIPAL =
+  "inline-flex items-center gap-2 rounded-xl border-2 border-ink bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-bold text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]";
 const BLOCO = "border-b border-border pb-8 mb-8 last:mb-0 last:border-b-0";
 
 function urlDaPagina(id: string): string {
@@ -48,6 +50,7 @@ export default function ProjetoDetalhe() {
   const {
     done: projectsDone,
     stages: projectStages,
+    updatedAt: projectUpdatedAt,
     ready: completionReady,
     toggle: toggleCompletion,
     toggleStage,
@@ -199,11 +202,25 @@ export default function ProjetoDetalhe() {
           }
     : { rotulo: "Começar", ancora: "passos" };
 
+  // "Concluido em" so existe para quem esta logado: o localStorage do anonimo
+  // guarda ids, nao datas, e inventar uma seria pior que omitir.
+  const concluidoEm = concluido ? projectUpdatedAt.get(projeto.id) : undefined;
+  const concluidoEmCurto = concluidoEm
+    ? new Date(concluidoEm).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+      })
+    : undefined;
+
+  // Pagina de projeto v1 fica FORA do indice: e objetivo, ferramentas e passos,
+  // conteudo raso que competiria com o proprio catalogo. A v2 tem os sete
+  // blocos e ja entrou no sitemap.
   const seo = (
     <SEO
       title={`${projeto.nome} · Projetos · Bora na Tech`}
       description={projeto.objetivo}
       url={`/projetos/${projeto.id}`}
+      noindex={!isProjetoV2(projeto.id)}
     />
   );
 
@@ -249,16 +266,35 @@ export default function ProjetoDetalhe() {
           <ProjetoHero
             projeto={projeto}
             estado={estado}
+            concluidoEm={concluidoEmCurto}
             fatos={fatos}
             acoes={
               <>
-                <button
-                  type="button"
-                  onClick={() => rolarPara(acaoPrincipal.ancora)}
-                  className="inline-flex items-center gap-2 rounded-xl border-2 border-ink bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-bold text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]"
-                >
-                  {acaoPrincipal.rotulo}
-                </button>
+                {concluido ? (
+                  proximo ? (
+                    <Link
+                      href={`/projetos/${proximo.id}`}
+                      className={ACAO_PRINCIPAL}
+                    >
+                      Próximo projeto
+                    </Link>
+                  ) : (
+                    <CopyButton
+                      text={urlDaPagina(projeto.id)}
+                      label="Compartilhar"
+                      copiedLabel="Link copiado!"
+                      className={ACAO_PRINCIPAL}
+                    />
+                  )
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => rolarPara(acaoPrincipal.ancora)}
+                    className={ACAO_PRINCIPAL}
+                  >
+                    {acaoPrincipal.rotulo}
+                  </button>
+                )}
                 <FavoriteButton
                   item={{
                     id: projeto.id,
@@ -268,10 +304,14 @@ export default function ProjetoDetalhe() {
                   }}
                   className="px-4 py-2.5 text-sm"
                 />
-                <CopyButton
-                  text={urlDaPagina(projeto.id)}
-                  className="border-border shadow-none"
-                />
+                {!concluido && (
+                  <CopyButton
+                    text={urlDaPagina(projeto.id)}
+                    label="Compartilhar"
+                    copiedLabel="Link copiado!"
+                    className="border-border shadow-none"
+                  />
+                )}
               </>
             }
             faixaMobile={
@@ -486,7 +526,6 @@ export default function ProjetoDetalhe() {
 
           <ProjetoLateral
             estado={estado}
-            proximo={proximo}
             topo={
               v2 ? (
                 <ProjetoAnel
