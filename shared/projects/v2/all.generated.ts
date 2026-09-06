@@ -6,6 +6,7 @@
 import analiseDadosPublicos from "./analise-dados-publicos";
 import apiRestTarefas from "./api-rest-tarefas";
 import automacaoLoginCypress from "./automacao-login-cypress";
+import dashboardPowerBi from "./dashboard-power-bi";
 import landingPagePessoal from "./landing-page-pessoal";
 import listaTarefasFullstack from "./lista-tarefas-fullstack";
 import pipelineEtlPython from "./pipeline-etl-python";
@@ -16,6 +17,7 @@ export const PROJETOS_V2: ProjetoV2Detalhe[] = [
   analiseDadosPublicos,
   apiRestTarefas,
   automacaoLoginCypress,
+  dashboardPowerBi,
   landingPagePessoal,
   listaTarefasFullstack,
   pipelineEtlPython,
