@@ -409,6 +409,41 @@ describe("card Assinantes Pro (D3)", () => {
     expect(pro.bySubscription + pro.byInfluencer - pro.both).toBe(pro.total);
   });
 
+  it("manual vencendo em 5 dias sem renovacao: terceira familia de receita em risco", async () => {
+    const em5dias = new Date(Date.now() + 5 * 24 * 3600_000).toISOString();
+    base({
+      subscriptions: {
+        rows: [
+          assinatura({
+            id: "m",
+            user_id: "u1",
+            renewal_type: "manual",
+            payment_method: "pix",
+            current_period_start: new Date(
+              Date.now() - 25 * 24 * 3600_000,
+            ).toISOString(),
+            current_period_end: em5dias,
+          }),
+          // Cartao vencendo no mesmo dia NAO entra: a Stripe renova sozinha.
+          assinatura({
+            id: "c",
+            user_id: "u2",
+            renewal_type: "auto",
+            current_period_end: em5dias,
+          }),
+        ],
+      },
+    });
+
+    const r = await chamarAdmin("GET", "/overview?window=30");
+    const risco = r.body.data.cards.receitaEmRisco;
+
+    expect(risco.vencendo).toEqual({ count: 1, mrrCents: 2990 });
+    // O headline SOMA as tres familias.
+    expect(risco.count).toBe(1);
+    expect(risco.mrrCents).toBe(2990);
+  });
+
   it("trialing conta como acesso, mas fica FORA do MRR e vem em campo próprio", async () => {
     base({
       subscriptions: {

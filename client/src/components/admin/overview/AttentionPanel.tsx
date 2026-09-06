@@ -108,6 +108,7 @@ const TITULO_DE_GRUPO: Record<string, string> = {
   payout_falho: "Repasses que falharam",
   mes_sem_despesa: "Mês sem despesa registrada",
   influencer_com_assinatura: "Influencers que viraram assinantes",
+  assinaturas_vencendo: "Assinaturas manuais vencendo",
 };
 
 function tituloDeGrupo(tipo: string, exemplo: ItemAtencao): string {

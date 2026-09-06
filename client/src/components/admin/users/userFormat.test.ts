@@ -210,6 +210,70 @@ describe("subscriptionStatusBadgeOf", () => {
   });
 });
 
+describe("subscriptionStatusBadgeOf: assinatura manual", () => {
+  const AGORA = Date.parse("2026-09-14T12:00:00.000Z");
+  const DIA = 24 * 3600_000;
+
+  it("manual active com fim em 7 dias: diz quando vence e que e manual", () => {
+    const badge = subscriptionStatusBadgeOf("active", {
+      renewalType: "manual",
+      currentPeriodEnd: new Date(AGORA + 7 * DIA).toISOString(),
+      nowMs: AGORA,
+    });
+    expect(badge?.label).toBe("Vence em 7 dias (renovação manual)");
+  });
+
+  it("manual active com fim amanha: singular", () => {
+    const badge = subscriptionStatusBadgeOf("active", {
+      renewalType: "manual",
+      currentPeriodEnd: new Date(AGORA + DIA).toISOString(),
+      nowMs: AGORA,
+    });
+    expect(badge?.label).toBe("Vence em 1 dia (renovação manual)");
+  });
+
+  it("manual active com fim no passado (o cron ainda nao passou): Vencida", () => {
+    const badge = subscriptionStatusBadgeOf("active", {
+      renewalType: "manual",
+      currentPeriodEnd: new Date(AGORA - DIA).toISOString(),
+      nowMs: AGORA,
+    });
+    expect(badge?.label).toBe("Vencida");
+  });
+
+  it("cartao (auto) continua Ativa, seja qual for o fim", () => {
+    const badge = subscriptionStatusBadgeOf("active", {
+      renewalType: "auto",
+      currentPeriodEnd: new Date(AGORA + DIA).toISOString(),
+      nowMs: AGORA,
+    });
+    expect(badge?.label).toBe("Ativa");
+  });
+
+  it("manual canceled continua Cancelada: o contexto so muda a ATIVA", () => {
+    const badge = subscriptionStatusBadgeOf("canceled", {
+      renewalType: "manual",
+      currentPeriodEnd: new Date(AGORA - DIA).toISOString(),
+      nowMs: AGORA,
+    });
+    expect(badge?.label).toBe("Cancelada");
+  });
+
+  it("o rotulo do detalhe le o MESMO contexto", () => {
+    expect(
+      subscriptionStatusLabelOf("active", {
+        renewalType: "manual",
+        currentPeriodEnd: new Date(AGORA + 3 * DIA).toISOString(),
+        nowMs: AGORA,
+      }),
+    ).toBe("Vence em 3 dias (renovação manual)");
+  });
+
+  it("sem contexto (janela de deploy, lista antiga): Ativa, como sempre", () => {
+    expect(subscriptionStatusBadgeOf("active")?.label).toBe("Ativa");
+  });
+});
+
 describe("initialsOf", () => {
   it("usa as iniciais do primeiro e do ultimo nome", () => {
     expect(initialsOf("Ana Ferreira Moura")).toBe("AM");

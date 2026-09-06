@@ -140,9 +140,32 @@ describe("pickSubscription: qual linha vence quando ha mais de uma", () => {
 });
 
 describe("buildEnrichmentIndex", () => {
+  it("leva renewal_type e current_period_end da assinatura escolhida (selo da lista)", () => {
+    const index = buildEnrichmentIndex(
+      [
+        sub({
+          renewal_type: "manual",
+          current_period_end: "2030-01-01T00:00:00Z",
+        }),
+      ],
+      new Set(),
+      AGORA,
+    );
+    expect(index.get("u1")).toMatchObject({
+      renewal_type: "manual",
+      current_period_end: "2030-01-01T00:00:00Z",
+    });
+    // Influencer sem assinatura: os dois nulos, nunca ausentes.
+    const soInfluencer = buildEnrichmentIndex([], new Set(["u9"]), AGORA);
+    expect(soInfluencer.get("u9")).toMatchObject({
+      renewal_type: null,
+      current_period_end: null,
+    });
+  });
+
   it("Pro por assinatura: pro_source subscription, com plano e status", () => {
     const index = buildEnrichmentIndex([sub()], new Set(), AGORA);
-    expect(index.get("u1")).toEqual({
+    expect(index.get("u1")).toMatchObject({
       is_pro: true,
       pro_source: "subscription",
       plan_code: "pro_monthly",
@@ -154,7 +177,7 @@ describe("buildEnrichmentIndex", () => {
     // Este e o caso que uma lista ingenua marca como "nao Pro". Sao 24 pessoas
     // em producao hoje.
     const index = buildEnrichmentIndex([], new Set(["u9"]), AGORA);
-    expect(index.get("u9")).toEqual({
+    expect(index.get("u9")).toMatchObject({
       is_pro: true,
       pro_source: "influencer",
       plan_code: null,
@@ -177,7 +200,7 @@ describe("buildEnrichmentIndex", () => {
       new Set(),
       AGORA,
     );
-    expect(index.get("u1")).toEqual({
+    expect(index.get("u1")).toMatchObject({
       is_pro: false,
       pro_source: null,
       plan_code: "pro_monthly",

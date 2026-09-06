@@ -538,8 +538,12 @@ export function criarSupabaseDouble(
       "or",
     ]) {
       q[metodo] = (coluna: string, valor: unknown) => {
-        // `or` recebe uma expressão inteira, não uma coluna: não valida.
-        if (metodo !== "or" && typeof coluna === "string") {
+        // `or` recebe uma expressão inteira, não uma coluna: não valida, mas
+        // REGISTRA a expressão, para um teste poder afirmar que o filtro de
+        // período existe (foi assim que /churn-risk ficou sem ele por meses).
+        if (metodo === "or") {
+          chamada.filtros.push({ tipo: "or", coluna: "", valor: coluna });
+        } else if (typeof coluna === "string") {
           chamada.filtros.push({ tipo: metodo, coluna, valor });
           validarColunas(table, [coluna]);
         }

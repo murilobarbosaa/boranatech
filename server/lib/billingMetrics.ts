@@ -231,17 +231,66 @@ export type MrrSnapshot = {
    * Medido em 2026-07-31 (so `saindo`): 10 assinaturas, R$ 267,80, 15,4% do MRR.
    */
   atRisk: {
-    /** Soma de `saindo` e `emAtraso`. E este o headline do card. */
+    /** Soma de `saindo`, `emAtraso` e `vencendo`. E este o headline do card. */
     count: number;
     mrrCents: number;
     saindo: { count: number; mrrCents: number };
     emAtraso: { count: number; mrrCents: number };
+    /**
+     * TERCEIRA FAMILIA (lote 2b.2): assinatura MANUAL (boleto ou Pix) ativa
+     * com fim nos proximos 7 dias e sem renovacao iniciada (nenhuma linha
+     * `pending` do mesmo usuario criada depois do inicio do periodo atual).
+     * E receita que so continua se alguem clicar; ate 2026-09-06 nao aparecia
+     * em lugar nenhum. Ver `assinaturaVencendoSemRenovacao`.
+     */
+    vencendo: { count: number; mrrCents: number };
   };
 };
 
+/** Janela da familia `vencendo`: os mesmos 7 dias do primeiro marco do mensal. */
+export const VENCENDO_JANELA_DIAS = 7;
+
+/**
+ * A assinatura conta como "vencendo sem renovacao iniciada"?
+ *
+ * Manual, ativa, com fim em (agora, agora + 7 dias], e sem `pending` do
+ * usuario criada DEPOIS do inicio do periodo atual: uma pendente mais antiga
+ * e sobra de outro ciclo (o Pix que a pessoa nao pagou na compra anterior),
+ * nao a renovacao deste. Cartao nunca conta: a Stripe renova sozinha. Ja
+ * vencida tambem nao: e assunto da expiracao, e "vencendo" e antes.
+ */
+export function assinaturaVencendoSemRenovacao(args: {
+  status: string | null;
+  renewalType: string | null;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  /** `created_at` da pendente mais recente do usuario, ou `null`. */
+  pendingCreatedAt: string | null;
+  nowMs: number;
+}): boolean {
+  if (args.status !== "active" || args.renewalType !== "manual") return false;
+  if (!args.currentPeriodEnd) return false;
+  const fimMs = new Date(args.currentPeriodEnd).getTime();
+  if (!Number.isFinite(fimMs)) return false;
+  const janelaMs = VENCENDO_JANELA_DIAS * 24 * 60 * 60 * 1000;
+  if (fimMs <= args.nowMs || fimMs > args.nowMs + janelaMs) return false;
+  if (args.pendingCreatedAt) {
+    const pendenteMs = new Date(args.pendingCreatedAt).getTime();
+    const inicioMs = args.currentPeriodStart
+      ? new Date(args.currentPeriodStart).getTime()
+      : Number.NEGATIVE_INFINITY;
+    if (Number.isFinite(pendenteMs) && pendenteMs > inicioMs) return false;
+  }
+  return true;
+}
+
 type RawMrrRow = {
+  user_id: string | null;
   status: string | null;
   cancel_at_period_end: boolean | null;
+  renewal_type: string | null;
+  current_period_start: string | null;
+  current_period_end: string | null;
   plans: EmbeddedPlan | EmbeddedPlan[] | null;
 };
 
@@ -266,7 +315,7 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
       supabaseAdmin
         .from("subscriptions")
         .select(
-          "status, cancel_at_period_end, plans!inner(code, name, price_cents, interval)",
+          "user_id, status, cancel_at_period_end, renewal_type, current_period_start, current_period_end, plans!inner(code, name, price_cents, interval)",
         )
         // `past_due` entra na LEITURA e fica fora do MRR (o `continue` abaixo).
         // Ele nao e receita ativa, e receita em risco, e sem le-lo aqui o card
@@ -279,6 +328,39 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
     "mrr snapshot",
   )) as RawMrrRow[];
 
+  // RENOVACAO INICIADA: a pendente mais recente por usuario. Uma consulta para
+  // o snapshot inteiro, nao uma por linha manual. Falha aqui NAO derruba o
+  // MRR: sem o mapa, toda manual vencendo conta como sem renovacao, que e o
+  // lado que faz alguem olhar, nunca o que esconde.
+  const pendentePorUsuario = new Map<string, string>();
+  try {
+    const pendentes = (await coletarTudo<{
+      user_id: string | null;
+      created_at: string | null;
+    }>(
+      (from, to) =>
+        supabaseAdmin
+          .from("subscriptions")
+          .select("user_id, created_at")
+          .eq("status", "pending")
+          .order("id", { ascending: true })
+          .range(from, to),
+      "mrr snapshot pendentes",
+    )) as Array<{ user_id: string | null; created_at: string | null }>;
+    for (const p of pendentes) {
+      if (!p.user_id || !p.created_at) continue;
+      const atual = pendentePorUsuario.get(p.user_id);
+      if (!atual || p.created_at > atual) {
+        pendentePorUsuario.set(p.user_id, p.created_at);
+      }
+    }
+  } catch (err) {
+    console.warn(
+      "[billingMetrics] pendentes indisponiveis; vencendo conta sem elas:",
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+
   let mrrCents = 0;
   let activeCount = 0;
   let trialingCount = 0;
@@ -286,6 +368,9 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
   let saindoCount = 0;
   let atrasoCents = 0;
   let atrasoCount = 0;
+  let vencendoCents = 0;
+  let vencendoCount = 0;
+  const nowMs = new Date(nowIso).getTime();
   const byPlan = new Map<string, PlanMrr>();
 
   for (const row of rows) {
@@ -336,6 +421,21 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
       saindoCents += perMonth;
       saindoCount += 1;
     }
+    if (
+      assinaturaVencendoSemRenovacao({
+        status: row.status,
+        renewalType: row.renewal_type,
+        currentPeriodStart: row.current_period_start,
+        currentPeriodEnd: row.current_period_end,
+        pendingCreatedAt: row.user_id
+          ? (pendentePorUsuario.get(row.user_id) ?? null)
+          : null,
+        nowMs,
+      })
+    ) {
+      vencendoCents += perMonth;
+      vencendoCount += 1;
+    }
 
     const entry = byPlan.get(plan.code) ?? {
       code: plan.code,
@@ -357,10 +457,11 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
     trialingCount,
     byPlan: Array.from(byPlan.values()),
     atRisk: {
-      count: saindoCount + atrasoCount,
-      mrrCents: saindoCents + atrasoCents,
+      count: saindoCount + atrasoCount + vencendoCount,
+      mrrCents: saindoCents + atrasoCents + vencendoCents,
       saindo: { count: saindoCount, mrrCents: saindoCents },
       emAtraso: { count: atrasoCount, mrrCents: atrasoCents },
+      vencendo: { count: vencendoCount, mrrCents: vencendoCents },
     },
   };
 }

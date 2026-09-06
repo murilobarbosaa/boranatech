@@ -624,6 +624,11 @@ export function UserDetailModal({
                           label="Status"
                           value={subscriptionStatusLabelOf(
                             detail.subscription.status,
+                            {
+                              renewalType: detail.subscription.renewal_type,
+                              currentPeriodEnd:
+                                detail.subscription.current_period_end,
+                            },
                           )}
                           empty={semValor(detail.subscription.status)}
                         />

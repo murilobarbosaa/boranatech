@@ -10,8 +10,21 @@ export type RiscoDoCard = {
   mrrCents: number;
   saindo?: { count: number; mrrCents: number };
   emAtraso?: { count: number; mrrCents: number };
+  /** Manual vencendo em 7 dias sem renovação iniciada (lote 2b.2). Opcional pelo mesmo motivo. */
+  vencendo?: { count: number; mrrCents: number };
   percentOfMrr?: number | null;
 };
+
+function reais(cents: number): string {
+  // O `Intl` separa "R$" do número com espaço NÃO quebrável; numa frase corrida
+  // isso vira quebra estranha e string que nenhum teste literal casa.
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  })
+    .format(cents / 100)
+    .replace(/\u00a0/g, " ");
+}
 
 function plural(n: number, um: string, muitos: string): string {
   return n === 1 ? um : muitos;
@@ -48,6 +61,16 @@ export function detalheDeRisco(risco: RiscoDoCard | null | undefined): string {
   if (typeof saindo === "number" && saindo > 0) partes.push(`${saindo} saindo`);
   if (typeof atraso === "number" && atraso > 0) {
     partes.push(`${atraso} em atraso`);
+  }
+  // A terceira família fala em DINHEIRO, não em contagem: "1 vencendo" não move
+  // ninguém; "R$ 29,90 vencendo em 7 dias sem renovação iniciada" diz o que
+  // está em jogo e o que fazer.
+  // TODO(Ana)
+  const vencendo = risco.vencendo;
+  if (vencendo && vencendo.count > 0) {
+    partes.push(
+      `${reais(vencendo.mrrCents)} vencendo em 7 dias sem renovação iniciada`,
+    );
   }
 
   // As duas famílias vazias com `count` zero: é o estado bom, e ele merece uma
