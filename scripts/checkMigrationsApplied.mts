@@ -237,6 +237,25 @@ const naoReconhecidasOutras: string[] = [];
 // `pnpm check:migrations --declared`, nao somado.
 const EXPECTED_TABLE_COUNT = 85;
 
+// ---------------------------------------------------------------------------
+// RLS: verificada de fato, lendo com a chave anon.
+// ---------------------------------------------------------------------------
+// 82 pela mesma causa do EXPECTED_TABLE_COUNT: admin_refunds declara
+// `alter table ... enable row level security` e entrou sem o numero subir.
+// 83 desde 20260811171556_create_external_events.sql: external_events declara
+// `alter table ... enable row level security`, entao entra no conjunto.
+// Sobe junto com EXPECTED_TABLE_COUNT sempre que a tabela nova declara
+// `alter table ... enable row level security`, que e o caso de todas as tabelas
+// novas deste projeto. 83 desde 20260804120000_create_fiscal_invoices.sql.
+// Era 82 pela mesma causa: admin_refunds declarou RLS e entrou sem o numero
+// subir.
+// MERGE de 2026-08-24: mesma colisao. `fiscal_invoices` (pilha) e
+// `external_events` (main) declaram RLS cada uma, e as duas entram no conjunto
+// depois do merge. Valor abaixo medido, nao somado.
+// 85 desde 20260906120000_create_project_submissions.sql, medido com
+// `--declared` no mesmo commit da migration.
+const EXPECTED_RLS_COUNT = 85;
+
 // Mesma assercao de tamanho das tabelas, pelo mesmo motivo: pegar o caso em que
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
 // numeros e ato deliberado, no mesmo commit da migration que cria ou remove o
@@ -563,9 +582,23 @@ if (MODO_DECLARADO) {
   const rlsNoConjunto = [...rlsDeclarada].filter((t) => declared.has(t));
   console.log("[checkMigrationsApplied] MODO --declared: nada foi conferido");
   console.log("  contra o banco. Estes sao os totais LIDOS das migrations.");
-  console.log(`  tabelas declaradas: ${tables.length}`);
-  console.log(`  tabelas com RLS:    ${rlsNoConjunto.length}`);
-  console.log(`  funcoes declaradas: ${funcoesDeclaradas.size}`);
+  console.log(
+    `  tabelas declaradas: ${tables.length} (EXPECTED_TABLE_COUNT = ${EXPECTED_TABLE_COUNT}) ${tables.length === EXPECTED_TABLE_COUNT ? "bate" : "NAO BATE"}`,
+  );
+  console.log(
+    `  tabelas com RLS:    ${rlsNoConjunto.length} (EXPECTED_RLS_COUNT = ${EXPECTED_RLS_COUNT}) ${rlsNoConjunto.length === EXPECTED_RLS_COUNT ? "bate" : "NAO BATE"}`,
+  );
+  console.log(
+    `  funcoes declaradas: ${funcoesDeclaradas.size} (EXPECTED_FUNCTION_COUNT = ${EXPECTED_FUNCTION_COUNT}) ${funcoesDeclaradas.size === EXPECTED_FUNCTION_COUNT ? "bate" : "NAO BATE"}`,
+  );
+  // Uma tabela por argumento `--tabela=<nome>`: responde pertinencia sem
+  // despejar as 85 na tela.
+  for (const arg of process.argv.filter((a) => a.startsWith("--tabela="))) {
+    const nome = arg.slice("--tabela=".length).toLowerCase();
+    console.log(
+      `  tabela "${nome}": ${declared.has(nome) ? "DECLARADA" : "ausente do conjunto"}`,
+    );
+  }
   process.exit(0);
 }
 
@@ -1124,24 +1157,6 @@ if (expostas !== null) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// RLS: verificada de fato, lendo com a chave anon.
-// ---------------------------------------------------------------------------
-// 82 pela mesma causa do EXPECTED_TABLE_COUNT: admin_refunds declara
-// `alter table ... enable row level security` e entrou sem o numero subir.
-// 83 desde 20260811171556_create_external_events.sql: external_events declara
-// `alter table ... enable row level security`, entao entra no conjunto.
-// Sobe junto com EXPECTED_TABLE_COUNT sempre que a tabela nova declara
-// `alter table ... enable row level security`, que e o caso de todas as tabelas
-// novas deste projeto. 83 desde 20260804120000_create_fiscal_invoices.sql.
-// Era 82 pela mesma causa: admin_refunds declarou RLS e entrou sem o numero
-// subir.
-// MERGE de 2026-08-24: mesma colisao. `fiscal_invoices` (pilha) e
-// `external_events` (main) declaram RLS cada uma, e as duas entram no conjunto
-// depois do merge. Valor abaixo medido, nao somado.
-// 85 desde 20260906120000_create_project_submissions.sql, medido com
-// `--declared` no mesmo commit da migration.
-const EXPECTED_RLS_COUNT = 85;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 const rlsVivas = [...rlsDeclarada].filter((t) => declared.has(t)).sort();
