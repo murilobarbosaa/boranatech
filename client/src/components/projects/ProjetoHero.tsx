@@ -41,7 +41,7 @@ export default function ProjetoHero({
   );
 
   return (
-    <header className="border-b border-border pb-7">
+    <header className="pb-7">
       <nav
         className="flex items-center gap-2 pt-6 text-sm text-muted-foreground"
         aria-label="Trilha de navegação"

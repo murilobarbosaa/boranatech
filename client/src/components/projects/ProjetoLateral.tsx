@@ -25,7 +25,7 @@ export default function ProjetoLateral({
   children?: ReactNode;
 }) {
   return (
-    <aside className="flex flex-col gap-6 lg:sticky lg:top-16">
+    <aside className="flex flex-col gap-6 rounded-xl border border-border bg-muted/40 p-4 lg:sticky lg:top-16">
       {topo ?? (
         <div className="card-brutal rounded-xl bg-card p-4">
           <ProjetoEstadoChip estado={estado} />

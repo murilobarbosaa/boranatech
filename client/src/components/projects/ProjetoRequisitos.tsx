@@ -15,7 +15,7 @@ export default function ProjetoRequisitos({
         {requisitos.map((req) => (
           <li
             key={req.id}
-            className="flex items-start gap-3 rounded-[10px] bg-card p-3 text-sm text-foreground"
+            className="flex items-start gap-3 rounded-[10px] border border-border bg-card p-3 text-sm text-foreground"
           >
             <span
               className="mt-1 h-3.5 w-3.5 shrink-0 rounded-[4px] border-2 border-violet-500"

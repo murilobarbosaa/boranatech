@@ -206,9 +206,13 @@ export default function ProjetoDetalhe() {
     return (
       <Layout>
         {seo}
+        <section className="hero-pattern border-b-2 border-ink">
+          <div className="container max-w-[1180px]">
+            <ProjetoHero projeto={projeto} estado={estado} fatos={[]} />
+          </div>
+        </section>
         <section className="container max-w-[1180px] pb-16">
-          <ProjetoHero projeto={projeto} estado={estado} fatos={[]} />
-          <div className="card-brutal mt-8 rounded-xl border-amber-400 bg-amber-50 p-6 dark:bg-amber-950/30">
+          <div className="card-brutal mt-8 rounded-xl bg-accent/10 p-6">
             <p className="flex items-start gap-3 text-sm font-semibold text-foreground">
               <Lock
                 className="mt-0.5 h-5 w-5 shrink-0 text-amber-600"
@@ -235,56 +239,60 @@ export default function ProjetoDetalhe() {
   return (
     <Layout>
       {seo}
-      <section className="container max-w-[1180px] pb-16">
-        <ProjetoHero
-          projeto={projeto}
-          estado={estado}
-          fatos={fatos}
-          acoes={
-            <>
-              <button
-                type="button"
-                onClick={() => rolarPara(acaoPrincipal.ancora)}
-                className="inline-flex items-center gap-2 rounded-xl border-2 border-ink bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-bold text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]"
-              >
-                {acaoPrincipal.rotulo}
-              </button>
-              <FavoriteButton
-                item={{
-                  id: projeto.id,
-                  type: "projeto",
-                  title: projeto.nome,
-                  subtitle: labelForProjectArea(projeto.areaSlug),
-                }}
-                className="px-4 py-2.5 text-sm"
-              />
-              <CopyButton
-                text={urlDaPagina(projeto.id)}
-                className="border-border shadow-none"
-              />
-            </>
-          }
-          faixaMobile={
-            v2 ? (
-              <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border-2 border-ink bg-card p-3 text-sm lg:hidden">
-                <span className="text-muted-foreground">
-                  <span className="font-display font-bold text-foreground">
-                    {feitas} de {v2.etapas.length} etapas
-                  </span>
-                  {feitas > 0 && " · em andamento"}
-                </span>
+      <section className="hero-pattern border-b-2 border-ink">
+        <div className="container max-w-[1180px]">
+          <ProjetoHero
+            projeto={projeto}
+            estado={estado}
+            fatos={fatos}
+            acoes={
+              <>
                 <button
                   type="button"
-                  onClick={() => rolarPara("etapas")}
-                  className="shrink-0 rounded font-bold text-orange-700 underline-offset-2 hover:underline dark:text-orange-400"
+                  onClick={() => rolarPara(acaoPrincipal.ancora)}
+                  className="inline-flex items-center gap-2 rounded-xl border-2 border-ink bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-bold text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]"
                 >
-                  Ir para as etapas
+                  {acaoPrincipal.rotulo}
                 </button>
-              </div>
-            ) : undefined
-          }
-        />
+                <FavoriteButton
+                  item={{
+                    id: projeto.id,
+                    type: "projeto",
+                    title: projeto.nome,
+                    subtitle: labelForProjectArea(projeto.areaSlug),
+                  }}
+                  className="px-4 py-2.5 text-sm"
+                />
+                <CopyButton
+                  text={urlDaPagina(projeto.id)}
+                  className="border-border shadow-none"
+                />
+              </>
+            }
+            faixaMobile={
+              v2 ? (
+                <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border-2 border-ink bg-card p-3 text-sm lg:hidden">
+                  <span className="text-muted-foreground">
+                    <span className="font-display font-bold text-foreground">
+                      {feitas} de {v2.etapas.length} etapas
+                    </span>
+                    {feitas > 0 && " · em andamento"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => rolarPara("etapas")}
+                    className="shrink-0 rounded font-bold text-orange-700 underline-offset-2 hover:underline dark:text-orange-400"
+                  >
+                    Ir para as etapas
+                  </button>
+                </div>
+              ) : undefined
+            }
+          />
+        </div>
+      </section>
 
+      <section className="container max-w-[1180px] pb-16">
         <div className="grid grid-cols-1 gap-10 pt-8 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 max-w-[72ch]">
             {v2 ? (
@@ -438,7 +446,7 @@ export default function ProjetoDetalhe() {
 
                 <section className={BLOCO}>
                   <h2 className={H2}>Depois</h2>
-                  <div className="mt-3 rounded-xl border-2 border-amber-300 bg-amber-50 p-4 dark:bg-amber-950/30">
+                  <div className="mt-3 rounded-xl border-2 border-accent/60 bg-accent/10 p-4">
                     <div className="mb-2 flex items-center justify-between gap-3">
                       <span className="font-display text-sm font-bold text-foreground">
                         Post pronto para o LinkedIn
@@ -448,7 +456,7 @@ export default function ProjetoDetalhe() {
                         className="border-border shadow-none"
                       />
                     </div>
-                    <p className="text-sm italic text-foreground">
+                    <p className="whitespace-pre-line text-sm italic text-foreground">
                       {projeto.sugestaoLinkedIn}
                     </p>
                   </div>

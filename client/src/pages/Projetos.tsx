@@ -263,9 +263,8 @@ export default function Projetos() {
         url="/projetos"
         schemaType="CollectionPage"
       />
-      <section className="relative overflow-hidden border-b-2 border-slate-900 bg-orange-100 py-12">
-        <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#fb923c_1px,transparent_1px)] [background-size:18px_18px]" />
-        <div className="container relative">
+      <section className="hero-pattern border-b-2 border-violet-200 py-12">
+        <div className="container">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="max-w-2xl">
               <h1 className="mb-3 font-display text-4xl font-bold text-slate-950">
@@ -300,7 +299,7 @@ export default function Projetos() {
         </div>
       </section>
 
-      <section className="bg-orange-50 border-b-2 border-orange-200 py-4">
+      <section className="border-b-2 border-violet-200 bg-violet-50 py-4">
         <div className="container">
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
