@@ -46,7 +46,8 @@ const projetosOnboarding: OnboardingDef = {
       heroSize: 82,
       eyebrow: "DENTRO DE CADA UM",
       title: "Não é só o nome do projeto",
-      lead: "Cada projeto vem explicado por inteiro: o que você precisa entregar, o caminho pra chegar lá e até vídeo pra acompanhar.",
+      // TODO(Ana): copy do passo de projetos sem mencao a video
+      lead: "Cada projeto vem explicado por inteiro: o que você precisa entregar, o caminho pra chegar lá e o kit pra começar.",
       points: [
         [
           "check",
@@ -62,8 +63,8 @@ const projetosOnboarding: OnboardingDef = {
         ],
         [
           "chat",
-          "Vídeo junto",
-          "Dá pra assistir e construir ao mesmo tempo.",
+          "Etapas com checkpoint",
+          "Cada passo diz o que fazer e como saber que está pronto.",
           null,
         ],
       ],

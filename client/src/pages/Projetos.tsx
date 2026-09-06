@@ -11,9 +11,7 @@ import {
   ChevronDown,
   ChevronUp,
   Lightbulb,
-  ExternalLink,
   Lock,
-  PlayCircle,
   Search,
   X,
 } from "lucide-react";
@@ -28,7 +26,7 @@ import { useProjectCompletion } from "@/hooks/useProjectCompletion";
 import ProjectValidationBlock from "@/components/projects/ProjectValidationBlock";
 import { listProjectValidations } from "@/services/projectValidationService";
 import { projetos } from "@/lib/data";
-import { getAreaAccent, projectHelpVideos } from "@/lib/platformData";
+import { getAreaAccent } from "@/lib/platformData";
 import { areaGridPaletteOf } from "@/lib/areaGridPalette";
 import {
   labelForProjectArea,
@@ -81,22 +79,6 @@ const ESTADO_LABELS: Record<ProjectStateFilter, string> = {
   concluidos: "Concluídos",
   pro: "Pro",
 };
-
-// Material de video do projeto: usa o curado se existir; senao monta uma busca
-// do YouTube ESPECIFICA do projeto (titulo + tecnologia principal). Nao inventa
-// URL de video especifico, so uma query de busca boa e relevante.
-function projectHelpVideo(projeto: Projeto): { title: string; url: string } {
-  const curado = projectHelpVideos[projeto.id];
-  if (curado) return curado;
-  const tech = projeto.ferramentas[0] ?? "";
-  const query = `como fazer ${projeto.nome} ${tech} tutorial`
-    .replace(/\s+/g, " ")
-    .trim();
-  return {
-    title: `Como fazer ${projeto.nome}`,
-    url: `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`,
-  };
-}
 
 const nivelColors: Record<string, string> = {
   Iniciante: "bg-emerald-100 text-emerald-700",
@@ -900,26 +882,6 @@ export default function Projetos() {
                                     </div>
 
                                     <div>
-                                      <a
-                                        href={projectHelpVideo(projeto).url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="card-brutal mb-4 flex items-start gap-3 rounded-lg border-amber-300 bg-amber-50 p-4"
-                                      >
-                                        <PlayCircle className="mt-0.5 h-5 w-5 shrink-0 text-slate-900" />
-                                        <div>
-                                          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                            Vídeo de ajuda
-                                          </p>
-                                          <p className="text-sm font-bold text-slate-900">
-                                            {projectHelpVideo(projeto).title}
-                                          </p>
-                                          <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-slate-950">
-                                            Assistir referência{" "}
-                                            <ExternalLink className="h-3 w-3" />
-                                          </span>
-                                        </div>
-                                      </a>
                                       {/* Entregável */}
                                       <div className="card-brutal bg-orange-50 rounded-lg p-4 mb-4 border-orange-200">
                                         <p className="text-xs font-medium text-orange-700 uppercase tracking-wide mb-1">
