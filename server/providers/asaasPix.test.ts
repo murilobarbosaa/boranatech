@@ -2265,3 +2265,151 @@ describe("webhook: pagamento em linha ACTIVE ou ENCERRADA nunca some nem da 500"
     expect(linhasDoLedger()).toEqual([]);
   });
 });
+
+describe("checkout Pix de RENOVACAO (internalRenewal)", () => {
+  beforeEach(() => {
+    limpar();
+    // Assinante ativo: e exatamente quem renova.
+    estado.ativas = [{ id: "sub-viva" }];
+    estado.linhaSubscription = {
+      id: "sub-viva",
+      user_id: USER,
+      status: "active",
+      plan_id: "plan-anual",
+      affiliate_code: null,
+      coupon_code: null,
+      current_period_start: "2026-03-01T00:00:00.000Z",
+    };
+  });
+
+  function renovacao(over: Record<string, unknown> = {}) {
+    return {
+      ...checkoutInput("pro_annual"),
+      internalRenewal: true,
+      ...over,
+    } as Parameters<typeof asaasProvider.createCheckout>[0];
+  }
+
+  it("pula o 409 de assinatura ativa e cria a cobranca", async () => {
+    const r = await asaasProvider.createCheckout(renovacao());
+
+    expect(r.subscriptionId).toBe(COBRANCA);
+    expect(
+      estado.asaas.filter(
+        (c) => c.method === "POST" && c.caminho === "/payments",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("CONTROLE: sem internalRenewal o mesmo assinante continua recebendo 409", async () => {
+    await expect(
+      asaasProvider.createCheckout(checkoutInput("pro_annual")),
+    ).rejects.toMatchObject({ code: "conflict" });
+  });
+
+  it("MANTEM o 409 de Pix pendente: nao gera dois QR de renovacao", async () => {
+    estado.pixPendentes = [{ id: "pix-em-aberto" }];
+
+    await expect(
+      asaasProvider.createCheckout(renovacao()),
+    ).rejects.toMatchObject({ code: "pix_pending" });
+    expect(estado.asaas).toEqual([]);
+  });
+
+  it("a linha nova nasce pending, manual, pix, com externalReference = id dela", async () => {
+    await asaasProvider.createCheckout(renovacao());
+
+    const insert = estado.escritas.find(
+      (e) => e.tabela === "subscriptions" && e.operacao === "insert",
+    )!;
+    expect(insert.carga).toMatchObject({
+      status: "pending",
+      renewal_type: "manual",
+      payment_method: "pix",
+      provider_subscription_id: null,
+    });
+    const post = estado.asaas.find(
+      (c) => c.method === "POST" && c.caminho === "/payments",
+    )!;
+    expect((post.body as Record<string, unknown>).externalReference).toBe(
+      estado.novaLinhaId,
+    );
+  });
+
+  it("a descricao da cobranca diz que e renovacao", async () => {
+    await asaasProvider.createCheckout(renovacao());
+
+    const post = estado.asaas.find(
+      (c) => c.method === "POST" && c.caminho === "/payments",
+    )!;
+    expect((post.body as Record<string, unknown>).description).toBe(
+      "Renovação Bora na Tech Pro Anual",
+    );
+  });
+
+  it("CONTROLE: a primeira compra continua sem a palavra Renovação", async () => {
+    estado.ativas = [];
+    estado.linhaSubscription = null;
+
+    await asaasProvider.createCheckout(checkoutInput("pro_annual"));
+
+    const post = estado.asaas.find(
+      (c) => c.method === "POST" && c.caminho === "/payments",
+    )!;
+    expect((post.body as Record<string, unknown>).description).toBe(
+      "Bora na Tech Pro Anual",
+    );
+  });
+
+  it("renovacao NAO aplica cupom, mesmo com codigo no input: cobra o preco cheio", async () => {
+    estado.cupom = { code: "DESC90", discount_percent: 90, active: true };
+
+    await asaasProvider.createCheckout(renovacao({ couponCode: "DESC90" }));
+
+    const post = estado.asaas.find(
+      (c) => c.method === "POST" && c.caminho === "/payments",
+    )!;
+    expect((post.body as Record<string, unknown>).value).toBe(
+      PLAN_PRICING.pro_annual.total,
+    );
+    const insert = estado.escritas.find(
+      (e) => e.tabela === "subscriptions" && e.operacao === "insert",
+    )!;
+    expect((insert.carga as Record<string, unknown>).coupon_code).toBeNull();
+  });
+});
+
+describe("ativacao Pix: a ancora do periodo e a regra compartilhada", () => {
+  beforeEach(() => {
+    limpar();
+    // O duble devolve `linhaSubscription` para toda leitura `maybeSingle` de
+    // subscriptions, inclusive a consulta da ancora: um fim vigente aqui e
+    // lido como "a maior assinatura ainda vigente do usuario".
+    estado.linhaSubscription = {
+      id: "row-1",
+      user_id: USER,
+      status: "pending",
+      plan_id: "plan-anual",
+      affiliate_code: null,
+      coupon_code: null,
+      current_period_end: "2026-09-21T00:00:00.000Z",
+    };
+  });
+
+  it("pagamento ANTES do fim vigente: o periodo novo comeca no fim vigente", async () => {
+    await processAsaasEvent(
+      eventoDePagamento({ dateCreated: "2026-09-18 12:00:00" }),
+    );
+
+    const rpc = estado.rpcCalls.find(
+      (c) => c.nome === "activate_subscription_exclusive",
+    )!;
+    expect(rpc.args.p_period_start).toBe("2026-09-21T00:00:00.000Z");
+    expect(rpc.args.p_period_end).toBe(
+      new Date(
+        Date.parse("2026-09-21T00:00:00.000Z") +
+          oneOffAccessDays("pro_annual")! * 24 * 60 * 60 * 1000,
+      ).toISOString(),
+    );
+  });
+});

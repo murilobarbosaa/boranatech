@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/node";
 import Stripe from "stripe";
 
 import { findValidCoupon } from "../lib/coupons";
+import { periodoDaRenovacao } from "../lib/renewalAnchor";
 import { env } from "../lib/env";
 import { registerFiscalInvoice } from "../lib/fiscalQueue";
 import { applyRefundToFiscalInvoice } from "../lib/fiscalRefund";
@@ -1020,16 +1021,17 @@ export async function onBoletoAsyncPaymentSucceeded(
     .limit(1)
     .maybeSingle();
 
-  const anchorMs = vigente?.current_period_end
-    ? new Date(vigente.current_period_end).getTime()
-    : eventCreatedAt.getTime();
   // current_period_start = ancora: na renovacao vigente o novo periodo comeca
   // exatamente onde o anterior termina (contiguo, sem overlap de receita); na 1a
-  // compra e na renovacao atrasada a ancora e o proprio pagamento.
-  const periodStart = new Date(anchorMs).toISOString();
-  const periodEnd = new Date(
-    anchorMs + accessDays * 24 * 60 * 60 * 1000,
-  ).toISOString();
+  // compra e na renovacao atrasada a ancora e o proprio pagamento. A REGRA e
+  // compartilhada com o Pix (server/lib/renewalAnchor.ts).
+  const { periodStart, periodEnd } = periodoDaRenovacao({
+    paidAtMs: eventCreatedAt.getTime(),
+    fimVigenteMs: vigente?.current_period_end
+      ? new Date(vigente.current_period_end).getTime()
+      : null,
+    accessDays,
+  });
 
   // ATIVACAO ATOMICA. O supersede das assinaturas antigas e o flip desta linha
   // acontecem DENTRO de uma transacao so, na funcao

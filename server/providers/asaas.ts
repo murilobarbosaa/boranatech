@@ -28,6 +28,7 @@ import { oneOffAccessDays } from "../../shared/paymentMethods";
 import { PLAN_PRICING } from "../../shared/planPricing";
 import type { PlanId } from "../../shared/planPricing";
 import { montarDbError } from "../lib/dbError";
+import { periodoDaRenovacao } from "../lib/renewalAnchor";
 import type {
   CancelInput,
   CancelResult,
@@ -256,26 +257,34 @@ async function createCheckout(
   // `subscriptions_one_active_per_user` e a rede de seguranca, nao a primeira
   // row: sem este guard o usuario pagaria e SO ENTAO descobriria, por um 23505
   // no webhook, que ja era assinante. Fail-closed: err de query BLOQUEIA.
-  const { data: activeRows, error: guardError } = await supabaseAdmin
-    .from("subscriptions")
-    .select("id")
-    .eq("user_id", input.user.id)
-    .in("status", ["active", "trialing"])
-    .limit(1);
-  if (guardError) {
-    console.error(
-      "[asaas/checkout] guard de assinatura ativa falhou; bloqueando:",
-      guardError,
-    );
-    throw createError(
-      500,
-      "db_error",
-      "Não foi possível verificar sua assinatura. Tente novamente.",
-      { cause: guardError },
-    );
-  }
-  if (activeRows && activeRows.length > 0) {
-    throw createError(409, "conflict", "Usuário já possui assinatura ativa.");
+  //
+  // PULADO NA RENOVACAO, e so nela: quem renova esta `active` de proposito.
+  // `internalRenewal` e setado pelo servidor (rota de renovacao, a partir do
+  // token), nunca lido do corpo HTTP; mesmo contrato do boleto na Stripe. A
+  // linha nova nasce `pending` e a RPC de ativacao marca a antiga como
+  // `superseded`, entao o indice unico nunca ve duas ativas.
+  if (!input.internalRenewal) {
+    const { data: activeRows, error: guardError } = await supabaseAdmin
+      .from("subscriptions")
+      .select("id")
+      .eq("user_id", input.user.id)
+      .in("status", ["active", "trialing"])
+      .limit(1);
+    if (guardError) {
+      console.error(
+        "[asaas/checkout] guard de assinatura ativa falhou; bloqueando:",
+        guardError,
+      );
+      throw createError(
+        500,
+        "db_error",
+        "Não foi possível verificar sua assinatura. Tente novamente.",
+        { cause: guardError },
+      );
+    }
+    if (activeRows && activeRows.length > 0) {
+      throw createError(409, "conflict", "Usuário já possui assinatura ativa.");
+    }
   }
 
   // Guard de Pix pendente, espelhando o de boleto pendente: enquanto uma
@@ -394,7 +403,9 @@ async function createCheckout(
         // Centavos inteiros dos dois lados; o Asaas recebe reais.
         value: finalCents / 100,
         dueDate: dueDateInDays(PIX_DUE_DAYS, new Date()),
-        description: `Bora na Tech Pro ${PLAN_PRICING[input.planId].label}`,
+        // "Renovacao" no extrato do Asaas, para a pessoa e para quem concilia
+        // distinguirem a segunda cobranca da primeira.
+        description: `${input.internalRenewal ? "Renovação " : ""}Bora na Tech Pro ${PLAN_PRICING[input.planId].label}`,
         externalReference: created.id,
       },
     });
@@ -1072,13 +1083,14 @@ async function activateOnPayment(args: {
     .limit(1)
     .maybeSingle();
 
-  const anchorMs = current?.current_period_end
-    ? new Date(current.current_period_end).getTime()
-    : paidAt.getTime();
-  const periodStart = new Date(anchorMs).toISOString();
-  const periodEnd = new Date(
-    anchorMs + accessDays * 24 * 60 * 60 * 1000,
-  ).toISOString();
+  // A REGRA e compartilhada com o boleto (server/lib/renewalAnchor.ts).
+  const { periodStart, periodEnd } = periodoDaRenovacao({
+    paidAtMs: paidAt.getTime(),
+    fimVigenteMs: current?.current_period_end
+      ? new Date(current.current_period_end).getTime()
+      : null,
+    accessDays,
+  });
 
   const { data: activation, error } = await supabaseAdmin.rpc(
     "activate_subscription_exclusive",
