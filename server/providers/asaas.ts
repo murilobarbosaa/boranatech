@@ -1625,6 +1625,8 @@ export type EstornoDoAsaas = {
 export type PagamentoDoAsaas = {
   status: string | null;
   valueCents: number | null;
+  /** Vencimento da cobranca, `YYYY-MM-DD`. O prazo que governa o QR. */
+  dueDate: string | null;
   refunds: EstornoDoAsaas[];
 };
 
@@ -1632,6 +1634,7 @@ export type PagamentoDoAsaas = {
 type AsaasPaymentBody = {
   status?: unknown;
   value?: unknown;
+  dueDate?: unknown;
   refunds?: unknown;
 };
 
@@ -1662,6 +1665,7 @@ function pagamentoDoAsaas(corpo: AsaasPaymentBody | null): PagamentoDoAsaas {
   return {
     status: typeof corpo?.status === "string" ? corpo.status : null,
     valueCents: centavosAsaas(corpo?.value),
+    dueDate: typeof corpo?.dueDate === "string" ? corpo.dueDate : null,
     refunds,
   };
 }

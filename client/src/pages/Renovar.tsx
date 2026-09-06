@@ -1,21 +1,29 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { AlertTriangle, Check, Clock, RefreshCw } from "lucide-react";
 
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import PixCheckoutModal from "@/components/pro/PixCheckoutModal";
 import {
   createRenewalCheckout,
   getRenewalPreview,
+  getRenewalStatus,
   RenewalError,
+  type RenewalCheckoutResult,
   type RenewalPreview,
 } from "@/services/renewalService";
 
-// Pagina PUBLICA de renovacao de boleto (/renovar?t=<token>), sem auth: o token e
-// a autenticacao (o assinante anual vem do e-mail, provavelmente deslogado). NAO
-// usa useAuth/useSubscription para dados; tudo vem do token via renewalService.
-// Estados: loading, ready, error(slug). Trata os 6 slugs no GET (preview) E no
-// POST (gerar boleto). Data skeleton de CertificadoPublico, visual de CheckoutSucesso.
+// Pagina PUBLICA de renovacao manual (/renovar?t=<token>), sem auth: o token e
+// a autenticacao (o assinante vem do e-mail, provavelmente deslogado). NAO usa
+// useAuth/useSubscription para dados; tudo vem do token via renewalService.
+// Estados: loading, ready, error(slug). Trata os slugs no GET (preview) E no
+// POST (gerar cobranca). Data skeleton de CertificadoPublico, visual de
+// CheckoutSucesso.
+//
+// DOIS MEIOS desde o lote 2b.2: boleto redireciona para a Stripe, como sempre;
+// Pix abre o MESMO modal de QR do checkout, com o QR que a rota devolve e um
+// polling por token (GET /renew/status), porque nao ha sessao aqui.
 
 type View =
   | { kind: "loading" }
@@ -30,7 +38,9 @@ type ErrorContent = {
 };
 
 // Copy fixa por slug (fornecida na task). invalid_token, subscription_unavailable,
-// not_manual_renewal e a ausencia de token compartilham a copy generica (GENERIC).
+// not_manual_renewal e a ausencia de token compartilham a copy generica (GENERIC),
+// que mostra o `code` recebido: sem ele, "nao conseguimos processar" nao diz a
+// quem le o suporte qual foi a recusa.
 const GENERIC_ERROR: ErrorContent = {
   icon: <AlertTriangle className="h-6 w-6 text-slate-700" />,
   title: "Não conseguimos processar este link",
@@ -61,6 +71,10 @@ const ERROR_CONTENT: Record<string, ErrorContent> = {
 function errorContentFor(code: string): ErrorContent {
   return ERROR_CONTENT[code] ?? GENERIC_ERROR;
 }
+
+// TODO(Ana)
+const PIX_NOTE =
+  "Assim que o Pix cair, seu acesso volta em instantes. Você recebe um e-mail de confirmação.";
 
 function formatDueDate(iso: string | null): string {
   if (!iso) return "em breve";
@@ -104,6 +118,8 @@ export default function Renovar() {
     token ? { kind: "loading" } : { kind: "error", code: "invalid_token" },
   );
   const [submitting, setSubmitting] = useState(false);
+  // Cobranca Pix aberta no modal. `null` = modal fechado.
+  const [pix, setPix] = useState<RenewalCheckoutResult | null>(null);
 
   useEffect(() => {
     if (!token) return; // sem token: erro ja setado, nao chama a API.
@@ -127,9 +143,15 @@ export default function Renovar() {
     if (submitting) return;
     setSubmitting(true);
     try {
-      const checkoutUrl = await createRenewalCheckout(token);
+      const result = await createRenewalCheckout(token);
+      if (result.flow === "native_pix" && result.pixQrCode) {
+        setPix(result);
+        setSubmitting(false);
+        return;
+      }
+      if (!result.checkoutUrl) throw new RenewalError("unknown");
       // Sai do SPA para a Stripe. So redireciona com a URL em maos.
-      window.location.href = checkoutUrl;
+      window.location.href = result.checkoutUrl;
     } catch (err) {
       const code = err instanceof RenewalError ? err.code : "unknown";
       setView({ kind: "error", code });
@@ -137,9 +159,24 @@ export default function Renovar() {
     }
   }
 
+  // Polling por token: `paid` quando a linha nova foi ativada. `expired_qr`
+  // nao encerra o polling; o relogio do modal e quem diz "expirou".
+  const checkPaid = useCallback(async () => {
+    const r = await getRenewalStatus(token);
+    return r.status === "active"
+      ? { paid: true, periodEnd: r.periodEnd }
+      : { paid: false };
+  }, [token]);
+
+  const ehPix = view.kind === "ready" && view.preview.paymentMethod === "pix";
+
   return (
     <Layout>
-      <SEO title="Renovar assinatura · Bora na Tech? Pro" url="/renovar" noindex />
+      <SEO
+        title="Renovar assinatura · Bora na Tech? Pro"
+        url="/renovar"
+        noindex
+      />
       <section className="bg-[var(--brand-cream)] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <div className="mx-auto max-w-[560px] px-5 pb-20 pt-12">
           {view.kind === "loading" ? (
@@ -151,7 +188,10 @@ export default function Renovar() {
           ) : view.kind === "ready" ? (
             <Card>
               <IconPill>
-                <RefreshCw className="h-7 w-7 text-slate-950" strokeWidth={2.5} />
+                <RefreshCw
+                  className="h-7 w-7 text-slate-950"
+                  strokeWidth={2.5}
+                />
               </IconPill>
               <h1 className="mt-6 font-display text-3xl font-black text-slate-950">
                 Renovar Pro {view.preview.planLabel}
@@ -170,7 +210,11 @@ export default function Renovar() {
                 disabled={submitting}
                 className={BUTTON_CLASS}
               >
-                {submitting ? "Gerando..." : "Gerar boleto"}
+                {submitting
+                  ? "Gerando..."
+                  : ehPix
+                    ? "Pagar com Pix"
+                    : "Gerar boleto"}
               </button>
             </Card>
           ) : (
@@ -185,6 +229,11 @@ export default function Renovar() {
                   <p className="mx-auto mt-2 max-w-md text-sm font-medium leading-relaxed text-slate-600">
                     {content.body}
                   </p>
+                  {content === GENERIC_ERROR ? (
+                    <p className="mt-2 font-mono text-[11px] text-slate-400">
+                      código: {view.code}
+                    </p>
+                  ) : null}
                   {content.action ? (
                     <Link href={content.action.href} className={BUTTON_CLASS}>
                       {content.action.label}
@@ -196,6 +245,32 @@ export default function Renovar() {
           )}
         </div>
       </section>
+      <PixCheckoutModal
+        open={pix !== null}
+        qr={pix?.pixQrCode ?? null}
+        amountCents={pix?.amountCents}
+        dueDate={pix?.dueDate}
+        invoiceUrl={pix?.checkoutUrl ?? null}
+        checkPaid={checkPaid}
+        copy={{
+          note: PIX_NOTE,
+          // TODO(Ana)
+          confirmedTitle: "Renovado!",
+          confirmedBody: (periodEnd) =>
+            `Renovado. Seu Pro vai até ${formatDueDate(periodEnd)}.`,
+          confirmedAction: "Ir para o perfil",
+          confirmedHref: "/perfil",
+          expiredAction: "Gerar novo Pix",
+        }}
+        onDismiss={() => setPix(null)}
+        onConfirmedContinue={() => setPix(null)}
+        // QR expirado: fecha e pede outro. Se o Asaas ainda considerar a
+        // cobranca valida, a rota devolve o MESMO QR (reused) em vez de 409.
+        onExpiredRestart={() => {
+          setPix(null);
+          void handleGenerate();
+        }}
+      />
     </Layout>
   );
 }

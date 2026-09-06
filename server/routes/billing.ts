@@ -12,9 +12,13 @@ import { verifyRenewalToken } from "../lib/renewalToken";
 import { erroEncadeavel } from "../lib/supabaseError";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
-import { createError } from "../middleware/error";
+import { createError, type AppError } from "../middleware/error";
 import { asaasProvider, stripeProvider } from "../providers";
-import { fetchChargeAmountCents, fetchPixQrCode } from "../providers/asaas";
+import {
+  fetchChargeAmountCents,
+  fetchPixQrCode,
+  lerPagamento,
+} from "../providers/asaas";
 import { isPlanId, PLAN_PRICING, type PlanId } from "../../shared/planPricing";
 import { metodoDaRenovacao } from "../../shared/renewalMethod";
 import {
@@ -840,7 +844,26 @@ export async function handleRenew(
           ),
         );
       }
-      const data = await asaasProvider.createCheckout(input);
+      let data: Awaited<ReturnType<typeof asaasProvider.createCheckout>> & {
+        reused?: true;
+      };
+      try {
+        data = await asaasProvider.createCheckout(input);
+      } catch (err) {
+        // PIX JA PENDENTE: o provider recusa gerar um segundo QR (409
+        // `pix_pending`), e esta certo. Mas quem clicou "gerar novo Pix" na
+        // pagina depois de o relogio dela dizer "expirou" nao tem como pegar o
+        // QR antigo sem sessao. Se o Asaas ainda considera a cobranca PENDING,
+        // o QR dela e o que a pessoa precisa, e volta aqui como se fosse novo,
+        // marcado `reused`. Cobranca ja OVERDUE/DELETED la: o 409 segue, e o
+        // cron de Pix pendente encerra a linha.
+        const reaproveitado =
+          (err as AppError)?.code === "pix_pending"
+            ? await pixPendenteReaproveitavel(r.data.userId)
+            : null;
+        if (!reaproveitado) throw err;
+        data = reaproveitado;
+      }
       // O QR vai JUNTO, porque a pagina /renovar nao tem sessao para chamar
       // GET /pix-qrcode (que exige requireAuth). Falha ao ler o QR NAO derruba
       // a renovacao: a cobranca ja existe e `checkoutUrl` e o fallback.
@@ -863,8 +886,126 @@ export async function handleRenew(
   }
 }
 
+/**
+ * A cobranca Pix pendente do usuario, no formato da resposta de checkout, se o
+ * Asaas ainda a considera PENDING. `null` quando nao ha linha pendente ou a
+ * cobranca ja venceu la.
+ */
+async function pixPendenteReaproveitavel(userId: string): Promise<
+  | (Awaited<ReturnType<typeof asaasProvider.createCheckout>> & {
+      reused: true;
+    })
+  | null
+> {
+  const { data: pendente } = await supabaseAdmin
+    .from("subscriptions")
+    .select("id, provider_subscription_id")
+    .eq("user_id", userId)
+    .eq("provider", "asaas")
+    .eq("payment_method", "pix")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const chargeId = pendente?.provider_subscription_id;
+  if (typeof chargeId !== "string" || !chargeId) return null;
+  const pagamento = await lerPagamento(chargeId);
+  if (pagamento.status !== "PENDING") return null;
+  return {
+    checkoutUrl: undefined,
+    subscriptionId: chargeId,
+    flow: "native_pix",
+    amountCents: pagamento.valueCents ?? undefined,
+    dueDate: pagamento.dueDate,
+    reused: true,
+  };
+}
+
+/**
+ * Estado da renovacao para o polling da pagina /renovar, SEM sessao: o token
+ * do e-mail e a autenticacao, como no resto do fluxo.
+ *
+ *   active      a linha nova foi ativada (a antiga esta `superseded`, ou existe
+ *               uma ativa do usuario com fim alem do fim antigo); `periodEnd`
+ *               e o fim novo, para a pagina dizer "vai ate <data>".
+ *   pending     existe uma linha Pix pendente do usuario: o QR ainda vale.
+ *   expired_qr  nem uma coisa nem outra: a pendente foi encerrada (OVERDUE)
+ *               e a pessoa precisa gerar outro QR.
+ *
+ * 401 para token invalido ou expirado, sem distinguir: o polling nao e lugar
+ * de explicar link, e um 401 seco nao vaza se a assinatura existe.
+ */
+export async function handleRenewStatus(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const token = typeof req.query.token === "string" ? req.query.token : "";
+    const verified = token ? verifyRenewalToken(token) : null;
+    if (!verified || verified.status !== "valid") {
+      return next(
+        createError(401, "invalid_token", "Link de renovação inválido."),
+      );
+    }
+
+    const { data: antiga } = await supabaseAdmin
+      .from("subscriptions")
+      .select("id, user_id, status, current_period_end")
+      .eq("id", verified.subscriptionId)
+      .maybeSingle();
+    if (!antiga) {
+      return next(
+        createError(
+          404,
+          "subscription_unavailable",
+          "Assinatura não encontrada ou cancelada.",
+        ),
+      );
+    }
+
+    const { data: linhas } = await supabaseAdmin
+      .from("subscriptions")
+      .select("status, current_period_end, payment_method")
+      .eq("user_id", antiga.user_id)
+      .in("status", ["active", "pending"])
+      .order("created_at", { ascending: false });
+    const rows = (linhas ?? []) as Array<{
+      status: string;
+      current_period_end: string | null;
+      payment_method: string | null;
+    }>;
+
+    const fimAntigoMs = antiga.current_period_end
+      ? new Date(antiga.current_period_end).getTime()
+      : 0;
+    let fimNovo: string | null = null;
+    for (const row of rows) {
+      if (row.status !== "active" || !row.current_period_end) continue;
+      const fimMs = new Date(row.current_period_end).getTime();
+      if (antiga.status === "superseded" || fimMs > fimAntigoMs) {
+        if (!fimNovo || fimMs > new Date(fimNovo).getTime()) {
+          fimNovo = row.current_period_end;
+        }
+      }
+    }
+    if (fimNovo) {
+      return res.json({ data: { status: "active", periodEnd: fimNovo } });
+    }
+    if (
+      rows.some((r) => r.status === "pending" && r.payment_method === "pix")
+    ) {
+      return res.json({ data: { status: "pending" } });
+    }
+    return res.json({ data: { status: "expired_qr" } });
+  } catch (err) {
+    next(err);
+  }
+}
+
 router.get("/renew", handleRenewPreview);
 router.post("/renew", handleRenew);
+router.get("/renew/status", handleRenewStatus);
 
 // Webhook da Stripe: rota FIXA. Cai no express.raw de app.ts (match por prefixo
 // /api/billing/webhook), entao req.rawBody chega intacto para

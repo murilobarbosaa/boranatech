@@ -53,18 +53,50 @@ type Fase =
   | { nome: "carregando" }
   | { nome: "pronto"; qr: PixQrCode }
   | { nome: "erro" }
-  | { nome: "confirmado" };
+  | { nome: "confirmado"; periodEnd: string | null };
+
+/**
+ * Textos que mudam entre o checkout e a renovacao. Todos opcionais: ausentes,
+ * o modal e o do checkout, palavra por palavra.
+ */
+export type PixCheckoutCopy = {
+  /** Frase abaixo do QR, no lugar de "A confirmacao e automatica...". */
+  note?: string;
+  confirmedTitle?: string;
+  /** Recebe o fim do periodo novo, quando o poller o informa. */
+  confirmedBody?: (periodEnd: string | null) => string;
+  /** Rotulo do botao de sair depois de confirmado. */
+  confirmedAction?: string;
+  /** `href` do botao confirmado: link em vez de acao, para pagina sem sessao. */
+  confirmedHref?: string;
+  /** Rotulo do botao quando o QR expirou. */
+  expiredAction?: string;
+};
 
 export default function PixCheckoutModal({
   open,
   amountCents,
   dueDate,
   invoiceUrl,
+  qr: qrFornecido,
+  checkPaid,
+  copy,
   onDismiss,
   onConfirmedContinue,
   onExpiredRestart,
 }: {
   open: boolean;
+  /**
+   * QR ja em maos (a rota de renovacao o devolve junto). Presente, o modal NAO
+   * chama GET /pix-qrcode, que exige sessao; a pagina /renovar nao tem uma.
+   */
+  qr?: PixQrCode | null;
+  /**
+   * Fonte de confirmacao alternativa ao `isPro` do SubscriptionContext, para
+   * pagina sem sessao. Chamada a cada passo do polling; `paid: true` encerra.
+   */
+  checkPaid?: () => Promise<{ paid: boolean; periodEnd?: string | null }>;
+  copy?: PixCheckoutCopy;
   /** Valor que o provedor registrou, em centavos. Ver `amountCents` do checkout. */
   amountCents?: number | null;
   /**
@@ -91,12 +123,17 @@ export default function PixCheckoutModal({
   const inicioRef = useRef<number>(Date.now());
 
   // BUSCA DO QR. Refaz a cada abertura: um modal reaberto sobre outra cobranca
-  // mostrando o QR da anterior seria pior que um erro visivel.
+  // mostrando o QR da anterior seria pior que um erro visivel. Com o QR
+  // fornecido pelo chamador, nao ha o que buscar.
   useEffect(() => {
     if (!open) return;
     let cancelado = false;
-    setFase({ nome: "carregando" });
     inicioRef.current = Date.now();
+    if (qrFornecido) {
+      setFase({ nome: "pronto", qr: qrFornecido });
+      return;
+    }
+    setFase({ nome: "carregando" });
     getPixQrCode()
       .then((qr) => {
         if (!cancelado) setFase({ nome: "pronto", qr });
@@ -107,7 +144,7 @@ export default function PixCheckoutModal({
     return () => {
       cancelado = true;
     };
-  }, [open]);
+  }, [open, qrFornecido]);
 
   // RELOGIO. Um tick por segundo enquanto o modal esta aberto e ninguem pagou.
   // Parar no `confirmado` evita render por segundo numa tela que ja terminou.
@@ -123,20 +160,35 @@ export default function PixCheckoutModal({
     let vivo = true;
     let id: ReturnType<typeof setTimeout> | undefined;
 
+    // Com `checkPaid`, a confirmacao vem dele (pagina sem sessao); sem ele, do
+    // `isPro` do contexto, reconsultado a cada passo.
+    let pagoPeloPoller = false;
+    let fimNovo: string | null = null;
+
     async function passo() {
       if (!vivo) return;
       const decisao = nextPixPollStep({
-        isPro,
+        isPro: checkPaid ? pagoPeloPoller : isPro,
         elapsedMs: Date.now() - inicioRef.current,
       });
       if (decisao.action === "confirmed") {
-        setFase({ nome: "confirmado" });
+        setFase({ nome: "confirmado", periodEnd: fimNovo });
         return;
       }
       if (decisao.action === "stop") return;
-      // `silent`: reconsulta de fundo nao pode piscar a tela inteira.
-      await refreshSubscription({ silent: true });
-      if (vivo) id = setTimeout(passo, decisao.delayMs);
+      if (checkPaid) {
+        try {
+          const r = await checkPaid();
+          pagoPeloPoller = r.paid;
+          fimNovo = r.periodEnd ?? null;
+        } catch {
+          // Falha de rede num passo nao encerra o polling: o proximo tenta.
+        }
+      } else {
+        // `silent`: reconsulta de fundo nao pode piscar a tela inteira.
+        await refreshSubscription({ silent: true });
+      }
+      if (vivo) id = setTimeout(passo, pagoPeloPoller ? 0 : decisao.delayMs);
     }
 
     id = setTimeout(passo, 0);
@@ -144,7 +196,7 @@ export default function PixCheckoutModal({
       vivo = false;
       if (id) clearTimeout(id);
     };
-  }, [open, fase.nome, isPro, refreshSubscription]);
+  }, [open, fase.nome, isPro, refreshSubscription, checkPaid]);
 
   useEffect(() => {
     if (!copiado) return;
@@ -228,7 +280,7 @@ export default function PixCheckoutModal({
           <DialogTitle className="font-display text-2xl font-black text-slate-950">
             {/* TODO(Ana): titulo do modal de pagamento Pix. */}
             {fase.nome === "confirmado"
-              ? "Pagamento confirmado!"
+              ? (copy?.confirmedTitle ?? "Pagamento confirmado!")
               : "Pague com Pix"}
           </DialogTitle>
         </DialogHeader>
@@ -243,16 +295,27 @@ export default function PixCheckoutModal({
             </span>
             {/* TODO(Ana): mensagem de confirmacao do pagamento Pix. */}
             <p className="text-sm font-bold text-slate-700">
-              Seu acesso Pro já está liberado.
+              {copy?.confirmedBody
+                ? copy.confirmedBody(fase.periodEnd)
+                : "Seu acesso Pro já está liberado."}
             </p>
-            <button
-              type="button"
-              onClick={onConfirmedContinue}
-              className="bnt-pressable inline-flex items-center gap-2 rounded-xl border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5"
-            >
-              {/* TODO(Ana): rotulo do botao apos a confirmacao. */}
-              Ver meu Pro
-            </button>
+            {copy?.confirmedHref ? (
+              <a
+                href={copy.confirmedHref}
+                className="bnt-pressable inline-flex items-center gap-2 rounded-xl border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5"
+              >
+                {copy.confirmedAction ?? "Ver meu Pro"}
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={onConfirmedContinue}
+                className="bnt-pressable inline-flex items-center gap-2 rounded-xl border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5"
+              >
+                {/* TODO(Ana): rotulo do botao apos a confirmacao. */}
+                {copy?.confirmedAction ?? "Ver meu Pro"}
+              </button>
+            )}
           </div>
         ) : expirou ? (
           <div className="mt-4 flex flex-col items-center gap-4 text-center">
@@ -266,7 +329,7 @@ export default function PixCheckoutModal({
               className="bnt-pressable inline-flex items-center gap-2 rounded-xl border-2 border-slate-950 bg-[var(--brand-yellow)] px-5 py-2.5 font-display text-sm font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)] transition-all duration-200 hover:-translate-y-0.5"
             >
               {/* TODO(Ana): rotulo do botao de refazer o checkout. */}
-              Escolher plano de novo
+              {copy?.expiredAction ?? "Escolher plano de novo"}
             </button>
           </div>
         ) : fase.nome === "carregando" ? (
@@ -364,7 +427,8 @@ export default function PixCheckoutModal({
 
             {/* TODO(Ana): aviso de confirmacao automatica. */}
             <p className="text-center text-xs font-medium text-slate-500">
-              A confirmação é automática. Pode deixar esta tela aberta.
+              {copy?.note ??
+                "A confirmação é automática. Pode deixar esta tela aberta."}
             </p>
           </div>
         ) : null}

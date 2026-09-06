@@ -11,7 +11,41 @@ export interface RenewalPreview {
   planLabel: string;
   priceLabel: string;
   periodEnd: string | null;
+  /**
+   * Meio pelo qual a renovacao vai ser cobrada (`boleto` | `pix`). Opcional:
+   * backend antigo na janela de deploy nao manda; ausente vale boleto, que era
+   * o unico meio ate o lote 2b.
+   */
+  paymentMethod?: string;
 }
+
+/** QR do Pix, no mesmo shape de `PixQrCode` do subscriptionService. */
+export interface RenewalPixQrCode {
+  encodedImage: string;
+  payload: string;
+  expirationDate: string | null;
+}
+
+/**
+ * Resposta do POST /api/billing/renew. Stripe manda `checkoutUrl` (a pagina
+ * redireciona); Asaas manda `flow: "native_pix"` com o QR JUNTO, porque a
+ * pagina nao tem sessao para buscar o QR por conta propria.
+ */
+export interface RenewalCheckoutResult {
+  checkoutUrl?: string;
+  subscriptionId?: string;
+  flow?: "redirect" | "native_pix";
+  amountCents?: number | null;
+  dueDate?: string | null;
+  /** O QR de uma cobranca pendente que ainda valia, em vez de um novo. */
+  reused?: boolean;
+  pixQrCode?: RenewalPixQrCode | null;
+}
+
+export type RenewalStatus =
+  | { status: "pending" }
+  | { status: "active"; periodEnd: string | null }
+  | { status: "expired_qr" };
 
 export class RenewalError extends Error {
   code: string;
@@ -31,7 +65,9 @@ async function errorCodeFrom(res: Response): Promise<string> {
   return body?.error?.code ?? "unknown";
 }
 
-export async function getRenewalPreview(token: string): Promise<RenewalPreview> {
+export async function getRenewalPreview(
+  token: string,
+): Promise<RenewalPreview> {
   let res: Response;
   try {
     res = await fetch(
@@ -48,11 +84,13 @@ export async function getRenewalPreview(token: string): Promise<RenewalPreview> 
   return json.data;
 }
 
-// Gera o boleto de renovacao. Sucesso -> checkoutUrl da Stripe (a pagina
-// redireciona). Erros aqui podem trazer slugs DIFERENTES do preview (ex.:
-// boleto_pending, already_renewed) porque o estado pode ter mudado entre o GET e
-// o clique; a pagina trata os 6 slugs nas duas chamadas.
-export async function createRenewalCheckout(token: string): Promise<string> {
+// Gera a cobranca de renovacao. Stripe -> `checkoutUrl` (a pagina
+// redireciona); Asaas -> `flow: "native_pix"` com o QR. Erros aqui podem trazer
+// slugs DIFERENTES do preview (ex.: boleto_pending, pix_pending,
+// already_renewed) porque o estado pode ter mudado entre o GET e o clique.
+export async function createRenewalCheckout(
+  token: string,
+): Promise<RenewalCheckoutResult> {
   let res: Response;
   try {
     res = await fetch(apiUrl("/api/billing/renew"), {
@@ -65,8 +103,27 @@ export async function createRenewalCheckout(token: string): Promise<string> {
   }
   if (!res.ok) throw new RenewalError(await errorCodeFrom(res));
   const json = (await res.json().catch(() => null)) as {
-    data?: { checkoutUrl?: string };
+    data?: RenewalCheckoutResult;
   } | null;
-  if (!json?.data?.checkoutUrl) throw new RenewalError("unknown");
-  return json.data.checkoutUrl;
+  if (!json?.data) throw new RenewalError("unknown");
+  return json.data;
+}
+
+// Estado da renovacao, para o polling do QR sem sessao. 401 vira erro nomeado;
+// falha de rede vira "unknown" e o chamador decide se tenta de novo.
+export async function getRenewalStatus(token: string): Promise<RenewalStatus> {
+  let res: Response;
+  try {
+    res = await fetch(
+      apiUrl(`/api/billing/renew/status?token=${encodeURIComponent(token)}`),
+    );
+  } catch {
+    throw new RenewalError("unknown");
+  }
+  if (!res.ok) throw new RenewalError(await errorCodeFrom(res));
+  const json = (await res.json().catch(() => null)) as {
+    data?: RenewalStatus;
+  } | null;
+  if (!json?.data) throw new RenewalError("unknown");
+  return json.data;
 }
