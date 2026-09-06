@@ -661,12 +661,153 @@ describe("webhook: encerramento e eventos desconhecidos", () => {
     expect(r).toMatchObject({ unhandled: true });
   });
 
-  it("pagamento SEM linha correspondente grita e propaga", async () => {
+  it("PAYMENT_OVERDUE sem linha correspondente responde 200 e guarda o raw", async () => {
     estado.linhaSubscription = null;
-    await expect(processAsaasEvent(eventoDePagamento())).rejects.toThrow();
+    const r = await processAsaasEvent(
+      eventoDePagamento({ event: "PAYMENT_OVERDUE" }),
+    );
+    expect(r).toMatchObject({ received: true, activated: false });
+    expect(estado.escritas.filter((e) => e.tabela === "subscriptions")).toEqual(
+      [],
+    );
+    expect(estado.escritas.some((e) => e.tabela === "billing_events")).toBe(
+      true,
+    );
+    expect(estado.capturas).toEqual([]);
+  });
+});
+
+describe("webhook: pagamento SEM linha nossa e orfao, nao erro", () => {
+  // O EVENTO REAL DO INCIDENTE DE 2026-09-03. Um Pix de R$ 30,00 mandado direto
+  // para a chave da conta: o Asaas cria a cobranca sozinho, sem
+  // `externalReference`, e dispara PAYMENT_RECEIVED. O handler lancava 500, o
+  // Asaas reentregou 15 vezes e INTERROMPEU a fila inteira, prendendo atras
+  // dele o PAYMENT_RECEIVED de um pagamento real.
+  const EVENTO_DO_INCIDENTE = "evt_d26e303b238e509335ac9ba210e51b0f&1497329671";
+  const COBRANCA_DO_INCIDENTE = "pay_1dd6hnhum3ysn950";
+
+  function eventoAvulso() {
+    return {
+      id: EVENTO_DO_INCIDENTE,
+      event: "PAYMENT_RECEIVED",
+      dateCreated: "2026-09-03 03:28:01",
+      payment: {
+        id: COBRANCA_DO_INCIDENTE,
+        value: 30,
+        netValue: 30,
+        externalReference: null,
+        status: "RECEIVED",
+      },
+    } as Parameters<typeof processAsaasEvent>[0];
+  }
+
+  const linhasDoLedger = () =>
+    estado.escritas
+      .filter(
+        (e) => e.tabela === "finance_transactions" && e.operacao === "upsert",
+      )
+      .map((e) => e.carga as Record<string, unknown>);
+
+  beforeEach(() => {
+    limpar();
+    estado.linhaSubscription = null;
+  });
+
+  it("responde 200 com orphan em vez de lancar", async () => {
+    const r = await processAsaasEvent(eventoAvulso());
+    expect(r).toMatchObject({ received: true, orphan: true });
+    expect(estado.rpcCalls).toEqual([]);
+  });
+
+  it("grava a cobranca no ledger SEM dono, com o valor em centavos", async () => {
+    await processAsaasEvent(eventoAvulso());
+
+    const linhas = linhasDoLedger();
+    expect(linhas).toHaveLength(1);
+    expect(linhas[0]).toMatchObject({
+      provider: "asaas",
+      provider_transaction_id: COBRANCA_DO_INCIDENTE,
+      type: "charge",
+      gross_cents: 3000,
+      net_cents: 3000,
+      fee_cents: 0,
+      user_id: null,
+      plan_code: null,
+    });
+  });
+
+  it("a linha de billing_events e PRESERVADA e carimbada como processada", async () => {
+    await processAsaasEvent(eventoAvulso());
+
+    expect(
+      estado.escritas.filter(
+        (e) => e.tabela === "billing_events" && e.operacao === "delete",
+      ),
+    ).toEqual([]);
+    const carimbo = estado.escritas.find(
+      (e) => e.tabela === "billing_events" && e.operacao === "update",
+    );
+    expect(carimbo).toBeDefined();
+    expect((carimbo!.carga as Record<string, unknown>).processed_at).toEqual(
+      expect.any(String),
+    );
+  });
+
+  it("grita no Sentry UMA vez, como warning, com o id da cobranca", async () => {
+    await processAsaasEvent(eventoAvulso());
+
+    const avisos = estado.capturas.filter(
+      (c) => c.mensagem === "asaas_pagamento_sem_assinatura",
+    );
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0].opcoes).toMatchObject({
+      level: "warning",
+      fingerprint: ["asaas-pagamento-sem-assinatura"],
+      tags: { event_type: "PAYMENT_RECEIVED" },
+      extra: {
+        event_id: EVENTO_DO_INCIDENTE,
+        asaas_payment_id: COBRANCA_DO_INCIDENTE,
+        gross_cents: 3000,
+      },
+    });
     expect(
       estado.capturas.filter((c) => c.mensagem === "asaas_webhook_falhou"),
-    ).toHaveLength(1);
+    ).toEqual([]);
+  });
+
+  it("segunda entrega do MESMO evento: 200 e nenhuma segunda linha no ledger", async () => {
+    await processAsaasEvent(eventoAvulso());
+    const segunda = await processAsaasEvent(eventoAvulso());
+
+    expect(segunda).toMatchObject({ received: true, deduped: true });
+    expect(linhasDoLedger()).toHaveLength(1);
+  });
+
+  it("PAYMENT_CONFIRMED sem linha segue o mesmo caminho", async () => {
+    const r = await processAsaasEvent({
+      ...eventoAvulso(),
+      event: "PAYMENT_CONFIRMED",
+    });
+    expect(r).toMatchObject({ received: true, orphan: true });
+    expect(linhasDoLedger()).toHaveLength(1);
+  });
+
+  it("sem linha E sem valor no payload: ainda 200, sem ledger, e o aviso nomeia a ausencia", async () => {
+    // Condicao DETERMINISTICA: reentregar nao faz o valor aparecer. Lancar aqui
+    // repetiria o incidente por outro payload.
+    const r = await processAsaasEvent({
+      ...eventoAvulso(),
+      payment: { id: COBRANCA_DO_INCIDENTE, externalReference: null },
+    });
+    expect(r).toMatchObject({ received: true, orphan: true });
+    expect(linhasDoLedger()).toEqual([]);
+    const avisos = estado.capturas.filter(
+      (c) => c.mensagem === "asaas_pagamento_sem_assinatura",
+    );
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0].opcoes).toMatchObject({
+      extra: { gross_cents: null },
+    });
   });
 });
 
@@ -1413,9 +1554,9 @@ describe("ledger: a cobranca Pix vira linha de finance_transactions", () => {
       "asaas_ledger_falhou",
     );
     // O billing_event CONTINUA gravado: e dele que o backfill reconstroi.
-    expect(
-      estado.escritas.some((e) => e.tabela === "billing_events"),
-    ).toBe(true);
+    expect(estado.escritas.some((e) => e.tabela === "billing_events")).toBe(
+      true,
+    );
   });
 
   it("reentrega NAO grava o ledger de novo", async () => {
@@ -1479,9 +1620,9 @@ describe("ledger: estorno do Asaas", () => {
 
     // server/providers/stripe.ts, case "charge.refunded": so chama
     // syncBalanceTransactions. A revogacao e decisao administrativa.
-    expect(
-      estado.escritas.filter((e) => e.tabela === "subscriptions"),
-    ).toEqual([]);
+    expect(estado.escritas.filter((e) => e.tabela === "subscriptions")).toEqual(
+      [],
+    );
     expect(estado.rpcCalls).toEqual([]);
   });
 
@@ -1505,9 +1646,9 @@ describe("ledger: estorno do Asaas", () => {
     expect(estado.capturas.map((c) => c.mensagem)).toContain(
       "asaas_partial_refund_nao_tratado",
     );
-    expect(
-      estado.escritas.some((e) => e.tabela === "billing_events"),
-    ).toBe(true);
+    expect(estado.escritas.some((e) => e.tabela === "billing_events")).toBe(
+      true,
+    );
   });
 });
 

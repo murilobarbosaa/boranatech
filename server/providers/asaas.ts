@@ -1,7 +1,11 @@
 import * as Sentry from "@sentry/node";
 
 import { asaasFetch } from "../lib/asaasClient";
-import { montarCobrancaAsaas, montarEstornoAsaas } from "../lib/asaasLedger";
+import {
+  centavosAsaas,
+  montarCobrancaAsaas,
+  montarEstornoAsaas,
+} from "../lib/asaasLedger";
 import { registrarNoLedger } from "../lib/asaasLedgerWriter";
 import {
   resolverAssinaturaDoAsaas,
@@ -637,6 +641,11 @@ export type WebhookOutcome = {
   deduped?: true;
   unhandled?: true;
   activated?: boolean;
+  /**
+   * Dinheiro confirmado sem row nossa: registrado no ledger SEM dono e
+   * respondido com 200. Ver `registrarPagamentoSemAssinatura`.
+   */
+  orphan?: true;
 };
 
 /** Eventos que confirmam dinheiro recebido. */
@@ -832,7 +841,7 @@ export async function processAsaasEvent(
 
   try {
     if (PAYMENT_EVENTS.has(eventType)) {
-      const ativou = await activateOnPayment({
+      return await activateOnPayment({
         event,
         eventType,
         eventId,
@@ -840,7 +849,6 @@ export async function processAsaasEvent(
         rowId,
         receivedAtIso,
       });
-      return { received: true, activated: ativou };
     }
     if (REFUND_EVENTS.has(eventType)) {
       await registrarEstornoNoLedger({
@@ -858,6 +866,17 @@ export async function processAsaasEvent(
   } catch (err) {
     // Compensacao: apaga o registro para a reentrega reprocessar. Mesmo desenho
     // do webhook da Stripe.
+    //
+    // SO PARA EXCECAO INESPERADA (banco fora, RPC que falhou, rede). Reentrega
+    // serve para falha TRANSITORIA: a segunda tentativa encontra o mundo
+    // diferente e pode dar certo. Condicao DETERMINISTICA (pagamento sem row
+    // nossa, payload sem valor) NAO passa por aqui: ela responde 200 e
+    // registra, porque reentregar nao muda o payload nem faz a row aparecer.
+    // Medido em 2026-09-03: um Pix avulso mandado direto para a chave da conta
+    // caiu em "sem row", o handler lancou 500, o Asaas reentregou 15 vezes ao
+    // longo de 12 horas e INTERROMPEU a fila da conta inteira, com o
+    // PAYMENT_RECEIVED de um pagamento real preso atras. Ver
+    // `registrarPagamentoSemAssinatura`.
     const { error: cleanupError } = await supabaseAdmin
       .from("billing_events")
       .delete()
@@ -928,7 +947,8 @@ export async function findSubscriptionRow(
  * current em vez de substituir, para quem paga adiantado nao perder os dias que
  * faltavam.
  *
- * Devolve `true` quando esta chamada foi a que ativou, `false` na reentrega.
+ * Devolve `activated: true` quando esta chamada foi a que ativou, `activated:
+ * false` na reentrega, e `orphan: true` quando nao ha row nossa para ativar.
  */
 async function activateOnPayment(args: {
   event: AsaasEvent;
@@ -937,20 +957,16 @@ async function activateOnPayment(args: {
   chargeId: string | null;
   rowId: string | null;
   receivedAtIso: string;
-}): Promise<boolean> {
+}): Promise<WebhookOutcome> {
   const { event, eventType, eventId, chargeId, rowId, receivedAtIso } = args;
 
   const row = await findSubscriptionRow(chargeId, rowId);
   if (!row) {
-    // Dinheiro confirmado sem row para ativar. NUNCA silencioso: lanca, a
-    // compensacao apaga o dedupe e a reentrega tenta de novo.
-    console.error(
-      `[webhook/asaas] PAGAMENTO SEM LINHA: charge ${chargeId ?? "?"} (event ${eventId}).`,
-    );
-    throw createError(500, "db_error", "Pagamento sem assinatura para ativar.");
+    await registrarPagamentoSemAssinatura(args);
+    return { received: true, orphan: true };
   }
 
-  if (row.status === "active") return false; // reprocesso idempotente
+  if (row.status === "active") return { received: true, activated: false }; // reprocesso idempotente
 
   if (row.status !== "pending") {
     console.error(
@@ -1059,7 +1075,7 @@ async function activateOnPayment(args: {
       { rowId: row.id },
     );
   }
-  if (!result.out_activated) return false;
+  if (!result.out_activated) return { received: true, activated: false };
 
   if (result.out_superseded_count > 0) {
     console.log(
@@ -1135,7 +1151,88 @@ async function activateOnPayment(args: {
     );
   }
 
-  return true;
+  return { received: true, activated: true };
+}
+
+/**
+ * Dinheiro confirmado SEM row nossa: cobranca sem dono, nao erro.
+ *
+ * O CASO E REAL E NAO E BUG DE ROW: o Asaas cria cobranca sozinho para Pix
+ * mandado direto a chave da conta ("Cobranca gerada automaticamente a partir
+ * de Pix recebido"), sem `externalReference`, e dispara PAYMENT_RECEIVED para
+ * ela. Nenhuma row de `subscriptions` vai existir, nem na reentrega.
+ *
+ * ATE 2026-09-03 ISTO LANCAVA 500, e o 500 era o incidente: o Asaas reentregou
+ * o mesmo evento 15 vezes e interrompeu a fila da conta inteira. Um pagamento
+ * real ficou preso atras dele, pago no Asaas e `pending` aqui. Lancar para
+ * "nunca ser silencioso" custou mais silencio do que evitou.
+ *
+ * O QUE ACONTECE AGORA: a cobranca entra no ledger com `user_id` nulo, que e
+ * exatamente a definicao de cobranca sem dono que o detector
+ * (server/lib/chargeSemDono.ts) e o painel de orfaos ja leem; a linha de
+ * `billing_events` fica, carimbada como processada; e o Sentry recebe um
+ * warning com o id da cobranca. O dinheiro aparece, alguem decide, e a fila
+ * segue.
+ *
+ * VALOR AUSENTE NO PAYLOAD tambem responde 200: e condicao deterministica, e
+ * reentregar nao faz o valor aparecer. A linha do ledger nao e montada (o
+ * ledger recusa inventar zero) e o aviso carrega `gross_cents: null`, que e o
+ * sinal para conciliar a mao a partir do `raw` guardado em `billing_events`.
+ */
+async function registrarPagamentoSemAssinatura(args: {
+  event: AsaasEvent;
+  eventType: string;
+  eventId: string;
+  chargeId: string | null;
+  receivedAtIso: string;
+}): Promise<void> {
+  const { event, eventType, eventId, chargeId, receivedAtIso } = args;
+  const grossCents = centavosAsaas(event.payment?.value);
+
+  console.warn(
+    `[webhook/asaas] PAGAMENTO SEM LINHA: charge ${chargeId ?? "?"} (event ${eventId}); entra no ledger sem dono.`,
+  );
+
+  let linha: ReturnType<typeof montarCobrancaAsaas> | null = null;
+  try {
+    linha = montarCobrancaAsaas({
+      event,
+      eventId,
+      receivedAtIso,
+      userId: null,
+      planCode: null,
+    });
+  } catch (err) {
+    // Sem id ou sem valor: a linha nao tem identidade ou nao tem numero. Os
+    // dois sao do payload, nao do ambiente; seguem sem ledger e com aviso.
+    console.warn(
+      `[webhook/asaas] cobranca sem dono nao montavel (event ${eventId}):`,
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+  if (linha) await registrarNoLedger(linha);
+
+  const { error: carimboError } = await supabaseAdmin
+    .from("billing_events")
+    .update({ processed_at: new Date().toISOString() })
+    .eq("id", eventKey(eventId));
+  if (carimboError) {
+    console.error(
+      `[webhook/asaas] falha ao carimbar processed_at de ${eventId}:`,
+      carimboError,
+    );
+  }
+
+  Sentry.captureMessage("asaas_pagamento_sem_assinatura", {
+    level: "warning",
+    fingerprint: ["asaas-pagamento-sem-assinatura"],
+    tags: { origem: "asaas-webhook", event_type: eventType },
+    extra: {
+      event_id: eventId,
+      asaas_payment_id: chargeId,
+      gross_cents: grossCents,
+    },
+  });
 }
 
 /**
