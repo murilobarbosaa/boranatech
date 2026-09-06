@@ -7,6 +7,7 @@ import analiseDadosPublicos from "./analise-dados-publicos";
 import apiRestTarefas from "./api-rest-tarefas";
 import automacaoLoginCypress from "./automacao-login-cypress";
 import dashboardPowerBi from "./dashboard-power-bi";
+import detectorSentimentoNlp from "./detector-sentimento-nlp";
 import landingPagePessoal from "./landing-page-pessoal";
 import listaTarefasFullstack from "./lista-tarefas-fullstack";
 import personaJourneyMapa from "./persona-journey-mapa";
@@ -21,6 +22,7 @@ export const PROJETOS_V2: ProjetoV2Detalhe[] = [
   apiRestTarefas,
   automacaoLoginCypress,
   dashboardPowerBi,
+  detectorSentimentoNlp,
   landingPagePessoal,
   listaTarefasFullstack,
   personaJourneyMapa,
