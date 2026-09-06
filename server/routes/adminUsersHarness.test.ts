@@ -277,14 +277,28 @@ export type RespostaTabela = {
 
 type Chamada = {
   table: string;
-  op: "select" | "insert" | "update" | "delete";
+  op: "select" | "insert" | "update" | "delete" | "upsert";
   colunas: string[];
   filtros: Array<{ tipo: string; coluna: string; valor: unknown }>;
   /** Colunas passadas a `.order()`, na ordem. Paginação por OFFSET sem ordenação
    * tem resultado indefinido no Postgres, e é isso que um teste precisa poder
    * afirmar. */
   ordem: string[];
+  /**
+   * A mesma ordenação COM a direção. Campo separado de `ordem` de propósito:
+   * mudar `ordem` para objetos quebraria os `toEqual(["id"])` que já existem.
+   * A direção importa quando o dedupe da rota depende de "a primeira linha é a
+   * mais recente", que é o caso de project_progress e project_validations.
+   */
+  ordemDetalhe: Array<{ coluna: string; ascending: boolean }>;
   payload?: LinhaQualquer;
+  /**
+   * Upsert em lote (bookmarks migrate) chega aqui, e nao em `payload`.
+   * Campo separado de proposito: alargar `payload` para uma uniao obrigaria
+   * cada `payload.coluna` ja escrito nos testes de admin a virar cast, e o
+   * teste ficaria pior para acomodar o duble.
+   */
+  payloadLote?: LinhaQualquer[];
 };
 
 export type SupabaseDouble = {
@@ -471,7 +485,7 @@ export function criarSupabaseDouble(
   function makeQuery(
     table: string,
     op: Chamada["op"],
-    payload?: LinhaQualquer,
+    payload?: LinhaQualquer | LinhaQualquer[],
   ) {
     const chamada: Chamada = {
       table,
@@ -479,12 +493,19 @@ export function criarSupabaseDouble(
       colunas: [],
       filtros: [],
       ordem: [],
-      payload,
+      ordemDetalhe: [],
+      payload: Array.isArray(payload) ? undefined : payload,
+      payloadLote: Array.isArray(payload) ? payload : undefined,
     };
     chamadas.push(chamada);
 
+    // Lote valida LINHA A LINHA: um upsert de 500 linhas em que só a última
+    // tem coluna inventada precisa falhar, e validar só a primeira deixaria
+    // passar.
     if (payload) {
-      validarColunas(table, Object.keys(payload));
+      for (const linha of Array.isArray(payload) ? payload : [payload]) {
+        validarColunas(table, Object.keys(linha));
+      }
     }
 
     let headOnly = false;
@@ -525,10 +546,15 @@ export function criarSupabaseDouble(
         return q;
       };
     }
-    q.order = (coluna: string) => {
+    q.order = (coluna: string, opts?: { ascending?: boolean }) => {
       if (typeof coluna === "string") {
         validarColunas(table, [coluna]);
         chamada.ordem.push(coluna);
+        // Sem `ascending` explicito o PostgREST ordena crescente, como o SQL.
+        chamada.ordemDetalhe.push({
+          coluna,
+          ascending: opts?.ascending !== false,
+        });
       }
       return q;
     };
@@ -598,6 +624,11 @@ export function criarSupabaseDouble(
         select: (...a: unknown[]) =>
           (makeQuery(table, "select") as Record<string, Function>).select(...a),
         insert: (payload: LinhaQualquer) => makeQuery(table, "insert", payload),
+        // `onConflict` e `ignoreDuplicates` sao aceitos e ignorados: o duble
+        // nao tem indice unico para resolver conflito, e o que o teste afirma
+        // e o PAYLOAD gravado.
+        upsert: (payload: LinhaQualquer | LinhaQualquer[]) =>
+          makeQuery(table, "upsert", payload),
         update: (payload: LinhaQualquer) => makeQuery(table, "update", payload),
         delete: () => makeQuery(table, "delete"),
       }),
