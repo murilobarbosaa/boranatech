@@ -4,17 +4,8 @@
 */
 
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams, useSearch } from "wouter";
-import {
-  ArrowRight,
-  Check,
-  ChevronDown,
-  ChevronUp,
-  Lightbulb,
-  Lock,
-  Search,
-  X,
-} from "lucide-react";
+import { Link, useSearch } from "wouter";
+import { ArrowRight, Lock, Search, X } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
@@ -23,7 +14,6 @@ import { BntSelect } from "@/components/shared/BntSelect";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useProjectCompletion } from "@/hooks/useProjectCompletion";
-import ProjectValidationBlock from "@/components/projects/ProjectValidationBlock";
 import { listProjectValidations } from "@/services/projectValidationService";
 import { projetos } from "@/lib/data";
 import { getAreaAccent } from "@/lib/platformData";
@@ -33,10 +23,10 @@ import {
   labelForProjectSubarea,
   normalizeProjectAreaParam,
 } from "@/lib/projectAreaGroup";
-import { resolveProjectId } from "@shared/projects/aliases";
-import { isProjetoV2, loadProjetoV2 } from "@shared/projects/v2";
-import type { ProjetoV2Detalhe } from "@shared/projects/v2/types";
-import ProjectV2Detail from "@/components/projects/ProjectV2Detail";
+import { PROJETOS_V2_IDS, isProjetoV2 } from "@shared/projects/v2";
+import ProjetoEstadoChip, {
+  type EstadoChip,
+} from "@/components/projects/ProjetoEstadoChip";
 import { filtrarPorEstado } from "@/lib/projectState";
 import type { ProjectStateFilter } from "@/lib/projectState";
 
@@ -92,11 +82,8 @@ export default function Projetos() {
     done: projectsDone,
     stages: projectStages,
     ready: completionReady,
-    toggle: toggleCompletion,
-    toggleStage,
   } = useProjectCompletion();
   const search = useSearch();
-  const params = useParams<{ id?: string }>();
   // ?area= normalizado: link antigo apontando pra slug de subarea (que era um
   // areaSlug valido ate este lote) vira a area-mae, em vez de filtrar por um
   // valor que nenhum projeto tem mais e devolver lista vazia.
@@ -120,59 +107,8 @@ export default function Projetos() {
   // aparecia na lista antes do status carregar, e garante que o conteudo pago
   // nunca chegue ao DOM de quem nao assina, nem por um frame.
   const travado = (projeto: Projeto) => projeto.pro === true && !isPro;
-  // Deep-link /projetos/:id: abre o card expandido e rola ate ele. Id que nao
-  // existe no catalogo mostra um banner discreto e a listagem normal.
-  // Alias no deep link: /projetos/portfolio-pessoal-html-css abre
-  // landing-page-pessoal em vez do banner de "nao encontramos esse projeto".
-  const deepLinkId = params.id ? resolveProjectId(params.id) : null;
-  const deepLinkProject = deepLinkId
-    ? projectItems.find((p) => p.id === deepLinkId)
-    : undefined;
-  const deepLinkMissing = Boolean(deepLinkId && !deepLinkProject);
   const [area, setArea] = useState(initialAreaFromUrl ?? AREA_ALL);
   const [nivel, setNivel] = useState("Todos");
-  const [expanded, setExpanded] = useState<string | null>(
-    deepLinkProject?.id ?? null,
-  );
-
-  useEffect(() => {
-    if (!deepLinkProject) return;
-    // Espera o primeiro paint pro card existir com layout estavel antes de
-    // rolar (o smooth scroll em elemento recem-montado engasga em mobile).
-    const raf = requestAnimationFrame(() => {
-      document
-        .getElementById(`projeto-${deepLinkProject.id}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [deepLinkProject]);
-  // Detalhe v2 carregado SOB DEMANDA, so quando o card daquele projeto abre.
-  // Nao no topo do modulo, nao num efeito sem condicao: e isso que mantem o
-  // detalhe fora do chunk compartilhado (medido no lote 02b).
-  const [detalhes, setDetalhes] = useState<
-    Map<string, ProjetoV2Detalhe | "erro">
-  >(new Map());
-  useEffect(() => {
-    if (!expanded || !isProjetoV2(expanded) || detalhes.has(expanded)) return;
-    // Projeto travado nao carrega detalhe: o modulo v2 E o conteudo pago, e
-    // baixa-lo colocaria no navegador de quem nao assina exatamente o que a
-    // trava existe pra reter.
-    const alvo = projetos.find((p) => p.id === expanded);
-    if (!alvo || travado(alvo)) return;
-    let cancelado = false;
-    const id = expanded;
-    void loadProjetoV2(id)
-      .then((d) => {
-        if (cancelado) return;
-        setDetalhes((prev) => new Map(prev).set(id, d ?? "erro"));
-      })
-      .catch(() => {
-        if (!cancelado) setDetalhes((prev) => new Map(prev).set(id, "erro"));
-      });
-    return () => {
-      cancelado = true;
-    };
-  }, [expanded, detalhes, isPro]);
   const [query, setQuery] = useState("");
   const [tech, setTech] = useState(TECH_ALL);
   const [estado, setEstado] = useState<ProjectStateFilter>("todos");
@@ -330,17 +266,19 @@ export default function Projetos() {
       <section className="relative overflow-hidden border-b-2 border-slate-900 bg-orange-100 py-12">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#fb923c_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
-          <div className="max-w-2xl">
-            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-orange-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_var(--bnt-shadow)]">
-              portfólio por nível
-            </p>
-            <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">
-              Projetos para cada fase da sua jornada.
-            </h1>
-            <p className="text-slate-950 text-lg">
-              Ideias práticas para quem está do zero absoluto até quem já quer
-              projetos completos e profundos em TI.
-            </p>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div className="max-w-2xl">
+              <h1 className="mb-3 font-display text-4xl font-bold text-slate-950">
+                Projetos
+              </h1>
+              <p className="text-lg text-slate-950">
+                {projetos.length} projetos para construir portfólio. Cada um diz
+                o que entregar, o caminho até lá e como saber que terminou.
+              </p>
+            </div>
+            <span className="inline-flex items-center rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-ink-on-accent shadow-[3px_3px_0_var(--bnt-shadow)]">
+              {PROJETOS_V2_IDS.length} com guia completo
+            </span>
           </div>
           <div className="mt-8 grid gap-4 md:grid-cols-4">
             {nivelGuides.map((guide) => (
@@ -480,13 +418,6 @@ export default function Projetos() {
               </span>
             )}
           </p>
-          {deepLinkMissing && (
-            <p className="mb-6 rounded-xl border-2 border-slate-900 bg-amber-50 px-4 py-3 text-sm font-bold text-slate-700 shadow-[3px_3px_0_var(--bnt-shadow)]">
-              {/* TODO(Ana): copy do aviso de projeto nao encontrado no deep-link */}
-              Não encontramos esse projeto. Ele pode ter mudado de nome; aqui
-              está a lista completa.
-            </p>
-          )}
           {!isPro && !loading && lockedCount > 0 ? (
             <Link
               href="/planos"
@@ -524,415 +455,118 @@ export default function Projetos() {
                     ({grupo.itens.length})
                   </span>
                 </h2>
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3">
                   {grupo.itens.map((projeto) => {
-                    const areaBadge = areaGridPaletteOf(
-                      labelForProjectArea(projeto.areaSlug),
-                    );
-                    // Chip de subarea: mesmo desenho do chip de area, com a
-                    // bolinha suprimida pra ler como refinamento do chip
-                    // anterior, nao como um par. O texto vem de areasTI, entao
-                    // nao ha copy nova. null quando o projeto nao tem subarea.
+                    const areaLabel = labelForProjectArea(projeto.areaSlug);
+                    const areaBadge = areaGridPaletteOf(areaLabel);
                     const subareaLabel = labelForProjectSubarea(
                       projeto.areaSlug,
                       projeto.subareaSlug,
                     );
-                    // Sugestao "pra praticar depois": vira link quando o
-                    // catalogo sabe o id do alvo. Sem id (ou com id que nao
-                    // resolve), continua o texto livre de proximoProjeto,
-                    // que e o comportamento de sempre.
-                    const proximo = projeto.proximoProjetoId
-                      ? projectItems.find(
-                          (p) => p.id === projeto.proximoProjetoId,
-                        )
-                      : undefined;
                     const cardTravado = travado(projeto);
-                    const detalheV2 = detalhes.get(projeto.id);
-                    // Chip de progresso no card FECHADO. So aparece quando ha
-                    // etapa marcada e o projeto nao foi concluido: concluido ja
-                    // tem o proprio selo, e zero de N nao informa nada.
-                    const marcadasDoCard = projectStages.get(projeto.id);
-                    const etapasDoCard =
-                      marcadasDoCard &&
-                      Object.keys(marcadasDoCard).length > 0 &&
-                      !projectsDone.has(projeto.id) &&
-                      detalheV2 !== undefined &&
-                      detalheV2 !== "erro"
-                        ? {
-                            feitas: detalheV2.etapas.filter(
-                              (e) => e.id in marcadasDoCard,
-                            ).length,
-                            total: detalheV2.etapas.length,
-                          }
-                        : null;
-                    // O bloco de entrega e o mesmo nas duas versoes: na v2 ele
-                    // entra como children do componente; na v1 fica no fim do
-                    // painel, onde sempre esteve.
-                    const entrega = (
-                      <>
-                        {projeto.pro === true && (
-                          <ProjectValidationBlock
-                            projeto={projeto}
-                            onApproved={(id) =>
-                              setValidatedIds((prev) => new Set(prev).add(id))
-                            }
-                          />
-                        )}
-                        {completionReady && (
-                          <div className="mt-5 border-t border-slate-100 pt-4">
-                            <button
-                              type="button"
-                              aria-pressed={projectsDone.has(projeto.id)}
-                              onClick={() => toggleCompletion(projeto.id)}
-                              className={`inline-flex items-center gap-1.5 rounded-[9px] border-[2.5px] border-slate-900 px-3.5 py-2 text-sm font-extrabold shadow-[2px_2px_0_var(--bnt-shadow)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_var(--bnt-shadow)] ${
-                                projectsDone.has(projeto.id)
-                                  ? "bg-emerald-500 text-white shadow-[2px_2px_0_#047857]"
-                                  : "bg-white text-slate-900"
-                              }`}
-                            >
-                              {projectsDone.has(projeto.id) && (
-                                <Check className="h-4 w-4" strokeWidth={4} />
-                              )}
-                              {/* TODO(Ana): labels do toggle de conclusao de projeto */}
-                              {projectsDone.has(projeto.id)
-                                ? "Projeto concluído"
-                                : "Marcar como concluído"}
-                            </button>
-                          </div>
-                        )}
-                      </>
-                    );
+                    const marcadasDoCard = projectStages.get(projeto.id) ?? {};
+                    const estado: EstadoChip = cardTravado
+                      ? { tipo: "pro_travado" }
+                      : validatedIds.has(projeto.id) ||
+                          projectsDone.has(projeto.id)
+                        ? { tipo: "concluido" }
+                        : Object.keys(marcadasDoCard).length > 0
+                          ? { tipo: "em_andamento" }
+                          : { tipo: "nao_iniciado" };
+                    // Fatos do card saem SO do catalogo: tempo estimado e
+                    // tipo de entrega moram no modulo v2, e carrega-lo aqui
+                    // colocaria 12 chunks no catalogo (e o conteudo pago no
+                    // navegador de quem nao assina). O chip "Guia" e o que
+                    // sinaliza que a pagina tem mais.
+                    const fatos = projeto.ferramentas.slice(0, 3);
                     return (
-                      <div
+                      <Link
                         key={projeto.id}
-                        id={`projeto-${projeto.id}`}
-                        className="relative scroll-mt-24"
+                        href={`/projetos/${projeto.id}`}
+                        className="card-brutal relative flex flex-col gap-2.5 overflow-hidden rounded-xl bg-card p-4 pl-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
                       >
-                        <div
+                        <span
+                          className="absolute bottom-0 left-0 top-0 w-1.5"
                           style={{
-                            boxShadow: `5px 5px 0 ${getAreaAccent(labelForProjectArea(projeto.areaSlug))}`,
+                            backgroundColor: cardTravado
+                              ? "var(--brand-yellow)"
+                              : getAreaAccent(areaLabel),
                           }}
-                          className="card-brutal overflow-hidden rounded-xl border-2 border-slate-950 bg-white transition-transform duration-200 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5"
-                        >
-                          <div
-                            className={`flex w-full items-start justify-between rounded-xl p-6 text-left ${
-                              cardTravado
-                                ? ""
-                                : "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-500"
-                            }`}
-                            role={cardTravado ? undefined : "button"}
-                            tabIndex={cardTravado ? undefined : 0}
-                            aria-expanded={
-                              cardTravado ? undefined : expanded === projeto.id
-                            }
-                            aria-controls={
-                              cardTravado
-                                ? undefined
-                                : `projeto-detalhe-${projeto.id}`
-                            }
-                            onClick={
-                              cardTravado
-                                ? undefined
-                                : () => {
-                                    setExpanded(
-                                      expanded === projeto.id
-                                        ? null
-                                        : projeto.id,
-                                    );
-                                  }
-                            }
-                            onKeyDown={
-                              cardTravado
-                                ? undefined
-                                : (e) => {
-                                    if (e.target !== e.currentTarget) return;
-                                    if (e.key === "Enter" || e.key === " ") {
-                                      e.preventDefault();
-                                      setExpanded(
-                                        expanded === projeto.id
-                                          ? null
-                                          : projeto.id,
-                                      );
-                                    }
-                                  }
-                            }
-                          >
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                {/* Classes, nao hex inline, pelo mesmo motivo
-                                    da grade de /areas: o hex de AREA_ACCENT nao
-                                    passa por variavel de tema, entao o texto do
-                                    chip ficava com a cor do modo claro sobre o
-                                    card escuro (1,55:1 no pior caso, e 2,86:1
-                                    ja no claro). O par bg-200/text-900 atravessa
-                                    os dois temas pelo contexto pastel do
-                                    index.css, sem variante dark:. */}
-                                <span
-                                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold ${areaBadge.bg} ${areaBadge.text} ${areaBadge.border}`}
-                                >
-                                  {/* bg-current: a bolinha herda o currentColor
-                                      que areaBadge.text acabou de fixar, entao
-                                      ela acompanha a familia sem repetir a
-                                      classe nem reintroduzir um valor cravado. */}
-                                  <span
-                                    className="h-1.5 w-1.5 rounded-full bg-current"
-                                    aria-hidden
-                                  />
-                                  {labelForProjectArea(projeto.areaSlug)}
-                                </span>
-                                {subareaLabel !== null && (
-                                  <span
-                                    className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${areaBadge.bg} ${areaBadge.text} ${areaBadge.border}`}
-                                  >
-                                    {subareaLabel}
-                                  </span>
-                                )}
-                                <span
-                                  className={`text-xs px-2 py-0.5 rounded-full font-bold ${nivelColors[projeto.nivel] || "bg-slate-100 text-slate-600"}`}
-                                >
-                                  {projeto.nivel}
-                                </span>
-                                {etapasDoCard !== null && (
-                                  <span className="inline-flex items-center rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xs font-bold text-slate-600">
-                                    {/* TODO(Ana): chip de progresso por etapas no card */}
-                                    {etapasDoCard.feitas} de{" "}
-                                    {etapasDoCard.total} etapas
-                                  </span>
-                                )}
-                                {projeto.pro === true && (
-                                  <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-2 py-0.5 text-xs font-black text-ink-on-accent">
-                                    <ProStarIcon className="h-3 w-3" />
-                                    Pro
-                                  </span>
-                                )}
-                                {/* Validado e o selo mais forte: quando existe,
-                                    substitui o chip de concluido no header. */}
-                                {validatedIds.has(projeto.id) ? (
-                                  <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-emerald-400 px-2 py-0.5 text-xs font-black text-slate-950">
-                                    <Check
-                                      className="h-3 w-3"
-                                      strokeWidth={3.5}
-                                    />
-                                    {/* TODO(Ana): label do selo validado no header */}
-                                    Validado
-                                  </span>
-                                ) : (
-                                  completionReady &&
-                                  projectsDone.has(projeto.id) && (
-                                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
-                                      <Check
-                                        className="h-3 w-3"
-                                        strokeWidth={3.5}
-                                      />
-                                      {/* TODO(Ana): label do badge de projeto concluido */}
-                                      Concluído
-                                    </span>
-                                  )
-                                )}
-                              </div>
-                              <h3 className="font-display font-bold text-xl text-slate-900">
-                                {projeto.nome}
-                              </h3>
-                              <p className="text-sm text-slate-600 mt-1">
-                                {projeto.objetivo}
-                              </p>
-                            </div>
-                            <div className="ml-4 flex shrink-0 items-center gap-3">
-                              <span
-                                className="inline-flex"
-                                onClick={(e) => e.stopPropagation()}
-                                onKeyDown={(e) => e.stopPropagation()}
-                              >
-                                <FavoriteButton
-                                  compact
-                                  item={{
-                                    id: projeto.id,
-                                    type: "projeto",
-                                    title: projeto.nome,
-                                    subtitle: labelForProjectArea(
-                                      projeto.areaSlug,
-                                    ),
-                                  }}
-                                />
-                              </span>
-                              <span className="text-slate-400" aria-hidden>
-                                {cardTravado ? (
-                                  <Lock className="h-5 w-5 text-amber-500" />
-                                ) : expanded === projeto.id ? (
-                                  <ChevronUp className="w-5 h-5" />
-                                ) : (
-                                  <ChevronDown className="w-5 h-5" />
-                                )}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Card travado: o cabecalho e o mesmo (nome, area,
-                              subarea, nivel, selo Pro), e no lugar do painel
-                              vai o que a assinatura abre. Nenhum campo do
-                              detalhe entra no DOM. */}
-                          {cardTravado && (
-                            <div className="border-t border-slate-100 px-6 pb-6 pt-4">
-                              <p className="flex items-start gap-2 text-sm font-semibold text-slate-600">
-                                <Lock
-                                  className="mt-0.5 h-4 w-4 shrink-0 text-amber-500"
-                                  aria-hidden
-                                />
-                                {/* TODO(Ana): copy do card de projeto Pro travado */}
-                                <span>
-                                  Este é um desafio Pro. A assinatura abre o
-                                  briefing completo, os requisitos de aceite, as
-                                  etapas com checkpoint e a validação da
-                                  entrega.
-                                </span>
-                              </p>
-                              <Link
-                                href="/planos"
-                                className="mt-4 inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[var(--brand-yellow)] px-4 py-2 text-xs font-black uppercase text-ink-on-accent shadow-[2px_2px_0_var(--bnt-shadow)] transition-transform hover:-translate-y-0.5"
-                              >
-                                {/* TODO(Ana): copy do botao de assinatura no card travado */}
-                                Assinar o Pro{" "}
-                                <ArrowRight
-                                  className="h-3.5 w-3.5"
-                                  aria-hidden
-                                />
-                              </Link>
-                            </div>
-                          )}
-                          {!cardTravado && expanded === projeto.id && (
-                            <div
-                              id={`projeto-detalhe-${projeto.id}`}
-                              role="region"
-                              aria-label={`Detalhes de ${projeto.nome}`}
-                              className="px-6 pb-6 border-t border-slate-100 pt-4"
+                          aria-hidden
+                        />
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold ${areaBadge.bg} ${areaBadge.text} ${areaBadge.border}`}
                             >
-                              {isProjetoV2(projeto.id) &&
-                              detalheV2 !== undefined &&
-                              detalheV2 !== "erro" ? (
-                                <ProjectV2Detail
-                                  projeto={projeto}
-                                  detalhe={detalheV2}
-                                  etapasMarcadas={
-                                    projectStages.get(projeto.id) ?? {}
-                                  }
-                                  onToggleEtapa={(etapaId) =>
-                                    toggleStage(projeto.id, etapaId)
-                                  }
-                                  proximo={
-                                    proximo
-                                      ? { id: proximo.id, nome: proximo.nome }
-                                      : undefined
-                                  }
-                                >
-                                  {entrega}
-                                </ProjectV2Detail>
-                              ) : isProjetoV2(projeto.id) &&
-                                detalheV2 === undefined ? (
-                                <div
-                                  className="space-y-3"
-                                  aria-busy="true"
-                                  aria-live="polite"
-                                >
-                                  <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100" />
-                                  <div className="h-4 w-full animate-pulse rounded bg-slate-100" />
-                                  <div className="h-24 w-full animate-pulse rounded bg-slate-100" />
-                                </div>
-                              ) : (
-                                <>
-                                  <div className="grid md:grid-cols-2 gap-6">
-                                    <div>
-                                      {/* Ferramentas */}
-                                      <div className="mb-4">
-                                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-                                          Ferramentas
-                                        </p>
-                                        <div className="flex flex-wrap gap-1">
-                                          {projeto.ferramentas.map((f) => (
-                                            <span
-                                              key={f}
-                                              className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-mono"
-                                            >
-                                              {f}
-                                            </span>
-                                          ))}
-                                        </div>
-                                      </div>
-
-                                      {/* Passo a passo */}
-                                      <div>
-                                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-                                          Passo a passo
-                                        </p>
-                                        <ol className="space-y-2">
-                                          {projeto.passosSimplificados.map(
-                                            (passo, i) => (
-                                              <li
-                                                key={i}
-                                                className="flex items-start gap-2 text-sm text-slate-700"
-                                              >
-                                                <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                                                  {i + 1}
-                                                </span>
-                                                {passo}
-                                              </li>
-                                            ),
-                                          )}
-                                        </ol>
-                                      </div>
-                                    </div>
-
-                                    <div>
-                                      {/* Entregável */}
-                                      <div className="card-brutal bg-orange-50 rounded-lg p-4 mb-4 border-orange-200">
-                                        <p className="text-xs font-medium text-orange-700 uppercase tracking-wide mb-1">
-                                          Entregável final
-                                        </p>
-                                        <p className="text-sm text-slate-700">
-                                          {projeto.entregavel}
-                                        </p>
-                                        <p className="text-xs text-slate-500 mt-1">
-                                          📤 Publicar em: {projeto.comoPublicar}
-                                        </p>
-                                      </div>
-
-                                      {/* LinkedIn */}
-                                      <div className="card-brutal bg-orange-50 rounded-lg p-4 border-orange-200">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <Lightbulb className="w-4 h-4 text-orange-700" />
-                                          <p className="text-xs font-medium text-orange-700 uppercase tracking-wide">
-                                            Sugestão de post no LinkedIn
-                                          </p>
-                                        </div>
-                                        <p className="text-xs text-slate-700 italic">
-                                          "{projeto.sugestaoLinkedIn}"
-                                        </p>
-                                      </div>
-
-                                      <div className="mt-4 text-sm text-slate-700">
-                                        <span className="font-medium">
-                                          Sugestão pra praticar depois:
-                                        </span>{" "}
-                                        {proximo ? (
-                                          <Link
-                                            href={`/projetos/${proximo.id}`}
-                                            onClick={(e) => e.stopPropagation()}
-                                            className="rounded font-medium text-orange-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
-                                          >
-                                            {proximo.nome}
-                                          </Link>
-                                        ) : (
-                                          <span>{projeto.proximoProjeto}</span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  {entrega}
-                                </>
-                              )}
-                            </div>
-                          )}
+                              <span
+                                className="h-1.5 w-1.5 rounded-full bg-current"
+                                aria-hidden
+                              />
+                              {areaLabel}
+                            </span>
+                            {subareaLabel !== null && (
+                              <span
+                                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${areaBadge.bg} ${areaBadge.text} ${areaBadge.border}`}
+                              >
+                                {subareaLabel}
+                              </span>
+                            )}
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-xs font-bold ${nivelColors[projeto.nivel] || "bg-slate-100 text-slate-600"}`}
+                            >
+                              {projeto.nivel}
+                            </span>
+                            {isProjetoV2(projeto.id) && (
+                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
+                                Guia
+                              </span>
+                            )}
+                            {projeto.pro === true && (
+                              <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-2 py-0.5 text-xs font-black text-ink-on-accent">
+                                <ProStarIcon className="h-3 w-3" />
+                                Pro
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            className="inline-flex shrink-0"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                            onKeyDown={(e) => e.stopPropagation()}
+                          >
+                            <FavoriteButton
+                              compact
+                              item={{
+                                id: projeto.id,
+                                type: "projeto",
+                                title: projeto.nome,
+                                subtitle: areaLabel,
+                              }}
+                            />
+                          </span>
                         </div>
-                      </div>
+                        <h3 className="font-display text-lg font-bold text-foreground">
+                          {projeto.nome}
+                        </h3>
+                        <p
+                          className={`line-clamp-2 text-sm text-muted-foreground ${
+                            cardTravado ? "blur-sm opacity-70" : ""
+                          }`}
+                        >
+                          {projeto.objetivo}
+                        </p>
+                        <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-2.5">
+                          <span className="flex flex-wrap gap-x-3 text-xs font-semibold text-muted-foreground">
+                            {fatos.map((f) => (
+                              <span key={f}>{f}</span>
+                            ))}
+                          </span>
+                          <ProjetoEstadoChip estado={estado} />
+                        </div>
+                      </Link>
                     );
                   })}
                 </div>
