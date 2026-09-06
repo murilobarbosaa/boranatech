@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 
 /**
  * A pagina propria do projeto (lote 03b).
@@ -47,6 +53,47 @@ const { PRO, GRATIS, ALIASADO, seo, v2 } = vi.hoisted(() => ({
 }));
 
 const rota = vi.hoisted(() => ({ id: "landing-page-pessoal" }));
+const progresso = vi.hoisted(() => ({
+  stages: new Map<string, Record<string, string>>(),
+  toggleStage: vi.fn(),
+}));
+
+// Fixture propria, nao o conteudo editorial real: amarrar o teste de render a
+// copy faria toda revisao de texto quebrar teste.
+const DETALHE = vi.hoisted(() => ({
+  valor: {
+    id: "landing-page-pessoal",
+    tipoEntrega: "repo_deploy" as const,
+    briefing: {
+      contexto: "Contexto do projeto de teste.",
+      aprende: ["Aprende A", "Aprende B", "Aprende C"],
+      preRequisitos: [{ rotulo: "Saber HTML", href: "/dicionario?termo=HTML" }],
+      tempoEstimado: {
+        horas: [6, 10] as [number, number],
+        semanas: [1, 2] as [number, number],
+      },
+    },
+    requisitos: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => ({
+      id: `req-${n}`,
+      descricao: `Requisito numero ${n}`,
+      verificacao: `Como verificar ${n}`,
+    })),
+    etapas: ["planejar", "html", "css", "celular", "publicar"].map((id) => ({
+      id,
+      titulo: `Etapa ${id}`,
+      tempo: "1 h",
+      oQueFazer: [`Faca ${id}`],
+      prontoQuando: `Pronto ${id}`,
+    })),
+    kit: [
+      { tipo: "modelo" as const, titulo: "Modelo", nota: "Nota do modelo" },
+    ],
+    ajuda: {
+      trilha: { slug: "frontend", nodeIds: ["html.semantica"] },
+      termos: ["HTML"],
+    },
+  },
+}));
 
 vi.mock("@/lib/data", () => ({ projetos: [PRO, GRATIS], areasTI: [] }));
 vi.mock("@shared/projects/v2", () => ({
@@ -60,10 +107,10 @@ vi.mock("@/contexts/SubscriptionContext", () => ({
 vi.mock("@/hooks/useProjectCompletion", () => ({
   useProjectCompletion: () => ({
     done: new Set<string>(),
-    stages: new Map<string, Record<string, string>>(),
+    stages: progresso.stages,
     ready: true,
     toggle: vi.fn(),
-    toggleStage: vi.fn(),
+    toggleStage: progresso.toggleStage,
   }),
 }));
 vi.mock("@/components/Layout", () => ({
@@ -95,13 +142,18 @@ beforeEach(() => {
   USUARIO_PRO.valor = false;
   rota.id = "landing-page-pessoal";
   seo.props.length = 0;
+  progresso.stages = new Map();
+  progresso.toggleStage.mockReset();
   v2.loadProjetoV2.mockReset();
   v2.loadProjetoV2.mockResolvedValue(null);
 });
 
 describe("corpo v1", () => {
-  it("renderiza os blocos do projeto sem detalhe v2", () => {
+  it("renderiza os blocos do projeto sem detalhe v2", async () => {
+    // O modulo v2 resolve null (nao existe): a pagina cai no corpo v1 depois
+    // do esqueleto.
     render(<ProjetoDetalhe />);
+    await waitFor(() => expect(screen.getByText("Passo a passo")).toBeTruthy());
     expect(
       screen.getByRole("heading", { level: 1, name: "Página Pessoal" }),
     ).toBeTruthy();
@@ -154,10 +206,104 @@ describe("projeto Pro para quem nao assina", () => {
     expect(screen.getByText("Assinar para abrir")).toBeTruthy();
   });
 
-  it("assinante ve o corpo do projeto", () => {
+  it("assinante ve o corpo do projeto", async () => {
     USUARIO_PRO.valor = true;
     rota.id = "projeto-pro";
     const { container } = render(<ProjetoDetalhe />);
-    expect(container.innerHTML).toContain("PASSO-SECRETO-DO-PRO");
+    await waitFor(() =>
+      expect(container.innerHTML).toContain("PASSO-SECRETO-DO-PRO"),
+    );
+    expect(v2.loadProjetoV2).toHaveBeenCalledWith("projeto-pro");
+  });
+});
+
+describe("corpo v2", () => {
+  async function renderizarV2() {
+    v2.loadProjetoV2.mockResolvedValue(DETALHE.valor);
+    render(<ProjetoDetalhe />);
+    await waitFor(() => expect(screen.getByText("Etapas")).toBeTruthy());
+  }
+
+  it("mostra os blocos do guia na ordem do mockup", async () => {
+    await renderizarV2();
+    for (const titulo of [
+      "Por que este projeto",
+      "O que precisa estar lá no fim",
+      "Etapas",
+      "Entrega",
+      "Depois",
+    ])
+      expect(screen.getByText(titulo), `bloco ausente: ${titulo}`).toBeTruthy();
+    expect(screen.getByText("Você vai sair sabendo")).toBeTruthy();
+  });
+
+  it("os 10 requisitos aparecem sem numero e sem a verificacao", async () => {
+    await renderizarV2();
+    for (let n = 1; n <= 10; n += 1)
+      expect(screen.getByText(`Requisito numero ${n}`)).toBeTruthy();
+    expect(screen.queryByText("Como verificar 1")).toBeNull();
+    const item = screen.getByText("Requisito numero 1").closest("li")!;
+    expect(item.textContent).toBe("Requisito numero 1");
+  });
+
+  it("a linha do tempo marca a primeira etapa nao feita como atual", async () => {
+    progresso.stages = new Map([
+      [
+        "landing-page-pessoal",
+        {
+          planejar: "2026-09-05T07:00:00.000Z",
+          html: "2026-09-06T07:00:00.000Z",
+        },
+      ],
+    ]);
+    await renderizarV2();
+    expect(screen.getAllByRole("checkbox")).toHaveLength(5);
+    expect(
+      screen
+        .getByRole("checkbox", { name: "Etapa planejar" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(
+      screen
+        .getByRole("checkbox", { name: "Etapa css" })
+        .getAttribute("aria-checked"),
+    ).toBe("false");
+    // A etapa atual e a 3, e o botao principal aponta para ela.
+    expect(screen.getByText("Continuar da etapa 3")).toBeTruthy();
+    expect(screen.getAllByText("2 de 5 etapas").length).toBeGreaterThan(0);
+  });
+
+  it("sem etapa marcada o botao principal diz Comecar", async () => {
+    await renderizarV2();
+    expect(screen.getByText("Começar")).toBeTruthy();
+  });
+
+  it("com todas as etapas feitas o botao principal leva a entrega", async () => {
+    progresso.stages = new Map([
+      [
+        "landing-page-pessoal",
+        Object.fromEntries(
+          DETALHE.valor.etapas.map((e) => [e.id, "2026-09-06T07:00:00.000Z"]),
+        ),
+      ],
+    ]);
+    await renderizarV2();
+    expect(screen.getByText("Ir para a entrega")).toBeTruthy();
+  });
+
+  it("clicar numa etapa chama toggleStage com o id certo", async () => {
+    await renderizarV2();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Etapa celular" }));
+    expect(progresso.toggleStage).toHaveBeenCalledWith(
+      "landing-page-pessoal",
+      "celular",
+    );
+  });
+
+  it("o kit e os termos aparecem na lateral", async () => {
+    await renderizarV2();
+    expect(screen.getByText("Nota do modelo")).toBeTruthy();
+    expect(screen.getByText("Kit")).toBeTruthy();
+    expect(screen.getByText("Antes de começar")).toBeTruthy();
   });
 });
