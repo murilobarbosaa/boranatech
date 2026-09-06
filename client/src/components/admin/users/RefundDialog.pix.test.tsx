@@ -159,20 +159,64 @@ describe("RefundDialog no caminho do Pix", () => {
     });
   });
 
-  it("a mensagem de sucesso NAO afirma que o extrato ja mudou", async () => {
-    // `statement_synced: false` e o estado NORMAL aqui: a linha negativa do
-    // ledger chega pelo webhook. Um "reembolso emitido" seco faria o admin
-    // procurar a devolucao no extrato e nao achar.
+  // COPY APROVADA PELA ANA (lote 2a.4). O toast depende do `provider_status`
+  // que a rota devolve: estorno parado em autorizacao pede ACAO no app do
+  // Asaas; estorno aceito so pede espera. As frases sao literais.
+  async function estornarERecolherToast(providerStatus: string | undefined) {
+    spies.adminFetch.mockResolvedValue({
+      data: {
+        refunded: true,
+        status: providerStatus ?? "REFUNDED",
+        provider_status: providerStatus,
+        statement_synced: false,
+      },
+    });
     montar(PIX);
     irAteOFim();
     fireEvent.click(screen.getByRole("button", { name: "Estornar Pix" }));
-
     await waitFor(() => expect(spies.showActionToast).toHaveBeenCalled());
-    const arg = spies.showActionToast.mock.calls[0][0] as { message: string };
-    expect(arg.message).toContain("Estorno enviado ao Asaas");
-    expect(arg.message).toContain("webhook");
+    return (spies.showActionToast.mock.calls[0][0] as { message: string })
+      .message;
+  }
+
+  it("AWAITING_CRITICAL_ACTION_AUTHORIZATION: o toast manda aprovar no app do Asaas", async () => {
+    expect(
+      await estornarERecolherToast("AWAITING_CRITICAL_ACTION_AUTHORIZATION"),
+    ).toBe(
+      "Estorno enviado. Aprove no app do Asaas para concluir a devolução.",
+    );
+    expect(spies.showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it("PENDING tambem pede aprovacao", async () => {
+    expect(await estornarERecolherToast("PENDING")).toBe(
+      "Estorno enviado. Aprove no app do Asaas para concluir a devolução.",
+    );
+  });
+
+  it.each([
+    ["REFUNDED"],
+    ["REFUND_REQUESTED"],
+    ["REFUND_IN_PROGRESS"],
+    ["DONE"],
+  ])("%s: o toast diz que a devolucao aparece em instantes", async (status) => {
+    expect(await estornarERecolherToast(status)).toBe(
+      "Estorno enviado ao Asaas. A devolução aparece no extrato em instantes.",
+    );
     // E NAO vira toast de ERRO: `statement_synced: false` aqui nao e falha.
     expect(spies.showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it("SEM provider_status (backend antigo na janela de deploy): cai na frase de espera", async () => {
+    expect(await estornarERecolherToast(undefined)).toBe(
+      "Estorno enviado ao Asaas. A devolução aparece no extrato em instantes.",
+    );
+  });
+
+  it("status DESCONHECIDO cai na frase de espera, nunca em pedido de acao inventado", async () => {
+    expect(await estornarERecolherToast("ALGO_NOVO")).toBe(
+      "Estorno enviado ao Asaas. A devolução aparece no extrato em instantes.",
+    );
   });
 
   it("erro do provedor vira toast de ERRO, e o dialogo nao promete estorno", async () => {
