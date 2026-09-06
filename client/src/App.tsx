@@ -97,6 +97,7 @@ const PortfolioAnalisar = lazyWithRetry(
 );
 const Privacidade = lazyWithRetry(() => import("@/pages/Privacidade"));
 const Projetos = lazyWithRetry(() => import("@/pages/Projetos"));
+const ProjetoDetalhe = lazyWithRetry(() => import("@/pages/ProjetoDetalhe"));
 const QuizCarreira = lazyWithRetry(() => import("@/pages/QuizCarreira"));
 const QuizCarreiraResultado = lazyWithRetry(
   () => import("@/pages/quiz-carreira/QuizCarreiraResultado"),
@@ -307,7 +308,7 @@ function Router() {
         <Route path="/faculdades" component={Faculdades} />
         <Route path="/eventos" component={Eventos} />
         <Route path="/projetos" component={Projetos} />
-        <Route path="/projetos/:id" component={Projetos} />
+        <Route path="/projetos/:id" component={ProjetoDetalhe} />
         <Route path="/vagas" component={Vagas} />
         {/* TODO: remover redirect apos 90 dias em prod */}
         <Route path="/estagio/freelance">

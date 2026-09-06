@@ -1,4 +1,5 @@
 import type { ProjetoCatalogo } from "@shared/projects/catalog";
+import type { ProjetoTipoEntrega } from "@shared/projects/v2/types";
 
 // Estado de um projeto para a pessoa que esta olhando.
 //
@@ -69,4 +70,30 @@ export function filtrarPorEstado<T extends Pick<ProjetoCatalogo, "id" | "pro">>(
       return estado === "concluido" || estado === "verificado";
     return estado === "em_andamento";
   });
+}
+
+// Rotulo humano do tipo de entrega, para a linha de fatos do cabecalho.
+// So "Site no ar + repositorio" veio do mockup aprovado; os outros cinco sao
+// texto novo.
+// TODO(Ana): rotulos de tipo de entrega, menos repo_deploy
+const TIPO_ENTREGA_LABELS: Record<ProjetoTipoEntrega, string> = {
+  repo_deploy: "Site no ar + repositório",
+  repo: "Repositório",
+  figma: "Arquivo no Figma",
+  notebook: "Notebook",
+  documento: "Documento",
+  dashboard: "Dashboard",
+};
+
+/**
+ * Resolver de INFORMACAO, nao de apresentacao: o tipo de entrega decide o que
+ * a pessoa precisa produzir. Um fallback neutro aqui devolveria um rotulo
+ * plausivel e errado, entao lanca nomeando o valor (mesma regra do
+ * TIER_WEIGHTS no CLAUDE.md). O `Record` fechado ja faz o tsc reprovar um
+ * tipo novo sem rotulo; isto cobre o valor que chega em runtime.
+ */
+export function labelTipoEntrega(tipo: ProjetoTipoEntrega): string {
+  const label = TIPO_ENTREGA_LABELS[tipo];
+  if (!label) throw new Error(`tipo de entrega sem rotulo: ${tipo}`);
+  return label;
 }
