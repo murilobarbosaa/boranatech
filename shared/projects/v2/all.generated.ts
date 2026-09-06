@@ -4,6 +4,7 @@
 // (que nao se importa com tamanho de bundle). O client NUNCA importa este
 // arquivo: o guard em client/src/lib/projectsV2Import.test.ts afirma isso.
 import apiRestTarefas from "./api-rest-tarefas";
+import automacaoLoginCypress from "./automacao-login-cypress";
 import landingPagePessoal from "./landing-page-pessoal";
 import listaTarefasFullstack from "./lista-tarefas-fullstack";
 import pipelineEtlPython from "./pipeline-etl-python";
@@ -12,6 +13,7 @@ import type { ProjetoV2Detalhe } from "./types";
 
 export const PROJETOS_V2: ProjetoV2Detalhe[] = [
   apiRestTarefas,
+  automacaoLoginCypress,
   landingPagePessoal,
   listaTarefasFullstack,
   pipelineEtlPython,

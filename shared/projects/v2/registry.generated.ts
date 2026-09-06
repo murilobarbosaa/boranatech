@@ -6,6 +6,7 @@ import type { ProjetoV2Detalhe } from "./types";
 
 export const PROJETOS_V2_IDS = [
   "api-rest-tarefas",
+  "automacao-login-cypress",
   "landing-page-pessoal",
   "lista-tarefas-fullstack",
   "pipeline-etl-python",
@@ -17,6 +18,7 @@ export const loaders: Record<
   () => Promise<{ default: ProjetoV2Detalhe }>
 > = {
   "api-rest-tarefas": () => import("./api-rest-tarefas"),
+  "automacao-login-cypress": () => import("./automacao-login-cypress"),
   "landing-page-pessoal": () => import("./landing-page-pessoal"),
   "lista-tarefas-fullstack": () => import("./lista-tarefas-fullstack"),
   "pipeline-etl-python": () => import("./pipeline-etl-python"),
