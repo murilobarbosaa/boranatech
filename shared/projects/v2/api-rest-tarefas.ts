@@ -19,7 +19,7 @@ const detalhe: ProjetoV2Detalhe = {
         rotulo: "Saber o básico de JavaScript",
         href: "/dicionario?termo=JavaScript",
       },
-      { rotulo: "Ter o Node.js instalado", href: "/dicionario?termo=Node.js" },
+      { rotulo: "Ter o Node.js instalado", href: "/ferramentas?q=Node.js" },
       { rotulo: "Entender o que é uma API", href: "/dicionario?termo=API" },
     ],
     tempoEstimado: { horas: [8, 16], semanas: [1, 3] },
