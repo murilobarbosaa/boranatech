@@ -51,6 +51,22 @@ export function RefundDialog({
   return <RefundDialogInterno charge={charge} {...resto} />;
 }
 
+/** Status do estorno no Asaas que exigem aprovacao humana no app. */
+const STATUS_QUE_PEDEM_APROVACAO = new Set([
+  "AWAITING_CRITICAL_ACTION_AUTHORIZATION",
+  "PENDING",
+]);
+
+export function toastDoEstornoPix(providerStatus: unknown): string {
+  if (
+    typeof providerStatus === "string" &&
+    STATUS_QUE_PEDEM_APROVACAO.has(providerStatus)
+  ) {
+    return "Estorno enviado. Aprove no app do Asaas para concluir a devolução.";
+  }
+  return "Estorno enviado ao Asaas. A devolução aparece no extrato em instantes.";
+}
+
 function RefundDialogInterno({
   userId,
   charge,
@@ -153,11 +169,16 @@ function RefundDialogInterno({
       // linha negativa do ledger chega pelo webhook `PAYMENT_REFUNDED`, segundos
       // ou minutos depois. `toastDeDevolucao` trataria `statement_synced: false`
       // como falha do sync, que aqui e o estado normal e nao um problema.
-      // TODO(Ana)
+      //
+      // A FRASE DEPENDE DO `provider_status`: estorno parado em autorizacao
+      // critica (ou pendente) so anda se alguem aprovar no app do Asaas, e o
+      // toast e o unico lugar em que o admin ve isso na hora do clique. Status
+      // ausente (backend antigo na janela de deploy) ou desconhecido cai na
+      // frase de espera, nunca num pedido de acao inventado. Copy aprovada no
+      // lote 2a.4.
       if (ehAsaas) {
         showActionToast({
-          message:
-            "Estorno enviado ao Asaas. A devolução aparece no extrato quando o webhook confirmar.",
+          message: toastDoEstornoPix(json.data?.provider_status),
         });
         // REFETCH ATRASADO, uma vez: o `onDone()` acima ja recarregou, e naquele
         // instante o webhook quase certamente nao chegou. Cinco segundos e uma

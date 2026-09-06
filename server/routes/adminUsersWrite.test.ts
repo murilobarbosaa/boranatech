@@ -1069,6 +1069,9 @@ describe("POST /users/:id/refunds", () => {
       refund_id: "pay_abc",
       amount_cents: 1290,
       status: "REFUNDED",
+      // O MESMO valor gravado em admin_refunds.provider_status, com o nome da
+      // coluna: e por ele que o dialogo escolhe o toast.
+      provider_status: "REFUNDED",
       // NAO ha sync a fazer: o ledger vem do webhook. Dizer `true` faria a tela
       // afirmar que o extrato ja reflete a devolucao.
       statement_synced: false,

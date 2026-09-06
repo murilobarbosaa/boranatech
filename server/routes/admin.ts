@@ -4583,6 +4583,10 @@ async function reembolsarNoAsaas(input: {
       refund_id: paymentId,
       amount_cents: validacao.amountCents,
       status: estorno.status,
+      // O mesmo valor, com o nome da coluna de `admin_refunds`: e por ele que
+      // o dialogo escolhe entre "aprove no app" e "aparece em instantes".
+      // Aditivo; `status` fica para quem ja lia.
+      provider_status: estorno.status,
       // NAO ha sync a fazer: o ledger vem do webhook. O campo fica FALSO de
       // proposito, para a tela nao afirmar que o extrato ja reflete a devolucao.
       statement_synced: false,

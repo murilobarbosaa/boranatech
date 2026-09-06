@@ -193,8 +193,7 @@ function Linha({
               {estornoPendente > 0
                 ? item.estorno_status ===
                   "AWAITING_CRITICAL_ACTION_AUTHORIZATION"
-                  ? // TODO(Ana)
-                    "Estorno aguardando autorização no Asaas (app ou painel)."
+                  ? "Estorno aguardando autorização no Asaas (app ou painel)."
                   : "Estorno solicitado. Aguardando confirmação do Asaas."
                 : item.refund_state === "full"
                   ? "Reembolsada"
