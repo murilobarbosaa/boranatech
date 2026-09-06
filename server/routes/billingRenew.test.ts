@@ -149,7 +149,11 @@ function assinatura(over: Record<string, unknown> = {}) {
   };
 }
 
-function chamar(handler: typeof handleRenew, body: Record<string, unknown>) {
+function chamar(
+  handler: typeof handleRenew,
+  body: Record<string, unknown>,
+  user?: { id: string; email: string },
+) {
   const gravado: { json?: Record<string, unknown>; erro?: unknown } = {};
   const objeto = {
     json(carga: Record<string, unknown>) {
@@ -164,7 +168,7 @@ function chamar(handler: typeof handleRenew, body: Record<string, unknown>) {
     gravado.erro = err;
   }) as unknown as NextFunction;
   return handler(
-    { body, query: body, headers: {} } as unknown as Request,
+    { body, query: body, headers: {}, user } as unknown as Request,
     objeto as unknown as Response,
     next,
   ).then(() => gravado);
@@ -229,7 +233,11 @@ describe("POST /renew despacha por provedor", () => {
     });
     expect(estado.asaasCheckout).toEqual([]);
     expect(r.json).toEqual({
-      data: { checkoutUrl: "https://stripe.test/cs", subscriptionId: "cs_1" },
+      data: {
+        checkoutUrl: "https://stripe.test/cs",
+        subscriptionId: "cs_1",
+        previousPeriodEnd: FUTURO,
+      },
     });
   });
 
@@ -262,6 +270,7 @@ describe("POST /renew despacha por provedor", () => {
         flow: "native_pix",
         amountCents: 2990,
         dueDate: "2026-09-08",
+        previousPeriodEnd: FUTURO,
         pixQrCode: {
           encodedImage: "img",
           payload: "copia-e-cola",
@@ -450,6 +459,7 @@ describe("POST /renew com Pix ja pendente: mesmo QR em vez de erro", () => {
         amountCents: 2990,
         dueDate: "2026-09-08",
         reused: true,
+        previousPeriodEnd: FUTURO,
         pixQrCode: {
           encodedImage: "img",
           payload: "copia-e-cola",
@@ -476,5 +486,102 @@ describe("POST /renew com Pix ja pendente: mesmo QR em vez de erro", () => {
     estado.pendingPix = null;
     const r = await chamar(handleRenew, { token: "t" });
     expect(r.erro).toMatchObject({ statusCode: 409, code: "pix_pending" });
+  });
+});
+
+const LOGADO = { id: "user-1", email: "pessoa@exemplo.com" };
+
+describe("POST /renew com SESSAO, sem token (o botao do Perfil)", () => {
+  it("assinante manual logado: mesmo despacho, e a resposta traz o fim anterior", async () => {
+    estado.subscription = assinatura({ payment_method: "pix" });
+
+    const r = await chamar(handleRenew, {}, LOGADO);
+
+    expect(r.erro).toBeUndefined();
+    expect(estado.asaasCheckout[0]).toMatchObject({
+      user: { id: "user-1" },
+      paymentMethod: "pix",
+      internalRenewal: true,
+    });
+    expect(r.json!.data).toMatchObject({
+      flow: "native_pix",
+      previousPeriodEnd: FUTURO,
+    });
+  });
+
+  it("logado sem assinatura manual: 404 nomeado, nada criado", async () => {
+    estado.subscription = null;
+
+    const r = await chamar(handleRenew, {}, LOGADO);
+
+    expect(r.erro).toMatchObject({
+      statusCode: 404,
+      code: "subscription_unavailable",
+    });
+    expect(estado.asaasCheckout).toEqual([]);
+  });
+
+  it("sem token E sem sessao: 400 invalid_token, como antes", async () => {
+    const r = await chamar(handleRenew, {});
+    expect(r.erro).toMatchObject({ statusCode: 400, code: "invalid_token" });
+  });
+
+  it("token presente ganha da sessao: e o fluxo do e-mail", async () => {
+    estado.subscription = assinatura({ user_id: "outro" });
+
+    await chamar(handleRenew, { token: "t" }, LOGADO);
+
+    expect(estado.stripeCheckout[0]).toMatchObject({ user: { id: "outro" } });
+  });
+});
+
+describe("GET /renew/status com SESSAO: polling do Perfil", () => {
+  it("logado com `after`: active quando ha ativa com fim alem de after", async () => {
+    estado.subscriptionsDoUsuario = [
+      {
+        status: "active",
+        current_period_end: "2026-10-21T00:00:00.000Z",
+        payment_method: "pix",
+      },
+    ];
+
+    const r = await chamar(
+      handleRenewStatus,
+      { after: "2026-09-21T00:00:00.000Z" },
+      LOGADO,
+    );
+
+    expect(r.json).toEqual({
+      data: { status: "active", periodEnd: "2026-10-21T00:00:00.000Z" },
+    });
+  });
+
+  it("logado, a ativa ainda e a antiga e ha pix pendente: pending", async () => {
+    estado.subscriptionsDoUsuario = [
+      { status: "pending", current_period_end: null, payment_method: "pix" },
+      {
+        status: "active",
+        current_period_end: "2026-09-21T00:00:00.000Z",
+        payment_method: "pix",
+      },
+    ];
+
+    const r = await chamar(
+      handleRenewStatus,
+      { after: "2026-09-21T00:00:00.000Z" },
+      LOGADO,
+    );
+
+    expect(r.json).toEqual({ data: { status: "pending" } });
+  });
+
+  it("logado sem `after`: 400, o cliente precisa dizer a partir de quando", async () => {
+    const r = await chamar(handleRenewStatus, {}, LOGADO);
+    expect(r.erro).toMatchObject({ statusCode: 400 });
+  });
+
+  it("sem sessao e sem token: 401", async () => {
+    const r = await chamar(handleRenewStatus, { after: FUTURO });
+    expect(r.erro).toMatchObject({ statusCode: 401 });
   });
 });

@@ -42,6 +42,8 @@ import { ProInlineBadge, ProStarIcon } from "@/components/pro/ProStarIcon";
 import ProUpsellModal from "@/components/pro/ProUpsellModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import ManualRenewalCard from "@/components/pro/ManualRenewalCard";
+import PixCheckoutModal from "@/components/pro/PixCheckoutModal";
 import PixQrCodeBlock from "@/components/pro/PixQrCodeBlock";
 import { nextPixPollStep } from "@/lib/pixPolling";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -90,6 +92,12 @@ import { updateMyProfile } from "@/services/profileService";
 import { hasFiscalIdentity } from "@shared/fiscalIdentity";
 import { greet } from "@shared/greeting";
 import { getPlanPriceCents, isPlanId, PLAN_PRICING } from "@shared/planPricing";
+import { metodoDaRenovacao } from "@shared/renewalMethod";
+import { estadoDaRenovacaoManual } from "@/lib/manualRenewalState";
+import {
+  getRenewalStatusWithSession,
+  renewWithSession,
+} from "@/services/subscriptionService";
 
 type SubscriptionPlan = {
   name?: string | null;
@@ -784,6 +792,12 @@ export default function Perfil() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelingSubscription, setCancelingSubscription] = useState(false);
   const [reactivating, setReactivating] = useState(false);
+  // Renovacao manual pelo Perfil (lote 2b.2). `renewPix` e a cobranca Pix
+  // aberta no modal; boleto redireciona para a Stripe e nao passa por aqui.
+  const [renewing, setRenewing] = useState(false);
+  const [renewPix, setRenewPix] = useState<Awaited<
+    ReturnType<typeof renewWithSession>
+  > | null>(null);
   const [signOutModalOpen, setSignOutModalOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -1030,6 +1044,45 @@ export default function Perfil() {
     subscriptionData?.renewal_type === "manual" ||
     subscriptionData?.payment_method === "boleto";
   const nonRenewalRegistered = subscriptionData?.nonRenewal ?? null;
+  // Estado da renovacao manual (vigente com dias, ou vencida). Puro, testado
+  // em client/src/lib/manualRenewalState.test.ts.
+  const estadoManual = estadoDaRenovacaoManual(subscriptionData, Date.now());
+  const metodoDaRenovacaoManual =
+    subscriptionData?.plans?.code && isPlanId(subscriptionData.plans.code)
+      ? metodoDaRenovacao(
+          subscriptionData.payment_method,
+          subscriptionData.plans.code,
+        )
+      : "pix";
+
+  async function handleRenewNow() {
+    if (renewing) return;
+    setRenewing(true);
+    try {
+      const r = await renewWithSession();
+      if (r.flow === "native_pix" && r.pixQrCode) {
+        setRenewPix(r);
+        return;
+      }
+      if (r.checkoutUrl) {
+        window.location.href = r.checkoutUrl;
+        return;
+      }
+      showErrorToast("Não foi possível iniciar a renovação.");
+    } catch (err) {
+      const code = (err as { code?: string } | null)?.code ?? "";
+      // TODO(Ana)
+      showErrorToast(
+        code === "pix_pending"
+          ? "Você já tem um Pix de renovação aguardando pagamento."
+          : code === "boleto_pending"
+            ? "Você já tem um boleto de renovação aguardando pagamento."
+            : "Não foi possível iniciar a renovação. Tente de novo.",
+      );
+    } finally {
+      setRenewing(false);
+    }
+  }
   const pendingPlanId =
     pendingBoleto?.planCode && isPlanId(pendingBoleto.planCode)
       ? pendingBoleto.planCode
@@ -1884,6 +1937,34 @@ export default function Perfil() {
                       {isPendingPix ? <PixQrCodeBlock /> : null}
                     </div>
                   </>
+                ) : estadoManual?.kind === "expired" ? (
+                  <>
+                    <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-amber-700">
+                      Assinatura
+                    </p>
+
+                    <h2
+                      className="font-display mt-2 font-black leading-none text-slate-950"
+                      style={{ fontSize: "clamp(3rem, 7vw, 5.5rem)" }}
+                    >
+                      PRO
+                    </h2>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className="inline-block rounded-full border-2 border-slate-400 bg-slate-100 px-3 py-1 font-display text-[11px] font-black uppercase tracking-[0.18em] text-slate-600">
+                        {getStatusLabel("expired").label}
+                      </span>
+                    </div>
+
+                    {/* Ate o lote 2b.2 o cartao Pro simplesmente sumia quando a
+                        manual vencia, sem uma frase dizendo por que. */}
+                    <ManualRenewalCard
+                      estado={estadoManual}
+                      paymentMethod={metodoDaRenovacaoManual}
+                      renewing={renewing}
+                      onRenew={() => void handleRenewNow()}
+                    />
+                  </>
                 ) : isPro ? (
                   <>
                     <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-amber-700">
@@ -1947,6 +2028,15 @@ export default function Perfil() {
                             </span>
                           </div>
                         </>
+                      ) : null}
+
+                      {estadoManual?.kind === "vigente" ? (
+                        <ManualRenewalCard
+                          estado={estadoManual}
+                          paymentMethod={metodoDaRenovacaoManual}
+                          renewing={renewing}
+                          onRenew={() => void handleRenewNow()}
+                        />
                       ) : null}
 
                       {/* TODO(Ana): copy do acesso de parceiro (influencer). */}
@@ -2304,6 +2394,42 @@ export default function Perfil() {
             periodEnd={subscriptionData?.current_period_end}
             isLoading={cancelingSubscription}
             mode={isBoletoSubscription ? "non_renewal" : "cancel"}
+          />
+          <PixCheckoutModal
+            open={renewPix !== null}
+            qr={renewPix?.pixQrCode ?? null}
+            amountCents={renewPix?.amountCents}
+            dueDate={renewPix?.dueDate}
+            invoiceUrl={renewPix?.checkoutUrl ?? null}
+            checkPaid={async () => {
+              const after = renewPix?.previousPeriodEnd;
+              if (!after) return { paid: false };
+              const r = await getRenewalStatusWithSession(after);
+              return r.status === "active"
+                ? { paid: true, periodEnd: r.periodEnd }
+                : { paid: false };
+            }}
+            copy={{
+              // TODO(Ana)
+              note: "Assim que o Pix cair, seu acesso volta em instantes. Você recebe um e-mail de confirmação.",
+              confirmedTitle: "Renovado!",
+              confirmedBody: (periodEnd) =>
+                `Renovado. Seu Pro vai até ${formatPeriodEnd(periodEnd)}.`,
+              confirmedAction: "Fechar",
+              expiredAction: "Gerar novo Pix",
+            }}
+            onDismiss={() => {
+              setRenewPix(null);
+              void refreshSubscription().catch(() => undefined);
+            }}
+            onConfirmedContinue={() => {
+              setRenewPix(null);
+              void refreshSubscription().catch(() => undefined);
+            }}
+            onExpiredRestart={() => {
+              setRenewPix(null);
+              void handleRenewNow();
+            }}
           />
 
           <SignOutConfirmModal

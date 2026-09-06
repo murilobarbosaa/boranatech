@@ -46,38 +46,40 @@ type RenewalResolved = {
 // de lembrete. Reexportada aqui porque e parte do contrato desta rota.
 export { metodoDaRenovacao };
 
-async function resolveRenewal(
-  token: string,
-): Promise<
-  | { ok: false; status: number; code: string; message: string }
-  | { ok: true; data: RenewalResolved }
-> {
-  const verified = verifyRenewalToken(token);
-  if (verified.status === "invalid") {
-    return {
-      ok: false,
-      status: 400,
-      code: "invalid_token",
-      message: "Link de renovação inválido.",
-    };
-  }
-  if (verified.status === "expired") {
-    return {
-      ok: false,
-      status: 400,
-      code: "expired_token",
-      message: "Este link de renovação expirou.",
-    };
-  }
+type RenewalRefusal = {
+  ok: false;
+  status: number;
+  code: string;
+  message: string;
+};
+type RenewalResult = RenewalRefusal | { ok: true; data: RenewalResolved };
 
-  const { data: sub } = await supabaseAdmin
-    .from("subscriptions")
-    .select(
-      "id, user_id, status, current_period_end, plan_id, renewal_type, payment_method",
-    )
-    .eq("id", verified.subscriptionId)
-    .maybeSingle();
+type LinhaParaRenovar = {
+  id: string;
+  user_id: string;
+  status: string;
+  current_period_end: string | null;
+  plan_id: string | null;
+  renewal_type: string | null;
+  payment_method: string | null;
+};
 
+const COLUNAS_PARA_RENOVAR =
+  "id, user_id, status, current_period_end, plan_id, renewal_type, payment_method";
+
+/**
+ * A linha pode ser renovada? Regras iguais para o link do e-mail (token) e
+ * para o botao do Perfil (sessao); so a origem da linha muda.
+ *
+ * `periodEndMsDoToken` existe SO no caminho do token: e o fim gravado na
+ * emissao, e um fim atual maior que ele significa "este link ja foi usado".
+ * Na sessao nao ha emissao; quem cobre o duplo clique e o `superseded` e o
+ * guard de cobranca pendente do provider.
+ */
+async function avaliarParaRenovar(
+  sub: LinhaParaRenovar | null,
+  periodEndMsDoToken: number | null,
+): Promise<RenewalResult> {
   // Cancelada ou inexistente compartilham o slug (a task agrupa os dois casos).
   //
   // EXCECAO DESDE O LOTE 2b: a linha RECEM-VENCIDA. O cron de expiracao
@@ -115,9 +117,9 @@ async function resolveRenewal(
     };
   }
 
-  // Defesa em profundidade: renovacao manual e SO para boleto (renewal_type
-  // 'manual'). Uma sub de cartao renova sozinha; gerar boleto para ela cobraria
-  // em duplicidade. Nao confia so na promessa de que o cron nunca emite o token
+  // Defesa em profundidade: renovacao manual e SO para `renewal_type='manual'`.
+  // Uma sub de cartao renova sozinha; gerar cobranca para ela cobraria em
+  // duplicidade. Nao confia so na promessa de que o cron nunca emite o token
   // para uma sub 'auto'.
   if (sub.renewal_type !== "manual") {
     return {
@@ -129,16 +131,18 @@ async function resolveRenewal(
   }
 
   // Ja renovada: o periodo avancou alem do que o token foi emitido (pend).
-  const currentEndMs = sub.current_period_end
-    ? new Date(sub.current_period_end).getTime()
-    : 0;
-  if (currentEndMs > verified.periodEndMs) {
-    return {
-      ok: false,
-      status: 409,
-      code: "already_renewed",
-      message: "Esta assinatura já foi renovada.",
-    };
+  if (periodEndMsDoToken !== null) {
+    const currentEndMs = sub.current_period_end
+      ? new Date(sub.current_period_end).getTime()
+      : 0;
+    if (currentEndMs > periodEndMsDoToken) {
+      return {
+        ok: false,
+        status: 409,
+        code: "already_renewed",
+        message: "Esta assinatura já foi renovada.",
+      };
+    }
   }
 
   const { data: plan } = await supabaseAdmin
@@ -165,6 +169,54 @@ async function resolveRenewal(
       paymentMethod: metodoDaRenovacao(sub.payment_method, plan.code),
     },
   };
+}
+
+async function resolveRenewal(token: string): Promise<RenewalResult> {
+  const verified = verifyRenewalToken(token);
+  if (verified.status === "invalid") {
+    return {
+      ok: false,
+      status: 400,
+      code: "invalid_token",
+      message: "Link de renovação inválido.",
+    };
+  }
+  if (verified.status === "expired") {
+    return {
+      ok: false,
+      status: 400,
+      code: "expired_token",
+      message: "Este link de renovação expirou.",
+    };
+  }
+
+  const { data: sub } = await supabaseAdmin
+    .from("subscriptions")
+    .select(COLUNAS_PARA_RENOVAR)
+    .eq("id", verified.subscriptionId)
+    .maybeSingle();
+  return avaliarParaRenovar(
+    (sub as LinhaParaRenovar | null) ?? null,
+    verified.periodEndMs,
+  );
+}
+
+/**
+ * A assinatura manual do usuario LOGADO: a mais recente entre `active` e
+ * `canceled` (a recem-vencida, ver `avaliarParaRenovar`). `pending` fica de
+ * fora: e uma renovacao em curso, nao a linha a renovar.
+ */
+async function resolveRenewalDoUsuario(userId: string): Promise<RenewalResult> {
+  const { data: sub } = await supabaseAdmin
+    .from("subscriptions")
+    .select(COLUNAS_PARA_RENOVAR)
+    .eq("user_id", userId)
+    .eq("renewal_type", "manual")
+    .in("status", ["active", "canceled"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return avaliarParaRenovar((sub as LinhaParaRenovar | null) ?? null, null);
 }
 
 /**
@@ -371,6 +423,45 @@ export async function handleGetSubscription(
         }
         if (!adminError && adminData === true) accessSource = "admin";
       }
+    }
+
+    // MANUAL RECEM-VENCIDA. Sem linha viva, procura a manual `canceled` cujo
+    // periodo terminou nos ultimos 7 dias (a janela do token de renovacao): o
+    // cron de expiracao troca `active` por `canceled` em ate 6 horas, e sem
+    // este fallback o cartao de "seu Pro terminou" do Perfil sumiria junto,
+    // que e exatamente o silencio que o lote 2b.2 existe para acabar. Vai
+    // como `expired`, o mesmo status derivado da manual `active` vencida.
+    let expiradaRecente: Record<string, unknown> | null = null;
+    if (!subscription) {
+      const agora = Date.now();
+      const { data } = await supabaseAdmin
+        .from("subscriptions")
+        .select("*, plans(*)")
+        .eq("user_id", userId)
+        .eq("renewal_type", "manual")
+        .eq("status", "canceled")
+        .gt(
+          "current_period_end",
+          new Date(agora - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        )
+        .lt("current_period_end", new Date(agora).toISOString())
+        .order("current_period_end", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      expiradaRecente = (data as Record<string, unknown> | null) ?? null;
+    }
+    if (expiradaRecente) {
+      return res.json({
+        data: {
+          ...expiradaRecente,
+          status: "expired",
+          isPro,
+          pendingBoleto,
+          pendingCharge,
+          nonRenewal: null,
+          accessSource,
+        },
+      });
     }
 
     if (!subscription) {
@@ -806,13 +897,20 @@ export async function handleRenew(
       );
     }
 
+    // DUAS PORTAS, um despacho. Token no corpo: o link do e-mail, sem sessao.
+    // Sem token mas com `req.user` (o `validateSupabaseJwt` global ja o
+    // preenche quando o browser manda o Bearer): o botao do Perfil. O token
+    // ganha quando os dois existem, porque ele identifica a linha exata que o
+    // e-mail apontou.
     const token = typeof req.body?.token === "string" ? req.body.token : "";
-    if (!token) {
+    if (!token && !req.user) {
       return next(
         createError(400, "invalid_token", "Link de renovação inválido."),
       );
     }
-    const r = await resolveRenewal(token);
+    const r = token
+      ? await resolveRenewal(token)
+      : await resolveRenewalDoUsuario(req.user!.id);
     if (!r.ok) return next(createError(r.status, r.code, r.message));
 
     // Token e a auth (nao ha req.user): busca o e-mail do dono para prefill.
@@ -820,6 +918,8 @@ export async function handleRenew(
       r.data.userId,
     );
     const email = authData?.user?.email || "";
+    // O fim ANTERIOR vai na resposta: e o `after` do polling com sessao.
+    const previousPeriodEnd = r.data.currentPeriodEnd;
 
     // internalRenewal: seta AQUI, no server, apos validar o token. Pula so o
     // guard de assinatura ativa; o guard de cobranca pendente segue valendo e
@@ -876,11 +976,11 @@ export async function handleRenew(
           err,
         );
       }
-      return res.json({ data: { ...data, pixQrCode } });
+      return res.json({ data: { ...data, pixQrCode, previousPeriodEnd } });
     }
 
     const data = await stripeProvider.createCheckout(input);
-    res.json({ data });
+    res.json({ data: { ...data, previousPeriodEnd } });
   } catch (err) {
     next(err);
   }
@@ -942,25 +1042,55 @@ export async function handleRenewStatus(
 ) {
   try {
     const token = typeof req.query.token === "string" ? req.query.token : "";
-    const verified = token ? verifyRenewalToken(token) : null;
-    if (!verified || verified.status !== "valid") {
+    let antiga: {
+      user_id: string;
+      status: string;
+      current_period_end: string | null;
+    } | null = null;
+    if (token) {
+      const verified = verifyRenewalToken(token);
+      if (verified.status !== "valid") {
+        return next(
+          createError(401, "invalid_token", "Link de renovação inválido."),
+        );
+      }
+      const { data } = await supabaseAdmin
+        .from("subscriptions")
+        .select("id, user_id, status, current_period_end")
+        .eq("id", verified.subscriptionId)
+        .maybeSingle();
+      antiga = data as typeof antiga;
+      if (!antiga) {
+        return next(
+          createError(
+            404,
+            "subscription_unavailable",
+            "Assinatura não encontrada ou cancelada.",
+          ),
+        );
+      }
+    } else if (req.user) {
+      // SESSAO: o Perfil manda `after`, o fim que ele viu antes de pedir a
+      // renovacao (o `previousPeriodEnd` da resposta do POST). Sem ele nao ha
+      // como distinguir "a ativa de sempre" de "a ativa nova".
+      const after = typeof req.query.after === "string" ? req.query.after : "";
+      if (!after || Number.isNaN(Date.parse(after))) {
+        return next(
+          createError(
+            400,
+            "invalid_after",
+            "Informe o fim do período anterior.",
+          ),
+        );
+      }
+      antiga = {
+        user_id: req.user.id,
+        status: "active",
+        current_period_end: after,
+      };
+    } else {
       return next(
         createError(401, "invalid_token", "Link de renovação inválido."),
-      );
-    }
-
-    const { data: antiga } = await supabaseAdmin
-      .from("subscriptions")
-      .select("id, user_id, status, current_period_end")
-      .eq("id", verified.subscriptionId)
-      .maybeSingle();
-    if (!antiga) {
-      return next(
-        createError(
-          404,
-          "subscription_unavailable",
-          "Assinatura não encontrada ou cancelada.",
-        ),
       );
     }
 
