@@ -13,6 +13,7 @@ export const PROJETOS_V2_IDS = [
   "lista-tarefas-fullstack",
   "persona-journey-mapa",
   "pipeline-etl-python",
+  "plano-testes",
   "prd-feature-nova",
   "todo-list",
 ] as const;
@@ -29,6 +30,7 @@ export const loaders: Record<
   "lista-tarefas-fullstack": () => import("./lista-tarefas-fullstack"),
   "persona-journey-mapa": () => import("./persona-journey-mapa"),
   "pipeline-etl-python": () => import("./pipeline-etl-python"),
+  "plano-testes": () => import("./plano-testes"),
   "prd-feature-nova": () => import("./prd-feature-nova"),
   "todo-list": () => import("./todo-list"),
 };

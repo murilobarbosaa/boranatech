@@ -11,6 +11,7 @@ import landingPagePessoal from "./landing-page-pessoal";
 import listaTarefasFullstack from "./lista-tarefas-fullstack";
 import personaJourneyMapa from "./persona-journey-mapa";
 import pipelineEtlPython from "./pipeline-etl-python";
+import planoTestes from "./plano-testes";
 import prdFeatureNova from "./prd-feature-nova";
 import todoList from "./todo-list";
 import type { ProjetoV2Detalhe } from "./types";
@@ -24,6 +25,7 @@ export const PROJETOS_V2: ProjetoV2Detalhe[] = [
   listaTarefasFullstack,
   personaJourneyMapa,
   pipelineEtlPython,
+  planoTestes,
   prdFeatureNova,
   todoList,
 ];

@@ -27,7 +27,7 @@ import {
 // deliberado, nao efeito colateral. Ele amarra QUATRO lugares (o modulo,
 // PROJETOS_V2_IDS, `loaders` e all.ts), e os guards 10 a 13 conferem os
 // quatro entre si.
-const EXPECTED_V2_COUNT = 10;
+const EXPECTED_V2_COUNT = 11;
 
 // Percorre nos e filhos. Reimplementado aqui de proposito: os helpers
 // equivalentes vivem em scripts/generateRoadmapMeta.mts, que nao os exporta e
