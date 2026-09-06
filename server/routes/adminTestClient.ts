@@ -5,7 +5,7 @@ import type { AddressInfo } from "node:net";
 import { errorHandler } from "../middleware/error";
 
 /**
- * Cliente HTTP para os testes de integração das rotas de admin.
+ * Cliente HTTP para os testes de integração das rotas do servidor.
  *
  * `supertest` NÃO existe no projeto e não foi adicionado: um servidor efêmero
  * na porta 0 com o `fetch` global do Node faz o mesmo em poucas linhas, e
@@ -24,7 +24,13 @@ import { errorHandler } from "../middleware/error";
 
 export type RespostaHttp = { status: number; body: any };
 
-export function criarClienteAdmin(router: Router) {
+/**
+ * Monta um router em `basePath` num servidor efêmero. O caminho entra por
+ * parâmetro porque o `req.path` que chega ao errorHandler precisa ser o de
+ * produção, e ele muda por rota: `/api/admin`, `/api/progress`,
+ * `/api/bookmarks`, `/api/project-validations`.
+ */
+export function criarClienteRota(router: Router, basePath: string) {
   let servidor: ReturnType<typeof createServer> | null = null;
   let base = "";
 
@@ -34,19 +40,19 @@ export function criarClienteAdmin(router: Router) {
     app.use(express.json());
     // Mesmo caminho de produção: o req.path que chega ao errorHandler bate com
     // o real.
-    app.use("/api/admin", router);
+    app.use(basePath, router);
     app.use(errorHandler);
 
     servidor = createServer(app);
     await new Promise<void>((resolve) =>
       servidor!.listen(0, "127.0.0.1", resolve),
     );
-    base = `http://127.0.0.1:${(servidor!.address() as AddressInfo).port}/api/admin`;
+    base = `http://127.0.0.1:${(servidor!.address() as AddressInfo).port}${basePath}`;
     return base;
   }
 
   return async function chamar(
-    metodo: "GET" | "POST" | "PATCH" | "DELETE",
+    metodo: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
     caminho: string,
     corpo?: unknown,
   ): Promise<RespostaHttp> {
@@ -69,4 +75,9 @@ export function criarClienteAdmin(router: Router) {
     }
     return { status: resposta.status, body };
   };
+}
+
+/** Atalho histórico: o admin monta em /api/admin. */
+export function criarClienteAdmin(router: Router) {
+  return criarClienteRota(router, "/api/admin");
 }
