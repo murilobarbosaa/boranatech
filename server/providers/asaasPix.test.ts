@@ -2126,3 +2126,142 @@ describe("fila de webhooks do Asaas: leitura e classificacao", () => {
     ).toBe("ok");
   });
 });
+
+describe("webhook: pagamento em linha ACTIVE ou ENCERRADA nunca some nem da 500", () => {
+  // Com a renovacao por linha nova (lote 2b), um PAYMENT_RECEIVED apontando
+  // para uma linha ja `active` ou ja `canceled`/`superseded` so acontece por
+  // fluxo estranho. Antes: `active` engolia em silencio sem ledger; `canceled`
+  // lancava 500 deterministico e reabria o laco de reentrega do incidente de
+  // 2026-09-03. Agora os dois deixam rastro e dinheiro contado.
+  const COBRANCA_ANTIGA = "pay_old_111";
+
+  function linha(status: string) {
+    return {
+      id: "row-1",
+      user_id: USER,
+      status,
+      plan_id: "plan-anual",
+      affiliate_code: null,
+      coupon_code: null,
+      provider_subscription_id: COBRANCA_ANTIGA,
+    };
+  }
+
+  const linhasDoLedger = () =>
+    estado.escritas
+      .filter(
+        (e) => e.tabela === "finance_transactions" && e.operacao === "upsert",
+      )
+      .map((e) => e.carga as Record<string, unknown>);
+  const carimbo = () =>
+    estado.escritas.find(
+      (e) => e.tabela === "billing_events" && e.operacao === "update",
+    );
+
+  beforeEach(() => {
+    limpar();
+  });
+
+  it("linha ACTIVE com cobranca DIFERENTE: 200, ledger com dono e plano, sem tocar periodo", async () => {
+    estado.linhaSubscription = linha("active");
+
+    const r = await processAsaasEvent(eventoDePagamento());
+
+    expect(r).toEqual({ received: true, activated: false, ledgered: true });
+    expect(linhasDoLedger()).toHaveLength(1);
+    expect(linhasDoLedger()[0]).toMatchObject({
+      provider_transaction_id: COBRANCA,
+      type: "charge",
+      gross_cents: 22200,
+      user_id: USER,
+      plan_code: "pro_annual",
+    });
+    expect(carimbo()).toBeDefined();
+    expect(estado.rpcCalls).toEqual([]);
+    expect(estado.escritas.filter((e) => e.tabela === "subscriptions")).toEqual(
+      [],
+    );
+    const avisos = estado.capturas.filter(
+      (c) => c.mensagem === "asaas_pagamento_em_assinatura_ativa",
+    );
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0].opcoes).toMatchObject({
+      level: "warning",
+      fingerprint: ["asaas-pagamento-em-assinatura-ativa"],
+      extra: {
+        event_id: EVENTO,
+        asaas_payment_id: COBRANCA,
+        subscription_id: "row-1",
+      },
+    });
+  });
+
+  it("linha ACTIVE com a MESMA cobranca e reentrega: nada de ledger nem aviso", async () => {
+    estado.linhaSubscription = {
+      ...linha("active"),
+      provider_subscription_id: COBRANCA,
+    };
+
+    const r = await processAsaasEvent(eventoDePagamento());
+
+    expect(r).toEqual({ received: true, activated: false });
+    expect(linhasDoLedger()).toEqual([]);
+    expect(estado.capturas).toEqual([]);
+  });
+
+  it.each([["canceled"], ["superseded"]])(
+    "linha %s: 200 com ledger e aviso, nunca 500",
+    async (status) => {
+      estado.linhaSubscription = linha(status);
+
+      const r = await processAsaasEvent(eventoDePagamento());
+
+      expect(r).toEqual({ received: true, activated: false, ledgered: true });
+      expect(linhasDoLedger()).toHaveLength(1);
+      expect(linhasDoLedger()[0]).toMatchObject({
+        user_id: USER,
+        plan_code: "pro_annual",
+      });
+      expect(carimbo()).toBeDefined();
+      // O billing_events NAO e apagado: nao ha reentrega a provocar.
+      expect(
+        estado.escritas.filter(
+          (e) => e.tabela === "billing_events" && e.operacao === "delete",
+        ),
+      ).toEqual([]);
+      const avisos = estado.capturas.filter(
+        (c) => c.mensagem === "asaas_pagamento_em_assinatura_encerrada",
+      );
+      expect(avisos).toHaveLength(1);
+      expect(avisos[0].opcoes).toMatchObject({
+        level: "warning",
+        fingerprint: ["asaas-pagamento-em-assinatura-encerrada"],
+        extra: { subscription_id: "row-1", subscription_status: status },
+      });
+      expect(
+        estado.capturas.filter((c) => c.mensagem === "asaas_webhook_falhou"),
+      ).toEqual([]);
+    },
+  );
+
+  it("o MESMO evento entregue duas vezes nao grava segunda linha", async () => {
+    estado.linhaSubscription = linha("canceled");
+
+    await processAsaasEvent(eventoDePagamento());
+    const segunda = await processAsaasEvent(eventoDePagamento());
+
+    expect(segunda).toMatchObject({ received: true, deduped: true });
+    expect(linhasDoLedger()).toHaveLength(1);
+  });
+
+  it("linha encerrada e payload SEM valor: 200, sem ledger, ledgered false", async () => {
+    estado.linhaSubscription = linha("canceled");
+
+    const r = await processAsaasEvent(
+      eventoDePagamento({ payment: { value: undefined, netValue: undefined } }),
+    );
+
+    expect(r).toEqual({ received: true, activated: false, ledgered: false });
+    expect(linhasDoLedger()).toEqual([]);
+  });
+});

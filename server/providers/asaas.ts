@@ -646,6 +646,13 @@ export type WebhookOutcome = {
    * respondido com 200. Ver `registrarPagamentoSemAssinatura`.
    */
   orphan?: true;
+  /**
+   * Pagamento que caiu numa linha ja `active` (cobranca diferente da que a
+   * ativou) ou ja encerrada: nao ativa nada, mas o dinheiro foi contado no
+   * ledger (`true`) ou nao pode ser, por payload sem valor (`false`). Ver
+   * `registrarPagamentoForaDoFluxo`.
+   */
+  ledgered?: boolean;
 };
 
 /** Eventos que confirmam dinheiro recebido. */
@@ -928,7 +935,9 @@ const LEITURA_REAL: LeituraDeAssinatura = {
   async porCobranca(chargeId) {
     const { data, error } = await supabaseAdmin
       .from("subscriptions")
-      .select("id, user_id, status, plan_id, affiliate_code, coupon_code")
+      .select(
+        "id, user_id, status, plan_id, affiliate_code, coupon_code, provider_subscription_id",
+      )
       .eq("provider_subscription_id", chargeId)
       .maybeSingle();
     if (error) throw error;
@@ -937,7 +946,9 @@ const LEITURA_REAL: LeituraDeAssinatura = {
   async porId(rowId) {
     const { data, error } = await supabaseAdmin
       .from("subscriptions")
-      .select("id, user_id, status, plan_id, affiliate_code, coupon_code")
+      .select(
+        "id, user_id, status, plan_id, affiliate_code, coupon_code, provider_subscription_id",
+      )
       .eq("id", rowId)
       .maybeSingle();
     if (error) throw error;
@@ -961,7 +972,9 @@ export async function findSubscriptionRow(
  * faltavam.
  *
  * Devolve `activated: true` quando esta chamada foi a que ativou, `activated:
- * false` na reentrega, e `orphan: true` quando nao ha row nossa para ativar.
+ * false` na reentrega, `orphan: true` quando nao ha row nossa para ativar, e
+ * `ledgered` quando o pagamento caiu numa linha ja ativa ou ja encerrada
+ * (contado no ledger, nada ativado).
  */
 async function activateOnPayment(args: {
   event: AsaasEvent;
@@ -979,13 +992,40 @@ async function activateOnPayment(args: {
     return { received: true, orphan: true };
   }
 
-  if (row.status === "active") return { received: true, activated: false }; // reprocesso idempotente
+  if (row.status === "active") {
+    // REENTREGA do pagamento que ativou: a cobranca e a mesma. Idempotente.
+    if (chargeId && chargeId === row.provider_subscription_id) {
+      return { received: true, activated: false };
+    }
+    // PAGAMENTO NOVO NUMA LINHA JA ATIVA. Com a renovacao por linha nova
+    // (lote 2b) isto so acontece por fluxo estranho, e ate 2026-09-06 era
+    // engolido em silencio: 200, sem ledger, dinheiro sem rastro. Agora conta
+    // o dinheiro e grita; NAO toca periodo, porque estender a partir daqui
+    // seria conceder acesso por um pagamento que ninguem amarrou a um plano.
+    const ledgered = await registrarPagamentoForaDoFluxo({
+      ...args,
+      row,
+      mensagem: "asaas_pagamento_em_assinatura_ativa",
+      fingerprint: "asaas-pagamento-em-assinatura-ativa",
+      log: `[webhook/asaas] PAGAMENTO EM LINHA ATIVA: charge ${chargeId ?? "?"} numa linha ativada por ${row.provider_subscription_id ?? "?"} (row ${row.id}); entra no ledger, periodo intocado.`,
+    });
+    return { received: true, activated: false, ledgered };
+  }
 
   if (row.status !== "pending") {
-    console.error(
-      `[webhook/asaas] pagamento nao ativou (row ${row.id}, status ${row.status}).`,
-    );
-    throw createError(500, "db_error", "Pagamento não ativou a assinatura.");
+    // LINHA ENCERRADA (`canceled`, `superseded`). Ate 2026-09-06 lancava 500,
+    // e 500 aqui e deterministico: a linha nao volta a `pending` sozinha, o
+    // Asaas reentrega ate desistir e INTERROMPE a fila da conta, como no
+    // incidente de 2026-09-03. A compensacao e a reentrega sao para excecao
+    // inesperada; isto e um fato do payload. Conta o dinheiro, grita, 200.
+    const ledgered = await registrarPagamentoForaDoFluxo({
+      ...args,
+      row,
+      mensagem: "asaas_pagamento_em_assinatura_encerrada",
+      fingerprint: "asaas-pagamento-em-assinatura-encerrada",
+      log: `[webhook/asaas] PAGAMENTO EM LINHA ENCERRADA: charge ${chargeId ?? "?"} (row ${row.id}, status ${row.status}); entra no ledger, nada ativado.`,
+    });
+    return { received: true, activated: false, ledgered };
   }
 
   const { data: plan } = await supabaseAdmin
@@ -1199,12 +1239,65 @@ async function registrarPagamentoSemAssinatura(args: {
   chargeId: string | null;
   receivedAtIso: string;
 }): Promise<void> {
-  const { event, eventType, eventId, chargeId, receivedAtIso } = args;
+  await registrarPagamentoForaDoFluxo({
+    ...args,
+    row: null,
+    mensagem: "asaas_pagamento_sem_assinatura",
+    fingerprint: "asaas-pagamento-sem-assinatura",
+    log: `[webhook/asaas] PAGAMENTO SEM LINHA: charge ${args.chargeId ?? "?"} (event ${args.eventId}); entra no ledger sem dono.`,
+  });
+}
+
+/**
+ * Pagamento confirmado que NAO ativa nada: sem linha, em linha ja ativa, ou
+ * em linha encerrada. O tratamento e um so, e a diferenca entre os tres casos
+ * e quem e o dono (a linha, quando existe) e qual aviso sobe.
+ *
+ * O que sempre acontece: (1) a cobranca entra no ledger, com o `user_id` e o
+ * `plan_code` da linha quando ha linha, sem dono quando nao ha; (2) a linha de
+ * `billing_events` fica, carimbada como processada; (3) o Sentry recebe um
+ * warning nomeado com os ids. Responder 200 e obrigacao do chamador.
+ *
+ * VALOR AUSENTE NO PAYLOAD tambem segue: e condicao deterministica, e
+ * reentregar nao faz o valor aparecer. A linha do ledger nao e montada (o
+ * ledger recusa inventar zero), o aviso carrega `gross_cents: null`, e o
+ * retorno `false` diz ao chamador que o dinheiro NAO foi contado.
+ */
+async function registrarPagamentoForaDoFluxo(args: {
+  event: AsaasEvent;
+  eventType: string;
+  eventId: string;
+  chargeId: string | null;
+  receivedAtIso: string;
+  row: AssinaturaDoAsaas | null;
+  mensagem: string;
+  fingerprint: string;
+  log: string;
+}): Promise<boolean> {
+  const {
+    event,
+    eventType,
+    eventId,
+    chargeId,
+    receivedAtIso,
+    row,
+    mensagem,
+    fingerprint,
+    log,
+  } = args;
   const grossCents = centavosAsaas(event.payment?.value);
 
-  console.warn(
-    `[webhook/asaas] PAGAMENTO SEM LINHA: charge ${chargeId ?? "?"} (event ${eventId}); entra no ledger sem dono.`,
-  );
+  console.warn(log);
+
+  let planCode: string | null = null;
+  if (row?.plan_id) {
+    const { data: plan } = await supabaseAdmin
+      .from("plans")
+      .select("code")
+      .eq("id", row.plan_id)
+      .maybeSingle();
+    planCode = plan?.code ?? null;
+  }
 
   let linha: ReturnType<typeof montarCobrancaAsaas> | null = null;
   try {
@@ -1212,14 +1305,14 @@ async function registrarPagamentoSemAssinatura(args: {
       event,
       eventId,
       receivedAtIso,
-      userId: null,
-      planCode: null,
+      userId: row?.user_id ?? null,
+      planCode,
     });
   } catch (err) {
     // Sem id ou sem valor: a linha nao tem identidade ou nao tem numero. Os
     // dois sao do payload, nao do ambiente; seguem sem ledger e com aviso.
     console.warn(
-      `[webhook/asaas] cobranca sem dono nao montavel (event ${eventId}):`,
+      `[webhook/asaas] cobranca fora do fluxo nao montavel (event ${eventId}):`,
       err instanceof Error ? err.message : String(err),
     );
   }
@@ -1236,16 +1329,20 @@ async function registrarPagamentoSemAssinatura(args: {
     );
   }
 
-  Sentry.captureMessage("asaas_pagamento_sem_assinatura", {
+  Sentry.captureMessage(mensagem, {
     level: "warning",
-    fingerprint: ["asaas-pagamento-sem-assinatura"],
+    fingerprint: [fingerprint],
     tags: { origem: "asaas-webhook", event_type: eventType },
     extra: {
       event_id: eventId,
       asaas_payment_id: chargeId,
       gross_cents: grossCents,
+      subscription_id: row?.id ?? null,
+      subscription_status: row?.status ?? null,
     },
   });
+
+  return linha !== null;
 }
 
 /**

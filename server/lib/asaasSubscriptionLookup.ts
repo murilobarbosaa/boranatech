@@ -29,6 +29,13 @@ export type AssinaturaDoAsaas = {
   plan_id: string | null;
   affiliate_code: string | null;
   coupon_code: string | null;
+  /**
+   * Cobranca amarrada a esta linha. Opcional porque o backfill e os testes
+   * montam a linha sem ele; o webhook o le para distinguir a reentrega do
+   * pagamento que ativou (mesma cobranca) de um pagamento NOVO numa linha
+   * ja ativa (cobranca diferente).
+   */
+  provider_subscription_id?: string | null;
 };
 
 export type LeituraDeAssinatura = {
