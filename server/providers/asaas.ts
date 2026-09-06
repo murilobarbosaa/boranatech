@@ -676,6 +676,13 @@ const REFUND_EVENTS = new Set(["PAYMENT_REFUNDED"]);
  * cliente iria a zero com dinheiro nosso ainda em caixa.
  */
 const PARTIAL_REFUND_EVENTS = new Set(["PAYMENT_PARTIALLY_REFUNDED"]);
+/**
+ * Estorno ACEITO e ainda nao liquidado. So atualiza o `provider_status` da
+ * linha de `admin_refunds` que a rota administrativa gravou; NAO toca o ledger,
+ * porque dinheiro em transito ainda nao saiu, e a linha negativa e do
+ * `PAYMENT_REFUNDED`.
+ */
+const REFUND_PROGRESS_EVENTS = new Set(["PAYMENT_REFUND_IN_PROGRESS"]);
 
 function asText(v: unknown): string | null {
   return typeof v === "string" && v.length > 0 ? v : null;
@@ -815,7 +822,8 @@ export async function processAsaasEvent(
   const handled =
     PAYMENT_EVENTS.has(eventType) ||
     CLOSING_EVENTS.has(eventType) ||
-    REFUND_EVENTS.has(eventType);
+    REFUND_EVENTS.has(eventType) ||
+    REFUND_PROGRESS_EVENTS.has(eventType);
   if (!handled) {
     if (PARTIAL_REFUND_EVENTS.has(eventType)) {
       // ESTORNO PARCIAL NAO E TRATADO, e o silencio seria pior que o alarme: o
@@ -859,6 +867,11 @@ export async function processAsaasEvent(
         rowId,
         receivedAtIso,
       });
+      await marcarStatusDoEstorno(chargeId, "REFUNDED");
+      return { received: true, activated: false };
+    }
+    if (REFUND_PROGRESS_EVENTS.has(eventType)) {
+      await marcarStatusDoEstorno(chargeId, "REFUND_IN_PROGRESS");
       return { received: true, activated: false };
     }
     await closePendingCharge({ eventType, eventId, chargeId, rowId, event });
@@ -1290,6 +1303,37 @@ async function registrarEstornoNoLedger(args: {
 }
 
 /**
+ * Atualiza o `provider_status` da linha de `admin_refunds` deste estorno, se
+ * ela existir.
+ *
+ * A LINHA E OPCIONAL: estorno feito direto no painel do Asaas nunca passou pela
+ * rota administrativa e nao tem linha; o update filtra por
+ * `(provider, provider_refund_id)` e simplesmente nao casa nada. O
+ * `provider_refund_id` de um estorno do Asaas E o id do pagamento (ver o insert
+ * em server/routes/admin.ts, `reembolsarNoAsaas`).
+ *
+ * NAO LANCA: o efeito principal (ledger, no `PAYMENT_REFUNDED`) ja aconteceu, e
+ * um rotulo desatualizado na tela nao justifica apagar o dedupe e reprocessar.
+ */
+async function marcarStatusDoEstorno(
+  chargeId: string | null,
+  status: "REFUND_IN_PROGRESS" | "REFUNDED",
+): Promise<void> {
+  if (!chargeId) return;
+  const { error } = await supabaseAdmin
+    .from("admin_refunds")
+    .update({ provider_status: status })
+    .eq("provider", PROVIDER)
+    .eq("provider_refund_id", chargeId);
+  if (error) {
+    console.error(
+      `[webhook/asaas] falha ao marcar provider_status=${status} de ${chargeId}:`,
+      error,
+    );
+  }
+}
+
+/**
  * Cobranca vencida ou removida: encerra a row pendente.
  *
  * Condicional em `pending` (idempotente) e SEM efeitos de transicao: a pessoa
@@ -1401,12 +1445,7 @@ export async function fetchChargeAmountCents(
   chargeId: string,
 ): Promise<number | null> {
   try {
-    const charge = await asaasFetch<AsaasCharge>(
-      `/payments/${encodeURIComponent(chargeId)}`,
-    );
-    return typeof charge?.value === "number"
-      ? Math.round(charge.value * 100)
-      : null;
+    return (await lerPagamento(chargeId)).valueCents;
   } catch (err) {
     console.error(
       `[asaas] falha ao ler o valor da cobranca ${chargeId}; o card cai no preco do plano:`,
@@ -1415,6 +1454,111 @@ export async function fetchChargeAmountCents(
     return null;
   }
 }
+
+/** Um item de `refunds[]` do objeto de pagamento do Asaas, ja normalizado. */
+export type EstornoDoAsaas = {
+  /** `PENDING` | `AWAITING_CRITICAL_ACTION_AUTHORIZATION` | `DONE` | `CANCELLED`. */
+  status: string;
+  valueCents: number | null;
+  /** `YYYY-MM-DD HH:MM:SS` em Brasilia, como o Asaas manda. Ordena por texto. */
+  dateCreated: string | null;
+};
+
+export type PagamentoDoAsaas = {
+  status: string | null;
+  valueCents: number | null;
+  refunds: EstornoDoAsaas[];
+};
+
+/** Recorte do objeto de pagamento do Asaas que este modulo le. */
+type AsaasPaymentBody = {
+  status?: unknown;
+  value?: unknown;
+  refunds?: unknown;
+};
+
+/**
+ * Normaliza um objeto de pagamento do Asaas (resposta de GET /payments/{id} e
+ * tambem do POST /refund, que devolve o mesmo objeto).
+ *
+ * `refunds` vem `null` na cobranca sem estorno (medido em 2026-09-06) e array
+ * nas demais; as duas viram lista, para o chamador nao ter dois casos.
+ */
+function pagamentoDoAsaas(corpo: AsaasPaymentBody | null): PagamentoDoAsaas {
+  const lista = Array.isArray(corpo?.refunds) ? corpo.refunds : [];
+  const refunds: EstornoDoAsaas[] = [];
+  for (const item of lista) {
+    if (!item || typeof item !== "object") continue;
+    const r = item as {
+      status?: unknown;
+      value?: unknown;
+      dateCreated?: unknown;
+    };
+    if (typeof r.status !== "string") continue;
+    refunds.push({
+      status: r.status,
+      valueCents: centavosAsaas(r.value),
+      dateCreated: typeof r.dateCreated === "string" ? r.dateCreated : null,
+    });
+  }
+  return {
+    status: typeof corpo?.status === "string" ? corpo.status : null,
+    valueCents: centavosAsaas(corpo?.value),
+    refunds,
+  };
+}
+
+/**
+ * Le uma cobranca do Asaas: status, valor e a lista de estornos.
+ *
+ * Existe porque o estorno do Asaas pode ficar parado ANTES de mudar o status da
+ * cobranca (autorizacao critica, ver `estornarPagamento`), e a unica forma de
+ * saber que ele existe e olhar `refunds[]`. PROPAGA o erro do cliente: quem
+ * chama decide se falha fechada (a rota de estorno) ou degrada
+ * (`fetchChargeAmountCents`).
+ */
+export async function lerPagamento(
+  paymentId: string,
+): Promise<PagamentoDoAsaas> {
+  const corpo = await asaasFetch<AsaasPaymentBody>(
+    `/payments/${encodeURIComponent(paymentId)}`,
+  );
+  return pagamentoDoAsaas(corpo);
+}
+
+/**
+ * O estorno MAIS RECENTE de `refunds[]`, por `dateCreated`.
+ *
+ * O mais recente e o que descreve o estado atual: um `CANCELLED` de ontem
+ * seguido de um `PENDING` de hoje e um estorno em curso, e o inverso e um
+ * estorno cancelado. A ordem do array nao e garantida pela documentacao, e por
+ * isso nao se le `refunds[0]`.
+ */
+export function estornoMaisRecente(
+  refunds: EstornoDoAsaas[],
+): EstornoDoAsaas | null {
+  let melhor: EstornoDoAsaas | null = null;
+  for (const r of refunds) {
+    if (!melhor || (r.dateCreated ?? "") >= (melhor.dateCreated ?? "")) {
+      melhor = r;
+    }
+  }
+  return melhor;
+}
+
+/**
+ * Status de item de `refunds[]` que significam "o pedido foi aceito".
+ *
+ * `AWAITING_CRITICAL_ACTION_AUTHORIZATION` e o caso medido em 2026-09-03: a
+ * conta exige aprovacao (app ou painel) para estornar, o Asaas cria o estorno
+ * e o deixa aguardando, e o status da COBRANCA continua `RECEIVED`. Ler so o
+ * status da cobranca dizia "recusou" sobre um estorno que existia.
+ */
+const STATUS_DE_REFUND_ACEITO = new Set([
+  "PENDING",
+  "AWAITING_CRITICAL_ACTION_AUTHORIZATION",
+  "DONE",
+]);
 
 /**
  * Status que o Asaas devolve depois de aceitar um pedido de estorno.
@@ -1436,7 +1580,10 @@ const STATUS_DE_ESTORNO_ACEITO = new Set([
 ]);
 
 export type EstornoAsaas = {
-  /** Status da cobranca na resposta do estorno. Um dos aceitos acima. */
+  /**
+   * Status do ESTORNO quando `refunds[]` veio na resposta (o mais recente),
+   * senao o status da cobranca. Em qualquer caso, um dos aceitos.
+   */
   status: string;
   /** Corpo inteiro, para auditoria e diagnostico. */
   raw: unknown;
@@ -1465,18 +1612,32 @@ export async function estornarPagamento(
   paymentId: string,
   args: { descricao: string },
 ): Promise<EstornoAsaas> {
-  const resposta = await asaasFetch<{ status?: unknown }>(
+  const resposta = await asaasFetch<AsaasPaymentBody>(
     `/payments/${encodeURIComponent(paymentId)}/refund`,
     { method: "POST", body: { description: args.descricao } },
   );
 
-  const status = typeof resposta?.status === "string" ? resposta.status : null;
-  if (!status || !STATUS_DE_ESTORNO_ACEITO.has(status)) {
+  const pagamento = pagamentoDoAsaas(resposta);
+  const refund = estornoMaisRecente(pagamento.refunds);
+  // O ITEM DE `refunds[]` DECIDE QUANDO EXISTE: e ele que sabe de um estorno
+  // parado em autorizacao enquanto a cobranca ainda diz `RECEIVED`. Sem item,
+  // vale o status da cobranca, como antes.
+  const status = refund?.status ?? pagamento.status;
+  const aceito = refund
+    ? STATUS_DE_REFUND_ACEITO.has(refund.status)
+    : Boolean(status && STATUS_DE_ESTORNO_ACEITO.has(status));
+  if (!status || !aceito) {
     throw createError(
       502,
       "asaas_refund_rejected",
       "O Asaas nao confirmou o estorno. Nada foi devolvido.",
-      { context: { asaas_status: status ?? "ausente", payment_id: paymentId } },
+      {
+        context: {
+          asaas_status: pagamento.status ?? "ausente",
+          asaas_refund_status: refund?.status ?? "ausente",
+          payment_id: paymentId,
+        },
+      },
     );
   }
 

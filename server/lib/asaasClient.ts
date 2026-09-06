@@ -17,6 +17,12 @@ export type AsaasErro = {
   status: number;
   /** Codigo do primeiro erro do corpo, quando o Asaas manda um. */
   code: string | null;
+  /**
+   * `description` do primeiro erro, quando o Asaas manda uma. E o texto que
+   * diz POR QUE ("Saldo insuficiente para realizar o estorno."); o `code`
+   * sozinho nao dizia, e o 502 chegava ao admin sem motivo.
+   */
+  description: string | null;
   message: string;
 };
 
@@ -27,17 +33,17 @@ function mensagemDeErro(corpo: unknown, status: number): AsaasErro {
     const errors = (corpo as { errors?: unknown }).errors;
     if (Array.isArray(errors) && errors.length > 0) {
       const primeiro = errors[0] as { code?: unknown; description?: unknown };
+      const description =
+        typeof primeiro.description === "string" ? primeiro.description : null;
       return {
         status,
         code: typeof primeiro.code === "string" ? primeiro.code : null,
-        message:
-          typeof primeiro.description === "string"
-            ? primeiro.description
-            : `HTTP ${status}`,
+        description,
+        message: description ?? `HTTP ${status}`,
       };
     }
   }
-  return { status, code: null, message: `HTTP ${status}` };
+  return { status, code: null, description: null, message: `HTTP ${status}` };
 }
 
 /**
@@ -99,7 +105,14 @@ export async function asaasFetch<T>(
       502,
       "asaas_error",
       "O provedor de pagamento recusou a operação.",
-      { cause: erro, context: { asaas_status: erro.status, asaas_code: erro.code } },
+      {
+        cause: erro,
+        context: {
+          asaas_status: erro.status,
+          asaas_code: erro.code,
+          asaas_description: erro.description,
+        },
+      },
     );
   }
 

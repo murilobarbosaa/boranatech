@@ -208,6 +208,13 @@ export type TransactionItem = {
    * deploy o bundle novo recebe a resposta antiga sem o campo.
    */
   estorno_pendente_cents?: number;
+  /**
+   * Status do estorno pendente no provedor. Quando e
+   * `AWAITING_CRITICAL_ACTION_AUTHORIZATION`, o estorno nao esta esperando o
+   * Asaas: esta esperando ALGUEM aprovar no app ou no painel dele. OPCIONAL
+   * pela janela de deploy, como o campo acima.
+   */
+  estorno_status?: string | null;
 };
 
 export type TransactionsPayload = {

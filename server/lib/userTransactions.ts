@@ -38,6 +38,12 @@ export type DeclaredRefund = {
   provider?: string | null;
   /** Id da cobranca no provedor. Para Asaas e o unico vinculo que existe. */
   provider_transaction_id?: string | null;
+  /**
+   * Ultimo status que o provedor deu ao estorno (`REFUND_REQUESTED`,
+   * `AWAITING_CRITICAL_ACTION_AUTHORIZATION`, `REFUNDED`...). So o Asaas
+   * escreve; a tela usa para dizer ONDE o estorno esta parado.
+   */
+  provider_status?: string | null;
 };
 
 /**
@@ -114,13 +120,19 @@ export function providerDaLinha(row: { provider?: string | null }): string {
  */
 function solicitadoPorCobrancaAsaas(
   declaradas: DeclaredRefund[],
-): Map<string, number> {
-  const mapa = new Map<string, number>();
+): Map<string, { cents: number; status: string | null }> {
+  const mapa = new Map<string, { cents: number; status: string | null }>();
   for (const d of declaradas) {
     if (providerDaLinha(d) !== "asaas") continue;
     const chave = d.provider_transaction_id;
     if (!chave) continue;
-    mapa.set(chave, (mapa.get(chave) ?? 0) + Math.abs(d.amount_cents ?? 0));
+    const atual = mapa.get(chave) ?? { cents: 0, status: null };
+    mapa.set(chave, {
+      cents: atual.cents + Math.abs(d.amount_cents ?? 0),
+      // O estorno integral e um por cobranca (indice unico em admin_refunds),
+      // entao "o ultimo status" e o desta unica linha.
+      status: d.provider_status ?? atual.status,
+    });
   }
   return mapa;
 }
@@ -171,6 +183,12 @@ export type TransactionItem = FinanceRow & {
    * reembolsar" sobre um estorno que ninguem confirmou ainda.
    */
   estorno_pendente_cents: number;
+  /**
+   * `provider_status` da declaracao pendente, quando `estorno_pendente_cents`
+   * e maior que zero; `null` fora disso. A tela distingue "aguardando o Asaas
+   * liquidar" de "aguardando ALGUEM autorizar no Asaas", que pede acao.
+   */
+  estorno_status: string | null;
 };
 
 export type TransactionList = {
@@ -373,11 +391,16 @@ export function buildTransactionList(
     // `estorno_pendente_cents` viraria zero cedo demais e a tela diria
     // "confirmado" antes da hora.
     const ehAsaasCharge = ehCharge && providerDaLinha(row) === "asaas";
-    const asaas = { refundable: 0, pendente: 0 };
+    const asaas = {
+      refundable: 0,
+      pendente: 0,
+      status: null as string | null,
+    };
     if (ehAsaasCharge) {
       const id = row.provider_transaction_id ?? "";
       const devolvido = id ? (asaasDevolvido.porPagamento.get(id) ?? 0) : 0;
-      const solicitado = id ? (asaasSolicitado.get(id) ?? 0) : 0;
+      const pedido = id ? asaasSolicitado.get(id) : undefined;
+      const solicitado = pedido?.cents ?? 0;
       const jaSaiu = Math.max(devolvido, solicitado);
       // Estorno que existe e nao foi possivel ligar a cobranca nenhuma FECHA o
       // teto de todas as cobrancas Asaas deste usuario. Fail-closed: recusar um
@@ -387,6 +410,7 @@ export function buildTransactionList(
         ? 0
         : Math.max(0, (row.gross_cents ?? 0) - jaSaiu);
       asaas.pendente = Math.max(0, solicitado - devolvido);
+      asaas.status = asaas.pendente > 0 ? (pedido?.status ?? null) : null;
     }
     const agregado =
       reembolsavelPelaStripe && row.stripe_charge_id
@@ -411,6 +435,7 @@ export function buildTransactionList(
           ? asaas.refundable
           : 0,
       estorno_pendente_cents: ehAsaasCharge ? asaas.pendente : 0,
+      estorno_status: ehAsaasCharge ? asaas.status : null,
     };
   });
 
@@ -428,4 +453,3 @@ export function buildTransactionList(
     total_paid_cents: totalPagoCents(rows, declaradas),
   };
 }
-

@@ -191,7 +191,11 @@ function Linha({
                   esta a caminho de volta e verdade sobre o saldo e mentira sobre
                   o estado, e foi por isso que este ramo passou a existir. */}
               {estornoPendente > 0
-                ? "Estorno solicitado. Aguardando confirmação do Asaas."
+                ? item.estorno_status ===
+                  "AWAITING_CRITICAL_ACTION_AUTHORIZATION"
+                  ? // TODO(Ana)
+                    "Estorno aguardando autorização no Asaas (app ou painel)."
+                  : "Estorno solicitado. Aguardando confirmação do Asaas."
                 : item.refund_state === "full"
                   ? "Reembolsada"
                   : "Sem saldo a reembolsar"}

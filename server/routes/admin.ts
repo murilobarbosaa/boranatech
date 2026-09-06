@@ -47,6 +47,7 @@ import { getStripe } from "../lib/stripeClient";
 import { syncBalanceTransactions } from "../lib/stripeSync";
 import {
   estornarPagamento,
+  lerPagamento,
   type EstornoAsaas,
 } from "../providers/asaas";
 import { erroEncadeavel } from "../lib/supabaseError";
@@ -146,7 +147,7 @@ import {
   type RefundRow,
 } from "../lib/userAuditHistory";
 import { requireAdmin, requireAuth } from "../middleware/auth";
-import { createError } from "../middleware/error";
+import { createError, type AppError } from "../middleware/error";
 import { resolvePlanPriceCents } from "../lib/planPrice";
 import bugsAdminRouter from "./adminBugs";
 import contactListsRouter from "./adminContactLists";
@@ -4052,7 +4053,7 @@ async function lerDeclaracoesDeDevolucao(
   const { data, error } = await supabaseAdmin
     .from("admin_refunds")
     .select(
-      "stripe_charge_id, amount_cents, settlement, provider, provider_transaction_id",
+      "stripe_charge_id, amount_cents, settlement, provider, provider_transaction_id, provider_status",
     )
     .eq("user_id", uid);
   if (error) return { ok: false, message: error.message };
@@ -4414,6 +4415,41 @@ async function reembolsarNoAsaas(input: {
     );
   }
 
+  // ESTORNO JA PENDENTE NO PROVEDOR, e esta base nao sabe dele.
+  //
+  // O caso medido em 2026-09-03: a conta exige autorizacao critica, o Asaas
+  // criou o estorno e o deixou aguardando, e a rota leu a resposta como recusa
+  // (ver `estornarPagamento`). `admin_refunds` ficou sem linha, entao o guard
+  // `jaPedido` acima nao enxerga nada e o proximo clique pediria um SEGUNDO
+  // estorno da mesma cobranca. A verdade sobre isso mora no Asaas, e e la que
+  // se pergunta, antes de qualquer escrita. Falha na leitura propaga como
+  // esta (502 nomeado): fail-closed, porque estornar sem saber e o lado caro.
+  //
+  // `CANCELLED` nao bloqueia: um estorno cancelado la e historia, nao pedido.
+  let pagamentoNoAsaas: Awaited<ReturnType<typeof lerPagamento>>;
+  try {
+    pagamentoNoAsaas = await lerPagamento(paymentId);
+  } catch (asaasErr) {
+    console.error(
+      `[admin/refund] nao consegui ler ${paymentId} no Asaas antes de estornar:`,
+      asaasErr,
+    );
+    return next(asaasErr);
+  }
+  const pendenteNoProvedor = pagamentoNoAsaas.refunds.some(
+    (r) => r.status !== "CANCELLED",
+  );
+  if (pendenteNoProvedor) {
+    return next(
+      createError(
+        409,
+        "refund_already_pending_at_provider",
+        // TODO(Ana)
+        "Já existe um estorno desta cobrança no Asaas aguardando autorização. Aprove ou cancele lá antes de pedir outro.",
+      ),
+    );
+  }
+
   // AUDITORIA DA INTENCAO, fail-closed, ANTES do provedor.
   const { error: auditError } = await supabaseAdmin
     .from("content_audit_logs")
@@ -4458,6 +4494,21 @@ async function reembolsarNoAsaas(input: {
     // O erro do provider JA vem nomeado (`asaas_refund_rejected`,
     // `asaas_error`, `asaas_unreachable`) e com status 502. Reembrulhar
     // apagaria a distincao entre "recusou" e "nao consegui falar".
+    //
+    // A UNICA coisa acrescentada e o MOTIVO, quando o Asaas mandou um: o 4xx
+    // dele traz `description` ("Saldo insuficiente para realizar o estorno."),
+    // e o admin vendo so "recusou a operacao" nao tem como agir. Codigo e
+    // status ficam os mesmos.
+    const erro = asaasErr as AppError;
+    const descricao = erro?.context?.asaas_description;
+    if (erro?.code === "asaas_error" && typeof descricao === "string") {
+      return next(
+        createError(502, "asaas_error", `O Asaas recusou: ${descricao}`, {
+          cause: erro,
+          context: erro.context,
+        }),
+      );
+    }
     return next(asaasErr);
   }
 

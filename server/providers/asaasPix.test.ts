@@ -24,7 +24,12 @@ const estado = vi.hoisted(() => ({
   asaasErro: null as Error | null,
 
   /** Escritas em tabela, na ordem. */
-  escritas: [] as Array<{ tabela: string; operacao: string; carga: unknown }>,
+  escritas: [] as Array<{
+    tabela: string;
+    operacao: string;
+    carga: unknown;
+    filtros?: unknown[];
+  }>,
   /** Chamadas de rpc, na ordem. */
   rpcCalls: [] as Array<{ nome: string; args: Record<string, unknown> }>,
   capturas: [] as Array<{ mensagem: string; opcoes: Record<string, unknown> }>,
@@ -150,7 +155,26 @@ vi.mock("../lib/supabaseAdmin", () => {
     };
     for (const op of ["update", "insert", "upsert", "delete"]) {
       q[op] = (carga: unknown, opcoes?: unknown) => {
-        estado.escritas.push({ tabela, operacao: op, carga });
+        const escrita = {
+          tabela,
+          operacao: op,
+          carga,
+          filtros: [] as unknown[],
+        };
+        estado.escritas.push(escrita);
+        if (tabela === "admin_refunds" && op === "update") {
+          // Encadeavel proprio: guarda os `eq` desta escrita para o teste
+          // conferir QUAL linha o update mira.
+          const encadeavel: Record<string, unknown> = {
+            eq: (coluna: string, valor: unknown) => {
+              escrita.filtros.push([coluna, valor]);
+              return encadeavel;
+            },
+            then: (r: (v: unknown) => unknown) =>
+              Promise.resolve({ data: null, error: null }).then(r),
+          };
+          return encadeavel;
+        }
         if (tabela === "billing_events" && op === "upsert") {
           const id = (carga as { id: string }).id;
           const novo = !estado.eventosVistos.has(id);
@@ -205,6 +229,7 @@ import { fetchPixQrCode, maskCpf } from "./asaas";
 import {
   eventKey,
   estornarPagamento,
+  lerPagamento,
   paidAmountCentsFromAsaas,
   processAsaasEvent,
   asaasProvider,
@@ -1768,6 +1793,110 @@ describe("estornarPagamento", () => {
     ).rejects.toMatchObject({ code: "asaas_refund_rejected" });
   });
 
+  // A RESPOSTA REAL DE 2026-09-03: o Asaas criou o estorno e o deixou
+  // "aguardando autorizacao critica" (aprovacao no app ou no painel). O status
+  // da COBRANCA continuou `RECEIVED`, e o codigo de entao leu isso como recusa:
+  // "O Asaas nao confirmou o estorno. Nada foi devolvido." sobre um estorno que
+  // existia no provedor. `admin_refunds` ficou sem linha, e o proximo clique
+  // pediria um segundo estorno.
+  it("RECEIVED com refund AWAITING_CRITICAL_ACTION_AUTHORIZATION e SUCESSO, com o status do refund", async () => {
+    estado.asaasResposta = {
+      "/payments/pay_x/refund": {
+        id: "pay_x",
+        status: "RECEIVED",
+        value: 12.9,
+        refunds: [
+          {
+            dateCreated: "2026-09-03 03:28:20",
+            status: "AWAITING_CRITICAL_ACTION_AUTHORIZATION",
+            value: 12.9,
+            description: "Teste",
+          },
+        ],
+      },
+    };
+
+    const r = await estornarPagamento("pay_x", { descricao: "Teste" });
+
+    expect(r.status).toBe("AWAITING_CRITICAL_ACTION_AUTHORIZATION");
+  });
+
+  it.each([["PENDING"], ["DONE"]])(
+    "RECEIVED com refund %s tambem e sucesso",
+    async (status) => {
+      estado.asaasResposta = {
+        "/payments/pay_x/refund": {
+          status: "RECEIVED",
+          refunds: [
+            { dateCreated: "2026-09-03 03:28:20", status, value: 12.9 },
+          ],
+        },
+      };
+      const r = await estornarPagamento("pay_x", { descricao: "x" });
+      expect(r.status).toBe(status);
+    },
+  );
+
+  it("RECEIVED com refunds VAZIO continua recusa", async () => {
+    estado.asaasResposta = {
+      "/payments/pay_x/refund": { status: "RECEIVED", refunds: [] },
+    };
+    await expect(
+      estornarPagamento("pay_x", { descricao: "x" }),
+    ).rejects.toMatchObject({ code: "asaas_refund_rejected" });
+  });
+
+  it("o refund que decide e o MAIS RECENTE por dateCreated, nao o primeiro do array", async () => {
+    estado.asaasResposta = {
+      "/payments/pay_x/refund": {
+        status: "RECEIVED",
+        refunds: [
+          {
+            dateCreated: "2026-09-03 03:28:20",
+            status: "PENDING",
+            value: 12.9,
+          },
+          {
+            dateCreated: "2026-09-01 10:00:00",
+            status: "CANCELLED",
+            value: 12.9,
+          },
+        ],
+      },
+    };
+    const r = await estornarPagamento("pay_x", { descricao: "x" });
+    expect(r.status).toBe("PENDING");
+  });
+
+  it("refund mais recente CANCELLED, com a cobranca ainda RECEIVED, e recusa", async () => {
+    estado.asaasResposta = {
+      "/payments/pay_x/refund": {
+        status: "RECEIVED",
+        refunds: [
+          {
+            dateCreated: "2026-09-01 10:00:00",
+            status: "PENDING",
+            value: 12.9,
+          },
+          {
+            dateCreated: "2026-09-03 03:28:20",
+            status: "CANCELLED",
+            value: 12.9,
+          },
+        ],
+      },
+    };
+    await expect(
+      estornarPagamento("pay_x", { descricao: "x" }),
+    ).rejects.toMatchObject({ code: "asaas_refund_rejected" });
+  });
+
+  it("status da cobranca aceito SEM refunds continua sucesso, com o status da cobranca", async () => {
+    respondeCom("REFUND_IN_PROGRESS");
+    const r = await estornarPagamento("pay_x", { descricao: "x" });
+    expect(r.status).toBe("REFUND_IN_PROGRESS");
+  });
+
   it("erro de TRANSPORTE mantem o codigo do cliente, nao vira asaas_refund_rejected", async () => {
     // A distincao importa na investigacao: "o Asaas recusou o estorno" e "nao
     // consegui falar com o Asaas" pedem acoes diferentes.
@@ -1776,5 +1905,141 @@ describe("estornarPagamento", () => {
     await expect(
       estornarPagamento("pay_x", { descricao: "x" }),
     ).rejects.toThrow("timeout");
+  });
+});
+
+describe("lerPagamento", () => {
+  beforeEach(() => {
+    limpar();
+  });
+
+  it("le status, valor e refunds de GET /payments/{id}, com valores em centavos", async () => {
+    estado.asaasResposta = {
+      "/payments/pay_qlfe88ojqywpde05": {
+        id: "pay_qlfe88ojqywpde05",
+        status: "RECEIVED",
+        value: 12.9,
+        refunds: [
+          {
+            dateCreated: "2026-09-03 03:28:20",
+            status: "AWAITING_CRITICAL_ACTION_AUTHORIZATION",
+            value: 12.9,
+            description: "Teste",
+          },
+        ],
+      },
+    };
+
+    const p = await lerPagamento("pay_qlfe88ojqywpde05");
+
+    expect(estado.asaas[0]).toMatchObject({
+      caminho: "/payments/pay_qlfe88ojqywpde05",
+      method: "GET",
+    });
+    expect(p).toEqual({
+      status: "RECEIVED",
+      valueCents: 1290,
+      refunds: [
+        {
+          status: "AWAITING_CRITICAL_ACTION_AUTHORIZATION",
+          valueCents: 1290,
+          dateCreated: "2026-09-03 03:28:20",
+        },
+      ],
+    });
+  });
+
+  it("refunds nulo (a resposta real de uma cobranca sem estorno) vira lista vazia", async () => {
+    estado.asaasResposta = {
+      "/payments/pay_x": {
+        id: "pay_x",
+        status: "RECEIVED",
+        value: 30,
+        refunds: null,
+      },
+    };
+    const p = await lerPagamento("pay_x");
+    expect(p).toEqual({ status: "RECEIVED", valueCents: 3000, refunds: [] });
+  });
+
+  it("o id vai ESCAPADO na URL", async () => {
+    estado.asaasResposta = { "/payments/": { status: "RECEIVED" } };
+    await lerPagamento("pay/../outro");
+    expect(estado.asaas[0].caminho).toBe("/payments/pay%2F..%2Foutro");
+  });
+
+  it("erro do cliente propaga como esta", async () => {
+    estado.asaasErro = new Error("timeout");
+    await expect(lerPagamento("pay_x")).rejects.toThrow("timeout");
+  });
+});
+
+describe("webhook: estorno em andamento e confirmado atualizam admin_refunds", () => {
+  beforeEach(() => {
+    limpar();
+    estado.linhaSubscription = {
+      id: "row-1",
+      user_id: USER,
+      status: "active",
+      plan_id: "plan-anual",
+      affiliate_code: null,
+      coupon_code: null,
+    };
+  });
+
+  const updatesDeRefunds = () =>
+    estado.escritas.filter(
+      (e) => e.tabela === "admin_refunds" && e.operacao === "update",
+    );
+  const linhasDoLedger = () =>
+    estado.escritas.filter((e) => e.tabela === "finance_transactions");
+
+  it("PAYMENT_REFUND_IN_PROGRESS: registra, marca provider_status, e NAO grava ledger", async () => {
+    const r = await processAsaasEvent(
+      eventoDePagamento({ event: "PAYMENT_REFUND_IN_PROGRESS" }),
+    );
+
+    expect(r).toMatchObject({ received: true, activated: false });
+    expect(r).not.toHaveProperty("unhandled");
+    expect(estado.escritas.some((e) => e.tabela === "billing_events")).toBe(
+      true,
+    );
+    expect(updatesDeRefunds()).toHaveLength(1);
+    expect(updatesDeRefunds()[0].carga).toEqual({
+      provider_status: "REFUND_IN_PROGRESS",
+    });
+    expect(linhasDoLedger()).toEqual([]);
+    expect(estado.rpcCalls).toEqual([]);
+  });
+
+  it("PAYMENT_REFUNDED: alem do ledger, marca provider_status REFUNDED", async () => {
+    await processAsaasEvent(eventoDePagamento({ event: "PAYMENT_REFUNDED" }));
+
+    expect(linhasDoLedger()).toHaveLength(1);
+    expect(updatesDeRefunds()).toHaveLength(1);
+    expect(updatesDeRefunds()[0].carga).toEqual({
+      provider_status: "REFUNDED",
+    });
+  });
+
+  it("o update mira a linha do Asaas pela cobranca, e nada mais", async () => {
+    // O `update` do duble devolve o proprio encadeavel; os filtros sao
+    // observados por um espiao no `eq`.
+    await processAsaasEvent(
+      eventoDePagamento({ event: "PAYMENT_REFUND_IN_PROGRESS" }),
+    );
+    const update = updatesDeRefunds()[0] as { filtros?: unknown[] };
+    expect(update.filtros).toEqual([
+      ["provider", "asaas"],
+      ["provider_refund_id", COBRANCA],
+    ]);
+  });
+
+  it("PAYMENT_REFUND_IN_PROGRESS sem row de assinatura tambem responde 200", async () => {
+    estado.linhaSubscription = null;
+    const r = await processAsaasEvent(
+      eventoDePagamento({ event: "PAYMENT_REFUND_IN_PROGRESS" }),
+    );
+    expect(r).toMatchObject({ received: true, activated: false });
   });
 });

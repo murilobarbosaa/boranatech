@@ -102,6 +102,33 @@ describe("linha do extrato: cobranca do Asaas", () => {
     expect(screen.queryByTestId("sem-reembolso")).toBeNull();
   });
 
+  it("(2b) estorno aguardando autorizacao critica diz ONDE autorizar", () => {
+    montar({
+      ...PIX_BASE,
+      refundable_cents: 0,
+      estorno_pendente_cents: 1290,
+      estorno_status: "AWAITING_CRITICAL_ACTION_AUTHORIZATION",
+    });
+
+    expect(screen.getByTestId("estorno-pendente").textContent).toBe(
+      "Estorno aguardando autorização no Asaas (app ou painel).",
+    );
+    expect(screen.queryByRole("button", { name: "Reembolsar" })).toBeNull();
+  });
+
+  it("(2c) outro status pendente mantem a frase generica", () => {
+    montar({
+      ...PIX_BASE,
+      refundable_cents: 0,
+      estorno_pendente_cents: 1290,
+      estorno_status: "REFUND_IN_PROGRESS",
+    });
+
+    expect(screen.getByTestId("estorno-pendente").textContent).toBe(
+      "Estorno solicitado. Aguardando confirmação do Asaas.",
+    );
+  });
+
   it("(3) com os dois zerados, diz Sem saldo a reembolsar", () => {
     montar({
       ...PIX_BASE,

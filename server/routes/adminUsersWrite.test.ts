@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createError } from "../middleware/error";
 
-
 /**
  * FIACAO das rotas de ESCRITA de usuário do admin.
  *
@@ -30,6 +29,7 @@ const estado = vi.hoisted(() => ({
   stripeSubscriptionCancel: null as unknown as ReturnType<typeof vi.fn>,
   syncBalance: null as unknown as ReturnType<typeof vi.fn>,
   asaasRefund: null as unknown as ReturnType<typeof vi.fn>,
+  asaasLeitura: null as unknown as ReturnType<typeof vi.fn>,
 }));
 
 vi.mock("../lib/queue", () => ({
@@ -91,6 +91,7 @@ vi.mock("../lib/stripeSync", () => ({
 // HTTP e o `env`, e o `.env` local nao tem `ASAAS_API_URL`.
 vi.mock("../providers/asaas", () => ({
   estornarPagamento: (...a: unknown[]) => estado.asaasRefund(...a),
+  lerPagamento: (...a: unknown[]) => estado.asaasLeitura(...a),
 }));
 
 vi.mock("../lib/proStatusCache", () => ({
@@ -190,6 +191,11 @@ beforeEach(() => {
   estado.asaasRefund = vi.fn(async () => ({
     status: "REFUNDED",
     raw: { id: "pay_abc", status: "REFUNDED" },
+  }));
+  estado.asaasLeitura = vi.fn(async () => ({
+    status: "RECEIVED",
+    valueCents: 1290,
+    refunds: [],
   }));
 });
 
@@ -1240,6 +1246,135 @@ describe("POST /users/:id/refunds", () => {
     expect(
       estado.double.de("admin_refunds").filter((c) => c.op === "insert"),
     ).toEqual([]);
+  });
+
+  it("estorno JA PENDENTE no provedor: 409 nomeado, e NAO pede outro", async () => {
+    // O CASO REAL: em 2026-09-03 o Asaas deixou um estorno "aguardando
+    // autorizacao critica" e a rota, sem saber, teria mandado um segundo.
+    montar({
+      finance_transactions: { rows: [pix()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [] },
+      subscriptions: { rows: [] },
+    });
+    estado.asaasLeitura = vi.fn(async () => ({
+      status: "RECEIVED",
+      valueCents: 1290,
+      refunds: [
+        {
+          status: "AWAITING_CRITICAL_ACTION_AUTHORIZATION",
+          valueCents: 1290,
+          dateCreated: "2026-09-03 03:28:20",
+        },
+      ],
+    }));
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "pay_abc",
+      amount_cents: 1290,
+      reason: "x",
+    });
+
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe("refund_already_pending_at_provider");
+    expect(r.body.error.message).toBe(
+      "Já existe um estorno desta cobrança no Asaas aguardando autorização. Aprove ou cancele lá antes de pedir outro.",
+    );
+    expect(estado.asaasLeitura).toHaveBeenCalledWith("pay_abc");
+    expect(estado.asaasRefund).not.toHaveBeenCalled();
+    expect(
+      estado.double.de("admin_refunds").filter((c) => c.op === "insert"),
+    ).toEqual([]);
+  });
+
+  it("refund CANCELLED no provedor NAO bloqueia: o estorno segue", async () => {
+    montar({
+      finance_transactions: { rows: [pix()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [] },
+      subscriptions: { rows: [] },
+    });
+    estado.asaasLeitura = vi.fn(async () => ({
+      status: "RECEIVED",
+      valueCents: 1290,
+      refunds: [
+        {
+          status: "CANCELLED",
+          valueCents: 1290,
+          dateCreated: "2026-09-01 10:00:00",
+        },
+      ],
+    }));
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "pay_abc",
+      amount_cents: 1290,
+      reason: "x",
+    });
+
+    expect(r.status).toBe(200);
+    expect(estado.asaasRefund).toHaveBeenCalledTimes(1);
+  });
+
+  it("4xx do Asaas com description: a mensagem ao admin diz o motivo", async () => {
+    montar({
+      finance_transactions: { rows: [pix()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [] },
+    });
+    estado.asaasRefund = vi.fn(async () => {
+      throw createError(
+        502,
+        "asaas_error",
+        "O provedor de pagamento recusou a operação.",
+        {
+          context: {
+            asaas_status: 400,
+            asaas_code: "invalid_action",
+            asaas_description: "Saldo insuficiente para realizar o estorno.",
+          },
+        },
+      );
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "pay_abc",
+      amount_cents: 1290,
+      reason: "x",
+    });
+
+    expect(r.status).toBe(502);
+    expect(r.body.error.code).toBe("asaas_error");
+    expect(r.body.error.message).toBe(
+      "O Asaas recusou: Saldo insuficiente para realizar o estorno.",
+    );
+  });
+
+  it("4xx do Asaas SEM description: a mensagem generica fica", async () => {
+    montar({
+      finance_transactions: { rows: [pix()] },
+      content_audit_logs: { rows: [{}] },
+      admin_refunds: { rows: [] },
+    });
+    estado.asaasRefund = vi.fn(async () => {
+      throw createError(
+        502,
+        "asaas_error",
+        "O provedor de pagamento recusou a operação.",
+        { context: { asaas_status: 400, asaas_code: null } },
+      );
+    });
+
+    const r = await chamarAdmin("POST", `/users/${UID}/refunds`, {
+      charge_id: "pay_abc",
+      amount_cents: 1290,
+      reason: "x",
+    });
+
+    expect(r.status).toBe(502);
+    expect(r.body.error.message).toBe(
+      "O provedor de pagamento recusou a operação.",
+    );
   });
 
   it.each([["REFUND_REQUESTED"], ["REFUND_IN_PROGRESS"]])(

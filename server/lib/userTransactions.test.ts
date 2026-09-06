@@ -581,6 +581,58 @@ describe("ledger multi-provedor: Pix no extrato", () => {
     expect(lista.items[0].estorno_pendente_cents).toBe(0);
   });
 
+  it("estorno_status e o provider_status da declaracao Asaas pendente", () => {
+    const cobranca = { ...cobrancaPix, provider_transaction_id: "pay_abc" };
+    const lista = buildTransactionList(
+      [cobranca],
+      [
+        declarada({
+          stripe_charge_id: null,
+          provider: "asaas",
+          provider_transaction_id: "pay_abc",
+          amount_cents: 1290,
+          settlement: "asaas_api",
+          provider_status: "AWAITING_CRITICAL_ACTION_AUTHORIZATION",
+        }),
+      ],
+    );
+
+    expect(lista.items[0].estorno_pendente_cents).toBe(1290);
+    expect(lista.items[0].estorno_status).toBe(
+      "AWAITING_CRITICAL_ACTION_AUTHORIZATION",
+    );
+  });
+
+  it("estorno_status e null sem declaracao pendente", () => {
+    const lista = buildTransactionList([cobrancaPix], []);
+    expect(lista.items[0].estorno_status).toBeNull();
+  });
+
+  it("estorno_status e null depois que o webhook confirmou (nada mais pendente)", () => {
+    const cobranca = { ...cobrancaPix, provider_transaction_id: "pay_abc" };
+    const estorno = {
+      ...estornoPix,
+      provider_transaction_id: "evt_1",
+      raw_payload: { id: "pay_abc" },
+    };
+    const lista = buildTransactionList(
+      [cobranca, estorno],
+      [
+        declarada({
+          stripe_charge_id: null,
+          provider: "asaas",
+          provider_transaction_id: "pay_abc",
+          amount_cents: 1290,
+          settlement: "asaas_api",
+          provider_status: "REFUNDED",
+        }),
+      ],
+    );
+    const daCobranca = lista.items.find((i) => i.id === cobranca.id)!;
+    expect(daCobranca.estorno_pendente_cents).toBe(0);
+    expect(daCobranca.estorno_status).toBeNull();
+  });
+
   it("CONTROLE NEGATIVO: cobranca da Stripe nao ganha estorno pendente", () => {
     const cobrancaStripe = {
       ...cobrancaPix,
