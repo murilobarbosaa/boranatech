@@ -136,6 +136,21 @@ async function assertHostAllowed(hostnameRaw: string): Promise<void> {
   }
 }
 
+/**
+ * Guard anti-SSRF reutilizavel: https obrigatorio, host resolvido por DNS
+ * ANTES da requisicao, faixas privadas e loopback bloqueadas.
+ *
+ * Exportado no lote 04 para a verificacao de entrega usar o MESMO guard, em
+ * vez de reimplementar. A implementacao nao mudou: e a composicao das duas
+ * funcoes que `fetchExternalPage` ja chamava, na mesma ordem. Quem chama
+ * continua responsavel por revalidar a cada redirect.
+ */
+export async function assertPublicHttpsTarget(rawUrl: string): Promise<URL> {
+  const url = parseHttpsUrl(rawUrl);
+  await assertHostAllowed(url.hostname);
+  return url;
+}
+
 function parseHttpsUrl(rawUrl: string): URL {
   let parsed: URL;
   try {
@@ -293,7 +308,9 @@ export async function fetchExternalPageText(rawUrl: string): Promise<string> {
     );
   }
 
-  const contentType = (response.headers.get("content-type") || "").toLowerCase();
+  const contentType = (
+    response.headers.get("content-type") || ""
+  ).toLowerCase();
   const isPlainText = contentType.includes("text/plain");
   if (!contentType.includes("text/html") && !isPlainText) {
     await response.body?.cancel().catch(() => undefined);
