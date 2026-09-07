@@ -18,6 +18,7 @@ export default function ProjetoConcluidoModal({
   aberto,
   onOpenChange,
   nome,
+  entregue = false,
   totalEtapas,
   post,
   url,
@@ -27,6 +28,8 @@ export default function ProjetoConcluidoModal({
   aberto: boolean;
   onOpenChange: (aberto: boolean) => void;
   nome: string;
+  /** Veio do formulario de entrega, e nao do botao de autodeclaracao. */
+  entregue?: boolean;
   totalEtapas: number | null;
   post: string;
   url: string;
@@ -50,9 +53,11 @@ export default function ProjetoConcluidoModal({
             Projeto concluído!
           </DialogTitle>
           <DialogDescription>
-            {totalEtapas === null
-              ? `Você fechou ${nome}.`
-              : `Você fechou ${nome} em ${totalEtapas} etapas.`}
+            {entregue
+              ? `Você entregou ${nome}.`
+              : totalEtapas === null
+                ? `Você fechou ${nome}.`
+                : `Você fechou ${nome} em ${totalEtapas} etapas.`}
           </DialogDescription>
         </DialogHeader>
 

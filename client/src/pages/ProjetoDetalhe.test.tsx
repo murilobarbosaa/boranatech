@@ -56,6 +56,12 @@ const { PRO, GRATIS, ALIASADO, seo, v2 } = vi.hoisted(() => ({
 }));
 
 const rota = vi.hoisted(() => ({ id: "landing-page-pessoal" }));
+const sessao = vi.hoisted(() => ({ user: null as { id: string } | null }));
+const entrega = vi.hoisted(() => ({
+  get: vi.fn(async () => null),
+  upsert: vi.fn(async () => ({})),
+  verify: vi.fn(async () => ({})),
+}));
 const progresso = vi.hoisted(() => ({
   stages: new Map<string, Record<string, string>>(),
   done: new Set<string>(),
@@ -133,6 +139,17 @@ vi.mock("@/components/SEO", () => ({
 }));
 vi.mock("@/components/FavoriteButton", () => ({ default: () => null }));
 vi.mock("@/lib/proConfetti", () => ({ fireProCelebration: () => () => {} }));
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: sessao.user, leaving: false, loading: false }),
+}));
+vi.mock("@/services/projectSubmissionService", () => ({
+  getSubmission: entrega.get,
+  upsertSubmission: entrega.upsert,
+  verifySubmission: entrega.verify,
+  ProjectSubmissionError: class extends Error {
+    code = "generic";
+  },
+}));
 vi.mock("@/components/projects/ProjectValidationBlock", () => ({
   default: () => null,
 }));
@@ -150,6 +167,11 @@ beforeEach(() => {
   USUARIO_PRO.valor = false;
   rota.id = "landing-page-pessoal";
   v2.ids = new Set(["landing-page-pessoal", "projeto-pro"]);
+  sessao.user = null;
+  entrega.get.mockReset();
+  entrega.get.mockResolvedValue(null);
+  entrega.upsert.mockReset();
+  entrega.verify.mockReset();
   seo.props.length = 0;
   progresso.stages = new Map();
   progresso.done = new Set();
@@ -269,7 +291,10 @@ describe("corpo v2", () => {
       ],
     ]);
     await renderizarV2();
-    expect(screen.getAllByRole("checkbox")).toHaveLength(5);
+    // Só as caixas da linha do tempo: o formulário de entrega tem a sua.
+    expect(screen.getAllByRole("checkbox", { name: /^Etapa / })).toHaveLength(
+      5,
+    );
     expect(
       screen
         .getByRole("checkbox", { name: "Etapa planejar" })

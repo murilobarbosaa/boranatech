@@ -22,9 +22,13 @@ import { describe, expect, it } from "vitest";
  */
 
 // Total conferido contra `select count(*) from pg_tables where schemaname='public'`
-// em 2026-07-30 (85 desde a migration 20260730160000, que criou admin_refunds). Alterar este número é ato deliberado, no mesmo commit da
-// migration que cria ou dropa a tabela.
-const EXPECTED_TABLE_COUNT = 85;
+// em 2026-07-30 (85 desde a migration 20260730160000, que criou admin_refunds).
+// 86 desde 20260906120000_create_project_submissions.sql: aqui o número é o de
+// tabelas EM shared/database.types.ts, medido rodando o próprio teste, e não o
+// mesmo conjunto que o EXPECTED_TABLE_COUNT do checkMigrationsApplied (85), que
+// conta o que as migrations DECLARAM. Alterar este número é ato deliberado, no
+// mesmo commit da migration que cria ou dropa a tabela.
+const EXPECTED_TABLE_COUNT = 86;
 
 function parseColumnsFromTypes(): Map<string, Set<string>> {
   const file = resolve(process.cwd(), "shared/database.types.ts");

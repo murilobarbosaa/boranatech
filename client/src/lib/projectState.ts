@@ -3,12 +3,10 @@ import type { ProjetoTipoEntrega } from "@shared/projects/v2/types";
 
 // Estado de um projeto para a pessoa que esta olhando.
 //
-// Os cinco valores da spec ja estao no tipo, mas `entregue` e `verificado`
-// ainda NAO sao produzidos por deriveProjectState: eles dependem da entrega
-// com link e da verificacao automatica, que sao o lote 04. Deixar o tipo
-// completo desde agora evita que a UI seja escrita assumindo quatro estados e
-// precise ser reaberta; deixar de produzi-los evita inventar um estado que
-// nada sustenta.
+// Desde o lote 04 os cinco valores sao produzidos: `entregue` e `verificado`
+// vem da entrega (project_submissions), `concluido` da autodeclaracao
+// (user_progress) e `verificado` tambem pode vir da validacao por IA
+// (project_validations), que e o `validado` do input.
 export type ProjectState =
   | "nao_iniciado"
   | "em_andamento"
@@ -20,6 +18,8 @@ export type ProjectStateInput = {
   done: boolean;
   etapas: Record<string, string>;
   validado: boolean;
+  /** Status da entrega, quando existe. */
+  entrega?: "entregue" | "verificado" | null;
 };
 
 // Ordem deliberada: validado ganha de concluido, e concluido ganha de etapa
@@ -29,8 +29,10 @@ export function deriveProjectState({
   done,
   etapas,
   validado,
+  entrega,
 }: ProjectStateInput): ProjectState {
-  if (validado) return "verificado";
+  if (validado || entrega === "verificado") return "verificado";
+  if (entrega === "entregue") return "entregue";
   if (done) return "concluido";
   if (Object.keys(etapas).length > 0) return "em_andamento";
   return "nao_iniciado";
@@ -48,6 +50,7 @@ export type FiltroEstadoCtx = {
   done: (id: string) => boolean;
   etapas: (id: string) => Record<string, string>;
   validado: (id: string) => boolean;
+  entrega?: (id: string) => "entregue" | "verificado" | null;
 };
 
 // Funcao pura para ser testavel sem montar a pagina.
@@ -63,11 +66,16 @@ export function filtrarPorEstado<T extends Pick<ProjetoCatalogo, "id" | "pro">>(
       done: ctx.done(p.id),
       etapas: ctx.etapas(p.id),
       validado: ctx.validado(p.id),
+      entrega: ctx.entrega?.(p.id) ?? null,
     });
-    // "Concluidos" inclui o verificado: quem teve o projeto aprovado tambem o
-    // concluiu, e some-lo do filtro seria esconder o caso melhor.
+    // "Concluidos" inclui entregue e verificado: quem entregou tambem
+    // terminou, e some-los do filtro seria esconder os casos melhores.
     if (filtro === "concluidos")
-      return estado === "concluido" || estado === "verificado";
+      return (
+        estado === "concluido" ||
+        estado === "entregue" ||
+        estado === "verificado"
+      );
     return estado === "em_andamento";
   });
 }

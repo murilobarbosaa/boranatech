@@ -22,14 +22,8 @@
 //                                          SUPABASE_SERVICE_ROLE_KEY do ambiente)
 // Saida: exit 1 e lista das tabelas ausentes; exit 0 quando tudo existe.
 import { readdirSync, readFileSync } from "node:fs";
-import {
-  classificarRls,
-  type LeituraContagem,
-} from "./lib/rlsVeredito";
-import {
-  DRIFT_PERMITIDO,
-  nomesPermitidos,
-} from "./lib/schemaDriftAllowlist";
+import { classificarRls, type LeituraContagem } from "./lib/rlsVeredito";
+import { DRIFT_PERMITIDO, nomesPermitidos } from "./lib/schemaDriftAllowlist";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -60,7 +54,21 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
  */
 const EXIT_AMBIENTE_AUSENTE = 78;
 
-if (!supabaseUrl || !serviceRoleKey) {
+/**
+ * `--declared`: imprime os TOTAIS do conjunto declarado (tabelas, RLS,
+ * funcoes) lendo so `supabase/migrations/*.sql`, sem tocar no banco, e sai 0.
+ *
+ * Existe para MEDIR os EXPECTED_* no commit da migration, em vez de somar 1 de
+ * cabeca. Somar e o erro que este arquivo inteiro existe para evitar: o numero
+ * que entra e o medido.
+ *
+ * Nao verifica nada contra o banco, e por isso nao substitui o modo normal. A
+ * saida diz isso em voz alta, pelo mesmo motivo do exit=78: resultado que
+ * parece verificacao e nao e ja custou caro nesta base.
+ */
+const MODO_DECLARADO = process.argv.includes("--declared");
+
+if (!MODO_DECLARADO && (!supabaseUrl || !serviceRoleKey)) {
   console.error(
     "[checkMigrationsApplied] ABORTADO SEM VERIFICAR NADA: faltam " +
       "VITE_SUPABASE_URL e/ou SUPABASE_SERVICE_ROLE_KEY no ambiente.",
@@ -106,7 +114,8 @@ const DROP_TABLE_RE =
   /drop\s+table\s+(?:if\s+exists\s+)?(?:public|"public")\.\s*"?([a-z0-9_]+)"?/gi;
 // Deteccao ampla, so para conferir COBERTURA do parser: pega qualquer
 // "create ... table" e compara com o que o regex especifico conseguiu ler.
-const ANY_CREATE_TABLE_RE = /create\s+(?:\w+\s+)*?table\s+(?:if\s+not\s+exists\s+)?[^\s(;]+/gi;
+const ANY_CREATE_TABLE_RE =
+  /create\s+(?:\w+\s+)*?table\s+(?:if\s+not\s+exists\s+)?[^\s(;]+/gi;
 
 /**
  * FUNCOES, POLICIES E INDICES.
@@ -130,7 +139,8 @@ const ANY_CREATE_TABLE_RE = /create\s+(?:\w+\s+)*?table\s+(?:if\s+not\s+exists\s
  */
 const CREATE_FUNCTION_RE =
   /create\s+(?:or\s+replace\s+)?function\s+(?:public|"public")\.\s*"?([a-z0-9_]+)"?/gi;
-const ANY_CREATE_FUNCTION_RE = /create\s+(?:or\s+replace\s+)?function\s+[^\s(;]+/gi;
+const ANY_CREATE_FUNCTION_RE =
+  /create\s+(?:or\s+replace\s+)?function\s+[^\s(;]+/gi;
 const DROP_FUNCTION_RE =
   /drop\s+function\s+(?:if\s+exists\s+)?(?:public|"public")\.\s*"?([a-z0-9_]+)"?/gi;
 
@@ -223,7 +233,28 @@ const naoReconhecidasOutras: string[] = [];
 // `external_events`. Depois do merge o conjunto declarado e a UNIAO das duas,
 // entao 83 deixou de valer para os dois lados. O valor abaixo NAO foi somado:
 // foi medido no estado mesclado (ver o relatorio do Lote C2-REV2).
-const EXPECTED_TABLE_COUNT = 84;
+// 85 desde 20260906120000_create_project_submissions.sql. Numero MEDIDO com
+// `pnpm check:migrations --declared`, nao somado.
+const EXPECTED_TABLE_COUNT = 85;
+
+// ---------------------------------------------------------------------------
+// RLS: verificada de fato, lendo com a chave anon.
+// ---------------------------------------------------------------------------
+// 82 pela mesma causa do EXPECTED_TABLE_COUNT: admin_refunds declara
+// `alter table ... enable row level security` e entrou sem o numero subir.
+// 83 desde 20260811171556_create_external_events.sql: external_events declara
+// `alter table ... enable row level security`, entao entra no conjunto.
+// Sobe junto com EXPECTED_TABLE_COUNT sempre que a tabela nova declara
+// `alter table ... enable row level security`, que e o caso de todas as tabelas
+// novas deste projeto. 83 desde 20260804120000_create_fiscal_invoices.sql.
+// Era 82 pela mesma causa: admin_refunds declarou RLS e entrou sem o numero
+// subir.
+// MERGE de 2026-08-24: mesma colisao. `fiscal_invoices` (pilha) e
+// `external_events` (main) declaram RLS cada uma, e as duas entram no conjunto
+// depois do merge. Valor abaixo medido, nao somado.
+// 85 desde 20260906120000_create_project_submissions.sql, medido com
+// `--declared` no mesmo commit da migration.
+const EXPECTED_RLS_COUNT = 85;
 
 // Mesma assercao de tamanho das tabelas, pelo mesmo motivo: pegar o caso em que
 // o parser (ou a classificacao de trigger) encolhe em silencio. Mudar estes
@@ -398,7 +429,9 @@ const naoReconhecidas: string[] = [];
 for (const file of readdirSync(migrationsDir)
   .filter((f) => f.endsWith(".sql"))
   .sort()) {
-  const sql = stripSqlComments(readFileSync(path.join(migrationsDir, file), "utf8"));
+  const sql = stripSqlComments(
+    readFileSync(path.join(migrationsDir, file), "utf8"),
+  );
   // ORDEM DE ORIGEM, nao ordem de categoria. A primeira versao aplicava todos
   // os CREATE do arquivo e so depois todos os DROP, entao um arquivo que faz
   // `drop function x; create function x;` (padrao para mudar assinatura)
@@ -438,25 +471,42 @@ for (const file of readdirSync(migrationsDir)
   // FUNCOES, POLICIES, INDICES: mesma leitura, mesmo guard de cobertura.
   const fnLidas = [...sql.matchAll(CREATE_FUNCTION_RE)];
   const nomesFuncao = new Set<string>();
-  aplicarEmOrdem(nomesFuncao, CREATE_FUNCTION_RE, DROP_FUNCTION_RE, (nome, pos) => {
-    funcoesDeclaradas.set(nome, ehTrigger(sql, pos));
-  });
+  aplicarEmOrdem(
+    nomesFuncao,
+    CREATE_FUNCTION_RE,
+    DROP_FUNCTION_RE,
+    (nome, pos) => {
+      funcoesDeclaradas.set(nome, ehTrigger(sql, pos));
+    },
+  );
   for (const nome of Array.from(funcoesDeclaradas.keys())) {
-    if (nomesFuncao.size > 0 && !nomesFuncao.has(nome) && fnLidas.some((m) => m[1].toLowerCase() === nome)) {
+    if (
+      nomesFuncao.size > 0 &&
+      !nomesFuncao.has(nome) &&
+      fnLidas.some((m) => m[1].toLowerCase() === nome)
+    ) {
       funcoesDeclaradas.delete(nome);
     }
   }
   const rlsLidas = [...sql.matchAll(ENABLE_RLS_RE)];
   aplicarEmOrdem(rlsDeclarada, ENABLE_RLS_RE, DISABLE_RLS_RE);
-  conferirCoberturaSimples(rlsLidas.length, sql, ANY_ENABLE_RLS_RE, "enable row level security", file);
+  conferirCoberturaSimples(
+    rlsLidas.length,
+    sql,
+    ANY_ENABLE_RLS_RE,
+    "enable row level security",
+    file,
+  );
   for (const m of sql.matchAll(POLICY_SELECT_RE)) {
     const tabela = m[2].toLowerCase();
     const corpo = m[3].toLowerCase();
     const ehSelect =
-      /for\s+select/.test(corpo) || !/for\s+(insert|update|delete|all)/.test(corpo);
+      /for\s+select/.test(corpo) ||
+      !/for\s+(insert|update|delete|all)/.test(corpo);
     const semClausulaTo = !/\bto\s+[a-z_]/.test(corpo);
     const paraAnon = /\bto\s+[^;]*\b(anon|public)\b/.test(corpo);
-    if (ehSelect && (semClausulaTo || paraAnon)) tabelasComSelectPublico.add(tabela);
+    if (ehSelect && (semClausulaTo || paraAnon))
+      tabelasComSelectPublico.add(tabela);
   }
 
   const polLidas = [...sql.matchAll(CREATE_POLICY_RE)];
@@ -482,11 +532,17 @@ for (const file of readdirSync(migrationsDir)
   // Guard de cobertura por arquivo: todo "create table" precisa ter sido lido.
   const todas = [...sql.matchAll(ANY_CREATE_TABLE_RE)];
   if (todas.length > reconhecidas.length) {
-    const lidas = new Set(reconhecidas.map((m) => m[0].replace(/\s+/g, " ").toLowerCase()));
+    const lidas = new Set(
+      reconhecidas.map((m) => m[0].replace(/\s+/g, " ").toLowerCase()),
+    );
     for (const m of todas) {
       const trecho = m[0].replace(/\s+/g, " ").toLowerCase();
-      if (![...lidas].some((l) => l.startsWith(trecho) || trecho.startsWith(l))) {
-        naoReconhecidas.push(`${file}: ${m[0].replace(/\s+/g, " ").slice(0, 80)}`);
+      if (
+        ![...lidas].some((l) => l.startsWith(trecho) || trecho.startsWith(l))
+      ) {
+        naoReconhecidas.push(
+          `${file}: ${m[0].replace(/\s+/g, " ").slice(0, 80)}`,
+        );
       }
     }
   }
@@ -516,8 +572,34 @@ if (naoReconhecidas.length > 0) {
 
 const tables = [...declared].sort();
 if (tables.length === 0) {
-  console.error("[checkMigrationsApplied] nenhuma tabela encontrada nas migrations.");
+  console.error(
+    "[checkMigrationsApplied] nenhuma tabela encontrada nas migrations.",
+  );
   process.exit(1);
+}
+
+if (MODO_DECLARADO) {
+  const rlsNoConjunto = [...rlsDeclarada].filter((t) => declared.has(t));
+  console.log("[checkMigrationsApplied] MODO --declared: nada foi conferido");
+  console.log("  contra o banco. Estes sao os totais LIDOS das migrations.");
+  console.log(
+    `  tabelas declaradas: ${tables.length} (EXPECTED_TABLE_COUNT = ${EXPECTED_TABLE_COUNT}) ${tables.length === EXPECTED_TABLE_COUNT ? "bate" : "NAO BATE"}`,
+  );
+  console.log(
+    `  tabelas com RLS:    ${rlsNoConjunto.length} (EXPECTED_RLS_COUNT = ${EXPECTED_RLS_COUNT}) ${rlsNoConjunto.length === EXPECTED_RLS_COUNT ? "bate" : "NAO BATE"}`,
+  );
+  console.log(
+    `  funcoes declaradas: ${funcoesDeclaradas.size} (EXPECTED_FUNCTION_COUNT = ${EXPECTED_FUNCTION_COUNT}) ${funcoesDeclaradas.size === EXPECTED_FUNCTION_COUNT ? "bate" : "NAO BATE"}`,
+  );
+  // Uma tabela por argumento `--tabela=<nome>`: responde pertinencia sem
+  // despejar as 85 na tela.
+  for (const arg of process.argv.filter((a) => a.startsWith("--tabela="))) {
+    const nome = arg.slice("--tabela=".length).toLowerCase();
+    console.log(
+      `  tabela "${nome}": ${declared.has(nome) ? "DECLARADA" : "ausente do conjunto"}`,
+    );
+  }
+  process.exit(0);
 }
 
 if (tables.length !== EXPECTED_TABLE_COUNT) {
@@ -620,7 +702,9 @@ async function rpcsExpostas(): Promise<Set<string> | null> {
     const paths = Object.keys(spec.paths ?? {});
     recursosExpostos = new Set(
       paths
-        .filter((p) => p.startsWith("/") && !p.startsWith("/rpc/") && p.length > 1)
+        .filter(
+          (p) => p.startsWith("/") && !p.startsWith("/rpc/") && p.length > 1,
+        )
         .map((p) => p.slice(1).toLowerCase()),
     );
     const nomes = paths
@@ -755,7 +839,10 @@ async function chamarRpc(
     }
     return { ok: true, valor: await response.json() };
   } catch (err) {
-    return { ok: false, erro: err instanceof Error ? err.message : String(err) };
+    return {
+      ok: false,
+      erro: err instanceof Error ? err.message : String(err),
+    };
   }
 }
 
@@ -861,7 +948,11 @@ const COLUNAS_ESPERADAS: Record<string, string[]> = {
 async function colunaExiste(
   tabela: string,
   coluna: string,
-): Promise<{ tipo: "existe" } | { tipo: "ausente" } | { tipo: "indeterminado"; detalhe: string }> {
+): Promise<
+  | { tipo: "existe" }
+  | { tipo: "ausente" }
+  | { tipo: "indeterminado"; detalhe: string }
+> {
   try {
     const response = await fetch(
       `${supabaseUrl}/rest/v1/${tabela}?select=${encodeURIComponent(coluna)}&limit=0`,
@@ -882,7 +973,8 @@ async function colunaExiste(
     if (corpo?.code === "42703") return { tipo: "ausente" };
     return {
       tipo: "indeterminado",
-      detalhe: `HTTP ${response.status} ${corpo?.code ?? ""} ${corpo?.message ?? ""}`.trim(),
+      detalhe:
+        `HTTP ${response.status} ${corpo?.code ?? ""} ${corpo?.message ?? ""}`.trim(),
     };
   } catch (err) {
     return {
@@ -1065,22 +1157,6 @@ if (expostas !== null) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// RLS: verificada de fato, lendo com a chave anon.
-// ---------------------------------------------------------------------------
-// 82 pela mesma causa do EXPECTED_TABLE_COUNT: admin_refunds declara
-// `alter table ... enable row level security` e entrou sem o numero subir.
-// 83 desde 20260811171556_create_external_events.sql: external_events declara
-// `alter table ... enable row level security`, entao entra no conjunto.
-// Sobe junto com EXPECTED_TABLE_COUNT sempre que a tabela nova declara
-// `alter table ... enable row level security`, que e o caso de todas as tabelas
-// novas deste projeto. 83 desde 20260804120000_create_fiscal_invoices.sql.
-// Era 82 pela mesma causa: admin_refunds declarou RLS e entrou sem o numero
-// subir.
-// MERGE de 2026-08-24: mesma colisao. `fiscal_invoices` (pilha) e
-// `external_events` (main) declaram RLS cada uma, e as duas entram no conjunto
-// depois do merge. Valor abaixo medido, nao somado.
-const EXPECTED_RLS_COUNT = 84;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 const rlsVivas = [...rlsDeclarada].filter((t) => declared.has(t)).sort();
@@ -1129,7 +1205,10 @@ async function contarLinhas(
     } | null;
     // 42501 e o insufficient_privilege do Postgres, que e o que o REVOKE produz.
     if (corpo?.code === "42501") return { tipo: "sem-privilegio" };
-    return { tipo: "erro", detalhe: `HTTP ${response.status} ${corpo?.code ?? ""}` };
+    return {
+      tipo: "erro",
+      detalhe: `HTTP ${response.status} ${corpo?.code ?? ""}`,
+    };
   } catch (err) {
     return {
       tipo: "erro",

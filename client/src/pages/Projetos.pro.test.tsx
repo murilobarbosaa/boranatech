@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 
 /**
  * Lote 03 D: o projeto Pro passa a APARECER na lista para quem nao assina,
@@ -16,6 +22,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
  */
 
 const assinatura = vi.hoisted(() => ({ isPro: false, loading: false }));
+const sessao = vi.hoisted(() => ({ user: null as { id: string } | null }));
+const entregas = vi.hoisted(() => ({ listar: vi.fn(async () => []) }));
 const rota = vi.hoisted(() => ({ id: undefined as string | undefined }));
 const v2 = vi.hoisted(() => ({ loadProjetoV2: vi.fn() }));
 
@@ -66,6 +74,12 @@ vi.mock("@shared/projects/v2", () => ({
 vi.mock("@/contexts/SubscriptionContext", () => ({
   useSubscription: () => assinatura,
 }));
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: sessao.user, loading: false }),
+}));
+vi.mock("@/services/projectSubmissionService", () => ({
+  listSubmissions: entregas.listar,
+}));
 
 vi.mock("@/hooks/useProjectCompletion", () => ({
   useProjectCompletion: () => ({
@@ -106,6 +120,8 @@ afterEach(cleanup);
 beforeEach(() => {
   assinatura.isPro = false;
   assinatura.loading = false;
+  sessao.user = null;
+  entregas.listar.mockClear();
   rota.id = undefined;
   v2.loadProjetoV2.mockReset();
   v2.loadProjetoV2.mockResolvedValue(null);
@@ -182,5 +198,27 @@ describe("Projetos, projeto Pro para quem assina", () => {
     expect(
       screen.getByText("Objetivo do desafio pago").className,
     ).not.toContain("blur-sm");
+  });
+});
+
+describe("Projetos, entregas no catalogo", () => {
+  it("anonimo nao pede a lista de entregas", () => {
+    render(<Projetos />);
+    expect(entregas.listar).not.toHaveBeenCalled();
+  });
+
+  it("logado pede a lista UMA vez", () => {
+    sessao.user = { id: "u1" };
+    render(<Projetos />);
+    expect(entregas.listar).toHaveBeenCalledTimes(1);
+  });
+
+  it("entrega verificada aparece no chip do card", async () => {
+    sessao.user = { id: "u1" };
+    entregas.listar.mockResolvedValue([
+      { projectId: "projeto-gratis", status: "verificado" },
+    ] as never);
+    render(<Projetos />);
+    await waitFor(() => expect(screen.getByText("Verificado")).toBeTruthy());
   });
 });

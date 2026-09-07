@@ -2971,6 +2971,60 @@ export type Database = {
         };
         Relationships: [];
       };
+      project_submissions: {
+        Row: {
+          artifact_url: string | null;
+          auto_check: Json | null;
+          auto_check_at: string | null;
+          created_at: string;
+          deploy_url: string | null;
+          id: string;
+          is_public: boolean;
+          project_id: string;
+          public_code: string;
+          repo_url: string | null;
+          retro: Json;
+          status: string;
+          tipo_entrega: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          artifact_url?: string | null;
+          auto_check?: Json | null;
+          auto_check_at?: string | null;
+          created_at?: string;
+          deploy_url?: string | null;
+          id?: string;
+          is_public?: boolean;
+          project_id: string;
+          public_code: string;
+          repo_url?: string | null;
+          retro?: Json;
+          status?: string;
+          tipo_entrega: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          artifact_url?: string | null;
+          auto_check?: Json | null;
+          auto_check_at?: string | null;
+          created_at?: string;
+          deploy_url?: string | null;
+          id?: string;
+          is_public?: boolean;
+          project_id?: string;
+          public_code?: string;
+          repo_url?: string | null;
+          retro?: Json;
+          status?: string;
+          tipo_entrega?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       project_validations: {
         Row: {
           analysis_id: string;
