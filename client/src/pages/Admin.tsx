@@ -390,6 +390,7 @@ type OverviewData = {
        */
       saindo?: { count: number; mrrCents: number };
       emAtraso?: { count: number; mrrCents: number };
+      vencendo?: { count: number; mrrCents: number };
       percentOfMrr: number | null;
     };
     custoIa: {

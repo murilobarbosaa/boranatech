@@ -188,6 +188,82 @@ beforeEach(() => {
   supaSpy.erroInfluencers = null;
 });
 
+describe("assinaturas manuais vencendo", () => {
+  const DIA = 24 * 3600_000;
+  const em5dias = new Date(AGORA.getTime() + 5 * DIA).toISOString();
+
+  function manual(over: Record<string, unknown> = {}) {
+    return sub({
+      id: "m-1",
+      user_id: "u-manual",
+      renewal_type: "manual",
+      payment_method: "pix",
+      provider_subscription_id: "pay_1",
+      current_period_start: new Date(AGORA.getTime() - 25 * DIA).toISOString(),
+      current_period_end: em5dias,
+      ...over,
+    });
+  }
+
+  it("manual vencendo em 7 dias sem pendente vira UM item agregado, com a lista", async () => {
+    supaSpy.subscriptions = [manual()];
+    supaSpy.perfis = [{ user_id: "u-manual", email: "pessoa@exemplo.com" }];
+
+    const p = await montar();
+
+    const item = p.itens.find((i) => i.tipo === "assinaturas_vencendo");
+    expect(item).toBeDefined();
+    expect(item).toMatchObject({
+      severidade: "atencao",
+      agregado: { quantidade: 1, janelaDias: 7 },
+      destinoInterno: "/admin?section=usuarios",
+      mrrMensalCents: 2990,
+    });
+    expect(item!.detalhe).toContain("pessoa@exemplo.com");
+    expect(item!.detalhe).toContain("Mensal");
+    expect(item!.detalhe).toContain("Pix");
+    // O passado (past_due, saida agendada) nao e confundido com isto.
+    expect(p.itens.filter((i) => i.tipo === "assinatura_past_due")).toEqual([]);
+  });
+
+  it("com Pix pendente criado neste periodo: renovacao iniciada, sem item", async () => {
+    supaSpy.subscriptions = [
+      manual(),
+      sub({
+        id: "pend",
+        user_id: "u-manual",
+        status: "pending",
+        renewal_type: "manual",
+        payment_method: "pix",
+        created_at: new Date(AGORA.getTime() - DIA).toISOString(),
+        current_period_end: null,
+      }),
+    ];
+
+    const p = await montar();
+
+    expect(p.itens.filter((i) => i.tipo === "assinaturas_vencendo")).toEqual(
+      [],
+    );
+  });
+
+  it("cartao vencendo no mesmo dia nao gera item", async () => {
+    supaSpy.subscriptions = [manual({ renewal_type: "auto" })];
+    const p = await montar();
+    expect(p.itens.filter((i) => i.tipo === "assinaturas_vencendo")).toEqual(
+      [],
+    );
+  });
+
+  it("duas manuais vencendo: um item so, quantidade 2, soma do mensal", async () => {
+    supaSpy.subscriptions = [manual(), manual({ id: "m-2", user_id: "u-2" })];
+    const p = await montar();
+    const item = p.itens.find((i) => i.tipo === "assinaturas_vencendo")!;
+    expect(item.agregado).toEqual({ quantidade: 2, janelaDias: 7 });
+    expect(item.mrrMensalCents).toBe(5980);
+  });
+});
+
 describe("assinaturas", () => {
   it("past_due vira item crítico com valor e link para a Stripe", async () => {
     supaSpy.subscriptions = [sub({ status: "past_due" })];

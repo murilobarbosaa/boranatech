@@ -208,12 +208,51 @@ const SUBSCRIPTION_STATUS_BADGES: Record<
   },
 };
 
+/**
+ * Contexto da assinatura MANUAL, opcional: a lista antiga (janela de deploy)
+ * nao manda `renewal_type` nem `current_period_end`, e sem eles o selo e o de
+ * sempre. Com eles, uma `active` manual passa a dizer QUANDO vence, porque
+ * "Ativa" sobre uma assinatura que so continua se alguem clicar e verdade
+ * sobre o status e silencio sobre o risco.
+ */
+export type SubscriptionBadgeContext = {
+  renewalType?: string | null;
+  currentPeriodEnd?: string | null;
+  nowMs?: number;
+};
+
+const SELO_MANUAL_VENCENDO = "border-amber-500 bg-amber-50 text-amber-700";
+const SELO_MANUAL_VENCIDA = "border-slate-400 bg-slate-100 text-slate-600";
+
+function seloManual(
+  status: string,
+  ctx: SubscriptionBadgeContext | undefined,
+): { label: string; className: string } | null {
+  if (status !== "active" || ctx?.renewalType !== "manual") return null;
+  if (!ctx.currentPeriodEnd) return null;
+  const fimMs = new Date(ctx.currentPeriodEnd).getTime();
+  if (!Number.isFinite(fimMs)) return null;
+  const nowMs = ctx.nowMs ?? Date.now();
+  if (fimMs <= nowMs) {
+    // O cron de expiracao ainda nao passou (ate 6h): o status diz `active`, o
+    // periodo diz que acabou. O periodo e quem manda.
+    return { label: "Vencida", className: SELO_MANUAL_VENCIDA };
+  }
+  const dias = Math.max(1, Math.ceil((fimMs - nowMs) / (24 * 60 * 60 * 1000)));
+  return {
+    label: `Vence em ${dias} ${dias === 1 ? "dia" : "dias"} (renovação manual)`,
+    className: SELO_MANUAL_VENCENDO,
+  };
+}
+
 /** null quando a pessoa nunca assinou: a coluna fica vazia em vez de inventar. */
 export function subscriptionStatusBadgeOf(
   status: string | null | undefined,
+  ctx?: SubscriptionBadgeContext,
 ): { label: string; className: string } | null {
   if (!status) return null;
   return (
+    seloManual(status, ctx) ??
     SUBSCRIPTION_STATUS_BADGES[status] ?? {
       label: status,
       className: ORIGEM_DESCONHECIDA,
@@ -231,9 +270,14 @@ export function subscriptionStatusBadgeOf(
  */
 export function subscriptionStatusLabelOf(
   status: string | null | undefined,
+  ctx?: SubscriptionBadgeContext,
 ): string {
   if (!status) return NAO_INFORMADO;
-  return SUBSCRIPTION_STATUS_BADGES[status]?.label ?? status;
+  return (
+    seloManual(status, ctx)?.label ??
+    SUBSCRIPTION_STATUS_BADGES[status]?.label ??
+    status
+  );
 }
 
 /**

@@ -1980,6 +1980,7 @@ describe("lerPagamento", () => {
     expect(p).toEqual({
       status: "RECEIVED",
       valueCents: 1290,
+      dueDate: null,
       refunds: [
         {
           status: "AWAITING_CRITICAL_ACTION_AUTHORIZATION",
@@ -2000,7 +2001,24 @@ describe("lerPagamento", () => {
       },
     };
     const p = await lerPagamento("pay_x");
-    expect(p).toEqual({ status: "RECEIVED", valueCents: 3000, refunds: [] });
+    expect(p).toEqual({
+      status: "RECEIVED",
+      valueCents: 3000,
+      dueDate: null,
+      refunds: [],
+    });
+  });
+
+  it("dueDate da cobranca vem junto, como o Asaas manda (YYYY-MM-DD)", async () => {
+    estado.asaasResposta = {
+      "/payments/pay_x": {
+        status: "PENDING",
+        value: 29.9,
+        dueDate: "2026-09-08",
+      },
+    };
+    const p = await lerPagamento("pay_x");
+    expect(p.dueDate).toBe("2026-09-08");
   });
 
   it("o id vai ESCAPADO na URL", async () => {

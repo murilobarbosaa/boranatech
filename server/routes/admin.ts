@@ -1041,6 +1041,12 @@ router.get("/churn-risk", async (_req, res, next) => {
           .from("subscriptions")
           .select("user_id, status, plans(code, name, price_cents)")
           .eq("status", "active")
+          // MESMO recorte de periodo do MRR: uma manual vencida ainda `active`
+          // (o cron de expiracao roda a cada 6h) nao e assinante, e entrava
+          // aqui como um.
+          .or(
+            `current_period_end.is.null,current_period_end.gt.${new Date().toISOString()}`,
+          )
           .order("id", { ascending: true })
           .range(from, to),
       "churn-risk subscriptions",
@@ -1445,6 +1451,8 @@ router.get("/overview", async (req, res, next) => {
               // `mrrCents`, que continuam existindo e continuam somando o total.
               saindo: mrr.atRisk.saindo,
               emAtraso: mrr.atRisk.emAtraso,
+              // Terceira familia (lote 2b.2), aditiva como as duas acima.
+              vencendo: mrr.atRisk.vencendo,
               percentOfMrr:
                 mrr.mrrCents > 0
                   ? (mrr.atRisk.mrrCents / mrr.mrrCents) * 100
@@ -3373,7 +3381,7 @@ router.get("/users", async (req, res, next) => {
           const { data: subs, error: subsError } = await supabaseAdmin
             .from("subscriptions")
             .select(
-              "user_id, status, current_period_end, created_at, plans(code)",
+              "user_id, status, current_period_end, created_at, renewal_type, plans(code)",
             )
             .in("user_id", ids);
           if (subsError) {
@@ -3452,6 +3460,10 @@ router.get("/users", async (req, res, next) => {
         pro_source: extra?.pro_source ?? null,
         plan_code: extra?.plan_code ?? null,
         subscription_status: extra?.subscription_status ?? null,
+        // ADITIVOS (lote 2b.2): o selo da lista diz "vence em N dias" para a
+        // manual, e precisa destes dois campos para isso.
+        renewal_type: extra?.renewal_type ?? null,
+        current_period_end: extra?.current_period_end ?? null,
         // ZERO e afirmacao ("nunca pagou"); `null` e ausencia de medicao ("a
         // consulta falhou"). Os dois desenham coisas diferentes na tela.
         total_pago_cents: totais ? (totais.get(row.user_id ?? "") ?? 0) : null,

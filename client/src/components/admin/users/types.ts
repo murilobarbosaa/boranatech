@@ -17,6 +17,12 @@ export type UserRow = {
   pro_source?: string | null;
   plan_code?: string | null;
   subscription_status?: string | null;
+  /**
+   * Da assinatura escolhida pelo enriquecimento (lote 2b.2), para o selo dizer
+   * "vence em N dias" na manual. Opcionais: a lista antiga nao os manda.
+   */
+  renewal_type?: string | null;
+  current_period_end?: string | null;
   /** `area_interesse` de profiles. `null` = a pessoa nunca preencheu. */
   area_interesse?: string | null;
   /**

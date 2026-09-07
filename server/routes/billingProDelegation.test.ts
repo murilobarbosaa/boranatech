@@ -20,6 +20,8 @@ const estado = vi.hoisted(() => ({
   /** Toda chamada de rpc que o HANDLER fizer, na ordem. */
   rpcCalls: [] as string[],
   subscription: null as Record<string, unknown> | null,
+  /** Manual `canceled` recem-vencida, devolvida pela consulta de fallback. */
+  expiradaRecente: null as Record<string, unknown> | null,
   planoFree: { code: "free", name: "Free" } as Record<string, unknown> | null,
   influencer: null as Record<string, unknown> | null,
   adminRpc: false,
@@ -48,21 +50,29 @@ vi.mock("../providers", () => ({
 vi.mock("../lib/supabaseAdmin", () => {
   function consulta(tabela: string) {
     const q: Record<string, unknown> = {};
+    const iguais: Record<string, unknown> = {};
     for (const m of [
       "select",
-      "eq",
       "in",
       "neq",
       "order",
       "limit",
       "is",
       "gt",
+      "lt",
     ]) {
       q[m] = () => q;
     }
+    q.eq = (coluna: string, valor: unknown) => {
+      iguais[coluna] = valor;
+      return q;
+    };
     q.maybeSingle = async () => {
-      if (tabela === "subscriptions")
+      if (tabela === "subscriptions") {
+        if (iguais.renewal_type === "manual")
+          return { data: estado.expiradaRecente, error: null };
         return { data: estado.subscription, error: null };
+      }
       if (tabela === "influencers")
         return { data: estado.influencer, error: null };
       if (tabela === "plans") return { data: estado.planoFree, error: null };
@@ -116,6 +126,7 @@ describe("a rota DELEGA: nao ha mais decisao propria de Pro", () => {
   beforeEach(() => {
     estado.rpcCalls = [];
     estado.subscription = null;
+    estado.expiradaRecente = null;
     estado.influencer = null;
     estado.adminRpc = false;
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -246,6 +257,46 @@ describe("o contrato da resposta nao mudou", () => {
     const data = r.gravado.json?.data as Record<string, unknown>;
     expect(data.status).toBe("expired");
     expect(data.isPro).toBe(false);
+  });
+
+  it("sem linha ativa mas com manual canceled recem-vencida: responde a linha como expired", async () => {
+    // O cron de expiracao troca `active` por `canceled` em ate 6 horas; sem
+    // este fallback o cartao de "seu Pro terminou" do Perfil sumiria junto.
+    estado.subscription = null;
+    estado.expiradaRecente = {
+      id: "sub-velha",
+      status: "canceled",
+      renewal_type: "manual",
+      payment_method: "pix",
+      provider_subscription_id: "pay_1",
+      current_period_end: new Date(
+        Date.now() - 2 * 24 * 3600_000,
+      ).toISOString(),
+      plans: { code: "pro_monthly" },
+    };
+
+    const r = res();
+    await handleGetSubscription(req(false), r.objeto, next);
+
+    const data = r.gravado.json?.data as Record<string, unknown>;
+    expect(data.id).toBe("sub-velha");
+    expect(data.status).toBe("expired");
+    expect(data.isPro).toBe(false);
+  });
+
+  it("sem linha ativa e sem recem-vencida: free, como sempre", async () => {
+    estado.subscription = null;
+    estado.expiradaRecente = null;
+
+    const r = await (async () => {
+      const r = res();
+      await handleGetSubscription(req(false), r.objeto, next);
+      return r;
+    })();
+
+    expect((r.gravado.json?.data as Record<string, unknown>).status).toBe(
+      "free",
+    );
   });
 
   it("manual ACTIVE com periodo vigente continua active", async () => {

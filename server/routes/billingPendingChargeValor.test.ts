@@ -53,7 +53,16 @@ vi.mock("../lib/supabaseAdmin", () => {
   function consulta(tabela: string) {
     const iguais: Record<string, unknown> = {};
     const q: Record<string, unknown> = {};
-    for (const m of ["select", "in", "order", "limit", "is", "gt", "neq"]) {
+    for (const m of [
+      "select",
+      "in",
+      "order",
+      "limit",
+      "is",
+      "gt",
+      "lt",
+      "neq",
+    ]) {
       q[m] = () => q;
     }
     q.eq = (coluna: string, valor: unknown) => {

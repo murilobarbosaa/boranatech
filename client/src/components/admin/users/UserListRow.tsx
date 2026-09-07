@@ -151,7 +151,10 @@ export function UserListRow({
 }) {
   const pro = proBadgeOf(row.pro_source);
   const ultimoAcesso = row.last_sign_in_at ?? null;
-  const status = subscriptionStatusBadgeOf(row.subscription_status);
+  const status = subscriptionStatusBadgeOf(row.subscription_status, {
+    renewalType: row.renewal_type,
+    currentPeriodEnd: row.current_period_end,
+  });
 
   return (
     <button

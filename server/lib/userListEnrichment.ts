@@ -33,6 +33,8 @@ export type SubscriptionRow = {
   created_at: string | null;
   // O PostgREST devolve o relacionamento ora como objeto, ora como array.
   plans: { code: string | null } | { code: string | null }[] | null;
+  /** Opcional: a rota antiga nao o seleciona. */
+  renewal_type?: string | null;
 };
 
 export type ProSource = "subscription" | "influencer" | "both";
@@ -46,6 +48,9 @@ export type UserListEnrichment = {
   pro_source: ProSource | null;
   plan_code: string | null;
   subscription_status: string | null;
+  /** Da assinatura escolhida, para o selo "vence em N dias" da lista. */
+  renewal_type: string | null;
+  current_period_end: string | null;
 };
 
 export function planCodeOf(row: SubscriptionRow): string | null {
@@ -150,6 +155,8 @@ export function buildEnrichmentIndex(
       pro_source: resolveProSource(proPorAssinatura, proPorInfluencer),
       plan_code: escolhida ? planCodeOf(escolhida) : null,
       subscription_status: escolhida?.status ?? null,
+      renewal_type: escolhida?.renewal_type ?? null,
+      current_period_end: escolhida?.current_period_end ?? null,
     });
   });
 
@@ -161,6 +168,8 @@ export function buildEnrichmentIndex(
       pro_source: "influencer",
       plan_code: null,
       subscription_status: null,
+      renewal_type: null,
+      current_period_end: null,
     });
   });
 

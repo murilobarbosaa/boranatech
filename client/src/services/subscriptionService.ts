@@ -157,3 +157,47 @@ export async function getPixQrCode(): Promise<PixQrCode> {
   const json = await res.json();
   return json.data as PixQrCode;
 }
+
+/**
+ * RENOVACAO COM SESSAO (o botao do Perfil). Mesma rota do link do e-mail, sem
+ * token: o servidor acha a assinatura manual do usuario logado. A resposta e
+ * a de `createRenewalCheckout` do renewalService, mais `previousPeriodEnd`.
+ */
+export async function renewWithSession(): Promise<{
+  checkoutUrl?: string;
+  subscriptionId?: string;
+  flow?: "redirect" | "native_pix";
+  amountCents?: number | null;
+  dueDate?: string | null;
+  reused?: boolean;
+  previousPeriodEnd?: string | null;
+  pixQrCode?: PixQrCode | null;
+}> {
+  const headers = await getAuthHeader();
+  const res = await fetch(`${API_BASE}/billing/renew`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify({}),
+  });
+  if (!res.ok) throw new CheckoutError(await checkoutErrorCode(res));
+  const json = await res.json();
+  return json.data;
+}
+
+/** Polling da renovacao com sessao: ativa quando ha periodo alem de `after`. */
+export async function getRenewalStatusWithSession(
+  after: string,
+): Promise<
+  | { status: "pending" }
+  | { status: "active"; periodEnd: string | null }
+  | { status: "expired_qr" }
+> {
+  const headers = await getAuthHeader();
+  const res = await fetch(
+    `${API_BASE}/billing/renew/status?after=${encodeURIComponent(after)}`,
+    { headers },
+  );
+  if (!res.ok) throw new CheckoutError(await checkoutErrorCode(res));
+  const json = await res.json();
+  return json.data;
+}

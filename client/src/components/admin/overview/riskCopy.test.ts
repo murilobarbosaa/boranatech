@@ -77,3 +77,41 @@ describe("detalheDeRisco", () => {
     expect(detalheDeRisco({} as never)).toBe("Sem dados de risco.");
   });
 });
+
+describe("terceira familia: vencendo sem renovacao iniciada", () => {
+  it("entra na frase com o VALOR, nao so a contagem, e o prazo", () => {
+    expect(
+      detalheDeRisco({
+        count: 3,
+        mrrCents: 8970,
+        saindo: { count: 2, mrrCents: 5980 },
+        emAtraso: { count: 0, mrrCents: 0 },
+        vencendo: { count: 1, mrrCents: 2990 },
+      }),
+    ).toBe("2 saindo + R$ 29,90 vencendo em 7 dias sem renovação iniciada");
+  });
+
+  it("so vencendo", () => {
+    expect(
+      detalheDeRisco({
+        count: 1,
+        mrrCents: 2990,
+        saindo: { count: 0, mrrCents: 0 },
+        emAtraso: { count: 0, mrrCents: 0 },
+        vencendo: { count: 1, mrrCents: 2990 },
+      }),
+    ).toBe("R$ 29,90 vencendo em 7 dias sem renovação iniciada");
+  });
+
+  it("vencendo vazio some, como as outras familias", () => {
+    expect(
+      detalheDeRisco({
+        count: 1,
+        mrrCents: 2990,
+        saindo: { count: 1, mrrCents: 2990 },
+        emAtraso: { count: 0, mrrCents: 0 },
+        vencendo: { count: 0, mrrCents: 0 },
+      }),
+    ).toBe("1 saindo");
+  });
+});

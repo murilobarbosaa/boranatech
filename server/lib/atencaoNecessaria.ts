@@ -1,9 +1,14 @@
+import { isPlanId, PLAN_PRICING } from "../../shared/planPricing";
 import {
   diaBrasilia,
   inicioDoDiaBrasilia,
   somarDiaCivil,
 } from "../../shared/brasiliaDay";
-import { monthlyEquivalentCents } from "./billingMetrics";
+import {
+  assinaturaVencendoSemRenovacao,
+  monthlyEquivalentCents,
+  VENCENDO_JANELA_DIAS,
+} from "./billingMetrics";
 import { coletarTudo } from "./paginate";
 import { resolvePlanPriceCents } from "./planPrice";
 import { getStripe } from "./stripeClient";
@@ -66,7 +71,8 @@ export type ItemAtencao = {
     | "custo_ia_spike"
     | "payout_falho"
     | "mes_sem_despesa"
-    | "influencer_com_assinatura";
+    | "influencer_com_assinatura"
+    | "assinaturas_vencendo";
   /** Identidade estavel do item entre execucoes. Dois itens iguais colidem. */
   chave: string;
   severidade: SeveridadeAtencao;
@@ -143,6 +149,11 @@ const STRIPE_PAYOUTS_URL = "https://dashboard.stripe.com/payouts";
 // tambem nao leva a lugar nenhum util. Sao constantes, e nao literais soltos,
 // para o teste de conjunto poder afirmar todos de uma vez.
 const ADMIN_USUARIOS = "/admin?section=usuarios";
+
+/** "Mensal", "Semestral", "Anual" a partir do code; `null` para code fora do mapa. */
+function rotuloDoPlano(code: string): string | null {
+  return isPlanId(code) ? PLAN_PRICING[code].label : null;
+}
 const ADMIN_FINANCEIRO = "/admin?section=financeiro";
 
 /** Janela do payout falho. Ver o principio na docstring do topo. */
@@ -498,9 +509,20 @@ export async function montarPainelDeAtencao(
     cancel_at_period_end: boolean | null;
     current_period_end: string | null;
     provider_subscription_id: string | null;
+    renewal_type?: string | null;
+    payment_method?: string | null;
+    current_period_start?: string | null;
+    created_at?: string | null;
     // O PostgREST devolve o relacionamento ora como objeto, ora como array.
     plans: PlanoDoItem | Array<PlanoDoItem> | null;
   };
+  let vencendoManuais: Array<{
+    userId: string | null;
+    plano: PlanoDoItem | null;
+    fim: string;
+    meio: string;
+    mrrMensalCents: number | null;
+  }> = [];
   try {
     const subs = (await coletarTudo<LinhaSub>(
       (from, to) =>
@@ -509,9 +531,11 @@ export async function montarPainelDeAtencao(
         supabaseAdmin
           .from("subscriptions")
           .select(
-            "id, user_id, status, cancel_at_period_end, current_period_end, provider_subscription_id, plans(code, price_cents, interval)",
+            "id, user_id, status, cancel_at_period_end, current_period_end, current_period_start, created_at, renewal_type, payment_method, provider_subscription_id, plans(code, price_cents, interval)",
           )
-          .in("status", ["active", "trialing", "past_due"])
+          // `pending` entra na LEITURA so para dizer quem ja iniciou uma
+          // renovacao (lote 2b.2); nunca vira item.
+          .in("status", ["active", "trialing", "past_due", "pending"])
           .order("id", { ascending: true })
           .range(from, to) as never,
       "atencao subscriptions",
@@ -525,7 +549,26 @@ export async function montarPainelDeAtencao(
     // item sem motivo continua sendo o item certo. Mapa vazio e a degradacao.
     const motivoPorSub = await motivosDeSaidaAgendada();
 
+    // RENOVACAO INICIADA: a pendente mais recente por usuario, lida das mesmas
+    // linhas. Serve so a familia "vencendo" abaixo.
+    const pendentePorUsuario = new Map<string, string>();
     for (const s of subs) {
+      if (s.status !== "pending" || !s.user_id || !s.created_at) continue;
+      const atual = pendentePorUsuario.get(s.user_id);
+      if (!atual || s.created_at > atual) {
+        pendentePorUsuario.set(s.user_id, s.created_at);
+      }
+    }
+    const vencendo: Array<{
+      userId: string | null;
+      plano: PlanoDoItem | null;
+      fim: string;
+      meio: string;
+      mrrMensalCents: number | null;
+    }> = [];
+
+    for (const s of subs) {
+      if (s.status === "pending") continue;
       if (s.user_id) idsParaEmail.add(s.user_id);
       const plano = Array.isArray(s.plans) ? s.plans[0] : s.plans;
       const valorCents = resolvePlanPriceCents(
@@ -537,6 +580,34 @@ export async function montarPainelDeAtencao(
       const url = s.provider_subscription_id?.startsWith("sub_")
         ? `${STRIPE_SUB_URL}${s.provider_subscription_id}`
         : "";
+
+      // MANUAL VENCENDO SEM RENOVACAO INICIADA (lote 2b.2), a mesma regra do
+      // card "Receita em risco" (billingMetrics.ts), para as duas telas nunca
+      // discordarem sobre quem esta vencendo.
+      if (
+        assinaturaVencendoSemRenovacao({
+          status: s.status,
+          renewalType: s.renewal_type ?? null,
+          currentPeriodStart: s.current_period_start ?? null,
+          currentPeriodEnd: s.current_period_end,
+          pendingCreatedAt: s.user_id
+            ? (pendentePorUsuario.get(s.user_id) ?? null)
+            : null,
+          nowMs: agora.getTime(),
+        })
+      ) {
+        vencendo.push({
+          userId: s.user_id,
+          plano,
+          fim: s.current_period_end
+            ? new Date(s.current_period_end).toLocaleDateString("pt-BR", {
+                timeZone: "America/Sao_Paulo",
+              })
+            : "data desconhecida",
+          meio: s.payment_method === "pix" ? "Pix" : "boleto",
+          mrrMensalCents,
+        });
+      }
 
       if (s.status === "past_due") {
         pendentesDeAssinatura.push({
@@ -572,6 +643,7 @@ export async function montarPainelDeAtencao(
         });
       }
     }
+    vencendoManuais = vencendo;
   } catch (err) {
     console.warn(
       "[atencao] falha ao ler assinaturas:",
@@ -887,6 +959,37 @@ export async function montarPainelDeAtencao(
         ? { mrrMensalCents: p.mrrMensalCents }
         : {}),
       url: p.url,
+      destinoInterno: ADMIN_USUARIOS,
+    });
+  }
+
+  // UM item agregado para as manuais vencendo, com a lista no detalhe: sao
+  // poucas por semana, e a lista e o que faz o item ser acionavel sem abrir
+  // cada usuario. Ordenado pela data, a mais proxima primeiro.
+  if (vencendoManuais.length > 0) {
+    const n = vencendoManuais.length;
+    const somaMensal = vencendoManuais.reduce(
+      (acc, v) => acc + (v.mrrMensalCents ?? 0),
+      0,
+    );
+    const lista = vencendoManuais
+      .map((v) => {
+        const plano = v.plano?.code
+          ? (rotuloDoPlano(v.plano.code) ?? v.plano.code)
+          : "plano desconhecido";
+        return `${emailDe(v.userId)} (${plano}, ${v.fim}, ${v.meio})`;
+      })
+      .join("; ");
+    itens.push({
+      tipo: "assinaturas_vencendo",
+      chave: `vencendo:${VENCENDO_JANELA_DIAS}d`,
+      severidade: "atencao",
+      // TODO(Ana)
+      titulo: `${n} ${n === 1 ? "assinatura manual vence" : "assinaturas manuais vencem"} em ${VENCENDO_JANELA_DIAS} dias sem renovação iniciada`,
+      detalhe: `${lista}. O lembrete por e-mail já saiu; se ninguém pagar, o acesso cai na data.`,
+      mrrMensalCents: somaMensal,
+      agregado: { quantidade: n, janelaDias: VENCENDO_JANELA_DIAS },
+      url: "",
       destinoInterno: ADMIN_USUARIOS,
     });
   }

@@ -371,6 +371,25 @@ describe("as varreduras globais do admin não param no teto", () => {
     expect(rpcs).toContain("admin_auth_users_lite");
   });
 
+  it("GET /churn-risk filtra por PERIODO, como o MRR: manual vencida nao e assinante", async () => {
+    montar(
+      { subscriptions: { rows: [assinaturaAtiva(0)] }, profiles: { rows: [] } },
+      MAX_ROWS,
+      {},
+      async () => ({ data: [], error: null }),
+    );
+
+    await chamarAdmin("GET", "/churn-risk");
+
+    const chamada = estado.double.de("subscriptions")[0];
+    const periodo = chamada.filtros.find(
+      (f) =>
+        f.tipo === "or" && String(f.valor).includes("current_period_end.gt."),
+    );
+    expect(periodo).toBeDefined();
+    expect(String(periodo!.valor)).toContain("current_period_end.is.null");
+  });
+
   it("GET /affiliates-stats devolve TODOS os afiliados", async () => {
     montar({
       affiliates: {
