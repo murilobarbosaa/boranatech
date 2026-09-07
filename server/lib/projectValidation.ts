@@ -1,25 +1,29 @@
 import type { RequisitoAvaliacao } from "../../shared/github/schema";
 import type { ProjetoRequisito } from "../../shared/projects/catalog";
+import {
+  calcularNota,
+  type NotaValidacao,
+} from "../../shared/projects/validationScore";
 
 export interface ValidationOutcome {
   status: "aprovado" | "reprovado";
-  pendentes: string[];
+  nota: NotaValidacao;
 }
 
-// Veredito final da validacao de projeto e CODIGO, nao IA: aprovado somente
-// quando TODO requisito do catalogo tem avaliacao "atende". Requisito sem
-// avaliacao correspondente (IA omitiu ou repetiu id) conta como pendente,
-// fail-closed. Funcao pura pra ser testavel isolada.
+// Veredito da validacao: CODIGO, nao IA. A IA da o veredito requisito a
+// requisito; quem decide se isso vale como validado e a nota, com corte em
+// 80% (lote 06). Antes era 100%, e um "parcial" num projeto de dez reprovava
+// tudo.
+//
+// `pendentes` mora em `nota.pendentes`; a funcao delega inteira a
+// `calcularNota`, que e compartilhada com o client.
 export function computeValidationOutcome(
   requisitos: ProjetoRequisito[],
   avaliacao: RequisitoAvaliacao[],
 ): ValidationOutcome {
-  const byId = new Map(avaliacao.map((item) => [item.id, item]));
-  const pendentes = requisitos
-    .filter((req) => byId.get(req.id)?.veredito !== "atende")
-    .map((req) => req.id);
-  return {
-    status: pendentes.length === 0 ? "aprovado" : "reprovado",
-    pendentes,
-  };
+  const nota = calcularNota(
+    requisitos.map((r) => r.id),
+    avaliacao,
+  );
+  return { status: nota.validado ? "aprovado" : "reprovado", nota };
 }

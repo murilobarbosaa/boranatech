@@ -238,7 +238,8 @@ router.post(
         status: outcome.status,
         resultado: avaliacao,
         analysisId,
-        pendentes: outcome.pendentes,
+        nota: outcome.nota,
+        pendentes: outcome.nota.pendentes,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro desconhecido";
