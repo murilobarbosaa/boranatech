@@ -160,15 +160,16 @@ describe("GET /:projectId", () => {
 });
 
 describe("POST /:projectId/submit", () => {
-  it("3. projeto gratuito nao tem validacao, mesmo chegando pelo alias", async () => {
-    // O alias resolve para landing-page-pessoal, que nao e `pro`: hoje a
-    // validacao e exclusiva de projeto premium. O teste documenta o
-    // comportamento atual (lote 06 reabre a decisao).
+  it("3. projeto v2 de codigo agora vale, mesmo sem selo Pro no catalogo", async () => {
+    // Ate o lote 06 isto dava 400: a validacao era exclusiva dos 8 projetos
+    // com selo Pro. Agora o alias resolve para landing-page-pessoal, que e v2
+    // `repo_deploy`, e o gate de elegibilidade passa. O que segura daqui em
+    // diante e a cota de IA, nao o catalogo.
     const d = montar({ project_validations: { rows: [] } });
     const r = await chamar("POST", `/${ALIAS}/submit`, { url: REPO });
-    expect(r.status).toBe(400);
-    expect(r.body.error.code).toBe("validation_unavailable");
-    expect(d.chamadas).toHaveLength(0);
+    expect(r.status).not.toBe(400);
+    expect(d.chamadas.length).toBeGreaterThan(0);
+    expect(d.chamadas[0].table).toBe("project_validations");
   });
 
   it("4. nao-assinante leva 403 antes de qualquer consulta", async () => {
