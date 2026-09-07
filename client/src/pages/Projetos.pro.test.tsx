@@ -102,7 +102,7 @@ vi.mock("@/components/Layout", () => ({
 }));
 vi.mock("@/components/SEO", () => ({ default: () => null }));
 vi.mock("@/components/FavoriteButton", () => ({ default: () => null }));
-vi.mock("@/components/projects/ProjectValidationBlock", () => ({
+vi.mock("@/components/projects/ProjetoValidacao", () => ({
   default: () => null,
 }));
 

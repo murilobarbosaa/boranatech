@@ -45,6 +45,8 @@ function montar(over: Partial<Parameters<typeof ProjetoEntrega>[0]> = {}) {
   const onVerificar = vi.fn(async () => {});
   render(
     <ProjetoEntrega
+      projectId="landing-page-pessoal"
+      isPro={false}
       tipoEntrega="repo_deploy"
       checks={["deploy_responde", "repo_publico"]}
       submission={null}

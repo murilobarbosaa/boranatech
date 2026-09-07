@@ -1,5 +1,6 @@
 import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
+import type { NotaValidacao } from "@shared/projects/validationScore";
 
 // Camada VALIDADA de conclusao de projeto Pro (fase 5c): submissao de um
 // repositorio do GitHub e leitura dos resultados requisito a requisito.
@@ -19,6 +20,12 @@ export interface ProjectValidationRecord {
   createdAt: string | null;
   analysisId: string | null;
   resultado: RequisitoAvaliacaoItem[];
+  nota: NotaValidacao | null;
+}
+
+export interface RequisitoDeclarado {
+  id: string;
+  descricao: string;
 }
 
 export interface SubmitValidationResult {
@@ -26,6 +33,12 @@ export interface SubmitValidationResult {
   resultado: RequisitoAvaliacaoItem[];
   analysisId: string | null;
   pendentes: string[];
+  nota: NotaValidacao;
+  requisitos: RequisitoDeclarado[];
+  /** false quando a tentativa foi PIOR que a melhor ja registrada. */
+  gravado?: boolean;
+  /** A melhor nota ja registrada, quando `gravado` e false. */
+  melhor?: NotaValidacao;
 }
 
 export type ValidationErrorCode =
@@ -37,10 +50,13 @@ export type ValidationErrorCode =
 
 export class ProjectValidationError extends Error {
   code: ValidationErrorCode;
-  constructor(code: ValidationErrorCode, message: string) {
+  /** Segundos ate poder tentar de novo, quando o servidor manda (429). */
+  retryAfter?: number;
+  constructor(code: ValidationErrorCode, message: string, retryAfter?: number) {
     super(message);
     this.name = "ProjectValidationError";
     this.code = code;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -75,13 +91,23 @@ function codeForStatus(status: number): ValidationErrorCode {
 // Lista as validacoes do usuario (todas). Erro degrada pra lista vazia: a UI
 // trata como "sem validacoes" e o detalhe por projeto re-tenta ao expandir.
 export async function listProjectValidations(): Promise<
-  Array<{ projectId: string; status: string }>
+  Array<{
+    projectId: string;
+    status: string;
+    nota?: NotaValidacao | null;
+    perfeito?: boolean;
+  }>
 > {
   try {
     const res = await request("/");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = (await res.json()) as {
-      data?: Array<{ projectId: string; status: string }>;
+      data?: Array<{
+        projectId: string;
+        status: string;
+        nota?: NotaValidacao | null;
+        perfeito?: boolean;
+      }>;
     };
     return json.data ?? [];
   } catch (err) {
@@ -95,6 +121,7 @@ export async function listProjectValidations(): Promise<
 export async function getProjectValidation(projectId: string): Promise<{
   ultima: ProjectValidationRecord;
   aprovada: ProjectValidationRecord | null;
+  requisitos: RequisitoDeclarado[];
 } | null> {
   const res = await request(`/${encodeURIComponent(projectId)}`);
   if (res.status === 404) return null;
@@ -108,6 +135,7 @@ export async function getProjectValidation(projectId: string): Promise<{
     data?: {
       ultima: ProjectValidationRecord;
       aprovada: ProjectValidationRecord | null;
+      requisitos: RequisitoDeclarado[];
     };
   };
   return json.data ?? null;
@@ -123,13 +151,21 @@ export async function submitProjectValidation(
   });
   if (!res.ok) {
     let message = `HTTP ${res.status}`;
+    let retryAfter: number | undefined;
     try {
-      const body = (await res.json()) as { error?: { message?: string } };
+      const body = (await res.json()) as {
+        error?: { message?: string; context?: { retryAfter?: number } };
+      };
       if (body.error?.message) message = body.error.message;
+      retryAfter = body.error?.context?.retryAfter;
     } catch {
       // corpo nao-JSON: mantem a mensagem generica
     }
-    throw new ProjectValidationError(codeForStatus(res.status), message);
+    throw new ProjectValidationError(
+      codeForStatus(res.status),
+      message,
+      retryAfter,
+    );
   }
   return (await res.json()) as SubmitValidationResult;
 }

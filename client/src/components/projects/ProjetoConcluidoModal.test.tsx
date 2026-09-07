@@ -118,3 +118,23 @@ describe("ProjetoConcluidoModal", () => {
     expect(screen.queryByText("Próximo projeto")).toBeNull();
   });
 });
+
+describe("variante de validacao", () => {
+  it("com nota, o titulo e o texto mudam", () => {
+    montar({ nota: { atendidos: 8, total: 10, perfeito: false } });
+    expect(screen.getByText("Projeto validado!")).toBeTruthy();
+    expect(screen.getByText("Nota: 8 de 10.")).toBeTruthy();
+    expect(screen.queryByText("Projeto concluído!")).toBeNull();
+  });
+
+  it("nota perfeita mostra o selo 100%", () => {
+    montar({ nota: { atendidos: 10, total: 10, perfeito: true } });
+    expect(screen.getByText("100%")).toBeTruthy();
+  });
+
+  it("sem nota, continua a comemoracao de conclusao", () => {
+    montar();
+    expect(screen.getByText("Projeto concluído!")).toBeTruthy();
+    expect(screen.queryByText("100%")).toBeNull();
+  });
+});

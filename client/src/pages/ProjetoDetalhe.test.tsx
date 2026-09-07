@@ -150,7 +150,7 @@ vi.mock("@/services/projectSubmissionService", () => ({
     code = "generic";
   },
 }));
-vi.mock("@/components/projects/ProjectValidationBlock", () => ({
+vi.mock("@/components/projects/ProjetoValidacao", () => ({
   default: () => null,
 }));
 vi.mock("wouter", () => ({

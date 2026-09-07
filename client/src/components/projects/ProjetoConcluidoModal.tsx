@@ -19,6 +19,7 @@ export default function ProjetoConcluidoModal({
   onOpenChange,
   nome,
   entregue = false,
+  nota,
   totalEtapas,
   post,
   url,
@@ -30,6 +31,8 @@ export default function ProjetoConcluidoModal({
   nome: string;
   /** Veio do formulario de entrega, e nao do botao de autodeclaracao. */
   entregue?: boolean;
+  /** Veio da validacao por IA: muda o titulo e mostra a nota. */
+  nota?: { atendidos: number; total: number; perfeito: boolean } | null;
   totalEtapas: number | null;
   post: string;
   url: string;
@@ -50,15 +53,22 @@ export default function ProjetoConcluidoModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-xl">
             <Check className="h-5 w-5 text-emerald-600" strokeWidth={3.5} />
-            Projeto concluído!
+            {nota ? "Projeto validado!" : "Projeto concluído!"}
           </DialogTitle>
           <DialogDescription>
-            {entregue
-              ? `Você entregou ${nome}.`
-              : totalEtapas === null
-                ? `Você fechou ${nome}.`
-                : `Você fechou ${nome} em ${totalEtapas} etapas.`}
+            {nota
+              ? `Nota: ${nota.atendidos} de ${nota.total}.`
+              : entregue
+                ? `Você entregou ${nome}.`
+                : totalEtapas === null
+                  ? `Você fechou ${nome}.`
+                  : `Você fechou ${nome} em ${totalEtapas} etapas.`}
           </DialogDescription>
+          {nota?.perfeito && (
+            <span className="inline-flex w-fit items-center rounded-full border-2 border-ink bg-[var(--brand-yellow)] px-2.5 py-0.5 font-display text-xs font-black text-ink-on-accent">
+              100%
+            </span>
+          )}
         </DialogHeader>
 
         <div className="flex flex-col gap-3">

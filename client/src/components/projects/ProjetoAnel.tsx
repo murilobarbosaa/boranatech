@@ -5,13 +5,19 @@ export default function ProjetoAnel({
   feitas,
   total,
   desde,
+  rotulo,
+  legenda,
 }: {
   feitas: number;
   total: number;
   desde?: string;
+  /** Sobrescreve "N de M etapas". Usado pela nota da validacao. */
+  rotulo?: string;
+  /** Sobrescreve a linha de baixo. */
+  legenda?: string;
 }) {
   const fracao = total > 0 ? feitas / total : 0;
-  const legenda =
+  const legendaPadrao =
     feitas === 0
       ? "Não iniciado"
       : feitas === total
@@ -45,9 +51,11 @@ export default function ProjetoAnel({
       </svg>
       <div className="min-w-0">
         <span className="block font-display text-lg font-bold text-foreground">
-          {feitas} de {total} etapas
+          {rotulo ?? `${feitas} de ${total} etapas`}
         </span>
-        <span className="block text-xs text-muted-foreground">{legenda}</span>
+        <span className="block text-xs text-muted-foreground">
+          {legenda ?? legendaPadrao}
+        </span>
       </div>
     </div>
   );

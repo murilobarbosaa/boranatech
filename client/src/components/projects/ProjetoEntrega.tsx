@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { AlertCircle, Check, HelpCircle } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import ProjetoValidacao from "@/components/projects/ProjetoValidacao";
 import {
   ProjectSubmissionError,
   type ProjectSubmission,
@@ -16,6 +17,7 @@ import type {
   ProjetoTipoEntrega,
   ProjetoVerificacaoAuto,
 } from "@shared/projects/v2/types";
+import type { NotaValidacao } from "@shared/projects/validationScore";
 
 const INTERVALO_VERIFY_MS = 60_000;
 
@@ -74,6 +76,9 @@ export default function ProjetoEntrega({
   status,
   onEntregar,
   onVerificar,
+  projectId,
+  isPro,
+  onValidated,
 }: {
   tipoEntrega: ProjetoTipoEntrega;
   checks: readonly ProjetoVerificacaoAuto[];
@@ -81,9 +86,15 @@ export default function ProjetoEntrega({
   status: StatusEntrega;
   onEntregar: (input: SubmissionInput) => Promise<void>;
   onVerificar: () => Promise<void>;
+  /** Validacao por IA: so aparece em projeto de codigo. */
+  projectId: string;
+  isPro: boolean;
+  onValidated?: (nota: NotaValidacao) => void;
 }) {
   const { user } = useAuth();
   const campos = CAMPOS_POR_TIPO[tipoEntrega];
+  // So projeto de codigo tem validacao por IA: o avaliador le um repositorio.
+  const ehCodigo = tipoEntrega === "repo" || tipoEntrega === "repo_deploy";
   const [editando, setEditando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -374,6 +385,21 @@ export default function ProjetoEntrega({
               ? `Verificar de novo (${segundos}s)`
               : "Verificar de novo"}
           </button>
+        </div>
+      )}
+
+      {ehCodigo && (
+        <div className="mt-5 border-t border-border pt-5">
+          <p className="mb-3 font-display text-sm font-bold text-foreground">
+            Validação com IA
+          </p>
+          <ProjetoValidacao
+            projectId={projectId}
+            isPro={isPro}
+            repoUrlDaEntrega={submission?.repoUrl ?? null}
+            exigeEntrega
+            onValidated={onValidated}
+          />
         </div>
       )}
     </div>

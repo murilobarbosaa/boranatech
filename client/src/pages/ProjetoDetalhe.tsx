@@ -6,7 +6,6 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import CopyButton from "@/components/shared/CopyButton";
-import ProjectValidationBlock from "@/components/projects/ProjectValidationBlock";
 import ProjetoAnel from "@/components/projects/ProjetoAnel";
 import ProjetoConcluidoModal from "@/components/projects/ProjetoConcluidoModal";
 import ProjetoDepois from "@/components/projects/ProjetoDepois";
@@ -15,6 +14,7 @@ import ProjetoEtapas from "@/components/projects/ProjetoEtapas";
 import ProjetoPorQue from "@/components/projects/ProjetoPorQue";
 import ProjetoRecursos from "@/components/projects/ProjetoRecursos";
 import ProjetoRequisitos from "@/components/projects/ProjetoRequisitos";
+import ProjetoValidacao from "@/components/projects/ProjetoValidacao";
 import ProjetoHero, { type Fato } from "@/components/projects/ProjetoHero";
 import ProjetoLateral, {
   type ProximoProjeto,
@@ -59,8 +59,8 @@ export default function ProjetoDetalhe() {
   } = useProjectCompletion();
   const reduzirMovimento = usePrefersReducedMotion();
   // Validado nao vem de uma lista carregada aqui: quem hidrata e o
-  // ProjectValidationBlock, por projeto. A pagina so precisa saber que passou
-  // a valer, para o chip de estado.
+  // ProjetoValidacao, por projeto. A pagina so precisa saber que passou a
+  // valer, para o chip de estado.
   const [validado, setValidado] = useState(false);
   // A comemoracao e disparada pelo CLIQUE, nao pelo valor de `done`: abrir por
   // efeito faria o modal aparecer toda vez que alguem abrisse um projeto ja
@@ -69,6 +69,11 @@ export default function ProjetoDetalhe() {
   // Muda a copy do modal: "entregou" quando veio do formulario, "fechou"
   // quando veio do botao de autodeclaracao.
   const [entregou, setEntregou] = useState(false);
+  const [notaValidacao, setNotaValidacao] = useState<{
+    atendidos: number;
+    total: number;
+    perfeito: boolean;
+  } | null>(null);
   const [detalhe, setDetalhe] = useState<ProjetoV2Detalhe | "erro" | null>(
     null,
   );
@@ -390,6 +395,13 @@ export default function ProjetoDetalhe() {
                   </p>
                   <div className="mt-3">
                     <ProjetoEntrega
+                      projectId={projeto.id}
+                      isPro={isPro}
+                      onValidated={(nota) => {
+                        setValidado(true);
+                        setNotaValidacao(nota);
+                        setCelebrando(true);
+                      }}
                       tipoEntrega={v2.tipoEntrega}
                       checks={v2.verificacaoAutomatica ?? []}
                       submission={submission}
@@ -413,14 +425,6 @@ export default function ProjetoDetalhe() {
                       }}
                     />
                   </div>
-                  {projeto.pro === true && (
-                    <div className="mt-4">
-                      <ProjectValidationBlock
-                        projeto={projeto}
-                        onApproved={() => setValidado(true)}
-                      />
-                    </div>
-                  )}
                 </section>
 
                 <section className={BLOCO}>
@@ -485,12 +489,6 @@ export default function ProjetoDetalhe() {
                 <section className={BLOCO} id="entrega">
                   <h2 className={H2}>Entrega</h2>
                   <div className="card-brutal mt-3 rounded-xl bg-card p-5">
-                    {projeto.pro === true && (
-                      <ProjectValidationBlock
-                        projeto={projeto}
-                        onApproved={() => setValidado(true)}
-                      />
-                    )}
                     {completionReady && (
                       <button
                         type="button"
@@ -513,6 +511,24 @@ export default function ProjetoDetalhe() {
                           ? "Projeto concluído"
                           : "Marcar como concluído"}
                       </button>
+                    )}
+                    {projeto.pro === true && (
+                      <div className="mt-5 border-t border-border pt-5">
+                        <p className="mb-3 font-display text-sm font-bold text-foreground">
+                          Validação com IA
+                        </p>
+                        <ProjetoValidacao
+                          projectId={projeto.id}
+                          isPro={isPro}
+                          repoUrlDaEntrega={null}
+                          exigeEntrega={false}
+                          onValidated={(nota) => {
+                            setValidado(true);
+                            setNotaValidacao(nota);
+                            setCelebrando(true);
+                          }}
+                        />
+                      </div>
                     )}
                   </div>
                 </section>
@@ -570,10 +586,14 @@ export default function ProjetoDetalhe() {
         aberto={celebrando}
         onOpenChange={(aberto) => {
           setCelebrando(aberto);
-          if (!aberto) setEntregou(false);
+          if (!aberto) {
+            setEntregou(false);
+            setNotaValidacao(null);
+          }
         }}
         nome={projeto.nome}
         entregue={entregou}
+        nota={notaValidacao}
         totalEtapas={v2 ? v2.etapas.length : null}
         post={projeto.sugestaoLinkedIn}
         url={urlDaPagina(projeto.id)}
