@@ -33,7 +33,7 @@
    e opcao de git pull, nao de git merge.
 4. Auditoria de sombra e por luminancia (tinta vs acento), nao por lista
    de hex.
-5. Toda var(--color-*) referenciada precisa existir no :root do bundle:
+5. Toda var(--color-\*) referenciada precisa existir no :root do bundle:
    o Tailwind v4 so emite variaveis usadas por utilitaria, e var()
    pendurado renderiza transparente sem erro.
 6. Fumaca de producao no dominio canonico e com curl -L: o www devolve
@@ -124,6 +124,7 @@ supabase/migrations/
 - Produto: catálogo e descoberta são grátis; análise personalizada por IA é Pro. Exceções explícitas (decisão de produto): o Comparador (/comparador e /tecnologias/comparar) e a área de entrevistas (/entrevistas) são 100% Pro. Isso decide onde entra ProGate/paywall.
 - Cursos e Plataformas são freemium: o grátis vê uma amostra (tamanhos em `client/src/lib/freeTierLimits.ts`, reexport de `shared/freeTierLimits.ts`, fonte única compartilhada com o server), o Pro vê tudo.
 - O gate por tier não alcança o bundle JS: o catálogo completo continua extraível dele (detalhe: `docs/decisoes.md#divida-gating-catalogo`).
+- Validação de projeto por IA é do Pro, em qualquer projeto v2 de código (`repo` ou `repo_deploy`), com nota e corte em 80%. Estados, fontes e regras em `docs/projetos-estados.md`.
 
 ## Política de Branch e Deploy
 
