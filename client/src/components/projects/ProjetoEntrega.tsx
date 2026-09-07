@@ -79,6 +79,7 @@ export default function ProjetoEntrega({
   projectId,
   isPro,
   onValidated,
+  onNota,
 }: {
   tipoEntrega: ProjetoTipoEntrega;
   checks: readonly ProjetoVerificacaoAuto[];
@@ -90,6 +91,7 @@ export default function ProjetoEntrega({
   projectId: string;
   isPro: boolean;
   onValidated?: (nota: NotaValidacao) => void;
+  onNota?: (nota: NotaValidacao | null) => void;
 }) {
   const { user } = useAuth();
   const campos = CAMPOS_POR_TIPO[tipoEntrega];
@@ -399,6 +401,7 @@ export default function ProjetoEntrega({
             repoUrlDaEntrega={submission?.repoUrl ?? null}
             exigeEntrega
             onValidated={onValidated}
+            onNota={onNota}
           />
         </div>
       )}

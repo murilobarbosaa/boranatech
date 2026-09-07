@@ -24,6 +24,9 @@ import {
 const assinatura = vi.hoisted(() => ({ isPro: false, loading: false }));
 const sessao = vi.hoisted(() => ({ user: null as { id: string } | null }));
 const entregas = vi.hoisted(() => ({ listar: vi.fn(async () => []) }));
+const validacoes = vi.hoisted(() => ({
+  listar: vi.fn<() => Promise<unknown[]>>(async () => []),
+}));
 const rota = vi.hoisted(() => ({ id: undefined as string | undefined }));
 const v2 = vi.hoisted(() => ({ loadProjetoV2: vi.fn() }));
 
@@ -80,6 +83,9 @@ vi.mock("@/contexts/AuthContext", () => ({
 vi.mock("@/services/projectSubmissionService", () => ({
   listSubmissions: entregas.listar,
 }));
+vi.mock("@/services/projectValidationService", () => ({
+  listProjectValidations: validacoes.listar,
+}));
 
 vi.mock("@/hooks/useProjectCompletion", () => ({
   useProjectCompletion: () => ({
@@ -89,10 +95,6 @@ vi.mock("@/hooks/useProjectCompletion", () => ({
     toggle: vi.fn(),
     toggleStage: vi.fn(),
   }),
-}));
-
-vi.mock("@/services/projectValidationService", () => ({
-  listProjectValidations: vi.fn(async () => []),
 }));
 
 vi.mock("@/components/Layout", () => ({
@@ -122,6 +124,8 @@ beforeEach(() => {
   assinatura.loading = false;
   sessao.user = null;
   entregas.listar.mockClear();
+  validacoes.listar.mockReset();
+  validacoes.listar.mockResolvedValue([]);
   rota.id = undefined;
   v2.loadProjetoV2.mockReset();
   v2.loadProjetoV2.mockResolvedValue(null);
@@ -220,5 +224,38 @@ describe("Projetos, entregas no catalogo", () => {
     ] as never);
     render(<Projetos />);
     await waitFor(() => expect(screen.getByText("Verificado")).toBeTruthy());
+  });
+});
+
+describe("Projetos, validacoes no catalogo", () => {
+  it("anonimo nao pede a lista de validacoes", () => {
+    render(<Projetos />);
+    expect(validacoes.listar).not.toHaveBeenCalled();
+  });
+
+  it("logado pede a lista UMA vez", () => {
+    sessao.user = { id: "u1" };
+    render(<Projetos />);
+    expect(validacoes.listar).toHaveBeenCalledTimes(1);
+  });
+
+  it("validado com nota perfeita mostra o selo 100%", async () => {
+    sessao.user = { id: "u1" };
+    validacoes.listar.mockResolvedValue([
+      { projectId: "projeto-gratis", status: "aprovado", perfeito: true },
+    ]);
+    render(<Projetos />);
+    await waitFor(() => expect(screen.getByText("Validado")).toBeTruthy());
+    expect(screen.getByText("100%")).toBeTruthy();
+  });
+
+  it("validado sem nota perfeita nao mostra o selo", async () => {
+    sessao.user = { id: "u1" };
+    validacoes.listar.mockResolvedValue([
+      { projectId: "projeto-gratis", status: "aprovado", perfeito: false },
+    ]);
+    render(<Projetos />);
+    await waitFor(() => expect(screen.getByText("Validado")).toBeTruthy());
+    expect(screen.queryByText("100%")).toBeNull();
   });
 });

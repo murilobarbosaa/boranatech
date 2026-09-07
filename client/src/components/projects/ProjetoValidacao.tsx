@@ -55,6 +55,7 @@ export default function ProjetoValidacao({
   repoUrlDaEntrega,
   exigeEntrega,
   onValidated,
+  onNota,
 }: {
   projectId: string;
   isPro: boolean;
@@ -63,6 +64,8 @@ export default function ProjetoValidacao({
   /** v2 de codigo exige entrega antes; os Pro do catalogo, nao. */
   exigeEntrega: boolean;
   onValidated?: (nota: NotaValidacao) => void;
+  /** Reporta a nota atual sem comemorar: usado na carga, para o cabecalho. */
+  onNota?: (nota: NotaValidacao | null) => void;
 }) {
   const [url, setUrl] = useState(repoUrlDaEntrega ?? "");
   const [nota, setNota] = useState<NotaValidacao | null>(null);
@@ -84,6 +87,7 @@ export default function ProjetoValidacao({
       if (!dados) return;
       const registro = dados.aprovada ?? dados.ultima;
       setNota(registro.nota);
+      if (dados.aprovada?.nota) onNota?.(dados.aprovada.nota);
       setResultado(registro.resultado ?? []);
       setRequisitos(dados.requisitos ?? []);
       if (dados.ultima.createdAt)
@@ -92,7 +96,7 @@ export default function ProjetoValidacao({
       // Sem validacao anterior ou falha de leitura: o bloco abre no estado
       // inicial, e o botao continua disponivel.
     }
-  }, [projectId]);
+  }, [projectId, onNota]);
 
   useEffect(() => {
     if (!isPro) return;
@@ -149,7 +153,10 @@ export default function ProjetoValidacao({
       setRequisitos(r.requisitos ?? []);
       setMelhor(r.gravado === false ? (r.melhor ?? null) : null);
       setProximaEm(Date.now() + COOLDOWN_MS);
-      if (r.status === "aprovado") onValidated?.(r.melhor ?? r.nota);
+      if (r.status === "aprovado") {
+        onNota?.(r.melhor ?? r.nota);
+        onValidated?.(r.melhor ?? r.nota);
+      }
     } catch (err) {
       if (err instanceof ProjectValidationError) {
         setErro(err.message);

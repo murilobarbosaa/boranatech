@@ -135,25 +135,35 @@ export default function Projetos() {
   // Aprovacoes de validacao (camada validada, 5c): UMA chamada de lista pro
   // selo do header; o detalhe requisito a requisito hidrata por card, ao
   // expandir (dentro do ProjectValidationBlock).
-  const [validatedIds, setValidatedIds] = useState<Set<string>>(new Set());
+  // Validacoes aprovadas, com a nota: o chip mostra "Validado" e, quando a
+  // nota e perfeita, o selo "100%". UMA chamada por carga, para quem esta
+  // logado (nao so assinante: quem cancelou continua com o que ja validou).
+  const [validados, setValidados] = useState<Map<string, boolean>>(new Map());
+  const validatedIds = validados;
   useEffect(() => {
-    if (!isPro) {
-      setValidatedIds(new Set());
+    if (!user) {
+      setValidados(new Map());
       return;
     }
     let cancelled = false;
-    void listProjectValidations().then((rows) => {
-      if (cancelled) return;
-      setValidatedIds(
-        new Set(
-          rows.filter((r) => r.status === "aprovado").map((r) => r.projectId),
-        ),
-      );
-    });
+    void listProjectValidations()
+      .then((rows) => {
+        if (cancelled) return;
+        setValidados(
+          new Map(
+            rows
+              .filter((r) => r.status === "aprovado")
+              .map((r) => [r.projectId, r.perfeito === true] as const),
+          ),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setValidados(new Map());
+      });
     return () => {
       cancelled = true;
     };
-  }, [isPro]);
+  }, [user]);
 
   // UMA chamada por carga de pagina, so para quem esta logado: o anonimo nao
   // tem entrega, e pedir a lista para ele seria uma requisicao garantidamente
@@ -499,16 +509,20 @@ export default function Projetos() {
                     const entregaDoCard = entregas.get(projeto.id) ?? null;
                     const estado: EstadoChip = cardTravado
                       ? { tipo: "pro_travado" }
-                      : validatedIds.has(projeto.id) ||
-                          entregaDoCard === "verificado"
-                        ? { tipo: "verificado" }
-                        : entregaDoCard === "entregue"
-                          ? { tipo: "entregue" }
-                          : projectsDone.has(projeto.id)
-                            ? { tipo: "concluido" }
-                            : Object.keys(marcadasDoCard).length > 0
-                              ? { tipo: "em_andamento" }
-                              : { tipo: "nao_iniciado" };
+                      : validados.has(projeto.id)
+                        ? {
+                            tipo: "validado",
+                            perfeito: validados.get(projeto.id) === true,
+                          }
+                        : entregaDoCard === "verificado"
+                          ? { tipo: "verificado" }
+                          : entregaDoCard === "entregue"
+                            ? { tipo: "entregue" }
+                            : projectsDone.has(projeto.id)
+                              ? { tipo: "concluido" }
+                              : Object.keys(marcadasDoCard).length > 0
+                                ? { tipo: "em_andamento" }
+                                : { tipo: "nao_iniciado" };
                     // Fatos do card saem SO do catalogo: tempo estimado e
                     // tipo de entrega moram no modulo v2, e carrega-lo aqui
                     // colocaria 12 chunks no catalogo (e o conteudo pago no

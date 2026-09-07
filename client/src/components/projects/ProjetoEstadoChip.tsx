@@ -4,6 +4,7 @@ export type EstadoChip =
   | { tipo: "concluido" }
   | { tipo: "entregue" }
   | { tipo: "verificado" }
+  | { tipo: "validado"; perfeito?: boolean }
   | { tipo: "pro_travado" };
 
 const BASE =
@@ -15,6 +16,7 @@ const CORES: Record<EstadoChip["tipo"], string> = {
   concluido: "border-emerald-500 text-emerald-700 dark:text-emerald-300",
   entregue: "border-violet-500 text-violet-700 dark:text-violet-300",
   verificado: "border-emerald-500 text-emerald-700 dark:text-emerald-300",
+  validado: "border-emerald-500 text-emerald-700 dark:text-emerald-300",
   pro_travado: "border-amber-500 text-amber-700 dark:text-amber-300",
 };
 
@@ -24,6 +26,7 @@ const QUADRADO: Record<EstadoChip["tipo"], string> = {
   concluido: "bg-emerald-500",
   entregue: "bg-violet-500",
   verificado: "bg-emerald-500",
+  validado: "bg-emerald-500",
   pro_travado: "bg-amber-500",
 };
 
@@ -32,6 +35,7 @@ function rotulo(estado: EstadoChip): string {
   if (estado.tipo === "concluido") return "Concluído";
   if (estado.tipo === "entregue") return "Entregue";
   if (estado.tipo === "verificado") return "Verificado";
+  if (estado.tipo === "validado") return "Validado";
   if (estado.tipo === "pro_travado") return "Assinar para abrir";
   if (estado.feitas === undefined || estado.total === undefined)
     // TODO(Ana): rotulo do card quando o total de etapas ainda nao carregou
@@ -47,12 +51,19 @@ export default function ProjetoEstadoChip({
   className?: string;
 }) {
   return (
-    <span className={`${BASE} ${CORES[estado.tipo]} ${className}`}>
-      <span
-        className={`h-2.5 w-2.5 rounded-[3px] ${QUADRADO[estado.tipo]}`}
-        aria-hidden
-      />
-      {rotulo(estado)}
+    <span className="inline-flex items-center gap-1.5">
+      <span className={`${BASE} ${CORES[estado.tipo]} ${className}`}>
+        <span
+          className={`h-2.5 w-2.5 rounded-[3px] ${QUADRADO[estado.tipo]}`}
+          aria-hidden
+        />
+        {rotulo(estado)}
+      </span>
+      {estado.tipo === "validado" && estado.perfeito && (
+        <span className="inline-flex items-center rounded-full border-2 border-ink bg-[var(--brand-yellow)] px-2 py-0.5 font-display text-[11px] font-black text-ink-on-accent">
+          100%
+        </span>
+      )}
     </span>
   );
 }

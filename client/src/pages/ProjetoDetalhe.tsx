@@ -154,17 +154,19 @@ export default function ProjetoDetalhe() {
 
   const estado: EstadoChip = travado
     ? { tipo: "pro_travado" }
-    : validado || submission?.status === "verificado"
-      ? { tipo: "verificado" }
-      : submission?.status === "entregue"
-        ? { tipo: "entregue" }
-        : concluido
-          ? { tipo: "concluido" }
-          : feitas > 0
-            ? v2
-              ? { tipo: "em_andamento", feitas, total: v2.etapas.length }
-              : { tipo: "em_andamento" }
-            : { tipo: "nao_iniciado" };
+    : validado
+      ? { tipo: "validado", perfeito: notaValidacao?.perfeito === true }
+      : submission?.status === "verificado"
+        ? { tipo: "verificado" }
+        : submission?.status === "entregue"
+          ? { tipo: "entregue" }
+          : concluido
+            ? { tipo: "concluido" }
+            : feitas > 0
+              ? v2
+                ? { tipo: "em_andamento", feitas, total: v2.etapas.length }
+                : { tipo: "em_andamento" }
+              : { tipo: "nao_iniciado" };
 
   const proximoNoCatalogo = projeto.proximoProjetoId
     ? projetos.find((p) => p.id === projeto.proximoProjetoId)
@@ -185,6 +187,14 @@ export default function ProjetoDetalhe() {
     });
   };
 
+  const fatoValidacao: Fato[] = notaValidacao
+    ? [
+        {
+          valor: `${notaValidacao.atendidos} de ${notaValidacao.total}`,
+          legenda: "validado com IA",
+        },
+      ]
+    : [];
   const tempo = v2?.briefing.tempoEstimado;
   const fatos: Fato[] = v2
     ? [
@@ -211,6 +221,7 @@ export default function ProjetoDetalhe() {
         },
         { valor: projeto.entregavel, legenda: "o que você entrega" },
       ];
+  const fatosComValidacao = [...fatos, ...fatoValidacao];
 
   const acaoPrincipal = submission
     ? { rotulo: "Ver entrega", ancora: "entrega" }
@@ -290,10 +301,10 @@ export default function ProjetoDetalhe() {
             projeto={projeto}
             estado={estado}
             concluidoEm={concluidoEmCurto}
-            fatos={fatos}
+            fatos={fatosComValidacao}
             acoes={
               <>
-                {concluido ? (
+                {concluido || validado ? (
                   proximo ? (
                     <Link
                       href={`/projetos/${proximo.id}`}
@@ -397,11 +408,12 @@ export default function ProjetoDetalhe() {
                     <ProjetoEntrega
                       projectId={projeto.id}
                       isPro={isPro}
-                      onValidated={(nota) => {
+                      onNota={(nota) => {
+                        if (!nota) return;
                         setValidado(true);
                         setNotaValidacao(nota);
-                        setCelebrando(true);
                       }}
+                      onValidated={() => setCelebrando(true)}
                       tipoEntrega={v2.tipoEntrega}
                       checks={v2.verificacaoAutomatica ?? []}
                       submission={submission}
@@ -522,11 +534,12 @@ export default function ProjetoDetalhe() {
                           isPro={isPro}
                           repoUrlDaEntrega={null}
                           exigeEntrega={false}
-                          onValidated={(nota) => {
+                          onNota={(nota) => {
+                            if (!nota) return;
                             setValidado(true);
                             setNotaValidacao(nota);
-                            setCelebrando(true);
                           }}
+                          onValidated={() => setCelebrando(true)}
                         />
                       </div>
                     )}
