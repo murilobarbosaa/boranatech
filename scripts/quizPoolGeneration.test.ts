@@ -6,6 +6,7 @@ import {
   buildQuestionSchema,
   buildUserPrompt,
   codeQuotaFor,
+  codeRuleViolations,
   type GeneratedQuestion,
   missingCodeCount,
   normalizeGeneratedQuestion,
@@ -224,5 +225,58 @@ describe("missingCodeCount", () => {
 
   it("zero quando nao ha cota", () => {
     expect(missingCodeCount(cinco, 0)).toBe(0);
+  });
+});
+
+describe("codeRuleViolations", () => {
+  const js = ["js"];
+
+  it("completar sem lacuna e a unica violacao numa lista com saida valida", () => {
+    const violacoes = codeRuleViolations(
+      [
+        gerada({
+          tipo: "saida",
+          codigo: { linguagem: "js", trecho: "console.log(1);" },
+        }),
+        gerada({
+          tipo: "completar",
+          codigo: { linguagem: "js", trecho: "const x = 1;" },
+        }),
+      ],
+      js,
+    );
+    expect(violacoes).toHaveLength(1);
+    expect(violacoes[0]).toContain("lacuna");
+  });
+
+  it("linha de 71 caracteres cita 71", () => {
+    const linha =
+      "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrs";
+    const violacoes = codeRuleViolations(
+      [gerada({ tipo: "saida", codigo: { linguagem: "js", trecho: linha } })],
+      js,
+    );
+    expect(violacoes).toHaveLength(1);
+    expect(violacoes[0]).toContain("71");
+  });
+
+  it("linguagem fora das codeLanguages cita a linguagem", () => {
+    const violacoes = codeRuleViolations(
+      [
+        gerada({
+          tipo: "erro",
+          codigo: { linguagem: "python", trecho: "print(1)" },
+        }),
+      ],
+      js,
+    );
+    expect(violacoes).toHaveLength(1);
+    expect(violacoes[0]).toContain("python");
+  });
+
+  it("lista so de conceito nao tem violacao", () => {
+    expect(
+      codeRuleViolations([gerada(), gerada({ tipo: "conceito" })], js),
+    ).toEqual([]);
   });
 });

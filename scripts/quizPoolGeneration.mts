@@ -15,6 +15,7 @@ import {
   CODE_MAX_LINE_LENGTH,
   CODE_MAX_LINES,
   CODE_PLACEHOLDER,
+  CODE_QUESTION_TIPOS,
   isCodeQuestion,
 } from "../shared/roadmapQuiz/types";
 import type { RoadmapNode, RoadmapV2 } from "../shared/roadmapV2/types";
@@ -311,6 +312,71 @@ export function missingCodeCount(
     isCodeQuestion({ tipo: question.tipo }),
   ).length;
   return Math.max(codeQuota - deCodigo, 0);
+}
+
+const DASH_RE = /\u2014|\u2013/;
+
+// Violacoes das regras de codigo numa resposta do modelo, para o retry de
+// generateSection corrigir ANTES da validacao final: sao as mesmas regras que
+// quizPoolValidation.mts aplica ao trecho, em redacao curta, uma linha por
+// violacao no formato "pergunta N (fonte X): problema". N e a posicao na
+// resposta (1 e a primeira), porque o id so nasce depois.
+export function codeRuleViolations(
+  questions: GeneratedQuestion[],
+  codeLanguages: string[],
+): string[] {
+  const out: string[] = [];
+  questions.forEach((question, index) => {
+    const rotulo = `pergunta ${index + 1} (fonte ${question.fonte})`;
+    const ehCodigo = isCodeQuestion({ tipo: question.tipo });
+    const codigo = question.codigo ?? null;
+    if (ehCodigo && !codigo) {
+      out.push(`${rotulo}: tipo ${question.tipo} sem codigo`);
+      return;
+    }
+    if (!ehCodigo && codigo) {
+      out.push(
+        `${rotulo}: codigo so em pergunta ${CODE_QUESTION_TIPOS.join(", ")}`,
+      );
+      return;
+    }
+    if (!codigo) return;
+    const trecho = codigo.trecho ?? "";
+    if (trecho.trim().length === 0) {
+      out.push(`${rotulo}: trecho vazio`);
+      return;
+    }
+    const linhas = trecho.split("\n");
+    if (linhas.length > CODE_MAX_LINES) {
+      out.push(
+        `${rotulo}: trecho com ${linhas.length} linhas (maximo ${CODE_MAX_LINES})`,
+      );
+    }
+    const maisLonga = Math.max(...linhas.map((linha) => linha.length));
+    if (maisLonga > CODE_MAX_LINE_LENGTH) {
+      out.push(
+        `${rotulo}: linha de ${maisLonga} caracteres (maximo ${CODE_MAX_LINE_LENGTH})`,
+      );
+    }
+    if (DASH_RE.test(trecho)) {
+      out.push(`${rotulo}: travessao ou meia-risca no trecho`);
+    }
+    const lacunas = trecho.split(CODE_PLACEHOLDER).length - 1;
+    if (question.tipo === "completar" && lacunas !== 1) {
+      out.push(
+        `${rotulo}: completar exige exatamente uma lacuna ${CODE_PLACEHOLDER} (encontradas ${lacunas})`,
+      );
+    }
+    if (question.tipo !== "completar" && lacunas > 0) {
+      out.push(`${rotulo}: lacuna ${CODE_PLACEHOLDER} so em completar`);
+    }
+    if (!codeLanguages.includes(codigo.linguagem)) {
+      out.push(
+        `${rotulo}: codigo.linguagem "${codigo.linguagem}" fora de [${codeLanguages.join(", ")}]`,
+      );
+    }
+  });
+  return out;
 }
 
 // Pergunta final do pool a partir da resposta do modelo. Conceito (tipo

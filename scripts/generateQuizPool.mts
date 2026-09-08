@@ -34,6 +34,7 @@ import {
   buildQuestionSchema,
   buildUserPrompt,
   codeQuotaFor,
+  codeRuleViolations,
   type GeneratedQuestion,
   levelSections,
   MAX_PER_FONTE,
@@ -148,6 +149,11 @@ async function generateSection(
   // a trilha inteira por isso seria pior que aceitar leve concentracao. A
   // cobertura por secao continua garantida pela validacao do pool.
   let bestValid: GeneratedQuestion[] | null = null;
+  // Ultima resposta schema-valida SEM violacao de regra de codigo. Se as
+  // tentativas acabarem com bestValid ainda violando, esta e preferida: uma
+  // resposta limpa com concentracao residual vale mais que uma concentrada
+  // certa com trecho fora da regra (a validacao final reprovaria a segunda).
+  let bestClean: GeneratedQuestion[] | null = null;
   for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
     try {
       const userPrompt = buildUserPrompt(
@@ -184,7 +190,21 @@ async function generateSection(
         validation.data.questions,
         codeQuota,
       );
-      if (excedidos.length === 0 && faltamCodigo === 0) {
+      const violacoes =
+        codeQuota > 0
+          ? codeRuleViolations(
+              validation.data.questions,
+              roadmap.codeLanguages ?? [],
+            )
+          : [];
+      if (violacoes.length === 0) {
+        bestClean = validation.data.questions;
+      }
+      if (
+        excedidos.length === 0 &&
+        faltamCodigo === 0 &&
+        violacoes.length === 0
+      ) {
         return validation.data.questions;
       }
       // Notas de rebalanceamento: concentracao por fonte e, quando a secao
@@ -201,6 +221,11 @@ async function generateSection(
           `Na tentativa anterior vieram ${codeQuota - faltamCodigo} perguntas de codigo; precisam ser exatamente ${codeQuota}.`,
         );
       }
+      if (violacoes.length > 0) {
+        notas.push(
+          `Na tentativa anterior estas perguntas violaram as regras de codigo; corrija SO elas e mantenha as demais como estao:\n${violacoes.map((v) => `- ${v}`).join("\n")}`,
+        );
+      }
       rebalanceNote = notas.join("\n");
       console.error(
         `[generateQuizPool] ${label} tentativa ${attempt}/${AI_MAX_ATTEMPTS}: ${[
@@ -208,6 +233,9 @@ async function generateSection(
             ? `concentracao acima de ${MAX_PER_FONTE} (${excedidos.join(", ")})`
             : "",
           faltamCodigo > 0 ? `faltam ${faltamCodigo} de codigo` : "",
+          violacoes.length > 0
+            ? `${violacoes.length} violacao(oes) de regra de codigo`
+            : "",
         ]
           .filter(Boolean)
           .join(", ")}, reequilibrando.`,
@@ -226,8 +254,16 @@ async function generateSection(
       }
     }
   }
-  // Esgotou as tentativas sem atingir o teto. Aceita o ultimo resultado
-  // schema-valido com aviso; so falha se nenhuma resposta foi schema-valida.
+  // Esgotou as tentativas sem atingir o teto. Prefere a ultima resposta sem
+  // violacao de regra de codigo, se houve alguma; senao aceita o ultimo
+  // resultado schema-valido com aviso; so falha se nenhuma resposta foi
+  // schema-valida. A validacao final do pool continua sendo o portao.
+  if (bestClean && bestClean !== bestValid) {
+    console.warn(
+      `[generateQuizPool] ${label}: aceitando a ultima resposta sem violacao de regra de codigo apos ${AI_MAX_ATTEMPTS} tentativas (a mais recente ainda violava).`,
+    );
+    return bestClean;
+  }
   if (bestValid) {
     console.warn(
       `[generateQuizPool] ${label}: aceitando com concentracao residual apos ${AI_MAX_ATTEMPTS} tentativas (secao fina, distribuicao ideal inatingivel).`,
