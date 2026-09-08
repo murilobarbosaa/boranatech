@@ -5,6 +5,7 @@ import {
   buildCodeRules,
   buildQuestionSchema,
   buildUserPrompt,
+  codeLeafIds,
   codeQuotaFor,
   codeRuleViolations,
   type GeneratedQuestion,
@@ -59,25 +60,25 @@ function gerada(extra: Partial<GeneratedQuestion> = {}): GeneratedQuestion {
 
 describe("codeQuotaFor", () => {
   it("zero para trilha sem kind, carreira e linguagem sem codeLanguages", () => {
-    expect(codeQuotaFor({}, 6)).toBe(0);
-    expect(codeQuotaFor({ kind: "carreira" }, 6)).toBe(0);
-    expect(codeQuotaFor({ kind: "linguagem" }, 6)).toBe(0);
+    expect(codeQuotaFor({}, 6, 10)).toBe(0);
+    expect(codeQuotaFor({ kind: "carreira" }, 6, 10)).toBe(0);
+    expect(codeQuotaFor({ kind: "linguagem" }, 6, 10)).toBe(0);
   });
 
   it("linguagem com codeLanguages: metade, piso 1, teto quota menos 1", () => {
     const py = { kind: "linguagem" as const, codeLanguages: ["python"] };
-    expect(codeQuotaFor(py, 6)).toBe(3);
-    expect(codeQuotaFor(py, 2)).toBe(1);
-    expect(codeQuotaFor(py, 1)).toBe(0);
+    expect(codeQuotaFor(py, 6, 10)).toBe(3);
+    expect(codeQuotaFor(py, 2, 10)).toBe(1);
+    expect(codeQuotaFor(py, 1, 10)).toBe(0);
   });
 
   it("ferramenta com quota 5 da 2 e framework com quota 3 da 2", () => {
     expect(
-      codeQuotaFor({ kind: "ferramenta", codeLanguages: ["bash"] }, 5),
+      codeQuotaFor({ kind: "ferramenta", codeLanguages: ["bash"] }, 5, 10),
     ).toBe(2);
-    expect(codeQuotaFor({ kind: "framework", codeLanguages: ["js"] }, 3)).toBe(
-      2,
-    );
+    expect(
+      codeQuotaFor({ kind: "framework", codeLanguages: ["js"] }, 3, 10),
+    ).toBe(2);
   });
 });
 
@@ -278,5 +279,60 @@ describe("codeRuleViolations", () => {
     expect(
       codeRuleViolations([gerada(), gerada({ tipo: "conceito" })], js),
     ).toEqual([]);
+  });
+});
+
+describe("codeLeafIds e a cota pelo material", () => {
+  const secaoMista: SectionMaterial = {
+    title: "Mista",
+    leaves: [
+      {
+        id: "m.js",
+        title: "Com js",
+        description: "",
+        content: "Texto.\n\n```js\nconsole.log(1);\n```\n\nMais texto.",
+      },
+      {
+        id: "m.json",
+        title: "Com json",
+        description: "",
+        content: 'Texto.\n\n```json\n{ "a": 1 }\n```',
+      },
+      {
+        id: "m.prosa",
+        title: "Sem cerca",
+        description: "",
+        content: "So prosa.",
+      },
+    ],
+  };
+  const js = { kind: "linguagem" as const, codeLanguages: ["js"] };
+
+  it("codeLeafIds so conta cerca na linguagem da trilha", () => {
+    expect(codeLeafIds(secaoMista, ["js"])).toEqual(["m.js"]);
+  });
+
+  it("quota 7 com 1 folha de codigo da 2 (teto por folha)", () => {
+    expect(codeQuotaFor(js, 7, 1)).toBe(2);
+  });
+
+  it("quota 3 com 0 folhas de codigo da 0", () => {
+    expect(codeQuotaFor(js, 3, 0)).toBe(0);
+  });
+
+  it("quota 5 com 3 folhas da 3 (o share manda)", () => {
+    expect(codeQuotaFor(js, 5, 3)).toBe(3);
+  });
+
+  it("quota 5 com 1 folha da 2 (o teto por folha manda)", () => {
+    expect(codeQuotaFor(js, 5, 1)).toBe(2);
+  });
+
+  it("buildUserPrompt lista os passos com codigo", () => {
+    const texto = buildUserPrompt(trilha, "iniciante", secao, 5, null, 2, [
+      "a.x",
+      "a.y",
+    ]);
+    expect(texto).toContain("passos que trazem codigo no material: a.x, a.y");
   });
 });

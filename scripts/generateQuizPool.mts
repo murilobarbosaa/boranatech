@@ -33,6 +33,7 @@ import {
   buildCodeRules,
   buildQuestionSchema,
   buildUserPrompt,
+  codeLeafIds,
   codeQuotaFor,
   codeRuleViolations,
   type GeneratedQuestion,
@@ -130,7 +131,8 @@ async function generateSection(
   quota: number,
   usageLevel: Usage,
 ): Promise<GeneratedQuestion[]> {
-  const codeQuota = codeQuotaFor(roadmap, quota);
+  const codeLeaves = codeLeafIds(section, roadmap.codeLanguages ?? []);
+  const codeQuota = codeQuotaFor(roadmap, quota, codeLeaves.length);
   const schema = buildQuestionSchema(
     section.leaves.map((leaf) => leaf.id),
     quota,
@@ -163,6 +165,7 @@ async function generateSection(
         quota,
         rebalanceNote,
         codeQuota,
+        codeLeaves,
       );
       const { parsed, usage } = await callOpenAIOnce(
         systemPrompt,
@@ -306,9 +309,21 @@ if (existsSync(outFile) && !force && !dryRun) {
 if (dryRun) {
   // Mesma montagem de secoes, alvo e cotas do laco de geracao abaixo, so que
   // imprimindo em vez de chamar a IA. Nivel sem secao aborta igual.
+  // As regras de codigo entram no SYSTEM se ALGUMA secao tiver cota de
+  // codigo maior que zero, o mesmo criterio de generateSection secao a secao.
+  const algumaCota = NIVEIS.some((nivel) =>
+    levelSections(roadmap, nivel).some(
+      (section) =>
+        codeQuotaFor(
+          roadmap,
+          2,
+          codeLeafIds(section, roadmap.codeLanguages ?? []).length,
+        ) > 0,
+    ),
+  );
   const lines: string[] = [
     "### SYSTEM",
-    systemPromptFor(roadmap, codeQuotaFor(roadmap, 2)),
+    systemPromptFor(roadmap, algumaCota ? 1 : 0),
   ];
   for (const nivel of NIVEIS) {
     const sections = levelSections(roadmap, nivel);
@@ -334,7 +349,8 @@ if (dryRun) {
     }
     const quotas = sectionQuotas(sections, levelTarget);
     for (let i = 0; i < sections.length; i += 1) {
-      const codeQuota = codeQuotaFor(roadmap, quotas[i]);
+      const codeLeaves = codeLeafIds(sections[i], roadmap.codeLanguages ?? []);
+      const codeQuota = codeQuotaFor(roadmap, quotas[i], codeLeaves.length);
       lines.push(
         `### ${nivel} / ${sections[i].title} / cota ${quotas[i]}`,
         buildUserPrompt(
@@ -344,6 +360,7 @@ if (dryRun) {
           quotas[i],
           null,
           codeQuota,
+          codeLeaves,
         ),
       );
       if (withSchema) {

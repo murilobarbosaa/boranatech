@@ -215,21 +215,50 @@ export const CODE_SHARE_BY_KIND: Record<
   ferramenta: 0.4,
 };
 
+// Teto de perguntas de codigo por passo que tem cerca de codigo. Junto com
+// MAX_PER_FONTE (3), um passo com codigo pode originar ate 3 perguntas, das
+// quais no maximo 2 de codigo.
+export const MAX_CODE_PER_LEAF = 2;
+
+// Ids das folhas da secao cujo content tem pelo menos uma cerca markdown numa
+// das linguagens da trilha (```js, ```ts...). Cerca de outra linguagem, como
+// a ```json do package.json numa trilha de JavaScript, nao conta: o modelo
+// so consegue escrever pergunta de codigo onde o material tem codigo.
+export function codeLeafIds(
+  section: SectionMaterial,
+  codeLanguages: string[],
+): string[] {
+  if (codeLanguages.length === 0) return [];
+  const langs = codeLanguages
+    .map((lang) => lang.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+  const re = new RegExp("```(?:" + langs + ")[ \\t]*\\n");
+  return section.leaves
+    .filter((leaf) => re.test(leaf.content))
+    .map((leaf) => leaf.id);
+}
+
 // Quantas das `quota` perguntas de uma secao devem ser de codigo. Zero para
 // trilha sem kind, de carreira ou sem codeLanguages (as pools de area seguem
-// identicas as de hoje). Com share > 0 e quota >= 2, pelo menos 1; teto de
-// quota - 1, para uma secao nunca ficar so com codigo.
+// identicas as de hoje) e zero quando nenhum passo da secao tem cerca de
+// codigo na linguagem da trilha (codeLeafCount). Com share > 0 e quota >= 2,
+// pelo menos 1; tetos de quota - 1 (uma secao nunca fica so com codigo) e de
+// codeLeafCount x MAX_CODE_PER_LEAF (o modelo so tem de onde tirar codigo nos
+// passos que o trazem).
 export function codeQuotaFor(
   roadmap: Pick<RoadmapV2, "kind" | "codeLanguages">,
   quota: number,
+  codeLeafCount: number,
 ): number {
   const { kind, codeLanguages } = roadmap;
   if (!kind || kind === "carreira") return 0;
   if (!codeLanguages || codeLanguages.length === 0) return 0;
+  if (codeLeafCount <= 0) return 0;
   const share = CODE_SHARE_BY_KIND[kind];
   if (share <= 0 || quota < 2) return 0;
   const bruto = Math.round(quota * share);
-  return Math.min(Math.max(bruto, 1), quota - 1);
+  const porFolha = codeLeafCount * MAX_CODE_PER_LEAF;
+  return Math.min(Math.max(bruto, 1), quota - 1, porFolha);
 }
 
 // Regras das perguntas de codigo, anexadas ao SYSTEM_PROMPT so quando a secao
@@ -256,6 +285,7 @@ export function buildUserPrompt(
   quota: number,
   rebalanceNote: string | null,
   codeQuota = 0,
+  codeLeafIdList: string[] = [],
 ) {
   const lines = [
     `Trilha: ${roadmap.title} (area ${roadmap.area})`,
@@ -265,6 +295,7 @@ export function buildUserPrompt(
     ...(codeQuota > 0
       ? [
           `Dessas ${quota}, exatamente ${codeQuota} devem ser de codigo (tipos completar, erro e saida, variando entre os tres) e ${quota - codeQuota} de conceito.`,
+          `Baseie as perguntas de codigo nos passos que trazem codigo no material: ${codeLeafIdList.join(", ")}. Perguntas de conceito podem vir de qualquer passo.`,
         ]
       : []),
     "",
