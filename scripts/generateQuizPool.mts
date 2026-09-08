@@ -391,10 +391,18 @@ async function generateSection(
 
 const args = process.argv.slice(2);
 const force = args.includes("--force");
+// --dry-run: imprime o system prompt, o user prompt de cada secao de cada
+// nivel (e, com --schema, o JSON Schema strict de cada secao) sem chamar a
+// OpenAI, sem exigir OPENAI_API_KEY e sem escrever arquivo. Formato estavel
+// para diff, e o que se roda antes da geracao real.
+const dryRun = args.includes("--dry-run");
+const withSchema = args.includes("--schema");
 const slug = args.find((arg) => !arg.startsWith("--"));
 
 if (!slug) {
-  console.error("Uso: pnpm gen:quiz-pool <slug> [--force]");
+  console.error(
+    "Uso: pnpm gen:quiz-pool <slug> [--force] [--dry-run [--schema]]",
+  );
   process.exit(1);
 }
 const roadmap = roadmapsV2.find((entry) => entry.slug === slug);
@@ -403,11 +411,58 @@ if (!roadmap) {
   process.exit(1);
 }
 const outFile = path.join(QUIZ_DIR, `${slug}.ts`);
-if (existsSync(outFile) && !force) {
+if (existsSync(outFile) && !force && !dryRun) {
   console.error(
     `[generateQuizPool] ${path.relative(ROOT, outFile)} ja existe. Use --force pra regenerar (isso troca os ids e invalida tentativas registradas).`,
   );
   process.exit(1);
+}
+if (dryRun) {
+  // Mesma montagem de secoes, alvo e cotas do laco de geracao abaixo, so que
+  // imprimindo em vez de chamar a IA. Nivel sem secao aborta igual.
+  const lines: string[] = ["### SYSTEM", SYSTEM_PROMPT];
+  for (const nivel of NIVEIS) {
+    const sections = levelSections(roadmap, nivel);
+    if (sections.length === 0) {
+      console.error(
+        `[generateQuizPool] trilha ${slug} nao tem secoes do nivel ${nivel}; pool exige os tres niveis.`,
+      );
+      process.exit(1);
+    }
+    const levelLeaves = sections.reduce(
+      (sum, section) => sum + section.leaves.length,
+      0,
+    );
+    const levelTarget = Math.min(
+      POOL_TARGET_PER_LEVEL,
+      levelLeaves * MAX_PER_FONTE,
+    );
+    if (levelTarget < POOL_MIN_PER_LEVEL) {
+      console.error(
+        `[generateQuizPool] nivel ${nivel} de ${slug} comporta no maximo ${levelTarget} perguntas (${levelLeaves} folhas x ${MAX_PER_FONTE}), abaixo do minimo ${POOL_MIN_PER_LEVEL}.`,
+      );
+      process.exit(1);
+    }
+    const quotas = sectionQuotas(sections, levelTarget);
+    for (let i = 0; i < sections.length; i += 1) {
+      lines.push(
+        `### ${nivel} / ${sections[i].title} / cota ${quotas[i]}`,
+        buildUserPrompt(roadmap, nivel, sections[i], quotas[i], null),
+      );
+      if (withSchema) {
+        const schema = buildQuestionSchema(
+          sections[i].leaves.map((leaf) => leaf.id),
+          quotas[i],
+        );
+        lines.push(
+          `### SCHEMA ${nivel} / ${sections[i].title}`,
+          JSON.stringify(toOpenAIStrictSchema(schema)),
+        );
+      }
+    }
+  }
+  process.stdout.write(lines.join("\n") + "\n");
+  process.exit(0);
 }
 if (!env.openaiApiKey) {
   console.error("[generateQuizPool] OPENAI_API_KEY ausente no ambiente.");
