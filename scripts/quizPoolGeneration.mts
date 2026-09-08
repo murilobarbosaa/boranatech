@@ -310,6 +310,7 @@ export function buildCodeRules(codeLanguages: string[]): string {
     `- completar: a lacuna ${CODE_PLACEHOLDER} substitui uma expressao, um token ou um argumento, nunca uma linha ou instrucao inteira; as alternativas sao SO o que entra na lacuna (sem repetir o resto da linha), em uma linha cada. Com a correta na lacuna o trecho roda; com cada errada, o trecho quebra ou produz outro resultado.`,
     "- Trecho autocontido: sem import, require, fetch, leitura de arquivo ou qualquer dependencia externa; so a linguagem e a biblioteca padrao. Sem entrada do usuario, sem aleatoriedade, sem data e hora.",
     "- Variedade: em secao com 3 ou mais perguntas de codigo, pelo menos uma de cada tipo (completar, erro e saida); com 2, tipos diferentes; saida nao pode passar da metade das perguntas de codigo da secao.",
+    `- Exemplo de completar: trecho const x = ${CODE_PLACEHOLDER}; com alternativas 1, 2, 3 e 4. NUNCA const x = 1; como alternativa: a alternativa e so o que entra na lacuna, sem o resto da linha.`,
   ].join("\n");
 }
 
@@ -484,6 +485,29 @@ export function codeRuleViolations(
       }
       if (!question.alternativasCodigo) {
         out.push(`${rotulo}: completar exige alternativasCodigo true`);
+      }
+      // Alternativa que repete o resto da linha da lacuna: 3 das 7 CORRIGIR
+      // do 04d eram isso (preenchida, a linha virava "const x = const x =").
+      // Prefixo curto (menos de 4 caracteres) e sufixo que e so ";" nao
+      // contam, porque coincidem com alternativa legitima.
+      const linhaLacuna = linhas.find((linha) =>
+        linha.includes(CODE_PLACEHOLDER),
+      );
+      if (linhaLacuna) {
+        const [prefixo, sufixo] = linhaLacuna
+          .split(CODE_PLACEHOLDER)
+          .map((parte) => parte.trim());
+        const sufixoUtil = sufixo.replace(/;/g, "").length;
+        const repete = alternativas.some(
+          (alt) =>
+            (prefixo.length >= 4 && alt.includes(prefixo)) ||
+            (sufixoUtil >= 2 && alt.trim().endsWith(sufixo)),
+        );
+        if (repete) {
+          out.push(
+            `${rotulo}: alternativa de completar repete o resto da linha (so o que entra na lacuna)`,
+          );
+        }
       }
     }
     if (question.tipo === "saida") {

@@ -565,6 +565,75 @@ describe("codeRuleViolations: regras novas do Lote 04c", () => {
   });
 });
 
+describe("codeRuleViolations: alternativa de completar que repete a linha", () => {
+  const js = ["js"];
+  const completar = (
+    trecho: string,
+    alternativas: GeneratedQuestion["alternativas"],
+  ): GeneratedQuestion =>
+    gerada({
+      tipo: "completar",
+      codigo: { linguagem: "js", trecho },
+      alternativas,
+      alternativasCodigo: true,
+    });
+
+  it("alternativa que repete o prefixo da linha acusa", () => {
+    const v = codeRuleViolations(
+      [
+        completar("const resultado = ____;", {
+          a: "const resultado = 1",
+          b: "2",
+          c: "3",
+          d: "4",
+        }),
+      ],
+      js,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("alternativa de completar repete o resto da linha");
+  });
+
+  it("alternativa so com o que entra na lacuna passa", () => {
+    const v = codeRuleViolations(
+      [
+        completar("const resultado = ____;", {
+          a: "1",
+          b: "2",
+          c: "3",
+          d: "4",
+        }),
+      ],
+      js,
+    );
+    expect(v).toEqual([]);
+  });
+
+  it("alternativa terminando so em ponto e virgula nao acusa", () => {
+    const v = codeRuleViolations(
+      [
+        completar("const resultado = ____;", {
+          a: "1;",
+          b: "2",
+          c: "3",
+          d: "4",
+        }),
+      ],
+      js,
+    );
+    expect(v).toEqual([]);
+  });
+
+  it("alternativa que repete o sufixo da linha acusa", () => {
+    const v = codeRuleViolations(
+      [completar("____ = 3;", { a: "x = 3;", b: "let x", c: "var x", d: "x" })],
+      js,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("alternativa de completar repete o resto da linha");
+  });
+});
+
 describe("codeTypeViolations", () => {
   const de = (tipo: "saida" | "erro" | "completar"): GeneratedQuestion =>
     gerada({ tipo, codigo: { linguagem: "js", trecho: "console.log(1);" } });
