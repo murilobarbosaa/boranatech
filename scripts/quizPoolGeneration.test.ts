@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Execucao } from "./verifyQuizPoolByExecution.mts";
 import { toOpenAIStrictSchema } from "../server/lib/openaiStrictSchema";
 import type { RoadmapV2 } from "../shared/roadmapV2/types";
 import {
@@ -9,6 +10,7 @@ import {
   codeQuotaFor,
   codeRuleViolations,
   codeTypeViolations,
+  execViolations,
   type GeneratedQuestion,
   missingCodeCount,
   normalizeGeneratedQuestion,
@@ -767,5 +769,97 @@ describe("codeTypeViolations", () => {
 
   it("cota zero nao acusa nada", () => {
     expect(codeTypeViolations([gerada(), gerada()], 0)).toEqual([]);
+  });
+});
+
+describe("execViolations com executor stub", () => {
+  const ok = (stdout: string): Execucao => ({
+    status: 0,
+    stdout,
+    erro: "",
+    timeout: false,
+  });
+  // Stub: js "executa" devolvendo o numero da atribuicao ou o argumento do
+  // console.log; qualquer outra linguagem nao tem runner.
+  const executarPor = (linguagem: string) =>
+    linguagem === "js"
+      ? (code: string) => {
+          const m = code.match(/const a = (.*);/) ?? code.match(/log\((.*)\)/);
+          return ok(String(Number(m?.[1])));
+        }
+      : null;
+
+  it("saida cujo stdout difere da correta acusa", () => {
+    const v = execViolations(
+      [
+        gerada({
+          tipo: "saida",
+          codigo: { linguagem: "js", trecho: "console.log(3);" },
+          alternativas: { a: "2", b: "3", c: "4", d: "5" },
+          alternativasCodigo: true,
+        }),
+      ],
+      ["js"],
+      executarPor,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]).toMatch(/^pergunta 1 \(fonte basico.variaveis\): obtido="3"/);
+  });
+
+  it("erro com saidaEsperada igual ao stdout acusa sem defeito", () => {
+    const v = execViolations(
+      [
+        gerada({
+          tipo: "erro",
+          codigo: {
+            linguagem: "js",
+            trecho: "console.log(2);",
+            saidaEsperada: "2",
+          },
+          alternativasCodigo: false,
+        }),
+      ],
+      ["js"],
+      executarPor,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("erro sem defeito");
+  });
+
+  it("completar com distrator equivalente acusa", () => {
+    const v = execViolations(
+      [
+        gerada({
+          tipo: "completar",
+          codigo: {
+            linguagem: "js",
+            trecho: "const a = ____;\nconsole.log(a);",
+          },
+          alternativas: { a: "1", b: "1.0", c: "2", d: "3" },
+          alternativasCodigo: true,
+        }),
+      ],
+      ["js"],
+      executarPor,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("distratores equivalentes: b");
+  });
+
+  it("linguagem sem runner e conceito nao acusam nada", () => {
+    const v = execViolations(
+      [
+        gerada(),
+        gerada({
+          tipo: "saida",
+          codigo: { linguagem: "bash", trecho: "echo 3" },
+          alternativas: { a: "2", b: "3", c: "4", d: "5" },
+          alternativasCodigo: true,
+        }),
+      ],
+      ["bash"],
+      executarPor,
+    );
+    expect(v).toEqual([]);
   });
 });

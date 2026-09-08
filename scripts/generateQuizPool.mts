@@ -37,6 +37,7 @@ import {
   codeQuotaFor,
   codeRuleViolations,
   codeTypeViolations,
+  execViolations,
   type GeneratedQuestion,
   levelSections,
   MAX_PER_FONTE,
@@ -49,6 +50,11 @@ import {
   SYSTEM_PROMPT,
 } from "./quizPoolGeneration.mts";
 import { NIVEL_ABBR, validateQuizPool } from "./quizPoolValidation.mts";
+import {
+  type Executor,
+  makeExecutor,
+  runnerFor,
+} from "./verifyQuizPoolByExecution.mts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const QUIZ_DIR = path.join(ROOT, "server", "data", "roadmapQuizzes");
@@ -131,6 +137,7 @@ async function generateSection(
   section: SectionMaterial,
   quota: number,
   usageLevel: Usage,
+  executarPor: ((linguagem: string) => Executor | null) | null,
 ): Promise<GeneratedQuestion[]> {
   const codeLeaves = codeLeafIds(section, roadmap.codeLanguages ?? []);
   const codeQuota = codeQuotaFor(roadmap, quota, codeLeaves.length);
@@ -202,6 +209,13 @@ async function generateSection(
                 roadmap.codeLanguages ?? [],
               ),
               ...codeTypeViolations(validation.data.questions, codeQuota),
+              ...(executarPor
+                ? execViolations(
+                    validation.data.questions,
+                    roadmap.codeLanguages ?? [],
+                    executarPor,
+                  )
+                : []),
             ]
           : [];
       if (violacoes.length === 0) {
@@ -293,11 +307,27 @@ const force = args.includes("--force");
 // para diff, e o que se roda antes da geracao real.
 const dryRun = args.includes("--dry-run");
 const withSchema = args.includes("--schema");
+// --no-exec: nao executa os trechos de codigo dentro do retry (para ambiente
+// sem o runner da linguagem). Com execucao ligada, um executor por linguagem
+// com runner (js, python) e criado uma vez por rodada e reaproveitado; o
+// dry-run nunca executa nada.
+const noExec = args.includes("--no-exec");
+const executores = new Map<string, Executor>();
+const executarPor = (linguagem: string): Executor | null => {
+  const runner = runnerFor(linguagem);
+  if (!runner) return null;
+  let executar = executores.get(linguagem);
+  if (!executar) {
+    executar = makeExecutor(runner);
+    executores.set(linguagem, executar);
+  }
+  return executar;
+};
 const slug = args.find((arg) => !arg.startsWith("--"));
 
 if (!slug) {
   console.error(
-    "Uso: pnpm gen:quiz-pool <slug> [--force] [--dry-run [--schema]]",
+    "Uso: pnpm gen:quiz-pool <slug> [--force] [--dry-run [--schema]] [--no-exec]",
   );
   process.exit(1);
 }
@@ -435,6 +465,7 @@ for (const nivel of NIVEIS) {
       sections[i],
       quotas[i],
       usageLevel,
+      noExec ? null : executarPor,
     );
     for (const question of generated) {
       seq += 1;

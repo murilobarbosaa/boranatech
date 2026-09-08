@@ -19,6 +19,7 @@ import {
   isCodeQuestion,
 } from "../shared/roadmapQuiz/types";
 import type { RoadmapNode, RoadmapV2 } from "../shared/roadmapV2/types";
+import { conferirCodigo, type Executor } from "./verifyQuizPoolByExecution.mts";
 
 export const NIVEIS: QuizNivel[] = ["iniciante", "intermediario", "avancado"];
 export const MAX_PER_FONTE = 3;
@@ -586,6 +587,42 @@ export function codeTypeViolations(
       `variedade: saida nao pode passar da metade das perguntas de codigo (${conta("saida")} de ${tipos.length})`,
     );
   }
+  return out;
+}
+
+// Violacoes por EXECUCAO dos trechos de uma resposta do modelo, no mesmo
+// formato de codeRuleViolations, para o retry corrigir antes da validacao
+// final: saida cujo stdout nao bate com a correta, completar com distrator
+// equivalente ou correta que lanca, erro que roda limpo e imprime a
+// saidaEsperada (sem defeito). `executarPor` devolve o executor da linguagem
+// ou null quando nao ha runner (bash, dockerfile), e nesse caso a pergunta
+// nao gera violacao nenhuma. Pura em relacao ao executor recebido.
+export function execViolations(
+  questions: GeneratedQuestion[],
+  codeLanguages: string[],
+  executarPor: (linguagem: string) => Executor | null,
+): string[] {
+  const out: string[] = [];
+  questions.forEach((question, index) => {
+    if (!isCodeQuestion({ tipo: question.tipo }) || !question.codigo) return;
+    if (!codeLanguages.includes(question.codigo.linguagem)) return;
+    const executar = executarPor(question.codigo.linguagem);
+    if (!executar) return;
+    const r = conferirCodigo(
+      {
+        tipo: question.tipo,
+        codigo: question.codigo,
+        alternativas: question.alternativas,
+        correta: question.correta,
+      },
+      executar,
+    );
+    if (r.veredito === "CORRIGIR") {
+      out.push(
+        `pergunta ${index + 1} (fonte ${question.fonte}): ${r.resultado}`,
+      );
+    }
+  });
   return out;
 }
 

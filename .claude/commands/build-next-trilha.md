@@ -79,6 +79,9 @@ O --check do pnpm check acusa qualquer omissao dos tres; rode pnpm check antes d
 - A proporcao de perguntas de codigo por tipo de trilha vem de `CODE_SHARE_BY_KIND` em scripts/quizPoolGeneration.mts (metade em linguagem e framework, 40% em ferramenta), com pelo menos 1 e no maximo cota menos 1 por secao.
 - `pnpm gen:quiz-pool <slug> --dry-run` (e `--dry-run --schema`) imprime o system prompt, o user prompt de cada secao e o schema sem gastar credito; e o que se roda antes da geracao real.
 - `pnpm verify:quiz-pool <slug>` roda depois de TODA geracao de pool de trilha com `codeLanguages` que tenha runner (js e python): executa cada trecho de codigo e compara com o gabarito. Pergunta `CORRIGIR` nao entra em commit; `LER` (tipo erro) e leitura humana.
+- Pergunta `erro` exige `codigo.saidaEsperada`: o stdout cru que o trecho DEVERIA produzir segundo a intencao declarada na pergunta. Nao e gabarito (vai ao client); e o que torna `erro` verificavel: trecho que roda limpo e imprime exatamente isso nao tem defeito.
+- O gerador executa os trechos de `js` e `python` DENTRO do retry (saida, completar e erro conferidos por execucao a cada tentativa, no mesmo canal das violacoes de regra); `--no-exec` desliga, para ambiente sem o runner. O dry-run nunca executa.
+- O verificador continua sendo o portao final antes do commit, e `erro` com `saidaEsperada` agora sai `OK` (lanca ou diverge) ou `CORRIGIR` (roda limpo e imprime a saida esperada), nao mais `LER`; `LER` fica so para pool anterior ao campo.
 
 Disciplina de codigo em trilha de linguagem, framework e ferramenta (SUBSTITUI a secao 3 para essas trilhas; a secao 3 continua valendo para trilha de area e de carreira):
 

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  conferirCodigo,
+  erroDoStderr,
+  type Execucao,
   fillGap,
   normalizeStdout,
   runnerFor,
@@ -41,5 +44,124 @@ describe("runnerFor", () => {
 
   it("linguagem sem runner devolve null", () => {
     expect(runnerFor("bash")).toBeNull();
+  });
+});
+
+describe("erroDoStderr", () => {
+  it("prefere a ultima linha de erro, nao a linha de codigo que o Node imprime antes", () => {
+    const stderr = [
+      "file:///tmp/q.mjs:3",
+      "    if (id <= 0) return rejeitar(new Error('id invalido'));",
+      "                                 ^",
+      "",
+      "Error: id invalido",
+      "    at file:///tmp/q.mjs:3:34",
+      "",
+      "Node.js v24.13.1",
+    ].join("\n");
+    expect(erroDoStderr(stderr)).toBe("Error: id invalido");
+  });
+
+  it("aceita nome de erro no inicio da linha (SyntaxError, TypeError)", () => {
+    expect(
+      erroDoStderr("x\n\nSyntaxError: missing ) after argument list\n    at y"),
+    ).toBe("SyntaxError: missing ) after argument list");
+  });
+
+  it("sem linha de erro devolve a primeira linha nao vazia", () => {
+    expect(erroDoStderr("\n  aviso qualquer\n")).toBe("aviso qualquer");
+    expect(erroDoStderr("")).toBe("");
+  });
+});
+
+describe("conferirCodigo com executor stub", () => {
+  const ok = (stdout: string): Execucao => ({
+    status: 0,
+    stdout,
+    erro: "",
+    timeout: false,
+  });
+  const falha = (erro: string): Execucao => ({
+    status: 1,
+    stdout: "",
+    erro,
+    timeout: false,
+  });
+  const alternativas = { a: "1", b: "1.0", c: "2", d: "3" };
+
+  it("saida cujo stdout difere da correta e CORRIGIR", () => {
+    const r = conferirCodigo(
+      {
+        tipo: "saida",
+        codigo: { linguagem: "js", trecho: "console.log(3);" },
+        alternativas: { a: "2", b: "3", c: "4", d: "5" },
+        correta: "a",
+      },
+      () => ok("3"),
+    );
+    expect(r.veredito).toBe("CORRIGIR");
+    expect(r.resultado).toContain('obtido="3"');
+  });
+
+  it("erro com saidaEsperada que roda limpo e imprime a saida esperada e CORRIGIR", () => {
+    const r = conferirCodigo(
+      {
+        tipo: "erro",
+        codigo: {
+          linguagem: "js",
+          trecho: "console.log(2);",
+          saidaEsperada: "2",
+        },
+        alternativas,
+        correta: "a",
+      },
+      () => ok("2"),
+    );
+    expect(r.veredito).toBe("CORRIGIR");
+    expect(r.resultado).toContain("erro sem defeito");
+  });
+
+  it("erro com saidaEsperada que lanca ou diverge e OK", () => {
+    const base = {
+      tipo: "erro" as const,
+      codigo: {
+        linguagem: "js",
+        trecho: "console.log(x);",
+        saidaEsperada: "2",
+      },
+      alternativas,
+      correta: "a" as const,
+    };
+    expect(
+      conferirCodigo(base, () => falha("ReferenceError: x")).veredito,
+    ).toBe("OK");
+    expect(conferirCodigo(base, () => ok("3")).veredito).toBe("OK");
+  });
+
+  it("erro sem saidaEsperada continua LER", () => {
+    const r = conferirCodigo(
+      {
+        tipo: "erro",
+        codigo: { linguagem: "js", trecho: "console.log(2);" },
+        alternativas,
+        correta: "a",
+      },
+      () => ok("2"),
+    );
+    expect(r.veredito).toBe("LER");
+  });
+
+  it("completar com distrator equivalente e CORRIGIR e o nomeia", () => {
+    const r = conferirCodigo(
+      {
+        tipo: "completar",
+        codigo: { linguagem: "js", trecho: "const a = ____;\nconsole.log(a);" },
+        alternativas,
+        correta: "a",
+      },
+      (code) => ok(String(Number(code.match(/const a = (.*);/)?.[1]))),
+    );
+    expect(r.veredito).toBe("CORRIGIR");
+    expect(r.resultado).toContain("distratores equivalentes: b");
   });
 });
