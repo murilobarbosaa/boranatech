@@ -197,6 +197,7 @@ const SENTINEL_AREAS = Object.keys(SENTINEL_AREAS_BY_KIND);
 // ocupar (/roadmaps/ia e o gerador de roadmap com IA).
 const RESERVED_SLUGS = ["ia"];
 const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+const CODE_LANGUAGE_RE = /^[a-z0-9]+$/;
 
 function checkKinds(): string[] {
   const problems: string[] = [];
@@ -233,6 +234,28 @@ function checkKinds(): string[] {
       problems.push(
         `trilha "${slug}": area "${area}" nao existe em areasTI (trilha sem kind exige area real)`,
       );
+    }
+
+    // codeLanguages so faz sentido onde o gerador de pool produz pergunta de
+    // codigo: trilha de linguagem, framework ou ferramenta. Cada entrada e um
+    // identificador de cerca markdown, no mesmo alfabeto do slug sem hifen.
+    const { codeLanguages } = roadmap;
+    if (codeLanguages !== undefined) {
+      if (!kind || kind === "carreira") {
+        problems.push(
+          `trilha "${slug}": codeLanguages so e permitido em trilha de linguagem, framework ou ferramenta`,
+        );
+      }
+      if (codeLanguages.length === 0) {
+        problems.push(`trilha "${slug}": codeLanguages vazio`);
+      }
+      for (const lang of codeLanguages) {
+        if (!CODE_LANGUAGE_RE.test(lang)) {
+          problems.push(
+            `trilha "${slug}": codeLanguages com identificador fora do formato a-z e 0-9: "${lang}"`,
+          );
+        }
+      }
     }
   }
   return problems;

@@ -63,5 +63,11 @@ export type RoadmapV2 = {
   // A vitrine agrupa "linguagem" e "framework" num mesmo bloco.
   kind?: "carreira" | "linguagem" | "framework" | "ferramenta";
   languages?: RoadmapLanguage[];
+  // Linguagens em que o codigo desta trilha e escrito, como identificadores
+  // de cerca markdown (js, ts, python, sql, bash, dockerfile, yaml...). So em
+  // trilhas de kind linguagem, framework ou ferramenta; a primeira e a
+  // principal. E o que liga o gerador de pool as perguntas de codigo: trilha
+  // sem este campo gera so perguntas de conceito, como as trilhas de area.
+  codeLanguages?: string[];
   sections: RoadmapSection[];
 };
