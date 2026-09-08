@@ -7,6 +7,8 @@
 import {
   COOLDOWN_HOURS,
   DRAW_BY_LEVEL,
+  DRAW_MIN_CODE_PER_LEVEL,
+  isCodeQuestion,
   PASS_SCORE,
   RETAKE_LIMIT,
   type PublicQuizQuestion,
@@ -40,8 +42,11 @@ function shuffle<T>(items: T[], rng: QuizRng): T[] {
 // Sorteia DRAW_BY_LEVEL perguntas por nivel excluindo os ids de exclude (a
 // tentativa anterior do usuario, anti-repeticao imediata). Nivel sem
 // candidatos suficientes fora da exclusao relaxa a exclusao SO naquele nivel.
-// A ordem das perguntas e a das alternativas de cada uma saem embaralhadas;
-// rng e injetavel pra teste deterministico.
+// Em cada nivel com pergunta de codigo entre as candidatas, pelo menos
+// DRAW_MIN_CODE_PER_LEVEL entra na tentativa, para a prova de trilha de
+// linguagem sempre ter codigo em cada nivel. Pool sem pergunta de codigo nao
+// muda em nada. A ordem das perguntas e a das alternativas de cada uma saem
+// embaralhadas; rng e injetavel pra teste deterministico.
 export function drawQuestions(
   pool: QuizPool,
   exclude: Set<string>,
@@ -59,10 +64,18 @@ export function drawQuestions(
       );
       candidatas = doNivel;
     }
+    const codigo = candidatas.filter(isCodeQuestion);
+    const demais = candidatas.filter((question) => !isCodeQuestion(question));
+    const garantidas = shuffle(codigo, rng).slice(0, DRAW_MIN_CODE_PER_LEVEL);
+    const restantes = shuffle(
+      [
+        ...codigo.filter((question) => !garantidas.includes(question)),
+        ...demais,
+      ],
+      rng,
+    ).slice(0, DRAW_BY_LEVEL[nivel] - garantidas.length);
     selecionadas.push(
-      ...shuffle(candidatas, rng)
-        .slice(0, DRAW_BY_LEVEL[nivel])
-        .map((question) => question.id),
+      ...[...garantidas, ...restantes].map((question) => question.id),
     );
   }
   return shuffle(selecionadas, rng).map((id) => ({
