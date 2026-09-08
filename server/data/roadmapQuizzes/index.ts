@@ -22,6 +22,7 @@ import gestao from "./gestao";
 import inteligenciaArtificial from "./inteligencia-artificial";
 import infraestrutura from "./infraestrutura";
 import iot from "./iot";
+import javascript from "./javascript";
 import mainframe from "./mainframe";
 import mobile from "./mobile";
 import produto from "./produto";
@@ -47,6 +48,7 @@ export const roadmapQuizPools: Record<string, QuizPool> = {
   "inteligencia-artificial": inteligenciaArtificial,
   infraestrutura,
   iot,
+  javascript,
   mainframe,
   mobile,
   produto,
