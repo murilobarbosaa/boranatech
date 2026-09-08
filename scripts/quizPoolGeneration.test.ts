@@ -340,6 +340,47 @@ describe("codeLeafIds e a cota pelo material", () => {
     expect(codeLeafIds(secaoMista, ["js"])).toEqual(["m.js"]);
   });
 
+  const secaoImports: SectionMaterial = {
+    title: "Imports",
+    leaves: [
+      {
+        id: "f1",
+        title: "Autocontida",
+        description: "",
+        content: "Texto.\n\n```js\nconsole.log(1);\n```",
+      },
+      {
+        id: "f2",
+        title: "So import",
+        description: "",
+        content:
+          "Texto.\n\n```js\nimport x from './x.js';\nconsole.log(x);\n```",
+      },
+      {
+        id: "f3",
+        title: "Fetch e autocontida",
+        description: "",
+        content:
+          "Texto.\n\n```js\nfetch('/api');\n```\n\nMais.\n\n```js\nconst a = 1;\nconsole.log(a);\n```",
+      },
+    ],
+  };
+
+  it("codeLeafIds em js ignora folha cujo unico codigo depende de import ou fetch", () => {
+    expect(codeLeafIds(secaoImports, ["js"])).toEqual(["f1", "f3"]);
+  });
+
+  it("codeLeafIds em bash conta folha com import na cerca", () => {
+    const bash: SectionMaterial = {
+      title: "Bash",
+      leaves: secaoImports.leaves.map((leaf) => ({
+        ...leaf,
+        content: leaf.content.replace(/```js/g, "```bash"),
+      })),
+    };
+    expect(codeLeafIds(bash, ["bash"])).toEqual(["f1", "f2", "f3"]);
+  });
+
   it("quota 7 com 1 folha de codigo da 2 (teto por folha)", () => {
     expect(codeQuotaFor(js, 7, 1)).toBe(2);
   });

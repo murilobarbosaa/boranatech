@@ -239,6 +239,13 @@ export const MAX_CODE_PER_LEAF = 2;
 // das linguagens da trilha (```js, ```ts...). Cerca de outra linguagem, como
 // a ```json do package.json numa trilha de JavaScript, nao conta: o modelo
 // so consegue escrever pergunta de codigo onde o material tem codigo.
+// Em linguagem de IMPORT_FREE_LANGUAGES a cerca so conta se o codigo dela
+// NAO casar IMPORT_RE: o prompt aponta o modelo para essas folhas e a regra
+// de trecho autocontido proibe import, require e fetch, entao apontar para
+// uma folha cujo unico codigo depende disso e pedir uma pergunta impossivel,
+// e o modelo respondeu com codigo nulo em vez de recusar (registro do 04c,
+// secao Assincronia, folha assincrono.fetch, cinco tentativas). Em bash ou
+// dockerfile a exclusao nao se aplica.
 export function codeLeafIds(
   section: SectionMaterial,
   codeLanguages: string[],
@@ -247,9 +254,16 @@ export function codeLeafIds(
   const langs = codeLanguages
     .map((lang) => lang.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
     .join("|");
-  const re = new RegExp("```(?:" + langs + ")[ \\t]*\\n");
+  const re = new RegExp("```(?:" + langs + ")[ \\t]*\\n([\\s\\S]*?)```", "g");
+  const semImports = codeLanguages.some((lang) =>
+    IMPORT_FREE_LANGUAGES.includes(lang),
+  );
   return section.leaves
-    .filter((leaf) => re.test(leaf.content))
+    .filter((leaf) =>
+      Array.from(leaf.content.matchAll(re)).some(
+        (m) => !semImports || !IMPORT_RE.test(m[1]),
+      ),
+    )
     .map((leaf) => leaf.id);
 }
 
@@ -373,7 +387,7 @@ const DASH_RE = /\u2014|\u2013/;
 // Dockerfile comeca com FROM e um script bash chama comandos externos por
 // natureza, entao a checagem so roda quando codeLanguages tem alguma destas.
 export const IMPORT_FREE_LANGUAGES = ["js", "ts", "python"];
-const IMPORT_RE = /\b(import|require|fetch)\b|readFile|\bopen\(/;
+export const IMPORT_RE = /\b(import|require|fetch)\b|readFile|\bopen\(/;
 // Heuristica de "alternativa de saida escrita como frase": a saida crua de um
 // programa raramente contem a palavra imprime ou termina em letra seguida de
 // ponto final; uma frase em portugues quase sempre. Pode dar falso positivo
