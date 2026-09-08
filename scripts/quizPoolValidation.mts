@@ -15,6 +15,13 @@ const NIVEIS: QuizNivel[] = ["iniciante", "intermediario", "avancado"];
 const ALTERNATIVA_IDS = ["a", "b", "c", "d"] as const;
 const DASH_RE = /\u2014|\u2013/;
 
+// O slug entra num RegExp construido por string (idRe): sem escape, um
+// metacaractere no slug muda o padrao em silencio. Protecao aqui dentro, nao
+// no call site.
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export const NIVEL_ABBR: Record<QuizNivel, string> = {
   iniciante: "ini",
   intermediario: "int",
@@ -91,7 +98,7 @@ export function validateQuizPool(
     countByLevel[question.nivel] += 1;
 
     const idRe = new RegExp(
-      `^${fileSlug}-${NIVEL_ABBR[question.nivel]}-\\d{2}$`,
+      `^${escapeRegExp(fileSlug)}-${NIVEL_ABBR[question.nivel]}-\\d{2}$`,
     );
     if (!idRe.test(question.id)) {
       problems.push(
