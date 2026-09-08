@@ -53,3 +53,163 @@ describe("validateQuizPool com slug que tem metacaractere de regex", () => {
     expect(problemasDeFormato(pool)).toHaveLength(1);
   });
 });
+
+// Perguntas de codigo: cada caso usa `pergunta(id)` com os campos novos por
+// cima e filtra os problemas pelo trecho da mensagem esperada.
+function problemasContendo(question: QuizQuestion, trecho: string): string[] {
+  const pool: QuizPool = { slug: "a+b", questions: [question] };
+  return validateQuizPool(pool, "a+b", roadmap).filter((problem) =>
+    problem.includes(trecho),
+  );
+}
+
+function problemasDeCodigo(question: QuizQuestion): string[] {
+  const pool: QuizPool = { slug: "a+b", questions: [question] };
+  return validateQuizPool(pool, "a+b", roadmap).filter(
+    (problem) =>
+      problem.includes("codigo") ||
+      problem.includes("tipo invalido") ||
+      problem.includes("lacuna"),
+  );
+}
+
+describe("perguntas de codigo", () => {
+  it("saida com codigo valido de 3 linhas nao gera problema de codigo", () => {
+    expect(
+      problemasDeCodigo({
+        ...pergunta("a+b-ini-01"),
+        tipo: "saida",
+        codigo: {
+          linguagem: "js",
+          trecho: "const a = 1;\nconst b = 2;\nconsole.log(a + b);",
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  it("tipo fora da lista gera tipo invalido", () => {
+    expect(
+      problemasContendo(
+        { ...pergunta("a+b-ini-01"), tipo: "xyz" as never },
+        'tipo invalido "xyz"',
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("erro sem codigo gera sem campo codigo", () => {
+    expect(
+      problemasContendo(
+        { ...pergunta("a+b-ini-01"), tipo: "erro" },
+        "sem campo codigo",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("codigo em pergunta sem tipo gera so e permitido", () => {
+    expect(
+      problemasContendo(
+        {
+          ...pergunta("a+b-ini-01"),
+          codigo: { linguagem: "js", trecho: "let x = 1;" },
+        },
+        "so e permitido em pergunta de tipo completar, erro ou saida",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("completar sem lacuna gera encontradas 0", () => {
+    expect(
+      problemasContendo(
+        {
+          ...pergunta("a+b-ini-01"),
+          tipo: "completar",
+          codigo: { linguagem: "js", trecho: "let x = 1;" },
+        },
+        "exatamente uma lacuna ____ no trecho (encontradas 0)",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("completar com duas lacunas gera encontradas 2", () => {
+    expect(
+      problemasContendo(
+        {
+          ...pergunta("a+b-ini-01"),
+          tipo: "completar",
+          codigo: { linguagem: "js", trecho: "let ____ = ____;" },
+        },
+        "(encontradas 2)",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("saida com lacuna no trecho gera so e permitida em completar", () => {
+    expect(
+      problemasContendo(
+        {
+          ...pergunta("a+b-ini-01"),
+          tipo: "saida",
+          codigo: { linguagem: "js", trecho: "console.log(____);" },
+        },
+        "lacuna ____ so e permitida em pergunta completar",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("trecho de 13 linhas gera com 13 linhas", () => {
+    const trecho = [
+      "l1",
+      "l2",
+      "l3",
+      "l4",
+      "l5",
+      "l6",
+      "l7",
+      "l8",
+      "l9",
+      "l10",
+      "l11",
+      "l12",
+      "l13",
+    ].join("\n");
+    expect(
+      problemasContendo(
+        {
+          ...pergunta("a+b-ini-01"),
+          tipo: "saida",
+          codigo: { linguagem: "python", trecho },
+        },
+        "codigo.trecho com 13 linhas (maximo 12)",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("linha de 71 caracteres gera linha de 71 caracteres", () => {
+    const linha =
+      "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrs";
+    expect(linha).toHaveLength(71);
+    expect(
+      problemasContendo(
+        {
+          ...pergunta("a+b-ini-01"),
+          tipo: "saida",
+          codigo: { linguagem: "sql", trecho: `print(1)\n${linha}` },
+        },
+        "codigo.trecho com linha de 71 caracteres (maximo 70)",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("meia-risca no trecho gera travessao ou meia-risca", () => {
+    expect(
+      problemasContendo(
+        {
+          ...pergunta("a+b-ini-01"),
+          tipo: "saida",
+          codigo: { linguagem: "bash", trecho: "echo a \u2013 b" },
+        },
+        "codigo.trecho com travessao ou meia-risca",
+      ),
+    ).toHaveLength(1);
+  });
+});

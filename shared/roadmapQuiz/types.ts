@@ -8,6 +8,25 @@ export type QuizNivel = "iniciante" | "intermediario" | "avancado";
 
 export type QuizAlternativaId = "a" | "b" | "c" | "d";
 
+// Tipo da pergunta. Ausente = "conceito" (as pools anteriores a este campo
+// nao o declaram). Os tres tipos de codigo continuam sendo escolha unica a-d:
+// o que muda e que a pergunta carrega um trecho de codigo e as alternativas
+// podem ser codigo. Snapshot da tentativa, correcao e retake nao dependem
+// do tipo.
+export type QuizTipo = "conceito" | "completar" | "erro" | "saida";
+
+// Trecho de codigo exibido entre o enunciado e as alternativas.
+// "completar": o trecho tem a lacuna CODE_PLACEHOLDER exatamente uma vez e
+// as alternativas sao candidatas a preenche-la. "erro": o trecho tem um
+// defeito e as alternativas dizem qual e. "saida": as alternativas sao
+// saidas possiveis do trecho. `linguagem` e o identificador curto usado na
+// cerca markdown (js, ts, python, sql, bash...), so para rotulo e para o
+// renderer; nao e validado contra lista fechada.
+export interface QuizCodigo {
+  linguagem: string;
+  trecho: string;
+}
+
 export interface QuizQuestion {
   // Id estavel no formato <slug>-<ini|int|av>-<NN>, gerado pelo script (nunca
   // pela IA). Tentativas de quiz referenciam esses ids: renomear ou reordenar
@@ -20,6 +39,37 @@ export interface QuizQuestion {
   explicacao: string;
   // Id da folha da trilha v2 que originou a pergunta.
   fonte: string;
+  // Ausente = conceito. Ver QuizTipo.
+  tipo?: QuizTipo;
+  // Obrigatorio nos tipos de codigo, proibido nos demais (validado no pool).
+  codigo?: QuizCodigo;
+  // Quando presente, o client renderiza as quatro alternativas em fonte
+  // monoespaciada (alternativas que sao codigo).
+  alternativasCodigo?: true;
+}
+
+// Tipos que carregam trecho de codigo. Usado pelo sorteio (garantia por
+// nivel) e pela validacao do pool, para os dois lerem a mesma regra.
+export const CODE_QUESTION_TIPOS: readonly QuizTipo[] = [
+  "completar",
+  "erro",
+  "saida",
+];
+// Lacuna do tipo "completar": aparece exatamente uma vez no trecho.
+export const CODE_PLACEHOLDER = "____";
+// Limites do trecho, pra caber na tela da prova sem rolagem vertical e sem
+// quebra de linha forcada em celular.
+export const CODE_MAX_LINES = 12;
+export const CODE_MAX_LINE_LENGTH = 70;
+// Sorteio: em cada nivel que tenha pergunta de codigo disponivel, pelo menos
+// esta quantidade entra na tentativa. Nivel sem pergunta de codigo sorteia
+// como sempre; pool sem nenhuma pergunta de codigo nao muda em nada.
+export const DRAW_MIN_CODE_PER_LEVEL = 1;
+
+export function isCodeQuestion(question: Pick<QuizQuestion, "tipo">): boolean {
+  return (
+    question.tipo !== undefined && CODE_QUESTION_TIPOS.includes(question.tipo)
+  );
 }
 
 export interface QuizPool {

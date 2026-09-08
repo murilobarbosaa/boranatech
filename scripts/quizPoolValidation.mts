@@ -7,12 +7,20 @@ import type {
   QuizNivel,
   QuizPool,
   QuizQuestion,
+  QuizTipo,
 } from "../shared/roadmapQuiz/types";
-import { POOL_MIN_PER_LEVEL } from "../shared/roadmapQuiz/types";
+import {
+  CODE_MAX_LINE_LENGTH,
+  CODE_MAX_LINES,
+  CODE_PLACEHOLDER,
+  isCodeQuestion,
+  POOL_MIN_PER_LEVEL,
+} from "../shared/roadmapQuiz/types";
 import type { RoadmapNode, RoadmapV2 } from "../shared/roadmapV2/types";
 
 const NIVEIS: QuizNivel[] = ["iniciante", "intermediario", "avancado"];
 const ALTERNATIVA_IDS = ["a", "b", "c", "d"] as const;
+const TIPOS: QuizTipo[] = ["conceito", "completar", "erro", "saida"];
 const DASH_RE = /\u2014|\u2013/;
 
 // O slug entra num RegExp construido por string (idRe): sem escape, um
@@ -124,6 +132,58 @@ export function validateQuizPool(
       }
       if (DASH_RE.test(value)) {
         problems.push(`${q}: ${field} contem travessao ou meia-risca`);
+      }
+    }
+
+    // Perguntas de codigo: tipo conhecido, codigo presente exatamente nos
+    // tipos de codigo, trecho dentro dos limites da tela e lacuna so (e
+    // exatamente uma) no tipo completar.
+    if (question.tipo !== undefined && !TIPOS.includes(question.tipo)) {
+      problems.push(`${q}: tipo invalido "${question.tipo}"`);
+    }
+    const ehCodigo = isCodeQuestion(question);
+    if (ehCodigo && !question.codigo) {
+      problems.push(`${q}: pergunta de codigo sem campo codigo`);
+    }
+    if (question.codigo && !ehCodigo) {
+      problems.push(
+        `${q}: campo codigo so e permitido em pergunta de tipo completar, erro ou saida`,
+      );
+    }
+    if (question.codigo) {
+      const { linguagem, trecho } = question.codigo;
+      if (!linguagem || linguagem.trim().length === 0) {
+        problems.push(`${q}: codigo.linguagem vazio`);
+      }
+      if (!trecho || trecho.trim().length === 0) {
+        problems.push(`${q}: codigo.trecho vazio`);
+      }
+      const linhas = (trecho ?? "").split("\n");
+      if (linhas.length > CODE_MAX_LINES) {
+        problems.push(
+          `${q}: codigo.trecho com ${linhas.length} linhas (maximo ${CODE_MAX_LINES})`,
+        );
+      }
+      const maisLonga = Math.max(...linhas.map((linha) => linha.length));
+      if (maisLonga > CODE_MAX_LINE_LENGTH) {
+        problems.push(
+          `${q}: codigo.trecho com linha de ${maisLonga} caracteres (maximo ${CODE_MAX_LINE_LENGTH})`,
+        );
+      }
+      if (DASH_RE.test(trecho ?? "")) {
+        problems.push(`${q}: codigo.trecho com travessao ou meia-risca`);
+      }
+      const lacunas = (trecho ?? "").split(CODE_PLACEHOLDER).length - 1;
+      if (question.tipo === "completar") {
+        if (lacunas !== 1) {
+          problems.push(
+            `${q}: completar exige exatamente uma lacuna ${CODE_PLACEHOLDER} no trecho (encontradas ${lacunas})`,
+          );
+        }
+      } else if (lacunas > 0) {
+        problems.push(
+          `${q}: lacuna ${CODE_PLACEHOLDER} so e permitida em pergunta completar`,
+        );
       }
     }
   }
