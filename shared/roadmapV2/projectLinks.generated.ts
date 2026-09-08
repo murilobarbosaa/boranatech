@@ -150,6 +150,10 @@ export const projectTrailLinks: Record<
     {
       "slug": "javascript",
       "nodeId": "projeto.cli"
+    },
+    {
+      "slug": "python",
+      "nodeId": "projeto.cli"
     }
   ]
 };

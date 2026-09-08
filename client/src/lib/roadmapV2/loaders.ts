@@ -96,6 +96,8 @@ const loadersCrus: Record<string, () => Promise<RoadmapV2>> = {
   erp: () => import("@shared/roadmapV2/content/erp").then((m) => m.erp),
   javascript: () =>
     import("@shared/roadmapV2/content/javascript").then((m) => m.javascript),
+  python: () =>
+    import("@shared/roadmapV2/content/python").then((m) => m.python),
 };
 
 /**
