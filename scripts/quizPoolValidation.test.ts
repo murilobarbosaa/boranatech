@@ -23,6 +23,16 @@ const roadmap: RoadmapV2 = {
   ],
 };
 
+// Trilha de linguagem com codeLanguages, para os casos em que a pergunta de
+// codigo e permitida. A fixture de area acima nao tem codeLanguages, entao
+// pergunta de codigo nela e erro.
+const roadmapComCodigo: RoadmapV2 = {
+  ...roadmap,
+  area: "linguagem",
+  kind: "linguagem",
+  codeLanguages: ["js", "ts"],
+};
+
 function pergunta(id: string): QuizQuestion {
   return {
     id,
@@ -56,16 +66,23 @@ describe("validateQuizPool com slug que tem metacaractere de regex", () => {
 
 // Perguntas de codigo: cada caso usa `pergunta(id)` com os campos novos por
 // cima e filtra os problemas pelo trecho da mensagem esperada.
-function problemasContendo(question: QuizQuestion, trecho: string): string[] {
+function problemasContendo(
+  question: QuizQuestion,
+  trecho: string,
+  trilha: RoadmapV2 = roadmap,
+): string[] {
   const pool: QuizPool = { slug: "a+b", questions: [question] };
-  return validateQuizPool(pool, "a+b", roadmap).filter((problem) =>
+  return validateQuizPool(pool, "a+b", trilha).filter((problem) =>
     problem.includes(trecho),
   );
 }
 
-function problemasDeCodigo(question: QuizQuestion): string[] {
+function problemasDeCodigo(
+  question: QuizQuestion,
+  trilha: RoadmapV2 = roadmap,
+): string[] {
   const pool: QuizPool = { slug: "a+b", questions: [question] };
-  return validateQuizPool(pool, "a+b", roadmap).filter(
+  return validateQuizPool(pool, "a+b", trilha).filter(
     (problem) =>
       problem.includes("codigo") ||
       problem.includes("tipo invalido") ||
@@ -76,14 +93,17 @@ function problemasDeCodigo(question: QuizQuestion): string[] {
 describe("perguntas de codigo", () => {
   it("saida com codigo valido de 3 linhas nao gera problema de codigo", () => {
     expect(
-      problemasDeCodigo({
-        ...pergunta("a+b-ini-01"),
-        tipo: "saida",
-        codigo: {
-          linguagem: "js",
-          trecho: "const a = 1;\nconst b = 2;\nconsole.log(a + b);",
+      problemasDeCodigo(
+        {
+          ...pergunta("a+b-ini-01"),
+          tipo: "saida",
+          codigo: {
+            linguagem: "js",
+            trecho: "const a = 1;\nconst b = 2;\nconsole.log(a + b);",
+          },
         },
-      }),
+        roadmapComCodigo,
+      ),
     ).toEqual([]);
   });
 
@@ -211,5 +231,33 @@ describe("perguntas de codigo", () => {
         "codigo.trecho com travessao ou meia-risca",
       ),
     ).toHaveLength(1);
+  });
+});
+
+describe("codeLanguages da trilha", () => {
+  const saidaEm = (linguagem: string): QuizQuestion => ({
+    ...pergunta("a+b-ini-01"),
+    tipo: "saida",
+    codigo: { linguagem, trecho: "console.log(1);" },
+  });
+
+  it("pergunta de codigo em trilha sem codeLanguages e erro", () => {
+    expect(
+      problemasContendo(saidaEm("js"), "em trilha sem codeLanguages", roadmap),
+    ).toHaveLength(1);
+  });
+
+  it("linguagem fora das codeLanguages da trilha e erro", () => {
+    expect(
+      problemasContendo(
+        saidaEm("python"),
+        'codigo.linguagem "python" fora das codeLanguages da trilha [js, ts]',
+        roadmapComCodigo,
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("linguagem dentro das codeLanguages nao gera problema de codigo", () => {
+    expect(problemasDeCodigo(saidaEm("ts"), roadmapComCodigo)).toEqual([]);
   });
 });

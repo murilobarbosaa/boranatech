@@ -186,6 +186,23 @@ export function validateQuizPool(
         );
       }
     }
+
+    // A linguagem do trecho precisa ser uma das codeLanguages da trilha, e
+    // trilha sem codeLanguages nao pode ter pergunta de codigo (o gerador so
+    // as produz quando o campo existe).
+    if (ehCodigo) {
+      const codeLanguages = roadmap.codeLanguages;
+      if (!codeLanguages || codeLanguages.length === 0) {
+        problems.push(`${q}: pergunta de codigo em trilha sem codeLanguages`);
+      } else if (
+        question.codigo &&
+        !codeLanguages.includes(question.codigo.linguagem)
+      ) {
+        problems.push(
+          `${q}: codigo.linguagem "${question.codigo.linguagem}" fora das codeLanguages da trilha [${codeLanguages.join(", ")}]`,
+        );
+      }
+    }
   }
 
   for (const nivel of NIVEIS) {
