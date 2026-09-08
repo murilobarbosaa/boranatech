@@ -36,6 +36,7 @@ import {
   codeLeafIds,
   codeQuotaFor,
   codeRuleViolations,
+  codeTypeViolations,
   type GeneratedQuestion,
   levelSections,
   MAX_PER_FONTE,
@@ -195,10 +196,13 @@ async function generateSection(
       );
       const violacoes =
         codeQuota > 0
-          ? codeRuleViolations(
-              validation.data.questions,
-              roadmap.codeLanguages ?? [],
-            )
+          ? [
+              ...codeRuleViolations(
+                validation.data.questions,
+                roadmap.codeLanguages ?? [],
+              ),
+              ...codeTypeViolations(validation.data.questions, codeQuota),
+            ]
           : [];
       if (violacoes.length === 0) {
         bestClean = validation.data.questions;

@@ -8,6 +8,7 @@ import {
   codeLeafIds,
   codeQuotaFor,
   codeRuleViolations,
+  codeTypeViolations,
   type GeneratedQuestion,
   missingCodeCount,
   normalizeGeneratedQuestion,
@@ -238,10 +239,12 @@ describe("codeRuleViolations", () => {
         gerada({
           tipo: "saida",
           codigo: { linguagem: "js", trecho: "console.log(1);" },
+          alternativasCodigo: true,
         }),
         gerada({
           tipo: "completar",
           codigo: { linguagem: "js", trecho: "const x = 1;" },
+          alternativasCodigo: true,
         }),
       ],
       js,
@@ -254,7 +257,13 @@ describe("codeRuleViolations", () => {
     const linha =
       "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrs";
     const violacoes = codeRuleViolations(
-      [gerada({ tipo: "saida", codigo: { linguagem: "js", trecho: linha } })],
+      [
+        gerada({
+          tipo: "saida",
+          codigo: { linguagem: "js", trecho: linha },
+          alternativasCodigo: true,
+        }),
+      ],
       js,
     );
     expect(violacoes).toHaveLength(1);
@@ -334,5 +343,178 @@ describe("codeLeafIds e a cota pelo material", () => {
       "a.y",
     ]);
     expect(texto).toContain("passos que trazem codigo no material: a.x, a.y");
+  });
+});
+
+describe("codeRuleViolations: regras novas do Lote 04c", () => {
+  const js = ["js"];
+  const saidaOk = (extra: Partial<GeneratedQuestion> = {}): GeneratedQuestion =>
+    gerada({
+      tipo: "saida",
+      codigo: { linguagem: "js", trecho: "console.log(1);" },
+      alternativas: { a: "1", b: "2", c: "3", d: "4" },
+      alternativasCodigo: true,
+      ...extra,
+    });
+
+  it("pergunta com cerca markdown acusa", () => {
+    const v = codeRuleViolations(
+      [saidaOk({ pergunta: "O que imprime?\n```js\nconsole.log(1);\n```" })],
+      js,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("pergunta contem codigo");
+  });
+
+  it("pergunta que repete o trecho inteiro acusa", () => {
+    const v = codeRuleViolations(
+      [saidaOk({ pergunta: "Veja console.log(1); e diga a saida" })],
+      js,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("pergunta contem codigo");
+  });
+
+  it("trecho com import em js acusa", () => {
+    const v = codeRuleViolations(
+      [
+        saidaOk({
+          codigo: {
+            linguagem: "js",
+            trecho: "import x from './x.js';\nconsole.log(x);",
+          },
+        }),
+      ],
+      js,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("autocontido");
+  });
+
+  it("trecho com import em bash nao acusa a regra de import", () => {
+    const v = codeRuleViolations(
+      [
+        gerada({
+          tipo: "erro",
+          codigo: { linguagem: "bash", trecho: "import foo\necho ok" },
+          alternativasCodigo: false,
+        }),
+      ],
+      ["bash"],
+    );
+    expect(v).toEqual([]);
+  });
+
+  it("completar com a lacuna ocupando a linha inteira acusa", () => {
+    const v = codeRuleViolations(
+      [
+        gerada({
+          tipo: "completar",
+          codigo: {
+            linguagem: "js",
+            trecho: "const a = 1;\n____\nconsole.log(a);",
+          },
+          alternativas: { a: "a = 2;", b: "a++;", c: "a--;", d: "a = 0;" },
+          alternativasCodigo: true,
+        }),
+      ],
+      js,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("lacuna ocupa a linha inteira");
+  });
+
+  it("alternativa de completar com mais de uma linha acusa", () => {
+    const v = codeRuleViolations(
+      [
+        gerada({
+          tipo: "completar",
+          codigo: { linguagem: "js", trecho: "const a = ____;" },
+          alternativas: { a: "1", b: "2\n3", c: "3", d: "4" },
+          alternativasCodigo: true,
+        }),
+      ],
+      js,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("mais de uma linha");
+  });
+
+  it("saida sem alternativasCodigo acusa", () => {
+    const v = codeRuleViolations([saidaOk({ alternativasCodigo: false })], js);
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("saida exige alternativasCodigo true");
+  });
+
+  it("erro com alternativasCodigo true acusa", () => {
+    const v = codeRuleViolations(
+      [
+        gerada({
+          tipo: "erro",
+          codigo: { linguagem: "js", trecho: "console.log(x);" },
+          alternativasCodigo: true,
+        }),
+      ],
+      js,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("erro exige alternativasCodigo false");
+  });
+
+  it("alternativa de saida escrita como frase acusa", () => {
+    const v = codeRuleViolations(
+      [
+        saidaOk({
+          alternativas: { a: "O codigo imprime 50.", b: "1", c: "2", d: "3" },
+        }),
+      ],
+      js,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("escrita como frase");
+  });
+
+  it("saida crua nao acusa", () => {
+    expect(codeRuleViolations([saidaOk()], js)).toEqual([]);
+  });
+});
+
+describe("codeTypeViolations", () => {
+  const de = (tipo: "saida" | "erro" | "completar"): GeneratedQuestion =>
+    gerada({ tipo, codigo: { linguagem: "js", trecho: "console.log(1);" } });
+
+  it("tres ou mais de codigo sem algum tipo acusa", () => {
+    const v = codeTypeViolations(
+      [de("saida"), de("saida"), de("erro"), gerada()],
+      3,
+    );
+    expect(v.some((l) => l.includes("completar"))).toBe(true);
+  });
+
+  it("duas de codigo do mesmo tipo acusa", () => {
+    const v = codeTypeViolations([de("erro"), de("erro"), gerada()], 2);
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("tipos diferentes");
+  });
+
+  it("saida acima da metade acusa", () => {
+    const v = codeTypeViolations(
+      [de("saida"), de("saida"), de("saida"), de("erro"), de("completar")],
+      5,
+    );
+    expect(v.some((l) => l.includes("metade"))).toBe(true);
+  });
+
+  it("um de cada tipo e saida na metade passa", () => {
+    expect(
+      codeTypeViolations(
+        [de("saida"), de("erro"), de("completar"), gerada()],
+        3,
+      ),
+    ).toEqual([]);
+  });
+
+  it("cota zero nao acusa nada", () => {
+    expect(codeTypeViolations([gerada(), gerada()], 0)).toEqual([]);
   });
 });

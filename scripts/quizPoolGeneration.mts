@@ -275,6 +275,12 @@ export function buildCodeRules(codeLanguages: string[]): string {
     `- Trecho: codigo valido e autocontido na linguagem, no maximo ${CODE_MAX_LINES} linhas e ${CODE_MAX_LINE_LENGTH} caracteres por linha, indentado com dois espacos, sem comentario que entregue a resposta, sem ${CODE_PLACEHOLDER} fora do tipo completar.`,
     `- codigo.linguagem e obrigatoriamente uma destas: ${codeLanguages.join(", ")}; a primeira da lista e a principal.`,
     "- Distratores de codigo: erros reais de quem esta aprendendo (off-by-one, tipo errado, ordem de argumentos, escopo), nunca sintaxe absurda.",
+    "- A pergunta NUNCA contem codigo nem cerca markdown: o trecho vai SOMENTE em codigo.trecho. A pergunta diz o que fazer com o trecho (por exemplo: O que este codigo imprime? Qual alternativa completa a lacuna para que a saida seja X? Qual e o defeito deste codigo?).",
+    "- saida: cada alternativa e EXATAMENTE o texto que o terminal mostra, linha por linha separada por quebra de linha, sem frase em volta (escrever O codigo imprime 50. esta errado; escrever 50 esta certo) e sem virgula juntando linhas. A correta e a alternativa cujo texto e a saida real do trecho: confira a saida mentalmente, linha a linha, antes de escolher a letra.",
+    "- erro: o trecho, executado, precisa lancar ou produzir resultado errado em relacao ao que a pergunta declara como intencao; a pergunta declara essa intencao (por exemplo: este codigo deveria somar a lista) e a correta descreve o defeito. Codigo correto com a pergunta qual e o erro e PROIBIDO. Pergunta de conceito com alternativas em codigo NAO e erro: e conceito.",
+    `- completar: a lacuna ${CODE_PLACEHOLDER} substitui uma expressao, um token ou um argumento, nunca uma linha ou instrucao inteira; as alternativas sao SO o que entra na lacuna (sem repetir o resto da linha), em uma linha cada. Com a correta na lacuna o trecho roda; com cada errada, o trecho quebra ou produz outro resultado.`,
+    "- Trecho autocontido: sem import, require, fetch, leitura de arquivo ou qualquer dependencia externa; so a linguagem e a biblioteca padrao. Sem entrada do usuario, sem aleatoriedade, sem data e hora.",
+    "- Variedade: em secao com 3 ou mais perguntas de codigo, pelo menos uma de cada tipo (completar, erro e saida); com 2, tipos diferentes; saida nao pode passar da metade das perguntas de codigo da secao.",
   ].join("\n");
 }
 
@@ -347,6 +353,19 @@ export function missingCodeCount(
 
 const DASH_RE = /\u2014|\u2013/;
 
+// Linguagens em que "trecho autocontido" significa sem import, require, fetch
+// ou leitura de arquivo. Em trilha de ferramenta a regra nao cabe: um
+// Dockerfile comeca com FROM e um script bash chama comandos externos por
+// natureza, entao a checagem so roda quando codeLanguages tem alguma destas.
+export const IMPORT_FREE_LANGUAGES = ["js", "ts", "python"];
+const IMPORT_RE = /\b(import|require|fetch)\b|readFile|\bopen\(/;
+// Heuristica de "alternativa de saida escrita como frase": a saida crua de um
+// programa raramente contem a palavra imprime ou termina em letra seguida de
+// ponto final; uma frase em portugues quase sempre. Pode dar falso positivo
+// numa saida que seja uma frase de verdade; nesse caso o retry pede o ajuste
+// e o modelo devolve a mesma resposta, e o fallback aceita.
+const FRASE_RE = /imprime|[a-z\u00e1\u00e9\u00ed\u00f3\u00fa\u00e7]\.$/i;
+
 // Violacoes das regras de codigo numa resposta do modelo, para o retry de
 // generateSection corrigir ANTES da validacao final: sao as mesmas regras que
 // quizPoolValidation.mts aplica ao trecho, em redacao curta, uma linha por
@@ -406,7 +425,82 @@ export function codeRuleViolations(
         `${rotulo}: codigo.linguagem "${codigo.linguagem}" fora de [${codeLanguages.join(", ")}]`,
       );
     }
+    if (
+      question.pergunta.includes("```") ||
+      question.pergunta.includes(trecho.trim())
+    ) {
+      out.push(
+        `${rotulo}: pergunta contem codigo (o trecho vai so em codigo.trecho)`,
+      );
+    }
+    if (
+      codeLanguages.some((lang) => IMPORT_FREE_LANGUAGES.includes(lang)) &&
+      IMPORT_RE.test(trecho)
+    ) {
+      out.push(
+        `${rotulo}: trecho depende de import, require, fetch ou arquivo (precisa ser autocontido)`,
+      );
+    }
+    const alternativas = Object.values(question.alternativas);
+    if (question.tipo === "completar") {
+      if (linhas.some((linha) => linha.trim() === CODE_PLACEHOLDER)) {
+        out.push(`${rotulo}: lacuna ocupa a linha inteira`);
+      }
+      if (alternativas.some((alt) => alt.includes("\n"))) {
+        out.push(`${rotulo}: alternativa de completar com mais de uma linha`);
+      }
+      if (!question.alternativasCodigo) {
+        out.push(`${rotulo}: completar exige alternativasCodigo true`);
+      }
+    }
+    if (question.tipo === "saida") {
+      if (!question.alternativasCodigo) {
+        out.push(`${rotulo}: saida exige alternativasCodigo true`);
+      }
+      if (alternativas.some((alt) => FRASE_RE.test(alt.trim()))) {
+        out.push(
+          `${rotulo}: alternativa de saida escrita como frase (tem que ser a saida crua)`,
+        );
+      }
+    }
+    if (question.tipo === "erro" && question.alternativasCodigo) {
+      out.push(`${rotulo}: erro exige alternativasCodigo false`);
+    }
   });
+  return out;
+}
+
+// Regra de variedade dos tipos de codigo numa secao: com 3 ou mais perguntas
+// de codigo, pelo menos uma de cada tipo; com 2, tipos diferentes; saida nao
+// passa da metade. Tratada no retry como as outras violacoes.
+export function codeTypeViolations(
+  questions: GeneratedQuestion[],
+  codeQuota: number,
+): string[] {
+  if (codeQuota <= 0) return [];
+  const tipos = questions
+    .filter((question) => isCodeQuestion({ tipo: question.tipo }))
+    .map((question) => question.tipo as QuizTipo);
+  const out: string[] = [];
+  const conta = (tipo: QuizTipo) => tipos.filter((t) => t === tipo).length;
+  if (tipos.length >= 3) {
+    for (const tipo of CODE_QUESTION_TIPOS) {
+      if (conta(tipo) === 0) {
+        out.push(
+          `variedade: ${tipos.length} perguntas de codigo e nenhuma do tipo ${tipo}`,
+        );
+      }
+    }
+  } else if (tipos.length === 2 && tipos[0] === tipos[1]) {
+    out.push(
+      `variedade: as 2 perguntas de codigo precisam ser de tipos diferentes (vieram 2 de ${tipos[0]})`,
+    );
+  }
+  if (tipos.length > 0 && conta("saida") > tipos.length / 2) {
+    out.push(
+      `variedade: saida nao pode passar da metade das perguntas de codigo (${conta("saida")} de ${tipos.length})`,
+    );
+  }
   return out;
 }
 
