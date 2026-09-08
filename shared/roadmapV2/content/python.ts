@@ -433,14 +433,14 @@ export const python: RoadmapV2 = {
       ],
     },
     {
-      id: "avancado",
-      title: "Python por dentro",
+      id: "classes",
+      title: "Classes e objetos",
       level: "avancado",
       description:
-        "Classes, os métodos que o interpretador chama sozinho, geradores que economizam memória e dicas de tipo.",
+        "Criar um tipo seu com dados e comportamento, e os métodos de nome especial que o interpretador chama sozinho.",
       children: [
         {
-          id: "avancado.classes",
+          id: "classes.definir",
           title: "Classes e __init__",
           description:
             "Agrupar dados e comportamento num tipo próprio, com o método que roda ao criar cada objeto.",
@@ -455,7 +455,7 @@ export const python: RoadmapV2 = {
           ],
         },
         {
-          id: "avancado.especiais",
+          id: "classes.especiais",
           title: "Métodos especiais: __str__ e __len__",
           description:
             "Os métodos de nome duplo-sublinhado que integram seus objetos às funções embutidas da linguagem.",
@@ -463,7 +463,47 @@ export const python: RoadmapV2 = {
             "Métodos com dois sublinhados de cada lado do nome não são chamados por você: são chamados pela linguagem. Eles são o que faz um objeto seu funcionar com as funções embutidas.\n\n`__str__` decide o que `print` mostra. Sem ele, um objeto sai como `<__main__.Conta object at 0x7f...>`, que não informa nada:\n\n```python\nclass Produto:\n    def __init__(self, nome, itens):\n        self.nome = nome\n        self.itens = itens\n\n    def __str__(self):\n        return f'Produto({self.nome})'\n\n    def __len__(self):\n        return len(self.itens)\n\np = Produto('kit', ['a', 'b', 'c'])\nprint(p, len(p))  # Produto(kit) 3\n```\n\n`__len__` faz `len()` funcionar, e de quebra decide a verdade do objeto: um `Produto` com zero itens passa a ser falso em `if p:`, pela regra de valores falsos da seção de fluxo.\n\nOs outros que aparecem com frequência: `__eq__` define o que `==` compara (sem ele, dois objetos com os mesmos campos são diferentes); `__repr__` é a representação para quem depura, e é o que o REPL mostra; `__iter__` permite usar o objeto num `for`.\n\nO princípio: em vez de inventar `imprimir()` e `tamanho()`, você implementa o método especial e o objeto passa a se comportar como os tipos da linguagem. É o que se chama de protocolo em Python, e é por isso que `len` funciona igual em lista, dicionário e string.\n\nVocê domina este passo quando implementa `__str__` em toda classe que vai ser impressa, e sabe qual método embutido cada um desses nomes atende.",
         },
         {
-          id: "avancado.geradores",
+          id: "classes.heranca",
+          title: "Herança, em uma dose só",
+          description:
+            "Uma classe que aproveita outra e troca só o que muda, e por que composição costuma ser a escolha melhor.",
+          content:
+            "Herança faz uma classe aproveitar tudo de outra e trocar só o que muda. A classe nova recebe a de origem entre parênteses, e `super()` alcança a versão original de um método que ela substituiu.\n\n```python\nclass Conta:\n    def __init__(self, titular):\n        self.titular = titular\n        self.saldo = 0\n\n    def resumo(self):\n        return f'{self.titular}: {self.saldo}'\n\nclass Poupanca(Conta):\n    def resumo(self):\n        return super().resumo() + ' (poupanca)'\n\nprint(Poupanca('Ana').resumo())  # Ana: 0 (poupanca)\n```\n\n`Poupanca` não redefine `__init__` nem `titular`: herda tudo e substitui apenas `resumo`. Esse é o uso que compensa, quando a classe nova **é** um tipo especial da anterior e a frase 'toda poupança é uma conta' descreve a realidade.\n\nO uso que não compensa é herdar só para reaproveitar código. Uma classe que herda de outra fica presa a cada mudança dela, e cadeias de três ou quatro níveis viram o tipo de código em que ninguém acha onde um método foi definido. A alternativa é composição: a classe guarda um objeto da outra num atributo e chama o que precisa. Menos acoplamento, e o leitor enxerga a dependência.\n\nO passo sobre exceções próprias já usou herança sem alarde: `class SaldoInsuficiente(Exception)` é exatamente isso, e é o caso em que ela é obrigatória, porque o `except` funciona por tipo.\n\nVocê domina este passo quando escolhe entre herdar e compor pela pergunta 'a nova classe É um caso especial da outra?'.",
+        },
+        {
+          id: "classes.quando",
+          title: "Quando classe, quando dicionário, quando função",
+          description:
+            "O critério de decisão que evita tanto o programa sem estrutura quanto a classe que só embrulha um dicionário.",
+          content:
+            "Nem todo dado precisa de classe, e nem toda função precisa virar método. Três perguntas resolvem quase todos os casos.\n\nA primeira: **existe comportamento junto do dado?** Se o que você tem é um registro de campos que alguém lê e grava, um dicionário resolve, e a seção de coleções já mostrou como. `{'nome': 'Ana', 'saldo': 0}` não fica melhor virando classe se ninguém faz nada com ele além de ler.\n\nA segunda: **existe invariante a proteger?** Uma conta cujo saldo nunca pode ficar negativo tem uma regra que precisa valer em toda alteração. Colocar essa regra dentro de um método `sacar` garante que todo caminho passe por ela; espalhada pelos chamadores, ela some no primeiro que esquecer. É o mesmo raciocínio de validar dentro da função, do passo sobre `raise`.\n\nA terceira: **quantos objetos do mesmo formato existem ao mesmo tempo?** Um, e provavelmente você quer só funções e um módulo. Muitos, com estado próprio cada um, e a classe se paga.\n\nQuando o dado é um registro com poucos campos e nenhuma regra, existe um meio-termo que a próxima seção apresenta: `dataclass`, que dá um tipo com nome sem o `__init__` escrito à mão.\n\nVocê domina este passo quando consegue justificar, em uma frase, por que aquele dado virou classe em vez de dicionário.",
+        },
+      ],
+    },
+    {
+      id: "modernos",
+      title: "Geradores e tipagem",
+      level: "avancado",
+      description:
+        "Produzir valores sob demanda em vez de montar listas, e anotar tipos para o editor e para quem lê.",
+      children: [
+        {
+          id: "modernos.iteradores",
+          title: "Iteradores: o que o for faz por dentro",
+          description:
+            "O protocolo de duas funções que todo for usa, e o motivo de o mesmo laço servir a lista, string, dicionário e arquivo.",
+          content:
+            "O `for` da seção de fluxo não sabe nada sobre listas. Ele conhece um protocolo de duas funções, e qualquer objeto que as tenha funciona nele. Isso explica por que o mesmo laço percorre lista, string, dicionário e arquivo aberto sem nenhuma adaptação.\n\n`iter` pede ao objeto um **iterador**, e `next` pede o próximo valor a esse iterador. Quando acaba, `next` lança `StopIteration`, e o `for` captura essa exceção para encerrar em silêncio.\n\n```python\nletras = ['a', 'b']\nit = iter(letras)\nprint(next(it))  # a\nprint(next(it))  # b\n```\n\nUma terceira chamada de `next` lançaria `StopIteration`. O `for` está fazendo exatamente isso a cada volta, com o `try` embutido.\n\nO detalhe que importa na prática: o iterador guarda a posição e **avança só para a frente**. Depois de esgotado, ele não volta ao início; você pede outro com `iter`. Uma lista pode ser percorrida quantas vezes você quiser porque cada `for` cria um iterador novo a partir dela.\n\nÉ o mesmo protocolo do método `__iter__` que a seção anterior citou entre os métodos especiais: implementá-lo faz um objeto seu funcionar num `for`, sem que ele precise ser uma lista.\n\nVocê domina este passo quando explica o que acontece entre duas voltas de um `for` e por que um iterador esgotado não recomeça.",
+          resources: [
+            {
+              label: "Iteradores (pt-BR)",
+              url: "https://docs.python.org/pt-br/3/tutorial/classes.html#iterators",
+              kind: "doc",
+            },
+          ],
+        },
+        {
+          id: "modernos.geradores",
           title: "Iteradores e geradores",
           description:
             "Produzir valores sob demanda com yield, em vez de montar uma lista inteira na memória.",
@@ -471,12 +511,35 @@ export const python: RoadmapV2 = {
             "Um gerador é uma função que produz valores um por um, sob demanda. Onde uma função normal usa `return` e acaba, o gerador usa `yield` e **pausa**, guardando onde parou até pedirem o próximo valor.\n\n```python\ndef contagem(limite):\n    n = 1\n    while n <= limite:\n        yield n\n        n = n + 1\n\nfor numero in contagem(3):\n    print(numero)  # 1\n# 2\n# 3\nprint(list(contagem(4)))  # [1, 2, 3, 4]\n```\n\nA diferença que importa é memória. Uma função que devolve uma lista com um milhão de itens ocupa a memória do milhão inteiro; o gerador ocupa a de um item por vez. Ler um arquivo de log de dois gigabytes, linha a linha, só é possível assim, e é exatamente o que o `for linha in arquivo` do passo de arquivos faz por dentro.\n\nO preço: um gerador é consumido uma vez. Depois que o `for` chegou ao fim, ele está esgotado; para percorrer de novo, chame a função outra vez. E não existe `len()` de gerador, porque ele não sabe quantos itens virão.\n\nA versão curta é a expressão geradora, igual à compreensão de lista mas com parênteses. `sum(n * n for n in range(1000))` calcula a soma sem construir a lista intermediária.\n\n`range` é o exemplo mais familiar dessa ideia: `range(1000000)` não cria um milhão de números, cria um objeto que os produz quando pedidos.\n\nVocê domina este passo quando troca uma função que monta lista por um gerador em dados grandes, e sabe dizer por que não dá para percorrê-lo duas vezes.",
         },
         {
-          id: "avancado.tipos",
-          title: "Type hints e dataclasses",
+          id: "modernos.preguica",
+          title: "Expressões geradoras e avaliação preguiçosa",
           description:
-            "Anotar tipos para o editor e para quem lê, e a forma curta de declarar uma classe que só carrega dados.",
+            "A compreensão com parênteses, que produz sob demanda, e a diferença que ela faz numa cadeia de transformações.",
           content:
-            "Type hints anotam o tipo esperado dos parâmetros e do retorno. Python **não** os verifica em execução, e o programa roda igual com o tipo errado; quem os usa é o editor, o Pylance e ferramentas como o mypy, que apontam a incompatibilidade antes de você rodar.\n\n```python\ndef media(valores: list[float]) -> float:\n    if not valores:\n        return 0.0\n    return sum(valores) / len(valores)\n\nprint(media([2.0, 4.0]))  # 3.0\n```\n\nA sintaxe: dois pontos depois do parâmetro, seta antes do retorno. Os tipos compostos usam colchetes (`list[str]`, `dict[str, int]`), e `str | None` diz que o valor pode faltar. O ganho aparece no editor, que passa a completar métodos e a marcar de vermelho a chamada errada, e em quem lê a assinatura sem abrir o corpo.\n\nPara classes que só carregam dados, `dataclasses` elimina o `__init__` repetitivo:\n\n```python\nfrom dataclasses import dataclass\n\n@dataclass\nclass Produto:\n    nome: str\n    preco: float\n    ativo: bool = True\n\np = Produto('caneta', 2.5)\nprint(p)  # Produto(nome='caneta', preco=2.5, ativo=True)\nprint(p == Produto('caneta', 2.5))  # True\n```\n\nO decorador `@dataclass` gera `__init__`, `__repr__` e `__eq__` a partir dos campos anotados. É a resposta curta para o que o passo de classes descreveu à mão, e a razão de `p == Produto(...)` ser verdadeiro sem você escrever `__eq__`.\n\nVocê domina este passo quando anota funções públicas com tipos e escolhe `dataclass` sempre que a classe é só um registro de campos.",
+            "Uma expressão geradora é a compreensão de lista da seção de coleções trocando colchetes por parênteses. A forma é a mesma; o que muda é quando o trabalho acontece.\n\n```python\nquadrados = (n * n for n in range(4))\nprint(sum(quadrados))  # 14\nprint(list(quadrados))  # []\n```\n\nA primeira linha não calcula nada: cria um gerador parado. `sum` puxa os valores um por um e chega a 14. A segunda impressão sai vazia porque o gerador foi consumido, exatamente como o passo anterior descreveu.\n\nO nome disso é avaliação preguiçosa: o valor só é produzido quando alguém pede. A vantagem aparece em cadeia. Filtrar um milhão de linhas com compreensões de lista cria uma lista nova a cada etapa; com expressões geradoras, cada linha atravessa a cadeia inteira sozinha e nenhuma lista intermediária existe.\n\nUm detalhe de escrita: quando a expressão geradora é o único argumento de uma função, os parênteses dela bastam. `sum(n * n for n in range(4))` é válido e é a forma que você mais vai ver.\n\nQuando usar cada uma: compreensão de lista quando você vai percorrer o resultado mais de uma vez ou precisa de `len`; expressão geradora quando o resultado é consumido uma vez só, principalmente por `sum`, `max`, `any` ou um `for`.\n\nVocê domina este passo quando escolhe entre colchetes e parênteses pensando em quantas vezes o resultado será percorrido.",
+        },
+        {
+          id: "modernos.tipos",
+          title: "Type hints: tipos para o editor e para quem lê",
+          description:
+            "Anotações que Python não verifica em execução, mas que o editor e o mypy usam para apontar erro antes de rodar.",
+          content:
+            "Type hints anotam o tipo esperado dos parâmetros e do retorno. Python **não** os verifica em execução: o programa roda igual com o tipo errado. Quem os usa é o editor, o Pylance e ferramentas como o mypy, que apontam a incompatibilidade antes de você rodar.\n\n```python\ndef media(valores: list[float]) -> float:\n    if not valores:\n        return 0.0\n    return sum(valores) / len(valores)\n\nprint(media([2.0, 4.0]))  # 3.0\nprint(media([]))  # 0.0\n```\n\nA sintaxe: dois pontos depois do parâmetro, seta antes do retorno. Os tipos compostos usam colchetes (`list[str]`, `dict[str, int]`), e a barra vertical diz que o valor pode ser de mais de um tipo: `str | None` é o jeito moderno de anotar o que pode faltar.\n\nO ganho aparece em dois lugares. No editor, que passa a completar os métodos certos e a marcar de vermelho a chamada errada. E em quem lê a assinatura sem abrir o corpo: `def media(valores: list[float]) -> float` responde sozinha o que entra e o que sai, e substitui metade das docstrings que a seção de funções apresentou.\n\nOnde anotar: nas funções que outras partes do programa chamam. Dentro de um laço de três linhas, a anotação só faz ruído.\n\nVocê domina este passo quando anota a assinatura de uma função pública sem consultar nada, e sabe dizer o que acontece se o tipo passado não bater.",
+          resources: [
+            {
+              label: "Módulo typing (pt-BR)",
+              url: "https://docs.python.org/pt-br/3/library/typing.html",
+              kind: "doc",
+            },
+          ],
+        },
+        {
+          id: "modernos.dataclasses",
+          title: "dataclasses: a classe de registro sem cerimônia",
+          description:
+            "Um decorador que escreve o __init__, o __repr__ e o __eq__ a partir dos campos anotados.",
+          content:
+            "Muita classe existe só para carregar campos. Escrever `__init__` atribuindo cinco atributos, `__repr__` para imprimir e `__eq__` para comparar é trabalho mecânico, e `dataclasses` faz esse trabalho a partir das anotações do passo anterior.\n\n```python\nfrom dataclasses import dataclass\n\n@dataclass\nclass Produto:\n    nome: str\n    preco: float\n    ativo: bool = True\n\np = Produto('caneta', 2.5)\nprint(p)  # Produto(nome='caneta', preco=2.5, ativo=True)\nprint(p == Produto('caneta', 2.5))  # True\n```\n\nO `@dataclass` acima da classe é um decorador: uma função que recebe a classe e devolve outra, com os métodos gerados. Os campos vêm das linhas anotadas, na ordem em que aparecem, e o valor depois do igual vira padrão, com a mesma regra dos argumentos padrão da seção de funções.\n\nO que você ganha em relação ao dicionário: um tipo com nome, campos que o editor conhece e igualdade por conteúdo, que a classe escrita à mão só tem se você implementar `__eq__`. O que você ganha em relação à classe manual: não escrever o óbvio, e não esquecer de atualizar a comparação quando um campo novo entra.\n\nÉ a resposta ao meio-termo que o passo sobre quando criar classe deixou em aberto: registro com nome e tipo, sem cerimônia.\n\nVocê domina este passo quando usa `dataclass` por padrão em classe que só guarda campos, e escreve `__init__` à mão apenas quando há lógica na construção.",
           resources: [
             {
               label: "Módulo dataclasses (pt-BR)",
@@ -507,7 +570,7 @@ export const python: RoadmapV2 = {
           description:
             "Onde Python leva depois desta trilha: as trilhas de área que o usam e como escolher a sua.",
           content:
-            "Python é a linguagem de mais áreas desta plataforma do que qualquer outra, e terminar esta trilha é o ponto de partida de várias. Com a linguagem assentada, a pergunta deixa de ser 'como escrevo isso' e passa a ser 'sobre o que quero trabalhar'.\n\nA trilha de **Dados** é a continuação mais direta: ela pega as listas, dicionários e compreensões daqui e as coloca sobre tabelas de verdade, com pandas, gráficos e as perguntas que os dados respondem. A de **Análise de dados** segue o mesmo caminho pelo lado do negócio, com métricas e apresentação de resultado.\n\nA trilha de **Inteligência artificial** parte do mesmo lugar e vai para modelos, e a de **Engenharia de dados** usa Python como cola entre bancos, filas e agendadores, onde os geradores desta trilha aparecem em escala.\n\nA trilha de **Back-end**, escolhendo Python no seletor de linguagem, leva a linguagem para o servidor: rotas HTTP, banco de dados e autenticação com Django ou FastAPI. As classes, os módulos e as dicas de tipo daqui são a base disso.\n\nAntes de qualquer uma, o projeto desta trilha: o gerenciador de tarefas no terminal usa listas, dicionários, JSON, funções, tratamento de erro e leitura de arquivo, e fica pronto sem nada que você não tenha visto aqui. Termine, publique no GitHub e leve como primeira peça do portfólio.\n\nVocê domina este passo, e a trilha, quando olha para uma ideia de programa e consegue dizer qual dessas trilhas ensina o que falta para construí-la.",
+            "Python é a linguagem de mais áreas desta plataforma do que qualquer outra, e terminar esta trilha é o ponto de partida de várias. Com a linguagem assentada, a pergunta deixa de ser 'como escrevo isso' e passa a ser 'sobre o que quero trabalhar'.\n\nA trilha de **Dados** é a continuação mais direta: ela pega as listas, dicionários e compreensões daqui e as coloca sobre tabelas de verdade, com pandas e gráficos. A de **Análise de dados** segue o mesmo caminho pelo lado do negócio.\n\nA trilha de **Inteligência artificial** vai para modelos, e a de **Engenharia de dados** usa Python como cola entre bancos e filas, onde os geradores daqui aparecem em escala.\n\nA trilha de **Back-end**, escolhendo Python no seletor, leva a linguagem para o servidor: rotas HTTP, banco e autenticação com Django ou FastAPI.\n\nAs seções **Classes e objetos** e **Geradores e tipagem** são o que separa quem escreve script de quem escreve programa, e é o vocabulário que todo framework usa.\n\nAntes de qualquer uma, o projeto desta trilha: o gerenciador de tarefas no terminal usa listas, dicionários, JSON, funções, tratamento de erro e leitura de arquivo, e fica pronto sem nada que você não tenha visto aqui. Termine, publique no GitHub e leve como primeira peça do portfólio.\n\nVocê domina este passo, e a trilha, quando olha para uma ideia de programa e consegue dizer qual dessas trilhas ensina o que falta para construí-la.",
         },
       ],
     },

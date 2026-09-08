@@ -430,8 +430,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "title": "Python do Zero",
     "level": "Iniciante",
     "description": "Do primeiro print no terminal até classes, geradores e arquivos, com a linguagem que virou a porta de entrada de dados, automação e web. Conclua uma etapa pra liberar a próxima.",
-    "sectionCount": 9,
-    "stepCount": 38,
+    "sectionCount": 10,
+    "stepCount": 43,
     "hasProject": true,
     "hasQuiz": false
   }
