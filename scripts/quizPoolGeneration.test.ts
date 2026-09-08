@@ -370,6 +370,32 @@ describe("codeLeafIds e a cota pelo material", () => {
     expect(codeLeafIds(secaoImports, ["js"])).toEqual(["f1", "f3"]);
   });
 
+  it("codeLeafIds em js ignora folha cuja unica cerca so exporta", () => {
+    const secao: SectionMaterial = {
+      title: "Modulos",
+      leaves: [
+        {
+          id: "m.esm",
+          title: "So export",
+          description: "",
+          content:
+            "Texto.\n\n```js\nexport function dobro(n) {\n  return n * 2;\n}\n```",
+        },
+      ],
+    };
+    expect(codeLeafIds(secao, ["js"])).toEqual([]);
+    const bash: SectionMaterial = {
+      title: "Bash",
+      leaves: [
+        {
+          ...secao.leaves[0],
+          content: "Texto.\n\n```bash\nexport PATH=$PATH:/opt/bin\n```",
+        },
+      ],
+    };
+    expect(codeLeafIds(bash, ["bash"])).toEqual(["m.esm"]);
+  });
+
   it("codeLeafIds em bash conta folha com import na cerca", () => {
     const bash: SectionMaterial = {
       title: "Bash",

@@ -386,8 +386,12 @@ const DASH_RE = /\u2014|\u2013/;
 // ou leitura de arquivo. Em trilha de ferramenta a regra nao cabe: um
 // Dockerfile comeca com FROM e um script bash chama comandos externos por
 // natureza, entao a checagem so roda quando codeLanguages tem alguma destas.
+// export entra na lista pelo outro lado da mesma dependencia: um trecho que
+// so exporta roda em silencio e so faz sentido com um importador, e foi a
+// cerca de export de modulos.esm que manteve a folha como material no 04d,
+// com o modelo escrevendo import em todas as cinco tentativas da secao.
 export const IMPORT_FREE_LANGUAGES = ["js", "ts", "python"];
-export const IMPORT_RE = /\b(import|require|fetch)\b|readFile|\bopen\(/;
+export const IMPORT_RE = /\b(import|export|require|fetch)\b|readFile|\bopen\(/;
 // Heuristica de "alternativa de saida escrita como frase": a saida crua de um
 // programa raramente contem a palavra imprime ou termina em letra seguida de
 // ponto final; uma frase em portugues quase sempre. Pode dar falso positivo
