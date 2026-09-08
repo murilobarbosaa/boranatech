@@ -6,6 +6,7 @@ import { fireProCelebration } from "@/lib/proConfetti";
 import { useCountdown } from "@/hooks/useCountdown";
 import { roadmapsMeta } from "@/lib/roadmapV2/meta";
 import QuizBriefing from "@/components/roadmapQuiz/QuizBriefing";
+import QuizCodeBlock from "@/components/roadmapQuiz/QuizCodeBlock";
 import {
   getHistory,
   QuizServiceError,
@@ -741,6 +742,11 @@ function ApprovedResult({
                   <p className="text-sm font-bold text-slate-950">
                     {item.pergunta}
                   </p>
+                  {item.codigo && (
+                    <div className="mt-3">
+                      <QuizCodeBlock codigo={item.codigo} tipo={item.tipo} />
+                    </div>
+                  )}
                   <ul className="mt-3 space-y-1.5">
                     {item.alternativas.map((alternativa, j) => {
                       const isCorrect = alternativa.id === item.correta;
@@ -759,7 +765,15 @@ function ApprovedResult({
                           <span className="font-black">
                             {String.fromCharCode(65 + j)})
                           </span>{" "}
-                          {alternativa.texto}
+                          <span
+                            className={
+                              item.alternativasCodigo
+                                ? "font-mono whitespace-pre-wrap"
+                                : ""
+                            }
+                          >
+                            {alternativa.texto}
+                          </span>
                           {isCorrect && (
                             <span className="ml-2 rounded-full border border-slate-900 bg-emerald-200 px-2 py-0.5 text-[10px] font-black uppercase">
                               {/* TODO(Ana): marcador de alternativa correta */}
@@ -862,6 +876,11 @@ function ExamQuestion({
         <p className="text-base font-bold text-slate-950">
           {question.pergunta}
         </p>
+        {question.codigo && (
+          <div className="mt-3">
+            <QuizCodeBlock codigo={question.codigo} tipo={question.tipo} />
+          </div>
+        )}
         <div
           className="mt-4 space-y-2"
           role="radiogroup"
@@ -889,7 +908,13 @@ function ExamQuestion({
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-2 border-slate-900 bg-white font-display text-sm font-black text-slate-950">
                   {String.fromCharCode(65 + i)}
                 </span>
-                <span className="pt-1 text-sm font-semibold text-slate-800">
+                <span
+                  className={`pt-1 text-sm font-semibold text-slate-800 ${
+                    question.alternativasCodigo
+                      ? "font-mono whitespace-pre-wrap"
+                      : ""
+                  }`}
+                >
                   {alternativa.texto}
                 </span>
               </label>

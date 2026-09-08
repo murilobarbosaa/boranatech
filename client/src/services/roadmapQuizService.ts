@@ -3,6 +3,8 @@ import { supabase } from "@/lib/supabase";
 import type {
   PublicQuizQuestion,
   QuizAlternativaId,
+  QuizCodigo,
+  QuizTipo,
 } from "@shared/roadmapQuiz/types";
 
 // Service da prova final de roadmap (fase 4.3), consumindo os endpoints de
@@ -32,6 +34,11 @@ export interface QuizReviewItem {
   correta: QuizAlternativaId;
   explicacao: string;
   respostaDoUsuario: QuizAlternativaId | null;
+  // Campos de pergunta de codigo, presentes so quando a pergunta do pool os
+  // tem (mesma projecao condicional de buildApprovedReview no server).
+  tipo?: QuizTipo;
+  codigo?: QuizCodigo;
+  alternativasCodigo?: true;
 }
 
 export interface QuizSubmitResult {
