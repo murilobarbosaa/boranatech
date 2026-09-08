@@ -117,7 +117,7 @@ describe("buildQuestionSchema", () => {
     expect(json).not.toContain('"tipo"');
   });
 
-  it("com cota de codigo o schema tem tipo, codigo nullable e alternativasCodigo", () => {
+  it("com cota de codigo o schema tem tipo, codigo e alternativasCodigo", () => {
     const json = JSON.stringify(
       toOpenAIStrictSchema(buildQuestionSchema(ids, 3, 1)),
     );
@@ -125,6 +125,25 @@ describe("buildQuestionSchema", () => {
     expect(json).toContain('"codigo"');
     expect(json).toContain('"alternativasCodigo"');
     expect(json).toContain('"null"');
+  });
+
+  it("com cota de codigo a pergunta e uma uniao discriminada por tipo", () => {
+    const json = JSON.stringify(
+      toOpenAIStrictSchema(buildQuestionSchema(ids, 3, 1)),
+    );
+    expect(json).toContain('"anyOf"');
+    expect(json).toContain('"tipo":{"type":"string","const":"conceito"}');
+    expect(json).toContain('"codigo":{"type":"null"}');
+    expect(json).toContain(
+      '"alternativasCodigo":{"type":"boolean","const":false}',
+    );
+    expect(json).toContain(
+      '"tipo":{"type":"string","enum":["completar","erro","saida"]}',
+    );
+    expect(json).toContain(
+      '"codigo":{"type":"object","properties":{"linguagem":{"type":"string"},"trecho":{"type":"string"}},"required":["linguagem","trecho"],"additionalProperties":false}',
+    );
+    expect(json).not.toContain('"codigo":{"anyOf"');
   });
 });
 

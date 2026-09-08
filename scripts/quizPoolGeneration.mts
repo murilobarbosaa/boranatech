@@ -139,9 +139,11 @@ export function sectionQuotas(
 }
 
 // Resposta de UMA pergunta como o modelo a devolve. Os tres campos de codigo
-// so existem no schema quando a secao tem cota de codigo; no strict mode da
-// OpenAI opcional vira required + nullable, por isso `codigo` e nullable e
-// `alternativasCodigo` e boolean, nunca opcional no schema.
+// so existem no schema quando a secao tem cota de codigo, e la a pergunta e
+// uma uniao discriminada por `tipo` (buildQuestionSchema): conceito com
+// `codigo` null, tipos de codigo com `codigo` objeto obrigatorio. Esta
+// interface e o superconjunto dos dois ramos; `codigo` nulo so existe no ramo
+// conceito.
 export interface GeneratedQuestion {
   pergunta: string;
   alternativas: { a: string; b: string; c: string; d: string };
@@ -170,16 +172,29 @@ export function buildQuestionSchema(
     explicacao: z.string(),
     fonte: z.enum(leafIds as [string, ...string[]]),
   };
+  // Com cota de codigo a pergunta e uma uniao discriminada por tipo, e nao um
+  // objeto com `codigo` nullable: no 04c o modelo devolveu cinco vezes uma
+  // pergunta de tipo erro com codigo null, que o schema antigo aceitava e a
+  // normalizacao rejeitava. Aqui o estado invalido nao existe na forma que a
+  // API obriga. z.union (e nao discriminatedUnion) porque o zod serializa a
+  // primeira como anyOf, que e a forma que o strict mode da OpenAI aceita, e
+  // a segunda como oneOf.
   const question =
     codeQuota > 0
-      ? z.object({
-          ...base,
-          tipo: z.enum(["conceito", "completar", "erro", "saida"]),
-          codigo: z
-            .object({ linguagem: z.string(), trecho: z.string() })
-            .nullable(),
-          alternativasCodigo: z.boolean(),
-        })
+      ? z.union([
+          z.object({
+            ...base,
+            tipo: z.literal("conceito"),
+            codigo: z.null(),
+            alternativasCodigo: z.literal(false),
+          }),
+          z.object({
+            ...base,
+            tipo: z.enum(["completar", "erro", "saida"]),
+            codigo: z.object({ linguagem: z.string(), trecho: z.string() }),
+            alternativasCodigo: z.boolean(),
+          }),
+        ])
       : z.object(base);
   return z.object({
     questions: z.array(question).min(count).max(count),
@@ -507,7 +522,9 @@ export function codeTypeViolations(
 // Pergunta final do pool a partir da resposta do modelo. Conceito (tipo
 // ausente ou "conceito") sai sem tipo, codigo e alternativasCodigo, entao a
 // pool de area continua sem esses campos. Tipo de codigo sem codigo e erro:
-// nunca se salva pergunta de codigo sem trecho.
+// nunca se salva pergunta de codigo sem trecho. Vindo da API esse estado e
+// inalcancavel desde o schema discriminado (buildQuestionSchema); o throw
+// fica como portao para pool montada ou editada a mao.
 export function normalizeGeneratedQuestion(
   raw: GeneratedQuestion,
   id: string,
