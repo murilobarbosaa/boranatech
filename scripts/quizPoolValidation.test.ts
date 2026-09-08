@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { QuizPool, QuizQuestion } from "../shared/roadmapQuiz/types";
 import type { RoadmapV2 } from "../shared/roadmapV2/types";
-import { validateQuizPool } from "./quizPoolValidation.mts";
+import { quizPoolWarnings, validateQuizPool } from "./quizPoolValidation.mts";
 
 // Literais escritos a mao. O slug "a+b" tem um metacaractere de regex: sem
 // escape, o "+" vira quantificador e o id correto "a+b-ini-01" deixa de casar
@@ -318,5 +318,55 @@ describe("codeLanguages da trilha", () => {
 
   it("linguagem dentro das codeLanguages nao gera problema de codigo", () => {
     expect(problemasDeCodigo(saidaEm("ts"), roadmapComCodigo)).toEqual([]);
+  });
+});
+
+describe("quizPoolWarnings: variedade de tipo de codigo por nivel", () => {
+  const deCodigo = (
+    id: string,
+    nivel: QuizQuestion["nivel"],
+    tipo: "completar" | "erro" | "saida",
+  ): QuizQuestion => ({
+    ...pergunta(id),
+    nivel,
+    tipo,
+    codigo: {
+      linguagem: "js",
+      trecho: tipo === "completar" ? "const a = ____;" : "console.log(1);",
+      ...(tipo === "erro" ? { saidaEsperada: "2" } : {}),
+    },
+    ...(tipo === "erro" ? {} : { alternativasCodigo: true as const }),
+  });
+  const pool: QuizPool = {
+    slug: "a+b",
+    questions: [
+      deCodigo("a+b-ini-01", "iniciante", "completar"),
+      deCodigo("a+b-ini-02", "iniciante", "erro"),
+      deCodigo("a+b-ini-03", "iniciante", "saida"),
+      deCodigo("a+b-int-01", "intermediario", "erro"),
+      deCodigo("a+b-int-02", "intermediario", "saida"),
+      deCodigo("a+b-av-01", "avancado", "completar"),
+      deCodigo("a+b-av-02", "avancado", "erro"),
+      deCodigo("a+b-av-03", "avancado", "saida"),
+    ],
+  };
+
+  it("avisa exatamente o nivel e o tipo que faltam", () => {
+    expect(quizPoolWarnings(pool, roadmapComCodigo)).toEqual([
+      "pool a+b: nivel intermediario sem pergunta completar",
+    ]);
+  });
+
+  it("trilha sem codeLanguages nao avisa nada", () => {
+    expect(quizPoolWarnings(pool, roadmap)).toEqual([]);
+    expect(quizPoolWarnings(pool, null)).toEqual([]);
+  });
+
+  it("pool so de conceito em trilha com codeLanguages avisa os nove", () => {
+    const soConceito: QuizPool = {
+      slug: "a+b",
+      questions: [pergunta("a+b-ini-01")],
+    };
+    expect(quizPoolWarnings(soConceito, roadmapComCodigo)).toHaveLength(9);
   });
 });

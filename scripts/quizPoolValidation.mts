@@ -13,6 +13,7 @@ import {
   CODE_MAX_LINE_LENGTH,
   CODE_MAX_LINES,
   CODE_PLACEHOLDER,
+  CODE_QUESTION_TIPOS,
   isCodeQuestion,
   POOL_MIN_PER_LEVEL,
 } from "../shared/roadmapQuiz/types";
@@ -244,4 +245,30 @@ export function validateQuizPool(
   }
 
   return problems;
+}
+
+// AVISOS, nao problemas: em trilha com codeLanguages, nivel sem pergunta de
+// algum tipo de codigo. O sorteio garante 1 pergunta de codigo por nivel
+// (DRAW_MIN_CODE_PER_LEVEL), nao 1 de cada tipo, entao a prova continua
+// valida; e desequilibrio de pool, que vale saber (a pool de javascript saiu
+// do piloto sem completar no intermediario). Canal separado de
+// validateQuizPool de proposito: validateQuizPool.mts e generateRoadmapMeta
+// --check imprimem com prefixo [aviso] e nao reprovam.
+export function quizPoolWarnings(
+  pool: QuizPool,
+  roadmap: RoadmapV2 | null,
+): string[] {
+  if (!roadmap?.codeLanguages || roadmap.codeLanguages.length === 0) return [];
+  const out: string[] = [];
+  for (const nivel of NIVEIS) {
+    for (const tipo of CODE_QUESTION_TIPOS) {
+      const tem = pool.questions.some(
+        (question) => question.nivel === nivel && question.tipo === tipo,
+      );
+      if (!tem) {
+        out.push(`pool ${pool.slug}: nivel ${nivel} sem pergunta ${tipo}`);
+      }
+    }
+  }
+  return out;
 }

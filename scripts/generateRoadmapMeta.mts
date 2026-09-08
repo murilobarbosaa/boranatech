@@ -17,7 +17,7 @@ import type { QuizPool } from "../shared/roadmapQuiz/types";
 import { roadmapsV2 } from "../shared/roadmapV2/content";
 import type { RoadmapMeta } from "../shared/roadmapV2/meta";
 import type { RoadmapNode, RoadmapV2 } from "../shared/roadmapV2/types";
-import { validateQuizPool } from "./quizPoolValidation.mts";
+import { quizPoolWarnings, validateQuizPool } from "./quizPoolValidation.mts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = path.join(ROOT, "shared", "roadmapV2", "meta.generated.ts");
@@ -328,6 +328,10 @@ async function checkQuizPools(): Promise<string[]> {
     }
     const roadmap = roadmapsV2.find((entry) => entry.slug === fileSlug) ?? null;
     problems.push(...validateQuizPool(mod.default, fileSlug, roadmap));
+    // Avisos de variedade por nivel: so impressos, nunca reprovam.
+    for (const warning of quizPoolWarnings(mod.default, roadmap)) {
+      console.warn(`[generateRoadmapMeta] [aviso] ${warning}`);
+    }
   }
 
   // Registry de runtime (index.ts): o Express importa os pools por slug do

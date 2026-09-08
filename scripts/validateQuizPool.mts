@@ -9,7 +9,7 @@
 // tentativas registradas).
 import { roadmapQuizPools } from "../server/data/roadmapQuizzes";
 import { roadmapsV2 } from "../shared/roadmapV2/content";
-import { validateQuizPool } from "./quizPoolValidation.mts";
+import { quizPoolWarnings, validateQuizPool } from "./quizPoolValidation.mts";
 
 const arg = process.argv.slice(2).find((token) => !token.startsWith("--"));
 const slugs = arg ? [arg] : Object.keys(roadmapQuizPools);
@@ -18,12 +18,17 @@ let problemsFound = 0;
 for (const slug of slugs) {
   const pool = roadmapQuizPools[slug];
   if (!pool) {
-    console.error(`[validate:quiz-pool] pool "${slug}" nao existe no registry.`);
+    console.error(
+      `[validate:quiz-pool] pool "${slug}" nao existe no registry.`,
+    );
     problemsFound += 1;
     continue;
   }
   const roadmap = roadmapsV2.find((entry) => entry.slug === slug) ?? null;
   const problems = validateQuizPool(pool, slug, roadmap);
+  for (const warning of quizPoolWarnings(pool, roadmap)) {
+    console.warn(`[validate:quiz-pool] [aviso] ${warning}`);
+  }
   if (problems.length === 0) {
     console.log(
       `[validate:quiz-pool] ${slug}: valido (${pool.questions.length} perguntas).`,
