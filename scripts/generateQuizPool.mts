@@ -16,7 +16,6 @@ import { fileURLToPath } from "node:url";
 import {
   POOL_MIN_PER_LEVEL,
   POOL_TARGET_PER_LEVEL,
-  type QuizAlternativaId,
   type QuizNivel,
   type QuizPool,
   type QuizQuestion,
@@ -31,12 +30,16 @@ import {
 } from "../server/lib/openai";
 import { toOpenAIStrictSchema } from "../server/lib/openaiStrictSchema";
 import {
+  buildCodeRules,
   buildQuestionSchema,
   buildUserPrompt,
+  codeQuotaFor,
   type GeneratedQuestion,
   levelSections,
   MAX_PER_FONTE,
+  missingCodeCount,
   NIVEIS,
+  normalizeGeneratedQuestion,
   overusedFontes,
   type SectionMaterial,
   sectionQuotas,
@@ -54,6 +57,14 @@ const AI_MAX_TOKENS = 4000;
 // Precos do gpt-4o-mini (USD por 1M tokens), so pro log de custo.
 const PRICE_INPUT_PER_M = 0.15;
 const PRICE_OUTPUT_PER_M = 0.6;
+
+// System prompt da secao: o de sempre, mais as regras de codigo quando a
+// secao tem cota de codigo (so trilha com kind e codeLanguages chega aqui com
+// cota > 0; trilha de area recebe SYSTEM_PROMPT byte a byte).
+function systemPromptFor(roadmap: RoadmapV2, codeQuota: number): string {
+  if (codeQuota <= 0 || !roadmap.codeLanguages) return SYSTEM_PROMPT;
+  return `${SYSTEM_PROMPT}\n${buildCodeRules(roadmap.codeLanguages)}`;
+}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -118,11 +129,14 @@ async function generateSection(
   quota: number,
   usageLevel: Usage,
 ): Promise<GeneratedQuestion[]> {
+  const codeQuota = codeQuotaFor(roadmap, quota);
   const schema = buildQuestionSchema(
     section.leaves.map((leaf) => leaf.id),
     quota,
+    codeQuota,
   );
   const jsonSchema = toOpenAIStrictSchema(schema);
+  const systemPrompt = systemPromptFor(roadmap, codeQuota);
   const label = `${nivel} / ${section.title}`;
 
   let rebalanceNote: string | null = null;
@@ -142,9 +156,10 @@ async function generateSection(
         section,
         quota,
         rebalanceNote,
+        codeQuota,
       );
       const { parsed, usage } = await callOpenAIOnce(
-        SYSTEM_PROMPT,
+        systemPrompt,
         userPrompt,
         jsonSchema,
       );
@@ -165,12 +180,37 @@ async function generateSection(
       }
       bestValid = validation.data.questions;
       const excedidos = overusedFontes(validation.data.questions);
-      if (excedidos.length === 0) {
+      const faltamCodigo = missingCodeCount(
+        validation.data.questions,
+        codeQuota,
+      );
+      if (excedidos.length === 0 && faltamCodigo === 0) {
         return validation.data.questions;
       }
-      rebalanceNote = `Na tentativa anterior estes passos passaram do limite: ${excedidos.join(", ")}. REGRA DURA: nenhum passo pode originar mais de ${MAX_PER_FONTE} perguntas. Distribua as ${quota} perguntas o mais uniformemente possivel entre os ${section.leaves.length} passos do material (cerca de ${Math.ceil(quota / section.leaves.length)} por passo), cobrindo todos. Antes de responder, conte quantas perguntas voce colocou em cada fonte e corrija se alguma passar de ${MAX_PER_FONTE}.`;
+      // Notas de rebalanceamento: concentracao por fonte e, quando a secao
+      // tem cota de codigo, perguntas de codigo a menos. Mesma filosofia do
+      // teto por fonte: preferencia de qualidade, com bestValid de fallback.
+      const notas: string[] = [];
+      if (excedidos.length > 0) {
+        notas.push(
+          `Na tentativa anterior estes passos passaram do limite: ${excedidos.join(", ")}. REGRA DURA: nenhum passo pode originar mais de ${MAX_PER_FONTE} perguntas. Distribua as ${quota} perguntas o mais uniformemente possivel entre os ${section.leaves.length} passos do material (cerca de ${Math.ceil(quota / section.leaves.length)} por passo), cobrindo todos. Antes de responder, conte quantas perguntas voce colocou em cada fonte e corrija se alguma passar de ${MAX_PER_FONTE}.`,
+        );
+      }
+      if (faltamCodigo > 0) {
+        notas.push(
+          `Na tentativa anterior vieram ${codeQuota - faltamCodigo} perguntas de codigo; precisam ser exatamente ${codeQuota}.`,
+        );
+      }
+      rebalanceNote = notas.join("\n");
       console.error(
-        `[generateQuizPool] ${label} tentativa ${attempt}/${AI_MAX_ATTEMPTS}: concentracao acima de ${MAX_PER_FONTE} (${excedidos.join(", ")}), reequilibrando.`,
+        `[generateQuizPool] ${label} tentativa ${attempt}/${AI_MAX_ATTEMPTS}: ${[
+          excedidos.length > 0
+            ? `concentracao acima de ${MAX_PER_FONTE} (${excedidos.join(", ")})`
+            : "",
+          faltamCodigo > 0 ? `faltam ${faltamCodigo} de codigo` : "",
+        ]
+          .filter(Boolean)
+          .join(", ")}, reequilibrando.`,
       );
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
@@ -230,7 +270,10 @@ if (existsSync(outFile) && !force && !dryRun) {
 if (dryRun) {
   // Mesma montagem de secoes, alvo e cotas do laco de geracao abaixo, so que
   // imprimindo em vez de chamar a IA. Nivel sem secao aborta igual.
-  const lines: string[] = ["### SYSTEM", SYSTEM_PROMPT];
+  const lines: string[] = [
+    "### SYSTEM",
+    systemPromptFor(roadmap, codeQuotaFor(roadmap, 2)),
+  ];
   for (const nivel of NIVEIS) {
     const sections = levelSections(roadmap, nivel);
     if (sections.length === 0) {
@@ -255,14 +298,23 @@ if (dryRun) {
     }
     const quotas = sectionQuotas(sections, levelTarget);
     for (let i = 0; i < sections.length; i += 1) {
+      const codeQuota = codeQuotaFor(roadmap, quotas[i]);
       lines.push(
         `### ${nivel} / ${sections[i].title} / cota ${quotas[i]}`,
-        buildUserPrompt(roadmap, nivel, sections[i], quotas[i], null),
+        buildUserPrompt(
+          roadmap,
+          nivel,
+          sections[i],
+          quotas[i],
+          null,
+          codeQuota,
+        ),
       );
       if (withSchema) {
         const schema = buildQuestionSchema(
           sections[i].leaves.map((leaf) => leaf.id),
           quotas[i],
+          codeQuota,
         );
         lines.push(
           `### SCHEMA ${nivel} / ${sections[i].title}`,
@@ -326,15 +378,13 @@ for (const nivel of NIVEIS) {
     );
     for (const question of generated) {
       seq += 1;
-      questions.push({
-        id: `${slug}-${NIVEL_ABBR[nivel]}-${String(seq).padStart(2, "0")}`,
-        nivel,
-        pergunta: question.pergunta,
-        alternativas: question.alternativas,
-        correta: question.correta as QuizAlternativaId,
-        explicacao: question.explicacao,
-        fonte: question.fonte,
-      });
+      questions.push(
+        normalizeGeneratedQuestion(
+          question,
+          `${slug}-${NIVEL_ABBR[nivel]}-${String(seq).padStart(2, "0")}`,
+          nivel,
+        ),
+      );
     }
   }
   console.log(

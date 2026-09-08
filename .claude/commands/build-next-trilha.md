@@ -75,6 +75,9 @@ O --check do pnpm check acusa qualquer omissao dos tres; rode pnpm check antes d
 - Slug so com `a-z`, `0-9` e hifen simples: `cpp` e nao `c++`, `csharp` e nao `c#`. O slug `ia` e reservado pela rota /roadmaps/ia.
 - O `pnpm check` afirma tudo isso nos dois sentidos (checkKinds em scripts/generateRoadmapMeta.mts): kind sem area igual, area sentinela sem kind, area real inexistente, slug fora da forma, slug reservado e slug duplicado reprovam.
 - As regras editoriais especificas dessas trilhas (disciplina de codigo, quiz de codigo) entram em revisao posterior deste guia.
+- `codeLanguages` (identificadores de cerca markdown, a primeira e a principal) e obrigatorio na pratica em trilha de linguagem e framework, porque sem ele a prova sai so de conceito; em ferramenta e opcional (Git e Docker tem codigo, Figma nao). O `pnpm check` reprova o campo em trilha sem kind ou de carreira, vazio, ou com identificador fora de `a-z` e `0-9`.
+- A proporcao de perguntas de codigo por tipo de trilha vem de `CODE_SHARE_BY_KIND` em scripts/quizPoolGeneration.mts (metade em linguagem e framework, 40% em ferramenta), com pelo menos 1 e no maximo cota menos 1 por secao.
+- `pnpm gen:quiz-pool <slug> --dry-run` (e `--dry-run --schema`) imprime o system prompt, o user prompt de cada secao e o schema sem gastar credito; e o que se roda antes da geracao real.
 
 ## Fechamento de qualquer lote
 

@@ -6,7 +6,17 @@
 // prompts e o schema foram movidos do script sem alteracao: o dry-run das
 // trilhas de area e identico antes e depois da extracao.
 import { z } from "zod";
-import type { QuizNivel } from "../shared/roadmapQuiz/types";
+import type {
+  QuizNivel,
+  QuizQuestion,
+  QuizTipo,
+} from "../shared/roadmapQuiz/types";
+import {
+  CODE_MAX_LINE_LENGTH,
+  CODE_MAX_LINES,
+  CODE_PLACEHOLDER,
+  isCodeQuestion,
+} from "../shared/roadmapQuiz/types";
 import type { RoadmapNode, RoadmapV2 } from "../shared/roadmapV2/types";
 
 export const NIVEIS: QuizNivel[] = ["iniciante", "intermediario", "avancado"];
@@ -127,31 +137,53 @@ export function sectionQuotas(
   return quotas;
 }
 
-export function buildQuestionSchema(leafIds: string[], count: number) {
-  return z.object({
-    questions: z
-      .array(
-        z.object({
-          pergunta: z.string(),
-          alternativas: z.object({
-            a: z.string(),
-            b: z.string(),
-            c: z.string(),
-            d: z.string(),
-          }),
-          correta: z.enum(["a", "b", "c", "d"]),
-          explicacao: z.string(),
-          fonte: z.enum(leafIds as [string, ...string[]]),
-        }),
-      )
-      .min(count)
-      .max(count),
-  });
+// Resposta de UMA pergunta como o modelo a devolve. Os tres campos de codigo
+// so existem no schema quando a secao tem cota de codigo; no strict mode da
+// OpenAI opcional vira required + nullable, por isso `codigo` e nullable e
+// `alternativasCodigo` e boolean, nunca opcional no schema.
+export interface GeneratedQuestion {
+  pergunta: string;
+  alternativas: { a: string; b: string; c: string; d: string };
+  correta: "a" | "b" | "c" | "d";
+  explicacao: string;
+  fonte: string;
+  tipo?: QuizTipo;
+  codigo?: { linguagem: string; trecho: string } | null;
+  alternativasCodigo?: boolean;
 }
 
-export type GeneratedQuestion = z.infer<
-  ReturnType<typeof buildQuestionSchema>
->["questions"][number];
+export function buildQuestionSchema(
+  leafIds: string[],
+  count: number,
+  codeQuota = 0,
+): z.ZodType<{ questions: GeneratedQuestion[] }> {
+  const base = {
+    pergunta: z.string(),
+    alternativas: z.object({
+      a: z.string(),
+      b: z.string(),
+      c: z.string(),
+      d: z.string(),
+    }),
+    correta: z.enum(["a", "b", "c", "d"]),
+    explicacao: z.string(),
+    fonte: z.enum(leafIds as [string, ...string[]]),
+  };
+  const question =
+    codeQuota > 0
+      ? z.object({
+          ...base,
+          tipo: z.enum(["conceito", "completar", "erro", "saida"]),
+          codigo: z
+            .object({ linguagem: z.string(), trecho: z.string() })
+            .nullable(),
+          alternativasCodigo: z.boolean(),
+        })
+      : z.object(base);
+  return z.object({
+    questions: z.array(question).min(count).max(count),
+  });
+}
 
 export const SYSTEM_PROMPT = [
   "Voce cria perguntas de quiz de multipla escolha em portugues do Brasil para uma plataforma de carreira tech. Regras inegociaveis:",
@@ -170,18 +202,70 @@ export const SYSTEM_PROMPT = [
   "- Proibido travessao e meia-risca em qualquer texto; use virgulas, pontos ou parenteses.",
 ].join("\n");
 
+// Proporcao de perguntas de codigo por tipo de trilha. Trilha sem kind, de
+// carreira ou sem codeLanguages tem cota zero: as pools de area seguem
+// identicas as de hoje.
+export const CODE_SHARE_BY_KIND: Record<
+  "linguagem" | "framework" | "ferramenta",
+  number
+> = {
+  linguagem: 0.5,
+  framework: 0.5,
+  ferramenta: 0.4,
+};
+
+// Quantas das `quota` perguntas de uma secao devem ser de codigo. Zero para
+// trilha sem kind, de carreira ou sem codeLanguages (as pools de area seguem
+// identicas as de hoje). Com share > 0 e quota >= 2, pelo menos 1; teto de
+// quota - 1, para uma secao nunca ficar so com codigo.
+export function codeQuotaFor(
+  roadmap: Pick<RoadmapV2, "kind" | "codeLanguages">,
+  quota: number,
+): number {
+  const { kind, codeLanguages } = roadmap;
+  if (!kind || kind === "carreira") return 0;
+  if (!codeLanguages || codeLanguages.length === 0) return 0;
+  const share = CODE_SHARE_BY_KIND[kind];
+  if (share <= 0 || quota < 2) return 0;
+  const bruto = Math.round(quota * share);
+  return Math.min(Math.max(bruto, 1), quota - 1);
+}
+
+// Regras das perguntas de codigo, anexadas ao SYSTEM_PROMPT so quando a secao
+// tem cota de codigo. O SYSTEM_PROMPT em si nao muda: trilha de area recebe
+// byte a byte o prompt de sempre.
+export function buildCodeRules(codeLanguages: string[]): string {
+  return [
+    "Regras adicionais para perguntas de CODIGO (esta trilha tem cota de perguntas de codigo):",
+    "- Campo tipo em toda pergunta: conceito, completar, erro ou saida.",
+    "- conceito: pergunta como as demais; codigo null e alternativasCodigo false.",
+    `- completar: o trecho tem UMA lacuna ${CODE_PLACEHOLDER} e as quatro alternativas sao candidatas a preenche-la; alternativasCodigo true.`,
+    "- erro: o trecho tem UM defeito real (compila ou roda, mas faz a coisa errada, ou falha de um jeito especifico); as alternativas descrevem o defeito e podem citar o numero da linha, sendo 1 a primeira linha; alternativasCodigo false.",
+    "- saida: as alternativas sao o que o trecho imprime ou devolve; alternativasCodigo true. O trecho precisa ter saida deterministica: a regra de uma unica resposta defensavel vale dobrado aqui.",
+    `- Trecho: codigo valido e autocontido na linguagem, no maximo ${CODE_MAX_LINES} linhas e ${CODE_MAX_LINE_LENGTH} caracteres por linha, indentado com dois espacos, sem comentario que entregue a resposta, sem ${CODE_PLACEHOLDER} fora do tipo completar.`,
+    `- codigo.linguagem e obrigatoriamente uma destas: ${codeLanguages.join(", ")}; a primeira da lista e a principal.`,
+    "- Distratores de codigo: erros reais de quem esta aprendendo (off-by-one, tipo errado, ordem de argumentos, escopo), nunca sintaxe absurda.",
+  ].join("\n");
+}
+
 export function buildUserPrompt(
   roadmap: RoadmapV2,
   nivel: QuizNivel,
   section: SectionMaterial,
   quota: number,
   rebalanceNote: string | null,
+  codeQuota = 0,
 ) {
   const lines = [
     `Trilha: ${roadmap.title} (area ${roadmap.area})`,
     `Nivel desta rodada: ${nivel}`,
     `Secao desta rodada: ${section.title}`,
     `Gere exatamente ${quota} perguntas do nivel ${nivel} sobre o material desta secao.`,
+    ...(codeQuota > 0
+      ? [
+          `Dessas ${quota}, exatamente ${codeQuota} devem ser de codigo (tipos completar, erro e saida, variando entre os tres) e ${quota - codeQuota} de conceito.`,
+        ]
+      : []),
     "",
     "Ids validos para o campo fonte:",
     ...section.leaves.map((leaf) => `- ${leaf.id}`),
@@ -212,4 +296,51 @@ export function overusedFontes(questions: GeneratedQuestion[]): string[] {
   return [...counts.entries()]
     .filter(([, count]) => count > MAX_PER_FONTE)
     .map(([fonte, count]) => `${fonte} (${count})`);
+}
+
+// Quantas perguntas de codigo faltam para a cota da secao. Zero quando a
+// secao nao tem cota. Entra no retry de generateSection ao lado de
+// overusedFontes, como preferencia de qualidade: a validacao do pool e o
+// sorteio com garantia fecham o resto.
+export function missingCodeCount(
+  questions: GeneratedQuestion[],
+  codeQuota: number,
+): number {
+  if (codeQuota <= 0) return 0;
+  const deCodigo = questions.filter((question) =>
+    isCodeQuestion({ tipo: question.tipo }),
+  ).length;
+  return Math.max(codeQuota - deCodigo, 0);
+}
+
+// Pergunta final do pool a partir da resposta do modelo. Conceito (tipo
+// ausente ou "conceito") sai sem tipo, codigo e alternativasCodigo, entao a
+// pool de area continua sem esses campos. Tipo de codigo sem codigo e erro:
+// nunca se salva pergunta de codigo sem trecho.
+export function normalizeGeneratedQuestion(
+  raw: GeneratedQuestion,
+  id: string,
+  nivel: QuizNivel,
+): QuizQuestion {
+  const base: QuizQuestion = {
+    id,
+    nivel,
+    pergunta: raw.pergunta,
+    alternativas: raw.alternativas,
+    correta: raw.correta,
+    explicacao: raw.explicacao,
+    fonte: raw.fonte,
+  };
+  if (!isCodeQuestion({ tipo: raw.tipo })) return base;
+  if (!raw.codigo) {
+    throw new Error(
+      `[generateQuizPool] pergunta ${id} e do tipo ${raw.tipo} mas veio sem codigo.`,
+    );
+  }
+  return {
+    ...base,
+    tipo: raw.tipo,
+    codigo: { linguagem: raw.codigo.linguagem, trecho: raw.codigo.trecho },
+    ...(raw.alternativasCodigo ? { alternativasCodigo: true as const } : {}),
+  };
 }
