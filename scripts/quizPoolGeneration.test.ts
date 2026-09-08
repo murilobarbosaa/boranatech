@@ -960,3 +960,21 @@ describe("sectionQuotas: teto flexivel por secao", () => {
     expect(quotas.reduce((x, y) => x + y, 0)).toBe(15);
   });
 });
+
+describe("buildCodeRules: exemplo de completar na linguagem da trilha", () => {
+  it("python usa atribuicao sem const", () => {
+    const texto = buildCodeRules(["python"]);
+    expect(texto).toContain("x = ____");
+    expect(texto).not.toContain("const");
+  });
+
+  it("js mantem o exemplo de hoje, byte a byte", () => {
+    expect(buildCodeRules(["js"])).toContain(
+      "- Exemplo de completar: trecho const x = ____; com alternativas 1, 2, 3 e 4. NUNCA const x = 1; como alternativa: a alternativa e so o que entra na lacuna, sem o resto da linha.",
+    );
+  });
+
+  it("linguagem sem forma propria cai no generico", () => {
+    expect(buildCodeRules(["bash"])).toContain("const x = ____;");
+  });
+});

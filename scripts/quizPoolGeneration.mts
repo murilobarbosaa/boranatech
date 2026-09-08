@@ -361,6 +361,19 @@ export function codeQuotaFor(
 // Regras das perguntas de codigo, anexadas ao SYSTEM_PROMPT so quando a secao
 // tem cota de codigo. O SYSTEM_PROMPT em si nao muda: trilha de area recebe
 // byte a byte o prompt de sempre.
+// O exemplo de completar sai na linguagem principal da trilha: um exemplo em
+// sintaxe de JavaScript numa trilha de Python contradiz a regra de que o
+// trecho e valido na linguagem (registro do Lote 06).
+function completarExemplo(codeLanguages: string[]): string {
+  if (codeLanguages[0] === "python") return `x = ${CODE_PLACEHOLDER}`;
+  return `const x = ${CODE_PLACEHOLDER};`;
+}
+
+function completarErrado(codeLanguages: string[]): string {
+  if (codeLanguages[0] === "python") return "x = 1";
+  return "const x = 1;";
+}
+
 export function buildCodeRules(codeLanguages: string[]): string {
   return [
     "Regras adicionais para perguntas de CODIGO (esta trilha tem cota de perguntas de codigo):",
@@ -384,7 +397,7 @@ export function buildCodeRules(codeLanguages: string[]): string {
         ]
       : []),
     "- Variedade: em secao com 3 ou mais perguntas de codigo, pelo menos uma de cada tipo (completar, erro e saida); com 2, tipos diferentes; saida nao pode passar da metade das perguntas de codigo da secao.",
-    `- Exemplo de completar: trecho const x = ${CODE_PLACEHOLDER}; com alternativas 1, 2, 3 e 4. NUNCA const x = 1; como alternativa: a alternativa e so o que entra na lacuna, sem o resto da linha.`,
+    `- Exemplo de completar: trecho ${completarExemplo(codeLanguages)} com alternativas 1, 2, 3 e 4. NUNCA ${completarErrado(codeLanguages)} como alternativa: a alternativa e so o que entra na lacuna, sem o resto da linha.`,
   ].join("\n");
 }
 
