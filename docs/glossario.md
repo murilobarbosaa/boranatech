@@ -68,4 +68,4 @@ Quando houver conflito, esta página vence.
 - `slug`: usado para a entidade Área em si, `areas.slug` (PK).
 - `areaSlug` (camelCase no frontend) / `area_slug` (snake_case no banco): chave estrangeira de outras entidades (Roadmap, Curso, Projeto, Vaga) apontando pra `areas.slug`.
 - **Lista canônica de areaSlugs:** `frontend`, `backend`, `dados`, `uxui`, `ia`, `produto`, `ciberseguranca`, `cloud`, `gestao`, `qa`, `mobile`, `devops`.
-- **Casos especiais:** `null` para conteúdo sem área (ex: roadmap "Começar do Zero"); `"carreira"` (sentinela) para trilhas de carreira; futuramente `fullstack` quando a área Full-stack for criada.
+- **Casos especiais:** `null` para conteúdo sem área (ex: roadmap "Começar do Zero"); `"carreira"` (sentinela) para trilhas de carreira; `"linguagem"` (sentinela) para trilhas de linguagem de programação, como JavaScript ou Python; `"framework"` (sentinela) para trilhas de framework, biblioteca ou runtime, como React ou Node; `"ferramenta"` (sentinela) para trilhas de ferramenta de trabalho, como Git ou Docker; futuramente `fullstack` quando a área Full-stack for criada.

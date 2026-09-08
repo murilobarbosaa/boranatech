@@ -68,6 +68,14 @@ O --check do pnpm check acusa qualquer omissao dos tres; rode pnpm check antes d
 
 - Todo arquivo de conteudo novo ou reescrito abre com cabecalho TODO(Ana) pedindo revisao editorial completa.
 
+## 11. Trilhas de linguagem, framework e ferramenta
+
+- Tres kinds alem de "carreira", declarados em `kind` na trilha (shared/roadmapV2/types.ts): `linguagem` para linguagem de programacao (JavaScript, Python, SQL); `framework` para framework, biblioteca ou runtime (React, Node, Django); `ferramenta` para ferramenta de trabalho (Git, Docker, Linux).
+- `area` e IGUAL ao kind (`area: "linguagem"`, `area: "framework"`, `area: "ferramenta"`), a mesma sentinela que "carreira" ja usa. Trilha sem kind continua exigindo `area` de areasTI.
+- Slug so com `a-z`, `0-9` e hifen simples: `cpp` e nao `c++`, `csharp` e nao `c#`. O slug `ia` e reservado pela rota /roadmaps/ia.
+- O `pnpm check` afirma tudo isso nos dois sentidos (checkKinds em scripts/generateRoadmapMeta.mts): kind sem area igual, area sentinela sem kind, area real inexistente, slug fora da forma, slug reservado e slug duplicado reprovam.
+- As regras editoriais especificas dessas trilhas (disciplina de codigo, quiz de codigo) entram em revisao posterior deste guia.
+
 ## Fechamento de qualquer lote
 
 - pnpm check com exit 0.
