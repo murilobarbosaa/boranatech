@@ -16,7 +16,7 @@ import { projetos } from "../shared/projects/catalog";
 import type { QuizPool } from "../shared/roadmapQuiz/types";
 import { roadmapsV2 } from "../shared/roadmapV2/content";
 import type { RoadmapMeta } from "../shared/roadmapV2/meta";
-import type { RoadmapNode } from "../shared/roadmapV2/types";
+import type { RoadmapNode, RoadmapV2 } from "../shared/roadmapV2/types";
 import { validateQuizPool } from "./quizPoolValidation.mts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -183,14 +183,16 @@ function checkLoaders(): string[] {
 // sentinela sem kind e erro. O slug e validado no mesmo alfabeto que o
 // keyPattern de checkLoaders ja assume, porque um slug fora dele passaria
 // despercebido pelo parser textual e entra em regex sem escape em outros
-// pontos (ids do pool de quiz). Kind novo no futuro toca so SENTINEL_AREAS,
-// que precisa continuar igual a uniao de RoadmapV2["kind"].
-const SENTINEL_AREAS = [
-  "carreira",
-  "linguagem",
-  "framework",
-  "ferramenta",
-] as const;
+// pontos (ids do pool de quiz). As sentinelas sao derivadas da uniao
+// RoadmapV2["kind"] pelo tipo: kind novo na uniao sem entrada aqui, ou
+// entrada aqui sem kind na uniao, quebra o tsc.
+const SENTINEL_AREAS_BY_KIND: Record<NonNullable<RoadmapV2["kind"]>, true> = {
+  carreira: true,
+  linguagem: true,
+  framework: true,
+  ferramenta: true,
+};
+const SENTINEL_AREAS = Object.keys(SENTINEL_AREAS_BY_KIND);
 // Rotas fixas de client/src/App.tsx sob /roadmaps/ que um slug nao pode
 // ocupar (/roadmaps/ia e o gerador de roadmap com IA).
 const RESERVED_SLUGS = ["ia"];
