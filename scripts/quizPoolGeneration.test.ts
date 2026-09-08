@@ -14,8 +14,11 @@ import {
   execViolations,
   type GeneratedQuestion,
   missingCodeCount,
+  MAX_QUOTA_PER_SECTION,
   normalizeGeneratedQuestion,
   type SectionMaterial,
+  sectionQuotaWarnings,
+  sectionQuotas,
 } from "./quizPoolGeneration.mts";
 
 // Literais escritos a mao. A fixture de trilha e minima: o que importa para o
@@ -899,5 +902,61 @@ describe("dependsOnExternal", () => {
     expect(dependsOnExternal("import foo\nexport PATH=1", ["bash"])).toBe(
       false,
     );
+  });
+});
+
+describe("sectionQuotas: teto flexivel por secao", () => {
+  const secao = (title: string, folhas: number): SectionMaterial => ({
+    title,
+    leaves: Array.from({ length: folhas }, (_, i) => ({
+      id: `${title}.f${i}`,
+      title: `Folha ${i}`,
+      description: "",
+      content: "",
+    })),
+  });
+  const tres = [secao("a", 5), secao("b", 5), secao("c", 5)];
+  const duas = [secao("a", 5), secao("b", 5)];
+  const uma = [secao("unica", 10)];
+
+  it("sem o parametro, as cotas de hoje, byte a byte", () => {
+    expect(sectionQuotas(tres, 15)).toEqual([5, 5, 5]);
+    expect(sectionQuotas(duas, 15)).toEqual([8, 7]);
+    expect(sectionQuotas(uma, 15)).toEqual([15]);
+    expect(sectionQuotaWarnings(tres, 15)).toEqual([]);
+  });
+
+  it("tres secoes com teto 7 somam 15 sem passar do teto e sem aviso", () => {
+    const quotas = sectionQuotas(tres, 15, MAX_QUOTA_PER_SECTION);
+    expect(quotas.reduce((x, y) => x + y, 0)).toBe(15);
+    expect(Math.max(...quotas)).toBeLessThanOrEqual(MAX_QUOTA_PER_SECTION);
+    expect(sectionQuotaWarnings(tres, 15, MAX_QUOTA_PER_SECTION)).toEqual([]);
+  });
+
+  it("duas secoes nao comportam 15 com teto 7: mantem a cota alta e avisa", () => {
+    const quotas = sectionQuotas(duas, 15, MAX_QUOTA_PER_SECTION);
+    expect(quotas.reduce((x, y) => x + y, 0)).toBe(15);
+    expect(Math.max(...quotas)).toBe(8);
+    const avisos = sectionQuotaWarnings(duas, 15, MAX_QUOTA_PER_SECTION);
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0]).toContain("cota 8");
+    expect(avisos[0]).toContain("acima do teto de 7");
+  });
+
+  it("uma secao com folhas de sobra fica com o alvo inteiro e avisa", () => {
+    expect(sectionQuotas(uma, 15, MAX_QUOTA_PER_SECTION)).toEqual([15]);
+    const avisos = sectionQuotaWarnings(uma, 15, MAX_QUOTA_PER_SECTION);
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0]).toContain("cota 15");
+  });
+
+  it("secao gorda cede o excedente para as magras quando ha folga", () => {
+    const quotas = sectionQuotas(
+      [secao("gorda", 12), secao("magra", 3), secao("outra", 3)],
+      15,
+      MAX_QUOTA_PER_SECTION,
+    );
+    expect(quotas[0]).toBe(MAX_QUOTA_PER_SECTION);
+    expect(quotas.reduce((x, y) => x + y, 0)).toBe(15);
   });
 });

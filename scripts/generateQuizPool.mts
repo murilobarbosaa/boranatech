@@ -41,11 +41,13 @@ import {
   type GeneratedQuestion,
   levelSections,
   MAX_PER_FONTE,
+  MAX_QUOTA_PER_SECTION,
   missingCodeCount,
   NIVEIS,
   normalizeGeneratedQuestion,
   overusedFontes,
   type SectionMaterial,
+  sectionQuotaWarnings,
   sectionQuotas,
   SYSTEM_PROMPT,
 } from "./quizPoolGeneration.mts";
@@ -336,6 +338,13 @@ if (!roadmap) {
   console.error(`[generateQuizPool] slug "${slug}" nao existe no agregado.`);
   process.exit(1);
 }
+// Teto de cota por secao so em trilha com codeLanguages: as trilhas de area
+// tem 40 combinacoes de nivel com duas secoes e 15 perguntas, e as pools
+// delas ja publicadas foram geradas sem teto (medido no Lote 06b).
+const maxPerSection =
+  roadmap.codeLanguages && roadmap.codeLanguages.length > 0
+    ? MAX_QUOTA_PER_SECTION
+    : undefined;
 const outFile = path.join(QUIZ_DIR, `${slug}.ts`);
 if (existsSync(outFile) && !force && !dryRun) {
   console.error(
@@ -384,7 +393,15 @@ if (dryRun) {
       );
       process.exit(1);
     }
-    const quotas = sectionQuotas(sections, levelTarget);
+    const quotas = sectionQuotas(sections, levelTarget, maxPerSection);
+    for (const aviso of sectionQuotaWarnings(
+      sections,
+      levelTarget,
+      maxPerSection,
+    )) {
+      // stderr de proposito: o stdout do dry-run entra em diff.
+      console.error(`[generateQuizPool] [aviso] ${nivel}: ${aviso}`);
+    }
     for (let i = 0; i < sections.length; i += 1) {
       const codeLeaves = codeLeafIds(sections[i], roadmap.codeLanguages ?? []);
       const codeQuota = codeQuotaFor(roadmap, quotas[i], codeLeaves.length);
@@ -449,7 +466,14 @@ for (const nivel of NIVEIS) {
     );
     process.exit(1);
   }
-  const quotas = sectionQuotas(sections, levelTarget);
+  const quotas = sectionQuotas(sections, levelTarget, maxPerSection);
+  for (const aviso of sectionQuotaWarnings(
+    sections,
+    levelTarget,
+    maxPerSection,
+  )) {
+    console.warn(`[generateQuizPool] [aviso] ${nivel}: ${aviso}`);
+  }
   for (let i = 0; i < sections.length; i += 1) {
     console.log(
       `[generateQuizPool] orcamento ${nivel} / ${sections[i].title}: ${sections[i].leaves.length} folhas, cota ${quotas[i]}`,

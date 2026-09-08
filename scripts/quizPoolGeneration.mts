@@ -67,14 +67,31 @@ export function levelSections(
   return out;
 }
 
+// Teto de perguntas numa unica secao, PREFERENCIA e nao regra dura. E a maior
+// cota que o modelo cumpriu de forma confiavel nesta serie: com cota 10
+// (nivel avancado da trilha de Python, duas secoes) ele devolveu menos
+// perguntas nas CINCO tentativas e uma delas truncou o JSON, e a geracao
+// abortou sem salvar nada (registro do Lote 06). Nao aborta quando o nivel
+// nao comporta, pelo mesmo motivo de MAX_PER_FONTE e do bestValid: cota alta
+// com aviso e melhor que trilha que nao gera. Aplicado so a trilha com
+// codeLanguages: nas trilhas de area, 40 combinacoes de nivel tem duas
+// secoes e 15 perguntas, e duas secoes no teto comportam 14 (medido no
+// Lote 06b, com as pools ja publicadas).
+export const MAX_QUOTA_PER_SECTION = 7;
+
 // Orcamento do nivel: target repartido entre as secoes proporcionalmente ao
 // numero de folhas, arredondamento determinista por maiores restos (empate
 // resolve pela ordem das secoes na trilha), com piso de 1 pergunta por secao
 // e teto de MAX_PER_FONTE por folha. Falha antes de chamar a IA se a soma
-// nao fechar o target ou alguma cota estourar o teto.
+// nao fechar o target ou alguma cota estourar o teto por folha.
+// `maxPerSection` e opcional: sem ele o resultado e identico ao de sempre
+// (as pools de area foram geradas assim); com ele, o excedente das secoes
+// acima do teto migra para as demais enquanto houver folga, e o que nao
+// couber FICA, sinalizado por sectionQuotaWarnings.
 export function sectionQuotas(
   sections: SectionMaterial[],
   target: number,
+  maxPerSection?: number,
 ): number[] {
   const totalLeaves = sections.reduce(
     (sum, section) => sum + section.leaves.length,
@@ -124,6 +141,22 @@ export function sectionQuotas(
     }
   }
 
+  // Teto por secao (opcional): excedente migra pra primeira secao com folga
+  // nos DOIS tetos, na mesma ordem deterministica. Sem receptor, para: a cota
+  // alta fica e vira aviso, nunca aborto.
+  if (maxPerSection !== undefined) {
+    const capOf = (i: number) =>
+      Math.min(sections[i].leaves.length * MAX_PER_FONTE, maxPerSection);
+    for (let i = 0; i < quotas.length; i += 1) {
+      while (quotas[i] > capOf(i)) {
+        const receiver = quotas.findIndex((quota, j) => quota < capOf(j));
+        if (receiver === -1) break;
+        quotas[i] -= 1;
+        quotas[receiver] += 1;
+      }
+    }
+  }
+
   const sum = quotas.reduce((a, b) => a + b, 0);
   if (sum !== target) {
     throw new Error(`Orcamento nao fecha ${target} (somou ${sum}).`);
@@ -137,6 +170,28 @@ export function sectionQuotas(
     }
   });
   return quotas;
+}
+
+// Secoes que ficaram acima de `maxPerSection` porque o nivel nao comportava a
+// redistribuicao. Canal separado de sectionQuotas para os call sites nao
+// mudarem de forma (eles seguem lendo `quotas[i]`); o gerador imprime cada
+// aviso com prefixo [aviso] e segue.
+export function sectionQuotaWarnings(
+  sections: SectionMaterial[],
+  target: number,
+  maxPerSection?: number,
+): string[] {
+  if (maxPerSection === undefined) return [];
+  const quotas = sectionQuotas(sections, target, maxPerSection);
+  const out: string[] = [];
+  quotas.forEach((quota, i) => {
+    if (quota > maxPerSection) {
+      out.push(
+        `secao "${sections[i].title}" com cota ${quota}, acima do teto de ${maxPerSection} (o nivel tem ${sections.length} secoes para ${target} perguntas; dividir a secao maior daria uma cota menor).`,
+      );
+    }
+  });
+  return out;
 }
 
 // Resposta de UMA pergunta como o modelo a devolve. Os tres campos de codigo
