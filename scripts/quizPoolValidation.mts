@@ -173,6 +173,20 @@ export function validateQuizPool(
       if (DASH_RE.test(trecho ?? "")) {
         problems.push(`${q}: codigo.trecho com travessao ou meia-risca`);
       }
+      // saidaEsperada: obrigatoria em erro (e o que o verificador por
+      // execucao compara), proibida nos demais tipos.
+      const { saidaEsperada } = question.codigo;
+      if (question.tipo === "erro") {
+        if (!saidaEsperada || saidaEsperada.trim().length === 0) {
+          problems.push(`${q}: erro exige codigo.saidaEsperada`);
+        } else if (DASH_RE.test(saidaEsperada)) {
+          problems.push(
+            `${q}: codigo.saidaEsperada contem travessao ou meia-risca`,
+          );
+        }
+      } else if (saidaEsperada !== undefined) {
+        problems.push(`${q}: saidaEsperada so em pergunta erro`);
+      }
       const lacunas = (trecho ?? "").split(CODE_PLACEHOLDER).length - 1;
       if (question.tipo === "completar") {
         if (lacunas !== 1) {

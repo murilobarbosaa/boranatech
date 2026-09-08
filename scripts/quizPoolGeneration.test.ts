@@ -138,12 +138,24 @@ describe("buildQuestionSchema", () => {
       '"alternativasCodigo":{"type":"boolean","const":false}',
     );
     expect(json).toContain(
-      '"tipo":{"type":"string","enum":["completar","erro","saida"]}',
+      '"tipo":{"type":"string","enum":["completar","saida"]}',
     );
     expect(json).toContain(
-      '"codigo":{"type":"object","properties":{"linguagem":{"type":"string"},"trecho":{"type":"string"}},"required":["linguagem","trecho"],"additionalProperties":false}',
+      '"codigo":{"type":"object","properties":{"linguagem":{"type":"string"},"trecho":{"type":"string"}},"required":["linguagem","trecho"],"additionalProperties":false},"alternativasCodigo":{"type":"boolean","const":true}',
     );
     expect(json).not.toContain('"codigo":{"anyOf"');
+  });
+
+  it("com cota de codigo o ramo erro exige saidaEsperada e alternativasCodigo false", () => {
+    const json = JSON.stringify(
+      toOpenAIStrictSchema(buildQuestionSchema(ids, 3, 1)),
+    );
+    expect(json).toContain('"tipo":{"type":"string","const":"erro"}');
+    expect(json).toContain(
+      '"codigo":{"type":"object","properties":{"linguagem":{"type":"string"},"trecho":{"type":"string"},"saidaEsperada":{"type":"string"}},"required":["linguagem","trecho","saidaEsperada"],"additionalProperties":false},"alternativasCodigo":{"type":"boolean","const":false}',
+    );
+    expect(json.split('"anyOf"').length - 1).toBe(1);
+    expect(json.split('"tipo":{').length - 1).toBe(3);
   });
 });
 
@@ -201,6 +213,33 @@ describe("normalizeGeneratedQuestion", () => {
       "tipo",
     ]);
     expect(q.alternativasCodigo).toBe(true);
+  });
+
+  it("erro copia saidaEsperada e saida nao a carrega", () => {
+    const erro = normalizeGeneratedQuestion(
+      gerada({
+        tipo: "erro",
+        codigo: { linguagem: "python", trecho: "print(x", saidaEsperada: "2" },
+        alternativasCodigo: false,
+      }),
+      "python-av-02",
+      "avancado",
+    );
+    expect(erro.codigo).toEqual({
+      linguagem: "python",
+      trecho: "print(x",
+      saidaEsperada: "2",
+    });
+    const saida = normalizeGeneratedQuestion(
+      gerada({
+        tipo: "saida",
+        codigo: { linguagem: "python", trecho: "print(2)", saidaEsperada: "2" },
+        alternativasCodigo: true,
+      }),
+      "python-av-03",
+      "avancado",
+    );
+    expect(saida.codigo).toEqual({ linguagem: "python", trecho: "print(2)" });
   });
 
   it("erro com alternativasCodigo false sai sem essa chave", () => {
@@ -294,7 +333,11 @@ describe("codeRuleViolations", () => {
       [
         gerada({
           tipo: "erro",
-          codigo: { linguagem: "python", trecho: "print(1)" },
+          codigo: {
+            linguagem: "python",
+            trecho: "print(1)",
+            saidaEsperada: "2",
+          },
         }),
       ],
       js,
@@ -482,7 +525,11 @@ describe("codeRuleViolations: regras novas do Lote 04c", () => {
       [
         gerada({
           tipo: "erro",
-          codigo: { linguagem: "bash", trecho: "import foo\necho ok" },
+          codigo: {
+            linguagem: "bash",
+            trecho: "import foo\necho ok",
+            saidaEsperada: "ok",
+          },
           alternativasCodigo: false,
         }),
       ],
@@ -537,7 +584,11 @@ describe("codeRuleViolations: regras novas do Lote 04c", () => {
       [
         gerada({
           tipo: "erro",
-          codigo: { linguagem: "js", trecho: "console.log(x);" },
+          codigo: {
+            linguagem: "js",
+            trecho: "console.log(x);",
+            saidaEsperada: "1",
+          },
           alternativasCodigo: true,
         }),
       ],
@@ -562,6 +613,51 @@ describe("codeRuleViolations: regras novas do Lote 04c", () => {
 
   it("saida crua nao acusa", () => {
     expect(codeRuleViolations([saidaOk()], js)).toEqual([]);
+  });
+});
+
+describe("codeRuleViolations: saidaEsperada em erro", () => {
+  const js = ["js"];
+  const erro = (codigo: GeneratedQuestion["codigo"]): GeneratedQuestion =>
+    gerada({ tipo: "erro", codigo, alternativasCodigo: false });
+
+  it("erro sem saidaEsperada acusa", () => {
+    const v = codeRuleViolations(
+      [erro({ linguagem: "js", trecho: "console.log(1 + '1');" })],
+      js,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("erro exige codigo.saidaEsperada");
+  });
+
+  it("saidaEsperada escrita como frase acusa", () => {
+    const v = codeRuleViolations(
+      [
+        erro({
+          linguagem: "js",
+          trecho: "console.log(1 + '1');",
+          saidaEsperada: "O codigo imprime 2.",
+        }),
+      ],
+      js,
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]).toContain("saidaEsperada escrita como frase");
+  });
+
+  it("erro com saidaEsperada crua passa", () => {
+    expect(
+      codeRuleViolations(
+        [
+          erro({
+            linguagem: "js",
+            trecho: "console.log(1 + '1');",
+            saidaEsperada: "2",
+          }),
+        ],
+        js,
+      ),
+    ).toEqual([]);
   });
 });
 

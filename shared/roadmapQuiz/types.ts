@@ -25,6 +25,12 @@ export type QuizTipo = "conceito" | "completar" | "erro" | "saida";
 export interface QuizCodigo {
   linguagem: string;
   trecho: string;
+  // So em "erro": o que o trecho DEVERIA imprimir segundo a intencao que a
+  // pergunta declara em texto (stdout cru, mesma convencao das alternativas
+  // de "saida"). E o que torna "erro" verificavel por execucao: trecho que
+  // roda limpo e imprime exatamente isto nao tem defeito. Nunca e gabarito,
+  // por isso pode ir ao client dentro de PublicQuizQuestion.
+  saidaEsperada?: string;
 }
 
 export interface QuizQuestion {

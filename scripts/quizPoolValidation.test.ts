@@ -234,6 +234,65 @@ describe("perguntas de codigo", () => {
   });
 });
 
+describe("saidaEsperada nas perguntas erro", () => {
+  const erro = (saidaEsperada?: string): QuizQuestion => ({
+    ...pergunta("a+b-ini-01"),
+    tipo: "erro",
+    codigo: {
+      linguagem: "js",
+      trecho: "console.log(1 + '1');",
+      ...(saidaEsperada === undefined ? {} : { saidaEsperada }),
+    },
+  });
+  const problemas = (q: QuizQuestion) =>
+    validateQuizPool({ slug: "a+b", questions: [q] }, "a+b", roadmapComCodigo);
+
+  it("erro sem saidaEsperada gera erro exige codigo.saidaEsperada", () => {
+    expect(
+      problemas(erro()).filter((p) =>
+        p.includes("erro exige codigo.saidaEsperada"),
+      ),
+    ).toHaveLength(1);
+    expect(
+      problemas(erro("   ")).filter((p) =>
+        p.includes("erro exige codigo.saidaEsperada"),
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("erro com saidaEsperada crua nao gera problema de saidaEsperada", () => {
+    expect(
+      problemas(erro("2")).filter((p) => p.includes("saidaEsperada")),
+    ).toEqual([]);
+  });
+
+  it("saidaEsperada com meia-risca gera travessao ou meia-risca", () => {
+    expect(
+      problemas(erro("a \u2013 b")).filter((p) =>
+        p.includes("codigo.saidaEsperada contem travessao ou meia-risca"),
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("saidaEsperada fora de erro gera so em pergunta erro", () => {
+    const saida: QuizQuestion = {
+      ...pergunta("a+b-ini-01"),
+      tipo: "saida",
+      alternativasCodigo: true,
+      codigo: {
+        linguagem: "js",
+        trecho: "console.log(1);",
+        saidaEsperada: "1",
+      },
+    };
+    expect(
+      problemas(saida).filter((p) =>
+        p.includes("saidaEsperada so em pergunta erro"),
+      ),
+    ).toHaveLength(1);
+  });
+});
+
 describe("codeLanguages da trilha", () => {
   const saidaEm = (linguagem: string): QuizQuestion => ({
     ...pergunta("a+b-ini-01"),

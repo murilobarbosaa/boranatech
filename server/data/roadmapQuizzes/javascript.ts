@@ -74,7 +74,8 @@ const pool: QuizPool = {
       "tipo": "erro",
       "codigo": {
         "linguagem": "js",
-        "trecho": "console.log('primeira');\nconsole.log('segunda';"
+        "trecho": "console.log('primeira');\nconsole.log('segunda';",
+        "saidaEsperada": "primeira\nsegunda"
       }
     },
     {
@@ -141,7 +142,8 @@ const pool: QuizPool = {
       "tipo": "erro",
       "codigo": {
         "linguagem": "js",
-        "trecho": "const a = '5';\nconst b = 3;\nconsole.log(a + b);"
+        "trecho": "const a = '5';\nconst b = 3;\nconsole.log(a + b);",
+        "saidaEsperada": "8"
       }
     },
     {
@@ -220,7 +222,8 @@ const pool: QuizPool = {
       "tipo": "erro",
       "codigo": {
         "linguagem": "js",
-        "trecho": "const idade = 20;\nconst temIngresso = false;\nconsole.log(idade >= 18 || temIngresso);"
+        "trecho": "const idade = 20;\nconst temIngresso = false;\nconsole.log(idade >= 18 || temIngresso);",
+        "saidaEsperada": "false"
       }
     },
     {
@@ -302,7 +305,7 @@ const pool: QuizPool = {
     {
       "id": "javascript-int-03",
       "nivel": "intermediario",
-      "pergunta": "Qual é o erro neste código, que deveria somar dois números e retornar o resultado?",
+      "pergunta": "Qual é o erro neste código, que deveria somar dois números e imprimir 5, mas imprime undefined?",
       "alternativas": {
         "a": "Falta o return na função.",
         "b": "Os parâmetros não estão definidos corretamente.",
@@ -310,12 +313,13 @@ const pool: QuizPool = {
         "d": "A função não está usando o operador de soma."
       },
       "correta": "a",
-      "explicacao": "O código não retorna o resultado da soma porque falta a instrução 'return' na função, resultando em undefined.",
+      "explicacao": "Sem return a função termina e devolve undefined, e é isso que o console.log imprime. Com return a + b a chamada devolve 5.",
       "fonte": "funcoes.parametros",
       "tipo": "erro",
       "codigo": {
         "linguagem": "js",
-        "trecho": "function somar(a, b) {\n  a + b;\n}"
+        "trecho": "function somar(a, b) {\n  a + b;\n}\nconsole.log(somar(2, 3));",
+        "saidaEsperada": "5"
       }
     },
     {
@@ -382,7 +386,8 @@ const pool: QuizPool = {
       "tipo": "erro",
       "codigo": {
         "linguagem": "js",
-        "trecho": "const numeros = [];\nconst soma = numeros.reduce((acc, num) => acc + num);\nconsole.log(soma);"
+        "trecho": "const numeros = [];\nconst soma = numeros.reduce((acc, num) => acc + num);\nconsole.log(soma);",
+        "saidaEsperada": "0"
       }
     },
     {
@@ -463,7 +468,8 @@ const pool: QuizPool = {
       "tipo": "erro",
       "codigo": {
         "linguagem": "js",
-        "trecho": "function lerConfig(texto) {\n  const config = JSON.parse(texto);\n  if (!config) {\n    console.log('config invalida');\n    return {};\n  }\n  return config;\n}\nconsole.log(lerConfig('{tema}'));"
+        "trecho": "function lerConfig(texto) {\n  const config = JSON.parse(texto);\n  if (!config) {\n    console.log('config invalida');\n    return {};\n  }\n  return config;\n}\nconsole.log(lerConfig('{tema}'));",
+        "saidaEsperada": "config invalida\n{}"
       }
     },
     {
@@ -496,7 +502,8 @@ const pool: QuizPool = {
       "tipo": "erro",
       "codigo": {
         "linguagem": "js",
-        "trecho": "function buscarUsuario(id) {\n  return new Promise((resolver, rejeitar) => {\n    if (id <= 0) return rejeitar(new Error('id invalido'));\n    setTimeout(() => resolver({ id, nome: 'Ana' }), 10);\n  });\n}\nbuscarUsuario(-1)\n  .then((usuario) => console.log(usuario.nome));"
+        "trecho": "function buscarUsuario(id) {\n  return new Promise((resolver, rejeitar) => {\n    if (id <= 0) return rejeitar(new Error('id invalido'));\n    setTimeout(() => resolver({ id, nome: 'Ana' }), 10);\n  });\n}\nbuscarUsuario(-1)\n  .then((usuario) => console.log(usuario.nome));",
+        "saidaEsperada": "id invalido"
       }
     },
     {
@@ -578,20 +585,21 @@ const pool: QuizPool = {
     {
       "id": "javascript-av-05",
       "nivel": "avancado",
-      "pergunta": "Este código deveria exportar a função 'dobro' corretamente, mas falha. Qual é o erro neste código?",
+      "pergunta": "Este código deveria declarar PI, exportá-la para outros módulos e imprimir 3.14159, mas o Node recusa o arquivo. Qual é o defeito?",
       "alternativas": {
-        "a": "A função não está sendo chamada corretamente.",
-        "b": "Faltou a palavra-chave 'export' antes da função.",
-        "c": "O nome da função não pode ser 'dobro'.",
-        "d": "O arquivo não possui a extensão correta."
+        "a": "A função constantes também precisa ser exportada, com export function.",
+        "b": "export só pode aparecer no nível superior do módulo, nunca dentro de uma função.",
+        "c": "Faltou a palavra-chave default depois de export.",
+        "d": "Uma constante exportada não pode ser devolvida com return."
       },
       "correta": "b",
-      "explicacao": "Sem a palavra-chave 'export', a função 'dobro' não será visível fora do módulo, resultando em falha ao tentar importá-la.",
+      "explicacao": "export declara a interface do módulo e só é aceito no nível superior do arquivo; dentro de uma função é erro de sintaxe. A saída pedida vem de declarar PI no topo, com export, e imprimir depois.",
       "fonte": "modulos.esm",
       "tipo": "erro",
       "codigo": {
         "linguagem": "js",
-        "trecho": "function dobro(n) {\n  return n * 2;\n}"
+        "trecho": "function constantes() {\n  export const PI = 3.14159;\n  return PI;\n}\nconsole.log(constantes());",
+        "saidaEsperada": "3.14159"
       }
     },
     {
@@ -658,7 +666,8 @@ const pool: QuizPool = {
       "tipo": "erro",
       "codigo": {
         "linguagem": "js",
-        "trecho": "class Conta {\n  constructor(titular) {\n    this.titular = titular;\n    this.saldo = 0;\n  }\n  depositar(valor) {\n    this.saldo += valor;\n  }\n}\nconst conta = new Conta('Ana').depositar(50);\nconsole.log(conta.saldo); // 50"
+        "trecho": "class Conta {\n  constructor(titular) {\n    this.titular = titular;\n    this.saldo = 0;\n  }\n  depositar(valor) {\n    this.saldo += valor;\n  }\n}\nconst conta = new Conta('Ana').depositar(50);\nconsole.log(conta.saldo); // 50",
+        "saidaEsperada": "50"
       }
     },
     {

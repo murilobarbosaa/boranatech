@@ -141,9 +141,10 @@ export function sectionQuotas(
 // Resposta de UMA pergunta como o modelo a devolve. Os tres campos de codigo
 // so existem no schema quando a secao tem cota de codigo, e la a pergunta e
 // uma uniao discriminada por `tipo` (buildQuestionSchema): conceito com
-// `codigo` null, tipos de codigo com `codigo` objeto obrigatorio. Esta
-// interface e o superconjunto dos dois ramos; `codigo` nulo so existe no ramo
-// conceito.
+// `codigo` null, erro com `codigo` que traz `saidaEsperada`, completar e
+// saida com `codigo` sem ela. Esta interface e o superconjunto dos tres
+// ramos; `codigo` nulo so existe no ramo conceito e `saidaEsperada` so no
+// ramo erro.
 export interface GeneratedQuestion {
   pergunta: string;
   alternativas: { a: string; b: string; c: string; d: string };
@@ -151,7 +152,7 @@ export interface GeneratedQuestion {
   explicacao: string;
   fonte: string;
   tipo?: QuizTipo;
-  codigo?: { linguagem: string; trecho: string } | null;
+  codigo?: { linguagem: string; trecho: string; saidaEsperada?: string } | null;
   alternativasCodigo?: boolean;
 }
 
@@ -176,9 +177,13 @@ export function buildQuestionSchema(
   // objeto com `codigo` nullable: no 04c o modelo devolveu cinco vezes uma
   // pergunta de tipo erro com codigo null, que o schema antigo aceitava e a
   // normalizacao rejeitava. Aqui o estado invalido nao existe na forma que a
-  // API obriga. z.union (e nao discriminatedUnion) porque o zod serializa a
-  // primeira como anyOf, que e a forma que o strict mode da OpenAI aceita, e
-  // a segunda como oneOf.
+  // API obriga. Tres ramos: conceito; erro, que exige saidaEsperada (o que o
+  // codigo deveria imprimir, para o verificador por execucao) e
+  // alternativasCodigo false; completar e saida, sem saidaEsperada e com
+  // alternativasCodigo true (as regras ja exigiam, agora o schema obriga).
+  // z.union (e nao discriminatedUnion) porque o zod serializa a primeira
+  // como anyOf, que e a forma que o strict mode da OpenAI aceita, e a
+  // segunda como oneOf.
   const question =
     codeQuota > 0
       ? z.union([
@@ -190,9 +195,19 @@ export function buildQuestionSchema(
           }),
           z.object({
             ...base,
-            tipo: z.enum(["completar", "erro", "saida"]),
+            tipo: z.literal("erro"),
+            codigo: z.object({
+              linguagem: z.string(),
+              trecho: z.string(),
+              saidaEsperada: z.string(),
+            }),
+            alternativasCodigo: z.literal(false),
+          }),
+          z.object({
+            ...base,
+            tipo: z.enum(["completar", "saida"]),
             codigo: z.object({ linguagem: z.string(), trecho: z.string() }),
-            alternativasCodigo: z.boolean(),
+            alternativasCodigo: z.literal(true),
           }),
         ])
       : z.object(base);
@@ -307,6 +322,7 @@ export function buildCodeRules(codeLanguages: string[]): string {
     "- A pergunta NUNCA contem codigo nem cerca markdown: o trecho vai SOMENTE em codigo.trecho. A pergunta diz o que fazer com o trecho (por exemplo: O que este codigo imprime? Qual alternativa completa a lacuna para que a saida seja X? Qual e o defeito deste codigo?).",
     "- saida: cada alternativa e EXATAMENTE o texto que o terminal mostra, linha por linha separada por quebra de linha, sem frase em volta (escrever O codigo imprime 50. esta errado; escrever 50 esta certo) e sem virgula juntando linhas. A correta e a alternativa cujo texto e a saida real do trecho: confira a saida mentalmente, linha a linha, antes de escolher a letra.",
     "- erro: o trecho, executado, precisa lancar ou produzir resultado errado em relacao ao que a pergunta declara como intencao; a pergunta declara essa intencao (por exemplo: este codigo deveria somar a lista) e a correta descreve o defeito. Codigo correto com a pergunta qual e o erro e PROIBIDO. Pergunta de conceito com alternativas em codigo NAO e erro: e conceito.",
+    "- erro traz codigo.saidaEsperada: o stdout cru que o codigo DEVERIA produzir se estivesse certo, linha por linha, sem frase em volta (escrever 8 esta certo; escrever O codigo imprime 8. esta errado). O trecho com defeito precisa lancar ou imprimir algo diferente disso; se ele roda limpo e imprime exatamente a saidaEsperada, nao tem defeito e a pergunta e invalida.",
     `- completar: a lacuna ${CODE_PLACEHOLDER} substitui uma expressao, um token ou um argumento, nunca uma linha ou instrucao inteira; as alternativas sao SO o que entra na lacuna (sem repetir o resto da linha), em uma linha cada. Com a correta na lacuna o trecho roda; com cada errada, o trecho quebra ou produz outro resultado.`,
     "- Trecho autocontido: sem import, require, fetch, leitura de arquivo ou qualquer dependencia externa; so a linguagem e a biblioteca padrao. Sem entrada do usuario, sem aleatoriedade, sem data e hora.",
     "- Variedade: em secao com 3 ou mais perguntas de codigo, pelo menos uma de cada tipo (completar, erro e saida); com 2, tipos diferentes; saida nao pode passar da metade das perguntas de codigo da secao.",
@@ -523,6 +539,18 @@ export function codeRuleViolations(
     if (question.tipo === "erro" && question.alternativasCodigo) {
       out.push(`${rotulo}: erro exige alternativasCodigo false`);
     }
+    if (question.tipo === "erro") {
+      const saidaEsperada = codigo.saidaEsperada ?? "";
+      if (saidaEsperada.trim().length === 0) {
+        out.push(
+          `${rotulo}: erro exige codigo.saidaEsperada (stdout cru que o codigo deveria produzir)`,
+        );
+      } else if (FRASE_RE.test(saidaEsperada.trim())) {
+        out.push(
+          `${rotulo}: saidaEsperada escrita como frase (tem que ser a saida crua)`,
+        );
+      }
+    }
   });
   return out;
 }
@@ -590,7 +618,13 @@ export function normalizeGeneratedQuestion(
   return {
     ...base,
     tipo: raw.tipo,
-    codigo: { linguagem: raw.codigo.linguagem, trecho: raw.codigo.trecho },
+    codigo: {
+      linguagem: raw.codigo.linguagem,
+      trecho: raw.codigo.trecho,
+      ...(raw.tipo === "erro" && raw.codigo.saidaEsperada !== undefined
+        ? { saidaEsperada: raw.codigo.saidaEsperada }
+        : {}),
+    },
     ...(raw.alternativasCodigo ? { alternativasCodigo: true as const } : {}),
   };
 }
