@@ -17,6 +17,15 @@
 // do retry (execViolations em quizPoolGeneration.mts); o registry de pools e
 // o agregado de trilhas so sao importados dentro do main, para o gerador nao
 // carregar todas as pools ao importar este modulo.
+//
+// ISOLAMENTO: o trecho executado e codigo escrito por um modelo, entao o
+// spawn roda com cwd no diretorio temporario do executor, com ambiente
+// montado do zero (sem os segredos do .env que o gerador carregou), com
+// entrada vazia e com teto de saida. O que isso NAO cobre: acesso a rede,
+// escrita fora do cwd por caminho absoluto e consumo de CPU dentro do
+// timeout. Trecho de trilha e codigo didatico curto e o portao real continua
+// sendo a revisao humana da pool; cwd e env fecham o acidente que aconteceu
+// no Lote 06, em que um trecho gravou um arquivo na raiz do repositorio.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -98,6 +107,26 @@ export function makeExecutor(runner: Runner): Executor {
     const r = spawnSync(runner.command, [file], {
       encoding: "utf8",
       timeout: TIMEOUT_MS,
+      // cwd no diretorio do executor: um trecho com open(...,'w') grava aqui
+      // dentro, nao no repositorio. Sem isso, uma pergunta gerada no Lote 06
+      // criou usuario.json na raiz do worktree.
+      cwd: dir,
+      // Ambiente montado do zero, nunca process.env: o gerador carrega o .env
+      // (OPENAI_API_KEY, SUPABASE_*, REDIS_URL, STRIPE_*) e o trecho e codigo
+      // escrito por um modelo. HOME aponta para o proprio dir, entao cache e
+      // arquivo de configuracao do runner tambem ficam contidos.
+      env: {
+        PATH: process.env.PATH ?? "/usr/bin:/bin",
+        HOME: dir,
+        LANG: process.env.LANG ?? "C.UTF-8",
+        PYTHONIOENCODING: "utf-8",
+      },
+      // Entrada vazia e fechada: trecho com input() falha na hora em vez de
+      // segurar o processo ate o timeout.
+      input: "",
+      // Teto de saida: laco que imprime sem parar morre aqui, nao na memoria
+      // do processo do gerador.
+      maxBuffer: 1024 * 1024,
     });
     return {
       status: r.status,

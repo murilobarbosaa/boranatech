@@ -1,9 +1,12 @@
+import { existsSync, rmSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   conferirCodigo,
   erroDoStderr,
   type Execucao,
   fillGap,
+  makeExecutor,
   normalizeStdout,
   runnerFor,
   stdoutMatches,
@@ -163,5 +166,45 @@ describe("conferirCodigo com executor stub", () => {
     );
     expect(r.veredito).toBe("CORRIGIR");
     expect(r.resultado).toContain("distratores equivalentes: b");
+  });
+});
+
+// Execucao REAL (os unicos testes deste arquivo que chamam python3): o trecho
+// que roda vem de um modelo, e estas duas asserções sao a prova do
+// isolamento. Um trecho criou usuario.json na raiz do repositorio durante a
+// geracao do Lote 06, porque o spawn herdava o cwd e o env do gerador.
+describe("isolamento do executor", () => {
+  const runner = runnerFor("python");
+  if (!runner) throw new Error("runner de python ausente");
+
+  it("escrita do trecho fica no diretorio do executor, nao no worktree", () => {
+    const executar = makeExecutor(runner);
+    const escreveu = executar(
+      "with open('marcador.txt', 'w') as f:\n    f.write('x')\nprint('ok')",
+    );
+    expect(escreveu.status).toBe(0);
+    expect(normalizeStdout(escreveu.stdout)).toBe("ok");
+    const leu = executar("print(open('marcador.txt').read())");
+    expect(normalizeStdout(leu.stdout)).toBe("x");
+    const noWorktree = path.join(process.cwd(), "marcador.txt");
+    expect(existsSync(noWorktree)).toBe(false);
+    rmSync(noWorktree, { force: true });
+  });
+
+  it("o trecho nao enxerga os segredos do processo do gerador", () => {
+    process.env.OPENAI_API_KEY = "sk-teste-do-vitest";
+    const executar = makeExecutor(runner);
+    const r = executar(
+      "import os\nprint(os.environ.get('OPENAI_API_KEY'))\nprint(os.environ.get('SUPABASE_SERVICE_ROLE_KEY'))",
+    );
+    expect(r.status).toBe(0);
+    expect(normalizeStdout(r.stdout)).toBe("None\nNone");
+  });
+
+  it("trecho que espera entrada do usuario falha rapido em vez de travar", () => {
+    const executar = makeExecutor(runner);
+    const r = executar("nome = input()\nprint(nome)");
+    expect(r.status).not.toBe(0);
+    expect(r.timeout).toBe(false);
   });
 });
