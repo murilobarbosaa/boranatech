@@ -50,7 +50,18 @@ export type RoadmapV2 = {
   // exige entrada correspondente em areasTI). "carreira": trilha transversal
   // de carreira, listada na secao "Trilhas de carreira" da listagem e sem
   // dependencia de areasTI.
-  kind?: "carreira";
+  //
+  // Convencao de `area` (mesma sentinela que "carreira" ja usa, ver
+  // docs/glossario.md): trilha COM kind tem `area` IGUAL ao proprio kind
+  // (area: "carreira", "linguagem", "framework" ou "ferramenta"); trilha SEM
+  // kind tem `area` igual a um slug de areasTI. O pnpm check afirma os dois
+  // sentidos (checkKinds em scripts/generateRoadmapMeta.mts).
+  //
+  // "linguagem": linguagem de programacao (JavaScript, Python, SQL).
+  // "framework": framework, biblioteca ou runtime (React, Node, Django).
+  // "ferramenta": ferramenta de trabalho (Git, Docker, Linux).
+  // A vitrine agrupa "linguagem" e "framework" num mesmo bloco.
+  kind?: "carreira" | "linguagem" | "framework" | "ferramenta";
   languages?: RoadmapLanguage[];
   sections: RoadmapSection[];
 };

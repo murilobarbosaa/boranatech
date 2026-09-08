@@ -11,6 +11,7 @@ import RoadmapCompletionCard from "@/components/roadmapV2/RoadmapCompletionCard"
 import RoadmapCompletionModal from "@/components/roadmapV2/RoadmapCompletionModal";
 import RoadmapFeaturedCourse from "@/components/roadmapV2/RoadmapFeaturedCourse";
 import { cursosParceiros } from "@/lib/parceiros";
+import { roadmapAreaLabel } from "@/lib/roadmapV2/areaLabel";
 import { roadmapLoaders } from "@/lib/roadmapV2/loaders";
 import { nodeProgress } from "@/lib/roadmapV2/progress";
 import { useRoadmapCompletion } from "@/hooks/useRoadmapCompletion";
@@ -139,11 +140,7 @@ export default function RoadmapsV2() {
     ? (sections.find((section) => section.id === openSectionId) ?? null)
     : null;
 
-  const areaLabel = roadmap
-    ? roadmap.title.includes("Front")
-      ? "Front-end"
-      : roadmap.area
-    : "";
+  const areaLabel = roadmap ? roadmapAreaLabel(roadmap) : "";
 
   if (!loader) {
     return <Redirect to="/roadmaps" />;

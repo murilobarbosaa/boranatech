@@ -323,9 +323,13 @@ export default function RoadmapsV2Index() {
   // Resolve por slug OU por area: a trilha de IA tem slug
   // "inteligencia-artificial" mas area "ia" (o gerador ocupa /roadmaps/ia),
   // entao ?area=ia precisa cair no slug da trilha, nao no proprio param.
+  // ?area= so resolve trilha de area (sem kind); trilha com kind (carreira,
+  // linguagem, framework, ferramenta) e alcancada por slug.
   const areaParam = new URLSearchParams(search).get("area");
   const areaTarget = areaParam
-    ? roadmapsMeta.find((r) => r.slug === areaParam || r.area === areaParam)
+    ? roadmapsMeta.find(
+        (r) => r.slug === areaParam || (!r.kind && r.area === areaParam),
+      )
     : undefined;
   if (areaTarget) {
     return <Redirect to={`/roadmaps/${areaTarget.slug}`} />;
@@ -406,7 +410,7 @@ export default function RoadmapsV2Index() {
 
           <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {roadmapsMeta
-              .filter((r) => r.kind !== "carreira")
+              .filter((r) => !r.kind)
               .map((r, index) => {
                 const area = areasTI.find((x) => x.slug === r.area);
                 if (!area) return null;
