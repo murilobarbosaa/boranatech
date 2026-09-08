@@ -29,6 +29,7 @@ import { mlops } from "./mlops";
 import { suporte } from "./suporte";
 import { techWriter } from "./tech-writer";
 import { erp } from "./erp";
+import { javascript } from "./javascript";
 
 export {
   frontend,
@@ -93,4 +94,5 @@ export const roadmapsV2: RoadmapV2[] = [
   suporte,
   techWriter,
   erp,
+  javascript,
 ];

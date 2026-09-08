@@ -145,5 +145,11 @@ export const projectTrailLinks: Record<
       "slug": "mainframe",
       "nodeId": "carreira.projeto"
     }
+  ],
+  "cli-tarefas-terminal": [
+    {
+      "slug": "javascript",
+      "nodeId": "projeto.cli"
+    }
   ]
 };

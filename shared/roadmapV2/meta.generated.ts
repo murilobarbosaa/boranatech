@@ -410,5 +410,17 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "stepCount": 13,
     "hasProject": false,
     "hasQuiz": false
+  },
+  {
+    "slug": "javascript",
+    "area": "linguagem",
+    "kind": "linguagem",
+    "title": "JavaScript do Zero",
+    "level": "Iniciante",
+    "description": "Da primeira linha no terminal até módulos, assincronia e o que roda por dentro da linguagem. Conclua uma etapa pra liberar a próxima.",
+    "sectionCount": 10,
+    "stepCount": 46,
+    "hasProject": true,
+    "hasQuiz": false
   }
 ];

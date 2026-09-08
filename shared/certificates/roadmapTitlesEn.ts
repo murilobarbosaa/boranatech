@@ -33,6 +33,7 @@ export const ROADMAP_TITLES_EN: Record<string, string> = {
   suporte: "Technical Support and Help Desk from Scratch",
   "tech-writer": "Tech Writer and Documentation from Scratch",
   erp: "Enterprise Systems and ERP from Scratch",
+  javascript: "JavaScript from Scratch",
 };
 
 // Titulo da trilha no idioma pedido. Fallback: o proprio titulo (PT) se nao
