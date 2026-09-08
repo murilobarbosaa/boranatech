@@ -137,6 +137,13 @@ export function toPublicQuestions(
         texto: question.alternativas[alt],
       })),
       fonte: question.fonte,
+      // Campos de pergunta de codigo, so quando presentes: o JSON de pool sem
+      // eles continua identico ao de antes.
+      ...(question.tipo ? { tipo: question.tipo } : {}),
+      ...(question.codigo ? { codigo: question.codigo } : {}),
+      ...(question.alternativasCodigo
+        ? { alternativasCodigo: question.alternativasCodigo }
+        : {}),
     });
   }
   return out;

@@ -5,7 +5,7 @@ import type {
   QuizQuestion,
   QuizTipo,
 } from "../../shared/roadmapQuiz/types";
-import { drawQuestions, gradeAttempt } from "./roadmapQuiz";
+import { drawQuestions, gradeAttempt, toPublicQuestions } from "./roadmapQuiz";
 
 // rng "sem troca": Math.floor(0.999 * (i + 1)) === i para todo i < 1000, entao
 // o Fisher-Yates de shuffle nao troca nenhuma posicao e a ordem de saida e a
@@ -211,5 +211,92 @@ describe("gradeAttempt", () => {
       { id: "sumiu-99", acertou: true, anulada: true },
     ]);
     expect(grade.score).toBe(1);
+  });
+});
+
+describe("toPublicQuestions", () => {
+  const pool: QuizPool = {
+    slug: "teste",
+    questions: [
+      {
+        id: "conceito-01",
+        nivel: "iniciante",
+        pergunta: "O que e HTML?",
+        alternativas: { a: "Linguagem", b: "Banco", c: "Servidor", d: "Rede" },
+        correta: "a",
+        explicacao: "HTML marca a estrutura.",
+        fonte: "s1.f1",
+      },
+      {
+        id: "completar-01",
+        nivel: "intermediario",
+        pergunta: "Complete a lacuna.",
+        alternativas: { a: "let", b: "var", c: "const", d: "static" },
+        correta: "c",
+        explicacao: "const nao muda.",
+        fonte: "s1.f1",
+        tipo: "completar",
+        codigo: { linguagem: "js", trecho: "____ PI = 3.14;" },
+        alternativasCodigo: true,
+      },
+    ],
+  };
+  const snapshot = [
+    { id: "conceito-01", alternativas: ["b", "a", "d", "c"] as const },
+    { id: "completar-01", alternativas: ["c", "d", "a", "b"] as const },
+  ].map((entry) => ({ id: entry.id, alternativas: [...entry.alternativas] }));
+
+  it("pergunta de conceito sai so com as chaves de sempre", () => {
+    const [conceito] = toPublicQuestions(pool, snapshot);
+    expect(Object.keys(conceito).sort()).toEqual([
+      "alternativas",
+      "fonte",
+      "id",
+      "nivel",
+      "pergunta",
+    ]);
+  });
+
+  it("pergunta de codigo sai com tipo, codigo e alternativasCodigo", () => {
+    const [, completar] = toPublicQuestions(pool, snapshot);
+    expect(Object.keys(completar).sort()).toEqual([
+      "alternativas",
+      "alternativasCodigo",
+      "codigo",
+      "fonte",
+      "id",
+      "nivel",
+      "pergunta",
+      "tipo",
+    ]);
+    expect(completar.tipo).toBe("completar");
+    expect(completar.codigo).toEqual({
+      linguagem: "js",
+      trecho: "____ PI = 3.14;",
+    });
+    expect(completar.alternativasCodigo).toBe(true);
+  });
+
+  it("nunca vaza correta nem explicacao", () => {
+    for (const question of toPublicQuestions(pool, snapshot)) {
+      expect(question).not.toHaveProperty("correta");
+      expect(question).not.toHaveProperty("explicacao");
+    }
+  });
+
+  it("alternativas saem na ordem do snapshot com o texto certo", () => {
+    const [conceito, completar] = toPublicQuestions(pool, snapshot);
+    expect(conceito.alternativas).toEqual([
+      { id: "b", texto: "Banco" },
+      { id: "a", texto: "Linguagem" },
+      { id: "d", texto: "Rede" },
+      { id: "c", texto: "Servidor" },
+    ]);
+    expect(completar.alternativas).toEqual([
+      { id: "c", texto: "const" },
+      { id: "d", texto: "static" },
+      { id: "a", texto: "let" },
+      { id: "b", texto: "var" },
+    ]);
   });
 });

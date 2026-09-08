@@ -113,6 +113,14 @@ function buildApprovedReview(
       correta: question.correta,
       explicacao: question.explicacao,
       respostaDoUsuario: answers[question.id] ?? null,
+      // Campos de pergunta de codigo, so quando presentes (mesmo padrao de
+      // toPublicQuestions); a revisao continua carregando o gabarito porque a
+      // tentativa e aprovada.
+      ...(question.tipo ? { tipo: question.tipo } : {}),
+      ...(question.codigo ? { codigo: question.codigo } : {}),
+      ...(question.alternativasCodigo
+        ? { alternativasCodigo: question.alternativasCodigo }
+        : {}),
     });
   }
   return out;
