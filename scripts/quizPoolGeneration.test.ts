@@ -10,6 +10,7 @@ import {
   codeQuotaFor,
   codeRuleViolations,
   codeTypeViolations,
+  dependsOnExternal,
   execViolations,
   type GeneratedQuestion,
   missingCodeCount,
@@ -861,5 +862,42 @@ describe("execViolations com executor stub", () => {
       executarPor,
     );
     expect(v).toEqual([]);
+  });
+});
+
+describe("dependsOnExternal", () => {
+  it("python: import da biblioteca padrao permitida nao e externo", () => {
+    expect(
+      dependsOnExternal("import json\nprint(json.dumps([1]))", ["python"]),
+    ).toBe(false);
+    expect(
+      dependsOnExternal("from collections import Counter", ["python"]),
+    ).toBe(false);
+  });
+
+  it("python: pacote de fora e modulo fora da lista sao externos", () => {
+    expect(dependsOnExternal("import requests", ["python"])).toBe(true);
+    expect(dependsOnExternal("from os import path", ["python"])).toBe(true);
+    expect(dependsOnExternal("import random", ["python"])).toBe(true);
+  });
+
+  it("python: open continua externo", () => {
+    expect(
+      dependsOnExternal("with open('a.txt') as f:\n  pass", ["python"]),
+    ).toBe(true);
+  });
+
+  it("js: qualquer import, export, require e fetch sao externos", () => {
+    expect(dependsOnExternal("import x from './x.js';", ["js"])).toBe(true);
+    expect(dependsOnExternal("export const a = 1;", ["js"])).toBe(true);
+    expect(dependsOnExternal("import json", ["js"])).toBe(true);
+    expect(dependsOnExternal("const fs = require('fs');", ["js"])).toBe(true);
+    expect(dependsOnExternal("console.log(1);", ["js"])).toBe(false);
+  });
+
+  it("bash: nada e externo", () => {
+    expect(dependsOnExternal("import foo\nexport PATH=1", ["bash"])).toBe(
+      false,
+    );
   });
 });

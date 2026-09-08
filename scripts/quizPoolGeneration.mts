@@ -256,8 +256,8 @@ export const MAX_CODE_PER_LEAF = 2;
 // a ```json do package.json numa trilha de JavaScript, nao conta: o modelo
 // so consegue escrever pergunta de codigo onde o material tem codigo.
 // Em linguagem de IMPORT_FREE_LANGUAGES a cerca so conta se o codigo dela
-// NAO casar IMPORT_RE: o prompt aponta o modelo para essas folhas e a regra
-// de trecho autocontido proibe import, require e fetch, entao apontar para
+// NAO depender de nada de fora (dependsOnExternal): o prompt aponta o modelo
+// para essas folhas e a regra de trecho autocontido proibe isso, entao apontar para
 // uma folha cujo unico codigo depende disso e pedir uma pergunta impossivel,
 // e o modelo respondeu com codigo nulo em vez de recusar (registro do 04c,
 // secao Assincronia, folha assincrono.fetch, cinco tentativas). Em bash ou
@@ -271,13 +271,10 @@ export function codeLeafIds(
     .map((lang) => lang.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
     .join("|");
   const re = new RegExp("```(?:" + langs + ")[ \\t]*\\n([\\s\\S]*?)```", "g");
-  const semImports = codeLanguages.some((lang) =>
-    IMPORT_FREE_LANGUAGES.includes(lang),
-  );
   return section.leaves
     .filter((leaf) =>
       Array.from(leaf.content.matchAll(re)).some(
-        (m) => !semImports || !IMPORT_RE.test(m[1]),
+        (m) => !dependsOnExternal(m[1], codeLanguages),
       ),
     )
     .map((leaf) => leaf.id);
@@ -326,6 +323,11 @@ export function buildCodeRules(codeLanguages: string[]): string {
     "- erro traz codigo.saidaEsperada: o stdout cru que o codigo DEVERIA produzir se estivesse certo, linha por linha, sem frase em volta (escrever 8 esta certo; escrever O codigo imprime 8. esta errado). O trecho com defeito precisa lancar ou imprimir algo diferente disso; se ele roda limpo e imprime exatamente a saidaEsperada, nao tem defeito e a pergunta e invalida.",
     `- completar: a lacuna ${CODE_PLACEHOLDER} substitui uma expressao, um token ou um argumento, nunca uma linha ou instrucao inteira; as alternativas sao SO o que entra na lacuna (sem repetir o resto da linha), em uma linha cada. Com a correta na lacuna o trecho roda; com cada errada, o trecho quebra ou produz outro resultado.`,
     "- Trecho autocontido: sem import, require, fetch, leitura de arquivo ou qualquer dependencia externa; so a linguagem e a biblioteca padrao. Sem entrada do usuario, sem aleatoriedade, sem data e hora.",
+    ...(codeLanguages.includes("python")
+      ? [
+          `- Em Python, import so da biblioteca padrao desta lista: ${PYTHON_STDLIB_ALLOWED.join(", ")}; nada de random, datetime, os, sys ou arquivo.`,
+        ]
+      : []),
     "- Variedade: em secao com 3 ou mais perguntas de codigo, pelo menos uma de cada tipo (completar, erro e saida); com 2, tipos diferentes; saida nao pode passar da metade das perguntas de codigo da secao.",
     `- Exemplo de completar: trecho const x = ${CODE_PLACEHOLDER}; com alternativas 1, 2, 3 e 4. NUNCA const x = 1; como alternativa: a alternativa e so o que entra na lacuna, sem o resto da linha.`,
   ].join("\n");
@@ -409,7 +411,61 @@ const DASH_RE = /\u2014|\u2013/;
 // cerca de export de modulos.esm que manteve a folha como material no 04d,
 // com o modelo escrevendo import em todas as cinco tentativas da secao.
 export const IMPORT_FREE_LANGUAGES = ["js", "ts", "python"];
-export const IMPORT_RE = /\b(import|export|require|fetch)\b|readFile|\bopen\(/;
+// Em Python, import da biblioteca padrao e legitimo num trecho autocontido,
+// e a regra unica de "sem import" (Lote 05) proibia a palavra. Lista fechada
+// de modulos deterministas e sem ambiente: fora dela ficam random, datetime,
+// time, os, sys, pathlib e urllib, que quebram determinismo ou tocam o
+// ambiente, e qualquer pacote instalado por pip.
+export const PYTHON_STDLIB_ALLOWED = [
+  "json",
+  "math",
+  "re",
+  "collections",
+  "itertools",
+  "functools",
+  "string",
+  "typing",
+  "dataclasses",
+  "decimal",
+  "fractions",
+  "statistics",
+  "enum",
+  "textwrap",
+];
+const EXTERNAL_RE = /\b(export|require|fetch)\b|readFile|\bopen\(/;
+const RELATIVE_IMPORT_RE = /\b(?:import|from)\s+['"]\.\.?\//;
+const PYTHON_IMPORT_RE =
+  /^\s*(?:import\s+([\w.]+(?:\s*,\s*[\w.]+)*)|from\s+([\w.]+)\s+import\b)/;
+
+// Um trecho depende de algo de fora quando toca rede, arquivo, modulo
+// relativo ou pacote externo. Em bash e dockerfile nunca (a checagem so vale
+// para linguagens de IMPORT_FREE_LANGUAGES). Em js e ts qualquer import e
+// externo; em python, import e from X import so sao aceitos quando cada
+// modulo (primeiro segmento) esta em PYTHON_STDLIB_ALLOWED.
+export function dependsOnExternal(
+  code: string,
+  codeLanguages: string[],
+): boolean {
+  if (!codeLanguages.some((lang) => IMPORT_FREE_LANGUAGES.includes(lang))) {
+    return false;
+  }
+  if (EXTERNAL_RE.test(code) || RELATIVE_IMPORT_RE.test(code)) return true;
+  const python = codeLanguages.includes("python");
+  for (const linha of code.split("\n")) {
+    if (!python) {
+      if (/\bimport\b/.test(linha)) return true;
+      continue;
+    }
+    const m = PYTHON_IMPORT_RE.exec(linha);
+    if (!m) continue;
+    const modulos = (m[1] ?? m[2]).split(",").map((nome) => nome.trim());
+    for (const modulo of modulos) {
+      const raiz = modulo.split(/\s+as\s+/)[0].split(".")[0];
+      if (!PYTHON_STDLIB_ALLOWED.includes(raiz)) return true;
+    }
+  }
+  return false;
+}
 // Heuristica de "alternativa de saida escrita como frase": a saida crua de um
 // programa raramente contem a palavra imprime ou termina em letra seguida de
 // ponto final; uma frase em portugues quase sempre. Pode dar falso positivo
@@ -484,10 +540,7 @@ export function codeRuleViolations(
         `${rotulo}: pergunta contem codigo (o trecho vai so em codigo.trecho)`,
       );
     }
-    if (
-      codeLanguages.some((lang) => IMPORT_FREE_LANGUAGES.includes(lang)) &&
-      IMPORT_RE.test(trecho)
-    ) {
+    if (dependsOnExternal(trecho, codeLanguages)) {
       out.push(
         `${rotulo}: trecho depende de import, require, fetch ou arquivo (precisa ser autocontido)`,
       );
