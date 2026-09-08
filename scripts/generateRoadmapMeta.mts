@@ -11,6 +11,7 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { areasTI } from "../client/src/lib/data";
 import { projetos } from "../shared/projects/catalog";
 import type { QuizPool } from "../shared/roadmapQuiz/types";
 import { roadmapsV2 } from "../shared/roadmapV2/content";
@@ -168,6 +169,67 @@ function checkLoaders(): string[] {
     if (!slugs.has(key)) {
       problems.push(
         `loaders.ts tem entrada "${key}" que nao existe no agregado`,
+      );
+    }
+  }
+  return problems;
+}
+
+// Kind, sentinela de area e forma do slug de toda trilha do agregado. Existe
+// porque a vitrine (RoadmapsV2Index.tsx) so sabe montar card de trilha sem
+// kind quando a area resolve em areasTI, e a falha ali e `return null`: a
+// trilha some da listagem sem nada acusar. Afirma os dois sentidos: trilha sem
+// kind exige area real, trilha com kind exige area igual ao kind, e area
+// sentinela sem kind e erro. O slug e validado no mesmo alfabeto que o
+// keyPattern de checkLoaders ja assume, porque um slug fora dele passaria
+// despercebido pelo parser textual e entra em regex sem escape em outros
+// pontos (ids do pool de quiz). Kind novo no futuro toca so SENTINEL_AREAS,
+// que precisa continuar igual a uniao de RoadmapV2["kind"].
+const SENTINEL_AREAS = [
+  "carreira",
+  "linguagem",
+  "framework",
+  "ferramenta",
+] as const;
+// Rotas fixas de client/src/App.tsx sob /roadmaps/ que um slug nao pode
+// ocupar (/roadmaps/ia e o gerador de roadmap com IA).
+const RESERVED_SLUGS = ["ia"];
+const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+function checkKinds(): string[] {
+  const problems: string[] = [];
+  const areaSlugs = new Set(areasTI.map((area) => area.slug));
+  const sentinels = new Set<string>(SENTINEL_AREAS);
+  const seenSlugs = new Set<string>();
+
+  for (const roadmap of roadmapsV2) {
+    const { slug, area, kind } = roadmap;
+    if (!SLUG_RE.test(slug)) {
+      problems.push(
+        `trilha "${slug}": slug fora do formato a-z, 0-9 e hifen simples`,
+      );
+    }
+    if (RESERVED_SLUGS.includes(slug)) {
+      problems.push(`trilha "${slug}": slug reservado por rota`);
+    }
+    if (seenSlugs.has(slug)) {
+      problems.push(`trilha "${slug}": slug duplicado no agregado`);
+    }
+    seenSlugs.add(slug);
+
+    if (kind) {
+      if (area !== kind) {
+        problems.push(
+          `trilha "${slug}": kind "${kind}" exige area "${kind}" (encontrado "${area}")`,
+        );
+      }
+    } else if (sentinels.has(area)) {
+      problems.push(
+        `trilha "${slug}": area sentinela "${area}" sem kind correspondente`,
+      );
+    } else if (!areaSlugs.has(area)) {
+      problems.push(
+        `trilha "${slug}": area "${area}" nao existe em areasTI (trilha sem kind exige area real)`,
       );
     }
   }
@@ -332,6 +394,11 @@ if (checkMode) {
   }
 
   for (const problem of checkLoaders()) {
+    console.error(`[generateRoadmapMeta] ${problem}`);
+    failed = true;
+  }
+
+  for (const problem of checkKinds()) {
     console.error(`[generateRoadmapMeta] ${problem}`);
     failed = true;
   }
