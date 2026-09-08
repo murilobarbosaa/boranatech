@@ -247,6 +247,9 @@ async function generateSection(
           .filter(Boolean)
           .join(", ")}, reequilibrando.`,
       );
+      for (const violacao of violacoes) {
+        console.error(`[generateQuizPool]     - ${violacao}`);
+      }
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
       }
