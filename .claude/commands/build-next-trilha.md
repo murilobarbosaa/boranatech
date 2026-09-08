@@ -78,6 +78,7 @@ O --check do pnpm check acusa qualquer omissao dos tres; rode pnpm check antes d
 - `codeLanguages` (identificadores de cerca markdown, a primeira e a principal) e obrigatorio na pratica em trilha de linguagem e framework, porque sem ele a prova sai so de conceito; em ferramenta e opcional (Git e Docker tem codigo, Figma nao). O `pnpm check` reprova o campo em trilha sem kind ou de carreira, vazio, ou com identificador fora de `a-z` e `0-9`.
 - A proporcao de perguntas de codigo por tipo de trilha vem de `CODE_SHARE_BY_KIND` em scripts/quizPoolGeneration.mts (metade em linguagem e framework, 40% em ferramenta), com pelo menos 1 e no maximo cota menos 1 por secao.
 - `pnpm gen:quiz-pool <slug> --dry-run` (e `--dry-run --schema`) imprime o system prompt, o user prompt de cada secao e o schema sem gastar credito; e o que se roda antes da geracao real.
+- `pnpm verify:quiz-pool <slug>` roda depois de TODA geracao de pool de trilha com `codeLanguages` que tenha runner (js e python): executa cada trecho de codigo e compara com o gabarito. Pergunta `CORRIGIR` nao entra em commit; `LER` (tipo erro) e leitura humana.
 
 Disciplina de codigo em trilha de linguagem, framework e ferramenta (SUBSTITUI a secao 3 para essas trilhas; a secao 3 continua valendo para trilha de area e de carreira):
 
