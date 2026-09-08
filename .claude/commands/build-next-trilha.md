@@ -79,6 +79,15 @@ O --check do pnpm check acusa qualquer omissao dos tres; rode pnpm check antes d
 - A proporcao de perguntas de codigo por tipo de trilha vem de `CODE_SHARE_BY_KIND` em scripts/quizPoolGeneration.mts (metade em linguagem e framework, 40% em ferramenta), com pelo menos 1 e no maximo cota menos 1 por secao.
 - `pnpm gen:quiz-pool <slug> --dry-run` (e `--dry-run --schema`) imprime o system prompt, o user prompt de cada secao e o schema sem gastar credito; e o que se roda antes da geracao real.
 
+Disciplina de codigo em trilha de linguagem, framework e ferramenta (SUBSTITUI a secao 3 para essas trilhas; a secao 3 continua valendo para trilha de area e de carreira):
+
+- Bloco cercado e a licao na maioria dos passos: a sintaxe se aprende vendo. Ate 2 blocos por passo, cada um com no maximo 10 linhas de ate 60 caracteres, indentacao de dois espacos.
+- A cerca leva o identificador de `codeLanguages` (`js`, nao `javascript`); o renderer ignora, mas o gerador de pool e a validacao leem.
+- Passo de conceito puro (o que e, por que existe, modelo mental) pode nao ter bloco; passo de sintaxe ou de API sempre tem pelo menos um.
+- Todo bloco e codigo que roda: nada de pseudocodigo, nada de `...` no meio, nada de saida inventada. Quando o passo mostra a saida, ela vem de execucao real (no lote, com `node -e`).
+- A faixa de 120 a 250 palavras de prosa por passo continua valendo; o codigo nao conta como palavra.
+- O restante do guia (anatomia da folha, voz, conexoes nominais, resources canonicos, projeto unico gratuito, ids estaveis, registro triplo, pool) vale igual.
+
 ## Fechamento de qualquer lote
 
 - pnpm check com exit 0.
