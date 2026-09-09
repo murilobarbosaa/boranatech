@@ -19,6 +19,7 @@ export default function ProjetoConcluidoModal({
   onOpenChange,
   nome,
   entregue = false,
+  verificacoes = null,
   nota,
   totalEtapas,
   post,
@@ -31,6 +32,14 @@ export default function ProjetoConcluidoModal({
   nome: string;
   /** Veio do formulario de entrega, e nao do botao de autodeclaracao. */
   entregue?: boolean;
+  /**
+   * Quantas conferencias automaticas passaram, quando a comemoracao veio de uma
+   * verificacao que fechou. `null` quando nao veio dai.
+   *
+   * Separa "entregue" de "verificado", que e a distincao inteira deste lote:
+   * entregar so grava links, e quem conclui e o resultado das conferencias.
+   */
+  verificacoes?: number | null;
   /** Veio da validacao por IA: muda o titulo e mostra a nota. */
   nota?: { atendidos: number; total: number; perfeito: boolean } | null;
   totalEtapas: number | null;
@@ -53,16 +62,24 @@ export default function ProjetoConcluidoModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-xl">
             <Check className="h-5 w-5 text-emerald-600" strokeWidth={3.5} />
-            {nota ? "Projeto validado!" : "Projeto concluído!"}
+            {nota
+              ? "Projeto validado!"
+              : verificacoes
+                ? "Projeto verificado!"
+                : entregue
+                  ? "Projeto entregue!"
+                  : "Projeto concluído!"}
           </DialogTitle>
           <DialogDescription>
             {nota
               ? `Nota: ${nota.atendidos} de ${nota.total}.`
-              : entregue
-                ? `Você entregou ${nome}.`
-                : totalEtapas === null
-                  ? `Você fechou ${nome}.`
-                  : `Você fechou ${nome} em ${totalEtapas} etapas.`}
+              : verificacoes
+                ? `Você entregou ${nome} e passou nas ${verificacoes} conferências.`
+                : entregue
+                  ? `Você entregou ${nome}.`
+                  : totalEtapas === null
+                    ? `Você fechou ${nome}.`
+                    : `Você fechou ${nome} em ${totalEtapas} etapas.`}
           </DialogDescription>
           {nota?.perfeito && (
             <span className="inline-flex w-fit items-center rounded-full border-2 border-ink bg-[var(--brand-yellow)] px-2.5 py-0.5 font-display text-xs font-black text-ink-on-accent">
