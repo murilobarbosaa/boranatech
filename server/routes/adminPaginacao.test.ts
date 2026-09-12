@@ -1169,10 +1169,15 @@ describe("GET /overview", () => {
   });
 
   it("cada card decide o Δ pela SUA série", async () => {
-    // profiles desde 2026-05-04 (sustenta 30 dias); finance desde 2026-07-13
-    // (não sustenta). Uma regra global da página erraria em um dos dois.
+    // profiles desde 130 dias atrás (sustenta o período anterior da janela de
+    // 30, que começa 60 dias atrás); finance desde 40 dias atrás (não
+    // sustenta). Uma regra global da página erraria em um dos dois. As datas
+    // são relativas ao relógio: fixas, o contraste sumiu no dia em que o
+    // calendário alcançou 60 dias depois da data de finance.
+    const diasAtras = (n: number) =>
+      new Date(Date.now() - n * 86_400_000).toISOString();
     base({
-      profiles: { rows: [{ created_at: "2026-05-04T00:00:00Z" }], count: 100 },
+      profiles: { rows: [{ created_at: diasAtras(130) }], count: 100 },
       finance_transactions: {
         rows: [
           {
@@ -1182,7 +1187,7 @@ describe("GET /overview", () => {
             fee_cents: 0,
             net_cents: 1000,
             plan_code: "pro_monthly",
-            occurred_at: "2026-07-13T00:00:00Z",
+            occurred_at: diasAtras(40),
           },
         ],
       },

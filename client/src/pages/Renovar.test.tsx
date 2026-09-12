@@ -101,7 +101,9 @@ describe("pagamento por Pix", () => {
       subscriptionId: "pay_novo",
       flow: "native_pix",
       amountCents: 2990,
-      dueDate: "2026-09-08",
+      // Relativa ao relogio: com a data fixa, o teste passou a falhar no dia em
+      // que o calendario alcancou o vencimento, e o QR sumiu como "expirado".
+      dueDate: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10),
       pixQrCode: QR,
     });
     render(<Renovar />);
