@@ -1164,8 +1164,16 @@ export default function Perfil() {
       toast.success(json.data?.message || "Assinatura cancelada com sucesso.");
       setCancelModalOpen(false);
       await refreshSubscription().catch(() => undefined);
-    } catch {
-      toast.error("Erro ao cancelar. Tente novamente ou contate o suporte.");
+    } catch (err) {
+      const mensagemDaApi =
+        err instanceof Error
+          ? (err as Error & { apiMessage?: string | null }).apiMessage
+          : null;
+      toast.error(
+        mensagemDaApi?.trim()
+          ? mensagemDaApi
+          : "Erro ao cancelar. Tente novamente ou contate o suporte.",
+      );
     } finally {
       setCancelingSubscription(false);
     }
@@ -1189,7 +1197,15 @@ export default function Perfil() {
 
       // 502/500/qualquer outro nao-ok: o endpoint e retry-safe.
       if (!res.ok) {
-        toast.error("Erro ao reativar. Tente novamente ou contate o suporte.");
+        const corpo = (await res.json().catch(() => null)) as {
+          error?: { message?: unknown };
+        } | null;
+        const mensagemDaApi = corpo?.error?.message;
+        toast.error(
+          typeof mensagemDaApi === "string" && mensagemDaApi.trim()
+            ? mensagemDaApi
+            : "Erro ao reativar. Tente novamente ou contate o suporte.",
+        );
         return;
       }
 
