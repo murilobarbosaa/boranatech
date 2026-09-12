@@ -57,6 +57,8 @@ const estado = vi.hoisted(() => ({
   sequencia: [] as string[],
   suprimidos: new Set<string>(),
   emailsDosUsuarios: {} as Record<string, string | null>,
+  /** Quantas vezes a supressao foi lida. */
+  leiturasDeSupressao: 0,
 }));
 
 vi.mock("../lib/redis", () => ({
@@ -84,7 +86,10 @@ vi.mock("../lib/targetedNotifications", () => ({
   createTargetedNotification: vi.fn(),
 }));
 vi.mock("../lib/emailCampaignQueue", () => ({
-  fetchSuppressedEmailSet: async () => estado.suprimidos,
+  fetchSuppressedEmailSet: async () => {
+    estado.leiturasDeSupressao++;
+    return estado.suprimidos;
+  },
   reconcileEmailCampaignBatches: vi.fn(),
 }));
 vi.mock("../providers/asaas", () => ({
@@ -242,6 +247,7 @@ beforeEach(() => {
   estado.sequencia = [];
   estado.suprimidos = new Set();
   estado.emailsDosUsuarios = {};
+  estado.leiturasDeSupressao = 0;
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
@@ -478,5 +484,7 @@ describe("rodarLembretesPix", () => {
 
     expect(r.candidatos).toBe(0);
     expect(estado.consultasDeAssinantes).toBe(0);
+    // O nome promete as duas coisas; ate o lote 3b so a segunda era afirmada.
+    expect(estado.leiturasDeSupressao).toBe(0);
   });
 });
