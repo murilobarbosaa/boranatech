@@ -472,6 +472,31 @@ async function createCheckout(
     throw err;
   }
 
+  // (4) VENCIMENTO E FATURA, best-effort e FORA do try acima. Uma coluna que
+  // ainda nao existe (o codigo sobe antes da migration) nao pode cancelar uma
+  // venda: no mesmo update da amarracao, o erro de coluna cairia no `catch`
+  // que cancela a linha e deixaria a cobranca viva no Asaas sem linha no
+  // banco. Sem Sentry de proposito: na janela de deploy isto falharia em todo
+  // checkout Pix, e o ruido esperado afogaria o resto.
+  try {
+    const { error: pixMetaError } = await supabaseAdmin
+      .from("subscriptions")
+      .update({
+        pix_due_date: charge.dueDate ?? null,
+        pix_invoice_url: charge.invoiceUrl ?? null,
+      })
+      .eq("id", created.id);
+    if (pixMetaError) {
+      console.warn(
+        `[asaas/checkout] vencimento e fatura nao gravados na linha ${created.id} (cobranca ${charge.id}): ${pixMetaError.code} ${pixMetaError.message}`,
+      );
+    }
+  } catch (err) {
+    console.warn(
+      `[asaas/checkout] vencimento e fatura nao gravados na linha ${created.id} (cobranca ${charge.id}): ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
   return {
     checkoutUrl: charge.invoiceUrl ?? undefined,
     subscriptionId: charge.id,
