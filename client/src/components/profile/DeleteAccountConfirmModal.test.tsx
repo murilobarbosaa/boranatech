@@ -140,8 +140,8 @@ describe("acessibilidade e comportamento do campo", () => {
 
 describe("estado entre aberturas", () => {
   it("fechar e reabrir ZERA o campo", () => {
-    // O componente nao desmonta ao fechar (devolve null), entao sem o reset a
-    // segunda abertura nasceria com o botao ja liberado.
+    // O componente nao desmonta ao fechar (o Dialog so desmonta o conteudo),
+    // entao sem o reset a segunda abertura nasceria com o botao ja liberado.
     const props = padrao();
     const { rerender } = render(<DeleteAccountConfirmModal {...props} />);
     digitar(PALAVRA_DE_CONFIRMACAO);
