@@ -2400,6 +2400,7 @@ describe("lerPagamento", () => {
       status: "RECEIVED",
       valueCents: 1290,
       dueDate: null,
+      invoiceUrl: null,
       refunds: [
         {
           status: "AWAITING_CRITICAL_ACTION_AUTHORIZATION",
@@ -2424,6 +2425,7 @@ describe("lerPagamento", () => {
       status: "RECEIVED",
       valueCents: 3000,
       dueDate: null,
+      invoiceUrl: null,
       refunds: [],
     });
   });
@@ -2438,6 +2440,24 @@ describe("lerPagamento", () => {
     };
     const p = await lerPagamento("pay_x");
     expect(p.dueDate).toBe("2026-09-08");
+  });
+
+  it("invoiceUrl da cobranca vem junto; ausente vira null", async () => {
+    estado.asaasResposta = {
+      "/payments/pay_x": {
+        status: "PENDING",
+        value: 29.9,
+        invoiceUrl: "https://www.asaas.com/i/abc",
+      },
+    };
+    expect((await lerPagamento("pay_x")).invoiceUrl).toBe(
+      "https://www.asaas.com/i/abc",
+    );
+
+    estado.asaasResposta = {
+      "/payments/pay_x": { status: "PENDING", value: 29.9 },
+    };
+    expect((await lerPagamento("pay_x")).invoiceUrl).toBeNull();
   });
 
   it("o id vai ESCAPADO na URL", async () => {

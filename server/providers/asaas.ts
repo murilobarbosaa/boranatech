@@ -1658,6 +1658,8 @@ export type PagamentoDoAsaas = {
   valueCents: number | null;
   /** Vencimento da cobranca, `YYYY-MM-DD`. O prazo que governa o QR. */
   dueDate: string | null;
+  /** Fatura hospedada da cobranca; o lembrete de Pix a oferece como saida. */
+  invoiceUrl: string | null;
   refunds: EstornoDoAsaas[];
 };
 
@@ -1666,6 +1668,7 @@ type AsaasPaymentBody = {
   status?: unknown;
   value?: unknown;
   dueDate?: unknown;
+  invoiceUrl?: unknown;
   refunds?: unknown;
 };
 
@@ -1697,6 +1700,10 @@ function pagamentoDoAsaas(corpo: AsaasPaymentBody | null): PagamentoDoAsaas {
     status: typeof corpo?.status === "string" ? corpo.status : null,
     valueCents: centavosAsaas(corpo?.value),
     dueDate: typeof corpo?.dueDate === "string" ? corpo.dueDate : null,
+    invoiceUrl:
+      typeof corpo?.invoiceUrl === "string" && corpo.invoiceUrl
+        ? corpo.invoiceUrl
+        : null,
     refunds,
   };
 }
