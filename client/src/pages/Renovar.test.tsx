@@ -71,7 +71,15 @@ beforeEach(() => {
   spies.status.mockResolvedValue({ status: "pending" });
 });
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
+
+function fixarRelogio(iso: string) {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(iso));
+}
 
 describe("preview", () => {
   it("meio Pix: o botao diz Pagar com Pix, nao Gerar boleto", async () => {
@@ -96,6 +104,7 @@ describe("preview", () => {
 
 describe("pagamento por Pix", () => {
   it("resposta com pixQrCode renderiza o QR, o copia e cola e a frase de retorno", async () => {
+    fixarRelogio("2026-09-08T12:00:00-03:00");
     spies.checkout.mockResolvedValue({
       checkoutUrl: "https://asaas.test/i/1",
       subscriptionId: "pay_novo",
@@ -122,7 +131,31 @@ describe("pagamento por Pix", () => {
     expect(spies.status).toHaveBeenCalledWith("tok");
   });
 
+  it("resposta com Pix vencido preserva o estado expirado e esconde o QR", async () => {
+    fixarRelogio("2026-09-09T12:00:00-03:00");
+    spies.checkout.mockResolvedValue({
+      checkoutUrl: "https://asaas.test/i/1",
+      subscriptionId: "pay_vencido",
+      flow: "native_pix",
+      amountCents: 2990,
+      dueDate: "2026-09-08",
+      pixQrCode: QR,
+    });
+    render(<Renovar />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Pagar com Pix" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Este código Pix expirou. Refaça o checkout para gerar um novo.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByAltText("QR Code do Pix")).toBeNull();
+  });
+
   it("polling active mostra a data do novo periodo e o link para o perfil", async () => {
+    fixarRelogio("2026-09-08T12:00:00-03:00");
     spies.checkout.mockResolvedValue({
       subscriptionId: "pay_novo",
       flow: "native_pix",

@@ -121,6 +121,7 @@ function montar(
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 // ---------------------------------------------------------------------------
@@ -1169,6 +1170,8 @@ describe("GET /overview", () => {
   });
 
   it("cada card decide o Δ pela SUA série", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-08-14T12:00:00-03:00"));
     // profiles desde 2026-05-04 (sustenta 30 dias); finance desde 2026-07-13
     // (não sustenta). Uma regra global da página erraria em um dos dois.
     base({
