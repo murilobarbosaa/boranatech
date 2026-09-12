@@ -22,6 +22,8 @@ const estado = vi.hoisted(() => ({
   asaasResposta: {} as Record<string, unknown>,
   /** Erro que o duble do Asaas lanca, se houver. */
   asaasErro: null as Error | null,
+  /** Erro por metodo HTTP, para o DELETE falhar e o GET seguinte responder. */
+  asaasErroPorMetodo: {} as Record<string, Error>,
 
   /** Escritas em tabela, na ordem. */
   escritas: [] as Array<{
@@ -110,6 +112,8 @@ vi.mock("../lib/asaasClient", () => ({
   ) => {
     estado.asaas.push({ caminho, method: init.method, body: init.body });
     if (estado.asaasErro) throw estado.asaasErro;
+    const erroDoMetodo = estado.asaasErroPorMetodo[init.method];
+    if (erroDoMetodo) throw erroDoMetodo;
     for (const [chave, valor] of Object.entries(estado.asaasResposta)) {
       if (caminho.startsWith(chave)) return valor;
     }
@@ -121,6 +125,9 @@ vi.mock("../lib/supabaseAdmin", () => {
   function consulta(tabela: string) {
     const q: Record<string, unknown> = {};
     let filtroPagamento = false;
+    // Escrita em curso nesta consulta: os `eq` depois de um `update` sao os
+    // filtros DELE, e o teste do fechamento confere o `status = pending`.
+    let escritaAberta: { filtros: unknown[] } | null = null;
     const encadeia = () => q;
     for (const m of [
       "select",
@@ -137,6 +144,8 @@ vi.mock("../lib/supabaseAdmin", () => {
         if (tabela === "subscriptions" && coluna === "payment_method") {
           filtroPagamento = valor === "pix";
         }
+        if (m === "eq" && escritaAberta)
+          escritaAberta.filtros.push([coluna, valor]);
         return q;
       };
     }
@@ -225,6 +234,7 @@ vi.mock("../lib/supabaseAdmin", () => {
           return encadeavel;
         }
         void opcoes;
+        escritaAberta = escrita;
         return q;
       };
     }
@@ -262,10 +272,13 @@ vi.mock("../lib/supabaseAdmin", () => {
 
 import { oneOffAccessDays } from "../../shared/paymentMethods";
 import { discountedPriceCents, PLAN_PRICING } from "../../shared/planPricing";
+import { createError } from "../middleware/error";
 import { fetchPixQrCode, maskCpf } from "./asaas";
 import {
   eventKey,
   estadoDaFilaDeWebhooks,
+  cancelPayment,
+  closePendingCharge,
   estornarPagamento,
   lerPagamento,
   listarWebhooks,
@@ -285,6 +298,7 @@ function limpar() {
     "/payments": { id: COBRANCA, invoiceUrl: "https://asaas.test/i/123" },
   };
   estado.asaasErro = null;
+  estado.asaasErroPorMetodo = {};
   estado.escritas = [];
   estado.rpcCalls = [];
   estado.capturas = [];
@@ -2431,6 +2445,7 @@ describe("lerPagamento", () => {
           dateCreated: "2026-09-03 03:28:20",
         },
       ],
+      deleted: false,
     });
   });
 
@@ -2450,6 +2465,7 @@ describe("lerPagamento", () => {
       dueDate: null,
       invoiceUrl: null,
       refunds: [],
+      deleted: false,
     });
   });
 
@@ -2899,6 +2915,195 @@ describe("checkout Pix de RENOVACAO (internalRenewal)", () => {
     )!;
     expect((insert.carga as Record<string, unknown>).coupon_code).toBeNull();
     expect((insert.carga as Record<string, unknown>).affiliate_code).toBeNull();
+  });
+});
+
+describe("cancelPayment: DELETE, e na recusa o STATUS decide", () => {
+  /** Recusa 4xx como `asaasFetch` a entrega: 502 nosso, status do Asaas no context. */
+  const recusa4xx = () =>
+    createError(
+      502,
+      "asaas_error",
+      "O provedor de pagamento recusou a operação.",
+      {
+        context: {
+          asaas_status: 400,
+          asaas_code: "invalid_action",
+          asaas_description: "texto que o codigo NAO le",
+        },
+      },
+    );
+
+  beforeEach(() => {
+    limpar();
+  });
+
+  it("DELETE confirmado (deleted: true): cancelada, sem GET", async () => {
+    estado.asaasResposta = {
+      "/payments/pay_x": { deleted: true, id: "pay_x" },
+    };
+    expect(await cancelPayment("pay_x")).toEqual({ resultado: "cancelada" });
+    expect(estado.asaas).toEqual([
+      { caminho: "/payments/pay_x", method: "DELETE", body: undefined },
+    ]);
+  });
+
+  it("o id vai ESCAPADO na URL", async () => {
+    estado.asaasResposta = { "/payments/": { deleted: true } };
+    await cancelPayment("pay/../outro");
+    expect(estado.asaas[0].caminho).toBe("/payments/pay%2F..%2Foutro");
+  });
+
+  it("DELETE 2xx SEM deleted=true: falha, sem GET", async () => {
+    estado.asaasResposta = { "/payments/pay_x": { id: "pay_x" } };
+    const r = await cancelPayment("pay_x");
+    expect(r.resultado).toBe("falha");
+    expect(estado.asaas.map((c) => c.method)).toEqual(["DELETE"]);
+  });
+
+  it.each(["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"])(
+    "recusa 4xx com a cobranca %s: already_paid",
+    async (status) => {
+      estado.asaasErroPorMetodo = { DELETE: recusa4xx() };
+      estado.asaasResposta = { "/payments/pay_x": { status, value: 29.9 } };
+      expect(await cancelPayment("pay_x")).toEqual({
+        resultado: "already_paid",
+        status,
+      });
+      expect(estado.asaas.map((c) => c.method)).toEqual(["DELETE", "GET"]);
+    },
+  );
+
+  it("recusa 4xx com a cobranca ja removida (deleted: true): cancelada, idempotente", async () => {
+    estado.asaasErroPorMetodo = { DELETE: recusa4xx() };
+    estado.asaasResposta = {
+      "/payments/pay_x": { status: "PENDING", deleted: true },
+    };
+    expect(await cancelPayment("pay_x")).toEqual({ resultado: "cancelada" });
+  });
+
+  it("recusa 4xx com a cobranca CANCELLED: cancelada", async () => {
+    estado.asaasErroPorMetodo = { DELETE: recusa4xx() };
+    estado.asaasResposta = { "/payments/pay_x": { status: "CANCELLED" } };
+    expect(await cancelPayment("pay_x")).toEqual({ resultado: "cancelada" });
+  });
+
+  it.each(["PENDING", "OVERDUE", "STATUS_QUE_NAO_EXISTE_HOJE"])(
+    "recusa 4xx com a cobranca %s: falha",
+    async (status) => {
+      estado.asaasErroPorMetodo = { DELETE: recusa4xx() };
+      estado.asaasResposta = { "/payments/pay_x": { status } };
+      expect((await cancelPayment("pay_x")).resultado).toBe("falha");
+    },
+  );
+
+  it("recusa 4xx e a cobranca SEM status: falha", async () => {
+    estado.asaasErroPorMetodo = { DELETE: recusa4xx() };
+    estado.asaasResposta = { "/payments/pay_x": { value: 29.9 } };
+    expect((await cancelPayment("pay_x")).resultado).toBe("falha");
+  });
+
+  it("recusa 4xx e o GET falha: falha, e nao lanca", async () => {
+    estado.asaasErroPorMetodo = {
+      DELETE: recusa4xx(),
+      GET: new Error("timeout"),
+    };
+    expect(await cancelPayment("pay_x")).toEqual({
+      resultado: "falha",
+      motivo: "leitura_falhou",
+    });
+  });
+
+  it("5xx do Asaas: falha, SEM GET (o DELETE pode nem ter chegado)", async () => {
+    estado.asaasErroPorMetodo = {
+      DELETE: createError(502, "asaas_error", "x", {
+        context: { asaas_status: 503, asaas_code: null },
+      }),
+    };
+    expect((await cancelPayment("pay_x")).resultado).toBe("falha");
+    expect(estado.asaas.map((c) => c.method)).toEqual(["DELETE"]);
+  });
+
+  it("falha de transporte (asaas_unreachable, sem status): falha, SEM GET", async () => {
+    estado.asaasErroPorMetodo = {
+      DELETE: createError(
+        502,
+        "asaas_unreachable",
+        "Falha ao falar com o Asaas.",
+      ),
+    };
+    expect((await cancelPayment("pay_x")).resultado).toBe("falha");
+    expect(estado.asaas.map((c) => c.method)).toEqual(["DELETE"]);
+  });
+
+  it("erro cru, sem context nenhum: falha, e nao lanca", async () => {
+    estado.asaasErroPorMetodo = { DELETE: new Error("boom") };
+    expect((await cancelPayment("pay_x")).resultado).toBe("falha");
+  });
+});
+
+describe("fechamento sincrono e o PAYMENT_DELETED que chega depois", () => {
+  beforeEach(() => {
+    limpar();
+    estado.linhaSubscription = {
+      id: "row-1",
+      user_id: USER,
+      status: "pending",
+      plan_id: "plan-anual",
+      affiliate_code: null,
+      coupon_code: null,
+      provider_subscription_id: COBRANCA,
+    };
+  });
+
+  function updatesDeSubscriptions() {
+    return estado.escritas.filter(
+      (e) => e.tabela === "subscriptions" && e.operacao === "update",
+    );
+  }
+
+  it("o fechamento sincrono cancela a linha com canceled_at, condicional em pending", async () => {
+    await closePendingCharge({
+      eventType: "CANCELAMENTO_PELO_CLIENTE",
+      eventId: "",
+      chargeId: COBRANCA,
+      rowId: "row-1",
+      event: { event: "CANCELAMENTO_PELO_CLIENTE", payment: { id: COBRANCA } },
+    });
+
+    const [update] = updatesDeSubscriptions();
+    expect(update.carga).toMatchObject({ status: "canceled" });
+    expect(typeof (update.carga as Record<string, unknown>).canceled_at).toBe(
+      "string",
+    );
+    expect(update.filtros).toEqual([
+      ["id", "row-1"],
+      ["status", "pending"],
+    ]);
+  });
+
+  it("PAYMENT_DELETED sobre a linha ja cancelada: so escreve filtrado por pending, sem RPC nem alarme", async () => {
+    // O duble nao aplica filtro; o banco aplica. O que se trava aqui e que TODO
+    // update do webhook carrega `status = pending`, que e o que faz o banco nao
+    // casar a linha ja `canceled`: a escrita vira no-op, e nada mais acontece.
+    estado.linhaSubscription = {
+      ...estado.linhaSubscription!,
+      status: "canceled",
+    };
+
+    const r = await processAsaasEvent(
+      eventoDePagamento({ event: "PAYMENT_DELETED" }),
+    );
+
+    expect(r).toEqual({ received: true, activated: false });
+    const updates = updatesDeSubscriptions();
+    expect(updates.length).toBeGreaterThan(0);
+    for (const u of updates) {
+      expect(u.filtros).toContainEqual(["status", "pending"]);
+    }
+    expect(estado.rpcCalls).toEqual([]);
+    expect(estado.capturas).toEqual([]);
+    expect(estado.emails).toEqual([]);
   });
 });
 
