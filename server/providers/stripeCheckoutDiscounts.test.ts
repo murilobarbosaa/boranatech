@@ -7,6 +7,7 @@ const estado = vi.hoisted(() => ({
     discount_percent: 20,
   } as Record<string, unknown> | null,
   coupon: null as Record<string, unknown> | null,
+  subscriptionLookupError: null as Record<string, unknown> | null,
   sessions: [] as Array<Record<string, unknown>>,
 }));
 
@@ -51,10 +52,15 @@ vi.mock("../lib/supabaseAdmin", () => {
     for (const method of ["select", "eq", "in", "not", "limit"]) {
       q[method] = () => q;
     }
-    q.maybeSingle = async () => ({
-      data: table === "affiliates" ? estado.affiliate : null,
-      error: null,
-    });
+    q.maybeSingle = async () => {
+      if (table === "subscriptions") {
+        return { data: null, error: estado.subscriptionLookupError };
+      }
+      return {
+        data: table === "affiliates" ? estado.affiliate : null,
+        error: null,
+      };
+    };
     q.then = (resolve: (value: unknown) => unknown) =>
       Promise.resolve({ data: [], error: null }).then(resolve);
     return q;
@@ -111,6 +117,7 @@ beforeEach(() => {
     discount_percent: 20,
   };
   estado.coupon = null;
+  estado.subscriptionLookupError = null;
 });
 
 describe("desconto Stripe preservado", () => {
@@ -127,6 +134,35 @@ describe("desconto Stripe preservado", () => {
         affiliate_code: "AFILIADO20",
         coupon_code: "",
       });
+    },
+  );
+
+  it.each([
+    { paymentMethod: "card", promotion: "affiliate" },
+    { paymentMethod: "boleto", promotion: "affiliate" },
+    { paymentMethod: "card", promotion: "coupon" },
+    { paymentMethod: "boleto", promotion: "coupon" },
+  ] as const)(
+    "$paymentMethod propaga falha de elegibilidade com $promotion e nao cria sessao",
+    async ({ paymentMethod, promotion }) => {
+      estado.subscriptionLookupError = {
+        message: "database unavailable",
+      };
+
+      await expect(
+        stripeProvider.createCheckout({
+          ...input(paymentMethod),
+          affiliateCode: promotion === "affiliate" ? "AFILIADO20" : "",
+          couponCode: promotion === "coupon" ? "PROMO30" : "",
+        }),
+      ).rejects.toMatchObject({
+        statusCode: 500,
+        code: "db_error",
+        message:
+          "Não foi possível verificar a elegibilidade do desconto. Tente novamente.",
+      });
+
+      expect(estado.sessions).toHaveLength(0);
     },
   );
 
