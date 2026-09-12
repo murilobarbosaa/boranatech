@@ -479,6 +479,35 @@ describe("rodarLembretesPix", () => {
     expect(r.pulados).toMatchObject({ sem_cobranca: 1 });
   });
 
+  it("fora da janela: conta candidatos, pula todos por horario e nao le Asaas, supressao nem assinantes", async () => {
+    estado.env.pixRemindersEnabled = true;
+    estado.rows = [
+      linha(),
+      linha({
+        id: "row-2",
+        user_id: "u2",
+        provider_subscription_id: "pay_2",
+        pix_due_date: null,
+        pix_invoice_url: null,
+      }),
+    ];
+    estado.pagamentos.pay_2 = pagamento();
+
+    // 03h de 09/09 em Brasilia: fora da janela de 09h a 21h.
+    const r = await rodarLembretesPix(
+      new Date(Date.parse("2026-09-09T03:00:00-03:00")),
+    );
+
+    expect(r.candidatos).toBe(2);
+    expect(r.pulados).toEqual({ fora_do_horario: 2 });
+    expect(estado.lidos).toEqual([]);
+    expect(estado.leiturasDeSupressao).toBe(0);
+    expect(estado.consultasDeAssinantes).toBe(0);
+    // Nem backfill: a linha sem vencimento continua sem ele.
+    expect(estado.updates).toEqual([]);
+    expect(estado.enfileirados).toEqual([]);
+  });
+
   it("sem candidatos nao le supressao nem assinantes", async () => {
     const r = await rodarLembretesPix(AGORA);
 

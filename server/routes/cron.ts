@@ -655,6 +655,18 @@ const PIX_LEMBRETE_INICIO_MIN = 9 * 60;
 const PIX_LEMBRETE_FIM_MIN = 21 * 60;
 
 /**
+ * O instante cai na janela de envio do lembrete de Pix, em Brasilia?
+ *
+ * Uma copia so da regra: `decidirLembretePix` e o corte de `rodarLembretesPix`
+ * chamam esta funcao. Com a comparacao repetida nos dois, a correcao de um
+ * limite aplicada num lugar deixaria o outro errado.
+ */
+export function dentroDaJanelaPix(agoraMs: number): boolean {
+  const { minutos } = relogioDeBrasilia(agoraMs);
+  return minutos >= PIX_LEMBRETE_INICIO_MIN && minutos < PIX_LEMBRETE_FIM_MIN;
+}
+
+/**
  * Qual lembrete de Pix pendente sai AGORA, se algum. Pura, para o teste afirmar
  * a tabela.
  *
@@ -680,10 +692,10 @@ export function decidirLembretePix(args: {
   const vencimento = normalizarDataPix(args.pixDueDate);
   if (!vencimento) return { tipo: "pular", motivo: "sem_vencimento" };
 
-  const { dia: hoje, minutos } = relogioDeBrasilia(args.agoraMs);
-  if (minutos < PIX_LEMBRETE_INICIO_MIN || minutos >= PIX_LEMBRETE_FIM_MIN) {
+  if (!dentroDaJanelaPix(args.agoraMs)) {
     return { tipo: "pular", motivo: "fora_do_horario" };
   }
+  const { dia: hoje } = relogioDeBrasilia(args.agoraMs);
 
   // `YYYY-MM-DD` ordena como texto.
   if (hoje > vencimento) return { tipo: "pular", motivo: "vencida" };
@@ -1255,6 +1267,17 @@ export async function rodarLembretesPix(
   const linhas = data ?? [];
   r.candidatos = linhas.length;
   if (linhas.length === 0) return r;
+
+  // CORTE DE HORARIO ANTES DE TUDO QUE CUSTA. A selecao acima fica de fora: e
+  // uma consulta ao nosso banco, e o numero de candidatos e o que a rodada de
+  // observacao precisa ver. Ler o Asaas custa uma chamada externa POR LINHA, e
+  // fora da janela a resposta nao tem uso nenhum, porque tudo acabaria em
+  // `fora_do_horario`. Supressao, assinantes, planos e backfill tambem ficam
+  // para as rodadas dentro da janela.
+  if (!dentroDaJanelaPix(agora.getTime())) {
+    r.pulados.fora_do_horario = linhas.length;
+    return r;
+  }
 
   const suprimidos = await fetchSuppressedEmailSet();
 

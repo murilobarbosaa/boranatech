@@ -63,7 +63,7 @@ vi.mock("../lib/supabaseAdmin", () => ({
 }));
 
 import { relogioDeBrasilia } from "../lib/pixVencimento";
-import { decidirLembretePix } from "./cron";
+import { decidirLembretePix, dentroDaJanelaPix } from "./cron";
 
 const TZ_ORIGINAL = process.env.TZ;
 
@@ -183,6 +183,17 @@ describe("decidirLembretePix: os sete ramos, na ordem", () => {
         estagio: "p1",
         variant: "aberto",
       });
+    });
+  });
+});
+
+describe("dentroDaJanelaPix: a regra de horario, isolada", () => {
+  it("08h59 fora, 09h00 dentro, 20h59 dentro, 21h00 fora, nos dois fusos", () => {
+    nosDoisFusos(() => {
+      expect(dentroDaJanelaPix(brt("2026-09-09T08:59:00"))).toBe(false);
+      expect(dentroDaJanelaPix(brt("2026-09-09T09:00:00"))).toBe(true);
+      expect(dentroDaJanelaPix(brt("2026-09-09T20:59:00"))).toBe(true);
+      expect(dentroDaJanelaPix(brt("2026-09-09T21:00:00"))).toBe(false);
     });
   });
 });
