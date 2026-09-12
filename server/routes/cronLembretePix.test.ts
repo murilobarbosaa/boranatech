@@ -59,6 +59,10 @@ const estado = vi.hoisted(() => ({
   emailsDosUsuarios: {} as Record<string, string | null>,
   /** Quantas vezes a supressao foi lida. */
   leiturasDeSupressao: 0,
+  /** Tamanho de cada lista de ids enviada na consulta de assinantes. */
+  blocosDeAssinantes: [] as number[],
+  /** Indice do bloco de assinantes cuja consulta devolve erro, se algum. */
+  falhaAssinantesNoBloco: null as number | null,
 }));
 
 vi.mock("../lib/redis", () => ({
@@ -132,6 +136,9 @@ vi.mock("../lib/supabaseAdmin", () => {
       return q;
     };
     q.in = (coluna: string, valores: unknown[]) => {
+      if (tabela === "subscriptions" && coluna === "user_id") {
+        estado.blocosDeAssinantes.push(valores.length);
+      }
       dentro[coluna] = valores;
       return q;
     };
@@ -159,6 +166,15 @@ vi.mock("../lib/supabaseAdmin", () => {
             if (erro) return { data: null, error: erro };
             for (const r of estado.rows.filter(casa)) Object.assign(r, patch);
             return { data: null, error: null };
+          }
+          if (
+            tabela === "subscriptions" &&
+            colunas === "user_id" &&
+            estado.falhaAssinantesNoBloco !== null &&
+            estado.blocosDeAssinantes.length - 1 ===
+              estado.falhaAssinantesNoBloco
+          ) {
+            return { data: null, error: { message: "timeout no bloco" } };
           }
           return { data: estado.rows.filter(casa), error: null };
         })
@@ -248,6 +264,8 @@ beforeEach(() => {
   estado.suprimidos = new Set();
   estado.emailsDosUsuarios = {};
   estado.leiturasDeSupressao = 0;
+  estado.blocosDeAssinantes = [];
+  estado.falhaAssinantesNoBloco = null;
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
@@ -477,6 +495,60 @@ describe("rodarLembretesPix", () => {
 
     expect(estado.lidos).toEqual([]);
     expect(r.pulados).toMatchObject({ sem_cobranca: 1 });
+  });
+
+  it("assinantes consultados em blocos de 100: 250 ids viram 3 consultas, e o do terceiro bloco e reconhecido", async () => {
+    estado.rows = [];
+    for (let i = 0; i < 250; i++) {
+      estado.rows.push(
+        linha({
+          id: `row-${i}`,
+          user_id: `u${i}`,
+          provider_subscription_id: `pay_${i}`,
+        }),
+      );
+      estado.pagamentos[`pay_${i}`] = pagamento();
+    }
+    // Assinante ativo cujo id cai no TERCEIRO bloco (posicao 240 de 250).
+    estado.rows.push(
+      linha({
+        id: "row-ativa",
+        user_id: "u240",
+        provider: "stripe",
+        payment_method: "card",
+        status: "active",
+      }),
+    );
+
+    const r = await rodarLembretesPix(AGORA);
+
+    expect(r.candidatos).toBe(250);
+    expect(estado.consultasDeAssinantes).toBe(3);
+    expect(estado.blocosDeAssinantes).toEqual([100, 100, 50]);
+    expect(r.pulados).toMatchObject({ ja_assinante: 1 });
+  });
+
+  it("erro na consulta de QUALQUER bloco de assinantes derruba a rodada, antes de ler o Asaas", async () => {
+    estado.env.pixRemindersEnabled = true;
+    estado.rows = [];
+    for (let i = 0; i < 250; i++) {
+      estado.rows.push(
+        linha({
+          id: `row-${i}`,
+          user_id: `u${i}`,
+          provider_subscription_id: `pay_${i}`,
+        }),
+      );
+      estado.pagamentos[`pay_${i}`] = pagamento();
+    }
+    // Os dois primeiros blocos respondem; o terceiro falha.
+    estado.falhaAssinantesNoBloco = 2;
+
+    await expect(rodarLembretesPix(AGORA)).rejects.toThrow(
+      "leitura de assinantes falhou",
+    );
+    expect(estado.lidos).toEqual([]);
+    expect(estado.enfileirados).toEqual([]);
   });
 
   it("fora da janela: conta candidatos, pula todos por horario e nao le Asaas, supressao nem assinantes", async () => {

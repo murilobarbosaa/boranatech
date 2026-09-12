@@ -1187,6 +1187,25 @@ router.post(
   }),
 );
 
+/**
+ * Ids por consulta de assinantes. O filtro `in` vai na URL do PostgREST, e uma
+ * lista longa demais estoura o limite de tamanho dela; 100 uuids ficam bem
+ * abaixo.
+ */
+const PIX_ASSINANTES_POR_BLOCO = 100;
+
+/**
+ * Divide a lista em blocos de ate `tamanho`, na ordem. Local de proposito: o
+ * `chunk` de server/lib/searchIndex.ts e privado daquele modulo.
+ */
+function emBlocos<T>(itens: T[], tamanho: number): T[][] {
+  const blocos: T[][] = [];
+  for (let i = 0; i < itens.length; i += tamanho) {
+    blocos.push(itens.slice(i, i + tamanho));
+  }
+  return blocos;
+}
+
 const COLUNAS_PIX_PENDENTE =
   "id, user_id, plan_id, created_at, provider_subscription_id, pix_due_date, pix_invoice_url, pix_reminders_sent";
 
@@ -1281,22 +1300,28 @@ export async function rodarLembretesPix(
 
   const suprimidos = await fetchSuppressedEmailSet();
 
+  // EM BLOCOS: a lista de ids vai na URL do PostgREST, e numa consulta so ela
+  // estouraria o limite de tamanho quando as cobrancas abertas passassem de
+  // uma centena. O erro derrubaria a rodada inteira e ninguem receberia nada.
   const userIds = Array.from(new Set(linhas.map((l) => l.user_id)));
-  const { data: ativas, error: ativasError } = await supabaseAdmin
-    .from("subscriptions")
-    .select("user_id")
-    .in("user_id", userIds)
-    .in("status", ["active", "trialing"]);
-  // Fail-closed: sem saber quem ja assina, mandar texto de compra para um
-  // assinante e o erro que este guard existe para evitar.
-  if (ativasError) {
-    throw new Error(
-      `pix-pending-reminders: leitura de assinantes falhou: ${ativasError.message}`,
-    );
+  const assinantes = new Set<string>();
+  for (const bloco of emBlocos(userIds, PIX_ASSINANTES_POR_BLOCO)) {
+    const { data: ativas, error: ativasError } = await supabaseAdmin
+      .from("subscriptions")
+      .select("user_id")
+      .in("user_id", bloco)
+      .in("status", ["active", "trialing"]);
+    // Fail-closed em QUALQUER bloco: sem saber quem ja assina, mandar texto de
+    // compra para um assinante e o erro que este guard existe para evitar.
+    if (ativasError) {
+      throw new Error(
+        `pix-pending-reminders: leitura de assinantes falhou: ${ativasError.message}`,
+      );
+    }
+    for (const a of (ativas ?? []) as Array<{ user_id: string }>) {
+      assinantes.add(a.user_id);
+    }
   }
-  const assinantes = new Set(
-    ((ativas ?? []) as Array<{ user_id: string }>).map((a) => a.user_id),
-  );
 
   const planCodeById = new Map<string, string>();
   const { data: plans } = await supabaseAdmin.from("plans").select("id, code");
