@@ -938,6 +938,8 @@ const COLUNAS_ESPERADAS: Record<string, string[]> = {
     // 20260804140000_add_precisa_revisao_to_fiscal_invoices.sql
     "precisa_revisao",
   ],
+  // 20260912120000_add_pix_reminder_columns_to_subscriptions.sql
+  subscriptions: ["pix_due_date", "pix_invoice_url", "pix_reminders_sent"],
 };
 
 /**
