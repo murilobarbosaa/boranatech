@@ -140,6 +140,7 @@ const OVERVIEW_CHEIO = {
 
 /** Serie de cadastros com pontos MEDIDOS: o sparkline exige dois ou mais. */
 const SERIES_COM_CADASTROS = {
+  contractVersion: 3,
   series: [
     {
       chave: "cadastros",
@@ -153,12 +154,84 @@ const SERIES_COM_CADASTROS = {
       ],
       total: 20,
     },
+    ...[
+      ["receitaBrutaCents", "Receita bruta"],
+      ["custoIaUsd", "Custo IA"],
+      ["chamadasSemCustoMedido", "Sem custo"],
+      ["mrrCents", "MRR"],
+      ["assinantesAtivos", "Assinantes"],
+    ].map(([chave, rotulo]) => ({
+      chave,
+      rotulo,
+      pontos: [
+        { date: "2026-08-12", value: 0, partial: false },
+        { date: "2026-08-13", value: 0, partial: false },
+        { date: "2026-08-14", value: 0, partial: false },
+      ],
+      total: 0,
+    })),
   ],
+  pagamentos: {
+    series: [
+      ["primeiroPagamentoObservado", "Primeiro pagamento observado"],
+      ["pagamentosPosteriores", "Pagamentos posteriores"],
+      ["pagamentosSemClassificacao", "Sem pessoa identificada"],
+      ["pagamentosOrdemIncerta", "Ordem histórica incerta"],
+    ].map(([chave, rotulo]) => ({
+      chave,
+      rotulo,
+      pontos: [
+        { date: "2026-08-12", value: 0, partial: false },
+        { date: "2026-08-13", value: 0, partial: false },
+        { date: "2026-08-14", value: 0, partial: false },
+      ],
+      total: 0,
+    })),
+    pagamentosUtilizaveisNoPeriodo: 0,
+    pessoasIdentificadas: 0,
+    semPessoaNoPeriodo: 0,
+    ordemHistoricaIncertaNoPeriodo: 0,
+    identidadesConflitantesNoHistorico: 0,
+    identidadesConflitantesComDataCandidataNoPeriodo: 0,
+    porMeio: [],
+    porProvider: [],
+    cobertura: {
+      calculadoAte: "2026-08-14T15:00:00Z",
+      consultaIniciadaEm: "2026-08-14T15:00:01Z",
+      consultaConcluidaEm: "2026-08-14T15:00:02Z",
+      leituraLocal: "paginacao_verificada_sem_snapshot",
+      consistenciaFotografia: "nao_garantida",
+      historicoIntegral: "nao_verificavel",
+      pagamentosSemUsuario: 0,
+      pagamentosSemMeio: 0,
+      excluidos: { identidadeAusente: 0, dataInvalida: 0 },
+    },
+    ressalvaHistorica: "Histórico integral não verificável.",
+  },
   funil: {
-    passos: [],
+    passos: [
+      {
+        chave: "cadastro",
+        rotulo: "Cadastros",
+        valor: 20,
+        taxaSobreAnterior: null,
+      },
+      {
+        chave: "pagamento",
+        rotulo: "Pagamentos",
+        valor: 0,
+        taxaSobreAnterior: 0,
+      },
+      { chave: "uso_ia", rotulo: "IA", valor: 0, taxaSobreAnterior: null },
+    ],
     destaque: null,
     anterior: null,
-    motivoSemDelta: "",
+    motivoSemDelta: "janelas_de_observacao_nao_equivalentes",
+    limiteTemporalDosInicios: "2026-08-14T15:00:00Z",
+    consultaIniciadaEm: "2026-08-14T15:00:01Z",
+    consultaConcluidaEm: "2026-08-14T15:00:02Z",
+    semanticaUso: "inicio_apos_pagamento_status_success_na_consulta",
+    cadastrosComMenosDe7Dias: 7,
   },
   ferramentas: [],
   windowLabel: "16 jul a 14 ago",

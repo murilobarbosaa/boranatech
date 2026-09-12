@@ -11,8 +11,8 @@ import { AlertTriangle } from "lucide-react";
  * 1. NÃO exibe delta de taxa contra o período anterior. As coortes têm
  *    maturidades diferentes (quem entrou ontem teve um dia para ativar, quem
  *    entrou há 45 dias teve 45), então o delta seria negativo por construção
- *    todo dia. O servidor manda `motivoSemDelta` e as contagens anteriores como
- *    informação; a tela diz isso em vez de calcular.
+ *    todo dia. O servidor manda `motivoSemDelta`; a tela diz isso em vez de
+ *    fabricar uma comparação.
  * 2. NÃO gera texto de "insight". O destaque é uma regra fixa escrita no
  *    servidor (a transição de menor taxa absoluta), e aqui só se pinta o passo
  *    que ele apontou.
@@ -28,8 +28,13 @@ export type PassoDoFunil = {
 export type FunilDigerido = {
   passos: PassoDoFunil[];
   destaque: string | null;
-  anterior: { cadastro: number; pro: number; proComUso: number } | null;
+  anterior: null;
   motivoSemDelta?: string;
+  limiteTemporalDosInicios?: string;
+  consultaIniciadaEm?: string;
+  consultaConcluidaEm?: string;
+  semanticaUso?: string;
+  cadastrosComMenosDe7Dias?: number;
 };
 
 function pct(v: number) {
@@ -49,8 +54,8 @@ function pct(v: number) {
  * admin em produção). Aqui a ausência é uma legenda a menos, nada mais.
  */
 const LEGENDA_DO_PASSO: Record<string, string> = {
-  pro: "conversão em receita",
-  engajamento: "engajamento pós-compra",
+  pagamento: "recebimento local observado",
+  uso_ia: "status na consulta",
 };
 
 export function legendaDoPasso(chave: string): string | null {
@@ -94,14 +99,46 @@ export function FunnelDigest({
         data-testid="funil-como-ler"
         className="mt-1 text-sm font-semibold text-slate-600"
       >
-        A taxa de cada etapa é sobre a etapa ACIMA dela, não sobre o topo: quanto
-        do cadastro virou assinatura, e quanto de quem assinou chegou a usar o
-        produto. A marcação aponta a menor dessas taxas.
+        A taxa de cada etapa é sobre a etapa acima: quantas pessoas da coorte
+        têm pagamento elegível registrado depois do cadastro e quantas dessas
+        iniciaram uma execução de IA depois do pagamento, encontrada com status
+        success durante a consulta.
       </p>
       {windowLabel ? (
         <p className="mt-1 text-xs font-bold text-slate-500">
           Coorte de quem se cadastrou em {windowLabel}
           {tz ? ` (${tz})` : ""}
+        </p>
+      ) : null}
+      <p className="mt-1 text-xs font-semibold text-slate-500">
+        Inícios considerados até{" "}
+        {data?.limiteTemporalDosInicios
+          ? new Date(data.limiteTemporalDosInicios).toLocaleString("pt-BR", {
+              timeZone: "America/Sao_Paulo",
+            })
+          : "o corte informado"}
+        . Cadastros recentes tiveram menos tempo para pagar e usar IA. Ausência
+        de log significa uso de IA não observado, não inatividade em todo o
+        produto.
+      </p>
+      {data?.consultaIniciadaEm && data?.consultaConcluidaEm ? (
+        <p className="mt-1 text-xs font-semibold text-slate-500">
+          Status consultados entre{" "}
+          {new Date(data.consultaIniciadaEm).toLocaleString("pt-BR", {
+            timeZone: "America/Sao_Paulo",
+          })}{" "}
+          e{" "}
+          {new Date(data.consultaConcluidaEm).toLocaleString("pt-BR", {
+            timeZone: "America/Sao_Paulo",
+          })}
+          . O momento em que uma execução virou success não é registrado;
+          resultados iniciados no período podem ser atualizados depois.
+        </p>
+      ) : null}
+      {typeof data?.cadastrosComMenosDe7Dias === "number" ? (
+        <p className="mt-1 text-xs font-bold text-slate-500">
+          {data.cadastrosComMenosDe7Dias.toLocaleString("pt-BR")} cadastros da
+          coorte tinham menos de 7 dias de observação no corte.
         </p>
       ) : null}
 
@@ -189,11 +226,8 @@ export function FunnelDigest({
               data-testid="funil-sem-delta"
               className="mt-4 text-xs font-semibold text-slate-500"
             >
-              Sem comparação com o período anterior: as coortes têm tempos de
-              vida diferentes, e a diferença seria negativa por construção.
-              {data.anterior
-                ? ` No período anterior: ${data.anterior.cadastro.toLocaleString("pt-BR")} cadastros, ${data.anterior.pro.toLocaleString("pt-BR")} assinantes, ${data.anterior.proComUso.toLocaleString("pt-BR")} deles com uso.`
-                : ""}
+              Sem comparação com o período anterior: as coortes não têm janelas
+              de observação equivalentes e cobertura comparável.
             </p>
           ) : null}
         </>

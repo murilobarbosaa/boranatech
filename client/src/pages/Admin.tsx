@@ -102,8 +102,10 @@ import { FunnelDigest } from "@/components/admin/overview/FunnelDigest";
 import { MetricSparkline } from "@/components/admin/overview/MetricSparkline";
 import {
   CostVsRevenueChart,
-  ProConversionsChart,
+  hasOverviewPaymentsContract,
+  RegisteredPaymentsChart,
   serieDe,
+  type RegisteredPaymentsData,
 } from "@/components/admin/overview/SeriesCharts";
 import { ToolUsagePanel } from "@/components/admin/overview/ToolUsagePanel";
 import { PagesDashboard } from "@/components/admin/PagesDashboard";
@@ -414,6 +416,7 @@ type OverviewData = {
 
 /** O que GET /admin/overview-series devolve. Ver server/lib/overviewSeries.ts. */
 type SeriesData = {
+  contractVersion: 3;
   series: Array<{
     chave: string;
     rotulo: string;
@@ -422,6 +425,7 @@ type SeriesData = {
     pontos: Array<{ date: string; value: number | null; partial: boolean }>;
     total: number | null;
   }>;
+  pagamentos: RegisteredPaymentsData;
   funil: {
     passos: Array<{
       chave: string;
@@ -430,8 +434,13 @@ type SeriesData = {
       taxaSobreAnterior: number | null;
     }>;
     destaque: string | null;
-    anterior: { cadastro: number; pro: number; proComUso: number } | null;
+    anterior: null;
     motivoSemDelta: string;
+    limiteTemporalDosInicios: string;
+    consultaIniciadaEm: string;
+    consultaConcluidaEm: string;
+    semanticaUso: string;
+    cadastrosComMenosDe7Dias: number;
   };
   ferramentas: Array<{
     tool: string;
@@ -6579,9 +6588,14 @@ export default function Admin() {
     let cancelled = false;
     setSeriesLoading(true);
     setSeriesError(null);
-    adminFetch(`/overview-series?window=${overviewWindow}`)
+    adminFetch(`/overview-series?window=${overviewWindow}&contract=3`)
       .then((json) => {
         if (cancelled) return;
+        if (!hasOverviewPaymentsContract(json.data)) {
+          throw new Error(
+            "Contrato de pagamentos incompatível. Atualize a página após a conclusão do deploy.",
+          );
+        }
         setSeriesData(json.data as SeriesData);
       })
       .catch((err: unknown) => {
@@ -7871,13 +7885,8 @@ export default function Admin() {
                 </BlocoBoundary>
               </div>
 
-              {/* FUNIL DIGERIDO substitui o `PaidFunnel`.
-                  O bloco antigo vinha do PostHog e mostrava contagens; este vem
-                  de tabelas locais e mostra TAXAS entre etapas adjacentes, que e
-                  a pergunta ("onde vaza?"). As etapas sao verificaveis no banco:
-                  cadastro (profiles) -> ativacao (ai_usage_logs) -> Pro
-                  (subscriptions). Nao comeca em visitantes porque nao existe
-                  fonte local de visitante. */}
+              {/* Funil de coorte local: cadastro -> pagamento registrado -> uso
+                  de IA success cujo registro começou depois do pagamento. */}
               <div className="grid gap-6">
                 <BlocoBoundary nome="Funil principal">
                   <FunnelDigest
@@ -7894,9 +7903,9 @@ export default function Admin() {
 
               {/* GRAFICOS NOVOS da Fase 4, no mesmo frame dos dois de cima. */}
               <div className="grid gap-6 xl:grid-cols-2">
-                <BlocoBoundary nome="Conversões Pro por dia">
-                  <ProConversionsChart
-                    series={seriesData?.series}
+                <BlocoBoundary nome="Pagamentos registrados por dia">
+                  <RegisteredPaymentsChart
+                    pagamentos={seriesData?.pagamentos}
                     erro={seriesError}
                     carregando={seriesLoading}
                   />

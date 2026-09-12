@@ -1587,7 +1587,7 @@ router.get("/paid-funnel", async (_req, res, next) => {
 //
 // ROTA IRMA do /overview, com a MESMA janela (`resolverJanela`) e o mesmo
 // mecanismo de cache, com o mesmo TTL de 60s e CHAVES DISTINTAS:
-// `admincache:overview-series:<janela>` aqui, `admincache:overview:<janela>` la.
+// `admincache:overview-series:v3:<janela>` aqui, `admincache:overview:<janela>` la.
 // Duas chaves de proposito, porque sao dois payloads; o que precisa coincidir e
 // a duracao, para os cards e as series na mesma tela nunca descreverem instantes
 // diferentes por mais de um minuto.
@@ -1603,29 +1603,46 @@ router.get("/paid-funnel", async (_req, res, next) => {
 // SO TABELAS LOCAIS. Ver o cabecalho de server/lib/overviewSeries.ts.
 const OVERVIEW_SERIES_CACHE_TTL_S = 60;
 
+export async function carregarOverviewSeries(windowBruta: unknown) {
+  const janela = resolverJanela(parseOverviewWindow(windowBruta));
+  const { result, computedAt } = await getOrCompute(
+    `admincache:overview-series:v3:${janela.window}`,
+    OVERVIEW_SERIES_CACHE_TTL_S,
+    async () => ({
+      result: await montarSeriesDaVisao(janela),
+      computedAt: new Date().toISOString(),
+    }),
+  );
+  return {
+    data: {
+      ...result,
+      window: janela.window,
+      windowLabel: rotuloDeIntervalo(
+        janela.primeiroDiaCivil,
+        janela.ultimoDiaCivil,
+      ),
+      tz: OVERVIEW_TZ_LABEL,
+    },
+    computedAt,
+  };
+}
+
+export function overviewSeriesContractRequested(value: unknown): boolean {
+  return value === "3";
+}
+
 router.get("/overview-series", async (req, res, next) => {
   try {
-    const janela = resolverJanela(parseOverviewWindow(req.query.window));
-    const { result, computedAt } = await getOrCompute(
-      `admincache:overview-series:${janela.window}`,
-      OVERVIEW_SERIES_CACHE_TTL_S,
-      async () => ({
-        result: await montarSeriesDaVisao(janela),
-        computedAt: new Date().toISOString(),
-      }),
-    );
-    res.json({
-      data: {
-        ...result,
-        window: janela.window,
-        windowLabel: rotuloDeIntervalo(
-          janela.primeiroDiaCivil,
-          janela.ultimoDiaCivil,
+    if (!overviewSeriesContractRequested(req.query.contract)) {
+      return next(
+        createError(
+          409,
+          "overview_series_contract_mismatch",
+          "Contrato da Visão incompatível. Atualize a página.",
         ),
-        tz: OVERVIEW_TZ_LABEL,
-      },
-      computedAt,
-    });
+      );
+    }
+    res.json(await carregarOverviewSeries(req.query.window));
   } catch (err) {
     next(err);
   }

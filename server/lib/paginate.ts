@@ -108,14 +108,14 @@ export type PaginatedPageComContagem<T> = PaginatedPage<T> & {
 };
 
 /**
- * Varre TUDO e PROVA que varreu tudo, comparando com o total exato.
+ * Varre as paginas e valida total/identidade sem prometer uma fotografia.
  *
  * POR QUE `coletarTudo` NAO BASTA AQUI. Ele para na primeira pagina vazia, o
  * que e robusto ao max-rows, mas o que ele afirma no fim e "as paginas
  * acabaram", nao "eu tenho todas as linhas". Sao coisas diferentes quando algo
  * corta a varredura no meio: o resultado sai curto e com cara de completo. Esta
- * funcao afirma o TOTAL, que e a contramedida que o CLAUDE.md registra como a
- * unica que funcionou nas vezes em que foi aplicada.
+ * funcao confere o TOTAL observado em cada pagina. Isso detecta truncagem e
+ * algumas mutacoes concorrentes, mas OFFSET nao cria snapshot transacional.
  *
  * O CASO QUE MOTIVOU, medido em 02/09/2026 contra producao. `admin_auth_times`
  * devolve 8.370 linhas, e `POST /rpc/admin_auth_times` respondia 200 com
@@ -139,11 +139,23 @@ export async function coletarTudoProvandoTotal<T>(
     from: number,
     to: number,
   ) => PromiseLike<PaginatedPageComContagem<T>>,
-  options: { op: string; pageSize?: number },
+  options: {
+    op: string;
+    pageSize?: number;
+    /** Identidade estavel da LINHA. Quando presente, ausencia/repeticao falha. */
+    rowKey?: (row: T) => string | null | undefined;
+  },
 ): Promise<T[]> {
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
   const linhas: T[] = [];
   let total: number | null = null;
+  const chavesVistas = new Set<string>();
+
+  const falhar = (context: Record<string, unknown>): never => {
+    throw createError(500, "db_error", "Erro ao ler a base.", {
+      context: { op: options.op, ...context },
+    });
+  };
 
   for (let from = 0; ; ) {
     const { data, error, count } = await fetchPage(from, from + pageSize - 1);
@@ -153,24 +165,57 @@ export async function coletarTudoProvandoTotal<T>(
         context: { op: options.op, from, pageSize },
       });
     }
+    // TODA pagina, inclusive a vazia final, precisa declarar o mesmo total.
+    // Guardar apenas o primeiro count deixa uma mutacao 4 -> 5 -> 4 passar.
+    if (
+      typeof count !== "number" ||
+      !Number.isSafeInteger(count) ||
+      count < 0
+    ) {
+      falhar({ from, pageSize, count, motivo: "contagem_invalida" });
+    }
     if (total === null) total = count;
+    else if (count !== total) {
+      falhar({
+        from,
+        pageSize,
+        esperado: total,
+        obtido: count,
+        motivo: "contagem_mudou_entre_paginas",
+      });
+    }
     const rows = data ?? [];
-    for (const row of rows) linhas.push(row);
+    for (const row of rows) {
+      if (options.rowKey) {
+        const key = options.rowKey(row)?.trim();
+        if (!key) {
+          falhar({ from, pageSize, motivo: "identidade_de_linha_ausente" });
+        }
+        const chaveValidada = key as string;
+        if (chavesVistas.has(chaveValidada)) {
+          falhar({
+            from,
+            pageSize,
+            motivo: "identidade_de_linha_repetida",
+            rowKey: chaveValidada,
+          });
+        }
+        chavesVistas.add(chaveValidada);
+      }
+      linhas.push(row);
+    }
     if (rows.length === 0) break;
     // Avanca pelo tamanho REAL da pagina, como o coletarTudo: se o servidor
     // capar abaixo do pageSize, a proxima comeca onde esta parou.
     from += rows.length;
   }
 
-  if (typeof total !== "number") {
-    throw createError(500, "db_error", "Erro ao ler a base.", {
-      context: { op: options.op, obtido: linhas.length, esperado: null },
-    });
-  }
+  // O ramo so e alcancavel por defesa de tipos: a pagina vazia tambem passou
+  // pela validacao acima. Mantido fail-closed se o contrato mudar.
+  if (typeof total !== "number")
+    falhar({ obtido: linhas.length, esperado: null });
   if (linhas.length !== total) {
-    throw createError(500, "db_error", "Erro ao ler a base.", {
-      context: { op: options.op, esperado: total, obtido: linhas.length },
-    });
+    falhar({ esperado: total, obtido: linhas.length });
   }
   return linhas;
 }
