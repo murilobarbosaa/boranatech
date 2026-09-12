@@ -1515,6 +1515,12 @@ export default function Checkout() {
           // cobranca do lado do provedor segue seu curso.
           setPixCharge(null);
         }}
+        onChargeCanceled={() => {
+          // Cancelou para trocar de plano: fica no checkout, onde a escolha de
+          // plano mora, com a assinatura ja sem a cobranca pendente.
+          setPixCharge(null);
+          void refreshSubscription();
+        }}
       />
     </Layout>
   );

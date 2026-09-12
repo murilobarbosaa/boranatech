@@ -45,6 +45,7 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import ManualRenewalCard from "@/components/pro/ManualRenewalCard";
 import PixCheckoutModal from "@/components/pro/PixCheckoutModal";
 import PixQrCodeBlock from "@/components/pro/PixQrCodeBlock";
+import CancelPendingPixDialog from "@/components/pro/CancelPendingPixDialog";
 import { nextPixPollStep } from "@/lib/pixPolling";
 import { useFavorites } from "@/hooks/useFavorites";
 import {
@@ -791,6 +792,7 @@ export default function Perfil() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelingSubscription, setCancelingSubscription] = useState(false);
+  const [cancelPixOpen, setCancelPixOpen] = useState(false);
   const [reactivating, setReactivating] = useState(false);
   // Renovacao manual pelo Perfil (lote 2b.2). `renewPix` e a cobranca Pix
   // aberta no modal; boleto redireciona para a Stripe e nao passa por aqui.
@@ -1880,7 +1882,8 @@ export default function Perfil() {
                 ) : !isPro && pendingBoleto ? (
                   // Cenario A: cobranca avulsa de primeira compra aguardando
                   // pagamento (boleto ou Pix).
-                  // Sem acesso Pro ainda; sem botao de cancelar e sem CTA.
+                  // Sem acesso Pro ainda e sem CTA. So o Pix tem o botao de
+                  // cancelar a cobranca (lote 2o); o boleto e da Stripe.
                   <>
                     <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-amber-700">
                       Assinatura
@@ -1935,6 +1938,17 @@ export default function Perfil() {
                       </p>
 
                       {isPendingPix ? <PixQrCodeBlock /> : null}
+
+                      {isPendingPix ? (
+                        <button
+                          type="button"
+                          onClick={() => setCancelPixOpen(true)}
+                          className="pt-2 text-sm font-black text-slate-600 underline underline-offset-4 transition-colors duration-200 hover:text-rose-600"
+                        >
+                          {/* TODO(Ana): rotulo do botao de cancelar a cobranca Pix pendente. */}
+                          Cancelar cobrança
+                        </button>
+                      ) : null}
                     </div>
                   </>
                 ) : estadoManual?.kind === "expired" ? (
@@ -2394,6 +2408,14 @@ export default function Perfil() {
             periodEnd={subscriptionData?.current_period_end}
             isLoading={cancelingSubscription}
             mode={isBoletoSubscription ? "non_renewal" : "cancel"}
+          />
+          <CancelPendingPixDialog
+            open={cancelPixOpen}
+            onClose={() => setCancelPixOpen(false)}
+            onResolved={() => {
+              setCancelPixOpen(false);
+              void refreshSubscription().catch(() => undefined);
+            }}
           />
           <PixCheckoutModal
             open={renewPix !== null}
