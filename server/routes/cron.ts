@@ -28,6 +28,7 @@ import {
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
+import { normalizarDataPix, relogioDeBrasilia } from "../lib/pixVencimento";
 import { issueRenewalToken } from "../lib/renewalToken";
 import { getStripe } from "../lib/stripeClient";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -633,6 +634,73 @@ export function decidirLembrete(args: {
     codigo,
     daysRemaining: Math.max(0, Math.round(daysUntil)),
   };
+}
+
+export type DecisaoPix =
+  | { tipo: "enviar"; estagio: "p1" | "p0"; variant: "aberto" | "vence_hoje" }
+  | { tipo: "pular"; motivo: string };
+
+/**
+ * Idade minima para o `p1`. Medido: de 32 Pix confirmados, 29 cairam em ate 15
+ * minutos da criacao, 1 entre 1h e 6h e 2 acima de 20h. Depois de duas horas o
+ * abandono ja aconteceu, e esperar mais gasta a janela util da cobranca.
+ */
+const PIX_LEMBRETE_IDADE_MINIMA_MS = 2 * 60 * 60 * 1000;
+/** Janela de envio em Brasilia, em minutos desde a meia-noite: [09h00, 21h00). */
+const PIX_LEMBRETE_INICIO_MIN = 9 * 60;
+const PIX_LEMBRETE_FIM_MIN = 21 * 60;
+
+/**
+ * Qual lembrete de Pix pendente sai AGORA, se algum. Pura, para o teste afirmar
+ * a tabela.
+ *
+ * `p1` (variante `aberto`) com pelo menos duas horas de vida e antes do dia do
+ * vencimento; `p0` (`vence_hoje`) no dia do vencimento, a qualquer hora da
+ * janela, com PRIORIDADE sobre o `p1` e sobre a idade minima. A cobranca segue
+ * pagavel o dia inteiro: o PAYMENT_OVERDUE foi medido chegando entre 03h e 04h
+ * do dia SEGUINTE nos 13 casos observados.
+ *
+ * Um estagio por execucao e sem retroatividade, como `decidirLembrete`: quem
+ * chega ao dia do vencimento sem o `p1` recebe so o `p0`.
+ *
+ * A JANELA MORA AQUI, e nao na expressao cron, para ser testavel. O limite de
+ * 21h e exclusivo. Todo relogio e o de Brasilia (`relogioDeBrasilia`), nunca o
+ * do processo, que em producao roda em UTC.
+ */
+export function decidirLembretePix(args: {
+  criadaEmIso: string;
+  pixDueDate: string | null;
+  jaEnviados: string[];
+  agoraMs: number;
+}): DecisaoPix {
+  const vencimento = normalizarDataPix(args.pixDueDate);
+  if (!vencimento) return { tipo: "pular", motivo: "sem_vencimento" };
+
+  const { dia: hoje, minutos } = relogioDeBrasilia(args.agoraMs);
+  if (minutos < PIX_LEMBRETE_INICIO_MIN || minutos >= PIX_LEMBRETE_FIM_MIN) {
+    return { tipo: "pular", motivo: "fora_do_horario" };
+  }
+
+  // `YYYY-MM-DD` ordena como texto.
+  if (hoje > vencimento) return { tipo: "pular", motivo: "vencida" };
+  if (hoje === vencimento) {
+    return args.jaEnviados.includes("p0")
+      ? { tipo: "pular", motivo: "ja_enviado" }
+      : { tipo: "enviar", estagio: "p0", variant: "vence_hoje" };
+  }
+
+  const criadaMs = Date.parse(args.criadaEmIso);
+  // Sem saber a idade, nao ha como respeitar a idade minima: nao envia.
+  if (!Number.isFinite(criadaMs)) {
+    return { tipo: "pular", motivo: "criacao_ilegivel" };
+  }
+  if (args.agoraMs - criadaMs < PIX_LEMBRETE_IDADE_MINIMA_MS) {
+    return { tipo: "pular", motivo: "muito_recente" };
+  }
+  if (args.jaEnviados.includes("p1")) {
+    return { tipo: "pular", motivo: "ja_enviado" };
+  }
+  return { tipo: "enviar", estagio: "p1", variant: "aberto" };
 }
 
 const COLUNAS_DE_LEMBRETE =

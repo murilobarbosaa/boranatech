@@ -1,6 +1,10 @@
 import { afterAll, describe, expect, it } from "vitest";
 
-import { formatarVencimentoPix } from "./pixVencimento";
+import {
+  formatarVencimentoPix,
+  normalizarDataPix,
+  relogioDeBrasilia,
+} from "./pixVencimento";
 
 /**
  * VENCIMENTO DO PIX POR EXTENSO, independente do fuso do processo.
@@ -50,6 +54,38 @@ describe("formatarVencimentoPix", () => {
   it("virada de ano nao recua para o ano anterior em Brasilia", () => {
     usarFuso("America/Sao_Paulo", 180);
     expect(formatarVencimentoPix("2026-01-01")).toBe("1 de janeiro de 2026");
+    usarFuso("UTC", 0);
+  });
+
+  it("normalizarDataPix aceita so data de calendario real YYYY-MM-DD", () => {
+    expect(normalizarDataPix("2026-09-10")).toBe("2026-09-10");
+    expect(normalizarDataPix(" 2026-09-10 ")).toBe("2026-09-10");
+    for (const invalida of ["", "2026-02-30", "10/09/2026", "2026-9-10"]) {
+      expect(normalizarDataPix(invalida)).toBeNull();
+    }
+    expect(normalizarDataPix(null)).toBeNull();
+    expect(normalizarDataPix(20260910)).toBeNull();
+  });
+
+  it("relogioDeBrasilia da o dia e os minutos de Brasilia, nos dois fusos", () => {
+    for (const [tz, offset] of [
+      ["UTC", 0],
+      ["America/Sao_Paulo", 180],
+    ] as const) {
+      usarFuso(tz, offset);
+      // 00h30 de 09/09 em Brasilia: 03h30 UTC, ainda dia 09.
+      expect(relogioDeBrasilia(Date.parse("2026-09-09T00:30:00-03:00"))).toEqual(
+        { dia: "2026-09-09", minutos: 30 },
+      );
+      // 23h59 de 09/09 em Brasilia: 02h59 UTC do dia 10. O dia e 09.
+      expect(relogioDeBrasilia(Date.parse("2026-09-09T23:59:00-03:00"))).toEqual(
+        { dia: "2026-09-09", minutos: 23 * 60 + 59 },
+      );
+      // Virada de ano.
+      expect(relogioDeBrasilia(Date.parse("2026-01-01T00:00:00-03:00"))).toEqual(
+        { dia: "2026-01-01", minutos: 0 },
+      );
+    }
     usarFuso("UTC", 0);
   });
 
