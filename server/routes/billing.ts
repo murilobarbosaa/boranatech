@@ -717,13 +717,35 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
       );
     }
 
-    const data = await stripeProvider.cancel({
+    const { data: vigente, error: vigenteError } =
+      await buscarAssinaturaVigente(userId);
+    if (vigenteError) {
+      return next(
+        montarDbError(
+          "billing",
+          "billing cancel lookup",
+          vigenteError,
+          "Erro ao buscar assinatura.",
+        ),
+      );
+    }
+    if (!vigente) {
+      return next(
+        createError(404, "not_found", "Nenhuma assinatura ativa encontrada."),
+      );
+    }
+
+    const entrada = {
       userId,
       // O ator e a propria pessoa neste caminho.
       actorUserId: userId,
       reasonCode,
       reasonText,
-    });
+    };
+    const data =
+      vigente.provider === "asaas"
+        ? await asaasProvider.cancel(entrada)
+        : await stripeProvider.cancel(entrada);
 
     res.json({ data });
   } catch (err) {
@@ -731,15 +753,51 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
   }
 });
 
+// Sem assinatura vigente o reactivate NAO responde 404: segue para a Stripe,
+// que manda para o checkout, exatamente como antes do despacho. So a linha
+// vigente do Asaas muda de caminho.
 router.post("/reactivate", requireAuth, async (req, res, next) => {
   try {
     const userId = req.user!.id;
-    const data = await stripeProvider.reactivate({ userId });
+
+    const { data: vigente, error: vigenteError } =
+      await buscarAssinaturaVigente(userId);
+    if (vigenteError) {
+      return next(
+        montarDbError(
+          "billing",
+          "billing reactivate lookup",
+          vigenteError,
+          "Erro ao buscar assinatura.",
+        ),
+      );
+    }
+
+    const data =
+      vigente?.provider === "asaas"
+        ? await asaasProvider.reactivate({ userId })
+        : await stripeProvider.reactivate({ userId });
     res.json({ data });
   } catch (err) {
     next(err);
   }
 });
+
+// Linha vigente do usuario, SEM FILTRO DE PROVEDOR, so para decidir qual
+// provider atende /cancel e /reactivate. Mesmo motivo da rota admin desde
+// 2026-09-02: com o filtro `provider='stripe'`, o assinante Pix recebia 404
+// "Nenhuma assinatura ativa encontrada." sobre uma assinatura ativa. Cada
+// provider continua fazendo a propria busca e validacao depois.
+function buscarAssinaturaVigente(userId: string) {
+  return supabaseAdmin
+    .from("subscriptions")
+    .select("provider")
+    .eq("user_id", userId)
+    .in("status", ["active", "trialing", "past_due"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+}
 
 router.post("/checkout", requireAuth, async (req, res, next) => {
   try {
