@@ -95,6 +95,16 @@ describe("preview", () => {
 });
 
 describe("pagamento por Pix", () => {
+  // RELOGIO FIXO antes do `dueDate` das fixtures (2026-09-08). Com o relogio
+  // real, a partir desse dia o modal abria direto em "expirado" e o QR nao
+  // renderizava: o teste virou vermelho sozinho em 2026-09-09, sem mudanca de
+  // codigo. So `Date` e falso; os timers ficam reais para o `findBy` e o polling.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-06T12:00:00Z"));
+  });
+  afterEach(() => vi.useRealTimers());
+
   it("resposta com pixQrCode renderiza o QR, o copia e cola e a frase de retorno", async () => {
     spies.checkout.mockResolvedValue({
       checkoutUrl: "https://asaas.test/i/1",
