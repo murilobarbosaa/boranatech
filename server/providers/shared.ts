@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/node";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
+import { erroEncadeavel } from "../lib/supabaseError";
 import { createError } from "../middleware/error";
 import type { Gender } from "../../shared/gender";
 
@@ -11,13 +12,21 @@ import type { Gender } from "../../shared/gender";
 // preenchido). Fonte unica para o desconto de afiliado nao divergir entre Asaas
 // e Stripe (o desconto de cupom so vale na primeira compra).
 export async function isFirstPurchase(userId: string): Promise<boolean> {
-  const { data: priorActivated } = await supabaseAdmin
+  const { data: priorActivated, error } = await supabaseAdmin
     .from("subscriptions")
     .select("id")
     .eq("user_id", userId)
     .not("current_period_start", "is", null)
     .limit(1)
     .maybeSingle();
+  if (error) {
+    throw createError(
+      500,
+      "db_error",
+      "Não foi possível verificar a elegibilidade do desconto. Tente novamente.",
+      { cause: erroEncadeavel(error) },
+    );
+  }
   return !priorActivated;
 }
 

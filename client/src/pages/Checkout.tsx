@@ -628,7 +628,7 @@ function CouponField({
 export default function Checkout() {
   const [, setLocation] = useLocation();
   const { session, user, profile } = useAuth();
-  const { affiliateCode, discountPercent } = useAffiliate();
+  const { affiliateCode, discountPercent, clearAffiliate } = useAffiliate();
   const {
     coupon,
     status: couponStatus,
@@ -892,6 +892,22 @@ export default function Checkout() {
         // TODO(Ana): copy do valor abaixo do minimo do Pix.
         toast.error(
           "Com esse desconto o valor fica abaixo do mínimo do Pix. Escolha cartão.",
+        );
+      } else if (code === "coupon_unavailable") {
+        removeCoupon();
+        toast.error(
+          "Este cupom não está mais disponível. Revise o valor antes de continuar.",
+        );
+      } else if (code === "affiliate_unavailable") {
+        clearAffiliate();
+        toast.error(
+          "Este desconto de afiliado não está mais disponível. Revise o valor antes de continuar.",
+        );
+      } else if (code === "promotion_first_purchase_only") {
+        removeCoupon();
+        clearAffiliate();
+        toast.error(
+          "Este desconto vale somente na primeira compra. Revise o valor antes de continuar.",
         );
       } else if (code === "asaas_disabled") {
         // TODO(Ana): copy da indisponibilidade temporaria do Pix.

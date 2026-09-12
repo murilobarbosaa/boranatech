@@ -334,12 +334,16 @@ async function createCheckout(
   // PRECO FINAL pela funcao unica (server/lib/coupons.ts), a mesma aritmetica
   // que o frontend usa na previa. Antes daqui a cobranca herdava o preco CHEIO
   // e a tela mostrava o descontado.
-  const { finalCents, appliedCouponCode } = await resolveCheckoutPriceCents({
-    userId: input.user.id,
-    planId: input.planId,
-    couponCode: input.couponCode,
-    isFirstPurchase,
-  });
+  const { finalCents, appliedCouponCode, validAffiliateCode } =
+    await resolveCheckoutPriceCents({
+      userId: input.user.id,
+      planId: input.planId,
+      // Renovacao e sempre preco cheio. O input interno da rota ja chega sem
+      // codigos; estas guardas mantem a regra dentro do provider tambem.
+      couponCode: input.internalRenewal ? "" : input.couponCode,
+      affiliateCode: input.internalRenewal ? "" : input.affiliateCode,
+      isFirstPurchase,
+    });
 
   // PISO DO ASAAS. Cobranca abaixo de R$ 5,00 e recusada por eles, e um cupom
   // agressivo o bastante derruba o semestral abaixo disso. Recusar aqui, ANTES
@@ -364,7 +368,9 @@ async function createCheckout(
       provider: PROVIDER,
       provider_subscription_id: null,
       provider_customer_id: null,
-      affiliate_code: input.affiliateCode || null,
+      // Codigo canonico da linha ativa. O valor bruto do navegador nao vira
+      // atribuicao nem comissao.
+      affiliate_code: validAffiliateCode || null,
       // O cupom APROVADO, nao o bruto do cliente: a ativacao conta resgate a
       // partir deste campo, e contar resgate de cupom que nao descontou nada
       // corromperia `times_redeemed`.
