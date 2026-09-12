@@ -14,7 +14,7 @@ import {
 } from "../lib/asaasSubscriptionLookup";
 import { env } from "../lib/env";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
-import { createError } from "../middleware/error";
+import { createError, type AppError } from "../middleware/error";
 import { instanteAsaas } from "../../shared/asaasDatetime";
 import {
   applyActivationEffects,
@@ -1451,8 +1451,13 @@ async function marcarStatusDoEstorno(
  * nunca teve acesso, entao e-mail de cancelamento seria errado. Efeito colateral
  * desejado, igual ao do boleto: sair de `pending` libera o guard 409 e a pessoa
  * pode tentar de novo.
+ *
+ * EXPORTADA para o cancelamento pelo proprio cliente (POST
+ * /api/billing/cancel-pending), que fecha a linha na mesma requisicao em que o
+ * Asaas confirma a exclusao. O PAYMENT_DELETED que chega depois passa por aqui
+ * de novo e cai no filtro `status = pending`: nao escreve nada.
  */
-async function closePendingCharge(args: {
+export async function closePendingCharge(args: {
   eventType: string;
   eventId: string;
   chargeId: string | null;
@@ -1628,6 +1633,8 @@ export type PagamentoDoAsaas = {
   /** Vencimento da cobranca, `YYYY-MM-DD`. O prazo que governa o QR. */
   dueDate: string | null;
   refunds: EstornoDoAsaas[];
+  /** Cobranca removida no Asaas. So `true` literal conta; ausente vira `false`. */
+  deleted: boolean;
 };
 
 /** Recorte do objeto de pagamento do Asaas que este modulo le. */
@@ -1636,6 +1643,7 @@ type AsaasPaymentBody = {
   value?: unknown;
   dueDate?: unknown;
   refunds?: unknown;
+  deleted?: unknown;
 };
 
 /**
@@ -1667,6 +1675,7 @@ function pagamentoDoAsaas(corpo: AsaasPaymentBody | null): PagamentoDoAsaas {
     valueCents: centavosAsaas(corpo?.value),
     dueDate: typeof corpo?.dueDate === "string" ? corpo.dueDate : null,
     refunds,
+    deleted: corpo?.deleted === true,
   };
 }
 
@@ -1804,4 +1813,83 @@ export async function estornarPagamento(
   }
 
   return { status, raw: resposta };
+}
+
+/** Status de cobranca do Asaas que significam dinheiro recebido. */
+const STATUS_DE_COBRANCA_PAGA = new Set([
+  "RECEIVED",
+  "CONFIRMED",
+  "RECEIVED_IN_CASH",
+]);
+
+export type CancelamentoDaCobranca =
+  | { resultado: "cancelada" }
+  | { resultado: "already_paid"; status: string }
+  | { resultado: "falha"; motivo: string };
+
+/**
+ * Exclui uma cobranca pendente no Asaas (DELETE /payments/{id}).
+ *
+ * NUNCA LANCA: todo desfecho volta tipado, porque quem chama decide se fecha a
+ * linha local, e so pode fechar quando o Asaas confirmou.
+ *
+ * O ERRO DO DELETE NAO E LIDO PELO CORPO. A documentacao do provedor da o
+ * sucesso (`{ deleted: true, id }`) e NAO documenta o erro de uma cobranca ja
+ * recebida (conferido em 2026-09-11). Em vez de casar texto de erro, uma recusa
+ * 4xx e seguida de um GET, e o STATUS da cobranca decide, em tres baldes:
+ *   - paga (`STATUS_DE_COBRANCA_PAGA`): `already_paid`, o webhook ativa;
+ *   - ja removida (`deleted` ou `CANCELLED`): `cancelada`, idempotente (duplo
+ *     clique, corrida com exclusao pelo painel);
+ *   - qualquer outra coisa, GET falho incluido: `falha`.
+ * 5xx e falha de transporte nao passam pelo GET: o DELETE pode nem ter chegado,
+ * e o estado do outro lado nao e o que a recusa diz. Fail-closed sempre.
+ */
+export async function cancelPayment(
+  paymentId: string,
+): Promise<CancelamentoDaCobranca> {
+  try {
+    const corpo = await asaasFetch<{ deleted?: unknown }>(
+      `/payments/${encodeURIComponent(paymentId)}`,
+      { method: "DELETE" },
+    );
+    if (corpo?.deleted === true) return { resultado: "cancelada" };
+    // 2xx sem a confirmacao: nao da para afirmar que a cobranca morreu.
+    console.warn(
+      `[asaas/cancel] DELETE de ${paymentId} respondeu sem deleted=true.`,
+    );
+    return { resultado: "falha", motivo: "delete_sem_confirmacao" };
+  } catch (err) {
+    const status = (err as AppError | null)?.context?.asaas_status;
+    if (typeof status !== "number" || status < 400 || status >= 500) {
+      console.warn(
+        `[asaas/cancel] DELETE de ${paymentId} falhou sem recusa 4xx (status ${String(status ?? "ausente")}).`,
+      );
+      return { resultado: "falha", motivo: "delete_sem_recusa_4xx" };
+    }
+  }
+
+  let pagamento: PagamentoDoAsaas;
+  try {
+    pagamento = await lerPagamento(paymentId);
+  } catch (err) {
+    console.warn(
+      `[asaas/cancel] DELETE de ${paymentId} recusado e a leitura falhou:`,
+      err instanceof Error ? err.message : String(err),
+    );
+    return { resultado: "falha", motivo: "leitura_falhou" };
+  }
+
+  if (pagamento.status && STATUS_DE_COBRANCA_PAGA.has(pagamento.status)) {
+    return { resultado: "already_paid", status: pagamento.status };
+  }
+  if (pagamento.deleted || pagamento.status === "CANCELLED") {
+    return { resultado: "cancelada" };
+  }
+  console.warn(
+    `[asaas/cancel] DELETE de ${paymentId} recusado com a cobranca em ${pagamento.status ?? "status ausente"}.`,
+  );
+  return {
+    resultado: "falha",
+    motivo: `status_${pagamento.status ?? "ausente"}`,
+  };
 }
