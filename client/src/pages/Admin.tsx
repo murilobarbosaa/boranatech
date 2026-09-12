@@ -7718,6 +7718,8 @@ export default function Admin() {
         onClose={() => setLogoutModalOpen(false)}
         onConfirm={handleLogout}
         isLoading={loggingOut}
+        contentClassName="z-[2000]"
+        overlayClassName="z-[2000]"
       />
       <section className="hero-pattern border-b-2 border-slate-900 py-10">
         <div className="container">
