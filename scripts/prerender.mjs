@@ -5,6 +5,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { conferirCanonical } from "./lib/canonicalDoSnapshot.mjs";
 
 if (!process.env.VERCEL && !process.env.FORCE_PRERENDER) {
   console.log("[prerender] Fora da Vercel e sem FORCE_PRERENDER: pulando.");
@@ -150,6 +151,11 @@ const browser = await puppeteer.launch({
 
 let postHogBlocked = 0;
 const failures = [];
+// Snapshot capturado de OUTRA pagina (ou sem canonical nenhum). Lista separada
+// das `failures` de captura de proposito: falha de captura e um browser que nao
+// carregou, e o MAX_FAILURES tolera algumas; contaminacao e conteudo errado
+// indo para producao, e nao se tolera nenhuma.
+const contaminados = [];
 const snapshots = new Map();
 const startedAt = Date.now();
 
@@ -179,7 +185,10 @@ async function capture(route) {
       }
     }
 
-    snapshots.set(route, dedupeHead(await page.content()));
+    const html = dedupeHead(await page.content());
+    const problema = conferirCanonical(route, html);
+    if (problema) contaminados.push({ route, problema });
+    snapshots.set(route, html);
   } catch (err) {
     failures.push({ route, error: String(err) });
     console.warn(`[prerender] Falha em ${route}: ${err}`);
@@ -220,6 +229,24 @@ const avgKb = snapshots.size ? Math.round(totalBytes / snapshots.size / 1024) : 
 console.log(
   `[prerender] ${routes.length} rotas, ${snapshots.size} snapshots, ` +
     `${failures.length} falhas, media ${avgKb} kB, posthog bloqueados ${postHogBlocked}, ${elapsed}s.`,
+);
+
+if (contaminados.length > 0) {
+  console.error(
+    `[prerender] ${contaminados.length} snapshot(s) com canonical que nao e o da propria rota:`,
+  );
+  for (const c of contaminados) {
+    console.error(`  ${c.route} -> ${c.problema}`);
+  }
+  console.error(
+    "Snapshot de outra pagina e HTML valido, entao so este guard acusa. " +
+      "Causa tipica: a rota redireciona durante a captura (o prerender roda SEM sessao).",
+  );
+  process.exit(1);
+}
+
+console.log(
+  `[prerender] guard de canonical: ${snapshots.size} snapshot(s) conferidos, nenhum contaminado.`,
 );
 
 if (failures.length > MAX_FAILURES) {
