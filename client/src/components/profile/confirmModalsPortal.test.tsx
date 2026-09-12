@@ -7,7 +7,11 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { BadgeDetailModal } from "@/components/badges/BadgeDetailModal";
+import type { BadgeInfo } from "@/services/badgesService";
+
 import { DeleteAccountConfirmModal } from "./DeleteAccountConfirmModal";
+import { ResetQuizConfirmModal } from "./ResetQuizConfirmModal";
 import { SignOutConfirmModal } from "./SignOutConfirmModal";
 
 /**
@@ -170,5 +174,165 @@ describe("DeleteAccountConfirmModal", () => {
     const { onClose } = montar(true);
     await cliqueFora();
     expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe("SignOutConfirmModal: elevacao para o admin", () => {
+  function montar(
+    props: { contentClassName?: string; overlayClassName?: string } = {},
+  ) {
+    render(
+      <SignOutConfirmModal
+        isOpen
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        {...props}
+      />,
+    );
+    const content = screen.getByRole("dialog");
+    const overlay = document.querySelector<HTMLElement>(
+      '[data-slot="dialog-overlay"]',
+    );
+    if (!overlay) throw new Error("overlay do Dialog nao encontrado");
+    return { content, overlay };
+  }
+
+  it("sem as props, content e overlay seguem no z-50 de sempre", () => {
+    const { content, overlay } = montar();
+    expect(content.className).toContain("z-50");
+    expect(content.className).not.toContain("z-[2000]");
+    expect(overlay.className).toContain("z-50");
+    expect(overlay.className).not.toContain("z-[2000]");
+  });
+
+  it("com as props, a classe chega ao content e ao overlay", () => {
+    const { content, overlay } = montar({
+      contentClassName: "z-[2000]",
+      overlayClassName: "z-[2000]",
+    });
+    expect(content.className).toContain("z-[2000]");
+    expect(content.className).not.toContain("z-50");
+    expect(overlay.className).toContain("z-[2000]");
+    expect(overlay.className).not.toContain("z-50");
+    expect(content.className).toContain("rounded-3xl");
+    expect(overlay.className).toContain("bg-slate-950/60");
+  });
+});
+
+describe("ResetQuizConfirmModal", () => {
+  function montar() {
+    const onClose = vi.fn();
+    const onConfirm = vi.fn();
+    render(
+      <div data-testid="pai">
+        <ResetQuizConfirmModal open onClose={onClose} onConfirm={onConfirm} />
+      </div>,
+    );
+    return { onClose, onConfirm };
+  }
+
+  it("renderiza em portal no body, fora da arvore do pai", () => {
+    montar();
+    const conteudo = screen.getByText("Reiniciar o quiz?");
+    expect(screen.getByTestId("pai").contains(conteudo)).toBe(false);
+    expect(document.body.contains(conteudo)).toBe(true);
+  });
+
+  it("confirmar chama onConfirm e depois onClose", () => {
+    const { onConfirm, onClose } = montar();
+    fireEvent.click(screen.getByRole("button", { name: "Sim, reiniciar" }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onConfirm.mock.invocationCallOrder[0]).toBeLessThan(
+      onClose.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("cancelar chama onClose", () => {
+    const { onClose, onConfirm } = montar();
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it("o X fecha", () => {
+    const { onClose } = montar();
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("Esc fecha", () => {
+    const { onClose } = montar();
+    apertarEsc();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("clique no fundo fecha", async () => {
+    const { onClose } = montar();
+    await cliqueFora();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("ao abrir, o foco vai para o botao de confirmar", () => {
+    montar();
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Sim, reiniciar" }),
+    );
+  });
+});
+
+describe("BadgeDetailModal", () => {
+  const BADGE: BadgeInfo = {
+    id: "b1",
+    category: "estudo",
+    name: "Primeiros passos",
+    description: "Concluiu o primeiro modulo.",
+    iconName: "Footprints",
+    unlockCriteria: "Conclua um modulo.",
+    isUnlocked: false,
+    unlockedAt: null,
+    progress: { current: 1, target: 4 },
+    isNew: false,
+  };
+
+  function montar(badge: BadgeInfo | null = BADGE) {
+    const onClose = vi.fn();
+    render(
+      <div data-testid="pai">
+        <BadgeDetailModal badge={badge} onClose={onClose} />
+      </div>,
+    );
+    return { onClose };
+  }
+
+  it("sem badge, nao renderiza nada", () => {
+    montar(null);
+    expect(screen.queryByText("Primeiros passos")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("renderiza em portal no body, fora da arvore do pai", () => {
+    montar();
+    const conteudo = screen.getByText("Primeiros passos");
+    expect(screen.getByTestId("pai").contains(conteudo)).toBe(false);
+    expect(document.body.contains(conteudo)).toBe(true);
+  });
+
+  it("o X fecha", () => {
+    const { onClose } = montar();
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("clique no fundo fecha", async () => {
+    const { onClose } = montar();
+    await cliqueFora();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("Esc fecha: melhoria, antes nao havia atalho nenhum", () => {
+    const { onClose } = montar();
+    apertarEsc();
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
