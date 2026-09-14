@@ -35,6 +35,7 @@ import { areasTI, cursosGratuitos } from "@/lib/data";
 import { cursosParceiros, type CursoParceiro } from "@/lib/parceiros";
 import { FREE_COURSES_SAMPLE_SIZE } from "@/lib/freeTierLimits";
 import { youtubeEmbedUrl } from "@/lib/utils";
+import { entrada } from "@/lib/entradaEstatica";
 
 // Structured data expoe SO a amostra gratis (mesmo limite do gate). Nao
 // emitir dado de curso travado no JSON-LD, senao o conteudo Pro vazaria pelo
@@ -436,7 +437,7 @@ export default function Cursos() {
       <section className="bg-amber-50 border-b-2 border-amber-200 py-6">
         <div className="container">
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
+            initial={entrada({ opacity: 0, y: 8 })}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28 }}
           >
@@ -458,7 +459,7 @@ export default function Cursos() {
             <AnimatePresence initial={false}>
               {aberto ? (
                 <motion.div
-                  initial={{ height: 0, opacity: 0 }}
+                  initial={entrada({ height: 0, opacity: 0 })}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.28 }}

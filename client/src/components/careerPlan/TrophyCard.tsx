@@ -5,6 +5,7 @@ import { getCatalogItem, type CareerCatalogLevel } from "@shared/careerCatalog";
 import { cn } from "@/lib/utils";
 import type { FxRate } from "@/services/careerPlanService";
 import { formatAmount, formatPrice, type StationCertVM } from "./types";
+import { entrada } from "@/lib/entradaEstatica";
 
 // TODO(Ana): labels dos niveis do catalogo
 const LEVEL_LABELS: Record<CareerCatalogLevel, string> = {
@@ -151,7 +152,7 @@ export default function TrophyCard({
         {expanded ? (
           <motion.div
             key="detail"
-            initial={reduce ? false : { height: 0, opacity: 0 }}
+            initial={entrada(reduce ? false : { height: 0, opacity: 0 })}
             animate={{ height: "auto", opacity: 1 }}
             exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
             transition={{ duration: reduce ? 0 : 0.24, ease: "easeOut" }}

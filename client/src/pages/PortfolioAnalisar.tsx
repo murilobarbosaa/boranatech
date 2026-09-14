@@ -72,6 +72,7 @@ import type {
   GithubAnalysisResponse,
   ScoreBand,
 } from "@shared/github/schema";
+import { entrada } from "@/lib/entradaEstatica";
 
 const ac = getPageAccentUi("violet");
 
@@ -362,7 +363,7 @@ function ScanCard({
           <AnimatePresence mode="wait">
             <motion.p
               key={step}
-              initial={{ opacity: 0 }}
+              initial={entrada({ opacity: 0 })}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
@@ -421,7 +422,7 @@ function Reveal({
   const reduce = useReducedMotion() ?? false;
   return (
     <motion.div
-      initial={reduce ? false : { opacity: 0, y: 14 }}
+      initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.35, delay }}
@@ -555,7 +556,7 @@ function ScoreHero({
             </p>
           ) : null}
           <motion.span
-            initial={reduce ? false : { opacity: 0, scale: 1.6 }}
+            initial={entrada(reduce ? false : { opacity: 0, scale: 1.6 })}
             animate={{ opacity: 1, scale: 1 }}
             transition={
               reduce
@@ -985,7 +986,7 @@ export default function PortfolioAnalisar() {
               scan fica vazio. TODO(Ana): validar eyebrow, titulo, subtitulo e
               o rotulo do link (alternativa: "Analisar outro"). */}
           <motion.div
-            initial={reduce ? false : { opacity: 0, y: 14 }}
+            initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
             className="mb-10"
@@ -1135,7 +1136,7 @@ export default function PortfolioAnalisar() {
                           ? `repo:${preview.owner}/${preview.repo}`
                           : `perfil:${preview.login}`
                       }
-                      initial={reduce ? false : { opacity: 0, y: 10 }}
+                      initial={entrada(reduce ? false : { opacity: 0, y: 10 })}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.28, ease: "easeOut" }}
                       className="mt-5 flex items-start gap-3 rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[3px_3px_0_var(--bnt-shadow)]"
@@ -1241,9 +1242,9 @@ export default function PortfolioAnalisar() {
 
                   {/* Spotlight fora das tabs: a ponte nota -> acao. */}
                   <motion.div
-                    initial={
+                    initial={entrada(
                       reduce ? false : { opacity: 0, y: 16, scale: 0.98 }
-                    }
+                    )}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={
                       reduce

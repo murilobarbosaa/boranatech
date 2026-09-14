@@ -11,6 +11,7 @@ import {
   mentorias,
   type RecursoTipo,
 } from "@/lib/mentoriasEbooks";
+import { entrada } from "@/lib/entradaEstatica";
 
 const ac = getPageAccentUi("amber");
 
@@ -52,7 +53,7 @@ function RecursoCard({
       href={link}
       target="_blank"
       rel="noopener noreferrer"
-      initial={reduce ? false : { opacity: 0, y: 16 }}
+      initial={entrada(reduce ? false : { opacity: 0, y: 16 })}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.35, delay: Math.min(index * 0.05, 0.3) }}
@@ -124,7 +125,7 @@ function ComingSoon({ reduce }: { reduce: boolean }) {
         {COMING_SOON_CARDS.map((card, index) => (
           <motion.div
             key={card.titulo}
-            initial={reduce ? false : { opacity: 0, y: 16 }}
+            initial={entrada(reduce ? false : { opacity: 0, y: 16 })}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.35, delay: index * 0.05 }}

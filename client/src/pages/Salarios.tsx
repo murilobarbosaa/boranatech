@@ -39,6 +39,7 @@ import {
   parseLow,
   salaryRows,
 } from "@/lib/marketData";
+import { entrada } from "@/lib/entradaEstatica";
 
 const ac = getPageAccentUi("emerald");
 
@@ -81,7 +82,7 @@ function MoneyRain() {
             key={`m-${index}`}
             className={cn("absolute", item.color)}
             style={{ left: item.left, top: item.top }}
-            initial={{ opacity: 0 }}
+            initial={{ opacity: 0.18 }}
             animate={{
               y: [0, -18, 0],
               x: [0, 8, 0],
@@ -243,7 +244,7 @@ const salarioFontes = [
 ];
 
 const fadeUp = {
-  initial: { opacity: 0, y: 12 },
+  initial: entrada({ opacity: 0, y: 12 }),
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.25 },
 };
@@ -609,7 +610,7 @@ export default function Salarios() {
             {aba === "Calculadoras" ? (
               <div className="grid gap-6 lg:grid-cols-2">
                 <motion.div
-                  initial={{ opacity: 0, y: 16 }}
+                  initial={entrada({ opacity: 0, y: 16 })}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-40px" }}
                   transition={{ duration: 0.3 }}
@@ -717,7 +718,7 @@ export default function Salarios() {
                 </motion.div>
 
                 <motion.div
-                  initial={{ opacity: 0, y: 16 }}
+                  initial={entrada({ opacity: 0, y: 16 })}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-40px" }}
                   transition={{ duration: 0.3 }}
@@ -760,7 +761,7 @@ export default function Salarios() {
                   </label>
                   <motion.div
                     key={`${negArea}-${negLevel}`}
-                    initial={reduce ? false : { opacity: 0, y: 8 }}
+                    initial={entrada(reduce ? false : { opacity: 0, y: 8 })}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.25 }}
                     className={cn(

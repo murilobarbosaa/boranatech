@@ -15,6 +15,7 @@ import {
   type EnglishObjetivo,
 } from "@/lib/inglesRecursos";
 import { AiCtaLink } from "@/components/shared/AiCta";
+import { entrada } from "@/lib/entradaEstatica";
 
 // Mapeia o nivel do mini quiz pro nivel do roadmap de ingles por nivel (secao
 // "O que fazer em cada nivel" na pagina de Ingles), pro CTA gratis cair na
@@ -141,7 +142,7 @@ export default function InglesTrilhaQuiz() {
         {nivel && objetivo ? (
           <motion.div
             key={`${nivel}-${objetivo}`}
-            initial={reduce ? false : { opacity: 0, y: 10 }}
+            initial={entrada(reduce ? false : { opacity: 0, y: 10 })}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
             className="mt-6"

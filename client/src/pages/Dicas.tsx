@@ -73,6 +73,7 @@ import {
   notebookParts,
   notebookTiers,
 } from "@/lib/notebookGuideData";
+import { entrada } from "@/lib/entradaEstatica";
 
 const ac = getPageAccentUi("amber");
 
@@ -634,7 +635,7 @@ function SparkleBurst() {
           height={s.size}
           viewBox="0 0 24 24"
           fill="currentColor"
-          initial={{ scale: 0, opacity: 0 }}
+          initial={entrada({ scale: 0, opacity: 0 })}
           animate={{ scale: [0, 1, 0], opacity: [0, 1, 0], rotate: [0, 90] }}
           transition={{ duration: 0.7, delay: s.delay, ease: "easeOut" as const }}
         >
@@ -727,7 +728,7 @@ function DicasDestaque() {
                 key={gold.nonce}
                 ref={goldRef}
                 tabIndex={-1}
-                initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.85 }}
+                initial={entrada(reduce ? { opacity: 0 } : { opacity: 0, scale: 0.85 })}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={
                   reduce
@@ -803,7 +804,7 @@ function DicasDestaque() {
                       <motion.li
                         layout
                         key={d.texto}
-                        initial={reduce ? false : { opacity: 0, y: 10 }}
+                        initial={entrada(reduce ? false : { opacity: 0, y: 10 })}
                         animate={{ opacity: 1, y: 0 }}
                         exit={reduce ? undefined : { opacity: 0, scale: 0.95 }}
                         transition={{
@@ -928,7 +929,7 @@ function CuriosidadesSection() {
                   key={atual.nonce}
                   ref={cardRef}
                   tabIndex={-1}
-                  initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.85 }}
+                  initial={entrada(reduce ? { opacity: 0 } : { opacity: 0, scale: 0.85 })}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={
                   reduce
@@ -954,7 +955,7 @@ function CuriosidadesSection() {
               ) : (
                 <motion.div
                   key="vazio"
-                  initial={reduce ? false : { opacity: 0 }}
+                  initial={entrada(reduce ? false : { opacity: 0 })}
                   animate={{ opacity: 1 }}
                   className="rounded-[1.2rem] border-2 border-dashed border-slate-400 bg-white/70 p-8 text-center text-sm font-bold text-slate-500"
                 >
@@ -990,7 +991,7 @@ function CuriosidadesSection() {
           <AnimatePresence initial={false}>
             {verTodas ? (
               <motion.ul
-                initial={reduce ? false : { opacity: 0, height: 0 }}
+                initial={entrada(reduce ? false : { opacity: 0, height: 0 })}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={reduce ? { opacity: 0 } : { opacity: 0, height: 0 }}
                 transition={{ duration: reduce ? 0 : 0.3 }}
@@ -1091,7 +1092,7 @@ function TelaRevealCard({
     <motion.div
       ref={cardRef}
       tabIndex={-1}
-      initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
+      initial={entrada(reduce ? { opacity: 0 } : { opacity: 0, scale: 0.9 })}
       animate={{ opacity: 1, scale: 1 }}
       transition={
         reduce
@@ -1577,7 +1578,7 @@ function LinksGrid({
               <motion.li
                 layout
                 key={it.url}
-                initial={reduce ? false : { opacity: 0, y: 10 }}
+                initial={entrada(reduce ? false : { opacity: 0, y: 10 })}
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduce ? undefined : { opacity: 0, scale: 0.9 }}
                 transition={{
@@ -1646,7 +1647,7 @@ function FilmesGrid({
               <motion.li
                 layout
                 key={filme.titulo}
-                initial={reduce ? false : { opacity: 0, y: 10 }}
+                initial={entrada(reduce ? false : { opacity: 0, y: 10 })}
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduce ? undefined : { opacity: 0, scale: 0.9 }}
                 whileHover={
@@ -1705,7 +1706,7 @@ function FilmesGrid({
                   </h3>
                   {expanded ? (
                     <motion.div
-                      initial={reduce ? false : { opacity: 0 }}
+                      initial={entrada(reduce ? false : { opacity: 0 })}
                       animate={{ opacity: 1 }}
                       className="mt-2"
                     >
@@ -1773,7 +1774,7 @@ function LivrosGrid({
               <motion.li
                 layout
                 key={livro.titulo}
-                initial={reduce ? false : { opacity: 0, y: 10 }}
+                initial={entrada(reduce ? false : { opacity: 0, y: 10 })}
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduce ? undefined : { opacity: 0, scale: 0.9 }}
                 transition={{

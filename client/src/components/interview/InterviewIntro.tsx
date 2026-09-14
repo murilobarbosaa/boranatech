@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { Check, Sparkles } from "lucide-react";
+import { entrada } from "@/lib/entradaEstatica";
 
 // Explicacao da arena no estado de ENTRADA, molde do AnalyzerIntro do
 // analisador de GitHub: timeline de como funciona + vitrine com um exemplo
@@ -54,7 +55,7 @@ export function InterviewTimeline() {
           return (
             <motion.li
               key={step.title}
-              initial={reduce ? false : { opacity: 0, y: 14 }}
+              initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.35, delay: Math.min(i * 0.08, 0.3) }}
@@ -100,7 +101,7 @@ function ShowcaseCard({
 }) {
   return (
     <motion.div
-      initial={reduce ? false : { opacity: 0, y: 16 }}
+      initial={entrada(reduce ? false : { opacity: 0, y: 16 })}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.4, delay: Math.min(index * 0.12, 0.36) }}

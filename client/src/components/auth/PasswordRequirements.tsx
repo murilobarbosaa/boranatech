@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { entrada } from "@/lib/entradaEstatica";
 
 interface PasswordRequirementsProps {
   value: string;
@@ -38,7 +39,7 @@ export function PasswordRequirements({
       {shouldShow && (
         <motion.div
           key="password-requirements"
-          initial={{ opacity: 0, height: 0 }}
+          initial={entrada({ opacity: 0, height: 0 })}
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
           transition={{ duration: 0.18, ease: "easeOut" }}

@@ -83,6 +83,7 @@ import {
   FREE_PLATFORMS_SAMPLE_SIZE,
 } from "@/lib/freeTierLimits";
 import { validateEmailForSending } from "@shared/emailValidation";
+import { entrada } from "@/lib/entradaEstatica";
 
 // UI-only (destaque/selo) por plano; os precos vem da fonte unica planPricing.
 const PLAN_UI: Record<PlanId, { highlight: boolean; badge: string | null }> = {
@@ -946,7 +947,7 @@ export default function Checkout() {
   }
 
   const fade = (delay = 0) => ({
-    initial: reduce ? false : { opacity: 0, y: 18 },
+    initial: entrada(reduce ? false : { opacity: 0, y: 18 }),
     whileInView: { opacity: 1, y: 0 },
     viewport: { once: true, margin: "-80px" },
     transition: { duration: 0.5, delay },
@@ -1368,7 +1369,9 @@ export default function Checkout() {
                     </p>
                     <motion.p
                       key={finalPriceCents}
-                      initial={reduce ? false : { opacity: 0, scale: 0.96 }}
+                      initial={entrada(
+                        reduce ? false : { opacity: 0, scale: 0.96 },
+                      )}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.25, ease: "easeOut" }}
                       className="font-display text-4xl font-black text-slate-950"
@@ -1400,7 +1403,7 @@ export default function Checkout() {
                         key={
                           couponMonthlyEquivalentCents ?? plan.monthlyEquivalent
                         }
-                        initial={reduce ? false : { opacity: 0 }}
+                        initial={entrada(reduce ? false : { opacity: 0 })}
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.25, ease: "easeOut" }}
                         className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950"

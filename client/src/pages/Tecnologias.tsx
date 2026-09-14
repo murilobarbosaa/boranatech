@@ -29,6 +29,7 @@ import {
 } from "@/lib/technologyData";
 import { technologyCuriosities } from "@/lib/technologyCuriosities";
 import { getTechnologies } from "@/services/contentService";
+import { entrada } from "@/lib/entradaEstatica";
 
 const ac = getPageAccentUi("violet");
 
@@ -149,7 +150,7 @@ export default function Tecnologias() {
         schemaType="CollectionPage"
       />
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
+        initial={entrada({ opacity: 0, y: 16 })}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
       >
@@ -165,7 +166,7 @@ export default function Tecnologias() {
       <section className="relative overflow-hidden bg-[var(--brand-cream)] py-8">
         <BackgroundDoodles />
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={entrada({ opacity: 0, y: 12 })}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
           className="bnt-marquee relative z-10"

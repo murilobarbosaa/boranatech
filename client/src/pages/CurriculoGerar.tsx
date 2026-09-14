@@ -37,6 +37,7 @@ import {
   type ResumeSummary,
 } from "@/services/resumeService";
 import type { Curriculo } from "@shared/curriculo/schema";
+import { entrada } from "@/lib/entradaEstatica";
 
 const ac = getPageAccentUi("amber");
 
@@ -168,7 +169,7 @@ function BuilderTimeline({ reduce }: { reduce: boolean }) {
           return (
             <motion.li
               key={step.title}
-              initial={reduce ? false : { opacity: 0, y: 14 }}
+              initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.35, delay: Math.min(i * 0.08, 0.3) }}
@@ -214,7 +215,7 @@ function ShowcaseCard({
 }) {
   return (
     <motion.div
-      initial={reduce ? false : { opacity: 0, y: 16 }}
+      initial={entrada(reduce ? false : { opacity: 0, y: 16 })}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.4, delay: Math.min(index * 0.12, 0.36) }}
@@ -485,7 +486,7 @@ export default function CurriculoGerar() {
           {/* Cabecalho integrado, presente nos 3 estados. TODO(Ana): validar
               badge, titulo e subtitulo. */}
           <motion.div
-            initial={reduce ? false : { opacity: 0, y: 14 }}
+            initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
             className="print-hide mb-10"
@@ -950,7 +951,7 @@ function SavedResumesGallery({
         {resumes.map((item, i) => (
           <motion.div
             key={item.id}
-            initial={reduce ? false : { opacity: 0, y: 14 }}
+            initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
             animate={{ opacity: 1, y: 0 }}
             transition={{
               duration: 0.35,

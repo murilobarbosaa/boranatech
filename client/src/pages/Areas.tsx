@@ -38,6 +38,7 @@ import { areaGridPaletteOf } from "@/lib/areaGridPalette";
 // que motivou a migracao da grade.
 import { getAreaAccent } from "@/lib/platformData";
 import { getAreas } from "@/services/contentService";
+import { entrada } from "@/lib/entradaEstatica";
 
 const areaSlugs = new Set(areasTI.map((area) => area.slug));
 
@@ -518,7 +519,7 @@ export default function Areas() {
                 return (
                   <motion.div
                     key={area.key}
-                    initial={reduce ? false : { opacity: 0, y: 14 }}
+                    initial={entrada(reduce ? false : { opacity: 0, y: 14 })}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-60px" }}
                     transition={{
