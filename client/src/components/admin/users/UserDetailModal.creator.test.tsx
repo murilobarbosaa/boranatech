@@ -11,9 +11,10 @@ import {
 /**
  * CONCESSAO DE CREATOR COM KIND e o bloco "Codigos de creator" do modal.
  *
- * O BntSelect e trocado por um select nativo AQUI: ele e Radix, e nenhum teste
- * da base dirige o dropdown dele no jsdom. O que este arquivo trava e o que o
- * bloco oferece e o que ele manda, nao o componente de select.
+ * O BntSelect e trocado por um select nativo AQUI: o que este arquivo trava e o
+ * que o bloco oferece e o que ele manda, nao o componente de select. O popup
+ * real do Radix abre no jsdom (pelo teclado), e a camada dele acima do modal e
+ * travada em CreatorCodesBlock.camada.test.tsx.
  */
 
 const fetchMock = vi.hoisted(() => vi.fn());
